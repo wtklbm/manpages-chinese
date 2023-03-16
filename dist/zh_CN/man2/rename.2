@@ -1,0 +1,286 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Michael Haardt;
+.\"             and Copyright (C) 1993,1995 Ian Jackson
+.\"		and Copyright (C) 2006, 2014 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 00:35:52 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Thu Jun  4 12:21:13 1998 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified Thu Mar  3 09:49:35 2005 by Michael Haardt <michael@moria.de>
+.\" 2007-03-25, mtk, added various text to DESCRIPTION.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rename 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+rename, renameat, renameat2 \- 更改文件的名称或位置
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBint rename(const char *\fP\fIoldpath\fP\fB, const char *\fP\fInewpath\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of \fBAT_*\fP constants */
+\fB#include <stdio.h>\fP
+.PP
+\fBint renameat(int \fP\fIolddirfd\fP\fB, const char *\fP\fIoldpath\fP\fB,\fP
+\fB             int \fP\fInewdirfd\fP\fB, const char *\fP\fInewpath\fP\fB);\fP
+\fBint renameat2(int \fP\fIolddirfd\fP\fB, const char *\fP\fIoldpath\fP\fB,\fP
+\fB             int \fP\fInewdirfd\fP\fB, const char *\fP\fInewpath\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+.nf
+\fBrenameat\fP():
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.PP
+\fBrenameat2\fP():
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBrename\fP() 重命名文件，并在需要时在目录之间移动它。 该文件的任何其他硬链接 (使用 \fBlink\fP(2)) 创建的) 不受影响。
+\fIoldpath\fP 的打开文件描述符也不受影响。
+.PP
+各种限制决定重命名操作是否成功: 请参见下面的错误。
+.PP
+如果 \fInewpath\fP 已经存在，它将被自动替换，这样另一个试图访问 \fInewpath\fP 的进程就不会发现它丢失了。
+但是，可能会出现一个窗口，其中 \fIoldpath\fP 和 \fInewpath\fP 都引用正在重命名的文件。
+.PP
+如果 \fIoldpath\fP 和 \fInewpath\fP 是指向同一文件的现有硬链接，则 \fBrename\fP() 什么也不做，并返回成功状态。
+.PP
+如果 \fInewpath\fP 存在但由于某种原因操作失败，则 \fBrename\fP() 保证保留 \fInewpath\fP 的实例。
+.PP
+\fIoldpath\fP 可以指定一个目录。 在这种情况下，\fInewpath\fP 要么不存在，要么必须指定一个空目录。
+.PP
+如果 \fIoldpath\fP 引用一个符号链接，则该链接被重命名; 如果 \fInewpath\fP 引用符号链接，则该链接将被覆盖。
+.SS renameat()
+\fBrenameat\fP() 系统调用的操作方式与 \fBrename\fP() 完全相同，除了此处描述的差异。
+.PP
+如果 \fIoldpath\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIolddirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBrename\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIoldpath\fP 是相对的且 \fIolddirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIoldpath\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBrename\fP()).
+.PP
+如果 \fIoldpath\fP 是绝对的，则忽略 \fIolddirfd\fP。
+.PP
+\fInewpath\fP 的解释与 \fIoldpath\fP 相同，除了相对路径名是相对于文件描述符 \fInewdirfd\fP 引用的目录解释的。
+.PP
+有关对 \fBrenameat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SS renameat2()
+\fBrenameat2\fP() 有一个额外的 \fIflags\fP 参数。 具有零 \fIflags\fP 参数的 \fBrenameat2\fP() 调用等同于
+\fBrenameat\fP()。
+.PP
+\fIflags\fP 参数是由零个或多个以下标志组成的位掩码:
+.TP 
+\fBRENAME_EXCHANGE\fP
+原子交换 \fIoldpath\fP 和 \fInewpath\fP。 两个路径名都必须存在，但可以是不同类型 (例如，一个可以是非空目录，另一个可以是符号链接)。
+.TP 
+\fBRENAME_NOREPLACE\fP
+不要覆盖重命名的 \fInewpath\fP。 如果 \fInewpath\fP 已经存在，则返回错误。
+.IP
+\fBRENAME_NOREPLACE\fP 不能与 \fBRENAME_EXCHANGE\fP 一起使用。
+.IP
+\fBRENAME_NOREPLACE\fP 需要底层文件系统的支持。 添加了对各种文件系统的支持，如下所示:
+.RS
+.IP \[bu] 3
+.\" ext4: commit 0a7c3937a1f23f8cb5fc77ae01661e9968a51d0c
+ext4 (Linux 3.15);
+.IP \[bu]
+btrfs、tmpfs 和 cifs (Linux 3.17);
+.IP \[bu]
+.\" btrfs: commit 80ace85c915d0f41016f82917218997b72431258
+.\" tmpfs: commit 3b69ff51d087d265aa4af3a532fc4f20bf33e718
+.\" cifs: commit 7c33d5972ce382bcc506d16235f1e9b7d22cbef8
+.\"
+.\" gfs2 in Linux 4.2?
+xfs (Linux 4.0);
+.IP \[bu]
+.\" Also affs, bfs, exofs, hfs, hfsplus, jffs2, logfs, msdos,
+.\" nilfs2, omfs, sysvfs, ubifs, udf, ufs
+.\" hugetlbfs, ramfs
+.\" local filesystems: commit f03b8ad8d38634d13e802165cc15917481b47835
+.\" libfs: commit e0e0be8a835520e2f7c89f214dfda570922a1b90
+Linux 4.9 中添加了对许多其他文件系统的支持，包括 ext2、minix、reiserfs、jfs、vfat 和 bpf。
+.RE
+.TP 
+\fBRENAME_WHITEOUT\fP (since Linux 3.18)
+.\" commit 0d7a855526dd672e114aff2ac22b60fc6f155b08
+.\" commit 787fb6bc9682ec7c05fb5d9561b57100fbc1cc41
+此操作仅对 overlay/union 文件系统实现有意义。
+.IP
+指定 \fBRENAME_WHITEOUT\fP 在执行重命名的同时在重命名的源创建一个 "whiteout" 对象。
+整个操作是原子的，因此如果重命名成功，那么 whiteout 也将被创建。
+.IP
+"whiteout" 是在 union/overlay 文件系统构造中具有特殊含义的对象。 在这些构造中，存在多个层，并且只有顶层被修改过。
+上层的空白将有效地隐藏下层的匹配文件，使其看起来好像该文件不存在。
+.IP
+当存在于下层的文件被重命名时，该文件首先被复制 (如果还没有在上层) 然后在上层重命名，可读写。 同时，源文件需要是 "whiteouted"
+(这样底层源文件的版本就被渲染不可见了)。 整个操作需要以原子方式完成。
+.IP
+.\" https://www.freebsd.org/cgi/man.cgi?query=mount_unionfs&manpath=FreeBSD+11.0-RELEASE
+当不是 union/overlay 的一部分时，空白显示为具有 {0,0} 设备编号的字符设备。 (请注意，其他 union/overlay
+实现可能采用不同的方法来存储 whiteout 条目; 具体而言，BSD union 挂载采用单独的 inode 类型 \fBDT_WHT\fP，虽然
+Linux 中可用的某些文件系统 (例如 CODA 和 XFS) 支持该类型，但内核的 whiteout 支持代码，至少从 Linux 4.19
+开始。)
+.IP
+\fBRENAME_WHITEOUT\fP 需要与创建设备节点相同的权限 (即 \fBCAP_MKNOD\fP 能力)。
+.IP
+\fBRENAME_WHITEOUT\fP 不能与 \fBRENAME_EXCHANGE\fP 一起使用。
+.IP
+.\" tmpfs: commit 46fdb794e3f52ef18b859ebc92f0a9d7db21c5df
+.\" ext4: commit cd808deced431b66b5fa4e5c193cb7ec0059eaff
+.\" XFS: commit 7dcf5c3e4527cfa2807567b00387cf2ed5e07f00
+.\" f2fs: commit 7e01e7ad746bc8198a8b46163ddc73a1c7d22339
+.\" btrfs: commit cdd1fedf8261cd7a73c0596298902ff4f0f04492
+.\" ubifs: commit 9e0a1fff8db56eaaebb74b4a3ef65f86811c4798
+\fBRENAME_WHITEOUT\fP 需要底层文件系统的支持。 支持它的文件系统包括 tmpfs (自 Linux 3.18)、ext4 (自
+Linux 3.18)、XFS (自 Linux 4.1)、f2fs (自 Linux 4.2)、btrfs (自 Linux 4.7) 和 ubifs
+(自 Linux 4.9)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+包含 \fIoldpath\fP 或 \fInewpath\fP 的目录被拒绝写入权限，或者，\fIoldpath\fP 或 \fInewpath\fP
+路径前缀中的目录之一被拒绝搜索权限，或者 \fIoldpath\fP 是一个目录并且不允许写入权限 (需要更新 \fI..\fP 条目).  (另见
+\fBpath_resolution\fP(7).)
+.TP 
+\fBEBUSY\fP
+重命名失败，因为 \fIoldpath\fP 或 \fInewpath\fP 是某个进程正在使用的目录
+(可能作为当前工作目录，或作为根目录，或者因为它已打开以供读取) 或正在被系统使用 (例如作为挂载点)，而系统认为这是一个错误。
+(请注意，在这种情况下不需要返回 \fBEBUSY\fP\[em] 无论如何进行重命名都没有错 \[em] 但如果系统无法以其他方式处理此类情况，则允许返回
+\fBEBUSY\fP。)
+.TP 
+\fBEDQUOT\fP
+用户在文件系统上的磁盘块配额已用完。
+.TP 
+\fBEFAULT\fP
+\fIoldpath\fP 或 \fInewpath\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+新路径名包含旧路径前缀，或者更一般地说，试图使目录成为其自身的子目录。
+.TP 
+\fBEISDIR\fP
+\fInewpath\fP 是现有目录，但 \fIoldpath\fP 不是目录。
+.TP 
+\fBELOOP\fP
+解析 \fIoldpath\fP 或 \fInewpath\fP 时遇到太多符号链接。
+.TP 
+\fBEMLINK\fP
+\fIoldpath\fP 已经拥有最大数量的链接，或者它是一个目录，而包含 \fInewpath\fP 的目录拥有最大数量的链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIoldpath\fP 或 \fInewpath\fP 太长。
+.TP 
+\fBENOENT\fP
+\fIoldpath\fP 命名的链接不存在; 或者，\fInewpath\fP 中的目录组件不存在; 或者，\fIoldpath\fP 或 \fInewpath\fP
+是空字符串。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOSPC\fP
+包含该文件的设备没有空间容纳新的目录条目。
+.TP 
+\fBENOTDIR\fP
+在 \fIoldpath\fP 或 \fInewpath\fP 中用作目录的组件实际上不是目录。 或者，\fIoldpath\fP 是目录，\fInewpath\fP
+存在但不是目录。
+.TP 
+\fBENOTEMPTY\fP or \fBEEXIST\fP
+\fInewpath\fP 是一个非空目录，即包含 "." 和 ".." 以外的条目。
+.TP 
+\fBEPERM\fP or \fBEACCES\fP
+包含 \fIoldpath\fP 的目录设置了粘性位 (\fBS_ISVTX\fP)，进程的有效用户 ID 既不是要删除的文件的用户 ID，也不是包含它的目录的用户
+ID，进程没有特权 (Linux: 没有 \fBCAP_FOWNER\fP 能力); 或 \fInewpath\fP
+是一个现有文件并且包含它的目录设置了粘滞位并且进程的有效用户 ID 既不是要替换的文件的用户 ID 也不是包含它的目录的用户 ID，并且进程没有特权
+(Linux: 没有 \fBCAP_FOWNER\fP 能力) ; 或者包含 \fIoldpath\fP 的文件系统不支持重命名请求的类型。
+.TP 
+\fBEROFS\fP
+该文件位于只读文件系统上。
+.TP 
+\fBEXDEV\fP
+\fIoldpath\fP 和 \fInewpath\fP 不在同一个挂载文件系统上。 (Linux 允许在多个点挂载一个文件系统，但 \fBrename\fP()
+不能跨不同的挂载点工作，即使在两个点上挂载了相同的文件系统。)
+.PP
+\fBrenameat\fP() 和 \fBrenameat2\fP(): 可能会出现以下附加错误
+.TP 
+\fBEBADF\fP
+\fIoldpath\fP (\fInewpath\fP) 是相对的，但 \fIolddirfd\fP (\fInewdirfd\fP) 不是有效的文件描述符。
+.TP 
+\fBENOTDIR\fP
+\fIoldpath\fP 是相对的，\fIolddirfd\fP 是指文件而不是目录的文件描述符; 或类似的 \fInewpath\fP 和 \fInewdirfd\fP
+.PP
+\fBrenameat2\fP(): 可能会出现以下其他错误
+.TP 
+\fBEEXIST\fP
+\fIflags\fP 包含 \fBRENAME_NOREPLACE\fP，\fInewpath\fP 已经存在。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了无效标志。
+.TP 
+\fBEINVAL\fP
+\fBRENAME_NOREPLACE\fP 和 \fBRENAME_EXCHANGE\fP 都在 \fIflags\fP 中指定。
+.TP 
+\fBEINVAL\fP
+\fBRENAME_WHITEOUT\fP 和 \fBRENAME_EXCHANGE\fP 都在 \fIflags\fP 中指定。
+.TP 
+\fBEINVAL\fP
+文件系统不支持 \fIflags\fP 中的标志之一。
+.TP 
+\fBENOENT\fP
+\fIflags\fP 包含 \fBRENAME_EXCHANGE\fP，\fInewpath\fP 不存在。
+.TP 
+\fBEPERM\fP
+在 \fIflags\fP 中指定了 \fBRENAME_WHITEOUT\fP，但调用者没有 \fBCAP_MKNOD\fP 能力。
+.SH VERSIONS
+\fBrenameat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.PP
+\fBrenameat2\fP() 在 Linux 3.15 中加入; glibc 2.28 中添加了库支持。
+.SH STANDARDS
+\fBrename\fP(): 4.3BSD, C99, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBrenameat\fP(): POSIX.1\-2008.
+.PP
+\fBrenameat2\fP() 是特定于 Linux 的。
+.SH NOTES
+.\"
+.SS "glibc notes"
+在 \fBrenameat\fP() 不可用的旧内核上，glibc 包装器函数退回到使用 \fBrename\fP()。 当 \fIoldpath\fP 和
+\fInewpath\fP 是相对路径名时，glibc 根据 \fI/proc/self/fd\fP 中对应于 \fIolddirfd\fP 和 \fInewdirfd\fP
+参数的符号链接构造路径名。
+.SH BUGS
+在 NFS 文件系统上，您不能假设如果操作失败，文件就不会被重命名。 如果服务器做了重命名操作，然后崩溃了，服务器重新启动时要处理的重传 RPC
+会导致失败。 该应用程序有望处理此问题。 类似问题见 \fBlink\fP(2)。
+.SH "SEE ALSO"
+\fBmv\fP(1), \fBrename\fP(1), \fBchmod\fP(2), \fBlink\fP(2), \fBsymlink\fP(2),
+\fBunlink\fP(2), \fBpath_resolution\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

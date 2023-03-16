@@ -1,0 +1,603 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: makepkg
+.\"    Author: [see the "Authors" section]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 2022-11-01
+.\"    Manual: Pacman Manual
+.\"    Source: Pacman 6.0.2
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH MAKEPKG 8 2022\-11\-01 "Pacman 6\&.0\&.2" "Pacman Manual"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+makepkg \- 包构建实用程序
+.SH SYNOPSIS
+.sp
+\fImakepkg\fP [options] [ENVVAR=value] [ENVVAR+=value] \& ...
+.SH DESCRIPTION
+.sp
+\fImakepkg\fP 是一个脚本，用于自动构建包 \&。使用该脚本的要求是具有构建能力的 *nix 平台和您希望构建的每个包的自定义构建脚本 (称为
+PKGBUILD) \&。有关创建您自己的构建脚本的详细信息，请参见 \fBPKGBUILD\fP(5)。
+.sp
+基于脚本构建的优点是工作只完成一次 \&。一旦您有了包的构建脚本，\fImakepkg\fP 将完成剩下的工作:
+下载并验证源文件、检查依赖性、配置构建时设置、构建包、将包安装到临时根目录、进行自定义、生成元 \- 信息，并将整个东西打包以供 pacman 使用
+\&。
+.if  n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fP
+.ps -1
+.br
+.sp
+\fImakepkg\fP 默认使用您当前的区域设置，并且在构建包时不会取消设置
+\&。如果您希望在寻求帮助或出于其他目的时与其他人共享您的构建输出，您可能希望运行 "LC_ALL=C makepkg"
+这样您的日志和输出就不会被本地化 \&。
+.sp .5v
+.RE
+.SH OPTIONS
+.PP
+\fB\-A, \-\-ignorearch\fP
+.RS 4
+忽略构建脚本中缺失或不完整的 arch 字段 \&。这是为了在 PKGBUILD 可能稍微过时并且未使用
+arch=(\*(Aqyourarch\*(Aq) 字段 \& 更新时从源代码重建包。
+.RE
+.PP
+\fB\-c, \-\-clean\fP
+.RS 4
+成功构建后清理剩余的工作文件和目录。
+.RE
+.PP
+\fB\-\-config\fP <file>
+.RS 4
+使用备用配置文件而不是默认的 /etc/makepkg\&.conf\&。
+.RE
+.PP
+\fB\-d, \-\-nodeps\fP
+.RS 4
+不要执行任何依赖性检查 \&。这将使您覆盖并忽略任何所需的依赖项 \&。如果所有依赖项都没有安装 \&，这个选项很有可能会中断构建过程。
+.RE
+.PP
+\fB\-e, \-\-noextract\fP
+.RS 4
+不要提取源文件或运行 prepare() 函数 (如果存在) ; 使用 $srcdir / 目录中已经存在的任何源 \&。如果您想进入 $srcdir
+/ 并手动修补或调整代码，然后从结果中创建一个包，这将很方便 \&。请记住，创建补丁可能是允许其他人使用您的 PKGBUILD\& 的更好解决方案。
+.RE
+.PP
+\fB\-\-verifysource\fP
+.RS 4
+对于 PKGBUILD 源数组中的每个源文件，如果需要下载文件并执行完整性检查 \&。不执行提取或构建 \&。除非使用
+\-\-syncdeps\&，否则不会处理 PKGBUILD 中指定的依赖项。用于执行后续离线构建 \&。
+.RE
+.PP
+\fB\-f, \-\-force\fP
+.RS 4
+如果已构建的包已存在于 PKGDEST (设置在 \fBmakepkg.conf\fP(5)) 目录中，可能默认为当前目录 \&. 这允许构建的包被覆盖
+\&。
+.RE
+.PP
+\fB\-g, \-\-geninteg\fP
+.RS 4
+对于 PKGBUILD 源数组中的每个源文件，如果需要下载文件并生成完整性检查 \&。生成的完整性检查由 PKGBUILD
+中存在的检查确定，如果不存在则回退到 makepkg\&.conf (5) 中的 INTEGRITY_CHECK 数组的值此输出可以重定向到您的
+PKGBUILD 以使用 `makepkg` 进行源验证 \-g >> PKGBUILD"\&.
+.RE
+.PP
+\fB\-\-skipinteg\fP
+.RS 4
+不要对源文件执行任何完整性检查 (校验和和 PGP) \&。
+.RE
+.PP
+\fB\-\-skipchecksums\fP
+.RS 4
+不验证源文件的校验和 \&。
+.RE
+.PP
+\fB\-\-skippgpcheck\fP
+.RS 4
+不验证源文件的 PGP 签名 \&。
+.RE
+.PP
+\fB\-h, \-\-help\fP
+.RS 4
+输出语法和命令行选项 \&。
+.RE
+.PP
+\fB\-\-holdver\fP
+.RS 4
+使用版本控制系统源 (\fBPKGBUILD\fP(5)) 时，任何当前签出的源都不会更新到最新版本 \&。
+.RE
+.PP
+\fB\-i, \-\-install\fP
+.RS 4
+使用 \fBpacman\fP(8)\& 成功构建后安装或升级包。
+.RE
+.PP
+\fB\-L, \-\-log\fP
+.RS 4
+启用日志记录 \&。这将使用 \fBtee\fP 程序将每个 PKGBUILD 函数的输出发送到控制台和名为
+pkgbase\-pkgver\-pkgrel\-arch\-<function>\&.log\&
+的构建目录中的文本文件。如上所述，日志将被本地化，因此如果与其他人共享日志输出 \&，您可能需要相应地设置您的语言环境。
+.RE
+.PP
+\fB\-m, \-\-nocolor\fP
+.RS 4
+在输出消息中禁用颜色 \&。
+.RE
+.PP
+\fB\-o, \-\-nobuild\fP
+.RS 4
+下载并提取文件，运行 prepare() 函数，但不要构建它们 \&。如果您希望在构建之前调整 $srcdir / 中的文件，请使用
+\fI\-\-noextract\fP 选项。
+.RE
+.PP
+\fB\-p\fP <buildscript>
+.RS 4
+读取包脚本 buildscript 而不是默认的 PKGBUILD; 请参见 \fBPKGBUILD\fP(5)\&。buildscript 必须位于
+makepkg 被调用的目录中。
+.RE
+.PP
+\fB\-r, \-\-rmdeps\fP
+.RS 4
+成功构建后，在使用 \- s\& 时删除 makepkg 在依赖项自动解析和安装期间安装的所有依赖项。
+.RE
+.PP
+\fB\-R, \-\-repackage\fP
+.RS 4
+重新打包包的内容而不重建包 \&。如果您忘记了 PKGBUILD 中的依赖项或安装文件并且构建本身不会更改 \&，这将很有用。
+.RE
+.PP
+\fB\-s, \-\-syncdeps\fP
+.RS 4
+使用 pacman\& 安装缺少的依赖项。当找不到构建时或运行时依赖项时，pacman 将尝试解决它们 \&。如果成功，将下载并安装缺少的包 \&。
+.RE
+.PP
+\fB\-S, \-\-source\fP
+.RS 4
+不要实际构建包，而是构建一个仅包含源代码的 tarball，不包含可以通过下载 URL 获取的源代码 \&。这对于将单个 tarball
+传递给另一个程序 (例如 chroot、远程构建器或 tarball 上传 \&) 很有用。因为验证了完整性检查，所以包的所有源文件都需要存在或可下载
+\&。
+.RE
+.PP
+\fB\-V, \-\-version\fP
+.RS 4
+显示版本信息 \&。
+.RE
+.PP
+\fB\-C, \-\-cleanbuild\fP
+.RS 4
+在构建包之前删除 $srcdir\&。
+.RE
+.PP
+\fB\-\-allsource\fP
+.RS 4
+不要实际构建包，而是构建一个包含所有源的纯源 tarball，包括那些通常通过 makepkg\& 下载的源。这对于将单个 tarball
+传递给另一个程序 (例如 chroot 或远程构建器 \&) 很有用。在分发二进制包时，它也将满足 GPL 的要求。
+.RE
+.PP
+\fB\-\-check\fP
+.RS 4
+运行 PKGBUILD 中的 check() 函数，覆盖 \fBmakepkg.conf\fP(5)\& 中的设置。
+.RE
+.PP
+\fB\-\-noarchive\fP
+.RS 4
+不要在构建过程结束时创建存档 \&。这对于测试 package() 函数或者如果您的目标发行版不使用 pacman\& 很有用。
+.RE
+.PP
+\fB\-\-nocheck\fP
+.RS 4
+不要在 PKGBUILD 中运行 check() 函数或处理 checkdepends\&。
+.RE
+.PP
+\fB\-\-noprepare\fP
+.RS 4
+不要在 PKGBUILD\& 中运行 prepare() 函数。
+.RE
+.PP
+\fB\-\-sign\fP
+.RS 4
+使用 gpg 对生成的包进行签名，覆盖 \fBmakepkg.conf\fP(5)\& 中的设置。
+.RE
+.PP
+\fB\-\-nosign\fP
+.RS 4
+不要为构建的包创建签名 \&。
+.RE
+.PP
+\fB\-\-key\fP <key>
+.RS 4
+指定签名包时使用的密钥，覆盖 \fBmakepkg.conf\fP(5)\& 中的 GPGKEY 设置。如果在任一位置均未指定，则将使用密钥环中的默认密钥
+\&。
+.RE
+.PP
+\fB\-\-noconfirm\fP
+.RS 4
+(传递给 pacman) 防止 pacman 在继续操作之前等待用户输入 \&。
+.RE
+.PP
+\fB\-\-needed\fP
+.RS 4
+(传递给 pacman) 告诉 pacman 不要重新安装目标，如果它已经是最新的 \&。(与 \fI\-i\fP/\fI\-\-install\fP)\& 一起使用。
+.RE
+.PP
+\fB\-\-asdeps\fP
+.RS 4
+(传递给 pacman) 将软件包安装为非显式安装 (与 \fI\-i\fP/\fI\-\-install\fP)\& 一起使用。
+.RE
+.PP
+\fB\-\-noprogressbar\fP
+.RS 4
+(传递给 pacman) 防止 pacman 显示进度条; 如果您将 makepkg 输出重定向到文件 \&，则很有用。
+.RE
+.PP
+\fB\-\-packagelist\fP
+.RS 4
+列出无需构建 \& 即可生成的包文件名。列出的包文件名包括 PKGDEST 和 PKGEXT\&。
+.RE
+.PP
+\fB\-\-printsrcinfo\fP
+.RS 4
+生成 SRCINFO 文件并将其打印到 stdout\&。
+.RE
+.SH "ADDITIONAL FEATURES"
+.sp
+makepkg 支持构建包的开发版本，而无需手动更新 PKGBUILD\& 中的 pkgver。这以前是使用单独的实用程序
+\fIversionpkg\fP\& 完成的。有关如何设置开发 PKGBUILD\& 的详细信息，请参见 \fBPKGBUILD\fP(5)。
+.SH REPRODUCIBILITY
+.sp
+makepkg 旨在与 Reproducible Builds 兼容。如果设置了 \fBSOURCE_DATE_EPOCH\fP
+环境变量，则导出到子进程，源文件和包文件修改时间和包元数据将根据指定的时间戳统一 \&。
+.sp
+如果没有设置 \fBSOURCE_DATE_EPOCH\fP 环境变量，makepkg 会使用自己的开始日期供内部使用，但不会在构建前统一源文件时间戳。
+.SH "ENVIRONMENT VARIABLES"
+.PP
+\fBPACMAN\fP
+.RS 4
+将用于检查缺少的依赖项以及安装和删除包的命令 \&。Pacman\(cqs \fI\-Qq\fP, \fI\-Rns\fP, \fI\-S\fP, \fI\-T\fP, and
+\fI\-U\fP operations must be supported by this command\&. 如果变量未设置或为空，makepkg
+将回退到 \(oqpacman\(cq\&.
+.RE
+.PP
+\fBMAKEPKG_CONF=\fP"/path/to/file"
+.RS 4
+使用备用配置文件而不是默认的 /etc/makepkg\&.conf\&。
+.RE
+.PP
+\fBPKGDEST=\fP"/path/to/directory"
+.RS 4
+将存储结果包的目录 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBSRCDEST=\fP"/path/to/directory"
+.RS 4
+将存储下载源的目录 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBSRCPKGDEST=\fP"/path/to/directory"
+.RS 4
+存放源码包文件的目录 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBLOGDEST=\fP"/path/to/directory"
+.RS 4
+将存储生成的日志文件的目录 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBPACKAGER=\fP"John Doe <john@doe\&.com>"
+.RS 4
+用于标识结果包创建者的字符串 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBBUILDDIR=\fP"/path/to/directory"
+.RS 4
+将构建包的目录 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBCARCH=\fP"(i686|x86_64)"
+.RS 4
+强制构建特定架构 \&。用于交叉编译 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBPKGEXT=\fP"\&.pkg\&.tar\&.gz", \fBSRCEXT=\fP"\&.src\&.tar\&.gz"
+.RS 4
+设置制作编译包或源包时使用的压缩 \&。覆盖 \fBmakepkg.conf\fP(5)\& 中定义的相应值。
+.RE
+.PP
+\fBGNUPGHOME=\fP"/path/to/directory"
+.RS 4
+用于签署构建包的 gpg 密钥环存储的目录 \&。
+.RE
+.PP
+\fBGPGKEY=\fP"keyid"
+.RS 4
+指定签名包时使用的密钥，覆盖 \fBmakepkg.conf\fP(5)\& 中的 GPGKEY 设置。
+.RE
+.PP
+\fBSOURCE_DATE_EPOCH=\fP"<date>"
+.RS 4
+用于可复制的构建 \&。
+.RE
+.PP
+\fBBUILDTOOL=\fP"<name>"
+.RS 4
+用于设置构建环境的工具生态系统的名称 \&。用于定义可重现构建的规范，例如 \&.g\&。\fBmakepkg.conf\fP(5) 使用 \&。
+.RE
+.PP
+\fBBUILDTOOLVER=\fP"<version>"
+.RS 4
+\fI$BUILDTOOL\fP 使用的版本 \&。
+.RE
+.SH CONFIGURATION
+.sp
+有关使用 \fImakepkg\&.conf\fP 文件配置 makepkg 的更多详细信息，请参见 \fBmakepkg.conf\fP(5)。
+.SH ERRORS
+.sp
+退出时，makepkg 将返回以下错误代码之一 \&。
+.PP
+0
+.RS 4
+正常退出条件 \&。
+.RE
+.PP
+1
+.RS 4
+失败的未知原因 \&。
+.RE
+.PP
+2
+.RS 4
+配置文件错误 \&。
+.RE
+.PP
+3
+.RS 4
+用户指定了无效选项 \&。
+.RE
+.PP
+4
+.RS 4
+PKGBUILD\& 中用户提供的函数错误。
+.RE
+.PP
+5
+.RS 4
+无法创建可行的包 \&。
+.RE
+.PP
+6
+.RS 4
+PKGBUILD 中指定的源文件或辅助文件丢失 \&。
+.RE
+.PP
+7
+.RS 4
+PKGDIR 丢失 \&。
+.RE
+.PP
+8
+.RS 4
+无法安装依赖项 \&。
+.RE
+.PP
+9
+.RS 4
+无法删除依赖项 \&。
+.RE
+.PP
+10
+.RS 4
+用户试图以 root\& 身份运行 makepkg。
+.RE
+.PP
+11
+.RS 4
+用户没有构建或安装到给定位置的权限 \&。
+.RE
+.PP
+12
+.RS 4
+解析 PKGBUILD\& 时出错。
+.RE
+.PP
+13
+.RS 4
+已经构建了一个包 \&。
+.RE
+.PP
+14
+.RS 4
+软件包安装失败 \&。
+.RE
+.PP
+15
+.RS 4
+缺少运行 makepkg 所需的程序 \&。
+.RE
+.PP
+16
+.RS 4
+指定的 GPG 密钥不存在或未能签署包 \&。
+.RE
+.SH "SEE ALSO"
+.sp
+\fBmakepkg.conf\fP(5), \fBPKGBUILD\fP(5), \fBpacman\fP(8)
+.sp
+有关 pacman 及其相关工具的最新信息，请参见 pacman 网站 https://archlinux\&.org/pacman/。
+.SH BUGS
+.sp
+虫子? 您一定在开玩笑; 此软件中没有错误 \&。但如果我们碰巧错了，请在 Pacman 部分的 Arch Linux Bug Tracker
+提交尽可能详细的错误报告 \&。
+.SH AUTHORS
+.sp
+目前的维护者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Allan McRae <allan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Andrew Gregory <andrew\&.gregory\&.8@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Eli Schwartz <eschwartz@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Morgan Adamiec <morganamilo@archlinux\&.org>
+.RE
+.sp
+过去的主要贡献者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Judd Vinet <jvinet@zeroflux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aurelien Foret <aurelien@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aaron Griffin <aaron@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dan McGee <dan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Xavier Chantry <shiningxc@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Nagy Gabor <ngaba@bibl\&.u\-szeged\&.hu>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dave Reisner <dreisner@archlinux\&.org>
+.RE
+.sp
+对于其他贡献者，请在 pacman\&.git 库 \& 上使用 git shortlog \-s。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

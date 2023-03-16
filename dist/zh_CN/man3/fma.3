@@ -1,0 +1,129 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2002 Walter Harms (walter.harms@informatik.uni-oldenburg.de)
+.\" and Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Modified 2004-11-15, Added further text on FLT_ROUNDS
+.\" 	as suggested by AEB and Fabian Kreutz
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fma 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+fma、fmaf、fmal \- 浮点乘法和加法
+.SH LIBRARY
+数学库 (\fIlibm\fP、\fI\-lm\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <math.h>\fP
+.PP
+\fBdouble fma(double \fP\fIx\fP\fB, double \fP\fIy\fP\fB, double \fP\fIz\fP\fB);\fP
+\fBfloat fmaf(float \fP\fIx\fP\fB, float \fP\fIy\fP\fB, float \fP\fIz\fP\fB);\fP
+\fBlong double fmal(long double \fP\fIx\fP\fB, long double \fP\fIy\fP\fB, long double \fP\fIz\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBfma\fP(), \fBfmaf\fP(), \fBfmal\fP():
+.nf
+    _ISOC99_ 源 ||_POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+这些函数计算 \fIx\fP * \fIy\fP + \fIz\fP。 结果根据当前舍入模式舍入为一个三元运算 (参见 \fBfenv\fP(3)).
+.SH "RETURN VALUE"
+这些函数返回 \fIx\fP * \fIy\fP + \fIz\fP 的值，四舍五入为一个三元运算。
+.PP
+如果 \fIx\fP 或 \fIy\fP 是 NaN，则返回 NaN。
+.PP
+如果 \fIx\fP 乘以 \fIy\fP 是一个精确的无穷大，而 \fIz\fP 是一个符号相反的无穷大，则会发生域错误，并返回 NaN。
+.PP
+.\" POSIX.1-2008 allows some possible differences for the following two
+.\" domain error cases, but on Linux they are treated the same (AFAICS).
+.\" Nevertheless, we'll mirror POSIX.1 and describe the two cases
+.\" separately.
+.\" POSIX.1 says that a NaN or an implementation-defined value shall
+.\" be returned for this case.
+如果 \fIx\fP 或 \fIy\fP 其中一个为无穷大，另一个为 0，且 \fIz\fP 不是 NaN，则出现定义域错误，返回 NaN。
+.PP
+.\" POSIX.1 makes the domain error optional for this case.
+如果 \fIx\fP 或 \fIy\fP 其中一个为无穷大，另一个为 0，且 \fIz\fP 为 NaN，则出现定义域错误，返回 NaN。
+.PP
+如果 \fIx\fP 乘以 \fIy\fP 不是无穷大乘以零 (反之亦然)，并且 \fIz\fP 是 NaN，则返回 NaN。
+.PP
+如果结果溢出，则会发生范围错误，并返回具有正确符号的无穷大。
+.PP
+如果结果下溢，则会发生范围错误，并返回带符号的 0。
+.SH ERRORS
+有关如何确定调用这些函数时是否发生错误的信息，请参见 \fBmath_error\fP(7)。
+.PP
+可能会出现以下错误:
+.TP 
+Domain error: \fIx\fP * \fIy\fP + \fIz\fP, or \fIx\fP * \fIy\fP is invalid and \fIz\fP is not a NaN
+.\" .I errno
+.\" is set to
+.\" .BR EDOM .
+引发无效浮点异常 (\fBFE_INVALID\fP)。
+.TP 
+Range error: result overflow
+.\" .I errno
+.\" is set to
+.\" .BR ERANGE .
+引发溢出浮点异常 (\fBFE_OVERFLOW\fP)。
+.TP 
+Range error: result underflow
+.\" .I errno
+.\" is set to
+.\" .BR ERANGE .
+引发下溢浮点异常 (\fBFE_UNDERFLOW\fP)。
+.PP
+.\" FIXME . Is it intentional that these functions do not set errno?
+.\" Bug raised: http://sources.redhat.com/bugzilla/show_bug.cgi?id=6801
+这些函数不设置 \fIerrno\fP。
+.SH VERSIONS
+这些函数是在 glibc 2.1 中添加的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfma\fP(),
+\fBfmaf\fP(),
+\fBfmal\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+C99, POSIX.1\-2001, POSIX.1\-2008.
+.SH "SEE ALSO"
+\fBremainder\fP(3), \fBremquo\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,237 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\" and Copyright 2004, 2005 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Tue Oct 22 08:11:14 EDT 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Sun Feb 18 01:59:29 2001 by Andries E. Brouwer <aeb@cwi.nl>
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_IPC_OWNER requirement
+.\" Modified, 17 Jun 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_SYS_ADMIN requirement for IPC_SET and IPC_RMID
+.\" Modified, 11 Nov 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language and formatting clean-ups
+.\"	Added msqid_ds and ipc_perm structure definitions
+.\" 2005-08-02, mtk: Added IPC_INFO, MSG_INFO, MSG_STAT descriptions
+.\" 2018-03-20, dbueso: Added MSG_STAT_ANY description.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH msgctl 2 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+msgctl\-System V 消息控制操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/msg.h>\fP
+.PP
+\fBint msgctl(int \fP\fImsqid\fP\fB, int \fP\fIcmd\fP\fB, struct msqid_ds *\fP\fIbuf\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmsgctl\fP() 在标识符为 \fImsqid\fP 的 System\V 消息队列上执行 \fIcmd\fP 指定的控制操作。
+.PP
+\fImsqid_ds\fP 数据结构体在 \fI<sys/msg.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct msqid_ds {
+    struct ipc_perm msg_perm;   /* Ownership and permissions */
+    time_t          msg_stime;  /* Time of last msgsnd(2) */
+    time_t          msg_rtime;  /* Time of last msgrcv(2) */
+    time_t          msg_ctime;  /* Time of creation or last
+                                   modification by msgctl() */
+    unsigned long   msg_cbytes; /* # of bytes in queue */
+    msgqnum_t       msg_qnum;   /* # number of messages in queue */
+    msglen_t        msg_qbytes; /* Maximum # of bytes in queue */
+    pid_t           msg_lspid;  /* PID of last msgsnd(2) */
+    pid_t           msg_lrpid;  /* PID of last msgrcv(2) */
+};
+.EE
+.in
+.PP
+\fImsqid_ds\fP 结构体的字段如下:
+.TP  11
+\fImsg_perm\fP
+这是一个 \fIipc_perm\fP 结构体 (见下文)，它指定了对消息队列的访问权限。
+.TP 
+\fImsg_stime\fP
+\fBmsgsnd\fP(2) 系统最后一次调用的时间。
+.TP 
+\fImsg_rtime\fP
+\fBmsgrcv\fP(2) 系统最后一次调用的时间。
+.TP 
+\fImsg_ctime\fP
+创建队列的时间或上次 \fBmsgctl\fP() \fBIPC_SET\fP 操作的时间。
+.TP 
+\fImsg_cbytes\fP
+当前消息队列中所有消息的字节数。 这是 POSIX 中未指定的非标准 Linux 扩展。
+.TP 
+\fImsg_qnum\fP
+当前在消息队列中的消息数。
+.TP 
+\fImsg_qbytes\fP
+消息队列中允许的最大消息文本字节数。
+.TP 
+\fImsg_lspid\fP
+执行最后一个 \fBmsgsnd\fP(2) 系统调用的进程的 ID。
+.TP 
+\fImsg_lrpid\fP
+执行最后一个 \fBmsgrcv\fP(2) 系统调用的进程的 ID。
+.PP
+\fIipc_perm\fP 结构体定义如下 (突出显示的字段可使用 \fBIPC_SET\fP): 设置
+.PP
+.in +4n
+.EX
+struct ipc_perm {
+    key_t          __key;       /* Key supplied to msgget(2) */
+    uid_t          \fBuid\fP;         /* Effective UID of owner */
+    gid_t          \fBgid\fP;         /* Effective GID of owner */
+    uid_t          cuid;        /* Effective UID of creator */
+    gid_t          cgid;        /* Effective GID of creator */
+    unsigned short \fBmode\fP;        /* Permissions */
+    unsigned short __seq;       /* Sequence number */
+};
+.EE
+.in
+.PP
+\fIipc_perm\fP 结构体的 \fImode\fP 字段的最低有效 9 位定义了消息队列的访问权限。 权限位如下:
+.TS
+l l.
+0400	Read by user
+0200	Write by user
+0040	Read by group
+0020	Write by group
+0004	Read by others
+0002	Write by others
+.TE
+.PP
+系统未使用位 0100、0010 和 0001 (执行位)。
+.PP
+\fIcmd\fP 的有效值为:
+.TP 
+\fBIPC_STAT\fP
+将 \fImsqid\fP 关联的内核数据结构体中的信息复制到 \fIbuf\fP 指向的 \fImsqid_ds\fP 结构体中。 调用者必须对消息队列具有读取权限。
+.TP 
+\fBIPC_SET\fP
+将 \fIbuf\fP 指向的 \fImsqid_ds\fP 结构体的某些成员的值写入与此消息队列关联的内核数据结构体，同时更新其 \fImsg_ctime\fP 成员。
+.IP
+结构体的以下成员已更新: \fImsg_qbytes\fP、\fImsg_perm.uid\fP、\fImsg_perm.gid\fP 和 (最低有效的 9 位)
+\fImsg_perm.mode\fP。
+.IP
+调用进程的有效 UID 必须匹配消息队列的所有者 (\fImsg_perm.uid\fP) 或创建者
+(\fImsg_perm.cuid\fP)，否则调用者必须具有特权。 需要适当的特权 (Linux: \fBCAP_SYS_RESOURCE\fP 能力) 才能将
+\fImsg_qbytes\fP 值提高到系统参数 \fBMSGMNB\fP 之外。
+.TP 
+\fBIPC_RMID\fP
+立即移除消息队列，唤醒所有等待的 reader 和 writer 进程 (错误返回并将 \fIerrno\fP 设置为 \fBEIDRM\fP)。
+调用进程必须具有适当的权限或其有效用户 ID 必须是消息队列的创建者或所有者的用户 ID。 在这种情况下忽略 \fBmsgctl\fP() 的第三个参数。
+.TP 
+\fBIPC_INFO\fP (Linux\-specific)
+在 \fIbuf\fP 指向的结构体中返回有关系统范围消息队列限制和参数的信息。 此结构体是 \fImsginfo\fP 类型 (因此，需要强制转换)，如果定义了
+\fB_GNU_SOURCE\fP 特性测试宏，则在 \fI<sys/msg.h>\fP 中定义:
+.IP
+.in +4n
+.EX
+struct msginfo {
+    int msgpool; /* Size in kibibytes of buffer pool
+                    用于保存消息数据;
+                    unused within kernel */  
+    int msgmap;  /* Maximum number of entries in message
+                    map; unused within kernel */
+    int msgmax;  /* Maximum number of bytes that can be
+                    written in a single message */
+    int msgmnb;  /* Maximum number of bytes that can be
+                    写入队列; 用于初始化
+                    队列创建期间的 msg_qbytes
+                    (msgget(2)) */
+    int msgmni;  /* Maximum number of message queues */
+    int msgssz;  /* Message segment size;
+                    unused within kernel */
+    int msgtql;  /* Maximum number of messages on all queues
+                    in system; unused within kernel */
+    unsigned short msgseg;
+                 /* Maximum number of segments;
+                    unused within kernel */
+};
+.EE
+.in
+.IP
+\fImsgmni\fP、\fImsgmax\fP 和 \fImsgmnb\fP 设置可以通过同名的 \fI/proc\fP 文件进行更改; 详见 \fBproc\fP(5)。
+.TP 
+\fBMSG_INFO\fP (Linux\-specific)
+返回一个 \fImsginfo\fP 结构体，其中包含与 \fBIPC_INFO\fP 相同的信息，除了以下字段返回有关消息队列消耗的系统资源的信息:
+\fImsgpool\fP 字段返回系统上当前存在的消息队列的数量; \fImsgmap\fP 字段返回系统上所有队列中的消息总数; \fImsgtql\fP
+字段返回系统上所有队列中所有消息的总字节数。
+.TP 
+\fBMSG_STAT\fP (Linux\-specific)
+像 \fBIPC_STAT\fP 一样返回 \fImsqid_ds\fP 结构体。 但是，\fImsqid\fP
+参数不是队列标识符，而是内核内部数组的索引，该数组维护有关系统上所有消息队列的信息。
+.TP 
+\fBMSG_STAT_ANY\fP (Linux\-specific, since Linux 4.17)
+像 \fBMSG_STAT\fP 一样返回 \fImsqid_ds\fP 结构体。 但是，不会检查 \fImsg_perm.mode\fP 是否具有 \fImsqid\fP
+的读取权限，这意味着任何用户都可以使用此操作 (就像任何用户都可以读取 \fI/proc/sysvipc/msg\fP 以获得相同的信息一样)。
+.SH "RETURN VALUE"
+成功时，\fBIPC_STAT\fP、\fBIPC_SET\fP 和 \fBIPC_RMID\fP 返回 0。 成功的 \fBIPC_INFO\fP 或 \fBMSG_INFO\fP
+操作返回内核内部数组中最高使用条目的索引，记录有关所有消息队列的信息。 (此信息可与重复的 \fBMSG_STAT\fP 或 \fBMSG_STAT_ANY\fP
+操作一起使用，以获得有关系统上所有队列的信息。) 成功的 \fBMSG_STAT\fP 或 \fBMSG_STAT_ANY\fP 操作返回其索引在 \fImsqid\fP
+中给出的队列的标识符。
+.PP
+失败时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+参数 \fIcmd\fP 等于 \fBIPC_STAT\fP 或 \fBMSG_STAT\fP，但调用进程对消息队列 \fImsqid\fP 没有读权限，在管理其 IPC
+命名空间的用户命名空间中不具有 \fBCAP_IPC_OWNER\fP 能力。
+.TP 
+\fBEFAULT\fP
+参数 \fIcmd\fP 的值为 \fBIPC_SET\fP 或 \fBIPC_STAT\fP，但 \fIbuf\fP 指向的地址不可访问。
+.TP 
+\fBEIDRM\fP
+消息队列已删除。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 或 \fImsqid\fP 的值无效。 或者: 对于 \fBMSG_STAT\fP 操作，\fImsqid\fP 中指定的索引值引用了当前未使用的数组槽。
+.TP 
+\fBEPERM\fP
+参数 \fIcmd\fP 的值为 \fBIPC_SET\fP 或 \fBIPC_RMID\fP，但调用进程的有效用户 ID 不是创建者 (在
+\fImsg_perm.cuid\fP) 中找到) 或所有者 (在消息队列的 \fImsg_perm.uid\fP) 中找到，并且调用者没有特权 (Linux:
+没有 \fBCAP_SYS_ADMIN\fP 功能)。
+.TP 
+\fBEPERM\fP
+尝试 (\fBIPC_SET\fP) 将 \fImsg_qbytes\fP 增加到系统参数 \fBMSGMNB\fP 之外，但调用者没有特权 (Linux: 没有
+\fBCAP_SYS_RESOURCE\fP 功能)。
+.SH STANDARDS
+.\" SVID does not document the EIDRM error condition.
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.SH NOTES
+\fBipcs\fP(1) 程序使用 \fBIPC_INFO\fP、\fBMSG_STAT\fP 和 \fBMSG_INFO\fP 操作来提供有关已分配资源的信息。 在
+future 中，这些可能会修改或移动到 \fI/proc\fP 文件系统接口。
+.PP
+\fIstruct msqid_ds\fP 中的各个字段在 Linux 2.2 下被键入为 \fIshort\fP，在 Linux 2.4 下已成为
+\fIlong\fP。 要利用这一点，在 glibc\-2.1.91 或更高版本下重新编译就足够了。 (内核通过 \fIcmd\fP.) 中的 \fBIPC_64\fP
+标志区分新旧调用
+.SH "SEE ALSO"
+\fBmsgget\fP(2), \fBmsgrcv\fP(2), \fBmsgsnd\fP(2), \fBcapabilities\fP(7),
+\fBmq_overview\fP(7), \fBsysvipc\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

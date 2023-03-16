@@ -1,0 +1,168 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-SLEEP\&.CONF 5 "" "systemd 253" systemd\-sleep.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-sleep.conf, sleep.conf.d \- 挂起和休眠配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/sleep\&.conf
+.PP
+/etc/systemd/sleep\&.conf\&.d/*\&.conf
+.PP
+/run/systemd/sleep\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/sleep\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+\fBsystemd\fP 支持四种通用省电模式:
+.PP
+suspend
+.RS 4
+操作系统暂停执行的低功耗状态，完全断电可能会导致数据丢失，并且可以快速进入和退出 \&。这对应于内核理解的挂起、待机或冻结状态。
+.RE
+.PP
+hibernate
+.RS 4
+操作系统暂停执行的低功耗状态，完全断电不会导致数据丢失，并且进入和退出 \& 可能会很慢。这对应于内核理解的休眠。
+.RE
+.PP
+hybrid\-sleep
+.RS 4
+操作系统暂停执行的低功耗状态，进入该状态可能会很慢，并且在完全断电时不会导致数据丢失，但在这种情况下退出可能会更慢 \&。这种模式被内核称为
+suspend\-to\-both。
+.RE
+.PP
+suspend\-then\-hibernate
+.RS 4
+系统最初挂起的低功耗状态 (状态存储在 RAM 中) \&。如果系统支持低电量报警 (ACPI_BTP)，那么系统会被 ACPI
+低电量信号唤醒并进入休眠状态 (然后将状态存储在磁盘上) \&。此外，如果在 \fIHibernateDelaySec=\fP
+指定的时间跨度或估计的时间跨度内没有中断，直到系统电池电量下降到 5%，则系统将被 RTC 警报唤醒并休眠 \&。估计时间跨度是根据
+\fISuspendEstimationSec=\fP 指定的时间后或系统从挂起状态唤醒时电池容量水平的变化计算得出的。
+.RE
+.PP
+这些文件中的设置决定了当 \fBsystemd\fP(1) 试图挂起或休眠机器时，\fBsystemd\-sleep\fP(8) 将哪些字符串写入
+/sys/power/disk 和 /sys/power/state。有关语法 \& 的一般说明，请参见 \fBsystemd.syntax\fP(7)。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH OPTIONS
+.PP
+可以在 /etc/systemd/sleep\&.conf 或 sleep\&.conf\&.d 文件的 [Sleep] 部分配置以下选项:
+.PP
+\fIAllowSuspend=\fP, \fIAllowHibernation=\fP, \fIAllowSuspendThenHibernate=\fP,
+\fIAllowHybridSleep=\fP
+.RS 4
+默认情况下，如果可能，任何节能模式都会被公布 (i\&.e\&。内核支持该模式，必要的资源可用) \&。这些开关可用于禁用特定模式 \&。
+.sp
+如果使用 \fIAllowHibernation=no\fP 或 \fIAllowSuspend=no\fP，这意味着
+\fIAllowSuspendThenHibernate=no\fP 和 \fIAllowHybridSleep=no\fP，因为这些方法在内部同时使用挂起和休眠
+\&。 \fIAllowSuspendThenHibernate=yes\fP 和 \fIAllowHybridSleep=yes\fP
+可用于覆盖和启用这些特定模式 \&。
+.RE
+.PP
+\fISuspendMode=\fP, \fIHibernateMode=\fP, \fIHybridSleepMode=\fP
+.RS 4
+分别由 \fBsystemd\-suspend.service\fP(8)、\fBsystemd\-hibernate.service\fP(8) 或
+\fBsystemd\-hybrid\-sleep.service\fP(8)\& 写入 /sys/power/disk 的字符串。可以通过用空格 \&
+分隔多个值来指定多个值。它们将依次被尝试，直到一个没有错误地写入 \&。如果两者都不成功，操作将被中止 \&。
+.sp
+\fBsystemd\-suspend\-then\-hibernate.service\fP(8) 在挂起时使用 \fISuspendMode=\fP
+的值，在休眠时使用 \fIHibernateMode=\fP 的值 \&。
+.RE
+.PP
+\fISuspendState=\fP, \fIHibernateState=\fP, \fIHybridSleepState=\fP
+.RS 4
+分别由 \fBsystemd\-suspend.service\fP(8)、\fBsystemd\-hibernate.service\fP(8) 或
+\fBsystemd\-hybrid\-sleep.service\fP(8)\& 写入 /sys/power/state 的字符串。可以通过用空格 \&
+分隔多个值来指定多个值。它们将依次被尝试，直到一个没有错误地写入 \&。如果两者都不成功，操作将被中止 \&。
+.sp
+\fBsystemd\-suspend\-then\-hibernate.service\fP(8) 在挂起时使用 \fISuspendState=\fP
+的值，在休眠时使用 \fIHibernateState=\fP 的值 \&。
+.RE
+.PP
+\fIHibernateDelaySec=\fP
+.RS 4
+在系统自动进入休眠模式之前系统处于挂起模式的时间量 \&。仅由
+\fBsystemd\-suspend\-then\-hibernate.service\fP(8)\&
+使用。如果系统有电池，则默认为估计的时间跨度，直到系统电池充电水平下降到 5%\&。如果系统没有电池，则默认为 2h\&。
+.RE
+.PP
+\fISuspendEstimationSec=\fP
+.RS 4
+RTC 闹钟将在指定的时间跨度后唤醒系统，以测量系统电池容量水平并估计电池放电率，用于估计系统电池电量水平下降到 5%\& 的时间跨度。仅由
+\fBsystemd\-suspend\-then\-hibernate.service\fP(8)\& 使用。默认为 2h\&。
+.RE
+.SH "EXAMPLE: FREEZE"
+.PP
+示例: 要利用 Linux 3\&.9 中添加的 \(lqfreeze\(rq 模式，可以将 \fBsystemctl suspend\fP 与
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Sleep]
+SuspendState=freeze
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-sleep\fP(8), \fBsystemd\-suspend.service\fP(8),
+\fBsystemd\-hibernate.service\fP(8), \fBsystemd\-hybrid\-sleep.service\fP(8),
+\fBsystemd\-suspend\-then\-hibernate.service\fP(8), \fBsystemd\fP(1),
+\fBsystemd.directives\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

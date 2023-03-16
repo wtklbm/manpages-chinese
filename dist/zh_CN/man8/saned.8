@@ -1,0 +1,317 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH saned 8 "29 Sep 2017" "" "SANE Scanner Access Now Easy"
+.IX saned
+.SH NAME
+saned\-SANE 网络守护进程
+.SH SYNOPSIS
+\fBsaned\fP \fB[ \-a\fP \fI[ username ]\fP \fB]\fP \fB[ \-u\fP \fIusername\fP \fB]\fP \fB[ \-b\fP
+\fIaddress\fP \fB]\fP \fB[ \-p\fP \fIport\fP \fB]\fP \fB[ \-l ]\fP \fB[ \-D ]\fP \fB[ \-o ]\fP \fB[ \-d\fP
+\fIn\fP \fB]\fP \fB[ \-e ]\fP \fB[ \-h ]\fP
+
+.SH DESCRIPTION
+\fBsaned\fP 是 SANE (Scanner Access Now Easy) 守护程序，它允许远程客户端访问本地主机上可用的图像采集设备。
+
+.SH OPTIONS
+.PP
+\fBsaned\fP 识别以下选项:
+
+.TP 
+\fB\-a\fP\fI [username]\fP, \fB\-\-alone\fP[=\fIusername]\fP
+相当于 \fB\-l \-D \-u\fP \fIusername\fP 选项的组合。但是，\fIusername\fP 是可选的，只有指定时才会设置运行用户。
+
+.TP 
+\fB\-u\fP\fI username\fP, \fB\-\-user\fP=\fIusername\fP
+请求 \fBsaned\fP 抛弃 root 权限并在绑定后作为与 \fIusername\fP 关联的用户 (和组) 运行。
+
+.TP 
+\fB\-b\fP\fI address\fP, \fB\-\-bind\fP=\fIaddress\fP
+告诉 \fBsaned\fP 绑定到给定的 \fIaddress\fP。
+
+.TP 
+\fB\-p\fP\fI port\fP, \fB\-\-port=\fP\fIport\fP
+告诉 \fBsaned\fP 监听给定的 \fIport\fP。 值 0 告诉 \fBsaned\fP 选择一个未使用的端口。 默认为 \fBsane\-port (6566).\fP
+
+.TP 
+\fB\-l\fP, \fB\-\-listen\fP
+请求 \fBsaned\fP 以独立守护进程模式运行。 在这种模式下，\fBsaned\fP 将监听传入的客户端连接; 在此模式下，\fBsaned\fP 操作不需要
+\fBinetd\fP(8)。
+
+.TP 
+\fB\-D\fP, \fB\-\-daemonize\fP
+将请求 \fBsaned\fP 从控制台分离并在后台运行。
+
+.TP 
+\fB\-o\fP, \fB\-\-once\fP
+请求 \fBsaned\fP 在第一个客户端断开连接后退出。 这对于调试很有用。
+
+.TP 
+\fB\-d\fP\fI n\fP, \fB\-\-debug\fP=\fIn\fP
+将 \fBsaned\fP 调试输出的级别设置为 \fIn\fP。 在启用调试的情况下编译时，此标志后面可能跟有一个数字以请求更多或更少的调试信息。
+数字越大，调试输出越详细。 例如，\fB\-d128\fP 将请求输出所有调试信息。 级别 0 根本不产生任何输出。 默认值为 2.
+
+.TP 
+\fB\-e\fP, \fB\-\-stderr\fP
+会将 \fBsaned\fP 调试输出转移到标准错误而不是系统日志默认值。
+
+.TP 
+\fB\-h\fP, \fB\-\-help\fP
+显示一条简短的帮助信息。
+.PP
+如果 \fBsaned\fP 是从其他程序 (例如 \fBinetd\fP(8)、\fBxinetd\fP(8) 和 \fBsystemd\fP(1))
+运行的，请查看该程序的文档以了解如何传递命令行选项。
+
+.SH CONFIGURATION
+首先也是最重要的: \fBsaned\fP 不打算暴露在互联网或其他不受信任的网络中。确保访问受到 tcpwrappers 或者防火墙设置的限制。不要只依赖
+\fBsaned\fP's 自己的身份验证。如果没有必要，不要以 root 身份运行 \fBsaned\fP。并以 setuid root 身份执行 \fBnot\fP
+安装 \fBsaned\fP。
+.PP
+\fIsaned.conf\fP 配置文件包含守护程序和访问列表的选项。
+.TP 
+\fBdata_portrange\fP = \fImin_port\fP \- \fImax_port\fP
+指定用于数据连接的端口范围。选择 1024 到 65535 之间的端口范围; 不要选择太大的端口范围，因为它可能会出现性能问题。如果您的
+\fBsaned\fP 服务器位于防火墙后面，请使用此选项。如果该防火墙是 Linux 机器，我们强烈建议改用 Netfilter
+\fInf_conntrack_sane\fP 模块。
+.TP 
+\fBdata_connect_timeout\fP = \fItimeout\fP
+指定 \fBsaned\fP 等待数据连接的时间
+(以毫秒为单位)。如果没有这个选项，如果在扫描器到达扫描结束之前没有完成数据连接，扫描器将继续扫描结束并可能损坏它，具体取决于后端。指定零以具有旧行为。默认值为
+4000 毫秒。
+.PP
+访问列表是允许使用本地 SANE 设备的主机名、IP 地址或 IP 子网 (CIDR 表示法) 的列表。IPv6
+地址必须括在方括号中，并且应始终以其压缩形式指定。始终允许来自本地主机的连接。空行和以哈希标记 (#) 开头的行将被忽略。包含单个字符 `+`
+的行被解释为匹配任何主机名。这允许任何远程机器使用您的扫描仪并可能存在安全风险，因此除非您知道自己在做什么，否则不应使用它。
+.PP
+示例配置文件如下所示:
+.PP
+.RS
+# 守护进程选项
+.br
+data_portrange = 10000 \- 10100
+.br
+# 访问列表
+.br
+scan\-client.somedomain.firm
+.br
+# 这是一条评论
+.br
+192.168.0.1
+.br
+192.168.2.12/29
+.br
+[::1]
+.br
+[2001:db8:185e::42:12]/64
+.RE
+.PP
+主机名的大小写无关紧要，因此 AHost.COM 被认为与 ahost.com 相同。
+.SH "SERVER DAEMON CONFIGURATION"
+为了使 \fBsaned\fP 在其默认操作模式下正常工作，还需要为 \fBxinetd\fP(8)、\fBinetd\fP(8) 或 \fBsystemd\fP(1)
+添加适当的配置 (见下文)。 请注意，如果您想通过 IPv6 连接到 \fBsaned\fP，您的 \fBinetd\fP(8) 必须支持 IPv6; 已知
+\fBxinetd\fP(8)、\fBopenbsd\-inetd\fP(8) 和 \fBsystemd\fP(1) 支持 IPv6，请查看 \fBinetd\fP(8)
+守护程序的文档。
+.PP
+在下面的部分中，对 \fBinetd\fP(8)、\fBxinetd\fP(8) 和 \fBsystemd\fP(1) 的配置进行了更详细的描述。
+.PP
+对于下面的配置，需要在 \fI/etc/services\fP: 中添加如下形式的一行
+.PP
+.RS
+sane\-port 6566/tcp#SANE 网络扫描守护进程
+.RE
+.PP
+端口 6566 的官方 IANA 简称为 "sane\-port"。旧名称 "sane" 现已弃用。
+
+.SH "INETD CONFIGURATION"
+需要在 \fBinetd\fP(8) 配置文件 \fI(/etc/inetd.conf)\fP 中增加一行
+.
+.PP
+配置行通常如下所示:
+.PP
+.RS
+理智端口流 tcp nowait saned.saned /usr/bin/saned 理智
+.RE
+.PP
+但是，如果您的系统使用 \fBtcpd\fP(8) 进行额外的安全筛选，您可能希望通过在 \fIsaned.conf\fP 中放置 `+` 来禁用 \fBsaned\fP
+访问控制，并在 \fI/etc/inetd.conf\fP 中使用以下形式的行:
+.PP
+.RS
+理智端口流 tcp nowait saned.saned /usr/sbin/tcpd /usr/bin/saned
+.RE
+.PP
+请注意，这两个示例都假设有一个 \fBsaned\fP 组和一个 \fBsaned\fP 用户。 如果您按照这个例子，请确保特殊设备上的访问权限设置为
+\fBsaned\fP 可以访问扫描仪 (程序通常需要对扫描仪设备进行读写访问)。
+
+.SH "XINETD CONFIGURATION"
+如果您的系统上安装的是 \fBxinetd\fP(8) 而不是 \fBinetd\fP(8)，则以下 \fI/etc/xinetd.conf\fP 示例可能会有所帮助:
+.PP
+.RS
+.nf
+\f (CR# 默认值: 关闭
+# 描述: 理智的服务器接受请求
+# 通过网络访问本地扫描仪
+# 网络。
+服务健全端口
+{
+   port        = 6566
+   socket_type = stream
+   wait        = no
+   user        = saned
+   group       = saned
+   server      = /usr/bin/saned
+}\fR
+.fi
+.RE
+
+.SH "SYSTEMD CONFIGURATION"
+\fBsaned\fP 可以使用显式 \fBsystemd\fP(1) 支持进行编译。这将允许将日志记录调试信息转发到 \fBsystemd\fP(1)
+日志。\fBsystemd\fP(1) 支持需要使用安装在系统上的 systemd\-devel 包进行编译。这是首选。
+
+\fBsaned\fP 可以与 \fBsystemd\fP(1) 一起使用而无需编译 \fBsystemd\fP(1) 集成，但不支持记录调试信息。
+
+2 个选项的 \fBsystemd\fP(1) 配置不同，因此下面将对它们进行描述。
+
+.SH "Systemd configuration for saned with systemd support compiled in"
+对于 \fBsystemd\fP(1) 配置，我们需要在 \fI/etc/systemd/system\fP 中添加 2 个配置文件。
+.PP
+我们需要在此处添加的第一个文件名为 \fIsaned.socket.\fP 它应具有以下内容:
+.PP
+.RS
+.nf
+\f(CR[Unit]
+Description=saned incoming socket\fR
+
+\f(CR[Socket]
+ListenStream=6566
+Accept=yes
+MaxConnections=1\fR
+
+\f(CR[Install]
+WantedBy=sockets.target\fR
+.fi
+.RE
+.PP
+要添加的第二个文件是 \fIsaned@.service\fP，其内容如下:
+.PP
+.RS
+.nf
+\f(CR[Unit]
+Description=Scanner Service
+Requires=saned.socket\fR
+
+\f(CR[Service]
+ExecStart=/usr/sbin/saned
+User=saned
+Group=saned
+StandardInput=null
+StandardOutput=syslog
+StandardError=syslog
+Environment=SANE_CONFIG_DIR=/etc/sane.d
+# 如果您需要调试您的配置，取消注释下一行
+# 根据需要更改它以设置所需的调试选项
+# 环境 = SANE_DEBUG_DLL=255 SANE_DEBUG_BJNP=5\fR
+
+\f(CR[Install]
+Also=saned.socket\fR
+.fi
+.RE
+.PP
+您需要为 \fBSANE_CONFIG_DIR\fP 设置一个环境变量，指向 \fBsaned\fP 可以找到其配置文件的目录。 如果需要，您必须删除最后一行的
+#并为所需的调试信息设置变量。 如上例所示，可以通过空格分隔分配来设置多个变量。
+.PP
+与 \fBxinetd\fP(8) 和 \fBinetd\fP(8) 不同，\fBsystemd\fP(1) 允许捕获使用 \fBSANE_DEBUG_XXX\fP
+设置的后端的调试输出。请参见后端的手册页以查看支持的选项。 使用如上所述的服务元，调试输出被转发到系统日志。
+
+.SH "Systemd configuration when saned is compiled without systemd support"
+当使用 \fBsystemd\fP(1) 集成支持编译 \fBsaned\fP 时，此配置也将起作用，但它不允许记录调试信息。
+.PP
+对于 \fBsaned\fP 的 \fBsystemd\fP(1) 配置，我们需要在 \fI/etc/systemd/system\fP 中添加 2 个配置文件。
+.PP
+我们需要在此处添加的第一个文件名为 \fIsaned.socket.\fP，它与 \fBsystemd\fP(1) 的版本相同，并带有编译支持。 应具有以下内容:
+.PP
+.RS
+.nf
+\f(CR[Unit]
+Description=saned incoming socket\fR
+
+\f(CR[Socket]
+ListenStream=6566
+Accept=yes
+MaxConnections=1\fR
+
+\f(CR[Install]
+WantedBy=sockets.target\fR
+.fi
+.RE
+.PP
+要添加的第二个文件是 \fIsaned@.service\fP。 这一个不同于编译了 \fBsystemd\fP(1) 集成的版本:
+.PP
+.RS
+.nf
+\f(CR[Unit]
+Description=Scanner Service
+Requires=saned.socket\fR
+
+\f(CR[Service]
+ExecStart=/usr/sbin/saned
+User=saned
+Group=saned
+StandardInput=socket\fR
+
+\f(CREnvironment=SANE_CONFIG_DIR=/etc/sane.d\fR
+
+\f(CR[Install]
+Also=saned.socket\fR
+.fi
+.RE
+.PP
+
+.SH FILES
+.TP 
+\fI/etc/hosts.equiv\fP
+此文件中列出的主机被允许访问所有本地 SANE 设备。 警告: 此文件存在严重的安全风险，不建议使用。
+.TP 
+\fI/etc/sane.d/saned.conf\fP
+包含允许访问本地 SANE 设备的主机列表 (另请参见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/etc/sane.d/saned.users\fP
+如果此文件包含以下形式的行
+
+user:password:backend
+
+对列出的后端的访问受到限制。对于不同的 user/password 组合，后端可能会被多次列出。如果客户端支持，服务器使用 MD5 散列。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBscanimage\fP(1), \fBxscanimage\fP(1), \fBxcam\fP(1), \fBsane\-dll\fP(5),
+\fBsane\-net\fP(5), \fBsane\-"backendname"\fP(5), \fBinetd\fP(8), \fBxinetd\fP(8),
+\fBsystemd\fP(1)
+.br
+\fIhttp://www.penguin\-breeder.org/?page=sane\-net\fP
+.SH AUTHOR
+大卫莫斯伯格
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

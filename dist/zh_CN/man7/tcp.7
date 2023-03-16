@@ -1,0 +1,879 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\" and Copyright (C) 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Note also that many pieces are drawn from the kernel source file
+.\" Documentation/networking/ip-sysctl.txt.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" 2.4 Updates by Nivedita Singhvi 4/20/02 <nivedita@us.ibm.com>.
+.\" Modified, 2004-11-11, Michael Kerrisk and Andries Brouwer
+.\"	Updated details of interaction of TCP_CORK and TCP_NODELAY.
+.\"
+.\" 2008-11-21, mtk, many, many updates.
+.\"     The descriptions of /proc files and socket options should now
+.\"     be more or less up to date and complete as at Linux 2.6.27
+.\"     (other than the remaining FIXMEs in the page source below).
+.\"
+.\" FIXME The following need to be documented
+.\"	TCP_MD5SIG (2.6.20)
+.\"	    commit cfb6eeb4c860592edd123fdea908d23c6ad1c7dc
+.\"	    Author was yoshfuji@linux-ipv6.org
+.\"	    Needs CONFIG_TCP_MD5SIG
+.\" From net/inet/Kconfig:
+.\" bool "TCP: MD5 Signature Option support (RFC2385) (EXPERIMENTAL)"
+.\" RFC2385 specifies a method of giving MD5 protection to TCP sessions.
+.\" Its main (only?) use is to protect BGP sessions between core routers
+.\" on the Internet.
+.\"
+.\" There is a TCP_MD5SIG option documented in FreeBSD's tcp(4),
+.\" but probably many details are different on Linux
+.\"	    http://thread.gmane.org/gmane.linux.network/47490
+.\"	    http://www.daemon-systems.org/man/tcp.4.html
+.\"	    http://article.gmane.org/gmane.os.netbsd.devel.network/3767/match=tcp_md5sig+freebsd
+.\"
+.\"	TCP_COOKIE_TRANSACTIONS (2.6.33)
+.\"	    commit 519855c508b9a17878c0977a3cdefc09b59b30df
+.\"	    Author: William Allen Simpson <william.allen.simpson@gmail.com>
+.\"	    commit e56fb50f2b7958b931c8a2fc0966061b3f3c8f3a
+.\"	    Author: William Allen Simpson <william.allen.simpson@gmail.com>
+.\"
+.\"	    REMOVED in Linux 3.10
+.\" 		commit 1a2c6181c4a1922021b4d7df373bba612c3e5f04
+.\"		Author: Christoph Paasch <christoph.paasch@uclouvain.be>
+.\"
+.\"	TCP_THIN_LINEAR_TIMEOUTS (2.6.34)
+.\"	    commit 36e31b0af58728071e8023cf8e20c5166b700717
+.\"	    Author: Andreas Petlund <apetlund@simula.no>
+.\"
+.\"	TCP_THIN_DUPACK (2.6.34)
+.\"	    commit 7e38017557bc0b87434d184f8804cadb102bb903
+.\"	    Author: Andreas Petlund <apetlund@simula.no>
+.\"
+.\"	TCP_REPAIR (3.5)
+.\"	    commit ee9952831cfd0bbe834f4a26489d7dce74582e37
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"	    See also
+.\"		http://criu.org/TCP_connection
+.\"		https://lwn.net/Articles/495304/
+.\"
+.\"	TCP_REPAIR_QUEUE (3.5)
+.\"	    commit ee9952831cfd0bbe834f4a26489d7dce74582e37
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"
+.\"	TCP_QUEUE_SEQ (3.5)
+.\"	    commit ee9952831cfd0bbe834f4a26489d7dce74582e37
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"
+.\"	TCP_REPAIR_OPTIONS (3.5)
+.\"	    commit b139ba4e90dccbf4cd4efb112af96a5c9e0b098c
+.\"	    Author: Pavel Emelyanov <xemul@parallels.com>
+.\"
+.\"     TCP_FASTOPEN (3.6)
+.\"         (Fast Open server side implementation completed in Linux 3.7)
+.\"	    http://lwn.net/Articles/508865/
+.\"
+.\"     TCP_TIMESTAMP (3.9)
+.\"        commit 93be6ce0e91b6a94783e012b1857a347a5e6e9f2
+.\"        Author: Andrey Vagin <avagin@openvz.org>
+.\"
+.\"     TCP_NOTSENT_LOWAT (3.12)
+.\"        commit c9bee3b7fdecb0c1d070c7b54113b3bdfb9a3d36
+.\"        Author: Eric Dumazet <edumazet@google.com>
+.\"
+.\"	TCP_CC_INFO (4.1)
+.\"	   commit 6e9250f59ef9efb932c84850cd221f22c2a03c4a
+.\"	   Author: Eric Dumazet <edumazet@google.com>
+.\"
+.\"	TCP_SAVE_SYN, TCP_SAVED_SYN (4.2)
+.\"	    commit cd8ae85299d54155702a56811b2e035e63064d3d
+.\"	    Author: Eric Dumazet <edumazet@google.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tcp 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+tcp\-TCP 协议
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <netinet/in.h>\fP
+\fB#include <netinet/tcp.h>\fP
+.PP
+\fItcp_socket\fP\fB = socket(AF_INET, SOCK_STREAM, 0);\fP
+.fi
+.SH DESCRIPTION
+这是 RFC\793、RFC\1122 和 RFC\2001 中定义的 TCP 协议的实现，带有 NewReno 和 SACK 扩展。 它为 v4 和
+v6 版本在 \fBip\fP(7) 顶部的两个套接字之间提供可靠的、面向流的全双工连接。 TCP 保证数据按顺序到达并重传丢失的数据包。
+它生成并检查每个数据包的校验和以捕获传输错误。 TCP 不保留记录边界。
+.PP
+新创建的 TCP 套接字没有远程或本地地址，也没有完全指定。 要创建传出 TCP 连接，请使用 \fBconnect\fP(2) 建立到另一个 TCP
+套接字的连接。 要接收新的传入连接，首先将套接字 \fBbind\fP(2) 到本地地址和端口，然后调用 \fBlisten\fP(2) 将套接字置于侦听状态。
+之后，可以使用 \fBaccept\fP(2) 接受每个传入连接的新套接字。 已成功调用 \fBaccept\fP(2) 或 \fBconnect\fP(2)
+的套接字是完全指定的，可以传输数据。 无法在侦听或尚未连接的套接字上传输数据。
+.PP
+Linux 支持 RFC\1323 TCP 高性能扩展。 其中包括防止包装序列号 (PAWS)、窗口缩放和时间戳。 窗口缩放允许使用大 (>
+64\kB) TCP windows 以支持具有高延迟或带宽的链接。 要使用它们，必须增加发送和接收缓冲区的大小。 它们可以通过
+\fI/proc/sys/net/ipv4/tcp_wmem\fP 和 \fI/proc/sys/net/ipv4/tcp_rmem\fP
+文件全局设置，或者通过使用 \fBsetsockopt\fP(2) 调用的 \fBSO_SNDBUF\fP 和 \fBSO_RCVBUF\fP
+套接字选项在单个套接字上设置。
+.PP
+通过 \fBSO_SNDBUF\fP 和 \fBSO_RCVBUF\fP 机制声明的套接字缓冲区的最大大小受
+\fI/proc/sys/net/core/rmem_max\fP 和 \fI/proc/sys/net/core/wmem_max\fP 文件中的值限制。
+请注意，TCP 实际上分配的缓冲区大小是 \fBsetsockopt\fP(2) 调用中请求的缓冲区大小的两倍，因此后续的 \fBgetsockopt\fP(2)
+调用不会返回与 \fBsetsockopt\fP(2) 调用中请求的大小相同的缓冲区。 TCP 将额外空间用于管理目的和内部内核结构，\fI/proc\fP
+文件值反映了与实际 TCP windows 相比更大的大小。 在单个连接上，必须在 \fBlisten\fP(2) 或 \fBconnect\fP(2)
+调用之前设置套接字缓冲区大小才能使其生效。 有关更多信息，请参见 \fBsocket\fP(7)。
+.PP
+TCP 支持紧急数据。 紧急数据用于通知接收者一些重要消息是数据流的一部分，应该尽快处理。 要发送紧急数据，请将 \fBMSG_OOB\fP 选项指定为
+\fBsend\fP(2)。 当收到紧急数据时，内核使用 \fBSIOCSPGRP\fP 或 \fBFIOSETOWN\fP ioctls (或 POSIX.1 指定的
+\fBfcntl\fP(2) \fBF_SETOWN\fP 操作) 向已设置为套接字 "owner" 的进程或进程组发送 \fBSIGURG\fP 信号。 当启用
+\fBSO_OOBINLINE\fP 套接字选项时，紧急数据被放入普通数据流中 (程序可以使用下面描述的 \fBSIOCATMARK\fP ioctl
+测试其位置)，否则只有在为 \fBrecv\fP(2) 或 \fBrecvmsg\fP(2) 设置 \fBMSG_OOB\fP 标志时才能接收。
+.PP
+当存在带外数据时，\fBselect\fP(2) 指示文件描述符具有异常情况，\fIpoll (2)\fP 指示 \fBPOLLPRI\fP 事件。
+.PP
+Linux 2.4 引入了许多更改，以提高吞吐量和扩展性，并增强功能。 其中一些特性包括对零拷贝 \fBsendfile\fP(2)
+的支持、显式拥塞通知、TIME_WAIT 套接字的新管理、保持活动套接字选项以及对 Duplicate SACK 扩展的支持。
+.SS "Address formats"
+TCP 建立在 IP 之上 (参见 \fBip\fP(7)).  \fBip\fP(7) 定义的地址格式适用于 TCP。 TCP 仅支持点对点通信;
+不支持广播和多播。
+.SS "/proc interfaces"
+系统范围的 TCP 参数设置可以通过目录 \fI/proc/sys/net/ipv4/\fP 中的文件访问。 另外，大部分 IP \fI/proc\fP
+接口也适用于 TCP; 请参见 \fBip\fP(7)。 描述为 \fIBoolean\fP 的变量取整数值，非零值 ("true") 表示启用相应选项，零值
+("false") 表示禁用该选项。
+.TP 
+\fItcp_abc\fP (Integer; default: 0; Linux 2.6.15 to Linux 3.8)
+.\" Since Linux 2.6.15; removed in Linux 3.9
+.\" commit ca2eb5679f8ddffff60156af42595df44a315ef0
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+控制适当的字节数 (ABC)，在 RFC 3465 中定义。 ABC 是一种更缓慢地增加拥塞窗口 (\fIcwnd\fP) 以响应部分确认的方法。
+可能的值是:
+.RS
+.TP 
+\fB0\fP
+每次确认增加一次 \fIcwnd\fP (无 ABC)
+.TP 
+\fB1\fP
+每次确认全尺寸段时增加 \fIcwnd\fP 一次
+.TP 
+\fB2\fP
+如果确认是两个段，则允许将 \fIcwnd\fP 增加 2 以补偿延迟确认。
+.RE
+.TP 
+\fItcp_abort_on_overflow\fP (Boolean; default: disabled; since Linux 2.4)
+.\" Since Linux 2.3.41
+如果侦听服务太慢并且无法跟上并接受它们，请启用重置连接。 这意味着如果由于突发而发生溢出，连接将恢复。
+如果您确实确定无法调整侦听守护程序以更快地接受连接，请启用此选项 \fIonly\fP。 启用此选项可能会损害服务器的客户端。
+.TP 
+\fItcp_adv_win_scale\fP (integer; default: 2; since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+如果 \fItcp_adv_win_scale\fP 大于 0，则将缓冲开销计为 \fIbytes/2\[ha]tcp_adv_win_scale\fP; 或
+\fIbytes\-bytes/2\[ha](\-tcp_adv_win_scale)\fP，如果 \fItcp_adv_win_scale\fP 小于或等于零。
+.IP
+套接字接收缓冲区空间在应用程序和内核之间共享。 TCP 维护缓冲区的一部分作为 TCP 窗口，这是向另一端通告的接收窗口的大小。 其余空间用作
+"application" 缓冲区，用于将网络与调度和应用程序延迟隔离开来。 \fItcp_adv_win_scale\fP 默认值 2
+表示用于应用程序缓冲区的空间是总空间的四分之一。
+.TP 
+\fItcp_allowed_congestion_control\fP (String; default: see text; since Linux 2.4.20)
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+Show/set 非特权进程可用的拥塞控制算法选择 (参见 \fBTCP_CONGESTION\fP 套接字选项的描述)。
+列表中的项由空格分隔并以换行符终止。 该列表是 \fItcp_available_congestion_control\fP 中列出的列表的子集。
+此列表的默认值是 "reno" 加上 \fItcp_congestion_control\fP 的默认设置。
+.TP 
+\fItcp_autocorking\fP (Boolean; default: enabled; since Linux 3.14)
+.\" commit f54b311142a92ea2e42598e347b84e1655caf8e3
+.\" Text heavily based on Documentation/networking/ip-sysctl.txt
+如果启用此选项，内核会尝试尽可能多地合并小型写入 (来自连续的 \fBwrite\fP(2) 和 \fBsendmsg\fP(2) 调用)，以减少发送的数据包总数。
+如果流的至少一个先前数据包正在 Qdisc 队列或设备传输队列中等待，则完成合并。 当应用程序知道 how/when
+可以打开它们的套接字时，它们仍然可以使用 \fBTCP_CORK\fP 套接字选项来获得最佳行为。
+.TP 
+\fItcp_available_congestion_control\fP (String; read\-only; since Linux 2.4.20)
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+显示已注册的拥塞控制算法列表。 列表中的项由空格分隔并以换行符终止。 此列表是 \fItcp_allowed_congestion_control\fP
+中列表的限制集。 更多拥塞控制算法可能作为模块提供，但未加载。
+.TP 
+\fItcp_app_win\fP (integer; default: 31; since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+此变量定义 TCP 窗口的多少字节保留用于缓冲开销。
+.IP
+.\"
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+窗口中最多保留 (\fIwindow/2\[ha]tcp_app_win\fP, mss) 个字节用于应用程序缓冲区。 值为 0 表示未保留任何金额。
+.TP 
+\fItcp_base_mss\fP (Integer; default: 512; since Linux 2.6.17)
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+打包层路径 MTU 发现 (MTU 探测) 使用的 \fIsearch_low\fP 的初始值。 如果启用了 MTU 探测，则这是连接使用的初始 MSS。
+.TP 
+\fItcp_bic\fP (Boolean; default: disabled; Linux 2.4.27/2.6.6 to Linux 2.6.13)
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+启用 BIC TCP 拥塞控制算法。 BIC\-TCP 是一种仅限发送方的更改，可确保大型 windows 下的线性 RTT
+公平性，同时提供可扩展性和有限的 TCP 友好性。 该协议结合了两种方案，称为加法增加和二分搜索增加。 当拥塞窗口较大时，大增量的加性增加保证了线性
+RTT 公平性以及良好的可扩展性。 在小拥塞 windows 下，二分查找增加提供了 TCP 友好性。
+.TP 
+\fItcp_bic_low_window\fP (integer; default: 14; Linux 2.4.27/2.6.6 to Linux 2.6.13)
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+设置 BIC TCP 开始调整拥塞窗口的阈值窗口 (以数据包为单位)。 低于此阈值 BIC TCP 的行为与默认 TCP Reno 相同。
+.TP 
+\fItcp_bic_fast_convergence\fP (Boolean; default: enabled; Linux 2.4.27/2.6.6 to Linux 2.6.13)
+强制 BIC TCP 更快地响应拥塞窗口的变化。 允许共享同一连接的两个流更快地收敛。
+.TP 
+\fItcp_congestion_control\fP (String; default: see text; since Linux 2.4.13)
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+设置用于新连接的默认拥塞控制算法。 算法 "reno" 始终可用，但根据内核配置可能会有其他选择可用。 该文件的默认值设置为内核配置的一部分。
+.TP 
+\fItcp_dma_copybreak\fP (integer; default: 4096; since Linux 2.6.24)
+如果系统中存在并且内核配置了 \fBCONFIG_NET_DMA\fP 选项，则将卸载到 DMA 复制引擎的套接字读取大小的下限 (以字节为单位)。
+.TP 
+\fItcp_dsack\fP (Boolean; default: enabled; since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+启用 RFC\2883 TCP 重复 SACK 支持。
+.TP 
+\fItcp_fastopen\fP (Bitmask; default: 0x1; since Linux 3.7)
+启用 RFC\~7413 快速打开支持。 该标志用作具有以下值的位图:
+.RS
+.TP 
+\fB0x1\fP
+启用客户端快速打开支持
+.TP 
+\fB0x2\fP
+启用服务器端快速打开支持
+.TP 
+\fB0x4\fP
+允许客户端在没有快速打开选项的情况下以 SYN 传输数据
+.TP 
+\fB0x200\fP
+允许服务器端在没有快速打开选项的情况下接受 SYN 数据
+.TP 
+\fB0x400\fP
+在没有 \fBTCP_FASTOPEN\fP 套接字选项的情况下对所有侦听器启用快速打开
+.RE
+.TP 
+\fItcp_fastopen_key\fP (since Linux 3.7)
+设置服务器端 RFC\~7413 快速打开密钥以在启用服务器端快速打开支持时生成快速打开 cookie。
+.TP 
+\fItcp_ecn\fP (Integer; default: see below; since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+启用 RFC\3168 显式拥塞通知。
+.IP
+该文件可以具有以下值之一:
+.RS
+.TP 
+\fB0\fP
+禁用 ECN。 既不启动也不接受 ECN。 这是默认值，包括 Linux 2.6.30。
+.TP 
+\fB1\fP
+在传入连接请求时启用 ECN，并在传出连接尝试时请求 ECN。
+.TP 
+\fB2\fP
+.\" commit 255cac91c3c9ce7dca7713b93ab03c75b7902e0e
+在传入连接请求时启用 ECN，但不在传出连接上请求 ECN。 自 Linux 2.6.31 起，此值受支持并且是默认值。
+.RE
+.IP
+启用后，由于沿路径的中间 boxes 较旧、行为不当，导致连接丢弃，因此可能会影响到某些目的地的连接。 但是，为了促进和鼓励使用选项 1
+进行部署，并解决此类 buggy 设备，引入了 \fBtcp_ecn_fallback\fP 选项。
+.TP 
+\fItcp_ecn_fallback\fP (Boolean; default: enabled; since Linux 4.1)
+.\" commit 492135557dc090a1abb2cfbe1a412757e3ed68ab
+启用 RFC\3168，6.1.1.1 节。倒退。启用后，在正常 SYN 重传超时内超时的传出 ECN 设置 SYN 将在 CWR 和 ECE
+清除的情况下重新发送。
+.TP 
+\fItcp_fack\fP (Boolean; default: enabled; since Linux 2.2)
+.\" Since Linux 2.1.92
+启用 TCP 转发确认支持。
+.TP 
+\fItcp_fin_timeout\fP (integer; default: 60; since Linux 2.2)
+.\" Since Linux 2.1.53
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+这指定在强制关闭套接字之前等待最终 FIN 数据包的秒数。 这完全违反了 TCP 规范，但需要防止拒绝服务攻击。 在 Linux 2.2 中，默认值为
+180。
+.TP 
+\fItcp_frto\fP (integer; default: see below; since Linux 2.4.21/2.6)
+.\" Since Linux 2.4.21/2.5.43
+启用 F\-RTO，一种增强的 TCP 重传超时恢复算法 (RTOs)。
+它在数据包丢失通常是由于随机无线电干扰而不是中间路由器拥塞引起的无线环境中特别有用。 有关详细信息，请参见 RFC 4138。
+.IP
+该文件可以具有以下值之一:
+.RS
+.TP 
+\fB0\fP
+禁用。这是默认值，包括 Linux 2.6.23。
+.TP 
+\fB1\fP
+启用基本版本的 F\-RTO 算法。
+.TP 
+\fB2\fP
+.\" commit c96fd3d461fa495400df24be3b3b66f0e0b152f9
+如果流程使用 SACK，则启用 SACK 增强型 F\-RTO。 基本版本也可以在使用 SACK 时使用，尽管在这种情况下存在
+scenario(s)，其中 F\-RTO 与启用 SACK 的 TCP 流的数据包计数交互不良。 这个值是 Linux 2.6.24 以来的默认值。
+.RE
+.IP
+在 Linux 2.6.22 之前，这个参数是一个布尔值，只支持上面的值 0 和 1。
+.TP 
+\fItcp_frto_response\fP (integer; default: 0; since Linux 2.6.22)
+当 F\-RTO 检测到 TCP 重传超时是虚假的 (即，如果 TCP 设置更长的重传超时可以避免超时)，TCP 有几个关于下一步做什么的选项。
+可能的值是:
+.RS
+.TP 
+\fB0\fP
+基于利率减半; 平滑和保守的响应，导致拥塞窗口 (\fIcwnd\fP) 和慢启动阈值 (\fIssthresh\fP) 在一个 RTT 后减半。
+.TP 
+\fB1\fP
+非常保守的反应; 不推荐，因为即使有效，它与 Linux TCP 的其余部分交互也很差; 立即减半 \fIcwnd\fP 和 \fIssthresh\fP。
+.TP 
+\fB2\fP
+攻击性反应; 撤消现在已知不必要的拥塞控制措施 (忽略需要 TCP 更加谨慎的丢失重传的可能性) ; \fIcwnd\fP 和 \fIssthresh\fP
+恢复到超时前的值。
+.RE
+.TP 
+\fItcp_keepalive_intvl\fP (integer; default: 75; since Linux 2.4)
+.\" Since Linux 2.3.18
+TCP 保持活动探测之间的秒数。
+.TP 
+\fItcp_keepalive_probes\fP (integer; default: 9; since Linux 2.2)
+.\" Since Linux 2.1.43
+如果没有从另一端获得响应，则在放弃和终止连接之前要发送的 TCP 保持活动探测的最大数量。
+.TP 
+\fItcp_keepalive_time\fP (integer; default: 7200; since Linux 2.2)
+.\" Since Linux 2.1.43
+在 TCP 开始发送保持活动探测之前连接需要空闲的秒数。 仅当启用 \fBSO_KEEPALIVE\fP 套接字选项时才发送 Keep\-alives。
+默认值为 7200 秒 (2 小时)。 启用保持活动状态后，空闲连接将在大约另外 11 分钟 (间隔 75 秒的时间间隔内进行 9 次探测) 后终止。
+.IP
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+请注意，底层连接跟踪机制和应用程序超时可能要短得多。
+.TP 
+\fItcp_low_latency\fP (Boolean; default: disabled; since Linux 2.4.21/2.6; obsolete since Linux 4.14)
+.\" Since Linux 2.4.21/2.5.60
+.\" commit b6690b14386698ce2c19309abad3f17656bdfaea
+如果启用，TCP 栈会做出更喜欢低延迟而不是高吞吐量的决定。 如果禁用此选项，则首选更高的吞吐量。 应更改此默认值的应用程序示例是 Beowulf
+计算集群。 从 Linux 4.14 开始，这个文件仍然存在，但它的值被忽略了。
+.TP 
+\fItcp_max_orphans\fP (integer; default: see below; since Linux 2.4)
+.\" Since Linux 2.3.41
+系统中允许的最大孤立 (未附加到任何用户文件句柄) TCP 套接字数。 当超过这个数字时，孤立的连接将被重置并打印一条警告。
+此限制仅用于防止简单的拒绝服务攻击。 不建议降低此限制。 网络条件可能要求您增加允许的孤儿数量，但请注意每个孤儿最多可以吃掉 \[ti] 64\kB
+的不可交换内存。 默认初始值设置为等于内核参数 NR_FILE。 此初始默认值根据系统中的内存进行调整。
+.TP 
+\fItcp_max_syn_backlog\fP (integer; default: see below; since Linux 2.2)
+.\" Since Linux 2.1.53
+尚未从连接客户端收到确认的排队连接请求的最大数量。 如果超过这个数字，内核将开始抛弃请求。 当系统内存充足或大于 (>= 128\MB)
+时，默认值 256 增加到 1024，对于内存非常低的系统 (<= 32\MB)，默认值减少到 128。
+.IP
+.\" commit 72a3effaf633bcae9034b7e176bdbd78d64a71db
+Linux 2.6.20 之前，建议如果这个需要增加到 1024 以上，修改 \fIinclude/net/tcp.h\fP 中 SYNACK 哈希表
+(\fBTCP_SYNQ_HSIZE\fP) 的大小，保持
+.IP
+.in +4n
+.EX
+TCP_SYNQ_HSIZE * 16 <= tcp_max_syn_backlog
+.EE
+.in
+.IP
+并且应该重新编译内核。 在 Linux 2.6.20 中，固定大小的 \fBTCP_SYNQ_HSIZE\fP 被移除以支持动态大小。
+.TP 
+\fItcp_max_tw_buckets\fP (integer; default: see below; since Linux 2.4)
+.\" Since Linux 2.3.41
+系统允许的 TIME_WAIT 状态套接字的最大数量。 此限制仅用于防止简单的拒绝服务攻击。 NR_FILE*2 的默认值根据系统中的内存进行调整。
+如果超过这个数字，套接字将关闭并打印一条警告。
+.TP 
+\fItcp_moderate_rcvbuf\fP (Boolean; default: enabled; since Linux 2.4.17/2.6.7)
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+如果启用，TCP 将执行接收缓冲区自动调整，尝试自动调整缓冲区大小 (不大于 \fItcp_rmem[2]\fP) 以匹配全吞吐量路径所需的大小。
+.TP 
+\fItcp_mem\fP (since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+这是 3 个整数的 vector: [low, pressure, high]。 这些边界以系统页面大小为单位测量，TCP
+使用这些边界来跟踪其内存使用情况。 默认值是在启动时根据可用内存量计算的。 (TCP 只能为此使用 \fIlow memory\fP，在 32 位系统上限制在
+900 兆字节左右。64 位系统不受此限制。)
+.RS
+.TP 
+\fIlow\fP
+当它全局分配的页数低于这个数字时，TCP 不会调节它的内存分配。
+.TP 
+\fIpressure\fP
+当 TCP 分配的内存量超过此页数时，TCP 会降低其内存消耗。 一旦分配的页数低于 \fIlow\fP 标记，就会退出此内存压力状态。
+.TP 
+\fIhigh\fP
+TCP 将分配的全局最大页数。 该值覆盖内核强加的任何其他限制。
+.RE
+.TP 
+\fItcp_mtu_probing\fP (integer; default: 0; since Linux 2.6.17)
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+此参数控制 TCP 打包层路径 MTU 发现。 可以将以下值分配给文件:
+.RS
+.TP 
+\fB0\fP
+Disabled
+.TP 
+\fB1\fP
+默认禁用，检测到 ICMP 黑 hole 时启用
+.TP 
+\fB2\fP
+始终启用，使用 \fItcp_base_mss\fP 的初始 MSS。
+.RE
+.TP 
+\fItcp_no_metrics_save\fP (Boolean; default: disabled; since Linux 2.6.6)
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+默认情况下，TCP 在连接关闭时将各种连接指标保存在路由缓存中，以便在 near future 中建立的连接可以使用这些来设置初始条件。
+通常，这会提高整体性能，但有时可能会导致性能下降。 如果启用 \fItcp_no_metrics_save\fP，TCP 将不会在关闭连接时缓存指标。
+.TP 
+\fItcp_orphan_retries\fP (integer; default: 8; since Linux 2.4)
+.\" Since Linux 2.3.41
+探测已被我们关闭的连接的另一端的最大尝试次数。
+.TP 
+\fItcp_reordering\fP (integer; default: 3; since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+在 TCP 假设数据包丢失并进入慢启动的情况下，可以在 TCP 数据包流中重新排序数据包的最大值。 不建议更改此数字。
+这是一种数据包重新排序检测指标，旨在最大程度地减少因连接上的数据包重新排序而引起的不必要的退避和重新传输。
+.TP 
+\fItcp_retrans_collapse\fP (Boolean; default: enabled; since Linux 2.2)
+.\" Since Linux 2.1.96
+尝试在重新传输期间发送完整大小的数据包。
+.TP 
+\fItcp_retries1\fP (integer; default: 3; since Linux 2.2)
+.\" Since Linux 2.1.43
+TCP 将尝试在已建立的连接上正常重新传输数据包的次数，而无需额外努力让网络层参与进来。
+一旦我们超过了这个重传次数，我们首先让网络层在每次新的重传之前更新路由 (如果可能的话)。 默认值是 RFC 指定的最小值 3.
+.TP 
+\fItcp_retries2\fP (integer; default: 15; since Linux 2.2)
+.\" Since Linux 2.1.43
+TCP 数据包在放弃之前以已建立状态重传的最大次数。 默认值为 15，对应于大约 13 到 30 分钟的持续时间，具体取决于重传超时。 RFC\1122
+指定的 100 秒的最小限制通常被认为太短。
+.TP 
+\fItcp_rfc1337\fP (Boolean; default: disabled; since Linux 2.2)
+.\" Since Linux 2.1.90
+启用符合 RFC\1337 的 TCP 行为。 禁用时，如果在 TIME_WAIT 状态下收到 RST，我们会立即关闭套接字，而无需等待
+TIME_WAIT 周期结束。
+.TP 
+\fItcp_rmem\fP (since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+这是 3 个整数的 vector: [min, default, max]。 TCP 使用这些参数来调节接收缓冲区大小。 TCP
+根据系统中可用的内存，在这些值的范围内根据下面列出的默认值动态调整接收缓冲区的大小。
+.RS
+.TP 
+\fImin\fP
+每个 TCP 套接字使用的接收缓冲区的最小大小。 默认值是系统页面大小。 (在 Linux 2.4 上，默认值为 4\kB，在低内存系统中降低为
+\fBPAGE_SIZE\fP 字节。) 该值用于确保在内存压力模式下，低于此大小的分配仍然会成功。 这不用于限制在套接字上使用 \fBSO_RCVBUF\fP
+声明的接收缓冲区的大小。
+.TP 
+\fIdefault\fP
+TCP 套接字接收缓冲区的默认大小。 此值覆盖为所有协议定义的泛型全局 \fInet.core.rmem_default\fP 的初始默认缓冲区大小。
+默认值为 87380 字节。 (在 Linux 2.4 上，在低内存系统中这将降低到 43689。) 如果需要更大的接收缓冲区大小，应该增加这个值
+(以影响所有套接字)。 要使用大型 TCP windows，\fInet.ipv4.tcp_window_scaling\fP 必须启用 (default)。
+.TP 
+\fImax\fP
+每个 TCP 套接字使用的接收缓冲区的最大大小。 该值不会覆盖全局 \fInet.core.rmem_max\fP。 这不用于限制在套接字上使用
+\fBSO_RCVBUF\fP 声明的接收缓冲区的大小。 默认值使用以下公式计算
+.IP
+.in +4n
+.EX
+max(87380, min(4\ MB, \fItcp_mem\fP[1]*PAGE_SIZE/128))
+.EE
+.in
+.IP
+(在 Linux 2.4 上，默认为 87380*2 字节，在低内存系统中降低为 87380)。
+.RE
+.TP 
+\fItcp_sack\fP (Boolean; default: enabled; since Linux 2.2)
+.\" Since Linux 2.1.36
+启用 RFC\2018 TCP 选择性确认。
+.TP 
+\fItcp_slow_start_after_idle\fP (Boolean; default: enabled; since Linux 2.6.18)
+.\" The following is from Linux 2.6.28-rc4: Documentation/networking/ip-sysctl.txt
+如果启用，提供 RFC 2861 行为并在空闲期后使拥塞窗口超时。 空闲期定义为当前的 RTO (重传超时)。 如果禁用，拥塞窗口在空闲期后不会超时。
+.TP 
+\fItcp_stdurg\fP (Boolean; default: disabled; since Linux 2.2)
+.\" Since Linux 2.1.44
+.\" RFC 793 was ambiguous in its specification of the meaning of the
+.\" urgent pointer.  RFC 1122 (and RFC 961) fixed on a particular
+.\" resolution of this ambiguity (unfortunately the "wrong" one).
+如果启用此选项，则使用 TCP 紧急指针字段的 RFC\1122 解释。 根据这种解释，紧急指针指向紧急数据的最后一个字节。
+如果禁用此选项，则使用紧急指针的 BSD 兼容解释: 紧急指针指向紧急数据后的第一个字节。 启用此选项可能会导致互操作性问题。
+.TP 
+\fItcp_syn_retries\fP (integer; default: 6; since Linux 2.2)
+.\" Since Linux 2.1.38
+.\" commit 6c9ff979d1921e9fd05d89e1383121c2503759b9
+将重新传输活动 TCP 连接尝试的初始 SYN 的最大次数。 该值不应高于 255。 默认值为 6，对应于重试最多约 127 秒。 在 Linux
+3.7 之前，默认值为 5，(结合其他内核参数计算) 对应大约 180 秒。
+.TP 
+\fItcp_synack_retries\fP (integer; default: 5; since Linux 2.2)
+.\" Since Linux 2.1.38
+被动 TCP 连接的 SYN/ACK 段将被重新传输的最大次数。 此数字不应高于 255。
+.TP 
+\fItcp_syncookies\fP (integer; default: 1; since Linux 2.2)
+.\" Since Linux 2.1.43
+启用 TCP 同步 cookie。 内核必须用 \fBCONFIG_SYN_COOKIES\fP 编译。 syncookies 特性试图保护套接字免受 SYN
+洪水攻击。 如果有的话，这应该作为最后的手段使用。 这违反了 TCP 协议，并且与 TCP 的其他领域 (例如 TCP 扩展) 冲突。
+它可能会给客户端和中继带来问题。 不建议将其作为重载服务器的调整机制来帮助解决，重载，或配置错误的情况。 有关推荐的替代品，请参见
+\fItcp_max_syn_backlog\fP、\fItcp_synack_retries\fP 和 \fItcp_abort_on_overflow\fP。
+设置为以下值之一:
+.RS
+.TP 
+\fB0\fP
+禁用 TCP 同步 cookie。
+.TP 
+\fB1\fP
+当套接字的 syn 积压队列溢出时发送 syncookies。
+.TP 
+\fB2\fP
+.\" commit 5ad37d5deee1ff7150a2d0602370101de158ad86
+(自 Linux 3.12 起) 无条件发送 syncookies。 这对于网络测试很有用。
+.RE
+.TP 
+\fItcp_timestamps\fP (integer; default: 1; since Linux 2.2)
+.\" Since Linux 2.1.36
+设置为以下值之一以启用或禁用 RFC\1323 TCP 时间戳:
+.RS
+.TP 
+\fB0\fP
+禁用时间戳。
+.TP 
+\fB1\fP
+启用 RFC1323 中定义的时间戳，并为每个连接使用随机偏移量，而不是仅使用当前时间。
+.TP 
+\fB2\fP
+.\" commit 25429d7b7dca01dc4f17205de023a30ca09390d0
+至于值 1，但没有随机偏移量。 设置 \fItcp_timestamps\fP 为这个值是有意义的，因为 Linux 4.10。
+.RE
+.TP 
+\fItcp_tso_win_divisor\fP (integer; default: 3; since Linux 2.6.9)
+此参数控制单个 TCP 分段卸载 (TSO) 帧可以消耗的拥塞窗口的百分比。 此参数的设置是突发性和构建更大的 TSO 帧之间的权衡。
+.TP 
+\fItcp_tw_recycle\fP (Boolean; default: disabled; Linux 2.4 to Linux 4.11)
+.\" Since Linux 2.3.15
+.\" removed in Linux 4.12; commit 4396e46187ca5070219b81773c4e65088dac50cc
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+启用 TIME_WAIT 套接字的快速回收。 不建议启用此选项，因为远程 IP 可能不会使用单调递增的时间戳 (NAT
+后面的设备，具有每个连接时间戳偏移的设备)。 请参见 RFC 1323 (PAWS) 和 RFC 6191。
+.TP 
+\fItcp_tw_reuse\fP (Boolean; default: disabled; since Linux 2.4.19/2.6)
+.\" Since Linux 2.4.19/2.5.43
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+从协议的角度来看是安全的，允许为新连接重用 TIME_WAIT 套接字。 没有技术专家的 advice/request 应该不会改。
+.TP 
+\fItcp_vegas_cong_avoid\fP (Boolean; default: disabled; Linux 2.2 to Linux 2.6.13)
+.\" Since Linux 2.1.8; removed in Linux 2.6.13
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+启用 TCP Vegas 拥塞避免算法。 TCP Vegas 是对 TCP 的一种仅限发送方的更改，它通过估计带宽来预测拥塞的发生。 TCP Vegas
+通过修改拥塞窗口来调整发送速率。 TCP Vegas 应该提供更少的数据包丢失，但它不像 TCP Reno 那样激进。
+.TP 
+\fItcp_westwood\fP (Boolean; default: disabled; Linux 2.4.26/2.6.3 to Linux 2.6.13)
+启用 TCP Westwood + 拥塞控制算法。 TCP Westwood + 是 TCP Reno 协议栈的仅发送方修改，可优化 TCP
+拥塞控制的性能。 它基于端到端的带宽估计来设置拥塞窗口和拥塞事件后的慢启动阈值。 使用此估计，TCP Westwood +
+自适应地设置一个慢启动阈值和一个拥塞窗口，该窗口考虑了在遇到拥塞时使用的带宽。 TCP Westwood + 显着提高了有线网络中 TCP Reno
+的公平性和无线链路的吞吐量。
+.TP 
+\fItcp_window_scaling\fP (Boolean; default: enabled; since Linux 2.2)
+.\" Since Linux 2.1.36
+启用 RFC\1323 TCP 窗口缩放。 如果另一端支持，此特性允许在 TCP 连接上使用大窗口 (> 64\kB)。 通常，TCP 头中的
+16 位窗口长度字段将窗口大小限制在小于 64kB。 如果需要更大的 windows，应用程序可以增加其套接字缓冲区的大小，并且将采用窗口缩放选项。
+如果禁用 \fItcp_window_scaling\fP，TCP 将不会在连接建立期间与另一端协商窗口缩放的使用。
+.TP 
+\fItcp_wmem\fP (since Linux 2.4)
+.\" Since Linux 2.4.0-test7
+这是 3 个整数的 vector: [min, default, max]。 TCP 使用这些参数来调节发送缓冲区的大小。 TCP
+根据下面列出的默认值动态调整发送缓冲区的大小，在这些值的范围内，具体取决于可用内存。
+.RS
+.TP 
+\fImin\fP
+每个 TCP 套接字使用的发送缓冲区的最小大小。 默认值是系统页面大小。 (在 Linux 2.4 上，默认值为 4\kB。)
+该值用于确保在内存压力模式下，低于此大小的分配仍会成功。 这不用于限制在套接字上使用 \fBSO_SNDBUF\fP 声明的发送缓冲区的大小。
+.TP 
+\fIdefault\fP
+.\" True in Linux 2.4 and 2.6
+TCP 套接字发送缓冲区的默认大小。 此值覆盖为所有协议定义的泛型全局 \fI/proc/sys/net/core/wmem_default\fP
+的初始默认缓冲区大小。 默认值为 16\kB。 如果需要更大的发送缓冲区大小，则应增加此值 (以影响所有套接字)。 要使用较大的 TCP
+windows，必须将 \fI/proc/sys/net/ipv4/tcp_window_scaling\fP 设置为非零值 (default)。
+.TP 
+\fImax\fP
+每个 TCP 套接字使用的发送缓冲区的最大大小。 该值不会覆盖 \fI/proc/sys/net/core/wmem_max\fP 中的值。
+这不用于限制在套接字上使用 \fBSO_SNDBUF\fP 声明的发送缓冲区的大小。 默认值使用以下公式计算
+.IP
+.in +4n
+.EX
+max(65536, min(4\ MB, \fItcp_mem\fP[1]*PAGE_SIZE/128))
+.EE
+.in
+.IP
+(在 Linux 2.4 上，默认值为 128\kB，根据低内存系统降低 64\kB。)
+.RE
+.TP 
+\fItcp_workaround_signed_windows\fP (Boolean; default: disabled; since Linux 2.6.26)
+如果启用，假设没有收到窗口缩放选项意味着远程 TCP 已损坏并将窗口视为已签名的数量。 如果禁用，即使我们没有收到来自它的窗口缩放选项，假设远程 TCP
+没有被破坏。
+.SS "Socket options"
+.\" or SOL_TCP on Linux
+要设置或获取 TCP 套接字选项，调使用 \fBgetsockopt\fP(2) 读取或 \fBsetsockopt\fP(2) 写入选项，选项级别参数设置为
+\fBIPPROTO_TCP\fP。 除非另有说明，否则 \fIoptval\fP 是指向 \fIint\fP 的指针。 此外，大多数 \fBIPPROTO_IP\fP
+套接字选项在 TCP 套接字上有效。 有关详细信息，请参见 \fBip\fP(7)。
+.PP
+以下是 TCP 特定套接字选项的列表。 有关也适用于 TCP 套接字的其他一些套接字选项的详细信息，请参见 \fBsocket\fP(7)。
+.TP 
+\fBTCP_CONGESTION\fP (since Linux 2.6.13)
+.\"	    commit 5f8ef48d240963093451bcf83df89f1a1364f51d
+.\"	    Author: Stephen Hemminger <shemminger@osdl.org>
+此选项的参数是一个字符串。 此选项允许调用者在每个套接字的基础上设置要使用的 TCP 拥塞控制算法。 非特权进程仅限于选择
+\fItcp_allowed_congestion_control\fP 中的一种算法 (如上所述)。 特权进程 (\fBCAP_NET_ADMIN\fP)
+可以从任何可用的拥塞控制算法中进行选择 (参见上面对 \fItcp_available_congestion_control\fP 的描述)。
+.TP 
+\fBTCP_CORK\fP (since Linux 2.2)
+.\" precisely: since Linux 2.1.127
+如果设置，则不要发送部分帧。 再次清除该选项时，将发送所有排队的部分帧。 这对于在调用 \fBsendfile\fP(2) 之前附加标头或吞吐量优化很有用。
+按照目前的实现，输出被 \fBTCP_CORK\fP 塞住的时间有 200 毫秒的上限。 如果达到此上限，则会自动传输排队的数据。 此选项只能与
+\fBTCP_NODELAY\fP 结合使用，因为 Linux 2.5.71。 此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_DEFER_ACCEPT\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.3.38
+.\" Useful references:
+.\" http://www.techrepublic.com/article/take-advantage-of-tcp-ip-options-to-optimize-data-transmission/
+.\" http://unix.stackexchange.com/questions/94104/real-world-use-of-tcp-defer-accept
+仅当数据到达套接字时才允许侦听器被唤醒。 取一个整数值 (seconds)，这可以限制 TCP 完成连接的最大尝试次数。
+此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_INFO\fP (since Linux 2.4)
+用于收集有关此套接字的信息。 内核返回文件 \fI/usr/include/linux/tcp.h\fP 中定义的 \fIstruct tcp_info\fP。
+此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_KEEPCNT\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.3.18
+丢弃连接之前 TCP 应发送的最大保活探测数。 此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_KEEPIDLE\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.3.18
+如果已在此套接字上设置套接字选项 \fBSO_KEEPALIVE\fP，则在 TCP 开始发送保持活动探测之前连接需要保持空闲的时间 (以秒为单位)。
+此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_KEEPINTVL\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.3.18
+各个保活探测之间的时间 (以秒为单位)。 此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_LINGER2\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.3.41
+孤立的 FIN_WAIT2 状态套接字的生命周期。 此选项可用于覆盖此套接字文件
+\fI/proc/sys/net/ipv4/tcp_fin_timeout\fP 中的系统范围设置。 这不要与 \fBsocket\fP(7) 级别选项
+\fBSO_LINGER\fP 混淆。 此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_MAXSEG\fP
+.\" Present in Linux 1.0
+传出 TCP 数据包的最大段大小。 在 Linux 2.2 及更早版本和 Linux 2.6.28
+及更高版本中，如果在连接建立之前设置此选项，它还会更改初始数据包中向另一端通告的 MSS 值。 大于 (eventual) 接口 MTU 的值无效。
+TCP 还将对所提供的值施加其最小和最大界限。
+.TP 
+\fBTCP_NODELAY\fP
+.\" Present in Linux 1.0
+如果设置，禁用 Nagle 算法。 这意味着段总是尽快发送，即使只有少量数据。
+不设置时，数据会被缓冲，直到有足够的量发送出去，从而避免频繁发送小数据包，导致网络利用率低下。 该选项被 \fBTCP_CORK\fP 覆盖;
+但是，设置此选项会强制显式刷新未决输出，即使当前设置了 \fBTCP_CORK\fP 也是如此。
+.TP 
+\fBTCP_QUICKACK\fP (since Linux 2.4.4)
+如果设置或禁用 quickack 模式，则启用 quickack 模式清除。 在 quickack 模式下，ack 立即发送，而不是根据正常 TCP
+操作在需要时延迟发送。 这个标志不是永久性的，它只允许切换到或退出 quickack 模式。 TCP 协议的后续运行将再次 enter/leave
+quickack 模式取决于内部协议处理和延迟 ack 超时发生和数据传输等因素。 此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_SYNCNT\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.3.18
+设置在终止连接尝试之前 TCP 应发送的 SYN 重传次数。 它不能超过 255。 此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_USER_TIMEOUT\fP (since Linux 2.6.37)
+.\"	    commit dca43c75e7e545694a9dd6288553f55c53e2a3a3
+.\"	    Author: Jerry Chu <hkchu@google.com>
+.\" The following text taken nearly verbatim from Jerry Chu's (excellent)
+.\" commit message.
+.\"
+此选项将 \fIunsigned int\fP 作为参数。 当该值大于 0 时，它指定在 TCP 强行关闭相应连接并返回 \fBETIMEDOUT\fP
+之前，传输数据可能保持未确认或缓冲数据可能保持未传输 (由于窗口大小为零) 的最长时间 (以毫秒为单位) 应用。 如果选项值指定为 0，TCP
+将使用系统默认值。
+.IP
+增加用户超时允许 TCP 连接在没有端到端连接的情况下存活更长时间。 如果需要，减少用户超时允许应用程序 "fail fast"。 否则，在正常 WAN
+环境中，当前系统默认设置最多可能需要 20 分钟才能出现故障。
+.IP
+该选项可以在 TCP 连接的任何状态期间设置，但仅在连接的同步状态
+(ESTABLISHED、FIN\-WAIT\-1、FIN\-WAIT\-2、CLOSE\-WAIT、CLOSING 和 LAST\-ACK) 期间有效.
+此外，当与 TCP keepalive (\fBSO_KEEPALIVE\fP) 选项一起使用时，\fBTCP_USER_TIMEOUT\fP 将覆盖
+keepalive 以确定何时因 keepalive 失败而关闭连接。
+.IP
+该选项对 TCP 何时重新传输数据包以及何时发送保活探测没有影响。
+.IP
+如果在侦听套接字上设置了此选项，则该选项将由 \fBaccept\fP(2) 返回的套接字继承。
+.IP
+有关用户超时特性的更多详细信息，请参见 RFC\793 和 RFC\5482 (`TCP 用户超时选项`)。
+.TP 
+\fBTCP_WINDOW_CLAMP\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.3.41
+将通告窗口的大小绑定到该值。 内核规定最小大小为 SOCK_MIN_RCVBUF/2。 此选项不应在旨在可移植的代码中使用。
+.TP 
+\fBTCP_FASTOPEN\fP (since Linux 3.6)
+此选项在侦听器套接字上启用快速打开 (RFC\~7413)。 该值指定了挂起 SYN 的最大长度 (类似于 \fBlisten\fP(2)) 中的积压参数)。
+启用后，侦听器套接字会在传入的 SYN 上使用 TCP 快速打开选项授予 TCP 快速打开 cookie。
+.IP
+更重要的是，它使用有效的快速打开 cookie 接受 SYN 中的数据，并响应 SYN\-ACK 确认数据和 SYN 序列。 \fBaccept\fP(2)
+在握手尚未完成时返回一个可读写的套接字。 因此数据交换可以在握手完成之前开始。 此选项需要在 sysctl
+\fInet.ipv4.tcp_fastopen\fP 上启用服务器端支持 (见上文)。 对于 TCP Fast Open 客户端支持，请参见下面的
+\fBsend\fP(2) \fBMSG_FASTOPEN\fP 或 \fBTCP_FASTOPEN_CONNECT\fP。
+.TP 
+\fBTCP_FASTOPEN_CONNECT\fP (since Linux 4.11)
+此选项启用另一种方法来在活动端 (client) 上执行快速打开。 启用此选项后，\fBconnect\fP(2)
+的行为会有所不同，具体取决于目标是否有快速打开 cookie。
+.IP
+如果 cookie 不可用 (即第一次联系到目的地)，\fBconnect\fP(2) 会像往常一样立即发送 SYN，除了 SYN 将包含一个空的快速打开
+cookie 选项以请求 cookie。
+.IP
+如果 cookie 可用，\fBconnect\fP(2) 将立即返回 0，但 SYN 传输被延迟。 随后的 \fBwrite\fP(2) 或
+\fBsendmsg\fP(2) 将触发 SYN，其中包含快速打开选项中的数据和 cookie。 换句话说，实际的连接操作被推迟到提供数据为止。
+.IP
+\fBNote:\fP 虽然此选项是为方便起见而设计的，但启用它确实会改变行为，并且某些系统调用可能会设置不同的 \fIerrno\fP 值。 在存在 cookie
+的情况下，必须在 \fBconnect\fP(2) 之后立即调用 \fBwrite\fP(2) 或 \fBsendmsg\fP(2)，以便发送 SYN + 数据以完成
+3WHS 并建立连接。 在没有 \fBwrite\fP(2) 的情况下在 \fBconnect\fP(2) 之后立即调用 \fBread\fP(2)
+将导致阻塞套接字永远被阻塞。
+.IP
+应用程序应该在 \fBwrite\fP(2) 或 \fBsendmsg\fP(2) 之前设置 \fBTCP_FASTOPEN_CONNECT\fP
+套接字选项，或者直接使用 \fBMSG_FASTOPEN\fP 标志调用 \fBwrite\fP(2) 或
+\fBsendmsg\fP(2)，而不是在同一连接上同时设置两者。
+.IP
+这是使用此新选项的典型调用流程:
+.IP
+.in +4n
+.EX
+小号 = socket();
+setsockopt(s, IPPROTO_TCP, TCP_FASTOPEN_CONNECT, 1, ...);
+connect(s);
+write(s); /* write() 应该始终跟在 connect() 之后
+           * 以触发 SYN 出去。*/ 
+read(s)/write(s);
+/* ... */
+close(s);
+.EE
+.in
+.SS "Sockets API"
+TCP 以紧急数据 (单个字节) 的形式为带外数据提供有限支持。 在 Linux
+中，这意味着如果另一端发送较新的带外数据，则较旧的紧急数据将作为正常量据插入到流中 (即使未设置 \fBSO_OOBINLINE\fP)。 这不同于基于
+BSD 的栈。
+.PP
+Linux 默认使用紧急指针字段的 BSD 兼容解释。 这违反了 RFC\1122，但需要与其他栈进行互操作。 它可以通过
+\fI/proc/sys/net/ipv4/tcp_stdurg\fP 改变。
+.PP
+可以使用 \fBrecv\fP(2) \fBMSG_PEEK\fP 标志对带外数据进行 peek。
+.PP
+从 Linux 2.4 开始，Linux 支持在 \fBrecv\fP(2) 的 \fIflags\fP 参数中使用 \fBMSG_TRUNC\fP (以及
+\fBrecvmsg\fP(2)).  此标志导致丢弃接收到的数据字节，而不是在调用者提供的缓冲区中传回。 从 Linux 2.4.4
+开始，\fBMSG_TRUNC\fP 与 \fBMSG_OOB\fP 配合使用接收带外数据时也有这个效果。
+.SS Ioctls
+以下 \fBioctl\fP(2) 调用在 \fIvalue\fP 中返回信息。 正确的语法是:
+.PP
+.RS
+.nf
+\fBint\fP\fI value\fP\fB;\fP
+\fIerror\fP\fB = ioctl(\fP\fItcp_socket\fP\fB, \fP\fIioctl_type\fP\fB, &\fP\fIvalue\fP\fB);\fP
+.fi
+.RE
+.PP
+\fIioctl_type\fP 是以下之一:
+.TP 
+\fBSIOCINQ\fP
+.\" FIXME http://sources.redhat.com/bugzilla/show_bug.cgi?id=12002,
+.\" filed 2010-09-10, may cause SIOCINQ to be defined in glibc headers
+返回接收缓冲区中排队的未读数据量。 套接字不能处于 LISTEN 状态，否则将返回错误 (\fBEINVAL\fP)。 \fBSIOCINQ\fP 在
+\fI<linux/sockios.h>\fP 中定义。 或者，您可以使用 \fI<sys/ioctl.h>\fP 中定义的同义词
+\fBFIONREAD\fP。
+.TP 
+\fBSIOCATMARK\fP
+如果入站数据流处于紧急标记，则返回真 (即，\fIvalue\fP 为非零)。
+.IP
+如果设置了 \fBSO_OOBINLINE\fP 套接字选项，并且 \fBSIOCATMARK\fP 返回 true，则下一次从套接字读取将返回紧急数据。
+如果没有设置 \fBSO_OOBINLINE\fP 套接字选项，并且 \fBSIOCATMARK\fP 返回真，那么下一次从套接字读取将返回紧急数据后面的字节
+(实际读取紧急数据需要 \fBrecv(MSG_OOB)\fP 标志)。
+.IP
+请注意，读取永远不会读取紧急标记。 如果通过 \fBselect\fP(2) (使用 \fIexceptfds\fP 参数) 或通过 \fBSIGURG\fP
+信号的传递通知应用程序存在紧急数据，则它可以使用重复测试 \fBSIOCATMARK\fP 并执行读取 (请求任何数字) 的循环前进到标记字节数)，只要
+\fBSIOCATMARK\fP 返回 false。
+.TP 
+\fBSIOCOUTQ\fP
+.\" FIXME . http://sources.redhat.com/bugzilla/show_bug.cgi?id=12002,
+.\" filed 2010-09-10, may cause SIOCOUTQ to be defined in glibc headers
+返回套接字发送队列中未发送的数据量。 套接字不能处于 LISTEN 状态，否则将返回错误 (\fBEINVAL\fP)。 \fBSIOCOUTQ\fP 在
+\fI<linux/sockios.h>\fP 中定义。 或者，您可以使用 \fI<sys/ioctl.h>\fP 中定义的同义词
+\fBTIOCOUTQ\fP。
+.SS "Error handling"
+当发生网络错误时，TCP 会尝试重新发送数据包。 如果一段时间后仍未成功，则会报告 \fBETIMEDOUT\fP 或此连接上最后收到的错误。
+.PP
+某些应用程序需要更快的错误通知。 这可以通过 \fBIPPROTO_IP\fP 级 \fBIP_RECVERR\fP 套接字选项启用。
+启用此选项后，所有传入错误都会立即传递给用户程序。 小心使用此选项 \[em] 它会降低 TCP 对路由更改和其他正常网络条件的容忍度。
+.SH ERRORS
+.TP 
+\fBEAFNOTSUPPORT\fP
+\fIsin_family\fP 中传递的套接字地址类型不是 \fBAF_INET\fP。
+.TP 
+\fBEPIPE\fP
+另一端意外关闭套接字或在关闭的套接字上执行读取。
+.TP 
+\fBETIMEDOUT\fP
+另一端在一段时间后没有确认重新传输的数据。
+.PP
+为 \fBip\fP(7) 或泛型套接字层定义的任何错误也可能为 TCP 返回。
+.SH VERSIONS
+Linux 2.4 中引入了对显式拥塞通知、零拷贝 \fBsendfile\fP(2)、重新排序支持和一些 SACK 扩展 (DSACK) 的支持。 在
+Linux 2.3 中引入了对前向确认 (FACK)、TIME_WAIT 回收和每个连接的 keepalive 套接字选项的支持。
+.SH BUGS
+并非所有错误都记录在案。
+.PP
+.\" Only a single Linux kernel version is described
+.\" Info for 2.2 was lost. Should be added again,
+.\" or put into a separate page.
+.\" .SH AUTHORS
+.\" This man page was originally written by Andi Kleen.
+.\" It was updated for 2.4 by Nivedita Singhvi with input from
+.\" Alexey Kuznetsov's Documentation/networking/ip-sysctl.txt
+.\" document.
+IPv6 没有描述。
+.SH "SEE ALSO"
+\fBaccept\fP(2), \fBbind\fP(2), \fBconnect\fP(2), \fBgetsockopt\fP(2), \fBlisten\fP(2),
+\fBrecvmsg\fP(2), \fBsendfile\fP(2), \fBsendmsg\fP(2), \fBsocket\fP(2), \fBip\fP(7),
+\fBsocket\fP(7)
+.PP
+内核源文件 \fIDocumentation/networking/ip\-sysctl.txt\fP.
+.PP
+RFC\793 用于 TCP 规范。
+.br
+RFC\1122 用于 TCP 要求和 Nagle 算法的描述。
+.br
+RFC\1323 用于 TCP 时间戳和窗口缩放选项。
+.br
+RFC\1337 用于描述 TIME_WAIT 暗杀危险。
+.br
+RFC\3168 对显式拥塞通知的描述。
+.br
+RFC\2581 用于 TCP 拥塞控制算法。
+.br
+RFC\2018 和 RFC\2883 用于 SACK 和 SACK 的扩展。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

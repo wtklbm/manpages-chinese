@@ -1,0 +1,156 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Michael Haardt
+.\"             and Copyright (C) 1993,1994 Ian Jackson
+.\"		and Copyright (C) 2006, 2014 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mkdir 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mkdir, mkdirat \- 创建一个目录
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+.\" .B #include <unistd.h>
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint mkdir(const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of AT_* constants */
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint mkdirat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmkdirat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBmkdir\fP() 尝试创建名为 \fIpathname\fP 的目录。
+.PP
+参数 \fImode\fP 指定新目录的模式 (参见 \fBinode\fP(7)).  它由进程的 \fIumask\fP 按通常方式修改: 在没有默认 ACL
+的情况下，创建目录的模式为 (\fImode\fP&\[ti]\fIumask\fP&0777)。 其他 \fImode\fP 位是否适用于创建的目录取决于操作系统。
+对于 Linux，请参见下面的注释。
+.PP
+新创建的目录将由进程的有效用户 ID 拥有。 如果包含该文件的目录设置了 set\-group\-ID 位，或者如果文件系统使用 BSD 组语义
+(\fImount \-o bsdgroups\fP 或同义 \fImount \-o grpid\fP) 挂载，则新目录将从其父目录继承组所有权;
+否则它将由进程的有效组 ID 拥有。
+.PP
+.\"
+.\"
+如果父目录设置了 set\-group\-ID 位，那么新创建的目录也会如此。
+.SS mkdirat()
+\fBmkdirat\fP() 系统调用的操作方式与 \fBmkdir\fP() 完全相同，除了此处描述的差异。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBmkdir\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBmkdir\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+有关对 \fBmkdirat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+\fBmkdir\fP() 和 \fBmkdirat\fP() 成功返回零。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+父目录不允许进程写入权限，或者 \fIpathname\fP 中的目录之一不允许搜索权限。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+(\fBmkdirat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEDQUOT\fP
+文件系统上用户的磁盘块或 inode 配额已用完。
+.TP 
+\fBEEXIST\fP
+\fIpathname\fP 已经存在 (不一定是目录)。 这包括 \fIpathname\fP 是符号链接的情况，悬垂与否。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+新目录的 \fIpathname\fP 的最后一个组件 ("basename") 无效 (例如，它包含底层文件系统不允许的字符)。
+.TP 
+\fBELOOP\fP
+解析 \fIpathname\fP 时遇到太多符号链接。
+.TP 
+\fBEMLINK\fP
+父目录的链接数将超过 \fBLINK_MAX\fP。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长了。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 中的目录组件不存在或者是悬垂符号链接。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOSPC\fP
+包含 \fIpathname\fP 的设备没有空间容纳新目录。
+.TP 
+\fBENOSPC\fP
+无法创建新目录，因为用户的磁盘配额已用完。
+.TP 
+\fBENOTDIR\fP
+在 \fIpathname\fP 中用作目录的组件实际上不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBmkdirat\fP()) \fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.TP 
+\fBEPERM\fP
+包含 \fIpathname\fP 的文件系统不支持创建目录。
+.TP 
+\fBEROFS\fP
+\fIpathname\fP 指的是只读文件系统上的文件。
+.SH VERSIONS
+\fBmkdirat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+.\" SVr4 documents additional EIO, EMULTIHOP
+\fBmkdir\fP(): SVr4, BSD, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBmkdirat\fP(): POSIX.1\-2008.
+.SH NOTES
+在 Linux 下，除了权限位之外，\fBS_ISVTX\fP \fImode\fP 位也受到尊重。
+.PP
+NFS 的底层协议有很多缺陷。 其中一些会影响 \fBmkdir\fP()。
+.SS "glibc notes"
+在 \fBmkdirat\fP() 不可用的旧内核上，glibc 包装器函数退回到使用 \fBmkdir\fP()。 当 \fIpathname\fP
+是相对路径名时，glibc 根据 \fI/proc/self/fd\fP 中对应于 \fIdirfd\fP 参数的符号链接构造路径名。
+.SH "SEE ALSO"
+\fBmkdir\fP(1), \fBchmod\fP(2), \fBchown\fP(2), \fBmknod\fP(2), \fBmount\fP(2),
+\fBrmdir\fP(2), \fBstat\fP(2), \fBumask\fP(2), \fBunlink\fP(2), \fBacl\fP(5),
+\fBpath_resolution\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

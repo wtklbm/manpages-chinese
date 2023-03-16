@@ -1,0 +1,109 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 2006 Jens Axboe
+.\" and Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH vmsplice 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+vmsplice \- 拼接用户页面 to/from 管道
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP
+.PP
+\fBssize_t vmsplice(int \fP\fIfd\fP\fB, const struct iovec *\fP\fIiov\fP\fB,\fP
+\fB                 size_t \fP\fInr_segs\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.\" Return type was long before glibc 2.7
+.SH DESCRIPTION
+.\" Linus: vmsplice() system call to basically do a "write to
+.\" the buffer", but using the reference counting and VM traversal
+.\" to actually fill the buffer. This means that the user needs to
+.\" be careful not to reuse the user-space buffer it spliced into
+.\" the kernel-space one (contrast this to "write()", which copies
+.\" the actual data, and you can thus reuse the buffer immediately
+.\" after a successful write), but that is often easy to do.
+.\" Since Linux 2.6.23
+.\" commit 6a14b90bb6bc7cd83e2a444bf457a2ea645cbfe7
+如果 \fIfd\fP 为写打开，\fBvmsplice\fP() 系统调用 maps \fInr_segs\fP 范围的用户内存由 \fIiov\fP 描述成一个管道。
+如果打开 \fIfd\fP 进行读取，则 \fBvmsplice\fP() 系统调用从管道填充 \fIiov\fP 描述的用户内存的 \fInr_segs\fP 范围。
+文件描述符 \fIfd\fP 必须指向一个管道。
+.PP
+指针 \fIiov\fP 指向 \fIiovec\fP 结构数组，如 \fBiovec\fP(3type) 中所述。
+.PP
+\fIflags\fP 参数是一个位掩码，由以下零个或多个值的或运算组合而成:
+.TP 
+\fBSPLICE_F_MOVE\fP
+未用于 \fBvmsplice\fP(); 请参见 \fBsplice\fP(2)。
+.TP 
+\fBSPLICE_F_NONBLOCK\fP
+.\" Not used for vmsplice
+.\" May be in the future -- therefore EAGAIN
+不要在 I/O 上阻塞; 有关详细信息，请参见 \fBsplice\fP(2)。
+.TP 
+\fBSPLICE_F_MORE\fP
+目前对 \fBvmsplice\fP() 没有影响，但可能会在 future 中实现; 请参见 \fBsplice\fP(2)。
+.TP 
+\fBSPLICE_F_GIFT\fP
+.\" FIXME . Explain the following line in a little more detail:
+.\" FIXME
+.\" It looks like the page-alignment requirement went away with
+.\" commit bd1a68b59c8e3bce45fb76632c64e1e063c3962d
+.\"
+.\" .... if we expect to later SPLICE_F_MOVE to the cache.
+用户页面是给内核的礼物。 应用程序可能永远不会修改此内存，否则页面缓存和磁盘上的数据可能会有所不同。 将页面赠予内核意味着后续的
+\fBsplice\fP(2) \fBSPLICE_F_MOVE\fP 可以成功移动页面; 如果未指定此标志，则后续的 \fBsplice\fP(2)
+\fBSPLICE_F_MOVE\fP 必须复制页面。 数据还必须在内存和长度上正确地进行页面对齐。
+.SH "RETURN VALUE"
+成功完成后，\fBvmsplice\fP() 返回传输到管道的字节数。 出错时，\fBvmsplice\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+在 \fIflags\fP 中指定了 \fBSPLICE_F_NONBLOCK\fP，操作将阻塞。
+.TP 
+\fBEBADF\fP
+\fIfd\fP 要么无效，要么不引用管道。
+.TP 
+\fBEINVAL\fP
+\fInr_segs\fP 大于 \fBIOV_MAX\fP; 如果设置了 \fBSPLICE_F_GIFT\fP，则内存未对齐。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.SH VERSIONS
+\fBvmsplice\fP() 系统调用最早出现在 Linux 2.6.17; glibc 2.5 中添加了库支持。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+.\" UIO_MAXIOV in kernel source
+\fBvmsplice\fP() 遵循其他矢量化 read/write 类型函数当涉及到对传入的段数的限制时。 此限制为
+\fI<limits.h>\fP 中定义的 \fBIOV_MAX\fP。 目前，此限制为 1024。
+.PP
+.\" commit 6a14b90bb6bc7cd83e2a444bf457a2ea645cbfe7
+\fBvmsplice\fP() 真正支持仅从用户内存到管道的真正拼接。 相反，它实际上只是将数据复制到用户空间。 但这使得界面美观且对称，并使人们能够在
+\fBvmsplice\fP() 上进行构建，并为 future 的性能改进留有余地。
+.SH "SEE ALSO"
+\fBsplice\fP(2), \fBtee\fP(2), \fBpipe\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

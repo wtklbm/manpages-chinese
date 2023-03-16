@@ -1,0 +1,148 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2003 Abhijit Menon-Sen <ams@wiw.org>
+.\" and Copyright (C) 2010, 2015, 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2005-04-08 mtk, noted kernel version and added BUGS
+.\" 2010-10-09, mtk, document arm_fadvise64_64()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH posix_fadvise 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+posix_fadvise \- 预先声明文件数据的访问模式
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP
+.PP
+\fBint posix_fadvise(int \fP\fIfd\fP\fB, off_t \fP\fIoffset\fP\fB, off_t \fP\fIlen\fP\fB, int \fP\fIadvice\fP\fB);\fP
+.fi
+.PP
+.ad l
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBposix_fadvise\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+程序可以使用 \fBposix_fadvise\fP() 来宣布访问 future 中特定模式的文件数据的意图，从而允许内核执行适当的优化。
+.PP
+\fIadvice\fP 适用于 \fIfd\fP 引用的文件中从 \fIoffset\fP 开始并扩展 \fIlen\fP 字节 (或者如果 \fIlen\fP 为 0
+则直到文件末尾) 的区域 (不一定存在)。 \fIadvice\fP 不具有约束力; 它仅构成对应用程序的期望。
+.PP
+\fIadvice\fP 的允许值包括:
+.TP 
+\fBPOSIX_FADV_NORMAL\fP
+指示应用程序没有关于其对指定数据的访问模式的建议。 如果没有为打开的文件提供建议，则这是默认假设。
+.TP 
+\fBPOSIX_FADV_SEQUENTIAL\fP
+应用程序希望按顺序访问指定的数据 (先读取较低的偏移量，然后再读取较高的偏移量)。
+.TP 
+\fBPOSIX_FADV_RANDOM\fP
+指定的数据将以随机顺序访问。
+.TP 
+\fBPOSIX_FADV_NOREUSE\fP
+指定的数据将只被访问一次。
+.IP
+在 Linux 2.6.18 之前，\fBPOSIX_FADV_NOREUSE\fP 与 \fBPOSIX_FADV_WILLNEED\fP 具有相同的语义。
+这可能是一个错误; 自 Linux 2.6.18 起，此标志为空操作。
+.TP 
+\fBPOSIX_FADV_WILLNEED\fP
+指定的数据将在最近的 future 中被访问。
+.IP
+\fBPOSIX_FADV_WILLNEED\fP 启动对指定区域的非阻塞读取到页面缓存中。 内核可能会根据虚拟内存负载减少读取的数据量。
+(几兆字节通常会完全满足，更多很少有用。)
+.TP 
+\fBPOSIX_FADV_DONTNEED\fP
+在 near future 中不会访问指定的数据。
+.IP
+\fBPOSIX_FADV_DONTNEED\fP 尝试释放与指定区域关联的缓存页面。 这很有用，例如，在流式传输大文件时。
+程序可能会周期性地请求内核释放已经使用过的缓存数据，这样更有用的缓存页面就不会被丢弃。
+.IP
+丢弃部分页面的请求将被忽略。 保留需要的数据比丢弃不需要的数据更可取。 如果应用程序要求考虑丢弃数据，则 \fIoffset\fP 和 \fIlen\fP
+必须页对齐。
+.IP
+实现 \fImay\fP 尝试写回指定区域中的脏页，但这并不能保证。 任何未写入的脏页都不会被释放。 如果应用程序希望确保脏页被释放，它应该首先调用
+\fBfsync\fP(2) 或 \fBfdatasync\fP(2)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时，返回一个错误号。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 参数不是有效的文件描述符。
+.TP 
+\fBEINVAL\fP
+为 \fIadvice\fP 指定了无效值。
+.TP 
+\fBESPIPE\fP
+.\" commit 87ba81dba431232548ce29d5d224115d0c2355ac
+指定的文件描述符引用管道或 FIFO。 (\fBESPIPE\fP 是 POSIX 指定的错误，但在 Linux 2.6.16 之前，Linux
+在这种情况下返回了 \fBEINVAL\fP。)
+.SH VERSIONS
+.\" of fadvise64_64()
+内核支持最早出现在 Linux 2.5.60; 底层系统调用称为 \fBfadvise64\fP()。 自 glibc 2.2 以来，通过包装器函数
+\fBposix_fadvise\fP() 提供了库支持。
+.PP
+.\" commit d3ac21cacc24790eb45d735769f35753f5b56ceb
+从 Linux 3.18 开始，对底层系统调用的支持是可选的，具体取决于 \fBCONFIG_ADVISE_SYSCALLS\fP 配置选项的设置。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.  请注意，\fIlen\fP 参数的类型在 POSIX.1\-2001 TC1 中从 \fIsize_t\fP
+更改为 \fIoff_t\fP。
+.SH NOTES
+在 Linux 下，\fBPOSIX_FADV_NORMAL\fP 将预读窗口设置为支持设备的默认大小; \fBPOSIX_FADV_SEQUENTIAL\fP
+将此大小加倍，\fBPOSIX_FADV_RANDOM\fP 完全禁用文件预读。 这些更改会影响整个文件，而不仅仅是指定区域
+(但同一文件的其他打开文件句柄不受影响)。
+.PP
+可以通过 \fBproc\fP(5) 中描述的 \fI/proc/sys/vm/drop_caches\fP 接口清除内核缓冲区缓存的内容。
+.PP
+通过打开一个文件，将其映射到 \fBmmap\fP(2)，然后将 \fBmincore\fP(2) 应用于映射，可以获得文件的哪些页面驻留在缓冲区缓存中的快照。
+.SS "C library/kernel differences"
+C 库中的包装器函数的名称是 \fBposix_fadvise\fP()。 底层系统调用称为 \fBfadvise64\fP()
+(或者，在某些架构上，\fBfadvise64_64\fP()); 两者的区别是前者系统调用假设 \fIlen\fP 参数的类型是 \fIsize_t\fP，而后者期望
+\fIloff_t\fP 在那里。
+.SS "Architecture\-specific variants"
+某些体系结构要求 64 位参数在合适的寄存器对中对齐 (有关详细信息，请参见 \fBsyscall\fP(2))。 在这样的体系结构上，概要中显示的
+\fBposix_fadvise\fP() 的调用签名将强制将寄存器浪费为 \fIfd\fP 和 \fIoffset\fP 参数之间的填充。
+因此，这些体系结构定义了一个版本的系统调用，该版本对参数进行了适当的排序，但在其他方面与 \fBposix_fadvise\fP() 完全相同。
+.PP
+比如 Linux 2.6.14，ARM 有如下系统调用:
+.PP
+.in +4n
+.EX
+\fBlong arm_fadvise64_64(int \fP\fIfd\fP\fB, int \fP\fIadvice\fP\fB,\fP
+\fB                      loff_t \fP\fIoffset\fP\fB, loff_t \fP\fIlen\fP\fB);\fP
+.EE
+.in
+.PP
+这些特定于体系结构的细节通常通过 glibc \fBposix_fadvise\fP() 包装器函数对应用程序隐藏，它调用适当的特定于体系结构的系统调用。
+.SH BUGS
+在 Linux 2.6.6 之前，如果 \fIlen\fP 被指定为 0，那么这将按字面解释为 "zero bytes"，而不是 "all bytes
+through to the end of the file"。
+.SH "SEE ALSO"
+\fBfincore\fP(1), \fBmincore\fP(2), \fBreadahead\fP(2), \fBsync_file_range\fP(2),
+\fBposix_fallocate\fP(3), \fBposix_madvise\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

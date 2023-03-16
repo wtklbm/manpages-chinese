@@ -1,0 +1,95 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Derived from text written by Martin Schulze (or taken from glibc.info)
+.\" and text written by Paul Thompson - both copyright 2002.
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH login 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+登录、注销 \- 写入 utmp 和 wtmp 条目
+.SH LIBRARY
+系统实用工具库 (\fIlibutil\fP, \fI\-lutil\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <utmp.h>\fP
+.PP
+\fBvoid login(const struct utmp *\fP\fIut\fP\fB);\fP
+\fBint logout(const char *\fP\fIut_line\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+utmp 文件记录了当前谁在使用系统。 wtmp 文件记录所有登录和注销。 请参见 \fButmp\fP(5)。
+.PP
+函数 \fBlogin\fP() 获取提供的 \fIstruct utmp\fP、\fIut\fP，并将其写入 utmp 和 wtmp 文件。
+.PP
+函数 \fBlogout\fP() 再次清除 utmp 文件中的条目。
+.SS "GNU details"
+更准确地说，\fBlogin\fP() 采用参数 \fIut\fP 结构体，用值 \fBUSER_PROCESS\fP 填充字段 \fIut\->ut_type\fP
+(如果有这样的字段)，并用调用进程的进程 ID 填充字段 \fIut\->ut_pid\fP (如果有这样的字段)。 然后它尝试填充字段
+\fIut\->ut_line\fP。 它取 \fIstdin\fP, \fIstdout\fP, \fIstderr\fP
+中的第一个为最终端，并将相应的路径名减去可能的前导 \fI/dev/\fP 存储到该字段中，然后将结构体写入 utmp 文件。
+另一方面，如果没有找到最终名称，则此字段将填充 "???"，并且不会将结构体写入 utmp 文件。 在此之后，结构体被写入 wtmp 文件。
+.PP
+\fBlogout\fP() 函数在 utmp 文件中搜索与 \fIut_line\fP 参数匹配的条目。 如果找到记录，则通过将 \fIut_name\fP 和
+\fIut_host\fP 字段清零、更新 \fIut_tv\fP 时间戳字段并将 \fIut_type\fP (如果有这样的字段) 设置为
+\fBDEAD_PROCESS\fP 来更新记录。
+.SH "RETURN VALUE"
+如果条目成功写入数据库，则 \fBlogout\fP() 函数返回 1，如果发生错误，则返回 0。
+.SH FILES
+.TP 
+\fI/var/run/utmp\fP
+用户计费数据库，通过 \fI<paths.h>\fP 中的 \fB_PATH_UTMP\fP 配置
+.TP 
+\fI/var/log/wtmp\fP
+用户记帐日志文件，通过 \fI<paths.h>\fP 中的 \fB_PATH_WTMP\fP 配置
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBlogin\fP(),
+\fBlogout\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:utent
+sig:ALRM timer
+T}
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:utent\fP 中的 \fIutent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetutent\fP(3)、\fBgetutent\fP(3) 或 \fBendutent\fP(3) 中的任何一个，则可能发生数据竞争。 \fBlogin\fP()
+和 \fBlogout\fP() 调用那些函数，所以我们使用 race:utent 来提醒用户。
+.SH STANDARDS
+不在 POSIX.1 中。 出现在 BSD 上。
+.SH NOTES
+请注意，\fIstruct utmp\fP 的成员 \fIut_user\fP 在 BSD 中称为 \fIut_name\fP。 因此，\fIut_name\fP 在
+\fI<utmp.h>\fP 中被定义为 \fIut_user\fP 的别名。
+.SH "SEE ALSO"
+\fBgetutent\fP(3), \fButmp\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

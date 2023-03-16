@@ -1,0 +1,194 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2017 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sysfs 5 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+sysfs \- 用于导出内核对象的文件系统
+.SH DESCRIPTION
+\fBsysfs\fP 文件系统是一个伪文件系统，它提供了内核数据结构的接口。 (更准确地说，\fBsysfs\fP 中的文件和目录提供了内核内部定义的
+\fIkobject\fP 结构的视图。) \fBsysfs\fP 下的文件提供了有关设备、内核模块、文件系统和其他内核组件的信息。
+.PP
+\fBsysfs\fP 文件系统通常挂载在 \fI/sys\fP。 通常，它由系统自动挂载，但也可以使用以下命令手动挂载:
+.PP
+.in +4n
+.EX
+mount \-t sysfs sysfs /sys
+.EE
+.in
+.PP
+.\"
+\fBsysfs\fP 文件系统中的许多文件是只读的，但有些文件是可写的，允许更改内核变量。 为了避免冗余，大量使用符号链接来连接文件系统树中的条目。
+.SS "Files and directories"
+下面的列表描述了 \fI/sys\fP 层次结构下的一些文件和目录。
+.TP 
+\fI/sys/block\fP
+该子目录包含系统上已发现的每个块设备的一个符号链接。 符号链接指向 \fI/sys/devices\fP 下的相应目录。
+.TP 
+\fI/sys/bus\fP
+该目录为内核中的每一种总线类型包含一个子目录。 每个目录中都有两个子目录:
+.RS
+.TP 
+\fIdevices\fP
+此子目录包含指向 \fI/sys/devices\fP 中条目的符号链接，这些条目对应于在此总线上发现的设备。
+.TP 
+\fIdrivers\fP
+该子目录包含加载到该总线上的每个设备驱动程序的一个子目录。
+.RE
+.TP 
+\fI/sys/class\fP
+该子目录包含一个单层子目录，用于已在系统上注册的每个设备类 (例如，终端、网络设备、块设备、图形设备、声音设备等)。
+在这些子目录中的每一个中，都有此类中每个设备的符号链接。 这些符号链接引用 \fI/sys/devices\fP 目录中的条目。
+.TP 
+\fI/sys/class/net\fP
+此目录中的每个条目都是一个符号链接，表示在访问该目录的进程的网络名称空间中可见的真实或虚拟网络设备之一。 这些符号链接中的每一个都引用
+\fI/sys/devices\fP 目录中的条目。
+.TP 
+\fI/sys/dev\fP
+该目录包含两个子目录 \fIblock/\fP 和 \fIchar/\fP，分别对应系统中的块设备和字符设备。 在这些子目录中的每个子目录中都有名称为
+\fImajor\-ID\fP:\fIminor\-ID\fP 形式的符号链接，其中 ID 值对应于特定设备的主要和次要 ID。 每个符号链接都指向设备的
+\fBsysfs\fP 目录。 因此，\fI/sys/dev\fP 中的符号链接提供了一种简单的方法来使用调用返回到 \fBstat\fP(2) (或类似) 的设备 ID
+来查找 \fBsysfs\fP 接口。
+.IP
+以下 shell 会话显示了来自 \fI/sys/dev\fP: 的示例
+.IP
+.in +4n
+.EX
+$ \fBstat \-c "%t %T" /dev/null\fP
+1 3
+$ \fBreadlink /sys/dev/char/1\e:3\fP
+\&../../devices/virtual/mem/null
+$ \fBls \-Fd /sys/devices/virtual/mem/null\fP
+/sys/devices/virtual/mem/null/
+$ \fBls \-d1 /sys/devices/virtual/mem/null/*\fP
+/sys/devices/virtual/mem/null/dev
+/sys/devices/virtual/mem/null/power/
+/sys/devices/virtual/mem/null/subsystem@
+/sys/devices/virtual/mem/null/uevent
+.EE
+.in
+.TP 
+\fI/sys/devices\fP
+这是一个包含内核设备树的文件系统表示的目录，它是内核中 \fIdevice\fP 结构的层次结构。
+.TP 
+\fI/sys/firmware\fP
+该子目录包含用于查看和操作固件特定对象和属性的界面。
+.TP 
+\fI/sys/fs\fP
+该目录包含某些文件系统的子目录。 仅当文件系统选择显式创建子目录时，文件系统才会在此处具有子目录。
+.TP 
+\fI/sys/fs/cgroup\fP
+该目录通常用作 \fBtmpfs\fP(5) 文件系统的挂载点，其中包含 \fBcgroups\fP(7) 文件系统的挂载点。
+.TP 
+\fI/sys/fs/smackfs\fP
+该目录包含 SMACK LSM 的配置文件。 请参见内核源文件 \fIDocumentation/admin\-guide/LSM/Smack.rst\fP。
+.TP 
+\fI/sys/hypervisor\fP
+[To be documented]
+.TP 
+\fI/sys/kernel\fP
+该子目录包含提供有关正在运行的内核的信息的各种文件和子目录。
+.TP 
+\fI/sys/kernel/cgroup/\fP
+有关此目录中文件的信息，请参见 \fBcgroups\fP(7)。
+.TP 
+\fI/sys/kernel/debug/tracing\fP
+内核的 \fIftrace\fP 设施使用的 \fItracefs\fP 文件系统的挂载点。 (关于 \fIftrace\fP 的信息，参见内核源文件
+\fIDocumentation/trace/ftrace.txt\fP.)
+.TP 
+\fI/sys/kernel/mm\fP
+该子目录包含提供有关内核内存管理子系统信息的各种文件和子目录。
+.TP 
+\fI/sys/kernel/mm/hugepages\fP
+该子目录包含系统支持的每一种大页面大小的子目录。 子目录名称表示大页面大小 (例如，\fIhugepages\-2048kB\fP).
+在这些子目录中的每一个中都有一组文件，可用于查看和 (在某些情况下) 更改与该巨大页面大小相关的设置。 有关详细信息，请参见内核源文件
+\fIDocumentation/admin\-guide/mm/hugetlbpage.rst\fP。
+.TP 
+\fI/sys/module\fP
+该子目录包含每个加载到内核中的模块的子目录。 每个目录的名称就是模块的名称。 在每个子目录中，可能有以下文件:
+.RS
+.TP 
+\fIcoresize\fP
+[to be documented]
+.TP 
+\fIinitsize\fP
+[to be documented]
+.TP 
+\fIinitstate\fP
+[to be documented]
+.TP 
+\fIrefcnt\fP
+[to be documented]
+.TP 
+\fIsrcversion\fP
+[to be documented]
+.TP 
+\fItaint\fP
+[to be documented]
+.TP 
+\fIuevent\fP
+[to be documented]
+.TP 
+\fIversion\fP
+[to be documented]
+.RE
+.IP
+在每个子目录中，可能有以下子目录:
+.RS
+.TP 
+\fIdrivers\fP
+[To be documented]
+.TP 
+\fIholders\fP
+[To be documented]
+.TP 
+\fInotes\fP
+[To be documented]
+.TP 
+\fIparameters\fP
+该目录为每个模块参数包含一个文件，每个文件包含相应参数的值。 其中一些文件是可写的，允许
+.TP 
+\fIsections\fP
+该子目录包含有关模块部分信息的文件。 该信息主要用于调试。
+.TP 
+\fI[To be documented]\fP
+.RE
+.TP 
+\fI/sys/power\fP
+[To be documented]
+.SH VERSIONS
+\fBsysfs\fP 文件系统最早出现在 Linux 2.6.0。
+.SH STANDARDS
+\fBsysfs\fP 文件系统是特定于 Linux 的。
+.SH NOTES
+该手册页不完整，可能不准确，是那种需要经常更新的东西。
+.SH "SEE ALSO"
+\fBproc\fP(5), \fBudev\fP(7)
+.PP
+.\" https://www.kernel.org/pub/linux/kernel/people/mochel/doc/papers/ols-2005/mochel.pdf
+P.\& 莫歇尔。(2005).   P.\& 莫歇尔。 2005 年渥太华 Linux 研讨会论文集。
+.PP
+内核源文件 \fIDocumentation/filesystems/sysfs.txt\fP 以及 \fIDocumentation/ABI\fP 和
+\fIDocumentation/*/sysfs.txt\fP 中的各种其他文件
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

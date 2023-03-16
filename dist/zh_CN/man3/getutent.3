@@ -1,0 +1,250 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1995 Mark D. Roth (roth@uiuc.edu)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Solaris manpages
+.\"
+.\" Modified Thu Jul 25 14:43:46 MET DST 1996 by Michael Haardt
+.\"     <michael@cantor.informatik.rwth-aachen.de>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getutent 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getutent、getutid、getutline、pututline、setutent、endutent、utmpname \- 访问 utmp
+文件条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <utmp.h>\fP
+.PP
+\fBstruct utmp *getutent(void);\fP
+\fBstruct utmp *getutid(const struct utmp *\fP\fIut\fP\fB);\fP
+\fBstruct utmp *getutline(const struct utmp *\fP\fIut\fP\fB);\fP
+.PP
+\fBstruct utmp *pututline(const struct utmp *\fP\fIut\fP\fB);\fP
+.PP
+\fBvoid setutent(void);\fP
+\fBvoid endutent(void);\fP
+.PP
+\fBint utmpname(const char *\fP\fIfile\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+新应用程序应使用这些函数的 POSIX.1 指定的 "utmpx" 版本; 见标准。
+.PP
+\fButmpname\fP() 设置其他 utmp 函数访问的 utmp 格式文件的名称。 如果在使用其他函数之前未使用 \fButmpname\fP()
+设置文件名，则它们假定为 \fB_PATH_UTMP\fP，如 \fI<paths.h>\fP 中所定义。
+.PP
+\fBsetutent\fP() 将文件指针倒回到 utmp 文件的开头。 在任何其他函数之前调用它通常是个好主意。
+.PP
+\fBendutent\fP() 关闭 utmp 文件。 当用户代码完成使用其他函数访问文件时，应该调用它。
+.PP
+\fBgetutent\fP() 从 utmp 文件中的当前文件位置读取一行。 它返回一个指向包含该行字段的结构体的指针。 这个结构体的定义在
+\fButmp\fP(5) 中显示。
+.PP
+\fBgetutid\fP() 根据 \fIut\fP 从 utmp 文件中的当前文件位置向前查找。 如果 \fIut\->ut_type\fP 是
+\fBRUN_LVL\fP、\fBBOOT_TIME\fP、\fBNEW_TIME\fP 或 \fBOLD_TIME\fP 之一，则 \fBgetutid\fP() 将找到
+\fIut_type\fP 字段与 \fIut\->ut_type\fP 匹配的第一个条目。 如果 \fIut\->ut_type\fP 是
+\fBINIT_PROCESS\fP、\fBLOGIN_PROCESS\fP、\fBUSER_PROCESS\fP 或 \fBDEAD_PROCESS\fP 之一，则
+\fBgetutid\fP() 将找到 \fIut_id\fP 字段与 \fIut\->ut_id\fP 匹配的第一个条目。
+.PP
+\fBgetutline\fP() 从 utmp 文件中的当前文件位置向前搜索。 它扫描 \fIut_type\fP 为 \fBUSER_PROCESS\fP 或
+\fBLOGIN_PROCESS\fP 的条目，并返回 \fIut_line\fP 字段与 \fIut\->ut_line\fP 匹配的第一个条目。
+.PP
+\fBpututline\fP() 将 \fIutmp\fP 结构体 \fIut\fP 写入 utmp 文件。 它使用 \fBgetutid\fP()
+在文件中搜索适当的位置以插入新条目。 如果找不到适合 \fIut\fP 的插槽，\fBpututline\fP() 会将新条目追加到文件末尾。
+.SH "RETURN VALUE"
+\fBgetutent\fP()、\fBgetutid\fP() 和 \fBgetutline\fP() 成功时返回指向 \fIstruct utmp\fP 的指针，失败时返回
+NULL (包括 "record not found" 情况)。 这个 \fIstruct utmp\fP 在静态存储中分配，可能会被后续调用覆盖。
+.PP
+成功时 \fBpututline\fP() 返回 \fIut\fP; 失败时，它返回 NULL。
+.PP
+如果成功存储新名称，则 \fButmpname\fP() 返回 0，否则返回 \-1。
+.PP
+失败时，这些函数 \fIerrno\fP 设置以指示错误。
+.SH ERRORS
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBESRCH\fP
+找不到记录。
+.PP
+\fBsetutent\fP()、\fBpututline\fP() 和 \fBgetut*\fP() 函数也可能因 \fBopen\fP(2) 中所述的原因而失败。
+.SH FILES
+.TP 
+\fI/var/run/utmp\fP
+当前登录用户的数据库
+.TP 
+\fI/var/log/wtmp\fP
+过去用户登录的数据库
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetutent\fP()
+T}	Thread safety	T{
+MT\-Unsafe init race:utent
+race:utentbuf sig:ALRM timer
+T}
+T{
+\fBgetutid\fP(),
+\fBgetutline\fP()
+T}	Thread safety	T{
+MT\-Unsafe init race:utent
+sig:ALRM timer
+T}
+T{
+\fBpututline\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:utent
+sig:ALRM timer
+T}
+T{
+\fBsetutent\fP(),
+\fBendutent\fP(),
+\fButmpname\fP()
+T}	Thread safety	MT\-Unsafe race:utent
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:utent\fP 中的 \fIutent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetutent\fP()、\fBgetutent\fP()、\fBgetutid\fP()、\fBgetutline\fP()、\fBpututline\fP()、\fButmpname\fP()
+或 \fBendutent\fP() 中的任何一个，则可能发生数据竞争。
+.SH STANDARDS
+XPG2, SVr4.
+.PP
+在 XPG2 和 SVID 2 中，函数 \fBpututline\fP() 被记录为返回 void，这就是它在许多系统 (AIX、HP\-UX)
+上所做的事情。 HP\-UX 引入了一个新的函数 \fB_pututline\fP()，其原型为上面给出的 \fBpututline\fP()。
+.PP
+所有这些函数现在在非 Linux 系统上都已过时。 POSIX.1\-2001 和 POSIX.1\-2008，在 SUSv1
+之后，没有任何这些函数，而是使用
+.PP
+.RS 4
+.EX
+\fB#include <utmpx.h>\fP
+.PP
+\fBstruct utmpx *getutxent(void);\fP
+\fBstruct utmpx *getutxid(const struct utmpx *);\fP
+\fBstruct utmpx *getutxline(const struct utmpx *);\fP
+\fBstruct utmpx *pututxline(const struct utmpx *);\fP
+\fBvoid setutxent(void);\fP
+\fBvoid endutxent(void);\fP
+.EE
+.RE
+.PP
+这些函数由 glibc 提供，执行与没有 "x" 的等效项相同的任务，但使用 \fIstruct utmpx\fP，在 Linux 上定义为与
+\fIstruct utmp\fP 相同。 为了完整性，glibc 也提供了 \fButmpxname\fP()，虽然这个函数不是 POSIX.1 指定的。
+.PP
+在某些其他系统上，\fIutmpx\fP 结构体是 \fIutmp\fP 结构体的超集，具有附加字段和现有字段的更大版本，并维护并行文件，通常为
+\fI/var/*/utmpx\fP 和 \fI/var/*/wtmpx\fP。
+.PP
+另一方面，Linux glibc 不使用并行 \fIutmpx\fP 文件，因为它的 \fIutmp\fP 结构体已经足够大了。 上面列出的 "x" 函数只是没有
+"x" 的别名 (例如，\fBgetutxent\fP() 是 \fBgetutent\fP()) 的别名。
+.SH NOTES
+.SS "glibc notes"
+上面的函数不是线程安全的。 glibc 添加可重入版本
+.PP
+.nf
+\fB#include <utmp.h>\fP
+.PP
+\fBint getutent_r(struct utmp *\fP\fIubuf\fP\fB, struct utmp **\fP\fIubufp\fP\fB);\fP
+\fBint getutid_r(struct utmp *\fP\fIut\fP\fB,\fP
+\fB              struct utmp *\fP\fIubuf\fP\fB, struct utmp **\fP\fIubufp\fP\fB);\fP
+\fBint getutline_r(struct utmp *\fP\fIut\fP\fB,\fP
+\fB                struct utmp *\fP\fIubuf\fP\fB, struct utmp **\fP\fIubufp\fP\fB);\fP
+.fi
+.PP
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.PP
+\fBgetutent_r\fP(), \fBgetutid_r\fP(), \fBgetutline_r\fP():
+.nf
+    _GNU_SOURCE
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */    _SVID_SOURCE || _BSD_SOURCE
+.fi
+.PP
+这些函数是 GNU 扩展名，是同名函数的类似物，但没有 _r 后缀。 \fIubuf\fP 参数为这些函数提供了一个存储结果的地方。 成功时，它们返回
+0，并将指向结果的指针写入 \fI*ubufp\fP。 出错时，这些函数返回 \-1。 上面的函数没有 utmpx 等价物。 (POSIX.1
+没有指定这样的函数。)
+.SH EXAMPLES
+下面的示例添加和删除一个 utmp 记录，假设它是从一个伪最终端运行的。 为了在实际应用中使用，您应该检查 \fBgetpwuid\fP(3) 和
+\fBttyname\fP(3) 的返回值。
+.PP
+.\" SRC BEGIN (getutent.c)
+.EX
+#include <pwd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <utmp.h>
+
+int
+main(void)
+{
+    struct utmp entry;
+
+    system("echo before adding entry:;who");
+
+    entry.ut_type = USER_PROCESS;
+    entry.ut_pid = getpid();
+    strcpy(entry.ut_line, ttyname(STDIN_FILENO) + strlen("/dev/"));
+    /* only correct for ptys named /dev/tty[pqr][0\-9a\-z] */
+    strcpy(entry.ut_id, ttyname(STDIN_FILENO) + strlen("/dev/tty"));
+    time(&entry.ut_time);
+    strcpy(entry.ut_user, getpwuid(getuid())\->pw_name);
+    memset(entry.ut_host, 0, UT_HOSTSIZE);
+    entry.ut_addr = 0;
+    setutent();
+    pututline(&entry);
+
+    system("echo after adding entry:;who");
+
+    entry.ut_type = DEAD_PROCESS;
+    memset(entry.ut_line, 0, UT_LINESIZE);
+    entry.ut_time = 0;
+    memset(entry.ut_user, 0, UT_NAMESIZE);
+    setutent();
+    pututline(&entry);
+
+    system("echo after removing entry:;who");
+
+    endutent();
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetutmp\fP(3), \fButmp\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

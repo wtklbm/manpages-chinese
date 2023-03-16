@@ -1,0 +1,247 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2017, Oracle.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_getfsmap 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_getfsmap \- 检索文件系统的物理布局
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/fsmap.h>  \fP/* Definition of \fBFS_IOC_GETFSMAP\fP,
+\fB                             FM?_OF_*\fP, and \fB*FMR_OWN_*\fP constants */
+\fB#include <sys/ioctl.h>\fP
+.PP
+\fBint ioctl(int \fP\fIfd\fP\fB, FS_IOC_GETFSMAP, struct fsmap_head * \fP\fIarg\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+此 \fBioctl\fP(2) 操作检索文件系统的物理范围映射。 此信息可用于发现哪些文件映射到物理块、检查可用空间或查找已知的坏块等。
+.PP
+此操作的唯一参数应该是指向单个 \fIstruct fsmap_head\fP: 的指针
+.PP
+.in +4n
+.EX
+struct fsmap {
+    __u32 fmr_device;      /* Device ID */
+    __u32 fmr_flags;       /* Mapping flags */
+    __u64 fmr_physical;    /* Device offset of segment */
+    __u64 fmr_owner;       /* Owner ID */
+    __u64 fmr_offset;      /* File offset of segment */
+    __u64 fmr_length;      /* Length of segment */
+    __u64 fmr_reserved[3]; /* Must be zero */
+};
+
+struct fsmap_head {
+    __u32 fmh_iflags;       /* Control flags */
+    __u32 fmh_oflags;       /* Output flags */
+    __u32 fmh_count;        /* # of entries in array incl.  input */
+    __u32 fmh_entries;      /* # of entries filled in (output) */
+    __u64 fmh_reserved[6];  /* Must be zero */
+
+    struct fsmap fmh_keys[2];   /* Low and high keys for
+                                  the mapping search */
+    struct fsmap fmh_recs[];    /* Returned records */
+};
+.EE
+.in
+.PP
+两个 \fIfmh_keys\fP 数组元素指定应用程序需要物理映射信息的最低和最高反向映射键。 反向映射密钥由元组 (设备、块、所有者、偏移量) 组成。
+owner 和 offset 字段是密钥的一部分，因为某些文件系统支持在多个文件之间共享物理块，因此可能会返回给定物理块的多个映射。
+.PP
+.\"
+文件系统映射被复制到紧跟在头数据之后的 \fIfmh_recs\fP 数组中。
+.SS "Fields of struct fsmap_head"
+\fIfmh_iflags\fP 字段是传递给内核以更改输出的位掩码。 当前未定义任何标志，因此调用者必须将此值设置为零。
+.PP
+\fIfmh_oflags\fP 字段是内核设置的有关返回映射的标志的位掩码。 如果设置了 \fBFMH_OF_DEV_T\fP，则 \fIfmr_device\fP
+字段表示包含块设备的主要和次要编号的 \fIdev_t\fP 结构体。
+.PP
+\fIfmh_count\fP 字段包含传递给内核的数组中的元素数。 如果此值为 0，则 \fIfmh_entries\fP
+将设置为在数组足够大的情况下返回的记录数; 不会返回映射信息。
+.PP
+\fIfmh_entries\fP 字段包含 \fIfmh_recs\fP 数组中包含有用信息的元素数。
+.PP
+.\"
+\fIfmh_reserved\fP 字段必须设置为零。
+.SS Keys
+\fIfsmap_head.fmh_keys\fP 中的两个键记录指定调用者希望返回的键空间中的最低和最高范围记录。
+可以在文件之间共享块的文件系统可能需要元组 (\fIdevice\fP、\fIphysical\fP、\fIowner\fP、\fIoffset\fP、\fIflags\fP)
+来唯一索引任何文件系统映射记录。 经典的非共享文件系统可能能够识别任何只有 (\fIdevice\fP、\fIphysical\fP、\fIflags\fP) 的记录。
+例如，如果 low key 设置为 (8:0, 36864, 0, 0, 0)，文件系统将只返回磁盘上 36\KiB 或以上范围的记录。 如果设置
+high key 为 (8:0, 1048576, 0, 0, 0)，则只返回 1\MiB 以下的记录。 键中 \fIfmr_device\fP
+的格式必须与输出记录中相同字段的格式匹配，如下定义。 按照约定，字段 \fIfsmap_head.fmh_keys[0]\fP
+必须包含请求的低键，\fIfsmap_head.fmh_keys[1]\fP 必须包含高键。
+.PP
+.\"
+为方便起见，如果 \fIfmr_length\fP 设置在低调中，会酌情添加到 \fIfmr_block\fP 或 \fIfmr_offset\fP 中。
+调用者可以利用这个微妙之处，通过将 \fIfsmap_head.fmh_recs[fsmap_head.fmh_entries \- 1]\fP
+复制到低调中来设置后续调用。 函数 \fIfsmap_advance\fP (在 \fIlinux/fsmap.h\fP) 中定义) 提供此功能。
+.SS "Fields of struct fsmap"
+\fIfmr_device\fP 字段唯一标识底层存储设备。 如果在标头的 \fIfmh_oflags\fP 字段中设置了 \fBFMH_OF_DEV_T\fP
+标志，则该字段包含一个 \fIdev_t\fP，可以从中提取主要和次要编号。 如果未设置标志，则此字段包含一个值，该值对于每个唯一的存储设备必须是唯一的。
+.PP
+\fIfmr_physical\fP 字段包含盘区的磁盘地址 (以字节为单位)。
+.PP
+\fIfmr_owner\fP 字段包含范围的所有者。 这是一个 inode 编号，除非在 \fIfmr_flags\fP 字段中设置了
+\fBFMR_OF_SPECIAL_OWNER\fP，在这种情况下，该值由文件系统确定。 有关更多详细信息，请参见下面有关所有者值的部分。
+.PP
+\fIfmr_offset\fP 字段包含以字节为单位的映射记录中的逻辑地址。 如果在 \fIfmr_flags\fP 中设置了
+\fBFMR_OF_SPECIAL_OWNER\fP 或 \fBFMR_OF_EXTENT_MAP\fP 标志，则该字段没有意义。
+.PP
+\fIfmr_length\fP 字段包含范围的长度 (以字节为单位)。
+.PP
+\fIfmr_flags\fP 字段是范围状态标志的位掩码。 这些位是:
+.RS 0.4i
+.TP 
+\fBFMR_OF_PREALLOC\fP
+范围已分配但尚未写入。
+.TP 
+\fBFMR_OF_ATTR_FORK\fP
+此范围包含扩展属性数据。
+.TP 
+\fBFMR_OF_EXTENT_MAP\fP
+该范围包含所有者的范围 map 信息。
+.TP 
+\fBFMR_OF_SHARED\fP
+这个范围的一部分可以共享。
+.TP 
+\fBFMR_OF_SPECIAL_OWNER\fP
+\fIfmr_owner\fP 字段包含一个特殊值而不是索引节点号。
+.TP 
+\fBFMR_OF_LAST\fP
+这是数据集中的最后一条记录。
+.RE
+.PP
+.\"
+\fIfmr_reserved\fP 字段将设置为零。
+.SS "Owner values"
+通常，非元数据范围的 \fIfmr_owner\fP 字段的值应该是一个索引节点号。 但是，文件系统没有义务报告索引节点号; 如果无法轻松检索 inode
+编号，如果调用者缺乏足够的权限，如果文件系统不支持稳定的 inode 编号，或者出于任何其他原因，他们可能会报告 \fBFMR_OWN_UNKNOWN\fP。
+如果文件系统希望根据进程能力调整 inode 编号的报告，强烈建议将 \fBCAP_SYS_ADMIN\fP 能力用于此目的。
+.TP 
+The following special owner values are generic to all filesystems:
+.RS 0.4i
+.TP 
+\fBFMR_OWN_FREE\fP
+可用空间。
+.TP 
+\fBFMR_OWN_UNKNOWN\fP
+此范围正在使用中，但其所有者未知或不易检索。
+.TP 
+\fBFMR_OWN_METADATA\fP
+这个范围是文件系统元数据。
+.RE
+.PP
+XFS 可以返回以下特殊所有者值:
+.RS 0.4i
+.TP 
+\fBXFS_FMR_OWN_FREE\fP
+可用空间。
+.TP 
+\fBXFS_FMR_OWN_UNKNOWN\fP
+此范围正在使用中，但其所有者未知或不易检索。
+.TP 
+\fBXFS_FMR_OWN_FS\fP
+存在于固定地址的静态文件系统元数据。 这些是 AG 超级块、AGF、AGFL 和 AGI 标头。
+.TP 
+\fBXFS_FMR_OWN_LOG\fP
+文件系统日志。
+.TP 
+\fBXFS_FMR_OWN_AG\fP
+分配组元数据，例如可用空间 btrees 和反向映射 btrees。
+.TP 
+\fBXFS_FMR_OWN_INOBT\fP
+inode 和空闲 inode btrees。
+.TP 
+\fBXFS_FMR_OWN_INODES\fP
+索引节点记录。
+.TP 
+\fBXFS_FMR_OWN_REFC\fP
+引用计数信息。
+.TP 
+\fBXFS_FMR_OWN_COW\fP
+此范围用于暂存写时复制。
+.TP 
+\fBXFS_FMR_OWN_DEFECTIVE:\fP
+该范围已被文件系统或底层设备标记为有缺陷。
+.RE
+.PP
+ext4 可以返回以下特殊所有者值:
+.RS 0.4i
+.TP 
+\fBEXT4_FMR_OWN_FREE\fP
+可用空间。
+.TP 
+\fBEXT4_FMR_OWN_UNKNOWN\fP
+此范围正在使用中，但其所有者未知或不易检索。
+.TP 
+\fBEXT4_FMR_OWN_FS\fP
+存在于固定地址的静态文件系统元数据。 这是超级块和组描述符。
+.TP 
+\fBEXT4_FMR_OWN_LOG\fP
+文件系统日志。
+.TP 
+\fBEXT4_FMR_OWN_INODES\fP
+索引节点记录。
+.TP 
+\fBEXT4_FMR_OWN_BLKBM\fP
+块位 map。
+.TP 
+\fBEXT4_FMR_OWN_INOBM\fP
+索引节点位 map。
+.RE
+.SH "RETURN VALUE"
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fIerrno\fP 中的错误可以是但不限于以下之一:
+.TP 
+\fBEBADF\fP
+\fIfd\fP 未打开供读取。
+.TP 
+\fBEBADMSG\fP
+文件系统在元数据中检测到校验和错误。
+.TP 
+\fBEFAULT\fP
+传入的指针未映射到有效的内存地址。
+.TP 
+\fBEINVAL\fP
+数组不够长，键没有指向文件系统的有效部分，低键指向文件系统物理存储地址空间中比高键更高的点，或者在其中一个中传递了非零值必须为零的字段。
+.TP 
+\fBENOMEM\fP
+内存不足，无法处理请求。
+.TP 
+\fBEOPNOTSUPP\fP
+文件系统不支持此命令。
+.TP 
+\fBEUCLEAN\fP
+文件系统元数据已损坏，需要修复。
+.SH VERSIONS
+\fBFS_IOC_GETFSMAP\fP 操作最早出现在 Linux 4.12。
+.SH STANDARDS
+这个 API 是特定于 Linux 的。 并非所有文件系统都支持它。
+.SH EXAMPLES
+有关示例程序，请参见 \fIxfsprogs\fP 分发版中的 \fIio/fsmap.c\fP。
+.SH "SEE ALSO"
+\fBioctl\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

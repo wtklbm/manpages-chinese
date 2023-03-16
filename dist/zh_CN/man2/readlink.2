@@ -1,0 +1,232 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1991 The Regents of the University of California.
+.\" And Copyright (C) 2011 Guillem Jover <guillem@hadrons.org>
+.\" And Copyright (C) 2006, 2014 Michael Kerrisk
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)readlink.2	6.8 (Berkeley) 3/10/91
+.\"
+.\" Modified Sat Jul 24 00:10:21 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Tue Jul  9 23:55:17 1996 by aeb
+.\" Modified Fri Jan 24 00:26:00 1997 by aeb
+.\" 2011-09-20, Guillem Jover <guillem@hadrons.org>:
+.\"     Added text on dynamically allocating buffer + example program
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH readlink 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+readlink, readlinkat \- 读取符号链接的值
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBssize_t readlink(const char *restrict \fP\fIpathname\fP\fB, char *restrict \fP\fIbuf\fP\fB,\fP
+\fB                 size_t \fP\fIbufsiz\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>            \fP/* Definition of \fBAT_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBssize_t readlinkat(int \fP\fIdirfd\fP\fB, const char *restrict \fP\fIpathname\fP\fB,\fP
+\fB                 char *restrict \fP\fIbuf\fP\fB, size_t \fP\fIbufsiz\fP\fB);\fP
+.PP
+.fi
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBreadlink\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500 || _POSIX_C_SOURCE >= 200112L
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.PP
+\fBreadlinkat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBreadlink\fP() 将符号链接 \fIpathname\fP 的内容放入缓冲区 \fIbuf\fP，其大小为 \fIbufsiz\fP。
+\fBreadlink\fP() 不会将终止空字节追加到 \fIbuf\fP。 它将 (silently) 截断内容 (到 \fIbufsiz\fP
+个字符的长度)，以防缓冲区太小而无法容纳所有内容。
+.SS readlinkat()
+\fBreadlinkat\fP() 系统调用的操作方式与 \fBreadlink\fP() 完全相同，除了此处描述的差异。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBreadlink\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBreadlink\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+.\" commit 65cfc6722361570bfe255698d9cd4dccaf47570d
+由于 Linux 2.6.39，\fIpathname\fP 可以是空字符串，在这种情况下调用对 \fIdirfd\fP 引用的符号链接进行操作 (应该使用带有
+\fBO_PATH\fP 和 \fBO_NOFOLLOW\fP 标志的 \fBopen\fP(2) 获得)。
+.PP
+有关对 \fBreadlinkat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+成功时，这些调用返回放置在 \fIbuf\fP 中的字节数。 (如果返回值等于 \fIbufsiz\fP，则可能发生截断。) 出错时，返回 \-1 并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+路径前缀的组成部分的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+(\fBreadlinkat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIbuf\fP 扩展到进程分配的地址空间之外。
+.TP 
+\fBEINVAL\fP
+.\" At the glibc level, bufsiz is unsigned, so this error can only occur
+.\" if bufsiz==0.  However, the in the kernel syscall, bufsiz is signed,
+.\" and this error can also occur if bufsiz < 0.
+.\" See: http://thread.gmane.org/gmane.linux.man/380
+.\" Subject: [patch 0/3] [RFC] kernel/glibc mismatch of "readlink" syscall?
+\fIbufsiz\fP 不是正数。
+.TP 
+\fBEINVAL\fP
+命名文件 (即 \fIpathname\fP) 的最终文件名部分不是符号链接。
+.TP 
+\fBEIO\fP
+从文件系统读取时发生 I/O 错误。
+.TP 
+\fBELOOP\fP
+翻译路径名时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+路径名或路径名的组成部分太长。
+.TP 
+\fBENOENT\fP
+指定的文件不存在。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOTDIR\fP
+路径前缀的组成部分不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBreadlinkat\fP()) \fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.SH VERSIONS
+\fBreadlinkat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+\fBreadlink\fP(): 4.4BSD (\fBreadlink\fP() 最早出现在 4.2BSD), POSIX.1\-2001,
+POSIX.1\-2008。
+.PP
+\fBreadlinkat\fP(): POSIX.1\-2008.
+.SH NOTES
+直到并包括 glibc 2.4，\fBreadlink\fP() 的返回类型被声明为 \fIint\fP。 如今，返回类型声明为
+\fIssize_t\fP，POSIX.1\-2001 要求的 (newly)。
+.PP
+使用静态大小的缓冲区可能无法为符号链接内容提供足够的空间。 缓冲区所需的大小可以从调用返回到链接上的 \fBlstat\fP(2) 的
+\fIstat.st_size\fP 值中获得。 但是，应检查 \fBreadlink\fP() 和 \fBreadlinkat\fP()
+写入的字节数，以确保符号链接的大小在两次调用之间没有增加。 为 \fBreadlink\fP() 和 \fBreadlinkat\fP()
+动态分配缓冲区还解决了使用 \fBPATH_MAX\fP 作为缓冲区大小时的常见可移植性问题，因为如果系统没有这样的限制，则不能保证按 POSIX
+定义此常量。
+.SS "glibc notes"
+在 \fBreadlinkat\fP() 不可用的旧内核上，glibc 包装器函数退回到使用 \fBreadlink\fP()。 当 \fIpathname\fP
+是相对路径名时，glibc 根据 \fI/proc/self/fd\fP 中对应于 \fIdirfd\fP 参数的符号链接构造路径名。
+.SH EXAMPLES
+以下程序根据 \fBlstat\fP(2) 提供的信息动态分配 \fBreadlink\fP() 所需的缓冲区，在 \fBlstat\fP(2)
+报告大小为零的情况下回退到大小为 \fBPATH_MAX\fP 的缓冲区。
+.PP
+.\" SRC BEGIN (readlink.c)
+.EX
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    char         *buf;
+    ssize_t      nbytes, bufsiz;
+    struct stat  sb;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <pathname>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (lstat(argv[1], &sb) == \-1) {
+        perror("lstat");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Add one to the link size, so that we can determine whether
+       the buffer returned by readlink() was truncated. */
+
+    bufsiz = sb.st_size + 1;
+
+    /* Some magic symlinks under (for example) /proc and /sys
+       report \[aq]st_size\[aq] as zero. In that case, take PATH_MAX as
+       a "good enough" estimate. */
+
+    if (sb.st_size == 0)
+        bufsiz = PATH_MAX;
+
+    buf = malloc(bufsiz);
+    if (buf == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    nbytes = readlink(argv[1], buf, bufsiz);
+    if (nbytes == \-1) {
+        perror("readlink");
+        exit(EXIT_FAILURE);
+    }
+
+    /* 只打印 \[aq] nbytes\[aq] of\[aq] buf\[aq]，因为它不包含终止符
+       null byte (\[aq]\e0\[aq]).  */
+    printf("\[aq]%s\[aq] points to \[aq]%.*s\[aq]\en", argv[1], (int) nbytes, buf);
+
+    /* If the return value was equal to the buffer size, then the
+       the link target was larger than expected (perhaps because the
+       target was changed between the call to lstat() and the call to
+       readlink()). Warn the user that the returned target may have
+       been truncated. */
+
+    if (nbytes == bufsiz)
+        printf("(Returned buffer may have been truncated)\en");
+
+    free(buf);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBreadlink\fP(1), \fBlstat\fP(2), \fBstat\fP(2), \fBsymlink\fP(2), \fBrealpath\fP(3),
+\fBpath_resolution\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

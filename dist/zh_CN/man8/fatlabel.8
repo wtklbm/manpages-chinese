@@ -1,0 +1,165 @@
+.\" -*- coding: UTF-8 -*-
+.\" fatlabel.8 - manpage for fatlabel
+.\"
+.\" Copyright (C) 2006-2014 Daniel Baumann <daniel@debian.org>
+.\" Copyright (C) 2017 Andreas Bombe <aeb@debian.org>
+.\" Copyright (C) 2017-2021 Pali Rohár <pali.rohar@gmail.com>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program. If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\" The complete text of the GNU General Public License
+.\" can be found in /usr/share/common-licenses/GPL-3 file.
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH FATLABEL 8 2021\-01\-31 "dosfstools 4.2" 
+.SH NAME
+.\" ----------------------------------------------------------------------------
+fatlabel \- 设置或获取 MS\-DOS 文件系统标签或卷 ID
+.SH SYNOPSIS
+.\" ----------------------------------------------------------------------------
+\fBfatlabel\fP [\fIOPTIONS\fP] \fIDEVICE\fP [\fINEW\fP]
+.SH DESCRIPTION
+\fBfatlabel\fP 将显示或更改位于 \fIDEVICE\fP 上的 MS\-DOS 文件系统上的卷标或卷 ID。 默认情况下，它在标签模式下工作。
+可以使用选项 \fB\-i\fP 或 \fB\-\-volume\-id\fP 将其切换到卷 ID 模式。
+.PP
+.\" ----------------------------------------------------------------------------
+如果省略 \fINEW\fP，则将现有标签或卷 ID 写入标准输出。 标签不能超过 11 个字节，并且应该全部大写以获得最佳兼容性。
+不允许使用空字符串或仅包含空格的标签。 卷 ID 必须以十六进制数字形式给出 (无前导 "0x" 或类似数字) 并且必须适合 32 位。
+.SH OPTIONS
+.IP "\fB\-i\fP, \fB\-\-volume\-id\fP" 4
+切换到卷 ID 模式。
+.IP "\fB\-r\fP, \fB\-\-reset\fP" 4
+在标签模式下删除标签或在卷 ID 模式下生成新 ID。
+.IP "\fB\-c\fP \fIPAGE\fP, \fB\-\-codepage\fP=\fIPAGE\fP" 4
+使用 DOS 代码页 \fIPAGE\fP 到 encode/decode 标签。 默认使用代码页 850。
+.IP "\fB\-h\fP, \fB\-\-help\fP" 4
+显示帮助消息并终止。
+.IP "\fB\-V\fP, \fB\-\-version\fP" 4
+.\" ----------------------------------------------------------------------------
+显示版本号并终止。
+.SH "COMPATIBILITY and BUGS"
+由于历史原因，FAT 标签存储在两个不同的位置: 引导扇区和根目录中的特殊卷标条目。 MS\-DOS 5.00、MS\-DOS 6.22、MS\-DOS
+7.10、Windows 98、Windows XP 以及 Windows 10 仅从根目录读取 FAT 标签。
+根目录中缺少卷标将被解释为空或无标号，即使引导扇区包含一些有效标号。
+
+当 Windows XP 或 Windows 10 系统更改 FAT 标签时，它仅将其存储在根目录中 \(em 让引导扇区保持不变。 当 Windows
+上的标签被移除时，这会导致问题。 旧标签仍存储在引导扇区中，但已从根目录中删除。
+
+3.0.7 之前的 \fBdosfslabel\fP 版本仅使用存储在引导扇区中的 FAT 标签进行操作，完全忽略根目录中的卷标。
+
+版本 3.0.7\(en3.0.15 中的 \fBdosfslabel\fP 从根目录读取 FAT 标签，如果不存在，它会回退到存储在引导扇区中的标签。
+由于错误，更改操作导致更新引导扇区中的标签和根目录中的 \fIsometimes\fP。 该错误已在 \fBdosfslabel\fP 版本 3.0.16
+中修复，并且自此版本 \fBdosfslabel\fP 更新两个位置的标签。
+
+自版本 4.2 起，\fBfatlabel\fP 仅从根目录 (如 MS\-DOS 和 Windows 系统) 读取 FAT 标签，但在两个位置都更改 FAT
+标签。 在版本 4.2 中修复了空标签和以字节 0xE5 开头的标签的处理。 此版本还根据指定的 DOS 代码页添加了对非 ASCII
+标签的支持，并添加了检查新标签是否有效的功能。
+
+.\" ----------------------------------------------------------------------------
+强烈建议不要使用 3.0.16 之前的版本 \fBdosfslabel\fP。
+.SH "DOS CODEPAGES"
+MS\-DOS 和 Windows 系统使用 DOS (OEM) 代码页对 FAT 标签进行编码和解码。 在 Windows 系统中，DOS
+代码页是所有正在运行的应用程序的全部，不能明确配置。 它由 \fIRegional and Language Options\fP 中通过 \fIControl Panel\fP 提供的选项 \fILanguage for non\-Unicode programs\fP 隐式设置。 fatlabel 的默认 DOS
+代码页是 850。 非 Unicode 程序的 DOS 代码页和语言之间的映射表见下表:
+.TS
+tab(:);
+c lx.
+\fBCodepage\fP:\fBLanguage\fP
+437:T{
+English (India), English (Malaysia), English (Republic of the Philippines),
+English (Singapore), English (South Africa), English (United States),
+English (Zimbabwe), Filipino, Hausa, Igbo, Inuktitut, Kinyarwanda, Kiswahili,
+Yoruba
+T}
+720:Arabic, Dari, Persian, Urdu, Uyghur
+737:Greek
+775:Estonian, Latvian, Lithuanian
+850:T{
+Afrikaans, Alsatian, Basque, Breton, Catalan, Corsican, Danish, Dutch,
+English (Australia), English (Belize), English (Canada), English (Caribbean),
+English (Ireland), English (Jamaica), English (New Zealand),
+English (Trinidad and Tobago), English (United Kingdom), Faroese, Finnish,
+French, Frisian, Galician, German, Greenlandic, Icelandic, Indonesian, Irish,
+isiXhosa, isiZulu, Italian, K'iche, Lower Sorbian, Luxembourgish, Malay,
+Mapudungun, Mohawk, Norwegian, Occitan, Portuguese, Quechua, Romansh, Sami,
+Scottish Gaelic, Sesotho sa Leboa, Setswana, Spanish, Swedish, Tamazight,
+Upper Sorbian, Welsh, Wolof
+T}
+852:T{
+Albanian, Bosnian (Latin), Croatian, Czech, Hungarian, Polish, Romanian,
+Serbian (Latin), Slovak, Slovenian, Turkmen
+T}
+855:Bosnian (Cyrillic), Serbian (Cyrillic)
+857:Azeri (Latin), Turkish, Uzbek (Latin)
+862:Hebrew
+866:T{
+Azeri (Cyrillic), Bashkir, Belarusian, Bulgarian, Kyrgyz, Macedonian, Mongolian,
+Russian, Tajik, Tatar, Ukrainian, Uzbek (Cyrillic), Yakut
+T}
+874:Thai
+932:Japanese
+936:Chinese (Simplified)
+949:Korean
+950:Chinese (Traditional)
+1258:Vietnamese
+.TE
+.\" ----------------------------------------------------------------------------
+.SH "SEE ALSO"
+.\" ----------------------------------------------------------------------------
+\fBfsck.fat\fP(8), \fBmkfs.fat\fP(8)
+.SH HOMEPAGE
+.\" ----------------------------------------------------------------------------
+\fBdosfstools\fP 项目的主页是它的
+.UR https://github.com/dosfstools/dosfstools
+GitHub 项目页面
+.UE .
+.SH AUTHORS
+\fBdosfstools\fP 由
+.MT werner.almesberger@\:lrc.di.epfl.ch
+Werner
+Almesberger
+.ME ,
+.MT Roman.Hodek@\:informatik.\:uni\-erlangen.de
+Roman
+Hodek
+.ME ,
+等人编写。 目前的维护者是
+.MT aeb@\:debian.org
+Andreas Bombe
+.ME
+和
+.MT pali.rohar@\:gmail.com
+Pali Rohár
+.ME .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

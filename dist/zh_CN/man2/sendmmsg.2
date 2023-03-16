@@ -1,0 +1,172 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2012 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" with some material from a draft by
+.\" Stephan Mueller <stephan.mueller@atsec.com>
+.\" in turn based on Andi Kleen's recvmmsg.2 page.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sendmmsg 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+sendmmsg \- 在套接字上发送多条消息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <sys/socket.h>\fP
+.PP
+\fBint sendmmsg(int \fP\fIsockfd\fP\fB, struct mmsghdr *\fP\fImsgvec\fP\fB, unsigned int \fP\fIvlen\fP\fB,\fP
+\fB             int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" See commit 228e548e602061b08ee8e8966f567c12aa079682
+\fBsendmmsg\fP() 系统调用是 \fBsendmsg\fP(2) 的扩展，它允许调用者使用单个系统调用在套接字上传输多条消息。
+(这对某些应用程序有性能优势。)
+.PP
+\fIsockfd\fP 参数是要传输数据的套接字的文件描述符。
+.PP
+\fImsgvec\fP 参数是指向 \fImmsghdr\fP 结构数组的指针。 该数组的大小在 \fIvlen\fP 中指定。
+.PP
+\fImmsghdr\fP 结构体在 \fI<sys/socket.h>\fP 中定义为:
+.PP
+.in +4n
+.EX
+struct mmsghdr {
+    struct msghdr msg_hdr;  /* Message header */
+    unsigned int  msg_len;  /* Number of bytes transmitted */
+};
+.EE
+.in
+.PP
+\fImsg_hdr\fP 字段是 \fImsghdr\fP 结构体，如 \fBsendmsg\fP(2) 中所述。 \fImsg_len\fP 字段用于返回从
+\fImsg_hdr\fP 中的消息发送的字节数 (即与单个 \fBsendmsg\fP(2) 调用的返回值相同)。
+.PP
+\fIflags\fP 参数包含用或运算组合在一起的标志。 标志与 \fBsendmsg\fP(2) 相同。
+.PP
+阻塞 \fBsendmmsg\fP() 调用阻塞，直到发送 \fIvlen\fP 消息。 非阻塞调用发送尽可能多的消息 (达到 \fIvlen\fP)
+指定的限制并立即返回。
+.PP
+从 \fBsendmmsg\fP() 返回时，\fImsgvec\fP 的连续元素的 \fImsg_len\fP 字段被更新为包含从相应的 \fImsg_hdr\fP
+传输的字节数。 调用的返回值表示 \fImsgvec\fP 中被更新的元素个数。
+.SH "RETURN VALUE"
+成功时，\fBsendmmsg\fP() 返回从 \fImsgvec\fP 发送的消息数; 如果这小于 \fIvlen\fP，调用方可以使用进一步的
+\fBsendmmsg\fP() 调用重试以发送剩余的消息。
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.\" commit 728ffb86f10873aaf4abd26dde691ee40ae731fe
+.\"     ... only return an error if no datagrams could be sent.
+.\"     If less than the requested number of messages were sent, the application
+.\"     must retry starting at the first failed one and if the problem is
+.\"     persistent the error will be returned.
+.\"
+.\"     This matches the behavior of other syscalls like read/write - it
+.\"     is not an error if less than the requested number of elements are sent.
+错误与 \fBsendmsg\fP(2) 相同。 仅当无法发送数据报时才返回错误。 另请详见错误。
+.SH VERSIONS
+\fBsendmmsg\fP() 系统调用在 Linux 3.0 中加入。 在 Linux 2.14 中添加了对 glibc 的支持。
+.SH STANDARDS
+\fBsendmmsg\fP() 是特定于 Linux 的。
+.SH NOTES
+.\" commit 98382f419f32d2c12d021943b87dea555677144b
+.\"     net: Cap number of elements for sendmmsg
+.\"
+.\"     To limit the amount of time we can spend in sendmmsg, cap the
+.\"     number of elements to UIO_MAXIOV (currently 1024).
+.\"
+.\"     For error handling an application using sendmmsg needs to retry at
+.\"     the first unsent message, so capping is simpler and requires less
+.\"     application logic than returning EINVAL.
+\fIvlen\fP 中指定的值上限为 \fBUIO_MAXIOV\fP (1024)。
+.SH BUGS
+如果在至少发送一条消息后发生错误，则调用成功，并返回发送的消息数。 错误代码丢失。
+调用者可以重试传输，从第一个失败的消息开始，但不能保证如果返回错误，它将与前一个调用丢失的错误相同。
+.SH EXAMPLES
+下面的示例使用 \fBsendmmsg\fP() 在两个不同的 UDP 数据报中使用一个系统调用发送 \fIonetwo\fP 和 \fIthree\fP。
+第一个数据报的内容来自一对缓冲区。
+.PP
+.\" SRC BEGIN (sendmmsg.c)
+.EX
+#define _GNU_SOURCE
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+int
+main(void)
+{
+    int                 retval;
+    int                 sockfd;
+    struct iovec        msg1[2], msg2;
+    struct mmsghdr      msg[2];
+    struct sockaddr_in  addr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == \-1) {
+        perror("socket()");
+        exit(EXIT_FAILURE);
+    }
+
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons(1234);
+    if (connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) == \-1) {
+        perror("connect()");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(msg1, 0, sizeof(msg1));
+    msg1[0].iov_base = "one";
+    msg1[0].iov_len = 3;
+    msg1[1].iov_base = "two";
+    msg1[1].iov_len = 3;
+
+    memset(&msg2, 0, sizeof(msg2));
+    msg2.iov_base = "three";
+    msg2.iov_len = 5;
+
+    memset(msg, 0, sizeof(msg));
+    msg[0].msg_hdr.msg_iov = msg1;
+    msg[0].msg_hdr.msg_iovlen = 2;
+
+    msg[1].msg_hdr.msg_iov = &msg2;
+    msg[1].msg_hdr.msg_iovlen = 1;
+
+    retval = sendmmsg(sockfd, msg, 2, 0);
+    if (retval == \-1)
+        perror("sendmmsg()");
+    else
+        printf("%d messages sent\en", retval);
+
+    exit(0);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBrecvmmsg\fP(2), \fBsendmsg\fP(2), \fBsocket\fP(2), \fBsocket\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

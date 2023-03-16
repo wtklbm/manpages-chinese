@@ -1,0 +1,106 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1993 Michael Haardt, (michael@moria.de)
+.\" and Copyright 2006, 2008, Michael Kerrisk <tmk.manpages@gmail.com>
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified Wed Jul 21 19:52:58 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Sun Aug 21 17:40:38 1994 by Rik Faith <faith@cs.unc.edu>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH brk 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+brk, sbrk \- 改变字段大小
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint brk(void *\fP\fIaddr\fP\fB);\fP
+\fBvoid *sbrk(intptr_t \fP\fIincrement\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBbrk\fP(), \fBsbrk\fP():
+.nf
+.\"    (_XOPEN_SOURCE >= 500 ||
+.\"        _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED) &&
+.\"    (_XOPEN_SOURCE >= 500 ||
+.\"        _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED) &&
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+            || ((_XOPEN_SOURCE >= 500) &&
+                ! (_POSIX_C_SOURCE >= 200112L))
+    从 glibc 2.12 到 glibc 2.19:
+        _BSD_SOURCE || _SVID_SOURCE
+            || ((_XOPEN_SOURCE >= 500) &&
+                ! (_POSIX_C_SOURCE >= 200112L))
+    在 glibc 2.12 之前:
+        _BSD_SOURCE || _SVID_SOURCE || _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+\fBbrk\fP() 和 \fBsbrk\fP() 改变了 \fIprogram break\fP 的位置，\fIprogram break\fP 定义了进程字段的结束
+(即，程序中断是未初始化字段结束后的第一个位置)。 增加程序中断具有为进程分配内存的效果; 减少中断会释放内存。
+.PP
+\fBbrk\fP() 将字段的结束设置为 \fIaddr\fP 指定的值，当该值合理时，系统有足够的内存，进程不会超过其最大数据大小 (参见
+\fBsetrlimit\fP(2)).
+.PP
+\fBsbrk\fP() 将程序的数据空间增加 \fIincrement\fP 字节。 使用 \fIincrement\fP 为 0 调用 \fBsbrk\fP()
+可用于查找程序中断的当前位置。
+.SH "RETURN VALUE"
+成功时，\fBbrk\fP() 返回零。 出错时返回 \-1，并将 \fIerrno\fP 设置为 \fBENOMEM\fP。
+.PP
+成功时，\fBsbrk\fP() 返回上一个程序中断。 (如果 break 增加了，那么这个值就是指向新分配内存开始的指针)。 出错时返回 \fI(void\ *)\ \-1\fP，并将 \fIerrno\fP 设置为 \fBENOMEM\fP。
+.SH STANDARDS
+.\"
+.\" .BR brk ()
+.\" and
+.\" .BR sbrk ()
+.\" are not defined in the C Standard and are deliberately excluded from the
+.\" POSIX.1-1990 standard (see paragraphs B.1.1.1.3 and B.8.3.3).
+4.3BSD; SUSv1，在 SUSv2 中标记为 LEGACY，在 POSIX.1\-2001 中删除。
+.SH NOTES
+避免使用 \fBbrk\fP() 和 \fBsbrk\fP():，\fBmalloc\fP(3) 内存分配包是一种轻便舒适的内存分配方式。
+.PP
+.\" One sees
+.\" \fIint\fP (e.g., XPGv4, DU 4.0, HP-UX 11, FreeBSD 4.0, OpenBSD 3.2),
+.\" \fIssize_t\fP (OSF1 2.0, Irix 5.3, 6.5),
+.\" \fIptrdiff_t\fP (libc4, libc5, ulibc, glibc 2.0, 2.1),
+.\" \fIintptr_t\fP (e.g., XPGv5, AIX, SunOS 5.8, 5.9, FreeBSD 4.7, NetBSD 1.6,
+.\" Tru64 5.1, glibc2.2).
+各种系统对 \fBsbrk\fP() 的参数使用各种类型。 常见的有 \fIint\fP、\fIssize_t\fP、\fIptrdiff_t\fP、\fIintptr_t\fP。
+.SS "C library/kernel differences"
+上面描述的 \fBbrk\fP() 的返回值是 glibc 包装器函数为 Linux \fBbrk\fP() 系统调用提供的行为。
+(在大多数其他实现中，\fBbrk\fP() 的返回值是相同的; 此返回值也在 SUSv2 中指定。) 但是，实际的 Linux
+系统调用在成功时返回新程序中断。 失败时，系统调用返回当前中断。 glibc 包装器函数做了一些工作 (即检查新中断是否小于 \fIaddr\fP)
+以提供上述 0 和 \-1 返回值。
+.PP
+在 Linux 上，\fBsbrk\fP() 被实现为一个使用 \fBbrk\fP() 系统调用的库函数，并做了一些内部记录以便它可以返回旧的中断值。
+.SH "SEE ALSO"
+\fBexecve\fP(2), \fBgetrlimit\fP(2), \fBend\fP(3), \fBmalloc\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

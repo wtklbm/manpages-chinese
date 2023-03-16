@@ -1,0 +1,111 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2003 Andi Kleen
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH arch_prctl 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+arch_prctl \- 设置架构特定的线程状态
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <asm/prctl.h>\fP        /* Definition of \fBARCH_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_arch_prctl, int \fP\fIcode\fP\fB, unsigned long \fP\fIaddr\fP\fB);\fP
+\fBint syscall(SYS_arch_prctl, int \fP\fIcode\fP\fB, unsigned long *\fP\fIaddr\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBarch_prctl\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBarch_prctl\fP() 设置特定于体系结构的进程或线程状态。 \fIcode\fP 选择一个子函数，将参数 \fIaddr\fP 传给它; \fIaddr\fP
+被解释为 "set" 操作的 \fIunsigned long\fP，或 "get" 操作的 \fIunsigned long\ *\fP。
+.PP
+x86 和 x86\-64 的子函数是:
+.TP 
+\fBARCH_SET_CPUID\fP (since Linux 4.12)
+.\" commit e9ea1e7f53b852147cbd568b0568c7ad97ec21a3
+为调用线程启用 (\fIaddr != 0\fP) 或禁用 (\fIaddr == 0\fP) 和 \fIcpuid\fP 指令。 该指令默认启用。 如果禁用，任何
+\fIcpuid\fP 指令的执行都将生成 \fBSIGSEGV\fP 信号。 此特性可用于模拟与底层硬件产生的结果不同的 \fIcpuid\fP 结果
+(例如，在半虚拟化设置中)。
+.IP
+\fBARCH_SET_CPUID\fP 设置在 \fBfork\fP(2) 和 \fBclone\fP(2) 上保留，但在 \fBexecve\fP(2) 上重置为默认值
+(即启用 \fIcpuid\fP)。
+.TP 
+\fBARCH_GET_CPUID\fP (since Linux 4.12)
+返回 \fBARCH_SET_CPUID\fP 操作的标志位的设置作为系统调用的结果 (1 表示启用，0 表示禁用)。 \fIaddr\fP 被忽略。
+.TP 
+Subfunctions for x86\-64 only are:
+.TP 
+\fBARCH_SET_FS\fP
+将 \fIFS\fP 寄存器的 64 位基址设置为 \fIaddr\fP。
+.TP 
+\fBARCH_GET_FS\fP
+返回 \fIaddr\fP 指向的 \fIunsigned long\fP 中调用线程的 \fIFS\fP 寄存器的 64 位基值。
+.TP 
+\fBARCH_SET_GS\fP
+将 \fIGS\fP 寄存器的 64 位基址设置为 \fIaddr\fP。
+.TP 
+\fBARCH_GET_GS\fP
+返回 \fIaddr\fP 指向的 \fIunsigned long\fP 中调用线程的 \fIGS\fP 寄存器的 64 位基值。
+.SH "RETURN VALUE"
+成功时，\fBarch_prctl\fP() 返回 0; 出错时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIaddr\fP 指向未映射的地址或在进程地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIcode\fP 不是有效的子命令。
+.TP 
+\fBENODEV\fP
+已请求 \fBARCH_SET_CPUID\fP，但底层硬件不支持 CPUID 故障。
+.TP 
+\fBEPERM\fP
+.\" .SH AUTHOR
+.\" Man page written by Andi Kleen.
+\fIaddr\fP 在进程地址空间之外。
+.SH STANDARDS
+\fBarch_prctl\fP() 是 Linux/x86\-64 的扩展，不应用于可移植的程序。
+.SH NOTES
+\fBarch_prctl\fP() 目前仅在 Linux/x86\-64 上支持 64 位程序。
+.PP
+加载新的 32 位段选择器时，64 位基数会发生变化。
+.PP
+\fBARCH_SET_GS\fP 在某些内核中被禁用。
+.PP
+64 位段基础的上下文切换相当昂贵。 作为优化，如果使用 32 位 TLS 基地址，\fBarch_prctl\fP() 可能会使用真正的 TLS
+条目，就好像 \fBset_thread_area\fP(2) 已被调用一样，而不是直接操作段基址寄存器。 可以使用带有 \fBMAP_32BIT\fP 标志的
+\fBmmap\fP(2) 分配前 2\GB 地址空间中的内存。
+.PP
+由于上述优化，在同一个线程中使用 \fBarch_prctl\fP() 和 \fBset_thread_area\fP(2) 是危险的，因为它们可能会覆盖彼此的
+TLS 条目。
+.PP
+\fIFS\fP 可能已被线程库使用。 直接使用 \fBARCH_SET_FS\fP 的程序极有可能崩溃。
+.SH "SEE ALSO"
+\fBmmap\fP(2), \fBmodify_ldt\fP(2), \fBprctl\fP(2), \fBset_thread_area\fP(2)
+.PP
+AMD X86\-64 程序员手册
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

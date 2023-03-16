@@ -1,0 +1,332 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2015-2017 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH membarrier 2 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+membarrier \- 在一组线程上发布内存屏障碍
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+.PP
+\fB#include <linux/membarrier.h>\fP /* Definition of \fBMEMBARRIER_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_membarrier, int \fP\fIcmd\fP\fB, unsigned int \fP\fIflags\fP\fB, int \fP\fIcpu_id\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBmembarrier\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBmembarrier\fP() 系统调用有助于减少在多核系统上对内存访问进行排序所需的内存屏蔽指令的开销。
+然而，这个系统调用比内部屏幕故障更重，所以有效地使用它就像用这个系统调用替换内部屏幕故障一样简单，但需要了解以下细节。
+.PP
+使用内存屏障需要考虑到内存屏障总是需要与其内存屏障对应物匹配，或者架构的内存模型不需要匹配障碍。
+.PP
+在某些情况下，匹配障碍的一侧 (我们称为 "fast side") 比另一侧 (我们称为 "slow side") 执行得更频繁。 这是使用
+\fBmembarrier\fP() 的主要目标。 关键思想是，对于这些匹配障碍，用简单的编译器障碍替换快速端内存屏障碍，例如:
+.PP
+.in +4n
+.EX
+asm 易失性 ("": : : "memory")
+.EE
+.in
+.PP
+并通过调用 \fBmembarrier\fP() 替换慢速端内存屏故障。
+.PP
+这将增加慢速端的开销，并消除快速端的开销，从而导致整体性能提升，只要慢速端不频繁，\fBmembarrier\fP() 调用的开销不会超过快速端的性能增益.
+.PP
+\fIcmd\fP 参数是以下之一:
+.TP 
+\fBMEMBARRIER_CMD_QUERY\fP (since Linux 4.3)
+查询支持的命令集。 调用的返回值是支持命令的位掩码。 值为 0 的 \fBMEMBARRIER_CMD_QUERY\fP 本身不包含在此位掩码中。
+始终支持此命令 (在提供 \fBmembarrier\fP() 的内核上)。
+.TP 
+\fBMEMBARRIER_CMD_GLOBAL\fP (since Linux 4.16)
+确保系统上所有进程的所有线程都经过一个状态，在该状态下，对用户空间地址的所有内存访问都与进入和返回 \fBmembarrier\fP()
+系统调用之间的程序顺序相匹配。 系统上的所有线程都是此命令的目标。
+.TP 
+\fBMEMBARRIER_CMD_GLOBAL_EXPEDITED\fP (since Linux 4.16)
+对先前注册到 \fBMEMBARRIER_CMD_REGISTER_GLOBAL_EXPEDITED\fP 的所有进程的所有正在运行的线程执行内存屏故障。
+.IP
+从系统调用返回时，调用线程可以保证所有正在运行的线程都经过一个状态，在该状态下，所有对用户空间地址的内存访问都与进入和返回系统调用之间的程序顺序相匹配
+(非运行线程是 de 事实上处于这种状态)。 此保证仅提供给先前注册到
+\fBMEMBARRIER_CMD_REGISTER_GLOBAL_EXPEDITED\fP 的进程的线程。
+.IP
+鉴于注册是关于接收障碍的意图，从没有使用 \fBMEMBARRIER_CMD_REGISTER_GLOBAL_EXPEDITED\fP 的进程调用
+\fBMEMBARRIER_CMD_GLOBAL_EXPEDITED\fP 是有效的。
+.IP
+"expedited" 命令比非加急命令完成得更快; 他们从不阻塞，但有导致额外开销的缺点。
+.TP 
+\fBMEMBARRIER_CMD_REGISTER_GLOBAL_EXPEDITED\fP (since Linux 4.16)
+注册进程接收 \fBMEMBARRIER_CMD_GLOBAL_EXPEDITED\fP 内存屏故障的意图。
+.TP 
+\fBMEMBARRIER_CMD_PRIVATE_EXPEDITED\fP (since Linux 4.14)
+在与调用线程属于同一进程的每个正在运行的线程上执行内存屏故障。
+.IP
+从系统调用返回时，调用线程可以保证其所有正在运行的线程兄弟都已通过一种状态，在该状态下，对用户空间地址的所有内存访问都与进入和返回系统调用之间的程序顺序相匹配
+(非运行线程事实上处于这种状态)。 此保证仅提供给与调用线程位于同一进程中的线程。
+.IP
+"expedited" 命令比非加急命令完成得更快; 他们从不阻塞，但有导致额外开销的缺点。
+.IP
+进程必须在使用之前注册其使用私有加速命令的意图。
+.TP 
+\fBMEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED\fP (since Linux 4.14)
+注册进程使用 \fBMEMBARRIER_CMD_PRIVATE_EXPEDITED\fP 的意图。
+.TP 
+\fBMEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE\fP (since Linux 4.16)
+除了提供 \fBMEMBARRIER_CMD_PRIVATE_EXPEDITED\fP
+中描述的内存排序保证外，在从系统调用返回时，调用线程可以保证其所有正在运行的线程兄弟都已执行核心序列化指令。
+此保证仅提供给与调用线程位于同一进程中的线程。
+.IP
+"expedited" 命令比非加速命令完成得更快，它们从不阻塞，但有导致额外开销的缺点。
+.IP
+进程必须在使用之前注册其使用私有加速同步核心命令的意图。
+.TP 
+\fBMEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE\fP (since Linux 4.16)
+注册进程使用 \fBMEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE\fP 的意图。
+.TP 
+\fBMEMBARRIER_CMD_PRIVATE_EXPEDITED_RSEQ\fP (since Linux 5.10)
+如果 \fIflags\fP 参数为 0，确保调用者线程在从系统调用返回时，其所有正在运行的线程兄弟都已重新启动任何当前正在运行的 rseq 临界区; 如果
+\fIflags\fP 参数为 \fBMEMBARRIER_CMD_FLAG_CPU\fP，则此操作仅在 \fIcpu_id\fP 所指示的 CPU 上执行。
+此保证仅提供给与调用线程位于同一进程中的线程。
+.IP
+RSEQ membarrier 仅以 "private expedited" 形式提供。
+.IP
+进程必须在使用之前注册其使用私有加速 rseq 命令的意图。
+.TP 
+\fBMEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_RSEQ\fP (since Linux 5.10)
+注册进程使用 \fBMEMBARRIER_CMD_PRIVATE_EXPEDITED_RSEQ\fP 的意图。
+.TP 
+\fBMEMBARRIER_CMD_SHARED\fP (since Linux 4.3)
+这是 \fBMEMBARRIER_CMD_GLOBAL\fP 的别名，用于向后兼容标头。
+.PP
+\fIflags\fP 参数必须指定为 0，除非命令是 \fBMEMBARRIER_CMD_PRIVATE_EXPEDITED_RSEQ\fP，在这种情况下
+\fIflags\fP 可以是 0 或 \fBMEMBARRIER_CMD_FLAG_CPU\fP。
+.PP
+\fIcpu_id\fP 参数被忽略，除非 \fIflags\fP 是 \fBMEMBARRIER_CMD_FLAG_CPU\fP，在这种情况下它必须指定此
+membarrier 命令的目标 CPU。
+.PP
+从每个目标线程按程序顺序执行的所有内存访问都保证相对于 \fBmembarrier\fP() 进行排序。
+.PP
+如果我们使用语义 \fIbarrier()\fP 来表示一个编译器屏障，强制内存访问在屏障上按程序顺序执行，而 \fIsmp_mb()\fP
+表示显式内存屏障碍，强制在屏障上进行完整的内存排序，对于 \fIbarrier()\fP 的每一对，我们都有以下排序表、\fBmembarrier\fP() 和
+\fIsmp_mb()\fP。 对排序详细为 (O: 有序，X: 未排序) :
+.PP
+.RS
+.TS
+l c c c.
+\&	barrier()	smp_mb()	membarrier()
+barrier()	X	X	O
+smp_mb()	X	O	O
+membarrier()	O	O	O
+.TE
+.RE
+.SH "RETURN VALUE"
+成功时，\fBMEMBARRIER_CMD_QUERY\fP
+操作返回支持命令的位掩码，\fBMEMBARRIER_CMD_GLOBAL\fP、\fBMEMBARRIER_CMD_GLOBAL_EXPEDITED\fP、\fBMEMBARRIER_CMD_REGISTER_GLOBAL_EXPEDITED\fP、\fBMEMBARRIER_CMD_PRIVATE_EXPEDITED\fP、\fBMEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED\fP、\fBMEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE\fP
+和 \fBMEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE\fP 操作返回零。 出错时返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.PP
+对于给定的命令，\fIflags\fP 设置为 0，此系统调用保证在重新启动之前始终返回相同的值。 使用相同参数的进一步调用将导致相同的结果。 因此，当
+\fIflags\fP 设置为 0 时，只需对第一个调用 \fBmembarrier\fP() 进行错误处理。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 无效，或 \fIflags\fP 非零，或 \fBMEMBARRIER_CMD_GLOBAL\fP 命令被禁用，因为已设置 \fInohz_full\fP
+CPU 参数，或架构未实现 \fBMEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE\fP 和
+\fBMEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE\fP 命令。
+.TP 
+\fBENOSYS\fP
+\fBmembarrier\fP() 系统调用没有被这个内核实现。
+.TP 
+\fBEPERM\fP
+在使用私有加速命令之前未注册当前进程。
+.SH VERSIONS
+\fBmembarrier\fP() 系统调用在 Linux 4.3 中加入。
+.PP
+在 Linux 5.10 之前，\fBmembarrier\fP() 的原型是:
+.PP
+.in +4n
+.EX
+\fBint membarrier(int \fP\fIcmd\fP\fB, int \fP\fIflags\fP\fB);\fP
+.EE
+.in
+.SH STANDARDS
+.\" .SH SEE ALSO
+.\" FIXME See if the following syscalls make it into Linux 4.15 or later
+.\" .BR cpu_opv (2),
+.\" .BR rseq (2)
+\fBmembarrier\fP() 是特定于 Linux 的。
+.SH NOTES
+内存屏故障指令是具有弱有序内存模型的体系结构指令集的一部分。 它根据其他内核上的匹配屏障在屏障之前和屏障之后对内存访问进行排序。
+例如，相对于商店，栅栏，订购的商店，货物，栅栏，可以在该，栅栏，之前和之后订购货物。
+.PP
+程序顺序是指令在程序汇编代码中排序的顺序。
+.PP
+\fBmembarrier\fP() 可能有用的示例包括读取 \- 复制 \- 更新库和垃圾收集器的实现。
+.SH EXAMPLES
+假设一个多线程应用程序，其中 "fast_path()" 执行非常频繁，而 "slow_path()" 执行不频繁，则可以使用
+\fBmembarrier\fP(): 转换以下代码 (x86)
+.PP
+.in +4n
+.\" SRC BEGIN (membarrier.c)
+.EX
+#include <stdlib.h>
+
+static volatile int a, b;
+
+static void
+fast_path(int *read_b)
+{
+    a = 1;
+    asm volatile ("mfence" : : : "memory");
+    *read_b = b;
+}
+
+static void
+slow_path(int *read_a)
+{
+    b = 1;
+    asm volatile ("mfence" : : : "memory");
+    *read_a = a;
+}
+
+int
+main(void)
+{
+    int read_a, read_b;
+
+    /*
+     * Real applications would call fast_path() and slow_path()
+     * from different threads.  Call those from main() to keep
+     * this example short.
+     */
+
+    slow_path(&read_a);
+    fast_path(&read_b);
+
+    /*
+     * read_b == 0 implies read_a == 1 and
+     * read_a == 0 implies read_b == 1.
+     */
+
+    if (read_b == 0 && read_a == 0)
+        abort();
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.PP
+上面转换为使用 \fBmembarrier\fP() 的代码变为:
+.PP
+.in +4n
+.EX
+#define _GNU_SOURCE
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <linux/membarrier.h>
+
+static volatile int a, b;
+
+static int
+membarrier(int cmd, unsigned int flags, int cpu_id)
+{
+    return syscall(__NR_membarrier, cmd, flags, cpu_id);
+}
+
+static int
+init_membarrier(void)
+{
+    int ret;
+
+    /* Check that membarrier() is supported. */
+
+    ret = membarrier(MEMBARRIER_CMD_QUERY, 0, 0);
+    if (ret < 0) {
+        perror("membarrier");
+        return \-1;
+    }
+
+    if (!(ret & MEMBARRIER_CMD_GLOBAL)) {
+        fprintf(stderr,
+            "membarrier does not support MEMBARRIER_CMD_GLOBAL\en");
+        return \-1;
+    }
+
+    return 0;
+}
+
+static void
+fast_path(int *read_b)
+{
+    a = 1;
+    asm volatile ("" : : : "memory");
+    *read_b = b;
+}
+
+static void
+slow_path(int *read_a)
+{
+    b = 1;
+    membarrier(MEMBARRIER_CMD_GLOBAL, 0, 0);
+    *read_a = a;
+}
+
+int
+main(int argc, char *argv[])
+{
+    int read_a, read_b;
+
+    if (init_membarrier())
+        exit(EXIT_FAILURE);
+
+    /*
+     * Real applications would call fast_path() and slow_path()
+     * from different threads.  Call those from main() to keep
+     * this example short.
+     */
+
+    slow_path(&read_a);
+    fast_path(&read_b);
+
+    /*
+     * read_b == 0 implies read_a == 1 and
+     * read_a == 0 implies read_b == 1.
+     */
+
+    if (read_b == 0 && read_a == 0)
+        abort();
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.in
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

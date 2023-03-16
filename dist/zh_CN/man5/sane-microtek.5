@@ -1,0 +1,158 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-microtek 5 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-microtek
+.SH NAME
+sane\-microtek\-Microtek 扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-microtek\fP 库实现了一个 SANE (现在可以轻松访问扫描仪) 后端，该后端提供对 "second generation"
+Microtek 扫描仪的访问。 目前，已知以下硬件可与此后端配合使用:
+.PP
+.RS
+Microtek ScanMaker E2, E3, E6
+.br
+Microtek ScanMaker II, IIG, IIHR, IISP, III
+.br
+Microtek ScanMaker 35t, 35t+, 45t
+.br
+Microtek ScanMaker 600GS, 600ZS (see bug notes)
+.br
+Agfa StudioScan
+.br
+Agfa StudioScan II, StudioScan IIsi
+.br
+Agfa Arcus II (but not the "Arcus")
+.br
+Agfa DuoScan (preliminary)
+.br
+Vobis "Highscreen Realscan"
+.br
+Microtek Color PageWiz (preliminary)
+.br
+.PP
+透明媒体适配器
+.br
+文档自动进纸器
+.br
+.RE
+.PP
+该驱动程序支持正常和 "expanded" 分辨率下的艺术线条、半色调、8bpp 灰色和 24bpp 彩色扫描 (即 E6 上的
+1200x1200)、快速扫描颜色预览和可下载的伽玛表。
+.PP
+支持的扫描仪都是 SCSI 扫描仪。 但是，某些并行端口型号可能可以工作 (在 Linux 下)，如果它们使用 parport\->scsi
+芯片，并且您可以找到 scsi\->parport 驱动程序。 众所周知，Color PageWiz 就是这种情况。
+.PP
+\fBnot\fP 驱动程序确实支持最新的 Microtek 扫描仪，例如 V330 和 V660，它们使用全新且非常不同的 SCSI\-II 命令集。
+对于那些，请尝试备用 \fBmicrotek2\fP(5) 后端。 大多数非 SCSI 扫描仪将使用新的命令集。 大多数比 Scanmaker E6
+更新的扫描仪都会使用新的命令集。
+.PP
+如果您拥有上面列出的扫描仪以外的 Microtek 扫描仪，请告诉我们发生了什么 \-\- 请参见本文档末尾的 \fBBUGS\fP 部分。
+.PP
+虽然此手册页通常随每个版本更新，但可以从后端主页获得有关新版本的最新信息和额外的有用提示:
+.br
+.PP
+.RS
+\fIhttp://www.mir.com/mtek/\fP
+.RE
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于扫描仪的特殊设备的 UNIX 路径名。 特殊设备名称必须是泛型 SCSI 设备或指向此类设备的符号链接。 例如，在
+Linux 下，这样的设备名称可以是 \fI/dev/sga\fP 或 \fI/dev/sge\fP。
+.PP
+
+.SH CONFIGURATION
+\fImicrotek.conf\fP 文件的内容是与 Microtek 扫描仪对应的设备名称列表。 空行和以哈希标记 (#) 开头的行将被忽略。
+示例配置文件如下所示:
+.PP
+.RS
+/dev/scanner
+.br
+# 这是一条评论
+.br
+/dev/sge
+.RE
+.PP
+配置文件还可能包含特殊的 tokens \fInorealcal\fP 或 \fInoprecal.\fP \fInorealcal\fP
+将禁用魔法、未记录的扫描仪校准命令，这些命令已知可在 E6 上使用，但可能不适用于其他型号。 \fInoprecal\fP 将禁用试图避免扫描仪预校准的逻辑。
+只有在关闭魔法校准代码时才会激活此逻辑。
+
+.PP
+.SH FILES
+.TP 
+\fI/etc/sane.d/microtek.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-microtek.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-microtek.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_MICROTEK\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 128 的值请求最大程度的调试输出; 较小的级别减少冗长。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBsane\-microtek2\fP(5)
+
+.SH AUTHOR
+马特・马扬诺维奇
+
+.SH BUGS
+已知的 bugs/limitations 是:
+.PP
+.RS
+亮度和对比度坏了。
+.br
+600GS 只有灰阶，选择彩色会锁定。 (不幸的是，600GS 和 600ZS 无法通过软件区分。)
+.br
+.RE
+.PP
+即不要抱怨这些 \-\- 但如果亮度或者对比度 \fBdo\fP 适合您，请告诉我。
+.PP
+如果您的扫描仪锁定，请尝试在配置文件中设置 \fInorealcal\fP 或 \fInoprecal\fP 选项 (第一个，然后两个)，看看是否有帮助。
+(如果有，请报告。)
+.PP
+向 \fImtek\-bugs@mir.com\fP 发送冗长的错误报告和新的扫描仪信息。 所有错误报告和新的扫描器查询都应包含一个错误日志文件。
+您可以通过设置上述 \fBSANE_DEBUG_MICROTEK\fP 环境变量来生成大量标准错误输出。 例如:
+.PP
+.RS
+setenv SANE_DEBUG_MICROTEK 128
+.RE
+.PP
+有关前端或 SANE 的更多一般评论、建议和查询应转到 \fIsane\-devel@alioth\-lists.debian.net\fP，SANE
+开发人员邮件列表。查看 \fIhttp://www.sane\-project.org/mailing\-lists.html\fP 关于订阅
+sane\-devel 的信息。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

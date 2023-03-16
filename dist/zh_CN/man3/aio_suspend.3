@@ -1,0 +1,103 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\" and Copyright (C) 2010 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH aio_suspend 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+aio_suspend \- 等待异步 I/O 操作或超时
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+.PP
+\fB#include <aio.h>\fP
+.PP
+\fBint aio_suspend(const struct aiocb *const \fP\fIaiocb_list\fP\fB[], int \fP\fInitems\fP\fB,\fP
+\fB                const struct timespec *restrict \fP\fItimeout\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBaio_suspend\fP() 函数挂起调用线程，直到发生以下情况之一:
+.IP \[bu] 3
+列表 \fIaiocb_list\fP 中的一个或多个异步 I/O 请求已完成。
+.IP \[bu]
+发出信号。
+.IP \[bu]
+\fItimeout\fP 不为 NULL，并且指定的时间间隔已过。 (有关 \fItimespec\fP 结构体的详细信息，请参见
+\fBnanosleep\fP(2).)
+.PP
+\fInitems\fP 参数指定 \fIaiocb_list\fP 中的项数。 \fIaiocb_list\fP 指向的列表中的每个项必须是 NULL
+(然后被忽略)，或者是指向使用 \fBaio_read\fP(3)、\fBaio_write\fP(3) 或 \fBlio_listio\fP(3) 启动 I/O
+的控制块的指针。 (有关 \fIaiocb\fP 结构体的说明，请参见 \fBaio\fP(7)。)
+.PP
+如果支持 \fBCLOCK_MONOTONIC\fP，则此时钟用于测量超时间隔 (参见 \fBclock_gettime\fP(2)).
+.SH "RETURN VALUE"
+如果此函数在 \fIaiocb_list\fP 中指定的 I/O 请求之一完成后返回，则返回 0。 否则，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+在任何指示的操作完成之前，调用超时。
+.TP 
+\fBEINTR\fP
+调用被信号结束 (可能是我们正在等待的操作之一的完成信号) ; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBENOSYS\fP
+\fBaio_suspend\fP() 未实现。
+.SH VERSIONS
+\fBaio_suspend\fP() 函数自 glibc 2.1 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBaio_suspend\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.PP
+POSIX 没有指定参数为 \fIrestrict\fP; 这是 glibc 特有的。
+.SH NOTES
+可以通过使用指定零时间间隔的非 NULL \fItimeout\fP 来实现轮询。
+.PP
+如果在调用 \fBaio_suspend\fP() 时 \fIaiocb_list\fP 中指定的一个或多个异步 I/O 操作已经完成，则调用立即返回。
+.PP
+要确定从 \fBaio_suspend\fP() 成功返回后完成了哪些 I/O 操作，请使用 \fBaio_error\fP(3) 扫描 \fIaiocb_list\fP
+指向的 \fIaiocb\fP 结构列表。
+.SH BUGS
+.\" FIXME . https://sourceware.org/bugzilla/show_bug.cgi?id=13172
+\fBaio_suspend\fP() 的 glibc 实现不是异步信号安全的，违反了 POSIX.1 的要求。
+.SH "SEE ALSO"
+\fBaio_cancel\fP(3), \fBaio_error\fP(3), \fBaio_fsync\fP(3), \fBaio_read\fP(3),
+\fBaio_return\fP(3), \fBaio_write\fP(3), \fBlio_listio\fP(3), \fBaio\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

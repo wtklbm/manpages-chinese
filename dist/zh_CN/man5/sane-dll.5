@@ -1,0 +1,140 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-dll 5 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-dll
+.SH NAME
+sane\-dll\-SANE 动态后端加载器
+.SH DESCRIPTION
+\fBsane\-dll\fP 库实现了一个 SANE (扫描仪访问现在简单) 后端，该后端提供对任意数量的其他 SANE 后端的访问。 这些后端可以在构建
+\fBsane\-dll\fP 库时预加载，或者在支持共享库动态加载的系统上，后端可以在运行时加载。 在后一种情况下，添加对新后端的支持只需要在
+\fI/usr/lib/sane\fP 中安装相关库并在 \fIdll.conf\fP 配置文件中添加一个条目。
+换句话说，不需要修改或重新编译应用程序来添加对新设备的支持。
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIbackend\fP:\fIdevice\fP
+.RE
+.PP
+其中 \fIbackend\fP 是后端的名称，\fIdevice\fP 是该后端中应寻址的设备的名称。 如果设备名称不包含冒号
+(:)，则整个字符串将被视为默认后端的 \fIdevice\fP 字符串。 默认后端是配置文件中最后列出的后端 (见下文) 或第一个预加载的后端 (如果有)。
+.SH CONFIGURATION
+\fIdll.conf\fP 文件的内容是可以根据需要动态加载的后端名称列表。 空行将被忽略，散列标记 (#)
+之后的所有内容也将被忽略。示例配置文件如下所示:
+.PP
+.RS
+net
+.br
+# 这是一条评论
+.br
+pnm
+.br
+mustek
+.RE
+.PP
+也可以在 \fI/etc/sane.d/dll.d\fP 中添加一个文件，其中包含要添加的后端列表。在此目录中包含的文件中提到的后端将在
+\fI/etc/sane.d/dll.d\fP 中的 \fIdll.conf.\fP 文件中列出的任何后端可以自由命名之前添加。它们应遵循适用于
+\fIdll.conf.\fP 的格式约定
+
+.PP
+请注意，构建此库时预加载的后端不必在此配置文件中列出。 也就是说，如果预加载了后端，则该后端将始终存在，无论它是否列在配置文件中。
+.PP
+预加载后端列表由 SANE 源代码分发文件 backend/Makefile.in 中的宏 \fBPRELOADABLE_BACKENDS\fP 确定。
+更改此宏的值后，需要重新配置、重建和重新安装 SANE 才能使更改生效。
+
+别名在配置文件 \fIdll.aliases\fP 中定义。 它可以包含表单的条目
+.PP
+.RS
+.br
+别名 SomeName SaneDeviceName
+.br
+别名 "Some Name" SaneDeviceName
+.br
+隐藏 SaneDeviceName
+.RE
+.PP
+例如:
+
+.PP
+.RS
+.br
+别名 Epson net:somehost:epson:/dev/sgX
+.br
+别名 "Siemens ST400" st400:/dev/sgY
+.br
+隐藏网络: somehost: pnm: 0
+.br
+隐藏网: 一些主机: pnm: 1
+.br
+别名 "Read from file" pnm:0
+.br
+隐藏 pnm:1
+.RE
+.PP
+
+别名的设备名称会自动隐藏。
+
+这个想法是用户不必处理复杂的设备名称
+(尤其是网络设备)，也不必隐藏其他可能使他们感到困惑的导出设备。请注意，如果设备名称已知，仍然可以访问隐藏设备，只是它没有出现在列表中。
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/dll.aliases\fP
+别名或隐藏后端的列表。
+.TP 
+\fI/etc/sane.d/dll.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-dll.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-dll.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_DLL\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 128 请求打印所有调试输出。 较小的级别减少冗长。
+
+.nf
+\f (CR 值说明
+0 仅打印严重错误
+1 打印正常错误和重要信息
+2 打印普通消息
+3 打印调试信息
+4 打印 everything\fR
+.fi
+
+示例: export SANE_DEBUG_DLL=3
+
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBscanimage\fP(1), \fBsane\-"backendname"\fP(5)
+
+.SH AUTHOR
+大卫莫斯伯格
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

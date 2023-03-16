@@ -1,0 +1,556 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-SYSTEM\&.CONF 5 "" "systemd 253" systemd\-system.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-system.conf、system.conf.d、systemd\-user.conf、user.conf.d \-
+系统和会话服务管理器配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/system\&.conf, /etc/systemd/system\&.conf\&.d/*\&.conf,
+/run/systemd/system\&.conf\&.d/*\&.conf,
+/usr/lib/systemd/system\&.conf\&.d/*\&.conf
+.PP
+~/\&.config/systemd/user\&.conf, /etc/systemd/user\&.conf,
+/etc/systemd/user\&.conf\&.d/*\&.conf,
+/run/systemd/user\&.conf\&.d/*\&.conf,
+/usr/lib/systemd/user\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+当作为系统实例运行时，\fBsystemd\fP 解释配置文件 system\&.conf 和 system\&.conf\&.d 目录下的文件;
+当作为用户实例运行时，它解释配置文件 user\&.conf (在用户的主目录中，或者如果没有找到，在 /etc/systemd/ 下) 和
+user\&.conf\&.d 目录中的文件 \&。这些配置文件包含一些控制基本管理器操作的设置。
+.PP
+有关语法 \& 的一般说明，请参见 \fBsystemd.syntax\fP(7)。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH OPTIONS
+.PP
+所有选项都在 [Manager] 部分配置:
+.PP
+\fILogColor=\fP, \fILogLevel=\fP, \fILogLocation=\fP, \fILogTarget=\fP, \fILogTime=\fP,
+\fIDumpCore=yes\fP, \fICrashChangeVT=no\fP, \fICrashShell=no\fP, \fICrashReboot=no\fP,
+\fIShowStatus=yes\fP, \fIDefaultStandardOutput=journal\fP,
+\fIDefaultStandardError=inherit\fP
+.RS 4
+配置基本管理器操作的各种参数 \&。这些选项可能会被各自的进程和内核命令行参数 \& 覆盖。有关详细信息，请参见 \fBsystemd\fP(1)\&。
+.RE
+.PP
+\fICtrlAltDelBurstAction=\fP
+.RS 4
+定义如果用户在 2s\& 内按 Ctrl\-Alt\-Delete 超过 7 次，将执行什么操作。可以设置为
+"reboot\-force"、"poweroff\-force"、"reboot\-immediate"、"poweroff\-immediate" 或使用
+`none`\& 禁用。默认为 `强制重启`\&。
+.RE
+.PP
+\fICPUAffinity=\fP
+.RS 4
+配置服务管理器的 CPU 亲和力以及所有分支进程的默认 CPU 亲和力 \&。获取由空格或逗号 \& 分隔的 CPU 索引或范围列表。CPU
+范围由由破折号 \& 分隔的下限和上限 CPU 索引指定。可以多次指定此选项，在这种情况下，指定的 CPU 关联掩码将合并
+\&。如果分配了空字符串，则重置掩码，在此之前的所有分配都将无效 \&。个别服务可以使用元文件中的 \fICPUAffinity=\fP 设置覆盖其进程的
+CPU 亲和力，请参见 \fBsystemd.exec\fP(5)\&。
+.RE
+.PP
+\fINUMAPolicy=\fP
+.RS 4
+配置服务管理器的 NUMA 内存策略和所有分支进程的默认 NUMA 内存策略 \&。个别服务可能会使用元文件中的 \fINUMAPolicy=\fP
+设置覆盖默认策略，请参见 \fBsystemd.exec\fP(5)\&。
+.RE
+.PP
+\fINUMAMask=\fP
+.RS 4
+配置将与所选 NUMA 策略关联的 NUMA 节点掩码 \&。请注意，\fBdefault\fP 和 \fBlocal\fP NUMA 策略不 \*(Aqt
+需要明确的 NUMA 节点掩码，选项的值可以为空 \&。与 \fINUMAPolicy=\fP 类似，值可以被元文件中的单个服务覆盖，参见
+\fBsystemd.exec\fP(5)\&。
+.RE
+.PP
+\fIRuntimeWatchdogSec=\fP, \fIRebootWatchdogSec=\fP, \fIKExecWatchdogSec=\fP
+.RS 4
+在运行时和重启时配置硬件看门狗。获取以秒为单位的超时值 (如果以 "ms"、"min"、"h"、"d"、"w" 为后缀，则以其他时间单位为单位)
+或特殊字符串 "off" 或 `default`\&。如果设置为 "off" (或者: "0")，看门狗逻辑将被禁用: 没有打开、配置或 ping
+看门狗设备 \&。如果设置为特殊字符串 "default"，看门狗将打开并定期 ping，但超时不会从默认值更改
+\&。如果设置为任何其他时间值，看门狗超时将配置为指定值 (或接近它的值，具体取决于硬件功能) \&。
+.sp
+如果 \fIRuntimeWatchdogSec=\fP 设置为非零值，看门狗硬件 (/dev/watchdog0 或 \fIWatchdogDevice=\fP
+指定的路径或内核选项 \fIsystemd\&.watchdog\-device=\fP) 将被编程为如果在指定的超时间隔内未联系它会自动重启系统
+\&。系统管理器将确保至少在指定超时间隔的一半时联系它一次。此特性需要存在硬件看门狗设备，因为这在嵌入式和服务器系统中很常见
+\&。并非所有硬件看门狗都允许配置所有可能的重启超时值，在这种情况下，会选择最接近的可用超时值 \&。
+.sp
+\fIRebootWatchdogSec=\fP 可用于在要求系统重新启动 \& 时配置硬件看门狗。它用作安全网，以确保即使干净重启尝试超时也能进行重启
+\&。请注意，\fIRebootWatchdogSec=\fP
+超时仅适用于重启的第二阶段，i\&.e\&。在所有常规服务已经终止之后，以及在系统和服务管理器进程 (PID 1) 被 systemd\-shutdown
+二进制文件替换之后，请参见系统 \fBbootup\fP(7) 了解详细信息 \&。在关闭操作的第一阶段，系统和服务管理器保持运行，因此
+\fIRuntimeWatchdogSec=\fP 仍然有效 \&。为了在系统关闭的第一阶段定义超时，在 shutdown\&.target 元 \& 的
+[Unit] 部分配置 \fIJobTimeoutSec=\fP 和 \fIJobTimeoutAction=\fP。默认
+\fIRuntimeWatchdogSec=\fP 默认为 0 (off)，\fIRebootWatchdogSec=\fP 默认为 10min\&。
+.sp
+\fIKExecWatchdogSec=\fP 可用于在执行 kexec 时而不是在重新启动 \& 时额外启用看门狗。请注意，如果内核没有在 kexec
+上重置看门狗 (取决于特定的硬件或者驱动程序)，在这种情况下，看门狗可能不会在 kexec 成功后被禁用，因此系统可能会重新启动，除非
+\fIRuntimeWatchdogSec=\fP 也被启用同一时间 \&。出于这个原因，建议仅当 \fIRuntimeWatchdogSec=\fP 也已启用
+\& 时才启用 \fIKExecWatchdogSec=\fP。
+.sp
+如果硬件看门狗不可用，这些设置将无效 \&。
+.RE
+.PP
+\fIRuntimeWatchdogPreSec=\fP
+.RS 4
+配置硬件看门狗设备预超时值 \&。采用以秒为单位的超时值 (或类似于 \fIRuntimeWatchdogSec=\fP)\&
+的其他时间单位。看门狗预超时是看门狗在看门狗未得到服务的情况下可能发生看门狗重置之前生成的通知 \&。此通知由内核处理，可以配置为使用
+\fIRuntimeWatchdogPreGovernor=\fP\& 采取操作 (i\&.e\&。生成内核
+panic)。并非所有看门狗硬件或驱动程序都支持生成预超时，并且根据系统状态，内核可能无法在看门狗重新启动之前采取配置的操作
+\&。看门狗将配置为在运行时看门狗超时 (由 \fIRuntimeWatchdogSec=\fP)\& 设置。例如，如果我们有
+\fIRuntimeWatchdogSec=30\fP 和 \fIRuntimeWatchdogPreSec=10\fP，则预超时事件将如果看门狗在 20 秒内未
+ping (看门狗触发前 10 秒) \&。默认情况下，\fIRuntimeWatchdogPreSec=\fP 默认为 0 (关闭) \&。为
+\fIRuntimeWatchdogPreSec=\fP 设置的值必须小于 \fIRuntimeWatchdogSec=\fP\&
+的超时值。如果硬件看门狗不可用或硬件看门狗不支持预超时，则此设置无效，如果设置大于实际看门狗超时 \&，内核将忽略该设置。
+.RE
+.PP
+\fIRuntimeWatchdogPreGovernor=\fP
+.RS 4
+配置硬件看门狗设备在预超时到期时采取的操作 \&。超时前事件的默认操作取决于内核配置，但通常是记录内核消息
+\&。有关给定看门狗设备可用的有效操作列表，请检查
+/sys/class/watchdog/watchdog\fIX\fP/pretimeout_available_governors 文件的内容
+\&。通常，可用的调速器类型为 \fInoop\fP 和 \fIpanic\fP\&。可用性、名称和功能可能因使用的特定设备驱动程序而异。如果
+pretimeout_available_governors sysfs 文件为空，则调控器可能构建为内核模块并且可能需要手动加载 (例如
+\&.g\&.\fIpretimeout_noop\&.ko\fP)，或者看门狗设备可能不支持预超时 \&。
+.RE
+.PP
+\fIWatchdogDevice=\fP
+.RS 4
+配置运行时和关闭看门狗定时器将打开和使用的硬件看门狗设备 \&。默认为 /dev/watchdog0\&。如果硬件看门狗不可用 \&，则此设置无效。
+.RE
+.PP
+\fICapabilityBoundingSet=\fP
+.RS 4
+控制将哪些功能包含在 PID 1 及其子项的功能范围集中。有关详细信息，请参见 \fBcapabilities\fP(7)\&。采用由
+\fBcap_from_name\fP(3)\& 读取的以空格分隔的功能名称列表。列出的功能将包含在边界集中，所有其他功能都将被删除
+\&。如果能力列表以～为前缀，则将包括除列出的能力之外的所有能力，赋值的效果反转 \&。请注意，此选项还会影响有效的、允许的和可继承的能力集中的相应能力
+\&。也可以使用单元的 \fICapabilityBoundingSet=\fP 指令为单元单独配置能力边界集，但请注意，PID 1
+的能力丢弃不能在单个单元中重新获得，它们将永远丢失 \&。
+.RE
+.PP
+\fINoNewPrivileges=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则确保 PID 1 及其所有子项永远不会通过 \fBexecve\fP(2) 获得新权限 (例如 \&.g\&。通过
+setuid 或 setgid 位，或文件系统功能) \&。默认为 false\&。通用发行版通常依赖于具有 setuid 或 setgid
+位的可执行文件，因此在启用此选项的情况下将无法正确调用 \&。个别单位不能禁用此选项 \&。另请详见 \m[blue]\fBNo New Privileges Flag\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.RE
+.PP
+\fISystemCallArchitectures=\fP
+.RS 4
+采用以空格分隔的体系结构标识符列表 \&。选择可以在此系统上调用哪些体系结构系统调用
+\&。这可以用作在系统范围内禁用非原生二进制文件调用的有效方法，例如禁止在 64 位 x86\-64 系统上执行 32 位 x86 二进制文件
+\&。此选项在系统范围内运行，其作用类似于元文件的 \fISystemCallArchitectures=\fP 设置，有关详细信息，请参见
+\fBsystemd.exec\fP(5)\&。此设置默认为空列表，在这种情况下，不应用基于体系结构的系统调用过滤 \&。已知的体系结构标识符是
+"x86"、"x86\-64"、"x32"、"arm" 和特殊标识符 `native`\&。后者隐式地将 maps 映射到系统的原生架构
+(或更具体地说，系统管理器为其编译的架构) \&。将此设置设置为 "native" 以禁止执行任何非原生二进制文件
+\&。当二进制文件执行未在此设置中列出的体系结构的系统调用时，它将立即以 SIGSYS 信号 \& 终止。
+.RE
+.PP
+\fITimerSlackNSec=\fP
+.RS 4
+为 PID 1 设置以纳秒为单位的计时器松弛，它由所有执行的进程继承，除非单独覆盖，例如使用服务单元中的 \fITimerSlackNSec=\fP 设置
+(有关详细信息，请参见 \fBsystemd.exec\fP(5))\&。计时器松弛控制触发唤醒的准确性通过系统定时器 \&。有关详细信息，请参见
+\fBprctl\fP(2)\&。请注意，与大多数其他时间跨度定义相比，如果未指定单位 \&，则此参数采用以纳秒为单位的整数值。也可以理解通常的时间单位
+\&。
+.RE
+.PP
+\fIStatusUnitFormat=\fP
+.RS 4
+取 \fBname\fP、\fBdescription\fP 或 \fBcombined\fP 为值 \&。如果是 \fBname\fP，系统管理器将在状态消息中使用元名称
+(e\&.g\&. "systemd\-journald\&.service")，而不是使用 \fIDescription=\fP
+(e\&.g\&. "Journal Logging Service")\& 设置的更长且信息量更大的描述。如果是
+\fBcombined\fP，系统管理器将在状态消息中同时使用元名称和描述
+(e\&.g\&. "systemd\-journald\&.service\-Journal Logging Service)\&。
+.sp
+有关元名称和 \fIDescription=\fP\& 的详细信息，请参见 \fBsystemd.unit\fP(5)。
+.RE
+.PP
+\fIDefaultTimerAccuracySec=\fP
+.RS 4
+设置定时器单位的默认精度 \&。这控制定时器单元 \fIAccuracySec=\fP 设置的全局默认值，有关详细信息，请参见
+\fBsystemd.timer\fP(5)\&。 \fIAccuracySec=\fP 设置在个别单位覆盖全局默认为特定单位 \&。默认为 1 分钟
+\&。请注意，计时器单元的精度也受为 PID 1 配置的计时器松弛的影响，请参见上面的 \fITimerSlackNSec=\fP\&。
+.RE
+.PP
+\fIDefaultTimeoutStartSec=\fP, \fIDefaultTimeoutStopSec=\fP,
+\fIDefaultTimeoutAbortSec=\fP, \fIDefaultRestartSec=\fP
+.RS 4
+配置单元的启动、停止和停止的默认超时，以及单元自动重启之间的默认休眠时间，如
+\fITimeoutStartSec=\fP、\fITimeoutStopSec=\fP、\fITimeoutAbortSec=\fP 和 \fIRestartSec=\fP
+中的每元配置 (对于服务，请参见 \fBsystemd.service\fP(5) 了解有关详细信息每元设置)
+\&。对于非服务单位，\fIDefaultTimeoutStartSec=\fP 设置默认的 \fITimeoutSec=\fP 值 \&。
+.sp
+\fIDefaultTimeoutStartSec=\fP 和 \fIDefaultTimeoutStopSec=\fP 在系统管理器中默认为
+90s，在用户管理器中默认为 90s\&。 默认情况下未设置 \fIDefaultTimeoutAbortSec=\fP，因此所有单位都回落到
+\fITimeoutStopSec=\fP\&。\fIDefaultRestartSec=\fP 默认为 100 毫秒 \&。
+.RE
+.PP
+\fIDefaultDeviceTimeoutSec=\fP
+.RS 4
+配置等待设备的默认超时 \&。它可以通过 /etc/fstab 和 /etc/crypttab 中的
+\fIx\-systemd\&.device\-timeout=\fP 选项按设备进行更改 (参见
+\fBsystemd.mount\fP(5)、\fBcrypttab\fP(5))\&。系统管理器中默认为 90 秒，用户管理器中默认为 90 秒 \&。
+.RE
+.PP
+\fIDefaultStartLimitIntervalSec=\fP, \fIDefaultStartLimitBurst=\fP
+.RS 4
+配置默认元启动速率限制，由 \fIStartLimitIntervalSec=\fP 和 \fIStartLimitBurst=\fP\&
+配置每个服务。有关每个服务设置的详细信息，请参见 \fBsystemd.service\fP(5)。
+\fIDefaultStartLimitIntervalSec=\fP 默认为 10s\&。 \fIDefaultStartLimitBurst=\fP 默认为
+5\&。
+.RE
+.PP
+\fIDefaultEnvironment=\fP
+.RS 4
+配置传递给所有已执行进程的环境变量 \&。采用以空格分隔的变量赋值列表 \&。有关环境变量 \& 的详细信息，请参见 \fBenviron\fP(7)。
+.sp
+支持简单的 `%`\- 说明符扩展，请参见下面的支持说明符列表 \&。
+.sp
+Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+DefaultEnvironment="VAR1=word1 word2" VAR2=word3 "VAR3=word 5 6"
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+设置三个变量 "VAR1"、"VAR2"、"VAR3"\&。
+.RE
+.PP
+\fIManagerEnvironment=\fP
+.RS 4
+采用与 \fIDefaultEnvironment=\fP 相同的参数，见上文 \&。仅为管理器进程本身设置环境变量
+\&。与用户管理器相反，这些变量不是由系统管理器生成的进程继承的，为此使用
+\fIDefaultEnvironment=\fP\&。请注意，这些变量被合并到现有的环境块中。特别是，在系统管理器的情况下，这包括内核基于内核命令行设置的变量
+\&。
+.sp
+为管理器进程设置环境变量可能有助于修改它的行为 \&。\fBsystemd\fP\& 理解的一些变量的描述参见
+\m[blue]\fBENVIRONMENT\fP\m[]\&\s-2\u[2]\d\s+2。
+.sp
+支持简单的 `%`\- 说明符扩展，请参见下面的支持说明符列表 \&。
+.RE
+.PP
+\fIDefaultCPUAccounting=\fP, \fIDefaultMemoryAccounting=\fP,
+\fIDefaultTasksAccounting=\fP, \fIDefaultIOAccounting=\fP, \fIDefaultIPAccounting=\fP
+.RS 4
+配置默认资源记帐设置，如
+\fICPUAccounting=\fP、\fIMemoryAccounting=\fP、\fITasksAccounting=\fP、\fIIOAccounting=\fP
+和 \fIIPAccounting=\fP\& 配置的每元。单位元设置的详细信息参见 \fBsystemd.resource\-control\fP(5)。
+\fIDefaultTasksAccounting=\fP 默认为 yes，\fIDefaultMemoryAccounting=\fP 默认为 yes\&。
+如果启用 CPU accounting 不 \* (Aqt 要求启用 CPU 控制器 (Linux 4\&.15 +
+使用统一层次结构进行资源控制)，\fIDefaultCPUAccounting=\fP 默认为 yes)，否则默认为 no\&。其他三个设置默认为 no\&。
+.RE
+.PP
+\fIDefaultTasksMax=\fP
+.RS 4
+配置每元 \fITasksMax=\fP 设置的默认值 \&。有关详细信息，请参见
+\fBsystemd.resource\-control\fP(5)\&。此设置适用于支持资源控制设置的所有元类型，切片单元 \& 除外。默认为
+\fIkernel\&.pid_max=\fP、\fIkernel\&.threads\-max=\fP 和根 cgroup \fIpids\&.max\fP\&
+中最小值的 15%。内核有一个默认值 \fIkernel\&.pid_max=\fP 和超过 32 核时的计数算法 \&。例如，对于默认的
+\fIkernel\&.pid_max=\fP，\fIDefaultTasksMax=\fP 默认为 4915，但在其他系统中可能更大或在 OS 容器中更小 \&。
+.RE
+.PP
+\fIDefaultLimitCPU=\fP, \fIDefaultLimitFSIZE=\fP, \fIDefaultLimitDATA=\fP,
+\fIDefaultLimitSTACK=\fP, \fIDefaultLimitCORE=\fP, \fIDefaultLimitRSS=\fP,
+\fIDefaultLimitNOFILE=\fP, \fIDefaultLimitAS=\fP, \fIDefaultLimitNPROC=\fP,
+\fIDefaultLimitMEMLOCK=\fP, \fIDefaultLimitLOCKS=\fP, \fIDefaultLimitSIGPENDING=\fP,
+\fIDefaultLimitMSGQUEUE=\fP, \fIDefaultLimitNICE=\fP, \fIDefaultLimitRTPRIO=\fP,
+\fIDefaultLimitRTTIME=\fP
+.RS 4
+这些设置控制单元执行的进程的各种默认资源限制。有关详细信息，请参见 \fBsetrlimit\fP(2)\&。使用相应的 \fILimitXXX=\fP
+指令可以在单个单元中覆盖这些设置，并且它们接受相同的参数语法，有关详细信息，请参见
+\fBsystemd.exec\fP(5)\&。请注意，这些资源限制只是单元的默认值，它们不适用于服务管理器进程 (i\&.e\&. PID 1) 本身
+\&。
+.sp
+大多数这些设置是未设置的，这意味着资源限制是从内核继承的，或者如果在容器中调用，则从容器管理器 \& 继承。但是，以下具有默认值:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fIDefaultLimitNOFILE=\fP 默认为 1024:524288\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fIDefaultLimitMEMLOCK=\fP 默认为 8M\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fIDefaultLimitCORE=\fP 没有默认值，但值得一提的是，\fIRLIMIT_CORE\fP 被 PID 1 设置为
+"infinity"，由其子级继承 \&。
+.RE
+.sp
+请注意，PID 1 中的服务管理器在内部将 \fIRLIMIT_NOFILE\fP 和 \fIRLIMIT_MEMLOCK\fP
+提高到更高的值，但是对于所有分叉的子进程，该限制将恢复为上述默认值 \&。
+.RE
+.PP
+\fIDefaultOOMPolicy=\fP
+.RS 4
+配置默认策略以响应被 Linux Out\-Of\-Memory (OOM) killer 或 \fBsystemd\-oomd\fP\&
+杀死的进程。这可用于为每元 \fIOOMPolicy=\fP 设置选择全局默认值 \&。有关详细信息，请参见
+\fBsystemd.service\fP(5)\&。请注意，此默认值不用于已打开 \fIDelegate=\fP\& 的服务。
+.RE
+.PP
+\fIDefaultOOMScoreAdjust=\fP
+.RS 4
+配置由服务管理器运行的进程的默认 OOM 分数调整。这默认为未设置 (意味着分叉进程继承服务管理器 \* (Aqs OOM
+分数调整值)，除非服务管理器是为非特权用户运行的，在这种情况下，这默认为服务管理器 \* (Aqs OOM 调整值加 100
+(这使得服务进程在内存压力下比管理器本身更容易被杀死) \&。这可用于为每元 \fIOOMScoreAdjust=\fP 设置选择全局默认值
+\&。有关详细信息，请参见 \fBsystemd.exec\fP(5)\&。请注意，此设置对服务管理器进程本身的 OOM
+分数调整值没有影响，它保留其调用时设置的原始值 \&。
+.RE
+.PP
+\fIDefaultSmackProcessLabel=\fP
+.RS 4
+以 \fBSMACK64\fP 安全标号为参数 \&。如果元 \& 中没有设置
+\fISmackProcessLabel=\fP，元执行的进程就会在这个标签下启动。有关详细信息，请参见 \fBsystemd.exec\fP(5)\&。
+.sp
+如果值为 "/"，则仅分配 \fISmackProcessLabel=\fP 指定的标签，编译时默认值将被忽略 \&。
+.RE
+.PP
+\fIReloadLimitIntervalSec=\fP, \fIReloadLimitBurst=\fP
+.RS 4
+守护进程重新加载请求的速率限制 \&。默认为未设置，并且可以随时请求任意数量的守护程序重新加载操作 \&。
+\fIReloadLimitIntervalSec=\fP 取一个以秒为单位的值来配置速率限制窗口，\fIReloadLimitBurst=\fP
+取一个正整数来配置在配置的时间窗口内允许的最大重载次数 \&。
+.RE
+.SH SPECIFIERS
+.PP
+可以在 \fIDefaultEnvironment=\fP 和 \fIManagerEnvironment=\fP 设置中使用说明符 \&。理解以下扩展:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Specifiers available\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"%a"
+T}:T{
+Architecture
+T}:T{
+A short string identifying the architecture of the local system\&. A string such as \fBx86\fP, \fBx86\-64\fP or \fBarm64\fP\&. See the architectures defined for \fIConditionArchitecture=\fP in \fBsystemd.unit\fP(5) for a full list\&.
+T}
+T{
+"%A"
+T}:T{
+Operating system image version
+T}:T{
+The operating system image version identifier of the running system, as read from the \fIIMAGE_VERSION=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%b"
+T}:T{
+Boot ID
+T}:T{
+The boot ID of the running system, formatted as string\&. See \fBrandom\fP(4) for more information\&.
+T}
+T{
+"%B"
+T}:T{
+Operating system build ID
+T}:T{
+The operating system build identifier of the running system, as read from the \fIBUILD_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%H"
+T}:T{
+Host name
+T}:T{
+The hostname of the running system\&.
+T}
+T{
+"%l"
+T}:T{
+Short host name
+T}:T{
+The hostname of the running system, truncated at the first dot to remove any domain component\&.
+T}
+T{
+"%m"
+T}:T{
+Machine ID
+T}:T{
+The machine ID of the running system, formatted as string\&. See \fBmachine\-id\fP(5) for more information\&.
+T}
+T{
+"%M"
+T}:T{
+Operating system image identifier
+T}:T{
+The operating system image identifier of the running system, as read from the \fIIMAGE_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%o"
+T}:T{
+Operating system ID
+T}:T{
+The operating system identifier of the running system, as read from the \fIID=\fP field of /etc/os\-release\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%v"
+T}:T{
+Kernel release
+T}:T{
+Identical to \fBuname \-r\fP output\&.
+T}
+T{
+"%w"
+T}:T{
+Operating system version ID
+T}:T{
+The operating system version identifier of the running system, as read from the \fIVERSION_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%W"
+T}:T{
+Operating system variant ID
+T}:T{
+The operating system variant identifier of the running system, as read from the \fIVARIANT_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%T"
+T}:T{
+Directory for temporary files
+T}:T{
+This is either /tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%V"
+T}:T{
+Directory for larger and persistent temporary files
+T}:T{
+This is either /var/tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%%"
+T}:T{
+Single percent sign
+T}:T{
+Use "%%" in place of "%" to specify a single percent sign\&.
+T}
+.TE
+.sp 1
+.SH HISTORY
+.PP
+系统 252
+.RS 4
+选项 \fIDefaultBlockIOAccounting=\fP 已弃用 \&。请切换到统一的 cgroup 层次结构 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.directives\fP(7), \fBsystemd.exec\fP(5),
+\fBsystemd.service\fP(5), \fBenviron\fP(7), \fBcapabilities\fP(7)
+.SH NOTES
+.IP " 1." 4
+无新权限标志
+.RS 4
+\%https://docs.kernel.org/userspace\-api/no_new_privs.html
+.RE
+.IP " 2." 4
+ENVIRONMENT
+.RS 4
+\%https://systemd.io/ENVIRONMENT
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

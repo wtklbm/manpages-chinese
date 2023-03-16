@@ -1,0 +1,253 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH GPM 8 "February 2002"  
+.UC 4
+.SH NAME
+gpm \- 用于虚拟控制台的剪切和粘贴实用程序和鼠标服务器
+.SH SYNOPSIS
+\fBgpm\fP [ \fIoptions\fP ]
+.br
+.SH DESCRIPTION
+这个包试图成为一个有用的鼠标服务器，用于在 Linux 控制台上运行的应用程序。 它基于 "selection"
+包，它的一些代码来自选择本身。该软件包旨在替代 "selection" 作为剪切和粘贴机制; 它还提供额外的设施。"selection"
+包使用两个鼠标按钮为 Linux 提供了第一个剪切和粘贴实现，剪切缓冲区在本文档中仍称为 "selection buffer" 或简称
+"selection"。 下面的信息是从 texinfo 文件中提取的，这是首选的信息来源。
+
+.LP
+gpm 可执行文件旨在像守护进程一样工作 (因此，gpmd 更适合它)。本节旨在描述 gpm 的命令行选项，而其内部结构将在下一节中概述。
+
+.LP
+由于 ioctl(TIOCLINUX) 系统调用的限制，gpm 必须由超级用户运行。这些限制已添加到最新的 1.1
+内核中，以修复与选择和屏幕转储相关的安全 hole。
+
+.LP
+服务器可以根据用户的喜好进行配置，任何使用鼠标的应用程序都将继承服务器的态度。从版本 1.02 到 1.19.2，任何登录系统控制台的用户都可以使用
+\-q 选项更改鼠标感觉。出于安全原因，这不再可能。
+
+.LP
+从 0.97 开始，服务器程序将自己置于后台。要终止 gpm，您只需使用 \-k cmdline 开关重新调用它，尽管 killall gpm
+可能是更好的选择。
+
+.LP
+.SH "SPECIAL COMMANDS"
+
+.LP
+1.10 版增加了在特定情况下执行特殊命令的能力。特殊命令默认为重新启动和停止系统，但用户可以指定 his/her
+个人选择。使用鼠标调用命令的功能对程序员来说是一种方便的功能，因为它允许在键盘锁定且没有网络可用于将系统恢复到正常状态时发出干净的关机。
+
+.LP
+通过三次单击左右按钮来切换特殊命令 \-\-
+在正常使用鼠标期间不太可能发生这种情况。三次单击最简单的方法是按下其中一个按钮，然后三次单击另一个按钮。切换特殊处理时，控制台上会显示一条消息
+(如果您有扬声器，扬声器会发出两次哔哔声) ; 如果用户释放所有按钮并在三秒内再次按下其中一个按钮，则执行与该按钮对应的特殊命令。
+
+.LP
+默认的特殊命令是:
+.TP 
+left button
+通过向 init 进程发送信号来重启系统
+.TP 
+middle button (if any)
+现在执行 /sbin/shutdown \-h
+.TP 
+right button
+现在执行 /sbin/shutdown \-r
+
+.LP
+\-S 命令行开关启用特殊命令处理并允许更改三个特殊命令。要接受默认命令，请使用 \-S "" (即，指定一个空参数)。
+要指定您自己的命令，请使用冒号分隔的列表来指定与左、中和右按钮关联的命令。如果任何命令为空，则将其解释为 `向 init
+进程发送信号`。除了执行外部命令外，还支持此特定操作，因为有时严重的错误会使系统无法运行到 fork;
+在这些罕见的情况下，程序员无论如何都应该能够关闭系统，而从正在运行的进程中杀死 init 是唯一的方法。
+
+.LP
+例如，\-S ":telinit 1:/sbin/halt"，将杀死 init
+与左侧按钮相关联，将单个用户与中间按钮相关联，并将系统停止与右侧按钮相关联。
+
+.LP
+系统管理员显然应该小心特殊命令，因为 gpm 以超级用户权限运行。特殊命令最适合鼠标只能由受信任的人物理访问的计算机。
+
+.LP
+.SH "COMMAND LINE OPTIONS"
+
+.LP
+可用的命令行选项如下:
+.TP 
+\-a \fBaccel\fP
+设置单个运动事件长于 \fBdelta\fP 时使用的加速度值 (参见 \-d\fB). \fP
+.TP 
+\fB\-A[limit]\fP
+在禁用选择粘贴的情况下启动。 这是一种安全措施; 对系统的合理攻击似乎是将讨厌的 shell 命令塞入选择缓冲区 (rm
+\-rf/)，包括终止换行符，然后受害者所要做的就是单击鼠标中键 ..  从 1.17.2 版本开始，这已经发展成为一种更通用的老化机制; gpm
+守护程序可以在一段时间不活动后自动禁用 (age) 选择粘贴。 要启用此模式，只需提供可选的 \fBlimit\fP 参数 (中间没有空格!
+)，该参数被解释为选择被认为有效且可粘贴的时间 (以秒为单位)。 从版本 1.15.7 开始，提供了一个名为 disable\-paste
+的简单程序。如果您允许多个用户在您的控制台上工作，则以下是对 /etc/profile 的一个很好的补充。
+
+.LP
+case $( /usr/bin/tty ) in
+.br
+/dev/tty[0\-9]*) /usr/bin/disable\-paste ;;
+.br
+esac
+.TP 
+\-b \fBbaud\fP
+设置波特率。
+.TP 
+\-B \fBsequence\fP
+设置按键顺序。123 是正常序列，左撇子可以使用 321，双键鼠标可以使用 132 (尤其是在 Emacs 中)。所有按钮排列都是允许的。
+.TP 
+\-d \fBdelta\fP
+设置增量值。当单个运动事件长于 \fBdelta\fP 时，\fBaccel\fP 用作倍数。(必须是 2 或以上)
+.TP 
+\-D
+启动时不自动进入后台运行，并将消息记录到标准错误流，而不是 syslog 机制。 这对调试很有用; 在以前的版本中，它是通过编译时选项完成的。
+.TP 
+\-g \fBnumber\fP
+使用 glidepoint 设备，通过点击模拟指定的按钮。 \fBnumber\fP 必须是 1\fB, 2\fP 或 3\fB, and refers to the button number before the \-B button remapping is performed. This option applies to the mman and ps2 decoding. No button is emulated by default because the ps2 tapping is incompatible with some normal ps2 mice\fP
+.TP 
+\fB\-h\fP
+打印命令行选项的总结。
+.TP 
+\-i \fBinterval\fP
+设置 \fBinterval\fP 用作多次点击的时间上限。如果按钮弹起和按钮按下事件之间的间隔小于
+\fBlimit\fP，则按下被视为双击或三次单击。时间以毫秒为单位。
+.TP 
+\-k 
+杀死正在运行的 gpm。busmouse 用户可以使用它在运行 X 之前终止 gpm (除非他们使用 \-R 或从内核中删除了单打开限制)。
+.TP 
+\-l \fBcharset\fP
+选择 inword() 查找表。\fBcharset\fP 参数是一个字符列表。\-\fB is used to specify a range and \e is used to escape the next character or to provide octal codes.  Only visible character can appear in charset because control characters can't appear in text\-mode video memory, whence selection is cut. \fP
+.TP 
+\fB\-m filename\fP
+选择要打开的鼠标文件。必须在 \-t 和 \-o 之前。
+.TP 
+\-M
+启用多模式。守护进程将读取两个不同的鼠标设备。 任何后续选项都将引用第二个设备，而任何前面的选项将用于第一个设备。该选项自动强制开启中继器 (\-R)
+选项。
+.TP 
+\-o \fBlist\-of\-extra\-options\fP
+该选项的工作方式类似于 mount 的 `\-o` 选项; 它用于指定特定于每种鼠标类型的 `额外选项` 列表。该列表以逗号分隔。串行初始化使用选项
+dtr、rts 或两者来切换调制解调器线路，例如与早期 gpm 版本兼容; 但请注意，使用与非普通串行鼠标类型关联的 \-o dtr 现在可能会产生错误。
+顺便说一下，在 \-m 之后和 \-t 之后使用 \-o。
+
+.TP 
+\-p
+选择时强制指针可见。这是 selection\-1.7 的行为，但有时会令人困惑。 默认情况下不显示指针，这也可能造成混淆。
+.TP 
+\-r \fBnumber\fP
+设置响应度。更高的响应速度用于更快的游标移动。
+.TP 
+\-R[\fBname\fP]
+使 gpm 充当转发器: 在图形模式下接收到的任何鼠标数据都将在协议 \fBname\fP 中的 fifo /dev/gpmdata 上生成，作为可选参数给出
+(中间没有空格! )。 原则上，您可以使用与 \-t 选项相同的名称，尽管在某些协议中重复使用可能暂时不会实现。 此外，您可以指定 raw\fB as the name, to repeat the mouse data byte by byte, without any protocol translation. If name is omitted, it defaults to msc. Using gpm in repeater mode, you can configure the X server to use its fifo as a mouse device. This option is useful for bus\-mouse owners to override the single\-open limitation. It is also an easy way to manage those stupid dual\-mode mice which force you to keep the middle button down while changing video mode. The option is forced on by the \-M option.\fP
+.TP 
+\fB\-s number\fP
+设置鼠标设备的采样率。
+.TP 
+\-S \fBcommands\fP
+启用特殊命令处理，并可选择将自定义命令指定为冒号分隔的列表。有关特殊命令的详细说明，请参见上文。
+.TP 
+\-t \fBname\fP
+设置鼠标类型。使用 \-t 帮助获取允许类型的列表。从版本 1.18.1 开始，该列表还显示哪些协议可用作中继器 (参见上面的 \-R)，方法是用星号
+(\*(lq*\*(rq) 标记它们。
+
+使用 \-m 选择鼠标设备后，使用 \-t。
+.TP 
+\-v
+打印版本信息并退出。
+.TP 
+\-2
+强制两个按钮。这意味着中间的按钮 (如果有的话) 将被视为正确的按钮。
+.TP 
+\-3
+强制三个按钮。默认情况下，鼠标被认为是一个 2 键鼠标，直到按下中间按钮。如果有三个按钮，右边的用于扩展选择，中间的用于粘贴。 当心: 如果您使用带有
+2 键鼠标的 \-3 选项，您将无法粘贴选择。
+
+.LP
+.SH OPERATION
+
+.LP
+要选择文本，请按鼠标左键并拖动鼠标。 要在同一个或另一个控制台中粘贴文本，请按中间按钮。 右键用于扩展选择，就像在 `xterm' 中一样。
+
+.LP
+双键鼠标使用右键粘贴文本。
+
+.LP
+双击和三次点击选择整个单词和整行。建议使用 `\-p` 选项以获得最佳视觉反馈。
+
+.LP
+如果突出显示一行内容后的尾随空格，并且该行的其余部分没有其他文本，则该行的其余部分将被自动选中。如果选择了多行，则每行上突出显示的尾随空格将从选择缓冲区中删除。
+
+.LP
+保留选择的虚拟控制台上的任何输出都将从屏幕上清除突出显示的选择，以保持显示的完整性，尽管粘贴缓冲区的内容不会受到影响。
+
+.LP
+如果控制虚拟控制台处于图形模式，例如在运行 X11 时，选择机制将被禁用，并在恢复文本模式时重新启用。(但请参见下面的错误部分。)
+
+.LP
+.SH BUGS
+gpm 服务器在与 X 交互时可能会出现问题: 如果您的鼠标是单开设备 (即总线鼠标)，您应该在启动 X 之前终止 gpm，或者使用 \-R 选项
+(见上文)。 要终止 gpm，只需调用 gpm \-k。此问题不适用于串行鼠标。
+
+.LP
+gpm 的两个实例不能在同一个系统上运行。如果您有两只鼠标，请使用 \-M 选项 (见上文)。
+
+.LP
+当前控制台处于图形模式时，gpm 会休眠直到返回文本模式 (除非使用
+\-R)。因此，它不会回复客户。无论如何，渴望鼠标的客户不太可能在隐藏的控制台中突然出现。
+
+.LP
+gpm 附带的客户端未更新，因此使用它们时存在潜在的安全风险。
+
+.LP
+.SH AUTHORS
+.nf
+Andrew Haylett <ajh@gec\-mrc.co.uk> (原选码)
+Ian Zimmerman <itz@speakeasy.org> (老维护者)
+Alessandro Rubini <rubini@linux.it> (老维护者 (仍然有很大帮助) )
+尼科肖特柳斯 <nico\-gpm2008@schottelius.org> (maintainer)
+
+许多贡献者，包括选择和 gpm。
+.fi
+
+.LP
+.SH MAINTAINERS
+
+.LP
+目前的维护者是 Nico Schottelius。但是如果没有 Alessandro Rubini 和邮件列表的帮助，我不可能维护 gpm。可以在
+gpm@lists.linux.it 下访问开发邮件列表。有关列表的更多信息位于 gpm 源代码分发的 README 文件部分。
+
+.LP
+.SH FILES
+.nf
+/var/run/gpm.pid The PID of the running gpm
+/dev/gpmctl     A control socket for clients
+/dev/gpmdata    The fifo written to by a \fBrepeater\fP (`\-R') daemon.
+.fi
+
+.LP
+.SH "SEE ALSO"
+.nf
+ \fBmev(1)\fP gpm 守护进程的示例客户端。
+ \fBgpm\-root(1)\fP Control\-Mouse 事件的处理程序。
+
+.fi
+关于 `gpm' 的信息文件，它提供了更完整的信息并解释了如何编写 gpm 客户端。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

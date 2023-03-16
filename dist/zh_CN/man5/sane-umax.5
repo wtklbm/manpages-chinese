@@ -1,0 +1,235 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-umax 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-umax
+
+.SH NAME
+sane\-umax\-UMAX 扫描仪的 SANE 后端
+
+.SH "ABOUT THIS FILE"
+
+此文件只是对 SANE 的 \fBsane\-umax\fP 后端的简要描述! 有关详细信息，请查看 sane\-umax\-doc.html (它包含在 sane
+源目录和 \fBxsane\fP(1) 在线帮助中) !
+
+.SH DESCRIPTION
+
+\fBsane\-umax\fP 库实现了一个 SANE 后端，可以访问多个 UMAX\-SCSI 扫描仪和一些 Linotype Hell SCSI
+扫描仪，并行 \- 不支持 (并且可能永远不会) 支持 USB 扫描仪!
+
+\fBI suggest you hold one hand on the power\-button of the scanner while you try the first scans!\fP
+
+.SH CONFIGURATION
+
+该后端的配置文件位于 \fI/etc/sane.d/umax.conf\fP.
+
+其内容是与 UMAX 和 UMAX 兼容扫描仪对应的设备名称列表。空行和以哈希标记 (#) 开头的行将被忽略。示例配置文件如下所示:
+
+.nf
+ # 这是一条评论
+ #
+ 选项 scsi\-maxqueue 4
+ 选项 scsi\-buffer\-size\-min 65536
+ 选项 scsi\-buffer\-size\-max 131072
+ 选项扫描线 40
+ 选项预览行 10
+ 选项 scsi\-maxqueue 2
+ 选项 execute\-request\-sense 0
+ 选项 force\-preview\-bit\-rgb 0
+ 选项慢速 \-1
+ 选项 care\-about\-smearing \-1
+ 选项校准全 ccd \-1
+ 选项校准宽度偏移 \-1
+ 选项校准字节像素 \-1
+ 选项 exposure\-time\-rgb\-bind \-1
+ 选项反转阴影数据 \-1
+ 选项灯控制可用 0
+ 选项 gamma\-lsb\-padded 0
+ /dev/sge
+ #scsi Vendor Model Type Bus 通道 ID LUN
+ # 以下扫描器支持灯控
+ 选项灯控制可用 1
+ scsi UMAX*扫描仪** * * *
+ # /dev/scanner 上的扫描器不支持灯管控制
+ 选项灯控制可用 0
+ /dev/scanner
+.fi
+
+.TP 
+execute\-request\-sense:
+值: 0 = 禁用，1 = 启用
+.br
+default = 0
+.br
+如果设置为 1，则在 \fBumax_do_calibration\fP() 中调用 \fBumax_do_request_sense\fP()。
+这个可以挂系统，但是一直启用到这个版本。
+.TP 
+scsi\-buffer\-size\-min, scsi\-buffer\-size\-max:
+值: 4096\-1048576
+.br
+默认最小值 = 32768，最大值 = 131072
+.br
+特别是最小值非常重要。
+如果此值设置得太小，后端将无法将伽玛表发送到扫描仪或进行正确的颜色校准。这可能会导致奇怪的颜色效果。如果最小值设置得太大，则后端无法分配请求的 SCSI
+缓冲区大小并因内存不足错误而中止。默认值为 32KB，对于某些扫描仪，应将其增加到 64KB。
+.TP 
+scan\-lines, preview\-lines:
+值: 1\-65535
+.br
+默认值: 扫描线 = 40，预览线 = 10
+.br
+定义扫描到一个缓冲区中的最大行数
+.TP 
+force\-preview\-bit\-rgb:
+值: 0 = 禁用，1 = 启用
+.br
+default = 0
+.br
+在 rgb 真实扫描中设置预览位
+.TP 
+slow\-speed, care\-about\-smearing:
+值: \-1 = 自动，0 = 禁用，1 = 启用
+.br
+default = \-1
+.br
+一些扫描仪需要的危险选项。
+.br
+除非您真的知道自己在做什么，否则不要更改这些选项，否则您可能会使用无效值来销售您的扫描仪。
+.TP 
+calibration\-full\-ccd:
+值: \-1 = 自动，0 = 禁用，1 = 启用
+.br
+default = \-1
+.br
+对 ccd 的每个像素而不是选定的图像进行校准
+.TP 
+calibration\-width\-offset:
+取值: \-99999 = 自动，> \-99999 设定值
+.br
+为 image/ccd 的计算宽度添加一个偏移量
+.TP 
+calibration\-bytes\-pixel:
+值: \-1 = 禁用，0 = 未设置，1=1 byte/pixel，2=2 bytes/pixel
+.br
+使用每个像素 #字节进行校准
+.TP 
+exposure\-time\-rgb\-bind:
+值: \-1 = 由驱动程序自动设置 \- 如果已知，0 = 禁用 (自己选择红色、绿色和蓝色)，1 = 启用 (红色、绿色和蓝色的值相同)
+.TP 
+invert\-shading\-data:
+值: \-1 = 由驱动程序自动设置 \- 如果已知，0 = 禁用，1 = 启用
+.br
+default = \-1
+.br
+在将着色数据发送回扫描仪之前反转着色数据
+.TP 
+lamp\-control\-available:
+值: 0 = 由驱动程序自动设置 \- 如果已知，1 = 可用
+.br
+default = 0
+.TP 
+gamma\-lsb\-padded:
+值: \-1 = 由驱动程序自动设置 \- 如果已知，0 = 伽玛数据被 msb 填充，1 = 伽玛数据被 lsb 填充
+.br
+default = \-1
+.TP 
+handle\-bad\-sense\-error:
+值: 0 = 处理为设备忙，1 = 处理正常，2 = 处理为 i/o 错误，3 = 忽略错误代码 \- 继续检测处理程序
+.br
+default = 0
+.TP 
+scsi\-maxqueue:
+值: 1..# (编译时定义的最大值)
+.br
+default = 2
+.br
+大多数 SCSI 驱动程序允许深度为 2 个命令的内部命令队列。在大多数情况下，当您增加此值时它不会改善任何事情。当您的 SCSI
+驱动程序不支持任何命令队列时，您可以尝试将此值设置为 1.
+
+.PP
+特殊设备名称必须是泛型 SCSI 设备或指向此类设备的符号链接。 要了解您的扫描仪分配给了哪个设备以及您必须如何设置该设备的权限，请查看
+\fBsane\-scsi\fP(5)。
+
+.SH "SCSI ADAPTER TIPS"
+
+Linux 不能很好地支持一些 UMAX 扫描仪附带的 ISA\-SCSI 适配器 (我建议不要使用它)，根本不支持一些 UMAX 扫描仪附带的
+PCI\-SCSI 适配器 (因为据我所知)。在其他平台上，不支持这些 SCSI 适配器。因此，您通常需要购买您的平台支持的另一个 SCSI
+适配器。有关详细信息，请参见适用于您的平台的相关硬件常见问题解答和操作指南。
+
+UMAX 扫描仪在扫描时确实会阻塞 SCSI 总线几秒钟。没有必要将扫描仪连接到它自己的 SCSI 适配器。但是如果您的 SCSI 硬盘
+(例如，如果您的计算机是文件服务器) 或其他 SCSI 设备需要较短的响应时间，我建议您为 UMAX 扫描仪使用自己的 SCSI 适配器。
+
+如果您的 UMAX 扫描仪有任何问题，请检查您的 SCSI 链 (电缆长度、端接...)。
+
+另请详见: \fBsane\-scsi\fP(5)
+
+.SH FILES
+
+.TP 
+The backend configuration file:
+\fI/etc/sane.d/umax.conf\fP
+.TP 
+The static library implementing this backend:
+\fI/usr/lib/sane/libsane\-umax.a\fP
+.TP 
+The shared library implementing this backend:
+\fI/usr/lib/sane/libsane\-umax.so\fP (存在于支持动态加载的系统上)
+
+.SH ENVIRONMENT
+
+.TP 
+\fBSANE_DEBUG_UMAX\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。例如，值 128 请求打印所有调试输出。较小的级别减少冗长。
+\fBSANE_DEBUG_UMAX\fP 值:
+
+.nf
+\f (CRNumber 备注
+ 0 打印重要错误 (每次打印)
+ 1 打印错误
+ 2 打印感
+ 3 打印警告
+ 4 打印扫描仪 \- 查询
+ 5 打印信息
+ 6 打印不太重要的信息
+ 7 打印调用过程
+ 8 打印 reader_process 消息
+ 10 打印称为 sane\-init\-routines
+ 11 打印称为 sane\-procedures
+ 12 打印理智的信息
+ 13 打印 sane option\-control messages\fR
+.fi
+
+.TP 
+Example:
+导出 SANE_DEBUG_UMAX=8
+
+.SH BUGS
+大于 600 dpi 的 X 分辨率有时会导致问题。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5)
+
+.SH AUTHOR
+奥利弗劳赫
+
+.SH EMAIL\-CONTACT
+\fIOliver.Rauch@Rauch\-Domain.DE\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,107 @@
+.\" -*- coding: UTF-8 -*-
+.\" Written by Ralf Baechle (ralf@waldorf-gmbh.de),
+.\" Copyright (c) 1994, 1995 Waldorf GMBH
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH cacheflush 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+cacheflush \- 刷新指令或者数据缓存的内容
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/cachectl.h>\fP
+.PP
+\fBint cacheflush(void \fP\fIaddr\fP\fB[.\fP\fInbytes\fP\fB], int \fP\fInbytes\fP\fB, int \fP\fIcache\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: 在某些体系结构上，此系统没有 glibc 包装器调用; 见注释。
+.SH DESCRIPTION
+\fBcacheflush\fP() 为 \fIaddr\fP 到 \fI(addr+nbytes\-1)\fP 范围内的用户地址刷新指示的 cache(s) 的内容。
+\fIcache\fP 可能是以下之一:
+.TP 
+\fBICACHE\fP
+刷新指令缓存。
+.TP 
+\fBDCACHE\fP
+写回内存并使受影响的有效缓存行无效。
+.TP 
+\fBBCACHE\fP
+与 \fB(ICACHE|DCACHE)\fP 相同。
+.SH "RETURN VALUE"
+\fBcacheflush\fP() 成功返回 0。 出错时，它返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+部分或全部地址范围 \fIaddr\fP 到 \fI(addr+nbytes\-1)\fP 不可访问。
+.TP 
+\fBEINVAL\fP
+\fIcache\fP 不是 \fBICACHE\fP、\fBDCACHE\fP 或 \fBBCACHE\fP 之一 (但请参见 BUGS)。
+.SH STANDARDS
+历史上，这个系统调用在所有 MIPS UNIX 变体包括 RISC/os、IRIX、Ultrix、NetBSD、OpenBSD 和 FreeBSD
+(以及一些非 UNIX MIPS 操作系统) 上可用，所以这个调用在 MIPS 操作系统中的存在是事实上的标准。
+.SS Caveat
+\fBcacheflush\fP() 不应用于可移植的程序。 在 Linux 上，这个调用最先出现在 MIPS 架构上，但是现在 Linux
+在其他一些架构上提供了 \fBcacheflush\fP() 系统调用，只是参数不同。
+.SH NOTES
+.SS "Architecture\-specific variants"
+glibc 为该系统调用提供了一个包装器，其原型如 SYNOPSIS 所示，适用于以下体系结构: ARC、CSKY、MIPS 和 NIOS2。
+.PP
+在其他一些架构上，Linux 提供了这个系统调用，有不同的参数:
+.TP 
+M68K:
+.nf
+\fBint cacheflush(unsigned long \fP\fIaddr\fP\fB, int \fP\fIscope\fP\fB, int \fP\fIcache\fP\fB,\fP
+\fB               unsigned long \fP\fIlen\fP\fB);\fP
+.fi
+.TP 
+SH:
+.nf
+\fBint cacheflush(unsigned long \fP\fIaddr\fP\fB, unsigned long \fP\fIlen\fP\fB, int \fP\fIop\fP\fB);\fP
+.fi
+.TP 
+NDS32:
+.nf
+\fBint cacheflush(unsigned int \fP\fIstart\fP\fB, unsigned int \fP\fIend\fP\fB, int \fP\fIcache\fP\fB);\fP
+.fi
+.PP
+在上述架构上，glibc 没有为这个系统提供包装器调用; 使用 \fBsyscall\fP(2) 调用它。
+.SS "GCC alternative"
+除非您需要这个系统调用提供的更细粒度的控制，否则您可能想要使用 GCC 内置的任数
+\fB__builtin___clear_cache\fP()，它提供了一个跨平台的可移植接口，由 GCC 和兼容的编译器支持:
+.PP
+.in +4n
+.EX
+\fBvoid __builtin___clear_cache(void *\fP\fIbegin\fP\fB, void *\fP\fIend\fP\fB);\fP
+.EE
+.in
+.PP
+在不需要指令缓存刷新的平台上，\fB__builtin___clear_cache\fP() 无效。
+.PP
+\fINote\fP: 在一些 GCC 兼容的编译器上，这个内置函数的原型使用 \fIchar *\fP 而不是 \fIvoid *\fP 作为参数。
+.SH BUGS
+早于 Linux 2.6.11 的 Linux 内核忽略 \fIaddr\fP 和 \fInbytes\fP 参数，使这个函数相当昂贵。 因此，整个缓存总是被刷新。
+.PP
+此函数始终表现为 \fBBCACHE\fP 已传递给 \fIcache\fP 参数，并且不对 \fIcache\fP 参数进行任何错误检查。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

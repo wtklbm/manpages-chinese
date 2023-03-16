@@ -1,0 +1,260 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2012, Cyrill Gorcunov <gorcunov@openvz.org>
+.\" and Copyright (C) 2012, 2016, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Kernel commit d97b46a64674a267bc41c9e16132ee2a98c3347d
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH kcmp 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+kcmp \- 比较两个进程以确定它们是否共享内核资源
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/kcmp.h>\fP       /* Definition of \fBKCMP_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_kcmp, pid_t \fP\fIpid1\fP\fB, pid_t \fP\fIpid2\fP\fB, int \fP\fItype\fP\fB,\fP
+\fB            unsigned long \fP\fIidx1\fP\fB, unsigned long \fP\fIidx2\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBkcmp\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBkcmp\fP() 系统调用可以用来检查 \fIpid1\fP 和 \fIpid2\fP 标识的两个进程是否共享一个内核资源，如虚拟内存、文件描述符等。
+.PP
+使用 \fBkcmp\fP() 的权限由 ptrace 访问模式控制 \fBPTRACE_MODE_READ_REALCREDS\fP 检查 \fIpid1\fP 和
+\fIpid2\fP; 请参见 \fBptrace\fP(2)。
+.PP
+\fItype\fP 参数指定要在两个进程中比较的资源。 它具有以下值之一:
+.TP 
+\fBKCMP_FILE\fP
+检查进程 \fIpid1\fP 中的文件描述符 \fIidx1\fP 是否引用相同的打开文件描述 (参见 \fBopen\fP(2)) 作为进程 \fIpid2\fP
+中的文件描述符 \fIidx2\fP。 引用相同打开文件描述的两个文件描述符的存在可能是 \fBdup\fP(2) (和类似的) \fBfork\fP(2)
+的结果，或者通过域套接字传递文件描述符 (参见 \fBunix\fP(7)).
+.TP 
+\fBKCMP_FILES\fP
+检查进程是否共享同一组打开的文件描述符。 参数 \fIidx1\fP 和 \fIidx2\fP 被忽略。 请参见 \fBclone\fP(2) 中对
+\fBCLONE_FILES\fP 标志的讨论。
+.TP 
+\fBKCMP_FS\fP
+检查进程是否共享相同的文件系统信息 (即文件模式创建掩码、工作目录和文件系统根目录)。 参数 \fIidx1\fP 和 \fIidx2\fP 被忽略。 请参见
+\fBclone\fP(2) 中对 \fBCLONE_FS\fP 标志的讨论。
+.TP 
+\fBKCMP_IO\fP
+检查进程是否共享 I/O 上下文。 参数 \fIidx1\fP 和 \fIidx2\fP 被忽略。 请参见 \fBclone\fP(2) 中对 \fBCLONE_IO\fP
+标志的讨论。
+.TP 
+\fBKCMP_SIGHAND\fP
+检查进程是否共享同一个信号配置表。 参数 \fIidx1\fP 和 \fIidx2\fP 被忽略。 请参见 \fBclone\fP(2) 中对
+\fBCLONE_SIGHAND\fP 标志的讨论。
+.TP 
+\fBKCMP_SYSVSEM\fP
+检查进程是否共享相同的 System\V 信号量撤消操作列表。 参数 \fIidx1\fP 和 \fIidx2\fP 被忽略。 请参见 \fBclone\fP(2) 中对
+\fBCLONE_SYSVSEM\fP 标志的讨论。
+.TP 
+\fBKCMP_VM\fP
+检查进程是否共享相同的地址空间。 参数 \fIidx1\fP 和 \fIidx2\fP 被忽略。 请参见 \fBclone\fP(2) 中对 \fBCLONE_VM\fP
+标志的讨论。
+.TP 
+\fBKCMP_EPOLL_TFD\fP (since Linux 4.13)
+.\" commit 0791e3644e5ef21646fe565b9061788d05ec71d4
+检查进程 \fIpid1\fP 的文件描述符 \fIidx1\fP 是否存在于进程 \fIpid2\fP 的 \fIidx2\fP 所描述的 \fBepoll\fP(7) 实例中。
+参数 \fIidx2\fP 是指向描述目标文件的结构体的指针。 这个结构体有以下形式:
+.PP
+.in +4n
+.EX
+struct kcmp_epoll_slot {
+    __u32 efd;
+    __u32 tfd;
+    __u64 toff;
+};
+.EE
+.in
+.PP
+在这个结构体中，\fIefd\fP 是从 \fBepoll_create\fP(2) 返回的 epoll 文件描述符，\fItfd\fP
+是目标文件描述符编号，\fItoff\fP 是从零开始计数的目标文件偏移量。
+可以使用相同的文件描述符编号注册多个不同的目标，设置特定的偏移量有助于调查每个目标。
+.PP
+请注意，\fBkcmp\fP() 无法防止进程当前正在运行时可能发生的误报。 应该通过发送 \fBSIGSTOP\fP 来停止进程 (在检查此系统之前请参见
+\fBsignal\fP(7)) 调用以获得有意义的结果。
+.SH "RETURN VALUE"
+对 \fBkcmp\fP() 调用成功的返回值只是内核指针算术比较的结果 (内核比较资源时，使用的是它们的内存地址)。
+.PP
+最简单的解释方法是考虑一个例子。 假设 \fIv1\fP 和 \fIv2\fP 是相应资源的地址，则返回值为以下之一:
+.RS
+.TP 
+\fB0\fP
+\fIv1\fP 等于 \fIv2\fP; 换句话说，这两个进程共享资源。
+.TP 
+\fB1\fP
+\fIv1\fP 小于 \fIv2\fP。
+.TP 
+\fB2\fP
+\fIv1\fP 大于 \fIv2\fP。
+.TP 
+\fB3\fP
+\fIv1\fP 不等于 \fIv2\fP，但无法获得订购信息。
+.RE
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+\fBkcmp\fP() 旨在返回适合排序的值。 如果需要比较大量文件描述符，这将特别方便。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fItype\fP 是 \fBKCMP_FILE\fP，\fIfd1\fP 或 \fIfd2\fP 不是打开的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIidx2\fP 寻址的 epoll 槽在用户地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fItype\fP 无效。
+.TP 
+\fBENOENT\fP
+\fBepoll\fP(7) 实例中不存在目标文件。
+.TP 
+\fBEPERM\fP
+权限不足，无法检查进程资源。 检查不属于您的进程需要 \fBCAP_SYS_PTRACE\fP 功能。 其他 ptrace 限制也可能适用，例如
+\fBCONFIG_SECURITY_YAMA\fP，当 \fI/proc/sys/kernel/yama/ptrace_scope\fP 为 2 时，将
+\fBkcmp\fP() 限制为子进程; 请参见 \fBptrace\fP(2)。
+.TP 
+\fBESRCH\fP
+进程 \fIpid1\fP 或 \fIpid2\fP 不存在。
+.SH VERSIONS
+\fBkcmp\fP() 系统调用最早出现在 Linux 3.5。
+.SH STANDARDS
+\fBkcmp\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+在 Linux 5.12 之前，这个系统调用只有在内核配置了 \fBCONFIG_CHECKPOINT_RESTORE\fP
+的情况下才可用，因为系统调用的初衷是为了 checkpoint/restore in user space (CRIU) feature。
+(此系统调用的替代方案是通过 \fBproc\fP(5) 文件系统公开合适的进程信息; 出于安全原因，这被认为是不合适的。) 从 Linux 5.12
+开始，如果内核配置了 \fBCONFIG_KCMP\fP，则此系统调用也可用。
+.PP
+请参见 \fBclone\fP(2)，了解有关本页所指共享资源的一些背景信息。
+.SH EXAMPLES
+下面的程序使用 \fBkcmp\fP() 来测试成对的文件描述符是否引用相同的打开文件描述。 该程序测试文件描述符对的不同情况，如程序输出中所述。
+程序运行示例如下:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+父 PID 为 1144
+父在 FD 3 上打开文件
+
+fork() 的子节点 PID 是 1145
+	比较来自不同进程的重复 FD:
+		kcmp(1145, 1144, KCMP_FILE, 3, 3) ==> same
+子节点在 FD 4 上打开文件
+	比较同一进程中不同 open () 的 FD:
+		kcmp(1145, 1145, KCMP_FILE, 3, 4) ==> 不同
+子节点复制 FD 3 以创建 FD 5
+	比较同一进程中的重复 FD:
+		kcmp(1145, 1145, KCMP_FILE, 3, 5) ==> same
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (kcmp.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <fcntl.h>
+#include <linux/kcmp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+static int
+kcmp(pid_t pid1, pid_t pid2, int type,
+     unsigned long idx1, unsigned long idx2)
+{
+    return syscall(SYS_kcmp, pid1, pid2, type, idx1, idx2);
+}
+
+static void
+test_kcmp(char *msg, pid_t pid1, pid_t pid2, int fd_a, int fd_b)
+{
+    printf("\et%s\en", msg);
+    printf("\et\etkcmp(%jd, %jd, KCMP_FILE, %d, %d) ==> %s\en",
+           (intmax_t) pid1, (intmax_t) pid2, fd_a, fd_b,
+           (kcmp(pid1, pid2, KCMP_FILE, fd_a, fd_b) == 0) ?
+                        "same" : "different");
+}
+
+int
+main(void)
+{
+    int                fd1, fd2, fd3;
+    static const char  pathname[] = "/tmp/kcmp.test";
+
+    fd1 = open(pathname, O_CREAT | O_RDWR, 0600);
+    if (fd1 == \-1)
+        err(EXIT_FAILURE, "open");
+
+    printf("Parent PID is %jd\en", (intmax_t) getpid());
+    printf("Parent opened file on FD %d\en\en", fd1);
+
+    switch (fork()) {
+    case \-1:
+        err(EXIT_FAILURE, "fork");
+
+    case 0:
+        printf("PID of child of fork() is %jd\en", (intmax_t) getpid());
+
+        test_kcmp("Compare duplicate FDs from different processes:",
+                  getpid(), getppid(), fd1, fd1);
+
+        fd2 = open(pathname, O_CREAT | O_RDWR, 0600);
+        if (fd2 == \-1)
+            err(EXIT_FAILURE, "open");
+        printf("Child opened file on FD %d\en", fd2);
+
+        test_kcmp("Compare FDs from distinct open()s in same process:",
+                  getpid(), getpid(), fd1, fd2);
+
+        fd3 = dup(fd1);
+        if (fd3 == \-1)
+            err(EXIT_FAILURE, "dup");
+        printf("Child duplicated FD %d to create FD %d\en", fd1, fd3);
+
+        test_kcmp("Compare duplicated FDs in same process:",
+                  getpid(), getpid(), fd1, fd3);
+        break;
+
+    default:
+        wait(NULL);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBunshare\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

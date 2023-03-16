@@ -1,0 +1,257 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"  Copyright 2002 walter harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"  adapted glibc info page
+.\"
+.\"  This should run as 'Guru Meditation' (amiga joke :)
+.\"  The function is quite complex and deserves an example
+.\"
+.\"  Polished, aeb, 2003-11-01
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fmtmsg 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fmtmsg \- 打印格式化的错误信息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fmtmsg.h>\fP
+.PP
+\fBint fmtmsg(long \fP\fIclassification\fP\fB, const char *\fP\fIlabel\fP\fB,\fP
+\fB           int \fP\fIseverity\fP\fB, const char *\fP\fItext\fP\fB,\fP
+\fB           const char *\fP\fIaction\fP\fB, const char *\fP\fItag\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+此函数在 \fIclassification\fP 参数中指定的 device(s) 上显示由其参数描述的消息。 对于写入 \fIstderr\fP
+的消息，格式取决于 \fBMSGVERB\fP 环境变量。
+.PP
+\fIlabel\fP 参数标识消息的来源。 该字符串必须由两个冒号分隔的部分组成，其中第一部分不超过 10 个字符，第二部分不超过 14 个字符。
+.PP
+\fItext\fP 参数描述了错误的情况。
+.PP
+\fIaction\fP 参数描述了从错误中恢复的可能步骤。 如果打印出来，则以 "TO FIX: " 为前缀。
+.PP
+\fItag\fP 参数是对联机文档的引用，可以在其中找到更多信息。 它应包含 \fIlabel\fP 值和唯一标识号。
+.SS "Dummy arguments"
+每个参数都可以有一个虚拟值。 虚拟分类值 \fBMM_NULLMC\fP (0L) 未指定任何输出，因此不打印任何内容。 虚拟严重性值 \fBNO_SEV\fP
+(0) 表示未提供严重性。 值 \fBMM_NULLLBL\fP、\fBMM_NULLTXT\fP、\fBMM_NULLACT\fP、\fBMM_NULLTAG\fP 是
+\fI((char\ *)\ 0)\fP (空字符串) 的同义词，\fBMM_NULLSEV\fP 是 \fBNO_SEV\fP 的同义词。
+.SS "The classification argument"
+\fIclassification\fP 参数是描述 4 种信息的值的总和。
+.PP
+第一个值定义输出通道。
+.TP  12n
+\fBMM_PRINT\fP
+输出到 \fIstderr\fP。
+.TP 
+\fBMM_CONSOLE\fP
+输出到系统控制台。
+.TP 
+\fBMM_PRINT | MM_CONSOLE\fP
+输出到两者。
+.PP
+第二个值是错误的来源:
+.TP  12n
+\fBMM_HARD\fP
+发生硬件错误。
+.TP 
+\fBMM_FIRM\fP
+出现固件错误。
+.TP 
+\fBMM_SOFT\fP
+出现软件错误。
+.PP
+第三个值对问题的检测器进行编码:
+.TP  12n
+\fBMM_APPL\fP
+它由应用程序检测到。
+.TP 
+\fBMM_UTIL\fP
+它由实用程序检测到。
+.TP 
+\fBMM_OPSYS\fP
+它是由操作系统检测到的。
+.PP
+第四个值显示事件的严重性:
+.TP  12n
+\fBMM_RECOVER\fP
+这是一个可恢复的错误。
+.TP 
+\fBMM_NRECOV\fP
+这是一个不可恢复的错误。
+.SS "The severity argument"
+\fIseverity\fP 参数可以采用以下值之一:
+.TP  12n
+\fBMM_NOSEV\fP
+没有打印严重性。
+.TP 
+\fBMM_HALT\fP
+该值打印为 HALT。
+.TP 
+\fBMM_ERROR\fP
+该值打印为 ERROR。
+.TP 
+\fBMM_WARNING\fP
+此值打印为警告。
+.TP 
+\fBMM_INFO\fP
+该值打印为 INFO。
+.PP
+数值介于 0 和 4 之间。 使用 \fBaddseverity\fP(3) 或环境变量 \fBSEV_LEVEL\fP，您可以添加更多级别和字符串进行打印。
+.SH "RETURN VALUE"
+函数可以返回 4 个值:
+.TP  12n
+\fBMM_OK\fP
+一切都很顺利。
+.TP 
+\fBMM_NOTOK\fP
+彻底失败。
+.TP 
+\fBMM_NOMSG\fP
+写入 \fIstderr\fP 时出错。
+.TP 
+\fBMM_NOCON\fP
+写入控制台时出错。
+.SH ENVIRONMENT
+环境变量 \fBMSGVERB\fP (`消息详细程度`) 可用于抑制 \fIstderr\fP 的部分输出。 (它不影响控制台的输出。)
+当这个变量被定义时，它是非 NULL 的，并且是一个以冒号分隔的有效关键字列表，那么只打印与这些关键字对应的消息部分。 有效关键字为
+"label"、"severity"、"text"、"action" 和 "tag"。
+.PP
+环境变量 \fBSEV_LEVEL\fP 可用于引入新的严重性级别。 默认情况下，只有上述五个严重级别可用。 任何其他数值都会使 \fBfmtmsg\fP()
+不打印任何内容。 如果用户将 \fBSEV_LEVEL\fP 的格式设置为
+.PP
+.RS
+SEV_LEVEL=[description[:description[:...]]]
+.RE
+.PP
+在第一个调用到 \fBfmtmsg\fP() 之前的过程环境中，其中每个描述的形式
+.PP
+.RS
+severity\-keyword,level,printstring
+.RE
+.PP
+那么 \fBfmtmsg\fP() 也将接受指示的级别值 (除了标准级别 0\[en] 4 之外)，并在出现此类级别时使用指示的打印字符串。
+.PP
+\fBfmtmsg\fP() 不使用 severity\-keyword 部分，但它必须存在。 级别部分是数字的字符串表示形式。 数值必须是大于 4 的数字。
+该值必须用在 \fBfmtmsg\fP() 的严重性参数中才能选择该类。 无法覆盖任何预定义的类。 printstring 是 \fBfmtmsg\fP()
+处理此类消息时打印的字符串。
+.SH VERSIONS
+自 glibc 2.1 以来提供了 \fBfmtmsg\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBfmtmsg\fP()
+T}	Thread safety	T{
+glibc\ >=\ 2.16: MT\-Safe;
+glibc\ <\ 2.16: MT\-Unsafe
+T}
+.TE
+.hy
+.ad
+.sp 1
+.PP
+在 glibc 2.16 之前，\fBfmtmsg\fP() 的函数使用了一个没有保护的静态变量，所以不是线程安全的。
+.PP
+.\" Modified in commit 7724defcf8873116fe4efab256596861eef21a94
+从 glibc 2.16 开始，\fBfmtmsg\fP() 的函数使用锁来保护静态变量，所以是线程安全的。
+.SH STANDARDS
+函数 \fBfmtmsg\fP() 和 \fBaddseverity\fP(3)，以及环境变量 \fBMSGVERB\fP 和 \fBSEV_LEVEL\fP 来自
+System V。
+.PP
+POSIX.1\-2001 和 POSIX.1\-2008 中描述了函数 \fBfmtmsg\fP() 和环境变量 \fBMSGVERB\fP。
+.SH NOTES
+System V 和 UnixWare 手册页告诉我们，这些函数已被 "pfmt() and addsev()" 或 "pfmt(), vpfmt(),
+lfmt(), and vlfmt()" 取代，稍后将被删除。
+.SH EXAMPLES
+.\" SRC BEGIN (fmtmsg.c)
+.EX
+#include <fmtmsg.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    long class = MM_PRINT | MM_SOFT | MM_OPSYS | MM_RECOVER;
+    int err;
+
+    err = fmtmsg(class, "util\-linux:mount", MM_ERROR,
+                 "unknown mount option", "See mount(8).",
+                 "util\-linux:mount:017");
+    switch (err) {
+    case MM_OK:
+        break;   
+    case MM_NOTOK:
+        printf("Nothing printed\en");
+        break;
+    case MM_NOMSG:
+        printf("Nothing printed to stderr\en");
+        break;
+    case MM_NOCON:
+        printf("No console output\en");
+        break;
+    default:
+        printf("Unknown error from fmtmsg()\en");
+    }
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.PP
+输出应该是:
+.PP
+.in +4n
+.EX
+util\-linux:mount: 错误: 未知的挂载选项
+修复: 参见 mount(8)。 util\-linux:mount:017
+.EE
+.in
+.PP
+之后
+.PP
+.in +4n
+.EX
+MSGVERB=text:action; export MSGVERB
+.EE
+.in
+.PP
+输出变为:
+.PP
+.in +4n
+.EX
+未知挂载选项
+修复: 参见 mount(8)。
+.EE
+.in
+.SH "SEE ALSO"
+\fBaddseverity\fP(3), \fBperror\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

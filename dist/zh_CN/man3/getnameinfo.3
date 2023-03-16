@@ -1,0 +1,240 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" %%%LICENSE_START(PUBLIC_DOMAIN)
+.\" This page is in the public domain.
+.\" %%%LICENSE_END
+.\"
+.\" Almost all details are from RFC 2553.
+.\"
+.\" 2004-12-14, mtk, Added EAI_OVERFLOW error
+.\" 2004-12-14 Fixed description of error return
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getnameinfo 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getnameinfo \- 以与协议无关的方式进行地址到名称的转换
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <netdb.h>\fP
+.PP
+\fBint getnameinfo(const struct sockaddr *restrict \fP\fIaddr\fP\fB, socklen_t \fP\fIaddrlen\fP\fB,\fP
+\fB                char \fP\fIhost\fP\fB[_Nullable restrict .\fP\fIhostlen\fP\fB],\fP
+\fB                socklen_t \fP\fIhostlen\fP\fB,\fP
+\fB                char \fP\fIserv\fP\fB[_Nullable restrict .\fP\fIservlen\fP\fB],\fP
+\fB                socklen_t \fP\fIservlen\fP\fB,\fP
+\fB                int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetnameinfo\fP():
+.nf
+    由于 glibc 2.22:
+        _POSIX_C_SOURCE >= 200112L
+    glibc 2.21 及更早版本:
+        _POSIX_C_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetnameinfo\fP() 函数是 \fBgetaddrinfo\fP(3): 的逆函数，它以协议无关的方式将套接字地址转换为相应的主机和服务。
+它结合了 \fBgethostbyaddr\fP(3) 和 \fBgetservbyport\fP(3)
+的功能，但与那些函数不同的是，\fBgetnameinfo\fP() 是可重入的，允许程序消除 IPv4 与 IPv6 的依赖关系。
+.PP
+\fIaddr\fP 参数是指向泛型套接字地址结构体的指针 (类型为 \fIsockaddr_in\fP 或 \fIsockaddr_in6\fP)，大小为
+\fIaddrlen\fP，它保存输入的 IP 地址和端口号。 参数 \fIhost\fP 和 \fIserv\fP 是指向调用者分配的缓冲区 (大小分别为
+\fIhostlen\fP 和 \fIservlen\fP) 的指针，\fBgetnameinfo\fP() 将分别包含主机名和服务名的空终止字符串放入其中。
+.PP
+调用者可以通过提供 NULL \fIhost\fP (或 \fIserv\fP) 参数或零 \fIhostlen\fP (或 \fIservlen\fP) 参数)
+来指定不需要主机名 (或服务名称)。 但是，必须至少请求主机名或服务名之一。
+.PP
+\fIflags\fP 参数修改 \fBgetnameinfo\fP() 的行为如下:
+.TP 
+\fBNI_NAMEREQD\fP
+如果设置，则在无法确定主机名时返回错误。
+.TP 
+\fBNI_DGRAM\fP
+如果设置，则该服务是基于数据报 (UDP) 而不是基于流 (TCP)。 这是为 UDP 和 TCP 提供不同服务的少数端口 (512\[en]514)
+所必需的。
+.TP 
+\fBNI_NOFQDN\fP
+如果设置，则仅返回本地主机的完全限定域名的主机名部分。
+.TP 
+\fBNI_NUMERICHOST\fP
+.\" For example, by calling
+.\" .BR inet_ntop ()
+.\" instead of
+.\" .BR gethostbyaddr ().
+.\" POSIX.1-2001 TC1 has NI_NUMERICSCOPE, but glibc doesn't have it.
+如果设置，则返回主机名的数字形式。 (当未设置时，如果无法确定节点名称，这仍然会发生。)
+.TP 
+\fBNI_NUMERICSERV\fP
+如果设置，则返回服务地址的数字形式。 (未设置时，如果无法确定服务名称，仍会发生这种情况。)
+.SS "Extensions to getnameinfo() for Internationalized Domain Names"
+从 glibc 2.3.4 开始，\fBgetnameinfo\fP() 已扩展为有选择地允许主机名透明地与国际化域名 (IDN) 格式相互转换 (请参见
+RFC 3490，\fIInternationalizing Domain Names in Applications (IDNA)\fP).
+定义了三个新标志:
+.TP 
+\fBNI_IDN\fP
+如果使用此标志，则在查找过程中找到的名称会在必要时从 IDN 格式转换为区域设置的编码。 纯 ASCII
+名称不受转换的影响，这使得该标志可用于现有程序和环境。
+.TP 
+\fBNI_IDN_ALLOW_UNASSIGNED\fP, \fBNI_IDN_USE_STD3_ASCII_RULES\fP
+设置这些标志将分别启用 IDNA_ALLOW_UNASSIGNED (允许未分配的 Unicode 代码点) 和
+IDNA_USE_STD3_ASCII_RULES (检查输出以确保它是符合 STD3 的主机名) 标志以用于 IDNA 处理。
+.SH "RETURN VALUE"
+.\" FIXME glibc defines the following additional errors, some which
+.\" can probably be returned by getnameinfo(); they need to
+.\" be documented.
+.\"
+.\"     #ifdef __USE_GNU
+.\"     #define EAI_INPROGRESS  -100  /* Processing request in progress.  */
+.\"     #define EAI_CANCELED    -101  /* Request canceled.  */
+.\"     #define EAI_NOTCANCELED -102  /* Request not canceled.  */
+.\"     #define EAI_ALLDONE     -103  /* All requests done.  */
+.\"     #define EAI_INTR        -104  /* Interrupted by a signal.  */
+.\"     #define EAI_IDN_ENCODE  -105  /* IDN encoding failed.  */
+.\"     #endif
+成功时，将返回 0，并且节点和服务名称 (如果有请求) 将填充以空字符结尾的字符串，可能会被截断以适应指定的缓冲区长度。
+出错时，返回以下非零错误代码之一:
+.TP 
+\fBEAI_AGAIN\fP
+此时无法解析该名称。 稍后再试。
+.TP 
+\fBEAI_BADFLAGS\fP
+\fIflags\fP 参数值无效。
+.TP 
+\fBEAI_FAIL\fP
+发生不可恢复的错误。
+.TP 
+\fBEAI_FAMILY\fP
+地址族未被识别，或者地址长度对于指定的族无效。
+.TP 
+\fBEAI_MEMORY\fP
+内存不足。
+.TP 
+\fBEAI_NONAME\fP
+该名称无法解析提供的参数。 \fBNI_NAMEREQD\fP 已设置且无法找到主机名，或者既未请求主机名也未请求服务名。
+.TP 
+\fBEAI_OVERFLOW\fP
+\fIhost\fP 或 \fIserv\fP 指向的缓冲区太小。
+.TP 
+\fBEAI_SYSTEM\fP
+发生系统错误。 错误代码可以在 \fIerrno\fP 中找到。
+.PP
+\fBgai_strerror\fP(3) 函数将这些错误代码转换为人类可读的字符串，适用于错误报告。
+.SH FILES
+\fI/etc/hosts\fP
+.br
+\fI/etc/nsswitch.conf\fP
+.br
+\fI/etc/resolv.conf\fP
+.SH VERSIONS
+自 glibc 2.1 以来提供了 \fBgetnameinfo\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetnameinfo\fP()
+T}	Thread safety	MT\-Safe env locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, RFC\ 2553.
+.SH NOTES
+为了帮助程序人员为提供的缓冲区选择合理的大小，\fI<netdb.h>\fP 定义了常量
+.PP
+.in +4n
+.EX
+#define NI_MAXHOST      1025
+#define NI_MAXSERV      32
+.EE
+.in
+.PP
+自 glibc 2.8 起，仅当定义了合适的特性测试宏时才会公开这些定义，即: \fB_GNU_SOURCE\fP、\fB_DEFAULT_SOURCE\fP (自
+glibc 2.19 起) 或 (在 glibc 版本中直至并包括 2.19) \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP。
+.PP
+前者是最近版本的 BIND 的 \fI<arpa/nameser.h>\fP 头文件中的常量 \fBMAXDNAME\fP。 后者是基于当前
+Assigned Numbers RFC 中列出的服务的猜测。
+.PP
+在 glibc 2.2 之前，\fIhostlen\fP 和 \fIservlen\fP 参数被键入为 \fIsize_t\fP。
+.SH EXAMPLES
+以下代码尝试获取给定套接字地址的数字主机名和服务名称。 请注意，没有针对特定地址族的硬编码引用。
+.PP
+.in +4n
+.EX
+struct sockaddr *addr;      /* input */
+socklen_t addrlen;          /* input */
+char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+
+if (getnameinfo(addr, addrlen, hbuf, sizeof(hbuf), sbuf,
+            sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV) == 0)
+    printf("host=%s, serv=%s\en", hbuf, sbuf);
+.EE
+.in
+.PP
+以下版本检查套接字地址是否具有反向地址映射。
+.PP
+.in +4n
+.EX
+struct sockaddr *addr;      /* input */
+socklen_t addrlen;          /* input */
+char hbuf[NI_MAXHOST];
+
+if (getnameinfo(addr, addrlen, hbuf, sizeof(hbuf),
+            空，0，NI_NAMEREQD))
+    printf("could not resolve hostname");
+else
+    printf("host=%s\en", hbuf);
+.EE
+.in
+.PP
+可以在 \fBgetaddrinfo\fP(3) 中找到使用 \fBgetnameinfo\fP() 的示例程序。
+.SH "SEE ALSO"
+\fBaccept\fP(2), \fBgetpeername\fP(2), \fBgetsockname\fP(2), \fBrecvfrom\fP(2),
+\fBsocket\fP(2), \fBgetaddrinfo\fP(3), \fBgethostbyaddr\fP(3), \fBgetservbyname\fP(3),
+\fBgetservbyport\fP(3), \fBinet_ntop\fP(3), \fBhosts\fP(5), \fBservices\fP(5),
+\fBhostname\fP(7), \fBnamed\fP(8)
+.PP
+R.\& Gilligan, S.\& Thomson, J.\& Bound and W.\& Stevens, \fIBasic Socket Interface Extensions for IPv6\fP, RFC\ 2553, March 1999.
+.PP
+Tatsuya Jinmei 和 Atsushi Onoe，\fIAn Extension of Format for IPv6 Scoped Addresses\fP，网络草稿，进行中
+.UR ftp://ftp.ietf.org\:/internet\-drafts\:/draft\-ietf\-ipngwg\-scopedaddr\-format\-02.txt
+.UE .
+.PP
+Craig Metz，\fIProtocol Independence Using the Sockets API\fP，freenix 会议记录: 2000
+年 USENIX 年度技术会议，2000 年 6 月
+.ad l
+.UR http://www.usenix.org\:/publications\:/library\:/proceedings\:/usenix2000\:/freenix\:/metzprotocol.html
+.UE .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

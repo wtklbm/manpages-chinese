@@ -1,0 +1,174 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\"
+.\" Modified 1993-03-29, David Metcalfe
+.\" Modified 1993-04-28, Lars Wirzenius
+.\" Modified 1993-07-24, Rik Faith (faith@cs.unc.edu)
+.\" Modified 1995-05-18, Rik Faith (faith@cs.unc.edu) to add
+.\"          better discussion of problems with rand on other systems.
+.\"          (Thanks to Esa Hyyti{ (ehyytia@snakemail.hut.fi).)
+.\" Modified 1998-04-10, Nicolás Lichtmaier <nick@debian.org>
+.\"          with contribution from Francesco Potorti <F.Potorti@cnuce.cnr.it>
+.\" Modified 2003-11-15, aeb, added rand_r
+.\" 2010-09-13, mtk, added example program
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rand 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+rand, rand_r, srand \- 伪随机数生成器
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint rand(void);\fP
+\fBvoid srand(unsigned int \fP\fIseed\fP\fB);\fP
+.PP
+\fB[[deprecated]] int rand_r(unsigned int *\fP\fIseedp\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBrand_r\fP():
+.nf
+    由于 glibc 2.24:
+        _POSIX_C_SOURCE >= 199506L
+    glibc 2.23 及更早版本
+        _POSIX_C_SOURCE
+.fi
+.SH DESCRIPTION
+\fBrand\fP() 函数返回 0 到 \fBRAND_MAX\fP 范围内的伪随机整数 (即数学范围 [0,\\fBRAND_MAX\fP]).
+.PP
+\fBsrand\fP() 函数将其参数设置为 seed，以便 \fBrand\fP() 返回一个新的伪随机整数序列。 这些序列可以通过使用相同的 seed 值调用
+\fBsrand\fP() 来重复。
+.PP
+如果未提供 seed 值，则 \fBrand\fP() 函数自动使用值为 1.
+.PP
+函数 \fBrand\fP() 不可重入，因为它使用在每个调用上修改的隐藏状态。 这可能只是下一个调用要使用的 seed 值，或者它可能是更复杂的东西。
+为了在线程应用程序中获得可重现的行为，这个状态必须明确; 这可以使用可重入函数 \fBrand_r\fP() 来完成。
+.PP
+与 \fBrand\fP() 一样，\fBrand_r\fP() 返回范围为 [0,\\fBRAND_MAX\fP] 的伪随机整数。 \fIseedp\fP 参数是指向
+\fIunsigned int\fP 的指针，用于存储调用之间的状态。 如果调用 \fBrand_r\fP() 时使用与 \fIseedp\fP
+指向的整数相同的初始值，并且该值在两次调用之间没有修改，那么将产生相同的伪随机序列。
+.PP
+\fBrand_r\fP() 的 \fIseedp\fP 参数所指向的值只提供了非常少量的状态，所以这个函数将是一个弱伪随机数生成器。 请尝试使用
+\fBdrand48_r\fP(3)。
+.SH "RETURN VALUE"
+\fBrand\fP() 和 \fBrand_r\fP() 函数返回 0 到 \fBRAND_MAX\fP (inclusive) 之间的值。 \fBsrand\fP()
+函数不返回任何值。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBrand\fP(),
+\fBrand_r\fP(),
+\fBsrand\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+函数 \fBrand\fP() 和 \fBsrand\fP() 符合 SVr4、4.3BSD、C99、POSIX.1\-2001。 函数 \fBrand_r\fP() 来自
+POSIX.1\-2001。 POSIX.1\-2008 将 \fBrand_r\fP() 标记为已过时。
+.SH NOTES
+Linux C 库中的 \fBrand\fP() 和 \fBsrand\fP() 版本使用与 \fBrandom\fP(3) 和 \fBsrandom\fP(3)
+相同的随机数生成器，因此低位应与高位一样随机。 然而，在较旧的 \fBrand\fP()
+实现中，以及在不同系统上的当前实现中，低位比特的随机性远低于高位比特。 当需要良好的随机性时，请勿在旨在便携的应用程序中使用此函数。 (改为使用
+\fBrandom\fP(3)。)
+.SH EXAMPLES
+POSIX.1\-2001 给出了以下 \fBrand\fP() 和 \fBsrand\fP() 的实现示例，当需要在两台不同机器上使用相同序列时可能有用。
+.PP
+.in +4n
+.EX
+static unsigned long next = 1;
+
+/* RAND_MAX assumed to be 32767 */
+int myrand(void) {
+    next = next * 1103515245 + 12345;
+    return((unsigned)(next/65536) % 32768);
+}
+
+void mysrand(unsigned int seed) {
+    next = seed;
+}
+.EE
+.in
+.PP
+以下程序可用于显示给定特定 seed 时 \fBrand\fP() 生成的伪随机序列。 当 seed 为 \fI\-1\fP 时，程序使用随机的 seed。
+.PP
+.in +4n
+.\" SRC BEGIN (rand.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    int           r;
+    unsigned int  seed, nloops;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <seed> <nloops>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    seed = atoi(argv[1]);
+    nloops = atoi(argv[2]);
+
+    if (seed == \-1) {
+        seed = arc4random();
+        printf("seed: %u\en", seed);
+    }
+
+    srand(seed);
+    for (unsigned int j = 0; j < nloops; j++) {
+        r =  rand();
+        printf("%d\en", r);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.SH "SEE ALSO"
+\fBdrand48\fP(3), \fBrandom\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,315 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: runuser
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: User Commands
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RUNUSER 1 2022\-05\-11 "util\-linux 2.38.1" "User Commands"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+runuser \- 使用替代用户和组 ID 运行命令
+.SH SYNOPSIS
+.sp
+\fBrunuser\fP [options] \fB\-u\fP \fIuser\fP [[\-\-] \fIcommand\fP [\fIargument\fP...]]
+.sp
+\fBrunuser\fP [options] [\fB\-\fP] [\fIuser\fP [\fIargument\fP...]]
+.SH DESCRIPTION
+.sp
+\fBrunuser\fP 可用于运行具有替代用户和组 ID 的命令。如果未给出选项 \fB\-u\fP，则 \fBrunuser\fP 回退到
+\fBsu\fP\-compatible 语义并执行 shell。命令 \fBrunuser\fP 和 \fBsu\fP 之间的区别在于 \fBrunuser\fP
+不要求输入密码 (因为它可能仅由 root 用户执行) 并且它使用不同的 PAM 配置。命令 \fBrunuser\fP 不必安装 set\-user\-ID
+权限。
+.sp
+如果不需要 PAM 会话，那么推荐的解决方案是使用 \fBsetpriv\fP(1) 命令。
+.sp
+当没有参数调用时，\fBrunuser\fP 默认运行交互式 shell 作为 \fIroot\fP。
+.sp
+为了向后兼容，\fBrunuser\fP 默认不更改当前目录并仅设置环境变量 \fBHOME\fP 和 \fBSHELL\fP (如果目标 \fIuser\fP 不是
+root，则加上 \fBUSER\fP 和 \fBLOGNAME\fP)。此版本的 \fBrunuser\fP 使用 PAM 进行会话管理。
+.sp
+请注意，\fBrunuser\fP 在所有情况下都使用 PAM (pam_getenvlist()) 进行最终环境修改。\fB\-\-login\fP 和
+\fB\-\-preserve\-environment\fP 等命令行选项会在环境被 PAM 修改之前影响环境。
+.sp
+由于版本 2.38 \fBrunuser\fP 重置了进程资源限制
+RLIMIT_NICE、RLIMIT_RTPRIO、RLIMIT_FSIZE、RLIMIT_AS 和 RLIMIT_NOFILE。
+.SH OPTIONS
+.sp
+\fB\-c\fP, \fB\-\-command\fP=\fIcommand\fP
+.RS 4
+使用 \fB\-c\fP 选项将 \fIcommand\fP 传递给 shell。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-fast\fP
+.RS 4
+将 \fB\-f\fP 传递给 shell，这可能有用也可能没有用，具体取决于 shell。
+.RE
+.sp
+\fB\-g\fP, \fB\-\-group\fP=\fIgroup\fP
+.RS 4
+要使用的主要组。此选项仅允许 root 用户使用。
+.RE
+.sp
+\fB\-G\fP, \fB\-\-supp\-group\fP=\fIgroup\fP
+.RS 4
+指定补充组。此选项仅对 root 用户可用。如果未指定选项 \fB\-\-group\fP，则第一个指定的补充组也用作主要组。
+.RE
+.sp
+\fB\-\fP, \fB\-l\fP, \fB\-\-login\fP
+.RS 4
+使用类似于真实登录的环境将 shell 作为登录 shell 启动:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+清除除 \fBTERM\fP 和 \fB\-\-whitelist\-environment\fP 指定的变量外的所有环境变量
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+初始化环境变量 \fBHOME\fP、\fBSHELL\fP、\fBUSER\fP、\fBLOGNAME\fP 和 \fBPATH\fP
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+更改目标用户 \(cqs 主目录
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+将 shell 的 argv[0] 设置为 \(aq\fB\-\fP\(aq，以使 shell 成为登录名 shell
+.RE
+.RE
+.sp
+\fB\-P\fP, \fB\-\-pty\fP
+.RS 4
+为会话创建一个伪终端。独立终端提供更好的安全性，因为用户不与原始会话共享终端。这可用于避免 TIOCSTI ioctl
+终端注入和其他针对终端文件描述符的安全攻击。整个会话也可以移到后台 (例如，\fBrunuser \-\-pty\fP \fB\-u\fP \fIusername\fP
+\fB\-\-\fP \fIcommand\fP \fB&\fP). 如果启用伪终端，则 \fBrunuser\fP 将作为会话之间的代理 (同步 stdin 和 stdout)。
+.sp
+此特性主要用于交互式会话。如果标准输入不是终端，而是管道 (例如 \fBecho "date" | runuser \-\-pty \-u\fP
+\fIuser\fP))，则禁用伪终端的 \fBECHO\fP 标志以避免输出混乱。
+.RE
+.sp
+\fB\-m\fP, \fB\-p\fP, \fB\-\-preserve\-environment\fP
+.RS 4
+保留整个环境，即不要设置 \fBHOME\fP、\fBSHELL\fP、\fBUSER\fP 或 \fBLOGNAME\fP。如果指定选项 \fB\-\-login\fP，则忽略该选项。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-shell\fP=\fIshell\fP
+.RS 4
+运行指定的 \fIshell\fP 而不是默认值。要运行的 shell 根据以下规则依次选择:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+用 \fB\-\-shell\fP 指定的 shell
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+如果使用 \fB\-\-preserve\-environment\fP 选项，则在环境变量 \fBSHELL\fP 中指定的 shell
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+目标用户的 passwd 条目中列出的 shell
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+/bin/sh
+.sp
+如果目标用户有一个受限的 shell (即没有在 \fI/etc/shells\fP) 中列出，那么 \fB\-\-shell\fP 选项和 \fBSHELL\fP
+环境变量将被忽略，除非调用用户是 root。
+.RE
+.RE
+.sp
+\fB\-\-session\-command=\fP\fIcommand\fP
+.RS 4
+与 \fB\-c\fP 相同，但不创建新会话。(Discouraged.)
+.RE
+.sp
+\fB\-w\fP, \fB\-\-whitelist\-environment\fP=\fIlist\fP
+.RS 4
+Don\(cqt reset the environment 变量在为 \fB\-\-login\fP 清除环境时以逗号分隔的 \fIlist\fP
+中指定。对于环境变量 \fBHOME\fP、\fBSHELL\fP、\fBUSER\fP、\fBLOGNAME\fP 和 \fBPATH\fP，白名单将被忽略。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH "CONFIG FILES"
+.sp
+\fBrunuser\fP 读取 \fI/etc/default/runuser\fP 和 \fI/etc/login.defs\fP 配置文件。以下配置项与
+\fBrunuser\fP: 相关
+.sp
+\fBENV_PATH\fP (string)
+.RS 4
+为普通用户定义 PATH 环境变量。默认值为 \fI/usr/local/bin:/bin:/usr/bin\fP。
+.RE
+.sp
+\fBENV_ROOTPATH\fP (string), \fBENV_SUPATH\fP (string)
+.RS 4
+为 root 定义 \fBPATH\fP 环境变量。\fBENV_SUPATH\fP 优先。默认值为
+\fI/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin\fP。
+.RE
+.sp
+\fBALWAYS_SET_PATH\fP (boolean)
+.RS 4
+如果设置为 \fIyes\fP 且未指定 \fB\-\-login\fP 和 \fB\-\-preserve\-environment\fP，\fBrunuser\fP 将初始化
+\fBPATH\fP。
+.RE
+.sp
+\fI/bin\fP 和 \fI/sbin\fP 合并到 \fI/usr\fP 的系统上，环境变量 \fBPATH\fP 可能不同; 该变量还受 \fB\-\-login\fP
+命令行选项和 PAM 系统设置 (例如 \fBpam_env\fP(8)).PAM) 的影响。
+.SH "EXIT STATUS"
+.sp
+\fBrunuser\fP 通常返回它执行的命令的退出状态。如果命令被信号终止，\fBrunuser\fP 返回信号号加 128。
+.sp
+\fBrunuser\fP 自身生成的退出状态:
+.sp
+1
+.RS 4
+执行请求命令前泛型错误
+.RE
+.sp
+126
+.RS 4
+无法执行请求的命令
+.RE
+.sp
+127
+.RS 4
+找不到请求的命令
+.RE
+.SH FILES
+.sp
+\fI/etc/pam.d/runuser\fP
+.RS 4
+默认 PAM 配置文件
+.RE
+.sp
+\fI/etc/pam.d/runuser\-l\fP
+.RS 4
+PAM 配置文件 (如果指定了 \fB\-\-login\fP)
+.RE
+.sp
+\fI/etc/default/runuser\fP
+.RS 4
+runuser 特定的 logindef 配置文件
+.RE
+.sp
+\fI/etc/login.defs\fP
+.RS 4
+全局 logindef 配置文件
+.RE
+.SH HISTORY
+.sp
+此 \fBrunuser\fP 命令派生自 coreutils\(aq \fBsu\fP，它基于 David MacKenzie 的实现，以及 Dan Walsh
+的 Fedora \fBrunuser\fP 命令。
+.SH "SEE ALSO"
+.sp
+\fBsetpriv\fP(1), \fBsu\fP(1), \fBlogin.defs\fP(5), \fBshells\fP(5), \fBpam\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBrunuser\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

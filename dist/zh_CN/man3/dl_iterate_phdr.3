@@ -1,0 +1,273 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003, 2017 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dl_iterate_phdr 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+dl_iterate_phdr \- 遍历共享对象列表
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <link.h>\fP
+.PP
+\fBint dl_iterate_phdr(\fP
+\fB          int (*\fP\fIcallback\fP\fB)(struct dl_phdr_info *\fP\fIinfo\fP\fB,\fP
+\fB                          size_t \fP\fIsize\fP\fB, void *\fP\fIdata\fP\fB),\fP
+\fB          void *\fP\fIdata\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBdl_iterate_phdr\fP() 函数允许应用程序在运行时查询以找出它加载了哪些共享对象，以及它们的加载顺序。
+.PP
+\fBdl_iterate_phdr\fP() 函数遍历应用程序的共享对象列表并为每个对象调用一次函数 \fIcallback\fP，直到所有共享对象都已处理或
+\fIcallback\fP 返回非零值。
+.PP
+每个对 \fIcallback\fP 的调用接收三个参数: \fIinfo\fP，它是指向包含共享对象信息的结构体的指针; \fIsize\fP，也就是 \fIinfo\fP
+指向的结构体的大小; 和 \fIdata\fP，它是调用程序作为第二个参数传递的任何值的副本 (在调用 \fBdl_iterate_phdr\fP() 时也称为
+\fIdata\fP)。
+.PP
+\fIinfo\fP 参数是以下类型的结构体:
+.PP
+.in +4n
+.EX
+struct dl_phdr_info {
+    ElfW(Addr) dlpi_ 地址;  /* Base address of 目的 */
+    const char       *dlpi_name;   /* (Null\-terminated) 的名称
+                                     object */
+    const ElfW(Phdr) *dlpi_phdr;   /* 指向数组的指针
+                                     ELF 程序头
+                                     对于这个对象 */
+    ElfW(Half)        dlpi_phnum; /* # of items in \fIdlpi_phdr\fP */
+
+    /* The following fields were added in glibc 2.4, after the first
+       version of this structure was available.  Check the \fIsize\fP
+       argument passed to the dl_iterate_phdr callback to determine
+       whether or not each later member is available.  */
+
+    unsigned long long dlpi_adds;
+                    /* 当一个新对象可能时递增
+                       已添加 */
+    unsigned long long dlpi_subs;
+                    /* 当对象可能增加时递增
+                       已被删除 */
+    size_t dlpi_tls_modid;
+                    /* 如果有 PT_TLS 段，它的模块
+                       在 TLS 重定位中使用的 ID，否则为零 */
+    void  *dlpi_tls_data;
+                    /* 调用线程 \[aq] s 实例的地址
+                       此模块的 \[aq] s PT_TLS 段，如果它有
+                       一个，它已在调用中分配
+                       线程，否则为空指针 */
+};
+.EE
+.in
+.PP
+(\fIElfW\fP() 宏定义将其参数转换为适合硬件架构的 ELF 数据类型的名称。例如，在 32 位平台上，\fIElfW(Addr)\fP 产生数据类型名称
+\fIElf32_Addr\fP。有关这些类型的更多信息，请参见 \fI<elf.h>\fP 和 \fI<link.h>\fP 头文件。)
+.PP
+\fIdlpi_addr\fP 字段指示共享对象的基地址 (即共享对象的虚拟内存地址与该对象在加载它的文件中的偏移量之间的差异)。 \fIdlpi_name\fP
+字段是一个以 null 结尾的字符串，给出从中加载共享对象的路径名。
+.PP
+要理解 \fIdlpi_phdr\fP 和 \fIdlpi_phnum\fP 字段的含义，我们需要知道一个 ELF
+共享对象由许多段组成，每个段都有一个相应的程序头来描述该段。 \fIdlpi_phdr\fP 字段是指向此共享对象的程序头数组的指针。
+\fIdlpi_phnum\fP 字段指示此数组的大小。
+.PP
+这些程序头是以下形式的结构:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf32_Word  p_type;    /* Segment type */
+    Elf32_Off   p_offset;  /* Segment file offset */
+    Elf32_Addr  p_vaddr;   /* Segment virtual address */
+    Elf32_Addr  p_paddr;   /* Segment physical address */
+    Elf32_Word  p_filesz;  /* Segment size in file */
+    Elf32_Word  p_memsz;   /* Segment size in memory */
+    Elf32_Word  p_flags;   /* Segment flags */
+    Elf32_Word  p_align;   /* Segment alignment */
+} Elf32_Phdr;
+.EE
+.in
+.PP
+请注意，我们可以使用以下公式计算特定程序头 \fIx\fP 在虚拟内存中的位置:
+.PP
+.in +4n
+.EX
+addr == info\->dlpi_addr + info\->dlpi_phdr[x].p_vaddr;
+.EE
+.in
+.PP
+\fIp_type\fP 的可能值包括以下 (有关详细信息，请参见 \fI<elf.h>\fP) :
+.PP
+.in +4n
+.EX
+.\" For PT_GNU_STACK, see http://www.airs.com/blog/archives/518
+#define PT_LOAD         1    /* Loadable program segment */
+#define PT_DYNAMIC      2    /* Dynamic linking information */
+#define PT_INTERP       3    /* Program interpreter */
+#define PT_NOTE         4    /* Auxiliary information */
+#define PT_SHLIB        5    /* Reserved */
+#define PT_PHDR         6    /* Entry for header table itself */
+#define PT_TLS          7    /* Thread\-local storage segment */
+#define PT_GNU_EH_FRAME 0x6474e550 /* GCC .eh_frame_hdr segment */
+#define PT_GNU_STACK  0x6474e551 /* Indicates stack executability */
+#define PT_GNU_RELRO  0x6474e552 /* Read\-only after relocation */
+.EE
+.in
+.SH "RETURN VALUE"
+\fBdl_iterate_phdr\fP() 函数返回上次调用返回给 \fIcallback\fP 的任何值。
+.SH VERSIONS
+自 glibc 2.2.4 以来一直支持 \fBdl_iterate_phdr\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBdl_iterate_phdr\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBdl_iterate_phdr\fP() 函数未在任何标准中指定。 各种其他系统提供此函数的版本，但返回的 \fIdl_phdr_info\fP
+结构体的详细信息有所不同。 在 BSD 和 Solaris 上，除了其他特定于实现的字段外，结构体还包括字段
+\fIdlpi_addr\fP、\fIdlpi_name\fP、\fIdlpi_phdr\fP 和 \fIdlpi_phnum\fP。
+.SH NOTES
+C 库的 Future 版本可能会向 \fIdl_phdr_info\fP 结构体添加更多字段; 在那种情况下，\fIsize\fP
+参数提供了一种机制，用于回调函数来发现它是否在具有添加字段的系统上运行。
+.PP
+\fIcallback\fP 访问的第一个对象是主程序。 对于主程序，\fIdlpi_name\fP 字段将为空字符串。
+.SH EXAMPLES
+以下程序显示它已加载的共享对象的路径名列表。 对于每个共享对象，程序列出了每个对象 ELF 段的一些信息 (虚拟地址、大小、标志和类型)。
+.PP
+以下 shell 会话演示了程序在 x86\-64 系统上产生的输出。 显示输出的第一个共享对象 (名称为空字符串) 是主程序。
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+Name: "" (9 segments)
+     0: [      0x400040; memsz:    1f8] flags: 0x5;  PT_PHDR
+     1: [      0x400238; memsz:     1c] flags: 0x4;  PT_INTERP
+     2: [      0x400000; memsz:    ac4] flags: 0x5;  PT_LOAD      
+     3: [      0x600e10; memsz:    240] flags: 0x6;  PT_LOAD
+     4: [      0x600e28; memsz:    1d0] flags: 0x6;  PT_DYNAMIC   
+     5: [      0x400254; memsz:     44] flags: 0x4;  PT_NOTE   
+     6: [      0x400970; memsz:     3c] flags: 0x4;  PT_GNU_EH_FRAME
+     7: [         (nil); memsz:      0] flags: 0x6;  PT_GNU_STACK
+     8: [      0x600e10; memsz:    1f0] flags: 0x4;  PT_GNU_RELRO
+Name: "linux\-vdso.so.1" (4 segments)
+     0: [0x7ffc6edd1000; memsz:    e89] flags: 0x5;  PT_LOAD
+     1: [0x7ffc6edd1360; memsz:    110] flags: 0x4;  PT_DYNAMIC
+     2: [0x7ffc6edd17b0; memsz:     3c] flags: 0x4;  PT_NOTE
+     3: [0x7ffc6edd17ec; memsz:     3c] flags: 0x4;  PT_GNU_EH_FRAME
+Name: "/lib64/libc.so.6" (10 segments)
+     0: [0x7f55712ce040; memsz:    230] flags: 0x5;  PT_PHDR
+     1: [0x7f557145b980; memsz:     1c] flags: 0x4;  PT_INTERP
+     2: [0x7f55712ce000; memsz: 1b6a5c] flags: 0x5;  PT_LOAD
+     3: [0x7f55716857a0; memsz:   9240] flags: 0x6;  PT_LOAD
+     4: [0x7f5571688b80; memsz:    1f0] flags: 0x6;  PT_DYNAMIC
+     5: [0x7f55712ce270; memsz:     44] flags: 0x4;  PT_NOTE
+     6: [0x7f55716857a0; memsz:     78] flags: 0x4;  PT_TLS
+     7: [0x7f557145b99c; memsz:   544c] flags: 0x4;  PT_GNU_EH_FRAME
+     8: [0x7f55712ce000; memsz:      0] flags: 0x6;  PT_GNU_STACK
+     9: [0x7f55716857a0; memsz:   3860] flags: 0x4;  PT_GNU_RELRO
+Name: "/lib64/ld\-linux\-x86\-64.so.2" (7 segments)
+     0: [0x7f557168f000; memsz:  20828] flags: 0x5;  PT_LOAD
+     1: [0x7f55718afba0; memsz:   15a8] flags: 0x6;  PT_LOAD
+     2: [0x7f55718afe10; memsz:    190] flags: 0x6;  PT_DYNAMIC
+     3: [0x7f557168f1c8; memsz:     24] flags: 0x4;  PT_NOTE
+     4: [0x7f55716acec4; memsz:    604] flags: 0x4;  PT_GNU_EH_FRAME
+     5: [0x7f557168f000; memsz:      0] flags: 0x6;  PT_GNU_STACK
+     6: [0x7f55718afba0; memsz:    460] flags: 0x4;  PT_GNU_RELRO
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (dl_iterate_phdr.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <link.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+static int
+callback(struct dl_phdr_info *info, size_t size, void *data)
+{
+    char *type;
+    int p_type;
+
+    printf("Name: \e"%s\e" (%d segments)\en", info\->dlpi_name,
+               info\->dlpi_phnum);
+
+    for (size_t j = 0; j < info\->dlpi_phnum; j++) {
+        p_type = info\->dlpi_phdr[j].p_type;
+        type =  (p_type == PT_LOAD) ? "PT_LOAD" :
+                (p_type == PT_DYNAMIC) ? "PT_DYNAMIC" :
+                (p_type == PT_INTERP) ? "PT_INTERP" :
+                (p_type == PT_NOTE) ? "PT_NOTE" :
+                (p_type == PT_INTERP) ? "PT_INTERP" :
+                (p_type == PT_PHDR) ? "PT_PHDR" :
+                (p_type == PT_TLS) ? "PT_TLS" :
+                (p_type == PT_GNU_EH_FRAME) ? "PT_GNU_EH_FRAME" :
+                (p_type == PT_GNU_STACK) ? "PT_GNU_STACK" :
+                (p_type == PT_GNU_RELRO) ? "PT_GNU_RELRO" : NULL;
+
+        printf("    %2zu: [%14p; memsz:%7jx] flags: %#jx; ", j,
+                (void *) (info\->dlpi_addr + info\->dlpi_phdr[j].p_vaddr),
+                (uintmax_t) info\->dlpi_phdr[j].p_memsz,
+                (uintmax_t) info\->dlpi_phdr[j].p_flags);
+        if (type != NULL)
+            printf("%s\en", type);
+        else
+            printf("[other (%#x)]\en", p_type);
+    }
+
+    return 0;
+}
+
+int
+main(void)
+{
+    dl_iterate_phdr(callback, NULL);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBldd\fP(1), \fBobjdump\fP(1), \fBreadelf\fP(1), \fBdladdr\fP(3), \fBdlopen\fP(3),
+\fBelf\fP(5), \fBld.so\fP(8)
+.PP
+\fIExecutable and Linking Format Specification\fP, available at various
+locations online.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

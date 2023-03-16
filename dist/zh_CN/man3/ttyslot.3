@@ -1,0 +1,123 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2002 Andries Brouwer <aeb@cwi.nl>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" This replaces an earlier man page written by Walter Harms
+.\" <walter.harms@informatik.uni-oldenburg.de>.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ttyslot 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ttyslot \- 在某个文件中找到当前用户终端的插槽
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP       /* See NOTES */
+.PP
+\fBint ttyslot(void);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBttyslot\fP():
+.nf
+    由于 glibc 2.24:
+        _DEFAULT_SOURCE
+    从 glibc 2.20 到 glibc 2.23:
+        _DEFAULT_SOURCE || (_XOPEN_SOURCE && _XOPEN_SOURCE < 500)
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE || (_XOPEN_SOURCE && _XOPEN_SOURCE < 500)
+.fi
+.SH DESCRIPTION
+遗留的函数 \fBttyslot\fP() 返回当前用户在某个文件中的条目的索引。
+.PP
+现在您问 "What file?"。 好吧，让我们先看看一些历史。
+.SS "Ancient history"
+在 UNIX\V6 中曾经有一个 \fI/etc/ttys\fP 文件，\fBinit\fP(1) 程序读取该文件以找出对每个终端行执行的操作。
+每行由三个字符组成。 第一个字符是 \[aq] 0\[aq] 或 \[aq] 1\[aq]，其中 \[aq] 0\[aq] 表示 "ignore"。
+第二个字符表示终端: \[aq] 8\[aq] 代表 "/dev/tty8"。 第三个字符是 \fBgetty\fP(8) 的参数，表示要尝试的线速度顺序
+(\[aq]\-\[aq] 是: 开始尝试 110 波特)。 因此，典型的行是 "18\-"。 通过将 \[aq] 1\[aq] 更改为 \[aq]
+0\[aq]、向 init 发出信号、再次更改回来并再次向 init 发出信号，解决了某些线路上的挂起。
+.PP
+在 UNIX\V7 中，格式发生了变化: 这里第二个字符是 \fBgetty\fP(8) 的参数，表示要尝试的线速度顺序 (\[aq] 0\[aq] 是:
+循环通过 300\-1200\-150\-110 波特; \[aq] 4\[aq] 用于在线控制台 DECwriter)，而该行的其余部分包含 tty
+的名称。 因此，典型的行是 "14console"。
+.PP
+后来的系统有更复杂的语法。 类似 System V 的系统有 \fI/etc/inittab\fP。
+.SS "Ancient history (2)"
+另一方面，文件 \fI/etc/utmp\fP 列出了当前登录的人员。 它由 \fBlogin\fP(1) 维护。 它有一个固定的大小，文件中适当的索引由
+\fBlogin\fP(1) 使用 \fBttyslot\fP() 调用来确定 \fI/etc/ttys\fP 中的行号 (从 1 开始计数)。
+.SS "The semantics of ttyslot"
+因此，函数 \fBttyslot\fP() 返回文件 \fI/etc/ttys\fP 中调用进程的控制终端的索引，即 (usually) 与文件
+\fI/etc/utmp\fP 中当前用户的条目索引相同。 BSD 仍然有 \fI/etc/ttys\fP 文件，但类似 System V
+的系统没有，因此不能引用它。 因此，在这样的系统上，文档说 \fBttyslot\fP() 返回当前用户在用户记帐数据库中的索引。
+.SH "RETURN VALUE"
+如果成功，这个函数返回槽号。 出错时 (例如，如果文件描述符 0、1 或 2 均未与此数据库中出现的终端相关联)，它在 UNIX\V6 和 V7
+以及类似 BSD 的系统上返回 0，但在系统 V 上返回 \-1 \- 像系统。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBttyslot\fP()
+T}	Thread safety	MT\-Unsafe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+SUSv1; 在 SUSv2 中标记为 LEGACY; 在 POSIX.1\-2001 中删除。 SUSv2 需要 \-1 出错。
+.SH NOTES
+utmp 文件存在于各种系统的各个地方，如 \fI/etc/utmp\fP、\fI/var/adm/utmp\fP、\fI/var/run/utmp\fP。
+.PP
+这个函数的 glibc2 实现读取文件 \fB_PATH_TTYS\fP，在 \fI<ttyent.h>\fP 中定义为 "/etc/ttys"。
+它在错误时返回 0。 由于 Linux 系统通常没有 "/etc/ttys"，它总是会返回 0.
+.PP
+在类 BSD 系统和 Linux 上，\fBttyslot\fP() 的声明由 \fI<unistd.h>\fP 提供。 在类似 System V
+的系统上，声明由 \fI<stdlib.h>\fP 提供。 从 glibc 2.24 开始，\fI<stdlib.h>\fP
+也提供了以下特性测试宏定义的声明:
+.PP
+.in +4n
+.EX
+(_XOPEN_SOURCE >= 500 ||
+        (_XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED))
+    && ! (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600)
+.EE
+.in
+.PP
+.\" .SH HISTORY
+.\" .BR ttyslot ()
+.\" appeared in UNIX V7.
+Minix 也有 \fIfttyslot\fP(\fIfd\fP)。
+.SH "SEE ALSO"
+\fBgetttyent\fP(3), \fBttyname\fP(3), \fButmp\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

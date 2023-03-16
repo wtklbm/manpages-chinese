@@ -1,0 +1,119 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mq_send 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+mq_send、mq_timedsend \- 将消息发送到消息队列
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <mqueue.h>\fP
+.PP
+\fBint mq_send(mqd_t \fP\fImqdes\fP\fB, const char \fP\fImsg_ptr\fP\fB[.\fP\fImsg_len\fP\fB],\fP
+\fB              size_t \fP\fImsg_len\fP\fB, unsigned int \fP\fImsg_prio\fP\fB);\fP
+.PP
+\fB#include <time.h>\fP
+\fB#include <mqueue.h>\fP
+.PP
+\fBint mq_timedsend(mqd_t \fP\fImqdes\fP\fB, const char \fP\fImsg_ptr\fP\fB[.\fP\fImsg_len\fP\fB],\fP
+\fB              size_t \fP\fImsg_len\fP\fB, unsigned int \fP\fImsg_prio\fP\fB,\fP
+\fB              const struct timespec *\fP\fIabs_timeout\fP\fB);\fP
+.fi
+.PP
+.ad l
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmq_timedsend\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBmq_send\fP() 将 \fImsg_ptr\fP 指向的消息添加到消息队列描述符 \fImqdes\fP 指向的消息队列中。 \fImsg_len\fP 参数指定
+\fImsg_ptr\fP 指向的消息长度; 此长度必须小于或等于队列的 \fImq_msgsize\fP 属性。 允许零长度消息。
+.PP
+\fImsg_prio\fP 参数是一个非负整数，指定该消息的优先级。
+消息按优先级递减顺序放置在队列中，具有相同优先级的较新消息放置在具有相同优先级的较旧消息之后。 有关消息优先级范围的详细信息，请参见
+\fBmq_overview\fP(7)。
+.PP
+如果消息队列已经满了 (即队列中的消息数量等于队列的 \fImq_maxmsg\fP 属性)，那么默认情况下，\fBmq_send\fP()
+会阻塞，直到有足够的空间可用以允许消息排队，或者直到调用被中断通过信号处理程序。 如果为消息队列描述启用了 \fBO_NONBLOCK\fP
+标志，则调用会立即失败并显示错误 \fBEAGAIN\fP。
+.PP
+\fBmq_timedsend\fP() 的行为与 \fBmq_send\fP() 一样，除了如果队列已满并且没有为消息队列描述启用 \fBO_NONBLOCK\fP
+标志，则 \fIabs_timeout\fP 指向结构体，它指定调用将阻塞多长时间。 该值是自纪元 1970\-01\-01 00:00:00 +0000
+(UTC) 以来的绝对超时 (以秒和纳秒为单位)，在 \fBtimespec\fP(3) 结构体中指定。
+.PP
+如果消息队列已满，并且在调用时超时已经过期，则 \fBmq_timedsend\fP() 立即返回。
+.SH "RETURN VALUE"
+成功时，\fBmq_send\fP() 和 \fBmq_timedsend\fP() 返回零; 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+队列已满，并且为 \fImqdes\fP 引用的消息队列描述设置了 \fBO_NONBLOCK\fP 标志。
+.TP 
+\fBEBADF\fP
+\fImqdes\fP 中指定的描述符无效或未打开以供写入。
+.TP 
+\fBEINTR\fP
+调用被信号处理程序中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+调用会阻塞，\fIabs_timeout\fP 无效，要么是因为 \fItv_sec\fP 小于零，要么是因为 \fItv_nsec\fP 小于零或大于 10 亿。
+.TP 
+\fBEMSGSIZE\fP
+\fImsg_len\fP 大于消息队列的 \fImq_msgsize\fP 属性。
+.TP 
+\fBETIMEDOUT\fP
+消息传输前调用超时。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmq_send\fP(),
+\fBmq_timedsend\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在 Linux 上，\fBmq_timedsend\fP() 是一个系统调用，而 \fBmq_send\fP() 是一个库函数，层叠在该系统调用之上。
+.SH "SEE ALSO"
+\fBmq_close\fP(3), \fBmq_getattr\fP(3), \fBmq_notify\fP(3), \fBmq_open\fP(3),
+\fBmq_receive\fP(3), \fBmq_unlink\fP(3), \fBtimespec\fP(3), \fBmq_overview\fP(7),
+\fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

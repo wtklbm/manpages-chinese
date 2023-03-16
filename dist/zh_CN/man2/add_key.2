@@ -1,0 +1,208 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
+.\"     Written by David Howells (dhowells@redhat.com)
+.\" and Copyright (C) 2016 Michael Kerrisk <mtk.man-pages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH add_key 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+add_key \- 添加一个密钥到内核的密钥管理工具
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <keyutils.h>\fP
+.PP
+\fBkey_serial_t add_key(const char *\fP\fItype\fP\fB, const char *\fP\fIdescription\fP\fB,\fP
+\fB                     const void \fP\fIpayload\fP\fB[.\fP\fIplen\fP\fB], size_t \fP\fIplen\fP\fB,\fP
+\fB                     key_serial_t \fP\fIkeyring\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: 此系统没有 glibc 包装器调用; 见注释。
+.SH DESCRIPTION
+\fBadd_key\fP() 创建或更新给定 \fItype\fP 和 \fIdescription\fP 的密钥，用长度为 \fIplen\fP 的 \fIpayload\fP
+对其进行实例化，将其附加到指定的 \fIkeyring\fP，并返回密钥的序列号。
+.PP
+如果提供的数据格式错误或以其他方式无效，则密钥可能会被拒绝。
+.PP
+.\" FIXME The aforementioned phrases begs the question:
+.\" which key types support this?
+.\" FIXME Perhaps elaborate the implications here? Namely, the new
+.\" key will have a new ID, and if the old key was a keyring that
+.\" is consequently unlinked, then keys that it was anchoring
+.\" will have their reference count decreased by one (and may
+.\" consequently be garbage collected). Is this all correct?
+如果目标 \fIkeyring\fP 已经包含与指定的 \fItype\fP 和 \fIdescription\fP
+匹配的密钥，那么，如果密钥类型支持它，则将更新该密钥而不是创建新密钥; 如果不是，将创建一个新密钥 (具有不同的
+ID)，它将取代密钥环中现有密钥的链接。
+.PP
+.\" FIXME . Perhaps have a separate page describing special keyring IDs?
+目标 \fIkeyring\fP 序列号可能是调用者具有 \fIwrite\fP 权限的有效密钥环的序列号。 或者，它可以是以下特殊密钥环 ID 之一:
+.TP 
+\fBKEY_SPEC_THREAD_KEYRING\fP
+这指定了调用者的线程特定密钥环 (\fBthread\-keyring\fP(7))。
+.TP 
+\fBKEY_SPEC_PROCESS_KEYRING\fP
+这指定了调用者进程特定的密钥环 (\fBprocess\-keyring\fP(7))。
+.TP 
+\fBKEY_SPEC_SESSION_KEYRING\fP
+这指定了调用者的特定于会话的密钥环 (\fBsession\-keyring\fP(7))。
+.TP 
+\fBKEY_SPEC_USER_KEYRING\fP
+这指定调用者的特定于 UID 的密钥环 (\fBuser\-keyring\fP(7))。
+.TP 
+\fBKEY_SPEC_USER_SESSION_KEYRING\fP
+这指定了调用者的 UID 会话密钥环 (\fBuser\-session\-keyring\fP(7))。
+.SS "Key types"
+键 \fItype\fP 是指定键类型的字符串。 在内部，内核定义了一些在核心密钥管理代码中可用的密钥类型。 可供用户空间使用并可指定为 \fItype\fP
+参数到 \fBadd_key\fP() 的类型如下:
+.TP 
+\fI"keyring"\fP
+密钥环是特殊的密钥类型，可能包含指向任何类型的其他密钥序列的链接。 如果此接口用于创建密钥环，则 \fIpayload\fP 应为 NULL，\fIplen\fP
+应为零。
+.TP 
+\fI"user"\fP
+这是一种通用密钥类型，其有效，载荷，可由用户空间应用程序读取和更新。 密钥完全保存在内核内存中。 这种类型的密钥的有效，载荷，是一个最多 32,767
+字节的任意数据块。
+.TP 
+\fI"logon"\fP (since Linux 3.3)
+.\" commit 9f6ed2ca257fa8650b876377833e6f14e272848b
+这种密钥类型与 \fI"user"\fP 基本相同，但它不允许密钥读取。 这适用于存储您不想从用户空间读取的有效，载荷。
+.PP
+此键类型通过检查以确保 \fIdescription\fP 包含前面有其他字符的 ':' 来审查 \fIdescription\fP 以确保它符合
+"service" 前缀。
+.TP 
+\fI"big_key"\fP (since Linux 3.13)
+.\" commit ab3c3587f8cda9083209a61dbe3a4407d3cada10
+此密钥类型类似于 \fI"user"\fP，但最多可容纳 1\MiB 的有效，载荷。 如果密钥，载荷，足够大，那么它可能会加密存储在 tmpfs (可以换出)
+而不是内核内存中。
+.PP
+有关这些密钥类型的更多详细信息，请参见 \fBkeyrings\fP(7)。
+.SH "RETURN VALUE"
+成功时，\fBadd_key\fP() 返回它创建或更新的密钥的序列号。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+密钥环不可用于用户修改。
+.TP 
+\fBEDQUOT\fP
+创建此密钥或将其链接到密钥环会超出此用户的密钥配额。
+.TP 
+\fBEFAULT\fP
+\fItype\fP、\fIdescription\fP 和 \fIpayload\fP 中的一个或多个指向进程的可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fItype\fP 或 \fIdescription\fP 中指定的字符串 (包括终止空字节) 的大小超过限制 (分别为 32 字节和 4096 字节)。
+.TP 
+\fBEINVAL\fP
+载荷，数据无效。
+.TP 
+\fBEINVAL\fP
+\fItype\fP 是 \fI"logon"\fP，\fIdescription\fP 没有使用 \fI"service:"\fP 形式的前缀字符串进行限定。
+.TP 
+\fBEKEYEXPIRED\fP
+密钥环已过期。
+.TP 
+\fBEKEYREVOKED\fP
+密钥环已被撤销。
+.TP 
+\fBENOKEY\fP
+密钥环不存在。
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建密钥。
+.TP 
+\fBEPERM\fP
+\fItype\fP 以句点 (\[aq].\[aq]) 开头。 以句点开头的键类型保留给实现。
+.TP 
+\fBEPERM\fP
+\fItype\fP 是 \fI"keyring"\fP，\fIdescription\fP 以句点 (\[aq].\[aq]) 开头。 带有以句点开头的 (names)
+描述的密钥环保留给实现。
+.SH VERSIONS
+本系统调用最早出现在 Linux 2.6.10。
+.SH STANDARDS
+这个系统调用是一个非标准的 Linux 扩展。
+.SH NOTES
+glibc 不提供此系统调用的包装器。 \fIlibkeyutils\fP 库中提供了一个包装器。 (附带的包提供了
+\fI<keyutils.h>\fP 头文件。) 在该库中使用包装器时，与 \fI\-lkeyutils\fP 链接。
+.SH EXAMPLES
+下面的程序使用在其命令行参数中指定的类型、描述和有效，载荷，创建一个密钥，并将该密钥链接到会话密钥环中。 下面的 shell 会话演示了该程序的使用:
+.PP
+.in +4n
+.EX
+$ \fB./a.out user mykey "Some payload"\fP
+Key ID is 64a4dca
+Key ID is 64a4dca
+064a4dca I\-\-Q\-\-\-    1 perm 3f010000  1000  1000 user    mykey: 12
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (add_key.c)
+\&
+.EX
+#include <keyutils.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    key_serial_t key;
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s type description payload\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    key = add_key(argv[1], argv[2], argv[3], strlen(argv[3]),
+                  KEY_SPEC_SESSION_KEYRING);
+    if (key == \-1) {
+        perror("add_key");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Key ID is %jx\en", (uintmax_t) key);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBkeyctl\fP(1), \fBkeyctl\fP(2), \fBrequest_key\fP(2), \fBkeyctl\fP(3), \fBkeyrings\fP(7),
+\fBkeyutils\fP(7), \fBpersistent\-keyring\fP(7), \fBprocess\-keyring\fP(7),
+\fBsession\-keyring\fP(7), \fBthread\-keyring\fP(7), \fBuser\-keyring\fP(7),
+\fBuser\-session\-keyring\fP(7)
+.PP
+.\" commit b68101a1e8f0263dbc7b8375d2a7c57c6216fb76
+.\" commit 3db38ed76890565772fcca3279cc8d454ea6176b
+内核源文件 \fIDocumentation/security/keys/core.rst\fP 和
+\fIDocumentation/keys/request\-key.rst\fP (或者，在 Linux 4.13 之前，在文件
+\fIDocumentation/security/keys.txt\fP 和
+\fIDocumentation/security/keys\-request\-key.txt\fP).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,663 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1996 Andries Brouwer <aeb@cwi.nl>, Mon Oct 31 22:13:04 1996
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" This is combined from many sources.
+.\" For Linux, the definitive source is of course console.c.
+.\" About vt100-like escape sequences in general there are
+.\" the ISO 6429 and ISO 2022 norms, the descriptions of
+.\" an actual vt100, and the xterm docs (ctlseqs.ms).
+.\" Substantial portions of this text are derived from a write-up
+.\" by Eric S. Raymond <esr@thyrsus.com>.
+.\"
+.\" Tiny correction, aeb, 961107.
+.\"
+.\" 2006-05-27, Several corrections - Thomas E. Dickey
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH console_codes 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+console_codes\-Linux 控制台转义和控制序列
+.SH DESCRIPTION
+Linux 控制台实现了 VT102 和 ECMA\-48/ISO 6429/ANSI X3.64
+终端控件的一个大型子集，以及用于更改调色板、字符集映射等的某些私有模式序列。 在下面的表格描述中，第二列给出了给定函数的 ECMA\-48 或 DEC
+助记符 (后者如果以 DEC 为前缀)。 没有助记符的序列既不是 ECMA\-48 也不是 VT102。
+.PP
+在完成所有正常的输出处理之后，字符流到达控制台驱动程序进行实际打印，首先发生的事情是将用于处理的代码转换为用于打印的代码。
+.PP
+如果控制台处于 UTF\-8 模式，那么传入的字节首先被组装成 16 位 Unicode 代码。 否则，每个字节都根据当前映射表进行转换 (将其转换为
+Unicode 值)。 请参见下面的 \fBCharacter Sets\fP 部分进行讨论。
+.PP
+在正常情况下，Unicode 值被转换为字体索引，并将其存储在视频内存中，以便相应的字形 (在视频 ROM 中找到) 出现在屏幕上。 请注意，使用
+Unicode (以及 PC 硬件的设计) 允许我们同时使用 512 种不同的字形。
+.PP
+如果当前 Unicode 值是一个控制字符，或者我们当前正在处理一个转义序列，该值将被特殊处理。
+它不会变成字体索引并呈现为字形，而是可能会触发游标移动或其他控制函数。 请参见下面的 \fBLinux Console Controls\fP 部分进行讨论。
+.PP
+将终端控件硬连线到程序中通常不是好的做法。 Linux 支持 \fBterminfo\fP(5) 数据库的终端功能。
+您几乎总是希望使用可识别术语信息的屏幕库或实用程序，例如 \fBncurses\fP(3)、\fBtput\fP(1) 或
+\fBreset\fP(1)，而不是手动发出控制台转义序列。
+.SS "Linux console controls"
+本节描述在 Linux 控制台上调用特殊函数 (即除了在当前游标位置写入字形之外的任何内容) 的所有控制字符和转义序列。
+.PP
+\fBControl characters\fP
+.PP
+一个字符是一个控制字符，如果 (在根据映射表转换之前) 它具有 14 个代码之一 00 (NUL)，07 (BEL)，08 (BS)，09
+(HT)，0a (LF)，0b (VT)，0c (FF)，0d (CR)，0e (SO)，0f (SI)、18 (CAN)、1a (SUB)、1b
+(ESC)、7f (DEL)。 可以设置 "display control characters" 模式 (见下文)，并允许
+07、09、0b、18、1a、7f 显示为字形。 另一方面，在 UTF\-8 模式下，所有代码 00\[en] 1f 都被视为控制字符，与任何
+"display control characters" 模式无关。
+.PP
+如果我们有一个控制字符，它会立即被处理然后被丢弃 (即使在转义序列的中间) 并且转义序列继续下一个字符。 (但是，ESC
+开始一个新的转义序列，可能终止之前未完成的序列，而 CAN 和 SUB 终止任何转义序列。) 可识别的控制字符是
+BEL、BS、HT、LF、VT、FF、CR、SO、SI、CAN、SUB、ESC、DEL、CSI。 他们做了人们所期望的:
+.TP 
+BEL (0x07, \fB\[ha]G\fP)
+beeps;
+.TP 
+BS (0x08, \fB\[ha]H\fP)
+退格一列 (但不超过行的开头) ;
+.TP 
+HT (0x09, \fB\[ha]I\fP)
+如果没有更早的制表位，则转到下一个制表位或行尾;
+.TP 
+LF (0x0A, \fB\[ha]J\fP)
+.TQ
+VT (0x0B, \fB\[ha]K\fP)
+.TQ
+FF (0x0C, \fB\[ha]L\fP)
+都给出一个换行符，如果设置了 LF/NL (换行模式) 也一个回车符;
+.TP 
+CR (0x0D, \fB\[ha]M\fP)
+回车;
+.TP 
+SO (0x0E, \fB\[ha]N\fP)
+激活 G1 字符集;
+.TP 
+SI (0x0F, \fB\[ha]O\fP)
+激活 G0 字符集;
+.TP 
+CAN (0x18, \fB\[ha]X\fP)
+.TQ
+SUB (0x1A, \fB\[ha]Z\fP)
+终止转义序列;
+.TP 
+ESC (0x1B, \fB\[ha][\fP)
+开始一个转义序列;
+.TP 
+DEL (0x7F)
+被忽略;
+.TP 
+CSI (0x9B)
+等同于 ESC [.
+.PP
+\fBESC\- but not CSI\-sequences\fP
+.ad l
+.TS
+l l lx.
+ESC c	RIS	Reset.
+ESC D	IND	Linefeed.
+ESC E	NEL	Newline.
+ESC H	HTS	Set tab stop at current column.
+ESC M	RI	Reverse linefeed.
+ESC Z	DECID	T{
+DEC private identification. The kernel
+returns the string  ESC [ ? 6 c, claiming
+that it is a VT102.
+T}
+ESC 7	DECSC	T{
+Save current state (cursor coordinates,
+attributes, character sets pointed at by G0, G1).
+T}
+ESC 8	DECRC	T{
+Restore state most recently saved by ESC 7.
+T}
+ESC %		Start sequence selecting character set
+ESC % @		\0\0\0Select default (ISO 646 / ISO 8859\-1)
+ESC % G		\0\0\0Select UTF\-8
+ESC % 8		\0\0\0Select UTF\-8 (obsolete)
+ESC # 8	DECALN	T{
+DEC screen alignment test \- fill screen with E's.
+T}
+ESC (		T{
+Start sequence defining G0 character set
+(followed by one of B, 0, U, K, as below)
+T}
+ESC ( B		T{
+Select default (ISO 8859\-1 mapping).
+T}
+ESC ( 0		T{
+Select VT100 graphics mapping.
+T}
+ESC ( U		T{
+Select null mapping \- straight to character ROM.
+T}
+ESC ( K		T{
+Select user mapping \- the map that is loaded by the utility \fBmapscrn\fP(8).
+T}
+ESC )		T{
+Start sequence defining G1 (followed by one of B, 0, U, K, as above).
+T}
+ESC >	DECPNM	Set numeric keypad mode
+ESC =	DECPAM	Set application keypad mode
+ESC ]	OSC	T{
+Operating System Command prefix.
+T}
+ESC ] R		Reset palette.
+ESC ] P		T{
+Set palette, with parameter given in 7 hexadecimal digits \fInrrggbb\fP after
+the final P. Here \fIn\fP is the color (0\[en]15), and \fIrrggbb\fP indicates
+the red/green/blue values (0\[en]255).
+T}
+.TE
+.ad
+.PP
+\fBECMA\-48 CSI sequences\fP
+.PP
+CSI (或 ESC [) 后跟一系列参数，最多为 NPAR (16)，它们是由分号分隔的十进制数。 一个空的或不存在的参数被认为是 0。
+参数序列之前可以有一个问号。
+.PP
+但是，在 CSI [ (或 ESC [[) 之后读取单个字符并且忽略整个序列。 (这个想法是忽略回显的函数键。)
+.PP
+CSI 序列的动作由其最终字符决定。
+.ad l
+.TS
+l l lx.
+@	ICH	T{
+Insert the indicated # of blank characters.
+T}
+A	CUU	T{
+Move cursor up the indicated # of rows.
+T}
+B	CUD	T{
+Move cursor down the indicated # of rows.
+T}
+C	CUF	T{
+Move cursor right the indicated # of columns.
+T}
+D	CUB	T{
+Move cursor left the indicated # of columns.
+T}
+E	CNL	T{
+Move cursor down the indicated # of rows, to column 1.
+T}
+F	CPL	T{
+Move cursor up the indicated # of rows, to column 1.
+T}
+G	CHA	T{
+Move cursor to indicated column in current row.
+T}
+H	CUP	T{
+Move cursor to the indicated row, column (origin at 1,1).
+T}
+J	ED	T{
+Erase display (default: from cursor to end of display).
+T}
+		T{
+ESC [ 1 J: erase from start to cursor.
+T}
+		T{
+ESC [ 2 J: erase whole display.
+T}
+		T{
+ESC [ 3 J: erase whole display including scroll\-back
+buffer (since Linux 3.0).
+T}
+.\" ESC [ 3 J: commit f8df13e0a901fe55631fed66562369b4dba40f8b
+K	EL	T{
+Erase line (default: from cursor to end of line).
+T}
+		T{
+ESC [ 1 K: erase from start of line to cursor.
+T}
+		T{
+ESC [ 2 K: erase whole line.
+T}
+L	IL	T{
+Insert the indicated # of blank lines.
+T}
+M	DL	T{
+Delete the indicated # of lines.
+T}
+P	DCH	T{
+Delete the indicated # of characters on current line.
+T}
+X	ECH	T{
+Erase the indicated # of characters on current line.
+T}
+a	HPR	T{
+Move cursor right the indicated # of columns.
+T}
+c	DA	T{
+Answer ESC [ ? 6 c: "I am a VT102".
+T}
+d	VPA	T{
+Move cursor to the indicated row, current column.
+T}
+e	VPR	T{
+Move cursor down the indicated # of rows.
+T}
+f	HVP	T{
+Move cursor to the indicated row, column.
+T}
+g	TBC	T{
+Without parameter: clear tab stop at current position.
+T}
+		T{
+ESC [ 3 g: delete all tab stops.
+T}
+h	SM	Set Mode (see below).
+l	RM	Reset Mode (see below).
+m	SGR	Set attributes (see below).
+n	DSR	Status report (see below).
+q	DECLL	Set keyboard LEDs.
+		ESC [ 0 q: clear all LEDs
+		ESC [ 1 q: set Scroll Lock LED
+		ESC [ 2 q: set Num Lock LED
+		ESC [ 3 q: set Caps Lock LED
+r	DECSTBM	T{
+Set scrolling region; parameters are top and bottom row.
+T}
+s	?	Save cursor location.
+u	?	Restore cursor location.
+\`	HPA	T{
+Move cursor to indicated column in current row.
+T}
+.TE
+.ad
+.PP
+\fBECMA\-48 Select Graphic Rendition\fP
+.PP
+ECMA\-48 SGR 序列 ESC [\fIparameters\fP m 设置显示属性。 多个属性可以按相同顺序设置，以分号分隔。 空参数
+(在分号或字符串起始符或终止符之间) 被解释为零。
+.ad l
+.TS
+l lx.
+param	result
+0	T{
+reset all attributes to their defaults
+T}
+1	set bold
+2	T{
+set half\-bright (simulated with color on a color display)
+T}
+3	set italic (since Linux 2.6.22; simulated with color on a color display)
+4	T{
+set underscore (simulated with color on a color display)
+(the colors used to simulate dim or underline are set
+using ESC ] ...)
+T}
+5	set blink
+7	set reverse video
+10	T{
+reset selected mapping, display control flag,
+and toggle meta flag (ECMA\-48 says "primary font").
+T}
+11	T{
+select null mapping, set display control flag,
+reset toggle meta flag (ECMA\-48 says "first alternate font").
+T}
+12	T{
+select null mapping, set display control flag,
+set toggle meta flag (ECMA\-48 says "second alternate font").
+The toggle meta flag
+causes the high bit of a byte to be toggled
+before the mapping table translation is done.
+T}
+21	T{
+set underline; before Linux 4.17, this value
+set normal intensity (as is done in many other terminals)
+T}
+22	set normal intensity
+23	italic off (since Linux 2.6.22)
+24	underline off
+25	blink off
+27	reverse video off
+30	set black foreground
+31	set red foreground
+32	set green foreground
+33	set brown foreground
+34	set blue foreground
+35	set magenta foreground
+36	set cyan foreground
+37	set white foreground
+38	T{
+256/24\-bit foreground color follows, shoehorned into 16 basic colors
+(before Linux 3.16: set underscore on, set default foreground color)
+T}
+39	T{
+set default foreground color
+(before Linux 3.16: set underscore off, set default foreground color)
+T}
+40	set black background
+41	set red background
+42	set green background
+43	set brown background
+44	set blue background
+45	set magenta background
+46	set cyan background
+47	set white background
+48	T{
+256/24\-bit background color follows, shoehorned into 8 basic colors
+T}
+49	set default background color
+90..97	T{
+set foreground to bright versions of 30..37
+T}
+100..107	T{
+set background, same as 40..47 (bright not supported)
+T}
+.TE
+.ad
+.PP
+命令 38 和 48 需要进一步的参数:
+.TS
+l lx.
+;5;x	T{
+256 color: values 0..15 are IBGR (black, red, green, ... white),
+16..231 a 6x6x6 color cube, 232..255 a grayscale ramp
+T}
+;2;r;g;b	T{
+24\-bit color, r/g/b components are in the range 0..255
+T}
+.TE
+.PP
+\fBECMA\-48 Mode Switches\fP
+.TP 
+ESC [ 3 h
+DECCRM (default off): 显示控制字符。
+.TP 
+ESC [ 4 h
+DECIM (default off): 设置插入模式。
+.TP 
+ESC [ 20 h
+.\"
+LF/NL (默认关闭) : 自动跟随 LF、VT 或 FF 的回波与 CR。
+.PP
+.\"
+\fBECMA\-48 Status Report Commands\fP
+.TP 
+ESC [ 5 n
+设备状态报告 (DSR): Answer is ESC [0 n (终端 OK).
+.TP 
+ESC [ 6 n
+.\"
+游标位置报告 (CPR): Answer is ESC [\fIy\fP ;\fIx\fP R，其中 \fIx,y\fP 是游标位置。
+.PP
+\fBDEC Private Mode (DECSET/DECRST) sequences\fP
+.PP
+.\"
+这些在 ECMA\-48 中没有描述。 我们列出了设置模式序列; 重置模式序列是通过用 \[aq] l\[aq] 替换最终的 \[aq] h\[aq]
+获得的。
+.TP 
+ESC [ ? 1 h
+DECCKM (default off): 设置后，游标键发送 ESC O 前缀，而不是 ESC [。
+.TP 
+ESC [ ? 3 h
+DECCOLM (default off = 80 columns): 80/132 列模式开关。 驱动程序消息来源指出，仅此还不够;
+某些用户模式实用程序 (例如 \fBresizecons\fP(8)) 必须更改控制台视频卡上的硬件寄存器。
+.TP 
+ESC [ ? 5 h
+DECSCNM (default off): 设置反向视频模式。
+.TP 
+ESC [ ? 6 h
+DECOM (default off): 设置后，游标寻址相对于滚动区域的左上角。
+.TP 
+ESC [ ? 7 h
+DECAWM (default on): 设置自动换行。 在这种模式下，在第 80 列 (或 DECCOLM 的第 132 列打开)
+之后发出的图形字符强制换行到下一行的开头。
+.TP 
+ESC [ ? 8 h
+DECARM (default on): 设置键盘自动重复。
+.TP 
+ESC [ ? 9 h
+X10 鼠标报告 (默认关闭) : 将报告模式设置为 1 (或重置为 0) \[em]，请参见下文。
+.TP 
+ESC [ ? 25 h
+DECTECM (default on): 使游标可见。
+.TP 
+ESC [ ? 1000 h
+.\"
+X11 鼠标报告 (默认关闭) : 将报告模式设置为 2 (或重置为 0) \[em]，请参见下文。
+.PP
+\fBLinux Console Private CSI Sequences\fP
+.PP
+.\"
+以下序列既不是 ECMA\-48 也不是原生 VT102。 它们原生于 Linux 控制台驱动程序。 SGR 参数中的颜色: 0 = 黑色，1 =
+红色，2 = 绿色，3 = 棕色，4 = 蓝色，5 = 品红色，6 = 青色，7 = 白色; 8\[en] 15=0\[en] 7 的明亮版本。
+.TS
+l lx.
+ESC [ 1 ; \fIn\fP ]	T{
+Set color \fIn\fP as the underline color.
+T}
+ESC [ 2 ; \fIn\fP ]	T{
+Set color \fIn\fP as the dim color.
+T}
+ESC [ 8 ]       	T{
+Make the current color pair the default attributes.
+T}
+ESC [ 9 ; \fIn\fP ]	T{
+Set screen blank timeout to \fIn\fP minutes.
+T}
+ESC [ 10 ; \fIn\fP ]	T{
+Set bell frequency in Hz.
+T}
+ESC [ 11 ; \fIn\fP ]	T{
+Set bell duration in msec.
+T}
+ESC [ 12 ; \fIn\fP ]	T{
+Bring specified console to the front.
+T}
+ESC [ 13 ]      	T{
+打开屏幕。
+T}
+ESC [ 14 ; \fIn\fP ]   	T{
+Set the VESA powerdown interval in minutes.
+T}
+ESC [ 15 ]	T{
+Bring the previous console to the front
+(since Linux 2.6.0).
+T}
+ESC [ 16 ; \fIn\fP ]	T{
+Set the cursor blink interval in milliseconds
+(since Linux 4.2).
+T}
+.\" commit bd63364caa8df38bad2b25b11b2a1b849475cce5
+.TE
+.SS "Character sets"
+内核知道大约 4 个字节到控制台屏幕符号的翻译。 这四个表是: a) Latin1 \-> PC，b) VT100 显卡 \-> PC，c)
+PC \-> PC，d) 用户自定义。
+.PP
+有两种字符集，称为 G0 和 G1，其中一种是当前字符集。 (最初为 G0。) 键入 \fB\[ha]N\fP 会使 G1 变为电流，\fB\[ha]O\fP 会使
+G0 变为电流。
+.PP
+这些变量 G0 和 G1 指向一个转换表，用户可以更改。 最初它们分别指向表 a) 和 b)。 序列 ESC (B 和 ESC (0 和 ESC (U
+和 ESC (K 导致 G0 指向转换表 a)、b)、c) 和 d)。 序列 ESC) B 和 ESC) 0 和 ESC) U 和 ESC) K
+分别导致 G1 指向转换表 a)、b)、c) 和 d)。
+.PP
+序列 ESC c 导致最终重置，如果屏幕全是乱码，这就是您想要的。 通常建议的 "echo \[ha]V\[ha]O" 只会使 G0
+成为电流，但不能保证 G0 指向表 a)。 在某些发行版中，有一个程序 \fBreset\fP(1) 只执行 "echo \[ha][c"。 如果控制台的
+terminfo 条目是正确的 (并且有一个条目 rs1=\eEc)，那么 "tput reset" 也可以工作。
+.PP
+用户定义的映射表可以使用 \fBmapscrn\fP(8) 来设置。 映射的结果是，如果打印了一个符号 c，那么这个符号 s= map[c]
+就被送到了显存中。 对应于 s 的位图位于字符 ROM 中，可以使用 \fBsetfont\fP(8) 进行更改。
+.SS "Mouse tracking"
+鼠标跟踪工具旨在返回 \fBxterm\fP(1)\-compatible 鼠标状态报告。
+因为控制台驱动程序无法知道鼠标的设备或类型，所以只有当虚拟终端驱动程序接收到鼠标更新 ioctl 时，这些报告才会在控制台输入流中返回。 这些
+ioctl 必须由鼠标感知的用户模式应用程序 (例如 \fBgpm\fP(8) 守护程序) 生成。
+.PP
+\fBxterm\fP(1) 生成的鼠标跟踪转义序列将数字参数编码为单个字符，如 \fIvalue\fP+040。例如，\[aq]!\[aq] 为 1。
+屏幕坐标系从 1 开始。
+.PP
+X10 兼容模式在按下按钮时发送一个转义序列，对位置和按下的鼠标按钮进行编码。 它通过发送 ESC [?9 小时并使用 ESC [?9 升。
+按下按钮时，\fBxterm\fP(1) 发送 ESC [M \fIbxy\fP (6 个字符)。 这里的 \fIb\fP 就是 button\-1，\fIx\fP 和 \fIy\fP
+就是按下按钮时鼠标的 x 和 y 坐标。 这与内核生成的代码相同。
+.PP
+正常跟踪模式 (未在 Linux 2.0.24 中实现) 在按下和释放按钮时发送转义序列。 修饰符信息也被发送。 它通过发送 ESC [?1000
+小时并禁用 ESC [?1000 升。 在按下或释放按钮时，\fBxterm\fP(1) 发送 ESC [M \fIbxy\fP.  \fIb\fP
+的低两位编码按键信息: 0=MB1 按下，1=MB2 按下，2=MB3 按下，3 = 释放。 较高的位编码按下按钮时按下的修饰符，并将它们加在一起:
+4=Shift，8=Meta，16=Control。 同样，\fIx\fP 和 \fIy\fP 是鼠标事件的 x 和 y 坐标。 左上角是 (1,1)。
+.SS "Comparisons with other terminals"
+.\"
+许多不同的终端类型被描述为 "VT100\-compatible"，例如 Linux 控制台。 在这里，我们讨论 Linux
+调音台与其他两个最重要的调音台 DEC VT102 和 \fBxterm\fP(1) 之间的区别。
+.PP
+\fBControl\-character handling\fP
+.PP
+VT102 还识别以下控制字符:
+.TP 
+NUL (0x00)
+被忽略;
+.TP 
+ENQ (0x05)
+触发回复消息;
+.TP 
+DC1 (0x11, \fB\[ha]Q\fP, XON)
+恢复传输;
+.TP 
+DC3 (0x13, \fB\[ha]S\fP, XOFF)
+导致 VT100 忽略 (并停止传输) 除 XOFF 和 XON 之外的所有代码。
+.PP
+终端驱动程序可能会启用类似 VT100 的 DC1/DC3 处理。
+.PP
+.\"
+\fBxterm\fP(1) 程序 (在 VT100 模式下) 识别控制字符 BEL、BS、HT、LF、VT、FF、CR、SO、SI、ESC。
+.PP
+\fBEscape sequences\fP
+.PP
+VT100 控制台序列未在 Linux 控制台上实现:
+.TS
+l l l.
+ESC N	SS2	T{
+Single shift 2. (Select G2 character set for the next character only.)
+T}
+ESC O	SS3	T{
+Single shift 3. (Select G3 character set for the next character only.)
+T}
+ESC P	DCS	T{
+Device control string (ended by ESC \e)
+T}
+ESC X	SOS	Start of string.
+ESC \[ha]	PM	Privacy message (ended by ESC \e)
+ESC \e	ST	String terminator
+ESC * ...		Designate G2 character set
+ESC + ...		Designate G3 character set
+.TE
+.PP
+程序 \fBxterm\fP(1) (在 VT100 模式下) 识别 ESC c、ESC#8、ESC >、ESC=、ESC D、ESC E、ESC
+H、ESC M、ESC N、ESC O、ESC P ... ESC\e, ESC Z (它回答 ESC [ ? 1 ; 2 c, "I am a
+VT100 with advanced video option") and ESC \[ha] ... ESC\e 含义同上。 它接受 ESC (,
+ESC)、ESC *、ESC + 后跟 0、A、B 分别表示 DEC 特殊字符和线条图集、UK 和 US\-ASCII。
+.PP
+用户可以配置 \fBxterm\fP(1) 以响应 VT220 特定的控制序列，并且它将根据配置和初始化的方式将自己标识为 VT52、VT100 和更高版本。
+.PP
+它接受 ESC] (OSC) 来设置某些资源。 除了 ECMA\-48 字符串终止符 (ST) 之外，\fBxterm\fP(1) 还接受 BEL 来终止
+OSC 字符串。 这些是 \fBxterm\fP(1): 识别的几个 OSC 控制序列
+.TS
+l l.
+ESC ] 0 ; \fItxt\fP ST	T{
+Set icon name and window title to \fItxt\fP.
+T}
+ESC ] 1 ; \fItxt\fP ST	Set icon name to \fItxt\fP.
+ESC ] 2 ; \fItxt\fP ST	Set window title to \fItxt\fP.
+ESC ] 4 ; \fInum\fP; \fItxt\fP ST	Set ANSI color \fInum\fP to \fItxt\fP.
+ESC ] 10 ; \fItxt\fP ST	Set dynamic text color to \fItxt\fP.
+ESC ] 4 6 ; \fIname\fP ST	T{
+Change log file to \fIname\fP (normally disabled by a compile\-time option).
+T}
+ESC ] 5 0 ; \fIfn\fP ST	Set font to \fIfn\fP.
+.TE
+.PP
+它以略微修改的含义识别以下内容 (保存更多状态，表现更接近 VT100/VT220) :
+.TS
+l l l.
+ESC 7  DECSC	Save cursor
+ESC 8  DECRC	Restore cursor
+.TE
+.PP
+它还识别
+.TS
+l l lx.
+ESC F		T{
+Cursor to lower left corner of screen (if enabled
+by \fBxterm\fP(1)'s \fBhpLowerleftBugCompat\fP resource).
+T}
+ESC l		Memory lock (per HP terminals).
+		Locks memory above the cursor.
+ESC m		Memory unlock (per HP terminals).
+ESC n	LS2	Invoke the G2 character set.
+ESC o	LS3	Invoke the G3 character set.
+ESC |	LS3R	Invoke the G3 character set as GR.
+ESC }	LS2R	Invoke the G2 character set as GR.
+ESC \[ti]	LS1R	Invoke the G1 character set as GR.
+.TE
+.PP
+.\"
+它还可以识别 ESC % 并提供比 Linux 控制台更完整的 UTF\-8 实现。
+.PP
+\fBCSI Sequences\fP
+.PP
+\fBxterm\fP(1) 的旧版本，例如 X11R5，将闪烁 SGR 解释为粗体 SGR。 后来实现 ANSI 颜色的版本，例如 1995 年的
+XFree86 3.1.2A，通过允许将闪烁属性显示为颜色来改进这一点。 xterm 的现代版本将闪烁 SGR 实现为闪烁文本，并且仍然允许彩色文本作为
+SGR 的替代呈现。 库存 X11R6 版本在 X11R6.8 版本之前无法识别颜色设置 SGR，其中包含 XFree86 xterm。 Linux
+识别的所有 ECMA\-48 CSI 序列也被 \fIxterm\fP 识别，但是 \fBxterm\fP(1) 实现了几个 Linux 不识别的 ECMA\-48 和
+DEC 控制序列。
+.PP
+\fBxterm\fP(1) 程序可以识别上面列出的所有 DEC 专用模式序列，但不能识别 Linux 专用模式序列。 有关 \fBxterm\fP(1)'s
+自己的私有模式序列的讨论，请参见 Edward Moy、Stephen Gildea 和 Thomas E.\&Dickey 的 \fIXterm Control Sequences\fP 文档，该文档随 X 发行版一起提供。 该文档虽然简洁，但比本手册页长得多。 对于按时间顺序排列的概述，
+.PP
+.RS
+.UR http://invisible\-island.net\:/xterm\:/xterm.log.html
+.UE
+.RE
+.PP
+xterm 的细节变化。
+.PP
+\fIvttest\fP 程序
+.PP
+.RS
+.UR http://invisible\-island.net\:/vttest/
+.UE
+.RE
+.PP
+演示了许多这些控制序列。 \fBxterm\fP(1) 源代码分发还包含练习其他特性的示例脚本。
+.SH NOTES
+ESC 8 (DECRC) 无法恢复用 ESC % 更改的字符集。
+.SH BUGS
+在 Linux 2.0.23 中，CSI 被破坏，转义序列中的 NUL 不被忽略。
+.PP
+一些较旧的内核版本 (在 Linux 2.0 之后) 解释 8 位控制序列。 这些 "C1 controls" 使用 128 到 159
+之间的代码来替换 ESC [, ESC ] 和类似的双字节控制序列启动器。 现代内核中有一些片段 (被忽略或被支持 UTF\-8
+的更改破坏)，但实现不完整，应被视为不可靠。
+.PP
+Linux "private mode" 序列不遵循 ECMA\-48 中私有模式控制序列的规则。 特别是，那些以] 结尾的不使用标准终止符。 OSC
+(设置调色板) 序列是一个更大的问题，因为 \fBxterm\fP(1) 可能会将其解释为需要字符串终止符 (ST) 的控制序列。 与将被忽略的
+\fBsetterm\fP(1) 序列不同 (因为它们是无效的控制序列)，调色板序列将使 \fBxterm\fP(1) 看起来挂起
+(尽管按回车键可以解决这个问题)。 为了适应已硬编码为使用 Linux 控制序列的应用程序，请将 \fBxterm\fP(1) 资源
+\fBbrokenLinuxOSC\fP 设置为 true。
+.PP
+本文档的旧版本暗示 Linux 识别不可见文本的 ECMA\-48 控制序列。 它被忽略了。
+.SH "SEE ALSO"
+\fBioctl_console\fP(2), \fBcharsets\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,357 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-COREDUMP 8 "" "systemd 253" systemd\-coredump
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-coredump、systemd\-coredump.socket、systemd\-coredump@.service \-
+获取、保存和处理核心转储
+.SH SYNOPSIS
+.PP
+/usr/lib/systemd/systemd\-coredump
+.PP
+/usr/lib/systemd/systemd\-coredump \fB\-\-backtrace\fP
+.PP
+systemd\-coredump@\&.service
+.PP
+systemd\-coredump\&.socket
+.SH DESCRIPTION
+.PP
+systemd\-coredump@\&.service 是处理核心转储 \& 的系统服务。它会将事件的总结记录到
+\fBsystemd\-journald.service\fP(8)，包括有关进程标识符、所有者、终止进程的信号以及栈跟踪 (如果可能) 的信息
+\&。它还可以保存核心转储以供以后处理 \&。请参见下面的 "Information about the crashed process" 部分 \&。
+.PP
+特定程序在接收到信号后的行为由几个因素决定，这些因素在 \fBcore\fP(5)\& 中有详细描述。特别地，核心转储只有在相关资源限制足够时才会被处理
+\&。
+.PP
+核心转储可以写入日志或保存为文件 \&。在这两种情况下，都可以检索它们以进行进一步处理，例如在 \fBgdb\fP(1)\& 中。参见
+\fBcoredumpctl\fP(1)，特别是 \fBlist\fP 和 \fBdebug\fP 动词 \&。
+.PP
+默认情况下，\fBsystemd\-coredump\fP 会将核心转储记录到日志中，如果可能的话包括回溯，并将核心转储 (进程内存内容的图像) 本身存储在
+/var/coredump\ 的外部文件中 &. 默认情况下，这些核心转储会在几天后删除; 详见
+/usr/lib/tmpfiles\&.d/systemd\&.conf\&。请注意，从文件系统中删除核心文件和清除日志条目是独立的，核心文件可能在没有日志条目的情况下存在，并且日志条目可能指向自删除的核心文件
+\&。一些元数据以扩展属性的形式附加到核心文件，因此即使没有日志条目中可用的完整元数据，核心文件也可用于某些目的。
+.SS "Invocation of systemd\-coredump"
+.PP
+\fBsystemd\-coredump\fP 可执行文件执行实际工作 \&。它被调用了两次: 一次作为内核的处理程序，第二次在
+systemd\-coredump@\&.service 中实际将数据写入日志并处理并保存核心文件 \&。
+.PP
+当内核调用 \fBsystemd\-coredump\fP 处理核心转储时，它以特权模式运行，并将连接到由 systemd\-coredump\&.socket
+单元创建的套接字，这反过来将 spawn 一个非特权的 systemd\-coredump@\&.service 实例来处理核心转储
+\&。因此，systemd\-coredump\&.socket 和 systemd\-coredump@\&.service
+是辅助单元，它们执行核心转储的实际处理，并受制于正常的服务管理 \&。
+.PP
+也可以使用 \fB\-\-backtrace\fP 选项调用 \fBsystemd\-coredump\fP\&。在这种情况下，\fBsystemd\-coredump\fP
+期望在标准输入 \& 上的日志 \m[blue]\fBJournal Export Format\fP\m[]\&\s-2\u[1]\d\s+2
+中有一个日志条目。该条目应包含一个 \fIMESSAGE=\fP 字段和调用者认为合理的任何其他元数据字段 \&。 \fBsystemd\-coredump\fP
+将，追加，额外的元数据字段，其方式与从内核接收的核心转储相同。在此模式下，日志中不存储任何核心转储 \&。
+.SH CONFIGURATION
+.PP
+对于由 \fBsystemd\fP 启动的程序，可以通过指令 \fILimitCORE=\fP 设置进程资源限制，请参见 \fBsystemd.exec\fP(5)\&。
+.PP
+为了被内核用来处理核心转储，必须在 \fBsysctl\fP(8) 参数 \fIkernel\&.core_pattern\fP\& 中配置
+\fBsystemd\-coredump\fP。\fBcore\fP(5)\& 中解释了该参数的语法。systemd 安装文件
+/usr/lib/sysctl\&.d/50\-coredump\&.conf，它相应地配置
+\fIkernel\&.core_pattern\fP\&。该文件可能会被屏蔽或覆盖，以使用遵循正常 \fBsysctl.d\fP(5) 规则的不同设置
+\&。如果修改了 sysctl 配置，必须在内核中更新才能生效，见 \fBsysctl\fP(8) 和 \fBsystemd\-sysctl\fP(8)\&。
+.PP
+为了在 \fB\-\-backtrace\fP 模式下使用，必须在发送方安装适当的回溯处理程序 \&。例如，对于 \fBpython\fP(1)，这意味着必须安装
+\fIsys\&.excepthook\fP，请参见
+\m[blue]\fBsystemd\-coredump\-python\fP\m[]\&\s-2\u[2]\d\s+2\&。
+.PP
+\fBsystemd\-coredump\fP 本身的行为是通过配置文件 /etc/systemd/coredump\&.conf 和相应的片段
+/etc/coredump\&.conf\&.d/*\&.conf 来配置的，见
+\fBcoredump.conf\fP(5)\&。\fBsystemd\-coredump\fP 的新实例在收到每个核心转储 \&
+时被调用。因此，这些文件中的更改将在下次收到核心转储时生效 \&。
+.PP
+核心转储文件使用的资源以两种方式受到限制 \&。获取的核心转储和文件的最大大小等参数可以在文件 /etc/systemd/coredump\&.conf
+和上面提到的代码段中设置。另外 core dump 文件的保存时间受 \fBsystemd\-tmpfiles\fP 限制，对应设置默认在
+/usr/tmpfiles\&.d/systemd\&.conf\&。默认是几天后删除核心转储; 有关详细信息，请参见上述文件 \&。
+.SS "Disabling coredump processing"
+.PP
+要禁用 \fBsystemd\-coredump\fP 的潜在资源密集型处理，请设置
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+Storage=none
+ProcessSizeMax=0
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+in \fBcoredump.conf\fP(5)\&.
+.SH "INFORMATION ABOUT THE CRASHED PROCESS"
+.PP
+\fBcoredumpctl\fP(1) 可用于独立于其位置检索保存的核心转储、显示信息和处理它们，例如 \&.g\&。通过传递给 GNU 调试器
+(gdb)\&。
+.PP
+存储在日志中的数据也可以像往常一样使用 \fBjournalctl\fP(1) 查看 (或从任何其他进程，使用 \fBsd\-journal\fP(3) API)
+\&。相关消息有 \fBMESSAGE_ID=fc2e22bc6ee647b6b90729ab34a250b1\fP:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ journalctl MESSAGE_ID=fc2e22bc6ee647b6b90729ab34a250b1 \-o verbose
+\&...
+MESSAGE_ID=fc2e22bc6ee647b6b90729ab34a250b1
+COREDUMP_PID=552351
+COREDUMP_UID=1000
+COREDUMP_GID=1000
+COREDUMP_SIGNAL_NAME=SIGSEGV
+COREDUMP_SIGNAL=11
+COREDUMP_TIMESTAMP=1614342930000000
+COREDUMP_COMM=Web Content
+COREDUMP_EXE=/usr/lib64/firefox/firefox
+COREDUMP_USER_UNIT=app\-gnome\-firefox\-552136\&.scope
+COREDUMP_CMDLINE=/usr/lib64/firefox/firefox \-contentproc \-childID 5 \-isForBrowser \&...
+COREDUMP_CGROUP=/user\&.slice/user\-1000\&.slice/user@1000\&.service/app\&.slice/app\-\&...\&.scope
+COREDUMP_FILENAME=/var/lib/systemd/coredump/core\&.Web\&...\&.552351\&.\&...\&.zst
+\&...
+    
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+以下字段与日记条目一起保存 (如果已知)
+.PP
+\fICOREDUMP_UID=\fP, \fICOREDUMP_PID=\fP, \fICOREDUMP_GID=\fP
+.RS 4
+崩溃进程的进程号 (PID)，所有者用户号 (UID)，组号 (GID)\&。
+.sp
+当崩溃的进程是容器的一部分 (或者通常在进程或用户命名空间中) 时，这些值如 \fIoutside\fP 所示，在运行 systemd\-coredump
+的命名空间中 \&。
+.RE
+.PP
+\fICOREDUMP_TIMESTAMP=\fP
+.RS 4
+内核报告的崩溃时间 (在 \(mcs since the epoch) \&.
+.RE
+.PP
+\fICOREDUMP_RLIMIT=\fP
+.RS 4
+核心文件大小软资源限制，见 \fBgetrlimit\fP(2)\&。
+.RE
+.PP
+\fICOREDUMP_UNIT=\fP, \fICOREDUMP_SLICE=\fP
+.RS 4
+系统元和片名 \&。
+.sp
+当崩溃的进程在容器中时，这些是主系统管理器中的单元名称 \fIoutside\fP\&。
+.RE
+.PP
+\fICOREDUMP_CGROUP=\fP
+.RS 4
+/proc/cgroup\& 中使用的格式的控制组信息。在具有统一 cgroup 层次结构的系统上，这是一个以 "0::"
+为前缀的单一路径，在遗留系统上以控制器编号为前缀的多个路径 \&。
+.sp
+当崩溃的进程在容器中时，这是完整路径，如容器外所见 \&。
+.RE
+.PP
+\fICOREDUMP_OWNER_UID=\fP, \fICOREDUMP_USER_UNIT=\fP
+.RS 4
+拥有登录会话的用户的数字 UID 或崩溃进程的 systemd 用户元，以及用户管理器元 \&。这两个字段仅适用于用户进程 \&。
+.sp
+当崩溃的进程在容器中时，这些是主系统中的值 \fIoutside\fP\&。
+.RE
+.PP
+\fICOREDUMP_SIGNAL_NAME=\fP, \fICOREDUMP_SIGNAL=\fP
+.RS 4
+终止信号名称 (带有 "SIG" 前缀 \&\s-2\u [3]\d\s+2) 和数值 \&。(两者都包括在内，因为信号数量因体系结构而异。)
+.RE
+.PP
+\fICOREDUMP_CWD=\fP, \fICOREDUMP_ROOT=\fP
+.RS 4
+崩溃进程的当前工作目录和根目录 \&。
+.sp
+当崩溃的进程在容器中时，这些路径是相对于容器的根目录 \*(Aqs mount namespace\&.
+.RE
+.PP
+\fICOREDUMP_OPEN_FDS=\fP
+.RS 4
+有关打开文件描述符的信息，格式如下:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\fIfd\fP:\fI/path/to/file\fP
+位置: \&.\&.\&。
+标志: \&.\&.\&。
+\&.\&.\&.
+
+\fIfd\fP:\fI/path/to/file\fP
+位置: \&.\&.\&。
+标志: \&.\&.\&。
+\&.\&.\&.
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+第一行包含文件描述符编号 \fIfd\fP 和路径，而后续行显示 /proc/\fIpid\fP/fdinfo/\fIfd\fP\& 的内容。
+.RE
+.PP
+\fICOREDUMP_EXE=\fP
+.RS 4
+/proc/\fIpid\fP/exe 符号链接 \& 的目的地。
+.sp
+当崩溃的进程在容器中时，该路径是相对于容器的根目录 \*(Aqs mount namespace\&.
+.RE
+.PP
+\fICOREDUMP_COMM=\fP, \fICOREDUMP_PROC_STATUS=\fP, \fICOREDUMP_PROC_MAPS=\fP,
+\fICOREDUMP_PROC_LIMITS=\fP, \fICOREDUMP_PROC_MOUNTINFO=\fP, \fICOREDUMP_ENVIRON=\fP
+.RS 4
+/proc/ 文件系统中每个进程条目的 map 字段: /proc/\fIpid\fP/comm (与进程关联的命令名称)、/proc/\fIpid\fP/exe
+(已执行命令的文件名)、/proc/\fIpid\fP/status (有关进程的各种元数据)、/proc/\fIpid\fP/maps (可见的内存区域)
+进程及其访问权限)，/proc/\fIpid\fP/limits (软硬资源限制)，/proc/\fIpid\fP/mountinfo (进程中的挂载点 \*
+(Aqs 挂载命名空间)，/proc/\fIpid\fP/environ (崩溃进程的环境块) \&。
+.sp
+有关详细信息，请参见 \fBproc\fP(5)\&。
+.RE
+.PP
+\fICOREDUMP_HOSTNAME=\fP
+.RS 4
+系统主机名 \&。
+.sp
+当崩溃的进程在容器中时，这是容器主机名 \&。
+.RE
+.PP
+\fICOREDUMP_CONTAINER_CMDLINE=\fP
+.RS 4
+对于在容器中运行的进程，生成容器的进程的命令行 (具有不同挂载命名空间的第一个父进程) \&。
+.RE
+.PP
+\fICOREDUMP=\fP
+.RS 4
+当核心存储在日志中时，核心图像本身 \&。
+.RE
+.PP
+\fICOREDUMP_FILENAME=\fP
+.RS 4
+core 外存时，core 文件的路径 \&.
+.RE
+.PP
+\fICOREDUMP_TRUNCATED=\fP
+.RS 4
+当保存的核心转储被截断时设置为 "1"\&。(部分核心图像可能仍由某些工具处理，但显然并非所有信息都可用 \&。)
+.RE
+.PP
+\fICOREDUMP_PACKAGE_NAME=\fP, \fICOREDUMP_PACKAGE_VERSION=\fP,
+\fICOREDUMP_PACKAGE_JSON=\fP
+.RS 4
+如果可执行文件包含 \&.package 元数据 ELF 注释，它们将被解析并附加 \&。\*(Aqmain\*(Aq ELF 模块 (即:
+可执行文件) 的 \fIpackage\fP 和 \fIpackageVersion\fP 将单独，追加 \&。所有模块的 JSON 格式内容将作为单个 JSON
+对象，追加，每个对象都以模块名称作为键 \&。有关此元数据格式和内容的详细信息，请参见 \m[blue]\fBthe coredump metadata spec\fP\m[]\&\s-2\u[4]\d\s+2\&。
+.RE
+.PP
+\fIMESSAGE=\fP
+.RS 4
+由 \fBsystemd\-coredump\fP 生成的消息，如果成功生成则包含回溯 \&。当用 \fB\-\-backtrace\fP 调用
+\fBsystemd\-coredump\fP 时，这个字段由调用者提供 \&。
+.RE
+.PP
+日志条目中存在各种其他字段，但与日志记录过程有关，i\&.e\&。 \fBsystemd\-coredump\fP，不是崩溃的进程 \&。请参见
+\fBsystemd.journal\-fields\fP(7)\&。
+.PP
+以下字段与 \fICOREDUMP_FILENAME=\fP 中列出的外部文件一起保存 (如果已知) 作为扩展属性:
+.PP
+\fIuser\&.coredump\&.pid\fP, \fIuser\&.coredump\&.uid\fP,
+\fIuser\&.coredump\&.gid\fP, \fIuser\&.coredump\&.signal\fP,
+\fIuser\&.coredump\&.timestamp\fP, \fIuser\&.coredump\&.rlimit\fP,
+\fIuser\&.coredump\&.hostname\fP, \fIuser\&.coredump\&.comm\fP,
+\fIuser\&.coredump\&.exe\fP
+.RS 4
+它们与上述
+\fICOREDUMP_PID=\fP、\fICOREDUMP_UID=\fP、\fICOREDUMP_GID=\fP、\fICOREDUMP_SIGNAL=\fP、\fICOREDUMP_TIMESTAMP=\fP、\fICOREDUMP_RLIMIT=\fP、\fICOREDUMP_HOSTNAME=\fP、\fICOREDUMP_COMM=\fP
+和 \fICOREDUMP_EXE=\fP 相同 \&。
+.RE
+.PP
+这些可以使用 \fBgetfattr\fP(1)\& 查看。对于上面显示的日志条目中描述的核心文件:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ getfattr\-\- 绝对名称 \-d /var/lib/systemd/coredump/core\&.Web\&...\&.552351\&.\&...\&.zst
+# 文件: /var/lib/systemd/coredump/core\&.Web\&...\&.552351\&.\&...\&.zst
+user\&.coredump\&.pid="552351"
+user\&.coredump\&.uid="1000"
+user\&.coredump\&.gid="1000"
+user\&.coredump\&.signal="11"
+user\&.coredump\&.timestamp="1614342930000000"
+user\&.coredump\&.comm="网页内容"
+user\&.coredump\&.exe="/usr/lib64/firefox/firefox"
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.SH "SEE ALSO"
+.PP
+\fBcoredump.conf\fP(5), \fBcoredumpctl\fP(1), \fBsystemd\-journald.service\fP(8),
+\fBsystemd\-tmpfiles\fP(8), \fBcore\fP(5), \fBsysctl.d\fP(5),
+\fBsystemd\-sysctl.service\fP(8)\&.
+.SH NOTES
+.IP " 1." 4
+期刊导出格式
+.RS 4
+\%https://systemd.io/JOURNAL_EXPORT_FORMATS#journal\-export\-format
+.RE
+.IP " 2." 4
+systemd\-coredump\-python
+.RS 4
+\%https://github.com/systemd/systemd\-coredump\-python
+.RE
+.IP " 3." 4
+\fBkill\fP(1) 期望信号名称为 \fIwithout\fP 前缀; \fBkill\fP(2) 使用前缀; 所有 systemd
+工具都接受带前缀和不带前缀的信号名称。
+.IP " 4." 4
+核心转储元数据规范
+.RS 4
+\%https://systemd.io/COREDUMP_PACKAGE_METADATA/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

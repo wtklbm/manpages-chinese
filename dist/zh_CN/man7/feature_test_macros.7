@@ -1,0 +1,550 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 2006, Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH feature_test_macros 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+feature_test_macros \- feature test macros
+.SH DESCRIPTION
+特性测试宏允许程序人员控制编译程序时系统头文件公开的定义。
+.PP
+\fBNOTE:\fP 为了有效特性测试宏 \fImust be defined before including any header files\fP。
+这可以在编译命令 (\fIcc \-DMACRO=value\fP) 中完成，也可以通过在包含任何标头之前在源代码中定义宏来完成。
+宏必须在包含任何头文件之前定义的要求存在，因为头文件可以自由地相互包含。 因此，例如，在以下行中，定义 \fB_GNU_SOURCE\fP
+宏可能没有任何效果，因为标题 \fI<abc.h>\fP 本身包含 \fI<xyz.h>\fP (POSIX 明确允许这样做) :
+.PP
+.in +4n
+.EX
+#include <abc.h>
+#define _GNU_SOURCE
+#include <xyz.h>
+.EE
+.in
+.PP
+通过防止暴露非标准定义，某些特性测试宏可用于创建可移植应用程序。 其他宏可用于公开默认情况下不公开的非标准定义。
+.PP
+可以通过检查 \fI<features.h>\fP 头文件来确定下面描述的每个特性测试宏的精确效果。 \fBNote\fP: 应用做 \fInot\fP
+需要直接包含 \fI<features.h>\fP; 事实上，积极劝阻这样做。 见注释。
+.SS "Specification of feature test macro requirements in manual pages"
+当一个函数要求定义一个特性测试宏时，手册页 SYNOPSIS 通常包括以下形式的注释 (这个例子来自 \fBacct\fP(2) 手册页) :
+.PP
+.RS
+\fB#include <unistd.h>\fP
+.PP
+\fBint acct(const char *\fP\fIfilename\fP\fB);\fP
+.PP
+.RS -4
+.EX
+特性测试宏 glibc 的要求 (请参见
+\fBfeature_test_macros\fP(7)):
+.EE
+.RE
+.PP
+\fBacct\fP(): _BSD_SOURCE || (_XOPEN_SOURCE && _XOPEN_SOURCE < 500)
+.RE
+.PP
+\fB||\fP 表示为了从 \fI<unistd.h>\fP 得到 \fBacct\fP(2) 的声明，\fIeither\fP
+必须在包含任何头文件之前进行如下宏定义:
+.PP
+.in +4n
+.EX
+#define _BSD_SOURCE
+#define _XOPEN_SOURCE        /* or any value < 500 */
+.EE
+.in
+.PP
+或者，可以在编译命令中包含等效定义:
+.PP
+.in +4n
+.EX
+cc \-D_BSD_SOURCE
+cc \-D_XOPEN_SOURCE           # 或任意值 < 500
+.EE
+.in
+.PP
+请注意，如下所述，\fBsome feature test macros are defined by default\fP，因此可能并不总是需要明确指定
+SYNOPSIS 中显示的特性测试 macro(s)。
+.PP
+在少数情况下，手册页使用速记来表示特性测试宏要求 (此示例来自 \fBreadahead\fP(2)):
+.PP
+.RS +4
+.EX
+\fB#define _GNU_SOURCE\fP
+\fB#include <fcntl.h>\fP
+.PP
+\fBssize_t readahead(int \fP\fIfd\fP\fB, off64_t *\fP\fIoffset\fP\fB, size_t \fP\fIcount\fP\fB);\fP
+.EE
+.RE
+.PP
+这种格式适用于只有一个特性测试宏可以用来暴露任数声明，并且默认情况下没有定义宏的情况。
+.SS "Feature test macros understood by glibc"
+下面的段落解释了如何在 glibc 2.\fIx\fP、\fIx\fP > 中处理特性测试宏 0.
+.PP
+不过，首先，对于不耐烦的人来说，总的来说是一些细节:
+.IP \[bu] 3
+您最有可能需要在现代源代码中使用的宏是 \fB_POSIX_C_SOURCE\fP (用于 POSIX.1
+的各种版本的定义)、\fB_XOPEN_SOURCE\fP (用于 SUS 的各种版本的定义)、\fB_GNU_SOURCE\fP (用于 GNU 或者 Linux
+特定的东西) 和 \fB_DEFAULT_SOURCE\fP (获取通常默认提供的定义)。
+.IP \[bu]
+某些宏定义了默认值。 因此，尽管在手册页的概要中可能会指示一个或多个宏是必需的，但可能没有必要明确定义它们。
+默认值的完整详细信息将在本手册页的后面部分给出。
+.IP \[bu]
+用 600 或更大的值定义 \fB_XOPEN_SOURCE\fP 产生的效果与用 200112L 或更大的值定义 \fB_POSIX_C_SOURCE\fP
+产生的效果相同。 在哪里看到
+.IP
+.in +4n
+.EX
+_POSIX_C_SOURCE >= 200112L
+.EE
+.in
+.IP
+在手册页概要中的特性测试宏要求中，隐含以下内容具有相同的效果:
+.IP
+.in +4n
+.EX
+_XOPEN_SOURCE >= 600
+.EE
+.in
+.IP \[bu]
+用 700 或更大的值定义 \fB_XOPEN_SOURCE\fP 产生的效果与用 200809L 或更大的值定义 \fB_POSIX_C_SOURCE\fP
+产生的效果相同。 在哪里看到
+.IP
+.in +4n
+.EX
+_POSIX_C_SOURCE >= 200809L
+.EE
+.in
+.IP
+在手册页概要中的特性测试宏要求中，隐含以下内容具有相同的效果:
+.IP
+.in +4n
+.EX
+_XOPEN_SOURCE >= 700
+.EE
+.in
+.\" The details in glibc 2.0 are simpler, but combining a
+.\" a description of them with the details in later glibc versions
+.\" would make for a complicated description.
+.PP
+glibc 理解以下特性测试宏:
+.TP 
+\fB__STRICT_ANSI__\fP
+ISO Standard C。当使用例如 \fI\-std=c99\fP 或 \fI\-ansi\fP 标志调用时，此宏由 \fBgcc\fP(1) 隐式定义。
+.TP 
+\fB_POSIX_C_SOURCE\fP
+定义这个宏会导致头文件公开如下定义:
+.RS
+.IP \[bu] 3
+值 1 公开符合 POSIX.1\-1990 和 ISO C (1990) 的定义。
+.IP \[bu]
+值 2 或更大还公开了 POSIX.2\-1992 的定义。
+.IP \[bu]
+.\" 199506L functionality is available only since glibc 2.1
+值 199309L 或更大还公开了 POSIX.1b (实时扩展) 的定义。
+.IP \[bu]
+值 199506L 或更大还公开了 POSIX.1c (threads) 的定义。
+.IP \[bu]
+(自 glibc 2.3.3 起) 值 200112L 或更大的值额外公开对应于 POSIX.1\-2001 基本规范 (不包括 XSI 扩展) 的定义。
+该值还会导致暴露 C95 (自 glibc 2.12) 和 C99 (自 glibc 2.10) 特性 (换句话说，相当于定义
+\fB_ISOC99_SOURCE\fP).
+.IP \[bu]
+(自 glibc 2.10 起) 值 200809L 或更大的值额外公开对应于 POSIX.1\-2008 基本规范 (不包括 XSI 扩展) 的定义。
+.RE
+.TP 
+\fB_POSIX_SOURCE\fP
+用任何值定义这个过时的宏等同于用值定义 \fB_POSIX_C_SOURCE\fP 1.
+.IP
+由于此宏已过时，因此在手册页中讨论特性测试宏要求时通常不会记录其用法。
+.TP 
+\fB_XOPEN_SOURCE\fP
+定义这个宏会导致头文件公开如下定义:
+.RS
+.IP \[bu] 3
+使用任何值进行定义都会公开符合 POSIX.1、POSIX.2 和 XPG4 的定义。
+.IP \[bu]
+值 500 或更大还公开了 SUSv2 (UNIX 98) 的定义。
+.IP \[bu]
+(自 glibc 2.2 起) 600 或更大的值额外公开 SUSv3 (UNIX 03; 即 POSIX.1\-2001 基本规范加上 XSI 扩展)
+和 C99 定义的定义。
+.IP \[bu]
+(自 glibc 2.10 起) 值 700 或更大还公开了 SUSv4 的定义 (即 POSIX.1\-2008 基本规范加上 XSI 扩展)。
+.RE
+.IP
+如果 \fB__STRICT_ANSI__\fP 没有定义，或者 \fB_XOPEN_SOURCE\fP 定义了一个大于或等于 500 \fIand\fP
+的值，\fB_POSIX_SOURCE\fP 和 \fB_POSIX_C_SOURCE\fP 都没有显式定义，那么下面的宏被隐式定义:
+.RS
+.IP \[bu] 3
+\fB_POSIX_SOURCE\fP 定义为值 1.
+.IP \[bu]
+\fB_POSIX_C_SOURCE\fP 定义，根据 \fB_XOPEN_SOURCE\fP: 的值
+.RS
+.TP 
+\fB_XOPEN_SOURCE\fP < 500
+\fB_POSIX_C_SOURCE\fP 定义为值 2.
+.TP 
+500 <= \fB_XOPEN_SOURCE\fP < 600
+\fB_POSIX_C_SOURCE\fP 定义为值 199506L。
+.TP 
+600 <= \fB_XOPEN_SOURCE\fP < 700
+\fB_POSIX_C_SOURCE\fP 定义为值 200112L。
+.TP 
+700 <= \fB_XOPEN_SOURCE\fP (since glibc 2.10)
+\fB_POSIX_C_SOURCE\fP 定义为值 200809L。
+.RE
+.RE
+.IP
+此外，用 500 或更大的值定义 \fB_XOPEN_SOURCE\fP 会产生与定义 \fB_XOPEN_SOURCE_EXTENDED\fP 相同的效果。
+.TP 
+\fB_XOPEN_SOURCE_EXTENDED\fP
+如果定义了宏，则定义了 \fIand\fP \fB_XOPEN_SOURCE\fP，然后公开对应于 XPG4v2 (SUSv1) UNIX 扩展名 (UNIX
+95) 的定义。 用 500 或更大的值定义 \fB_XOPEN_SOURCE\fP 也产生与定义 \fB_XOPEN_SOURCE_EXTENDED\fP
+相同的效果。 应避免在新源代码中使用 \fB_XOPEN_SOURCE_EXTENDED\fP。
+.IP
+由于定义 \fB_XOPEN_SOURCE\fP 的值为 500 或更大与定义 \fB_XOPEN_SOURCE_EXTENDED\fP 具有相同的效果，所以后面的
+(obsolete) 特性测试宏一般不会在 man pages 的 SYNOPSIS 中描述。
+.TP 
+\fB_ISOC99_SOURCE\fP (since glibc 2.1.3)
+公开符合 ISO C99 标准的声明。
+.IP
+早期的 glibc 2.1.x 版本识别一个名为 \fB_ISOC9X_SOURCE\fP 的等效宏 (因为当时 C99 标准尚未最终确定)。
+虽然这个宏的使用已经过时，但 glibc 继续识别它以实现向后兼容性。
+.IP
+定义 \fB_ISOC99_SOURCE\fP 还会公开 ISO C (1990) 修正案 1 ("C95") 定义。 (C95
+的主要变化是支持国际字符集。)
+.IP
+使用选项 \fI\-std=c99\fP 调用 C 编译器产生与定义此宏相同的效果。
+.TP 
+\fB_ISOC11_SOURCE\fP (since glibc 2.16)
+公开符合 ISO C11 标准的声明。 定义这个宏还可以启用 C99 和 C95 特性 (如 \fB_ISOC99_SOURCE\fP).
+.IP
+使用选项 \fI\-std=c11\fP 调用 C 编译器产生与定义此宏相同的效果。
+.TP 
+\fB_LARGEFILE64_SOURCE\fP
+将 LFS (大型文件峰会) 指定的替代 API 的定义作为 "transitional extension" 公开给单一 UNIX 规范。 (参见
+.UR http:\:/\:/opengroup.org\:/platform\:/lfs.html
+.UE .)
+替代 API
+由一组新对象 (即函数和类型) 组成，其名称以 "64" 为后缀 (例如，\fIoff64_t\fP 与 \fIoff_t\fP，\fBlseek64\fP() 与
+\fBlseek\fP() 等)。 新程序不应该使用这个宏; 相反，应该使用 \fI_FILE_OFFSET_BITS=64\fP。
+.TP 
+\fB_LARGEFILE_SOURCE\fP
+这个宏在历史上用于公开某些函数 (特别是 \fBfseeko\fP(3) 和 \fBftello\fP(3))，它们解决了早期 API (\fBfseek\fP(3) 和
+\fBftell\fP(3)) 的限制，这些 API 使用 \fIlong\fP 作为文件偏移量。 如果 \fB_XOPEN_SOURCE\fP 被定义为大于或等于
+500 的值，则此宏被隐式定义。 新程序不应该使用这个宏; 如前所述定义 \fB_XOPEN_SOURCE\fP 或定义值为 64 的
+\fB_FILE_OFFSET_BITS\fP 是实现相同结果的首选机制。
+.TP 
+\fB_FILE_OFFSET_BITS\fP
+使用值 64 定义此宏会自动将引用转换为 32 位函数，并将与文件 I/O 和文件系统操作相关的数据类型转换为对 64 位对应项的引用。 这对于在 32
+位系统上对大文件 (> 2 GB) 执行 I/O 很有用。 (定义这个宏允许正确编写的程序使用大文件，只需要重新编译。)
+.IP
+64 位系统自然允许文件大小大于 2 GB，并且在这些系统上这个宏没有效果。
+.TP 
+\fB_TIME_BITS\fP
+使用值 64 定义此宏会将 \fBtime_t\fP(3type) 的宽度更改为 64 位，这允许处理超过 2038 的时间戳。 它与
+\fB_FILE_OFFSET_BITS\fP 密切相关，根据实现的不同，可能需要设置它。 这个宏从 glibc 2.34 开始可用。
+.TP 
+\fB_BSD_SOURCE\fP (deprecated since glibc 2.20)
+用任何值定义这个宏都会导致头文件公开 BSD 派生的定义。
+.IP
+在直到并包括 2.18 的 glibc 版本中，定义此宏还会导致在标准冲突的某些情况下首选 BSD 定义，除非定义了
+\fB_SVID_SOURCE\fP、\fB_POSIX_SOURCE\fP、\fB_POSIX_C_SOURCE\fP、\fB_XOPEN_SOURCE\fP、\fB_XOPEN_SOURCE_EXTENDED\fP
+或 \fB_GNU_SOURCE\fP 中的一个或多个，在这种情况下为 BSD 定义不受欢迎。 自 glibc 2.19 以来，\fB_BSD_SOURCE\fP
+不再导致在发生冲突时首选 BSD 定义。
+.IP
+.\" commit c941736c92fa3a319221f65f6755659b2a5e0a20
+.\" commit 498afc54dfee41d33ba519f496e96480badace8e
+.\" commit acd7f096d79c181866d56d4aaf3b043e741f1e2c
+.\" commit ade40b10ff5fa59a318cf55b9d8414b758e8df78
+从 glibc 2.20 开始，这个宏被弃用了。 它现在与定义 \fB_DEFAULT_SOURCE\fP 具有相同的效果，但会生成编译时警告 (除非还定义了
+\fB_DEFAULT_SOURCE\fP)。 请改用 \fB_DEFAULT_SOURCE\fP。 要允许在 glibc 2.19 及更早版本中需要
+\fB_BSD_SOURCE\fP 以及在 glibc 2.20 及更高版本中需要 \fB_DEFAULT_SOURCE\fP
+的代码在没有警告的情况下进行编译，请定义 \fIboth\fP \fB_BSD_SOURCE\fP 和 \fB_DEFAULT_SOURCE\fP。
+.TP 
+\fB_SVID_SOURCE\fP (deprecated since glibc 2.20)
+用任何值定义这个宏都会导致头文件公开 System V 派生的定义。 (SVID == System V 接口定义; 参见
+\fBstandards\fP(7).)
+.IP
+从 glibc 2.20 开始，这个宏以与 \fB_BSD_SOURCE\fP 相同的方式被弃用。
+.TP 
+\fB_DEFAULT_SOURCE\fP (since glibc 2.19)
+可以定义此宏以确保提供 "default" 定义，即使默认值将被禁用，如显式定义单个宏或以其 "standard" 模式之一调用编译器
+(例如，\fIcc\~\-std=c99\fP).  定义 \fB_DEFAULT_SOURCE\fP 而不定义其他单独的宏或在其中一种 "standard"
+模式下调用编译器没有任何效果。
+.IP
+"default" 定义包括 POSIX.1\-2008 和 ISO C99 所要求的定义，以及最初派生自 BSD 和 System V 的各种定义。在
+glibc 2.19 及更早版本上，这些默认值大致等同于显式定义以下内容:
+.IP
+.in +4n
+.EX
+cc \-D_BSD_SOURCE \-D_SVID_SOURCE \-D_POSIX_C_SOURCE=200809
+.EE
+.in
+.TP 
+\fB_ATFILE_SOURCE\fP (since glibc 2.4)
+用任何值定义这个宏都会导致头文件公开一系列带有后缀 "at" 的函数的声明; 请参见 \fBopenat\fP(2)。 自 glibc 2.10 起，如果
+\fB_POSIX_C_SOURCE\fP 定义的值大于或等于 200809L，则此宏也被隐式定义。
+.TP 
+\fB_GNU_SOURCE\fP
+定义此宏 (具有任何值) 隐式定义
+\fB_ATFILE_SOURCE\fP、\fB_LARGEFILE64_SOURCE\fP、\fB_ISOC99_SOURCE\fP、\fB_XOPEN_SOURCE_EXTENDED\fP、\fB_POSIX_SOURCE\fP、\fB_POSIX_C_SOURCE\fP
+值为 200809L (glibc 2.10 之前为 200112L; glibc 2.5 之前为 199506L; glibc 2.1 之前为
+199309L) 和 \fB_XOPEN_SOURCE\fP 值为 700 (600 之前 glibc 2.10; glibc 2.2 之前为 500)。
+此外，还公开了各种 GNU 特定的扩展。
+.IP
+从 glibc 2.19 开始，定义 \fB_GNU_SOURCE\fP 也具有隐式定义 \fB_DEFAULT_SOURCE\fP 的效果。 在 glibc
+2.20 之前，定义 \fB_GNU_SOURCE\fP 也有隐式定义 \fB_BSD_SOURCE\fP 和 \fB_SVID_SOURCE\fP 的效果。
+.TP 
+\fB_REENTRANT\fP
+.\" Zack Weinberg
+.\"     There did once exist C libraries where it was necessary. The ones
+.\"     I remember were proprietary Unix vendor libcs from the mid-1990s
+.\"     You would get completely unlocked stdio without _REENTRANT.
+从历史上看，在各种 C 库中，有必要在所有多线程代码中定义这个宏。 (一些 C 库可能仍然需要这个。) 在 glibc
+中，这个宏也暴露了某些可重入函数的定义。
+.IP
+然而，glibc 多年来一直默认是线程安全的; 自 glibc 2.3 以来，定义 \fB_REENTRANT\fP
+的唯一效果是启用一个或两个相同的声明，这些声明也可以通过定义 \fB_POSIX_C_SOURCE\fP 的值 199606L 或更大来启用。
+.IP
+\fB_REENTRANT\fP 现在已过时。 在 glibc 2.25 及更高版本中，定义 \fB_REENTRANT\fP 等同于定义
+\fB_POSIX_C_SOURCE\fP 的值为 199606L。 如果通过任何其他方式 (例如 \fB_POSIX_C_SOURCE\fP
+本身、\fB_XOPEN_SOURCE\fP、\fB_DEFAULT_SOURCE\fP 或 \fB_GNU_SOURCE\fP)) 选择更高的 POSIX
+一致性级别，则定义 \fB_REENTRANT\fP 无效。
+.IP
+如果用 \fIcc\~\-pthread\fP 编译，这个宏是自动定义的。
+.TP 
+\fB_THREAD_SAFE\fP
+(deprecated) \fB_REENTRANT\fP 的同义词，提供与某些其他实现的兼容性。
+.TP 
+\fB_FORTIFY_SOURCE\fP (since glibc 2.3.4)
+.\" For more detail, see:
+.\" http://gcc.gnu.org/ml/gcc-patches/2004-09/msg02055.html
+.\" [PATCH] Object size checking to prevent (some) buffer overflows
+.\" * From: Jakub Jelinek <jakub at redhat dot com>
+.\" * To: gcc-patches at gcc dot gnu dot org
+.\" * Date: Tue, 21 Sep 2004 04:16:40 -0400
+.\" Look for __USE_FORTIFY_LEVEL in the header files
+定义这个宏会导致在使用各种字符串和内存操作函数时执行一些轻量级检查以检测一些缓冲区溢出错误
+(例如，\fBmemcpy\fP(3)、\fBmemset\fP(3)、\fBstpcpy\fP(3)、\fBstrcpy\fP(3)、\fBstrncpy\fP(3)、\fBstrcat\fP(3)、\fBstrncat\fP(3)、\fBsprintf\fP(3)、\fBsnprintf\fP(3)、\fBvsprintf\fP(3)、\fBvsnprintf\fP(3)、\fBgets\fP(3)，及其宽字符变体)。
+对于某些函数，检查参数一致性; 例如，当指定的标志包括 \fBO_CREAT\fP 时，检查 \fBopen\fP(2) 是否已提供 \fImode\fP 参数。
+并非检测到所有问题，仅检测到一些常见情况。
+.IP
+.\" For example, given the following code
+.\"        int d;
+.\"        char buf[1000], buf[1000];
+.\"        strcpy(fmt, "Hello world\n%n");
+.\"        snprintf(buf, sizeof(buf), fmt, &d);
+.\"
+.\" Compiling with "gcc -D_FORTIFY_SOURCE=2 -O1" and then running will
+.\" cause the following diagnostic at run time at the snprintf() call
+.\"
+.\"        *** %n in writable segment detected ***
+.\"        Aborted (core dumped)
+.\"
+如果 \fB_FORTIFY_SOURCE\fP 设置为 1，编译器优化级别 1 (\fIgcc\ \-O1\fP) 及以上，将执行不应更改符合程序行为的检查。
+\fB_FORTIFY_SOURCE\fP 设置为 2 时，添加了更多检查，但一些符合要求的程序可能会失败。
+.IP
+一些检查可以在编译时执行 (通过头文件中实现的宏逻辑)，并导致编译器警告; 其他检查在运行时进行，如果检查失败会导致运行时错误。
+.IP
+当 \fB_FORTIFY_SOURCE\fP 设置为 3
+时，添加了额外的检查以拦截一些与可变大小的参数一起使用的函数调用，编译器可以在其中推断出其值的上限。 例如，现在可以强化 \fBmalloc\fP(3)'s
+大小参数可变的程序。
+.IP
+使用此宏需要编译器支持，从 glibc 4.0 开始可用于 \fBgcc\fP(1)。
+.IP
+使用 \fB_FORTIFY_SOURCE\fP 设置为 3 需要 \fBgcc\fP(1) 版本 12.0 或更高版本。
+.SS "Default definitions, implicit definitions, and combining definitions"
+如果没有显式定义特性测试宏，则默认定义以下特性测试宏: \fB_BSD_SOURCE\fP (在 glibc 2.19
+和更早版本中)、\fB_SVID_SOURCE\fP (在 glibc 2.19 和更早版本中)、\fB_DEFAULT_SOURCE\fP (自 glibc
+2.19 起)、\fB_POSIX_SOURCE\fP 和 \fB_POSIX_C_SOURCE\fP=200809L (glibc 2.10 之前为
+200112L; glibc 2.4 之前为 199506L; glibc 2.1 之前为 199309L)。
+.PP
+如果明确定义了 \fB__STRICT_ANSI__\fP、\fB_ISOC99_SOURCE\fP、\fB_ISOC11_SOURCE\fP (自 glibc 2.18
+起)、\fB_POSIX_SOURCE\fP、\fB_POSIX_C_SOURCE\fP、\fB_XOPEN_SOURCE\fP、\fB_XOPEN_SOURCE_EXTENDED\fP
+(在 glibc 2.11 和更早版本中)、\fB_BSD_SOURCE\fP (在 glibc 2.19 和更早版本中) 或 \fB_SVID_SOURCE\fP
+(在 glibc 2.19 和更早版本中)，则默认情况下不定义 \fB_BSD_SOURCE\fP、\fB_SVID_SOURCE\fP 和
+\fB_DEFAULT_SOURCE\fP。
+.PP
+如果 \fB_POSIX_SOURCE\fP 和 \fB_POSIX_C_SOURCE\fP 未明确定义，并且 \fB__STRICT_ANSI__\fP 未定义或
+\fB_XOPEN_SOURCE\fP 定义为 500 或更大的值，则
+.IP \[bu] 3
+\fB_POSIX_SOURCE\fP 定义为值 1; and
+.IP \[bu]
+\fB_POSIX_C_SOURCE\fP 定义为以下值之一:
+.RS 3
+.IP \[bu] 3
+2、如果 \fB_XOPEN_SOURCE\fP 被定义为小于 500 的值;
+.IP \[bu]
+199506L，如果 \fB_XOPEN_SOURCE\fP 被定义为大于等于 500 小于 600 的值; or
+.IP \[bu]
+(自 glibc 2.4 起) 200112L，如果 \fB_XOPEN_SOURCE\fP 定义为大于或等于 600 且小于 700 的值。
+.IP \[bu]
+(自 glibc 2.10 起) 200809L，如果 \fB_XOPEN_SOURCE\fP 定义为大于或等于 700 的值。
+.IP \[bu]
+旧版本的 glibc 不知道 \fB_POSIX_C_SOURCE\fP 的值 200112L 和 200809L，这个宏的设置将取决于 glibc 版本。
+.IP \[bu]
+如果 \fB_XOPEN_SOURCE\fP 未定义，则 \fB_POSIX_C_SOURCE\fP 的设置取决于 glibc 版本: 199506L，glibc
+2.4 之前; 200112L，从 glibc 2.4 到 glibc 2.9; 和 200809L，自 glibc 2.10 以来。
+.RE
+.PP
+可以定义多个宏; 结果是相加的。
+.SH STANDARDS
+POSIX.1 指定 \fB_POSIX_C_SOURCE\fP、\fB_POSIX_SOURCE\fP 和 \fB_XOPEN_SOURCE\fP。
+.PP
+\fB_XOPEN_SOURCE_EXTENDED\fP 由 XPG4v2 (又名 SUSv1) 指定，但在 SUSv2 及更高版本中不存在。
+\fB_FILE_OFFSET_BITS\fP 没有被任何标准指定，但被用于其他一些实现。
+.PP
+\fB_BSD_SOURCE\fP、\fB_SVID_SOURCE\fP、\fB_DEFAULT_SOURCE\fP、\fB_ATFILE_SOURCE\fP、\fB_GNU_SOURCE\fP、\fB_FORTIFY_SOURCE\fP、\fB_REENTRANT\fP、\fB_THREAD_SAFE\fP
+是 Linux (glibc) 特有的。
+.SH NOTES
+\fI<features.h>\fP 是一个 Linux/glibc\-specific 头文件。
+其他系统有一个类似的文件，但通常具有不同的名称。 此头文件会根据需要自动包含在其他头文件中: 无需显式包含它即可使用特性测试宏。
+.PP
+根据定义了上述哪些特性测试宏，\fI<features.h>\fP 内部定义了其他各种由其他 glibc 头文件检查的其他宏。
+这些宏的名称以两个下划线为前缀 (例如，\fB__USE_MISC\fP).  程序应该 \fInever\fP 直接定义这些宏:
+相反，应该使用上面列表中的适当特性测试 macro(s)。
+.SH EXAMPLES
+下面的程序可用于探索如何根据 glibc 版本设置各种特性测试宏，以及显式设置了哪些特性测试宏。 以下 shell 会话，在具有 glibc 2.10
+的系统上，显示了我们将看到的一些示例:
+.PP
+.in +4n
+.EX
+$ \fBcc ftm.c\fP
+$ \fB./a.out\fP
+_POSIX_SOURCE defined  
+_POSIX_C_SOURCE defined: 200809L 
+_BSD_SOURCE defined 
+_SVID_SOURCE defined 
+_ATFILE_SOURCE defined 
+_ATFILE_SOURCE defined
+$ \fB./a.out\fP
+_POSIX_SOURCE defined
+_POSIX_C_SOURCE defined: 199506L
+_XOPEN_SOURCE defined: 500
+_XOPEN_SOURCE defined: 500
+$ \fB./a.out\fP
+_POSIX_SOURCE defined
+_POSIX_C_SOURCE defined: 200809L
+_ISOC99_SOURCE defined
+_XOPEN_SOURCE defined: 700
+_XOPEN_SOURCE_EXTENDED defined
+_LARGEFILE64_SOURCE defined
+_BSD_SOURCE defined
+_SVID_SOURCE defined
+_ATFILE_SOURCE defined
+_GNU_SOURCE defined
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+/* ftm.c */
+
+#include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+#ifdef _POSIX_SOURCE
+    printf("_POSIX_SOURCE defined\en");
+#endif
+
+#ifdef _POSIX_C_SOURCE
+    printf("_POSIX_C_SOURCE defined: %jdL\en",
+            (intmax_t) _POSIX_C_SOURCE);
+#endif
+
+#ifdef _ISOC99_SOURCE
+    printf("_ISOC99_SOURCE defined\en");
+#endif
+
+#ifdef _ISOC11_SOURCE
+    printf("_ISOC11_SOURCE defined\en");
+#endif
+
+#ifdef _XOPEN_SOURCE
+    printf("_XOPEN_SOURCE defined: %d\en", _XOPEN_SOURCE);
+#endif
+
+#ifdef _XOPEN_SOURCE_EXTENDED
+    printf("_XOPEN_SOURCE_EXTENDED defined\en");
+#endif
+
+#ifdef _LARGEFILE64_SOURCE
+    printf("_LARGEFILE64_SOURCE defined\en");
+#endif
+
+#ifdef _FILE_OFFSET_BITS
+    printf("_FILE_OFFSET_BITS defined: %d\en", _FILE_OFFSET_BITS);
+#endif
+
+#ifdef _TIME_BITS
+    printf("_TIME_BITS defined: %d\en", _TIME_BITS);
+#endif
+
+#ifdef _BSD_SOURCE
+    printf("_BSD_SOURCE defined\en");
+#endif
+
+#ifdef _SVID_SOURCE
+    printf("_SVID_SOURCE defined\en");
+#endif
+
+#ifdef _DEFAULT_SOURCE
+    printf("_DEFAULT_SOURCE defined\en");
+#endif
+
+#ifdef _ATFILE_SOURCE
+    printf("_ATFILE_SOURCE defined\en");
+#endif
+
+#ifdef _GNU_SOURCE
+    printf("_GNU_SOURCE defined\en");
+#endif
+
+#ifdef _REENTRANT
+    printf("_REENTRANT defined\en");
+#endif
+
+#ifdef _THREAD_SAFE
+    printf("_THREAD_SAFE defined\en");
+#endif
+
+#ifdef _FORTIFY_SOURCE
+    printf("_FORTIFY_SOURCE defined\en");
+#endif
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBlibc\fP(7), \fBstandards\fP(7), \fBsystem_data_types\fP(7)
+.PP
+.\" But beware: the info libc document is out of date (Jul 07, mtk)
+\fIinfo libc\fP 下的 "Feature Test Macros" 部分。
+.PP
+\fI/usr/include/features.h\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

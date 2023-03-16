@@ -1,0 +1,243 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright © 2017-2020 Mickaël Salaün <mic@digikod.net>
+.\" Copyright © 2019-2020 ANSSI
+.\" Copyright © 2021 Microsoft Corporation
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH Landlock 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+Landlock \- 非特权访问控制
+.SH DESCRIPTION
+Landlock 是一个访问控制系统，它使任何进程都能安全地限制自己及其 future 子进程。 因为 Landlock 是一个可堆叠的 Linux
+安全模块 (LSM)，所以除了现有的系统范围的访问控制之外，它还可以创建安全的安全沙箱作为新的安全层。
+这种沙箱有望帮助减轻错误以及应用程序中意外或恶意行为的安全影响。
+.PP
+Landlock 安全策略是一组与文件层次结构相关的访问权限 (例如，以只读方式打开文件、创建目录等)。
+此类策略可以由进程使用三个系统调用为自己配置和实现:
+.IP \[bu] 2
+\fBlandlock_create_ruleset\fP(2) 创建一个新的规则集;
+.IP \[bu]
+\fBlandlock_add_rule\fP(2) 向规则集中添加新规则;
+.IP \[bu]
+\fBlandlock_restrict_self\fP(2) 在调用线程上强制执行规则集。
+.PP
+.\"
+为了能够使用这些系统调用，正在运行的内核必须支持 Landlock，并且必须在引导时启用它。
+.SS "Landlock rules"
+.\"
+Landlock 规则描述了对对象的操作。 一个对象目前是一个文件层次结构，相关的文件系统动作定义了访问权限 (见
+\fBlandlock_add_rule\fP(2)).  一组规则聚集在一个规则集中，然后可以限制执行它的线程及其 future 子线程。
+.SS "Filesystem actions"
+这些标志可以将沙盒进程限制为对文件和目录执行一组操作。 在沙盒之前打开的文件或目录不受这些限制。 有关更多上下文，请参见
+\fBlandlock_add_rule\fP(2) 和 \fBlandlock_create_ruleset\fP(2)。
+.PP
+一个文件只能获得这些访问权限:
+.TP 
+\fBLANDLOCK_ACCESS_FS_EXECUTE\fP
+执行一个文件。
+.TP 
+\fBLANDLOCK_ACCESS_FS_WRITE_FILE\fP
+打开具有写入权限的文件。
+.TP 
+\fBLANDLOCK_ACCESS_FS_READ_FILE\fP
+打开具有读取权限的文件。
+.PP
+目录可以接收与文件或目录相关的访问权限。 以下访问权限适用于目录本身及其下的目录:
+.TP 
+\fBLANDLOCK_ACCESS_FS_READ_DIR\fP
+打开目录或列出其内容。
+.PP
+但是，以下访问权限仅适用于目录的内容，而不适用于目录本身:
+.TP 
+\fBLANDLOCK_ACCESS_FS_REMOVE_DIR\fP
+删除一个空目录或重命名一个目录。
+.TP 
+\fBLANDLOCK_ACCESS_FS_REMOVE_FILE\fP
+取消链接 (或重命名) 文件。
+.TP 
+\fBLANDLOCK_ACCESS_FS_MAKE_CHAR\fP
+创建 (或重命名或链接) 字符设备。
+.TP 
+\fBLANDLOCK_ACCESS_FS_MAKE_DIR\fP
+创建 (或重命名) 目录。
+.TP 
+\fBLANDLOCK_ACCESS_FS_MAKE_REG\fP
+创建 (或重命名或链接) 一个常规文件。
+.TP 
+\fBLANDLOCK_ACCESS_FS_MAKE_SOCK\fP
+创建 (或重命名或链接) 一个 UNIX 域套接字。
+.TP 
+\fBLANDLOCK_ACCESS_FS_MAKE_FIFO\fP
+创建 (或重命名或链接) 命名管道。
+.TP 
+\fBLANDLOCK_ACCESS_FS_MAKE_BLOCK\fP
+创建 (或重命名或链接) 块设备。
+.TP 
+\fBLANDLOCK_ACCESS_FS_MAKE_SYM\fP
+.\"
+创建 (或重命名或链接) 符号链接。
+.SS "Layers of file path access rights"
+每次线程对自身执行规则集时，它都会使用新的策略层更新其 Landlock 域。 事实上，这个补充策略是由已经限制这个线程的潜在其他规则集组成的。
+然后，沙盒线程可以使用新的强制规则集安全地向自身添加更多约束。
+.PP
+.\"
+如果在路径上遇到的至少一个规则授予访问权限，则一个策略层授予对文件路径的访问权限。 如果沙箱线程的所有强制策略层都授予访问权限以及所有其他系统访问控制
+(例如，文件系统 DAC、其他 LSM 策略等)，则它只能访问文件路径。
+.SS "Bind mounts and OverlayFS"
+Landlock 允许限制对文件层次结构的访问，这意味着可以使用绑定安装传播这些访问权限 (参见
+\fBmount_namespaces\fP(7))，但不能使用 OverlayFS。
+.PP
+绑定安装将源文件层次结构镜像到目标。 然后目标层次结构由完全相同的文件组成，Landlock 规则可以通过源路径或目标路径绑定到这些文件上。
+这些规则在路径上遇到它们时会限制访问，这意味着它们可以同时限制对多个文件层次结构的访问，无论这些层次结构是否是绑定安装的结果。
+.PP
+.\"
+OverlayFS 挂载点由上层和下层组成。 这些层合并在一个合并目录中，这是挂载点的结果。
+此合并层次结构可能包括来自上层和下层的文件，但对合并层次结构执行的修改仅反映在上层。 从 Landlock 策略的角度来看，每个 OverlayFS
+层和合并层次结构都是独立的，并且包含自己的一组文件和目录，这与绑定挂载不同。 限制 OverlayFS 层的策略不会限制生成的合并层次结构，反之亦然。
+Landlock 用户应该只考虑他们想要允许访问的文件层次结构，而不考虑底层文件系统。
+.SS Inheritance
+\fBclone\fP(2) 产生的每个新线程都从其父线程继承 Landlock 域限制。 这类似于 \fBseccomp\fP(2) 继承或任何其他处理任务
+\fBcredentials\fP(7) 的 LSM。 例如，一个进程的线程可能会将 Landlock 规则应用于自身，但它们不会自动应用于其他兄弟线程 (与
+POSIX 线程凭证更改不同，参见 \fBnptl\fP(7)).
+.PP
+.\"
+当线程沙盒自身时，我们可以保证相关的安全策略将在该线程的所有后代上保持强制执行。
+这允许为每个应用程序创建独立和模块化的安全策略，这些策略将根据它们的运行时父策略在它们之间自动组合。
+.SS "Ptrace restrictions"
+沙盒进程比非沙盒进程具有更少的特权，并且在操作另一个进程时必须受到额外的限制。 要允许在目标进程上使用 \fBptrace\fP(2)
+和相关系统调用，沙盒进程应该具有目标进程规则的子集，这意味着被跟踪者必须位于跟踪器的子域中。
+.SH VERSIONS
+在 Linux 5.13 中添加了 Landlock。
+.SH NOTES
+Landlock 由 \fBCONFIG_SECURITY_LANDLOCK\fP 启用。 \fIlsm=lsm1,...,lsmN\fP 命令行参数控制
+Linux 安全模块的初始化顺序。 它必须包含字符串 \fIlandlock\fP 才能启用 Landlock。 如果未指定命令行参数，则初始化回退到已弃用的
+\fIsecurity=\fP 命令行参数的值，并进一步返回到 \fBCONFIG_LSM\fP 的值。 我们可以通过在内核日志中查找 \fIlandlock: Up and running.\fP 来检查 Landlock 是否已启用。
+.PP
+目前无法限制通过这些系统调用系列访问的一些与文件相关的操作:
+\fBchdir\fP(2)、\fBtruncate\fP(2)、\fBstat\fP(2)、\fBflock\fP(2)、\fBchmod\fP(2)、\fBchown\fP(2)、\fBsetxattr\fP(2)、\fButime\fP(2)、\fBioctl\fP(2)、\fBfcntl\fP(2)、\fBaccess\fP(2)。
+Future Landlock 进化将能够限制它们。
+.SH EXAMPLES
+我们首先需要创建包含我们规则的规则集。 对于此示例，规则集将包含仅允许读取操作但拒绝写入操作的规则。 然后规则集需要处理这两种操作。
+有关文件系统操作的描述，请参见下文。
+.PP
+.in +4n
+.EX
+struct landlock_ruleset_attr attr = {0};
+int ruleset_fd;
+
+attr.handled_access_fs =
+        LANDLOCK_ACCESS_FS_EXECUTE |
+        LANDLOCK_ACCESS_FS_WRITE_FILE |
+        LANDLOCK_ACCESS_FS_READ_FILE |
+        LANDLOCK_ACCESS_FS_READ_DIR |
+        LANDLOCK_ACCESS_FS_REMOVE_DIR |
+        LANDLOCK_ACCESS_FS_REMOVE_FILE |
+        LANDLOCK_ACCESS_FS_MAKE_CHAR |
+        LANDLOCK_ACCESS_FS_MAKE_DIR |
+        LANDLOCK_ACCESS_FS_MAKE_REG |
+        LANDLOCK_ACCESS_FS_MAKE_SOCK |
+        LANDLOCK_ACCESS_FS_MAKE_FIFO |
+        LANDLOCK_ACCESS_FS_MAKE_BLOCK |
+        LANDLOCK_ACCESS_FS_MAKE_SYM;
+
+ruleset_fd = landlock_create_ruleset(&attr, sizeof(attr), 0);
+if (ruleset_fd == \-1) {
+    perror("Failed to create a ruleset");
+    exit(EXIT_FAILURE);
+}
+.EE
+.in
+.PP
+由于返回的文件描述符引用了这个规则集，我们现在可以向这个规则集添加一个新规则。 该规则将只允许读取文件层次结构 \fI/usr\fP。
+如果没有其他规则，写入操作将被规则集拒绝。 要将 \fI/usr\fP 添加到规则集中，我们使用 \fIO_PATH\fP 标志打开它并用该文件描述符填充
+\fIstruct landlock_path_beneath_attr\fP。
+.PP
+.in +4n
+.EX
+struct landlock_path_beneath_attr path_beneath = {0};
+int err;
+
+path_beneath.allowed_access =
+        LANDLOCK_ACCESS_FS_EXECUTE |
+        LANDLOCK_ACCESS_FS_READ_FILE |
+        LANDLOCK_ACCESS_FS_READ_DIR;
+
+path_beneath.parent_fd = open("/usr", O_PATH | O_CLOEXEC);
+if (path_beneath.parent_fd == \-1) {
+    perror("Failed to open file");
+    close(ruleset_fd);
+    exit(EXIT_FAILURE);
+}
+err = landlock_add_rule(ruleset_fd, LANDLOCK_RULE_PATH_BENEATH,
+                        &path_beneath, 0);
+close(path_beneath.parent_fd);
+if (err) {
+    perror("Failed to update ruleset");
+    close(ruleset_fd);
+    exit(EXIT_FAILURE);
+}
+.EE
+.in
+.PP
+我们现在有一个规则集，其中一条规则允许对 \fI/usr\fP 进行读取访问，同时拒绝对文件系统的所有其他已处理访问。 下一步是限制当前线程获得更多特权
+(例如，感谢 set\-user\-ID 二进制文件)。
+.PP
+.in +4n
+.EX
+if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+    perror("Failed to restrict privileges");
+    close(ruleset_fd);
+    exit(EXIT_FAILURE);
+}
+.EE
+.in
+.PP
+当前线程现在已准备好使用规则集对自身进行沙盒处理。
+.PP
+.in +4n
+.EX
+if (landlock_restrict_self(ruleset_fd, 0)) {
+    perror("Failed to enforce ruleset");
+    close(ruleset_fd);
+    exit(EXIT_FAILURE);
+}
+close(ruleset_fd);
+.EE
+.in
+.PP
+如果 \fBlandlock_restrict_self\fP(2) 系统调用成功，则当前线程现在被限制，并且该策略也将在其随后创建的所有子线程上强制执行。
+一旦一个线程被锁住，就没有办法取消它的安全策略; 只允许添加更多限制。 这些线程现在位于新的 Landlock 域中，将其父线程 (如果有)
+与新规则集合并。
+.PP
+完整的工作代码可以在
+.UR https://git.kernel.org/\:pub/\:scm/\:linux/\:kernel/\:git/\:stable/\:linux.git/\:tree/\:samples/\:landlock/\:sandboxer.c
+.UE
+中找到
+.SH "SEE ALSO"
+\fBlandlock_create_ruleset\fP(2), \fBlandlock_add_rule\fP(2),
+\fBlandlock_restrict_self\fP(2)
+.PP
+.UR https://landlock.io/
+.UE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,74 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
+.\" Written by Marcela Maslanova <mmaslano@redhat.com>
+.\" and Copyright 2013, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getunwind 2 2022\-11\-10 "Linux man\-pages 6.03" 
+.SH NAME
+getunwind \- 将展开数据复制到调用者的缓冲区
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/unwind.h>\fP
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fB[[deprecated]] long syscall(SYS_getunwind, void \fP\fIbuf\fP\fB[.\fP\fIbuf_size\fP\fB],\fP
+\fB                            size_t \fP\fIbuf_size\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fINote: this system call is obsolete.\fP
+.PP
+IA\-64\-specific \fBgetunwind\fP() 系统调用将内核的调用 frame unwind 数据复制到 \fIbuf\fP
+指向的缓冲区中，并返回 unwind 数据的大小; 该数据描述了门页面 (映射到用户空间的内核代码)。
+.PP
+缓冲区 \fIbuf\fP 的大小在 \fIbuf_size\fP 中指定。 只有当 \fIbuf_size\fP 大于或等于 unwind 数据的大小且 \fIbuf\fP
+不为 NULL 时，才会复制数据; 否则，没有数据被复制，调用成功，返回存储展开数据所需的大小。
+.PP
+展开数据的第一部分包含一个展开表。 其余部分包含关联的展开信息，没有特定顺序。 展开表包含以下形式的条目:
+.PP
+.in +4n
+.EX
+u64 start;       (函数开始的 64 位地址)
+u64 end;         (函数末尾的 64 位地址)
+u64 info;        (BUF 相对于展开信息的偏移量)
+.EE
+.in
+.PP
+\fIstart\fP 值为零的条目指示表的末尾。 有关格式的更多信息，请参见 \fIIA\-64 Software Conventions and Runtime Architecture\fP 手册。
+.SH "RETURN VALUE"
+成功时，\fBgetunwind\fP() 返回展开数据的大小。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+如果无法将展开信息存储在 \fIbuf\fP 指定的空间中，则 \fBgetunwind\fP() 将失败并显示错误 \fBEFAULT\fP。
+.SH VERSIONS
+本系统调用自 Linux 2.4 起可用。
+.SH STANDARDS
+这个系统调用是 Linux 特有的，并且只在 IA\-64 架构上可用。
+.SH NOTES
+该系统调用已被弃用。 获取内核展开数据的现代方法是通过 \fBvdso\fP(7)。
+.SH "SEE ALSO"
+\fBgetauxval\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

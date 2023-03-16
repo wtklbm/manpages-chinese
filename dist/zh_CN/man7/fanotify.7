@@ -1,0 +1,904 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2013, Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\" and Copyright (C) 2014, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fanotify 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fanotify \- 监控文件系统事件
+.SH DESCRIPTION
+fanotify API 提供文件系统事件的通知和拦截。 用例包括病毒扫描和分层存储管理。 在最初的 fanotify API
+中，只支持一组有限的事件。 特别是，不支持创建、删除和移动事件。 Linux 5.1 中添加了对这些事件的支持。 (有关在 Linux 5.1
+之前通知这些事件的 API 的详细信息，请参见 \fBinotify\fP(7)。)
+.PP
+与 \fBinotify\fP(7) API
+相比的附加功能包括监视已安装文件系统中所有对象的能力、做出访问权限决策的能力，以及在其他应用程序访问之前读取或修改文件的可能性。
+.PP
+以下系统调用与此 API 一起使用:
+\fBfanotify_init\fP(2)、\fBfanotify_mark\fP(2)、\fBread\fP(2)、\fBwrite\fP(2) 和
+\fBclose\fP(2)。
+.SS "fanotify_init(), fanotify_mark(), and notification groups"
+\fBfanotify_init\fP(2) 系统调用创建并初始化一个 fanotify 通知组并返回引用它的文件描述符。
+.PP
+一个 fanotify 通知组是一个内核内部对象，它包含一个文件、目录、文件系统和要为其创建事件的挂载列表。
+.PP
+对于 fanotify 通知组中的每个条目，存在两个位掩码: \fImark\fP 掩码和 \fIignore\fP 掩码。 标记掩码定义应为其创建事件的文件活动。
+忽略掩码定义不应生成事件的活动。 拥有这两种类型的掩码允许将文件系统、挂载或目录标记为接收事件，同时忽略挂载或目录下特定对象的事件。
+.PP
+\fBfanotify_mark\fP(2) 系统调用将文件、目录、文件系统或装载添加到通知组，并指定应报告 (或忽略) 哪些事件，或者删除或修改此类条目。
+.PP
+忽略掩码的一种可能用途是用于文件缓存。 文件缓存感兴趣的事件是文件的修改和文件的关闭。 因此，缓存目录或挂载将被标记为接收这些事件。
+在收到第一个通知文件被修改的事件后，相应的缓存条目将失效。 在文件关闭之前，对该文件的进一步修改事件不感兴趣。 因此，可以将修改事件添加到忽略掩码。
+在接收到关闭事件后，可以从忽略掩码中删除修改事件，并且可以更新文件缓存条目。
+.PP
+fanotify 通知组中的条目通过其 inode 编号引用文件和目录，并通过其挂载 ID
+挂载。如果文件或目录在同一个装载中被重命名或移动，则相应的条目将保留下来。
+如果文件或目录被删除或移动到另一个挂载，或者如果文件系统或挂载被卸载，则相应的条目将被删除。
+.SS "The event queue"
+当事件发生在通知组监视的文件系统对象上时，fanotify 系统会生成收集在队列中的事件。 然后可以从 \fBfanotify_init\fP(2) 返回的
+fanotify 文件描述符中读取 (使用 \fBread\fP(2) 或类似的) 这些事件。
+.PP
+生成两种类型的事件: \fInotification\fP 事件和 \fIpermission\fP 事件。
+通知事件仅提供信息，不需要接收应用程序采取任何操作，但有一个例外: 如果在泛型事件中提供了有效的文件描述符，则必须关闭该文件描述符。
+权限事件是对接收应用程序的请求，以决定是否授予文件访问权限。 对于这些事件，接收者必须写一个响应来决定是否授予访问权限。
+.PP
+当一个事件被读取时，它会从 fanotify 组的事件队列中移除。 已读取的权限事件保存在 fanotify 组的内部列表中，直到通过写入
+fanotify 文件描述符做出权限决定或关闭 fanotify 文件描述符。
+.SS "Reading fanotify events"
+为 \fBfanotify_init\fP(2) 返回的文件描述符调用 \fBread\fP(2) 块 (如果标志 \fBFAN_NONBLOCK\fP 未在调用到
+\fBfanotify_init\fP(2)) 中指定，直到文件事件发生或调用被信号中断 (参见 \fBsignal\fP(7)).
+.PP
+\fBread\fP(2) 成功后，读取缓冲区包含以下一个或多个结构:
+.PP
+.in +4n
+.EX
+struct fanotify_event_metadata {
+    __u32 event_len;
+    __u8 vers;
+    __u8 reserved;
+    __u16 metadata_len;
+    __aligned_u64 mask;
+    __s32 fd;
+    __s32 pid;
+};
+.EE
+.in
+.PP
+信息记录是补充信息，可以与泛型 \fIfanotify_event_metadata\fP 结构体一起提供。 传递给 \fBfanotify_init\fP(2)
+的 \fIflags\fP 影响可能为事件返回的信息记录的类型。 例如，如果通知组是用 \fBFAN_REPORT_FID\fP 或
+\fBFAN_REPORT_DIR_FID\fP 初始化的，那么事件侦听器还应该期望在 \fIfanotify_event_metadata\fP 结构体旁边接收
+\fIfanotify_event_info_fid\fP 结构体，文件句柄用于识别文件系统对象而不是文件描述符。 信息记录也可以堆叠，这意味着支持将各种
+\fBFAN_REPORT_*\fP 标志相互结合使用。 在这种情况下，可以为事件返回多个信息记录以及泛型
+\fIfanotify_event_metadata\fP 结构体。 例如，如果一个通知组初始化为 \fBFAN_REPORT_TARGET_FID\fP 和
+\fBFAN_REPORT_PIDFD\fP，那么事件侦听器应该期望接收到最多两个 \fIfanotify_event_info_fid\fP 信息记录和一个
+\fIfanotify_event_info_pidfd\fP 信息记录以及泛型 \fIfanotify_event_metadata\fP 结构体。
+重要的是，当使用基于栈的配置初始化通知组时，fanotify 不保证信息记录的顺序。 每个信息记录都有一个
+\fIfanotify_event_info_header\fP 类型的嵌套结构体。 事件侦听器必须检查此结构体的 \fIinfo_type\fP
+字段，以确定已为给定事件接收到的信息记录的类型。
+.PP
+在 fanotify 组通过文件句柄识别文件系统对象的情况下，事件侦听器还应该期望在读取缓冲区中接收一个或多个以下信息记录对象以及泛型
+\fIfanotify_event_metadata\fP 结构体:
+.PP
+.in +4n
+.EX
+struct fanotify_event_info_fid {
+    struct fanotify_event_info_header hdr;
+    __kernel_fsid_t fsid;
+    unsigned char file_handle[0];
+};
+.EE
+.in
+.PP
+在使用 \fBFAN_REPORT_PIDFD\fP 初始化 fanotify 组的情况下，事件侦听器应该期望在读取缓冲区中接收以下信息记录对象以及泛型
+\fIfanotify_event_metadata\fP 结构体:
+.PP
+.in +4n
+.EX
+struct fanotify_event_info_pidfd {
+        struct fanotify_event_info_header hdr;
+        __s32 pidfd;
+};
+.EE
+.in
+.PP
+在发生 \fBFAN_FS_ERROR\fP 事件的情况下，将在读取缓冲区中与泛型 \fIfanotify_event_metadata\fP
+结构体一起返回描述所发生错误的附加信息记录。 这个结构体定义如下:
+.PP
+.in +4n
+.EX
+struct fanotify_event_info_error {
+    struct fanotify_event_info_header hdr;
+    __s32 error;
+    __u32 error_count;
+};
+.EE
+.in
+.PP
+所有信息记录都包含一个 \fIfanotify_event_info_header\fP 类型的嵌套结构体。 此结构体包含有关可能与泛型
+\fIfanotify_event_metadata\fP 结构体一起返回的信息记录的元信息。 这个结构体定义如下:
+.PP
+.in +4n
+.EX
+struct fanotify_event_info_header {
+	__u8 info_type;
+	__u8 pad;
+	__u16 len;
+};
+.EE
+.in
+.PP
+出于性能原因，建议使用较大的缓冲区大小 (例如 4096 字节)，以便单个 \fBread\fP(2) 可以检索多个事件。
+.PP
+\fBread\fP(2) 的返回值是缓冲区中的字节数，如果出现错误则返回 \-1 (但请参见 BUGS)。
+.PP
+\fIfanotify_event_metadata\fP 结构体的字段如下:
+.TP 
+\fIevent_len\fP
+这是当前事件的数据长度和缓冲区中下一个事件的偏移量。 除非该组通过文件句柄标识文件系统对象，否则 \fIevent_len\fP 的值始终为
+\fBFAN_EVENT_METADATA_LEN\fP。 对于通过文件句柄标识文件系统对象的组，\fIevent_len\fP 还包括可变长度文件标识符记录。
+.TP 
+\fIvers\fP
+该字段包含结构体的版本号。 必须将它与 \fBFANOTIFY_METADATA_VERSION\fP
+进行比较，以验证运行时返回的结构是否与编译时定义的结构相匹配。 如果不匹配，应用程序应该放弃尝试使用 fanotify 文件描述符。
+.TP 
+\fIreserved\fP
+不使用该字段。
+.TP 
+\fImetadata_len\fP
+这是结构体的长度。 引入该字段是为了促进每个事件类型的可选标头的实现。 当前实现中不存在此类可选标头。
+.TP 
+\fImask\fP
+这是描述事件的位掩码 (见下文)。
+.TP 
+\fIfd\fP
+这是被访问对象的打开文件描述符，如果发生队列溢出，则为 \fBFAN_NOFD\fP。 对于通过文件句柄识别文件系统对象的 fanotify
+组，应用程序应该期望为接收到的每个事件将此值设置为 \fBFAN_NOFD\fP。 文件描述符可用于访问受监视文件或目录的内容。
+读取应用程序负责关闭此文件描述符。
+.IP
+调用 \fBfanotify_init\fP(2) 时，调用者可以指定 (通过 \fIevent_f_flags\fP 参数)
+各种文件状态标志，这些标志将设置在与该文件描述符对应的打开文件描述上。 此外，(kernel\-internal) \fBFMODE_NONOTIFY\fP
+文件状态标志设置在打开文件描述中。 此标志抑制 fanotify 事件生成。 因此，当 fanotify
+事件的接收者使用此文件描述符访问通知的文件或目录时，不会创建其他事件。
+.TP 
+\fIpid\fP
+如果在 \fBfanotify_init\fP(2) 中设置了标志 \fBFAN_REPORT_TID\fP，则这是导致事件的线程的 TID。
+否则，这是导致事件的进程的 PID。
+.PP
+侦听 fanotify 事件的程序可以将此 PID 与 \fBgetpid\fP(2) 返回的 PID
+进行比较，以确定该事件是由侦听器本身引起的，还是由另一个进程访问文件引起的。
+.PP
+\fImask\fP 中的位掩码指示单个文件系统对象发生了哪些事件。 如果受监视的文件系统对象发生了不止一个事件，则可以在此掩码中设置多个位。
+特别是，同一文件系统对象的连续事件和源自同一进程的事件可能会合并为一个事件，但两个权限事件永远不会合并为一个队列条目。
+.PP
+\fImask\fP 中可能出现的位如下:
+.TP 
+\fBFAN_ACCESS\fP
+文件或目录 (但请参见 BUGS) 被访问 (read)。
+.TP 
+\fBFAN_OPEN\fP
+打开了文件或目录。
+.TP 
+\fBFAN_OPEN_EXEC\fP
+一个文件被打开，意图被执行。 有关更多详细信息，请参见 \fBfanotify_mark\fP(2) 中的注释。
+.TP 
+\fBFAN_ATTRIB\fP
+文件或目录元数据已更改。
+.TP 
+\fBFAN_CREATE\fP
+在监视的父级中创建了子文件或目录。
+.TP 
+\fBFAN_DELETE\fP
+被监视的父文件或目录已被删除。
+.TP 
+\fBFAN_DELETE_SELF\fP
+监视的文件或目录已删除。
+.TP 
+\fBFAN_FS_ERROR\fP
+检测到文件系统错误。
+.TP 
+\fBFAN_RENAME\fP
+文件或目录已移入或移出监视的父目录。
+.TP 
+\fBFAN_MOVED_FROM\fP
+文件或目录已从监视的父目录中移出。
+.TP 
+\fBFAN_MOVED_TO\fP
+文件或目录已移动到监视的父目录。
+.TP 
+\fBFAN_MOVE_SELF\fP
+移动了监视的文件或目录。
+.TP 
+\fBFAN_MODIFY\fP
+修改了一个文件。
+.TP 
+\fBFAN_CLOSE_WRITE\fP
+为写入 (\fBO_WRONLY\fP 或 \fBO_RDWR\fP) 而打开的文件已关闭。
+.TP 
+\fBFAN_CLOSE_NOWRITE\fP
+以只读 (\fBO_RDONLY\fP) 打开的文件或目录已关闭。
+.TP 
+\fBFAN_Q_OVERFLOW\fP
+事件队列超出了事件数限制。 可以通过在调用 \fBfanotify_init\fP(2) 时指定 \fBFAN_UNLIMITED_QUEUE\fP
+标志来覆盖此限制。
+.TP 
+\fBFAN_ACCESS_PERM\fP
+应用程序想要读取文件或目录，例如使用 \fBread\fP(2) 或 \fBreaddir\fP(2)。 reader 必须写一个响应 (如下所述)
+来确定是否应该授予访问文件系统对象的权限。
+.TP 
+\fBFAN_OPEN_PERM\fP
+一个应用程序想要打开一个文件或目录。 reader 必须写一个响应来确定是否应该授予打开文件系统对象的权限。
+.TP 
+\fBFAN_OPEN_EXEC_PERM\fP
+一个应用程序想要打开一个文件来执行。 reader 必须写一个响应来确定是否应该授予打开文件系统对象执行的权限。 有关更多详细信息，请参见
+\fBfanotify_mark\fP(2) 中的注释。
+.PP
+要检查任何关闭事件，可以使用以下位掩码:
+.TP 
+\fBFAN_CLOSE\fP
+一个文件被关闭。 这是以下的同义词:
+.IP
+.in +4n
+.EX
+FAN_CLOSE_WRITE | FAN_CLOSE_NOWRITE
+.EE
+.in
+.PP
+要检查任何移动事件，可以使用以下位掩码:
+.TP 
+\fBFAN_MOVE\fP
+文件或目录已移动。 这是以下的同义词:
+.IP
+.in +4n
+.EX
+FAN_MOVED_FROM | FAN_MOVED_TO
+.EE
+.in
+.PP
+以下位可能仅与其他事件类型位一起出现在 \fImask\fP 中:
+.TP 
+\fBFAN_ONDIR\fP
+\fImask\fP 中描述的事件发生在目录对象上。 报告目录事件需要在标记掩码中设置此标志。 有关更多详细信息，请参见
+\fBfanotify_mark\fP(2)。 仅当 fanotify 组通过文件句柄识别文件系统对象时，才会在事件掩码中报告 \fBFAN_ONDIR\fP
+标志。
+.PP
+与泛型 \fIfanotify_event_metadata\fP 结构体一起提供的信息记录将始终包含
+\fIfanotify_event_info_header\fP 类型的嵌套结构体。 \fIfanotify_event_info_header\fP 的字段如下:
+.TP 
+\fIinfo_type\fP
+一个唯一的整数值，表示为事件接收的信息记录对象的类型。 该字段的值可以设置为以下之一:
+\fBFAN_EVENT_INFO_TYPE_FID\fP、\fBFAN_EVENT_INFO_TYPE_DFID\fP、\fBFAN_EVENT_INFO_TYPE_DFID_NAME\fP
+或 \fBFAN_EVENT_INFO_TYPE_PIDFD\fP。 为该字段设置的值取决于提供给 \fBfanotify_init\fP(2) 的标志。
+请参见下面每个信息记录对象类型的字段详细信息，以了解可以设置 \fIinfo_type\fP 值的不同情况。
+.TP 
+\fIpad\fP
+该字段当前未被任何信息记录对象类型使用，因此设置为零。
+.TP 
+\fIlen\fP
+\fIlen\fP 的值设置为信息记录对象的大小，包括 \fIfanotify_event_info_header\fP。 所有附加信息记录的总大小预计不会大于
+(\fIevent_len\fP\-\fImetadata_len\fP)。
+.PP
+\fIfanotify_event_info_fid\fP 结构体的字段如下:
+.TP 
+\fIhdr\fP
+这是一个 \fIfanotify_event_info_header\fP 类型的结构体。 例如，当使用 \fBFAN_REPORT_FID\fP 创建
+fanotify 文件描述符时，单个信息记录应附加到 \fIinfo_type\fP 字段值为 \fBFAN_EVENT_INFO_TYPE_FID\fP 的事件。
+当使用 \fBFAN_REPORT_FID\fP 和 \fBFAN_REPORT_DIR_FID\fP 的组合创建 fanotify
+文件描述符时，可能有两条信息记录附加到事件上: 一条 \fIinfo_type\fP 字段值为
+\fBFAN_EVENT_INFO_TYPE_DFID\fP，标识父目录对象，另一条 \fIinfo_type\fP 字段值为
+\fBFAN_EVENT_INFO_TYPE_FID\fP，标识一个子对象。 请注意，对于目录条目修改事件
+\fBFAN_CREATE\fP、\fBFAN_DELETE\fP、\fBFAN_MOVE\fP 和 \fBFAN_RENAME\fP，仅当使用标志
+\fBFAN_REPORT_TARGET_FID\fP 初始化 fanotify 组时，才会报告标识 created/deleted/moved
+子对象的信息记录。
+.TP 
+\fIfsid\fP
+这是包含与事件关联的对象的文件系统的唯一标识符。 它是一个 \fI__kernel_fsid_t\fP 类型的结构体，在调用 \fBstatfs\fP(2)
+时包含与 \fIf_fsid\fP 相同的值。
+.TP 
+\fIfile_handle\fP
+这是一个结构体 file_handle 类型的可变长度结构体。 它是一个不透明的句柄，对应于 \fBname_to_handle_at\fP(2)
+返回的文件系统上的指定对象。 它可用于唯一标识文件系统上的文件，并可作为参数传递给 \fBopen_by_handle_at\fP(2)。 如果
+\fIinfo_type\fP 字段的值为 \fBFAN_EVENT_INFO_TYPE_DFID_NAME\fP，则文件句柄后跟一个空终止字符串，用于标识
+created/deleted/moved 目录条目名称。 对于
+\fBFAN_OPEN\fP、\fBFAN_ATTRIB\fP、\fBFAN_DELETE_SELF\fP、\fBFAN_MOVE_SELF\fP 等其他事件，如果
+\fIinfo_type\fP 字段的值为 \fBFAN_EVENT_INFO_TYPE_FID\fP，则 \fIfile_handle\fP 标识与该事件关联的对象。
+如果 \fIinfo_type\fP 字段的值为 \fBFAN_EVENT_INFO_TYPE_DFID\fP，则 \fIfile_handle\fP
+标识与事件相关的目录对象或与事件相关的非目录对象的父目录。 如果 \fIinfo_type\fP 字段的值为
+\fBFAN_EVENT_INFO_TYPE_DFID_NAME\fP，则 \fIfile_handle\fP 标识将与
+\fBFAN_EVENT_INFO_TYPE_DFID\fP 一起报告的同一目录对象，文件句柄后跟一个空终止字符串，标识该目录中目录条目的名称，或者 '.'
+标识目录对象本身。
+.PP
+\fIfanotify_event_info_pidfd\fP 结构体的字段如下:
+.TP 
+\fIhdr\fP
+这是一个 \fIfanotify_event_info_header\fP 类型的结构体。 当使用 \fBFAN_REPORT_PIDFD\fP 初始化
+fanotify 组时，\fIfanotify_event_info_header\fP 的 \fIinfo_type\fP 字段值设置为
+\fBFAN_EVENT_INFO_TYPE_PIDFD\fP。
+.TP 
+\fIpidfd\fP
+这是一个进程文件描述符，引用负责生成事件的进程。 返回的进程文件描述符与在 \fIfanotify_event_metadata.pid\fP 上调用
+\fBpidfd_open\fP(2) 时可以手动获取的进程文件描述符没有区别。 在创建 pidfd 期间遇到错误的情况下，可能会在此 \fIpidfd\fP
+字段中返回由 negative 整数值表示的两种可能错误类型之一。 如果负责生成事件的进程在事件侦听器能够从通知队列中读取事件之前终止，则返回
+\fBFAN_NOPIDFD\fP。 事件的 pidfd 创建仅在从通知队列中读取事件时执行。 所有其他可能的 pidfd 创建失败都由
+\fBFAN_EPIDFD\fP 表示。 一旦事件侦听器处理了事件并且不再需要 pidfd，应该通过 \fBclose\fP(2) 关闭 pidfd。
+.PP
+\fIfanotify_event_info_error\fP 结构体的字段如下:
+.TP 
+\fIhdr\fP
+这是一个 \fIfanotify_event_info_header\fP 类型的结构体。 \fIinfo_type\fP 字段设置为
+\fBFAN_EVENT_INFO_TYPE_ERROR\fP。
+.TP 
+\fIerror\fP
+标识发生的错误类型。
+.TP 
+\fIerror_count\fP
+这是自读取上一个错误以来抑制的错误数的计数器。
+.PP
+提供以下宏以迭代包含 \fBread\fP(2) 从 fanotify 文件描述符返回的 fanotify 事件元数据的缓冲区:
+.TP 
+\fBFAN_EVENT_OK(meta, len)\fP
+此宏检查缓冲区 \fImeta\fP 的剩余长度 \fIlen\fP 与元数据结构体的长度和缓冲区中第一个元数据结构体的 \fIevent_len\fP 字段。
+.TP 
+\fBFAN_EVENT_NEXT(meta, len)\fP
+这个宏用 \fImeta\fP 指向的元数据结构体的 \fIevent_len\fP 字段中指示的长度来计算 \fImeta\fP 之后的下一个元数据结构体的地址。
+\fIlen\fP 是当前保留在缓冲区中的元数据的字节数。 宏返回指向 \fImeta\fP 之后的下一个元数据结构体的指针，并将 \fIlen\fP
+减少元数据结构体中已跳过的字节数 (即，它从 \fIlen\fP) 中减去 \fImeta\->event_len\fP。
+.PP
+此外，还有:
+.TP 
+\fBFAN_EVENT_METADATA_LEN\fP
+.\"
+此宏返回结构体 \fIfanotify_event_metadata\fP 的大小 (以字节为单位)。 这是任何事件元数据的最小大小 (也是目前唯一的大小)。
+.SS "Monitoring an fanotify file descriptor for events"
+当发生 fanotify 事件时，fanotify 文件描述符在传递给 \fBepoll\fP(7)、\fBpoll\fP(2) 或 \fBselect\fP(2)
+时指示为可读。
+.SS "Dealing with permission events"
+对于权限事件，应用程序必须将以下形式的结构体 \fBwrite\fP(2) 到 fanotify 文件描述符:
+.PP
+.in +4n
+.EX
+struct fanotify_response {
+    __s32 fd;
+    __u32 response;
+};
+.EE
+.in
+.PP
+这个结构体的字段如下:
+.TP 
+\fIfd\fP
+这是来自结构体 \fIfanotify_event_metadata\fP 的文件描述符。
+.TP 
+\fIresponse\fP
+该字段指示是否授予权限。 它的值必须是 \fBFAN_ALLOW\fP 以允许文件操作或 \fBFAN_DENY\fP 以拒绝文件操作。
+.PP
+.\"
+如果访问被拒绝，请求应用程序调用将收到 \fBEPERM\fP 错误。 此外，如果已使用 \fBFAN_ENABLE_AUDIT\fP 标志创建通知组，则可以在
+\fIresponse\fP 字段中设置 \fBFAN_AUDIT\fP 标志。 在这种情况下，审计子系统会将有关访问决策的信息记录到审计日志中。
+.SS "Monitoring filesystems for errors"
+每个文件系统一次存储一个 \fBFAN_FS_ERROR\fP 事件。 现有 \fBFAN_FS_ERROR\fP 事件记录的 \fIerror_count\fP
+字段中会抑制和说明额外的错误消息，但会丢失有关错误的详细信息。
+.PP
+\fBFAN_FS_ERROR\fP 报告的错误是泛型 \fIerrno\fP 值，但并非所有文件系统都报告所有类型的错误。
+.PP
+.\"
+与文件不直接相关的错误 (即超级块损坏) 用无效的 \fIfile_handle\fP 报告。 对于这些错误，\fIfile_handle\fP 会将字段
+\fIhandle_type\fP 设置为 \fBFILEID_INVALID\fP，并将句柄缓冲区大小设置为 \fB0\fP。
+.SS "Closing the fanotify file descriptor"
+当引用 fanotify 通知组的所有文件描述符都关闭时，将释放 fanotify 组，释放其资源以供内核重用。 在 \fBclose\fP(2)
+上，未完成的权限事件将被设置为允许。
+.SS "/proc interfaces"
+文件 \fI/proc/[pid]/fdinfo/[fd]\fP 包含有关进程 \fIpid\fP 的文件描述符 \fIfd\fP 的 fanotify 标记的信息。
+有关详细信息，请参见 \fBproc\fP(5)。
+.PP
+.\" commit 5b8fea65d197f408bb00b251c70d842826d6b70b
+从 Linux 5.13 开始，可以通过以下接口来控制 fanotify 消耗的内核资源量:
+.TP 
+\fI/proc/sys/fs/fanotify/max_queued_events\fP
+.\" commit 5b8fea65d197f408bb00b251c70d842826d6b70b
+当应用程序调用 \fBfanotify_init\fP(2) 以设置可以排队到相应 fanotify 组的事件数上限时，将使用此文件中的值。
+超过此限制的事件是丢弃，但始终会生成 \fBFAN_Q_OVERFLOW\fP 事件。 在 Linux 内核 5.13 之前，硬编码限制是 16384
+个事件。
+.TP 
+\fI/proc/sys/fs/fanotify/max_user_group\fP
+.\" commit 5b8fea65d197f408bb00b251c70d842826d6b70b
+这指定了每个真实用户 ID 可以创建的 fanotify 组数量的上限。在 Linux 内核 5.13 之前，硬编码限制是每个用户 128 个组。
+.TP 
+\fI/proc/sys/fs/fanotify/max_user_marks\fP
+.\" commit 5b8fea65d197f408bb00b251c70d842826d6b70b
+这指定了每个真实用户 ID 可以创建的 fanotify 标记数量的上限。在 Linux 内核 5.13 之前，硬编码限制是每个组 (不是每个用户)
+8192 个标记。
+.SH ERRORS
+除了 \fBread\fP(2) 的常见错误之外，从 fanotify 文件描述符读取时还会出现以下错误:
+.TP 
+\fBEINVAL\fP
+缓冲区太小，无法容纳事件。
+.TP 
+\fBEMFILE\fP
+已达到打开文件数的每个进程限制。 请参见 \fBgetrlimit\fP(2) 中 \fBRLIMIT_NOFILE\fP 的说明。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。 请参见 \fBproc\fP(5) 中的 \fI/proc/sys/fs/file\-max\fP。
+.TP 
+\fBETXTBSY\fP
+如果在调用 \fBfanotify_init\fP(2) 时在 \fIevent_f_flags\fP 参数中指定了 \fBO_RDWR\fP 或
+\fBO_WRONLY\fP，并且当前正在执行的监视文件发生了事件，则 \fBread\fP(2) 将返回此错误。
+.PP
+除了 \fBwrite\fP(2) 的常见错误外，写入 fanotify 文件描述符时还会出现以下错误:
+.TP 
+\fBEINVAL\fP
+内核配置中未启用 Fanotify 访问权限或响应结构体中 \fIresponse\fP 的值无效。
+.TP 
+\fBENOENT\fP
+响应结构体中的文件描述符 \fIfd\fP 无效。 当权限事件的响应已经写入时，可能会发生这种情况。
+.SH VERSIONS
+fanotify API 在 Linux 2.6.36 引入，在 Linux 2.6.37 启用。 在 Linux 3.8 中添加了 Fdinfo
+支持。
+.SH STANDARDS
+fanotify API 是特定于 Linux 的。
+.SH NOTES
+只有在启用 \fBCONFIG_FANOTIFY\fP 配置选项的情况下构建内核时，fanotify API 才可用。 此外，仅当启用
+\fBCONFIG_FANOTIFY_ACCESS_PERMISSIONS\fP 配置选项时，fanotify 权限处理才可用。
+.SS "Limitations and caveats"
+Fanotify 仅报告用户空间程序通过文件系统 API 触发的事件。 因此，它不会捕获网络文件系统上发生的远程事件。
+.PP
+fanotify API 不会报告由于 \fBmmap\fP(2)、\fBmsync\fP(2) 和 \fBmunmap\fP(2) 可能发生的文件访问和修改。
+.PP
+仅当目录本身被打开、读取和关闭时，才会创建目录事件。 添加、删除或更改标记目录的子目录不会为受监视目录本身创建事件。
+.PP
+Fanotify 对目录的监控不是递归的: 要监控目录下的子目录，必须创建额外的标记。 \fBFAN_CREATE\fP
+事件可用于检测何时在标记的目录下创建了子目录。 然后必须在新创建的子目录上设置一个附加标记。
+这种方法是活泼的，因为它可能会丢失在新创建的子目录中发生的事件，然后再在该子目录上添加标记。 监控挂载提供了以无竞争方式监控整个目录树的能力。
+监视文件系统提供了以无竞争方式监视从文件系统实例的任何挂载所做的更改的能力。
+.PP
+事件队列可能会溢出。 在这种情况下，事件会丢失。
+.SH BUGS
+.\" commit 820c12d5d6c0890bc93dd63893924a13041fdc35
+在 Linux 3.19 之前，\fBfallocate\fP(2) 没有产生 fanotify 事件。 自 Linux 3.19 起，对
+\fBfallocate\fP(2) 的调用将生成 \fBFAN_MODIFY\fP 事件。
+.PP
+从 Linux 3.17 开始，存在以下错误:
+.IP \[bu] 3
+在 Linux 上，可以通过多个路径访问文件系统对象，例如，可以使用 \fBmount\fP(8) 的 \fI\-\-bind\fP 选项重新挂载文件系统的一部分。
+标记挂载的侦听器将仅收到为使用相同挂载的文件系统对象触发的事件的通知。 任何其他事件都会被忽视。
+.IP \[bu]
+.\" FIXME . A patch was proposed.
+生成事件时，在传递文件的文件描述符之前，不会检查接收进程的用户 ID 是否有权读取或写入文件。 当为非特权用户执行的程序设置
+\fBCAP_SYS_ADMIN\fP 功能时，这会带来安全风险。
+.IP \[bu]
+如果调用 \fBread\fP(2) 处理来自 fanotify 队列的多个事件并且发生错误，则返回值将是错误发生之前成功复制到用户空间缓冲区的事件的总长度。
+返回值不会是 \-1，也不会设置 \fIerrno\fP。 因此，阅读应用程序无法检测到错误。
+.SH EXAMPLES
+下面的两个示例程序演示了 fanotify API 的用法。
+.SS "Example program: fanotify_example.c"
+第一个程序是使用 fanotify 的示例，其事件对象信息以文件描述符的形式传递。 该程序将挂载标记为命令行参数，并等待
+\fBFAN_OPEN_PERM\fP 和 \fBFAN_CLOSE_WRITE\fP 类型的事件。 当权限事件发生时，给出 \fBFAN_ALLOW\fP 响应。
+.PP
+以下 shell 会话显示了运行此程序的示例。 该会话涉及编辑文件 \fI/home/user/temp/notes\fP。 在打开文件之前，发生了
+\fBFAN_OPEN_PERM\fP 事件。 文件关闭后，发生 \fBFAN_CLOSE_WRITE\fP 事件。 当用户按下 ENTER 键时，程序的执行结束。
+.PP
+.in +4n
+.EX
+# \fB./fanotify_example /home\fP
+按回车键终止。
+监听事件。
+FAN_OPEN_PERM: File /home/user/temp/notes
+FAN_CLOSE_WRITE: File /home/user/temp/notes
+
+侦听事件已停止。
+.EE
+.in
+.SS "Program source: fanotify_example.c"
+\&
+.EX
+#define _GNU_SOURCE     /* Needed to get O_LARGEFILE definition */
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/fanotify.h>
+#include <unistd.h>
+
+/* Read all available fanotify events from the file descriptor \[aq]fd\[aq]. */
+
+static void
+handle_events(int fd)
+{
+    const struct fanotify_event_metadata *metadata;
+    struct fanotify_event_metadata buf[200];
+    ssize_t len;
+    char path[PATH_MAX];
+    ssize_t path_len;
+    char procfd_path[PATH_MAX];
+    struct fanotify_response response;
+
+    /* Loop while events can be read from fanotify file descriptor. */
+
+    for (;;) {
+
+        /* Read some events. */
+
+        len = read(fd, buf, sizeof(buf));
+        if (len == \-1 && errno != EAGAIN) {
+            perror("read");
+            exit(EXIT_FAILURE);
+        }
+
+        /* Check if end of available data reached. */
+
+        if (len <= 0)
+            break;
+
+        /* Point to the first event in the buffer. */
+
+        metadata = buf;
+
+        /* Loop over all events in the buffer. */
+
+        while (FAN_EVENT_OK(metadata, len)) {
+
+            /* Check that run\-time and compile\-time structures match. */
+
+            if (metadata\->vers != FANOTIFY_METADATA_VERSION) {
+                fprintf(stderr,
+                        "Mismatch of fanotify metadata version.\en");
+                exit(EXIT_FAILURE);
+            }
+
+            /* metadata\->fd contains either FAN_NOFD, indicating a
+               queue overflow, or a file descriptor (a nonnegative
+               integer). Here, we simply ignore queue overflow. */
+
+            if (metadata\->fd >= 0) {
+
+                /* Handle open permission event. */
+
+                if (metadata\->mask & FAN_OPEN_PERM) {
+                    printf("FAN_OPEN_PERM: ");
+
+                    /* Allow file to be opened. */
+
+                    response.fd = metadata\->fd;
+                    response.response = FAN_ALLOW;
+                    write(fd, &response, sizeof(response));
+                }
+
+                /* Handle closing of writable file event. */
+
+                if (metadata\->mask & FAN_CLOSE_WRITE)
+                    printf("FAN_CLOSE_WRITE: ");
+
+                /* Retrieve and print pathname of the accessed file. */
+
+                snprintf(procfd_path, sizeof(procfd_path),
+                         "/proc/self/fd/%d", metadata\->fd);
+                path_len = readlink(procfd_path, path,
+                                    sizeof(path) \- 1);
+                if (path_len == \-1) {
+                    perror("readlink");
+                    exit(EXIT_FAILURE);
+                }
+
+                path[path_len] = \[aq]\e0\[aq];
+                printf("File %s\en", path);
+
+                /* Close the file descriptor of the event. */
+
+                close(metadata\->fd);
+            }
+
+            /* Advance to next event. */
+
+            metadata = FAN_EVENT_NEXT(metadata, len);
+        }
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    char buf;
+    int fd, poll_num;
+    nfds_t nfds;
+    struct pollfd fds[2];
+
+    /* Check mount point is supplied. */
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s MOUNT\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Press enter key to terminate.\en");
+
+    /* Create the file descriptor for accessing the fanotify API. */
+
+    fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_CONTENT | FAN_NONBLOCK,
+                       O_RDONLY | O_LARGEFILE);
+    if (fd == \-1) {
+        perror("fanotify_init");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Mark the mount for:
+       \- permission events before opening files
+       \- notification events after closing a write\-enabled
+         file descriptor. */
+
+    if (fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
+                      FAN_OPEN_PERM | FAN_CLOSE_WRITE, AT_FDCWD,
+                      argv[1]) == \-1) {
+        perror("fanotify_mark");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Prepare for polling. */
+
+    nfds = 2;
+
+    fds[0].fd = STDIN_FILENO;       /* Console input */
+    fds[0].events = POLLIN;
+
+    fds[1].fd = fd;                 /* Fanotify input */
+    fds[1].events = POLLIN;
+
+    /* This is the loop to wait for incoming events. */
+
+    printf("Listening for events.\en");
+
+    while (1) {
+        poll_num = poll(fds, nfds, \-1);
+        if (poll_num == \-1) {
+            if (errno == EINTR)     /* Interrupted by a signal */
+                continue;            /* Restart poll() */
+
+            perror("poll");         /* Unexpected error */
+            exit(EXIT_FAILURE);
+        }
+
+        if (poll_num > 0) {
+            if (fds[0].revents & POLLIN) {
+
+                /* Console input is available: empty stdin and quit. */
+
+                while (read(STDIN_FILENO, &buf, 1) > 0 && buf != \[aq]\en\[aq])
+                    continue;
+                break;
+            }
+
+            if (fds[1].revents & POLLIN) {
+
+                /* Fanotify events are available. */
+
+                handle_events(fd);
+            }
+        }
+    }
+
+    printf("Listening for events stopped.\en");
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\"
+.SS "Example program: fanotify_fid.c"
+第二个程序是 fanotify 与一个通过文件句柄识别对象的组一起使用的示例。 该程序标记作为命令行参数传递的文件系统对象，并等待直到
+\fBFAN_CREATE\fP 类型的事件发生。 事件掩码指示创建了哪种类型的文件系统对象 \[em] 文件或目录 \[em]。
+一旦从缓冲区中读取了所有事件并进行了相应处理，程序就会终止。
+.PP
+以下 shell 会话显示了该程序的两次不同调用，对监视的对象执行了不同的操作。
+.PP
+第一个会话显示一个标记被放置在 \fI/home/user\fP 上。 接下来是创建常规文件 \fI/home/user/testfile.txt\fP。
+这会导致生成 \fBFAN_CREATE\fP 事件并针对文件的父监视目录对象和创建的文件名进行报告。 一旦处理完缓冲区中捕获的所有事件，程序执行就会结束。
+.PP
+.in +4n
+.EX
+# \fB./fanotify_fid /home/user\fP
+监听事件。
+FAN_CREATE (文件创建) :
+        目录 /home/user 已被修改。
+        条目 \[aq] testfile.txt\[aq] 不是子目录。
+所有事件均已成功处理。程序退出。
+
+$ \fBtouch /home/user/testfile.txt\fP              # 在另一个终点
+.EE
+.in
+.PP
+第二个会话显示一个标记被放置在 \fI/home/user\fP 上。 随后创建目录 \fI/home/user/testdir\fP。 此特定操作会导致生成
+\fBFAN_CREATE\fP 事件并报告 \fBFAN_ONDIR\fP 标志集和创建的目录名称。
+.PP
+.in +4n
+.EX
+# \fB./fanotify_fid /home/user\fP
+监听事件。
+粉丝创建 | FAN_ONDIR (创建的子目录) :
+        目录 /home/user 已被修改。
+        条目 \[aq] testdir\[aq] 是一个子目录。
+所有事件均已成功处理。程序退出。
+
+$ \fBmkdir \-p /home/user/testdir\fP          # 在另一个终点
+.EE
+.in
+.SS "Program source: fanotify_fid.c"
+\&
+.EX
+#define _GNU_SOURCE
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/fanotify.h>
+#include <unistd.h>
+
+#define BUF_SIZE 256
+
+int
+main(int argc, char *argv[])
+{
+    int fd, ret, event_fd, mount_fd;
+    ssize_t len, path_len;
+    char path[PATH_MAX];
+    char procfd_path[PATH_MAX];
+    char events_buf[BUF_SIZE];
+    struct file_handle *file_handle;
+    struct fanotify_event_metadata *metadata;
+    struct fanotify_event_info_fid *fid;
+    const char *file_name;
+    struct stat sb;
+
+    if (argc != 2) {
+        fprintf(stderr, "Invalid number of command line arguments.\en");
+        exit(EXIT_FAILURE);
+    }
+
+    mount_fd = open(argv[1], O_DIRECTORY | O_RDONLY);
+    if (mount_fd == \-1) {
+        perror(argv[1]);
+        exit(EXIT_FAILURE);
+    }
+
+
+    /* Create an fanotify file descriptor with FAN_REPORT_DFID_NAME as
+       a flag so that program can receive fid events with directory
+       entry name. */
+
+    fd = fanotify_init(FAN_CLASS_NOTIF | FAN_REPORT_DFID_NAME, 0);
+    if (fd == \-1) {
+        perror("fanotify_init");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Place a mark on the filesystem object supplied in argv[1]. */
+
+    ret = fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_ONLYDIR,
+                        FAN_CREATE | FAN_ONDIR,
+                        AT_FDCWD, argv[1]);
+    if (ret == \-1) {
+        perror("fanotify_mark");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Listening for events.\en");
+
+    /* Read events from the event queue into a buffer. */
+
+    len = read(fd, events_buf, sizeof(events_buf));
+    if (len == \-1 && errno != EAGAIN) {
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Process all events within the buffer. */
+
+    for (metadata = (struct fanotify_event_metadata *) events_buf;
+            FAN_EVENT_OK(metadata, len);
+            metadata = FAN_EVENT_NEXT(metadata, len)) {
+        fid = (struct fanotify_event_info_fid *) (metadata + 1);
+        file_handle = (struct file_handle *) fid\->handle;
+
+        /* Ensure that the event info is of the correct type. */
+
+        if (fid\->hdr.info_type == FAN_EVENT_INFO_TYPE_FID ||
+            fid\->hdr.info_type == FAN_EVENT_INFO_TYPE_DFID) {
+            file_name = NULL;
+        } else if (fid\->hdr.info_type == FAN_EVENT_INFO_TYPE_DFID_NAME) {
+            file_name = file_handle\->f_handle +
+                        file_handle\->handle_bytes;
+        } else {
+            fprintf(stderr, "Received unexpected event info type.\en");
+            exit(EXIT_FAILURE);
+        }
+
+        if (metadata\->mask == FAN_CREATE)
+            printf("FAN_CREATE (file created):\en");
+
+        if (metadata\->mask == (FAN_CREATE | FAN_ONDIR))
+            printf("FAN_CREATE | FAN_ONDIR (subdirectory created):\en");
+
+	/* metadata\->fd is set to FAN_NOFD when the group identifies
+	   objects by file handles.  To obtain a file descriptor for
+	   the file object corresponding to an event you can use the
+	   struct file_handle that\[aq]s provided within the
+	   fanotify_event_info_fid in conjunction with the
+	   open_by_handle_at(2) system call.  A check for ESTALE is
+	   done to accommodate for the situation where the file handle
+	   for the object was deleted prior to this system call. */
+
+        event_fd = open_by_handle_at(mount_fd, file_handle, O_RDONLY);
+        if (event_fd == \-1) {
+            if (errno == ESTALE) {
+                printf("File handle is no longer valid. "
+                        "File has been deleted\en");
+                continue;
+            } else {
+                perror("open_by_handle_at");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        snprintf(procfd_path, sizeof(procfd_path), "/proc/self/fd/%d",
+                event_fd);
+
+        /* Retrieve and print the path of the modified dentry. */
+
+        path_len = readlink(procfd_path, path, sizeof(path) \- 1);
+        if (path_len == \-1) {
+            perror("readlink");
+            exit(EXIT_FAILURE);
+        }
+
+        path[path_len] = \[aq]\e0\[aq];
+        printf("\etDirectory \[aq]%s\[aq] has been modified.\en", path);
+
+        if (file_name) {
+            ret = fstatat(event_fd, file_name, &sb, 0);
+            if (ret == \-1) {
+                if (errno != ENOENT) {
+                    perror("fstatat");
+                    exit(EXIT_FAILURE);
+                }
+                printf("\etEntry \[aq]%s\[aq] does not exist.\en", file_name);
+            } else if ((sb.st_mode & S_IFMT) == S_IFDIR) {
+                printf("\etEntry \[aq]%s\[aq] is a subdirectory.\en", file_name);
+            } else {
+                printf("\etEntry \[aq]%s\[aq] is not a subdirectory.\en",
+                        file_name);
+            }
+        }
+
+        /* Close associated file descriptor for this event. */
+
+        close(event_fd);
+    }
+
+    printf("All events processed successfully. Program exiting.\en");
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+.ad l
+\fBfanotify_init\fP(2), \fBfanotify_mark\fP(2), \fBinotify\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

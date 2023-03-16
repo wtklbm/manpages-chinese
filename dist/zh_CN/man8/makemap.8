@@ -1,0 +1,164 @@
+.\" -*- coding: UTF-8 -*-
+.\"	$OpenBSD: makemap.8,v 1.30 2018/11/25 14:41:16 gilles Exp $
+.\"
+.\" Copyright (c) 2009 Jacek Masiulaniec <jacekm@openbsd.org>
+.\" Copyright (c) 2008-2009 Gilles Chehade <gilles@poolp.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: November 25 2018 $
+.Dt MAKEMAP 8
+.Os
+.Sh NAME
+.Nm makemap
+.Nd create database maps for smtpd
+.Sh SYNOPSIS
+.Nm makemap
+.Op Fl U
+.Op Fl d Ar dbtype
+.Op Fl o Ar dbfile
+.Op Fl t Ar type
+.Ar file
+.Sh DESCRIPTION
+Maps 提供了一个泛型接口，用于将文本键与值相关联。 可以通过明文文件、数据库或 DNS 访问此类关联。 这些文件类型的格式如下所述。
+.Nm
+本身创建数据库 maps，供
+.Xr smtpd.conf 5
+中指定的键控 map 查找使用。
+.Pp
+.Nm
+从
+.Ar file
+读取输入并将数据写入一个文件，该文件的名称是在
+.Ar file
+的基础上加上
+.Dq .db
+后缀。 当前行可以使用反斜杠
+.Pq Sq \e
+扩展到多行。 可以使用井号
+.Pq Sq #
+将注释放在文件中的任何位置，并延伸到当前行的末尾。 注释多行文本时要注意: 注释在整个块结束前有效。 在所有情况下，
+.Nm
+读取由空格分隔的单词组成的行。 一行的第一个词是数据库键; 余数代表映射值。 数据库键和值可以选择用冒号字符分隔。
+.Pp
+选项如下:
+.Bl -tag -width Ds
+.It Fl d Ar dbtype
+指定数据库的格式。 可用格式为
+.Ar hash
+和
+.Ar btree
+。 默认值为
+.Ar hash
+。
+.It Fl o Ar dbfile
+将生成的数据库写入
+.Ar dbfile
+。
+.It Fl t Ar type
+指定生成的 map 文件的格式。 默认的 map 格式适用于存储简单的、非结构化的、键到值的字符串关联。
+但是，如果映射值具有特殊含义，如虚拟域文件的情况，则必须提供合适的
+.Ar type
+。 可用的输出类型有:
+.Bl -tag -width aliases
+.It Cm aliases
+映射值是以逗号分隔的邮件目的地列表。 此格式可用于为虚拟域文件构建用户别名和用户映射。
+.It Cm set
+没有映射值 \(en 这种类型的 map 将只允许查找键。 此格式可用于构建主域 maps。
+.El
+.It Fl U
+不是从文本输入生成数据库 map，而是将数据库 map 的内容转储为文本，键和值用制表符分隔。
+.El
+.Sh PRIMARY DOMAINS
+主域可以保存在表中。 要创建主域表，请将每个主域单独添加到一行中。
+.Pp
+除了向主域 map 添加条目外，还必须添加接受域 map 的邮件的过滤规则，例如:
+.Bd -literal -offset indent
+表域 db:/etc/domains.db
+
+动作 "local" mbox
+
+匹配域 <domains> 操作 "local"
+.Ed
+.Sh VIRTUAL DOMAINS
+虚拟域也可以保存在表中。 要创建虚拟域表，请将每个虚拟域单独添加到一行中。
+.Pp
+虚拟域需要虚拟用户到真实用户的映射，以确定接收者是否被接受。 映射格式是
+.Xr aliases 5
+的扩展，它允许使用
+.Dq user@domain.tld
+仅接受指定域上的用户，
+.Dq user
+接受任何虚拟域的用户，
+.Dq @domain.tld
+为指定域提供一个包罗万象的区域，
+.Dq @
+到为所有域提供全面的包罗万象。
+.Xr smtpd 8
+将按照该特定顺序执行查找。
+.Pp
+要创建单个虚拟地址，请将
+.Dq user@example.com user
+添加到用户 map。 要处理发往 example.com
+上任何用户的所有邮件，请将
+.Dq @example.com user
+添加到虚拟 map。
+.Pp
+除了向虚拟 map 添加条目外，还必须添加接受虚拟域邮件的过滤规则，例如:
+.Bd -literal -offset indent
+表 vdomains db:/etc/vdomains.db
+表 vusers db:/etc/users.db
+
+动作 "local" mbox 虚拟 <vusers>
+
+匹配域 <vdomains> 操作 "local"
+匹配域 "example.org" 操作 "local"
+.Ed
+.Sh FILES
+.Bl -tag -width /etc/smtpd/aliasesXXX -compact
+.It Pa /etc/smtpd/aliases
+用户邮件别名列表。
+.It Pa /etc/smtpd/secrets
+远程主机凭据列表。
+.El
+.Sh EXIT STATUS
+.Ex -std makemap
+.Sh SEE ALSO
+.Xr aliases 5 ,
+.Xr smtpd.conf 5 ,
+.Xr table 5 ,
+.Xr newaliases 8 ,
+.Xr smtpd 8
+.Sh HISTORY
+.Nm
+命令首次出现在
+.Ox 4.6
+中，作为 sendmail 附带的等效命令的替代。
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

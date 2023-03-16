@@ -1,0 +1,367 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2002, 2020 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH shm_open 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+shm_open、shm_unlink\-create/open 或取消链接 POSIX 共享内存对象
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mman.h>\fP
+\fB#include <sys/stat.h>\fP        /* For mode constants */
+\fB#include <fcntl.h>\fP           /* For O_* constants */
+.PP
+\fBint shm_open(const char *\fP\fIname\fP\fB, int \fP\fIoflag\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+\fBint shm_unlink(const char *\fP\fIname\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBshm_open\fP() 创建并打开一个新的，或打开一个现有的 POSIX 共享内存对象。 POSIX
+共享内存对象实际上是一个句柄，不相关的进程可以使用它来 \fBmmap\fP(2) 同一共享内存区域。 \fBshm_unlink\fP()
+函数执行相反的操作，删除先前由 \fBshm_open\fP() 创建的对象。
+.PP
+.\" glibc allows the initial slash to be omitted, and makes
+.\" multiple initial slashes equivalent to a single slash.
+.\" This differs from the implementation of POSIX message queues.
+.\" glibc allows subdirectory components in the name, in which
+.\" case the subdirectory must exist under /dev/shm, and allow the
+.\" required permissions if a user wants to create a shared memory
+.\" object in that subdirectory.
+\fBshm_open\fP() 的操作类似于 \fBopen\fP(2) 的操作。 \fIname\fP 指定要创建或打开的共享内存对象。
+对于便携式使用，共享内存对象应由 \fI/somename\fP 形式的名称标识; 也就是说，一个最多 \fBNAME_MAX\fP (即 255)
+个字符的以空字符结尾的字符串，由一个初始斜，字符串，组成，后跟一个或多个字符，其中没有一个是斜，字符串。
+.PP
+\fIoflag\fP 是通过将 \fBO_RDONLY\fP 或 \fBO_RDWR\fP 中的一个与此处列出的任何其他标志进行 OR 运算而创建的位掩码:
+.TP 
+\fBO_RDONLY\fP
+打开对象以进行读取访问。 以这种方式打开的共享内存对象可以是 \fBmmap\fP(2)ed 只读 (\fBPROT_READ\fP) 访问。
+.TP 
+\fBO_RDWR\fP
+打开对象以进行读写访问。
+.TP 
+\fBO_CREAT\fP
+.\" In truth it is actually the filesystem IDs on Linux, but these
+.\" are nearly always the same as the effective IDs.  (MTK, Jul 05)
+如果共享内存对象不存在，则创建它。 对象的用户和组所有权取自调用进程对应的有效 ID，对象的权限位根据 \fImode\fP 的低 9
+位设置，进程文件模式创建掩码中设置的那些位除外 (见 \fBumask\fP(2)) 为新对象清除。 \fBopen\fP(2) 中列出了一组可用于定义
+\fImode\fP 的宏常量。 (这些常量的符号定义可以通过包含 \fI<sys/stat.h>\fP.) 获得
+.IP
+新的共享内存对象最初的长度为零 \[em] 对象的大小可以使用 \fBftruncate\fP(2) 设置。 共享内存对象的新分配字节自动初始化为 0.
+.TP 
+\fBO_EXCL\fP
+如果还指定了 \fBO_CREAT\fP，并且具有给定 \fIname\fP 的共享内存对象已经存在，则返回错误。
+检查对象是否存在，如果不存在则创建对象，都是以原子方式执行的。
+.TP 
+\fBO_TRUNC\fP
+如果共享内存对象已经存在，则将其截断为零字节。
+.PP
+这些标志值的定义可以通过包含 \fI<fcntl.h>\fP 来获得。
+.PP
+成功完成后，\fBshm_open\fP() 返回一个引用共享内存对象的新文件描述符。 此文件描述符保证是先前未在进程中打开的编号最小的文件描述符。
+\fBFD_CLOEXEC\fP 标志 (见 \fBfcntl\fP(2)) 设置为文件描述符。
+.PP
+文件描述符通常用于后续调用 \fBftruncate\fP(2) (对于新创建的对象) 和 \fBmmap\fP(2)。 在调用 \fBmmap\fP(2)
+之后，文件描述符可能会被关闭而不影响内存映射。
+.PP
+\fBshm_unlink\fP() 的操作类似于
+\fBunlink\fP(2):，它删除一个共享内存对象名称，并且，一旦所有进程都取消映射该对象，就会释放并销毁相关内存区域的内容。
+\fBshm_unlink\fP() 成功后，尝试对具有相同 \fIname\fP 的对象进行 \fBshm_open\fP() 失败 (除非指定了
+\fBO_CREAT\fP，在这种情况下会创建一个新的不同对象)。
+.SH "RETURN VALUE"
+成功时，\fBshm_open\fP() 返回一个文件描述符 (一个非负整数)。 成功时，\fBshm_unlink\fP() 返回 0。 失败时，函数都返回 \-1
+并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fBshm_unlink\fP() 共享内存对象的权限被拒绝。
+.TP 
+\fBEACCES\fP
+对指定的 \fImode\fP 中的 \fBshm_open\fP() \fIname\fP 的权限被拒绝，或者指定了 \fBO_TRUNC\fP
+并且调用者对该对象没有写权限。
+.TP 
+\fBEEXIST\fP
+\fBO_CREAT\fP 和 \fBO_EXCL\fP 都被指定给 \fBshm_open\fP()，\fIname\fP 指定的共享内存对象已经存在。
+.TP 
+\fBEINVAL\fP
+\fIname\fP 到 \fBshm_open\fP() 的参数无效。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENAMETOOLONG\fP
+\fIname\fP 的长度超过了 \fBPATH_MAX\fP。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOENT\fP
+尝试将 \fBshm_open\fP() 设为不存在的 \fIname\fP，并且未指定 \fBO_CREAT\fP。
+.TP 
+\fBENOENT\fP
+尝试将 \fBshm_unlink\fP() 设为不存在的 \fIname\fP。
+.SH VERSIONS
+这些函数在 glibc 2.2 及更高版本中提供。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBshm_open\fP(),
+\fBshm_unlink\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.PP
+POSIX.1\-2001 表示新创建的共享内存对象的组所有权设置为调用进程的有效组 ID 或 "a system default group ID"。
+POSIX.1\-2008 表示组所有权可以设置为调用进程的有效组 ID，或者如果对象在文件系统中可见，则设置为父目录的组 ID。
+.SH NOTES
+POSIX 未指定 \fBO_RDONLY\fP 和 \fBO_TRUNC\fP 组合的行为。 在 Linux 上，这将成功截断现有的共享内存对象 \[em]
+这在其他 UNIX 系统上可能并非如此。
+.PP
+Linux 上的 POSIX 共享内存对象实现使用通常安装在 \fI/dev/shm\fP 下的专用 \fBtmpfs\fP(5) 文件系统。
+.SH EXAMPLES
+下面的程序使用 POSIX 共享内存和 POSIX 未命名信号量来交换一段数据。 "bounce" 程序 (必须先运行) 引发 "send"
+程序放入共享内存中的字符串的大小写。 一旦数据被修改，"send" 程序就会打印修改后的共享内存的内容。 这两个程序的示例执行如下:
+.PP
+.in +4n
+.EX
+$ \fB./pshm_ucase_bounce /myshm &\fP
+[1] 270171
+$ \fB./pshm_ucase_send /myshm hello\fP
+HELLO
+.EE
+.in
+.PP
+.\"
+下面提供了有关这些程序的更多详细信息。
+.SS "Program source: pshm_ucase.h"
+下面的两个程序都包含以下头文件。 它的主要目的是定义一个结构体，该结构体将被施加到两个程序之间共享的内存对象上。
+.PP
+.in +4n
+.\" SRC BEGIN (pshm_ucase.h)
+.EX
+#include <fcntl.h>
+#include <semaphore.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+#define BUF_SIZE 1024   /* Maximum size for exchanged string */
+
+/* Define a structure that will be imposed on the shared
+   memory object */
+
+struct shmbuf {
+    sem_t  sem1;            /* POSIX unnamed semaphore */
+    sem_t  sem2;            /* POSIX unnamed semaphore */
+    size_t cnt;             /* Number of bytes used in \[aq]buf\[aq] */
+    char   buf[BUF_SIZE];   /* Data being transferred */
+};
+.EE
+.\" SRC END
+.in
+.\"
+.SS "Program source: pshm_ucase_bounce.c"
+"bounce" 程序创建一个新的共享内存对象，其名称在其命令行参数中给出，并调整该对象的大小以匹配头文件中定义的 \fIshmbuf\fP 结构体的大小。
+然后它将对象 maps 到进程的地址空间，并初始化对象内部的两个 POSIX 信号量 0.
+.PP
+在 "send" 程序发布第一个信号量后，"bounce" 程序将 "send" 程序放置在内存中的数据大写，然后发布第二个信号量以告诉 "send"
+程序它现在可以访问共享内存。
+.PP
+.in +4n
+.\" SRC BEGIN (pshm_ucase_bounce.c)
+.EX
+/* pshm_ucase_bounce.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <ctype.h>
+
+#include "pshm_ucase.h"
+
+int
+main(int argc, char *argv[])
+{
+    int            fd;
+    char           *shmpath;
+    struct shmbuf  *shmp;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s /shm\-path\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    shmpath = argv[1];
+
+    /* Create shared memory object and set its size to the size
+       of our structure. */
+
+    fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, 0600);
+    if (fd == \-1)
+        errExit("shm_open");
+
+    if (ftruncate(fd, sizeof(struct shmbuf)) == \-1)
+        errExit("ftruncate");
+
+    /* Map the object into the caller\[aq]s address space. */
+
+    shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE,
+                MAP_SHARED, fd, 0);
+    if (shmp == MAP_FAILED)
+        errExit("mmap");
+
+    /* Initialize semaphores as process\-shared, with value 0. */
+
+    if (sem_init(&shmp\->sem1, 1, 0) == \-1)
+        errExit("sem_init\-sem1");
+    if (sem_init(&shmp\->sem2, 1, 0) == \-1)
+        errExit("sem_init\-sem2");
+
+    /* Wait for \[aq]sem1\[aq] to be posted by peer before touching
+       shared memory. */
+
+    if (sem_wait(&shmp\->sem1) == \-1)
+        errExit("sem_wait");
+
+    /* Convert data in shared memory into upper case. */
+
+    for (size_t j = 0; j < shmp\->cnt; j++)
+        shmp\->buf[j] = toupper((unsigned char) shmp\->buf[j]);
+
+    /* Post \[aq]sem2\[aq] to tell the peer that it can now
+       access the modified data in shared memory. */
+
+    if (sem_post(&shmp\->sem2) == \-1)
+        errExit("sem_post");
+
+    /* Unlink the shared memory object. Even if the peer process
+       is still using the object, this is okay. The object will
+       be removed only after all open references are closed. */
+
+    shm_unlink(shmpath);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.\"
+.SS "Program source: pshm_ucase_send.c"
+"send" 程序采用两个命令行参数: 先前由 "bounce" 程序创建的共享内存对象的路径名和要复制到该对象中的字符串。
+.PP
+程序打开共享内存对象并将 maps 对象放入其地址空间。 然后它将第二个参数中指定的数据复制到共享内存中，并发布第一个信号量，它告诉 "bounce"
+程序它现在可以访问该数据。 "bounce" 程序发布第二个信号量后，"send" 程序在标准输出上打印共享内存的内容。
+.PP
+.in +4n
+.\" SRC BEGIN (pshm_ucase_send.c)
+.EX
+/* pshm_ucase_send.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <string.h>
+
+#include "pshm_ucase.h"
+
+int
+main(int argc, char *argv[])
+{
+    int            fd;
+    char           *shmpath, *string;
+    size_t         len;
+    struct shmbuf  *shmp;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s /shm\-path string\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    shmpath = argv[1];
+    string = argv[2];
+    len = strlen(string);
+
+    if (len > BUF_SIZE) {
+        fprintf(stderr, "String is too long\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Open the existing shared memory object and map it
+       into the caller\[aq]s address space. */
+
+    fd = shm_open(shmpath, O_RDWR, 0);
+    if (fd == \-1)
+        errExit("shm_open");
+
+    shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE,
+                MAP_SHARED, fd, 0);
+    if (shmp == MAP_FAILED)
+        errExit("mmap");
+
+    /* Copy data into the shared memory object. */
+
+    shmp\->cnt = len;
+    memcpy(&shmp\->buf, string, len);
+
+    /* Tell peer that it can now access shared memory. */
+
+    if (sem_post(&shmp\->sem1) == \-1)
+        errExit("sem_post");
+
+    /* Wait until peer says that it has finished accessing
+       the shared memory. */
+
+    if (sem_wait(&shmp\->sem2) == \-1)
+        errExit("sem_wait");
+
+    /* Write modified data in shared memory to standard output. */
+
+    write(STDOUT_FILENO, &shmp\->buf, len);
+    write(STDOUT_FILENO, "\en", 1);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.SH "SEE ALSO"
+\fBclose\fP(2), \fBfchmod\fP(2), \fBfchown\fP(2), \fBfcntl\fP(2), \fBfstat\fP(2),
+\fBftruncate\fP(2), \fBmemfd_create\fP(2), \fBmmap\fP(2), \fBopen\fP(2), \fBumask\fP(2),
+\fBshm_overview\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

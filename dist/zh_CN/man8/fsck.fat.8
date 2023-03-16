@@ -1,0 +1,214 @@
+.\" -*- coding: UTF-8 -*-
+.\" fsck.fat.8 - manpage for fsck.fat
+.\"
+.\" Copyright (C) 2006-2014 Daniel Baumann <daniel@debian.org>
+.\" Copyright (C) 2018-2021 Pali Rohár <pali.rohar@gmail.com>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program. If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\" The complete text of the GNU General Public License
+.\" can be found in /usr/share/common-licenses/GPL-3 file.
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH FSCK.FAT 8 2021\-01\-31 "dosfstools 4.2" 
+.SH NAME
+.\" ----------------------------------------------------------------------------
+fsck.fat \- 检查和修复 MS\-DOS FAT 文件系统
+.SH SYNOPSIS
+.\" ----------------------------------------------------------------------------
+\fBfsck.fat\fP [\fIOPTIONS\fP] \fIDEVICE\fP
+.SH DESCRIPTION
+\fBfsck.fat\fP 验证 MS\-DOS 文件系统的一致性，并可选择尝试修复它们。
+.PP
+可以更正以下文件系统问题 (按此顺序) :
+.IP \(bu 4
+FAT 包含无效簇号。 簇更改为 EOF。
+.IP \(bu 4
+文件的簇链包含一个循环。 循环被打破了。
+.IP \(bu 4
+坏簇 (读取错误)。 簇被标记为坏的，并且它们从拥有它们的文件中删除。 此检查是可选的。
+.IP \(bu 4
+包含大量错误条目 (可能已损坏) 的目录。 目录可以删除。
+.IP \(bu 4
+文件。和 .. 是非目录。 它们可以被删除或重命名。
+.IP \(bu 4
+目录。和 .. 在根目录中。 它们被删除了。
+.IP \(bu 4
+错误的文件名。 它们可以重命名。
+.IP \(bu 4
+重复的目录条目。 它们可以被删除或重命名。
+.IP \(bu 4
+带有非零大小字段的目录。 大小设置为零。
+.IP \(bu 4
+目录。不指向父目录。 调整起始指针。
+.IP \(bu 4
+目录 .. 不指向父目录的父目录。 调整起始指针。
+.IP \(bu 4
+\&。和 .. 不是非根目录中的前两个条目。 创建条目，必要时移动占用的插槽。
+.IP \(bu 4
+文件的起始簇号无效。 文件被截断。
+.IP \(bu 4
+文件包含坏簇或空闲簇。 文件被截断。
+.IP \(bu 4
+文件的簇链比大小字段指示的要长。 文件被截断。
+.IP \(bu 4
+两个或多个文件共享同一个 cluster(s)。 除了一个文件外，所有文件都被截断了。
+如果被截断的文件是一个已经被读取过的目录文件，截断后会重新开始文件系统检查。
+.IP \(bu 4
+文件的簇链比大小字段指示的要短。 文件被截断。
+.IP \(bu 4
+根目录中的卷标或引导扇区中的卷标无效。 无效的标签被删除。
+.IP \(bu 4
+根目录中的卷标和引导扇区中的卷标不同。 根目录中的卷标被复制到引导扇区。
+.IP \(bu 4
+簇被标记为已使用但不属于文件。 它们被标记为免费。
+.PP
+此外，检测到以下问题，但未修复:
+.IP \(bu 4
+引导扇区中的无效参数
+.PP
+当 \fBfsck.fat\fP 检查文件系统时，它会在内存中累积所有更改，并仅在所有检查完成后才执行它们。 这可以通过 \fB\-w\fP 选项禁用。
+.PP
+支持 FAT 文件系统的两种不同变体。 标准是由 Microsoft 定义的 FAT12、FAT16 和 FAT32 文件系统，广泛用于硬盘和可移动媒体
+(如 U 盘和 SD 卡)。 另一个是在 Atari ST 上使用的遗留 Atari 变体。
+.PP
+.\" ----------------------------------------------------------------------------
+Atari 格式有一些细微差别: 一些引导扇区字段的解释略有不同，文件末尾和坏簇的特殊 FAT 条目可能不同。 在 MS\-DOS 下，0xfff8 用于
+EOF，而 Atari 默认使用 0xffff，但两个系统都将 0xfff8\(en0xffff 中的所有值识别为文件结尾。 MS\-DOS 只使用
+0xfff7 表示坏簇，在 Atari 上值 0xfff0\(en0xfff7 就是为了这个目的 (但标准值仍然是 0xfff7)。
+.SH OPTIONS
+.IP \fB\-a\fP 4
+自动修复文件系统。 无需用户干预。 只要解决问题的方法不止一种，就会使用破坏性最小的方法。
+.IP \fB\-A\fP 4
+如果尚未激活，请选择使用 FAT 文件系统的 Atari 变体，否则选择标准 FAT 文件系统。 如果 \fBmkfs.fat\fP 在 68k Atari
+Linux 上运行，则默认选择此项。
+.IP \fB\-b\fP 4
+进行只读引导扇区检查。
+.IP "\fB\-c\fP \fIPAGE\fP" 4
+使用 DOS 代码页 \fIPAGE\fP 解码短文件名。 默认使用代码页 850。
+.IP "\fB\-d\fP \fIPATH\fP" 4
+删除指定文件。 如果存在多个具有该名称的文件，则删除第一个。 可以多次给出此选项。
+.IP \fB\-f\fP 4
+将未使用的集群链回收到文件中。 默认情况下，未使用的簇被添加到可用磁盘空间中，自动模式 (\fB\-a\fP) 除外。
+.IP "\fB\-F\fP \fINUM\fP" 4
+为文件系统访问指定 FAT 表 \fINUM\fP。 默认情况下假定值为 \fI0\fP，然后选择第一个未损坏的 FAT 表。 未损坏意味着 FAT
+表具有有效的第一个簇。 如果使用默认值 \fI0\fP 并且所有 FAT 表都已损坏，则 \fBfsck.fat\fP 会放弃并且不会尝试修复 FAT 文件系统。
+如果指定了非零 \fINUM\fP 值，则 \fBfsck.fat\fP 使用 FAT 表 \fINUM\fP 来修复 FAT 文件系统。 如果 FAT 表 \fINUM\fP
+损坏了第一个簇，那么 \fBfsck.fat\fP 将修复它。 在任何情况下，如果 FAT 文件系统有更多 FAT 表，则所选 FAT
+表的修复内容将复制到其他 FAT 表。 要修复损坏的第一个集群，需要使用非零 \fINUM\fP 值调用 \fBfsck.fat\fP。
+.IP \fB\-l\fP 4
+列出正在处理的文件的路径名。
+.IP \fB\-n\fP 4
+无操作模式: 非交互地检查错误，但不向文件系统写入任何内容。
+.IP \fB\-p\fP 4
+与 \fB\-a\fP 相同，用于与其他 *fsck 兼容。
+.IP \fB\-r\fP 4
+交互式修复文件系统。 每当有不止一种方法来修复不一致时，都会征求用户的意见。 这是默认模式，保留该选项只是为了向后兼容。
+.IP \fB\-S\fP 4
+将中间带有空格的短 (8.3) 文件名视为无效，就像该程序的先前版本一样。 虽然 FAT 规范不禁止此类文件名，并且 Microsoft
+文件系统检查工具从未将其视为错误，但许多 DOS 程序无法处理具有此类名称的文件。 使用此选项可以使这些程序可以访问它们。
+.IP "" 4
+无论此选项的设置如何，带有空格的 \fIstart\fP 的短文件名都被视为无效。
+.IP "" 4
+该程序的早期版本特别将 \fIEA DATA. SF\fP 和 \fIWP ROOT. SF\fP 视为有效的短名称; 使用此选项不会保留该异常。
+.IP \fB\-t\fP 4
+将不可读的集群标记为坏的。
+.IP "\fB\-u\fP \fIPATH\fP" 4
+尝试取消删除指定的文件。 \fBfsck.fat\fP 尝试从未删除文件的起始簇开始分配一系列连续的未分配簇。 可以多次给出此选项。
+.IP \fB\-U\fP 4
+将小写卷和引导标签视为无效，并且只允许使用大写字符。 FAT 规范禁止使用此类标签，但它们被 Linux 工具广泛使用。 而且 MS\-DOS 和
+Windows 系统读取它们没有问题。 因此，默认情况下允许使用小写字符的卷和引导标签。
+.IP \fB\-v\fP 4
+详细模式。 产生稍微多一点的输出。
+.IP \fB\-V\fP 4
+执行验证通过。 第一次运行后会重复文件系统检查。 第二遍不应报告任何可修复的错误。
+它可能比第一次通过要花费更长的时间，因为第一次通过可能会生成一长串修改，每次磁盘读取都必须扫描这些修改。
+.IP "\fB\-\-variant\fP \fITYPE\fP" 4
+创建变体 \fITYPE\fP 的文件系统。 可接受的值为 \fIstandard\fP 和 \fIatari\fP (upper/lower 大小写的任意组合)。
+有关差异，请参见上文描述。
+.IP \fB\-w\fP 4
+立即将更改写入磁盘。
+.IP \fB\-y\fP 4
+与 \fB\-a\fP (自动修复文件系统) 相同，以与其他 fsck 工具兼容。
+.IP \fB\-\-help\fP 4
+.\" ----------------------------------------------------------------------------
+显示描述用法和选项的帮助消息，然后退出。
+.SH "EXIT STATUS"
+.IP 0 4
+没有检测到可恢复的错误。
+.IP 1 4
+已检测到可恢复的错误或 \fBfsck.fat\fP 已发现内部不一致。
+.IP 2 4
+.\" ----------------------------------------------------------------------------
+使用错误。 \fBfsck.fat\fP 没有访问文件系统。
+.SH FILES
+.IP "\fIfsck0000.rec\fP, \fIfsck0001.rec\fP, ..." 4
+.\" ----------------------------------------------------------------------------
+从损坏的文件系统恢复时，\fBfsck.fat\fP 将恢复的数据转储到文件系统顶级目录中名为 \fIfsckNNNN.rec\fP 的文件中。
+.SH BUGS
+.IP \(bu 4
+不删除完全空的目录。
+.IP \(bu 4
+应该提供更多诊断信息。
+.IP \(bu 4
+.\" ----------------------------------------------------------------------------
+取消删除文件应该使用更复杂的算法。
+.SH "SEE ALSO"
+.\" ----------------------------------------------------------------------------
+\fBfatlabel\fP(8), \fBmkfs.fat\fP(8)
+.SH HOMEPAGE
+.\" ----------------------------------------------------------------------------
+\fBdosfstools\fP 项目的主页是它的
+.UR https://github.com/dosfstools/dosfstools
+GitHub 项目页面
+.UE .
+.SH AUTHORS
+\fBdosfstools\fP 由
+.MT werner.almesberger@\:lrc.di.epfl.ch
+Werner
+Almesberger
+.ME ,
+.MT Roman.Hodek@\:informatik.\:uni\-erlangen.de
+Roman
+Hodek
+.ME ,
+等人编写。 目前的维护者是
+.MT aeb@\:debian.org
+Andreas Bombe
+.ME
+和
+.MT pali.rohar@\:gmail.com
+Pali Rohár
+.ME .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

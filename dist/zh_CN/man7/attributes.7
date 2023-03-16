@@ -1,0 +1,695 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2014, Red Hat, Inc
+.\"     Written by Alexandre Oliva <aoliva@redhat.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH attributes 7 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+属性 \- POSIX 安全概念
+.SH DESCRIPTION
+.\"
+.\"
+\fINote\fP: 本手册页的文本基于取自 GNU C 库手册的 "POSIX Safety Concepts" 部分的材料。
+可以在该手册中找到有关此处描述的主题的更多详细信息。
+.PP
+各种函数手册页包括描述在各种上下文中调用函数的安全性的属性部分。 本节使用以下安全标记对函数进行注释:
+.TP 
+\fIMT\-Safe\fP
+\fIMT\-Safe\fP 或 Thread\-Safe 函数在其他线程存在的情况下可以安全调用。 MT，在 MT\-Safe 中，代表多线程。
+.IP
+多线程安全并不意味着函数是原子的，也不意味着它使用 POSIX 向用户公开的任何内存同步机制。 甚至有可能按顺序调用 MT\-Safe 函数不会产生
+MT\-Safe 组合。 例如，让一个线程调用两个 MT\-Safe
+函数一个接一个并不能保证等同于原子执行两个函数组合的行为，因为其他线程中的并发调用可能会以破坏性方式干扰。
+.IP
+.\" .TP
+.\" .I AS-Safe
+.\" .I AS-Safe
+.\" or Async-Signal-Safe functions are safe to call from
+.\" asynchronous signal handlers.
+.\" AS, in AS-Safe, stands for Asynchronous Signal.
+.\"
+.\" Many functions that are AS-Safe may set
+.\" .IR errno ,
+.\" or modify the floating-point environment,
+.\" because their doing so does not make them
+.\" unsuitable for use in signal handlers.
+.\" However, programs could misbehave should asynchronous signal handlers
+.\" modify this thread-local state,
+.\" and the signal handling machinery cannot be counted on to
+.\" preserve it.
+.\" Therefore, signal handlers that call functions that may set
+.\" .I errno
+.\" or modify the floating-point environment
+.\" .I must
+.\" save their original values, and restore them before returning.
+.\" .TP
+.\" .I AC-Safe
+.\" .I AC-Safe
+.\" or Async-Cancel-Safe functions are safe to call when
+.\" asynchronous cancelation is enabled.
+.\" AC in AC-Safe stands for Asynchronous Cancellation.
+.\"
+.\" The POSIX standard defines only three functions to be AC-Safe, namely
+.\" .BR pthread_cancel (3),
+.\" .BR pthread_setcancelstate (3),
+.\" and
+.\" .BR pthread_setcanceltype (3).
+.\" At present the GNU C Library provides no
+.\" guarantees beyond these three functions,
+.\" but does document which functions are presently AC-Safe.
+.\" This documentation is provided for use
+.\" by the GNU C Library developers.
+.\"
+.\" Just like signal handlers, cancelation cleanup routines must configure
+.\" the floating point environment they require.
+.\" The routines cannot assume a floating point environment,
+.\" particularly when asynchronous cancelation is enabled.
+.\" If the configuration of the floating point
+.\" environment cannot be performed atomically then it is also possible that
+.\" the environment encountered is internally inconsistent.
+可以跨库接口内联函数的全程序优化可能会暴露不安全的重新排序，因此不建议跨 GNU C 库接口执行内联。 在整个程序优化下，无法保证记录的
+MT\-Safety 状态。 但是，在用户可见的标头中定义的函数被设计为可以安全地进行内联。
+.TP 
+.\" ", " AS-Unsafe ", " AC-Unsafe
+\fIMT\-Unsafe\fP
+.\" ", " AS-Unsafe ", " AC-Unsafe
+.\" functions are not
+.\" safe to call within the safety contexts described above.
+.\" Calling them
+.\" within such contexts invokes undefined behavior.
+.\"
+.\" Functions not explicitly documented as safe in a safety context should
+.\" be regarded as Unsafe.
+.\" .TP
+.\" .I Preliminary
+.\" .I Preliminary
+.\" safety properties are documented, indicating these
+.\" properties may
+.\" .I not
+.\" be counted on in future releases of
+.\" the GNU C Library.
+.\"
+.\" Such preliminary properties are the result of an assessment of the
+.\" properties of our current implementation,
+.\" rather than of what is mandated and permitted
+.\" by current and future standards.
+.\"
+.\" Although we strive to abide by the standards, in some cases our
+.\" implementation is safe even when the standard does not demand safety,
+.\" and in other cases our implementation does not meet the standard safety
+.\" requirements.
+.\" The latter are most likely bugs; the former, when marked
+.\" as
+.\" .IR Preliminary ,
+.\" should not be counted on: future standards may
+.\" require changes that are not compatible with the additional safety
+.\" properties afforded by the current implementation.
+.\"
+.\" Furthermore,
+.\" the POSIX standard does not offer a detailed definition of safety.
+.\" We assume that, by "safe to call", POSIX means that,
+.\" as long as the program does not invoke undefined behavior,
+.\" the "safe to call" function behaves as specified,
+.\" and does not cause other functions to deviate from their specified behavior.
+.\" We have chosen to use its loose
+.\" definitions of safety, not because they are the best definitions to use,
+.\" but because choosing them harmonizes this manual with POSIX.
+.\"
+.\" Please keep in mind that these are preliminary definitions and annotations,
+.\" and certain aspects of the definitions are still under
+.\" discussion and might be subject to clarification or change.
+.\"
+.\" Over time,
+.\" we envision evolving the preliminary safety notes into stable commitments,
+.\" as stable as those of our interfaces.
+.\" As we do, we will remove the
+.\" .I Preliminary
+.\" keyword from safety notes.
+.\" As long as the keyword remains, however,
+.\" they are not to be regarded as a promise of future behavior.
+\fIMT\-Unsafe\fP 函数在多线程程序中调用是不安全的。
+.PP
+.\"
+.\"
+.\" .SS Unsafe features
+.\" Functions that are unsafe to call in certain contexts are annotated with
+.\" keywords that document their features that make them unsafe to call.
+.\" AS-Unsafe features in this section indicate the functions are never safe
+.\" to call when asynchronous signals are enabled.
+.\" AC-Unsafe features
+.\" indicate they are never safe to call when asynchronous cancelation is
+.\" .\" enabled.
+.\" There are no MT-Unsafe marks in this section.
+.\" .TP
+.\" .\" .I code
+.\" Functions marked with
+.\" .I lock
+.\" as an AS-Unsafe feature may be
+.\" .\" interrupted by a signal while holding a non-recursive lock.
+.\" If the signal handler calls another such function that takes the same lock,
+.\" the result is a deadlock.
+.\"
+.\" Functions annotated with
+.\" .I lock
+.\" as an AC-Unsafe feature may, if canceled asynchronously,
+.\" fail to release a lock that would have been released if their execution
+.\" had not been interrupted by asynchronous thread cancelation.
+.\" Once a lock is left taken,
+.\" attempts to take that lock will block indefinitely.
+.\" .TP
+.\" .I corrupt
+.\" Functions marked with
+.\" .\" .I corrupt
+.\" as an AS-Unsafe feature may corrupt
+.\" data structures and misbehave when they interrupt,
+.\" or are interrupted by, another such function.
+.\" Unlike functions marked with
+.\" .IR lock ,
+.\" these take recursive locks to avoid MT-Safety problems,
+.\" but this is not enough to stop a signal handler from observing
+.\" a partially-updated data structure.
+.\" Further corruption may arise from the interrupted function's
+.\" failure to notice updates made by signal handlers.
+.\"
+.\" Functions marked with
+.\" .I corrupt
+.\" as an AC-Unsafe feature may leave
+.\" data structures in a corrupt, partially updated state.
+.\" Subsequent uses of the data structure may misbehave.
+.\"
+.\" .\" A special case, probably not worth documenting separately, involves
+.\" .\" reallocing, or even freeing pointers.  Any case involving free could
+.\" .\" be easily turned into an ac-safe leak by resetting the pointer before
+.\" .\" releasing it; I don't think we have any case that calls for this sort
+.\" .\" of fixing.  Fixing the realloc cases would require a new interface:
+.\" .\" instead of @code{ptr=realloc(ptr,size)} we'd have to introduce
+.\" .\" @code{acsafe_realloc(&ptr,size)} that would modify ptr before
+.\" .\" releasing the old memory.  The ac-unsafe realloc could be implemented
+.\" .\" in terms of an internal interface with this semantics (say
+.\" .\" __acsafe_realloc), but since realloc can be overridden, the function
+.\" .\" we call to implement realloc should not be this internal interface,
+.\" .\" but another internal interface that calls __acsafe_realloc if realloc
+.\" .\" was not overridden, and calls the overridden realloc with async
+.\" .\" cancel disabled.  --lxoliva
+.\" .TP
+.\" .I heap
+.\" Functions marked with
+.\" .I heap
+.\" may call heap memory management functions from the
+.\" .BR malloc (3)/ free (3)
+.\" family of functions and are only as safe as those functions.
+.\" This note is thus equivalent to:
+.\"
+.\"     | AS-Unsafe lock | AC-Unsafe lock fd mem |
+.\" .\" @sampsafety{@asunsafe{@asulock{}}@acunsafe{@aculock{} @acsfd{} @acsmem{}}}
+.\" .\"
+.\" .\" Check for cases that should have used plugin instead of or in
+.\" .\" addition to this.  Then, after rechecking gettext, adjust i18n if
+.\" .\" needed.
+.\" .TP
+.\" .I dlopen
+.\" Functions marked with
+.\" .I dlopen
+.\" use the dynamic loader to load
+.\" shared libraries into the current execution image.
+.\" This involves opening files, mapping them into memory,
+.\" allocating additional memory, resolving symbols,
+.\" applying relocations and more,
+.\" all of this while holding internal dynamic loader locks.
+.\"
+.\" The locks are enough for these functions to be AS-Unsafe and AC-Unsafe,
+.\" but other issues may arise.
+.\" At present this is a placeholder for all
+.\" potential safety issues raised by
+.\" .BR dlopen (3).
+.\"
+.\" .\" dlopen runs init and fini sections of the module; does this mean
+.\" .\" dlopen always implies plugin?
+.\" .TP
+.\" .I plugin
+.\" Functions annotated with
+.\" .I plugin
+.\" may run code from plugins that
+.\" may be external to the GNU C Library.
+.\" Such plugin functions are assumed to be
+.\" MT-Safe, AS-Unsafe and AC-Unsafe.
+.\" Examples of such plugins are stack unwinding libraries,
+.\" name service switch (NSS) and character set conversion (iconv) back-ends.
+.\"
+.\" Although the plugins mentioned as examples are all brought in by means
+.\" of dlopen, the
+.\" .I plugin
+.\" keyword does not imply any direct
+.\" involvement of the dynamic loader or the
+.\" .I libdl
+.\" interfaces,
+.\" those are covered by
+.\" .IR dlopen .
+.\" For example, if one function loads a module and finds the addresses
+.\" of some of its functions,
+.\" while another just calls those already-resolved functions,
+.\" the former will be marked with
+.\" .IR dlopen ,
+.\" whereas the latter will get the
+.\" .IR plugin .
+.\" When a single function takes all of these actions, then it gets both marks.
+.\" .TP
+.\" .I i18n
+.\" Functions marked with
+.\" .I i18n
+.\" may call internationalization
+.\" functions of the
+.\" .BR gettext (3)
+.\" family and will be only as safe as those
+.\" functions.
+.\" This note is thus equivalent to:
+.\"
+.\"     | MT-Safe env | AS-Unsafe corrupt heap dlopen | AC-Unsafe corrupt |
+.\"
+.\" .\" @sampsafety{@mtsafe{@mtsenv{}}@asunsafe{@asucorrupt{} @ascuheap{} @ascudlopen{}}@acunsafe{@acucorrupt{}}}
+.\" .TP
+.\" .I timer
+.\" Functions marked with
+.\" .I timer
+.\" use the
+.\" .BR alarm (3)
+.\" function or
+.\" similar to set a time-out for a system call or a long-running operation.
+.\" In a multi-threaded program, there is a risk that the time-out signal
+.\" will be delivered to a different thread,
+.\" thus failing to interrupt the intended thread.
+.\" Besides being MT-Unsafe, such functions are always
+.\" AS-Unsafe, because calling them in signal handlers may interfere with
+.\" timers set in the interrupted code, and AC-Unsafe,
+.\" because there is no safe way to guarantee an earlier timer
+.\" will be reset in case of asynchronous cancelation.
+.\"
+.\"
+出现在安全说明中的其他关键字在后续部分中定义。
+.SS "Conditionally safe features"
+对于某些使函数在某些情况下对调用不安全的特性除了完全避免调用函数之外，还有一些已知的方法可以避免安全问题。
+后面的关键字指的是这些特性它们的每一个定义都指出了整个程序需要如何约束才能消除关键字所指示的安全问题。
+只有当所有导致一个数不安全的原因都被观察和解决时，通过应用记录的约束，这个数在一个上下文中对调用是安全的。
+.TP 
+\fIinit\fP
+标有 \fIinit\fP 作为 MT\-Unsafe 特性的函数在首次调用时执行 MT\-Unsafe 初始化。
+.IP
+.\"
+.\" Functions marked with
+.\" .I init
+.\" as an AS-Unsafe or AC-Unsafe feature use the GNU C Library internal
+.\" .I libc_once
+.\" machinery or similar to initialize internal data structures.
+.\"
+.\" If a signal handler interrupts such an initializer,
+.\" and calls any function that also performs
+.\" .I libc_once
+.\" initialization, it will deadlock if the thread library has been loaded.
+.\"
+.\" Furthermore, if an initializer is partially complete before it is canceled
+.\" or interrupted by a signal whose handler requires the same initialization,
+.\" some or all of the initialization may be performed more than once,
+.\" leaking resources or even resulting in corrupt internal data.
+.\"
+.\" Applications that need to call functions marked with
+.\" .I init
+.\" as an AS-Safety or AC-Unsafe feature should ensure
+.\" the initialization is performed
+.\" before configuring signal handlers or enabling cancelation,
+.\" so that the AS-Safety and AC-Safety issues related with
+.\" .I libc_once
+.\" do not arise.
+.\"
+.\" .\" We may have to extend the annotations to cover conditions in which
+.\" .\" initialization may or may not occur, since an initial call in a safe
+.\" .\" context is no use if the initialization doesn't take place at that
+.\" .\" time: it doesn't remove the risk for later calls.
+在单线程模式下至少调用一次这样的函数消除了函数被视为多线程不安全的特定原因。 如果没有其他原因，则可以在其他线程启动后安全地调用函数。
+.TP 
+\fIrace\fP
+.\"
+.\" We consider access to objects passed as (indirect) arguments to
+.\" functions to be data race free.
+.\" The assurance of data race free objects
+.\" is the caller's responsibility.
+.\" We will not mark a function as MT-Unsafe or AS-Unsafe
+.\" if it misbehaves when users fail to take the measures required by
+.\" POSIX to avoid data races when dealing with such objects.
+.\" As a general rule, if a function is documented as reading from
+.\" an object passed (by reference) to it, or modifying it,
+.\" users ought to use memory synchronization primitives
+.\" to avoid data races just as they would should they perform
+.\" the accesses themselves rather than by calling the library function.
+.\" Standard I/O
+.\" .RI ( "FILE *" )
+.\" streams are the exception to the general rule,
+.\" in that POSIX mandates the library to guard against data races
+.\" in many functions that manipulate objects of this specific opaque type.
+.\" We regard this as a convenience provided to users,
+.\" rather than as a general requirement whose expectations
+.\" should extend to other types.
+.\"
+.\" In order to remind users that guarding certain arguments is their
+.\" responsibility, we will annotate functions that take objects of certain
+.\" types as arguments.
+.\" We draw the line for objects passed by users as follows:
+.\" objects whose types are exposed to users,
+.\" and that users are expected to access directly,
+.\" such as memory buffers, strings,
+.\" and various user-visible structured types, do
+.\" .I not
+.\" give reason for functions to be annotated with
+.\" .IR race .
+.\" It would be noisy and redundant with the general requirement,
+.\" and not many would be surprised by the library's lack of internal
+.\" guards when accessing objects that can be accessed directly by users.
+.\"
+.\" As for objects that are opaque or opaque-like,
+.\" in that they are to be manipulated only by passing them
+.\" to library functions (e.g.,
+.\" .IR FILE ,
+.\" .IR DIR ,
+.\" .IR obstack ,
+.\" .IR iconv_t ),
+.\" there might be additional expectations as to internal coordination
+.\" of access by the library.
+.\" We will annotate, with
+.\" .I race
+.\" followed by a colon and the argument name,
+.\" functions that take such objects but that do not take
+.\" care of synchronizing access to them by default.
+.\" For example,
+.\" .I FILE
+.\" stream
+.\" .I unlocked
+.\" functions
+.\" .RB ( unlocked_stdio (3))
+.\" will be annotated,
+.\" but those that perform implicit locking on
+.\" .I FILE
+.\" streams by default will not,
+.\" even though the implicit locking may be disabled on a per-stream basis.
+.\"
+.\" In either case, we will not regard as MT-Unsafe functions that may
+.\" access user-supplied objects in unsafe ways should users fail to ensure
+.\" the accesses are well defined.
+.\" The notion prevails that users are expected to safeguard against
+.\" data races any user-supplied objects that the library accesses
+.\" on their behalf.
+.\"
+.\" .\" The above describes @mtsrace; @mtasurace is described below.
+.\"
+.\" This user responsibility does not apply, however,
+.\" to objects controlled by the library itself,
+.\" such as internal objects and static buffers used
+.\" to return values from certain calls.
+.\" When the library doesn't guard them against concurrent uses,
+.\" these cases are regarded as MT-Unsafe and AS-Unsafe (although the
+.\" .I race
+.\" mark under AS-Unsafe will be omitted
+.\" as redundant with the one under MT-Unsafe).
+.\" As in the case of user-exposed objects,
+.\" the mark may be followed by a colon and an identifier.
+.\" The identifier groups all functions that operate on a
+.\" certain unguarded object; users may avoid the MT-Safety issues related
+.\" with unguarded concurrent access to such internal objects by creating a
+.\" non-recursive mutex related with the identifier,
+.\" and always holding the mutex when calling any function marked
+.\" as racy on that identifier,
+.\" as they would have to should the identifier be
+.\" an object under user control.
+.\" The non-recursive mutex avoids the MT-Safety issue,
+.\" but it trades one AS-Safety issue for another,
+.\" so use in asynchronous signals remains undefined.
+.\"
+.\" When the identifier relates to a static buffer used to hold return values,
+.\" the mutex must be held for as long as the buffer remains in use
+.\" by the caller.
+.\" Many functions that return pointers to static buffers offer reentrant
+.\" variants that store return values in caller-supplied buffers instead.
+.\" In some cases, such as
+.\" .BR tmpname (3),
+.\" the variant is chosen not by calling an alternate entry point,
+.\" but by passing a non-NULL pointer to the buffer in which the
+.\" returned values are to be stored.
+.\" These variants are generally preferable in multi-threaded programs,
+.\" although some of them are not MT-Safe because of other internal buffers,
+.\" also documented with
+.\" .I race
+.\" notes.
+使用 \fIrace\fP 作为 MT\-Safety 问题的数据注解以可能导致数据竞争或类似形式的破坏性干扰并发执行的方式对对象进行操作。
+在某些情况下，对象由用户传递给函数; 在其他情况下，它们被任数用来向用户返回值; 在其他情况下，它们甚至不会暴露给用户。
+.TP 
+\fIconst\fP
+.\" and AS-Unsafe,
+.\" equally
+.\" and AS-Unsafe
+.\" and AS-Safe
+标有 \fIconst\fP 作为 MT\-Safety 问题的函数非原子地修改内部对象，这些对象更好地被视为常量，因为 GNU C
+库的很大一部分在没有同步的情况下访问它们。 与 \fIrace\fP 不同，它导致内部对象的 readers 和 writers 都被视为
+MT\-Unsafe，此标记仅应用于 writers。 Writers 仍然是 MT 不安全的调用，但是他们修改的对象的强制常量使得 readers
+被认为是 MT 安全的 (只要没有其他原因导致它们不安全)，因为缺乏同步不是对象有效常量时的问题。
+.IP
+.\" The non-recursive locking removes the MT-Safety problem,
+.\" but it trades one AS-Safety problem for another,
+.\" so use in asynchronous signals remains undefined.
+.\"
+.\" .\" But what if, instead of marking modifiers with const:id and readers
+.\" .\" with just id, we marked writers with race:id and readers with ro:id?
+.\" .\" Instead of having to define each instance of 'id', we'd have a
+.\" .\" general pattern governing all such 'id's, wherein race:id would
+.\" .\" suggest the need for an exclusive/write lock to make the function
+.\" .\" safe, whereas ro:id would indicate 'id' is expected to be read-only,
+.\" .\" but if any modifiers are called (while holding an exclusive lock),
+.\" .\" then ro:id-marked functions ought to be guarded with a read lock for
+.\" .\" safe operation.  ro:env or ro:locale, for example, seems to convey
+.\" .\" more clearly the expectations and the meaning, than just env or
+.\" .\" locale.
+\fIconst\fP 标记后面的标识符将作为安全说明单独出现在 readers 中。 希望解决此安全问题的程序，例如调用
+writers，可以使用与标识符关联的非递归读写锁，并保护 \fIall\fP 调用标有 \fIconst\fP 的函数，后跟带有写锁的标识符，并且 \fIall\fP
+调用标有标识符的函数本身带有读锁。
+.TP 
+\fIsig\fP
+.\" (that implies an identical AS-Safety issue, omitted for brevity)
+标有 \fIsig\fP 作为 MT\-Safety 问题的函数可能会临时安装信号处理程序用于内部目的，这可能会干扰信号的其他用途，在冒号后标识。
+.IP
+.\"
+.\" There is no safe way to guarantee the original signal handler is
+.\" restored in case of asynchronous cancelation,
+.\" therefore so-marked functions are also AC-Unsafe.
+.\"
+.\" .\" fixme: at least deferred cancelation should get it right, and would
+.\" .\" obviate the restoring bit below, and the qualifier above.
+.\"
+.\" Besides the measures recommended to work around the
+.\" MT-Safety and AS-Safety problem,
+.\" in order to avert the cancelation problem,
+.\" disabling asynchronous cancelation
+.\" .I and
+.\" installing a cleanup handler to restore the signal to the desired state
+.\" and to release the mutex are recommended.
+这个安全问题可以通过确保在调用期间不会对信号进行其他使用来解决。 持有一个非递归互锁同时调用所有使用相同临时信号的函数;
+建议在调用之前阻止该信号并在之后重置其处理程序。
+.TP 
+\fIterm\fP
+.\" The same window enables changes made by asynchronous signals to be lost.
+.\" These functions are also AS-Unsafe,
+.\" but the corresponding mark is omitted as redundant.
+标有 \fIterm\fP 为 MT\-Safety issue 的函数可能会按照推荐的方式更改最终设置，即: 调用
+\fBtcgetattr\fP(3)，修改一些标志，然后调用 \fBtcsetattr\fP(3)，这将创建一个窗口，其中其他线程所做的更改将丢失。 因此，标有
+\fIterm\fP 的函数是 MT\-Unsafe。
+.IP
+.\"
+.\" Functions marked with
+.\" .I term
+.\" as an AC-Safety issue are supposed to
+.\" restore terminal settings to their original state,
+.\" after temporarily changing them, but they may fail to do so if canceled.
+.\"
+.\" .\" fixme: at least deferred cancelation should get it right, and would
+.\" .\" obviate the restoring bit below, and the qualifier above.
+.\"
+.\" Besides the measures recommended to work around the
+.\" MT-Safety and AS-Safety problem,
+.\" in order to avert the cancelation problem,
+.\" disabling asynchronous cancelation
+.\" .I and
+.\" installing a cleanup handler to
+.\" restore the terminal settings to the original state and to release the
+.\" mutex are recommended.
+.\"
+.\"
+因此，建议使用最终端的应用程序避免与它进行并发和重入交互，不在信号处理程序中使用它或阻止可能使用它的信号，并在调用这些函数和与最终端交互时持有锁。
+这个锁也应该用来和标有 \fIrace:tcattr(fd)\fP 的函数互斥，其中 \fIfd\fP 是控制终端的文件描述符。
+为简单起见，调用者可以使用单个互连锁，或者每个终端使用一个互连锁，即使被不同的文件描述符引用。
+.SS "Other safety remarks"
+额外的关键字可能会附加到函数，表明不会使函数对调用不安全的特性但在某些程序类别中可能需要考虑这些关键字:
+.TP 
+\fIlocale\fP
+函数注解 \fIlocale\fP 作为 MT\-Safety 问题从语言环境对象读取，没有任何形式的同步。 与区域设置更改同时调用的 \fIlocale\fP
+的函数注解可能以不对应于执行期间活动的任何区域设置的方式运行，而是不可预测的组合。
+.IP
+.\" or AS-Unsafe,
+.\" Should the locking strategy suggested under @code{const} be used,
+.\" failure to guard locale uses is not as fatal as data races in
+.\" general: unguarded uses will @emph{not} follow dangling pointers or
+.\" access uninitialized, unmapped or recycled memory.  Each access will
+.\" read from a consistent locale object that is or was active at some
+.\" point during its execution.  Without synchronization, however, it
+.\" cannot even be assumed that, after a change in locale, earlier
+.\" locales will no longer be used, even after the newly-chosen one is
+.\" used in the thread.  Nevertheless, even though unguarded reads from
+.\" the locale will not violate type safety, functions that access the
+.\" locale multiple times may invoke all sorts of undefined behavior
+.\" because of the unexpected locale changes.
+但是，我们不将这些函数标记为 MT\-Unsafe，因为修改 locale 对象的函数被标记为 \fIconst:locale\fP 并被视为不安全。
+由于不安全，后者在多线程运行或启用异步信号时不会被调用，因此在这些上下文中可以有效地考虑语言环境，这使得前者安全。
+.TP 
+\fIenv\fP
+标有 \fIenv\fP 的函数作为 MT\-Safety 问题访问具有 \fBgetenv\fP(3)
+或类似的环境，没有任何守卫以确保在存在并发修改的情况下的安全。
+.IP
+.\" or AS-Unsafe,
+但是，我们不将这些函数标记为 MT\-Unsafe，因为修改环境的函数都被标记为 \fIconst:env\fP，被认为是不安全的。
+由于不安全，后者在多线程运行或启用异步信号时不会被调用，因此在这些上下文中可以有效地考虑环境，这使得前者安全。
+.TP 
+\fIhostid\fP
+标有 \fIhostid\fP 作为 MT\-Safety 问题的函数从保存机器 "host ID" 的系统范围数据结构中读取。
+这些数据结构通常不能被原子地修改。 由于预计 "host ID" 不会正常变化，因此读取它的函数 (\fBgethostid\fP(3))
+被认为是安全的，而修改它的函数 (\fBsethostid\fP(3)) 被标记为 \fIconst:hostid\fP，表明如果调用它可能需要特别小心。
+在这种特定情况下，特别注意相当于系统范围 (不仅仅是进程内) 的协调。
+.TP 
+\fIsigintr\fP
+标有 \fIsigintr\fP 的函数作为 MT\-Safety 问题访问 GNU C 库 \fI_sigintr\fP
+内部数据结构体，无需任何守卫，以确保在存在并发修改时的安全性。
+.IP
+.\" or AS-Unsafe,
+.\" .TP
+.\" .I fd
+.\" Functions annotated with
+.\" .I fd
+.\" as an AC-Safety issue may leak file
+.\" descriptors if asynchronous thread cancelation interrupts their
+.\" execution.
+.\"
+.\" Functions that allocate or deallocate file descriptors will generally be
+.\" marked as such.
+.\" Even if they attempted to protect the file descriptor
+.\" allocation and deallocation with cleanup regions,
+.\" allocating a new descriptor and storing its number where the cleanup region
+.\" could release it cannot be performed as a single atomic operation.
+.\" Similarly,
+.\" releasing the descriptor and taking it out of the data structure
+.\" normally responsible for releasing it cannot be performed atomically.
+.\" There will always be a window in which the descriptor cannot be released
+.\" because it was not stored in the cleanup handler argument yet,
+.\" or it was already taken out before releasing it.
+.\" .\" It cannot be taken out after release:
+.\" an open descriptor could mean either that the descriptor still
+.\" has to be closed,
+.\" or that it already did so but the descriptor was
+.\" reallocated by another thread or signal handler.
+.\"
+.\" Such leaks could be internally avoided, with some performance penalty,
+.\" by temporarily disabling asynchronous thread cancelation.
+.\" However,
+.\" since callers of allocation or deallocation functions would have to do
+.\" this themselves, to avoid the same sort of leak in their own layer,
+.\" it makes more sense for the library to assume they are taking care of it
+.\" than to impose a performance penalty that is redundant when the problem
+.\" is solved in upper layers, and insufficient when it is not.
+.\"
+.\" This remark by itself does not cause a function to be regarded as
+.\" AC-Unsafe.
+.\" However, cumulative effects of such leaks may pose a
+.\" problem for some programs.
+.\" If this is the case,
+.\" suspending asynchronous cancelation for the duration of calls
+.\" to such functions is recommended.
+.\" .TP
+.\" .I mem
+.\" Functions annotated with
+.\" .I mem
+.\" as an AC-Safety issue may leak
+.\" memory if asynchronous thread cancelation interrupts their execution.
+.\"
+.\" The problem is similar to that of file descriptors: there is no atomic
+.\" interface to allocate memory and store its address in the argument to a
+.\" cleanup handler,
+.\" or to release it and remove its address from that argument,
+.\" without at least temporarily disabling asynchronous cancelation,
+.\" which these functions do not do.
+.\"
+.\" This remark does not by itself cause a function to be regarded as
+.\" generally AC-Unsafe.
+.\" However, cumulative effects of such leaks may be
+.\" severe enough for some programs that disabling asynchronous cancelation
+.\" for the duration of calls to such functions may be required.
+但是我们不把这些函数标记为 MT\-Unsafe，因为修改这个数据结构体的函数都被标记为 \fIconst:sigintr\fP，被认为是不安全的。
+后者是不安全的，在多线程运行或异步信号使能时不会调用后者，因此在这些上下文中数据结构体可以被认为是有效常量，这使得前者是安全的。
+.TP 
+\fIcwd\fP
+标有 \fIcwd\fP 作为 MT\-Safety
+问题的函数可能会在执行期间临时更改当前工作目录，这可能会导致相对路径名在其他线程或异步信号或取消处理程序中以意外方式解析。
+.IP
+.\" or AS-Unsafe,
+.\" .TP
+.\" .I !posix
+.\" This remark, as an MT-Safety, AS-Safety or AC-Safety
+.\" note to a function,
+.\" indicates the safety status of the function is known to differ
+.\" from the specified status in the POSIX standard.
+.\" For example, POSIX does not require a function to be Safe,
+.\" but our implementation is, or vice-versa.
+.\"
+.\" For the time being, the absence of this remark does not imply the safety
+.\" properties we documented are identical to those mandated by POSIX for
+.\" the corresponding functions.
+这不足以作为将如此标记的函数标记为 MT\-Unsafe 的理由，但是当此行为是可选的时 (例如，\fBnftw\fP(3) 和
+\fBFTW_CHDIR\fP)，避免该选项可能是使用完整路径名或文件描述符相关的一个很好的替代方案 (例如，\fBopenat\fP(2)) 系统调用。
+.TP 
+\fI:identifier\fP
+注解有时可能会跟有标识符，用于对几个函数进行分组，例如，以不安全的方式访问数据结构，如 \fIrace\fP 和
+\fIconst\fP，或提供更具体的信息，例如在一个函数中命名信号 \fIsig\fP。 设想它可以应用于 \fIlock\fP 和 \fIcorrupt\fP 以及
+future 中。
+.IP
+在大多数情况下，标识符将命名一组函数，但它可以命名全局对象或函数参数，或与它们关联的可识别属性或逻辑组件，并使用诸如 \fI:buf(arg)\fP
+之类的符号来表示与参数 \fIarg\fP 或 \fI:tcattr(fd)\fP 表示文件描述符 \fIfd\fP 的最终属性。
+.IP
+标识符最常见的用途是提供需要由同一同步原语保护的函数和参数的逻辑组，以确保在给定上下文中的安全操作。
+.TP 
+\fI/condition\fP
+.\" Such conditions as
+.\" .I /hurd
+.\" or
+.\" .I /!linux!bsd
+.\" indicate the preceding marker only
+.\" applies when the underlying kernel is the HURD,
+.\" or when it is neither Linux nor a BSD kernel, respectively.
+某些安全注解可能是有条件的，因为它们仅在涉及参数、全局变量甚至底层内核的布尔表达式计算结果为真时适用。 例如，\fI/!ps\fP 和
+\fI/one_per_line\fP 表示前面的标记只适用于参数 \fIps\fP 为 NULL，或全局变量 \fIone_per_line\fP 为非零的情况。
+.IP
+当所有使一个函数不安全的标记都带有这样的条件时，并且指定的条件都不成立，那么这个函数就可以被认为是安全的。
+.SH "SEE ALSO"
+\fBpthreads\fP(7), \fBsignal\-safety\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

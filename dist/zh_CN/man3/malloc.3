@@ -1,0 +1,204 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\" and Copyright i2007, 2012, 2018, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 19:00:59 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Clarification concerning realloc, iwj10@cus.cam.ac.uk (Ian Jackson), 950701
+.\" Documented MALLOC_CHECK_, Wolfram Gloger (wmglo@dent.med.uni-muenchen.de)
+.\" 2007-09-15 mtk: added notes on malloc()'s use of sbrk() and mmap().
+.\"
+.\" FIXME . Review http://austingroupbugs.net/view.php?id=374
+.\" to see what changes are required on this page.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH malloc 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+malloc、free、calloc、realloc、reallocarray \- 分配和释放动态内存
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBvoid *malloc(size_t \fP\fIsize\fP\fB);\fP
+\fBvoid free(void \fP\fI*ptr\fP\fB);\fP
+\fBvoid *calloc(size_t \fP\fInmemb\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+\fBvoid *realloc(void \fP\fI*ptr\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+\fBvoid *reallocarray(void \fP\fI*ptr\fP\fB, size_t \fP\fInmemb\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBreallocarray\fP():
+.nf
+    由于 glibc 2.29:
+        _DEFAULT_SOURCE
+    glibc 2.28 及更早版本:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+.SS malloc()
+\fBmalloc\fP() 函数分配 \fIsize\fP 字节并返回指向已分配内存的指针。 \fBmalloc\fP() 函数分配 \fIsize\fP
+字节并返回指向已分配内存的指针。 如果 \fIsize\fP 为 0，则 \fBmalloc\fP() 返回一个唯一的指针值，稍后可以成功传递给
+\fBfree\fP()。 (有关可移植性问题，请参见 "Nonportable behavior"。)
+.SS free()
+\fBfree\fP() 函数释放了 \fIptr\fP 指向的内存空间，该内存空间必须由先前的调用返回给 \fBmalloc\fP() 或相关函数。 否则，或者如果
+\fIptr\fP 已经被释放，则会发生未定义的行为。 如果 \fIptr\fP 为 NULL，则不执行任何操作。
+.SS calloc()
+\fBcalloc\fP() 函数为每个 \fIsize\fP 字节的 \fInmemb\fP 元素数组分配内存，并返回指向分配内存的指针。 内存设置为零。 如果
+\fInmemb\fP 或 \fIsize\fP 为 0，则 \fBcalloc\fP() 返回一个唯一的指针值，稍后可以成功传递给 \fBfree\fP()。
+.PP
+如果 \fInmemb\fP 和 \fIsize\fP 相乘会导致整型溢出，则 \fBcalloc\fP() 返回错误。 相比之下，在以下对 \fBmalloc\fP()
+的调用中不会检测到整型溢出，结果会分配不正确大小的内存块:
+.PP
+.in +4n
+.EX
+malloc(nmemb * size);
+.EE
+.in
+.SS realloc()
+\fBrealloc\fP() 函数将 \fIptr\fP 指向的内存块的大小更改为 \fIsize\fP 字节。 从区域的开始到新旧大小的最小值，内存的内容将保持不变。
+如果新大小大于旧大小，则添加的内存将被初始化为 \fInot\fP。
+.PP
+如果 \fIptr\fP 为 NULL，则对于 \fIsize\fP 的所有值，调用等同于 \fImalloc(size)\fP。
+.PP
+如果 \fIsize\fP 等于零，并且 \fIptr\fP 不为 NULL，则调用等同于 \fIfree(ptr)\fP (但请参见 "Nonportable
+behavior" 了解可移植性问题)。
+.PP
+除非 \fIptr\fP 为 NULL，否则它必须已由较早的调用返回到 \fBmalloc\fP 或相关的函数。 如果指向的区域被移动，则完成
+\fIfree(ptr)\fP。
+.SS reallocarray()
+\fBreallocarray\fP() 函数更改 (并可能移动) \fIptr\fP 指向的内存块的大小，使其足够大以容纳 \fInmemb\fP
+元素数组，每个元素都是 \fIsize\fP 字节。 相当于调用
+.PP
+.in +4n
+.EX
+realloc(ptr, nmemb * size);
+.EE
+.in
+.PP
+但是，与 \fBrealloc\fP() 调用不同，\fBreallocarray\fP() 在乘法溢出的情况下会安全失败。
+如果发生此类溢出，\fBreallocarray\fP() 将返回错误。
+.SH "RETURN VALUE"
+\fBmalloc\fP()、\fBcalloc\fP()、\fBrealloc\fP() 和 \fBreallocarray\fP()
+函数返回一个指向已分配内存的指针，该指针适合于适合请求大小或更小大小的任何类型。 出错时，这些函数返回 NULL 并设置 \fIerrno\fP。
+尝试分配超过 \fBPTRDIFF_MAX\fP 个字节被认为是一个错误，因为一个大的对象可能导致稍后指针减法溢出。
+.PP
+\fBfree\fP() 函数不返回任何值，并保留 \fIerrno\fP。
+.PP
+如果 \fBrealloc\fP() 和 \fBreallocarray\fP() 函数不为 NULL 且请求的大小为零，则返回 NULL; 这不被视为错误。
+(有关可移植性问题，请参见 "Nonportable behavior"。) 否则，如果分配没有移动
+(例如，有空间可以就地扩展分配)，则返回的指针可能与 \fIptr\fP 相同，或者如果分配被移动到，则返回的指针可能与 \fIptr\fP 不同一个新地址。
+如果这些函数失败，则原块保持不变; 它没有被释放或移动。
+.SH ERRORS
+\fBcalloc\fP()、\fBmalloc\fP()、\fBrealloc\fP() 和 \fBreallocarray\fP() 可能会失败并出现以下错误:
+.TP 
+\fBENOMEM\fP
+内存不足。 应用程序可能达到 \fBgetrlimit\fP(2) 中描述的 \fBRLIMIT_AS\fP 或 \fBRLIMIT_DATA\fP 限制。
+.SH VERSIONS
+在 glibc 2.26 中添加了 \fBreallocarray\fP()。
+.PP
+从 glibc 2.30 开始，\fBmalloc\fP() 和相关的函数拒绝大于 \fBPTRDIFF_MAX\fP 的大小。
+.PP
+\fBfree\fP() 保留了从 glibc 2.33 开始的 \fIerrno\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmalloc\fP(),
+\fBfree\fP(),
+\fBcalloc\fP(),
+\fBrealloc\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBmalloc\fP(), \fBfree\fP(), \fBcalloc\fP(), \fBrealloc\fP(): POSIX.1\-2001,
+POSIX.1\-2008, C99.
+.PP
+\fBreallocarray\fP() 是一个非标准扩展名，最早出现在 OpenBSD 5.6 和 FreeBSD 11.0 中。
+.SH NOTES
+默认情况下，Linux 遵循乐观的内存分配策略。 这意味着当 \fBmalloc\fP() 返回非 NULL 时，不能保证内存确实可用。
+万一发现系统内存不足，一个或多个进程将被 OOM 杀手杀死。 更多信息参见 \fBproc\fP(5) 中
+\fI/proc/sys/vm/overcommit_memory\fP 和 \fI/proc/sys/vm/oom_adj\fP 的说明，Linux 内核源文件
+\fIDocumentation/vm/overcommit\-accounting.rst\fP。
+.PP
+通常，\fBmalloc\fP() 从堆中分配内存，并根据需要调整堆的大小，使用 \fBsbrk\fP(2)。 当分配大于 \fBMMAP_THRESHOLD\fP
+字节的内存块时，glibc \fBmalloc\fP() 实现使用 \fBmmap\fP(2) 将内存分配为私有匿名映射。 \fBMMAP_THRESHOLD\fP
+默认为 128\kB，但可以使用 \fBmallopt\fP(3) 进行调整。 在 Linux 4.7 之前，使用 \fBmmap\fP(2) 执行的分配不受
+\fBRLIMIT_DATA\fP 资源限制的影响; 自 Linux 4.7 起，此限制也适用于使用 \fBmmap\fP(2) 执行的分配。
+.PP
+为了避免多线程应用程序中的损坏，内部使用互连锁来保护这些函数所使用的内存管理数据结构。
+在线程同时分配和释放内存的多线程应用程序中，可能会争用这些互连锁。 为了可扩展地处理多线程应用程序中的内存分配，如果检测到互连锁争用，glibc
+会创建额外的 \fImemory allocation arenas\fP。 每个 arena 都是一个大的内存区域，由系统内部分配 (使用
+\fBbrk\fP(2) 或 \fBmmap\fP(2))，并使用自己的互连锁进行管理。
+.PP
+如果您的程序使用私有内存分配器，则应通过替换 \fBmalloc\fP()、\fBfree\fP()、\fBcalloc\fP() 和 \fBrealloc\fP() 来实现。
+替换的数必须实现记录在案的 glibc 行为，包括 \fIerrno\fP 处理、零大小分配和溢出检查; 否则，其他库例程可能会崩溃或运行不正确。
+例如，如果替换 \fIfree\fP() 不保留 \fIerrno\fP，那么看似无关的库例程可能会在 \fIerrno\fP 中没有正当理由的情况下失败。
+私有内存分配器可能还需要替换其他 glibc 任数; 有关详细信息，请参见 glibc 手册中的 "Replacing malloc"。
+.PP
+内存分配器的崩溃几乎总是与堆损坏有关，例如溢出已分配的块或两次释放同一指针。
+.PP
+\fBmalloc\fP() 实现可通过环境变量进行调整; 详见 \fBmallopt\fP(3)。
+.SS "Nonportable behavior"
+当请求的大小为零时，这些函数的行为是特定于 glibc 的; 其他实现可能会在不设置 \fIerrno\fP 的情况下返回 NULL，并且可移植的 POSIX
+程序应该容忍这种行为。 请参见 \fBrealloc\fP(3p)。
+.PP
+POSIX 要求内存分配器在失败时设置 \fIerrno\fP。 然而，C 标准并不需要这一点，并且可移植到非 POSIX 平台的应用程序不应该假设这一点。
+.PP
+可移植程序不应使用私有内存分配器，因为 POSIX 和 C 标准不允许替换 \fBmalloc\fP()、\fBfree\fP()、\fBcalloc\fP() 和
+\fBrealloc\fP()。
+.SH "SEE ALSO"
+.\" http://g.oswego.edu/dl/html/malloc.html
+.\" A Memory Allocator - by Doug Lea
+.\"
+.\" http://www.bozemanpass.com/info/linux/malloc/Linux_Heap_Contention.html
+.\" Linux Heap, Contention in free() - David Boreham
+.\"
+.\" http://www.citi.umich.edu/projects/linux-scalability/reports/malloc.html
+.\" malloc() Performance in a Multithreaded Linux Environment -
+.\"     Check Lever, David Boreham
+.\"
+.ad l
+.nh
+\fBvalgrind\fP(1), \fBbrk\fP(2), \fBmmap\fP(2), \fBalloca\fP(3), \fBmalloc_get_state\fP(3),
+\fBmalloc_info\fP(3), \fBmalloc_trim\fP(3), \fBmalloc_usable_size\fP(3),
+\fBmallopt\fP(3), \fBmcheck\fP(3), \fBmtrace\fP(3), \fBposix_memalign\fP(3)
+.PP
+有关 GNU C 库实现的详细信息，请参见
+.UR https://sourceware.org/glibc/wiki/MallocInternals
+.UE .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

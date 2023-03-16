@@ -1,0 +1,124 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Justin Pryzby <pryzbyj@justinpryzby.com>
+.\" and Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\" Permission is hereby granted, free of charge, to any person obtaining
+.\" a copy of this software and associated documentation files (the
+.\" "Software"), to deal in the Software without restriction, including
+.\" without limitation the rights to use, copy, modify, merge, publish,
+.\" distribute, sublicense, and/or sell copies of the Software, and to
+.\" permit persons to whom the Software is furnished to do so, subject to
+.\" the following conditions:
+.\"
+.\" The above copyright notice and this permission notice shall be
+.\" included in all copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+.\" EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+.\" IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+.\" CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+.\" TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+.\" SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.\" %%%LICENSE_END
+.\"
+.\" References:
+.\"   glibc manual and source
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH error 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+error, error_at_line, error_message_count, error_one_per_line,
+error_print_progname\-glibc 错误报告函数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <error.h>\fP
+.PP
+\fBvoid error(int \fP\fIstatus\fP\fB, int \fP\fIerrnum\fP\fB, const char *\fP\fIformat\fP\fB, ...);\fP
+\fBvoid error_at_line(int \fP\fIstatus\fP\fB, int \fP\fIerrnum\fP\fB, const char *\fP\fIfilename\fP\fB,\fP
+\fB                   unsigned int \fP\fIlinenum\fP\fB, const char *\fP\fIformat\fP\fB, ...);\fP
+.PP
+\fBextern unsigned int \fP\fIerror_message_count\fP\fB;\fP
+\fBextern int \fP\fIerror_one_per_line\fP\fB;\fP
+.PP
+\fBextern void (*\fP\fIerror_print_progname\fP\fB)(void);\fP
+.fi
+.SH DESCRIPTION
+\fBerror\fP() 是一个一般的错误报告函数。 它刷新 \fIstdout\fP，然后向 \fIstderr\fP 输出程序名称、一个冒号和一个空格、由
+\fBprintf\fP(3)\-style 格式字符串 \fIformat\fP 指定的消息，如果 \fIerrnum\fP 不为零，则输出第二个冒号和一个空格，后跟
+\fIstrerror(errnum)\fP 给出的字符串。 \fIformat\fP 所需的任何参数都应跟在参数列表中的 \fIformat\fP 之后。
+输出以换行符终止。
+.PP
+\fBerror\fP() 打印的程序名是全局变量 \fBprogram_invocation_name\fP(3) 的值。
+\fIprogram_invocation_name\fP 初始值与 \fImain\fP()'s \fIargv[0]\fP 相同。 可以修改此变量的值以更改
+\fBerror\fP() 的输出。
+.PP
+如果 \fIstatus\fP 具有非零值，则 \fBerror\fP() 调用 \fBexit\fP(3) 以使用给定值作为退出状态终止程序;
+否则它会在打印错误信息后返回。
+.PP
+\fBerror_at_line\fP() 函数与 \fBerror\fP() 完全一样，只是增加了参数 \fIfilename\fP 和 \fIlinenum\fP。
+产生的输出与 \fBerror\fP() 相同，只是在程序名称后写入: 一个冒号、\fIfilename\fP 的值、一个冒号和 \fIlinenum\fP 的值。
+预处理器值 \fB__LINE__\fP 和 \fB__FILE__\fP 在调用 \fBerror_at_line\fP() 时可能有用，但也可以使用其他值。
+例如，这些参数可以引用输入文件中的位置。
+.PP
+如果全局变量 \fIerror_one_per_line\fP 设置为非零，则具有相同 \fIfilename\fP 和 \fIlinenum\fP 值的一系列
+\fBerror_at_line\fP() 调用将导致仅输出一条消息 (第一条)。
+.PP
+全局变量 \fIerror_message_count\fP 统计 \fBerror\fP() 和 \fBerror_at_line\fP() 输出的消息数。
+.PP
+如果全局变量 \fIerror_print_progname\fP 被分配了一个函数的地址 (即不为 NULL)，则调用该函数而不是在消息前加上程序名和冒号。
+函数应该打印一个合适的字符串到 \fIstderr\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBerror\fP()
+T}	Thread safety	MT\-Safe locale
+T{
+\fBerror_at_line\fP()
+T}	Thread safety	T{
+MT\-Unsafe\ race: error_at_line/\:error_one_per_line locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+.PP
+访问内部 \fIerror_one_per_line\fP 变量 (没有任何形式的同步，但由于它是一个使用过一次的 \fIint\fP，它应该足够安全) 并且，如果
+\fIerror_one_per_line\fP 设置为非零，内部静态变量 (不向用户公开)
+用于保存最后一个打印的文件名和行号在没有同步的情况下被访问和修改; 更新不是原子的，它发生在禁用取消之前，因此只有在两个变量之一被修改后才能被中断。
+在那之后，\fBerror_at_line\fP() 非常像 \fBerror\fP()。
+.SH STANDARDS
+这些函数和变量是 GNU 的扩展，不应用于可移植的程序。
+.SH "SEE ALSO"
+\fBerr\fP(3), \fBerrno\fP(3), \fBexit\fP(3), \fBperror\fP(3),
+\fBprogram_invocation_name\fP(3), \fBstrerror\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

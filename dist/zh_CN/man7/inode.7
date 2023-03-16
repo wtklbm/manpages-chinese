@@ -1,0 +1,298 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH inode 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+inode \- 文件 inode 信息
+.SH DESCRIPTION
+每个文件都有一个 inode，其中包含有关该文件的元数据。 应用程序可以使用 \fBstat\fP(2) (或相关调用) 检索此元数据，它返回一个
+\fIstat\fP 结构体，或 \fBstatx\fP(2)，它返回一个 \fIstatx\fP 结构体。
+.PP
+以下是通常在文件 inode 中找到或与之关联的信息列表，以及 \fBstat\fP(2) 和 \fBstatx\fP(2): 返回的相应结构体字段的名称
+.TP 
+Device where inode resides
+\fIstat.st_dev\fP;  \fIstatx.stx_dev_minor\fP 和 \fIstatx.stx_dev_major\fP
+.IP
+每个索引节点 (以及关联的文件) 都驻留在设备上托管的文件系统中。 该设备由其主要 ID (标识设备的一般类别) 和次要 ID
+(标识一般类别中的特定实例) 的组合来标识。
+.TP 
+Inode number
+\fIstat.st_ino\fP;  \fIstatx.stx_ino\fP
+.IP
+文件系统中的每个文件都有一个唯一的索引节点号。 inode 号保证只在一个文件系统内是唯一的 (即，相同的 inode
+号可能被不同的文件系统使用，这就是硬链接不能跨越文件系统边界的原因)。 该字段包含文件的 inode 编号。
+.TP 
+File type and mode
+\fIstat.st_mode\fP;  \fIstatx.stx_mode\fP
+.IP
+请参见下面对文件类型和模式的讨论。
+.TP 
+Link count
+\fIstat.st_nlink\fP;  \fIstatx.stx_nlink\fP
+.IP
+该字段包含文件的硬链接数。 使用 \fBlink\fP(2) 创建指向现有文件的附加链接。
+.TP 
+User ID
+\fIst_uid\fP \fIstat.st_uid\fP;  \fIstatx.stx_uid\fP
+.IP
+该字段记录文件所有者的用户 ID。 对于新创建的文件，文件用户标识为创建进程的有效用户标识。 可以使用 \fBchown\fP(2) 更改文件的用户 ID。
+.TP 
+Group ID
+\fIstat.st_gid\fP;  \fIstatx.stx_gid\fP
+.IP
+inode 记录了文件所属组的 ID。 对于新创建的文件，文件组 ID 是父目录的组 ID 或创建进程的有效组 ID，具体取决于父目录上是否设置了
+set\-group\-ID 位 (见下文) .  可以使用 \fBchown\fP(2) 更改文件的组 ID。
+.TP 
+Device represented by this inode
+\fIstat.st_rdev\fP;  \fIstatx.stx_rdev_minor\fP 和 \fIstatx.stx_rdev_major\fP
+.IP
+如果这个文件 (inode) 代表一个设备，那么 inode 记录了那个设备的 major 和 minor ID。
+.TP 
+File size
+\fIstat.st_size\fP;  \fIstatx.stx_size\fP
+.IP
+此字段以字节为单位给出文件的大小 (如果它是常规文件或符号链接)。 符号链接的大小是它包含的路径名的长度，没有终止空字节。
+.TP 
+Preferred block size for I/O
+\fIstat.st_blksize\fP;  \fIstatx.stx_blksize\fP
+.IP
+该字段给出高效文件系统 I/O 的 "preferred" 块大小。 (以较小的块写入文件可能会导致读取 \- 修改 \- 重写效率低下。)
+.TP 
+Number of blocks allocated to the file
+\fIstat.st_blocks\fP;  \fIstatx.stx_size\fP
+.IP
+该字段表示分配给该文件的块数，以 512 字节为单位，(当文件有空洞时，该字段可能小于 \fIst_size\fP/512。)
+.IP
+.\" Rationale for sys/stat.h in POSIX.1-2008
+POSIX.1 标准指出，\fIstat\fP 结构体的 \fIst_blocks\fP 成员的元未由标准定义。 在许多实现中它是 512 字节;
+在一些系统上，使用不同的元，例如 1024。 此外，单位可能因文件系统而异。
+.TP 
+Last access timestamp (atime)
+\fIstat.st_atime\fP;  \fIstatx.stx_atime\fP
+.IP
+这是文件的上次访问时间戳。 它由文件访问更改，例如，由 \fBexecve\fP(2)、\fBmknod\fP(2)、\fBpipe\fP(2)、\fButime\fP(2)
+和 \fBread\fP(2) (多于零字节) 更改。 其他接口，比如 \fBmmap\fP(2)，可能更新也可能不更新 atime 时间戳
+.IP
+某些文件系统类型允许以文件或者目录访问不会导致 atime 时间戳更新的方式进行安装。 (参见 \fBmount\fP(8) 中的
+\fInoatime\fP、\fInodiratime\fP 和 \fIrelatime\fP，以及 \fBmount\fP(2).) 中的相关信息另外，如果使用
+\fBO_NOATIME\fP 标志打开文件，atime 时间戳不会更新; 请参见 \fBopen\fP(2)。
+.TP 
+File creation (birth) timestamp (btime)
+(不在 \fIstat\fP 结构体中返回) ; \fIstatx.stx_btime\fP
+.IP
+文件的创建时间戳。 这是在创建文件时设置的，以后不会更改。
+.IP
+.\" FIXME Is it supported on ext4 and XFS?
+btime 时间戳过去在 UNIX 系统上不存在，目前大多数 Linux 文件系统都不支持。
+.TP 
+Last modification timestamp (mtime)
+\fIstat.st_mtime\fP;  \fIstatx.stx_mtime\fP
+.IP
+这是文件的最后修改时间戳。 它由文件修改更改，例如，由 \fBmknod\fP(2)、\fBtruncate\fP(2)、\fButime\fP(2) 和
+\fBwrite\fP(2) (超过零字节) 更改。 此外，目录的 mtime 时间戳会随着目录中文件的创建或删除而改变。 mtime
+时间戳因所有者、组、硬链接计数或模式的更改而发生了 \fInot\fP 更改。
+.TP 
+Last status change timestamp (ctime)
+\fIstat.st_ctime\fP;  \fIstatx.stx_ctime\fP
+.IP
+这是文件的最后状态更改时间戳。 它通过写入或设置 inode 信息 (即所有者、组、链接计数、模式等) 来更改。
+.PP
+时间戳字段报告在 \fIEpoch\fP 处以零点测量的时间，1970\-01\-01 00:00:00 +0000，UTC (请参见 \fBtime\fP(7)).
+.PP
+.\" commit ef7f38359ea8b3e9c7f2cae9a4d4935f55ca9e80
+.\"
+XFS、JFS、Btrfs 和 ext4 (自 Linux 2.6.23 起) 支持纳秒时间戳。 ext2、ext3 和 Reiserfs
+不支持纳秒时间戳。 为了返回具有纳秒精度的时间戳，\fIstat\fP 和 \fIstatx\fP 结构中的时间戳字段被定义为包含纳秒组件的结构。
+有关详细信息，请参见 \fBstat\fP(2) 和 \fBstatx\fP(2)。 在不支持亚秒时间戳的文件系统上，\fIstat\fP 和 \fIstatx\fP
+结构中的纳秒字段返回值 0.
+.SS "The file type and mode"
+\fIstat.st_mode\fP 字段 (对于 \fBstatx\fP(2)，\fIstatx.stx_mode\fP 字段) 包含文件类型和模式。
+.PP
+POSIX 将掩码 \fBS_IFMT\fP (见下文) 对应的 \fIstat.st_mode\fP 位称为 \fIfile type\fP，将掩码 07777 对应的
+12 位称为 \fIfile mode bits\fP，(0777) 的低 9 位称为 \fIfile permission bits\fP。
+.PP
+为文件类型定义了以下掩码值:
+.in +4n
+.TS
+lB l l.
+S_IFMT	0170000	bit mask for the file type bit field
+
+S_IFSOCK	0140000	socket
+S_IFLNK	0120000	symbolic link
+S_IFREG	0100000	常规文件
+S_IFBLK	0060000	block device
+S_IFDIR	0040000	directory
+S_IFCHR	0020000	character device
+S_IFIFO	0010000	FIFO
+.TE
+.in
+.PP
+因此，要测试一个常规文件 (例如)，可以这样写:
+.PP
+.in +4n
+.EX
+stat(pathname, &sb);
+if ((sb.st_mode & S_IFMT) == S_IFREG) {
+    /* Handle regular file */
+}
+.EE
+.in
+.PP
+由于以上形式的测试比较常见，所以 POSIX 定义了额外的宏，让 \fIst_mode\fP 中文件类型的测试写得更简洁:
+.RS 4
+.TP  1.2i
+\fBS_ISREG\fP(m)
+是普通文件吗?
+.TP 
+\fBS_ISDIR\fP(m)
+directory?
+.TP 
+\fBS_ISCHR\fP(m)
+字符设备?
+.TP 
+\fBS_ISBLK\fP(m)
+块设备?
+.TP 
+\fBS_ISFIFO\fP(m)
+FIFO (命名管道) ?
+.TP 
+\fBS_ISLNK\fP(m)
+符号链接? (不在 POSIX.1\-1996 中。)
+.TP 
+\fBS_ISSOCK\fP(m)
+套接字? (不在 POSIX.1\-1996 中。)
+.RE
+.PP
+因此，前面的代码片段可以重写为:
+.PP
+.in +4n
+.EX
+stat(pathname, &sb);
+if (S_ISREG(sb.st_mode)) {
+    /* Handle regular file */
+}
+.EE
+.in
+.PP
+如果定义了以下任何特性测试宏，则提供大多数上述文件类型测试宏的定义: \fB_BSD_SOURCE\fP (在 glibc 2.19
+和更早版本中)、\fB_SVID_SOURCE\fP (在 glibc 2.19 和更早版本中) 或 \fB_DEFAULT_SOURCE\fP (在 glibc
+2.20 和更高版本中) ).  此外，如果定义了 \fB_XOPEN_SOURCE\fP，则提供除 \fBS_IFSOCK\fP 和 \fBS_ISSOCK\fP()
+之外的所有上述宏的定义。
+.PP
+\fBS_IFSOCK\fP 的定义也可以通过将 \fB_XOPEN_SOURCE\fP 定义为 500 或更大的值或 (自 glibc 2.24 起)
+通过同时定义 \fB_XOPEN_SOURCE\fP 和 \fB_XOPEN_SOURCE_EXTENDED\fP 来公开。
+.PP
+如果定义了以下任何特性测试宏，则会公开 \fBS_ISSOCK\fP() 的定义: \fB_BSD_SOURCE\fP (在 glibc 2.19
+及更早版本中)、\fB_DEFAULT_SOURCE\fP (在 glibc 2.20 及更高版本中)、值为 500 或更大的
+\fB_XOPEN_SOURCE\fP、值为 200112L 的 \fB_POSIX_C_SOURCE\fP 或更高，或 (自 glibc 2.24 起)
+通过同时定义 \fB_XOPEN_SOURCE\fP 和 \fB_XOPEN_SOURCE_EXTENDED\fP。
+.PP
+为 \fIst_mode\fP 字段的文件模式组件定义了以下掩码值:
+.in +4n
+.nh
+.ad l
+.TS
+lB l lx.
+S_ISUID	  04000	T{
+set\-user\-ID bit (see \fBexecve\fP(2))
+T}
+S_ISGID	  02000	T{
+set\-group\-ID bit (see below)
+T}
+S_ISVTX	  01000	T{
+sticky bit (see below)
+T}
+
+S_IRWXU	  00700	T{
+owner has read, write, and execute permission
+T}
+S_IRUSR	  00400	T{
+owner has read permission
+T}
+S_IWUSR	  00200	T{
+owner has write permission
+T}
+S_IXUSR	  00100	T{
+owner has execute permission
+T}
+
+S_IRWXG	  00070	T{
+group has read, write, and execute permission
+T}
+S_IRGRP	  00040	T{
+group has read permission
+T}
+S_IWGRP	  00020	T{
+group has write permission
+T}
+S_IXGRP	  00010	T{
+group has execute permission
+T}
+
+S_IRWXO	  00007	T{
+others (not in group) have read, write, and execute permission
+T}
+S_IROTH	  00004	T{
+others have read permission
+T}
+S_IWOTH	  00002	T{
+others have write permission
+T}
+S_IXOTH	  00001	T{
+others have execute permission
+T}
+.TE
+.ad
+.hy
+.in
+.PP
+设置组 ID 位 (\fBS_ISGID\fP) 有几个特殊用途。 对于一个目录，它表示 BSD 语义将用于该目录: 在那里创建的文件从目录继承它们的组
+ID，而不是从创建进程的有效组 ID，并且在那里创建的目录也将设置 \fBS_ISGID\fP 位.  对于可执行文件，设置组 ID
+位会导致执行文件的进程的有效组 ID 发生更改，如 \fBexecve\fP(2) 中所述。 对于没有设置组执行位 (\fBS_IXGRP\fP) 的文件，设置组
+ID 位指示强制 file/record 锁定。
+.PP
+目录上的粘性位 (\fBS_ISVTX\fP) 表示该目录中的文件只能由文件所有者、目录所有者和特权进程重命名或删除。
+.SH STANDARDS
+如果需要从 \fI<sys/stat.h>\fP 获取 \fIblkcnt_t\fP 或 \fIblksize_t\fP 类型的定义，则定义
+\fB_XOPEN_SOURCE\fP 的值为 500 或更大 (在包含 \fIany\fP 头文件之前)。
+.PP
+POSIX.1\-1990 没有描述
+\fBS_IFMT\fP、\fBS_IFSOCK\fP、\fBS_IFLNK\fP、\fBS_IFREG\fP、\fBS_IFBLK\fP、\fBS_IFDIR\fP、\fBS_IFCHR\fP、\fBS_IFIFO\fP
+和 \fBS_ISVTX\fP 常量，而是规定了宏 \fBS_ISDIR\fP() 等的使用。 \fBS_IF*\fP 常量存在于 POSIX.1\-2001
+及更高版本中。
+.PP
+\fBS_ISLNK\fP() 和 \fBS_ISSOCK\fP() 宏不在 POSIX.1\-1996 中，但都存在于 POSIX.1\-2001 中; 前者来自
+SVID 4，后者来自 SUSv2。
+.PP
+UNIX\V7 (及以后的系统) 有 \fBS_IREAD\fP、\fBS_IWRITE\fP、\fBS_IEXEC\fP，其中 POSIX 规定了同义词
+\fBS_IRUSR\fP、\fBS_IWUSR\fP 和 \fBS_IXUSR\fP。
+.SH NOTES
+对于内核自动生成的伪文件，文件大小为 (\fIstat.st_size\fP; 内核报告的 \fIstatx.stx_size\fP) 不准确。 例如，对于
+\fI/proc\fP 目录下的许多文件返回值 0，而 \fI/sys\fP 下的各种文件报告大小为 4096 字节，即使文件内容更小。
+对于这样的文件，应该简单地尝试读取尽可能多的字节 (如果要将其解释为字符串，则将 \[aq]\e0\[aq] 追加到返回的缓冲区)。
+.SH "SEE ALSO"
+\fBstat\fP(1), \fBstat\fP(2), \fBstatx\fP(2), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

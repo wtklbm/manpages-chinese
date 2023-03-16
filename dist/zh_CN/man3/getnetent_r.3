@@ -1,0 +1,117 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"	<mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getnetent_r 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getnetent_r、getnetbyname_r、getnetbyaddr_r \- 获取网络条目 (reentrant)
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <netdb.h>\fP
+.PP
+\fBint getnetent_r(struct netent *restrict \fP\fIresult_buf\fP\fB,\fP
+\fB                char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP  
+\fB                struct netent **restrict \fP\fIresult\fP\fB,\fP
+\fB                int *restrict \fP\fIh_errnop\fP\fB);\fP
+\fBint getnetbyname_r(const char *restrict \fP\fIname\fP\fB,\fP
+\fB                struct netent *restrict \fP\fIresult_buf\fP\fB,\fP
+\fB                char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB                struct netent **restrict \fP\fIresult\fP\fB,\fP
+\fB                int *restrict \fP\fIh_errnop\fP\fB);\fP
+\fBint getnetbyaddr_r(uint32_t \fP\fInet\fP\fB, int \fP\fItype\fP\fB,\fP
+\fB                struct netent *restrict \fP\fIresult_buf\fP\fB,\fP
+\fB                char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB                struct netent **restrict \fP\fIresult\fP\fB,\fP
+\fB                int *restrict \fP\fIh_errnop\fP\fB);\fP
+.PP
+.fi
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetnetent_r\fP(), \fBgetnetbyname_r\fP(), \fBgetnetbyaddr_r\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetnetent_r\fP()、\fBgetnetbyname_r\fP() 和 \fBgetnetbyaddr_r\fP() 函数分别是
+\fBgetnetent\fP(3)、\fBgetnetbyname\fP(3) 和 \fBgetnetbynumber\fP(3) 的可重入等效项。
+它们的不同之处在于返回 \fInetent\fP 结构体的方式，以及调用签名和返回值的函数。 本手册页仅描述了与不可重入函数的区别。
+.PP
+这些函数不是返回指向静态分配的 \fInetent\fP 结构体的指针作为函数结果，而是将函数复制到 \fIresult_buf\fP 指向的位置。
+.PP
+.\" I can find no information on the required/recommended buffer size;
+.\" the nonreentrant functions use a 1024 byte buffer -- mtk.
+\fIbuf\fP 数组用于存储返回的 \fInetent\fP 结构体指向的字符串字段。 (不可重入函数在静态存储中分配这些字符串。) 该数组的大小在
+\fIbuflen\fP 中指定。 如果 \fIbuf\fP 太小，调用将失败并返回错误 \fBERANGE\fP，调用者必须使用更大的缓冲区重试。
+(对于大多数应用程序，长度为 1024 字节的缓冲区应该足够了。)
+.PP
+如果任数调用成功获取到一条网络记录，则将 \fI*result\fP 设置为指向 \fIresult_buf\fP; 否则，\fI*result\fP 被设置为
+NULL。
+.PP
+.\" getnetent.3 doesn't document any use of h_errno, but nevertheless
+.\" the nonreentrant functions no seem to set h_errno.
+\fIh_errnop\fP 指向的缓冲区用于返回将由这些函数的非重入版本存储在全局变量 \fIh_errno\fP 中的值。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0。 出错时，它们返回 ERRORS 中列出的正错误号之一。
+.PP
+出错时，未找到记录 (\fBgetnetbyname_r\fP()、\fBgetnetbyaddr_r\fP()) 或输入结束 (\fBgetnetent_r\fP())
+\fIresult\fP 设置为 NULL。
+.SH ERRORS
+.TP 
+\fBENOENT\fP
+(\fBgetnetent_r\fP()) 数据库中没有更多记录。
+.TP 
+\fBERANGE\fP
+\fIbuf\fP 太小了。 使用更大的缓冲区 (并增加 \fIbuflen\fP).
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetnetent_r\fP(),
+\fBgetnetbyname_r\fP(),
+\fBgetnetbyaddr_r\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是 GNU 的扩展名。 具有相似名称的函数存在于其他一些系统中，但通常具有不同的调用签名。
+.SH "SEE ALSO"
+\fBgetnetent\fP(3), \fBnetworks\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

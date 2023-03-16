@@ -1,0 +1,122 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" and Copyright 2007 Lee Schermerhorn, Hewlett Packard
+.\"
+.\" %%%LICENSE_START(VERBATIM_PROF)
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\"
+.\" Since the Linux kernel and libraries are constantly changing, this
+.\" manual page may be incorrect or out-of-date.  The author(s) assume no
+.\" responsibility for errors or omissions, or for damages resulting from
+.\" the use of the information contained herein.
+.\"
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-02-03, mtk, substantial wording changes and other improvements
+.\" 2007-08-27, Lee Schermerhorn <Lee.Schermerhorn@hp.com>
+.\"     more precise specification of behavior.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH get_mempolicy 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+get_mempolicy \- 检索线程的 NUMA 内存策略
+.SH LIBRARY
+NUMA (非统一内存访问) 策略库 (\fIlibnuma\fP、\fI\-lnuma\fP)
+.SH SYNOPSIS
+\fB#include <numaif.h>\fP
+.nf
+.PP
+\fBlong get_mempolicy(int *\fP\fImode\fP\fB,\fP
+\fB                   unsigned long \fP\fInodemask\fP\fB[(.\fP\fImaxnode\fP\fB + ULONG_WIDTH \- 1)\fP
+\fB/ ULONG_WIDTH],\fP
+\fB                   unsigned long \fP\fImaxnode\fP\fB, void *\fP\fIaddr\fP\fB,\fP
+\fB                   unsigned long \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBget_mempolicy\fP() 检索调用线程或内存地址的 NUMA 策略，具体取决于 \fIflags\fP 的设置。
+.PP
+NUMA 机器具有不同的内存控制器，它们与特定 CPU 的距离不同。 内存策略定义了从哪个节点为线程分配内存。
+.PP
+如果 \fIflags\fP 指定为 0，则返回有关调用线程的默认策略的信息 (由 \fBset_mempolicy\fP(2)) 设置)，在 \fImode\fP 和
+\fInodemask\fP 指向的缓冲区中。 这些参数中返回的值可用于将线程的策略恢复到使用 \fBset_mempolicy\fP(2) 调用
+\fBget_mempolicy\fP() 时的状态。 当 \fIflags\fP 为 0 时，\fIaddr\fP 必须指定为 NULL。
+.PP
+如果 \fIflags\fP 指定 \fBMPOL_F_MEMS_ALLOWED\fP (自 Linux 2.6.24 起可用)，则忽略 \fImode\fP
+参数，并且允许线程在后续调用 \fBmbind\fP(2) 或 \fBset_mempolicy\fP(2) 中指定的节点集 (memories) (在没有任何
+\fImode flags\fP) 的情况下，在 \fInodemask\fP 中返回。 不允许将 \fBMPOL_F_MEMS_ALLOWED\fP 与
+\fBMPOL_F_ADDR\fP 或 \fBMPOL_F_NODE\fP 结合使用。
+.PP
+如果 \fIflags\fP 指定 \fBMPOL_F_ADDR\fP，则返回有关管理 \fIaddr\fP 中给出的内存地址的策略的信息。 如果已使用
+\fBmbind\fP(2) 或 \fBnuma\fP(3) 中描述的助手函数之一为包含 \fIaddr\fP 的内存范围建立策略，则此策略可能与线程的默认策略不同。
+.PP
+如果 \fImode\fP 参数不为 NULL，则 \fBget_mempolicy\fP() 将在该参数指向的位置存储策略模式和请求的 NUMA 策略的任何可选
+\fImode flags\fP。 如果 \fInodemask\fP 不为 NULL，则与策略关联的节点掩码将存储在该参数指向的位置。 \fImaxnode\fP
+指定可以存储到 \fInodemask\fP\[em]that 中的节点 ID 的数量是，最大节点 ID 加一。 \fImaxnode\fP 指定的值始终四舍五入为
+\fIsizeof(unsigned\ long)*8\fP 的倍数。
+.PP
+如果 \fIflags\fP 同时指定了 \fBMPOL_F_NODE\fP 和 \fBMPOL_F_ADDR\fP，则 \fBget_mempolicy\fP()
+将把分配地址 \fIaddr\fP 的节点的节点 ID 返回到 \fImode\fP 指向的位置。 如果尚未为指定地址分配页面，则
+\fBget_mempolicy\fP() 将分配一个页面，就好像线程已对该地址执行读取 (load) 访问一样，并返回分配该页面的节点的 ID。
+.PP
+.\" Note:  code returns next interleave node via 'mode' argument -Lee Schermerhorn
+如果 \fIflags\fP 指定 \fBMPOL_F_NODE\fP，而不是 \fBMPOL_F_ADDR\fP，并且线程的当前策略是
+\fBMPOL_INTERLEAVE\fP，则 \fBget_mempolicy\fP() 将在非 NULL \fImode\fP
+参数指向的位置返回，将用于内部内核交错的下一个节点的节点 ID 代表线程分配的页面。 这些分配包括使用 \fBmmap\fP(2) 调用和
+\fBMAP_PRIVATE\fP 标志映射的进程内存范围中的内存映射文件的页面，用于读取访问，以及使用 \fBMAP_SHARED\fP
+标志映射的内存范围，用于所有访问。
+.PP
+保留其他标志值。
+.PP
+有关可能策略的概述，请参见 \fBset_mempolicy\fP(2)。
+.SH "RETURN VALUE"
+成功时，\fBget_mempolicy\fP() 返回 0; 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fInodemask\fP 和 \fImaxnode\fP 指定的所有内存范围的一部分指向您的可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fImaxnode\fP 指定的值小于系统支持的节点 ID 个数。 或 \fIflags\fP 指定的 \fBMPOL_F_NODE\fP 或
+\fBMPOL_F_ADDR\fP 以外的值; 或者 \fIflags\fP 指定 \fBMPOL_F_ADDR\fP 和 \fIaddr\fP 为 NULL，或者
+\fIflags\fP 没有指定 \fBMPOL_F_ADDR\fP 并且 \fIaddr\fP 不为 NULL。 或者，\fIflags\fP 指定了
+\fBMPOL_F_NODE\fP 而不是 \fBMPOL_F_ADDR\fP，并且当前线程策略不是 \fBMPOL_INTERLEAVE\fP。 或者，\fIflags\fP
+用 \fBMPOL_F_ADDR\fP 或 \fBMPOL_F_NODE\fP 指定 \fBMPOL_F_MEMS_ALLOWED\fP。 (还有其他 \fBEINVAL\fP
+案例。)
+.SH VERSIONS
+\fBget_mempolicy\fP() 系统调用在 Linux 2.6.7 中加入。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+有关库支持的信息，请参见 \fBnuma\fP(7)。
+.SH "SEE ALSO"
+\fBgetcpu\fP(2), \fBmbind\fP(2), \fBmmap\fP(2), \fBset_mempolicy\fP(2), \fBnuma\fP(3),
+\fBnuma\fP(7), \fBnumactl\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

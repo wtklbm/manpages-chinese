@@ -1,0 +1,116 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mq_receive 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+mq_receive、mq_timedreceive \- 从消息队列接收消息
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <mqueue.h>\fP
+.PP
+\fBssize_t mq_receive(mqd_t \fP\fImqdes\fP\fB, char \fP\fImsg_ptr\fP\fB[.\fP\fImsg_len\fP\fB],\fP
+\fB                   size_t \fP\fImsg_len\fP\fB, unsigned int *\fP\fImsg_prio\fP\fB);\fP
+.PP
+\fB#include <time.h>\fP
+\fB#include <mqueue.h>\fP
+.PP
+\fBssize_t mq_timedreceive(mqd_t \fP\fImqdes\fP\fB, char *restrict \fP\fImsg_ptr\fP\fB[.\fP\fImsg_len\fP\fB],\fP
+\fB                   size_t \fP\fImsg_len\fP\fB, unsigned int *restrict \fP\fImsg_prio\fP\fB,\fP
+\fB                   const struct timespec *restrict \fP\fIabs_timeout\fP\fB);\fP
+.fi
+.PP
+.ad l
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmq_timedreceive\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBmq_receive\fP() 从消息队列描述符 \fImqdes\fP 所指的消息队列中取出优先级最高的最旧消息，放入 \fImsg_ptr\fP
+所指向的缓冲区中。 \fImsg_len\fP 参数指定 \fImsg_ptr\fP 指向的缓冲区大小; 这必须大于或等于队列的 \fImq_msgsize\fP 属性
+(请参见 \fBmq_getattr\fP(3)).  如果 \fImsg_prio\fP 不为 NULL，则它指向的缓冲区用于返回与接收到的消息关联的优先级。
+.PP
+如果队列为空，则默认情况下 \fBmq_receive\fP() 会阻塞，直到有消息可用，或者调用被信号处理程序中断。 如果为消息队列描述启用了
+\fBO_NONBLOCK\fP 标志，则调用会立即失败并显示错误 \fBEAGAIN\fP。
+.PP
+\fBmq_timedreceive\fP() 的行为与 \fBmq_receive\fP() 一样，除了如果队列为空并且没有为消息队列描述启用
+\fBO_NONBLOCK\fP 标志，则 \fIabs_timeout\fP 指向一个结构体，它指定调用将阻塞多长时间。 该值是自纪元 1970\-01\-01
+00:00:00 +0000 (UTC) 以来的绝对超时 (以秒和纳秒为单位)，在 \fBtimespec\fP(3) 结构体中指定。
+.PP
+如果没有消息可用，并且在调用时超时已经过期，则 \fBmq_timedreceive\fP() 立即返回。
+.SH "RETURN VALUE"
+成功时，\fBmq_receive\fP() 和 \fBmq_timedreceive\fP() 返回接收到的消息中的字节数; 出错时返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+队列为空，并且为 \fImqdes\fP 引用的消息队列描述设置了 \fBO_NONBLOCK\fP 标志。
+.TP 
+\fBEBADF\fP
+\fImqdes\fP 中指定的描述符无效或未打开以供读取。
+.TP 
+\fBEINTR\fP
+调用被信号处理程序中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+调用会阻塞，\fIabs_timeout\fP 无效，要么是因为 \fItv_sec\fP 小于零，要么是因为 \fItv_nsec\fP 小于零或大于 10 亿。
+.TP 
+\fBEMSGSIZE\fP
+\fImsg_len\fP 小于消息队列的 \fImq_msgsize\fP 属性。
+.TP 
+\fBETIMEDOUT\fP
+消息传输前调用超时。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmq_receive\fP(),
+\fBmq_timedreceive\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在 Linux 上，\fBmq_timedreceive\fP() 是一个系统调用，而 \fBmq_receive\fP() 是一个库函数，层叠在该系统调用之上。
+.SH "SEE ALSO"
+\fBmq_close\fP(3), \fBmq_getattr\fP(3), \fBmq_notify\fP(3), \fBmq_open\fP(3),
+\fBmq_send\fP(3), \fBmq_unlink\fP(3), \fBtimespec\fP(3), \fBmq_overview\fP(7),
+\fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

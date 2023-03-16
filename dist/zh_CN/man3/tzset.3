@@ -1,0 +1,189 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sun Jul 25 11:01:58 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 2001-11-13, aeb
+.\" Modified 2004-12-01 mtk and Martin Schulze <joey@infodrom.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tzset 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+tzset, tzname, timezone, daylight \- 初始化时间转换信息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBvoid tzset(void);\fP
+.PP
+\fBextern char *\fP\fItzname\fP\fB[2];\fP
+\fBextern long \fP\fItimezone\fP\fB;\fP
+\fBextern int \fP\fIdaylight\fP\fB;\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBtzset\fP():
+.nf
+    _POSIX_C_SOURCE
+.fi
+.PP
+\fItzname\fP:
+.nf
+    _POSIX_C_SOURCE
+.fi
+.PP
+\fItimezone\fP, \fIdaylight\fP:
+.nf
+    _XOPEN_SOURCE
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBtzset\fP() 函数从 \fBTZ\fP 环境变量初始化 \fItzname\fP 变量。 此函数由依赖于时区的其他时间转换函数自动调用。 在类似
+System\-V 的环境中，它还将设置变量 \fItimezone\fP (UTC 以西的秒数) 和 \fIdaylight\fP
+(如果此时区没有任何夏令时规则，则为 0，如果有过去的时间，则为非零，present 或 future (当夏令时适用时)。
+.PP
+如果环境中没有出现 \fBTZ\fP 变量，则使用系统时区。 通过将 \fBtzfile\fP(5) 格式的文件复制或链接到 \fI/etc/localtime\fP
+来配置系统时区。 这些文件的时区数据库可能位于系统时区目录中 (请参见下面的 \fBFILES\fP 部分)。
+.PP
+如果 \fBTZ\fP 变量确实出现在环境中，但它的值为空，或者它的值无法使用下面指定的任何格式解释，则使用协调世界时 (UTC)。
+.PP
+\fBTZ\fP 的值可以是两种格式之一。 第一种格式是一串字符，直接表示要使用的时区:
+.PP
+.in +4n
+.EX
+\fIstd offset\fP[\fIdst\fP[\fIoffset\fP][,\fIstart\fP[\fI/time\fP],\fIend\fP[\fI/time\fP]]]
+.EE
+.in
+.PP
+规范中没有空格。 \fIstd\fP 字符串指定时区的缩写，并且必须是三个或更多字母字符。 当包含在小于 (<) 和大于 (>)
+符号之间时，字符集将扩展为包括加号 (+)、减号 (\-) 和数字。 \fIoffset\fP 字符串紧跟在 \fIstd\fP
+之后并指定要添加到本地时间以获得协调世界时 (UTC) 的时间值。 如果当地时区在本初子午线以西，则 \fIoffset\fP 为正，如果在东，则为
+negative。 小时必须在 0 到 24 之间，分和秒必须在 00 到 59 之间:
+.PP
+.in +4n
+.EX
+[\fI+\fP|\fI\-\fP]\fIhh\fP[\fI:mm\fP[\fI:ss\fP]]
+.EE
+.in
+.PP
+\fIdst\fP 字符串和 \fIoffset\fP 指定相应夏令时区的名称和偏移量。 如果省略偏移量，则默认为比标准时间提前一小时。
+.PP
+\fIstart\fP 字段指定夏令时何时生效，\fIend\fP 字段指定何时更改回标准时间。 这些字段可能具有以下格式:
+.TP 
+J\fIn\fP
+这指定 \fIn\fP 介于 1 和 365 之间的儒略日。 不计算闰日。 在这种格式中，无法表示 2 月 29 日; 2 月 28 日是第 59 天，而 3
+月 1 日始终是第 60 天。
+.TP 
+\fIn\fP
+这指定了从零开始的儒略日，\fIn\fP 介于 0 和 365 之间。 2 月 29 日为闰年。
+.TP 
+M\fIm\fP.\fIw\fP.\fId\fP
+这指定 \fId\fP (0 <= \fId\fP <= 6) 周 \fIw\fP (1 <= \fIw\fP <= 5) 月份 \fIm\fP (1
+<= \fIm\fP <= 12)。 第 1 周是 \fId\fP 日发生的第一周，第 5 周是 \fId\fP 日发生的最后一周。 第 0 天是星期天。
+.PP
+\fItime\fP 字段指定在当前有效的本地时间中何时更改为其他时间。 如果省略，则默认为 02:00:00。
+.PP
+以新西兰为例，标准时间 (NZST) 比 UTC 早 12 小时，夏令时 (NZDT) 比 UTC 早 13 小时，从 10 月的第一个星期日运行到 3
+月的第三个星期日，并且发生转换在默认时间 02:00:00:
+.PP
+.in +4n
+.EX
+TZ="NZST\-12:00:00NZDT\-13:00:00,M10.1.0,M3.3.0"
+.EE
+.in
+.PP
+第二种格式指定应从文件中读取时区信息:
+.PP
+.in +4n
+.EX
+:[filespec]
+.EE
+.in
+.PP
+如果省略文件规范 \fIfilespec\fP，或者无法解释其值，则使用协调世界时 (UTC)。 如果给出 \fIfilespec\fP，它指定另一个
+\fBtzfile\fP(5)\-format 文件来读取时区信息。 如果 \fIfilespec\fP 不以 \[aq]/\[aq]
+开头，文件说明是相对于系统时区目录的。 如果省略冒号，将尝试上述每种 \fBTZ\fP 格式。
+.PP
+这是新西兰的一个例子:
+.PP
+.in +4n
+.EX
+TZ=":Pacific/Auckland"
+.EE
+.in
+.SH ENVIRONMENT
+.TP 
+\fBTZ\fP
+如果设置了此变量，则其值优先于系统配置的时区。
+.TP 
+\fBTZDIR\fP
+如果设置了此变量，则其值优先于系统配置的时区数据库目录路径。
+.SH FILES
+.TP 
+\fI/etc/localtime\fP
+系统时区文件。
+.TP 
+\fI/usr/share/zoneinfo/\fP
+系统时区数据库目录。
+.TP 
+\fI/usr/share/zoneinfo/posixrules\fP
+当 TZ 字符串包含 dst 时区但后面没有任何内容时，此文件将用于 start/end 规则。 它采用 \fBtzfile\fP(5) 格式。
+默认情况下，zoneinfo Makefile 将其硬链接到 \fIAmerica/New_York\fP tzfile。
+.PP
+以上是当前的标准文件位置，但它们在编译 glibc 时是可配置的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBtzset\fP()
+T}	Thread safety	MT\-Safe env locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.SH NOTES
+4.3BSD 有一个函数 \fBchar *timezone(\fP\fIzone\fP\fB，\fP\fIdst\fP\fB)\fP 返回与其第一个参数 (UTC 以西分钟)
+对应的时区名称。 如果第二个参数为 0，则使用标准名称，否则使用夏令时版本。
+.SH "SEE ALSO"
+\fBdate\fP(1), \fBgettimeofday\fP(2), \fBtime\fP(2), \fBctime\fP(3), \fBgetenv\fP(3),
+\fBtzfile\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,106 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH OOMD\&.CONF 5 "" "systemd 253" oomd.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+oomd.conf, oomd.conf.d \- 全局 \fBsystemd\-oomd\fP 配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/oomd\&.conf
+.PP
+/etc/systemd/oomd\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/oomd\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+这些文件配置了 \fBsystemd\fP(1) 用户空间内存不足 (OOM) 杀手 \fBsystemd\-oomd.service\fP(8)\&
+的各种参数。有关语法 \& 的一般说明，请参见 \fBsystemd.syntax\fP(7)。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH "[OOM] SECTION OPTIONS"
+.PP
+[OOM] 部分提供以下选项:
+.PP
+\fISwapUsedLimit=\fP
+.RS 4
+在 \fBsystemd\-oomd\fP 采取行动之前设置系统内存和交换使用的限制 \&。如果系统上使用的内存部分和使用的交换部分都大于此处定义的值，则
+\fBsystemd\-oomd\fP 将作用于符合条件的后代控制组，这些控制组的交换空间使用量大于总交换空间的 5%，从最高的开始交换使用
+\&。监视哪些控制组以及采取什么操作取决于单元为 \fIManagedOOMSwap=\fP\& 配置的内容。取以百分比 (当以 "%"
+为后缀时)、permille ("‰") 或 permyriad ("‱") 指定的值，介于 0% 和 100% 之间，包括 \&。默认为 90%\&。
+.RE
+.PP
+\fIDefaultMemoryPressureLimit=\fP
+.RS 4
+设置单元内存压力限制 \*(\fBsystemd\-oomd\fP 之前的 Aqs 控制组会采取行动 \&。元可以用
+\fIManagedOOMMemoryPressureLimit=\fP\& 覆盖这个值。此属性的内存压力表示 10
+秒窗口中控制组中的所有任务都被延迟的时间分数 \&。对于每一个被监控的控制组，如果该控制组的内存压力超过设置的限制超过
+\fIDefaultMemoryPressureDurationSec=\fP 设置的持续时间，\fBsystemd\-oomd\fP
+将作用于符合条件的后代控制组，从回收活动最多的开始到回收活动最少的 \&。监视哪些控制组以及采取什么操作取决于单元为
+\fIManagedOOMMemoryPressure=\fP\& 配置的内容。采用与上述 \fISwapUsedLimit=\fP 相同的方式指定的分数
+\&。默认为 60%\&。
+.RE
+.PP
+\fIDefaultMemoryPressureDurationSec=\fP
+.RS 4
+设置时间 a 元 \*(Aqs 控制组在 \fBsystemd\-oomd\fP 采取行动之前需要超过内存压力限制 \&。内存压力限制由
+\fIDefaultMemoryPressureLimit=\fP 和 \fIManagedOOMMemoryPressureLimit=\fP\&
+定义。必须设置为 0，或至少 1 秒 \&。未设置或 0\& 时默认为 30 秒。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.resource\-control\fP(5), \fBsystemd\-oomd.service\fP(8),
+\fBoomctl\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

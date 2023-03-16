@@ -1,0 +1,211 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1986 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\" Redistribution and use in source and binary forms are permitted
+.\" provided that the above copyright notice and this paragraph are
+.\" duplicated in all such forms and that any documentation,
+.\" advertising materials, and other materials related to such
+.\" distribution and use acknowledge that the software was developed
+.\" by the University of California, Berkeley.  The name of the
+.\" University may not be used to endorse or promote products derived
+.\" from this software without specific prior written permission.
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+.\" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\" %%%LICENSE_END
+.\"
+.\"	@(#)resolver.5	5.9 (Berkeley) 12/14/89
+.\"	$Id: resolver.5,v 8.6 1999/05/21 00:01:02 vixie Exp $
+.\"
+.\" Added ndots remark by Bernhard R. Link - debian bug #182886
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH resolv.conf 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.UC 4
+.SH NAME
+resolv.conf \- 解析器配置文件
+.SH SYNOPSIS
+.nf
+\fB/etc/resolv.conf\fP
+.fi
+.SH DESCRIPTION
+\fIresolver\fP 是 C 库中的一组例程，提供对 Internet 域名系统 (DNS) 的访问。
+解析器配置文件包含解析器例程第一次被进程调用时读取的信息。 该文件被设计为易于阅读，并包含一个关键字列表，其值提供各种类型的解析器信息。
+配置文件被认为是 DNS 信息的可信来源; 有关详细信息，请参见下面的 \fBtrust\-ad\fP 选项。
+.PP
+如果该文件不存在，则只查询本地机器上的名称服务器，搜索列表包含由主机名确定的本地域名。
+.PP
+不同的配置选项是:
+.TP 
+\fBnameserver\fP Name server IP address
+解析器应查询的名称服务器的 Internet 地址，根据 RFC 2373，可以是 IPv4 地址 (以点表示法) 或以冒号 (也可能是点) 表示法的
+IPv6 地址。 最多 \fBMAXNS\fP (目前 3 个，请参见可能列出的 \fI<resolv.h>\fP) 名称服务器，每个关键字一个。
+如果有多个服务器，解析器库将按列出的顺序查询它们。 如果不存在 \fBnameserver\fP 条目，则默认使用本地计算机上的名称服务器。
+(使用的算法是尝试一个名字服务器，如果查询超时，再尝试下一个，直到没有名字服务器，然后重复尝试所有的名字服务器，直到达到最大重试次数。)
+.TP 
+\fBsearch\fP Search list for host\-name lookup.
+默认情况下，搜索列表包含一个条目，即本地域名。 它由 \fBgethostname\fP(2) 返回的本地主机名确定; 本地域名被认为是第一个
+\[aq].\[aq] 之后的所有内容。 最后，如果主机名不包含 \[aq].\[aq]，则根域被假定为本地域名。
+.IP
+.\" When having a resolv.conv with a line
+.\"  search subdomain.domain.tld domain.tld
+.\" and doing a hostlookup, for example by
+.\"  ping host.anothersubdomain
+.\" it sends dns-requests for
+.\"  host.anothersubdomain.
+.\"  host.anothersubdomain.subdomain.domain.tld.
+.\"  host.anothersubdomain.domain.tld.
+.\" thus not only causing unnecessary traffic for the root-dns-servers
+.\" but broadcasting information to the outside and making man-in-the-middle
+.\" attacks possible.
+这可以通过在 \fIsearch\fP 关键字后列出所需的域搜索路径并用空格或制表符分隔名称来更改。 解析器查询中少于 \fIndots\fP 点 (默认为 1)
+的查询将依次尝试使用搜索路径的每个组件，直到找到匹配项。 对于具有多个子域的环境，请阅读下面的 \fBoptions ndots:\fP\fIn\fP，以避免中间人攻击和根 dns 服务器的不必要流量。
+请注意，如果列出的域的服务器不是本地的，此过程可能会很慢并且会产生大量网络流量，并且如果其中一个域没有可用的服务器，则查询将超时。
+.IP
+如果有多个 \fBsearch\fP 指令，则仅使用最后一个实例中的搜索列表。
+.IP
+.\" glibc commit 3f853f22c87f0b671c0366eb290919719fa56c0e
+在 glibc 2.25 及更早版本中，搜索列表限制为六个域，总共 256 个字符。 从 glibc 2.26 开始，搜索列表是无限的。
+.IP
+\fBdomain\fP 指令是仅处理一个搜索列表条目的 \fBsearch\fP 指令的过时名称。
+.TP 
+\fBsortlist\fP
+该选项允许对 \fBgethostbyname\fP(3) 返回的地址进行排序。 排序列表由 IP \- 地址 \- 网络掩码对指定。
+网络掩码是可选的，默认为网络的自然网络掩码。 IP 地址和可选网络对由斜杠分隔。 最多可以指定 10 对。 这是一个例子:
+.IP
+.in +4n
+排序列表 130.155.160.0/255.255.240.0 130.155.0.0
+.in
+.TP 
+\fBoptions\fP
+选项允许修改某些内部解析器变量。 语法是
+.RS
+.IP
+\fBoptions\fP \fIoption\fP \fI...\fP
+.PP
+其中 \fIoption\fP 是以下之一:
+.TP 
+\fBdebug\fP
+.\" Since glibc 2.2?
+在 \fI_res.options\fP 中设置 \fBRES_DEBUG\fP (仅当 glibc 构建时具有调试支持时才有效; 请参见
+\fBresolver\fP(3))。
+.TP 
+\fBndots:\fP\fIn\fP
+.\" Since glibc 2.2
+为给定 \fBres_query\fP(3) 的名称中必须出现的点数设置阈值 (在创建 \fIinitial absolute query\fP 之前请参见
+\fBresolver\fP(3))。 \fIn\fP 的默认值为 1，这意味着如果名称中有任何点，则在将任何 \fIsearch list\fP
+元素追加到它之前，将首先尝试将该名称作为绝对名称。 此选项的值默认上限为 15。
+.TP 
+\fBtimeout:\fP\fIn\fP
+.\" Since glibc 2.2
+设置解析器在通过不同名称服务器重试查询之前等待远程名称服务器响应的时间。 这可能 \fBnot\fP 是任何解析器 API
+调用所花费的总时间，并且不能保证单个解析器 API 调用 maps 到单个超时。 以秒为单位，默认为 \fBRES_TIMEOUT\fP (目前为 5，见
+\fI<resolv.h>\fP).  此选项的值默认上限为 30。
+.TP 
+\fBattempts:\fP\fIn\fP
+设置解析器在放弃并将错误返回给调用应用程序之前向其名称服务器发送查询的次数。 默认为 \fBRES_DFLRETRY\fP (当前为 2，请参见
+\fI<resolv.h>\fP)。 此选项的值默认上限为 5.
+.TP 
+\fBrotate\fP
+.\" Since glibc 2.2
+在 \fI_res.options\fP 中设置 \fBRES_ROTATE\fP，这会导致从列出的名称服务器中循环选择名称服务器。
+这具有在所有列出的服务器之间分散查询负载的效果，而不是让所有客户端每次都先尝试第一个列出的服务器。
+.TP 
+\fBno\-check\-names\fP
+.\" since glibc 2.2
+在 \fI_res.options\fP 中设置 \fBRES_NOCHECKNAME\fP，这会禁用现代 BIND
+检查传入主机名和邮件名称中是否存在无效字符，例如下划线 (_)、非 ASCII 或控制字符。
+.TP 
+\fBinet6\fP
+.\" Since glibc 2.2
+.\" b76e065991ec01299225d9da90a627ebe6c1ac97
+在 \fI_res.options\fP 中设置 \fBRES_USE_INET6\fP。 这具有在 \fBgethostbyname\fP(3) 函数内的 A
+查询之前尝试 AAAA 查询的效果，如果没有找到 AAAA 记录但存在 A 记录集，则在 IPv6 "tunneled form" 中映射 IPv4
+响应。 从 glibc 2.25 开始，此选项已弃用; 应用程序应该使用 \fBgetaddrinfo\fP(3)，而不是
+\fBgethostbyname\fP(3)。
+.TP 
+\fBip6\-bytestring\fP (since glibc 2.3.4 to glibc 2.24)
+在 \fI_res.options\fP 中设置 \fBRES_USEBSTRING\fP。 这会导致使用 RFC\2673 中描述的位标签格式进行反向 IPv6
+查找; 如果未设置此选项 (默认设置)，则使用半字节格式。 该选项在 glibc 2.25 中被删除，因为它依赖于一个从未在 Internet
+上部署的向后不兼容的 DNS 扩展。
+.TP 
+\fBip6\-dotint\fP/\fBno\-ip6\-dotint\fP (glibc 2.3.4 to glibc 2.24)
+\fI_res.options\fP 中的 Clear/set \fBRES_NOIP6DOTINT\fP。 当此选项清零 (\fBip6\-dotint\fP) 时，在
+(deprecated) \fIip6.int\fP 区域进行反向 IPv6 查找; 当此选项设置为 (\fBno\-ip6\-dotint\fP) 时，默认情况下在
+\fIip6.arpa\fP 区域中进行反向 IPv6 查找。 这些选项在 glibc 2.24 之前可用，其中 \fBno\-ip6\-dotint\fP 是默认值。
+由于 \fBip6\-dotint\fP 支持很久以前就不再在 Internet 上可用，因此这些选项在 glibc 2.25 中被删除。
+.TP 
+\fBedns0\fP (since glibc 2.6)
+在 \fI_res.options\fP 中设置 \fBRES_USE_EDNS0\fP。 这将启用对 RFC\2671 中描述的 DNS 扩展的支持。
+.TP 
+\fBsingle\-request\fP (since glibc 2.10)
+在 \fI_res.options\fP 中设置 \fBRES_SNGLKUP\fP。 默认情况下，glibc 从 glibc 2.9 开始在并行中执行 IPv4
+和 IPv6 查找。 某些设备 DNS 服务器无法正确处理这些查询并使请求超时。 此选项禁用该行为并使 glibc 顺序执行 IPv6 和 IPv4
+请求 (以解析过程的一些减慢为代价)。
+.TP 
+\fBsingle\-request\-reopen\fP (since glibc 2.9)
+在 \fI_res.options\fP 中设置 \fBRES_SNGLKUPREOP\fP。 解析器对 A 和 AAAA 请求使用相同的套接字。
+某些硬件错误地只发回一个回复。 当发生这种情况时，客户端系统将等待第二个回复。
+打开此选项会更改此行为，以便如果未正确处理来自同一端口的两个请求，它将关闭套接字并在发送第二个请求之前打开一个新套接字。
+.TP 
+\fBno\-tld\-query\fP (since glibc 2.14)
+在 \fI_res.options\fP 中设置 \fBRES_NOTLDQUERY\fP。 此选项导致 \fBres_nsearch\fP()
+不尝试解析非限定名称，就好像它是顶级域 (TLD) 一样。 如果站点将 `localhost` 作为 TLD 而不是在搜索列表的一个或多个元素上使用
+localhost，则此选项可能会导致问题。 如果 RES_DEFNAMES 或 RES_DNSRCH 均未设置，则此选项无效。
+.TP 
+\fBuse\-vc\fP (since glibc 2.14)
+.\" aef16cc8a4c670036d45590877d411a97f01e0cd
+在 \fI_res.options\fP 中设置 \fBRES_USEVC\fP。 此选项强制使用 TCP 进行 DNS 解析。
+.TP 
+\fBno\-reload\fP (since glibc 2.26)
+在 \fI_res.options\fP 中设置 \fBRES_NORELOAD\fP。 此选项禁用自动重新加载已更改的配置文件。
+.TP 
+\fBtrust\-ad\fP (since glibc 2.31)
+.\" 446997ff1433d33452b81dfa9e626b8dccf101a4
+在 \fI_res.options\fP 中设置 \fBRES_TRUSTAD\fP。 此选项控制存根解析器的 AD 位行为。 如果验证解析器在响应中设置 AD
+位，则表明响应中的数据已根据 DNSSEC 协议进行验证。 为了依赖 AD 位，本地系统必须信任 DNSSEC
+验证解析器和到它的网络路径，这就是为什么需要显式选择加入的原因。 如果 \fBtrust\-ad\fP 选项处于活动状态，则存根解析器会在传出 DNS
+查询中设置 AD 位 (以启用 AD 位支持)，并在响应中保留 AD 位。 如果没有此选项，则不会在查询中设置 AD
+位，并且在将响应返回给应用程序之前总是将其从响应中删除。 这意味着如果 \fBtrust\-ad\fP 选项设置正确，应用程序可以信任响应中的 AD 位。
+.IP
+在 glibc 2.30 及更早版本中，AD 不会在查询中自动设置，而是在响应中以不变的方式传递给应用程序。
+.RE
+.PP
+通过将环境变量 \fBLOCALDOMAIN\fP 设置为以空格分隔的搜索域列表，可以基于每个进程覆盖系统 \fIresolv.conf\fP 文件的
+\fIsearch\fP 关键字。
+.PP
+系统的 \fIresolv.conf\fP 文件的 \fIoptions\fP 关键字可以在每个进程的基础上进行修改，方法是将环境变量 \fBRES_OPTIONS\fP
+设置为以空格分隔的解析器选项列表，如上文 \fBoptions\fP 中所述。
+.PP
+关键字和值必须出现在一行中，并且关键字 (例如，\fBnameserver\fP) 必须作为行首。 该值跟在关键字之后，以空格分隔。
+.PP
+第一列中包含分号 (;) 或散列字符 (#) 的行被视为注释。
+.SH FILES
+\fI/etc/resolv.conf\fP, \fI<resolv.h>\fP
+.SH "SEE ALSO"
+\fBgethostbyname\fP(3), \fBresolver\fP(3), \fBhost.conf\fP(5), \fBhosts\fP(5),
+\fBnsswitch.conf\fP(5), \fBhostname\fP(7), \fBnamed\fP(8)
+.PP
+BIND 名称服务器操作指南
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

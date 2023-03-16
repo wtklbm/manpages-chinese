@@ -1,0 +1,165 @@
+.\" -*- coding: UTF-8 -*-
+.\"
+.\" Copyright 1988, 1998  The Open Group
+.\"
+.\" Permission to use, copy, modify, distribute, and sell this software and its
+.\" documentation for any purpose is hereby granted without fee, provided that
+.\" the above copyright notice appear in all copies and that both that
+.\" copyright notice and this permission notice appear in supporting
+.\" documentation.
+.\"
+.\" The above copyright notice and this permission notice shall be included
+.\" in all copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+.\" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+.\" IN NO EVENT SHALL THE OPEN GROUP BE LIABLE FOR ANY CLAIM, DAMAGES OR
+.\" OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+.\" ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+.\" OTHER DEALINGS IN THE SOFTWARE.
+.\"
+.\" Except as contained in this notice, the name of The Open Group shall
+.\" not be used in advertising or otherwise to promote the sale, use or
+.\" other dealings in this Software without prior written authorization
+.\" from The Open Group.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH XINIT 1 "xinit 1.4.2" "X Version 11" 
+.SH NAME
+xinit\-X 窗口系统初始化
+.SH SYNOPSIS
+\fBxinit\fP [ [ \fIclient\fP ] \fIoptions\fP \&.\|.\|. ] [ \fB\-\^\-\fP [ \fIserver\fP ] [
+\fIdisplay\fP ] \fIoptions\fP \&.\|.\|. ]
+.SH DESCRIPTION
+\fBxinit\fP 程序用于在不使用显示管理器 (如 \fBxdm\fP(1)) 的系统或使用多窗口系统的环境中启动 X 窗口系统服务器和第一个客户端程序。
+当第一个客户端退出时，\fBxinit\fP 将杀死 X 服务器然后终止。
+.PP
+如果在命令行中没有给出特定的客户端程序，\fBxinit\fP 将在用户的主目录中寻找一个名为 \fI.xinitrc\fP 的文件作为 shell
+脚本运行以启动客户端程序。 如果不存在这样的文件，\fBxinit\fP 将默认使用以下内容:
+.sp
+  xterm \-geometry +1+1 \-n 登录 \-display :0
+.sp
+.PP
+如果在命令行中没有给出特定的服务器程序，\fBxinit\fP 将在用户的主目录中寻找一个名为 \fI.xserverrc\fP 的文件作为 shell
+脚本运行以启动服务器。 如果不存在这样的文件，\fIxinit\fP 将默认使用以下内容:
+.sp
+  X :0
+.sp
+请注意，这里假定在当前搜索路径中有一个名为 \fIX\fP 的程序。 因此，站点管理员应该链接到计算机上适当类型的服务器，或者创建一个 shell
+脚本，在适当的服务器上运行 \fBxinit\fP。
+.PP
+注意，当使用 \fI.xserverrc\fP 脚本时，一定要 `执行` 真正的 X 服务器。 如果不这样做可能会使 X 服务器启动和退出缓慢。 例如:
+.sp
+  exec Xdisplaytype
+.PP
+重要的一点是，由 \fI.xinitrc\fP 运行的程序如果没有立即退出，则应在后台运行，以免阻止其他程序启动。 但是，最后启动的长期运行的程序
+(通常是窗口管理器或终端模拟器) 应该留在前台，这样脚本就不会退出 (这表明用户已完成，\fBxinit\fP 应该退出)。
+.PP
+可以在命令行上指定备用客户端或者服务器。 所需的客户端程序及其参数应作为第一个命令行参数给 \fBxinit\fP。 要指定特定的服务器命令行，请将双破折号
+(\-\^\-) 追加到 \fBxinit\fP 命令行 (在任何客户端和参数之后)，然后是所需的服务器命令。
+.PP
+客户端程序名称和服务器程序名称都必须以斜杠 (/) 或句点 (.) 开头。 否则，它们将被视为要追加到各自启动行的参数。
+这使得无需重新键入整个命令行就可以添加参数 (例如，前景色和背景色)。
+.PP
+如果未给出明确的服务器名称并且双破折号 (\-\^\-) 后的第一个参数是一个冒号后跟一个数字，则 \fBxinit\fP 将使用该数字作为显示数字而不是零。
+所有剩余的参数都追加到服务器命令行。
+.PP
+.SH EXAMPLES
+以下是如何使用 \fBxinit\fP 中的命令行参数的几个示例。
+.TP  8
+\fBxinit\fP
+这将启动名为 \fIX\fP 的服务器并运行用户的 \fI.xinitrc\fP (如果存在)，否则将启动 \fIxterm\fP。
+.TP  8
+\fBxinit \-\^\- /usr/bin/Xvnc  :1\fP
+这就是如何在备用显示器上启动特定类型的服务器。
+.TP  8
+\fBxinit \-geometry =80x65+10+10 \-fn 8x13 \-j \-fg white \-bg navy\fP
+这将启动一个名为 \fIX\fP 的服务器，并将给定的参数追加到默认的 \fIxterm\fP 命令。 它会忽略 \fI.xinitrc\fP。
+.TP  8
+\fBxinit \-e widgets \-\^\- ./Xorg \-l \-c\fP
+这将使用命令 \fI./Xorg \-l \-c\fP 启动服务器并将参数 \fI\-e widgets\fP 追加到默认 \fIxterm\fP 命令。
+.TP  8
+\fBxinit /usr/bin/ssh \-X fasthost cpupig \-\^\-  :1 \-a 2 \-t 5\fP
+这将在显示器 1 上启动名为 \fIX\fP 的服务器，其参数为 \fI\-a 2 \-t 5\fP。 然后它将在机器 \fBfasthost\fP 上启动一个远程
+shell，它将在其中运行命令 \fIcpupig\fP，告诉它在本地工作站上显示回来。
+.PP
+下面是一个示例 \fI.xinitrc\fP，它启动一个时钟、几个终端，并让窗口管理器作为 `最后一个` 应用程序运行。
+假设窗口管理器已经正确配置，然后用户选择 `退出` 菜单项关闭 X。
+.sp
+.in +8
+.nf
+xrdb \-load $HOME/.Xresources
+xsetroot \-solid 灰 &
+xclock \-g 50x50\-0+0 \-bw 0 &
+xload \-g 50x50\-50+0 \-bw 0 &
+xterm \-g 80x24+0+0 &
+xterm \-g 80x24+0\-0 &
+twm
+.fi
+.in -8
+.sp
+想要创建通用启动环境的站点可以简单地创建一个默认的 \fI.xinitrc\fP 来引用站点范围的启动文件:
+.sp
+.in +8
+.nf
+\&#!/bin/sh
+\&. /etc/X11/xinit/site.xinitrc
+.fi
+.in -8
+.sp
+另一种方法是编写一个脚本，使用特定的 shell 脚本启动 \fBxinit\fP。 此类脚本通常命名为 \fIx11\fP、\fIxstart\fP 或
+\fIstartx\fP，是为新手用户提供简单界面的便捷方式:
+.sp
+.in +8
+.nf
+\&#!/bin/sh
+xinit /etc/X11/xinit/site.xinitrc \-\^\- /usr/bin/X \-br
+.fi
+.in -8
+.sp
+.SH "ENVIRONMENT VARIABLES"
+.TP  15
+\fBDISPLAY\fP
+此变量设置为客户端应连接到的显示器的名称。
+.TP  15
+\fBXINITRC\fP
+这个变量指定一个包含 shell 命令的初始化文件来启动初始的 windows。 默认情况下，将使用主目录中的 \fI.xinitrc\fP。
+.SH FILES
+.TP  15
+\&\fI.xinitrc\fP
+默认客户端脚本
+.TP  15
+\fIxterm\fP
+如果 \fI.xinitrc\fP 不存在则运行客户端
+.TP  15
+\&\fI.xserverrc\fP
+默认服务器脚本
+.TP  15
+\fIX\fP
+如果 \fI.xserverrc\fP 不存在则运行的服务器
+.SH "SEE ALSO"
+\fBX\fP(7), \fBstartx\fP(1), \fBXserver\fP(1), \fBXorg\fP(1), \fBxorg.conf\fP(5),
+\fBxterm\fP(1)
+.SH AUTHOR
+Bob Scheifler，麻省理工学院计算机科学实验室
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,669 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016 Pavel Emelyanov <xemul@virtuozzo.com>
+.\" Copyright (c) 2016 Dmitry V. Levin <ldv@altlinux.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sock_diag 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+sock_diag \- 获取有关套接字的信息
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <linux/sock_diag.h>\fP
+\fB#include <linux/unix_diag.h>\fP /* for UNIX domain sockets */
+\fB#include <linux/inet_diag.h>\fP /* for IPv4 and IPv6 sockets */
+.PP
+\fBdiag_socket = socket(AF_NETLINK, \fP\fIsocket_type\fP\fB, NETLINK_SOCK_DIAG);\fP
+.fi
+.SH DESCRIPTION
+sock_diag netlink 子系统提供了一种机制，用于从内核获取有关各种地址族的套接字的信息。
+该子系统可用于获取有关单个套接字的信息或请求套接字列表。
+.PP
+在请求中，调用者可以指定它想要获取的关于套接字的附加信息，例如，内存信息或特定于地址族的信息。
+.PP
+当请求套接字列表时，调用者可以指定过滤器，内核将应用这些过滤器来选择要报告的套接字子集。 目前，只有按状态 (连接、侦听等) 过滤套接字的功能。
+.PP
+.\"
+请注意，sock_diag 仅报告那些有名称的套接字; 也就是说，套接字与 \fBbind\fP(2) 显式绑定或自动绑定到地址的套接字 (例如，由
+\fBconnect\fP(2)).  这是通过 \fI/proc/net/unix\fP、\fI/proc/net/tcp\fP、\fI/proc/net/udp\fP
+等可用的同一组套接字。
+.SS Request
+请求以 \fBnetlink\fP(7) 中描述的 \fIstruct nlmsghdr\fP 标头开始，\fInlmsg_type\fP 字段设置为
+\fBSOCK_DIAG_BY_FAMILY\fP。 其后是特定于地址族的标头，该标头以所有地址族共享的公共部分开头:
+.PP
+.in +4n
+.EX
+struct sock_diag_req {
+    __u8 sdiag_family;
+    __u8 sdiag_protocol;
+};
+.EE
+.in
+.PP
+这个结构体的字段如下:
+.TP 
+\fIsdiag_family\fP
+地址族。 应设置为适当的 \fBAF_*\fP 常量。
+.TP 
+\fIsdiag_protocol\fP
+取决于 \fIsdiag_family\fP。 \fBAF_INET\fP 和 \fBAF_INET6\fP 应设置为适当的 \fBIPPROTO_*\fP 常量，否则设置为
+0。
+.PP
+.\"
+如果 \fIstruct nlmsghdr\fP 标头的 \fInlmsg_flags\fP 字段设置了 \fBNLM_F_DUMP\fP
+标志，则表示正在请求套接字列表; 否则它是关于单个套接字的查询。
+.SS Response
+响应以 \fIstruct nlmsghdr\fP 标头开头，然后是特定于地址族的对象数组。 该数组将使用来自 \fBnetlink\fP(3) API 的标准
+\fBNLMSG_*\fP 宏进行访问。
+.PP
+.\"
+每个对象都是 NLA (网络链接属性) 列表，要使用来自 \fBrtnetlink\fP(3) API 的 \fBRTA_*\fP 宏进行访问。
+.SS "UNIX domain sockets"
+对于 UNIX 域套接字，请求在以下结构体中表示:
+.PP
+.in +4n
+.EX
+struct unix_diag_req {
+    __u8    sdiag_family;
+    __u8    sdiag_protocol;
+    __u16   pad;
+    __u32   udiag_states;
+    __u32   udiag_ino;
+    __u32   udiag_show;
+    __u32   udiag_cookie[2];
+};
+.EE
+.in
+.PP
+这个结构体的字段如下:
+.TP 
+\fIsdiag_family\fP
+地址族; 它应该设置为 \fBAF_UNIX\fP。
+.PP
+\fIsdiag_protocol\fP
+.PD 0
+.TP 
+.PD
+\fIpad\fP
+这些字段应设置为 0.
+.TP 
+\fIudiag_states\fP
+这是一个定义套接字状态过滤器的位掩码。 只有那些状态在此掩码中的套接字才会被报告。 查询单个套接字时忽略。 支持的值为:
+.PP
+.RS 12
+1 << \fBTCP_ESTABLISHED\fP
+.PP
+1 << \fBTCP_LISTEN\fP
+.RE
+.TP 
+\fIudiag_ino\fP
+这是查询单个套接字时的 inode 编号。 查询套接字列表时忽略。
+.TP 
+\fIudiag_show\fP
+这是一组标志，用于定义要报告的信息类型。 每种请求的信息都作为 netlink 属性报告回来，如下所述:
+.RS
+.TP 
+\fBUDIAG_SHOW_NAME\fP
+响应此请求而报告的属性是 \fBUNIX_DIAG_NAME\fP。 与此属性关联的有效，载荷，是套接字绑定到的路径名 (字节序列，最大长度为
+\fBUNIX_PATH_MAX\fP)。
+.TP 
+\fBUDIAG_SHOW_VFS\fP
+响应此请求而报告的属性是 \fBUNIX_DIAG_VFS\fP。 与此属性关联的有效，载荷，在以下结构体中表示:
+.IP
+.in +4n
+.EX
+struct unix_diag_vfs {
+    __u32 udiag_vfs_dev;
+    __u32 udiag_vfs_ino;
+};
+.EE
+.in
+.IP
+这个结构体的字段如下:
+.RS
+.TP 
+\fIudiag_vfs_dev\fP
+相应的磁盘套接字 inode 的设备号。
+.TP 
+\fIudiag_vfs_ino\fP
+相应的磁盘套接字 inode 的 inode 编号。
+.RE
+.TP 
+\fBUDIAG_SHOW_PEER\fP
+响应此请求而报告的属性是 \fBUNIX_DIAG_PEER\fP。 与此属性关联的有效，载荷，是一个 __u32 值，它是对等方的 inode 编号。
+仅针对连接的套接字报告此属性。
+.TP 
+\fBUDIAG_SHOW_ICONS\fP
+响应此请求而报告的属性是 \fBUNIX_DIAG_ICONS\fP。 与此属性关联的有效，载荷，是一个 __u32 值数组，这些值是已通过
+\fBconnect\fP(2) 调用但尚未使用 \fBaccept\fP(2) 处理的套接字的 inode 编号。 仅针对侦听套接字报告此属性。
+.TP 
+\fBUDIAG_SHOW_RQLEN\fP
+响应此请求而报告的属性是 \fBUNIX_DIAG_RQLEN\fP。 与此属性关联的有效，载荷，在以下结构体中表示:
+.IP
+.in +4n
+.EX
+struct unix_diag_rqlen {
+    __u32 udiag_rqueue;
+    __u32 udiag_wqueue;
+};
+.EE
+.in
+.IP
+这个结构体的字段如下:
+.RS
+.TP 
+\fIudiag_rqueue\fP
+对于侦听套接字: 挂起的连接数。 与 \fBUNIX_DIAG_ICONS\fP 响应属性关联的数组的长度等于此值。
+.IP
+对于已建立的套接字: 传入队列中的数据量。
+.TP 
+\fIudiag_wqueue\fP
+对于侦听套接字: 积压长度等于作为第二个参数传递给 \fBlisten\fP(2) 的值。
+.IP
+对于已建立的套接字: 可用于发送的内存量。
+.RE
+.TP 
+\fBUDIAG_SHOW_MEMINFO\fP
+响应此请求而报告的属性是 \fBUNIX_DIAG_MEMINFO\fP。 与此属性关联的有效，载荷，是一个 __u32 值数组，在下面的 "Socket
+memory information" 小节中有所描述。
+.PP
+无需任何特定请求即可报告以下属性:
+.TP 
+\fBUNIX_DIAG_SHUTDOWN\fP
+与此属性关联的有效，载荷，是 __u8 值，它表示 \fBshutdown\fP(2) 状态的位。
+.RE
+.TP 
+\fIudiag_cookie\fP
+这是一组不透明标识符，可与 \fIudiag_ino\fP 一起使用以指定单个套接字。 当查询套接字列表时，以及当它的所有元素都设置为 \-1 时，它会被忽略。
+.PP
+对 UNIX 域套接字查询的响应表示为一个数组
+.PP
+.in +4n
+.EX
+struct unix_diag_msg {
+    __u8    udiag_family;
+    __u8    udiag_type;
+    __u8    udiag_state;
+    __u8    pad;
+    __u32   udiag_ino;
+    __u32   udiag_cookie[2];
+};
+.EE
+.in
+.PP
+其次是 netlink 属性。
+.PP
+这个结构体的字段如下:
+.TP 
+\fIudiag_family\fP
+该字段与 \fIstruct unix_diag_req\fP 中的含义相同。
+.TP 
+\fIudiag_type\fP
+这被设置为 \fBSOCK_PACKET\fP、\fBSOCK_STREAM\fP 或 \fBSOCK_SEQPACKET\fP 之一。
+.TP 
+\fIudiag_state\fP
+这被设置为 \fBTCP_LISTEN\fP 或 \fBTCP_ESTABLISHED\fP 之一。
+.TP 
+\fIpad\fP
+该字段设置为 0.
+.TP 
+\fIudiag_ino\fP
+这是套接字索引节点号。
+.TP 
+\fIudiag_cookie\fP
+.\"
+这是一组不透明标识符，可用于后续查询。
+.SS "IPv4 and IPv6 sockets"
+对于 IPv4 和 IPv6 套接字，请求在以下结构体中表示:
+.PP
+.in +4n
+.EX
+struct inet_diag_req_v2 {
+    __u8    sdiag_family;
+    __u8    sdiag_protocol;
+    __u8    idiag_ext;
+    __u8    pad;
+    __u32   idiag_states;
+    struct inet_diag_sockid id;
+};
+.EE
+.in
+.PP
+其中 \fIstruct inet_diag_sockid\fP 定义如下:
+.PP
+.in +4n
+.EX
+struct inet_diag_sockid {
+    __be16  idiag_sport;
+    __be16  idiag_dport;
+    __be32  idiag_src[4];
+    __be32  idiag_dst[4];
+    __u32   idiag_if;
+    __u32   idiag_cookie[2];
+};
+.EE
+.in
+.PP
+\fIstruct inet_diag_req_v2\fP 的字段如下:
+.TP 
+\fIsdiag_family\fP
+对于 IPv4 或 IPv6 套接字，这应分别设置为 \fBAF_INET\fP 或 \fBAF_INET6\fP。
+.TP 
+\fIsdiag_protocol\fP
+这应该设置为 \fBIPPROTO_TCP\fP、\fBIPPROTO_UDP\fP 或 \fBIPPROTO_UDPLITE\fP 之一。
+.TP 
+\fIidiag_ext\fP
+这是一组标志，定义要报告哪种扩展信息。 每种请求的信息都作为 netlink 属性报告回来，如下所述:
+.RS
+.TP 
+\fBINET_DIAG_TOS\fP
+与此属性关联的有效，载荷，是一个 __u8 值，它是套接字的 TOS。
+.TP 
+\fBINET_DIAG_TCLASS\fP
+与此属性关联的有效，载荷，是一个 __u8 值，它是套接字的 TClass。 仅限 IPv6 套接字。 对于 LISTEN 和 CLOSE
+套接字，其后跟 \fBINET_DIAG_SKV6ONLY\fP 属性以及关联的 __u8 有效，载荷，值，表示套接字是否仅支持 IPv6。
+.TP 
+\fBINET_DIAG_MEMINFO\fP
+与此属性关联的有效，载荷，在以下结构体中表示:
+.IP
+.in +4n
+.EX
+struct inet_diag_meminfo {
+    __u32 idiag_rmem;
+    __u32 idiag_wmem;
+    __u32 idiag_fmem;
+    __u32 idiag_tmem;
+};
+.EE
+.in
+.IP
+这个结构体的字段如下:
+.RS
+.TP  12
+\fIidiag_rmem\fP
+接收队列中的数据量。
+.TP 
+\fIidiag_wmem\fP
+TCP 排队但尚未发送的数据量。
+.TP 
+\fIidiag_fmem\fP
+计划供 future 使用的内存量 (仅限 TCP)。
+.TP 
+\fIidiag_tmem\fP
+发送队列中的数据量。
+.RE
+.TP 
+\fBINET_DIAG_SKMEMINFO\fP
+与此属性关联的有效，载荷，是一个 __u32 值数组，在下面的 "Socket memory information" 小节中有所描述。
+.TP 
+\fBINET_DIAG_INFO\fP
+与此属性关联的有效，载荷，特定于地址族。 对于 TCP 套接字，它是一个 \fIstruct tcp_info\fP 类型的对象。
+.TP 
+\fBINET_DIAG_CONG\fP
+与此属性关联的有效，载荷，是描述所使用的拥塞控制算法的字符串。 仅适用于 TCP 套接字。
+.RE
+.TP 
+\fIpad\fP
+这应该设置为 0.
+.TP 
+\fIidiag_states\fP
+这是一个定义套接字状态过滤器的位掩码。 只有那些状态在此掩码中的套接字才会被报告。 查询单个套接字时忽略。
+.TP 
+\fIid\fP
+这是一个套接字 ID 对象，用于转储请求、查询单个套接字，并在每个响应中返回报告。 与 UNIX 域套接字不同，IPv4 和 IPv6
+套接字使用地址和端口进行标识。 所有值均按网络字节顺序排列。
+.PP
+\fIstruct inet_diag_sockid\fP 的字段如下:
+.TP 
+\fIidiag_sport\fP
+源端口。
+.TP 
+\fIidiag_dport\fP
+目的港。
+.TP 
+\fIidiag_src\fP
+源地址。
+.TP 
+\fIidiag_dst\fP
+目的地地址。
+.TP 
+\fIidiag_if\fP
+套接字绑定的接口号。
+.TP 
+\fIidiag_cookie\fP
+这是一个不透明标识符数组，可与此结构体的其他字段一起使用以指定单个套接字。 当查询套接字列表时，以及当它的所有元素都设置为 \-1 时，它会被忽略。
+.PP
+对 IPv4 或 IPv6 套接字查询的响应表示为一个数组
+.PP
+.in +4n
+.EX
+struct inet_diag_msg {
+    __u8    idiag_family;
+    __u8    idiag_state;
+    __u8    idiag_timer;
+    __u8    idiag_retrans;
+
+    struct inet_diag_sockid id;
+
+    __u32   idiag_expires;
+    __u32   idiag_rqueue;
+    __u32   idiag_wqueue;
+    __u32   idiag_uid;
+    __u32   idiag_inode;
+};
+.EE
+.in
+.PP
+其次是 netlink 属性。
+.PP
+这个结构体的字段如下:
+.TP 
+\fIidiag_family\fP
+这是与 \fIstruct inet_diag_req_v2\fP 中相同的字段。
+.TP 
+\fIidiag_state\fP
+这表示 \fIstruct inet_diag_req_v2\fP 中的套接字状态。
+.TP 
+\fIidiag_timer\fP
+对于 TCP 套接字，此字段描述当前为套接字激活的计时器类型。 它被设置为以下常量之一:
+.IP
+.PD 0
+.RS 12
+.TP 
+\fB0\fP
+没有计时器处于活动状态
+.TP 
+\fB1\fP
+重传定时器
+.TP 
+\fB2\fP
+一个保活定时器
+.TP 
+\fB3\fP
+一个 TIME_WAIT 计时器
+.TP 
+\fB4\fP
+零窗口探测计时器
+.RE
+.PD
+.IP
+对于非 TCP 套接字，此字段设置为 0.
+.TP 
+\fIidiag_retrans\fP
+对于 \fIidiag_timer\fP 值 1、2 和 4，此字段包含重传次数。 对于其他 \fIidiag_timer\fP 值，此字段设置为 0.
+.TP 
+\fIidiag_expires\fP
+对于具有活动计时器的 TCP 套接字，此字段以毫秒为单位描述其过期时间。 对于其他套接字，此字段设置为 0.
+.TP 
+\fIidiag_rqueue\fP
+对于侦听套接字: 挂起的连接数。
+.IP
+对于其他套接字: 传入队列中的数据量。
+.TP 
+\fIidiag_wqueue\fP
+对于侦听套接字: 积压长度。
+.IP
+对于其他套接字: 可用于发送的内存量。
+.TP 
+\fIidiag_uid\fP
+这是套接字所有者 UID。
+.TP 
+\fIidiag_inode\fP
+.\"
+这是套接字索引节点号。
+.SS "Socket memory information"
+与 \fBUNIX_DIAG_MEMINFO\fP 和 \fBINET_DIAG_SKMEMINFO\fP 网络链接属性关联的有效，载荷，是以下 __u32
+值的数组:
+.TP 
+\fBSK_MEMINFO_RMEM_ALLOC\fP
+接收队列中的数据量。
+.TP 
+\fBSK_MEMINFO_RCVBUF\fP
+由 \fBSO_RCVBUF\fP 设置的接收套接字缓冲区。
+.TP 
+\fBSK_MEMINFO_WMEM_ALLOC\fP
+发送队列中的数据量。
+.TP 
+\fBSK_MEMINFO_SNDBUF\fP
+由 \fBSO_SNDBUF\fP 设置的发送套接字缓冲区。
+.TP 
+\fBSK_MEMINFO_FWD_ALLOC\fP
+计划供 future 使用的内存量 (仅限 TCP)。
+.TP 
+\fBSK_MEMINFO_WMEM_QUEUED\fP
+TCP 排队但尚未发送的数据量。
+.TP 
+\fBSK_MEMINFO_OPTMEM\fP
+为套接字的服务需求 (例如，套接字过滤器) 分配的内存量。
+.TP 
+\fBSK_MEMINFO_BACKLOG\fP
+积压中的数据包数量 (尚未处理)。
+.SH VERSIONS
+\fBNETLINK_INET_DIAG\fP 在 Linux 2.6.14 中引入，仅支持 \fBAF_INET\fP 和 \fBAF_INET6\fP 套接字。 在
+Linux 3.3 中更名为 \fBNETLINK_SOCK_DIAG\fP 并扩展支持 \fBAF_UNIX\fP 套接字。
+.PP
+\fBUNIX_DIAG_MEMINFO\fP 和 \fBINET_DIAG_SKMEMINFO\fP 在 Linux 3.6 中引入。
+.SH STANDARDS
+NETLINK_SOCK_DIAG API 是特定于 Linux 的。
+.SH EXAMPLES
+以下示例程序打印当前命名空间中所有 UNIX 域套接字的 inode 编号、对等节点编号和名称。
+.PP
+.EX
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <linux/sock_diag.h>
+#include <linux/unix_diag.h>
+
+static int
+send_query(int fd)
+{
+    struct  sockaddr_nl nladdr = {
+        .nl_family = AF_NETLINK
+    };
+    struct
+    {
+        struct nlmsghdr nlh;
+        struct unix_diag_req udr;
+    } req = {
+        .nlh = {
+            .nlmsg_len = sizeof(req),
+            .nlmsg_type = SOCK_DIAG_BY_FAMILY,
+            .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP
+        },
+        .udr = {
+            .sdiag_family = AF_UNIX,
+            .udiag_states = \-1,
+            .udiag_show = UDIAG_SHOW_NAME | UDIAG_SHOW_PEER
+        }
+    };
+    struct iovec iov = {
+        .iov_base = &req,
+        .iov_len = sizeof(req)
+    };
+    struct msghdr msg = {
+        .msg_name = &nladdr,
+        .msg_namelen = sizeof(nladdr),
+        .msg_iov = &iov,
+        .msg_iovlen = 1
+    };
+
+    for (;;) {
+        if (sendmsg(fd, &msg, 0) < 0) {
+            if (errno == EINTR)
+                continue;
+
+            perror("sendmsg");
+            return \-1;
+        }
+
+        return 0;
+    }
+}
+
+static int
+print_diag(const struct unix_diag_msg *diag, unsigned int len)
+{
+    if (len < NLMSG_LENGTH(sizeof(*diag))) {
+        fputs("short response\en", stderr);
+        return \-1; 
+    }
+    if (diag\->udiag_family != AF_UNIX) {
+        fprintf(stderr, "unexpected family %u\en", diag\->udiag_family);
+        return \-1;
+    }
+
+    unsigned int rta_len = len \- NLMSG_LENGTH(sizeof(*diag));
+    unsigned int peer = 0;
+    size_t path_len = 0;
+    char path[sizeof(((struct sockaddr_un *) 0)\->sun_path) + 1];
+
+    for (struct rtattr *attr = (struct rtattr *) (diag + 1);
+             RTA_OK(attr, rta_len); attr = RTA_NEXT(attr, rta_len)) {
+        switch (attr\->rta_type) {
+        case UNIX_DIAG_NAME:
+            if (!path_len) {
+                path_len = RTA_PAYLOAD(attr);
+                if (path_len > sizeof(path) \- 1)
+                    path_len = sizeof(path) \- 1;
+                memcpy(path, RTA_DATA(attr), path_len);
+                path[path_len] = \[aq]\e0\[aq];
+            }
+            break;
+
+        case UNIX_DIAG_PEER:
+            if (RTA_PAYLOAD(attr) >= sizeof(peer))
+                peer = *(unsigned int *) RTA_DATA(attr);
+            break;
+        }
+    }
+
+    printf("inode=%u", diag\->udiag_ino);
+
+    if (peer)
+        printf(", peer=%u", peer);
+
+    if (path_len)
+        printf(", name=%s%s", *path ? "" : "@",
+                *path ? path : path + 1);
+
+    putchar(\[aq]\en\[aq]);
+    return 0;
+}
+
+static int
+receive_responses(int fd)
+{
+    long buf[8192 / sizeof(long)];
+    struct sockaddr_nl nladdr;
+    struct iovec iov = {
+        .iov_base = buf,
+        .iov_len = sizeof(buf)
+    };
+    int flags = 0;
+
+    for (;;) {
+        struct msghdr msg = {
+            .msg_name = &nladdr,
+            .msg_namelen = sizeof(nladdr),
+            .msg_iov = &iov,
+            .msg_iovlen = 1
+        };
+
+        ssize_t ret = recvmsg(fd, &msg, flags);
+
+        if (ret < 0) {
+            if (errno == EINTR)
+                continue;
+
+            perror("recvmsg");
+            return \-1;
+        }
+        if (ret == 0)
+            return 0;
+
+        if (nladdr.nl_family != AF_NETLINK) {
+            fputs("!AF_NETLINK\en", stderr);
+            return \-1;
+        }
+
+        const struct nlmsghdr *h = (struct nlmsghdr *) buf;
+
+        if (!NLMSG_OK(h, ret)) {
+            fputs("!NLMSG_OK\en", stderr);
+            return \-1;
+        }
+
+        for (; NLMSG_OK(h, ret); h = NLMSG_NEXT(h, ret)) {
+            if (h\->nlmsg_type == NLMSG_DONE)
+                return 0;
+
+            if (h\->nlmsg_type == NLMSG_ERROR) {
+                const struct nlmsgerr *err = NLMSG_DATA(h);
+
+                if (h\->nlmsg_len < NLMSG_LENGTH(sizeof(*err))) {
+                    fputs("NLMSG_ERROR\en", stderr);
+                } else {
+                    errno = \-err\->error;
+                    perror("NLMSG_ERROR");
+                }
+
+                return \-1;
+            }
+
+            if (h\->nlmsg_type != SOCK_DIAG_BY_FAMILY) {
+                fprintf(stderr, "unexpected nlmsg_type %u\en",
+                        (unsigned) h\->nlmsg_type);
+                return \-1;
+            }
+
+            if (print_diag(NLMSG_DATA(h), h\->nlmsg_len))
+                return \-1;
+        }
+    }
+}
+
+int
+main(void)
+{
+    int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_SOCK_DIAG);
+
+    if (fd < 0) {
+        perror("socket");
+        return 1;
+    }
+
+    int ret = send_query(fd) || receive_responses(fd);
+
+    close(fd);
+    return ret;
+}
+.EE
+.SH "SEE ALSO"
+\fBnetlink\fP(3), \fBrtnetlink\fP(3), \fBnetlink\fP(7), \fBtcp\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

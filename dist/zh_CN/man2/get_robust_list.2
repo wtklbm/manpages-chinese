@@ -1,0 +1,103 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
+.\" Written by Ivana Varekova <varekova@redhat.com>
+.\" and Copyright (c) 2017, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" FIXME Something could be added to this page (or exit(2))
+.\" about exit_robust_list processing
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH get_robust_list 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+get_robust_list, set_robust_list\-get/set 健壮的 futexes 列表
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/futex.h>\fP   /* Definition of \fBstruct robust_list_head\fP */
+\fB#include <sys/syscall.h>\fP   /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBlong syscall(SYS_get_robust_list, int \fP\fIpid\fP\fB,\fP
+\fB             struct robust_list_head **\fP\fIhead_ptr\fP\fB, size_t *\fP\fIlen_ptr\fP\fB);\fP
+\fB             struct robust_list_head **\fP\fIhead_ptr\fP\fB, size_t *\fP\fIlen_ptr\fP\fB);\fP
+\fB             struct robust_list_head *\fP\fIhead\fP\fB, size_t \fP\fIlen\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+这些系统调用处理每线程健壮的 futex 列表。 这些列表在用户空间中管理: 内核只知道列表头部的位置。 线程可以使用
+\fBset_robust_list\fP() 通知内核其健壮的 futex 列表的位置。 可以使用 \fBget_robust_list\fP() 获取线程的健壮
+futex 列表的地址。
+.PP
+健壮的 futex 列表的目的是确保如果一个线程在终止或调用 \fBexecve\fP(2) 之前意外未能解锁 futex，则通知正在等待该 futex
+的另一个线程该 futex 的前所有者已经死亡。 该通知由两部分组成: 在 futex 字中设置 \fBFUTEX_OWNER_DIED\fP 位，内核对等待
+futex 的线程之一执行 \fBfutex\fP(2) \fBFUTEX_WAKE\fP 操作。
+.PP
+\fBget_robust_list\fP() 系统调用返回 \fIpid\fP 中指定线程 ID 的线程的健壮 futex 链表头。 如果 \fIpid\fP 为
+0，则返回调用线程列表的头部。 列表头存储在 \fIhead_ptr\fP 指向的位置。 \fI**head_ptr\fP 指向的对象的大小存储在
+\fIlen_ptr\fP 中。
+.PP
+使用 \fBget_robust_list\fP() 的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_REALCREDS\fP 检查控制;
+请参见 \fBptrace\fP(2)。
+.PP
+\fBset_robust_list\fP() 系统调用请求内核记录调用线程拥有所有权的健壮 futexes 列表的头部。 \fIhead\fP
+参数是要记录的表头。 \fIlen\fP 参数应为 \fIsizeof(*head)\fP。
+.SH "RETURN VALUE"
+\fBset_robust_list\fP() 和 \fBget_robust_list\fP() 系统调用在操作成功时返回零，否则返回错误代码。
+.SH ERRORS
+\fBset_robust_list\fP() 系统调用可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP
+\fIlen\fP 不等于 \fIsizeof(struct\ robust_list_head)\fP。
+.PP
+\fBget_robust_list\fP() 系统调用可能会失败并出现以下错误:
+.TP 
+\fBEFAULT\fP
+健壮的 futex 列表的头部不能存储在位置 \fIhead\fP。
+.TP 
+\fBEPERM\fP
+调用进程无权查看线程 ID 为 \fIpid\fP 的线程的健壮 futex 列表，不具备 \fBCAP_SYS_PTRACE\fP 能力。
+.TP 
+\fBESRCH\fP
+找不到线程 ID 为 \fIpid\fP 的线程。
+.SH VERSIONS
+这些系统调用是在 Linux 2.6.17 中添加的。
+.SH NOTES
+普通应用程序不需要这些系统调用。
+.PP
+一个线程只能有一个健壮的 futex 列表; 因此，希望使用此功能的应用程序应使用 glibc 提供的强大的互连锁。
+.PP
+.\" commit 8141c7f3e7aee618312fa1c15109e1219de784a7
+在最初的实现中，等待 futex 的线程只有在所有者终止时才被告知所有者已经死亡。 从 Linux 2.6.28 开始，通知扩展到包括所有者执行
+\fBexecve\fP(2) 的情况。
+.PP
+正文中提到的线程 ID 是 \fBclone\fP(2) 和 \fBgettid\fP(2) 返回的那种 \fIkernel\fP 线程 ID。
+.SH "SEE ALSO"
+\fBfutex\fP(2), \fBpthread_mutexattr_setrobust\fP(3)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/robust\-futexes.txt\fP 和
+\fIDocumentation/robust\-futex\-ABI.txt\fP
+.\" http://lwn.net/Articles/172149/
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

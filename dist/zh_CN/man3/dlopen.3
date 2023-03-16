@@ -1,0 +1,330 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1995 Yggdrasil Computing, Incorporated.
+.\" written by Adam J. Richter (adam@yggdrasil.com),
+.\" with typesetting help from Daniel Quinlan (quinlan@yggdrasil.com).
+.\" and Copyright 2003, 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified by David A. Wheeler <dwheeler@dwheeler.com> 2000-11-28.
+.\" Applied patch by Terran Melconian, aeb, 2001-12-14.
+.\" Modified by Hacksaw <hacksaw@hacksaw.org> 2003-03-13.
+.\" Modified by Matt Domsch, 2003-04-09: _init and _fini obsolete
+.\" Modified by Michael Kerrisk <mtk.manpages@gmail.com> 2003-05-16.
+.\" Modified by Walter Harms: dladdr, dlvsym
+.\" Modified by Petr Baudis <pasky@suse.cz>, 2008-12-04: dladdr caveat
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dlopen 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+dlclose、dlopen、dlmopen \- 打开和关闭共享对象
+.SH LIBRARY
+Dynamic linking library (\fIlibdl\fP, \fI\-ldl\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <dlfcn.h>\fP
+.PP
+\fBvoid *dlopen(const char *\fP\fIfilename\fP\fB, int \fP\fIflags\fP\fB);\fP
+\fBint dlclose(void *\fP\fIhandle\fP\fB);\fP
+.PP
+\fB#define _GNU_SOURCE\fP
+.br
+\fB#include <dlfcn.h>\fP
+.PP
+\fBvoid *dlmopen(Lmid_t \fP\fIlmid\fP\fB, const char *\fP\fIfilename\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.SS dlopen()
+函数 \fBdlopen\fP() 加载由空终止字符串 \fIfilename\fP 命名的动态共享对象 (共享库) 文件，并为加载的对象返回一个不透明的
+"handle"。 此句柄与 dlopen API 中的其他函数一起使用，例如
+\fBdlsym\fP(3)、\fBdladdr\fP(3)、\fBdlinfo\fP(3) 和 \fBdlclose\fP()。
+.PP
+.\" FIXME On Solaris, when handle is NULL, we seem to get back
+.\" a handle for (something like) the root of the namespace.
+.\" The point here is that if we do a dlmopen(LM_ID_NEWLM), then
+.\" the filename==NULL case returns a different handle than
+.\" in the initial namespace. But, on glibc, the same handle is
+.\" returned. This is probably a bug in glibc.
+.\"
+如果 \fIfilename\fP 为 NULL，则返回的句柄用于主程序。 如果 \fIfilename\fP 包含斜杠 ("/")，则它被解释为 (相对或绝对)
+路径名。 否则，动态链接器将按如下方式搜索对象 (有关详细信息，请参见 \fBld.so\fP(8)) :
+.IP \[bu] 3
+(仅限 ELF) 如果调用对象 (即调用 \fBdlopen\fP() 的共享库或可执行文件) 包含 DT_RPATH 标记，但不包含 DT_RUNPATH
+标记，则搜索 DT_RPATH 标记中列出的目录。
+.IP \[bu]
+如果在程序启动时，环境变量 \fBLD_LIBRARY_PATH\fP 被定义为包含以冒号分隔的目录列表，则会搜索这些目录。
+(作为安全措施，set\-user\-ID 和 set\-group\-ID 程序会忽略此变量。)
+.IP \[bu]
+(仅限 ELF) 如果调用对象包含 DT_RUNPATH 标记，则搜索该标记中列出的目录。
+.IP \[bu]
+检查缓存文件 \fI/etc/ld.so.cache\fP (由 \fBldconfig\fP(8)) 维护) 以查看它是否包含 \fIfilename\fP 的条目。
+.IP \[bu]
+搜索目录 \fI/lib\fP 和 \fI/usr/lib\fP (按此顺序)。
+.PP
+如果 \fIfilename\fP 指定的对象依赖于其他共享对象，那么动态链接器也会使用相同的规则自动加载这些对象。
+(如果这些对象依次具有依赖性，则此过程可能会递归发生，等等。)
+.PP
+\fIflags\fP: 中必须包含以下两个值之一
+.TP 
+\fBRTLD_LAZY\fP
+.\" commit 12b5b6b7f78ea111e89bbf638294a5413c791072
+执行惰性绑定。 仅在执行引用它们的代码时解析符号。 如果符号从未被引用，那么它永远不会被解析。 (惰性绑定只对函数引用执行;
+引用到变量总是在加载共享对象时立即绑定。) 从 glibc 2.1.1 开始，这个标志被 \fBLD_BIND_NOW\fP 环境变量的影响覆盖。
+.TP 
+\fBRTLD_NOW\fP
+如果指定了该值，或者环境变量 \fBLD_BIND_NOW\fP 设置为非空字符串，则在 \fBdlopen\fP() 返回之前解析共享库中所有未定义的符号。
+如果无法做到这一点，则会返回一个错误。
+.PP
+零个或多个以下值也可以在 \fIflags\fP: 中进行或运算
+.TP 
+\fBRTLD_GLOBAL\fP
+此共享对象定义的符号将可用于随后加载的共享对象的符号解析。
+.TP 
+\fBRTLD_LOCAL\fP
+这是 \fBRTLD_GLOBAL\fP 的反面，如果没有指定任何标志，则为默认值。 此共享对象中定义的符号不可用于解析随后加载的共享对象中的引用。
+.TP 
+\fBRTLD_NODELETE\fP (since glibc 2.2)
+不要在 \fBdlclose\fP() 期间卸载共享库。 因此，如果稍后使用 \fBdlopen\fP() 重新加载对象，则不会重新初始化对象的静态和全局变量。
+.TP 
+\fBRTLD_NOLOAD\fP (since glibc 2.2)
+.\"
+不要加载共享对象。 这可用于测试对象是否已经驻留 (\fBdlopen\fP() 如果不是则返回 NULL，如果对象是驻留则返回对象的句柄)。
+此标志还可用于提升已加载的共享对象上的标志。 例如，以前用 \fBRTLD_LOCAL\fP 加载的共享对象可以用 \fBRTLD_NOLOAD\ |\ RTLD_GLOBAL\fP 重新打开。
+.TP 
+\fBRTLD_DEEPBIND\fP (since glibc 2.3.4)
+.\" Inimitably described by UD in
+.\" http://sources.redhat.com/ml/libc-hacker/2004-09/msg00083.html.
+将此共享对象中符号的查找作用域放在全局范围之前。 这意味着自包含对象将优先使用自己的符号，而不是已加载对象中包含的具有相同名称的全局符号。
+.PP
+如果 \fIfilename\fP 为 NULL，则返回的句柄用于主程序。 当给 \fBdlsym\fP(3)
+时，这个句柄会在主程序中搜索一个符号，然后是程序启动时加载的所有共享对象，然后是 \fBdlopen\fP() 加载的带有标志 \fBRTLD_GLOBAL\fP
+的所有共享对象。
+.PP
+共享对象中的符号引用使用 (按顺序) 解析: 为主程序及其依赖加载的对象的链接 map 中的符号; 先前使用 \fBRTLD_GLOBAL\fP 标志使用
+\fBdlopen\fP() 打开的共享对象 (及其依赖项) 中的符号; 和共享对象本身中的定义 (以及为该对象加载的任何依赖项)。
+.PP
+由 \fBld\fP(1) 放入其动态符号表中的可执行文件中的任何全局符号也可用于解析动态加载的共享对象中的引用。
+符号可能被放置在动态符号表中，因为可执行文件与标志 "\-rdynamic" (或同义词 "\-\-export\-dynamic")
+链接，这导致所有可执行文件的全局符号被放置在动态符号表中，或者因为 \fBld\fP(1) 指出了依赖关系在静态链接期间在另一个对象中的符号上。
+.PP
+如果用 \fBdlopen\fP() 再次打开同一个共享对象，则返回同一个对象句柄。 动态链接器维护对象句柄的引用计数，因此动态加载的共享对象不会被释放，直到
+\fBdlclose\fP() 在其上被调用的次数与 \fBdlopen\fP() 在其上的成功调用次数相同。 只有当对象实际加载到内存中时 (即，当引用计数增加到
+1 时) 才会调用构造函数 (见下文)。
+.PP
+加载与 \fBRTLD_NOW\fP 相同的共享对象的后续 \fBdlopen\fP() 调用可能会强制对先前使用 \fBRTLD_LAZY\fP
+加载的共享对象进行符号解析。 同样，先前使用 \fBRTLD_LOCAL\fP 打开的对象可以在随后的 \fBdlopen\fP() 中提升为
+\fBRTLD_GLOBAL\fP。
+.PP
+.\"
+如果 \fBdlopen\fP() 由于任何原因失败，它返回 NULL。
+.SS dlmopen()
+此函数执行与 \fBdlopen\fP()\[em]the \fIfilename\fP 和 \fIflags\fP 参数相同的任务，返回值也相同，除了下面提到的差异。
+.PP
+\fBdlmopen\fP() 函数与 \fBdlopen\fP() 的主要区别在于它接受一个额外的参数 \fIlmid\fP，它指定链接 \- map 列表 (也称为
+\fInamespace\fP)，其中应加载共享对象。 (相比之下，\fBdlopen\fP() 将动态加载的共享对象添加到与创建 \fBdlopen\fP()
+调用的共享对象相同的名称空间。) \fILmid_t\fP 类型是引用名称空间的不透明句柄。
+.PP
+.\" FIXME: Is using dlinfo() RTLD_DI_LMID the right technique?
+\fIlmid\fP 参数是现有命名空间的 ID (可以使用 \fBdlinfo\fP(3) \fBRTLD_DI_LMID\fP 请求获取) 或以下特殊值之一:
+.TP 
+\fBLM_ID_BASE\fP
+在初始命名空间 (即应用程序的命名空间) 中加载共享对象。
+.TP 
+\fBLM_ID_NEWLM\fP
+创建一个新的命名空间并在该命名空间中加载共享对象。 该对象必须已正确链接到它需要的所有其他共享对象，因为新名称空间最初是空的。
+.PP
+如果 \fIfilename\fP 为 NULL，则 \fIlmid\fP 的唯一允许值是 \fBLM_ID_BASE\fP。
+.SS dlclose()
+函数 \fBdlclose\fP() 减少 \fIhandle\fP 引用的动态加载共享对象的引用计数。
+.PP
+如果对象的引用计数丢弃为零并且其他对象不需要此对象中的任何符号，则在首先调用为该对象定义的任何析构函数后卸载该对象。
+(此对象中的符号可能在另一个对象中需要，因为此对象是使用 \fBRTLD_GLOBAL\fP 标志打开的，并且其符号之一满足另一个对象中的重定位。)
+.PP
+在 \fIhandle\fP 引用的对象上调用 \fBdlopen\fP() 时自动加载的所有共享对象都以相同的方式递归关闭。
+.PP
+从 \fBdlclose\fP() 成功返回并不能保证与 \fIhandle\fP 关联的符号从调用者的地址空间中删除。 除了显式 \fBdlopen\fP()
+调用导致的引用之外，由于其他共享对象的依赖性，共享对象可能已被隐式加载 (并且引用计数)。 只有当所有引用都被释放后，共享对象才能从地址空间中移除。
+.SH "RETURN VALUE"
+成功时，\fBdlopen\fP() 和 \fBdlmopen\fP() 返回已加载对象的非 NULL 句柄。 出错时
+(找不到文件、不可读、格式错误或在加载过程中导致错误)，这些函数返回 NULL。
+.PP
+成功时，\fBdlclose\fP() 返回 0; 出错时，它返回一个非零值。
+.PP
+可以使用 \fBdlerror\fP(3) 诊断来自这些函数的错误。
+.SH VERSIONS
+\fBdlopen\fP() 和 \fBdlclose\fP() 存在于 glibc 2.0 及更高版本中。 \fBdlmopen\fP() 最早出现在 glibc
+2.3.4 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBdlopen\fP(),
+\fBdlmopen\fP(),
+\fBdlclose\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001 描述了 \fBdlclose\fP() 和 \fBdlopen\fP()。 \fBdlmopen\fP() 函数是 GNU 的扩展。
+.PP
+\fBRTLD_NOLOAD\fP、\fBRTLD_NODELETE\fP 和 \fBRTLD_DEEPBIND\fP 标志是 GNU 扩展; 这些标志中的前两个也出现在
+Solaris 上。
+.SH NOTES
+.SS "dlmopen() and namespaces"
+link\-map 列表为动态链接器解析符号定义了一个独立的命名空间。
+在命名空间内，依赖共享对象根据通常规则隐式加载，符号引用同样根据通常规则解析，但这种解析仅限于已 (显式和隐式) 加载到的对象提供的定义名称空间。
+.PP
+\fBdlmopen\fP() 函数允许对象加载隔离 \[em] 能够在新命名空间中加载共享对象，而不会将应用程序的其余部分暴露给新对象提供的符号。
+请注意，使用 \fBRTLD_LOCAL\fP 标志不足以达到此目的，因为它会阻止 \fIany\fP 其他共享库使用共享库的符号。
+在某些情况下，我们可能希望使动态加载的共享对象提供的符号可供其他共享对象 (的子集) 使用，而不会将这些符号暴露给整个应用程序。
+这可以通过使用单独的名称空间和 \fBRTLD_GLOBAL\fP 标志来实现。
+.PP
+\fBdlmopen\fP() 函数也可用于提供比 \fBRTLD_LOCAL\fP 标志更好的隔离。 特别是，如果加载 \fBRTLD_LOCAL\fP
+的共享对象是加载 \fBRTLD_GLOBAL\fP 的另一个共享对象的依赖项，则它们可能会提升为 \fBRTLD_GLOBAL\fP。
+因此，\fBRTLD_LOCAL\fP 不足以隔离已加载的共享对象，除非在 (uncommon) 情况下可以显式控制所有共享对象依赖项。
+.PP
+\fBdlmopen\fP() 的可能用途是插件加载框架的作者不信任插件作者并且不希望将插件框架中的任何未定义符号解析为插件符号。
+另一个用途是多次加载同一个对象。 如果不使用 \fBdlmopen\fP()，这将需要创建共享对象文件的不同副本。 使用
+\fBdlmopen\fP()，这可以通过将相同的共享对象文件加载到不同的名称空间来实现。
+.PP
+.\" DL_NNS
+.\"
+glibc 实现最多支持 16 个名称空间。
+.SS "Initialization and finalization functions"
+.\" info gcc "C Extensions" "Function attributes"
+共享对象可以使用 \fB__attribute__((constructor))\fP 和 \fB__attribute__((destructor))\fP
+函数属性导出函数。 构造函数函数在 \fBdlopen\fP() 返回前执行，析构函数函数在 \fBdlclose\fP() 返回前执行。
+一个共享对象可以导出多个构造函数和析构函数，优先级可以与每个函数相关联，以确定它们执行的顺序。 有关详细信息，请参见 \fBgcc\fP 信息页面 (在
+"Function attributes" 下)。
+.PP
+(partially) 实现相同结果的旧方法是通过使用链接器识别的两个特殊符号: \fB_init\fP 和 \fB_fini\fP。
+如果动态加载的共享对象导出名为 \fB_init\fP() 的例程，则在加载共享对象后，\fBdlopen\fP() 返回之前执行该代码。 如果共享对象导出一个名为
+\fB_fini\fP() 的例程，那么该例程将在该对象被卸载之前被调用。 在这种情况下，必须避免链接到系统启动文件，这些文件包含这些文件的默认版本;
+这可以通过使用 \fBgcc\fP(1) \fI\-nostartfiles\fP 命令行选项来完成。
+.PP
+.\"
+.\" Using these routines, or the gcc
+.\" .B \-nostartfiles
+.\" or
+.\" .B \-nostdlib
+.\" options, is not recommended.
+.\" Their use may result in undesired behavior,
+.\" since the constructor/destructor routines will not be executed
+.\" (unless special measures are taken).
+.\" .\" void _init(void) __attribute__((constructor));
+.\" .\" void _fini(void) __attribute__((destructor));
+.\"
+\fB_init\fP 和 \fB_fini\fP 的使用现已弃用，取而代之的是上述构造函数和析构函数，除其他优点外，它们还允许定义多个初始化和终结函数。
+.PP
+从 glibc 2.2.3 开始，\fBatexit\fP(3) 可用于注册一个退出处理程序，该处理程序在卸载共享对象时自动调用。
+.SS History
+这些函数是 dlopen API 的一部分，源自 SunOS。
+.SH BUGS
+.\" dlerror(): "invalid mode"
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=18684
+与 glibc 2.24 一样，在调用 \fBdlmopen\fP() 时指定 \fBRTLD_GLOBAL\fP 标志会产生错误。 此外，调用
+\fBdlopen\fP() 时指定 \fBRTLD_GLOBAL\fP 会导致程序崩溃
+(\fBSIGSEGV\fP)，如果调用是由在初始命名空间以外的命名空间中加载的任何对象创建的。
+.SH EXAMPLES
+下面的程序加载 (glibc) 数学库，查找 \fBcos\fP(3) 函数的地址，并打印 2.0 的余弦值。 下面是构建和运行程序的示例:
+.PP
+.in +4n
+.EX
+$ \fBcc dlopen_demo.c \-ldl\fP
+$ \fB./a.out\fP
+\-0.416147
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (dlopen.c)
+\&
+.EX
+#include <dlfcn.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <gnu/lib\-names.h>  /* Defines LIBM_SO (which will be a
+                               string such as "libm.so.6") */
+int
+main(void)
+{
+    void *handle;
+    double (*cosine)(double);
+    char *error;
+
+    handle = dlopen(LIBM_SO, RTLD_LAZY);
+    if (!handle) {
+        fprintf(stderr, "%s\en", dlerror());
+        exit(EXIT_FAILURE);
+    }
+
+    dlerror();    /* Clear any existing error */
+
+    cosine = (double (*)(double)) dlsym(handle, "cos");
+
+    /* 根据 ISO C 标准，在函数之间进行转换
+       指针和 \[aq] void *\[aq] 如上所述，会产生未定义的结果。
+       POSIX.1\-2001 和 POSIX.1\-2008 接受了这种情况并且
+       提出了以下解决方法:
+
+           *(void **) (&cosine) = dlsym(handle, "cos");
+
+       此 (clumsy) 铸件符合 ISO C 标准，并将
+       避免任何编译器警告。
+
+.\" http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html#tag_03_112_08
+.\" http://pubs.opengroup.org/onlinepubs/9699919799/functions/dlsym.html#tag_16_96_07
+.\" http://austingroupbugs.net/view.php?id=74
+       POSIX.1\-2008 的 2013 年技术勘误 1 改进了事项
+       通过要求符合要求的实现支持铸造
+       \[aq] void *\[aq] 到一个函数指针。 尽管如此，一些编译器
+       (例如，带 \[aq]\-pedantic\[aq] 选项的 gcc) 可能会抱怨
+       本程序中使用的 cast。*/
+
+    error = dlerror();
+    if (error != NULL) {
+        fprintf(stderr, "%s\en", error);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("%f\en", (*cosine)(2.0));
+    dlclose(handle);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBld\fP(1), \fBldd\fP(1), \fBpldd\fP(1), \fBdl_iterate_phdr\fP(3), \fBdladdr\fP(3),
+\fBdlerror\fP(3), \fBdlinfo\fP(3), \fBdlsym\fP(3), \fBrtld\-audit\fP(7), \fBld.so\fP(8),
+\fBldconfig\fP(8)
+.PP
+gcc 信息页，ld 信息页
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,123 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2002 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" added note on self-signaling, aeb, 2002-06-07
+.\" added note on CAP_KILL, mtk, 2004-06-16
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigqueue 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+sigqueue \- 将信号和数据排队到进程
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint sigqueue(pid_t \fP\fIpid\fP\fB, int \fP\fIsig\fP\fB, const union sigval \fP\fIvalue\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigqueue\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+\fBsigqueue\fP() 将 \fIsig\fP 中指定的信号发送给其 PID 在 \fIpid\fP 中给出的进程。 发送信号所需的权限与 \fBkill\fP(2)
+相同。 与 \fBkill\fP(2) 一样，空信号 (0) 可用于检查是否存在具有给定 PID 的进程。
+.PP
+\fIvalue\fP 参数用于指定随信号发送的伴随数据项 (整数或指针值)，并具有以下类型:
+.PP
+.in +4n
+.EX
+union sigval {
+    int   sival_int;
+    void *sival_ptr;
+};
+.EE
+.in
+.PP
+如果接收进程使用 \fBSA_SIGINFO\fP 标志为 \fBsigaction\fP(2) 安装了此信号的处理程序，则它可以通过作为第二个参数传递给处理程序的
+\fIsiginfo_t\fP 结构体的 \fIsi_value\fP 字段获取此数据。 此外，该结构体的 \fIsi_code\fP 字段将设置为
+\fBSI_QUEUE\fP。
+.SH "RETURN VALUE"
+成功时，\fBsigqueue\fP() 返回 0，表示信号已成功排队到接收进程。 否则，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+已达到可以排队的信号限制。 (有关详细信息，请参见 \fBsignal\fP(7)。)
+.TP 
+\fBEINVAL\fP
+\fIsig\fP 无效。
+.TP 
+\fBEPERM\fP
+该进程没有向接收进程发送信号的权限。 有关所需的权限，请参见 \fBkill\fP(2)。
+.TP 
+\fBESRCH\fP
+没有进程具有匹配 \fIpid\fP 的 PID。
+.SH VERSIONS
+\fBsigqueue\fP() 和底层 \fBrt_sigqueueinfo\fP(2) 系统调用最早出现在 Linux 2.2。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsigqueue\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+如果这个函数导致向调用它的进程发送一个信号，并且该信号没有被调用线程阻塞，并且没有其他线程愿意处理这个信号 (通过解除阻塞或等待它) 使用
+\fBsigwait\fP(3))，那么在这个函数返回之前至少有一些信号必须传递给这个线程。
+.SS "C library/kernel differences"
+在 Linux 上，\fBsigqueue\fP() 是使用 \fBrt_sigqueueinfo\fP(2) 系统调用实现的。
+系统调用的不同之处在于它的第三个参数，它是 \fIsiginfo_t\fP 结构体，它将提供给接收进程的信号处理程序或由接收进程的
+\fBsigtimedwait\fP(2) 调用返回。 在 glibc \fBsigqueue\fP() 包装器内部，这个参数 \fIuinfo\fP 初始化如下:
+.PP
+.in +4n
+.EX
+uinfo.si_signo = 信号;      /* Argument supplied to sigqueue() */
+uinfo.si_code = SI_QUEUE;
+uinfo.si_pid = getpid();   /* Process ID of sender */
+uinfo.si_uid = getuid();   /* Real UID of sender */
+uinfo.si_value = 值;      /* Argument supplied to sigqueue() */
+.EE
+.in
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBrt_sigqueueinfo\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2),
+\fBpthread_sigqueue\fP(3), \fBsigwait\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

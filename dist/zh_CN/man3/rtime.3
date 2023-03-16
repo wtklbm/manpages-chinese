@@ -1,0 +1,146 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2003 walter harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Modified 2003-04-04 Walter Harms
+.\" <walter.harms@informatik.uni-oldenburg.de>
+.\"
+.\" Slightly polished, aeb, 2003-04-06
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rtime 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+rtime \- 从远程机器获取时间
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <rpc/auth_des.h>\fP
+.PP
+\fBint rtime(struct sockaddr_in *\fP\fIaddrp\fP\fB, struct rpc_timeval *\fP\fItimep\fP\fB,\fP
+\fB          struct rpc_timeval *\fP\fItimeout\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+此函数使用 RFC\868 中描述的时间服务器协议从远程计算机获取时间。
+.PP
+时间服务器协议给出自 1900 年 1 月 1 日 00:00:00 UTC 以来的秒数，并且此函数减去适当的常量以将结果转换为自纪元
+1970\-01\-01 00:00:00 以来的秒数 + 0000 (UTC)。
+.PP
+当 \fItimeout\fP 为非 NULL 时，使用 udp/time 套接字 (端口 37)。 否则，使用 tcp/time 套接字 (端口 37)。
+.SH "RETURN VALUE"
+成功返回 0，将得到的 32 位时间值存入 \fItimep\->tv_sec\fP。 如果出现错误，则返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+底层函数 (\fBsendto\fP(2)、\fBpoll\fP(2)、\fBrecvfrom\fP(2)、\fBconnect\fP(2)、\fBread\fP(2))
+的所有错误都可能发生。 Moreover:
+.TP 
+\fBEIO\fP
+返回的字节数不是 4.
+.TP 
+\fBETIMEDOUT\fP
+timeout 中定义的等待时间已过。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBrtime\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH NOTES
+仅支持 IPv4。
+.PP
+.\" .PP
+.\" Libc5 uses the prototype
+.\" .PP
+.\" .nf
+.\"    int rtime(struct sockaddr_in *, struct timeval *, struct timeval *);
+.\" .fi
+.\" .PP
+.\" and requires
+.\" .I <sys/time.h>
+.\" instead of
+.\" .IR <rpc/auth_des.h> .
+某些 \fIin.timed\fP 版本仅支持 TCP。 尝试将 \fIuse_tcp\fP 设置为的示例程序 1.
+.SH BUGS
+glibc 2.2.5 和更早版本中的 \fBrtime\fP() 在 64 位机器上无法正常工作。
+.SH EXAMPLES
+此示例要求端口 37 已启动并打开。 您可以检查 \fI/etc/inetd.conf\fP 中的时间条目是否未被注释掉。
+.PP
+该程序连接到一台名为 "linux" 的计算机。 使用 "localhost" 不起作用。 结果是计算机 "linux" 的本地时间。
+.PP
+.\" SRC BEGIN (rtime.c)
+.EX
+#include <errno.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#include <rpc/auth_des.h>
+
+static int use_tcp = 0;
+static const char servername[] = "linux";
+
+int
+main(void)
+{
+    int                 ret;
+    time_t              t;
+    struct hostent      *hent;
+    struct rpc_timeval  time1 = {0, 0};
+    struct rpc_timeval  timeout = {1, 0};
+    struct sockaddr_in  name;
+
+    memset(&name, 0, sizeof(name));
+    sethostent(1);
+    hent = gethostbyname(servername);
+    memcpy(&name.sin_addr, hent\->h_addr, hent\->h_length);
+
+    ret = rtime(&name, &time1, use_tcp ? NULL : &timeout);
+    if (ret < 0)
+        perror("rtime error");
+    else {
+        t = time1.tv_sec;
+        printf("%s\en", ctime(&t));
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.\" .BR netdate (1),
+.\" .BR rdate (1),
+\fBntpdate\fP(1), \fBinetd\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,130 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1996 Free Software Foundation, Inc.
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" 2006-02-09, some reformatting by Luc Van Oostenryck; some
+.\" reformatting and rewordings by mtk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH query_module 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+query_module \- 查询内核以获取与模块有关的各种位
+.SH SYNOPSIS
+.nf
+\fB#include <linux/module.h>\fP
+.PP
+\fB[[deprecated]] int query_module(const char *\fP\fIname\fP\fB, 整数 \fP\fIwhich\fP\fB,\fP
+\fB                                void \fP\fIbuf\fP\fB[.\fP\fIbufsize\fP\fB], size_t \fP\fIbufsize\fP\fB,\fP
+\fB                                size_t *\fP\fIret\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fINote\fP: 本系统调用只存在于 Linux 2.6 之前。
+.PP
+\fBquery_module\fP() 从内核请求有关可加载模块的信息。 返回的信息放在 \fIbuf\fP 指向的缓冲区中。 调用者必须在 \fIbufsize\fP
+中指定 \fIbuf\fP 的大小。 返回信息的准确性质和格式取决于 \fIwhich\fP 指定的操作。 有些操作需要 \fIname\fP
+来标识当前加载的模块，有些操作允许 \fIname\fP 为 NULL，表示内核正确。
+.PP
+可以为 \fIwhich\fP: 指定以下值
+.TP 
+\fB0\fP
+如果内核支持 \fBquery_module\fP()，则返回成功。 用于探测系统调用的可用性。
+.TP 
+\fBQM_MODULES\fP
+.\" ret is set on ENOSPC
+返回所有已加载模块的名称。 返回的缓冲区由一系列以 null 结尾的字符串组成; \fIret\fP 设置为模块数。
+.TP 
+\fBQM_DEPS\fP
+.\" ret is set on ENOSPC
+返回指定模块使用的所有模块的名称。 返回的缓冲区由一系列以 null 结尾的字符串组成; \fIret\fP 设置为模块数。
+.TP 
+\fBQM_REFS\fP
+.\" ret is set on ENOSPC
+返回使用指定模块的所有模块的名称。 这是 \fBQM_DEPS\fP 的倒数。 返回的缓冲区由一系列以 null 结尾的字符串组成; \fIret\fP
+设置为模块数。
+.TP 
+\fBQM_SYMBOLS\fP
+.\" ret is set on ENOSPC
+返回内核或指定模块导出的符号和值。 返回的缓冲区是以下形式的结构数组
+.IP
+.in +4n
+.EX
+struct module_symbol {
+    unsigned long value;
+    unsigned long name;
+};
+.EE
+.in
+.IP
+后跟以 null 结尾的字符串。 \fIname\fP 的值是字符串相对于 \fIbuf\fP 开头的字符偏移量; \fIret\fP 设置为符号数。
+.TP 
+\fBQM_INFO\fP
+返回有关指定模块的杂项信息。 输出缓冲区格式为:
+.IP
+.in +4n
+.EX
+struct module_info {
+    unsigned long address;
+    unsigned long size;
+    unsigned long flags;
+};
+.EE
+.in
+.IP
+其中 \fIaddress\fP 是模块所在的内核地址，\fIsize\fP 是模块的字节大小，\fIflags\fP 是
+\fBMOD_RUNNING\fP、\fBMOD_AUTOCLEAN\fP 等的掩码，表示模块的当前状态 (参见 Linux 内核源代码文件
+\fIinclude/linux/module.h\fP)。 \fIret\fP 设置为 \fImodule_info\fP 结构体的大小。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIname\fP、\fIbuf\fP 或 \fIret\fP 中至少有一个在程序的可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+.\" Not permitted with QM_DEPS, QM_REFS, or QM_INFO.
+\fIwhich\fP 无效; 或 \fIname\fP 为 NULL (表示 "the kernel")，但 \fIwhich\fP 的指定值不允许这样做。
+.TP 
+\fBENOENT\fP
+不存在该 \fIname\fP 的模块。
+.TP 
+\fBENOSPC\fP
+提供的缓冲区大小太小。 \fIret\fP 设置为所需的最小大小。
+.TP 
+\fBENOSYS\fP
+此版本的内核不支持 \fBquery_module\fP() (例如，Linux 2.6 或更高版本)。
+.SH VERSIONS
+.\" Removed in Linux 2.5.48
+本系统调用仅存在至 Linux 2.4; 它在 Linux 2.6 中被删除。
+.SH STANDARDS
+\fBquery_module\fP() 是特定于 Linux 的。
+.SH NOTES
+一些以前可以通过 \fBquery_module\fP() 获得的信息可以从 \fI/proc/modules\fP、\fI/proc/kallsyms\fP 和目录
+\fI/sys/module\fP 下的文件中获得。
+.PP
+glibc 不支持 \fBquery_module\fP() 系统调用。 glibc 头文件中没有提供声明，但是，由于历史的怪癖，glibc
+确实为这个系统导出了一个 ABI 调用。 因此，为了使用这个系统调用，在您的代码中手动声明接口就足够了; 或者，您可以使用 \fBsyscall\fP(2)
+调用系统调用。
+.SH "SEE ALSO"
+\fBcreate_module\fP(2), \fBdelete_module\fP(2), \fBget_kernel_syms\fP(2),
+\fBinit_module\fP(2), \fBlsmod\fP(8), \fBmodinfo\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

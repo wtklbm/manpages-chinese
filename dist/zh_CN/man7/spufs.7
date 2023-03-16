@@ -1,0 +1,390 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) International Business Machines Corp., 2006
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" HISTORY:
+.\" 2005-09-28, created by Arnd Bergmann <arndb@de.ibm.com>,
+.\"   Mark Nutter <mnutter@us.ibm.com> and
+.\"   Ulrich Weigand <Ulrich.Weigand@de.ibm.com>
+.\" 2006-06-16, revised by Eduardo M. Fleury <efleury@br.ibm.com>
+.\" 2007-07-10, quite a lot of polishing by mtk
+.\" 2007-09-28, updates for newer kernels by Jeremy Kerr <jk@ozlabs.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH spufs 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+spufs\-SPU 文件系统
+.SH DESCRIPTION
+SPU 文件系统用于实现 Cell 宽带引擎架构的 PowerPC 机器，以访问协同处理器单元 (SPUs)。
+.PP
+文件系统提供类似于 POSIX 共享内存或消息队列的名称空间。 对文件系统具有写入权限的用户可以使用 \fBspu_create\fP(2) 在
+\fBspufs\fP 根目录下建立 SPU 上下文。
+.PP
+每个 SPU 上下文都由一个包含一组预定义文件的目录表示。 这些文件可用于操纵逻辑 SPU 的状态。 用户可以更改文件的权限，但不能添加或删除文件。
+.SS "Mount options"
+.TP 
+\fBuid=<uid>\fP
+设置拥有挂载点的用户; 默认值为 0 (root)。
+.TP 
+\fBgid=<gid>\fP
+设置拥有挂载点的组; 默认值为 0 (root)。
+.TP 
+\fBmode=<mode>\fP
+设置 \fBspufs\fP 中顶级目录的模式，为八进制模式字符串。 默认值为 0775。
+.SS Files
+\fBspufs\fP 中的文件大多遵循常规系统调用 (如 \fBread\fP(2) 或 \fBwrite\fP(2))
+的标准行为，但通常仅支持常规文件系统所支持的操作的子集。 此列表详细说明了支持的操作以及与相应手册页中描述的标准行为的偏差。
+.PP
+所有支持 \fBread\fP(2) 操作的文件也支持 \fBreadv\fP(2)，所有支持 \fBwrite\fP(2) 操作的文件也支持 \fBwritev\fP(2)。
+所有文件都支持 \fBaccess\fP(2) 和 \fBstat\fP(2) 系列操作，但对于后者调用，返回的 \fIstat\fP 结构体中包含可靠信息的字段只有
+\fIst_mode\fP、\fIst_nlink\fP、\fIst_uid\fP 和 \fIst_gid\fP。
+.PP
+所有文件都支持 \fBchmod\fP(2)/\fBfchmod\fP(2) 和 \fBchown\fP(2)/\fBfchown\fP(2)
+操作，但不能授予与可能的操作相矛盾的权限 (例如，对 \fIwbox\fP 文件的读取访问权限)。
+.PP
+当前的文件集是:
+.TP 
+\fI/capabilities\fP
+包含表示此 SPU 上下文功能的逗号分隔字符串。 可能的能力是:
+.RS
+.TP 
+\fBsched\fP
+可以安排此上下文。
+.TP 
+\fBstep\fP
+此上下文可以以单步模式运行，以进行调试。
+.PP
+可能会在 future 中添加新的功能标志。
+.RE
+.TP 
+\fI/mem\fP
+SPU 本地存储器的内容。 这可以像常规共享内存文件一样访问，并且在 SPU 的地址空间中包含代码和数据。 对打开的 \fImem\fP 文件的可能操作是:
+.RS
+.TP 
+\fBread\fP(2), \fBpread\fP(2), \fBwrite\fP(2), \fBpwrite\fP(2), \fBlseek\fP(2)
+它们像往常一样运行，除了不支持超出文件末尾的 \fBlseek\fP(2)、\fBwrite\fP(2) 和 \fBpwrite\fP(2)。 文件大小是 SPU
+本地存储的大小，一般为 256KB。
+.TP 
+\fBmmap\fP(2)
+将 \fImem\fP 映射到进程地址空间可提供对进程地址空间内的 SPU 本地存储的访问。 只允许 \fBMAP_SHARED\fP 映射。
+.RE
+.TP 
+\fI/regs\fP
+包含保存的 SPU 上下文的通用寄存器。 该文件包含每个寄存器的 128 位值，从寄存器 0 到寄存器 127，按顺序排列。
+这允许检查通用寄存器以进行调试。
+.IP
+读取或写入此文件需要调度上下文，因此不建议在正常程序操作中使用此文件。
+.IP
+\fIregs\fP 文件不存在于使用 \fBSPU_CREATE_NOSCHED\fP 标志创建的上下文中。
+.TP 
+\fI/mbox\fP
+第一个 SPU 到 CPU 的通信邮箱。 该文件是只读的，可以以 4 字节为单位读取。 该文件只能在非阻塞模式下使用 \-\- 甚至 \fBpoll\fP(2)
+也不能用于阻塞该文件。 对打开的 \fImbox\fP 文件唯一可能的操作是:
+.RS
+.TP 
+\fBread\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBread\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。 如果邮箱中没有可用数据
+(即 SPU 没有发送邮箱消息)，则返回值设置为 \-1，\fIerrno\fP 设置为 \fBEAGAIN\fP。
+成功读取数据后，会将四个字节放入数据缓冲区并返回值四。
+.RE
+.TP 
+\fI/ibox\fP
+第二个 SPU 到 CPU 的通信邮箱。 该文件类似于第一个邮箱文件，但可以在阻塞 I/O 模式下读取，因此在打开的 \fIibox\fP 文件上调用
+\fBread\fP(2) 将阻塞，直到 SPU 将数据写入其中断邮箱通道 (除非该文件已使用 \fBO_NONBLOCK\fP 打开，见下文)。
+此外，\fBpoll\fP(2) 和类似的系统调用可用于监视邮箱数据的存在。
+.IP
+对打开的 \fIibox\fP 文件的可能操作是:
+.RS
+.TP 
+\fBread\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBread\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+如果邮箱中没有可用数据，并且文件描述符已用 \fBO_NONBLOCK\fP 打开，则返回值设置为 \-1，\fIerrno\fP 设置为 \fBEAGAIN\fP。
+.IP
+如果邮箱中没有可用数据并且文件描述符已在没有 \fBO_NONBLOCK\fP 的情况下打开，调用将阻塞，直到 SPU 写入其中断邮箱通道。
+成功读取数据后，会将四个字节放入数据缓冲区并返回值四。
+.TP 
+\fBpoll\fP(2)
+只要数据可供读取，对 \fIibox\fP 文件的轮询就会返回 \fI(POLLIN | POLLRDNORM)\fP。
+.RE
+.TP 
+\fI/wbox\fP
+CPU 到 SPU 的通信邮箱。 它是只写的，可以以四个字节为单位写入。 如果邮箱满了，\fBwrite\fP(2) 会阻塞，\fBpoll\fP(2)
+可以用来阻塞，直到邮箱可以再次写入为止。 对打开的 \fIwbox\fP 文件的可能操作是:
+.RS
+.TP 
+\fBwrite\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBwrite\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+如果邮箱中没有可用空间并且文件描述符已用 \fBO_NONBLOCK\fP 打开，则返回值设置为 \-1，\fIerrno\fP 设置为 \fBEAGAIN\fP。
+.IP
+如果邮箱中没有可用空间并且文件描述符已在没有 \fBO_NONBLOCK\fP 的情况下打开，调用将阻塞，直到 SPU 从其 PPE (PowerPC
+处理元素) 邮箱中读取通道。 当数据写入成功后，系统调用返回四作为调用结果。
+.TP 
+\fBpoll\fP(2)
+只要空间可用于写入，对 \fIwbox\fP 文件的轮询就会返回 \fI(POLLOUT | POLLWRNORM)\fP。
+.RE
+.TP 
+\fI/mbox_stat\fP, \fI/ibox_stat\fP, \fI/wbox_stat\fP
+这些是只读文件，其中包含每个邮箱的当前队列长度 \[em]，即可以从 \fImbox\fP 或 \fIibox\fP
+读取多少个单词，或者可以在不阻塞的情况下将多少个单词写入 \fIwbox\fP。 这些文件只能以四字节为单位读取，并返回一个大端二进制整数。 对打开的
+\fI*box_stat\fP 文件唯一可能的操作是:
+.RS
+.TP 
+\fBread\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBread\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+否则，将一个四字节的值放入数据缓冲区。 此值是可以从中读取的元素数 (对于 \fImbox_stat\fP 和 \fIibox_stat\fP) 或写入 (对于
+\fIwbox_stat\fP) 各自的邮箱，而不会阻塞或返回 \fBEAGAIN\fP 错误。
+.RE
+.TP 
+\fI/npc\fP, \fI/decr\fP, \fI/decr_status\fP, \fI/spu_tag_mask\fP, \fI/event_mask\fP, \fI/event_status\fP, \fI/srr0\fP, \fI/lslr\fP
+SPU 的内部寄存器。 这些文件包含表示指定寄存器的十六进制值的 ASCII 字符串。 对这些文件 (\fInpc\fP 除外，见下文) 的读写需要 SPU
+上下文被调度出来，因此不建议频繁访问这些文件以进行正常的程序操作。
+.IP
+这些文件的内容是:
+.RS
+.TP  16
+\fInpc\fP
+下一个程序计数器 \- 仅当 SPU 处于停止状态时有效。
+.TP 
+\fIdecr\fP
+SPU 减量器
+.TP 
+\fIdecr_status\fP
+递减器状态
+.TP 
+\fIspu_tag_mask\fP
+SPU DMA 的 MFC 标记掩码
+.TP 
+\fIevent_mask\fP
+SPU 中断的事件掩码
+.TP 
+\fIevent_status\fP
+未决的 SPU 事件数 (read\-only)
+.TP 
+\fIsrr0\fP
+中断返回地址寄存器
+.TP 
+\fIlslr\fP
+本地存储限制寄存器
+.RE
+.IP
+对这些文件的可能操作是:
+.RS
+.TP 
+\fBread\fP(2)
+读取当前寄存器值。 如果寄存器值大于传递给 \fBread\fP(2) 系统调用的缓冲区，后续读取将继续从同一缓冲区读取，直到到达缓冲区的末尾。
+.IP
+当一个完整的字符串被读取时，所有后续的读取操作将返回零字节，并且需要打开一个新的文件描述符来读取一个新的值。
+.TP 
+\fBwrite\fP(2)
+对文件的 \fBwrite\fP(2) 操作将寄存器设置为字符串中给定的值。 字符串从头开始分析，直到第一个非数字字符或缓冲区结束。
+对同一文件描述符的后续写入将覆盖先前的设置。
+.IP
+除 \fInpc\fP 文件外，这些文件不存在于使用 \fBSPU_CREATE_NOSCHED\fP 标志创建的上下文中。
+.RE
+.TP 
+\fI/fpcr\fP
+该文件以二进制四字节文件形式提供对浮点状态和控制寄存器 (fcpr) 的访问。 对 \fIfpcr\fP 文件的操作是:
+.RS
+.TP 
+\fBread\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBread\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+否则，将一个四字节的值放入数据缓冲区; 这是 \fIfpcr\fP 寄存器的当前值。
+.TP 
+\fBwrite\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBwrite\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+否则，从数据缓冲区复制一个四字节值，更新 \fIfpcr\fP 寄存器的值。
+.RE
+.TP 
+\fI/signal1\fP, \fI/signal2\fP
+这些文件提供对 SPU 的两个信号通知通道的访问。 这些是对四字节字进行操作的读写文件。 写入其中一个文件会触发 SPU 中断。
+写入信号文件的值可以通过通道读取从 SPU 读取，也可以通过文件从主机用户空间读取。 SPU 读取该值后，将其重置为零。 对打开的 \fIsignal1\fP
+或 \fIsignal2\fP 文件的可能操作是:
+.RS
+.TP 
+\fBread\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBread\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+否则，将一个四字节的值放入数据缓冲区; 这是指定信号通知寄存器的当前值。
+.TP 
+\fBwrite\fP(2)
+如果 \fIcount\fP 小于 4，则 \fBwrite\fP(2) 返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+否则，从数据缓冲区复制一个四字节值，更新指定信号通知寄存器的值。 信号通知寄存器要么被输入数据替换，要么被更新为旧值和输入数据的按位或运算，分别取决于
+\fIsignal1_type\fP 或 \fIsignal2_type\fP 文件的内容。
+.RE
+.TP 
+\fI/signal1_type\fP, \fI/signal2_type\fP
+这两个文件更改了 \fIsignal1\fP 和 \fIsignal2\fP 通知文件的行为。 它们包含一个数字 ASCII 字符串，读作 "1" 或 "0"。
+在模式 0 (overwrite) 中，硬件用写入的数据替换信号通道的内容。 在模式 1 (逻辑或) 中，硬件累积随后写入的位。 对打开的
+\fIsignal1_type\fP 或 \fIsignal2_type\fP 文件的可能操作是:
+.RS
+.TP 
+\fBread\fP(2)
+当提供给 \fBread\fP(2) 调用的计数短于数字所需的长度 (加上换行符) 时，从同一文件描述符的后续读取将完成该字符串。
+当一个完整的字符串被读取后，所有后续读取操作将返回零字节，并且需要打开一个新的文件描述符以再次读取该值。
+.TP 
+\fBwrite\fP(2)
+对文件的 \fBwrite\fP(2) 操作将寄存器设置为字符串中给定的值。 字符串从头开始分析，直到第一个非数字字符或缓冲区结束。
+对同一文件描述符的后续写入将覆盖先前的设置。
+.RE
+.TP 
+\fI/mbox_info\fP, \fI/ibox_info\fP, \fI/wbox_info\fP, \fI/dma_into\fP, \fI/proxydma_info\fP
+包含 SPU 邮箱和 DMA 队列的已保存状态的只读文件。 这允许检查 SPU 状态，主要用于调试。 \fImbox_info\fP 和
+\fIibox_info\fP 文件均包含 SPU 写入的四字节邮箱消息。 如果没有消息被写入这些邮箱，那么这些文件的内容是未定义的。
+\fImbox_stat\fP、\fIibox_stat\fP 和 \fIwbox_stat\fP 文件包含可用消息计数。
+.IP
+\fIwbox_info\fP 文件包含一组四字节的邮箱消息，这些消息已发送到 SPU。 对于当前的 CBEA 机器，该数组的长度为 4
+项，因此最多可以从该文件中读取 4 * 4=16 个字节。 如果任何邮箱队列条目为空，则在相应位置读取的字节未定义。
+.IP
+\fIdma_info\fP 文件包含 SPU MFC DMA 队列的内容，表示为以下结构体:
+.IP
+.in +4n
+.EX
+struct spu_dma_info {
+    uint64_t         dma_info_type;
+    uint64_t         dma_info_mask;
+    uint64_t         dma_info_status;
+    uint64_t         dma_info_stall_and_notify;
+    uint64_t         dma_info_atomic_command_status;
+    struct mfc_cq_sr dma_info_command_data[16];
+};
+.EE
+.in
+.IP
+该数据结构体的最后一个成员是实际的 DMA 队列，包含 16 个条目。 \fImfc_cq_sr\fP 结构体定义为:
+.IP
+.in +4n
+.EX
+struct mfc_cq_sr {
+    uint64_t mfc_cq_data0_RW;
+    uint64_t mfc_cq_data1_RW;
+    uint64_t mfc_cq_data2_RW;
+    uint64_t mfc_cq_data3_RW;
+};
+.EE
+.in
+.IP
+\fIproxydma_info\fP 文件包含类似的信息，但描述的是代理 DMA 队列 (即，由 SPU 外部的实体发起的 DMA)。 该文件采用以下格式:
+.IP
+.in +4n
+.EX
+struct spu_proxydma_info {
+    uint64_t         proxydma_info_type;
+    uint64_t         proxydma_info_mask;
+    uint64_t         proxydma_info_status;
+    struct mfc_cq_sr proxydma_info_command_data[8];
+};
+.EE
+.in
+.IP
+访问这些文件需要将 SPU 上下文调度出去 \-\- 频繁使用可能效率低下。 这些文件不应该用于正常的程序操作。
+.IP
+这些文件不存在于使用 \fBSPU_CREATE_NOSCHED\fP 标志创建的上下文中。
+.TP 
+\fI/cntl\fP
+该文件以 ASCII 字符串形式提供对 SPU 运行控制和 SPU 状态寄存器的访问。 支持以下操作:
+.RS
+.TP 
+\fBread\fP(2)
+从 \fIcntl\fP 文件读取将返回一个 ASCII 字符串，其中包含 SPU 状态寄存器的十六进制值。
+.TP 
+\fBwrite\fP(2)
+写入 \fIcntl\fP 文件将设置上下文的 SPU 运行控制寄存器。
+.RE
+.TP 
+\fI/mfc\fP
+提供对 SPU 的内存流控制器的访问。 从文件读取返回 SPU 的 MFC 标记状态寄存器的内容，写入文件从 MFC 启动 DMA。 支持以下操作:
+.RS
+.TP 
+\fBwrite\fP(2)
+写入此文件需要采用 MFC DMA 命令的格式，定义如下:
+.IP
+.in +4n
+.EX
+struct mfc_dma_command {
+    int32_t  pad;    /* reserved */
+    uint32_t lsa;    /* local storage address */
+    uint64_t ea;     /* effective address */
+    uint16_t size;   /* transfer size */
+    uint16_t tag;    /* command tag */
+    uint16_t class;  /* class ID */
+    uint16_t cmd;    /* command opcode */
+};
+.EE
+.in
+.IP
+写入的大小必须正好是 \fIsizeof(struct mfc_dma_command)\fP 字节。 该命令将被发送到 SPU 的 MFC
+代理队列，并将标记存储在内核中 (见下文)。
+.TP 
+\fBread\fP(2)
+读取标签状态寄存器的内容。 如果文件以阻塞模式打开 (即没有 \fBO_NONBLOCK\fP)，则读取将阻塞直到 DMA 标记 (由先前的写入执行) 完成。
+在非阻塞模式下，MFC 标记状态寄存器将被返回而无需等待。
+.TP 
+\fBpoll\fP(2)
+在 \fImfc\fP 文件上调用 \fBpoll\fP(2) 将阻塞，直到可以启动新的 DMA (通过检查 \fBPOLLOUT\fP) 或直到先前启动的 DMA
+(通过检查 \fBPOLLIN\fP) 已完成)。
+.IP
+\fI/mss\fP 提供对 MFC 多源同步 (MSS) 工具的访问。 通过 \fBmmap\fP(2)\-ing 这个文件，进程可以访问 SPU 的 MSS 区。
+.IP
+支持以下操作:
+.TP 
+\fBmmap\fP(2)
+将 \fBmss\fP 映射到进程地址空间可以访问进程地址空间内的 SPU MSS 区域。 只允许 \fBMAP_SHARED\fP 映射。
+.RE
+.TP 
+\fI/psmap\fP
+提供对 SPU 的整个问题状态映射的访问。 应用程序可以使用此区域连接到 SPU，而不是写入 \fBspufs\fP 中的各个寄存器文件。
+.IP
+支持以下操作:
+.RS
+.TP 
+\fBmmap\fP(2)
+映射 \fBpsmap\fP 为进程提供 SPU 问题状态区域的直接 map。 仅支持 \fBMAP_SHARED\fP 映射。
+.RE
+.TP 
+\fI/phys\-id\fP
+包含运行 SPU 上下文的物理 SPU 编号的只读文件。 当上下文未运行时，此文件包含字符串 "\-1"。
+.IP
+物理 SPU 编号由 ASCII 十六进制字符串给出。
+.TP 
+\fI/object\-id\fP
+允许应用程序将单个 64 位 ID 存储 (或检索) 到上下文中。 此 ID 稍后由分析工具使用以唯一标识上下文。
+.RS
+.TP 
+\fBwrite\fP(2)
+通过将 ASCII 十六进制值写入此文件，应用程序可以设置 SPU 上下文的对象 ID。 对象 ID 的任何先前值都将被覆盖。
+.TP 
+\fBread\fP(2)
+读取此文件会得到一个 ASCII 十六进制字符串，表示此 SPU 上下文的对象 ID。
+.RE
+.SH EXAMPLES
+要在启动时自动 \fBmount\fP(8) SPU 文件系统，在用户选择的 \fI/spu\fP 位置，将此行放入 \fBfstab\fP(5) 配置文件中:
+.EX
+none /spu spufs gid=spu 0 0
+.EE
+.\" .SH AUTHORS
+.\" Arnd Bergmann <arndb@de.ibm.com>, Mark Nutter <mnutter@us.ibm.com>,
+.\" Ulrich Weigand <Ulrich.Weigand@de.ibm.com>, Jeremy Kerr <jk@ozlabs.org>
+.SH "SEE ALSO"
+\fBclose\fP(2), \fBspu_create\fP(2), \fBspu_run\fP(2), \fBcapabilities\fP(7)
+.PP
+\fIThe Cell Broadband Engine Architecture (CBEA) specification\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,171 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2008, Linux Foundation, written by Michael Kerrisk
+.\" <mtk.manpages@gmail.com>
+.\"
+.\" A few pieces remain from an earlier version written in
+.\" 2002 by Walter Harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getgrouplist 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getgrouplist \- 获取用户所属组的列表
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <grp.h>\fP
+.PP
+\fBint getgrouplist(const char *\fP\fIuser\fP\fB, gid_t \fP\fIgroup\fP\fB,\fP
+\fB                 gid_t *\fP\fIgroups\fP\fB, int *\fP\fIngroups\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetgrouplist\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetgrouplist\fP() 函数扫描组数据库 (参见 \fBgroup\fP(5)) 以获取 \fIuser\fP 所属的组列表。 这些组中最多
+\fI*ngroups\fP 个返回数组 \fIgroups\fP 中。
+.PP
+如果它不在组数据库中为 \fIuser\fP 定义的组中，则 \fIgroup\fP 包含在 \fBgetgrouplist\fP() 返回的组列表中;
+通常，此参数被指定为 \fIuser\fP 的密码记录中的组 ID。
+.PP
+\fIngroups\fP 参数是一个值 \- 结果参数: 返回时它始终包含为 \fIuser\fP 找到的组数，包括 \fIgroup\fP; 该值可能大于
+\fIgroups\fP 中存储的组数。
+.SH "RETURN VALUE"
+如果 \fIuser\fP 所属的组数小于或等于 \fI*ngroups\fP，则返回值 \fI*ngroups\fP。
+.PP
+如果用户是多个 \fI*ngroups\fP 组的成员，则 \fBgetgrouplist\fP() 返回 \-1。 在这种情况下，\fI*ngroups\fP
+中返回的值可用于调整传递给 \fBgetgrouplist\fP() 的缓冲区的大小。
+.SH VERSIONS
+这个函数自 glibc 2.2.4 以来就存在。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetgrouplist\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这个函数不标准; 它出现在大多数 BSD 上。
+.SH BUGS
+在 glibc 2.3.3 之前，这个函数的实现包含一个缓冲区溢出错误: 它返回数组 \fIgroups\fP 中 \fIuser\fP 的完整组列表，即使组数超过
+\fI*ngroups\fP。
+.SH EXAMPLES
+下面的程序显示在其第一个命令行参数中命名的用户的组列表。 第二个命令行参数指定要提供给 \fBgetgrouplist\fP() 的 \fIngroups\fP
+值。 以下 shell 会话显示了该程序的使用示例:
+.PP
+.in +4n
+.EX
+$\fB ./a.out cecilia 0\fP
+getgrouplist() returned \-1;  ngroups = 3 
+$\fB ./a.out cecilia 3\fP
+ngroups = 3
+16 (dialout)
+33 (video)
+100 (users)
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (getgrouplist.c)
+\&
+.EX
+#include <grp.h>
+#include <pwd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    int ngroups;
+    struct passwd *pw;
+    struct group *gr;
+    gid_t *groups;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <user> <ngroups>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    ngroups = atoi(argv[2]);
+
+    groups = malloc(sizeof(*groups) * ngroups);
+    if (groups == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Fetch passwd structure (contains first group ID for user). */
+
+    pw = getpwnam(argv[1]);
+    if (pw == NULL) {
+        perror("getpwnam");
+        exit(EXIT_SUCCESS);
+    }
+
+    /* Retrieve group list. */
+
+    if (getgrouplist(argv[1], pw\->pw_gid, groups, &ngroups) == \-1) {
+        fprintf(stderr, "getgrouplist() returned \-1; ngroups = %d\en",
+                ngroups);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Display list of retrieved groups, along with group names. */
+
+    fprintf(stderr, "ngroups = %d\en", ngroups);
+    for (size_t j = 0; j < ngroups; j++) {
+        printf("%d", groups[j]);
+        gr = getgrgid(groups[j]);
+        if (gr != NULL)
+            printf(" (%s)", gr\->gr_name);
+        printf("\en");
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetgroups\fP(2), \fBsetgroups\fP(2), \fBgetgrent\fP(3), \fBgroup_member\fP(3),
+\fBgroup\fP(5), \fBpasswd\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

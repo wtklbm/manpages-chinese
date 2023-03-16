@@ -1,0 +1,182 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2019 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pidfd_send_signal 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pidfd_send_signal \- 向文件描述符指定的进程发送信号
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/signal.h>\fP     /* Definition of \fBSIG*\fP constants */
+\fB#include <signal.h>\fP           /* Definition of \fBSI_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_pidfd_send_signal, int \fP\fIpidfd\fP\fB, int \fP\fIsig\fP\fB,\fP
+\fB            siginfo_t *_Nullable \fP\fIinfo\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBpidfd_send_signal\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+.\" See the very detailed commit message for kernel commit
+.\" 3eb39f47934f9d5a3027fe00d906a45fe3a15fad
+\fBpidfd_send_signal\fP() 系统调用发送信号 \fIsig\fP 给 \fIpidfd\fP 所指的目标进程，\fIpidfd\fP 是指进程的 PID
+文件描述符。
+.PP
+如果 \fIinfo\fP 参数指向 \fIsiginfo_t\fP 缓冲区，则应按照 \fBrt_sigqueueinfo\fP(2) 中的描述填充该缓冲区。
+.PP
+如果 \fIinfo\fP 参数是 NULL 指针，这相当于指定一个指向 \fIsiginfo_t\fP 缓冲区的指针，其字段与使用 \fBkill\fP(2):
+发送信号时隐式提供的值匹配
+.PP
+.PD 0
+.IP \[bu] 3
+\fIsi_signo\fP 设置为信号编号;
+.IP \[bu]
+\fIsi_errno\fP 置 0;
+.IP \[bu]
+\fIsi_code\fP 设置为 \fBSI_USER\fP;
+.IP \[bu]
+\fIsi_pid\fP 设置为调用者的 PID; and
+.IP \[bu]
+\fIsi_uid\fP 设置为调用者的真实用户 ID。
+.PD
+.PP
+调用进程必须与 \fIpidfd\fP 引用的进程位于相同的 PID 名称空间中，或者位于该名称空间的祖先中。
+.PP
+\fIflags\fP 参数保留给 future 使用; 目前，这个参数必须指定为 0.
+.SH "RETURN VALUE"
+成功时，\fBpidfd_send_signal\fP() 返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIpidfd\fP 不是有效的 PID 文件描述符。
+.TP 
+\fBEINVAL\fP
+\fIsig\fP 不是有效信号。
+.TP 
+\fBEINVAL\fP
+调用进程不在可以向目标进程发送信号的 PID 名称空间中。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 不是 0.
+.TP 
+\fBEPERM\fP
+调用进程没有向目标进程发送信号的权限。
+.TP 
+\fBEPERM\fP
+\fIpidfd\fP 不引用调用进程，\fIinfo.si_code\fP 无效 (参见 \fBrt_sigqueueinfo\fP(2)).
+.TP 
+\fBESRCH\fP
+目标进程不存在 (即，它已终止并正在等待)。
+.SH VERSIONS
+\fBpidfd_send_signal\fP() 最早出现在 Linux 5.1。
+.SH STANDARDS
+\fBpidfd_send_signal\fP() 是 Linux 特定的。
+.SH NOTES
+.SS "PID file descriptors"
+\fIpidfd\fP 参数是 PID 文件描述符，是指进程的文件描述符。 这样的文件描述符可以通过以下任何一种方式获得:
+.IP \[bu] 3
+通过打开 \fI/proc/\fPpid 目录;
+.IP \[bu]
+使用 \fBpidfd_open\fP(2); or
+.IP \[bu]
+通过由调用返回到指定 \fBCLONE_PIDFD\fP 标志的 \fBclone\fP(2) 或 \fBclone3\fP(2) 的 PID 文件描述符。
+.PP
+\fBpidfd_send_signal\fP() 系统调用可以避免使用传统接口 (例如 \fBkill\fP(2)) 向进程发送信号) 时发生的竞争状态。
+问题在于，传统接口通过进程 ID (PID) 指定目标进程，结果是，如果原本预期的目标进程已经终止并且其 PID
+已被另一个进程回收，则发送方可能会意外地将信号发送到错误的进程。 相比之下，PID 文件描述符是对特定进程的稳定引用;
+如果该进程终止，\fBpidfd_send_signal\fP() 将失败并返回错误 \fBESRCH\fP。
+.SH EXAMPLES
+.\" SRC BEGIN (pidfd_send_signal.c)
+.EX
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+static int
+pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
+                  unsigned int flags)
+{
+    return syscall(SYS_pidfd_send_signal, pidfd, sig, info, flags);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int        pidfd, sig;
+    char       path[PATH_MAX];
+    siginfo_t  info;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <pid> <signal>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    sig = atoi(argv[2]);
+
+    /* Obtain a PID file descriptor by opening the /proc/PID directory
+       of the target process. */
+
+    snprintf(path, sizeof(path), "/proc/%s", argv[1]);
+
+    pidfd = open(path, O_RDONLY);
+    if (pidfd == \-1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Populate a \[aq]siginfo_t\[aq] structure for use with
+       pidfd_send_signal(). */
+
+    memset(&info, 0, sizeof(info));
+    info.si_code = SI_QUEUE;
+    info.si_signo = sig;
+    info.si_errno = 0;
+    info.si_uid = getuid();
+    info.si_pid = getpid();
+    info.si_value.sival_int = 1234;
+
+    /* Send the signal. */
+
+    if (pidfd_send_signal(pidfd, sig, &info, 0) == \-1) {
+        perror("pidfd_send_signal");
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBkill\fP(2), \fBpidfd_open\fP(2), \fBrt_sigqueueinfo\fP(2),
+\fBsigaction\fP(2), \fBpid_namespaces\fP(7), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

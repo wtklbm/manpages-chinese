@@ -1,0 +1,374 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH KERNEL\-INSTALL 8 "" "systemd 253" kernel\-install
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+kernel\-install \- 在 /boot 中添加和删除内核和 initrd 映像
+.SH SYNOPSIS
+.HP \w'\fBkernel\-install\fR\ 'u
+\fBkernel\-install\fP [OPTIONS...] 命令 \fIKERNEL\-VERSION\fP \fIKERNEL\-IMAGE\fP
+[\fIINITRD\-FILE\fP...]
+.SH DESCRIPTION
+.PP
+\fBkernel\-install\fP 用于安装和删除内核和 initrd 映像 \&\s-2\u [1]\d\s+2 到引导加载程序分区，这里称为
+\fI$BOOT\fP\&。它通常是 /boot/、/efi/ 或 /boot/efi/ 之一，见下文 \&。
+.PP
+\fBkernel\-install\fP 将运行位于目录 /usr/lib/kernel/install\&.d/ 和本地管理目录
+/etc/install\&.d/\& 中的可执行文件 ("plugins")。所有文件都按词法顺序共同排序和执行，而不管它们所在的目录
+\&。但是，具有相同文件名的文件会相互替换 \&。/etc/kernel/install\&.d/ 中的文件优先于
+/usr/install\&.d/\& 中同名的文件。如果需要，这可用于使用本地文件覆盖系统提供的可执行文件;
+/etc/kernel/install\&.d/ 中的符号链接与 /usr/lib/kernel/install\&.d/ 中的可执行文件同名，指向
+/dev/null，完全禁用可执行文件 \&。可执行文件的扩展名必须是 "\&.install"; 其他扩展被忽略 \&。
+.PP
+放置在这些目录中的可执行文件在成功时应返回 \fB0\fP\&。它还可能返回 \fB77\fP 以导致整个操作终止 (将跳过词汇顺序后面的可执行文件) \&。
+.SH COMMANDS
+.PP
+理解以下命令:
+.PP
+\fBadd \fP\fIKERNEL\-VERSION\fP\fB \fP\fIKERNEL\-IMAGE\fP\fB [\fP\fIINITRD\-FILE\fP\fB \&.\&.\&.]\fP
+.RS 4
+此命令需要内核版本字符串和内核映像文件的路径，如参数 \&。可选地，也可以指定一个或多个 initrd 映像 (请注意，插件可能会生成其他映像)
+\&。\fBkernel\-install\fP 从 /usr/install\&.d/*\&.install 和
+/etc/install\&.d/*\&.install (i\&.e\&. 插件) 具有以下参数:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+add \fIKERNEL\-VERSION\fP $BOOT/\fIENTRY\-TOKEN\fP/\fIKERNEL\-VERSION\fP/ \fIKERNEL\-IMAGE\fP [\fIINITRD\-FILE\fP \&.\&.\&.]
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+第三个参数直接指 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2 类型 #1 表项
+("entry directory") \& 的内核镜像、initrd 镜像等资源的放置路径。如果使用其他引导加载程序方案，则可以忽略该参数
+\&。\fIENTRY\-TOKEN\fP 字符串通常是机器 ID，应该标识系统上的本地安装 \&。详情见下文 \&。
+.sp
+在这种情况下，两个默认插件执行以下操作:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fBkernel\-install\fP creates $BOOT/\fIENTRY\-TOKEN\fP/\fIKERNEL\-VERSION\fP, if enabled
+(see \fI$KERNEL_INSTALL_LAYOUT\fP)\&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+50\-depmod\&.install runs \fBdepmod\fP(8)  for the \fIKERNEL\-VERSION\fP\&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+90\-loaderentry\&.install copies \fIKERNEL\-IMAGE\fP to
+$BOOT/\fIENTRY\-TOKEN\fP/\fIKERNEL\-VERSION\fP/linux\&. If \fIINITRD\-FILE\fPs are
+provided, it also copies them to
+$BOOT/\fIENTRY\-TOKEN\fP/\fIKERNEL_VERSION\fP/\fIINITRD\-FILE\fP\&. It also creates a
+boot loader entry according to the \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2 (Type #1) in
+$BOOT/loader/entries/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP\&.conf\&. The title of
+the entry is the \fIPRETTY_NAME\fP parameter specified in /etc/os\-release or
+/usr/lib/os\-release (if the former is missing), or "Linux
+\fIKERNEL\-VERSION\fP", if unset\&.
+.sp
+如果 \fI$KERNEL_INSTALL_LAYOUT\fP 不是 "bls"，则此插件不执行任何操作 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+90\-uki\-copy\&.install copies a file uki\&.efi from
+\fI$KERNEL_INSTALL_STAGING_AREA\fP or if it does not exist the \fIKERNEL\-IMAGE\fP
+argument, iff it has a "\&.efi" extension, to
+$BOOT/EFI/Linux/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP\&.efi\&.
+.sp
+如果 \fI$KERNEL_INSTALL_LAYOUT\fP 不是 "uki"，则此插件不执行任何操作 \&。
+.RE
+.RE
+.PP
+\fBremove \fP\fIKERNEL\-VERSION\fP
+.RS 4
+此命令需要一个内核版本字符串作为单个参数 \&。这使用以下参数从 /usr/install\&.d/*\&.install 和
+/etc/install\&.d/*\&.install 调用可执行文件:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+remove \fIKERNEL\-VERSION\fP $BOOT/\fIENTRY\-TOKEN\fP/\fIKERNEL\-VERSION\fP/
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+Afterwards, \fBkernel\-install\fP removes the entry directory
+$BOOT/\fIENTRY\-TOKEN\fP/\fIKERNEL\-VERSION\fP/ and its contents, if it exists\&.
+.sp
+在这种情况下，两个默认插件执行以下操作:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+50\-depmod\&.install 再次删除 \fBdepmod\fP 为这个内核生成的文件 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+90\-loaderentry\&.install removes the file
+$BOOT/loader/entries/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP\&.conf\&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+90\-uki\-copy\&.install removes the file
+$BOOT/EFI/Linux/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP\&.efi\&.
+.RE
+.RE
+.PP
+\fBinspect\fP
+.RS 4
+显示配置或自动检测的各种路径和参数 \&。特别显示下面列出的各种 \fI$KERNEL_INSTALL_*\fP 环境变量的值 \&。
+.RE
+.SH "THE \FI$BOOT\FR PARTITION"
+.PP
+内核和 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2 片段所在的分区称为
+\fI$BOOT\fP\&。\fBkernel\-install\fP 通过依次查看 /efi/、/boot/、/boot/efi/ 来确定这个分区的位置
+\&。$BOOT/entries/ 或 $BOOT/\fIENTRY\-TOKEN\fP/ 所在的第一个位置使用 \&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+输出有关正在执行的操作的附加信息 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "ENVIRONMENT VARIABLES"
+.SS "Environment variables exported for plugins"
+.PP
+如果使用 \fB\-\-verbose\fP，\fI$KERNEL_INSTALL_VERBOSE=1\fP 将被导出用于插件
+\&。在这种情况下，他们可能会输出额外的日志 \&。
+.PP
+\fI$KERNEL_INSTALL_MACHINE_ID\fP 为插件设置为所需的机器 ID 以使用 \&。它 \*(Aqs 总是一个 128 位的
+ID\&。通常它 \*(Aqs 从 /etc/machine\-id 读取，但它也可以通过 \fI$MACHINE_ID\fP 覆盖 (见下文)
+\&。如果未通过这些方法指定，回退值将由 \fBkernel\-install\fP 生成并仅用于单个调用 \&。
+.PP
+\fI$KERNEL_INSTALL_ENTRY_TOKEN\fP 为插件设置为所需条目 "token" 以使用 \&。It\*(Aqs
+一个标识符，用于识别本地安装，通常是机器 ID，i\&.e\&。与 \fI$KERNEL_INSTALL_MACHINE_ID\fP
+相同，但也可能是不同类型的标识符，例如固定字符串或 /etc/os\-release\& 中的 \fIID=\fP、\fIIMAGE_ID=\fP
+值。此处传递的字符串将用于命名引导加载程序规范条目，或内核映像和初始 RAM 磁盘映像放置到 \& 中的目录。
+.PP
+请注意，虽然 \fI$KERNEL_INSTALL_ENTRY_TOKEN\fP 和 \fI$KERNEL_INSTALL_MACHINE_ID\fP
+通常设置为相同的值，但后者保证是小写十六进制的有效 32 字符 ID，而前者可以是任何短字符串 \&。要使用的条目 token 从
+/etc/kernel/entry\-token 读取，如果它存在 \&。否则，将检查 \fI$BOOT\fP 以下的几个可能候选者的引导加载程序规范类型 1
+条目目录，如果找到条目 token 则派生自该 \&。如果不成功，\fI$KERNEL_INSTALL_MACHINE_ID\fP 将用作回退 \&。
+.PP
+\fI$KERNEL_INSTALL_BOOT_ROOT\fP 为插件设置为层次结构的根目录 (通常是挂载点)
+的绝对路径，其中应放置引导加载程序条目、内核映像和相关资源 \&。这通常是 XBOOTLDR 分区或 ESP (EFI 系统分区)
+的挂载路径，概念上也称为 \fI$BOOT\fP\&。可以通过设置 \fI$BOOT_ROOT\fP (见下文) \& 来覆盖。
+.PP
+为插件设置 \fI$KERNEL_INSTALL_LAYOUT=bls|uki|other|\&.\&.\&.\fP 以指定安装布局 \&。如果
+$BOOT/\fIENTRY\-TOKEN\fP 存在则默认为 \fBbls\fP，否则默认为 \fBother\fP\&。附加的布局名称可以通过约定 \&
+来定义。如果一个插件使用特殊的布局，它 \*(Aqs 鼓励在初始安装时声明自己的布局名称并在 install\&.conf 中配置
+\fIlayout=\fP\&。目前理解以下值:
+.PP
+bls
+.RS 4
+Standard \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2 Type #1
+layout, compatible with \fBsystemd\-boot\fP(7): entries in
+$BOOT/loader/entries/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP[+\fITRIES\fP]\&.conf,
+kernel and initrds under $BOOT/\fIENTRY\-TOKEN\fP/\fIKERNEL\-VERSION\fP/
+.sp
+由 90\-loaderentry\&.install\& 实现。
+.RE
+.PP
+uki
+.RS 4
+Standard \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2 Type #2
+layout, compatible with \fBsystemd\-boot\fP(7): unified kernel images under
+$BOOT/EFI/Linux as
+$BOOT/EFI/Linux/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP[+\fITRIES\fP]\&.efi\&.
+.sp
+由 90\-uki\-copy\&.install\& 实现。
+.RE
+.PP
+other
+.RS 4
+\fBkernel\-install\fP\& 本身不理解的一些其他布局。
+.RE
+.PP
+为插件设置 \fI$KERNEL_INSTALL_INITRD_GENERATOR\fP 以选择 initrd 生成器 \&。这可以配置为
+install\&.conf 中的 \fIinitrd_generator=\fP，见下文 \&。
+.PP
+\fI$KERNEL_INSTALL_STAGING_AREA\fP 为插件设置为目录路径 \&。插件可以丢弃该目录中的文件，它们将根据文件名和扩展名 \&
+作为加载程序条目的一部分安装。
+.SS "Environment variables understood by kernel\-install"
+.PP
+可以设置 \fI$KERNEL_INSTALL_CONF_ROOT\fP 来覆盖 \fBkernel\-install\fP\&
+读取的配置文件的位置。设置后，install\&.conf、entry\-token 等文件将从该目录读取 \&。
+.PP
+\fI$KERNEL_INSTALL_PLUGINS\fP 可以设置为覆盖 \fBkernel\-install\fP\& 执行的插件列表。参数是以空格分隔的路径列表
+\&。 "KERNEL_INSTALL_PLUGINS=:" 可用于防止任何插件运行 \&。
+.PP
+可以为 \fBkernel\-install\fP 设置 \fI$MACHINE_ID\fP 以覆盖 \fI$KERNEL_INSTALL_MACHINE_ID\fP，机器
+ID\&。
+.PP
+可以为 \fBkernel\-install\fP 设置 \fI$BOOT_ROOT\fP 以覆盖
+\fI$KERNEL_INSTALL_BOOT_ROOT\fP，引导项的安装位置 \&。
+.PP
+最后两个变量也可以在 install\&.conf\& 中设置。环境中设置的变量优先于配置文件中指定的值 \&。
+.SH "EXIT STATUS"
+.PP
+如果每个可执行文件都返回 0 或 77，则返回 0，否则返回非零失败代码 \&。
+.SH FILES
+.PP
+/usr/lib/kernel/install\&.d/*\&.install /etc/kernel/install\&.d/*\&.install
+.RS 4
+由 kernel\-install\& 执行的插入文件。
+.RE
+.PP
+/usr/lib/kernel/cmdline /etc/kernel/cmdline /proc/cmdline
+.RS 4
+由 90\-loaderentry\&.install\& 读取。文件 /etc/kernel/cmdline 的内容指定要使用的内核命令行
+\&。如果该文件不存在，则使用 /usr/lib/kernel/cmdline\&。如果也不存在，则使用 /proc/cmdline\&。
+\fI$KERNEL_INSTALL_CONF_ROOT\fP 可用于覆盖路径 \&。
+.RE
+.PP
+/etc/kernel/tries
+.RS 4
+通过 90\-loaderentry\&.install 和 90\-uki\-copy\&.install\& 读取。If this file exists
+a numeric value is read from it and the naming of the generated entry file
+or UKI is slightly altered to include it as
+$BOOT/loader/entries/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP+\fITRIES\fP\&.conf or
+$BOOT/EFI/Linux/\fIENTRY\-TOKEN\fP\-\fIKERNEL\-VERSION\fP+\fITRIES\fP\&.conf,
+respectively\&.  这对于 \fBsystemd\-boot\fP(7) 等引导加载程序很有用，它使用嵌入在条目文件名
+\&. 中的计数器来实现引导尝试计数。 \fI$KERNEL_INSTALL_CONF_ROOT\fP 可用于覆盖路径 \&。
+.RE
+.PP
+/etc/kernel/entry\-token
+.RS 4
+如果这个文件存在，它被读取并用作这个系统的 "entry token"，i\&.e\&。用于命名 Boot Loader Specification
+条目，有关详细信息，请参见上面的 \fI$KERNEL_INSTALL_ENTRY_TOKEN\fP\&。
+\fI$KERNEL_INSTALL_CONF_ROOT\fP 可用于覆盖路径 \&。
+.RE
+.PP
+/etc/machine\-id
+.RS 4
+该文件的内容指定了机器标识 \fIMACHINE\-ID\fP\&。
+.RE
+.PP
+/etc/os\-release /usr/lib/os\-release
+.RS 4
+由 90\-loaderentry\&.install\& 读取。如果可用，将从这些文件中读取 \fIPRETTY_NAME=\fP
+并将其用作引导菜单条目的标题 \&。否则，` 将使用 Linux \fIKERNEL\-VERSION\fP"\&。
+.RE
+.PP
+/usr/lib/kernel/install\&.conf /etc/kernel/install\&.conf
+.RS 4
+\fBkernel\-install\fP 的配置选项，作为一系列 \fIKEY=\fP\fIVALUE\fP 赋值，与 shell 语法兼容，遵循与
+\fBos\-release\fP(5)\& 中描述的相同规则。如果存在 /etc/kernel/install\&.conf，将读取
+/usr/lib/kernel/install\&.conf，否则读取 /usr/lib/kernel/install\&.conf\&。该文件是可选的
+\&。 \fI$KERNEL_INSTALL_CONF_ROOT\fP 可用于覆盖路径 \&。
+.sp
+目前支持以下按键:
+\fIMACHINE_ID=\fP、\fIBOOT_ROOT=\fP、\fIlayout=\fP、\fIinitrd_generator=\fP\&。有关详细信息，请参见上面的环境变量部分。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBmachine\-id\fP(5), \fBos\-release\fP(5), \fBdepmod\fP(8), \fBsystemd\-boot\fP(7),
+\m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2
+.SH NOTES
+.IP " 1." 4
+现在实际上 CPIO 归档用作 "initramfs"，而不是 "initrd"。有关解释，请参见 \fBbootup\fP(7)。
+.IP " 2." 4
+引导装载程序规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/boot_loader_specification
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

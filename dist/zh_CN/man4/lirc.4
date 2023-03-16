@@ -1,0 +1,233 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2015-2016, Alec Leamas
+.\" Copyright (c) 2018, Sean Young <sean@mess.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH lirc 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+lirc\-lirc 设备
+.SH DESCRIPTION
+\fI/dev/lirc*\fP 字符设备为红外线 (IR) 遥控器提供底层双向接口。 这些设备大部分可以接收，有些可以发送。
+在接收或发送数据时，驱动程序根据底层硬件以两种不同的模式工作。
+.PP
+一些硬件 (通常是电视卡) 在内部解码 IR 信号，并提供解码后的按钮按下作为扫描码值。 此类硬件的驱动程序在
+\fBLIRC_MODE_SCANCODE\fP 模式下工作。 此类硬件通常不支持发送红外信号。 此外，此类硬件只能解码一组有限的 IR
+协议，通常只能解码与电视卡捆绑在一起的特定遥控器的协议。
+.PP
+其他硬件提供 pulse/space 持续时间流。 此类驱动程序在 \fBLIRC_MODE_MODE2\fP 模式下工作。 这样的硬件可以与
+(almost) 任何类型的遥控器一起使用。 这种类型的硬件也可以在 \fBLIRC_MODE_SCANCODE\fP 模式下使用，在这种情况下，内核 IR
+解码器将对 IR 进行解码。 这些解码器可以用扩展的 BPF 编写 (参见 \fBbpf\fP(2)) 并附加到 \fBlirc\fP 设备。
+有时，这种硬件也支持发送红外数据。
+.PP
+.\"
+\fBLIRC_GET_FEATURES\fP ioctl (见下文) 允许探测是否支持接收和发送，以及在哪些模式下，以及其他，特性。
+.SS "Reading input with the LIRC_MODE_MODE2 mode"
+在 \fBLIRC_MODE_MODE2 mode\fP 中，\fBread\fP(2) 返回的数据提供了 32 位值，表示一个空格或一个脉冲持续时间。 持续时间
+(microseconds) 的时间编码在低 24 位中。 脉冲 (也称为闪光) 表示检测到红外光的持续时间，而空格 (也称为间隙)
+表示没有红外线的持续时间。 如果空间的持续时间超过不活动超时，则传递一个特殊的超时包，它标志着一条消息的结束。 高 8 位表示包的类型:
+.TP  4
+\fBLIRC_MODE2_SPACE\fP
+值反映了空间持续时间 (microseconds)。
+.TP  4
+\fBLIRC_MODE2_PULSE\fP
+值反映脉冲持续时间 (microseconds)。
+.TP  4
+\fBLIRC_MODE2_FREQUENCY\fP
+值反映一个频率 (Hz); 请参见 \fBLIRC_SET_MEASURE_CARRIER_MODE\fP ioctl。
+.TP  4
+\fBLIRC_MODE2_TIMEOUT\fP
+.\"
+值反映了空间持续时间 (microseconds)。 包反映超时; 请参见 \fBLIRC_SET_REC_TIMEOUT_REPORTS\fP ioctl。
+.TP  4
+\fBLIRC_MODE2_OVERFLOW\fP
+IR 接收者遇到溢出，结果数据丢失 (自 Linux 5.18 起)。
+.SS "Reading input with the LIRC_MODE_SCANCODE mode"
+.\"
+在 \fBLIRC_MODE_SCANCODE\fP 模式下，\fBread\fP(2) 返回的数据反映了结构体 \fIlirc_scancode\fP
+中的解码按钮按下。 scancode 存放在 \fIscancode\fP 域，IR 协议存放在 \fIrc_proto\fP 域。 该字段有一个 \fIenum rc_proto\fP 的值。
+.SS "Writing output with the LIRC_MODE_PULSE mode"
+使用 \fBwrite\fP(2) 写入字符设备的数据是一个 pulse/space 整数值序列。 脉冲和空格仅由它们的位置隐式标记。
+数据必须以脉冲开始和结束，因此它必须始终包含奇数个样本。 \fBwrite\fP(2) 函数阻塞，直到数据已被硬件传输。
+如果提供的数据多于硬件可以发送的数据，则 \fBwrite\fP(2) 调用会失败并显示错误 \fBEINVAL\fP。
+.SS "Writing output with the LIRC_MODE_SCANCODE mode"
+写入字符设备的数据必须是单个结构体 \fIlirc_scancode\fP。 \fIscancode\fP 和 \fIrc_proto\fP
+字段必须填写，所有其他字段必须为 0。 内核 IR 编码器会将扫描码转换为脉冲和空格。 协议或扫描码无效，或 \fBlirc\fP 设备无法传输。
+.SH "IOCTL COMMANDS"
+.nf
+#include <linux/lirc.h>    /* But see BUGS */
+
+int ioctl(int fd, int cmd, int *val);
+.fi
+.PP
+\fBlirc\fP 字符设备提供以下 \fBioctl\fP(2) 操作来探测或更改特定的 \fBlirc\fP 硬件设置。
+.SS "Always Supported Commands"
+\fI/dev/lirc*\fP 设备始终支持以下命令:
+.TP  4
+\fBLIRC_GET_FEATURES\fP (\fIvoid\fP)
+返回组合特性位的位掩码; 见，特性。
+.PP
+.\"
+如果设备返回 \fBLIRC_GET_FEATURES\fP 的错误代码，则可以安全地假定它不是 \fBlirc\fP 设备。
+.SS "Optional Commands"
+一些 \fBlirc\fP 设备支持下面列出的命令。 除非另有说明，否则如果操作不受支持，这些操作将失败并返回错误
+\fBENOTTY\fP，或者如果操作失败则返回错误 \fBEINVAL\fP，或者提供的参数无效。 如果驱动程序未宣布支持某些特性则调用相应的 ioctl
+将失败并显示错误 \fBENOTTY\fP。
+.TP 
+\fBLIRC_GET_REC_MODE\fP (\fIvoid\fP)
+如果 \fBlirc\fP 设备没有接收者，则此操作失败并显示错误 \fBENOTTY\fP。 否则，它返回接收模式，这将是以下之一:
+.RS
+.TP 
+\fBLIRC_MODE_MODE2\fP
+驱动程序返回一系列 pulse/space 持续时间。
+.TP 
+\fBLIRC_MODE_SCANCODE\fP
+驱动程序返回结构体 \fIlirc_scancode\fP 值，每个值代表一个解码的按钮按下。
+.RE
+.TP 
+\fBLIRC_SET_REC_MODE\fP (\fIint\fP)
+设置接收模式。 \fIval\fP 是 \fBLIRC_MODE_SCANCODE\fP 或 \fBLIRC_MODE_MODE2\fP。 如果 \fBlirc\fP
+设备没有接收者，则此操作失败并显示错误 \fBENOTTY.\fP
+.TP 
+\fBLIRC_GET_SEND_MODE\fP (\fIvoid\fP)
+返回发送模式。 支持 \fBLIRC_MODE_PULSE\fP 或 \fBLIRC_MODE_SCANCODE\fP。 如果 \fBlirc\fP
+设备无法发送，则此操作失败并显示错误 \fBENOTTY.\fP
+.TP 
+\fBLIRC_SET_SEND_MODE\fP (\fIint\fP)
+设置发送模式。 \fIval\fP 是 \fBLIRC_MODE_SCANCODE\fP 或 \fBLIRC_MODE_PULSE\fP。 如果 \fBlirc\fP
+设备无法发送，此操作将失败并显示错误 \fBENOTTY\fP。
+.TP 
+\fBLIRC_SET_SEND_CARRIER\fP (\fIint\fP)
+设置调制频率。 参数是频率 (Hz)。
+.TP 
+\fBLIRC_SET_SEND_DUTY_CYCLE\fP (\fIint\fP)
+设置载波占空比。 \fIval\fP 是 [0,100] 范围内的一个数字，它描述脉冲宽度占总周期的百分比。 目前，没有为 0 或 100
+定义特殊含义，但这些值保留供 future 使用。
+.TP 
+\fBLIRC_GET_MIN_TIMEOUT\fP (\fIvoid\fP)\fB,\fP \fBLIRC_GET_MAX_TIMEOUT\fP (\fIvoid\fP)
+某些设备具有内部计时器，可用于检测何时长时间没有 IR 活动。 这可以帮助 \fBlircd\fP(8) 检测到 IR 信号已完成并可以加快解码过程。
+这些操作返回整数值，minimum/maximum 超时可以设置为 (microseconds)。 有些设备有固定的超时时间。
+对于此类驱动程序，\fBLIRC_GET_MIN_TIMEOUT\fP 和 \fBLIRC_GET_MAX_TIMEOUT\fP 将失败并显示错误
+\fBENOTTY\fP。
+.TP 
+\fBLIRC_SET_REC_TIMEOUT\fP (\fIint\fP)
+设置 IR 不活动超时 (microseconds) 的整数值。 要被接受，该值必须在 \fBLIRC_GET_MIN_TIMEOUT\fP 和
+\fBLIRC_GET_MAX_TIMEOUT\fP 定义的限制范围内。 值为 0 (如果硬件支持) 将禁用所有硬件超时，并且应尽快报告数据。
+如果无法设置准确值，则应设置比给定值下一个可能的值 \fIgreater\fP。
+.TP 
+\fBLIRC_GET_REC_TIMEOUT\fP (\fIvoid\fP)
+返回当前不活动超时 (microseconds)。 自 Linux 4.18 起可用。
+.TP 
+\fBLIRC_SET_REC_TIMEOUT_REPORTS\fP (\fIint\fP)
+Enable (\fIval\fP is 1) or disable (\fIval\fP is 0) \fBLIRC_MODE_MODE2\fP 超时包。
+此操作的行为因内核版本而异:
+.RS
+.IP \[bu] 3
+由于 Linux 5.17: 超时包始终启用，并且此 ioctl 是空操作。
+.IP \[bu]
+自 Linux 4.16: 默认启用超时包。 每次打开 \fBlirc\fP 设备时，\fBLIRC_SET_REC_TIMEOUT\fP 操作可用于禁用
+(如果需要，稍后重新启用) 文件描述符超时。
+.IP \[bu]
+在 Linux 4.15 及更早版本中: 默认情况下禁用超时包，并启用它们 (通过与 \fBlirc\fP 设备关联的任何文件描述符上的
+\fBLIRC_SET_REC_TIMEOUT\fP) 具有为引用该设备的所有文件描述符启用超时的效果 (直到再次禁用超时)。
+.RE
+.TP 
+\fBLIRC_SET_REC_CARRIER\fP (\fIint\fP)
+设置接收载波频率上限 (Hz)。 请参见 \fBLIRC_SET_REC_CARRIER_RANGE\fP。
+.TP 
+\fBLIRC_SET_REC_CARRIER_RANGE\fP (\fIint\fP)
+设置接收载波频率 (Hz) 的下限。 为使其生效，首先使用 \fBLIRC_SET_REC_CARRIER_RANGE\fP ioctl 设置下限，然后使用
+\fBLIRC_SET_REC_CARRIER\fP ioctl 设置上限。
+.TP 
+\fBLIRC_SET_MEASURE_CARRIER_MODE\fP (\fIint\fP)
+启用 (\fIval\fP 为 1) 或禁用 (\fIval\fP 为 0) 测量模式。 如果启用，从下一个按键开始，驱动程序将发送
+\fBLIRC_MODE2_FREQUENCY\fP 数据包。 默认情况下，这应该是关闭的。
+.TP 
+\fBLIRC_GET_REC_RESOLUTION\fP (\fIvoid\fP)
+返回驱动程序分辨率 (microseconds)。
+.TP 
+\fBLIRC_SET_TRANSMITTER_MASK\fP (\fIint\fP)
+启用 \fIval\fP 中指定的一组发送器，其中包含一个位掩码，其中每个启用的发送者都是 1。 第一个发送者由最低有效位编码，依此类推。
+当给出无效的位掩码时，例如即使设备没有那么多发射器也设置了一个位，此操作返回可用发射器的数量并且不做任何其他事情。
+.TP 
+\fBLIRC_SET_WIDEBAND_RECEIVER\fP (\fIint\fP)
+一些设备配备了一个特殊的宽带接收器，旨在用于学习现有遥控器的输出。 此 ioctl 可用于启用 (\fIval\fP 等于 1) 或禁用 (\fIval\fP 等于
+0) 此功能。 这对于具有 narrow 波段接收器的设备可能有用，这些接收器阻止它们与某些遥控器一起使用。 宽带接收器也可能更精确。
+另一方面，它们的缺点通常是接收范围缩小。
+.IP
+.\"
+Note: 如果启用运营商报告，可能会隐式启用宽带接收者。 在这种情况下，一旦您禁用运营商报告，它就会被禁用。
+在运营商报告处于活动状态时尝试禁用宽带接入者将无济于事。
+.SH FEATURES
+\fBLIRC_GET_FEATURES\fP ioctl 返回描述驱动程序特性的位掩码。 掩码中可能会返回以下位:
+.TP 
+\fBLIRC_CAN_REC_MODE2\fP
+驱动程序能够使用 \fBLIRC_MODE_MODE2\fP 进行接收。
+.TP 
+\fBLIRC_CAN_REC_SCANCODE\fP
+驱动程序能够使用 \fBLIRC_MODE_SCANCODE\fP 进行接收。
+.TP 
+\fBLIRC_CAN_SET_SEND_CARRIER\fP
+驱动程序支持使用 \fBLIRC_SET_SEND_CARRIER\fP 更改调制频率。
+.TP 
+\fBLIRC_CAN_SET_SEND_DUTY_CYCLE\fP
+驱动程序支持使用 \fBLIRC_SET_SEND_DUTY_CYCLE\fP 更改占空比。
+.TP 
+\fBLIRC_CAN_SET_TRANSMITTER_MASK\fP
+驱动程序支持使用 \fBLIRC_SET_TRANSMITTER_MASK\fP 更改活动的 transmitter(s)。
+.TP 
+\fBLIRC_CAN_SET_REC_CARRIER\fP
+驱动支持使用 \fBLIRC_SET_REC_CARRIER\fP 设置接收载波频率。 自驱动程序合并到 Linux 2.6.36 后的任何 \fBlirc\fP
+设备都必须设置 \fBLIRC_CAN_SET_REC_CARRIER_RANGE\fP (如果设置了 \fBLIRC_CAN_SET_REC_CARRIER\fP
+特性)。
+.TP 
+\fBLIRC_CAN_SET_REC_CARRIER_RANGE\fP
+驱动程序支持 \fBLIRC_SET_REC_CARRIER_RANGE\fP。 必须先使用 \fBLIRC_SET_REC_CARRIER_RANGE\fP
+ioctl 设置载波的下限，然后再使用 \fBLIRC_SET_REC_CARRIER\fP ioctl 设置上限。
+.TP 
+\fBLIRC_CAN_GET_REC_RESOLUTION\fP
+驱动程序支持 \fBLIRC_GET_REC_RESOLUTION\fP。
+.TP 
+\fBLIRC_CAN_SET_REC_TIMEOUT\fP
+驱动程序支持 \fBLIRC_SET_REC_TIMEOUT\fP。
+.TP 
+\fBLIRC_CAN_MEASURE_CARRIER\fP
+驱动程序支持使用 \fBLIRC_SET_MEASURE_CARRIER_MODE\fP 测量调制频率。
+.TP 
+\fBLIRC_CAN_USE_WIDEBAND_RECEIVER\fP
+驱动程序支持使用 \fBLIRC_SET_WIDEBAND_RECEIVER\fP 的学习模式。
+.TP 
+\fBLIRC_CAN_SEND_PULSE\fP
+.\"
+驱动支持使用 \fBLIRC_MODE_PULSE\fP 或 \fBLIRC_MODE_SCANCODE\fP 发送
+.SH BUGS
+.\"
+使用这些设备需要内核源头文件 \fIlirc.h\fP。 此文件在 Linux 4.6 之前不可用。 旧内核的用户可以使用
+.UR http://www.lirc.org
+.UE .
+中捆绑的文件
+.SH "SEE ALSO"
+\fBir\-ctl\fP(1), \fBlircd\fP(8),\ \fBbpf\fP(2)
+.PP
+.UR https://www.kernel.org/\:doc/\:html/\:latest/\:userspace\-api/\:media/\:rc/\:lirc\-dev.html
+.UE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

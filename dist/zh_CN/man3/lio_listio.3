@@ -1,0 +1,132 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2010, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH lio_listio 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+lio_listio \- 启动 I/O 请求列表
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <aio.h>\fP
+.PP
+\fBint lio_listio(int \fP\fImode\fP\fB,\fP
+\fB               struct aiocb *restrict const \fP\fIaiocb_list\fP\fB[restrict],\fP
+\fB               int \fP\fInitems\fP\fB, struct sigevent *restrict \fP\fIsevp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBlio_listio\fP() 函数启动数组 \fIaiocb_list\fP 描述的 I/O 操作列表。
+.PP
+\fImode\fP 操作具有以下值之一:
+.TP 
+\fBLIO_WAIT\fP
+调用块，直到所有操作完成。 \fIsevp\fP 参数被忽略。
+.TP 
+\fBLIO_NOWAIT\fP
+I/O 操作排队等待处理，调用立即返回。 当所有 I/O 操作完成时，异步通知发生，由 \fIsevp\fP 参数指定; 详见 \fBsigevent\fP(7)。
+如果 \fIsevp\fP 为 NULL，则不会发生异步通知。
+.PP
+\fIaiocb_list\fP 参数是指向描述 I/O 操作的 \fIaiocb\fP 结构的指针数组。 这些操作以未指定的顺序执行。 \fInitems\fP
+参数指定数组 \fIaiocb_list\fP 的大小。 \fIaiocb_list\fP 中的空指针将被忽略。
+.PP
+在 \fIaiocb_list\fP 中的每个控制块中，\fIaio_lio_opcode\fP 字段指定要发起的 I/O 操作，如下:
+.TP 
+\fBLIO_READ\fP
+启动读取操作。 该操作排队等待指定此控制块的 \fBaio_read\fP(3) 调用。
+.TP 
+\fBLIO_WRITE\fP
+启动写操作。 该操作排队等待指定此控制块的 \fBaio_write\fP(3) 调用。
+.TP 
+\fBLIO_NOP\fP
+忽略此控制块。
+.PP
+每个控制块中的其余字段与 \fBaio_read\fP(3) 和 \fBaio_write\fP(3) 具有相同的含义。 每个控制块的
+\fIaio_sigevent\fP 字段可用于指定单个 I/O 操作的通知 (参见 \fBsigevent\fP(7)).
+.SH "RETURN VALUE"
+如果 \fImode\fP 是 \fBLIO_NOWAIT\fP，如果所有 I/O 操作都成功排队，则 \fBlio_listio\fP() 返回 0。 否则，返回
+\-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+如果 \fImode\fP 是 \fBLIO_WAIT\fP，当所有 I/O 操作都成功完成时，\fBlio_listio\fP() 返回 0。 否则，返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.PP
+\fBlio_listio\fP() 的返回状态仅提供有关调用本身的信息，而不提供有关单个 I/O 操作的信息。 一项或多项 I/O
+操作可能会失败，但这不会阻止其他操作完成。 可以使用 \fBaio_error\fP(3) 确定 \fIaiocb_list\fP 中各个 I/O 操作的状态。
+操作完成后，可以使用 \fBaio_return\fP(3) 获取其返回状态。 由于 \fBaio_read\fP(3) 和 \fBaio_write\fP(3)
+中所述的原因，个别 I/O 操作可能会失败。
+.SH ERRORS
+\fBlio_listio\fP() 函数可能失败的原因如下:
+.TP 
+\fBEAGAIN\fP
+资源不足。
+.TP 
+\fBEAGAIN\fP
+.\" Doesn't happen in glibc(?)
+\fInitems\fP 指定的 I/O 操作数将导致超出限制 \fBAIO_MAX\fP。
+.TP 
+\fBEINTR\fP
+\fImode\fP 是 \fBLIO_WAIT\fP，在所有 I/O 操作完成之前捕获到信号; 请参见 \fBsignal\fP(7)。 (这甚至可能是用于异步 I/O
+完成通知的信号之一。)
+.TP 
+\fBEINVAL\fP
+.\" Doesn't happen in glibc(?)
+\fImode\fP 无效，或 \fInitems\fP 超出限制 \fBAIO_LISTIO_MAX\fP。
+.TP 
+\fBEIO\fP
+.\" e.g., ioa_reqprio or aio_lio_opcode was invalid
+\fIaiocb_list\fP 指定的多个操作之一失败。 应用程序可以使用 \fBaio_return\fP(3) 检查每个操作的状态。
+.PP
+如果 \fBlio_listio\fP() 失败并出现错误 \fBEAGAIN\fP、\fBEINTR\fP 或 \fBEIO\fP，则可能已启动 \fIaiocb_list\fP
+中的某些操作。 如果 \fBlio_listio\fP() 因任何其他原因失败，则 I/O 操作均未启动。
+.SH VERSIONS
+\fBlio_listio\fP() 函数自 glibc 2.1 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBlio_listio\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+.\" or the control block of the operation
+在使用前将控制块归零是个好主意。 当 I/O 操作正在进行时，不得更改控制块。 在操作期间不得访问正在读取或写入的缓冲区，否则可能会出现未定义的结果。
+涉及的存储区必须保持有效。
+.PP
+指定相同 \fIaiocb\fP 结构体的同时 I/O 操作会产生未定义的结果。
+.SH "SEE ALSO"
+\fBaio_cancel\fP(3), \fBaio_error\fP(3), \fBaio_fsync\fP(3), \fBaio_return\fP(3),
+\fBaio_suspend\fP(3), \fBaio_write\fP(3), \fBaio\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

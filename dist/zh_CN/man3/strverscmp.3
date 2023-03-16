@@ -1,0 +1,125 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2001 Andries Brouwer <aeb@cwi.nl>
+.\" and Copyright (C) 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strverscmp 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+strverscmp \- 比较两个版本字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <string.h>\fP
+.PP
+\fBint strverscmp(const char *\fP\fIs1\fP\fB, const char *\fP\fIs2\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" classical solution: "rename jan jan0 jan?"
+通常一个人有文件 \fIjan1\fP, \fIjan2\fP, ..., \fIjan9\fP, \fIjan10\fP, ...  当 \fBls\fP(1) 将它们命令为
+\fIjan1\fP、\fIjan10\fP、...、\fIjan2\fP、...、\fIjan9\fP 时感觉不对。 为了纠正这个问题，GNU 将 \fI\-v\fP 选项引入到
+\fBls\fP(1) 中，\fBls\fP(1) 是使用 \fBversionsort\fP(3) 实现的，而 \fBversionsort\fP(3) 又使用了
+\fBstrverscmp\fP()。
+.PP
+因此，\fBstrverscmp\fP() 的任务是比较两个字符串并找到 "right" 顺序，而 \fBstrcmp\fP(3) 只找到字典顺序。
+此函数不使用区域设置类别 \fBLC_COLLATE\fP，因此主要用于预期字符串为 ASCII 的情况。
+.PP
+这个函数的作用如下。 如果两个字符串相等，则返回 0。 否则，找到两个字节之间的位置，其属性是在它之前两个字符串相等，而紧接着在它之后是不同的。
+查找包含 (或开始于或结束于) 该位置的最大连续数字串。 如果其中一个或两个为空，则返回 \fBstrcmp\fP(3) 将返回的内容 (字节值的数字排序)。
+否则，在数值上比较两个数字串，其中具有一个或多个前导零的数字串被解释为好像它们前面有一个小数点
+(因此特别是具有更多前导零的数字串出现在具有更少前导零的数字串之前)。 因此，顺序为
+\fI000\fP、\fI00\fP、\fI01\fP、\fI010\fP、\fI09\fP、\fI0\fP、\fI1\fP、\fI9\fP、\fI10\fP。
+.SH "RETURN VALUE"
+如果发现 \fIs1\fP 分别早于、等于或晚于 \fIs2\fP，则 \fBstrverscmp\fP() 函数返回小于、等于或大于零的整数。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrverscmp\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.\" FIXME: The marking is different from that in the glibc manual,
+.\" which has:
+.\"
+.\"     strverscmp: MT-Safe locale
+.\"
+.\" glibc manual says strverscmp should have marking locale because it calls
+.\" isdigit() multiple times and isdigit() uses locale variable.
+.\" But isdigit() has two implementations. With different compiling conditions,
+.\" we may call isdigit() in macro, then strverscmp() should not have locale
+.\" problem.
+.SH STANDARDS
+这个函数是 GNU 的扩展名。
+.SH EXAMPLES
+下面的程序可用于演示 \fBstrverscmp\fP() 的行为。 它使用 \fBstrverscmp\fP() 来比较作为它的命令行参数给出的两个字符串。
+其使用示例如下:
+.PP
+.in +4n
+.EX
+$ \fB./a.out jan1 jan10\fP
+jan1 < jan10
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (strverscmp.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    int res;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <string1> <string2>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    res = strverscmp(argv[1], argv[2]);
+
+    printf("%s %s %s\en", argv[1],
+           (res < 0) ? "<" : (res == 0) ? "==" : ">", argv[2]);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBrename\fP(1), \fBstrcasecmp\fP(3), \fBstrcmp\fP(3), \fBstrcoll\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

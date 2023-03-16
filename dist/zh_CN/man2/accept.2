@@ -1,0 +1,182 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1990, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-21 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998-2000 by Andi Kleen to match Linux 2.2 reality
+.\" Modified 2002-04-23 by Roger Luethi <rl@hellgate.ch>
+.\" Modified 2004-06-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2008-12-04, mtk, Add documentation of accept4()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH accept 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+accept, accept4 \- 接受套接字上的连接
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fBint accept(int \fP\fIsockfd\fP\fB, struct sockaddr *_Nullable restrict \fP\fIaddr\fP\fB,\fP
+\fB           socklen_t *_Nullable restrict \fP\fIaddrlen\fP\fB);\fP
+.PP
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <sys/socket.h>\fP
+.PP
+\fBint accept4(int \fP\fIsockfd\fP\fB, struct sockaddr *_Nullable restrict \fP\fIaddr\fP\fB,\fP
+\fB           socklen_t *_Nullable restrict \fP\fIaddrlen\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBaccept\fP() 系统调用与基于连接的套接字类型 (\fBSOCK_STREAM\fP、\fBSOCK_SEQPACKET\fP) 一起使用。 它从监听套接字
+\fIsockfd\fP 的挂起连接队列中提取第一个连接请求，创建一个新的已连接套接字，并返回一个引用该套接字的新文件描述符。
+新创建的套接字没有处于监听状态。 原套接字 \fIsockfd\fP 不受此调用影响。
+.PP
+参数 \fIsockfd\fP 是一个已经用 \fBsocket\fP(2) 创建的套接字，用 \fBbind\fP(2) 绑定到本地地址，并在 \fBlisten\fP(2)
+之后监听连接。
+.PP
+参数 \fIaddr\fP 是指向 \fIsockaddr\fP 结构体的指针。 这个结构体填充了通信层已知的对等套接字的地址。 返回的地址 \fIaddr\fP
+的确切格式由套接字的地址族决定 (参见 \fBsocket\fP(2) 和相应的协议手册页)。 当 \fIaddr\fP 为 NULL 时，什么都不填;
+在这种情况下，不使用 \fIaddrlen\fP，也应该为 NULL。
+.PP
+\fIaddrlen\fP 参数是一个值 \- 结果参数: 调用者必须初始化它以包含 \fIaddr\fP 指向的结构体的大小 (以字节为单位) ;
+返回时它将包含对等地址的实际大小。
+.PP
+如果提供的缓冲区太小，返回的地址将被截断; 在这种情况下，\fIaddrlen\fP 将返回一个大于提供给调用的值。
+.PP
+如果队列中不存在挂起的连接，并且套接字未标记为非阻塞，则 \fBaccept\fP() 会阻塞调用者，直到出现连接为止。
+如果套接字被标记为非阻塞并且队列中不存在挂起的连接，则 \fBaccept\fP() 将失败并显示错误 \fBEAGAIN\fP 或 \fBEWOULDBLOCK\fP。
+.PP
+为了收到套接字上传入连接的通知，您可以使用 \fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7)。
+当尝试建立新连接时，将传递一个可读事件，然后您可以调用 \fBaccept\fP() 来获取该连接的套接字。
+或者，您可以将套接字设置为在套接字上发生活动时传递 \fBSIGIO\fP; 详见 \fBsocket\fP(7)。
+.PP
+如果 \fIflags\fP 为 0，则 \fBaccept4\fP() 与 \fBaccept\fP() 相同。 可以在 \fIflags\fP
+中对以下值进行按位或运算以获得不同的行为:
+.TP  16
+\fBSOCK_NONBLOCK\fP
+在打开的文件描述中设置 \fBO_NONBLOCK\fP 文件状态标志 (请参见新文件描述符引用的 \fBopen\fP(2))。 使用此标志可节省对
+\fBfcntl\fP(2) 的额外调用以实现相同的结果。
+.TP 
+\fBSOCK_CLOEXEC\fP
+在新文件描述符上设置 close\-on\-exec (\fBFD_CLOEXEC\fP) 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的描述，了解这可能有用的原因。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回已接受套接字的文件描述符 (非负整数)。 出错时，返回 \-1，设置 \fIerrno\fP 以指示错误，\fIaddrlen\fP
+保持不变。
+.SS "Error handling"
+Linux \fBaccept\fP() (和 \fBaccept4\fP()) 在新套接字上传递已经挂起的网络错误作为来自 \fBaccept\fP() 的错误代码。
+此行为不同于其他 BSD 套接字实现。 为了可靠运行，应用程序应检测 \fBaccept\fP() 之后为协议定义的网络错误，并通过重试将它们视为
+\fBEAGAIN\fP。 对于 TCP/IP，这些是
+\fBENETDOWN\fP、\fBEPROTO\fP、\fBENOPROTOOPT\fP、\fBEHOSTDOWN\fP、\fBENONET\fP、\fBEHOSTUNREACH\fP、\fBEOPNOTSUPP\fP
+和 \fBENETUNREACH\fP。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP or \fBEWOULDBLOCK\fP
+.\" Actually EAGAIN on Linux
+套接字标记为非阻塞，并且不存在要接受的连接。 POSIX.1\-2001 和 POSIX.1\-2008
+允许在这种情况下返回任一错误，并且不要求这些常量具有相同的值，因此可移植应用程序应该检查这两种可能性。
+.TP 
+\fBEBADF\fP
+\fIsockfd\fP 不是打开的文件描述符。
+.TP 
+\fBECONNABORTED\fP
+连接已中止。
+.TP 
+\fBEFAULT\fP
+\fIaddr\fP 参数不在用户地址空间的可写部分。
+.TP 
+\fBEINTR\fP
+系统调用被有效连接到达之前捕获的信号中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+套接字未侦听连接，或 \fIaddrlen\fP 无效 (例如，是 negative)。
+.TP 
+\fBEINVAL\fP
+(\fBaccept4\fP()) \fIflags\fP 中的无效值。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOBUFS\fP, \fBENOMEM\fP
+可用内存不足。 这通常意味着内存分配受限于套接字缓冲区限制，而不是系统内存。
+.TP 
+\fBENOTSOCK\fP
+文件描述符 \fIsockfd\fP 不引用套接字。
+.TP 
+\fBEOPNOTSUPP\fP
+引用的套接字不是 \fBSOCK_STREAM\fP 类型。
+.TP 
+\fBEPERM\fP
+防火墙规则禁止连接。
+.TP 
+\fBEPROTO\fP
+协议错误。
+.PP
+此外，可能会返回新套接字和协议定义的网络错误。 各种 Linux 内核可以返回其他错误，例如
+\fBENOSR\fP、\fBESOCKTNOSUPPORT\fP、\fBEPROTONOSUPPORT\fP、\fBETIMEDOUT\fP。 在跟踪过程中可能会看到值
+\fBERESTARTSYS\fP。
+.SH VERSIONS
+\fBaccept4\fP() 系统调用从 Linux 2.6.28 开始可用; glibc 的支持从 glibc 2.10 开始可用。
+.SH STANDARDS
+.\" The BSD man page documents five possible error returns
+.\" (EBADF, ENOTSOCK, EOPNOTSUPP, EWOULDBLOCK, EFAULT).
+.\" POSIX.1-2001 documents errors
+.\" EAGAIN, EBADF, ECONNABORTED, EINTR, EINVAL, EMFILE,
+.\" ENFILE, ENOBUFS, ENOMEM, ENOTSOCK, EOPNOTSUPP, EPROTO, EWOULDBLOCK.
+.\" In addition, SUSv2 documents EFAULT and ENOSR.
+\fBaccept\fP(): POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.4BSD (\fBaccept\fP() 首次出现在
+4.2BSD)。
+.PP
+\fBaccept4\fP() 是一个非标准的 Linux 扩展。
+.PP
+.\" Some testing seems to show that Tru64 5.1 and HP-UX 11 also
+.\" do not inherit file status flags -- MTK Jun 05
+在 Linux 上，\fBaccept\fP() 返回的新 socket 确实 \fInot\fP 继承了监听 socket 的
+\fBO_NONBLOCK\fP、\fBO_ASYNC\fP 等文件状态标志。 此行为不同于规范的 BSD 套接字实现。
+可移植程序不应依赖文件状态标志的继承或非继承，并且始终在从 \fBaccept\fP() 返回的套接字上显式设置所有必需的标志。
+.SH NOTES
+在交付 \fBSIGIO\fP 或 \fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7)
+返回可读性事件后可能并不总是有连接等待，因为在调用 \fBaccept\fP() 之前连接可能已被异步网络错误或其他线程删除。
+如果发生这种情况，那么调用将阻塞等待下一个连接到达。 为确保 \fBaccept\fP() 永不阻塞，传递的套接字 \fIsockfd\fP 需要设置
+\fBO_NONBLOCK\fP 标志 (参见 \fBsocket\fP(7)).
+.PP
+.\"
+对于某些需要显式确认的协议，例如 DECnet，\fBaccept\fP() 可以被认为只是出列下一个连接请求，而不是暗示确认。
+确认可以通过对新文件描述符的正常读取或写入来暗示，而拒绝可以通过关闭新套接字来暗示。 目前，只有 DECnet 在 Linux 上具有这些语义。
+.SS "The socklen_t type"
+.\" such as Linux libc4 and libc5, SunOS 4, SGI
+.\" SunOS 5 has 'size_t *'
+在最初的 BSD 套接字实现中 (以及在其他较旧的系统上)，\fBaccept\fP() 的第三个参数被声明为 \fIint\ *\fP。 一个 POSIX.1g
+草案标准想把它改成 \fIsize_t\ *\fPC; 后来的 POSIX 标准和 glibc 2.x 有 \fIsocklen_t\ * \fP。
+.SH EXAMPLES
+请参见 \fBbind\fP(2)。
+.SH "SEE ALSO"
+\fBbind\fP(2), \fBconnect\fP(2), \fBlisten\fP(2), \fBselect\fP(2), \fBsocket\fP(2),
+\fBsocket\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

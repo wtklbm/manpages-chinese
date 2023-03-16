@@ -1,0 +1,231 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH newlocale 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+newlocale, freelocale \- 创建、修改和释放一个语言环境对象
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <locale.h>\fP
+.PP
+\fBlocale_t newlocale(int \fP\fIcategory_mask\fP\fB, const char *\fP\fIlocale\fP\fB,\fP
+\fB                   locale_t \fP\fIbase\fP\fB);\fP
+\fBvoid freelocale(locale_t \fP\fIlocobj\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBnewlocale\fP(), \fBfreelocale\fP():
+.nf
+    由于 glibc 2.10:
+        _XOPEN_SOURCE >= 700
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBnewlocale\fP() 函数创建一个新的语言环境对象，或修改现有对象，将引用返回给新的或修改后的对象作为函数结果。
+调用是创建新对象还是修改现有对象由 \fIbase\fP: 的值决定
+.IP \[bu] 3
+如果 \fIbase\fP 为 \fI(locale_t)\ 0\fP，则创建一个新对象。
+.IP \[bu]
+如果 \fIbase\fP 引用有效的现有语言环境对象 (即，由先前的调用返回到 \fBnewlocale\fP() 或 \fBduplocale\fP(3))
+的对象，则该对象由调用修改。 如果调用成功，\fIbase\fP 的内容是未指定的 (特别是，\fIbase\fP 引用的对象可能被释放，并创建一个新对象)。
+因此，调用方应确保在调用到 \fBnewlocale\fP() 之前停止使用 \fIbase\fP，并随后应通过作为函数结果返回的引用来引用修改后的对象。
+如果调用失败，\fIbase\fP 的内容保持有效且不变。
+.PP
+如果 \fIbase\fP 是特殊的语言环境对象 \fBLC_GLOBAL_LOCALE\fP (请参见 \fBduplocale\fP(3)))，或者不是
+\fI(locale_t)\ 0\fP 并且不是有效的语言环境对象句柄，则行为未定义。
+.PP
+\fIcategory_mask\fP 参数是一个位掩码，它指定要在新创建的语言环境对象中设置或在现有对象中修改的语言环境类别。 掩码由常量
+\fBLC_ADDRESS_MASK\fP、\fBLC_CTYPE_MASK\fP、\fBLC_COLLATE_MASK\fP、\fBLC_IDENTIFICATION_MASK\fP、\fBLC_MEASUREMENT_MASK\fP、\fBLC_MESSAGES_MASK\fP、\fBLC_MONETARY_MASK\fP、\fBLC_NUMERIC_MASK\fP、\fBLC_NAME_MASK\fP、\fBLC_PAPER_MASK\fP、\fBLC_TELEPHONE_MASK\fP
+和 \fBLC_TIME_MASK\fP 的按位或构成。 或者，可以将掩码指定为 \fBLC_ALL_MASK\fP，这等效于对所有前面的常量进行 ORing。
+.PP
+对于 \fIcategory_mask\fP 中指定的每个类别，\fIlocale\fP 中的区域设置数据将用于 \fBnewlocale\fP() 返回的对象中。
+如果正在创建新的语言环境对象，则 \fIcategory_mask\fP 中未指定的所有类别的数据都取自默认的 ("POSIX") 语言环境。
+.PP
+\fIlocale\fP 的以下预置值是为 \fIcategory_mask\fP: 中可以指定的所有类别定义的
+.TP 
+"POSIX"
+C 语言程序的最小语言环境。
+.TP 
+"C"
+相当于 "POSIX"。
+.TP 
+""
+对应于 \fBLC_*\fP 和 \fBLANG\fP 环境变量值的实现定义的原生环境 (参见 \fBlocale\fP(7)).
+.SS freelocale()
+\fBfreelocale\fP() 函数释放与 \fIlocobj\fP 关联的资源，\fIlocobj\fP 是先前由调用返回到 \fBnewlocale\fP() 或
+\fBduplocale\fP(3) 的区域设置对象。 如果 \fIlocobj\fP 是 \fBLC_GLOBAL_LOCALE\fP
+或者不是有效的语言环境对象句柄，则结果未定义。
+.PP
+一旦释放了区域设置对象，程序就不应再使用它。
+.SH "RETURN VALUE"
+成功时，\fBnewlocale\fP() 返回一个句柄，该句柄可用于调用 \fBduplocale\fP(3)、\fBfreelocale\fP() 和其他采用
+\fIlocale_t\fP 参数的函数。 出错时，\fBnewlocale\fP() 返回 \fI(locale_t)\ 0\fP，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIcategory_mask\fP 中的一位或多位不对应于有效的语言环境类别。
+.TP 
+\fBEINVAL\fP
+\fIlocale\fP 为空。
+.TP 
+\fBENOENT\fP
+\fIlocale\fP 不是指向有效语言环境的字符串指针。
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建语言环境对象。
+.SH VERSIONS
+\fBnewlocale\fP() 和 \fBfreelocale\fP() 函数首次出现在 glibc 2.3 中。
+.SH STANDARDS
+POSIX.1\-2008.
+.SH NOTES
+\fBnewlocale\fP() 创建的每个语言环境对象都应使用 \fBfreelocale\fP() 释放。
+.SH EXAMPLES
+下面的程序最多使用两个命令行参数，每个都标识语言环境。 第一个参数是必需的，用于在使用 \fBnewlocale\fP() 创建的区域设置对象中设置
+\fBLC_NUMERIC\fP 类别。 第二个命令行参数是可选的; 如果存在，则用于设置语言环境对象的 \fBLC_TIME\fP 类别。
+.PP
+创建并初始化语言环境对象后，程序使用 \fBuselocale\fP(3) 应用它，然后通过以下方式测试语言环境更改的效果:
+.IP (1) 5
+显示带小数部分的浮点数。 该输出将受 \fBLC_NUMERIC\fP 设置的影响。 在许多欧洲语言环境中，数字的小数部分与整数部分使用逗号而不是句点分隔。
+.IP (2)
+显示日期。 输出的格式和语言将受 \fBLC_TIME\fP 设置的影响。
+.PP
+以下 shell 会话显示了该程序的一些示例运行。
+.PP
+将 \fBLC_NUMERIC\fP 类别设置为 \fIfr_FR\fP (French):
+.PP
+.in +4n
+.EX
+$ \fB./a.out fr_FR\fP
+123456,789
+2014 年 3 月 7 日星期五 00:25:08
+.EE
+.in
+.PP
+设置 \fBLC_NUMERIC\fP 类别为 \fIfr_FR\fP (French)，\fBLC_TIME\fP 类别为 \fIit_IT\fP (Italian):
+.PP
+.in +4n
+.EX
+$ \fB./a.out fr_FR it_IT\fP
+123456,789
+欧洲中部时间 2014 年 3 月 7 日 00:26:01
+.EE
+.in
+.PP
+将 \fBLC_TIME\fP 设置指定为空字符串，这会导致从环境变量设置中获取值 (此处指定 \fImi_NZ\fP，新西兰毛利语) :
+.PP
+.in +4n
+.EX
+$ LC_ALL=mi_NZ ./a.out fr_FR ""
+123456,789
+Te Paraire, te 07 o Poutū\-te\-rangi, 2014 00:38:44 CET
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (newlocale.c)
+.EX
+#define _XOPEN_SOURCE 700
+#include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    char buf[100];
+    time_t t;
+    size_t s;
+    struct tm *tm;
+    locale_t loc, nloc;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s locale1 [locale2]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Create a new locale object, taking the LC_NUMERIC settings
+       from the locale specified in argv[1]. */
+
+    loc = newlocale(LC_NUMERIC_MASK, argv[1], (locale_t) 0);
+    if (loc == (locale_t) 0)
+        errExit("newlocale");
+
+    /* If a second command\-line argument was specified, modify the
+       locale object to take the LC_TIME settings from the locale
+       specified in argv[2]. We assign the result of this newlocale()
+       call to \[aq]nloc\[aq] rather than \[aq]loc\[aq], since in some cases, we might
+       want to preserve \[aq]loc\[aq] if this call fails. */
+
+    if (argc > 2) {
+        nloc = newlocale(LC_TIME_MASK, argv[2], loc);
+        if (nloc == (locale_t) 0)
+            errExit("newlocale");
+        loc = nloc;
+    }
+
+    /* Apply the newly created locale to this thread. */
+
+    uselocale(loc);
+
+    /* Test effect of LC_NUMERIC. */
+
+    printf("%8.3f\en", 123456.789);
+
+    /* Test effect of LC_TIME. */
+
+    t = time(NULL);
+    tm = localtime(&t);
+    if (tm == NULL)
+        errExit("time");
+
+    s = strftime(buf, sizeof(buf), "%c", tm);
+    if (s == 0)
+        errExit("strftime");
+
+    printf("%s\en", buf);
+
+    /* Free the locale object. */
+
+    uselocale(LC_GLOBAL_LOCALE);    /* So \[aq]loc\[aq] is no longer in use */
+    freelocale(loc);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBlocale\fP(1), \fBduplocale\fP(3), \fBsetlocale\fP(3), \fBuselocale\fP(3),
+\fBlocale\fP(5), \fBlocale\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

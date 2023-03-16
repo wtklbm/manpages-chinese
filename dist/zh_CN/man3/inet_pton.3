@@ -1,0 +1,154 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2000 Sam Varshavchik <mrsam@courier-mta.com>
+.\" and Copyright (c) 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References: RFC 2553
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH inet_pton 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+inet_pton \- 将 IPv4 和 IPv6 地址从文本格式转换为二进制格式
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <arpa/inet.h>\fP
+.PP
+\fBint inet_pton(int \fP\fIaf\fP\fB, const char *restrict \fP\fIsrc\fP\fB, void *restrict \fP\fIdst\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这个函数将字符串 \fIsrc\fP 转换为 \fIaf\fP 地址族中的网络地址结构体，然后将网络地址结构体复制到 \fIdst\fP。 \fIaf\fP 参数必须是
+\fBAF_INET\fP 或 \fBAF_INET6\fP。 \fIdst\fP 以网络字节顺序写入。
+.PP
+目前支持以下地址系列:
+.TP 
+\fBAF_INET\fP
+\fIsrc\fP 指向包含 IPv4 网络地址的字符串，点分十进制格式 "\fIddd.ddd.ddd.ddd\fP"，其中 \fIddd\fP 是 0 到 255
+范围内最多三位的十进制数。 地址转换为 \fIstruct in_addr\fP 并复制到 \fIdst\fP，其长度必须为 \fIsizeof(struct in_addr)\fP (4) 字节 (32 位)。
+.TP 
+\fBAF_INET6\fP
+\fIsrc\fP 指向包含 IPv6 网络地址的字符串。 地址转换为 \fIstruct in6_addr\fP 并复制到 \fIdst\fP，其长度必须为
+\fIsizeof(struct in6_addr)\fP (16) 字节 (128 位)。 IPv6 地址的允许格式遵循以下规则:
+.RS
+.IP \[bu] 3
+首选格式是 \fIx:x:x:x:x:x:x:x\fP。 这种形式由八个十六进制数组成，每个十六进制数表示一个 16 位的值 (即每个 \fIx\fP 最多可以是
+4 个十六进制数)。
+.IP \[bu]
+首选格式中的一系列连续零值可以缩写为 \fI::\fP。 一个地址中只能出现一个 \fI::\fP 实例。 例如，回环地址 \fI0:0:0:0:0:0:0:1\fP
+可以缩写为 \fI::1\fP。 由全零组成的通配符地址可以写成 \fI::\fP。
+.IP \[bu]
+另一种格式可用于表示 IPv4 映射的 IPv6 地址。 这种形式写成 \fIx:x:x:x:x:x:d.d.d.d\fP，其中六个前导 \fIx\fPs
+是十六进制值，定义地址的六个最高有效 16 位部分 (即 96 位)，\fId\fPs 表示一个点分十进制表示法的值，定义地址的最低有效 32 位。
+这种地址的一个例子是 \fI::FFFF:204.152.189.116\fP。
+.RE
+.IP
+有关 IPv6 地址表示的更多详细信息，请参见 RFC 2373。
+.SH "RETURN VALUE"
+\fBinet_pton\fP() 成功返回 1 (网络地址已成功转换)。 如果 \fIsrc\fP 不包含表示指定地址族中有效网络地址的字符串，则返回 0。 如果
+\fIaf\fP 不包含有效地址族，则返回 \-1 并将 \fIerrno\fP 设置为 \fBEAFNOSUPPORT\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBinet_pton\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+与 \fBinet_aton\fP(3) 和 \fBinet_addr\fP(3) 不同，\fBinet_pton\fP() 支持 IPv6 地址。
+另一方面，\fBinet_pton\fP() 仅接受点分十进制表示法中的 IPv4 地址，而 \fBinet_aton\fP(3) 和
+\fBinet_addr\fP(3) 允许更通用的数字和点表示法 (十六进制和八进制数字格式，以及不需要显式显示所有四个字节的格式) 书面)。
+对于以数字和点表示法处理 IPv6 地址和 IPv4 地址的接口，请参见 \fBgetaddrinfo\fP(3)。
+.SH BUGS
+\fBAF_INET6\fP 不识别 IPv4 地址。 必须在 \fIsrc\fP 中提供显式 IPv4 映射的 IPv6 地址。
+.SH EXAMPLES
+下面的程序演示了 \fBinet_pton\fP() 和 \fBinet_ntop\fP(3) 的使用。 以下是一些示例运行:
+.PP
+.in +4n
+.EX
+$\fB ./a.out i6 0:0:0:0:0:0:0:0\fP
+::
+$\fB ./a.out i6 1:0:0:0:0:0:0:8\fP
+1::8
+$\fB ./a.out i6 0:0:0:0:0:FFFF:204.152.189.116\fP
+::ffff:204.152.189.116
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (inet_pton.c)
+\&
+.EX
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    unsigned char buf[sizeof(struct in6_addr)];
+    int domain, s;
+    char str[INET6_ADDRSTRLEN];
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s {i4|i6|<num>} string\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    domain = (strcmp(argv[1], "i4") == 0) ? AF_INET :
+             (strcmp(argv[1], "i6") == 0) ? AF_INET6 : atoi(argv[1]);
+
+    s = inet_pton(domain, argv[2], buf);
+    if (s <= 0) {
+        if (s == 0)
+            fprintf(stderr, "Not in presentation format");
+        else
+            perror("inet_pton");
+        exit(EXIT_FAILURE);
+    }
+
+    if (inet_ntop(domain, buf, str, INET6_ADDRSTRLEN) == NULL) {
+        perror("inet_ntop");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("%s\en", str);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetaddrinfo\fP(3), \fBinet\fP(3), \fBinet_ntop\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

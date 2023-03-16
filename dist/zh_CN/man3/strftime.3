@@ -1,0 +1,399 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\"     GNU texinfo documentation on glibc date/time functions.
+.\" Modified Sat Jul 24 18:03:44 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Applied fix by Wolfgang Franke, aeb, 961011
+.\" Corrected return value, aeb, 970307
+.\" Added Single UNIX Spec conversions and %z, aeb/esr, 990329.
+.\" 2005-11-22 mtk, added glibc Notes covering optional 'flag' and
+.\"           'width' components of conversion specifications.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strftime 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strftime \- 格式化日期和时间
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBsize_t strftime(char \fP\fIs\fP\fB[restrict .\fP\fImax\fP\fB], size_t \fP\fImax\fP\fB,\fP
+\fB                const char *restrict \fP\fIformat\fP\fB,\fP
+\fB                const struct tm *restrict \fP\fItm\fP\fB);\fP
+.PP
+\fBsize_t strftime_l(char \fP\fIs\fP\fB[restrict .\fP\fImax\fP\fB], size_t \fP\fImax\fP\fB,\fP
+\fB                const char *restrict \fP\fIformat\fP\fB,\fP
+\fB                const struct tm *restrict \fP\fItm\fP\fB,\fP
+\fB                locale_t \fP\fIlocale\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" FIXME . POSIX says: Local timezone information is used as though
+.\" strftime() called tzset().  But this doesn't appear to be the case
+\fBstrftime\fP() 函数根据格式规范 \fIformat\fP 对细分时间 \fItm\fP 进行格式化，并将结果放入大小为 \fImax\fP 的字符数组
+\fIs\fP 中。 \fI<time.h>\fP 定义了故障时间结构体 \fItm\fP。 另请详见 \fBctime\fP(3)。
+.PP
+格式规范是一个以 null 结尾的字符串，可能包含称为 \fIconversion specifications\fP 的特殊字符序列，每个字符序列都由
+\[aq]%\[aq] 字符引入，并由其他一些称为 \fIconversion specifier character\fP 的字符终止。
+所有其他字符序列都是 \fIordinary character sequences\fP。
+.PP
+普通字符序列的字符 (包括空字节) 从 \fIformat\fP 逐字复制到 \fIs\fP。 但是，转换规格的字符如下表所示被替换。 在此列表中，还显示了
+\fItm\fP 结构体中使用的 field(s)。
+.TP 
+\fB%a\fP
+根据当前区域设置的星期几的缩写名称。 (从 \fItm_wday\fP.) 计算 (当前语言环境中使用的具体名称可以通过以
+\fBABDAY_\fP{\fB1\fP\[en]\fB7\fP} 为参数调用 \fBnl_langinfo\fP(3) 来获取。)
+.TP 
+\fB%A\fP
+根据当前区域设置的星期几的全名。 (从 \fItm_wday\fP.) 计算 (当前语言环境中使用的具体名称可以通过以
+\fBDAY_\fP{\fB1\fP\[en]\fB7\fP} 为参数调用 \fBnl_langinfo\fP(3) 来获取。)
+.TP 
+\fB%b\fP
+根据当前区域设置的缩写月份名称。 (从 \fItm_mon\fP.) 计算 (当前语言环境中使用的具体名称可以通过以
+\fBABMON_\fP{\fB1\fP\[en]\fB12\fP} 为参数调用 \fBnl_langinfo\fP(3) 来获取。)
+.TP 
+\fB%B\fP
+根据当前语言环境的完整月份名称。 (从 \fItm_mon\fP.) 计算 (当前语言环境中使用的具体名称可以通过以
+\fBMON_\fP{\fB1\fP\[en]\fB12\fP} 为参数调用 \fBnl_langinfo\fP(3) 来获取。)
+.TP 
+\fB%c\fP
+当前语言环境的首选日期和时间表示。 (当前语言环境中使用的具体格式可以通过调用 \fBnl_langinfo\fP(3) 获得，对于 \fB%c\fP 转换规范，以
+\fBD_T_FMT\fP 为参数，对于 \fB%Ec\fP 转换规范，以 \fBERA_D_T_FMT\fP 为参数。) (在 POSIX 语言环境中，这相当于
+\fB%a %b %e %H:%M:%S %Y\fP.)
+.TP 
+\fB%C\fP
+作为 2 位整数的世纪编号 (year/100)。(SU) (\fB%EC\fP 转换规范对应纪元名称。) (从 \fItm_year\fP.) 计算
+.TP 
+\fB%d\fP
+以十进制数表示的月中日期 (范围为 01 到 31)。 (从 \fItm_mday\fP.) 计算
+.TP 
+\fB%D\fP
+相当于 \fB%m/%d/%y\fP。 (Yecch\[em] 仅适用于美国人。美国人应该注意，在其他国家 / 地区，\fB%d/%m/%y\fP
+相当普遍。这意味着在国际环境中，这种格式不明确，不应使用。) (SU)
+.TP 
+\fB%e\fP
+与 \fB%d\fP 一样，月份中的第几天作为十进制数，但前导零被空格替换。(SU) (从 \fItm_mday\fP.) 计算
+.TP 
+\fB%E\fP
+修饰符: 使用替代的 ("era\-based") 格式，见下文。(SU)
+.TP 
+\fB%F\fP
+等同于 \fB%Y\-%m\-%d\fP (ISO\8601 日期格式)。(C99)
+.TP 
+\fB%G\fP
+ISO\8601 基于周的年份 (参见注释)，世纪作为十进制数。 ISO 周数对应的 4 位年份 (参见 \fB%V\fP).  这与 \fB%Y\fP
+具有相同的格式和值，除了如果 ISO 周数属于上一年或下一年，则使用那一年。(TZ) (根据 \fItm_year\fP、\fItm_yday\fP 和
+\fItm_wday\fP.) 计算得出
+.TP 
+\fB%g\fP
+类似于 \fB%G\fP，但没有世纪，即具有两位数的年份 (00\[en]99)。(TZ) (根据 \fItm_year\fP、\fItm_yday\fP 和
+\fItm_wday\fP.) 计算得出
+.TP 
+\fB%h\fP
+相当于 \fB%b\fP。 (SU)
+.TP 
+\fB%H\fP
+使用 24 小时制 (范围为 00 到 23) 的十进制数形式的小时。 (从 \fItm_hour\fP.) 计算
+.TP 
+\fB%I\fP
+使用 12 小时制 (范围为 01 到 12) 的十进制数形式的小时。 (从 \fItm_hour\fP.) 计算
+.TP 
+\fB%j\fP
+以十进制数表示的一年中的第几天 (范围从 001 到 366)。 (从 \fItm_yday\fP.) 计算
+.TP 
+\fB%k\fP
+十进制数形式的小时 (24 小时制) (范围 0 到 23) ; 单个数字前面有一个空格。 (另见 \fB%H\fP.) (从 \fItm_hour\fP.)
+(TZ) 计算
+.TP 
+\fB%l\fP
+十进制数形式的小时 (12 小时制) (范围 1 到 12) ; 单个数字前面有一个空格。 (另见 \fB%I\fP.) (从 \fItm_hour\fP.)
+(TZ) 计算
+.TP 
+\fB%m\fP
+十进制数形式的月份 (范围为 01 到 12)。 (从 \fItm_mon\fP.) 计算
+.TP 
+\fB%M\fP
+十进制数形式的分钟 (范围为 00 到 59)。 (从 \fItm_min\fP.) 计算
+.TP 
+\fB%n\fP
+换行符。(SU)
+.TP 
+\fB%O\fP
+修饰符: 使用替代数字符号，见下文。(SU)
+.TP 
+\fB%p\fP
+根据给定时间值的 "AM" 或 "PM"，或当前语言环境的相应字符串。 中午被视为 "PM"，午夜被视为 "AM"。 (从 \fItm_hour\fP.)
+计算 (当前语言环境中用于 "AM" 和 "PM" 的具体字符串表示可以通过分别用 \fBAM_STR\fP 和 \fBPM_STR\fP 调用
+\fBnl_langinfo\fP(3) 来获得。)
+.TP 
+\fB%P\fP
+类似于 \fB%p\fP 但小写: "am" 或 "pm" 或当前语言环境的相应字符串。 (从 \fItm_hour\fP.) (GNU) 计算
+.TP 
+\fB%r\fP
+以 am 或 pm 表示法表示的时间。(SU) (当前语言环境中使用的具体格式可以通过以 \fBT_FMT_AMPM\fP 为参数调用
+\fBnl_langinfo\fP(3) 来获得。) (在 POSIX 语言环境中，这相当于 \fB%I:%M:%S %p\fP.)
+.TP 
+\fB%R\fP
+以 24 小时制表示的时间 (\fB%H:%M\fP)。 (SU) 对于包括秒的版本，请参见下面的 \fB%T\fP。
+.TP 
+\fB%s\fP
+自纪元 1970\-01\-01 00:00:00 +0000 (UTC) 以来的秒数。(TZ) (从 \fImktime(tm)\fP.) 计算
+.TP 
+\fB%S\fP
+秒为十进制数 (范围为 00 到 60)。 (范围最大为 60，以允许偶尔出现闰秒。) (从 \fItm_sec\fP.) 计算
+.TP 
+\fB%t\fP
+制表符。(SU)
+.TP 
+\fB%T\fP
+以 24 小时制表示的时间 (\fB%H:%M:%S\fP)。 (SU)
+.TP 
+\fB%u\fP
+小数形式的星期几，范围从 1 到 7，星期一为 1。 另请详见 \fB%w\fP。 (从 \fItm_wday\fP.) (SU) 计算
+.TP 
+\fB%U\fP
+当年的周数，十进制数，范围 00 到 53，从第一个星期日开始，作为 01 周的第一天。 另请参见 \fB%V\fP 和 \fB%W\fP。 (从
+\fItm_yday\fP 和 \fItm_wday\fP.) 计算
+.TP 
+\fB%V\fP
+当前年份的 ISO\8601 周数 (见注释)，为十进制数，范围为 01 到 53，其中第 1 周是新年中至少有 4 天的第一周。 另请参见 \fB%U\fP
+和 \fB%W\fP。 (从 \fItm_year\fP、\fItm_yday\fP 和 \fItm_wday\fP.) (SU) 计算
+.TP 
+\fB%w\fP
+小数形式的星期几，范围为 0 到 6，星期日为 0。 另请详见 \fB%u\fP。 (从 \fItm_wday\fP.) 计算
+.TP 
+\fB%W\fP
+当年的周数，十进制数，范围 00 到 53，从第一个星期一开始，作为 01 周的第一天。 (从 \fItm_yday\fP 和 \fItm_wday\fP.) 计算
+.TP 
+\fB%x\fP
+不带时间的当前语言环境的首选日期表示。 (当前语言环境中使用的具体格式可以通过调用 \fBnl_langinfo\fP(3) 获得，对于 \fB%x\fP
+转换规范，以 \fBD_FMT\fP 为参数，对于 \fB%Ex\fP 转换规范，以 \fBERA_D_FMT\fP 为参数。) (在 POSIX 语言环境中，这相当于
+\fB%m/%d/%y\fP.)
+.TP 
+\fB%X\fP
+不带日期的当前语言环境的首选时间表示。 (当前语言环境中使用的具体格式可以通过调用 \fBnl_langinfo\fP(3) 获得，对于 \fB%X\fP
+转换规范，以 \fBT_FMT\fP 为参数，对于 \fB%EX\fP 转换规范，以 \fBERA_T_FMT\fP 为参数。) (在 POSIX 语言环境中，这相当于
+\fB%H:%M:%S\fP.)
+.TP 
+\fB%y\fP
+不带世纪的十进制数字形式的年份 (范围从 00 到 99)。 (\fB%Ey\fP 转换规范对应于 \fB%EC\fP 转换规范表示的时代开始后的年份。) (从
+\fItm_year\fP) 计算
+.TP 
+\fB%Y\fP
+以十进制数字表示的年份，包括世纪。 (\fB%EY\fP 转换规范对应于完整的替代年份表示。) (从 \fItm_year\fP) 计算
+.TP 
+\fB%z\fP
+\fI+hhmm\fP 或 \fI\-hhmm\fP 数字时区 (即与 UTC 的小时和分钟偏移量)。(SU)
+.TP 
+\fB%Z\fP
+时区名称或缩写。
+.TP 
+\fB%+\fP
+.\" Nov 05 -- Not in Linux/glibc, but is in some BSDs (according to
+.\" their man pages)
+\fBdate\fP(1) 格式的日期和时间。(TZ) (glibc2 不支持。)
+.TP 
+\fB%%\fP
+一个字面量 \[aq]%\[aq] 字符。
+.PP
+可以通过在转换说明符字符前加上 \fBE\fP 或 \fBO\fP \fImodifier\fP 来修改某些转换规范，以指示应使用替代格式。
+如果当前语言环境不存在替代格式或规范，则行为将如同使用未修改的转换规范一样。(SU) 单个 UNIX 规范提到
+\fB%Ec\fP、\fB%EC\fP、\fB%Ex\fP、\fB%EX\fP、\fB%Ey\fP、\fB%EY\fP、\fB%Od\fP、\fB%Oe\fP、\fB%OH\fP、\fB%OI\fP、\fB%Om\fP、\fB%OM\fP、\fB%OS\fP、\fB%Ou\fP、\fB%OU\fP、\fB%OV\fP、\fB%Ow\fP、\fB%OW\fP、\fB%Oy\fP，其中
+\fBO\fP 的影响修饰符是使用替代数字符号 (例如，罗马数字)，而 \fBE\fP 修饰符是使用依赖于语言环境的替代表示形式。 可以通过将 \fBERA\fP
+作为参数提供给 \fBnl_langinfo\fP(3) 来获得使用 \fBE\fP 修饰符管理日期表示的规则。 这种替代形式的一个示例是 \fBja_JP\fP
+glibc 语言环境中的日本纪元日历方案。
+.PP
+\fBstrftime_l\fP() 等同于 \fBstrftime\fP()，只是它使用指定的 \fIlocale\fP 而不是当前语言环境。 如果 \fIlocale\fP
+无效或 \fBLC_GLOBAL_LOCALE\fP，则行为未定义。
+.SH "RETURN VALUE"
+.\" (This behavior applies since at least libc 4.4.4;
+.\" very old versions of libc, such as libc 4.4.1,
+.\" would return
+.\" .I max
+.\" if the array was too small.)
+如果结果字符串 (包括终止空字节) 不超过 \fImax\fP 字节，则 \fBstrftime\fP() 返回放置在数组 \fIs\fP 中的字节数
+(不包括终止空字节)。 如果结果字符串的长度 (包括终止空字节) 超过 \fImax\fP 字节，则 \fBstrftime\fP() 返回
+0，并且数组的内容未定义。
+.PP
+请注意，返回值 0 不一定表示错误。 例如，在许多语言环境中，\fB%p\fP 会产生一个空字符串。 一个空的 \fIformat\fP
+字符串同样会产生一个空字符串。
+.SH ENVIRONMENT
+使用环境变量 \fBTZ\fP 和 \fBLC_TIME\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrftime\fP(),
+\fBstrftime_l\fP()
+T}	Thread safety	MT\-Safe env locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBstrftime\fP(): SVr4, C99.
+.PD 0
+.PP
+.PD
+\fBstrftime_l\fP(): POSIX.1\-2008.
+.PP
+.\" FIXME strftime() is in POSIX.1-2001 and POSIX.1-2008, but the details
+.\" in the standards changed across versions. Investigate and
+.\" write up.
+ANSI C (unmarked) 中给出的转换集、Single UNIX 规范中给出的转换集 (标记为 SU)、Olson 时区包中给出的转换集
+(标记为 TZ) 和 glibc 中给出的转换集 (标记为 GNU) 之间存在严格的包含，除了 glibc2 不支持 \fB%+\fP。
+另一方面，glibc2 有更多的扩展。 POSIX.1 仅指 ANSI C; POSIX.2 在 \fBdate\fP(1) 下描述了几个也可以应用于
+\fBstrftime\fP() 的扩展。 \fB%F\fP 转换在 C99 和 POSIX.1\-2001 中。
+.PP
+在 SUSv2 中，\fB%S\fP 说明符允许 00 到 61 的范围，以允许一分钟的理论可能性包括双闰秒 (从来没有这样的分钟)。
+.SH NOTES
+.SS "ISO 8601 week dates"
+\fB%G\fP、\fB%g\fP 和 \fB%V\fP 产量值根据 ISO\8601 标准定义的基于周的年份计算得出。 在这个系统中，周从星期一开始，从第一周的 01
+到最后一周的 52 或 53。 第 1 周是新年中有四天或更多天的第一周 (或者同义，第 01 周是: 一年中包含星期四的第一周; 或者，其中有 1 月
+4 日的那一周)。 如果新年第一个日历周的三天或更少天数在该年内，则基于 ISO 8601 周的系统将这些天数计为前一年第 52 或 53 周的一部分。
+例如，2010 年 1 月 1 日是星期五，这意味着 2010 年该日历周只有三天。 因此，ISO\8601 基于周的系统将这些天视为 2009
+(\fB%G\fP) 年第 53 (\fB%V\fP) 周的一部分; ISO\8601 2010 年第 01 周从 2010 年 1 月 4 日星期一开始。
+同样，2011 年 1 月的前两天被视为 2010 年第 52 周的一部分。
+.SS "glibc notes"
+.\" HP-UX and Tru64 also have features like this.
+glibc 为转换规范提供了一些扩展。 (这些扩展未在 POSIX.1\-2001 中指定，但一些其他系统提供类似，特性。) 在 \[aq]%\[aq]
+字符和转换说明符字符之间，可以指定可选的 \fIflag\fP 和字段 \fIwidth\fP .  (如果存在，这些位于 \fBE\fP 或 \fBO\fP 修饰符之前。)
+.PP
+允许使用以下标志字符:
+.TP 
+\fB_\fP
+(underscore) 用空格填充数字结果字符串。
+.TP 
+\fB\-\fP
+(dash) 不要填充数字结果字符串。
+.TP 
+\fB0\fP
+使用零填充数字结果字符串，即使转换说明符默认使用空格填充也是如此。
+.TP 
+\fB\[ha]\fP
+将结果字符串中的字母字符转换为大写。
+.TP 
+\fB#\fP
+交换结果字符串的大小写。 (此标志仅适用于某些转换说明符字符，其中，它仅对 \fB%Z\fP.) 真正有用
+.PP
+可选的十进制宽度说明符可以跟在 (可能不存在) 标志之后。 如果字段的自然大小小于此宽度，则将结果字符串 (在左侧) 填充到指定宽度。
+.SH BUGS
+如果输出字符串超过 \fImax\fP 字节，则 \fIerrno\fP 设置为 \fInot\fP。 这使得无法将此错误情况与 \fIformat\fP
+字符串合法生成零长度输出字符串的情况区分开来。 POSIX.1\-2001 \fInot\fP 是否为 \fBstrftime\fP() 指定任何 \fIerrno\fP
+设置。
+.PP
+\fBgcc\fP(1) 的某些 buggy 版本抱怨使用 \fB%c\fP: \fIwarning: \`%c\[aq] yields only last 2 digits of year in some locales\fP。 当然，鼓励程序员使用 \fB%c\fP，因为它提供了首选的日期和时间表示。 为了规避这个
+\fBgcc\fP(1) 问题，遇到了各种奇怪的迷惑。 比较干净的是加一个中间的函数
+.PP
+.in +4n
+.EX
+size_t
+my_strftime(char *s, size_t max, const char *fmt,
+            const struct tm *tm)
+{
+    return strftime(s, max, fmt, tm);
+}
+.EE
+.in
+.PP
+如今，\fBgcc\fP(1) 提供了 \fI\-Wno\-format\-y2k\fP 选项来防止警告，因此不再需要上述解决方法。
+.SH EXAMPLES
+\fBRFC\~2822\-compliant date format\fP (%a 和 %b 的语言环境为英语)
+.PP
+.in +4n
+.EX
+"%a,\ %d\ %b\ %Y\ %T\ %z"
+.EE
+.in
+.PP
+\fBRFC\~822\-compliant date format\fP (%a 和 %b 的语言环境为英语)
+.PP
+.in +4n
+.EX
+"%a,\ %d\ %b\ %y\ %T\ %z"
+.EE
+.in
+.SS "Example program"
+下面的程序可以用来试验 \fBstrftime\fP()。
+.PP
+\fBstrftime\fP() 的 glibc 实现产生的结果字符串的一些例子如下:
+.PP
+.in +4n
+.EX
+$\fB ./a.out \[aq]%m\[aq]\fP
+结果字符串是 "11"
+$\fB ./a.out \[aq]%5m\[aq]\fP
+结果字符串是 "00011"
+$\fB ./a.out \[aq]%_5m\[aq]\fP
+结果字符串是 " 11"
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (strftime.c)
+\&
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+int
+main(int argc, char *argv[])
+{
+    char outstr[200];
+    time_t t;
+    struct tm *tmp;
+
+    t = time(NULL);
+    tmp = localtime(&t);
+    if (tmp == NULL) {
+        perror("localtime");
+        exit(EXIT_FAILURE);
+    }
+
+    if (strftime(outstr, sizeof(outstr), argv[1], tmp) == 0) {
+        fprintf(stderr, "strftime returned 0");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Result string is \e"%s\e"\en", outstr);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBdate\fP(1), \fBtime\fP(2), \fBctime\fP(3), \fBnl_langinfo\fP(3), \fBsetlocale\fP(3),
+\fBsprintf\fP(3), \fBstrptime\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

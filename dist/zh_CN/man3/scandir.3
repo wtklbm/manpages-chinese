@@ -1,0 +1,219 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 18:26:16 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Thu Apr 11 17:11:33 1996 by Andries Brouwer (aeb@cwi.nl):
+.\"     Corrected type of compar routines, as suggested by
+.\"     Miguel Barreiro (enano@avalon.yaix.es).  Added example.
+.\" Modified Sun Sep 24 20:15:46 2000 by aeb, following Petter Reinholdtsen.
+.\" Modified 2001-12-26 by aeb, following Joey. Added versionsort.
+.\"
+.\" The pieces on scandirat(3) were copyright and licensed as follows.
+.\"
+.\" Copyright (c) 2012, Mark R. Bannister <cambridge@users.sourceforge.net>
+.\"        based on text in mkfifoat.3 Copyright (c) 2006, Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH scandir 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+scandir、scandirat、alphasort、versionsort \- 扫描目录以查找匹配条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <dirent.h>\fP
+.PP
+\fBint scandir(const char *restrict \fP\fIdirp\fP\fB,\fP
+\fB            struct dirent ***restrict \fP\fInamelist\fP\fB,\fP
+\fB            int (*\fP\fIfilter\fP\fB)(const struct dirent *),\fP
+\fB            int (*\fP\fIcompar\fP\fB)(const struct dirent **,\fP
+\fBconst struct dirent **));\fP
+.PP
+\fBint alphasort(const struct dirent **\fP\fIa\fP\fB, const struct dirent **\fP\fIb\fP\fB);\fP
+\fBint versionsort(const struct dirent **\fP\fIa\fP\fB, const struct dirent **\fP\fIb\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>\fP          /* Definition of AT_* constants */
+\fB#include <dirent.h>\fP
+.PP
+\fBint scandirat(int \fP\fIdirfd\fP\fB, const char *restrict \fP\fIdirp\fP\fB,\fP
+\fB            struct dirent ***restrict \fP\fInamelist\fP\fB,\fP
+\fB            int (*\fP\fIfilter\fP\fB)(const struct dirent *),\fP
+\fB            int (*\fP\fIcompar\fP\fB)(const struct dirent **,\fP
+\fBconst struct dirent **));\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBscandir\fP(), \fBalphasort\fP():
+.nf
+    /* Since glibc 2.10: */ _POSIX_C_SOURCE >= 200809L
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.PP
+\fBversionsort\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.PP
+\fBscandirat\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBscandir\fP() 函数扫描目录 \fIdirp\fP，在每个目录条目上调用 \fIfilter\fP()。 \fIfilter\fP()
+返回非零值的条目存储在通过 \fBmalloc\fP(3) 分配的字符串中，使用 \fBqsort\fP(3) 与比较函数 \fIcompar\fP()
+进行排序，并收集在通过 \fBmalloc\fP(3) 分配的数组 \fInamelist\fP 中。 如果 \fIfilter\fP 为 NULL，则选择所有条目。
+.PP
+\fBalphasort\fP() 和 \fBversionsort\fP() 函数可以作为比较函数 \fIcompar\fP()。 前者使用 \fBstrcoll\fP(3)
+对目录条目进行排序，后者使用 \fBstrverscmp\fP(3) 对字符串 \fI(*a)\->d_name\fP 和
+\fI(*b)\->d_name\fP 进行排序。
+.SS scandirat()
+\fBscandirat\fP() 函数的操作方式与 \fBscandir\fP() 完全相同，除了此处描述的不同之处。
+.PP
+如果 \fIdirp\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录 (而不是相对于调用进程的当前工作目录，如
+\fBscandir\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIdirp\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIdirp\fP 被解释为相对于调用进程的当前工作目录 (如
+\fBscandir\fP()).
+.PP
+如果 \fIdirp\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+有关对 \fBscandirat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+\fBscandir\fP() 函数返回所选目录条目的数量。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+如果第一个参数被认为分别小于、等于或大于第二个参数，则 \fBalphasort\fP() 和 \fBversionsort\fP()
+参数返回一个小于、等于或大于零的整数。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+(\fBscandirat\fP()) \fIdirp\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBENOENT\fP
+\fIdirp\fP 中的路径不存在。
+.TP 
+\fBENOMEM\fP
+内存不足，无法完成操作。
+.TP 
+\fBENOTDIR\fP
+\fIdirp\fP 中的路径不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBscandirat\fP()) \fIdirp\fP 是相对路径名，\fIdirfd\fP 是指文件而非目录的文件描述符。
+.SH VERSIONS
+在 glibc 2.1 中添加了 \fBversionsort\fP()。
+.PP
+在 glibc 2.15 中添加了 \fBscandirat\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBscandir\fP(),
+\fBscandirat\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBalphasort\fP(),
+\fBversionsort\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBalphasort\fP(), \fBscandir\fP(): 4.3BSD, POSIX.1\-2008.
+.PP
+.\" .LP
+.\" The functions
+.\" .BR scandir ()
+.\" and
+.\" .BR alphasort ()
+.\" are from 4.3BSD, and have been available under Linux since libc4.
+.\" Libc4 and libc5 use the more precise prototype
+.\" .sp
+.\" .nf
+.\"    int alphasort(const struct dirent ** a,
+.\"                  const struct dirent **b);
+.\" .fi
+.\" .sp
+.\" but glibc 2.0 returns to the imprecise BSD prototype.
+\fBversionsort\fP() 和 \fBscandirat\fP() 是 GNU 扩展。
+.SH NOTES
+由于 glibc 2.1，\fBalphasort\fP() 调用 \fBstrcoll\fP(3); 早些时候它使用 \fBstrcmp\fP(3)。
+.PP
+在 glibc 2.10 之前，\fBalphasort\fP() 和 \fBversionsort\fP() 这两个参数被打成 \fIconst void\ *\fP。
+当 \fBalphasort\fP() 在 POSIX.1\-2008 中标准化时，参数类型被指定为类型安全的 \fIconst struct dirent\ **\fP，glibc 2.10 更改了 \fBalphasort\fP() (和非标准的 \fBversionsort\fP()) 以符合标准。
+.SH EXAMPLES
+.\"
+下面的程序以相反的顺序打印当前目录中的文件列表。
+.SS "Program source"
+.\" SRC BEGIN (scandir.c)
+\&
+.EX
+#define _DEFAULT_SOURCE
+#include <dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    struct dirent **namelist;
+    int n;
+
+    n = scandir(".", &namelist, NULL, alphasort);
+    if (n == \-1) {
+        perror("scandir");
+        exit(EXIT_FAILURE);
+    }
+
+    while (n\-\-) {
+        printf("%s\en", namelist[n]\->d_name);
+        free(namelist[n]);
+    }
+    free(namelist);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclosedir\fP(3), \fBfnmatch\fP(3), \fBopendir\fP(3), \fBreaddir\fP(3),
+\fBrewinddir\fP(3), \fBseekdir\fP(3), \fBstrcmp\fP(3), \fBstrcoll\fP(3),
+\fBstrverscmp\fP(3), \fBtelldir\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

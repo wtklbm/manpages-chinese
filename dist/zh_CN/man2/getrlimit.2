@@ -1,0 +1,462 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1992 Drew Eckhardt, March 28, 1992
+.\" and Copyright (c) 2002, 2004, 2005, 2008, 2010 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-23 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-01-13 by Arnt Gulbrandsen <agulbra@troll.no>
+.\" Modified 1996-01-22 by aeb, following a remark by
+.\"          Tigran Aivazian <tigran@sco.com>
+.\" Modified 1996-04-14 by aeb, following a remark by
+.\"          Robert Bihlmeyer <robbe@orcus.ping.at>
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2001-05-04 by aeb, following a remark by
+.\"          Håvard Lygre <hklygre@online.no>
+.\" Modified 2001-04-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2002-06-13 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added note on nonstandard behavior when SIGCHLD is ignored.
+.\" Modified 2002-07-09 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Enhanced descriptions of 'resource' values
+.\" Modified 2003-11-28 by aeb, added RLIMIT_CORE
+.\" Modified 2004-03-26 by aeb, added RLIMIT_AS
+.\" Modified 2004-06-16 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_SYS_RESOURCE
+.\"
+.\" 2004-11-16 -- mtk: the getrlimit.2 page, which formally included
+.\" coverage of getrusage(2), has been split, so that the latter
+.\" is now covered in its own getrusage.2.
+.\"
+.\" Modified 2004-11-16, mtk: A few other minor changes
+.\" Modified 2004-11-23, mtk
+.\"	Added notes on RLIMIT_MEMLOCK, RLIMIT_NPROC, and RLIMIT_RSS
+.\"		to "CONFORMING TO"
+.\" Modified 2004-11-25, mtk
+.\"	Rewrote discussion on RLIMIT_MEMLOCK to incorporate kernel
+.\"		2.6.9 changes.
+.\"	Added note on RLIMIT_CPU error in older kernels
+.\" 2004-11-03, mtk, Added RLIMIT_SIGPENDING
+.\" 2005-07-13, mtk, documented RLIMIT_MSGQUEUE limit.
+.\" 2005-07-28, mtk, Added descriptions of RLIMIT_NICE and RLIMIT_RTPRIO
+.\" 2008-05-07, mtk / Peter Zijlstra, Added description of RLIMIT_RTTIME
+.\" 2010-11-06, mtk: Added documentation of prlimit()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getrlimit 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getrlimit、setrlimit、prlimit\-get/set 资源限制
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/resource.h>\fP
+.PP
+\fBint getrlimit(int \fP\fIresource\fP\fB, struct rlimit *\fP\fIrlim\fP\fB);\fP
+\fBint setrlimit(int \fP\fIresource\fP\fB, const struct rlimit *\fP\fIrlim\fP\fB);\fP
+.PP
+\fBint prlimit(pid_t \fP\fIpid\fP\fB, int \fP\fIresource\fP\fB,\fP
+\fB            const struct rlimit *_Nullable \fP\fInew_limit\fP\fB,\fP
+\fB            struct rlimit *_Nullable \fP\fIold_limit\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBprlimit\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetrlimit\fP() 和 \fBsetrlimit\fP() 系统调用获取和设置资源限制。 每个资源都有一个相关的软硬限制，由 \fIrlimit\fP
+结构体定义:
+.PP
+.in +4n
+.EX
+struct rlimit {
+    rlim_t rlim_cur;  /* Soft limit */
+    rlim_t rlim_max;  /* Hard limit (ceiling for rlim_cur) */
+};
+.EE
+.in
+.PP
+软限制是内核对相应资源强制执行的值。 硬限制充当软限制的上限: 非特权进程可以仅将其软限制设置为从 0 到硬限制范围内的值，并且
+(irreversibly) 降低其硬限制。 特权进程 (在 Linux 下: 在初始用户命名空间中具有 \fBCAP_SYS_RESOURCE\fP
+功能的进程) 可以对任一限制值进行任意更改。
+.PP
+值 \fBRLIM_INFINITY\fP 表示对资源没有限制 (在 \fBgetrlimit\fP() 返回的结构体和传递给 \fBsetrlimit\fP())
+的结构体中)。
+.PP
+\fIresource\fP 参数必须是以下之一:
+.TP 
+\fBRLIMIT_AS\fP
+.\" since Linux 2.0.27 / Linux 2.1.12
+这是进程的虚拟内存 (地址空间) 的最大大小。 该限制以字节为单位指定，并向下舍入为系统页面大小。 此限制会影响对
+\fBbrk\fP(2)、\fBmmap\fP(2) 和 \fBmremap\fP(2) 的调用，这些调用会在超过此限制时失败并显示错误 \fBENOMEM\fP。
+此外，自动栈扩展失败 (并生成一个 \fBSIGSEGV\fP，如果没有通过 \fBsigaltstack\fP(2)) 提供可用的备用栈，则会终止进程。 由于值为
+\fIlong\fP，在具有 32 位 \fIlong\fP 的计算机上，此限制最多为 2\GiB，或者此资源不受限制。
+.TP 
+\fBRLIMIT_CORE\fP
+这是 \fIcore\fP 文件的最大大小 (请参见进程可能转储的以字节为单位的 \fBcore\fP(5))。 当为 0 时，不创建核心转储文件。
+当非零时，较大的转储将被截断为此大小。
+.TP 
+\fBRLIMIT_CPU\fP
+这是进程可以消耗的 CPU 时间量的限制 (以秒为单位)。 当进程到达软限位时，它被发送一个 \fBSIGXCPU\fP 信号。 此信号的默认操作是终止进程。
+但是，可以捕获信号，并且处理程序可以将控制权返回给主程序。 如果进程继续消耗 CPU 时间，每秒发送一次 \fBSIGXCPU\fP，直到达到硬限制，此时发送
+\fBSIGKILL\fP。 (后一点描述了 Linux 的行为。实现在如何处理达到软限制后继续消耗 CPU
+时间的进程方面有所不同。需要捕获此信号的便携式应用程序应在首次收到 \fBSIGXCPU\fP.) 时执行有序终止
+.TP 
+\fBRLIMIT_DATA\fP
+.\" commits 84638335900f1995495838fe1bd4870c43ec1f67
+.\" ("mm: rework virtual memory accounting"),
+.\" f4fcd55841fc9e46daac553b39361572453c2b88
+.\" (mm: enable RLIMIT_DATA by default with workaround for valgrind).
+这是进程的字段 (初始化数据、未初始化数据和堆) 的最大大小。 该限制以字节为单位指定，并向下舍入为系统页面大小。 此限制会影响对
+\fBbrk\fP(2)、\fBsbrk\fP(2) 和 (自 Linux 4.7 起) \fBmmap\fP(2) 的调用，这些调用在遇到此资源的软限制时失败并显示错误
+\fBENOMEM\fP。
+.TP 
+\fBRLIMIT_FSIZE\fP
+这是进程可能创建的文件的最大大小 (以字节为单位)。 尝试将文件扩展到超出此限制会导致传递 \fBSIGXFSZ\fP 信号。
+默认情况下，这个信号会终止一个进程，但是一个进程可以捕获这个信号，在这种情况下相关的系统调用
+(例如，\fBwrite\fP(2)，\fBtruncate\fP(2)) 失败并出现错误 \fBEFBIG\fP。
+.TP 
+\fBRLIMIT_LOCKS\fP (Linux 2.4.0 to Linux 2.4.24)
+.\" to be precise: Linux 2.4.0-test9; no longer in Linux 2.4.25 / Linux 2.5.65
+这是对该进程可能建立的 \fBflock\fP(2) 锁和 \fBfcntl\fP(2) 租约的组合数量的限制。
+.TP 
+\fBRLIMIT_MEMLOCK\fP
+这是可以锁定到 RAM 中的最大内存字节数。 该限制实际上向下舍入为最接近的系统页面大小倍数。 此限制会影响
+\fBmlock\fP(2)、\fBmlockall\fP(2) 和 \fBmmap\fP(2) \fBMAP_LOCKED\fP 操作。 自 Linux 2.6.9
+以来，它还影响 \fBshmctl\fP(2) \fBSHM_LOCK\fP 操作，它在共享内存段中设置总字节数的最大值 (请参见可能被调用进程的真实用户 ID
+锁定的 \fBshmget\fP(2))。 \fBshmctl\fP(2) \fBSHM_LOCK\fP 锁与 \fBmlock\fP(2)、\fBmlockall\fP(2) 和
+\fBmmap\fP(2) \fBMAP_LOCKED\fP 建立的每个进程内存锁分开计算; 进程可以在这两个类别中的每一个中将字节锁定到此限制。
+.IP
+在 Linux 2.6.9 之前，这个限制控制了特权进程可以锁定的内存量。 从 Linux 2.6.9
+开始，特权进程可以锁定的内存量没有限制，这个限制反而控制了非特权进程可以锁定的内存量。
+.TP 
+\fBRLIMIT_MSGQUEUE\fP (since Linux 2.6.8)
+这是可以为调用进程的真实用户 ID 分配给 POSIX 消息队列的字节数限制。 \fBmq_open\fP(3) 强制执行此限制。 用户创建的每个消息队列
+(直到它被删除) 根据以下公式计入此限制:
+.RS 4
+.IP
+从 Linux 3.5 开始:
+.IP
+.in +4n
+.EX
+bytes = attr.mq_maxmsg * sizeof(struct msg_msg) +
+        MIN(attr.mq_maxmsg, MQ_PRIO_MAX) *
+              sizeof(struct posix_msg_tree_node)+
+                        /* For overhead */
+        attr.mq_maxmsg * attr.mq_msgsize;
+                        /* For message data */
+.EE
+.in
+.IP
+Linux 3.4 and earlier:
+.IP
+.in +4n
+.EX
+bytes = attr.mq_maxmsg * sizeof(struct msg_msg *) +
+                        /* For overhead */
+        attr.mq_maxmsg * attr.mq_msgsize;
+                        /* For message data */
+.EE
+.in
+.RE
+.IP
+其中 \fIattr\fP 是指定为 \fBmq_open\fP(3) 的第四个参数的 \fImq_attr\fP 结构体，\fImsg_msg\fP 和
+\fIposix_msg_tree_node\fP 结构是内核内部结构。
+.IP
+公式中的 "overhead" 加数考虑了实现所需的开销字节，并确保用户不能创建无限数量的零长度消息
+(尽管如此，此类消息每个都会消耗一些系统内存用于记录开销)。
+.TP 
+\fBRLIMIT_NICE\fP (since Linux 2.6.12, but see BUGS below)
+这指定了使用 \fBsetpriority\fP(2) 或 \fBnice\fP(2) 可以将进程的 nice 值提高到的上限。 nice 值的实际上限计算为
+\fI20\ \-\ rlim_cur\fP。 因此，此限制的有用范围是从 1 (对应于 19 的 nice 值) 到 40 (对应于 \-20 的 nice
+值)。 这种不寻常的范围选择是必要的，因为 negative 数字不能指定为资源限制值，因为它们通常具有特殊含义。
+例如，\fBRLIM_INFINITY\fP 通常与 \-1 相同。 有关 nice 值的更多详细信息，请参见 \fBsched\fP(7)。
+.TP 
+\fBRLIMIT_NOFILE\fP
+这指定了一个比该进程可以打开的最大文件描述符数大 1 的值。 尝试 (\fBopen\fP(2)、\fBpipe\fP(2)、\fBdup\fP(2) 等)
+超过此限制会产生错误 \fBEMFILE\fP。 (历史上，这个限制在 BSD 上被命名为 \fBRLIMIT_OFILE\fP。)
+.IP
+从 Linux 4.5 开始，此限制还定义了非特权进程 (没有 \fBCAP_SYS_RESOURCE\fP 功能的进程) 通过跨 UNIX
+域套接字传递给其他进程的文件描述符的最大数量。 此限制适用于 \fBsendmsg\fP(2) 系统调用。 有关详细信息，请参见 \fBunix\fP(7)。
+.TP 
+\fBRLIMIT_NPROC\fP
+这是对调用进程的真实用户 ID 的现存进程 (或更准确地说，Linux，线程) 数量的限制。 只要属于此进程的真实用户 ID
+的当前进程数大于或等于此限制，\fBfork\fP(2) 就会失败并显示错误 \fBEAGAIN\fP。
+.IP
+对于具有 \fBCAP_SYS_ADMIN\fP 或 \fBCAP_SYS_RESOURCE\fP 功能或使用真实用户 ID 运行的进程，不强制执行
+\fBRLIMIT_NPROC\fP 限制 0.
+.TP 
+\fBRLIMIT_RSS\fP
+.\" As at Linux 2.6.12, this limit still does nothing in Linux 2.6 though
+.\" talk of making it do something has surfaced from time to time in LKML
+.\"       -- MTK, Jul 05
+这是对进程驻留集 (驻留在 RAM 中的虚拟页数) 的限制 (以字节为单位)。 此限制仅在 Linux 2.4.x、x < 30
+中有效，并且仅影响对指定 \fBMADV_WILLNEED\fP 的 \fBmadvise\fP(2) 的调用。
+.TP 
+\fBRLIMIT_RTPRIO\fP (since Linux 2.6.12, but see BUGS)
+这指定了可以使用 \fBsched_setscheduler\fP(2) 和 \fBsched_setparam\fP(2) 为此进程设置的实时优先级上限。
+.IP
+有关实时调度策略的更多详细信息，请参见 \fBsched\fP(7)
+.TP 
+\fBRLIMIT_RTTIME\fP (since Linux 2.6.25)
+这是在不造成阻塞系统调用的情况下，根据实时调度策略调度的进程可能消耗的 CPU 时间量的限制 (以微秒为单位)。
+出于此限制的目的，每次进程进行阻塞系统调用时，其消耗的 CPU 时间计数将重置为零。 如果进程继续尝试使用 CPU 但被抢占、其时间片到期或调用
+\fBsched_yield\fP(2)，则 CPU 时间计数不会重置。
+.IP
+达到软限位后，进程将收到 \fBSIGXCPU\fP 信号。 如果进程捕获或忽略此信号并继续消耗 CPU 时间，则每秒生成一次
+\fBSIGXCPU\fP，直到达到硬限制，此时向进程发送 \fBSIGKILL\fP 信号。
+.IP
+此限制的预期用途是阻止失控的实时进程锁定系统。
+.IP
+有关实时调度策略的更多详细信息，请参见 \fBsched\fP(7)
+.TP 
+\fBRLIMIT_SIGPENDING\fP (since Linux 2.6.8)
+.\" This replaces the /proc/sys/kernel/rtsig-max system-wide limit
+.\" that was present in Linux <= 2.6.7.  MTK Dec 04
+这是对可能为调用进程的真实用户 ID 排队的信号数量的限制。 为了检查此限制，标准和实时信号都被计算在内。 但是，该限制仅适用于
+\fBsigqueue\fP(3); 始终可以使用 \fBkill\fP(2) 将尚未排队到进程的任何信号的一个实例排队。
+.TP 
+\fBRLIMIT_STACK\fP
+这是进程栈的最大大小，以字节为单位。 达到此限制后，将生成 \fBSIGSEGV\fP 信号。 要处理此信号，进程必须使用备用信号栈
+(\fBsigaltstack\fP(2))。
+.IP
+从 Linux 2.6.23 开始，这个限制也决定了进程的命令行参数和环境变量所占用的空间量; 有关详细信息，请参见 \fBexecve\fP(2)。
+.SS prlimit()
+.\" commit c022a0acad534fd5f5d5f17280f6d4d135e74e81
+.\" Author: Jiri Slaby <jslaby@suse.cz>
+.\" Date:   Tue May 4 18:03:50 2010 +0200
+.\"
+.\"     rlimits: implement prlimit64 syscall
+.\"
+.\" commit 6a1d5e2c85d06da35cdfd93f1a27675bfdc3ad8c
+.\" Author: Jiri Slaby <jslaby@suse.cz>
+.\" Date:   Wed Mar 24 17:06:58 2010 +0100
+.\"
+.\"     rlimits: add rlimit64 structure
+.\"
+Linux 专用的 \fBprlimit\fP() 系统调用结合并扩展了 \fBsetrlimit\fP() 和 \fBgetrlimit\fP() 的功能。
+它可用于设置和获取任意进程的资源限制。
+.PP
+\fIresource\fP 参数与 \fBsetrlimit\fP() 和 \fBgetrlimit\fP() 的含义相同。
+.PP
+如果 \fInew_limit\fP 参数不为 NULL，则使用它指向的 \fIrlimit\fP 结构体为 \fIresource\fP 的软限制和硬限制设置新值。
+如果 \fIold_limit\fP 参数不为 NULL，则对 \fBprlimit\fP() 的成功调用会将 \fIresource\fP 的先前软硬限制放置在
+\fIold_limit\fP 指向的 \fIrlimit\fP 结构体中。
+.PP
+.\" FIXME . this permission check is strange
+.\" Asked about this on LKML, 7 Nov 2010
+.\"     "Inconsistent credential checking in prlimit() syscall"
+\fIpid\fP 参数指定调用要在其上运行的进程的 ID。 如果 \fIpid\fP 为 0，则调用适用于调用进程。
+要设置或获取除自身以外的进程的资源，调用者必须在被更改资源限制的进程的用户命名空间中具有 \fBCAP_SYS_RESOURCE\fP
+能力，或者目标进程的真实、有效和保存的设置用户 ID 必须 match the real user ID of the caller \fIand\fP
+目标进程的真实、有效和保存的集合组 ID 必须匹配调用者的真实组 ID。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+指针参数指向可访问地址空间之外的位置。
+.TP 
+\fBEINVAL\fP
+\fIresource\fP 中指定的值无效; or, for \fBsetrlimit\fP()  or \fBprlimit\fP():
+\fIrlim\->rlim_cur\fP was greater than \fIrlim\->rlim_max\fP.
+.TP 
+\fBEPERM\fP
+非特权进程试图提高硬限制; 执行此操作需要 \fBCAP_SYS_RESOURCE\fP 功能。
+.TP 
+\fBEPERM\fP
+调用者试图将硬 \fBRLIMIT_NOFILE\fP 限制增加到 \fI/proc/sys/fs/nr_open\fP 定义的最大值以上 (请参见
+\fBproc\fP(5))
+.TP 
+\fBEPERM\fP
+(\fBprlimit\fP()) 调用进程无权为 \fIpid\fP 指定的进程设置限制。
+.TP 
+\fBESRCH\fP
+找不到具有 \fIpid\fP 中指定 ID 的进程。
+.SH VERSIONS
+\fBprlimit\fP() 系统调用自 Linux 2.6.36 起可用。 自 glibc 2.13 以来，库支持可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetrlimit\fP(),
+\fBsetrlimit\fP(),
+\fBprlimit\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBgetrlimit\fP(), \fBsetrlimit\fP(): POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.PP
+\fBprlimit\fP(): Linux 专用。
+.PP
+\fBRLIMIT_MEMLOCK\fP 和 \fBRLIMIT_NPROC\fP 派生自 BSD，在 POSIX.1 中没有指定; 它们出现在 BSD 和
+Linux 上，但很少出现在其他实现中。 \fBRLIMIT_RSS\fP 派生自 BSD，POSIX.1 中没有指定; 尽管如此，它仍然存在于大多数实现中。
+\fBRLIMIT_MSGQUEUE\fP、\fBRLIMIT_NICE\fP、\fBRLIMIT_RTPRIO\fP、\fBRLIMIT_RTTIME\fP 和
+\fBRLIMIT_SIGPENDING\fP 是特定于 Linux 的。
+.SH NOTES
+通过 \fBfork\fP(2) 创建的子进程继承其父进程的资源限制。 跨 \fBexecve\fP(2) 保留资源限制。
+.PP
+资源限制是每个进程的属性，由进程中的所有线程共享。
+.PP
+将资源的软限制降低到进程当前对该资源的消耗以下将会成功 (但会阻止进程进一步增加其对资源的消耗)。
+.PP
+可以使用 \fBcsh\fP(1)) 中的内置 \fIulimit\fP 命令 (\fIlimit\fP 设置 shell 的资源限制。 shell
+的资源限制由它创建的执行命令的进程继承。
+.PP
+从 Linux 2.6.24 开始，任何进程的资源限制都可以通过 \fI/proc/\fPpid\fI/limits\fP 检查; 请参见 \fBproc\fP(5)。
+.PP
+古代系统提供了一个 \fBvlimit\fP() 函数，其目的与 \fBsetrlimit\fP() 相似。 为了向后兼容，glibc 还提供了
+\fBvlimit\fP()。 所有新应用程序都应使用 \fBsetrlimit\fP() 编写。
+.SS "C library/kernel ABI differences"
+从 glibc 2.13 开始，glibc \fBgetrlimit\fP() 和 \fBsetrlimit\fP() 包装器函数不再调用相应的系统调用，而是使用
+\fBprlimit\fP()，原因在 BUGS 中描述。
+.PP
+glibc wrapper 的名字是 \fBprlimit\fP(); 底层系统调用是 \fBprlimit64\fP()。
+.SH BUGS
+在较旧的 Linux 内核中，当进程遇到软和硬 \fBRLIMIT_CPU\fP 限制时传递的 \fBSIGXCPU\fP 和 \fBSIGKILL\fP
+信号比它们应该传递的时间晚了 (CPU) 秒。 这已在 Linux 2.6.8 中修复。
+.PP
+.\" see http://marc.theaimsgroup.com/?l=linux-kernel&m=114008066530167&w=2
+在 Linux 2.6.17 之前的 Linux 2.6.x 内核中，\fBRLIMIT_CPU\fP 限制为 0 被错误地视为 "no limit" (如
+\fBRLIM_INFINITY\fP)。 从 Linux 2.6.17 开始，设置 0 的限制确实有效果，但实际上被视为 1 秒的限制。
+.PP
+.\" See https://lwn.net/Articles/145008/
+内核错误意味着 \fBRLIMIT_RTPRIO\fP 在 Linux 2.6.12 中不起作用; 该问题已在 Linux 2.6.13 中修复。
+.PP
+.\" see http://marc.theaimsgroup.com/?l=linux-kernel&m=112256338703880&w=2
+在 Linux 2.6.12 中，\fBgetpriority\fP(2) 和 \fBRLIMIT_NICE\fP 返回的优先级范围之间存在差一不匹配。 这具有将
+nice 值的实际上限计算为 \fI19\ \-\ rlim_cur\fP 的效果。 这已在 Linux 2.6.13 中修复。
+.PP
+.\" The relevant patch, sent to LKML, seems to be
+.\" http://thread.gmane.org/gmane.linux.kernel/273462
+.\" From: Roland McGrath <roland <at> redhat.com>
+.\" Subject: [PATCH 7/7] make RLIMIT_CPU/SIGXCPU per-process
+.\" Date: 2005-01-23 23:27:46 GMT
+.\" Tested Solaris 10, FreeBSD 9, OpenBSD 5.0
+.\" FIXME . https://bugzilla.kernel.org/show_bug.cgi?id=50951
+从 Linux 2.6.12 开始，如果进程达到其软 \fBRLIMIT_CPU\fP 限制并且为 \fBSIGXCPU\fP
+安装了处理程序，那么，除了调用信号处理程序之外，内核还将软限制增加一秒。 如果进程继续消耗 CPU
+时间，则会重复此行为，直到达到硬限制，此时进程将被终止。 其他实现不会以这种方式更改 \fBRLIMIT_CPU\fP 软限制，并且 Linux
+行为可能不符合标准; 可移植应用程序应该避免依赖于这种特定于 Linux 的行为。 当遇到软限制时，特定于 Linux 的
+\fBRLIMIT_RTTIME\fP 限制会表现出相同的行为。
+.PP
+.\" d3561f78fd379a7110e46c87964ba7aa4120235c
+当 \fIrlim\->rlim_cur\fP 大于 \fIrlim\->rlim_max\fP 时，Linux 2.4.22 之前的内核没有为
+\fBsetrlimit\fP() 诊断出 \fBEINVAL\fP 的错误。
+.PP
+.\"
+出于兼容性原因，当尝试设置 \fBRLIMIT_CPU\fP 失败时，Linux 不会返回错误。
+.SS "Representation of \(dqlarge\(dq resource limit values on 32\-bit platforms"
+.\" Linux still uses long for limits internally:
+.\" c022a0acad534fd5f5d5f17280f6d4d135e74e81
+.\" kernel/sys.c:do_prlimit() still uses struct rlimit which
+.\" uses kernel_ulong_t for its members, i.e. 32-bit  on 32-bit kernel.
+.\" https://bugzilla.kernel.org/show_bug.cgi?id=5042
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=12201
+glibc \fBgetrlimit\fP() 和 \fBsetrlimit\fP() 包装器函数使用 64 位 \fIrlim_t\fP 数据类型，即使在 32
+位平台上也是如此。 但是，\fBgetrlimit\fP() 和 \fBsetrlimit\fP() 系统调用中使用的 \fIrlim_t\fP 数据类型是
+(32\-bit) \fIunsigned long\fP。 此外，在 Linux 中，内核将 32 位平台上的资源限制表示为 \fIunsigned long\fP。 但是，32 位数据类型不够宽。 这里最相关的限制是 \fBRLIMIT_FSIZE\fP，它指定文件可以增长到的最大大小:
+要有用，必须使用与用于表示文件偏移量的类型一样宽的类型来表示此限制 \[em] 即，和 64 位 \fBoff_t\fP 一样宽 (假设一个程序用
+\fI_FILE_OFFSET_BITS=64\fP).
+.PP
+要解决此内核限制，如果程序试图将资源限制设置为大于 32 位 \fIunsigned long\fP 可以表示的值，则 glibc
+\fBsetrlimit\fP() 包装器函数会默默地将限制值转换为 \fBRLIM_INFINITY\fP。 换句话说，请求的资源限制设置被默默地忽略了。
+.PP
+.\" https://www.sourceware.org/bugzilla/show_bug.cgi?id=12201
+从 glibc 2.13 开始，glibc 通过将 \fBsetrlimit\fP() 和 \fBgetrlimit\fP() 实现为调用 \fBprlimit\fP()
+的包装器函数来解决 \fBgetrlimit\fP() 和 \fBsetrlimit\fP() 系统调用的局限性。
+.SH EXAMPLES
+下面的程序演示了 \fBprlimit\fP() 的使用。
+.PP
+.\" SRC BEGIN (getrlimit.c)
+.EX
+#define _GNU_SOURCE
+#define _FILE_OFFSET_BITS 64
+#include <err.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/resource.h>
+#include <time.h>
+
+int
+main(int argc, char *argv[])
+{
+    pid_t          pid;
+    struct rlimit  old, new;
+    struct rlimit  *newp;
+
+    if (!(argc == 2 || argc == 4)) {
+        fprintf(stderr, "Usage: %s <pid> [<new\-soft\-limit> "
+                "<new\-hard\-limit>]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    pid = atoi(argv[1]);        /* PID of target process */
+
+    newp = NULL;
+    if (argc == 4) {
+        new.rlim_cur = atoi(argv[2]);
+        new.rlim_max = atoi(argv[3]);
+        newp = &new;
+    }
+
+    /* Set CPU time limit of target process; retrieve and display
+       previous limit */
+
+    if (prlimit(pid, RLIMIT_CPU, newp, &old) == \-1)
+        err(EXIT_FAILURE, "prlimit\-1");
+    printf("Previous limits: soft=%jd; hard=%jd\en",
+           (intmax_t) old.rlim_cur, (intmax_t) old.rlim_max);
+
+    /* Retrieve and display new CPU time limit */
+
+    if (prlimit(pid, RLIMIT_CPU, NULL, &old) == \-1)
+        err(EXIT_FAILURE, "prlimit\-2");
+    printf("New limits: soft=%jd; hard=%jd\en",
+           (intmax_t) old.rlim_cur, (intmax_t) old.rlim_max);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBprlimit\fP(1), \fBdup\fP(2), \fBfcntl\fP(2), \fBfork\fP(2), \fBgetrusage\fP(2),
+\fBmlock\fP(2), \fBmmap\fP(2), \fBopen\fP(2), \fBquotactl\fP(2), \fBsbrk\fP(2),
+\fBshmctl\fP(2), \fBmalloc\fP(3), \fBsigqueue\fP(3), \fBulimit\fP(3), \fBcore\fP(5),
+\fBcapabilities\fP(7), \fBcgroups\fP(7), \fBcredentials\fP(7), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

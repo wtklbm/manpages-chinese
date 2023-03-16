@@ -1,0 +1,722 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: pacman
+.\"    Author: [see the "Authors" section]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 2022-11-01
+.\"    Manual: Pacman Manual
+.\"    Source: Pacman 6.0.2
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH PACMAN 8 2022\-11\-01 "Pacman 6\&.0\&.2" "Pacman Manual"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+pacman \- 包管理器工具
+.SH SYNOPSIS
+.sp
+\fIpacman\fP <operation> [options] [targets]
+.SH DESCRIPTION
+.sp
+Pacman 是一个包管理实用程序，用于跟踪 Linux
+系统上已安装的包。它具有依赖性支持、包组、安装和卸载脚本，以及将本地计算机与远程库同步以自动升级包的能力。Pacman 包是压缩的 tar 格式 \&。
+.sp
+从版本 3\&.0\&.0 开始，pacman 一直是 \fBlibalpm\fP(3) 的前端，\(lqArch Linux Package
+Management\(rq library\&. 该库允许编写替代前端 (例如，GUI 前端) \&。
+.sp
+调用 pacman 涉及指定一个操作，其中包含任何潜在的选项和要操作的目标。\fItarget\fP 通常是包名、文件名、URL 或搜索字符串
+\&。目标可以作为命令行参数 \& 提供。此外，如果 stdin 不是来自最终端并且单个连字符 (\-) 作为参数传递，目标将从 stdin\& 读取。
+.SH OPERATIONS
+.PP
+\fB\-D, \-\-database\fP
+.RS 4
+对包数据库进行操作 \&。此操作允许您修改 pacman\(cqs database\&. 它还允许您检查数据库的内部一致性
+\&。请参见下面的数据库选项 \&。
+.RE
+.PP
+\fB\-Q, \-\-query\fP
+.RS 4
+查询包数据库 \&。此操作允许您查看已安装的包及其文件，以及有关单个包的元信息 (依赖项、冲突、安装日期、构建日期、大小)
+\&。这可以针对本地包数据库运行，也可以用于单个包文件 \&。在第一种情况下，如果命令行中没有提供包名，则会查询所有已安装的包
+\&。此外，可以在包列表上应用各种过滤器 \&。请参见下面的查询选项 \&。
+.RE
+.PP
+\fB\-R, \-\-remove\fP
+.RS 4
+从系统中删除 package(s)\&。也可以指定要删除的组，在这种情况下，该组中的每个包都将被删除 \&。属于指定包的文件将被删除，数据库将被更新
+\&。大多数配置文件将以 \fI\&.pacsave\fP 扩展名保存，除非使用 \fI\-\-nosave\fP 选项 \&。请参见下面的删除选项 \&。
+.RE
+.PP
+\fB\-S, \-\-sync\fP
+.RS 4
+同步包 \&。包直接从远程存储库安装，包括运行包所需的所有依赖项 \&。例如 pacman \-S qt 会下载并安装 qt 及其依赖的所有包
+\&。如果包名存在于多个库中，可以明确指定库以明确要安装的包: pacman \-S 测试 /qt\&。您还可以指定版本要求: pacman \-S
+"bash>=3\&.2"\&。需要引号，否则 shell 会将 ">" 解释为重定向到文件 \&。
+.sp
+除了包之外，还可以指定组 \&。例如，如果 gnome 是一个已定义的包组，那么 pacman \-S gnome
+将提供一个提示，允许您从编号列表中选择要安装的包 \&。使用以空格或者逗号分隔的包号 \& 列表指定包选择。可以通过指定由连字符 (\-)\&
+分隔的第一个和最后一个包号来选择连续包。排除包是通过在数字或数字范围前加上插入符号 (^)\& 来实现的。
+.sp
+提供其他包的包也被处理 \&。例如，pacman \-S foo 将首先查找 foo 包 \&。如果找不到 foo，将搜索提供与 foo 相同功能的包
+\&。如果找到任何包，它将被安装 \&。如果找到多个提供 foo 的包，则会提供选择提示 \&。
+.sp
+您还可以使用 pacman \-Su 升级所有过时的包。请参见下面的同步选项 \&。升级时，pacman 会进行版本比较，以确定哪些包需要升级
+\&。此行为的操作如下:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+Alphanumeric:
+  1\&.0a < 1\&.0b < 1\&.0beta < 1\&.0p < 1\&.0pre < 1\&.0rc < 1\&.0 < 1\&.0\&.a < 1\&.0\&.1
+Numeric:
+  1 < 1\&.0 < 1\&.1 < 1\&.1\&.1 < 1\&.2 < 2\&.0 < 3\&.0\&.0
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+此外，版本字符串可以定义一个 \fIepoch\fP 值，它将否决任何版本比较，除非纪元值相等 \&。这是以 epoch:version\-rel 格式指定的
+\&。例如，2:1\&.0\-1 总是大于 1:3\&.6\-1\&。
+.RE
+.PP
+\fB\-T, \-\-deptest\fP
+.RS 4
+检查依赖关系; 这在 makepkg 等脚本中很有用，可以检查已安装的包 \&。此操作将检查指定的每个依赖项并返回系统当前不满足的依赖项列表
+\&。此操作不接受其他选项 \&。用法示例: pacman \-T qt "bash>=3\&.2"\&。
+.RE
+.PP
+\fB\-U, \-\-upgrade\fP
+.RS 4
+升级或添加 package(s) 到系统并从同步存储库安装所需的依赖项 \&。可以指定 URL 或文件路径 \&。这是一个
+\(lqremove\-then\-add\(rq 过程 \&。请参见下面的升级选项; 另请参见处理配置文件以了解 pacman 如何处理配置文件 \&。
+.RE
+.PP
+\fB\-F, \-\-files\fP
+.RS 4
+查询文件数据库 \&。此操作允许您查找拥有某些文件的包或显示某些包所拥有所有权的文件 \&。仅搜索属于您的同步数据库的包 \&。请参见下面的文件选项
+\&。
+.RE
+.PP
+\fB\-V, \-\-version\fP
+.RS 4
+显示版本并退出 \&。
+.RE
+.PP
+\fB\-h, \-\-help\fP
+.RS 4
+显示给定操作的语法 \&。如果未提供任何操作，则显示一般语法 \&。
+.RE
+.SH OPTIONS
+.PP
+\fB\-b, \-\-dbpath\fP <path>
+.RS 4
+指定备用数据库位置 (默认为 /var/lib/pacman) \&。除非您知道自己在做什么 \&，否则不应使用它。 \fBNOTE\fP:
+如果指定，这是一个绝对路径，根路径不会自动添加到前缀 \&。
+.RE
+.PP
+\fB\-r, \-\-root\fP <path>
+.RS 4
+指定备用安装根目录 (默认为 /) \&。这不应该用作将软件安装到 /usr/local 而不是 /usr\& 的方法。 \fBNOTE\fP:
+如果在命令行或 \fBpacman.conf\fP(5) 中未指定数据库路径或日志文件，则它们的默认位置将在此根路径内 \&。 \fBNOTE\fP:
+此选项不适用于在挂载的访客系统上执行操作 \&。请参见 \fI\-\-sysroot\fP\&。
+.RE
+.PP
+\fB\-v, \-\-verbose\fP
+.RS 4
+输出路径，例如 Root、Conf File、DB Path、Cache Dirs 等 \&。
+.RE
+.PP
+\fB\-\-arch\fP <arch>
+.RS 4
+指定备用架构 \&。
+.RE
+.PP
+\fB\-\-cachedir\fP <dir>
+.RS 4
+指定备用包缓存位置 (默认为 /var/cache/pacman/pkg) \&。可以指定多个缓存目录，并按照传递给 pacman\& 的顺序进行尝试。
+\fBNOTE\fP: 这是绝对路径，根路径不会自动添加 \&。
+.RE
+.PP
+\fB\-\-color\fP <when>
+.RS 4
+指定何时启用着色 \&。有效选项为 \fIalways\fP、\fInever\fP 或 \fIauto\fP\&。\fIalways\fP 强制启用颜色; \fInever\fP
+强制关闭颜色; 并且 \fIauto\fP 仅在输出到 tty\& 时自动启用颜色。
+.RE
+.PP
+\fB\-\-config\fP <file>
+.RS 4
+指定备用配置文件 \&。
+.RE
+.PP
+\fB\-\-debug\fP
+.RS 4
+显示调试消息 \&。报告错误时，建议使用此选项 \&。
+.RE
+.PP
+\fB\-\-gpgdir\fP <dir>
+.RS 4
+指定 GnuPG 用来验证包签名的文件目录 (默认为 /etc/pacman\&.d/gnupg) \&。该目录应包含两个文件:
+pubring\&.gpg 和 trustdb\&.gpg\&。 pubring\&.gpg 持有所有 packagers\& 的公钥。
+trustdb\&.gpg 包含一个所谓的信任数据库，它指定密钥是真实可信的 \&。 \fBNOTE\fP: 这是绝对路径，根路径不会自动添加 \&。
+.RE
+.PP
+\fB\-\-hookdir\fP <dir>
+.RS 4
+指定包含，钩子，文件的替代目录 (默认为 /etc/pacman\&.d/hooks)
+\&。可以指定多个，钩子，目录，后面目录中的，钩子，优先于前面目录中的，钩子 \&。 \fBNOTE\fP: 这是绝对路径，根路径不会自动添加 \&。
+.RE
+.PP
+\fB\-\-logfile\fP <file>
+.RS 4
+指定备用日志文件 \&。这是一个绝对路径，与安装根设置无关 \&。
+.RE
+.PP
+\fB\-\-noconfirm\fP
+.RS 4
+绕过所有 \(lqAre you sure?\(rq messages\&. \(除非您想从脚本中运行 pacman，否则这样做不是一个好主意 \&。
+.RE
+.PP
+\fB\-\-confirm\fP
+.RS 4
+取消先前 \fI\-\-noconfirm\fP\& 的效果。
+.RE
+.PP
+\fB\-\-disable\-download\-timeout\fP
+.RS 4
+禁用低速限制和下载超时的默认值 \&。如果您在使用代理或者安全网关 \& 下载文件时遇到问题，请使用它。
+.RE
+.PP
+\fB\-\-sysroot\fP <dir>
+.RS 4
+指定替代系统根目录 \&。Pacman 将在运行 \& 之前将 chroot 和 chdir 进入系统根目录。这允许挂载的来宾系统在 \&
+上正常运行。给定的任何其他路径都将被解释为相对于系统根 \&。需要 root 权限 \&。
+.RE
+.SH "TRANSACTION OPTIONS (APPLY TO \FI\-S\FR, \FI\-R\FR AND \FI\-U\FR)"
+.PP
+\fB\-d, \-\-nodeps\fP
+.RS 4
+跳过依赖版本检查 \&。包名仍然被检查 \&。通常情况下，pacman 会一直检查一个包 \(cqs
+依赖字段以确保所有依赖项都已安装并且系统中没有包冲突 \&。指定此选项两次以跳过所有依赖项检查 \&。
+.RE
+.PP
+\fB\-\-assume\-installed\fP <package=version>
+.RS 4
+将版本为 "version" 的虚拟包 "package" 添加到事务以满足依赖性 \&。这允许在不影响所有依赖性检查的情况下禁用特定的依赖性检查
+\&。要禁用所有依赖项检查，请参见 \fI\-\-nodeps\fP 选项 \&。
+.RE
+.PP
+\fB\-\-dbonly\fP
+.RS 4
+Adds/removes 仅数据库条目，保留所有文件 \&。
+.RE
+.PP
+\fB\-\-noprogressbar\fP
+.RS 4
+下载文件时不显示进度条 \&。这对于调用 pacman 并捕获输出 \& 的脚本很有用。
+.RE
+.PP
+\fB\-\-noscriptlet\fP
+.RS 4
+如果存在安装脚本，请不要执行它 \&。不要使用它，除非您知道您在做什么 \&。
+.RE
+.PP
+\fB\-p, \-\-print\fP
+.RS 4
+仅打印目标而不执行实际操作 (同步、删除或升级) \&。使用 \fI\-\-print\-format\fP 指定目标的显示方式 \&。默认格式字符串为
+"%l"，它显示带有 \fI\-S\fP 的 URL、带有 \fI\-U\fP 的文件名和带有 \fI\-R\fP\& 的 pkgname\-pkgver。
+.RE
+.PP
+\fB\-\-print\-format\fP <format>
+.RS 4
+指定类似 printf 的格式来控制 \fI\-\-print\fP 操作的输出 \&。可能的属性是: "%n" 表示 pkgname，"%v" 表示
+pkgver，"%l" 表示位置，"%r" 表示库，"%s" 表示大小 \&。表示 \fI\-\-print\fP\&。
+.RE
+.SH "UPGRADE OPTIONS (APPLY TO \FI\-S\FR AND \FI\-U\FR)"
+.PP
+\fB\-w, \-\-downloadonly\fP
+.RS 4
+从服务器检索所有包，但不要 install/upgrade 任何东西 \&。
+.RE
+.PP
+\fB\-\-asdeps\fP
+.RS 4
+非显式安装包; 换句话说，伪造他们的安装原因作为依赖项安装 \&。这对于 makepkg 和其他需要在构建包之前安装依赖项的源代码构建工具很有用。
+.RE
+.PP
+\fB\-\-asexplicit\fP
+.RS 4
+显式安装包; 换句话说，假装他们的安装原因是显式安装 \&。如果您想将依赖项标记为显式安装，这样它就不会被 \fI\-\-recursive\fP 删除操作 \&
+删除，这将很有用。
+.RE
+.PP
+\fB\-\-ignore\fP <package>
+.RS 4
+指示 pacman 忽略软件包的升级，即使有一个可用的 \&。可以通过用逗号 \& 分隔它们来指定多个包。
+.RE
+.PP
+\fB\-\-ignoregroup\fP <group>
+.RS 4
+指示 pacman 忽略 \fIgroup\fP 中所有软件包的升级，即使有一个可用 \&。可以通过用逗号 \& 分隔它们来指定多个组。
+.RE
+.PP
+\fB\-\-needed\fP
+.RS 4
+不要重新安装已经是最新的目标 \&。
+.RE
+.PP
+\fB\-\-overwrite\fP <glob>
+.RS 4
+绕过文件冲突检查并覆盖冲突文件 \&。如果即将安装的包中包含已经安装并匹配 \fIglob\fP 的文件，此选项将导致所有这些文件被覆盖 \&。使用
+\fI\-\-overwrite\fP 将不允许用文件覆盖目录或安装具有冲突文件和目录的包 \&。可以通过用逗号 \& 分隔它们来指定多个模式。可以指定多次
+\&。模式可以被否定，这样匹配它们的文件就不会被覆盖，方法是在它们前面加上感叹号 \&。随后的匹配将覆盖之前的 \&。前导字符值感叹号或反斜杠需要转义
+\&。
+.RE
+.SH "QUERY OPTIONS (APPLY TO \FI\-Q\FR)"
+.PP
+\fB\-c, \-\-changelog\fP
+.RS 4
+查看包的 ChangeLog (如果存在) \&。
+.RE
+.PP
+\fB\-d, \-\-deps\fP
+.RS 4
+限制或过滤输出到作为依赖项安装的包。此选项可以与 \fI\-t\fP 结合使用以列出真正的孤立包 \- 作为依赖项安装但不再被任何已安装包需要的包。
+.RE
+.PP
+\fB\-e, \-\-explicit\fP
+.RS 4
+将输出限制或过滤为显式安装的包 \&。此选项可以与 \fI\-t\fP 结合使用，以列出任何其他包不需要的明确安装的包。
+.RE
+.PP
+\fB\-g, \-\-groups\fP
+.RS 4
+显示作为指定组成员的所有包 \&。如果未指定名称，则列出所有分组的包 \&。
+.RE
+.PP
+\fB\-i, \-\-info\fP
+.RS 4
+显示给定包的信息 \&。如果查询包文件而不是本地数据库 \&，则可以使用 \fI\-p\fP 选项。传递两个 \fI\-\-info\fP 或 \fI\-i\fP
+标志也会显示备份文件列表及其修改状态 \&。
+.RE
+.PP
+\fB\-k, \-\-check\fP
+.RS 4
+检查系统中是否存在给定 package(s) 拥有所有权的所有文件 \&。如果未指定包或未提供过滤器标志，请检查所有已安装的包
+\&。指定此选项两次将为包含所需 mtree 文件的包执行更详细的文件检查 (包括权限、文件大小和修改时间) \&。
+.RE
+.PP
+\fB\-l, \-\-list\fP
+.RS 4
+列出给定包拥有所有权的所有文件 \&。可以在命令行中指定多个包 \&。
+.RE
+.PP
+\fB\-m, \-\-foreign\fP
+.RS 4
+限制或过滤在同步数据库中找不到的包的输出 \&。通常这些是手动下载并使用 \fI\-\-upgrade\fP\& 安装的包。
+.RE
+.PP
+\fB\-n, \-\-native\fP
+.RS 4
+限制或过滤在同步数据库中找到的包的输出 \&。这是 \fI\-\-foreign\fP\& 的逆过滤器。
+.RE
+.PP
+\fB\-o, \-\-owns\fP <file>
+.RS 4
+搜索拥有指定文件 \& 的包。路径可以是相对路径也可以是绝对路径，可以指定一个或多个文件 \&。
+.RE
+.PP
+\fB\-p, \-\-file\fP
+.RS 4
+表示命令行上提供的包是一个文件，而不是数据库中的条目 \&。该文件将被解压和查询 \&。这与 \fI\-\-info\fP 和 \fI\-\-list\fP\&
+结合使用很有用。
+.RE
+.PP
+\fB\-q, \-\-quiet\fP
+.RS 4
+显示某些查询操作的较少信息 \&。这在 pacman\(cqs 输出在脚本中处理 \& 时很有用。搜索只会显示包名，不会显示版本、组和描述信息;
+owns 将只显示包名而不是 "file is owned by pkg" 消息; group 将只显示包名并省略组名; 列表将只显示文件并省略包名称;
+检查只会显示成对的包名称和丢失的文件; 一个简单的查询将只显示包名称而不是名称和版本 \&。
+.RE
+.PP
+\fB\-s, \-\-search\fP <regexp>
+.RS 4
+在每个本地安装的包中搜索与 regexp\& 匹配的名称或描述。当包含多个搜索词时，仅返回描述与所有这些词匹配的包 \&。
+.RE
+.PP
+\fB\-t, \-\-unrequired\fP
+.RS 4
+限制或过滤输出以仅打印任何当前安装的包既不需要也不需要的包。指定此选项两次以包括可选但不是直接由另一个包所需的包。
+.RE
+.PP
+\fB\-u, \-\-upgrades\fP
+.RS 4
+限制或过滤本地系统上过时的包的输出 \&。仅使用包版本来查找过时的包; 此处不检查替换 \&。如果使用 \fI\-Sy\fP\&
+刷新同步数据库，则此选项最有效。
+.RE
+.SH "REMOVE OPTIONS (APPLY TO \FI\-R\FR)"
+.PP
+\fB\-c, \-\-cascade\fP
+.RS 4
+删除所有目标包，以及所有依赖于一个或多个目标包的包 \&。此操作是递归的，必须小心使用，因为它可以删除许多可能需要的包 \&。
+.RE
+.PP
+\fB\-n, \-\-nosave\fP
+.RS 4
+指示 pacman 忽略文件备份指定 \&。通常，当一个文件从系统中删除时，会检查数据库以查看该文件是否应该重命名为 \fI\&.pacsave\fP 扩展名
+\&。
+.RE
+.PP
+\fB\-s, \-\-recursive\fP
+.RS 4
+删除指定的每个目标，包括它们的所有依赖项，前提是 (A) 其他包不需要它们; 和 (B) 它们不是由用户显式安装的 \&。此操作是递归的，类似于向后的
+\fI\-\-sync\fP 操作，它有助于保持没有孤立 \& 的干净系统。如果要省略条件 (B)，请将此选项传递两次 \&。
+.RE
+.PP
+\fB\-u, \-\-unneeded\fP
+.RS 4
+删除任何其他包不需要的目标 \&。这在不使用 \fI\-c\fP 选项删除组时非常有用，以避免破坏任何依赖性 \&。
+.RE
+.SH "SYNC OPTIONS (APPLY TO \FI\-S\FR)"
+.PP
+\fB\-c, \-\-clean\fP
+.RS 4
+从缓存中删除不再安装的包以及当前未使用的同步数据库以释放磁盘空间 \&。当 pacman 下载包时，它会将它们保存在缓存目录中
+\&。此外，为您下载的每个同步数据库保存数据库，即使从配置文件 \fBpacman.conf\fP(5)\& 中删除它们也不会被删除。使用一个
+\fI\-\-clean\fP 开关只删除不再安装的包; 使用两个从缓存中删除所有文件 \&。在这两种情况下，您都可以选择是或否来删除包或者未使用的下载数据库
+\&。
+.sp
+如果使用网络共享缓存，请参见 \fBpacman.conf\fP(5)\& 中的 \fICleanMethod\fP 选项。
+.RE
+.PP
+\fB\-g, \-\-groups\fP
+.RS 4
+显示指定的每个包组的所有成员 \&。如果没有提供组名，将列出所有组; 两次传递标志以查看所有组及其成员 \&。
+.RE
+.PP
+\fB\-i, \-\-info\fP
+.RS 4
+显示有关给定同步数据库包的信息 \&。传递两个 \fI\-\-info\fP 或 \fI\-i\fP 标志还将在依赖于此包的所有存储库中显示这些包 \&。
+.RE
+.PP
+\fB\-l, \-\-list\fP
+.RS 4
+列出指定存储库中的所有包 \&。可以在命令行中指定多个存储库 \&。
+.RE
+.PP
+\fB\-q, \-\-quiet\fP
+.RS 4
+显示某些同步操作的较少信息 \&。这在 pacman\(cqs 输出在脚本中处理 \& 时很有用。搜索只会显示包名，不会显示库、版本、组和描述信息;
+列表将只显示包名称并省略数据库和版本; group 将只显示包名并省略组名 \&。
+.RE
+.PP
+\fB\-s, \-\-search\fP <regexp>
+.RS 4
+这将在同步数据库中搜索每个包以查找与 regexp\& 匹配的名称或描述。当您包含多个搜索词时，只有描述与所有这些词匹配的包才会被返回 \&。
+.RE
+.PP
+\fB\-u, \-\-sysupgrade\fP
+.RS 4
+升级所有过时的包。如果存在更新的包，将检查并升级每个当前安装的包。将显示所有要升级的包的报告，如果没有用户确认
+\&，操作将不会继续。依赖关系在此级别自动解析，必要时将为 installed/upgraded\&。
+.sp
+传递此选项两次以启用包降级; 在这种情况下，pacman 将选择版本与本地版本不匹配的同步包。这在用户从测试库切换到稳定库时很有用 \&。
+.sp
+也可以手动指定额外的目标，这样 \fI\-Su foo\fP 会做系统升级，install/upgrade 和 "foo" 包在同一个操作 \&。
+.RE
+.PP
+\fB\-y, \-\-refresh\fP
+.RS 4
+从 \fBpacman.conf\fP(5)\& 中定义的 server(s) 下载主包数据库的新副本。这通常应该在您每次使用 \fI\-\-sysupgrade\fP
+或 \fI\-u\fP\& 时使用。传递两个 \fI\-\-refresh\fP 或 \fI\-y\fP 标志将强制刷新所有包数据库，即使它们看起来是最新的 \&。
+.RE
+.SH "DATABASE OPTIONS (APPLY TO \FI\-D\FR)"
+.PP
+\fB\-\-asdeps\fP <package>
+.RS 4
+将包标记为非显式安装; 换句话说，将它们的安装原因设置为依赖项 \&。
+.RE
+.PP
+\fB\-\-asexplicit\fP <package>
+.RS 4
+将包标记为已明确安装; 换句话说，将它们的安装原因设置为显式安装 \&。如果您希望保持安装一个包，即使它最初是作为另一个包的依赖项安装的，这很有用
+\&。
+.RE
+.PP
+\fB\-k, \-\-check\fP
+.RS 4
+检查本地包数据库是否内部一致 \&。这将检查所有必需的文件是否存在以及安装的包是否具有所需的依赖项，不冲突并且多个包不拥有相同的文件
+\&。指定此选项两次将对同步数据库执行检查以确保所有指定的依赖项都可用 \&。
+.RE
+.PP
+\fB\-q, \-\-quiet\fP
+.RS 4
+在成功完成数据库操作时抑制消息 \&。
+.RE
+.SH "FILE OPTIONS (APPLY TO \FI\-F\FR)"
+.PP
+\fB\-y, \-\-refresh\fP
+.RS 4
+从服务器下载新的包数据库 \&。使用两次强制刷新，即使数据库是最新的 \&。
+.RE
+.PP
+\fB\-l, \-\-list\fP
+.RS 4
+列出查询的包所拥有所有权的文件 \&。
+.RE
+.PP
+\fB\-x, \-\-regex\fP
+.RS 4
+将每个查询解释为正则表达式 \&。
+.RE
+.PP
+\fB\-q, \-\-quiet\fP
+.RS 4
+显示某些文件操作的较少信息 \&。这在 pacman\(cqs 输出在脚本中处理时很有用，但是，您可能想改用
+\fI\-\-machinereadable\fP\&。
+.RE
+.PP
+\fB\-\-machinereadable\fP
+.RS 4
+以机器可读的输出格式打印每个匹配项 \&。格式为 \fIrepository\e0pkgname\e0pkgver\e0path\en\fP，其中
+\fI\e0\fP 是 NULL 字符，\fI\en\fP 是换行符 \&。
+.RE
+.SH "HANDLING CONFIG FILES"
+.sp
+Pacman 使用与 \fIrpm\fP 相同的逻辑来确定针对指定要备份的文件的操作 \&。在升级过程中，三个 MD5 哈希用于每个备份文件以确定所需的操作:
+一个用于安装的原始文件，一个用于将要安装的新文件，一个用于文件系统上存在的实际文件 \&. 比较这三个哈希值后，可能会出现以下情况:
+.PP
+original=X, current=X, new=X
+.RS 4
+这三个文件都是一样的，所以覆盖不是问题 \&。安装新文件 \&。
+.RE
+.PP
+original=X, current=X, new=Y
+.RS 4
+当前文件与原始文件相同，但新文件不同 \&。由于用户从未修改过该文件，并且新文件可能包含改进或错误修复，因此安装新文件 \&。
+.RE
+.PP
+original=X, current=Y, new=X
+.RS 4
+两个包版本都包含完全相同的文件，但文件系统上的文件已被修改 \&。将当前文件留在原地 \&。
+.RE
+.PP
+original=X, current=Y, new=Y
+.RS 4
+新文件与当前文件相同 \&。安装新文件 \&。
+.RE
+.PP
+original=X, current=Y, new=Z
+.RS 4
+这三个文件都不同，因此安装扩展名为 \fI\&.pacnew\fP 的新文件并警告用户 \&。然后用户必须手动将任何必要的更改合并到原始文件 \&。
+.RE
+.PP
+original=NULL, current=Y, new=Z
+.RS 4
+该软件包以前未安装，文件系统中已存在该文件 \&。安装扩展名为 \fI\&.pacnew\fP 的新文件并警告用户
+\&。然后用户必须手动将任何必要的更改合并到原始文件 \&。
+.RE
+.SH EXAMPLES
+.PP
+pacman \-Ss ne\&.hack
+.RS 4
+在包数据库中搜索正则表达式 "ne\&.hack"\&。
+.RE
+.PP
+pacman \-S gpm
+.RS 4
+下载并安装 gpm，包括依赖项 \&。
+.RE
+.PP
+pacman \-U /home/user/ceofhack\-0\&.6\-1\-x86_64\&.pkg\&.tar\&.gz
+.RS 4
+从本地文件安装 ceofhack\-0\&.6\-1 包 \&。
+.RE
+.PP
+pacman \-Syu
+.RS 4
+更新包列表并随后升级所有包 \&。
+.RE
+.PP
+pacman \-Syu gpm
+.RS 4
+更新包列表，升级所有包，然后安装 gpm，如果它没有 \(cqt 已经安装 \&。
+.RE
+.SH CONFIGURATION
+.sp
+有关使用 \fIpacman\&.conf\fP 文件配置 pacman 的更多详细信息，请参见 \fBpacman.conf\fP(5)。
+.SH "SEE ALSO"
+.sp
+\fBalpm\-hooks\fP(5), \fBlibalpm\fP(3), \fBmakepkg\fP(8), \fBpacman.conf\fP(5)
+.sp
+有关 pacman 及其相关工具的最新信息，请参见 pacman 网站 https://archlinux\&.org/pacman/。
+.SH BUGS
+.sp
+虫子? 您一定在开玩笑; 此软件中没有错误 \&。但如果我们碰巧错了，请在 Pacman 部分的 Arch Linux Bug Tracker
+提交尽可能详细的错误报告 \&。
+.SH AUTHORS
+.sp
+目前的维护者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Allan McRae <allan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Andrew Gregory <andrew\&.gregory\&.8@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Eli Schwartz <eschwartz@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Morgan Adamiec <morganamilo@archlinux\&.org>
+.RE
+.sp
+过去的主要贡献者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Judd Vinet <jvinet@zeroflux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aurelien Foret <aurelien@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aaron Griffin <aaron@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dan McGee <dan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Xavier Chantry <shiningxc@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Nagy Gabor <ngaba@bibl\&.u\-szeged\&.hu>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dave Reisner <dreisner@archlinux\&.org>
+.RE
+.sp
+对于其他贡献者，请在 pacman\&.git 库 \& 上使用 git shortlog \-s。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

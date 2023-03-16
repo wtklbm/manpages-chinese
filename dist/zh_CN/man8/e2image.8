@@ -1,0 +1,179 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 2001 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under the terms of the GNU Public License.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH E2IMAGE 8 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+e2image \- 将关键的 ext2/ext3/ext4 文件系统元数据保存到文件中
+
+.SH SYNOPSIS
+\fBe2image\fP [\fB\-r\fP|\fB\-Q\fP [\fB\-af\fP]] [ \fB\-b\fP \fIsuperblock\fP ] [ \fB\-B\fP
+\fIblocksize\fP ] [ \fB\-cnps\fP ] [ \fB\-o\fP \fIsrc_offset\fP ] [ \fB\-O\fP \fIdest_offset\fP ]
+\fIdevice\fP \fIimage\-file\fP
+.br
+\fBe2image\fP \fB\-I\fP \fIdevice\fP \fIimage\-file\fP
+
+.SH DESCRIPTION
+\fBe2image\fP 程序会将位于 \fIdevice\fP 上的关键 ext2、ext3 或 ext4 文件系统元数据保存到 \fIimage\-file\fP
+指定的文件中。 通过使用 \fBdumpe2fs\fP 和 \fBdebugfs\fP 程序的 \fB\-i\fP 选项，可以检查图像文件。
+这可以帮助专家恢复灾难性损坏的文件系统。
+.PP
+为系统上的所有文件系统创建映像文件并定期保存分区布局 (可以使用 \fBfdisk \-l\fP 命令生成) 是一个很好的主意 \-\-\- 在启动时或者每周左右。
+图像文件应存储在其包含数据的文件系统以外的某个文件系统上，以确保在文件系统严重损坏的情况下可以访问此数据。
+.PP
+为了节省磁盘空间，\fBe2image\fP 将图像文件创建为稀疏文件或 QCOW2 格式。
+因此，如果需要将稀疏图像文件复制到另一个位置，则应首先对其进行压缩或使用 \fB\-\-sparse=always\fP 选项将其复制到 \fBcp\fP(1) 的
+GNU 版本。 这不适用于不稀疏的 QCOW2 图像。
+.PP
+ext2 图像文件的大小主要取决于文件系统的大小和正在使用的 inode 数量。 对于一个典型的 10 GB 文件系统，在 1.2 百万 inode
+中使用了 200,000 个 inode，图像文件大约为 35 MB; 一个 4 GB 的文件系统在 550,000 个 inode 中使用了
+15,000 个 inode 将产生一个 3 MB 的图像文件。 图像文件往往是可压缩的; 占用 32 兆字节磁盘空间的图像文件通常会压缩到 3 或 4
+兆字节。
+.PP
+如果 \fIimage\-file\fP 是 \fB\-\fP，那么 \fBe2image\fP 的输出将被发送到标准输出，这样输出就可以通过管道传输到另一个程序，例如
+\fBgzip\fP(1)。 (请注意，目前仅在使用 \fB\-r\fP 选项创建原始图像文件时才支持此功能，因为创建普通图像文件或 QCOW2
+图像的过程目前需要随机访问文件，而使用管道无法做到这一点。
+
+.SH OPTIONS
+.TP 
+\fB\-a\fP
+在图像文件中包含文件数据。 通常 \fBe2image\fP 只包括 fs 元数据，不包括常规文件数据。 此选项将生成适合用于克隆整个 FS
+或用于备份目的的图像。 请注意，此选项仅适用于原始 (\fI\-r\fP) 或 QCOW2 (\fI\-Q\fP) 格式。 结合 \fB\-r\fP
+选项，可以将一个文件系统的所有且仅使用的块克隆到另一个 device/image 文件。
+.TP 
+\fB\-b\fP\fI superblock\fP
+使用位于文件系统块编号 \fIsuperblock\fP 的超级块从主超级块损坏的分区获取映像。 分区按原样复制，包括损坏的主超级块。
+.TP 
+\fB\-B\fP\fI blocksize\fP
+以字节为单位设置文件系统块大小。 通常，\fBe2image\fP 会搜索各种不同块大小的超级块，以尝试找到合适的块大小。在某些情况下，这种搜索可能会被愚弄。
+此选项强制 e2fsck 仅尝试定位具有特定块大小的超级块。如果未找到超级块，e2image 将终止并出现致命错误。
+.TP 
+\fB\-c\fP
+将要从源 \fIdevice\fP 复制的每个块与目标 \fIimage\-file\fP 中的相应块进行比较。 如果两者已经相同，则将跳过写入。
+如果将文件系统克隆到基于闪存的存储设备 (其中读取速度非常快并且希望避免不必要的写入以减少设备上的写入磨损)，这将很有用。
+.TP 
+\fB\-f\fP
+使用 \fB\-r\fP 和 \fB\-Q\fP 选项保存图像文件时覆盖源文件系统的只读要求。
+通常，如果源文件系统正在使用中，生成的图像文件很可能不会有用。在某些源文件系统经常使用的情况下，这可能比根本没有图像要好。
+.TP 
+\fB\-I\fP
+将图像文件中存储的元数据安装回设备。 它可用于在紧急情况下将文件系统元数据恢复回设备。
+.PP
+\fBWARNING!!!!\fP \fB\-I\fP 选项仅应在其他替代方案失败时用作不得已的措施。 如果创建图像文件后文件系统发生变化，则数据 \fBwill\fP
+将丢失。 一般来说，您应该先对文件系统进行另一个完整映像备份，以防您之后想尝试其他恢复策略。
+.TP 
+\fB\-n\fP
+导致跳过所有图像写入，而只打印本应写入的块号。
+.TP 
+\fB\-o\fP\fI src_offset\fP
+指定要从源 \fIdevice\fP 的开头读取的图像的偏移量 (以字节为单位)。 有关详细信息，请参见 \fBOFFSETS\fP。
+.TP 
+\fB\-O\fP\fI tgt_offset\fP
+指定要写入的图像从目标 \fIimage\-file\fP 开始的偏移量 (以字节为单位)。 有关详细信息，请参见 \fBOFFSETS\fP。
+.TP 
+\fB\-p\fP
+显示图像文件创建的进度。
+.TP 
+\fB\-Q\fP
+创建一个 QCOW2 格式的镜像文件而不是普通的镜像文件，适合虚拟机镜像和其他可以使用 \fB.qcow\fP 镜像格式的工具使用。有关详细信息，请参见下面的
+\fBQCOW2 IMAGE FILES\fP。
+.TP 
+\fB\-r\fP
+创建原始图像文件而不是普通图像文件。 有关详细信息，请参见下面的 \fBRAW IMAGE FILES\fP。
+.TP 
+\fB\-s\fP
+打乱目录条目并将写入的映像文件中未使用的目录块部分清零，以避免泄露有关文件系统内容的信息。 然而，这将阻止分析与哈希树索引目录相关的问题。
+
+.SH "RAW IMAGE FILES"
+\fB\-r\fP 选项将创建一个原始图像文件，它在两个方面与普通图像文件不同。 首先，文件系统元数据被放置在 \fIimage\-file\fP 中与
+\fIdevice\fP 中相同的相对偏移量，以便
+\fBdebugfs\fP(8)、\fBdumpe2fs\fP(8)、\fBe2fsck\fP(8)、\fBlosetup\fP(8) 等可以直接在原始图像文件上运行。
+为了尽量减少原始图像文件占用的磁盘空间量，它被创建为一个稀疏文件。 (谨防使用不了解如何创建稀疏文件的实用工具复制或
+compressing/decompressing 此文件; 文件将变得与文件系统本身一样大! )
+其次，原始图像文件还包括间接块和目录块，这标准图像文件没有。
+.PP
+将文件系统作为错误报告的一部分发送给维护者时，有时会使用原始图像文件给 e2fsprogs。 以这种身份使用时，推荐的命令如下 (将 \fBhda1\fP
+替换为适合您系统的设备) :
+.PP
+.br
+  \fBe2image \-r /dev/hda1 \- | bzip2 > hda1.e2i.bz2\fP
+.PP
+这将只发送元数据信息，没有任何数据块。 但是，目录块中的文件名仍然可以揭示错误报告者可能希望保密的有关文件系统内容的信息。 为了解决这个问题，可以指定
+\fB\-s\fP 选项来打乱图像中的文件名。
+.PP
+请注意，即使您将 \fB/dev/hda1\fP 替换为另一个原始磁盘映像，或之前由 \fBe2image\fP 创建的 QCOW2 映像，这仍然有效。
+
+.SH "QCOW2 IMAGE FILES"
+\fB\-Q\fP 选项将创建 QCOW2 图像文件，而不是普通或原始图像文件。 QCOW2
+图像包含原始图像包含的所有信息，但与原始图像不同的是，它并不稀疏。QCOW2
+图像通过以将数据紧密打包在一起的特殊格式存储图像，最大限度地减少图像使用的空间量，从而避免空洞，同时仍然最小化尺寸。
+.PP
+为了将文件系统作为错误报告的一部分发送给维护者给 e2fsprogs，请使用以下命令 (将 \fBhda1\fP 替换为适合您系统的设备) :
+.PP
+.br
+\	\fBe2image \-Q /dev/hda1 hda1.qcow2\fP
+.br
+\	\fBbzip2 \-z hda1.qcow2\fP
+.PP
+这将只发送元数据信息，没有任何数据块。 如针对 \fBRAW IMAGE FILES\fP 所述，可以指定 \fB\-s\fP 选项来打乱映像中的文件系统名称。
+.PP
+请注意，由 \fBe2image\fP 创建的 QCOW2 图像是一个常规的 QCOW2 图像，可以通过识别 QCOW2 格式的工具 (例如
+\fBqemu\-img\fP) 进行处理。
+.PP
+您可以使用以下方法将 .qcow2 图像转换为原始图像:
+.PP
+.br
+\	\fBe2image \-r hda1.qcow2 hda1.raw\fP
+.br
+.PP
+这对于将包含所有数据的 QCOW2 图像写入可以循环安装的稀疏图像文件或写入磁盘分区很有用。 请注意，这可能不适用于不是由 e2image 生成的
+QCOW2 图像。
+
+.SH OFFSETS
+通常文件系统从分区的开头开始，\fBe2image\fP 在分区上运行。 使用图像文件时，您没有使用分区设备的选项，因此您可以直接使用 \fB\-o\fP
+选项指定文件系统开始的偏移量。 类似地，\fB\-O\fP 选项指定在写入文件系统之前应该在目标中查找的偏移量。
+.PP
+例如，如果您有一个整个硬盘驱动器的 \fBdd\fP 映像，其中包含一个从 1 MiB 开始的分区中的 ext2 fs，您可以将该映像克隆到块设备:
+.PP
+.br
+\	\fBe2image \-aro 1048576 img /dev/sda1\fP
+.br
+.PP
+或者您可以将文件系统从块设备克隆到映像文件中，在第一个 MiB 中为分区表留出空间:
+.PP
+.br
+\	\fBe2image \-arO 1048576 /dev/sda1 img\fP
+.br
+.PP
+如果您指定至少一个偏移量，并且只指定一个文件，则将执行就地移动，从而允许您安全地将文件系统从一个偏移量移动到另一个偏移量。
+
+.SH AUTHOR
+\fBe2image\fP 由 Theodore Ts'o (tytso@mit.edu) 编写。
+
+.SH AVAILABILITY
+\fBe2image\fP 是 e2fsprogs 包的一部分，可从 http://e2fsprogs.sourceforge.net 获得。
+
+.SH "SEE ALSO"
+\fBdumpe2fs\fP(8), \fBdebugfs\fP(8)  \fBe2fsck\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

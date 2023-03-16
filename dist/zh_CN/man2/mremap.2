@@ -1,0 +1,170 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1996 Tom Bjorkholm <tomb@mydata.se>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 1996-04-11 Tom Bjorkholm <tomb@mydata.se>
+.\"            First version written (1.3.86)
+.\" 1996-04-12 Tom Bjorkholm <tomb@mydata.se>
+.\"            Update for Linux 1.3.87 and later
+.\" 2005-10-11 mtk: Added NOTES for MREMAP_FIXED; revised EINVAL text.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mremap 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mremap \- 重新映射虚拟内存地址
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <sys/mman.h>\fP
+.PP
+\fBvoid *mremap(void \fP\fIold_address\fP\fB[.\fP\fIold_size\fP\fB], size_t \fP\fIold_size\fP\fB,\fP
+\fB             size_t \fP\fInew_size\fP\fB, int \fP\fIflags\fP\fB, ... /* void *\fP\fInew_address\fP\fB */);\fP
+.fi
+.SH DESCRIPTION
+\fBmremap\fP() 扩展 (或缩小) 现有内存映射，可能同时移动它 (由 \fIflags\fP 参数和可用虚拟地址空间控制)。
+.PP
+\fIold_address\fP 是要扩展 (或收缩) 的虚拟内存块的旧地址。 请注意，\fIold_address\fP 必须是页面对齐的。
+\fIold_size\fP 是虚拟内存块的旧大小。 \fInew_size\fP 是调整大小后虚拟内存块的请求大小。 可以提供可选的第五个参数
+\fInew_address\fP; 请参见下面对 \fBMREMAP_FIXED\fP 的说明。
+.PP
+如果 \fIold_size\fP 的值为零，并且 \fIold_address\fP 指的是可共享映射 (请参见 \fBmmap\fP(2)
+\fBMAP_SHARED\fP)，则 \fBmremap\fP() 将创建相同页面的新映射。 \fInew_size\fP 将是新映射的大小，新映射的位置可以用
+\fInew_address\fP 指定; 请参见下面对 \fBMREMAP_FIXED\fP 的说明。 如果通过此方法请求新映射，则还必须指定
+\fBMREMAP_MAYMOVE\fP 标志。
+.PP
+\fIflags\fP 位掩码参数可以为 0，或包括以下标志:
+.TP 
+\fBMREMAP_MAYMOVE\fP
+默认情况下，如果没有足够的空间在其当前位置展开映射，则 \fBmremap\fP() 失败。 如果指定了此标志，则允许内核在必要时将映射重定位到新的虚拟地址。
+如果映射被重定位，则指向旧映射位置的绝对指针将变得无效 (应使用相对于映射起始地址的偏移量)。
+.TP 
+\fBMREMAP_FIXED\fP (since Linux 2.3.31)
+该标志的用途与 \fBmmap\fP(2) 的 \fBMAP_FIXED\fP 标志相似。 如果指定了此标志，则 \fBmremap\fP() 接受第五个参数
+\fIvoid\ *new_address\fP，它指定映射必须移动到的页对齐地址。 \fInew_address\fP 和 \fInew_size\fP
+指定的地址范围内的任何先前映射都将取消映射。
+.IP
+如果指定 \fBMREMAP_FIXED\fP，则还必须指定 \fBMREMAP_MAYMOVE\fP。
+.TP 
+\fBMREMAP_DONTUNMAP\fP (since Linux 5.7)
+.\" commit e346b3813067d4b17383f975f197a9aa28a3b077
+此标志必须与 \fBMREMAP_MAYMOVE\fP 一起使用，将映射重新映射到新地址，但不会取消 \fIold_address\fP 处的映射。
+.IP
+\fBMREMAP_DONTUNMAP\fP 标志只能与私有匿名映射一起使用 (参见 \fBmmap\fP(2)).x 中 \fBMAP_PRIVATE\fP 和
+\fBMAP_ANONYMOUS\fP 的描述)。
+.IP
+完成后，任何对 \fIold_address\fP 和 \fIold_size\fP 指定范围的访问都将导致页面错误。 如果地址在先前用
+\fBuserfaultfd\fP(2) 注册的范围内，则页面错误将由 \fBuserfaultfd\fP(2) 处理程序处理。
+否则，内核分配一个零填充页来处理错误。
+.IP
+\fBMREMAP_DONTUNMAP\fP 标志可用于在保留源映射的同时自动移动映射。 有关 \fBMREMAP_DONTUNMAP\fP
+的一些可能应用，请参见注释。
+.PP
+如果由 \fIold_address\fP 和 \fIold_size\fP 指定的内存段被锁定 (使用 \fBmlock\fP(2)
+或类似的)，则在调整段大小或者重新定位时将保持此锁定。 因此，进程锁定的内存量可能会发生变化。
+.SH "RETURN VALUE"
+成功时，\fBmremap\fP() 返回指向新虚拟内存区域的指针。 出错时，返回值 \fBMAP_FAILED\fP (即 \fI(void\ *)\ \-1\fP)，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+调用者试图扩展锁定的内存段，但如果不超过 \fBRLIMIT_MEMLOCK\fP 资源限制，这是不可能的。
+.TP 
+\fBEFAULT\fP
+\fIold_address\fP 到 \fIold_address\fP+\fIold_size\fP 范围内的某些地址是此进程的无效虚拟内存地址。
+即使存在覆盖请求的整个地址空间的映射，您也可以获得 \fBEFAULT\fP，但这些映射属于不同类型。
+.TP 
+\fBEINVAL\fP
+给出了无效的参数。 可能的原因是:
+.RS
+.IP \[bu] 3
+\fIold_address\fP 没有页面对齐;
+.IP \[bu]
+\fIflags\fP 中指定了 \fBMREMAP_MAYMOVE\fP、\fBMREMAP_FIXED\fP 或 \fBMREMAP_DONTUNMAP\fP 以外的值;
+.IP \[bu]
+\fInew_size\fP 为零;
+.IP \[bu]
+\fInew_size\fP 或 \fInew_address\fP 无效;
+.IP \[bu]
+\fInew_address\fP 和 \fInew_size\fP 指定的新地址范围与 \fIold_address\fP 和 \fIold_size\fP
+指定的旧地址范围重叠;
+.IP \[bu]
+指定了 \fBMREMAP_FIXED\fP 或 \fBMREMAP_DONTUNMAP\fP，但没有同时指定 \fBMREMAP_MAYMOVE\fP;
+.IP \[bu]
+指定了 \fBMREMAP_DONTUNMAP\fP，但 \fIold_address\fP 和 \fIold_size\fP 指定范围内的一页或多页不是 private
+anonymous;
+.IP \[bu]
+指定了 \fBMREMAP_DONTUNMAP\fP，但 \fIold_size\fP 不等于 \fInew_size\fP;
+.IP \[bu]
+\fIold_size\fP 为零且 \fIold_address\fP 未引用可共享映射 (但请参见 BUGS) ;
+.IP \[bu]
+\fIold_size\fP 为零且未指定 \fBMREMAP_MAYMOVE\fP 标志。
+.RE
+.TP 
+\fBENOMEM\fP
+内存不足，无法完成操作。 可能的原因是:
+.RS
+.IP \[bu] 3
+不能在当前虚拟地址扩展内存区，\fIflags\fP 没有设置 \fBMREMAP_MAYMOVE\fP 标志。 或者，没有足够的 (virtual) 内存可用。
+.IP \[bu]
+使用 \fBMREMAP_DONTUNMAP\fP 会导致创建的新映射超出可用的 (virtual) 内存。 或者，它会超过允许映射的最大数量。
+.RE
+.SH STANDARDS
+.\" 4.2BSD had a (never actually implemented)
+.\" .BR mremap (2)
+.\" call with completely different semantics.
+此调用是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+\fBmremap\fP() 改变了虚拟地址和内存页之间的映射。 这可用于实现非常高效的 \fBrealloc\fP(3)。
+.PP
+在 Linux 中，内存被分成页。 一个进程有 (一个或) 几个线性虚拟内存段。 每个虚拟内存段都有一个或多个到实际内存页面 (在页表中) 的映射。
+每个虚拟内存段都有自己的保护 (访问权限)，如果内存访问不正确 (例如，写入只读段)，可能会导致段冲突 (\fBSIGSEGV\fP)。
+访问段外的虚拟内存也会导致段冲突。
+.PP
+如果使用 \fBmremap\fP() 移动或扩展用 \fBmlock\fP(2) 或等效物锁定的区域，则 \fBmremap\fP()
+调整将尽最大努力填充新区域，但如果无法填充该区域，则 \fBENOMEM\fP 不会失败。
+.PP
+.\"
+在 glibc 2.4 之前，glibc 没有公开 \fBMREMAP_FIXED\fP 的定义，并且 \fBmremap\fP() 的原型不允许
+\fInew_address\fP 参数。
+.SS "MREMAP_DONTUNMAP use cases"
+\fBMREMAP_DONTUNMAP\fP 的可能应用包括:
+.IP \[bu] 3
+非合作 \fBuserfaultfd\fP(2): 应用程序可以使用 \fBMREMAP_DONTUNMAP\fP 退出虚拟地址范围，然后使用
+\fBuserfaultfd\fP(2) 处理程序来处理随后发生的页面错误，因为进程中的其他线程触摸了被抽出范围内的页面。
+.IP \[bu]
+垃圾集合: \fBMREMAP_DONTUNMAP\fP 可以与 \fBuserfaultfd\fP(2) 结合使用来实现垃圾集合算法 (例如，在 Java
+虚拟机中)。 这样的实现可以比传统的垃圾收集技术更便宜 (也更简单)，后者涉及使用 \fBPROT_NONE\fP 保护标记页面并使用 \fBSIGSEGV\fP
+处理程序来捕获对这些页面的访问。
+.SH BUGS
+.\" commit dba58d3b8c5045ad89c1c95d33d01451e3964db7
+在 Linux 4.14 之前，如果 \fIold_size\fP 为零，\fIold_address\fP 引用的映射是私有映射 (\fBmmap\fP(2)
+\fBMAP_PRIVATE\fP)，则 \fBmremap\fP() 创建一个与原始映射无关的新私有映射。 此行为在用户空间应用程序中是无意的，并且可能是意外的
+(因为 \fBmremap\fP() 的目的是基于原始映射创建新映射)。 由于 Linux 4.14，\fBmremap\fP() 在这种情况下失败并出现错误
+\fBEINVAL\fP。
+.SH "SEE ALSO"
+\fBbrk\fP(2), \fBgetpagesize\fP(2), \fBgetrlimit\fP(2), \fBmlock\fP(2), \fBmmap\fP(2),
+\fBsbrk\fP(2), \fBmalloc\fP(3), \fBrealloc\fP(3)
+.PP
+您最喜欢的操作系统教科书，了解有关分页内存的更多信息 (例如，Andrew S.\&Tanenbaum 的 \fIModern Operating Systems\fP、Randolph Bentson 的 \fIInside Linux\fP、Maurice J.\&Bach 的 \fIThe Design of the UNIX Operating System\fP)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,178 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)truncate.2	6.9 (Berkeley) 3/10/91
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998-12-21 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2002-01-07 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2002-04-06 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH truncate 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+truncate, ftruncate \- 将文件截断到指定长度
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint truncate(const char *\fP\fIpath\fP\fB, off_t \fP\fIlength\fP\fB);\fP
+\fBint ftruncate(int \fP\fIfd\fP\fB, off_t \fP\fIlength\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBtruncate\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.PP
+\fBftruncate\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.3.5: */ _POSIX_C_SOURCE >= 200112L
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBtruncate\fP() 和 \fBftruncate\fP() 函数导致由 \fIpath\fP 命名或由 \fIfd\fP 引用的常规文件被截断为恰好为
+\fIlength\fP 字节的大小。
+.PP
+如果文件以前大于此大小，则多余的数据将丢失。 如果之前的文件较短，则对其进行扩展，扩展部分读取为空字节 (\[aq]\e0\[aq])。
+.PP
+文件偏移量没有改变。
+.PP
+如果大小发生变化，则 st_ctime 和 st_mtime 字段 (分别为上次状态变化时间和上次修改时间; 文件更新见
+\fBinode\fP(7))，set\-user\-ID 和 set\-group\-ID 模式位可能是清除。
+.PP
+使用 \fBftruncate\fP()，文件必须打开以进行写入; 对于 \fBtruncate\fP()，文件必须是可写的。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+对于 \fBtruncate\fP():
+.TP 
+\fBEACCES\fP
+路径前缀的某个组件的搜索权限被拒绝，或者指定的文件对用户不可写。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEFAULT\fP
+参数 \fIpath\fP 指向进程分配的地址空间之外。
+.TP 
+\fBEFBIG\fP
+参数 \fIlength\fP 大于最大文件大小。(XSI)
+.TP 
+\fBEINTR\fP
+在阻塞等待完成时，调用被信号处理程序中断; 请参见 \fBfcntl\fP(2) 和 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+参数 \fIlength\fP 为 negative 或大于最大文件大小。
+.TP 
+\fBEIO\fP
+更新索引节点时发生 I/O 错误。
+.TP 
+\fBEISDIR\fP
+命名文件是一个目录。
+.TP 
+\fBELOOP\fP
+翻译路径名时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+路径名的一个组成部分超过 255 个字符，或者整个路径名超过 1023 个字符。
+.TP 
+\fBENOENT\fP
+指定的文件不存在。
+.TP 
+\fBENOTDIR\fP
+路径前缀的组成部分不是目录。
+.TP 
+\fBEPERM\fP
+.\" This happens for at least MSDOS and VFAT filesystems
+.\" on kernel 2.6.13
+底层文件系统不支持将文件扩展到其当前大小之外。
+.TP 
+\fBEPERM\fP
+文件密封阻止了该操作; 请参见 \fBfcntl\fP(2)。
+.TP 
+\fBEROFS\fP
+命名文件驻留在只读文件系统上。
+.TP 
+\fBETXTBSY\fP
+该文件是正在执行的可执行文件。
+.PP
+对于 \fBftruncate\fP()，同样的错误适用，但不是 \fIpath\fP 可能出错的东西，我们现在有文件描述符 \fIfd\fP: 可能出错的东西
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEBADF\fP or \fBEINVAL\fP
+\fIfd\fP 未打开以供写入。
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 不引用常规文件或 POSIX 共享内存对象。
+.TP 
+\fBEINVAL\fP or \fBEBADF\fP
+文件描述符 \fIfd\fP 未打开以供写入。 POSIX 允许并且便携式应用程序应该处理这种情况下的任一错误。 (Linux 产生 \fBEINVAL\fP.)
+.SH STANDARDS
+.\" POSIX.1-1996 has
+.\" .BR ftruncate ().
+.\" POSIX.1-2001 also has
+.\" .BR truncate (),
+.\" as an XSI extension.
+.\" .LP
+.\" SVr4 documents additional
+.\" .BR truncate ()
+.\" error conditions EMFILE, EMULTIHP, ENFILE, ENOLINK.  SVr4 documents for
+.\" .BR ftruncate ()
+.\" an additional EAGAIN error condition.
+POSIX.1\-2001、POSIX.1\-2008、4.4BSD、SVr4 (这些调用首次出现在 4.2BSD 中)。
+.SH NOTES
+\fBftruncate\fP() 也可用于设置 POSIX 共享内存对象的大小; 请参见 \fBshm_open\fP(3)。
+.PP
+.\" At the very least: OSF/1, Solaris 7, and FreeBSD conform, mtk, Jan 2002
+DESCRIPTION 中的详细信息适用于符合 XSI 的系统。 对于不符合 XSI 的系统，当 \fIlength\fP 超过文件长度时，POSIX
+标准允许 \fBftruncate\fP() 有两种行为 (请注意，在这种环境中根本没有指定 \fBtruncate\fP()) : 返回错误或扩展文件。 与大多数
+UNIX 实现一样，Linux 在处理原生文件系统时遵循 XSI 要求。 然而，一些非本地文件系统不允许使用 \fBtruncate\fP() 和
+\fBftruncate\fP() 来扩展文件超过其当前长度: Linux 上一个值得注意的例子是 VFAT。
+.PP
+最初的 Linux \fBtruncate\fP() 和 \fBftruncate\fP() 系统调用并不是为处理大文件偏移而设计的。 因此，Linux 2.4
+添加了处理大文件的 \fBtruncate64\fP() 和 \fBftruncate64\fP() 系统调用。 然而，这些细节可以被使用 glibc
+的应用程序忽略，其包装器函数透明地使用可用的更新的系统调用。
+.PP
+在某些 32 位体系结构上，这些系统调用的调用签名不同，原因在 \fBsyscall\fP(2) 中有所描述。
+.SH BUGS
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=12037
+glibc 2.12 中的头文件错误意味着公开 \fBftruncate\fP() 声明所需的 \fB_POSIX_C_SOURCE\fP 的最小值是
+200809L 而不是 200112L。 这已在以后的 glibc 版本中修复。
+.SH "SEE ALSO"
+\fBtruncate\fP(1), \fBopen\fP(2), \fBstat\fP(2), \fBpath_resolution\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,173 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Wed Jul 21 22:35:42 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 18 Mar 1996 by Martin Schulze (joey@infodrom.north.de):
+.\"   Corrected description of getwd().
+.\" Modified Sat Aug 21 12:32:12 MET 1999 by aeb - applied fix by aj
+.\" Modified Mon Dec 11 13:32:51 MET 2000 by aeb
+.\" Modified Thu Apr 22 03:49:15 CEST 2002 by Roger Luethi <rl@hellgate.ch>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getcwd 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getcwd, getwd, get_current_dir_name \- 获取当前工作目录
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBchar *getcwd(char \fP\fIbuf\fP\fB[.\fP\fIsize\fP\fB], size_t \fP\fIsize\fP\fB);\fP
+\fBchar *getcwd(char \fP\fIbuf\fP\fB[.\fP\fIsize\fP\fB], size_t \fP\fIsize\fP\fB);\fP
+.PP
+\fB[[deprecated]] char *getwd(char \fP\fIbuf\fP\fB[PATH_MAX]);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBget_current_dir_name\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.PP
+\fBgetwd\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    由于 glibc 2.12:
+        (_XOPEN_SOURCE >= 500) && ! (_POSIX_C_SOURCE >= 200809L)
+            || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+            || /* glibc <= 2.19: */ _BSD_SOURCE
+    在 glibc 2.12 之前:
+        _BSD_SOURCE || _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+这些函数返回一个以 null 结尾的字符串，其中包含一个绝对路径名，该路径名是调用进程的当前工作目录。 路径名作为函数结果返回，并通过参数 \fIbuf\fP
+(如果存在) 返回。
+.PP
+\fBgetcwd\fP() 函数将当前工作目录的绝对路径名复制到 \fIbuf\fP 指向的数组中，该数组的长度为 \fIsize\fP。
+.PP
+如果当前工作目录的绝对路径名的长度，包括终止空字节，超过 \fIsize\fP 字节，则返回 NULL，并将 \fIerrno\fP 设置为 \fBERANGE\fP;
+应用程序应检查此错误，并在必要时分配更大的缓冲区。
+.PP
+作为 POSIX.1\-2001 标准的扩展，glibc 的 \fBgetcwd\fP() 在 \fIbuf\fP 为 NULL 时使用 \fBmalloc\fP(3)
+动态分配缓冲区。 在这种情况下，分配的缓冲区的长度为 \fIsize\fP，除非 \fIsize\fP 为零，此时 \fIbuf\fP 已分配为必要的大小。 调用者应该
+\fBfree\fP(3) 返回的缓冲区。
+.PP
+\fBget_current_dir_name\fP() 将 \fBmalloc\fP(3) 一个足够大的数组来保存当前工作目录的绝对路径名。 如果设置了环境变量
+\fBPWD\fP，并且它的值是正确的，那么该值将被返回。 调用者应该 \fBfree\fP(3) 返回的缓冲区。
+.PP
+\fBgetwd\fP() 没有 \fBmalloc\fP(3) 任何内存。 \fIbuf\fP 参数应该是指向至少 \fBPATH_MAX\fP 字节长的数组的指针。
+如果当前工作目录的绝对路径名的长度 (包括终止空字节) 超过 \fBPATH_MAX\fP 字节，则返回 NULL，并将 \fIerrno\fP 设置为
+\fBENAMETOOLONG\fP。 (请注意，在某些系统上，\fBPATH_MAX\fP 可能不是编译时常量; 此外，它的值可能取决于文件系统，请参见
+\fBpathconf\fP(3).) 出于可移植性和安全性原因，不推荐使用 \fBgetwd\fP()。
+.SH "RETURN VALUE"
+成功时，这些函数返回一个指向包含当前工作目录路径名的字符串的指针。 在 \fBgetcwd\fP() 和 \fBgetwd\fP() 的情况下，这与 \fIbuf\fP
+的值相同。
+.PP
+失败时，这些函数返回 NULL，并设置 \fIerrno\fP 以指示错误。 \fIbuf\fP 指向的数组内容在出错时未定义。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+读取或搜索文件名的组成部分的权限被拒绝。
+.TP 
+\fBEFAULT\fP
+\fIbuf\fP 指向错误地址。
+.TP 
+\fBEINVAL\fP
+\fIsize\fP 参数为零且 \fIbuf\fP 不是空指针。
+.TP 
+\fBEINVAL\fP
+\fBgetwd\fP(): \fIbuf\fP 为 NULL。
+.TP 
+\fBENAMETOOLONG\fP
+\fBgetwd\fP(): 以 null 结尾的绝对路径名字符串的大小超过 \fBPATH_MAX\fP 字节。
+.TP 
+\fBENOENT\fP
+当前工作目录已取消链接。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBERANGE\fP
+\fIsize\fP 参数小于工作目录的绝对路径名的长度，包括终止空字节。 您需要分配一个更大的数组，然后重试。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetcwd\fP(),
+\fBgetwd\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBget_current_dir_name\fP()
+T}	Thread safety	MT\-Safe env
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBgetcwd\fP() 符合 POSIX.1\-2001。 但是请注意，如果 \fIbuf\fP 为 NULL，则 POSIX.1\-2001 会保留
+\fBgetcwd\fP() 的行为未指定。
+.PP
+\fBgetwd\fP() 存在于 POSIX.1\-2001 中，但标记为 LEGACY。 POSIX.1\-2008 删除了 \fBgetwd\fP() 的规范。
+请改用 \fBgetcwd\fP()。 POSIX.1\-2001 没有为 \fBgetwd\fP() 定义任何错误。
+.PP
+\fBget_current_dir_name\fP() 是 GNU 的扩展。
+.SH NOTES
+在 Linux 下，这些函数使用 \fBgetcwd\fP() 系统调用 (自 Linux 2.1.92 起可用)。 在旧系统上，他们会查询
+\fI/proc/self/cwd\fP。 如果缺少系统调用和 proc 文件系统，则调用泛型实现。 只有在那种情况下，这些调用才能在 Linux 和
+\fBEACCES\fP 下失败。
+.PP
+.\"
+这些函数常用于保存当前工作目录的位置，以便以后返回时使用。 当有足够多的文件描述符可用时，打开当前目录 (".") 并调用 \fBfchdir\fP(2)
+返回通常是更快、更可靠的替代方法，尤其是在 Linux 以外的平台上。
+.SS "C library/kernel differences"
+.\" commit 3272c544da48f8915a0e34189182aed029bd0f2b
+在 Linux 上，内核提供了一个 \fBgetcwd\fP() 系统调用，本页中描述的函数将尽可能使用它。 系统调用取与同名库函数相同的参数，但限于最多返回
+\fBPATH_MAX\fP 字节。 (在 Linux 3.12 之前，返回路径名的大小限制是系统页面大小。在许多体系结构上，\fBPATH_MAX\fP
+和系统页面大小都是 4096 字节，但少数体系结构的页面大小更大。) 如果长度当前工作目录的路径名超过这个限制，则系统调用失败，错误为
+\fBENAMETOOLONG\fP。 在这种情况下，库函数回退到返回完整路径名的 (slower) 替代实现。
+.PP
+.\" commit 8df9d1a4142311c084ffeeacb67cd34d190eff74
+在 Linux 2.6.36 发生变化后，如果当前目录不在当前进程的根目录下 (例如，因为进程使用 \fBchroot\fP(2)
+设置了一个新的文件系统根目录而不使用将其当前目录更改为新的根目录)。 此类行为也可能由非特权用户通过将当前目录更改为另一个挂载命名空间而引起。
+在处理来自不受信任来源的路径名时，本页中描述的函数的调用者应考虑检查返回的路径名是否以 '/' 或 '('
+开头，以避免将无法访问的路径误解为相对路径名。
+.SH BUGS
+由于在上述情况下 Linux 2.6.36 变化增加了 "(unreachable)"，\fBgetcwd\fP() 的 glibc 实现未能符合
+POSIX，在 API 契约需要绝对路径名时返回了相对路径名。 从 glibc 2.27 开始，这个问题得到了纠正; 从这样的路径名调用
+\fBgetcwd\fP() 现在将导致 \fBENOENT\fP 失败。
+.SH "SEE ALSO"
+\fBpwd\fP(1), \fBchdir\fP(2), \fBfchdir\fP(2), \fBopen\fP(2), \fBunlink\fP(2), \fBfree\fP(3),
+\fBmalloc\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

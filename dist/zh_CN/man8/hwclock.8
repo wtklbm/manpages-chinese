@@ -1,0 +1,734 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: hwclock
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH HWCLOCK 8 2022\-05\-11 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+hwclock \- 时钟实用程序
+.SH SYNOPSIS
+.sp
+\fBhwclock\fP [\fIfunction\fP] [\fIoption\fP...]
+.SH DESCRIPTION
+.sp
+\fBhwclock\fP 是时钟的管理工具。它可以: 显示硬件时钟时间; 将硬件时钟设置为指定时间; 从系统时钟设置硬件时钟; 从硬件时钟设置系统时钟;
+补偿硬件时钟漂移; 更正系统时钟时间刻度; 设置内核 \(cqs timezone, NTP timescale, and epoch (alpha
+only); 并根据其漂移率预测 future 硬件时钟值。
+.sp
+自 v2.26 以来，对 \fB\-\-hctosys\fP 函数和 \fB\-\-directisa\fP 选项做了重要改动，增加了一个新的选项
+\fB\-\-update\-drift\fP。请参见下面各自的说明。
+.SH FUNCTIONS
+.sp
+以下函数互斥，一次只能给一个。如果没有给出，则默认为 \fB\-\-show\fP。
+.sp
+\fB\-a, \-\-adjust\fP
+.RS 4
+从硬件时钟中添加或减去时间以解决自上次设置或调整时钟以来的系统漂移。请参见下面 \fBThe Adjust Function\fP 下的讨论。
+.RE
+.sp
+\fB\-\-getepoch\fP; \fB\-\-setepoch\fP
+.RS 4
+这些函数仅适用于 Alpha 机器，并且只能通过 Linux 内核 RTC 驱动程序使用。
+.sp
+它们用于读取和设置内核 \(cqs 硬件时钟纪元值。Epoch 是硬件时钟中零年值所指的 AD 年数。例如，如果机器 \(cqs BIOS
+将硬件时钟中的年份计数器设置为包含自 1952 年以来的完整年份数，则内核 \(cqs 硬件时钟纪元值必须为 1952。
+.sp
+\fB\-\-setepoch\fP 函数需要使用 \fB\-\-epoch\fP 选项来指定年份。例如:
+.sp
+\fBhwclock \-\-setepoch \-\-epoch=1952\fP
+.sp
+RTC 驱动程序尝试猜测正确的纪元值，因此可能不需要设置它。
+.sp
+每当 \fBhwclock\fP 读取或设置 Alpha 机器上的硬件时钟时，都会使用此纪元值。对于 ISA 机器，内核使用 1900 年的固定硬件时钟纪元。
+.RE
+.sp
+\fB\-\-param\-get=\fP\fIparameter\fP; \fB\-\-param\-set=\fP\fIparameter\fP=\fIvalue\fP
+.RS 4
+读取并设置 RTC\(cqs 参数。这很有用，例如，检索 RTC\(cqs 特性或设置 RTC\(cqs 备份切换模式。
+.sp
+\fIparameter\fP 是一个数字 RTC 参数值 (请参见 Kernel\(cqs \fIinclude/uapi/linux/rtc.h\fP)
+或别名。有关有效别名的列表，请参见 \fB\-\-help\fP。\fIparameter\fP 和 \fIvalue\fP，如果前缀为
+0x，则被解释为十六进制值，否则为十进制值。
+.RE
+.sp
+\fB\-\-predict\fP
+.RS 4
+根据 \fB\-\-date\fP 选项给出的时间和 \fI/etc/adjtime\fP 中的信息，预测硬件时钟将在 future
+中读取的内容。这很有用，例如，在设置硬件时钟唤醒 (又名警报) 时考虑漂移。请参见 \fBrtcwake\fP(8)。
+.sp
+如果硬件时钟被除当前操作系统之外的任何其他东西修改，请不要使用此函数 \(cqs \fBhwclock\fP 命令，例如 \(aq11 分钟模式 \(aq
+或双启动另一个操作系统。
+.RE
+.sp
+\fB\-r\fP, \fB\-\-show\fP;  \fB\-\-get\fP
+.RS 4
+读取硬件时钟并将其时间以 \fBISO 8601\fP 格式打印到标准输出。显示的时间始终为当地时间，即使您将硬件时钟保持为 UTC。请参见
+\fB\-\-localtime\fP 选项。
+.sp
+未指定函数时，默认显示硬件时钟时间。
+.sp
+\fB\-\-get\fP 函数还根据 \fI/etc/adjtime\fP
+中的信息对读取的时间应用漂移校正。如果硬件时钟被除当前操作系统之外的任何其他东西修改，请不要使用此函数 \(cqs \fBhwclock\fP 命令，例如
+\(aq11 分钟模式 \(aq 或双启动另一个操作系统。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-hctosys\fP
+.RS 4
+从硬件时钟设置系统时钟。从硬件时钟读取的时间经过补偿以解决系统漂移，然后再使用它来设置系统时钟。请参见下面 \fBThe Adjust Function\fP
+下的讨论。
+.sp
+系统时钟必须保持在 UTC
+时间刻度中，日期时间应用程序才能与为系统配置的时区一起正常工作。如果硬件时钟保持在本地时间，那么在使用它来设置系统时钟之前，必须将从它读取的时间转换为
+UTC 时间刻度。\fB\-\-hctosys\fP 函数根据 \fI/etc/adjtime\fP 文件或命令行参数 \fB\-\-localtime\fP 和
+\fB\-\-utc\fP 中的信息执行此操作。注意: 没有进行夏令时调整。请参见下面 \fBLOCAL vs UTC\fP 下的讨论。
+.sp
+内核还保留一个时区值，\fB\-\-hctosys\fP 函数将其设置为为系统配置的时区。系统时区由 \fBTZ\fP 环境变量或 \fI/etc/localtime\fP
+文件配置，因为 \fBtzset\fP(3) 会解释它们。内核的过时 \fItz_dsttime\fP 字段 (cqs
+时区值设置为零。(有关此字段过去含义的详细信息，请参见 \fBsettimeofday\fP(2).)
+.sp
+当在启动脚本中使用时，使 \fB\-\-hctosys\fP 函数成为启动时 \fBsettimeofday\fP(2) 的第一个调用者，它将通过
+\fIpersistent_clock_is_local\fP 内核变量设置 NTP\(aq11 分钟模式 \(aq 时间刻度。如果硬件时钟 \(cqs
+时间刻度配置发生更改，则需要重新启动以通知内核。请参见下面 \fBAutomatic Hardware Clock Synchronization by the Kernel\fP 下的讨论。
+.sp
+这是一个很好的函数，可以在文件系统挂载 read/write 之前在其中一个系统启动脚本中使用。
+.sp
+此函数不应该在正在运行的系统上使用。跳跃的系统时间会导致问题，例如损坏的文件系统时间戳。此外，如果某些东西改变了硬件时钟，例如
+NTP\(cqs\(aq11 分钟模式 \(aq，则 \fB\-\-hctosys\fP 将通过包括漂移补偿来错误地设置时间。
+.sp
+可以通过将 \fI/etc/adjtime\fP 中的漂移系数设置为零来抑制漂移补偿。只要 \fB\-\-update\-drift\fP 选项在关闭时
+(或其他任何地方) 不与 \fB\-\-systohc\fP 一起使用，此设置就会一直存在。另一种抑制这种情况的方法是在调用 \fB\-\-hctosys\fP 函数时使用
+\fB\-\-noadjfile\fP 选项。第三种方法是删除 \fI/etc/adjtime\fP 文件。然后，\fBHwclock\fP 将默认为硬件时钟使用 UTC
+时间刻度。如果硬件时钟在当地时间滴答作响，则需要在文件中对其进行定义。这可以通过调用 \fBhwclock \-\-localtime \-\-adjust\fP
+来完成; 当文件不存在时，此命令实际上不会调整时钟，但会创建配置了本地时间且漂移系数为零的文件。
+.sp
+可能需要禁止 \fBhwclock\fP\(aqs 漂移校正的情况是双引导多个操作系统时。如果此 Linux 实例停止时，另一个操作系统更改了硬件时钟
+\(cqs 值，则当此实例再次启动时，应用的漂移校正将不正确。
+.sp
+为了使 \fBhwclock\fP\(aqs 漂移校正正常工作，当其 Linux 实例未运行时，硬件时钟不得发生任何变化。
+.RE
+.sp
+\fB\-\-set\fP
+.RS 4
+将硬件时钟设置为 \fB\-\-date\fP 选项给出的时间，并更新 \fI/etc/adjtime\fP 中的时间戳。使用 \fB\-\-update\-drift\fP
+选项还可以 (重新) 计算漂移系数。如果 \fB\-\-set\fP 失败，请尝试不带选项。请参见下面的 \fB\-\-update\-drift\fP。
+.RE
+.sp
+\fB\-\-systz\fP
+.RS 4
+这是 \fB\-\-hctosys\fP 函数的替代方法，既不读取硬件时钟也不设置系统时钟; 因此没有任何漂移校正。它旨在用于内核版本高于 2.6
+的系统上的启动脚本，您知道系统时钟已由内核在引导期间从硬件时钟设置。
+.sp
+它执行上面 \fB\-\-hctosys\fP 函数中详述的以下操作:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+根据需要将系统时钟时间刻度更正为 UTC。只是不是通过设置系统时钟来完成此操作，\fBhwclock\fP 只是通知内核并由它处理更改。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+设置内核 \(cqs NTP\(aq11 分钟模式 \(aq 时间刻度。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+设置内核 \(cqs 时区。
+.RE
+.RE
+.sp
+前两个只在 \fBsettimeofday\fP(2)
+开机后的第一个调用上可用。因此，此选项仅在启动脚本中使用时才有意义。如果更改了硬件时钟时间刻度配置，则需要重新启动以通知内核。
+.sp
+\fB\-w\fP, \fB\-\-systohc\fP
+.RS 4
+从系统时钟设置硬件时钟，并更新 \fI/etc/adjtime\fP 中的时间戳。使用 \fB\-\-update\-drift\fP 选项还可以 (重新)
+计算漂移系数。如果 \fB\-\-systohc\fP 失败，请尝试不带选项。请参见下面的 \fB\-\-update\-drift\fP。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH OPTIONS
+.sp
+\fB\-\-adjfile=\fP\fIfilename\fP
+.RS 4
+覆盖默认的 \fI/etc/adjtime\fP 文件路径。
+.RE
+.sp
+\fB\-\-date=\fP\fIdate_string\fP
+.RS 4
+此选项必须与 \fB\-\-set\fP 或 \fB\-\-predict\fP 函数一起使用，否则将被忽略。
+.sp
+\fBhwclock \-\-set \-\-date=\(aq16:45\(aq\fP
+.sp
+\fBhwclock \-\-predict \-\-date=\(aq2525\-08\-14 07:11:05\(aq\fP
+.sp
+参数必须是本地时间，即使您将硬件时钟保持为 UTC。请参见 \fB\-\-localtime\fP 选项。因此，参数不应包含任何时区信息。它也不应该像 "+5
+minutes" 那样是相对时间，因为 \fBhwclock\fP\(aqs 精度取决于参数 \(cqs
+值与按下回车键时的相关性。零点几秒都在默默丢弃。此选项能够理解许多时间和日期格式，但应遵守前面的参数。
+.RE
+.sp
+\fB\-\-delay=\fP\fIseconds\fP
+.RS 4
+此选项可用于在设置时钟时间时覆盖内部使用的延迟。rtc_cmos 的默认值为 0.5 (500ms)，对于其他 RTC 类型，延迟为 0。如果无法确定
+RTC 类型 (从 sysfs)，那么它也默认为 0.5 以向后兼容。
+.sp
+500ms 默认值基于常用的 MC146818A 兼容 (x86)
+硬件时钟。此硬件时钟只能设置为任何整数时间加半秒。整数时间是必需的，因为没有设置或获取小数秒的接口。额外的半秒延迟是因为硬件时钟在设置新时间后精确更新到下一秒
+500 毫秒。不幸的是，这种行为是特定于硬件的，在相同的情况下需要另一个延迟。
+.RE
+.sp
+\fB\-D\fP, \fB\-\-debug\fP
+.RS 4
+使用 \fB\-\-verbose\fP。\fB\-\-debug\fP 选项已被弃用，可能会在 future 版本中重新调整用途或删除。
+.RE
+.sp
+\fB\-\-directisa\fP
+.RS 4
+此选项对 x86 和 x86_64 系列中的 ISA 兼容机器有意义。对于其他机器，它没有影响。该选项告诉 \fBhwclock\fP 使用明确的 I/O
+指令来访问硬件时钟。如果没有此选项，\fBhwclock\fP 将使用 rtc 设备文件，它假定该文件由 Linux RTC 设备驱动程序驱动。从 v2.26
+开始，当 rtc 驱动程序不可用时，它将不再自动使用 directisa;
+这导致了一个不安全的情况，可能允许两个进程同时访问硬件时钟。从用户空间直接访问硬件应该只用于测试、故障排除，以及当所有其他方法都失败时的最后手段。请参见
+\fB\-\-rtc\fP 选项。
+.RE
+.sp
+\fB\-\-epoch=\fP\fIyear\fP
+.RS 4
+使用 \fB\-\-setepoch\fP 函数时需要此选项。\fIyear\fP 的最小值为 1900。最大值取决于系统 (\fBULONG_MAX \- 1\fP)。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-rtc=\fP\fIfilename\fP
+.RS 4
+覆盖 \fBhwclock\fP\(aqs 默认 rtc 设备文件名。否则它将使用按此顺序找到的第一个:
+\fI/dev/rtc0\fP、\fI/dev/rtc\fP、\fI/dev/misc/rtc\fP。对于 \fBIA\-64:\fP \fI/dev/efirtc\fP
+\fI/dev/misc/efirtc\fP
+.RE
+.sp
+\fB\-l\fP, \fB\-\-localtime\fP;  \fB\-u\fP, \fB\-\-utc\fP
+.RS 4
+指示硬件时钟设置为哪个时间刻度。
+.sp
+硬件时钟可以配置为使用 UTC 或本地时间刻度，但时钟本身没有说明正在使用哪个替代方案。\fB\-\-localtime\fP 或 \fB\-\-utc\fP
+选项将此信息提供给 \fBhwclock\fP 命令。如果您指定了错误的 (或两者均未指定并采用错误的默认值)，则设置和读取硬件时钟都将不正确。
+.sp
+如果您既不指定 \fB\-\-utc\fP 也不指定 \fB\-\-localtime\fP，那么将使用 \fI/etc/adjtime\fP 中记录的最后一个带有一组函数
+(\fB\-\-set\fP、\fB\-\-systohc\fP 或 \fB\-\-adjust\fP) 的值。如果 adjtime 文件不 \(cqt 存在，默认为 UTC。
+.sp
+Note: 当硬件时钟保持本地时间时，夏令时更改可能不一致。请参见下面 \fBLOCAL vs UTC\fP 下的讨论。
+.RE
+.sp
+\fB\-\-noadjfile\fP
+.RS 4
+禁用 \fI/etc/adjtime\fP 提供的功能。\fBhwclock\fP 不会使用此选项读取或写入该文件。使用此选项时必须指定 \fB\-\-utc\fP 或
+\fB\-\-localtime\fP。
+.RE
+.sp
+\fB\-\-test\fP
+.RS 4
+实际上不要更改系统上的任何内容，即时钟或 \fI/etc/adjtime\fP (\fB\-\-verbose\fP 隐含在该选项中)。
+.RE
+.sp
+\fB\-\-update\-drift\fP
+.RS 4
+更新硬件时钟 \(cqs \fI/etc/adjtime\fP 中的漂移因子。它只能与 \fB\-\-set\fP 或 \fB\-\-systohc\fP 一起使用。
+.sp
+设置之间至少需要四个小时的时间间隔。这是为了避免无效的计算。周期越长，得到的漂移因子就越精确。
+.sp
+这个选项是在 v2.26 中添加的，因为它是典型的系统在关闭时调用 \fBhwclock \-\-systohc\fP; 对于旧行为，这将自动 (重新)
+计算导致几个问题的漂移因子:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+当使用带有 \(aq11 分钟模式 \(aq 内核的 NTP 时，漂移因子将被破坏到接近零。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+它不允许使用 \(aqcold\(aq 漂移校正。大多数配置使用 \(aqcold\(aq drift
+将产生有利的结果。冷，意味着机器关闭时会对漂移系数产生重大影响。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+(重新) 计算每次关闭时的漂移因子会产生次优结果。例如，如果短暂的条件导致机器异常热，则漂移系数计算将越界。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+显着增加系统关闭时间 (从 v2.31 开始，当不使用 \fB\-\-update\-drift\fP 时，不会读取 RTC)。
+.RE
+.RE
+.sp
+让 \fBhwclock\fP 计算漂移因子是一个很好的起点，但要获得最佳结果，可能需要通过直接编辑 \fI/etc/adjtime\fP
+文件来进行调整。对于大多数配置，一旦机器 \(cqs 最佳漂移因子被精心设计，它就不需要改变。因此，自动 (重新)
+计算漂移的旧行为已更改，现在需要使用此选项。请参见下面 \fBThe Adjust Function\fP 下的讨论。
+.sp
+此选项需要在设置之前读取硬件时钟。如果无法读取，那么这个选项会导致设置函数失败。例如，如果硬件时钟因电源故障而损坏，就会发生这种情况。在这种情况下，必须首先设置时钟而不使用此选项。尽管它不起作用，但由此产生的漂移校正因子无论如何都是无效的。
+.sp
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+显示有关 \fBhwclock\fP 内部操作的更多详细信息。
+.RE
+.SH NOTES
+.SS "Clocks in a Linux System"
+.sp
+有两种类型的日期时间时钟:
+.sp
+\fBThe Hardware Clock:\fP 这个时钟是一个独立的硬件设备，有自己的电源域 (电池、电容器等)，在机器断电甚至拔掉电源时运行。
+.sp
+在 ISA 兼容系统上，此时钟被指定为 ISA 标准的一部分。控制程序只能读取或设置此时钟为整秒，但它也可以检测 1 秒时钟滴答的
+edges，因此时钟实际上具有无限精度。
+.sp
+该时钟通常称为硬件时钟、实时时钟、RTC、BIOS 时钟和 CMOS 时钟。大写形式的硬件时钟是为 \fBhwclock\fP 使用而创造的。Linux
+内核也将其称为持久时钟。
+.sp
+一些非 ISA 系统有几个实时时钟，其中只有一个有自己的电源域。一个非常低功耗的外部 I2C 或 SPI
+时钟芯片可以与备用电池一起用作硬件时钟，以初始化用于大多数其他目的的功能更强大的集成实时时钟。
+.sp
+\fBThe System Clock:\fP 该时钟是 Linux 内核的一部分，由定时器中断驱动。(在 ISA 机器上，定时器中断是 ISA
+标准的一部分。) 只有当 Linux 在机器上运行时它才有意义。系统时间是自 1970 年 1 月 1 日 00:00:00 UTC 以来的秒数
+(或更简洁地说，是自 1969 UTC 以来的秒数)。但是，系统时间不是整数。它具有几乎无限的精度。
+.sp
+系统时间是重要的时间。硬件时钟 \(cqs 的基本目的是在 Linux 未运行时保持时间，以便系统时钟可以在启动时从中初始化。请注意，在为 ISA
+设计的 DOS 中，硬件时钟是唯一的实时时钟。
+.sp
+重要的是系统时间不能有任何不连续性，例如在系统运行时使用 \fBdate\fP(1)
+程序设置它会发生的情况。但是，您可以在系统运行时对硬件时钟做任何您想做的事情，下次 Linux 启动时，它将使用硬件时钟调整后的时间。注意:
+目前这在大多数系统上是不可能的，因为 \fBhwclock \-\-systohc\fP 在关机时被调用。
+.sp
+Linux 内核 \(cqs 时区由 \fBhwclock\fP 设置。但是不要 \(cqt 被误导 \(em
+几乎没有人关心内核认为它处于哪个时区。相反，关心时区的程序 (也许是因为它们想为您显示本地时间) 几乎总是使用更传统的方法来确定时区: 它们使用
+\fBTZ\fP 环境变量或 \fI/etc/localtime\fP 文件，如手册页中所述对于 \fBtzset\fP(3)。但是，Linux 内核的某些程序和边缘部分
+(例如文件系统) 使用内核 \(cqs 时区值。一个例子是 vfat 文件系统。如果内核时区值错误，vfat
+文件系统将报告并在文件上设置错误的时间戳。另一个例子是内核 \(cqs NTP\(aq11 分钟模式 \(aq. 如果内核 \(cqs 时区值或者
+\fIpersistent_clock_is_local\fP 变量错误，则硬件时钟将被 \(aq11 分钟模式 \(aq. 请参见下面
+\fBAutomatic Hardware Clock Synchronization by the Kernel\fP 下的讨论。
+.sp
+\fBhwclock\fP 将内核 \(cqs 时区设置为 \fBTZ\fP 或 \fI/etc/localtime\fP 与 \fB\-\-hctosys\fP 或
+\fB\-\-systz\fP 函数指示的值。
+.sp
+内核 \(cqs 时区值实际上由两部分组成: 1) 一个字段 tz_minuteswest 指示本地时间 (未针对 DST 调整) 落后于 UTC
+的分钟数，以及 2) 一个字段 tz_dsttime 指示夏令时 (DST) 约定的类型目前在当地有效。第二个字段在 Linux
+下不使用并且始终为零。另请详见 \fBsettimeofday\fP(2)。
+.SS "Hardware Clock Access Methods"
+.sp
+\fBhwclock\fP 使用许多不同的方法来获取和设置硬件时钟值。最正常的做法是对 rtc 设备专用文件做 I/O，推测是 rtc
+设备驱动驱动的。此外，使用 rtc 框架和 udev 的 Linux 系统能够支持多个硬件时钟。这可能需要通过使用 \fB\-\-rtc\fP
+选项指定一个来覆盖默认的 rtc 设备。
+.sp
+但是，这种方法并不总是可用，因为旧系统没有 rtc 驱动程序。在这些系统上，访问硬件时钟的方法取决于系统硬件。
+.sp
+在 ISA 兼容系统上，\fBhwclock\fP 可以直接访问构成时钟的 "CMOS memory" 寄存器，方法是对端口 0x70 和 0x71 执行
+I/O。它使用实际的 I/O 指令执行此操作，因此只有在使用超级用户有效用户标识运行时才能执行此操作。可以通过指定 \fB\-\-directisa\fP
+选项来使用此方法。
+.sp
+这是访问时钟的一种非常糟糕的方法，因为用户空间程序通常不应该执行直接 I/O 和禁用中断的所有原因。\fBhwclock\fP
+提供它用于测试、故障排除，并且因为它可能是没有工作 rtc 设备驱动程序的 ISA 系统上唯一可用的方法。
+.SS "The Adjust Function"
+.sp
+硬件时钟通常不是很准确。然而，它的大部分不准确性是完全可以预测的 \-\- 它每天增加或减少相同的时间。这称为系统漂移。\fBhwclock\fP\(aqs
+\fB\-\-adjust\fP function lets you apply systematic drift corrections to the
+Hardware Clock.
+.sp
+它是这样工作的: \fBhwclock\fP 保留了一个文件 \fI/etc/adjtime\fP，其中保留了一些历史信息。这称为 adjtime 文件。
+.sp
+假设您开始时没有 adjtime 文件。您发出 \fBhwclock \-\-set\fP 命令以将硬件时钟设置为真实的当前时间。\fBhwclock\fP 创建
+adjtime 文件并将当前时间记录为上次校准时钟的时间。五天后，时钟增加了 10 秒，因此您发出 \fBhwclock \-\-set \-\-update\-drift\fP 命令将其调回 10 秒。\fBhwclock\fP 更新 adjtime 文件，将当前时间显示为上次校准时钟的时间，并记录每天
+2 秒作为系统漂移率。24 小时过去了，然后您发出 \fBhwclock \-\-adjust\fP 命令。\fBhwclock\fP 查阅 adjtime
+文件，发现时钟在单独放置时每天增加 2 秒，并且它已经单独放置整整一天。所以它从硬件时钟中减去 2 秒。然后它将当前时间记录为上次调整时钟的时间。又过了
+24 小时，您发出了另一个 \fBhwclock \-\-adjust\fP。\fBhwclock\fP 做同样的事情: 减去 2 秒并用当前时间更新 adjtime
+文件，作为上次调整时钟的时间。
+.sp
+当您将 \fB\-\-update\-drift\fP 选项与 \fB\-\-set\fP 或 \fB\-\-systohc\fP
+一起使用时，通过将完全漂移校正的当前硬件时钟时间与新设置时间进行比较 (重新) 计算系统漂移率，从中得出基于上次校准的 24 小时漂移率来自
+adjtime 文件的时间戳。然后将更新后的漂移系数保存在 \fI/etc/adjtime\fP 中。
+.sp
+设置硬件时钟时会出现少量错误，因此 \fB\-\-adjust\fP 不会进行任何小于 1 秒的调整。稍后，当您再次请求调整时，累积漂移将超过 1
+秒，\fB\-\-adjust\fP 将进行调整，包括任何小数部分。
+.sp
+\fBhwclock \-\-hctosys\fP 还使用 adjtime 文件数据来补偿从硬件时钟读取的值，然后再使用它来设置系统时钟。它没有
+\fB\-\-adjust\fP 的 1 秒限制，并且会立即纠正亚秒级漂移值。它不会更改硬件时钟时间或 adjtime 文件。这可能消除了使用
+\fB\-\-adjust\fP 的需要，除非系统上的其他东西需要补偿硬件时钟。
+.SS "The Adjtime File"
+.sp
+虽然因其历史目的仅用于控制调整而命名，但它实际上包含 \fBhwclock\fP 从一次调用到下一次调用使用的其他信息。
+.sp
+adjtime 文件的格式为 ASCII:
+.sp
+第 1 行: 三个数字，由空格分隔: 1) 系统漂移率，以秒为单位，每天，浮点小数; 2) 自 1969 年 UTC
+最近调整或校准以来的秒数，十进制整数; 3) 零 (为了与 \fBclock\fP(8)) 兼容作为浮点十进制。
+.sp
+第 2 行: 一个数字: 自 1969 年 UTC 最近校准以来的秒数。如果还没有校准或已知任何先前的校准都没有实际意义
+(例如，因为硬件时钟已找到，自该校准以来不包含有效时间)，则为零。这是一个十进制整数。
+.sp
+第 3 行: "UTC" 或 "LOCAL"。告知硬件时钟是设置为协调世界时还是本地时间。您始终可以使用 \fBhwclock\fP 命令行上的选项覆盖此值。
+.sp
+您可以将以前与 \fBclock\fP(8) 程序一起使用的 adjtime 文件与 \fBhwclock\fP 一起使用。
+.SS "Automatic Hardware Clock Synchronization by the Kernel"
+.sp
+您应该知道在某些系统中硬件时钟保持同步的另一种方式。Linux 内核有一种模式，它每 11
+分钟将系统时间复制到硬件时钟。此模式是一个编译时选项，因此并非所有内核都具有此功能。当您使用像 NTP
+这样复杂的东西来保持系统时钟同步时，这是一个很好的模式。(NTP
+是一种使您的系统时间与网络上某处的时间服务器或连接到您系统的无线电时钟保持同步的方法。请参见 RFC 1305。)
+.sp
+如果内核是使用 \(aq11 分钟模式 \(aq 选项编译的，当内核 \(cqs 时钟规则处于同步状态时它将处于活动状态。处于此状态时，内核 \ (cqs \fItime_status\fP 变量) 的第 6 位 (在掩码 0x0040 中设置的位) 未设置。该值作为 \fBadjtimex \-\-print\fP 或 \fBntptime\fP 命令的 \(aqstatus\(aq 行输出。
+.sp
+它需要外部影响，例如 NTP 守护进程将内核 \(cqs 时钟规则置于同步状态，因此打开 \(aq11 分钟模式
+\(aq. 可以通过运行任何以老式方式设置系统时钟的程序来关闭它，包括 \fBhwclock \-\-hctosys\fP。但是，如果 NTP
+守护程序仍在运行，它将在下次同步系统时钟时再次打开 \(aq11 分钟模式 \(aq。
+.sp
+如果您的系统以 \(aq11 分钟模式 \(aq 打开，它可能需要在启动脚本中使用 \fB\-\-hctosys\fP 或
+\fB\-\-systz\fP，特别是如果硬件时钟配置为使用本地时间刻度。除非内核被告知硬件时钟正在使用什么时间尺度，否则它可能会用错误的时间尺度来破坏它。内核默认使用
+UTC。
+.sp
+设置系统时钟的第一个用户空间命令通知内核硬件时钟正在使用什么时间刻度。这是通过 \fIpersistent_clock_is_local\fP
+内核变量发生的。如果 \fB\-\-hctosys\fP 或 \fB\-\-systz\fP 是第一个，它将根据 adjtime
+文件或适当的命令行参数设置此变量。请注意，当使用此功能并更改硬件时钟时标配置时，需要重新启动以通知内核。
+.sp
+\fBhwclock \-\-adjust\fP 不应与 NTP\(aq11 分钟模式 \(aq.
+.SS "ISA Hardware Clock Century value"
+.sp
+有某种标准将 ISA 机器上的 CMOS 内存字节 50 定义为它是哪个世纪的指示器。\fBhwclock\fP 不使用或设置该字节，因为有些机器不
+\(cqt 以这种方式定义字节，而且它确实是 \(无论如何，cqt 是必需的，因为世纪年很好地暗示了它是哪个世纪是。
+.sp
+如果您对 CMOS 世纪字节有真正的用途，请联系 \fBhwclock\fP 维护者; 一个选项可能是合适的。
+.sp
+请注意，此部分仅在您使用 "direct ISA" 方法访问硬件时钟时相关。当硬件支持时，ACPI 提供了一种访问世纪值的标准方法。
+.SH "DATE\-TIME CONFIGURATION"
+.SS "Keeping Time without External Synchronization"
+.sp
+本次讨论基于以下条件:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+没有任何改变日期时间时钟的运行，例如 NTP 守护程序或 cron 作业。`
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+系统时区配置为正确的本地时间。见下文，在 \fBPOSIX vs \(aqRIGHT\(aq\fP 下。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+在启动初期，将按以下顺序调用以下内容: \fBadjtimex \-\-tick\fP \fIvalue\fP \fB\-\-frequency\fP \fIvalue\fP
+\fBhwclock \-\-hctosys\fP
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+在关机期间调用以下内容: \fBhwclock \-\-systohc\fP
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+没有 \fBadjtimex\fP 的系统可以使用 \fBntptime\fP。
+.RE
+.RE
+.sp
+无论是否使用 NTP 守护程序保持精确时间，将系统配置为自行保持相当好的日期时间是有意义的。
+.sp
+实现这一目标的第一步是清楚地了解大局。有两个完全独立的硬件设备以它们自己的速度运行，并以它们自己的速率偏离 \(aqcorrect\(aq
+时间。漂移校正的方法和软件对于它们中的每一个都是不同的。但是，大多数系统都配置为在启动和关闭时在这两个时钟之间交换值。现在，单个设备 \ (cqs
+计时错误在彼此之间来回传输。尝试为其中一个配置漂移校正，另一个 \ (cqs 漂移将覆盖在它上面。
+.sp
+在为系统时钟配置漂移校正时，只需不关闭机器即可避免此问题。这一点，再加上所有 \fBhwclock\fP\(aqs 精度 (包括计算漂移因子)
+都取决于系统时钟 \ (cqs 速率正确，意味着系统时钟的配置应该首先完成。
+.sp
+使用 \fBadjtimex\fP(8) 命令 \(cqs \fB\-\-tick\fP 和 \fB\-\-frequency\fP 选项校正系统时钟漂移。这两个一起工作:
+tick 是粗调，frequency 是细调。(对于没有 \fBadjtimex\fP 包的系统，可以使用 \fBntptime \-f\fP \fIppm\fP 代替。)
+.sp
+某些 Linux 发行版尝试使用 \fBadjtimex\fP\(aqs
+比较操作自动计算系统时钟漂移。试图用另一个漂流时钟来校正一个漂流时钟就像一只狗试图抓住自己的尾巴。成功可能最终会发生，但在此之前可能会付出巨大的努力和挫折。这种自动化可能会比没有配置产生改进，但期望最佳结果是错误的。手动配置的更好选择是
+\fBadjtimex\fP\(aqs \fB\-\-log\fP 选项。
+.sp
+使用 \fBsntp\fP 或 \fBdate \-Ins\fP 和精密时计简单地跟踪系统时钟漂移，然后手动计算校正可能更有效。
+.sp
+设置刻度和频率值后，继续测试和细化调整，直到系统时钟保持良好的时间。有关详细信息和演示手动漂移计算的示例，请参见 \fBadjtimex\fP(2)。
+.sp
+一旦系统时钟平稳地滴答作响，就转到硬件时钟。
+.sp
+通常，冷漂移最适合大多数用例。即使对于正常停机时间包括重新启动的 24/7
+机器，这也应该是正确的。在那种情况下，漂移因子值几乎没有区别。但在机器长时间停机的极少数情况下，冷漂应该会产生更好的结果。
+.sp
+\fBSteps to calculate cold drift:\fP
+.sp
+1
+.RS 4
+\fBEnsure that NTP daemon will not be launched at startup.\fP
+.RE
+.sp
+2
+.RS 4
+关机时 \fISystem Clock\fP 时间一定要正确!
+.RE
+.sp
+3
+.RS 4
+关闭系统。
+.RE
+.sp
+4
+.RS 4
+在不更改硬件时钟的情况下延长一段时间。
+.RE
+.sp
+5
+.RS 4
+启动系统。
+.RE
+.sp
+6
+.RS 4
+立即使用 \fBhwclock\fP 设置正确的时间，添加 \fB\-\-update\-drift\fP 选项。
+.RE
+.sp
+Note: 如果第 6 步使用 \fB\-\-systohc\fP，则必须在这样做之前正确设置系统时钟 (第 6a 步)。
+.sp
+让 \fBhwclock\fP 计算漂移因子是一个很好的起点，但要获得最佳结果，可能需要通过直接编辑 \fI/etc/adjtime\fP
+文件来进行调整。继续测试和优化漂移因子，直到硬件时钟在启动时得到正确校正。要检查这一点，首先确保系统时间在关机前是正确的，然后在启动后立即使用
+\fBsntp\fP 或 \fBdate \-Ins\fP 和精密时钟。
+.SS "LOCAL vs UTC"
+.sp
+将硬件时钟保持在本地时间尺度会导致夏令时结果不一致:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+如果 Linux 在夏令时更改期间运行，写入硬件时钟的时间将根据更改进行调整。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+如果 Linux 在夏令时更改期间未运行，则不会针对更改调整从硬件时钟读取的时间。
+.RE
+.sp
+ISA 兼容系统上的硬件时钟只保留日期和时间，它没有时区或夏令时的概念。因此，当 \fBhwclock\fP 被告知它处于本地时间时，它假定它处于
+\(aqcorrect\(aq 本地时间并且不对从中读取的时间进行任何调整。
+.sp
+仅当硬件时钟保持在 UTC 时标中时，Linux 才会透明地处理夏令时更改。这样做对系统管理员来说很容易，因为 \fBhwclock\fP
+使用本地时间作为它的输出，并作为 \fB\-\-date\fP 选项的参数。
+.sp
+POSIX 系统与 Linux 一样，旨在让系统时钟在 UTC 时标中运行。硬件时钟 \(cqs 的目的是初始化系统时钟，因此也将其保持在 UTC
+中是有意义的。
+.sp
+但是，Linux 确实会尝试适应本地时标中的硬件时钟。这主要是为了与旧版本的 MS Windows 进行双引导。从 Windows 7
+开始，RealTimeIsUniversal 注册表项应该可以正常工作，以便它的硬件时钟可以保持在 UTC 中。
+.SS "POSIX vs \(aqRIGHT\(aq"
+.sp
+如果不解决时区问题，关于日期时间配置的讨论将是不完整的，\fBtzset\fP(3) 对此进行了很好的介绍。一个似乎没有文档的区域是时区数据库的
+\(aqright\(aq 目录，有时称为 tz 或 zoneinfo。
+.sp
+zoneinfo 系统中有两个独立的数据库，posix 和 \(aqright\(aq. \(aqRight\(aq (现在命名为
+zoneinfo\-leaps) 包括闰秒，而 posix 不包括。要使用 \(aqright\(aq 数据库，系统时钟必须设置为 (UTC +
+闰秒)，这相当于 (TAI\-10)。这允许计算跨越闰秒纪元的两个日期之间的确切秒数。然后通过使用 \(aqright\(aq
+时区文件减去闰秒，将系统时钟转换为正确的民用时间，包括 UTC。注意: 此配置被认为是实验性的，并且已知存在问题。
+.sp
+要将系统配置为使用特定数据库，必须将位于其目录中的所有文件复制到 \fI/usr/share/zoneinfo\fP 的根目录。永远不会直接从 posix 或
+\(aqright\(aq 子目录，例如 TZ=\(aq\fIright/Europe/Dublin\fP\(aq 使用文件。这种习惯变得如此普遍，以至于上游
+zoneinfo 项目通过移动 posix 和 \(aqright\(aq 子目录脱离 zoneinfo 目录并进入同级目录:
+.sp
+\fI/usr/share/zoneinfo\fP, \fI/usr/share/zoneinfo\-posix\fP,
+\fI/usr/share/zoneinfo\-leaps\fP
+.sp
+不幸的是，一些 Linux 发行版正在将其改回其包中的旧树结构体。因此，系统管理员进入 \(aqright\(aq
+子目录的问题仍然存在。这会导致系统时区配置为包含闰秒，而 zoneinfo 数据库仍配置为排除闰秒。然后当世界时钟等应用程序需要 South_Pole
+时区文件时; 或电子邮件 MTA，或 \fBhwclock\fP 需要 UTC 时区文件; 他们从 \fI/usr/share/zoneinfo\fP
+的根目录中获取它，因为这是他们应该做的。这些文件不包括闰秒，但系统时钟现在包含它们，导致时间转换不正确。
+.sp
+尝试混合和匹配来自这些单独数据库的文件是行不通的，因为它们每个都需要系统时钟使用不同的时间刻度。zoneinfo 数据库必须配置为使用 posix 或
+\(aqright\(aq，如上所述，或者通过将数据库路径分配给 \fITZDIR\fP 环境变量。
+.SH "EXIT STATUS"
+.sp
+将返回以下退出值之一:
+.sp
+\fBEXIT_SUCCESS\fP (\(aq0\(POSIX 系统上的 aq)
+.RS 4
+程序执行成功。
+.RE
+.sp
+\fBEXIT_FAILURE\fP (\(aq1\(POSIX 系统上的 aq)
+.RS 4
+操作失败或命令语法无效。
+.RE
+.SH ENVIRONMENT
+.sp
+\fBTZ\fP
+.RS 4
+如果设置了此变量，则其值优先于系统配置的时区。
+.RE
+.sp
+\fBTZDIR\fP
+.RS 4
+如果设置了此变量，则其值优先于系统配置的时区数据库目录路径。
+.RE
+.SH FILES
+.sp
+\fI/etc/adjtime\fP
+.RS 4
+\fBhwclock\fP 的配置和状态文件。另请详见 \fBadjtime_config\fP(5)。
+.RE
+.sp
+\fI/etc/localtime\fP
+.RS 4
+系统时区文件。
+.RE
+.sp
+\fI/usr/share/zoneinfo/\fP
+.RS 4
+系统时区数据库目录。
+.RE
+.sp
+设备文件 \fBhwclock\fP 可能会尝试访问硬件时钟: \fI/dev/rtc0\fP \fI/dev/rtc\fP \fI/dev/misc/rtc\fP
+\fI/dev/efirtc\fP \fI/dev/misc/efirtc\fP
+.SH "SEE ALSO"
+.sp
+\fBdate\fP(1), \fBadjtime_config\fP(5), \fBadjtimex\fP(8), \fBgettimeofday\fP(2),
+\fBsettimeofday\fP(2), \fBcrontab\fP(1p), \fBtzset\fP(3)
+.SH AUTHORS
+.sp
+撰写者
+.MTO bryanh\(atgiraffe\-data.com "Bryan Henderson" ,
+1996 年 9 月，基于 Charles Hedrick、Rob Hooft 和 Harald Koenig 在 \fBclock\fP(8)
+程序上所做的工作。请参见源代码以获取完整的历史记录和学分。
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBhwclock\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

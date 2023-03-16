@@ -1,0 +1,4396 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 1994, 1995 by Daniel Quinlan (quinlan@yggdrasil.com)
+.\" and Copyright (C) 2002-2008,2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" with networking additions from Alan Cox (A.Cox@swansea.ac.uk)
+.\" and scsi additions from Michael Neuffer (neuffer@mail.uni-mainz.de)
+.\" and sysctl additions from Andries Brouwer (aeb@cwi.nl)
+.\" and System V IPC (as well as various other) additions from
+.\" Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified 1995-05-17 by faith@cs.unc.edu
+.\" Minor changes by aeb and Marty Leisner (leisner@sdsp.mc.xerox.com).
+.\" Modified 1996-04-13, 1996-07-22 by aeb@cwi.nl
+.\" Modified 2001-12-16 by rwhron@earthlink.net
+.\" Modified 2002-07-13 by jbelton@shaw.ca
+.\" Modified 2002-07-22, 2003-05-27, 2004-04-06, 2004-05-25
+.\"    by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2004-11-17, mtk -- updated notes on /proc/loadavg
+.\" 2004-12-01, mtk, rtsig-max and rtsig-nr went away in Linux 2.6.8
+.\" 2004-12-14, mtk, updated 'statm', and fixed error in order of list
+.\" 2005-05-12, mtk, updated 'stat'
+.\" 2005-07-13, mtk, added /proc/sys/fs/mqueue/*
+.\" 2005-09-16, mtk, Added /proc/sys/fs/suid_dumpable
+.\" 2005-09-19, mtk, added /proc/zoneinfo
+.\" 2005-03-01, mtk, moved /proc/sys/fs/mqueue/* material to mq_overview.7.
+.\" 2008-06-05, mtk, Added /proc/[pid]/oom_score, /proc/[pid]/oom_adj,
+.\"     /proc/[pid]/limits, /proc/[pid]/mountinfo, /proc/[pid]/mountstats,
+.\"     and /proc/[pid]/fdinfo/*.
+.\" 2008-06-19, mtk, Documented /proc/[pid]/status.
+.\" 2008-07-15, mtk, added /proc/config.gz
+.\"
+.\" FIXME cross check against Documentation/filesystems/proc.txt
+.\" to see what information could be imported from that file
+.\" into this file.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH proc 5 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+proc \- 进程信息伪文件系统
+.SH DESCRIPTION
+\fBproc\fP 文件系统是一个伪文件系统，它提供了内核数据结构的接口。 它通常安装在 \fI/proc\fP。
+通常，它由系统自动挂载，但也可以使用以下命令手动挂载:
+.PP
+.in +4n
+.EX
+mount \-t proc proc /proc
+.EE
+.in
+.PP
+.\"
+\fBproc\fP 文件系统中的大部分文件是只读的，但有些文件是可写的，允许更改内核变量。
+.SS "Mount options"
+\fBproc\fP 文件系统支持以下挂载选项:
+.TP 
+\fBhidepid\fP=\fIn\fP (since Linux 3.3)
+.\" commit 0499680a42141d86417a8fbaa8c8db806bea1201
+此选项控制谁可以访问 \fI/proc/\fPpid 目录中的信息。 参数 \fIn\fP 是以下值之一:
+.RS
+.TP  4
+0
+每个人都可以访问所有 \fI/proc/\fPpid 目录。 这是传统行为，如果未指定此挂载选项，则为默认行为。
+.TP 
+1
+.\" As an additional bonus, since
+.\" .IR /proc/[pid]/cmdline
+.\" is inaccessible for other users,
+.\" poorly written programs passing sensitive information via
+.\" program arguments are now protected against local eavesdroppers.
+用户可能无法访问任何 \fI/proc/\fPpid 目录中的文件和子目录，但他们自己的 (\fI/proc/\fPpid 目录本身仍然可见)。
+\fI/proc/\fPpid\fI/cmdline\fP 和 \fI/proc/\fPpid\fI/status\fP 等敏感文件现在受到保护，不会被其他用户访问。
+这使得无法了解是否有任何用户正在运行特定程序 (只要该程序不会以其他方式通过其行为暴露自己)。
+.TP 
+2
+至于模式 1，另外属于其他用户的 \fI/proc/\fPpid 目录变得不可见。 这意味着 \fI/proc/\fPpid 条目不能再用于发现系统上的 PID。
+这并没有隐藏具有特定 PID 值的进程存在的事实 (可以通过其他方式获知，例如通过 "kill \-0 $PID")，但它隐藏了进程的 UID 和
+GID，否则可以通过在一个 \fI/proc/\fPpid 目录。 这使攻击者收集有关正在运行的进程的信息的任务变得非常复杂
+(例如，发现某个守护进程是否正在以提升的权限运行，另一个用户是否正在运行某个敏感程序，其他用户是否正在运行任何程序，等等)。
+.RE
+.TP 
+\fBgid\fP=\fIgid\fP (since Linux 3.3)
+.\" commit 0499680a42141d86417a8fbaa8c8db806bea1201
+.\"
+指定一个组的 ID，该组的成员有权学习 \fBhidepid\fP 禁止的进程信息 (即，该组中的用户表现得好像 \fI/proc\fP 是用
+\fIhidepid=0\fP) 挂载的。 应该使用该组而不是将非 root 用户放入 \fBsudoers\fP(5) 文件等方法。
+.SS Overview
+在 \fI/proc\fP 下，有以下一般文件和子目录组:
+.TP 
+\fI/proc/\fPpid subdirectories
+这些子目录中的每一个都包含文件和子目录，这些文件和子目录公开有关具有相应进程 ID 的进程的信息。
+.IP
+在每个 \fI/proc/\fPpid 目录下，\fItask\fP 子目录包含 \fItask/\fPtid 形式的子目录，其中包含有关进程中每个线程的相应信息，其中
+\fItid\fP 是线程的内核线程 ID。
+.IP
+\fI/proc/\fPpid 子目录在使用 \fBgetdents\fP(2) 遍历 \fI/proc\fP 时可见 (因此在使用 \fBls\fP(1) 查看
+\fI/proc\fP) 的内容时可见。
+.TP 
+\fI/proc/\fPtid subdirectories
+这些子目录中的每一个都包含文件和子目录，这些文件和子目录公开有关具有相应线程 ID 的线程的信息。这些目录的内容与对应的
+\fI/proc/\fPpid\fI/task/\fPtid 目录相同。
+.IP
+当使用 \fBgetdents\fP(2) 遍历 \fI/proc\fP 时，\fI/proc/\fPtid 子目录是 \fInot\fP 可见的 (因此当使用
+\fBls\fP(1) 查看 \fI/proc\fP) 的内容时，\fInot\fP 是可见的。
+.TP 
+\fI/proc/self\fP
+当进程访问这个神奇的符号链接时，它会解析到进程自己的 \fI/proc/\fPpid 目录。
+.TP 
+\fI/proc/thread\-self\fP
+当线程访问这个神奇的符号链接时，它会解析到进程自己的 \fI/proc/self/task/\fPtid 目录。
+.TP 
+\fI/proc/[a\-z]*\fP
+\fI/proc\fP 下的各种其他文件和子目录公开了系统范围的信息。
+.PP
+.\"
+下文将更详细地描述所有上述内容。
+.SS "Files and directories"
+以下列表提供了 \fI/proc\fP 层次结构下的许多文件和目录的详细信息。
+.TP 
+\fI/proc/\fPpid
+每个正在运行的进程都有一个数字子目录; 该子目录由进程 ID 命名。每个 \fI/proc/\fPpid 子目录都包含下面描述的伪文件和目录。
+.IP
+每个 \fI/proc/\fPpid 目录中的文件通常由进程的有效用户和有效组 ID 所有。 但是，作为一项安全措施，如果进程的 "dumpable"
+属性设置为除 1.
+.IP
+.\" commit 68eb94f16227336a5773b83ecfa8290f1d6b78ce
+在 Linux 4.11 之前，\fIroot:root\fP 表示 "global" 根用户 ID 和组 ID (即初始用户命名空间中的 UID 0 和
+GID 0)。 自 Linux 4.11 起，如果进程位于非初始用户命名空间中，该命名空间内的用户 (group) ID 0 具有有效映射，则
+\fI/proc/\fPpid 下文件的用户 (group) 所有权将改为与根用户 (group) ID 相同命名空间。 这意味着在容器内部，对于容器
+"root" 用户来说，一切都按预期工作。
+.IP
+由于以下原因，进程的 "dumpable" 属性可能会发生变化:
+.RS
+.IP \[bu] 3
+该属性是通过 \fBprctl\fP(2) \fBPR_SET_DUMPABLE\fP 操作明确设置的。
+.IP \[bu]
+由于 \fBprctl\fP(2) 中所述的原因，该属性已重置为文件 \fI/proc/sys/fs/suid_dumpable\fP 中的值 (如下所述)。
+.RE
+.IP
+将 "dumpable" 属性重置为 1 会将 \fI/proc/\fPpid\fI/*\fP 文件的所有权恢复为进程的有效 UID 和 GID。
+但是请注意，如果随后修改了有效的 UID 或 GID，则可能会重置 "dumpable" 属性，如 \fBprctl\fP(2) 中所述。 因此，可能需要重置
+"dumpable" 属性 \fIafter\fP，从而对进程的有效 UID 或 GID 进行任何所需的更改。
+.TP 
+\fI/proc/\fPpid\fI/attr\fP
+.\" https://lwn.net/Articles/28222/
+.\" From:    Stephen Smalley <sds@epoch.ncsc.mil>
+.\" To:	     LKML and others
+.\" Subject: [RFC][PATCH] Process Attribute API for Security Modules
+.\" Date:    08 Apr 2003 16:17:52 -0400
+.\"
+.\"	http://www.nsa.gov/research/_files/selinux/papers/module/x362.shtml
+.\"
+此目录中的文件为安全模块提供 API。 该目录的内容是可以读取和写入的文件，以便设置与安全相关的属性。 添加此目录是为了支持 SELinux，但目的是使
+API 足够通用以支持其他安全模块。 出于解释的目的，下面提供了 SELinux 如何使用这些文件的示例。
+.IP
+该目录仅在内核配置为 \fBCONFIG_SECURITY\fP 时存在。
+.TP 
+\fI/proc/\fPpid\fI/attr/current\fP (since Linux 2.6.0)
+该文件的内容表示进程的当前安全属性。
+.IP
+在 SELinux 中，此文件用于获取进程的安全上下文。 在 Linux 2.6.11 之前，此文件不能用于设置安全上下文 (写入总是被拒绝)，因为
+SELinux 限制进程安全转换到 \fBexecve\fP(2) (请参见下面的 \fI/proc/\fPpid\fI/attr/exec\fP 的描述)。 自
+Linux 2.6.11 起，SELinux 取消了此限制并开始支持 "set"
+操作，如果策略授权，则通过写入此节点来进行操作，尽管此操作的使用仅适用于受信任以维护新旧安全上下文之间任何所需分离的应用程序。
+.IP
+在 Linux 2.6.28 之前，SELinux
+不允许多线程进程中的线程通过此节点设置它们的安全上下文，因为这会在共享相同内存空间的线程的安全上下文之间产生不一致。 自 Linux 2.6.28
+起，SELinux 取消了此限制并开始支持多线程进程中线程的 "set"
+操作，前提是新安全上下文受旧安全上下文的限制，其中绑定关系在策略中定义并保证新安全上下文具有子集旧安全上下文的权限。
+.IP
+其他安全模块可以选择通过写入此节点来支持 "set" 操作。
+.TP 
+\fI/proc/\fPpid\fI/attr/exec\fP (since Linux 2.6.0)
+该文件表示分配给后续 \fBexecve\fP(2) 过程的属性。
+.IP
+在 SELinux 中，这是支持 role/domain 转换所必需的，而 \fBexecve\fP(2)
+是进行此类转换的首选点，因为它可以更好地控制新安全标签中进程的初始化和状态继承。 在 SELinux 中，此属性在 \fBexecve\fP(2)
+上重置，以便新程序恢复为它可能进行的任何 \fBexecve\fP(2) 调用的默认行为。 在 SELinux 中，一个进程只能设置它自己的
+\fI/proc/\fPpid\fI/attr/exec\fP 属性。
+.TP 
+\fI/proc/\fPpid\fI/attr/fscreate\fP (since Linux 2.6.0)
+此文件表示分配给后续调用 \fBopen\fP(2)、\fBmkdir\fP(2)、\fBsymlink\fP(2) 和 \fBmknod\fP(2) 创建的文件的属性
+.IP
+SELinux 使用此文件来支持在安全状态下创建文件 (使用上述系统调用)，因此在创建时间和设置属性之间没有获得不适当访问的风险。 在 SELinux
+中，此属性在 \fBexecve\fP(2)
+上被重置，因此新程序恢复到它可能进行的任何文件创建调用的默认行为，但该属性将在程序内的多个文件创建调用中持续存在，除非它被显式重置。 在 SELinux
+中，一个进程只能设置它自己的 \fI/proc/\fPpid\fI/attr/fscreate\fP 属性。
+.TP 
+\fI/proc/\fPpid\fI/attr/keycreate\fP (since Linux 2.6.18)
+.\" commit 4eb582cf1fbd7b9e5f466e3718a59c957e75254e
+.\" commit b68101a1e8f0263dbc7b8375d2a7c57c6216fb76
+.\" commit d410fa4ef99112386de5f218dd7df7b4fca910b4
+如果进程将安全上下文写入此文件，则所有随后创建的密钥 (\fBadd_key\fP(2)) 都将标有此上下文。 有关详细信息，请参见内核源文件
+\fIDocumentation/security/keys/core.rst\fP (或 Linux 3.0 和 Linux 4.13 之间的文件
+\fIDocumentation/security/keys.txt\fP，或 Linux 3.0 之前的
+\fIDocumentation/keys.txt\fP)。
+.TP 
+\fI/proc/\fPpid\fI/attr/prev\fP (since Linux 2.6.0)
+这个文件包含了最后一个 \fBexecve\fP(2) 之前进程的安全上下文; 即 \fI/proc/\fPpid\fI/attr/current\fP 的前一个值。
+.TP 
+\fI/proc/\fPpid\fI/attr/socketcreate\fP (since Linux 2.6.18)
+.\" commit 42c3e03ef6b298813557cdb997bd6db619cd65a2
+如果进程将安全上下文写入此文件，则所有随后创建的套接字都将标有此上下文。
+.TP 
+\fI/proc/\fPpid\fI/autogroup\fP (since Linux 2.6.38)
+.\" commit 5091faa449ee0b7d73bc296a93bca9540fc51d0a
+请参见 \fBsched\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/auxv\fP (since Linux 2.6.0)
+.\" Precisely: Linux 2.6.0-test7
+这包含在执行时传递给进程的 ELF 解释器信息的内容。 格式是每个条目一个 \fIunsigned long\fP ID 加上一个 \fIunsigned long\fP 值。 最后一项包含两个零。 另请详见 \fBgetauxval\fP(3)。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/cgroup\fP (since Linux 2.6.24)
+请参见 \fBcgroups\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/clear_refs\fP (since Linux 2.6.22)
+.\" commit b813e931b4c8235bb42e301096ea97dbdee3e8fe (2.6.22)
+.\" commit 398499d5f3613c47f2143b8c54a04efb5d7a6da9 (2.6.32)
+.\" commit 040fa02077de01c7e08fa75be6125e4ca5636011 (3.11)
+.\"
+.\"       "Clears page referenced bits shown in smaps output"
+.\"       write-only, writable only by the owner of the process
+.IP
+这是一个只写文件，只能由进程的所有者写入。
+.IP
+可以将以下值写入文件:
+.RS
+.TP 
+1 (since Linux 2.6.22)
+.\" Internally: CLEAR_REFS_ALL
+重置与进程关联的所有页面的 PG_Referenced 和 ACCESSED/YOUNG 位。 (在 Linux 2.6.32
+之前，将任何非零值写入此文件都会产生这种效果。)
+.TP 
+2 (since Linux 2.6.32)
+.\" Internally: CLEAR_REFS_ANON
+重置与进程关联的所有匿名页面的 PG_Referenced 和 ACCESSED/YOUNG 位。
+.TP 
+3 (since Linux 2.6.32)
+.\" Internally: CLEAR_REFS_MAPPED
+为与进程关联的所有文件映射页面重置 PG_Referenced 和 ACCESSED/YOUNG 位。
+.RE
+.IP
+清除 PG_Referenced 和 ACCESSED/YOUNG 位提供了一种方法来大致测量进程使用的内存量。 首先检查
+\fI/proc/\fPpid\fI/smaps\fP 中显示的 VMA 的 "Referenced" 字段中的值，以了解进程的内存占用情况。 然后清除
+PG_Referenced 和 ACCESSED/YOUNG 位，并在经过某个测量时间间隔后，再次检查 "Referenced"
+字段中的值，以了解测量间隔期间进程内存占用的变化。 如果只对检查选定的映射类型感兴趣，则可以使用值 2 或 3 代替 1.
+.IP
+可以写入更多值来影响不同的属性:
+.RS
+.TP 
+4 (since Linux 3.11)
+.\" Internally: CLEAR_REFS_SOFT_DIRTY
+清除与进程关联的所有页面的软脏位。 检查点恢复系统使用它 (与 \fI/proc/\fPpid\fI/pagemap\fP) 结合使用) 来发现自文件
+\fI/proc/\fPpid\fI/clear_refs\fP 写入以来进程的哪些页面已被弄脏。
+.TP 
+5 (since Linux 4.0)
+.\" Internally: CLEAR_REFS_MM_HIWATER_RSS
+将峰值驻留集大小 (`高水位线`) 重置为进程的当前驻留集大小值。
+.RE
+.IP
+将上述以外的任何值写入 \fI/proc/\fPpid\fI/clear_refs\fP 均无效。
+.IP
+仅当启用 \fBCONFIG_PROC_PAGE_MONITOR\fP 内核配置选项时才会出现 \fI/proc/\fPpid\fI/clear_refs\fP 文件。
+.TP 
+\fI/proc/\fPpid\fI/cmdline\fP
+.\" In Linux 2.3.26, this also used to be true if the process was swapped out.
+这个只读文件包含进程的完整命令行，除非进程是僵尸进程。 在后一种情况下，此文件中没有任何内容: 也就是说，读取此文件将返回 0 个字符。
+命令行参数在此文件中显示为一组由空字节 (\[aq]\e0\[aq]) 分隔的字符串，最后一个字符串后还有一个空字节。
+.IP
+如果在 \fBexecve\fP(2) 之后，进程修改了它的 \fIargv\fP 字符串，那么这些更改将显示在这里。 这与修改 \fIargv\fP 数组不同。
+.IP
+此外，进程可能会通过 \fBprctl\fP(2) 操作 (例如 \fBPR_SET_MM_ARG_START\fP) 更改此文件引用的内存位置。
+.IP
+将此文件视为进程希望您看到的命令行。
+.TP 
+\fI/proc/\fPpid\fI/comm\fP (since Linux 2.6.33)
+.\" commit 4614a696bd1c3a9af3a08f0e5874830a85b889d4
+此文件公开进程的 \fIcomm\fP 值 \[em]，即与进程关联的命令名称。 同一进程中的不同线程可能具有不同的 \fIcomm\fP 值，可通过
+\fI/proc/\fPpid\fI/task/\fPtid\fI/comm\fP 访问。 一个线程可以修改它的 \fIcomm\fP 值，或者同一线程组中任何其他线程的值
+(参见 \fBclone\fP(2)) 中对 \fBCLONE_THREAD\fP 的讨论，通过写入文件
+\fI/proc/self/task/\fPtid\fI/comm\fP.  长度超过 \fBTASK_COMM_LEN\fP (16) 字符 (包括终止空字节)
+的字符串将被静默截断。
+.IP
+此文件提供了 \fBprctl\fP(2)、\fBPR_SET_NAME\fP 和 \fBPR_GET_NAME\fP 操作的超集，并且在用于重命名调用者以外的线程时由
+\fBpthread_setname_np\fP(3) 使用。 该文件中的值用于 \fI/proc/sys/kernel/core_pattern\fP 中的
+\fI%e\fP 说明符; 请参见 \fBcore\fP(5)。
+.TP 
+\fI/proc/\fPpid\fI/coredump_filter\fP (since Linux 2.6.23)
+请参见 \fBcore\fP(5)。
+.TP 
+\fI/proc/\fPpid\fI/cpuset\fP (since Linux 2.6.12)
+.\" and/proc/[pid]/task/[tid]/cpuset
+请参见 \fBcpuset\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/cwd\fP
+这是指向进程当前工作目录的符号链接。 例如，要找出进程 20 的当前工作目录，您可以这样做:
+.IP
+.in +4n
+.EX
+$\fB cd /proc/20/cwd; pwd \-P\fP
+.EE
+.in
+.IP
+.\" The following was still true as at kernel 2.6.13
+在多线程进程中，如果主线程已经终止 (通常通过调用 \fBpthread_exit\fP(3)).
+.IP
+解释引用或读取 (\fBreadlink\fP(2)) 的权限此符号链接由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP
+检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/environ\fP
+该文件包含当前正在执行的程序通过 \fBexecve\fP(2) 启动时设置的初始环境。 这些条目由空字节 (\[aq]\e0\[aq])
+分隔，最后可能有一个空字节。 因此，要打印出进程 1 的环境，您可以这样做:
+.IP
+.in +4n
+.EX
+$\fB cat /proc/1/environ | tr \[aq]\e000\[aq] \[aq]\en\[aq]\fP
+.EE
+.in
+.IP
+如果在 \fBexecve\fP(2) 之后，进程修改了它的环境 (例如，通过调用诸如 \fBputenv\fP(3) 之类的函数或直接修改
+\fBenviron\fP(7) 变量)，该文件将 \fInot\fP 反映这些变化。
+.IP
+此外，进程可能会通过 \fBprctl\fP(2) 操作 (例如 \fBPR_SET_MM_ENV_START\fP) 更改此文件引用的内存位置。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/exe\fP
+.\" The following was still true as at kernel 2.6.13
+在 Linux 2.2 及更高版本下，此文件是一个符号链接，其中包含已执行命令的实际路径名。 这个符号链接可以正常解除引用;
+尝试打开它会打开可执行文件。 您甚至可以键入 \fI/proc/\fPpid\fI/exe\fP 来运行进程 \fIpid\fP 正在运行的同一可执行文件的另一个副本。
+如果路径名已取消链接，则符号链接将包含追加到原始路径名的字符串 \[aq](deleted)\[aq]。 在多线程进程中，如果主线程已经终止
+(通常通过调用 \fBpthread_exit\fP(3)).
+.IP
+解释引用或读取 (\fBreadlink\fP(2)) 的权限此符号链接由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP
+检查控制; 请参见 \fBptrace\fP(2)。
+.IP
+在 Linux 2.0 及更早版本下，\fI/proc/\fPpid\fI/exe\fP 是指向已执行二进制文件的指针，并显示为符号链接。 Linux 2.0
+下此文件的 \fBreadlink\fP(2) 调用返回格式为以下的字符串:
+.IP
+.in +4n
+.EX
+[device]:inode
+.EE
+.in
+.IP
+例如，[0301]:1502 将是设备 major 03 (IDE、MFM 等驱动器) 和 minor 01 (第一个驱动器上的第一个分区) 上的
+inode 1502。
+.IP
+\fBfind\fP(1) 和 \fI\-inum\fP 选项可用于定位文件。
+.TP 
+\fI/proc/\fPpid\fI/fd/\fP
+这是一个子目录，其中包含进程打开的每个文件的一个条目，由其文件描述符命名，并且是指向实际文件的符号链接。 因此，0 是标准输入，1 是标准输出，2
+是标准错误，依此类推。
+.IP
+对于管道和套接字的文件描述符，条目将是符号链接，其内容是带有 inode 的文件类型。 此文件上的 \fBreadlink\fP(2)
+调用返回以下格式的字符串:
+.IP
+.in +4n
+.EX
+type:[inode]
+.EE
+.in
+.IP
+例如，\fIsocket:[2248868]\fP 将是一个套接字，其 inode 为 2248868。 对于套接字，该 inode 可用于在
+\fI/proc/net/\fP 下的文件之一中查找更多信息。
+.IP
+对于没有相应 inode 的文件描述符 (例如，由
+\fBbpf\fP(2)、\fBepoll_create\fP(2)、\fBeventfd\fP(2)、\fBinotify_init\fP(2)、\fBperf_event_open\fP(2)、\fBsignalfd\fP(2)、\fBtimerfd_create\fP(2)
+和 \fBuserfaultfd\fP(2)) 生成的文件描述符，条目将是一个符号链接，其内容为以下形式
+.IP
+.in +4n
+.EX
+anon_inode:\fIfile\-type\fP
+.EE
+.in
+.IP
+在许多情况下 (但不是全部)，\fIfile\-type\fP 被方括号括起来。
+.IP
+例如，一个 epoll 文件描述符将有一个符号链接，其内容是字符串 \fIanon_inode:[eventpoll]\fP。
+.IP
+.\"The following was still true as at kernel 2.6.13
+在多线程进程中，如果主线程已经终止 (通常通过调用 \fBpthread_exit\fP(3)).
+.IP
+将文件名作为命令行参数但不从标准输入获取输入 (如果未提供参数)
+的程序，以及写入名为命令行参数的文件但不将其输出发送到的程序标准输出如果没有提供参数，仍然可以通过使用 \fI/proc/\fPpid\fI/fd\fP
+文件作为命令行参数来使用标准输入或标准输出。 例如，假设 \fI\-i\fP 是指定输入文件的标志，\fI\-o\fP 是指定输出文件的标志:
+.IP
+.in +4n
+.EX
+$\fB foobar \-i /proc/self/fd/0 \-o /proc/self/fd/1 ...\fP
+.EE
+.in
+.IP
+.\" The following is not true in my tests (MTK):
+.\" Note that this will not work for
+.\" programs that seek on their files, as the files in the fd directory
+.\" are not seekable.
+您有一个工作过滤器。
+.IP
+在某些 UNIX 和类 UNIX 系统中，\fI/proc/self/fd/N\fP 与 \fI/dev/fd/N\fP 大致相同。 事实上，大多数 Linux
+MAKEDEV 脚本都象征性地将 \fI/dev/fd\fP 链接到 \fI/proc/self/fd\fP。
+.IP
+大多数系统都提供了符号链接 \fI/dev/stdin\fP、\fI/dev/stdout\fP、\fI/dev/stderr\fP，分别链接到
+\fI/proc/self/fd\fP 中的文件 \fI0\fP、\fI1\fP、\fI2\fP。 因此，上面的示例命令可以写成:
+.IP
+.in +4n
+.EX
+$\fB foobar \-i /dev/stdin \-o /dev/stdout ...\fP
+.EE
+.in
+.IP
+解引或读取 (\fBreadlink\fP(2)) 的权限，该目录中的符号链接由 ptrace 访问模式
+\fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.IP
+请注意，对于引用 inode (管道和套接字，见上文) 的文件描述符，这些 inode 仍然具有与 \fI/proc/\fPpid\fI/fd\fP
+条目不同的权限位和所有权信息，并且所有者可能不同于进程的用户和组 ID。 非特权进程可能没有打开它们的权限，如本例所示:
+.IP
+.in +4n
+.EX
+$\fB echo test  | sudo \-u nobody cat\fP
+test
+测试
+cat:/proc/0: 权限被拒绝
+.EE
+.in
+.IP
+文件描述符 0 指的是由 shell 创建并由 shell 的用户拥有所有权的管道，它不是 \fInobody\fP，因此 \fBcat\fP
+没有创建新文件描述符的权限以从该 inode 读取，即使它仍然可以从其现有的读取文件描述符 0.
+.TP 
+\fI/proc/\fPpid\fI/fdinfo/\fP (since Linux 2.6.22)
+这是一个子目录，其中包含进程打开的每个文件的一个条目，由其文件描述符命名。 此目录中的文件只能由进程的所有者读取。
+可以读取每个文件的内容以获取有关相应文件描述符的信息。 内容取决于相应文件描述符引用的文件类型。
+.IP
+对于常规文件和目录，我们会看到如下内容:
+.IP
+.in +4n
+.EX
+$\fB cat /proc/12015/fdinfo/4\fP
+位置: 1000
+标志: 01002002
+mnt_id: 21
+.EE
+.in
+.IP
+字段如下:
+.RS
+.TP 
+\fIpos\fP
+这是一个显示文件偏移量的十进制数。
+.TP 
+\fIflags\fP
+这是一个八进制数，显示文件访问模式和文件状态标志 (参见 \fBopen\fP(2)).  如果设置了 close\-on\-exec 文件描述符标志，则
+\fIflags\fP 也将包含值 \fBO_CLOEXEC\fP。
+.IP
+.\" commit 1117f72ea0217ba0cc19f05adbbd8b9a397f5ab7
+在 Linux 3.1 之前，此字段错误地显示文件打开时 \fBO_CLOEXEC\fP 的设置，而不是 close\-on\-exec 标志的当前设置。
+.TP 
+\fImnt_id\fP
+.\" commit 49d063cb353265c3af701bab215ac438ca7df36d
+该字段自 Linux 3.15 以来一直存在，是包含该文件的挂载 ID。 请参见 \fI/proc/\fPpid\fI/mountinfo\fP 的说明。
+.RE
+.IP
+.\" commit cbac5542d48127b546a23d816380a7926eee1c25
+对于 eventfd 文件描述符 (参见 \fBeventfd\fP(2))，我们看到 (自 Linux 3.8 起) 以下字段:
+.IP
+.in +4n
+.EX
+pos:	0
+flags:	02
+mnt_id:	10
+eventfd 计数: 40
+.EE
+.in
+.IP
+\fIeventfd\-count\fP 是 eventfd 计数器的当前值，以十六进制表示。
+.IP
+.\" commit 138d22b58696c506799f8de759804083ff9effae
+对于 epoll 文件描述符 (参见 \fBepoll\fP(7))，我们看到 (自 Linux 3.8 起) 以下字段:
+.IP
+.in +4n
+.EX
+pos:	0
+flags:	02
+mnt_id:	10
+tfd: 9 个事件: 19 个数据: 74253d2500000009
+tfd: 7 个事件: 19 个数据: 74253d2500000007
+.EE
+.in
+.IP
+以 \fItfd\fP 开头的每一行都描述了通过 epoll 文件描述符监视的文件描述符之一 (有关详细信息，请参见 \fBepoll_ctl\fP(2))。
+\fItfd\fP 字段是文件描述符的编号。 \fIevents\fP 字段是为此文件描述符监视的事件的十六进制掩码。 \fIdata\fP
+字段是与此文件描述符关联的数据值。
+.IP
+.\" commit 138d22b58696c506799f8de759804083ff9effae
+对于 signalfd 文件描述符 (参见 \fBsignalfd\fP(2))，我们看到 (自 Linux 3.8 起) 以下字段:
+.IP
+.in +4n
+.EX
+pos:	0
+flags:	02
+mnt_id:	10
+sigmask:	0000000000000006
+.EE
+.in
+.IP
+\fIsigmask\fP 是通过此 signalfd 文件描述符接受的信号的十六进制掩码。 (在这个例子中，位 2 和 3 被设置，对应于信号
+\fBSIGINT\fP 和 \fBSIGQUIT\fP; 见 \fBsignal\fP(7).)
+.IP
+对于 inotify 文件描述符 (参见 \fBinotify\fP(7))，我们看到 (自 Linux 3.8 起) 以下字段:
+.IP
+.in +4n
+.EX
+pos:	0
+flags:	00
+mnt_id:	11
+inotify wd:2 ino:7ef82a sdev:800001 mask:800afff ignored_mask:0 fhandle\-bytes:8 fhandle\-type:1 f_handle:2af87e00220ffd73
+inotify wd:1 ino:192627 sdev:800001 mask:800afff ignored_mask:0 fhandle\-bytes:8 fhandle\-type:1 f_handle:27261900802dfd73
+.EE
+.in
+.IP
+以 "inotify" 开头的每一行显示有关正在监视的一个文件或目录的信息。 该行中的字段如下:
+.RS
+.TP 
+\fIwd\fP
+watch 描述符编号 (十进制)。
+.TP 
+\fIino\fP
+目标文件的 inode 编号 (十六进制)。
+.TP 
+\fIsdev\fP
+目标文件所在设备的 ID (十六进制)。
+.TP 
+\fImask\fP
+为目标文件监视的事件掩码 (十六进制)。
+.RE
+.IP
+如果内核是使用 exportfs 支持构建的，目标文件的路径将通过三个十六进制字段公开为文件句柄:
+\fIfhandle\-bytes\fP、\fIfhandle\-type\fP 和 \fIf_handle\fP。
+.IP
+对于 fanotify 文件描述符 (参见 \fBfanotify\fP(7))，我们看到 (自 Linux 3.8 起) 以下字段:
+.IP
+.in +4n
+.EX
+pos:	0
+flags:	02
+mnt_id:	11
+fanotify 标志: 0 事件标志: 88002
+fanotify ino:19264f sdev:800001 mflags:0 mask:1 ignored_mask:0 fhandle\-bytes:8 fhandle\-type:1 f_handle:4f261900a82dfd73
+.EE
+.in
+.IP
+第四行显示通过 \fBfanotify_init\fP(2): 创建 fanotify 组时定义的信息
+.RS
+.TP 
+\fIflags\fP
+给 \fBfanotify_init\fP(2) 的 \fIflags\fP 参数 (十六进制表示)。
+.TP 
+\fIevent\-flags\fP
+给 \fBfanotify_init\fP(2) 的 \fIevent_f_flags\fP 参数 (十六进制表示)。
+.RE
+.IP
+文件中显示的每一行都包含有关 fanotify 组中的一个标记的信息。 大多数这些字段与 inotify 相同，除了:
+.RS
+.TP 
+\fImflags\fP
+与标记关联的标志 (以十六进制表示)。
+.TP 
+\fImask\fP
+此标记的事件掩码 (以十六进制表示)。
+.TP 
+\fIignored_mask\fP
+为此标记忽略的事件的掩码 (以十六进制表示)。
+.RE
+.IP
+有关这些字段的详细信息，请参见 \fBfanotify_mark\fP(2)。
+.IP
+.\" commit af9c4957cf212ad9cf0bee34c95cb11de5426e85
+对于 timerfd 文件描述符 (参见 \fBtimerfd\fP(2))，我们看到 (自 Linux 3.17 起) 以下字段:
+.IP
+.in +4n
+.EX
+位置: 0
+标志: 02004002
+mnt_id: 13
+时钟编号: 0
+滴答声: 0
+设置时间标志: 03
+它_值: (7695568592、640020877)
+它_间隔: (0， 0)
+.EE
+.in
+.RS
+.TP 
+\fIclockid\fP
+这是时钟 ID 的数值 (对应于通过 \fI<time.h>\fP) 定义的 \fBCLOCK_*\fP 常量之一，用于标记计时器的进度
+(在本例中，0 是 \fBCLOCK_REALTIME\fP)。
+.TP 
+\fIticks\fP
+这是已发生的计时器到期次数 (即，其上的 \fBread\fP(2) 将返回的值)。
+.TP 
+\fIsettime flags\fP
+该字段列出了 timerfd 上次使用的标志 (参见 \fBtimerfd_settime\fP(2))，八进制
+(在本例中，\fBTFD_TIMER_ABSTIME\fP 和 \fBTFD_TIMER_CANCEL_ON_SET\fP 均已设置)。
+.TP 
+\fIit_value\fP
+该字段包含计时器下一次到期之前的时间量，以秒和纳秒表示。 这始终表示为相对值，无论计时器是否使用 \fBTFD_TIMER_ABSTIME\fP 标志创建。
+.TP 
+\fIit_interval\fP
+该字段包含计时器的间隔，以秒和纳秒为单位。 (\fIit_value\fP 和 \fIit_interval\fP 字段包含此文件描述符上的
+\fBtimerfd_gettime\fP(2) 将返回的值。)
+.RE
+.TP 
+\fI/proc/\fPpid\fI/gid_map\fP (since Linux 3.5)
+请参见 \fBuser_namespaces\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/io\fP (since Linux 2.6.20)
+.\" commit 7c3ab7381e79dfc7db14a67c6f4f3285664e1ec2
+该文件包含进程的 I/O 统计信息，例如:
+.IP
+.in +4n
+.EX
+#\fB cat /proc/3828/io\fP
+rchar: 323934931
+wchar: 323929600
+syscr: 632687
+syscw: 632675
+read_bytes: 0
+write_bytes: 323932160
+cancelled_write_bytes: 0
+.EE
+.in
+.IP
+字段如下:
+.RS
+.TP 
+\fIrchar\fP: characters read
+此任务导致从存储中读取的字节数。 这只是此进程传递给 \fBread\fP(2) 和类似系统调用的字节总和。 它包括诸如终端 I/O
+之类的东西，并且不受是否需要实际物理磁盘 I/O 的影响 (读取可能已经从页面缓存中得到满足)。
+.TP 
+\fIwchar\fP: characters written
+此任务已导致或将导致写入磁盘的字节数。 与 \fIrchar\fP 类似的注意事项适用于此处。
+.TP 
+\fIsyscr\fP: read syscalls
+尝试统计读取 I/O 操作的次数 \[em]，即 \fBread\fP(2) 和 \fBpread\fP(2) 等系统调用。
+.TP 
+\fIsyscw\fP: write syscalls
+尝试统计写 I/O 操作的次数 \[em]，即 \fBwrite\fP(2) 和 \fBpwrite\fP(2) 等系统调用。
+.TP 
+\fIread_bytes\fP: bytes read
+尝试计算此进程确实导致从存储层获取的字节数。 这对于块支持的文件系统是准确的。
+.TP 
+\fIwrite_bytes\fP: bytes written
+尝试计算此进程导致发送到存储层的字节数。
+.TP 
+\fIcancelled_write_bytes\fP:
+这里最大的错误是截断。 如果进程向文件写入 1 MB，然后删除该文件，它实际上不会执行任何写出操作。 但它会被计为导致 1 MB 的写入。 换句话说:
+此字段表示此进程通过截断页面缓存而导致未发生的字节数。 任务也可能导致 "negative" I/O。 如果这个任务截断了一些脏页面缓存，一些 I/O
+已经被另一个任务占用 (在它的 \fIwrite_bytes\fP) 中将不会发生。
+.RE
+.IP
+\fINote\fP: 在当前的实现中，32 位系统上的事情有点活泼: 如果进程 A 读取进程 B 的 \fI/proc/\fPpid\fI/io\fP 而进程 B
+正在更新这些 64 位计数器之一，则进程 A 可以看到中间结果。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/limits\fP (since Linux 2.6.24)
+.\" commit 3036e7b490bf7878c6dae952eec5fb87b1106589
+.\" FIXME Describe /proc/[pid]/loginuid
+.\"       Added in Linux 2.6.11; updating requires CAP_AUDIT_CONTROL
+.\"       CONFIG_AUDITSYSCALL
+此文件显示每个进程资源限制的软限制、硬限制和度量单位 (请参见 \fBgetrlimit\fP(2)).  在 Linux 2.6.35 之前 (包括
+Linux 2.6.35)，此文件受到保护，只允许进程的真实 UID 读取。 自 Linux 2.6.36 起，该文件对系统上的所有用户都是可读的。
+.TP 
+\fI/proc/\fPpid\fI/map_files/\fP (since Linux 3.3)
+.\" commit 640708a2cff7f81e246243b0073c66e6ece7e53e
+该子目录包含对应于内存映射文件的条目 (参见 \fBmmap\fP(2)).  条目由内存区域开始和结束地址对 (表示为十六进制数)
+命名，并且是指向映射文件本身的符号链接。 下面是一个示例，输出被包装并重新格式化以适应 80 列显示:
+.IP
+.in +4n
+.EX
+#\fB ls \-l /proc/self/map_files/\fP
+lr\-\-\-\-\-\-\-\-。1 根根 64 Apr 16 21:31
+            3252e00000\-3252e20000 \-> /usr/lib64/ld\-2.15.so
+\&...
+.EE
+.in
+.IP
+尽管这些条目针对使用 \fBMAP_FILE\fP 标志映射的内存区域存在，但在 Linux 中实现匿名共享内存 (使用 \fBMAP_ANON | MAP_SHARED\fP 标志创建的区域) 的方式意味着此类区域也出现在该目录中。 这是一个示例，其中目标文件是已删除的 \fI/dev/zero\fP 文件:
+.IP
+.in +4n
+.EX
+lrw\-\-\-\-\-\-\-\-。1 根根 64 Apr 16 21:33
+            7fc075d2f000\-7fc075e6f000 \-> /dev/zero (deleted)
+.EE
+.in
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.IP
+.\" commit bdb4d100afe9818aebd1d98ced575c5ef143456c
+在 Linux 4.3 之前，这个目录只有在启用了 \fBCONFIG_CHECKPOINT_RESTORE\fP 内核配置选项的情况下才会出现。
+.IP
+读取该目录下符号链接内容需要能力: Linux 5.9 之前，读取过程需要初始用户命名空间中的 \fBCAP_SYS_ADMIN\fP; 自 Linux
+5.9 起，读取进程在其所在的用户命名空间中必须有 \fBCAP_SYS_ADMIN\fP 或 \fBCAP_CHECKPOINT_RESTORE\fP。
+.TP 
+\fI/proc/\fPpid\fI/maps\fP
+包含当前映射的内存区域及其访问权限的文件。 有关内存映射的更多信息，请参见 \fBmmap\fP(2)。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.IP
+文件格式为:
+.IP
+.in +4n
+.EX
+\fIaddress           perms offset  dev   inode       pathname\fP
+00400000\-00452000 r\-xp 00000000 08:02 173521      /usr/bin/dbus\-daemon
+00651000\-00652000 r\-\-p 00051000 08:02 173521      /usr/bin/dbus\-daemon
+00652000\-00655000 rw\-p 00052000 08:02 173521      /usr/bin/dbus\-daemon
+00e03000\-00e24000 rw\-p 00000000 00:00 0           [heap]
+00e24000\-011f7000 rw\-p 00000000 00:00 0           [heap]
+\&...
+35b1800000\-35b1820000 r\-xp 00000000 08:02 135522  /usr/lib64/ld\-2.15.so
+35b1a1f000\-35b1a20000 r\-\-p 0001f000 08:02 135522  /usr/lib64/ld\-2.15.so
+35b1a20000\-35b1a21000 rw\-p 00020000 08:02 135522  /usr/lib64/ld\-2.15.so
+35b1a21000\-35b1a22000 rw\-p 00000000 00:00 0
+35b1c00000\-35b1dac000 r\-xp 00000000 08:02 135870  /usr/lib64/libc\-2.15.so
+35b1dac000\-35b1fac000 \-\-\-p 001ac000 08:02 135870  /usr/lib64/libc\-2.15.so
+35b1fac000\-35b1fb0000 r\-\-p 001ac000 08:02 135870  /usr/lib64/libc\-2.15.so
+35b1fb0000\-35b1fb2000 rw\-p 001b0000 08:02 135870  /usr/lib64/libc\-2.15.so
+\&...
+f2c6ff8c000\-7f2c7078c000 rw\-p 00000000 00:00 0    [stack:986]
+\&...
+7fffb2c0d000\-7fffb2c2e000 rw\-p 00000000 00:00 0   [stack]
+7fffb2d48000\-7fffb2d49000 r\-xp 00000000 00:00 0   [vdso]
+.EE
+.in
+.IP
+\fIaddress\fP 字段是映射占用的进程中的地址空间。 \fIperms\fP 字段是一组权限:
+.IP
+.in +4n
+.EX
+r = 读取
+w = 写
+x = 执行
+s = 共享
+p = 私有 (写时复制)
+.EE
+.in
+.IP
+\fIoffset\fP 字段是 file/whatever 的偏移量; \fIdev\fP 为设备 (major:minor); \fIinode\fP
+是该设备上的索引节点。 0 表示没有 inode 与内存区域关联，BSS (未初始化数据) 就是这种情况。
+.IP
+\fIpathname\fP 字段通常是支持映射的文件。 对于 ELF 文件，您可以通过查看 ELF 程序头 (\fIreadelf\ \-l\fP) 中的
+Offset 字段轻松地与 \fIoffset\fP 字段进行协调。
+.IP
+还有其他有用的伪路径:
+.RS
+.TP 
+\fI[stack]\fP
+初始进程 (也称为主线程) 的栈。
+.TP 
+\fI[stack:\fPtid\fI]\fP (from Linux 3.4 to Linux 4.4)
+.\" commit b76437579d1344b612cf1851ae610c636cec7db0 (added)
+.\" commit 65376df582174ffcec9e6471bf5b0dd79ba05e4a (removed)
+线程的栈 (其中 \fItid\fP 是线程 ID)。 它对应于 \fI/proc/\fPpid\fI/task/\fPtid\fI/\fP 路径。 该字段已在 Linux
+4.5 中删除，因为为具有大量线程的进程提供此信息的成本很高。
+.TP 
+\fI[vdso]\fP
+虚拟动态链接共享对象。 请参见 \fBvdso\fP(7)。
+.TP 
+\fI[heap]\fP
+进程的堆。
+.TP 
+\fI[anon:\fPname\fI]\fP (since Linux 5.17)
+.\" Commit 9a10064f5625d5572c3626c1516e0bebc6c9fe9b
+命名的私有匿名映射。 设置为 \fBprctl\fP(2) \fBPR_SET_VMA_ANON_NAME\fP。
+.TP 
+\fI[anon_shmem:\fPname\fI]\fP (since Linux 6.2)
+.\" Commit d09e8ca6cb93bb4b97517a18fbbf7eccb0e9ff43
+命名的共享匿名映射。 设置为 \fBprctl\fP(2) \fBPR_SET_VMA_ANON_NAME\fP。
+.in
+.RE
+.IP
+如果 \fIpathname\fP 字段为空，则这是通过 \fBmmap\fP(2) 获得的匿名映射。 没有简单的方法可以将其协调回进程的源，除非通过
+\fBgdb\fP(1)、\fBstrace\fP(1) 或类似的方式运行它。
+.IP
+\fIpathname\fP 显示为未转义，但换行符除外，换行符将替换为八进制转义序列。 因此，无法确定原始路径名是否包含换行符或字符值 \fI\e012\fP
+字符序列。
+.IP
+如果映射是文件支持的并且文件已被删除，则字符串 " (deleted)" 将追加到路径名。 请注意，这也是模棱两可的。
+.IP
+在 Linux 2.0 下，没有提供路径名的字段。
+.TP 
+\fI/proc/\fPpid\fI/mem\fP
+该文件可用于通过 \fBopen\fP(2)、\fBread\fP(2) 和 \fBlseek\fP(2) 访问进程内存的页面。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/mountinfo\fP (since Linux 2.6.26)
+.\" This info adapted from Documentation/filesystems/proc.txt
+.\" commit 2d4d4864ac08caff5c204a752bd004eed4f08760
+该文件包含有关进程挂载命名空间中挂载的信息 (请参见 \fBmount_namespaces\fP(7)).  它提供了 (older)
+\fI/proc/\fPpid\fI/mounts\fP 文件中缺少的各种信息
+(例如，传播状态、绑定安装的安装根、每个安装及其父级的标识符)，并修复了该文件的各种其他问题 (例如，不可扩展性、无法区分每个安装与每个超级块选项)。
+.IP
+该文件包含以下形式的行:
+.IP
+.EX
+36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 \- ext3 /dev/root rw,errors=continue
+(1)(2)(3)   (4)   (5)      (6)      (7)   (8) (9)   (10)         (11)
+.EE
+.IP
+括号中的数字是以下描述的标签:
+.RS 7
+.TP  5
+(1)
+mount ID: 挂载的唯一 ID (可以在 \fBumount\fP(2)).
+.TP 
+(2)
+parent ID: 父挂载的 ID (或此挂载命名空间的挂载树的根的 self 的 ID)。
+.IP
+如果在路径名 P 处将新安装堆叠在先前现有安装的顶部 (以便它隐藏现有安装)，则新安装的父级是该位置的先前安装。
+因此，当查看堆叠在特定位置的所有坐骑时，最上面的坐骑不是同一位置任何其他坐骑的父坐骑。 (但是请注意，仅当作为挂载点的 P
+的最长路径子前缀本身未被堆叠挂载隐藏时，此最顶层挂载才可访问。)
+.IP
+.\" Miklos Szeredi, Nov 2017: The hidden one is the initramfs, I believe
+.\" mtk: In the initial mount namespace, this hidden ID has the value 0
+如果父挂载位于进程的根目录之外 (参见 \fBchroot\fP(2))，此处显示的 ID 在 \fImountinfo\fP 中不会有对应的记录，其挂载 ID
+(字段 1) 与该父挂载 ID 匹配 (因为位于进程根目录之外的挂载是未在 \fImountinfo\fP) 中显示。
+作为这一点的特例，进程的根挂载可能有一个位于进程根目录之外的父挂载 (对于 initramfs 文件系统)，并且该挂载的条目不会出现在
+\fImountinfo\fP 中。
+.TP 
+(3)
+major:minor: 此文件系统上文件的 \fIst_dev\fP 的值 (请参见 \fBstat\fP(2)).
+.TP 
+(4)
+root: 文件系统中构成此挂载根的目录的路径名。
+.TP 
+(5)
+挂载点: 挂载点相对于进程根目录的路径名。
+.TP 
+(6)
+安装选项: 每个安装选项 (参见 \fBmount\fP(2)).
+.TP 
+(7)
+可选字段: "tag[:value]" 形式的零个或多个字段; 见下文。
+.TP 
+(8)
+分隔符: 可选字段的末尾由单个连字符标记。
+.TP 
+(9)
+文件系统类型: "type[.subtype]" 形式的文件系统类型。
+.TP 
+(10)
+挂载源: 文件系统特定信息或 "none"。
+.TP 
+(11)
+超级选项: 每个超级块选项 (参见 \fBmount\fP(2)).
+.RE
+.IP
+目前，可能的可选字段为 \fIshared\fP、\fImaster\fP、\fIpropagate_from\fP 和 \fIunbindable\fP。
+有关这些字段的说明，请参见 \fBmount_namespaces\fP(7)。 解析器应该忽略所有无法识别的可选字段。
+.IP
+有关安装传播的更多信息，请参见 Linux 内核源代码树中的
+\fIDocumentation/filesystems/sharedsubtree.rst\fP (或
+\fIDocumentation/filesystems/sharedsubtree.txt\fP 之前的 Linux 5.8)。
+.TP 
+\fI/proc/\fPpid\fI/mounts\fP (since Linux 2.4.19)
+该文件列出了当前挂载在进程的挂载命名空间中的所有文件系统 (参见 \fBmount_namespaces\fP(7)).  该文件的格式记录在
+\fBfstab\fP(5) 中。
+.IP
+从 Linux 2.6.15 开始，这个文件是可轮询的: 打开文件进行读取后，这个文件中的更改 (即文件系统挂载或卸载) 导致 \fBselect\fP(2)
+将文件描述符标记为具有异常情况，\fBpoll\fP(2) 和 \fBepoll_wait\fP(2) 将文件标记为具有优先事件 (\fBPOLLPRI\fP)。 (在
+Linux 2.6.30 之前，此文件中的更改由文件描述符指示，对于 \fBselect\fP(2) 标记为可读，对于 \fBpoll\fP(2) 和
+\fBepoll_wait\fP(2).) 标记为具有错误条件
+.TP 
+\fI/proc/\fPpid\fI/mountstats\fP (since Linux 2.6.17)
+该文件导出有关进程挂载命名空间中挂载的信息 (统计信息、配置信息) (请参见 \fBmount_namespaces\fP(7)).
+此文件中的行具有以下形式:
+.IP
+.in +4n
+.EX
+设备 /dev/sda7 安装在 /home 上，文件类型为 ext3 [stats]
+(一) (二) (三) (四)
+.EE
+.in
+.IP
+每行中的字段是:
+.RS 7
+.TP  5
+(1)
+挂载设备的名称 (如果没有相应的设备，则为 "nodevice")。
+.TP 
+(2)
+文件系统树中的挂载点。
+.TP 
+(3)
+文件系统类型。
+.TP 
+(4)
+可选的统计信息和配置信息。 当前 (如 Linux 2.6.26)，只有 NFS 文件系统通过该字段导出信息。
+.RE
+.IP
+该文件只能由进程的所有者读取。
+.TP 
+\fI/proc/\fPpid\fI/net\fP (since Linux 2.6.25)
+请参见 \fI/proc/net\fP 的说明。
+.TP 
+\fI/proc/\fPpid\fI/ns/\fP (since Linux 3.0)
+.\" See commit 6b4e306aa3dc94a0545eb9279475b1ab6209a31f
+这是一个子目录，其中包含每个支持由 \fBsetns\fP(2) 操作的名称空间的条目。 有关详细信息，请参见 \fBnamespaces\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/numa_maps\fP (since Linux 2.6.14)
+请参见 \fBnuma\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/oom_adj\fP (since Linux 2.6.11)
+该文件可用于调整用于选择在内存不足 (OOM) 情况下应终止哪个进程的分数。 内核使用这个值对进程的 \fIoom_score\fP 值进行移位操作:
+有效值在 \-16 到 + 15 的范围内，加上特殊值 \-17，它完全禁用了这个进程的 OOM\-killing。 正分会增加该进程被 OOM
+杀手杀死的可能性; negative 分数降低了可能性。
+.IP
+该文件的默认值为 0; 新进程继承其父进程的 \fIoom_adj\fP 设置。 进程必须具有 (\fBCAP_SYS_RESOURCE\fP)
+特权才能更新此文件。
+.IP
+自 Linux 2.6.36 起，不推荐使用此文件以支持 \fI/proc/\fPpid\fI/oom_score_adj\fP。
+.TP 
+\fI/proc/\fPpid\fI/oom_score\fP (since Linux 2.6.11)
+.\" See mm/oom_kill.c::badness() before Linux 2.6.36 sources
+.\" See mm/oom_kill.c::oom_badness() after Linux 2.6.36
+.\" commit a63d83f427fbce97a6cea0db2e64b0eb8435cd10
+.\" See mm/oom_kill.c::badness() before Linux 2.6.36 sources
+.\" See mm/oom_kill.c::oom_badness() after Linux 2.6.36
+.\" commit a63d83f427fbce97a6cea0db2e64b0eb8435cd10
+此文件显示内核为选择 OOM 杀手的进程而为此进程提供的当前分数。 较高的分数意味着该进程更有可能被 OOM\-killer 选择。
+该分数的基础是进程使用的内存量，增加 (+) 或减少 (\-) 的因素包括:
+.RS
+.IP \[bu] 3
+.\" More precisely, if it has CAP_SYS_ADMIN or (pre 2.6.36) CAP_SYS_RESOURCE
+进程是否具有特权 (\-)。
+.RE
+.IP
+在 Linux 2.6.36 之前，在 oom_score 的计算中还使用了以下因素:
+.RS
+.IP \[bu] 3
+进程是否使用 \fBfork\fP(2) (+) 创建了很多子进程;
+.IP \[bu]
+进程是否已经运行了很长时间，或者已经使用了大量的 CPU 时间 (\-);
+.IP \[bu]
+进程是否具有低 nice 值 (即 > 0) (+); and
+.IP \[bu]
+.\" More precisely, if it has CAP_SYS_RAWIO
+进程是否正在使直接硬件访问 (\-)。
+.RE
+.IP
+\fIoom_score\fP 还反映由 \fIoom_score_adj\fP 或 \fIoom_adj\fP 设置为过程指定的调整。
+.TP 
+\fI/proc/\fPpid\fI/oom_score_adj\fP (since Linux 2.6.36)
+.\" Text taken from Linux 3.7 Documentation/filesystems/proc.txt
+该文件可用于调整用于选择在内存不足情况下杀死哪个进程的不良启发式。
+.IP
+badness heuristic 为每个候选任务分配一个值，范围从 0 (永不终止) 到 1000 (始终终止) 以确定目标进程。
+根据对其当前内存和交换使用的估计，这些单位大致是进程可以从中分配的允许内存范围的一部分。 例如，如果一个任务正在使用所有允许的内存，它的不良分数将为
+1000。 如果它使用了其允许内存的一半，则其分数将为 500。
+.IP
+不良评分中还包括一个额外的因素: 根进程比其他任务多了 3% 的内存。
+.IP
+"allowed" 内存量取决于调用 OOM\-killer 的上下文。 如果是由于分配给分配任务的 cpuset 的内存耗尽，允许的内存表示分配给该
+cpuset 的 mems 集 (参见 \fBcpuset\fP(7)).  如果是由于一个 mempolicy 的 node(s)
+被耗尽，允许的内存代表一组 mempolicy 节点。 如果是由于达到内存限制 (或交换限制)，则允许的内存就是配置的限制。
+最后，如果是由于整个系统内存不足，允许的内存代表所有可分配的资源。
+.IP
+\fIoom_score_adj\fP 的值在用于确定要终止哪个任务之前被添加到不良分数中。 可接受的值范围从 \-1000
+(OOM_SCORE_ADJ_MIN) 到 + 1000 (OOM_SCORE_ADJ_MAX)。 这允许用户空间控制对 OOM\-killing
+的偏好，范围从始终偏好某个任务或完全禁用 OOM\-killing。 可能的最低值 \-1000 相当于为该任务完全禁用
+OOM\-killing，因为它总是报告不良分数为 0.
+.IP
+因此，用户空间很容易定义每个任务要考虑的内存量。 例如，将 \fIoom_score_adj\fP 值设置为 + 500
+大致相当于允许共享同一系统、cpuset、mempolicy 或内存控制器资源的其余任务使用至少 50% 以上的内存。 另一方面，\-500
+的值大致相当于将任务允许内存的 50% 打折，不被视为对任务的评分。
+.IP
+为了与以前的内核向后兼容，\fI/proc/\fPpid\fI/oom_adj\fP 仍可用于调整不良分数。 它的值与 \fIoom_score_adj\fP
+成线性比例关系。
+.IP
+写入 \fI/proc/\fPpid\fI/oom_score_adj\fP 或 \fI/proc/\fPpid\fI/oom_adj\fP 将改变另一个的换算值。
+.IP
+\fBchoom\fP(1) 程序提供了一个命令行界面，用于调整正在运行的进程或新执行的命令的 \fIoom_score_adj\fP 值。
+.TP 
+\fI/proc/\fPpid\fI/pagemap\fP (since Linux 2.6.25)
+该文件显示进程的每个虚拟页面到物理页面框架或交换区域的映射。 它为每个虚拟页面包含一个 64 位值，位设置如下:
+.RS
+.TP 
+63
+如果设置，则该页面存在于 RAM 中。
+.TP 
+62
+如果设置，则页面位于交换空间中
+.TP 
+61 (since Linux 3.5)
+该页面是文件映射页面或共享匿名页面。
+.TP 
+60\[en]58 (since Linux 3.11)
+.\" Not quite true; see commit 541c237c0923f567c9c4cabb8a81635baadc713f
+Zero
+.TP 
+57 (since Linux 5.14)
+如果设置，该页通过 \fBuserfaultfd\fP(2) 写保护。
+.TP 
+56 (since Linux 4.2)
+.\" commit 77bb499bb60f4b79cca7d139c8041662860fcf87
+.\" commit 83b4b0bb635eee2b8e075062e4e008d1bc110ed7
+该页面是专门映射的。
+.TP 
+55 (since Linux 3.11)
+PTE 是软脏的 (参见内核源文件 \fIDocumentation/admin\-guide/mm/soft\-dirty.rst\fP).
+.TP 
+54\[en]0
+如果页面存在于 RAM 中 (第 63 位)，则这些位提供页框编号，可用于索引 \fI/proc/kpageflags\fP 和
+\fI/proc/kpagecount\fP。 如果页面存在于交换区 (位 62)，则位 4\[en] 0 给出交换类型，位 54\[en] 5
+编码交换偏移量。
+.RE
+.IP
+在 Linux 3.11 之前，位 60\[en] 55 用于对页面大小的 base\-2 日志进行编码。
+.IP
+要有效地使用 \fI/proc/\fPpid\fI/pagemap\fP，请使用 \fI/proc/\fPpid\fI/maps\fP 确定实际映射了哪些内存区域，并使用
+seek 跳过未映射的区域。
+.IP
+仅当启用 \fBCONFIG_PROC_PAGE_MONITOR\fP 内核配置选项时才会出现 \fI/proc/\fPpid\fI/pagemap\fP 文件。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/personality\fP (since Linux 2.6.28)
+.\" commit 478307230810d7e2a753ed220db9066dfdf88718
+这个只读文件公开了进程的执行域，由 \fBpersonality\fP(2) 设置。 该值以十六进制表示法显示。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/root\fP
+UNIX 和 Linux 支持文件系统的每个进程根的想法，由 \fBchroot\fP(2) 系统调用设置。 该文件是指向进程根目录的符号链接，其行为方式与
+\fIexe\fP 和 \fIfd/*\fP 相同。
+.IP
+但是请注意，此文件不仅仅是一个符号链接。 它提供与进程本身相同的文件系统视图 (包括名称空间和每个进程的安装集)。 一个例子说明了这一点。
+在一个终端中，我们在新用户和挂载命名空间中启动一个 shell，并在该 shell 中创建一些新的挂载:
+.IP
+.in +4n
+.EX
+$ \fBPS1=\[aq]sh1# \[aq] unshare \-Urnm\fP
+sh1#\fBmount \-t tmpfs tmpfs /etc\fP# 在 /etc 挂载空的 tmpfs
+sh1# \fBmount \-\-bind /usr /dev\fP     # 挂载 /usr 到 /dev
+sh1# \fBecho $$\fP
+27123
+.EE
+.in
+.IP
+在第二个终端窗口中，在初始挂载命名空间中，我们查看初始和新命名空间中相应挂载的内容:
+.IP
+.in +4n
+.EX
+$ \fBPS1=\[aq]sh2# \[aq] sudo sh\fP
+sh2# \fBls /etc | wc \-l\fP                  # 初始 NS
+309
+sh2#\fBls /proc/27123/root/etc | wc \-l\fP#/etc 其他 NS
+0                                     # 空的 tmpfs 目录
+sh2# \fBls /dev | wc \-l\fP                  # 初始 NS
+205
+sh2#\fBls /proc/27123/root/dev | wc \-l\fP   #/dev 在其他 NS
+11                                    # 实际绑定
+                                      # 挂载到 /usr
+sh2# \fBls /usr | wc \-l\fP                  #/usr 初始 NS
+11
+.EE
+.in
+.IP
+.\" The following was still true as at kernel 2.6.13
+在多线程进程中，如果主线程已经终止 (通常通过调用 \fBpthread_exit\fP(3)).
+.IP
+解释引用或读取 (\fBreadlink\fP(2)) 的权限此符号链接由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP
+检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/projid_map\fP (since Linux 3.7)
+.\"       commit f76d207a66c3a53defea67e7d36c3eb1b7d6d61d
+请参见 \fBuser_namespaces\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/seccomp\fP (Linux 2.6.12 to Linux 2.6.22)
+该文件可用于读取和更改进程的安全计算 (seccomp) 模式设置。 如果进程不处于 seccomp 模式，它包含值 0，如果进程处于严格
+seccomp 模式，它包含值 1 (参见 \fBseccomp\fP(2)).  将 1 写入此文件会使进程不可逆转地进入严格的 seccomp 模式。
+(进一步尝试写入文件失败并出现 \fBEPERM\fP 错误。)
+.IP
+.\" FIXME Describe /proc/[pid]/sessionid
+.\"	  commit 1e0bd7550ea9cf474b1ad4c6ff5729a507f75fdc
+.\"       CONFIG_AUDITSYSCALL
+.\"       Added in Linux 2.6.25; read-only; only readable by real UID
+.\"
+.\" FIXME Describe /proc/[pid]/sched
+.\"       Added in Linux 2.6.23
+.\"       CONFIG_SCHED_DEBUG, and additional fields if CONFIG_SCHEDSTATS
+.\"       Displays various scheduling parameters
+.\"       This file can be written, to reset stats
+.\"       The set of fields exposed by this file have changed
+.\"	  significantly over time.
+.\"       commit 43ae34cb4cd650d1eb4460a8253a8e747ba052ac
+.\"
+.\" FIXME Describe /proc/[pid]/schedstats and
+.\"       /proc/[pid]/task/[tid]/schedstats
+.\"       Added in Linux 2.6.9
+.\"       CONFIG_SCHEDSTATS
+在 Linux 2.6.23 中，这个文件消失了，被 \fBprctl\fP(2) \fBPR_GET_SECCOMP\fP 和 \fBPR_SET_SECCOMP\fP
+操作取代 (后来被 \fI/proc/\fPpid\fI/status\fP) 中的 \fBseccomp\fP(2) 和 \fISeccomp\fP 字段取代。
+.TP 
+\fI/proc/\fPpid\fI/setgroups\fP (since Linux 3.19)
+请参见 \fBuser_namespaces\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/smaps\fP (since Linux 2.6.14)
+此文件显示每个进程映射的内存消耗。 (\fBpmap\fP(1) 命令以更易于解析的形式显示类似信息。) 对于每个映射，都有一系列行，如下所示:
+.IP
+.in +4n
+.EX
+00400000\-0048a000 r\-xp 00000000 fd:03 960637       /bin/bash
+大小: 552 KB
+Rss:                 460 kB
+Pss:                 100 kB
+Shared_Clean:        452 kB
+共享脏: 0 kB
+Private_Clean:         8 kB
+private 脏: 0 kB
+参考: 460 kB
+匿名: 0 kB
+AnonHugePages:         0 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+交换: 0 kB
+内核页面大小: 4 kB
+MMUPageSize:           4 kB
+锁定: 0 kB
+保护密钥: 0
+VmFlags: rd ex mr mw me dw
+.EE
+.in
+.IP
+这些行中的第一行显示与 \fI/proc/\fPpid\fI/maps\fP 中的映射相同的信息。 下面几行显示了映射的大小、当前驻留在 RAM ("Rss")
+中的映射数量、该映射 ("Pss") 的进程份额比例、映射中干净和脏共享页的数量以及干净和脏的数量。映射中的脏私有页面。 "Referenced"
+指示当前标记为已引用或已访问的内存量。 "Anonymous" 显示不属于任何文件的内存量。 "Swap"
+显示了有多少可能是匿名的内存也被使用了，但在交换时用完了。
+.IP
+"KernelPageSize" 行 (从 Linux 2.6.29 开始可用) 是内核用来支持虚拟内存区域的页面大小。 在大多数情况下，这与 MMU
+使用的大小相匹配。 然而，一个反例发生在 PPC64 内核上，即使用 64 kB 作为基页大小的内核可能仍然使用 4 kB 页面作为旧处理器上的
+MMU。 为了区分这两个属性，"MMUPageSize" 行 (从 Linux 2.6.29 开始也可用) 报告 MMU 使用的页面大小。
+.IP
+"Locked" 表示映射是否锁定在内存中。
+.IP
+"ProtectionKey" 行 (自 Linux 4.9 起可用，仅在 x86 上可用) 包含内存保护密钥 (请参见与虚拟内存区域关联的
+\fBpkeys\fP(7))。 仅当使用 \fBCONFIG_X86_INTEL_MEMORY_PROTECTION_KEYS\fP 配置选项构建内核时 (自
+Linux 4.6 起)，此条目才会出现。
+.IP
+"VmFlags" 行 (自 Linux 3.8 起可用) 表示与虚拟内存区域关联的内核标志，使用以下两个字母代码进行编码:
+.RS
+.IP
+.TS
+l l l.
+rd	\-	readable
+wr	\-	writable
+ex	\-	executable
+sh	\-	shared
+mr	\-	may read
+mw	\-	may write
+me	\-	may execute
+ms	\-	may share
+gd	\-	stack segment grows down
+pf	\-	pure PFN range
+dw	\-	disabled write to the mapped file
+lo	\-	pages are locked in memory
+io	\-	memory mapped I/O area
+sr	\-	sequential read advise provided
+rr	\-	random read advise provided
+dc	\-	do not copy area on fork
+de	\-	do not expand area on remapping
+ac	\-	area is accountable
+nr	\-	swap space is not reserved for the area
+ht	\-	area uses huge tlb pages
+sf	\-	perform synchronous page faults (since Linux 4.15)
+nl	\-	non\-linear mapping (removed in Linux 4.0)
+ar	\-	architecture specific flag
+wf	\-	wipe on fork (since Linux 4.14)
+dd	\-	do not include area into core dump
+sd	\-	soft\-dirty flag (since Linux 3.13)
+mm	\-	mixed map area
+hg	\-	huge page advise flag
+nh	\-	no\-huge page advise flag
+mg	\-	mergeable advise flag
+um	\-	userfaultfd missing pages tracking (since Linux 4.3)
+uw	\-	userfaultfd wprotect pages tracking (since Linux 4.3)
+.TE
+.RE
+.IP
+仅当启用 \fBCONFIG_PROC_PAGE_MONITOR\fP 内核配置选项时才会出现 \fI/proc/\fPpid\fI/smaps\fP 文件。
+.TP 
+\fI/proc/\fPpid\fI/stack\fP (since Linux 2.6.29)
+.\" 2ec220e27f5040aec1e88901c1b6ea3d135787ad
+该文件提供了在此进程的内核栈中调用函数的符号跟踪。 仅当使用 \fBCONFIG_STACKTRACE\fP 配置选项构建内核时才提供此文件。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/stat\fP
+有关进程的状态信息。 这是由 \fBps\fP(1) 使用的。 它在内核源文件 \fIfs/proc/array.c\fP 中定义。
+.IP
+下面列出了这些字段及其正确的 \fBscanf\fP(3) 格式说明符。 这些字段中的某些字段是否显示有效信息由 ptrace 访问模式
+\fBPTRACE_MODE_READ_FSCREDS\fP | 控制。\fBPTRACE_MODE_NOAUDIT\fP 检查 (参考
+\fBptrace\fP(2)).  如果检查拒绝访问，则字段值显示为 0。 受影响的字段用标记 [PT] 表示。
+.RS
+.TP 
+(1) \fIpid\fP \ %d
+.br
+进程标识。
+.TP 
+(2) \fIcomm\fP \ %s
+可执行文件的文件名，在括号中。 长度超过 \fBTASK_COMM_LEN\fP (16) 字符 (包括终止空字节) 的字符串将被静默截断。
+无论可执行文件是否被换出，这都是可见的。
+.TP 
+(3) \fIstate\fP \ %c
+以下字符之一，表示进程状态:
+.RS
+.TP 
+R
+Running
+.TP 
+S
+在可中断的等待中沉睡
+.TP 
+D
+等待不间断磁盘睡眠
+.TP 
+Z
+Zombie
+.TP 
+T
+停止 (根据信号) 或 (在 Linux 2.6.33 之前) 跟踪停止
+.TP 
+t
+.\" commit 44d90df6b757c59651ddd55f1a84f28132b50d29
+跟踪停止 (Linux 2.6.33 起)
+.TP 
+W
+寻呼 (仅限 Linux 2.6.0 之前)
+.TP 
+X
+死亡 (从 Linux 2.6.0 开始)
+.TP 
+x
+.\" commit 44d90df6b757c59651ddd55f1a84f28132b50d29
+.\" commit 74e37200de8e9c4e09b70c21c3f13c2071e77457
+死机 (仅限 Linux 2.6.33 至 3.13)
+.TP 
+K
+.\" commit 44d90df6b757c59651ddd55f1a84f28132b50d29
+.\" commit 74e37200de8e9c4e09b70c21c3f13c2071e77457
+Wakekill (仅限 Linux 2.6.33 至 3.13)
+.TP 
+W
+.\" commit 44d90df6b757c59651ddd55f1a84f28132b50d29
+.\" commit 74e37200de8e9c4e09b70c21c3f13c2071e77457
+唤醒 (仅限 Linux 2.6.33 至 3.13)
+.TP 
+P
+.\" commit f2530dc71cf0822f90bb63ea4600caaef33a66bb
+.\" commit 74e37200de8e9c4e09b70c21c3f13c2071e77457
+停车 (仅限 Linux 3.9 至 3.13)
+.TP 
+I
+.\" commit 06eb61844d841d0032a9950ce7f8e783ee49c0d0
+空闲 (Linux 4.14 起)
+.RE
+.TP 
+(4) \fIppid\fP \ %d
+此进程的父进程的 PID。
+.TP 
+(5) \fIpgrp\fP \ %d
+进程的进程组 ID。
+.TP 
+(6) \fIsession\fP \ %d
+进程的会话 ID。
+.TP 
+(7) \fItty_nr\fP \ %d
+进程的控制端。 (次设备号包含在位 31 到 20 和位 7 到 0 的组合中; 主设备号包含在位 15 到 8 中。)
+.TP 
+(8) \fItpgid\fP \ %d
+.\" This field and following, up to and including wchan added 0.99.1
+进程控制端的前台进程组 ID。
+.TP 
+(9) \fIflags\fP \ %u
+进程的内核标志字。 位含义见 Linux 内核源文件 \fIinclude/linux/sched.h\fP.PF_* 定义。 详细信息取决于内核版本。
+.IP
+该字段的格式在 Linux 2.6 之前是 %lu。
+.TP 
+(10) \fIminflt\fP \ %lu
+进程发生的不需要从磁盘加载内存页的小错误的数量。
+.TP 
+(11) \fIcminflt\fP \ %lu
+进程的等待子进程所犯的小错误数。
+.TP 
+(12) \fImajflt\fP \ %lu
+进程发生的需要从磁盘加载内存页的主要错误的数量。
+.TP 
+(13) \fIcmajflt\fP \ %lu
+进程的等待子进程所犯的重大错误的数量。
+.TP 
+(14) \fIutime\fP \ %lu
+此进程已在用户模式下安排的时间量，以时钟滴答测量 (除以 \fIsysconf(_SC_CLK_TCK)\fP).  这包括来宾时间
+\fIguest_time\fP (运行虚拟 CPU 所花费的时间，见下文)，以便不知道来宾时间字段的应用程序不会在计算中丢失该时间。
+.TP 
+(15) \fIstime\fP \ %lu
+此进程已在内核模式下调度的时间量，以时钟滴答测量 (除以 \fIsysconf(_SC_CLK_TCK)\fP).
+.TP 
+(16) \fIcutime\fP \ %ld
+此进程的等待子进程已在用户模式下安排的时间量，以时钟滴答测量 (除以 \fIsysconf(_SC_CLK_TCK)\fP).  (另请参见
+\fBtimes\fP(2).) 这包括来宾时间 \fIcguest_time\fP (运行虚拟 CPU 所花费的时间，请参见下文)。
+.TP 
+(17) \fIcstime\fP \ %ld
+该进程的等待子进程在内核模式下被调度的时间量，以时钟滴答 (除以 \fIsysconf(_SC_CLK_TCK)\fP).
+.TP 
+(18) \fIpriority\fP \ %ld
+(Linux 2.6 的解释) 对于运行下面实时调度策略 (\fIpolicy\fP 的进程; 见
+\fBsched_setscheduler\fP(2))，这是否定的调度优先级，减一; 即 \-2 到 \-100 范围内的数字，对应实时优先级 1 到 99。
+对于在非实时调度策略下运行的进程，这是内核中表示的原始 nice 值 (\fBsetpriority\fP(2))。 内核将 nice 值存储为 0
+(high) 到 39 (low) 范围内的数字，对应于用户可见的 nice 范围 \-20 到 19。
+.IP
+.\" And back in Linux 1.2 days things were different again.
+在 Linux 2.6 之前，这是一个基于给予该进程的调度程序权重的缩放值。
+.TP 
+(19) \fInice\fP \ %ld
+.\" Back in Linux 1.2 days things were different.
+.\" .TP
+.\" \fIcounter\fP %ld
+.\" The current maximum size in jiffies of the process's next timeslice,
+.\" or what is currently left of its current timeslice, if it is the
+.\" currently running process.
+.\" .TP
+.\" \fItimeout\fP %u
+.\" The time in jiffies of the process's next timeout.
+.\" timeout was removed sometime around 2.1/2.2
+nice 值 (参见 \fBsetpriority\fP(2))，范围为 19 (低优先级) 到 \-20 (高优先级) 的值。
+.TP 
+(20) \fInum_threads\fP \ %ld
+此进程中的线程数 (从 Linux 2.6 开始)。 在 Linux 2.6 之前，该字段被硬编码为 0 作为先前删除的字段的占位符。
+.TP 
+(21) \fIitrealvalue\fP \ %ld
+由于间隔计时器，下一个 \fBSIGALRM\fP 发送到进程之前的时间 (以 jiffies 为单位)。 自 Linux 2.6.17
+起，该字段不再维护，硬编码为 0.
+.TP 
+(22) \fIstarttime\fP \ %llu
+系统启动后进程启动的时间。 在 Linux 2.6 之前，这个值是用 jiffies 表示的。 自 Linux 2.6 起，该值以时钟节拍表示 (除以
+\fIsysconf(_SC_CLK_TCK)\fP)。
+.IP
+该字段的格式在 Linux 2.6 之前是 %lu。
+.TP 
+(23) \fIvsize\fP \ %lu
+以字节为单位的虚拟内存大小。
+.TP 
+(24) \fIrss\fP \ %ld
+Resident Set Size: 进程在实际内存中的页数。 这只是计入文本、数据或栈空间的页面。 这不包括尚未按需加载或换出的页面。 这个值不准确;
+请参见下面的 \fI/proc/\fPpid\fI/statm\fP。
+.TP 
+(25) \fIrsslim\fP \ %lu
+进程 rss 的当前软限制 (以字节为单位) ; 请参见 \fBgetrlimit\fP(2) 中 \fBRLIMIT_RSS\fP 的说明。
+.TP 
+(26) \fIstartcode\fP \ %lu \ [PT]
+程序文本可以在上面运行的地址。
+.TP 
+(27) \fIendcode\fP \ %lu \ [PT]
+程序文本可以运行的地址。
+.TP 
+(28) \fIstartstack\fP \ %lu \ [PT]
+栈开始 (即底部) 的地址。
+.TP 
+(29) \fIkstkesp\fP \ %lu \ [PT]
+在进程的内核栈页中找到的 ESP (栈指针) 的当前值。
+.TP 
+(30) \fIkstkeip\fP \ %lu \ [PT]
+当前的 EIP (指令指针)。
+.TP 
+(31) \fIsignal\fP \ %lu
+挂起信号的位图，显示为十进制数。 已过时，因为它不提供有关实时信号的信息; 请改用 \fI/proc/\fPpid\fI/status\fP。
+.TP 
+(32) \fIblocked\fP \ %lu
+阻塞信号的位图，显示为十进制数。 已过时，因为它不提供有关实时信号的信息; 请改用 \fI/proc/\fPpid\fI/status\fP。
+.TP 
+(33) \fIsigignore\fP \ %lu
+忽略信号的位图，显示为十进制数。 已过时，因为它不提供有关实时信号的信息; 请改用 \fI/proc/\fPpid\fI/status\fP。
+.TP 
+(34) \fIsigcatch\fP \ %lu
+捕获信号的位图，显示为十进制数。 已过时，因为它不提供有关实时信号的信息; 请改用 \fI/proc/\fPpid\fI/status\fP。
+.TP 
+(35) \fIwchan\fP \ %lu \ [PT]
+这是进程正在等待的 "channel"。 它是内核中进程休眠的位置的地址。 对应的符号名称可以在 \fI/proc/\fPpid\fI/wchan\fP 中找到。
+.TP 
+(36) \fInswap\fP \ %lu
+.\" nswap was added in Linux 2.0
+交换的页数 (未维护)。
+.TP 
+(37) \fIcnswap\fP \ %lu
+.\" cnswap was added in Linux 2.0
+子进程的累积 \fInswap\fP (未维护)。
+.TP 
+(38) \fIexit_signal\fP \ %d \ (since Linux 2.1.22)
+我们死后发送给父母的信号。
+.TP 
+(39) \fIprocessor\fP \ %d \ (since Linux 2.2.8)
+最后执行的 CPU 编号。
+.TP 
+(40) \fIrt_priority\fP \ %u \ (since Linux 2.5.19)
+实时调度优先级，对于根据实时策略调度的进程，范围为 1 到 99 的数字，对于非实时进程，为 0 (参见
+\fBsched_setscheduler\fP(2)).
+.TP 
+(41) \fIpolicy\fP \ %u \ (since Linux 2.5.19)
+调度策略 (参见 \fBsched_setscheduler\fP(2)).  使用 \fIlinux/sched.h\fP 中的 SCHED_* 常量进行解码。
+.IP
+该字段的格式在 Linux 2.6.22 之前是 %lu。
+.TP 
+(42) \fIdelayacct_blkio_ticks\fP \ %llu \ (since Linux 2.6.18)
+聚合块 I/O 延迟，以时钟滴答 (centiseconds) 为单位测量。
+.TP 
+(43) \fIguest_time\fP \ %lu \ (since Linux 2.6.24)
+进程的来宾时间 (为来宾操作系统运行虚拟 CPU 所花费的时间)，以时钟滴答 (除以 \fIsysconf(_SC_CLK_TCK)\fP).
+.TP 
+(44) \fIcguest_time\fP \ %ld \ (since Linux 2.6.24)
+进程子进程的来宾时间，以时钟滴答为单位 (除以 \fIsysconf(_SC_CLK_TCK)\fP).
+.TP 
+(45) \fIstart_data\fP \ %lu \ (since Linux 3.3) \ [PT]
+.\" commit b3f7f573a20081910e34e99cbc91831f4f02f1ff
+上面放置程序初始化和未初始化的 (BSS) 数据的地址。
+.TP 
+(46) \fIend_data\fP \ %lu \ (since Linux 3.3) \ [PT]
+.\" commit b3f7f573a20081910e34e99cbc91831f4f02f1ff
+下面放置程序初始化和未初始化的 (BSS) 数据的地址。
+.TP 
+(47) \fIstart_brk\fP \ %lu \ (since Linux 3.3) \ [PT]
+.\" commit b3f7f573a20081910e34e99cbc91831f4f02f1ff
+上面的地址可以用 \fBbrk\fP(2) 扩展程序堆。
+.TP 
+(48) \fIarg_start\fP \ %lu \ (since Linux 3.5) \ [PT]
+.\" commit 5b172087f99189416d5f47fd7ab5e6fb762a9ba3
+程序命令行参数 (\fIargv\fP) 上面的地址。
+.TP 
+(49) \fIarg_end\fP \ %lu \ (since Linux 3.5) \ [PT]
+.\" commit 5b172087f99189416d5f47fd7ab5e6fb762a9ba3
+程序命令行参数 (\fIargv\fP) 下面的地址被放置。
+.TP 
+(50) \fIenv_start\fP \ %lu \ (since Linux 3.5) \ [PT]
+.\" commit 5b172087f99189416d5f47fd7ab5e6fb762a9ba3
+上面放置程序环境的地址。
+.TP 
+(51) \fIenv_end\fP \ %lu \ (since Linux 3.5) \ [PT]
+.\" commit 5b172087f99189416d5f47fd7ab5e6fb762a9ba3
+下面放置程序环境的地址。
+.TP 
+(52) \fIexit_code\fP \ %d \ (since Linux 3.5) \ [PT]
+.\" commit 5b172087f99189416d5f47fd7ab5e6fb762a9ba3
+\fBwaitpid\fP(2) 报告的线程的退出状态。
+.RE
+.TP 
+\fI/proc/\fPpid\fI/statm\fP
+提供有关内存使用情况的信息，以页面为单位。 这些列是:
+.IP
+.in +4n
+.EX
+.\" (not including libs; broken, includes data segment)
+.\" (including libs; broken, includes library text)
+size (1) 程序总大小
+           (与 \fI/proc/\fPpid\fI/status\fP)  中的 VmSize 相同
+常驻 (2) 常驻集大小
+           (不准确; 与 \fI/proc/\fPpid\fI/status\fP) 中的 VmRSS 相同
+shared (3) 常驻共享页面数
+           (即，由文件支持)
+           (不准确; 与中的 RssFile+RssShmem 相同
+           \fI/proc/\fPpid\fI/status\fP)
+text       (4) text (code)
+lib        (5) library (unused since Linux 2.6; always  0)
+data       (6) data + stack
+dt         (7) dirty pages (unused since Linux 2.6;  always 0)
+.EE
+.in
+.IP
+.\" See SPLIT_RSS_COUNTING in the kernel.
+.\" Inaccuracy is bounded by TASK_RSS_EVENTS_THRESH.
+由于内核内部可伸缩性优化，其中一些值不准确。 如果需要准确的值，请改用 \fI/proc/\fPpid\fI/smaps\fP 或
+\fI/proc/\fPpid\fI/smaps_rollup\fP，它们速度要慢得多，但可提供准确、详细的信息。
+.TP 
+\fI/proc/\fPpid\fI/status\fP
+以更易于人类解析的格式提供 \fI/proc/\fPpid\fI/stat\fP 和 \fI/proc/\fPpid\fI/statm\fP 中的大部分信息。 这是一个例子:
+.IP
+.in +4n
+.EX
+$\fB cat /proc/$$/status\fP
+名称: 庆典
+掩码: 0022
+状态: S (sleeping)
+Tgid:   17248
+Ngid:   0
+Pid:    17248
+PPid:   17200
+TracerPid:      0
+Uid:    1000    1000    1000    1000
+Gid:    100     100     100     100
+FDSize: 256
+团体: 16 33 100
+NStgid: 17248
+NSpid:  17248
+NSpgid: 17248
+NSsid:  17200
+VmPeak:	  131168 kB
+虚拟机大小: 131168 kB
+VmLck:	       0 kB
+VmPin:	       0 kB
+VmHWM:	   13484 kB
+VmRSS:	   13484 kB
+RssAnon:	   10264 kB
+Rss 文件: 3220 kB
+RssShmem:	       0 kB
+VmData:	   10332 kB
+VmStk:	     136 kB
+VmExe:	     992 kB
+VmLib:	    2104 kB
+VmPTE:	      76 kB
+VmPMD:	      12 kB
+VmSwap:	       0 kB
+HugetlbPages:          0 kB		# 4.4
+核心转储:	0                           #4.15
+线程: 1
+信号 Q: 0/3067
+签名: 0000000000000000
+ShdPnd: 0000000000000000
+信号块: 0000000000010000
+签名: 0000000000384004
+SigCgt: 000000004b813efb
+资本金: 0000000000000000
+资本金: 0000000000000000
+CapEff: 0000000000000000
+上限: ffffffffffffffff
+CapAmb:	0000000000000000
+无新权限: 0
+秒 comp: 0
+Speculation_Store_Bypass: 易受攻击
+Cpus_allowed:   00000001
+Cpus_allowed_list:      0
+Mems_allowed:   1
+Mems_allowed_list:      0
+voluntary_ctxt_switches:        150
+nonvoluntary_ctxt_switches:     545
+.EE
+.in
+.IP
+字段如下:
+.RS
+.TP 
+\fIName\fP
+此进程运行的命令。 长度超过 \fBTASK_COMM_LEN\fP (16) 字符 (包括终止空字节) 的字符串将被静默截断。
+.TP 
+\fIUmask\fP
+进程 umask，以八进制表示，前导零; 请参见 \fBumask\fP(2)。 (自 Linux 4.7 起。)
+.TP 
+\fIState\fP
+进程的当前状态。 "R (running)"、"S (sleeping)"、"D (disk sleep)"、"T (stopped)"、"t
+(tracing stop)"、"Z (zombie)" 或 "X (dead)" 之一。
+.TP 
+\fITgid\fP
+线程组 ID (即进程 ID)。
+.TP 
+\fINgid\fP
+NUMA 组 ID (如果没有则为 0; 自 Linux 3.13 起)。
+.TP 
+\fIPid\fP
+线程 ID (参见 \fBgettid\fP(2)).
+.TP 
+\fIPPid\fP
+父进程的 PID。
+.TP 
+\fITracerPid\fP
+跟踪此进程的进程的 PID (如果未被跟踪则为 0)。
+.TP 
+\fIUid\fP, \fIGid\fP
+真实、有效、保存集和文件系统 UID (GIDs)。
+.TP 
+\fIFDSize\fP
+当前分配的文件描述符槽数。
+.TP 
+\fIGroups\fP
+补充组列表。
+.TP 
+\fINStgid\fP
+.\" commit e4bc33245124db69b74a6d853ac76c2976f472d5
+\fIpid\fP 所属的每个 PID 命名空间中的线程组 ID (即 PID)。 最左边的条目显示相对于安装此 procfs 的进程的 PID 名称空间的值
+(如果由内核安装，则为根名称空间)，然后是连续嵌套的内部名称空间中的值。 (自 Linux 4.1 起。)
+.TP 
+\fINSpid\fP
+\fIpid\fP 所属的每个 PID 命名空间中的线程 ID。 这些字段的顺序与 \fINStgid\fP 相同。 (自 Linux 4.1 起。)
+.TP 
+\fINSpgid\fP
+\fIpid\fP 所属的每个 PID 命名空间中的进程组 ID。 这些字段的顺序与 \fINStgid\fP 相同。 (自 Linux 4.1 起。)
+.TP 
+\fINSsid\fP
+后代名称空间会话 ID 层次结构 \fIpid\fP 是其成员的每个 PID 名称空间中的会话 ID。 这些字段的顺序与 \fINStgid\fP 相同。 (自
+Linux 4.1 起。)
+.TP 
+\fIVmPeak\fP
+峰值虚拟内存大小。
+.TP 
+\fIVmSize\fP
+虚拟内存大小。
+.TP 
+\fIVmLck\fP
+锁定的内存大小 (参见 \fBmlock\fP(2)).
+.TP 
+\fIVmPin\fP
+.\" commit bc3e53f682d93df677dbd5006a404722b3adfe18
+固定内存大小 (自 Linux 3.2 起)。 这些是无法移动的页面，因为某些东西需要直接访问物理内存。
+.TP 
+\fIVmHWM\fP
+峰值驻留集大小 (`高水位线`)。 这个值不准确; 见上面的 \fI/proc/\fPpid\fI/statm\fP。
+.TP 
+\fIVmRSS\fP
+驻留集大小。 请注意，这里的值是 \fIRssAnon\fP、\fIRssFile\fP 和 \fIRssShmem\fP 的总和。 这个值不准确; 见上面的
+\fI/proc/\fPpid\fI/statm\fP。
+.TP 
+\fIRssAnon\fP
+.\" commit bf9683d6990589390b5178dafe8fd06808869293
+常驻匿名内存的大小。 (自 Linux 4.5 起)。 这个值不准确; 见上面的 \fI/proc/\fPpid\fI/statm\fP。
+.TP 
+\fIRssFile\fP
+.\" commit bf9683d6990589390b5178dafe8fd06808869293
+常驻文件映射的大小。 (自 Linux 4.5 起)。 这个值不准确; 见上面的 \fI/proc/\fPpid\fI/statm\fP。
+.TP 
+\fIRssShmem\fP
+.\" commit bf9683d6990589390b5178dafe8fd06808869293
+驻留共享内存的大小 (包括 System V 共享内存、来自 \fBtmpfs\fP(5) 的映射和共享匿名映射)。 (自 Linux 4.5 起)。
+.TP 
+\fIVmData\fP, \fIVmStk\fP, \fIVmExe\fP
+数据、栈和文本段的大小。 这个值不准确; 见上面的 \fI/proc/\fPpid\fI/statm\fP。
+.TP 
+\fIVmLib\fP
+共享库代码大小。
+.TP 
+\fIVmPTE\fP
+页表条目大小 (从 Linux 2.6.10 开始)。
+.TP 
+\fIVmPMD\fP
+.\" commit dc6c9a35b66b520cf67e05d8ca60ebecad3b0479
+二级页表的大小 (Linux 4.0 新增; Linux 4.15 移除)。
+.TP 
+\fIVmSwap\fP
+.\" commit b084d4353ff99d824d3bc5a5c2c22c70b1fba722
+匿名私有页面换出的虚拟内存大小; 不包括 shmem 交换使用 (自 Linux 2.6.34 起)。 这个值不准确; 见上面的
+\fI/proc/\fPpid\fI/statm\fP。
+.TP 
+\fIHugetlbPages\fP
+.\" commit 5d317b2b6536592a9b51fe65faed43d65ca9158e
+hugetlb 内存部分的大小 (从 Linux 4.4 开始)。
+.TP 
+\fICoreDumping\fP
+.\" commit c643401218be0f4ab3522e0c0a63016596d6e9ca
+如果进程当前正在转储核心，则包含值 1，如果不是，则包含值 0 (自 Linux 4.15 起)。
+监视进程可以使用此信息来避免终止当前正在转储核心的进程，这可能会导致核心转储文件损坏。
+.TP 
+\fIThreads\fP
+包含此线程的进程中的线程数。
+.TP 
+\fISigQ\fP
+该字段包含两个斜线分隔的数字，这些数字与该进程的真实用户 ID 的排队信号相关。 其中第一个是这个真实用户 ID
+当前排队信号的数量，第二个是这个进程排队信号数量的资源限制 (参见 \fBgetrlimit\fP(2)).\fBRLIMIT_SIGPENDING\fP 中
+\fBRLIMIT_SIGPENDING\fP 的描述)。
+.TP 
+\fISigPnd\fP, \fIShdPnd\fP
+为线程和整个进程挂起的信号掩码 (以十六进制表示) (参见 \fBpthreads\fP(7) 和 \fBsignal\fP(7)).
+.TP 
+\fISigBlk\fP, \fISigIgn\fP, \fISigCgt\fP
+掩码 (以十六进制表示) 指示信号被阻止、忽略和捕获 (请参见 \fBsignal\fP(7)).
+.TP 
+\fICapInh\fP, \fICapPrm\fP, \fICapEff\fP
+在可继承的、允许的和有效的集合中启用的能力掩码 (以十六进制表示) (参见 \fBcapabilities\fP(7)).
+.TP 
+\fICapBnd\fP
+能力边界集，以十六进制表示 (自 Linux 2.6.26，见 \fBcapabilities\fP(7)).
+.TP 
+\fICapAmb\fP
+环境能力集，以十六进制表示 (自 Linux 4.3 起，参见 \fBcapabilities\fP(7)).
+.TP 
+\fINoNewPrivs\fP
+.\" commit af884cd4a5ae62fcf5e321fecf0ec1014730353d
+\fIno_new_privs\fP 位的值 (自 Linux 4.10 起，参见 \fBprctl\fP(2))。
+.TP 
+\fISeccomp\fP
+.\" commit 2f4b3bf6b2318cfaa177ec5a802f4d8d6afbd816
+进程的 Seccomp 模式 (从 Linux 3.8 开始，参见 \fBseccomp\fP(2)).  0 表示
+\fBSECCOMP_MODE_DISABLED\fP; 1 表示 \fBSECCOMP_MODE_STRICT\fP; 2 表示
+\fBSECCOMP_MODE_FILTER\fP。 仅当在启用 \fBCONFIG_SECCOMP\fP 内核配置选项的情况下构建内核时才提供此字段。
+.TP 
+\fISpeculation_Store_Bypass\fP
+.\" commit fae1fa0fc6cca8beee3ab8ed71d54f9a78fa3f64
+推测漏洞缓解状态 (自 Linux 4.17 起，参见 \fBprctl\fP(2)).
+.TP 
+\fICpus_allowed\fP
+此进程可能运行的 CPU 的十六进制掩码 (从 Linux 2.6.24 开始，请参见 \fBcpuset\fP(7)).
+.TP 
+\fICpus_allowed_list\fP
+与之前相同，但在 "list format" 中 (从 Linux 2.6.26 开始，请参见 \fBcpuset\fP(7))。
+.TP 
+\fIMems_allowed\fP
+此进程允许的内存节点掩码 (自 Linux 2.6.24 起，请参见 \fBcpuset\fP(7)).
+.TP 
+\fIMems_allowed_list\fP
+与之前相同，但在 "list format" 中 (从 Linux 2.6.26 开始，请参见 \fBcpuset\fP(7))。
+.TP 
+\fIvoluntary_ctxt_switches\fP, \fInonvoluntary_ctxt_switches\fP
+自愿和非自愿上下文切换的次数 (自 Linux 2.6.23 起)。
+.RE
+.TP 
+\fI/proc/\fPpid\fI/syscall\fP (since Linux 2.6.27)
+.\" commit ebcb67341fee34061430f3367f2e507e52ee051b
+该文件公开了进程当前正在执行的系统调用号和参数寄存器，后面是栈指针和程序计数器寄存器的值。
+公开了所有六个参数寄存器的值，尽管大多数系统调用使用较少的寄存器。
+.IP
+如果进程被阻塞，但不在系统调用中，则文件显示 \-1 代替系统调用号，后跟栈指针和程序计数器的值。 如果进程未被阻止，则该文件仅包含字符串
+"running"。
+.IP
+该文件仅在内核配置为 \fBCONFIG_HAVE_ARCH_TRACEHOOK\fP 时存在。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPpid\fI/task\fP (since Linux 2.6.0)
+.\" Precisely: Linux 2.6.0-test6
+这是一个包含进程中每个线程的子目录的目录。 每个子目录的名称是线程的数字线程 ID (\fItid\fP) (参见 \fBgettid\fP(2)).
+.IP
+.\" in particular: "children" :/
+在每个子目录中，都有一组与 \fI/proc/\fPpid 目录下名称和内容相同的文件。 对于所有线程共享的属性，\fItask/\fPtid
+子目录下的每个文件的内容将与父 \fI/proc/\fPpid 目录中相应文件的内容相同 (例如，在多线程进程中，所有 \fItask/\fPtid\fI/cwd\fP
+文件都将具有与父目录中的 \fI/proc/\fPpid\fI/cwd\fP 文件相同的值，因为进程中的所有线程共享一个工作目录)。
+对于每个线程不同的属性，\fItask/\fPtid 下的相应文件可能具有不同的值 (例如，每个 \fItask/\fPtid\fI/status\fP
+文件中的各个字段对于每个线程可能不同)，或者它们可能根本不存在于 \fI/proc/\fPpid 中。
+.IP
+.\" The following was still true as at kernel 2.6.13
+在多线程进程中，如果主线程已经终止 (通常通过调用 \fBpthread_exit\fP(3)).
+.TP 
+\fI/proc/\fPpid\fI/task/\fPtid\fI/children\fP (since Linux 3.5)
+.\" commit 818411616baf46ceba0cff6f05af3a9b294734f7
+此任务的以空格分隔的子任务列表。 每个子任务都由其 TID 表示。
+.IP
+.\" see comments in get_children_pid() in fs/proc/array.c
+此选项旨在供检查点恢复 (CRIU) 系统使用，并且仅当所有子进程都停止或冻结时才可靠地提供子进程列表。
+如果目标任务的子任务在读取文件时退出，它将无法正常工作! 退出的子节点可能会导致列表中省略不退出的子节点。
+如果检查的任务及其子任务没有被冻结，这使得这个接口比经典的基于 PID 的方法更不可靠，并且大多数代码可能不应该使用这个接口。
+.IP
+.\" commit 2e13ba54a2682eea24918b87ad3edf70c2cf085b
+在 Linux 4.2 之前，此文件的存在由 \fBCONFIG_CHECKPOINT_RESTORE\fP 内核配置选项控制。 自 Linux 4.2
+起，受 \fBCONFIG_PROC_CHILDREN\fP 选项支配。
+.TP 
+\fI/proc/\fPpid\fI/timers\fP (since Linux 3.10)
+.\" commit 5ed67f05f66c41e39880a6d61358438a25f9fee5
+.\" commit 48f6a7a511ef8823fdff39afee0320092d43a8a0
+此进程的 POSIX 计时器列表。 每个计时器都列有以字符串 "ID:" 开头的行。 例如:
+.IP
+.in +4n
+.EX
+ID: 1
+信号: 60/00007fff86e452a8
+通知: signal/pid.2634
+时钟 编号: 0
+ID: 0
+信号: 60/00007fff86e452a8
+通知: signal/pid.2634
+时钟 ID: 1
+.EE
+.in
+.IP
+为每个计时器显示的行具有以下含义:
+.RS
+.TP 
+\fIID\fP
+此计时器的 ID。 这与 \fBtimer_create\fP(2) 返回的定时器 ID 不同; 相反，它是通过 \fIsiginfo_t\fP 结构体的
+\fIsi_timerid\fP 字段可用的相同内核内部 ID (请参见 \fBsigaction\fP(2)).
+.TP 
+\fIsignal\fP
+这是此计时器用于传递通知的信号编号，后跟斜杠，然后是提供给信号处理程序的 \fIsigev_value\fP 值。 仅对通过信号通知的计时器有效。
+.TP 
+\fInotify\fP
+斜线之前的部分指定了此计时器用于传递通知的机制，并且是 "thread"、"signal" 或 "none" 之一。 紧跟在斜，字符串，之后的是带有
+\fBSIGEV_THREAD_ID\fP 通知的定时器的字符串 "tid"，或者是通过其他机制通知的定时器的 "pid"。 "." 之后是进程的 PID
+(或线程的内核线程 ID)，如果计时器通过信号传递通知，则将传递信号。
+.TP 
+\fIClockID\fP
+该字段标识计时器用于测量时间的时钟。 对于大多数时钟，这是一个与通过 \fI<time.h>\fP 公开的用户空间 \fBCLOCK_*\fP
+常量之一相匹配的数字。 \fBCLOCK_PROCESS_CPUTIME_ID\fP 计时器在此字段中显示 \-6 值。
+\fBCLOCK_THREAD_CPUTIME_ID\fP 计时器在此字段中显示 \-2 值。
+.RE
+.IP
+该文件仅在内核配置为 \fBCONFIG_CHECKPOINT_RESTORE\fP 时可用。
+.TP 
+\fI/proc/\fPpid\fI/timerslack_ns\fP (since Linux 4.6)
+.\" commit da8b44d5a9f8bf26da637b7336508ca534d6b319
+.\" commit 5de23d435e88996b1efe0e2cebe242074ce67c9e
+此文件公开进程的 "current" 计时器松弛值，以纳秒表示。 该文件是可写的，允许更改进程的计时器松弛值。 向该文件写入 0 会将
+"current" 定时器松弛值重置为 "default" 定时器松弛值。 有关详细信息，请参见 \fBprctl\fP(2) 中对
+\fBPR_SET_TIMERSLACK\fP 的讨论。
+.IP
+.\" commit 7abbaf94049914f074306d960b0f968ffe52e59f
+最初，访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_FSCREDS\fP 检查控制 (请参见
+\fBptrace\fP(2)).  然而，这随后被认为是一个过于严格的要求 (并且产生了副作用，即要求进程具有 \fBCAP_SYS_PTRACE\fP
+能力也将允许它查看和更改任何进程的内存)。 因此，从 Linux 4.9 开始，只需要 (weaker) \fBCAP_SYS_NICE\fP
+能力就可以访问这个文件。
+.TP 
+\fI/proc/\fPpid\fI/uid_map\fP (since Linux 3.5)
+请参见 \fBuser_namespaces\fP(7)。
+.TP 
+\fI/proc/\fPpid\fI/wchan\fP (since Linux 2.6.0)
+对应于内核中进程休眠位置的符号名称。
+.IP
+访问此文件的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/\fPtid
+每个运行中的非线程组领导线程 (即线程 ID 与其进程 ID 不同的线程) 都有一个数字子目录; 该子目录由线程 ID
+命名。这些子目录中的每一个都包含公开有关线程 ID \fItid\fP 的线程信息的文件和子目录。 这些目录的内容与对应的
+\fI/proc/\fPpid\fI/task/\fPtid 目录相同。
+.IP
+当使用 \fBgetdents\fP(2) 遍历 \fI/proc\fP 时，\fI/proc/\fPtid 子目录是 \fInot\fP 可见的 (因此当使用
+\fBls\fP(1) 查看 \fI/proc\fP) 的内容时，\fInot\fP 是可见的。 然而，这些目录的路径名对于在路径名上运行的系统调用是可见的
+(即，可用作参数)。
+.TP 
+\fI/proc/apm\fP
+在内核编译时定义 \fBCONFIG_APM\fP 时的高级电源管理版本和电池信息。
+.TP 
+\fI/proc/buddyinfo\fP
+此文件包含用于诊断内存碎片问题的信息。 每行都以节点的标识和区域的名称开头，它们共同标识一个内存区域。 然后是按特定顺序划分这些区域的可用块的计数。
+特定顺序的字节大小由以下公式给出:
+.IP
+.in +4n
+.EX
+(2\[ha]order)\ *\ PAGE_SIZE
+.EE
+.in
+.IP
+内核中的二进制伙伴分配器算法会将一个块分成两个较小阶的块 (因此大小减半) 或将两个连续的块组合成一个更高阶的较大块 (因此大小加倍)
+以满足分配请求并应对内存碎片。 从零开始计数时，顺序与列号匹配。
+.IP
+例如在 x86\-64 系统上:
+.RS -12
+.EX
+节点 0，区域 DMA 1 1 1 0 2 1 1 0 1 1 3
+节点 0，区域 DMA32 65 47 4 81 52 28 13 10 5 1 404
+节点 0，区域正常 216 55 189 101 84 38 37 27 5 3 587
+.EE
+.RE
+.IP
+在此示例中，有一个节点包含三个区域，并且有 11 个不同的块大小。 如果页面大小为 4 KB，则称为 \fIDMA\fP 的第一个区域 (在 x86
+上的第一个 16 MB 内存) 有 1 个 4 KB 的块 (顺序 0) 可用，并且有 3 个 4 兆字节的块 (顺序 10) 可用。
+.IP
+如果内存严重碎片化，则高阶块的计数器将为零，并且大的连续区域的分配将失败。
+.IP
+有关区域的更多信息，请参见 \fI/proc/zoneinfo\fP。
+.TP 
+\fI/proc/bus\fP
+包含已安装总线的子目录。
+.TP 
+\fI/proc/bus/pccard\fP
+在内核编译时设置 \fBCONFIG_PCMCIA\fP 时 PCMCIA 设备的子目录。
+.TP 
+\fI/proc/bus/pccard/drivers\fP
+.TP 
+\fI/proc/bus/pci\fP
+包含各种总线子目录和伪文件，其中包含有关 PCI 总线、已安装设备和设备驱动程序的信息。 其中一些文件不是 ASCII。
+.TP 
+\fI/proc/bus/pci/devices\fP
+有关 PCI 设备的信息。 它们可以通过 \fBlspci\fP(8) 和 \fBsetpci\fP(8) 访问。
+.TP 
+\fI/proc/cgroups\fP (since Linux 2.6.24)
+请参见 \fBcgroups\fP(7)。
+.TP 
+\fI/proc/cmdline\fP
+参数在引导时传递给 Linux 内核。 通常通过 \fBlilo\fP(8) 或 \fBgrub\fP(8) 等引导管理器完成。
+.TP 
+\fI/proc/config.gz\fP (since Linux 2.6)
+该文件公开了用于构建当前运行的内核的配置选项，其格式与配置内核时产生的 \fI.config\fP 文件中显示的格式相同 (使用 \fImake xconfig\fP、\fImake config\fP 或类似文件)。 文件内容被压缩; 使用 \fBzcat\fP(1) 和 \fBzgrep\fP(1)
+查看或搜索它们。 只要不对以下文件进行更改，\fI/proc/config.gz\fP 的内容与提供的内容相同:
+.IP
+.in +4n
+.EX
+cat /lib/modules/$(uname \-r)/build/.config
+.EE
+.in
+.IP
+仅当内核配置了 \fBCONFIG_IKCONFIG_PROC\fP 时才提供 \fI/proc/config.gz\fP。
+.TP 
+\fI/proc/crypto\fP
+.\" commit 3b72c814a8e8cd638e1ba0da4dfce501e9dff5af
+内核加密 API 提供的密码列表。 有关详细信息，请参见内核源代码目录 \fIDocumentation/crypto/\fP (或
+\fIDocumentation/DocBook\fP 之前的 Linux 4.10; 可以使用内核源代码树根目录中的 \fImake htmldocs\fP
+等命令构建文档) 下的内核 \fILinux Kernel Crypto API\fP 文档。
+.TP 
+\fI/proc/cpuinfo\fP
+这是 CPU 和系统架构依赖项的集合，每个支持的架构都有一个不同的列表。 两个常见的条目是 \fIprocessor\fP (给出 CPU 编号) 和
+\fIbogomips\fP; 在内核初始化期间计算的系统常量。 SMP 机器有每个 CPU 的信息。 \fBlscpu\fP(1) 命令从该文件中收集信息。
+.TP 
+\fI/proc/devices\fP
+主要编号和设备组的文本列表。 MAKEDEV 脚本可以使用它来与内核保持一致。
+.TP 
+\fI/proc/diskstats\fP (since Linux 2.5.69)
+此文件包含每个磁盘设备的磁盘 I/O 统计信息。 有关详细信息，请参见 Linux 内核源文件
+\fIDocumentation/admin\-guide/iostats.rst\fP (或 Linux 5.3 之前的
+\fIDocumentation/iostats.txt\fP)。
+.TP 
+\fI/proc/dma\fP
+这是正在使用的已注册 \fIISA\fP DMA (直接内存访问) 通道的列表。
+.TP 
+\fI/proc/driver\fP
+空子目录。
+.TP 
+\fI/proc/execdomains\fP
+执行域列表 (ABI 个性)。
+.TP 
+\fI/proc/fb\fP
+在内核编译期间定义 \fBCONFIG_FB\fP 时的帧缓冲区信息。
+.TP 
+\fI/proc/filesystems\fP
+内核支持的文件系统的文本列表，即编译到内核中或当前加载其内核模块的文件系统。 (另见 \fBfilesystems\fP(5).) 如果文件系统标有
+"nodev"，这意味着它不需要挂载块设备 (例如，虚拟文件系统、网络文件系统)。
+.IP
+顺便说一句，当没有指定文件系统并且它没有设法确定文件系统类型时，\fBmount\fP(8) 可能会使用这个文件。 然后尝试包含在该文件中的文件系统 (标有
+"nodev" 的除外)。
+.TP 
+\fI/proc/fs\fP
+.\" FIXME Much more needs to be said about /proc/fs
+.\"
+包含子目录，这些子目录又包含有关 (certain) 挂载文件系统信息的文件。
+.TP 
+\fI/proc/ide\fP
+该目录存在于具有集合开发环境总线的系统上。 每个集合开发环境通信和附加设备都有目录。 文件包括:
+.IP
+.in +4n
+.EX
+缓存缓冲区大小 (以 KB 为单位)
+扇区容量
+驱动驱动版本
+几何物理和逻辑几何
+十六进制识别
+媒体媒体类型
+型号制造商 \[aq] 型号
+设置驱动设置
+smart_thresholds 集合开发环境磁盘管理阈值 (十六进制)
+smart_values 集成开发环境磁盘管理值 (十六进制)
+.EE
+.in
+.IP
+\fBhdparm\fP(8) 实用程序以友好的格式提供对此信息的访问。
+.TP 
+\fI/proc/interrupts\fP
+这用于记录每个 IO 设备每个 CPU 的中断数。 从 Linux 2.6.24 开始，对于 i386 和 x86\-64
+架构，至少，这还包括系统内部的中断 (即与设备本身无关)，例如 NMI (不可屏蔽中断)、LOC (本地定时器中断) ), 对于 SMP 系统，TLB
+(TLB flush interrupt), RES (rescheduling interrupt), CAL (remote 任数调用中断),
+可能还有其他。 非常易于阅读的格式，以 ASCII 格式完成。
+.TP 
+\fI/proc/iomem\fP
+I/O 内存 map 在 Linux 2.4。
+.TP 
+\fI/proc/ioports\fP
+这是当前已注册且正在使用的输入输出端口区域的列表。
+.TP 
+\fI/proc/kallsyms\fP (since Linux 2.5.71)
+这包含 \fBmodules\fP(X) 工具用于动态链接和绑定可加载模块的内核导出符号定义。 在 Linux 2.5.47
+及更早版本中，一个语法略有不同的类似文件被命名为 \fIksyms\fP。
+.TP 
+\fI/proc/kcore\fP
+该文件代表系统的物理内存，以 ELF 核心文件格式存储。 使用这个伪文件和一个未剥离的内核 (\fI/usr/src/linux/vmlinux\fP)
+二进制文件，GDB 可用于检查任何内核数据结构的当前状态。
+.IP
+文件总长度为物理内存 (RAM) 的大小加上 4\KiB。
+.TP 
+\fI/proc/keys\fP (since Linux 2.6.10)
+请参见 \fBkeyrings\fP(7)。
+.TP 
+\fI/proc/key\-users\fP (since Linux 2.6.10)
+请参见 \fBkeyrings\fP(7)。
+.TP 
+\fI/proc/kmsg\fP
+这个文件可以代替 \fBsyslog\fP(2) 系统调用来读取内核消息。 一个进程必须有超级用户权限才能读取这个文件，并且只有一个进程应该读取这个文件。
+如果正在运行使用 \fBsyslog\fP(2) 系统调用工具记录内核消息的系统日志进程，则不应读取此文件。
+.IP
+使用 \fBdmesg\fP(1) 程序检索此文件中的信息。
+.TP 
+\fI/proc/kpagecgroup\fP (since Linux 4.3)
+.\" commit 80ae2fdceba8313b0433f899bdd9c6c463291a17
+这个文件包含一个 64 位的 inode 编号，每个页面被归入内存 cgroup，由页面帧编号索引 (参见
+\fI/proc/\fPpid\fI/pagemap\fP).h 的讨论)。
+.IP
+仅当启用 \fBCONFIG_MEMCG\fP 内核配置选项时才会出现 \fI/proc/kpagecgroup\fP 文件。
+.TP 
+\fI/proc/kpagecount\fP (since Linux 2.6.25)
+该文件包含每个物理页框被映射次数的 64 位计数，由页框编号索引 (参见 \fI/proc/\fPpid\fI/pagemap\fP).h 的讨论)。
+.IP
+仅当启用 \fBCONFIG_PROC_PAGE_MONITOR\fP 内核配置选项时才会出现 \fI/proc/kpagecount\fP 文件。
+.TP 
+\fI/proc/kpageflags\fP (since Linux 2.6.25)
+该文件包含与每个物理页框对应的 64 位掩码; 它由页框号索引 (参见 \fI/proc/\fPpid\fI/pagemap\fP).  位如下:
+.RS
+.IP
+.TS
+r l l l.
+0	\-	KPF_LOCKED
+1	\-	KPF_ERROR
+2	\-	KPF_REFERENCED
+3	\-	KPF_UPTODATE
+4	\-	KPF_DIRTY
+5	\-	KPF_LRU
+6	\-	KPF_ACTIVE
+7	\-	KPF_SLAB
+8	\-	KPF_WRITEBACK
+9	\-	KPF_RECLAIM
+10	\-	KPF_BUDDY
+11	\-	KPF_MMAP	(since Linux 2.6.31)
+12	\-	KPF_ANON	(since Linux 2.6.31)
+13	\-	KPF_SWAPCACHE	(since Linux 2.6.31)
+14	\-	KPF_SWAPBACKED	(since Linux 2.6.31)
+15	\-	KPF_COMPOUND_HEAD	(since Linux 2.6.31)
+16	\-	KPF_COMPOUND_TAIL	(since Linux 2.6.31)
+17	\-	KPF_HUGE	(since Linux 2.6.31)
+18	\-	KPF_UNEVICTABLE	(since Linux 2.6.31)
+19	\-	KPF_HWPOISON	(since Linux 2.6.31)
+20	\-	KPF_NOPAGE	(since Linux 2.6.31)
+21	\-	KPF_KSM	(since Linux 2.6.32)
+22	\-	KPF_THP	(since Linux 3.4)
+23	\-	KPF_BALLOON	(since Linux 3.18)
+.\" KPF_BALLOON: commit 09316c09dde33aae14f34489d9e3d243ec0d5938
+24	\-	KPF_ZERO_PAGE	(since Linux 4.0)
+.\" KPF_ZERO_PAGE: commit 56873f43abdcd574b25105867a990f067747b2f4
+25	\-	KPF_IDLE	(since Linux 4.3)
+.\" KPF_IDLE: commit f074a8f49eb87cde95ac9d040ad5e7ea4f029738
+.TE
+.RE
+.IP
+.\" commit ad3bdefe877afb47480418fdb05ecd42842de65e
+.\" commit e07a4b9217d1e97d2f3a62b6b070efdc61212110
+有关这些位含义的更多详细信息，请参见内核源文件 \fIDocumentation/admin\-guide/mm/pagemap.rst\fP。 在 Linux
+2.6.29、\fBKPF_WRITEBACK\fP、\fBKPF_RECLAIM\fP、\fBKPF_BUDDY\fP、\fBKPF_LOCKED\fP 之前没有报错。
+.IP
+仅当启用 \fBCONFIG_PROC_PAGE_MONITOR\fP 内核配置选项时才会出现 \fI/proc/kpageflags\fP 文件。
+.TP 
+\fI/proc/ksyms\fP (Linux 1.1.23\[en]2.5.47)
+请参见 \fI/proc/kallsyms\fP。
+.TP 
+\fI/proc/loadavg\fP
+此文件中的前三个字段是平均负载数字，给出运行队列中的作业数 (状态 R) 或等待磁盘 I/O (状态 D) 的平均时间超过 1、5 和 15 分钟。
+它们与 \fBuptime\fP(1) 和其他程序给出的负载平均数相同。 第四个字段由两个由斜线 (/) 分隔的数字组成。
+其中第一个是当前可运行的内核调度实体 (进程、线程) 的数量。 斜杠后面的值是系统中当前存在的内核调度实体的数量。 第五个字段是最近在系统上创建的进程的
+PID。
+.TP 
+\fI/proc/locks\fP
+此文件显示当前文件锁 (\fBflock\fP(2) 和 \fBfcntl\fP(2)) 以及租用 (\fBfcntl\fP(2))。
+.IP
+此文件中显示的内容示例如下:
+.IP
+.in +4n
+.EX
+1: POSIX 咨询读 5433 08:01:7864448 128 128
+2: FLOCK  ADVISORY  WRITE 2001 08:01:7864554 0 EOF
+3: FLOCK  ADVISORY  WRITE 1568 00:2f:32388 0 EOF
+4: POSIX 咨询写 699 00:16:28457 0 EOF
+5: POSIX 建议写 764 00:16:21448 0 0
+6: POSIX 咨询读 3548 08:01:7867240 1 1
+7: POSIX 咨询读 3548 08:01:7865567 1826 2335
+8: OFDLCK 咨询写 \-1 08:01:8713209 128 191
+.EE
+.in
+.IP
+每行显示的字段如下:
+.RS
+.IP [1] 5
+锁在列表中的顺序位置。
+.IP [2]
+锁类型。 此处可能出现的值包括:
+.RS
+.TP 
+\fBFLOCK\fP
+这是使用 \fBflock\fP(2) 创建的 BSD 文件锁。
+.TP 
+\fBOFDLCK\fP
+这是使用 \fBfcntl\fP(2) 创建的打开文件说明 (OFD) 锁。
+.TP 
+\fBPOSIX\fP
+这是使用 \fBfcntl\fP(2) 创建的 POSIX 字节范围锁。
+.RE
+.IP [3]
+可以出现在这里的字符串如下:
+.RS
+.TP 
+\fBADVISORY\fP
+这是一个咨询锁。
+.TP 
+\fBMANDATORY\fP
+这是一个强制锁。
+.RE
+.IP [4]
+锁的类型。 可以出现在这里的值是:
+.RS
+.TP 
+\fBREAD\fP
+这是 POSIX 或 OFD 读锁，或 BSD 共享锁。
+.TP 
+\fBWRITE\fP
+这是 POSIX 或 OFD 写锁，或 BSD 独占锁。
+.RE
+.IP [5]
+拥有锁的进程的 PID。
+.IP
+.\" commit 9d5b86ac13c573795525ecac6ed2db39ab23e2a8
+因为 OFD 锁不属于单个进程 (因为多个进程可能具有引用相同打开文件描述的文件描述符)，所以值 \-1 显示在 OFD 锁的该字段中。 (在 Linux
+4.14 之前，一个 bug 意味着显示最初获得锁的进程的 PID 而不是值 \- 1。)
+.IP [6]
+三个以冒号分隔的子字段，标识包含锁定文件所在文件系统的设备的主要和次要设备 ID，后跟锁定文件的索引节点号。
+.IP [7]
+锁的第一个字节的字节偏移量。 对于 BSD 锁，这个值总是 0.
+.IP [8]
+锁的最后一个字节的字节偏移量。 该字段中的 \fBEOF\fP 表示锁定扩展到文件末尾。 对于 BSD 锁，显示的值始终为 \fIEOF\fP。
+.RE
+.IP
+.\" commit d67fd44f697dff293d7cdc29af929241b669affe
+从 Linux 4.9 开始，\fI/proc/locks\fP 中显示的锁列表被过滤以仅显示 PID 命名空间中进程的锁 (请参见
+\fBpid_namespaces\fP(7))，其中安装了 \fI/proc\fP 文件系统。 (在初始 PID 命名空间中，没有过滤此文件中显示的记录。)
+.IP
+\fBlslocks\fP(8) 命令提供了关于每个锁的更多信息。
+.TP 
+\fI/proc/malloc\fP (only up to and including Linux 2.2)
+.\" It looks like this only ever did something back in 1.0 days
+仅当在编译期间定义了 \fBCONFIG_DEBUG_MALLOC\fP 时，此文件才会存在。
+.TP 
+\fI/proc/meminfo\fP
+该文件报告有关系统内存使用情况的统计信息。 \fBfree\fP(1) 使用它来报告系统上可用和已用内存 (包括物理内存和交换内存)
+的数量，以及内核使用的共享内存和缓冲区。 文件的每一行都包含一个参数名称，后跟一个冒号、参数值和一个度量单位选项 (例如，"kB")。
+下面的列表描述了读取字段值所需的参数名称和格式说明符。 除下文所述外，所有字段至少从 Linux 2.6.0 开始就存在。
+有些字段只有在内核配置了各种选项时才会显示; 这些依赖项已在列表中注明。
+.RS
+.TP 
+\fIMemTotal\fP %lu
+总可用 RAM (即，物理 RAM 减去一些保留位和内核二进制代码)。
+.TP 
+\fIMemFree\fP %lu
+\fILowFree\fP+\fIHighFree\fP 的总和。
+.TP 
+\fIMemAvailable\fP %lu (since Linux 3.14)
+在不交换的情况下估计有多少内存可用于启动新应用程序。
+.TP 
+\fIBuffers\fP %lu
+原始磁盘块的相对临时存储不应变得非常大 (20 MB 左右)。
+.TP 
+\fICached\fP %lu
+从磁盘读取的文件的内存缓存 (页面缓存)。 不包括 \fISwapCached\fP。
+.TP 
+\fISwapCached\fP %lu
+曾经被换出的内存被换回，但仍然在交换文件中。 (如果内存压力大，这些页面不需要再次换出，因为它们已经在交换文件中了。这样就省了 I/O。)
+.TP 
+\fIActive\fP %lu
+最近使用的内存，除非绝对必要，否则通常不会回收。
+.TP 
+\fIInactive\fP %lu
+最近较少使用的内存。 它更有资格被回收用于其他目的。
+.TP 
+\fIActive(anon)\fP %lu (since Linux 2.6.28)
+[To be documented.]
+.TP 
+\fIInactive(anon)\fP %lu (since Linux 2.6.28)
+[To be documented.]
+.TP 
+\fIActive(file)\fP %lu (since Linux 2.6.28)
+[To be documented.]
+.TP 
+\fIInactive(file)\fP %lu (since Linux 2.6.28)
+[To be documented.]
+.TP 
+\fIUnevictable\fP %lu (since Linux 2.6.28)
+(从 Linux 2.6.28 到 Linux 2.6.30，需要 \fBCONFIG_UNEVICTABLE_LRU\fP。) [To be
+documented.]
+.TP 
+\fIMlocked\fP %lu (since Linux 2.6.28)
+(从 Linux 2.6.28 到 Linux 2.6.30，需要 \fBCONFIG_UNEVICTABLE_LRU\fP。) [To be
+documented.]
+.TP 
+\fIHighTotal\fP %lu
+(从 Linux 2.6.19 开始，需要 \fBCONFIG_HIGHMEM\fP。) highmem 总量。 Highmem 是 \[ti] 860 MB
+物理内存以上的所有内存。 Highmem 区域供用户空间程序使用，或用于页面缓存。 内核必须使用技巧来访问此内存，使其访问速度比 lowmem 慢。
+.TP 
+\fIHighFree\fP %lu
+(从 Linux 2.6.19 开始，\fBCONFIG_HIGHMEM\fP 是必需的。) 空闲 highmem 的数量。
+.TP 
+\fILowTotal\fP %lu
+(从 Linux 2.6.19 开始，需要 \fBCONFIG_HIGHMEM\fP。) lowmem 总量。 Lowmem 是可用于 highmem
+可用于的所有内容的内存，但它也可供内核用于其自己的数据结构。 除其他外，它是分配 \fISlab\fP 的所有内容的地方。 当您用完 lowmem
+时，坏事就会发生。
+.TP 
+\fILowFree\fP %lu
+(从 Linux 2.6.19 开始，\fBCONFIG_HIGHMEM\fP 是必需的。) 可用的低内存量。
+.TP 
+\fIMmapCopy\fP %lu (since Linux 2.6.29)
+(\fBCONFIG_MMU\fP 是必需的。) [To be documented.]
+.TP 
+\fISwapTotal\fP %lu
+可用交换空间总量。
+.TP 
+\fISwapFree\fP %lu
+当前未使用的交换空间量。
+.TP 
+\fIDirty\fP %lu
+等待写回磁盘的内存。
+.TP 
+\fIWriteback\fP %lu
+正在主动写回磁盘的内存。
+.TP 
+\fIAnonPages\fP %lu (since Linux 2.6.18)
+映射到用户空间页表的非文件支持页。
+.TP 
+\fIMapped\fP %lu
+映射到内存中的文件 (带 \fBmmap\fP(2)) 的，比如 libraries.
+.TP 
+\fIShmem\fP %lu (since Linux 2.6.32)
+\fBtmpfs\fP(5) 文件系统消耗的内存量。
+.TP 
+\fIKReclaimable\fP %lu (since Linux 4.20)
+内核将在内存压力下尝试回收的内核分配。 包括 \fISReclaimable\fP (below) 和其他带收缩器的直接分配。
+.TP 
+\fISlab\fP %lu
+内核数据结构缓存。 (见 \fBslabinfo\fP(5).)
+.TP 
+\fISReclaimable\fP %lu (since Linux 2.6.19)
+\fISlab\fP 的一部分，可能会被回收，例如缓存。
+.TP 
+\fISUnreclaim\fP %lu (since Linux 2.6.19)
+\fISlab\fP 的一部分，在内存压力下无法回收。
+.TP 
+\fIKernelStack\fP %lu (since Linux 2.6.32)
+分配给内核栈的内存量。
+.TP 
+\fIPageTables\fP %lu (since Linux 2.6.18)
+专用于最低级别页表的内存量。
+.TP 
+\fIQuicklists\fP %lu (since Linux 2.6.27)
+(\fBCONFIG_QUICKLIST\fP 是必需的。) [To be documented.]
+.TP 
+\fINFS_Unstable\fP %lu (since Linux 2.6.18)
+NFS 页面已发送到服务器，但尚未提交到稳定存储。
+.TP 
+\fIBounce\fP %lu (since Linux 2.6.18)
+用于块设备 "bounce buffers" 的内存。
+.TP 
+\fIWritebackTmp\fP %lu (since Linux 2.6.26)
+FUSE 用于临时写回缓冲区的内存。
+.TP 
+\fICommitLimit\fP %lu (since Linux 2.6.10)
+这是当前可在系统上分配的内存总量，以千字节表示。 仅当启用严格的过度使用记帐 (\fI/proc/sys/vm/overcommit_memory\fP).x
+中的模式 2) 时，才会遵守此限制。 该限制是根据 \fI/proc/sys/vm/overcommit_memory\fP 下描述的公式计算的。
+有关详细信息，请参见内核源文件 \fIDocumentation/vm/overcommit\-accounting.rst\fP。
+.TP 
+\fICommitted_AS\fP %lu
+当前在系统上分配的内存量。 提交的内存是进程分配的所有内存的总和，即使它还没有被进程分配到 "used"。 分配 1 GB 内存 (使用
+\fBmalloc\fP(3) 或类似内存) 但仅触及该内存的 300 MB 的进程将显示为仅使用 300 MB 内存，即使它具有为整个 1 GB
+分配的地址空间。
+.IP
+这 1 GB 是虚拟机 "committed" 的内存，分配应用程序可以随时使用。 在系统上启用严格的过度使用
+(\fI/proc/sys/vm/overcommit_memory\fP) 中的模式 2) 后，将不允许超过 \fICommitLimit\fP 的分配。
+如果需要保证在成功分配内存后进程不会因内存不足而失败，这将很有用。
+.TP 
+\fIVmallocTotal\fP %lu
+vmalloc 内存区域的总大小。
+.TP 
+\fIVmallocUsed\fP %lu
+.\" commit a5ad88ce8c7fae7ddc72ee49a11a75aa837788e0
+使用的 vmalloc 区域量。 自 Linux 4.4 起，该字段不再计算，硬编码为 0。 请参见 \fI/proc/vmallocinfo\fP。
+.TP 
+\fIVmallocChunk\fP %lu
+.\" commit a5ad88ce8c7fae7ddc72ee49a11a75aa837788e0
+可用的 vmalloc 区域的最大连续块。 自 Linux 4.4 起，该字段不再计算，硬编码为 0。 请参见
+\fI/proc/vmallocinfo\fP。
+.TP 
+\fIHardwareCorrupted\fP %lu (since Linux 2.6.32)
+(\fBCONFIG_MEMORY_FAILURE\fP 是必需的。) [To be documented.]
+.TP 
+\fILazyFree\fP %lu (since Linux 4.12)
+显示由 \fBmadvise\fP(2) \fBMADV_FREE\fP 标记的内存量。
+.TP 
+\fIAnonHugePages\fP %lu (since Linux 2.6.38)
+(\fBCONFIG_TRANSPARENT_HUGEPAGE\fP 是必需的。) 非文件支持的大页面映射到用户空间页表。
+.TP 
+\fIShmemHugePages\fP %lu (since Linux 4.8)
+(\fBCONFIG_TRANSPARENT_HUGEPAGE\fP 是必需的。) 共享内存 (shmem) 和 \fBtmpfs\fP(5)
+使用的内存分配有大页面。
+.TP 
+\fIShmemPmdMapped\fP %lu (since Linux 4.8)
+(\fBCONFIG_TRANSPARENT_HUGEPAGE\fP 是必需的。) 共享内存映射到具有大页面的用户空间。
+.TP 
+\fICmaTotal\fP %lu (since Linux 3.1)
+CMA (连续内存分配器) 页面总数。 (\fBCONFIG_CMA\fP 是必需的。)
+.TP 
+\fICmaFree\fP %lu (since Linux 3.1)
+免费 CMA (连续内存分配器) 页面。 (\fBCONFIG_CMA\fP 是必需的。)
+.TP 
+\fIHugePages_Total\fP %lu
+(\fBCONFIG_HUGETLB_PAGE\fP 是必需的。) 大页面池的大小。
+.TP 
+\fIHugePages_Free\fP %lu
+(\fBCONFIG_HUGETLB_PAGE\fP 是必需的。) 池中尚未分配的大页面数。
+.TP 
+\fIHugePages_Rsvd\fP %lu (since Linux 2.6.17)
+(\fBCONFIG_HUGETLB_PAGE\fP 是必需的。) 这是已承诺从池中分配但尚未分配的巨页数。
+这些保留的大页面保证应用程序能够在故障时从大页面池中分配一个大页面。
+.TP 
+\fIHugePages_Surp\fP %lu (since Linux 2.6.24)
+(\fBCONFIG_HUGETLB_PAGE\fP 是必需的。) 这是池中大于 \fI/proc/sys/vm/nr_hugepages\fP 值的大页面数。
+剩余巨页的最大数量由 \fI/proc/sys/vm/nr_overcommit_hugepages\fP 控制。
+.TP 
+\fIHugepagesize\fP %lu
+(\fBCONFIG_HUGETLB_PAGE\fP 是必需的。) 大页面的大小。
+.TP 
+\fIDirectMap4k\fP %lu (since Linux 2.6.27)
+内核在 4 kB 页中线性映射的 RAM 字节数。 (x86.)
+.TP 
+\fIDirectMap4M\fP %lu (since Linux 2.6.27)
+内核在 4 MB 页中线性映射的 RAM 字节数。 (启用 \fBCONFIG_X86_64\fP 或 \fBCONFIG_X86_PAE\fP 的 x86。)
+.TP 
+\fIDirectMap2M\fP %lu (since Linux 2.6.27)
+内核在 2 MB 页中线性映射的 RAM 字节数。 (\fBCONFIG_X86_64\fP 和 \fBCONFIG_X86_PAE\fP 均未启用的 x86。)
+.TP 
+\fIDirectMap1G\fP %lu (since Linux 2.6.27)
+(启用 \fBCONFIG_X86_64\fP 和 \fBCONFIG_X86_DIRECT_GBPAGES\fP 的 x86。)
+.RE
+.TP 
+\fI/proc/modules\fP
+系统加载的模块的文本列表。 另请详见 \fBlsmod\fP(8)。
+.TP 
+\fI/proc/mounts\fP
+在 Linux 2.4.19 之前，这个文件是当前安装在系统上的所有文件系统的列表。 随着 Linux 2.4.19 中每个进程挂载命名空间的引入
+(请参见 \fBmount_namespaces\fP(7))，此文件成为指向 \fI/proc/self/mounts\fP
+的链接，其中列出了进程自己的挂载命名空间的挂载。 该文件的格式记录在 \fBfstab\fP(5) 中。
+.TP 
+\fI/proc/mtrr\fP
+.\" commit 7225e75144b9718cbbe1820d9c011c809d5773fd
+内存类型范围寄存器。 详见 Linux 内核源文件 \fIDocumentation/x86/mtrr.rst\fP (或 Linux 5.2 之前的
+\fIDocumentation/x86/mtrr.txt\fP，Linux 2.6.28 之前的 \fIDocumentation/mtrr.txt\fP)。
+.TP 
+\fI/proc/net\fP
+该目录包含各种文件和子目录，其中包含有关网络层的信息。 这些文件包含 ASCII 结构，因此可以使用 \fBcat\fP(1) 读取。 但是，标准
+\fBnetstat\fP(8) 套件提供了对这些文件的更清晰的访问。
+.IP
+.\" commit e9720acd728a46cb40daa52c99a979f7c4ff195c
+随着网络命名空间的出现，与网络栈相关的各种信息被虚拟化 (参见 \fBnetwork_namespaces\fP(7)).  因此，由于 Linux
+2.6.25，\fI/proc/net\fP 是指向目录 \fI/proc/self/net\fP 的符号链接，该目录包含如下所列的相同文件和目录。
+但是，这些文件和目录现在公开了进程所属的网络名称空间的信息。
+.TP 
+\fI/proc/net/arp\fP
+这包含用于地址解析的内核 ARP 表的 ASCII 可读转储。 它将显示动态学习和预编程的 ARP 条目。 格式为:
+.IP
+.in +4n
+.EX
+IP 地址硬件类型标志硬件地址掩码设备
+192.168.0.50   0x1       0x2       00:50:BF:25:68:F3   *      eth0
+192.168.0.250  0x1       0xc       00:00:00:00:00:00   *      eth0
+.EE
+.in
+.IP
+这里的 "IP address" 是机器的 IPv4 地址，"HW type" 是来自 RFC\826 的地址的硬件类型。 这些标志是 ARP
+结构体的内部标志 (如 \fI/usr/include/linux/if_arp.h\fP) 中所定义，"HW address" 是该 IP
+地址的数据链路层映射 (如果已知)。
+.TP 
+\fI/proc/net/dev\fP
+dev 伪文件包含网络设备状态信息。 这给出了接收和发送数据包的数量、错误和冲突的数量以及其他基本统计信息。 \fBifconfig\fP(8)
+程序使用这些来报告设备状态。 格式为:
+.IP
+.EX
+间 | 接收 | 发送
+ face |bytes packets errs 抛弃 fifo frame compressed
+    lo: 2776770   11307    0    0    0     0          0         0  2776770   11307    0    0    0     0       0          0
+  eth0: 1215645    2751    0    0    0     0          0         0  1782404    4324    0    0    0   427       0          0
+  ppp0: 1622270    5552    1    0    0     0          0         0   354130    5669    0    0    0     0       0          0
+  tap0:    7714      81    0    0    0     0          0         0     7714      81    0    0    0     0       0          0
+.EE
+.\" .TP
+.\" .I /proc/net/ipx
+.\" No information.
+.\" .TP
+.\" .I /proc/net/ipx_route
+.\" No information.
+.TP 
+\fI/proc/net/dev_mcast\fP
+在 \fI/usr/src/linux/net/core/dev_mcast.c\fP: 中定义
+.IP
+.in +4n
+.EX
+indx interface_name  dmi_u dmi_g dmi_address
+2    eth0            1     0     01005e000001
+3    eth1            1     0     01005e000001
+4    eth2            1     0     01005e000001
+.EE
+.in
+.TP 
+\fI/proc/net/igmp\fP
+互联网组管理协议。 在 \fI/usr/src/linux/net/core/igmp.c\fP 中定义。
+.TP 
+\fI/proc/net/rarp\fP
+该文件使用与 \fIarp\fP 文件相同的格式，包含当前用于提供 \fBrarp\fP(8) 反向地址查找服务的反向映射数据库。 如果 RARP
+没有配置到内核中，这个文件将不会存在。
+.TP 
+\fI/proc/net/raw\fP
+.\" .TP
+.\" .I /proc/net/route
+.\" No information, but looks similar to
+.\" .BR route (8).
+保存 RAW 套接字表的转储。 除了调试之外，大部分信息没有用处。 "sl" 值是套接字的内核散列槽，"local_address"
+是本地地址和协议号对。 \&"St" 是套接字的内部状态。 "tx_queue" 和 "rx_queue" 是内核内存使用方面的传出和传入数据队列。
+RAW 不使用 "tr"、"tm\->when" 和 "rexmits" 字段。 "uid" 字段包含套接字创建者的有效 UID。
+.TP 
+\fI/proc/net/snmp\fP
+该文件包含 SNMP 代理的 IP、ICMP、TCP 和 UDP 管理信息库所需的 ASCII 数据。
+.TP 
+\fI/proc/net/tcp\fP
+保存 TCP 套接字表的转储。 除了调试之外，大部分信息没有用处。 "sl" 值是套接字的内核散列槽，"local_address"
+是本地地址和端口号对。 "rem_address" 是远程地址和端口号对 (如果已连接)。 \&"St" 是套接字的内部状态。 "tx_queue" 和
+"rx_queue" 是内核内存使用方面的传出和传入数据队列。 "tr"、"tm\->when" 和 "rexmits"
+字段保存内核套接字状态的内部信息，仅对调试有用。 "uid" 字段包含套接字创建者的有效 UID。
+.TP 
+\fI/proc/net/udp\fP
+保存 UDP 套接字表的转储。 除了调试之外，大部分信息没有用处。 "sl" 值是套接字的内核散列槽，"local_address"
+是本地地址和端口号对。 "rem_address" 是远程地址和端口号对 (如果已连接)。 "St" 是套接字的内部状态。 "tx_queue" 和
+"rx_queue" 是内核内存使用方面的传出和传入数据队列。 UDP 不使用 "tr"、"tm\->when" 和 "rexmits" 字段。
+"uid" 字段包含套接字创建者的有效 UID。 格式为:
+.IP
+.EX
+sl  local_address rem_address   st tx_queue rx_queue tr rexmits  tm\->when uid
+ 1: 01642C89:0201 0C642C89:03FF 01 00000000:00000001 01:000071BA 00000000 0
+ 1: 00000000:0801 00000000:0000 0A 00000000:00000000 00:00000000 6F000100 0
+ 1: 00000000:0201 00000000:0000 0A 00000000:00000000 00:00000000 00000000 0
+.EE
+.TP 
+\fI/proc/net/unix\fP
+列出系统中存在的 UNIX 域套接字及其状态。 格式为:
+.IP
+.EX
+Num RefCount 协议标志类型 St Inode 路径
+ 0: 00000002 00000000 00000000 0001 03    42
+ 1: 00000001 00000000 00010000 0001 01  1948 /dev/printer
+.EE
+.IP
+字段如下:
+.RS
+.TP  10
+\fINum\fP:
+内核表槽号。
+.TP 
+\fIRefCount\fP:
+套接字的用户数。
+.TP 
+\fIProtocol\fP:
+目前总是 0.
+.TP 
+\fIFlags\fP:
+保存套接字状态的内部内核标志。
+.TP 
+\fIType\fP:
+套接字类型。 对于 \fBSOCK_STREAM\fP 套接字，这是 0001; 对于 \fBSOCK_DGRAM\fP 套接字，它是 0002; 对于
+\fBSOCK_SEQPACKET\fP 套接字，它是 0005。
+.TP 
+\fISt\fP:
+套接字的内部状态。
+.TP 
+\fIInode\fP:
+套接字的索引节点号。
+.TP 
+\fIPath\fP:
+套接字的绑定路径名 (如果有的话)。 抽象名称空间中的套接字包含在列表中，并显示为以字符 '@' 开头的 \fIPath\fP。
+.RE
+.TP 
+\fI/proc/net/netfilter/nfnetlink_queue\fP
+此文件包含有关 netfilter 用户空间队列的信息 (如果使用)。 每行代表一个队列。 未被用户空间订阅的队列不显示。
+.IP
+.in +4n
+.EX
+   1   4207     0  2 65535     0     0        0  1
+  (1)   (2)    (3)(4)  (5)    (6)   (7)      (8)
+.EE
+.in
+.IP
+每行中的字段是:
+.RS 7
+.TP  5
+(1)
+队列的 ID。 这会将 \fB\-\-queue\-num\fP 或 \fB\-\-queue\-balance\fP 选项中指定的内容与 \fBiptables\fP(8)
+NFQUEUE 目标相匹配。 有关更多信息，请参见 \fBiptables\-extensions\fP(8)。
+.TP 
+(2)
+订阅队列的 netlink 端口 ID。
+.TP 
+(3)
+当前排队等待应用程序处理的数据包数。
+.TP 
+(4)
+队列的复制模式。 它是 1 (仅元数据) 或 2 (还将有效，载荷，数据复制到用户空间)。
+.TP 
+(5)
+复制范围; 也就是说，最多应该将多少字节的数据包有效，载荷，复制到用户空间。
+.TP 
+(6)
+排队丢弃。 由于太多数据包已经在等待用户空间发送回强制性 accept/drop 判决，内核必须丢弃的数据包数量。
+.TP 
+(7)
+队列用户丢弃。 在 netlink 子系统中丢弃的数据包数。 这种抛弃通常发生在相应的套接字缓冲区已满时; 也就是说，用户空间无法足够快地读取消息。
+.TP 
+(8)
+序列号。 每个排队的数据包都与一个 (32\-bit) 单调递增的序列号相关联。 这显示了最近排队的数据包的 ID。
+.RE
+.IP
+最后一个数字仅出于兼容性原因而存在，并且始终 1.
+.TP 
+\fI/proc/partitions\fP
+包含每个分区的主要和次要编号以及 1024 字节块的数量和分区名称。
+.TP 
+\fI/proc/pci\fP
+这是在内核初始化期间找到的所有 PCI 设备及其配置的列表。
+.IP
+.\" FIXME Document /proc/sched_debug (since Linux 2.6.23)
+.\" See also /proc/[pid]/sched
+此文件已被弃用，取而代之的是用于 PCI (\fI/proc/bus/pci\fP) 的新 \fI/proc\fP 接口。 它在 Linux 2.2 中成为可选的
+(可在内核编译时设置 \fBCONFIG_PCI_OLD_PROC\fP)。 它再次在 Linux 2.4 中非可选地启用。 接下来，它在 Linux 2.6
+中被弃用 (仍然适用于 \fBCONFIG_PCI_LEGACY_PROC\fP 集)，并最终从 Linux 2.6.17 中完全删除。
+.TP 
+\fI/proc/profile\fP (since Linux 2.4)
+只有在使用 \fIprofile=1\fP 命令行选项引导内核时才会出现此文件。 它以二进制格式公开内核分析信息以供 \fBreadprofile\fP(1)
+使用。 写入 (例如，一个空字符串) 到这个文件会重置分析计数器; 在某些体系结构上，写入大小为 \fIsizeof(int)\fP 的二进制整数
+"profiling multiplier" 可设置分析中断频率。
+.TP 
+\fI/proc/scsi\fP
+\fIscsi\fP 中级伪文件和各种 SCSI 底层驱动程序目录的目录，其中包含该系统中每个 SCSI 主机的文件，所有这些都给出了 SCSI IO
+子系统某些部分的状态。 这些文件包含 ASCII 结构，因此可以用 \fBcat\fP(1) 读取。
+.IP
+您还可以写入某些文件以重新配置子系统或打开或关闭某些，特性。
+.TP 
+\fI/proc/scsi/scsi\fP
+这是内核已知的所有 SCSI 设备的列表。 该清单类似于启动期间看到的清单。 scsi 当前仅支持 \fIadd\-single\-device\fP
+命令，该命令允许 root 将热插拔设备添加到已知设备列表中。
+.IP
+命令
+.IP
+.in +4n
+.EX
+echo\[aq] scsi 添加单设备 1 0 5 0\[aq] > /proc/scsi/scsi
+.EE
+.in
+.IP
+将导致主机 scsi1 在 SCSI 通道 0 上扫描 ID 5 LUN 0 上的设备。 如果该地址上已经存在已知设备或该地址无效，将返回错误。
+.TP 
+\fI/proc/scsi/\fPdrivername
+\fIdrivername\fP 目前可以是
+NCR53c7xx、aha152x、aha1542、aha1740、aic7xxx、buslogic、eata_dma、eata_pio、fdomain、in2000、pas16、qlogic、scsi_debug、seagate、t128、u15\-24f、ultrastore
+或 wd7000。 这些目录显示所有注册了至少一个 SCSI HBA 的驱动程序。 每个目录包含每个注册主机的一个文件。
+每个主机文件都以主机在初始化期间分配的编号命名。
+.IP
+读取这些文件通常会显示驱动程序和主机配置、统计信息等。
+.IP
+写入这些文件允许在不同的主机上进行不同的操作。 例如，通过 \fIlatency\fP 和 \fInolatency\fP 命令，root 可以打开和关闭
+eata_dma 驱动程序中的命令延迟测量代码。 使用 \fIlockup\fP 和 \fIunlock\fP 命令，root 可以控制 scsi_debug
+驱动程序模拟的总线锁定。
+.TP 
+\fI/proc/self\fP
+该目录指的是访问 \fI/proc\fP 文件系统的进程，与同一进程的进程 ID 命名的 \fI/proc\fP 目录相同。
+.TP 
+\fI/proc/slabinfo\fP
+有关内核缓存的信息。 有关详细信息，请参见 \fBslabinfo\fP(5)。
+.TP 
+\fI/proc/stat\fP
+kernel/system 统计。 因架构而异。 常见条目包括:
+.RS
+.TP 
+\fIcpu 10132153 290696 3084719 46828483 16683 0 25195 0 175628 0\fP
+.TQ
+\fIcpu0 1393280 32966 572056 13343292 6130 0 17875 0 23933 0\fP
+.\" 1024 on Alpha and ia64
+系统 ("cpu" 线) 或特定 CPU ("cpu\fIN\fP" 线) 在各种状态下花费的时间量，以 USER_HZ 为单位 (大多数架构上为秒的
+1/100ths，使用 \fIsysconf(_SC_CLK_TCK)\fP 以获得正确的值) :
+.RS
+.TP 
+\fIuser\fP
+(1) 在用户模式下花费的时间。
+.TP 
+\fInice\fP
+(2) 在具有低优先级 (nice) 的用户模式下花费的时间。
+.TP 
+\fIsystem\fP
+(3) 在系统模式下花费的时间。
+.TP 
+\fIidle\fP
+.\" FIXME . Actually, the following info about the /proc/stat 'cpu' field
+.\"       does not seem to be quite right (at least in Linux 2.6.12 or Linux 3.6):
+.\"       the idle time in /proc/uptime does not quite match this value
+(4) 空闲任务花费的时间。 该值应该是 USER_HZ 乘以 \fI/proc/uptime\fP 伪文件中的第二个条目。
+.TP 
+\fIiowait\fP (since Linux 2.5.41)
+.\" See kernel commit 9c240d757658a3ae9968dd309e674c61f07c7f48
+(5) 等待 I/O 完成的时间。 该值不可靠，原因如下:
+.RS
+.IP \[bu] 3
+CPU 不会等待 I/O 完成; iowait 是任务等待 I/O 完成的时间。 当一个 CPU 为未完成的任务 I/O
+进入空闲状态时，另一个任务将被调度到这个 CPU 上。
+.IP \[bu]
+在多核 CPU 上，等待 I/O 完成的任务并没有在任何 CPU 上运行，所以每个 CPU 的 iowait 是很难计算的。
+.IP \[bu]
+此字段中的值在某些情况下可能为 \fIdecrease\fP。
+.RE
+.TP 
+\fIirq\fP (since Linux 2.6.0)
+.\" Precisely: Linux 2.6.0-test4
+(6) 时间服务中断。
+.TP 
+\fIsoftirq\fP (since Linux 2.6.0)
+.\" Precisely: Linux 2.6.0-test4
+(7) 时间服务软中断。
+.TP 
+\fIsteal\fP (since Linux 2.6.11)
+(8) Stolen time，即在虚拟化环境中运行时在其他操作系统上花费的时间
+.TP 
+\fIguest\fP (since Linux 2.6.24)
+.\" See Changelog entry for 5e84cfde51cf303d368fcb48f22059f37b3872de
+(9) 在 Linux 内核的控制下为客户操作系统运行虚拟 CPU 所花费的时间。
+.TP 
+\fIguest_nice\fP (since Linux 2.6.33)
+.\" commit ce0e7b28fb75cb003cfc8d0238613aaf1c55e797
+(10) 运行 niced guest 所花费的时间 (在 Linux 内核控制下用于来宾操作系统的虚拟 CPU)。
+.RE
+.TP 
+\fIpage 5741 1808\fP
+系统调入的页数和调出的页数 (从磁盘)。
+.TP 
+\fIswap 1 0\fP
+已带入和带出的交换页数。
+.TP 
+.\" FIXME . The following is not the full picture for the 'intr' of
+.\"       /proc/stat on 2.6:
+\fIintr 1462898\fP
+对于每个可能的系统中断，此行显示自启动时间以来服务的中断计数。 第一列是所有服务中断的总数，包括未编号的体系结构特定中断;
+随后的每一列都是该特定编号中断的总数。 未编号的中断未显示，仅汇总到总数中。
+.TP 
+\fIdisk_io: (2,0):(31,30,5764,1,2) (3,0):\fP...
+(主要，disk_idx) : (noinfo，read_io_ops，blks_read，write_io_ops，blks_written)
+.br
+(仅限 Linux 2.4)
+.TP 
+\fIctxt 115315\fP
+系统经历的上下文切换次数。
+.TP 
+\fIbtime 769041601\fP
+启动时间，自纪元以来的秒数，1970\-01\-01 00:00:00 +0000 (UTC)。
+.TP 
+\fIprocesses 86031\fP
+自引导以来的分叉数。
+.TP 
+\fIprocs_running 6\fP
+处于可运行状态的进程数。 (从 Linux 2.5.45 开始。)
+.TP 
+\fIprocs_blocked 2\fP
+阻塞等待 I/O 完成的进程数。 (从 Linux 2.5.45 开始。)
+.TP 
+\fIsoftirq 229245889 94 60001584 13619 5175704 2471304 28 51212741 59130143 0 51240672\fP
+.\" commit d3d64df21d3d0de675a0d3ffa7c10514f3644b30
+这一行显示了所有 CPU 的软中断数量。 第一列是所有软中断的总数，随后的每一列是特定软中断的总数。 (从 Linux 2.6.31 开始。)
+.RE
+.TP 
+\fI/proc/swaps\fP
+交换使用中的区域。 另请详见 \fBswapon\fP(8)。
+.TP 
+\fI/proc/sys\fP
+该目录 (从 Linux 1.3.57 开始存在) 包含许多与内核变量相对应的文件和子目录。 这些变量可以使用 \fI/proc\fP 文件系统和
+(deprecated) \fBsysctl\fP(2) 系统调用进行读取，在某些情况下可以修改。
+.IP
+字符串值可以由 \[aq]\e0\[aq] 或 \[aq]\en\[aq] 终止。
+.IP
+整数和长值可以用十进制或十六进制表示法 (例如，0x3FFF) 书写。 当写入多个整数或长值时，它们可以由以下任何空白字符分隔:
+\[aq]\\[aq]、\[aq]\et\[aq] 或 \[aq]\en\[水]。 使用其他分隔符会导致错误 \fBEINVAL\fP。
+.TP 
+\fI/proc/sys/abi\fP (since Linux 2.4.10)
+.\" On some systems, it is not present.
+该目录可能包含带有应用程序二进制信息的文件。 有关详细信息，请参见 Linux 内核源文件
+\fIDocumentation/sysctl/abi.rst\fP (或 Linux 5.3 之前的
+\fIDocumentation/sysctl/abi.txt\fP)。
+.TP 
+\fI/proc/sys/debug\fP
+该目录可能为空。
+.TP 
+\fI/proc/sys/dev\fP
+该目录包含特定于设备的信息 (例如，\fIdev/cdrom/info\fP).  在某些系统上，它可能是空的。
+.TP 
+\fI/proc/sys/fs\fP
+该目录包含与文件系统相关的内核变量的文件和子目录。
+.TP 
+\fI/proc/sys/fs/aio\-max\-nr\fP and \fI/proc/sys/fs/aio\-nr\fP (since Linux 2.6.4)
+\fIaio\-nr\fP 是 \fBio_setup\fP(2) 调用为所有当前活动的 AIO 上下文指定的事件数的运行总数。 如果 \fIaio\-nr\fP 达到
+\fIaio\-max\-nr\fP，则 \fBio_setup\fP(2) 将失败并显示错误 \fBEAGAIN\fP。 提高 \fIaio\-max\-nr\fP
+不会导致任何内核数据结构的预分配或大小调整。
+.TP 
+\fI/proc/sys/fs/binfmt_misc\fP
+此目录中文件的文档可以在文件 \fIDocumentation/admin\-guide/binfmt\-misc.rst\fP 的 Linux 内核源代码中找到
+(或在旧内核的 \fIDocumentation/binfmt_misc.txt\fP 中)。
+.TP 
+\fI/proc/sys/fs/dentry\-state\fP (since Linux 2.2)
+此文件包含有关目录缓存 (dcache) 状态的信息。 该文件包含六个数字，\fInr_dentry\fP、\fInr_unused\fP、\fIage_limit\fP
+(以秒为单位的年龄)、\fIwant_pages\fP (系统请求的页面) 和两个虚拟值。
+.RS
+.IP \[bu] 3
+\fInr_dentry\fP 是分配的 dentries (dcache 条目) 的数量。 该字段在 Linux 2.2 中未使用。
+.IP \[bu]
+\fInr_unused\fP 是未使用的目录数。
+.IP \[bu]
+.\" looks like this is unused in Linux 2.2 to Linux 2.6
+\fIage_limit\fP 是内存不足时可以回收 dcache 条目的时间 (以秒为单位)。
+.IP \[bu]
+.\" looks like this is unused in Linux 2.2 to Linux 2.6
+当内核调用 shrink_dcache_pages() 并且 dcache 还没有被修剪时，\fIwant_pages\fP 是非零的。
+.RE
+.TP 
+\fI/proc/sys/fs/dir\-notify\-enable\fP
+该文件可用于在系统范围内禁用或启用 \fBfcntl\fP(2) 中描述的 \fIdnotify\fP 接口。 此文件中的值 0 禁用接口，值 1 启用它。
+.TP 
+\fI/proc/sys/fs/dquot\-max\fP
+此文件显示缓存的磁盘配额条目的最大数量。 在某些 (2.4) 系统上，它不存在。 如果可用缓存磁盘配额条目的数量非常低，并且同时系统用户的数量为
+awesome，则可能需要提高限制。
+.TP 
+\fI/proc/sys/fs/dquot\-nr\fP
+该文件显示已分配的磁盘配额条目数和可用磁盘配额条目数。
+.TP 
+\fI/proc/sys/fs/epoll\fP (since Linux 2.6.28)
+该目录包含文件 \fImax_user_watches\fP，可用于限制 \fIepoll\fP 接口消耗的内核内存量。 有关详细信息，请参见
+\fBepoll\fP(7)。
+.TP 
+\fI/proc/sys/fs/file\-max\fP
+该文件定义了系统范围内所有进程打开文件数的限制。 遇到此限制时失败的系统调用将失败并显示错误 \fBENFILE\fP。 (另请参见
+\fBsetrlimit\fP(2)，进程可以使用它来设置每个进程的限制，\fBRLIMIT_NOFILE\fP，关于它可以打开的文件数。)
+如果您在内核日志中收到大量关于文件句柄用完的错误消息 (打开文件描述) (寻找 "VFS: file\-max limit
+<number> reached")，尝试增加这个值:
+.IP
+.in +4n
+.EX
+回声 100000 > /proc/sys/fs/file\-max
+.EE
+.in
+.IP
+特权进程 (\fBCAP_SYS_ADMIN\fP) 可以覆盖 \fIfile\-max\fP 限制。
+.TP 
+\fI/proc/sys/fs/file\-nr\fP
+这个 (read\-only) 文件包含三个数字: 分配的文件句柄数 (即打开的文件描述数; 参见 \fBopen\fP(2)); 空闲文件句柄的数量;
+和文件句柄的最大数量 (即与 \fI/proc/sys/fs/file\-max\fP) 相同的值)。 如果分配的文件句柄数接近最大值，则应考虑增加最大值。 在
+Linux 2.6 之前，内核分配的文件句柄是动态处理的，但它并没有再次释放它们。 相反，空闲文件句柄被保存在一个列表中以供重新分配; "free
+file handles" 值表示该列表的大小。 大量空闲文件句柄表示打开文件句柄的使用量过去达到峰值。 从 Linux 2.6
+开始，内核确实释放了释放的文件句柄，并且 "free file handles" 值始终为零。
+.TP 
+\fI/proc/sys/fs/inode\-max\fP (only present until Linux 2.2)
+此文件包含最大数量的内存 inode。 这个值应该比 \fIfile\-max\fP 中的值大 3\[en] 4 倍，因为 \fIstdin\fP、\fIstdout\fP
+和网络套接字也需要 inode 来处理它们。 当您经常用完 inode 时，您需要增加这个值。
+.IP
+从 Linux 2.4 开始，不再有 inode 数量的静态限制，去掉这个文件。
+.TP 
+\fI/proc/sys/fs/inode\-nr\fP
+该文件包含 \fIinode\-state\fP 的前两个值。
+.TP 
+\fI/proc/sys/fs/inode\-state\fP
+该文件包含七个数字: \fInr_inodes\fP、\fInr_free_inodes\fP、\fIpreshrink\fP 和四个虚拟值 (始终为零)。
+.IP
+.\" This can be slightly more than
+.\" .I inode\-max
+.\" because Linux allocates them one page full at a time.
+\fInr_inodes\fP 是系统分配的 inode 数。 \fInr_free_inodes\fP 表示空闲 inode 的数量。
+.IP
+当 \fInr_inodes\fP > \fIinode\-max\fP 和系统需要修剪 inode 列表而不是分配更多时，\fIpreshrink\fP 为非零;
+自 Linux 2.4 起，此字段为虚拟值 (始终为零)。
+.TP 
+\fI/proc/sys/fs/inotify\fP (since Linux 2.6.13)
+此目录包含文件 \fImax_queued_events\fP、\fImax_user_instances\fP 和
+\fImax_user_watches\fP，可用于限制 \fIinotify\fP 接口消耗的内核内存量。 有关详细信息，请参见 \fBinotify\fP(7)。
+.TP 
+\fI/proc/sys/fs/lease\-break\-time\fP
+此文件指定宽限期，在内核向持有文件租约 (\fBfcntl\fP(2)) 的进程发送信号通知它另一个进程正在等待打开文件后，内核授予该进程宽限期。
+如果租约持有人没有在此宽限期内移除或降级租约，内核将强行终止租约。
+.TP 
+\fI/proc/sys/fs/leases\-enable\fP
+该文件可用于在系统范围内启用或禁用文件租用 (\fBfcntl\fP(2))。 如果此文件包含值 0，则禁用租约。 非零值启用租约。
+.TP 
+\fI/proc/sys/fs/mount\-max\fP (since Linux 4.9)
+.\" commit d29216842a85c7970c536108e093963f02714498
+此文件中的值指定挂载命名空间中可能存在的最大挂载数。 此文件中的默认值为 100,000。
+.TP 
+\fI/proc/sys/fs/mqueue\fP (since Linux 2.6.6)
+该目录包含文件 \fImsg_max\fP、\fImsgsize_max\fP 和 \fIqueues_max\fP，控制 POSIX 消息队列使用的资源。
+有关详细信息，请参见 \fBmq_overview\fP(7)。
+.TP 
+\fI/proc/sys/fs/nr_open\fP (since Linux 2.6.25)
+.\" commit 9cfe015aa424b3c003baba3841a60dd9b5ad319b
+该文件对 \fBRLIMIT_NOFILE\fP 资源限制可以提高到的值施加了上限 (请参见 \fBgetrlimit\fP(2)).
+非特权进程和特权进程都强制执行此上限。 此文件中的默认值为 1048576。 (在 Linux 2.6.25 之前，\fBRLIMIT_NOFILE\fP
+的上限被硬编码为相同的值。)
+.TP 
+\fI/proc/sys/fs/overflowgid\fP and \fI/proc/sys/fs/overflowuid\fP
+这些文件允许您更改固定 UID 和 GID 的值。 默认值为 65534。 一些文件系统仅支持 16 位 UID 和 GID，尽管在 Linux 中
+UID 和 GID 是 32 位。 当其中一个文件系统在启用写入的情况下挂载时，任何超过 65535 的 UID 或 GID
+都会在写入磁盘之前转换为溢出值。
+.TP 
+\fI/proc/sys/fs/pipe\-max\-size\fP (since Linux 2.6.35)
+请参见 \fBpipe\fP(7)。
+.TP 
+\fI/proc/sys/fs/pipe\-user\-pages\-hard\fP (since Linux 4.5)
+请参见 \fBpipe\fP(7)。
+.TP 
+\fI/proc/sys/fs/pipe\-user\-pages\-soft\fP (since Linux 4.5)
+请参见 \fBpipe\fP(7)。
+.TP 
+\fI/proc/sys/fs/protected_fifos\fP (since Linux 4.19)
+此文件中的值 is/can 被设置为以下之一:
+.RS
+.TP  4
+0
+写入 FIFO 不受限制。
+.TP 
+1
+不允许在世界可写粘性目录中调用者不拥有所有权的 FIFO 上的 \fBO_CREAT\fP \fBopen\fP(2)，除非 FIFO 由目录所有者拥有。
+.TP 
+2
+至于值 1，但该限制也适用于组可写的粘性目录。
+.RE
+.IP
+上述保护的目的是避免在程序预期创建常规文件时无意中写入攻击者控制的 FIFO。
+.TP 
+\fI/proc/sys/fs/protected_hardlinks\fP (since Linux 3.6)
+.\" commit 800179c9b8a1e796e441674776d11cd4c05d61d7
+当这个文件中的值为 0 时，不限制创建硬链接 (即，这是 Linux 3.6 之前的历史行为)。 当此文件中的值为 1
+时，仅当以下条件之一为真时，才能创建到目标文件的硬链接:
+.RS
+.IP \[bu] 3
+调用进程在其用户命名空间中具有 \fBCAP_FOWNER\fP 功能，文件 UID 在命名空间中具有映射。
+.IP \[bu]
+创建链接的进程的文件系统 UID 与目标文件的所有者 (UID) 匹配 (如 \fBcredentials\fP(7) 中所述，进程的文件系统 UID
+通常与其有效 UID 相同)。
+.IP \[bu]
+以下所有条件都为真:
+.RS 4
+.IP \[bu] 3
+目标是一个普通文件;
+.IP \[bu]
+目标文件没有启用其设置用户 ID 模式位;
+.IP \[bu]
+目标文件没有同时启用其设置组 ID 和组可执行模式位; and
+.IP \[bu]
+调用者有权读取和写入目标文件 (通过文件的权限掩码或因为它具有合适的功能)。
+.RE
+.RE
+.IP
+此文件中的默认值为 0。 将值设置为 1 可以防止由基于硬链接的检查时间、使用时间竞争引起的长期存在的安全问题，最常见于 \fI/tmp\fP
+等世界可写目录中。 利用此缺陷的常用方法是在遵循给定的硬链接时跨越权限边界 (即，根进程遵循另一个用户创建的硬链接)。
+此外，在没有单独分区的系统上，这会阻止未经授权的用户使用 "pinning" 易受攻击的 set\-user\-ID 和 set\-group\-ID
+文件，防止管理员升级或链接到特殊文件。
+.TP 
+\fI/proc/sys/fs/protected_regular\fP (since Linux 4.19)
+此文件中的值 is/can 被设置为以下之一:
+.RS
+.TP  4
+0
+写入常规文件不受限制。
+.TP 
+1
+不允许 \fBO_CREAT\fP \fBopen\fP(2) 调用者在世界可写粘性目录中不拥有所有权的常规文件，除非该常规文件由目录所有者拥有。
+.TP 
+2
+至于值 1，但该限制也适用于组可写的粘性目录。
+.RE
+.IP
+上述保护的目的与 \fIprotected_fifos\fP 类似，但允许应用程序避免写入攻击者控制的常规文件，而应用程序希望在该文件中创建一个文件。
+.TP 
+\fI/proc/sys/fs/protected_symlinks\fP (since Linux 3.6)
+.\" commit 800179c9b8a1e796e441674776d11cd4c05d61d7
+当此文件中的值为 0 时，对后面的符号链接不做任何限制 (即，这是 Linux 3.6 之前的历史行为)。 当此文件中的值为 1
+时，仅在以下情况下跟随符号链接:
+.RS
+.IP \[bu] 3
+链接后进程的文件系统 UID 与符号链接的所有者 (UID) 匹配 (如 \fBcredentials\fP(7) 中所述，进程的文件系统 UID
+通常与其有效 UID 相同) ;
+.IP \[bu]
+该链接不在粘性世界可写目录中; or
+.IP \[bu]
+符号链接及其父目录具有相同的所有者 (UID)
+.RE
+.IP
+由于上述限制而无法遵循符号链接的系统调用在 \fIerrno\fP 中返回错误 \fBEACCES\fP。
+.IP
+此文件中的默认值为 0。 将值设置为 1 可避免在访问符号链接时基于检查时间和使用时间竞争的长期存在的安全问题。
+.TP 
+\fI/proc/sys/fs/suid_dumpable\fP (since Linux 2.6.13)
+.\" The following is based on text from Documentation/sysctl/kernel.txt
+在 \fBprctl\fP(2) 中描述的情况下，此文件中的值被分配给进程的 "dumpable" 标志。 实际上，此文件中的值决定了核心转储文件是为
+set\-user\-ID 还是 protected/tainted 二进制文件生成的。 如上所述，"dumpable" 设置还会影响进程的
+\fI/proc/\fPpid 目录中文件的所有权。
+.IP
+可以指定三个不同的整数值:
+.RS
+.TP 
+\fI0\ (default)\fP
+.\" In kernel source: SUID_DUMP_DISABLE
+这提供了传统的 (Linux 2.6.13 之前的) 行为。 不会为已更改凭据 (通过调用 \fBseteuid\fP(2)、\fBsetgid\fP(2)
+或类似程序，或通过执行 set\-user\-ID 或 set\-group\-ID 程序) 或其二进制文件未启用读取权限的进程生成核心转储.
+.TP 
+\fI1\ ("debug")\fP
+.\" In kernel source: SUID_DUMP_USER
+所有进程都尽可能转储核心。 (\fBcore\fP(5).) 中描述了进程可能仍然不转储核心的原因。核心转储由转储进程的文件系统用户 ID
+拥有，并且不应用任何安全措施。 这仅适用于系统调试情况: 此模式不安全，因为它允许非特权用户检查特权进程的内存内容。
+.TP 
+\fI2\ ("suidsafe")\fP
+.\" In kernel source: SUID_DUMP_ROOT
+任何通常不会被转储的二进制文件 (参见上面的 "0") 被转储为只能由 root 读取。 这允许用户删除核心转储文件但不能读取它。
+出于安全原因，此模式下的核心转储不会相互覆盖或覆盖其他文件。 当管理员试图在正常环境中调试问题时，此模式是合适的。
+.IP
+.\" 9520628e8ceb69fa9a4aee6b57f22675d9e1b709
+.\" 54b501992dd2a839e94e76aa392c392b55080ce8
+此外，由于 Linux 3.6，\fI/proc/sys/kernel/core_pattern\fP 必须是绝对路径名或管道命令，如 \fBcore\fP(5)
+中所述。 如果 \fIcore_pattern\fP 不遵循这些规则，警告将写入内核日志，并且不会产生核心转储。
+.RE
+.IP
+有关进程的 "dumpable" 设置对 ptrace 访问模式检查的影响的详细信息，请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/sys/fs/super\-max\fP
+该文件控制超级块的最大数量，因此内核可以拥有所有权的最大挂载文件系统数量。 如果您需要挂载比 \fIsuper\-max\fP
+中的当前值允许的更多的文件系统，则只需增加 \fIsuper\-max\fP。
+.TP 
+\fI/proc/sys/fs/super\-nr\fP
+该文件包含当前安装的文件系统的数量。
+.TP 
+\fI/proc/sys/kernel\fP
+该目录包含控制一系列内核参数的文件，如下所述。
+.TP 
+\fI/proc/sys/kernel/acct\fP
+该文件包含三个数字: \fIhighwater\fP、\fIlowwater\fP 和 \fIfrequency\fP。 如果启用了 BSD
+风格的进程记帐，这些值将控制其行为。 如果日志所在的文件系统上的可用空间低于 \fIlowwater\fP%，记帐将暂停。 如果可用空间超过
+\fIhighwater\fP%，记帐将恢复。 \fIfrequency\fP 确定内核检查可用空间量的频率 (值以秒为单位)。 默认值为 4、2 和 30。
+即如果空闲空间小于或等于 2%，则暂停计费; 如果有 4% 或更多的可用空间，则恢复它; 考虑有关 30 秒有效的可用空间量的信息。
+.TP 
+\fI/proc/sys/kernel/auto_msgmni\fP (Linux 2.6.27 to Linux 3.18)
+.\" commit 9eefe520c814f6f62c5d36a2ddcd3fb99dfdb30e (introduces feature)
+.\" commit 0050ee059f7fc86b1df2527aaa14ed5dc72f9973 (rendered redundant)
+从 Linux 2.6.27 到 Linux 3.18，此文件用于控制在添加或删除内存时或在 IPC 命名空间 creation/removal
+上重新计算 \fI/proc/sys/kernel/msgmni\fP 中的值。 将 "1" 回显到此文件中启用 \fImsgmni\fP 自动重新计算
+(并根据当前可用内存量和 IPC 命名空间数量触发 \fImsgmni\fP 的重新计算)。 回显 "0" 禁用自动重新计算。 (如果一个值明确分配给
+\fI/proc/sys/kernel/msgmni\fP.)，自动重新计算也被禁用。\fIauto_msgmni\fP 中的默认值为 1.
+.IP
+.\" FIXME Must document the 3.19 'msgmni' changes.
+从 Linux 3.19 开始，这个文件的内容没有影响 (因为 \fImsgmni\fP 默认接近可能的最大值)，从这个文件读取总是返回值 "0"。
+.TP 
+\fI/proc/sys/kernel/cap_last_cap\fP (since Linux 3.2)
+请参见 \fBcapabilities\fP(7)。
+.TP 
+\fI/proc/sys/kernel/cap\-bound\fP (from Linux 2.2 to Linux 2.6.24)
+该文件保存内核 \fIcapability bounding set\fP 的值 (表示为带符号的十进制数)。 该集合与 \fBexecve\fP(2)
+期间进程允许的功能进行 AND 运算。 从 Linux 2.6.25 开始，系统范围的能力边界集消失了，取而代之的是每线程边界集; 请参见
+\fBcapabilities\fP(7)。
+.TP 
+\fI/proc/sys/kernel/core_pattern\fP
+请参见 \fBcore\fP(5)。
+.TP 
+\fI/proc/sys/kernel/core_pipe_limit\fP
+请参见 \fBcore\fP(5)。
+.TP 
+\fI/proc/sys/kernel/core_uses_pid\fP
+请参见 \fBcore\fP(5)。
+.TP 
+\fI/proc/sys/kernel/ctrl\-alt\-del\fP
+该文件控制键盘上 Ctrl\-Alt\-Del 的处理。 当此文件中的值为 0 时，Ctrl\-Alt\-Del 将被捕获并发送到 \fBinit\fP(1)
+程序以处理从容重启。 当该值大于零时，Linux 对 Vulcan Nerve Pinch (tm) 的反应将是 immediate
+重启，甚至不同步其脏缓冲区。 注意: 当一个程序 (如 dosemu) 的键盘处于 "raw" 模式时，ctrl\-alt\-del 在它到达内核 tty
+层之前被程序拦截，并且由程序决定如何处理它。
+.TP 
+\fI/proc/sys/kernel/dmesg_restrict\fP (since Linux 2.6.37)
+.\" commit 620f6e8e855d6d447688a5f67a4e176944a084e8
+该文件中的值决定了谁可以看到内核系统日志内容。 此文件中的值 0 不施加任何限制。 如果值为 1，则只有特权用户才能读取内核系统日志。
+(有关详细信息，请参见 \fBsyslog\fP(2)。) 从 Linux 3.4 开始，只有具有 \fBCAP_SYS_ADMIN\fP
+能力的用户才能更改此文件中的值。
+.TP 
+\fI/proc/sys/kernel/domainname\fP and \fI/proc/sys/kernel/hostname\fP
+可用于设置 NIS/YP 域名和 box 的主机名，其方式与命令 \fBdomainname\fP(1) 和 \fBhostname\fP(1) 完全相同，即:
+.IP
+.in +4n
+.EX
+#\fB echo \[aq]darkstar\[aq] > /proc/sys/kernel/hostname\fP
+#\fB echo \[aq]mydomain\[aq] > /proc/sys/kernel/domainname\fP
+.EE
+.in
+.IP
+具有相同的效果
+.IP
+.in +4n
+.EX
+#\fB hostname \[aq]darkstar\[aq]\fP
+#\fB domainname \[aq]mydomain\[aq]\fP
+.EE
+.in
+.IP
+但是请注意，经典的 darkstar.frop.org 具有主机名 "darkstar" 和 DNS (互联网域名服务器) 域名
+"frop.org"，不要与 NIS (网络信息服务) 或 YP (黄页) 域名混淆。 这两个域名通常是不同的。 有关详细讨论，请参见
+\fBhostname\fP(1) 手册页。
+.TP 
+\fI/proc/sys/kernel/hotplug\fP
+该文件包含热插拔策略代理的路径名。 此文件中的默认值为 \fI/sbin/hotplug\fP。
+.TP 
+.\" Removed in commit 87f504e5c78b910b0c1d6ffb89bc95e492322c84 (tglx/history.git)
+\fI/proc/sys/kernel/htab\-reclaim\fP (before Linux 2.4.9.2)
+.\" removed in commit 1b483a6a7b2998e9c98ad985d7494b9b725bd228, before Linux 2.6.28
+(仅限 PowerPC) 如果此文件设置为非零值，则 PowerPC htab (请参见内核文件
+\fIDocumentation/powerpc/ppc_htab.txt\fP)) 每次系统进入空闲循环时都会被删除。
+.TP 
+\fI/proc/sys/kernel/keys/*\fP
+该目录包含各种文件，这些文件定义了密钥管理工具的参数和限制。 这些文件在 \fBkeyrings\fP(7) 中进行了描述。
+.TP 
+\fI/proc/sys/kernel/kptr_restrict\fP (since Linux 2.6.38)
+.\" 455cd5ab305c90ffc422dd2e0fb634730942b257
+.\" commit 411f05f123cbd7f8aa1edcae86970755a6e2a9d9
+.\" commit 620f6e8e855d6d447688a5f67a4e176944a084e8
+该文件中的值确定内核地址是否通过 \fI/proc\fP 文件和其他接口公开。 此文件中的值 0 不施加任何限制。 如果该值为 1，则使用 \fI%pK\fP
+格式说明符打印的内核指针将被替换为零，除非用户具有 \fBCAP_SYSLOG\fP 功能。 如果该值为 2，则无论用户的能力如何，使用 \fI%pK\fP
+格式说明符打印的内核指针都将替换为零。 该文件的初始默认值为 1，但在 Linux 2.6.39 中默认值已更改为 0。 从 Linux 3.4
+开始，只有具有 \fBCAP_SYS_ADMIN\fP 能力的用户才能更改此文件中的值。
+.TP 
+\fI/proc/sys/kernel/l2cr\fP
+(仅限 PowerPC) 此文件包含一个标志，用于控制 G3 处理器板的 L2 缓存。 如果为 0，则禁用缓存。 如果非零则启用。
+.TP 
+\fI/proc/sys/kernel/modprobe\fP
+该文件包含内核模块加载程序的路径名。 默认值为 \fI/sbin/modprobe\fP。 只有在启用了 \fBCONFIG_MODULES\fP
+(\fBCONFIG_KMOD\fP in Linux 2.6.26 和更早版本选项的情况下构建内核时，该文件才会存在。 它由 Linux 内核源文件
+\fIDocumentation/kmod.txt\fP (仅存在于 Linux 2.4 及更早版本中) 描述。
+.TP 
+\fI/proc/sys/kernel/modules_disabled\fP (since Linux 2.6.31)
+.\" 3d43321b7015387cfebbe26436d0e9d299162ea1
+.\" From Documentation/sysctl/kernel.txt
+一个切换值，指示是否允许在其他模块化内核中加载模块。 此切换默认为关闭 (0)，但可以设置为真 (1)。 一旦为
+true，模块既不能加载也不能卸载，并且切换不能设置回 false。 只有在启用 \fBCONFIG_MODULES\fP
+选项的情况下构建内核时，该文件才会存在。
+.TP 
+\fI/proc/sys/kernel/msgmax\fP (since Linux 2.2)
+该文件定义了系统范围的限制，指定写入 System V 消息队列的单个消息的最大字节数。
+.TP 
+\fI/proc/sys/kernel/msgmni\fP (since Linux 2.4)
+该文件定义了系统范围内消息队列标识符数量的限制。 另请详见 \fI/proc/sys/kernel/auto_msgmni\fP。
+.TP 
+\fI/proc/sys/kernel/msgmnb\fP (since Linux 2.2)
+该文件定义了一个系统范围的参数，用于为随后创建的消息队列初始化 \fImsg_qbytes\fP 设置。 \fImsg_qbytes\fP
+设置指定可以写入消息队列的最大字节数。
+.TP 
+\fI/proc/sys/kernel/ngroups_max\fP (since Linux 2.6.4)
+这是一个只读文件，显示进程组成员数量的上限。
+.TP 
+\fI/proc/sys/kernel/ns_last_pid\fP (since Linux 3.3)
+请参见 \fBpid_namespaces\fP(7)。
+.TP 
+\fI/proc/sys/kernel/ostype\fP and \fI/proc/sys/kernel/osrelease\fP
+这些文件给出了 \fI/proc/version\fP 的子字符串。
+.TP 
+\fI/proc/sys/kernel/overflowgid\fP and \fI/proc/sys/kernel/overflowuid\fP
+这些文件复制文件 \fI/proc/sys/fs/overflowgid\fP 和 \fI/proc/sys/fs/overflowuid\fP。
+.TP 
+\fI/proc/sys/kernel/panic\fP
+该文件使 read/write 可以访问内核变量 \fIpanic_timeout\fP。 如果这是零，内核将在 panic 中循环;
+如果非零，则表示内核应在此秒数后自动重启。 当您使用软件看门狗设备驱动程序时，建议设置为 60。
+.TP 
+\fI/proc/sys/kernel/panic_on_oops\fP (since Linux 2.5.68)
+当遇到 oops 或 BUG 时，该文件控制内核的行为。 如果此文件包含 0，则系统会尝试继续操作。 如果它包含 1，那么系统会延迟几秒钟 (让
+klogd 有时间记录 oops 输出) 然后出现 panic。 如果 \fI/proc/sys/kernel/panic\fP
+文件也不为零，则机器将重新启动。
+.TP 
+\fI/proc/sys/kernel/pid_max\fP (since Linux 2.5.34)
+.\" Prior to Linux 2.6.10, pid_max could also be raised above 32768 on 32-bit
+.\" platforms, but this broke /proc/[pid]
+.\" See http://marc.theaimsgroup.com/?l=linux-kernel&m=109513010926152&w=2
+该文件指定 PID 环绕的值 (即，该文件中的值比最大 PID 大 1)。 不分配大于此值的 PID;
+因此，此文件中的值也作为系统范围内对进程和线程总数的限制。 该文件的默认值 32768 产生与早期内核相同的 PID 范围。 在 32
+位平台上，32768 是 \fIpid_max\fP 的最大值。 在 64 位系统上，\fIpid_max\fP 可以设置为最大 2\[ha] 22
+(\fBPID_MAX_LIMIT\fP，大约 400 万) 的任意值。
+.TP 
+\fI/proc/sys/kernel/powersave\-nap\fP (PowerPC only)
+该文件包含一个标志。 如果设置，Linux\-PPC 将使用 "nap" 省电模式，否则将使用 "doze" 模式。
+.TP 
+\fI/proc/sys/kernel/printk\fP
+请参见 \fBsyslog\fP(2)。
+.TP 
+\fI/proc/sys/kernel/pty\fP (since Linux 2.6.4)
+该目录包含两个与 UNIX 98 伪终端数量相关的文件 (参见系统上的 \fBpts\fP(4)).
+.TP 
+\fI/proc/sys/kernel/pty/max\fP
+.\" FIXME Document /proc/sys/kernel/pty/reserve
+.\"     New in Linux 3.3
+.\"     commit e9aba5158a80098447ff207a452a3418ae7ee386
+该文件定义了伪终端的最大数量。
+.TP 
+\fI/proc/sys/kernel/pty/nr\fP
+这个只读文件指示当前使用了多少个伪终端。
+.TP 
+\fI/proc/sys/kernel/random\fP
+该目录包含控制文件 \fI/dev/random\fP 操作的各种参数。 有关详细信息，请参见 \fBrandom\fP(4)。
+.TP 
+\fI/proc/sys/kernel/random/uuid\fP (since Linux 2.4)
+每次读取此只读文件都会返回一个随机生成的 128 位 UUID，作为标准 UUID 格式的字符串。
+.TP 
+\fI/proc/sys/kernel/randomize_va_space\fP (since Linux 2.6.12)
+.\" Some further details can be found in Documentation/sysctl/kernel.txt
+为系统选择地址空间布局随机化 (ASLR) 策略 (在支持 ASLR 的体系结构上)。 此文件支持三个值:
+.RS
+.TP 
+\fB0\fP
+关闭 ASLR。 这是不支持 ASLR 的体系结构的默认值，并且当内核使用 \fInorandmaps\fP 参数启动时。
+.TP 
+\fB1\fP
+使 \fBmmap\fP(2) 分配地址、栈和 VDSO 页随机化。 除其他事项外，这意味着共享库将加载到随机地址。 PIE
+链接二进制文件的文本段也将加载到随机地址。 如果内核配置了 \fBCONFIG_COMPAT_BRK\fP，则此值为默认值。
+.TP 
+\fB2\fP
+.\" commit c1d171a002942ea2d93b4fbd0c9583c56fce0772
+(自 Linux 2.6.25 起) 还支持堆随机化。 如果内核未配置 \fBCONFIG_COMPAT_BRK\fP，则此值为默认值。
+.RE
+.TP 
+\fI/proc/sys/kernel/real\-root\-dev\fP
+.\" commit 9d85025b0418163fae079c9ba8f8445212de8568
+该文件记录在 Linux 内核源文件 \fIDocumentation/admin\-guide/initrd.rst\fP (或 Linux 4.10 之前的
+\fIDocumentation/initrd.txt\fP) 中。
+.TP 
+\fI/proc/sys/kernel/reboot\-cmd\fP (Sparc only)
+这个文件似乎是给 SPARC ROM/Flash 引导装载程序一个参数的方法。 也许告诉它重启后做什么?
+.TP 
+\fI/proc/sys/kernel/rtsig\-max\fP
+(直至并包括 Linux 2.6.7; 参见 \fBsetrlimit\fP(2)) 此文件可用于调整系统中可突出的 POSIX 实时 (queued)
+信号的最大数量。
+.TP 
+\fI/proc/sys/kernel/rtsig\-nr\fP
+(直至并包括 Linux 2.6.7。) 此文件显示当前排队的 POSIX 实时信号的数量。
+.TP 
+\fI/proc/\fPpid\fI/sched_autogroup_enabled\fP (since Linux 2.6.38)
+.\" commit 5091faa449ee0b7d73bc296a93bca9540fc51d0a
+请参见 \fBsched\fP(7)。
+.TP 
+\fI/proc/sys/kernel/sched_child_runs_first\fP (since Linux 2.6.23)
+如果这个文件包含值零，那么在 \fBfork\fP(2) 之后，父进程首先被调度到 CPU 上。 如果该文件包含一个非零值，则子进程将首先在 CPU
+上进行调度。 (当然，在多处理器系统上，父进程和子进程可能都立即被调度到一个 CPU 上。)
+.TP 
+\fI/proc/sys/kernel/sched_rr_timeslice_ms\fP (since Linux 3.9)
+请参见 \fBsched_rr_get_interval\fP(2)。
+.TP 
+\fI/proc/sys/kernel/sched_rt_period_us\fP (since Linux 2.6.25)
+请参见 \fBsched\fP(7)。
+.TP 
+\fI/proc/sys/kernel/sched_rt_runtime_us\fP (since Linux 2.6.25)
+请参见 \fBsched\fP(7)。
+.TP 
+\fI/proc/sys/kernel/seccomp\fP (since Linux 4.14)
+.\" commit 8e5f1ad116df6b0de65eac458d5e7c318d1c05af
+此目录提供额外的 seccomp 信息和配置。 有关详细信息，请参见 \fBseccomp\fP(2)。
+.TP 
+\fI/proc/sys/kernel/sem\fP (since Linux 2.4)
+该文件包含 4 个定义 System V IPC 信号量限制的数字。 这些字段按顺序是:
+.RS
+.TP 
+SEMMSL
+每个信号量集的最大信号量。
+.TP 
+SEMMNS
+对所有信号量集中的信号量数量的系统范围限制。
+.TP 
+SEMOPM
+可以在 \fBsemop\fP(2) 调用中指定的最大操作数。
+.TP 
+SEMMNI
+系统范围内对信号量标识符最大数量的限制。
+.RE
+.TP 
+\fI/proc/sys/kernel/sg\-big\-buff\fP
+此文件显示泛型 SCSI 设备 (sg) 缓冲区的大小。 您现在还不能调整它，但您可以在编译时通过编辑 \fIinclude/scsi/sg.h\fP 和更改
+\fBSG_BIG_BUFF\fP 的值来更改它。 但是，不应有任何理由更改此值。
+.TP 
+\fI/proc/sys/kernel/shm_rmid_forced\fP (since Linux 3.1)
+.\" commit b34a6b1da371ed8af1221459a18c67970f7e3d53
+.\" See also Documentation/sysctl/kernel.txt
+如果此文件设置为 1，则一旦附加进程数降为零，所有 System V 共享内存段将被标记为销毁;
+换句话说，不再可能创建独立于任何附加进程而存在的共享内存段。
+.IP
+效果就像对所有现有段以及在 future 中创建的所有段执行 \fBshmctl\fP(2) \fBIPC_RMID\fP (直到此文件重置为 0)。
+请注意，当此文件设置为 1 时，不附加到任何进程的现有段将立即被销毁。 设置此选项还将在使用 \fBshmget\fP(2)
+创建段的进程终止时销毁已创建但从未附加的段。
+.IP
+将此文件设置为 1 提供了一种确保所有 System V 共享内存段都被计入资源使用和资源限制的方法 (请参见至少一个进程的
+\fBgetrlimit\fP(2)) 中的 \fBRLIMIT_AS\fP 的描述。
+.IP
+因为将此文件设置为 1 会产生非标准行为并且可能会破坏现有应用程序，所以此文件中的默认值为 0。 仅当您很好地理解系统上使用 System V
+共享内存的应用程序的语义时，才将此文件设置为 1。
+.TP 
+\fI/proc/sys/kernel/shmall\fP (since Linux 2.2)
+该文件包含系统范围内对 System V 共享内存页面总数的限制。
+.TP 
+\fI/proc/sys/kernel/shmmax\fP (since Linux 2.2)
+该文件可用于查询和设置可创建的最大 (System V IPC) 共享内存段大小的运行时限制。 内核现在支持最大 1 GB 的共享内存段。 该值默认为
+\fBSHMMAX\fP。
+.TP 
+\fI/proc/sys/kernel/shmmni\fP (since Linux 2.4)
+该文件指定了系统范围内可以创建的 System V 共享内存段的最大数量。
+.TP 
+\fI/proc/sys/kernel/sysctl_writes_strict\fP (since Linux 3.16)
+.\" commit f88083005ab319abba5d0b2e4e997558245493c8
+.\" commit 2ca9bb456ada8bcbdc8f77f8fc78207653bbaa92
+.\" commit f4aacea2f5d1a5f7e3154e967d70cf3f711bcd61
+.\" commit 24fe831c17ab8149413874f2fd4e5c8a41fcd294
+此文件中的值确定文件偏移量如何影响更新 \fI/proc/sys\fP 下文件中条目的行为。 该文件具有三个可能的值:
+.RS
+.TP  4
+\-1
+这提供了遗留处理，没有 printk 警告。 每个 \fBwrite\fP(2)
+必须完全包含要写入的值，对同一文件描述符的多次写入将覆盖整个值，无论文件位置如何。
+.TP 
+0
+(default) 这提供了与 \-1 相同的行为，但是 printk 警告是为在文件偏移量不正确时执行写入的进程编写的 0.
+.TP 
+1
+.\" FIXME .
+.\"     With /proc/sys/kernel/sysctl_writes_strict==1, writes at an
+.\"     offset other than 0 do not generate an error. Instead, the
+.\"     write() succeeds, but the file is left unmodified.
+.\"     This is surprising. The behavior may change in the future.
+.\"     See thread.gmane.org/gmane.linux.man/9197
+.\"		From: Michael Kerrisk (man-pages <mtk.manpages@...>
+.\"		Subject: sysctl_writes_strict documentation + an oddity?
+.\"		Newsgroups: gmane.linux.man, gmane.linux.kernel
+.\"		Date: 2015-05-09 08:54:11 GMT
+将字符串写入 \fI/proc/sys\fP 文件时注意文件偏移量。 多次写入会将 \fIappend\fP 写入值缓冲区。
+任何超出值缓冲区最大长度的写入都将被忽略。 对数字 \fI/proc/sys\fP 条目的写入必须始终位于文件偏移量 0 处，并且该值必须完全包含在提供给
+\fBwrite\fP(2) 的缓冲区中。
+.RE
+.TP 
+\fI/proc/sys/kernel/sysrq\fP
+该文件控制允许被 SysRq 键调用的函数。 默认情况下，该文件包含 1 表示允许每个可能的 SysRq 请求 (在旧内核版本中，SysRq
+默认被禁用，并且您需要在运行时专门启用它，但现在不再是这种情况)。 此文件中的可能值为:
+.RS
+.TP  5
+0
+完全禁用 sysrq
+.TP 
+1
+启用 sysrq 的所有函数
+.TP 
+> 1
+允许的 sysrq 函数的位掩码，如下:
+.PD 0
+.RS
+.TP  5
+\ \ 2
+启用对控制台日志记录级别的控制
+.TP 
+\ \ 4
+启用键盘控制 (SAK，unraw)
+.TP 
+\ \ 8
+启用进程的调试转储等。
+.TP 
+\ 16
+启用同步命令
+.TP 
+\ 32
+启用重新挂载只读
+.TP 
+\ 64
+启用进程信号 (term、kill、oom\-kill)
+.TP 
+128
+允许 reboot/poweroff
+.TP 
+256
+允许 nicing 所有实时任务
+.RE
+.PD
+.RE
+.IP
+.\" commit 9d85025b0418163fae079c9ba8f8445212de8568
+仅当启用 \fBCONFIG_MAGIC_SYSRQ\fP 内核配置选项时才会出现此文件。 有关详细信息，请参见 Linux 内核源文件
+\fIDocumentation/admin\-guide/sysrq.rst\fP (或 Linux 4.10 之前的
+\fIDocumentation/sysrq.txt\fP)。
+.TP 
+\fI/proc/sys/kernel/version\fP
+该文件包含一个字符串，例如:
+.IP
+.in +4n
+.EX
+#5 1998 年 2 月 25 日星期三 21:49:24 MET
+.EE
+.in
+.IP
+"#5" 表示这是从该源代码库构建的第五个内核，紧随其后的日期表示构建内核的时间。
+.TP 
+\fI/proc/sys/kernel/threads\-max\fP (since Linux 2.3.11)
+.\" The following is based on Documentation/sysctl/kernel.txt
+该文件指定系统范围内可在系统上创建的线程数 (tasks) 的限制。
+.IP
+.\" commit 230633d109e35b0a24277498e773edeb79b4a331
+自 Linux 4.1 起，可写入 \fIthreads\-max\fP 的值是有界的。 可写入的最小值为 20。 可写入的最大值由常量
+\fBFUTEX_TID_MASK\fP (0x3fffffff) 给定。 如果将超出此范围的值写入 \fIthreads\-max\fP，则会发生错误
+\fBEINVAL\fP。
+.IP
+根据可用的 RAM 页检查写入的值。 如果线程结构占用过多 (超过 1/8th) 可用 RAM 页，则 \fIthreads\-max\fP 会相应减少。
+.TP 
+\fI/proc/sys/kernel/yama/ptrace_scope\fP (since Linux 3.5)
+请参见 \fBptrace\fP(2)。
+.TP 
+\fI/proc/sys/kernel/zero\-paged\fP (PowerPC only)
+该文件包含一个标志。 当启用 (nonzero) 时，Linux\-PPC 将在空闲循环中预置零页面，可能会加速 get_free_pages。
+.TP 
+\fI/proc/sys/net\fP
+该目录包含网络内容。 该目录下部分文件的说明见 \fBtcp\fP(7) 和 \fBip\fP(7)。
+.TP 
+\fI/proc/sys/net/core/bpf_jit_enable\fP
+请参见 \fBbpf\fP(2)。
+.TP 
+\fI/proc/sys/net/core/somaxconn\fP
+该文件为 \fBlisten\fP(2) 的 \fIbacklog\fP 参数定义了一个上限值; 有关详细信息，请参见 \fBlisten\fP(2) 手册页。
+.TP 
+\fI/proc/sys/proc\fP
+该目录可能为空。
+.TP 
+\fI/proc/sys/sunrpc\fP
+该目录支持网络文件系统 (NFS) 的 Sun 远程程序调用。 在某些系统上，它不存在。
+.TP 
+\fI/proc/sys/user\fP (since Linux 4.9)
+请参见 \fBnamespaces\fP(7)。
+.TP 
+\fI/proc/sys/vm\fP
+此目录包含用于内存管理调整、缓冲区和高速缓存管理的文件。
+.TP 
+\fI/proc/sys/vm/admin_reserve_kbytes\fP (since Linux 3.10)
+.\" commit 4eeab4f5580d11bffedc697684b91b0bca0d5009
+此文件定义系统上应为具有 \fBCAP_SYS_ADMIN\fP 功能的用户保留的可用内存量 (以 KiB 为单位)。
+.IP
+此文件中的默认值是 [3% of free pages, 8MiB] 的最小值，以 KiB 表示。
+默认值旨在为超级用户提供足够的登录和终止进程，如有必要，在默认的过量使用 'guess' 模式下 (即
+\fI/proc/sys/vm/overcommit_memory\fP).0 中的 0)。
+.IP
+以 "overcommit never" 模式运行的系统 (即 \fI/proc/sys/vm/overcommit_memory\fP) 中的 2
+应增加此文件中的值以说明用于恢复的程序的完整虚拟内存大小 (例如，\fBlogin\fP(1) \fBssh\fP(1) 和 \fBtop\fP(1))
+否则，超级用户可能无法登录进入恢复系统。 例如，在 x86\-64 上，合适的值为 131072 (保留 128MiB)。
+.IP
+只要应用程序请求内存，更改此文件中的值就会生效。
+.TP 
+\fI/proc/sys/vm/compact_memory\fP (since Linux 2.6.35)
+当 1 写入此文件时，所有区域都被压缩，以便在可能的情况下在连续块中提供可用内存。 通过检查 \fI/proc/buddyinfo\fP
+可以看出此操作的效果。
+.IP
+仅当内核配置有 \fBCONFIG_COMPACTION\fP 时才存在。
+.TP 
+\fI/proc/sys/vm/drop_caches\fP (since Linux 2.6.16)
+写入此文件会导致内核丢弃内存中的缓存、目录和索引节点，从而使内存变为空闲。 这对于内存管理测试和执行可重现的文件系统基准测试很有用。
+因为写入此文件会导致缓存的好处丧失，它会降低整体系统性能。
+.IP
+要释放页面缓存，请使用:
+.IP
+.in +4n
+.EX
+回声 1 > /proc/sys/vm/drop_caches
+.EE
+.in
+.IP
+要释放 dentry 和 inode，请使用:
+.IP
+.in +4n
+.EX
+回声 2 > /proc/sys/vm/drop_caches
+.EE
+.in
+.IP
+要释放 pagecache、dentry 和 inode，请使用:
+.IP
+.in +4n
+.EX
+回声 3 > /proc/sys/vm/drop_caches
+.EE
+.in
+.IP
+因为写入这个文件是一个非破坏性的操作，而且脏对象是不可释放的，所以用户应该先运行 \fBsync\fP(1)。
+.TP 
+\fI/proc/sys/vm/sysctl_hugetlb_shm_group\fP (since Linux 2.6.7)
+这个可写文件包含一个允许使用大页面分配内存的组 ID。 如果一个进程有一个文件系统组 ID 或任何与这个组 ID 匹配的补充组 ID，那么它可以在不持有
+\fBCAP_IPC_LOCK\fP 能力的情况下进行大页面分配; 请参见 \fBmemfd_create\fP(2)、\fBmmap\fP(2) 和
+\fBshmget\fP(2)。
+.TP 
+\fI/proc/sys/vm/legacy_va_layout\fP (since Linux 2.6.9)
+.\" The following is from Documentation/filesystems/proc.txt
+如果非零，这将禁用新的 32 位内存映射布局; 内核将为所有进程使用遗留的 (2.4) 布局。
+.TP 
+\fI/proc/sys/vm/memory_failure_early_kill\fP (since Linux 2.6.32)
+.\" The following is based on the text in Documentation/sysctl/vm.txt
+当硬件在后台检测到内核无法处理的未纠正内存错误 (通常是内存模块中的 2 位错误) 时，控制如何终止进程。 在某些情况下
+(比如页面在磁盘上仍有有效副本)，内核将透明地处理故障而不影响任何应用程序。 但是，如果没有其他最新的数据副本，它将终止进程以防止任何数据损坏传播。
+.IP
+该文件具有以下值之一:
+.RS
+.TP 
+\fB1\fP
+一旦检测到损坏，立即终止所有映射了损坏且不可重新加载页面的进程。
+请注意，这不支持少数类型的页面，例如内核内部分配的数据或交换缓存，但适用于大多数用户页面。
+.TP 
+\fB0\fP
+从所有进程中取消映射损坏的页面，并仅在尝试访问该页面时终止进程。
+.RE
+.IP
+杀死是使用 \fBSIGBUS\fP 信号执行的，其中 \fIsi_code\fP 设置为 \fBBUS_MCEERR_AO\fP。 如果他们愿意，流程可以处理这个问题;
+有关详细信息，请参见 \fBsigaction\fP(2)。
+.IP
+此特性仅在具有高级机器检查处理的 architectures/platforms 上有效，并且取决于硬件，特性。
+.IP
+应用程序可以使用 \fBprctl\fP(2) \fBPR_MCE_KILL\fP 操作分别覆盖 \fImemory_failure_early_kill\fP 设置。
+.IP
+仅当内核配置有 \fBCONFIG_MEMORY_FAILURE\fP 时才存在。
+.TP 
+\fI/proc/sys/vm/memory_failure_recovery\fP (since Linux 2.6.32)
+.\" The following is based on the text in Documentation/sysctl/vm.txt
+启用内存故障恢复 (当平台支持时)。
+.RS
+.TP 
+\fB1\fP
+尝试恢复。
+.TP 
+\fB0\fP
+总是对内存故障 panic。
+.RE
+.IP
+仅当内核配置有 \fBCONFIG_MEMORY_FAILURE\fP 时才存在。
+.TP 
+\fI/proc/sys/vm/oom_dump_tasks\fP (since Linux 2.6.25)
+.\" The following is from Documentation/sysctl/vm.txt
+启用在内核执行 OOM 终止时生成系统范围的任务转储 (不包括内核线程)。 dump 包括每个任务 (线程、进程) 的以下信息: 线程 ID、真实用户
+ID、线程组 ID (进程 ID)、虚拟内存大小、驻留集大小、调度任务的 CPU、oom_adj 分数 (参见
+\fI/proc/\fPpid\fI/oom_adj\fP) 和命令名称的说明。 这有助于确定调用 OOM 杀手的原因并识别导致它的流氓任务。
+.IP
+如果它包含值零，则该信息被抑制。 在具有数千个任务的非常大的系统上，转储每个任务的内存状态信息可能不可行。 当可能不需要信息时，不应强迫此类系统在
+OOM 情况下招致性能损失。
+.IP
+如果将其设置为非零值，则只要 OOM\-killer 实际终止占用内存的任务，就会显示此信息。
+.IP
+默认值为 0.
+.TP 
+\fI/proc/sys/vm/oom_kill_allocating_task\fP (since Linux 2.6.24)
+.\" The following is from Documentation/sysctl/vm.txt
+这启用或禁用在内存不足的情况下终止 OOM 触发任务。
+.IP
+如果将其设置为零，OOM\-killer 将扫描整个任务列表并根据启发式选择一个任务来终止。
+这通常会选择一个流氓内存占用任务，该任务在被杀死时会释放大量内存。
+.IP
+如果设置为非零值，OOM\-killer 将简单地杀死触发内存不足情况的任务。 这避免了可能代价高昂的任务列表扫描。
+.IP
+如果 \fI/proc/sys/vm/panic_on_oom\fP 不为零，则它优先于
+\fI/proc/sys/vm/oom_kill_allocating_task\fP 中使用的任何值。
+.IP
+默认值为 0.
+.TP 
+\fI/proc/sys/vm/overcommit_kbytes\fP (since Linux 3.14)
+.\" commit 49f0ce5f92321cdcf741e35f385669a421013cb7
+当 \fI/proc/sys/vm/overcommit_memory\fP 的值为 2 时，此可写文件提供了
+\fI/proc/sys/vm/overcommit_ratio\fP 的替代方案来控制 \fICommitLimit\fP。 它允许将内存过度使用量指定为绝对值
+(以 kB 为单位)，而不是像 \fIovercommit_ratio\fP 那样指定为百分比。 这允许在具有极大内存大小的系统上对
+\fICommitLimit\fP 进行更细粒度的控制。
+.IP
+只有 \fIovercommit_kbytes\fP 或 \fIovercommit_ratio\fP 中的一个会产生影响: 如果
+\fIovercommit_kbytes\fP 具有非零值，则使用它来计算 \fICommitLimit\fP，否则使用 \fIovercommit_ratio\fP。
+向这些文件中的任何一个写入值都会导致另一个文件中的值设置为零。
+.TP 
+\fI/proc/sys/vm/overcommit_memory\fP
+该文件包含内核虚拟内存计费模式。 值为:
+.RS
+.IP
+0: 启发式过度使用 (这是默认设置)
+.br
+1: 总是过度使用，从不检查
+.br
+2: 始终检查，永远不要过度使用
+.RE
+.IP
+mode 0 不检查 \fBmmap\fP(2) 与 \fBMAP_NORESERVE\fP 的调用，默认检查很弱，导致有进程 "OOM\-killed" 的风险。
+.IP
+在模式 1 中，内核假装总是有足够的内存，直到内存实际耗尽。 这种模式的一个用例是使用大型稀疏数组的科学计算应用程序。 在 Linux 2.6.0
+之前，任何非零值都意味着模式 1.
+.IP
+在模式 2 (自 Linux 2.6 起可用) 下，\fI/proc/meminfo\fP) 中 (\fICommitLimit\fP 可分配的总虚拟地址空间计算为
+.IP
+.in +4n
+.EX
+CommitLimit = (total_RAM \- total_huge_TLB) *
+	      overcommit_ratio / 100 + total_swap
+.EE
+.in
+.IP
+where:
+.RS
+.IP \[bu] 3
+\fItotal_RAM\fP 是系统上的 RAM 总量;
+.IP \[bu]
+\fItotal_huge_TLB\fP 是为大页面预留的内存量;
+.IP \[bu]
+\fIovercommit_ratio\fP 为 \fI/proc/sys/vm/overcommit_ratio\fP 中的值; and
+.IP \[bu]
+\fItotal_swap\fP 是交换空间的数量。
+.RE
+.IP
+例如，在具有 16 GB 物理 RAM、16 GB 交换空间、没有大页面专用空间且 \fIovercommit_ratio\fP 为 50
+的系统上，此公式得出的 \fICommitLimit\fP 为 24 GB。
+.IP
+由于 Linux 3.14，如果 \fI/proc/sys/vm/overcommit_kbytes\fP 中的值不为零，则 \fICommitLimit\fP
+计算为:
+.IP
+.in +4n
+.EX
+CommitLimit = overcommit_kbytes + total_swap
+.EE
+.in
+.IP
+另请参见 \fI/proc/sys/vm/admin_reserve_kbytes\fP 和
+\fI/proc/sys/vm/user_reserve_kbytes\fP 的说明。
+.TP 
+\fI/proc/sys/vm/overcommit_ratio\fP (since Linux 2.6.0)
+这个可写文件定义了内存可以被过度使用的百分比。 文件中的默认值为 50。 请参见 \fI/proc/sys/vm/overcommit_memory\fP
+的说明。
+.TP 
+\fI/proc/sys/vm/panic_on_oom\fP (since Linux 2.6.18)
+.\" The following is adapted from Documentation/sysctl/vm.txt
+这会在内存不足的情况下启用或禁用内核 panic。
+.IP
+如果这个文件被设置为值 0，内核的 OOM\-killer 将杀死一些流氓进程。 通常，OOM\-killer 能够杀死流氓进程，系统将继续存在。
+.IP
+如果此文件设置为值 1，则内核通常会在发生内存不足时崩溃。 但是，如果一个进程使用内存策略 (\fBmbind\fP(2) \fBMPOL_BIND\fP) 或
+cpusets (\fBcpuset\fP(7)) 限制分配给某些节点，并且这些节点达到内存耗尽状态，则一个进程可能会被 OOM\-killer 杀死。
+在这种情况下不会发生 panic: 因为其他节点的内存可能是空闲的，这意味着整个系统可能还没有达到内存不足的情况。
+.IP
+如果这个文件被设置为值 2，当出现内存不足的情况时，内核总是会崩溃。
+.IP
+默认值为 0。 1 和 2 用于集群的故障转移。 根据您的故障转移策略进行选择。
+.TP 
+\fI/proc/sys/vm/swappiness\fP
+.\" The following is from Documentation/sysctl/vm.txt
+该文件中的值控制内核交换内存页面的积极程度。 较高的值会增加侵略性，较低的值会降低侵略性。 默认值为 60。
+.TP 
+\fI/proc/sys/vm/user_reserve_kbytes\fP (since Linux 3.10)
+.\" commit c9b1d0981fcce3d9976d7b7a56e4e0503bc610dd
+指定为用户进程保留的内存量 (以 KiB 为单位)。 这是为了防止用户启动单个内存占用进程，这样他们就无法恢复 (杀死内存占用)。 此文件中的值仅在
+\fI/proc/sys/vm/overcommit_memory\fP 设置为 2 ("overcommit never" 模式) 时有效。
+在这种情况下，系统保留的内存量最小为 [当前进程大小的 3%，\fIuser_reserve_kbytes\fP]。
+.IP
+此文件中的默认值是 [3% of free pages, 128MiB] 的最小值，以 KiB 表示。
+.IP
+如果此文件中的值设置为零，则允许用户使用单个进程分配所有空闲内存 (减去 \fI/proc/sys/vm/admin_reserve_kbytes\fP).
+执行命令的任何后续尝试都将导致 "fork: Cannot allocate memory"。
+.IP
+只要应用程序请求内存，更改此文件中的值就会生效。
+.TP 
+\fI/proc/sys/vm/unprivileged_userfaultfd\fP (since Linux 5.2)
+.\" cefdca0a86be517bc390fc4541e3674b8e7803b0
+这个 (writable) 文件公开了一个标志，该标志控制是否允许非特权进程使用 \fBuserfaultfd\fP(2)。 如果此文件的值为
+1，则非特权进程可以使用 \fBuserfaultfd\fP(2)。 如果此文件的值为 0，则只有具有 \fBCAP_SYS_PTRACE\fP 能力的进程才能使用
+\fBuserfaultfd\fP(2)。 该文件中的默认值为 1.
+.TP 
+\fI/proc/sysrq\-trigger\fP (since Linux 2.4.21)
+.\" commit 9d85025b0418163fae079c9ba8f8445212de8568
+向该文件写入一个字符会触发与键入 ALT\-SysRq\-<character> 相同的 SysRq 函数 (请参见
+\fI/proc/sys/kernel/sysrq\fP) 的说明。 该文件通常只能由 \fIroot\fP 写入。 有关详细信息，请参见 Linux 内核源文件
+\fIDocumentation/admin\-guide/sysrq.rst\fP (或 Linux 4.10 之前的
+\fIDocumentation/sysrq.txt\fP)。
+.TP 
+\fI/proc/sysvipc\fP
+包含伪文件 \fImsg\fP、\fIsem\fP 和 \fIshm\fP 的子目录。 这些文件列出了系统中当前存在的 System V 进程间通信 (IPC) 对象
+(分别为: 消息队列、信号量和共享内存)，提供与通过 \fBipcs\fP(1) 可用的信息类似的信息。 这些文件具有标题并经过格式化 (每行一个 IPC
+对象) 以便于理解。 \fBsysvipc\fP(7) 提供了这些文件所显示信息的更多背景信息。
+.TP 
+\fI/proc/thread\-self\fP (since Linux 3.17)
+.\" commit 0097875bd41528922fb3bb5f348c53f17e00e2fd
+该目录指访问 \fI/proc\fP 文件系统的线程，与同一线程的进程线程 ID (\fItid\fP) 命名的 \fI/proc/self/task/\fPtid
+目录相同。
+.TP 
+\fI/proc/timer_list\fP (since Linux 2.6.21)
+.\" commit 289f480af87e45f7a6de6ba9b4c061c2e259fe98
+这个只读文件以人类可读的形式公开了所有当前挂起的 (high\-resolution) 计时器、所有时钟事件源及其参数的列表。
+.TP 
+\fI/proc/timer_stats\fP (from  Linux 2.6.21 until Linux 4.10)
+.\" commit 82f67cd9fca8c8762c15ba7ed0d5747588c1e221
+.\"	Date:   Fri Feb 16 01:28:13 2007 -0800
+.\" Text largely derived from Documentation/timers/timer_stats.txt
+.\" removed in commit dfb4357da6ddbdf57d583ba64361c9d792b0e0b1
+.\"     Date:   Wed Feb 8 11:26:59 2017 -0800
+这是一个调试工具，可以使 Linux 系统中的定时器 (ab) 使用对内核和用户空间开发人员可见。
+内核和用户空间开发人员可以使用它来验证他们的代码没有不当使用计时器。 目标是避免不必要的唤醒，从而优化功耗。
+.IP
+如果在内核 (\fBCONFIG_TIMER_STATS\fP) 中启用但不使用，它几乎具有零运行时开销和相对较小的数据结构开销。
+即使在运行时启用了集合，开销也很低: 所有锁定都是按 CPU 进行的，查找是散列的。
+.IP
+\fI/proc/timer_stats\fP 文件既用于控制采样设备，也用于读取采样信息。
+.IP
+\fItimer_stats\fP 功能在启动时处于非活动状态。 可以使用以下命令启动采样周期:
+.IP
+.in +4n
+.EX
+# 回声 1 > /proc/timer_stats
+.EE
+.in
+.IP
+以下命令停止采样周期:
+.IP
+.in +4n
+.EX
+# 回显 0 > /proc/timer_stats
+.EE
+.in
+.IP
+可以通过以下方式检索统计信息:
+.IP
+.in +4n
+.EX
+$ 猫 /proc/timer_stats
+.EE
+.in
+.IP
+启用采样后，\fI/proc/timer_stats\fP 的每个读数都将看到最新更新的统计数据。 一旦采样被禁用，采样信息将被保留，直到新的采样周期开始。
+这允许多个读数。
+.IP
+\fI/proc/timer_stats\fP: 的样本输出
+.IP
+.in +4n
+.EX
+$\fB cat /proc/timer_stats\fP
+计时器统计版本: v0.3
+采样周期: 1.764 s
+采集: 活跃
+  255,     0 swapper/3        hrtimer_start_range_ns (tick_sched_timer)
+   71,     0 swapper/1        hrtimer_start_range_ns (tick_sched_timer)
+   58,     0 swapper/0        hrtimer_start_range_ns (tick_sched_timer)
+    4,  1694 gnome\-shell      mod_delayed_work_on (delayed_work_timer_fn)
+   17,     7 rcu_sched        rcu_gp_kthread (process_timeout)
+\&...
+    1,  4911 kworker/u16:0    mod_delayed_work_on (delayed_work_timer_fn)
+   一维，2522 kworker/0:0 queue_delayed_work_on (delayed_work_timer_fn)
+总共 1029 个事件，583.333 events/sec
+.EE
+.in
+.IP
+输出列是:
+.RS
+.IP [1] 5
+.\" commit c5c061b8f9726bc2c25e19dec227933a13d1e6b7 deferrable timers
+事件数量的计数，可选地 (自 Linux 2.6.23 起) 后跟字母 \[aq] D\[aq] 如果这是可延迟计时器;
+.IP [2]
+初始化计时器的进程的 PID;
+.IP [3]
+初始化计时器的进程的名称;
+.IP [4]
+初始化定时器的函数; 和 (在括号中) 与计时器关联的回调函数。
+.RE
+.IP
+在 Linux 4.11 开发周期中，出于安全考虑，此文件已被删除，因为它会跨命名空间公开信息。 此外，可以通过内核跟踪工具 (如 ftrace)
+获得相同的信息。
+.TP 
+\fI/proc/tty\fP
+包含 tty 驱动程序和线路规程的伪文件和子目录的子目录。
+.TP 
+\fI/proc/uptime\fP
+该文件包含两个数字 (以秒为单位的值) : 系统的正常运行时间 (包括挂起时间) 和空闲进程所花费的时间量。
+.TP 
+\fI/proc/version\fP
+此字符串标识当前正在运行的内核版本。 包括
+\fI/proc/sys/kernel/ostype\fP、\fI/proc/sys/kernel/osrelease\fP、\fI/proc/sys/kernel/version\fP
+的内容。 例如:
+.IP
+.in +4n
+.EX
+Linux 版本 1.0.9 (quinlan@phaze) #1 1994 年 5 月 14 日星期六 01:51:54 EDT
+.EE
+.in
+.\" FIXME 2.6.13 seems to have /proc/vmcore implemented; document this
+.\" 	See Documentation/kdump/kdump.txt
+.\"	commit 666bfddbe8b8fd4fd44617d6c55193d5ac7edb29
+.\" 	Needs CONFIG_VMCORE
+.\"
+.TP 
+\fI/proc/vmstat\fP (since Linux 2.6.0)
+.\" FIXME We need explanations for each of the following fields...
+该文件显示各种虚拟内存统计信息。 该文件的每一行都包含一个名称 \- 值对，由空格分隔。 有些行只有在内核配置了合适的选项时才会出现。
+(在某些情况下，特定文件所需的选项在内核版本之间发生了变化，因此此处未列出。可以通过查阅内核源代码找到详细信息。) 可能存在以下字段:
+.RS
+.TP 
+\fInr_free_pages\fP (since Linux 2.6.31)
+.\" commit d23ad42324cc4378132e51f2fc5c9ba6cbe75182
+.TP 
+\fInr_alloc_batch\fP (since Linux 3.12)
+.\" commit 81c0a2bb515fd4daae8cab64352877480792b515
+.TP 
+\fInr_inactive_anon\fP (since Linux 2.6.28)
+.\" commit 4f98a2fee8acdb4ac84545df98cccecfd130f8db
+.TP 
+\fInr_active_anon\fP (since Linux 2.6.28)
+.\" commit 4f98a2fee8acdb4ac84545df98cccecfd130f8db
+.TP 
+\fInr_inactive_file\fP (since Linux 2.6.28)
+.\" commit 4f98a2fee8acdb4ac84545df98cccecfd130f8db
+.TP 
+\fInr_active_file\fP (since Linux 2.6.28)
+.\" commit 4f98a2fee8acdb4ac84545df98cccecfd130f8db
+.TP 
+\fInr_unevictable\fP (since Linux 2.6.28)
+.\" commit 7b854121eb3e5ba0241882ff939e2c485228c9c5
+.TP 
+\fInr_mlock\fP (since Linux 2.6.28)
+.\" commit 5344b7e648980cc2ca613ec03a56a8222ff48820
+.TP 
+\fInr_anon_pages\fP (since Linux 2.6.18)
+.\" commit f3dbd34460ff54962d3e3244b6bcb7f5295356e6
+.TP 
+\fInr_mapped\fP (since Linux 2.6.0)
+.TP 
+\fInr_file_pages\fP (since Linux 2.6.18)
+.\" commit 347ce434d57da80fd5809c0c836f206a50999c26
+.TP 
+\fInr_dirty\fP (since Linux 2.6.0)
+.TP 
+\fInr_writeback\fP (since Linux 2.6.0)
+.TP 
+\fInr_slab_reclaimable\fP (since Linux 2.6.19)
+.\" commit 972d1a7b140569084439a81265a0f15b74e924e0
+.\" Linux 2.6.0 had nr_slab
+.TP 
+\fInr_slab_unreclaimable\fP (since Linux 2.6.19)
+.\" commit 972d1a7b140569084439a81265a0f15b74e924e0
+.TP 
+\fInr_page_table_pages\fP (since Linux 2.6.0)
+.TP 
+\fInr_kernel_stack\fP (since Linux 2.6.32)
+.\" commit c6a7f5728a1db45d30df55a01adc130b4ab0327c
+分配给内核栈的内存量。
+.TP 
+\fInr_unstable\fP (since Linux 2.6.0)
+.TP 
+\fInr_bounce\fP (since Linux 2.6.12)
+.\" commit edfbe2b0038723e5699ab22695ccd62b5542a5c1
+.TP 
+\fInr_vmscan_write\fP (since Linux 2.6.19)
+.\" commit e129b5c23c2b471d47f1c5d2b8b193fc2034af43
+.TP 
+\fInr_vmscan_immediate_reclaim\fP (since Linux 3.2)
+.\" commit 49ea7eb65e7c5060807fb9312b1ad4c3eab82e2c
+.TP 
+\fInr_writeback_temp\fP (since Linux 2.6.26)
+.\" commit fc3ba692a4d19019387c5acaea63131f9eab05dd
+.TP 
+\fInr_isolated_anon\fP (since Linux 2.6.32)
+.\" commit a731286de62294b63d8ceb3c5914ac52cc17e690
+.TP 
+\fInr_isolated_file\fP (since Linux 2.6.32)
+.\" commit a731286de62294b63d8ceb3c5914ac52cc17e690
+.TP 
+\fInr_shmem\fP (since Linux 2.6.32)
+.\" commit 4b02108ac1b3354a22b0d83c684797692efdc395
+shmem 和 \fBtmpfs\fP(5) 使用的页面。
+.TP 
+\fInr_dirtied\fP (since Linux 2.6.37)
+.\" commit ea941f0e2a8c02ae876cd73deb4e1557248f258c
+.TP 
+\fInr_written\fP (since Linux 2.6.37)
+.\" commit ea941f0e2a8c02ae876cd73deb4e1557248f258c
+.TP 
+\fInr_pages_scanned\fP (since Linux 3.17)
+.\" commit 0d5d823ab4e608ec7b52ac4410de4cb74bbe0edd
+.TP 
+\fInuma_hit\fP (since Linux 2.6.18)
+.\" commit ca889e6c45e0b112cb2ca9d35afc66297519b5d5
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_NUMA .
+.TP 
+\fInuma_miss\fP (since Linux 2.6.18)
+.\" commit ca889e6c45e0b112cb2ca9d35afc66297519b5d5
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_NUMA .
+.TP 
+\fInuma_foreign\fP (since Linux 2.6.18)
+.\" commit ca889e6c45e0b112cb2ca9d35afc66297519b5d5
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_NUMA .
+.TP 
+\fInuma_interleave\fP (since Linux 2.6.18)
+.\" commit ca889e6c45e0b112cb2ca9d35afc66297519b5d5
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_NUMA .
+.TP 
+\fInuma_local\fP (since Linux 2.6.18)
+.\" commit ca889e6c45e0b112cb2ca9d35afc66297519b5d5
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_NUMA .
+.TP 
+\fInuma_other\fP (since Linux 2.6.18)
+.\" commit ca889e6c45e0b112cb2ca9d35afc66297519b5d5
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_NUMA .
+.TP 
+\fIworkingset_refault\fP (since Linux 3.15)
+.\" commit a528910e12ec7ee203095eb1711468a66b9b60b0
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIworkingset_activate\fP (since Linux 3.15)
+.\" commit a528910e12ec7ee203095eb1711468a66b9b60b0
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIworkingset_nodereclaim\fP (since Linux 3.15)
+.\" commit 449dd6984d0e47643c04c807f609dd56d48d5bcc
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fInr_anon_transparent_hugepages\fP (since Linux 2.6.38)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fInr_free_cma\fP (since Linux 3.7)
+.\" commit d1ce749a0db12202b711d1aba1d29e823034648d
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+空闲 CMA (连续内存分配器) 页数。
+.TP 
+\fInr_dirty_threshold\fP (since Linux 2.6.37)
+.\" commit 79da826aee6a10902ef411bc65864bd02102fa83
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fInr_dirty_background_threshold\fP (since Linux 2.6.37)
+.\" commit 79da826aee6a10902ef411bc65864bd02102fa83
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgpgin\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgpgout\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpswpin\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpswpout\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgalloc_dma\fP (since Linux 2.6.5)
+.\" Linux 2.6.0 had pgalloc
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgalloc_dma32\fP (since Linux 2.6.16)
+.\" commit 9328b8faae922e52073785ed6c1eaa8565648a0e
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgalloc_normal\fP (since Linux 2.6.5)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgalloc_high\fP (since Linux 2.6.5)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HIGHMEM .
+.TP 
+\fIpgalloc_movable\fP (since Linux 2.6.23)
+.\" commit 2a1e274acf0b1c192face19a4be7c12d4503eaaf
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgfree\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgactivate\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgdeactivate\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgfault\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgmajfault\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgrefill_dma\fP (since Linux 2.6.5)
+.\" Linux 2.6.0 had pgrefill
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgrefill_dma32\fP (since Linux 2.6.16)
+.\" commit 9328b8faae922e52073785ed6c1eaa8565648a0e
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgrefill_normal\fP (since Linux 2.6.5)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgrefill_high\fP (since Linux 2.6.5)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HIGHMEM .
+.TP 
+\fIpgrefill_movable\fP (since Linux 2.6.23)
+.\" commit 2a1e274acf0b1c192face19a4be7c12d4503eaaf
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.\" Formerly there were
+.\"     pgsteal_high
+.\"     pgsteal_normal
+.\"     pgsteal_dma32
+.\"     pgsteal_dma
+.\" These were split out into pgsteal_kswapd* and pgsteal_direct*
+.\" in commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.TP 
+\fIpgsteal_kswapd_dma\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" Linux 2.6.0 had pgsteal
+.\" Present only if the kernel was configured with
+.\" .\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgsteal_kswapd_dma32\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" commit 9328b8faae922e52073785ed6c1eaa8565648a0e
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgsteal_kswapd_normal\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgsteal_kswapd_high\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HIGHMEM .
+.TP 
+\fIpgsteal_kswapd_movable\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgsteal_direct_dma\fP
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgsteal_direct_dma32\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgsteal_direct_normal\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgsteal_direct_high\fP (since Linux 3.4)
+.\" commit 904249aa68010c8e223263c922fcbb840a3f42e4
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HIGHMEM .
+.TP 
+\fIpgsteal_direct_movable\fP (since Linux 2.6.23)
+.\" commit 2a1e274acf0b1c192face19a4be7c12d4503eaaf
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_kswapd_dma\fP
+.\" Linux 2.6.0 had pgscan
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_kswapd_dma32\fP (since Linux 2.6.16)
+.\" commit 9328b8faae922e52073785ed6c1eaa8565648a0e
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_kswapd_normal\fP (since Linux 2.6.5)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_kswapd_high\fP
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HIGHMEM .
+.TP 
+\fIpgscan_kswapd_movable\fP (since Linux 2.6.23)
+.\" commit 2a1e274acf0b1c192face19a4be7c12d4503eaaf
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_direct_dma\fP
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_direct_dma32\fP (since Linux 2.6.16)
+.\" commit 9328b8faae922e52073785ed6c1eaa8565648a0e
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_direct_normal\fP
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_direct_high\fP
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HIGHMEM .
+.TP 
+\fIpgscan_direct_movable\fP (since Linux 2.6.23)
+.\" commit 2a1e274acf0b1c192face19a4be7c12d4503eaaf
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgscan_direct_throttle\fP (since Linux 3.6)
+.\" commit 68243e76ee343d63c6cf76978588a885951e2818
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIzone_reclaim_failed\fP (since linux 2.6.31)
+.\" commit 24cf72518c79cdcda486ed26074ff8151291cf65
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_NUMA .
+.TP 
+\fIpginodesteal\fP (since linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIslabs_scanned\fP (since linux 2.6.5)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIkswapd_inodesteal\fP (since linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIkswapd_low_wmark_hit_quickly\fP (since Linux 2.6.33)
+.\" commit bb3ab596832b920c703d1aea1ce76d69c0f71fb7
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIkswapd_high_wmark_hit_quickly\fP (since Linux 2.6.33)
+.\" commit bb3ab596832b920c703d1aea1ce76d69c0f71fb7
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpageoutrun\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIallocstall\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIpgrotated\fP (since Linux 2.6.0)
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIdrop_pagecache\fP (since Linux 3.15)
+.\" commit 5509a5d27b971a90b940e148ca9ca53312e4fa7a
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIdrop_slab\fP (since Linux 3.15)
+.\" commit 5509a5d27b971a90b940e148ca9ca53312e4fa7a
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fInuma_pte_updates\fP (since Linux 3.8)
+.\" commit 03c5a6e16322c997bf8f264851bfa3f532ad515f
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_NUMA_BALANCING .
+.TP 
+\fInuma_huge_pte_updates\fP (since Linux 3.13)
+.\" commit 72403b4a0fbdf433c1fe0127e49864658f6f6468
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_NUMA_BALANCING .
+.TP 
+\fInuma_hint_faults\fP (since Linux 3.8)
+.\" commit 03c5a6e16322c997bf8f264851bfa3f532ad515f
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_NUMA_BALANCING .
+.TP 
+\fInuma_hint_faults_local\fP (since Linux 3.8)
+.\" commit 03c5a6e16322c997bf8f264851bfa3f532ad515f
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_NUMA_BALANCING .
+.TP 
+\fInuma_pages_migrated\fP (since Linux 3.8)
+.\" commit 03c5a6e16322c997bf8f264851bfa3f532ad515f
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_NUMA_BALANCING
+.\" and
+.\" .BR CONFIG_NUMA_BALANCING .
+.TP 
+\fIpgmigrate_success\fP (since Linux 3.8)
+.\" commit 5647bc293ab15f66a7b1cda850c5e9d162a6c7c2
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_MIGRATION .
+.TP 
+\fIpgmigrate_fail\fP (since Linux 3.8)
+.\" commit 5647bc293ab15f66a7b1cda850c5e9d162a6c7c2
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_MIGRATION .
+.TP 
+\fIcompact_migrate_scanned\fP (since Linux 3.8)
+.\" commit 397487db696cae0b026a474a5cd66f4e372995e6
+.\" Linux 3.8 dropped compact_blocks_moved, compact_pages_moved, and
+.\"           compact_pagemigrate_failed
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_COMPACTION .
+.TP 
+\fIcompact_free_scanned\fP (since Linux 3.8)
+.\" commit 397487db696cae0b026a474a5cd66f4e372995e6
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_COMPACTION .
+.TP 
+\fIcompact_isolated\fP (since Linux 3.8)
+.\" commit 397487db696cae0b026a474a5cd66f4e372995e6
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_COMPACTION .
+.TP 
+\fIcompact_stall\fP (since Linux 2.6.35)
+.\" commit 56de7263fcf3eb10c8dcdf8d59a9cec831795f3f
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_COMPACTION .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIcompact_fail\fP (since Linux 2.6.35)
+.\" commit 56de7263fcf3eb10c8dcdf8d59a9cec831795f3f
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_COMPACTION .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIcompact_success\fP (since Linux 2.6.35)
+.\" commit 56de7263fcf3eb10c8dcdf8d59a9cec831795f3f
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_COMPACTION .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIhtlb_buddy_alloc_success\fP (since Linux 2.6.26)
+.\" commit 3b1163006332302117b1b2acf226d4014ff46525
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HUGETLB_PAGE .
+.TP 
+\fIhtlb_buddy_alloc_fail\fP (since Linux 2.6.26)
+.\" commit 3b1163006332302117b1b2acf226d4014ff46525
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_HUGETLB_PAGE .
+.TP 
+\fIunevictable_pgs_culled\fP (since Linux 2.6.28)
+.\" commit bbfd28eee9fbd73e780b19beb3dc562befbb94fa
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIunevictable_pgs_scanned\fP (since Linux 2.6.28)
+.\" commit bbfd28eee9fbd73e780b19beb3dc562befbb94fa
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIunevictable_pgs_rescued\fP (since Linux 2.6.28)
+.\" commit bbfd28eee9fbd73e780b19beb3dc562befbb94fa
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIunevictable_pgs_mlocked\fP (since Linux 2.6.28)
+.\" commit 5344b7e648980cc2ca613ec03a56a8222ff48820
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIunevictable_pgs_munlocked\fP (since Linux 2.6.28)
+.\" commit 5344b7e648980cc2ca613ec03a56a8222ff48820
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIunevictable_pgs_cleared\fP (since Linux 2.6.28)
+.\" commit 5344b7e648980cc2ca613ec03a56a8222ff48820
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.TP 
+\fIunevictable_pgs_stranded\fP (since Linux 2.6.28)
+.\" commit 5344b7e648980cc2ca613ec03a56a8222ff48820
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS .
+.\" Linux 3.7 removed unevictable_pgs_mlockfreed
+.TP 
+\fIthp_fault_alloc\fP (since Linux 2.6.39)
+.\" commit 81ab4201fb7d91d6b0cd9ad5b4b16776e4bed145
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_TRANSPARENT_HUGEPAGE .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIthp_fault_fallback\fP (since Linux 2.6.39)
+.\" commit 81ab4201fb7d91d6b0cd9ad5b4b16776e4bed145
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_TRANSPARENT_HUGEPAGE .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIthp_collapse_alloc\fP (since Linux 2.6.39)
+.\" commit 81ab4201fb7d91d6b0cd9ad5b4b16776e4bed145
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_TRANSPARENT_HUGEPAGE .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIthp_collapse_alloc_failed\fP (since Linux 2.6.39)
+.\" commit 81ab4201fb7d91d6b0cd9ad5b4b16776e4bed145
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_TRANSPARENT_HUGEPAGE .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIthp_split\fP (since Linux 2.6.39)
+.\" commit 81ab4201fb7d91d6b0cd9ad5b4b16776e4bed145
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_TRANSPARENT_HUGEPAGE .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIthp_zero_page_alloc\fP (since Linux 3.8)
+.\" commit d8a8e1f0da3d29d7268b3300c96a059d63901b76
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_TRANSPARENT_HUGEPAGE .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIthp_zero_page_alloc_failed\fP (since Linux 3.8)
+.\" commit d8a8e1f0da3d29d7268b3300c96a059d63901b76
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_TRANSPARENT_HUGEPAGE .
+请参见内核源文件 \fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.TP 
+\fIballoon_inflate\fP (since Linux 3.18)
+.\" commit 09316c09dde33aae14f34489d9e3d243ec0d5938
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_MEMORY_BALLOON .
+.TP 
+\fIballoon_deflate\fP (since Linux 3.18)
+.\" commit 09316c09dde33aae14f34489d9e3d243ec0d5938
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS
+.\" and
+.\" .BR CONFIG_MEMORY_BALLOON .
+.TP 
+\fIballoon_migrate\fP (since Linux 3.18)
+.\" commit 09316c09dde33aae14f34489d9e3d243ec0d5938
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_VM_EVENT_COUNTERS ,
+.\" .BR CONFIG_MEMORY_BALLOON ,
+.\" and
+.\" .BR CONFIG_BALLOON_COMPACTION .
+.TP 
+\fInr_tlb_remote_flush\fP (since Linux 3.12)
+.\" commit 9824cf9753ecbe8f5b47aa9b2f218207defea211
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_DEBUG_TLBFLUSH
+.\" and
+.\" .BR CONFIG_SMP .
+.TP 
+\fInr_tlb_remote_flush_received\fP (since Linux 3.12)
+.\" commit 9824cf9753ecbe8f5b47aa9b2f218207defea211
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_DEBUG_TLBFLUSH
+.\" and
+.\" .BR CONFIG_SMP .
+.TP 
+\fInr_tlb_local_flush_all\fP (since Linux 3.12)
+.\" commit 9824cf9753ecbe8f5b47aa9b2f218207defea211
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_DEBUG_TLBFLUSH .
+.TP 
+\fInr_tlb_local_flush_one\fP (since Linux 3.12)
+.\" commit 9824cf9753ecbe8f5b47aa9b2f218207defea211
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_DEBUG_TLBFLUSH .
+.TP 
+\fIvmacache_find_calls\fP (since Linux 3.16)
+.\" commit 4f115147ff802267d0aa41e361c5aa5bd933d896
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_DEBUG_VM_VMACACHE .
+.TP 
+\fIvmacache_find_hits\fP (since Linux 3.16)
+.\" commit 4f115147ff802267d0aa41e361c5aa5bd933d896
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_DEBUG_VM_VMACACHE .
+.TP 
+\fIvmacache_full_flushes\fP (since Linux 3.19)
+.\" commit f5f302e21257ebb0c074bbafc37606c26d28cc3d
+.\" Present only if the kernel was configured with
+.\" .BR CONFIG_DEBUG_VM_VMACACHE .
+.RE
+.TP 
+\fI/proc/zoneinfo\fP (since Linux 2.6.13)
+.\" FIXME more should be said about /proc/zoneinfo
+该文件显示有关内存区域的信息。 这对于分析虚拟内存行为很有用。
+.SH NOTES
+许多文件包含内部格式的字符串 (例如，环境和命令行)，子字段由空字节 (\[aq]\e0\[aq]) 终止。
+检查此类文件时，如果使用以下形式的命令显示它们，您可能会发现结果更具可读性:
+.PP
+.in +4n
+.EX
+$\fB cat \fP\fIfile\fP\fB | tr \[aq]\e000\[aq] \[aq]\en\[aq]\fP
+.EE
+.in
+.PP
+.\" .SH ACKNOWLEDGEMENTS
+.\" The material on /proc/sys/fs and /proc/sys/kernel is closely based on
+.\" kernel source documentation files written by Rik van Riel.
+该手册页不完整，可能不准确，是那种需要经常更新的东西。
+.SH "SEE ALSO"
+\fBcat\fP(1), \fBdmesg\fP(1), \fBfind\fP(1), \fBfree\fP(1), \fBhtop\fP(1), \fBinit\fP(1),
+\fBps\fP(1), \fBpstree\fP(1), \fBtr\fP(1), \fBuptime\fP(1), \fBchroot\fP(2), \fBmmap\fP(2),
+\fBreadlink\fP(2), \fBsyslog\fP(2), \fBslabinfo\fP(5), \fBsysfs\fP(5), \fBhier\fP(7),
+\fBnamespaces\fP(7), \fBtime\fP(7), \fBarp\fP(8), \fBhdparm\fP(8), \fBifconfig\fP(8),
+\fBlsmod\fP(8), \fBlspci\fP(8), \fBmount\fP(8), \fBnetstat\fP(8), \fBprocinfo\fP(8),
+\fBroute\fP(8), \fBsysctl\fP(8)
+.PP
+Linux 内核源文件:
+\fIDocumentation/filesystems/proc.rst\fP、\fIDocumentation/admin\-guide/sysctl/fs.rst\fP、\fIDocumentation/admin\-guide/sysctl/kernel.rst\fP、\fIDocumentation/admin\-guide/sysctl/net.rst\fP
+和 \fIDocumentation/admin\-guide/sysctl/vm.rst\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

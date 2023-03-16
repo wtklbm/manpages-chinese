@@ -1,0 +1,112 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2008 by Gerrit Renker <gerrit@erg.abdn.ac.uk>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" $Id: udplite.7,v 1.12 2008/07/23 15:22:22 gerrit Exp gerrit $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH udplite 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+udplite \- 轻量级用户数据报协议
+.SH SYNOPSIS
+.nf
+.\" FIXME . see #defines under `BUGS',
+.\"        when glibc supports this, add
+.\"        #include <netinet/udplite.h>
+\fB#include <sys/socket.h>\fP
+.PP
+\fBsockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDPLITE);\fP
+.fi
+.SH DESCRIPTION
+这是轻量级用户数据报协议 (UDP\-Lite) 的实现，如 RFC\3828 中所述。
+.PP
+UDP\-Lite 是 UDP (RFC\768) 的扩展，支持可变长度校验和。
+这对于某些类型的多媒体传输具有优势，它们可以利用轻微损坏的数据报，而不是让它们被低层协议丢弃。
+.PP
+可变长度校验和覆盖范围是通过 \fBsetsockopt\fP(2) 选项设置的。 如果未设置此选项，与 UDP 的唯一区别是使用不同的 IP 协议标识符
+(IANA 编号 136)。
+.PP
+UDP\-Lite 实现是 \fBudp\fP(7)\[em]that 的完整扩展，它共享相同的 API 和 API
+行为，此外还提供两个套接字选项来控制校验和覆盖范围。
+.SS "Address format"
+UDP\-Litev4 使用 \fBip\fP(7) 中描述的 \fIsockaddr_in\fP 地址格式。 UDP\-Litev6 使用 \fBipv6\fP(7)
+中描述的 \fIsockaddr_in6\fP 地址格式。
+.SS "Socket options"
+要设置或获取 UDP\-Lite 套接字选项，请调用 \fBgetsockopt\fP(2) 读取或 \fBsetsockopt\fP(2)
+写入选项，并将选项级别参数设置为 \fBIPPROTO_UDPLITE\fP。 此外，所有 \fBIPPROTO_UDP\fP 套接字选项在 UDP\-Lite
+套接字上都有效。 有关更多信息，请参见 \fBudp\fP(7)。
+.PP
+以下两个选项特定于 UDP\-Lite。
+.TP 
+\fBUDPLITE_SEND_CSCOV\fP
+此选项设置发送者校验和覆盖范围，并将 \fIint\fP 作为参数，校验和覆盖范围值在 0..2\[ha] 16\-1 范围内。
+.IP
+值为 0 表示始终覆盖整个数据报。 来自 1\-7 的值是非法的 (RFC\3828，3.1)，并且向上舍入到最小覆盖范围 8.
+.IP
+关于 IPv6 jumbograms (RFC\2675)，根据 RFC\3828，3.5，UDP\-Litev6 校验和覆盖范围仅限于前 2\[ha]
+16\-1 个八位字节。 因此，更高的值被默默地截断为 2\[ha] 16\-1。 如有疑问，可始终使用 \fBgetsockopt\fP(2)
+查询当前覆盖率值。
+.TP 
+\fBUDPLITE_RECV_CSCOV\fP
+这是接收者端的模拟，使用与 \fBUDPLITE_SEND_CSCOV\fP 相同的参数格式和取值范围。 启用具有部分校验和覆盖的流量不需要此选项。
+它的函数是流量过滤器的函数: 当启用时，它指示内核丢弃所有覆盖范围 \fIless\fP 超过指定覆盖值的数据包。
+.IP
+.\" SO_NO_CHECK exists and is supported by UDPv4, but is
+.\" commented out in socket(7), hence also commented out here
+.\".PP
+.\"Since UDP-Lite mandates checksums, checksumming can not be disabled
+.\"via the
+.\".B SO_NO_CHECK
+.\"option from
+.\".BR socket (7).
+当 \fBUDPLITE_RECV_CSCOV\fP 的值超过实际数据包覆盖率时，传入的数据包将被静默抛弃，但可能会在系统日志中生成警告消息。
+.SH ERRORS
+可能会返回为 \fBudp\fP(7) 记录的所有错误。 UDP\-Lite 不会添加更多错误。
+.SH FILES
+.TP 
+\fI/proc/net/snmp\fP
+基本 UDP\-Litev4 统计计数器。
+.TP 
+\fI/proc/net/snmp6\fP
+基本 UDP\-Litev6 统计计数器。
+.SH VERSIONS
+UDP\-Litev4/v6 最早出现在 Linux 2.6.20。
+.SH BUGS
+.\" FIXME . remove this section once glibc supports UDP-Lite
+如果缺少 glibc 支持，则需要以下定义:
+.PP
+.in +4n
+.EX
+.\" The following two are defined in the kernel in linux/net/udplite.h
+#define IPPROTO_UDPLITE     136
+#define UDPLITE_SEND_CSCOV  10
+#define UDPLITE_RECV_CSCOV  11
+.EE
+.in
+.SH "SEE ALSO"
+\fBip\fP(7), \fBipv6\fP(7), \fBsocket\fP(7), \fBudp\fP(7)
+.PP
+RFC\3828 用于轻量级用户数据报协议 (UDP\-Lite)。
+.PP
+Linux 内核源代码树中的 \fIDocumentation/networking/udplite.txt\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

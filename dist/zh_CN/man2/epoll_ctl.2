@@ -1,0 +1,190 @@
+.\" -*- coding: UTF-8 -*-
+.\"  Copyright (C) 2003  Davide Libenzi
+.\"  Davide Libenzi <davidel@xmailserver.org>
+.\" and Copyright 2009, 2014, 2016, 2018, 2019 Michael Kerrisk <tk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH epoll_ctl 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+epoll_ctl\-epoll 文件描述符的控制接口
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/epoll.h>\fP
+.PP
+\fBint epoll_ctl(int \fP\fIepfd\fP\fB, int \fP\fIop\fP\fB, int \fP\fIfd\fP\fB, struct epoll_event *_Nullable \fP\fIevent\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+该系统调用用于添加、修改或删除文件描述符 \fIepfd\fP 引用的 \fBepoll\fP(7) 实例的兴趣列表中的条目。 它请求对目标文件描述符 \fIfd\fP
+执行操作 \fIop\fP。
+.PP
+\fIop\fP 参数的有效值为:
+.TP 
+\fBEPOLL_CTL_ADD\fP
+在 epoll 文件描述符 \fIepfd\fP 的兴趣列表中添加一个条目。 该条目包括文件描述符、\fIfd\fP、对相应打开文件描述的引用 (参见
+\fBepoll\fP(7) 和 \fBopen\fP(2))，以及 \fIevent\fP 中指定的设置。
+.TP 
+\fBEPOLL_CTL_MOD\fP
+将兴趣列表中与 \fIfd\fP 关联的设置更改为 \fIevent\fP 中指定的新设置。
+.TP 
+\fBEPOLL_CTL_DEL\fP
+从兴趣列表中删除 (deregister) 目标文件描述符 \fIfd\fP。 \fIevent\fP 参数被忽略并且可以为 NULL (但请参见下面的
+BUGS)。
+.PP
+\fIevent\fP 参数描述链接到文件描述符 \fIfd\fP 的对象。 \fIstruct epoll_event\fP 在
+\fBepoll_event\fP(3type) 中描述。
+.PP
+\fIepoll_event\fP 结构体的 \fIdata\fP 成员指定内核应该保存然后返回的数据 (当这个文件描述符准备好时通过
+\fBepoll_wait\fP(2))。
+.PP
+\fIepoll_event\fP 结构体的 \fIevents\fP 成员是一个位掩码，由 \fBepoll_wait\fP(2)
+返回的零个或多个事件类型和影响其行为但不返回的输入标志组合在一起组成。 可用的事件类型有:
+.TP 
+\fBEPOLLIN\fP
+关联文件可用于 \fBread\fP(2) 操作。
+.TP 
+\fBEPOLLOUT\fP
+关联文件可用于 \fBwrite\fP(2) 操作。
+.TP 
+\fBEPOLLRDHUP\fP (since Linux 2.6.17)
+Stream socket peer 关闭连接，或关闭写入一半的连接。 (此标志对于编写简单代码以在使用 edge 触发的监视时检测对等关闭特别有用。)
+.TP 
+\fBEPOLLPRI\fP
+文件描述符存在异常情况。 请参见 \fBpoll\fP(2) 中对 \fBPOLLPRI\fP 的讨论。
+.TP 
+\fBEPOLLERR\fP
+相关文件描述符发生错误情况。 当读端关闭时，也会为管道的写端报告此事件。
+.IP
+\fBepoll_wait\fP(2) 将始终报告此事件; 调用 \fBepoll_ctl\fP() 时不必在 \fIevents\fP 中设置。
+.TP 
+\fBEPOLLHUP\fP
+挂断发生在关联的文件描述符上。
+.IP
+\fBepoll_wait\fP(2) 会一直等待这个事件; 调用 \fBepoll_ctl\fP() 时不必在 \fIevents\fP 中设置。
+.IP
+请注意，当从诸如管道或流套接字之类的通道读取时，此事件仅表示对等点关闭了通道的末端。 只有在通道中所有未完成的数据都被消耗后，从通道的后续读取才会返回
+0 (文件结尾)。
+.PP
+可用的输入标志是:
+.TP 
+\fBEPOLLET\fP
+为关联的文件描述符请求 edge 触发的通知。 \fBepoll\fP 的默认行为是电平触发的。 有关 edge 触发和电平触发通知的更多详细信息，请参见
+\fBepoll\fP(7)。
+.TP 
+\fBEPOLLONESHOT\fP (since Linux 2.6.2)
+请求关联文件描述符的一次性通知。 这意味着在 \fBepoll_wait\fP(2)
+为文件描述符通知一个事件后，该文件描述符在兴趣列表中被禁用，\fBepoll\fP 接口将不会报告其他事件。 用户必须用 \fBEPOLL_CTL_MOD\fP
+调用 \fBepoll_ctl\fP() 以使用新的事件掩码重新装备文件描述符。
+.TP 
+\fBEPOLLWAKEUP\fP (since Linux 3.5)
+.\" commit 4d7e30d98939a0340022ccd49325a3d70f7e0238
+如果 \fBEPOLLONESHOT\fP 和 \fBEPOLLET\fP 是明确的，并且进程有 \fBCAP_BLOCK_SUSPEND\fP
+能力，确保系统在这个事件未决或正在处理时不进入 "suspend" 或 "hibernate"。 该事件被认为是 "processed"，从调用到
+\fBepoll_wait\fP(2) 直到下一次调用到 \fBepoll_wait\fP(2) 在同一个 \fBepoll\fP(7)
+文件描述符上，该文件描述符的闭包，用 \fBEPOLL_CTL_DEL\fP 删除事件文件描述符，或者用 \fBEPOLL_CTL_MOD\fP
+清除事件文件描述符的 \fBEPOLLWAKEUP\fP。 另请详见错误。
+.TP 
+\fBEPOLLEXCLUSIVE\fP (since Linux 4.5)
+为附加到目标文件描述符 \fIfd\fP 的 epoll 文件描述符设置独占唤醒模式。 当一个唤醒事件发生并且多个 epoll 文件描述符使用
+\fBEPOLLEXCLUSIVE\fP 附加到同一个目标文件时，一个或多个 epoll 文件描述符将接收到一个带有 \fBepoll_wait\fP(2)
+的事件。 这种情况下 (当 \fBEPOLLEXCLUSIVE\fP 未设置时) 默认是所有 epoll 文件描述符都接收一个事件。
+因此，\fBEPOLLEXCLUSIVE\fP 对于在某些情况下避免雷鸣般的群体问题很有用。
+.IP
+如果同一个文件描述符在多个 epoll 实例中，一些带有 \fBEPOLLEXCLUSIVE\fP 标志，而另一些则没有，那么事件将提供给所有没有指定
+\fBEPOLLEXCLUSIVE\fP 的 epoll 实例，并且至少有一个指定了 \fBEPOLLEXCLUSIVE\fP 的 epoll 实例。
+.IP
+以下值可与 \fBEPOLLEXCLUSIVE\fP:、\fBEPOLLIN\fP、\fBEPOLLOUT\fP、\fBEPOLLWAKEUP\fP 和 \fBEPOLLET\fP
+一起指定。 也可以指定 \fBEPOLLHUP\fP 和 \fBEPOLLERR\fP，但这不是必需的:
+与往常一样，如果发生这些事件，则始终报告这些事件，而不管它们是否在 \fIevents\fP 中指定。 尝试在 \fIevents\fP 中指定其他值会产生错误
+\fBEINVAL\fP。
+.IP
+\fBEPOLLEXCLUSIVE\fP 只能在 \fBEPOLL_CTL_ADD\fP 操作中使用; 尝试将它与 \fBEPOLL_CTL_MOD\fP
+一起使用会产生错误。 如果 \fBEPOLLEXCLUSIVE\fP 已使用 \fBepoll_ctl\fP() 设置，则同一 \fIepfd\fP,\~\fIfd\fP
+对上的后续 \fBEPOLL_CTL_MOD\fP 会产生错误。 调用 \fBepoll_ctl\fP() 在 \fIevents\fP 中指定
+\fBEPOLLEXCLUSIVE\fP 并将目标文件描述符 \fIfd\fP 指定为 epoll 实例同样会失败。 所有这些情况下的错误都是 \fBEINVAL\fP。
+.SH "RETURN VALUE"
+成功时，\fBepoll_ctl\fP() 返回零。 发生错误时，\fBepoll_ctl\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIepfd\fP 或 \fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEEXIST\fP
+\fIop\fP 是 \fBEPOLL_CTL_ADD\fP，提供的文件描述符 \fIfd\fP 已经注册到这个 epoll 实例。
+.TP 
+\fBEINVAL\fP
+\fIepfd\fP 不是 \fBepoll\fP 文件描述符，或者 \fIfd\fP 与 \fIepfd\fP 相同，或者该接口不支持请求的操作 \fIop\fP。
+.TP 
+\fBEINVAL\fP
+与 \fIevents\fP 中的 \fBEPOLLEXCLUSIVE\fP 一起指定的事件类型无效。
+.TP 
+\fBEINVAL\fP
+\fIop\fP 是 \fBEPOLL_CTL_MOD\fP，\fIevents\fP 包括 \fBEPOLLEXCLUSIVE\fP。
+.TP 
+\fBEINVAL\fP
+\fIop\fP 是 \fBEPOLL_CTL_MOD\fP，而 \fBEPOLLEXCLUSIVE\fP 标志先前已应用于此 \fIepfd\fP,\~\fIfd\fP 对。
+.TP 
+\fBEINVAL\fP
+\fBEPOLLEXCLUSIVE\fP 是在 \fIevent\fP 中指定的，\fIfd\fP 指的是一个 epoll 实例。
+.TP 
+\fBELOOP\fP
+\fIfd\fP 指的是一个 epoll 实例，这个 \fBEPOLL_CTL_ADD\fP 操作会导致 epoll 实例相互监控的循环或者 epoll
+实例的嵌套深度大于 5.
+.TP 
+\fBENOENT\fP
+\fIop\fP 是 \fBEPOLL_CTL_MOD\fP 或 \fBEPOLL_CTL_DEL\fP，\fIfd\fP 没有注册到这个 epoll 实例。
+.TP 
+\fBENOMEM\fP
+内存不足，无法处理请求的 \fIop\fP 控制操作。
+.TP 
+\fBENOSPC\fP
+尝试在 epoll 实例上注册 (\fBEPOLL_CTL_ADD\fP) 新文件描述符时遇到了
+\fI/proc/sys/fs/epoll/max_user_watches\fP 强加的限制。 有关详细信息，请参见 \fBepoll\fP(7)。
+.TP 
+\fBEPERM\fP
+目标文件 \fIfd\fP 不支持 \fBepoll\fP。 例如，如果 \fIfd\fP 引用常规文件或目录，则会发生此错误。
+.SH VERSIONS
+.\" To be precise: kernel 2.5.44.
+.\" The interface should be finalized by Linux kernel 2.5.66.
+\fBepoll_ctl\fP() 被添加到 Linux 2.6 中。 glibc 2.3.2 中提供了库支持。
+.SH STANDARDS
+\fBepoll_ctl\fP() 是特定于 Linux 的。
+.SH NOTES
+\fBepoll\fP 接口支持所有支持 \fBpoll\fP(2) 的文件描述符。
+.SH BUGS
+在 Linux 2.6.9 之前，\fBEPOLL_CTL_DEL\fP 操作需要 \fIevent\fP 中的非空指针，即使这个参数被忽略。 从 Linux
+2.6.9 开始，使用 \fBEPOLL_CTL_DEL\fP 时可以将 \fIevent\fP 指定为 NULL。 需要在 Linux 2.6.9
+之前移植到内核的应用程序应该在 \fIevent\fP 中指定一个非空指针。
+.PP
+.\" commit a8159414d7e3af7233e7a5a82d1c5d85379bd75c (behavior change)
+.\" https://lwn.net/Articles/520198/
+如果在 \fIflags\fP 中指定了 \fBEPOLLWAKEUP\fP，但调用者没有 \fBCAP_BLOCK_SUSPEND\fP 能力，则
+\fBEPOLLWAKEUP\fP 标志为 \fIsilently ignored\fP。 这种不幸的行为是必要的，因为在原始实现中没有对 \fIflags\fP
+参数执行有效性检查，并且如果调用者没有 \fBCAP_BLOCK_SUSPEND\fP 能力导致中断至少一个现有的用户空间应用程序碰巧随机 (并且无用)
+指定了这个位。 因此，如果尝试使用 \fBEPOLLWAKEUP\fP 标志，健壮的应用程序应仔细检查它是否具有 \fBCAP_BLOCK_SUSPEND\fP
+功能。
+.SH "SEE ALSO"
+\fBepoll_create\fP(2), \fBepoll_wait\fP(2), \fBpoll\fP(2), \fBepoll\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

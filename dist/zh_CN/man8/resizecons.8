@@ -1,0 +1,56 @@
+.\" -*- coding: UTF-8 -*-
+.\" @(#)man/man8/resizecons.8	1.0 Jan 17 12:04:28 MET 1995
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RESIZECONS 8 "17 Jan 1995" kbd 
+.SH NAME
+resizecons \- 改变控制台大小的内核理念
+.SH SYNOPSIS
+\fBresizecons \fP\fICOLSxROWS\fP
+.br
+\fBresizecons \-lines \fP\fIROWS\fP
+.SH DESCRIPTION
+\fIresizecons\fP 命令尝试更改控制台的视频模式。 这有几个方面: (a) 内核必须知道它，(b) 硬件必须知道它，(c)
+用户程序必须知道它，(d) 控制台字体可能必须适应。
+
+(a) 使用 ioctl VT_RESIZE 将更改告知内核。 这会导致内核为所有虚拟控制台重新分配控制台屏幕内存，如果内存不足，则可能会失败。
+(在这种情况下，首先尝试释放一些虚拟控制台。) 如果此 ioctl 成功，但后面的步骤失败 (例如，因为您没有 root
+权限)，您可能会看到一个非常混乱的屏幕。
+
+其中最困难的部分是 (b)，因为它需要显卡硬件的详细知识以及大量寄存器的设置。仅更改行数会稍微容易一些，并且 \fIresizecons\fP 会在给定
+\fI\-lines\fP 选项时尝试自行执行此操作。(可能需要 root 权限。) 命令 \fIresizecons COLSxROWS\fP 将执行
+\fIrestoretextmode \-r COLSxROWS\fP (因此需要安装 svgalib)。这里的 COLSxROWS 是之前由
+\fIrestoretextmode \-w COLSxROWS.\fP 创建的文件，同样，要么需要 root 权限，要么 \fIrestoretextmode\fP
+必须是 suid root。
+
+为了处理 (c)，\fIresizecons\fP 为每个活动控制台 (在 tty0..tty15 范围内) 执行 `stty rows ROWS cols
+COLS`，如果找到文件 /tmp/selection.pid，则向 \fIselection\fP 发送 SIGWINCH 信号。
+
+最后，(d) 是通过执行 \fIsetfont\fP 命令来处理的。很可能加载了错误的字体，之后您可能想自己再做一个 \fIsetfont\fP。
+
+.SH BUGS
+\fIresizecons\fP 并不适用于所有硬件。 此命令过去称为 \fIresize,\fP，但已重命名以避免与另一个同名命令发生冲突。
+
+.SH "SEE ALSO"
+\fBsetfont\fP(8), \fBstty\fP(1), \fBselection\fP(1), \fBrestoretextmode\fP(8),
+\fBdisalloc\fP(8)
+
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

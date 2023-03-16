@@ -1,0 +1,467 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2014 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH open_by_handle_at 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+name_to_handle_at, open_by_handle_at \- 获取路径名的句柄并通过句柄打开文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP
+.PP
+\fBint name_to_handle_at(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB,\fP
+\fB                      struct file_handle *\fP\fIhandle\fP\fB,\fP
+\fB                      int *\fP\fImount_id\fP\fB, int \fP\fIflags\fP\fB);\fP
+\fBint open_by_handle_at(int \fP\fImount_fd\fP\fB, struct file_handle *\fP\fIhandle\fP\fB,\fP
+\fB                      int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\"
+.\"
+\fBname_to_handle_at\fP() 和 \fBopen_by_handle_at\fP() 系统调用将 \fBopenat\fP(2) 的功能分为两部分:
+\fBname_to_handle_at\fP() 返回对应于指定文件的不透明句柄; \fBopen_by_handle_at\fP() 打开前一个调用返回给
+\fBname_to_handle_at\fP() 的句柄对应的文件，并返回一个打开的文件描述符。
+.SS name_to_handle_at()
+\fBname_to_handle_at\fP() 系统调用返回一个文件句柄和一个挂载 ID，对应于 \fIdirfd\fP 和 \fIpathname\fP
+参数指定的文件。 文件句柄通过参数 \fIhandle\fP 返回，它是指向以下形式的结构体的指针:
+.PP
+.in +4n
+.EX
+struct file_handle {
+    unsigned int  handle_bytes;   /* Size of f_handle [in, out] */
+    int           handle_type;    /* Handle type [out] */
+    unsigned char f_handle[0];    /* File identifier (sized by
+                                     caller) [out] */
+};
+.EE
+.in
+.PP
+调用者有责任分配大小足以容纳 \fIf_handle\fP 中返回的句柄的结构体。 在调用之前，应初始化 \fIhandle_bytes\fP 字段以包含为
+\fIf_handle\fP 分配的大小。 (在 \fI<fcntl.h>\fP 中定义的常量 \fBMAX_HANDLE_SZ\fP
+指定文件句柄的最大预期大小。它不是保证的上限，因为 future 文件系统可能需要更多空间。) 成功返回后，\fIhandle_bytes\fP
+字段将更新为包含字节数实际上写到 \fIf_handle\fP。
+.PP
+调用者可以通过调用其中 \fIhandle\->handle_bytes\fP 为零来发现 \fIfile_handle\fP 结构体所需的大小;
+在这种情况下，调用失败并出现错误 \fBEOVERFLOW\fP，\fIhandle\->handle_bytes\fP 被设置为指示所需的大小;
+然后调用者可以使用此信息来分配正确大小的结构体 (请参见下面的示例)。 这里需要注意一些，因为 \fBEOVERFLOW\fP
+还可以指示在通常支持文件句柄查找的文件系统中没有可用于此特定名称的文件句柄。 当返回 \fBEOVERFLOW\fP 错误而不增加
+\fIhandle_bytes\fP 时，可以检测到这种情况。
+.PP
+除了使用 \fIhandle_bytes\fP 字段外，调用者应将 \fIfile_handle\fP 结构体视为不透明的数据类型: 只有随后调用
+\fBopen_by_handle_at\fP() 才需要 \fIhandle_type\fP 和 \fIf_handle\fP 字段。
+.PP
+\fIflags\fP 参数是通过对 \fBAT_EMPTY_PATH\fP 和 \fBAT_SYMLINK_FOLLOW\fP 的零个或多个进行 OR
+运算而构造的位掩码，如下所述。
+.PP
+\fIpathname\fP 和 \fIdirfd\fP 参数一起标识要为其获取句柄的文件。 有四种不同的情况:
+.IP \[bu] 3
+如果 \fIpathname\fP 是包含绝对路径名的非空字符串，则返回该路径名引用的文件的句柄。 在这种情况下，\fIdirfd\fP 被忽略。
+.IP \[bu]
+如果 \fIpathname\fP 是一个包含相对路径名的非空字符串并且 \fIdirfd\fP 具有特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用者的当前工作目录，并返回它所引用的文件的句柄。
+.IP \[bu]
+如果 \fIpathname\fP 是包含相对路径名的非空字符串，而 \fIdirfd\fP 是引用目录的文件描述符，则 \fIpathname\fP 被解释为相对于
+\fIdirfd\fP 引用的目录，并返回它引用的文件的句柄。 (有关 "directory file descriptors" 为何有用的解释，请参见
+\fBopenat\fP(2)。)
+.IP \[bu]
+如果 \fIpathname\fP 是一个空字符串并且 \fIflags\fP 指定值 \fBAT_EMPTY_PATH\fP，那么 \fIdirfd\fP
+可以是一个打开的文件描述符，指的是任何类型的文件，或者 \fBAT_FDCWD\fP，表示当前工作目录，并返回它所指的文件的句柄。
+.PP
+\fImount_id\fP 参数返回对应于 \fIpathname\fP 的文件系统挂载的标识符。 这对应于 \fI/proc/self/mountinfo\fP
+中的一个记录中的第一个字段。 打开该记录的第五个字段中的路径名会产生挂载点的文件描述符; 该文件描述符可用于后续调用
+\fBopen_by_handle_at\fP()。 对于成功的调用和导致错误 \fBEOVERFLOW\fP 的调用，都会返回 \fImount_id\fP。
+.PP
+默认情况下，如果 \fBname_to_handle_at\fP() 是符号链接，则它不会解析引用 \fIpathname\fP，因此会返回链接本身的句柄。 如果在
+\fIflags\fP 中指定了 \fBAT_SYMLINK_FOLLOW\fP，如果 \fIpathname\fP 是符号链接，则解引用它
+(以便调用返回链接引用的文件的句柄)。
+.PP
+.\" commit 20fa19027286983ab2734b5910c4a687436e0c31
+当路径名的最后一个组件是自动挂载点时，\fBname_to_handle_at\fP() 不会触发挂载。
+当文件系统同时支持文件句柄和自动挂载点时，自动挂载点上的 \fBname_to_handle_at\fP() 调用将返回错误
+\fBEOVERFLOW\fP，而不会增加 \fIhandle_bytes\fP。 当访问服务器上单独文件系统上的目录时，可能会发生这种情况，因为 Linux
+4.13 使用 NFS。 在这种情况下，可以通过在路径名末尾添加 "/" 来触发自动挂载。
+.SS open_by_handle_at()
+\fBopen_by_handle_at\fP() 系统调用打开 \fIhandle\fP 引用的文件，是之前调用返回给
+\fBname_to_handle_at\fP() 的文件句柄。
+.PP
+\fImount_fd\fP 参数是已挂载文件系统中任何对象 (文件、目录等) 的文件描述符，\fIhandle\fP 应根据该对象进行解释。 可以指定特殊值
+\fBAT_FDCWD\fP，表示调用者的当前工作目录。
+.PP
+\fIflags\fP 参数与 \fBopen\fP(2) 相同。 如果 \fIhandle\fP 引用符号链接，则调用者必须指定 \fBO_PATH\fP
+标志，并且符号链接不会被解引用; \fBO_NOFOLLOW\fP 标志 (如果指定) 将被忽略。
+.PP
+调用者必须具有 \fBCAP_DAC_READ_SEARCH\fP 能力才能调用 \fBopen_by_handle_at\fP()。
+.SH "RETURN VALUE"
+成功时，\fBname_to_handle_at\fP() 返回 0，\fBopen_by_handle_at\fP() 返回文件描述符 (非负整数)。
+.PP
+如果出现错误，两个系统调用都会返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBname_to_handle_at\fP() 和 \fBopen_by_handle_at\fP() 可能因与 \fBopenat\fP(2) 相同的错误而失败。
+此外，它们可能会因下面提到的错误而失败。
+.PP
+\fBname_to_handle_at\fP() 可能会因以下错误而失败:
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP、\fImount_id\fP 或 \fIhandle\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 包含无效位值。
+.TP 
+\fBEINVAL\fP
+\fIhandle\->handle_bytes\fP 大于 \fBMAX_HANDLE_SZ\fP。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 是空字符串，但 \fIflags\fP 中未指定 \fBAT_EMPTY_PATH\fP。
+.TP 
+\fBENOTDIR\fP
+\fIdirfd\fP 中提供的文件描述符不引用目录，并且 \fIflags\fP 包括 \fBAT_EMPTY_PATH\fP 和 \fIpathname\fP
+都不是空字符串的情况。
+.TP 
+\fBEOPNOTSUPP\fP
+文件系统不支持将路径名解码为文件句柄。
+.TP 
+\fBEOVERFLOW\fP
+.\"
+.\"
+传入调用的 \fIhandle\->handle_bytes\fP 值太小。 发生此错误时，\fIhandle\->handle_bytes\fP
+会更新以指示句柄所需的大小。
+.PP
+\fBopen_by_handle_at\fP() 可能会因以下错误而失败:
+.TP 
+\fBEBADF\fP
+\fImount_fd\fP 不是打开的文件描述符。
+.TP 
+\fBEBADF\fP
+\fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIhandle\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIhandle\->handle_bytes\fP 大于 \fBMAX_HANDLE_SZ\fP 或等于零。
+.TP 
+\fBELOOP\fP
+\fIhandle\fP 指代符号链接，但 \fIflags\fP 中未指定 \fBO_PATH\fP。
+.TP 
+\fBEPERM\fP
+调用方没有 \fBCAP_DAC_READ_SEARCH\fP 能力。
+.TP 
+\fBESTALE\fP
+指定的 \fIhandle\fP 无效。 例如，如果文件已被删除，则会发生此错误。
+.SH VERSIONS
+这些系统调用首先出现在 Linux 2.6.39 中。 自 glibc 2.14 起提供库支持。
+.SH STANDARDS
+这些系统调用是非标准的 Linux 扩展。
+.PP
+FreeBSD 有一对大致相似的系统调用，形式为 \fBgetfh\fP() 和 \fBopenfh\fP()。
+.SH NOTES
+文件句柄可以在使用 \fBname_to_handle_at\fP() 的一个进程中生成，然后在调用 \fBopen_by_handle_at\fP()
+的不同进程中使用。
+.PP
+某些文件系统不支持将路径名转换为文件句柄，例如 \fI/proc\fP、\fI/sys\fP 和各种网络文件系统。
+.PP
+如果文件被删除，或者由于其他文件系统特定的原因，文件句柄可能会变得无效 ("stale")。 来自 \fBopen_by_handle_at\fP() 的
+\fBESTALE\fP 错误通知无效句柄。
+.PP
+.\" https://lwn.net/Articles/375888/
+.\"	"Open by handle" - Jonathan Corbet, 2010-02-23
+这些系统调用是为用户空间文件服务器使用而设计的。 例如，用户空间 NFS 服务器可能会生成一个文件句柄并将其传递给 NFS 客户端。
+稍后，当客户端想要打开文件时，它可以将句柄传递回服务器。 这种功能允许用户空间文件服务器以无状态的方式对其服务的文件进行操作。
+.PP
+.\" commit bcda76524cd1fa32af748536f27f674a13e56700
+如果 \fIpathname\fP 引用符号链接并且 \fIflags\fP 未指定 \fBAT_SYMLINK_FOLLOW\fP，则
+\fBname_to_handle_at\fP() 返回链接的句柄 (而不是它引用的文件)。 接收句柄的进程稍后可以通过使用带有 \fBO_PATH\fP 标志的
+\fBopen_by_handle_at\fP() 将句柄转换为文件描述符，然后在 \fBreadlinkat\fP(2) 和 \fBfchownat\fP(2)
+等系统调用中将文件描述符作为 \fIdirfd\fP 参数传递，从而对符号链接执行操作。
+.SS "Obtaining a persistent filesystem ID"
+\fI/proc/self/mountinfo\fP 中的挂载 ID 可以在卸载和挂载文件系统时重复使用。 因此，\fBname_to_handle_at\fP()
+(在 \fI*mount_id\fP) 中) 返回的挂载 ID 不应被视为相应挂载文件系统的持久标识符。 但是，应用程序可以使用 \fImountinfo\fP
+记录中与安装 ID 相对应的信息来派生持久标识符。
+.PP
+.\" e.g., http://stackoverflow.com/questions/6748429/using-libblkid-to-find-uuid-of-a-partition
+例如，可以使用 \fImountinfo\fP 记录中第五字段的设备名称，通过 \fI/dev/disks/by\-uuid\fP 中的符号链接查找对应的设备
+UUID。 (更方便的获取 UUID 的方法是使用 \fBlibblkid\fP(3) 库。) 这个过程可以反过来，使用 UUID
+查找设备名称，然后获取相应的挂载点，以产生使用的 \fImount_fd\fP 参数通过 \fBopen_by_handle_at\fP()。
+.SH EXAMPLES
+下面的两个程序演示了 \fBname_to_handle_at\fP() 和 \fBopen_by_handle_at\fP() 的使用。 第一个程序
+(\fIt_name_to_handle_at.c\fP) 使用 \fBname_to_handle_at\fP() 获取在其命令行参数中指定的文件的文件句柄和挂载
+ID; 句柄和挂载 ID 被写入标准输出。
+.PP
+第二个程序 (\fIt_open_by_handle_at.c\fP) 从标准输入读取挂载 ID 和文件句柄。 然后程序使用
+\fBopen_by_handle_at\fP() 打开使用该句柄的文件。 如果提供了一个可选的命令行参数，那么 \fBopen_by_handle_at\fP()
+的 \fImount_fd\fP 参数是通过打开该参数中命名的目录获得的。 否则，通过扫描 \fI/proc/self/mountinfo\fP 找到一个挂载 ID
+与从标准输入读取的挂载 ID 匹配的记录来获得 \fImount_fd\fP，并打开该记录中指定的挂载目录。 (这些程序不处理挂载 ID 不持久的事实。)
+.PP
+下面的 shell 会话演示了这两个程序的使用:
+.PP
+.in +4n
+.EX
+$ \fBecho \[aq]Can you please think about it?\[aq] > cecilia.txt\fP
+$ \fB./t_name_to_handle_at cecilia.txt > fh\fP
+$ \fB./t_open_by_handle_at < fh\fP
+open_by_handle_at: 不允许操作
+$ \fBsudo ./t_open_by_handle_at < fh\fP      # 需要 CAP_SYS_ADMIN
+读取 31 个字节
+读取 31 个字节
+.EE
+.in
+.PP
+.\" Christoph Hellwig: That's why the file handles contain a generation
+.\" counter that gets incremented in this case.
+现在我们删除并 (quickly) 重新创建文件，以便它具有相同的内容和 (偶然) 相同的 inode。
+然而，\fBopen_by_handle_at\fP() 认识到文件句柄引用的原始文件不再存在。
+.PP
+.in +4n
+.EX
+$ \fBstat \-\-printf="%i\en" cecilia.txt\fP     # 显示 inode 号
+4072121
+$ \fBstat \-\-printf="%i\en" cecilia.txt\fP     # 显示 inode 号
+$ \fBecho \[aq]Can you please think about it?\[aq] > cecilia.txt\fP
+$ \fBstat \-\-printf="%i\en" cecilia.txt\fP     # 检查 inode 号
+4072121
+$ \fBsudo ./t_open_by_handle_at < fh\fP
+open_by_handle_at: 陈旧的 NFS 文件句柄
+.EE
+.in
+.SS "Program source: t_name_to_handle_at.c"
+.\" SRC BEGIN (t_name_to_handle_at.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    int                 mount_id, fhsize, flags, dirfd;
+    char                *pathname;
+    struct file_handle  *fhp;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s pathname\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    pathname = argv[1];
+
+    /* Allocate file_handle structure. */
+
+    fhsize = sizeof(*fhp);
+    fhp = malloc(fhsize);
+    if (fhp == NULL)
+        err(EXIT_FAILURE, "malloc");
+
+    /* Make an initial call to name_to_handle_at() to discover
+       the size required for file handle. */
+
+    dirfd = AT_FDCWD;           /* For name_to_handle_at() calls */
+    flags = 0;                   /* For name_to_handle_at() calls */
+    fhp\->handle_bytes = 0;
+    if (name_to_handle_at(dirfd, pathname, fhp,
+                          &mount_id, flags) != \-1
+        || errno != EOVERFLOW)
+    {
+        fprintf(stderr, "Unexpected result from name_to_handle_at()\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Reallocate file_handle structure with correct size. */
+
+    fhsize = sizeof(*fhp) + fhp\->handle_bytes;
+    fhp = realloc(fhp, fhsize);         /* Copies fhp\->handle_bytes */
+    if (fhp == NULL)
+        err(EXIT_FAILURE, "realloc");
+
+    /* Get file handle from pathname supplied on command line. */
+
+    if (name_to_handle_at(dirfd, pathname, fhp, &mount_id, flags) == \-1)
+        err(EXIT_FAILURE, "name_to_handle_at");
+
+    /* Write mount ID, file handle size, and file handle to stdout,
+       for later reuse by t_open_by_handle_at.c. */
+
+    printf("%d\en", mount_id);
+    printf("%u %d   ", fhp\->handle_bytes, fhp\->handle_type);
+    for (size_t j = 0; j < fhp\->handle_bytes; j++)
+        printf(" %02x", fhp\->f_handle[j]);
+    printf("\en");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SS "Program source: t_open_by_handle_at.c"
+.\" SRC BEGIN (t_open_by_handle_at.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+/* Scan /proc/self/mountinfo to find the line whose mount ID matches
+   \[aq]mount_id\[aq]. (An easier way to do this is to install and use the
+   \[aq]libmount\[aq] library provided by the \[aq]util\-linux\[aq] project.)
+   Open the corresponding mount path and return the resulting file
+   descriptor. */
+
+static int
+open_mount_path_by_id(int mount_id)
+{
+    int      mi_mount_id, found;
+    char     mount_path[PATH_MAX];
+    char     *linep;
+    FILE     *fp;
+    size_t   lsize;
+    ssize_t  nread;
+
+    fp = fopen("/proc/self/mountinfo", "r");
+    if (fp == NULL)
+        err(EXIT_FAILURE, "fopen");
+
+    found = 0;
+    linep = NULL;
+    while (!found) {
+        nread = getline(&linep, &lsize, fp);
+        if (nread == \-1)
+            break;
+
+        nread = sscanf(linep, "%d %*d %*s %*s %s",
+                       &mi_mount_id, mount_path);
+        if (nread != 2) {
+            fprintf(stderr, "Bad sscanf()\en");
+            exit(EXIT_FAILURE);
+        }
+
+        if (mi_mount_id == mount_id)
+            found = 1;
+    }
+    free(linep);
+
+    fclose(fp);
+
+    if (!found) {
+        fprintf(stderr, "Could not find mount point\en");
+        exit(EXIT_FAILURE);
+    }
+
+    return open(mount_path, O_RDONLY);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int                 mount_id, fd, mount_fd, handle_bytes;
+    char                buf[1000];
+#define LINE_SIZE 100
+    char                line1[LINE_SIZE], line2[LINE_SIZE];
+    char                *nextp;
+    ssize_t             nread;
+    struct file_handle  *fhp;
+
+    if ((argc > 1 && strcmp(argv[1], "\-\-help") == 0) || argc > 2) {
+        fprintf(stderr, "Usage: %s [mount\-path]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* 标准输入包含挂载 ID 和文件句柄信息:
+
+         第 1 行: <mount_id>
+         第 2 行: hex> 中句柄的 <handle_bytes> <handle_type> <bytes
+    */
+
+    if (fgets(line1, sizeof(line1), stdin) == NULL ||
+        fgets(line2, sizeof(line2), stdin) == NULL)
+    {
+        fprintf(stderr, "Missing mount_id / file handle\en");
+        exit(EXIT_FAILURE);
+    }
+
+    mount_id = atoi(line1);
+
+    handle_bytes = strtoul(line2, &nextp, 0);
+
+    /* Given handle_bytes, we can now allocate file_handle structure. */
+
+    fhp = malloc(sizeof(*fhp) + handle_bytes);
+    if (fhp == NULL)
+        err(EXIT_FAILURE, "malloc");
+
+    fhp\->handle_bytes = handle_bytes;
+
+    fhp\->handle_type = strtoul(nextp, &nextp, 0);
+
+    for (size_t j = 0; j < fhp\->handle_bytes; j++)
+        fhp\->f_handle[j] = strtoul(nextp, &nextp, 16);
+
+    /* Obtain file descriptor for mount point, either by opening
+       the pathname specified on the command line, or by scanning
+       /proc/self/mounts to find a mount that matches the \[aq]mount_id\[aq]
+       that we received from stdin. */
+
+    if (argc > 1)
+        mount_fd = open(argv[1], O_RDONLY);
+    else
+        mount_fd = open_mount_path_by_id(mount_id);
+
+    if (mount_fd == \-1)
+        err(EXIT_FAILURE, "opening mount fd");
+
+    /* Open file using handle and mount point. */
+
+    fd = open_by_handle_at(mount_fd, fhp, O_RDONLY);
+    if (fd == \-1)
+        err(EXIT_FAILURE, "open_by_handle_at");
+
+    /* Try reading a few bytes from the file. */
+
+    nread = read(fd, buf, sizeof(buf));
+    if (nread == \-1)
+        err(EXIT_FAILURE, "read");
+
+    printf("Read %zd bytes\en", nread);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBopen\fP(2), \fBlibblkid\fP(3), \fBblkid\fP(8), \fBfindfs\fP(8), \fBmount\fP(8)
+.PP
+.UR https://www.kernel.org/pub/linux/utils/util\-linux/
+.UE
+最新
+\fIutil\-linux\fP 版本中的 \fIlibblkid\fP 和 \fIlibmount\fP 文档
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

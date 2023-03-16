@@ -1,0 +1,86 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2005 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pty 7 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+pty \- 伪终端接口
+.SH DESCRIPTION
+伪终端 (有时缩写为 "pty") 是一对提供双向通信的虚拟字符设备。 通道的一端称为 \fImaster\fP; 另一端称为 \fIslave\fP。
+.PP
+伪终端的从端提供了一个与经典终端完全一样的接口。 期望连接到终端的进程可以打开伪终端的从端，然后由打开主端的程序驱动。
+在主端写入的任何内容都会提供给从端的进程，就好像它是在终端上输入的一样。 例如，向主设备写入中断字符 (通常是 control\-C)
+会导致连接到从设备的前台进程组产生中断信号 (\fBSIGINT\fP)。 相反，写入伪终端的从端的任何内容都可以被连接到主端的进程读取。
+.PP
+master 和 slave 之间的数据流是异步处理的，很像物理端的数据流。 写入从站的数据将立即在主站可用，但可能不会立即可用。
+类似地，在写入主机和在从机上看到效果之间可能会有一个小的处理延迟。
+.PP
+从历史上看，已经发展了两个伪终端 API: BSD 和 System V。SUSv1 在 System V API 的基础上标准化了一个伪终端
+API，所有使用伪终端的新程序都应该使用这个 API。
+.PP
+Linux 提供 BSD 风格和 (standardized) System V 风格的伪终端。 System V 风格的终端在 Linux
+系统上通常称为 UNIX 98 伪终端。
+.PP
+自 Linux 2.6.4 起，BSD 风格的伪终端被认为已弃用: 通过禁用 \fBCONFIG_LEGACY_PTYS\fP 选项构建内核时可以禁用支持。
+(从 Linux 2.6.30 开始，该选项在主线内核中默认禁用。) UNIX 98 伪终端应在新应用程序中使用。
+.SS "UNIX 98 pseudoterminals"
+通过调用 \fBposix_openpt\fP(3) 打开未使用的 UNIX 98 伪终端主机。 (此函数打开主克隆设备，\fI/dev/ptmx\fP; 参见
+\fBpts\fP(4).) 在执行任何程序特定的初始化、使用 \fBgrantpt\fP(3) 更改从属设备的所有权和权限以及使用 \fBunlockpt\fP(3))
+解锁从属设备后，可以通过传递 \fBptsname\fP(3) 在对 \fBopen\fP(2) 的调用中返回的名称。
+.PP
+Linux 内核对可用 UNIX 98 伪终端的数量施加了限制。 Linux 2.6.3 及 2.6.3 之前，这个限制是在内核编译时
+(\fBCONFIG_UNIX98_PTYS\fP) 配置的，允许的伪终端数量最多可达 2048 个，默认设置为 256 个。 自 Linux 2.6.4
+起，限制可通过 \fI/proc/sys/kernel/pty/max\fP 动态调整，相应的文件 \fI/proc/sys/kernel/pty/nr\fP
+指示当前使用了多少个伪终端。 有关这两个文件的更多详细信息，请参见 \fBproc\fP(5)。
+.SS "BSD pseudoterminals"
+BSD 风格的伪终端作为预先创建的对提供，名称形式为 \fI/dev/ptyXY\fP (master) 和 \fI/dev/ttyXY\fP (slave)，其中
+X 是 16 字符集 [p\-za\-e] 中的一个字母，Y 是 16 字符集 [0\-9a\-f] 中的一个字母。 (这两组字母的精确范围因 UNIX
+实现而异。) 例如，\fI/dev/ptyp1\fP 和 \fI/dev/ttyp1\fP 构成 BSD 伪终端对。 进程通过尝试 \fBopen\fP(2)
+每个伪终端主机直到打开成功来找到未使用的伪终端对。 然后可以打开相应的伪终端从站 (用 "tty" 代替主站名称中的 "pty")。
+.SH FILES
+.TP 
+\fI/dev/ptmx\fP
+UNIX 98 主克隆设备
+.TP 
+\fI/dev/pts/*\fP
+UNIX 98 从机
+.TP 
+\fI/dev/pty[p\-za\-e][0\-9a\-f]\fP
+BSD 主设备
+.TP 
+\fI/dev/tty[p\-za\-e][0\-9a\-f]\fP
+BSD 从属设备
+.SH NOTES
+伪终端由网络登录服务 (\fBssh\fP(1)、\fBrlogin\fP(1)、\fBtelnet\fP(1)) 等应用程序使用，终端仿真器如
+\fBxterm\fP(1)、\fBscript\fP(1)、\fBscreen\fP(1)、\fBtmux\fP(1)、\fBunbuffer\fP(1) 和
+\fBexpect\fP(1)。
+.PP
+可以在 \fBioctl_tty\fP(2) 中找到控制数据包模式操作的 \fBTIOCPKT\fP \fBioctl\fP(2) 的描述。
+.PP
+BSD \fBioctl\fP(2) 操作 \fBTIOCSTOP\fP、\fBTIOCSTART\fP、\fBTIOCUCNTL\fP、\fBTIOCREMOTE\fP 都没有在
+Linux 下实现。
+.SH "SEE ALSO"
+\fBioctl_tty\fP(2), \fBselect\fP(2), \fBsetsid\fP(2), \fBforkpty\fP(3), \fBopenpty\fP(3),
+\fBtermios\fP(3), \fBpts\fP(4), \fBtty\fP(4)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

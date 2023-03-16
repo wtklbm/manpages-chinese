@@ -1,0 +1,189 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getgrent_r 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getgrent_r, fgetgrent_r \- 重入获取组文件条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <grp.h>\fP
+.PP
+\fBint getgrent_r(struct group *restrict \fP\fIgbuf\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP 
+\fB               struct group **restrict \fP\fIgbufp\fP\fB);\fP
+\fBint fgetgrent_r(FILE *restrict \fP\fIstream\fP\fB, struct group *restrict \fP\fIgbuf\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB               struct group **restrict \fP\fIgbufp\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetgrent_r\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.\" FIXME . The FTM requirements seem inconsistent here.  File a glibc bug?
+.PP
+\fBfgetgrent_r\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+函数 \fBgetgrent_r\fP() 和 \fBfgetgrent_r\fP() 是 \fBgetgrent\fP(3) 和 \fBfgetgrent\fP(3)
+的可重入版本。 前者从 \fBsetgrent\fP(3) 初始化的流中读取下一个组条目。 后者从 \fIstream\fP 读取下一个组条目。
+.PP
+\fIgroup\fP 结构体在 \fI<grp.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct group {
+    char   *gr_name;        /* group name */
+    char   *gr_passwd;      /* group password */
+    gid_t   gr_gid;         /* group ID */
+    char  **gr_mem;         /* NULL\-terminated array of pointers
+                               组成员的名字 */
+};
+.EE
+.in
+.PP
+有关此结构体字段的更多信息，请参见 \fBgroup\fP(5)。
+.PP
+不可重入函数返回一个指向静态存储的指针，其中这个静态存储包含指向组名、密码和成员的进一步指针。 此处描述的可重入函数返回调用者提供的缓冲区中的所有数据。
+首先是可以容纳 \fIstruct group\fP 的缓冲区 \fIgbuf\fP。 接下来是可以容纳额外字符串的大小为 \fIbuflen\fP 的缓冲区
+\fIbuf\fP。 这些函数的结果，即从流中读取的 \fIstruct group\fP，存储在提供的缓冲区 \fI*gbuf\fP 中，并在 \fI*gbufp\fP
+中返回指向此 \fIstruct group\fP 的指针。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0 并且 \fI*gbufp\fP 是指向 \fIstruct group\fP 的指针。 出错时，这些函数返回一个错误值并且
+\fI*gbufp\fP 为 NULL。
+.SH ERRORS
+.TP 
+\fBENOENT\fP
+没有更多条目。
+.TP 
+\fBERANGE\fP
+提供的缓冲区空间不足。 使用更大的缓冲区重试。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetgrent_r\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:grent locale
+T}
+T{
+\fBfgetgrent_r\fP()
+T}	Thread safety	T{
+MT\-Safe
+T}
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:grent\fP 中的 \fIgrent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetgrent\fP(3)、\fBgetgrent\fP(3)、\fBendgrent\fP(3) 或 \fBgetgrent_r\fP()
+中的任何一个，则可能发生数据竞争。
+.SH STANDARDS
+这些函数是 GNU 的扩展，其风格类似于函数的 \fBgetpwnam_r\fP(3) 的 POSIX 版本。 其他系统使用原型
+.PP
+.in +4n
+.EX
+struct group *getgrent_r(struct group *grp, char *buf,
+                         int buflen);
+.EE
+.in
+.PP
+or, better,
+.PP
+.in +4n
+.EX
+int getgrent_r(struct group *grp, char *buf, int buflen,
+               FILE **gr_fp);
+.EE
+.in
+.SH NOTES
+函数 \fBgetgrent_r\fP() 并不是真正可重入的，因为它与所有其他线程共享流中的读取位置。
+.SH EXAMPLES
+.\" SRC BEGIN (getgrent_r.c)
+.EX
+#define _GNU_SOURCE
+#include <grp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#define BUFLEN 4096
+
+int
+main(void)
+{
+    struct group grp;
+    struct group *grpp;
+    char buf[BUFLEN];
+    int i;
+
+    setgrent();
+    while (1) {
+        i = getgrent_r(&grp, buf, sizeof(buf), &grpp);
+        if (i)
+            break; 
+        printf("%s (%jd):", grpp\->gr_name, (intmax_t) grpp\->gr_gid);
+        for (size_t j = 0; ; j++) {
+            if (grpp\->gr_mem[j] == NULL)
+                break;
+            printf(" %s", grpp\->gr_mem[j]);
+        }
+        printf("\en");
+    }
+    endgrent();
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" perhaps add error checking - should use strerror_r
+.\" #include <errno.h>
+.\" #include <stdlib.h>
+.\"         if (i) {
+.\"               if (i == ENOENT)
+.\"                     break;
+.\"               printf("getgrent_r: %s", strerror(i));
+.\"               exit(EXIT_FAILURE);
+.\"         }
+.\" SRC END
+.SH "SEE ALSO"
+\fBfgetgrent\fP(3), \fBgetgrent\fP(3), \fBgetgrgid\fP(3), \fBgetgrnam\fP(3),
+\fBputgrent\fP(3), \fBgroup\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,275 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" starting from a version by Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH signalfd 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+signalfd \- 创建用于接受信号的文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/signalfd.h>\fP
+.PP
+\fBint signalfd(int \fP\fIfd\fP\fB, const sigset_t *\fP\fImask\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsignalfd\fP() 创建一个文件描述符，可用于接受针对调用者的信号。 这提供了使用信号处理程序或 \fBsigwaitinfo\fP(2)
+的替代方法，并且具有文件描述符可以由 \fBselect\fP(2)、\fBpoll\fP(2) 和 \fBepoll\fP(7) 监视的优点。
+.PP
+\fImask\fP 参数指定调用者希望通过文件描述符接受的一组信号。 这个参数是一个信号集，其内容可以使用 \fBsigsetops\fP(3)
+中描述的宏来初始化。 通常，应使用 \fBsigprocmask\fP(2) 阻止通过文件描述符接收的信号集，以防止根据其默认配置处理信号。 无法通过
+signalfd 文件描述符接收 \fBSIGKILL\fP 或 \fBSIGSTOP\fP 信号; 如果在 \fImask\fP 中指定，这些信号将被忽略。
+.PP
+如果 \fIfd\fP 参数是 \-1，则调用创建一个新的文件描述符并将 \fImask\fP 中指定的信号集与该文件描述符相关联。 如果 \fIfd\fP 不是
+\-1，则它必须指定一个有效的现有 signalfd 文件描述符，并且 \fImask\fP 用于替换与该文件描述符关联的信号集。
+.PP
+从 Linux 2.6.27 开始，以下值可能在 \fIflags\fP 中按位或运算以改变 \fBsignalfd\fP(): 的行为
+.TP  14
+\fBSFD_NONBLOCK\fP
+在打开的文件描述中设置 \fBO_NONBLOCK\fP 文件状态标志 (请参见新文件描述符引用的 \fBopen\fP(2))。 使用此标志可节省对
+\fBfcntl\fP(2) 的额外调用以实现相同的结果。
+.TP 
+\fBSFD_CLOEXEC\fP
+在新文件描述符上设置 close\-on\-exec (\fBFD_CLOEXEC\fP) 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的描述，了解这可能有用的原因。
+.PP
+直到 Linux 2.6.26，\fIflags\fP 参数未使用，必须指定为零。
+.PP
+\fBsignalfd\fP() 返回一个支持以下操作的文件描述符:
+.TP 
+\fBread\fP(2)
+如果 \fImask\fP 中指定的一个或多个信号等待进程处理，则提供给 \fBread\fP(2) 的缓冲区用于返回一个或多个描述信号的
+\fIsignalfd_siginfo\fP 结构 (见下文)。 \fBread\fP(2) 返回与未决信号一样多的信息，并将适合提供的缓冲区。 缓冲区必须至少为
+\fIsizeof(struct signalfd_siginfo)\fP 字节。 \fBread\fP(2) 的返回值是读取的字节总数。
+.IP
+作为 \fBread\fP(2) 的结果，信号被消耗，因此它们不再等待进程 (即，不会被信号处理程序捕获，并且无法使用 \fBsigwaitinfo\fP(2))
+接受。
+.IP
+如果 \fImask\fP 中没有任何信号为进程挂起，则 \fBread\fP(2) 要么阻塞，直到为进程生成 \fImask\fP
+中的信号之一，或者如果文件描述符已设为非阻塞，则失败并返回错误 \fBEAGAIN\fP。
+.TP 
+\fBpoll\fP(2), \fBselect\fP(2) (and similar)
+如果 \fImask\fP 中的一个或多个信号正在为进程挂起，则文件描述符是可读的 ( \fBselect\fP(2) \fIreadfds\fP 参数;
+\fBpoll\fP(2) \fBPOLLIN\fP 标志)。
+.IP
+signalfd 文件描述符还支持其他文件描述符多路复用 API: \fBpselect\fP(2)、\fBppoll\fP(2) 和 \fBepoll\fP(7)。
+.TP 
+\fBclose\fP(2)
+当不再需要文件描述符时，应该将其关闭。 当与同一个 signalfd 对象关联的所有文件描述符都已关闭时，内核将释放该对象的资源。
+.SS "The signalfd_siginfo structure"
+\fBread\fP(2)s 从一个 signalfd 文件描述符返回的 \fIsignalfd_siginfo\fP structure(s) 的格式如下:
+.PP
+.in +4n
+.EX
+.\" ssi_trapno is unused on most arches
+.\" ssi_addr_lsb: commit b8aeec34175fc8fe8b0d40efea4846dfc1ba663e
+struct signalfd_siginfo {
+    uint32_t ssi_signo;    /* Signal number */
+    int32_t  ssi_errno;    /* Error number (unused) */
+    int32_t  ssi_code;     /* Signal code */
+    uint32_t ssi_pid;      /* PID of sender */
+    uint32_t ssi_uid;      /* Real UID of sender */
+    int32_t  ssi_fd;       /* File descriptor (SIGIO) */
+    uint32_t ssi_tid; /* 内核计时器 ID (POSIX 计时器)
+    uint32_t ssi_band;     /* Band event (SIGIO) */
+    uint32_t ssi_overrun;  /* POSIX timer overrun count */
+    uint32_t ssi_trapno;   /* Trap number that caused signal */
+    int32_t  ssi_status;   /* Exit status or signal (SIGCHLD) */
+    int32_t  ssi_int;      /* Integer sent by sigqueue(3) */
+    uint64_t ssi_ptr;      /* Pointer sent by sigqueue(3) */
+    uint64_t ssi_utime;    /* User CPU time consumed (SIGCHLD) */
+    uint64_t ssi_stime; /* 系统消耗的 CPU 时间
+                              (SIGCHLD) */
+    uint64_t ssi_addr; /* 产生信号的地址
+                              (对于硬件生成的信号) */
+    uint16_t ssi_addr_lsb; /* 地址的最低有效位
+                              (SIGBUS; 自 Linux 2.6.37) */
+    uint8_t pad[\fIX\fP]; /* 填充大小为 128 字节 (允许
+                              future 中的附加字段) */
+};
+.EE
+.in
+.PP
+此结构体中的每个字段都类似于 \fIsiginfo_t\fP 结构体中的类似命名字段。 \fIsiginfo_t\fP 结构体在 \fBsigaction\fP(2)
+中描述。 并非返回的 \fIsignalfd_siginfo\fP 结构体中的所有字段都对特定信号有效; 可以根据 \fIssi_code\fP
+字段中返回的值确定有效字段集。 该字段是 \fIsiginfo_t\fP \fIsi_code\fP 字段的模拟; 详见 \fBsigaction\fP(2)。
+.SS "fork(2) semantics"
+在 \fBfork\fP(2) 之后，子节点继承了 signalfd 文件描述符的副本。 子文件描述符中的 \fBread\fP(2)
+将返回有关排队给子文件的信号的信息。
+.SS "Semantics of file descriptor passing"
+与其他文件描述符一样，signalfd 文件描述符可以通过 UNIX 域套接字 (参见 \fBunix\fP(7)).  在接收进程中，接收到的文件描述符中的
+\fBread\fP(2) 将返回有关排队到该进程的信号的信息。
+.SS "execve(2) semantics"
+就像任何其他文件描述符一样，signalfd 文件描述符在 \fBexecve\fP(2) 中保持打开状态，除非它已被标记为 close\-on\-exec
+(请参见 \fBfcntl\fP(2)).  在 \fBexecve\fP(2) 之前可用于读取的任何信号对新加载的程序仍然可用。
+(这类似于传统的信号语义，其中挂起的阻塞信号在 \fBexecve\fP(2).) 中保持挂起状态
+.SS "Thread semantics"
+.\"
+多线程程序中 signalfd 文件描述符的语义反映了信号的标准语义。 换句话说，当一个线程从一个 signalfd
+文件描述符中读取时，它会读取指向线程本身的信号和指向进程 (即整个线程组) 的信号。 (线程将无法读取指向进程中其他线程的信号。)
+.SS "epoll(7) semantics"
+如果进程添加 (通过 \fBepoll_ctl\fP(2)) 将 signalfd 文件描述符添加到 \fBepoll\fP(7) 实例，则
+\fBepoll_wait\fP(2) 仅针对发送到该进程的信号返回事件。 特别是，如果该进程随后使用 \fBfork\fP(2) 创建子进程，则该子进程将能够使用
+signalfd 文件描述符将 \fBread\fP(2) 信号发送给它，但 \fBepoll_wait\fP(2) 将通过 \fBnot\fP 指示 signalfd
+文件描述符已准备就绪。 在这种情况下，一个可能的解决方法是，在 \fBfork\fP(2) 之后，子进程可以关闭它从父进程继承的 signalfd
+文件描述符，然后创建另一个 signalfd 文件描述符并将其添加到 epoll 实例中。 或者，父母和子节点可以延迟创建他们的 (separate)
+signalfd 文件描述符并将它们添加到 epoll 实例，直到调用到 \fBfork\fP(2) 之后。
+.SH "RETURN VALUE"
+成功时，\fBsignalfd\fP() 返回一个 signalfd 文件描述符; 这是一个新的文件描述符 (如果 \fIfd\fP 是 \-1)，或者是 \fIfd\fP
+如果 \fIfd\fP 是一个有效的 signalfd 文件描述符。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 文件描述符不是有效的文件描述符。
+.TP 
+\fBEINVAL\fP
+.\" or, the
+.\" .I sizemask
+.\" argument is not equal to
+.\" .IR sizeof(sigset_t) ;
+\fIfd\fP 不是有效的 signalfd 文件描述符。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 无效; 或者，在 Linux 2.6.26 或更早版本中，\fIflags\fP 为非零值。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENODEV\fP
+无法安装 (internal) 匿名 inode 设备。
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建新的 signalfd 文件描述符。
+.SH VERSIONS
+.\" signalfd() is in glibc 2.7, but reportedly does not build
+\fBsignalfd\fP() 从 Linux 2.6.22 开始可用。 从 glibc 2.8 开始提供工作支持。 \fBsignalfd4\fP() 系统调用
+(见注释) 自 Linux 2.6.27 起可用。
+.SH STANDARDS
+\fBsignalfd\fP() 和 \fBsignalfd4\fP() 是特定于 Linux 的。
+.SH NOTES
+一个进程可以创建多个 signalfd 文件描述符。 这使得在不同的文件描述符上接受不同的信号成为可能。 (如果使用
+\fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7): 监视文件描述符，不同信号的到来将使不同的文件描述符就绪，这可能很有用。)
+如果一个信号出现在多个文件描述符的 \fImask\fP 中，则该信号的出现可以从任何一个文件描述符中读取 (once) 信号。
+.PP
+在 \fImask\fP 中包含 \fBSIGKILL\fP 和 \fBSIGSTOP\fP 的尝试将被忽略。
+.PP
+.\"
+可以通过进程的 \fI/proc/\fPpid\fI/fdinfo\fP 目录中相应文件描述符的条目查看 signalfd 文件描述符使用的信号掩码。
+有关详细信息，请参见 \fBproc\fP(5)。
+.SS Limitations
+signalfd 机制不能用于接收同步生成的信号，例如因访问无效内存地址而产生的 \fBSIGSEGV\fP 信号或因算术错误而产生的 \fBSIGFPE\fP
+信号。 此类信号只能通过信号处理程序捕获。
+.PP
+.\"
+如上所述，在正常使用中，会阻止将通过 \fBsignalfd\fP() 接受的信号。 如果生成一个子进程来执行一个辅助程序 (不需要 signalfd
+文件描述符)，那么，在调用 \fBfork\fP(2) 之后，您通常希望在调用 \fBexecve\fP(2)
+之前解除对这些信号的阻塞，以便辅助程序可以看到任何信号它希望看到的。 但是请注意，对于程序可能调用的任何库函数在幕后生成的帮助程序，这是不可能的。
+在这种情况下，必须回退到使用传统的信号处理程序，该处理程序写入由 \fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7)
+监视的文件描述符。
+.SS "C library/kernel differences"
+底层的 Linux 系统调用需要一个额外的参数 \fIsize_t sizemask\fP，它指定了 \fImask\fP 参数的大小。 glibc
+\fBsignalfd\fP() 封装函数函数不包含这个参数，因为它为底层系统调用提供了所需的值。
+.PP
+有两个底层 Linux 系统调用: \fBsignalfd\fP() 和更新的 \fBsignalfd4\fP()。 以前的系统调用没有实现 \fIflags\fP
+参数。 后一个系统调用实现上述 \fIflags\fP 值。 从 glibc 2.9 开始，\fBsignalfd\fP() 包装器函数将在可用的地方使用
+\fBsignalfd4\fP()。
+.SH BUGS
+.\" The fix also was put into Linux 2.6.24.5
+在 Linux 2.6.25 之前，\fIssi_ptr\fP 和 \fIssi_int\fP 字段没有填充 \fBsigqueue\fP(3) 发送的信号附带的数据。
+.SH EXAMPLES
+下面的程序通过 signalfd 文件描述符接受信号 \fBSIGINT\fP 和 \fBSIGQUIT\fP。 程序在接受 \fBSIGQUIT\fP 信号后终止。
+下面的 shell 会话演示了该程序的使用:
+.PP
+.in +4n
+.EX
+$\fB ./signalfd_demo\fP
+\fB\[ha]C\fP                   # Control\-C generates SIGINT
+Got SIGINT 
+\fB\[ha]C\fP
+Got SIGINT
+\fB\[ha]\e\fP                    # Control\-\e generates SIGQUIT
+Got SIGQUIT
+$
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (signalfd.c)
+\&
+.EX
+#include <err.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/signalfd.h>
+#include <unistd.h>
+
+int
+main(void)
+{
+    int                      sfd;
+    ssize_t                  s;
+    sigset_t                 mask;
+    struct signalfd_siginfo  fdsi;
+
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGQUIT);
+
+    /* Block signals so that they aren\[aq]t handled
+       according to their default dispositions. */
+
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) == \-1)
+        err(EXIT_FAILURE, "sigprocmask");
+
+    sfd = signalfd(\-1, &mask, 0);
+    if (sfd == \-1)
+        err(EXIT_FAILURE, "signalfd");
+
+    for (;;) {
+        s = read(sfd, &fdsi, sizeof(fdsi));
+        if (s != sizeof(fdsi))
+            err(EXIT_FAILURE, "read");
+
+        if (fdsi.ssi_signo == SIGINT) {
+            printf("Got SIGINT\en");
+        } else if (fdsi.ssi_signo == SIGQUIT) {
+            printf("Got SIGQUIT\en");
+            exit(EXIT_SUCCESS);
+        } else {
+            printf("Read unexpected signal\en");
+        }
+    }
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBeventfd\fP(2), \fBpoll\fP(2), \fBread\fP(2), \fBselect\fP(2), \fBsigaction\fP(2),
+\fBsigprocmask\fP(2), \fBsigwaitinfo\fP(2), \fBtimerfd_create\fP(2), \fBsigsetops\fP(3),
+\fBsigwait\fP(3), \fBepoll\fP(7), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

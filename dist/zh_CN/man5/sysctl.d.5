@@ -1,0 +1,213 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSCTL\&.D 5 "" "systemd 253" sysctl.d
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+sysctl.d \- 在启动时配置内核参数
+.SH SYNOPSIS
+.PP
+/etc/sysctl\&.d/*\&.conf
+.PP
+/run/sysctl\&.d/*\&.conf
+.PP
+/usr/lib/sysctl\&.d/*\&.conf
+.sp
+.nf
+key\&.name\&.under\&.proc\&.sys = 一些值
+key/name/under/proc/sys = 一些值
+key/middle\&.part\&.with\&.dots/foo = 123
+key\&.middle/part/with/dots\&.foo = 123
+\-key\&.that\&.will\&.not\&.fail = 值
+key\&.pattern\&.*\&.with\&.glob = whatever
+\-key\&.pattern\&.excluded\&.with\&.glob
+key\&.pattern\&.overridden\&.with\&.glob = 自定义
+.fi
+.SH DESCRIPTION
+.PP
+\fBsystemd\-sysctl.service\fP(8) 在启动时从上述目录中读取配置文件来配置 \fBsysctl\fP(8) 内核参数 \&。
+.SH "CONFIGURATION FORMAT"
+.PP
+配置文件包含变量分配列表，由换行符 \& 分隔。空行和第一个非空白字符为 "#" 或 ";" 的行将被忽略 \&。
+.PP
+请注意，"/" 或 "\&." 都可以用作 sysctl 变量名称 \& 中的分隔符。如果第一个分隔符是斜杠，则其余的斜杠和点将保持不变
+\&。如果第一个分隔符是点，则点和斜线互换 \&。 "kernel\&.domainname=foo" 和
+"kernel/domainname=foo" 是等价的，会导致 "foo" 被写入
+/proc/domainname\&。"net\&.ipv4\&.conf\&.enp3s0/200\&.forwarding" 或
+"net/ipv4/conf/enp3s0\&.200/forwarding" 可用于引用
+/proc/enp3s0\&.200/forwarding\&。glob \fBglob\fP(7) 模式可用于将相同的值写入所有匹配的键
+\&。存在显式模式的键将从任何 glob 匹配中排除。此外，通过指定以 "\-" 字符为前缀且后面不跟 "=" 的键名称，可以明确排除键被任何匹配的
+glob 模式设置，请参见 SYNOPSIS\&。
+.PP
+任何访问权限错误和写入本地系统上不存在的变量的尝试都在调试级别记录，不会导致服务失败
+\&。设置变量时的其他类型的错误以更高的优先级记录，并导致服务在最后返回失败 (在处理其他变量后) \&。作为例外，如果变量赋值以单个 "\-"
+字符为前缀，则无论出于何种原因未能设置变量都将在调试级别记录下来，并且不会导致服务失败 \&。
+.PP
+使用 sysctl\&.d 文件配置的设置将在引导早期应用。特定于网络接口的选项也将单独应用于每个网络接口，因为它显示在系统中
+\&。(更具体地说，net\&.ipv4\&.conf\&.*、net\&.ipv6\&.conf\&.*、net\&.ipv4\&.neigh\&.*和
+net\&。ipv6\&.neigh\&.*)\&.
+.PP
+许多 sysctl 参数只有在加载某些内核模块时才可用 \&。模块通常是按需加载的，例如 \&.g\&。当插入某些硬件或启动网络时
+\&。这意味着在早期启动期间运行的 \fBsystemd\-sysctl.service\fP(8)
+将不会配置这些参数，如果它们在运行后变得可用的话。要设置此类参数，建议添加 \fBudev\fP(7) 规则以在这些参数可用时设置这些参数
+\&。或者，一个稍微简单且效率较低的选项是将模块添加到 \fBmodules\-load.d\fP(5)，使其在应用 sysctl 设置之前静态加载
+(参见下面的示例) \&。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+配置文件从 /etc/、/run/、/usr/local/lib/ 和 /usr/lib/ 中的目录中读取，按照优先顺序，如上面的 SYNOPSIS
+部分中所列 \&。文件必须具有 "\&.conf" 扩展名 \&。/etc/ 中的文件覆盖 /run/、/usr/local/lib/ 和
+/usr/lib/\& 中的同名文件。/run/ 中的文件覆盖 /usr/\& 下的同名文件。
+.PP
+所有配置文件都按字典顺序按文件名排序，而不管它们位于哪个目录中 \&。如果多个文件指定相同的选项，则文件中具有字典顺序最新名称的条目将优先
+\&。因此，某个文件中的配置可能会被完全替换 (通过将具有相同名称的文件放在具有更高优先级的目录中)，或者可能会更改个别设置
+(通过在具有不同名称的文件中指定其他设置) 稍后订购) \&。
+.PP
+包应将其配置文件安装在 /usr/lib/ (分发包) 或 /usr/local/lib/ (本地安装) \& 中。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。建议在所有文件名前加上一个两位数字和一个破折号，以简化文件的排序
+\&。
+.PP
+如果管理员想禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同
+\&。如果供应商配置文件包含在 initrd 映像中，则必须重新生成映像 \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Set kernel YP domain name\fP
+.PP
+/etc/sysctl\&.d/domain\-name\&.conf:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+kernel\&.domainname=example\&.com
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Apply settings available only when a certain module is loaded (method one)\fP
+.PP
+/etc/udev/rules\&.d/99\-bridge\&.rules:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+ACTION=="add", SUBSYSTEM=="module", KERNEL=="br_netfilter", \e
+      RUN+="/usr/lib/systemd/systemd\-sysctl \-\-prefix=/net/bridge"
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+/etc/sysctl\&.d/bridge\&.conf:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+net\&.bridge\&.bridge\-nf\-call\-ip6tables = 0
+net\&.bridge\&.bridge\-nf\-call\-iptables = 0
+net\&.bridge\&.bridge\-nf\-call\-arptables = 0
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+此方法在加载模块时应用设置 \&。请注意，除非加载了 br_netfilter 模块，否则桥接数据包将不会被 Netfilter 过滤 (从内核
+3\&.18 开始)，因此只需不加载该模块就足以避免过滤 \&。
+.PP
+\fBExample\ \&3.\ \&Apply settings available only when a certain module is loaded (method two)\fP
+.PP
+/etc/modules\-load\&.d/bridge\&.conf:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+br_netfilter
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+/etc/sysctl\&.d/bridge\&.conf:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+net\&.bridge\&.bridge\-nf\-call\-ip6tables = 0
+net\&.bridge\&.bridge\-nf\-call\-iptables = 0
+net\&.bridge\&.bridge\-nf\-call\-arptables = 0
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+此方法强制模块始终加载 \&。请注意，除非加载了 br_netfilter 模块，桥接数据包将不会被 Netfilter 过滤 (从内核 3\&.18
+开始)，因此只要不加载该模块就足以避免过滤 \&。
+.PP
+\fBExample\ \&4.\ \&Set network routing properties for all interfaces\fP
+.PP
+/etc/sysctl\&.d/20\-rp_filter\&.conf:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+net\&.ipv4\&.conf\&.default\&.rp_filter = 2
+net\&.ipv4\&.conf\&.*\&.rp_filter = 2
+\-net\&.ipv4\&.conf\&.all\&.rp_filter
+net\&.ipv4\&.conf\&.hub0\&.rp_filter = 1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+所有接口的 \fBrp_filter\fP 密钥都将设置为 "2"，`hub0`\& 除外。我们首先设置
+net\&.ipv4\&.conf\&.default\&.rp_filter，因此添加 \fIlater\fP 的任何接口都将获得此值 (这也涵盖了我们
+\* (Aqre 运行) \& 时检测到的任何接口。glob 匹配任何检测到的接口 \fIearlier\fP\&。该 glob 还将匹配
+net\&.ipv4\&.conf\&.all\&.rp_filter，我们根本不 \*(Aqt 想要设置它，因此它被显式排除 \&。并且 "hub0"
+被排除在 glob 之外，因为它有一个明确的设置 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-sysctl.service\fP(8), \fBsystemd\-delta\fP(1),
+\fBsysctl\fP(8), \fBsysctl.conf\fP(5), \fBmodprobe\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

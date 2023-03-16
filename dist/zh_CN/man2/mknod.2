@@ -1,0 +1,172 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Michael Haardt
+.\"             and Copyright (C) 1993,1994 Ian Jackson
+.\"		and Copyright (C) 2006, 2014, Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Modified 1996-08-18 by urs
+.\" Modified 2003-04-23 by Michael Kerrisk
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mknod 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mknod, mknodat \- 创建特殊或普通文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint mknod(const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB, dev_t \fP\fIdev\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of AT_* constants */
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint mknodat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB, dev_t \fP\fIdev\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmknod\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+系统调用 \fBmknod\fP() 创建一个名为 \fIpathname\fP 的文件系统节点 (文件、设备专用文件或命名管道)，其属性由 \fImode\fP 和
+\fIdev\fP 指定。
+.PP
+\fImode\fP 参数指定要使用的文件模式和要创建的节点类型。 它应该是下面列出的一种文件类型和 \fBinode\fP(7)
+中列出的零个或多个文件模式位的组合 (使用按位或)。
+.PP
+文件模式由进程的 \fIumask\fP 以通常的方式修改: 在没有默认 ACL 的情况下，创建的节点的权限是
+(\fImode\fP&\[ti]\fIumask\fP)。
+.PP
+.\" (S_IFSOCK since Linux 1.2.4)
+文件类型必须是 \fBS_IFREG\fP、\fBS_IFCHR\fP、\fBS_IFBLK\fP、\fBS_IFIFO\fP 或 \fBS_IFSOCK\fP
+之一，以分别指定常规文件 (将被创建为空)、字符特殊文件、块特殊文件、FIFO (命名管道) 或 UNIX 域套接字.  (零文件类型相当于类型
+\fBS_IFREG\fP.)
+.PP
+如果文件类型是 \fBS_IFCHR\fP 或 \fBS_IFBLK\fP，则 \fIdev\fP 指定新创建的设备专用文件的主要和次要编号 (\fBmakedev\fP(3)
+可能对构建 \fIdev\fP) 的值有用; 否则将被忽略。
+.PP
+如果 \fIpathname\fP 已经存在，或者是符号链接，则此调用失败并出现 \fBEEXIST\fP 错误。
+.PP
+.\"
+.\"
+新创建的节点将由进程的有效用户 ID 拥有。 如果包含该节点的目录设置了 set\-group\-ID 位，或者如果文件系统使用 BSD
+组语义挂载，则新节点将从其父目录继承组所有权; 否则它将由进程的有效组 ID 拥有。
+.SS mknodat()
+\fBmknodat\fP() 系统调用的操作方式与 \fBmknod\fP() 完全相同，除了此处描述的差异。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBmknod\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBmknod\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+有关对 \fBmknodat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+\fBmknod\fP() 和 \fBmknodat\fP() 成功返回零。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+父目录不允许进程写入权限，或者 \fIpathname\fP 的路径前缀中的目录之一不允许搜索权限。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+\fB(\fPmknodat\fB())\fP \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEDQUOT\fP
+文件系统上用户的磁盘块或 inode 配额已用完。
+.TP 
+\fBEEXIST\fP
+\fIpathname\fP 已经存在。 这包括 \fIpathname\fP 是符号链接的情况，悬垂与否。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fImode\fP 请求创建常规文件、设备专用文件、FIFO 或套接字以外的内容。
+.TP 
+\fBELOOP\fP
+解析 \fIpathname\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长了。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 中的目录组件不存在或者是悬垂符号链接。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOSPC\fP
+包含 \fIpathname\fP 的设备没有空间容纳新节点。
+.TP 
+\fBENOTDIR\fP
+在 \fIpathname\fP 中用作目录的组件实际上不是目录。
+.TP 
+\fBENOTDIR\fP
+\fB(\fPmknodat\fB())\fP \fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.TP 
+\fBEPERM\fP
+.\" For UNIX domain sockets and regular files, EPERM is returned only in
+.\" Linux 2.2 and earlier; in Linux 2.4 and later, unprivileged can
+.\" use mknod() to make these files.
+\fImode\fP 请求创建常规文件、FIFO (命名管道) 或 UNIX 域套接字以外的内容，并且调用者没有特权 (Linux: 没有
+\fBCAP_MKNOD\fP 功能) ; 如果包含 \fIpathname\fP 的文件系统不支持请求的节点类型，也会返回。
+.TP 
+\fBEROFS\fP
+\fIpathname\fP 指的是只读文件系统上的文件。
+.SH VERSIONS
+\fBmknodat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+.\" The Linux version differs from the SVr4 version in that it
+.\" does not require root permission to create pipes, also in that no
+.\" EMULTIHOP, ENOLINK, or EINTR error is documented.
+\fBmknod\fP(): SVr4、4.4BSD、POSIX.1\-2001 (但见下文)、POSIX.1\-2008。
+.PP
+\fBmknodat\fP(): POSIX.1\-2008.
+.SH NOTES
+POSIX.1\-2001 说: "The only portable use of \fBmknod\fP() is to create a
+FIFO\-special file. If \fImode\fP is not \fBS_IFIFO\fP or \fIdev\fP is not 0, the
+behavior of \fBmknod\fP() is unspecified." 然而，如今人们永远不应该将 \fBmknod\fP() 用于此目的; 应该使用
+\fBmkfifo\fP(3)，一个专门为此目的定义的函数。
+.PP
+.\" and one should make UNIX domain sockets with socket(2) and bind(2).
+Linux 下，\fBmknod\fP() 不能用来创建目录。 应该用 \fBmkdir\fP(2) 创建目录。
+.PP
+NFS 的底层协议有很多缺陷。 其中一些会影响 \fBmknod\fP() 和 \fBmknodat\fP()。
+.SH "SEE ALSO"
+\fBmknod\fP(1), \fBchmod\fP(2), \fBchown\fP(2), \fBfcntl\fP(2), \fBmkdir\fP(2),
+\fBmount\fP(2), \fBsocket\fP(2), \fBstat\fP(2), \fBumask\fP(2), \fBunlink\fP(2),
+\fBmakedev\fP(3), \fBmkfifo\fP(3), \fBacl\fP(5), \fBpath_resolution\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

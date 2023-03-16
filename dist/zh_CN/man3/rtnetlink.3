@@ -1,0 +1,118 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: rtnetlink.3,v 1.2 1999/05/18 10:35:10 freitag Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rtnetlink 3 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+rtnetlink \- 用于操作 rtnetlink 消息的宏
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <asm/types.h>\fP
+\fB#include <linux/netlink.h>\fP
+\fB#include <linux/rtnetlink.h>\fP
+\fB#include <sys/socket.h>\fP
+.PP
+\fBrtnetlink_socket = socket(AF_NETLINK, int \fP\fIsocket_type\fP\fB, NETLINK_ROUTE);\fP
+.PP
+\fBint RTA_OK(struct rtattr *\fP\fIrta\fP\fB, int \fP\fIrtabuflen\fP\fB);\fP
+.PP
+\fBvoid *RTA_DATA(struct rtattr *\fP\fIrta\fP\fB);\fP
+\fBunsigned int RTA_PAYLOAD(struct rtattr *\fP\fIrta\fP\fB);\fP
+.PP
+\fBstruct rtattr *RTA_NEXT(struct rtattr *\fP\fIrta\fP\fB，无符号整数 \fP\fIrtabuflen\fP\fB);\fP
+.PP
+\fBunsigned int RTA_LENGTH(unsigned int \fP\fIlength\fP\fB);\fP
+\fBunsigned int RTA_SPACE(unsigned int \fP\fIlength\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+所有 \fBrtnetlink\fP(7) 消息都包含一个 \fBnetlink\fP(7) 消息头和，追加，属性。 只能使用此处提供的宏来操作属性。
+.PP
+\fBRTA_OK(\fP\fIrta\fP\fB, \fP\fIattrlen\fP\fB)\fP returns true if \fIrta\fP points to a valid
+routing attribute;  \fIattrlen\fP 是属性缓冲区的运行长度。 如果不为真，那么您必须假定消息中没有更多属性，即使
+\fIattrlen\fP 不为零。
+.PP
+\fBRTA_DATA(\fP\fIrta\fP\fB)\fP 返回指向该属性数据开始的指针。
+.PP
+\fBRTA_PAYLOAD(\fP\fIrta\fP\fB)\fP 返回该属性数据的长度。
+.PP
+\fBRTA_NEXT(\fP\fIrta\fP\fB, \fP\fIattrlen\fP\fB)\fP gets the next attribute after \fIrta\fP.
+调用此宏将更新 \fIattrlen\fP。 您应该使用 \fBRTA_OK\fP 检查返回指针的有效性。
+.PP
+\fBRTA_LENGTH(\fP\fIlen\fP\fB)\fP 返回 \fIlen\fP 字节数据加上标头所需的长度。
+.PP
+\fBRTA_SPACE(\fP\fIlen\fP\fB)\fP 返回包含 \fIlen\fP 字节数据的消息中所需的空间量。
+.SH STANDARDS
+这些宏是非标准的 Linux 扩展。
+.SH BUGS
+该手册页不完整。
+.SH EXAMPLES
+.\" FIXME . ? would be better to use libnetlink in the EXAMPLE code here
+创建一个 rtnetlink 消息来设置设备的 MTU:
+.PP
+.in +4n
+.EX
+#include <linux/rtnetlink.h>
+
+\&...
+
+struct {
+    struct nlmsghdr  nh;
+    struct ifinfomsg if;
+    char             attrbuf[512];
+} req;
+
+struct rtattr *rta;
+unsigned int mtu = 1000;
+
+int rtnetlink_sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+
+memset(&req, 0, sizeof(req));
+req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(req.if));
+req.nh.nlmsg_flags = NLM_F_REQUEST;
+req.nh.nlmsg_type = RTM_NEWLINK;
+req.if.ifi_family = AF_UNSPEC;
+req.if.ifi_index = INTERFACE_INDEX;
+req.if.ifi_change = 0xffffffff; /* ??? */
+rta = (struct rtattr *)(((char *) &req) +
+                         NLMSG_ALIGN(req.nh.nlmsg_len));
+rta\->rta_type = IFLA_MTU;
+rta\->rta_len = RTA_LENGTH(sizeof(mtu));
+req.nh.nlmsg_len = NLMSG_ALIGN(req.nh.nlmsg_len) +
+                              RTA_LENGTH(sizeof(mtu));
+memcpy(RTA_DATA(rta), &mtu, sizeof(mtu));
+send(rtnetlink_sk, &req, req.nh.nlmsg_len, 0);
+.EE
+.in
+.SH "SEE ALSO"
+\fBnetlink\fP(3), \fBnetlink\fP(7), \fBrtnetlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

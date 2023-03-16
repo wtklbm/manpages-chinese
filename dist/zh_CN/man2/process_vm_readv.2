@@ -1,0 +1,183 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2011 Christopher Yeoh <cyeoh@au1.ibm.com>
+.\" and Copyright (C) 2012 Mike Frysinger <vapier@gentoo.org>
+.\" and Copyright (C) 2012 Michael Kerrisk <mtk.man-pages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Commit fcf634098c00dd9cd247447368495f0b79be12d1
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH process_vm_readv 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+process_vm_readv, process_vm_writev \- 在进程地址空间之间传输数据
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/uio.h>\fP
+.PP
+\fBssize_t process_vm_readv(pid_t \fP\fIpid\fP\fB,\fP
+\fB                       const struct iovec *\fP\fIlocal_iov\fP\fB,\fP
+\fB                       unsigned long \fP\fIliovcnt\fP\fB,\fP
+\fB                       const struct iovec *\fP\fIremote_iov\fP\fB,\fP
+\fB                       unsigned long \fP\fIriovcnt\fP\fB,\fP
+\fB                       unsigned long \fP\fIflags\fP\fB);\fP
+\fBssize_t process_vm_writev(pid_t \fP\fIpid\fP\fB,\fP
+\fB                       const struct iovec *\fP\fIlocal_iov\fP\fB,\fP
+\fB                       unsigned long \fP\fIliovcnt\fP\fB,\fP
+\fB                       const struct iovec *\fP\fIremote_iov\fP\fB,\fP
+\fB                       unsigned long \fP\fIriovcnt\fP\fB,\fP
+\fB                       unsigned long \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBprocess_vm_readv\fP(), \fBprocess_vm_writev\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+这些系统调用在调用进程 (`本地进程`) 的地址空间和由 \fIpid\fP 标识的进程 (`远程进程`) 的地址空间之间传输数据。
+数据直接在两个进程的地址空间之间移动，不经过内核空间。
+.PP
+\fBprocess_vm_readv\fP() 系统调用将数据从远程进程传输到本地进程。 \fIremote_iov\fP 和 \fIriovcnt\fP:
+\fIremote_iov\fP 是一个指向描述进程地址范围的数组的指针，\fIpid\fP 是 \fIpid\fP 的标识，\fIriovcnt\fP 是
+\fIremote_iov\fP 的元素个数。 数据被传送到 \fIlocal_iov\fP 和 \fIliovcnt\fP: 指定的位置 \fIlocal_iov\fP
+是一个指向描述调用过程中地址范围的数组的指针，\fIliovcnt\fP 指定 \fIlocal_iov\fP 中的元素个数。
+.PP
+\fBprocess_vm_writev\fP() 系统调用是 \fBprocess_vm_readv\fP()\[em]it
+的逆向，将数据从本地进程传输到远程进程。 \fIliovcnt\fP、\fIlocal_iov\fP、\fIriovcnt\fP、\fIremote_iov\fP
+除传输方向外，与 \fBprocess_vm_readv\fP() 含义相同。
+.PP
+\fIlocal_iov\fP 和 \fIremote_iov\fP 参数指向 \fBiovec\fP(3type) 中描述的 \fIiovec\fP 结构数组。
+.PP
+缓冲区按数组顺序处理。 这意味着 \fBprocess_vm_readv\fP() 在进入 \fIlocal_iov[1]\fP 之前完全填满
+\fIlocal_iov[0]\fP，依此类推。 同样，\fIremote_iov[0]\fP 在继续 \fIremote_iov[1]\fP 之前被完全读取，依此类推。
+.PP
+类似地，\fBprocess_vm_writev\fP() 在进行 \fIlocal_iov[1]\fP 之前写出 \fIlocal_iov[0]\fP
+的全部内容，并在进行 \fIremote_iov[1]\fP 之前完全填充 \fIremote_iov[0]\fP。
+.PP
+\fIremote_iov[i].iov_len\fP 和 \fIlocal_iov[i].iov_len\fP 的长度不必相同。
+因此，可以将单个本地缓冲区拆分为多个远程缓冲区，反之亦然。
+.PP
+\fIflags\fP 参数目前未使用，必须设置为 0.
+.PP
+.\" In time, glibc might provide a wrapper that works around this limit,
+.\" as is done for readv()/writev()
+\fIliovcnt\fP 和 \fIriovcnt\fP 参数中指定的值必须小于或等于 \fBIOV_MAX\fP (在 \fI<limits.h>\fP
+中定义或可通过调用 \fIsysconf(_SC_IOV_MAX)\fP) 访问。
+.PP
+在进行任何传输之前检查计数参数和 \fIlocal_iov\fP。 如果计数太大，或 \fIlocal_iov\fP
+无效，或地址引用本地进程无法访问的区域，则不会处理任何 vectors 并立即返回错误。
+.PP
+但是请注意，这些系统调用在执行 read/write 之前不会检查远程进程中的内存区域。 因此，如果其中一个 \fIremote_iov\fP
+元素指向远程进程中的无效内存区域，则可能会产生部分 read/write (请参见返回值)。 超过该点将不再尝试 reads/writes。
+在尝试从远程进程读取未知长度的数据 (例如以 null 结尾的 C 字符串) 时，请记住这一点，避免在单个远程 \fIiovec\fP 元素中跨越内存页面
+(通常为 4\KiB)。 (相反，将远程读取拆分为两个 \fIremote_iov\fP 元素，然后将它们合并回单个写入 \fIlocal_iov\fP
+条目。第一个读取条目上升到页面边界，而第二个从下一个页面边界开始。)
+.PP
+读取或写入另一个进程的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_REALCREDS\fP 检查控制; 请参见
+\fBptrace\fP(2)。
+.SH "RETURN VALUE"
+成功时，\fBprocess_vm_readv\fP() 返回读取的字节数，\fBprocess_vm_writev\fP() 返回写入的字节数。 如果出现部分
+read/write，则此返回值可能小于请求的字节总数。 (部分传输适用于 \fIiovec\fP 元素的粒度。这些系统调用不会执行拆分单个 \fIiovec\fP
+元素的部分传输。) 调用者应检查返回值以确定是否发生了部分 read/write。
+.PP
+出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIlocal_iov\fP 描述的内存在调用者可访问的地址空间之外。
+.TP 
+\fBEFAULT\fP
+\fIremote_iov\fP 描述的内存在进程 \fIpid\fP 的可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIlocal_iov\fP 或 \fIremote_iov\fP 的 \fIiov_len\fP 值之和溢出 \fIssize_t\fP 值。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 不是 0.
+.TP 
+\fBEINVAL\fP
+\fIliovcnt\fP 或 \fIriovcnt\fP 太大。
+.TP 
+\fBENOMEM\fP
+无法为 \fIiovec\fP 结构的内部副本分配内存。
+.TP 
+\fBEPERM\fP
+调用者无权访问进程 \fIpid\fP 的地址空间。
+.TP 
+\fBESRCH\fP
+不存在 ID 为 \fIpid\fP 的进程。
+.SH VERSIONS
+这些系统调用是在 Linux 3.2 中添加的。 自 glibc 2.15 起提供支持。
+.SH STANDARDS
+这些系统调用是非标准的 Linux 扩展。
+.SH NOTES
+不保证 \fBprocess_vm_readv\fP() 和 \fBprocess_vm_writev\fP() 执行的数据传输是原子的。
+.PP
+.\" Original user is MPI, http://www.mcs.anl.gov/research/projects/mpi/
+.\" See also some benchmarks at http://lwn.net/Articles/405284/
+.\" and http://marc.info/?l=linux-mm&m=130105930902915&w=2
+这些系统调用旨在通过允许使用单个复制操作交换消息 (而不是使用共享内存或管道时所需的双重复制) 来实现快速消息传递。
+.SH EXAMPLES
+以下代码示例演示了 \fBprocess_vm_readv\fP() 的使用。 它从 PID 为 10 的进程读取地址 0x10000 处的 20
+个字节，并将前 10 个字节写入 \fIbuf1\fP，将后 10 个字节写入 \fIbuf2\fP。
+.PP
+.\" SRC BEGIN (process_vm_readv.c)
+.EX
+#define _GNU_SOURCE
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+
+int
+main(void)
+{
+    char          buf1[10];
+    char          buf2[10];
+    pid_t         pid = 10;    /* PID of remote process */
+    ssize_t       nread;
+    struct iovec  local[2];
+    struct iovec  remote[1];
+
+    local[0].iov_base = buf1;
+    local[0].iov_len = 10;
+    local[1].iov_base = buf2;
+    local[1].iov_len = 10;
+    remote[0].iov_base = (void *) 0x10000;
+    remote[0].iov_len = 20;
+
+    nread = process_vm_readv(pid, local, 2, remote, 1, 0);
+    if (nread != 20)
+        exit(EXIT_FAILURE);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBreadv\fP(2), \fBwritev\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

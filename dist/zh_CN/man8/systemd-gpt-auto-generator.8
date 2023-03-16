@@ -1,0 +1,313 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-GPT\-AUTO\-GENERATOR 8 "" "systemd 253" systemd\-gpt\-auto\-generator
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-gpt\-auto\-generator \- 基于 GPT 分区类型 GUID 自动发现和挂载根、/home/、/srv/、/var/ 和
+/var/tmp/ 分区以及发现和启用交换分区的生成器
+.SH SYNOPSIS
+.PP
+/usr/lib/systemd/system\-generators/systemd\-gpt\-auto\-generator
+.SH DESCRIPTION
+.PP
+systemd\-gpt\-auto\-generator 是一个元生成器，它自动发现
+root、/home/、/srv/、/var/、/var/tmp/、EFI 系统分区、扩展引导加载程序分区和交换分区，并为创建挂载和交换单元它们，基于
+GUID 分区表 (GPT) 的分区类型 GUID，参见 \m[blue]\fBUEFI Specification\fP\m[]\&\s-2\u[1]\d\s+2，第 5 章 &。它实现了 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[2]\d\s+2\&。请注意，此生成器对非 GPT 系统以及已包含文件 \&
+的目录的特定挂载点没有影响。此外，在显式配置单元的系统上 (例如，在 \fBfstab\fP(5))
+中列出，此生成器创建的单元将被覆盖，但可能会创建其他隐式依赖项 \&。
+.PP
+此生成器只会在 EFI 系统分区 (ESP) 所在的同一物理磁盘上寻找根分区 \&。请注意，需要引导加载程序的支持:
+\fB4a67b082\-0a4c\-41cf\-b6c7\-440b29bb8c4f\fP 供应商 UUID 的 EFI 变量
+\fILoaderDevicePartUUID\fP 用于确定从哪个分区，从而确定从哪个磁盘引导系统
+\&。如果引导加载程序未设置此变量，此生成器将无法自动检测根分区 \&。有关详细信息，请参见 \m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[3]\d\s+2\&。
+.PP
+同样，此生成器将只查找与根分区相同的物理磁盘上的其他分区。在这种情况下，不需要引导加载程序支持
+\&。这些分区不会在根文件系统分布在多个磁盘上的系统上搜索，例如通过 btrfs RAID\&。
+.PP
+systemd\-gpt\-auto\-generator 可用于将文件系统配置集中在分区表中，并且无需在 /etc/fstab 或内核命令行上进行配置
+\&。
+.PP
+此生成器根据分区类型 GUID\& 查找分区。确定了以下分区类型 GUID:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Partition Type GUIDs\fP
+.TS
+allbox tab(:);
+lB lB lB lB.
+T{
+Partition Type GUID
+T}:T{
+Name
+T}:T{
+Mount Point
+T}:T{
+Explanation
+T}
+.T&
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l.
+T{
+\fBSD_GPT_ROOT_X86_64\fP \fB4f68bce3\-e8cd\-4db1\-96e7\-fbcaf984b709\fP
+T}:T{
+Root Partition (x86\-64)
+T}:T{
+/
+T}:T{
+The first partition with this type UUID, located on the same disk as the ESP, is used as the root file system / on AMD64 / 64\-bit x86 systems\&.
+T}
+T{
+\fBSD_GPT_ROOT_ARM64\fP \fBb921b045\-1df0\-41c3\-af44\-4c6f280d3fae\fP
+T}:T{
+Root Partition (64\-bit ARM)
+T}:T{
+/
+T}:T{
+The first partition with this type UUID, located on the same disk as the ESP, is used as the root file system / on AArch64 / 64\-bit ARM systems\&.
+T}
+T{
+\fBSD_GPT_ROOT_ALPHA\fP \fBSD_GPT_ROOT_ARC\fP \fBSD_GPT_ROOT_ARM\fP \fBSD_GPT_ROOT_ARM64\fP \fBSD_GPT_ROOT_IA64\fP \fBSD_GPT_ROOT_LOONGARCH64\fP \fBSD_GPT_ROOT_MIPS_LE\fP \fBSD_GPT_ROOT_MIPS64_LE\fP \fBSD_GPT_ROOT_PARISC\fP \fBSD_GPT_ROOT_PPC\fP \fBSD_GPT_ROOT_PPC64\fP \fBSD_GPT_ROOT_PPC64_LE\fP \fBSD_GPT_ROOT_RISCV32\fP \fBSD_GPT_ROOT_RISCV64\fP \fBSD_GPT_ROOT_S390\fP \fBSD_GPT_ROOT_S390X\fP \fBSD_GPT_ROOT_TILEGX\fP \fBSD_GPT_ROOT_X86\fP \fBSD_GPT_ROOT_X86_64\fP \fBSD_GPT_USR_ALPHA\fP \fBSD_GPT_USR_ARC\fP \fBSD_GPT_USR_ARM\fP \fBSD_GPT_USR_IA64\fP \fBSD_GPT_USR_LOONGARCH64\fP \fBSD_GPT_USR_MIPS_LE\fP \fBSD_GPT_USR_MIPS64_LE\fP \fBSD_GPT_USR_PARISC\fP \fBSD_GPT_USR_PPC\fP \fBSD_GPT_USR_PPC64\fP \fBSD_GPT_USR_PPC64_LE\fP \fBSD_GPT_USR_RISCV32\fP \fBSD_GPT_USR_RISCV64\fP \fBSD_GPT_USR_S390\fP \fBSD_GPT_USR_S390X\fP \fBSD_GPT_USR_TILEGX\fP \fBSD_GPT_USR_X86\fP
+T}:T{
+root partitions for other architectures
+T}:T{
+/
+T}:T{
+The first partition with the type UUID matching the architecture, located on the same disk as the ESP, is used as the root file system /\&. For the full list and constant values, see \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[2]\d\s+2\&.
+T}
+T{
+\fBSD_GPT_HOME\fP \fB933ac7e1\-2eb4\-4f13\-b844\-0e14e2aef915\fP
+T}:T{
+Home Partition
+T}:T{
+/home/
+T}:T{
+The first partition with this type UUID on the same disk as the ESP is mounted to /home/\&.
+T}
+T{
+\fBSD_GPT_SRV\fP \fB3b8f8425\-20e0\-4f3b\-907f\-1a25a76f98e8\fP
+T}:T{
+Server Data Partition
+T}:T{
+/srv/
+T}:T{
+The first partition with this type UUID on the same disk as the ESP is mounted to /srv/\&.
+T}
+T{
+\fBSD_GPT_VAR\fP \fB4d21b016\-b534\-45c2\-a9fb\-5c16e091fd2d\fP
+T}:T{
+Variable Data Partition
+T}:T{
+/var/
+T}:T{
+The first partition with this type UUID on the same disk as the ESP is mounted to /var/ \(em under the condition its partition UUID matches the first 128 bit of the HMAC\-SHA256 of the GPT type uuid of this partition keyed by the machine ID of the installation stored in \fBmachine\-id\fP(5)\&.
+T}
+T{
+\fBSD_GPT_TMP\fP \fB7ec6f557\-3bc5\-4aca\-b293\-16ef5df639d1\fP
+T}:T{
+Temporary Data Partition
+T}:T{
+/var/tmp/
+T}:T{
+The first partition with this type UUID on the same disk as the ESP is mounted to /var/tmp/\&.
+T}
+T{
+\fBSD_GPT_SWAP\fP \fB0657fd6d\-a4ab\-43c4\-84e5\-0933c84b4f4f\fP
+T}:T{
+Swap
+T}:T{
+n/a
+T}:T{
+All partitions with this type UUID on the same disk as the ESP are used as swap\&.
+T}
+T{
+\fBSD_GPT_ESP\fP \fBc12a7328\-f81f\-11d2\-ba4b\-00a0c93ec93b\fP
+T}:T{
+EFI System Partition (ESP)
+T}:T{
+/efi/ or /boot/
+T}:T{
+The first partition with this type UUID located on the same disk as the root partition is mounted to /boot/ or /efi/, see below\&.
+T}
+T{
+\fBSD_GPT_XBOOTLDR\fP \fBbc13c2ff\-59e6\-4262\-a352\-b275fd6f7172\fP
+T}:T{
+Extended Boot Loader Partition
+T}:T{
+/boot/
+T}:T{
+The first partition with this type UUID located on the same disk as the root partition is mounted to /boot/, see below\&.
+T}
+.TE
+.sp 1
+.PP
+此生成器了解分区的以下属性标志:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \&Partition Attribute Flags\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Flag
+T}:T{
+Applicable to
+T}:T{
+Explanation
+T}
+.T&
+l l l
+l l l
+l l l.
+T{
+\fBSD_GPT_FLAG_READ_ONLY\fP \fB0x1000000000000000\fP
+T}:T{
+/, /home/, /srv/, /var/, /var/tmp/, Extended Boot Loader Partition
+T}:T{
+Partition is mounted read\-only
+T}
+T{
+\fBSD_GPT_FLAG_NO_AUTO\fP \fB0x8000000000000000\fP
+T}:T{
+/, /home/, /srv/, /var/, /var/tmp/, Extended Boot Loader Partition
+T}:T{
+Partition is not mounted automatically
+T}
+T{
+\fBSD_GPT_FLAG_NO_BLOCK_IO_PROTOCOL\fP \fB0x0000000000000002\fP
+T}:T{
+EFI System Partition (ESP)
+T}:T{
+Partition is not mounted automatically
+T}
+.TE
+.sp 1
+.PP
+/home/、/srv/、/var/ 和 /var/tmp/ 分区可能以 LUKS 格式加密。在这种情况下，设备映射器设备设置在名称
+/dev/mapper/home、/dev/mapper/srv、/dev/mapper/var 和 /dev/tmp\& 下。请注意，如果
+/etc/crypttab 中列出的同一分区具有不同的设备映射器设备名称 \&，则可能会产生冲突。
+.PP
+当 systemd 在 initrd 中运行时，/ 分区也可能以 LUKS 格式加密 \&。在这种情况下，设备映射器设备设置为名称
+/dev/mapper/root，sysroot\&.mount 设置为将设备安装在 /sysroot\& 下。有关详细信息，请参见
+\fBbootup\fP(7)\&。
+.PP
+可以通过将 /run/systemd/volatile\-root 符号链接到 /dev/$major:$minor\&
+来指定根分区。如果根安装已被某种形式的易失性文件系统 (overlayfs)\& 替换，这将特别有用。
+.PP
+EFI 系统分区 (ESP) 的挂载和自动挂载单元是在 EFI 系统上生成的。ESP 安装到 /boot/
+(除非存在扩展引导加载程序分区，见下文)，除非安装点目录 /efi / 存在，在这种情况下它安装在那里
+\&。由于这个生成器创建了一个自动挂载单元，挂载只会在访问时按需激活 \&。在 /boot/ (或 /efi/，如果存在) 是显式配置的挂载的系统上
+(例如，在 \fBfstab\fP(5)) 中列出或 /boot/ (或 /efi/) 挂载点非空的系统上，没有挂载单元生成 \&。
+.PP
+如果磁盘包含 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[4]\d\s+2
+中定义的扩展引导加载程序分区，则它在 /boot / 可用 (通过自动挂载点，类似于 ESP，见上文) \&。如果 EFI
+系统分区和扩展引导加载程序分区都存在，后者最好挂载到 /boot/\&。确保同时创建 /efi / 和 /boot / 以确保两个分区都已挂载 \&。
+.PP
+将此生成器与 btrfs 文件系统结合使用时，请确保使用 \fBbtrfs subvolume set\-default\fP\& 在它们上设置正确的默认子卷。
+.PP
+如果系统是通过 \fBsystemd\-stub\fP(7) 启动的，并且存根向用户空间报告内核映像被测量为 TPM2 PCR，那么任何发现的根和 /var /
+卷标识符 (以及卷加密密钥，如果它被加密) 将被自动测量到 PCR 15 激活，通过 \fBsystemd\-pcrfs@.service\fP(8)\&。
+.PP
+systemd\-gpt\-auto\-generator 实现了 \fBsystemd.generator\fP(7)\&。
+.SH "KERNEL COMMAND LINE"
+.PP
+systemd\-gpt\-auto\-generator 理解以下内核命令行参数:
+.PP
+\fIsystemd\&.gpt_auto\fP, \fIrd\&.systemd\&.gpt_auto\fP
+.RS 4
+这些选项采用可选的布尔值参数，默认为 yes\&。默认情况下启用生成器，可以使用 negative 值来禁用它 \&。
+.RE
+.PP
+\fIroot=\fP, \fIrootfstype=\fP, \fIrootflags=\fP
+.RS 4
+当 \fIroot=\fP 与特殊值 "gpt\-auto" 一起使用时 (或者如果根本不使用该参数)，将启用基于 GPT 分区类型的根分区自动发现
+\&。任何其他值都会禁用此逻辑 \&。
+.sp
+\fIrootfstype=\fP 和 \fIrootflags=\fP 用于选择自动发现根文件系统时的文件系统类型和选项。
+.RE
+.PP
+\fIrw\fP, \fIro\fP
+.RS 4
+挂载根分区读写或只读 \fIinitially\fP\&。
+.sp
+请注意，与大多数内核命令行选项不同，这些设置不会覆盖文件系统中的配置，文件系统稍后可能会重新挂载 \&。请参见
+\fBsystemd\-remount\-fs.service\fP(8)\&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.mount\fP(5), \fBsystemd.swap\fP(5),
+\fBsystemd\-fstab\-generator\fP(8), \fBsystemd\-cryptsetup@.service\fP(8),
+\fBsystemd\-pcrfs@.service\fP(8), \fBmachine\-id\fP(5), \fBcryptsetup\fP(8),
+\fBfstab\fP(5), \fBbtrfs\fP(8)
+.SH NOTES
+.IP " 1." 4
+UEFI 规范
+.RS 4
+\%https://uefi.org/specifications
+.RE
+.IP " 2." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.IP " 3." 4
+引导加载程序接口
+.RS 4
+\%https://systemd.io/BOOT_LOADER_INTERFACE
+.RE
+.IP " 4." 4
+引导装载程序规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/boot_loader_specification
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

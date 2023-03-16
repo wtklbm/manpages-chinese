@@ -1,0 +1,101 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1990, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"	@(#)hash.3	8.6 (Berkeley) 8/18/94
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH hash 3 2022\-12\-04 "Linux man\-pages 6.03" 
+.UC 7
+.SH NAME
+hash \- 哈希数据库访问方法
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h> #include <db.h>\fP
+.fi
+.SH DESCRIPTION
+\fINote well\fP: 此页面记录了在 glibc 2.1 之前提供的接口。 从 glibc 2.2 开始，glibc 不再提供这些接口。
+您可能正在寻找 \fIlibdb\fP 库提供的 API。
+.PP
+例程 \fBdbopen\fP(3) 是数据库文件的库接口。 受支持的文件格式之一是散列文件。 数据库访问方法的一般描述在 \fBdbopen\fP(3)
+中，该手册页仅描述特定于散列的信息。
+.PP
+散列数据结构体是一种可扩展的动态散列方案。
+.PP
+提供给 \fBdbopen\fP(3) 的访问方法特定数据结构体在 \fI<db.h>\fP 包含文件中定义如下:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    unsigned int       bsize;
+    unsigned int       ffactor;
+    unsigned int       nelem;
+    unsigned int       cachesize;
+    uint32_t         (*hash)(const void *, size_t);
+    int         lorder;
+} HASHINFO;
+.EE
+.in
+.PP
+这个结构体的元素如下:
+.TP  10
+\fIbsize\fP
+定义哈希表桶大小，默认情况下为 256 字节。 对于磁盘驻留表和具有大数据项的表，增加页面大小可能更可取。
+.TP 
+\fIffactor\fP
+指示哈希表中的所需密度。 它是允许在任何一个桶中累积的键数的近似值，确定哈希表何时增长或收缩。 默认值为 8.
+.TP 
+\fInelem\fP
+是哈希表最终大小的估计值。 如果未设置或设置得太低，哈希表将在输入密钥时优雅地扩展，尽管可能会注意到轻微的性能下降。 默认值为 1.
+.TP 
+\fIcachesize\fP
+是内存缓存的建议最大大小 (以字节为单位)。 这个值为 \fIonly advisory\fP，访问方法会分配更多的内存而不是失败。
+.TP 
+\fIhash\fP
+是用户定义的散列函数。 由于没有哈希函数对所有可能的数据都表现得一样好，因此用户可能会发现内置哈希函数在特定数据集上表现不佳。
+一个用户指定的散列函数必须取两个参数 (一个指向，字节字符串，的指针和一个长度) 并返回一个 32 位的数量作为散列值。
+.TP 
+\fIlorder\fP
+是存储的数据库元数据中整数的字节顺序。 数字应以整数表示订单; 例如，大端顺序为数字 4,321。 如果 \fIlorder\fP 为 0
+(未指定顺序)，则使用当前主机顺序。 如果文件已经存在，则忽略指定的值并使用创建树时指定的值。
+.PP
+如果文件已经存在 (并且未指定 \fBO_TRUNC\fP 标志)，则忽略为 \fIbsize\fP、\fIffactor\fP、\fIlorder\fP 和 \fInelem\fP
+指定的值，并使用创建树时指定的值。
+.PP
+如果指定了散列函数，\fIhash_open\fP 会尝试确定指定的散列函数是否与创建数据库时使用的相同，否则失败。
+.PP
+提供了 \fBdbm\fP(3) 和 \fBndbm\fP(3) 中描述的例程的向后兼容接口，但是这些接口与以前的文件格式不兼容。
+.SH ERRORS
+\fIhash\fP 访问方法例程可能会失败并为库例程 \fBdbopen\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.SH BUGS
+仅支持大字节序和小字节序。
+.SH "SEE ALSO"
+\fBbtree\fP(3), \fBdbopen\fP(3), \fBmpool\fP(3), \fBrecno\fP(3)
+.PP
+\fIDynamic Hash Tables\fP，Per\-Ake Larson，ACM 通讯，1988 年 4 月。
+.PP
+\fIA New Hash Package for UNIX\fP，Margo Seltzer，USENIX 会议记录，1991 年冬季。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

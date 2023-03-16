@@ -1,0 +1,396 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under the terms of the GNU Public License.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH DEBUGFS 8 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+debugfs\-ext2/ext3/ext4 文件系统调试器
+.SH SYNOPSIS
+\fBdebugfs\fP [ \fB\-DVwcin\fP ] [ \fB\-b\fP blocksize ] [ \fB\-s\fP superblock ] [ \fB\-f\fP
+cmd_file ] [ \fB\-R\fP request ] [ \fB\-d\fP data_source_device ] [ \fB\-z\fP
+\fIundo_file\fP ] [ device ]
+.SH DESCRIPTION
+\fBdebugfs\fP 程序是一个交互式文件系统调试器。它可用于检查和更改 ext2、ext3 或 ext4 文件系统的状态。
+.PP
+\fIdevice\fP 是块设备 (例如，/dev/sdXX) 或包含文件系统的文件。
+.SH OPTIONS
+.TP 
+\fI\-w\fP
+指定文件系统应以读写模式打开。 如果没有此选项，文件系统将以只读模式打开。
+.TP 
+\fI\-n\fP
+禁用元数据校验和验证。 尽管有 e2fsprogs 的抱怨，但仅当您认为元数据正确时才应使用此方法。
+.TP 
+\fI\-c\fP
+指定文件系统应以灾难模式打开，在这种模式下，最初不读取 inode 和组位图。
+这对于损坏严重的文件系统很有用，但正因为如此，灾难模式会强制文件系统以只读方式打开。
+.TP 
+\fI\-i\fP
+指定 \fIdevice\fP 表示由 \fBe2image\fP 程序创建的 ext2 图像文件。 由于 ext2 映像文件仅包含超级块、块组描述符、块和
+inode 分配位图以及 inode 表，因此许多 \fBdebugfs\fP 命令将无法正确赋值。 \fBWarning:\fP 没有安全检查，如果在没有使用
+\fI\-d\fP 选项指定 \fIdata_source_device\fP 的情况下尝试 \fIls\fP、\fIdump\fP 等命令，\fBdebugfs\fP
+可能会以有趣的方式失败。 \fBdebugfs\fP 是一个调试工具。 它有粗糙的 edges!
+.TP 
+\fI\-d data_source_device\fP
+与 \fI\-i\fP 选项一起使用，指定在读取 ext2 图像文件中找不到的块时应使用 \fIdata_source_device\fP。
+这包括数据、目录和间接块。
+.TP 
+\fI\-b blocksize\fP
+强制文件系统使用给定的块大小 (以字节为单位)，而不是自动检测正确的块大小。 (很少需要这个选项; 它主要用于文件系统非常糟糕的
+damaged/corrupted 时。)
+.TP 
+\fI\-s superblock\fP
+导致从给定的块号读取文件系统超级块，而不是使用主超级块 (位于距文件系统开头 1024 字节的偏移处)。 如果指定 \fI\-s\fP 选项，则还必须通过
+\fI\-b\fP 选项提供文件系统的块大小。 (很少需要这个选项; 它主要用于文件系统非常糟糕的 damaged/corrupted 时。)
+.TP 
+\fI\-f cmd_file\fP
+使 \fBdebugfs\fP 从 \fIcmd_file\fP 读入命令，并执行它们。 当 \fBdebugfs\fP 执行完这些命令后，它将退出。
+.TP 
+\fI\-D\fP
+导致 \fBdebugfs\fP 使用 Direct I/O 打开设备，绕过缓冲区缓存。 请注意，某些 Linux 设备，尤其是撰写本文时的设备映射器，不支持
+Direct I/O。
+.TP 
+\fI\-R request\fP
+使 \fBdebugfs\fP 执行单个命令 \fIrequest\fP，然后退出。
+.TP 
+\fI\-V\fP
+打印 \fBdebugfs\fP 的版本号并退出。
+.TP 
+\fB\-z\fP\fI undo_file\fP
+在覆盖文件系统块之前，将块的旧内容写入撤消文件。 如果出现问题，此撤消文件可与 e2undo(8) 一起使用以恢复文件系统的旧内容。 如果空字符串作为
+undo_file 参数传递，则撤消文件将写入通过 \fIE2FSPROGS_UNDO_DIR\fP 环境变量指定的目录中名为
+debugfs\-\fIdevice\fP.e2undo 的文件。
+
+WARNING: 撤消文件不能用于从电源或系统崩溃中恢复。
+.SH "SPECIFYING FILES"
+.\"
+.\"
+.\"
+许多 \fBdebugfs\fP 命令将 \fIfilespec\fP 作为参数来指定当前由 \fBdebugfs\fP 打开的文件系统中的索引节点 (而不是路径名)。
+\fIfilespec\fP 参数可以用两种形式指定。 第一种形式是用尖括号包围的 inode 编号，例如 \fI<2>\fP。
+第二种形式是路径名; 如果路径名以正斜杠 ('/') 为前缀，则它被解释为相对于当前由 \fBdebugfs\fP 打开的文件系统的根目录。
+如果不是，路径名将被解释为相对于 \fBdebugfs\fP 维护的当前工作目录。 这可以通过使用 \fBdebugfs\fP 命令 \fIcd\fP 来修改。
+.SH COMMANDS
+这是 \fBdebugfs\fP 支持的命令列表。
+.TP 
+\fBblocks\fP\fI filespec\fP
+将索引节点 \fIfilespec\fP 使用的块打印到 stdout。
+.TP 
+\fBbmap\fP\fI [ \-a ] filespec logical_block [physical_block]\fP
+打印或设置 inode \fIfilespec\fP 中逻辑块号 \fIlogical_block\fP 对应的物理块号。 如果指定了 \fI\-a\fP
+标志，则在必要时尝试分配一个块。
+.TP 
+\fBblock_dump\fP\fI '[ \-x ] [\-f filespec] block_num\fP
+将 \fIblock_num\fP 给出的十六进制和 ASCII 格式的文件系统块转储到控制台。 如果指定了 \fI\-f\fP 选项，则块编号相对于给定
+\fBfilespec\fP 的开始。 如果指定了 \fI\-x\fP 选项，该块将被解释为扩展属性块并打印以显示扩展属性数据结构的结构体。
+.TP 
+\fBcat\fP\fI filespec\fP
+将 inode \fIfilespec\fP 的内容转储到 stdout。
+.TP 
+\fBcd\fP\fI filespec\fP
+将当前工作目录更改为 \fIfilespec\fP。
+.TP 
+\fBchroot\fP\fI filespec\fP
+将根目录更改为目录 \fIfilespec\fP。
+.TP 
+\fBclose\fP\fI [\-a]\fP
+关闭当前打开的文件系统。 如果指定了 \fI\-a\fP 选项，则将对超级块和块组描述符的任何更改写到所有备份超级块，而不仅仅是主超级块。
+.TP 
+\fBclri\fP\fI filespec\fP
+清除 inode \fIfilespec\fP 的内容。
+.TP 
+\fBcopy_inode\fP\fI source_inode destination_inode\fP
+复制 \fIsource_inode\fP 的 inode 结构体的内容，用它覆盖 \fIdestination_inode\fP 的 inode 结构体。
+.TP 
+\fBdirsearch\fP\fI filespec filename\fP
+在目录 \fIfilespec\fP 中搜索 \fIfilename\fP。
+.TP 
+\fBdirty\fP\fI [\-clean]\fP
+将文件系统标记为脏，以便在退出时写入超级块。 此外，清除超级块的有效标志，或者如果指定了 \fI\-clean\fP 则设置它。
+.TP 
+\fBdump\fP\fI [\-p] filespec out_file\fP
+将索引节点 \fIfilespec\fP 的内容转储到输出文件 \fIout_file\fP。 如果给出了 \fI\-p\fP 选项，则设置 \fIout_file\fP
+上的所有者、组和权限信息以匹配 \fIfilespec\fP。
+.TP 
+\fBdump_mmp\fP\fI [mmp_block]\fP
+显示多重安装保护 (mmp) 字段值。 如果指定了 \fImmp_block\fP，则验证并转储给定块编号中的 MMP 值，否则使用超级块中的
+\fBs_mmp_block\fP 字段来定位和使用现有的 MMP 块。
+.TP 
+\fBdx_hash\fP\fI [\-h hash_alg] [\-s hash_seed] filename\fP
+计算 \fIfilename\fP 的目录哈希。 \fI\-h\fP 指定的 hash 算法可能是 \fBlegacy\fP,\fB half_md4\fP，也可能是
+\fBtea\fP。 用 \fI\-s\fP 指定的散列 seed 必须是 UUID 格式。
+.TP 
+\fBdump_extents\fP\fI [\-n] [\-l] filespec\fP
+转储 inode \fIfilespec\fP 的范围树。 \fI\-n\fP 标志将导致 \fBdump_extents\fP 仅显示范围树中的内部节点。 \fI\-l\fP
+标志将使 \fBdump_extents\fP 仅显示范围树中的叶子节点。
+.IP
+(请注意，内部节点中最后一个范围的块的长度和范围是范围库函数的估计值，并不存储在文件系统数据结构中。因此，显示的值不一定准确，也不指示文件系统中的问题或损坏。)
+.TP 
+\fBdump_unused\fP
+转储包含非空字节的未使用块。
+.TP 
+\fBea_get\fP\fI [\-f outfile]|[\-xVC] [\-r] filespec attr_name\fP
+在文件 \fIfilespec\fP 中检索扩展属性 \fIattr_name\fP 的值，并将其写入 stdout 或 \fIoutfile\fP。
+.TP 
+\fBea_list\fP\fI filespec\fP
+将与文件 \fIfilespec\fP 关联的扩展属性列出到标准输出。
+.TP 
+\fBea_set\fP\fI [\-f infile] [\-r] filespec attr_name attr_value\fP
+将文件 \fIfilespec\fP 中的扩展属性 \fIattr_name\fP 的值设置为字符串值 \fIattr_value\fP 或从 \fIinfile\fP
+中读取。
+.TP 
+\fBea_rm\fP\fI filespec attr_names...\fP
+从文件 \fIfilespec\fP 中删除扩展属性 \fIattr_name\fP。
+.TP 
+\fBexpand_dir\fP\fI filespec\fP
+展开目录 \fIfilespec\fP。
+.TP 
+\fBfallocate\fP\fI filespec start_block [end_block]\fP
+将 map 未初始化块分配到逻辑块 \fIstart_block\fP 和 \fIend_block\fP 之间的 \fIfilespec\fP，包括在内。 如果未提供
+\fIend_block\fP，则此函数 maps 直到用完可用磁盘块或达到最大文件大小。 现有映射保持不变。
+.TP 
+\fBfeature\fP\fI [fs_feature] [\-fs_feature] ...\fP
+设置或清除超级块中的各种文件系统，特性。 设置或清除请求的任何文件系统特性后，打印文件系统特性集的当前状态。
+.TP 
+\fBfilefrag\fP\fI [\-dvr] filespec\fP
+打印 \fIfilespec\fP 中连续范围的数量。 如果 \fIfilespec\fP 是目录且未指定 \fI\-d\fP 选项，则 \fIfilefrag\fP
+将打印目录中每个文件的连续范围数。 \fI\-v\fP 选项将导致 \fIfilefrag\fP 打印文件中连续范围的表格列表。 \fI\-r\fP 选项将导致
+\fIfilefrag\fP 执行目录的递归列表。
+.TP 
+\fBfind_free_block\fP\fI [count [goal]]\fP
+找到第一个 \fIcount\fP 个空闲块，从 \fIgoal\fP 开始分配它。 也可用作 \fBffb\fP。
+.TP 
+\fBfind_free_inode\fP\fI [dir [mode]]\fP
+找到一个空闲的 inode 并分配它。 如果存在，\fIdir\fP 指定 inode 所在目录的 inode 编号。 第二个可选参数 \fImode\fP 指定新
+inode 的权限。 (如果在模式上设置了目录位，则分配例程的函数会有所不同。) 也可用作 \fBffi\fP。
+.TP 
+\fBfreeb\fP\fI block [count]\fP
+将块号 \fIblock\fP 标记为未分配。 如果存在可选的参数 \fIcount\fP，则从块号 \fIblock\fP 开始的 \fIcount\fP
+块将被标记为未分配。
+.TP 
+\fBfreefrag\fP\fI [\-c chunk_kb]\fP
+报告当前打开的文件系统上的可用空间碎片。 如果指定了 \fI\-c\fP 选项，则 filefrag 命令将打印在文件系统中可以找到多少个大小为
+\fIchunk_kb\fP 的空闲块。 块大小必须是 2 的幂并且大于文件系统块大小。
+.TP 
+\fBfreei\fP\fI filespec [num]\fP
+释放 \fIfilespec\fP 指定的索引节点。 如果指定了 \fInum\fP，还清除指定 inode 之后的 num\-1 inode。
+.TP 
+\fBget_quota\fP\fI quota_type id\fP
+显示给定配额类型 (用户、组或项目) 和 ID 的配额信息。
+.TP 
+\fBhelp\fP
+打印 \fBdebugfs\fP 理解的命令列表。
+.TP 
+\fBhtree_dump\fP\fI filespec\fP
+转储哈希索引目录 \fIfilespec\fP，显示其树结构体。
+.TP 
+\fBicheck\fP\fI block ...\fP
+列显使用命令行指定的一个或多个块的 inode 列表。
+.TP 
+\fBinode_dump\fP\fI [\-b]|[\-e]|[\-x] filespec\fP
+以十六进制和 ASCII 格式打印 inode 数据结构体的内容。 \fI\-b\fP 选项使命令只转储 \fBi_blocks\fP 数组的内容。 \fI\-e\fP
+选项使命令只转储额外 inode 空间的内容，这些空间用于存储内联扩展属性。\fI\-x\fP 选项导致命令转储额外的 inode 空间解释和扩展属性。
+这对于调试包含扩展属性的损坏 inode 很有用。
+.TP 
+\fBimap\fP\fI filespec\fP
+打印 inode \fIfilespec\fP 的 inode 数据结构体 (在 inode 表中) 的位置。
+.TP 
+\fBinit_filesys\fP\fI device blocksize\fP
+在设备大小为 \fIblocksize\fP 的 \fIdevice\fP 上创建 ext2 文件系统。 请注意，这并没有完全初始化所有的数据结构; 为此，请使用
+\fBmke2fs\fP(8) 程序。 这只是对底层库的调用，它设置了超级块和块描述符。
+.TP 
+\fBjournal_close\fP
+关闭打开的日志。
+.TP 
+\fBjournal_open\fP\fI [\-c] [\-v ver] [\-f ext_jnl]\fP
+打开日志进行阅读和写作。 可以通过提供 \fI\-c\fP 来启用日志校验和; 可以使用 \fI\-v\fP 选项选择校验和格式 2 和 3。 可以从
+\fIext_jnl\fP 加载外部日志。
+.TP 
+\fBjournal_run\fP
+重放打开日志中的所有事务。
+.TP 
+\fBjournal_write\fP\fI [\-b blocks] [\-r revoke] [\-c] file\fP
+将事务写入打开的日志。 要写入的块列表应作为 \fIblocks\fP 中的逗号分隔列表提供; 块本身应该可以从 \fIfile\fP 读取。 可以在
+\fIrevoke\fP 中以逗号分隔的列表形式提供要撤销的块列表。 默认情况下，commit 记录写在最后; \fI\-c\fP 开关写入未提交的事务。
+.TP 
+\fBkill_file\fP\fI filespec\fP
+释放索引节点 \fIfilespec\fP 及其块。 请注意，这不会删除此 inode 的任何目录条目 (如果有)。 如果您希望取消链接文件，请参见
+\fBrm\fP(1) 命令。
+.TP 
+\fBlcd\fP\fI directory\fP
+将 \fBdebugfs\fP 进程的当前工作目录更改为原生文件系统上的 \fIdirectory\fP。
+.TP 
+\fBlist_quota\fP\fI quota_type\fP
+显示给定配额类型 (用户、组或项目) 的配额信息。
+.TP 
+\fBln\fP\fI filespec dest_file\fP
+创建一个名为 \fIdest_file\fP 的链接，它是到 \fIfilespec\fP 的硬链接。 请注意，这不会调整 inode 引用计数。
+.TP 
+\fBlogdump\fP\fI [\-acsOS] [\-b block] [\-n num_trans ] [\-i filespec] [\-f journal_file] [output_file]\fP
+转储 ext3 日志的内容。 默认情况下，转储超级块中指定的日志索引节点。 然而，这可以用 \fI\-i\fP 选项覆盖，它从 \fIfilespec\fP
+给定的内部索引节点转储日志。 可以使用 \fI\-f\fP 选项指定包含日志数据的常规文件。 最后，\fI\-s\fP 选项利用超级块中的备份信息来定位日志。
+.IP
+\fI\-S\fP 选项使 \fBlogdump\fP 打印日志超级块的内容。
+.IP
+\fI\-a\fP 选项使 \fBlogdump\fP 打印所有描述符块的内容。 \fI\-b\fP 选项使 \fBlogdump\fP 打印所有引用指定块的日志记录。 \fI\-c\fP
+选项将打印出由 \fI\-a\fP 和 \fI\-b\fP 选项选择的所有数据块的内容。
+.IP
+\fI\-O\fP 选项导致 logdump 显示旧的 (checkpointed) 日志条目。 即使在重播日志后，这也可用于尝试追踪日志问题。
+.IP
+\fI\-n\fP 选项导致 \fBlogdump\fP 继续通过缺少幻数的日志块。 相反，它只会在打印整个日志时或在 \fInum_trans\fP 事务之后停止。
+.TP 
+\fBls\fP\fI [\-l] [\-c] [\-d] [\-p] [\-r] filespec\fP
+打印目录 \fIfilespec\fP 中的文件列表。 \fI\-c\fP 标志导致显示目录块校验和 (如果存在)。 \fI\-d\fP 标志将列出目录中已删除的条目。
+\fI\-l\fP 标志将使用更详细的格式列出文件。 \fI\-p\fP
+标志将以一种更容易被脚本解析的格式列出文件，并在文件名末尾有空格或其他非打印字符时使其更加清晰。 \fI\-r\fP 标志将强制打印文件名，即使它是加密的。
+.TP 
+\fBlist_deleted_inodes\fP\fI [limit]\fP
+列出已删除的 inode，可选择限制为 \fIlimit\fP 秒前删除的 inode。 也可用作 \fBlsdel\fP。
+.IP
+此命令对于从 ext2 文件系统的意外文件删除中恢复很有用。 不幸的是，如果文件是使用 ext3 或 ext4 删除的，则它对此没有用，因为 inode
+的数据块在 inode 被释放后不再可用。
+.TP 
+\fBmodify_inode\fP\fI filespec\fP
+修改 inode \fIfilespec\fP 中 inode 结构体的内容。 也可用作 \fBmi\fP。
+.TP 
+\fBmkdir\fP\fI filespec\fP
+做一个目录。
+.TP 
+\fBmknod\fP\fI filespec [p|[[c|b] major minor]]\fP
+创建一个特殊的设备文件 (命名管道、字符或块设备)。 如果要创建字符设备或块设备，则必须指定 \fImajor\fP 和 \fIminor\fP 设备号。
+.TP 
+\fBncheck\fP\fI [\-c] inode_num ...\fP
+获取请求的 inode 编号列表，并打印这些 inode 的路径名列表。 \fI\-c\fP 标志将启用检查目录条目中的文件类型信息以确保它与 inode
+的类型相匹配。
+.TP 
+\fBopen\fP\fI [\-weficD] [\-b blocksize] [\-d image_filename] [\-s superblock] [\-z undo_file] device\fP
+打开文件系统进行编辑。 \fI\-f\fP 标志强制打开文件系统，即使存在一些通常会阻止文件系统打开的未知或不兼容的文件系统，特性。 \fI\-e\fP
+标志导致文件系统以独占模式打开。 \fI\-b\fP、\fI\-c\fP、\fI\-d\fP、\fI\-i\fP、\fI\-s\fP、\fI\-w\fP 和 \fI\-D\fP 选项的行为与
+\fBdebugfs\fP 的命令行选项相同。
+.TP 
+\fBpunch\fP\fI filespec start_blk [end_blk]\fP
+删除 inode 中从 \fIstart_blk\fP 到 \fIend_blk\fP 的块。 如果 \fIend_blk\fP 被省略那么这条命令将截断命令截断;
+也就是说，从 \fIstart_blk\fP 开始到文件末尾的所有块都将被释放。
+.TP 
+\fBsymlink\fP\fI filespec target\fP
+做一个符号链接。
+.TP 
+\fBpwd\fP
+打印当前工作目录。
+.TP 
+\fBquit\fP
+退出 \fBdebugfs\fP
+.TP 
+\fBrdump\fP\fI directory[...] destination\fP
+递归地将 \fIdirectory\fP 或多个 \fIdirectories\fP 及其所有内容 (包括常规文件、符号链接和其他目录) 转储到指定的
+\fIdestination\fP 中，该目录应该是原生文件系统上的现有目录。
+.TP 
+\fBrm\fP\fI pathname\fP
+取消链接 \fIpathname\fP。 如果这导致 \fIpathname\fP 指向的 inode 没有其他引用，则释放文件。 本指令函数为 unlink()
+系统调用。
+.TP 
+\fBrmdir\fP\fI filespec\fP
+删除目录 \fIfilespec\fP。
+.TP 
+\fBsetb\fP\fI block [count]\fP
+将块编号 \fIblock\fP 标记为已分配。 如果存在可选的参数 \fIcount\fP，则从块号 \fIblock\fP 开始的 \fIcount\fP
+块将被标记为已分配。
+.TP 
+\fBset_block_group\fP\fI bgnum field value\fP
+修改 \fIbgnum\fP 指定的块组描述符，使块组描述符字段 \fIfield\fP 的值为 \fIvalue\fP。 也可用作 \fBset_bg\fP。
+.TP 
+\fBset_current_time\fP\fI time\fP
+设置自 Unix 纪元以来的当前时间 (以秒为单位)，以便在设置文件系统字段时使用。
+.TP 
+\fBseti\fP\fI filespec [num]\fP
+在 inode 位图中将 inode \fIfilespec\fP 标记为正在使用。 如果指定了 \fInum\fP，还要在指定的 inode 之后设置 num\-1
+inode。
+.TP 
+\fBset_inode_field\fP\fI filespec field value\fP
+修改 \fIfilespec\fP 指定的 inode，使 inode 字段 \fIfield\fP 的值为 \fIvalue.\fP 可通过此命令设置的有效 inode
+字段列表可使用以下命令显示: \fBset_inode_field \-l\fP 也可用作 \fBsif\fP。
+.TP 
+\fBset_mmp_value\fP\fI field value\fP
+修改多重安装保护 (MMP) 数据，使 MMP 字段 \fIfield\fP 的值为 \fIvalue.\fP 可以通过此命令设置的有效 MMP
+字段列表可以使用以下命令显示: \fBset_mmp_value \-l\fP 也可用作 \fBsmmp\fP。
+.TP 
+\fBset_super_value\fP\fI field value\fP
+将超级块字段 \fIfield\fP 设置为 \fIvalue.\fP 可通过此命令设置的有效超级块字段列表可使用以下命令显示: \fBset_super_value \-l\fP 也可用作 \fBssv\fP。
+.TP 
+\fBshow_debugfs_params\fP
+显示 \fBdebugfs\fP 参数，例如有关当前打开的文件系统的信息。
+.TP 
+\fBshow_super_stats\fP\fI [\-h]\fP
+列出超级块的内容和块组描述符。 如果给出 \fI\-h\fP 标志，则只打印出超级块内容。也可用作 \fBstats\fP。
+.TP 
+\fBstat\fP\fI filespec\fP
+显示 inode \fIfilespec\fP 的 inode 结构体的内容。
+.TP 
+\fBsupported_features\fP
+显示此版本 \fBdebugfs\fP 支持的文件系统，特性。
+.TP 
+\fBtestb\fP\fI block [count]\fP
+测试块号 \fIblock\fP 是否在块位图中标记为已分配。 如果存在可选的参数 \fIcount\fP，则将测试从块号 \fIblock\fP 开始的
+\fIcount\fP 块。
+.TP 
+\fBtesti\fP\fI filespec\fP
+测试 inode \fIfilespec\fP 是否在 inode 位图中标记为已分配。
+.TP 
+\fBundel\fP\fI <inode_number> [pathname]\fP
+取消删除指定的 inode 编号 (必须用尖括号括起来)，以便它和它的块被标记为正在使用，并且可以选择将恢复的 inode 链接到指定的路径名。 在使用
+\fBundel\fP 命令恢复已删除的文件后，应始终运行 \fBe2fsck\fP 命令。
+.IP
+请注意，如果您要恢复大量已删除的文件，将 inode 链接到目录可能需要扩展目录，这可能会分配一个已被尚未删除的文件之一使用的块。
+因此，在不指定目标路径名的情况下取消删除所有 inode 更为安全，然后在单独的传递中，使用 debugfs \fBlink\fP 命令将 inode
+链接到目标路径名，或者使用 \fBe2fsck\fP 检查文件系统并链接所有将 inode 恢复到 lost+found 目录。
+.TP 
+\fBunlink\fP\fI pathname\fP
+删除 \fIpathname\fP 指定的指向 inode 的链接。 请注意，这不会调整 inode 引用计数。
+.TP 
+\fBwrite\fP\fI source_file out_file\fP
+将 \fIsource_file\fP 的内容复制到名为 \fIout_file\fP 的文件系统中新建的文件中。
+.TP 
+\fBzap_block\fP\fI [\-f filespec] [\-o offset] [\-l length] [\-p pattern] block_num\fP
+用零个 (NUL) 字节覆盖 \fIblock_num\fP 指定的块，或者如果给定 \fI\-p\fP，则使用 \fIpattern\fP 指定的字节。 如果给出
+\fI\-f\fP，则 \fIblock_num\fP 相对于 \fIfilespec\fP 给出的文件的开头。 \fI\-o\fP 和 \fI\-l\fP
+选项将字节范围限制为相对于块开头的指定 \fIoffset\fP 和 \fIlength\fP。
+.TP 
+\fBzap_block\fP\fI [\-f filespec] [\-b bit] block_num\fP
+物理 \fIblock_num\fP 的位翻转部分。 如果给定 \fI\-f\fP，则 \fIblock_num\fP 是相对于 \fIfilespec\fP 开始的逻辑块。
+.SH "ENVIRONMENT VARIABLES"
+.TP 
+\fBDEBUGFS_PAGER, PAGER\fP
+\fBdebugfs\fP 程序总是通过寻呼程序将某些命令的输出通过管道传输。 这些命令包括: \fIshow_super_stats\fP
+(\fIstats\fP)、\fIlist_directory\fP (\fIls\fP)、\fIshow_inode_info\fP
+(\fIstat\fP)、\fIlist_deleted_inodes\fP (\fIlsdel\fP) 和 \fIhtree_dump\fP。 具体的 pager 可以通过
+\fBDEBUGFS_PAGER\fP 环境变量显式指定，如果没有设置，则由 \fBPAGER\fP 环境变量指定。
+.IP
+请注意，由于总是使用寻呼机，因此 \fBless\fP(1) 寻呼机并不是特别合适，因为它会在显示命令输出之前清除屏幕，并在退出寻呼机时清除屏幕输出。
+对于大多数用途，许多用户更喜欢使用 \fBless\fP(1) 寻呼机，这就是 \fBDEBUGFS_PAGER\fP 环境变量可用于覆盖更通用的 \fBPAGER\fP
+环境变量的原因。
+.SH AUTHOR
+\fBdebugfs\fP 由 Theodore Ts'o <tytso@mit.edu> 编写。
+.SH "SEE ALSO"
+\fBdumpe2fs\fP(8), \fBtune2fs\fP(8), \fBe2fsck\fP(8), \fBmke2fs\fP(8), \fBext4\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

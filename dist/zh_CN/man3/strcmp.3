@@ -1,0 +1,168 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\" and Copyright 2020 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 18:08:52 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 2001-08-31, aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strcmp 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strcmp, strncmp \- 比较两个字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <string.h>\fP
+.PP
+\fBint strcmp(const char *\fP\fIs1\fP\fB, const char *\fP\fIs2\fP\fB);\fP
+\fBint strncmp(const char \fP\fIs1\fP\fB[.\fP\fIn\fP\fB], const char \fP\fIs2\fP\fB[.\fP\fIn\fP\fB], size_t \fP\fIn\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBstrcmp\fP() 函数比较两个字符串 \fIs1\fP 和 \fIs2\fP。 不考虑区域设置 (有关区域设置的比较，请参见 \fBstrcoll\fP(3)).
+比较是使用无符号字符完成的。
+.PP
+\fBstrcmp\fP() 返回一个表示比较结果的整数，如下:
+.IP \[bu] 3
+0，如果 \fIs1\fP 和 \fIs2\fP 相等;
+.IP \[bu]
+如果 \fIs1\fP 小于 \fIs2\fP，则为 negative 值;
+.IP \[bu]
+如果 \fIs1\fP 大于 \fIs2\fP，则为正值。
+.PP
+\fBstrncmp\fP() 函数是类似的，除了它只比较 \fIs1\fP 和 \fIs2\fP 的第一个 (最多) \fIn\fP 字节。
+.SH "RETURN VALUE"
+如果发现 \fIs1\fP (或其第一个 \fIn\fP 字节) 分别小于、匹配或大于 \fIs2\fP，则 \fBstrcmp\fP() 和 \fBstrncmp\fP()
+函数返回小于、等于或大于零的整数。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrcmp\fP(),
+\fBstrncmp\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.SH NOTES
+POSIX.1 仅指定:
+.RS
+.PP
+非零返回值的符号应由第一对字节的值之间的差异符号确定 (两者都被解释为 \fIunsigned char\fP) 类型，在被比较的字符串中不同。
+.RE
+.PP
+在 glibc 中，与大多数其他实现一样，返回值是 \fIs1\fP 中最后一个比较字节减去 \fIs2\fP 中最后一个比较字节的算术结果。
+(如果两个字符相等，则此差异为 0。)
+.SH EXAMPLES
+下面的程序可以用来演示 \fBstrcmp\fP() (给定两个参数) 和 \fBstrncmp\fP() (给定三个参数) 的操作。 首先，一些使用
+\fBstrcmp\fP(): 的例子
+.PP
+.in +4n
+.EX
+$ \fB./string_comp ABC ABC\fP
+<str1> 和 <str2> 相等
+$ \fB./string_comp ABC AB\fP      # \[aq] C\[aq] 是 ASCII 67; \[aq]C\[aq] \- \[aq]\e0\[aq] = 67
+<str1> 大于 <str2> (67)
+$ \fB./string_comp ABA ABZ\fP     # \[aq] A\[aq] 是 ASCII 65; \[aq] Z\[aq] 是 ASCII 90
+<str1> 小于 <str2> (\-25)
+$ \fB./string_comp ABJ ABC\fP
+<str1> 大于 <str2> (7)
+$ .\fB/string_comp $\[aq]\e201\[aq] A\fP   # 0201\-0101=0100 (或十进制的 64)
+<str1> 大于 <str2> (64)
+.EE
+.in
+.PP
+最后一个示例使用 \fBbash\fP(1)\-specific 语法生成包含 8 位 ASCII 代码的字符串; 结果表明字符串比较使用无符号字符。
+.PP
+然后是一些使用 \fBstrncmp\fP(): 的示例
+.PP
+.in +4n
+.EX
+$ \fB./string_comp ABC AB 3\fP
+<str1> 大于 <str2> (67)
+$ \fB./string_comp ABC AB 2\fP
+<str1> 和 <str2> 的前 2 个字节相等
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (string_comp.c)
+\&
+.EX
+/* string_comp.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    int res;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <str1> <str2> [<len>]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (argc == 3)
+        res = strcmp(argv[1], argv[2]);
+    else
+        res = strncmp(argv[1], argv[2], atoi(argv[3]));
+
+    if (res == 0) {
+        printf("<str1> and <str2> are equal");
+        if (argc > 3)
+            printf(" in the first %d bytes\en", atoi(argv[3]));
+        printf("\en");
+    } else if (res < 0) {
+        printf("<str1> is less than <str2> (%d)\en", res);
+    } else {
+        printf("<str1> is greater than <str2> (%d)\en", res);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBmemcmp\fP(3), \fBstrcasecmp\fP(3), \fBstrcoll\fP(3), \fBstring\fP(3),
+\fBstrncasecmp\fP(3), \fBstrverscmp\fP(3), \fBwcscmp\fP(3), \fBwcsncmp\fP(3),
+\fBascii\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,130 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2021 Suren Baghdasaryan <surenb@google.com>
+.\" and Copyright (C) 2021 Minchan Kim <minchan@kernel.org>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Commit ecb8ac8b1f146915aa6b96449b66dd48984caacc
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH process_madvise 2 2022\-11\-01 "Linux man\-pages 6.03" 
+.SH NAME
+process_madvise \- 向进程提供有关内存使用的建议
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mman.h>\fP      /* Definition of \fBMADV_*\fP constants */
+\fB#include <sys/syscall.h>\fP   /* Definition of \fBSYS_*\fP constants */
+\fB#include <sys/uio.h>\fP       /* Definition of \fBstruct iovec\fP type */
+\fB#include <unistd.h>\fP
+.PP
+\fBssize_t syscall(SYS_process_madvise, int \fP\fIpidfd\fP\fB,\fP
+\fB                const struct iovec *\fP\fIiovec\fP\fB, size_t \fP\fIvlen\fP\fB, int \fP\fIadvice\fP\fB,\fP
+\fB                unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.\" FIXME: See <https://sourceware.org/bugzilla/show_bug.cgi?id=27380>
+\fINote\fP: glibc 没有为 \fBprocess_madvise\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBprocess_madvise\fP() 系统调用用于向内核提供有关另一个进程或调用进程的地址范围的建议或指示。 它为 \fIiovec\fP 和
+\fIvlen\fP 描述的地址范围提供建议。 此类建议的目标是提高系统或应用程序的性能。
+.PP
+\fIpidfd\fP 参数是一个 PID 文件描述符 (请参见 \fBpidfd_open\fP(2))，它指定了要应用建议的进程。
+.PP
+指针 \fIiovec\fP 指向 \fBiovec\fP(3type) 中描述的 \fIiovec\fP 结构数组。
+.PP
+\fIvlen\fP 指定 \fIiovec\fP 结构数组中的元素数。 此值必须小于或等于 \fBIOV_MAX\fP (在 \fI<limits.h>\fP
+中定义或可通过调用 \fIsysconf(_SC_IOV_MAX)\fP) 访问。
+.PP
+\fIadvice\fP 参数是下列值之一:
+.TP 
+\fBMADV_COLD\fP
+请参见 \fBmadvise\fP(2)。
+.TP 
+\fBMADV_COLLAPSE\fP
+请参见 \fBmadvise\fP(2)。
+.TP 
+\fBMADV_PAGEOUT\fP
+请参见 \fBmadvise\fP(2)。
+.TP 
+\fBMADV_WILLNEED\fP
+请参见 \fBmadvise\fP(2)。
+.PP
+\fIflags\fP 参数保留给 future 使用; 目前，这个参数必须指定为 0.
+.PP
+在应用任何建议之前检查 \fIvlen\fP 和 \fIiovec\fP 参数。 如果 \fIvlen\fP 太大，或者 \fIiovec\fP
+无效，则会立即返回错误，并且不会应用任何建议。
+.PP
+如果其中一个元素指向远程进程中的无效内存区域，则该建议可能仅应用于 \fIiovec\fP 的一部分。 超过该点将不再处理其他元素。
+(请参见返回值中关于部分建议的讨论。)
+.PP
+.\" commit 96cfe2c0fd23ea7c2368d14f769d287e7ae1082e
+从 Linux 5.12 开始，将建议应用于另一个进程的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP 检查控制
+(参见 \fBptrace\fP(2)); 此外，由于应用建议的性能影响，调用者必须具有 \fBCAP_SYS_NICE\fP 能力 (参见
+\fBcapabilities\fP(7)).
+.SH "RETURN VALUE"
+成功时，\fBprocess_madvise\fP() 返回建议的字节数。 如果在某些 \fIiovec\fP
+元素已被处理后发生错误，则此返回值可能小于请求的字节总数。 调用者应该检查返回值以确定是否出现了部分建议。
+.PP
+出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIpidfd\fP 不是有效的 PID 文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIiovec\fP 描述的内存在 \fIpidfd\fP 引用的进程的可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 不是 0.
+.TP 
+\fBEINVAL\fP
+\fIiovec\fP 的 \fIiov_len\fP 值之和溢出 \fIssize_t\fP 值。
+.TP 
+\fBEINVAL\fP
+\fIvlen\fP 太大。
+.TP 
+\fBENOMEM\fP
+无法为 \fIiovec\fP 结构的内部副本分配内存。
+.TP 
+\fBEPERM\fP
+调用者无权访问进程 \fIpidfd\fP 的地址空间。
+.TP 
+\fBESRCH\fP
+目标进程不存在 (即，它已终止并正在等待)。
+.PP
+有关 \fIadvice\fP\-specific 错误，请参见 \fBmadvise\fP(2)。
+.SH VERSIONS
+.\" commit ecb8ac8b1f146915aa6b96449b66dd48984caacc
+本系统调用最早出现在 Linux 5.10。 是否支持此系统调用是可选的，具体取决于 \fBCONFIG_ADVISE_SYSCALLS\fP
+配置选项的设置。
+.SH STANDARDS
+\fBprocess_madvise\fP() 系统调用是 Linux 特有的。
+.SH NOTES
+当这个系统调用第一次出现在 Linux 5.10 时，将通知应用到另一个进程的权限完全由 ptrace 访问模式
+\fBPTRACE_MODE_ATTACH_FSCREDS\fP 检查 (参见 \fBptrace\fP(2)).  Linux 5.12
+放宽了这个要求，因此调用者不需要完全控制目标进程。
+.SH "SEE ALSO"
+\fBmadvise\fP(2), \fBpidfd_open\fP(2), \fBprocess_vm_readv\fP(2),
+\fBprocess_vm_write\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,1485 @@
+.\" -*- coding: UTF-8 -*-
+.\"	$OpenBSD: elf.5,v 1.12 2003/10/27 20:23:58 jmc Exp $
+.\"Copyright (c) 1999 Jeroen Ruigrok van der Werven
+.\"All rights reserved.
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\"Redistribution and use in source and binary forms, with or without
+.\"modification, are permitted provided that the following conditions
+.\"are met:
+.\"1. Redistributions of source code must retain the above copyright
+.\"   notice, this list of conditions and the following disclaimer.
+.\"2. Redistributions in binary form must reproduce the above copyright
+.\"   notice, this list of conditions and the following disclaimer in the
+.\"   documentation and/or other materials provided with the distribution.
+.\"
+.\"THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\"ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\"IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\"ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\"FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\"DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\"OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\"HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\"LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\"OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\"SUCH DAMAGE.
+.\" %%%LICENSE_END
+.\"
+.\"	$FreeBSD: src/share/man/man5/elf.5,v 1.21 2001/10/01 16:09:23 ru Exp $
+.\"
+.\" Slightly adapted - aeb, 2004-01-01
+.\" 2005-07-15, Mike Frysinger <vapier@gentoo.org>, various fixes
+.\" 2007-10-11, Mike Frysinger <vapier@gentoo.org>, various fixes
+.\" 2007-12-08, mtk, Converted from mdoc to man macros
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ELF 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+elf \- 可执行和链接格式 (ELF) 文件的格式
+.SH SYNOPSIS
+.nf
+.\" .B #include <elf_abi.h>
+\fB#include <elf.h>\fP
+.fi
+.SH DESCRIPTION
+头文件 \fI<elf.h>\fP 定义了 ELF 可执行二进制文件的格式。
+这些文件包括普通可执行文件、可重定位目标文件、核心文件和共享目标文件。
+.PP
+使用 ELF 文件格式的可执行文件由一个 ELF 头组成，后跟一个程序头表或节头表，或两者都有。 ELF 标头始终位于文件的偏移量零处。 ELF
+头中定义了程序头表和节头表在文件中的偏移量。 这两个表描述了文件的其余特性。
+.PP
+.\" Applications which wish to process ELF binary files for their native
+.\" architecture only should include
+.\" .I <elf_abi.h>
+.\" in their source code.
+.\" These applications should need to refer to
+.\" all the types and structures by their generic names
+.\" "Elf_xxx"
+.\" and to the macros by
+.\" ELF_xxx".
+.\" Applications written this way can be compiled on any architecture,
+.\" regardless of whether the host is 32-bit or 64-bit.
+.\" .PP
+.\" Should an application need to process ELF files of an unknown
+.\" architecture, then the application needs to explicitly use either
+.\" "Elf32_xxx"
+.\" or
+.\" "Elf64_xxx"
+.\" type and structure names.
+.\" Likewise, the macros need to be identified by
+.\" "ELF32_xxx"
+.\" or
+.\" "ELF64_xxx".
+.\" .PP
+.\"
+该头文件将上述头文件描述为 C 结构，还包括动态段、重定位段和符号表的结构。
+.SS "Basic types"
+以下类型用于 N 位架构 (N=32,64，\fIElfN\fP 代表 \fIElf32\fP 或 \fIElf64\fP，\fIuintN_t\fP 代表
+\fIuint32_t\fP 或 \fIuint64_t\fP):
+.PP
+.in +4n
+.EX
+.\" Elf32_Size  Unsigned object size
+ElfN_Addr 无符号程序地址，uintN_t
+ElfN_Off 无符号文件偏移量，uintN_t
+ElfN_Section 无符号节索引，uint16_t
+ElfN_Versym 无符号版本符号信息，uint16_t
+Elf_Byte 无符号字符
+ElfN_Half       uint16_t
+ElfN_Sword      int32_t
+ElfN_Word       uint32_t
+ElfN_Sxword     int64_t
+ElfN_Xword      uint64_t
+.EE
+.in
+.PP
+(注意: *BSD 术语有点不同。\fIElf64_Half\fP 是 \fIElf32_Half\fP 的两倍，\fIElf64Quarter\fP 用于
+\fIuint16_t\fP。为了避免混淆，这些类型在下面被显式替换。)
+.PP
+.\"
+文件格式定义的所有数据结构都遵循相关类的 "natural" 大小和对齐准则。 如有必要，数据结构包含显式填充以确保 4 字节对象的 4
+字节对齐，强制结构体大小为 4 的倍数，等等。
+.SS "ELF header (Ehdr)"
+ELF 标头由 \fIElf32_Ehdr\fP 或 \fIElf64_Ehdr\fP: 类型描述
+.PP
+.in +4n
+.EX
+#define EI_NIDENT 16
+
+typedef 结构体 {
+    unsigned char e_ident[EI_NIDENT];
+    uint16_t      e_type;
+    uint16_t      e_machine;
+    uint32_t      e_version;
+    ElfN_Addr     e_entry;
+    ElfN_Off      e_phoff;
+    ElfN_Off      e_shoff;
+    uint32_t      e_flags;
+    uint16_t      e_ehsize;
+    uint16_t      e_phentsize;
+    uint16_t      e_phnum;
+    uint16_t      e_shentsize;
+    uint16_t      e_shnum;
+    uint16_t      e_shstrndx;
+} ElfN_Ehdr;
+.EE
+.in
+.PP
+.\"
+.\"
+这些字段具有以下含义:
+.TP 
+\fIe_ident\fP
+这个字节数组指定了如何独立于处理器或文件的剩余内容来解释文件。 在此数组中，所有内容均由宏命名，宏以前缀 \fBEI_\fP 开头，并且可能包含以前缀
+\fBELF\fP 开头的值。 定义了以下宏:
+.RS
+.TP 
+\fBEI_MAG0\fP
+幻数的第一个字节。 必须填写 \fBELFMAG0\fP。 (0: 0x7f)
+.TP 
+\fBEI_MAG1\fP
+幻数的第二个字节。 必须填写 \fBELFMAG1\fP。 (1: \[aq]E\[aq])
+.TP 
+\fBEI_MAG2\fP
+幻数的第三个字节。 必须填写 \fBELFMAG2\fP。 (2: \[aq]L\[aq])
+.TP 
+\fBEI_MAG3\fP
+幻数的第四个字节。 必须填写 \fBELFMAG3\fP。 (3: \[aq]F\[aq])
+.TP 
+\fBEI_CLASS\fP
+第五个字节标识此二进制文件的体系结构:
+.RS
+.TP  14
+.PD 0
+\fBELFCLASSNONE\fP
+这个类是无效的。
+.TP 
+\fBELFCLASS32\fP
+这定义了 32 位体系结构。 它支持文件和虚拟地址空间高达 4 GB 的机器。
+.TP 
+\fBELFCLASS64\fP
+这定义了 64 位架构。
+.PD
+.RE
+.TP 
+\fBEI_DATA\fP
+第六个字节指定文件中处理器特定数据的数据编码。 目前，支持这些编码:
+.RS 9
+.TP  14
+.PD 0
+\fBELFDATANONE\fP
+未知的数据格式。
+.TP 
+\fBELFDATA2LSB\fP
+二进制补码，小端。
+.TP 
+\fBELFDATA2MSB\fP
+二进制补码，大端。
+.PD
+.RE
+.TP 
+\fBEI_VERSION\fP
+第七个字节是 ELF 规范的版本号:
+.IP
+.PD 0
+.RS
+.TP  14
+\fBEV_NONE\fP
+版本无效。
+.TP 
+\fBEV_CURRENT\fP
+当前版本。
+.PD
+.RE
+.\".El
+.TP 
+\fBEI_OSABI\fP
+第八个字节标识对象所针对的操作系统和 ABI。 其他 ELF 结构中的某些字段具有具有平台特定含义的标志和值; 这些字段的解释由该字节的值决定。 例如:
+.RS
+.TP  21
+.PD 0
+\fBELFOSABI_NONE\fP
+.\" 0
+与 ELFOSABI_SYSV 相同
+.TP 
+\fBELFOSABI_SYSV\fP
+.\" 0
+.\" synonym: ELFOSABI_NONE
+UNIX 系统 V ABI
+.TP 
+\fBELFOSABI_HPUX\fP
+.\" 1
+HP\-UX ABI
+.TP 
+\fBELFOSABI_NETBSD\fP
+.\" 2
+NetBSD ABI
+.TP 
+\fBELFOSABI_LINUX\fP
+.\" 3
+.\" .TP
+.\" .BR ELFOSABI_HURD
+.\" Hurd ABI
+.\" 4
+.\" .TP
+.\" .BR ELFOSABI_86OPEN
+.\" 86Open Common IA32 ABI
+.\" 5
+Linux ABI
+.TP 
+\fBELFOSABI_SOLARIS\fP
+.\" 6
+.\" .TP
+.\" .BR ELFOSABI_MONTEREY
+.\" Monterey project ABI
+.\" Now replaced by
+.\" ELFOSABI_AIX
+.\" 7
+Solaris ABI
+.TP 
+\fBELFOSABI_IRIX\fP
+.\" 8
+IRIX 应用程序接口
+.TP 
+\fBELFOSABI_FREEBSD\fP
+.\" 9
+FreeBSD ABI
+.TP 
+\fBELFOSABI_TRU64\fP
+.\" 10
+.\" ELFOSABI_MODESTO
+.\" 11
+.\" ELFOSABI_OPENBSD
+.\" 12
+TRU64 UNIX ABI
+.TP 
+\fBELFOSABI_ARM\fP
+.\" 97
+ARM 架构 ABI
+.TP 
+\fBELFOSABI_STANDALONE\fP
+.\" 255
+独立 (embedded) ABI
+.PD
+.RE
+.TP 
+\fBEI_ABIVERSION\fP
+第 9 个字节标识对象所针对的 ABI 的版本。 该字段用于区分 ABI 的不兼容版本。 此版本号的解释取决于 \fBEI_OSABI\fP 字段标识的
+ABI。 符合本规范的应用程序使用该值 0.
+.TP 
+\fBEI_PAD\fP
+.\" As reported by Yuri Kozlov and confirmed by Mike Frysinger, EI_BRAND is
+.\" not in GABI (http://www.sco.com/developers/gabi/latest/ch4.eheader.html)
+.\" It looks to be a BSDism
+.\" .TP
+.\" .BR EI_BRAND
+.\" Start of architecture identification.
+填充开始。 这些字节被保留并设置为零。 读取它们的程序应该忽略它们。 如果当前未使用的字节被赋予含义，则 \fBEI_PAD\fP 的值将在 future
+中更改。
+.TP 
+\fBEI_NIDENT\fP
+\fIe_ident\fP 数组的大小。
+.RE
+.TP 
+\fIe_type\fP
+结构体的这个成员标识目标文件类型:
+.RS
+.TP  16
+.PD 0
+\fBET_NONE\fP
+未知类型。
+.TP 
+\fBET_REL\fP
+可重定位文件。
+.TP 
+\fBET_EXEC\fP
+一个可执行文件。
+.TP 
+\fBET_DYN\fP
+共享对象。
+.TP 
+\fBET_CORE\fP
+一个核心文件。
+.PD
+.RE
+.TP 
+\fIe_machine\fP
+该成员指定单个文件所需的体系结构。 例如:
+.RS
+.TP  16
+.PD 0
+\fBEM_NONE\fP
+.\" 0
+未知机器
+.TP 
+\fBEM_M32\fP
+.\" 1
+美国电话电报公司 32100
+.TP 
+\fBEM_SPARC\fP
+.\" 2
+太阳微系统 SPARC
+.TP 
+\fBEM_386\fP
+.\" 3
+英特尔 80386
+.TP 
+\fBEM_68K\fP
+.\" 4
+摩托罗拉 68000
+.TP 
+\fBEM_88K\fP
+.\" 5
+.\" .TP
+.\" .BR EM_486
+.\" Intel 80486
+.\" 6
+摩托罗拉 88000
+.TP 
+\fBEM_860\fP
+.\" 7
+英特尔 80860
+.TP 
+\fBEM_MIPS\fP
+.\" 8
+.\" EM_S370
+.\" 9
+.\" .TP
+.\" .BR EM_MIPS_RS4_BE
+.\" MIPS RS4000 (big-endian only). Deprecated
+.\" 10
+.\" EM_MIPS_RS3_LE (MIPS R3000 little-endian)
+.\" 10
+MIPS RS3000 (仅限大端)
+.TP 
+\fBEM_PARISC\fP
+.\" 15
+HP/PA
+.TP 
+\fBEM_SPARC32PLUS\fP
+.\" 18
+SPARC 增强型指令集
+.TP 
+\fBEM_PPC\fP
+.\" 20
+PowerPC
+.TP 
+\fBEM_PPC64\fP
+.\" 21
+PowerPC 64 位
+.TP 
+\fBEM_S390\fP
+.\" 22
+IBM S/390
+.TP 
+\fBEM_ARM\fP
+.\" 40
+高级 RISC 机器
+.TP 
+\fBEM_SH\fP
+.\" 42
+瑞萨 SuperH
+.TP 
+\fBEM_SPARCV9\fP
+.\" 43
+SPARC v9 64 位
+.TP 
+\fBEM_IA_64\fP
+.\" 50
+英特尔安腾
+.TP 
+\fBEM_X86_64\fP
+.\" 62
+AMD x86\-64
+.TP 
+\fBEM_VAX\fP
+.\" 75
+.\" EM_CRIS
+.\" 76
+.\" .TP
+.\" .BR EM_ALPHA
+.\" Compaq [DEC] Alpha
+.\" .TP
+.\" .BR EM_ALPHA_EXP
+.\" Compaq [DEC] Alpha with enhanced instruction set
+十二月瓦克斯
+.PD
+.RE
+.TP 
+\fIe_version\fP
+该成员标识文件版本:
+.RS
+.TP  16
+.PD 0
+\fBEV_NONE\fP
+版本无效
+.TP 
+\fBEV_CURRENT\fP
+当前版本
+.PD
+.RE
+.TP 
+\fIe_entry\fP
+该成员给出系统首先将控制权转移到的虚拟地址，从而启动进程。 如果文件没有关联的入口点，则此成员为零。
+.TP 
+\fIe_phoff\fP
+该成员保存程序头表的文件偏移量 (以字节为单位)。 如果文件没有程序头表，则该成员为零。
+.TP 
+\fIe_shoff\fP
+该成员保存节头表的文件偏移量 (以字节为单位)。 如果文件没有节头表，则该成员为零。
+.TP 
+\fIe_flags\fP
+该成员持有与文件关联的特定于处理器的标志。 标志名称采用 EF_`machine_flag' 形式。目前，尚未定义任何标志。
+.TP 
+\fIe_ehsize\fP
+该成员保存 ELF 标头的大小 (以字节为单位)。
+.TP 
+\fIe_phentsize\fP
+该成员保存文件程序头表中一个条目的大小 (以字节为单位) ; 所有条目的大小相同。
+.TP 
+\fIe_phnum\fP
+该成员保存程序头表中的条目数。 因此，\fIe_phentsize\fP 和 \fIe_phnum\fP 的乘积给出了表的字节大小。 如果文件没有程序头，则
+\fIe_phnum\fP 的值为零。
+.IP
+.\" This is a Linux extension, added in Linux 2.6.34.
+如果程序头表项数大于等于 \fBPN_XNUM\fP (0xffff)，则该成员保存 \fBPN_XNUM\fP
+(0xffff)，真正的程序头表项数保存在节头表初始项的 \fIsh_info\fP 成员中。 否则，初始条目的 \fIsh_info\fP 成员包含值零。
+.RS
+.TP 
+\fBPN_XNUM\fP
+这被定义为 0xffff，\fIe_phnum\fP 可以拥有所有权的最大数字，指定分配程序头的实际数量的位置。
+.PD
+.RE
+.TP 
+\fIe_shentsize\fP
+该成员保存节头的大小 (以字节为单位)。 节头是节头表中的一个条目; 所有条目的大小相同。
+.TP 
+\fIe_shnum\fP
+该成员保存节头表中的条目数。 因此 \fIe_shentsize\fP 和 \fIe_shnum\fP 的乘积给出了节头表的字节大小。 如果文件没有节头表，则
+\fIe_shnum\fP 的值为零。
+.IP
+如果节头表中的条目数大于或等于 \fBSHN_LORESERVE\fP (0xff00)，则 \fIe_shnum\fP
+保持值为零，节头表中的实际条目数保存在节头表中初始条目的 \fIsh_size\fP 成员中。 否则，节头表中初始条目的 \fIsh_size\fP 成员的值为零。
+.TP 
+\fIe_shstrndx\fP
+该成员保存与节名字符串表关联的条目的节头表索引。 如果文件没有段名字符串表，则该成员的值为 \fBSHN_UNDEF\fP。
+.IP
+.\"
+如果段名字符串表段的索引大于等于 \fBSHN_LORESERVE\fP (0xff00)，则该成员保存 \fBSHN_XINDEX\fP
+(0xffff)，段名字符串表段的真实索引保存在段头表初始项的 \fIsh_link\fP 成员中。 否则，节头表中初始条目的 \fIsh_link\fP
+成员包含值零。
+.SS "Program header (Phdr)"
+可执行文件或共享目标文件的程序头表是一个结构数组，每个结构描述一个段或系统准备执行程序所需的其他信息。 目标文件 \fIsegment\fP 包含一个或多个
+\fIsections\fP。 程序头仅对可执行文件和共享目标文件有意义。 文件使用 ELF 标头的 \fIe_phentsize\fP 和 \fIe_phnum\fP
+成员指定其自己的程序标头大小。 ELF 程序头由类型 \fIElf32_Phdr\fP 或 \fIElf64_Phdr\fP 描述，具体取决于体系结构:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    uint32_t   p_type;
+    Elf32_Off  p_offset;
+    Elf32_Addr p_vaddr;
+    Elf32_Addr p_paddr;
+    uint32_t   p_filesz;
+    uint32_t   p_memsz;
+    uint32_t   p_flags;
+    uint32_t   p_align;
+} Elf32_Phdr;
+.EE
+.in
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    uint32_t   p_type;
+    uint32_t   p_flags;
+    Elf64_Off  p_offset;
+    Elf64_Addr p_vaddr;
+    Elf64_Addr p_paddr;
+    uint64_t   p_filesz;
+    uint64_t   p_memsz;
+    uint64_t   p_align;
+} Elf64_Phdr;
+.EE
+.in
+.PP
+32 位和 64 位程序头的主要区别在于 \fIp_flags\fP 成员在总结构体中的位置。
+.TP 
+\fIp_type\fP
+结构体的这个成员表示这个数组元素描述了什么样的段或者如何解释数组元素的信息。
+.RS 10
+.TP 
+\fBPT_NULL\fP
+数组元素未使用，其他成员的值未定义。 这让程序头已经忽略了条目。
+.TP 
+\fBPT_LOAD\fP
+数组元素指定一个可加载段，由 \fIp_filesz\fP 和 \fIp_memsz\fP 描述。 来自文件的字节被映射到内存段的开头。 如果段的内存大小
+\fIp_memsz\fP 大于文件大小 \fIp_filesz\fP，则 "extra" 字节被定义为保存值 0 并跟在段的初始化区域之后。
+文件大小不能大于内存大小。 程序头表中的可加载段条目以升序出现，按 \fIp_vaddr\fP 成员排序。
+.TP 
+\fBPT_DYNAMIC\fP
+数组元素指定动态链接信息。
+.TP 
+\fBPT_INTERP\fP
+数组元素指定要作为解释器调用的以 null 结尾的路径名的位置和大小。 此段类型仅对可执行文件有意义 (尽管它可能出现在共享对象中)。
+但是，它可能不会在一个文件中出现多次。 如果存在，它必须位于任何可加载段条目之前。
+.TP 
+\fBPT_NOTE\fP
+数组元素指定注释 (ElfN_Nhdr) 的位置。
+.TP 
+\fBPT_SHLIB\fP
+此段类型是保留的，但具有未指定的语义。 包含此类数组元素的程序不符合 ABI。
+.TP 
+\fBPT_PHDR\fP
+数组元素 (如果存在) 指定程序头表本身在文件和程序内存映像中的位置和大小。 这种段类型在一个文件中不能出现多次。
+此外，只有当程序头表是程序内存映像的一部分时，它才会发生。 如果存在，它必须位于任何可加载段条目之前。
+.TP 
+\fBPT_LOPROC\fP, \fBPT_HIPROC\fP
+[\fBPT_LOPROC\fP、\fBPT_HIPROC\fP] 范围内的值保留用于特定于处理器的语义。
+.TP 
+\fBPT_GNU_STACK\fP
+GNU 扩展，Linux 内核使用它通过在 \fIp_flags\fP 成员中设置的标志来控制栈的状态。
+.RE
+.TP 
+\fIp_offset\fP
+该成员保存从文件开头到段的第一个字节所在的偏移量。
+.TP 
+\fIp_vaddr\fP
+该成员保存段的第一个字节驻留在内存中的虚拟地址。
+.TP 
+\fIp_paddr\fP
+在物理寻址相关的系统上，该成员保留用于段的物理地址。 在 BSD 下，该成员未被使用且必须为零。
+.TP 
+\fIp_filesz\fP
+该成员保存段的文件映像中的字节数。 它可能为零。
+.TP 
+\fIp_memsz\fP
+该成员保存段内存映像中的字节数。 它可能为零。
+.TP 
+\fIp_flags\fP
+该成员持有与该段相关的标志位掩码:
+.RS
+.TP 
+.PD 0
+\fBPF_X\fP
+一个可执行段。
+.TP 
+\fBPF_W\fP
+可写段。
+.TP 
+\fBPF_R\fP
+可读段。
+.PD
+.RE
+.IP
+文本段通常有标志 \fBPF_X\fP 和 \fBPF_R .\fP 字段通常有 \fBPF_W\fP 和 \fBPF_R\fP。
+.TP 
+\fIp_align\fP
+.\"
+该成员保存段在内存和文件中对齐的值。 可加载进程段必须具有一致的 \fIp_vaddr\fP 和 \fIp_offset\fP 值，以页面大小为模。 值 0 和 1
+表示不需要对齐。 否则，\fIp_align\fP 应为 2 的正整数次幂，\fIp_vaddr\fP 应等于 \fIp_offset\fP，\fIp_align\fP 模。
+.SS "Section header (Shdr)"
+文件的节标题表可以让您找到文件的所有节。 节头表是一个 \fIElf32_Shdr\fP 或 \fIElf64_Shdr\fP 结构数组。 ELF 头的
+\fIe_shoff\fP 成员给出了从文件开头到节头表的字节偏移量。 \fIe_shnum\fP 保存节头表包含的条目数。 \fIe_shentsize\fP
+保存每个条目的字节大小。
+.PP
+节头表索引是该数组的下标。 一些节头表索引是保留的: 初始条目和 \fBSHN_LORESERVE\fP 和 \fBSHN_HIRESERVE\fP 之间的索引。
+初始条目用于 \fIe_phnum\fP、\fIe_shnum\fP 和 \fIe_shstrndx\fP 的 ELF 扩展;
+在其他情况下，初始条目中的每个字段都设置为零。 目标文件没有这些特殊索引的部分:
+.TP 
+\fBSHN_UNDEF\fP
+此值标记未定义、缺失、不相关或无意义的部分引用。
+.TP 
+\fBSHN_LORESERVE\fP
+该值指定保留索引范围的下限。
+.TP 
+\fBSHN_LOPROC\fP, \fBSHN_HIPROC\fP
+[\fBSHN_LOPROC\fP、\fBSHN_HIPROC\fP] 范围内较大的值保留用于特定于处理器的语义。
+.TP 
+\fBSHN_ABS\fP
+该值指定相应引用的绝对值。 例如，相对于节号 \fBSHN_ABS\fP 定义的符号具有绝对值，不受重定位的影响。
+.TP 
+\fBSHN_COMMON\fP
+与本节相关定义的符号是通用符号，例如 FORTRAN COMMON 或未分配的 C 外部变量。
+.TP 
+\fBSHN_HIRESERVE\fP
+该值指定保留索引范围的上限。 系统保留 \fBSHN_LORESERVE\fP 和 \fBSHN_HIRESERVE\fP (含) 之间的索引。
+节头表不包含保留索引的条目。
+.PP
+节标题具有以下结构体:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    uint32_t   sh_name;
+    uint32_t   sh_type;
+    uint32_t   sh_flags;
+    Elf32_Addr sh_addr;
+    Elf32_Off  sh_offset;
+    uint32_t   sh_size;
+    uint32_t   sh_link;
+    uint32_t   sh_info;
+    uint32_t   sh_addralign;
+    uint32_t   sh_entsize;
+} Elf32_Shdr;
+.EE
+.in
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    uint32_t   sh_name;
+    uint32_t   sh_type;
+    uint64_t   sh_flags;
+    Elf64_Addr sh_addr;
+    Elf64_Off  sh_offset;
+    uint64_t   sh_size;
+    uint32_t   sh_link;
+    uint32_t   sh_info;
+    uint64_t   sh_addralign;
+    uint64_t   sh_entsize;
+} Elf64_Shdr;
+.EE
+.in
+.PP
+32 位和 64 位节标头之间没有真正的区别。
+.TP 
+\fIsh_name\fP
+该成员指定节的名称。 它的值是节头字符串表节的索引，给出了以空字符结尾的字符串的位置。
+.TP 
+\fIsh_type\fP
+该成员对节的内容和语义进行分类。
+.RS
+.TP 
+\fBSHT_NULL\fP
+此值将节标题标记为不活动。 它没有关联的部分。 节标题的其他成员具有未定义的值。
+.TP 
+\fBSHT_PROGBITS\fP
+本节包含由程序定义的信息，其格式和含义完全由程序决定。
+.TP 
+\fBSHT_SYMTAB\fP
+该部分包含一个符号表。 通常，\fBSHT_SYMTAB\fP 提供用于链接编辑的符号，但它也可用于动态链接。
+作为一个完整的符号表，它可能包含许多动态链接不需要的符号。 目标文件还可以包含 \fBSHT_DYNSYM\fP 部分。
+.TP 
+\fBSHT_STRTAB\fP
+该部分包含一个字符串表。 目标文件可能有多个字符串表部分。
+.TP 
+\fBSHT_RELA\fP
+该部分包含带有显式加数的重定位条目，例如 32 位目标文件类的类型 \fIElf32_Rela\fP。 一个对象可能有多个重定位段。
+.TP 
+\fBSHT_HASH\fP
+该部分包含一个符号哈希表。 参与动态链接的对象必须包含一个符号哈希表。 一个目标文件可能只有一个哈希表。
+.TP 
+\fBSHT_DYNAMIC\fP
+本节包含动态链接的信息。 目标文件可能只有一个动态部分。
+.TP 
+\fBSHT_NOTE\fP
+本节包含注释 (ElfN_Nhdr)。
+.TP 
+\fBSHT_NOBITS\fP
+这种类型的部分在文件中不占用空间，但在其他方面类似于 \fBSHT_PROGBITS\fP。 尽管此部分不包含字节，但 \fIsh_offset\fP
+成员包含概念文件偏移量。
+.TP 
+\fBSHT_REL\fP
+此部分包含没有显式加数的重定位偏移量，例如 32 位目标文件类的类型 \fIElf32_Rel\fP。 目标文件可能有多个重定位节。
+.TP 
+\fBSHT_SHLIB\fP
+此部分是保留的，但具有未指定的语义。
+.TP 
+\fBSHT_DYNSYM\fP
+本节包含一组最小的动态链接符号。 目标文件还可以包含 \fBSHT_SYMTAB\fP 部分。
+.TP 
+\fBSHT_LOPROC\fP, \fBSHT_HIPROC\fP
+[\fBSHT_LOPROC\fP、\fBSHT_HIPROC\fP] 范围内的值保留用于特定于处理器的语义。
+.TP 
+\fBSHT_LOUSER\fP
+该值指定为应用程序保留的索引范围的下限。
+.TP 
+\fBSHT_HIUSER\fP
+该值指定为应用程序保留的索引范围的上限。 应用程序可以使用 \fBSHT_LOUSER\fP 和 \fBSHT_HIUSER\fP 之间的节类型，而不会与当前或
+future 系统定义的节类型冲突。
+.RE
+.TP 
+\fIsh_flags\fP
+节支持描述杂项属性的一位标志。 如果在 \fIsh_flags\fP 中设置了标志位，则该部分的属性为 "on"。 否则，该属性为 "off" 或不适用。
+未定义的属性设置为零。
+.RS
+.TP 
+\fBSHF_WRITE\fP
+此部分包含在流程执行期间应可写的数据。
+.TP 
+\fBSHF_ALLOC\fP
+该段在进程执行期间占用内存。 一些控制部分不驻留在目标文件的内存映像中。 对于这些部分，该属性是关闭的。
+.TP 
+\fBSHF_EXECINSTR\fP
+本节包含可执行机器指令。
+.TP 
+\fBSHF_MASKPROC\fP
+此掩码中包含的所有位都保留用于特定于处理器的语义。
+.RE
+.TP 
+\fIsh_addr\fP
+如果该部分出现在进程的内存映像中，则该成员保存该部分的第一个字节应驻留的地址。 否则，该成员包含零。
+.TP 
+\fIsh_offset\fP
+此成员的值保存从文件开头到该部分中第一个字节的字节偏移量。 一种节类型 \fBSHT_NOBITS\fP 不占用文件中的空间，其 \fIsh_offset\fP
+成员定位文件中的概念位置。
+.TP 
+\fIsh_size\fP
+该成员保存节的大小 (以字节为单位)。 除非节类型为 \fBSHT_NOBITS\fP，否则该节在文件中占用 \fIsh_size\fP 字节。
+\fBSHT_NOBITS\fP 类型的节可能具有非零大小，但它不占用文件中的空间。
+.TP 
+\fIsh_link\fP
+该成员持有节头表索引链接，其解释取决于节类型。
+.TP 
+\fIsh_info\fP
+该成员包含额外信息，其解释取决于部分类型。
+.TP 
+\fIsh_addralign\fP
+某些部分具有地址对齐约束。 如果一个节包含一个双字，系统必须确保整个节的双字对齐。 也就是说，\fIsh_addr\fP 的值必须等于零，对
+\fIsh_addralign\fP 的值取模。 只允许零和两个的正整数幂。 值 0 或 1 表示该部分没有对齐约束。
+.TP 
+\fIsh_entsize\fP
+某些部分包含固定大小条目的表，例如符号表。 对于这样的部分，该成员给出了每个条目的字节大小。 如果该部分不包含固定大小条目的表，则此成员包含零。
+.PP
+各个部分保存程序和控制信息:
+.TP 
+\&\fI.bss\fP
+该部分包含有助于程序内存映像的未初始化数据。 根据定义，系统在程序开始运行时用零初始化数据。 此部分的类型为 \fBSHT_NOBITS\fP。 属性类型为
+\fBSHF_ALLOC\fP 和 \fBSHF_WRITE\fP。
+.TP 
+\&\fI.comment\fP
+此部分包含版本控制信息。 此部分的类型为 \fBSHT_PROGBITS\fP。 不使用属性类型。
+.TP 
+\&\fI.ctors\fP
+此部分包含指向 C++ 构造函数函数的初始化指针。 此部分的类型为 \fBSHT_PROGBITS\fP。 属性类型为 \fBSHF_ALLOC\fP 和
+\fBSHF_WRITE\fP。
+.TP 
+\&\fI.data\fP
+该部分包含有助于程序内存映像的初始化数据。 此部分的类型为 \fBSHT_PROGBITS\fP。 属性类型为 \fBSHF_ALLOC\fP 和
+\fBSHF_WRITE\fP。
+.TP 
+\&\fI.data1\fP
+该部分包含有助于程序内存映像的初始化数据。 此部分的类型为 \fBSHT_PROGBITS\fP。 属性类型为 \fBSHF_ALLOC\fP 和
+\fBSHF_WRITE\fP。
+.TP 
+\&\fI.debug\fP
+本节包含符号调试的信息。 内容不详。 此部分的类型为 \fBSHT_PROGBITS\fP。 不使用属性类型。
+.TP 
+\&\fI.dtors\fP
+此部分包含指向 C++ 析构函数函数的初始化指针。 此部分的类型为 \fBSHT_PROGBITS\fP。 属性类型为 \fBSHF_ALLOC\fP 和
+\fBSHF_WRITE\fP。
+.TP 
+\&\fI.dynamic\fP
+此部分包含动态链接信息。 该部分的属性将包括 \fBSHF_ALLOC\fP 位。 \fBSHF_WRITE\fP 位是否设置是特定于处理器的。 此部分的类型为
+\fBSHT_DYNAMIC\fP。 请参见上面的属性。
+.TP 
+\&\fI.dynstr\fP
+该部分包含动态链接所需的字符串，最常见的是表示与符号表条目关联的名称的字符串。 此部分的类型为 \fBSHT_STRTAB\fP。 使用的属性类型是
+\fBSHF_ALLOC\fP。
+.TP 
+\&\fI.dynsym\fP
+该部分包含动态链接符号表。 此部分的类型为 \fBSHT_DYNSYM\fP。 使用的属性是 \fBSHF_ALLOC\fP。
+.TP 
+\&\fI.fini\fP
+该部分包含有助于进程终止代码的可执行指令。 当一个程序正常退出时，系统会安排执行这一段的代码。 此部分的类型为 \fBSHT_PROGBITS\fP。
+使用的属性是 \fBSHF_ALLOC\fP 和 \fBSHF_EXECINSTR\fP。
+.TP 
+\&\fI.gnu.version\fP
+该部分包含版本符号表，一个 \fIElfN_Half\fP 元素数组。 此部分的类型为 \fBSHT_GNU_versym\fP。 使用的属性类型是
+\fBSHF_ALLOC\fP。
+.TP 
+\&\fI.gnu.version_d\fP
+本节包含版本符号定义，\fIElfN_Verdef\fP 结构表。 此部分的类型为 \fBSHT_GNU_verdef\fP。 使用的属性类型是
+\fBSHF_ALLOC\fP。
+.TP 
+\&\fI.gnu.version_r\fP
+该部分包含版本符号所需的元素，\fIElfN_Verneed\fP 结构表。 此部分的类型为 \fBSHT_GNU_versym\fP。 使用的属性类型是
+\fBSHF_ALLOC\fP。
+.TP 
+\&\fI.got\fP
+本节包含全国偏移量表。 此部分的类型为 \fBSHT_PROGBITS\fP。 这些属性是特定于处理器的。
+.TP 
+\&\fI.hash\fP
+该部分包含一个符号哈希表。 此部分的类型为 \fBSHT_HASH\fP。 使用的属性是 \fBSHF_ALLOC\fP。
+.TP 
+\&\fI.init\fP
+该部分包含有助于进程初始化代码的可执行指令。 当程序开始运行时，系统安排在调用主程序入口点之前执行此部分中的代码。 此部分的类型为
+\fBSHT_PROGBITS\fP。 使用的属性是 \fBSHF_ALLOC\fP 和 \fBSHF_EXECINSTR\fP。
+.TP 
+\&\fI.interp\fP
+该部分包含程序解释器的路径名。 如果该文件有一个包含该部分的可加载段，则该部分的属性将包含 \fBSHF_ALLOC\fP 位。 否则，该位将关闭。
+此部分的类型为 \fBSHT_PROGBITS\fP。
+.TP 
+\&\fI.line\fP
+该部分保存符号调试的行号信息，它描述了程序源代码和机器代码之间的对应关系。 内容不详。 此部分的类型为 \fBSHT_PROGBITS\fP。
+不使用属性类型。
+.TP 
+\&\fI.note\fP
+本节包含各种注释。 此部分的类型为 \fBSHT_NOTE\fP。 不使用属性类型。
+.TP 
+\&\fI.note.ABI\-tag\fP
+此部分用于声明 ELF 映像的预期运行时 ABI。 它可能包括操作系统名称及其运行时版本。 此部分的类型为 \fBSHT_NOTE\fP。 唯一使用的属性是
+\fBSHF_ALLOC\fP。
+.TP 
+\&\fI.note.gnu.build\-id\fP
+该部分用于保存唯一标识 ELF 图像内容的 ID。 具有相同构建 ID 的不同文件应包含相同的可执行内容。 有关详细信息，请参见 GNU 链接器
+(\fBld\fP (1)) 的 \fB\-\-build\-id\fP 选项。 此部分的类型为 \fBSHT_NOTE\fP。 唯一使用的属性是 \fBSHF_ALLOC\fP。
+.TP 
+\&\fI.note.GNU\-stack\fP
+该部分在 Linux 目标文件中用于声明栈属性。 此部分的类型为 \fBSHT_PROGBITS\fP。 唯一使用的属性是 \fBSHF_EXECINSTR\fP。
+这向 GNU 链接器表明目标文件需要一个可执行栈。
+.TP 
+\&\fI.note.openbsd.ident\fP
+OpenBSD 原生可执行文件通常包含此部分以标识自己，以便内核在加载文件时可以绕过任何兼容性 ELF 二进制仿真测试。
+.TP 
+\&\fI.plt\fP
+该部分包含过程链接表。 此部分的类型为 \fBSHT_PROGBITS\fP。 这些属性是特定于处理器的。
+.TP 
+\&\fI.relNAME\fP
+此部分包含重定位信息，如下所述。 如果文件有一个包含重定位的可加载段，则该段的属性将包含 \fBSHF_ALLOC\fP 位。 否则，该位将关闭。
+按照惯例，"NAME" 由应用重定位的部分提供。 因此，\fB.text\fP 的重定位段通常具有名称 \fB.rel.text\fP。 此部分的类型为
+\fBSHT_REL\fP。
+.TP 
+\&\fI.relaNAME\fP
+此部分包含重定位信息，如下所述。 如果文件有一个包含重定位的可加载段，则该段的属性将包含 \fBSHF_ALLOC\fP 位。 否则，该位将关闭。
+按照惯例，"NAME" 由应用重定位的部分提供。 因此，\fB.text\fP 的重定位段通常具有名称 \fB.rela.text\fP。 此部分的类型为
+\fBSHT_RELA\fP。
+.TP 
+\&\fI.rodata\fP
+该部分包含只读数据，这些数据通常构成过程映像中的不可写段。 此部分的类型为 \fBSHT_PROGBITS\fP。 使用的属性是 \fBSHF_ALLOC\fP。
+.TP 
+\&\fI.rodata1\fP
+该部分包含只读数据，这些数据通常构成过程映像中的不可写段。 此部分的类型为 \fBSHT_PROGBITS\fP。 使用的属性是 \fBSHF_ALLOC\fP。
+.TP 
+\&\fI.shstrtab\fP
+此部分包含部分名称。 此部分的类型为 \fBSHT_STRTAB\fP。 不使用属性类型。
+.TP 
+\&\fI.strtab\fP
+该部分包含字符串，最常见的是表示与符号表条目关联的名称的字符串。 如果文件有包含符号字符串表的可加载段，则该段的属性将包含 \fBSHF_ALLOC\fP
+位。 否则，该位将关闭。 此部分的类型为 \fBSHT_STRTAB\fP。
+.TP 
+\&\fI.symtab\fP
+该部分包含一个符号表。 如果文件有包含符号表的可加载段，则该段的属性将包含 \fBSHF_ALLOC\fP 位。 否则，该位将关闭。 此部分的类型为
+\fBSHT_SYMTAB\fP。
+.TP 
+\&\fI.text\fP
+.\"
+该部分包含程序的 "text" 或可执行指令。 此部分的类型为 \fBSHT_PROGBITS\fP。 使用的属性是 \fBSHF_ALLOC\fP 和
+\fBSHF_EXECINSTR\fP。
+.SS "String and symbol tables"
+字符串表部分包含以 null 结尾的字符序列，通常称为字符串。 目标文件使用这些字符串来表示符号和节名称。 一引用一个字符串作为字符串表部分的索引。
+索引为零的第一个字节定义为包含空字节 (\[aq]\e0\[aq])。
+类似地，字符串表的最后一个字节被定义为包含一个空字节，以确保所有字符串都以空结尾。
+.PP
+目标文件的符号表包含定位和重新定位程序的符号定义和引用所需的信息。 符号表索引是该数组的下标。
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    uint32_t      st_name;
+    Elf32_Addr    st_value;
+    uint32_t      st_size;
+    unsigned char st_info;
+    unsigned char st_other;
+    uint16_t      st_shndx;
+} Elf32_Sym;
+.EE
+.in
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    uint32_t      st_name;
+    unsigned char st_info;
+    unsigned char st_other;
+    uint16_t      st_shndx;
+    Elf64_Addr    st_value;
+    uint64_t      st_size;
+} Elf64_Sym;
+.EE
+.in
+.PP
+32 位和 64 位版本具有相同的成员，只是顺序不同。
+.TP 
+\fIst_name\fP
+该成员包含目标文件的符号字符串表的索引，该表包含符号名称的字符表示。 如果该值非零，则它表示给出符号名称的字符串表索引。 否则，该符号没有名称。
+.TP 
+\fIst_value\fP
+该成员给出关联符号的值。
+.TP 
+\fIst_size\fP
+许多符号都有关联的大小。 如果符号没有大小或大小未知，则此成员为零。
+.TP 
+\fIst_info\fP
+该成员指定符号的类型和绑定属性:
+.RS
+.TP 
+\fBSTT_NOTYPE\fP
+符号的类型未定义。
+.TP 
+\fBSTT_OBJECT\fP
+该符号与数据对象相关联。
+.TP 
+\fBSTT_FUNC\fP
+该符号与一个函数或其他可执行代码相关联。
+.TP 
+\fBSTT_SECTION\fP
+该符号与一个部分相关联。 这种类型的符号表条目主要用于重定位，通常具有 \fBSTB_LOCAL\fP 绑定。
+.TP 
+\fBSTT_FILE\fP
+按照惯例，符号的名称给出了与目标文件关联的源文件的名称。 文件符号具有 \fBSTB_LOCAL\fP 绑定，其节索引为
+\fBSHN_ABS\fP，如果存在，它位于文件的其他 \fBSTB_LOCAL\fP 符号之前。
+.TP 
+\fBSTT_LOPROC\fP, \fBSTT_HIPROC\fP
+[\fBSTT_LOPROC\fP、\fBSTT_HIPROC\fP] 范围内的值保留用于特定于处理器的语义。
+.TP 
+\fBSTB_LOCAL\fP
+局部符号在包含其定义的目标文件之外是不可见的。 同名局部符号可以存在于多个文件中，互不干扰。
+.TP 
+\fBSTB_GLOBAL\fP
+全局符号对所有合并的目标文件可见。 一个文件对全局符号的定义将满足另一个文件对同一符号的未定义引用。
+.TP 
+\fBSTB_WEAK\fP
+弱符号类似于全局符号，但它们的定义具有较低的优先级。
+.TP 
+\fBSTB_LOPROC\fP, \fBSTB_HIPROC\fP
+[\fBSTB_LOPROC\fP、\fBSTB_HIPROC\fP] 范围内的值保留用于特定于处理器的语义。
+.RE
+.IP
+有用于打包和解包绑定和类型字段的宏:
+.RS
+.TP 
+\fBELF32_ST_BIND(\fP\fIinfo\fP\fB)\fP, \fBELF64_ST_BIND(\fP\fIinfo\fP\fB)\fP
+从 \fIst_info\fP 值中提取绑定。
+.TP 
+\fBELF32_ST_TYPE(\fP\fIinfo\fP\fB)\fP, \fBELF64_ST_TYPE(\fP\fIinfo\fP\fB)\fP
+从 \fIst_info\fP 值中提取类型。
+.TP 
+\fBELF32_ST_INFO(\fP\fIbind\fP\fB, \fP\fItype\fP\fB)\fP, \fBELF64_ST_INFO(\fP\fIbind\fP\fB, \fP\fItype\fP\fB)\fP
+将绑定和类型转换为 \fIst_info\fP 值。
+.RE
+.TP 
+\fIst_other\fP
+该成员定义符号可见性。
+.RS
+.TP 
+.PD 0
+\fBSTV_DEFAULT\fP
+默认符号可见性规则。 全局和弱符号对其他模块可用; 本地模块中的引用可以被其他模块中的定义插入。
+.TP 
+\fBSTV_INTERNAL\fP
+特定于处理器的隐藏类。
+.TP 
+\fBSTV_HIDDEN\fP
+Symbol 对其他模块不可用; 本地模块中的引用总是解析为本地符号 (即，该符号不能被其他模块中的定义插入)。
+.TP 
+\fBSTV_PROTECTED\fP
+Symbol 可用于其他模块，但本地模块中的引用始终解析为本地符号。
+.PD
+.PP
+有用于提取可见性类型的宏:
+.PP
+\fBELF32_ST_VISIBILITY\fP(other) 或 \fBELF64_ST_VISIBILITY\fP(other)
+.RE
+.TP 
+\fIst_shndx\fP
+.\"
+每个符号表条目都是与某些部分相关的 "defined"。 该成员持有相关节头表索引。
+.SS "Relocation entries (Rel & Rela)"
+重定位是连接符号引用和符号定义的过程。 可重定位文件必须包含描述如何修改其部分内容的信息，从而允许可执行文件和共享目标文件保存进程程序映像的正确信息。
+重定位条目就是这些数据。
+.PP
+不需要加数的重定位结构:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf32_Addr r_offset;
+    uint32_t   r_info;
+} Elf32_Rel;
+.EE
+.in
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf64_Addr r_offset;
+    uint64_t   r_info;
+} Elf64_Rel;
+.EE
+.in
+.PP
+需要加数的重定位结构:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf32_Addr r_offset;
+    uint32_t   r_info;
+    int32_t    r_addend;
+} Elf32_Rela;
+.EE
+.in
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf64_Addr r_offset;
+    uint64_t   r_info;
+    int64_t    r_addend;
+} Elf64_Rela;
+.EE
+.in
+.TP 
+\fIr_offset\fP
+该成员给出了应用重定位操作的位置。 对于可重定位文件，该值为从节首到受重定位影响的存储元的字节偏移量。
+对于可执行文件或共享对象，该值为受重定位影响的存储元的虚拟地址。
+.TP 
+\fIr_info\fP
+该成员给出了必须进行重定位的符号表索引和要应用的重定位类型。 重定位类型是特定于处理器的。 当文本提到重定位条目的重定位类型或符号表索引时，它表示分别将
+\fBELF[32|64]_R_TYPE\fP 或 \fBELF[32|64]_R_SYM\fP 应用于条目的 \fIr_info\fP 成员的结果。
+.TP 
+\fIr_addend\fP
+.\"
+该成员指定一个常量加数，用于计算要存储到可重定位字段中的值。
+.SS "Dynamic tags (Dyn)"
+\&\fI.dynamic\fP 部分包含一系列保存相关动态链接信息的结构。 \fId_tag\fP 成员控制 \fId_un\fP 的解释。
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf32_Sword    d_tag;
+    union {
+        Elf32_Word d_val;
+        Elf32_Addr d_ptr;
+    } d_un;
+} Elf32_Dyn;
+外部 Elf32_Dyn_DYNAMIC [];
+.EE
+.in
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf64_Sxword    d_tag;
+    union {
+        Elf64_Xword d_val;
+        Elf64_Addr  d_ptr;
+    } d_un;
+} Elf64_Dyn;
+外部 Elf64_Dyn_DYNAMIC [];
+.EE
+.in
+.TP 
+\fId_tag\fP
+该成员可能具有以下任何值:
+.RS
+.TP  12
+\fBDT_NULL\fP
+标记动态部分的结束
+.TP 
+\fBDT_NEEDED\fP
+字符串表偏移到所需库的名称
+.TP 
+\fBDT_PLTRELSZ\fP
+PLT 重定位条目的大小 (以字节为单位)
+.TP 
+\fBDT_PLTGOT\fP
+PLT 或者 GOT 的地址
+.TP 
+\fBDT_HASH\fP
+符号哈希表的地址
+.TP 
+\fBDT_STRTAB\fP
+字符串表地址
+.TP 
+\fBDT_SYMTAB\fP
+符号表地址
+.TP 
+\fBDT_RELA\fP
+Rela 重定位表的地址
+.TP 
+\fBDT_RELASZ\fP
+Rela 重定位表的大小 (以字节为单位)
+.TP 
+\fBDT_RELAENT\fP
+Rela 重定位表条目的大小 (以字节为单位)
+.TP 
+\fBDT_STRSZ\fP
+字符串表的字节大小
+.TP 
+\fBDT_SYMENT\fP
+符号表条目的字节大小
+.TP 
+\fBDT_INIT\fP
+初始化函数的地址
+.TP 
+\fBDT_FINI\fP
+终止地址函数
+.TP 
+\fBDT_SONAME\fP
+字符串表到共享对象名称的偏移量
+.TP 
+\fBDT_RPATH\fP
+字符串表到库搜索路径的偏移量 (deprecated)
+.TP 
+\fBDT_SYMBOLIC\fP
+提醒链接器在可执行文件之前搜索此共享库中的符号
+.TP 
+\fBDT_REL\fP
+Rel 重定位表的地址
+.TP 
+\fBDT_RELSZ\fP
+Rel 重定位表的字节大小
+.TP 
+\fBDT_RELENT\fP
+Rel 表条目的大小 (以字节为单位)
+.TP 
+\fBDT_PLTREL\fP
+PLT 引用的重定位条目类型 (Rela 或 Rel)
+.TP 
+\fBDT_DEBUG\fP
+未定义的调试用途
+.TP 
+\fBDT_TEXTREL\fP
+缺少此条目表示不应将重定位条目应用于不可写段
+.TP 
+\fBDT_JMPREL\fP
+仅与 PLT 关联的重定位条目的地址
+.TP 
+\fBDT_BIND_NOW\fP
+指示动态链接器在将控制权转移到可执行文件之前处理所有重定位
+.TP 
+\fBDT_RUNPATH\fP
+字符串表偏移到库搜索路径
+.TP 
+\fBDT_LOPROC\fP, \fBDT_HIPROC\fP
+[\fBDT_LOPROC\fP、\fBDT_HIPROC\fP] 范围内的值保留用于特定于处理器的语义
+.RE
+.TP 
+\fId_val\fP
+该成员表示具有各种解释的整数值。
+.TP 
+\fId_ptr\fP
+该成员代表程序虚拟地址。 在解释这些地址时，应根据原始文件值和内存基地址计算实际地址。 文件不包含修复这些地址的重定位条目。
+.TP 
+\fI_DYNAMIC\fP
+.\" GABI ELF Reference for Note Sections:
+.\" http://www.sco.com/developers/gabi/latest/ch5.pheader.html#note_section
+.\"
+.\" Note that it implies the sizes and alignments of notes depend on the ELF
+.\" size (e.g. 32-bit ELFs have three 4-byte words and use 4-byte alignment
+.\" while 64-bit ELFs use 8-byte words & alignment), but that is not the case
+.\" in the real world.  Notes always have three 4-byte words as can be seen
+.\" in the source links below (remember that Elf64_Word is a 32-bit quantity).
+.\" glibc:    https://sourceware.org/git/?p=glibc.git;a=blob;f=elf/elf.h;h=9e59b3275917549af0cebe1f2de9ded3b7b10bf2#l1173
+.\" binutils: https://sourceware.org/git/?p=binutils-gdb.git;a=blob;f=binutils/readelf.c;h=274ddd17266aef6e4ad1f67af8a13a21500ff2af#l15943
+.\" Linux:    https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/elf.h?h=v4.8#n422
+.\" Solaris:  https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-18048.html
+.\" FreeBSD:  https://svnweb.freebsd.org/base/head/sys/sys/elf_common.h?revision=303677&view=markup#l33
+.\" NetBSD:   https://www.netbsd.org/docs/kernel/elf-notes.html
+.\" OpenBSD:  https://github.com/openbsd/src/blob/master/sys/sys/exec_elf.h#L533
+.\"
+包含 \fI.dynamic\fP 部分中所有动态结构的数组。 这是由链接器自动填充的。
+.SS "Notes (Nhdr)"
+ELF 注释允许，追加，任意信息供系统使用。 它们主要由 \fBET_CORE\fP) 的核心文件 (\fIe_type\fP 使用，但许多项目定义了自己的扩展集。
+例如，GNU 工具链使用 ELF 注释将信息从链接器传递到 C 库。
+.PP
+注释部分包含一系列注释 (请参见下面的 \fIstruct\fP 定义)。 每个注释后跟名称字段 (其长度在 \fIn_namesz\fP)
+中定义)，然后是描述符字段 (其长度在 \fIn_descsz\fP) 中定义，其起始地址具有 4 字节对齐。
+由于它们的任意长度，这两个字段都没有在注释结构体中定义。
+.PP
+解析两个连续音符的示例应该阐明它们在内存中的布局:
+.PP
+.in +4n
+.EX
+void *memory, *name, *desc;
+Elf64_Nhdr *note, *next_note;
+
+/* The buffer is pointing to the start of the section/segment. */
+note = memory;
+
+/* If the name is defined, it follows the note. */
+name = note\->n_namesz == 0 ? NULL : memory + sizeof(*note);
+
+/* If the descriptor is defined, it follows the name
+   (with alignment). */
+
+desc = note\->n_descsz == 0 ? NULL :
+       memory + sizeof(*note) + ALIGN_UP(note\->n_namesz, 4);
+
+/* The next note follows both (with alignment). */
+next_note = memory + sizeof(*note) +
+                     ALIGN_UP(note\->n_namesz, 4) +
+                     ALIGN_UP(note\->n_descsz, 4);
+.EE
+.in
+.PP
+请记住，\fIn_type\fP 的解释取决于 \fIn_namesz\fP 字段定义的命名空间。 如果未设置 \fIn_namesz\fP 字段 (例如，为
+0)，则有两组注释: 一组用于核心文件，另一组用于所有其他 ELF 类型。 如果命名空间未知，那么工具通常也会回退到这些注释集。
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf32_Word n_namesz;
+    Elf32_Word n_descsz;
+    Elf32_Word n_type;
+} Elf32_Nhdr;
+.EE
+.in
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    Elf64_Word n_namesz;
+    Elf64_Word n_descsz;
+    Elf64_Word n_type;
+} Elf64_Nhdr;
+.EE
+.in
+.TP 
+\fIn_namesz\fP
+名称字段的长度 (以字节为单位)。 记忆中的内容将紧随此注释。 名称以 null 结尾。 例如，如果名称为 "GNU"，则 \fIn_namesz\fP
+将设置为 4.
+.TP 
+\fIn_descsz\fP
+描述符字段的长度 (以字节为单位)。 内容将紧跟内存中的名称字段。
+.TP 
+\fIn_type\fP
+根据名称字段的值，此成员可能具有以下任何值:
+.RS
+.TP  5
+\fBCore files (e_type = ET_CORE)\fP
+所有核心文件使用的注释。 这些是高度操作系统或体系结构特定的，通常需要与内核、C 库和调试器密切协调。 这些在名称空间为默认值 (即
+\fIn_namesz\fP 将设置为 0) 时使用，或者在名称空间未知时作为回退。
+.RS
+.TP  21
+.PD 0
+\fBNT_PRSTATUS\fP
+prstatus 结构体
+.TP 
+\fBNT_FPREGSET\fP
+fpregset 结构体
+.TP 
+\fBNT_PRPSINFO\fP
+prpsinfo 结构体
+.TP 
+\fBNT_PRXREG\fP
+prxregset 结构体
+.TP 
+\fBNT_TASKSTRUCT\fP
+task 结构体
+.TP 
+\fBNT_PLATFORM\fP
+来自 sysinfo(SI_PLATFORM) 的字符串
+.TP 
+\fBNT_AUXV\fP
+辅助数组
+.TP 
+\fBNT_GWINDOWS\fP
+gwindows 结构体
+.TP 
+\fBNT_ASRS\fP
+asrset 结构体
+.TP 
+\fBNT_PSTATUS\fP
+pstatus 结构体
+.TP 
+\fBNT_PSINFO\fP
+psinfo 结构体
+.TP 
+\fBNT_PRCRED\fP
+prcred 结构体
+.TP 
+\fBNT_UTSNAME\fP
+utsname 结构体
+.TP 
+\fBNT_LWPSTATUS\fP
+lwpstatus 结构体
+.TP 
+\fBNT_LWPSINFO\fP
+lwpinfo 结构体
+.TP 
+\fBNT_PRFPXREG\fP
+fprxregset 结构体
+.TP 
+\fBNT_SIGINFO\fP
+siginfo_t (大小可能会随着时间的推移而增加)
+.TP 
+\fBNT_FILE\fP
+包含有关映射文件的信息
+.TP 
+\fBNT_PRXFPREG\fP
+user_fxsr_struct
+.TP 
+\fBNT_PPC_VMX\fP
+PowerPC Altivec/VMX 寄存器
+.TP 
+\fBNT_PPC_SPE\fP
+PowerPC SPE/EVR 寄存器
+.TP 
+\fBNT_PPC_VSX\fP
+PowerPC VSX 寄存器
+.TP 
+\fBNT_386_TLS\fP
+i386 TLS 插槽 (结构体 user_desc)
+.TP 
+\fBNT_386_IOPERM\fP
+x86 io 权限位图 (1=deny)
+.TP 
+\fBNT_X86_XSTATE\fP
+使用 xsave 的 x86 扩展状态
+.TP 
+\fBNT_S390_HIGH_GPRS\fP
+s390 上半部分
+.TP 
+\fBNT_S390_TIMER\fP
+s390 定时器寄存器
+.TP 
+\fBNT_S390_TODCMP\fP
+s390 时钟 (TOD) 时钟比较器寄存器
+.TP 
+\fBNT_S390_TODPREG\fP
+s390 时钟 (TOD) 可编程寄存器
+.TP 
+\fBNT_S390_CTRS\fP
+s390 控制寄存器
+.TP 
+\fBNT_S390_PREFIX\fP
+s390 前缀寄存器
+.TP 
+\fBNT_S390_LAST_BREAK\fP
+s390 破解事件地址
+.TP 
+\fBNT_S390_SYSTEM_CALL\fP
+s390 系统调用重启数据
+.TP 
+\fBNT_S390_TDB\fP
+s390 事务诊断块
+.TP 
+\fBNT_ARM_VFP\fP
+ARM VFP/NEON 寄存器
+.TP 
+\fBNT_ARM_TLS\fP
+ARM TLS 寄存器
+.TP 
+\fBNT_ARM_HW_BREAK\fP
+ARM 硬件断点寄存器
+.TP 
+\fBNT_ARM_HW_WATCH\fP
+ARM 硬件观察点寄存器
+.TP 
+\fBNT_ARM_SYSTEM_CALL\fP
+ARM 系统调用号
+.PD
+.RE
+.TP 
+\fBn_name = GNU\fP
+GNU 工具链使用的扩展。
+.RS
+.TP 
+\fBNT_GNU_ABI_TAG\fP
+操作系统 (OS) ABI 信息。 desc 字段将是 4 个单词:
+.IP
+.PD 0
+.RS
+.IP [0] 5
+操作系统描述符 (\fBELF_NOTE_OS_LINUX\fP、\fBELF_NOTE_OS_GNU\fP 等) `
+.IP [1]
+ABI 的主要版本
+.IP [2]
+ABI 的次要版本
+.IP [3]
+ABI 的次要版本
+.RE
+.PD
+.TP 
+\fBNT_GNU_HWCAP\fP
+综合 hwcap 信息。 desc 字段以两个词开头:
+.IP
+.PD 0
+.RS
+.IP [0] 5
+条目数
+.IP [1]
+启用条目的位掩码
+.RE
+.PD
+.IP
+然后是可变长度条目，一个字节后跟一个以 null 结尾的 hwcap 名称字符串。 该字节给出了位号以测试是否启用，(1U << 位)
+和位掩码。
+.TP 
+\fBNT_GNU_BUILD_ID\fP
+由 GNU \fBld\fP(1) \fB\-\-build\-id\fP 选项生成的唯一构建 ID。 desc 由任意非零字节数组成。
+.TP 
+\fBNT_GNU_GOLD_VERSION\fP
+desc 包含使用的 GNU Gold 链接器版本。
+.RE
+.TP 
+\fBDefault/unknown namespace (e_type != ET_CORE)\fP
+这些在名称空间为默认值 (即 \fIn_namesz\fP 将设置为 0) 时使用，或者在名称空间未知时作为回退。
+.RS
+.TP  12
+.PD 0
+\fBNT_VERSION\fP
+某种版本字符串。
+.TP 
+\fBNT_ARCH\fP
+架构信息。
+.PD
+.RE
+.RE
+.SH NOTES
+.\" OpenBSD
+.\" ELF support first appeared in
+.\" OpenBSD 1.2,
+.\" although not all supported platforms use it as the native
+.\" binary file format.
+ELF 最早出现在 System V。ELF 格式是一种采用的标准。
+.PP
+.\" .SH AUTHORS
+.\" The original version of this manual page was written by
+.\" .An Jeroen Ruigrok van der Werven
+.\" .Aq asmodai@FreeBSD.org
+.\" with inspiration from BSDi's
+.\" .Bsx
+.\" .Nm elf
+.\" man page.
+\fIe_phnum\fP、\fIe_shnum\fP 和 \fIe_shstrndx\fP 的扩展分别是 Linux 扩展。 Sun、BSD 和 AMD64
+也支持它们; 有关详细信息，请查看 `另请参见` 下的内容。
+.SH "SEE ALSO"
+\fBas\fP(1), \fBelfedit\fP(1), \fBgdb\fP(1), \fBld\fP(1), \fBnm\fP(1), \fBobjcopy\fP(1),
+\fBobjdump\fP(1), \fBpatchelf\fP(1), \fBreadelf\fP(1), \fBsize\fP(1), \fBstrings\fP(1),
+\fBstrip\fP(1), \fBexecve\fP(2), \fBdl_iterate_phdr\fP(3), \fBcore\fP(5), \fBld.so\fP(8)
+.PP
+惠普，\fIElf\-64 Object File Format\fP。
+.PP
+圣克鲁斯行动，\fISystem V Application Binary Interface\fP。
+.PP
+UNIX 系统实验室，"Object Files"，\fIExecutable and Linking Format (ELF)\fP。
+.PP
+太阳微系统公司，\fILinker and Libraries Guide\fP。
+.PP
+AMD64 ABI 草案，\fISystem V Application Binary Interface AMD64 Architecture Processor Supplement\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

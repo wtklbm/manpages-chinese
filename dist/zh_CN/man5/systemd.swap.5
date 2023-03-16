@@ -1,0 +1,181 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.SWAP 5 "" "systemd 253" systemd.swap
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.swap \- 交换元配置
+.SH SYNOPSIS
+.PP
+\fIswap\fP\&.swap
+.SH DESCRIPTION
+.PP
+名称以 "\&.swap" 结尾的元配置文件编码有关交换设备或文件的信息，用于由 systemd\& 控制和监督的内存分页。
+.PP
+此手册页列出了特定于此元类型 \& 的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit]
+和 [Install] 部分 \&。交换特定的配置选项在 [Swap] 部分 \& 中配置。
+.PP
+附加选项在 \fBsystemd.exec\fP(5) 中列出，它定义了 \fBswapon\fP(8) 程序在其中执行的执行环境，在
+\fBsystemd.kill\fP(5) 中，它定义了这些进程的终止方式，在 \fBsystemd.resource\-control\fP(5)
+中，它为这些进程配置了元 \& 的资源控制设置。
+.PP
+交换单元必须以它们控制的设备或文件命名 \&。例: 交换设备 /dev/sda5 必须配置在一个元文件 dev\-sda5\&.swap\&
+中。文件系统路径转元名的转义逻辑详见
+\fBsystemd.unit\fP(5)\&。请注意，交换单元不能被模板化，也不能通过创建额外的符号链接将多个名称添加到交换单元 \&。
+.PP
+请注意，Linux 上的交换支持是特权的，因此交换单元仅在系统服务管理器 (和 root\* (Aqs 用户服务管理器) ) 中可用，但在非特权用户
+\* (Aqs 服务管理器 \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+隐式添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+所有交换单元自动获得对设备单元或它们从中激活的文件的挂载单元的 \fIBindsTo=\fP 和 \fIAfter=\fP 依赖性 \&。
+.RE
+.PP
+如 \fBsystemd.exec\fP(5) 和 \fBsystemd.resource\-control\fP(5)\&
+中所述，可能会添加额外的隐式依赖项作为执行和资源控制参数的结果。
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+交换单元自动获得对 umount\&.target 的 \fIConflicts=\fP 和 \fIBefore=\fP 依赖性，以便它们在关闭时停用以及
+\fIBefore=swap\&.target\fP 依赖性 \&。
+.RE
+.SH FSTAB
+.PP
+可以通过元文件或 /etc/fstab (有关详细信息，请参见 \fBfstab\fP(5)) \& 来配置交换单元。/etc/fstab
+中列出的交换将在启动时和重新加载系统管理器的配置时动态转换为原生单位 \&。有关转换的详细信息，请参见
+\fBsystemd\-fstab\-generator\fP(8)。
+.PP
+如果交换设备或文件同时在 /etc/fstab 和元文件中配置，则后者的配置优先 \&。
+.PP
+在读取 /etc/fstab 时，systemd 会理解一些特殊选项，这些选项会影响如何为交换单元创建依赖项 \&。
+.PP
+\fBnoauto\fP, \fBauto\fP
+.RS 4
+对于 \fBnoauto\fP，swap 元将不会添加为 swap\&.target\& 的依赖项。这意味着它不会在引导期间自动激活，除非它被其他一些元 \&
+拉入。\fBauto\fP 选项含义相反，默认为 \&。
+.RE
+.PP
+\fBnofail\fP
+.RS 4
+对于 \fBnofail\fP，swap 元只是需要的，而 swap\&.target\& 不需要。这意味着即使此交换设备未成功激活 \&，引导也会继续。
+.RE
+.PP
+\fBx\-systemd\&.device\-timeout=\fP
+.RS 4
+配置 systemd 在放弃来自 /etc/fstab\& 的条目之前应该等待设备出现的时间。以秒为单位指定时间或明确，追加，一个元，例如
+"s"、"min"、"h"、`ms`\&。
+.sp
+注意该选项只能在 /etc/fstab 中使用，当在元文件 \& 中设置部分 \fIOptions=\fP 时会被忽略。
+.RE
+.PP
+\fBx\-systemd\&.makefs\fP
+.RS 4
+交换结构体将在设备上初始化 \&。如果设备不是 "empty"，则 i\&.e\&。它包含任何签名，该操作将被跳过 \&。因此，即使在设备已初始化 \&
+后，预计此选项仍会保持设置状态。
+.sp
+注意该选项只能在 /etc/fstab 中使用，当在元文件 \& 中设置部分 \fIOptions=\fP 时会被忽略。
+.sp
+请参见 \fBsystemd\-mkswap@.service\fP(8) 和 \fBsystemd.mount\fP(5)\& 中对 \fBwipefs\fP(8)
+的讨论。
+.RE
+.SH OPTIONS
+.PP
+交换元文件可能包括 [Unit] 和 [Install] 部分，这些部分在 \fBsystemd.unit\fP(5)\& 中进行了描述。
+.PP
+Swap 元文件必须包含一个 [Swap] 部分，其中包含有关它所管理的交换设备的信息 \&。本节中可能使用的许多选项与其他元类型共享
+\&。这些选项记录在 \fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5)\& 中。特定于交换单元 [Swap]
+部分的选项如下:
+.PP
+\fIWhat=\fP
+.RS 4
+采用设备节点或文件的绝对路径以用于分页 \&。有关详细信息，请参见 \fBswapon\fP(8)\&。如果这是指设备节点，则自动创建对相应设备单元的依赖
+\&。(有关更多信息，请参见 \fBsystemd.device\fP(5)\&。) 如果这是指一个文件，则会自动创建对相应安装单元的依赖性
+\&。(有关更多信息，请参见 \fBsystemd.mount\fP(5)\&。) 此选项是必需的
+\&。请注意，通常的说明符扩展应用于此设置，因此字符值百分比字符应写为 `%%`\&。
+.RE
+.PP
+\fIPriority=\fP
+.RS 4
+激活交换设备或文件时使用的交换优先级 \&。这需要一个整数 \&。当 \fIOptions=\fP key\& 中的 \fBpri=\fP
+设置优先级时，此设置是可选的并被忽略。
+.RE
+.PP
+\fIOptions=\fP
+.RS 4
+可能包含交换设备的选项字符串 \&。这可用于控制丢弃选项以及其他功能，如果交换支持设备支持丢弃或修剪操作 \&。(有关更多信息，请参见
+\fBswapon\fP(8)\&。) 请注意，通常的说明符扩展应用于此设置，因此字符值百分比字符应写为 `%%`\&。
+.RE
+.PP
+\fITimeoutSec=\fP
+.RS 4
+配置等待 swapon 命令完成的时间 \&。如果命令在配置的时间内没有退出，swap 将被认为失败并再次关闭 \&。所有仍在运行的命令将通过
+\fBSIGTERM\fP 强制终止，并在再次延迟此时间后使用 \fBSIGKILL\fP\&。(见 \fBsystemd.kill\fP(5)\&.) 中的
+\fBKillMode=\fP 以秒为单位取一个元 \- less 值，或者一个时间跨度值，例如 `5min 20s`\&。通过 "0" 来禁用超时逻辑
+\&。默认为管理器配置文件中的 \fIDefaultTimeoutStartSec=\fP (请参见
+\fBsystemd\-system.conf\fP(5))\&.
+.RE
+.PP
+检查 \fBsystemd.unit\fP(5)、\fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5) 以获得更多设置 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd\-system.conf\fP(5),
+\fBsystemd.unit\fP(5), \fBsystemd.exec\fP(5), \fBsystemd.kill\fP(5),
+\fBsystemd.resource\-control\fP(5), \fBsystemd.device\fP(5), \fBsystemd.mount\fP(5),
+\fBswapon\fP(8), \fBsystemd\-fstab\-generator\fP(8), \fBsystemd.directives\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,633 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\" and copyright (c) 1999 Matthew Wilcox.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" 2002-10-30, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\"	Added description of SO_ACCEPTCONN
+.\" 2004-05-20, aeb, added SO_RCVTIMEO/SO_SNDTIMEO text.
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"	A few small grammar fixes
+.\" 2010-06-13 Jan Engelhardt <jengelh@medozas.de>
+.\"	Documented SO_DOMAIN and SO_PROTOCOL.
+.\"
+.\" FIXME
+.\" The following are not yet documented:
+.\"
+.\" SO_PEERNAME (2.4?)
+.\"	get only
+.\"	Seems to do something similar to getpeername(), but then
+.\"	why is it necessary / how does it differ?
+.\"
+.\" SO_TIMESTAMPING (2.6.30)
+.\"	Documentation/networking/timestamping.txt
+.\"	commit cb9eff097831007afb30d64373f29d99825d0068
+.\"	Author: Patrick Ohly <patrick.ohly@intel.com>
+.\"
+.\"  SO_WIFI_STATUS (3.3)
+.\"	commit 6e3e939f3b1bf8534b32ad09ff199d88800835a0
+.\"	Author: Johannes Berg <johannes.berg@intel.com>
+.\"	Also: SCM_WIFI_STATUS
+.\"
+.\" SO_NOFCS (3.4)
+.\"	commit 3bdc0eba0b8b47797f4a76e377dd8360f317450f
+.\"	Author: Ben Greear <greearb@candelatech.com>
+.\"
+.\"  SO_GET_FILTER (3.8)
+.\"	commit a8fc92778080c845eaadc369a0ecf5699a03bef0
+.\"	Author: Pavel Emelyanov <xemul@parallels.com>
+.\"
+.\" SO_MAX_PACING_RATE (3.13)
+.\"	commit 62748f32d501f5d3712a7c372bbb92abc7c62bc7
+.\"	Author: Eric Dumazet <edumazet@google.com>
+.\"
+.\" SO_BPF_EXTENSIONS (3.14)
+.\"	commit ea02f9411d9faa3553ed09ce0ec9f00ceae9885e
+.\"	Author: Michal Sekletar <msekleta@redhat.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH socket 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+socket\-Linux 套接字接口
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fIsockfd\fP\fB = socket(int \fP\fIsocket_family\fP\fB, int \fP\fIsocket_type\fP\fB, int \fP\fIprotocol\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+本手册页描述了 Linux 网络套接字层用户界面。 BSD 兼容套接字是用户进程与内核中网络协议栈之间的统一接口。 协议模块分为 \fIprotocol families\fP，如 \fBAF_INET\fP、\fBAF_IPX\fP 和 \fBAF_PACKET\fP，以及 \fIsocket types\fP，如
+\fBSOCK_STREAM\fP 或 \fBSOCK_DGRAM\fP。 有关系列和类型的更多信息，请参见 \fBsocket\fP(2)。
+.SS "Socket\-layer functions"
+这些函数被用户进程用于发送或接收数据包以及进行其他套接字操作。 有关详细信息，请参见它们各自的手册页。
+.PP
+\fBsocket\fP(2) 创建套接字，\fBconnect\fP(2) 将套接字连接到远程套接字地址，\fBbind\fP(2)
+函数将套接字绑定到本地套接字地址，\fBlisten\fP(2) 告诉套接字应接受新连接，\fBaccept\fP(2) 用于获取具有新套接字的新套接字传入连接。
+\fBsocketpair\fP(2) 返回两个连接的匿名套接字 (仅针对 \fBAF_UNIX\fP) 等少数本地家庭实现
+.PP
+\fBsend\fP(2)、\fBsendto\fP(2) 和 \fBsendmsg\fP(2)
+通过套接字发送数据，\fBrecv\fP(2)、\fBrecvfrom\fP(2)、\fBrecvmsg\fP(2) 从套接字接收数据。 \fBpoll\fP(2) 和
+\fBselect\fP(2) 等待数据到达或准备发送数据。 此外，还可以使用
+\fBwrite\fP(2)、\fBwritev\fP(2)、\fBsendfile\fP(2)、\fBread\fP(2)、\fBreadv\fP(2) 等标准的 I/O
+操作来读写数据。
+.PP
+\fBgetsockname\fP(2) 返回本地套接字地址，\fBgetpeername\fP(2) 返回远程套接字地址。 \fBgetsockopt\fP(2) 和
+\fBsetsockopt\fP(2) 用于设置或获取套接字层或协议选项。 \fBioctl\fP(2) 可用于设置或读取其他一些选项。
+.PP
+\fBclose\fP(2) 用于关闭套接字。 \fBshutdown\fP(2) 关闭全双工套接字连接的一部分。
+.PP
+套接字不支持使用非零位置查找或调用 \fBpread\fP(2) 或 \fBpwrite\fP(2)。
+.PP
+通过使用 \fBfcntl\fP(2) 在套接字文件描述符上设置 \fBO_NONBLOCK\fP 标志，可以在套接字上执行非阻塞 I/O。 然后所有会阻塞的操作将
+(usually) 与 \fBEAGAIN\fP 一起返回 (操作应稍后重试) ; \fBconnect\fP(2) 将返回 \fBEINPROGRESS\fP 错误。
+然后用户可以通过 \fBpoll\fP(2) 或 \fBselect\fP(2) 等待各种事件。
+.TS
+tab(:) allbox;
+c s s
+l l lx.
+I/O events
+Event:Poll flag:Occurrence
+Read:POLLIN:T{
+New data arrived.
+T}
+Read:POLLIN:T{
+A connection setup has been completed
+(for connection\-oriented sockets)
+T}
+Read:POLLHUP:T{
+A disconnection request has been initiated by the other end.
+T}
+Read:POLLHUP:T{
+A connection is broken (only for connection\-oriented protocols).
+When the socket is written
+\fBSIGPIPE\fP
+is also sent.
+T}
+Write:POLLOUT:T{
+Socket has enough send buffer space for writing new data.
+T}
+Read/Write:T{
+POLLIN |
+.br
+POLLOUT
+T}:T{
+An outgoing
+\fBconnect\fP(2)
+finished.
+T}
+Read/Write:POLLERR:T{
+An asynchronous error occurred.
+T}
+Read/Write:POLLHUP:T{
+The other end has shut down one direction.
+T}
+Exception:POLLPRI:T{
+Urgent data arrived.
+\fBSIGURG\fP
+is sent then.
+T}
+.\" FIXME . The following is not true currently:
+.\" It is no I/O event when the connection
+.\" is broken from the local end using
+.\" .BR shutdown (2)
+.\" or
+.\" .BR close (2).
+.TE
+.PP
+\fBpoll\fP(2) 和 \fBselect\fP(2) 的替代方法是让内核通过 \fBSIGIO\fP 信号通知应用程序有关事件。 为此，必须通过
+\fBfcntl\fP(2) 在套接字文件描述符上设置 \fBO_ASYNC\fP 标志，并且必须通过 \fBsigaction\fP(2) 安装 \fBSIGIO\fP
+的有效信号处理程序。 请参见下面的 \fISignals\fP 讨论。
+.SS "Socket address structures"
+每个套接字域都有自己的套接字地址格式，具有特定于域的地址结构体。 这些结构中的每一个都以一个整数 "family" 字段开始 (类型为
+\fIsa_family_t\fP)，表示地址结构体的类型。 这允许各种系统调用
+(例如，\fBconnect\fP(2)、\fBbind\fP(2)、\fBaccept\fP(2)、\fBgetsockname\fP(2)、\fBgetpeername\fP(2))，它们泛型到所有套接字域，以确定特定套接字地址的域。
+.PP
+为了允许将任何类型的套接字地址传递给套接字 API 中的接口，定义了类型 \fIstruct sockaddr\fP。
+这种类型的目的纯粹是允许将特定于域的套接字地址类型转换为 "generic" 类型，以避免在调用套接字 API 时出现有关类型不匹配的编译器警告。
+.PP
+此外，sockets API 提供数据类型 \fIstruct sockaddr_storage\fP。
+这种类型适合容纳所有受支持的特定于域的套接字地址结构; 它足够大并且对齐正确。 (特别是，它足够大以容纳 IPv6 套接字地址。)
+结构体包括以下字段，可用于标识实际存储在结构体中的套接字地址的类型:
+.PP
+.in +4n
+.EX
+    sa_family_t ss_family;
+.EE
+.in
+.PP
+\fIsockaddr_storage\fP 结构体在必须以泛型方式处理套接字地址的程序中很有用 (例如，必须处理 IPv4 和 IPv6
+套接字地址的程序)。
+.SS "Socket options"
+.\" FIXME .
+.\" In the list below, the text used to describe argument types
+.\" for each socket option should be more consistent
+.\"
+.\" SO_ACCEPTCONN is in POSIX.1-2001, and its origin is explained in
+.\" W R Stevens, UNPv1
+下面列出的套接字选项可以使用 \fBsetsockopt\fP(2) 设置并使用 \fBgetsockopt\fP(2) 读取，所有套接字的套接字级别设置为
+\fBSOL_SOCKET\fP。 除非另有说明，否则 \fIoptval\fP 是指向 \fIint\fP 的指针。
+.TP 
+\fBSO_ACCEPTCONN\fP
+返回一个值，指示此套接字是否已标记为接受与 \fBlisten\fP(2) 的连接。 值 0 表示这不是侦听套接字，值 1 表示这是侦听套接字。
+此套接字选项是只读的。
+.TP 
+\fBSO_ATTACH_FILTER\fP (since Linux 2.2), \fBSO_ATTACH_BPF\fP (since Linux 3.19)
+将经典 BPF (\fBSO_ATTACH_FILTER\fP) 或扩展 BPF (\fBSO_ATTACH_BPF\fP)
+程序附加到套接字，用作传入数据包的过滤器。 如果过滤器程序返回零，数据包将被丢弃。
+如果过滤器程序返回一个小于数据包数据长度的非零值，数据包将被截断为返回的长度。
+如果过滤器返回的值大于或等于数据包的数据长度，则允许数据包不加修改地继续处理。
+.IP
+\fBSO_ATTACH_FILTER\fP 的参数是一个 \fIsock_fprog\fP 结构体，在 \fI<linux/filter.h>\fP:
+中定义
+.IP
+.in +4n
+.EX
+struct sock_fprog {
+    unsigned short      len;
+    struct sock_filter *filter;
+};
+.EE
+.in
+.IP
+\fBSO_ATTACH_BPF\fP 的参数是 \fBbpf\fP(2) 系统调用返回的文件描述符，必须引用
+\fBBPF_PROG_TYPE_SOCKET_FILTER\fP 类型的程序。
+.IP
+这些选项可以为给定的套接字设置多次，每次都替换以前的过滤器程序。
+经典版本和扩展版本可以在同一个套接字上调用，但之前的过滤器将始终被替换，这样一个套接字永远不会定义多个过滤器。
+.IP
+经典和扩展 BPF 在内核源文件 \fIDocumentation/networking/filter.txt\fP 中都有解释
+.TP 
+\fBSO_ATTACH_REUSEPORT_CBPF\fP, \fBSO_ATTACH_REUSEPORT_EBPF\fP
+为了与 \fBSO_REUSEPORT\fP 选项一起使用，这些选项允许用户设置一个经典的 BPF (\fBSO_ATTACH_REUSEPORT_CBPF\fP)
+或一个扩展的 BPF (\fBSO_ATTACH_REUSEPORT_EBPF\fP) 程序，它定义了如何将数据包分配给重用端口组中的套接字 (即所有设置了
+\fBSO_REUSEPORT\fP 并正在使用的套接字) 相同的本地地址接收数据包)。
+.IP
+BPF 程序必须返回一个介于 0 和 N\-1 之间的索引，代表应该接收数据包的套接字 (其中 N 是组中套接字的数量)。 如果 BPF
+程序返回无效索引，套接字选择将回退到普通的 \fBSO_REUSEPORT\fP 机制。
+.IP
+套接字按照它们被添加到组中的顺序编号 (即 \fBbind\fP(2) 调用 UDP 套接字的顺序或 \fBlisten\fP(2) 调用 TCP 套接字的顺序)。
+添加到重用端口组的新套接字将继承 BPF 程序。 当套接字从重用端口组中移除时 (通过
+\fBclose\fP(2))，组中的最后一个套接字将移至关闭套接字的位置。
+.IP
+这些选项可以随时在组中的任何套接字上重复设置，以替换组中所有套接字使用的当前 BPF 程序。
+.IP
+\fBSO_ATTACH_REUSEPORT_CBPF\fP 与 \fBSO_ATTACH_FILTER\fP
+采用相同的参数类型，\fBSO_ATTACH_REUSEPORT_EBPF\fP 与 \fBSO_ATTACH_BPF\fP 采用相同的参数类型。
+.IP
+自 Linux 4.5 起提供对该特性的 UDP 支持; TCP 支持自 Linux 4.6 起可用。
+.TP 
+\fBSO_BINDTODEVICE\fP
+将此套接字绑定到特定设备，如 \[lq] eth0\[rq]，如传递的接口名称中指定的那样。 如果名称为空字符串或选项长度为零，则删除套接字设备绑定。
+传递的选项是一个可变长度的空终止接口名称字符串，最大大小为 \fBIFNAMSIZ\fP。 如果套接字绑定到接口，则套接字仅处理从该特定接口接收的数据包。
+请注意，这仅适用于某些套接字类型，尤其是 \fBAF_INET\fP 套接字。 它不支持数据包套接字 (在那里使用普通的 \fBbind\fP(2))。
+.IP
+在 Linux 3.8 之前，可以设置此套接字选项，但无法使用 \fBgetsockopt\fP(2) 检索。 由于 Linux 3.8，它是可读的。
+\fIoptlen\fP 参数应包含可用于接收设备名称的缓冲区大小，建议为 \fBIFNAMSIZ\fP 字节。 真实的设备名称长度在 \fIoptlen\fP
+参数中报告回来。
+.TP 
+\fBSO_BROADCAST\fP
+设置或获取广播标志。 启用后，允许数据报套接字将数据包发送到广播地址。 此选项对面向流的套接字没有影响。
+.TP 
+\fBSO_BSDCOMPAT\fP
+启用 BSD bug\-to\-bug 兼容性。 Linux 2.0 和 2.2 中的 UDP 协议模块使用这个。 如果启用，UDP 套接字收到的 ICMP
+错误将不会传递给用户程序。 在以后的内核版本中，对这个选项的支持已经被淘汰: Linux 2.4 默默地忽略它，Linux 2.6
+如果程序使用这个选项会产生一个内核警告 (printk())。 Linux 2.0 还为具有此选项的原始套接字启用了 BSD bug\-to\-bug
+兼容性选项 (随机标头更改，跳过广播标志)，但在 Linux 2.2 中已删除。
+.TP 
+\fBSO_DEBUG\fP
+启用套接字调试。 仅允许具有 \fBCAP_NET_ADMIN\fP 能力或有效用户 ID 的进程 0.
+.TP 
+\fBSO_DETACH_FILTER\fP (since Linux 2.2), \fBSO_DETACH_BPF\fP (since Linux 3.19)
+这两个选项是同义词，可用于删除附加到 \fBSO_ATTACH_FILTER\fP 或 \fBSO_ATTACH_BPF\fP 套接字的经典或扩展 BPF 程序。
+选项值被忽略。
+.TP 
+\fBSO_DOMAIN\fP (since Linux 2.6.32)
+以整数形式检索套接字域，返回一个值，如 \fBAF_INET6\fP。 有关详细信息，请参见 \fBsocket\fP(2)。 此套接字选项是只读的。
+.TP 
+\fBSO_ERROR\fP
+获取并清除挂起的套接字错误。 此套接字选项是只读的。 需要一个整数。
+.TP 
+\fBSO_DONTROUTE\fP
+不要通过网关发送，只发送到直接连接的主机。 通过在套接字 \fBsend\fP(2) 操作上设置 \fBMSG_DONTROUTE\fP 标志可以实现相同的效果。
+需要一个整数布尔标志。
+.TP 
+\fBSO_INCOMING_CPU\fP (gettable since Linux 3.19, settable since Linux 4.4)
+.\" getsockopt 2c8c56e15df3d4c2af3d656e44feb18789f75837
+.\" setsockopt 70da268b569d32a9fddeea85dc18043de9d89f89
+设置或获取套接字的 CPU 亲和力。 需要一个整数标志。
+.IP
+.in +4n
+.EX
+int cpu = 1;
+setsockopt(fd, SOL_SOCKET, SO_INCOMING_CPU, &cpu,
+           sizeof(cpu));
+.EE
+.in
+.IP
+.\"
+.\" From an email conversation with Eric Dumazet:
+.\" >> Note that setting the option is not supported if SO_REUSEPORT is used.
+.\" >
+.\" > Please define "not supported". Does this yield an API diagnostic?
+.\" > If so, what is it?
+.\" >
+.\" >> Socket will be selected from an array, either by a hash or BPF program
+.\" >> that has no access to this information.
+.\" >
+.\" > Sorry -- I'm lost here. How does this comment relate to the proposed
+.\" > man page text above?
+.\"
+.\" Simply that :
+.\"
+.\" If an application uses both SO_INCOMING_CPU and SO_REUSEPORT, then
+.\" SO_REUSEPORT logic, selecting the socket to receive the packet, ignores
+.\" SO_INCOMING_CPU setting.
+因为单个流的所有数据包 (即，同一个 4 元组的所有数据包) 都到达与特定 CPU 关联的单个 RX 队列，典型的用例是每个 RX
+队列使用一个监听进程，正在处理 RX 队列的同一 CPU 上的侦听器正在处理传入流。 这提供了最佳的 NUMA 行为并使 CPU 缓存保持热。
+.TP 
+\fBSO_INCOMING_NAPI_ID\fP (gettable since Linux 4.12)
+.\" getsockopt 6d4339028b350efbf87c61e6d9e113e5373545c9
+返回一个名为 NAPI ID 的系统级唯一 ID，该 ID 与 RX 队列关联，在该队列上接收与该套接字关联的最后一个数据包。
+.IP
+应用程序可以使用它根据接收与流关联的数据包的 RX 队列在工作线程之间拆分传入流。 它允许每个工作线程与 NIC HW 接收队列相关联，并为在该 RX
+队列上接收到的所有连接请求提供服务。 应用程序线程和 HW NIC 队列之间的这种映射简化了从 NIC 到应用程序的数据流。
+.TP 
+\fBSO_KEEPALIVE\fP
+启用在面向连接的套接字上发送保持活动消息。 需要一个整数布尔标志。
+.TP 
+\fBSO_LINGER\fP
+设置或获取 \fBSO_LINGER\fP 选项。 参数是 \fIlinger\fP 结构体。
+.IP
+.in +4n
+.EX
+struct linger {
+    int l_onoff;    /* linger active */
+    int l_linger;   /* how many seconds to linger for */
+};
+.EE
+.in
+.IP
+启用后，\fBclose\fP(2) 或 \fBshutdown\fP(2) 将不会返回，直到成功发送套接字的所有排队消息或达到延迟超时。
+否则，调用立即返回并在后台完成关闭。 当套接字作为 \fBexit\fP(2) 的一部分关闭时，它总是在后台徘徊。
+.TP 
+\fBSO_LOCK_FILTER\fP
+.\" commit d59577b6ffd313d0ab3be39cb1ab47e29bdc9182
+设置后，此选项将阻止更改与套接字关联的过滤器。 这些过滤器包括使用套接字选项
+\fBSO_ATTACH_FILTER\fP、\fBSO_ATTACH_BPF\fP、\fBSO_ATTACH_REUSEPORT_CBPF\fP 和
+\fBSO_ATTACH_REUSEPORT_EBPF\fP 的任何集合。
+.IP
+典型的用例是特权进程设置原始套接字 (需要 \fBCAP_NET_RAW\fP 功能的操作)，应用限制性过滤器，设置 \fBSO_LOCK_FILTER\fP
+选项，然后放弃其特权或将套接字文件描述符传递给非特权进程通过 UNIX 域套接字处理。
+.IP
+启用 \fBSO_LOCK_FILTER\fP 选项后，尝试更改或移除连接到套接字的过滤器，或禁用 \fBSO_LOCK_FILTER\fP 选项将失败，并显示错误
+\fBEPERM\fP。
+.TP 
+\fBSO_MARK\fP (since Linux 2.6.25)
+.\" commit 4a19ec5800fc3bb64e2d87c4d9fdd9e636086fe0
+.\" and    914a9ab386a288d0f22252fc268ecbc048cdcbd5
+为通过此套接字发送的每个数据包设置标记 (类似于 netfilter MARK 目标，但基于套接字)。 更改标记可用于不使用 netfilter
+的基于标记的路由或用于数据包过滤。 设置此选项需要 \fBCAP_NET_ADMIN\fP 功能。
+.TP 
+\fBSO_OOBINLINE\fP
+.\" don't document it because it can do too much harm.
+.\".B SO_NO_CHECK
+.\"     The kernel has support for the SO_NO_CHECK socket
+.\"     option (boolean: 0 == default, calculate checksum on xmit,
+.\"     1 == do not calculate checksum on xmit).
+.\" Additional note from Andi Kleen on SO_NO_CHECK (2010-08-30)
+.\"     On Linux UDP checksums are essentially free and there's no reason
+.\"     to turn them off and it would disable another safety line.
+.\"     That is why I didn't document the option.
+如果启用此选项，带外数据将直接放入接收数据流中。 否则，只有在接收期间设置 \fBMSG_OOB\fP 标志时，带外数据才会被传递。
+.TP 
+\fBSO_PASSCRED\fP
+启用或禁用 \fBSCM_CREDENTIALS\fP 控制消息的接收。 有关详细信息，请参见 \fBunix\fP(7)。
+.TP 
+\fBSO_PASSSEC\fP
+启用或禁用 \fBSCM_SECURITY\fP 控制消息的接收。 有关详细信息，请参见 \fBunix\fP(7)。
+.TP 
+\fBSO_PEEK_OFF\fP (since Linux 3.4)
+.\" commit ef64a54f6e558155b4f149bb10666b9e914b6c54
+此选项当前仅支持 \fBunix\fP(7) 套接字，当与 \fBMSG_PEEK\fP 标志一起使用时，为 \fBrecv\fP(2) 系统调用设置 "peek
+offset" 的值。
+.IP
+当此选项设置为 negative 值 (对于所有新套接字设置为 \-1) 时，将提供传统行为: 带有 \fBMSG_PEEK\fP 标志的 \fBrecv\fP(2)
+将从队列的前面 peek 数据。
+.IP
+当该选项设置为大于或等于零的值时，套接字中排队的数据的下一个 peek 将出现在选项值指定的字节偏移处。 同时，"peek offset"
+将增加从队列中读取的字节数，因此后续的 peek 将返回队列中的下一个数据。
+.IP
+如果在没有 \fBMSG_PEEK\fP 标志的情况下通过对 \fBrecv\fP(2) (或类似) 的调用从队列前端移除数据，则 "peek offset"
+将减少移除的字节数。 换句话说，接收没有 \fBMSG_PEEK\fP 标志的数据将导致调整 "peek offset"
+以保持排队数据中的正确相对位置，以便后续的 peek 将检索如果数据未被删除本应检索到的数据。
+.IP
+对于数据报套接字，如果 "peek offset" 指向数据包的中间，则返回的数据将标有 \fBMSG_TRUNC\fP 标志。
+.IP
+下面的例子用来说明 \fBSO_PEEK_OFF\fP 的使用。 假设流套接字具有以下排队的输入数据:
+.IP
+.in +4n
+.EX
+aabbccddeeff
+.EE
+.in
+.IP
+以下 \fBrecv\fP(2) 调用序列将产生注释中注明的效果:
+.IP
+.in +4n
+.EX
+int ov = 4;                  // 将 peek 偏移设置为 4
+setsockopt(fd, SOL_SOCKET, SO_PEEK_OFF, &ov, sizeof(ov));
+
+recv(fd, buf, 2, MSG_PEEK);  // 偷看 "cc"; 偏移量设置为 6
+recv(fd, buf, 2, MSG_PEEK);  // 偷看 "dd"; 偏移量设置为 8
+recv(fd, buf, 2, 0);         // 读取 "aa"; 偏移量设置为 6
+recv(fd, buf, 2, MSG_PEEK);  // 偷看 "ee"; 偏移量设置为 8
+.EE
+.in
+.TP 
+\fBSO_PEERCRED\fP
+返回连接到此套接字的对等进程的凭据。 有关详细信息，请参见 \fBunix\fP(7)。
+.TP 
+\fBSO_PEERSEC\fP (since Linux 2.6.2)
+返回连接到此套接字的对等套接字的安全上下文。 有关详细信息，请参见 \fBunix\fP(7) 和 \fBip\fP(7)。
+.TP 
+\fBSO_PRIORITY\fP
+.\" For
+.\" .BR ip (7),
+.\" this also sets the IP type-of-service (TOS) field for outgoing packets.
+为要在此套接字上发送的所有数据包设置协议定义的优先级。 Linux 使用此值对网络队列进行排序:
+根据所选的设备排队规则，可能首先处理具有更高优先级的数据包。 设置 0 到 6 范围之外的优先级需要 \fBCAP_NET_ADMIN\fP 功能。
+.TP 
+\fBSO_PROTOCOL\fP (since Linux 2.6.32)
+检索作为整数的套接字协议，返回一个值，例如 \fBIPPROTO_SCTP\fP。 有关详细信息，请参见 \fBsocket\fP(2)。 此套接字选项是只读的。
+.TP 
+\fBSO_RCVBUF\fP
+.\" Most (all?) other implementations do not do this -- MTK, Dec 05
+.\" The following thread on LMKL is quite informative:
+.\" getsockopt/setsockopt with SO_RCVBUF and SO_SNDBUF "non-standard" behavior
+.\" 17 July 2012
+.\" http://thread.gmane.org/gmane.linux.kernel/1328935
+设置或获取以字节为单位的最大套接字接收缓冲区。 当使用 \fBsetsockopt\fP(2) 设置时，内核将这个值加倍
+(以便为记录开销留出空间)，并且这个加倍的值由 \fBgetsockopt\fP(2) 返回。 默认值由
+\fI/proc/sys/net/core/rmem_default\fP 文件设置，最大允许值由
+\fI/proc/sys/net/core/rmem_max\fP 文件设置。 此选项的最小 (doubled) 值为 256。
+.TP 
+\fBSO_RCVBUFFORCE\fP (since Linux 2.6.14)
+使用此套接字选项，特权 (\fBCAP_NET_ADMIN\fP) 进程可以执行与 \fBSO_RCVBUF\fP 相同的任务，但可以覆盖 \fIrmem_max\fP
+限制。
+.TP 
+\fBSO_RCVLOWAT\fP and \fBSO_SNDLOWAT\fP
+指定缓冲区中的最小字节数，直到套接字层将数据传递给协议 (\fBSO_SNDLOWAT\fP) 或接收 (\fBSO_RCVLOWAT\fP) 的用户。
+这两个值被初始化为 1。 \fBSO_SNDLOWAT\fP 在 Linux 上不可更改 (\fBsetsockopt\fP(2) 失败并出现错误
+\fBENOPROTOOPT\fP)。 \fBSO_RCVLOWAT\fP 只能从 Linux 2.4 开始改变。
+.IP
+.\" Tested on kernel 2.6.14 -- mtk, 30 Nov 05
+.\" commit c7004482e8dcb7c3c72666395cfa98a216a4fb70
+在 Linux 2.6.28 \fBselect\fP(2)、\fBpoll\fP(2) 和 \fBepoll\fP(7) 之前不遵守 Linux 上的
+\fBSO_RCVLOWAT\fP 设置，并且即使只有一个字节的数据可用也将套接字指示为可读。 随后从套接字读取将阻塞，直到 \fBSO_RCVLOWAT\fP
+字节可用。 由于 Linux 2.6.28、\fBselect\fP(2)、\fBpoll\fP(2) 和 \fBepoll\fP(7) 仅在至少
+\fBSO_RCVLOWAT\fP 字节可用时才指示套接字可读。
+.TP 
+\fBSO_RCVTIMEO\fP and \fBSO_SNDTIMEO\fP
+.\" Not implemented in Linux 2.0.
+.\" Implemented in Linux 2.1.11 for getsockopt: always return a zero struct.
+.\" Implemented in Linux 2.3.41 for setsockopt, and actually used.
+.\" in fact to EAGAIN
+指定接收或发送超时，直到报告错误。 参数是 \fIstruct timeval\fP。
+如果一个输入或输出的函数阻塞了这段时间，并且已经发送或接收到数据，则该函数的返回值将是传输的数据量; 如果没有数据被传输并且已经达到超时，则返回 \-1
+并将 \fIerrno\fP 设置为 \fBEAGAIN\fP 或 \fBEWOULDBLOCK\fP，或 \fBEINPROGRESS\fP (对于
+\fBconnect\fP(2)) 就像套接字被指定为非阻塞一样。 如果超时设置为零 (默认值)，则操作永远不会超时。 超时仅对执行套接字 I/O
+的系统调用有效
+(例如，\fBaccept\fP(2)、\fBconnect\fP(2)、\fBread\fP(2)、\fBrecvmsg\fP(2)、\fBsend\fP(2)、\fBsendmsg\fP(2));
+超时对 \fBselect\fP(2)、\fBpoll\fP(2)、\fBepoll_wait\fP(2) 等没有影响。
+.TP 
+\fBSO_REUSEADDR\fP
+.\"	commit c617f398edd4db2b8567a28e899a88f8f574798d
+.\"	https://lwn.net/Articles/542629/
+指示用于验证 \fBbind\fP(2) 调用中提供的地址的规则应允许重用本地地址。 对于 \fBAF_INET\fP
+套接字，这意味着套接字可以绑定，除非存在绑定到该地址的活动侦听套接字。 当侦听套接字绑定到具有特定端口的 \fBINADDR_ANY\fP
+时，则无法为任何本地地址绑定到该端口。 参数是一个整数布尔标志。
+.TP 
+\fBSO_REUSEPORT\fP (since Linux 3.9)
+允许将多个 \fBAF_INET\fP 或 \fBAF_INET6\fP 套接字绑定到相同的套接字地址。 在套接字上调用 \fBbind\fP(2)
+之前，必须在每个套接字 (包括第一个套接字) 上设置此选项。 为防止端口劫持，绑定到同一地址的所有进程必须具有相同的有效 UID。 此选项可用于 TCP
+和 UDP 套接字。
+.IP
+对于 TCP 套接字，此选项允许通过为每个线程使用不同的侦听器套接字来改进多线程服务器中的 \fBaccept\fP(2) 负载分配。
+与传统技术相比，这提供了改进的负载分配，例如使用单个 \fBaccept\fP(2)ing 线程分配连接，或使用多个线程从同一套接字竞争
+\fBaccept\fP(2)。
+.IP
+对于 UDP 套接字，与让多个进程在同一套接字上竞争接收数据报的传统技术相比，使用此选项可以更好地将传入数据报分发到多个进程 (或线程)。
+.TP 
+\fBSO_RXQ_OVFL\fP (since Linux 2.6.33)
+.\" commit 3b885787ea4112eaa80945999ea0901bf742707f
+指示应将无符号的 32 位值辅助消息 (cmsg) 附加到接收到的 skbs，指示套接字自创建以来丢弃的数据包数。
+.TP 
+\fBSO_SELECT_ERR_QUEUE\fP (since Linux 3.10)
+.\"	commit 7d4c04fc170087119727119074e72445f2bb192b
+.\"	Author: Keller, Jacob E <jacob.e.keller@intel.com>
+.\" It does not affect wake up.
+当在套接字上设置此选项时，套接字上的错误条件不仅会通过 \fBselect\fP(2) 的 \fIexceptfds\fP 集引起通知。 同样，每当返回
+\fBPOLLERR\fP 事件时，\fBpoll\fP(2) 也会返回 \fBPOLLPRI\fP。
+.IP
+.\" commit 6e5d58fdc9bedd0255a8
+.\" ("skbuff: Fix not waking applications when errors are enqueued")
+背景: 此选项是在仅通过 \fIreadfds\fP 和 \fIwritefds\fP 集 \fBselect\fP(2) 发生的错误条件下唤醒时添加的。
+添加该选项以允许通过 \fIexceptfds\fP 参数监视错误情况，而不必同时接收通知 (通过 \fIreadfds\fP) 接收可从套接字读取的常规数据。 在
+Linux 4.16 发生变化后，不再需要使用此标志来实现所需的通知。 尽管如此，仍保留此选项以实现向后兼容性。
+.TP 
+\fBSO_SNDBUF\fP
+.\" Most (all?) other implementations do not do this -- MTK, Dec 05
+.\" See also the comment to SO_RCVBUF (17 Jul 2012 LKML mail)
+设置或获取以字节为单位的最大套接字发送缓冲区。 当使用 \fBsetsockopt\fP(2) 设置时，内核将这个值加倍
+(以便为记录开销留出空间)，并且这个加倍的值由 \fBgetsockopt\fP(2) 返回。 默认值由
+\fI/proc/sys/net/core/wmem_default\fP 文件设置，最大允许值由
+\fI/proc/sys/net/core/wmem_max\fP 文件设置。 此选项的最小 (doubled) 值为 2048。
+.TP 
+\fBSO_SNDBUFFORCE\fP (since Linux 2.6.14)
+使用此套接字选项，特权 (\fBCAP_NET_ADMIN\fP) 进程可以执行与 \fBSO_SNDBUF\fP 相同的任务，但可以覆盖 \fIwmem_max\fP
+限制。
+.TP 
+\fBSO_TIMESTAMP\fP
+启用或禁用 \fBSO_TIMESTAMP\fP 控制消息的接收。 时间戳控制消息以级别 \fBSOL_SOCKET\fP 和 \fBSCM_TIMESTAMP\fP 的
+\fIcmsg_type\fP 发送。 \fIcmsg_data\fP 字段是一个 \fIstruct timeval\fP，表示本调用中传递给用户的最后一个数据包的接收时间。 有关控制消息的详细信息，请参见 \fBcmsg\fP(3)。
+.TP 
+\fBSO_TIMESTAMPNS\fP (since Linux 2.6.22)
+.\" commit 92f37fd2ee805aa77925c1e64fd56088b46094fc
+启用或禁用 \fBSO_TIMESTAMPNS\fP 控制消息的接收。 时间戳控制消息以级别 \fBSOL_SOCKET\fP 和
+\fBSCM_TIMESTAMPNS\fP 的 \fIcmsg_type\fP 发送。 \fIcmsg_data\fP 字段是一个 \fIstruct timespec\fP，表示本调用中传递给用户的最后一个数据包的接收时间。 用于时间戳的时钟是 \fBCLOCK_REALTIME\fP。
+有关控制消息的详细信息，请参见 \fBcmsg\fP(3)。
+.IP
+套接字不能混合使用 \fBSO_TIMESTAMP\fP 和 \fBSO_TIMESTAMPNS\fP:，这两种模式是互斥的。
+.TP 
+\fBSO_TYPE\fP
+以整数形式获取套接字类型 (例如，\fBSOCK_STREAM\fP).  此套接字选项是只读的。
+.TP 
+\fBSO_BUSY_POLL\fP (since Linux 3.11)
+以微秒为单位设置在没有数据时对阻塞接收进行繁忙轮询的大致时间。 增加此值需要 \fBCAP_NET_ADMIN\fP。 此选项的默认值由
+\fI/proc/sys/net/core/busy_read\fP 文件控制。
+.IP
+\fI/proc/sys/net/core/busy_poll\fP 文件中的值决定了当 \fBselect\fP(2) 和 \fBpoll\fP(2) 在设置了
+\fBSO_BUSY_POLL\fP 的套接字上操作并且没有找到要报告的事件时，它们将忙于轮询多长时间。
+.IP
+在这两种情况下，忙轮询只会在套接字最后一次从支持此选项的网络设备接收数据时进行。
+.IP
+虽然繁忙的轮询可能会改善某些应用程序的延迟，但在使用它时必须小心，因为这会增加 CPU 利用率和功耗。
+.SS Signals
+当写入已关闭 (由本地或远程端) 的面向连接的套接字时，\fBSIGPIPE\fP 被发送到写入进程并返回 \fBEPIPE\fP。 当写调用指定
+\fBMSG_NOSIGNAL\fP 标志时不发送信号。
+.PP
+当用 \fBFIOSETOWN\fP \fBfcntl\fP(2) 或 \fBSIOCSPGRP\fP \fBioctl\fP(2) 请求时，当 I/O 事件发生时发送
+\fBSIGIO\fP。 可以在信号处理程序中使用 \fBpoll\fP(2) 或 \fBselect\fP(2) 来找出事件发生在哪个套接字上。 另一种方法 (在
+Linux 2.2 中) 是使用 \fBF_SETSIG\fP \fBfcntl\fP(2) 设置实时信号; 实时信号的处理程序将使用其 \fIsiginfo_t\fP
+的 \fIsi_fd\fP 字段中的文件描述符调用。 有关更多信息，请参见 \fBfcntl\fP(2)。
+.PP
+.\" .SS Ancillary messages
+在某些情况下 (例如，多个进程访问单个套接字)，当进程对信号作出反应时，导致 \fBSIGIO\fP 的条件可能已经消失。
+如果发生这种情况，进程应该再次等待，因为 Linux 稍后会重新发送信号。
+.SS "/proc interfaces"
+可以通过目录 \fI/proc/sys/net/core/\fP 中的文件访问核心套接字网络参数。
+.TP 
+\fIrmem_default\fP
+包含套接字接收缓冲区的默认设置 (以字节为单位)。
+.TP 
+\fIrmem_max\fP
+包含用户可以使用 \fBSO_RCVBUF\fP 套接字选项设置的最大套接字接收缓冲区大小 (以字节为单位)。
+.TP 
+\fIwmem_default\fP
+包含套接字发送缓冲区的默认设置 (以字节为单位)。
+.TP 
+\fIwmem_max\fP
+包含用户可以使用 \fBSO_SNDBUF\fP 套接字选项设置的最大套接字发送缓冲区大小 (以字节为单位)。
+.TP 
+\fImessage_cost\fP and \fImessage_burst\fP
+配置用于加载限制由外部网络事件引起的警告消息的 token 桶过滤器。
+.TP 
+\fInetdev_max_backlog\fP
+全局输入队列中的最大数据包数。
+.TP 
+\fIoptmem_max\fP
+.\" netdev_fastroute is not documented because it is experimental
+辅助数据和用户控制数据的最大长度，例如每个套接字的 iovecs。
+.SS Ioctls
+可以使用 \fBioctl\fP(2): 访问这些操作
+.PP
+.in +4n
+.EX
+\fIerror\fP\fB = ioctl(\fP\fIip_socket\fP\fB, \fP\fIioctl_type\fP\fB, \fP\fI&value_result\fP\fB);\fP
+.EE
+.in
+.TP 
+\fBSIOCGSTAMP\fP
+.\"
+返回 \fIstruct timeval\fP，其中包含传递给用户的最后一个数据包的接收时间戳。 这对于精确的往返时间测量很有用。 有关 \fIstruct timeval\fP 的说明，请参见 \fBsetitimer\fP(2)。 仅当未在套接字上设置套接字选项 \fBSO_TIMESTAMP\fP 和
+\fBSO_TIMESTAMPNS\fP 时，才应使用此 ioctl。 否则，它返回在 \fBSO_TIMESTAMP\fP 和 \fBSO_TIMESTAMPNS\fP
+未设置时收到的最后一个数据包的时间戳，或者如果没有收到这样的数据包则失败，(即，\fBioctl\fP(2) 返回 \-1，\fIerrno\fP 设置为
+\fBENOENT\fP)。
+.TP 
+\fBSIOCSPGRP\fP
+当 I/O 变为可能或紧急数据可用时，设置接收 \fBSIGIO\fP 或 \fBSIGURG\fP 信号的进程或进程组。 参数是指向 \fIpid_t\fP 的指针。
+更多详细信息，请参见 \fBfcntl\fP(2) 中 \fBF_SETOWN\fP 的说明。
+.TP 
+\fBFIOASYNC\fP
+更改 \fBO_ASYNC\fP 标志以启用或禁用套接字的异步 I/O 模式。 异步 I/O 模式是指当一个新的 I/O 事件发生时，\fBSIGIO\fP
+信号或用 \fBF_SETSIG\fP 设置的信号被拉起。
+.IP
+.\"
+参数是一个整数布尔标志。 (此操作与使用 \fBfcntl\fP(2) 设置 \fBO_ASYNC\fP 标志同义。)
+.TP 
+\fBSIOCGPGRP\fP
+获取当前接收 \fBSIGIO\fP 或 \fBSIGURG\fP 信号的进程或进程组，如果没有设置则为 0。
+.PP
+有效的 \fBfcntl\fP(2) 操作:
+.TP 
+\fBFIOGETOWN\fP
+同 \fBSIOCGPGRP\fP \fBioctl\fP(2)。
+.TP 
+\fBFIOSETOWN\fP
+同 \fBSIOCSPGRP\fP \fBioctl\fP(2)。
+.SH VERSIONS
+\fBSO_BINDTODEVICE\fP 是在 Linux 2.0.30 中引入的。 \fBSO_PASSCRED\fP 是 Linux 2.2 中新增的。
+\fI/proc\fP 接口是在 Linux 2.2 中引入的。 自 Linux 2.3.41 起支持 \fBSO_RCVTIMEO\fP 和
+\fBSO_SNDTIMEO\fP。 早些时候，超时被固定为特定于协议的设置，并且无法读取或写入。
+.SH NOTES
+Linux 假定 send/receive 缓冲区的一半用于内部内核结构; 因此，相应 \fI/proc\fP 文件中的值是在线上可观察到的值的两倍。
+.PP
+.\" .SH AUTHORS
+.\" This man page was written by Andi Kleen.
+Linux 将仅允许使用 \fBSO_REUSEADDR\fP 选项重用端口，前提是在对端口执行 \fBbind\fP(2)
+的先前程序和想要重用端口的程序中都设置了此选项。 这不同于某些实现 (例如 FreeBSD)，其中只有后面的程序需要设置 \fBSO_REUSEADDR\fP
+选项。 通常这种差异是不可见的，因为，例如，服务器程序被设计为始终设置此选项。
+.SH "SEE ALSO"
+\fBwireshark\fP(1), \fBbpf\fP(2), \fBconnect\fP(2), \fBgetsockopt\fP(2),
+\fBsetsockopt\fP(2), \fBsocket\fP(2), \fBpcap\fP(3), \fBaddress_families\fP(7),
+\fBcapabilities\fP(7), \fBddp\fP(7), \fBip\fP(7), \fBipv6\fP(7), \fBpacket\fP(7),
+\fBtcp\fP(7), \fBudp\fP(7), \fBunix\fP(7), \fBtcpdump\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

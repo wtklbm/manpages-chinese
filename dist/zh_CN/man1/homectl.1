@@ -1,0 +1,928 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH HOMECTL 1 "" "systemd 253" homectl
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+homectl \- 创建、删除、更改或检查主目录
+.SH SYNOPSIS
+.HP \w'\fBhomectl\fR\ 'u
+\fBhomectl\fP [OPTIONS...] {COMMAND} [NAME...]
+.SH DESCRIPTION
+.PP
+\fBhomectl\fP 可用于创建、删除、更改或检查用户 \*(Aqs 主目录 \&. 它 \*(Aqs 主要是一个与
+\fBsystemd\-homed.service\fP(8) 接口的命令，它管理用户的主目录 \&。
+.PP
+systemd\-homed\&.service 管理的家目录是独立的，因此包括用户 \*(Aqs 完整的元数据记录在家 \*(Aqs
+数据存储本身，使它们易于在机器之间迁移 \&。特别地，一个家目录描述了一个匹配的用户记录，systemd\-homed\&.service
+管理的每条用户记录也隐含着一个家目录的存在和封装 \&。用户帐号和主目录成为同一个概念 \&。
+.PP
+支持以下后备存储机制:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+用户的个人 LUKS2 加密回环文件，存储在 /home/*\&.home\&。在登录时，包含在这个文件中的文件系统被挂载，在附加 LUKS2
+加密卷之后 \&。用户 \*(Aqs 密码与 LUKS2 卷的加密密码相同 \&。因此，即使对于系统管理员
+\&，也无法在不预先进行用户身份验证的情况下访问数据。这种存储机制提供了最强的数据安全性，因此推荐 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+类似，但 LUKS2 加密文件系统位于常规块设备上，如 U 盘
+\&。在这种模式下，主目录和它们包含的所有数据都可以在机器之间很好地迁移，只需在不同时间将 USB 棒插入不同系统 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在支持它的文件系统上使用 "fscrypt" 的加密目录 (目前主要是 "ext4")，位于
+/home/*\&.homedir\&。此机制也提供加密，但比 LUKS2 弱得多，因为大多数文件系统元数据未受保护
+\&。此外，它目前不支持在创建主目录后更改用户密码 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+每个用户的 "btrfs" 子卷，也位于 /home/*\&.homedir\&。这不提供加密，但提供良好的配额支持 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+每个用户的常规目录，也位于 /home/*\&.homedir\&。这不提供加密，但是在所有机器上都是一个合适的回退，即使
+LUKS2、"fscrypt" 或 "btrfs" 支持不可用 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+每个用户一个单独的 Windows 文件共享 (CIFS)\&。
+.RE
+.PP
+请注意，systemd\-homed\&.service 和 \fBhomectl\fP 不会管理使用 \fBuseradd\fP(8) 或类似工具创建的
+"classic" UNIX 用户帐户 \&。特别是，此功能不适用于管理系统用户 (i\&.e\&. UID 低于 1000 的用户)，但仅限于普通
+("human") 用户 \&。
+.PP
+请注意，通过 \fBsystemd\-homed\&.service\fP 管理的 users/home 目录不会出现在 /etc/passwd
+和类似文件中，它们是在运行时通过 glibc NSS 合成的。因此，它们是可解析的，并且可以通过 \fBgetent\fP(1) 工具 \& 进行枚举。
+.PP
+该工具直接与 systemd\-homed\&.service 交互，并可在其管理的主目录上执行特定命令 \&。由于以这种方式管理的每个主目录还定义了一个
+JSON 用户和组记录，因此也可以通过 \fBuserdbctl\fP(1)\& 检查和枚举这些主目录。
+.PP
+由 systemd\-homed\&.service 管理的主目录通常处于两种状态之一，或者处于它们之间的过渡状态: 当 "active"
+时，它们被解锁并挂载，因此系统及其程序可以访问它们; 当 "inactive" 时，它们未安装，因此无法访问
+\&。激活在用户登录时自动发生，通常只有在提供密码 (或其他身份验证 token) 后才能完成 \&。停用发生在用户完全注销 \&
+之后。只要用户至少登录一次，主目录就会保持活动状态，i\&.e\&。至少有一个登录会话 \&。当用户同时第二次登录时，主目录保持活动状态
+\&。它仅在最后一个用户 \*(Aqs 会话结束 \&。
+.SH OPTIONS
+.PP
+了解以下一般选项 (控制由 systemd\-homed\&.service 管理的用户记录的各种属性的更多选项在下面进一步记录) :
+.PP
+\fB\-\-identity=\fP\fIFILE\fP
+.RS 4
+从指定文件中读取用户 \*(Aqs JSON 记录 \&. 如果作为 "\-" 传递，则从标准输入读取用户记录 \&。提供的 JSON 对象必须遵循
+\m[blue]\fBJSON User Records\fP\m[]\&\s-2\u[1]\d\s+2\& 中记录的结构体。此选项可以与 \fBcreate\fP
+和 \fBupdate\fP 命令结合使用 (见下文)，它允许按原样配置 JSON 中的用户记录，而不是设置单个用户记录属性 (见下文) \&。
+.RE
+.PP
+\fB\-\-json=\fP\fIFORMAT\fP, \fB\-j\fP
+.RS 4
+控制是否以 JSON 格式输出用户记录，如果使用 \fBinspect\fP 命令 (见下文) \&。采用 "pretty"、"short" 或 `关闭`\&
+之一。如果在输出中插入 "pretty" 人性化的空格和换行符，使 JSON 数据更具可读性 \&。如果 "short" 所有多余的空格都被抑制
+\&。如果 "off" (默认值)，则用户信息不会以 JSON 格式显示，而是以友好的人类可读格式显示 \&。\fB\-j\fP 选项在交互式运行时选择
+"pretty"，否则选择 "short"\&。
+.RE
+.PP
+\fB\-\-export\-format=\fP\fIFORMAT\fP, \fB\-E\fP, \fB\-EE\fP
+.RS 4
+当在 JSON 模式 (见上文) 中与 \fBinspect\fP 动词一起使用时，可用于在输出中抑制 JSON 用户记录的某些方面 \&。具体来说，如果使用
+"stripped" 格式，记录的绑定和运行时字段将被删除 \&。如果使用 "minimal" 格式，加密签名也会被删除 \&。如果使用 "full"
+格式，则会显示完整的 JSON 记录 (这是默认设置) \&。此选项可用于将现有用户记录复制到不同的系统，以便在那里创建具有相同设置的类似用户
+\&。具体来说: \fBhomectl inspect \-EE | ssh root@othersystem homectl create \-i\-\fP
+可以用作在另一台主机上复制用户的简单命令行 \&。 \fB\-E\fP 相当于 \fB\-j \-\-export\-format=stripped\fP，\fB\-EE\fP
+相当于 \fB\-j \-\-export\-format=minimal\fP\&。请注意，当复制用户帐户时，在 "stripped"
+模式下获取的用户记录将保留原始加密签名，因此只有当用于更新它们的私钥在目标机器上可用时才能修改 \&。当在 "minimal"
+模式下复制用户时，签名在复制过程中被删除，因此记录将使用目标机器的密钥隐式签名，并且可以在那里更新而无需任何私钥复制 \&。
+.RE
+.PP
+\fB\-H\fP, \fB\-\-host=\fP
+.RS 4
+远程执行操作 \&。指定主机名，或用 "@" 分隔的用户名和主机名，以连接到 \&。主机名可以选择以 ssh 正在侦听的端口为后缀，由 ":"
+分隔，然后是容器名称，由 "/" 分隔，它直接连接到指定主机上的特定容器 \&。这将使用 SSH 与远程机器管理器实例对话。容器名称可以用
+\fBmachinectl \-H \fP\fIHOST\fP\& 枚举。将 IPv6 地址放在括号 \& 中。
+.RE
+.PP
+\fB\-M\fP, \fB\-\-machine=\fP
+.RS 4
+在本地容器上执行操作 \&。指定要连接的容器名称，可以选择以要连接的用户名和分隔符 "@"\& 作为前缀。如果使用特殊字符串 "\&.host"
+代替容器名称，则会建立到本地系统的连接 (这对于连接到特定用户 \* (Aqs 用户总，字符串: "\-\-user
+\-\-machine=lennart@\&.host") \& 很有用。如果不使用 "@" 语法，则以 root 用户身份建立连接 \&。如果使用 "@"
+语法，则可以省略左侧或右侧 (但不能同时省略两者)，在这种情况下，隐含本地用户名和 "\&.host"\&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-\-no\-legend\fP
+.RS 4
+不要打印图例，i\&.e\&。带有提示的列标题和页脚 \&。
+.RE
+.PP
+\fB\-\-no\-ask\-password\fP
+.RS 4
+不要向用户查询特权操作的身份验证 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "USER RECORD PROPERTIES"
+.PP
+以下选项控制 systemd\-homed\&.service 管理的用户 records/home 目录的各种属性。这些开关可以与 \fBcreate\fP
+和 \fBupdate\fP 命令结合使用，以配置主目录和用户帐户的各个方面:
+.PP
+\fB\-\-real\-name=\fP\fINAME\fP, \fB\-c\fP \fINAME\fP
+.RS 4
+用户的真实姓名 \&。这对应于经典 UNIX NSS 记录中的 GECOS 字段 \&。
+.RE
+.PP
+\fB\-\-realm=\fP\fIREALM\fP
+.RS 4
+用户的领域 \&。领域将用户与特定组织或安装相关联，并允许区分在不同上下文中定义的同名用户 \&。领域可以是任何也符合有效 DNS
+域名资格的字符串，建议使用组织 \*(Aqs 或安装 \*(Aqs 域名用于此目的，但这不是强制性的，也不是必需的
+\&。在每个系统上可能只存在一个同名用户，如果看到具有相同名称和领域的用户，则假定指的是同一用户，而具有相同名称但不同领域的用户被认为是不同的用户
+\&。请注意，这意味着在同一系统上不允许共享相同名称但具有不同领域的两个用户 \&。为用户分配领域是可选的 \&。
+.RE
+.PP
+\fB\-\-email\-address=\fP\fIEMAIL\fP
+.RS 4
+获取与用户关联的电子邮件地址 \&。在登录时，\fI$EMAIL\fP 环境变量从该值初始化 \&。
+.RE
+.PP
+\fB\-\-location=\fP\fITEXT\fP
+.RS 4
+获取此用户的位置规范 \&。这是自由格式的文本，地理定位应用程序可能会或可能不会使用它 \&。示例: \fB\-\-location="Berlin, Germany"\fP 或 \fB\-\-location="Basement, Room 3a"\fP
+.RE
+.PP
+\fB\-\-icon\-name=\fP\fIICON\fP
+.RS 4
+按照 \m[blue]\fBIcon Naming Specification\fP\m[]\&\s-2\u[2]\d\s+2\&
+定义的方案采用图标名称与用户关联。
+.RE
+.PP
+\fB\-\-home\-dir=\fP\fIPATH\fP, \fB\-d\fP\fIPATH\fP
+.RS 4
+获取用作用户主目录的路径 \&。请注意，这是用户 \*(Aqs 主目录在用户登录时挂载到的目录 \&。这不是用户 \*(Aqs
+数据实际存储的位置，请参见 \fB\-\-image\-path=\fP\&。如果未指定，则默认为 /home/$USER\&。
+.RE
+.PP
+\fB\-\-uid=\fP\fIUID\fP
+.RS 4
+采用首选数字 UNIX UID 来分配此用户 \&。如果要使用指定的 UID 创建用户并且该用户已被本地系统上的其他用户占用，则拒绝创建主目录
+\&。但是请注意，如果在创建主目录后它在不同的系统上使用并且配置的 UID 被那里的另一个用户使用，那么 \fBsystemd\-homed\fP
+可能会在该系统上为用户分配一个不同的 UID\&。指定的 UID 必须在系统用户范围之外 \&。建议为此目的使用 60001\&...60513 UID
+范围 \&。如果未指定，则自动选择 UID\&。如果在登录时发现主目录属于不同的 UID，则主目录及其下的所有内容将在登录完成前自动更改其所有权 \&。
+.sp
+请注意，由 \fBsystemd\-homed\fP 管理的用户始终具有与相同名称关联的匹配组以及与用户的 UID 匹配的 GID\&。因此，不允许单独配置
+GID\&。
+.RE
+.PP
+\fB\-\-member\-of=\fP\fIGROUP\fP, \fB\-G\fP \fIGROUP\fP
+.RS 4
+采用此用户应属于的辅助 UNIX 组的逗号分隔列表 \&。例: \fB\-\-member\-of=wheel\fP 为用户提供管理员权限
+\&。请注意，除了名称和数字 UID/GID\& 与用户匹配的组之外，\fBsystemd\-homed\fP
+不管理任何组。因此，此处列出的任何组都必须独立注册，例如使用 \fBgroupadd\fP(8)\&。任何不存在的组都将被忽略
+\&。此选项可以多次使用，在这种情况下，所有指定的组列表都将合并 \&。如果用户当前是未列出的组的成员，则该用户将从组中删除 \&。
+.RE
+.PP
+\fB\-\-skel=\fP\fIPATH\fP
+.RS 4
+采用文件系统路径到目录 \&。指定框架目录以用 \& 初始化主目录。指定路径中的所有文件和目录都将复制到任何新创建的主目录 \&。如果未指定，则默认为
+/etc/skel/\&。
+.RE
+.PP
+\fB\-\-shell=\fP\fISHELL\fP
+.RS 4
+采用文件系统路径 \&。指定要在最终登录时执行的 shell 二进制文件。如果未指定，则默认为 /bin/bash\&。
+.RE
+.PP
+\fB\-\-setenv=\fP\fIVARIABLE\fP[=\fIVALUE\fP]
+.RS 4
+为所有用户进程设置环境变量分配 \&。可以多次使用，设置多个环境变量 \&。当省略 "=" 和 \fIVALUE\fP 时，将使用程序环境中同名变量的值
+\&。
+.sp
+请注意，许多其他设置也会导致为用户设置环境变量，包括 \fB\-\-email=\fP、\fB\-\-timezone=\fP 和 \fB\-\-language=\fP\&。
+.RE
+.PP
+\fB\-\-timezone=\fP\fITIMEZONE\fP
+.RS 4
+采用为指定用户设置时区的时区位置名称 \&。当用户登录时，\fI$TZ\fP 环境变量从此设置初始化 \&。示例:
+\fB\-\-timezone=Europe/Amsterdam\fP 将生成环境变量 `TZ=:Europe/Amsterdam`\&。(":"
+有意用作时区规范的一部分，请参见 \fBtzset\fP(3)\&.)
+.RE
+.PP
+\fB\-\-language=\fP\fILANG\fP
+.RS 4
+采用指示用户首选语言的说明符 \&。\fI$LANG\fP 环境变量在登录时从该值初始化，因此此处接受适合该环境变量的值，例如
+\fB\-\-language=de_DE\&.UTF8\fP\&。
+.RE
+.PP
+\fB\-\-ssh\-authorized\-keys=\fP\fIKEYS\fP
+.RS 4
+要么采用 SSH 授权密钥行与用户记录相关联，要么采用 "@" 字符后跟文件路径以从 \& 中读取一个或多个此类行。以这种方式配置的 SSH 密钥可用于
+SSH，以允许访问此主目录和用户记录 \&。可以多次使用此选项来配置多个 SSH 密钥 \&。
+.RE
+.PP
+\fB\-\-pkcs11\-token\-uri=\fP\fIURI\fP
+.RS 4
+采用引用安全 token (e\&.g\&.YubiKey 或 PIV 智能卡) 的 RFC 7512 PKCS#11 URI，该 URI
+应能够解锁用户帐户 \&。security token URI 应该引用一个 security token 和恰好一对 X\&.509 证书和私钥
+\&。然后生成一个随机密钥，用 X\&.509 证书的公钥加密，并作为用户记录的一部分存储 \&。在登录时使用 PKCS#11
+模块对其进行解密，然后用于解锁帐户和相关资源 \&。请参见下面的示例，了解如何使用安全 token\& 设置身份验证。
+.sp
+可以指定特殊字符串 "list" 和 "auto"\&，而不是有效的 PKCS#11 URI。如果传递了 "list"，则会显示一个合适的、当前插入
+PKCS#11 硬件 tokens 的简短表格，以及它们的 URI\&。如果传递 "auto"，则会自动选择合适的 PKCS#11 硬件 token
+(如果没有 \* (Aqt exactly an suitable token discovered) \&，此操作将失败。对于插入单个 PKCS#11
+硬件 token\& 的最常见情况，后者是一个有用的快捷方式。
+.sp
+请注意，许多硬件安全 tokens 都实现了 PKCS#11/PIV 和带有 "hmac\-secret" 扩展名的 FIDO2 (例如: YubiKey
+5 系列)，如下面的 \fB\-\-fido2\-device=\fP 选项支持 \&。两种机制都同样强大，尽管 FIDO2 是更现代的技术
+\&。PKCS#11/PIV tokens 具有在身份验证之前可识别的优势，因此可用于暗示用于登录的用户身份，FIDO2 不允许
+\&。PKCS#11/PIV 设备通常需要初始化 (i\&.e\&. 在其上存储 private/public 密钥对，参见下面的示例) 才能使用;
+FIDO2 security tokens 一般不需要，box\& 就出来了。
+.RE
+.PP
+\fB\-\-fido2\-credential\-algorithm=\fP\fISTRING\fP
+.RS 4
+指定凭证生成中使用的 COSE 算法 \&。默认值为 `es256`\&。支持的值为 "es256"、"rs256" 和 `eddsa`\&。
+.sp
+"es256" 表示 ECDSA over NIST P\-256 with SHA\-256\&。 "rs256" 表示带有 PKCS#1\&.5 填充和
+SHA\-256\& 的 2048 位 RSA。 "eddsa" 表示 Curve25519 上的 EDDSA 和 SHA\-512\&。
+.sp
+请注意，您的身份验证器可能不支持某些算法 \&。
+.RE
+.PP
+\fB\-\-fido2\-device=\fP\fIPATH\fP
+.RS 4
+采用 Linux "hidraw" 设备 (例如 \&.g\&./dev/hidraw1) 的路径，指的是实现 "hmac\-secret" 扩展的
+FIDO2 安全 token 应该能够解锁用户帐户 \&。在主机上生成一个随机盐值并传递给 FIDO2 设备，该设备使用内部密钥 \& 计算盐的
+HMAC 哈希值。然后将结果用作解锁用户帐户的密钥。随机盐包含在用户记录中，因此无论何时需要身份验证，它都可以再次传递给 FIDO2 token\&。
+.sp
+可以指定特殊字符串 "list" 和 "auto"，而不是 FIDO2 "hidraw" 设备的有效路径 \&。如果传递了
+"list"，则会显示合适的已发现 FIDO2 设备的简短表格 \&。如果 "auto" 被传递，一个合适的 FIDO2 token
+被自动选择，如果恰好一个被发现 \&。对于插入单个 FIDO2 硬件 token\& 的最常见情况，后者是一个有用的快捷方式。
+.sp
+请注意，适用于此选项的 FIDO2 设备必须实现 "hmac\-secret" 扩展 \&。大多数当前设备 (例如 YubiKey 5 系列) 都可以
+\&。如果未实现扩展，则设备不能用于解锁主目录 \&。
+.sp
+随后可以通过将设备路径设置为空字符串 (e\&.g\&. \fBhomectl update $USER \-\-fido2\-device=""\fP)\&.
+.sp
+请注意，许多硬件安全 tokens 都实现了 FIDO2 和 PKCS#11/PIV (因此可以与 \fB\-\-fido2\-device=\fP 或
+\fB\-\-pkcs11\-token\-uri=\fP) 一起使用，有关讨论，请参见上文 \&。
+.RE
+.PP
+\fB\-\-fido2\-with\-client\-pin=\fP\fIBOOL\fP
+.RS 4
+注册 FIDO2 安全 token 时，控制是否要求用户在解锁账户时输入 PIN 码 (FIDO2 "clientPin" 特性) \&。默认为
+`是`\&。(注意: 如果安全 token 根本不支持 "clientPin" 特性或者不允许启用或禁用它 \&，则此设置无效。)
+.RE
+.PP
+\fB\-\-fido2\-with\-user\-presence=\fP\fIBOOL\fP
+.RS 4
+注册 FIDO2 安全 token 时，控制是否要求用户在解锁账户时验证存在 (点击 token，FIDO2 "up" 特性) \&。默认为
+`是`\&。(注意: 如果安全 token 根本不支持 "up" 特性或者不允许启用或禁用它 \&，则此设置无效。)
+.RE
+.PP
+\fB\-\-fido2\-with\-user\-verification=\fP\fIBOOL\fP
+.RS 4
+注册 FIDO2 安全 token 时，控制解锁账号时是否需要用户验证 (FIDO2 "uv" 特性) \&。默认为 `否`\&。(注意: 如果安全
+token 根本不支持 "uv" 特性或者不允许启用或禁用它 \&，则此设置无效。)
+.RE
+.PP
+\fB\-\-recovery\-key=\fP\fIBOOL\fP
+.RS 4
+接受布尔参数 \&。如果启用，则为帐户配置恢复密钥 \&。恢复密钥是计算机生成的访问密钥，可用于在忘记密码或身份验证 token 丢失 \&
+时重新获得对帐户的访问权限。密钥已生成并显示在屏幕上，应打印或以其他方式转移到安全位置 \&。可以输入恢复密钥而不是常规密码来解锁帐户 \&。
+.RE
+.PP
+\fB\-\-locked=\fP\fIBOOLEAN\fP
+.RS 4
+采用布尔型参数 \&。指定是否应锁定此用户帐户 \&。如果为 true 则禁止登录此帐户，如果为 false (默认值) 则允许登录
+(当然，只有在授权成功的情况下) \&。
+.RE
+.PP
+\fB\-\-not\-before=\fP\fITIMESTAMP\fP, \fB\-\-not\-after=\fP\fITIMESTAMP\fP
+.RS 4
+这些选项采用 \fBsystemd.time\fP(7) 中记录的格式的时间戳字符串，并配置不允许登录此帐户前后的时间点 \&。
+.RE
+.PP
+\fB\-\-rate\-limit\-interval=\fP\fISECS\fP, \fB\-\-rate\-limit\-burst=\fP\fINUMBER\fP
+.RS 4
+配置对此用户的身份验证尝试的速率限制 \&。如果用户尝试验证的次数超过指定的次数，则在特定系统上，在指定的时间间隔内，身份验证将被拒绝，直到时间间隔过去
+\&。默认为每 1 分钟 10 次 \&。
+.RE
+.PP
+\fB\-\-password\-hint=\fP\fITEXT\fP
+.RS 4
+采用密码提示与用户记录一起存储 \&。此字符串仅供特权用户和用户本身访问，其他用户不得查询 \&。示例: \fB\-\-password\-hint="My first pet\*(Aqs name"\fP\&。
+.RE
+.PP
+\fB\-\-enforce\-password\-policy=\fP\fIBOOL\fP, \fB\-P\fP
+.RS 4
+采用布尔型参数 \&。配置是否强制执行系统 \*(此用户的 Aqs 密码策略，关于所选密码的质量和强度 \&。默认为开 \&。 \fB\-P\fP 是
+\fB\-\-\-enforce\-password\-policy=no\fP\& 的缩写。
+.RE
+.PP
+\fB\-\-password\-change\-now=\fP\fIBOOL\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则要求用户在下次登录时更改密码 \&。
+.RE
+.PP
+\fB\-\-password\-change\-min=\fP\fITIME\fP, \fB\-\-password\-change\-max=\fP\fITIME\fP,
+\fB\-\-password\-change\-warn=\fP\fITIME\fP, \fB\-\-password\-change\-inactive=\fP\fITIME\fP
+.RS 4
+这些选项中的每一个都将时间跨度规范作为参数 (在 \fBsystemd.time\fP(7)) 中记录的语法中，并配置用户的各个方面 \* (Aqs
+密码过期策略 \&。具体来说，\fB\-\-password\-change\-min=\fP 配置了用户修改密码后，需要经过多长时间才能再次修改密码
+\&。如果用户在此时间之前尝试更改其密码，则该尝试将被拒绝 \&。 \fB\-\-password\-change\-max=\fP
+配置密码更改后多久过期，需要再次更改 \&。这段时间过去后，只有在更改密码后才能继续登录 \&。 \fB\-\-password\-change\-warn=\fP
+指定比使用 \fB\-\-password\-change\-max=\fP 配置的时间提前多长时间，用户在登录时被警告更改密码，因为它很快就会过期 \&。最后
+\fB\-\-password\-change\-inactive=\fP 配置密码过期后必须经过的时间，直到不允许用户再登录或更改密码
+\&。请注意，这些选项仅适用于密码身份验证，不适用于其他形式的身份验证，例如基于 PKCS#11 的安全 token 身份验证 \&。
+.RE
+.PP
+\fB\-\-disk\-size=\fP\fIBYTES\fP
+.RS 4
+将以字节为单位的大小作为参数 (可能使用通常的 K、M、G、\&... 1024 基值的后缀)、百分比值或特殊字符串 "min" 或
+"max"，并配置要分配的磁盘空间给用户 \&。如果指定了百分比值 (i\&.e\&. 以 "%" 为后缀的参数)，则它是相对于后备文件系统 \&
+的可用磁盘空间而言的。如果指定为 "min"，则分配后备文件系统约束和其他限制所允许的最小磁盘空间，如果指定为 "max"，则分配最大可用磁盘空间
+\&。如果使用 LUKS2 后端，这将配置其中包含的回环文件和文件系统的大小 \&。对于其他存储后端，使用文件系统配置磁盘配额 \* (Aqs
+原生配额逻辑，如果可用 \&。如果未指定，则默认为 LUKS2 后端的可用磁盘空间的 85%，而其他的则没有配额 \&。
+.RE
+.PP
+\fB\-\-access\-mode=\fP\fIMODE\fP
+.RS 4
+采用以八进制 \& 编写的 UNIX 文件访问模式。配置主目录本身的访问模式 \&。请注意，这仅在目录首次创建时使用，用户可以在以后随时更改它
+\&。示例: \fB\-\-access\-mode=0700\fP
+.RE
+.PP
+\fB\-\-umask=\fP\fIMASK\fP
+.RS 4
+采用访问模式掩码 (八进制语法) 应用于用户新创建的文件和目录 (`umask`) \&。如果设置，这将控制用户所有登录会话的初始 umask
+集，可能会覆盖系统 \*(Aqs defaults\&。
+.RE
+.PP
+\fB\-\-nice=\fP\fINICE\fP
+.RS 4
+采用数字调度优先级 (`nice level`) 在登录时应用于用户的进程 \&。取 \-20 (最高优先级) 到 19 (最低优先级) \&
+范围内的数值。
+.RE
+.PP
+\fB\-\-rlimit=\fP\fILIMIT\fP=\fIVALUE\fP[:\fIVALUE\fP]
+.RS 4
+允许配置该用户进程的资源限制，有关详细信息，请参见 \fBgetrlimit\fP(2)\&。采用资源限制名称
+(e\&.g\&. "LIMIT_NOFILE")，后跟等号，然后是数字限制 \&。可选地，可以用冒号分隔指定第二个数字限制
+\&。如果指定了两个，则分别指的是软限制和硬限制 \&。如果仅指定了一个限制，则该设置将两个限制合而为一 \&。
+.RE
+.PP
+\fB\-\-tasks\-max=\fP\fITASKS\fP
+.RS 4
+取一个非零无符号整数作为参数 \&。配置用户在任何给定时间可能拥有所有权的最大任务数 (i\&.e\&. 线程，其中每个进程至少是一个线程)
+\&。此限制适用于从用户 \*(Aqs 会话中分叉出来的所有任务，即使它们通过 \fBsu\fP(1) 或类似工具更改用户身份 \&。使用
+\fB\-\-rlimit=LIMIT_NPROC=\fP 限制在用户 UID 下实际运行的任务，从而排除任何可能已更改用户身份的子进程。这控制了每个用户
+systemd 切片元 user\-$UID\&.slice\& 的 \fITasksMax=\fP 设置。有关详细信息，请参见
+\fBsystemd.resource\-control\fP(5)\&。
+.RE
+.PP
+\fB\-\-memory\-high=\fP\fIBYTES\fP, \fB\-\-memory\-max=\fP\fIBYTES\fP
+.RS 4
+以字节为单位设置用户在任何给定时间在系统上可能占用的内存限制 (支持通常的 K、M、G、\&... 后缀，以 1024 为基数)
+\&。这包括用户自己使用的所有内存以及他们分叉的所有更改用户凭据的进程。这控制了每个用户 systemd 切片元 user\-$UID\&.slice\&
+的 \fIMemoryHigh=\fP 和 \fIMemoryMax=\fP 设置。有关详细信息，请参见
+\fBsystemd.resource\-control\fP(5)\&。
+.RE
+.PP
+\fB\-\-cpu\-weight=\fP\fIWEIGHT\fP, \fB\-\-io\-weight=\fP\fIWEIGHT\fP
+.RS 4
+设置用户进程的 CPU 和 IO 调度权重，包括由更改用户凭据的用户分叉的进程 \&。取 1\&...10000\& 范围内的数值。这控制了每个用户
+systemd 切片元 user\-$UID\&.slice\& 的 \fICPUWeight=\fP 和 \fIIOWeight=\fP 设置。有关详细信息，请参见
+\fBsystemd.resource\-control\fP(5)\&。
+.RE
+.PP
+\fB\-\-storage=\fP\fISTORAGE\fP
+.RS 4
+选择用于此主目录的存储机制 \&。采用 "luks"、"fscrypt"、"directory"、"subvolume"、`cifs`\&
+之一。有关这些机制的详细信息，请参见上文 \&。如果创建了一个新的主目录并且没有具体指定存储类型，则 \fBhomed.conf\fP(5)
+定义要使用的默认存储 \&。
+.RE
+.PP
+\fB\-\-image\-path=\fP\fIPATH\fP
+.RS 4
+采用文件系统路径 \&。配置放置用户的位置 \*(Aqs home directory\&. 当使用 LUKS2
+存储时，指的是回环文件的路径，否则指主目录的路径 (可能在 /home / 或任何其他可访问的文件系统中) \&。当使用 LUKS 存储时未指定默认为
+/home/$USER\&.home，其他存储机制为 /home/$USER\&.homedir\&。没有为 "cifs" 存储机制定义
+\&。要在常规块设备 (例如 USB 记忆棒) 上使用 LUKS2 存储，请在此处传递块设备的路径 \&。不允许在使用 LUKS2
+存储时在此处指定目录路径 \&。类似地，如果使用任何其他存储后端，则不允许指定常规文件或设备节点的路径 \&。
+.RE
+.PP
+\fB\-\-drop\-caches=\fP\fIBOOL\fP
+.RS 4
+注销时自动刷新 OS 文件系统缓存。这与 fscrypt 存储后端结合使用非常有用，可确保操作系统在注销后不会将文件和目录的解密版本保留在内存中
+(并且可访问)。其他后端也支持此选项，但不应在那里带来任何好处 \&。默认为关闭，除非选定的存储后端是 fscrypt，它默认为打开
+\&。请注意，刷新操作系统缓存将在注销后不久对操作系统的性能产生负面影响 \&。
+.RE
+.PP
+\fB\-\-fs\-type=\fP\fITYPE\fP
+.RS 4
+当使用 LUKS2 存储时，配置文件系统类型以在主目录 LUKS2 container\& 中使用。"btrfs"、"ext4"、`xfs`\&
+之一。如果未指定，则 \fBhomed.conf\fP(5) 定义要使用的默认文件系统类型 \&。请注意，不推荐使用
+"xfs"，因为它对文件系统大小调整的支持太有限 \&。
+.RE
+.PP
+\fB\-\-luks\-discard=\fP\fIBOOL\fP
+.RS 4
+当使用 LUKS2 存储时配置是否开启文件系统的 "discard" 特性 \&。如果启用，LUKS2 卷顶部的文件系统将向 LUKS2
+和下面的回环文件报告空块信息，确保主目录中的空白空间返回到 LUKS2 卷下的备份文件系统，从而产生 "sparse" 回环文件
+\&。此选项大多数情况下默认为关闭，因为这允许过度提交主目录，如果底层文件系统运行满而上层文件系统想要分配块 \&，则会导致 I/O
+错误。文件系统或应用程序通常无法很好地处理此类 I/O 错误。当在常规块设备之上 (而不是在回环文件之上) 使用 LUKS2 存储时，丢弃逻辑默认为
+on\&。
+.RE
+.PP
+\fB\-\-luks\-offline\-discard=\fP\fIBOOL\fP
+.RS 4
+类似于 \fB\-\-luks\-discard=\fP，控制文件系统的裁剪 \&。但是，\fB\-\-luks\-discard=\fP
+控制主目录处于活动状态时发生的情况，而 \fB\-\-luks\-offline\-discard=\fP
+控制主目录变为非活动状态时发生的情况，i\&.e\&。停用主目录时是否 trim/allocate 存储
+\&。此选项默认为打开，以确保在用户未登录时磁盘空间最小化 \&。
+.RE
+.PP
+\fB\-\-luks\-extra\-mount\-options=\fP\fIOPTIONS\fP
+.RS 4
+采用包含附加安装选项的字符串，以便在安装 LUKS 卷时使用 \&。如果指定，此字符串将追加到默认的内置安装选项 \&。
+.RE
+.PP
+\fB\-\-luks\-cipher=\fP\fICIPHER\fP, \fB\-\-luks\-cipher\-mode=\fP\fIMODE\fP,
+\fB\-\-luks\-volume\-key\-size=\fP\fIBYTES\fP, \fB\-\-luks\-pbkdf\-type=\fP\fITYPE\fP,
+\fB\-\-luks\-pbkdf\-hash\-algorithm=\fP\fIALGORITHM\fP,
+\fB\-\-luks\-pbkdf\-force\-iterations=\fP\fIITERATIONS\fP,
+\fB\-\-luks\-pbkdf\-time\-cost=\fP\fISECONDS\fP, \fB\-\-luks\-pbkdf\-memory\-cost=\fP\fIBYTES\fP,
+\fB\-\-luks\-pbkdf\-parallel\-threads=\fP\fITHREADS\fP, \fB\-\-luks\-sector\-size=\fP\fIBYTES\fP
+.RS 4
+为 LUKS2 存储机制配置各种密码参数 \&。有关特定属性的详细信息，请参见 \fBcryptsetup\fP(8)。
+.sp
+请注意，\fBhomectl\fP 使用字节作为密钥大小，如 /proc/crypto，但 \fBcryptsetup\fP(8) 使用位 \&。
+.RE
+.PP
+\fB\-\-auto\-resize\-mode=\fP
+.RS 4
+配置是否在登录和注销时自动增大或者收缩后备文件系统 \&。采用字符串 "off"、"grow"、"shrink\-and\-grow"\&
+之一。目前只适用于 LUKS2 后端，如果内部使用了 btrfs 文件系统 (因为只支持在，字符串 growing/shrinking 文件系统)
+\&。默认为 "shrink\-and\-grow"，如果使用 LUKS2/btrfs，则为关闭 \&。如果设置为
+"off"，则在登录或注销期间不会自动执行 shrinking/growing\&。如果设置为 "grow"，主区域将增长到通过
+\fB\-\-disk\-size=\fP 配置的大小，如果它当前更小 \&。如果它已经匹配配置的大小或更大，则不执行任何操作 \&。如果设置为
+"shrink\-and\-grow"，主区域的大小也会在注销期间调整为已用磁盘空间和文件系统限制允许的最小大小
+\&。因此，此模式可确保在激活主区域时将其大小调整为配置的大小，但在停用时将其压缩，仅占用可能的最小空间
+\&。注意，如果系统异常掉电或者用户没有干净退出，收缩操作将不会发生，用户必须再次 re\-login/logout 才能再次执行 \&。
+.RE
+.PP
+\fB\-\-rebalance\-weight=\fP
+.RS 4
+配置可用磁盘空间重新平衡逻辑的权重参数 \&。仅适用于 LUKS2 后端 (因为 LUKS2
+后端磁盘空间是从每个用户回环文件系统分配的，而不是像其他后端那样立即从公共池分配)
+\&。活动主区域中的空闲磁盘空间及其后备存储会定期在它们之间重新分配，同时考虑此处配置的权重值 \&。需要 1\&...10000
+范围内的整数，或特殊字符串 `off`\&。如果未指定，则默认为 100\&。权重用于缩放家庭区域可用的可用空间: 权重为 200
+的家庭区域将获得权重为 100 的自由空间的两倍; 权重为 50 的家庭区域将获得其中的一半 \&。备份文件系统将分配权重为 20\&
+的空间。如果设置为 "off"，则不会为此主区域执行自动可用空间分配 \&。请注意，显式调整主区域的大小 (使用 \fBhomectl resize\fP
+见下文) 将隐式关闭自动重新平衡 \&。要重新启用自动重新平衡，请使用带有空参数 \& 的 \fB\-\-rebalance\-weight=\fP。
+.RE
+.PP
+\fB\-\-nosuid=\fP\fIBOOL\fP, \fB\-\-nodev=\fP\fIBOOL\fP, \fB\-\-noexec=\fP\fIBOOL\fP
+.RS 4
+为主目录配置 "nosuid"、"nodev" 和 "noexec" 挂载选项 \&。默认 "nodev" 和 "nosuid" 打开，而
+"noexec" 关闭 \&。有关这些安装选项的详细信息，请参见 \fBmount\fP(8)\&。
+.RE
+.PP
+\fB\-\-cifs\-domain=\fP\fIDOMAIN\fP, \fB\-\-cifs\-user\-name=\fP\fIUSER\fP,
+\fB\-\-cifs\-service=\fP\fISERVICE\fP, \fB\-\-cifs\-extra\-mount\-options=\fP\fIOPTIONS\fP
+.RS 4
+将 Windows 文件共享 (CIFS) 域和用户配置为与主 directory/user 帐户相关联，并将文件共享 ("service")
+配置为挂载为目录 \&。后者在选择 "cifs" 存储时使用 \&。文件共享应以
+"//\fIhost\fP/\fIshare\fP/\fIdirectory/\&...\fP"\& 格式指定。目录部分是可选的 \(em
+如果没有指定主目录将被放置在共享的顶级目录 \&。\fB\-\-cifs\-extra\-mount\-options=\fP
+设置允许在安装共享时指定其他安装选项，有关详细信息，请参见 \fBmount.cifs\fP(8)\&。
+.RE
+.PP
+\fB\-\-stop\-delay=\fP\fISECS\fP
+.RS 4
+配置每用户服务管理器在用户的所有会话结束后继续运行的时间 \&。默认配置在 \fBlogind.conf\fP(5) 中 (对于位于可移动媒体上的 LUKS2
+存储的主目录，默认为 0) \&。更长的时间确保快速、重复的登录更有效率，因为用户 \*(Aqs 服务管理器不需要 \*(每次都必须启动 Aqt\&。
+.RE
+.PP
+\fB\-\-kill\-processes=\fP\fIBOOL\fP
+.RS 4
+配置是否在注销 \& 时杀死用户的所有进程。默认配置在 \fBlogind.conf\fP(5)\&。
+.RE
+.PP
+\fB\-\-auto\-login=\fP\fIBOOL\fP
+.RS 4
+采用布尔型参数 \&。配置系统的图形用户界面是否应在可能的情况下自动让该用户登录 \&。默认关闭
+\&。如果少于或多于一个用户被标记为这种方式，自动登录将被禁用 \&。
+.RE
+.SH COMMANDS
+.PP
+理解以下命令:
+.PP
+\fBlist\fP
+.RS 4
+列出当前由 systemd\-homed\&.service\& 管理的所有主目录 (以及简要详细信息)。如果在命令行中没有指定
+\&，也会执行此命令。(请注意，此命令显示的用户列表不包括其他子系统管理的用户，例如系统用户或 /etc/passwd\& 中列出的任何传统用户。)
+.RE
+.PP
+\fBactivate\fP \fIUSER\fP [\fIUSER\&...\fP]
+.RS 4
+激活一个或多个主目录 \&。每个列出的用户的主目录将被激活并在他们的安装点下可用 (通常在 /home/$USER)
+\&。请注意，以这种方式激活的任何家庭都会无限期地保持活动状态，直到它再次被明确停用 (使用
+\fBdeactivate\fP，见下文)，或者用户再次登录和注销并且由于注销时自动停用逻辑而被停用 \&.
+.sp
+主目录的激活涉及取决于所选存储机制的各种操作 \&。如果使用 LUKS2 机制，这通常包括: 询问用户密码、设置回环设备、验证和激活 LUKS2
+卷、检查文件系统、安装文件系统以及可能更改所有包含文件的所有权到正确的 UID/GID\&。
+.RE
+.PP
+\fBdeactivate\fP \fIUSER\fP [\fIUSER\&...\fP]
+.RS 4
+停用一个或多个主目录 \&。这取消了 \fBactivate\fP\& 的效果。
+.RE
+.PP
+\fBinspect\fP \fIUSER\fP [\fIUSER\&...\fP]
+.RS 4
+显示有关指定主目录的各种详细信息 \&。这显示了有关主目录及其用户帐户的各种信息，包括运行时数据，例如当前状态、磁盘使用和类似的 \&。与
+\fB\-\-json=\fP 结合使用以显示详细的 JSON 用户记录，可能与 \fB\-\-export\-format=\fP 结合使用以抑制输出的某些方面 \&。
+.RE
+.PP
+\fBauthenticate\fP \fIUSER\fP [\fIUSER\&...\fP]
+.RS 4
+验证主目录的身份验证凭据 \&。这会向调用者询问密码 (或类似密码) 并检查它是否正确地解锁了主目录
+\&。这使主目录处于它所处的状态，i\&.e\&。如果主目录之前处于非活动状态，它将使主目录处于非活动状态，如果它之前处于活动状态，则处于活动状态
+\&。
+.RE
+.PP
+\fBcreate\fP \fIUSER\fP, \fBcreate\fP \fB\-\-identity=\fP\fIPATH\fP [\fIUSER\fP]
+.RS 4
+创建指定名称的新家庭 directory/user 帐户 \&。使用各种用户记录属性选项 (如上文所述) 来控制主目录及其用户帐户的各个方面。
+.sp
+指定的用户名应遵循 \m[blue]\fBUser/Group Name Syntax\fP\m[]\&\s-2\u[3]\d\s+2\& 中描述的严格语法。
+.RE
+.PP
+\fBremove\fP \fIUSER\fP
+.RS 4
+删除家庭 directory/user 帐户 \&。这将删除主目录 \*(Aqs 用户记录和主目录本身，从而删除用户拥有所有权的所有文件和目录 \&。
+.RE
+.PP
+\fBupdate\fP \fIUSER\fP, \fBupdate\fP \fB\-\-identity=\fP\fIPATH\fP [\fIUSER\fP]
+.RS 4
+更新家庭 directory/user 帐户 \&。使用各种用户记录属性选项 (如上文所述) 对帐户进行更改，或者通过 \fB\-\-identity=\fP
+选项 \& 提供完整的、更新的 JSON 用户记录。
+.sp
+请注意，不允许更改未由本地可用的加密私钥签名的用户记录，除非 \fB\-\-identity=\fP 与已由公认的私钥正确签名的用户记录一起使用 \&。
+.RE
+.PP
+\fBpasswd\fP \fIUSER\fP
+.RS 4
+修改指定家庭 directory/user 账号密码 \&。
+.RE
+.PP
+\fBresize\fP \fIUSER\fP \fIBYTES\fP
+.RS 4
+更改分配给指定主目录的磁盘空间 \&。如果使用 LUKS2 存储机制，这将自动调整回环文件和包含在 \& 中的文件系统的大小。请注意，如果在 LUKS2
+卷内部使用 "ext4"，则必须在收缩主目录之前停用主目录 (i\&.e 用户必须注销) \&。可以在主目录处于活动状态时进行增长 \&。如果在
+LUKS2 卷内部使用 "xfs"，则主目录可能不会缩小 \&。在 "ext4"、"xfs" 和 "btrfs"
+这三个上，主目录可能会在用户登录时增长，而在后者上也会在用户登录时收缩 \&。如果使用
+"subvolume"、"directory"、"fscrypt" 存储机制，调整大小会改变文件系统配额 \&。大小参数可以使用通常的后缀
+B、K、M、G、T (以 1024 为底) \&。可以指定特殊字符串 "min" 和 "max"
+来代替数字大小值，以最小化或最大化分配给主区域的磁盘空间，同时考虑文件系统的限制、主区域内的磁盘使用和后备存储 \&.
+.RE
+.PP
+\fBlock\fP \fIUSER\fP
+.RS 4
+暂时中止对用户 \*(Aqs 主目录的访问并从内存中删除所有关联的加密密钥 \&。任何访问用户 \*(Aqs 主目录的尝试都会停止，直到主目录再次解锁
+(i\&.e\&. 重新验证) \&。此功能主要用于在系统挂起期间确保用户 \*(Aqs 数据无法访问，直到用户在恢复时重新验证 \&。此操作仅针对使用
+LUKS2 存储机制 \& 的主目录定义。
+.RE
+.PP
+\fBunlock\fP \fIUSER\fP
+.RS 4
+再次恢复访问用户 \*(Aqs 主目录，撤销上面 \fBlock\fP 的效果 \&。这需要对用户进行身份验证，因为访问主目录所需的加密密钥需要重新获取
+\&。
+.RE
+.PP
+\fBlock\-all\fP
+.RS 4
+立即在所有合适的主目录上执行 \fBlock\fP 命令 \&。此操作通常在系统挂起时执行 (i\&.e\&。通过 \fBsystemctl suspend\fP
+和相关命令)，以确保所有活动用户 \* (用于访问其主目录的 Aqs 加密密钥已从内存中删除 \&。
+.RE
+.PP
+\fBdeactivate\-all\fP
+.RS 4
+立即在所有活动主目录上执行 \fBdeactivate\fP 命令 \&。此操作一般在系统关闭时执行 (i\&.e\&. 通过 \fBsystemctl poweroff\fP 和相关命令)，以确保所有活动用户 \* (Aqs 主目录在 /home / 和相关文件系统卸载之前完全停用 \&.
+.RE
+.PP
+\fBwith\fP \fIUSER\fP \fICOMMAND\&...\fP
+.RS 4
+激活指定用户 \*(Aqs 家目录，运行指定命令 (在调用者 \*(Aqs 身份下，不是指定用户 \*(Aqs)) 之后再次去激活家目录
+(除非用户已经登录) \&。此命令对于运行特权备份脚本等很有用，但需要使用用户 \*(Aqs 凭据才能解锁用户 \*(Aqs 主目录 \&。
+.RE
+.PP
+\fBrebalance\fP
+.RS 4
+重新平衡活动主区域和后备存储之间的可用磁盘空间 \&。请参见上面的 \fB\-\-rebalance\-weight=\fP\&。这不会执行任何操作，除非
+\*(Aqs 至少一个活动的 LUKS2 主区域启用了磁盘空间重新平衡 \&。此操作是同步的:
+只有根据重新平衡权重重新平衡磁盘空间后，它才会完成。请注意，重新平衡也会定期在后台自动进行
+\&。在启动需要大量磁盘空间的操作之前，使用此命令同步确保正确重新分配磁盘空间 \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.PP
+当使用 \fBwith\fP 调用命令时，传播子进程的退出状态 \&。实际上，如果命令成功调用，\fBhomectl\fP 将无错误退出 \fIand\fP 成功完成
+\&。
+.SH ENVIRONMENT
+.PP
+\fI$SYSTEMD_LOG_LEVEL\fP
+.RS 4
+发出消息的最大日志级别 (具有更高日志级别的消息，i\&.e\&。不太重要的消息将被抑制)
+\&。\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP 之一
+(按重要性递减顺序) 或 0\&...7\& 范围内的整数。有关详细信息，请参见 \fBsyslog\fP(3)\&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_COLOR\fP
+.RS 4
+一个布尔值 \&。如果为真，写入 tty 的消息将根据优先级着色。
+.sp
+这个设置只在消息直接写入终端时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会自行根据日志级别给消息着色 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TIME\fP
+.RS 4
+一个布尔值 \&。如果为 true，控制台日志消息将以时间戳 \& 为前缀。
+.sp
+这个设置只在消息直接写入终端或文件时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会根据条目元数据自行附加时间戳 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_LOCATION\fP
+.RS 4
+一个布尔值 \&。如果为 true，消息将在源代码中以文件名和行号为前缀 \&。
+.sp
+请注意，日志位置通常作为元数据附加到日志条目中。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TID\fP
+.RS 4
+一个布尔值 \&。如果为真，消息将以当前数字线程 ID (TID)\& 为前缀。
+.sp
+请注意，此信息无论如何都作为元数据附加到日记条目 \&。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TARGET\fP
+.RS 4
+日志消息的目的地 \&。\fBconsole\fP (记录到附加的 tty)、\fBconsole\-prefixed\fP (记录到附加的
+tty，但带有编码日志级别和 "facility" 的前缀，参见 \fBsyslog\fP(3)、\fBkmsg\fP
+(记录到内核循环日志缓冲区)、\fBjournal\fP (记录到日志) 之一，\fBjournal\-or\-kmsg\fP (如果可用则记录到日志，否则记录到
+kmsg)，\fBauto\fP (自动确定适当的日志目标，默认)，\fBnull\fP (禁用日志输出) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGER\fP
+.RS 4
+未给出 \fB\-\-no\-pager\fP 时使用的寻呼机; 覆盖 \fI$PAGER\fP\&。如果 \fI$SYSTEMD_PAGER\fP 和 \fI$PAGER\fP
+都没有设置，则依次尝试一组众所周知的寻呼机实现，包括 \fBless\fP(1) 和 \fBmore\fP(1)，直到找到一个
+\&。如果没有发现寻呼机实现，则不调用寻呼机 \&。将此环境变量设置为空字符串或值 "cat" 等同于传递 \fB\-\-no\-pager\fP\&。
+.sp
+Note: 如果未设置 \fI$SYSTEMD_PAGERSECURE\fP，\fI$SYSTEMD_PAGER\fP (以及 \fI$PAGER\fP) 将被忽略
+\&。
+.RE
+.PP
+\fI$SYSTEMD_LESS\fP
+.RS 4
+覆盖传递给 \fBless\fP (默认 "FRSXMK") \& 的选项。
+.sp
+用户可能希望特别更改两个选项:
+.PP
+\fBK\fP
+.RS 4
+此选项指示寻呼机在按下 Ctrl+C 时立即退出 \&。要允许 \fBless\fP 自己处理 Ctrl+C 以切换回寻呼机命令提示符，请取消设置此选项
+\&。
+.sp
+如果 \fI$SYSTEMD_LESS\fP 的值不包括 "K"，调用的分页器是 \fBless\fP，Ctrl+C 会被可执行文件忽略，需要分页器处理 \&。
+.RE
+.PP
+\fBX\fP
+.RS 4
+此选项指示寻呼机不将 termcap 初始化和取消初始化字符串发送到终端 \&。它默认设置为允许命令输出在终端中保持可见，即使在寻呼机退出 \&
+之后也是如此。然而，这会阻止某些寻呼机功能工作，特别是无法使用鼠标滚动分页输出。
+.RE
+.sp
+有关更多讨论，请参见 \fBless\fP(1)\&。
+.RE
+.PP
+\fI$SYSTEMD_LESSCHARSET\fP
+.RS 4
+覆盖传递给 \fBless\fP 的字符集 (默认为 "utf\-8"，如果调用终端被确定为与 UTF\-8 兼容) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGERSECURE\fP
+.RS 4
+采用布尔型参数 \&。为真时，启用寻呼机的 "secure" 模式; 如果为假，则禁用 \&。如果根本未设置
+\fI$SYSTEMD_PAGERSECURE\fP，则在有效 UID 与登录会话的所有者不同时启用安全模式，请参见 \fBgeteuid\fP(2) 和
+\fBsd_pid_get_owner_uid\fP(3)\&。在安全模式下，调用寻呼机时将设置
+\fBLESSSECURE=1\fP，寻呼机应禁用打开或创建新文件或启动新子进程的命令 \&。当根本没有设置 \fI$SYSTEMD_PAGERSECURE\fP
+时，将不会使用未知实现安全模式的寻呼机 \&。(目前只有 \fBless\fP(1) 实现了安全模式 \&。)
+.sp
+Note: 当以提升的权限调用命令时，例如在 \fBsudo\fP(8) 或 \fBpkexec\fP(1) 下，必须小心确保未启用意外的交互，特性 \&。寻呼机的
+"Secure" 模式可以如上所述自动启用 \&。设置 \fISYSTEMD_PAGERSECURE=0\fP 或不将其从继承环境中删除允许用户调用任意命令
+\&。请注意，如果要兑现 \fI$SYSTEMD_PAGER\fP 或 \fI$PAGER\fP 变量，则必须同时设置
+\fI$SYSTEMD_PAGERSECURE\fP\&。改为使用 \fB\-\-no\-pager\fP\& 完全禁用寻呼机可能是合理的。
+.RE
+.PP
+\fI$SYSTEMD_COLORS\fP
+.RS 4
+采用布尔型参数 \&。当为真时，\fBsystemd\fP 和相关的实用工具将在其输出中使用颜色，否则输出将为单色 \&。此外，该变量可以采用以下特殊值之一:
+"16"、"256"，分别将颜色的使用限制为基本 16 或 256 ANSI 颜色 \&。这可以被指定以覆盖基于 \fI$TERM\fP
+和控制台连接到什么的自动决定 \&。
+.RE
+.PP
+\fI$SYSTEMD_URLIFY\fP
+.RS 4
+该值必须是布尔值 \&。控制是否应在支持此 \& 的终端模拟器的输出中生成可点击链接。这可以被指定来覆盖 \fBsystemd\fP 基于 \fI$TERM\fP
+和其他条件做出的决定 \&。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Create a user "waldo" in the administrator group "wheel", and assign 500 MiB disk space to them\&.\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+homectl create waldo \-\-real\-name="Waldo McWaldo" \-G wheel \-\-disk\-size=500M
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Create a user "wally" on a USB stick, and assign a maximum of 500 concurrent tasks to them\&.\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+homectl create wally \-\-real\-name="Wally McWally" \-\-image\-path=/dev/disk/by\-id/usb\-SanDisk_Ultra_Fit_476fff954b2b5c44\-0:0 \-\-tasks\-max=500
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&Change nice level of user "odlaw" to +5 and make sure the environment variable \fP\fI$SOME\fP 在登录时被设置为字符串 "THING"。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+homectl 更新 odlaw\-\-nice=5\-\-setenv=SOME=THING
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&Set up authentication with a YubiKey security token using PKCS#11/PIV:\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 从任何旧密钥 (careful!) 清除 Yubikey
+ykman piv 重置
+
+# 在设备上生成新的 private/public 密钥对，公钥存放在 \*(Aqpubkey\&.pem\*(Aq\&.
+ykman piv 生成密钥 \-a RSA2048 9d pubkey\&.pem
+
+# 从这个公钥创建一个自签名证书，并将其存储在设备上 \&。
+ykman piv 生成证书 \-\-subject "Knobelei" 9d pubkey\&.pem
+
+# 我们不再 \*(Aqt 需要磁盘上的公钥
+rm pubkey\&.pem
+
+# 允许安全 token 解锁用户 \*(Aqlafcadio\*(Aq\&.
+homectl 更新 lafcadio\-\-pkcs11\-token\-uri=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&5.\ \&Set up authentication with a FIDO2 security token:\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 允许 FIDO2 安全 token 解锁用户帐户 \*(Aqnihilbaxter\*(Aq\&.
+homectl 更新 nihilbaxter\-\-fido2\-device=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-homed.service\fP(8), \fBhomed.conf\fP(5),
+\fBuserdbctl\fP(1), \fBuseradd\fP(8), \fBcryptsetup\fP(8)
+.SH NOTES
+.IP " 1." 4
+JSON 用户记录
+.RS 4
+\%https://systemd.io/USER_RECORD
+.RE
+.IP " 2." 4
+图标命名规范
+.RS 4
+\%https://standards.freedesktop.org/icon\-naming\-spec/icon\-naming\-spec\-latest.html
+.RE
+.IP " 3." 4
+User/Group 名称语法
+.RS 4
+\%https://systemd.io/USER_NAMES
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,202 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: flock
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: User Commands
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH FLOCK 1 2022\-05\-11 "util\-linux 2.38.1" "User Commands"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+flock \- 从 shell 脚本管理锁
+.SH SYNOPSIS
+.sp
+\fBflock\fP [options] \fIfile\fP|\fIdirectory\fP \fIcommand\fP [\fIarguments\fP]
+.sp
+\fBflock\fP [options] \fIfile\fP|\fIdirectory\fP \fB\-c\fP \fIcommand\fP
+.sp
+\fBflock\fP [options] \fInumber\fP
+.SH DESCRIPTION
+.sp
+该实用程序从 shell 脚本或命令行管理 \fBflock\fP(2) 锁。
+.sp
+上述第一种和第二种形式以类似于 \fBsu\fP(1) 或 \fBnewgrp\fP(1) 的方式围绕 \fIcommand\fP 的执行进行锁定。他们锁定指定的
+\fIfile\fP 或 \fIdirectory\fP，如果它不存在则创建 (假设有适当的权限)。默认情况下，如果不能立即获取锁，\fBflock\fP
+会等待直到锁可用。
+.sp
+第三种形式通过文件描述符 \fInumber\fP 使用打开的文件。请参见下面的示例，了解如何使用它。
+.SH OPTIONS
+.sp
+\fB\-c\fP, \fB\-\-command\fP \fIcommand\fP
+.RS 4
+将没有参数的单个 \fIcommand\fP 传递给带有 \fB\-c\fP 的 shell。
+.RE
+.sp
+\fB\-E\fP, \fB\-\-conflict\-exit\-code\fP \fInumber\fP
+.RS 4
+当使用 \fB\-n\fP 选项并且存在冲突锁时使用的退出状态，或者使用 \fB\-w\fP 选项并且达到超时时使用的退出状态。默认值为 \fB1\fP。\fInumber\fP
+必须在 0 到 255 的范围内。
+.RE
+.sp
+\fB\-F\fP, \fB\-\-no\-fork\fP
+.RS 4
+在执行 \fIcommand\fP 之前不要 fork。执行后，flock 进程被 \fIcommand\fP 取代，\fIcommand\fP 继续持有锁。此选项与
+\fB\-\-close\fP 不兼容，否则将没有任何东西可以保持锁定。
+.RE
+.sp
+\fB\-e\fP, \fB\-x\fP, \fB\-\-exclusive\fP
+.RS 4
+获得排他锁，有时称为写锁。这是默认设置。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-nb\fP, \fB\-\-nonblock\fP
+.RS 4
+如果不能立即获取锁，则失败而不是等待。有关使用的退出状态，请参见 \fB\-E\fP 选项。
+.RE
+.sp
+\fB\-o\fP, \fB\-\-close\fP
+.RS 4
+在执行 \fIcommand\fP 之前关闭持有锁的文件描述符。如果 \fIcommand\fP 产生一个不应持有锁的子进程，这将很有用。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-shared\fP
+.RS 4
+获取共享锁，有时称为读锁。
+.RE
+.sp
+\fB\-u\fP, \fB\-\-unlock\fP
+.RS 4
+扔掉一把锁。这通常不是必需的，因为当文件关闭时锁会自动丢掉。但是，在特殊情况下可能需要这样做，例如，如果封闭的命令组可能派生了一个不应持有锁的后台进程。
+.RE
+.sp
+\fB\-w\fP, \fB\-\-wait\fP, \fB\-\-timeout\fP \fIseconds\fP
+.RS 4
+如果无法在 \fIseconds\fP 内获取锁，则失败。允许使用十进制小数值。有关使用的退出状态，请参见 \fB\-E\fP 选项。\fIseconds\fP
+的零号被解释为 \fB\-\-nonblock\fP。
+.RE
+.sp
+\fB\-\-verbose\fP
+.RS 4
+报告获取锁花费了多长时间，或者无法获取锁的原因。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH "EXIT STATUS"
+.sp
+该命令对所有内容都使用 <sysexits.h> 退出状态值，除非使用选项 \fB\-n\fP 或 \fB\-w\fP
+中的任何一个，它们报告无法获取锁定，退出状态由 \fB\-E\fP 选项给出，或默认为 1。\fB\-E\fP 给出的退出状态必须在 0 到 255 的范围内。
+.sp
+当使用 \fIcommand\fP 变体并执行子命令时，退出状态就是子命令的状态。
+.SH NOTES
+.sp
+\fBflock\fP 不检测死锁。有关详细信息，请参见 \fBflock\fP(2)。
+.sp
+某些文件系统 (例如 NFS 和 CIFS) 对 \fBflock\fP(2) 的实现有限，并且 flock 可能总是失败。有关详细信息，请参见
+\fBflock\fP(2)、\fBnfs\fP(5) 和 \fBmount.cifs\fP(8)。根据挂载选项，flock 总是会在那里失败。
+.SH EXAMPLES
+.sp
+请注意，示例中的 "shell> " 是命令行提示符。
+.sp
+shell1> 羊群 /tmp \-c 猫; shell2> flock \-w .007 /tmp \-c echo; /bin/echo
+$?
+.RS 4
+将排他锁设置为目录 \fI/tmp\fP，第二个命令将失败。
+.RE
+.sp
+shell1> 羊群 \-s/tmp \-c 猫; shell2> flock \-s \-w .007 /tmp \-c echo;
+/bin/echo $?
+.RS 4
+将共享锁设置为目录 \fI/tmp\fP，第二个命令不会失败。请注意，尝试使用第二条命令获取独占锁会失败。
+.RE
+.sp
+shell> flock \-x local\-lock\-file echo \(aqa b c\(aq
+.RS 4
+在运行 echo with\(aqa bc\(aq.
+.RE
+.sp
+(; flock \-n 9 || exit 1;#... 在锁定下执行的命令...;) 9>/var/lock/mylockfile
+.RS 4
+这种形式在 shell 脚本中很方便。用于打开文件的模式与 \(cqt 对 \fBflock\fP 无关; 如果锁文件不存在，使用 \fI>\fP 或
+\fI>>\fP 允许创建锁文件，但是，需要写权限。使用 \fI<\fP 要求文件已经存在，但只需要读取权限。
+.RE
+.sp
+[ "${FLOCKER}" != "$0" ]&&exec env FLOCKER="$0" 群 \-en "$0" "$0" "$@" ||:
+.RS 4
+这是 shell 脚本的有用样板代码。把它放在您想锁定的 shell 脚本的顶部，它 \(cqll 在第一次运行时自动锁定自己。如果环境变量
+\fB$FLOCKER\fP 没有设置为正在运行的 shell 脚本，则执行 \fBflock\fP 并获取独占非阻塞锁
+(使用脚本本身作为锁文件)，然后再以正确的参数重新执行自身。它还将 \fBFLOCKER\fP 环境变量设置为正确的值，因此它不会 \(cqt 再次运行。
+.RE
+.sp
+shell> 执行 4<>/var/lock/mylockfile; shell> 群 \-n 4
+.RS 4
+这种形式对于在不生成子进程的情况下锁定文件很方便。shell 打开锁定文件读写为文件描述符 4，然后 \fBflock\fP 用于锁定该描述符。
+.RE
+.SH AUTHORS
+.sp
+.MTO hpa\(atzytor.com "H. Peter Anvin" ""
+.SH COPYRIGHT
+.sp
+Copyright © 2003\-2006 H.  Peter Anvin.  This is free software;  see the
+source for copying conditions.  There is NO warranty;  not even for
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.SH "SEE ALSO"
+.sp
+\fBflock\fP(2)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBflock\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

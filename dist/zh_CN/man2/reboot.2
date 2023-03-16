@@ -1,0 +1,139 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1998 Andries Brouwer (aeb@cwi.nl), 24 September 1998
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH reboot 2 2023\-02\-08 "Linux man\-pages 6.03" 
+.SH NAME
+重新启动 \- 重新启动或 enable/disable Ctrl\-Alt\-Del
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+/* Since Linux 2.1.30 there are symbolic names \fBLINUX_REBOOT_*\fP
+   for the constants and a fourth argument to the call: */
+.PP
+\fB#include <linux/reboot.h>  \fP/* Definition of \fBLINUX_REBOOT_*\fP constants */
+\fB#include <sys/syscall.h>   \fP/* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_reboot, int \fP\fImagic\fP\fB, int \fP\fImagic2\fP\fB, int \fP\fIcmd\fP\fB, void *\fP\fIarg\fP\fB);\fP
+.PP
+/* Under glibc and most alternative libc's (including uclibc, dietlibc,
+   musl and a few others), some of the constants involved have gotten
+   symbolic names \fBRB_*\fP, and the library call is a 1\-argument
+   wrapper around the system call: */
+.PP
+\fB#include <sys/reboot.h>    \fP/* Definition of \fBRB_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint reboot(int \fP\fIcmd\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBreboot\fP() 调用重新启动系统，或 enables/disables 重新启动击键 (缩写为 CAD，因为默认为
+Ctrl\-Alt\-Delete; 可以使用 \fBloadkeys\fP(1)) 进行更改。
+.PP
+该系统调用失败 (错误 \fBEINVAL\fP)，除非 \fImagic\fP 等于 \fBLINUX_REBOOT_MAGIC1\fP (即 0xfee1dead)
+且 \fImagic2\fP 等于 \fBLINUX_REBOOT_MAGIC2\fP (即 0x28121969)。 但是，由于 Linux 2.1.17 也允许
+\fBLINUX_REBOOT_MAGIC2A\fP (即 0x05121996) 并且由于 Linux 2.1.97 也允许
+\fBLINUX_REBOOT_MAGIC2B\fP (即 0x16041998) 以及由于 Linux 2.5.71 也允许
+\fBLINUX_REBOOT_MAGIC2C\fP (即 0x20112000) 作为 \fImagic2\fP 的值。 (这些常量的十六进制值是有意义的。)
+.PP
+\fIcmd\fP 参数可以有以下值:
+.TP 
+\fBLINUX_REBOOT_CMD_CAD_OFF\fP
+(\fBRB_DISABLE_CAD\fP, 0).  CAD 已禁用。 这意味着 CAD 键击将导致 \fBSIGINT\fP 信号被发送到 init (进程
+1)，于是该进程可能决定采取适当的操作 (可能: 终止所有进程、同步、重启)。
+.TP 
+\fBLINUX_REBOOT_CMD_CAD_ON\fP
+(\fBRB_ENABLE_CAD\fP, 0x89abcdef).   CAD 已启用。 这意味着 CAD 击键将立即导致与
+\fBLINUX_REBOOT_CMD_RESTART\fP 关联的操作。
+.TP 
+\fBLINUX_REBOOT_CMD_HALT\fP
+(\fBRB_HALT_SYSTEM\fP, 0xcdef0123; 自 Linux 1.1.76)。 打印消息 "System halted."，系统停止。
+控制权交给 ROM 监视器 (如果有的话)。 如果前面没有 \fBsync\fP(2)，数据将会丢失。
+.TP 
+\fBLINUX_REBOOT_CMD_KEXEC\fP
+(\fBRB_KEXEC\fP，0x45584543，自 Linux 2.6.13)。 执行先前已使用 \fBkexec_load\fP(2) 加载的内核。
+此选项仅在内核配置为 \fBCONFIG_KEXEC\fP 时可用。
+.TP 
+\fBLINUX_REBOOT_CMD_POWER_OFF\fP
+(\fBRB_POWER_OFF\fP, 0x4321fedc; 自 Linux 2.1.30)。 打印消息 "Power
+down."，系统停止，并在可能的情况下切断系统的所有电源。 如果前面没有 \fBsync\fP(2)，数据将会丢失。
+.TP 
+\fBLINUX_REBOOT_CMD_RESTART\fP
+(\fBRB_AUTOBOOT\fP, 0x1234567).   打印消息 "Restarting system."，并立即执行默认重启。 如果前面没有
+\fBsync\fP(2)，数据将会丢失。
+.TP 
+\fBLINUX_REBOOT_CMD_RESTART2\fP
+(0xa1b2c3d4; 从 Linux 2.1.30 开始)。 打印消息 "Restarting system with command
+\[aq]%s\[aq]"，并立即执行重启 (使用 \fIarg\fP) 中给出的命令字符串。 如果前面没有 \fBsync\fP(2)，数据将会丢失。
+.TP 
+\fBLINUX_REBOOT_CMD_SW_SUSPEND\fP
+(\fBRB_SW_SUSPEND\fP, 0xd000fce1; 自 Linux 2.5.18)。 系统暂停 (hibernated) 到磁盘。
+此选项仅在内核配置为 \fBCONFIG_HIBERNATION\fP 时可用。
+.PP
+只有超级用户可以调用 \fBreboot\fP()。
+.PP
+.\"
+上述操作的确切效果取决于架构。 对于 i386 架构，额外的参数目前 (2.1.122) 没有做任何事情，但是重启的类型可以通过内核命令行参数
+("reboot=...") 来决定是热重启还是冷重启，硬重启还是通过 BIOS。
+.SS "Behavior inside PID namespaces"
+.\" commit cf3f89214ef6a33fad60856bc5ffd7bb2fc4709b
+.\" see also commit 923c7538236564c46ee80c253a416705321f13e3
+从 Linux 3.4 开始，如果从具有下面列出的 \fIcmd\fP 值之一的初始 PID 命名空间以外的 PID 命名空间调用
+\fBreboot\fP()，它会执行该命名空间的 "reboot": PID 命名空间的 "init" 进程立即终止，效果如下所述在
+\fBpid_namespaces\fP(7)。
+.PP
+在这种情况下调用 \fBreboot\fP() 时可以在 \fIcmd\fP 中提供的值如下:
+.TP 
+\fBLINUX_REBOOT_CMD_RESTART\fP, \fBLINUX_REBOOT_CMD_RESTART2\fP
+"init" 进程终止，父进程中的 \fBwait\fP(2) 报告子进程已用 \fBSIGHUP\fP 信号杀死。
+.TP 
+\fBLINUX_REBOOT_CMD_POWER_OFF\fP, \fBLINUX_REBOOT_CMD_HALT\fP
+"init" 进程终止，父进程中的 \fBwait\fP(2) 报告子进程已用 \fBSIGINT\fP 信号杀死。
+.PP
+对于其他 \fIcmd\fP 值，\fBreboot\fP() 返回 \-1，\fIerrno\fP 设置为 \fBEINVAL\fP。
+.SH "RETURN VALUE"
+对于停止或重新启动系统的 \fIcmd\fP 的值，对 \fBreboot\fP() 的成功调用不会返回。 对于其他 \fIcmd\fP 值，成功时返回零。
+在所有情况下，失败时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+在 \fBLINUX_REBOOT_CMD_RESTART2\fP 下获取用户空间数据时出现问题。
+.TP 
+\fBEINVAL\fP
+错误的幻数或 \fIcmd\fP。
+.TP 
+\fBEPERM\fP
+调用进程对调用 \fBreboot\fP() 的权限不足; 调用者必须在其用户命名空间中包含 \fBCAP_SYS_BOOT\fP。
+.SH STANDARDS
+\fBreboot\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH "SEE ALSO"
+\fBsystemctl\fP(1), \fBsystemd\fP(1), \fBkexec_load\fP(2), \fBsync\fP(2),
+\fBbootparam\fP(7), \fBcapabilities\fP(7), \fBctrlaltdel\fP(8), \fBhalt\fP(8),
+\fBshutdown\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

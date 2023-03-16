@@ -1,0 +1,89 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2003 Andries E. Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH alloc_hugepages 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+alloc_hugepages, free_hugepages \- 分配或释放大页面
+.SH SYNOPSIS
+.nf
+.\" asmlinkage unsigned long sys_alloc_hugepages(int key, unsigned long addr,
+.\" unsigned long len, int prot, int flag);
+.\" asmlinkage int sys_free_hugepages(unsigned long addr);
+\fBvoid *syscall(SYS_alloc_hugepages, int \fP\fIkey\fP\fB, void \fP\fIaddr\fP\fB[.\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB,\fP
+\fB              int \fP\fIprot\fP\fB, int \fP\fIflag\fP\fB);\fP
+\fBint syscall(SYS_free_hugepages, void *\fP\fIaddr\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+系统调用 \fBalloc_hugepages\fP() 和 \fBfree_hugepages\fP() 在 Linux 2.5.36 中引入并在 Linux
+2.5.54 中再次删除。 它们仅存在于 i386 和 ia64 上 (当使用 \fBCONFIG_HUGETLB_PAGE\fP).  在 Linux
+2.4.20 中，存在 syscall 编号，但调用失败并显示错误 \fBENOSYS\fP。
+.PP
+在 i386 上，内存管理硬件知道普通页面 (4\KiB) 和大页面 (2 或 4\MiB)。 同样，ia64 知道几种大小的大页面。
+这些系统调用用于将 map 大页面放入进程内存或再次释放它们。 大页面被锁定在内存中，不会被交换。
+.PP
+\fIkey\fP 参数是一个标识符。 当为零时，页面是私有的，不会被子节点继承。 当为正时，页面将与使用相同 \fIkey\fP
+的其他应用程序共享，并由子进程继承。
+.PP
+\fBfree_hugepages\fP() 的 \fIaddr\fP 参数告诉哪个页面被释放: 它是一个调用到 \fBalloc_hugepages\fP()
+的返回值。 (当所有用户释放内存时，内存首先实际释放。) \fBalloc_hugepages\fP() 的 \fIaddr\fP
+参数是一个提示，内核可能会或可能不会跟随。 地址必须正确对齐。
+.PP
+\fIlen\fP 参数是所需段的长度。 它必须是大页面大小的倍数。
+.PP
+\fIprot\fP 参数指定段的内存保护。 它是 \fBPROT_READ\fP、\fBPROT_WRITE\fP、\fBPROT_EXEC\fP 之一。
+.PP
+\fIflag\fP 参数被忽略，除非 \fIkey\fP 为正数。 在那种情况下，如果 \fIflag\fP 是
+\fBIPC_CREAT\fP，那么当不存在具有给定键的大页面段时，将创建一个新的大页面段。 如果未设置此标志，则在不存在具有给定键的段时返回
+\fBENOENT\fP。
+.SH "RETURN VALUE"
+成功时，\fBalloc_hugepages\fP() 返回分配的虚拟地址，\fBfree_hugepages\fP() 返回零。 出错时返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBENOSYS\fP
+该内核不支持系统调用。
+.SH FILES
+.TP 
+\fI/proc/sys/vm/nr_hugepages\fP
+配置的 hugetlb 页数。 这是可以读和写的。
+.TP 
+\fI/proc/meminfo\fP
+在三个变量 HugePages_Total、HugePages_Free、Hugepagesize 中提供有关配置的 hugetlb
+页数及其大小的信息。
+.SH STANDARDS
+这些已灭绝的系统调用特定于 Intel 处理器上的 Linux。
+.SH NOTES
+这些系统调用消失了; 它们仅存在于 Linux 2.5.36 到 Linux 2.5.54 中。 现在可以改用 hugetlbfs 文件系统。
+由大页面支持的内存 (如果 CPU 支持) 是通过使用此虚拟文件系统中的 \fBmmap\fP(2) 到 map 文件获得的。
+.PP
+可以使用 \fBhugepages=\fP 引导参数指定大页面的最大数量。
+.\".PP
+.\" requires CONFIG_HUGETLB_PAGE (under "Processor type and features")
+.\" and CONFIG_HUGETLBFS (under "Filesystems").
+.\" mount \-t hugetlbfs hugetlbfs /huge
+.\" SHM_HUGETLB
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

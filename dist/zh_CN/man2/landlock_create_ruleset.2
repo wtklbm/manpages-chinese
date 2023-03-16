@@ -1,0 +1,96 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright © 2017-2020 Mickaël Salaün <mic@digikod.net>
+.\" Copyright © 2019-2020 ANSSI
+.\" Copyright © 2021 Microsoft Corporation
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH landlock_create_ruleset 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+landlock_create_ruleset \- 创建一个新的 Landlock 规则集
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/landlock.h>\fP  /* Definition of \fBLANDLOCK_*\fP constants */
+\fB#include <sys/syscall.h>\fP     /* Definition of \fBSYS_*\fP constants */
+.PP
+\fBint syscall(SYS_landlock_create_ruleset,\fP
+\fB            const struct landlock_ruleset_attr *\fP\fIattr\fP\fB,\fP
+\fB            size_t \fP\fIsize\fP\fB , uint32_t \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+Landlock 规则集标识一组规则 (即对对象的操作)。 这个 \fBlandlock_create_ruleset\fP()
+系统调用可以创建一个新的文件描述符来标识一个规则集。 然后 \fBlandlock_add_rule\fP(2) 和
+\fBlandlock_restrict_self\fP(2) 可以使用此文件描述符。 有关全面概述，请参见 \fBlandlock\fP(7)。
+.PP
+\fIattr\fP 指定新规则集的属性。 它指向以下结构体:
+.IP
+.in +4n
+.EX
+struct landlock_ruleset_attr {
+    __u64 handled_access_fs;
+};
+.EE
+.in
+.IP
+\fIhandled_access_fs\fP 是此规则集处理的操作的位掩码，如果没有规则明确允许它们，则应被禁止 (请参见
+\fBlandlock\fP(7)).x 中的 \fBFilesystem actions\fP)。 这可以简单地限制环境权限 (例如，全局文件系统访问)
+并且出于兼容性原因需要。
+.PP
+出于兼容性原因，必须将 \fIsize\fP 指定为 \fIsizeof(struct landlock_ruleset_attr)\fP。
+.PP
+如果使用 \fIattr\fP，则 \fIflags\fP 必须为 0。 否则，\fIflags\fP 可以设置为:
+.TP 
+\fBLANDLOCK_CREATE_RULESET_VERSION\fP
+如果 \fIattr\fP 为 NULL 且 \fIsize\fP 为 0，则返回值是支持的最高 Landlock ABI 版本 (从 1 开始)。
+此版本可用于尽力而为的安全方法，当用户空间未固定到特定内核版本时，鼓励使用此方法。 这些手册页中记录的所有特性都适用于该版本 1.
+.SH "RETURN VALUE"
+成功时，根据 \fIflags\fP，\fBlandlock_create_ruleset\fP() 返回一个新的 Landlock 规则集文件描述符或
+Landlock ABI 版本。
+.SH ERRORS
+\fBlandlock_create_ruleset\fP() 可能因以下原因而失败:
+.TP 
+\fBEOPNOTSUPP\fP
+内核支持 Landlock，但在启动时禁用。
+.TP 
+\fBEINVAL\fP
+未知的 \fIflags\fP，或未知的访问，或太小的 \fIsize\fP。
+.TP 
+\fBE2BIG\fP
+\fIsize\fP 太大了。
+.TP 
+\fBEFAULT\fP
+\fIattr\fP 不是有效地址。
+.TP 
+\fBENOMSG\fP
+空访问 (即 \fIattr\->handled_access_fs\fP 为 0)。
+.SH VERSIONS
+在 Linux 5.13 中添加了 Landlock。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH EXAMPLES
+请参见 \fBlandlock\fP(7)。
+.SH "SEE ALSO"
+\fBlandlock_add_rule\fP(2), \fBlandlock_restrict_self\fP(2), \fBlandlock\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

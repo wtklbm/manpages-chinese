@@ -1,0 +1,204 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2005, 2008, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" (A few fragments remain from an earlier (1992) version by
+.\" Drew Eckhardt <drew@cs.colorado.edu>.)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-23 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2004-06-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2005, mtk: added an example program
+.\" Modified 2008-01-09, mtk: rewrote DESCRIPTION; minor additions
+.\"     to EXAMPLE text.
+.\" 2008-10-10, mtk: add description of pipe2()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pipe 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pipe, pipe2 \- create pipe
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint pipe(int \fP\fIpipefd\fP\fB[2]);\fP
+.PP
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP              /* Definition of \fBO_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint pipe2(int \fP\fIpipefd\fP\fB[2], int \fP\fIflags\fP\fB);\fP
+.PP
+/* On Alpha, IA\-64, MIPS, SuperH, and SPARC/SPARC64, pipe() has the
+   following prototype; see NOTES */
+.PP
+\fB#include <unistd.h>\fP
+.PP
+\fBstruct fd_pair {\fP
+\fBlong fd[2];\fP
+\fB};\fP
+\fBstruct fd_pair pipe(void);\fP
+.fi
+.SH DESCRIPTION
+\fBpipe\fP() 创建一个管道，一个可用于进程间通信的单向数据通道。 数组 \fIpipefd\fP 用于返回两个指向管道末端的文件描述符。
+\fIpipefd[0]\fP 指的是管道的读取端。 \fIpipefd[1]\fP 指的是管道的写端。 写入管道写端的数据由内核缓冲，直到从管道的读端读取数据。
+有关详细信息，请参见 \fBpipe\fP(7)。
+.PP
+如果 \fIflags\fP 为 0，则 \fBpipe2\fP() 与 \fBpipe\fP() 相同。 可以在 \fIflags\fP
+中对以下值进行按位或运算以获得不同的行为:
+.TP 
+\fBO_CLOEXEC\fP
+在两个新文件描述符上设置 close\-on\-exec (\fBFD_CLOEXEC\fP) 标志。 请参见 \fBopen\fP(2)
+中相同标志的描述，了解这可能有用的原因。
+.TP 
+\fBO_DIRECT\fP (since Linux 3.4)
+.\" commit 9883035ae7edef3ec62ad215611cb8e17d6a1a5d
+创建一个以 "packet" 模式执行 I/O 的管道。 每个到管道的 \fBwrite\fP(2) 都作为一个单独的数据包处理，来自管道的
+\fBread\fP(2)s 将一次读取一个数据包。 请注意以下几点:
+.RS
+.IP \[bu] 3
+大于 \fBPIPE_BUF\fP 字节的写入 (请参见 \fBpipe\fP(7)) 将被拆分为多个数据包。 常量 \fBPIPE_BUF\fP 在
+\fI<limits.h>\fP 中定义。
+.IP \[bu]
+如果 \fBread\fP(2) 指定的缓冲区大小小于下一个数据包，则读取请求的字节数，并丢弃数据包中多余的字节。 指定 \fBPIPE_BUF\fP
+的缓冲区大小将足以读取最大可能的数据包 (请参见上一点)。
+.IP \[bu]
+不支持零长度数据包。 (指定缓冲区大小为零的 \fBread\fP(2) 是空操作，并返回 0。)
+.RE
+.IP
+不支持此标志的旧内核将通过 \fBEINVAL\fP 错误指示这一点。
+.IP
+.\" commit 0dbf5f20652108106cb822ad7662c786baaa03ff
+.\" FIXME . But, it is not possible to specify O_DIRECT when opening a FIFO
+从 Linux 4.5 开始，可以使用 \fBfcntl\fP(2) 更改管道文件描述符的 \fBO_DIRECT\fP 设置。
+.TP 
+\fBO_NONBLOCK\fP
+在新文件描述符引用的打开文件描述上设置 \fBO_NONBLOCK\fP 文件状态标志。 使用此标志可节省对 \fBfcntl\fP(2)
+的额外调用以实现相同的结果。
+.TP 
+\fBO_NOTIFICATION_PIPE\fP
+.\" commit c73be61cede5882f9605a852414db559c0ebedfd
+从 Linux 5.8 开始，通用通知机制建立在管道之上，内核将通知消息拼接到用户空间打开的管道中。
+管道的所有者必须告诉内核要监视哪些事件源，并且还可以应用过滤器来选择应将哪些子事件放入管道中。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时，返回 \-1，设置 \fIerrno\fP 以指示错误，\fIpipefd\fP 保持不变。
+.PP
+.\" http://austingroupbugs.net/view.php?id=467
+在 Linux (和其他系统) 上，\fBpipe\fP() 不会在失败时修改 \fIpipefd\fP。 在 POSIX.1\-2008 TC2
+中添加了标准化此行为的要求。 特定于 Linux 的 \fBpipe2\fP() 系统调用同样不会在失败时修改 \fIpipefd\fP。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIpipefd\fP 无效。
+.TP 
+\fBEINVAL\fP
+(\fBpipe2\fP()) \fIflags\fP 中的无效值。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENFILE\fP
+已达到可分配给管道的内存的用户硬限制，并且调用者没有特权; 请参见 \fBpipe\fP(7)。
+.TP 
+\fBENOPKG\fP
+(\fBpipe2\fP()) \fBO_NOTIFICATION_PIPE\fP 已在 \fIflags\fP 中传递，并且支持通知
+(\fBCONFIG_WATCH_QUEUE\fP) 未编译到内核中。
+.SH VERSIONS
+\fBpipe2\fP() 在 Linux 2.6.27 中加入; glibc 支持从 glibc 2.9 开始可用。
+.SH STANDARDS
+\fBpipe\fP(): POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBpipe2\fP() 是特定于 Linux 的。
+.SH NOTES
+.\" See http://math-atlas.sourceforge.net/devel/assembly/64.psabi.1.33.ps.Z
+.\" for example, section 3.2.1 "Registers and the Stack Frame".
+某些体系结构上的 System V ABI 允许使用多个寄存器来返回多个值; 几个体系结构 (即 Alpha、IA\-64、MIPS、SuperH 和
+SPARC/SPARC64) (ab) 使用此特性以 特性方式实现 \fBpipe\fP() 系统调用:
+调用不接受任何参数并返回一对文件描述符作为成功的回报值。 glibc \fBpipe\fP() 包装器函数透明地处理这个问题。
+有关用于存储第二个文件描述符的寄存器的信息，请参见 \fBsyscall\fP(2)。
+.SH EXAMPLES
+.\" fork.2 refers to this example program.
+下面程序创建一个管道，然后 \fBfork\fP(2)s 创建一个子进程; 子节点继承了一组引用同一管道的重复文件描述符。 在 \fBfork\fP(2)
+之后，每个进程关闭管道不需要的文件描述符 (参见 \fBpipe\fP(7)).
+然后，父进程将程序命令行参数中包含的字符串写入管道，子进程从管道中一次一个字节地读取该字符串，并在标准输出上回显。
+.SS "Program source"
+.\" SRC BEGIN (pipe.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int    pipefd[2];
+    char   buf;
+    pid_t  cpid;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <string>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (pipe(pipefd) == \-1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    cpid = fork();
+    if (cpid == \-1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (cpid == 0) {    /* Child reads from pipe */
+        close(pipefd[1]);          /* Close unused write end */
+
+        while (read(pipefd[0], &buf, 1) > 0)
+            write(STDOUT_FILENO, &buf, 1);
+
+        write(STDOUT_FILENO, "\en", 1);
+        close(pipefd[0]);
+        _exit(EXIT_SUCCESS);
+
+    } else {            /* Parent writes argv[1] to pipe */
+        close(pipefd[0]);          /* Close unused read end */
+        write(pipefd[1], argv[1], strlen(argv[1]));
+        close(pipefd[1]);          /* Reader will see EOF */
+        wait(NULL);                /* Wait for child */
+        exit(EXIT_SUCCESS);
+    }
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfork\fP(2), \fBread\fP(2), \fBsocketpair\fP(2), \fBsplice\fP(2), \fBtee\fP(2),
+\fBvmsplice\fP(2), \fBwrite\fP(2), \fBpopen\fP(3), \fBpipe\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

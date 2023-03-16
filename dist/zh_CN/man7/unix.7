@@ -1,0 +1,727 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>,
+.\" Copyright (C) 2008-2014, Michael Kerrisk <mtk.manpages@gmail.com>,
+.\" and Copyright (C) 2016, Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" Modified, 2003-12-02, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\" Modified, 2003-09-23, Adam Langley
+.\" Modified, 2004-05-27, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\"	Added SOCK_SEQPACKET
+.\" 2008-05-27, mtk, Provide a clear description of the three types of
+.\"     address that can appear in the sockaddr_un structure: pathname,
+.\"     unnamed, and abstract.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH UNIX 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+unix \- 用于本地进程间通信的套接字
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <sys/un.h>\fP
+.PP
+\fIunix_socket\fP\fB =socket (AF_UNIX, 类型，0);\fP
+\fIerror\fP\fB = socketpair(AF_UNIX, type, 0, int *\fP\fIsv\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBAF_UNIX\fP (也称为 \fBAF_LOCAL\fP) 套接字系列) 用于在同一台机器上的进程之间高效地进行通信。 传统上，UNIX
+域套接字可以是未命名的，也可以绑定到文件系统路径名 (标记为套接字类型)。 Linux 还支持独立于文件系统的抽象命名空间。
+.PP
+UNIX 域中的有效套接字类型是: \fBSOCK_STREAM\fP，用于面向流的套接字; \fBSOCK_DGRAM\fP，用于保留消息边界的面向数据报的套接字
+(与大多数 UNIX 实现一样，UNIX 域数据报套接字始终可靠并且不会重新排序数据报) ; 和 (自 Linux 2.6.4 起)
+\fBSOCK_SEQPACKET\fP，用于面向连接的序列数据包套接字，保留消息边界，并按照发送消息的顺序传递消息。
+.PP
+UNIX 域套接字支持使用辅助数据将文件描述符或进程凭证传递给其他进程。
+.SS "Address format"
+UNIX 域套接字地址在以下结构体中表示:
+.PP
+.in +4n
+.EX
+.\" #define UNIX_PATH_MAX    108
+.\"
+struct sockaddr_un {
+    sa_family_t sun_family;               /* AF_UNIX */
+    char        sun_path[108];            /* Pathname */
+};
+.EE
+.in
+.PP
+\fIsun_family\fP 字段始终包含 \fBAF_UNIX\fP。 在 Linux 上，\fIsun_path\fP 的大小为 108 个字节;
+另请参见下面的错误。
+.PP
+各种系统调用 (例如，\fBbind\fP(2)、\fBconnect\fP(2) 和 \fBsendto\fP(2)) 将 \fIsockaddr_un\fP 参数作为输入。
+其他一些系统调用 (例如，\fBgetsockname\fP(2)、\fBgetpeername\fP(2)、\fBrecvfrom\fP(2) 和
+\fBaccept\fP(2))) 返回此类型的参数。
+.PP
+\fIsockaddr_un\fP 结构体区分三种地址:
+.TP 
+pathname
+可以使用 \fBbind\fP(2) 将 UNIX 域套接字绑定到以 null 结尾的文件系统路径名。 当返回路径名套接字的地址时
+(通过上述系统调用之一)，其长度为
+.IP
+.in +4n
+.EX
+offsetof(struct sockaddr_un, sun_path) + strlen(sun_path) + 1
+.EE
+.in
+.IP
+\fIsun_path\fP 包含以 null 结尾的路径名。 (在 Linux 上，上述 \fBoffsetof\fP() 表达式等同于与
+\fIsizeof(sa_family_t)\fP 相同的值，但一些其他实现包括 \fIsun_path\fP 之前的其他字段，因此 \fBoffsetof\fP()
+表达式更便携地描述了地址结构体的大小。)
+.IP
+有关路径名套接字的更多详细信息，请参见下文。
+.TP 
+unnamed
+.\" There is quite some variation across implementations: FreeBSD
+.\" says the length is 16 bytes, HP-UX 11 says it's zero bytes.
+没有使用 \fBbind\fP(2) 绑定到路径名的流套接字没有名称。 同样，由 \fBsocketpair\fP(2) 创建的两个套接字也是未命名的。
+返回未命名套接字的地址时，其长度为 \fIsizeof(sa_family_t)\fP，不应检查 \fIsun_path\fP。
+.TP 
+abstract
+抽象套接字地址 (与路径名套接字) 的区别在于 \fIsun_path[0]\fP 是空字节 (\[aq]\e0\[aq])。 该名称空间中的套接字地址由
+\fIsun_path\fP 中的附加字节给出，这些字节被指定长度的地址结构体覆盖。 (名称中的空字节没有特殊意义。) 名称与文件系统路径名无关。
+当返回抽象套接字的地址时，返回的 \fIaddrlen\fP 大于 \fIsizeof(sa_family_t)\fP (即大于 2)，套接字的名称包含在
+\fIsun_path\fP 的前 \fI(addrlen \- sizeof(sa_family_t))\fP 字节中。
+.SS "Pathname sockets"
+将套接字绑定到路径名时，应遵守一些规则以获得最大的可移植性和易于编码:
+.IP \[bu] 3
+\fIsun_path\fP 中的路径名应该以 null 结尾。
+.IP \[bu]
+路径名的长度，包括终止空字节，不应超过 \fIsun_path\fP 的大小。
+.IP \[bu]
+描述封闭的 \fIsockaddr_un\fP 结构体的 \fIaddrlen\fP 参数值至少应为:
+.IP
+.in +4n
+.EX
+offsetof (结构体 sockaddr_un, sun_path)+strlen (addr.sun_path)+1
+.EE
+.in
+.IP
+或者，更简单地说，\fIaddrlen\fP 可以指定为 \fIsizeof(struct sockaddr_un)\fP。
+.PP
+.\" Linux does this, including for the case where the supplied path
+.\" is 108 bytes
+在实现如何处理不遵循上述规则的 UNIX 域套接字地址方面存在一些差异。 例如，如果提供的 \fIsun_path\fP 中没有终止符，一些 (但不是全部)
+实现会，追加，一个空终止符。
+.PP
+.\" HP-UX
+.\" Modern BSDs generally have 104, Tru64 and AIX have 104,
+.\" Solaris and Irix have 108
+在编写可移植应用程序时，请记住一些实现的 \fIsun_path\fP 短至 92 字节。
+.PP
+.\"
+各种系统调用 (\fBaccept\fP(2)、\fBrecvfrom\fP(2)、\fBgetsockname\fP(2)、\fBgetpeername\fP(2))
+返回套接字地址结构。 当应用于 UNIX 域套接字时，提供给调用的值 \- 结果 \fIaddrlen\fP 参数应如上初始化。
+返回时，参数设置为指示地址结构体的 \fIactual\fP 大小。 调用者应检查此参数中返回的值: 如果输出值超过输入值，则无法保证 \fIsun_path\fP
+中存在空终止符。 (见错误。)
+.SS "Pathname socket ownership and permissions"
+在 Linux 实现中，路径名套接字遵循它们所在目录的权限。 如果进程对创建套接字的目录没有写入和搜索 (execute)
+权限，则新套接字的创建将失败。
+.PP
+在 Linux 上，连接到流套接字对象需要对该套接字的写权限; 向数据报套接字发送数据报同样需要对该套接字的写权限。 POSIX
+不对权限对套接字文件的影响做出任何声明，并且在某些系统 (例如，较旧的 BSD) 上，套接字权限会被忽略。 便携式程序不应依赖此特性来确保安全。
+.PP
+当创建一个新的套接字时，套接字文件的所有者和组是按照通常的规则设置的。 套接字文件启用了所有权限，但进程 \fBumask\fP(2) 关闭的权限除外。
+.PP
+.\" However, fchown() and fchmod() do not seem to have an effect
+.\"
+可以更改路径名套接字的所有者、组和权限 (使用 \fBchown\fP(2) 和 \fBchmod\fP(2)).
+.SS "Abstract sockets"
+套接字权限对抽象套接字没有意义: 进程 \fBumask\fP(2) 在绑定抽象套接字时没有效果，并且更改对象的所有权和权限 (通过 \fBfchown\fP(2)
+和 \fBfchmod\fP(2)) 对套接字的可访问性没有影响。
+.PP
+当所有对套接字打开的引用都关闭时，抽象套接字自动消失。
+.PP
+.\"
+抽象套接字名称空间是不可移植的 Linux 扩展。
+.SS "Socket options"
+由于历史原因，这些套接字选项指定为 \fBSOL_SOCKET\fP 类型，即使它们是特定于 \fBAF_UNIX\fP 的。 通过将 \fBSOL_SOCKET\fP
+指定为套接字系列，它们可以用 \fBsetsockopt\fP(2) 设置并用 \fBgetsockopt\fP(2) 读取。
+.TP 
+\fBSO_PASSCRED\fP
+启用此套接字选项会导致在随后收到的每个消息中的 \fBSCM_CREDENTIALS ancillary\fP 消息中接收发送进程的凭据。
+返回的凭据是发送者使用 \fBSCM_CREDENTIALS\fP 指定的凭据，或者如果发送者未指定 \fBSCM_CREDENTIALS\fP
+辅助数据，则默认包括发送者的 PID、真实用户 ID 和真实组 ID。
+.IP
+当设置此选项且套接字尚未连接时，将自动生成抽象名称空间中的唯一名称。
+.IP
+作为 \fBsetsockopt\fP(2) 的参数给出并作为 \fBgetsockopt\fP(2) 的结果返回的值是一个整数布尔标志。
+.TP 
+\fBSO_PASSSEC\fP
+允许在 \fBSCM_SECURITY\fP 类型的辅助消息中接收对等套接字的 SELinux 安全标签 (见下文)。
+.IP
+作为 \fBsetsockopt\fP(2) 的参数给出并作为 \fBgetsockopt\fP(2) 的结果返回的值是一个整数布尔标志。
+.IP
+.\" commit 877ce7c1b3afd69a9b1caeb1b9964c992641f52a
+.\" commit 37a9a8df8ce9de6ea73349c9ac8bdf6ba4ec4f70
+自 Linux 2.6.18 起，UNIX 域数据报套接字支持 \fBSO_PASSSEC\fP 选项; 在 Linux 4.2 中添加了对 UNIX
+域流套接字的支持。
+.TP 
+\fBSO_PEEK_OFF\fP
+请参见 \fBsocket\fP(7)。
+.TP 
+\fBSO_PEERCRED\fP
+此只读套接字选项返回连接到此套接字的对等进程的凭据。 返回的凭据是调用 \fBconnect\fP(2) 或 \fBsocketpair\fP(2) 时有效的凭据。
+.IP
+\fBgetsockopt\fP(2) 的参数是指向 \fIucred\fP 结构体的指针; 定义 \fB_GNU_SOURCE\fP 特性测试宏以从
+\fI<sys/socket.h>\fP 获得结构体的定义。
+.IP
+只有连接的 \fBAF_UNIX\fP 流套接字和使用 \fBsocketpair\fP(2) 创建的 \fBAF_UNIX\fP 流和数据报套接字对才能使用此选项。
+.TP 
+\fBSO_PEERSEC\fP
+此只读套接字选项返回连接到此套接字的对等套接字的安全上下文。
+默认情况下，这将与创建对等套接字的进程的安全上下文相同，除非被策略或具有所需权限的进程覆盖。
+.IP
+\fBgetsockopt\fP(2) 的参数是指向指定长度 (以字节为单位) 的缓冲区的指针，安全上下文字符串将被复制到该缓冲区中。
+如果缓冲区长度小于安全上下文字符串的长度，则 \fBgetsockopt\fP(2) 返回 \-1，将 \fIerrno\fP 设置为 \fBERANGE\fP，并通过
+\fIoptlen\fP 返回所需的长度。 调用者最初应至少为缓冲区分配 \fBNAME_MAX\fP 字节，但不能保证足够。
+将缓冲区大小调整为返回的长度并可能需要重试。
+.IP
+安全上下文字符串可能在返回的长度中包含终止空字符，但不保证这样做: 安全上下文 "foo" 可能表示为长度为 3 的 {'f','o','o'}
+或长度为 4 的 {'f','o','o','\e0'}，它们被认为是可互换的。 该字符串是可打印的，不包含非终止空字符，并且采用未指定的编码
+(特别是，不保证是 ASCII 或 UTF\-8)。
+.IP
+.\" commit 0b811db2cb2aabc910e53d34ebb95a15997c33e7
+.\"
+自 Linux 2.6.2 以来，支持对 \fBAF_UNIX\fP 地址系列中的套接字使用此选项用于连接的流套接字，并且自 Linux 4.18
+起还支持使用 \fBsocketpair\fP(2) 创建的流和数据报套接字对。
+.SS "Autobind feature"
+.\" i.e., sizeof(short)
+如果 \fBbind\fP(2) 调用将 \fIaddrlen\fP 指定为 \fIsizeof(sa_family_t)\fP，或者为未明确绑定到地址的套接字指定了
+\fBSO_PASSCRED\fP 套接字选项，则套接字将自动绑定到抽象地址。 该地址由一个空字节后跟字符集 \fI[0\-9a\-f]\fP 中的 5 个字节组成。
+因此，有 2\[ha] 20 个自动绑定地址的限制。 (从 Linux 2.1.15 开始，当添加自动绑定特性时，使用了 8 个字节，因此限制为
+2\[ha] 32 个自动绑定地址。Linux 2.3.15 中更改为 5 个字节。)
+.SS "Sockets API"
+以下段落描述了 Linux 上 UNIX 域套接字的套接字 API 的域特定详细信息和不支持的，特性。
+.PP
+UNIX 域套接字不支持带外数据的传输 (\fBsend\fP(2) 和 \fBrecv\fP(2)) 的 \fBMSG_OOB\fP 标志。
+.PP
+UNIX 域套接字不支持 \fBsend\fP(2) \fBMSG_MORE\fP 标志。
+.PP
+.\" commit 9f6f9af7694ede6314bed281eec74d588ba9474f
+在 Linux 3.4 之前，UNIX 域套接字不支持在 \fBrecv\fP(2) 的 \fIflags\fP 参数中使用 \fBMSG_TRUNC\fP。
+.PP
+\fBSO_SNDBUF\fP 套接字选项确实对 UNIX 域套接字有影响，但 \fBSO_RCVBUF\fP 选项没有。
+对于数据报套接字，\fBSO_SNDBUF\fP 值对传出数据报的大小施加了上限。 此限制按双倍计算 (请参见 \fBsocket\fP(7))
+选项值减去用于开销的 32 个字节。
+.SS "Ancillary messages"
+使用 \fBsendmsg\fP(2) 和 \fBrecvmsg\fP(2) 发送和接收辅助数据。 由于历史原因，下面列出的辅助消息类型指定为
+\fBSOL_SOCKET\fP 类型，即使它们是特定于 \fBAF_UNIX\fP 的。 要发送它们，请将结构体 \fIcmsghdr\fP 的
+\fIcmsg_level\fP 字段设置为 \fBSOL_SOCKET\fP，将 \fIcmsg_type\fP 字段设置为类型。 有关详细信息，请参见
+\fBcmsg\fP(3)。
+.TP 
+\fBSCM_RIGHTS\fP
+从另一个进程发送或接收一组打开的文件描述符。 数据部分包含文件描述符的整数数组。
+.IP
+通常，此操作被另一个进程称为 "passing a file descriptor"。 然而，更准确地说，传递的是对打开文件描述的引用 (参见
+\fBopen\fP(2))，在接收过程中很可能会使用不同的文件描述符编号。 从语义上讲，这个操作相当于将 (\fBdup\fP(2))
+一个文件描述符复制到另一个进程的文件描述符表中。
+.IP
+如果用于接收包含文件描述符的辅助数据的缓冲区太小 (或不存在)，则辅助数据将被截断 (或丢弃)，并且在接收过程中自动关闭多余的文件描述符。
+.IP
+如果辅助数据中接收到的文件描述符的数量会导致进程超过其 \fBRLIMIT_NOFILE\fP 资源限制 (请参见
+\fBgetrlimit\fP(2))，接收进程中会自动关闭超出的文件描述符。
+.IP
+.\" commit bba14de98753cb6599a2dae0e520714b2153522d
+内核常量 \fBSCM_MAX_FD\fP 定义了数组中文件描述符数量的限制。 尝试发送大于此限制的数组会导致 \fBsendmsg\fP(2) 失败并显示错误
+\fBEINVAL\fP。 \fBSCM_MAX_FD\fP 的值为 253 (或在 Linux 2.6.38 之前为 255)。
+.TP 
+\fBSCM_CREDENTIALS\fP
+发送或接收 UNIX 凭据。 这可以用于身份验证。 凭据作为 \fIstruct ucred\fP 辅助消息传递。 这个结构体在
+\fI<sys/socket.h>\fP 中定义如下:
+.IP
+.in +4n
+.EX
+struct ucred {
+    pid_t pid;    /* Process ID of the sending process */
+    uid_t uid;    /* User ID of the sending process */
+    gid_t gid;    /* Group ID of the sending process */
+};
+.EE
+.in
+.IP
+从 glibc 2.8 开始，必须定义 \fB_GNU_SOURCE\fP 特性测试宏 (在包含 \fIany\fP 头文件之前) 以获得此结构体的定义。
+.IP
+发送者指定的凭据由内核检查。 允许特权进程指定与其自身不匹配的值。 发送方必须指定自己的进程 ID (除非它具有 \fBCAP_SYS_ADMIN\fP
+能力，在这种情况下可以指定任何现有进程的 PID)、它的真实用户 ID、有效用户 ID 或保存的 set\-user\-ID (除非它有
+\fBCAP_SETUID\fP)，以及它的真实组 ID，有效组 ID，或者保存的 set\-group\-ID (除非它有 \fBCAP_SETGID\fP).
+.IP
+要接收 \fIstruct ucred\fP 消息，必须在套接字上启用 \fBSO_PASSCRED\fP 选项。
+.TP 
+\fBSCM_SECURITY\fP
+接收对等套接字的 SELinux 安全上下文 (安全标签)。 接收到的辅助数据是一个包含安全上下文的以空字符结尾的字符串。
+接收者应为此数据在辅助消息的数据部分中分配至少 \fBNAME_MAX\fP 字节。
+.IP
+要接收安全上下文，必须在套接字上启用 \fBSO_PASSSEC\fP 选项 (见上文)。
+.PP
+当用 \fBsendmsg\fP(2) 发送辅助数据时，发送的报文中只能包含上述每种类型的一项。
+.PP
+发送辅助数据时至少要发送一个字节的真实数据。 在 Linux 上，这是通过 UNIX 域流套接字成功发送辅助数据所必需的。 当通过 UNIX
+域数据报套接字发送辅助数据时，在 Linux 上没有必要发送任何伴随的真实数据。
+但是，当通过数据报套接字发送辅助数据时，便携式应用程序还应包括至少一个字节的实际数据。
+.PP
+当从流套接字接收时，辅助数据形成了一种接收数据的屏障。 例如，假设发送方发送如下:
+.PP
+.RS
+.PD 0
+.IP (1) 5
+四个字节的 \fBsendmsg\fP(2)，没有辅助数据。
+.IP (2)
+一个字节的 \fBsendmsg\fP(2)，带有辅助数据。
+.IP (3)
+四个字节的 \fBsendmsg\fP(2)，没有辅助数据。
+.PD
+.RE
+.PP
+假设接收者现在执行 \fBrecvmsg\fP(2) 调用，每个调用的缓冲区大小为 20 字节。 第一个调用将接收五个字节的数据，以及第二个
+\fBsendmsg\fP(2) 调用发送的辅助数据。 下一次调用会收到剩余的四个字节的数据。
+.PP
+.\"
+如果分配用于接收传入辅助数据的空间太小，则辅助数据将被截断为适合提供的缓冲区的标头数量 (或者，在 \fBSCM_RIGHTS\fP
+文件描述符列表的情况下，文件描述符列表可能是截断)。 如果没有为传入的辅助数据提供缓冲区 (即，提供给 \fBrecvmsg\fP(2) 的
+\fImsghdr\fP 结构体的 \fImsg_control\fP 字段为 NULL)，则丢弃传入的辅助数据。 在这两种情况下，都会在
+\fBrecvmsg\fP(2) 返回的 \fImsg.msg_flags\fP 值中设置 \fBMSG_CTRUNC\fP 标志。
+.SS Ioctls
+以下 \fBioctl\fP(2) 调用在 \fIvalue\fP 中返回信息。 正确的语法是:
+.PP
+.RS
+.nf
+\fBint\fP\fI value\fP\fB;\fP
+\fIerror\fP\fB = ioctl(\fP\fIunix_socket\fP\fB, \fP\fIioctl_type\fP\fB, &\fP\fIvalue\fP\fB);\fP
+.fi
+.RE
+.PP
+\fIioctl_type\fP 可以是:
+.TP 
+\fBSIOCINQ\fP
+.\" FIXME . http://sources.redhat.com/bugzilla/show_bug.cgi?id=12002,
+.\" filed 2010-09-10, may cause SIOCINQ to be defined in glibc headers
+.\" SIOCOUTQ also has an effect for UNIX domain sockets, but not
+.\" quite what userland might expect. It seems to return the number
+.\" of bytes allocated for buffers containing pending output.
+.\" That number is normally larger than the number of bytes of pending
+.\" output. Since this info is, from userland's point of view, imprecise,
+.\" and it may well change, probably best not to document this now.
+对于 \fBSOCK_STREAM\fP 套接字，此调用返回接收缓冲区中未读字节数。 套接字不能处于 LISTEN 状态，否则将返回错误
+(\fBEINVAL\fP)。 \fBSIOCINQ\fP 在 \fI<linux/sockios.h>\fP 中定义。 或者，您可以使用
+\fI<sys/ioctl.h>\fP 中定义的同义词 \fBFIONREAD\fP。 对于 \fBSOCK_DGRAM\fP 套接字，返回值与
+Internet 域数据报套接字相同; 请参见 \fBudp\fP(7)。
+.SH ERRORS
+.TP 
+\fBEADDRINUSE\fP
+指定的本地地址已在使用或文件系统套接字对象已存在。
+.TP 
+\fBEBADF\fP
+当通过 UNIX 域套接字将文件描述符作为辅助数据发送时，\fBsendmsg\fP(2) 可能会发生此错误 (请参见上面对 \fBSCM_RIGHTS\fP
+的描述)，并指示正在发送的文件描述符编号无效 (例如，它不是打开文件描述符)。
+.TP 
+\fBECONNREFUSED\fP
+\fBconnect\fP(2) 指定的远程地址不是侦听套接字。 如果目标路径名不是套接字，也会发生此错误。
+.TP 
+\fBECONNRESET\fP
+远程套接字意外关闭。
+.TP 
+\fBEFAULT\fP
+用户内存地址无效。
+.TP 
+\fBEINVAL\fP
+传递的参数无效。 一个常见的原因是在传递地址的 \fIsun_type\fP 字段中未指定值 \fBAF_UNIX\fP，或者套接字对于应用的操作处于无效状态。
+.TP 
+\fBEISCONN\fP
+\fBconnect\fP(2) 在已连接的套接字上调用或在已连接的套接字上指定了目标地址。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOENT\fP
+指定给 \fBconnect\fP(2) 的远程地址中的路径名不存在。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBENOTCONN\fP
+套接字操作需要目标地址，但套接字未连接。
+.TP 
+\fBEOPNOTSUPP\fP
+在非面向流的套接字上调用流操作或尝试使用带外数据选项。
+.TP 
+\fBEPERM\fP
+发送者在 \fIstruct ucred\fP 中传递了无效凭据。
+.TP 
+\fBEPIPE\fP
+远程套接字在流套接字上关闭。 如果启用，也会发送 \fBSIGPIPE\fP。 这可以通过将 \fBMSG_NOSIGNAL\fP 标志传递给 \fBsend\fP(2)
+或 \fBsendmsg\fP(2) 来避免。
+.TP 
+\fBEPROTONOSUPPORT\fP
+通过的协议不是 \fBAF_UNIX\fP。
+.TP 
+\fBEPROTOTYPE\fP
+远程套接字与本地套接字类型 (\fBSOCK_DGRAM\fP 与 \fBSOCK_STREAM\fP) 不匹配。
+.TP 
+\fBESOCKTNOSUPPORT\fP
+未知套接字类型。
+.TP 
+\fBESRCH\fP
+在发送包含凭据 (\fBSCM_CREDENTIALS\fP) 的辅助消息时，调用方指定了一个与任何现有进程都不匹配的 PID。
+.TP 
+\fBETOOMANYREFS\fP
+当通过 UNIX 域套接字将文件描述符作为辅助数据发送时，\fBsendmsg\fP(2) 可能会发生此错误 (请参见上面对 \fBSCM_RIGHTS\fP
+的描述)。 如果 "in\-flight" 文件描述符的数量超过 \fBRLIMIT_NOFILE\fP 资源限制并且调用者没有
+\fBCAP_SYS_RESOURCE\fP 能力，就会发生这种情况。 正在运行的文件描述符是使用 \fBsendmsg\fP(2) 发送但尚未在使用
+\fBrecvmsg\fP(2) 的接收进程中接受的文件描述符。
+.IP
+.\" commit 712f4aad406bb1ed67f3f98d04c044191f0ff593
+此错误自主线 Linux 4.5 以来被诊断出来 (以及在一些较早的内核版本中已向后移植了修复程序)。 在早期的内核版本中，可以通过发送带有
+\fBsendmsg\fP(2) 的每个文件描述符然后关闭文件描述符，使其不计入 \fBRLIMIT_NOFILE\fP
+资源限制，从而在运行中放置无限数量的文件描述符。
+.PP
+泛型套接字层或文件系统在生成文件系统套接字对象时可能会产生其他错误。 有关更多信息，请参见相应的手册页。
+.SH VERSIONS
+\fBSCM_CREDENTIALS\fP 和抽象名称空间是随 Linux 2.2 一起引入的，不应在可移植程序中使用。 (一些 BSD
+派生系统也支持凭证传递，但实现细节不同。)
+.SH NOTES
+绑定到具有文件名的套接字会在文件系统中创建一个套接字，当不再需要它时调用者必须将其删除 (使用 \fBunlink\fP(2)).  通常的 UNIX
+紧随语义适用; 套接字可以随时取消链接，并在最后一个引用关闭时最终从文件系统中删除。
+.PP
+要通过 \fBSOCK_STREAM\fP 套接字传递文件描述符或凭据，您必须在同一 \fBsendmsg\fP(2) 或 \fBrecvmsg\fP(2)
+调用中发送或接收至少一个字节的非辅助数据。
+.PP
+.\"
+UNIX 域流套接字不支持带外数据的概念。
+.SH BUGS
+.\" The behavior on Solaris is quite similar.
+将套接字绑定到地址时，如果 \fIsun_path\fP 中没有提供，则 Linux 是，追加，空终止符的实现之一。 在大多数情况下，这是没有问题的:
+当套接字地址被检索时，它将比绑定套接字时提供的地址长一个字节。 但是，有一种情况会导致混淆行为: 如果在绑定套接字时提供了 108
+个非空字节，则添加空终止符会使路径名的长度超过 \fIsizeof(sun_path)\fP。 因此，在检索套接字地址时 (例如，通过
+\fBaccept\fP(2))，如果检索调用的输入 \fIaddrlen\fP 参数指定为 \fIsizeof(struct sockaddr_un)\fP，则返回的地址结构体 \fIwon't\fP 在 \fIsun_path\fP 中有一个空终止符。
+.PP
+.\" i.e., traditional BSD
+此外，某些实现在绑定套接字时不需要空终止符 (\fIaddrlen\fP 参数用于确定 \fIsun_path\fP)
+的长度，并且在这些实现上检索套接字地址时，\fIsun_path\fP 中没有空终止符。
+.PP
+检索套接字地址的应用程序可以使用 (portably) 代码来处理 \fIsun_path\fP 中没有空终止符的可能性，方法是考虑到路径名中的有效字节数是:
+.PP
+.in +4n
+.EX
+strnlen(addr.sun_path, addrlen \- offsetof(sockaddr_un, sun_path))
+.EE
+.in
+.\" The following patch to amend kernel behavior was rejected:
+.\" http://thread.gmane.org/gmane.linux.kernel.api/2437
+.\" Subject: [patch] Fix handling of overlength pathname in AF_UNIX sun_path
+.\" 2012-04-17
+.\" And there was a related discussion in the Austin list:
+.\" http://thread.gmane.org/gmane.comp.standards.posix.austin.general/5735
+.\" Subject: Having a sun_path with no null terminator
+.\" 2012-04-18
+.\"
+.\" FIXME . Track http://austingroupbugs.net/view.php?id=561
+.PP
+或者，应用程序可以通过分配一个大小为 \fIsizeof(struct sockaddr_un)+1\fP
+的缓冲区来检索套接字地址，该缓冲区在检索之前已清零。 检索调用可以指定 \fIaddrlen\fP 为 \fIsizeof(struct sockaddr_un)\fP，额外的零字节确保 \fIsun_path\fP: 中返回的字符串会有空终止符
+.PP
+.in +4n
+.EX
+void *addrp;
+
+addrlen = sizeof(struct sockaddr_un);
+addrp = malloc(addrlen + 1);
+if (addrp == NULL)
+    /* Handle error */ ;
+memset(addrp, 0, addrlen + 1);
+
+if (getsockname(sfd, (struct sockaddr *) addrp, &addrlen)) == \-1)
+    /* handle error */ ;
+
+printf("sun_path = %s\en", ((struct sockaddr_un *) addrp)\->sun_path);
+.EE
+.in
+.PP
+如果保证 \fIcreate\fP 路径名套接字的应用程序遵循上面在 \fIPathname sockets\fP 下概述的规则，则可以避免这种混乱。
+.SH EXAMPLES
+下面的代码演示了使用顺序数据包套接字进行本地进程间通信。 它由两个程序组成。 服务器程序等待来自客户端程序的连接。
+客户端在单独的消息中发送其每个命令行参数。 服务器将传入消息视为整数并将它们相加。 客户端发送命令字符串 "END"。
+服务器发回包含客户端整数总和的消息。 客户端打印总和并退出。 服务器等待下一个客户端连接。 要停止服务器，使用命令行参数 "DOWN" 调用客户端。
+.PP
+以下输出是在后台运行服务器并重复执行客户端时记录的。 当服务器程序接收到 "DOWN" 命令时，服务器程序的执行结束。
+.SS "Example output"
+.in +4n
+.EX
+$ \fB./server &\fP
+[1] 25887
+$ \fB./client 3 4\fP
+Result = 7
+$ \fB./client 11 \-5\fP
+Result = 6
+$ \fB./client DOWN\fP
+Result = 0
+[1]+  Done                    ./server
+$
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+/*
+ * File connection.h
+ */
+
+#define SOCKET_NAME "/tmp/9Lq7BNBnBycd6nxy.socket"
+#define BUFFER_SIZE 12
+
+/*
+ * File server.c
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include "connection.h"
+
+int
+main(int argc, char *argv[])
+{
+    struct sockaddr_un name;
+    int down_flag = 0;
+    int ret;
+    int connection_socket;
+    int data_socket;
+    int result;
+    char buffer[BUFFER_SIZE];
+
+    /* Create local socket. */
+
+    connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    if (connection_socket == \-1) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 为了便携性清除整个结构体，因为一些
+     * 实现中有额外的 (nonstandard) 字段
+     * 结构体。
+     */
+
+    memset(&name, 0, sizeof(name));
+
+    /* Bind socket to socket name. */
+
+    name.sun_family = AF_UNIX;
+    strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) \- 1);
+
+    ret = bind(connection_socket, (const struct sockaddr *) &name,
+               sizeof(name));
+    if (ret == \-1) {
+        perror("bind");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 准备接受连接。积压大小已设置
+     * 至 20。因此，在处理一个请求时，其他请求
+     * 可以等待。
+     */
+
+    ret = listen(connection_socket, 20);
+    if (ret == \-1) {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
+
+    /* This is the main loop for handling connections. */
+
+    for (;;) {
+
+        /* Wait for incoming connection. */
+
+        data_socket = accept(connection_socket, NULL, NULL);
+        if (data_socket == \-1) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+
+        result = 0;
+        for (;;) {
+
+            /* Wait for next data packet. */
+
+            ret = read(data_socket, buffer, sizeof(buffer));
+            if (ret == \-1) {
+                perror("read");
+                exit(EXIT_FAILURE);
+            }
+
+            /* Ensure buffer is 0\-terminated. */
+
+            buffer[sizeof(buffer) \- 1] = 0;
+
+            /* Handle commands. */
+
+            if (!strncmp(buffer, "DOWN", sizeof(buffer))) {
+                down_flag = 1;
+                break;
+            }
+
+            if (!strncmp(buffer, "END", sizeof(buffer))) {
+                break;
+            }
+
+            /* Add received summand. */
+
+            result += atoi(buffer);
+        }
+
+        /* Send result. */
+
+        sprintf(buffer, "%d", result);
+        ret = write(data_socket, buffer, sizeof(buffer));
+        if (ret == \-1) {
+            perror("write");
+            exit(EXIT_FAILURE);
+        }
+
+        /* Close socket. */
+
+        close(data_socket);
+
+        /* Quit on DOWN command. */
+
+        if (down_flag) {
+            break;
+        }
+    }
+
+    close(connection_socket);
+
+    /* Unlink the socket. */
+
+    unlink(SOCKET_NAME);
+
+    exit(EXIT_SUCCESS);
+}
+
+/*
+ * File client.c
+ */
+
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include "connection.h"
+
+int
+main(int argc, char *argv[])
+{
+    struct sockaddr_un addr;
+    int ret;
+    int data_socket;
+    char buffer[BUFFER_SIZE];
+
+    /* Create local socket. */
+
+    data_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    if (data_socket == \-1) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 为了便携性清除整个结构体，因为一些
+     * 实现中有额外的 (nonstandard) 字段
+     * 结构体。
+     */
+
+    memset(&addr, 0, sizeof(addr));
+
+    /* Connect socket to socket address. */
+
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_NAME, sizeof(addr.sun_path) \- 1);
+
+    ret = connect(data_socket, (const struct sockaddr *) &addr,
+                   sizeof(addr));
+    if (ret == \-1) {
+        fprintf(stderr, "The server is down.\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Send arguments. */
+
+    for (size_t i = 1; i < argc; ++i) {
+        ret = write(data_socket, argv[i], strlen(argv[i]) + 1);
+        if (ret == \-1) {
+            perror("write");
+            break;
+        }
+    }
+
+    /* Request result. */
+
+    strcpy(buffer, "END");
+    ret = write(data_socket, buffer, strlen(buffer) + 1);
+    if (ret == \-1) {
+        perror("write");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Receive result. */
+
+    ret = read(data_socket, buffer, sizeof(buffer));
+    if (ret == \-1) {
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Ensure buffer is 0\-terminated. */
+
+    buffer[sizeof(buffer) \- 1] = 0;
+
+    printf("Result = %s\en", buffer);
+
+    /* Close socket. */
+
+    close(data_socket);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.PP
+有关 \fBSCM_RIGHTS\fP 的使用示例，请参见 \fBcmsg\fP(3) 和 \fBseccomp_unotify\fP(2)。
+.SH "SEE ALSO"
+\fBrecvmsg\fP(2), \fBsendmsg\fP(2), \fBsocket\fP(2), \fBsocketpair\fP(2), \fBcmsg\fP(3),
+\fBcapabilities\fP(7), \fBcredentials\fP(7), \fBsocket\fP(7), \fBudp\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

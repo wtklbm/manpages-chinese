@@ -1,0 +1,189 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2022 Alejandro Colomar <alx@kernel.org>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strcpy 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+stpcpy、strcpy、strcat \- 复制或连接字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <string.h>\fP
+.PP
+\fBchar *stpcpy(char *restrict \fP\fIdst\fP\fB, const char *restrict \fP\fIsrc\fP\fB);\fP
+\fBchar *strcpy(char *restrict \fP\fIdst\fP\fB, const char *restrict \fP\fIsrc\fP\fB);\fP
+\fBchar *strcat(char *restrict \fP\fIdst\fP\fB, const char *restrict \fP\fIsrc\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBstpcpy\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+.TP 
+\fBstpcpy\fP()
+.TQ
+\fBstrcpy\fP()
+这些函数将 \fIsrc\fP 指向的字符串复制到 \fIdst\fP 指向的缓冲区中的字符串中。 程序员负责分配一个足够大的目标缓冲区，即
+\fIstrlen(src) + 1\fP。 两个函数的区别见 RETURN VALUE。
+.TP 
+\fBstrcat\fP()
+此函数将 \fIsrc\fP 指向的字符串连接在 \fIdst\fP 指向的字符串之后 (覆盖其终止空字节)。 程序员负责分配一个足够大的目标缓冲区，即
+\fIstrlen(dst) + strlen(src) + 1\fP。
+.PP
+这些函数的实现可能是:
+.PP
+.in +4n
+.EX
+char *
+stpcpy(char *restrict dst, const char *restrict src)
+{
+    char  *p;
+
+    p = mempcpy(dst, src, strlen(src));
+    *p = \[aq]\e0\[aq];
+
+    return p;
+}
+
+char *
+strcpy(char *restrict dst, const char *restrict src)
+{
+    stpcpy(dst, src);
+    return dst;
+}
+
+char *
+strcat(char *restrict dst, const char *restrict src)
+{
+    stpcpy(dst + strlen(dst), src);
+    return dst;
+}
+.EE
+.in
+.SH "RETURN VALUE"
+.TP 
+\fBstpcpy\fP()
+此函数返回指向复制字符串的终止空字节的指针。
+.TP 
+\fBstrcpy\fP()
+.TQ
+\fBstrcat\fP()
+这些函数返回 \fIdst\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstpcpy\fP(),
+\fBstrcpy\fP(),
+\fBstrcat\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.TP 
+\fBstpcpy\fP()
+POSIX.1\-2008.
+.TP 
+\fBstrcpy\fP()
+.TQ
+\fBstrcat\fP()
+POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.SH CAVEATS
+字符串 \fIsrc\fP 和 \fIdst\fP 不能重叠。
+.PP
+如果目标缓冲区不够大，则行为未定义。 请参见 \fBfeature_test_macros\fP(7) 中的 \fB_FORTIFY_SOURCE\fP。
+.PP
+\fBstrcat\fP() 可能非常低效。 阅读有关
+.UR https://www.joelonsoftware.com/\:2001/12/11/\:back\-to\-basics/
+画家 Shlemiel
+.UE .
+的信息
+.SH EXAMPLES
+.\" SRC BEGIN (strcpy.c)
+.EX
+#include <err.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(void)
+{
+    char    *p;
+    char    *buf1;
+    char    *buf2;
+    size_t  len, maxsize;
+
+    maxsize = strlen("Hello ") + strlen("world") + strlen("!") + 1;
+    buf1 = malloc(sizeof(*buf1) * maxsize);
+    if (buf1 == NULL)
+        err(EXIT_FAILURE, "malloc()"); 
+    buf2 = malloc(sizeof(*buf2) * maxsize);
+    if (buf2 == NULL)
+        err(EXIT_FAILURE, "malloc()");
+
+    p = buf1;
+    p = stpcpy(p, "Hello ");
+    p = stpcpy(p, "world");
+    p = stpcpy(p, "!");
+    len = p \- buf1;
+
+    printf("[len = %zu]: ", len);
+    puts(buf1);  // "Hello world!"
+    free(buf1);
+
+    strcpy(buf2, "Hello ");
+    strcat(buf2, "world");
+    strcat(buf2, "!");
+    len = strlen(buf2);
+
+    printf("[len = %zu]: ", len);
+    puts(buf2);  // "Hello world!"
+    free(buf2);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBstrdup\fP(3), \fBstring\fP(3), \fBwcscpy\fP(3), \fBstring_copying\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

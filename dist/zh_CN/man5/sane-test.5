@@ -1,0 +1,211 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-test 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-test
+.SH NAME
+sane\-test \- 用于测试前端的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-test\fP 库实现了一个 SANE (扫描仪访问现在简单) 后端，允许测试 SANE 安装和 SANE 前端。 它提供对 (nearly)
+无限数量的虚拟设备的访问。 不支持真正的扫描仪或相机。 但是，后端模拟扫描和设置选项。
+.PP
+这个想法不仅是为了发现前端的错误，而且是为了展示 SANE 的所有功能。 因此，\fBsane\-test\fP 实现了在其他后端中没有 (或很少)
+找到的函数和选项。
+.PP
+后端在 \fI/etc/sane.d/dll.conf\fP 中被注释掉，因此必须删除注释字符或者必须显式调用后端。 例如 \fIscanimage \-d test\fP 或 \fIxscanimage test\fP。
+
+
+.SH "SCAN MODE OPTIONS"
+选项 \fBmode\fP 选择扫描模式 (灰色或彩色)。
+.PP
+选项 \fBdepth\fP 确定每个样本的位数 (1、8 或 16)。 请记住，此值指的是样本，而不是像素。 所以 depth=16 在颜色模式下每像素
+48 位。最常见的组合是 mode=Gray, depth=1 for lineart，mode=Gray, depth=8 for gray 和
+mode=Color, depth=8 for color mode。 颜色和 1 位模式的组合非常模糊 (8 种颜色)，但在 SANE
+标准中是允许的。但是，位的含义没有定义。目前使用 1 = 高强度和 0 = 低强度。
+.PP
+设置选项 \fBhand\-scanner\fP 会导致测试后端表现得像手持扫描仪。 手持扫描仪无法先验地知道图像高度。 相反，它们返回 \-1 的高度。
+设置此选项允许测试前端是否可以正确处理此问题。 此选项还启用 11 厘米的固定宽度。
+.PP
+设置选项 \fBthree\-pass\fP 模拟三遍扫描仪。 较旧的彩色扫描仪需要对每种颜色 (red/green/blue) 扫描一次图像才能获得完整图像。
+因此，在这种模式下，三个单帧以彩色模式传输。
+.PP
+选项 \fBthree\-pass\-order\fP 支持更改三帧的顺序 (参见上面的选项三遍)。 前端应该支持所有订单。
+.PP
+选项 \fBresolution\fP 以每英寸点数为单位设置图像的分辨率。
+.PP
+.PP
+选项 \fBsource\fP 可用于模拟自动文档进纸器 (ADF)。扫描 10 次后，ADF 将为 "empty"。
+.PP
+
+.SH "SPECIAL OPTIONS"
+选项 \fBtest\-picture\fP 允许设置返回到前端的图像。 虽然 "Solid white" 和 "Solid black"
+很明显，但其他选项需要更多解释。 颜色模式用于确定前端是否正确表示所有模式及其颜色。 网格在每种模式和分辨率下都应该看起来相同。
+可以在以下位置找到所有测试图片的表格:
+\fIhttp://www.meier\-geinitz.de/sane/test\-backend/test\-pictures.html\fP。
+.PP
+如果设置选项 \fBinvert\-endianness\fP，则交换 16 位模式下图像数据的高位字节和低位字节。 此选项可用于测试前端的 16
+位模式，例如前端是否使用正确的字节顺序。
+.PP
+如果选项 \fBread\-limit\fP 被设置，每次调用传输到 \fBsane_read\fP() 的最大数据量是有限的。
+.PP
+选项 \fBread\-limit\-size\fP 设置选项读取限制的限制。 下限会减慢扫描速度。
+它可用于检测由于对缓冲区大小的错误假设或时序问题而导致的前端错误。
+.PP
+选项 \fBread\-delay\fP 允许将数据延迟到前端。
+.PP
+选项 \fBread\-delay\-duration\fP 选择每次缓冲区传输后后端等待的微秒数。 此选项可用于查找与时序相关的错误，尤其是在通过网络使用时。
+.PP
+如果选项 \fBread\-return\-value\fP 与 "Default" 不同，则每次调用 \fBsane_read\fP() 时都会返回选择的状态。
+这对于测试前端对 SANE 状态的处理很有用。
+.PP
+如果选项 \fBppl\-loss\fP 不同于 0，则它确定每行末尾为 "lost" 的像素数。 这意味着，行用未使用的数据填充。
+.PP
+选项 \fBfuzzy\-parameters\fP 选择只要扫描还没有开始就返回模糊的 (inexact) 参数。
+此选项可用于测试前端是否使用它在扫描开始之前获得的参数 (它不应该)。
+.PP
+选项 \fBnon\-blocking\fP 确定如果前端支持，是否应该使用 \fBsane_read\fP() 的非阻塞 IO。
+.PP
+如果设置了选项 \fBselect\-fd\fP，后端会提供一个选择文件描述符来检测 \fBsane_read()\fP 是否会返回数据。
+.PP
+如果设置了选项 \fBenable\-test\-options\fP，则会启用一个相当大的选项列表，用于测试各种 SANE 选项类型。
+.PP
+选项 \fBprint\-options\fP 可用于将所有选项的列表打印到标准错误。
+.PP
+
+.SH "GEOMETRY OPTIONS"
+选项 \fBtl\-x\fP 确定扫描区域左上角的 x 位置。
+.PP
+选项 \fBtl\-y\fP 确定扫描区域左上角的 y 位置。
+.PP
+选项 \fBbr\-x\fP 确定扫描区域右下角的 x 位置。
+.PP
+选项 \fBbr\-y\fP 确定扫描区域右下角的 y 位置。
+.PP
+
+.SH "BOOL TEST OPTIONS"
+总共有 6 个 bool 测试选项。 每个选项都有编号。 (3/6) 表示: 这是 6 个选项中的第 3 个。 编号方案旨在更轻松地检测前端未显示的选项
+(因为缺少支持或错误)。
+.PP
+选项 \fBbool\-soft\-select\-soft\-detect\fP (1/6) 是一个 bool 测试选项，具有软选择和软检测 (和高级) 功能。
+这只是一个普通的 bool 选项。
+.PP
+选项 \fBbool\-hard\-select\-soft\-detect\fP (2/6) 是一个 bool 测试选项，具有硬选择和软检测 (和高级) 功能。
+这意味着该选项不能由前端设置，而是由用户设置 (例如，通过按设备上的按钮)。
+.PP
+选项 \fBbool\-hard\-select\fP (3/6) 是一个 bool 测试选项，具有硬选择 (和高级) 功能。
+这意味着该选项不能由前端设置，而是由用户设置 (例如，通过按设备上的按钮)，并且不能由前端读取。
+.PP
+选项 \fBbool\-soft\-detect\fP (4/6) 是一个 bool 测试选项，具有软检测 (和高级) 功能。 这意味着该选项是只读的。
+.PP
+选项 \fBbool\-soft\-select\-soft\-detect\-emulated\fP (5/6) 是一个 Bool 测试选项，具有软选择、软检测和仿真
+(和高级) 功能。
+.PP
+选项 \fBbool\-soft\-select\-soft\-detect\-auto\fP (6/6) 是一个 Bool 测试选项，具有软选择、软检测和自动
+(和高级) 功能。 这个选项可以由后端自动设置。
+.PP
+
+.SH "INT TEST OPTIONS"
+总共有 7 个 int 测试选项。
+.PP
+选项 \fBint\fP (1/7) 是一个没有元和约束集的 int 测试选项。
+.PP
+选项 \fBint\-constraint\-range\fP (2/7) 是一个带有元像素和约束范围设置的 int 测试选项。 最小值为 4，最大值为
+192，quant 为 2.
+.PP
+选项 \fBint\-constraint\-word\-list\fP (3/7) 是一个带有元位和约束词列表集的 int 测试选项。
+.PP
+选项 \fBint\-constraint\-array\fP (4/7) 是一个 int 测试选项，具有单位 mm 并使用无约束的数组。
+.PP
+选项 \fBint\-constraint\-array\-constraint\-range\fP (5/7) 是一个带有单位 mm 的 int
+测试选项，并使用具有范围约束的数组。 最小值为 4，最大值为 192，quant 为 2.
+.PP
+选项 \fBint\-constraint\-array\-constraint\-word\-list\fP (6/7) 是一个 int
+测试选项，具有单位百分比并使用数组单词列表约束。
+.PP
+选项 \fBint\-inexact\fP (7/7) 是一个 int 测试选项，它递增请求的值并返回标志 SANE_INFO_INEXACT。
+
+
+.SH "FIXED TEST OPTIONS"
+共有 3 个固定测试选项。
+.PP
+选项 \fBfixed\fP (1/3) 为固定测试选项，无元，无约束设置。
+.PP
+选项 \fBfixed\-constraint\-range\fP (2/3) 为固定测试选项，单位微秒，设置约束范围。最小值为 \- 42.17，最大值为
+32767.9999，定量为 2.0。
+.PP
+Option \fBfixed\-constraint\-word\-list\fP (3/3) 是一个 Fixed test
+option，没有设置元和约束词列表。
+.PP
+
+.SH "STRING TEST OPTIONS"
+共有 3 个字符串测试选项。
+.PP
+选项 \fBstring\fP (1/3) 是一个不受约束的字符串测试选项。
+.PP
+选项 \fBstring\-constraint\-string\-list\fP (2/3) 是一个带有字符串列表约束的字符串测试选项。
+.PP
+选项 \fBstring\-constraint\-long\-string\-list\fP (3/3)
+是一个带有字符串列表约束的字符串测试选项。包含更多条目...
+.PP
+
+.SH "BUTTON TEST OPTION"
+选项 \fBbutton\fP (1/1) 是按钮测试选项。打印一些文本...
+.PP
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/test.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。大多数基本 SANE
+选项的初始值都可以在此文件中配置。包含所有默认值的模板与此后端一起提供。更有趣的值之一可能是 \fBnumber_of_devices\fP。
+它可用于检查前端显示一长串设备的能力。 有关分辨率和几何形状的配置值可用于测试大文件大小的处理。
+
+.TP 
+\fI/usr/lib/sane/libsane\-test.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-test.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_TEST\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 更高的调试级别会增加输出的冗长程度。
+
+示例: export SANE_DEBUG_TEST=4
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBscanimage\fP(1), \fBxscanimage\fP(1)
+.br
+\fIhttp://www.meier\-geinitz.de/sane/test\-backend/\fP
+
+
+.SH AUTHOR
+亨宁迈尔 \- 盖尼茨 <\fIhenning@meier\-geinitz.de\fP>
+
+.SH BUGS
+\- 未测试配置文件值的正确性
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

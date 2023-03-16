@@ -1,0 +1,87 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Michael Haardt, Ian Jackson.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Wed Jul 21 23:02:38 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 2001-11-17, aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH _exit 2 2023\-01\-22 "Linux man\-pages 6.03" 
+.SH NAME
+_exit, _Exit \- 终止调用进程
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fB[[noreturn]] void _exit(int \fP\fIstatus\fP\fB);\fP
+.PP
+\fB#include <stdlib.h>\fP
+.PP
+\fB[[noreturn]] void _Exit(int \fP\fIstatus\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fB_Exit\fP():
+.nf
+    _ISOC99_ 源 ||_POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fB_exit\fP() 终止调用进程 "immediately"。 属于该进程的任何打开的文件描述符都将关闭。 进程的任何子进程都由 \fBinit\fP(1)
+(或通过使用 \fBprctl\fP(2) \fBPR_SET_CHILD_SUBREAPER\fP 操作定义的最近的 "subreaper" 进程) 继承。
+向进程的父进程发送 \fBSIGCHLD\fP 信号。
+.PP
+值 \fIstatus & 0xFF\fP 作为进程的退出状态返回给父进程，并且可以由父进程使用 \fBwait\fP(2) 系列调用之一收集。
+.PP
+函数 \fB_Exit\fP() 相当于 \fB_exit\fP()。
+.SH "RETURN VALUE"
+这些函数不返回。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.  函数 \fB_Exit\fP() 由 C99 引入。
+.SH NOTES
+有关退出的影响、退出状态的传输、僵尸进程、发送的信号等的讨论，请参见 \fBexit\fP(3)。
+.PP
+函数 \fB_exit\fP() 与 \fBexit\fP(3) 类似，但不调用任何注册为 \fBatexit\fP(3) 或 \fBon_exit\fP(3) 的函数。
+打开的 \fBstdio\fP(3) 流不会被刷新。 另一方面，\fB_exit\fP() 确实会关闭打开的文件描述符，这可能会导致未知的延迟，等待挂起的输出完成。
+如果不需要延迟，在调用 \fB_exit\fP() 之前调用函数如 \fBtcflush\fP(3) 可能会有用。 是否取消任何挂起的 I/O，以及可以在
+\fB_exit\fP() 上取消哪个挂起的 I/O，取决于实现。
+.SS "C library/kernel differences"
+DESCRIPTION 上面的文字描述了 \fB_exit\fP() 的传统效果，即终止进程，这些是 POSIX.1 指定的语义，由 C 库包装器函数实现。
+在现代系统上，这意味着终止进程中的所有线程。
+.PP
+.\" _exit() is used by pthread_exit() to terminate the calling thread
+与 C 库包装器函数相比，原始 Linux \fB_exit\fP()
+系统调用仅终止调用线程，并且仅当这是线程组中的最后一个线程时才执行重新设置子进程父级或将 \fBSIGCHLD\fP 发送到父进程等操作。
+.PP
+在 glibc 2.3 之前，\fB_exit\fP() 包装器函数调用了同名的内核系统调用。 从 glibc 2.3 开始，包装函数函数调用
+\fBexit_group\fP(2)，以终止进程中的所有线程。
+.SH "SEE ALSO"
+\fBexecve\fP(2), \fBexit_group\fP(2), \fBfork\fP(2), \fBkill\fP(2), \fBwait\fP(2),
+\fBwait4\fP(2), \fBwaitpid\fP(2), \fBatexit\fP(3), \fBexit\fP(3), \fBon_exit\fP(3),
+\fBtermios\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

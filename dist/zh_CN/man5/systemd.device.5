@@ -1,0 +1,120 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.DEVICE 5 "" "systemd 253" systemd.device
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.device \- 设备元配置
+.SH SYNOPSIS
+.PP
+\fIdevice\fP\&.device
+.SH DESCRIPTION
+.PP
+名称以 "\&.device" 结尾的元配置文件对有关设备元的信息进行编码，如在 sysfs/\fBudev\fP(7) 设备树 \&
+中公开的那样。这可用于定义设备和其他单元之间的依赖性 \&。
+.PP
+这个元类型没有特定的选项 \&。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit] 和
+[Install] 部分 \&。不存在单独的 [Device] 部分，因为不能配置特定于设备的选项 \&。
+.PP
+systemd 将为所有标有 "systemd" udev 标签的内核设备动态创建设备单元 (默认情况下所有块和网络设备，以及其他一些)
+\&。请注意，\fIif \fP\fIsystemd\-udevd\&.service\fP\fI 未运行，没有可用的设备单元 (例如在典型的容器中) \fP\&。
+.PP
+设备单元以它们控制的 /sys / 和 /dev / 路径命名 \&。示例: 设备 /dev/sda5 在 systemd 中公开为
+dev\-sda5\&.device\&。有关用于将文件系统路径转换为元名称的转义逻辑的详细信息，请参见 \fBsystemd.unit\fP(5)\&。
+.PP
+要标记 udev 设备，请在 udev 规则文件中使用 `TAG +="systemd""，有关详细信息，请参见 \fBudev\fP(7)\&。
+.PP
+每当相应的设备生成 "changed" 事件 \& 时，systemd 就会重新加载设备单元。其他单位可以使用
+\fIReloadPropagatedFrom=\fP 到 react 对该事件 \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+许多元类型自动获取对它们需要的设备的设备单元的依赖性 \&。例如 \&.socket 元获取 \fIBindToDevice=\fP\&
+中指定的网络接口设备单元的依赖。类似地，交换和挂载单元依赖于封装其后备块设备的单元。
+.SS "Default Dependencies"
+.PP
+设备单元 \& 没有默认依赖项。
+.SH "THE UDEV DATABASE"
+.PP
+设备单元的元设置可以通过元文件配置，也可以直接从 udev 数据库 \&。服务管理器了解以下 udev 设备属性:
+.PP
+\fISYSTEMD_WANTS=\fP, \fISYSTEMD_USER_WANTS=\fP
+.RS 4
+将设备元中类型 \fIWants=\fP 的依赖项添加到指定的单元 \&。 \fISYSTEMD_WANTS=\fP
+由系统服务管理器读取，\fISYSTEMD_USER_WANTS=\fP 由用户服务管理器实例读取。这些属性可用于在特定设备可用时激活任意单元 \&。
+.sp
+请注意，除非设备在 udev 数据库中使用 "systemd" 标记进行标记，否则不会考虑此和其他 udev 设备属性，因为否则设备不会作为
+systemd 元 (见上文) \& 公开。
+.sp
+请注意，systemd 只会在设备首次激活时对 \fIWants=\fP 依赖项起作用 \&。如果将它们添加到已经激活的设备，它不会对它们起作用。使用
+\fISYSTEMD_READY=\fP (见下文) 配置 udev 设备何时应被视为活动，从而何时触发依赖性 \&。
+.sp
+指定的属性值应该是以空格分隔的有效元名称列表 \&。如果指定了元模板名称 (即包含 "@" 字符的元名称，表示用于多次实例化的元名称，但 "@"
+后为空实例名称)，它将由设备自动实例化 \*(aqs "sysfs" 路径 (即: 路径转义后作为实例名插入到模板元名中)
+\&。这对于为出现并匹配特定属性的每个设备实例化一次特定模板很有用 \&。
+.RE
+.PP
+\fISYSTEMD_ALIAS=\fP
+.RS 4
+添加一个额外的别名到设备元 \&。这必须是自动转换成元名 \& 的绝对路径。(往上看 \&。)
+.RE
+.PP
+\fISYSTEMD_READY=\fP
+.RS 4
+如果设置为 0，systemd 将认为此设备已拔出，即使它出现在 udev 树中 \&。如果此属性未设置或设置为 1，则设备在 udev
+树中可见时将被视为已插入。
+.sp
+此选项对于最初在树中显示为未初始化状态的设备很有用，并且在它们完全设置时会为其生成 "changed" 事件 \&。请注意，只要为设备设置了
+\fISYSTEMD_READY=0\fP，\fISYSTEMD_WANTS=\fP (见上文) 就不会起作用。
+.RE
+.PP
+\fIID_MODEL_FROM_DATABASE=\fP, \fIID_MODEL=\fP
+.RS 4
+如果设置，此属性将用作设备元 \& 的描述字符串。
+.RE
+.SH OPTIONS
+.PP
+设备元文件可能包括 [Unit] 和 [Install] 部分，这些部分在 \fBsystemd.unit\fP(5)\&
+中进行了描述。不支持特定于此文件类型的选项 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd.unit\fP(5), \fBudev\fP(7),
+\fBsystemd.directives\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

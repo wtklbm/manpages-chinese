@@ -1,0 +1,190 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_cancel 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_cancel \- 向线程发送取消请求
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_cancel(pthread_t \fP\fIthread\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_cancel\fP() 函数向线程 \fIthread\fP 发送取消请求。
+目标线程是否以及何时对取消请求做出反应取决于该线程控制下的两个属性: 它的可取消性 \fIstate\fP 和 \fItype\fP。
+.PP
+由 \fBpthread_setcancelstate\fP(3) 确定的线程的可取消状态可以是 \fIenabled\fP (新线程的默认值) 或
+\fIdisabled\fP。 如果线程已禁用取消，则取消请求将保持排队状态，直到线程启用取消。 如果一个线程启用了取消，那么它的可取消类型决定何时取消。
+.PP
+线程的取消类型由 \fBpthread_setcanceltype\fP(3) 确定，可以是 \fIasynchronous\fP 或 \fIdeferred\fP
+(新线程的默认值)。 异步可取消性是指线程可以随时取消 (通常是立即取消，但系统不保证)。
+延迟可取消性意味着取消将被延迟，直到线程下一次调用一个函数，即 \fIcancelation point\fP。 \fBpthreads\fP(7)
+中提供了是或可能是取消点的函数列表。
+.PP
+当对取消请求采取行动时，\fIthread\fP 将执行以下步骤 (按此顺序) :
+.IP (1) 5
+取消清理处理程序被弹出 (与它们被推送的顺序相反) 并被调用。 (见 \fBpthread_cleanup_push\fP(3).)
+.IP (2)
+以未指定的顺序调用特定于线程的数据析构函数。 (见 \fBpthread_key_create\fP(3).)
+.IP (3)
+线程终止。 (见 \fBpthread_exit\fP(3).)
+.PP
+上述步骤相对于 \fBpthread_cancel\fP() 调用异步发生; \fBpthread_cancel\fP()
+的返回状态只是通知调用者取消请求是否已成功排队。
+.PP
+取消的线程终止后，使用 \fBpthread_join\fP(3) 与该线程的连接将获得 \fBPTHREAD_CANCELED\fP 作为线程的退出状态。
+(加入线程是知道取消已完成的唯一方法。)
+.SH "RETURN VALUE"
+成功时，\fBpthread_cancel\fP() 返回 0; 出错时，它返回一个非零错误号。
+.SH ERRORS
+.TP 
+\fBESRCH\fP
+.\" .SH VERSIONS
+.\" Available since glibc 2.0
+找不到 ID 为 \fIthread\fP 的线程。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_cancel\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在 Linux 上，取消是使用信号实现的。 在 NPTL 线程实现下，第一个实时信号 (即信号 32) 用于此目的。 在 LinuxThreads
+上，如果实时信号可用，则使用第二个实时信号，否则使用 \fBSIGUSR2\fP。
+.SH EXAMPLES
+下面的程序创建一个线程，然后取消它。 主线程加入被取消的线程以检查其退出状态是否为 \fBPTHREAD_CANCELED\fP。 以下 shell
+会话显示了我们运行该程序时发生的情况:
+.PP
+.in +4n
+.EX
+$ ./a.out
+thread_func(): 开始; 取消禁用
+main(): 发送取消请求
+thread_func(): 即将启用取消
+main(): 线程被取消
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_cancel.c)
+\&
+.EX
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define handle_error_en(en, msg) \e
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void *
+thread_func(void *ignored_argument)
+{
+    int s;
+
+    /* Disable cancelation for a while, so that we don\[aq]t
+       immediately react to a cancelation request. */
+
+    s = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_setcancelstate");
+
+    printf("%s(): started; cancelation disabled\en", __func__);
+    sleep(5);
+    printf("%s(): about to enable cancelation\en", __func__);
+
+    s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_setcancelstate");
+
+    /* sleep() is a cancelation point. */
+
+    sleep(1000);        /* Should get canceled while we sleep */
+
+    /* Should never get here. */
+
+    printf("%s(): not canceled!\en", __func__);
+    return NULL;
+}
+
+int
+main(void)
+{
+    pthread_t thr;
+    void *res;
+    int s;
+
+    /* Start a thread and then send it a cancelation request. */
+
+    s = pthread_create(&thr, NULL, &thread_func, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_create");
+
+    sleep(2);           /* Give thread a chance to get started */
+
+    printf("%s(): sending cancelation request\en", __func__);
+    s = pthread_cancel(thr);
+    if (s != 0)
+        handle_error_en(s, "pthread_cancel");
+
+    /* Join with thread to see what its exit status was. */
+
+    s = pthread_join(thr, &res);
+    if (s != 0)
+        handle_error_en(s, "pthread_join");
+
+    if (res == PTHREAD_CANCELED)
+        printf("%s(): thread was canceled\en", __func__); 
+    else
+        printf("%s(): thread wasn\[aq]t canceled (shouldn\[aq]t happen!)\en",
+               __func__);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBpthread_cleanup_push\fP(3), \fBpthread_create\fP(3), \fBpthread_exit\fP(3),
+\fBpthread_join\fP(3), \fBpthread_key_create\fP(3), \fBpthread_setcancelstate\fP(3),
+\fBpthread_setcanceltype\fP(3), \fBpthread_testcancel\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

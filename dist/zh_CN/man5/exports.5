@@ -1,0 +1,358 @@
+.\" -*- coding: UTF-8 -*-
+.\"@(#)exports.5"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH exports 5 "31 December 2009"  
+.SH NAME
+exports\-NFS 服务器导出表
+.SH DESCRIPTION
+文件 \fI/etc/exports\fP 包含 NFS 客户端可访问的 NFS 服务器上的本地物理文件系统表。 该文件的内容由服务器的系统管理员维护。
+.PP
+此表中的每个文件系统都有一个选项列表和一个访问控制列表。 \fBexportfs\fP(8) 使用该表向 \fBmountd\fP(8) 提供信息。
+.PP
+文件格式类似于 SunOS \fIexports\fP
+文件。每行包含一个导出点和一个以空格分隔的允许在该点挂载文件系统的客户端列表。每个列出的客户端后面可能紧跟一个用括号括起来的逗号分隔的该客户端的导出选项列表。客户端与其选项列表之间不允许有空格。
+.PP
+此外，每行在路径名后可能有一个或多个默认选项规范，形式为破折号 ("\-") 后跟选项列表。选项列表仅用于该行上的所有后续导出。
+.PP
+空行被忽略。 井号 ("#")
+在行尾引入注释。条目可以使用反斜杠跨换行继续。如果导出名称包含空格，则应使用双引号将其引起来。您还可以使用反斜杠后跟作为三个八进制数字的字符代码来指定导出名称中的空格或其他不常见字符。
+.PP
+要将更改应用于此文件，请运行 \fBexportfs \-ra\fP 或重新启动 NFS 服务器。
+.PP
+.SS "Machine Name Formats"
+可以通过多种方式指定 NFS 客户端:
+.IP "single host"
+您可以通过解析器识别的缩写名称、完全限定的域名、IPv4 地址或 IPv6 地址来指定主机。IPv6 地址不得位于 /etc/exports
+中的方括号内，以免与字符类通配符匹配相混淆。
+.IP "IP networks"
+您还可以同时将目录导出到 IP (sub\-) 网络上的所有主机。这是通过将 IP 地址和网络掩码对指定为 \fIaddress/netmask\fP
+来完成的，其中网络掩码可以点分十进制格式或连续掩码长度指定。 例如追加到网络基 IPv4 地址的 `/255.255.252.0` 或 `/22`
+会导致具有 10 位主机的相同子网。IPv6 地址必须使用连续的掩码长度并且不能在方括号内以避免与字符类通配符混淆。通配符通常不适用于 IP
+地址，但在反向 DNS 查找失败时它们可能会意外起作用。
+.IP wildcards
+机器名称可能包含通配符 \fI*\fP 和 \fI?\fP，或者可能包含 [square brackets] 中的字符类列表。 这可用于使 \fIexports\fP
+文件更紧凑; 例如，\fI*.cs.foo.edu\fP 匹配域 \fIcs.foo.edu\fP 中的所有主机。
+由于这些字符也匹配域名中的点，因此给定的模式也将匹配 \fIcs.foo.edu\fP 的任何子域中的所有主机。
+.IP netgroups
+NIS 网络组可以指定为 \fI@group\fP。 在检查成员身份时只考虑每个网络组成员的主机部分。 空主机部件或包含单个破折号 (\-)
+的主机部件将被忽略。
+.IP anonymous
+.\".TP
+.\".B =public
+.\"This is a special ``hostname'' that identifies the given directory name
+.\"as the public root directory (see the section on WebNFS in
+.\".BR nfsd (8)
+.\"for a discussion of WebNFS and the public root handle). When using this
+.\"convention,
+.\".B =public
+.\"must be the only entry on this line, and must have no export options
+.\"associated with it. Note that this does
+.\".I not
+.\"actually export the named directory; you still have to set the exports
+.\"options in a separate entry.
+.\".PP
+.\"The public root path can also be specified by invoking
+.\".I nfsd
+.\"with the
+.\".B \-\-public\-root
+.\"option. Multiple specifications of a public root will be ignored.
+这是由单个 \fI*\fP 字符指定的 (不要与上面的 \fIwildcard\fP 条目混淆) 并将匹配所有客户端。
+.PP
+如果客户端匹配以上规范中的多个，则以上列表顺序中的第一个匹配项优先 \- 无论它们出现在导出行中的顺序如何。但是，如果客户端匹配多个相同类型的规范
+(例如两个网络组)，则按照它们在导出行中出现的顺序排列的第一个匹配项优先。
+.SS "RPCSEC_GSS security"
+您可以使用特殊字符串 "gss/krb5"、"gss/krb5i" 或 "gss/krb5p" 来限制对使用 rpcsec_gss
+安全性的客户端的访问。 但是，这种语法已被弃用; 在 2.6.23 之后的 linux 内核上，您应该改为使用 "sec=" 导出选项:
+.TP 
+\fIsec=\fP
+sec = 选项，后跟以冒号分隔的安全类型列表，限制导出到使用这些类型的客户端。 可用的安全类型包括 sys (默认 \-\- 无加密安全)、krb5
+(仅身份验证)、krb5i (完整性保护) 和 krb5p (隐私保护)。 出于安全口味谈判的目的，订单计数: 首选口味应首先列出。 sec =
+选项相对于其他选项的顺序无关紧要，除非您希望某些选项根据风格以不同方式执行。 在这种情况下，您可以包含多个 sec = 选项，并且仅对使用紧接在前面的
+sec = 选项中列出的风格的访问强制执行以下选项。 唯一允许以这种方式变化的选项是 ro、rw、no_root_squash、root_squash
+和 all_squash。
+.PP
+.SS "General Options"
+\fBexportfs\fP 理解以下导出选项:
+.TP 
+\fIsecure\fP
+此选项要求不使用 gss 的请求源自小于 IPPORT_RESERVED (1024) 的 Internet 端口。默认情况下此选项处于启用状态。
+要关闭它，请指定 \fIinsecure\fP。 (注意: 旧内核 (在上游内核版本 4.17 之前) 也对 gss 请求强制执行此要求。)
+.TP 
+\fIrw\fP
+允许对此 NFS 卷的读取和写入请求。默认是不允许任何更改文件系统的请求。 这也可以通过使用 \fIro\fP 选项来明确。
+.TP 
+\fIasync\fP
+此选项允许 NFS 服务器违反 NFS 协议并在该请求所做的任何更改提交到稳定存储 (例如磁盘驱动器) 之前回复请求。
+
+使用此选项通常会提高性能，但代价是服务器重启不干净 (即崩溃) 可能会导致数据丢失或损坏。
+
+.TP 
+\fIsync\fP
+只有在将更改提交到稳定存储后才回复请求 (请参见上面的 \fIasync\fP)。
+
+在 x01X 及之前的 nfs\-utils 版本中，\fIasync\fP 选项是默认选项。 在 1.0.0 之后的所有版本中，\fIsync\fP
+是默认的，如果需要，必须明确请求 \fIasync\fP。
+.TP 
+\fIno_wdelay\fP
+如果还设置了 \fIasync\fP，则此选项无效。 如果 NFS
+服务器怀疑另一个相关的写请求可能正在进行或可能很快到达，它通常会稍微延迟提交对磁盘的写请求。 这允许通过一次操作将多个写入请求提交到磁盘，从而提高性能。
+如果 NFS 服务器接收到的主要是无关的小请求，这种行为实际上会降低性能，因此可以使用 \fIno_wdelay\fP 将其关闭。 可以使用
+\fIwdelay\fP 选项明确请求默认值。
+.TP 
+\fInohide\fP
+此选项基于 IRIX NFS 中提供的同名选项。
+通常，如果服务器导出两个文件系统，其中一个安装在另一个上，那么客户端将必须显式安装两个文件系统才能访问它们。
+如果它只是挂载父文件系统，它将在挂载其他文件系统的地方看到一个空目录。 该文件系统是 "hidden"。
+
+在文件系统上设置 \fInohide\fP 选项会导致它不被隐藏，并且适当授权的客户端将能够从父文件系统移动到该文件系统而不会注意到更改。
+
+然而，一些 NFS 客户端不能很好地应对这种情况，例如，一个明显的文件系统中的两个文件可能具有相同的索引节点号。
+
+\fInohide\fP 选项目前仅对 \fIsingle host\fP 导出有效。 它不能可靠地用于网络组、子网或通配符导出。
+
+此选项在某些情况下可能非常有用，但应谨慎使用，并且只有在确认客户端系统能够有效应对这种情况后才能使用。
+
+可以使用 \fIhide\fP 为 NFSv2 和 NFSv3 显式禁用该选项。
+
+当使用 NFSv4 时，此选项不相关。 NFSv4 从不隐藏从属文件系统。 使用 NFSv4 时，任何导出的文件系统都将在预期的位置可见。
+.TP 
+\fIcrossmnt\fP
+此选项类似于 \fInohide\fP，但它使客户端可以访问安装在标有 \fIcrossmnt\fP 的文件系统上的所有文件系统。 因此，当子文件系统 "B"
+挂载到父 "A" 上时，在 "A" 上设置 crossmnt 与在 B 上设置 "nohide" 具有类似的效果。
+
+对于 \fInohide\fP，需要显式导出子文件系统。 使用 \fIcrossmnt\fP 则不需要。 如果 \fIcrossmnt\fP
+文件的子文件未显式导出，则它将使用与父文件相同的导出选项隐式导出，但 \fIfsid=\fP 除外。 这使得 \fBnot\fP 无法导出 \fIcrossmnt\fP
+文件系统的子文件系统。 如果要导出父文件的一些但不是所有的从属文件系统，则必须显式导出它们并且父文件系统不应设置 \fIcrossmnt\fP。
+
+\fInocrossmnt\fP 选项可以明确禁用 \fIcrossmnt\fP (如果之前已设置)。 这很少有用。
+.TP 
+\fIno_subtree_check\fP
+此选项禁用子树检查，这具有轻微的安全隐患，但在某些情况下可以提高可靠性。
+
+如果文件系统的一个子目录被导出，但整个文件系统都没有，那么每当 NFS 请求到达时，服务器不仅必须检查访问的文件是否在适当的文件系统中
+(这很容易)，而且还必须检查它是否在导出树 (更难)。此支票称为 \fIsubtree_check\fP。
+
+为了执行此检查，服务器必须在提供给客户端的 "filehandle" 中包含一些有关文件位置的信息。
+这可能会导致在客户端打开文件时访问重命名的文件时出现问题 (尽管在许多简单的情况下它仍然可以工作)。
+
+子树检查还用于确保只有 root 可以访问的目录中的文件只有在文件系统使用 \fIno_root_squash\fP (见下文)
+导出时才能访问，即使文件本身允许更一般的访问。
+
+作为一般指南，主目录文件系统通常在根目录下导出并且可能会看到大量文件重命名，应该在禁用子树检查的情况下导出。
+一个文件系统大部分是只读的，至少没有看到很多文件重命名 (例如 /usr 或 /var) 并且可以导出子目录，应该在启用子树检查的情况下导出。
+
+可以使用 \fIsubtree_check\fP 显式请求默认启用子树检查。
+
+从 nfs\-utils 的 1.1.0 版本开始，默认值将是 \fIno_subtree_check\fP，因为 subtree_checking
+往往会导致比其值更多的问题。 如果您真的需要子树检查，您应该将该选项明确地放入 \fBexports\fP 文件中。
+如果您不输入任何选项，\fBexportfs\fP 将警告您更改未决。
+
+.TP 
+\fIinsecure_locks\fP
+.TP 
+\fIno_auth_nlm\fP
+此选项 (两个名称同义) 告诉 NFS 服务器不需要对锁定请求 (即使用 NLM 协议的请求) 进行身份验证。 通常，NFS
+服务器将需要一个锁定请求来为对文件具有读取权限的用户持有凭证。 使用此标志将不会执行访问检查。
+
+早期的 NFS 客户端实现不发送带有锁定请求的凭据，并且许多当前的 NFS 客户端仍然存在，它们基于旧的实现。
+如果您发现您只能锁定全局可读的文件，请使用此标志。
+
+.\".TP
+.\".I noaccess
+.\"This makes everything below the directory inaccessible for the named
+.\"client.  This is useful when you want to export a directory hierarchy to
+.\"a client, but exclude certain subdirectories. The client's view of a
+.\"directory flagged with noaccess is very limited; it is allowed to read
+.\"its attributes, and lookup `.' and `..'. These are also the only entries
+.\"returned by a readdir.
+.\".TP
+.\".IR link_relative
+.\"Convert absolute symbolic links (where the link contents start with a
+.\"slash) into relative links by prepending the necessary number of ../'s
+.\"to get from the directory containing the link to the root on the
+.\"server.  This has subtle, perhaps questionable, semantics when the file
+.\"hierarchy is not mounted at its root.
+.\".TP
+.\".IR link_absolute
+.\"Leave all symbolic link as they are. This is the default operation.
+可以使用同义 \fIauth_nlm\fP 或 \fIsecure_locks\fP 显式请求要求对 NLM 请求进行身份验证的默认行为。
+
+.TP 
+\fImountpoint=\fPpath
+.TP 
+\fImp\fP
+此选项可以仅在目录已成功挂载时导出该目录。 如果没有给出路径 (例如 \fImountpoint\fP 或 \fImp\fP)，则导出点也必须是挂载点。
+如果不是，则不导出导出点。 这使您可以确保挂载点下的目录永远不会被意外导出，例如，如果文件系统由于光盘错误而无法挂载。
+
+如果给出路径 (例如 \fImountpoint=\fP/path 或 \fImp=\fP/path)，则指定路径必须是要导出的导出点的安装点。
+
+.TP 
+\fIfsid=\fPnum|root|uuid
+NFS 需要能够识别它导出的每个文件系统。 通常它将使用文件系统的 UUID (如果文件系统有这样的东西) 或持有文件系统的设备的设备号
+(如果文件系统存储在设备上)。
+
+由于并非所有文件系统都存储在设备上，并且并非所有文件系统都有 UUID，因此有时需要明确告诉 NFS 如何识别文件系统。 这是通过 \fIfsid=\fP
+选项完成的。
+
+对于 NFSv4，有一个独特的文件系统，它是所有导出文件系统的根。 这是用 \fIfsid=root\fP 或 \fIfsid=0\fP
+指定的，两者的含义完全相同。
+
+其他文件系统可以用一个小整数或一个 UUID 来标识，它应该包含 32 个十六进制数字和任意标点符号。
+
+Linux 内核版本 2.6.20 及更早版本不理解 UUID 设置，因此如果需要为此类内核设置 fsid 选项，则必须使用一个小整数。
+支持同时设置一个小数字和一个 UUID，因此可以使相同的配置在新旧内核上工作。
+
+.TP 
+\fInordirplus\fP
+此选项将禁用 READDIRPLUS 请求处理。 设置后，来自 NFS 客户端的 READDIRPLUS 请求返回
+NFS3ERR_NOTSUPP，并且客户端返回到 READDIR。 此选项仅影响 NFSv3 客户端。
+.TP 
+\fIrefer=\fPpath@host[+host][:path@host[+host]]
+引用导出点的客户端将被引导从给定列表中选择文件系统的替代位置。 (请注意，这里的服务器必须有一个挂载点，尽管不需要不同的文件系统;
+因此，例如，\fImount \-\-bind\fP/path 就足够了。)
+.TP 
+\fIreplicas=\fPpath@host[+host][:path@host[+host]]
+如果客户要求出口点的替代位置，它将获得此替代列表。(请注意，文件系统的实际复制必须在别处处理。)
+
+.TP 
+\fIpnfs\fP
+如果协议级别为 NFSv4.1 或更高，并且文件系统支持 pNFS 导出，则此选项启用 pNFS 扩展。 使用 pNFS
+客户端可以绕过服务器并直接对存储设备执行 I/O。可以使用 \fIno_pnfs\fP 选项明确请求默认值。
+
+.TP 
+\fIsecurity_label\fP
+设置此选项后，使用 NFSv4.2 或更高版本的客户端将能够设置和检索安全标签 (例如 SELinux 使用的标签)。
+这只有在所有客户端都使用一致的安全策略时才有效。 请注意，早期内核不支持此导出选项，而是默认启用安全标签。
+
+.SS "User ID Mapping"
+.PP
+\fBnfsd\fP 根据每个 NFS RPC 请求中提供的 uid 和 gid
+对服务器计算机上的文件进行访问控制。用户期望的正常行为是她可以像访问普通文件系统一样访问服务器上的文件。这要求在客户端和服务器计算机上使用相同的 uid
+和 gids。这并不总是正确的，也不总是可取的。
+.PP
+通常，在访问 NFS 服务器上的文件时，不希望客户端计算机上的 root 用户也被视为 root 用户。为此，uid 0 通常映射到不同的 id:
+所谓的匿名或 \fInobody\fP uid。这种操作模式 (称为 `root squashing`) 是默认的，可以用 \fIno_root_squash\fP
+关闭。
+.PP
+.\".B nfsd
+.\"tries to obtain the anonymous uid and gid by looking up user
+.\".I nobody
+.\"in the password file at startup time. If it isn't found, a uid and gid
+.\".PP
+.\"In addition to this,
+.\".B nfsd
+.\"lets you specify arbitrary uids and gids that should be mapped to user
+.\"nobody as well.
+默认情况下，\fBexportfs\fP 选择 65534 的 uid 和 gid 进行压缩访问。这些值也可以被 \fIanonuid\fP 和
+\fIanongid\fP 选项覆盖。 最后，您可以通过指定 \fIall_squash\fP 选项将所有用户请求 map 到匿名 uid。
+.PP
+以下是映射选项的完整列表:
+.TP 
+\fIroot_squash\fP
+Map 从 uid/gid 0 请求到匿名 uid/gid。请注意，这不适用于任何其他可能同样敏感的 uid 或 gid，例如用户 \fIbin\fP 或组
+\fIstaff\fP。
+.TP 
+\fIno_root_squash\fP
+关闭根压缩。此选项主要用于无盘客户端。
+.TP 
+\fIall_squash\fP
+Map 匿名用户的所有 uid 和 gids。对 NFS 导出的公共 FTP 目录、新闻假脱机目录等有用。相反的选项是
+\fIno_all_squash\fP，这是默认设置。
+.TP 
+\fIanonuid\fP and \fIanongid\fP
+这些选项显式设置匿名帐户的 uid 和 gid。 此选项主要用于 PC/NFS 客户端，您可能希望所有请求都显示为来自一个用户。例如，考虑下面示例部分中
+\fB/home/joe\fP 的导出条目，其中 maps 所有请求到 uid 150 (假定是用户 joe 的请求)。
+
+.SS "Subdirectory Exports"
+
+通常您应该只导出文件系统的根目录。 NFS 服务器还允许您导出文件系统的子目录，但是，这有缺点:
+
+首先，恶意用户可能通过猜测其他文件的文件句柄来访问导出子目录之外的文件系统上的文件。 防止这种情况的唯一方法是使用
+\fIno_subtree_check\fP 选项，这可能会导致其他问题。
+
+其次，导出选项可能不会以您期望的方式执行。 例如，\fIsecurity_label\fP 选项对子目录导出不起作用，如果嵌套子目录导出更改
+\fIsecurity_label\fP 或 \fIsec=\fP 选项，NFSv4 客户端通常只会看到父导出上的选项。
+此外，如果安全选项不同，恶意客户端可能会使用文件句柄猜测攻击，使用另一个子目录的选项访问一个子目录中的文件。
+
+
+.SS "Extra Export Tables"
+读取 \fI/etc/exports\fP 后，\fBexportfs\fP 读取 \fI/etc/exports.d\fP 目录中的文件作为额外的导出表。 仅考虑以
+\&\fI.exports\fP 结尾的文件。 以点开头的文件将被忽略。 额外导出表的格式与 \fI/etc/exports\fP 相同
+.
+.IP
+.SH EXAMPLE
+.PP
+.nf
+.ta +3i
+.\"/pub/private    (noaccess)
+# 示例 /etc/exports 文件
+/               master(rw) trusty(rw,no_root_squash)
+/projects       proj*.local.domain(rw)
+/usr            *.local.domain(ro) @trusted(rw)
+/home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
+/pub            *(ro,insecure,all_squash)
+/srv/www\-sync,rw 服务器 @trusted@external (ro)
+/foo            2001:db8:9:e54::/64(rw) 192.0.2.0/24(rw)
+/build          buildhost[0\-9].local.domain(rw)
+.fi
+.PP
+.\" The last line denies all NFS clients
+.\"access to the private directory.
+.\".SH CAVEATS
+.\"Unlike other NFS server implementations, this
+.\".B nfsd
+.\"allows you to export both a directory and a subdirectory thereof to
+.\"the same host, for instance
+.\".IR /usr " and " /usr/X11R6 .
+.\"In this case, the mount options of the most specific entry apply. For
+.\"instance, when a user on the client host accesses a file in
+.\".IR /usr/X11R6 ,
+.\"the mount options given in the
+.\".I /usr/X11R6
+.\"entry apply. This is also true when the latter is a wildcard or netgroup
+.\"entry.
+第一行将整个文件系统导出到机器 master 和 trusty。 除了写访问之外，所有 uid
+压缩都为主机信任关闭。第二个和第三个条目显示通配符主机名和网络组的示例 (这是条目 `@trusted`)。第四行显示了上面讨论的 PC/NFS
+客户端的条目。第 5 行将公共 FTP 目录导出到世界上的每台主机，执行 nobody 帐户下的所有请求。此条目中的 \fIinsecure\fP
+选项还允许具有不使用 NFS 保留端口的 NFS 实现的客户端。 第六行导出一个目录，对机器 'server' 和 `@trusted'
+网络组可读写，对网络组`@external' 只读，所有三个挂载都启用了 `sync' 选项。第七行将目录导出到 IPv6 和 IPv4
+子网。第八行演示了字符类通配符匹配。
+.SH FILES
+/etc/exports /etc/exports.d
+.SH "SEE ALSO"
+\fBexportfs\fP(8), \fBnetgroup\fP(5), \fBmountd\fP(8), \fBnfsd\fP(8), \fBshowmount\fP(8).
+.\".SH DIAGNOSTICS
+.\"An error parsing the file is reported using syslogd(8) as level NOTICE from
+.\"a DAEMON whenever
+.\".BR nfsd (8)
+.\"or
+.\".BR mountd (8)
+.\"is started up.  Any unknown
+.\"host is reported at that time, but often not all hosts are not yet known
+.\"to
+.\".BR named (8)
+.\"at boot time, thus as hosts are found they are reported
+.\"with the same
+.\".BR syslogd (8)
+.\"parameters.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

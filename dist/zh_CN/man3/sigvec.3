@@ -1,0 +1,162 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2005 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigvec 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+sigvec、sigblock、sigsetmask、siggetmask、sigmask\-BSD 信号 API
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint sigvec(int \fP\fIsig\fP\fB, const struct sigvec *\fP\fIvec\fP\fB, struct sigvec *\fP\fIovec\fP\fB);\fP
+.PP
+\fBint sigmask(int \fP\fIsignum\fP\fB);\fP
+.PP
+\fBint sigblock(int \fP\fImask\fP\fB);\fP
+\fBint sigsetmask(int \fP\fImask\fP\fB);\fP
+\fBint siggetmask(void);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+以上所有函数:
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数在 glibc 中作为使用历史 BSD 信号 API 的程序的兼容接口提供。 此 API 已过时: 新应用程序应使用 POSIX 信号 API
+((\fBsigaction\fP(2)、\fBsigprocmask\fP(2) 等)。
+.PP
+\fBsigvec\fP() 函数设置或者获取信号 \fIsig\fP 的配置 (如 POSIX \fBsigaction\fP(2)).  如果 \fIvec\fP 不为
+NULL，则它指向定义 \fIsig\fP 新配置的 \fIsigvec\fP 结构体。 如果 \fIovec\fP 不为 NULL，则它指向一个 \fIsigvec\fP
+结构体，用于返回 \fIsig\fP 的先前配置。 要在不更改 \fIsig\fP 的情况下获取其当前配置，请为 \fIvec\fP 指定 NULL，为 \fIovec\fP
+指定非空指针。
+.PP
+无法更改 \fBSIGKILL\fP 和 \fBSIGSTOP\fP 的配置。
+.PP
+\fIsigvec\fP 结构体具有以下形式:
+.PP
+.in +4n
+.EX
+struct sigvec {
+    void (*sv_handler)(int); /* Signal disposition */
+    int    sv_mask;          /* Signals to be blocked in handler */
+    int    sv_flags;         /* Flags */
+};
+.EE
+.in
+.PP
+\fIsv_handler\fP 字段指定信号的配置，并且是: 信号处理程序的地址函数; \fBSIG_DFL\fP，表示默认配置适用于该信号; 或
+\fBSIG_IGN\fP，表示该信号被忽略。
+.PP
+如果 \fIsv_handler\fP 指定信号处理程序的地址，则 \fIsv_mask\fP 指定在处理程序执行时要阻止的信号掩码。
+此外，调用处理程序的信号也被阻塞。 阻止 \fBSIGKILL\fP 或 \fBSIGSTOP\fP 的尝试将被静默忽略。
+.PP
+如果 \fIsv_handler\fP 指定信号处理程序的地址，则 \fIsv_flags\fP 字段指定控制调用处理程序时发生的情况的标志。
+该字段可能包含零个或多个以下标志:
+.TP 
+\fBSV_INTERRUPT\fP
+如果信号处理程序中断阻塞系统调用，则在从处理程序返回时系统调用不会重新启动: 相反它会失败并返回错误 \fBEINTR\fP。
+如果未指定此标志，则系统调用默认重新启动。
+.TP 
+\fBSV_RESETHAND\fP
+在调用信号处理程序之前将信号的处置重置为默认值。 如果未指定此标志，则处理程序将保持建立状态，直到被稍后调用 \fBsigvec\fP()
+明确删除或直到进程执行 \fBexecve\fP(2)。
+.TP 
+\fBSV_ONSTACK\fP
+处理备用信号栈上的信号 (历史上使用过时的 \fBsigstack\fP() 函数在 BSD 下建立; POSIX 替换为
+\fBsigaltstack\fP(2))。
+.PP
+\fBsigmask\fP() 宏为 \fIsignum\fP 构造并返回一个 "signal mask"。 例如，我们可以使用如下代码初始化赋予
+\fBsigvec\fP() 的 \fIvec.sv_mask\fP 字段:
+.PP
+.in +4n
+.EX
+vec.sv_mask = sigmask(SIGQUIT) | sigmask(SIGABRT);
+            /* 期间阻塞 SIGQUIT 和 SIGABRT
+               处理程序执行 */
+.EE
+.in
+.PP
+\fBsigblock\fP() 函数将 \fImask\fP 中的信号添加到进程的信号掩码 (如 POSIX
+\fIsigprocmask(SIG_BLOCK)\fP)，并返回进程的先前信号掩码。 阻止 \fBSIGKILL\fP 或 \fBSIGSTOP\fP
+的尝试将被静默忽略。
+.PP
+\fBsigsetmask\fP() 函数将进程的信号掩码设置为 \fImask\fP 中给定的值 (如 POSIX
+\fIsigprocmask(SIG_SETMASK)\fP)，并返回进程的前一个信号掩码。
+.PP
+\fBsiggetmask\fP() 函数返回进程的当前信号掩码。 这个调用相当于 \fIsigblock(0)\fP。
+.SH "RETURN VALUE"
+\fBsigvec\fP() 函数成功返回 0; 出错时，它返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.PP
+\fBsigblock\fP() 和 \fBsigsetmask\fP() 函数返回前一个信号掩码。
+.PP
+\fBsigmask\fP() 宏返回 \fIsignum\fP 的信号掩码。
+.SH ERRORS
+请参见 \fBsigaction\fP(2) 和 \fBsigprocmask\fP(2) 下的错误。
+.SH VERSIONS
+从 glibc 2.21 开始，GNU C 库不再将 \fBsigvec\fP() 函数导出为 ABI 的一部分。 (为确保向后兼容性，glibc
+符号版本控制方案继续将接口导出到与库的旧版本链接的二进制文件。)
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsigvec\fP(),
+\fBsigmask\fP(),
+\fBsigblock\fP(),
+\fBsigsetmask\fP(),
+\fBsiggetmask\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+所有这些函数都在 4.3BSD 中，除了 \fBsiggetmask\fP()，其来源不明。 这些函数已过时: 不要在新程序中使用它们。
+.SH NOTES
+在 4.3BSD 上，\fBsignal\fP() 函数提供了可靠的语义 (当调用 \fBsigvec\fP() 时 \fIvec.sv_mask\fP 等于 0)。 在
+System V 上，\fBsignal\fP() 提供了不可靠的语义。 POSIX.1 未指定 \fBsignal\fP() 的这些方面。 有关详细信息，请参见
+\fBsignal\fP(2)。
+.PP
+为了等待信号，BSD 和 System V 都提供了一个名为 \fBsigpause\fP(3) 的函数，但这个函数在两个系统上的参数不同。
+有关详细信息，请参见 \fBsigpause\fP(3)。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBpause\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2), \fBsigprocmask\fP(2),
+\fBraise\fP(3), \fBsigpause\fP(3), \fBsigset\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

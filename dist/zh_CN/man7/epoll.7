@@ -1,0 +1,286 @@
+.\" -*- coding: UTF-8 -*-
+.\"  Copyright (C) 2003  Davide Libenzi
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"  Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH epoll 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+epoll\-I/O 事件通知工具
+.SH SYNOPSIS
+.nf
+\fB#include <sys/epoll.h>\fP
+.fi
+.SH DESCRIPTION
+\fBepoll\fP API 执行与 \fBpoll\fP(2): 类似的任务，它监视多个文件描述符以查看 I/O 是否可以用于其中任何一个。 \fBepoll\fP
+API 可以用作 edge 触发或级别触发的接口，并且可以很好地扩展到大量监视的文件描述符。
+.PP
+\fBepoll\fP API 的核心概念是 \fBepoll\fP \fIinstance\fP，一个内核数据结构体，从用户空间的角度来看，可以将其视为两个列表的容器:
+.IP \[bu] 3
+\fIinterest\fP 列表 (有时也称为 \fBepoll\fP 集) : 进程已注册监视兴趣的文件描述符集。
+.IP \[bu]
+\fIready\fP 列表: I/O 为 "ready" 的文件描述符集。 就绪列表是兴趣列表中文件描述符的一个子集 (或者更准确地说，是一组引用)。
+由于这些文件描述符上的 I/O 活动，内核动态填充就绪列表。
+.PP
+提供以下系统调用来创建和管理 \fBepoll\fP 实例:
+.IP \[bu] 3
+\fBepoll_create\fP(2) 创建一个新的 \fBepoll\fP 实例并返回引用该实例的文件描述符。 (最近的
+\fBepoll_create1\fP(2) 扩展了 \fBepoll_create\fP(2).) 的功能
+.IP \[bu]
+然后通过 \fBepoll_ctl\fP(2) 注册对特定文件描述符的兴趣，这会将项目添加到 \fBepoll\fP 实例的兴趣列表中。
+.IP \[bu]
+.\"
+\fBepoll_wait\fP(2) 等待 I/O 事件，如果当前没有可用事件则阻塞调用线程。 (这个系统调用可以认为是从 \fBepoll\fP
+实例的就绪列表中取项。)
+.SS "Level\-triggered and edge\-triggered"
+\fBepoll\fP 事件分发接口既可以作为 edge 触发的 (ET)，也可以作为电平触发的 (LT)。 两种机制之间的区别可以描述如下。
+假设发生这种情况:
+.IP (1) 5
+表示管道 (\fIrfd\fP) 读取端的文件描述符在 \fBepoll\fP 实例上注册。
+.IP (2)
+管道 writer 在管道的写入端写入 2\kB 的数据。
+.IP (3)
+完成对 \fBepoll_wait\fP(2) 的调用，将返回 \fIrfd\fP 作为就绪文件描述符。
+.IP (4)
+管道 reader 从 \fIrfd\fP 读取 1kB 的数据。
+.IP (5)
+对 \fBepoll_wait\fP(2) 的调用已完成。
+.PP
+如果使用 \fBEPOLLET\fP (edge\-triggered) 标志将 \fIrfd\fP 文件描述符添加到 \fBepoll\fP
+接口，则尽管文件输入缓冲区中仍然存在可用数据，但在步骤 \fB5\fP 中完成的对 \fBepoll_wait\fP(2) 的调用可能会挂起;
+同时，远程对等方可能期望基于它已发送的数据做出响应。 这样做的原因是 edge 触发模式仅在监视的文件描述符发生更改时才传递事件。 因此，在步骤
+\fB5\fP 中，调用者可能最终会等待一些已经存在于输入缓冲区中的数据。 在上面的例子中，\fIrfd\fP 上的事件会因为在 \fB2\fP 中完成写入而在 \fB3\fP
+中被消费。 由于在 \fB4\fP 中完成的读取操作不会消耗整个缓冲区数据，因此在步骤 \fB5\fP 中完成的对 \fBepoll_wait\fP(2)
+的调用可能会无限期地阻塞。
+.PP
+使用 \fBEPOLLET\fP 标志的应用程序应该使用非阻塞文件描述符，以避免阻塞读取或写入使处理多个文件描述符的任务处于饥饿状态。 将 \fBepoll\fP
+用作 edge 触发的 (\fBEPOLLET\fP) 接口的建议方法如下:
+.IP (1) 5
+使用非阻塞文件描述符; and
+.IP (2)
+通过仅在 \fBread\fP(2) 或 \fBwrite\fP(2) 返回 \fBEAGAIN\fP 之后等待事件。
+.PP
+相比之下，当用作级别触发接口时 (默认情况下，当未指定 \fBEPOLLET\fP 时)，\fBepoll\fP 只是更快的
+\fBpoll\fP(2)，并且可以在使用后者的任何地方使用，因为它具有相同的语义。
+.PP
+由于即使使用 edge 触发的 \fBepoll\fP，在接收到多个数据块时也会生成多个事件，调用者可以选择指定 \fBEPOLLONESHOT\fP 标志，以告诉
+\fBepoll\fP 在接收到 \fBepoll_wait\fP(2) 事件后禁用关联的文件描述符。 当指定 \fBEPOLLONESHOT\fP
+标志时，调用者有责任使用 \fBepoll_ctl\fP(2) 和 \fBEPOLL_CTL_MOD\fP 重新装备文件描述符。
+.PP
+.\"
+如果多个线程 (或进程，如果子进程跨 \fBfork\fP(2)) 继承了 \fBepoll\fP 文件描述符，则在 \fBepoll_wait\fP(2)
+中被阻塞，等待相同的 epoll 文件描述符，并且兴趣列表中标记为 edge 触发的 (\fBEPOLLET\fP)
+通知的文件描述符准备就绪，只需其中一个线程 (或进程) 从 \fBepoll_wait\fP(2) 唤醒。 这为避免某些情况下的 "thundering
+herd" 唤醒提供了有用的优化。
+.SS "Interaction with autosleep"
+如果系统通过 \fI/sys/power/autosleep\fP 处于 \fBautosleep\fP
+模式并且发生将设备从睡眠中唤醒的事件，则设备驱动程序将仅在该事件排队之前保持设备唤醒。 要在事件处理完毕之前保持设备唤醒，必须使用
+\fBepoll_ctl\fP(2) \fBEPOLLWAKEUP\fP 标志。
+.PP
+当 \fIstruct epoll_event\fP 的 \fBevents\fP 字段中设置了 \fBEPOLLWAKEUP\fP
+标志时，系统将从事件排队的那一刻起一直保持唤醒状态，通过返回事件的 \fBepoll_wait\fP(2) 调用，直到随后的 \fBepoll_wait\fP(2)
+调用。 如果该事件应使系统在该时间之后保持清醒，则应在第二个 \fBepoll_wait\fP(2) 调用之前采用单独的 \fIwake_lock\fP。
+.SS "/proc interfaces"
+.\" Following was added in Linux 2.6.28, but them removed in Linux 2.6.29
+.\" .TP
+.\" .IR /proc/sys/fs/epoll/max_user_instances " (since Linux 2.6.28)"
+.\" This specifies an upper limit on the number of epoll instances
+.\" that can be created per real user ID.
+以下接口可用于限制 epoll 消耗的内核内存量:
+.TP 
+\fI/proc/sys/fs/epoll/max_user_watches\fP (since Linux 2.6.28)
+.\" Linux 2.6.29 (in Linux 2.6.28, the default was 1/32 of lowmem)
+这指定了用户可以在系统上的所有 epoll 实例中注册的文件描述符总数的限制。 该限制是针对每个真实用户 ID 的。每个注册的文件描述符在 32
+位内核上大约占用 90 个字节，在 64 位内核上大约占用 160 个字节。 目前，\fImax_user_watches\fP 的默认值是可用低内存的
+1/25 (4%) 除以以字节为单位的注册成本。
+.SS "Example for suggested usage"
+虽然在用作级别触发接口时 \fBepoll\fP 的用法确实与 \fBpoll\fP(2) 具有相同的语义，但 edge
+触发的用法需要更多说明以避免应用程序事件循环中的停顿。 在此示例中，侦听器是已调用 \fBlisten\fP(2) 的非阻塞套接字。 函数
+\fIdo_use_fd()\fP 使用新的就绪文件描述符，直到 \fBread\fP(2) 或 \fBwrite\fP(2) 返回 \fBEAGAIN\fP。
+事件驱动的状态机应用程序应该在收到 \fBEAGAIN\fP 后记录其当前状态，以便在下一次调用 \fIdo_use_fd()\fP 时它将从之前停止的位置继续到
+\fBread\fP(2) 或 \fBwrite\fP(2)。
+.PP
+.in +4n
+.EX
+#define MAX_EVENTS 10
+struct epoll_event ev, events[MAX_EVENTS];
+int listen_sock, conn_sock, nfds, epollfd;
+
+/* Code to set up listening socket, \[aq]listen_sock\[aq],
+   (socket(), bind(), listen()) omitted. */
+
+epollfd = epoll_create1(0);
+if (epollfd == \-1) {
+    perror("epoll_create1");
+    exit(EXIT_FAILURE);
+}
+
+ev.events = EPOLLIN;
+ev.data.fd = listen_sock;
+if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listen_sock, &ev) == \-1) {
+    perror("epoll_ctl: listen_sock");
+    exit(EXIT_FAILURE);
+}
+
+for (;;) {
+    nfds = epoll_wait(epollfd, events, MAX_EVENTS, \-1);
+    if (nfds == \-1) {
+        perror("epoll_wait");
+        exit(EXIT_FAILURE);
+    }
+
+    for (n = 0; n < nfds; ++n) {
+        if (events[n].data.fd == listen_sock) {
+            conn_sock = accept(listen_sock,
+                               (struct sockaddr *) &addr, &addrlen);
+            if (conn_sock == \-1) {
+                perror("accept");
+                exit(EXIT_FAILURE);
+            }
+            setnonblocking(conn_sock);
+            ev.events = EPOLLIN | EPOLLET;
+            ev.data.fd = conn_sock;
+            if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock,
+                        &ev) == \-1) {
+                perror("epoll_ctl: conn_sock");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            do_use_fd(events[n].data.fd);
+        }
+    }
+}
+.EE
+.in
+.PP
+当用作 edge 触发的接口时，出于性能原因，可以通过指定 (\fBEPOLLIN\fP|\fBEPOLLOUT\fP) 在 \fBepoll\fP 接口
+(\fBEPOLL_CTL_ADD\fP) 内部添加一次文件描述符。 这使您可以避免在 \fBEPOLLIN\fP 和 \fBEPOLLOUT\fP 之间连续切换调用
+\fBepoll_ctl\fP(2) 和 \fBEPOLL_CTL_MOD\fP。
+.SS "Questions and answers"
+.IP \[bu] 3
+用于区分兴趣列表中注册的文件描述符的键是什么?
+.IP
+关键是文件描述符编号和打开文件描述 (也称为 "open file handle"，内核对打开文件的内部表示) 的组合。
+.IP \[bu]
+如果在 \fBepoll\fP 实例上两次注册相同的文件描述符会怎样?
+.IP
+.\" But a file descriptor duplicated by fork(2) can't be added to the
+.\" set, because the [file *, fd] pair is already in the epoll set.
+.\" That is a somewhat ugly inconsistency.  On the one hand, a child process
+.\" cannot add the duplicate file descriptor to the epoll set.  (In every
+.\" other case that I can think of, file descriptors duplicated by fork have
+.\" similar semantics to file descriptors duplicated by dup() and friends.)  On
+.\" the other hand, the very fact that the child has a duplicate of the
+.\" file descriptor means that even if the parent closes its file descriptor,
+.\" then epoll_wait() in the parent will continue to receive notifications for
+.\" that file descriptor because of the duplicated file descriptor in the child.
+.\"
+.\" See http://thread.gmane.org/gmane.linux.kernel/596462/
+.\" "epoll design problems with common fork/exec patterns"
+.\"
+.\" mtk, Feb 2008
+您可能会得到 \fBEEXIST\fP。 但是，可以将重复的 (\fBdup\fP(2)、\fBdup2\fP(2)、\fBfcntl\fP(2) \fBF_DUPFD\fP)
+文件描述符添加到同一个 \fBepoll\fP 实例。 如果重复的文件描述符使用不同的 \fIevents\fP 掩码注册，这可能是过滤事件的有用技术。
+.IP \[bu]
+两个 \fBepoll\fP 实例可以等待同一个文件描述符吗? 如果是这样，事件是否报告给两个 \fBepoll\fP 文件描述符?
+.IP
+是的，事件将报告给双方。 但是，可能需要仔细编程才能正确执行此操作。
+.IP \[bu]
+\fBepoll\fP 文件描述符本身是 poll/epoll/selectable 吗?
+.IP
+是的。如果 \fBepoll\fP 文件描述符有事件等待，那么它将指示为可读。
+.IP \[bu]
+如果尝试将 \fBepoll\fP 文件描述符放入其自己的文件描述符集中会发生什么情况?
+.IP
+\fBepoll_ctl\fP(2) 调用失败 (\fBEINVAL\fP)。 但是，您可以在另一个 \fBepoll\fP 文件描述符集中添加一个 \fBepoll\fP
+文件描述符。
+.IP \[bu]
+我可以通过 UNIX 域套接字将 \fBepoll\fP 文件描述符发送到另一个进程吗?
+.IP
+是的，但这样做没有意义，因为接收进程不会在兴趣列表中拥有文件描述符的副本。
+.IP \[bu]
+关闭文件描述符会导致它从所有 \fBepoll\fP 兴趣列表中删除吗?
+.IP
+是的，但请注意以下几点。 文件描述符是对打开文件描述的引用 (参见 \fBopen\fP(2)).  每当通过
+\fBdup\fP(2)、\fBdup2\fP(2)、\fBfcntl\fP(2)、\fBF_DUPFD\fP 或 \fBfork\fP(2)
+复制文件描述符时，都会创建一个引用相同打开文件描述的新文件描述符。 打开的文件描述将继续存在，直到所有引用它的文件描述符都已关闭。
+.IP
+只有在引用底层打开文件描述的所有文件描述符都已关闭后，才会从兴趣列表中删除文件描述符。
+这意味着即使在作为兴趣列表一部分的文件描述符已关闭之后，如果引用相同，底层，文件描述的其他文件描述符保持打开状态，也可能会为该文件描述符报告事件。
+为防止这种情况发生，必须从兴趣列表中显式删除文件描述符 (在复制之前使用 \fBepoll_ctl\fP(2) \fBEPOLL_CTL_DEL\fP)。
+或者，应用程序必须确保关闭所有文件描述符 (如果使用 \fBdup\fP(2) 或 \fBfork\fP(2)) 的库函数在幕后复制文件描述符，这可能会很困难。
+.IP \[bu]
+如果在 \fBepoll_wait\fP(2) 调用之间发生不止一个事件，它们是合并还是单独报告?
+.IP
+他们将合并。
+.IP \[bu]
+对文件描述符的操作是否会影响已收集但尚未报告的事件?
+.IP
+您可以对现有文件描述符执行两个操作。 对于这种情况，删除将毫无意义。 修改将重新读取可用的 I/O。
+.IP \[bu]
+使用 \fBEPOLLET\fP 标志 (edge 触发的行为) 时，是否需要连续 read/write 文件描述符直到 \fBEAGAIN\fP?
+.IP
+从 \fBepoll_wait\fP(2) 接收到事件应该会提示您此类文件描述符已准备好用于请求的 I/O 操作。 在下一个 (nonblocking)
+read/write 产生 \fBEAGAIN\fP 之前，您必须考虑它已准备就绪。 何时以及如何使用文件描述符完全取决于您。
+.IP
+对于 packet/token\-oriented 文件 (例如，数据报套接字，规范模式下的终点)，检测 read/write I/O
+空间结束的唯一方法是继续 read/write 直到 \fBEAGAIN\fP。
+.IP
+对于面向流的文件 (例如，管道、FIFO、流套接字)，read/write I/O 空间耗尽的情况也可以通过检查从目标文件描述符读取 /
+写入的数据量来检测。 例如，如果您通过要求读取一定数量的数据来调用 \fBread\fP(2)，而 \fBread\fP(2)
+返回较少的字节数，则可以确定已用完文件描述符的读取 I/O 空间。 使用 \fBwrite\fP(2) 写入时也是如此。
+(如果您不能保证被监视的文件描述符总是引用一个面向流的文件，请避免使用后一种技术。)
+.SS "Possible pitfalls and ways to avoid them"
+.IP \[bu] 3
+\fBStarvation (edge\-triggered)\fP
+.IP
+如果有大量的 I/O 空间，则可能通过尝试 drain 来处理其他文件，从而导致饥饿。 (这个问题不是 \fBepoll\fP.) 特有的
+.IP
+解决方案是维护一个就绪列表，并在其关联数据结构体中将文件描述符标记为就绪，从而允许应用程序记住哪些文件需要处理，但仍然在所有就绪文件之间循环。
+这也支持忽略您为已经准备好的文件描述符收到的后续事件。
+.IP \[bu]
+\fBIf using an event cache...\fP
+.IP
+如果您使用事件缓存或存储从 \fBepoll_wait\fP(2) 返回的所有文件描述符，那么请确保提供一种方法来动态标记其闭包
+(即，由先前的事件处理引起)。 假设您从 \fBepoll_wait\fP(2) 接收到 100 个事件，并且在事件 #47 中，条件导致事件 #13 关闭。
+如果您删除事件 #13 的文件描述符结构体和 \fBclose\fP(2)，那么您的事件缓存可能仍然会说有事件在等待该文件描述符，这会导致混淆。
+.IP
+一种解决方案是调用，在事件 47 的处理过程中，\fBepoll_ctl\fP(\fBEPOLL_CTL_DEL\fP) 删除文件描述符 13 和
+\fBclose\fP(2)，然后将其关联数据结构体标记为已删除，并将其链接到清理列表。 如果您在批处理中发现文件描述符 13
+的另一个事件，您会发现该文件描述符之前已被删除并且不会有混淆。
+.SH VERSIONS
+.\" Its interface should be finalized in Linux kernel 2.5.66.
+\fBepoll\fP API 是在 Linux 内核 2.5.44 中引入的。 在 glibc 2.3.2 中添加了支持。
+.SH STANDARDS
+\fBepoll\fP API 是特定于 Linux 的。 其他一些系统也提供了类似的机制，比如 FreeBSD 有 \fIkqueue\fP，Solaris 有
+\fI/dev/poll\fP。
+.SH NOTES
+可以通过进程的 \fI/proc/\fPpid\fI/fdinfo\fP 目录中的 epoll 文件描述符条目查看通过 epoll 文件描述符监视的文件描述符集。
+有关详细信息，请参见 \fBproc\fP(5)。
+.PP
+\fBkcmp\fP(2) \fBKCMP_EPOLL_TFD\fP 操作可用于测试文件描述符是否存在于 epoll 实例中。
+.SH "SEE ALSO"
+\fBepoll_create\fP(2), \fBepoll_create1\fP(2), \fBepoll_ctl\fP(2), \fBepoll_wait\fP(2),
+\fBpoll\fP(2), \fBselect\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

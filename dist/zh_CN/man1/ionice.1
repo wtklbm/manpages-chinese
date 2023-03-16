@@ -1,0 +1,197 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: ionice
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: User Commands
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH IONICE 1 2022\-05\-11 "util\-linux 2.38.1" "User Commands"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+ionice \- 设置或获取进程 I/O 调度类和优先级
+.SH SYNOPSIS
+.sp
+\fBionice\fP [\fB\-c\fP \fIclass\fP] [\fB\-n\fP \fIlevel\fP] [\fB\-t\fP] \fB\-p\fP \fIPID\fP
+.sp
+\fBionice\fP [\fB\-c\fP \fIclass\fP] [\fB\-n\fP \fIlevel\fP] [\fB\-t\fP] \fB\-P\fP \fIPGID\fP
+.sp
+\fBionice\fP [\fB\-c\fP \fIclass\fP] [\fB\-n\fP \fIlevel\fP] [\fB\-t\fP] \fB\-u\fP \fIUID\fP
+.sp
+\fBionice\fP [\fB\-c\fP \fIclass\fP] [\fB\-n\fP \fIlevel\fP] [\fB\-t\fP] \fIcommand\fP [argument]
+\&...
+.SH DESCRIPTION
+.sp
+该程序设置或获取程序的 I/O 调度类和优先级。如果没有给出参数或只给出 \fB\-p\fP，\fBionice\fP 将查询当前 I/O 调度类和该进程的优先级。
+.sp
+当给出 \fIcommand\fP 时，\fBionice\fP 将使用给定的参数运行此命令。如果没有指定 \fIclass\fP，那么 \fIcommand\fP 将使用
+"best\-effort" 调度类执行。默认优先级是 4.
+.sp
+在撰写本文时，进程可以属于三个调度类之一:
+.sp
+\fBIdle\fP
+.RS 4
+以空闲 I/O 优先级运行的程序只有在没有其他程序在定义的宽限期内请求磁盘 I/O 时才会获得磁盘时间。空闲 I/O
+进程对正常系统活动的影响应该为零。这个调度类不带优先级参数。目前，普通用户允许使用此调度类 (自内核 2.6.25 起)。
+.RE
+.sp
+\fBBest\-effort\fP
+.RS 4
+对于没有请求特定 I/O 优先级的任何进程，这是有效的调度类。此类从 \fI0\-7\fP
+中获取优先级参数，数字越小优先级越高。以相同的尽力而为优先级运行的程序以循环方式提供服务。
+.sp
+请注意，在内核 2.6.26 之前，未请求 I/O 优先级的进程正式使用 "\fBnone\fP" 作为调度类，但 I/O
+调度程序会将此类进程视为尽力而为类。尽力而为类中的优先级将从进程的 CPU nice 级别动态派生: io_priority=(cpu_nice +
+20)/ 5.
+.sp
+对于具有 CFQ I/O 调度程序的 2.6.26 之后的内核，未请求 I/O 优先级的进程将继承其 CPU 调度类。I/O 优先级源自进程的 CPU
+nice 级别 (与内核 2.6.26 之前相同)。
+.RE
+.sp
+\fBRealtime\fP
+.RS 4
+RT 调度类优先访问磁盘，而不管系统中发生了什么。因此 RT 类需要小心使用，因为它可能会使其他进程饿死。与尽力而为类一样，定义了 8
+个优先级级别，表示给定进程将在每个调度窗口上接收到的时间片有多大。普通 (即非 root) 用户不允许使用此调度类。
+.RE
+.SH OPTIONS
+.sp
+\fB\-c\fP, \fB\-\-class\fP \fIclass\fP
+.RS 4
+指定要使用的调度类的名称或编号; \f (CR0\fR 表示无，\f (CR1\fR 表示实时，\f (CR2\fR 表示尽力而为，\f (CR3\fR
+表示空闲。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-classdata\fP \fIlevel\fP
+.RS 4
+指定调度类数据。这仅在班级接受参数时有效。对于 realtime 和 best\-effort，\fI0\-7\fP 为有效数据 (优先级)，\f (CR0\fR
+代表最高优先级。
+.RE
+.sp
+\fB\-p\fP, \fB\-\-pid\fP \fIPID\fP ...
+.RS 4
+指定要为其获取或设置调度参数的运行进程的进程 ID。
+.RE
+.sp
+\fB\-P\fP, \fB\-\-pgid\fP \fIPGID\fP ...
+.RS 4
+指定要为其获取或设置调度参数的运行进程的进程组 ID。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-ignore\fP
+.RS 4
+忽略设置请求优先级的失败。如果指定了 \fIcommand\fP，即使无法设置所需的调度优先级，也可以运行它，这可能是由于权限不足或内核版本过旧而导致的。
+.RE
+.sp
+\fB\-u\fP, \fB\-\-uid\fP \fIUID\fP ...
+.RS 4
+指定要为其获取或设置调度参数的正在运行的进程的用户 ID。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH NOTES
+.sp
+Linux 支持 I/O 调度优先级和类，因为 2.6.13 具有 CFQ I/O 调度程序。
+.SH EXAMPLES
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+# \fBionice\fP \-c 3 \-p 89
+.RE
+.sp
+将 PID 为 89 的进程设置为空闲 I/O 进程。
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+# \fBionice\fP \-c 2 \-n 0 狂欢
+.RE
+.sp
+运行 \(aqbash\(aq 作为具有最高优先级的尽力而为的程序。
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+# \fBionice\fP \-p 89 91
+.RE
+.sp
+打印 PID 为 89 和 91 的进程的类和优先级。
+.SH AUTHORS
+.sp
+.MTO jens\(ataxboe.dk "Jens Axboe" ,
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBioprio_set\fP(2)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBionice\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

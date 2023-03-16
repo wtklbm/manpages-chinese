@@ -1,0 +1,150 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-agfafocus 5 "10 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-agfafocus
+.SH NAME
+sane\-agfafocus \- 用于 AGFA Focus 平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-agfafocus\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对 AGFA Focus
+平板扫描仪的访问。目前，该后端支持以下扫描仪:
+.PP
+.RS
+AGFA Focus GS 扫描仪 (6 位灰度) (untested)
+.br
+AGFA Focus 线稿扫描仪 (lineart) (untested)
+.br
+AGFA Focus II (8 位灰度) (untested)
+.br
+AGFA Focus Color (24 位色 3\-pass)
+.br
+AGFA Focus Color Plus (24 位彩色 3\-pass)
+.br
+.PP
+西门子 S9036 (8 位灰阶) (untested)
+.br
+.RE
+.PP
+该驱动程序支持艺术线条、6bpp 和 8bpp 灰色、18bpp 和 24bpp 彩色扫描。
+.PP
+如果您拥有所有权的扫描仪不是上面列出的可以使用此后端的扫描仪，请通过将扫描仪的型号名称、SCSI ID 和固件版本发送到
+\fIsane\-devel@alioth\-lists.debian.net\fP 来告知我们。 查看
+\fIhttp://www.sane\-project.org/mailing\-lists.html\fP 关于订阅 sane\-devel 的信息。
+.PP
+所有这些扫描仪都是 SCSI\-2 之前的扫描仪，甚至不能正确地向 SCSI Inquiry 报告。 这在 SCSI
+总，字符串，扫描中通常很明显，扫描器将仅提供垃圾作为供应商和模型字符串。
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于 SCSI 扫描仪的特殊设备的路径名。对于 SCSI 扫描仪，特殊设备名称必须是泛型 SCSI
+设备或此类设备的符号链接。 例如，在 Linux 下，这样的设备名称可以是 \fI/dev/sga\fP 或 \fI/dev/sge\fP。 有关详细信息，请参见
+\fBsane\-scsi\fP(5)。
+
+.SH CONFIGURATION
+\fIagfafocus.conf\fP 文件的内容是与 AGFA Focus 扫描仪对应的设备名称列表。 空行和以哈希标记 (#) 开头的行将被忽略。
+示例配置文件如下所示:
+.PP
+.RS
+/dev/scanner
+.br
+# 这是一条评论
+.br
+/dev/sge
+.RE
+
+.PP
+.SH FILES
+.TP 
+\fI/etc/sane.d/agfafocus.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/libsane\-agfafocus.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/libsane\-agfafocus.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_AGFAFOCUS\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。例如，值 128 请求打印所有调试输出。较小的级别减少冗长。
+\fBSANE_DEBUG_AGFAFOCUS\fP 值:
+
+.sp
+.nf
+\f (CRNumber 备注
+ 0 打印重要错误 (每次打印)
+ 1 打印错误
+ 2 打印感
+ 3 打印警告
+ 4 打印扫描仪 \- 查询
+ 5 打印信息
+ 6 打印不太重要的信息
+ 7 打印调用过程
+ 8 打印 reader_process 消息
+ 10 打印称为 sane\-init\-routines
+ 11 打印称为 sane\-procedures
+ 12 打印理智的信息
+ 13 打印 sane option\-control messages\fR
+.fi
+
+.SH "MISSING FUNCTIONALITY"
+
+抖动矩阵和色调曲线的上传已经实现，但到目前为止还没有证明对任何东西有用。 因此，这些选项已被禁用。
+
+.SH BUGS
+如果加载 SCSI 总线，不支持断开连接的扫描器会出现 SCSI 超时问题，例如。如果您在扫描的同时进行内核构建。
+要查看您的扫描仪是否支持断开连接，请在终端中运行 \fISANE_DEBUG_AGFAFOCUS=128 scanimage \-L\fP 并查找
+"disconnect:" 行。
+
+.SH DEBUG
+如果您遇到 SANE 无法检测到您的扫描仪的问题，请确保 Artec 后端已禁用。 不知何故，这个后端至少导致我的扫描仪无法正确响应 SCSI
+查询命令。
+.PP
+如果遇到错误，请将环境变量 \fBSANE_DEBUG_AGFAFOCUS\fP 设置为 128 并尝试重新生成问题。然后给我一份附有日志的报告。
+.PP
+如果您遇到 SCSI 总线错误或修剪或者移位的图像，请在向我发送报告之前将环境变量 \fBSANE_DEBUG_SANEI_SCSI\fP 设置为 128。
+
+.SH TODO
+.TP 
+\fBMore scanners?\fP
+
+AGFA ACS 和 ARCUS 扫描仪类似于 FOCUS 扫描仪。 该驱动程序可能无需太多更改即可扩展以支持这些扫描仪。
+我无权访问此类扫描仪，也无法为其添加支持。 但是，如果您拥有这样的扫描仪，我可以帮助您添加对这些扫描仪的支持。
+
+AGFA HORIZON 扫描仪是 SCSI\-2 扫描仪，在 SCSI\-2 兼容后端中支持这些扫描仪可能会更容易。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5)
+
+.SH AUTHOR
+Ingo Schneider 和 Karl Anders\[/O] ygard。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

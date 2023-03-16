@@ -1,0 +1,93 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1998 Heiner Eisen.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: x25.7,v 1.4 1999/05/18 10:35:12 freitag Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH x25 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+x25\-ITU\-T X.25/ISO\-8208 协议接口
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <linux/x25.h>\fP
+.PP
+\fIx25_socket\fP\fB = socket(AF_X25, SOCK_SEQPACKET, 0);\fP
+.fi
+.SH DESCRIPTION
+X25 套接字提供到 X.25 数据包层协议的接口。 这允许应用程序通过国际电信 Union 的建议 X.25 (X.25 DTE\-DCE 模式)
+标准化的公共 X.25 数据网络进行通信。 X25 套接字也可用于没有中间 X.25 网络 (X.25 DTE\-DTE 模式) 的通信，如
+ISO\-8208 中所述。
+.PP
+消息边界被保留 \[em] 来自套接字的 \fBread\fP(2) 将检索与输出相同的数据块，并将相应的 \fBwrite\fP(2) 输出到对等套接字。
+必要时，内核通过 X.25 M 位负责分段和重组长消息。 消息大小没有硬编码上限。 但是，如果暂时缺少系统资源或当其他约束
+(例如套接字内存或缓冲区大小限制) 生效时，重组长消息可能会失败。 如果发生这种情况，X.25 连接将被重置。
+.SS "Socket addresses"
+\fBAF_X25\fP 套接字地址系列使用 \fIstruct sockaddr_x25\fP 来表示 ITU\-T 建议 X.121 中定义的网络地址。
+.PP
+.in +4n
+.EX
+struct sockaddr_x25 {
+    sa_family_t sx25_family;    /* must be AF_X25 */
+    x25_ 地址 sx25_addr; /* X.121 Address */
+};
+.EE
+.in
+.PP
+\fIsx25_addr\fP 包含一个 char 数组 \fIx25_addr[]\fP，将被解释为以 null 结尾的字符串。
+\fIsx25_addr.x25_addr[]\fP 由最多 15 个 (不包括终止空字节) ASCII 字符构成 X.121 地址。 只允许从 \[aq]
+0\[aq] 到 \[aq] 9\[aq] 的十进制数字字符。
+.SS "Socket options"
+可以使用 \fBsetsockopt\fP(2) 设置以下特定于 X.25 的套接字选项，并使用 \fBgetsockopt\fP(2) 读取并将 \fIlevel\fP
+参数设置为 \fBSOL_X25\fP。
+.TP 
+\fBX25_QBITINCL\fP
+控制用户是否可以访问 X.25 Q 位 (合格数据位)。 它需要一个整数参数。 如果设置为 0 (default)，则永远不会为传出数据包设置 Q
+位，并且忽略传入数据包的 Q 位。 如果设置为 1，则会在从套接字读取或写入套接字的每条消息前添加一个额外的第一个字节。
+对于从套接字读取的数据，第一个字节为 0 表示未设置相应传入数据包的 Q 位。 值为 1 的第一个字节表示相应传入数据包的 Q 位已设置。
+如果写入套接字的数据的第一个字节为 1，则相应的输出数据包的 Q 位将被设置。 如果第一个字节为 0，则不会设置 Q 位。
+.SH VERSIONS
+AF_X25 协议族是 Linux 2.2 的新特性。
+.SH BUGS
+很多，因为 X.25 PLP 实现是 \fBCONFIG_EXPERIMENTAL\fP。
+.PP
+此手册页不完整。
+.PP
+目前还没有专门的应用程序程序的头文件; 您需要包含内核头文件 \fI<linux/x25.h>\fP。
+\fBCONFIG_EXPERIMENTAL\fP 也可能意味着接口的 future 版本不是二进制兼容的。
+.PP
+X.25 N\-Reset 事件尚未传播到用户进程。 因此，如果发生重置，数据可能会丢失，恕不另行通知。
+.SH "SEE ALSO"
+\fBsocket\fP(2), \fBsocket\fP(7)
+.PP
+Jonathan Simon Naylor: \[lq]The Re\-Analysis and Re\-Implementation of
+X.25.\[rq] The URL is
+.UR ftp://ftp.pspt.fi\:/pub\:/ham\:/linux\:/ax25\:/x25doc.tgz
+.UE .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

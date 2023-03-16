@@ -1,0 +1,325 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\" Parts Copyright (c) 1995 Nicolai Langfeldt (janl@ifi.uio.no), 1/1/95
+.\" and Copyright (c) 2006, 2007, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-05-18 by Todd Larason <jtl@molehill.org>
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1995-01-09 by Richard Kettlewell <richard@greenend.org.uk>
+.\" Modified 1998-05-13 by Michael Haardt <michael@cantor.informatik.rwth-aachen.de>
+.\" Modified 1999-07-06 by aeb & Albert Cahalan
+.\" Modified 2000-01-07 by aeb
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2007-06-08 mtk: Added example program
+.\" 2007-07-05 mtk: Added details on underlying system call interfaces
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH stat 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+stat, fstat, lstat, fstatat \- 获取文件状态
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint stat(const char *restrict \fP\fIpathname\fP\fB,\fP
+\fB         struct stat *restrict \fP\fIstatbuf\fP\fB);\fP
+\fBint fstat(int \fP\fIfd\fP\fB, struct stat *\fP\fIstatbuf\fP\fB);\fP
+\fBint lstat(const char *restrict \fP\fIpathname\fP\fB,\fP
+\fB         struct stat *restrict \fP\fIstatbuf\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of \fBAT_*\fP constants */
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint fstatat(int \fP\fIdirfd\fP\fB, const char *restrict \fP\fIpathname\fP\fB,\fP
+\fB         struct stat *restrict \fP\fIstatbuf\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBlstat\fP():
+.nf
+.\"   _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    /* Since glibc 2.20 */ _DEFAULT_SOURCE
+        || _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.10: */ _POSIX_C_SOURCE >= 200112L
+        || /* glibc 2.19 and earlier */ _BSD_SOURCE
+.fi
+.PP
+\fBfstatat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数返回 \fIstatbuf\fP 指向的缓冲区中有关文件的信息。 文件本身不需要权限，但在 \fBstat\fP()、\fBfstatat\fP() 和
+\fBlstat\fP()\[em]execute 的情况下，\fIpathname\fP 中通向该文件的所有目录都需要 (search) 权限。
+.PP
+\fBstat\fP() 和 \fBfstatat\fP() 检索有关 \fIpathname\fP 指向的文件的信息; \fBfstatat\fP() 的区别如下所述。
+.PP
+\fBlstat\fP() 与 \fBstat\fP() 相同，只是如果 \fIpathname\fP 是符号链接，则它返回有关链接本身的信息，而不是链接引用的文件。
+.PP
+.\"
+\fBfstat\fP() 与 \fBstat\fP() 相同，只是要检索其信息的文件由文件描述符 \fIfd\fP 指定。
+.SS "The stat structure"
+所有这些系统调用都返回一个 \fIstat\fP 结构体 (参见 \fBstat\fP(3type)).
+.PP
+.\" Background: inode attributes are modified with i_mutex held, but
+.\" read by stat() without taking the mutex.
+\fINote\fP: 出于性能和简单的原因，\fIstat\fP 结构体中的不同字段可能包含系统调用期间不同时刻的状态信息。 例如，如果 \fIst_mode\fP 或
+\fIst_uid\fP 被另一个进程通过调用 \fBchmod\fP(2) 或 \fBchown\fP(2) 更改，则 \fBstat\fP() 可能会返回旧的
+\fIst_mode\fP 和新的 \fIst_uid\fP，或者旧的 \fIst_uid\fP 和新的 \fIst_mode\fP。
+.SS fstatat()
+\fBfstatat\fP() 系统调用是一个更通用的访问文件信息的接口，它仍然可以准确地提供 \fBstat\fP()、\fBlstat\fP() 和
+\fBfstat\fP() 中每一个的行为。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBstat\fP() 和 \fBlstat\fP() 对相对路径名所做的那样) .
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBstat\fP() 和 \fBlstat\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+\fIflags\fP 可以是 0，也可以包括以下一个或多个标志或:
+.TP 
+\fBAT_EMPTY_PATH\fP (since Linux 2.6.39)
+.\" commit 65cfc6722361570bfe255698d9cd4dccaf47570d
+.\" Before glibc 2.16, defining _ATFILE_SOURCE sufficed
+如果 \fIpathname\fP 为空字符串，则对 \fIdirfd\fP 引用的文件进行操作 (可能已经使用 \fBopen\fP(2) \fBO_PATH\fP
+标志获取)。 在这种情况下，\fIdirfd\fP 可以引用任何类型的文件，而不仅仅是一个目录，并且 \fBfstatat\fP() 的行为与 \fBfstat\fP()
+的行为类似。 如果 \fIdirfd\fP 是 \fBAT_FDCWD\fP，则调用在当前工作目录上运行。 这个标志是 Linux 特有的; 定义
+\fB_GNU_SOURCE\fP 以获得其定义。
+.TP 
+\fBAT_NO_AUTOMOUNT\fP (since Linux 2.6.38)
+不要自动挂载 \fIpathname.\fP 的最终 ("basename") 组件因为 Linux 3.1 这个标志被忽略。 由于 Linux 4.11
+这个标志是隐含的。
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+如果 \fIpathname\fP 是符号链接，请不要解引它: 而是返回有关链接本身的信息，如 \fBlstat\fP()。 (默认情况下，\fBfstatat\fP()
+解引用符号链接，如 \fBstat\fP().)
+.PP
+有关对 \fBfstatat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fIpathname\fP 路径前缀中的目录之一的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的打开文件描述符。
+.TP 
+\fBEBADF\fP
+(\fBfstatat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+地址错误。
+.TP 
+\fBEINVAL\fP
+(\fBfstatat\fP()) \fIflags\fP 中指定的标志无效。
+.TP 
+\fBELOOP\fP
+遍历路径时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 的组件不存在或者是悬垂符号链接。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 是空字符串，\fIflags\fP 中未指定 \fBAT_EMPTY_PATH\fP。
+.TP 
+\fBENOMEM\fP
+内存不足 (即内核内存)。
+.TP 
+\fBENOTDIR\fP
+\fIpathname\fP 的路径前缀的组成部分不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBfstatat\fP()) \fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.TP 
+\fBEOVERFLOW\fP
+\fIpathname\fP 或 \fIfd\fP 指的是一个文件，其大小、索引节点号或块数不能分别用 \fIoff_t\fP、\fIino_t\fP 或
+\fIblkcnt_t\fP 类型表示。 例如，当在没有 \fI\-D_FILE_OFFSET_BITS=64\fP 的 32 位平台上编译的应用程序在大小超过
+\fI(1<<31)\-1\fP 字节的文件上调用 \fBstat\fP() 时，就会发生此错误。
+.SH VERSIONS
+\fBfstatat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+.\" SVr4 documents additional
+.\" .BR fstat ()
+.\" error conditions EINTR, ENOLINK, and EOVERFLOW.  SVr4
+.\" documents additional
+.\" .BR stat ()
+.\" and
+.\" .BR lstat ()
+.\" error conditions EINTR, EMULTIHOP, ENOLINK, and EOVERFLOW.
+\fBstat\fP(), \fBfstat\fP(), \fBlstat\fP(): SVr4, 4.3BSD, POSIX.1\-2001, POSIX.1.2008.
+.PP
+\fBfstatat\fP(): POSIX.1\-2008.
+.PP
+根据 POSIX.1\-2001，符号链接上的 \fBlstat\fP() 只需要在 \fIstat\fP 结构体的 \fIst_size\fP 字段和
+\fIst_mode\fP 字段的文件类型中返回有效信息。 POSIX.1\-2008 收紧了规范，要求 \fBlstat\fP() 返回除 \fIst_mode\fP
+中的模式位以外的所有字段中的有效信息。
+.PP
+\fIst_blocks\fP 和 \fIst_blksize\fP 字段的使用可能不太便携。 (它们是在 BSD 中引入的。系统之间的解释不同，并且在涉及 NFS
+挂载时可能在单个系统上不同。)
+.SH NOTES
+.SS "C library/kernel differences"
+.\" See include/asm-i386/stat.h in the Linux 2.4 source code for the
+.\" various versions of the structure definitions
+随着时间的推移，\fIstat\fP 结构体尺寸的增加导致了 \fBstat\fP(): \fIsys_stat\fP() (插槽
+\fI__NR_oldstat\fP)、\fIsys_newstat\fP() (插槽 \fI__NR_stat\fP)) 和 \fIsys_stat64()\fP (插槽
+\fI__NR_stat64\fP)，在 i386 等 32 位平台上) 的三个连续版本。 前两个版本已经存在于 Linux 1.0 中 (尽管名称不同) ;
+最后一个是在 Linux 2.4 中添加的。 类似的说明适用于 \fBfstat\fP() 和 \fBlstat\fP()。
+.PP
+不同版本处理的 \fIstat\fP 结构体的内核版本分别是:
+.TP 
+\fI__old_kernel_stat\fP
+原始结构体，具有相当 narrow 字段，并且没有填充。
+.TP 
+\fIstat\fP
+结构体的各个部分添加了更大的 \fIst_ino\fP 字段和填充，以允许 future 扩展。
+.TP 
+\fIstat64\fP
+更大的 \fIst_ino\fP 字段、更大的 \fIst_uid\fP 和 \fIst_gid\fP 字段以适应 Linux\-2.4 将 UID 和 GID 扩展到
+32 位，以及结构体中的各种其他扩大字段和进一步填充。 (随着时间戳字段的 32 位设备 ID 和纳秒组件的出现，Linux 2.6
+最终消耗了各种填充字节。)
+.PP
+.\"
+.\" A note from Andries Brouwer, July 2007
+.\"
+.\" > Is the story not rather more complicated for some calls like
+.\" > stat(2)?
+.\"
+.\" Yes and no, mostly no. See /usr/include/sys/stat.h .
+.\"
+.\" The idea is here not so much that syscalls change, but that
+.\" the definitions of struct stat and of the types dev_t and mode_t change.
+.\" This means that libc (even if it does not call the kernel
+.\" but only calls some internal function) must know what the
+.\" format of dev_t or of struct stat is.
+.\" The communication between the application and libc goes via
+.\" the include file <sys/stat.h> that defines a _STAT_VER and
+.\" _MKNOD_VER describing the layout of the data that user space
+.\" uses. Each (almost each) occurrence of stat() is replaced by
+.\" an occurrence of xstat() where the first parameter of xstat()
+.\" is this version number _STAT_VER.
+.\"
+.\" Now, also the definitions used by the kernel change.
+.\" But glibc copes with this in the standard way, and the
+.\" struct stat as returned by the kernel is repacked into
+.\" the struct stat as expected by the application.
+.\" Thus, _STAT_VER and this setup cater for the application-libc
+.\" interface, rather than the libc-kernel interface.
+.\"
+.\" (Note that the details depend on gcc being used as c compiler.)
+glibc \fBstat\fP() 包装器函数向应用程序隐藏这些细节，调用内核提供的最新版本的系统调用，并在旧二进制文件需要时重新打包返回的信息。
+.PP
+在现代 64 位系统上，生活更简单: 只有一个 \fBstat\fP() 系统调用，内核处理包含足够大小字段的 \fIstat\fP 结构体。
+.PP
+.\" strace(1) shows the name "newfstatat" on x86-64
+glibc \fBfstatat\fP() 包装器函数所采用的底层系统调用实际上称为 \fBfstatat64\fP()，或者在某些体系结构上称为
+\fBnewfstatat\fP()。
+.SH EXAMPLES
+以下程序调用 \fBlstat\fP() 并显示返回的 \fIstat\fP 结构体中的选定字段。
+.PP
+.\" SRC BEGIN (stat.c)
+.EX
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <time.h>
+
+int
+main(int argc, char *argv[])
+{
+    struct stat sb;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <pathname>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (lstat(argv[1], &sb) == \-1) {
+        perror("lstat");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("ID of containing device:  [%x,%x]\en",
+           major(sb.st_dev),
+           minor(sb.st_dev));
+
+    printf("File type:                ");
+
+    switch (sb.st_mode & S_IFMT) {
+    case S_IFBLK:  printf("block device\en");            break;
+    case S_IFCHR:  printf("character device\en");        break;
+    case S_IFDIR:  printf("directory\en");               break;
+    case S_IFIFO:  printf("FIFO/pipe\en");               break;
+    case S_IFLNK:  printf("symlink\en");                 break;
+    case S_IFREG:  printf("regular file\en");            break;
+    case S_IFSOCK: printf("socket\en");                  break;
+    default:       printf("unknown?\en");                break;
+    }
+
+    printf("I\-node number:            %ju\en", (uintmax_t) sb.st_ino);
+
+    printf("Mode:                     %jo (octal)\en",
+           (uintmax_t) sb.st_mode);
+
+    printf("Link count:               %ju\en", (uintmax_t) sb.st_nlink);
+    printf("Ownership:                UID=%ju   GID=%ju\en",
+           (uintmax_t) sb.st_uid, (uintmax_t) sb.st_gid);
+
+    printf("Preferred I/O block size: %jd bytes\en",
+           (intmax_t) sb.st_blksize);
+    printf("File size:                %jd bytes\en",
+           (intmax_t) sb.st_size);
+    printf("Blocks allocated:         %jd\en",
+           (intmax_t) sb.st_blocks);
+
+    printf("Last status change:       %s", ctime(&sb.st_ctime));
+    printf("Last file access:         %s", ctime(&sb.st_atime));
+    printf("Last file modification:   %s", ctime(&sb.st_mtime));
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBls\fP(1), \fBstat\fP(1), \fBaccess\fP(2), \fBchmod\fP(2), \fBchown\fP(2),
+\fBreadlink\fP(2), \fBstatx\fP(2), \fButime\fP(2), \fBstat\fP(3type),
+\fBcapabilities\fP(7), \fBinode\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

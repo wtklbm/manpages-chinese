@@ -1,0 +1,119 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-net 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-net
+.SH NAME
+sane\-net\-SANE 网络后端
+.SH DESCRIPTION
+\fBsane\-net\fP 库实现了一个 SANE (扫描仪访问现在简单) 后端，通过网络连接提供对图像采集设备的访问。
+这使得控制连接到远程主机的设备成为可能，并且还提供了一种方法来授予用户访问受保护资源的权限。
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIhost\fP:\fIdevice\fP
+.RE
+.PP
+其中 \fIhost\fP 是 (remote) 主机的名称 (或 IP 地址)，\fIdevice\fP 是该主机上应寻址的设备的名称。 如果设备名称不包含冒号
+(:)，则整个字符串将被视为默认主机的 \fIdevice\fP 字符串。 默认主机是配置文件中最后列出的主机 (见下文)。
+.PP
+可以在方括号中指定 IPv6 地址:
+.PP
+.RS
+\fI[::1]\fP:\fIdevice\fP
+.RE
+.SH CONFIGURATION
+\fInet.conf\fP 文件包含后端选项和扫描请求应联系的主机名 (或 IP 地址) 列表。任何不是下面列出的选项之一的内容都将被视为主机名。
+.PP
+.TP 
+\fBconnect_timeout = nsecs\fP
+与 \fBsaned\fP(8) 服务器的初始连接超时 (以秒为单位)。这将防止后端在尝试连接到无响应的 \fBsaned\fP(8) 主机
+(网络中断、主机宕机等) 时阻塞几分钟。环境变量 \fBSANE_NET_TIMEOUT\fP 也可用于指定运行时的超时时间。
+.PP
+空行和以哈希标记 (#) 开头的行将被忽略。 请注意，此文件中的 IPv6 地址不需要括在方括号中。 示例配置文件如下所示:
+.PP
+.RS
+scan\-server.somedomain.firm
+.br
+192.168.0.1
+.br
+# 这是一条评论
+.br
+localhost
+.br
+::1
+.RE
+.PP
+上面的主机列表可以在运行时使用环境变量 \fBSANE_NET_HOSTS\fP 进行扩展。 此环境变量是以冒号分隔的主机名或 IP
+地址列表，除了配置文件中提到的主机外，还应联系这些主机名或 IP 地址。 例如，用户可以将环境变量设置为字符串:
+.PP
+.RS
+new.scanner.com:[::1]:192.168.0.2:scanner.univ.edu
+.RE
+.PP
+请求除上面列出的主机外还联系主机 \fInew.scanner.com\fP、\fI[::1]\fP、\fI192.168.0.2\fP 和
+\fIscanner.univ.edu\fP。
+.PP
+为了让这个后端能够正常的函数，还需要在 \fI/etc/services\fP 中定义 \fBsane\-port\fP 服务。 \fBsane\fP
+服务应使用以下形式的行定义:
+.PP
+.RS
+sane\-port 6566/tcp#SANE 网络扫描守护进程
+.RE
+.PP
+.SH FILES
+.TP 
+\fI/etc/sane.d/net.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-net.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-net.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_NET_HOSTS\fP
+此后端要联系的主机名或 IP 地址的冒号分隔列表。
+.TP 
+\fBSANE_NET_TIMEOUT\fP
+等待 \fBsaned\fP(8) 服务器对初始连接请求做出响应的秒数。
+.TP 
+\fBSANE_DEBUG_NET\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 128 请求打印所有调试输出。 较小的级别减少冗长。
+.SH BUGS
+如果 \fBsaned\fP(8) 超时，网络后端可能会循环授权请求。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsaned\fP(8), \fBsane\-dll\fP(5), \fBscanimage\fP(1)
+
+\fIhttp://www.penguin\-breeder.org/?page=sane\-net\fP
+.SH AUTHOR
+大卫莫斯伯格和安德烈亚斯贝克
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,98 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016, Oracle.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_ficlonerange 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_ficlonerange, ioctl_ficlone \- share some the data of one file with
+another file
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/fs.h>\fP        /* Definition of \fBFICLONE*\fP constants */
+\fB#include <sys/ioctl.h>\fP
+.PP
+\fBint ioctl(int \fP\fIdest_fd\fP\fB, FICLONERANGE, struct file_clone_range *\fP\fIarg\fP\fB);\fP
+\fBint ioctl(int \fP\fIdest_fd\fP\fB, FICLONE, int \fP\fIsrc_fd\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+如果一个文件系统支持多个文件 ("reflink") 之间的文件共享物理存储，这个 \fBioctl\fP(2) 操作可以通过共享底层存储，使
+\fIsrc_fd\fP 文件中的部分数据出现在 \fIdest_fd\fP 文件中，这比单独制作一个物理副本更快数据。 这两个文件必须位于同一文件系统中。
+如果对共享区域进行文件写入，文件系统必须确保更改对正在写入的文件保持私有。 此行为通常称为 "copy on write"。
+.PP
+此 ioctl 将最多 \fIsrc_length\fP 个字节从偏移量 \fIsrc_offset\fP 处的文件描述符 \fIsrc_fd\fP 重新链接到偏移量
+\fIdest_offset\fP 处的文件 \fIdest_fd\fP，前提是两者都是文件。 如果 \fIsrc_length\fP 为零，则 ioctl
+重新链接到源文件的末尾。 此信息以以下形式的结构体传达:
+.PP
+.in +4n
+.EX
+struct file_clone_range {
+    __s64 src_fd;
+    __u64 src_offset;
+    __u64 src_length;
+    __u64 dest_offset;
+};
+.EE
+.in
+.PP
+克隆在并发写入方面是原子的，因此无需锁定即可获得一致的克隆副本。
+.PP
+\fBFICLONE\fP ioctl 克隆整个文件。
+.SH "RETURN VALUE"
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+错误代码可以是但不限于以下之一:
+.TP 
+\fBEBADF\fP
+\fIsrc_fd\fP 不开放读取; \fIdest_fd\fP 未对写入打开或对仅追加写入打开; 或者 \fIsrc_fd\fP 所在的文件系统不支持
+reflink。
+.TP 
+\fBEINVAL\fP
+文件系统不支持重新链接给定文件的范围。 如果文件描述符表示设备、FIFO 或套接字，也会出现此错误。
+磁盘文件系统通常要求偏移量和长度参数与基本块大小对齐。 XFS 和 Btrfs 不支持同一文件中的重叠引用链接范围。
+.TP 
+\fBEISDIR\fP
+其中一个文件是目录，文件系统不支持目录中的共享区域。
+.TP 
+\fBEOPNOTSUPP\fP
+如果文件系统不支持重新链接任何一个文件描述符，或者如果任何一个文件描述符引用特殊的 inode，就会出现这种情况。
+.TP 
+\fBEPERM\fP
+\fIdest_fd\fP 是不可改变的。
+.TP 
+\fBETXTBSY\fP
+其中一个文件是交换文件。 交换文件不能共享存储。
+.TP 
+\fBEXDEV\fP
+\fIdest_fd\fP 和 \fIsrc_fd\fP 不在同一个挂载文件系统上。
+.SH VERSIONS
+这些 ioctl 操作最早出现在 Linux 4.5 中。 它们以前被称为 \fBBTRFS_IOC_CLONE\fP 和
+\fBBTRFS_IOC_CLONE_RANGE\fP，并且是 Btrfs 私有的。
+.SH STANDARDS
+这个 API 是特定于 Linux 的。
+.SH NOTES
+因为写时复制操作需要分配新的存储，\fBfallocate\fP(2) 操作可能会取消共享共享块，以保证后续写入不会因为磁盘空间不足而失败。
+.SH "SEE ALSO"
+\fBioctl\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

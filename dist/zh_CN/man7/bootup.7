@@ -1,0 +1,322 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH BOOTUP 7 "" "systemd 253" bootup
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+bootup \- 系统启动过程
+.SH DESCRIPTION
+.PP
+Linux 系统的启动涉及许多不同的组件。上电后，系统固件将立即进行最少的硬件初始化，并将控制权移交给引导加载程序 (例如存储在永久性存储设备上的
+\fBsystemd\-boot\fP(7) 或 \m[blue]\fBGRUB\fP\m[]\&\s-2\u[1]\d\s+2)\&。然后，该引导加载程序将从磁盘
+(或网络) \& 调用操作系统内核。在使用 EFI 或其他类型固件的系统上，此固件也可能直接加载内核 \&。
+.PP
+内核 (optionally) 挂载了一个内存文件系统，通常由 \fBdracut\fP(8) 生成，它寻找根文件系统 \&。如今，它被实现为一个
+"initramfs"\(em 一个压缩的 CPIO 存档，内核将其提取到一个 tmpfs\& 中。过去使用内存块设备 (ramdisk)
+的普通文件系统被使用，名称 "initrd" 仍然用于描述这两个概念 \&。它 \*(Aqs 引导加载程序或将内核和 initrd/initramfs
+映像加载到内存中的固件，但内核将其解释为文件系统 \&。 \fBsystemd\fP(1) 可能用于管理 initrd 中的服务，类似于真实系统 \&。
+.PP
+找到并挂载根文件系统后，initrd 将控制权交给主机 \*(Aqs 系统管理器 (如根文件系统中存储的
+\fBsystemd\fP(1))，然后负责探测所有剩余的硬件，挂载所有必要的文件系统并生成所有配置的服务 \&。
+.PP
+关闭时，系统管理器停止所有服务，卸载所有文件系统 (分离支持它们的存储技术)，然后 (optionally) 跳回到 initrd 代码，其中
+unmounts/detaches 根文件系统及其所在的存储 \&。最后一步，系统断电 \&。
+.PP
+有关系统引导过程的其他信息，请参见 \fBboot\fP(7)\&。
+.SH "SYSTEM MANAGER BOOTUP"
+.PP
+在启动时，操作系统映像上的系统管理器负责初始化系统运行所需的文件系统、服务和驱动程序。在 \fBsystemd\fP(1)
+系统上，此过程分为多个离散步骤，这些步骤公开为目标单元 \&。(有关目标单元 \& 的详细信息，请参见 \fBsystemd.target\fP(5)。)
+启动过程是高度并行的，因此到达特定目标单元的顺序不是确定性的，但仍然遵循有限数量的顺序结构体 \&。
+.PP
+当 systemd 启动系统时，它会激活所有作为 default\&.target 依赖项的单元 (以及递归地激活这些依赖项的所有依赖项)
+\&。通常，default\&.target 只是 graphical\&.target 或 multi\-user\&.target
+的别名，具体取决于系统是配置为图形 UI 还是仅配置为文本控制台 \&。为了在引入的单元之间强制执行最小顺序，可以使用许多众所周知的目标单元，如
+\fBsystemd.special\fP(7)\& 中所列。
+.PP
+下图是这些知名单元的结构概览及其在启动逻辑中的位置 \&。箭头描述了哪些单元被拉入并在哪些其他单元之前排序。靠近顶部的单元在靠近图表底部的单元之前启动
+\&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+                             cryptsetup\-pre\&.target veritysetup\-pre\&.target
+                                                  |
+(各种底层 v
+ API VFS 挂载: (各种 cryptsetup/veritysetup 设备 \&.\&.\&.)
+ mqueue, configfs,                                |    |
+ debugfs, \&.\&.\&.)                                    v    |
+ |                                  cryptsetup\&.target  |
+ | (各种交换 | | remote\-fs\-pre\&.target
+ | 设备 \&.\&.\&.) ||||
+ |    |                                           |    |     |        v
+ |v local\-fs\-pre\&.target ||| (网络文件系统)
+ |  swap\&.target                       |           |    v     v                 |
+ |    |                               v           |  remote\-cryptsetup\&.target  |
+ || (各种底层 (各种坐骑和 | remote\-veritysetup\&.target |
+ || 服务: udevd、fsck 服务 \&.\&.\&.) |||
+ ||tmp 文件，随机 ||| remote\-fs\&.target
+ |    |   seed, sysctl, \&.\&.\&.)          v           |             |              |
+ |    |      |                 local\-fs\&.target    |             | _____________/
+ |    |      |                        |           |             |/
+ \e____|______|_______________   ______|___________/             |
+                             \e /                                |
+                              v                                 |
+                       sysinit\&.target                           |
+                              |                                 |
+       ______________________/|\e_____________________           |
+      /              |        |      |               \e          |
+      |              |        |      |               |          |
+      v              v        |      v               |          |
+ (各种 (各种 | (各种 ||
+  定时器 \&.\&.\&.) 路径 \&.\&.\&.) | 套接字 \&.\&.\&.) ||
+      |              |        |      |               |          |
+      v              v        |      v               |          |
+timers\&.target  paths\&.target   |  sockets\&.target      |          |
+      |              |        |      |               v          |
+      v              \e_______ | _____/         rescue\&.service   |
+                             \e|/                     |          |
+                              v                      v          |
+                          basic\&.target         \fIrescue\&.target\fP    |
+                              |                                 |
+                      ________v____________________             |
+                     /              |              \e            |
+                     |              |              |            |
+                     呜呜呜 |
+                 显示 \- (各种系统 (各种系统 |
+             manager\&.service 服务服务) |
+                     | 需要 ||
+                     | 图形用户界面) vv
+                     |              |            \fImulti\-user\&.target\fP
+emergency\&.service    |              |              |
+        |            \e_____________ | _____________/
+        v                          \e|/
+\fIemergency\&.target\fP                    v
+                              \fIgraphical\&.target\fP
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+通常用作引导目标的目标单元是 \fIemphasized\fP\&。这些单元作为目标是不错的选择，例如将它们传递给 \fIsystemd\&.unit=\fP
+内核命令行选项 (请参见 \fBsystemd\fP(1)) 或通过将 default\&.target 符号链接到它们 \&.
+.PP
+timers\&.target 被 basic\&.target 异步拉入 \&。这允许计时器单元依赖于仅在稍后启动时可用的服务。
+.SH "USER MANAGER STARTUP"
+.PP
+系统管理器为每个用户启动 user@\fIuid\fP\&.service 单元，它为每个用户启动一个单独的非特权 \fBsystemd\fP 实例 \ (em
+the user manager\&。与系统管理器类似，用户管理器启动默认拉入的单元
+\&.target\&。下图是知名用户单位的结构概览。对于非图形会话，使用
+default\&.target\&。每当用户登录到图形会话时，登录管理器将启动 graphical\-session\&.target
+目标，用于拉入图形会话所需的单元 \&。当用户可以使用特定硬件时，会启动许多目标 (显示在右侧) \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+   (各种 (各种 (各种
+    timers\&.\&.\&.) paths\&.\&.\&.) sockets\&.\&.\&.) (声音设备)
+        |                  |                 |               |
+        v                  v                 v               v
+  timers\&.target      paths\&.target     sockets\&.target    sound\&.target
+        |                  |                 |
+        \e____________ _|__________________/ (蓝牙设备)
+                       \e /                                   |
+                        V                                    v
+                  basic\&.target                          bluetooth\&.target
+                        |
+             __________/\e_______ (智能卡设备)
+            /                    \e                           |
+            |                    |                           v
+            |                    v                      smartcard\&.target
+            v            graphical\-session\-pre\&.target
+(各种用户服务) | (printers)
+            |                    v                           |
+            | (图形会话服务) v
+            |                    |                       printer\&.target
+            v                    v
+     | (图形会话服务) v
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "BOOTUP IN THE INITRD"
+.PP
+Systemd 也可以在 initrd 中使用 \&。它通过检查 /etc/initrd\-release 文件 \& 来检测 initrd
+环境。initrd 中的默认目标是 initrd\&.target\&。启动过程与系统管理器启动相同，直到目标
+basic\&.target\&。之后，systemd 执行特殊目标
+initrd\&.target\&。在安装任何文件系统之前，管理器将确定系统是从休眠状态恢复还是继续正常启动 \&。这是由
+systemd\-hibernate\-resume@\&.service 完成的，它必须在 local\-fs\-pre\&.target
+之前完成，因此在检查完成 \& 之前不能挂载任何文件系统。当根设备可用时，到达 initrd\-root\-device\&.target\&。如果可以在
+/sysroot 挂载根设备，则 sysroot\&.mount 元变为活动状态并到达 initrd\-root\-fs\&.target\&。服务
+initrd\-parse\-etc\&.service 扫描 /sysroot/etc/fstab 以查找可能的 /usr / 安装点和标有
+\fIx\-initrd\&.mount\fP 选项 \& 的其他条目。找到的所有条目都挂载在 /sysroot 下，并且到达
+initrd\-fs\&.target\&。服务 initrd\-cleanup\&.service 隔离到
+initrd\-switch\-root\&.target，清理服务可以在其中运行
+\&。作为最后一步，initrd\-switch\-root\&.service 被激活，这将导致系统将其根目录切换到 /sysroot\&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+                               : (开始与上面相同)
+                               :
+                               v
+                         basic\&.target
+                               |                       emergency\&.service
+        ______________________/|                               |
+       /                       |                               v
+       |            initrd\-root\-device\&.target          \fIemergency\&.target\fP
+       |                       |
+       |                       v
+       |                  sysroot\&.mount
+       |                       |
+       |                       v
+       |             initrd\-root\-fs\&.target
+       |                       |
+       |                       v
+       v            initrd\-parse\-etc\&.service
+(自定义 initrd |
+ 服务 \&.\&.\&.) v
+       | (sysroot\-usr\&.mount 和
+       | 各种标记的坐骑
+       | 使用 fstab 选项
+       |              x\-initrd\&.mount\&.\&.\&.)
+       |                       |
+       |                       v
+       |                initrd\-fs\&.target
+       \e______________________ |
+                              \e|
+                               v
+                          initrd\&.target
+                               |
+                               v
+                     initrd\-cleanup\&.service
+                          隔离到
+                    initrd\-switch\-root\&.target
+                               |
+                               v
+        ______________________/|
+       /                       v
+       |        initrd\-udevadm\-cleanup\-db\&.service
+       v                       |
+(自定义 initrd |
+ 服务 \&.\&.\&.) |
+       \e______________________ |
+                              \e|
+                               v
+                   initrd\-switch\-root\&.target
+                               |
+                               v
+                   initrd\-switch\-root\&.service
+                               |
+                               v
+                     过渡到主机操作系统
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SYSTEM MANAGER SHUTDOWN"
+.PP
+使用 systemd 关闭系统还包括各种目标单元，并应用了一些最小的排序结构体:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+                       (与 (与冲突
+                          所有系统所有文件系统
+                           服务) 坐骑，交换，
+                               | 密码设置 /
+                               | 真实设置
+                               | 设备，\&。\&。\&。)
+                               |                |
+                               v                v
+                        shutdown\&.target    umount\&.target
+                               |                |
+                               \e_______   ______/
+                                       \e /
+                                        v
+                               (各种底层
+                                    services)
+                                        |
+                                        v
+                                  final\&.target
+                                        |
+            ___________________________/ \e_________________
+           /               |               |               \e
+           |               |               |               |
+           v               |               |               |
+systemd\-reboot\&.service     |               |               |
+           |               v               |               |
+           |    systemd\-poweroff\&.service   |               |
+           v               |               v               |
+     \fIreboot\&.target\fP         |      systemd\-halt\&.service     |
+                           v               |               v
+                   \fIpoweroff\&.target\fP         |    systemd\-kexec\&.service
+                                           v               |
+                                      \fIhalt\&.target\fP          |
+                                                           v
+                                                     \fIkexec\&.target\fP
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+常用的系统关闭目标是 \fIemphasized\fP\&。
+.PP
+请注意，\fBsystemd\-halt.service\fP(8)、systemd\-reboot\&.service、systemd\-poweroff\&.service
+和 systemd\-kexec\&.service 会将系统和服务器管理器 (PID 1) 转换到系统关闭的第二阶段 (在
+systemd\-shutdown
+二进制文件中实现)，这将卸载所有剩余的文件系统，终止所有剩余的进程并以简单而健壮的方式释放任何其他剩余资源，不再考虑任何服务或元概念
+\&。在这一点上，常规应用程序和资源通常已经终止和释放，因此第二阶段仅作为安全网运行，用于所有不能 \*
+(在上述主要的基于元的关闭阶段期间由于某种原因停止或释放 Aqt\&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBboot\fP(7), \fBsystemd.special\fP(7), \fBsystemd.target\fP(5),
+\fBsystemd\-halt.service\fP(8), \fBdracut\fP(8)
+.SH NOTES
+.IP " 1." 4
+GRUB
+.RS 4
+\%https://www.gnu.org/software/grub/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

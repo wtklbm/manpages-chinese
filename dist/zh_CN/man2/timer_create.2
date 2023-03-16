@@ -1,0 +1,344 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2009 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH timer_create 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+timer_create \- 创建一个 POSIX 每进程定时器
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP           /* Definition of \fBSIGEV_*\fP constants */
+\fB#include <time.h>\fP
+.PP
+\fBint timer_create(clockid_t \fP\fIclockid\fP\fB,\fP
+\fB                 struct sigevent *_Nullable restrict \fP\fIsevp\fP\fB,\fP
+\fB                 timer_t *restrict \fP\fItimerid\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBtimer_create\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+\fBtimer_create\fP() 创建一个新的每进程间隔计时器。 \fItimerid\fP 指向的缓冲区返回新定时器的 ID，必须是非空指针。 这个 ID
+在进程内是唯一的，直到定时器被删除。 新定时器最初是解除武装的。
+.PP
+\fIclockid\fP 参数指定新计时器用于测量时间的时钟。 它可以指定为以下值之一:
+.TP 
+\fBCLOCK_REALTIME\fP
+一个可设置的系统级实时时钟。
+.TP 
+\fBCLOCK_MONOTONIC\fP
+.\" Note: the CLOCK_MONOTONIC_RAW clock added for clock_gettime()
+.\" in Linux 2.6.28 is not supported for POSIX timers -- mtk, Feb 2009
+一个不可设置的单调递增时钟，它从过去某个未指定的时间点开始测量时间，该时间点在系统启动后不会更改。
+.TP 
+\fBCLOCK_PROCESS_CPUTIME_ID\fP (since Linux 2.6.12)
+测量调用进程 (中的所有线程) 消耗的 (用户和系统) CPU 时间的时钟。
+.TP 
+\fBCLOCK_THREAD_CPUTIME_ID\fP (since Linux 2.6.12)
+.\" The CLOCK_MONOTONIC_RAW that was added in Linux 2.6.28 can't be used
+.\" to create a timer -- mtk, Feb 2009
+测量调用线程消耗的 (用户和系统) CPU 时间的时钟。
+.TP 
+\fBCLOCK_BOOTTIME\fP (Since Linux 2.6.39)
+.\" commit 70a08cca1227dc31c784ec930099a4417a06e7d0
+与 \fBCLOCK_MONOTONIC\fP 一样，这是一个单调递增的时钟。 然而，\fBCLOCK_MONOTONIC\fP 时钟不测量系统挂起时的时间，而
+\fBCLOCK_BOOTTIME\fP 时钟确实包括系统挂起期间的时间。 这对于需要暂停感知的应用程序很有用。 \fBCLOCK_REALTIME\fP
+不适合此类应用，因为该时钟会受到系统时钟不连续变化的影响。
+.TP 
+\fBCLOCK_REALTIME_ALARM\fP (since Linux 3.0)
+.\" commit 9a7adcf5c6dea63d2e47e6f6d2f7a6c9f48b9337
+这个时钟就像 \fBCLOCK_REALTIME\fP，但是如果它挂起就会唤醒系统。 调用者必须具有 \fBCAP_WAKE_ALARM\fP
+能力才能针对此时钟设置计时器。
+.TP 
+\fBCLOCK_BOOTTIME_ALARM\fP (since Linux 3.0)
+.\" commit 9a7adcf5c6dea63d2e47e6f6d2f7a6c9f48b9337
+这个时钟就像 \fBCLOCK_BOOTTIME\fP，但是如果它挂起就会唤醒系统。 调用者必须具有 \fBCAP_WAKE_ALARM\fP
+能力才能针对此时钟设置计时器。
+.TP 
+\fBCLOCK_TAI\fP (since Linux 3.10)
+从挂钟时间派生但忽略闰秒的系统范围时钟。
+.PP
+有关上述时钟的更多详细信息，请参见 \fBclock_getres\fP(2)。
+.PP
+除上述值外，\fIclockid\fP 还可以指定为调用返回到 \fBclock_getcpuclockid\fP(3) 或
+\fBpthread_getcpuclockid\fP(3) 的 \fIclockid\fP。
+.PP
+\fIsevp\fP 参数指向一个 \fIsigevent\fP 结构体，该结构体指定当计时器到期时应如何通知调用者。 有关此结构体的定义和一般详细信息，请参见
+\fBsigevent\fP(7)。
+.PP
+\fIsevp.sigev_notify\fP 字段可以具有以下值:
+.TP 
+\fBSIGEV_NONE\fP
+不要在定时器到期时异步通知。 可以使用 \fBtimer_gettime\fP(2) 监视计时器的进度。
+.TP 
+\fBSIGEV_SIGNAL\fP
+计时器到期后，为进程生成信号 \fIsigev_signo\fP。 有关一般详细信息，请参见 \fBsigevent\fP(7)。 \fIsiginfo_t\fP
+结构体的 \fIsi_code\fP 字段将设置为 \fBSI_TIMER\fP。 在任何时间点，对于给定的计时器，最多有一个信号排队到进程; 有关详细信息，请参见
+\fBtimer_getoverrun\fP(2)。
+.TP 
+\fBSIGEV_THREAD\fP
+计时器到期后，调用 \fIsigev_notify_function\fP，就好像它是新线程的开始号码一样。 有关详细信息，请参见
+\fBsigevent\fP(7)。
+.TP 
+\fBSIGEV_THREAD_ID\fP (Linux\-specific)
+至于 \fBSIGEV_SIGNAL\fP，但是 signal 针对的是 \fIsigev_notify_thread_id\fP 中给出 ID
+的线程，这个线程必须是和调用者在同一个进程的线程。 \fIsigev_notify_thread_id\fP 字段指定一个内核线程 ID，即
+\fBclone\fP(2) 或 \fBgettid\fP(2) 返回的值。 此标志仅供线程库使用。
+.PP
+指定 \fIsevp\fP 为 NULL 相当于指定一个指向 \fIsigevent\fP 结构体的指针，其中 \fIsigev_notify\fP 为
+\fBSIGEV_SIGNAL\fP，\fIsigev_signo\fP 为 \fBSIGALRM\fP，\fIsigev_value.sival_int\fP 为定时器
+ID。
+.SH "RETURN VALUE"
+成功时，\fBtimer_create\fP() 返回 0，新定时器的 ID 放在 \fI*timerid\fP 中。 失败时，返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+定时器结构的内核分配期间出现临时错误。
+.TP 
+\fBEINVAL\fP
+时钟 ID、\fIsigev_notify\fP、\fIsigev_signo\fP 或 \fIsigev_notify_thread_id\fP 无效。
+.TP 
+\fBENOMEM\fP
+.\" glibc layer: malloc()
+无法分配内存。
+.TP 
+\fBENOTSUP\fP
+内核不支持针对此 \fIclockid\fP 创建计时器。
+.TP 
+\fBEPERM\fP
+\fIclockid\fP 是 \fBCLOCK_REALTIME_ALARM\fP 或 \fBCLOCK_BOOTTIME_ALARM\fP，但调用者没有
+\fBCAP_WAKE_ALARM\fP 功能。
+.SH VERSIONS
+本系统调用自 Linux 2.6 起可用。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+程序可以使用 \fBtimer_create\fP() 创建多个间隔计时器。
+.PP
+定时器不会被 \fBfork\fP(2) 的子级继承，并在 \fBexecve\fP(2) 期间被解除和删除。
+.PP
+内核为使用 \fBtimer_create\fP() 创建的每个定时器预分配一个 "queued real\-time signal"。
+因此，计时器的数量受限于 \fBRLIMIT_SIGPENDING\fP 资源限制 (参见 \fBsetrlimit\fP(2)).
+.PP
+\fBtimer_create\fP() 创建的定时器通常称为 "POSIX (interval) timers"。 POSIX 定时器 API
+由以下接口组成:
+.TP 
+\fBtimer_create\fP()
+创建一个计时器。
+.TP 
+\fBtimer_settime\fP(2)
+Arm (start) 或解除 (stop) 一个定时器。
+.TP 
+\fBtimer_gettime\fP(2)
+获取定时器下一次到期之前的剩余时间，以及定时器的间隔设置。
+.TP 
+\fBtimer_getoverrun\fP(2)
+返回上次计时器到期的超时计数。
+.TP 
+\fBtimer_delete\fP(2)
+解除并删除计时器。
+.PP
+自 Linux 3.10 起，\fI/proc/\fPpid\fI/timers\fP 文件可用于列出 PID 为 \fIpid\fP 的进程的 POSIX 计时器。
+有关详细信息，请参见 \fBproc\fP(5)。
+.PP
+.\" baa73d9e478ff32d62f3f9422822b59dd9a95a21
+.\"
+从 Linux 4.10 开始，对 POSIX 计时器的支持是默认启用的可配置选项。 可以通过 \fBCONFIG_POSIX_TIMERS\fP
+选项禁用内核支持。
+.SS "C library/kernel differences"
+.\" See nptl/sysdeps/unix/sysv/linux/timer_create.c
+POSIX 定时器 API 的部分实现由 glibc 提供。 尤其:
+.IP \[bu] 3
+\fBSIGEV_THREAD\fP 的大部分功能都是在 glibc 中实现的，而不是在内核中。 (这是必然的，因为涉及处理通知的线程必须由 C 库
+POSIX 线程实现管理。) 尽管传递给进程的通知是通过线程，但在内部 NPTL 实现使用 \fIsigev_notify\fP 值
+\fBSIGEV_THREAD_ID\fP 以及由实现保留的实时信号 (请参见 \fBnptl\fP(7)).
+.IP \[bu]
+\fIevp\fP 为 NULL 的默认情况的实现在 glibc 内部处理，它使用适当填充的 \fIsigevent\fP 结构体调用底层系统调用。
+.IP \[bu]
+.\" See the glibc source file kernel-posix-timers.h for the structure
+.\" that glibc uses to map user-space timer IDs to kernel timer IDs
+.\" The kernel-level timer ID is exposed via siginfo.si_tid.
+在用户级别显示的计时器 ID 由 glibc 维护，它 maps 这些 ID 到内核使用的计时器 ID。
+.PP
+.\" glibc commit 93a78ac437ba44f493333d7e2a4b0249839ce460
+POSIX 定时器系统调用最早出现在 Linux 2.6 中。 在此之前，glibc 使用 POSIX 线程提供了不完整的用户空间实现 (仅
+(\fBCLOCK_REALTIME\fP 计时器)，而在 glibc 2.17 之前，在运行早于 Linux 2.6 的内核的系统上，实现回退到此技术。
+.SH EXAMPLES
+下面的程序需要两个参数: 以秒为单位的睡眠周期和以纳秒为单位的定时器频率。
+该程序为其用于计时器的信号建立一个处理程序，阻塞该信号，创建并分支一个以给定频率到期的计时器，休眠指定的秒数，然后解除阻塞计时器信号。
+假设在程序休眠时计时器至少超时一次，将调用信号处理程序，并且该处理程序显示有关计时器通知的一些信息。 程序在调用一次信号处理程序后终止。
+.PP
+在下面的示例运行中，程序在创建一个频率为 100 纳秒的计时器后休眠 1 秒。 到信号解封送达时，已经有近千万超限。
+.PP
+.in +4n
+.EX
+$ \fB./a.out 1 100\fP
+为信号 34 建立处理程序
+阻塞信号 34
+定时器 ID 为 0x804c008
+睡 1 秒
+解封信号 34
+捕获信号 34
+    sival_ptr = 0xbfb174f4;     *sival_ptr = 0x804c008
+    超限计数 = 10004886
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (timer_create.c)
+\&
+.EX
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+#define CLOCKID CLOCK_REALTIME
+#define SIG SIGRTMIN
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+static void
+print_siginfo(siginfo_t *si)
+{
+    int      or;
+    timer_t  *tidp;
+
+    tidp = si\->si_value.sival_ptr;
+
+    printf("    sival_ptr = %p; ", si\->si_value.sival_ptr);
+    printf("    *sival_ptr = %#jx\en", (uintmax_t) *tidp);
+
+    or = timer_getoverrun(*tidp);
+    if (or == \-1)
+        errExit("timer_getoverrun");
+    else
+        printf("    overrun count = %d\en", or);
+}
+
+static void
+handler(int sig, siginfo_t *si, void *uc)
+{
+    /* 注意: 从信号处理程序调用 printf() 是不安全的
+       (并且不应在生产程序中完成)，因为
+       printf() is not async\-signal\-safe;  请参见信号安全 (7)。
+       不过，我们在这里使用 printf() 作为一种简单的方法
+       显示调用了处理程序。*/
+
+    printf("Caught signal %d\en", sig);
+    print_siginfo(si);
+    signal(sig, SIG_IGN);
+}
+
+int
+main(int argc, char *argv[])
+{
+    timer_t            timerid;
+    sigset_t           mask;
+    long long          freq_nanosecs;
+    struct sigevent    sev;
+    struct sigaction   sa;
+    struct itimerspec  its;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <sleep\-secs> <freq\-nanosecs>\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Establish handler for timer signal. */
+
+    printf("Establishing handler for signal %d\en", SIG);
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = handler;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIG, &sa, NULL) == \-1)
+        errExit("sigaction");
+
+    /* Block timer signal temporarily. */
+
+    printf("Blocking signal %d\en", SIG);
+    sigemptyset(&mask);
+    sigaddset(&mask, SIG);
+    if (sigprocmask(SIG_SETMASK, &mask, NULL) == \-1)
+        errExit("sigprocmask");
+
+    /* Create the timer. */
+
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = SIG;
+    sev.sigev_value.sival_ptr = &timerid;
+    if (timer_create(CLOCKID, &sev, &timerid) == \-1)
+        errExit("timer_create");
+
+    printf("timer ID is %#jx\en", (uintmax_t) timerid);
+
+    /* Start the timer. */
+
+    freq_nanosecs = atoll(argv[2]);
+    its.it_value.tv_sec = freq_nanosecs / 1000000000;
+    its.it_value.tv_nsec = freq_nanosecs % 1000000000;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    if (timer_settime(timerid, 0, &its, NULL) == \-1)
+         errExit("timer_settime");
+
+    /* Sleep for a while; meanwhile, the timer may expire
+       multiple times. */
+
+    printf("Sleeping for %d seconds\en", atoi(argv[1]));
+    sleep(atoi(argv[1]));
+
+    /* Unlock the timer signal, so that timer notification
+       can be delivered. */
+
+    printf("Unblocking signal %d\en", SIG);
+    if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == \-1)
+        errExit("sigprocmask");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBclock_gettime\fP(2), \fBsetitimer\fP(2), \fBtimer_delete\fP(2),
+\fBtimer_getoverrun\fP(2), \fBtimer_settime\fP(2), \fBtimerfd_create\fP(2),
+\fBclock_getcpuclockid\fP(3), \fBpthread_getcpuclockid\fP(3), \fBpthreads\fP(7),
+\fBsigevent\fP(7), \fBsignal\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,956 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1992 Drew Eckhardt <drew@cs.colorado.edu>, March 28, 1992
+.\" and Copyright (c) Michael Kerrisk, 2001, 2002, 2005, 2013, 2019
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 24 Jul 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 21 Aug 1994 by Michael Chastain <mec@shell.portal.com>:
+.\"   New man page (copied from 'fork.2').
+.\" Modified 10 June 1995 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 25 April 1998 by Xavier Leroy <Xavier.Leroy@inria.fr>
+.\" Modified 26 Jun 2001 by Michael Kerrisk
+.\"     Mostly upgraded to Linux 2.4.x
+.\"     Added prototype for sys_clone() plus description
+.\"	Added CLONE_THREAD with a brief description of thread groups
+.\"	Added CLONE_PARENT and revised entire page remove ambiguity
+.\"		between "calling process" and "parent process"
+.\"	Added CLONE_PTRACE and CLONE_VFORK
+.\"	Added EPERM and EINVAL error codes
+.\"	Renamed "__clone" to "clone" (which is the prototype in <sched.h>)
+.\"	various other minor tidy ups and clarifications.
+.\" Modified 26 Jun 2001 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Updated notes for 2.4.7+ behavior of CLONE_THREAD
+.\" Modified 15 Oct 2002 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added description for CLONE_NEWNS, which was added in Linux 2.4.19
+.\" Slightly rephrased, aeb.
+.\" Modified 1 Feb 2003 - added CLONE_SIGHAND restriction, aeb.
+.\" Modified 1 Jan 2004 - various updates, aeb
+.\" Modified 2004-09-10 - added CLONE_PARENT_SETTID etc. - aeb.
+.\" 2005-04-12, mtk, noted the PID caching behavior of NPTL's getpid()
+.\"	wrapper under BUGS.
+.\" 2005-05-10, mtk, added CLONE_SYSVSEM, CLONE_UNTRACED, CLONE_STOPPED.
+.\" 2005-05-17, mtk, Substantially enhanced discussion of CLONE_THREAD.
+.\" 2008-11-18, mtk, order CLONE_* flags alphabetically
+.\" 2008-11-18, mtk, document CLONE_NEWPID
+.\" 2008-11-19, mtk, document CLONE_NEWUTS
+.\" 2008-11-19, mtk, document CLONE_NEWIPC
+.\" 2008-11-19, Jens Axboe, mtk, document CLONE_IO
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH clone 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+clone, __clone2, clone3 \- 创建一个子进程
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+/* Prototype for the glibc wrapper function */
+.PP
+\fB#define _GNU_SOURCE\fP
+\fB#include <sched.h>\fP
+.PP
+\fBint clone(int (*\fP\fIfn\fP\fB)(void *_Nullable), void *\fP\fIstack\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB          void *_Nullable \fP\fIarg\fP\fB, ...\fP\fI  \fP/*\fB pid_t *_Nullable \fP\fIparent_tid\fP\fB,\fP
+\fB                                       void *_Nullable \fP\fItls\fP\fB,\fP
+\fB                                       pid_t *_Nullable \fP\fIchild_tid\fP\fB \fP*/\fB );\fP
+.PP
+/* For the prototype of the raw clone() system call, see NOTES */
+.PP
+\fB#include <linux/sched.h>\fP    /* Definition of \fBstruct clone_args\fP */
+\fB#include <sched.h>\fP          /* Definition of \fBCLONE_*\fP constants */
+\fB#include <sys/syscall.h>\fP    /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBlong syscall(SYS_clone3, struct clone_args *\fP\fIcl_args\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBclone3\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+这些系统调用以类似于 \fBfork\fP(2) 的方式创建一个新的 ("child") 进程。
+.PP
+与 \fBfork\fP(2) 相比，这些系统调用可以更精确地控制在调用进程和子进程之间共享哪些执行上下文。
+例如，使用这些系统调用，调用者可以控制两个进程是否共享虚拟地址空间、文件描述符表和信号处理程序表。 这些系统调用还允许将新的子进程放在单独的
+\fBnamespaces\fP(7) 中。
+.PP
+请注意，在本手册页中，"calling process" 通常对应于 "parent process"。 但是请看下面对 \fBCLONE_PARENT\fP
+和 \fBCLONE_THREAD\fP 的描述。
+.PP
+本页描述了以下接口:
+.IP \[bu] 3
+glibc \fBclone\fP() 封装函数及其所基于的底层系统调用。 正文描述包装器函数; 本页末尾描述了原始系统调用的差异。
+.IP \[bu]
+较新的 \fBclone3\fP() 系统调用。
+.PP
+.\"
+在本页的其余部分，术语 "the clone call" 用于标注适用于所有这些接口的详细信息，
+.SS "The clone() wrapper function"
+当使用 \fBclone\fP() 包装器函数创建子进程时，它通过调用参数 \fIfn\fP 指向的函数开始执行。 (这与 \fBfork\fP(2) 不同，在
+\fBfork\fP(2) 中，执行从 \fBfork\fP(2) 调用点继续在子级中进行。) \fIarg\fP 参数作为函数 \fIfn\fP 的参数传递。
+.PP
+当 \fIfn\fP(\fIarg\fP) 函数返回时，子进程终止。 \fIfn\fP 返回的整数是子进程的退出状态。 子进程也可以通过调用 \fBexit\fP(2)
+或在收到致命信号后显式终止。
+.PP
+\fIstack\fP 参数指定了子进程使用的栈的位置。 由于子进程和调用进程可能共享内存，因此子进程不可能与调用进程在同一栈中执行。
+因此，调用进程必须为子栈设置内存空间，并将指向该空间的指针传递给 \fBclone\fP()。 所有运行 Linux 的处理器 (HP PA 处理器除外)
+的栈都是向下增长的，所以 \fIstack\fP 通常指向为子栈设置的内存空间的最顶层地址。 请注意，\fBclone\fP()
+不提供调用者可以通知内核栈区域大小的方法。
+.PP
+.\"
+\fBclone\fP() 的剩余参数在下面讨论。
+.SS clone3()
+\fBclone3\fP() 系统调用提供了旧 \fBclone\fP() 接口功能的超集。 它还提供了一些 API 改进，包括: 额外标志位的空间;
+更干净的分离在使用各种参数; 以及指定子栈区域大小的能力。
+.PP
+与 \fBfork\fP(2) 一样，\fBclone3\fP() 在父项和子项中都返回。 它在子进程中返回 0，在父进程中返回子进程的 PID。
+.PP
+\fBclone3\fP() 的 \fIcl_args\fP 参数是如下形式的结构体:
+.PP
+.in +4n
+.EX
+struct clone_args {
+    u64 flags;        /* Flags bit mask */
+    u64 pidfd;        /* Where to store PID file descriptor
+                         (\fIint *\fP) */
+    u64 child_tid;    /* Where to store child TID,
+                         in child\[aq]s memory (\fIpid_t *\fP) */
+    u64 parent_tid;   /* Where to store child TID,
+                         in parent\[aq]s memory (\fIpid_t *\fP) */
+    u64 exit_signal;  /* Signal to deliver to parent on
+                         child termination */
+    u64 stack;        /* Pointer to lowest byte of stack */
+    u64 stack_size;   /* Size of stack */
+    u64 tls;          /* Location of new TLS */
+    u64 set_tid;      /* Pointer to a \fIpid_t\fP array
+                         (since Linux 5.5) */ 
+    u64 set_tid_size; /* Number of elements in \fIset_tid\fP
+                         (since Linux 5.5) */
+    u64 cgroup;       /* File descriptor for target cgroup
+                         of child (since Linux 5.7) */
+};
+.EE
+.in
+.PP
+提供给 \fBclone3\fP() 的 \fIsize\fP 参数应该初始化为这个结构体的大小。 (\fIsize\fP 参数的存在允许 future 扩展到
+\fIclone_args\fP 结构体。)
+.PP
+子进程的栈通过 \fIcl_args.stack\fP 和 \fIcl_args.stack_size\fP 指定，\fIcl_args.stack\fP
+指向栈区域的最低字节，\fIcl_args.stack_size\fP 以字节为单位指定栈的大小。 在指定 \fBCLONE_VM\fP 标志 (见下文)
+的情况下，必须显式分配和指定栈。 否则，可以将这两个字段指定为 NULL 和 0，这会导致子级使用与父级相同的栈区域 (在子级自己的虚拟地址空间中)。
+.PP
+.\"
+\fIcl_args\fP 参数中的其余字段在下面讨论。
+.SS "Equivalence between clone() and clone3() arguments"
+与单独传递参数的旧 \fBclone\fP() 接口不同，在较新的 \fBclone3\fP() 接口中，参数被打包到上面显示的 \fIclone_args\fP
+结构体中。 此结构体允许通过 \fBclone\fP() 参数传递的信息的超集。
+.PP
+下表显示了 \fBclone\fP() 的参数与提供给 \fBclone3\fP(): 的 \fIclone_args\fP 参数中字段的等价关系
+.RS 4
+.TS
+lb lb lb
+l l l
+li li l.
+clone()	clone3()	Notes
+	\fIcl_args\fP field
+flags & \[ti]0xff	flags	T{
+For most flags; details below
+T}
+parent_tid	pidfd	See CLONE_PIDFD
+child_tid	child_tid	See CLONE_CHILD_SETTID
+parent_tid	parent_tid	See CLONE_PARENT_SETTID
+flags & 0xff	exit_signal
+stack	stack
+\fI\-\-\-\fP	stack_size
+tls	tls	See CLONE_SETTLS
+\fI\-\-\-\fP	set_tid	See below for details
+\fI\-\-\-\fP	set_tid_size
+\fI\-\-\-\fP	cgroup	See CLONE_INTO_CGROUP
+.TE
+.RE
+.\"
+.SS "The child termination signal"
+.\"
+当子进程终止时，可以向父进程发送信号。 终止信号在 \fIflags\fP (\fBclone\fP()) 或 \fIcl_args.exit_signal\fP
+(\fBclone3\fP()) 的低字节中指定。 如果此信号被指定为 \fBSIGCHLD\fP 以外的任何信号，则父进程在等待带有 \fBwait\fP(2)
+的子进程时必须指定 \fB__WALL\fP 或 \fB__WCLONE\fP 选项。 如果没有指定信号 (即零)，则当子进程终止时，父进程不会收到信号。
+.SS "The set_tid array"
+默认情况下，内核为新进程在它所在的每个 PID 名称空间中选择下一个顺序 PID。 使用 \fBclone3\fP() 创建进程时，\fIset_tid\fP 数组
+(自 Linux 5.5 起可用) 可用于在它所在的部分或所有 PID 命名空间中为进程选择特定的 PID。 如果新创建进程的 PID 应该只为当前
+PID 命名空间或在新创建的 PID 命名空间中设置 (如果 \fIflags\fP 包含 \fBCLONE_NEWPID\fP)，则 \fIset_tid\fP
+数组中的第一个元素必须是所需的 PID，\fIset_tid_size\fP 需要是 1.
+.PP
+如果新创建的进程的 PID 在多个 PID 命名空间中应该有某个值，那么 \fIset_tid\fP 数组可以有多个条目。 第一个条目定义嵌套最深的 PID
+命名空间中的 PID，随后的每个条目都包含相应祖先 PID 命名空间中的 PID。 一个 PID 应该设置的 PID 命名空间的个数由
+\fIset_tid_size\fP 定义，不能大于当前嵌套的 PID 命名空间的个数。
+.PP
+在 PID 命名空间层次结构中创建具有以下 PID 的进程:
+.RS 4
+.TS
+lb lb lb
+l l l.
+PID NS level	Requested PID	Notes
+0	31496	Outermost PID namespace
+1	42
+2	7	Innermost PID namespace
+.TE
+.RE
+.PP
+将数组设置为:
+.PP
+.in +4n
+.EX
+set_tid[0] = 7;
+set_tid[1] = 42;
+set_tid[2] = 31496;
+set_tid_size = 3;
+.EE
+.in
+.PP
+如果只需要指定最里面的两个 PID 命名空间中的 PID，则将数组设置为:
+.PP
+.in +4n
+.EX
+set_tid[0] = 7;
+set_tid[1] = 42;
+set_tid_size = 2;
+.EE
+.in
+.PP
+两个最里面的 PID 命名空间之外的 PID 命名空间中的 PID 的选择方式与任何其他 PID 的选择方式相同。
+.PP
+.\" commit 124ea650d3072b005457faed69909221c2905a1f
+.\" commit 1caef81da05a84a40dbf02110e967ce6d1135ff6
+\fIset_tid\fP 特性需要目标 PID 名称空间的所有拥有用户名称空间中的 \fBCAP_SYS_ADMIN\fP 或 (自 Linux 5.9 起)
+\fBCAP_CHECKPOINT_RESTORE\fP。
+.PP
+.\"
+如果 \fBinit\fP 进程 (即 PID 为 1 的进程) 已经存在于该命名空间中，则调用者只能在给定的 PID 命名空间中选择大于 1 的 PID。
+否则，此 PID 名称空间的 PID 条目必须是 1.
+.SS "The flags mask"
+\fBclone\fP() 和 \fBclone3\fP() 都允许标志位掩码来修改它们的行为，并允许调用者指定调用进程和子进程之间共享的内容。 此位掩码
+\[em] \fBclone\fP() 的 \fIflags\fP 参数或传递给 \fBclone3\fP()\[em]is 的 \fIcl_args.flags\fP
+字段在本页的其余部分称为 \fIflags\fP 掩码。
+.PP
+\fIflags\fP 掩码指定为零个或多个下面列出的常量的按位或。 除了下面提到的，这些标志在 \fBclone\fP() 和 \fBclone3\fP() 中都可用
+(并且具有相同的效果)。
+.TP 
+\fBCLONE_CHILD_CLEARTID\fP (since Linux 2.5.49)
+子内存中 \fIchild_tid\fP (\fBclone\fP()) 或 \fIcl_args.child_tid\fP (\fBclone3\fP()) 指向的位置清除
+(zero) 子线程 ID，子进程退出时，对该地址的 futex 进行唤醒。 涉及到的地址可能会被 \fBset_tid_address\fP(2)
+系统调用改变。 这由线程库使用。
+.TP 
+\fBCLONE_CHILD_SETTID\fP (since Linux 2.5.49)
+将子线程 ID 存放在子内存中 \fIchild_tid\fP (\fBclone\fP()) 或 \fIcl_args.child_tid\fP
+(\fBclone3\fP()) 指向的位置。 存储操作在克隆调用将控制返回给子进程中的用户空间之前完成。
+(请注意，在克隆调用返回父进程之前，存储操作可能尚未完成，如果还使用了 \fBCLONE_VM\fP 标志，则相关。)
+.TP 
+\fBCLONE_CLEAR_SIGHAND\fP (since Linux 5.5)
+.\" commit b612e5df4587c934bd056bf05f4a1deca4de4f75
+默认情况下，子线程中的信号处理与父线程中的相同。 如果指定了此标志，则在父级中处理的所有信号都将重置为其在子级中的默认配置 (\fBSIG_DFL\fP)。
+.IP
+将此标志与 \fBCLONE_SIGHAND\fP 一起指定是荒谬的，也是不允许的。
+.TP 
+\fBCLONE_DETACHED\fP (historical)
+.\" added in Linux 2.5.32; removed in Linux 2.6.0-test4
+有一段时间 (在 Linux 2.5 开发系列期间) 有一个 \fBCLONE_DETACHED\fP 标志，导致当子节点终止时，父母没有收到信号。
+最终，这个标志的作用被包含在 \fBCLONE_THREAD\fP 标志下，到 Linux 2.6.0 发布时，这个标志已经没有作用了。 从 Linux
+2.6.2 开始，不再需要将此标志与 \fBCLONE_THREAD\fP 一起提供。
+.IP
+这个标志仍然被定义，但在调用 \fBclone\fP() 时通常被忽略。 但是，有些例外情况请参见 \fBCLONE_PIDFD\fP 的说明。
+.TP 
+\fBCLONE_FILES\fP (since Linux 2.0)
+如果设置了 \fBCLONE_FILES\fP，则调用进程和子进程共享同一个文件描述符表。 调用进程或子进程创建的任何文件描述符在其他进程中也是有效的。
+同样，如果其中一个进程关闭文件描述符，或更改其关联标志 (使用 \fBfcntl\fP(2) \fBF_SETFD\fP 操作)，则另一个进程也会受到影响。
+如果共享文件描述符表的进程调用 \fBexecve\fP(2)，则其文件描述符表将复制 (unshared)。
+.IP
+如果未设置 \fBCLONE_FILES\fP，子进程将继承调用进程在克隆调用时打开的所有文件描述符的副本。
+由调用进程或子进程执行的打开或关闭文件描述符或更改文件描述符标志的后续操作不会影响其他进程。
+但是请注意，子进程中的重复文件描述符与调用进程中的相应文件描述符引用相同的打开文件描述，因此共享文件偏移量和文件状态标志 (参见
+\fBopen\fP(2)).
+.TP 
+\fBCLONE_FS\fP (since Linux 2.0)
+如果设置了 \fBCLONE_FS\fP，则调用者和子进程共享相同的文件系统信息。 这包括文件系统的根目录、当前工作目录和 umask。 调用进程或子进程对
+\fBchroot\fP(2)、\fBchdir\fP(2) 或 \fBumask\fP(2) 执行的任何调用也会影响其他进程。
+.IP
+如果未设置 \fBCLONE_FS\fP，则子进程在克隆调用时处理调用进程的文件系统信息的副本。 稍后由其中一个进程执行的对
+\fBchroot\fP(2)、\fBchdir\fP(2) 或 \fBumask\fP(2) 的调用不会影响另一个进程。
+.TP 
+\fBCLONE_INTO_CGROUP\fP (since Linux 5.7)
+.\" commit ef2c41cf38a7559bbf91af42d5b6a4429db8fc68
+默认情况下，子进程与其父进程位于同一版本 2 cgroup 中。 \fBCLONE_INTO_CGROUP\fP 标志允许在不同的版本 2 cgroup
+中创建子进程。 (请注意，\fBCLONE_INTO_CGROUP\fP 仅对版本 2 cgroups 有效。)
+.IP
+为了将子进程放在不同的 cgroup 中，调用者在 \fIcl_args.flags\fP 中指定 \fBCLONE_INTO_CGROUP\fP，并在
+\fIcl_args.cgroup\fP 字段中传递引用版本 2 cgroup 的文件描述符。 (可以通过使用 \fBO_RDONLY\fP 或 \fBO_PATH\fP
+标志打开 cgroup v2 目录来获得此文件描述符。) 请注意，所有通常的限制 (在 \fBcgroups\fP(7)) 中描述的关于将进程放入版本 2
+cgroup 的限制适用。
+.IP
+\fBCLONE_INTO_CGROUP\fP 的可能用例如下:
+.RS
+.IP \[bu] 3
+将进程生成到与父 cgroup 不同的 cgroup 中，使服务管理器可以直接将 spawn 新服务放入专用 cgroup。
+这消除了如果子进程首先在与父进程相同的 cgroup 中创建然后移动到目标 cgroup 中会导致的会计抖动。 此外，将子进程直接生成到目标
+cgroup 中比在创建子进程后将其移动到目标 cgroup 中要便宜得多。
+.IP \[bu]
+\fBCLONE_INTO_CGROUP\fP 标志还允许通过将子进程派生到冻结的 cgroup 中来创建冻结的子进程。 (有关冷冻机控制器的说明，请参见
+\fBcgroups\fP(7)。)
+.IP \[bu]
+对于线程应用程序 (甚至是使用 cgroups 来限制单个线程的线程实现)，可以在将每个线程直接生成到其目标 cgroup 之前建立一个固定的
+cgroup 布局。
+.RE
+.TP 
+\fBCLONE_IO\fP (since Linux 2.6.25)
+如果设置了 \fBCLONE_IO\fP，则新进程与调用进程共享 I/O 上下文。 如果未设置此标志，则 (与 \fBfork\fP(2)) 一样，新进程有其自己的
+I/O 上下文。
+.IP
+.\" The following based on text from Jens Axboe
+.\" the anticipatory and CFQ scheduler
+.\" with CFQ and AS.
+I/O 上下文是磁盘调度程序的 I/O 作用域 (即，I/O 调度程序用来模拟进程 I/O 的调度)。 如果进程共享相同的 I/O 上下文，它们将被
+I/O 调度程序视为一个。 因此，他们可以共享磁盘时间。 对于一些 I/O 调度程序，如果两个进程共享一个 I/O
+上下文，它们将被允许交错进行磁盘访问。 例如，如果多个线程代表同一个进程 (\fBaio_read\fP(3) 执行 I/O)，它们应该使用
+\fBCLONE_IO\fP 以获得更好的 I/O 性能。
+.IP
+如果内核未配置 \fBCONFIG_BLOCK\fP 选项，则此标志为空操作。
+.TP 
+\fBCLONE_NEWCGROUP\fP (since Linux 4.6)
+在新的 cgroup 命名空间中创建进程。 如果未设置此标志，则 (与 \fBfork\fP(2)) 一样，该进程将在与调用进程相同的 cgroup
+命名空间中创建。
+.IP
+有关 cgroup 名称空间的更多信息，请参见 \fBcgroup_namespaces\fP(7)。
+.IP
+.\"
+只有特权进程 (\fBCAP_SYS_ADMIN\fP) 才能使用 \fBCLONE_NEWCGROUP\fP。
+.TP 
+\fBCLONE_NEWIPC\fP (since Linux 2.6.19)
+如果设置了 \fBCLONE_NEWIPC\fP，则在新的 IPC 命名空间中创建进程。 如果未设置此标志，则 (与 \fBfork\fP(2))
+一样，进程将在与调用进程相同的 IPC 名称空间中创建。
+.IP
+有关 IPC 名称空间的更多信息，请参见 \fBipc_namespaces\fP(7)。
+.IP
+只有特权进程 (\fBCAP_SYS_ADMIN\fP) 才能使用 \fBCLONE_NEWIPC\fP。 该标志不能与 \fBCLONE_SYSVSEM\fP
+一起指定。
+.TP 
+\fBCLONE_NEWNET\fP (since Linux 2.6.24)
+(此标志的实现仅在 Linux 2.6.29 左右完成。)
+.IP
+如果设置了 \fBCLONE_NEWNET\fP，则在新的网络命名空间中创建进程。 如果未设置此标志，则 (与 \fBfork\fP(2))
+一样，该进程将在与调用进程相同的网络名称空间中创建。
+.IP
+有关网络名称空间的更多信息，请参见 \fBnetwork_namespaces\fP(7)。
+.IP
+只有特权进程 (\fBCAP_SYS_ADMIN\fP) 才能使用 \fBCLONE_NEWNET\fP。
+.TP 
+\fBCLONE_NEWNS\fP (since Linux 2.4.19)
+如果设置了 \fBCLONE_NEWNS\fP，则克隆的子项将在新的挂载命名空间中启动，并使用父项命名空间的副本进行初始化。 如果未设置
+\fBCLONE_NEWNS\fP，则子项与父项位于相同的挂载命名空间中。
+.IP
+有关挂载命名空间的更多信息，请参见 \fBnamespaces\fP(7) 和 \fBmount_namespaces\fP(7)。
+.IP
+.\" See https://lwn.net/Articles/543273/
+只有特权进程 (\fBCAP_SYS_ADMIN\fP) 才能使用 \fBCLONE_NEWNS\fP。 不允许在同一个克隆调用中同时指定
+\fBCLONE_NEWNS\fP 和 \fBCLONE_FS\fP。
+.TP 
+\fBCLONE_NEWPID\fP (since Linux 2.6.24)
+.\" This explanation draws a lot of details from
+.\" http://lwn.net/Articles/259217/
+.\" Authors: Pavel Emelyanov <xemul@openvz.org>
+.\" and Kir Kolyshkin <kir@openvz.org>
+.\"
+.\" The primary kernel commit is 30e49c263e36341b60b735cbef5ca37912549264
+.\" Author: Pavel Emelyanov <xemul@openvz.org>
+如果设置了 \fBCLONE_NEWPID\fP，则在新的 PID 命名空间中创建进程。 如果未设置此标志，则 (与 \fBfork\fP(2))
+一样，进程将在与调用进程相同的 PID 名称空间中创建。
+.IP
+有关 PID 名称空间的更多信息，请参见 \fBnamespaces\fP(7) 和 \fBpid_namespaces\fP(7)。
+.IP
+只有特权进程 (\fBCAP_SYS_ADMIN\fP) 才能使用 \fBCLONE_NEWPID\fP。 该标志不能与 \fBCLONE_THREAD\fP 或
+\fBCLONE_PARENT\fP 一起指定。
+.TP 
+\fBCLONE_NEWUSER\fP
+(这个标志首先在 Linux 2.6.23 中对 \fBclone\fP() 有意义，当前的 \fBclone\fP() 语义在 Linux 3.5
+中合并，使用户命名空间完全可用的最终部分在 Linux 3.8 中合并。)
+.IP
+如果设置了 \fBCLONE_NEWUSER\fP，则在新的用户命名空间中创建进程。 如果未设置此标志，则 (与 \fBfork\fP(2))
+一样，该进程将在与调用进程相同的用户命名空间中创建。
+.IP
+有关用户命名空间的更多信息，请参见 \fBnamespaces\fP(7) 和 \fBuser_namespaces\fP(7)。
+.IP
+.\" Before Linux 2.6.29, it appears that only CAP_SYS_ADMIN was needed
+在 Linux 3.8 之前，使用 \fBCLONE_NEWUSER\fP 要求调用者具有三种能力:
+\fBCAP_SYS_ADMIN\fP、\fBCAP_SETUID\fP 和 \fBCAP_SETGID\fP。 从 Linux 3.8
+开始，创建用户命名空间不需要任何权限。
+.IP
+.\" commit e66eded8309ebf679d3d3c1f5820d1f2ca332c71
+.\" https://lwn.net/Articles/543273/
+.\" The fix actually went into Linux 3.9 and into Linux 3.8.3. However, user namespaces
+.\" were, for practical purposes, unusable in earlier Linux 3.8.x because of the
+.\" various filesystems that didn't support userns.
+该标志不能与 \fBCLONE_THREAD\fP 或 \fBCLONE_PARENT\fP 一起指定。 出于安全原因，\fBCLONE_NEWUSER\fP 不能与
+\fBCLONE_FS\fP 一起指定。
+.TP 
+\fBCLONE_NEWUTS\fP (since Linux 2.6.19)
+如果设置了 \fBCLONE_NEWUTS\fP，则在新的 UTS 命名空间中创建进程，其标识符通过复制调用进程的 UTS 命名空间中的标识符来初始化。
+如果未设置此标志，则 (与 \fBfork\fP(2)) 一样，该进程将在与调用进程相同的 UTS 名称空间中创建。
+.IP
+有关 UTS 名称空间的更多信息，请参见 \fButs_namespaces\fP(7)。
+.IP
+只有特权进程 (\fBCAP_SYS_ADMIN\fP) 才能使用 \fBCLONE_NEWUTS\fP。
+.TP 
+\fBCLONE_PARENT\fP (since Linux 2.3.12)
+如果设置了 \fBCLONE_PARENT\fP，则新子进程的父进程 (由 \fBgetppid\fP(2)) 返回) 将与调用进程的父进程相同。
+.IP
+如果未设置 \fBCLONE_PARENT\fP，则 (与 \fBfork\fP(2)) 一样，子进程的父进程是调用进程。
+.IP
+请注意，它是由 \fBgetppid\fP(2) 返回的父进程，在子进程终止时发出信号，因此如果设置了
+\fBCLONE_PARENT\fP，则发出信号的是调用进程的父进程，而不是调用进程本身。
+.IP
+\fBCLONE_PARENT\fP 标志不能用于全局 init 进程 (初始 PID 命名空间中的 PID 1) 和其他 PID 命名空间中的 init
+进程的克隆调用。 此限制可防止创建多根进程树以及在初始 PID 命名空间中创建无法收割的僵尸进程。
+.TP 
+\fBCLONE_PARENT_SETTID\fP (since Linux 2.5.49)
+将子线程 ID 存放在父内存中 \fIparent_tid\fP (\fBclone\fP()) 或 \fIcl_args.parent_tid\fP
+(\fBclone3\fP()) 指向的位置。 (在 Linux 2.5.32\-2.5.48 中有一个标志 \fBCLONE_SETTID\fP 执行此操作。)
+存储操作在克隆调用将控制权返回给用户空间之前完成。
+.TP 
+\fBCLONE_PID\fP (Linux 2.0 to Linux 2.5.15)
+如果设置了 \fBCLONE_PID\fP，则创建的子进程与调用进程具有相同的进程 ID。 这对于破解系统很有用，但除此之外没有多大用处。 从 Linux
+2.3.21 开始，该标志只能由系统引导进程 (PID 0) 指定。 该标志从 Linux 2.5.16 的内核源代码中完全消失。 随后，如果在
+\fIflags\fP 掩码中指定了该位，则内核会默默地忽略它。 很久以后，相同的位被回收用作 \fBCLONE_PIDFD\fP 标志。
+.TP 
+\fBCLONE_PIDFD\fP (since Linux 5.2)
+.\" commit b3e5838252665ee4cfa76b82bdf1198dca81e5be
+如果指定了此标志，则分配一个引用子进程的 PID 文件描述符并将其放置在父进程内存中的指定位置。 在这个新的文件描述符上设置了
+close\-on\-exec 标志。 PID 文件描述符可用于 \fBpidfd_open\fP(2) 中描述的目的。
+.RS
+.IP \[bu] 3
+使用 \fBclone3\fP() 时，PID 文件描述符放在 \fIcl_args.pidfd\fP 指向的位置。
+.IP \[bu]
+使用 \fBclone\fP() 时，PID 文件描述符放在 \fIparent_tid\fP 指向的位置。 由于 \fIparent_tid\fP 参数用于返回 PID
+文件描述符，因此在调用 \fBclone\fP() 时，\fBCLONE_PIDFD\fP 不能与 \fBCLONE_PARENT_SETTID\fP 一起使用。
+.RE
+.IP
+目前无法将此标志与 \fBCLONE_THREAD.\fP 一起使用。这意味着由 PID 文件描述符标识的进程将始终是线程组组长。
+.IP
+如果在调用 \fBclone\fP() 时与 \fBCLONE_PIDFD\fP 一起指定了过时的 \fBCLONE_DETACHED\fP 标志，则会返回错误。
+如果在调用 \fBclone3\fP() 时指定了 \fBCLONE_DETACHED\fP，也会产生错误。 此错误行为可确保对应于
+\fBCLONE_DETACHED\fP 的位可重新用于 future 中的其他 PID 文件描述符，特性。
+.TP 
+\fBCLONE_PTRACE\fP (since Linux 2.2)
+如果指定了 \fBCLONE_PTRACE\fP，并且正在跟踪调用进程，则也跟踪子进程 (参见 \fBptrace\fP(2)).
+.TP 
+\fBCLONE_SETTLS\fP (since Linux 2.5.32)
+TLS (线程本地存储) 描述符设置为 \fItls\fP。
+.IP
+\fItls\fP 的解释和产生的效果取决于体系结构。 在 x86 上，\fItls\fP 被解释为 \fIstruct user_desc\~*\fP (参见
+\fBset_thread_area\fP(2)).  在 x86\-64 上，它是为 %fs 基址寄存器设置的新值 (参见 \fBARCH_SET_FS\fP
+参数到 \fBarch_prctl\fP(2))。 在具有专用 TLS 寄存器的体系结构上，它是该寄存器的新值。
+.IP
+使用此标志需要详细的知识，通常不应使用它，除非在实现线程的库中。
+.TP 
+\fBCLONE_SIGHAND\fP (since Linux 2.0)
+如果设置了 \fBCLONE_SIGHAND\fP，则调用进程和子进程共享同一个信号处理程序表。 如果调用进程或子进程调用 \fBsigaction\fP(2)
+来更改与信号关联的行为，则其他进程中的行为也会更改。 但是，调用进程和子进程仍然具有不同的信号掩码和未决信号集。 因此，其中一个可以使用
+\fBsigprocmask\fP(2) 阻止或取消阻止信号而不影响另一个进程。
+.IP
+如果未设置 \fBCLONE_SIGHAND\fP，则子进程在克隆调用时继承调用进程的信号处理程序的副本。 其中一个进程稍后执行的对
+\fBsigaction\fP(2) 的调用对另一个进程没有影响。
+.IP
+.\" Precisely: Linux 2.6.0-test6
+自 Linux 2.6.0 起，如果指定了 \fBCLONE_SIGHAND\fP，则 \fIflags\fP 掩码还必须包括 \fBCLONE_VM\fP。
+.TP 
+\fBCLONE_STOPPED\fP (since Linux 2.6.0)
+.\" Precisely: Linux 2.6.0-test2
+如果设置了 \fBCLONE_STOPPED\fP，则子进程最初会停止 (就好像它被发送了一个 \fBSIGSTOP\fP 信号)，并且必须通过向它发送一个
+\fBSIGCONT\fP 信号来恢复。
+.IP
+.\" glibc 2.8 removed this defn from bits/sched.h
+这个 flag 从 Linux 2.6.25 开始就是 \fIdeprecated\fP，Linux 2.6.38 一共是 \fIremoved\fP。
+从那以后，内核默默地忽略了它，没有错误。 从 Linux 4.6 开始，相同的位被重新用于 \fBCLONE_NEWCGROUP\fP 标志。
+.TP 
+\fBCLONE_SYSVSEM\fP (since Linux 2.5.10)
+如果设置了 \fBCLONE_SYSVSEM\fP，则子进程和调用进程共享一个 System V 信号量调整 (\fIsemadj\fP) 值列表 (请参见
+\fBsemop\fP(2)).  在这种情况下，共享列表在共享列表的所有进程中累积 \fIsemadj\fP 值，并且仅当共享列表的最后一个进程终止 (或停止使用
+\fBunshare\fP(2)) 共享列表) 时才执行信号量调整。 如果未设置此标志，则子项有一个单独的 \fIsemadj\fP 列表，该列表最初为空。
+.TP 
+\fBCLONE_THREAD\fP (since Linux 2.4.0)
+.\" Precisely: Linux 2.6.0-test8
+如果设置了 \fBCLONE_THREAD\fP，子进程将被放置在与调用进程相同的线程组中。 为了使 \fBCLONE_THREAD\fP
+的其余讨论更具可读性，术语 "thread" 用于指代线程组中的进程。
+.IP
+线程组是 Linux 2.4 中添加的一项特性用于支持共享单个 PID 的一组线程的 POSIX 线程概念。 在内部，这个共享 PID
+是线程组的所谓线程组标识符 (TGID)。 从 Linux 2.4 开始，对 \fBgetpid\fP(2) 的调用返回调用者的 TGID。
+.IP
+组内的线程可以通过它们的 (system\-wide) 唯一线程 ID (TID) 来区分。 一个新线程的 TID
+作为函数返回给调用者的结果是可用的，一个线程可以使用 \fBgettid\fP(2) 获得自己的 TID。
+.IP
+当在没有指定 \fBCLONE_THREAD\fP 的情况下进行克隆调用时，生成的线程将被放置在一个新的线程组中，该线程组的 TGID 与线程的 TID
+相同。 这个线程是新线程组的 \fIleader\fP。
+.IP
+使用 \fBCLONE_THREAD\fP 创建的新线程与创建克隆调用的进程具有相同的父进程 (即，像 \fBCLONE_PARENT\fP)，因此对
+\fBgetppid\fP(2) 的调用为线程组中的所有线程返回相同的值。 当 \fBCLONE_THREAD\fP 线程终止时，创建它的线程不会发送
+\fBSIGCHLD\fP (或其他终止) 信号; 也不能使用 \fBwait\fP(2) 获取此类线程的状态。 (线程据说是 \fIdetached\fP.)
+.IP
+在线程组中的所有线程终止后，线程组的父进程将发送一个 \fBSIGCHLD\fP (或其他终止) 信号。
+.IP
+如果一个线程组中的任何一个线程执行了 \fBexecve\fP(2)，那么除了线程组领导之外的所有线程都会被终止，新的程序在线程组领导中执行。
+.IP
+如果线程组中的一个线程使用 \fBfork\fP(2) 创建一个子线程，则该组中的任何线程都可以为该子线程创建 \fBwait\fP(2)。
+.IP
+.\" Precisely: Linux 2.6.0-test6
+自 Linux 2.5.35 起，如果指定了 \fBCLONE_THREAD\fP，则 \fIflags\fP 掩码还必须包括 \fBCLONE_SIGHAND\fP
+(请注意，自 Linux 2.6.0 起，\fBCLONE_SIGHAND\fP 也需要包括 \fBCLONE_VM\fP)。
+.IP
+信号处置和操作是进程范围的: 如果将未处理的信号传递给线程，那么它将影响 (终止、停止、继续、被忽略) 线程组的所有成员。
+.IP
+每个线程都有自己的信号掩码，由 \fBsigprocmask\fP(2) 设置。
+.IP
+信号可以是进程导向的或线程导向的。 进程导向信号以线程组 (即 TGID) 为目标，并从未阻塞信号的线程中传递到任意选择的线程。
+信号可能是进程导向的，因为它是由内核出于硬件异常以外的原因生成的，或者因为它是使用 \fBkill\fP(2) 或 \fBsigqueue\fP(3) 发送的。
+线程定向信号针对 (即传递到) 特定线程。 信号可能是线程定向的，因为它是使用 \fBtgkill\fP(2) 或
+\fBpthread_sigqueue\fP(3) 发送的，或者因为线程执行了触发硬件异常的机器语言指令 (例如，无效内存访问触发 \fBSIGSEGV\fP
+或浮点异常触发 \fBSIGFPE\fP)。
+.IP
+对 \fBsigpending\fP(2) 的调用返回一个信号集，该信号集是挂起的进程定向信号的 union 和为调用线程挂起的信号。
+.IP
+如果一个进程导向的信号被传递到一个线程组，并且该线程组已经为该信号安装了一个处理程序，那么该处理程序将在一个任意选择的线程组成员中被调用，该线程组没有阻塞该信号。
+如果一组中的多个线程正在等待使用 \fBsigwaitinfo\fP(2) 接受同一个信号，内核将任意选择这些线程中的一个来接收信号。
+.TP 
+\fBCLONE_UNTRACED\fP (since Linux 2.5.46)
+如果指定了 \fBCLONE_UNTRACED\fP，则跟踪进程不能在该子进程上强制 \fBCLONE_PTRACE\fP。
+.TP 
+\fBCLONE_VFORK\fP (since Linux 2.2)
+如果设置了 \fBCLONE_VFORK\fP，则调用进程的执行将被挂起，直到子进程通过调用释放其虚拟内存资源到 \fBexecve\fP(2) 或
+\fB_exit\fP(2) (与 \fBvfork\fP(2)).
+.IP
+如果未设置 \fBCLONE_VFORK\fP，则调用进程和子进程都可以在调用之后进行调度，并且应用程序不应依赖于以任何特定顺序发生的执行。
+.TP 
+\fBCLONE_VM\fP (since Linux 2.0)
+如果设置了 \fBCLONE_VM\fP，则调用进程和子进程运行在同一内存空间。 特别是，调用进程或子进程执行的内存写入在其他进程中也是可见的。
+此外，子进程或调用进程对 \fBmmap\fP(2) 或 \fBmunmap\fP(2) 执行的任何内存映射或取消映射也会影响其他进程。
+.IP
+如果不设置 \fBCLONE_VM\fP，则子进程在克隆调用时运行在调用进程内存空间的单独副本中。 与 \fBfork\fP(2)
+一样，其中一个进程执行的内存写入或文件 mappings/unmappings 不会影响另一个进程。
+.IP
+如果指定了 \fBCLONE_VM\fP 标志但未指定 \fBCLONE_VFORK\fP 标志，则在子进程中清除由 \fBsigaltstack\fP(2)
+建立的任何备用信号栈。
+.SH "RETURN VALUE"
+.\" gettid(2) returns current->pid;
+.\" getpid(2) returns current->tgid;
+成功时，子进程的线程 ID 在调用者的执行线程中返回。 失败时，在调用者的上下文中返回 \-1，不创建子进程，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP (\fBclone3\fP() only)
+\fBCLONE_INTO_CGROUP\fP 已在 \fIcl_args.flags\fP 中指定，但不满足限制 (在 \fBcgroups\fP(7))
+中描述的将子进程放入 \fIcl_args.cgroup\fP 引用的版本 2 cgroup 中。
+.TP 
+\fBEAGAIN\fP
+太多进程已经在运行; 请参见 \fBfork\fP(2)。
+.TP 
+\fBEBUSY\fP (\fBclone3\fP() only)
+\fBCLONE_INTO_CGROUP\fP 在 \fIcl_args.flags\fP 中指定，但在 \fIcl_args.cgroup\fP
+中指定的文件描述符指的是启用了域控制器的版本 2 cgroup。
+.TP 
+\fBEEXIST\fP (\fBclone3\fP() only)
+\fIset_tid\fP 中指定的一个 (或多个) PID 已存在于相应的 PID 名称空间中。
+.TP 
+\fBEINVAL\fP
+\fBCLONE_SIGHAND\fP 和 \fBCLONE_CLEAR_SIGHAND\fP 都在 \fIflags\fP 掩码中指定。
+.TP 
+\fBEINVAL\fP
+.\" Precisely: Linux 2.6.0-test6
+\fBCLONE_SIGHAND\fP 是在 \fIflags\fP 掩码中指定的，但 \fBCLONE_VM\fP 不是。 (自 Linux 2.6.0 起。)
+.TP 
+\fBEINVAL\fP
+.\" .TP
+.\" .B EINVAL
+.\" Precisely one of
+.\" .B CLONE_DETACHED
+.\" and
+.\" .B CLONE_THREAD
+.\" was specified.
+.\" (Since Linux 2.6.0-test6.)
+\fBCLONE_THREAD\fP 是在 \fIflags\fP 掩码中指定的，但 \fBCLONE_SIGHAND\fP 不是。 (自 Linux 2.5.35
+起。)
+.TP 
+\fBEINVAL\fP
+\fBCLONE_THREAD\fP 在 \fIflags\fP 掩码中指定，但当前进程先前使用 \fBCLONE_NEWPID\fP 标志调用
+\fBunshare\fP(2) 或使用 \fBsetns\fP(2) 将自身与 PID 名称空间重新关联。
+.TP 
+\fBEINVAL\fP
+.\" commit e66eded8309ebf679d3d3c1f5820d1f2ca332c71
+\fBCLONE_FS\fP 和 \fBCLONE_NEWNS\fP 都在 \fIflags\fP 掩码中指定。
+.TP 
+\fBEINVAL\fP (since Linux 3.9)
+\fBCLONE_NEWUSER\fP 和 \fBCLONE_FS\fP 都在 \fIflags\fP 掩码中指定。
+.TP 
+\fBEINVAL\fP
+\fBCLONE_NEWIPC\fP 和 \fBCLONE_SYSVSEM\fP 都在 \fIflags\fP 掩码中指定。
+.TP 
+\fBEINVAL\fP
+\fBCLONE_NEWPID\fP 或 \fBCLONE_NEWUSER\fP 之一 (或两者) 和 \fBCLONE_THREAD\fP 或
+\fBCLONE_PARENT\fP 之一 (或两者) 在 \fIflags\fP 掩码中指定。
+.TP 
+\fBEINVAL\fP (since Linux 2.6.32)
+.\" commit 123be07b0b399670a7cc3d82fef0cb4f93ef885c
+指定了 \fBCLONE_PARENT\fP，调用者是一个 init 进程。
+.TP 
+\fBEINVAL\fP
+当 \fIfn\fP 或 \fIstack\fP 指定为 NULL 时，由 glibc \fBclone\fP() 包装器函数返回。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWIPC\fP，但内核没有配置 \fBCONFIG_SYSVIPC\fP 和
+\fBCONFIG_IPC_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWNET\fP，但内核没有配置 \fBCONFIG_NET_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWPID\fP，但内核没有配置 \fBCONFIG_PID_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWUSER\fP，但内核没有配置 \fBCONFIG_USER_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWUTS\fP，但内核没有配置 \fBCONFIG_UTS_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+\fIstack\fP 未与此体系结构的合适边界对齐。 例如，在 aarch64 上，\fIstack\fP 必须是 16 的倍数。
+.TP 
+\fBEINVAL\fP (\fBclone3\fP() only)
+\fBCLONE_DETACHED\fP 在 \fIflags\fP 掩码中指定。
+.TP 
+\fBEINVAL\fP (\fBclone\fP() only)
+\fBCLONE_PIDFD\fP 在 \fIflags\fP 掩码中与 \fBCLONE_DETACHED\fP 一起指定。
+.TP 
+\fBEINVAL\fP
+\fBCLONE_PIDFD\fP 在 \fIflags\fP 掩码中与 \fBCLONE_THREAD\fP 一起指定。
+.TP 
+\fBEINVAL \fP(\fBclone\fP() only)
+\fBCLONE_PIDFD\fP 在 \fIflags\fP 掩码中与 \fBCLONE_PARENT_SETTID\fP 一起指定。
+.TP 
+\fBEINVAL\fP (\fBclone3\fP() only)
+\fIset_tid_size\fP 大于嵌套的 PID 命名空间数。
+.TP 
+\fBEINVAL\fP (\fBclone3\fP() only)
+\fIset_tid\fP 中指定的 PID 之一无效。
+.TP 
+\fBEINVAL\fP (AArch64 only, Linux 4.6 and earlier)
+\fIstack\fP 未与 128 位边界对齐。
+.TP 
+\fBENOMEM\fP
+无法分配足够的内存来为子节点分配任务结构体，或复制调用者上下文中需要复制的那些部分。
+.TP 
+\fBENOSPC\fP (since Linux 3.7)
+.\" commit f2302505775fd13ba93f034206f1e2a587017929
+\fIflags\fP 掩码中指定了 \fBCLONE_NEWPID\fP，但已经超过了 PID 命名空间的嵌套深度限制; 请参见
+\fBpid_namespaces\fP(7)。
+.TP 
+\fBENOSPC\fP (since Linux 4.9; beforehand \fBEUSERS\fP)
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWUSER\fP，调用会导致超出嵌套用户命名空间的数量限制。 请参见
+\fBuser_namespaces\fP(7)。
+.IP
+从 Linux 3.11 到 Linux 4.8，本例诊断出的错误是 \fBEUSERS\fP。
+.TP 
+\fBENOSPC\fP (since Linux 4.9)
+\fIflags\fP 掩码中的一个值指定创建新的用户命名空间，但这样做会导致超出 \fI/proc/sys/user\fP 中相应文件定义的限制。
+有关详细信息，请参见 \fBnamespaces\fP(7)。
+.TP 
+\fBEOPNOTSUPP\fP (\fBclone3\fP() only)
+\fIcl_args.flags\fP 中指定了 \fBCLONE_INTO_CGROUP\fP，但 \fIcl_args.cgroup\fP
+中指定的文件描述符引用了处于 \fIdomain invalid\fP 状态的版本 2 cgroup。
+.TP 
+\fBEPERM\fP
+\fBCLONE_NEWCGROUP\fP、\fBCLONE_NEWIPC\fP、\fBCLONE_NEWNET\fP、\fBCLONE_NEWNS\fP、\fBCLONE_NEWPID\fP
+或 \fBCLONE_NEWUTS\fP 由非特权进程 (没有 \fBCAP_SYS_ADMIN\fP) 的进程) 指定。
+.TP 
+\fBEPERM\fP
+\fBCLONE_PID\fP 是由进程 0 以外的进程指定的。 (此错误仅发生在 Linux 2.5.15 及更早版本上。)
+.TP 
+\fBEPERM\fP
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWUSER\fP，但调用者的有效用户 ID 或有效组 ID 在父名称空间中没有映射 (请参见
+\fBuser_namespaces\fP(7)).
+.TP 
+\fBEPERM\fP (since Linux 3.9)
+.\" commit 3151527ee007b73a0ebd296010f1c0454a919c7d
+.\" FIXME What is the rationale for this restriction?
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWUSER\fP，并且调用者处于 chroot 环境中
+(即，调用者的根目录与其所在的挂载命名空间的根目录不匹配)。
+.TP 
+\fBEPERM\fP (\fBclone3\fP() only)
+\fIset_tid_size\fP 大于零，并且调用方在拥有相应 PID 名称空间的一个或多个用户名称空间中缺少 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBERESTARTNOINTR\fP (since Linux 2.6.17)
+.\" commit 4a2c7a7837da1b91468e50426066d988050e4d56
+系统调用被信号中断，将重新启动。 (这只能在跟踪期间看到。)
+.TP 
+\fBEUSERS\fP (Linux 3.11 to Linux 4.8)
+在 \fIflags\fP 掩码中指定了 \fBCLONE_NEWUSER\fP，将超出嵌套用户命名空间的数量限制。 请参见上面对 \fBENOSPC\fP 错误的讨论。
+.SH VERSIONS
+.\" There is no entry for
+.\" .BR clone ()
+.\" in libc5.
+.\" glibc2 provides
+.\" .BR clone ()
+.\" as described in this manual page.
+\fBclone3\fP() 系统调用最早出现在 Linux 5.3。
+.SH STANDARDS
+这些系统调用是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+这些系统调用的一种用途是实现线程: 在共享地址空间中并发运行的程序中的多个控制流。
+.PP
+请注意，glibc \fBclone\fP() 包装器函数对 \fIstack\fP 指向的内存进行了一些更改 (为子项正确设置栈所需的更改) \fIbefore\fP
+调用 \fBclone\fP() 系统调用。 因此，在使用 \fBclone\fP() 递归创建子级的情况下，不要将用于父级栈的缓冲区用作子级栈。
+.PP
+\fBkcmp\fP(2) 系统调用可用于测试两个进程是否共享各种资源，例如文件描述符表、System V 信号量撤消操作或虚拟地址空间。
+.PP
+使用 \fBpthread_atfork\fP(3) 注册的处理程序不会在克隆调用期间执行。
+.PP
+在 Linux 2.4.x 系列中，\fBCLONE_THREAD\fP 一般不会让新线程的父进程与调用进程的父进程相同。 但是，从 Linux 2.4.7
+到 Linux 2.4.18，\fBCLONE_THREAD\fP 标志隐含了 \fBCLONE_PARENT\fP 标志 (如 Linux 2.6.0
+及更高版本)。
+.PP
+.\"
+在 i386 上，\fBclone\fP() 不应该通过 vsyscall 调用，而是直接通过 \fIint $0x80\fP 调用。
+.SS "C library/kernel differences"
+原始 \fBclone\fP() 系统调用更接近于 \fBfork\fP(2)，因为子系统中的执行从调用点继续。 因此，省略了 \fBclone\fP() 包装器函数的
+\fIfn\fP 和 \fIarg\fP 参数。
+.PP
+与 glibc 包装器相反，原始 \fBclone\fP() 系统调用接受 NULL 作为 \fIstack\fP 参数 (并且 \fBclone3\fP() 同样允许
+\fIcl_args.stack\fP 为 NULL)。 在这种情况下，子级使用父级栈的副本。
+(写时复制语义确保子进程在任一进程修改栈时获得栈页面的单独副本。) 在这种情况下，为了正确操作，不应指定 \fBCLONE_VM\fP 选项。 (如果子
+\fIshares\fP 是父内存，因为使用了 \fBCLONE_VM\fP 标志，则不会发生写时复制，很可能导致混乱。)
+.PP
+参数的顺序在原始系统调用中也不同，并且参数在跨体系结构中存在变化，如下文所述。
+.PP
+x86\-64 和一些其他架构 (包括 sh、tile 和 alpha) 上的原始系统调用接口是:
+.PP
+.in +4n
+.EX
+\fBlong clone(unsigned long \fP\fIflags\fP\fB, void *\fP\fIstack\fP\fB,\fP
+\fB           int *\fP\fIparent_tid\fP\fB, int *\fP\fIchild_tid\fP\fB,\fP
+\fB           unsigned long \fP\fItls\fP\fB);\fP
+.EE
+.in
+.PP
+.\" CONFIG_CLONE_BACKWARDS
+在 x86\-32 和其他几种常见架构 (包括 score、ARM、ARM 64、PA\-RISC、arc、Power PC、xtensa 和 MIPS)
+上，最后两个参数的顺序是相反的:
+.PP
+.in +4n
+.EX
+\fBlong clone(unsigned long \fP\fIflags\fP\fB, void *\fP\fIstack\fP\fB,\fP
+\fB          int *\fP\fIparent_tid\fP\fB, unsigned long \fP\fItls\fP\fB,\fP
+\fB          int *\fP\fIchild_tid\fP\fB);\fP
+.EE
+.in
+.PP
+.\" CONFIG_CLONE_BACKWARDS2
+在 cris 和 s390 架构上，前两个参数的顺序是相反的:
+.PP
+.in +4n
+.EX
+\fBlong clone(void *\fP\fIstack\fP\fB, unsigned long \fP\fIflags\fP\fB,\fP
+\fB           int *\fP\fIparent_tid\fP\fB, int *\fP\fIchild_tid\fP\fB,\fP
+\fB           unsigned long \fP\fItls\fP\fB);\fP
+.EE
+.in
+.PP
+.\" CONFIG_CLONE_BACKWARDS3
+在 microblaze 架构上，提供了一个额外的参数:
+.PP
+.in +4n
+.EX
+\fBlong clone(unsigned long \fP\fIflags\fP\fB, void *\fP\fIstack\fP\fB,\fP
+\fB           int \fP\fIstack_size\fP\fB,\fP         /* Size of stack */
+\fB           int *\fP\fIparent_tid\fP\fB, int *\fP\fIchild_tid\fP\fB,\fP
+\fB           unsigned long \fP\fItls\fP\fB);\fP
+.EE
+.in
+.\"
+.SS "blackfin, m68k, and sparc"
+.\" Mike Frysinger noted in a 2013 mail:
+.\"     these arches don't define __ARCH_WANT_SYS_CLONE:
+.\"     blackfin ia64 m68k sparc
+blackfin、m68k 和 sparc 上的参数传递约定与上面的描述不同。 有关详细信息，请参见内核 (和 glibc) 源代码。
+.SS ia64
+在 ia64 上，使用不同的接口:
+.PP
+.in +4n
+.EX
+\fBint __clone2(int (*\fP\fIfn\fP\fB)(void *),\fP
+\fB             void *\fP\fIstack_base\fP\fB, size_t \fP\fIstack_size\fP\fB,\fP
+\fB             int \fP\fIflags\fP\fB, void *\fP\fIarg\fP\fB, ...\fP
+\fB          /* pid_t *\fP\fIparent_tid\fP\fB, struct user_desc *\fP\fItls\fP\fB,\fP
+\fB             pid_t *\fP\fIchild_tid\fP\fB */ );\fP
+.EE
+.in
+.PP
+上面显示的原型是 glibc 包装器函数; 对于系统调用本身，其原型可以描述如下 (与 microblaze 上的 \fBclone\fP() 原型相同) :
+.PP
+.in +4n
+.EX
+\fBlong clone2(unsigned long \fP\fIflags\fP\fB, void *\fP\fIstack_base\fP\fB,\fP
+\fB            int \fP\fIstack_size\fP\fB,\fP         /* Size of stack */
+\fB            int *\fP\fIparent_tid\fP\fB, int *\fP\fIchild_tid\fP\fB,\fP
+\fB            unsigned long \fP\fItls\fP\fB);\fP
+.EE
+.in
+.PP
+\fB__clone2\fP() 与 \fBclone\fP() 的操作方式相同，只是 \fIstack_base\fP 指向子栈区的最低地址，\fIstack_size\fP
+指定 \fIstack_base\fP 指向的栈的大小。
+.SS "Linux 2.4 and earlier"
+在 Linux 2.4 及更早版本中，\fBclone\fP() 不带参数 \fIparent_tid\fP、\fItls\fP 和 \fIchild_tid\fP。
+.SH BUGS
+GNU C 库版本 2.3.4 直至并包括 2.24 包含一个用于执行 PID 缓存的 \fBgetpid\fP(2) 的包装器函数。 此缓存依赖于
+\fBclone\fP() 的 glibc 包装器中的支持，但实现中的限制意味着缓存在某些情况下不是最新的。 特别是，如果在 \fBclone\fP()
+调用之后立即将信号传递给子进程，那么在信号处理程序中对 \fBgetpid\fP(2) 的调用可以返回调用进程 (`父进程`) 的
+PID，如果克隆包装器尚未有机会更新子节点的 PID 缓存。 (这个讨论忽略了使用 \fBCLONE_THREAD\fP 创建子进程的情况，当
+\fBgetpid\fP(2) \fIshould\fP 在子进程和调用 \fBclone\fP()
+的进程中返回相同的值时，因为调用者和子进程在同一个线程组中。陈旧缓存问题如果 \fIflags\fP 参数包含 \fBCLONE_VM\fP.)
+也不会发生为了得到真相，有时需要使用如下代码:
+.PP
+.in +4n
+.EX
+#include <syscall.h>
+
+pid_t mypid;
+
+mypid = syscall(SYS_getpid);
+.EE
+.in
+.\" See also the following bug reports
+.\" https://bugzilla.redhat.com/show_bug.cgi?id=417521
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=6910
+.PP
+由于陈旧缓存问题以及 \fBgetpid\fP(2) 中提到的其他问题，在 glibc 2.25 中删除了 PID 缓存，特性。
+.SH EXAMPLES
+下面的程序演示了如何使用 \fBclone\fP() 创建一个在单独的 UTS 命名空间中执行的子进程。 子节点更改其 UTS 名称空间中的主机名。
+然后，父项和子项都显示系统主机名，从而可以看到主机名在父项和子项的 UTS 命名空间中不同。 有关使用此程序的示例，请参见 \fBsetns\fP(2)。
+.PP
+在示例程序中，我们使用 \fBmmap\fP(2) 而不是 \fBmalloc\fP(3) 分配用于子栈的内存，原因如下:
+.IP \[bu] 3
+\fBmmap\fP(2) 分配一个内存块，该内存块从页面边界开始并且是页面大小的倍数。 如果我们想建立一个保护页 (在栈末尾使用
+\fBmprotect\fP(2) 保护 \fBPROT_NONE\fP) 的页面)，这将很有用。
+.IP \[bu]
+我们可以指定 \fBMAP_STACK\fP 标志来请求适合栈的映射。 目前，这个标志在 Linux
+上是一个空操作，但它存在并且对其他一些系统有影响，所以我们应该包括它以实现可移植性。
+.SS "Program source"
+.\" SRC BEGIN (clone.c)
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <sched.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/utsname.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+static int              /* Start function for cloned child */
+childFunc(void *arg)
+{
+    struct utsname uts;
+
+    /* Change hostname in UTS namespace of child. */
+
+    if (sethostname(arg, strlen(arg)) == \-1)
+        err(EXIT_FAILURE, "sethostname");
+
+    /* Retrieve and display hostname. */
+
+    if (uname(&uts) == \-1)
+        err(EXIT_FAILURE, "uname");
+    printf("uts.nodename in child:  %s\en", uts.nodename);
+
+    /* Keep the namespace open for a while, by sleeping.
+       This allows some experimentation\-\-for example, another
+       process might join the namespace. */
+
+    sleep(200);
+
+    return 0;            /* Child terminates now */
+}
+
+#define STACK_SIZE (1024 * 1024)    /* Stack size for cloned child */
+
+int
+main(int argc, char *argv[])
+{
+    char            *stack;          /* Start of stack buffer */
+    char            *stackTop;       /* End of stack buffer */
+    pid_t           pid;
+    struct utsname  uts;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <child\-hostname>\en", argv[0]);
+        exit(EXIT_SUCCESS);
+    }
+
+    /* Allocate memory to be used for the stack of the child. */
+
+    stack = mmap(NULL, STACK_SIZE, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, \-1, 0);
+    if (stack == MAP_FAILED)
+        err(EXIT_FAILURE, "mmap");
+
+    stackTop = stack + STACK_SIZE;  /* Assume stack grows downward */
+
+    /* Create child that has its own UTS namespace;
+       child commences execution in childFunc(). */
+
+    pid = clone(childFunc, stackTop, CLONE_NEWUTS | SIGCHLD, argv[1]);
+    if (pid == \-1)
+        err(EXIT_FAILURE, "clone");
+    printf("clone() returned %jd\en", (intmax_t) pid);
+
+    /* Parent falls through to here */
+
+    sleep(1);           /* Give child time to change its hostname */
+
+    /* Display hostname in parent\[aq]s UTS namespace. This will be
+       different from hostname in child\[aq]s UTS namespace. */
+
+    if (uname(&uts) == \-1)
+        err(EXIT_FAILURE, "uname");
+    printf("uts.nodename in parent: %s\en", uts.nodename);
+
+    if (waitpid(pid, NULL, 0) == \-1)    /* Wait for child */
+        err(EXIT_FAILURE, "waitpid");
+    printf("child has terminated\en");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfork\fP(2), \fBfutex\fP(2), \fBgetpid\fP(2), \fBgettid\fP(2), \fBkcmp\fP(2), \fBmmap\fP(2),
+\fBpidfd_open\fP(2), \fBset_thread_area\fP(2), \fBset_tid_address\fP(2), \fBsetns\fP(2),
+\fBtkill\fP(2), \fBunshare\fP(2), \fBwait\fP(2), \fBcapabilities\fP(7),
+\fBnamespaces\fP(7), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

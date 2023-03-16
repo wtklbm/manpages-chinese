@@ -1,0 +1,179 @@
+.\" -*- coding: UTF-8 -*-
+.\"/* Copyright 1988,1990,1993,1996 by Paul Vixie
+.\" * All rights reserved
+.\" */
+.\"
+.\" Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 1997,2000 by Internet Software Consortium, Inc.
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+.\" OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\" Modified 2010/09/12 by Colin Dean, Durham University IT Service,
+.\" to add clustering support.
+.\"
+.\" $Id: cron.8,v 1.8 2004/01/23 19:03:32 vixie Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH CRON 8 2013\-09\-26 cronie "System Administration"
+.SH NAME
+crond \- 执行预定命令的守护进程
+.SH SYNOPSIS
+\fBcrond\fP [\fB\-c\fP | \fB\-h\fP | \fB\-i\fP | \fB\-n\fP | \fB\-p\fP | \fB\-P\fP | \fB\-s\fP |
+\fB\-m\fP\fI<mail\fP\fBcommand>\fP]
+.br
+\fBcrond\fP \fB\-x\fP [ext,sch,proc,pars,load,misc,test,bit]
+.br
+\fBcrond\fP \fB\-V\fP
+.SH DESCRIPTION
+当使用经典的 sysvinit 脚本时，\fICron\fP 从 \fI/etc/rc.d/init.d\fP 或 \fI/etc/init.d\fP 开始。如果启用了
+systemd，则会将元文件安装到 \fI/lib/systemd/system/crond.service\fP 中，并通过 \fIsystemctl start crond.service\fP 命令启动守护进程。它立即返回，因此不需要使用 '&' 参数启动它。
+.PP
+\fICron\fP 在 \fI/var/spool/cron\fP 中搜索以 \fI/etc/passwd;\fP 中的帐户命名的 crontab 文件，将找到的
+crontab 加载到内存中。 \fICron\fP 还会搜索 \fI/etc/anacrontab\fP 和 \fI/etc/cron.d\fP
+目录中具有不同格式的任何文件 (请参见 \fBcrontab\fP(5)).  \fICron\fP 检查所有存储的 crontab
+并检查每个作业以查看它是否需要在当前分钟运行。 执行命令时，任何输出都会邮寄给 crontab 的所有者 (或在 crontab 的 \fIMAILTO\fP
+环境变量中指定的用户，如果存在的话)。 还可以使用 \fB\-s\fP 选项将任何作业输出发送到系统日志。
+.PP
+检查 crontable 中更改的方法有两种。 第一种方法是检查文件的修改时间。 第二种方法是使用 inotify 支持。 inotify
+的使用在守护进程启动后记录在 \fI/var/log/cron\fP 日志中。 inotify 支持检查所有 crontable
+中的更改，并仅在检测到更改时访问硬盘。
+.PP
+当使用 modtime 选项时，\fICron\fP 每分钟检查一次它的 crontables 的 modtimes 以检查是否有任何更改并重新加载已更改的
+crontables。 一些 crontables 被修改后不需要重新启动 \fICron\fP。 当 inotify 无法初始化时，也会使用 modtime
+选项。
+.PP
+\fICron\fP 检查这些文件和目录:
+.TP 
+\fI/etc/crontab\fP
+系统定时任务表。 现在该文件默认为空。 最初它通常用于运行每日、每周、每月的作业。 默认情况下，这些作业现在通过读取
+\fI/etc/anacrontab\fP 配置文件的 anacron 运行。 有关详细信息，请参见 \fBanacrontab\fP(5)。
+.TP 
+\fI/etc/cron.d/\fP
+包含为不同用户存储的系统 cronjobs 的目录。
+.TP 
+\fI/var/spool/cron\fP
+包含由 \fIcrontab\fP 命令创建的用户 crontable 的目录。
+.PP
+请注意，每当更改 crontab 时，\fBcrontab\fP(1) 命令都会更新假脱机目录的 modtime。
+.PP
+.SS "Daylight Saving Time and other time changes"
+本地时间少于三个小时的变化，例如由夏令时变化引起的变化，将以特殊方式处理。 这仅适用于在特定时间运行的作业和以大于一小时的粒度运行的作业。
+运行频率更高的作业会正常安排。
+.PP
+如果时间向前调整一小时，那些本应在已跳过的时间间隔内运行的作业将立即运行。 相反，如果时间向后调整，则可以避免两次运行相同的作业。
+.PP
+超过 3 小时的时间更改将被视为对时钟或时区的更正，并立即使用新时间。
+.PP
+可以为 crontables 使用不同的时区。 有关更多信息，请参见 \fBcrontab\fP(5)。
+.SS "PAM Access Control"
+如果系统安装了 PAM，\fICron\fP 支持使用 PAM 进行访问控制。 有关详细信息，请参见 \fBpam\fP(8)。 \fIcrond\fP 的 PAM
+配置文件安装在 \fI/etc/pam.d/crond\fP 中。 守护进程从 pam_env 模块加载 PAM 环境。 这可以通过在适当的 crontab
+文件中定义特定设置来覆盖。
+.SH OPTIONS
+.TP 
+\fB\-h\fP
+打印帮助消息并退出。
+.TP 
+\fB\-i\fP
+禁用 inotify 支持。
+.TP 
+\fB\-m\fP
+此选项允许您指定 shell 命令以用于发送 \fICron\fP 邮件输出而不是使用 \fBsendmail\fP(8)
+此命令必须在标准输入上接受完全格式化的邮件消息 (带标题) 并将其作为邮件消息发送给邮件中指定的收件人标题。 指定字符串 \fIoff\fP (即 crond
+\-m off) 将禁用邮件发送。
+.TP 
+\fB\-n\fP
+告诉守护进程在前台运行。 这在从 init 启动它时很有用。使用此选项需要更改 pam 设置。 \fI/etc/pam.d/crond\fP 不得启用
+\fIpam_loginuid.so\fP 模块。
+.TP 
+\fB\-f\fP
+与 \-n 相同，与其他 crond 实现一致。
+.TP 
+\fB\-p\fP
+允许 \fICron\fP 接受任何用户设置的 crontables。
+.TP 
+\fB\-P\fP
+不要设置路径。 PATH 是从环境中继承的。
+.TP 
+\fB\-c\fP
+此选项启用集群支持，如下所述。
+.TP 
+\fB\-s\fP
+此选项将指示 \fICron\fP 使用 \fBsyslog\fP(3) 将作业输出发送到系统日志。 如果您的系统没有安装 \fBsendmail\fP(8)
+或者邮件被禁用，这将很有用。
+.TP 
+\fB\-x\fP
+此选项允许您设置调试标志。
+.TP 
+\fB\-V\fP
+打印版本并退出。
+.SH SIGNALS
+当收到 \fISIGHUP\fP 时，\fICron\fP 守护程序将关闭并重新打开其日志文件。 这被证明在轮换和老化日志文件的脚本中很有用。 当然，如果
+\fICron\fP 是为使用 \fIsyslog\fP(3) 而构建的，这就无关紧要了。
+.SH "CLUSTERING SUPPORT"
+在此版本的 \fICron\fP 中，可以跨主机集群使用网络安装的共享 \fI/var/spool/cron\fP，并指定任何时候只有一台主机应在此目录中运行
+crontab 作业。 这是通过使用 \fB\-c\fP 选项启动 \fICron\fP 并让 \fI/var/spool/cron/.cron.hostname\fP
+文件仅包含一行来完成的，该行表示集群中应运行作业的任何主机的主机名。 如果此文件不存在，或者其中的主机名与 \fBgethostname\fP(2)
+返回的主机名不匹配，则忽略此目录中的所有 crontab 文件。 这对 \fI/etc/crontab\fP 文件中指定的 cron 作业或
+\fI/etc/cron.d\fP 目录中的文件没有影响。 这些文件始终运行并被视为特定于主机。
+.PP
+不要直接编辑 \fI/var/spool/cron/.cron.hostname\fP，而是使用 \fBcrontab\fP(1) 的 \fB\-n\fP 选项来指定主机。
+.PP
+您应该确保集群中的所有主机以及它们挂载共享 crontab 目录的文件服务器具有紧密同步的时钟，例如，使用
+\fBntpd\fP(8)，否则结果将非常不可预测。
+.PP
+使用集群共享会自动禁用 inotify 支持，因为网络安装的共享文件系统不能依赖 inotify。
+.SH CAVEATS
+所有 \fBcrontab\fP 文件都必须是常规文件或指向常规文件的符号链接，除所有者外，其他任何人都不能执行或写入这些文件。 可以通过在 crond
+命令行上使用 \fB\-p\fP 选项来覆盖此要求。 如果正在使用 inotify 支持，则 cron 守护程序不会自动注意到符号链接 crontab
+中的更改。 cron 守护程序必须接收 SIGHUP 信号才能重新加载 crontab。 这是 inotify API 的限制。
+.PP
+当未安装 sendmail 时，将使用 syslog 输出而不是邮件。
+.SH "SEE ALSO"
+\fBcrontab\fP(1), \fBcrontab\fP(5), \fBinotify\fP(7), \fBpam\fP(8)
+.SH AUTHOR
+.MT vixie@isc.org
+保罗维克西
+.ME
+.br
+.MT mmaslano@redhat.com
+Marcela Mašláňová
+.ME
+.br
+.MT colin@colin\-dean.org
+科林・迪恩
+.ME
+.br
+.MT tmraz@fedoraproject.org
+托马斯・马兹
+.ME
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

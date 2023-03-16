@@ -1,0 +1,156 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\" and Copyright (C) 1993 Michael Haardt, Ian Jackson.
+.\" and Copyright (C) 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Wed Jul 21 22:40:25 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Sat Feb 18 15:27:48 1995 by Michael Haardt
+.\" Modified Sun Apr 14 11:40:50 1996 by Andries Brouwer <aeb@cwi.nl>:
+.\"   corrected description of effect on locks (thanks to
+.\"   Tigran Aivazian <tigran@sco.com>).
+.\" Modified Fri Jan 31 16:21:46 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2000-07-22 by Nicolás Lichtmaier <nick@debian.org>
+.\"   added note about close(2) not guaranteeing that data is safe on close.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH close 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+close \- 关闭一个文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint close(int \fP\fIfd\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBclose\fP() 关闭一个文件描述符，因此它不再引用任何文件并且可以被重用。 任何记录锁 (请参见 \fBfcntl\fP(2))
+保持在与其关联并由进程拥有所有权的文件上) 都将被删除 (无论用于获取锁的文件描述符如何)。
+.PP
+如果 \fIfd\fP 是引用底层打开文件描述的最后一个文件描述符 (参见 \fBopen\fP(2))，则释放与打开文件描述关联的资源;
+如果文件描述符是最后一次引用到已使用 \fBunlink\fP(2) 删除的文件，则该文件将被删除。
+.SH "RETURN VALUE"
+\fBclose\fP() 成功返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的打开文件描述符。
+.TP 
+\fBEINTR\fP
+.\" Though, it's in doubt whether this error can ever occur; see
+.\" https://lwn.net/Articles/576478/ "Returning EINTR from close()"
+\fBclose\fP() 调用被信号中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEIO\fP
+发生 I/O 错误。
+.TP 
+\fBENOSPC\fP, \fBEDQUOT\fP
+在 NFS 上，通常不会针对超过可用存储空间的第一次写入报告这些错误，而是针对后续的 \fBwrite\fP(2)、\fBfsync\fP(2) 或
+\fBclose\fP()。
+.PP
+有关为什么不应在错误后重试 \fBclose\fP() 的讨论，请参见注释。
+.SH STANDARDS
+.\" SVr4 documents an additional ENOLINK error condition.
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.SH NOTES
+成功关闭并不能保证数据已成功保存到磁盘，因为内核使用缓冲区缓存来延迟写入。 通常，文件系统在文件关闭时不会刷新缓冲区。
+如果您需要确保数据物理存储在底层磁盘上，请使用 \fBfsync\fP(2)。 (此时将取决于磁盘硬件。)
+.PP
+.\"
+close\-on\-exec 文件描述符标志可用于确保文件描述符在成功的 \fBexecve\fP(2) 后自动关闭; 详见 \fBfcntl\fP(2)。
+.SS "Multithreaded processes and close()"
+.\" Date: Tue, 4 Sep 2007 13:57:35 +0200
+.\" From: Fredrik Noring <noring@nocrew.org>
+.\" One such race involves signals and ERESTARTSYS. If a file descriptor
+.\" in use by a system call is closed and then reused by e.g. an
+.\" independent open() in some unrelated thread, before the original system
+.\" call has restarted after ERESTARTSYS, the original system call will
+.\" later restart with the reused file descriptor. This is most likely a
+.\" serious programming error.
+关闭文件描述符可能是不明智的，因为它们可能正在被同一进程中其他线程的系统调用使用。
+由于文件描述符可能会被重用，因此有一些模糊的竞争状态可能会导致意想不到的副作用。
+.PP
+此外，考虑以下场景，其中两个线程正在对同一文件描述符执行操作:
+.IP (1) 5
+一个线程在 I/O 系统调用文件描述符时被阻塞。 例如，它尝试 \fBwrite\fP(2) 到一个已经满的管道，或者尝试从当前没有可用数据的流套接字
+\fBread\fP(2)。
+.IP (2)
+另一个线程关闭文件描述符。
+.PP
+这种情况下的行为因系统而异。 在某些系统上，当文件描述符关闭时，阻塞系统调用会立即返回错误。
+.PP
+.\" 'struct file' in kernel-speak
+.\"
+在 Linux (可能还有一些其他系统) 上，行为是不同的: 阻塞的 I/O 系统调用持有一个对底层打开文件描述的引用，并且这个引用保持描述打开直到
+I/O 系统调用完成。 (有关打开文件描述的讨论，请参见 \fBopen\fP(2)。) 因此，第一个线程中的阻塞系统调用可能会在第二个线程中的
+\fBclose\fP() 之后成功完成。
+.SS "Dealing with error returns from close()"
+细心的程序员会检查 \fBclose\fP() 的返回值，因为很有可能仅在释放打开文件描述的最终 \fBclose\fP() 上报告了先前 \fBwrite\fP(2)
+操作的错误。 关闭文件时未能检查返回值可能会导致 \fIsilent\fP 数据丢失。 使用 NFS 和磁盘配额时尤其会观察到这一点。
+.PP
+但是请注意，失败返回应该仅用于诊断目的 (即，警告应用程序可能仍有 I/O 挂起或 I/O 可能已失败) 或补救目的 (例如，再次写入文件或创建备份)。
+.PP
+.\" The file descriptor is released early in close();
+.\" close() ==> __close_fd():
+.\"			__put_unused_fd() ==> __clear_open_fd()
+.\"			return filp_close(file, files);
+.\"
+.\" The errors are returned by filp_close() after the FD has been
+.\" cleared for re-use.
+.\" filp_close()
+在失败返回后重试 \fBclose\fP() 是错误的做法，因为这可能会导致来自另一个线程的重用文件描述符被关闭。 发生这种情况是因为 Linux 内核
+\fIalways\fP 在关闭操作的早期释放了文件描述符，释放它以供重用; 可能返回错误的步骤 (例如将数据刷新到文件系统或设备) 仅在关闭操作的后期发生。
+.PP
+.\" FreeBSD documents this explicitly. From the look of the source code
+.\" SVR4, ancient SunOS, later Solaris, and AIX all do this.
+.\" Issue 8
+许多其他实现同样总是关闭文件描述符 (\fBEBADF\fP 除外，这意味着文件描述符无效)，即使它们随后在从 \fBclose\fP() 返回时报告错误。
+POSIX.1 目前对这一点保持沉默，但计划在标准的下一个主要版本中强制执行此行为。
+.PP
+想要了解 I/O 错误的细心程序人员可能会在 \fBclose\fP() 之前使用对 \fBfsync\fP(2) 的调用。
+.PP
+\fBEINTR\fP 错误是一种特殊情况。 关于 \fBEINTR\fP 错误，POSIX.1\-2008 说:
+.PP
+.RS
+如果 \fBclose\fP() 被要捕获的信号中断，它将返回 \-1，\fIerrno\fP 设置为 \fBEINTR\fP，\fIfildes\fP 的状态未指定。
+.RE
+.PP
+.\" FIXME . for later review when Issue 8 is one day released...
+.\" POSIX proposes further changes for EINTR
+.\" http://austingroupbugs.net/tag_view_page.php?tag_id=8
+.\" http://austingroupbugs.net/view.php?id=529
+.\"
+.\" FIXME .
+.\" Review the following glibc bug later
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=14627
+这允许在 Linux 和许多其他实现上发生的行为，其中，与 \fBclose\fP() 可能报告的其他错误一样，文件描述符保证关闭。
+然而，它也允许另一种可能性: 实现返回 \fBEINTR\fP 错误并保持文件描述符打开。 (根据其文档，HP\-UX 的 \fBclose\fP() 执行此操作。)
+调用者必须再次使用 \fBclose\fP() 关闭文件描述符，以避免文件描述符泄漏。
+这种实现行为的差异为可移植应用程序提供了一个困难的障碍，因为在许多实现中，\fBclose\fP() 不能在 \fBEINTR\fP
+错误后再次调用，并且至少在一个上，必须再次调用 \fBclose\fP()。 有计划在 POSIX.1 标准的下一个主要版本中解决这个难题。
+.SH "SEE ALSO"
+\fBclose_range\fP(2), \fBfcntl\fP(2), \fBfsync\fP(2), \fBopen\fP(2), \fBshutdown\fP(2),
+\fBunlink\fP(2), \fBfclose\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

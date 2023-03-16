@@ -1,0 +1,319 @@
+.\" -*- coding: UTF-8 -*-
+.\"	$OpenBSD: ssh-add.1,v 1.84 2022/02/04 02:49:17 dtucker Exp $
+.\"
+.\" Author: Tatu Ylonen <ylo@cs.hut.fi>
+.\" Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+.\"                    All rights reserved
+.\"
+.\" As far as I am concerned, the code I have written for this software
+.\" can be used freely for any purpose.  Any derived versions of this
+.\" software must be clearly marked as such, and if the derived work is
+.\" incompatible with the protocol description in the RFC file, it must be
+.\" called by a name other than "ssh" or "Secure Shell".
+.\"
+.\"
+.\" Copyright (c) 1999,2000 Markus Friedl.  All rights reserved.
+.\" Copyright (c) 1999 Aaron Campbell.  All rights reserved.
+.\" Copyright (c) 1999 Theo de Raadt.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: February 4 2022 $
+.Dt SSH-ADD 1
+.Os
+.Sh NAME
+.Nm ssh-add
+.Nd adds private key identities to the OpenSSH authentication agent
+.Sh SYNOPSIS
+.Nm ssh-add
+.Op Fl cDdKkLlqvXx
+.Op Fl E Ar fingerprint_hash
+.Op Fl H Ar hostkey_file
+.Op Fl h Ar destination_constraint
+.Op Fl S Ar provider
+.Op Fl t Ar life
+.Op Ar
+.Nm ssh-add
+.Fl s Ar pkcs11
+.Nm ssh-add
+.Fl e Ar pkcs11
+.Nm ssh-add
+.Fl T
+.Ar pubkey ...
+.Sh DESCRIPTION
+.Nm
+将私钥身份添加到身份验证代理
+.Xr ssh-agent 1
+。 在没有参数的情况下运行时，它会添加文件
+.Pa ~/.ssh/id_rsa
+、
+.Pa ~/.ssh/id_ecdsa
+、
+.Pa ~/.ssh/id_ecdsa_sk
+、
+.Pa ~/.ssh/id_ed25519
+、
+.Pa ~/.ssh/id_ed25519_sk
+和
+.Pa ~/.ssh/id_dsa
+。
+加载私钥后，
+.Nm
+会尝试从私钥文件名后加
+.Pa -cert.pub
+得到的文件名中加载相应的证书信息。 可以在命令行上提供替代文件名。
+.Pp
+如果任何文件需要密码，
+.Nm
+会要求用户提供密码。 密码是从用户的 tty 中读取的。 如果提供了多个身份文件，
+.Nm
+会重试最后一个密码。
+.Pp
+身份验证代理必须正在运行，并且
+.Ev SSH_AUTH_SOCK
+环境变量必须包含其套接字的名称，
+.Nm
+才能工作。
+.Pp
+选项如下:
+.Bl -tag -width Ds
+.It Fl c
+指示添加的身份在用于身份验证之前应经过确认。 确认由
+.Xr ssh-askpass 1
+执行。
+.Xr ssh-askpass 1
+的零退出状态表示成功确认，而不是向请求者输入文本。
+.It Fl D
+从代理中删除所有身份。
+.It Fl d
+不是添加身份，而是从代理中删除身份。 如果
+.Nm
+在没有参数的情况下运行，默认身份的密钥及其相应的证书将被删除。
+否则，参数列表将被解释为公钥文件的路径列表，以指定要从代理中删除的密钥和证书。 如果在给定路径中未找到公钥，
+.Nm
+将追加
+.Pa .pub
+并重试。 如果参数列表由
+.Dq -
+组成，则
+.Nm
+将读取要从标准输入中删除的公钥。
+.It Fl E Ar fingerprint_hash
+指定显示密钥指纹时使用的哈希算法。 有效选项是:
+.Dq md5
+和
+.Dq sha256
+。 默认为
+.Dq sha256
+。
+.It Fl e Ar pkcs11
+删除 PKCS#11 共享库
+.Ar pkcs11
+提供的密钥。
+.It Fl H Ar hostkey_file
+当通过
+.Fl h
+标志使用目标约束密钥时，指定一个已知的主机文件来查找主机密钥。 可以多次指定此选项以允许搜索多个文件。
+如果未指定文件，
+.Nm
+将使用默认的
+.Xr ssh_config 5
+已知主机文件:
+.Pa ~/.ssh/known_hosts
+、
+.Pa ~/.ssh/known_hosts2
+、
+.Pa /etc/ssh/ssh_known_hosts
+和
+.Pa /etc/ssh/ssh_known_hosts2
+。
+.It Fl h Ar destination_constraint
+添加密钥时，将它们限制为只能通过特定主机或特定目的地使用。
+.Pp
+.Sq [user@]dest-hostname
+形式的目标约束只允许使用来自原始主机的密钥 (运行
+.Xr ssh-agent 1 )
+的主机到列出的目标主机，具有可选的用户名。
+.Pp
+.Sq src-hostname>[user@]dst-hostname
+形式的约束允许通过特定主机使用转发的
+.Xr ssh-agent 1
+上可用的密钥 (如
+.Sq src-hostname )
+指定的那样，以向
+.Sq dst-hostname
+指定的另一台主机进行身份验证。
+.Pp
+加载密钥时可以添加多个目标约束。 当尝试使用具有目标约束的密钥进行身份验证时，将针对这些约束测试整个连接路径 (包括
+.Xr ssh-agent 1
+转发)，并且必须允许每个跃点才能成功进行尝试。 例如，如果将密钥转发到远程主机
+.Sq host-b
+，并尝试向另一台主机
+.Sq host-c
+进行身份验证，则只有在源主机允许
+.Sq host-b
+且目标约束也允许后续
+.Sq host-b>host-c
+跃点的情况下，操作才会成功.
+.Pp
+主机由其主机密钥标识，并通过
+.Nm
+从已知主机文件中查找。 通配符模式可用于主机名，并且支持证书主机密钥。 默认情况下，
+.Nm
+添加的键不受目标约束。
+.Pp
+在 OpenSSH 版本 8.9 中添加了目标约束。 在转发的
+.Xr ssh-agent 1
+通道上使用目标约束密钥时，需要同时支持远程 SSH
+客户端和服务器。
+.Pp
+同样重要的是要注意，目标约束只能在使用密钥时或由
+.Sy cooperating
+.Xr ssh 1
+转发时由
+.Xr ssh-agent 1
+强制执行。 具体来说，它不会阻止可以访问远程
+.Ev SSH_AUTH_SOCK
+的攻击者再次转发它并在不同的主机上使用它 (但仅限于允许的目的地)。
+.It Fl K
+从 FIDO 验证器加载常驻密钥。
+.It Fl k
+将密钥加载到代理中或从代理中删除密钥时，仅处理普通私钥并跳过证书。
+.It Fl L
+列出代理当前代表的所有身份的公钥参数。
+.It Fl l
+列出代理当前代表的所有身份的指纹。
+.It Fl q
+手术成功后要安静。
+.It Fl S Ar provider
+指定添加 FIDO 身份验证器托管密钥时将使用的库的路径，覆盖使用内部 USB HID 支持的默认值。
+.It Fl s Ar pkcs11
+添加由 PKCS#11 共享库
+.Ar pkcs11
+提供的密钥。
+.It Fl T Ar pubkey ...
+通过对每个文件执行签名和验证操作来测试对应于指定
+.Ar pubkey
+文件的私钥是否可用。
+.It Fl t Ar life
+向代理添加身份时设置最大生命周期。 生命周期可以以秒为单位指定，也可以以
+.Xr sshd_config 5
+中指定的时间格式指定。
+.It Fl v
+详细模式。 导致
+.Nm
+打印有关其进度的调试消息。 这有助于调试问题。 多个
+.Fl v
+选项会增加冗长程度。 最大值是 3.
+.It Fl X
+解锁代理。
+.It Fl x
+使用密码锁定代理。
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width Ds
+.It Ev DISPLAY , SSH_ASKPASS and SSH_ASKPASS_REQUIRE
+如果
+.Nm
+需要密码，如果它是从最终端运行的，它将从当前最终端读取密码。 如果
+.Nm
+没有与之关联的终端，但设置了
+.Ev DISPLAY
+和
+.Ev SSH_ASKPASS
+，它将执行
+.Ev SSH_ASKPASS
+指定的程序 (默认
+.Dq ssh-askpass )
+并打开 X11 窗口读取密码。 这在从
+.Pa .xsession
+或相关脚本调用
+.Nm
+时特别有用。
+.Pp
+.Ev SSH_ASKPASS_REQUIRE
+允许进一步控制 askpass 程序的使用。 如果此变量设置为
+.Dq never
+，则
+.Nm
+将永远不会尝试使用一个。 如果设置为
+.Dq prefer
+，则
+.Nm
+在请求密码时将优先使用 askpass 程序而不是
+TTY。 最后，如果变量设置为
+.Dq force
+，则无论是否设置
+.Ev DISPLAY
+，askpass 程序都将用于所有密码短语输入。
+.It Ev SSH_AUTH_SOCK
+标识用于与代理通信的
+.Ux Ns -domain
+套接字的路径。
+.It Ev SSH_SK_PROVIDER
+指定加载任何 FIDO 身份验证器托管密钥时将使用的库的路径，覆盖使用内置 USB HID 支持的默认值。
+.El
+.Sh FILES
+.Bl -tag -width Ds -compact
+.It Pa ~/.ssh/id_dsa
+.It Pa ~/.ssh/id_ecdsa
+.It Pa ~/.ssh/id_ecdsa_sk
+.It Pa ~/.ssh/id_ed25519
+.It Pa ~/.ssh/id_ed25519_sk
+.It Pa ~/.ssh/id_rsa
+包含用户的 DSA、ECDSA、身份验证器托管的 ECDSA、Ed25519、身份验证器托管的 Ed25519 或 RSA 身份验证身份。
+.El
+.Pp
+除用户外，任何人都不应读取标识文件。 请注意，如果其他人可以访问这些文件，则
+.Nm
+会忽略这些文件。
+.Sh EXIT STATUS
+成功时退出状态为 0，如果指定命令失败则为 1，如果
+.Nm
+无法联系身份验证代理则为 2。
+.Sh SEE ALSO
+.Xr ssh 1 ,
+.Xr ssh-agent 1 ,
+.Xr ssh-askpass 1 ,
+.Xr ssh-keygen 1 ,
+.Xr sshd 8
+.Sh AUTHORS
+OpenSSH 是 Tatu Ylonen 发布的原始免费 ssh 1.2.12 的衍生版本。 Aaron Campbell、Bob
+Beck、Markus Friedl、Niels Provos、Theo de Raadt 和 Dug Song
+删除了许多错误，重新添加了更新的特性并创建了 OpenSSH。 Markus Friedl 贡献了对 SSH 协议版本 1.5 和 2.0 的支持。
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

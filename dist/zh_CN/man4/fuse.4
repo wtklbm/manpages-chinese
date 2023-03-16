@@ -1,0 +1,401 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016 Julia Computing Inc, Keno Fischer
+.\" Description based on include/uapi/fuse.h and code in fs/fuse
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fuse 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fuse \- 用户空间 (FUSE) 设备中的文件系统
+.SH SYNOPSIS
+.nf
+\fB#include <linux/fuse.h>\fP
+.fi
+.SH DESCRIPTION
+该设备是 FUSE 文件系统驱动程序和希望提供文件系统的用户空间进程之间的主要接口 (在本手册的其余部分中称为 \fIfilesystem daemon\fP)。 本手册页适用于那些有兴趣了解内核接口本身的人。 那些实现 FUSE 文件系统的人可能希望使用一个用户空间库，例如抽象底层接口的
+\fIlibfuse\fP。
+.PP
+.\"
+FUSE 的核心是一个简单的客户端 \- 服务器协议，其中 Linux 内核是客户端，守护进程是服务器。
+在获得此设备的文件描述符后，守护程序可能会从该文件描述符发出 \fBread\fP(2) 请求，并期望 \fBwrite\fP(2) 返回其回复。
+重要的是要注意文件描述符与唯一的 FUSE 文件系统相关联。 特别是，打开此设备的第二个副本将不允许访问通过第一个文件描述符创建的资源 (反之亦然)。
+.SS "The basic protocol"
+守护程序读取的每条消息都以以下结构体描述的标头开头:
+.PP
+.in +4n
+.EX
+struct fuse_in_header {
+    uint32_t len;       /* Total length of the data,
+                           including this header */
+    uint32_t opcode;    /* The kind of operation (see below) */
+    uint64_t unique;    /* A unique identifier for this request */
+    uint64_t nodeid;    /* ID of the filesystem object
+                           being operated on */
+    uint32_t uid;       /* UID of the requesting process */
+    uint32_t gid;       /* GID of the requesting process */
+    uint32_t pid;       /* PID of the requesting process */
+    uint32_t padding;
+};
+.EE
+.in
+.PP
+头部后面是特定于所请求操作的可变长度数据部分 (可能为空) (所请求的操作由 \fIopcode\fP).
+.PP
+然后守护程序应该处理请求，如果适用，通过对文件描述符执行 \fBwrite\fP(2) 来发送回复 (几乎所有操作都需要回复; 如果不需要，请在下面记录)。
+所有回复必须以以下标题开头:
+.PP
+.in +4n
+.EX
+struct fuse_out_header {
+    uint32_t len;       /* Total length of data written to
+                           the file descriptor */
+    int32_t  error;     /* Any error that occurred (0 if none) */
+    uint64_t unique;    /* The value from the
+                           corresponding request */
+};
+.EE
+.in
+.PP
+.\"
+根据执行的请求，此标头后面还跟有 (可能为空) 可变大小的数据。 但是，如果回复是错误回复 (即设置了
+\fIerror\fP)，则不应发送更多有效载荷数据，与请求无关。
+.SS "Exchanged messages"
+本节应包含协议中每条消息的文档。 该手册页目前不完整，因此并未记录所有消息。 对于每条消息，首先给出内核发送的结构体，然后是消息语义的描述。
+.TP 
+\fBFUSE_INIT\fP
+.IP
+.in +4n
+.EX
+struct fuse_init_in {
+    uint32_t major;
+    uint32_t minor;
+    uint32_t max_readahead; /* Since protocol v7.6 */
+    uint32_t flags;         /* Since protocol v7.6 */
+};
+.EE
+.in
+.IP
+这是内核向守护进程发送的第一个请求。 它用于协商协议版本和其他文件系统参数。 请注意，协议版本可能会影响协议中任何结构体 (包括此结构体) 的布局。
+因此，守护进程必须记住每个会话的协商版本和标志。 在撰写本手册页时，支持的最高内核协议版本是 \fI7.26\fP。
+.IP
+用户应注意，本手册页中的描述对于较旧或较新的协议版本可能不完整或不正确。
+.IP
+此请求的回复具有以下格式:
+.IP
+.in +4n
+.EX
+struct fuse_init_out {
+    uint32_t major;
+    uint32_t minor;
+    uint32_t max_readahead;   /* Since v7.6 */
+    uint32_t flags;           /* Since v7.6; some flags bits
+                                 were introduced later */
+    uint16_t max_background;  /* Since v7.13 */
+    uint16_t congestion_threshold;  /* Since v7.13 */
+    uint32_t max_write;       /* Since v7.5 */
+    uint32_t time_gran;       /* Since v7.6 */
+    uint32_t unused[9];
+};
+.EE
+.in
+.IP
+如果内核支持的主要版本大于守护程序支持的版本，则回复应仅包含 \fIuint32_t major\fP (在通常的标头之后)，指示守护程序支持的最大主要版本。
+然后内核会发出一个新的 \fBFUSE_INIT\fP 请求，符合旧版本。 在相反的情况下，守护进程应该安静地回退到内核的主要版本。
+.IP
+协商的次要版本被认为是守护进程和内核提供的次要版本中的最小版本，双方应使用该次要版本对应的协议。
+.TP 
+\fBFUSE_GETATTR\fP
+.IP
+.in +4n
+.EX
+struct fuse_getattr_in {
+    uint32_t getattr_flags;
+    uint32_t dummy;
+    uint64_t fh;      /* Set only if
+                         (getattr_flags & FUSE_GETATTR_FH)
+};
+.EE
+.in
+.IP
+请求的操作是计算 \fBstat\fP(2) 返回的属性以及给定文件系统对象的类似操作。 应为其计算属性的对象由 \fIheader\->nodeid\fP
+指示，或者如果设置了 \fBFUSE_GETATTR_FH\fP 标志，则由文件句柄 \fIfh\fP 指示。 后一种操作类似于 \fBfstat\fP(2)。
+.IP
+出于性能原因，这些属性可能会在内核中缓存一段指定的时间。 虽然未超过缓存超时，但属性将从缓存中提供，不会导致额外的 \fBFUSE_GETATTR\fP
+请求。
+.IP
+然后应在以下结构体中返回计算的属性和请求的缓存超时:
+.IP
+.in +4n
+.EX
+struct fuse_attr_out {
+    /* Attribute cache duration (seconds + nanoseconds) */
+    uint64_t attr_valid;
+    uint32_t attr_valid_nsec;
+    uint32_t dummy;
+    struct fuse_attr {
+        uint64_t ino;
+        uint64_t size;
+        uint64_t blocks;
+        uint64_t atime;
+        uint64_t mtime;
+        uint64_t ctime;
+        uint32_t atimensec;
+        uint32_t mtimensec;
+        uint32_t ctimensec;
+        uint32_t mode;
+        uint32_t nlink;
+        uint32_t uid;
+        uint32_t gid;
+        uint32_t rdev;
+        uint32_t blksize;
+        uint32_t padding;
+    } attr;
+};
+.EE
+.in
+.TP 
+\fBFUSE_ACCESS\fP
+.IP
+.in +4n
+.EX
+struct fuse_access_in {
+    uint32_t mask;
+    uint32_t padding;
+};
+.EE
+.in
+.IP
+如果不使用 \fIdefault_permissions\fP 挂载选项，则此请求可用于权限检查。 不需要回复数据，但可以通过在回复标头中设置
+\fIerror\fP 字段照常指示错误 (特别是，访问被拒绝错误可以通过返回 \fB\-EACCES\fP) 来指示)。
+.TP 
+\fBFUSE_OPEN\fP and \fBFUSE_OPENDIR\fP
+.in +4n
+.EX
+struct fuse_open_in {
+    uint32_t flags;     /* The flags that were passed
+                           to the open(2) */
+    uint32_t unused;
+};
+.EE
+.in
+.IP
+请求的操作是打开 \fIheader\->nodeid\fP 所指示的节点。 这意味着什么的确切语义将取决于正在实现的文件系统。
+但是，文件系统至少应该验证请求的 \fIflags\fP 对指定资源有效，然后发送具有以下格式的回复:
+.IP
+.in +4n
+.EX
+struct fuse_open_out {
+    uint64_t fh;
+    uint32_t open_flags;
+    uint32_t padding;
+};
+.EE
+.in
+.IP
+\fIfh\fP 字段是内核将用来引用此资源的不透明标识符 \fIopen_flags\fP 字段是任意数量标志的位掩码，这些标志向内核指示此文件句柄的属性:
+.RS 7
+.TP  18
+\fBFOPEN_DIRECT_IO\fP
+绕过此打开文件的页面缓存。
+.TP 
+\fBFOPEN_KEEP_CACHE\fP
+不要在打开时使数据缓存无效。
+.TP 
+\fBFOPEN_NONSEEKABLE\fP
+该文件不可搜索。
+.RE
+.TP 
+\fBFUSE_READ\fP and \fBFUSE_READDIR\fP
+.IP
+.in +4n
+.EX
+struct fuse_read_in {
+    uint64_t fh;
+    uint64_t offset;
+    uint32_t size;
+    uint32_t read_flags;
+    uint64_t lock_owner;
+    uint32_t flags;
+    uint32_t padding;
+};
+.EE
+.in
+.IP
+请求的操作是从 \fIoffset\fP 开始读取最多 \fIsize\fP 字节的文件或目录。 字节应直接在通常的回复标头之后返回。
+.TP 
+\fBFUSE_INTERRUPT\fP
+.in +4n
+.EX
+struct fuse_interrupt_in {
+    uint64_t 唯一;
+};
+.EE
+.in
+.IP
+请求的操作是取消 \fIunique\fP 指示的挂起操作。 此请求不需要响应。 但是，收到此消息本身并不会取消指示的操作。 内核仍将期待对所述操作的回复
+(例如，\fIEINTR\fP 错误或短读取)。 对于给定的操作，最多会发出一个 \fBFUSE_INTERRUPT\fP 请求。
+发出上述操作后，内核将不间断地等待指示请求的完成。
+.TP 
+\fBFUSE_LOOKUP\fP
+紧跟在标题之后的是要在 \fIheader\->nodeid\fP 指示的目录中查找的文件名。 预期的答复是以下形式:
+.IP
+.in +4n
+.EX
+struct fuse_entry_out {
+    uint64_t nodeid;            /* Inode ID */
+    uint64_t generation;        /* Inode generation */
+    uint64_t entry_valid;
+    uint64_t attr_valid;
+    uint32_t entry_valid_nsec;
+    uint32_t attr_valid_nsec;
+    struct fuse_attr attr;
+};
+.EE
+.in
+.IP
+\fInodeid\fP 和 \fIgeneration\fP 的组合对于文件系统的生命周期必须是唯一的。
+.IP
+超时和 \fIattr\fP 的解释与 \fBFUSE_GETATTR\fP 相同。
+.TP 
+\fBFUSE_FLUSH\fP
+.in +4n
+.EX
+struct fuse_flush_in {
+    uint64_t fh;
+    uint32_t unused;
+    uint32_t padding;
+    uint64_t lock_owner;
+};
+.EE
+.in
+.IP
+请求的操作是刷新对指定文件句柄的任何未决更改。 不需要回复数据。 然而，一旦刷新操作完成，仍然需要发出一个空的回复消息。
+.TP 
+\fBFUSE_RELEASE\fP and \fBFUSE_RELEASEDIR\fP
+.in +4n
+.EX
+struct fuse_release_in {
+    uint64_t fh;
+    uint32_t flags;
+    uint32_t release_flags;
+    uint64_t lock_owner;
+};
+.EE
+.in
+.IP
+这些分别是 \fBFUSE_OPEN\fP 和 \fBFUSE_OPENDIR\fP 的逆向。 守护进程现在可以释放与文件句柄 \fIfh\fP
+关联的任何资源，因为内核将不再引用它。 没有与此请求关联的回复数据，但在请求已完全处理后仍需要发出回复。
+.TP 
+\fBFUSE_STATFS\fP
+此操作为此文件系统实现 \fBstatfs\fP(2)。 没有与此请求关联的输入数据。 预期的回复数据具有以下结构体:
+.IP
+.in +4n
+.EX
+struct fuse_kstatfs {
+    uint64_t blocks;
+    uint64_t bfree;
+    uint64_t bavail;
+    uint64_t files;
+    uint64_t ffree;
+    uint32_t bsize;
+    uint32_t namelen;
+    uint32_t frsize;
+    uint32_t padding;
+    uint32_t spare[6];
+};
+
+struct fuse_statfs_out {
+    struct fuse_kstatfs st;
+};
+.EE
+.in
+.IP
+有关这些字段的解释，请参见 \fBstatfs\fP(2)。
+.SH ERRORS
+.TP 
+\fBE2BIG\fP
+当内核的请求对于提供的缓冲区来说太大并且请求是 \fBFUSE_SETXATTR\fP 时从 \fBread\fP(2) 操作返回。
+.TP 
+\fBEINVAL\fP
+如果回复验证失败，则从 \fBwrite\fP(2) 返回。 此验证不会捕获回复中的所有错误。 但是，会检测到基本错误，例如简短回复或不正确的
+\fIunique\fP 值。
+.TP 
+\fBEIO\fP
+当内核的请求对于提供的缓冲区来说太大时从 \fBread\fP(2) 操作返回。
+.IP
+\fINote\fP: 这些接口的不正确使用有多种方式会导致对提供的文件系统的文件和目录的操作因 \fBEIO\fP 而失败。 可能的不正确用法包括:
+.RS
+.IP \[bu] 3
+为先前已报告给内核的 inode 更改 \fImode & S_IFMT\fP; or
+.IP \[bu]
+给内核的回复比内核预期的要短。
+.RE
+.TP 
+\fBENODEV\fP
+如果卸载 FUSE 文件系统，则从 \fBread\fP(2) 和 \fBwrite\fP(2) 返回。
+.TP 
+\fBEPERM\fP
+从对尚未安装的 \fI/dev/fuse\fP 文件描述符的操作返回。
+.SH STANDARDS
+FUSE 文件系统是特定于 Linux 的。
+.SH NOTES
+本手册页中尚未记录以下消息:
+.PP
+.\" FIXME: Document the following.
+.in +4n
+.EX
+\fBFUSE_BATCH_FORGET\fP
+\fBFUSE_BMAP\fP
+\fBFUSE_CREATE\fP
+\fBFUSE_DESTROY\fP
+\fBFUSE_FALLOCATE\fP
+\fBFUSE_FORGET\fP
+\fBFUSE_FSYNC\fP
+\fBFUSE_FSYNCDIR\fP
+\fBFUSE_GETLK\fP
+\fBFUSE_GETXATTR\fP
+\fBFUSE_IOCTL\fP
+\fBFUSE_LINK\fP
+\fBFUSE_LISTXATTR\fP
+\fBFUSE_LSEEK\fP
+\fBFUSE_MKDIR\fP
+\fBFUSE_MKNOD\fP
+\fBFUSE_NOTIFY_REPLY\fP
+\fBFUSE_POLL\fP
+\fBFUSE_READDIRPLUS\fP
+\fBFUSE_READLINK\fP
+\fBFUSE_REMOVEXATTR\fP
+\fBFUSE_RENAME\fP
+\fBFUSE_RENAME2\fP
+\fBFUSE_RMDIR\fP
+\fBFUSE_SETATTR\fP
+\fBFUSE_SETLK\fP
+\fBFUSE_SETLKW\fP
+\fBFUSE_SYMLINK\fP
+\fBFUSE_UNLINK\fP
+\fBFUSE_WRITE\fP
+.EE
+.in
+.SH "SEE ALSO"
+\fBfusermount\fP(1), \fBmount.fuse\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,189 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2005 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pipe 7 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+管道 \- 管道和 FIFO 概述
+.SH DESCRIPTION
+管道和 FIFO (也称为命名管道) 提供单向进程间通信通道。 管道有 \fIread end\fP 和 \fIwrite end\fP。
+写入管道写端的数据可以从管道的读端读取。
+.PP
+使用 \fBpipe\fP(2) 创建管道，它创建一个新管道并返回两个文件描述符，一个指向管道的读取端，另一个指向写入端。
+管道可用于在相关进程之间创建通信通道; 示例参见 \fBpipe\fP(2)。
+.PP
+FIFO (先进先出的缩写) 在文件系统中有一个名称 (使用 \fBmkfifo\fP(3)) 创建，并使用 \fBopen\fP(2) 打开。
+假设文件权限允许，任何进程都可以打开 FIFO。 读端使用 \fBO_RDONLY\fP 标志打开; 写端使用 \fBO_WRONLY\fP 标志打开。
+有关详细信息，请参见 \fBfifo\fP(7)。 \fINote\fP: 虽然 FIFO 在文件系统中有一个路径名，但 FIFO 上的 I/O
+不涉及对底层设备的操作 (如果有的话)。
+.SS "I/O on pipes and FIFOs"
+管道和 FIFO 之间的唯一区别是它们创建和打开的方式。 完成这些任务后，管道和 FIFO 上的 I/O 具有完全相同的语义。
+.PP
+如果一个进程试图从一个空管道中读取，那么 \fBread\fP(2) 将阻塞直到数据可用。 如果一个进程试图写入一个完整的管道 (见下文)，那么
+\fBwrite\fP(2) 会阻塞，直到从管道中读取了足够的数据以允许写入完成。 通过使用 \fBfcntl\fP(2) \fBF_SETFL\fP 操作启用
+\fBO_NONBLOCK\fP 打开文件状态标志，可以实现非阻塞 I/O。
+.PP
+管道提供的通信通道是 \fIbyte stream\fP:，没有消息边界的概念。
+.PP
+如果引用管道写入端的所有文件描述符都已关闭，则从管道到 \fBread\fP(2) 的尝试将看到文件结尾 (\fBread\fP(2) 将返回 0)。
+如果引用管道读取端的所有文件描述符都已关闭，则 \fBwrite\fP(2) 将导致为调用进程生成 \fBSIGPIPE\fP 信号。 如果调用进程忽略此信号，则
+\fBwrite\fP(2) 将失败并返回错误 \fBEPIPE\fP。 使用 \fBpipe\fP(2) 和 \fBfork\fP(2) 的应用程序应该使用合适的
+\fBclose\fP(2) 调用来关闭不必要的重复文件描述符; 这确保在适当的时候传送文件结尾和 \fBSIGPIPE\fP/\fBEPIPE\fP。
+.PP
+无法将 \fBlseek\fP(2) 应用于管道。
+.SS "Pipe capacity"
+管道的容量是有限的。 如果管道已满，则 \fBwrite\fP(2) 将阻塞或失败，具体取决于是否设置了 \fBO_NONBLOCK\fP 标志 (见下文)。
+不同的实现对管道容量有不同的限制。 应用程序不应依赖于特定的容量:
+应用程序应设计为读取进程在数据可用时立即使用数据，这样写入进程就不会一直处于阻塞状态。
+.PP
+在 Linux 2.6.11 之前，管道的容量与系统页面大小相同 (例如，在 i386 上为 4096 字节)。 自 Linux 2.6.11
+起，管道容量为 16 页 (即，在页大小为 4096 字节的系统中为 65,536 字节)。 从 Linux 2.6.35 开始，默认管道容量为 16
+页，但可以使用 \fBfcntl\fP(2) \fBF_GETPIPE_SZ\fP 和 \fBF_SETPIPE_SZ\fP 操作查询和设置容量。 有关更多信息，请参见
+\fBfcntl\fP(2)。
+.PP
+以下 \fBioctl\fP(2) 操作可应用于引用管道任一端的文件描述符，将管道中未读字节数的计数放在调用的最终参数指向的 \fIint\fP 缓冲区中:
+.PP
+.in +4n
+.EX
+ioctl(fd, FIONREAD, &nbytes);
+.EE
+.in
+.PP
+.\"
+\fBFIONREAD\fP 操作未在任何标准中指定，但在许多实现中提供。
+.SS "/proc files"
+在 Linux 上，以下文件控制可用于管道的内存量:
+.TP 
+\fI/proc/sys/fs/pipe\-max\-pages\fP (only in Linux 2.6.34)
+.\" commit b492e95be0ae672922f4734acf3f5d35c30be948
+非特权用户 (没有 \fBCAP_SYS_RESOURCE\fP 能力的用户) 可以为管道设置的容量上限 (以页面为单位)。
+.IP
+此限制的默认值为默认管道容量的 16 倍 (见上文) ; 下限是两页。
+.IP
+该接口在 Linux 2.6.35 中被移除，取而代之的是 \fI/proc/sys/fs/pipe\-max\-size\fP。
+.TP 
+\fI/proc/sys/fs/pipe\-max\-size\fP (since Linux 2.6.35)
+.\" commit ff9da691c0498ff81fdd014e7a0731dab2337dac
+.\" This limit is not checked on pipe creation, where the capacity is
+.\" always PIPE_DEF_BUFS, regardless of pipe-max-size
+没有 \fBCAP_SYS_RESOURCE\fP 能力的用户可以设置的单个管道的最大大小 (以字节为单位)。
+分配给该文件的值可以向上舍入，以反映为方便实现而实际使用的值。 要确定向上舍入的值，请在为其赋值后显示该文件的内容。
+.IP
+此文件的默认值为 1048576 (1\MiB)。 可以分配给该文件的最小值是系统页面大小。 尝试设置小于页面大小的限制会导致 \fBwrite\fP(2)
+失败并显示错误 \fBEINVAL\fP。
+.IP
+.\" commit 086e774a57fba4695f14383c0818994c0b31da7c
+自 Linux 4.9 起，此文件上的值还充当新管道或新打开的 FIFO 的默认容量上限。
+.TP 
+\fI/proc/sys/fs/pipe\-user\-pages\-hard\fP (since Linux 4.5)
+.\" commit 759c01142a5d0f364a462346168a56de28a80f52
+由单个非特权用户 (即既没有 \fBCAP_SYS_RESOURCE\fP 也没有 \fBCAP_SYS_ADMIN\fP 能力的用户)
+创建或设置的所有管道的总大小 (以页面为单位) 的硬限制。
+只要为该用户分配给管道缓冲区的总页数在此限制内，创建新管道的尝试就会被拒绝，增加管道容量的尝试也会被拒绝。
+.IP
+.\" The default was chosen to avoid breaking existing applications that
+.\" make intensive use of pipes (e.g., for splicing).
+当此限制的值为零 (默认值) 时，不应用硬限制。
+.TP 
+\fI/proc/sys/fs/pipe\-user\-pages\-soft\fP (since Linux 4.5)
+.\" commit 759c01142a5d0f364a462346168a56de28a80f52
+由单个非特权用户 (即既不具有 \fBCAP_SYS_RESOURCE\fP 也不具有 \fBCAP_SYS_ADMIN\fP 功能的用户)
+创建或设置的所有管道的总大小 (以页面为单位) 的软限制。
+只要为该用户分配给管道缓冲区的页面总数在此限制内，用户创建的单个管道将被限制为一页，并且将拒绝增加管道容量的尝试。
+.IP
+当此限制的值为零时，不应用软限制。 此文件的默认值为 16384，它允许创建最多 1024 个具有默认容量的管道。
+.PP
+.\"
+在 Linux 4.9 之前，一些错误影响了 \fIpipe\-user\-pages\-soft\fP 和 \fIpipe\-user\-pages\-hard\fP
+限制的处理; 看到错误。
+.SS PIPE_BUF
+POSIX.1 表示小于 \fBPIPE_BUF\fP 字节的写入必须是原子的: 输出数据作为连续序列写入管道。 超过 \fBPIPE_BUF\fP
+字节的写入可能是非原子的: 内核可能会将数据与其他进程写入的数据交织在一起。 POSIX.1 要求 \fBPIPE_BUF\fP 至少为 512 字节。 (在
+Linux 上，\fBPIPE_BUF\fP 是 4096 字节。) 精确的语义取决于文件描述符是否是非阻塞 (\fBO_NONBLOCK\fP)，是否有多个
+writers 到管道，以及在 \fIn\fP 上，要写入的字节数:
+.TP 
+\fBO_NONBLOCK\fP disabled, \fIn\fP <= \fBPIPE_BUF\fP
+所有 \fIn\fP 字节都是原子写入的; 如果没有立即写入 \fIn\fP 字节的空间，\fBwrite\fP(2) 可能会阻塞
+.TP 
+\fBO_NONBLOCK\fP enabled, \fIn\fP <= \fBPIPE_BUF\fP
+如果有空间向管道写入 \fIn\fP 字节，则 \fBwrite\fP(2) 立即成功，写入所有 \fIn\fP 字节; 否则 \fBwrite\fP(2)
+失败，\fIerrno\fP 设置为 \fBEAGAIN\fP。
+.TP 
+\fBO_NONBLOCK\fP disabled, \fIn\fP > \fBPIPE_BUF\fP
+写入是非原子的: 给 \fBwrite\fP(2) 的数据可能会被其他进程与 \fBwrite\fP(2)s 交错; \fBwrite\fP(2) 块直到 \fIn\fP
+字节被写入。
+.TP 
+\fBO_NONBLOCK\fP enabled, \fIn\fP > \fBPIPE_BUF\fP
+如果管道已满，则 \fBwrite\fP(2) 失败，\fIerrno\fP 设置为 \fBEAGAIN\fP。 否则，可能会写入 1 到 \fIn\fP 个字节
+(即，可能会出现 "partial write"; 调用者应检查 \fBwrite\fP(2)
+的返回值以查看实际写入了多少字节)，并且这些字节可能与其他进程的写入交错。
+.SS "Open file status flags"
+唯一可以有意义地应用于管道或 FIFO 的打开文件状态标志是 \fBO_NONBLOCK\fP 和 \fBO_ASYNC\fP。
+.PP
+为管道的读取端设置 \fBO_ASYNC\fP 标志会导致信号 (\fBSIGIO\fP (默认情况下) 在管道上有新输入可用时生成。 必须使用
+\fBfcntl\fP(2) \fBF_SETOWN\fP 命令设置信号传送目标。 在 Linux 上，\fBO_ASYNC\fP 仅支持管道和 FIFO，因为
+Linux 2.6。
+.SS "Portability notes"
+在某些系统上 (但不是 Linux)，管道是双向的: 数据可以在管道两端之间双向传输。 POSIX.1 只需要单向管道。
+便携式应用程序应避免依赖双向管道语义。
+.SS BUGS
+.\" These bugs where remedied by a series of patches, in particular,
+.\" commit b0b91d18e2e97b741b294af9333824ecc3fadfd8 and
+.\" commit a005ca0e6813e1d796a7422a7e31d8b8d6555df1
+在 Linux 4.9 之前，一些错误会影响使用 \fBfcntl\fP(2) \fBF_SETPIPE_SZ\fP 操作更改管道容量时
+\fIpipe\-user\-pages\-soft\fP 和 \fIpipe\-user\-pages\-hard\fP 限制的处理:
+.IP (a) 5
+增加管道容量时，会根据现有消耗量对软限制和硬限制进行检查，并排除增加管道容量所需的内存。 管道容量的新增加可能会使用户用于管道的总内存 (可能远)
+超过限制。 (这也可能触发接下来描述的问题。)
+.IP
+从 Linux 4.9 开始，限制检查包括新管道容量所需的内存。
+.IP (b)
+即使新管道容量小于现有管道容量，也会执行限制检查。 如果用户设置了一个大的管道容量，然后限制被降低，这可能会导致问题，结果是用户不能再降低管道容量。
+.IP
+从 Linux 4.9 开始，仅在增加管道容量时才执行限制检查; 非特权用户总是可以降低管道的容量。
+.IP (c)
+限额的核算和检查如下:
+.IP
+.RS
+.PD 0
+.IP (1) 5
+测试用户是否超过限制。
+.IP (2)
+进行新的管道缓冲区分配。
+.IP (3)
+根据限制计算新分配。
+.PD
+.RE
+.IP
+这太刺激了。 多个进程可以同时通过点 (1)，然后分配仅在步骤 (3) 中考虑的管道缓冲区，结果用户的管道缓冲区分配可能会超出限制。
+.IP
+从 Linux 4.9 开始，在分配前先进行计费，超过限制则失败。
+.PP
+在 Linux 4.9 之前，当内核为新的管道缓冲区分配内存时，也可能会出现类似于点 (a) 和 (c) 的错误; 也就是说，调用 \fBpipe\fP(2)
+和打开之前未打开的 FIFO 时。
+.SH "SEE ALSO"
+\fBmkfifo\fP(1), \fBdup\fP(2), \fBfcntl\fP(2), \fBopen\fP(2), \fBpipe\fP(2), \fBpoll\fP(2),
+\fBselect\fP(2), \fBsocketpair\fP(2), \fBsplice\fP(2), \fBstat\fP(2), \fBtee\fP(2),
+\fBvmsplice\fP(2), \fBmkfifo\fP(3), \fBepoll\fP(7), \fBfifo\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

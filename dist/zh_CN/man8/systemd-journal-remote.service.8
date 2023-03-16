@@ -1,0 +1,272 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-JOURNAL\-REMOTE\&.SERVICE 8 "" "systemd 253" systemd\-journal\-remote.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-journal\-remote.service, systemd\-journal\-remote.socket,
+systemd\-journal\-remote \- 通过网络接收日志消息
+.SH SYNOPSIS
+.PP
+systemd\-journal\-remote\&.service
+.PP
+systemd\-journal\-remote\&.socket
+.HP \w'\fB/usr/lib/systemd/systemd\-journal\-remote\fR\ 'u
+\fB/usr/lib/systemd/systemd\-journal\-remote\fP [OPTIONS...]
+[\-o/\-\-output=\fIDIR\fP|\fIFILE\fP] [SOURCES...]
+.SH DESCRIPTION
+.PP
+\fBsystemd\-journal\-remote\fP 是一个命令，用于接收序列化的日志事件并将它们存储到日志文件 \&。输入流在
+\m[blue]\fBJournal Export Format\fP\m[]\&\s-2\u[1]\d\s+2, i\&.e\&。就像
+\fBjournalctl \-\-output=export\fP\& 的输出。对于网络传输，此序列化流通常通过 HTTPS 连接传输。
+.PP
+systemd\-journal\-remote\&.service 是一个系统服务，它使用 \fBsystemd\-journal\-remote\fP 来监听连接
+\&。 systemd\-journal\-remote\&.socket 配置 systemd\-journal\-remote\&.service
+监听的网络地址 \&。默认情况下，这是端口 19532\&。接受哪些连接以及接收到的数据如何存储可以通过
+\fBjournal\-remote.conf\fP(5) 配置文件进行配置。
+.SH SOURCES
+.PP
+Sources 可以是 "active" (\fBsystemd\-journal\-remote\fP 请求并拉取数据)，也可以是 "passive"
+(\fBsystemd\-journal\-remote\fP 等待连接然后接收对方推送的事件) \&。
+.PP
+\fBsystemd\-journal\-remote\fP 一次可以读取多个事件流 \&。它们将在输出文件中交错 \&。在 "active" 连接的情况下，每个
+"source" 是一个流，在 "passive" 连接的情况下，每个连接都可以产生一个单独的流 \&。套接字可以配置为 "accept" 模式
+(i\&.e\&. 只有一个连接) 或 "listen" 模式 (i\&.e\&. 多个连接，每个连接产生一个流) \&。
+.PP
+当没有更多的连接，也不能再创建 (没有监听套接字) 时，\fBsystemd\-journal\-remote\fP 将退出 \&。
+.PP
+可以通过以下方式指定活动源:
+.PP
+[SOURCES...]
+.RS 4
+当 \fB\-\fP 作为位置参数给出时，将从标准输入 \& 读取事件。其他位置参数将被视为要打开和读取的文件名 \&。
+.RE
+.PP
+\fB\-\-url=\fP\fIADDRESS\fP
+.RS 4
+使用 \fB\-\-url=\fP\fIADDRESS\fP 选项，将使用 HTTP 从 \fIADDRESS\fP\& 检索事件。此 URL 应引用远程
+\fBsystemd\-journal\-gatewayd\fP(8) 实例的根，e\&.g\&。http://some\&.host:19531 / 或
+https://some\&.host:19531/\&。
+.RE
+.PP
+\fB\-\-getter=\*(Aq\fP\fIPROG\fP\fB \fP\fB[OPTIONS...]\fP\fB\*(Aq\fP
+.RS 4
+调用以检索数据的程序 \&。日志事件流必须在标准输出 \& 上生成。
+.sp
+Examples:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\-\-getter=\*(Aqcurl "\-HAccept: application/vnd\&.fdo\&.journal" https://some\&.host:19531/\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\-\-getter=\*(Aqwget \-\-header="Accept: application/vnd\&.fdo\&.journal" \-O\- https://some\&.host:19531/\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+可以通过以下方式指定被动源:
+.PP
+\fB\-\-listen\-raw=\fP\fIADDRESS\fP
+.RS 4
+\fIADDRESS\fP 必须是适合 \fBListenStream=\fP 的地址 (参见
+\&。\fBsystemd.socket\fP(5))\&。\fBsystemd\-journal\-remote\fP 将在此套接字上侦听连接
+\&。每个连接都应该是一个日志事件流 \&。
+.RE
+.PP
+\fB\-\-listen\-http=\fP\fIADDRESS\fP, \fB\-\-listen\-https=\fP\fIADDRESS\fP
+.RS 4
+\fIADDRESS\fP 必须是 negative 整数，在这种情况下，它将被解释为 (negated) 文件描述符编号，或者是适合
+\fBListenStream=\fP 的地址 (c\&.f\&. \fBsystemd.socket\fP(5))\&。在第一种情况下，服务器侦听默认端口
+19532，匹配的文件描述符必须通过 \fI$LISTEN_FDS\fP/\fI$LISTEN_PID\fP\& 继承。在第二种情况下，将在该端口上生成 HTTP
+或 HTTPS 服务器，分别用于 \fB\-\-listen\-http=\fP 和 \fB\-\-listen\-https=\fP\&。目前，只有 POST 请求到 /
+使用 `Content\-Type: application/vnd\&.fdo\&.journal" are supported\&.
+.RE
+.PP
+\fI$LISTEN_FDS\fP
+.RS 4
+\fBsystemd\-journal\-remote\fP 支持 \fI$LISTEN_FDS\fP/\fI$LISTEN_PID\fP 协议
+\&。通过套接字激活继承的打开套接字的行为类似于上述使用 \fB\-\-listen\-raw=\fP 打开的套接字，除非它们在上面的
+\fB\-\-listen\-http=\-\fP\fIn\fP 或 \fB\-\-listen\-https=\-\fP\fIn\fP 中指定为参数 \&。在后一种情况下，将使用此描述符生成
+HTTP 或 HTTPS 服务器，并且必须通过 HTTP 协议建立连接。
+.RE
+.PP
+\fB\-\-key=\fP
+.RS 4
+采用 PEM 格式 \& 的 SSL 密钥文件路径。默认为 /etc/journal\-remote\&.pem\&。该选项可与
+\fB\-\-listen\-https=\fP\& 一起使用。如果路径引用文件系统中的 \fBAF_UNIX\fP 流套接字，则会建立连接并从中读取密钥 \&。
+.RE
+.PP
+\fB\-\-cert=\fP
+.RS 4
+采用 PEM 格式 \& 的 SSL 证书文件路径。默认为 /etc/journal\-remote\&.pem\&。该选项可与
+\fB\-\-listen\-https=\fP\& 一起使用。如果路径引用文件系统中的 \fBAF_UNIX\fP 流套接字，则会建立连接并从中读取证书 \&。
+.RE
+.PP
+\fB\-\-trust=\fP
+.RS 4
+采用 PEM 格式或 \fBall\fP\& 的 SSL CA 证书文件的路径。如果设置了 \fBall\fP，则证书检查将被禁用 \&。默认为
+/etc/trusted\&.pem\&。该选项可与 \fB\-\-listen\-https=\fP\& 一起使用。如果路径引用文件系统中的 \fBAF_UNIX\fP
+流套接字，则会建立连接并从中读取证书 \&。
+.RE
+.PP
+\fB\-\-gnutls\-log=\fP
+.RS 4
+采用逗号分隔的 gnutls 日志记录类别列表 \&。该选项可与 \fB\-\-listen\-http=\fP 或 \fB\-\-listen\-https=\fP\&
+一起使用。
+.RE
+.SH SINKS
+.PP
+输出日志的位置可以用 \fB\-o\fP 或 \fB\-\-output=\fP\& 指定。
+.PP
+\fB\-\-output=\fP\fIFILE\fP
+.RS 4
+将写入此日志文件 \&。文件名必须以 \&.journal\& 结尾。如果文件不存在，将创建该文件 \&。如有必要
+(日志文件已满或已损坏)，文件将按照正常的日志规则重命名，并创建一个新的日志文件来取而代之 \&。
+.RE
+.PP
+\fB\-\-output=\fP\fIDIR\fP
+.RS 4
+将在目录 \fIDIR\fP\& 下创建日志文件。该目录必须存在 \&。如有必要 (日志文件过大或损坏)，日志文件将按照正常的日志规则进行轮换
+\&。\fIDIR\fP 下的文件名将使用下面描述的规则生成 \&。
+.RE
+.PP
+如果不使用 \fB\-\-output=\fP，则使用输出目录 /var/log/journal/remote/\&。如果未指定输出文件，将在所选目录 \&
+下创建日志文件。文件将被称为 remote\-\fIhostname\fP\&.journal，其中 \fIhostname\fP
+部分是连接源端点的转义主机名，如果无法确定主机名，则为数字地址 \&。
+.PP
+在 "active" 源由位置参数或 \fB\-\-getter=\fP 选项给出的情况下，输出文件名必须始终明确给出 \&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-split\-mode\fP
+.RS 4
+\fBnone\fP 或 \fBhost\fP\& 之一。对于第一个，只使用一个输出日志文件 \&。对于后者，使用一个单独的输出文件，基于连接的另一个端点的主机名
+\&。
+.sp
+在 "active" 源由位置参数或 \fB\-\-getter=\fP 选项给出的情况下，输出文件名必须始终明确给出，并且只允许 \fBnone\fP\&。
+.RE
+.PP
+\fB\-\-compress\fP [\fIBOOL\fP]
+.RS 4
+如果设置为 "yes"，则使用 XZ\& 压缩日志中的数据。默认为 `是`\&。
+.RE
+.PP
+\fB\-\-seal\fP [\fIBOOL\fP]
+.RS 4
+如果将其设置为 "yes"，则使用 Forward Secure Sealing\& 定期对日志中的数据进行签名。默认为 `否`\&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH EXAMPLES
+.PP
+将本地日志事件复制到不同的日志目录:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+journalctl \-o 导出 | systemd\-journal\-remote \-o /tmp/dir/foo\&.journal \-
+    
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+从远程 \fBsystemd\-journal\-gatewayd\fP(8) 实例检索所有可用事件并将它们存储在
+/var/log/journal/remote/remote\-some\&.host\&.journal 中:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemd\-journal\-remote \-\-url http://some\&.host:19531/
+    
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+检索当前启动事件并等待来自远程 \fBsystemd\-journal\-gatewayd\fP(8) 实例的新事件，并将它们存储在
+/var/log/journal/remote/remote\-some\&.host\&.journal 中:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemd\-journal\-remote \-\-url http://some\&.host:19531/entries?boot&follow
+    
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.SH "SEE ALSO"
+.PP
+\fBjournal\-remote.conf\fP(5), \fBjournalctl\fP(1),
+\fBsystemd\-journal\-gatewayd.service\fP(8),
+\fBsystemd\-journal\-upload.service\fP(8), \fBsystemd\-journald.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+期刊导出格式
+.RS 4
+\%https://systemd.io/JOURNAL_EXPORT_FORMATS#journal\-export\-format
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

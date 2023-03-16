@@ -1,0 +1,327 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH PAM_SYSTEMD 8 "" "systemd 253" pam_systemd
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+pam_systemd \- 在 systemd 登录管理器中注册用户会话
+.SH SYNOPSIS
+.PP
+pam_systemd\&.so
+.SH DESCRIPTION
+.PP
+\fBpam_systemd\fP 向 systemd 登录管理器 \fBsystemd\-logind.service\fP(8) 注册用户会话，因此
+systemd 控制组层次结构 \&。
+.PP
+该模块还将各种资源管理和运行时参数应用于新会话，如在用户的 \m[blue]\fBJSON User Records\fP\m[]\&\s-2\u[1]\d\s+2 中配置的那样，当一个被定义时 \&。
+.PP
+在登录时，此模块 \(em 与 systemd\-logind\&.service\(em 一起确保以下内容:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果用户运行时目录 /run/$UID 不存在，则创建或安装为应用了配额的新 "tmpfs" 文件系统，并且其所有权更改为正在登录的用户 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+\fI$XDG_SESSION_ID\fP 环境变量已初始化 \&。如果审计可用并且 \fBpam_loginuid\&.so\fP 在此模块之前运行
+(强烈推荐)，则变量从审计会话 ID (/proc/sessionid)\& 初始化。否则，使用一个独立的会话计数器 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+为会话创建了一个新的 systemd 作用域元。如果这是用户的第一个并发会话，则会自动创建一个低于 user\&.slice
+的隐式每用户切片元，并将作用域放入其中 \&。运行 systemd 用户管理器实例的系统服务 user@\&.service 的实例已启动 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+"$TZ"、"$EMAIL"、"$LANG" 环境变量是为用户配置的，基于用户各自的数据 \* (Aqs JSON 记录 (如果有定义)
+\&。此外，导入用户记录中明确配置的任何环境变量，并初始化 umask、nice 级别和资源限制 \&。
+.RE
+.PP
+注销时，此模块确保以下内容:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果在 \fBlogind.conf\fP(5) (\fIKillUserProcesses=\fP) 中启用，会话的所有进程都将终止
+\&。如果用户的最后一个并发会话结束，用户 \*(Aqs systemd 实例也将被终止，用户 \*(Aqs slice 元 \&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+如果用户的最后一个并发会话结束，则用户运行时目录 /run/$UID 及其所有内容也将被删除 \&。
+.RE
+.PP
+如果系统不是以 systemd 作为初始系统启动的，则此模块不执行任何操作并立即返回 \fBPAM_SUCCESS\fP\&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fIclass=\fP
+.RS 4
+采用设置会话类 \& 的字符串参数。\fIXDG_SESSION_CLASS\fP 环境变量 (见下文) 优先
+\&。"user"、"greeter"、"lock\-screen" 或 `背景`\& 之一。有关会话类 \& 的详细信息，请参见
+\fBsd_session_get_class\fP(3)。
+.RE
+.PP
+\fItype=\fP
+.RS 4
+采用设置会话类型 \& 的字符串参数。\fIXDG_SESSION_TYPE\fP 环境变量 (见下文) 优先
+\&。"unspecified"、"tty"、"x11"、"wayland" 或 `mir`\& 之一。有关会话类型 \& 的详细信息，请参见
+\fBsd_session_get_type\fP(3)。
+.RE
+.PP
+\fIdesktop=\fP
+.RS 4
+为桌面环境采用单个短标识符字符串 \&。\fIXDG_SESSION_DESKTOP\fP 环境变量 (见下文) 优先
+\&。这可用于指示使用的会话桌面、适用的位置以及此信息是否可用 \&。例如: "GNOME"，或 `KDE`\&。建议使用与
+\fI$XDG_CURRENT_DESKTOP\fP 相同的标识符和大小写，由 \m[blue]\fBDesktop Entry Specification\fP\m[]\&\s-2\u[2]\d\s+2\& 定义。(但是，请注意，该选项仅采用单个项目，而不是像
+\fI$XDG_CURRENT_DESKTOP\fP\&.) 那样的冒号分隔列表，请参见 \fBsd_session_get_desktop\fP(3)
+了解更多详细信息 \&。
+.RE
+.PP
+\fIdebug\fP[=]
+.RS 4
+采用可选的布尔参数 \&。如果是或没有参数，模块将在运行时记录调试信息 \&。
+.RE
+.SH "MODULE TYPES PROVIDED"
+.PP
+仅提供 \fBsession\fP\&。
+.SH ENVIRONMENT
+.PP
+以下环境变量由模块初始化，可供用户进程使用 \*(Aqs session:
+.PP
+\fI$XDG_SESSION_ID\fP
+.RS 4
+一个短会话标识符，适用于文件名 \&。字符串本身应该被认为是不透明的，尽管它通常只是 /proc/sessionid\& 报告的审计会话 ID。每个
+ID 在机器正常运行期间只会分配一次 \&。因此，它可用于唯一标记此会话的文件或其他资源 \&。将此 ID 与
+\fBsd_id128_get_boot\fP(3) 返回的启动标识符组合，以获得全局唯一标识符 \&。
+.RE
+.PP
+\fI$XDG_RUNTIME_DIR\fP
+.RS 4
+绑定到计算机上的用户登录时间的用户私有用户可写目录的路径 \&。它在用户第一次登录时自动创建，并在用户 \*(Aqs final
+logout\&. 如果用户同时登录两次，那么两次会话都会看到相同的 \fI$XDG_RUNTIME_DIR\fP 和相同的内容
+\&。如果用户登录一次，然后再次注销，然后再次登录，目录内容将在这期间丢失，但应用程序不应依赖此行为，并且必须能够处理陈旧文件
+\&。要在此目录中存储会话私有数据，用户应在文件名 \& 中包含 \fI$XDG_SESSION_ID\fP 的值。该目录应用于运行时文件系统对象，例如
+\fBAF_UNIX\fP 套接字、FIFO、PID 文件和类似的 \&。保证此目录是本地目录，并提供操作系统提供的最大可能的文件系统特性集
+\&。有关详细信息，请参见 \m[blue]\fBXDG Base Directory Specification\fP\m[]\&\s-2\u[3]\d\s+2\&。 如果当前用户不是会话的原始用户，则不设置
+\fI$XDG_RUNTIME_DIR\fP\&。
+.RE
+.PP
+\fI$TZ\fP, \fI$EMAIL\fP, \fI$LANG\fP
+.RS 4
+如果登录用户已知 JSON 用户记录，这些变量将从记录中的相应数据初始化。
+.RE
+.PP
+以下环境变量由模块读取，PAM 服务可能使用它来将元数据传递给模块 \&。如果这些变量在调用 PAM
+模块时未设置，但可以确定，否则它们由模块设置，因此如果已知这些变量，则为会话和应用程序初始化 \&。
+.PP
+\fI$XDG_SESSION_TYPE\fP
+.RS 4
+会话类型 \&。这可以用来代替模块参数行上的 \fItype=\fP，通常首选 \&。
+.RE
+.PP
+\fI$XDG_SESSION_CLASS\fP
+.RS 4
+会话类 \&。这可以用来代替模块参数行上的 \fIclass=\fP，通常首选 \&。
+.RE
+.PP
+\fI$XDG_SESSION_DESKTOP\fP
+.RS 4
+桌面标识符 \&。这可以用来代替模块参数行上的 \fIdesktop=\fP，通常首选 \&。
+.RE
+.PP
+\fI$XDG_SEAT\fP
+.RS 4
+会话应注册的席位名称 (如果有) \&。
+.RE
+.PP
+\fI$XDG_VTNR\fP
+.RS 4
+会话应注册的 VT 号，如果有的话 \&。(仅适用于有 VT 可用的座位，如 "seat0")
+.RE
+.PP
+如果未设置，\fBpam_systemd\fP 将根据 \fI$DISPLAY\fP 变量 (如果后者已设置) 初始化 \fI$XDG_SEAT\fP 和
+\fI$XDG_VTNR\fP\&。
+.SH "SESSION LIMITS"
+.PP
+栈中较早的 PAM 模块，即 \fBpam_systemd\&.so\fP 之前的那些模块，可以使用 PAM 上下文对象 \&
+设置会话作用域限制。这些对象的数据作为 \fBNUL\fP\-terminated C 字符串和 maps 直接提供给相应的元资源控制指令
+\&。请注意，这些限制适用于用户的单个会话，它们不适用于作为组合整体的所有用户进程。特别是每个用户 \fBuser@\&.service\fP 元实例，它运行
+\fBsystemd \-\-user\fP 管理器进程及其子进程，并在任何会话之外进行跟踪，由所有用户共享 \* (Aqs 会话，不受这些限制 \&。
+.PP
+有关资源的更多信息，请参见 \fBsystemd.resource\-control\fP(5)。此外，请参见 \fBpam_set_data\fP(3)
+以获取有关如何设置上下文对象 \& 的其他信息。
+.PP
+\fIsystemd\&.memory_max=\fP
+.RS 4
+设置元 \fIMemoryMax=\fP\&。
+.RE
+.PP
+\fIsystemd\&.tasks_max=\fP
+.RS 4
+设置元 \fITasksMax=\fP\&。
+.RE
+.PP
+\fIsystemd\&.cpu_weight=\fP
+.RS 4
+设置元 \fICPUWeight=\fP\&。
+.RE
+.PP
+\fIsystemd\&.io_weight=\fP
+.RS 4
+设置元 \fIIOWeight=\fP\&。
+.RE
+.PP
+\fIsystemd\&.runtime_max_sec=\fP
+.RS 4
+设置元 \fIRuntimeMaxSec=\fP\&。
+.RE
+.PP
+可以从另一个 PAM 模块提供的示例数据:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+pam_set_data(handle, "systemd\&.memory_max", (void *)"200M", cleanup);
+pam_set_data(handle, "systemd\&.tasks_max",  (void *)"50",   cleanup);
+pam_set_data(handle, "systemd\&.cpu_weight", (void *)"100",  cleanup);
+pam_set_data(handle, "systemd\&.io_weight",  (void *)"340",  cleanup);
+pam_set_data(handle, "systemd\&.runtime_max_sec", (void *)"3600", cleanup);
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.SH EXAMPLE
+.PP
+Here\*(Aqs 一个示例 PAM 配置片段，它允许用户会话由 systemd\-logind\&.service 管理:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#%PAM\-1\&.0
+验证足够的 pam_unix\&.so
+\-auth 足够 pam_systemd_home\&.so
+身份验证需要 pam_deny\&.so
+
+需要帐户 pam_nologin\&.so
+\-account 足够 pam_systemd_home\&.so
+帐号足够 pam_unix\&.so
+需要帐户 pam_permit\&.so
+
+\-password 足够 pam_systemd_home\&.so
+密码足够 pam_unix\&.so sha512 shadow try_first_pass use_authtok
+
+需要密码 pam_deny\&.so
+
+\-session optional pam_keyinit\&.so 撤销
+\-session 可选的 pam_loginuid\&.so
+\-session 可选的 pam_systemd_home\&.so
+\fB\-session  optional   pam_systemd\&.so\fP
+会话需要 pam_unix\&.so
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-logind.service\fP(8), \fBlogind.conf\fP(5),
+\fBloginctl\fP(1), \fBpam_systemd_home\fP(8), \fBpam.conf\fP(5), \fBpam.d\fP(5),
+\fBpam\fP(8), \fBpam_loginuid\fP(8), \fBsystemd.scope\fP(5), \fBsystemd.slice\fP(5),
+\fBsystemd.service\fP(5)
+.SH NOTES
+.IP " 1." 4
+JSON 用户记录
+.RS 4
+\%https://systemd.io/USER_RECORD
+.RE
+.IP " 2." 4
+桌面输入规范
+.RS 4
+\%https://standards.freedesktop.org/desktop\-entry\-spec/latest/
+.RE
+.IP " 3." 4
+XDG 基本目录规范
+.RS 4
+\%https://standards.freedesktop.org/basedir\-spec/basedir\-spec\-latest.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

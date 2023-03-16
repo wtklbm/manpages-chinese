@@ -1,0 +1,111 @@
+.\" -*- coding: UTF-8 -*-
+.ie  \nF \{\
+.    de IX
+.    tm Index:\\$1\t\\n%\t"\\$2"
+..
+.    nr % 0
+.    rr F
+.\}
+.el \{\
+.    de IX
+..
+.\}
+.IX Title "NFSDCLTRACK 8"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NFSDCLTRACK 8 2012\-10\-24 "" ""
+.if  n .ad l
+.\" For nroff, turn off justification.  Always turn off hyphenation; it makes
+.\" way too many mistakes in technical documents.
+.nh
+.SH NAME
+nfsdcltrack\-NFSv4 客户跟踪标注程序
+.SH SYNOPSIS
+.IX Header SYNOPSIS
+nfsdcltrack [\-d] [\-f] [\-s stable storage dir] <command>
+<args...>
+.SH DESCRIPTION
+.IX Header DESCRIPTION
+nfsdcltrack 是 NFSv4 客户端跟踪标注程序。没有必要在不充当 NFSv4 服务器的机器上安装此程序。
+.PP
+当网络分区与服务器重启相结合时，存在 edge 条件，当其他客户端在此期间获得了冲突锁时，可能会导致服务器授予锁回收。\s-1RFC\s0 3530 的
+8.6.3 节和 \s-1RFC\s0 5661 的 8.4.3 节中描述了此问题的更详细说明。
+.PP
+为了防止这些问题，服务器必须在稳定存储上跟踪少量的每个客户端信息。该程序提供了该功能的用户空间部分。当内核需要操作存储这些信息的数据库时，就会执行这个程序来处理。
+.SH OPTIONS
+.IX Header OPTIONS
+.IP "\fB\-d\fP, \fB\-\-debug\fP" 4
+.IX Item "\-d, \-\-debug"
+启用调试级别日志记录。
+.IP "\fB\-f\fP, \fB\-\-foreground\fP" 4
+.IX Item "\-f, \-\-foreground"
+记录到标准错误而不是系统日志。
+.IP "\fB\-s\fP \fIstoragedir\fP, \fB\-\-storagedir\fP=\fIstorage_dir\fP" 4
+.IX Item "\-s storagedir, \-\-storagedir=storage_dir"
+存放稳定存储信息的目录。默认值为 \fI/var/lib/nfs/nfsdcltrack\fP。
+.SH COMMANDS
+.IX Header COMMANDS
+nfsdcltrack 每次调用都需要一个命令。支持的命令是:
+.IP \fBinit\fP 4
+.IX Item init
+初始化数据库。此命令不需要参数。
+.IP \fBcreate\fP 4
+.IX Item create
+创建新的客户记录 (或更新现有记录的时间戳)。此命令需要一个十六进制编码的 nfs_client_id4 作为参数。
+.IP \fBremove\fP 4
+.IX Item remove
+从数据库中删除客户记录。此命令需要一个十六进制编码的 nfs_client_id4 作为参数。
+.IP \fBcheck\fP 4
+.IX Item check
+检查是否允许 nfs_client_id4 回收。此命令需要一个十六进制编码的 nfs_client_id4 作为参数。
+.IP \fBgracedone\fP 4
+.IX Item gracedone
+从数据库中删除任何未回收的客户记录。此命令需要纪元启动时间作为参数。
+.SH "EXTERNAL CONFIGURATION"
+通过在 \fBnfsdcltrack\fP 部分设置 \fBstoragedir\fP 值，可以通过文件 \fB/etc/nfs.conf\fP 设置稳定存储信息的目录。
+例如:
+.in +5
+[nfsdcltrack]
+.br
+  storagedir = /shared/nfs/nfsdcltrack
+.in -5
+也可以通过在此文件中设置 "debug = 1" 来启用对系统日志的调试。
+.SH "LEGACY TRANSITION MECHANISM"
+.IX Header "LEGACY TRANSITION MECHANISM"
+Linux 内核 NFSv4 服务器历来通过在 \fI/proc/fs/nfsd/nfsv4recoverydir\fP
+指向的目录中直接操作文件系统上的信息来跟踪稳定存储上的此信息。如果内核传递了正确的信息，则 nfsdcltrack
+可以使用它来允许从旧的客户端跟踪方案无缝过渡到新的。
+.PP
+在 \fBcheck\fP 操作上，如果数据库中没有客户端的记录，nfsdcltrack 将查看是否设置了
+\fB\s-1NFSDCLTRACK_LEGACY_RECDIR\s0\fP
+环境变量。如果是，那么它将获取该值并查看是否存在具有该名称的目录。如果是，则检查操作将成功，目录将被删除。
+.PP
+在 \fBgracedone\fP 操作中，nfsdcltrack 将查看是否设置了
+\&\fB\s-1NFSDCLTRACK_LEGACY_TOPDIR\s0\fP 环境变量。如果是，那么它将在退出之前尝试清除该目录。
+.PP
+请注意，此转换是单向的。如果机器随后重新引导回不支持 nfsdcltrack upcall 的旧内核，则客户端将无法恢复其状态。
+.SH NOTES
+.IX Header NOTES
+这个程序需要一个支持 nfsdcltrack usermodehelper upcall 的内核。这种支持首先添加到 3.8 的主线内核中。
+.SH AUTHORS
+.IX Header AUTHORS
+nfsdcltrack 由 Jeff Layton <jlayton@redhat.com> 开发。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

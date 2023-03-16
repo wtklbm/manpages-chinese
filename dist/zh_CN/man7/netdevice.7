@@ -1,0 +1,274 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: netdevice.7,v 1.10 2000/08/17 10:09:54 ak Exp $
+.\"
+.\" Modified, 2004-11-25, mtk, formatting and a few wording fixes
+.\"
+.\" Modified, 2011-11-02, <bidulock@openss7.org>, added many basic
+.\"  but missing ioctls, such as SIOCGIFADDR.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH netdevice 7 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+netdevice \- 底层访问 Linux 网络设备
+.SH SYNOPSIS
+.nf
+\fB#include <sys/ioctl.h>\fP
+\fB#include <net/if.h>\fP
+.fi
+.SH DESCRIPTION
+该手册页描述了用于配置网络设备的套接字接口。
+.PP
+Linux 支持一些标准的 ioctl 来配置网络设备。 它们可以用于任何套接字的文件描述符，而不管其系列或类型。 他们中的大多数都通过了
+\fIifreq\fP 结构体:
+.PP
+.in +4n
+.EX
+struct ifreq {
+    char ifr_name[IFNAMSIZ]; /* Interface name */
+    union {
+        struct sockaddr ifr_addr;
+        struct sockaddr ifr_dstaddr;
+        struct sockaddr ifr_broadaddr;
+        struct sockaddr ifr_netmask;
+        struct sockaddr ifr_hwaddr;
+        short           ifr_flags;
+        int             ifr_ifindex;
+        int             ifr_metric;
+        int             ifr_mtu;
+        struct ifmap    ifr_map;
+        char            ifr_slave[IFNAMSIZ];
+        char            ifr_newname[IFNAMSIZ];
+        char           *ifr_data;
+    };
+};
+.EE
+.in
+.PP
+\fBAF_INET6\fP 是一个例外。 它通过一个 \fIin6_ifreq\fP 结构体:
+.PP
+.in +4n
+.EX
+struct in6_ifreq {
+    struct in6_addr     ifr6_addr;
+    u32                 ifr6_prefixlen;
+    int                 ifr6_ifindex; /* Interface index */
+};
+.EE
+.in
+.PP
+通常，用户通过将 \fIifr_name\fP 设置为接口名称或将 \fIifr6_ifindex\fP 设置为接口索引来指定要影响的设备。
+结构体的所有其他成员可以共享内存。
+.SS Ioctls
+如果 ioctl 被标记为特权，则使用它需要有效用户 ID 0 或 \fBCAP_NET_ADMIN\fP 能力。 如果不是这种情况，将返回
+\fBEPERM\fP。
+.TP 
+\fBSIOCGIFNAME\fP
+给定 \fIifr_ifindex\fP，返回 \fIifr_name\fP 中的接口名称。 这是唯一在 \fIifr_name\fP 中返回结果的 ioctl。
+.TP 
+\fBSIOCGIFINDEX\fP
+将接口的接口索引检索到 \fIifr_ifindex\fP 中。
+.TP 
+\fBSIOCGIFFLAGS\fP, \fBSIOCSIFFLAGS\fP
+.\" Do not right adjust text blocks in tables
+获取或设置设备的活动标志字。 \fIifr_flags\fP 包含以下值的位掩码:
+.na
+.TS
+tab(:);
+c s
+l l.
+Device flags
+IFF_UP:Interface is running.
+IFF_BROADCAST:Valid broadcast address set.
+IFF_DEBUG:Internal debugging flag.
+IFF_LOOPBACK:Interface is a loopback interface.
+IFF_POINTOPOINT:Interface is a point\-to\-point link.
+IFF_RUNNING:Resources allocated.
+IFF_NOARP:T{
+No arp protocol, L2 destination address not set.
+T}
+IFF_PROMISC:Interface is in promiscuous mode.
+IFF_NOTRAILERS:Avoid use of trailers.
+IFF_ALLMULTI:Receive all multicast packets.
+IFF_MASTER:Master of a load balancing bundle.
+IFF_SLAVE:Slave of a load balancing bundle.
+IFF_MULTICAST:Supports multicast
+IFF_PORTSEL:Is able to select media type via ifmap.
+IFF_AUTOMEDIA:Auto media selection active.
+IFF_DYNAMIC:T{
+The addresses are lost when the interface goes down.
+T}
+IFF_LOWER_UP:Driver signals L1 up (since Linux 2.6.17)
+IFF_DORMANT:Driver signals dormant (since Linux 2.6.17)
+IFF_ECHO:Echo sent packets (since Linux 2.6.25)
+.TE
+.ad
+.PP
+设置活动标志字是一种特权操作，但任何进程都可以读取它。
+.TP 
+\fBSIOCGIFPFLAGS\fP, \fBSIOCSIFPFLAGS\fP
+获取或设置设备的扩展 (private) 标志。 \fIifr_flags\fP 包含以下值的位掩码:
+.TS
+tab(:);
+c s
+l l.
+Private flags
+IFF_802_1Q_VLAN:Interface is 802.1Q VLAN device.
+IFF_EBRIDGE:Interface is Ethernet bridging device.
+IFF_SLAVE_INACTIVE:Interface is inactive bonding slave.
+IFF_MASTER_8023AD:Interface is 802.3ad bonding master.
+IFF_MASTER_ALB:Interface is balanced\-alb bonding master.
+IFF_BONDING:Interface is a bonding master or slave.
+IFF_SLAVE_NEEDARP:Interface needs ARPs for validation.
+IFF_ISATAP:Interface is RFC4214 ISATAP interface.
+.TE
+.PP
+设置扩展 (private) 接口标志是一项特权操作。
+.TP 
+\fBSIOCGIFADDR\fP, \fBSIOCSIFADDR\fP, \fBSIOCDIFADDR\fP
+使用 \fIifr_addr\fP 或 \fIifr6_addr\fP 与 \fIifr6_prefixlen\fP 获取、设置或删除设备的地址。
+设置或删除接口地址是特权操作。 为了兼容性，\fBSIOCGIFADDR\fP 只返回 \fBAF_INET\fP 地址，\fBSIOCSIFADDR\fP 接受
+\fBAF_INET\fP 和 \fBAF_INET6\fP 地址，\fBSIOCDIFADDR\fP 只删除 \fBAF_INET6\fP 地址。 可以通过
+\fBSIOCSIFADDR\fP 将其设置为零来删除 \fBAF_INET\fP 地址。
+.TP 
+\fBSIOCGIFDSTADDR\fP, \fBSIOCSIFDSTADDR\fP
+使用 \fIifr_dstaddr\fP 获取或设置点对点设备的目标地址。 为了兼容性，只接受或返回 \fBAF_INET\fP 地址。
+设置目标地址是一项特权操作。
+.TP 
+\fBSIOCGIFBRDADDR\fP, \fBSIOCSIFBRDADDR\fP
+使用 \fIifr_brdaddr\fP 获取或设置设备的广播地址。 为了兼容性，只接受或返回 \fBAF_INET\fP 地址。 设置广播地址是一项特权操作。
+.TP 
+\fBSIOCGIFNETMASK\fP, \fBSIOCSIFNETMASK\fP
+使用 \fIifr_netmask\fP 获取或设置设备的网络掩码。 为了兼容性，只接受或返回 \fBAF_INET\fP 地址。 设置网络掩码是一项特权操作。
+.TP 
+\fBSIOCGIFMETRIC\fP, \fBSIOCSIFMETRIC\fP
+使用 \fIifr_metric\fP 获取或设置设备的指标。 目前还没有实现; 如果您尝试读取它，它将 \fIifr_metric\fP 设置为
+0，如果您尝试设置它，它将返回 \fBEOPNOTSUPP\fP。
+.TP 
+\fBSIOCGIFMTU\fP, \fBSIOCSIFMTU\fP
+获取或设置使用 \fIifr_mtu\fP 的设备的 MTU (最大传输元)。 设置 MTU 是一项特权操作。 将 MTU 设置为太小的值可能会导致内核崩溃。
+.TP 
+\fBSIOCGIFHWADDR\fP, \fBSIOCSIFHWADDR\fP
+使用 \fIifr_hwaddr\fP 获取或设置设备的硬件地址。 硬件地址在结构体 \fIsockaddr\fP 中指定。 \fIsa_family\fP 包含
+ARPHRD_* 设备类型，\fIsa_data\fP L2 从字节 0 开始的硬件地址。 设置硬件地址是一项特权操作。
+.TP 
+\fBSIOCSIFHWBROADCAST\fP
+从 \fIifr_hwaddr\fP 设置设备的硬件广播地址。 这是一个特权操作。
+.TP 
+\fBSIOCGIFMAP\fP, \fBSIOCSIFMAP\fP
+使用 \fIifr_map\fP 获取或设置接口的硬件参数。 设置参数是特权操作。
+.IP
+.in +4n
+.EX
+struct ifmap {
+    unsigned long   mem_start;
+    unsigned long   mem_end;
+    unsigned short  base_addr;
+    unsigned char   irq;
+    unsigned char   dma;
+    unsigned char   port;
+};
+.EE
+.in
+.IP
+ifmap 结构体的解释取决于设备驱动程序和体系结构。
+.TP 
+\fBSIOCADDMULTI\fP, \fBSIOCDELMULTI\fP
+使用 \fIifr_hwaddr\fP 向设备的链路层多播过滤器添加地址或从中删除地址。 这些是特权操作。 另请参见 \fBpacket\fP(7)
+以了解替代方案。
+.TP 
+\fBSIOCGIFTXQLEN\fP, \fBSIOCSIFTXQLEN\fP
+使用 \fIifr_qlen\fP 获取或设置设备的传输队列长度。 设置传输队列长度是一项特权操作。
+.TP 
+\fBSIOCSIFNAME\fP
+将 \fIifr_name\fP 中指定的接口名称更改为 \fIifr_newname\fP。 这是一个特权操作。 仅当接口未启动时才允许。
+.TP 
+\fBSIOCGIFCONF\fP
+返回接口 (网络层) 地址列表。 这目前意味着只有 \fBAF_INET\fP (IPv4) 系列的地址才能兼容。 与其他的不同，这个 ioctl 传递一个
+\fIifconf\fP 结构体:
+.IP
+.in +4n
+.EX
+struct ifconf {
+    int               ifc_len; /* size of buffer */
+    union {
+        char         *ifc_buf; /* buffer address */
+        struct ifreq *ifc_req; /* array of structures */
+    };
+};
+.EE
+.in
+.IP
+如果 \fIifc_req\fP 为 NULL，则 \fBSIOCGIFCONF\fP 返回必要的缓冲区大小 (以字节为单位) 以接收 \fIifc_len\fP
+中的所有可用地址。 否则，\fIifc_req\fP 包含指向 \fIifreq\fP 结构数组的指针，该数组将填充所有当前活动的 L3 接口地址。
+\fIifc_len\fP 包含数组的大小 (以字节为单位)。 在每个 \fIifreq\fP 结构体中，\fIifr_name\fP
+将收到接口名称，\fIifr_addr\fP 将收到地址。 实际传输的字节数在 \fIifc_len\fP 中返回。
+.IP
+如果 \fIifc_len\fP 指定的大小不足以存储所有地址，内核将跳过超出的地址并返回成功。 一旦发生这种情况，就没有可靠的方法来检测它。
+因此，建议通过将 \fIifc_req\fP 设置为 NULL 调用 \fBSIOCGIFCONF\fP 来预先确定必要的缓冲区大小，或者在返回时
+\fIifc_len\fP 与其原始值的差异小于 \fIsizeof(struct ifreq)\fP 时重试使用更大的缓冲区。
+.IP
+.\" Slaving isn't supported in Linux 2.2
+.\" .
+.\" .TP
+.\" .BR SIOCGIFSLAVE ", " SIOCSIFSLAVE
+.\" Get or set the slave device using
+.\" .IR ifr_slave .
+.\" Setting the slave device is a privileged operation.
+.\" .PP
+.\" FIXME . add amateur radio stuff.
+如果访问 \fIifconf\fP 或 \fIifreq\fP 结构时发生错误，将返回 \fBEFAULT\fP。
+.PP
+大多数协议都支持自己的 ioctl 来配置特定于协议的接口选项。 有关说明，请参见协议手册页。 有关配置 IP 地址，请参见 \fBip\fP(7)。
+.PP
+此外，一些设备支持私有 ioctl。 这些不在这里描述。
+.SH NOTES
+\fBSIOCGIFCONF\fP 和其他仅接受或返回 \fBAF_INET\fP 套接字地址的 ioctl 是特定于 IP 的，也许应该记录在 \fBip\fP(7)
+中。
+.PP
+可以通过 \fI/proc/net/dev\fP 找到没有地址或没有设置 \fBIFF_RUNNING\fP 标志的接口名称。
+.PP
+\fBAF_INET6\fP IPv6 地址可以从 \fI/proc/net/if_inet6\fP 或通过 \fBrtnetlink\fP(7) 读取。 添加新的
+IPv6 地址和删除现有的 IPv6 地址可以通过 \fBSIOCSIFADDR\fP 和 \fBSIOCDIFADDR\fP 或通过
+\fBrtnetlink\fP(7) 完成。 只能通过 \fBrtnetlink\fP(7) 检索或更改点对点接口的目标 IPv6 地址。
+.SH BUGS
+glibc 2.1 缺少 \fI<net/if.h>\fP 中的 \fIifr_newname\fP 宏。 将以下内容添加到您的程序中作为解决方法:
+.PP
+.in +4n
+.EX
+#ifndef ifr_newname
+#define ifr_newname     ifr_ifru.ifru_slave
+#endif
+.EE
+.in
+.SH "SEE ALSO"
+\fBproc\fP(5), \fBcapabilities\fP(7), \fBip\fP(7), \fBrtnetlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

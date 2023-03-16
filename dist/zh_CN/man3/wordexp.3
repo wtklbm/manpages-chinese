@@ -1,0 +1,163 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH wordexp 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+wordexp, wordfree \- 像 posix\-shell 一样执行单词扩展
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <wordexp.h>\fP
+.PP
+\fBint wordexp(const char *restrict \fP\fIs\fP\fB, wordexp_t *restrict \fP\fIp\fP\fB, int \fP\fIflags\fP\fB);\fP
+\fBvoid wordfree(wordexp_t *\fP\fIp\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBwordexp\fP(), \fBwordfree\fP():
+.nf
+    _XOPEN_SOURCE
+.fi
+.SH DESCRIPTION
+函数 \fBwordexp\fP() 对字符串 \fIs\fP 执行类似 shell 的扩展，并将结果返回到 \fIp\fP 指向的结构体中。 数据类型
+\fIwordexp_t\fP 是一个至少具有字段 \fIwe_wordc\fP、\fIwe_wordv\fP 和 \fIwe_offs\fP 的结构体。 字段
+\fIwe_wordc\fP 是一个 \fIsize_t\fP，它给出了 \fIs\fP 扩展中的单词数。 字段 \fIwe_wordv\fP 是指向找到的单词数组的
+\fIchar\ **\fP。 \fIsize_t\fP 类型的字段 \fIwe_offs\fP 有时 (取决于 \fIflags\fP，见下文) 用于指示
+\fIwe_wordv\fP 数组中应填充 NULL 的初始元素的数量。
+.PP
+函数 \fBwordfree\fP() 再次释放分配的内存。 更准确地说，它不会释放它的参数，但会释放数组 \fIwe_wordv\fP 和指向的字符串。
+.SS "The string argument"
+由于扩展与 shell 的扩展相同 (请参见命令参数的 \fBsh\fP(1))，字符串 \fIs\fP 不得包含 shell 命令参数中的非法字符。
+特别是，在命令替换或参数替换上下文之外不得有任何未转义的换行符或 |、&、;、<、>、(、)、{, } 字符。
+.PP
+如果参数 \fIs\fP 包含以未加引号的注释字符 #开头的单词，则未指定是否忽略该单词和所有后续单词，或者将 #视为非注释字符。
+.SS "The expansion"
+完成的扩展包括以下几个阶段: tilde 扩展 (将 \[ti] user 替换为用户的主目录)、变量替换 (将 $FOO 替换为环境变量 FOO
+的值)、命令替换 (替换 $(command) or \`command\` by the output of
+command)、算术扩展、字段拆分，通配符扩展，引号删除。
+.PP
+特殊参数 ($@, $*, $#, $?, $\-, $$, $!, $0) 的扩展结果未指定。
+.PP
+字段拆分是使用环境变量 $IFS 完成的。 如果未设置，则字段分隔符为空格、制表符和换行符。
+.SS "The output array"
+数组 \fIwe_wordv\fP 包含找到的单词，后跟 NULL。
+.SS "The flags argument"
+\fIflag\fP 参数是以下值的按位或运算:
+.TP 
+\fBWRDE_APPEND\fP
+将找到的单词追加到先前调用产生的数组中。
+.TP 
+\fBWRDE_DOOFFS\fP
+在数组 \fIwe_wordv\fP 中插入 \fIwe_offs\fP 初始 NULL。 (这些不算在返回的 \fIwe_wordc\fP.)
+.TP 
+\fBWRDE_NOCMD\fP
+不要进行命令替换。
+.TP 
+\fBWRDE_REUSE\fP
+参数 \fIp\fP 是之前调用 \fBwordexp\fP() 的结果，没有调用 \fBwordfree\fP()。 重用分配的存储空间。
+.TP 
+\fBWRDE_SHOWERR\fP
+通常在命令替换期间 \fIstderr\fP 被重定向到 \fI/dev/null\fP。 该标志指定 \fIstderr\fP 不被重定向。
+.TP 
+\fBWRDE_UNDEF\fP
+如果扩展未定义的 shell 变量，则将其视为错误。
+.SH "RETURN VALUE"
+成功时，\fBwordexp\fP() 返回 0。 失败时，\fBwordexp\fP() 返回以下非零值之一:
+.TP 
+\fBWRDE_BADCHAR\fP
+非法出现换行符或 |、&、;、<、>、(、)、{, } 之一。
+.TP 
+\fBWRDE_BADVAL\fP
+引用了未定义的 shell 变量，\fBWRDE_UNDEF\fP 标志告诉我们将此视为错误。
+.TP 
+\fBWRDE_CMDSUB\fP
+请求命令替换，但 \fBWRDE_NOCMD\fP 标志告诉我们将此视为错误。
+.TP 
+\fBWRDE_NOSPACE\fP
+内存不足。
+.TP 
+\fBWRDE_SYNTAX\fP
+Shell 语法错误，例如不平衡的括号或不匹配的引号。
+.SH VERSIONS
+自 glibc 2.1 起提供了 \fBwordexp\fP() 和 \fBwordfree\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBwordexp\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:utent const:env
+env sig:ALRM timer locale
+T}
+T{
+\fBwordfree\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:utent\fP 中的 \fIutent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetutent\fP(3)、\fBgetutent\fP(3) 或 \fBendutent\fP(3) 中的任何一个，则可能发生数据竞争。
+\fBwordexp\fP() 调用了那些函数，所以我们使用 race:utent 来提醒用户。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH EXAMPLES
+以下示例程序的输出大约是 "ls [a\-c]*.c" 的输出。
+.PP
+.\" SRC BEGIN (wordexp.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <wordexp.h>
+
+int
+main(void)
+{
+    wordexp_t p;
+    char **w;
+
+    wordexp("[a\-c]*.c", &p, 0);
+    w = p.we_wordv;
+    for (size_t i = 0; i < p.we_wordc; i++)
+        printf("%s\en", w[i]);
+    wordfree(&p);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfnmatch\fP(3), \fBglob\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

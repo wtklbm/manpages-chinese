@@ -1,0 +1,115 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1995-07-22 by Michael Chastain <mec@duracef.shout.net>:
+.\"   'gethostname' is real system call on Linux/Alpha.
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2000-06-04, 2001-12-15 by aeb
+.\" Modified 2004-06-17 by mtk
+.\" Modified 2008-11-27 by mtk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH gethostname 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+gethostname, sethostname\-get/set 主机名
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint gethostname(char *\fP\fIname\fP\fB, size_t \fP\fIlen\fP\fB);\fP
+\fBint sethostname(const char *\fP\fIname\fP\fB, size_t \fP\fIlen\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgethostname\fP():
+.nf
+.\" The above is something of a simplification
+.\" also before glibc 2.3 there was a bit churn
+    _XOPEN_SOURCE >= 500 || _POSIX_C_SOURCE >= 200112L
+        || /* glibc 2.19 and earlier */ _BSD_SOURCE
+.fi
+.PP
+\fBsethostname\fP():
+.nf
+.\"		commit 266865c0e7b79d4196e2cc393693463f03c90bd8
+    由于 glibc 2.21:
+        _DEFAULT_SOURCE
+    在 glibc 2.19 和 2.20 中:
+        _DEFAULT_SOURCE || (_XOPEN_SOURCE && _XOPEN_SOURCE < 500)
+    直到并包括 glibc 2.19:
+        _BSD_SOURCE || (_XOPEN_SOURCE && _XOPEN_SOURCE < 500)
+.fi
+.SH DESCRIPTION
+这些系统调用用于访问或更改系统主机名。 更准确地说，它们对与调用进程的 UTS 名称空间关联的主机名进行操作。
+.PP
+\fBsethostname\fP() 将主机名设置为字符数组 \fIname\fP 中给定的值。 \fIlen\fP 参数指定 \fIname\fP 中的字节数。
+(因此，\fIname\fP 不需要终止空字节。)
+.PP
+\fBgethostname\fP() 返回字符数组 \fIname\fP 中以 null 结尾的主机名，其长度为 \fIlen\fP 字节。 如果以 null
+结尾的主机名太大而不适合，那么该名称将被截断，并且不会返回任何错误 (但请参见下面的注释)。 POSIX.1
+表示如果发生这种截断，则返回的缓冲区是否包含终止空字节是未指定的。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIname\fP 是无效地址。
+.TP 
+\fBEINVAL\fP
+.\" Can't occur for gethostbyname() wrapper, since 'len' has an
+.\" unsigned type; can occur for the underlying system call.
+\fIlen\fP 是 negative 或者，对于 \fBsethostname\fP()，\fIlen\fP 大于最大允许大小。
+.TP 
+\fBENAMETOOLONG\fP
+(glibc \fBgethostname\fP()) \fIlen\fP 比实际大小要小。 (在 glibc 2.1 之前，glibc 在这种情况下使用
+\fBEINVAL\fP。)
+.TP 
+\fBEPERM\fP
+对于 \fBsethostname\fP()，调用者在与其 UTS 命名空间关联的用户命名空间中没有 \fBCAP_SYS_ADMIN\fP 功能 (请参见
+\fBnamespaces\fP(7)).
+.SH STANDARDS
+SVr4、4.4BSD (这些接口最先出现在 4.2BSD)。 POSIX.1\-2001 和 POSIX.1\-2008 指定
+\fBgethostname\fP() 但不指定 \fBsethostname\fP()。
+.SH NOTES
+SUSv2 保证 "Host names are limited to 255 bytes"。 POSIX.1 保证 "Host names (not
+including the terminating null byte) are limited to \fBHOST_NAME_MAX\fP bytes"。
+在 Linux 上，\fBHOST_NAME_MAX\fP 被定义为值 64，这是自 Linux 1.0 以来的限制 (较早的内核施加了 8 字节的限制)。
+.SS "C library/kernel differences"
+GNU C 库不使用 \fBgethostname\fP() 系统调用; 相反，它将 \fBgethostname\fP() 实现为调用 \fBuname\fP(2)
+并将最多 \fIlen\fP 字节从返回的 \fInodename\fP 字段复制到 \fIname\fP 的库函数。 复制完成后，函数会检查 \fInodename\fP
+的长度是否大于或等于 \fIlen\fP，如果是，则函数返回 \-1，并将 \fIerrno\fP 设置为 \fBENAMETOOLONG\fP; 在这种情况下，返回的
+\fIname\fP 中不包含终止空字节。
+.PP
+.\" At least glibc 2.0 and glibc 2.1, older versions not checked
+glibc 2.2 之前的 glibc 版本以不同方式处理 \fInodename\fP 的长度大于或等于 \fIlen\fP 的情况: 没有任何内容被复制到
+\fIname\fP 并且函数返回 \-1，其中 \fIerrno\fP 设置为 \fBENAMETOOLONG\fP。
+.SH "SEE ALSO"
+\fBhostname\fP(1), \fBgetdomainname\fP(2), \fBsetdomainname\fP(2), \fBuname\fP(2),
+\fButs_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

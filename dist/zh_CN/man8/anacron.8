@@ -1,0 +1,160 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ANACRON 8 2012\-11\-22 cronie "System Administration"
+.SH NAME
+anacron \- 定期运行命令
+.SH SYNOPSIS
+\fBanacron \fP[\fB\-s\fP] [\fB\-f\fP] [\fB\-n\fP] [\fB\-d\fP] [\fB\-q\fP] [\fB\-t anacrontab\fP] [\fB\-S spooldir\fP] [\fIjob\fP]
+.br
+\fBanacron \fP[\fB\-S spooldir\fP] \-u [\fB\-t anacrontab\fP] [\fIjob\fP]
+.br
+\fBanacron \fP[\fB\-V\fP|\fB\-h\fP]
+.br
+\fBanacron \-T \fP[\fB\-t anacrontab\fP]
+.SH DESCRIPTION
+\fBAnacron\fP 用于定期执行命令，频率以天为单位指定。 与 \fBcron(8)\fP 不同，它不假定机器连续运行。 因此，它可以用在不是每天 24
+小时运行的机器上，以控制每天、每周和每月的定期作业。
+.PP
+Anacron 从 \fI/etc/anacrontab\fP 配置文件 (参见 \fBanacrontab\fP(5)).  该文件包含 Anacron
+控制的作业列表。 每个作业条目指定以天为单位的时间段、以分钟为单位的延迟、唯一的作业标识符和 shell 命令。
+.PP
+对于每个作业，Anacron 检查该作业是否在最近 \fBn\fP 天内执行过，其中 \fBn\fP 是为该作业指定的时间段。 如果作业在 \fBn\fP
+天或更长时间内未执行，则在等待指定为延迟参数的分钟数后，Anacron 将运行作业的 shell 命令。
+.PP
+命令退出后，Anacron 在该作业的特殊时间戳文件中记录日期 (不包括小时)，因此它知道何时再次执行该作业。
+.PP
+当没有更多作业要运行时，Anacron 退出。
+.PP
+Anacron 仅考虑在 \fBanacrontab\fP(5) 中指定的标识符与 \fIjob\fP 命令行参数中的任何一个相匹配的作业。 \fIjob\fP
+命令行参数可以用 shell 通配符模式表示 (一定要用足够的引号保护它们免受 shell 的影响)。 指定没有 \fIjob\fP 命令行参数等同于指定
+"*" (即 Anacron 考虑所有作业)。
+.PP
+除非 Anacron 使用 \fB\-d\fP 选项 (在下面指定) 运行，否则它会在启动时分叉到后台，并且任何父进程都会立即退出。
+.PP
+除非 Anacron 使用 \fB\-s\fP 或 \fB\-n\fP 选项运行，否则它会在延迟结束后立即启动作业。 不同作业的执行是完全独立的。
+.PP
+如果执行的作业生成任何输出到标准输出或标准错误，则输出将邮寄给运行 Anacron 的用户 (通常是 root)，或者发送到在
+\fI/etc/anacrontab\fP 文件的 \fBMAILTO\fP 环境变量中指定的地址 (如果存在) .  如果设置了 \fBLOGNAME\fP
+环境变量，它将用于邮件的发送者: 字段。
+.PP
+Anacron 生成的任何信息性消息都被发送到 \fBsyslogd\fP(8) 或 \fBrsyslogd\fP(8)，设施设置为 \fBcron\fP，优先级设置为
+\fBnotice\fP。 任何错误消息都以优先级 \fBerror\fP 发送。
+.PP
+"Active" 作业 (即 Anacron 已经决定运行并正在等待延迟结束的作业，以及当前由 Anacron 执行的作业) 是 "locked"，因此
+Anacron 的其他副本无法同时运行它们。
+.SH OPTIONS
+.TP 
+\fB\-f\fP
+强制执行所有作业，忽略任何时间戳。
+.TP 
+\fB\-u\fP
+将所有作业的时间戳更新为当前日期，但不运行任何作业。
+.TP 
+\fB\-s\fP
+序列化作业的执行。 Anacron 在前一个工作完成之前不会开始新工作。
+.TP 
+\fB\-n\fP
+立即运行作业并忽略 \fI/etc/anacrontab\fP 文件中指定的延迟。 此选项表示 \fB\-s\fP。
+.TP 
+\fB\-d\fP
+不会 fork Anacron 到后台。 在这种模式下，Anacron 会将信息性消息输出到标准错误以及系统日志。 任何作业的输出都由 Anacron
+邮寄。
+.TP 
+\fB\-q\fP
+禁止显示标准错误的任何消息。 仅适用于 \fB\-d\fP。
+.TP 
+\fB\-t some_anacrontab\fP
+使用指定的 anacrontab，而不是 \fI/etc/anacrontab\fP 默认的。
+.TP 
+\fB\-T\fP
+Anacrontab 测试。测试 \fI/etc/anacrontab\fP 配置文件的有效性。如果文件中有错误，则会显示在标准输出中，并且 Anacron
+会返回值 1。 有效的 anacrontabs 返回值 0.
+.TP 
+\fB\-S spooldir\fP
+使用指定的 spooldir 来存储时间戳。 希望自己运行 anacron 的用户需要此选项。
+.TP 
+\fB\-V\fP
+打印版本信息，然后退出。
+.TP 
+\fB\-h\fP
+打印简短的使用信息，然后退出。
+.SH SIGNALS
+收到 \fBSIGUSR1\fP 信号后，Anacron 等待所有正在运行的作业完成，然后退出。 这可以用来干净地停止 Anacron。
+.SH NOTES
+确保在 Anacron 启动之前正确设置时区，因为时区会影响日期。 这通常通过设置 TZ 环境变量或安装
+\fI/usr/lib/zoneinfo/localtime\fP 文件来完成。 有关更多信息，请参见 \fBtzset\fP(3)。
+.PP
+时间戳文件是在 anacrontab 中指定的每个作业的假脱机目录中创建的。 Anacron
+永远不会自动删除这些文件，如果不再计划作业，则应手动删除这些文件。
+.SH FILES
+.TP 
+\fI/etc/anacrontab\fP
+包含作业规范。 有关完整说明，请参见 \fBanacrontab\fP(5)。
+.TP 
+\fI/var/spool/anacron\fP
+Anacron 使用此目录来存储时间戳文件。
+.SH "SEE ALSO"
+\fBanacrontab\fP(5), \fBcron\fP(8), \fBtzset\fP(3)
+.PP
+The Anacron \fIREADME\fP file.
+.SH BUGS
+Anacron 从不删除时间戳文件。 手动删除未使用的文件。
+.PP
+Anacron 为每个活动作业最多使用两个文件描述符。 如果有很多活动作业，它可能会用完描述符。 有关 anacron
+可能运行的并发作业数的信息，请参见 \fBecho $(($(ulimit \-n) / 2))\fP。
+.PP
+将评论、建议和错误报告邮寄至
+.MT shaleh@\:(debian.\:org|\:valinux.\:com)
+Sean 'Shaleh'
+Perry
+.ME .
+.SH AUTHOR
+Anacron 最初由
+.MT schwarz@\:monet.\:m.\:isar.\:de
+Christian Schwarz
+.ME .
+构思和实现
+.PP
+当前的实现是由
+.MT itzur@\:actcom.\:co.\:il
+Itai Tzur
+.ME .
+完全重写的
+.PP
+代码库由
+.MT shaleh@\:(debian.\:org|\:valinux.\:com)
+Sean 'Shaleh' Perry
+.ME .
+维护
+.PP
+自 2004 年以来，由
+.MT pasc@\:(debian.\:org|\:redellipse.\:net)
+Pascal Hakim
+.ME .
+维护
+.PP
+对于 Fedora，Anacron 由
+.MT mmaslano@redhat.\:com
+Marcela Mašláňová
+.ME .
+维护
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

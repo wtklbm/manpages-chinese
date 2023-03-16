@@ -1,0 +1,351 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
+.\"     Written by David Howells (dhowells@redhat.com)
+.\" and Copyright (C) 2016 Michael Kerrisk <mtk.man-pages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH request_key 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+request_key \- 从内核的密钥管理工具请求一个密钥
+.SH LIBRARY
+Linux 密钥管理实用工具 (\fIlibkeyutils\fP, \fI\-lkeyutils\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <keyutils.h>\fP
+.PP
+\fBkey_serial_t request_key(const char *\fP\fItype\fP\fB, const char *\fP\fIdescription\fP\fB,\fP
+\fB                         const char *_Nullable \fP\fIcallout_info\fP\fB,\fP
+\fB                         key_serial_t \fP\fIdest_keyring\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBrequest_key\fP() 尝试找到给定 \fItype\fP 的键，其描述 (name) 与指定的 \fIdescription\fP 匹配。
+如果找不到这样的密钥，则可选择创建该密钥。 如果找到或创建了密钥，\fBrequest_key\fP() 将其附加到 \fIdest_keyring\fP 中指定
+ID 的密钥环，并返回密钥的序列号。
+.PP
+\fBrequest_key\fP() 首先递归地在附加到调用进程的所有密钥环中搜索匹配的密钥。 密钥环按以下顺序搜索:
+特定于线程的密钥环、特定于进程的密钥环，然后是会话密钥环。
+.PP
+.\" David Howells: we can then have an arbitrarily long sequence
+.\" of "recursive" request-key upcalls. There is no limit, other
+.\" than number of PIDs, etc.
+如果从 \fBrequest_key\fP() 代表某个其他进程调用的程序中调用 \fBrequest_key\fP() 以生成密钥，则接下来将使用该其他进程的用户
+ID、组 ID、补充组 ID 和安全上下文搜索该其他进程的密钥环来确定访问。
+.PP
+密钥环树的搜索是广度优先的: 在递归任何子密钥环之前，检查每个搜索到的密钥环中的密钥是否匹配。 只能找到调用者具有 \fIsearch\fP
+权限的密钥，并且只能搜索调用者具有 \fIsearch\fP 权限的密钥环。
+.PP
+如果未找到密钥且 \fIcallout\fP 为 NULL，则调用失败并显示错误 \fBENOKEY\fP。
+.PP
+如果未找到密钥且 \fIcallout\fP 不为 NULL，则内核会尝试调用用户空间程序来实例化密钥。 详情如下。
+.PP
+\fIdest_keyring\fP 序列号可能是调用方对其具有 \fIwrite\fP 权限的有效密钥环的序列号，也可能是以下特殊密钥环 ID 之一:
+.TP 
+\fBKEY_SPEC_THREAD_KEYRING\fP
+这指定了调用者线程特定的密钥环 (参见 \fBthread\-keyring\fP(7)).
+.TP 
+\fBKEY_SPEC_PROCESS_KEYRING\fP
+这指定了调用者进程特定的密钥环 (参见 \fBprocess\-keyring\fP(7)).
+.TP 
+\fBKEY_SPEC_SESSION_KEYRING\fP
+这指定了调用者的特定于会话的密钥环 (参见 \fBsession\-keyring\fP(7)).
+.TP 
+\fBKEY_SPEC_USER_KEYRING\fP
+这指定调用者的特定于 UID 的密钥环 (请参见 \fBuser\-keyring\fP(7)).
+.TP 
+\fBKEY_SPEC_USER_SESSION_KEYRING\fP
+这指定了调用者的 UID 会话密钥环 (参见 \fBuser\-session\-keyring\fP(7)).
+.PP
+当 \fIdest_keyring\fP 被指定为 0 并且没有执行密钥构造时，则不会进行额外的链接。
+.PP
+否则，如果 \fIdest_keyring\fP 为 0 并构造新密钥，则新密钥将链接到 "default" 密钥环。
+更准确地说，当内核试图确定新构造的密钥应该链接到哪个密钥环时，它会尝试以下密钥环，从通过 \fBkeyctl\fP(2)
+\fBKEYCTL_SET_REQKEY_KEYRING\fP 操作设置的密钥环开始，并按照下面显示的顺序继续，直到找到第一个密钥环存在:
+.IP \[bu] 3
+.\" 8bbf4976b59fc9fc2861e79cab7beb3f6d647640
+.\" FIXME
+.\" Actually, is the preceding point correct?
+.\" If I understand correctly, we'll only get here if
+.\" 'dest_keyring' is zero, in which case KEY_REQKEY_DEFL_REQUESTOR_KEYRING
+.\" won't refer to a keyring. Have I misunderstood?
+请求者密钥环 (\fBKEY_REQKEY_DEFL_REQUESTOR_KEYRING\fP，自 Linux 2.6.29)。
+.IP \[bu]
+线程特定的密钥环 (\fBKEY_REQKEY_DEFL_THREAD_KEYRING\fP; 参见 \fBthread\-keyring\fP(7))。
+.IP \[bu]
+进程特定的密钥环 (\fBKEY_REQKEY_DEFL_PROCESS_KEYRING\fP; 参见 \fBprocess\-keyring\fP(7))。
+.IP \[bu]
+特定于会话的密钥环 (\fBKEY_REQKEY_DEFL_SESSION_KEYRING\fP; 参见 \fBsession\-keyring\fP(7))。
+.IP \[bu]
+进程用户 ID (\fBKEY_REQKEY_DEFL_USER_SESSION_KEYRING\fP 的会话密钥环; 参见
+\fBuser\-session\-keyring\fP(7))。 此密钥环应始终存在。
+.IP \[bu]
+.\" mtk: Are there circumstances where the user sessions and UID-specific
+.\" keyrings do not exist?
+.\"
+.\" David Howells:
+.\"     The uid keyrings don't exist until someone tries to access them -
+.\"     at which point they're both created.  When you log in, pam_keyinit
+.\"     creates a link to your user keyring in the session keyring it just
+.\"     created, thereby creating the user and user-session keyrings.
+.\"
+.\" and David elaborated that "access" means:
+.\"
+.\"     It means lookup_user_key() was passed KEY_LOOKUP_CREATE.  So:
+.\"
+.\"         add_key() - destination keyring
+.\"         request_key() - destination keyring
+.\"         KEYCTL_GET_KEYRING_ID - if create arg is true
+.\"         KEYCTL_CLEAR
+.\"         KEYCTL_LINK - both args
+.\"         KEYCTL_SEARCH - destination keyring
+.\"         KEYCTL_CHOWN
+.\"         KEYCTL_SETPERM
+.\"         KEYCTL_SET_TIMEOUT
+.\"         KEYCTL_INSTANTIATE - destination keyring
+.\"         KEYCTL_INSTANTIATE_IOV - destination keyring
+.\"         KEYCTL_NEGATE - destination keyring
+.\"         KEYCTL_REJECT - destination keyring
+.\"         KEYCTL_GET_PERSISTENT - destination keyring
+.\"
+.\"     will all create a keyring under some circumstances.  Whereas the rest,
+.\"     such as KEYCTL_GET_SECURITY, KEYCTL_READ and KEYCTL_REVOKE, won't.
+UID 特定的密钥环 (\fBKEY_REQKEY_DEFL_USER_KEYRING\fP; 参见 \fBuser\-keyring\fP(7))。
+这个密钥环也应该一直存在。
+.PP
+.\"
+如果 \fBkeyctl\fP(2) \fBKEYCTL_SET_REQKEY_KEYRING\fP 操作指定 \fBKEY_REQKEY_DEFL_DEFAULT\fP
+(或没有执行 \fBKEYCTL_SET_REQKEY_KEYRING\fP 操作)，则内核从列表的开头开始查找密钥环。
+.SS "Requesting user\-space instantiation of a key"
+如果内核找不到与 \fItype\fP 和 \fIdescription\fP 匹配的密钥，并且 \fIcallout\fP 不为
+NULL，则内核会尝试调用用户空间程序来实例化具有给定 \fItype\fP 和 \fIdescription\fP 的密钥。 在这种情况下，执行以下步骤:
+.IP (1) 5
+内核使用请求的 \fItype\fP 和 \fIdescription\fP 创建一个未实例化的密钥 U。
+.IP (2)
+.\" struct request_key_auth, defined in security/keys/internal.h
+内核创建一个授权密钥 V，它引用密钥 U 并记录 \fBrequest_key\fP() 的调用者是:
+.RS
+.IP (2.1) 7
+应实例化和保护密钥 U 的上下文，以及
+.IP (2.2)
+可以满足相关键请求的上下文。
+.RE
+.IP
+授权密钥的构造如下:
+.RS
+.IP \[bu] 3
+密钥类型是 \fI".request_key_auth"\fP。
+.IP \[bu]
+密钥的 UID 和 GID 与请求进程的相应文件系统 ID 相同。
+.IP \[bu]
+密钥向密钥拥有者授予 \fIview\fP、\fIread\fP 和 \fIsearch\fP 权限，并向密钥用户授予 \fIview\fP 权限。
+.IP \[bu]
+密钥的描述 (name) 是十六进制字符串，表示请求程序中要实例化的密钥的 ID。
+.IP \[bu]
+密钥的有效，载荷，取自 \fIcallout_info\fP 中指定的数据。
+.IP \[bu]
+在内部，内核还记录了调用 \fBrequest_key\fP() 的进程的 PID。
+.RE
+.IP (3)
+.\" The request\-key(8) program can be invoked in circumstances *other* than
+.\" when triggered by request_key(2). For example, upcalls from places such
+.\" as the DNS resolver.
+内核创建一个进程，该进程使用包含授权密钥 V 链接的新会话密钥环执行用户空间服务，例如 \fBrequest\-key\fP(8)。
+.IP
+该程序随附以下命令行参数:
+.RS
+.IP [0] 5
+字符串 \fI"/sbin/request\-key"\fP。
+.IP [1]
+字符串 \fI"create"\fP (表示要创建一个密钥)。
+.IP [2]
+要实例化的密钥的 ID。
+.IP [3]
+\fBrequest_key\fP() 的调用者的文件系统 UID。
+.IP [4]
+\fBrequest_key\fP() 的调用者的文件系统 GID。
+.IP [5]
+\fBrequest_key\fP() 的调用者的线程密钥环 ID。 如果尚未创建该密钥环，则这可能为零。
+.IP [6]
+\fBrequest_key\fP() 的调用者的进程密钥环 ID。 如果尚未创建该密钥环，则这可能为零。
+.IP [7]
+\fBrequest_key\fP() 的调用者的会话密钥环 ID。
+.RE
+.IP
+\fINote\fP: 每个作为密钥 ID 的命令行参数都以 \fIdecimal\fP 编码 (不同于 \fI/proc/keys\fP 中显示的密钥
+ID，后者显示为十六进制值)。
+.IP (4)
+该程序在上一步中生成:
+.RS
+.IP \[bu] 3
+假定有权使用 \fBkeyctl\fP(2) \fBKEYCTL_ASSUME_AUTHORITY\fP 操作 (通常通过
+\fBkeyctl_assume_authority\fP(3) 函数) 实例化密钥 U。
+.IP \[bu]
+从授权密钥 V 的有效，载荷，中获取标注数据 (使用 \fBkeyctl\fP(2) \fBKEYCTL_READ\fP 操作 (或更常见的是
+\fBkeyctl_read\fP(3) 函数 )，密钥 ID 值为 \fBKEY_SPEC_REQKEY_AUTH_KEY\fP)。
+.IP \[bu]
+.\" Should an instantiating program be using KEY_SPEC_REQUESTOR_KEYRING?
+.\" I couldn't find a use in the keyutils git repo.
+.\" According to David Howells:
+.\" * This feature is provided, but not used at the moment.
+.\" * A key added to that ring is then owned by the requester
+实例化密钥 (或执行执行该任务的另一个程序)，指定有效，载荷，和目标密钥环。 (可以使用特殊密钥 ID
+\fBKEY_SPEC_REQUESTOR_KEYRING\fP.) 访问请求者在调用 \fBrequest_key\fP() 时指定的目标密钥环实例化是使用
+\fBkeyctl\fP(2) \fBKEYCTL_INSTANTIATE\fP 操作 (或更常见的 \fBkeyctl_instantiate\fP(3) 函数)
+执行的。 至此，\fBrequest_key\fP() 调用完成，请求程序可以继续执行。
+.RE
+.PP
+如果这些步骤不成功，则 \fBENOKEY\fP 错误将返回给 \fBrequest_key\fP() 的调用者，并且将在 \fIdest_keyring\fP
+指定的密钥环中安装一个临时的、负实例化的密钥。 这将在几秒钟后过期，但会导致对 \fBrequest_key\fP() 的后续调用失败，直到它过期为止。
+这个负实例化密钥的目的是防止 (可能不同的) 进程对不能 (目前) 正实例化的密钥发出重复请求 (需要昂贵的 \fBrequest\-key\fP(8)
+upcalls)。
+.PP
+一旦密钥被实例化，授权密钥 (\fBKEY_SPEC_REQKEY_AUTH_KEY\fP) 就被撤销，并且目标密钥环
+(\fBKEY_SPEC_REQUESTOR_KEYRING\fP) 不再可以从 \fBrequest\-key\fP(8) 程序访问。
+.PP
+如果创建了一个密钥，那么 \[em] 无论它是有效密钥还是负实例化密钥 \[em] 它都会从 \fIdest_keyring\fP
+中指定的密钥环中替换任何其他具有相同类型和描述的密钥。
+.SH "RETURN VALUE"
+成功时，\fBrequest_key\fP() 返回它找到或导致创建的密钥的序列号。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+密钥环不可用于用户修改。
+.TP 
+\fBEDQUOT\fP
+创建此密钥或将其链接到密钥环会超出此用户的密钥配额。
+.TP 
+\fBEFAULT\fP
+\fItype\fP、\fIdescription\fP 或 \fIcallout_info\fP 之一指向进程的可访问地址空间之外。
+.TP 
+\fBEINTR\fP
+请求被信号中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fItype\fP 或 \fIdescription\fP 中指定的字符串 (包括终止空字节) 的大小超过限制 (分别为 32 字节和 4096 字节)。
+.TP 
+\fBEINVAL\fP
+\fIcallout_info\fP 中指定的字符串 (包括终止空字节) 的大小超出了系统页面大小。
+.TP 
+\fBEKEYEXPIRED\fP
+找到了过期的密钥，但无法获得替换密钥。
+.TP 
+\fBEKEYREJECTED\fP
+生成新密钥的尝试被拒绝。
+.TP 
+\fBEKEYREVOKED\fP
+找到了一个已撤销的密钥，但无法获得替换密钥。
+.TP 
+\fBENOKEY\fP
+找不到匹配的密钥。
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建密钥。
+.TP 
+\fBEPERM\fP
+\fItype\fP 参数以句点 (\[aq].\[aq]) 开头。
+.SH VERSIONS
+.\" commit 3e30148c3d524a9c1c63ca28261bc24c457eb07a
+本系统调用最早出现在 Linux 2.6.10。 在 Linux 2.6.13 中添加了根据请求实例化密钥的能力。
+.SH STANDARDS
+这个系统调用是一个非标准的 Linux 扩展。
+.SH EXAMPLES
+下面的程序演示了 \fBrequest_key\fP() 的使用。 系统调用的 \fItype\fP、\fIdescription\fP 和
+\fIcallout_info\fP 参数取自命令行参数中提供的值。 调用将会话密钥环指定为目标密钥环。
+.PP
+为了演示这个程序，我们首先在文件 \fI/etc/request\-key.conf\fP 中创建一个合适的条目。
+.PP
+.in +4n
+.EX
+$ 须藤 sh
+$ 须藤 sh
+          \fB> /etc/request\-key.conf\fP
+$ 须藤 sh
+.EE
+.in
+.PP
+此条目指定当必须实例化具有前缀 "mtk:" 的新 "user" 密钥时，应通过 \fBkeyctl\fP(1) 命令的 \fBinstantiate\fP
+操作执行该任务。 提供给 \fBinstantiate\fP 操作的参数是: 未实例化的密钥 (\fI%k\fP) 的 ID; 提供给
+\fBrequest_key\fP() 调用 (\fI%c\fP) 的标注数据; 以及请求者 (即 \fBrequest_key\fP()) 的调用者) 的会话密钥环
+(\fI%S\fP)。 有关这些 \fI%\fP 说明符的详细信息，请参见 \fBrequest\-key.conf\fP(5)。
+.PP
+然后我们运行程序并检查 \fI/proc/keys\fP 的内容以验证请求的密钥已被实例化:
+.PP
+.in +4n
+.EX
+$ \fB./t_request_key user mtk:key1 "Payload data"\fP
+$ \fBgrep \[aq]2dddaf50\[aq] /proc/keys\fP
+2dddaf50 I\-\-Q\-\-\-1 perm 3f010000 1000 1000 用户 mtk:key1: 12
+.EE
+.in
+.PP
+有关使用此程序的另一个示例，请参见 \fBkeyctl\fP(2)。
+.SS "Program source"
+.\" SRC BEGIN (t_request_key.c)
+\&
+.EX
+/* t_request_key.c */
+
+#include <keyutils.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    key_serial_t key;
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s type description callout\-data\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    key = request_key(argv[1], argv[2], argv[3],
+                      KEY_SPEC_SESSION_KEYRING);
+    if (key == \-1) {
+        perror("request_key");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Key ID is %jx\en", (uintmax_t) key);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBkeyctl\fP(1), \fBadd_key\fP(2), \fBkeyctl\fP(2), \fBkeyctl\fP(3), \fBcapabilities\fP(7),
+\fBkeyrings\fP(7), \fBkeyutils\fP(7), \fBpersistent\-keyring\fP(7),
+\fBprocess\-keyring\fP(7), \fBsession\-keyring\fP(7), \fBthread\-keyring\fP(7),
+\fBuser\-keyring\fP(7), \fBuser\-session\-keyring\fP(7), \fBrequest\-key\fP(8)
+.PP
+.\" commit b68101a1e8f0263dbc7b8375d2a7c57c6216fb76
+.\" commit 3db38ed76890565772fcca3279cc8d454ea6176b
+内核源文件 \fIDocumentation/security/keys/core.rst\fP 和
+\fIDocumentation/keys/request\-key.rst\fP (或者，在 Linux 4.13 之前，在文件
+\fIDocumentation/security/keys.txt\fP 和
+\fIDocumentation/security/keys\-request\-key.txt\fP).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

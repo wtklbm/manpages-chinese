@@ -1,0 +1,183 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2019 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pidfd_open 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pidfd_open \- 获取引用进程的文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_pidfd_open, pid_t \fP\fIpid\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBpidfd_open\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBpidfd_open\fP() 系统调用创建一个文件描述符，该文件描述符引用其 PID 在 \fIpid\fP 中指定的进程。 文件描述符作为函数结果返回;
+在文件描述符上设置了 close\-on\-exec 标志。
+.PP
+\fIflags\fP 参数要么具有值 0，要么包含以下标志:
+.TP 
+\fBPIDFD_NONBLOCK\fP (since Linux 5.10)
+.\" commit 4da9af0014b51c8b015ed8c622440ef28912efe6
+返回一个非阻塞文件描述符。 如果文件描述符引用的进程尚未终止，则尝试使用 \fBwaitid\fP(2) 等待文件描述符将立即返回错误 \fBEAGAIN\fP
+而不是阻塞。
+.SH "RETURN VALUE"
+成功时，\fBpidfd_open\fP() 返回一个文件描述符 (一个非负整数)。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 无效。
+.TP 
+\fBEINVAL\fP
+\fIpid\fP 无效。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制 (请参见 \fBgetrlimit\fP(2)).x 中 \fBRLIMIT_NOFILE\fP 的描述)。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENODEV\fP
+匿名 inode 文件系统在此内核中不可用。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBESRCH\fP
+\fIpid\fP 指定的进程不存在。
+.SH VERSIONS
+\fBpidfd_open\fP() 最早出现在 Linux 5.3。
+.SH STANDARDS
+\fBpidfd_open\fP() 是 Linux 特定的。
+.SH NOTES
+以下代码序列可用于获取 \fBfork\fP(2): 的子项的文件描述符
+.PP
+.in +4n
+.EX
+pid = fork();
+if (pid > 0) {     /* If parent */
+    pidfd = pidfd_open(pid, 0);
+    ...
+}
+.EE
+.in
+.PP
+即使子进程在 \fBpidfd_open\fP() 调用时已经终止，它的 PID 也不会被回收，返回的文件描述符将引用生成的僵尸进程。
+但是请注意，只有满足以下条件才能保证这一点:
+.IP \[bu] 3
+\fBSIGCHLD\fP 的处置尚未明确设置为 \fBSIG_IGN\fP (请参见 \fBsigaction\fP(2));
+.IP \[bu]
+在为 \fBSIGCHLD\fP 建立处理程序或将该信号的配置设置为 \fBSIG_DFL\fP 时未指定 \fBSA_NOCLDWAIT\fP 标志 (参见
+\fBsigaction\fP(2)); and
+.IP \[bu]
+僵尸进程没有在程序的其他地方被收割 (例如，通过异步执行的信号处理程序或 \fBwait\fP(2) 或另一个线程中的类似)。
+.PP
+.\"
+如果这些条件中的任何一个不成立，那么应该使用带有 \fBCLONE_PIDFD\fP 标志的 \fBclone\fP(2) 创建子进程 (连同引用它的 PID
+文件描述符)。
+.SS "Use cases for PID file descriptors"
+\fBpidfd_open\fP() (或带有 \fBCLONE_PID\fP 标志的 \fBclone\fP(2)) 返回的 PID 文件描述符可用于以下目的:
+.IP \[bu] 3
+\fBpidfd_send_signal\fP(2) 系统调用可用于向 PID 文件描述符引用的进程发送信号。
+.IP \[bu]
+可以使用 \fBpoll\fP(2)、\fBselect\fP(2) 和 \fBepoll\fP(7) 监视 PID 文件描述符。
+当它引用的进程终止时，这些接口将文件描述符指示为可读。 但是请注意，在当前实现中，无法从文件描述符 (\fBread\fP(2)
+读取任何内容，文件描述符失败并显示错误 \fBEINVAL\fP)。
+.IP \[bu]
+如果 PID 文件描述符引用调用进程的子进程，则可以使用 \fBwaitid\fP(2) 等待它。
+.IP \[bu]
+\fBpidfd_getfd\fP(2) 系统调用可用于获取 PID 文件描述符引用的另一个进程的文件描述符的副本。
+.IP \[bu]
+PID 文件描述符可以用作 \fBsetns\fP(2) 的引用数，以便移动到一个或多个与文件描述符所引用的进程相同的命名空间。
+.IP \[bu]
+PID 文件描述符可以用作 \fBprocess_madvise\fP(2) 的参数，以便为文件描述符所引用的进程的内存使用模式提供建议。
+.PP
+\fBpidfd_open\fP() 系统调用是为已存在的进程获取 PID 文件描述符的首选方式。 另一种方法是通过打开 \fI/proc/[pid]\fP
+目录来获取文件描述符。 但是，后一种技术只有在挂载了 \fBproc\fP(5) 文件系统时才有可能; 此外，通过这种方式获得的文件描述符是 \fInot\fP
+可轮询的，不能用 \fBwaitid\fP(2) 等待。
+.SH EXAMPLES
+.\"
+下面的程序为其 PID 指定为其命令行参数的进程打开一个 PID 文件描述符。 然后它使用 \fBpoll\fP(2) 来监视进程退出的文件描述符，如
+\fBEPOLLIN\fP 事件所示。
+.SS "Program source"
+.\" SRC BEGIN (pidfd_open.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+static int
+pidfd_open(pid_t pid, unsigned int flags)
+{
+    return syscall(SYS_pidfd_open, pid, flags);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int            pidfd, ready;
+    struct pollfd  pollfd;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <pid>\en", argv[0]);
+        exit(EXIT_SUCCESS);
+    }
+
+    pidfd = pidfd_open(atoi(argv[1]), 0);
+    if (pidfd == \-1) {
+        perror("pidfd_open");
+        exit(EXIT_FAILURE);
+    }
+
+    pollfd.fd = pidfd;
+    pollfd.events = POLLIN;
+
+    ready = poll(&pollfd, 1, \-1);
+    if (ready == \-1) {
+        perror("poll");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Events (%#x): POLLIN is %sset\en", pollfd.revents,
+           (pollfd.revents & POLLIN) ? "" : "not ");
+
+    close(pidfd);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBkill\fP(2), \fBpidfd_getfd\fP(2), \fBpidfd_send_signal\fP(2),
+\fBpoll\fP(2), \fBprocess_madvise\fP(2), \fBselect\fP(2), \fBsetns\fP(2), \fBwaitid\fP(2),
+\fBepoll\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

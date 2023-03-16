@@ -1,0 +1,227 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" peter memishian -- meem@gnu.ai.mit.edu
+.\" $Id: insque.3,v 1.2 1996/10/30 21:03:39 meem Exp meem $
+.\" and Copyright (c) 2010, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"   Linux libc source code (5.4.7)
+.\"   Solaris 2.x, OSF/1, and HP-UX manpages
+.\"   Curry's "UNIX Systems Programming for SVR4" (O'Reilly & Associates 1996)
+.\"
+.\" Changed to POSIX, 2003-08-11, aeb+wh
+.\" mtk, 2010-09-09: Noted glibc 2.4 bug, added info on circular
+.\"	lists, added example program
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH insque 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+insque, remque\-insert/remove 队列中的一项
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <search.h>\fP
+.PP
+\fBvoid insque(void *\fP\fIelem\fP\fB, void *\fP\fIprev\fP\fB);\fP
+\fBvoid remque(void *\fP\fIelem\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBinsque\fP(), \fBremque\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBinsque\fP() 和 \fBremque\fP() 函数操作双向链表。 列表中的每个元素都是一个结构体，其前两个元素是前向指针和后向指针。
+链表可以是线性的 (即，列表末尾为 NULL 前向指针，列表开头为 NULL 后向指针) 或循环。
+.PP
+\fBinsque\fP() 函数在 \fIprev\fP 指向的元素之后立即插入 \fIelem\fP 指向的元素。
+.PP
+如果列表是线性的，那么调用 \fIinsque(elem, NULL)\fP 可以用来插入初始列表元素，调用将 \fIelem\fP 的前向和后向指针设置为
+NULL。
+.PP
+如果列表是循环的，调用者应确保第一个元素的前向和后向指针被初始化为指向该元素，并且 \fBinsque\fP() 调用的 \fIprev\fP 参数也应指向该元素。
+.PP
+\fBremque\fP() 函数从双向链表中删除 \fIelem\fP 指向的元素。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBinsque\fP(),
+\fBremque\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+.\" e.g., SunOS, Linux libc4 and libc5
+在古代系统上，这些函数的参数是 \fIstruct qelem *\fP 类型，定义为:
+.PP
+.in +4n
+.EX
+struct qelem {
+    struct qelem *q_forw;
+    struct qelem *q_back;
+    char          q_data[1];
+};
+.EE
+.in
+.PP
+如果在包含 \fI<search.h>\fP 之前定义了 \fB_GNU_SOURCE\fP，这仍然是您将得到的结果。
+.PP
+.\" Linux libc4 and libc 5 placed them
+.\" in \fI<stdlib.h>\fP.
+这些函数的原型位置在 UNIX 的几个版本中有所不同。 以上是 POSIX 版本。 一些系统将它们放在 \fI<string.h>\fP 中。
+.SH BUGS
+在 glibc 2.4 及更早版本中，无法将 \fIprev\fP 指定为 NULL。
+因此，要构建线性列表，调用者必须使用包含列表前两个元素的初始调用来构建列表，并适当初始化每个元素中的前向和后向指针。
+.SH EXAMPLES
+下面的程序演示了 \fBinsque\fP() 的使用。 这是该程序的示例运行:
+.PP
+.in +4n
+.EX
+$ \fB./a.out \-c a b c\fP
+遍历完成列表:
+    a
+    b
+    c
+那是一个循环列表
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (insque.c)
+\&
+.EX
+#include <search.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+struct element {
+    struct element *forward;
+    struct element *backward;
+    char *name;
+};
+
+static struct element *
+new_element(void)
+{
+    struct element *e;
+
+    e = malloc(sizeof(*e));
+    if (e == NULL) {
+        fprintf(stderr, "malloc() failed\en");
+        exit(EXIT_FAILURE);
+    }
+
+    return e;
+}
+
+int
+main(int argc, char *argv[])
+{
+    struct element *first, *elem, *prev;
+    int circular, opt, errfnd;
+
+    /* The "\-c" command\-line option can be used to specify that the
+       list is circular. */
+
+    errfnd = 0;
+    circular = 0;
+    while ((opt = getopt(argc, argv, "c")) != \-1) {
+        switch (opt) {
+        case \[aq]c\[aq]:
+            circular = 1;
+            break; 
+        default:
+            errfnd = 1;
+            break;
+        }
+    }
+
+    if (errfnd || optind >= argc) {
+        fprintf(stderr,  "Usage: %s [\-c] string...\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Create first element and place it in the linked list. */
+
+    elem = new_element();
+    first = elem;
+
+    elem\->name = argv[optind];
+
+    if (circular) {
+        elem\->forward = elem;
+        elem\->backward = elem;
+        insque(elem, elem);
+    } else {
+        insque(elem, NULL);
+    }
+
+    /* Add remaining command\-line arguments as list elements. */
+
+    while (++optind < argc) {
+        prev = elem;
+
+        elem = new_element();
+        elem\->name = argv[optind];
+        insque(elem, prev);
+    }
+
+    /* Traverse the list from the start, printing element names. */
+
+    printf("Traversing completed list:\en");
+    elem = first;
+    做 {
+        printf("    %s\en", elem\->name);
+        elem = elem\->forward;
+    } while (elem != NULL && elem != first);
+
+    if (elem == first)
+        printf("That was a circular list\en");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBqueue\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,124 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-st400 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-st400
+.SH NAME
+sane\-st400 \- 西门子 ST/Highscan 平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-st400\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对西门子 ST400 平板扫描仪和兼容机的访问。
+目前该后台支持以下扫描仪:
+.PP
+.RS
+西门子 ST400 (6 位灰度)
+.br
+西门子 ST800 (6 位灰度)
+.br
+.RE
+.PP
+该驱动程序支持高达 8bpp 的艺术线条和灰度扫描。
+.PP
+Siemens ST/Highscan 系列包括更多型号，例如 ST300 和 ST600。
+如果您拥有这些扫描仪中的一台，或者除上面列出的扫描仪以外的其他扫描仪，请通过将扫描仪的型号名称、SCSI ID 和固件版本发送到
+\fIsane\-devel@alioth\-lists.debian.net\fP 来告知我们。 查看
+\fIhttp://www.sane\-project.org/mailing\-lists.html\fP 关于订阅 sane\-devel 的信息。
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于 SCSI 扫描仪的特殊设备的路径名。对于 SCSI 扫描仪，特殊设备名称必须是泛型 SCSI
+设备或此类设备的符号链接。 例如，在 Linux 下，这样的设备名称可以是 \fI/dev/sga\fP 或 \fI/dev/sge\fP。 有关详细信息，请参见
+\fBsane\-scsi\fP(5)。
+
+.SH CONFIGURATION
+\fIst400.conf\fP 文件的内容是对应西门子扫描仪的设备名称列表。 空行和以哈希标记 (#) 开头的行将被忽略。 示例配置文件如下所示:
+.PP
+.RS
+/dev/scanner
+.br
+# 这是一条评论
+.br
+/dev/sge
+.RE
+.PP
+与 SANE 一起分发的默认配置文件如下所示:
+.PP
+.RS
+scsi 西门子 "ST 400" 扫描器 * * 3 0
+.RE
+.PP
+在此配置中，驱动程序只能访问 SCSI ID 3 LUN 0 中的 ST400 型号 (原因请参见下面的 \fBBUGS\fP 部分)。
+要将驱动程序与其他扫描仪型号一起使用，请在配置文件中添加适当的行。 例如，要将其用于 SCSI ID 3 LUN 0 的 ST800，请添加以下行:
+.PP
+.RS
+scsi 西门子 "ST 800" 扫描器 * * 3 0
+.RE
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/st400.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-st400.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-st400.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_ST400\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。例如，值 128 请求打印所有调试输出。较小的级别减少冗长。
+
+.SH "MISSING FUNCTIONALITY"
+
+除了最基本的东西。
+
+.SH BUGS
+目前，后端不检查连接的设备是否真的是 ST400。 它会愉快地接受与配置条目匹配的所有内容。 这使得使用其他扫描器测试后端变得容易:
+只需在配置文件中添加适当的行。 分发的配置文件 (见上文) 仅适用于 ST400。 注意: 如果根本没有配置文件，后端默认为
+\fI/dev/scanner\fP。
+.PP
+ST400 响应所有八个 SCSI LUN。 通常这不是问题，因为 LUN 支持通常在 SCSI
+驱动程序中被禁用，但是如果您在设备列表中看到扫描仪的多个实例，请在 SCSI 设置中禁用 LUN 或更改配置文件中的条目以匹配 LUN 仅 0。
+
+.SH DEBUG
+如果遇到错误，请将环境变量 \fBSANE_DEBUG_ST400\fP 设置为 128 并尝试重新生成问题。然后给我一份附有日志的报告。
+.PP
+如果您遇到 SCSI 总线错误或修剪或者移位的图像，请在向我发送报告之前将环境变量 \fBSANE_DEBUG_SANEI_SCSI\fP 设置为 128。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5)
+.br
+\fIhttp://www.informatik.uni\-oldenburg.de/~ingo/sane/\fP
+
+.SH AUTHOR
+英戈・威尔肯 <\fIIngo.Wilken@informatik.uni\-oldenburg.de\fP>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

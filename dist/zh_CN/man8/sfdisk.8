@@ -1,0 +1,753 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: sfdisk
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-08-04
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SFDISK 8 2022\-08\-04 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+sfdisk \- 显示或操作磁盘分区表
+.SH SYNOPSIS
+.sp
+\fBsfdisk\fP [options] \fIdevice\fP [\fB\-N\fP \fIpartition\-number\fP]
+.sp
+\fBsfdisk\fP [options] \fIcommand\fP
+.SH DESCRIPTION
+.sp
+\fBsfdisk\fP 是一个面向脚本的工具，用于对任何块设备进行分区。如果在终端上执行，它以交互模式运行 (stdin 指的是终端)。
+.sp
+由于版本 2.26 \fBsfdisk\fP 支持 MBR (DOS)、GPT、SUN 和 SGI 磁盘标签，但不再提供 CHS
+(Cylinder\-Head\-Sector) 寻址的任何功能。CHS 对 Linux 从来都不重要，这个寻址概念对新设备没有任何意义。
+.sp
+\fBsfdisk\fP 在创建新磁盘标签时保护第一个磁盘扇区。选项 \fB\-\-wipe always\fP 禁用此保护。请注意，\fBfdisk\fP(8) 和
+\fBcfdisk\fP(8) 默认完全擦除该区域。
+.sp
+\fBsfdisk\fP (从版本 2.26 开始) \fBaligns the start and end of partitions\fP 到块设备 I/O
+限制指定相对大小、使用默认值或使用乘法后缀 (例如 MiB)
+作为大小。如果起始偏移量在扇区和分区大小相对或乘法后缀中准确指定，则分区大小可能会由于对齐而优化 (减少或扩大)。
+.sp
+推荐的方法是根本不指定起始偏移量，而是以 MiB、GiB (或大约) 为单位指定分区大小。在这种情况下，\fBsfdisk\fP 将所有分区对齐到块设备
+I/O 限制 (或者当 I/O 限制太小然后到兆字节边界以保持磁盘布局可移植)。如果不需要此默认行为
+(通常用于非常小的分区)，则指定扇区中的偏移量和大小。在这种情况下，\fBsfdisk\fP 完全遵循指定的数字，没有任何优化。
+.sp
+\fBsfdisk\fP 不像 \fBfdisk\fP(8) 那样为 SGI 和 SUN 磁盘标签创建标准系统分区。有必要显式创建所有分区，包括全盘系统分区。
+.sp
+\fBsfdisk\fP 使用 \fBBLKRRPART\fP (重新读取分区表) ioctl 来确保该设备未被系统或其他工具使用 (另请参见
+\fB\-\-no\-reread\fP). 它 \ (可能是此特性或其他 \fBsfdisk\fP 活动与 \fBsystemd\-udevd\fP(8)
+竞争。避免可能发生冲突的推荐方法是使用 \fB\-\-lock\fP 选项。独占锁将导致 \fBsystemd\-udevd\fP 跳过设备上的事件处理。
+.sp
+\fBsfdisk\fP 提示只是对用户的提示，显示的分区号并不意味着将创建相同的分区表条目 (如果未指定 \fB\-N\fP)，尤其是对于有间隙的表。
+.SH COMMANDS
+.sp
+这些命令是互斥的。
+.sp
+[\fB\-N\fP \fIpartition\-number\fP] \fIdevice\fP
+.RS 4
+默认的 \fBsfdisk\fP 命令是从标准输入中读取 \fIdevice\fP
+所需分区的规范，然后根据规范创建分区表。有关输入格式的说明，请参见下文。如果标准输入是一个终端，那么 \fBsfdisk\fP 会启动一个交互式会话。
+.sp
+如果指定选项 \fB\-N\fP，则更改将应用于 \fIpartition\-number\fP 寻址的分区。未修改分区的未指定字段。
+.sp
+请注意，它 \(cqs 可以使用 \fB\-N\fP 寻址未使用的分区。例如，一个 MBR 总是包含 4
+个分区，但使用的分区数可能更少。在这种情况下，\fBsfdisk\fP 遵循分区表中的默认值，并且不使用 \fB\-N\fP 给定的未使用分区的内置默认值。另请详见
+\fB\-\-append\fP。
+.RE
+.sp
+\fB\-A\fP, \fB\-\-activate\fP \fIdevice\fP [\fIpartition\-number\fP...]
+.RS 4
+打开指定分区的可引导标志并关闭所有未指定分区的可引导标志。可以使用特殊占位符 \(aq\-\(aq 而不是分区号来关闭所有分区上的可引导标志。
+.sp
+只有 MBR 和 PMBR 支持激活命令。如果检测到 GPT 标签，则 \fBsfdisk\fP 会打印警告并自动进入 PMBR。
+.sp
+如果未指定 \fIpartition\-number\fP，则列出具有启用标志的分区。
+.RE
+.sp
+\fB\-\-backup\-pt\-sectors\fP \fIdevice\fP
+.RS 4
+以二进制格式备份当前分区表扇区并退出。请参见 \fBBACKING UP THE PARTITION TABLE\fP 部分。
+.RE
+.sp
+\fB\-\-delete\fP \fIdevice\fP [\fIpartition\-number\fP...]
+.RS 4
+删除所有或指定的分区。
+.RE
+.sp
+\fB\-d\fP, \fB\-\-dump\fP \fIdevice\fP
+.RS 4
+以可用作 \fBsfdisk\fP 输入的格式转储设备的分区。请参见 \fBBACKING UP THE PARTITION TABLE\fP 部分。
+.RE
+.sp
+\fB\-g\fP, \fB\-\-show\-geometry\fP [\fIdevice\fP...]
+.RS 4
+列出所有或指定设备的几何结构。为了向后兼容，不推荐使用的选项 \fB\-\-show\-pt\-geometry\fP 与这个具有相同的含义。
+.RE
+.sp
+\fB\-J\fP, \fB\-\-json\fP \fIdevice\fP
+.RS 4
+以 JSON 格式转储设备的分区。请注意，\fBsfdisk\fP 无法使用 JSON 作为输入格式。
+.RE
+.sp
+\fB\-l\fP, \fB\-\-list\fP [\fIdevice\fP...]
+.RS 4
+列出所有或指定设备的分区。该命令可与 \fB\-\-verify\fP 一起使用。
+.RE
+.sp
+\fB\-F\fP, \fB\-\-list\-free\fP [\fIdevice\fP...]
+.RS 4
+列出所有或指定设备上的空闲未分区区域。
+.RE
+.sp
+\fB\-\-part\-attrs\fP \fIdevice partition\-number\fP [\fIattributes\fP]
+.RS 4
+更改 GPT 分区属性位。如果未指定 \fIattributes\fP，则打印当前分区设置。\fIattributes\fP
+参数是以逗号或空格分隔的位编号或位名称列表。例如，字符串 "RequiredPartition,50,51" 设置了三个位。目前支持的属性位有:
+.sp
+\fBBit 0 (RequiredPartition)\fP
+.RS 4
+如果设置了该位，则平台需要分区才能函数。分区的创建者表示，删除或修改内容可能会导致平台特性丢失或平台无法启动或运行。去掉这个分区，系统就不能正常量了，应该认为是系统硬件的一部分。
+.RE
+.sp
+\fBBit 1 (NoBlockIOProtocol)\fP
+.RS 4
+EFI 固件应该忽略分区的内容，而不是尝试从中读取。
+.RE
+.sp
+\fBBit 2 (LegacyBIOSBootable)\fP
+.RS 4
+该分区可以由传统 BIOS 固件引导。
+.RE
+.sp
+\fBBits 3\-47\fP
+.RS 4
+未定义且必须为零。保留用于 UEFI 规范的 future 版本的扩展。
+.RE
+.sp
+\fBBits 48\-63\fP
+.RS 4
+为 GUID 特定用途保留。这些位的使用将因分区类型而异。例如，Microsoft 使用位 60 表示只读，61 位表示另一个分区的卷影副本，62
+位表示隐藏分区，63 位表示禁用自动挂载。
+.RE
+.RE
+.sp
+\fB\-\-part\-label\fP \fIdevice partition\-number\fP [\fIlabel\fP]
+.RS 4
+更改 GPT 分区名称 (label)。如果未指定 \fIlabel\fP，则打印当前分区标签。
+.RE
+.sp
+\fB\-\-part\-type\fP \fIdevice partition\-number\fP [\fItype\fP]
+.RS 4
+更改分区类型。如果未指定 \fItype\fP，则打印当前分区类型。
+.sp
+\fItype\fP 参数对于 MBR 是十六进制的，对于 GPT 是 GUID，类型别名 (例如 "linux") 或类型快捷方式 (例如
+\(aqL\(aq)。为了向后兼容，选项 \fB\-c\fP 和 \fB\-\-id\fP 的含义与此相同。
+.RE
+.sp
+\fB\-\-part\-uuid\fP \fIdevice partition\-number\fP [\fIuuid\fP]
+.RS 4
+更改 GPT 分区 UUID。如果未指定 \fIuuid\fP，则打印当前分区 UUID。
+.RE
+.sp
+\fB\-\-disk\-id\fP \fIdevice\fP [\fIid\fP]
+.RS 4
+更改磁盘标识符。如果未指定 \fIid\fP，则打印当前标识符。标识符是 GPT 的 UUID 或 MBR 的无符号整数。
+.RE
+.sp
+\fB\-r\fP, \fB\-\-reorder\fP \fIdevice\fP
+.RS 4
+重新编号分区，按它们的起始偏移量排序。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-show\-size\fP [\fIdevice\fP...]
+.RS 4
+以 1024 字节大小为单位列出所有或指定设备的大小。此命令已弃用，取而代之的是 \fBblockdev\fP(8)。
+.RE
+.sp
+\fB\-T\fP, \fB\-\-list\-types\fP
+.RS 4
+打印当前磁盘标签或 \fB\-\-label\fP 指定的标签的所有支持类型。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-verify\fP [\fIdevice\fP...]
+.RS 4
+测试分区表和分区是否正确。
+.RE
+.sp
+\fB\-\-relocate\fP \fIoper\fP \fIdevice\fP
+.RS 4
+重新定位分区表头。目前仅 GPT 标头支持此命令。参数 \fIoper\fP 可以是:
+.sp
+\fBgpt\-bak\-std\fP
+.RS 4
+将 GPT 备份标头移动到设备末端的标准位置。
+.RE
+.sp
+\fBgpt\-bak\-mini\fP
+.RS 4
+将 GPT 备份标头移到最后一个分区后面。请注意，UEFI 标准要求设备末尾有备份标头，分区工具可以自动重新定位标头以符合标准。
+.RE
+.RE
+.SH OPTIONS
+.sp
+\fB\-a\fP, \fB\-\-append\fP
+.RS 4
+不要 \(cqt 创建一个新的分区表，但只追加指定的分区。
+.sp
+请注意，在这种情况下未使用的分区可能会被重新使用，尽管它不是分区表中的最后一个分区。另请参见 \fB\-N\fP 以指定分区表中的条目。
+.RE
+.sp
+\fB\-b\fP, \fB\-\-backup\fP
+.RS 4
+在开始分区之前备份当前的分区表扇区。默认备份文件名为
+\fI~/sfdisk\-<device>\-<offset>.bak\fP; 要使用其他名称，请参见选项
+\fB\-O\fP、\fB\-\-backup\-file\fP。有关详细信息，请参见 \fBBACKING UP THE PARTITION TABLE\fP 部分。
+.RE
+.sp
+\fB\-\-color\fP[\fB=\fP\fIwhen\fP]
+.RS 4
+对输出进行着色。可选参数 \fIwhen\fP 可以是 \fBauto\fP、\fBnever\fP 或 \fBalways\fP。如果省略 \fIwhen\fP 参数，则默认为
+\fBauto\fP。可以禁用颜色; 对于当前的内置默认值，请参见 \fB\-\-help\fP 输出。另请参见 \fBCOLORS\fP 部分。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-force\fP
+.RS 4
+禁用所有一致性检查。
+.RE
+.sp
+\fB\-\-Linux\fP
+.RS 4
+弃用和忽略的选项。与 Linux (和其他现代操作系统) 兼容的分区是默认的。
+.RE
+.sp
+\fB\-\-lock\fP[=\fImode\fP]
+.RS 4
+对其操作的设备或文件使用独占 BSD 锁。可选参数 \fImode\fP 可以是 \fByes\fP、\fBno\fP (或 1 和 0) 或
+\fBnonblock\fP。如果省略 \fImode\fP 参数，则默认为 \fByes\fP。此选项会覆盖环境变量
+\fB$LOCK_BLOCK_DEVICE\fP。默认情况下根本不使用任何锁，但建议使用它 \(cqs 以避免与 \fBsystemd\-udevd\fP(8)
+或其他工具发生冲突。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-no\-act\fP
+.RS 4
+除了写入设备外，执行所有操作。
+.RE
+.sp
+\fB\-\-no\-reread\fP
+.RS 4
+不要通过 re\-read\-partition\-table ioctl 检查设备是否在使用中。
+.RE
+.sp
+\fB\-\-no\-tell\-kernel\fP
+.RS 4
+不要 \(cqt 告诉内核有关分区更改的信息。建议将此选项与 \fB\-\-no\-reread\fP 一起修改已用磁盘上的分区。不应使用修改后的分区
+(例如，挂载)。
+.RE
+.sp
+\fB\-O\fP, \fB\-\-backup\-file\fP \fIpath\fP
+.RS 4
+覆盖默认备份文件名。请注意，设备名称和偏移量始终追加到文件名。
+.RE
+.sp
+\fB\-\-move\-data\fP[\fB=\fP\fIpath\fP]
+.RS 4
+分区重定位后移动数据，例如将分区的开头移动到磁盘上的另一个位置时。分区的大小必须保持不变，新旧位置可能会重叠。此选项需要选项 \fB\-N\fP
+以便仅在一个特定分区上进行处理。
+.sp
+可选的 \fIpath\fP 指定日志文件名。日志文件包含有关分区数据的所有 read/write 操作的信息。作为 \fIpath\fP 的单词
+"@default" 强制 \fBsfdisk\fP 使用 \fI~/sfdisk\-<devname>.move\fP 作为日志。自 v2.35
+起，日志是可选的。
+.sp
+请注意，此操作有风险且不是原子操作。请注意，此操作有风险且不是原子操作。
+.sp
+另请详见 \fB\-\-move\-use\-fsync\fP。
+.sp
+在下面的示例中，第一个命令在第一个分区之前创建一个 100MiB 的空闲区域并移动它包含的数据 (例如文件系统)，下一个命令从空闲空间 (偏移量
+2048) 创建一个新分区，最后一个命令重新排序分区以匹配磁盘顺序 (原来的 sdc1 将变为 sdc2)。
+.sp
+\fBecho \(aq+100M,\(aq | sfdisk \-\-move\-data /dev/sdc \-N 1\fP \fBecho \(aq2048,\(aq | sfdisk /dev/sdc \-\-append\fP \fBsfdisk /dev/sdc \-\-reorder\fP
+.RE
+.sp
+\fB\-\-move\-use\-fsync\fP
+.RS 4
+当通过 \fB\-\-move\-data\fP 将数据移动到新位置时，在每次写入后使用 \fBfsync\fP(2) 系统调用。
+.RE
+.sp
+\fB\-o\fP, \fB\-\-output\fP \fIlist\fP
+.RS 4
+指定要打印的输出列。使用 \fB\-\-help\fP 获取所有受支持列的列表。
+.sp
+如果 \fIlist\fP 以 \fI+list\fP 格式指定 (例如，\fB\-o +UUID\fP).
+.RE
+.sp
+\fB\-q\fP, \fB\-\-quiet\fP
+.RS 4
+抑制额外的信息消息。
+.RE
+.sp
+\fB\-u\fP, \fB\-\-unit S\fP
+.RS 4
+弃用的选项。仅支持扇区元。使用 \fB\-\-show\-size\fP 命令时不支持此选项。
+.RE
+.sp
+\fB\-X\fP, \fB\-\-label\fP \fItype\fP
+.RS 4
+指定磁盘标签类型 (例如，\fBdos\fP、\fBgpt\fP、...)。如果没有给出该选项，则 \fBsfdisk\fP
+默认为现有标签，但如果设备上还没有标签，则类型默认为 \fBdos\fP。默认或当前标签可能会被 ` 标签: <name>"
+脚本标题行覆盖。选项 \fB\-\-label\fP 不会强制 \fBsfdisk\fP 创建空磁盘标签 (请参见下面的 \fBEMPTY DISK LABEL\fP
+部分)。
+.RE
+.sp
+\fB\-Y\fP, \fB\-\-label\-nested\fP \fItype\fP
+.RS 4
+强制编辑嵌套的磁盘标签。主磁盘标签必须已经存在。此选项允许在具有 GPT 的设备上编辑例如 hybrid/protective MBR。
+.RE
+.sp
+\fB\-w\fP, \fB\-\-wipe\fP \fIwhen\fP
+.RS 4
+从设备中擦除文件系统、RAID 和分区表签名，以避免可能的冲突。参数 \fIwhen\fP 可以是 \fBauto\fP、\fBnever\fP 或
+\fBalways\fP。当没有给出这个选项时，默认是 \fBauto\fP，在这种情况下，只有在交互模式下才会擦除签名; 如果参数 \fIwhen\fP 不是
+\fBnever\fP，则在创建新分区表之前总是擦除旧分区表签名除外。\fBauto\fP 模式也不会擦除第一个扇区 (引导扇区)，需要用 \fBalways\fP
+模式擦除这个区域。在所有情况下，检测到的签名都会在创建新分区表之前通过警告消息进行报告。另请参见 \fBwipefs\fP(8) 命令。
+.RE
+.sp
+\fB\-W\fP, \fB\-\-wipe\-partitions\fP \fIwhen\fP
+.RS 4
+从新创建的分区中擦除文件系统、RAID 和分区表签名，以避免可能的冲突。参数 \fIwhen\fP 可以是 \fBauto\fP、\fBnever\fP 或
+\fBalways\fP。当没有给出这个选项时，默认是
+\fBauto\fP，在这种情况下，只有在交互模式下并且在用户确认后才会擦除签名。在所有情况下，检测到的签名都会在创建新分区后通过警告消息进行报告。另请参见
+\fBwipefs\fP(8) 命令。
+.RE
+.sp
+\fB\-v\fP, \fB\-\-version\fP
+.RS 4
+显示版本信息并退出。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.SH "INPUT FORMATS"
+.sp
+\fBsfdisk\fP 支持两种输入格式和泛型标题行。
+.SS "Header lines"
+.sp
+可选的标题行指定适用于分区表的泛型信息。标题行格式为:
+.sp
+\fB<name>: <value>\fP
+.sp
+当前识别的标头是:
+.sp
+\fBunit\fP
+.RS 4
+指定分区元。唯一支持的元是 \fBsectors\fP。
+.RE
+.sp
+\fBlabel\fP
+.RS 4
+指定分区表类型。例如 \fBdos\fP 或 \fBgpt\fP。
+.RE
+.sp
+\fBlabel\-id\fP
+.RS 4
+指定分区表标识符。它应该是 MBR 的十六进制数 (带有 0x 前缀) 和 GPT 的 UUID。
+.RE
+.sp
+\fBfirst\-lba\fP
+.RS 4
+指定 GPT 分区的第一个可用扇区。
+.RE
+.sp
+\fBlast\-lba\fP
+.RS 4
+指定 GPT 分区的最后可用扇区。
+.RE
+.sp
+\fBtable\-length\fP
+.RS 4
+指定 GPT 分区的最大数量。
+.RE
+.sp
+\fBgrain\fP
+.RS 4
+指定用于计算分区对齐的最小字节大小。默认值为 1MiB，强烈建议使用默认值。如果您不确定，请不要修改此变量。
+.RE
+.sp
+\fBsector\-size\fP
+.RS 4
+指定扇区大小。此标头仅供参考，在 \fBsfdisk\fP 创建新分区表时不使用，在这种情况下，始终使用实际设备特定值，转储中的扇区大小将被忽略。
+.RE
+.sp
+请注意，只有在输入中指定第一个分区之前才能使用标题行。
+.SS "Unnamed\-fields format"
+.RS 3
+.ll -.6i
+.sp
+\fIstart size type bootable\fP
+.br
+.RE
+.ll
+.sp
+其中每一行填充一个分区描述符。
+.sp
+字段由空格、逗号 (recommended) 或可能后跟空格的分号分隔; 初始和尾随空格被忽略。数字可以是八进制、十进制或十六进制;
+十进制是默认值。当字段不存在、为空或指定为 \(aq\-\(aq 时，将使用默认值。但是当给出 \fB\-N\fP 选项 (更改单个分区)
+时，每个字段的默认值是其以前的值。
+.sp
+\fIstart\fP 的默认值是根据设备 I/O 限制对齐的第一个未分配扇区。第一个分区的默认起始偏移量是 1 MiB。如果偏移量后跟乘法后缀
+(KiB、MiB、GiB、TiB、PiB、EiB、ZiB 和 YiB)，则该数字被解释为以字节为单位的偏移量。自 v2.38 起，当给出 \fB\-N\fP
+选项 (改变单个分区) 时，如果分区前有空闲空间，a\(aq+\(aq 可以通过分区的移动开始来扩大分区。
+.sp
+\fIsize\fP 默认值表示 "as much as possible";
+即，直到下一个分区或设备结束。默认情况下，数字参数被解释为扇区数，但是如果大小后跟乘法后缀之一 (KiB、MiB、GiB、TiB、PiB、EiB、ZiB
+和 YiB)，则该数字被解释为大小分区的字节数，然后根据设备 I/O 限制对齐。可以用 a\(aq+\(aq 代替数字，尽可能扩大分区。注意
+\(aq+\(aq 相当于新分区的默认行为; 现有分区将根据需要调整大小。
+.sp
+对于 MBR (DOS)，分区 \fItype\fP 以十六进制给出，其中 0x 前缀是可选的; GPT 的 GUID 字符串; 快捷方式或别名。它
+\(cqs 建议对 MBR 十六进制代码使用两个字母，以避免已弃用的快捷方式 \(aqE\(aq 和 \(aq0E\(aq MBR
+十六进制代码之间发生冲突。为了向后兼容，\fBsfdisk\fP 尝试将 \fItype\fP 解释为快捷方式作为分区脚本的第一种可能性，尽管在其他地方 (例如
+\fB\-\-part\-type\fP 命令) 它尝试将快捷方式作为最后一种可能性。
+.sp
+由于 v2.36 libfdisk 支持分区类型别名作为快捷方式的扩展。别名是一个简单的人类可读词 (例如 "linux")。
+.sp
+由于 v2.37 libfdisk 支持输入分区类型名称，忽略名称中的字符和所有非字母数字和非数字字符的大小写 (例如 "Linux /usr x86"
+与 "linux usr\-x86" 相同)。
+.sp
+支持的快捷方式和别名:
+.sp
+\fBL \- alias \(aqlinux\(aq\fP
+.RS 4
+Linux; 对于 MBR 表示 83，对于 GPT 表示 0FC63DAF\-8483\-4772\-8E79\-3D69D8477DE4。
+.RE
+.sp
+\fBS \- alias \(aqswap\(aq\fP
+.RS 4
+交换区; MBR 为 82，GPT 为 0657FD6D\-A4AB\-43C4\-84E5\-0933C84B4F4F
+.RE
+.sp
+\fBEx \- alias \(aqextended\(aq\fP
+.RS 4
+MBR 扩展分区; 表示 MBR 为 05。由于与 0x0E MBR 分区类型冲突，原始快捷方式 \(aqE\(aq 已被弃用。
+.RE
+.sp
+\fBH \- alias \(aqhome\(aq\fP
+.RS 4
+家庭分区; 表示 GPT 的 933AC7E1\-2EB4\-4F13\-B844\-0E14E2AEF915
+.RE
+.sp
+\fBU \- alias \(aquefi\(aq\fP
+.RS 4
+EFI 系统分区，对于 MBR 表示 EF，对于 GPT 表示 C12A7328\-F81F\-11D2\-BA4B\-00A0C93EC93B
+.RE
+.sp
+\fBR \- alias \(aqraid\(aq\fP
+.RS 4
+Linux RAID; MBR 表示 FD，GPT 表示 A19D880F\-05FC\-4D3B\-A006\-743F0F84911E
+.RE
+.sp
+\fBV \- alias \(aqlvm\(aq\fP
+.RS 4
+路易威登; 对于 MBR 表示 8E，对于 GPT 表示 E6D6D379\-F507\-44C2\-A23C\-238F2A3DF928
+.RE
+.sp
+默认 \fItype\fP 值为 \fIlinux\fP。
+.sp
+Linux 扩展分区 (85) 的快捷方式 \(aqX\(aq 已弃用，取而代之的是 \(aqEx\(aq.
+.sp
+\fIbootable\fP 指定为 [\fB*\fP|\fB\-\fP]，默认为不可引导。该字段的值与 Linux 无关 \- 当 Linux 运行时它已经被引导 \-
+但它可能对某些引导加载程序和其他操作系统起作用。
+.SS "Named\-fields format"
+.sp
+这种格式更具可读性、健壮性、可扩展性，并允许指定附加信息 (例如 UUID)。建议使用此格式以使您的脚本更具可读性。
+.RS 3
+.ll -.6i
+.sp
+[\fIdevice\fP \fB:\fP] \fIname\fP[\fB=\fP\fIvalue\fP],  ...
+.br
+.RE
+.ll
+.sp
+\fIdevice\fP 字段是可选的。\fBsfdisk\fP 从设备名称中提取分区号。它允许以随机顺序指定分区。此功能主要由 \fB\-\-dump\fP
+使用。如果您不确定，请不要 \(cqt 使用它。
+.sp
+\fIvalue\fP 可以放在引号之间 (例如，name="This is partition name")。\fBstart=\fP 和 \fBsize=\fP
+字段支持 \(aq+\(aq 和 \(aq\-\(aq，方式与 \fBUnnamed\-fields format\fP 相同。
+.sp
+目前支持的字段有:
+.sp
+\fBstart=\fP\fInumber\fP
+.RS 4
+第一个未分配扇区根据设备 I/O 限制对齐。第一个分区的默认起始偏移量是 1 MiB。如果偏移量后跟乘法后缀
+(KiB、MiB、GiB、TiB、PiB、EiB、ZiB 和 YiB)，则该数字被解释为以字节为单位的偏移量。
+.RE
+.sp
+\fBsize=\fP\fInumber\fP
+.RS 4
+以扇区为单位指定分区大小。数字后面可以跟乘法后缀 (KiB、MiB、GiB、TiB、PiB、EiB、ZiB 和 YiB)，然后它 \ (cqs
+解释为字节大小，大小根据设备 I/O 限制对齐。
+.RE
+.sp
+\fBbootable\fP
+.RS 4
+将分区标记为可引导。
+.RE
+.sp
+\fBattrs=\fP\fIstring\fP
+.RS 4
+分区属性，通常是 GPT 分区属性位。有关 GPT 位字符串格式的更多详细信息，请参见 \fB\-\-part\-attrs\fP。
+.RE
+.sp
+\fBuuid=\fP\fIstring\fP
+.RS 4
+GPT 分区 UUID。
+.RE
+.sp
+\fBname=\fP\fIstring\fP
+.RS 4
+GPT 分区名称。
+.RE
+.sp
+\fBtype=\fP\fIcode\fP
+.RS 4
+MBR 分区的十六进制数 (不带 0x)、GPT 分区的 GUID、未命名字段格式的快捷方式或类型名称 (例如 type="Linux/usr
+(x86)")。有关更多详细信息，请参见上面有关未命名字段格式的部分。为了向后兼容，\fBId=\fP 字段具有相同的含义。
+.RE
+.SH "EMPTY DISK LABEL"
+.sp
+\fBsfdisk\fP 默认不创建没有分区的分区表。默认情况下，脚本中需要带有分区的行。空分区表必须由 `label: <name>"
+script header line without any partitions lines` 明确请求。例如:
+.RS 3
+.ll -.6i
+.sp
+\fBecho \(aqlabel: gpt\(aq | sfdisk /dev/sdb\fP
+.br
+.RE
+.ll
+.sp
+创建空的 GPT 分区表。请注意，\fB\-\-append\fP 禁用此，特性。
+.SH "BACKING UP THE PARTITION TABLE"
+.sp
+建议保存设备的布局。\fBsfdisk\fP 支持两种方式。
+.SS "Dump in sfdisk compatible format"
+.sp
+使用 \fB\-\-dump\fP 命令将设备布局的描述保存到文本文件中。 dump 格式适合后面的 \fBsfdisk\fP 输入。例如:
+.RS 3
+.ll -.6i
+.sp
+\fBsfdisk \-\-dump /dev/sda > sda.dump\fP
+.br
+.RE
+.ll
+.sp
+稍后可以通过以下方式恢复:
+.RS 3
+.ll -.6i
+.sp
+\fBsfdisk /dev/sda < sda.dump\fP
+.br
+.RE
+.ll
+.SS "Full binary backup"
+.sp
+如果要对存储分区表的所有扇区进行完整的二进制备份，请使用 \fB\-\-backup\-pt\-sectors\fP 命令。它将扇区写入
+\fI~/sfdisk\-<device>\-<offset>.bak\fP 文件。可以使用 \fB\-\-backup\-file\fP
+选项更改备份文件的默认名称。备份文件仅包含来自 \fIdevice\fP 的原始数据。例如:
+.RS 3
+.ll -.6i
+.sp
+\fBsfdisk \-\-backup\-pt\-sectors /dev/sda\fP
+.br
+.RE
+.ll
+.sp
+GPT 标头稍后可以通过以下方式恢复:
+.RS 3
+.ll -.6i
+.sp
+\fBdd if=~/sfdisk\-sda\-0x00000200.bak of=/dev/sda seek=$((0x00000200)) bs=1 conv=notrunc\fP
+.br
+.RE
+.ll
+.sp
+\(cqs 也可以使用 \fB\-\-backup\fP 选项在其他 \fBsfdisk\fP
+命令启动后立即创建相同的备份。例如，在删除分区表中的所有分区之前备份分区表:
+.RS 3
+.ll -.6i
+.sp
+\fBsfdisk \-\-backup \-\-delete /dev/sda\fP
+.br
+.RE
+.ll
+.sp
+\fBwipefs\fP(8) 使用了相同的备份文件概念。
+.sp
+请注意，自版本 2.26 起，\fBsfdisk\fP 不再提供用于恢复扇区的 \fB\-I\fP 选项。\fBdd\fP(1) 提供了所有必要的功能。
+.SH COLORS
+.sp
+输出着色由 \fBterminal\-colors.d\fP(5) 功能实现。 空文件可以禁用隐式着色
+.RS 3
+.ll -.6i
+.sp
+\fI/etc/terminal\-colors.d/sfdisk.disable\fP
+.br
+.RE
+.ll
+.sp
+对于 \fBsfdisk\fP 命令或对于所有工具
+.RS 3
+.ll -.6i
+.sp
+\fI/etc/terminal\-colors.d/disable\fP
+.br
+.RE
+.ll
+.sp
+用户特定的 \fI$XDG_CONFIG_HOME/terminal\-colors.d\fP 或
+\fI$HOME/.config/terminal\-colors.d\fP 覆盖全局设置。
+.sp
+请注意，输出着色可能默认启用，在这种情况下，\fIterminal\-colors.d\fP 目录还不必存在。
+.sp
+\fBsfdisk\fP 支持的逻辑颜色名称是:
+.sp
+\fBheader\fP
+.RS 4
+输出表的标题。
+.RE
+.sp
+\fBwarn\fP
+.RS 4
+警告信息。
+.RE
+.sp
+\fBwelcome\fP
+.RS 4
+欢迎消息。
+.RE
+.SH ENVIRONMENT
+.sp
+\fBSFDISK_DEBUG\fP=all
+.RS 4
+启用 \fBsfdisk\fP 调试输出。
+.RE
+.sp
+\fBLIBFDISK_DEBUG\fP=all
+.RS 4
+启用 libfdisk 调试输出。
+.RE
+.sp
+\fBLIBBLKID_DEBUG\fP=all
+.RS 4
+启用 libblkid 调试输出。
+.RE
+.sp
+\fBLIBSMARTCOLS_DEBUG\fP=all
+.RS 4
+启用 libsmartcols 调试输出。
+.RE
+.sp
+\fBLOCK_BLOCK_DEVICE\fP=<mode>
+.RS 4
+使用独占 BSD 锁。模式为 "1" 或 "0"。有关详细信息，请参见 \fB\-\-lock\fP。
+.RE
+.SH NOTES
+.sp
+由于版本 2.26 \fBsfdisk\fP 不再提供 \fB\-R\fP 或 \fB\-\-re\-read\fP 选项来强制内核重新读取分区表。请改用 \fBblockdev \-\-rereadpt\fP。
+.sp
+由于版本 2.26 \fBsfdisk\fP 不提供
+\fB\-\-DOS\fP、\fB\-\-IBM\fP、\fB\-\-DOS\-extended\fP、\fB\-\-unhide\fP、\fB\-\-show\-extended\fP、\fB\-\-cylinders\fP、\fB\-\-heads\fP、\fB\-\-sectors\fP、\fB\-\-inside\-outer\fP、\fB\-\-not\-inside\-outer\fP
+选项。
+.SH EXAMPLES
+.sp
+\fBsfdisk \-\-list \-\-label\-nested=mbr /dev/sda\fP
+.RS 4
+在带有 GPT 磁盘标签的设备上打印保护性 MBR。
+.RE
+.sp
+\fBecho \-e \(aq,10M,L\(rsn,10M,L\(rsn,+,\(rsn\(aq | sfdisk /dev/sdc\fP
+.RS 4
+创建三个 Linux 分区，默认启动，前两个分区大小为 10MiB，最后一个分区填满设备上所有可用空间。
+.RE
+.sp
+\fBecho \-e \(aqsize=10M, type=L\(rsn size=10M, type=L\(rsn size=+\(rsn\(aq | sfdisk /dev/sdc\fP
+.RS 4
+与前面的示例相同，但采用命名字段格式。
+.RE
+.sp
+\fBecho \-e \(aqtype=swap\(aq | sfdisk \-N 3 /dev/sdc\fP
+.RS 4
+将第三个分区的类型设置为 \(aqswap\(aq.
+.RE
+.sp
+\fBsfdisk \-\-part\-type /dev/sdc 3 swap\fP
+.RS 4
+与前面的示例相同，但不使用脚本。
+.RE
+.sp
+\fBsfdisk \-\-delete /dev/sdc 2\fP
+.RS 4
+删除第二个分区。
+.RE
+.sp
+\fBecho "," | sfdisk \-N 3 \-\-move\-data /dev/sdc\fP
+.RS 4
+双向扩大第三个分区，移动开始使用分区前的可用空间并扩大大小以使用分区后的所有可用空间，并移动分区数据。
+.RE
+.SH AUTHORS
+.sp
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.sp
+当前的 \fBsfdisk\fP 实现基于 Andries E 的原始 \fBsfdisk\fP。Brouwer.
+.SH "SEE ALSO"
+.sp
+\fBfdisk\fP(8), \fBcfdisk\fP(8), \fBparted\fP(8), \fBpartprobe\fP(8), \fBpartx\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBsfdisk\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

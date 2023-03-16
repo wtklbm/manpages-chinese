@@ -1,0 +1,213 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2007, 2010 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 18:34:44 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Merged readv.[23], 2002-10-17, aeb
+.\" 2007-04-30 mtk, A fairly major rewrite to fix errors and
+.\"     add more details.
+.\" 2010-11-16, mtk, Added documentation of preadv() and pwritev()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH readv 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+readv、writev、preadv、pwritev、preadv2、pwritev2 \- 将数据读取或写入多个缓冲区
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/uio.h>\fP
+.PP
+\fBssize_t readv(int \fP\fIfd\fP\fB, const struct iovec *\fP\fIiov\fP\fB, int \fP\fIiovcnt\fP\fB);\fP
+\fBssize_t writev(int \fP\fIfd\fP\fB, const struct iovec *\fP\fIiov\fP\fB, int \fP\fIiovcnt\fP\fB);\fP
+.PP
+\fBssize_t preadv(int \fP\fIfd\fP\fB, const struct iovec *\fP\fIiov\fP\fB, int \fP\fIiovcnt\fP\fB,\fP
+\fB                off_t \fP\fIoffset\fP\fB);\fP
+\fBssize_t pwritev(int \fP\fIfd\fP\fB, const struct iovec *\fP\fIiov\fP\fB, int \fP\fIiovcnt\fP\fB,\fP
+\fB                off_t \fP\fIoffset\fP\fB);\fP
+.PP
+\fBssize_t preadv2(int \fP\fIfd\fP\fB, const struct iovec *\fP\fIiov\fP\fB, int \fP\fIiovcnt\fP\fB,\fP
+\fB                off_t \fP\fIoffset\fP\fB, int \fP\fIflags\fP\fB);\fP 
+\fBssize_t pwritev2(int \fP\fIfd\fP\fB, const struct iovec *\fP\fIiov\fP\fB, int \fP\fIiovcnt\fP\fB,\fP
+\fB                off_t \fP\fIoffset\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpreadv\fP(), \fBpwritev\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBreadv\fP() 系统调用将 \fIiovcnt\fP 缓冲区从与文件描述符 \fIfd\fP 关联的文件读取到 \fIiov\fP (`分散输入`)
+描述的缓冲区中。
+.PP
+\fBwritev\fP() 系统调用将 \fIiov\fP 描述的数据的 \fIiovcnt\fP 缓冲区写入与文件描述符 \fIfd\fP 关联的文件 (`收集输出`)。
+.PP
+指针 \fIiov\fP 指向 \fBiovec\fP(3type) 中描述的 \fIiovec\fP 结构数组。
+.PP
+\fBreadv\fP() 系统调用与 \fBread\fP(2) 一样，只是填充了多个缓冲区。
+.PP
+\fBwritev\fP() 系统调用和 \fBwrite\fP(2) 一样，只是多了一个 buffer 被写出。
+.PP
+缓冲区按数组顺序处理。 这意味着 \fBreadv\fP() 在进入 \fIiov[1]\fP 之前完全填满 \fIiov[0]\fP，依此类推。
+(如果没有足够的数据，那么 \fIiov\fP 指向的缓冲区可能不会被填满。) 同样，\fBwritev\fP() 在继续 \fIiov[1]\fP 之前写出
+\fIiov[0]\fP 的全部内容，依此类推。
+.PP
+.\" Regarding atomicity, see https://bugzilla.kernel.org/show_bug.cgi?id=10596
+\fBreadv\fP() 和 \fBwritev\fP() 执行的数据传输是原子的: \fBwritev\fP()
+写入的数据作为单个块写入，不与其他进程的写入输出混合; 类似地，\fBreadv\fP()
+保证从文件中读取连续的数据块，而不管在其他线程或进程中执行的读取操作是否具有引用相同打开文件描述的文件描述符 (参见 \fBopen\fP(2)).
+.SS "preadv() and pwritev()"
+\fBpreadv\fP() 系统调用结合了 \fBreadv\fP() 和 \fBpread\fP(2) 的功能。 它执行与 \fBreadv\fP()
+相同的任务，但添加了第四个参数 \fIoffset\fP，它指定要执行输入操作的文件偏移量。
+.PP
+\fBpwritev\fP() 系统调用结合了 \fBwritev\fP() 和 \fBpwrite\fP(2) 的功能。 它执行与 \fBwritev\fP()
+相同的任务，但添加了第四个参数 \fIoffset\fP，它指定要执行输出操作的文件偏移量。
+.PP
+这些系统调用不会更改文件偏移量。 \fIfd\fP 引用的文件必须能够搜索。
+.SS "preadv2() and pwritev2()"
+这些系统调用类似于 \fBpreadv\fP() 和 \fBpwritev\fP() 调用，但添加了第五个参数 \fIflags\fP，它在每个调用的基础上修改行为。
+.PP
+与 \fBpreadv\fP() 和 \fBpwritev\fP() 不同，如果 \fIoffset\fP 参数为 \-1，则使用并更新当前文件偏移量。
+.PP
+\fIflags\fP 参数包含零个或多个以下标志的按位或:
+.TP 
+\fBRWF_DSYNC\fP (since Linux 4.7)
+.\" commit e864f39569f4092c2b2bc72c773b6e486c7e3bd9
+提供 \fBO_DSYNC\fP \fBopen\fP(2) 标志的每次写入等效项。 该标志仅对 \fBpwritev2\fP()
+有意义，其作用仅适用于系统调用写入的数据范围。
+.TP 
+\fBRWF_HIPRI\fP (since Linux 4.6)
+高优先级 read/write。 允许基于块的文件系统使用设备轮询，这提供了较低的延迟，但可能会使用额外的资源。 (目前，此特性仅适用于使用
+\fBO_DIRECT\fP 标志打开的文件描述符。)
+.TP 
+\fBRWF_SYNC\fP (since Linux 4.7)
+.\" commit e864f39569f4092c2b2bc72c773b6e486c7e3bd9
+提供 \fBO_SYNC\fP \fBopen\fP(2) 标志的每次写入等效项。 该标志仅对 \fBpwritev2\fP()
+有意义，其作用仅适用于系统调用写入的数据范围。
+.TP 
+\fBRWF_NOWAIT\fP (since Linux 4.14)
+.\" commit 3239d834847627b6634a4139cf1dc58f6f137a46
+.\" commit 91f9943e1c7b6638f27312d03fe71fcc67b23571
+不要等待不能立即获得的数据。 如果指定了此标志，则 \fBpreadv2\fP() 系统调用将在必须从后备存储读取数据或等待锁定时立即返回。
+如果成功读取某些数据，它将返回读取的字节数。 如果没有读取任何字节，它将返回 \-1 并将 \fIerrno\fP 设置为 \fBEAGAIN\fP (但请参见
+\fBBUGS\fP).  目前，该标志仅对 \fBpreadv2\fP() 有意义。
+.TP 
+\fBRWF_APPEND\fP (since Linux 4.16)
+.\" commit e1fc742e14e01d84d9693c4aca4ab23da65811fb
+提供 \fBO_APPEND\fP \fBopen\fP(2) 标志的每次写入等效项。 该标志仅对 \fBpwritev2\fP()
+有意义，其作用仅适用于系统调用写入的数据范围。 \fIoffset\fP 参数不影响写操作; 数据总是追加到文件的末尾。 但是，如果 \fIoffset\fP
+参数为 \-1，则更新当前文件偏移量。
+.SH "RETURN VALUE"
+成功时，\fBreadv\fP()、\fBpreadv\fP() 和 \fBpreadv2\fP() 返回读取的字节数; \fBwritev\fP()、\fBpwritev\fP()
+和 \fBpwritev2\fP() 返回写入的字节数。
+.PP
+请注意，成功调用传输的字节数少于请求的字节数并不是错误 (请参见 \fBread\fP(2) 和 \fBwrite\fP(2))。
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+错误与 \fBread\fP(2) 和 \fBwrite\fP(2) 的一样。 此外，\fBpreadv\fP()、\fBpreadv2\fP()、\fBpwritev\fP() 和
+\fBpwritev2\fP() 也可能因与 \fBlseek\fP(2) 相同的原因而失败。 此外，还定义了以下错误:
+.TP 
+\fBEINVAL\fP
+\fIiov_len\fP 值的总和溢出 \fIssize_t\fP 值。
+.TP 
+\fBEINVAL\fP
+vector 计数 \fIiovcnt\fP 小于零或大于允许的最大值。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIflags\fP 中指定了未知标志。
+.SH VERSIONS
+\fBpreadv\fP() 和 \fBpwritev\fP() 最早出现在 Linux 2.6.30; glibc 2.10 中添加了库支持。
+.PP
+\fBpreadv2\fP() 和 \fBpwritev2\fP() 最早出现在 Linux 4.6。 glibc 2.26 中添加了库支持。
+.SH STANDARDS
+.\" Linux libc5 used \fIsize_t\fP as the type of the \fIiovcnt\fP argument,
+.\" and \fIint\fP as the return type.
+.\" The readv/writev system calls were buggy before Linux 1.3.40.
+.\" (Says release.libc.)
+\fBreadv\fP()、\fBwritev\fP(): POSIX.1\-2001、POSIX.1\-2008、4.4BSD (这些系统调用最早出现在 4.2BSD
+中)。
+.PP
+\fBpreadv\fP()、\fBpwritev\fP(): 非标准，但也出现在现代 BSD 上。
+.PP
+\fBpreadv2\fP()、\fBpwritev2\fP(): 非标准 Linux 扩展名。
+.SH NOTES
+.\"
+.\"
+POSIX.1 允许实现对可以在 \fIiov\fP 中传递的项数进行限制。 实现可以通过在 \fI<limits.h>\fP 中定义
+\fBIOV_MAX\fP 或在运行时通过 \fIsysconf(_SC_IOV_MAX)\fP 的返回值来公布其限制。 在现代 Linux 系统上，限制为
+1024。 在 Linux 2.0 天，这个限制是 16。
+.SS "C library/kernel differences"
+原始 \fBpreadv\fP() 和 \fBpwritev\fP() 系统调用的调用签名与概要中显示的相应 GNU C 库包装器函数略有不同。
+最后的参数，\fIoffset\fP，在系统调用中被包装器函数解包为两个参数:
+.PP
+\fB unsigned long \fP\fIpos_l\fP\fB, unsigned long \fP\fIpos\fP
+.PP
+这些参数分别包含 \fIoffset\fP 的低位和高位 32 位。
+.SS "Historical C library/kernel differences"
+为了解决 \fBIOV_MAX\fP 在 Linux 的早期版本上如此低的事实，如果 \fBreadv\fP() 和 \fBwritev\fP() 的 glibc
+包装器函数检测到底层内核系统调用失败，因为超过了这个限制，它们会做一些额外的工作。 在 \fBreadv\fP() 的情况下，包装函数为 \fIiov\fP
+指定的所有项分配了一个足够大的临时缓冲区，将该缓冲区在调用中传递给 \fBread\fP(2)，将数据从缓冲区复制到元素的 \fIiov_base\fP
+字段指定的位置 \fIiov\fP，然后释放缓冲区。 \fBwritev\fP() 的包装器函数使用临时缓冲区和对 \fBwrite\fP(2) 的调用执行类似的任务。
+.PP
+Linux 2.2 及更高版本不再需要在 glibc 包装器函数中进行这种额外的工作。 然而，在 glibc 2.10 之前，glibc
+继续提供这种行为。 从 glibc 2.9 开始，仅当库检测到系统运行的 Linux 内核早于 Linux 2.6.18 (任意选择的内核版本)
+时，包装器函数才提供此行为。 由于 glibc 2.20 (至少需要 Linux 2.6.32)，glibc 包装器函数总是直接调用系统调用。
+.SH BUGS
+.\" See
+.\" <https://lore.kernel.org/linux-fsdevel/fea8b16d-5a69-40f9-b123-e84dcd6e8f2e@www.fastmail.com/T/#u>
+.\" The bug was introduced in
+.\"    efa8480a831 fs: RWF_NOWAIT should imply IOCB_NOIO
+.\"and fixed in
+.\"    06c0444290 mm/filemap.c: generic_file_buffered_read() now uses find_get_pages_contig
+Linux 5.9 和 Linux 5.10 有一个错误，其中带有 \fBRWF_NOWAIT\fP 标志的 \fBpreadv2\fP() 可能返回
+0，即使不在文件末尾也是如此。
+.SH EXAMPLES
+下面的代码示例演示了 \fBwritev\fP(): 的使用
+.PP
+.in +4n
+.EX
+char          *str0 = "hello ";
+char          *str1 = "world\en";
+ssize_t       nwritten;
+struct iovec  iov[2];
+
+iov[0].iov_base = str0;
+iov[0].iov_len = strlen(str0);
+iov[1].iov_base = str1;
+iov[1].iov_len = strlen(str1);
+
+nwritten = writev(STDOUT_FILENO, iov, 2);
+.EE
+.in
+.SH "SEE ALSO"
+\fBpread\fP(2), \fBread\fP(2), \fBwrite\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

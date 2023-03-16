@@ -1,0 +1,101 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getpid 2 2023\-01\-22 "Linux man\-pages 6.03" 
+.SH NAME
+getpid, getppid \- 获取进程标识
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBpid_t getpid(void);\fP
+\fBpid_t getppid(void);\fP
+.fi
+.SH DESCRIPTION
+\fBgetpid\fP() 返回调用进程的进程 ID (PID)。 (这通常由生成唯一临时文件名的例程使用。)
+.PP
+\fBgetppid\fP() 返回调用进程的父进程的进程 ID。 这将是使用 \fBfork\fP() 创建此进程的进程的
+ID，或者，如果该进程已经终止，则此进程已重新为其父级的进程的 ID (\fBinit\fP(1) 或通过 \fBprctl\fP(2)
+\fBPR_SET_CHILD_SUBREAPER\fP 操作定义的 "subreaper" 进程).
+.SH ERRORS
+这些函数总是成功的。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, 4.3BSD, SVr4.
+.SH NOTES
+如果调用者的父级在不同的 PID 命名空间中 (参见 \fBpid_namespaces\fP(7))，\fBgetppid\fP() 返回 0.
+.PP
+.\"
+从内核的角度来看，PID (由多线程进程中的所有线程共享) 有时也称为线程组 ID (TGID)。 这与每个线程唯一的内核线程 ID (TID)
+形成对比。 有关详细信息，请参见 \fBgettid\fP(2) 和 \fBclone\fP(2) 中对 \fBCLONE_THREAD\fP 标志的讨论。
+.SS "C library/kernel differences"
+.\" The following program demonstrates this "feature":
+.\"
+.\" #define _GNU_SOURCE
+.\" #include <sys/syscall.h>
+.\" #include <sys/wait.h>
+.\" #include <stdint.h>
+.\" #include <stdio.h>
+.\" #include <stdlib.h>
+.\" #include <unistd.h>
+.\"
+.\" int
+.\" main(int argc, char *argv[])
+.\" {
+.\"    /* The following statement fills the getpid() cache */
+.\"
+.\"    printf("parent PID = %ld\n", (intmax_t) getpid());
+.\"
+.\"    if (syscall(SYS_fork) == 0) {
+.\"        if (getpid() != syscall(SYS_getpid))
+.\"            printf("child getpid() mismatch: getpid()=%jd; "
+.\"                    "syscall(SYS_getpid)=%ld\n",
+.\"                    (intmax_t) getpid(), (long) syscall(SYS_getpid));
+.\"        exit(EXIT_SUCCESS);
+.\"    }
+.\"    wait(NULL);
+.\"}
+从 glibc 2.3.4 到并包括 glibc 2.24，glibc 包装器函数用于 \fBgetpid\fP() 缓存的 PID，目的是在进程重复调用
+\fBgetpid\fP() 时避免额外的系统调用。 通常这种缓存是不可见的，但它的正确操作依赖于 \fBfork\fP(2)、\fBvfork\fP(2) 和
+\fBclone\fP(2): 的包装器函数中的支持，如果应用程序使用 \fBsyscall\fP(2) 绕过这些系统调用的 glibc 包装器，则子系统中对
+\fBgetpid\fP() 的调用将返回错误的值 (准确地说: 它将返回父进程的 PID)。 此外，在某些情况下，即使通过 glibc 包装器函数调用
+\fBclone\fP(2)，\fBgetpid\fP() 也可能返回错误值。 (有关此类案例的讨论，请参见 \fBclone\fP(2).) 中的 BUGS
+此外，多年来，缓存代码的复杂性一直是 glibc 中一些错误的根源。
+.PP
+.\" commit c579f48edba88380635ab98cb612030e3ed8691e
+.\" https://sourceware.org/glibc/wiki/Release/2.25#pid_cache_removal
+.\" FIXME .
+.\" Review progress of https://bugzilla.redhat.com/show_bug.cgi?id=1469757
+由于上述问题，从 glibc 2.25 开始，PID 缓存被移除: 对 \fBgetpid\fP() 的调用总是调用实际的系统调用，而不是返回缓存值。
+.PP
+在 Alpha 上，提供了单个 \fBgetxpid\fP() 系统调用，而不是一对 \fBgetpid\fP() 和 \fBgetppid\fP()
+系统调用，它返回一对 PID 和父 PID。 glibc \fBgetpid\fP() 和 \fBgetppid\fP() 包装器函数透明地处理这个问题。
+有关寄存器映射的详细信息，请参见 \fBsyscall\fP(2)。
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBfork\fP(2), \fBgettid\fP(2), \fBkill\fP(2), \fBexec\fP(3),
+\fBmkstemp\fP(3), \fBtempnam\fP(3), \fBtmpfile\fP(3), \fBtmpnam\fP(3),
+\fBcredentials\fP(7), \fBpid_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

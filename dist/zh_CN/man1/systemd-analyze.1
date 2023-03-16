@@ -1,0 +1,1411 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-ANALYZE 1 "" "systemd 253" systemd\-analyze
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-analyze \- 分析和调试系统管理器
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] [time]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] blame
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] critical\-chain [\fIUNIT\fP...]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] dump [\fIPATTERN\fP...]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] plot [>file\&.svg]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] dot [\fIPATTERN\fP...] [>file\&.dot]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] unit\-paths
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] exit\-status [\fISTATUS\fP...]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] capability [\fICAPABILITY\fP...]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] condition \fICONDITION\fP\& ...
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] syscall\-filter [\fISET\fP\&...]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] filesystems [\fISET\fP\&...]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] calendar \fISPEC\fP ...
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] timestamp \fITIMESTAMP\fP ...
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] timespan \fISPAN\fP ...
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] cat\-config \fINAME\fP|\fIPATH\fP ...
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] compare\-versions \fIVERSION1\fP [\fIOP\fP]
+\fIVERSION2\fP
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] verify [\fIFILE\fP...]
+.HP \w'\fBsystemd\-analyze\fR\ 'u
+\fBsystemd\-analyze\fP [OPTIONS...] security \fIUNIT\fP ...
+.SH DESCRIPTION
+.PP
+\fBsystemd\-analyze\fP
+可用于确定系统启动性能统计信息并从系统和服务管理器中检索其他状态和跟踪信息，并验证元文件的正确性。它还用于访问对高级系统管理器调试有用的特殊函数 \&。
+.PP
+如果没有传递命令，则隐含 \fBsystemd\-analyze time\fP\&。
+.SS "systemd\-analyze time"
+.PP
+此命令打印在到达用户空间之前在内核中花费的时间，在到达正常系统用户空间之前在 initrd 中花费的时间，以及正常系统用户空间初始化 \&
+所花费的时间。请注意，这些测量只是测量到所有系统服务已生成的时间点，但不一定要到它们完全完成初始化或磁盘空闲 \&。
+.PP
+\fBExample\ \&1.\ \&Show how long the boot took\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 在容器中
+$ systemd \- 分析时间
+启动在 296 毫秒内完成 (userspace)
+multi\-user\&.target 在用户空间 275 毫秒后到达
+
+# 在真机上
+$ systemd \- 分析时间
+启动完成 2\&.584s (kernel) + 19\&.176s (initrd) + 47\&.847s (userspace) =1min 9\&.608s
+multi\-user\&.target 在用户空间中到达 47\&.820s 之后
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze blame"
+.PP
+此命令打印所有正在运行的单元的列表，按它们初始化的时间排序 \&。此信息可用于优化启动时间
+\&。请注意，输出可能会产生误导，因为一项服务的初始化可能很慢，仅仅是因为它等待另一项服务的初始化完成 \&。另请注意:
+\fBsystemd\-analyze blame\fP 不会 \*(Aqt 显示带有 \fIType=simple\fP 的服务的结果，因为 systemd
+认为此类服务会立即启动，因此无法测量初始化延迟 \&。另请注意，此命令仅显示启动所花费的时间单位，而不会显示元作业在执行队列中花费的时间
+\&。特别是它显示了在 "activating" 状态下花费的时间单位，这不是为直接从 "inactive" 转换为 `活动`\&
+的设备单元等单位定义的。因此，该命令给出了程序代码性能的印象，但不能准确反映等待硬件和类似事件引入的延迟 \&。
+.PP
+\fBExample\ \&2.\ \&Show which units took the most time during boot\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd \- 分析责备
+         32\&.875s pmlogger\&.service
+         20\&.905s systemd\-networkd\-wait\-online\&.service
+         13\&.299s dev\-vda1\&.device
+         \&.\&.\&.
+            23 毫秒 sysroot\&.mount
+            11 毫秒 initrd\-udevadm\-cleanup\-db\&.service
+             3 毫秒 sys\-kernel\-config\&.mount
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze critical\-chain [\fIUNIT\fP\fR\&.\&.\&.]\fP"
+.PP
+此命令打印时间关键单元链的树 (对于每个指定的 \fIUNIT\fPs 或默认目标) \&。"@" 字符 \&
+后打印元元激活或启动后的时间。元开始的时间打印在 "+" 字符 \&
+之后。请注意，输出可能会产生误导，因为服务的初始化可能取决于套接字激活以及单元的并行执行 \&。此外，类似于 \fBblame\fP 命令，这只考虑了在
+"activating" 状态下花费的时间单位，因此不包括从未经历过 "activating" 状态的单位 (例如直接从 "inactive" 转换到
+"active" 的设备单位) \&。此外，它不显示有关作业的信息 (特别是不显示超时的作业) \&。
+.PP
+\fBExample\ \&3.\ \&systemd\-analyze critical\-chain\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd \- 分析关键链
+multi\-user\&.target @47\&.820s
+└─pmie\&.service @35\&.968s +548ms
+  └─pmcd\&.service @33\&.715s +2\&.247s
+    └─网络在线 \&.target@33\&.712s
+      └─systemd\-networkd\-wait\-online\&.service @12\&.804s +20\&.905s
+        └─systemd\-networkd\&.service @11\&.109s +1\&.690s
+          └─systemd\-udevd\&.service @9\&.201s +1\&.904s
+            └─systemd\-tmpfiles\-setup\-dev\&.service @7\&.306s +1\&.776s
+              └─kmod\-static\-nodes\&.service @6\&.976s +177ms
+                └─systemd\-journald\&.socket
+                  └─系统 \&. 切片
+                    └─\-\&. 切片
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze dump [\fIpattern\fP\fR\&...]\fP"
+.PP
+在没有任何参数的情况下，此命令输出一个 (通常很长) 人类可读的完整服务管理器状态的序列化 \&。可以指定可选的 glob
+模式，从而将输出限制为名称与模式之一匹配的单元 \&。输出格式如有更改，恕不另行通知，并且不应由应用程序解析 \&。
+.PP
+\fBExample\ \&4.\ \&Show the internal state of user manager\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze\-\-user 转储
+时间戳用户空间: 周四 2019\-03\-14 23:28:07 CET
+时间戳完成: Thu 2019\-03\-14 23:28:07 CET
+时间戳生成器开始: Thu 2019\-03\-14 23:28:07 CET
+时间戳生成器 \- 完成: Thu 2019\-03\-14 23:28:07 CET
+时间戳单位加载开始: 周四 2019\-03\-14 23:28:07 CET
+时间戳单位加载完成: 周四 2019\-03\-14 23:28:07 CET
+\-> 元 proc\-timer_list\&.mount:
+        说明: /proc/timer_list
+        \&.\&.\&.
+\-> 元 default\&.target:
+        描述: 主要用户目标
+\&.\&.\&.
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze plot"
+.PP
+此命令打印 SVG 图形，详细说明哪些系统服务在什么时间启动，突出显示它们在初始化上花费的时间，或 JSON 或表格格式的原始时间数据 \&。
+.PP
+\fBExample\ \&5.\ \&Plot a bootchart\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd \- 分析图 >bootup\&.svg
+$ eog 启动 \&.svg&
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，此图是基于加载单元的最新每单位时序数据 \&。这意味着如果元开始，然后停止然后再次启动，显示的信息将涵盖最近的启动周期，而不是第一个
+\&。因此它 \*(Aqs 建议仅在启动后不久查阅此信息，以便此区别不 \*(Aqt 重要 \&。此外，未通过依赖关系被任何其他单元引用的单元一旦终止
+(并且没有失败) \& 可能会被服务管理器卸载。这样的单位不会出现在剧情 \& 中。
+.SS "systemd\-analyze dot [\fIpattern\fP\fR\&.\&.\&.]\fP"
+.PP
+此命令以点格式生成文本依赖图描述，以便使用 GraphViz \fBdot\fP(1) 工具进行进一步处理 \&。使用 \fBsystemd\-analyze dot | dot \-Tsvg >systemd\&.svg\fP 之类的命令行生成图形依赖树 \&。除非传递 \fB\-\-order\fP 或
+\fB\-\-require\fP，否则生成的图形将同时显示排序和需求依赖性 \&。可选的模式 globbing 样式规范
+(e\&.g\&. *\&.target) 可以在末尾给出 \&。如果这些模式中的任何一个与源节点或目标节点 \& 匹配，图形中就会包含一个元依赖项。
+.PP
+\fBExample\ \&6.\ \&Plot all dependencies of any unit whose name starts with "avahi\-daemon"\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze dot \*(Aqavahi\-daemon\&.*\*(Aq | dot \-Tsvg >avahi\&.svg
+$ eog avahi\&.svg
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&7.\ \&Plot the dependencies between all known target units\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze dot \-\-to\-pattern=\*(Aq*\&.target\*(Aq \-\-from\-pattern=\*(Aq*\&.target\*(Aq \e
+      | 点 \-Tsvg >targets\&.svg
+$ eog targets\&.svg
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze unit\-paths"
+.PP
+此命令输出所有目录的列表，从中可以加载元文件、\&.d 覆盖和 \&.wants、\&.requires 符号链接 \&。结合 \fB\-\-user\fP
+检索用户管理器实例列表，\fB\-\-global\fP 检索用户管理器实例的全局配置 \&。
+.PP
+\fBExample\ \&8.\ \&Show all paths for generated units\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze 元 \- paths |grep\*(Aq^/run\*(Aq
+/run/systemd/system\&.control
+/run/systemd/transient
+/run/systemd/generator\&.early
+/run/systemd/system
+/run/systemd/system\&.attached
+/run/systemd/generator
+/run/systemd/generator\&.late
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，此动词打印编译到 \fBsystemd\-analyze\fP 本身的列表，并且不与运行管理器通信 \&。Use
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemctl [\-\-user] [\-\-global] show \-p UnitPath \-\-value
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+检索管理器使用的实际列表，省略任何空目录 \&。
+.SS "systemd\-analyze exit\-status [\fISTATUS\fP\fR\&.\&.\&.]\fP"
+.PP
+此命令打印退出状态列表及其 "class"，i\&.e\&。定义的来源 ("glibc"、"systemd"、"LSB" 或 "BSD" 之一)，请参见
+\fBsystemd.exec\fP(5)\& 中的进程退出代码部分。如果没有指定额外的参数，则显示所有已知状态 \&。否则，仅显示指定代码的定义 \&。
+.PP
+\fBExample\ \&9.\ \&Show some example exit status names\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd \- 分析退出状态 0 1 {63\&.\&.65}
+姓名身份等级
+成功 0 glibc
+失败 1 glibc
+\-       63     \-
+用法 64 BSD
+数据错误 65 BSD
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze capability [\fICAPABILITY\fP\fR\&.\&.\&.]\fP"
+.PP
+此命令打印 Linux 功能列表及其数字 ID\&。有关详细信息，请参见
+\fBcapabilities\fP(7)\&。如果未指定参数，则显示服务管理器和内核已知的完整功能列表 \&。由内核定义但服务管理器不知道的功能显示为
+`cap_????`\&。可选地，如果指定了参数，它们可以通过名称或数字 ID 引用特定的功能，在这种情况下，表中仅显示指定的功能 \&。
+.PP
+\fBExample\ \&10.\ \&Show some example capability names\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd 分析能力 0 1 {30\&.\&.32}
+姓名号码
+cap_chown              0
+cap_dac_override       1
+cap_audit_control     30
+cap_setfcap           31
+cap_mac_override      32
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze condition \fICONDITION\fP\fR\&.\&.\&.\fP"
+.PP
+此命令将评估 \fICondition*=\&.\&.\&.\fP 和 \fIAssert*=\&.\&.\&.\fP 赋值，并打印它们的值，以及组合条件集的结果值
+\&。有关可用条件和断言 \& 的列表，请参见 \fBsystemd.unit\fP(5)。
+.PP
+\fBExample\ \&11.\ \&Evaluate conditions that check kernel versions\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze condition \*(AqConditionKernelVersion = ! <4\&.0\*(Aq \e
+        \*(AqConditionKernelVersion = >=5\&.1\*(Aq \e
+        \*(AqConditionACPower=|false\*(Aq \e
+        \*(AqConditionArchitecture=|!arm\*(Aq \e
+        \*(AqAssertPathExists=/etc/os\-release\*(Aq
+test\&.service: AssertPathExists=/etc/os\-release succeeded\&.
+断言成功 \&。
+test\&.service: 条件架构 =|! 分支成功 \&.
+test\&.service: ConditionACPower=|false 失败 \&。
+test\&.service: ConditionKernelVersion=>=5\&.1 成功 \&。
+test\&.service: ConditionKernelVersion=!<4\&.0 成功 \&。
+条件成功 \&。
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze syscall\-filter [\fISET\fP\fR\&.\&.\&.]\fP"
+.PP
+此命令将列出包含在指定系统调用集 \fISET\fP 中的系统调用，如果没有指定集，则列出所有已知集 \&。参数 \fISET\fP 必须包含 "@" 前缀 \&。
+.SS "systemd\-analyze filesystems [\fISET\fP\fR\&.\&.\&.]\fP"
+.PP
+此命令将列出指定文件系统集 \fISET\fP 中的文件系统，如果未指定集，则列出所有已知集 \&。参数 \fISET\fP 必须包含 "@" 前缀 \&。
+.SS "systemd\-analyze calendar \fIEXPRESSION\fP\fR\&.\&.\&.\fP"
+.PP
+此命令将解析和规范化重复的日历时间事件，并将计算它们接下来的时间 \&。这采用与 \fBsystemd.timer\fP(5) 中的
+\fIOnCalendar=\fP 设置相同的输入，遵循 \fBsystemd.time\fP(7)\&
+中描述的语法。默认情况下，仅显示下一次日历表达式将过去的时间; 使用 \fB\-\-iterations=\fP 来显示下一次表达式经过的指定次数
+\&。每次表达式经过时都会形成一个时间戳，请参见下面的 \fBtimestamp\fP 动词 \&。
+.PP
+\fBExample\ \&12.\ \&Show leap days in the near future\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze calendar \-\-iterations=5 \*(Aq*\-2\-29 0:0:0\*(Aq
+  原始形式: *\-2\-29 0:0:0
+规范化形式: *\-02\-29 00:00:00
+    下一次过去: 星期六 2020\-02\-29 00:00:00 UTC
+       从现在开始: 还剩 11 个月 15 天
+       Iter\&.     #2: 星期四 2024\-02\-29 00:00:00 UTC
+       从现在开始: 还剩 4 年 11 个月
+       Iter\&. #3: 星期二 2028\-02\-29 00:00:00 UTC
+       从现在开始: 还剩 8 年 11 个月
+       Iter\&. #4: 星期日 2032\-02\-29 00:00:00 UTC
+       从现在开始: 还剩 12 年 11 个月
+       Iter\&. #5: 星期五 2036\-02\-29 00:00:00 UTC
+       从现在开始: 还剩 16 年 11 个月
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze timestamp \fITIMESTAMP\fP\fR\&.\&.\&.\fP"
+.PP
+此命令解析时间戳 (i\&.e\&. 单个时间点) 并输出规范化形式以及此时间戳与 now\& 之间的差异。时间戳应遵循
+\fBsystemd.time\fP(7) 中 `PARSING TIMESTAMPS`\& 部分中记录的语法。
+.PP
+\fBExample\ \&13.\ \&Show parsing of timestamps\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze timestamp 昨天现在明天
+  原形: 昨天
+规范化形式: Mon 2019\-05\-20 00:00:00 CEST
+       (UTC 时间) : Sun 2019\-05\-19 22:00:00 UTC
+   UNIX 秒: @15583032000
+       从现在开始: 1 天 9 小时前
+
+  原形: 现在
+规范化形式: 星期二 2019\-05\-21 09:48:39 CEST
+       (UTC) : UTC 2019\-05\-21 星期二 07:48:39
+   UNIX 秒: @1558424919\&.659757
+       从现在开始: 43us 前
+
+  原形: 明天
+规范化形式: Wed 2019\-05\-22 00:00:00 CEST
+       (UTC) : UTC 2019\-05\-21 星期二 22:00:00
+   UNIX 秒: @15584760000
+       从现在开始: 还剩 14 小时
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze timespan \fIEXPRESSION\fP\fR\&.\&.\&.\fP"
+.PP
+此命令解析时间跨度 (i\&.e\&. 两个时间戳之间的差异) 并输出规范化形式和以微秒为单位的等效值 \&。时间跨度应遵循
+\fBsystemd.time\fP(7) 中 `PARSING TIME SPANS`\& 部分中记录的语法。没有单位的值被解析为秒 \&。
+.PP
+\fBExample\ \&14.\ \&Show parsing of timespans\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze timespan 1s 300s \*(Aq1year 0\&.000001s\*(Aq
+原文: 1s
+      微秒: 1000000
+   人类: 1 秒
+
+原版: 300s
+      微秒: 300000000
+   人类: 5 分钟
+
+原件: 1 年 0\&.000001s
+      微秒: 31557600000001
+   人类: 1y 1us
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze cat\-config \fINAME\fP\fR|\fP\fIPATH\fP\fR\&.\&.\&.\fP"
+.PP
+此命令类似于 \fBsystemctl cat\fP，但对配置文件 \& 进行操作。它会将配置文件的内容和任何丢弃 \- ins 复制到标准输出，使用通常的
+systemd 目录集和优先级规则 \&。每个参数必须是包含前缀的绝对路径 (例如 /etc/systemd/logind\&.conf 或
+/usr/lib/systemd/logind\&.conf)，或者是相对于前缀的名称 (例如 systemd/logind\&.conf) \&。
+.PP
+\fBExample\ \&15.\ \&Showing logind configuration\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd \- 分析 cat\-config systemd/logind\&.conf
+# /etc/systemd/logind\&.conf
+\&.\&.\&.
+[Login]
+NAutoVTs=8
+\&.\&.\&.
+
+# /usr/lib/systemd/logind\&.conf\&.d/20\-test\&.conf
+\&.\&.\&. 一些来自另一个包的覆盖
+
+# /etc/systemd/logind\&.conf\&.d/50\-override\&.conf
+\&.\&.\&. 一些管理员覆盖
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze compare\-versions \fIVERSION1\fP\fR [\fP\fIOP\fP\fR] \fP\fIVERSION2\fP"
+.PP
+此命令有两种不同的操作模式，具体取决于是否指定了运算符 \fIOP\fP\&。
+.PP
+在第一种模式下 \(em 当没有指定 \fIOP\fP\(em 它将比较两个版本字符串并根据需要打印 "\fIVERSION1\fP <
+\fIVERSION2\fP"，或 "\fIVERSION1\fP == \fIVERSION2\fP"，或 "\fIVERSION1\fP >
+\fIVERSION2\fP"\&。
+.PP
+版本相等则退出状态为 \fB0\fP，右边版本小则为 \fB11\fP，左边版本小则为 \fB12\fP\&。(这符合 \fBrpmdev\-vercmp\fP\&.)
+使用的约定
+.PP
+在第二种模式 \(em 当指定 \fIOP\fP\(em 它将使用操作 \fIOP\fP 比较两个版本字符串，如果满足条件则返回 \fB0\fP
+(success)，否则返回 \fB1\fP (failure)\&。 \fBOP\fP 可能是
+\fBlt\fP、\fBle\fP、\fBeq\fP、\fBne\fP、\fBge\fP、\fBgt\fP\&。在这种模式下，不打印任何输出 \&。(这符合 \fBdpkg\fP(1)
+\fB\-\-compare\-versions\fP\&.) 使用的约定
+.PP
+\fBExample\ \&16.\ \&Compare versions of a package\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze 比较版本 systemd\-250~rc1\&.fc36\&.aarch64 systemd\-251\&.fc36\&.aarch64
+systemd\-250~rc1\&.fc36\&.aarch64 < systemd\-251\&.fc36\&.aarch64
+$ 回声 $?
+12
+
+$ systemd\-analyze compare\-versions 1  lt 2; 回声 $?
+0
+$ systemd\-analyze compare\-versions 1 ge 2; 回声 $?
+1
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze verify \fIFILE\fP\fR\&.\&.\&.\fP"
+.PP
+如果检测到任何错误，此命令将加载元文件并打印警告 \&。将加载在命令行上指定的文件，但也将加载它们引用的任何其他单元 \&。A 元
+\*(可以通过在冒号后指定别名来覆盖磁盘上的 Aqs 名称; 请参见下面的示例 \&。完整的元搜索路径由所有命令行参数的目录和通常的元加载路径 \&
+组合而成。支持变量 \fI$SYSTEMD_UNIT_PATH\fP，可用于替换或扩充已编译的单元加载路径集; 请参见
+\fBsystemd.unit\fP(5)\&。包含命令行参数的目录中存在的所有单元文件将优先于其他路径 \& 使用。
+.PP
+目前检测到以下错误:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+未知的部分和指令，
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+缺少启动给定元所需的依赖项，
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在系统中找不到的 \fIDocumentation=\fP 中列出的手册页，
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在 \fIExecStart=\fP 中列出的命令和在系统中找不到或不可执行的类似命令 \&。
+.RE
+.PP
+\fBExample\ \&17.\ \&Misspelt directives\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ cat \&./user\&.slice
+[Unit]
+WhatIsThis=11
+Documentation=man:nosuchfile(1)
+Requires=different\&.service
+
+[Service]
+Description=x
+
+$ systemd\-analyze verify \&./user\&.slice
+[\&./user\&.slice:9] Unknown lvalue \*(AqWhatIsThis\*(Aq in section \*(AqUnit\*(Aq
+[\&./user\&.slice:13] Unknown section \*(AqService\*(Aq\&.  Ignoring\&.
+Error: org\&.freedesktop\&.systemd1\&.LoadFailed:
+   Unit different\&.service failed to load:
+   No such file or directory\&.
+Failed to create user\&.slice/start: Invalid argument
+user\&.slice: man nosuchfile(1) command failed with code 16
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&18.\ \&Missing service units\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ tail \&./a\&.socket \&./b\&.socket
+==> \&./a\&.socket <==
+[Socket]
+ListenStream=100
+
+==> \&./b\&.socket <==
+[Socket]
+ListenStream=100
+Accept=yes
+
+$ systemd\-analyze verify \&./a\&.socket \&./b\&.socket
+Service a\&.service not loaded, a\&.socket cannot be started\&.
+Service b@0\&.service not loaded, b\&.socket cannot be started\&.
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&19.\ \&Aliasing a unit\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ cat /tmp/source
+[Unit]
+Description=Hostname printer
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/echo %H
+MysteryKey=true
+
+$ systemd\-analyze 验证 /tmp/source
+无法准备文件名 /tmp/source: 无效参数
+
+$ systemd\-analyze 验证 /tmp/source:alias\&.service
+/tmp/systemd\-analyze\-XXXXXX/alias\&.service:7: 未知密钥名称 \*(AqMysteryKey\*(Aq 在部分 \*(AqService\*(Aq，忽略 \&。
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze security [\fIUNIT\fP\fR\&.\&.\&.]\fP"
+.PP
+此命令分析一个或多个指定服务单元的安全和沙盒设置 \&。如果指定了至少一个元名称，则检查指定服务单元的安全设置并显示详细分析
+\&。如果未指定元名称，则会检查所有当前加载的长期运行的服务单元，并显示一个包含结果的简洁表格
+\&。该命令检查各种与安全相关的服务设置，并根据设置的重要性 \& 为每个分配一个数字 "exposure level"
+值。然后计算整个元的总体暴露级别，这是 0\&.0\&...10\&.0 范围内的估计值，指示服务在安全方面的暴露程度
+\&。高暴露级别表明应用的沙盒非常少。低暴露级别表示严密的沙盒和最强的安全限制 \&。请注意，这仅分析 systemd 本身实现的每服务安全，特性
+\&。这意味着不考虑服务代码本身应用的任何附加安全机制。不应误解以这种方式确定的暴露级别:
+高暴露级别既不意味着服务代码本身没有应用有效的沙箱，也不意味着该服务实际上容易受到远程或本地攻击
+\&。然而，高暴露级别确实表明该服务很可能会受益于应用于它们的其他设置 \&。
+.PP
+请注意，许多安全和沙盒设置都可以单独规避 \(em 除非与其他设置 \&。例如，如果服务保留建立或撤消挂载点的特权，则许多沙盒选项可以通过服务代码本身
+\& 撤消。因此，每项服务都必须尽可能使用最全面、最严格的沙盒和安全设置 \&。该工具将考虑其中一些组合和设置之间的关系，但不是所有
+\&。另请注意，此处分析的安全和沙盒设置仅适用于服务代码本身执行的操作。如果一个服务可以访问 IPC 系统 (例如
+D\-Bus)，它可能会请求不受相同限制的其他服务的操作 \&。如果 IPC 访问策略也未经过验证，则任何全面的安全和沙盒分析都是不完整的。
+.PP
+\fBExample\ \&20.\ \&Analyze systemd\-logind\&.service\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze security \-\-no\-pager systemd\-logind\&.service
+  名称描述曝光
+✗ PrivateNetwork=     Service has access to the host\*(Aqs network      0\&.5
+✗ User=/DynamicUser = 服务以根用户 0\&.4 运行
+✗ DeviceAllow = 服务没有设备 ACL 0\&.2
+✓ IPAddressDeny = 服务阻止所有 IP 地址范围
+\&.\&.\&.
+→ systemd\-logind\&.service 的总体曝光水平: 4\&.1 OK 🙂
+.fi
+.if  n \{\
+.RE
+.\}
+.SS "systemd\-analyze inspect\-elf \fIFILE\fP\fR\&.\&.\&.\fP"
+.PP
+此命令将加载指定的文件，如果它们是 ELF 对象 (可执行文件、库、核心文件等 \&.)，它将解析嵌入的打包元数据 (如果有)，并以表格或 json
+格式打印 \&。有关更多信息，请参见 \m[blue]\fBPackaging Metadata\fP\m[]\&\s-2\u[1]\d\s+2 文档 \&。
+.PP
+\fBExample\ \&21.\ \&Table output\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-analyze inspect\-elf\-\-json = 漂亮的 /tmp/core\&.fsverity\&.1000\&.f77dac5dc161402aa44e15b7dd9dcf97\&.58561\&.1637106137000000
+{
+        "elfType" : "coredump",
+        "elfArchitecture" : "AMD x86\-64",
+        "/home/bluca/git/fsverity\-utils/fsverity" : {
+                "type" : "deb",
+                "name" : "fsverity\-utils",
+                "version" : "1\&.3\-1",
+                "buildId" : "7c895ecd2a271f93e96268f479fdc3c64a2ec4ee"
+        },
+        "/home/bluca/git/fsverity\-utils/libfsverity\&.so\&.0" : {
+                "type" : "deb",
+                "name" : "fsverity\-utils",
+                "version" : "1\&.3\-1",
+                "buildId" : "b5e428254abf14237b0ae70ed85fffbb98a78f88"
+        }
+}
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-system\fP
+.RS 4
+在系统 systemd 实例上运行 \&。这是隐含的默认 \&。
+.RE
+.PP
+\fB\-\-user\fP
+.RS 4
+在用户 systemd 实例上运行 \&。
+.RE
+.PP
+\fB\-\-global\fP
+.RS 4
+对用户 systemd 实例 \& 的系统范围配置进行操作。
+.RE
+.PP
+\fB\-\-order\fP, \fB\-\-require\fP
+.RS 4
+当与 \fBdot\fP 命令 (见上文) 结合使用时，选择在依赖关系图中显示哪些依赖关系 \&。如果传递 \fB\-\-order\fP，则仅显示 \fIAfter=\fP
+或 \fIBefore=\fP 类型的依赖项 \&。如果传递 \fB\-\-require\fP，则仅显示
+\fIRequires=\fP、\fIRequisite=\fP、\fIWants=\fP 和 \fIConflicts=\fP 类型的依赖项
+\&。如果两者均未通过，则显示所有这些类型的依赖性 \&。
+.RE
+.PP
+\fB\-\-from\-pattern=\fP, \fB\-\-to\-pattern=\fP
+.RS 4
+当与 \fBdot\fP 命令 (见上文) 结合使用时，这会选择在依赖图中显示哪些关系 \&。这两个选项都需要一个 \fBglob\fP(7)
+模式作为参数，它将分别与关系的左侧和右侧节点匹配 \&。
+.sp
+这些中的每一个都可以使用多次，在这种情况下，元名称必须与其中一个值 \& 匹配。当存在关系两侧的测试时，关系必须通过两个测试才能显示
+\&。当模式也被指定为位置参数时，它们必须至少匹配关系的一侧 \&。换句话说，用这两个选项指定的模式将修剪与位置参数匹配的 edges 列表
+(如果给出)，并完全确定否则显示的 edges 列表 \&。
+.RE
+.PP
+\fB\-\-fuzz=\fP\fItimespan\fP
+.RS 4
+与 \fBcritical\-chain\fP 命令 (见上) 结合使用时，还显示单位，\fItimespan\fP 早于同级最新的单位 \&。\fItimespan\fP
+的单位是秒，除非指定不同的单位，e\&.g\&。"50ms"\&.
+.RE
+.PP
+\fB\-\-man=no\fP
+.RS 4
+不要调用 \fBman\fP(1) 来验证 \fIDocumentation=\fP\& 中列出的手册页是否存在。
+.RE
+.PP
+\fB\-\-generators\fP
+.RS 4
+调用元生成器，参见 \fBsystemd.generator\fP(7)\&。一些生成器需要 root 权限
+\&。在普通用户下，启用生成器运行通常会导致一些警告 \&。
+.RE
+.PP
+\fB\-\-recursive\-errors=\fP\fIMODE\fP
+.RS 4
+控制单元及其依赖关系的验证以及 \fBsystemd\-analyze verify\fP 是否以非零进程退出状态退出 \&。使用
+\fByes\fP，当在验证指定元或其任何关联依赖项 \& 期间出现警告时，返回非零进程退出状态。使用 \fBno\fP，在仅验证指定的元 \&
+期间出现警告时，返回非零进程退出状态。使用 \fBone\fP，当在验证指定元或其 immediate 依赖项 \&
+期间出现警告时，返回非零进程退出状态。如果未指定此选项，则无论是否在验证过程中出现警告 \&，都将返回零作为退出状态。
+.RE
+.PP
+\fB\-\-root=\fP\fIPATH\fP
+.RS 4
+使用 \fBcat\-files\fP 和 \fBverify\fP，对指定根路径 \fIPATH\fP\& 下的文件进行操作。
+.RE
+.PP
+\fB\-\-image=\fP\fIPATH\fP
+.RS 4
+使用 \fBcat\-files\fP 和 \fBverify\fP，对指定图片路径 \fIPATH\fP\& 内的文件进行操作。
+.RE
+.PP
+\fB\-\-offline=\fP\fIBOOL\fP
+.RS 4
+使用 \fBsecurity\fP，对指定元文件 i\&.e\& 进行离线安全审查。不必依赖 PID 1 来获取文件的安全信息，就像 \fBsecurity\fP
+动词单独使用时一样 \&。这意味着 \fB\-\-offline=\fP 也可以与 \fB\-\-root=\fP 和 \fB\-\-image=\fP 一起使用 \&。如果元
+\*(Aqs 整体曝光水平高于 \fB\-\-threshold=\fP 设置的水平 (默认值为 100)，\fB\-\-offline=\fP 将返回错误 \&。
+.RE
+.PP
+\fB\-\-profile=\fP\fIPATH\fP
+.RS 4
+对于 \fBsecurity\fP \fB\-\-offline=\fP，在评估元设置 \&
+时考虑指定的便携式配置文件。配置文件可以按名称传递，在这种情况下将搜索众所周知的系统位置，或者它可以是特定丢弃 \- in 文件的完整路径 \&。
+.RE
+.PP
+\fB\-\-threshold=\fP\fINUMBER\fP
+.RS 4
+使用 \fBsecurity\fP，允许用户为指定的元文件设置一个自定义值来比较整体曝光级别 \&。如果一个元 \*(Aqs
+整体暴露水平，大于用户设置的，\fBsecurity\fP 将返回一个错误 \&。 \fB\-\-threshold=\fP 也可以与 \fB\-\-offline=\fP
+一起使用，其默认值为 100\&。
+.RE
+.PP
+\fB\-\-security\-policy=\fP\fIPATH\fP
+.RS 4
+使用 \fBsecurity\fP，允许用户定义一组格式为 JSON 文件的自定义要求，用于比较指定的元 file(s) 并确定他们对安全威胁的总体暴露级别
+\&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Accepted Assessment Test Identifiers\fP
+.TS
+allbox tab(:);
+lB.
+T{
+Assessment Test Identifier
+T}
+.T&
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l
+l.
+T{
+UserOrDynamicUser
+T}
+T{
+SupplementaryGroups
+T}
+T{
+PrivateMounts
+T}
+T{
+PrivateDevices
+T}
+T{
+PrivateTmp
+T}
+T{
+PrivateNetwork
+T}
+T{
+PrivateUsers
+T}
+T{
+ProtectControlGroups
+T}
+T{
+ProtectKernelModules
+T}
+T{
+ProtectKernelTunables
+T}
+T{
+ProtectKernelLogs
+T}
+T{
+ProtectClock
+T}
+T{
+ProtectHome
+T}
+T{
+ProtectHostname
+T}
+T{
+ProtectSystem
+T}
+T{
+RootDirectoryOrRootImage
+T}
+T{
+LockPersonality
+T}
+T{
+MemoryDenyWriteExecute
+T}
+T{
+NoNewPrivileges
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_ADMIN
+T}
+T{
+CapabilityBoundingSet_CAP_SET_UID_GID_PCAP
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_PTRACE
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_TIME
+T}
+T{
+CapabilityBoundingSet_CAP_NET_ADMIN
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_RAWIO
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_MODULE
+T}
+T{
+CapabilityBoundingSet_CAP_AUDIT
+T}
+T{
+CapabilityBoundingSet_CAP_SYSLOG
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_NICE_RESOURCE
+T}
+T{
+CapabilityBoundingSet_CAP_MKNOD
+T}
+T{
+CapabilityBoundingSet_CAP_CHOWN_FSETID_SETFCAP
+T}
+T{
+CapabilityBoundingSet_CAP_DAC_FOWNER_IPC_OWNER
+T}
+T{
+CapabilityBoundingSet_CAP_KILL
+T}
+T{
+CapabilityBoundingSet_CAP_NET_BIND_SERVICE_BROADCAST_RAW
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_BOOT
+T}
+T{
+CapabilityBoundingSet_CAP_MAC
+T}
+T{
+CapabilityBoundingSet_CAP_LINUX_IMMUTABLE
+T}
+T{
+CapabilityBoundingSet_CAP_IPC_LOCK
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_CHROOT
+T}
+T{
+CapabilityBoundingSet_CAP_BLOCK_SUSPEND
+T}
+T{
+CapabilityBoundingSet_CAP_WAKE_ALARM
+T}
+T{
+CapabilityBoundingSet_CAP_LEASE
+T}
+T{
+CapabilityBoundingSet_CAP_SYS_TTY_CONFIG
+T}
+T{
+UMask
+T}
+T{
+KeyringMode
+T}
+T{
+ProtectProc
+T}
+T{
+ProcSubset
+T}
+T{
+NotifyAccess
+T}
+T{
+RemoveIPC
+T}
+T{
+Delegate
+T}
+T{
+RestrictRealtime
+T}
+T{
+RestrictSUIDSGID
+T}
+T{
+RestrictNamespaces_user
+T}
+T{
+RestrictNamespaces_mnt
+T}
+T{
+RestrictNamespaces_ipc
+T}
+T{
+RestrictNamespaces_pid
+T}
+T{
+RestrictNamespaces_cgroup
+T}
+T{
+RestrictNamespaces_uts
+T}
+T{
+RestrictNamespaces_net
+T}
+T{
+RestrictAddressFamilies_AF_INET_INET6
+T}
+T{
+RestrictAddressFamilies_AF_UNIX
+T}
+T{
+RestrictAddressFamilies_AF_NETLINK
+T}
+T{
+RestrictAddressFamilies_AF_PACKET
+T}
+T{
+RestrictAddressFamilies_OTHER
+T}
+T{
+SystemCallArchitectures
+T}
+T{
+SystemCallFilter_swap
+T}
+T{
+SystemCallFilter_obsolete
+T}
+T{
+SystemCallFilter_clock
+T}
+T{
+SystemCallFilter_cpu_emulation
+T}
+T{
+SystemCallFilter_debug
+T}
+T{
+SystemCallFilter_mount
+T}
+T{
+SystemCallFilter_module
+T}
+T{
+SystemCallFilter_raw_io
+T}
+T{
+SystemCallFilter_reboot
+T}
+T{
+SystemCallFilter_privileged
+T}
+T{
+SystemCallFilter_resources
+T}
+T{
+IPAddressDeny
+T}
+T{
+DeviceAllow
+T}
+T{
+AmbientCapabilities
+T}
+.TE
+.sp 1
+请参见下面的示例 "JSON Policy"\&。
+.RE
+.PP
+\fB\-\-json=\fP\fIMODE\fP
+.RS 4
+使用 \fBsecurity\fP 命令，生成安全分析表的 JSON 格式输出 \&。格式是一个 JSON 数组，其对象包含以下字段: \fIset\fP
+指示设置是否已启用，\fIname\fP 用于引用设置，\fIjson_field\fP 是设置的 JSON 兼容标识符，\fIdescription\fP
+是设置状态的轮廓，\fIexposure\fP 是 0\&.0\&...10\&.0 范围内的数字，其中较高的值对应于较高的安全威胁 \&。表的 JSON
+版本被打印到标准输出 \&。传递给该选项的 \fIMODE\fP 可以是以下三个之一: 默认的 \fBoff\fP、\fBpretty\fP 和
+\fBshort\fP，它们分别输出安全表的美化或缩短的 JSON 版本 \&。使用 \fBplot\fP 命令，生成原始时间数据的 JSON 格式输出
+\&。格式为 JSON 数组，对象包含以下字段: \fIname\fP 为元名称，\fIactivated\fP
+为启动后服务被激活的时间，\fIactivating\fP 为启动后服务最初启动的时间，\fItime\fP
+为多长时间服务从最初启动时开始激活，\fIdeactivated\fP 是启动后服务被停用的时间，\fIdeactivating\fP
+是启动后服务最初被告知停用的时间 \&。
+.RE
+.PP
+\fB\-\-iterations=\fP\fINUMBER\fP
+.RS 4
+当与 \fBcalendar\fP 命令一起使用时，显示指定日历表达式接下来将经过的指定迭代次数 \&。默认为 1\&。
+.RE
+.PP
+\fB\-\-base\-time=\fP\fITIMESTAMP\fP
+.RS 4
+与 \fBcalendar\fP 命令一起使用时，显示相对于指定时间点的下一次迭代 \&。如果未指定，则默认为当前时间 \&。
+.RE
+.PP
+\fB\-\-unit=\fP\fIUNIT\fP
+.RS 4
+与 \fBcondition\fP 命令一起使用时，计算指定元文件中的所有 \fICondition*=\&.\&.\&.\fP 和
+\fIAssert*=\&.\&.\&.\fP 赋值 \&。完整的元搜索路径是通过将指定元的目录与通常的元加载路径 \& 组合而成的。支持变量
+\fI$SYSTEMD_UNIT_PATH\fP，可用于替换或扩充已编译的单元加载路径集; 请参见
+\fBsystemd.unit\fP(5)\&。包含指定元的目录中存在的所有单元文件将优先于其他路径 \& 使用。
+.RE
+.PP
+\fB\-\-table\fP
+.RS 4
+当与 \fBplot\fP 命令一起使用时，原始时间数据在表中输出 \&。
+.RE
+.PP
+\fB\-\-no\-legend\fP
+.RS 4
+当 \fBplot\fP 命令与 \fB\-\-table\fP 或 \fB\-\-json=\fP 结合使用时，输出中不包含图例或提示 \&。
+.RE
+.PP
+\fB\-H\fP, \fB\-\-host=\fP
+.RS 4
+远程执行操作 \&。指定主机名，或用 "@" 分隔的用户名和主机名，以连接到 \&。主机名可以选择以 ssh 正在侦听的端口为后缀，由 ":"
+分隔，然后是容器名称，由 "/" 分隔，它直接连接到指定主机上的特定容器 \&。这将使用 SSH 与远程机器管理器实例对话。容器名称可以用
+\fBmachinectl \-H \fP\fIHOST\fP\& 枚举。将 IPv6 地址放在括号 \& 中。
+.RE
+.PP
+\fB\-M\fP, \fB\-\-machine=\fP
+.RS 4
+在本地容器上执行操作 \&。指定要连接的容器名称，可以选择以要连接的用户名和分隔符 "@"\& 作为前缀。如果使用特殊字符串 "\&.host"
+代替容器名称，则会建立到本地系统的连接 (这对于连接到特定用户 \* (Aqs 用户总，字符串: "\-\-user
+\-\-machine=lennart@\&.host") \& 很有用。如果不使用 "@" 语法，则以 root 用户身份建立连接 \&。如果使用 "@"
+语法，则可以省略左侧或右侧 (但不能同时省略两者)，在这种情况下，隐含本地用户名和 "\&.host"\&。
+.RE
+.PP
+\fB\-\-quiet\fP
+.RS 4
+抑制提示和其他非必要的输出 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+对于大多数命令，成功时返回 0，否则返回非零失败代码 \&。
+.PP
+对于动词 \fBcompare\-versions\fP，在双参数形式中，如果第二个版本字符串分别大于、等于或小于第一个 \&，则返回
+\fB12\fP、\fB0\fP、\fB11\fP。在三参数形式中，如果条件为真或假则分别为 \fB0\fP 或 \fB1\fP\&。
+.SH ENVIRONMENT
+.PP
+\fI$SYSTEMD_LOG_LEVEL\fP
+.RS 4
+发出消息的最大日志级别 (具有更高日志级别的消息，i\&.e\&。不太重要的消息将被抑制)
+\&。\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP 之一
+(按重要性递减顺序) 或 0\&...7\& 范围内的整数。有关详细信息，请参见 \fBsyslog\fP(3)\&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_COLOR\fP
+.RS 4
+一个布尔值 \&。如果为真，写入 tty 的消息将根据优先级着色。
+.sp
+这个设置只在消息直接写入终端时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会自行根据日志级别给消息着色 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TIME\fP
+.RS 4
+一个布尔值 \&。如果为 true，控制台日志消息将以时间戳 \& 为前缀。
+.sp
+这个设置只在消息直接写入终端或文件时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会根据条目元数据自行附加时间戳 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_LOCATION\fP
+.RS 4
+一个布尔值 \&。如果为 true，消息将在源代码中以文件名和行号为前缀 \&。
+.sp
+请注意，日志位置通常作为元数据附加到日志条目中。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TID\fP
+.RS 4
+一个布尔值 \&。如果为真，消息将以当前数字线程 ID (TID)\& 为前缀。
+.sp
+请注意，此信息无论如何都作为元数据附加到日记条目 \&。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TARGET\fP
+.RS 4
+日志消息的目的地 \&。\fBconsole\fP (记录到附加的 tty)、\fBconsole\-prefixed\fP (记录到附加的
+tty，但带有编码日志级别和 "facility" 的前缀，参见 \fBsyslog\fP(3)、\fBkmsg\fP
+(记录到内核循环日志缓冲区)、\fBjournal\fP (记录到日志) 之一，\fBjournal\-or\-kmsg\fP (如果可用则记录到日志，否则记录到
+kmsg)，\fBauto\fP (自动确定适当的日志目标，默认)，\fBnull\fP (禁用日志输出) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGER\fP
+.RS 4
+未给出 \fB\-\-no\-pager\fP 时使用的寻呼机; 覆盖 \fI$PAGER\fP\&。如果 \fI$SYSTEMD_PAGER\fP 和 \fI$PAGER\fP
+都没有设置，则依次尝试一组众所周知的寻呼机实现，包括 \fBless\fP(1) 和 \fBmore\fP(1)，直到找到一个
+\&。如果没有发现寻呼机实现，则不调用寻呼机 \&。将此环境变量设置为空字符串或值 "cat" 等同于传递 \fB\-\-no\-pager\fP\&。
+.sp
+Note: 如果未设置 \fI$SYSTEMD_PAGERSECURE\fP，\fI$SYSTEMD_PAGER\fP (以及 \fI$PAGER\fP) 将被忽略
+\&。
+.RE
+.PP
+\fI$SYSTEMD_LESS\fP
+.RS 4
+覆盖传递给 \fBless\fP (默认 "FRSXMK") \& 的选项。
+.sp
+用户可能希望特别更改两个选项:
+.PP
+\fBK\fP
+.RS 4
+此选项指示寻呼机在按下 Ctrl+C 时立即退出 \&。要允许 \fBless\fP 自己处理 Ctrl+C 以切换回寻呼机命令提示符，请取消设置此选项
+\&。
+.sp
+如果 \fI$SYSTEMD_LESS\fP 的值不包括 "K"，调用的分页器是 \fBless\fP，Ctrl+C 会被可执行文件忽略，需要分页器处理 \&。
+.RE
+.PP
+\fBX\fP
+.RS 4
+此选项指示寻呼机不将 termcap 初始化和取消初始化字符串发送到终端 \&。它默认设置为允许命令输出在终端中保持可见，即使在寻呼机退出 \&
+之后也是如此。然而，这会阻止某些寻呼机功能工作，特别是无法使用鼠标滚动分页输出。
+.RE
+.sp
+有关更多讨论，请参见 \fBless\fP(1)\&。
+.RE
+.PP
+\fI$SYSTEMD_LESSCHARSET\fP
+.RS 4
+覆盖传递给 \fBless\fP 的字符集 (默认为 "utf\-8"，如果调用终端被确定为与 UTF\-8 兼容) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGERSECURE\fP
+.RS 4
+采用布尔型参数 \&。为真时，启用寻呼机的 "secure" 模式; 如果为假，则禁用 \&。如果根本未设置
+\fI$SYSTEMD_PAGERSECURE\fP，则在有效 UID 与登录会话的所有者不同时启用安全模式，请参见 \fBgeteuid\fP(2) 和
+\fBsd_pid_get_owner_uid\fP(3)\&。在安全模式下，调用寻呼机时将设置
+\fBLESSSECURE=1\fP，寻呼机应禁用打开或创建新文件或启动新子进程的命令 \&。当根本没有设置 \fI$SYSTEMD_PAGERSECURE\fP
+时，将不会使用未知实现安全模式的寻呼机 \&。(目前只有 \fBless\fP(1) 实现了安全模式 \&。)
+.sp
+Note: 当以提升的权限调用命令时，例如在 \fBsudo\fP(8) 或 \fBpkexec\fP(1) 下，必须小心确保未启用意外的交互，特性 \&。寻呼机的
+"Secure" 模式可以如上所述自动启用 \&。设置 \fISYSTEMD_PAGERSECURE=0\fP 或不将其从继承环境中删除允许用户调用任意命令
+\&。请注意，如果要兑现 \fI$SYSTEMD_PAGER\fP 或 \fI$PAGER\fP 变量，则必须同时设置
+\fI$SYSTEMD_PAGERSECURE\fP\&。改为使用 \fB\-\-no\-pager\fP\& 完全禁用寻呼机可能是合理的。
+.RE
+.PP
+\fI$SYSTEMD_COLORS\fP
+.RS 4
+采用布尔型参数 \&。当为真时，\fBsystemd\fP 和相关的实用工具将在其输出中使用颜色，否则输出将为单色 \&。此外，该变量可以采用以下特殊值之一:
+"16"、"256"，分别将颜色的使用限制为基本 16 或 256 ANSI 颜色 \&。这可以被指定以覆盖基于 \fI$TERM\fP
+和控制台连接到什么的自动决定 \&。
+.RE
+.PP
+\fI$SYSTEMD_URLIFY\fP
+.RS 4
+该值必须是布尔值 \&。控制是否应在支持此 \& 的终端模拟器的输出中生成可点击链接。这可以被指定来覆盖 \fBsystemd\fP 基于 \fI$TERM\fP
+和其他条件做出的决定 \&。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&22.\ \&JSON Policy\fP
+.PP
+作为路径参数传递给 \fB\-\-security\-policy=\fP 的 JSON 文件有一个顶级 JSON 对象，键是上面提到的评估测试标识符
+\&。文件中的值应该是具有以下一个或多个字段的 JSON 对象: \fBdescription_na\fP
+(string)、\fBdescription_good\fP (string)、\fBdescription_bad\fP (string)、\fBweight\fP
+(无符号整数) 和 \fBrange\fP (无符号整数) \&。如果 JSON 对象中缺少与元文件的特定 id 对应的这些字段中的任何一个，则使用与相同
+id 对应的默认内置字段值作为 default\& 进行安全分析。weight 和 range 字段用于确定元文件的整体曝光级别:
+每个设置的值都分配了一个不良分数，乘以策略权重并除以策略范围以确定设置的整体曝光度暗示 \&。计算出的不良度在元文件中的所有设置中求和，归一化到
+1\&...100 范围，并用于确定元 \& 的整体曝光级别。通过允许用户操纵这些字段，\*(Aqsecurity\*(Aq
+动词让他们可以选择自己决定哪些 ID 更重要，因此应该对曝光级别产生更大的影响 \&。"0" 的权重表示不会检查设置 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+{
+  "PrivateDevices":
+    {
+    "description_good": "Service has no access to hardware devices",
+    "description_bad": "Service potentially has access to hardware devices",
+    "weight": 1000,
+    "range": 1
+    },
+  "PrivateMounts":
+    {
+    "description_good": "Service cannot install system mounts",
+    "description_bad": "Service may install system mounts",
+    "weight": 1000,
+    "range": 1
+    },
+  "PrivateNetwork":
+    {
+    "description_good": "Service has no access to the host\*(Aqs network",
+    "description_bad": "Service has access to the host\*(Aqs network",
+    "weight": 2500,
+    "range": 1
+    },
+  "PrivateTmp":
+    {
+    "description_good": "Service has no access to other software\*(Aqs temporary files",
+    "description_bad": "Service has access to other software\*(Aqs temporary files",
+    "weight": 1000,
+    "range": 1
+    },
+  "PrivateUsers":
+    {
+    "description_good": "Service does not have access to other users",
+    "description_bad": "Service has access to other users",
+    "weight": 1000,
+    "range": 1
+    }
+}
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1)
+.SH NOTES
+.IP " 1." 4
+打包元数据
+.RS 4
+\%https://systemd.io/COREDUMP_PACKAGE_METADATA/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,445 @@
+.\" -*- coding: UTF-8 -*-
+.\" %%%LICENSE_START(PUBLIC_DOMAIN)
+.\" This is in the public domain
+.\" %%%LICENSE_END
+.\" Various parts:
+.\" Copyright (C) 2007-9, 2013, 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ld.so 8 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ld.so, ld\-linux.so \- 动态 linker/loader
+.SH SYNOPSIS
+动态链接器可以通过运行一些动态链接程序或共享对象来间接运行 (在这种情况下，不能将命令行选项传递给动态链接器，在 ELF 情况下，动态链接器存储在
+\&\fB.interp\fP 部分程序的执行) 或直接运行:
+.PP
+\fI/lib/ld\-linux.so.*\fP [OPTIONS] [PROGRAM [ARGUMENTS]]
+.SH DESCRIPTION
+程序 \fBld.so\fP 和 \fBld\-linux.so*\fP 找到并加载程序所需的共享对象 (共享库)，准备程序运行，然后运行。
+.PP
+Linux 二进制文件需要动态链接 (在运行时链接)，除非在编译期间为 \fBld\fP(1) 提供了 \fB\-static\fP 选项。
+.PP
+\fBld.so\fP 程序处理 a.out 二进制文件，这是一种很久以前使用的二进制格式。 程序 \fBld\-linux.so*\fP
+(\fI/lib/ld\-linux.so.1\fP for libc5, \fI/lib/ld\-linux.so.2\fP for glibc2) 处理更现代的
+ELF 格式的二进制文件。 这两个程序具有相同的行为，并使用相同的支持文件和程序 (\fBldd\fP(1)、\fBldconfig\fP(8) 和
+\fI/etc/ld.so.conf\fP)。
+.PP
+解析共享对象依赖时，动态链接器首先检查每个依赖字符串以查看它是否包含斜，字符串
+(如果在链接时指定了包含斜，字符串，的共享对象路径名，则会发生这种情况)。 如果找到斜杠，则依赖字符串被解释为 (相对或绝对)
+路径名，并使用该路径名加载共享对象。
+.PP
+如果共享对象依赖项不包含斜杠，则按以下顺序搜索它:
+.IP (1) 5
+使用二进制文件的 DT_RPATH 动态部分属性中指定的目录 (如果存在且 DT_RUNPATH 属性不存在)。 不推荐使用 DT_RPATH。
+.IP (2)
+使用环境变量 \fBLD_LIBRARY_PATH\fP，除非可执行文件正在安全执行模式下运行 (见下文)，在这种情况下该变量将被忽略。
+.IP (3)
+使用二进制文件的 DT_RUNPATH 动态部分属性中指定的目录 (如果存在)。 搜索此类目录只是为了找到 DT_NEEDED (直接依赖项)
+条目所需的那些对象，而不适用于这些对象的子对象，这些对象本身必须具有自己的 DT_RUNPATH 条目。 这与 DT_RPATH
+不同，后者适用于搜索依赖树中的所有子项。
+.IP (4)
+来自缓存文件 \fI/etc/ld.so.cache\fP，其中包含先前在扩充库路径中找到的候选共享对象的编译列表。 但是，如果二进制文件与 \fB\-z nodeflib\fP 链接器选项链接，则将跳过默认路径中的共享对象。 安装在硬件功能目录 (见下文) 中的共享对象优于其他共享对象。
+.IP (5)
+.\"
+在默认路径 \fI/lib\fP 中，然后是 \fI/usr/lib\fP。 (在某些 64 位架构上，64 位共享对象的默认路径是 \fI/lib64\fP，然后是
+\fI/usr/lib64\fP.) 如果二进制文件是使用 \fB\-z nodeflib\fP 链接器选项链接的，则跳过此步骤。
+.SS "Dynamic string tokens"
+在几个地方，动态链接器扩展了动态字符串 tokens:
+.IP \[bu] 3
+在环境变量 \fBLD_LIBRARY_PATH\fP、\fBLD_PRELOAD\fP 和 \fBLD_AUDIT\fP 中，
+.IP \[bu]
+在 ELF 二进制文件的动态部分标记 \fBDT_NEEDED\fP、\fBDT_RPATH\fP、\fBDT_RUNPATH\fP、\fBDT_AUDIT\fP 和
+\fBDT_DEPAUDIT\fP 的值中，
+.IP \[bu]
+在 \fBld.so\fP 命令行选项 \fB\-\-audit\fP、\fB\-\-library\-path\fP 和 \fB\-\-preload\fP 的参数中 (见下文)，以及
+.IP \[bu]
+文件名中的参数为 \fBdlopen\fP(3) 和 \fBdlmopen\fP(3) 的函数。
+.PP
+代入的 tokens 如下:
+.TP 
+\fI$ORIGIN\fP (or equivalently \fI${ORIGIN}\fP)
+这将扩展到包含程序或共享对象的目录。 因此，位于 \fIsomedir/app\fP 中的应用程序可以用
+.IP
+.in +4n
+.EX
+gcc \-Wl,\-rpath,\[aq]$ORIGIN/../lib\[aq]
+.EE
+.in
+.IP
+这样无论 \fIsomedir\fP 在目录层次结构中的什么位置，它都会在 \fIsomedir/lib\fP 中找到关联的共享对象。
+这有助于创建不需要安装到特殊目录中的 "turn\-key" 应用程序，而是可以解压缩到任何目录中并仍然找到自己的共享对象。
+.TP 
+\fI$LIB\fP (or equivalently \fI${LIB}\fP)
+这会根据架构扩展到 \fIlib\fP 或 \fIlib64\fP (例如，在 x86\-64 上，它扩展到 \fIlib64\fP，在 x86\-32 上，它扩展到
+\fIlib\fP)。
+.TP 
+\fI$PLATFORM\fP (or equivalently \fI${PLATFORM}\fP)
+.\" To get an idea of the places that $PLATFORM would match,
+.\" look at the output of the following:
+.\"
+.\"     mkdir /tmp/d
+.\"     LD_LIBRARY_PATH=/tmp/d strace -e open /bin/date 2>&1 | grep /tmp/d
+.\"
+.\" ld.so lets names be abbreviated, so $O will work for $ORIGIN;
+.\" Don't do this!!
+这将扩展为与主机系统的处理器类型对应的字符串 (例如，"x86_64")。 在某些体系结构上，Linux 内核不向动态链接器提供平台字符串。
+该字符串的值取自辅助 vector 中的 \fBAT_PLATFORM\fP 值 (参见 \fBgetauxval\fP(3)).
+.PP
+请注意，当从 shell 设置时，动态字符串 tokens 必须正确引用，以防止它们扩展为 shell 或环境变量。
+.SH OPTIONS
+.TP 
+\fB\-\-argv0\fP \fIstring\fP (since glibc 2.33)
+在运行程序之前将 \fIargv[0]\fP 设置为值 \fIstring\fP。
+.TP 
+\fB\-\-audit\fP\fI list\fP
+使用 \fIlist\fP 中命名的对象作为审计员。 \fIlist\fP 中的对象由冒号分隔。
+.TP 
+\fB\-\-inhibit\-cache\fP
+不要使用 \fI/etc/ld.so.cache\fP。
+.TP 
+\fB\-\-library\-path\fP\fI path\fP
+使用 \fIpath\fP 而不是 \fBLD_LIBRARY_PATH\fP 环境变量设置 (见下文)。 名称 \fIORIGIN\fP、\fILIB\fP 和
+\fIPLATFORM\fP 被解释为 \fBLD_LIBRARY_PATH\fP 环境变量。
+.TP 
+\fB\-\-inhibit\-rpath\fP\fI list\fP
+忽略 \fIlist\fP 中对象名称中的 RPATH 和 RUNPATH 信息。 在安全执行模式下运行时会忽略此选项 (见下文)。 \fIlist\fP
+中的对象由冒号或空格分隔。
+.TP 
+\fB\-\-list\fP
+列出所有依赖项以及它们是如何解决的。
+.TP 
+\fB\-\-list\-tunables\fP (since glibc 2.33)
+打印所有可调参数的名称和值，以及允许的最小值和最大值。
+.TP 
+\fB\-\-preload\fP \fIlist\fP (since glibc 2.30)
+预加载 \fIlist\fP 中指定的对象。 \fIlist\fP 中的对象由冒号或空格分隔。 这些对象按照下面 \fBLD_PRELOAD\fP
+环境变量的说明进行预加载。
+.IP
+与 \fBLD_PRELOAD\fP 相比，\fB\-\-preload\fP
+选项提供了一种方法来为单个可执行文件执行预加载，而不影响在执行新程序的任何子进程中执行的预加载。
+.TP 
+\fB\-\-verify\fP
+验证程序是动态链接的并且此动态链接器可以处理它。
+.SH ENVIRONMENT
+.\"
+各种环境变量影响动态链接器的运行。
+.SS "Secure\-execution mode"
+出于安全原因，如果动态链接器确定二进制文件应该以安全执行模式运行，则某些环境变量的影响将被取消或修改，并且这些环境变量会从环境中剥离，这样程序甚至不会见定义。
+其中一些环境变量会影响动态链接器本身的操作，如下所述。 其他经此处理的环境变量包括:
+\fBGCONV_PATH\fP、\fBGETCONF_DIR\fP、\fBHOSTALIASES\fP、\fBLOCALDOMAIN\fP、\fBLOCPATH\fP、\fBMALLOC_TRACE\fP、\fBNIS_PATH\fP、\fBNLSPATH\fP、\fBRESOLV_HOST_CONF\fP、\fBRES_OPTIONS\fP、\fBTMPDIR\fP、\fBTZDIR\fP。
+.PP
+如果辅助 vector 中的 \fBAT_SECURE\fP 条目 (请参见 \fBgetauxval\fP(3)) 具有非零值)，则二进制文件以安全执行模式执行。
+由于各种原因，该条目可能具有非零值，包括:
+.IP \[bu] 3
+进程的真实有效用户 ID 不同，或者真实有效组 ID 不同。 这通常是执行设置用户 ID 或设置组 ID 程序的结果。
+.IP \[bu]
+具有非 root 用户 ID 的进程执行了一个赋予该进程能力的二进制文件。
+.IP \[bu]
+.\"
+Linux 安全模块可能设置了一个非零值。
+.SS "Environment variables"
+其中比较重要的环境变量如下:
+.TP 
+\fBLD_ASSUME_KERNEL\fP (since glibc 2.2.3)
+每个共享对象都可以通知动态链接器它需要的最低内核 ABI 版本。 (此要求在 ELF 注释部分中编码，可通过 \fIreadelf\~\-n\fP 查看为标记为
+\fBNT_GNU_ABI_TAG\fP.) 的部分在运行时，动态链接器确定正在运行的内核的 ABI 版本，并将拒绝加载指定超过该 ABI 的最低 ABI
+版本的共享对象版本。
+.IP
+\fBLD_ASSUME_KERNEL\fP 可用于使动态链接器假定它正在具有不同内核 ABI 版本的系统上运行。 例如，以下命令行使动态链接器在加载
+\fImyprog\fP: 所需的共享对象时假定它在 Linux 2.2.5 上运行
+.IP
+.in +4n
+.EX
+$ \fBLD_ASSUME_KERNEL=2.2.5 ./myprog\fP
+.EE
+.in
+.IP
+在提供多个版本的共享对象 (在搜索路径的不同目录中) 且具有不同的最低内核 ABI 版本要求的系统上，\fBLD_ASSUME_KERNEL\fP
+可用于选择所使用对象的版本 (取决于目录搜索顺序) .
+.IP
+从历史上看，\fBLD_ASSUME_KERNEL\fP 特性最常见的用途是在同时提供 LinuxThreads 和 NPTL
+(后者通常是此类系统的默认设置) 的系统上手动选择较旧的 LinuxThreads POSIX 线程实现; 请参见 \fBpthreads\fP(7)。
+.TP 
+\fBLD_BIND_NOW\fP (since glibc 2.1.1)
+如果设置为非空字符串，则导致动态链接器在程序启动时解析所有符号，而不是将函数解析延迟到它们首次被引用时的位置。 这在使用调试器时很有用。
+.TP 
+\fBLD_LIBRARY_PATH\fP
+在执行时搜索 ELF 库的目录列表。 列表中的项由冒号或分号分隔，并且不支持转义任一分隔符。 零长度目录名称指示当前工作目录。
+.IP
+该变量在安全执行模式下被忽略。
+.IP
+在 \fBLD_LIBRARY_PATH\fP 中指定的路径名中，动态链接器扩展 tokens \fI$ORIGIN\fP、\fI$LIB\fP 和
+\fI$PLATFORM\fP (或在名称周围使用花括号的版本)，如上文 \fIDynamic string tokens\fP 中所述。
+因此，例如，以下将导致在包含要执行的程序的目录下的 \fIlib\fP 或 \fIlib64\fP 子目录中搜索库:
+.IP
+.in +4n
+.EX
+$ \fBLD_LIBRARY_PATH=\[aq]$ORIGIN/$LIB\[aq] prog\fP
+.EE
+.in
+.IP
+(注意使用单引号，防止 \fI$ORIGIN\fP 和 \fI$LIB\fP 扩展为 shell 变量! )
+.TP 
+\fBLD_PRELOAD\fP
+要在所有其他对象之前加载的附加的、用户指定的 ELF 共享对象的列表。 此特性可用于选择性地覆盖其他共享对象中的函数。
+.IP
+列表的项可以用空格或冒号分隔，不支持转义任何一个分隔符。 使用描述下给出的规则搜索对象。 按照列表中指定的从左到右的顺序搜索对象并将其添加到链接
+map。
+.IP
+在安全执行模式下，包含斜杠的预加载路径名将被忽略。 此外，共享对象仅从标准搜索目录预加载，并且仅当它们启用了设置用户 ID 模式位时 (这不是典型的)。
+.IP
+.\" Tested with the following:
+.\"
+.\"	LD_PRELOAD='$LIB/libmod.so' LD_LIBRARY_PATH=. ./prog
+.\"
+.\" which will preload the libmod.so in 'lib' or 'lib64', using it
+.\" in preference to the version in '.'.
+在 \fBLD_PRELOAD\fP 列表中指定的名称中，动态链接器理解 tokens \fI$ORIGIN\fP、\fI$LIB\fP 和 \fI$PLATFORM\fP
+(或在名称周围使用大括号的版本)，如上文 \fIDynamic string tokens\fP 中所述。 (另请参见
+\fBLD_LIBRARY_PATH\fP.) 描述下的引用讨论
+.IP
+有多种指定要预加载的库的方法，这些方法按以下顺序处理:
+.RS
+.IP (1) 5
+\fBLD_PRELOAD\fP 环境变量。
+.IP (2)
+直接调用动态链接器时的 \fB\-\-preload\fP 命令行选项。
+.IP (3)
+\fI/etc/ld.so.preload\fP 文件 (如下所述)。
+.RE
+.TP 
+\fBLD_TRACE_LOADED_OBJECTS\fP
+如果设置 (为任何值)，将导致程序列出其动态依赖项，就像由 \fBldd\fP(1) 运行一样，而不是正常运行。
+.PP
+然后有很多或多或少晦涩难懂的变量，许多已过时或仅供内部使用。
+.TP 
+\fBLD_AUDIT\fP (since glibc 2.4)
+用户指定的 ELF 共享对象的列表，这些对象在单独的链接器命名空间中的所有其他对象之前加载 (即，不干扰进程中可能发生的正常符号绑定的对象)
+这些对象可用于审核操作的动态链接器。 列表中的项以冒号分隔，不支持转义分隔符。
+.IP
+\fBLD_AUDIT\fP 在安全执行模式下被忽略。
+.IP
+动态链接器将在所谓的审计检查点通知审计共享对象 \[em] 例如，加载一个新的共享对象，解析一个符号，或者从另一个共享对象调用一个符号 \[em]
+通过调用一个适当的函数审计共享对象。 有关详细信息，请参见 \fBrtld\-audit\fP(7)。 审计接口在很大程度上与 Solaris
+上提供的接口兼容，如 \fIRuntime Linker Auditing Interface\fP 一章中其 \fILinker and Libraries Guide\fP 中所述。
+.IP
+在 \fBLD_AUDIT\fP 列表中指定的名称中，动态链接器理解 tokens \fI$ORIGIN\fP、\fI$LIB\fP 和 \fI$PLATFORM\fP
+(或在名称周围使用大括号的版本)，如上文 \fIDynamic string tokens\fP 中所述。 (另请参见
+\fBLD_LIBRARY_PATH\fP.) 描述下的引用讨论
+.IP
+.\" commit 8e9f92e9d5d7737afdacf79b76d98c4c42980508
+从 glibc 2.13 开始，在安全执行模式下，审核列表中包含斜杠的名称将被忽略，并且仅加载标准搜索目录中启用了设置用户 ID 模式位的共享对象。
+.TP 
+\fBLD_BIND_NOT\fP (since glibc 2.1.95)
+如果此环境变量设置为非空字符串，则在解析一个函数符号后不更新 GOT (全局偏移表) 和 PLT (过程链接表)。 通过将此变量与
+\fBLD_DEBUG\fP (与类别 \fIbindings\fP 和 \fIsymbols\fP)) 结合使用，可以观察到所有运行时函数绑定。
+.TP 
+\fBLD_DEBUG\fP (since glibc 2.1)
+输出有关动态链接器操作的详细调试信息。 此变量的内容是以下多个类别之一，由冒号、逗号或 (如果值被引用) 空格分隔:
+.RS
+.TP  12
+\fIhelp\fP
+在此变量的值中指定 \fIhelp\fP 不会运行指定的程序，并显示有关可以在此环境变量中指定哪些类别的帮助消息。
+.TP 
+\fIall\fP
+打印所有调试信息 (\fIstatistics\fP 和 \fIunused\fP 除外; 见下文)。
+.TP 
+\fIbindings\fP
+显示有关每个符号绑定到哪个定义的信息。
+.TP 
+\fIfiles\fP
+显示输入文件的进度。
+.TP 
+\fIlibs\fP
+显示库搜索路径。
+.TP 
+\fIreloc\fP
+显示搬迁处理。
+.TP 
+\fIscopes\fP
+显示使用域信息。
+.TP 
+\fIstatistics\fP
+显示搬迁统计信息。
+.TP 
+\fIsymbols\fP
+显示每个符号查找的搜索路径。
+.TP 
+\fIunused\fP
+确定未使用的 DSO。
+.TP 
+\fIversions\fP
+显示版本依赖关系。
+.RE
+.IP
+由于 glibc 2.3.4，\fBLD_DEBUG\fP 在安全执行模式下被忽略，除非文件 \fI/etc/suid\-debug\fP 存在
+(文件的内容无关紧要)。
+.TP 
+\fBLD_DEBUG_OUTPUT\fP (since glibc 2.1)
+默认情况下，\fBLD_DEBUG\fP 输出写入标准错误。 如果定义了 \fBLD_DEBUG_OUTPUT\fP，则输出将写入其值指定的路径名，后缀 "."
+(dot) 后跟追加到路径名的进程 ID。
+.IP
+\fBLD_DEBUG_OUTPUT\fP 在安全执行模式下被忽略。
+.TP 
+\fBLD_DYNAMIC_WEAK\fP (since glibc 2.1.91)
+默认情况下，当搜索共享库来解析符号引用时，动态链接器将解析它找到的第一个定义。
+.IP
+旧的 glibc 版本 (在 glibc 2.2 之前) 提供了一种不同的行为: 如果链接器发现一个弱符号，它会记住该符号并继续在剩余的共享库中搜索。
+如果它随后找到了相同符号的强定义，那么它会改用该定义。 (如果没有找到更多的符号，那么动态链接器将使用它最初找到的弱符号。)
+.IP
+.\" More precisely 2.1.92
+.\" See weak handling
+.\"     https://www.sourceware.org/ml/libc-hacker/2000-06/msg00029.html
+.\"     To: GNU libc hacker <libc-hacker at sourceware dot cygnus dot com>
+.\"     Subject: weak handling
+.\"     From: Ulrich Drepper <drepper at redhat dot com>
+.\"     Date: 07 Jun 2000 20:08:12 -0700
+.\"     Reply-To: drepper at cygnus dot com (Ulrich Drepper)
+旧的 glibc 行为是不标准的。 (标准做法是弱符号和强符号之间的区别应该只在静态链接时有效。) 在 glibc 2.2
+中，动态链接器被修改以提供当前行为 (这是当时大多数其他实现提供的行为) 时间)。
+.IP
+定义 \fBLD_DYNAMIC_WEAK\fP 环境变量 (具有任何值) 提供旧的 (nonstandard) glibc
+行为，其中一个共享库中的弱符号可能会被随后在另一个共享库中发现的强符号覆盖。
+(请注意，即使设置了此变量，共享库中的强符号也不会覆盖主程序中同一符号的弱定义。)
+.IP
+从 glibc 2.3.4 开始，\fBLD_DYNAMIC_WEAK\fP 在安全执行模式下被忽略。
+.TP 
+\fBLD_HWCAP_MASK\fP (since glibc 2.1)
+硬件功能的掩码。
+.TP 
+\fBLD_ORIGIN_PATH\fP (since glibc 2.1)
+.\" Used only if $ORIGIN can't be determined by normal means
+.\" (from the origin path saved at load time, or from /proc/self/exe)?
+找到二进制文件的路径。
+.IP
+从 glibc 2.4 开始，\fBLD_ORIGIN_PATH\fP 在安全执行模式下被忽略。
+.TP 
+\fBLD_POINTER_GUARD\fP (from glibc 2.4 to glibc 2.22)
+.\" commit a014cecd82b71b70a6a843e250e06b541ad524f7
+设置为 0 以禁用指针保护。 任何其他值都会启用指针保护，这也是默认值。 指针保护是一种安全机制，其中一些指向存储在可写程序内存中的代码的指针 (由
+\fBsetjmp\fP(3) 保存的返回地址或各种 glibc 内部使用的函数指针)
+被半随机地破坏，使攻击者更难劫持指针以供使用在缓冲区溢出或栈粉碎攻击的情况下。 从 glibc 2.23 开始，\fBLD_POINTER_GUARD\fP
+不能再用于禁用指针保护，指针保护现在始终处于启用状态。
+.TP 
+\fBLD_PROFILE\fP (since glibc 2.1)
+要分析的 (single) 共享对象的名称，指定为路径名或 soname。 分析输出追加到名称为:
+"\fI$LD_PROFILE_OUTPUT\fP/\fI$LD_PROFILE\fP.profile" 的文件。
+.IP
+从 glibc 2.2.5 开始，\fBLD_PROFILE\fP 在安全执行模式下被忽略。
+.TP 
+\fBLD_PROFILE_OUTPUT\fP (since glibc 2.1)
+应写入 \fBLD_PROFILE\fP 输出的目录。 如果此变量未定义，或定义为空字符串，则默认为 \fI/var/tmp\fP。
+.IP
+\fBLD_PROFILE_OUTPUT\fP 在安全执行模式下被忽略; 相反，始终使用 \fI/var/profile\fP。 (此细节仅在 glibc
+2.2.5 之前相关，因为在以后的 glibc 版本中，\fBLD_PROFILE\fP 在安全执行模式下也会被忽略。)
+.TP 
+\fBLD_SHOW_AUXV\fP (since glibc 2.1)
+如果定义了此环境变量 (具有任何值)，则显示从内核传递过来的辅助数组 (另请参见 \fBgetauxval\fP(3)).
+.IP
+从 glibc 2.3.4 开始，\fBLD_SHOW_AUXV\fP 在安全执行模式下被忽略。
+.TP 
+\fBLD_TRACE_PRELINKING\fP (since glibc 2.4)
+.\" (This is what seems to happen, from experimenting)
+如果定义了此环境变量，则跟踪其名称分配给此环境变量的对象的预链接。 (使用 \fBldd\fP(1) 获取可能被跟踪的对象列表。)
+如果无法识别对象名称，则会跟踪所有预链接活动。
+.TP 
+\fBLD_USE_LOAD_BIAS\fP (since glibc 2.3.3)
+.\" http://sources.redhat.com/ml/libc-hacker/2003-11/msg00127.html
+.\" Subject: [PATCH] Support LD_USE_LOAD_BIAS
+.\" Jakub Jelinek
+默认情况下 (即，如果未定义此变量)，可执行文件和预链接的共享目标文件将遵循其相关共享目标文件的基地址，而 (nonprelinked)
+位置无关可执行文件 (PIEs) 和其他共享目标文件将不遵守它们。 如果 \fBLD_USE_LOAD_BIAS\fP 定义为值 1，则可执行文件和 PIE
+都将使用基地址。 如果 \fBLD_USE_LOAD_BIAS\fP 定义为值 0，则可执行文件和 PIE 都不会使用基地址。
+.IP
+从 glibc 2.3.3 开始，这个变量在安全执行模式下被忽略。
+.TP 
+\fBLD_VERBOSE\fP (since glibc 2.1)
+如果设置为非空字符串，则在已设置 \fBLD_TRACE_LOADED_OBJECTS\fP 环境变量的情况下输出有关程序的符号版本控制信息。
+.TP 
+\fBLD_WARN\fP (since glibc 2.1.3)
+如果设置为非空字符串，则警告未解析的符号。
+.TP 
+\fBLD_PREFER_MAP_32BIT_EXEC\fP (x86\-64 only; since glibc 2.23)
+根据 Intel Silvermont 软件优化指南，对于 64 位应用程序，当分支目标距离分支超过 4GB 时，分支预测性能可能会受到负面影响。
+如果此环境变量被设置 (为任何值)，动态链接器将首先尝试使用 \fBmmap\fP(2) \fBMAP_32BIT\fP 标志到 map
+可执行页面，如果尝试失败则回退到没有该标志的映射。 注意: MAP_32BIT 将 map 到地址空间的低 2\GB (不是 4\GB)。
+.IP
+因为 \fBMAP_32BIT\fP 减少了可用于地址空间布局随机化 (ASLR) 的地址范围，所以 \fBLD_PREFER_MAP_32BIT_EXEC\fP
+在安全执行模式下始终被禁用。
+.SH FILES
+.TP 
+\fI/lib/ld.so\fP
+a.out 动态 linker/loader
+.TP 
+\fI/lib/ld\-linux.so.\fP{\fI1\fP,\fI2\fP}
+ELF 动感 linker/loader
+.TP 
+\fI/etc/ld.so.cache\fP
+包含要在其中搜索共享对象的目录的编译列表和候选共享对象的有序列表的文件。 请参见 \fBldconfig\fP(8)。
+.TP 
+\fI/etc/ld.so.preload\fP
+包含要在程序之前加载的以空格分隔的 ELF 共享对象列表的文件。 请参见上面对 \fBLD_PRELOAD\fP 的讨论。 如果同时使用
+\fBLD_PRELOAD\fP 和 \fI/etc/ld.so.preload\fP，则先预加载 \fBLD_PRELOAD\fP 指定的库。
+\fI/etc/ld.so.preload\fP 具有系统范围的影响，导致为系统上执行的所有程序预加载指定的库。
+(这通常是不可取的，通常仅用作紧急补救措施，例如，作为库配置错误问题的临时解决方法。)
+.TP 
+\fIlib*.so*\fP
+共享对象
+.SH NOTES
+.SS "Hardware capabilities"
+.\" Presumably, this info comes from sysdeps/i386/dl-procinfo.c and
+.\" similar files
+一些共享对象是使用特定于硬件的指令编译的，这些指令并非在每个 CPU 上都存在。 此类对象应安装在其名称定义所需硬件功能的目录中，例如
+\fI/usr/lib/sse2/\fP。 动态链接器根据机器的硬件检查这些目录，并选择给定共享对象的最合适的版本。 可以级联硬件特性目录以组合 CPU
+特性。 支持的硬件功能名称列表取决于 CPU。 目前可识别以下名称:
+.TP 
+\fBAlpha\fP
+ev4, ev5, ev56, ev6, ev67
+.TP 
+\fBMIPS\fP
+loongson2e, loongson2f, octeon, octeon2
+.TP 
+\fBPowerPC\fP
+4xxmac, altivec, arch_2_05, arch_2_06, booke, cellbe, dfp, efpdouble,
+efpsingle, fpu, ic_snoop, mmu, notb, pa6t, power4, power5, power5+, power6x,
+ppc32, ppc601, ppc64, smt, spe, ucache, vsx
+.TP 
+\fBSPARC\fP
+冲洗，muldiv，stbar，交换，ultra3，v9，v9v，v9v2
+.TP 
+\fBs390\fP
+dfp, eimm, esan3, etf3enh, g5, highgprs, hpage, ldisp, msa, stfle, z900,
+z990, z9\-109, z10, zarch
+.TP 
+\fBx86 (32\-bit only)\fP
+acpi, apic, clflush, cmov, cx8, dts, fxsr, ht, i386, i486, i586, i686, mca,
+mmx, mtrr, pat, pbe, pge, pn, pse36, sep, ss, sse, sse2, tm
+.SH "SEE ALSO"
+\fBld\fP(1), \fBldd\fP(1), \fBpldd\fP(1), \fBsprof\fP(1), \fBdlopen\fP(3), \fBgetauxval\fP(3),
+\fBelf\fP(5), \fBcapabilities\fP(7), \fBrtld\-audit\fP(7), \fBldconfig\fP(8), \fBsln\fP(8)
+.\" .SH AUTHORS
+.\" ld.so: David Engel, Eric Youngdale, Peter MacDonald, Hongjiu Lu, Linus
+.\"  Torvalds, Lars Wirzenius and Mitch D'Souza
+.\" ld\-linux.so: Roland McGrath, Ulrich Drepper and others.
+.\"
+.\" In the above, (libc5) stands for David Engel's ld.so/ld\-linux.so.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,102 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2017, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_spin_init 3 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_spin_init, pthread_spin_destroy \- 初始化或销毁自旋锁
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_spin_init(pthread_spinlock_t *\fP\fIlock\fP\fB, int \fP\fIpshared\fP\fB);\fP
+\fBint pthread_spin_destroy(pthread_spinlock_t *\fP\fIlock\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpthread_spin_init\fP(), \fBpthread_spin_destroy\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fIGeneral note\fP: 大多数程序应该使用交互锁而不是自旋锁。 自旋锁主要与实时调度策略结合使用。 见注释。
+.PP
+\fBpthread_spin_init\fP() 函数分配使用 \fIlock\fP 引用的自旋锁所需的任何资源，并将锁初始化为解锁状态。 \fIpshared\fP
+参数必须具有以下值之一:
+.TP 
+\fBPTHREAD_PROCESS_PRIVATE\fP
+自旋锁只能由与调用 \fBpthread_spin_init\fP() 的线程处于同一进程中的线程操作。 (尝试在进程之间共享自旋锁会导致未定义的行为。)
+.TP 
+\fBPTHREAD_PROCESS_SHARED\fP
+自旋锁可以由可以访问包含锁的内存的任何进程中的任何线程操作 (即，锁可以在多个进程之间共享的共享内存对象中)。
+.PP
+在已初始化的自旋锁上调用 \fBpthread_spin_init\fP() 会导致未定义的行为。
+.PP
+\fBpthread_spin_destroy\fP() 函数销毁一个先前初始化的自旋锁，释放为该锁分配的所有资源。
+销毁之前未初始化的自旋锁或销毁自旋锁而另一个线程持有该锁会导致未定义的行为。
+.PP
+一旦自旋锁被销毁，除了用 \fBpthread_spin_init\fP() 再次初始化它之外，对锁执行任何操作都会导致未定义的行为。
+.PP
+对 \fIlock\fP 所引用的对象的 \fIcopies\fP 进行
+\fBpthread_spin_lock\fP(3)、\fBpthread_spin_unlock\fP(3)、\fBpthread_spin_destroy\fP()
+等操作的结果是不确定的。
+.SH "RETURN VALUE"
+成功时，有函数返回零。 失败时，它们会返回一个错误号。 如果 \fBpthread_spin_init\fP() 失败，锁不会被初始化。
+.SH ERRORS
+.\" These errors don't occur on the glibc implementation
+\fBpthread_spin_init\fP() 可能会因以下错误而失败:
+.TP 
+\fBEAGAIN\fP
+系统没有足够的资源来初始化新的自旋锁。
+.TP 
+\fBENOMEM\fP
+内存不足，无法初始化自旋锁。
+.SH VERSIONS
+这些函数是在 glibc 2.2 中添加的。
+.SH STANDARDS
+POSIX.1\-2001.
+.PP
+对进程共享自旋锁的支持是一个 POSIX 选项。 glibc 实现支持该选项。
+.SH NOTES
+自旋锁应与实时调度策略 (\fBSCHED_FIFO\fP 或 \fBSCHED_RR\fP) 结合使用。 使用具有非确定性调度策略 (例如
+\fBSCHED_OTHER\fP) 的自旋锁可能表明存在设计错误。 问题在于，如果在这种策略下运行的线程在持有自旋锁时被调度到 CPU
+之外，那么其他线程将浪费时间在锁上自旋，直到锁持有者再次重新调度并释放锁。
+.PP
+如果线程在使用自旋锁时产生死锁情况，这些线程将永远自旋，消耗 CPU 时间。
+.PP
+.\" FIXME . When PTHREAD_MUTEX_ADAPTIVE_NP is one day document
+.\" make reference to it here
+用户空间自旋锁是 \fInot\fP 适用的通用锁定解决方案。 根据定义，它们容易出现优先级反转和无限制的旋转时间。
+使用自旋锁的程序人员不仅在代码中必须格外小心，而且在系统配置、线程放置和优先级分配方面也必须格外小心。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBpthread_mutex_init\fP(3), \fBpthread_mutex_lock\fP(3), \fBpthread_spin_lock\fP(3),
+\fBpthread_spin_unlock\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

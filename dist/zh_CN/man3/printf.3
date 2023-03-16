@@ -1,0 +1,556 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1999 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" Earlier versions of this page influenced the present text.
+.\" It was derived from a Berkeley page with version
+.\"       @(#)printf.3    6.14 (Berkeley) 7/30/91
+.\" converted for Linux by faith@cs.unc.edu, updated by
+.\" Helmut.Geyer@iwr.uni-heidelberg.de, agulbra@troll.no and Bruno Haible.
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 1999-11-25 aeb - Rewritten, using SUSv2 and C99.
+.\" 2000-07-26 jsm28@hermes.cam.ac.uk - three small fixes
+.\" 2000-10-16 jsm28@hermes.cam.ac.uk - more fixes
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH printf 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+printf, fprintf, dprintf, sprintf, snprintf, vprintf, vfprintf, vdprintf,
+vsprintf, vsnprintf \- 格式化输出转换
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBint printf(const char *restrict \fP\fIformat\fP\fB, ...);\fP
+\fBint fprintf(FILE *restrict \fP\fIstream\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, ...);\fP
+\fBint dprintf(int \fP\fIfd\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, ...);\fP
+\fBint sprintf(char *restrict \fP\fIstr\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, ...);\fP
+\fBint snprintf(char \fP\fIstr\fP\fB[restrict .\fP\fIsize\fP\fB], size_t \fP\fIsize\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, ...);\fP
+.PP
+\fBint vprintf(const char *restrict \fP\fIformat\fP\fB, va_list \fP\fIap\fP\fB);\fP
+\fBint vfprintf(FILE *restrict \fP\fIstream\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, va_list \fP\fIap\fP\fB);\fP   
+\fBint vdprintf(int \fP\fIfd\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, va_list \fP\fIap\fP\fB);\fP
+\fBint vsprintf(char *restrict \fP\fIstr\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, va_list \fP\fIap\fP\fB);\fP
+\fBint vsnprintf(char \fP\fIstr\fP\fB[restrict .\fP\fIsize\fP\fB], size_t \fP\fIsize\fP\fB,\fP
+\fB            const char *restrict \fP\fIformat\fP\fB, va_list \fP\fIap\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsnprintf\fP(), \fBvsnprintf\fP():
+.nf
+    _XOPEN_SOURCE >= 500 ||_ISOC99_ 来源
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.PP
+\fBdprintf\fP(), \fBvdprintf\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBprintf\fP() 系列中的函数根据 \fIformat\fP 产生输出，如下所述。 函数 \fBprintf\fP() 和 \fBvprintf\fP()
+将输出写入标准输出流 \fIstdout\fP; \fBfprintf\fP() 和 \fBvfprintf\fP() 将输出写入给定的输出 \fIstream\fP;
+\fBsprintf\fP()、\fBsnprintf\fP()、\fBvsprintf\fP()、\fBvsnprintf\fP() 写入字符串 \fIstr\fP。
+.PP
+函数 \fBdprintf\fP() 与 \fBfprintf\fP() 相同，只是它输出到文件描述符 \fIfd\fP，而不是 \fBstdio\fP(3) 流。
+.PP
+函数 \fBsnprintf\fP() 和 \fBvsnprintf\fP() 最多写入 \fIsize\fP 字节 (包括终止空字节 (\[aq]\e0\[aq]))
+到 \fIstr\fP。
+.PP
+函数 \fBvprintf\fP()、\fBvfprintf\fP()、\fBvdprintf\fP()、\fBvsprintf\fP()、\fBvsnprintf\fP()
+分别等同于函数
+\fBprintf\fP()、\fBfprintf\fP()、\fBdprintf\fP()、\fBsprintf\fP()、\fBsnprintf\fP()，不同之处在于它们使用
+\fIva_list\fP 而不是可变数量的参数来调用。 这些函数不调 \fIva_end\fP 宏。 因为它们调用 \fIva_arg\fP 宏，所以 \fIap\fP
+的值在调用之后未定义。 请参见 \fBstdarg\fP(3)。
+.PP
+所有这些函数都在 \fIformat\fP 字符串的控制下写入输出，该字符串指定后续函数 (或通过 \fBstdarg\fP(3)) 的可变长度函数访问的函数)
+如何转换为输出。
+.PP
+C99 和 POSIX.1\-2001 指定如果调用 \fBsprintf\fP()、\fBsnprintf\fP()、\fBvsprintf\fP() 或
+\fBvsnprintf\fP() 会导致复制发生在重叠的对象之间 (例如，如果目标字符串数组和提供的输入参数之一引用相同的缓冲区)。 见注释。
+.SS "Format of the format string"
+格式字符串是一个字符串，如果有的话，以其初始移位状态开始和结束。 格式字符串由零个或多个指令组成: 普通字符 (不是
+\fB%\fP)，它们被原封不动地复制到输出流; 和转换规范，每一个都会导致获取零个或多个后续参数。 每个转换规范都由字符 \fB%\fP 引入，并以
+\fIconversion specifier\fP 结尾。 中间可能有 (按此顺序) 零个或多个 \fIflags\fP、可选的最小 \fIfield width\fP、可选的 \fIprecision\fP 和可选的 \fIlength modifier\fP。
+.PP
+转换规范的整体语法是:
+.PP
+.in +4n
+.nf
+%[$][flags][width][.precision][length modifier] 转换
+.fi
+.in
+.PP
+参数必须与转换说明符正确对应 (在类型提升之后)。 默认情况下，按照给定的顺序使用参数，其中每个 \[aq]*\[aq] (请参见下面的 \fIField width\fP 和 \fIPrecision\fP) 和每个转换说明符都要求下一个参数 (如果参数不足，则会出错) 给出)。
+还可以明确指定在每个需要参数的地方采用哪个参数，方法是写 "%m$" 而不是 \[aq]%\[aq] 和 "*m$" 而不是
+\[aq]*\[aq]，其中小数点整数 \fIm\fP 表示所需参数在参数列表中的位置，索引从 1 开始。 Thus,
+.PP
+.in +4n
+.EX
+printf("%*d", width, num);
+.EE
+.in
+.PP
+and
+.PP
+.in +4n
+.EX
+printf("%2$*1$d", width, num);
+.EE
+.in
+.PP
+是等价的。 第二种风格允许对同一个参数重复引用。 C99 标准不包括使用 \[aq]$\[aq] 的样式，它来自 Single UNIX
+Specification。 如果使用 \[aq]$\[aq] 的样式，则必须始终将其用于所有采用参数和所有宽度和精度参数的转换，但它可能与不消耗参数的
+"%%" 格式混合使用。 使用 \[aq]$\[aq] 指定的参数可以没有间隔; 例如，如果指定了参数 1 和 3，则还必须在格式字符串的某处指定参数
+2。
+.PP
+对于某些数字转换，使用基数字符 (`小数点`) 或千位分组字符。 实际使用的字符取决于语言环境的 \fBLC_NUMERIC\fP 部分。 (参见
+\fBsetlocale\fP(3).) POSIX 语言环境使用 \[aq].\[aq] 作为基数字符，并且没有分组字符。 Thus,
+.PP
+.in +4n
+.EX
+printf("%\[aq].2f", 1234567.89);
+.EE
+.in
+.PP
+结果在 POSIX 语言环境中为 "1234567.89"，在 nl_NL 语言环境中为 "1234567,89"，在 da_DK 语言环境中为
+"1.234.567,89"。
+.SS "Flag characters"
+字符 % 后跟零个或多个以下标志:
+.TP 
+\fB#\fP
+该值应转换为 "alternate form"。 对于 \fBo\fP 转换，输出字符串的第一个字符变为零 (如果它不为零，则在前面加上 0)。 对于
+\fBx\fP 和 \fBX\fP 转换，非零结果前面有字符串 "0x" (或 "0X"，用于 \fBX\fP 转换)。 对于
+\fBa\fP、\fBA\fP、\fBe\fP、\fBE\fP、\fBf\fP、\fBF\fP、\fBg\fP 和 \fBG\fP 转换，结果将始终包含小数点，即使后面没有数字
+(通常，只有在数字如下)。 对于 \fBg\fP 和 \fBG\fP 转换，不会像其他情况那样从结果中删除尾随零。 对于 \fBm\fP，如果 \fIerrno\fP
+包含有效错误代码，则打印 \fIstrerrorname_np(errno)\fP 的输出; 否则，存储在 \fIerrno\fP 中的值将打印为十进制数。
+对于其他转换，结果未定义。
+.TP 
+\fB\&0\fP
+该值应该用零填充。 对于
+\fBd\fP、\fBi\fP、\fBo\fP、\fBu\fP、\fBx\fP、\fBX\fP、\fBa\fP、\fBA\fP、\fBe\fP、\fBE\fP、\fBf\fP、\fBF\fP、\fBg\fP 和 \fBG\fP
+转换，转换后的值在左侧填充零而不是空白。 如果同时出现 \fB\&0\fP 和 \fB\-\fP 标志，则忽略 \fB\&0\fP 标志。 如果通过数字转换
+(\fBd\fP、\fBi\fP、\fBo\fP、\fBu\fP、\fBx\fP 和 \fBX\fP) 给出精度，则忽略 \fB\&0\fP 标志。 对于其他转换，行为未定义。
+.TP 
+\fB\-\fP
+转换后的值将在字段边界上进行左调整。 (默认为右对齐。) 转换后的值在右侧用空格填充，而不是在左侧用空格或零填充。 如果两者都给出，则 \fB\-\fP 会覆盖
+\fB\&0\fP。
+.TP 
+\fB\[aq] \[aq]\fP
+(一个空格) 在有符号转换产生的正数 (或空字符串) 之前应该留一个空格。
+.TP 
+\fB+\fP
+符号 (+ 或 \-) 应始终放在有符号转换产生的数字之前。 默认情况下，符号仅用于 negative 数字。 如果两者都使用，则 \fB+\fP 会覆盖空格。
+.PP
+C99 标准中定义了上述五个标志字符。 Single UNIX Specification 指定了一个进一步的标志字符。
+.TP 
+\fB\[aq]\fP
+对于十进制转换 (\fBi\fP、\fBd\fP、\fBu\fP、\fBf\fP、\fBF\fP、\fBg\fP、\fBG\fP)，如果语言环境信息指示，输出将使用千位分组字符进行分组。(参见
+\fBsetlocale\fP(3).) 注意，很多版本的 \fBgcc\fP(1) 无法解析这个选项，会发出警告。(SUSv2 没有包含
+\fI%\[aq]F\fP，但是 SUSv3 添加了它。) 还要注意 C 程序的默认语言环境是 "C"，其语言环境信息表明没有千位 ' 分组字符。
+因此，如果没有预先调用 \fBsetlocale\fP(3)，则不会打印千位分组字符。
+.PP
+glibc 2.2 添加了一个进一步的标志字符。
+.TP 
+\fBI\fP
+.\" outdigits keyword in locale file
+对于十进制整数转换 (\fBi\fP、\fBd\fP、\fBu\fP)，输出使用语言环境的替代输出数字 (如果有)。 例如，由于 glibc 2.2.3 这将在波斯语
+("fa_IR") 语言环境中给出阿拉伯语 \- 印度语数字。
+.SS "Field width"
+指定最小字段宽度的可选十进制数字字符串 (第一位非零)。 如果转换后的值的字符少于字段宽度，它将在左侧 (或右侧，如果已给出左调整标志) 填充空格。
+可以写 "*" 或 "*m$" (对于一些十进制整数 \fIm\fP) 以指定字段宽度在下一个参数或 \fIm\fP\-th 参数中给出，它们必须是 \fIint\fP
+类型，而不是十进制数字字符串。 negative 字段宽度被视为 \[aq]\-\[aq] 标志后跟正字段宽度。
+在任何情况下，不存在或较小的字段宽度都不会导致字段被截断; 如果转换结果比字段宽度宽，则扩展字段以包含转换结果。
+.SS Precision
+可选精度，形式为句点 (\[aq].\[aq]) 后跟可选的十进制数字字符串。 可以写 "*" 或 "*m$" (对于某些十进制整数 \fIm\fP)
+以指定精度在下一个参数或 \fIm\fP\-th 参数中给出，它们必须是 \fIint\fP 类型，而不是十进制数字字符串。 如果精度仅作为 \[aq].\[aq]
+给出，则精度为零。 采用 negative 精度，就好像省略了精度一样。 这给出了 \fBd\fP、\fBi\fP、\fBo\fP、\fBu\fP、\fBx\fP 和 \fBX\fP
+转换中出现的最小数字位数，\fBa\fP、\fBA\fP、\fBe\fP、\fBE\fP、\fBf\fP 和 \fBF\fP 转换中基数字符后出现的数字位数，\fBg\fP 和 \fBG\fP
+转换的最大有效数字数，或 \fBs\fP 和 \fBS\fP 转换的字符串中要打印的最大字符数。
+.SS "Length modifier"
+此处，"integer conversion" 代表 \fBd\fP、\fBi\fP、\fBo\fP、\fBu\fP、\fBx\fP 或 \fBX\fP 转换。
+.TP 
+\fBhh\fP
+随后的整数转换对应于 \fIsigned char\fP 或 \fIunsigned char\fP 参数，或随后的 \fBn\fP 转换对应于指向 \fIsigned char\fP 参数的指针。
+.TP 
+\fBh\fP
+随后的整数转换对应于 \fIshort\fP 或 \fIunsigned short\fP 参数，或随后的 \fBn\fP 转换对应于指向 \fIshort\fP 参数的指针。
+.TP 
+\fBl\fP
+(ell) 后面的整数转换对应于 \fIlong\fP 或 \fIunsigned long\fP 参数，或者后面的 \fBn\fP 转换对应于指向 \fIlong\fP
+参数的指针，或者后面的 \fBc\fP 转换对应于 \fIwint_t\fP 参数，或者后面的 \fBs\fP 转换对应于指向 \fIwchar_t\fP 参数的指针.
+在随后的 \fBa\fP、\fBA\fP、\fBe\fP、\fBE\fP、\fBf\fP、\fBF\fP、\fBg\fP 或 \fBG\fP 转换中，忽略此长度修饰符 (C99; 不在 SUSv2
+中)。
+.TP 
+\fBll\fP
+(ell\-ell).  随后的整数转换对应于 \fIlong long\fP 或 \fIunsigned long long\fP 参数，或随后的 \fBn\fP
+转换对应于指向 \fIlong long\fP 参数的指针。
+.TP 
+\fBq\fP
+\fBll\fP 的同义词。 这是一个非标准扩展，源自 BSD; 避免在新代码中使用它。
+.TP 
+\fBL\fP
+随后的 \fBa\fP、\fBA\fP、\fBe\fP、\fBE\fP、\fBf\fP、\fBF\fP、\fBg\fP 或 \fBG\fP 转换对应于 \fIlong double\fP 参数。 (C99
+允许 %LF，但 SUSv2 不允许。)
+.TP 
+\fBj\fP
+随后的整数转换对应于 \fIintmax_t\fP 或 \fIuintmax_t\fP 参数，或随后的 \fBn\fP 转换对应于指向 \fIintmax_t\fP
+参数的指针。
+.TP 
+\fBz\fP
+随后的整数转换对应于 \fIsize_t\fP 或 \fIssize_t\fP 参数，或随后的 \fBn\fP 转换对应于指向 \fIsize_t\fP 参数的指针。
+.TP 
+\fBZ\fP
+早于 \fBz\fP 出现的 \fBz\fP 的非标准同义词。 不要在新代码中使用。
+.TP 
+\fBt\fP
+随后的整数转换对应于 \fIptrdiff_t\fP 参数，或随后的 \fBn\fP 转换对应于指向 \fIptrdiff_t\fP 参数的指针。
+.PP
+SUSv3 指定了上述所有内容，但明确指出为非标准扩展的那些修饰符除外。 SUSv2 仅指定了长度修饰符 \fBh\fP (在
+\fBhd\fP、\fBhi\fP、\fBho\fP、\fBhx\fP、\fBhX\fP、\fBhn\fP) 和 \fBl\fP 中 (在
+\fBld\fP、\fBli\fP、\fBlo\fP、\fBlx\fP、\fBlX\fP、\fBln\fP、\fBlc\fP、\fBls\fP) 和 \fBL\fP 中 (在
+\fBLe\fP、\fBLE\fP、\fBLf\fP、\fBLf\fP 中，\fBLG\fP)。
+.PP
+.\"
+作为非标准扩展，GNU 实现将 \fBll\fP 和 \fBL\fP 视为同义词，因此可以编写 \fBllg\fP (作为符合标准的 \fBLg\fP) 和 \fBLd\fP
+的同义词 (作为符合标准的 \fBlld\fP) 的同义词。 这种用法是不可移植的。
+.SS "Conversion specifiers"
+指定要应用的转换类型的字符。 转换说明符及其含义是:
+.TP 
+\fBd\fP, \fBi\fP
+\fIint\fP 参数转换为带符号的十进制表示法。 精度 (如果有的话) 给出了必须出现的最小数字位数; 如果转换后的值需要更少的数字，则在左侧用零填充。
+默认精度为 1。 当 0 以显式精度 0 打印时，输出为空。
+.TP 
+\fBo\fP, \fBu\fP, \fBx\fP, \fBX\fP
+\fIunsigned int\fP 参数转换为无符号八进制 (\fBo\fP)、无符号十进制 (\fBu\fP) 或无符号十六进制 (\fBx\fP 和 \fBX\fP) 表示法。
+字母 \fBabcdef\fP 用于 \fBx\fP 转换; 字母 \fBABCDEF\fP 用于 \fBX\fP 转换。 精度 (如果有的话) 给出了必须出现的最小数字位数;
+如果转换后的值需要更少的数字，则在左侧用零填充。 默认精度为 1。 当 0 以显式精度 0 打印时，输出为空。
+.TP 
+\fBe\fP, \fBE\fP
+\fIdouble\fP 参数四舍五入，转换成 [\-]d\fB\&.\fPddd\fBe\fP\(+-dd 格式，小数点前有一位
+(参数不为零则不为零)，其后位数等于精度; 如果精度缺失，则取为 6; 如果精度为零，则不出现小数点字符。 \fBE\fP 转换使用字母 \fBE\fP (而不是
+\fBe\fP) 来引入指数。 指数总是至少包含两位数字; 如果值为零，则指数为 00。
+.TP 
+\fBf\fP, \fBF\fP
+\fIdouble\fP 参数四舍五入并转换为 [\-]ddd\fB\&.\fPddd 样式的十进制表示法，其中小数点字符后的位数等于精度规范。 如果精度缺失，则取
+6; 如果精度明确为零，则不出现小数点字符。 如果出现小数点，则至少在其前面出现一位数字。
+.IP
+(SUSv2 不知道 \fBF\fP，并说可以提供无穷大和 NaN 的字符串表示。SUSv3 添加了 \fBF\fP 的规范。C99 标准指定 "[\-]inf" 或
+"[\-]infinity" 表示无穷大，以 "nan" 开头的字符串表示 NaN，在 \fBf\fP 转换的情况下，\fBF\fP 转换的情况下为 "[\-]INF"
+或 "[\-]INFINITY" 或 "NAN"。)
+.TP 
+\fBg\fP, \fBG\fP
+\fIdouble\fP 参数转换为 \fBf\fP 或 \fBe\fP 样式 (或 \fBF\fP 或 \fBE\fP，用于 \fBG\fP 转换)。 精度指定有效数字的数量。
+如果缺少精度，则给出 6 位数字; 如果精度为零，则将其视为 1。 如果其转换的指数小于 \-4 或大于或等于精度，则使用样式 \fBe\fP。
+从结果的小数部分中删除尾随零; 小数点只有在其后跟至少一位数字时才会出现。
+.TP 
+\fBa\fP, \fBA\fP
+(C99; SUSv2 没有，SUSv3 增加了) 对于 \fBa\fP 转换，\fIdouble\fP 参数转换为
+[\-]\fB0x\fPh\fB\&.\fPhhhh\fBp\fP\(+-d 样式的十六进制表示法 (使用字母 abcdef) ; 对于 \fBA\fP 转换，使用前缀
+\fB0X\fP、字母 ABCDEF 和指数分隔符 \fBP\fP。 小数点前一位十六进制数，小数点后的位数等于精度。 如果存在以 2
+为基数的精确表示，则默认精度足以精确表示该值，否则默认精度足够大以区分 \fIdouble\fP 类型的值。
+小数点前的数字对于非规范化数字是未指定的，非零但对于规范化数字是未指定的。 指数总是至少包含一位数字; 如果值为零，则指数为 0.
+.TP 
+\fBc\fP
+如果不存在 \fBl\fP 修饰符，则 \fIint\fP 参数转换为 \fIunsigned char\fP，并写入结果字符。 如果存在 \fBl\fP 修饰符，则
+\fIwint_t\fP (宽字符) 参数通过对 \fBwcrtomb\fP(3) 函数的调用转换为多字节序列，转换状态从初始状态开始，并写入生成的多字节字符串。
+.TP 
+\fBs\fP
+如果不存在 \fBl\fP 修饰符: \fIconst char\ *\fP 参数应为指向字符类型数组 (指向字符串的指针) 的指针。 数组中的字符被写入
+(但不包括) 终止空字节 (\[aq]\e0\[aq]); 如果指定了精度，则写入的数量不会超过指定的数量。 如果给出精度，则不需要存在空字节;
+如果未指定精度，或者精度大于数组的大小，则数组必须包含终止空字节。
+.IP
+如果存在 \fBl\fP 修饰符: \fIconst wchar_t\ *\fP 参数应为指向宽字符数组的指针。 数组中的宽字符被转换为多字节字符 (每个由调用到
+\fBwcrtomb\fP(3) 函数，转换状态从第一个宽字符之前的初始状态开始)，直到并包括终止空宽字符。 生成的多字节字符被写入 (但不包括)
+终止空字节。 如果指定了精度，则写入的字节数不会超过指定的数目，但不会写入部分多字节字符。 请注意，精度决定写入的 \fIbytes\fP 的数量，而不是
+\fIwide characters\fP 或 \fIscreen positions\fP 的数量。
+数组必须包含一个终止空宽字符，除非给出了精度并且它太小以至于在到达数组末尾之前写入的字节数超过了它。
+.TP 
+\fBC\fP
+(不在 C99 或 C11 中，但在 SUSv2、SUSv3 和 SUSv4 中。) \fBlc\fP 的同义词。 不要使用。
+.TP 
+\fBS\fP
+(不在 C99 或 C11 中，但在 SUSv2、SUSv3 和 SUSv4 中。) \fBls\fP 的同义词。 不要使用。
+.TP 
+\fBp\fP
+\fIvoid\ *\fP 指针参数以十六进制打印 (如同 \fB%#x\fP 或 \fB%#lx\fP).
+.TP 
+\fBn\fP
+到目前为止写入的字符数存储到相应参数指向的整数中。 该参数应为 \fIint\ *\fP，或其大小与 (optionally)
+提供的整数长度修饰符匹配的变体。 没有参数被转换。 (仿生 C 库不支持此说明符。) 如果转换规范包含任何标志、字段宽度或精度，则行为未定义。
+.TP 
+\fBm\fP
+(glibc 扩展; uClibc 和 musl 支持。) 打印 \fIstrerror(errno)\fP (或替代形式的
+\fIstrerrorname_np(errno)\fP) 的输出。 不需要参数。
+.TP 
+\fB%\fP
+写入了 \[aq]%\[aq]。 没有参数被转换。 完整的转换规范是 \[aq]%%\[aq]。
+.SH "RETURN VALUE"
+成功返回后，这些函数返回打印的字符数 (不包括用于结束输出到字符串的空字节)。
+.PP
+函数 \fBsnprintf\fP() 和 \fBvsnprintf\fP() 不写入超过 \fIsize\fP 字节 (包括终止空字节
+(\[aq]\e0\[aq]))。 如果输出由于此限制而被截断，则返回值是在有足够空间可用的情况下本应写入最终字符串的字符数 (不包括终止空字节)。
+因此，\fIsize\fP 或更大的返回值意味着输出被截断了。 (另请参见下面的注释。)
+.PP
+如果遇到输出错误，则返回 negative 值。
+.SH VERSIONS
+.\" Linux libc4 knows about the five C standard flags.
+.\" It knows about the length modifiers \fBh\fP, \fBl\fP, \fBL\fP,
+.\" and the conversions
+.\" \fBc\fP, \fBd\fP, \fBe\fP, \fBE\fP, \fBf\fP, \fBF\fP,
+.\" \fBg\fP, \fBG\fP, \fBi\fP, \fBn\fP, \fBo\fP, \fBp\fP,
+.\" \fBs\fP, \fBu\fP, \fBx\fP, and \fBX\fP,
+.\" where \fBF\fP is a synonym for \fBf\fP.
+.\" Additionally, it accepts \fBD\fP, \fBO\fP, and \fBU\fP as synonyms
+.\" for \fBld\fP, \fBlo\fP, and \fBlu\fP.
+.\" (This is bad, and caused serious bugs later, when
+.\" support for \fB%D\fP disappeared.)
+.\" No locale-dependent radix character,
+.\" no thousands' separator, no NaN or infinity, no "%m$" and "*m$".
+.\" .PP
+.\" Linux libc5 knows about the five C standard flags and the \[aq] flag,
+.\" locale, "%m$" and "*m$".
+.\" It knows about the length modifiers \fBh\fP, \fBl\fP, \fBL\fP,
+.\" \fBZ\fP, and \fBq\fP, but accepts \fBL\fP and \fBq\fP
+.\" both for \fIlong double\fP and for \fIlong long\fP (this is a bug).
+.\" It no longer recognizes \fBF\fP, \fBD\fP, \fBO\fP, and \fBU\fP,
+.\" but adds the conversion character
+.\" .BR m ,
+.\" which outputs
+.\" .IR strerror(errno) .
+.\" .PP
+.\" glibc 2.0 adds conversion characters \fBC\fP and \fBS\fP.
+.\" .PP
+glibc 2.1 添加了长度修饰符 \fBhh\fP、\fBj\fP、\fBt\fP 和 \fBz\fP 以及转换字符 \fBa\fP 和 \fBA\fP。
+.PP
+glibc 2.2 添加了具有 C99 语义的转换字符 \fBF\fP 和标志字符 \fBI\fP。
+.PP
+glibc 2.35 为 \fBm\fP 转换说明符的替代形式 (\fB#\fP) 赋予了含义，即 \fI%#m\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBprintf\fP(),
+\fBfprintf\fP(),
+\fBsprintf\fP(),
+\fBsnprintf\fP(),
+\fBvprintf\fP(),
+\fBvfprintf\fP(),
+\fBvsprintf\fP(),
+\fBvsnprintf\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBfprintf\fP(), \fBprintf\fP(), \fBsprintf\fP(), \fBsnprintf\fP(), \fBvprintf\fP(),
+\fBvfprintf\fP(), \fBvsprintf\fP(), \fBvsnprintf\fP(): POSIX.1\-2001, POSIX.1\-2008,
+C99.
+.PP
+\fBdprintf\fP() 和 \fBvdprintf\fP() 函数最初是 GNU 扩展，后来在 POSIX.1\-2008 中标准化。
+.PP
+关于 \fBsnprintf\fP() 的返回值，SUSv2 和 C99 自相矛盾: 用 \fIsize\fP=0 调用 \fBsnprintf\fP() 时，SUSv2
+规定了一个小于 1 的未指定返回值，而 C99 允许 \fIstr\fP 在这种情况下为 NULL，并给出返回值 (一如既往)
+作为在输出字符串足够大的情况下应该写入的字符数。 POSIX.1\-2001 及更高版本将其 \fBsnprintf\fP() 规范与 C99 对齐。
+.SH NOTES
+一些程序轻率地依赖如下代码
+.PP
+.in +4n
+.EX
+sprintf(buf, "%s some further text", buf);
+.EE
+.in
+.PP
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=7075
+将文本追加到 \fIbuf\fP。 但是，标准明确指出，如果在调用 \fBsprintf\fP()、\fBsnprintf\fP()、\fBvsprintf\fP() 和
+\fBvsnprintf\fP() 时源缓冲区和目标缓冲区重叠，则结果是未定义的。 根据使用的 \fBgcc\fP(1) 版本和使用的编译器选项，上述调用将
+\fBnot\fP 产生预期的结果。
+.PP
+.\" .SH HISTORY
+.\" UNIX V7 defines the three routines
+.\" .BR printf (),
+.\" .BR fprintf (),
+.\" .BR sprintf (),
+.\" and has the flag \-, the width or precision *, the length modifier l,
+.\" and the conversions doxfegcsu, and also D,O,U,X as synonyms for ld,lo,lu,lx.
+.\" This is still true for 2.9.1BSD, but 2.10BSD has the flags
+.\" #, + and <space> and no longer mentions D,O,U,X.
+.\" 2.11BSD has
+.\" .BR vprintf (),
+.\" .BR vfprintf (),
+.\" .BR vsprintf (),
+.\" and warns not to use D,O,U,X.
+.\" 4.3BSD Reno has the flag 0, the length modifiers h and L,
+.\" and the conversions n, p, E, G, X (with current meaning)
+.\" and deprecates D,O,U.
+.\" 4.4BSD introduces the functions
+.\" .BR snprintf ()
+.\" and
+.\" .BR vsnprintf (),
+.\" and the length modifier q.
+.\" FreeBSD also has functions
+.\" .BR asprintf ()
+.\" and
+.\" .BR vasprintf (),
+.\" that allocate a buffer large enough for
+.\" .BR sprintf ().
+.\" In glibc there are functions
+.\" .BR dprintf ()
+.\" and
+.\" .BR vdprintf ()
+.\" that print to a file descriptor instead of a stream.
+函数 \fBsnprintf\fP() 和 \fBvsnprintf\fP() 的 glibc 实现符合 C99 标准，也就是说，从 glibc 2.1
+开始，其行为如上所述。 在 glibc 2.0.6 之前，它们会在输出被截断时返回 \-1。
+.SH BUGS
+.\" .PP
+.\" Linux libc4.[45] does not have a
+.\" .BR snprintf (),
+.\" but provides a libbsd that contains an
+.\" .BR snprintf ()
+.\" equivalent to
+.\" .BR sprintf (),
+.\" that is, one that ignores the
+.\" .I size
+.\" argument.
+.\" Thus, the use of
+.\" .BR snprintf ()
+.\" with early libc4 leads to serious security problems.
+因为 \fBsprintf\fP() 和 \fBvsprintf\fP() 假设一个任意长的字符串，调用者必须小心不要溢出实际空间; 这通常无法保证。
+请注意，生成的字符串的长度取决于语言环境且难以预测。 请改用 \fBsnprintf\fP() 和 \fBvsnprintf\fP() (或
+\fBasprintf\fP(3) 和 \fBvasprintf\fP(3))。
+.PP
+.\" .PP
+.\" Some floating-point conversions under early libc4
+.\" caused memory leaks.
+诸如 \fBprintf(\fP\fIfoo\fP\fB);\fP 之类的代码通常表示存在错误，因为 \fIfoo\fP 可能包含 % 字符。 如果 \fIfoo\fP
+来自不受信任的用户输入，它可能包含 \fB%n\fP，导致 \fBprintf\fP() 调用写入内存并创建安全 hole。
+.SH EXAMPLES
+要将 \fIPi\fP 打印到小数点后五位:
+.PP
+.in +4n
+.EX
+#include <math.h>
+#include <stdio.h>
+fprintf(stdout, "pi = %.5f\en", 4 * atan(1.0));
+.EE
+.in
+.PP
+以 "Sunday, July 3, 10:02" 格式打印日期和时间，其中 \fIweekday\fP 和 \fImonth\fP 是指向字符串的指针:
+.PP
+.in +4n
+.EX
+#include <stdio.h>
+fprintf(stdout, "%s, %s %d, %.2d:%.2d\en",
+        工作日、月、日、小时、分钟) ;
+.EE
+.in
+.PP
+许多国家 / 地区使用日 \- 月 \- 年的顺序。 因此，国际化版本必须能够按照格式指定的顺序打印参数:
+.PP
+.in +4n
+.EX
+#include <stdio.h>
+fprintf(stdout, format,
+        工作日、月、日、小时、分钟) ;
+.EE
+.in
+.PP
+其中 \fIformat\fP 取决于区域设置，并且可能会排列参数。 值:
+.PP
+.in +4n
+.EX
+"%1$s, %3$d. %2$s, %4$d:%5$.2d\en"
+.EE
+.in
+.PP
+一个人可能会得到 "Sonntag, 3. Juli, 10:02"。
+.PP
+要分配足够大的字符串并打印到其中 (glibc 2.0 和 glibc 2.1 的代码都是正确的) :
+.PP
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+char *
+make_message(const char *fmt, ...)
+{
+    int n = 0;
+    size_t size = 0;
+    char *p = NULL;
+    va_list ap;
+
+    /* Determine required size. */
+
+    va_start(ap, fmt);
+    n = vsnprintf(p, size, fmt, ap);
+    va_end(ap);
+
+    if (n < 0)
+        return NULL;
+
+    size = (size_t) n + 1;       /* One extra byte for \[aq]\e0\[aq] */
+    p = malloc(size);
+    if (p == NULL)
+        return NULL;
+
+    va_start(ap, fmt);
+    n = vsnprintf(p, size, fmt, ap);
+    va_end(ap);
+
+    if (n < 0) {
+        free(p);
+        return NULL;
+    }
+
+    return p;
+}
+.EE
+.PP
+如果截断发生在 glibc 2.0.6 之前的 glibc 版本中，这将被视为错误，而不是被妥善处理。
+.SH "SEE ALSO"
+\fBprintf\fP(1), \fBasprintf\fP(3), \fBputs\fP(3), \fBscanf\fP(3), \fBsetlocale\fP(3),
+\fBstrfromd\fP(3), \fBwcrtomb\fP(3), \fBwprintf\fP(3), \fBlocale\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,396 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH USERDBCTL 1 "" "systemd 253" userdbctl
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+userdbctl \- 检查用户、组和组成员
+.SH SYNOPSIS
+.HP \w'\fBuserdbctl\fR\ 'u
+\fBuserdbctl\fP [OPTIONS...] {COMMAND} [NAME...]
+.SH DESCRIPTION
+.PP
+\fBuserdbctl\fP 可用于检查系统的用户和组 (以及组成员身份) \&。此客户端实用程序查询各种系统服务提供的 user/group 信息，既对
+JSON user/group 记录 (如 \m[blue]\fBJSON User Records\fP\m[]\&\s-2\u[1]\d\s+2 和
+\m[blue]\fBJSON Group Records\fP\m[]\&\s-2\u[2]\d\s+2 定义所定义) 以及经典 UNIX
+NSS/glibc 用户和组记录进行操作 \&。该工具主要是 \m[blue]\fBUser/Group Record Lookup API via Varlink\fP\m[]\&\s-2\u[3]\d\s+2 的客户端，也可以从
+/etc/userdb/、/run/userdb/、/run/host/userdb/、/usr/userdb/\& 中获取丢弃 \- in JSON
+用户和组记录。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-output=\fP\fIMODE\fP
+.RS 4
+选择输出方式，取 "classic"、"friendly"、"table"、"json"\& 其中之一。如果是 "classic"，则会生成非常接近
+/etc/passwd 或 /etc/group 格式的输出 \&。如果 "friendly" 更全面和用户友好，则生成人类可读的输出; 如果
+"table" 生成最小的表格输出; 如果 "json" 生成 JSON 格式的输出 \&。如果在命令行上指定了 user/group，则默认为
+"friendly"，否则为 "table"\&。
+.sp
+请注意，大多数输出格式不会显示所有可用信息 \&。特别是，"classic" 和 "table" 仅显示最重要的字段 \&。各种模式也不显示密码哈希
+\&。使用 "json" 查看所有字段，包括任何身份验证字段 \&。
+.RE
+.PP
+\fB\-\-json=\fP\fIFORMAT\fP
+.RS 4
+选择 JSON 输出模式 (如 \fB\-\-output=json\fP) 并选择精确显示模式 \&。采用 "pretty" 或 `短`\& 之一。如果是
+"pretty"，则在输出中插入人性化的空格和换行符，使 JSON 数据更具可读性 \&。如果是 "short"，所有多余的空格都会被抑制 \&。
+.RE
+.PP
+\fB\-\-service=\fP\fISERVICE\fP[:\fISERVICE\&...\fP], \fB\-s\fP \fISERVICE\fP:\fISERVICE\&...\fP
+.RS 4
+控制为用户 / 组查询哪些服务。获取一个或多个服务名称的列表，以 `:`\& 分隔。请参见下面的知名服务名称列表
+\&。如果未指定，将立即查询所有可用服务 \&。
+.RE
+.PP
+\fB\-\-with\-nss=\fP\fIBOOL\fP
+.RS 4
+控制是否在输出中包含经典 glibc/NSS user/group 查找 \&。如果使用 \fB\-\-with\-nss=no\fP，任何解析或枚举仅通过
+glibc NSS 提供的 users/groups 的尝试都会被抑制 \&。如果指定了 \fB\-\-with\-nss=yes\fP，则此类
+users/groups 将包含在输出中 (这是默认设置) \&。
+.RE
+.PP
+\fB\-\-with\-varlink=\fP\fIBOOL\fP
+.RS 4
+控制是否在输出中包括 Varlink user/group 查找，i\&.e\&。那些通过 \m[blue]\fBUser/Group Record Lookup API via Varlink\fP\m[]\&\s-2\u[3]\d\s+2\& 完成的。如果使用
+\fB\-\-with\-varlink=no\fP，任何解析或枚举仅通过 Varlink 提供的 users/groups 的尝试都会被抑制 \&。如果指定了
+\fB\-\-with\-varlink=yes\fP，则此类 users/groups 将包含在输出中 (这是默认设置) \&。
+.RE
+.PP
+\fB\-\-with\-dropin=\fP\fIBOOL\fP
+.RS 4
+控制是否在使用 /etc/userdb/、/run/userdb/、/run/host/userdb/、/usr/userdb/\& 中的丢弃 \- in
+文件定义的输出中包含 user/group 查找。如果使用 \fB\-\-with\-dropin=no\fP，这些记录将被抑制 \&。如果指定了
+\fB\-\-with\-dropin=yes\fP，则此类 users/groups 将包含在输出中 (这是默认设置) \&。
+.RE
+.PP
+\fB\-\-synthesize=\fP\fIBOOL\fP
+.RS 4
+控制是否为 root 和 nobody users/groups 合成记录，如果它们不是 \*(Aqt defined
+otherwise\&。默认情况下 (或 "yes") 此类记录会隐式合成，否则会丢失，因为它们对 OS\& 具有特殊意义。"no" 时本次合成关闭
+\&。
+.RE
+.PP
+\fB\-N\fP
+.RS 4
+该选项是 \fB\-\-with\-nss=no\fP \fB\-\-synthesize=no\fP\& 的缩写。使用此选项仅显示原生定义为 JSON
+用户或组记录的记录，并关闭所有 NSS/glibc 兼容性和所有隐式合成 \&。
+.RE
+.PP
+\fB\-\-multiplexer=\fP\fIBOOL\fP
+.RS 4
+控制是通过多路复用器服务进行查找 (如果指定为 true，则为默认值) 还是在客户端中进行查找 (如果指定为 false)
+\&。使用多路复用器服务通常更可取，因为它在锁定的沙箱中运行 \&。
+.RE
+.PP
+\fB\-\-chain\fP
+.RS 4
+当与 \fBssh\-authorized\-keys\fP 命令一起使用时，这将允许在查找完成后执行的用户名之后传递一个额外的命令行 \&。这允许链接显示
+SSH 授权密钥 \& 的多个工具。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-\-no\-legend\fP
+.RS 4
+不要打印图例，i\&.e\&。带有提示的列标题和页脚 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH COMMANDS
+.PP
+理解以下命令:
+.PP
+\fBuser\fP [\fIUSER\fP\&...]
+.RS 4
+列出所有已知用户记录或显示一个或多个指定用户记录的详细信息 \&。使用 \fB\-\-output=\fP 调整输出模式 \&。
+.RE
+.PP
+\fBgroup\fP [\fIGROUP\fP\&...]
+.RS 4
+列出所有已知组记录或显示一个或多个指定组记录的详细信息 \&。使用 \fB\-\-output=\fP 调整输出模式 \&。
+.RE
+.PP
+\fBusers\-in\-group\fP [\fIGROUP\fP\&...]
+.RS 4
+列出属于指定组的用户 \&。如果未指定任何组，则列出所有已定义的 user/group 成员资格 \&。使用 \fB\-\-output=\fP 调整输出模式
+\&。
+.RE
+.PP
+\fBgroups\-of\-user\fP [\fIUSER\fP\&...]
+.RS 4
+列出指定用户所属的组 \&。如果没有指定用户，则列出所有已定义的 user/group 成员资格 (在这种情况下，\fBgroups\-of\-user\fP 和
+\fBusers\-in\-group\fP 是等效的) \&。使用 \fB\-\-output=\fP 调整输出模式 \&。
+.RE
+.PP
+\fBservices\fP
+.RS 4
+列出当前向系统提供 user/group 定义的所有服务 \&。请参见下文，了解提供用户信息的知名服务列表。
+.RE
+.PP
+\fBssh\-authorized\-keys\fP
+.RS 4
+显示此帐户的 SSH 授权密钥 \&。此命令旨在用于允许 SSH 守护程序从用户记录中获取授权密钥，请参见下文 \&。
+.RE
+.SH "WELL\-KNOWN SERVICES"
+.PP
+\fBuserdbctl services\fP 命令将列出所有当前运行的向系统提供用户或组定义的服务 \&。此列表中显示了以下知名服务:
+.PP
+\fBio\&.systemd\&.DynamicUser\fP
+.RS 4
+该服务由系统服务管理器自身提供 (i\&.e\&.PID 1)，通过服务元文件中 \fIDynamicUser=\fP 设置合成的所有用户 (及其组)
+对系统可用 (详见 \fBsystemd.exec\fP(5) 此设置) \&。
+.RE
+.PP
+\fBio\&.systemd\&.Home\fP
+.RS 4
+此服务由 \fBsystemd\-homed.service\fP(8) 提供，并使属于该服务管理的主目录的所有用户 (及其组) 对系统可用 \&。
+.RE
+.PP
+\fBio\&.systemd\&.Machine\fP
+.RS 4
+该服务由 \fBsystemd\-machined.service\fP(8) 提供，并为使用用户命名空间的容器使用的所有 users/groups 合成记录。
+.RE
+.PP
+\fBio\&.systemd\&.Multiplexer\fP
+.RS 4
+此服务由 \fBsystemd\-userdbd.service\fP(8) 提供，并将 user/group 查找复用到所有其他正在运行的查找服务 \&。这是
+user/group 记录客户端的主要入口点，因为它大大简化了客户端实现，因为它们可以请求单个服务进行查找，而不是请求并行 \& 中所有正在运行的服务。
+\fBuserdbctl\fP 也最好使用此服务，除非使用 \fB\-\-with\-nss=\fP 或
+\fB\-\-service=\fP，在这种情况下，需要更好地控制要与之通信的服务 \&。
+.RE
+.PP
+\fBio\&.systemd\&.NameServiceSwitch\fP
+.RS 4
+该服务是由 \fBsystemd\-userdbd.service\fP(8) 提供的 (also)，将经典的 NSS/glibc 用户和组记录转换为 JSON
+user/group 记录，提供完全向后兼容性 \&。使用 \fB\-\-with\-nss=no\fP 禁用此兼容性，请参见上文
+\&。请注意，兼容性实际上是双向提供的: \fBnss\-systemd\fP(8) 将自动从提供给系统的所有 JSON user/group 记录中合成经典的
+NSS/glibc user/group 记录，因此使用这两种 API 基本上是等效的，并提供对相同数据的访问，但是 NSS/glibc API
+必须公开一个只有更多减少的字段集 \&。
+.RE
+.PP
+\fBio\&.systemd\&.DropIn\fP
+.RS 4
+该服务是 \fBsystemd\-userdbd.service\fP(8) 提供的 (also)，从
+/etc/userdb/、/run/userdb/、/run/host/userdb/、/usr/userdb/\& 中获取 JSON
+user/group 记录。
+.RE
+.PP
+请注意，\fBuserdbctl\fP 也有对基于 NSS 的查找的内部支持 \&。这意味着如果 \fBio\&.systemd\&.Multiplexer\fP
+和 \fBio\&.systemd\&.NameServiceSwitch\fP 都没有运行对基本 user/group 数据库的查找仍然有效 \&。
+.SH "INTEGRATION WITH SSH"
+.PP
+\fBuserdbctl\fP 工具可用于使可能包含在用户记录中的 SSH 授权密钥列表可用于 SSH 守护程序以进行身份验证 \&。为此，在
+\fBsshd_config\fP(5): 中配置以下内容
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\&...
+AuthorizedKeysCommand /usr/bin/userdbctl ssh\-authorized\-keys %u
+AuthorizedKeysCommandUser root
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+有时它 \*(Aqs 有用的是允许链调用另一个程序列出 SSH 授权密钥 \&。通过使用 \fB\-\-chain\fP，这样的工具可以在查找完成后由
+\fBuserdbctl ssh\-authorized\-keys\fP 链式执行 (无论是否找到 SSH 密钥) \&。Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\&...
+AuthorizedKeysCommand /usr/bin/userdbctl ssh\-authorized\-keys %u \-\-chain /usr/bin/othertool %u
+AuthorizedKeysCommandUser root
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+上面会先查询 userdb 数据库获取 SSH 密钥，然后链式执行 \fB/usr/bin/othertool\fP 也要查询 \&。
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH ENVIRONMENT
+.PP
+\fI$SYSTEMD_LOG_LEVEL\fP
+.RS 4
+发出消息的最大日志级别 (具有更高日志级别的消息，i\&.e\&。不太重要的消息将被抑制)
+\&。\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP 之一
+(按重要性递减顺序) 或 0\&...7\& 范围内的整数。有关详细信息，请参见 \fBsyslog\fP(3)\&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_COLOR\fP
+.RS 4
+一个布尔值 \&。如果为真，写入 tty 的消息将根据优先级着色。
+.sp
+这个设置只在消息直接写入终端时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会自行根据日志级别给消息着色 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TIME\fP
+.RS 4
+一个布尔值 \&。如果为 true，控制台日志消息将以时间戳 \& 为前缀。
+.sp
+这个设置只在消息直接写入终端或文件时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会根据条目元数据自行附加时间戳 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_LOCATION\fP
+.RS 4
+一个布尔值 \&。如果为 true，消息将在源代码中以文件名和行号为前缀 \&。
+.sp
+请注意，日志位置通常作为元数据附加到日志条目中。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TID\fP
+.RS 4
+一个布尔值 \&。如果为真，消息将以当前数字线程 ID (TID)\& 为前缀。
+.sp
+请注意，此信息无论如何都作为元数据附加到日记条目 \&。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TARGET\fP
+.RS 4
+日志消息的目的地 \&。\fBconsole\fP (记录到附加的 tty)、\fBconsole\-prefixed\fP (记录到附加的
+tty，但带有编码日志级别和 "facility" 的前缀，参见 \fBsyslog\fP(3)、\fBkmsg\fP
+(记录到内核循环日志缓冲区)、\fBjournal\fP (记录到日志) 之一，\fBjournal\-or\-kmsg\fP (如果可用则记录到日志，否则记录到
+kmsg)，\fBauto\fP (自动确定适当的日志目标，默认)，\fBnull\fP (禁用日志输出) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGER\fP
+.RS 4
+未给出 \fB\-\-no\-pager\fP 时使用的寻呼机; 覆盖 \fI$PAGER\fP\&。如果 \fI$SYSTEMD_PAGER\fP 和 \fI$PAGER\fP
+都没有设置，则依次尝试一组众所周知的寻呼机实现，包括 \fBless\fP(1) 和 \fBmore\fP(1)，直到找到一个
+\&。如果没有发现寻呼机实现，则不调用寻呼机 \&。将此环境变量设置为空字符串或值 "cat" 等同于传递 \fB\-\-no\-pager\fP\&。
+.sp
+Note: 如果未设置 \fI$SYSTEMD_PAGERSECURE\fP，\fI$SYSTEMD_PAGER\fP (以及 \fI$PAGER\fP) 将被忽略
+\&。
+.RE
+.PP
+\fI$SYSTEMD_LESS\fP
+.RS 4
+覆盖传递给 \fBless\fP (默认 "FRSXMK") \& 的选项。
+.sp
+用户可能希望特别更改两个选项:
+.PP
+\fBK\fP
+.RS 4
+此选项指示寻呼机在按下 Ctrl+C 时立即退出 \&。要允许 \fBless\fP 自己处理 Ctrl+C 以切换回寻呼机命令提示符，请取消设置此选项
+\&。
+.sp
+如果 \fI$SYSTEMD_LESS\fP 的值不包括 "K"，调用的分页器是 \fBless\fP，Ctrl+C 会被可执行文件忽略，需要分页器处理 \&。
+.RE
+.PP
+\fBX\fP
+.RS 4
+此选项指示寻呼机不将 termcap 初始化和取消初始化字符串发送到终端 \&。它默认设置为允许命令输出在终端中保持可见，即使在寻呼机退出 \&
+之后也是如此。然而，这会阻止某些寻呼机功能工作，特别是无法使用鼠标滚动分页输出。
+.RE
+.sp
+有关更多讨论，请参见 \fBless\fP(1)\&。
+.RE
+.PP
+\fI$SYSTEMD_LESSCHARSET\fP
+.RS 4
+覆盖传递给 \fBless\fP 的字符集 (默认为 "utf\-8"，如果调用终端被确定为与 UTF\-8 兼容) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGERSECURE\fP
+.RS 4
+采用布尔型参数 \&。为真时，启用寻呼机的 "secure" 模式; 如果为假，则禁用 \&。如果根本未设置
+\fI$SYSTEMD_PAGERSECURE\fP，则在有效 UID 与登录会话的所有者不同时启用安全模式，请参见 \fBgeteuid\fP(2) 和
+\fBsd_pid_get_owner_uid\fP(3)\&。在安全模式下，调用寻呼机时将设置
+\fBLESSSECURE=1\fP，寻呼机应禁用打开或创建新文件或启动新子进程的命令 \&。当根本没有设置 \fI$SYSTEMD_PAGERSECURE\fP
+时，将不会使用未知实现安全模式的寻呼机 \&。(目前只有 \fBless\fP(1) 实现了安全模式 \&。)
+.sp
+Note: 当以提升的权限调用命令时，例如在 \fBsudo\fP(8) 或 \fBpkexec\fP(1) 下，必须小心确保未启用意外的交互，特性 \&。寻呼机的
+"Secure" 模式可以如上所述自动启用 \&。设置 \fISYSTEMD_PAGERSECURE=0\fP 或不将其从继承环境中删除允许用户调用任意命令
+\&。请注意，如果要兑现 \fI$SYSTEMD_PAGER\fP 或 \fI$PAGER\fP 变量，则必须同时设置
+\fI$SYSTEMD_PAGERSECURE\fP\&。改为使用 \fB\-\-no\-pager\fP\& 完全禁用寻呼机可能是合理的。
+.RE
+.PP
+\fI$SYSTEMD_COLORS\fP
+.RS 4
+采用布尔型参数 \&。当为真时，\fBsystemd\fP 和相关的实用工具将在其输出中使用颜色，否则输出将为单色 \&。此外，该变量可以采用以下特殊值之一:
+"16"、"256"，分别将颜色的使用限制为基本 16 或 256 ANSI 颜色 \&。这可以被指定以覆盖基于 \fI$TERM\fP
+和控制台连接到什么的自动决定 \&。
+.RE
+.PP
+\fI$SYSTEMD_URLIFY\fP
+.RS 4
+该值必须是布尔值 \&。控制是否应在支持此 \& 的终端模拟器的输出中生成可点击链接。这可以被指定来覆盖 \fBsystemd\fP 基于 \fI$TERM\fP
+和其他条件做出的决定 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-userdbd.service\fP(8), \fBsystemd\-homed.service\fP(8),
+\fBnss\-systemd\fP(8), \fBgetent\fP(1)
+.SH NOTES
+.IP " 1." 4
+JSON 用户记录
+.RS 4
+\%https://systemd.io/USER_RECORD
+.RE
+.IP " 2." 4
+JSON 组记录
+.RS 4
+\%https://systemd.io/GROUP_RECORD
+.RE
+.IP " 3." 4
+通过 Varlink 的 User/Group 记录查找 API
+.RS 4
+\%https://systemd.io/USER_GROUP_API
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

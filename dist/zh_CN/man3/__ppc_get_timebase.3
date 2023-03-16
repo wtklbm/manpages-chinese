@@ -1,0 +1,103 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2012, IBM Corporation.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH __ppc_get_timebase 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+__ppc_get_timebase, __ppc_get_timebase_freq \- get the current value of the
+Time Base Register on Power architecture and its frequency.
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/platform/ppc.h>\fP
+.PP
+\fBuint64_t __ppc_get_timebase(void);\fP
+\fBuint64_t __ppc_get_timebase_freq(void);\fP
+.fi
+.SH DESCRIPTION
+\fB__ppc_get_timebase\fP() 读取时基寄存器的当前值并返回其值，而 \fB__ppc_get_timebase_freq\fP()
+返回时基寄存器更新的频率。
+.PP
+时基寄存器是 Power Architecture 处理器提供的 64 位寄存器。
+它存储一个单调递增的值，该值以系统相关的频率更新，该频率可能与处理器频率不同。
+.SH "RETURN VALUE"
+\fB__ppc_get_timebase\fP() 返回一个 64 位无符号整数，表示时基寄存器的当前值。
+.PP
+\fB__ppc_get_timebase_freq\fP() 返回一个 64 位无符号整数，表示更新时基寄存器的频率。
+.SH VERSIONS
+.\" commit d9dc34cd569bcfe714fe8c708e58c028106e8b2e
+.\" commit 8ad11b9a9cf1de82bd7771306b42070b91417c11
+GNU C 库对 \fB__ppc_get_timebase\fP() 的支持从 glibc 2.16
+开始提供，\fB__ppc_get_timebase_freq\fP() 从 glibc 2.17 开始提供。
+.SH STANDARDS
+两个函数都是非标准的 GNU 扩展。
+.SH EXAMPLES
+以下程序将计算两次 \fB__ppc_get_timebase\fP() 调用之间花费的时间 (以微秒为单位)。
+.SS "Program source"
+.\" SRC BEGIN (__ppc_get_timebase.c)
+\&
+.EX
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/platform/ppc.h>
+
+/* Maximum value of the Time Base Register: 2\[ha]60 \- 1.
+   Source: POWER ISA.  */
+#define MAX_TB 0xFFFFFFFFFFFFFFF
+
+int
+main(void)
+{
+    uint64_t tb1, tb2, diff;
+    uint64_t freq;
+
+    freq = __ppc_get_timebase_freq();
+    printf("Time Base frequency = %"PRIu64" Hz\en", freq);
+
+    tb1 = __ppc_get_timebase();
+
+    // 做一些事情...
+
+    tb2 = __ppc_get_timebase();
+
+    if (tb2 > tb1) {
+        diff = tb2 \- tb1;
+    } else {
+        /* Treat Time Base Register overflow.  */
+        diff = (MAX_TB \- tb2) + tb1;
+    }
+
+    printf("Elapsed time  = %1.2f usecs\en",
+           (double) diff * 1000000 / freq);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBtime\fP(2), \fBusleep\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

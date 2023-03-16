@@ -1,0 +1,176 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: fallocate
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: User Commands
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH FALLOCATE 1 2022\-05\-11 "util\-linux 2.38.1" "User Commands"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+fallocate \- 为文件预分配或释放空间
+.SH SYNOPSIS
+.sp
+\fBfallocate\fP [\fB\-c\fP|\fB\-p\fP|\fB\-z\fP] [\fB\-o\fP \fIoffset\fP] \fB\-l\fP \fIlength\fP [\fB\-n\fP]
+\fIfilename\fP
+.sp
+\fBfallocate\fP \fB\-d\fP [\fB\-o\fP \fIoffset\fP] [\fB\-l\fP \fIlength\fP] \fIfilename\fP
+.sp
+\fBfallocate\fP \fB\-x\fP [\fB\-o\fP \fIoffset\fP] \fB\-l\fP \fIlength filename\fP
+.SH DESCRIPTION
+.sp
+\fBfallocate\fP 用于操作为文件分配的磁盘空间，以释放或预分配它。对于支持 \fBfallocate\fP(2)
+系统调用的文件系统，通过分配块并将它们标记为未初始化来快速完成预分配，不需要对数据块进行 IO。这比通过用零填充来创建文件要快得多。
+.sp
+\fBfallocate\fP 返回的退出状态为 0 表示成功，1 表示失败。
+.SH OPTIONS
+.sp
+\fIlength\fP 和 \fIoffset\fP 参数后面可以跟乘数后缀 KiB (=1024), MiB (=1024*1024), GiB, TiB,
+PiB, EiB, ZiB, YiB 等 ("iB" 是可选的，例如，"K" 与 "KiB" 含义相同) 或 GB、TB、PB、EB、ZB 和 YB
+的后缀 KB (=1000)、MB (=1000*1000) 等。
+.sp
+选项 \fB\-\-collapse\-range\fP、\fB\-\-dig\-holes\fP、\fB\-\-punch\-hole\fP 和 \fB\-\-zero\-range\fP
+是互斥的。
+.sp
+\fB\-c\fP, \fB\-\-collapse\-range\fP
+.RS 4
+从文件中删除一个字节范围，而不留下 hole。要折叠的字节范围从 \fIoffset\fP 开始并继续 \fIlength\fP 字节。操作完成时，从位置
+\fIoffset\fP+\fIlength\fP 开始的文件内容将追加到位置 \fIoffset\fP，文件将小 \fIlength\fP 字节。不能为折叠范围操作指定选项
+\fB\-\-keep\-size\fP。
+.sp
+自 Linux 3.15 起可用于 ext4 (仅适用于基于扩展的文件) 和 XFS。
+.sp
+文件系统可能会对操作的粒度进行限制，以确保高效实现。通常，\fIoffset\fP 和 \fIlength\fP
+必须是文件系统逻辑块大小的倍数，这根据文件系统类型和配置而有所不同。如果文件系统有这样的要求，如果违反此要求，操作将失败并显示错误 \fBEINVAL\fP。
+.RE
+.sp
+\fB\-d\fP, \fB\-\-dig\-holes\fP
+.RS 4
+检测并挖洞。这使得文件就地稀疏，而不使用额外的磁盘空间。hole 的最小大小取决于文件系统 I/O 块大小 (通常为 4096
+字节)。此外，当使用此选项时，\fB\-\-keep\-size\fP 是隐含的。如果 \fB\-\-offset\fP 和 \fB\-\-length\fP
+未指定范围，则会分析整个文件的漏洞。
+.sp
+您可以将此选项视为执行 "\fBcp \-\-sparse\fP"，然后将目标文件重命名为原始文件，而无需额外的磁盘空间。
+.sp
+有关受支持文件系统的列表，请参见 \fB\-\-punch\-hole\fP。
+.RE
+.sp
+\fB\-i\fP, \fB\-\-insert\-range\fP
+.RS 4
+从 \fIoffset\fP 插入一个 \fIlength\fP 字节的 hole，移动现有数据。
+.RE
+.sp
+\fB\-l\fP, \fB\-\-length\fP \fIlength\fP
+.RS 4
+指定范围的长度，以字节为单位。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-keep\-size\fP
+.RS 4
+不要修改文件的表观长度。这可以有效地分配 EOF 之后的块，可以通过截断将其删除。
+.RE
+.sp
+\fB\-o\fP, \fB\-\-offset\fP \fIoffset\fP
+.RS 4
+指定范围的起始偏移量，以字节为单位。
+.RE
+.sp
+\fB\-p\fP, \fB\-\-punch\-hole\fP
+.RS 4
+在从 \fIoffset\fP 开始到 \fIlength\fP 字节的字节范围内释放空间 (即，创建一个
+hole)。在指定范围内，部分文件系统块被清零，整个文件系统块从文件中删除。成功调用后，从此范围的后续读取将返回零。此选项不能与
+\fB\-\-zero\-range\fP 选项同时指定。此外，当使用此选项时，\fB\-\-keep\-size\fP 是隐含的。
+.sp
+支持 XFS (自 Linux 2.6.38)、ext4 (自 Linux 3.0)、Btrfs (自 Linux 3.7)、tmpfs (自
+Linux 3.5) 和 gfs2 (自 Linux 4.16)。
+.RE
+.sp
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+启用详细模式。
+.RE
+.sp
+\fB\-x\fP, \fB\-\-posix\fP
+.RS 4
+启用 POSIX 操作模式。在该模式下，分配操作始终会完成，但当底层文件系统不支持快速分配时，可能需要更长的时间。
+.RE
+.sp
+\fB\-z\fP, \fB\-\-zero\-range\fP
+.RS 4
+将字节范围内的空间从 \fIoffset\fP 开始并继续 \fIlength\fP
+字节。在指定范围内，块被预分配给跨越文件中空洞的区域。成功调用后，从此范围的后续读取将返回零。
+.sp
+最好通过将范围转换为未写入的范围来在文件系统内完成清零。这种方法意味着指定的范围不会在设备上被物理清零 (范围两端的部分块除外)，并且 I/O 是
+(otherwise)，仅需要更新元数据。
+.sp
+可以指定选项 \fB\-\-keep\-size\fP 以防止文件长度修改。
+.sp
+自 Linux 3.14 起可用于 ext4 (仅适用于基于扩展的文件) 和 XFS。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH AUTHORS
+.sp
+.MTO sandeen\(atredhat.com "Eric Sandeen" ,
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBtruncate\fP(1), \fBfallocate\fP(2), \fBposix_fallocate\fP(3)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBfallocate\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

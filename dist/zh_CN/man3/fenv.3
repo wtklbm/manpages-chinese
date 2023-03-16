@@ -1,0 +1,203 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2000 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 2000-08-14 added GNU additions from Andreas Jaeger
+.\" 2000-12-05 some changes inspired by acahalan's remarks
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fenv 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+feclearexcept, fegetexceptflag, feraiseexcept, fesetexceptflag,
+fetestexcept, fegetenv, fegetround, feholdexcept, fesetround, fesetenv,
+feupdateenv, feenableexcept, fedisableexcept, fegetexcept \- 浮点舍入和异常处理
+.SH LIBRARY
+数学库 (\fIlibm\fP、\fI\-lm\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fenv.h>\fP
+.PP
+\fBint feclearexcept(int \fP\fIexcepts\fP\fB);\fP
+\fBint fegetexceptflag(fexcept_t *\fP\fIflagp\fP\fB, int \fP\fIexcepts\fP\fB);\fP
+\fBint feraiseexcept(int \fP\fIexcepts\fP\fB);\fP
+\fBint fesetexceptflag(const fexcept_t *\fP\fIflagp\fP\fB, int \fP\fIexcepts\fP\fB);\fP
+\fBint fetestexcept(int \fP\fIexcepts\fP\fB);\fP
+.PP
+\fBint fegetround(void);\fP
+\fBint fesetround(int \fP\fIrounding_mode\fP\fB);\fP
+.PP
+\fBint fegetenv(fenv_t *\fP\fIenvp\fP\fB);\fP
+\fBint feholdexcept(fenv_t *\fP\fIenvp\fP\fB);\fP
+\fBint fesetenv(const fenv_t *\fP\fIenvp\fP\fB);\fP
+\fBint feupdateenv(const fenv_t *\fP\fIenvp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这 11 个函数定义在 C99 中，描述了浮点舍入和异常 (溢出、零除等) 的处理。
+.SS Exceptions
+当对有限数的运算产生无穷大作为精确答案时，会发生 \fIdivide\-by\-zero\fP 异常。
+.PP
+当结果必须表示为浮点数，但 (much) 的绝对值比可表示的最大 (finite) 浮点数大时，就会发生 \fIoverflow\fP 异常。
+.PP
+当结果必须表示为浮点数，但其绝对值小于最小的正归一化浮点数 (并且当表示为非归一化数时会失去很多准确性) 时，会发生 \fIunderflow\fP 异常。
+.PP
+当运算的舍入结果不等于无限精度结果时，会发生 \fIinexact\fP 异常。 每当 \fIoverflow\fP 或 \fIunderflow\fP
+发生时，它都可能发生。
+.PP
+\fIinvalid\fP 异常发生在没有明确定义的操作结果时，如 0/0 或无穷大 \- 无穷大或 sqrt(\-1)。
+.SS "Exception handling"
+异常以两种方式表示: 作为单个位 (异常
+present/absent)，这些位以某种实现定义的方式与整数中的位位置相对应，也作为不透明结构体，可能包含有关异常的更多信息
+(可能它发生的代码地址)。
+.PP
+每个宏
+\fBFE_DIVBYZERO\fP,\fBFE_INEXACT\fP,\fBFE_INVALID\fP,\fBFE_OVERFLOW\fP,\fBFE_UNDERFLOW\fP
+都是在实现支持对应异常处理时定义的，如果是则定义对应的 bit(s)，这样就可以调用异常处理函数，例如使用整数参数
+\fBFE_OVERFLOW\fP|\fBFE_UNDERFLOW\fP。 可能支持其他例外情况。 宏 \fBFE_ALL_EXCEPT\fP
+是与支持的异常对应的所有位的按位或。
+.PP
+\fBfeclearexcept\fP() 函数清除由其参数中的位表示的支持异常。
+.PP
+\fBfegetexceptflag\fP() 函数在不透明对象 \fI*flagp\fP 中存储由参数 \fIexcepts\fP 表示的异常标志状态的表示。
+.PP
+\fBferaiseexcept\fP() 函数引发由 \fIexcepts\fP 中的位表示的支持异常。
+.PP
+\fBfesetexceptflag\fP() 函数将 \fIexcepts\fP 表示的异常的完整状态设置为值 \fI*flagp\fP。 该值必须由
+\fBfegetexceptflag\fP() 的较早调用获得，最后一个参数包含 \fIexcepts\fP 中的所有位。
+.PP
+\fBfetestexcept\fP() 函数返回一个字，其中设置了在参数 \fIexcepts\fP 中设置的位，并且当前为其设置了相应的异常。
+.SS "Rounding mode"
+舍入模式决定了当结果不能精确地用有效数字表示时如何处理浮点运算的结果。 可以提供各种舍入模式: 舍入到最接近的 (默认)、向上舍入
+(向正无穷大)、向下舍入 (向，负 无穷大) 和向零舍入。
+.PP
+当实现支持获取和设置相应的舍入方向时，定义每个宏 \fBFE_TONEAREST\fP、\fBFE_UPWARD\fP、\fBFE_DOWNWARD\fP 和
+\fBFE_TOWARDZERO\fP。
+.PP
+\fBfegetround\fP() 函数返回当前舍入模式对应的宏。
+.PP
+\fBfesetround\fP() 函数设置其参数指定的舍入模式，并在成功时返回零。
+.PP
+C99 和 POSIX.1\-2008 指定了在 \fI<float.h>\fP 中定义的标识符
+\fBFLT_ROUNDS\fP，它指示实现定义的浮点加法舍入行为。 此标识符具有以下值之一:
+.TP 
+\fB\-1\fP
+舍入模式是不可确定的。
+.TP 
+\fB0\fP
+四舍五入是朝向 0.
+.TP 
+\fB1\fP
+四舍五入是朝着最接近的数字。
+.TP 
+\fB2\fP
+四舍五入朝向正无穷大。
+.TP 
+\fB3\fP
+向 negative 无穷大舍入。
+.PP
+其他值表示与机器相关的非标准舍入模式。
+.PP
+\fBFLT_ROUNDS\fP 的值应反映 \fBfesetround\fP() 设置的当前舍入模式 (但请参见 BUGS)。
+.SS "Floating\-point environment"
+整个浮点环境，包括控制模式和状态标志，可以作为一个 \fIfenv_t\fP 类型的不透明对象来处理。 默认环境由 \fBFE_DFL_ENV\fP
+(\fIconst fenv_t\ *\fP) 类型) 表示。 这是程序启动时的环境设置，ISO C 将其定义为舍入到最近、清除所有异常和不间断
+(异常时继续) 模式。
+.PP
+\fBfegetenv\fP() 函数将当前的浮点环境保存在对象 \fI*envp\fP 中。
+.PP
+\fBfeholdexcept\fP() 函数做同样的事情，然后清除所有异常标志，并设置不间断 (异常时继续) 模式 (如果可用)。 成功时返回零。
+.PP
+\fBfesetenv\fP() 函数从对象 \fI*envp\fP 恢复浮点环境。 必须知道此对象是有效的，例如，调用 \fBfegetenv\fP() 或
+\fBfeholdexcept\fP() 或等于 \fBFE_DFL_ENV\fP 的结果。 此调用不会引发异常。
+.PP
+\fBfeupdateenv\fP() 函数安装由对象 \fI*envp\fP 表示的浮点环境，除了当前引发的异常未被清除。 调用此函数后，引发的异常将与之前在
+\fI*envp\fP 中设置的异常按位或。 和以前一样，必须知道对象 \fI*envp\fP 是有效的。
+.SH "RETURN VALUE"
+.\" Earlier seven of these functions were listed as returning void.
+.\" This was corrected in Corrigendum 1 (ISO/IEC 9899:1999/Cor.1:2001(E))
+.\" of the C99 Standard.
+这些函数在成功时返回零，如果发生错误则返回非零。
+.SH VERSIONS
+这些函数是在 glibc 2.1 中添加的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.nh
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfeclearexcept\fP(),
+\fBfegetexceptflag\fP(),
+\fBferaiseexcept\fP(),
+\fBfesetexceptflag\fP(),
+\fBfetestexcept\fP(),
+\fBfegetround\fP(),
+\fBfesetround\fP(),
+\fBfegetenv\fP(),
+\fBfeholdexcept\fP(),
+\fBfesetenv\fP(),
+\fBfeupdateenv\fP(),
+\fBfeenableexcept\fP(),
+\fBfedisableexcept\fP(),
+\fBfegetexcept\fP()
+T}	Thread safety	T{
+MT\-Safe
+T}
+.TE
+.hy
+.ad
+.sp 1
+.hy
+.SH STANDARDS
+IEC 60559 (IEC 559:1989), ANSI/IEEE 854, C99, POSIX.1\-2001.
+.SH NOTES
+.SS "glibc notes"
+如果可能，GNU C 库定义了一个宏 \fBFE_NOMASK_ENV\fP，它表示一个环境，在该环境中，引发的每个异常都会导致陷阱发生。 您可以使用
+\fB#ifdef\fP 测试此宏。 仅当 \fB_GNU_SOURCE\fP 被定义时它才被定义。 C99
+标准没有定义一种方法来设置浮点掩码中的各个位，例如，捕获特定标志。 从 glibc 2.2 开始，glibc 支持函数
+\fBfeenableexcept\fP() 和 \fBfedisableexcept\fP() 来设置单独的浮点陷阱，以及 \fBfegetexcept\fP()
+来查询状态。
+.PP
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <fenv.h>\fP
+.PP
+\fBint feenableexcept(int \fP\fIexcepts\fP\fB);\fP
+\fBint fedisableexcept(int \fP\fIexcepts\fP\fB);\fP
+\fBint fegetexcept(void);\fP
+.fi
+.PP
+\fBfeenableexcept\fP() 和 \fBfedisableexcept\fP() 函数为 \fIexcepts\fP 表示的每个异常启用
+(disable) 陷阱，并在成功时返回前一组启用的异常，否则返回 \-1。 \fBfegetexcept\fP() 函数返回所有当前启用的异常的集合。
+.SH BUGS
+.\" Aug 08, glibc 2.8
+.\" See http://gcc.gnu.org/ml/gcc/2002-02/msg01535.html
+C99 指定 \fBFLT_ROUNDS\fP 的值应反映对当前舍入模式的更改，如 \fBfesetround\fP() 所设置的那样。 目前，这不会发生:
+\fBFLT_ROUNDS\fP 始终具有值 1.
+.SH "SEE ALSO"
+\fBmath_error\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

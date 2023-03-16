@@ -1,0 +1,145 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH PAM_SYSTEMD_HOME 8 "" "systemd 253" pam_systemd_home
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+pam_systemd_home \- 通过 systemd\-homed\&.service 验证用户并挂载主目录
+.SH SYNOPSIS
+.PP
+pam_systemd_home\&.so
+.SH DESCRIPTION
+.PP
+\fBpam_systemd_home\fP 确保由 \fBsystemd\-homed.service\fP(8) 管理的主目录在用户登录时自动激活
+(mounted)，并在用户的最后一个会话结束时停用 (unmounted)\&。对于此类用户，它还提供身份验证
+(当使用每用户磁盘加密时，磁盘加密密钥从登录时提供的身份验证凭据派生)、帐户管理 (嵌入在家庭商店中的 \m[blue]\fBJSON user record\fP\m[]\&\s-2\u[1]\d\s+2 包含帐户详细信息)，以及实现加密密码的更新 (也用于用户认证) \&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fIsuspend=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，系统挂起时用户的家目录会自动挂起; 如果为假，它将保持活动状态
+\&。主目录的自动挂起大大提高了安全性，因为在系统进入睡眠状态之前，密钥材料会自动从内存中删除，并且在从挂起状态恢复时必须重新获取 (通过用户重新验证)
+\&。建议为所有支持在系统恢复时通过 PAM 自动重新验证的 PAM 应用程序设置此参数。如果同一用户的多个会话在并行中打开，则用户 \*(Aqs
+主目录将在系统挂起时保持未挂起状态，只要至少一个会话未将此参数设置为 on\&。默认关闭 \&。
+.sp
+请注意，TTY 登录通常不支持在系统恢复 \&
+时重新验证。系统恢复时的重新身份验证主要是一个可在图形环境中实现的概念，以系统进入睡眠时自动显示的锁定屏幕的形式
+\&。这意味着，如果用户同时使用实现所需重新身份验证机制的图形登录会话和未实现所需的重新身份验证机制的控制台登录，则由于上面解释的逻辑
+\&，主目录在挂起期间不会被锁定。也就是说，也可以为 TTY 登录设置此字段，忽略 TTY 登录实际上不 \* (Aqt 支持重新验证机制
+\&。在这种情况下，TTY 会话将显示为挂起，直到用户登录到另一个虚拟终端 (无论是否通过另一个 TTY 会话或图形方式)，这将恢复主目录并取消阻止原始
+TTY 会话 \&。(请注意，TTY 会话上没有屏幕锁定意味着即使 TTY 会话看起来挂起，按键仍然可以排队进入，并且无需重新验证即可读取现有屏幕内容;
+此限制与主目录管理 \fBpam_systemd_home\fP 和 systemd\-homed\&.service 实现无关。)
+.sp
+强烈建议对所有会话默认启用此选项，但前提是管理这些会话的服务正确实现了上述重新身份验证 \&。请注意，重新身份验证必须从在用户 \*(Aqs
+上下文之外运行的组件进行，因此它不需要访问用户 \*(Aqs 主目录以进行操作 \&。传统上，大多数桌面环境不会以这种方式实现屏幕锁定，需要相应地更新
+\&。
+.sp
+此设置也可以通过 \fI$SYSTEMD_HOME_SUSPEND\fP 环境变量 (见下文) 控制，\fBpam_systemd_home\fP
+在初始化期间读取该变量并为会话设置。如果既设置了环境变量又指定了模块参数，则后者优先 \&。
+.RE
+.PP
+\fIdebug\fP[=]
+.RS 4
+采用可选的布尔参数 \&。如果是或没有参数，模块将在运行时记录调试信息 \&。
+.RE
+.SH "MODULE TYPES PROVIDED"
+.PP
+该模块实现了所有四个 PAM 操作: \fBauth\fP (允许使用加密数据进行身份验证)、\fBaccount\fP (因为具有
+systemd\-homed\&.service 用户帐户的用户在 \m[blue]\fBJSON user record\fP\m[]\&\s-2\u[1]\d\s+2 中进行了描述，并且可能比传统的 Linux 用户数据库中的配置更详细)、\fBsession\fP
+(因为必须跟踪用户会话，以便在用户的最后一个会话消失时实现自动释放)，\fBpassword\fP (更改加密密码 \ (em 也用于用户身份验证 \ (em
+通过 PAM) \&。
+.SH ENVIRONMENT
+.PP
+以下环境变量由模块初始化，可供用户进程使用 \*(Aqs session:
+.PP
+\fI$SYSTEMD_HOME=1\fP
+.RS 4
+表示用户 \*(Aqs 家目录由 systemd\-homed\&.service\& 管理。
+.RE
+.PP
+\fI$SYSTEMD_HOME_SUSPEND=\fP
+.RS 4
+指示会话是否已注册启用或禁用挂起机制 (见上文) \&。变量 \*(Aqs 值是 "0" 或
+`1`\&。请注意，模块在初始化时读取变量，并为会话设置它。
+.RE
+.SH EXAMPLE
+.PP
+Here\*(Aqs 一个示例 PAM 配置片段，允许 systemd\-homed\&.service 管理的用户登录:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#%PAM\-1\&.0
+验证足够的 pam_unix\&.so
+\fB\-auth     sufficient pam_systemd_home\&.so\fP
+身份验证需要 pam_deny\&.so
+
+需要帐户 pam_nologin\&.so
+需要帐户 pam_nologin\&.so
+帐号足够 pam_unix\&.so
+需要帐户 pam_permit\&.so
+
+\fB\-password sufficient pam_systemd_home\&.so\fP
+密码足够 pam_unix\&.so sha512 shadow try_first_pass use_authtok
+需要密码 pam_deny\&.so
+
+\-session optional pam_keyinit\&.so 撤销
+\-session 可选的 pam_loginuid\&.so
+\fB\-session  optional   pam_systemd_home\&.so\fP
+\-session 可选的 pam_systemd\&.so
+会话需要 pam_unix\&.so
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-homed.service\fP(8), \fBhomed.conf\fP(5), \fBhomectl\fP(1),
+\fBpam_systemd\fP(8), \fBpam.conf\fP(5), \fBpam.d\fP(5), \fBpam\fP(8)
+.SH NOTES
+.IP " 1." 4
+JSON 用户记录
+.RS 4
+\%https://systemd.io/USER_RECORD/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

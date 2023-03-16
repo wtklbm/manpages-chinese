@@ -1,0 +1,216 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1993
+.\"    The Regents of the University of California.  All rights reserved.
+.\" and Copyright (c) 2020 by Alejandro Colomar <alx@kernel.org>
+.\"
+.\" SPDX-License-Identifier: BSD-3-Clause
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH CIRCLEQ 3 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+CIRCLEQ_EMPTY, CIRCLEQ_ENTRY, CIRCLEQ_FIRST, CIRCLEQ_FOREACH,
+CIRCLEQ_FOREACH_REVERSE, CIRCLEQ_HEAD, CIRCLEQ_HEAD_INITIALIZER,
+CIRCLEQ_INIT, CIRCLEQ_INSERT_AFTER, CIRCLEQ_INSERT_BEFORE,
+CIRCLEQ_INSERT_HEAD, CIRCLEQ_INSERT_TAIL, CIRCLEQ_LAST, CIRCLEQ_LOOP_NEXT,
+CIRCLEQ_LOOP_PREV, CIRCLEQ_NEXT, CIRCLEQ_PREV, CIRCLEQ_REMOVE \-
+implementation of a doubly linked circular queue
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/queue.h>\fP
+.PP
+\fBCIRCLEQ_ENTRY(TYPE);\fP
+.PP
+\fBCIRCLEQ_HEAD(HEADNAME, TYPE);\fP
+\fBCIRCLEQ_HEAD CIRCLEQ_HEAD_INITIALIZER(CIRCLEQ_HEAD \fP\fIhead\fP\fB);\fP
+\fBvoid CIRCLEQ_INIT(CIRCLEQ_HEAD *\fP\fIhead\fP\fB);\fP
+.PP
+\fBint CIRCLEQ_EMPTY(CIRCLEQ_HEAD *\fP\fIhead\fP\fB);\fP
+.PP
+\fBvoid CIRCLEQ_INSERT_HEAD(CIRCLEQ_HEAD *\fP\fIhead\fP\fB,\fP
+\fB                           struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP   
+\fBvoid CIRCLEQ_INSERT_TAIL(CIRCLEQ_HEAD *\fP\fIhead\fP\fB,\fP
+\fB                           struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+\fBvoid CIRCLEQ_INSERT_BEFORE(CIRCLEQ_HEAD *\fP\fIhead\fP\fB, struct TYPE *\fP\fIlistelm\fP\fB,\fP
+\fB                           struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+\fBvoid CIRCLEQ_INSERT_AFTER(CIRCLEQ_HEAD *\fP\fIhead\fP\fB, struct TYPE *\fP\fIlistelm\fP\fB,\fP
+\fB                           struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+.PP
+\fBstruct TYPE *CIRCLEQ_FIRST(CIRCLEQ_HEAD *\fP\fIhead\fP\fB);\fP
+\fBstruct TYPE *CIRCLEQ_LAST(CIRCLEQ_HEAD *\fP\fIhead\fP\fB);\fP
+\fBstruct TYPE *CIRCLEQ_PREV(struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+\fBstruct TYPE *CIRCLEQ_NEXT(struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+\fBstruct TYPE *CIRCLEQ_LOOP_PREV(CIRCLEQ_HEAD *\fP\fIhead\fP\fB,\fP
+\fB                           struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP 
+\fBstruct TYPE *CIRCLEQ_LOOP_NEXT(CIRCLEQ_HEAD *\fP\fIhead\fP\fB,\fP
+\fB                           struct TYPE *\fP\fIelm\fP\fB, CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+.PP
+\fBCIRCLEQ_FOREACH(struct TYPE *\fP\fIvar\fP\fB, CIRCLEQ_HEAD *\fP\fIhead\fP\fB,\fP
+\fB                           CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+\fBCIRCLEQ_FOREACH_REVERSE(struct TYPE *\fP\fIvar\fP\fB, CIRCLEQ_HEAD *\fP\fIhead\fP\fB,\fP
+\fB                           CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+.PP
+\fBvoid CIRCLEQ_REMOVE(CIRCLEQ_HEAD *\fP\fIhead\fP\fB, struct TYPE *\fP\fIelm\fP\fB,\fP
+\fB                           CIRCLEQ_ENTRY \fP\fINAME\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些宏定义双向链接循环队列并对其进行操作。
+.PP
+在宏定义中，\fITYPE\fP 是用户定义的结构体的名称，它必须包含一个 \fICIRCLEQ_ENTRY\fP 类型的字段，名为 \fINAME\fP。 参数
+\fIHEADNAME\fP 是必须使用宏 \fBCIRCLEQ_HEAD\fP() 声明的用户定义结构体的名称。
+.SS Creation
+循环队列以 \fBCIRCLEQ_HEAD\fP() 宏定义的结构体为首。
+这个结构体包含一对指针，一个指向队列中的第一个元素，另一个指向队列中的最后一个元素。 这些元素是双向链接的，因此可以在不遍历队列的情况下删除任意元素。
+可以在现有元素之后、现有元素之前、队列头部或队列末尾将新元素添加到队列中。 \fICIRCLEQ_HEAD\fP 结构体声明如下:
+.PP
+.in +4
+.EX
+CIRCLEQ_HEAD(HEADNAME, TYPE) 头;
+.EE
+.in
+.PP
+其中 \fIstruct HEADNAME\fP 是要定义的结构体，\fIstruct TYPE\fP 是要链接到队列中的元素的类型。
+指向队列头部的指针稍后可以声明为:
+.PP
+.in +4
+.EX
+struct HEADNAME *headp;
+.EE
+.in
+.PP
+(名称 \fIhead\fP 和 \fIheadp\fP 可由用户选择。)
+.PP
+\fBCIRCLEQ_ENTRY\fP() 声明了一个连接队列中元素的结构体。
+.PP
+\fBCIRCLEQ_HEAD_INITIALIZER\fP() 的计算结果为队列 \fIhead\fP 的初始化。
+.PP
+\fBCIRCLEQ_INIT\fP() 初始化 \fIhead\fP 引用的队列。
+.PP
+如果队列中没有项，则 \fBCIRCLEQ_EMPTY\fP() 的计算结果为真。
+.SS Insertion
+\fBCIRCLEQ_INSERT_HEAD\fP() 将新元素 \fIelm\fP 插入队列的头部。
+.PP
+\fBCIRCLEQ_INSERT_TAIL\fP() 在队列末尾插入新元素 \fIelm\fP。
+.PP
+\fBCIRCLEQ_INSERT_BEFORE\fP() 在元素 \fIlistelm\fP 之前插入新元素 \fIelm\fP。
+.PP
+\fBCIRCLEQ_INSERT_AFTER\fP() 在元素 \fIlistelm\fP 之后插入新元素 \fIelm\fP。
+.SS Traversal
+\fBCIRCLEQ_FIRST\fP() 返回队列中的第一项。
+.PP
+\fBCIRCLEQ_LAST\fP() 返回队列中的最后一项。
+.PP
+\fBCIRCLEQ_PREV\fP() 返回队列中的前一项，如果此项是第一项，则返回 \fI&head\fP。
+.PP
+\fBCIRCLEQ_NEXT\fP() 返回队列中的下一项，如果此项是最后一项，则返回 \fI&head\fP。
+.PP
+\fBCIRCLEQ_LOOP_PREV\fP() 返回队列中的前一项。 如果 \fIelm\fP 是队列中的第一个元素，则返回最后一个元素。
+.PP
+\fBCIRCLEQ_LOOP_NEXT\fP() 返回队列中的下一项。 如果 \fIelm\fP 是队列中的最后一个元素，则返回第一个元素。
+.PP
+\fBCIRCLEQ_FOREACH\fP() 正向遍历 \fIhead\fP 引用的队列，依次将每个元素赋值给 \fIvar\fP。 如果循环正常完成，或者没有元素，则
+\fIvar\fP 设置为 \fI&head\fP。
+.PP
+\fBCIRCLEQ_FOREACH_REVERSE\fP() 反方向遍历 \fIhead\fP 引用的队列，依次将每个元素赋值给 \fIvar\fP。
+.SS Removal
+\fBCIRCLEQ_REMOVE\fP() 从队列中删除元素 \fIelm\fP。
+.SH "RETURN VALUE"
+如果队列为空，则 \fBCIRCLEQ_EMPTY\fP() 返回非零; 如果队列包含至少一个条目，则返回零。
+.PP
+\fBCIRCLEQ_FIRST\fP()、\fBCIRCLEQ_LAST\fP()、\fBCIRCLEQ_LOOP_PREV\fP() 和
+\fBCIRCLEQ_LOOP_NEXT\fP() 分别返回指向第一个、最后一个、上一个或下一个 \fITYPE\fP 结构体的指针。
+.PP
+\fBCIRCLEQ_PREV\fP() 和 \fBCIRCLEQ_NEXT\fP() 与对应的 \fBCIRCLEQ_LOOP_*\fP()
+类似，只是如果参数分别是第一个或最后一个元素，它们将返回 \fI&head\fP。
+.PP
+\fBCIRCLEQ_HEAD_INITIALIZER\fP() 返回一个可以分配给队列 \fIhead\fP 的初始化。
+.SH STANDARDS
+不在 POSIX.1、POSIX.1\-2001 或 POSIX.1\-2008 中。 存在于 BSD 上 (CIRCLEQ 宏首次出现在 4.4BSD
+中)。
+.SH BUGS
+\fBCIRCLEQ_FOREACH\fP() 和 \fBCIRCLEQ_FOREACH_REVERSE\fP() 不允许在循环内删除或释放
+\fIvar\fP，因为它会干扰遍历。 \fBCIRCLEQ_FOREACH_SAFE\fP() 和
+\fBCIRCLEQ_FOREACH_REVERSE_SAFE\fP() 存在于 BSD 中但不存在于 glibc 中，通过允许 \fIvar\fP
+安全地从列表中删除并从循环中释放而不干扰遍历来修复此限制。
+.SH EXAMPLES
+.\" SRC BEGIN (circleq.c)
+.EX
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/queue.h>
+
+struct entry {
+    int data;
+    CIRCLEQ_ENTRY(entry) entries;           /* Queue */
+};
+
+CIRCLEQ_HEAD(circlehead, entry);
+
+int
+main(void)
+{
+    struct entry *n1, *n2, *n3, *np;
+    struct circlehead head;                  /* Queue head */
+    int i;
+
+    CIRCLEQ_INIT(&head);                    /* Initialize the queue */
+
+    n1 = malloc(sizeof(struct entry));      /* Insert at the head */
+    CIRCLEQ_INSERT_HEAD(&head, n1, entries);
+
+    n1 = malloc(sizeof(struct entry));      /* Insert at the tail */
+    CIRCLEQ_INSERT_TAIL(&head, n1, entries);
+
+    n2 = malloc(sizeof(struct entry));      /* Insert after */
+    CIRCLEQ_INSERT_AFTER(&head, n1, n2, entries);
+
+    n3 = malloc(sizeof(struct entry));      /* Insert before */
+    CIRCLEQ_INSERT_BEFORE(&head, n2, n3, entries);
+
+    CIRCLEQ_REMOVE(&head, n2, entries);     /* Deletion */
+    free(n2);
+                                            /* Forward traversal */
+    i = 0;
+    CIRCLEQ_FOREACH(np, &head, entries)
+        np\->data = i++;
+                                            /* Reverse traversal */
+    CIRCLEQ_FOREACH_REVERSE(np, &head, entries)
+        printf("%i\en", np\->data);
+                                            /* Queue deletion */
+    n1 = CIRCLEQ_FIRST(&head);
+    while (n1 != (void *)&head) {
+        n2 = CIRCLEQ_NEXT(n1, entries);
+        free(n1);
+        n1 = n2;
+    }
+    CIRCLEQ_INIT(&head);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBinsque\fP(3), \fBqueue\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,1350 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1993 Michael Haardt <michael@moria.de>
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" and changes Copyright (C) 1999 Mike Coleman (mkc@acm.org)
+.\" -- major revision to fully document ptrace semantics per recent Linux
+.\"    kernel (2.2.10) and glibc (2.1.2)
+.\" Sun Nov  7 03:18:35 CST 1999
+.\"
+.\" and Copyright (c) 2011, Denys Vlasenko <vda.linux@googlemail.com>
+.\" and Copyright (c) 2015, 2016, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified Fri Jul 23 23:47:18 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Fri Jan 31 16:46:30 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Thu Oct  7 17:28:49 1999 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"
+.\" 2006-03-24, Chuck Ebbert <76306.1226@compuserve.com>
+.\"    Added    PTRACE_SETOPTIONS, PTRACE_GETEVENTMSG, PTRACE_GETSIGINFO,
+.\"        PTRACE_SETSIGINFO, PTRACE_SYSEMU, PTRACE_SYSEMU_SINGLESTEP
+.\"    (Thanks to Blaisorblade, Daniel Jacobowitz and others who helped.)
+.\" 2011-09, major update by Denys Vlasenko <vda.linux@googlemail.com>
+.\" 2015-01, Kees Cook <keescook@chromium.org>
+.\"    Added PTRACE_O_TRACESECCOMP, PTRACE_EVENT_SECCOMP
+.\"
+.\" FIXME The following are undocumented:
+.\"
+.\" PTRACE_GETWMMXREGS
+.\" PTRACE_SETWMMXREGS
+.\"	ARM
+.\" 	Linux 2.6.12
+.\"
+.\" PTRACE_SET_SYSCALL
+.\"	ARM and ARM64
+.\"	Linux 2.6.16
+.\"	commit 3f471126ee53feb5e9b210ea2f525ed3bb9b7a7f
+.\"	Author: Nicolas Pitre <nico@cam.org>
+.\"	Date:   Sat Jan 14 19:30:04 2006 +0000
+.\"
+.\" PTRACE_GETCRUNCHREGS
+.\" PTRACE_SETCRUNCHREGS
+.\"	ARM
+.\"	Linux 2.6.18
+.\"	commit 3bec6ded282b331552587267d67a06ed7fd95ddd
+.\"	Author: Lennert Buytenhek <buytenh@wantstofly.org>
+.\"	Date:   Tue Jun 27 22:56:18 2006 +0100
+.\"
+.\" PTRACE_GETVFPREGS
+.\" PTRACE_SETVFPREGS
+.\"	ARM and ARM64
+.\"	Linux 2.6.30
+.\"	commit 3d1228ead618b88e8606015cbabc49019981805d
+.\"	Author: Catalin Marinas <catalin.marinas@arm.com>
+.\"	Date:   Wed Feb 11 13:12:56 2009 +0100
+.\"
+.\" PTRACE_GETHBPREGS
+.\" PTRACE_SETHBPREGS
+.\"	ARM and ARM64
+.\"	Linux 2.6.37
+.\"	commit 864232fa1a2f8dfe003438ef0851a56722740f3e
+.\"	Author: Will Deacon <will.deacon@arm.com>
+.\"	Date:   Fri Sep 3 10:42:55 2010 +0100
+.\"
+.\" PTRACE_SINGLEBLOCK
+.\"	Since at least Linux 2.4.0 on various architectures
+.\"	Since Linux 2.6.25 on x86 (and others?)
+.\"	commit 5b88abbf770a0e1975c668743100f42934f385e8
+.\"	Author: Roland McGrath <roland@redhat.com>
+.\"	Date:   Wed Jan 30 13:30:53 2008 +0100
+.\"	    ptrace: generic PTRACE_SINGLEBLOCK
+.\"
+.\" PTRACE_GETFPXREGS
+.\" PTRACE_SETFPXREGS
+.\"	Since at least Linux 2.4.0 on various architectures
+.\"
+.\" PTRACE_GETFDPIC
+.\" PTRACE_GETFDPIC_EXEC
+.\" PTRACE_GETFDPIC_INTERP
+.\"	blackfin, c6x, frv, sh
+.\"	First appearance in Linux 2.6.11 on frv
+.\"
+.\" and others that can be found in the arch/*/include/uapi/asm/ptrace files
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ptrace 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ptrace \- 进程跟踪
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/ptrace.h>\fP
+.PP
+\fBlong ptrace(enum __ptrace_request \fP\fIrequest\fP\fB, pid_t \fP\fIpid\fP\fB,\fP
+\fB            void *\fP\fIaddr\fP\fB, void *\fP\fIdata\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBptrace\fP() 系统调用提供了一种方法，一个进程 ("tracer") 可以观察和控制另一个进程 ("tracee")
+的执行，并检查和更改被跟踪者的内存和寄存器。 主要用于实现断点调试和系统调用跟踪。
+.PP
+tracee 首先需要附加到 tracer。 附加和后续命令是针对每个线程的: 在多线程进程中，每个线程都可以单独附加到一个 (可能不同的)
+跟踪器，或者不附加，因此不进行调试。 因此，"tracee" 始终表示 "(one) thread"，而不是 "a (possibly
+multithreaded) process"。 Ptrace 命令总是使用形式的调用发送到特定的跟踪对象
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_foo, pid, ...)
+.EE
+.in
+.PP
+其中 \fIpid\fP 是相应 Linux 线程的线程 ID。
+.PP
+(请注意，在本页中，"multithreaded process" 表示由使用 \fBclone\fP(2) \fBCLONE_THREAD\fP
+标志创建的线程组成的线程组。)
+.PP
+进程可以通过调用 \fBfork\fP(2) 并让生成的子进程执行 \fBPTRACE_TRACEME\fP，然后执行 (typically) 和
+\fBexecve\fP(2) 来启动跟踪。 或者，一个进程可以使用 \fBPTRACE_ATTACH\fP 或 \fBPTRACE_SEIZE\fP
+开始跟踪另一个进程。
+.PP
+在被跟踪时，每次发送信号时被跟踪者都会停止，即使信号被忽略也是如此。 (\fBSIGKILL\fP 是一个例外，它具有通常的效果。) 跟踪器将在其下一次调用
+\fBwaitpid\fP(2) (或相关的 "wait" 系统调用之一) 时得到通知; 该调用将返回一个 \fIstatus\fP
+值，其中包含指示被跟踪者停止原因的信息。 当 tracee 停止时，tracer 可以使用各种 ptrace 请求来检查和修改 tracee。
+然后跟踪器使被跟踪者继续，可选择地忽略传递的信号 (或者甚至传递不同的信号)。
+.PP
+如果 \fBPTRACE_O_TRACEEXEC\fP 选项没有生效，被跟踪进程对 \fBexecve\fP(2) 的所有成功调用将导致它被发送一个
+\fBSIGTRAP\fP 信号，让父进程有机会在新程序开始执行之前获得控制权。
+.PP
+当跟踪器完成跟踪时，它可以通过 \fBPTRACE_DETACH\fP 使被跟踪者以正常的、未跟踪的模式继续执行。
+.PP
+\fIrequest\fP 的值决定了要执行的操作:
+.TP 
+\fBPTRACE_TRACEME\fP
+指示此进程将由其父进程跟踪。 如果一个进程的父进程不希望跟踪它，它可能不应该发出这个请求。 (\fIpid\fP、\fIaddr\fP 和 \fIdata\fP
+将被忽略。)
+.IP
+\fBPTRACE_TRACEME\fP 请求仅供被跟踪者使用; 其余请求仅由跟踪器使用。 在下面的请求中，\fIpid\fP 指定要作用的被跟踪者的线程 ID。
+对于 \fBPTRACE_ATTACH\fP、\fBPTRACE_SEIZE\fP、\fBPTRACE_INTERRUPT\fP 和 \fBPTRACE_KILL\fP
+以外的请求，tracee 必须停止。
+.TP 
+\fBPTRACE_PEEKTEXT\fP, \fBPTRACE_PEEKDATA\fP
+读取被跟踪者内存中地址 \fIaddr\fP 处的一个字，返回该字作为 \fBptrace\fP() 调用的结果。 Linux
+没有单独的文本和数据地址空间，因此这两个请求目前是等效的。 (\fIdata\fP 被忽略; 但请参见注释。)
+.TP 
+\fBPTRACE_PEEKUSER\fP
+.\" PTRACE_PEEKUSR in kernel source, but glibc uses PTRACE_PEEKUSER,
+.\" and that is the name that seems common on other systems.
+在被跟踪者的 USER 区中读取偏移量 \fIaddr\fP 处的一个字，该字保存有关进程的寄存器和其他信息 (参见
+\fI<sys/user.h>\fP).  该词作为 \fBptrace\fP() 调用的结果返回。
+通常，偏移量必须是字对齐的，尽管这可能因体系结构而异。 见注释。 (\fIdata\fP 被忽略; 但请参见注释。)
+.TP 
+\fBPTRACE_POKETEXT\fP, \fBPTRACE_POKEDATA\fP
+将单词 \fIdata\fP 复制到被跟踪者内存中的地址 \fIaddr\fP。 至于 \fBPTRACE_PEEKTEXT\fP 和
+\fBPTRACE_PEEKDATA\fP，这两个请求目前是等价的。
+.TP 
+\fBPTRACE_POKEUSER\fP
+.\" PTRACE_POKEUSR in kernel source, but glibc uses PTRACE_POKEUSER,
+.\" and that is the name that seems common on other systems.
+.\" FIXME In the preceding sentence, which modifications are disallowed,
+.\" and when they are disallowed, how does user space discover that fact?
+将单词 \fIdata\fP 复制到被跟踪者 USER 区域中的偏移量 \fIaddr\fP。 对于
+\fBPTRACE_PEEKUSER\fP，偏移量通常必须是字对齐的。 为了保持内核的完整性，一些对 USER 区的修改是不允许的。
+.TP 
+\fBPTRACE_GETREGS\fP, \fBPTRACE_GETFPREGS\fP
+将被跟踪者的通用或浮点寄存器分别复制到跟踪器中的地址 \fIdata\fP。 有关此数据格式的信息，请参见 \fI<sys/user.h>\fP。
+(\fIaddr\fP 被忽略。) 注意 SPARC 系统与 \fIdata\fP 和 \fIaddr\fP 的含义相反; 也就是说，\fIdata\fP
+被忽略，寄存器被复制到地址 \fIaddr\fP。 \fBPTRACE_GETREGS\fP 和 \fBPTRACE_GETFPREGS\fP 并非出现在所有架构中。
+.TP 
+\fBPTRACE_GETREGSET\fP (since Linux 2.6.34)
+读取被跟踪者的寄存器。 \fIaddr\fP 以依赖于体系结构的方式指定要读取的寄存器类型。 \fBNT_PRSTATUS\fP (数值为 1)
+通常导致读取通用寄存器。 例如，如果 CPU 具有浮点或者 vector 寄存器，则可以通过将 \fIaddr\fP 设置为相应的 \fBNT_foo\fP
+常量来检索它们。 \fIdata\fP 指向 \fBstruct iovec\fP，它描述了目标缓冲区的位置和长度。 返回时，内核修改 \fBiov.len\fP
+以指示返回的实际字节数。
+.TP 
+\fBPTRACE_SETREGS\fP, \fBPTRACE_SETFPREGS\fP
+.\" FIXME . In the preceding sentence, which modifications are disallowed,
+.\" and when they are disallowed, how does user space discover that fact?
+从 tracer 中的地址 \fIdata\fP 分别修改 tracee 的通用或浮点寄存器。 对于
+\fBPTRACE_POKEUSER\fP，一些通用寄存器修改可能是不允许的。 (\fIaddr\fP 被忽略。) 注意 SPARC 系统与 \fIdata\fP 和
+\fIaddr\fP 的含义相反; 也就是说，\fIdata\fP 被忽略，寄存器从地址 \fIaddr\fP 开始复制。 \fBPTRACE_SETREGS\fP 和
+\fBPTRACE_SETFPREGS\fP 并非出现在所有架构中。
+.TP 
+\fBPTRACE_SETREGSET\fP (since Linux 2.6.34)
+修改被跟踪者的寄存器。 \fIaddr\fP 和 \fIdata\fP 的含义类似于 \fBPTRACE_GETREGSET\fP。
+.TP 
+\fBPTRACE_GETSIGINFO\fP (since Linux 2.3.99\-pre6)
+检索有关导致停止的信号的信息。 复制一个 \fIsiginfo_t\fP 结构体 (见 tracee 中的 \fBsigaction\fP(2)) 到 tracer
+中的地址 \fIdata\fP。 (\fIaddr\fP 被忽略。)
+.TP 
+\fBPTRACE_SETSIGINFO\fP (since Linux 2.3.99\-pre6)
+设置信号信息: 从 tracer 中的地址 \fIdata\fP 复制一个 \fIsiginfo_t\fP 结构体给 tracee。
+这只会影响通常会传递给被跟踪者并被跟踪器捕获的信号。 可能很难从 \fBptrace\fP() 本身产生的合成信号中分辨出这些正常信号。 (\fIaddr\fP
+被忽略。)
+.TP 
+\fBPTRACE_PEEKSIGINFO\fP (since Linux 3.10)
+.\" commit 84c751bd4aebbaae995fe32279d3dba48327bad4
+在不从队列中移除信号的情况下检索 \fIsiginfo_t\fP 结构。 \fIaddr\fP 指向一个 \fIptrace_peeksiginfo_args\fP
+结构体，它指定信号复制应该开始的顺序位置，以及要复制的信号数。 \fIsiginfo_t\fP 结构被复制到 \fIdata\fP 指向的缓冲区中。
+返回值包含复制信号的数量 (零表示没有信号对应于指定的序号位置)。 在返回的 \fIsiginfo\fP 结构中，\fIsi_code\fP 字段包含信息
+(\fB__SI_CHLD\fP、\fB__SI_FAULT\fP 等)，这些信息不会以其他方式暴露给用户空间。
+.PP
+.in +4n
+.EX
+struct ptrace_peeksiginfo_args {
+    u64 off;    /* Ordinal position in queue at which
+                   to start copying signals */
+    u32 flags;  /* PTRACE_PEEKSIGINFO_SHARED or 0 */
+    s32 nr;     /* Number of signals to copy */
+};
+.EE
+.in
+.IP
+目前，只有一个标志，\fBPTRACE_PEEKSIGINFO_SHARED\fP，用于从进程范围的信号队列中转储信号。
+如果未设置此标志，则从指定线程的每线程队列中读取信号。
+.in
+.TP 
+\fBPTRACE_GETSIGMASK\fP (since Linux 3.11)
+.\" commit 29000caecbe87b6b66f144f72111f0d02fbbf0c1
+放置一份阻塞信号掩码的副本 (参见 \fIdata\fP 指向的缓冲区中的 \fBsigprocmask\fP(2))，它应该是指向 \fIsigset_t\fP
+类型缓冲区的指针。 \fIaddr\fP 参数包含 \fIdata\fP 指向的缓冲区的大小 (即 \fIsizeof(sigset_t)\fP).
+.TP 
+\fBPTRACE_SETSIGMASK\fP (since Linux 3.11)
+更改阻塞信号的掩码 (参见 \fBsigprocmask\fP(2)) 为 \fIdata\fP 指向的缓冲区中指定的值，该值应该是指向 \fIsigset_t\fP
+类型缓冲区的指针。 \fIaddr\fP 参数包含 \fIdata\fP 指向的缓冲区的大小 (即 \fIsizeof(sigset_t)\fP).
+.TP 
+\fBPTRACE_SETOPTIONS\fP (since Linux 2.4.6; see BUGS for caveats)
+从 \fIdata\fP 设置 ptrace 选项。 (\fIaddr\fP 被忽略。) \fIdata\fP 被解释为选项的位掩码，由以下标志指定:
+.RS
+.TP 
+\fBPTRACE_O_EXITKILL\fP (since Linux 3.8)
+.\" commit 992fb6e170639b0849bace8e49bf31bd37c4123
+如果跟踪器退出，则向被跟踪器发送 \fBSIGKILL\fP 信号。 此选项对于希望确保被跟踪者永远无法逃脱跟踪器控制的 ptrace 看守者很有用。
+.TP 
+\fBPTRACE_O_TRACECLONE\fP (since Linux 2.5.46)
+在下一个 \fBclone\fP(2) 处停止跟踪并自动开始跟踪新克隆的进程，该进程将以 \fBSIGSTOP\fP 或 \fBPTRACE_EVENT_STOP\fP
+(如果使用 \fBPTRACE_SEIZE\fP) 开始。 跟踪器的 \fBwaitpid\fP(2) 将返回 \fIstatus\fP 值，这样
+.IP
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_CLONE<<8))
+.fi
+.IP
+可以使用 \fBPTRACE_GETEVENTMSG\fP 检索新进程的 PID。
+.IP
+此选项可能无法在所有情况下捕获 \fBclone\fP(2) 调用。 如果被跟踪者调用带有 \fBCLONE_VFORK\fP 标志的
+\fBclone\fP(2)，如果设置了 \fBPTRACE_O_TRACEVFORK\fP，则将传递 \fBPTRACE_EVENT_VFORK\fP;
+否则，如果被跟踪者调用 \fBclone\fP(2)，退出信号设置为 \fBSIGCHLD\fP，如果设置了 \fBPTRACE_O_TRACEFORK\fP，则将传递
+\fBPTRACE_EVENT_FORK\fP。
+.TP 
+\fBPTRACE_O_TRACEEXEC\fP (since Linux 2.5.46)
+在下一个 \fBexecve\fP(2) 停止跟踪。 跟踪器的 \fBwaitpid\fP(2) 将返回 \fIstatus\fP 值，这样
+.IP
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_EXEC<<8))
+.fi
+.IP
+如果执行线程不是线程组组长，则线程 ID 将重置为此停止前线程组组长的 ID。 由于 Linux 3.0，以前的线程 ID 可以用
+\fBPTRACE_GETEVENTMSG\fP 检索。
+.TP 
+\fBPTRACE_O_TRACEEXIT\fP (since Linux 2.5.60)
+在出口处停止被跟踪者。 跟踪器的 \fBwaitpid\fP(2) 将返回 \fIstatus\fP 值，这样
+.IP
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_EXIT<<8))
+.fi
+.IP
+可以使用 \fBPTRACE_GETEVENTMSG\fP 检索被跟踪者的退出状态。
+.IP
+tracee 在进程退出期间提前停止，此时寄存器仍然可用，允许跟踪器查看退出发生的位置，而正常的退出通知是在进程完成退出后完成的。
+即使上下文可用，跟踪器也无法阻止此时发生退出。
+.TP 
+\fBPTRACE_O_TRACEFORK\fP (since Linux 2.5.46)
+在下一个 \fBfork\fP(2) 处停止跟踪并自动开始跟踪新分叉的进程，该进程将以 \fBSIGSTOP\fP 或 \fBPTRACE_EVENT_STOP\fP
+(如果使用 \fBPTRACE_SEIZE\fP) 开始。 跟踪器的 \fBwaitpid\fP(2) 将返回 \fIstatus\fP 值，这样
+.IP
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_FORK<<8))
+.fi
+.IP
+可以使用 \fBPTRACE_GETEVENTMSG\fP 检索新进程的 PID。
+.TP 
+\fBPTRACE_O_TRACESYSGOOD\fP (since Linux 2.4.6)
+传送系统调用陷阱时，设置信号编号的第 7 位 (即传送 \fISIGTRAP|0x80\fP).  这使得跟踪器很容易区分正常陷阱和由系统调用引起的陷阱。
+.TP 
+\fBPTRACE_O_TRACEVFORK\fP (since Linux 2.5.46)
+在下一个 \fBvfork\fP(2) 处停止跟踪并自动开始跟踪新的 vforked 进程，该进程将以 \fBSIGSTOP\fP 或
+\fBPTRACE_EVENT_STOP\fP (如果使用 \fBPTRACE_SEIZE\fP) 开始。 跟踪器的 \fBwaitpid\fP(2) 将返回
+\fIstatus\fP 值，这样
+.IP
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_VFORK<<8))
+.fi
+.IP
+可以使用 \fBPTRACE_GETEVENTMSG\fP 检索新进程的 PID。
+.TP 
+\fBPTRACE_O_TRACEVFORKDONE\fP (since Linux 2.5.60)
+在下一个 \fBvfork\fP(2) 完成时停止 tracee。 跟踪器的 \fBwaitpid\fP(2) 将返回 \fIstatus\fP 值，这样
+.IP
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_VFORK_DONE<<8))
+.fi
+.IP
+可以使用 \fBPTRACE_GETEVENTMSG\fP 检索新进程的 PID (自 Linux 2.6.18 起)。
+.TP 
+\fBPTRACE_O_TRACESECCOMP\fP (since Linux 3.5)
+当触发 \fBseccomp\fP(2) \fBSECCOMP_RET_TRACE\fP 规则时停止跟踪。 跟踪器的 \fBwaitpid\fP(2) 将返回
+\fIstatus\fP 值，这样
+.IP
+.nf
+  status>>8 == (SIGTRAP | (PTRACE_EVENT_SECCOMP<<8))
+.fi
+.IP
+虽然这会触发 \fBPTRACE_EVENT\fP 停止，但它类似于 syscall\-enter\-stop。 有关详细信息，请参见下面关于
+\fBPTRACE_EVENT_SECCOMP\fP 的注释。 可以使用 \fBPTRACE_GETEVENTMSG\fP 检索 seccomp 事件消息数据
+(来自 seccomp 过滤器规则的 \fBSECCOMP_RET_DATA\fP 部分)。
+.TP 
+\fBPTRACE_O_SUSPEND_SECCOMP\fP (since Linux 4.3)
+.\" commit 13c4a90119d28cfcb6b5bdd820c233b86c2b0237
+暂停被跟踪者的 seccomp 保护。 这适用于任何模式，并且可以在被跟踪者尚未安装 seccomp 过滤器时使用。
+也就是说，一个有效的用例是在被跟踪者安装之前暂停被跟踪者的 seccomp 保护，让被跟踪者安装过滤器，然后在应该恢复过滤器时清除此标志。
+设置此选项要求跟踪器具有 \fBCAP_SYS_ADMIN\fP 功能，未安装任何 seccomp 保护，并且自身未设置
+\fBPTRACE_O_SUSPEND_SECCOMP\fP。
+.RE
+.TP 
+\fBPTRACE_GETEVENTMSG\fP (since Linux 2.5.46)
+检索一条消息 (作为关于刚刚发生的 ptrace 事件的 \fIunsigned long\fP)，将其放置在跟踪器中的地址 \fIdata\fP 处。 对于
+\fBPTRACE_EVENT_EXIT\fP，这是被跟踪者的退出状态。 对于
+\fBPTRACE_EVENT_FORK\fP、\fBPTRACE_EVENT_VFORK\fP、\fBPTRACE_EVENT_VFORK_DONE\fP 和
+\fBPTRACE_EVENT_CLONE\fP，这是新进程的 PID。 对于 \fBPTRACE_EVENT_SECCOMP\fP，这是与触发规则关联的
+\fBseccomp\fP(2) 过滤器的 \fBSECCOMP_RET_DATA\fP。 (\fIaddr\fP 被忽略。)
+.TP 
+\fBPTRACE_CONT\fP
+重新启动已停止的 tracee 进程。 如果 \fIdata\fP 不为零，则它被解释为要传递给被跟踪者的信号数; 否则，不传递任何信号。
+因此，例如，跟踪器可以控制是否传递发送给被跟踪者的信号。 (\fIaddr\fP 被忽略。)
+.TP 
+\fBPTRACE_SYSCALL\fP, \fBPTRACE_SINGLESTEP\fP
+与 \fBPTRACE_CONT\fP 一样重新启动已停止的 tracee，但安排 tracee
+在下一次进入或退出系统调用时停止，或分别在执行单个指令后停止。 (像往常一样，被跟踪者也将在收到信号后停止。) 从跟踪者的角度来看，被跟踪者似乎已因收到
+\fBSIGTRAP\fP 而停止。 所以，以 \fBPTRACE_SYSCALL\fP 为例，思路是第一站检查系统调用的参数，然后再做一个
+\fBPTRACE_SYSCALL\fP，第二站检查系统调用的返回值。 \fIdata\fP 参数被视为 \fBPTRACE_CONT\fP。 (\fIaddr\fP
+被忽略。)
+.TP 
+\fBPTRACE_SET_SYSCALL\fP (since Linux 2.6.16)
+.\" commit 3f471126ee53feb5e9b210ea2f525ed3bb9b7a7f
+.\" As of 4.19-rc2
+.\" commit 27aa55c5e5123fa8b8ad0156559d34d7edff58ca
+.\" see change_syscall in tools/testing/selftests/seccomp/seccomp_bpf.c
+.\" and also strace's linux/*/set_scno.c files.
+在 syscall\-enter\-stop 时，将即将执行的系统调用号修改为 \fIdata\fP 参数中指定的号。 \fIaddr\fP 参数被忽略。
+该请求目前仅在 arm (和 arm64，尽管只是为了向后兼容) 上受支持，但大多数其他体系结构都有其他方法来完成此操作
+(通常通过更改用户态代码将系统调用号传入的寄存器)。
+.TP 
+\fBPTRACE_SYSEMU\fP, \fBPTRACE_SYSEMU_SINGLESTEP\fP (since Linux 2.6.14)
+.\" As at 3.7
+对于 \fBPTRACE_SYSEMU\fP，进入下一个系统调用时继续并停止，不会执行。 请参见下面有关 syscall\-stops 的文档。 对于
+\fBPTRACE_SYSEMU_SINGLESTEP\fP，执行相同的操作，但如果不是系统调用，也执行单步操作。 这个调用被像用户模式 Linux
+这样的程序使用，这些程序想要模拟所有被跟踪者的系统调用。 \fIdata\fP 参数被视为 \fBPTRACE_CONT\fP。 \fIaddr\fP 参数被忽略。
+这些请求目前仅在 x86 上受支持。
+.TP 
+\fBPTRACE_LISTEN\fP (since Linux 3.4)
+重新启动已停止的 tracee，但阻止它执行。 tracee 的结果状态类似于已被 \fBSIGSTOP\fP (或其他停止信号) 停止的进程。
+有关更多信息，请参见 "group\-stop" 小节。 \fBPTRACE_LISTEN\fP 仅适用于 \fBPTRACE_SEIZE\fP 附加的跟踪对象。
+.TP 
+\fBPTRACE_KILL\fP
+向被跟踪者发送一个 \fBSIGKILL\fP 以终止它。 (\fIaddr\fP 和 \fIdata\fP 被忽略。)
+.IP
+.\" [Note from Denys Vlasenko:
+.\"     deprecation suggested by Oleg Nesterov. He prefers to deprecate it
+.\"     instead of describing (and needing to support) PTRACE_KILL's quirks.]
+\fIThis operation is deprecated; do not use it!\fP 相反，使用 \fBkill\fP(2) 或
+\fBtgkill\fP(2) 直接发送 \fBSIGKILL\fP。 \fBPTRACE_KILL\fP 的问题在于它要求 tracee 处于
+signal\-delivery\-stop 状态，否则它可能无法工作 (即可能成功完成但不会杀死 tracee)。 相比之下，直接发送
+\fBSIGKILL\fP 则没有这种限制。
+.TP 
+\fBPTRACE_INTERRUPT\fP (since Linux 3.4)
+停止跟踪。 如果 tracee 在内核空间运行或休眠，\fBPTRACE_SYSCALL\fP 生效，则系统调用中断，报 syscall\-exit\-stop。
+(被中断的系统调用在 tracee 重新启动时重新启动。) 如果 tracee 已经被一个信号停止并且 \fBPTRACE_LISTEN\fP
+被发送给它，tracee 用 \fBPTRACE_EVENT_STOP\fP 停止并且 \fIWSTOPSIG(status)\fP 返回停止信号。
+如果同时生成任何其他 ptrace\-stop (例如，如果向 tracee 发送信号)，则会发生此 ptrace\-stop。 如果以上都不适用
+(例如，如果 tracee 在用户空间中运行)，它将以 \fBPTRACE_EVENT_STOP\fP 和 \fIWSTOPSIG(status)\fP ==
+\fBSIGTRAP\fP 停止。 \fBPTRACE_INTERRUPT\fP 仅适用于 \fBPTRACE_SEIZE\fP 附加的跟踪对象。
+.TP 
+\fBPTRACE_ATTACH\fP
+.\" No longer true (removed by Denys Vlasenko, 2011, who remarks:
+.\"        "I think it isn't true in non-ancient 2.4 and in Linux 2.6/3.x.
+.\"         Basically, it's not true for any Linux in practical use.
+.\" ; the behavior of the tracee is as if it had done a
+.\" .BR PTRACE_TRACEME .
+.\" The calling process actually becomes the parent of the tracee
+.\" process for most purposes (e.g., it will receive
+.\" notification of tracee events and appears in
+.\" .BR ps (1)
+.\" output as the tracee's parent), but a
+.\" .BR getppid (2)
+.\" by the tracee will still return the PID of the original parent.
+附加到 \fIpid\fP 中指定的进程，使其成为调用进程的跟踪对象。 tracee 被发送了一个 \fBSIGSTOP\fP，但不一定会在这个调用完成时停止;
+使用 \fBwaitpid\fP(2) 等待 tracee 停止。 有关更多信息，请参见 "Attaching and detaching" 小节。
+(\fIaddr\fP 和 \fIdata\fP 被忽略。)
+.IP
+执行 \fBPTRACE_ATTACH\fP 的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_REALCREDS\fP 检查控制;
+见下文。
+.TP 
+\fBPTRACE_SEIZE\fP (since Linux 3.4)
+.\"
+.\" Noted by Dmitry Levin:
+.\"
+.\"     PTRACE_SEIZE was introduced by commit v3.1-rc1~308^2~28, but
+.\"     it had to be used along with a temporary flag PTRACE_SEIZE_DEVEL,
+.\"     which was removed later by commit v3.4-rc1~109^2~20.
+.\"
+.\"     That is, [before] v3.4 we had a test mode of PTRACE_SEIZE API,
+.\"     which was not compatible with the current PTRACE_SEIZE API introduced
+.\"     in Linux 3.4.
+.\"
+附加到 \fIpid\fP 中指定的进程，使其成为调用进程的跟踪对象。 与 \fBPTRACE_ATTACH\fP 不同，\fBPTRACE_SEIZE\fP
+不会停止进程。 组停止报告为 \fBPTRACE_EVENT_STOP\fP，\fIWSTOPSIG(status)\fP 返回停止信号。 自动依附的子节点用
+\fBPTRACE_EVENT_STOP\fP 停止，\fIWSTOPSIG(status)\fP 返回 \fBSIGTRAP\fP，而不是将 \fBSIGSTOP\fP
+信号传递给他们。 \fBexecve\fP(2) 不提供额外的 \fBSIGTRAP\fP。 只有 \fBPTRACE_SEIZE\fPd 进程可以接受
+\fBPTRACE_INTERRUPT\fP 和 \fBPTRACE_LISTEN\fP 命令。 刚刚描述的 "seized" 行为由使用
+\fBPTRACE_O_TRACEFORK\fP、\fBPTRACE_O_TRACEVFORK\fP 和 \fBPTRACE_O_TRACECLONE\fP
+自动附加的子项继承。 \fIaddr\fP 必须为零。 \fIdata\fP 包含 ptrace 选项的位掩码以立即激活。
+.IP
+.\"
+执行 \fBPTRACE_SEIZE\fP 的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_REALCREDS\fP 检查控制;
+见下文。
+.TP 
+\fBPTRACE_SECCOMP_GET_FILTER\fP (since Linux 4.4)
+.\" commit f8e529ed941ba2bbcbf310b575d968159ce7e895
+此操作允许跟踪器转储被跟踪者的经典 BPF 过滤器。
+.IP
+\fIaddr\fP 是一个整数，指定要转储的过滤器的索引。 最近安装的过滤器的索引为 0。 如果 \fIaddr\fP
+大于已安装过滤器的数量，则操作失败并显示错误 \fBENOENT\fP。
+.IP
+\fIdata\fP 是指向 \fIstruct sock_filter\fP 数组的指针，该数组足够大以存储 BPF 程序，如果不存储程序，则为 NULL。
+.IP
+成功后，返回值是 BPF 程序中的指令数。 如果 \fIdata\fP 为 NULL，则此返回值可用于正确调整在后续调用中传递的 \fIstruct sock_filter\fP 数组的大小。
+.IP
+如果调用者不具有 \fBCAP_SYS_ADMIN\fP 功能或者如果调用者处于严格或过滤 seccomp 模式，则此操作将失败并显示错误
+\fBEACCES\fP。 如果 \fIaddr\fP 引用的过滤器不是经典 BPF 过滤器，则操作失败并显示错误 \fBEMEDIUMTYPE\fP。
+.IP
+如果内核配置了 \fBCONFIG_SECCOMP_FILTER\fP 和 \fBCONFIG_CHECKPOINT_RESTORE\fP 选项，则此操作可用。
+.TP 
+\fBPTRACE_DETACH\fP
+.\"
+与 \fBPTRACE_CONT\fP 一样重新启动已停止的 tracee，但首先要与它分离。 在 Linux
+下，无论使用哪种方法启动跟踪，都可以通过这种方式分离跟踪对象。 (\fIaddr\fP 被忽略。)
+.TP 
+\fBPTRACE_GET_THREAD_AREA\fP (since Linux 2.6.0)
+此操作执行与 \fBget_thread_area\fP(2) 类似的任务。 它读取 GDT 中的 TLS 条目，其索引在 \fIaddr\fP
+中给出，将条目的副本放入 \fIdata\fP 指向的 \fIstruct user_desc\fP 中。 (与 \fBget_thread_area\fP(2)
+对比，忽略 \fIstruct user_desc\fP 的 \fIentry_number\fP。)
+.TP 
+\fBPTRACE_SET_THREAD_AREA\fP (since Linux 2.6.0)
+此操作执行与 \fBset_thread_area\fP(2) 类似的任务。 它在 GDT 中设置 TLS 条目，其索引在 \fIaddr\fP 中给出，并为其分配
+\fIdata\fP 指向的 \fIstruct user_desc\fP 中提供的数据。 (与 \fBset_thread_area\fP(2) 相比，\fIstruct user_desc\fP 的 \fIentry_number\fP 被忽略; 换句话说，此 ptrace 操作不能用于分配空闲的 TLS 条目。)
+.TP 
+\fBPTRACE_GET_SYSCALL_INFO\fP (since Linux 5.3)
+.\" commit 201766a20e30f982ccfe36bebfad9602c3ff574a
+检索有关导致停止的系统调用的信息。 信息被放入 \fIdata\fP 参数指向的缓冲区中，它应该是指向 \fIstruct ptrace_syscall_info\fP 类型缓冲区的指针。 \fIaddr\fP 参数包含 \fIdata\fP 参数 (即 \fIsizeof(struct ptrace_syscall_info)\fP).  返回值包含内核可写入的字节数。 如果内核要写入的数据大小超过 \fIaddr\fP
+参数指定的大小，则输出数据被截断。
+.IP
+\fIptrace_syscall_info\fP 结构体包含以下字段:
+.IP
+.in +4n
+.EX
+struct ptrace_syscall_info {
+    __u8 op;        /* Type of system call stop */
+    __u32 arch;     /* AUDIT_ARCH_* value; see seccomp(2) */
+    __u64 instruction_pointer; /* CPU instruction pointer */
+    __u64 stack_pointer;    /* CPU stack pointer */
+    union {
+        struct {    /* op == PTRACE_SYSCALL_INFO_ENTRY */
+            __u64 nr;       /* System call number */ 
+            __u64 args[6];  /* System call arguments */
+        } entry;
+        struct {    /* op == PTRACE_SYSCALL_INFO_EXIT */
+            __s64 rval;     /* System call return value */
+            __u8 is_error;  /* System call error flag;
+                               Boolean: does rval contain
+                               an error value (\-ERRCODE) or
+                               a nonerror return value? */
+        } exit;
+        struct {    /* op == PTRACE_SYSCALL_INFO_SECCOMP */
+            __u64 nr;       /* System call number */
+            __u64 args[6];  /* System call arguments */
+            __u32 ret_data; /* SECCOMP_RET_DATA portion
+                               of SECCOMP_RET_TRACE
+                               return value */
+        } seccomp;
+    };
+};
+.EE
+.in
+.IP
+\fIop\fP、\fIarch\fP、\fIinstruction_pointer\fP 和 \fIstack_pointer\fP 字段是为各种 ptrace
+系统调用停止定义的。 结构体的其余部分是一个 union; 应该只读取那些对 \fIop\fP 字段指定的系统调用停止类型有意义的字段。
+.IP
+\fIop\fP 字段具有以下值之一 (在 \fI<linux/ptrace.h>\fP) 中定义，指示发生了什么类型的停止以及 union
+的哪一部分被填充:
+.RS
+.TP 
+\fBPTRACE_SYSCALL_INFO_ENTRY\fP
+union 的 \fIentry\fP 组件包含与系统调用进入停止相关的信息。
+.TP 
+\fBPTRACE_SYSCALL_INFO_EXIT\fP
+union 的 \fIexit\fP 组件包含与系统调用退出停止相关的信息。
+.TP 
+\fBPTRACE_SYSCALL_INFO_SECCOMP\fP
+union 的 \fIseccomp\fP 组件包含与 \fBPTRACE_EVENT_SECCOMP\fP 停止相关的信息。
+.TP 
+\fBPTRACE_SYSCALL_INFO_NONE\fP
+union 的任何组件均不包含相关信息。
+.RE
+.\"
+.SS "Death under ptrace"
+当一个 (可能是多线程的) 进程接收到终止信号 (其处置设置为 \fBSIG_DFL\fP 并且其默认操作是终止进程) 时，所有线程都会退出。 Tracees
+向他们的 tracer(s) 报告他们的死亡。 此事件的通知通过 \fBwaitpid\fP(2) 传送。
+.PP
+请注意，终止信号将首先导致信号传递停止 (仅在一个被跟踪者上)，并且只有在它被跟踪器注入后
+(或在它被分派到未被跟踪的线程后)，信号才会死亡发生在多线程进程中的 \fIall\fP tracees 上。 (术语
+"signal\-delivery\-stop" 解释如下。)
+.PP
+\fBSIGKILL\fP 不生成信号传递停止，因此跟踪器无法抑制它。 \fBSIGKILL\fP 甚至在系统调用中也会终止 (syscall\-exit\-stop
+不会在 \fBSIGKILL\fP) 终止之前生成。 最终结果是 \fBSIGKILL\fP 总是终止进程 (它的所有线程)，即使进程的某些线程被跟踪也是如此。
+.PP
+当被跟踪者调用 \fB_exit\fP(2) 时，它向其跟踪者报告其死亡。 其他线程不受影响。
+.PP
+当任何线程执行 \fBexit_group\fP(2) 时，其线程组中的每个被跟踪者都会向其跟踪器报告其死亡。
+.PP
+如果 \fBPTRACE_O_TRACEEXIT\fP 选项打开，\fBPTRACE_EVENT_EXIT\fP 将在实际死亡之前发生。 这适用于通过
+\fBexit\fP(2)、\fBexit_group\fP(2) 和信号死亡退出 (\fBSIGKILL\fP 除外，取决于内核版本; 请参见下面的
+BUGS)，以及多线程进程中 \fBexecve\fP(2) 上的线程被拆除时。
+.PP
+跟踪器不能假设 ptrace 停止的跟踪对象存在。 有很多场景，tracee 可能会在停止时死掉 (比如 \fBSIGKILL\fP).
+因此，跟踪器必须准备好处理任何 ptrace 操作中的 \fBESRCH\fP 错误。 不幸的是，如果 tracee 存在但没有被 ptrace 停止
+(对于需要停止 tracee 的命令)，或者如果它没有被发出 ptrace 调用的进程跟踪，则会返回相同的错误。 tracer 需要跟踪 tracee
+的 stopped/running 状态，只有知道 tracee 已经被观察到才会将 \fBESRCH\fP 解释为 "tracee died
+unexpectedly" 进入 ptrace\-stop。 请注意，如果 ptrace 操作返回 \fBESRCH\fP，则无法保证
+\fIwaitpid(WNOHANG)\fP 会可靠地报告被跟踪者的死亡状态。 \fIwaitpid(WNOHANG)\fP 可能会返回 0。
+也就是说，tracee 可能是 "not yet fully dead"，但是已经拒绝了 ptrace 请求。
+.PP
+追踪者不能通过报告 \fIWIFEXITED(status)\fP 或 \fIWIFSIGNALED(status)\fP 来假设被追踪者 \fIalways\fP
+结束了它的生命; 在某些情况下不会发生这种情况。 例如，如果线程组领导者以外的线程执行 \fBexecve\fP(2)，则它消失; 它的 PID
+将永远不会再出现，任何后续的 ptrace 停止都将在线程组领导者的 PID 下报告。
+.SS "Stopped states"
+tracee 可以处于两种状态: 运行或停止。 出于 ptrace 的目的，在系统调用 (例如 \fBread\fP(2)、\fBpause\fP(2) 等)
+中被阻塞的 tracee 仍然被认为正在运行，即使 tracee 被阻塞了很长时间。 \fBPTRACE_LISTEN\fP 之后的 tracee
+状态有点像灰色区域: 它不在任何 ptrace\-stop 中 (ptrace 命令对它不起作用，它会发送 \fBwaitpid\fP(2)
+通知)，但它也可能被认为是 "stopped"，因为它是不执行指令 (未调度)，如果在 \fBPTRACE_LISTEN\fP 之前处于组停状态，则直到接收到
+\fBSIGCONT\fP 后才会响应信号。
+.PP
+tracee 停止时的状态有很多种，在 ptrace 的讨论中经常混为一谈。 因此，使用精确的术语很重要。
+.PP
+在本手册页中，被跟踪者准备好接受来自跟踪器的 ptrace 命令的任何停止状态称为 \fIptrace\-stop\fP。 Ptrace\-stops
+可以进一步细分为
+\fIsignal\-delivery\-stop\fP、\fIgroup\-stop\fP、\fIsyscall\-stop\fP、\fIPTRACE_EVENT stops\fP
+等。 这些停止状态在下面详细描述。
+.PP
+当正在运行的被跟踪者进入 ptrace\-stop 时，它会使用 \fBwaitpid\fP(2) (或其他 "wait" 系统调用之一) 通知其跟踪者。
+本手册页的大部分内容假定跟踪器等待:
+.PP
+.in +4n
+.EX
+pid = waitpid(pid_or_minus_1, &status, __WALL);
+.EE
+.in
+.PP
+.\" Denys Vlasenko:
+.\"     Do we require __WALL usage, or will just using 0 be ok? (With 0,
+.\"     I am not 100% sure there aren't ugly corner cases.) Are the
+.\"     rules different if user wants to use waitid? Will waitid require
+.\"     WEXITED?
+.\"
+Ptrace 停止的跟踪对象被报告为 \fIpid\fP 大于 0 且 \fIWIFSTOPPED(status)\fP 为真的返回值。
+.PP
+\fB__WALL\fP 标志不包括 \fBWSTOPPED\fP 和 \fBWEXITED\fP 标志，但暗示了它们的功能。
+.PP
+不建议在调用 \fBwaitpid\fP(2) 时设置 \fBWCONTINUED\fP 标志: "continued"
+状态是每个进程的，使用它会混淆被跟踪者的真正父级。
+.PP
+使用 \fBWNOHANG\fP 标志可能会导致 \fBwaitpid\fP(2) 返回 0 (`尚无可用的等待结果`)，即使跟踪器知道应该有一个通知。
+Example:
+.PP
+.in +4n
+.EX
+errno = 0;
+ptrace(PTRACE_CONT, pid, 0L, 0L);
+if (errno == ESRCH) {
+    /* tracee is dead */
+    r = waitpid(tracee, &status, __WALL | WNOHANG);
+    /* r can still be 0 here! */
+}
+.EE
+.in
+.\" FIXME .
+.\"     waitid usage? WNOWAIT?
+.\"     describe how wait notifications queue (or not queue)
+.PP
+存在以下几种 ptrace\-stops: signal\-delivery\-stops、group\-stops、\fBPTRACE_EVENT\fP
+stops、syscall\-stops。 它们都由 \fBwaitpid\fP(2) 报告，\fIWIFSTOPPED(status)\fP 为真。 可以通过检查值
+\fIstatus>>8\fP 来区分它们，如果该值有歧义，则通过查询 \fBPTRACE_GETSIGINFO\fP 来区分。 (注意:
+\fIWSTOPSIG(status)\fP 宏不能用于执行此检查，因为它返回值 \fI(status>>8)\ &\ 0xff\fP.)
+.SS Signal\-delivery\-stop
+当一个 (可能是多线程的) 进程接收到除 \fBSIGKILL\fP 之外的任何信号时，内核会选择一个任意线程来处理该信号。 (如果用
+\fBtgkill\fP(2) 产生信号，调用者可以显式选择目标线程。) 如果跟踪到选择的线程，则进入 signal\-delivery\-stop。
+此时，信号还没有传递给进程，可以被示踪剂抑制。 如果跟踪器没有抑制信号，它会在下一个 ptrace 重新启动请求中将信号传递给被跟踪者。
+信号传递的第二步在本手册页中称为 \fIsignal injection\fP。
+请注意，如果信号被阻塞，信号传递停止将不会发生，直到信号被解除阻塞，通常的例外情况是 \fBSIGSTOP\fP 不能被阻塞。
+.PP
+跟踪器将信号传递停止观察为 \fBwaitpid\fP(2) 返回，\fIWIFSTOPPED(status)\fP 为真，\fIWSTOPSIG(status)\fP
+返回信号。 如果信号是 \fBSIGTRAP\fP，这可能是一种不同的 ptrace\-stop; 有关详细信息，请参见下面的 "Syscall\-stops"
+和 "execve" 部分。 如果 \fIWSTOPSIG(status)\fP 返回一个停止信号，这可能是一个组停止; 见下文。
+.SS "Signal injection and suppression"
+tracer 观察到 signal\-delivery\-stop 后，tracer 应使用调用重新启动 tracee
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_restart, pid, 0, sig)
+.EE
+.in
+.PP
+其中 \fBPTRACE_restart\fP 是重新启动的 ptrace 请求之一。 如果 \fIsig\fP 为 0，则不发送信号。 否则，传送信号
+\fIsig\fP。 此操作在本手册页中称为 \fIsignal injection\fP，以区别于 signal\-delivery\-stop。
+.PP
+\fIsig\fP 值可能与 \fIWSTOPSIG(status)\fP 值不同: 示踪剂可能导致注入不同的信号。
+.PP
+请注意，被抑制的信号仍然会导致系统调用过早返回。 在这种情况下，系统调用将被重启: 如果 tracer 使用
+\fBPTRACE_SYSCALL\fP，tracer 将观察 tracee 重新执行中断的系统调用 (或 \fBrestart_syscall\fP(2)
+系统调用，用于一些使用不同机制重启的系统调用)。 甚至系统调用 (如 \fBpoll\fP(2)) 等信号后不可重启的系统调用) 也会在信号被抑制后重启;
+然而，存在内核错误，即使没有可观察到的信号被注入到被跟踪对象，也会导致一些系统调用失败并返回 \fBEINTR\fP。
+.PP
+重新启动在 ptrace\-stops 而非 signal\-delivery\-stop 中发出的 ptrace 命令不能保证注入信号，即使 \fIsig\fP
+不为零。 没有报错; 非零 \fIsig\fP 可能会被忽略。 Ptrace 用户不应尝试以这种方式使用 "create a new signal": 请改用
+\fBtgkill\fP(2)。
+.PP
+在 ptrace 停止而不是信号传递停止后重新启动 tracee 时，信号注入请求可能会被忽略，这一事实导致 ptrace 用户感到困惑。
+一种典型的情况是跟踪器观察到 group\-stop，将其误认为是 signal\-delivery\-stop，重新启动 tracee
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_restart, pid, 0, stopsig)
+.EE
+.in
+.PP
+意图注入 \fIstopsig\fP，但 \fIstopsig\fP 被忽略，tracee 继续运行。
+.PP
+\fBSIGCONT\fP 信号具有唤醒组停止进程 (的所有线程) 的副作用。 这种副作用发生在信号传递停止之前。 跟踪器无法抑制这种副作用
+(它只能抑制信号注入，如果安装了这样的处理程序，只会导致 \fBSIGCONT\fP 处理程序不在被跟踪程序中执行)。 实际上，如果 signal(s)
+\fIother than\fP \fBSIGCONT\fP 的信号传递停止在 signal(s) \fIother than\fP \fBSIGCONT\fP
+被传递时从组停止唤醒，如果它们在传递 \fBSIGCONT\fP 时处于挂起状态。 换句话说，\fBSIGCONT\fP 可能不是 tracee
+发送后观察到的第一个信号。
+.PP
+停止信号导致进程 (的所有线程) 进入组停止。 这种副作用发生在信号注入之后，因此可以被示踪剂抑制。
+.PP
+.\" In the Linux 2.4 sources, in arch/i386/kernel/signal.c::do_signal(),
+.\" there is:
+.\"
+.\"             /* The debugger continued.  Ignore SIGSTOP.  */
+.\"             if (signr == SIGSTOP)
+.\"                     continue;
+在 Linux 2.4 及更早版本中，无法注入 \fBSIGSTOP\fP 信号。
+.PP
+\fBPTRACE_GETSIGINFO\fP 可用于检索对应于传送信号的 \fIsiginfo_t\fP 结构体。 \fBPTRACE_SETSIGINFO\fP
+可以用来修改它。 如果 \fBPTRACE_SETSIGINFO\fP 已经被用来改变 \fIsiginfo_t\fP，则重启命令中的 \fIsi_signo\fP
+字段和 \fIsig\fP 参数必须匹配，否则结果不确定。
+.SS Group\-stop
+当一个 (可能是多线程的) 进程接收到停止信号时，所有线程都会停止。 如果跟踪到某些线程，它们将进入组停止。 请注意，停止信号将首先导致信号传递停止
+(仅在一个被跟踪者上)，并且只有在它被跟踪器注入后 (或在它被分派到未被跟踪的线程后)，才会 group\-stop 在多线程进程中的 \fIall\fP
+tracees 上启动。 像往常一样，每个被跟踪者分别向相应的跟踪器报告其组停止。
+.PP
+跟踪器将组停止观察为 \fBwaitpid\fP(2) 返回且 \fIWIFSTOPPED(status)\fP 为真，停止信号可通过
+\fIWSTOPSIG(status)\fP 获得。 一些其他类的 ptrace\-stops 返回相同的结果，因此推荐的做法是执行调用
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_GETSIGINFO, pid, 0, &siginfo)
+.EE
+.in
+.PP
+如果信号不是 \fBSIGSTOP\fP、\fBSIGTSTP\fP、\fBSIGTTIN\fP、\fBSIGTTOU\fP，则可以避免调用; 只有这四个信号是停止信号。
+如果示踪剂看到别的东西，就不可能是集体停留。 否则示踪剂需要调用 \fBPTRACE_GETSIGINFO\fP。 如果
+\fBPTRACE_GETSIGINFO\fP 与 \fBEINVAL\fP 一起失败，那么它肯定是一个组停止。 (其他故障代码也是可能的，例如 \fBESRCH\fP
+(`没有这样的进程`) 如果 \fBSIGKILL\fP 杀死了被跟踪者。)
+.PP
+如果使用 \fBPTRACE_SEIZE\fP 附加 tracee，则组停止由 \fBPTRACE_EVENT_STOP\fP:
+\fIstatus>>16 == PTRACE_EVENT_STOP\fP 指示。 这允许在不需要额外的
+\fBPTRACE_GETSIGINFO\fP 调用的情况下检测组停止。
+.PP
+从 Linux 2.6.38 开始，tracer 看到 tracee ptrace\-stop 后，直到它重启或杀死它，tracee 不会运行，并且不会向
+tracer 发送通知 (\fBSIGKILL\fP 死亡除外)，即使 tracer 进入另一个 \fBwaitpid\fP(2) 调用。
+.PP
+上一段中描述的内核行为会导致透明处理停止信号的问题。 如果跟踪器在组停止后重新启动跟踪器，停止信号将被有效地忽略 \[em]
+跟踪器不会保持停止状态，它会运行。 如果 tracer 在进入下一个 \fBwaitpid\fP(2) 之前没有重启 tracee，则 future
+\fBSIGCONT\fP 信号不会上报给 tracer; 这会导致 \fBSIGCONT\fP 信号对被跟踪者没有影响。
+.PP
+从 Linux 3.4 开始，有一种方法可以解决这个问题: 代替 \fBPTRACE_CONT\fP，可以使用 \fBPTRACE_LISTEN\fP
+命令以不执行的方式重新启动 tracee，而是等待可以通过 \fBwaitpid\fP(2) 报告的新事件 (例如当它被 \fBSIGCONT\fP) 重新启动时。
+.SS "PTRACE_EVENT stops"
+如果跟踪器设置 \fBPTRACE_O_TRACE_*\fP 选项，则被跟踪者将输入称为 \fBPTRACE_EVENT\fP 停止的 ptrace\-stops。
+.PP
+\fBPTRACE_EVENT\fP 停止被跟踪器观察为 \fBwaitpid\fP(2) 返回
+\fIWIFSTOPPED(status)\fP，\fIWSTOPSIG(status)\fP 返回 \fBSIGTRAP\fP (或者对于
+\fBPTRACE_EVENT_STOP\fP，如果被跟踪者处于组停止，则返回停止信号)。 在状态字的高字节中设置了一个附加位: 值
+\fIstatus>>8\fP 将是
+.PP
+.in +4n
+.EX
+((PTRACE_EVENT_foo<<8) | SIGTRAP).
+.EE
+.in
+.PP
+存在以下事件:
+.TP 
+\fBPTRACE_EVENT_VFORK\fP
+在使用 \fBCLONE_VFORK\fP 标志从 \fBvfork\fP(2) 或 \fBclone\fP(2) 返回之前停止。 当 tracee
+在此停止后继续时，它将在继续执行之前等待 child 到 exit/exec (换句话说，\fBvfork\fP(2)) 上的通常行为。
+.TP 
+\fBPTRACE_EVENT_FORK\fP
+从 \fBfork\fP(2) 或 \fBclone\fP(2) 返回前停止，退出信号设置为 \fBSIGCHLD\fP。
+.TP 
+\fBPTRACE_EVENT_CLONE\fP
+在从 \fBclone\fP(2) 返回之前停止。
+.TP 
+\fBPTRACE_EVENT_VFORK_DONE\fP
+在使用 \fBCLONE_VFORK\fP 标志从 \fBvfork\fP(2) 或 \fBclone\fP(2)
+返回之前停止，但在子进程通过退出或执行取消阻止此跟踪对象之后停止。
+.PP
+对于上面描述的所有四个停止，停止都发生在父线程 (即被跟踪者) 中，而不是在新创建的线程中。 \fBPTRACE_GETEVENTMSG\fP
+可用于检索新线程的 ID。
+.TP 
+\fBPTRACE_EVENT_EXEC\fP
+在从 \fBexecve\fP(2) 返回之前停止。 由于 Linux 3.0，\fBPTRACE_GETEVENTMSG\fP 返回以前的线程 ID。
+.TP 
+\fBPTRACE_EVENT_EXIT\fP
+退出前停止 (包括 \fBexit_group\fP(2)) 死亡，信号死亡，或多线程进程中 \fBexecve\fP(2) 导致退出。
+\fBPTRACE_GETEVENTMSG\fP 返回退出状态。 可以检查寄存器 (与发生 "real" 退出时不同)。 被跟踪者还活着; 它需要是
+\fBPTRACE_CONT\fPed 或 \fBPTRACE_DETACH\fPed 才能完成退出。
+.TP 
+\fBPTRACE_EVENT_STOP\fP
+附加新子项时由 \fBPTRACE_INTERRUPT\fP 命令、组停止或初始 ptrace 停止引起的停止 (仅当使用 \fBPTRACE_SEIZE\fP)
+附加时)。
+.TP 
+\fBPTRACE_EVENT_SECCOMP\fP
+当跟踪器设置 \fBPTRACE_O_TRACESECCOMP\fP 时，停止由跟踪 syscall 条目上的 \fBseccomp\fP(2) 规则触发。
+可以使用 \fBPTRACE_GETEVENTMSG\fP 检索 seccomp 事件消息数据 (来自 seccomp 过滤器规则的
+\fBSECCOMP_RET_DATA\fP 部分)。 此停止的语义在下面的单独部分中详细描述。
+.PP
+\fBPTRACE_GETSIGINFO\fP on \fBPTRACE_EVENT\fP stops returns \fBSIGTRAP\fP in
+\fIsi_signo\fP, with \fIsi_code\fP set to \fI(event<<8)\ |\ SIGTRAP\fP.
+.SS Syscall\-stops
+如果 tracee 由 \fBPTRACE_SYSCALL\fP 或 \fBPTRACE_SYSEMU\fP 重新启动，则 tracee 在进入任何系统调用之前进入
+syscall\-enter\-stop tracee 在此停止后重新启动)。 不管是哪种方法导致了 syscall\-entry\-stop，如果
+tracer 用 \fBPTRACE_SYSCALL\fP 重启 tracee，tracee 在系统调用结束时进入
+syscall\-exit\-stop，或者被信号中断。 (也就是说，信号传递停止永远不会发生在 syscall\-enter\-stop 和
+syscall\-exit\-stop 之间; 它发生在 \fIafter\fP syscall\-exit\-stop 之间。)  如果使用任何其他方法 (包括
+\fBPTRACE_SYSEMU\fP)) 继续跟踪，则不会发生 syscall\-exit\-stop。 请注意，所有提及的 \fBPTRACE_SYSEMU\fP
+同样适用于 \fBPTRACE_SYSEMU_SINGLESTEP\fP。
+.PP
+然而，即使 tracee 继续使用 \fBPTRACE_SYSCALL\fP，也不能保证下一站将是 syscall\-exit\-stop。 其他可能是
+tracee 可能停在 \fBPTRACE_EVENT\fP stop (包括 seccomp stops)，退出 (如果进入 \fB_exit\fP(2) 或
+\fBexit_group\fP(2))，被 \fBSIGKILL\fP 杀死，或者静默死去 (如果是线程组 leader，\fBexecve\fP(2)
+发生在另一个线程，并且该线程未被同一个跟踪器跟踪; 这种情况稍后讨论)。
+.PP
+跟踪器将 Syscall\-enter\-stop 和 syscall\-exit\-stop 观察为 \fBwaitpid\fP(2) 返回
+\fIWIFSTOPPED(status)\fP true，\fIWSTOPSIG(status)\fP 返回 \fBSIGTRAP\fP。 如果跟踪器设置了
+\fBPTRACE_O_TRACESYSGOOD\fP 选项，则 \fIWSTOPSIG(status)\fP 将给出值 \fI(SIGTRAP\ |\ 0x80)\fP。
+.PP
+Syscall\-stops 可以通过查询 \fBPTRACE_GETSIGINFO\fP 来区分 \fBSIGTRAP\fP 的
+signal\-delivery\-stop 以下情况:
+.TP 
+\fIsi_code\fP <= 0
+\fBSIGTRAP\fP 作为用户空间操作的结果交付，例如，系统调用 (\fBtgkill\fP(2)、\fBkill\fP(2)、\fBsigqueue\fP(3)
+等)、POSIX 计时器到期、POSIX 消息队列状态更改或异步 I/O 完成要求。
+.TP 
+\fIsi_code\fP == SI_KERNEL (0x80)
+\fBSIGTRAP\fP 由内核发送。
+.TP 
+\fIsi_code\fP == SIGTRAP or \fIsi_code\fP == (SIGTRAP|0x80)
+这是一个 syscall 停止。
+.PP
+然而，syscall\-stops 经常发生 (每个系统调用两次)，并且为每个 syscall\-stop 执行 \fBPTRACE_GETSIGINFO\fP
+可能有点昂贵。
+.PP
+一些架构允许通过检查寄存器来区分案例。 例如，在 x86 上，\fIrax\fP == \-\fBENOSYS\fP in syscall\-enter\-stop。
+由于 \fBSIGTRAP\fP (与任何其他信号一样) 总是发生 \fIafter\fP syscall\-exit\-stop，此时 \fIrax\fP 几乎从不包含
+\-\fBENOSYS\fP，因此 \fBSIGTRAP\fP 看起来像 "syscall\-stop which is not
+syscall\-enter\-stop"; 换句话说，它看起来像 "stray syscall\-exit\-stop"，可以通过这种方式检测到。
+但这种检测是脆弱的，最好避免。
+.PP
+使用 \fBPTRACE_O_TRACESYSGOOD\fP 选项是将 syscall\-stops 与其他类型的 ptrace\-stops
+区分开来的推荐方法，因为它是可靠的并且不会导致性能损失。
+.PP
+跟踪器无法区分 Syscall\-enter\-stop 和 syscall\-exit\-stop。 跟踪器需要跟踪 ptrace\-stop 的顺序，以免将
+syscall\-enter\-stop 误解为 syscall\-exit\-stop，反之亦然。 一般来说，syscall\-enter\-stop 总是跟在
+syscall\-exit\-stop、\fBPTRACE_EVENT\fP 停止或被跟踪者死亡之后; 中间不会出现其他类型的 ptrace\-stop。
+但是，请注意 seccomp 停止 (见下文) 可能会导致 syscall\-exit\-stops，而不是在 syscall\-entry\-stops
+之前。 如果正在使用 seccomp，需要注意不要将此类停止误解为 syscall\-entry\-stops。
+.PP
+如果在 syscall\-enter\-stop 之后，tracer 使用 \fBPTRACE_SYSCALL\fP 以外的重启命令，则不会生成
+syscall\-exit\-stop。
+.PP
+.\"
+syscall\-stops 上的 \fBPTRACE_GETSIGINFO\fP 在 \fIsi_signo\fP 中返回
+\fBSIGTRAP\fP，\fIsi_code\fP 设置为 \fBSIGTRAP\fP 或 \fI(SIGTRAP|0x80)\fP。
+.SS "PTRACE_EVENT_SECCOMP stops (Linux 3.5 to Linux 4.7)"
+\fBPTRACE_EVENT_SECCOMP\fP 停止的行为以及它们与其他类型的 ptrace 停止的交互在内核版本之间发生了变化。
+这记录了从他们的介绍到 Linux 4.7 (inclusive) 的行为。 下一节将记录后续内核版本中的行为。
+.PP
+只要触发 \fBSECCOMP_RET_TRACE\fP 规则，就会发生 \fBPTRACE_EVENT_SECCOMP\fP 停止。
+这与使用哪种方法重新启动系统无关。 值得注意的是，即使使用 \fBPTRACE_SYSEMU\fP 重新启动 tracee
+并且无条件跳过此系统调用，seccomp 仍会运行。
+.PP
+.\"
+从此停止重新启动将表现得好像停止发生在有问题的系统调用之前。 特别是，\fBPTRACE_SYSCALL\fP 和 \fBPTRACE_SYSEMU\fP
+通常都会导致后续的 syscall\-entry\-stop。 但是，如果在 \fBPTRACE_EVENT_SECCOMP\fP 之后系统调用编号为
+negative，则 syscall\-entry\-stop 和系统调用本身都将被跳过。 这意味着如果在 \fBPTRACE_EVENT_SECCOMP\fP
+之后系统调用编号为 negative 并且使用 \fBPTRACE_SYSCALL\fP 重新启动被跟踪者，则下一个观察到的停止将是
+syscall\-exit\-stop，而不是可能预期的 syscall\-entry\-stop。
+.SS "PTRACE_EVENT_SECCOMP stops (since Linux 4.8)"
+.\" commit 93e35efb8de45393cf61ed07f7b407629bf698ea
+从 Linux 4.8 开始，\fBPTRACE_EVENT_SECCOMP\fP 停止被重新排序为发生在 syscall\-entry\-stop 和
+syscall\-exit\-stop 之间。 请注意，如果由于 \fBPTRACE_SYSEMU\fP 而跳过系统调用，则 seccomp 将不再运行
+(并且不会报告 \fBPTRACE_EVENT_SECCOMP\fP)。
+.PP
+从功能上讲，\fBPTRACE_EVENT_SECCOMP\fP 停止函数与 syscall\-entry\-stop 相当 (即，继续使用
+\fBPTRACE_SYSCALL\fP 将导致
+syscall\-exit\-stops，系统调用编号可能会更改，并且任何其他修改的寄存器对要执行的系统都是可见的调用也)。 请注意，前面可能有但不一定有
+syscall\-entry\-stop。
+.PP
+.\"
+\fBPTRACE_EVENT_SECCOMP\fP 停止后，seccomp 将重新运行，此时 \fBSECCOMP_RET_TRACE\fP 规则的功能与
+\fBSECCOMP_RET_ALLOW\fP 相同。 具体来说，这意味着如果在 \fBPTRACE_EVENT_SECCOMP\fP
+停止期间没有修改寄存器，则系统调用将被允许。
+.SS "PTRACE_SINGLESTEP stops"
+.\"
+.\" FIXME .
+.\" document stops occurring with PTRACE_SINGLESTEP
+.\"
+[Details of these kinds of stops are yet to be documented.]
+.SS "Informational and restarting ptrace commands"
+大多数 ptrace 命令 (除
+\fBPTRACE_ATTACH\fP、\fBPTRACE_SEIZE\fP、\fBPTRACE_TRACEME\fP、\fBPTRACE_INTERRUPT\fP 和
+\fBPTRACE_KILL\fP) 之外的所有命令) 都要求跟踪对象处于 ptrace\-stop 状态，否则它们将失败并返回 \fBESRCH\fP。
+.PP
+当被跟踪者处于 ptrace\-stop 时，跟踪器可以使用信息命令读取和写入数据到被跟踪者。 这些命令使 tracee 处于 ptrace 停止状态:
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_PEEKTEXT/PEEKDATA/PEEKUSER, pid, addr, 0);
+ptrace(PTRACE_POKETEXT/POKEDATA/POKEUSER, pid, addr, long_val);
+ptrace(PTRACE_GETREGS/GETFPREGS, pid, 0, &struct);
+ptrace(PTRACE_SETREGS/SETFPREGS, pid, 0, &struct);
+ptrace(PTRACE_GETREGSET, pid, NT_foo, &iov);
+ptrace(PTRACE_SETREGSET, pid, NT_foo, &iov);
+ptrace(PTRACE_GETSIGINFO, pid, 0, &siginfo);
+ptrace(PTRACE_SETSIGINFO, pid, 0, &siginfo);
+ptrace(PTRACE_GETEVENTMSG, pid, 0, &long_var);
+ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_flags);
+.EE
+.in
+.PP
+请注意，不会报告某些错误。 比如设置信号信息 (\fIsiginfo\fP)，在某些 ptrace\-stop 中可能没有效果，但调用可能成功 (返回
+0，不设置 \fIerrno\fP); 如果当前 ptrace\-stop 没有被记录为返回有意义的事件消息，则查询 \fBPTRACE_GETEVENTMSG\fP
+可能会成功并返回一些随机值。
+.PP
+调用
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_flags);
+.EE
+.in
+.PP
+影响一个跟踪对象。 tracee 的当前标志被替换。 标志由创建的新跟踪对象和 "auto\-attached" 通过活动的
+\fBPTRACE_O_TRACEFORK\fP、\fBPTRACE_O_TRACEVFORK\fP 或 \fBPTRACE_O_TRACECLONE\fP 选项继承。
+.PP
+另一组命令使 ptrace 停止的 tracee 运行。 他们有以下形式:
+.PP
+.in +4n
+.EX
+ptrace(cmd, pid, 0, sig);
+.EE
+.in
+.PP
+其中 \fIcmd\fP 是
+\fBPTRACE_CONT\fP、\fBPTRACE_LISTEN\fP、\fBPTRACE_DETACH\fP、\fBPTRACE_SYSCALL\fP、\fBPTRACE_SINGLESTEP\fP、\fBPTRACE_SYSEMU\fP
+或 \fBPTRACE_SYSEMU_SINGLESTEP\fP。 如果 tracee 处于 signal\-delivery\-stop，\fIsig\fP
+是要注入的信号 (如果它是非零的)。 否则，\fIsig\fP 可能会被忽略。 (当从 ptrace\-stop 而不是
+signal\-delivery\-stop 重新启动 tracee 时，推荐的做法是始终在 \fIsig\fP.) 中传递 0
+.SS "Attaching and detaching"
+可以使用调用将线程附加到示踪剂
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_ATTACH, pid, 0, 0);
+.EE
+.in
+.PP
+or
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_SEIZE, pid, 0, PTRACE_O_flags);
+.EE
+.in
+.PP
+.\"
+.\" FIXME Describe how to attach to a thread which is already group-stopped.
+\fBPTRACE_ATTACH\fP 将 \fBSIGSTOP\fP 发送到该线程。 如果示踪剂想要这个 \fBSIGSTOP\fP 不起任何作用，就需要压制它。
+请注意，如果在附加期间其他信号同时发送到此线程，则跟踪器可能会看到被跟踪者首先与其他 signal(s) 一起进入信号传递停止!
+通常的做法是重新注入这些信号，直到看到 \fBSIGSTOP\fP，然后抑制 \fBSIGSTOP\fP 注入。 这里的设计错误是 ptrace attach
+和同时交付的 \fBSIGSTOP\fP 可能会竞争，并且并发 \fBSIGSTOP\fP 可能会丢失。
+.PP
+由于附加发送 \fBSIGSTOP\fP 并且跟踪器通常会抑制它，因此这可能会导致从当前正在执行的系统调用中返回一个杂散的 \fBEINTR\fP 在被跟踪者中，如
+"Signal injection and suppression" 部分所述。
+.PP
+由于 Linux 3.4，可以使用 \fBPTRACE_SEIZE\fP 代替 \fBPTRACE_ATTACH\fP。 \fBPTRACE_SEIZE\fP
+不会停止附加进程。 如果您需要在附加后 (或任何其他时间) 停止它而不向其发送任何信号，请使用 \fBPTRACE_INTERRUPT\fP 命令。
+.PP
+要求
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_TRACEME, 0, 0, 0);
+.EE
+.in
+.PP
+将调用线程变成一个被跟踪者。 线程继续运行 (不进入 ptrace\-stop)。 一个常见的做法是跟随 \fBPTRACE_TRACEME\fP
+.PP
+.in +4n
+.EX
+raise(SIGSTOP);
+.EE
+.in
+.PP
+并允许父级 (现在是我们的跟踪器) 观察我们的信号传递停止。
+.PP
+如果 \fBPTRACE_O_TRACEFORK\fP、\fBPTRACE_O_TRACEVFORK\fP 或 \fBPTRACE_O_TRACECLONE\fP
+选项生效，则分别由带有 \fBCLONE_VFORK\fP 标志的 \fBvfork\fP(2) 或 \fBclone\fP(2)、退出信号设置为 \fBSIGCHLD\fP
+的 \fBfork\fP(2) 或 \fBclone\fP(2) 以及其他类型的 \fBclone\fP(2) 创建的子项将自动附加到追踪他们父母的同一个追踪者。
+\fBSIGSTOP\fP 被传递给子节点，导致他们退出创建他们的系统调用后进入信号 \- 传递 \- 停止。
+.PP
+tracee 的分离是通过以下方式执行的:
+.PP
+.in +4n
+.EX
+ptrace(PTRACE_DETACH, pid, 0, sig);
+.EE
+.in
+.PP
+\fBPTRACE_DETACH\fP 为重启操作; 因此它要求被跟踪者处于 ptrace\-stop 状态。 如果被跟踪者处于
+signal\-delivery\-stop，可以注入一个信号。 否则，\fIsig\fP 参数可能会被忽略。
+.PP
+.\" FIXME Describe how to detach from a group-stopped tracee so that it
+.\" doesn't run, but continues to wait for SIGCONT.
+如果当 tracer 想要分离它时 tracee 正在运行，通常的解决方案是发送 \fBSIGSTOP\fP (使用
+\fBtgkill\fP(2)，以确保它进入正确的线程)，等待 tracee 在 signal\-delivery\-stop for \fBSIGSTOP\fP
+中停止并且然后分离它 (抑制 \fBSIGSTOP\fP 注入)。 一个设计错误是这可以与并发 \fBSIGSTOP\fPs 竞争。另一个复杂的是，tracee
+可能会进入其他 ptrace\-stops，需要重新启动等待，直到看到 \fBSIGSTOP\fP。 另一个复杂的问题是要确保被跟踪者还没有被 ptrace
+停止，因为当它甚至不是 \fBSIGSTOP\fP 时，没有信号传递发生。
+.PP
+如果跟踪器死亡，所有跟踪器都会自动分离并重新启动，除非它们处于组停止状态。 从组停止重启的处理目前是 buggy，但 "as planned" 行为是让
+tracee 停止并等待 \fBSIGCONT\fP。 如果 tracee 从 signal\-delivery\-stop 重新启动，挂起的信号被注入。
+.SS "execve(2) under ptrace"
+.\" clone(2) CLONE_THREAD says:
+.\"     If  any  of the threads in a thread group performs an execve(2),
+.\"     then all threads other than the thread group leader are terminated,
+.\"     and the new program is executed in the thread group leader.
+.\"
+.\" In Linux 3.1 sources, see fs/exec.c::de_thread()
+当多线程进程中的一个线程调用 \fBexecve\fP(2) 时，内核销毁该进程中的所有其他线程，并将执行线程的线程 ID 重置为线程组 ID (进程
+ID)。 (或者，换句话说，当多线程进程执行 \fBexecve\fP(2) 时，在调用完成时，看起来好像 \fBexecve\fP(2)
+发生在线程组领导中，而不管 \fBexecve\fP(2).) 是哪个线程执行的。线程 ID 的这种重置看起来跟踪器非常混乱:
+.IP \[bu] 3
+如果打开了 \fBPTRACE_O_TRACEEXIT\fP 选项，所有其他线程将停止在 \fBPTRACE_EVENT_EXIT\fP 中。
+然后除线程组负责人之外的所有其他线程都报告死亡，就好像它们通过 \fB_exit\fP(2) 退出并带有退出代码一样 0.
+.IP \[bu]
+execing tracee 在 \fBexecve\fP(2) 中时更改其线程 ID。 (请记住，在 ptrace 下，从 \fBwaitpid\fP(2)
+返回的 "pid" 或馈入 ptrace 调用的 "pid" 是被跟踪者的线程 ID。) 也就是说，被跟踪者的线程 ID 被重置为与其进程 ID
+相同，这与线程相同组长的线程 ID。
+.IP \[bu]
+如果 \fBPTRACE_O_TRACEEXEC\fP 选项已打开，则发生 \fBPTRACE_EVENT_EXEC\fP 停止。
+.IP \[bu]
+如果此时线程组领导报告了它的 \fBPTRACE_EVENT_EXIT\fP 停止，那么对于跟踪器来说，死线程领导 "reappears from
+nowhere" 就会出现。 (注意: 线程组领导不会通过 \fIWIFEXITED(status)\fP
+报告死亡，直到至少有一个其他活动线程。这消除了跟踪器看到它死亡然后重新出现的可能性。) 如果线程组领导仍然活着，对于 tracer
+这可能看起来好像线程组领导者从与它进入的系统调用不同的系统返回，甚至是 "returned from a system call even though
+it was not in any system call"。 如果线程组组长未被跟踪 (或被不同的跟踪器跟踪)，那么在 \fBexecve\fP(2)
+期间它将看起来好像它已成为正在执行的跟踪器的跟踪器的跟踪器。
+.PP
+以上所有效果都是 tracee 中线程 ID 变化的产物。
+.PP
+\fBPTRACE_O_TRACEEXEC\fP 选项是处理这种情况的推荐工具。 首先，它启用 \fBPTRACE_EVENT_EXEC\fP 停止，这发生在
+\fBexecve\fP(2) 返回之前。 在此停止中，tracer 可以使用 \fBPTRACE_GETEVENTMSG\fP 来检索被跟踪者以前的线程
+ID。(此特性在 Linux 3.0 中引入。) 其次，\fBPTRACE_O_TRACEEXEC\fP 选项禁用 \fBexecve\fP(2) 上的旧版
+\fBSIGTRAP\fP 生成。
+.PP
+当跟踪器收到 \fBPTRACE_EVENT_EXEC\fP 停止通知时，可以保证除了这个跟踪器和线程组领导之外，进程中没有其他线程处于活动状态。
+.PP
+收到 \fBPTRACE_EVENT_EXEC\fP 停止通知后，跟踪器应清除其所有描述此进程线程的内部数据结构，并仅保留一个数据结构体 \[em] one
+描述单个仍在运行的跟踪器，其中
+.PP
+.in +4n
+.EX
+线程 ID == 线程组 ID == 进程 ID。
+.EE
+.in
+.PP
+例子: 两个线程同时调用 \fBexecve\fP(2):
+.PP
+.nf
+*** 我们在线程 1 中得到 syscall\-enter\-stop: **
+PID1 execve("/bin/foo", "foo" <unfinished ...>
+***我们为线程 1 发出 PTRACE_SYSCALL**
+***我们在线程 2 中得到 syscall\-enter\-stop: **
+PID2 execve("/bin/bar", "bar" <unfinished ...>
+***我们为线程 2 发出 PTRACE_SYSCALL**
+***我们得到 PID0 的 PTRACE_EVENT_EXEC，我们发出 PTRACE_SYSCALL**
+***我们得到 PID0 的 syscall\-exit\-stop: **
+PID0 <... 执行 resumed>)=0
+.fi
+.PP
+如果 \fBPTRACE_O_TRACEEXEC\fP 选项是 \fInot\fP，对正在执行的跟踪对象有效，并且如果跟踪对象是
+\fBPTRACE_ATTACH\fPed 而不是 \fBPTRACE_SEIZE\fPd，则内核在 \fBexecve\fP(2) 返回后向跟踪对象传递一个额外的
+\fBSIGTRAP\fP。 这是一个普通信号 (类似于 \fIkill \-TRAP\fP) 可以生成的信号，不是一种特殊的 ptrace\-stop。 对该信号使用
+\fBPTRACE_GETSIGINFO\fP 会将 \fIsi_code\fP 设置为 0 (\fISI_USER\fP)。 该信号可能会被信号掩码阻塞，因此可能会在
+(much) 之后传送。
+.PP
+通常，tracer (例如，\fBstrace\fP(1)) 不想向用户显示这个额外的 post\-execve \fBSIGTRAP\fP 信号，并且会抑制其传递给
+tracee (如果 \fBSIGTRAP\fP 设置为 \fBSIG_DFL\fP，则为终止信号)。 但是，要确定 \fIwhich\fP \fBSIGTRAP\fP
+压制并不容易。 设置 \fBPTRACE_O_TRACEEXEC\fP 选项或使用 \fBPTRACE_SEIZE\fP 从而抑制这个额外的 \fBSIGTRAP\fP
+是推荐的方法。
+.SS "Real parent"
+ptrace API (ab) 在 \fBwaitpid\fP(2) 上使用标准的 UNIX parent/child 信号。
+这曾经导致进程的真正父级在子进程被其他进程跟踪时停止接收多种 \fBwaitpid\fP(2) 通知。
+.PP
+其中许多错误已得到修复，但截至 Linux 2.6.38 仍有几个错误存在; 请参见下面的错误。
+.PP
+从 Linux 2.6.38 开始，以下内容被认为可以正常工作:
+.IP \[bu] 3
+exit/death by signal 首先报告给跟踪器，然后，当跟踪器使用 \fBwaitpid\fP(2) 结果时，再报告给真正的父级
+(仅当整个多线程进程退出时才报告给真正的父级)。 如果跟踪器和真正的父进程是同一个进程，则只发送一次报告。
+.SH "RETURN VALUE"
+成功时，\fBPTRACE_PEEK*\fP 请求返回请求的数据 (请参见注释)，\fBPTRACE_SECCOMP_GET_FILTER\fP 请求返回 BPF
+程序中的指令数，\fBPTRACE_GET_SYSCALL_INFO\fP 请求返回内核可写入的字节数，其他请求返回零.
+.PP
+出错时，所有请求都返回 \-1，并且设置 \fIerrno\fP 以指示错误。 由于 \fBPTRACE_PEEK*\fP 请求成功返回的值可能是
+\-1，调用者必须在调用前清除 \fIerrno\fP，然后再检查是否有错误发生。
+.SH ERRORS
+.TP 
+\fBEBUSY\fP
+(仅限 i386) 分配或释放调试寄存器时出错。
+.TP 
+\fBEFAULT\fP
+尝试读取或写入跟踪器或被跟踪者内存中的无效区域，可能是因为该区域未映射或不可访问。 不幸的是，在 Linux 下，此故障的不同变体或多或少会随机返回
+\fBEIO\fP 或 \fBEFAULT\fP。
+.TP 
+\fBEINVAL\fP
+试图设置一个无效的选项。
+.TP 
+\fBEIO\fP
+\fIrequest\fP 无效，或者试图读取或写入跟踪器或被跟踪器内存中的无效区域，或者存在字对齐违规，或者在重新启动请求期间指定了无效信号。
+.TP 
+\fBEPERM\fP
+无法跟踪指定进程。 这可能是因为跟踪器没有足够的权限 (所需的能力是 \fBCAP_SYS_PTRACE\fP);
+出于显而易见的原因，非特权进程无法跟踪它们无法向其发送信号或运行 set\-user\-ID/set\-group\-ID 程序的进程。
+或者，进程可能已经被跟踪，或者 (在 Linux 2.6.26 之前) 是 \fBinit\fP(1) (PID 1)。
+.TP 
+\fBESRCH\fP
+指定的进程不存在，或者当前没有被调用者跟踪，或者没有停止 (对于需要停止跟踪的请求)。
+.SH STANDARDS
+SVr4, 4.3BSD.
+.SH NOTES
+虽然参数到 \fBptrace\fP() 是根据给定的原型解释的，但 glibc 目前将 \fBptrace\fP() 声明为可变参数函数，只有
+\fIrequest\fP 参数是固定的。 建议始终提供四个参数，即使请求的操作不使用它们，将 unused/ignored 参数设置为 \fI0L\fP 或
+\fI(void\ *)\ 0\fP。
+.PP
+.\" See commit 00cd5c37afd5f431ac186dd131705048c0a11fdb
+在 Linux 2.6.26、\fBinit\fP(1) 之前，PID 为 1 的进程，可能追不到。
+.PP
+即使跟踪器调用 \fBexecve\fP(2)，跟踪器父级仍然是跟踪器。
+.PP
+.\" See http://lkml.org/lkml/2008/5/8/375
+内存内容和用户区的布局完全是操作系统和体系结构特定的。 提供的偏移量和返回的数据可能与 \fIstruct user\fP 的定义不完全匹配。
+.PP
+"word" 的大小由操作系统变体决定 (例如，对于 32 位 Linux，它是 32 位)。
+.PP
+.\"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+此页面记录了 \fBptrace\fP() 调用当前在 Linux 中的工作方式。 它的行为在 UNIX 的其他版本上有很大不同。
+无论如何，\fBptrace\fP() 的使用高度特定于操作系统和体系结构。
+.SS "Ptrace access mode checking"
+内核用户空间 API 的各个部分 (不仅仅是 \fBptrace\fP() 操作) 需要所谓的 "ptrace access mode"
+检查，其结果决定是否允许操作 (或者，在少数情况下，导致 "read" 操作返回经过清理的数据)。
+这些检查是在一个进程可以检查有关另一个进程的敏感信息，或者在某些情况下可以修改另一个进程的状态的情况下执行的。
+检查基于两个进程的凭据和功能、"target" 进程是否可转储以及任何启用的 Linux 安全模块 (LSM)\[em] (例如 SELinux)
+执行的检查结果等因素，Yama，或 Smack\[em]，由 commoncap LSM (始终调用) 提供。
+.PP
+.\" commit 006ebb40d3d65338bd74abb03b945f8d60e362bd
+在 Linux 2.6.27 之前，所有访问检查都是单一类型的。 从 Linux 2.6.27 开始，区分两种访问模式级别:
+.TP 
+\fBPTRACE_MODE_READ\fP
+对于 "read" 操作或其他危险性较小的操作，如: \fBget_robust_list\fP(2); \fBkcmp\fP(2);  读取
+\fI/proc/\fPpid\fI/auxv\fP、\fI/proc/\fPpid\fI/environ\fP 或 \fI/proc/\fPpid\fI/stat\fP; 或
+\fI/proc/\fPpid\fI/ns/*\fP 文件的 \fBreadlink\fP(2)。
+.TP 
+\fBPTRACE_MODE_ATTACH\fP
+.\"
+.\" Regarding the above description of the distinction between
+.\" PTRACE_MODE_READ and PTRACE_MODE_ATTACH, Stephen Smalley notes:
+.\"
+.\"     That was the intent when the distinction was introduced, but it doesn't
+.\"     appear to have been properly maintained, e.g. there is now a common
+.\"     helper lock_trace() that is used for
+.\"     /proc/pid/{stack,syscall,personality} but checks PTRACE_MODE_ATTACH, and
+.\"     PTRACE_MODE_ATTACH is also used in timerslack_ns_write/show().  Likely
+.\"     should review and make them consistent.  There was also some debate
+.\"     about proper handling of /proc/pid/fd.  Arguably that one might belong
+.\"     back in the _ATTACH camp.
+.\"
+对于 "write" 操作，或者其他比较危险的操作，比如: ptrace attach (\fBPTRACE_ATTACH\fP) to another
+process or calling \fBprocess_vm_writev\fP(2)。 (\fBPTRACE_MODE_ATTACH\fP 实际上是
+Linux 2.6.27 之前的默认值。)
+.PP
+.\" commit caaee6234d05a58c5b4d05e7bf766131b810a657
+自 Linux 4.5 起，上述访问模式检查将 (ORed) 与以下修饰符之一组合在一起:
+.TP 
+\fBPTRACE_MODE_FSCREDS\fP
+使用调用者的文件系统 UID 和 GID (请参见 \fBcredentials\fP(7)) 或 LSM 检查的有效功能。
+.TP 
+\fBPTRACE_MODE_REALCREDS\fP
+使用调用者的真实 UID 和 GID 或允许的功能进行 LSM 检查。 这实际上是 Linux 4.5 之前的默认值。
+.PP
+由于将凭证修饰符之一与上述访问模式之一组合是典型的，因此在内核源代码中为这些组合定义了一些宏:
+.TP 
+\fBPTRACE_MODE_READ_FSCREDS\fP
+定义为 \fBPTRACE_MODE_READ | PTRACE_MODE_FSCREDS\fP。
+.TP 
+\fBPTRACE_MODE_READ_REALCREDS\fP
+定义为 \fBPTRACE_MODE_READ | PTRACE_MODE_REALCREDS\fP。
+.TP 
+\fBPTRACE_MODE_ATTACH_FSCREDS\fP
+定义为 \fBPTRACE_MODE_ATTACH | PTRACE_MODE_FSCREDS\fP。
+.TP 
+\fBPTRACE_MODE_ATTACH_REALCREDS\fP
+定义为 \fBPTRACE_MODE_ATTACH | PTRACE_MODE_REALCREDS\fP。
+.PP
+另一个修饰符可以与访问模式进行或运算:
+.TP 
+\fBPTRACE_MODE_NOAUDIT\fP (since Linux 3.3)
+.\" commit 69f594a38967f4540ce7a29b3fd214e68a8330bd
+.\" Just for /proc/pid/stat
+不要审核此访问模式检查。 此修饰符用于 ptrace 访问模式检查 (例如读取 \fI/proc/\fPpid\fI/stat\fP)
+时仅导致输出被过滤或清理，而不是导致错误返回给调用者的检查。 在这些情况下，访问文件不是安全违规，也没有理由生成安全审计记录。
+此修饰符禁止为特定访问检查生成此类审计记录。
+.PP
+请注意，本小节中描述的所有 \fBPTRACE_MODE_*\fP 常量都是内核内部的，对用户空间不可见。 此处提及常量名称是为了标记为各种系统调用执行的各种
+ptrace 访问模式检查和对各种伪文件的访问 (例如，在 \fI/proc\fP).  这些名称在其他手册页中用于为标记不同的内核检查提供简单的速记。
+.PP
+用于 ptrace 访问模式检查的算法确定是否允许调用进程对目标进程执行相应的操作。 (在打开 \fI/proc/\fPpid 文件的情况下，"calling
+process" 就是打开文件的那个，对应 PID 的进程就是 `目标进程`) 算法如下:
+.IP (1) 5
+如果调用线程和目标线程在同一个线程组中，则始终允许访问。
+.IP (2)
+如果访问模式指定为 \fBPTRACE_MODE_FSCREDS\fP，则在下一步的检查中，使用调用者的文件系统 UID 和 GID。 (如
+\fBcredentials\fP(7) 中所述，文件系统 UID 和 GID 几乎总是与相应的有效 ID 具有相同的值。)
+.IP
+否则，访问模式指定为 \fBPTRACE_MODE_REALCREDS\fP，所以在下一步的检查中使用调用者的真实 UID 和 GID。 (大多数检查调用者
+UID 和 GID 的 API 使用有效 ID。由于历史原因，\fBPTRACE_MODE_REALCREDS\fP 检查使用真实 ID。)
+.IP (3)
+如果以下 \fIneither\fP 为真，则拒绝访问:
+.RS
+.IP \[bu] 3
+目标的真实、有效、保存集用户 ID 与调用者的用户 ID 匹配，\fIand\fP 目标的真实、有效、保存集组 ID 与调用者的组 ID 匹配。
+.IP \[bu]
+调用者在目标的用户命名空间中具有 \fBCAP_SYS_PTRACE\fP 能力。
+.RE
+.IP (4)
+如果目标进程 "dumpable" 属性的值不是 1 (\fBSUID_DUMP_USER\fP，则拒绝访问; 参见 \fBprctl\fP(2)) 中
+\fBPR_SET_DUMPABLE\fP 的讨论，调用者在目标进程的用户命名空间中不具备 \fBCAP_SYS_PTRACE\fP 能力。
+.IP (5)
+.\" (in cap_ptrace_access_check()):
+调用内核 LSM \fIsecurity_ptrace_access_check\fP() 接口以查看是否允许 ptrace 访问。 结果取决于
+LSM(s)。 该接口在 commoncap LSM 中的实现执行以下步骤:
+.RS
+.IP (5.1) 7
+如果访问模式包括 \fBPTRACE_MODE_FSCREDS\fP，则使用调用者在以下检查中设置的 \fIeffective\fP 能力; 否则 (访问模式指定
+\fBPTRACE_MODE_REALCREDS\fP，因此) 使用调用者的 \fIpermitted\fP 能力集。
+.IP (5.2)
+如果以下 \fIneither\fP 为真，则拒绝访问:
+.RS
+.IP \[bu] 3
+调用者和目标进程在同一个用户命名空间中，调用者的能力是目标进程 \fIpermitted\fP 能力的超集。
+.IP \[bu]
+调用者在目标进程的用户命名空间中具有 \fBCAP_SYS_PTRACE\fP 能力。
+.RE
+.IP
+请注意，commoncap LSM 不区分 \fBPTRACE_MODE_READ\fP 和 \fBPTRACE_MODE_ATTACH\fP。
+.RE
+.IP (6)
+.\"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+如果上述任何步骤均未拒绝访问，则允许访问。
+.SS /proc/sys/kernel/yama/ptrace_scope
+.\" commit 2d514487faf188938a4ee4fb3464eeecfbdcf8eb
+在安装了 Yama Linux 安全模块 (LSM) 的系统上 (即内核配置了
+\fBCONFIG_SECURITY_YAMA\fP)，\fI/proc/sys/kernel/yama/ptrace_scope\fP 文件 (自 Linux
+3.4 起可用) 可用于限制使用 \fBptrace\fP() 跟踪进程的能力 (因此也可以使用 \fBstrace\fP(1) 和 \fBgdb\fP(1)) 等工具。
+此类限制的目标是防止攻击升级，从而使受感染的进程可以 ptrace\-attach 到用户拥有所有权的其他敏感进程 (例如，GPG 代理或 SSH
+会话)，以获得可能存在于内存中的额外凭证，从而扩大攻击的作用域。
+.PP
+更准确地说，Yama LSM 限制了两种类型的操作:
+.IP \[bu] 3
+任何执行 ptrace 访问模式 \fBPTRACE_MODE_ATTACH\fP 检查 \[em] 例如 \fBptrace\fP()
+\fBPTRACE_ATTACH\fP 的操作。 (参见上面的 "Ptrace access mode checking" 讨论。)
+.IP \[bu]
+\fBptrace\fP()  \fBPTRACE_TRACEME\fP.
+.PP
+具有 \fBCAP_SYS_PTRACE\fP 功能的进程可以使用以下值之一更新 \fI/proc/sys/kernel/yama/ptrace_scope\fP
+文件:
+.TP 
+0 ("classic ptrace permissions")
+对执行 \fBPTRACE_MODE_ATTACH\fP 检查的操作没有额外限制 (超出 commoncap 和其他 LSM 强加的限制)。
+.IP
+\fBPTRACE_TRACEME\fP 的使用没有改变。
+.TP 
+1 ("restricted ptrace") [default value]
+当执行需要 \fBPTRACE_MODE_ATTACH\fP 检查的操作时，调用进程必须在目标进程的用户命名空间中具有 \fBCAP_SYS_PTRACE\fP
+功能，或者它必须与目标进程具有预定义的关系。 默认情况下，预定义关系是目标进程必须是调用者的后代。
+.IP
+.\" commit 90bb766440f2147486a2acc3e793d7b8348b0c22
+目标进程可以使用 \fBprctl\fP(2) \fBPR_SET_PTRACER\fP 操作来声明允许在目标上执行 \fBPTRACE_MODE_ATTACH\fP
+操作的附加 PID。 有关详细信息，请参见内核源文件 \fIDocumentation/admin\-guide/LSM/Yama.rst\fP (或
+Linux 4.13 之前的 \fIDocumentation/security/Yama.txt\fP)。
+.IP
+\fBPTRACE_TRACEME\fP 的使用没有改变。
+.TP 
+2 ("admin\-only attach")
+只有在目标进程的用户命名空间中具有 \fBCAP_SYS_PTRACE\fP 能力的进程才能执行 \fBPTRACE_MODE_ATTACH\fP 操作或跟踪使用
+\fBPTRACE_TRACEME\fP 的子进程。
+.TP 
+3 ("no attach")
+任何进程都不能执行 \fBPTRACE_MODE_ATTACH\fP 操作或跟踪使用 \fBPTRACE_TRACEME\fP 的子进程。
+.IP
+一旦将此值写入文件，就无法更改。
+.PP
+.\"
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+关于值 1 和 2，请注意创建新的用户命名空间有效地移除了 Yama 提供的保护。 这是因为父用户命名空间中的有效 UID 与子命名空间创建者的 UID
+相匹配的进程具有所有功能 (包括在子用户命名空间 (以及该命名空间的进一步删除的后代) 中执行操作时的 \fBCAP_SYS_PTRACE\fP)。
+因此，当进程尝试使用用户命名空间对自身进行沙箱处理时，它会无意中削弱 Yama LSM 提供的保护。
+.SS "C library/kernel differences"
+在系统调用层面，\fBPTRACE_PEEKTEXT\fP、\fBPTRACE_PEEKDATA\fP、\fBPTRACE_PEEKUSER\fP 请求有不同的 API:
+它们将结果存储在 \fIdata\fP 参数指定的地址，返回值为错误标志。 glibc 包装器函数提供了上面描述中给出的 API，结果通过函数返回值返回。
+.SH BUGS
+在具有 Linux 2.6 内核标头的主机上，\fBPTRACE_SETOPTIONS\fP 声明的值与 Linux 2.4 的值不同。 这会导致使用
+Linux 2.6 内核头文件编译的应用程序在 Linux 2.4 上运行时失败。 这可以通过将 \fBPTRACE_SETOPTIONS\fP 重新定义为
+\fBPTRACE_OLDSETOPTIONS\fP (如果已定义) 来解决。
+.PP
+Group\-stop 通知会发送给跟踪器，但不会发送给真正的父级。 最后在 2.6.38.6 上确认。
+.PP
+.\" Note from Denys Vlasenko:
+.\"     Here "exits" means any kind of death - _exit, exit_group,
+.\"     signal death. Signal death and exit_group cases are trivial,
+.\"     though: since signal death and exit_group kill all other threads
+.\"     too, "until all other threads exit" thing happens rather soon
+.\"     in these cases. Therefore, only _exit presents observably
+.\"     puzzling behavior to ptrace users: thread leader _exit's,
+.\"     but WIFEXITED isn't reported! We are trying to explain here
+.\"     why it is so.
+.\"  FIXME . need to test/verify this scenario
+如果通过调用 \fB_exit\fP(2) 跟踪并退出线程组领导者，则会为其发生 \fBPTRACE_EVENT_EXIT\fP 停止
+(如果请求)，但在所有其他线程退出之前不会传递后续的 \fBWIFEXITED\fP 通知。 如上所述，如果其他线程之一调用
+\fBexecve\fP(2)，则线程组领导者死亡将报告 \fInever\fP。 如果执行的线程没有被这个跟踪器跟踪，跟踪器永远不会知道 \fBexecve\fP(2)
+发生了。 一种可能的解决方法是 \fBPTRACE_DETACH\fP 线程组领导而不是在这种情况下重新启动它。 最后在 2.6.38.6 上确认。
+.PP
+\fBSIGKILL\fP 信号仍可能在实际信号死亡之前导致 \fBPTRACE_EVENT_EXIT\fP 停止。 这可能会在 future 中改变;
+\fBSIGKILL\fP 旨在始终立即终止任务，即使在 ptrace 下也是如此。 最后确认于 Linux 3.13。
+.PP
+如果信号被发送到被跟踪者，但发送被跟踪者抑制，一些系统调用返回 \fBEINTR\fP。 (这是非常典型的操作:
+它通常由调试器在每次附加时完成，以免引入伪造的 \fBSIGSTOP\fP)。 从 Linux 3.2.9 开始，以下系统调用受到影响 (此列表可能不完整)
+: \fBepoll_wait\fP(2) 和来自 \fBinotify\fP(7) 文件描述符的 \fBread\fP(2)。
+此错误的常见症状是，当您使用以下命令附加到静止进程时
+.PP
+.in +4n
+.EX
+跟踪 \-p <process\-ID>
+.EE
+.in
+.PP
+然后，而不是通常的和预期的单行输出，例如
+.PP
+.in +4n
+.EX
+restart_syscall(<..。恢复中断调用 ...>_
+.EE
+.in
+.PP
+or
+.PP
+.in +4n
+.EX
+选择 (6，[5]，NULL，[5]，NULL_
+.EE
+.in
+.PP
+('_' 表示游标位置)，您观察到不止一行。 例如:
+.PP
+.in +4n
+.EX
+    clock_gettime(CLOCK_MONOTONIC, {15370, 690928118}) = 0
+    epoll_wait(4,_
+.EE
+.in
+.PP
+此处不可见的是，在 \fBstrace\fP(1) 附加到它之前，该进程在 \fBepoll_wait\fP(2) 中被阻止。 附加导致
+\fBepoll_wait\fP(2) 返回用户空间并返回错误 \fBEINTR\fP。 在这种特殊情况下，程序通过检查当前时间对 \fBEINTR\fP
+作出反应，然后再次执行 \fBepoll_wait\fP(2)。 (不期望此类 "stray" \fBEINTR\fP 错误的程序可能会在 \fBstrace\fP(1)
+附加时以意想不到的方式运行。)
+.PP
+与正常规则相反，\fBptrace\fP() 的 glibc 包装器可以将 \fIerrno\fP 设置为零。
+.SH "SEE ALSO"
+\fBgdb\fP(1), \fBltrace\fP(1), \fBstrace\fP(1), \fBclone\fP(2), \fBexecve\fP(2),
+\fBfork\fP(2), \fBgettid\fP(2), \fBprctl\fP(2), \fBseccomp\fP(2), \fBsigaction\fP(2),
+\fBtgkill\fP(2), \fBvfork\fP(2), \fBwaitpid\fP(2), \fBexec\fP(3), \fBcapabilities\fP(7),
+\fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

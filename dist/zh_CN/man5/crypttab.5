@@ -1,0 +1,787 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH CRYPTTAB 5 "" "systemd 253" crypttab
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+crypttab \- 加密块设备的配置
+.SH SYNOPSIS
+.PP
+/etc/crypttab
+.SH DESCRIPTION
+.PP
+/etc/crypttab 文件描述了在系统引导期间设置的加密块设备。
+.PP
+空行和以 "#" 字符开头的行将被忽略 \&。剩下的每一行都描述了一个加密的块设备 \&。字段由空格 \& 分隔。
+.PP
+每一行都在表格中
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\fIvolume\-name\fP \fIencrypted\-device\fP \fIkey\-file\fP \fIoptions\fP
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+前两个字段是必填的，其余两个是可选的 \&。
+.PP
+使用该文件设置加密块设备支持四种加密模式: LUKS、TrueCrypt、BitLocker 和 plain\&。有关每种模式的更多信息，请参见
+\fBcryptsetup\fP(8)。当 options 字段没有指定模式，且块设备包含 LUKS 签名时，作为 LUKS 设备打开; 否则，假定为原始
+dm\-crypt (普通模式) 格式 \&。
+.PP
+/etc/crypttab 的四个字段定义如下:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+第一个字段包含带有解密数据的结果卷的名称; 它的块设备设置在 /dev/mapper/\& 下面。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+第二个字段包含底层块设备或文件的路径，或通过 "UUID=" 后跟 UUID\& 的块设备规范。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+第三个字段指定带有加密密钥 \& 的文件的绝对路径。可选地，路径后面可以跟 ":" 和 /etc/fstab 样式的设备规范 (例如 \&.g\&。以
+"LABEL=" 或类似的开头) ; 在这种情况下，路径是相对于指定设备 \*(Aqs 文件系统根目录 \&. 如果该字段不存在或者是 "none" 或
+"\-"，则以要解锁的卷命名的密钥文件 (i\&.e\&. 该行的第一列)，以 \& 为后缀。key 自动从
+/etc/cryptsetup\-keys\&.d/ 和 /run/cryptsetup\-keys\&.d/ 目录加载，如果存在
+\&。否则，必须在系统启动时手动输入密码 \&。对于交换加密，/dev/urandom 可用作密钥文件，从而产生随机密钥 \&。
+.sp
+如果指定的密钥文件路径引用文件系统中的 \fBAF_UNIX\fP 流套接字，则通过连接到套接字并从连接中读取来获取密钥
+\&。这允许服务的实现在需要时动态地提供关键信息 \&。详情见下文 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+第四个字段 (如果存在) 是以逗号分隔的选项列表 \&。下面列出了支持的选项 \&。
+.RE
+.SH "KEY ACQUISITION"
+.PP
+支持六种不同的机制来获取解密密钥或解锁加密卷的密码。Specifically:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+最突出的是，在批量激活期间 (我 \&.e\&。通常在启动时) 可能会以交互方式询问用户，要求他们输入必要的密码 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+(unencrypted) 密钥可以从磁盘上的文件中读取，可能在可移动媒体上 \&。每行的第三个字段编码位置，详情见上文 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+通过指定 \fBAF_UNIX\fP 文件系统套接字代替第三个字段中的密钥文件，可以从另一个服务请求 (unencrypted)
+密钥。有关详细信息，请参见上文和下文 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+可以通过 PKCS#11 兼容的硬件安全 token 或智能卡获取密钥。在这种情况下，加密密钥存储在 disk/removable 媒体上，通过
+\fBAF_UNIX\fP 获取，或存储在 LUKS2 JSON token 元数据标头 \& 中。加密的密钥随后由 PKCS#11 token
+使用存储在其上的 RSA 密钥解密，然后用于解锁加密的卷 \&。使用下面描述的 \fBpkcs11\-uri=\fP 选项来使用此机制 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+同样，可以通过 FIDO2 兼容的硬件安全 token (必须实现 "hmac\-secret" 扩展) \&
+获取密钥。在这种情况下，注册期间随机生成的密钥存储在 disk/removable 媒体上，通过 \fBAF_UNIX\fP 获取，或存储在 LUKS2
+JSON token 元数据标头 \& 中。随机密钥通过 FIDO2 token 上的加密散列函数 (HMAC) 进行散列，使用存储在 token
+上的密钥，该密钥永远不会离开它 \&。然后将生成的哈希值用作解锁加密卷的密钥。使用下面描述的 \fBfido2\-device=\fP 选项来使用此机制 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+类似地，可以通过 TPM2 安全芯片 \& 获取密钥。在这种情况下，(在注册期间) 随机生成的密钥 \(em 由从 TPM2 芯片派生的非对称密钥加密
+\*(Aqs seed 密钥 \(em 存储在 disk/removable 媒体上，通过 \fBAF_UNIX\fP 获取，或存储在 LUKS2 JSON
+token 中元数据头 \&。使用下面描述的 \fBtpm2\-device=\fP 选项来使用此机制 \&。
+.RE
+.PP
+对于后五种机制，用于解锁卷的密钥材料的来源主要配置在每个 /etc/crypttab 行的第三个字段中，但也可以配置在
+/etc/cryptsetup\-keys\&.d/ 和 /run/cryptsetup\-keys\&.d/ (见上文) 或 LUKS2 JSON
+token 标头中 (以防万一后三个) \&。使用 \fBsystemd\-cryptenroll\fP(1) 工具在 LUKS2 卷 \& 中注册
+PKCS#11、FIDO2 和 TPM2 设备。
+.SH "SUPPORTED OPTIONS"
+.PP
+在每行的第四个字段中可以使用以下选项:
+.PP
+\fBcipher=\fP
+.RS 4
+指定要使用的密码 \&。有关可能的值和此选项的默认值，请参见 \fBcryptsetup\fP(8)\&。建议使用具有不可预测的 IV 值的密码，例如
+"aes\-cbc\-essiv:sha256"\&。密码规范中的嵌入式逗号需要通过在它们前面加上反斜杠来转义，请参见下面的示例 \&。
+.RE
+.PP
+\fBdiscard\fP
+.RS 4
+允许丢弃请求通过加密的块设备 \&。这提高了 SSD 存储的性能，但具有安全隐患 \&。
+.RE
+.PP
+\fBhash=\fP
+.RS 4
+指定用于密码散列 \& 的散列。有关可能的值和此选项的默认值，请参见 \fBcryptsetup\fP(8)\&。
+.RE
+.PP
+\fBheader=\fP
+.RS 4
+使用存储 LUKS 标头的分离的 (separated) 元数据设备或文件 \&。此选项仅与 LUKS 设备相关。有关可能的值和此选项的默认值，请参见
+\fBcryptsetup\fP(8)\&。
+.sp
+可选地，路径后面可以跟 ":" 和 /etc/fstab 设备规范 (例如 \&.g\&。以 "UUID=" 或类似的开头) ;
+在这种情况下，路径是相对于设备文件系统根 \& 的。设备仅在 LUKS 设备激活持续时间内自动安装 \&。
+.RE
+.PP
+\fBkeyfile\-offset=\fP
+.RS 4
+指定要在密钥文件开头跳过的字节数 \&。有关可能的值和此选项的默认值，请参见 \fBcryptsetup\fP(8)\&。
+.RE
+.PP
+\fBkeyfile\-size=\fP
+.RS 4
+指定要从密钥文件中读取的最大字节数 \&。有关可能的值和此选项的默认值，请参见
+\fBcryptsetup\fP(8)\&。在普通加密模式中忽略此选项，因为密钥文件大小由密钥大小 \& 给出。
+.RE
+.PP
+\fBkeyfile\-erase\fP
+.RS 4
+如果启用，则指定的密钥文件在卷激活后或激活失败时为 erased\&。这在密钥文件仅在激活前短暂获取时特别有用 (例如，通过 /run /
+中的文件，由激活前运行的服务生成)，并应在使用后删除。默认关闭 \&。
+.RE
+.PP
+\fBkey\-slot=\fP
+.RS 4
+指定用于将密码短语或密钥与 \& 进行比较的密钥槽。如果密钥槽与给定的密码或密钥不匹配，但另一个匹配，则无论 \&，设备的设置都将失败。该选项表示
+\fBluks\fP\&。有关可能的值 \&，请参见 \fBcryptsetup\fP(8)。默认是按顺序尝试所有键槽 \&。
+.RE
+.PP
+\fBkeyfile\-timeout=\fP
+.RS 4
+指定密钥文件所在设备或用作密钥文件的设备的超时时间，如果无法访问则回退到密码 \&。外部设备上的关键文件见
+\fBsystemd\-cryptsetup\-generator\fP(8)\&。
+.RE
+.PP
+\fBluks\fP
+.RS 4
+强制 LUKS 模式 \&。使用此模式时，将忽略以下选项，因为它们由设备上的 LUKS 标头提供:
+\fBcipher=\fP、\fBhash=\fP、\fBsize=\fP\&。
+.RE
+.PP
+\fBbitlk\fP
+.RS 4
+解密 BitLocker 驱动器 \&。加密参数由 cryptsetup 从 BitLocker 标头推导出来。
+.RE
+.PP
+\fB_netdev\fP
+.RS 4
+将此 cryptsetup 设备标记为需要网络 \&。它会在网络可用后启动，类似于标有 \fB_netdev\fP\& 的
+\fBsystemd.mount\fP(5) 单元。设置此设备的服务元将在 remote\-fs\-pre\&.target 和
+remote\-cryptsetup\&.target 之间排序，而不是 cryptsetup\-pre\&.target 和
+cryptsetup\&.target\&。
+.sp
+提示: 如果此设备用于 \fBfstab\fP(5) 中指定的挂载点，则 \fB_netdev\fP 选项也应用于挂载点
+\&。否则，可能会创建一个依赖循环，其中挂载点将被 local\-fs\&.target 拉入，而配置网络的服务通常只启动 \fIafter\fP
+本地文件系统已挂载 \&。
+.RE
+.PP
+\fBnoauto\fP
+.RS 4
+此设备将不会添加到 cryptsetup\&.target\&。这意味着它不会在启动时自动解锁，除非有其他东西将其拉入
+\&。特别是，如果设备用于挂载点，它 \*(Aqll 在启动期间自动解锁，除非挂载点本身也被 \fBnoauto\fP\& 禁用。
+.RE
+.PP
+\fBnofail\fP
+.RS 4
+该设备不会成为 cryptsetup\&.target\& 的硬依赖。它 \*(Aqll
+仍然被拉入并启动，但系统不会等待设备出现并解锁，如果不成功则启动不会失败 \&。请注意，依赖于解锁设备的其他单元可能仍会失败
+\&。特别是，如果设备用于挂载点，挂载点本身也需要有 \fBnofail\fP 选项，否则设备解锁不成功会导致引导失败 \&。
+.RE
+.PP
+\fBoffset=\fP
+.RS 4
+后端设备中的起始偏移量，以 512 字节扇区为单位 \&。此选项仅与普通设备相关 \&。
+.RE
+.PP
+\fBplain\fP
+.RS 4
+强制普通加密模式 \&。
+.RE
+.PP
+\fBread\-only\fP, \fBreadonly\fP
+.RS 4
+以只读模式设置加密块设备 \&。
+.RE
+.PP
+\fBsame\-cpu\-crypt\fP
+.RS 4
+使用提交 IO 的同一 CPU 执行加密。默认是使用未绑定的工作队列，以便加密工作在可用 CPU 之间自动平衡。
+.sp
+这需要内核 4\&.0 或更新版本 \&。
+.RE
+.PP
+\fBsubmit\-from\-crypt\-cpus\fP
+.RS 4
+加密后禁止将写入卸载到单独的线程。在某些情况下，将写入请求从加密线程卸载到专用线程会显着降低性能 \&。默认是将写入请求卸载到专用线程，因为它有利于
+CFQ 调度程序使用相同的上下文提交写入 \&。
+.sp
+这需要内核 4\&.0 或更新版本 \&。
+.RE
+.PP
+\fBno\-read\-workqueue\fP
+.RS 4
+绕过 dm\-crypt 内部工作队列并同步处理读取请求 \&。默认是将这些请求排队并异步处理它们。
+.sp
+这需要内核 5\&.9 或更新版本 \&。
+.RE
+.PP
+\fBno\-write\-workqueue\fP
+.RS 4
+绕过 dm\-crypt 内部工作队列并同步处理写请求 \&。默认是将这些请求排队并异步处理它们。
+.sp
+这需要内核 5\&.9 或更新版本 \&。
+.RE
+.PP
+\fBskip=\fP
+.RS 4
+加密数据开头要跳过多少个 512 字节扇区 \&. 这与 \fBoffset=\fP 选项在初始化 vector (IV) 计算中使用的扇区号不同。使用
+\fBoffset=\fP 会将 IV 计算偏移相同的 negative 量 \&。因此，如果给定 \fBoffset=\fP\fIn\fP，扇区 \fIn\fP 将获得扇区号
+0 用于 IV 计算 \&。使用 \fBskip=\fP 会导致扇区 \fIn\fP 也成为映射设备的第一个扇区，但其 IV 生成编号为 \fIn\fP\&。
+.sp
+此选项仅与普通设备相关 \&。
+.RE
+.PP
+\fBsize=\fP
+.RS 4
+以位 \& 为单位指定密钥大小。有关可能的值和此选项的默认值，请参见 \fBcryptsetup\fP(8)\&。
+.RE
+.PP
+\fBsector\-size=\fP
+.RS 4
+以字节为单位指定扇区大小 \&。有关可能的值和此选项的默认值，请参见 \fBcryptsetup\fP(8)\&。
+.RE
+.PP
+\fBswap\fP
+.RS 4
+加密块设备将用作交换设备，并在设置加密块设备后进行相应格式化，\fBmkswap\fP(8)\&。该选项表示 \fBplain\fP\&。
+.sp
+WARNING: 使用 \fBswap\fP 选项将在每次启动时销毁指定分区的内容，因此请确保正确指定了底层块设备 \&。
+.RE
+.PP
+\fBtcrypt\fP
+.RS 4
+使用 TrueCrypt 加密模式 \&。使用此模式时，将忽略以下选项，因为它们由设备上的 TrueCrypt 标头提供或不适用:
+\fBcipher=\fP、\fBhash=\fP、\fBkeyfile\-offset=\fP、\fBkeyfile\-size=\fP、\fBsize=\fP\&。
+.sp
+使用此模式时，从第三个字段中给出的密钥文件中读取密码。只读取该文件的第一行，不包括换行符 \&。
+.sp
+请注意，TrueCrypt 格式使用密码和密钥文件来导出卷的密码。因此，需要提供密码和所有密钥文件 \&。使用 \fBtcrypt\-keyfile=\fP
+提供所有密钥文件的绝对路径 \&。将空密码短语与一个或多个密钥文件结合使用时，请在第三个字段中使用 "/dev/null" 作为密码文件 \&。
+.RE
+.PP
+\fBtcrypt\-hidden\fP
+.RS 4
+使用隐藏的 TrueCrypt 卷 \&。该选项表示 \fBtcrypt\fP\&。
+.sp
+这将 map 位于第二个字段中提供的卷内的隐藏卷 \&。请注意，如果安装了外部卷，则隐藏卷没有保护 \&。有关此限制的更多信息，请参见
+\fBcryptsetup\fP(8)。
+.RE
+.PP
+\fBtcrypt\-keyfile=\fP
+.RS 4
+指定用于 TrueCrypt 卷 \& 的密钥文件的绝对路径。这意味着 \fBtcrypt\fP 并且可以多次使用以提供几个关键文件 \&。
+.sp
+请参见有关使用 TrueCrypt 加密模式时密码短语和密钥文件行为的 \fBtcrypt\fP 条目 \&。
+.RE
+.PP
+\fBtcrypt\-system\fP
+.RS 4
+在系统加密模式下使用 TrueCrypt\&。该选项表示 \fBtcrypt\fP\&。
+.RE
+.PP
+\fBtcrypt\-veracrypt\fP
+.RS 4
+检查 VeraCrypt 卷 \&。VeraCrypt 是 TrueCrypt 的
+fork，大部分兼容，但使用不同的、更强大的密钥派生算法，如果没有此标志 \&，将无法检测到这些算法。启用此选项可能会大大减慢解锁速度，因为
+VeraCrypt\*(Aqs 密钥派生比 TrueCrypt\*(Aqs\&. 该选项表示 \fBtcrypt\fP\&。
+.RE
+.PP
+\fBtimeout=\fP
+.RS 4
+指定查询密码的超时时间 \&。如果没有指定元，则使用秒 \&。支持的单位是 s、ms、us、min、h、d\&。超时 0 无限期等待 (默认) \&。
+.RE
+.PP
+\fBtmp=\fP
+.RS 4
+加密后的块设备将准备用作 /tmp/; 它将使用 \fBmkfs\fP(8)\& 进行格式化。将文件系统类型作为参数，例如 "ext4"、"xfs" 或
+`btrfs`\&。如果没有指定参数默认为 `ext4`\&。该选项表示 \fBplain\fP\&。
+.sp
+WARNING: 使用 \fBtmp\fP 选项将在每次启动时销毁指定分区的内容，因此请确保正确指定了底层块设备 \&。
+.RE
+.PP
+\fBtries=\fP
+.RS 4
+指定查询用户密码的最大次数 \&。默认值为 3\&。如果设置为 0，将无限期地向用户查询密码 \&。
+.RE
+.PP
+\fBheadless=\fP
+.RS 4
+采用布尔参数，默认为 false\&。如果为 true，则永远不会以交互方式查询密码 /PIN\&。对无头系统很有用 \&。
+.RE
+.PP
+\fBverify\fP
+.RS 4
+如果从控制台读取加密密码，则必须输入两次以防止输入错误 \&。
+.RE
+.PP
+\fBpassword\-echo=yes|no|masked\fP
+.RS 4
+控制是否回显从控制台读取的密码或安全 token PIN。采用布尔值或特殊字符串 `masked`\&。默认为
+\fBpassword\-echo=masked\fP\&。
+.sp
+如果启用，键入的字符将按字面意思回显 \&。如果禁用，则不会以任何形式回显键入的字符，用户将不会获得有关其输入的反馈 \&。如果设置为
+"masked"，则为输入的每个字符 \& 回显一个星号 ("*")。无论选择哪种模式，如果用户在任何时候按下制表键
+("↹")，或在输入任何其他数据之前按下退格键 ("⌫")，则回显将关闭 \&。
+.RE
+.PP
+\fBpkcs11\-uri=\fP
+.RS 4
+采用特殊值 "auto" 或指向 RSA 私钥的 \m[blue]\fBRFC7512 PKCS#11 URI\fP\m[]\&\s-2\u[1]\d\s+2，该私钥用于解密在行 \& 的第三列中指定的加密密钥。这对于通过 PKCS#11 兼容的安全
+tokens 或智能卡 \& 解锁加密卷很有用。请参见下面的示例，了解如何设置此机制以使用 YubiKey 安全 token\& 解锁 LUKS2 卷。
+.sp
+如果指定为 "auto"，则该卷必须是 LUKS2 类型，并且必须在其 LUKS2 JSON token 部分 \& 中携带 PKCS#11 安全
+token 元数据。在这种模式下，URI 和加密密钥会自动从 LUKS2 JSON token header\& 中读取。使用
+\fBsystemd\-cryptenroll\fP(1) 作为简单工具以与 `自动`\& 兼容的方式注册 PKCS#11 安全 tokens
+或智能卡。在此模式下，该行的第三列应保持为空 (即，指定为 "\-") \&。
+.sp
+指定的 URI 可以直接引用存储在 token 上的 RSA 私钥，或者仅引用槽或 token，在这种情况下，将执行对合适的 RSA 私钥的搜索
+\&。在这种情况下，如果找到多个合适的对象，则拒绝 token\&。该行第三列中配置的加密密钥按原样 (i\&.e\&. 二进制形式，未处理) 传递给
+RSA 解密 \&。然后将生成的解密密钥进行 Base64 编码，然后再用于解锁 LUKS 卷 \&。
+.sp
+使用 \fBsystemd\-cryptenroll \-\-pkcs11\-token\-uri=list\fP 列出当前插入的所有合适的 PKCS#11 安全
+tokens，以及它们的 URI\&。
+.sp
+请注意，许多可用作 PKCS#11 安全 token 的较新安全 tokens 通常也实现较新且更简单的 FIDO2 标准 \&。考虑使用
+\fBfido2\-device=\fP (如下所述) 通过 FIDO2 注册它 \&。请注意，通过 PKCS#11 注册的安全 token 不能用于通过
+FIDO2 解锁卷，除非也通过 FIDO2 注册，反之亦然。
+.RE
+.PP
+\fBfido2\-device=\fP
+.RS 4
+采用特殊值 "auto" 或指向 "hidraw" 设备节点的路径 (e\&.g\&. /dev/hidraw1) 引用实现 "hmac\-secret"
+扩展的 FIDO2 安全 token (大多数当前硬件安全 tokens 做) \&。请参见下面的示例，了解如何设置此机制以解锁具有 FIDO2 安全性
+token\& 的加密卷。
+.sp
+如果指定为 "auto"，则会自动发现 FIDO2 token 设备，因为它已插入 \&。
+.sp
+FIDO2 卷解锁需要通过 \fBfido2\-cid=\fP (见下文) 配置客户端 ID 哈希 (CID) 和传递给安全 token\*(Aqs HMAC
+功能 (在行 \* (Aqs 第三列) 中配置以运行 \&。如果未配置且卷的类型为 LUKS2，则 CID 和密钥将从 LUKS2 JSON token
+元数据中读取 \&。使用 \fBsystemd\-cryptenroll\fP(1) 作为注册 FIDO2 安全 tokens
+的简单工具，兼容此自动模式，仅适用于 LUKS2 卷 \&。
+.sp
+使用 \fBsystemd\-cryptenroll \-\-fido2\-device=list\fP 列出当前插入的所有合适的 FIDO2 安全
+tokens，以及它们的设备节点 \&。
+.sp
+此选项实现以下机制: 配置的密钥通过 FIDO2 设备实现的 HMAC 键控散列算法进行散列，由嵌入在设备上的密钥加密 \&。生成的哈希值是
+Base64 编码的，用于解锁 LUKS2 卷 \&。由于不可能从硬件 token 中提取秘密，因此在不拥有硬件 token\&
+的情况下，不可能根据配置的密钥 \(em 检索散列密钥。
+.sp
+请注意，许多实现 FIDO2 的安全 tokens 也实现 PKCS#11，适用于通过上述 \fBpkcs11\-uri=\fP 选项解锁卷
+\&。通常，更新、更简单的 FIDO2 标准更可取。
+.RE
+.PP
+\fBfido2\-cid=\fP
+.RS 4
+采用 Base64 编码的 FIDO2 客户端 ID 以用于 FIDO2 解锁操作 \&。如果指定，但 \fBfido2\-device=\fP 未指定，则隐含
+\fBfido2\-device=auto\fP\&。如果使用了 \fBfido2\-device=\fP 但没有使用 \fBfido2\-cid=\fP，则 volume
+必须是 LUKS2 类型，CID 从 LUKS2 JSON token header\& 中读取。使用
+\fBsystemd\-cryptenroll\fP(1) 在与此自动模式兼容的 LUKS2 标头中注册 FIDO2 token\&。
+.RE
+.PP
+\fBfido2\-rp=\fP
+.RS 4
+采用字符串，为 FIDO2 解锁操作配置 FIDO2 依赖方 (rp)\&。如果未指定，则使用
+"io\&.systemd\&.cryptsetup"，除非 LUKS2 JSON token 标头包含不同的值 \&。通常不需要覆盖这个 \&。
+.RE
+.PP
+\fBtpm2\-device=\fP
+.RS 4
+采用特殊值 "auto" 或指向 TPM2 安全芯片 \& 的设备节点路径
+(e\&.g\&. /dev/tpmrm0)。请参见下面的示例，了解如何设置此机制以使用 TPM2 芯片 \& 解锁加密卷。
+.sp
+使用 \fBtpm2\-pcrs=\fP (见下文) 配置 TPM2 PCR 集以将卷解锁绑定到 \&。使用 \fBsystemd\-cryptenroll\fP(1)
+作为在 LUKS2 卷中注册 TPM2 安全芯片的简单工具 \&。
+.sp
+如果指定为 "auto"，则会自动发现 TPM2 设备 \&。使用 \fBsystemd\-cryptenroll \-\-tpm2\-device=list\fP
+列出当前可用的所有合适的 TPM2 设备，以及它们的设备节点 \&。
+.sp
+此选项实现以下机制: 当通过 \fBsystemd\-cryptenroll\fP 在 LUKS2 卷上注册 TPM2
+设备时，将在主机上生成用于解锁卷的随机密钥并将其加载到 TPM2 芯片中，并使用从 TPM2 派生的非对称 "primary" 密钥对进行加密
+\*(Aqs 内部 "seed" 密钥 \&。seed 密钥和主密钥都不允许离开 TPM2 芯片 \(但是，现在加密的随机密钥可能 \&。它保存在
+LUKS2 卷 JSON token header\& 中。解锁加密卷时，在 TPM2 芯片上再次生成主密钥对 (只要芯片有效 \* (Aqs seed
+密钥由 TPM2 芯片正确维护)，然后用于解密 (在 TPM2 上芯片) 来自 LUKS2 卷 JSON token 标头的加密密钥在注册期间保存在那里
+\&。然后使用生成的解密密钥来解锁卷 \&。当随机密钥被加密时，所选 PCR 的当前值 (见下文) 包含在操作中，因此不同的 PCR
+状态会导致不同的加密密钥，并且只有在复制相同的 PCR 状态时才能恢复解密的密钥 \&.
+.RE
+.PP
+\fBtpm2\-pcrs=\fP
+.RS 4
+采用 "+" 分隔的数字 TPM2 PCR (i\&.e\&. "Platform Configuration Register") 索引列表以将
+TPM2 卷解锁绑定到 \&。此选项仅在 TPM2 注册元数据在 LUKS2 JSON token
+标头中不可用时才有用，\fBsystemd\-cryptenroll\fP 将其写入那里的方式 \&。如果不使用 (并且 LUKS2 JSON token
+标头中没有元数据定义它)，则默认为单个条目的列表: PCR 7\&。分配一个空字符串来编码将密钥绑定到任何 PCR
+的策略，使本地程序可以访问密钥，而不管当前 PCR 状态 \&。
+.RE
+.PP
+\fBtpm2\-pin=\fP
+.RS 4
+采用布尔参数，默认为 `false`\&。控制 TPM2 卷解锁是否绑定到 PIN 除了 PCRs\&。同样，此选项仅在 TPM2
+注册元数据不可用时才有用 \&。
+.RE
+.PP
+\fBtpm2\-signature=\fP
+.RS 4
+采用 \fBsystemd\-measure\fP(1) 工具生成的 TPM2 PCR JSON 签名文件的绝对路径 \&。这允许将 LUKS2 卷锁定到任何
+PCR 值，可以为其提供匹配密钥注册时指定的公钥的有效签名 \&。有关注册 TPM2 PCR 公钥的详细信息，请参见
+\fBsystemd\-cryptenroll\fP(1)。如果未指定此选项，但尝试使用已签名的 TPM2 PCR 注册解锁 LUKS2 卷，则会在
+/etc/systemd/、/run/systemd/、/usr/lib/systemd/ (按此顺序) \& 中搜索合适的签名文件
+tpm2\-pcr\-signature\&.json。
+.RE
+.PP
+\fBtpm2\-measure\-pcr=\fP
+.RS 4
+控制是否将加密卷的卷密钥测量到 TPM2 PCR\&。如果设置为 "no" (这是默认值)，则不会进行任何 PCR 扩展 \&。如果设置为
+"yes"，音量键将测量到 PCR 15\&。如果设置为 0\&...23 范围内的十进制整数，则音量键被测量到指定的 PCR\&
+中。音量键与激活的音量名称及其 UUID\& 一起测量。此功能对于支持根文件系统的加密卷特别有用，因为它允许以后的 TPM
+对象安全地绑定到根文件系统，从而特定安装 \&。
+.RE
+.PP
+\fBtpm2\-measure\-bank=\fP
+.RS 4
+选择一个或多个 TPM2 PCR 库来测量音量键，如上面的 \fBtpm2\-measure\-pcr=\fP\& 配置。可以指定多个银行，以冒号字符 \&
+分隔。如果未指定，将自动确定可用和已用银行 \&。期望消息摘要名称 (e\&.g\&. "sha1", "sha256",\&...)
+作为参数，以标识银行 \&。
+.RE
+.PP
+\fBtoken\-timeout=\fP
+.RS 4
+指定最多等待配置的安全设备 (i\&.e\&.FIDO2、PKCS#11、TPM2) 出现 \& 的时间。采用以秒为单位的时间值
+(但也可以指定其他时间单位，有关支持的格式，请参见 \fBsystemd.time\fP(7)) \&。默认为
+30s\&。一旦指定的超时已过，将尝试通过密码进行身份验证 \&。请注意，此超时适用于等待安全设备出现 \(em 它不适用于设备的 PIN 提示
+(如果需要) 或类似的 \&。传递 0 以关闭超时并永远等待 \&。
+.RE
+.PP
+\fBtry\-empty\-password=\fP
+.RS 4
+采用布尔型参数 \&。如果启用，在要求用户输入密码之前，首先会尝试使用空密码 \&
+解锁卷。这对于使用仅设置空密码的加密卷初始化的系统很有用，在首次启动时应将其替换为合适的密码，但在激活后 \&。
+.RE
+.PP
+\fBx\-systemd\&.device\-timeout=\fP
+.RS 4
+指定 systemd 在放弃条目 \& 之前应等待块设备出现的时间。参数是以秒为单位的时间或 "s"、"min"、"h"、`ms`\& 明确指定的单位。
+.RE
+.PP
+\fBx\-initrd\&.attach\fP
+.RS 4
+在 initrd 中设置这个加密的块设备，类似于用 \fBx\-initrd\&.mount\fP\& 标记的 \fBsystemd.mount\fP(5) 单元。
+.sp
+虽然它 \*(Aqs 没有必要用 \fBx\-initrd\&.mount\fP 标记根文件系统的挂载条目，但仍然建议 \fBx\-initrd\&.attach\fP
+用于包含根文件系统的加密块设备，否则 systemd 将在常规系统关闭期间尝试分离设备，同时它 \*(Aqs 仍在使用中
+\&。使用此选项，设备仍将分离，但稍后会在卸载根文件系统之后 \&。
+.sp
+包含安装在 initrd 中的文件系统的所有其他加密块设备都应使用此选项 \&。
+.RE
+.PP
+在早期引导和重新加载系统管理器配置时，此文件由 \fBsystemd\-cryptsetup\-generator\fP(8)\& 转换为原生 systemd
+单元。
+.SH "AF_UNIX KEY FILES"
+.PP
+如果密钥文件路径 (在 /etc/crypttab 条目的第三列中指定，见上文) 引用文件系统中的 \fBAF_UNIX\fP
+流套接字，则通过连接到套接字并从连接中读取密钥来获取密钥 \&。连接是从抽象命名空间中的 \fBAF_UNIX\fP 套接字名称建立的，有关详细信息，请参见
+\fBunix\fP(7)\&。根据以下格式选择源套接字名称:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\fBNUL\fP \fIRANDOM\fP /cryptsetup/ \fIVOLUME\fP
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+换句话说: 一个 \fBNUL\fP 字节 (抽象命名空间套接字所需要的)，后跟一个随机字符串 (仅由字母数字字符组成)，然后是字符值字符串
+"/cryptsetup/"，然后是要获取它们的密钥的卷的名称 \&. 例如，对于卷 "myvol":
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\e0d7067f78d9827418/cryptsetup/myvol
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+在 \fBAF_UNIX\fP 流套接字上侦听的服务可以使用 \fBgetpeername\fP(2)
+查询源套接字名称，并使用它来确定要发送哪个密钥，从而允许单个侦听套接字为多个卷提供密钥 \&。如果使用 PKCS#11 逻辑
+(见上文)，套接字源名称将以类似的方式选取，除了使用字符值字符串 "/cryptsetup\-pkcs11/"\&。对于 FIDO2
+("/cryptsetup\-fido2/") 和 TPM2 ("/cryptsetup\-tpm2/")\&
+也类似。使用不同的路径组件，以便提供密钥材料的服务知道密钥不是直接请求的，而是通过 PKCS#11/TPM2 逻辑解密以获得最终密钥 \& 的加密密钥。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&/etc/crypttab example\fP
+.PP
+设置四个加密块设备 \&。一个使用 LUKS 进行正常存储，另一个用作交换设备和两个 TrueCrypt 卷
+\&。对于第四个设备，选项字符串被解释为两个选项
+"cipher=xchacha12,aes\-adiantum\-plain64"，`keyfile\-timeout=10s`\&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+luks       UUID=2505567a\-9e27\-4efe\-a4d5\-15ad146c258b
+交换 /dev/sda7 /dev/urandom 交换
+真加密 /dev/sda2 /etc/container_password tcrypt
+隐藏 /mnt/tc_hidden /dev/null tcrypt\-hidden,tcrypt\-keyfile=/etc/keyfile
+外部 /dev/sda3 密钥文件: LABEL=keydev keyfile\-timeout=10s,cipher=xchacha12\e,aes\-adiantum\-plain64
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Yubikey\-based PKCS#11 Volume Unlocking Example\fP
+.PP
+PKCS#11 逻辑允许连接任何能够存储 RSA 解密密钥以解锁加密卷的兼容安全 token。Here\*(Aqs 示例如何为此目的在 LUKS2
+卷上设置 Yubikey 安全 token，使用 yubikey\-manager 项目中的 \fBykmap\fP(1) 初始化 token 和
+\fBsystemd\-cryptenroll\fP(1) 以将其添加到 LUKS2 卷中:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# SPDX 许可证标识符: MIT\-0
+
+# 销售 Yubikey (careful!) 上的任何旧密钥
+ykman piv 重置
+
+# 在设备上生成新的 private/public 密钥对，将公钥存入
+# \*(Aqpubkey\&.pem\*(Aq\&.
+ykman piv 生成密钥 \-a RSA2048 9d pubkey\&.pem
+
+# 从这个公钥创建一个自签名证书，并将其存储在
+# 设备 \&。"subject" 应该是用户选择的任意字符串来标识
+# 带有 \& 的 token。
+ykman piv 生成证书 \-\-subject "Knobelei" 9d pubkey\&.pem
+
+# 我们不再 \*(Aqt 需要公钥了，让 \*(Aqs 删除它 \&。既然不是
+# 安全敏感我们只是在这里做一个常规的 "rm"\&。
+rm pubkey\&.pem
+
+# 在 LUKS2 卷 \& 中注册新初始化的安全 token。Replace
+# /dev/sdXn 被分区使用 (e\&.g\&. /dev/sda1)\&.
+sudo systemd\-cryptenroll \-\-pkcs11\-token\-uri=auto /dev/sdXn
+
+# 测试: 让 \*(Aqs 运行 systemd\-cryptsetup 来测试这一切是否有效 \&。
+sudo /usr/lib/systemd/systemd\-cryptsetup 附加 mytest /dev/sdXn\-pkcs11\-uri=auto
+
+# 如果可行，让 \*(Aqs 现在将相同的行持久添加到 /etc/crypttab，
+# 对于 future\&。
+sudo bash \-c \*(Aqecho "mytest /dev/sdXn \- pkcs11\-uri=auto" >>/etc/crypttab\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+关于上面的一些注意事项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+我们使用 RSA2048，这是目前 Yubikeys 支持的最长密钥长度
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+我们使用 Yubikey 密钥槽 9d，因为那个 \*(Aqs 显然是用于解密目的的密钥槽，\m[blue]\fBsee documentation\fP\m[]\&\s-2\u[2]\d\s+2\&。
+.RE
+.PP
+\fBExample\ \&3.\ \&FIDO2 Volume Unlocking Example\fP
+.PP
+FIDO2 逻辑允许使用任何实现 "hmac\-secret" 扩展的兼容 FIDO2 安全 token 来解锁加密卷 \&。Here\*(Aqs
+一个示例，说明如何使用 \fBsystemd\-cryptenroll\fP(1): 为此目的为 LUKS2 卷设置 FIDO2 安全 token
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# SPDX 许可证标识符: MIT\-0
+
+# 在 LUKS2 卷 \& 中注册安全 token。将 /dev/sdXn 替换为
+# 要使用的分区 (e\&.g\&. /dev/sda1)\&.
+sudo systemd\-cryptenroll \-\-fido2\-device=auto /dev/sdXn
+
+# 测试: 让 \*(Aqs 运行 systemd\-cryptsetup 来测试这是否有效 \&。
+sudo /usr/lib/systemd/systemd\-cryptsetup 附加 mytest /dev/sdXn\-fido2\-device=auto
+
+# 如果可行，让 \*(Aqs 现在将相同的行持久添加到 /etc/crypttab，
+# 对于 future\&。
+sudo bash \-c \*(Aqecho "mytest /dev/sdXn \- fido2\-device=auto" >>/etc/crypttab\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&TPM2 Volume Unlocking Example\fP
+.PP
+TPM2 逻辑允许使用 Linux 内核支持的任何 TPM2 芯片来解锁加密卷 \&。Here\*(Aqs 一个示例，如何使用
+\fBsystemd\-cryptenroll\fP(1): 为 LUKS2 卷为此目的设置 TPM2 芯片
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# SPDX 许可证标识符: MIT\-0
+
+# 在 LUKS2 卷中注册 TPM2 安全芯片，绑定 PCR 7
+# 仅有的 \&。将 /dev/sdXn 替换为要使用的分区 (e\&.g\&. /dev/sda1)\&。
+sudo systemd\-cryptenroll \-\-tpm2\-device=auto \-\-tpm2\-pcrs=7 /dev/sdXn
+
+# 测试: 让 \*(Aqs 运行 systemd\-cryptsetup 来测试这是否有效 \&。
+sudo /usr/lib/systemd/systemd\-cryptsetup attach mytest /dev/sdXn \- tpm2\-device=auto
+
+# 如果可行，让 \*(Aqs 现在将相同的行持久添加到 /etc/crypttab，
+# 对于 future\&。
+sudo bash \-c \*(Aqecho "mytest /dev/sdXn \- tpm2\-device=auto" >>/etc/crypttab\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-cryptsetup@.service\fP(8),
+\fBsystemd\-cryptsetup\-generator\fP(8), \fBsystemd\-cryptenroll\fP(1), \fBfstab\fP(5),
+\fBcryptsetup\fP(8), \fBmkswap\fP(8), \fBmke2fs\fP(8)
+.SH NOTES
+.IP " 1." 4
+RFC7512 PKCS#11 URI
+.RS 4
+\%https://tools.ietf.org/html/rfc7512
+.RE
+.IP " 2." 4
+见文档
+.RS 4
+\%https://developers.yubico.com/PIV/Introduction/Certificate_slots.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

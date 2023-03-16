@@ -1,0 +1,187 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 1993 David Metcalfe (david@prism.demon.co.uk)
+.\" and Copyright (C) 2005, 2014, 2020 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 18:05:30 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Fri Feb 16 14:25:17 1996 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified Sun Jul 21 20:55:44 1996 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified Mon Oct 15 21:16:25 2001 by John Levon <moz@compsoc.man.ac.uk>
+.\" Modified Tue Oct 16 00:04:43 2001 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified Fri Jun 20 03:04:30 2003 by Andries Brouwer <aeb@cwi.nl>
+.\" 2005-12-13, mtk, Substantial rewrite of strerror_r() description
+.\"         Addition of extra material on portability and standards.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strerror 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strerror, strerrorname_np, strerrordesc_np, strerror_r, strerror_l \-
+返回描述错误号的字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <string.h>\fP
+.PP
+\fBchar *strerror(int \fP\fIerrnum\fP\fB);\fP
+\fBconst char *strerrorname_np(int \fP\fIerrnum\fP\fB);\fP
+\fBconst char *strerrordesc_np(int \fP\fIerrnum\fP\fB);\fP
+.PP
+\fBint strerror_r(int \fP\fIerrnum\fP\fB, char \fP\fIbuf\fP\fB[.\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB);\fP
+               /* XSI\-compliant */
+.PP
+\fBchar *strerror_r(int \fP\fIerrnum\fP\fB, char \fP\fIbuf\fP\fB[.\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB);\fP
+               /* GNU\-specific */
+.PP
+\fBchar *strerror_l(int \fP\fIerrnum\fP\fB, locale_t \fP\fIlocale\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBstrerrorname_np\fP(), \fBstrerrordesc_np\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.PP
+\fBstrerror_r\fP():
+.nf
+    在以下情况下提供符合 XSI 的版本:
+        (_POSIX_C_SOURCE >= 200112L) && ! _GNU_SOURCE
+    否则，将提供 GNU 特定版本。
+.fi
+.SH DESCRIPTION
+\fBstrerror\fP() 函数返回一个指向字符串的指针，该字符串描述在参数 \fIerrnum\fP 中传递的错误代码，可能使用当前语言环境的
+\fBLC_MESSAGES\fP 部分来选择适当的语言。 (例如，如果 \fIerrnum\fP 是 \fBEINVAL\fP，则返回的描述将是 `无效参数`。)
+应用程序不得修改此字符串，但可以通过后续调用将其修改为 \fBstrerror\fP() 或 \fBstrerror_l\fP()。 没有其他，库 函数，包括
+\fBperror\fP(3)，将修改这个字符串。
+.PP
+与 \fBstrerror\fP() 一样，\fBstrerrordesc_np\fP() 函数返回一个指向字符串的指针，该字符串描述在参数 \fIerrnum\fP
+中传递的错误代码，不同之处在于返回的字符串未根据当前语言环境进行翻译。
+.PP
+.\"
+\fBstrerrorname_np\fP() 函数返回一个指向字符串的指针，该字符串包含在参数 \fIerrnum\fP 中传递的错误代码的名称。 例如，给定
+\fBEPERM\fP 作为参数，这个函数返回一个指向字符串 "EPERM" 的指针。
+.SS strerror_r()
+\fBstrerror_r\fP() 函数类似于 \fBstrerror\fP()，但它是线程安全的。 此函数有两个版本: 一个在 POSIX.1\-2001
+中指定的 XSI 兼容版本 (从 glibc 2.3.4 开始可用，但在 glibc 2.13 之前不兼容 POSIX)，以及一个 GNU 特定版本
+(从 glibc 2.0 开始可用)。 XSI 兼容版本提供了 SYNOPSIS 中显示的特性测试宏设置; 否则提供 GNU 特定版本。
+如果没有显式定义特性测试宏，则 (自 glibc 2.4 起) \fB_POSIX_C_SOURCE\fP 默认定义为值 200112L，因此默认提供 XSI
+兼容版本的 \fBstrerror_r\fP()。
+.PP
+符合 XSI 标准的 \fBstrerror_r\fP() 是便携式应用的首选。 它在用户提供的长度为 \fIbuflen\fP 的缓冲区 \fIbuf\fP
+中返回错误字符串。
+.PP
+.\"
+GNU 特定的 \fBstrerror_r\fP() 返回一个指向包含错误消息的字符串的指针。 这可能是指向函数存储在 \fIbuf\fP
+中的字符串的指针，或者是指向某个 (immutable) 静态字符串的指针 (在这种情况下 \fIbuf\fP 未使用)。 如果函数在 \fIbuf\fP
+中存储一个字符串，那么最多存储 \fIbuflen\fP 个字节 (如果 \fIbuflen\fP 太小，\fIerrnum\fP 未知，字符串可能会被截断)。
+该字符串始终包含一个终止空字节 (\[aq]\e0\[aq])。
+.SS strerror_l()
+\fBstrerror_l\fP() 类似于 \fBstrerror\fP()，但 maps \fIerrnum\fP 为 \fIlocale\fP
+指定的区域设置中的区域相关错误消息。 如果 \fIlocale\fP 是特殊的语言环境对象 \fBLC_GLOBAL_LOCALE\fP
+或者不是有效的语言环境对象句柄，则 \fBstrerror_l\fP() 的行为是未定义的。
+.SH "RETURN VALUE"
+\fBstrerror\fP()、\fBstrerror_l\fP() 和 GNU 特定的 \fBstrerror_r\fP()
+函数返回适当的错误描述字符串，如果错误号未知，则返回 "Unknown error nnn" 消息。
+.PP
+成功时，\fBstrerrorname_np\fP() 和 \fBstrerrordesc_np\fP() 返回适当的错误描述字符串。 如果 \fIerrnum\fP
+是一个无效的错误号，这些函数返回 NULL。
+.PP
+XSI 兼容的 \fBstrerror_r\fP() 函数在成功时返回 0。 出错时，返回 (positive) 错误号 (自 glibc 2.13
+起)，或返回 \-1 并设置 \fIerrno\fP 以指示错误 (在 glibc 2.13 之前)。
+.PP
+POSIX.1\-2001 和 POSIX.1\-2008 要求对 \fBstrerror\fP() 或 \fBstrerror_l\fP() 的成功调用应保持
+\fIerrno\fP 不变，并注意，由于没有保留任数返回值来指示错误，因此希望检查错误的应用程序应该调用前将 \fIerrno\fP 初始化为零，调用后检查
+\fIerrno\fP。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIerrnum\fP 的值不是有效的错误号。
+.TP 
+\fBERANGE\fP
+提供的存储空间不足，无法包含错误描述字符串。
+.SH VERSIONS
+\fBstrerror_l\fP() 函数最早出现在 glibc 2.6 中。
+.PP
+\fBstrerrorname_np\fP() 和 \fBstrerrordesc_np\fP() 函数首次出现在 glibc 2.32 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrerror\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:strerror
+T}
+T{
+\fBstrerrorname_np\fP(),
+\fBstrerrordesc_np\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBstrerror_r\fP(),
+\fBstrerror_l\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.\" FIXME . for later review when Issue 8 is one day released...
+.\" A future POSIX.1 may remove strerror_r()
+.\" http://austingroupbugs.net/tag_view_page.php?tag_id=8
+.\" http://austingroupbugs.net/view.php?id=508
+\fBstrerror\fP() 由 POSIX.1\-2001、POSIX.1\-2008 和 C99 指定。 \fBstrerror_r\fP() 由
+POSIX.1\-2001 和 POSIX.1\-2008 指定。
+.PP
+\fBstrerror_l\fP() 在 POSIX.1\-2008 中指定。
+.PP
+GNU 特定的函数 \fBstrerror_r\fP()、\fBstrerrorname_np\fP() 和 \fBstrerrordesc_np\fP()
+是非标准扩展。
+.PP
+.\" e.g., Solaris 8, HP-UX 11
+.\" e.g., FreeBSD 5.4, Tru64 5.1B
+如果调用遇到错误，POSIX.1\-2001 允许 \fBstrerror\fP() 设置 \fIerrno\fP，但没有指定在发生错误时应该返回什么值作为函数结果。
+在某些系统上，如果错误号未知，则 \fBstrerror\fP() 返回 NULL。 在其他系统上，\fBstrerror\fP() 返回类似于 "Error
+nnn occurred" 的字符串，如果错误号未知，则将 \fIerrno\fP 设置为 \fBEINVAL\fP。 C99 和 POSIX.1\-2008
+要求返回值为非 NULL。
+.SH NOTES
+GNU C 库为 \fBstrerror\fP() 使用 1024 个字符的缓冲区。 因此，此缓冲区大小应足以避免在调用 \fBstrerror_r\fP()
+时出现 \fBERANGE\fP 错误。
+.PP
+\fBstrerrorname_np\fP() 和 \fBstrerrordesc_np\fP() 是线程安全的和异步信号安全的。
+.SH "SEE ALSO"
+\fBerr\fP(3), \fBerrno\fP(3), \fBerror\fP(3), \fBperror\fP(3), \fBstrsignal\fP(3),
+\fBlocale\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

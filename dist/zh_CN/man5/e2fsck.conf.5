@@ -1,0 +1,313 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 2006 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under the terms of the GNU Public License.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH e2fsck.conf 5 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+e2fsck.conf\-e2fsck 的配置文件
+.SH DESCRIPTION
+\fIe2fsck.conf\fP 是 \fBe2fsck\fP(8) 的配置文件。 它在检查 ext2、ext3 或 ext4 文件系统时控制
+\fBe2fsck\fP(8) 的默认行为。
+.PP
+.\" Tags can be assigned multiple values
+\fIe2fsck.conf\fP 文件使用 INI 风格的格式。 节或顶级部分由方括号分隔: [ ]。
+在每个部分中，每一行都定义了一个关系，它将标签分配给值，或者分配给一个包含更多关系或子部分的子部分。 此配置文件使用的 INI 样式格式示例如下:
+.P
+  [section1]
+.br
+  tag1 = value_a
+.br
+  tag1 = value_b
+.br
+  tag2 = value_c
+.P
+  [section 2]
+.br
+  tag3 = {
+.br
+  subtag1 = subtag_value_a
+.br
+  subtag1 = subtag_value_b
+.br
+  subtag2 = subtag_value_c
+.br
+  }
+.br
+  tag1 = value_d
+.br
+  tag2 = value_e
+.br
+  }
+.P
+注释在注释的开头由分号 (';') 或散列 ('#') 字符分隔，并由行尾字符终止。
+.P
+如果标签和值包含空格，则必须使用双引号引起来。 在带引号的字符串中，标准反斜杠解释适用: "\en" (换行符)、"\et" (制表符)、"\eb"
+(退格符) 和 "\e\e" (反斜杠字符)。
+.P
+\fIe2fsck.conf\fP 文件中使用了以下节。 它们将在本文档的 future 部分中进行更详细的描述。
+.TP 
+\fI[options]\fP
+本节包含 \fBe2fsck\fP's 行为的一般配置参数。
+.TP 
+\fI[defaults]\fP
+包含定义 \fBe2fsck\fP(8) 使用的默认参数的关系。 通常，这些默认值可能会被用户提供的命令行选项覆盖。
+.TP 
+\fI[problems]\fP
+本节允许管理员重新配置 e2fsck 如何处理各种文件系统不一致。
+.TP 
+\fI[scratch_files]\fP
+本节控制 e2fsck 何时尝试使用暂存文件来减少内存需求。
+.SH "THE [options] STANZA"
+\fI[options]\fP 节中定义了以下关系。
+.TP 
+\fIallow_cancellation\fP
+如果此关系设置为布尔值 true，则如果用户使用 ^C 中断 e2fsck，并且文件系统未明确标记为包含错误，则 e2fsck 将退出，退出状态为 0
+而不是 32。 此设置默认为 false。
+.TP 
+\fIaccept_time_fudge\fP
+不幸的是，由于 Windows 的不幸设计决定将硬件时钟配置为本地时间，而不是更合适且更不容易出错的 UTC 时间，许多用户最终遇到系统时钟在
+e2fsck 时设置不正确的情况运行。
+.IP
+从历史上看，这通常是由于某些具有 buggy 初始化脚本或者安装程序的发行版没有正确检测到这种情况并采取适当的对策。
+不幸的是，即使在今天，这种情况偶尔也会发生，通常是由于 buggy 或配置错误的虚拟化管理器，或者安装程序在安装过程中无法访问网络时间服务器。
+所以默认情况下，我们允许超级块时间最多被篡改 24 小时。 这可以通过将 \fIaccept_time_fudge\fP 设置为布尔值 false 来禁用。
+此设置默认为 true。
+.TP 
+\fIbroken_system_clock\fP
+\fBe2fsck\fP(8) 程序有一些试探法，假设系统时钟是正确的。 此外，许多系统程序都会做出类似的假设。 例如，UUID
+库依赖于时间不会倒退，以便它能够保证发布全球唯一的 ID。 系统时钟损坏的系统很好，损坏了。 但是，确实存在损坏的系统时钟，尤其是在嵌入式系统中。
+E2fsck 将尝试使用启发式方法来确定时间是否可信; 如果这是真的，则跳过基于时间的检查。 如果此布尔值设置为 true，则 e2fsck
+将始终假定系统时钟不可信任。
+.TP 
+\fIbuggy_init_scripts\fP
+这个布尔关系是 \fIaccept_time_fudge\fP 的别名，用于向后兼容; 以前是上面 \fIaccept_time_fudge\fP 定义的行为默认为
+false，\fIbuggy_init_scripts\fP 会让 superblock time 字段最多错误 24 小时。
+当我们更改默认值时，我们还将此布尔关系重命名为 \fIaccept_time_fudge.\fP
+.TP 
+\fIclear_test_fs_flag\fP
+如果 ext4 文件系统在系统上可用，此布尔关系控制 \fBe2fsck\fP(8) 是否会提供清除 test_fs 标志。 它默认为真。
+.TP 
+\fIdefer_check_on_battery\fP
+如果系统使用电池运行，此布尔关系控制文件系统检查之间的间隔 (基于时间或安装次数) 是否应加倍。 此设置默认为 true。
+.TP 
+\fIindexed_dir_slack_percentage\fP
+\fBe2fsck\fP(8)
+在对索引目录进行重新打包时，在每个叶子节点中预留指定百分比的空余空间，以便在不分裂叶子节点的情况下向目录中添加少量新条目，从而使目录的平均填充率保持在较高的水平，更高效的水平。
+此关系默认为 20%。
+.TP 
+\fIinode_count_fullmap\fP
+如果此布尔关系为真，则在检查具有大量硬链接文件的文件系统时，使用内存换取速度。 所需的内存量与文件系统中的索引节点数成正比。
+对于大型文件系统，这可能是千兆字节的内存。 (例如，如果启用此优化，具有 2.8 十亿 inode 的 40TB 文件系统将消耗额外的 5.7 GB
+内存。) 此设置默认为 false。
+.TP 
+\fIlog_dir\fP
+如果 \fIlog_filename\fP 或 \fIproblem_log_filename\fP 关系包含相对路径名，则日志文件将放置在 \fIlog_dir\fP
+关系命名的目录中。
+.TP 
+\fIlog_dir_fallback\fP
+此关系包含一个备用目录，如果 \fIlog_dir\fP 指定的目录不可用或不可写，将使用该目录。
+.TP 
+\fIlog_dir_wait\fP
+如果这个布尔关系为真，如果 \fIlog_dir\fP 或 \fIlog_dir_fallback\fP 指定的目录不可用或不可写，e2fsck
+会将输出保存在内存缓冲区中，子进程将定期测试日志目录是否已变为在引导序列为 reading/writing 安装请求的文件系统后可用。 这实现了
+\fBlogsave\fP(8) 为 e2fsck 日志文件提供的功能。
+.TP 
+\fIlog_filename\fP
+此关系指定将写入 e2fsck 输出副本的文件名。 如果使用 \fImax_count_problems\fP 关系抑制了某些问题报告 (或使用
+\fImax_count\fP 关系基于每个问题)，则完整的问题报告集将写入日志文件。 文件名可能包含各种百分比表达式 (%D、%T、%N
+等)，这些表达式将被扩展，以便日志文件的文件名可以包含日期、时间、设备名称和其他运行时参数等内容。 有关详细信息，请参见 \fBLOGGING\fP 部分。
+.TP 
+\fImax_count_problems\fP
+此关系指定在压制该类型的进一步问题报告之前，将打印到 stdout 的特定类型问题报告的最大数量。 如果控制台速度很慢
+(即，连接到串行端口)，这可能很有用，因此大量输出最终可能会延迟启动过程很长时间 (可能数小时)。
+.TP 
+\fIno_optimize_extents\fP
+如果此布尔关系为真，则不要通过减少树的宽度或深度来优化范围树。 此设置默认为 false。
+.TP 
+\fIproblem_log_filename\fP
+此关系指定文件名，其中写入了 e2fsck 发现的问题代码日志。 文件名可能包含各种百分比表达式 (%D、%T、%N
+等)，这些表达式将被扩展，以便日志文件的文件名可以包含日期、时间、设备名称和其他运行时参数等内容。 有关详细信息，请参见 \fBLOGGING\fP 部分。
+.TP 
+\fIreadahead_mem_pct\fP
+使用此百分比的内存尝试在主 e2fsck 线程之前读入元数据块。 这应该会减少运行时间，具体取决于底层存储的速度和可用内存量。
+没有默认值，但有关更多详细信息，请参见 \fBreadahead_kb\fP。
+.TP 
+\fIreadahead_kb\fP
+使用此内存量在主检查线程之前读入元数据块。 将此值设置为零会完全禁用预读。 默认情况下，这是设置两个块组的 inode 表的大小 (在常规 ext4
+文件系统上通常为 4MiB) ; 如果此数量超过总物理内存的 1/50th，则禁用预读。
+.TP 
+\fIreport_features\fP
+如果此布尔关系为真，e2fsck 将打印文件系统特性作为它的详细报告的一部分 (即，如果指定了 \fB\-v\fP 选项)
+.TP 
+\fIreport_time\fP
+如果此布尔关系为真，则 e2fsck 将像始终指定选项 \fB\-tt\fP 一样运行。 这将导致 e2fsck 逐个打印时间统计信息以进行完整的文件系统检查。
+.TP 
+\fIreport_verbose\fP
+如果此布尔关系为真，则 e2fsck 将像始终指定选项 \fB\-v\fP 一样运行。 这将导致 e2fsck 在每次完整文件系统检查结束时打印一些附加信息。
+.SH "THE [defaults] STANZA"
+\fI[defaults]\fP 节中定义了以下关系。
+.TP 
+\fIundo_dir\fP
+此关系指定应存储撤消文件的目录。 它可以通过 \fBE2FSPROGS_UNDO_DIR\fP 环境变量覆盖。 如果目录位置设置为值
+\fInone\fP，\fBe2fsck\fP 将不会创建撤消文件。
+.SH "THE [problems] STANZA"
+\fI[problems]\fP 节中的每个标记命名一个问题代码，该代码由前导 "0x" 后跟六个十六进制数字指定。
+标签的值是一个小节，其中该小节中的关系覆盖了该特定问题代码的默认处理。
+.P
+请注意，本节中不适当的设置可能会导致 \fBe2fsck\fP 行为不正确，甚至崩溃。 大多数系统管理员不应该在不参考源代码的情况下对此部分进行更改。
+.P
+在每个问题代码的小节中，可以使用以下标签:
+.TP 
+\fIdescription\fP
+此关系允许覆盖检测到此文件系统不一致时打印的消息。
+.TP 
+\fIpreen_ok\fP
+当 \fBe2fsck\fP 在 preen 模式下运行时，此布尔关系会覆盖控制是否应自动修复此文件系统问题的默认行为。
+.TP 
+\fImax_count\fP
+此整数关系覆盖此特定问题的 \fImax_count_problems\fP 参数 (在选项部分中设置)。
+.TP 
+\fIno_ok\fP
+如果用户拒绝修复所报告的问题，此布尔关系会覆盖确定文件系统是否将被标记为不一致的默认行为。
+.TP 
+\fIno_default\fP
+此布尔关系覆盖此问题 (或问题) 的默认答案是否应为 "no"。
+.TP 
+\fIpreen_nomessage\fP
+当 \fBe2fsck\fP 在 preen 模式下运行时，此布尔关系会覆盖默认行为，该默认行为控制是否应抑制对此文件系统问题的描述。
+.TP 
+\fIno_nomsg\fP
+此布尔关系覆盖默认行为，该默认行为控制在强制不修复问题时是否应抑制此文件系统问题的描述，因为 \fBe2fsck\fP 使用 \fB\-n\fP
+选项运行或因为已为问题设置 \fIforce_no\fP 标志.
+.TP 
+\fIforce_no\fP
+这个布尔选项，如果设置为 true，将强制问题永远不被修复。 也就是说，就好像用户问题将 'no' 响应为 `是否应该解决此问题? ` 的问题。
+\fIforce_no\fP 选项甚至会覆盖命令行上给出的 \fB\-y\fP 选项 (当然只是针对特定问题)。
+.TP 
+\fInot_a_fix\fP
+这个布尔选项，它设置为 true，将问题标记为如果用户允许进行请求的更改，这并不意味着文件系统有问题，此后已修复。
+这用于优化文件系统数据结构体的请求，例如修剪扩展树。
+.SH "THE [scratch_files] STANZA"
+\fI[scratch_files]\fP 节中定义了以下关系。
+.TP 
+\fIdirectory\fP
+如果这个关系命名的目录存在并且是可写的，那么 e2fsck 将尝试使用这个目录来存储临时文件，而不是使用内存中的数据结构。
+.TP 
+\fInumdirs_threshold\fP
+如果设置了此关系，则如果文件系统中的目录数少于指定的数量，则将使用内存中的数据结构。
+.TP 
+\fIdirinfo\fP
+此关系控制是否使用暂存文件目录而不是目录信息的内存数据结构体。 它默认为真。
+.TP 
+\fIicount\fP
+此关系控制在跟踪 inode 计数时是否使用暂存文件目录而不是内存中数据结构体。 它默认为真。
+.SH LOGGING
+E2fsck 可以将来自 e2fsck 运行的信息保存在目录中，以便系统管理员可以在闲暇时查看其输出。 这允许在自动 e2fsck preen
+运行期间捕获的信息，以及手动启动的 e2fsck 运行，为后代保存。 该设施由 \fI[options]\fP 节中的
+\fIlog_filename\fP、\fIlog_dir\fP、\fIlog_dir_fallback\fP 和 \fIlog_dir_wait\fP 关系控制。
+.PP
+\fIlog_filename\fP 中的文件名可能包含以下将按如下方式展开的百分比表达式。
+.TP 
+\fB%d\fP
+该月的当前日期
+.TP 
+\fB%D\fP
+当前日期; 这相当于 \fB%Y%m%d\fP
+.TP 
+\fB%h\fP
+系统的主机名。
+.TP 
+\fB%H\fP
+24 小时格式的当前小时 (00..23)
+.TP 
+\fB%m\fP
+以两位数表示的当前月份 (01..12)
+.TP 
+\fB%M\fP
+当前分钟 (00..59)
+.TP 
+\fB%N\fP
+包含文件系统的块设备的名称，删除了任何目录路径名。
+.TP 
+\fB%p\fP
+e2fsck 进程的 pid
+.TP 
+\fB%s\fP
+当前时间表示为自 1970\-01\-01 00:00:00 UTC 以来的秒数
+.TP 
+\fB%S\fP
+当前秒 (00..59)
+.TP 
+\fB%T\fP
+当前时间; 这相当于 \fB%H%M%S\fP
+.TP 
+\fB%u\fP
+运行 e2fsck 的用户名。
+.TP 
+\fB%U\fP
+此百分比表达式不会扩展为任何内容，但它表明任何后续日期或时间表达式都应以 UTC 时间而不是本地时区表示。
+.TP 
+\fB%y\fP
+当前年份的最后两位数 (00..99)
+.TP 
+\fB%Y\fP
+当前年份 (即 2012 年)。
+.SH EXAMPLES
+当文件系统包含孤立文件时，以下配方将防止 e2fsck 在引导过程中终止。 (当然，这并不总是一个好主意，因为系统安全所需的关键文件可能最终会丢失 +
+找到，并且在没有先让系统管理员检查的情况下启动系统可能很危险。)
+.P
+.br
+  [problems]
+.br
+  0x040002 = {
+.br
+  preen_ok = true
+.br
+  描述 = "@u @i %i. "
+.br
+  }
+.P
+以下配方将导致 e2fsck 日志文件写入目录 /var/log/e2fsck，其文件名包含设备名称、系统主机名、日期和时间:
+例如，"e2fsck\-sda3.server.INFO.20120314\-112142"。 如果包含 /var/log
+的目录位于最初以只读方式挂载的根文件系统上，则输出将保存在内存中，并在根文件系统重新挂载 read/write 后写出。 为避免将太多细节写入串行控制台
+(这可能会减慢启动顺序)，每种类型的文件系统损坏仅打印不超过 16 个实例。
+.P
+.br
+  [options]
+.br
+  max_count_problems = 16
+.br
+  log_dir = /var/log/e2fsck
+.br
+  log_filename = e2fsck\-%N.%h.INFO.%D\-%T
+.br
+  log_dir_wait = true
+.P
+.SH FILES
+.TP 
+\fI/etc/e2fsck.conf\fP
+\fBe2fsck\fP(8) 的配置文件。
+.SH "SEE ALSO"
+\fBe2fsck\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

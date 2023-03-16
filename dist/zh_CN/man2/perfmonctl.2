@@ -1,0 +1,175 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
+.\" and Copyright (C) 2013 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Written by Ivana Varekova <varekova@redhat.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH perfmonctl 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+perfmonctl\-IA\-64 性能监控接口元
+.SH SYNOPSIS
+.nf
+\fB#include <syscall.h>\fP
+\fB#include <perfmon.h>\fP
+.PP
+\fBlong perfmonctl(int \fP\fIfd\fP\fB, int \fP\fIcmd\fP\fB, void \fP\fIarg\fP\fB[.\fP\fInarg\fP\fB], int \fP\fInarg\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: 此系统没有 glibc 包装器调用; 见注释。
+.SH DESCRIPTION
+IA\-64 特定的 \fBperfmonctl\fP() 系统调用提供了一个接口到 PMU (性能监控元)。 PMU 由 PMD (性能监控数据) 寄存器和
+PMC (性能监控控制) 寄存器组成，它们收集硬件统计信息。
+.PP
+\fBperfmonctl\fP() 将操作 \fIcmd\fP 应用于 \fIarg\fP 指定的输入参数。 参数的个数由 \fInarg\fP 定义。 \fIfd\fP
+参数指定要操作的 perfmon 上下文。
+.PP
+\fIcmd\fP 支持的值为:
+.TP 
+\fBPFM_CREATE_CONTEXT\fP
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_CREATE_CONTEXT, pfarg_context_t *\fP\fIctxt\fP\fB, 1);\fP
+.fi
+设置上下文。
+.IP
+\fIfd\fP 参数被忽略。 按照 \fIctxt\fP 中的指定创建新的 perfmon 上下文，并在 \fIctxt\->ctx_fd\fP
+中返回其文件描述符。
+.IP
+文件描述符可用于对 \fBperfmonctl\fP() 的后续调用，并可用于读取事件通知 (类型 \fIpfm_msg_t\fP) 使用 \fBread\fP(2).
+文件描述符可使用 \fBselect\fP(2)、\fBpoll\fP(2) 和 \fBepoll\fP(7) 轮询。
+.IP
+可以通过在文件描述符上调用 \fBclose\fP(2) 来销毁上下文。
+.TP 
+\fBPFM_WRITE_PMCS\fP
+.\" pfm_write_pmcs()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_WRITE_PMCS, pfarg_reg_t *\fP\fIpmcs\fP\fB, n);\fP
+.fi
+设置 PMC 寄存器。
+.TP 
+\fBPFM_WRITE_PMDS\fP
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_WRITE_PMDS, pfarg_reg_t *\fP\fIpmds\fP\fB, n);\fP
+.fi
+.\" pfm_write_pmds()
+设置 PMD 寄存器。
+.TP 
+\fBPFM_READ_PMDS\fP
+.\" pfm_read_pmds()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_READ_PMDS, pfarg_reg_t *\fP\fIpmds\fP\fB, n);\fP
+.fi
+读取 PMD 寄存器。
+.TP 
+\fBPFM_START\fP
+.\" pfm_start()
+.nf
+.\" .BI  "perfmonctl(int " fd ", PFM_START, arg, 1);
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_START, NULL, 0);\fP
+.fi
+开始监控。
+.TP 
+\fBPFM_STOP\fP
+.\" pfm_stop()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_STOP, NULL, 0);\fP
+.fi
+停止监控。
+.TP 
+\fBPFM_LOAD_CONTEXT\fP
+.\" pfm_context_load()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_LOAD_CONTEXT, pfarg_load_t *\fP\fIlargs\fP\fB, 1);\fP
+.fi
+将上下文附加到线程。
+.TP 
+\fBPFM_UNLOAD_CONTEXT\fP
+.\" pfm_context_unload()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_UNLOAD_CONTEXT, NULL, 0);\fP
+.fi
+从线程中分离上下文。
+.TP 
+\fBPFM_RESTART\fP
+.\" pfm_restart()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_RESTART, NULL, 0);\fP
+.fi
+收到溢出通知后重启监控。
+.TP 
+\fBPFM_GET_FEATURES\fP
+.\" pfm_get_features()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_GET_FEATURES, pfarg_features_t *\fP\fIarg\fP\fB, 1);\fP
+.fi
+.TP 
+\fBPFM_DEBUG\fP
+.\" pfm_debug()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_DEBUG, \fP\fIval\fP\fB, 0);\fP
+.fi
+如果 \fIval\fP 不为零，则启用调试模式，否则禁用。
+.TP 
+\fBPFM_GET_PMC_RESET_VAL\fP
+.\" pfm_get_pmc_reset()
+.nf
+\fBperfmonctl(int \fP\fIfd\fP\fB, PFM_GET_PMC_RESET_VAL, pfarg_reg_t *\fP\fIreq\fP\fB, n);\fP
+.fi
+.\"
+.\"
+.\" .TP
+.\" .B PFM_CREATE_EVTSETS
+.\"
+.\" create or modify event sets
+.\" .nf
+.\" .BI  "perfmonctl(int " fd ", PFM_CREATE_EVTSETS, pfarg_setdesc_t *desc , n);
+.\" .fi
+.\" .TP
+.\" .B PFM_DELETE_EVTSETS
+.\" delete event sets
+.\" .nf
+.\" .BI  "perfmonctl(int " fd ", PFM_DELETE_EVTSET, pfarg_setdesc_t *desc , n);
+.\" .fi
+.\" .TP
+.\" .B PFM_GETINFO_EVTSETS
+.\" get information about event sets
+.\" .nf
+.\" .BI  "perfmonctl(int " fd ", PFM_GETINFO_EVTSETS, pfarg_setinfo_t *info, n);
+.\" .fi
+将 PMC 寄存器重置为默认值。
+.SH "RETURN VALUE"
+当操作成功时，\fBperfmonctl\fP() 返回零。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH VERSIONS
+.\" commit ecf5b72d5f66af843f189dfe9ce31598c3e48ad7
+\fBperfmonctl\fP() 在 Linux 2.4 中加入; 它在 Linux 5.10 中被删除。
+.SH STANDARDS
+\fBperfmonctl\fP() 是特定于 Linux 的，仅在 IA\-64 架构上可用。
+.SH NOTES
+这个系统调用坏了很多年，最终在 Linux 5.10 被移除。
+.PP
+glibc 不提供此系统的包装器调用; 在它存在的内核上，使用 \fBsyscall\fP(2) 调用它。
+.SH "SEE ALSO"
+\fBgprof\fP(1)
+.PP
+perfmon2 接口规范
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

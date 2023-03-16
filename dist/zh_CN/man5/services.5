@@ -1,0 +1,144 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1996 Austin Donnelly <and1000@cam.ac.uk>,
+.\" with additional material Copyright (c) 1995 Martin Schulze
+.\"     <joey@infodrom.north.de>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"   This manpage was made by merging two independently written manpages,
+.\"   one written by Martin Schulze (18 Oct 95), the other written by
+.\"   Austin Donnelly, (9 Jan 96).
+.\"
+.\" Thu Jan 11 12:14:41 1996 Austin Donnelly  <and1000@cam.ac.uk>
+.\"   * Merged two services(5) manpages
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH services 5 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+服务 \- Internet 网络服务列表
+.SH DESCRIPTION
+\fBservices\fP 是一个普通的 ASCII 文件，提供互联网服务的人性化文本名称与其底层分配的端口号和协议类型之间的映射。
+每个网络程序都应该查看此文件以获取其服务的端口号 (和协议)。 C 库例程
+\fBgetservent\fP(3)、\fBgetservbyname\fP(3)、\fBgetservbyport\fP(3)、\fBsetservent\fP(3) 和
+\fBendservent\fP(3) 支持从程序中查询该文件。
+.PP
+端口号是由 IANA (Internet Assigned Numbers Authority) 分配的，他们目前的政策是分配端口号时同时分配 TCP
+和 UDP 协议。 因此，大多数条目将有两个条目，即使对于纯 TCP 服务也是如此。
+.PP
+1024 以下的端口号 (所谓的 "low numbered" 端口) 只能由 root 绑定 (参见 \fBbind\fP(2)、\fBtcp\fP(7) 和
+\fBudp\fP(7))。 这是为了让连接到低编号端口的客户端可以相信在该端口上运行的服务是标准实现，而不是机器用户运行的流氓服务。 IANA
+指定的众所周知的端口号通常位于这个仅限根的空间中。
+.PP
+\fBservices\fP 文件中存在服务条目并不一定意味着该服务当前正在计算机上运行。 有关提供的 Internet 服务的配置，请参见
+\fBinetd.conf\fP(5)。 请注意，并非所有网络服务都由 \fBinetd\fP(8) 启动，因此不会出现在 \fBinetd.conf\fP(5) 中。
+特别是，新闻 (NNTP) 和邮件 (SMTP) 服务器通常是从系统引导脚本初始化的。
+.PP
+\fBservices\fP 文件的位置由 \fI<netdb.h>\fP 中的 \fB_PATH_SERVICES\fP 定义。 这通常设置为
+\fI/etc/services\fP。
+.PP
+每行描述一项服务，形式如下:
+.IP
+\fIservice\-name\ \ \ port\fP\fB/\fP\fIprotocol\ \ \ \fP[\fIaliases ...\fP]
+.TP 
+where:
+.TP 
+\fIservice\-name\fP
+是服务已知并在其下查找的友好名称。 它区分大小写。 通常，客户端程序以 \fIservice\-name\fP 命名。
+.TP 
+\fIport\fP
+是用于此服务的端口号 (十进制)。
+.TP 
+\fIprotocol\fP
+是要使用的协议类型。 该字段应与 \fBprotocols\fP(5) 文件中的条目相匹配。 典型值包括 \fBtcp\fP 和 \fBudp\fP。
+.TP 
+\fIaliases\fP
+是此服务的其他名称的可选空格或制表符分隔列表。 同样，名称区分大小写。
+.PP
+可以使用空格或制表符来分隔字段。
+.PP
+注释以井号 (#) 开始，一直持续到行尾。 跳过空行。
+.PP
+\fIservice\-name\fP 应该从文件的第一列开始，因为没有去除前导空格。 \fIservice\-names\fP
+可以是除空格和制表符之外的任何可打印字符。 但是，应该使用保守的字符选择来最大程度地减少兼容性问题。 例如，a\-z、0\-9 和连字符 (\-)
+似乎是一个明智的选择。
+.PP
+不匹配此格式的行不应出现在文件中。 (目前，它们被 \fBgetservent\fP(3)、\fBgetservbyname\fP(3) 和
+\fBgetservbyport\fP(3) 静默跳过。但是，不应依赖此行为。)
+.PP
+.\" The following is not true as at glibc 2.8 (a line with a comma is
+.\" ignored by getservent()); it's not clear if/when it was ever true.
+.\"   As a backward compatibility feature, the slash (/) between the
+.\"   .I port
+.\"   number and
+.\"   .I protocol
+.\"   name can in fact be either a slash or a comma (,).
+.\"   Use of the comma in
+.\"   modern installations is deprecated.
+.\"
+该文件可能使用 Yellow Pages/NIS 或 BIND/Hesiod 等网络范围的命名服务在网络上分发。
+.PP
+示例 \fBservices\fP 文件可能如下所示:
+.PP
+.in +4n
+.EX
+netstat         15/tcp
+qotd            17/tcp          quote
+msp             18/tcp          # 消息发送协议
+msp             18/udp          # 消息发送协议
+chargen         19/tcp          ttytst source
+chargen         19/udp          ttytst source
+ftp             21/tcp
+# 22 \- 未分配
+远程登录         23/tcp
+.EE
+.in
+.SH FILES
+.TP 
+\fI/etc/services\fP
+Internet 网络服务列表
+.TP 
+\fI<netdb.h>\fP
+.\" .SH BUGS
+.\" It's not clear when/if the following was ever true;
+.\" it isn't true for glibc 2.8:
+.\"    There is a maximum of 35 aliases, due to the way the
+.\"    .BR getservent (3)
+.\"    code is written.
+.\"
+.\" It's not clear when/if the following was ever true;
+.\" it isn't true for glibc 2.8:
+.\"    Lines longer than
+.\"    .B BUFSIZ
+.\"    (currently 1024) characters will be ignored by
+.\"    .BR getservent (3),
+.\"    .BR getservbyname (3),
+.\"    and
+.\"    .BR getservbyport (3).
+.\"    However, this will also cause the next line to be mis-parsed.
+\fB_PATH_SERVICES\fP 的定义
+.SH "SEE ALSO"
+\fBlisten\fP(2), \fBendservent\fP(3), \fBgetservbyname\fP(3), \fBgetservbyport\fP(3),
+\fBgetservent\fP(3), \fBsetservent\fP(3), \fBinetd.conf\fP(5), \fBprotocols\fP(5),
+\fBinetd\fP(8)
+.PP
+分配编号 RFC，最近的 RFC\1700，(又名 STD0002)。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

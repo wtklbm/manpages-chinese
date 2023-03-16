@@ -1,0 +1,172 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH USER@\&.SERVICE 5 "" "systemd 253" user@.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+user@.service, user\-runtime\-dir@.service, systemd\-user\-runtime\-dir \-
+启动用户管理器的系统单元
+.SH SYNOPSIS
+.PP
+user@\fIUID\fP\&.service
+.PP
+user\-runtime\-dir@\fIUID\fP\&.service
+.PP
+/usr/lib/systemd/systemd\-user\-runtime\-dir
+.PP
+user\-\fIUID\fP\&.slice
+.SH DESCRIPTION
+.PP
+\fBsystemd\fP(1) 系统管理器 (PID 1) 以 user@\fIUID\fP\&.service 启动用户管理器实例，用户 \*(Aqs 数字
+UID 用作实例标识符 \&。这些实例使用与系统管理器相同的可执行文件，但在启动一组不同单元的模式下运行。每个 \fBsystemd \-\-user\fP
+实例都管理特定于该用户的单元层次结构。有关单位的讨论，请参见 \fBsystemd\fP(1)，有关构成系统和用户单位层次结构基础的单位列表，请参见
+\fBsystemd.special\fP(7)。
+.PP
+user@\fIUID\fP\&.service 伴随着系统元 user\-runtime\-dir@\fIUID\fP\&.service，创建用户 \*(Aqs
+运行目录 /run/user/\fIUID\fP，然后在这个元停止时删除 \&。 user\-runtime\-dir@\fIUID\fP\&.service 执行
+systemd\-user\-runtime\-dir 二进制文件来完成实际工作 \&。
+.PP
+用户进程可能由 user@\&.service 实例启动，在这种情况下，它们将成为系统层次结构 \& 中那个单元的一部分。它们也可以在别处启动，例如通过
+\fBsshd\fP(8) 或像 \fBgdm\fP 这样的显示管理器，在这种情况下它们形成一个 \&。作用域元 (见
+\fBsystemd.scope\fP(5))\&。user@\fIUID\fP\&.service 和作用域单位都收集在
+user\-\fIUID\fP\&.slice\& 下。
+.PP
+单个 user\-\fIUID\fP\&.slice 切片收集在 user\&.slice 下，请参见 \fBsystemd.special\fP(7)\&。
+.SH "CONTROLLING RESOURCES FOR LOGGED\-IN USERS"
+.PP
+可以在几个不同的级别配置控制登录用户可用资源的选项。如前一节所述，user\&.slice
+包含所有用户的进程，因此该片上的任何资源限制都适用于所有用户。通常配置它们的方法是通过抛弃 \- ins, e\&.g\&。
+/etc/systemd/system/user\&.slice\&.d/resources\&.conf\&.
+.PP
+user\-\fIUID\fP\&.slice\& 下收集单个用户的进程。该用户的资源限制可以通过丢弃 \- ins 为该元配置，e\&.g\&。
+/etc/user\-1000\&.slice\&.d/resources\&.conf\&。如果限制应适用于所有用户，则可以通过丢弃 \- ins
+为截断的元名称 user\-\&.slice\&
+配置它们。例如，/etc/systemd/system/user\-\&.slice\&.d/resources\&.conf 中的配置包含在所有
+user\-\fIUID\fP\&.slice 单元中，请参见 \fBsystemd.unit\fP(5) 以了解抛弃 \- in 机制 \& 的讨论。
+.PP
+当用户登录并出现 \&. 作用域单元是为会话创建的 (见上一节)，作用域的创建可以通过 \fBpam_systemd\fP(8)\& 来管理。此 PAM
+模块与 \fBsystemd\-logind\fP(8) 通信以创建会话作用域并提供对硬件资源的访问。可以通过 PAM 模块配置来配置使用域的资源限制，请参见
+\fBpam_systemd\fP(8)\&。通过普通的元配置来配置它们也是可以的，但是由于切片元的名称一般是不可预测的，所以这个用处不大 \&。
+.PP
+一般来说，适用于单元的任何资源都可以为 user@\fIUID\fP\&.service 和上面讨论的切片单元设置，请参见
+\fBsystemd.resource\-control\fP(5) 以获得概述 \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Hierarchy of control groups with two logged in users\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-cgls
+控制组 /:
+\-\&.slice
+├─用户 \&. 切片
+│ ├─user\-1000\&.slice
+│ │ ├─user@1000\&.service
+│ │ │ ├─pulseaudio\&.service
+│ │ │ │ └─2386 /usr/bin/pulseaudio \-\-daemonize=no
+│ │ │ └─gnome\-terminal\-server\&.service
+│ │ │   └─init\&.scope
+│ │ │     ├─ 4127 /usr/libexec/gnome\-terminal\-server
+│ │ │     └─ 4198 zsh
+│ │ \&...
+│ │ └─session\-4\&.scope
+│ │   ├─ 1264 gdm\-session\-worker [pam/gdm\-password]
+│ │   ├─ 2339 /usr/bin/gnome\-shell
+│ │   \&...
+│ │ ├─session\-19\&.scope
+│ │   ├─6497 sshd: zbyszek [priv]
+│ │   ├─6502 sshd: zbyszek@pts/6
+│ │   ├─6509 \-zsh
+│ │   └─6602 systemd\-cgls \-\-no\-pager
+│ \&...
+│ └─user\-1001\&.slice
+│   ├─session\-20\&.scope
+│   │ ├─6675 sshd: guest [priv]
+│   │ ├─6708 sshd: guest@pts/6
+│   │ └─6717 \-bash
+│   └─user@1001\&.service
+│     ├─init\&.scope
+│ │ ├─6680 /usr/lib/systemd/systemd\-\- 用户
+│     │ └─6688 (sd\-pam)
+│     └─sleep\&.service
+│       └─6706 /usr/bin/sleep 30
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+UID 1000 的用户使用 \fBgdm\fP (session\-4\&.scope) 和 \fBssh\fP(1) (session\-19\&.scope)
+登录，并且还有一个用户管理器实例正在运行 (user@1000\&.service)\&。UID 1001 的用户使用 \fBssh\fP
+(session\-20\&.scope) 登录，并且还有一个运行的用户管理器实例 (user@1001\&.service)\&。这些都是 (leaf)
+系统单元，构成切片层次结构的一部分，user\-1000\&.slice 和 user\-1001\&.slice 在 user\&.slice\&
+下面。用户单位在 user@\&.service 实例 (pulseaudio\&.service,
+gnome\-terminal\-server\&.service, init\&.scope, sleep\&.service)\& 下面可见。
+.PP
+\fBExample\ \&2.\ \&Default user resource limits\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemctl cat user\-1000\&.slice
+# /usr/lib/systemd/system/user\-\&.slice\&.d/10\-defaults\&.conf
+# \&...
+[Unit]
+Description=User Slice of UID %j
+After=systemd\-user\-sessions\&.service
+
+[Slice]
+TasksMax=33%
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+user\-\fIUID\fP\&.slice 单元默认不 \*(Aqt 有一个元文件 \&. 资源限制是通过丢弃 \- in
+设置的，可以按照第一部分中讨论的标准丢弃 \- in 机制轻松替换或扩展。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.service\fP(5), \fBsystemd.slice\fP(5),
+\fBsystemd.resource\-control\fP(5), \fBsystemd.exec\fP(5), \fBsystemd.special\fP(7),
+\fBpam\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

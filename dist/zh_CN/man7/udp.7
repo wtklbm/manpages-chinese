@@ -1,0 +1,159 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: udp.7,v 1.7 2000/01/22 01:55:05 freitag Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH udp 7 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+udp\-IPv4 的用户数据报协议
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <netinet/in.h>\fP
+\fB#include <netinet/udp.h>\fP
+.PP
+\fIudp_socket\fP\fB = socket(AF_INET, SOCK_DGRAM, 0);\fP
+.fi
+.SH DESCRIPTION
+这是 RFC\768 中描述的用户数据报协议的实现。 它实现了一种无连接、不可靠的数据报包服务。 数据包在到达之前可能会被重新排序或复制。 UDP
+生成并检查校验和以捕获传输错误。
+.PP
+创建 UDP 套接字时，未指定其本地和远程地址。 可以使用 \fBsendto\fP(2) 或 \fBsendmsg\fP(2)
+立即发送数据报，并将有效目标地址作为参数。 当在套接字上调用 \fBconnect\fP(2) 时，会设置默认目标地址，现在可以使用 \fBsend\fP(2) 或
+\fBwrite\fP(2) 发送数据报，而无需指定目标地址。 仍然可以通过将地址传递给 \fBsendto\fP(2) 或 \fBsendmsg\fP(2)
+来发送到其他目的地。 为了接收数据包，可以先使用 \fBbind\fP(2) 将套接字绑定到本地地址。 否则，socket 层会自动分配一个超出
+\fI/proc/sys/net/ipv4/ip_local_port_range\fP 定义范围的空闲本地端口，并将 socket 绑定到
+\fBINADDR_ANY\fP。
+.PP
+所有接收操作只返回一个数据包。 当数据包小于传递的缓冲区时，只返回那么多的数据; 当它更大时，数据包被截断并设置 \fBMSG_TRUNC\fP 标志。
+不支持 \fBMSG_WAITALL\fP。
+.PP
+可以使用 \fBip\fP(7) 中描述的套接字选项发送或接收 IP 选项。 它们仅在启用适当的 \fI/proc\fP 参数时由内核处理
+(但即使在关闭时仍会传递给用户)。 请参见 \fBip\fP(7)。
+.PP
+当在发送时设置 \fBMSG_DONTROUTE\fP 标志时，目标地址必须引用本地接口地址并且数据包仅发送到该接口。
+.PP
+默认情况下，Linux UDP 进行路径 MTU (最大传输元) 发现。 这意味着内核将跟踪特定目标 IP 地址的 MTU，并在 UDP
+数据包写入超过它时返回 \fBEMSGSIZE\fP。 发生这种情况时，应用程序应减小数据包大小。 也可以使用 \fBIP_MTU_DISCOVER\fP
+套接字选项或 \fI/proc/sys/net/ipv4/ip_no_pmtu_disc\fP 文件关闭路径 MTU 发现; 详见 \fBip\fP(7)。
+关闭时，UDP 将对超过接口 MTU 的传出 UDP 数据包进行分段。 但是，出于性能和可靠性原因，不建议禁用它。
+.SS "Address format"
+UDP 使用 \fBip\fP(7) 中描述的 IPv4 \fIsockaddr_in\fP 地址格式。
+.SS "Error handling"
+即使套接字未连接，所有致命错误都将作为错误返回传递给用户。 这包括从网络接收到的异步错误。 对于在同一套接字上发送的较早数据包，您可能会收到错误。
+此行为不同于许多其他 BSD 套接字实现，除非套接字已连接，否则不会传递任何错误。 Linux 的行为由 \fBRFC\ 1122\fP 强制执行。
+.PP
+为了与遗留代码兼容，在 Linux 2.0 和 2.2 中，可以将 \fBSO_BSDCOMPAT\fP \fBSOL_SOCKET\fP
+选项设置为仅在套接字已连接时接收远程错误 (\fBEPROTO\fP 和 \fBEMSGSIZE\fP) 除外)。 本地产生的错误总是被传递。
+在后来的内核中删除了对该套接字选项的支持; 有关详细信息，请参见 \fBsocket\fP(7)。
+.PP
+当启用 \fBIP_RECVERR\fP 选项时，所有错误都存储在套接字错误队列中，并且可以由设置了 \fBMSG_ERRQUEUE\fP 标志的
+\fBrecvmsg\fP(2) 接收。
+.SS "/proc interfaces"
+系统范围的 UDP 参数设置可以通过目录 \fI/proc/sys/net/ipv4/\fP 中的文件访问。
+.TP 
+\fIudp_mem\fP (since Linux 2.6.25)
+这是一个由三个整数组成的 vector，用于控制所有 UDP 套接字允许排队的页数。
+.RS
+.TP 
+\fImin\fP
+低于此页数，UDP 不会担心其内存需求。 当 UDP 分配的内存量超过这个数量时，UDP 开始缓和内存使用。
+.TP 
+\fIpressure\fP
+引入此值是为了遵循 \fItcp_mem\fP 的格式 (请参见 \fBtcp\fP(7)).
+.TP 
+\fImax\fP
+所有 UDP 套接字允许排队的页数。
+.RE
+.IP
+这三个项的默认值是在启动时根据可用内存量计算的。
+.TP 
+\fIudp_rmem_min\fP (integer; default value: PAGE_SIZE; since Linux 2.6.25)
+UDP 套接字适度使用的接收缓冲区的最小大小 (以字节为单位)。 每个 UDP 套接字都可以使用大小来接收数据，即使 UDP 套接字的总页数超过
+\fIudp_mem\fP 压力。
+.TP 
+\fIudp_wmem_min\fP (integer; default value: PAGE_SIZE; since Linux 2.6.25)
+UDP 套接字适度使用的发送缓冲区的最小大小 (以字节为单位)。 每个 UDP 套接字都能够使用发送数据的大小，即使 UDP 套接字的总页数超过
+\fIudp_mem\fP 压力。
+.SS "Socket options"
+要设置或获取 UDP 套接字选项，请使用 \fBgetsockopt\fP(2) 读取或 \fBsetsockopt\fP(2) 写入选项，并将选项级别参数设置为
+\fBIPPROTO_UDP\fP。 除非另有说明，否则 \fIoptval\fP 是指向 \fIint\fP 的指针。
+.PP
+以下是特定于 UDP 的套接字选项的列表。 有关也适用于 UDP 套接字的其他一些套接字选项的详细信息，请参见 \fBsocket\fP(7)。
+.TP 
+\fBUDP_CORK\fP (since Linux 2.5.44)
+.\" FIXME document UDP_ENCAP (new in Linux 2.5.67)
+.\" From include/linux/udp.h:
+.\"     UDP_ENCAP_ESPINUDP_NON_IKE draft-ietf-ipsec-nat-t-ike-00/01
+.\"     UDP_ENCAP_ESPINUDP draft-ietf-ipsec-udp-encaps-06
+.\"     UDP_ENCAP_L2TPINUDP rfc2661
+.\" FIXME Document UDP_NO_CHECK6_TX and UDP_NO_CHECK6_RX, added in Linux 3.16
+如果启用此选项，则此套接字上的所有数据输出都将累积到单个数据报中，该数据报在禁用该选项时传输。 此选项不应在旨在可移植的代码中使用。
+.SS Ioctls
+可以使用 \fBioctl\fP(2) 访问这些 ioctl。 正确的语法是:
+.PP
+.RS
+.nf
+\fBint\fP\fI value\fP\fB;\fP
+\fIerror\fP\fB = ioctl(\fP\fIudp_socket\fP\fB, \fP\fIioctl_type\fP\fB, &\fP\fIvalue\fP\fB);\fP
+.fi
+.RE
+.TP 
+\fBFIONREAD\fP (\fBSIOCINQ\fP)
+.\" See http://www.securiteam.com/unixfocus/5KP0I15IKO.html
+.\" "GNUnet DoS (UDP Socket Unreachable)", 14 May 2006
+获取一个指向整数的指针作为参数。 以整数形式返回下一个待处理数据报的大小 (以字节为单位)，或者当没有数据报待处理时返回 0。 \fBWarning:\fP
+使用 \fBFIONREAD\fP，无法区分没有数据报挂起的情况和下一个挂起的数据报包含零字节数据的情况。 使用
+\fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7) 来区分这些情况会更安全。
+.TP 
+\fBTIOCOUTQ\fP (\fBSIOCOUTQ\fP)
+返回本地发送队列中的数据字节数。 仅支持 Linux 2.4 及更高版本。
+.PP
+此外，还支持 \fBip\fP(7) 和 \fBsocket\fP(7) 中记录的所有 ioctl。
+.SH ERRORS
+为 \fBsocket\fP(7) 或 \fBip\fP(7) 记录的所有错误都可能通过 UDP 套接字上的发送或接收返回。
+.TP 
+\fBECONNREFUSED\fP
+没有接收者与目标地址相关联。 这可能是由先前通过套接字发送的数据包引起的。
+.SH VERSIONS
+.\" .SH CREDITS
+.\" This man page was written by Andi Kleen.
+\fBIP_RECVERR\fP 是 Linux 2.2 的新特性。
+.SH "SEE ALSO"
+\fBip\fP(7), \fBraw\fP(7), \fBsocket\fP(7), \fBudplite\fP(7)
+.PP
+内核源文件 \fIDocumentation/networking/ip\-sysctl.txt\fP.
+.PP
+RFC\768 用于用户数据报协议。
+.br
+RFC\1122 用于主机要求。
+.br
+RFC\1191 对路径 MTU 发现的描述。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

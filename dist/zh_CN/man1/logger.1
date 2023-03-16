@@ -1,0 +1,388 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: logger
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: User Commands
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH LOGGER 1 2022\-05\-11 "util\-linux 2.38.1" "User Commands"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+logger \- 在系统日志中输入消息
+.SH SYNOPSIS
+.sp
+\fBlogger\fP [options] \fImessage\fP
+.SH DESCRIPTION
+.sp
+\fBlogger\fP 在系统日志中创建条目。
+.sp
+当可选的 \fImessage\fP 参数存在时，它被写入日志。如果它不存在，并且也没有给出 \fB\-f\fP 选项，那么将记录标准输入。
+.SH OPTIONS
+.sp
+\fB\-d\fP, \fB\-\-udp\fP
+.RS 4
+仅使用数据报 (UDP)。默认情况下，尝试连接到 \fI/etc/services\fP 中定义的系统日志端口，通常是 514。
+.sp
+另请参见 \fB\-\-server\fP 和 \fB\-\-socket\fP 以指定连接位置。
+.RE
+.sp
+\fB\-e\fP, \fB\-\-skip\-empty\fP
+.RS 4
+处理文件时忽略空行。空行定义为没有任何字符的行。因此，仅由空格组成的行不被视为空行。请注意，当指定 \fB\-\-prio\-prefix\fP
+选项时，优先级不是该行的一部分。因此，此模式下的空行是优先级前缀后没有任何字符的行 (例如，\fB<13>\fP).
+.RE
+.sp
+\fB\-f\fP, \fB\-\-file\fP \fIfile\fP
+.RS 4
+记录指定 \fIfile\fP 的内容。此选项不能与命令行消息结合使用。
+.RE
+.sp
+\fB\-i\fP
+.RS 4
+在每一行记录 \fBlogger\fP 进程的 PID。
+.RE
+.sp
+\fB\-\-id\fP[\fB=\fP\fIid\fP]
+.RS 4
+在每一行记录 \fBlogger\fP 进程的 PID。当指定可选参数 \fIid\fP 时，将使用它代替 \fBlogger\fP 命令 \(cqs
+PID. 建议在发送多条消息的脚本中使用 \fB\-\-id=$$\fP (PPID)。
+.sp
+请注意，系统日志记录基础结构 (例如 \fBsystemd\fP 在 \fI/dev/log\fP) 上侦听时可能会遵循本地套接字凭据以覆盖消息中指定的
+PID。\fBlogger\fP(1) 能够将这些套接字凭据设置为给定的 \fIid\fP，但前提是您具有 root 权限并且存在具有指定 PID
+的进程，否则不会修改套接字凭据并且问题会被静默忽略。
+.RE
+.sp
+\fB\-\-journald\fP[\fB=\fP\fIfile\fP]
+.RS 4
+写一个 \fBsystemd\fP 日记帐分录。当指定时，条目从给定的 \fIfile\fP 读取，否则从标准输入读取。每行必须以 \fBjournald\fP
+接受的字段开始; 详见 \fBsystemd.journal\-fields\fP(7)。使用 MESSAGE_ID
+字段通常是一个好主意，因为它使查找条目变得容易。Examples:
+.RE
+.RS 3
+.ll -.6i
+.sp
+.if  n .RS 4
+.nf
+.fam C
+logger \-\-journald <<end 
+MESSAGE_ID=67feb6ffbaf24c5cbec13c008dd72309
+MESSAGE=The dogs bark, but the caravan goes on.
+DOGS=bark
+CARAVAN=goes on
+end
+.fam
+.fi
+.if  n .RE
+.sp
+.if  n .RS 4
+.nf
+.fam C
+logger \-\-journald=entry.txt
+.fam
+.fi
+.if  n .RE
+.br
+.RE
+.ll
+.sp
+请注意，\fB\-\-journald\fP 将忽略其他选项的值，例如优先级。如果需要优先级，它必须在输入中，并使用 PRIORITY
+字段。\fBjournalctl\fP(1) 的简单执行将显示 MESSAGE 字段。使用 \fBjournalctl \-\-output json\-pretty\fP 查看其余字段。
+.sp
++ 要在 MESSAGE 中包含换行符，请多次指定 MESSAGE。这是作为一种特殊情况处理的，其他字段如果出现多次，将作为一个数组存储在日志中。
+.sp
+\fB\-\-msgid\fP \fImsgid\fP
+.RS 4
+设置
+.URL https://tools.ietf.org/html/rfc5424 "RFC 5424" ""
+MSGID 字段。请注意，\fImsgid\fP 中不允许使用空格字符。仅当同时指定 \fB\-\-rfc5424\fP 时才使用此选项; 否则，它会被默默地忽略。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-server\fP \fIserver\fP
+.RS 4
+写入指定的远程系统日志 \fIserver\fP 而不是系统日志套接字。除非指定 \fB\-\-udp\fP 或 \fB\-\-tcp\fP，否则 \fBlogger\fP
+将首先尝试使用 UDP，但如果失败则尝试 TCP 连接。
+.RE
+.sp
+\fB\-\-no\-act\fP
+.RS 4
+导致除了将日志消息写入系统日志和删除与日志的连接之外的所有操作。此选项可与 \fB\-\-stderr\fP 一起用于测试目的。
+.RE
+.sp
+\fB\-\-octet\-count\fP
+.RS 4
+使用
+.URL https://tools.ietf.org/html/rfc6587 "RFC 6587" ""
+用于发送消息的八位字节计数成帧方法。不使用该选项时，UDP 上默认为无帧，TCP 上为 RFC6587 非透明帧 (也称为八位字节填充)。
+.RE
+.sp
+\fB\-P\fP, \fB\-\-port\fP \fIport\fP
+.RS 4
+使用指定的 \fIport\fP。如果未指定此选项，则端口默认为 udp 连接的 \fBsyslog\fP 和 tcp 连接的默认 \fBsyslog\-conn\fP。
+.RE
+.sp
+\fB\-p\fP, \fB\-\-priority\fP \fIpriority\fP
+.RS 4
+使用指定的 \fIpriority\fP 将消息输入到日志中。可以用数字或 \fIfacility\fP.\fIlevel\fP 对指定优先级。例如，\fB\-p local3.info\fP 在 local3 工具中将消息记录为信息性消息。默认为 \fBuser.notice\fP。
+.RE
+.sp
+\fB\-\-prio\-prefix\fP
+.RS 4
+在从标准输入读取的每一行上查找系统日志前缀。此前缀是尖括号内的十进制数字，对设施和级别进行编码。该数字是通过将设施乘以
+8，然后加上级别来构建的。例如，\fBlocal0.info\fP，表示 facility=16 和 level=6，变为 \fB<134>\fP。
+.sp
+如果前缀不包含设施，则设施默认为 \fB\-p\fP 选项指定的设施。同样，如果未提供前缀，则使用 \fB\-p\fP 给出的 \fIpriority\fP 记录该行。
+.sp
+此选项不会 \(cqt 影响命令行消息。
+.RE
+.sp
+\fB\-\-rfc3164\fP
+.RS 4
+使用
+.URL https://tools.ietf.org/html/rfc3164 "RFC 3164" ""
+BSD syslog 协议，用于将消息提交到远程服务器。
+.RE
+.sp
+\fB\-\-rfc5424\fP[\fB=\fP\fIwithout\fP]
+.RS 4
+使用
+.URL https://tools.ietf.org/html/rfc5424 "RFC 5424" ""
+syslog 协议将消息提交到远程服务器。可选的 \fIwithout\fP 参数可以是以下值的逗号分隔列表:
+\fBnotq\fP、\fBnotime\fP、\fBnohost\fP。
+.sp
+\fBnotq\fP 值抑制提交消息中的时间质量结构化数据。时间质量信息显示本地时钟是否同步加上时间戳可能关闭的最大微秒数。当指定 \fB\-\-sd\-id timeQuality\fP 时，时间质量也会被自动抑制。
+.sp
+\fBnotime\fP 值 (这意味着 \fBnotq\fP) 抑制了 ISO\-8601 格式的完整发送者时间戳，包括微秒和时区。
+.sp
+\fBnohost\fP 值抑制了邮件标头中的 \fBgethostname\fP(2) 信息。
+.sp
+自版本 2.26 以来，RFC 5424 协议一直是 \fBlogger\fP 的默认协议。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-stderr\fP
+.RS 4
+将消息输出到标准错误以及系统日志。
+.RE
+.sp
+\fB\-\-sd\-id\fP \fIname\fP[\fB@\fP\fIdigits\fP]
+.RS 4
+指定 RFC 5424 消息标头的结构化数据元素 ID。该选项必须在 \fB\-\-sd\-param\fP
+之前使用以引入新元素。结构化数据元素的数量是无限的。ID (\fIname\fP 加上可能的 \fB@\fP\fIdigits\fP)
+区分大小写，并唯一标识元素的类型和用途。同一个 ID 不能在一条消息中出现多次。\fB@\fP\fIdigits\fP 部分是用户定义的非标准化 ID 所必需的。
+.sp
+\fBlogger\fP 当前仅生成 \fBtimeQuality\fP 标准化元素。RFC 5424 还描述了元素 \fBorigin\fP (带有参数
+\fBip\fP、\fBenterpriseId\fP、\fBsoftware\fP 和 \fBswVersion\fP) 以及 \fBmeta\fP (带有参数
+\fBsequenceId\fP、\fBsysUpTime\fP 和 \fBlanguage\fP)。这些元素 ID 可以在没有 \fB@\fP\fIdigits\fP
+后缀的情况下指定。
+.RE
+.sp
+\fB\-\-sd\-param\fP \fIname\fP=\fIvalue\fP
+.RS 4
+指定结构化数据元素参数、名称和值对。该选项必须在 \fB\-\-sd\-id\fP 之后使用，并且可以为同一元素指定多次。请注意，\fIvalue\fP
+两边的引号是必需的，并且必须在命令行中进行转义。
+.sp
+.if  n .RS 4
+.nf
+.fam C
+    记录器 \-\-rfc5424\-\-sd\-id zoo@123\(rs
+                     \-\-sd\-param tiger="饥饿"\(rs
+                     \-\-sd\-param zebra="运行"\(rs
+                     \-\-sd\-id manager@123         \(rs
+                     \-\-sd\-param onMeeting="yes"  \(rs
+                     "this is message"
+.fam
+.fi
+.if  n .RE
+.sp
+produces:
+.sp
+\fB<13>1 2015\-10\-01T14:07:59.168662+02:00 ws kzak \- \- [timeQuality tzKnown="1" isSynced="1" syncAccuracy="218616"][zoo@123 tiger="hungry" zebra="running"][manager@123 onMeeting="yes"] this is message\fP
+.RE
+.sp
+\fB\-S\fP, \fB\-\-size\fP \fIsize\fP
+.RS 4
+将允许的最大消息大小设置为 \fIsize\fP。默认值为 1KiB 字符，这是 RFC 3164 中传统使用和指定的限制。使用 RFC
+5424，此限制变得灵活。一个很好的假设是 RFC 5424 接收器至少可以处理 4KiB 消息。
+.sp
+大多数接收器通过任何类型的系统日志协议接受大于 1KiB 的消息。因此，\fB\-\-size\fP 选项在所有情况下都会影响 \fBlogger\fP (不仅在使用
+\fB\-\-rfc5424\fP 时)。
+.sp
+Note: 消息大小限制限制了整体消息大小，包括系统日志标头。标头大小因所选选项和主机名长度而异。根据经验，标题通常不超过 50 到 80
+个字符。选择最大消息大小时，重要的是要确保接收者也支持最大大小，否则消息可能会被截断。同样，根据经验，两到四个 KiB
+消息大小通常应该没问题，而任何更大的消息都应该经过验证才能正常工作。
+.RE
+.sp
+\fB\-\-socket\-errors\fP[\fB=\fP\fImode\fP]
+.RS 4
+打印有关 Unix 套接字连接的错误。\fImode\fP 可以是 \fBoff\fP、\fBon\fP 或 \fBauto\fP 的值。当模式为 \fBauto\fP
+时，\fBlogger\fP 将检测 init 进程是否为 \fBsystemd\fP(1)，如果是则假设 \fI/dev/log\fP 可以在启动时提前使用。其他缺少
+\fI/dev/log\fP 的 init 系统不会导致与使用 \fBopenlog\fP(3) 系统调用的消息传递相同的错误。2.26 版本之前的
+\fBlogger\fP(1) 使用 \fBopenlog\fP(3)，因此无法检测到发送到 Unix 套接字的消息丢失。
+.sp
+默认模式是 \fBauto\fP。如果未启用错误，则不会传达丢失的消息，并将导致 \fBlogger\fP(1) 调用成功退出状态。
+.RE
+.sp
+\fB\-T\fP, \fB\-\-tcp\fP
+.RS 4
+仅使用流 (TCP)。默认情况下，尝试连接到 \fI/etc/services\fP 中定义的 \fIsyslog\-conn\fP 端口，通常是 \fI601\fP。
+.sp
+另请参见 \fB\-\-server\fP 和 \fB\-\-socket\fP 以指定连接位置。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-tag\fP \fItag\fP
+.RS 4
+使用指定的 \fItag\fP 标记要记录的每一行。默认标签是最终登录的用户名 (或基于有效用户 ID 的用户名)。
+.RE
+.sp
+\fB\-u\fP, \fB\-\-socket\fP \fIsocket\fP
+.RS 4
+写入指定的 \fIsocket\fP 而不是系统日志套接字。
+.RE
+.sp
+\fB\-\-\fP
+.RS 4
+结束参数列表。这允许 \fImessage\fP 以连字符 (\-) 开头。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH "EXIT STATUS"
+.sp
+\fBlogger\fP 实用程序在成功时退出 0，如果发生错误则退出 >0。
+.SH "FACILITIES AND LEVELS"
+.sp
+有效的设施名称是:
+.sp
+\fBauth\fP
+.br
+\fBauthpriv\fP 用于敏感性质的安全信息
+.br
+\fBcron\fP
+.br
+.sp
+\fBdaemon\fP
+.br
+\fBftp\fP
+.br
+\fBkern\fP 无法从用户空间进程生成，自动转换为 \fBuser\fP
+.br
+.sp
+\fBlpr\fP
+.br
+\fBmail\fP
+.br
+\fBnews\fP
+.br
+\fBsyslog\fP
+.br
+\fBuser\fP
+.br
+\fBuucp\fP
+.br
+\fBlocal0\fP
+.br
+to
+.br
+\fBlocal7\fP
+.br
+\fBsecurity\fP 已弃用 \fBauth\fP 的同义词
+.sp
+有效的级别名称是:
+.sp
+\fBemerg\fP
+.br
+\fBalert\fP
+.br
+\fBcrit\fP
+.br
+\fBerr\fP
+.br
+\fBwarning\fP
+.br
+\fBnotice\fP
+.br
+\fBinfo\fP
+.br
+\fBdebug\fP
+.br
+\fBpanic\fP 已弃用 \fBemerg\fP 的同义词
+.br
+\fBerror\fP 已弃用 \fBerr\fP 的同义词
+.br
+\fBwarn\fP 已弃用 \fBwarning\fP 的同义词
+.br
+.sp
+有关这些设施和级别的优先顺序和预期目的，请参见 \fBsyslog\fP(3)。
+.SH "CONFORMING TO"
+.sp
+\fBlogger\fP 命令应与 IEEE Std 1003.2 ("POSIX.2") 兼容。
+.SH EXAMPLES
+.sp
+\fBlogger System rebooted\fP \fBlogger \-p local0.notice \-t HOSTIDM \-f /dev/idmc\fP
+\fBlogger \-n loghost.example.com System rebooted\fP
+.SH AUTHORS
+.sp
+\fBlogger\fP 命令最初由加州大学在 1983\-1993 中编写，后来由
+.MTO kzak\(atredhat.com "Karel Zak" ,
+.MTO rgerhards\(atadiscon.com "Rainer Gerhards" ,
+and
+.MTO kerolasa\(atiki.fi "Sami Kerola" .
+.SH "SEE ALSO"
+.sp
+\fBjournalctl\fP(1), \fBsyslog\fP(3), \fBsystemd.journal\-fields\fP(7)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBlogger\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

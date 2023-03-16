@@ -1,0 +1,136 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2005 Michael Kerrisk
+.\" based on earlier work by faith@cs.unc.edu and
+.\" Mike Battersby <mib@deakin.edu.au>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2005-09-15, mtk, Created new page by splitting off from sigaction.2
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigprocmask 2 2022\-12\-03 "Linux man\-pages 6.03" 
+.SH NAME
+sigprocmask、rt_sigprocmask \- 检查和更改阻塞信号
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+\fB#include <signal.h>\fP
+.PP
+.nf
+/* Prototype for the glibc wrapper function */
+\fBint sigprocmask(int \fP\fIhow\fP\fB, const sigset_t *_Nullable restrict \fP\fIset\fP\fB,\fP
+\fB                           sigset_t *_Nullable restrict \fP\fIoldset\fP\fB);\fP
+.PP
+\fB#include <signal.h>\fP           /* Definition of \fBSIG_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+/* Prototype for the underlying system call */
+\fBint syscall(SYS_rt_sigprocmask, int \fP\fIhow\fP\fB,\fP
+\fB                           const kernel_sigset_t *_Nullable \fP\fIset\fP\fB,\fP
+\fB                           kernel_sigset_t *_Nullable \fP\fIoldset\fP\fB,\fP
+\fB                           size_t \fP\fIsigsetsize\fP\fB);\fP
+.PP
+/* Prototype for the legacy system call */
+\fB[[deprecated]] int syscall(SYS_sigprocmask, int \fP\fIhow\fP\fB,\fP
+\fB                           const old_kernel_sigset_t *_Nullable \fP\fIset\fP\fB,\fP
+\fB                           old_kernel_sigset_t *_Nullable \fP\fIoldset\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigprocmask\fP():
+.nf
+    _POSIX_C_SOURCE
+.fi
+.SH DESCRIPTION
+\fBsigprocmask\fP() 用于获取或者更改调用线程的信号掩码。 信号掩码是一组信号，其传递当前被阻止给调用者 (更多详细信息，另请参见
+\fBsignal\fP(7))。
+.PP
+调用的行为取决于 \fIhow\fP 的值，如下所示。
+.TP 
+\fBSIG_BLOCK\fP
+阻塞信号的集合是当前集合的 union 和 \fIset\fP 参数。
+.TP 
+\fBSIG_UNBLOCK\fP
+\fIset\fP 中的信号从当前的阻塞信号集中移除。 允许尝试解锁未阻塞的信号。
+.TP 
+\fBSIG_SETMASK\fP
+阻塞信号集设置为参数 \fIset\fP。
+.PP
+如果 \fIoldset\fP 为非 NULL，则信号掩码的先前值存储在 \fIoldset\fP 中。
+.PP
+如果 \fIset\fP 为 NULL，则信号掩码不变 (即 \fIhow\fP 被忽略)，但信号掩码的当前值仍然在 \fIoldset\fP 中返回 (如果它不为
+NULL)。
+.PP
+\fBsigsetops\fP(3) 中描述了一组用于修改和检查变量的 \fIsigset_t\fP (`信号组`) 类型的函数。
+.PP
+\fBsigprocmask\fP() 的使用在多线程进程中是未指定的; 请参见 \fBpthread_sigmask\fP(3)。
+.SH "RETURN VALUE"
+\fBsigprocmask\fP() 成功返回 0。 失败时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIset\fP 或 \fIoldset\fP 参数指向进程分配的地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIhow\fP 中指定的值无效或内核不支持 \fIsigsetsize.\fP 中传递的大小
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+无法阻止 \fBSIGKILL\fP 或 \fBSIGSTOP\fP。 这样做的尝试会被默默地忽略。
+.PP
+进程中的每个线程都有自己的信号掩码。
+.PP
+通过 \fBfork\fP(2) 创建的子级继承其父级信号掩码的副本; 信号掩码在 \fBexecve\fP(2) 中保留。
+.PP
+如果 \fBSIGBUS\fP、\fBSIGFPE\fP、\fBSIGILL\fP 或 \fBSIGSEGV\fP 在它们被阻塞时生成，则结果不确定，除非信号是由
+\fBkill\fP(2)、\fBsigqueue\fP(3) 或 \fBraise\fP(3) 生成的。
+.PP
+有关操作信号集的详细信息，请参见 \fBsigsetops\fP(3)。
+.PP
+.\"
+请注意，将 \fIset\fP 和 \fIoldset\fP 都指定为 NULL 是允许的 (尽管不是很有用)。
+.SS "C library/kernel differences"
+内核对 \fIsigset_t\fP 的定义在大小上与 C 库使用的不同。 在本手册页中，前者被称为 \fIkernel_sigset_t\fP
+(但在内核源代码中它被命名为 \fIsigset_t\fP)。
+.PP
+\fBsigprocmask\fP() 的 glibc 包装器函数默默地忽略了阻止 NPTL 线程实现内部使用的两个实时信号的尝试。 有关详细信息，请参见
+\fBnptl\fP(7)。
+.PP
+.\" sizeof(kernel_sigset_t) == _NSIG / 8,
+.\" which equals to 8 on most architectures, but e.g. on MIPS it's 16.
+原来的 Linux 系统调用被命名为 \fBsigprocmask\fP()。 但是，随着 Linux 2.2 中实时信号的添加，该系统调用支持的固定大小的
+32 位 \fIsigset_t\fP (在本手册页中称为 \fIold_kernel_sigset_t\fP) 类型不再适用。 因此，添加了一个新的系统调用
+\fBrt_sigprocmask\fP() 以支持放大的 \fIsigset_t\fP 类型 (在本手册页中称为 \fIkernel_sigset_t\fP)。
+新系统调用采用第四个参数 \fIsize_t sigsetsize\fP，它指定 \fIset\fP 和 \fIoldset\fP 中信号集的字节大小。
+这个参数目前要求有一个固定的架构特定值 (等于 \fIsizeof(kernel_sigset_t)\fP).
+.PP
+.\"
+glibc \fBsigprocmask\fP() 包装器函数向我们隐藏了这些细节，在内核提供 \fBrt_sigprocmask\fP() 时透明地调用它。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBpause\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2), \fBsigpending\fP(2),
+\fBsigsuspend\fP(2), \fBpthread_sigmask\fP(3), \fBsigqueue\fP(3), \fBsigsetops\fP(3),
+\fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

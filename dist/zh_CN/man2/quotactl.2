@@ -1,0 +1,466 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2010, Jan Kara
+.\" A few pieces copyright (c) 1996 Andries Brouwer (aeb@cwi.nl)
+.\" and copyright 2010 (c) Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH quotactl 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+quotactl \- 操纵磁盘配额
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/quota.h>\fP
+\fB#include <xfs/xqm.h>\fP /* Definition of \fBQ_X*\fP and \fBXFS_QUOTA_*\fP constants
+                        (或 \fB<linux/dqblk_xfs.h>\fP; 见注释) */
+.PP
+\fBint quotactl(int \fP\fIcmd\fP\fB, const char *_Nullable \fP\fIspecial\fP\fB, int \fP\fIid\fP\fB,\fP
+\fB             caddr_t \fP\fIaddr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+配额系统可用于设置每个用户、每个组和每个项目对文件系统上使用的磁盘空间量的限制。 对于每个用户或者组，可以为每个文件系统设置软限制和硬限制。
+不能超过硬限制。 可以超过软限制，但警告会随之而来。 此外，用户一次不能超过软限制超过宽限期持续时间 (默认为一周) ; 在此之后，软限制算作硬限制。
+.PP
+.\" 847aac644e92e5624f2c153bab409bf713d5ff9a
+\fBquotactl\fP() 调用操作磁盘配额。 \fIcmd\fP 参数表示应用于 \fIid\fP 中指定的用户或组 ID 的命令。 要初始化 \fIcmd\fP
+参数，请使用 \fIQCMD(subcmd, type)\fP 宏。 \fItype\fP 值是 \fBUSRQUOTA\fP (对于用户配额)、\fBGRPQUOTA\fP
+(对于组配额) 或 (自 Linux 4.1 起) \fBPRJQUOTA\fP (对于项目配额)。 \fIsubcmd\fP 值如下所述。
+.PP
+\fIspecial\fP 参数是一个指向以空字符结尾的字符串的指针，该字符串包含正在操作的文件系统的 (mounted) 块特殊设备的路径名。
+.PP
+\fIaddr\fP 参数是一个可选的、特定于命令的数据结构体的地址，它被复制到系统中或从系统中复制出来。 \fIaddr\fP 的解释在下面的每个操作中给出。
+.PP
+\fIsubcmd\fP 值是以下操作之一:
+.TP 
+\fBQ_QUOTAON\fP
+打开文件系统的配额。 \fIid\fP 参数是要使用的配额格式的标识号。 目前，支持三种配额格式:
+.RS
+.TP  13
+\fBQFMT_VFS_OLD\fP
+原始配额格式。
+.TP 
+\fBQFMT_VFS_V0\fP
+标准 VFS v0 配额格式，可以处理 32 位 UID 和 GID，配额限制最大为 2\[ha] 42 字节和 2\[ha] 32 个 inode。
+.TP 
+\fBQFMT_VFS_V1\fP
+可以处理 32 位 UID 和 GID 的配额格式以及 2\[ha] 63\-1 个字节和 2\[ha] 63\-1 个 inode 的配额限制。
+.RE
+.IP
+\fIaddr\fP 参数指向包含文件系统配额的文件的路径名。 配额文件必须存在; 它通常是用 \fBquotacheck\fP(8) 程序创建的
+.IP
+如果文件系统配置如此，配额信息也可以存储在 ext4、XFS 和其他文件系统的隐藏系统 inode 中。
+在这种情况下，没有可见的配额文件，也没有必要使用 \fBquotacheck\fP(8)。 配额信息始终由文件系统保持一致，\fBQ_QUOTAON\fP
+操作仅用于启用配额限制的实现。 具有配额信息的隐藏系统 inode 的存在由 \fBQ_GETINFO\fP 操作返回的 \fIdqi_flags\fP 字段中的
+\fBDQF_SYS_FILE\fP 标志指示。
+.IP
+此操作需要权限 (\fBCAP_SYS_ADMIN\fP)。
+.TP 
+\fBQ_QUOTAOFF\fP
+关闭文件系统的配额。 \fIaddr\fP 和 \fIid\fP 参数被忽略。 此操作需要权限 (\fBCAP_SYS_ADMIN\fP)。
+.TP 
+\fBQ_GETQUOTA\fP
+获取用户或组 \fIid\fP 的磁盘配额限制和当前使用情况。 \fIaddr\fP 参数是指向 \fI<sys/quota.h>\fP 中定义的
+\fIdqblk\fP 结构体的指针，如下所示:
+.IP
+.in +4n
+.EX
+/* uint64_t is an unsigned 64\-bit integer;
+   uint32_t is an unsigned 32\-bit integer */
+
+struct dqblk {      /* Definition since Linux 2.4.22 */
+    uint64_t dqb_bhardlimit;  /* Absolute limit on disk
+                                 quota blocks alloc */
+    uint64_t dqb_bsoftlimit;  /* Preferred limit on
+                                 disk quota blocks */
+    uint64_t dqb_curspace;    /* Current occupied space
+                                 (in bytes) */
+    uint64_t dqb_ihardlimit;  /* Maximum number of
+                                 allocated inodes */ 
+    uint64_t dqb_isoftlimit;  /* Preferred inode limit */
+    uint64_t dqb_curinodes;   /* Current number of
+                                 allocated inodes */
+    uint64_t dqb_btime;       /* Time limit for excessive
+                                 disk use */
+    uint64_t dqb_itime;       /* Time limit for excessive
+                                 files */
+    uint32_t dqb_valid;       /* Bit mask of QIF_*
+                                 constants */
+};
+
+/* Flags in dqb_valid that indicate which fields in
+   dqblk structure are valid. */
+
+#define QIF_BLIMITS   1
+#define QIF_SPACE     2
+#define QIF_ILIMITS   4
+#define QIF_INODES    8
+#define QIF_BTIME     16
+#define QIF_ITIME     32
+#define QIF_LIMITS    (QIF_BLIMITS | QIF_ILIMITS)
+#define QIF_USAGE     (QIF_SPACE | QIF_INODES)
+#define QIF_TIMES     (QIF_BTIME | QIF_ITIME)
+#define QIF_ALL       (QIF_LIMITS | QIF_USAGE | QIF_TIMES)
+.EE
+.in
+.IP
+\fIdqb_valid\fP 字段是一个位掩码，设置为指示 \fIdqblk\fP 结构体中的条目有效。 目前，内核填写 \fIdqblk\fP 结构体的所有条目，并在
+\fIdqb_valid\fP 字段中将它们标记为有效。 非特权用户只能检索他们自己的配额; 特权用户 (\fBCAP_SYS_ADMIN\fP)
+可以检索任何用户的配额。
+.TP 
+\fBQ_GETNEXTQUOTA\fP (since Linux 4.6)
+.\" commit 926132c0257a5a8d149a6a395cc3405e55420566
+此操作与 \fBQ_GETQUOTA\fP 相同，但它返回下一个大于或等于具有配额设置的 \fIid\fP 的 ID 的配额信息。
+.IP
+\fIaddr\fP 参数是指向 \fInextdqblk\fP 结构体的指针，其字段与 \fIdqblk\fP 相同，除了添加用于返回为其返回配额信息的 ID 的
+\fIdqb_id\fP 字段:
+.IP
+.in +4n
+.EX
+struct nextdqblk {
+    uint64_t dqb_bhardlimit;
+    uint64_t dqb_bsoftlimit;
+    uint64_t dqb_curspace;
+    uint64_t dqb_ihardlimit;
+    uint64_t dqb_isoftlimit;
+    uint64_t dqb_curinodes;
+    uint64_t dqb_btime;
+    uint64_t dqb_itime;
+    uint32_t dqb_valid;
+    uint32_t dqb_id;
+};
+.EE
+.in
+.TP 
+\fBQ_SETQUOTA\fP
+使用 \fIaddr\fP 指向的 \fIdqblk\fP 结构体中提供的信息，为用户或组 \fIid\fP 设置配额信息。 \fIdqblk\fP 结构体的
+\fIdqb_valid\fP 字段指示调用者已设置结构体中的哪些条目。 此操作取代了之前配额界面中的 \fBQ_SETQLIM\fP 和 \fBQ_SETUSE\fP
+操作。 此操作需要权限 (\fBCAP_SYS_ADMIN\fP)。
+.TP 
+\fBQ_GETINFO\fP (since Linux 2.4.22)
+获取有关配额文件的信息 (如宽限期)。 \fIaddr\fP 参数应该是指向 \fIdqinfo\fP 结构体的指针。 这个结构体在
+\fI<sys/quota.h>\fP 中定义如下:
+.IP
+.in +4n
+.EX
+/* uint64_t is an unsigned 64\-bit integer;
+   uint32_t is an unsigned 32\-bit integer */
+
+struct dqinfo {         /* Defined since Linux 2.4.22 */
+    uint64_t dqi_bgrace;  /* Time before block soft limit
+                             becomes hard limit */ 
+    uint64_t dqi_igrace;  /* Time before inode soft limit
+                             becomes hard limit */
+    uint32_t dqi_flags;   /* Flags for quotafile
+                             (DQF_*) */
+    uint32_t dqi_valid;
+};
+
+/* Bits for dqi_flags */
+
+/* Quota format QFMT_VFS_OLD */
+
+#define DQF_ROOT_SQUASH (1 << 0) /* Root squash enabled */
+              /* Before Linux v4.0, this had been defined
+                 privately as V1_DQF_RSQUASH */
+
+/* Quota format QFMT_VFS_V0 / QFMT_VFS_V1 */
+
+#define DQF_SYS_FILE    (1 << 16)   /* Quota stored in
+                                       一个系统文件 */
+
+/* Flags in dqi_valid that indicate which fields in
+   dqinfo structure are valid. */
+
+#define IIF_BGRACE  1
+#define IIF_IGRACE  2
+#define IIF_FLAGS   4
+#define IIF_ALL     (IIF_BGRACE | IIF_IGRACE | IIF_FLAGS)
+.EE
+.in
+.IP
+\fIdqinfo\fP 结构体中的 \fIdqi_valid\fP 字段指示结构体中有效的条目。 目前，内核填写 \fIdqinfo\fP 结构体的所有条目，并在
+\fIdqi_valid\fP 字段中将它们全部标记为有效。 \fIid\fP 参数被忽略。
+.TP 
+\fBQ_SETINFO\fP (since Linux 2.4.22)
+设置有关配额文件的信息。 \fIaddr\fP 参数应该是指向 \fIdqinfo\fP 结构体的指针。 \fIdqinfo\fP 结构体的 \fIdqi_valid\fP
+字段表示调用者设置的结构体中的条目。 此操作取代了之前配额界面中的 \fBQ_SETGRACE\fP 和 \fBQ_SETFLAGS\fP 操作。 \fIid\fP
+参数被忽略。 此操作需要权限 (\fBCAP_SYS_ADMIN\fP)。
+.TP 
+\fBQ_GETFMT\fP (since Linux 2.4.22)
+获取指定文件系统上使用的配额格式。 \fIaddr\fP 参数应该是指向将存储格式编号的 4 字节缓冲区的指针。
+.TP 
+\fBQ_SYNC\fP
+更新文件系统配额使用的磁盘副本。 如果 \fIspecial\fP 为 NULL，则同步所有具有活动配额的文件系统。\fIaddr\fP 和 \fIid\fP
+参数被忽略。
+.TP 
+\fBQ_GETSTATS\fP (supported up to Linux 2.4.21)
+获取有关配额子系统的统计信息和其他泛型信息。 \fIaddr\fP 参数应该是指向 \fIdqstats\fP 结构体的指针，数据应该存储在其中。 该结构体在
+\fI<sys/quota.h>\fP 中定义。 \fIspecial\fP 和 \fIid\fP 参数被忽略。
+.IP
+此操作已过时，已在 Linux 2.4.22 中删除。 \fI/proc/sys/fs/quota/\fP 中的文件改为携带信息。
+.PP
+对于使用 XFS Quota Manager (XQM) 的 XFS 文件系统，绕过上述操作并使用以下操作:
+.TP 
+\fBQ_XQUOTAON\fP
+为 XFS 文件系统启用配额。 XFS 提供了将 on/off 配额限制实现与配额记帐相结合的能力。 因此，XFS 期望 \fIaddr\fP 是指向
+\fIunsigned int\fP 的指针，它包含以下标志的按位组合 (在 \fI<xfs/xqm.h>\fP): 中定义
+.IP
+.in +4n
+.EX
+XFS_QUOTA_UDQ_ACCT  /* User quota accounting */
+XFS_QUOTA_UDQ_ENFD  /* User quota limits enforcement */
+XFS_QUOTA_GDQ_ACCT  /* Group quota accounting */
+XFS_QUOTA_GDQ_ENFD  /* Group quota limits enforcement */
+XFS_QUOTA_PDQ_ACCT  /* Project quota accounting */
+XFS_QUOTA_PDQ_ENFD  /* Project quota limits enforcement */
+.EE
+.in
+.IP
+此操作需要权限 (\fBCAP_SYS_ADMIN\fP)。 \fIid\fP 参数被忽略。
+.TP 
+\fBQ_XQUOTAOFF\fP
+关闭 XFS 文件系统的配额。 与 \fBQ_QUOTAON\fP 一样，XFS 文件系统需要一个指向 \fIunsigned int\fP
+的指针，该指针指定是否需要关闭配额计算或者限制强制执行 (使用与 \fBQ_XQUOTAON\fP 操作相同的标志)。 此操作需要权限
+(\fBCAP_SYS_ADMIN\fP)。 \fIid\fP 参数被忽略。
+.TP 
+\fBQ_XGETQUOTA\fP
+获取用户 \fIid\fP 的磁盘配额限制和当前使用情况。 \fIaddr\fP 参数是指向 \fIfs_disk_quota\fP 结构体的指针，在
+\fI<xfs/xqm.h>\fP 中定义如下:
+.IP
+.in +4n
+.EX
+/* All the blk units are in BBs (Basic Blocks) of
+   512 bytes. */
+
+#define FS_DQUOT_VERSION  1  /* fs_disk_quota.d_version */
+
+#define XFS_USER_QUOTA    (1<<0)  /* User quota type */
+#define XFS_PROJ_QUOTA    (1<<1)  /* Project quota type */
+#define XFS_GROUP_QUOTA   (1<<2)  /* Group quota type */
+
+struct fs_disk_quota {
+    int8_t   d_version;   /* Version of this structure */
+    int8_t   d_flags;     /* XFS_{USER,PROJ,GROUP}_QUOTA */
+    uint16_t d_fieldmask; /* Field specifier */
+    uint32_t d_id;        /* User, project, or group ID */
+    uint64_t d_blk_hardlimit; /* Absolute limit on
+                                 disk blocks */    
+    uint64_t d_blk_softlimit; /* Preferred limit on
+                                 disk blocks */
+    uint64_t d_ino_hardlimit; /* Maximum # allocated
+                                 inodes */
+    uint64_t d_ino_softlimit; /* Preferred inode limit */
+    uint64_t d_bcount;    /* # disk blocks owned by
+                             the user */
+    uint64_t d_icount;    /* # inodes owned by the user */
+    int32_t  d_itimer;    /* Zero if within inode limits */
+                          /* If not, we refuse service */
+    int32_t  d_btimer;    /* Similar to above; for
+                             disk blocks */
+    uint16_t d_iwarns;    /* # warnings issued with
+                             respect to # of inodes */
+    uint16_t d_bwarns;    /* # warnings issued with
+                             respect to disk blocks */
+    int32_t  d_padding2;  /* Padding \- for future use */
+    uint64_t d_rtb_hardlimit; /* Absolute limit on realtime
+                                 (RT) disk blocks */
+    uint64_t d_rtb_softlimit; /* Preferred limit on RT
+                                 disk blocks */
+    uint64_t d_rtbcount;  /* # realtime blocks owned */
+    int32_t  d_rtbtimer;  /* Similar to above; for RT
+                             disk blocks */
+    uint16_t d_rtbwarns;  /* # warnings issued with
+                             respect to RT disk blocks */
+    int16_t  d_padding3;  /* Padding \- for future use */
+    char     d_padding4[8];   /* Yet more padding */
+};
+.EE
+.in
+.IP
+非特权用户只能检索他们自己的配额; 特权用户 (\fBCAP_SYS_ADMIN\fP) 可以检索任何用户的配额。
+.TP 
+\fBQ_XGETNEXTQUOTA\fP (since Linux 4.6)
+.\" commit 8b37524962b9c54423374717786198f5c0820a28
+该操作与 \fBQ_XGETQUOTA\fP 相同，只是返回 (\fIfs_disk_quota\fP 结构体中 \fIaddr\fP) 配额信息指向的下一个大于或等于
+\fIid\fP 的设置了配额的 ID。 请注意，由于 \fIfs_disk_quota\fP 已经具有 \fIq_id\fP 字段，因此不需要单独的结构体类型 (与
+\fBQ_GETQUOTA\fP 和 \fBQ_GETNEXTQUOTA\fP 操作相反)
+.TP 
+\fBQ_XSETQLIM\fP
+为用户 \fIid\fP 设置磁盘配额限制。 \fIaddr\fP 参数是指向 \fIfs_disk_quota\fP 结构体的指针。 此操作需要权限
+(\fBCAP_SYS_ADMIN\fP)。
+.TP 
+\fBQ_XGETQSTAT\fP
+在 \fIaddr\fP 指向的 \fIfs_quota_stat\fP 结构体中返回 XFS 文件系统特定的配额信息。
+这对于找出有多少空间用于存储配额信息以及获取给定本地 XFS 文件系统的配额 on/off 状态很有用。 \fIfs_quota_stat\fP
+结构体本身定义如下:
+.IP
+.in +4n
+.EX
+#define FS_QSTAT_VERSION 1  /* fs_quota_stat.qs_version */
+
+struct fs_qfilestat {
+    uint64_t qfs_ino;       /* Inode number */
+    uint64_t qfs_nblks;     /* Number of BBs
+                               512\-byte\-blocks */
+    uint32_t qfs_nextents;  /* Number of extents */
+};
+
+struct fs_quota_stat {
+    int8_t   qs_version; /* Version number for
+                            future changes */
+    uint16_t qs_flags; /* XFS_QUOTA_{U,P,G}DQ_{ACCT,ENFD} */
+    int8_t   qs_pad;   /* Unused */
+    struct fs_qfilestat qs_uquota;  /* User quota storage
+                                       information */ 
+    struct fs_qfilestat qs_gquota;  /* Group quota storage
+                                       information */
+    uint32_t qs_incoredqs;   /* Number of dquots in core */
+    int32_t  qs_btimelimit;  /* Limit for blocks timer */
+    int32_t  qs_itimelimit;  /* Limit for inodes timer */
+    int32_t  qs_rtbtimelimit;/* Limit for RT
+                                blocks timer */
+    uint16_t qs_bwarnlimit;  /* Limit for # of warnings */
+    uint16_t qs_iwarnlimit;  /* Limit for # of warnings */
+};
+.EE
+.in
+.IP
+\fIid\fP 参数被忽略。
+.TP 
+\fBQ_XGETQSTATV\fP
+返回 \fIaddr\fP 指向的 \fIfs_quota_statv\fP 中 XFS 文件系统特定的配额信息。
+此版本的操作使用具有适当版本控制支持的结构体，以及适当的布局 (所有字段自然对齐) 和填充以避免特殊的兼容处理;
+它还提供了获取有关项目配额文件的统计信息的能力。 \fIfs_quota_statv\fP 结构体本身定义如下:
+.IP
+.in +4n
+.EX
+#define FS_QSTATV_VERSION1 1 /* fs_quota_statv.qs_version */
+
+struct fs_qfilestatv {
+    uint64_t qfs_ino;       /* Inode number */
+    uint64_t qfs_nblks;     /* Number of BBs
+                               512\-byte\-blocks */
+    uint32_t qfs_nextents;  /* Number of extents */
+    uint32_t qfs_pad;       /* Pad for 8\-byte alignment */
+};
+
+struct fs_quota_statv {
+    int8_t   qs_version;    /* Version for future
+                               changes */
+    uint8_t  qs_pad1;       /* Pad for 16\-bit alignment */
+    uint16_t qs_flags;      /* XFS_QUOTA_.* flags */
+    uint32_t qs_incoredqs;  /* Number of dquots incore */
+    struct fs_qfilestatv qs_uquota;  /* User quota
+                                        information */  
+    struct fs_qfilestatv qs_gquota;  /* Group quota
+                                        information */
+    struct fs_qfilestatv qs_pquota;  /* Project quota
+                                        information */
+    int32_t  qs_btimelimit;   /* Limit for blocks timer */
+    int32_t  qs_itimelimit;   /* Limit for inodes timer */
+    int32_t  qs_rtbtimelimit; /* Limit for RT blocks
+                                 timer */
+    uint16_t qs_bwarnlimit;   /* Limit for # of warnings */
+    uint16_t qs_iwarnlimit;   /* Limit for # of warnings */
+    uint64_t qs_pad2[8];      /* For future proofing */
+};
+.EE
+.in
+.IP
+结构体的 \fIqs_version\fP 字段填写被调用方支持的结构体版本 (目前只支持 \fIFS_QSTAT_VERSION1\fP)。
+内核会根据提供的版本填充结构体。 \fIid\fP 参数被忽略。
+.TP 
+\fBQ_XQUOTARM\fP (buggy until Linux 3.16)
+.\" 9da93f9b7cdf8ab28da6b364cdc1fafc8670b4dc
+释放磁盘配额占用的磁盘空间。 \fIaddr\fP 参数应该是指向 \fIunsigned int\fP 值的指针，该值包含标志 (与
+\fIfs_disk_quota\fP 结构体的 \fId_flags\fP 字段中的相同)，这些标志标识应删除哪些类型的配额。 (请注意，在 \fIcmd\fP
+参数中传递的配额类型将被忽略，但应保持有效以便通过初步的 quotactl syscall 处理程序检查。)
+.IP
+配额必须已经关闭。 \fIid\fP 参数被忽略。
+.TP 
+\fBQ_XQUOTASYNC\fP (since Linux 2.6.15; no\-op since Linux 3.4)
+.\" Added in commit ee34807a65aa0c5911dc27682863afca780a003e
+.\" 4b217ed9e30f94b6e8e5e262020ef0ceab6113af
+此操作是 XFS 配额等同于 \fBQ_SYNC\fP，但自 Linux 3.4 以来它是空操作，因为 \fBsync\fP(1) 现在将配额信息写入磁盘
+(除了它写出的其他文件系统元数据之外)。 \fIspecial\fP、\fIid\fP 和 \fIaddr\fP 参数被忽略。
+.SH "RETURN VALUE"
+成功时，\fBquotactl\fP() 返回 0; 返回错误 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fIcmd\fP 为 \fBQ_QUOTAON\fP，\fIaddr\fP 指向的 quota 文件存在，但不是普通文件或不在 \fIspecial\fP 指向的文件系统中。
+.TP 
+\fBEBUSY\fP
+\fIcmd\fP 是 \fBQ_QUOTAON\fP，但已经执行了另一个 \fBQ_QUOTAON\fP。
+.TP 
+\fBEFAULT\fP
+\fIaddr\fP 或 \fIspecial\fP 无效。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 或 \fItype\fP 无效。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 是 \fBQ_QUOTAON\fP，但指定的配额文件已损坏。
+.TP 
+\fBEINVAL\fP (since Linux 5.5)
+.\" 3dd4d40b420846dd35869ccc8f8627feef2cff32
+\fIcmd\fP 是 \fBQ_XQUOTARM\fP，但 \fIaddr\fP 未指向有效的配额类型。
+.TP 
+\fBENOENT\fP
+\fIspecial\fP 或 \fIaddr\fP 指定的文件不存在。
+.TP 
+\fBENOSYS\fP
+内核未使用 \fBCONFIG_QUOTA\fP 选项编译。
+.TP 
+\fBENOTBLK\fP
+\fIspecial\fP 不是块设备。
+.TP 
+\fBEPERM\fP
+调用者缺少指定操作所需的权限 (\fBCAP_SYS_ADMIN\fP)。
+.TP 
+\fBERANGE\fP
+\fIcmd\fP 是 \fBQ_SETQUOTA\fP，但指定的限制超出了配额格式允许的范围。
+.TP 
+\fBESRCH\fP
+找不到指定用户的磁盘配额。 尚未为此文件系统启用配额。
+.TP 
+\fBESRCH\fP
+\fIcmd\fP 是 \fBQ_QUOTAON\fP，但是找不到指定的配额格式。
+.TP 
+\fBESRCH\fP
+\fIcmd\fP 为 \fBQ_GETNEXTQUOTA\fP 或 \fBQ_XGETNEXTQUOTA\fP，但没有大于或等于 \fIid\fP 的 ID 有活跃配额。
+.SH NOTES
+考虑到存在几个命名差异，可以使用 \fI<linux/dqblk_xfs.h>\fP 代替 \fI<xfs/xqm.h>\fP:
+.IP \[bu] 3
+配额启用标志 (格式 \fBXFS_QUOTA_[UGP]DQ_{ACCT,ENFD}\fP) 定义为没有前导 "X"，如
+\fBFS_QUOTA_[UGP]DQ_{ACCT,ENFD}\fP。
+.IP \[bu]
+\fBXFS_{USER,GROUP,PROJ}_QUOTA\fP 配额类型标志也是如此，定义为 \fBFS_{USER,GROUP,PROJ}_QUOTA\fP。
+.IP \[bu]
+\fIdqblk_xfs.h\fP 头文件为可用配额类型定义了自己的 \fBXQM_USRQUOTA\fP、\fBXQM_GRPQUOTA\fP 和
+\fBXQM_PRJQUOTA\fP 常量，但它们的值与没有 \fBXQM_\fP 前缀的常量相同。
+.SH "SEE ALSO"
+\fBquota\fP(1), \fBgetrlimit\fP(2), \fBquotacheck\fP(8), \fBquotaon\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

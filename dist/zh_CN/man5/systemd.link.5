@@ -1,0 +1,996 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.LINK 5 "" "systemd 253" systemd.link
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.link \- 网络设备配置
+.SH SYNOPSIS
+.PP
+\fIlink\fP\&.link
+.SH DESCRIPTION
+.PP
+一个纯 ini 样式的文本文件，为匹配的网络设备编码配置，由 \fBsystemd\-udevd\fP(8) 使用，特别是它的
+\fBnet_setup_link\fP 内置 \&。有关语法 \& 的一般说明，请参见 \fBsystemd.syntax\fP(7)。
+.PP
+\&.link 文件是从位于系统网络目录 /usr/lib/systemd/network 和
+/usr/local/lib/systemd/network、易失性运行时网络目录 /run/systemd/network 和本地管理网络目录
+/etc/network\& 中的文件读取的。所有配置文件都按字母数字顺序集中排序和处理，无论它们位于哪个目录
+\&。但是，具有相同文件名的文件会相互替换 \&。建议每个文件名都以数字为前缀 (e\&.g\&. 10\-eth0\&.link)\&。否则，默认的
+\&.link 文件或由 \fBsystemd\-network\-generator.service\fP(8) 生成的文件可能优先于用户配置的文件
+\&。/etc/ 中的文件具有最高优先级，/run/ 中的文件优先于 /usr/lib/\&
+中的同名文件。如果需要，这可用于用本地文件覆盖系统提供的链接文件 \&。作为一种特殊情况，空文件 (文件大小为 0) 或指向 /dev/null
+的同名符号链接会完全禁用配置文件 (它是 "masked") \&。
+.PP
+与链接文件 foo\&.link 一起，"drop\-in" 目录 foo\&.link\&.d/ 可能存在 \&。该目录中所有后缀为 "\&.conf"
+的文件将按字母数字顺序合并，并在主文件本身被解析后进行解析 \&。这对于更改或添加配置设置很有用，而无需修改主配置文件 \&。每个丢弃 \- in
+文件必须有适当的节标题 \&。
+.PP
+除了 /etc/systemd/network，丢弃 \- in "\&.d" 目录可以放在 /usr/lib/systemd/network 或
+/run/systemd/network 目录下 \&。/etc/ 中的插入文件优先于 /run / 中的文件，而 /run / 中的文件又优先于
+/usr/lib/\& 中的文件。任何这些目录下的插入文件都优先于位于任何位置的主链接文件 \&。
+.PP
+链接文件包含一个 [Match] 部分，它确定一个给定的链接文件是否可以应用于一个给定的设备，以及一个 [Link] 部分指定设备应该如何配置
+\&。应用与给定设备匹配的第一个 (按词汇顺序) 链接文件 \&。请注意，默认文件 99\-default\&.link 由系统提供
+\&。因此，任何用户提供的 \&.link 都应该有一个词法上更早的名称，以便完全考虑 \&。
+.PP
+请参见 \fBudevadm\fP(8) 以诊断 \&.link 文件 \& 的问题。
+.SH "[MATCH] SECTION OPTIONS"
+.PP
+如果满足 [Match] 部分指定的所有匹配 \&，则称链接文件与接口匹配。当链接文件不包含 [Match]
+部分中的有效设置时，该文件将匹配所有接口并且 \fBsystemd\-udevd\fP 对此发出警告 \&。提示:
+为避免警告并明确所有接口都应匹配，添加以下内容:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+OriginalName=*
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+应用与给定接口匹配的第一个 (按字母数字顺序) 链接文件，忽略所有后面的文件，即使它们也匹配 \&。接受以下密钥:
+.PP
+\fIMACAddress=\fP
+.RS 4
+以空格分隔的硬件地址列表 \&。可接受的格式是:
+.PP
+\fBcolon\-delimited hexadecimal\fP
+.RS 4
+每个字段必须是一个字节 \&。例如 \&。"12:34:56:78:90:ab" 或 `AA:BB:CC:DD:EE:FF`\&。
+.RE
+.PP
+\fBhyphen\-delimited hexadecimal\fP
+.RS 4
+每个字段必须是一个字节 \&。例如 \&。"12\-34\-56\-78\-90\-ab" 或 `AA\-BB\-CC\-DD\-EE\-FF`\&。
+.RE
+.PP
+\fBdot\-delimited hexadecimal\fP
+.RS 4
+每个字段必须是两个字节 \&。例如 \&。"1234\&.5678\&.90ab" 或 `AABB\&.CCDD\&.EEFF`\&。
+.RE
+.PP
+\fBIPv4 address format\fP
+.RS 4
+例如 \&。"127\&.0\&.0\&.1" 或 `192\&.168\&.0\&.1`\&。
+.RE
+.PP
+\fBIPv6 address format\fP
+.RS 4
+例如 \&。"2001:0db8:85a3::8a2e:0370:7334" 或 `::1`\&。
+.RE
+.sp
+每个 MAC 地址的总长度必须为 4 (对于 IPv4 隧道)、6 (对于以太网)、16 (对于 IPv6 隧道) 或 20 (对于
+InfiniBand) \&。此选项可能会出现多次，在这种情况下，列表会被合并 \&。如果将空字符串分配给此选项，则重置在此之前定义的硬件地址列表
+\&。默认为取消设置 \&。
+.RE
+.PP
+\fIPermanentMACAddress=\fP
+.RS 4
+以空格分隔的硬件列表 \*(Aqs 永久地址 \&。而 \fIMACAddress=\fP 匹配设备 \*(Aqs 当前 MAC 地址，this 匹配设备
+\*(Aqs 永久 MAC 地址，可能与当前不同 \&。使用完整的冒号、连字符或点分隔的十六进制，或 IPv4 或 IPv6 地址格式
+\&。此选项可能会出现多次，在这种情况下，列表会被合并 \&。如果将空字符串分配给此选项，则重置在此之前定义的硬件地址列表 \&。默认为取消设置 \&。
+.RE
+.PP
+\fIPath=\fP
+.RS 4
+与持久路径匹配的以空格分隔的 shell 风格 glob 列表，由 udev 属性 \fIID_PATH\fP\& 公开。
+.RE
+.PP
+\fIDriver=\fP
+.RS 4
+与当前绑定到设备的驱动程序匹配的以空格分隔的 shell 样式 glob 列表，由其父设备的 udev 属性 \fIID_NET_DRIVER\fP
+公开，或者如果未设置，则由设备本身的 \fBethtool \-i\fP 公开的驱动程序 \&. 如果列表以 "!" 为前缀，则测试是倒置的 \&。
+.RE
+.PP
+\fIType=\fP
+.RS 4
+与设备类型匹配的以空格分隔的 shell 风格 glob 列表，由 \fBnetworkctl list\fP\& 公开。如果列表以 "!"
+为前缀，则测试是倒置的 \&。一些有效值为 "ether"、"loopback"、"wlan"、`wwan`\&。有效类型是从 udev
+"DEVTYPE" 属性或 linux/if_arp\&.h 中的 "ARPHRD_" 宏命名的，因此这并不全面 \&。
+.RE
+.PP
+\fIKind=\fP
+.RS 4
+与设备类型匹配的以空格分隔的 shell 风格 glob 列表，由 \fBnetworkctl status \fP\fIINTERFACE\fP 或 \fBip \-d link show \fP\fIINTERFACE\fP\& 公开。如果列表以 "!" 为前缀，则测试是倒置的 \&。一些有效值为
+"bond"、"bridge"、"gre"、"tun"、`veth`\&。有效类型由 netlink\*(Aqs "IFLA_INFO_KIND"
+属性给出，所以这并不全面 \&。
+.RE
+.PP
+\fIProperty=\fP
+.RS 4
+以空格分隔的 udev 属性名称列表，其值在等号 ("=")\& 之后。如果指定了多个属性，则测试结果是 ANDed\&。如果列表以 "!"
+为前缀，则测试是倒置的 \&。如果值包含空格，请引用整个键值对 \&。如果一个值包含引号，那么请用 `\e`\& 转义引号。
+.sp
+示例: 如果 \&.link 文件具有以下内容:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+Property=ID_MODEL_ID=9999 "ID_VENDOR_FROM_DATABASE=vendor name" "KEY=with \e"quotation\e""
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+那么，\&.link 文件只有在一个接口同时具备以上三个属性时才匹配 \&。
+.RE
+.PP
+\fIOriginalName=\fP
+.RS 4
+与设备名称匹配的以空格分隔的 shell 风格 glob 列表，由 udev 属性 `INTERFACE`\&
+公开。这不能用于匹配已从用户空间更改的名称 \&。匹配内核分配的名称时要小心，因为众所周知它们在重新启动之间不稳定。
+.RE
+.PP
+\fIHost=\fP
+.RS 4
+与主机的主机名或机器 ID 匹配。详见 \fBsystemd.unit\fP(5) 中的 \fIConditionHost=\fP\&。当以感叹号 ("!")
+为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIVirtualization=\fP
+.RS 4
+检查系统是否在虚拟化环境中执行，并可选择测试是否是特定实现 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionVirtualization=\fP\&。当以感叹号 ("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值
+\&。
+.RE
+.PP
+\fIKernelCommandLine=\fP
+.RS 4
+检查是否设置了特定的内核命令行选项 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionKernelCommandLine=\fP\&。当以感叹号 ("!") 为前缀时，结果取反
+\&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIKernelVersion=\fP
+.RS 4
+检查内核版本 (由 \fBuname \-r\fP) 报告) 是否与特定表达式匹配 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionKernelVersion=\fP\&。当以感叹号 ("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值
+\&。
+.RE
+.PP
+\fICredential=\fP
+.RS 4
+检查指定的凭据是否已传递给 systemd\-udevd\&.service 服务 \&。有关详细信息，请参见 \m[blue]\fBSystem and Service Credentials\fP\m[]\&\s-2\u[1]\d\s+2\&。当以感叹号 ("!") 为前缀时，结果取反
+\&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIArchitecture=\fP
+.RS 4
+检查系统是否在特定架构上运行 \&。详见 \fBsystemd.unit\fP(5) 中的 \fIConditionArchitecture=\fP\&。当以感叹号
+("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIFirmware=\fP
+.RS 4
+检查系统是否在具有指定固件的机器上运行 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionFirmware=\fP\&。当以感叹号 ("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.SH "[LINK] SECTION OPTIONS"
+.PP
+[Link] 部分接受以下键:
+.PP
+\fIDescription=\fP
+.RS 4
+设备描述 \&。
+.RE
+.PP
+\fIAlias=\fP
+.RS 4
+\fIifalias\fP 接口属性设置为此值 \&。
+.RE
+.PP
+\fIMACAddressPolicy=\fP
+.RS 4
+应设置 MAC 地址的策略 \&。可用的政策是:
+.PP
+\fBpersistent\fP
+.RS 4
+如果硬件有一个持久的 MAC 地址，就像大多数硬件应该的那样，并且如果它被内核使用，则什么都不做 \&。否则，将生成一个新的 MAC
+地址，保证在给定机器和给定设备的每次启动时都相同，但在其他方面是随机的。此特性取决于链接存在的 ID_NET_NAME_* 属性
+\&。在未设置这些属性的硬件上，持久 MAC 地址的生成将失败 \&。
+.RE
+.PP
+\fBrandom\fP
+.RS 4
+如果内核正在使用随机 MAC 地址，则什么都不做 \&。否则，每次设备出现时都会随机生成一个新地址，通常是在启动时。无论哪种方式，随机地址都将设置
+"unicast" 和 "locally administered" 位 \&。
+.RE
+.PP
+\fBnone\fP
+.RS 4
+保留内核分配的 MAC 地址 \&。或者使用 \fIMACAddress=\fP\& 中指定的 MAC 地址。
+.RE
+.sp
+空字符串赋值等同于设置 `none`\&。
+.RE
+.PP
+\fIMACAddress=\fP
+.RS 4
+要使用的接口 MAC 地址 \&。要使此设置生效，\fIMACAddressPolicy=\fP 必须未设置、为空或 `无`\&。
+.RE
+.PP
+\fINamePolicy=\fP
+.RS 4
+一个有序的、以空格分隔的策略列表，应根据这些策略设置接口名称 \&。 可以通过在内核命令行上指定 \fBnet\&.ifnames=0\fP 来禁用
+\fINamePolicy=\fP\&。每个策略都可能失败，并且使用第一个成功的 \&。该名称不是直接设置的，而是作为属性 \fBID_NET_NAME\fP
+导出到 udev，默认情况下，\fBudev\fP(7) 使用该属性来设置 \fINAME\fP\&。可用的政策是:
+.PP
+\fBkernel\fP
+.RS 4
+如果内核声称它为设备设置的名称是可预测的，则不会执行重命名 \&。
+.RE
+.PP
+\fBdatabase\fP
+.RS 4
+该名称是根据 udev\*(Aqs 硬件数据库中的条目设置的，密钥为 \fIID_NET_NAME_FROM_DATABASE\fP\&。
+.RE
+.PP
+\fBonboard\fP
+.RS 4
+该名称是根据板载设备固件提供的信息设置的，由 udev 属性 \fIID_NET_NAME_ONBOARD\fP\& 导出。参见
+\fBsystemd.net\-naming\-scheme\fP(7)\&。
+.RE
+.PP
+\fBslot\fP
+.RS 4
+该名称是根据热插拔设备固件提供的信息设置的，由 udev 属性 \fIID_NET_NAME_SLOT\fP\& 导出。参见
+\fBsystemd.net\-naming\-scheme\fP(7)\&。
+.RE
+.PP
+\fBpath\fP
+.RS 4
+该名称是根据设备 \*(Aqs 物理位置，由 udev 属性 \fIID_NET_NAME_PATH\fP\& 导出的。请参见
+\fBsystemd.net\-naming\-scheme\fP(7)\&。
+.RE
+.PP
+\fBmac\fP
+.RS 4
+该名称是基于设备 \*(Aqs 持久 MAC 地址，由 udev 属性 \fIID_NET_NAME_MAC\fP\& 导出的。请参见
+\fBsystemd.net\-naming\-scheme\fP(7)\&。
+.RE
+.PP
+\fBkeep\fP
+.RS 4
+如果设备已经有用户空间给定的名称 (作为设备创建或重命名的一部分)，请保留它 \&。
+.RE
+.RE
+.PP
+\fIName=\fP
+.RS 4
+要使用的接口名称 \&。此选项的优先级低于 \fINamePolicy=\fP，因此要使此设置生效，\fINamePolicy=\fP
+必须未设置、为空、禁用，或者此处配置的所有策略都必须失败 \&。另请参见下面带有 `Name=dmz0`\& 的示例。
+.sp
+请注意，指定内核可能用于另一个接口 (例如 "eth0") 的名称是危险的，因为 udev
+完成的名称分配将与内核完成的分配竞争，并且只有一个接口可以使用名称 \&。根据操作的顺序，udev 或内核将获胜，从而使命名变得不可预测
+\&。最好使用一些不同的前缀，例如 "internal0"/"external0" 或 `lan0`/`lan1`/`lan3`\&。
+.sp
+接口名称的最小长度必须为 1 个字符，最大长度为 15 个字符，并且可以包含任何 7 位 ASCII 字符，控制字符 ":"、"/" 和 `%`\&
+除外。虽然 "\&." 是允许的字符，但它 \*(Aqs 建议在为各种工具命名接口时避免使用它 (例如 \fBresolvconf\fP(1))
+使用它作为分隔符 \&。此外，不允许使用全数字接口名称 (为了避免通过数字索引对接口规范产生歧义)，特殊字符串 "\&."、"\&.\&."、"all"
+和 `default`\& 也是如此。
+.RE
+.PP
+\fIAlternativeNamesPolicy=\fP
+.RS 4
+以空格分隔的策略列表，接口 \*(应设置 Aqs 备用名称 \&。每个策略都可能失败，所有成功的策略都被使用 \&。可用策略为
+"database"、"onboard"、"slot"、"path" 和 `mac`\&。如果内核不支持替代名称，则此设置将被忽略 \&。
+.RE
+.PP
+\fIAlternativeName=\fP
+.RS 4
+要使用的替代接口名称 \&。该选项可以指定多次 \&。如果将空字符串分配给此选项，则会重置列表，并且所有先前的分配都无效
+\&。如果内核不支持替代名称，则此设置将被忽略 \&。
+.sp
+替代接口名称可用于标识各种工具中的接口 \&。与主要名称 (如上面的 \fIName=\fP 配置) 相反，可能有多个替代名称引用同一接口
+\&。备用名称的最大长度为 127 个字符，与主接口名称允许的 15 个字符形成对比，但其他名称受相同的命名约束 \&。
+.RE
+.PP
+\fITransmitQueues=\fP
+.RS 4
+指定设备 \*(Aqs 传输队列数 \&。1\&...4096\& 范围内的整数。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIReceiveQueues=\fP
+.RS 4
+指定设备 \*(Aqs 接收队列数 \&。1\&...4096\& 范围内的整数。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fITransmitQueueLength=\fP
+.RS 4
+以数据包数 \& 指定设备的传输队列长度。0\&...4294967294\& 范围内的无符号整数。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIMTUBytes=\fP
+.RS 4
+为设备设置的最大传输元字节 \&。支持常用的后缀 K、M、G，并将其理解为 1024\& 的基数。
+.RE
+.PP
+\fIBitsPerSecond=\fP
+.RS 4
+为设备设置的速度，该值向下舍入到最接近的 Mbps\&。支持常用的后缀 K、M、G，并理解为 1000\& 的基数。
+.RE
+.PP
+\fIDuplex=\fP
+.RS 4
+为设备设置的双工模式 \&。可接受的值为 \fBhalf\fP 和 \fBfull\fP\&。
+.RE
+.PP
+\fIAutoNegotiation=\fP
+.RS 4
+采用布尔值 \&。如果设置为 yes，则启用传输参数的自动协商 \&。自动协商是两个连接的以太网设备选择共同传输参数的过程，例如速度、双工模式和流量控制
+\&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.sp
+请注意，如果启用了自动协商，则速度和双工设置为只读 \&。如果禁用自动协商，并且驱动程序支持多种链接模式 \&，则速度和双工设置是可写的。
+.RE
+.PP
+\fIWakeOnLan=\fP
+.RS 4
+为设备设置的 LAN 唤醒策略。采用禁用 LAN 唤醒的特殊值 "off"，或以下单词的空格分隔列表:
+.PP
+\fBphy\fP
+.RS 4
+唤醒 PHY 活动 \&。
+.RE
+.PP
+\fBunicast\fP
+.RS 4
+唤醒单播消息 \&。
+.RE
+.PP
+\fBmulticast\fP
+.RS 4
+唤醒多播消息 \&。
+.RE
+.PP
+\fBbroadcast\fP
+.RS 4
+唤醒广播消息 \&。
+.RE
+.PP
+\fBarp\fP
+.RS 4
+唤醒 ARP\&。
+.RE
+.PP
+\fBmagic\fP
+.RS 4
+收到魔法包后醒来 \&。
+.RE
+.PP
+\fBsecureon\fP
+.RS 4
+为 MagicPacket\& 启用 SecureOn 密码。指定 \fIWakeOnLanPassword=\fP 时隐含 \&。如果没有指定
+\fIWakeOnLanPassword=\fP 选项，则从凭证 "\fILINK\fP\&.link\&.wol\&.password" (e\&.g\&.,
+"60\-foo\&.link\&.wol\&.password") 读取密码，如果未找到凭证，则从 `wol\&.password`\&
+读取。有关详细信息，请参见 \fBsystemd.exec\fP(1) 中的
+\fILoadCredential=\fP/\fISetCredential=\fP\&。凭据中的密码必须是十六进制格式的 6 个字节，每个字节由冒号 (":")
+分隔，如以太网 MAC 地址，e\&.g\&., "aa:bb:cc:dd:ee:ff"\&.
+.RE
+.sp
+默认为未设置，设备 \* (将使用 Aqs 默认值 \&。可以多次指定此设置 \&。如果分配了空字符串，则清除所有先前的分配 \&。
+.RE
+.PP
+\fIWakeOnLanPassword=\fP
+.RS 4
+指定 MagicPacket\& 的 SecureOn 密码。采用常规文件或 \fBAF_UNIX\fP 流套接字的绝对路径，或普通密码
+\&。指定常规文件的路径时，将从中读取密码 \&。当指定 \fBAF_UNIX\fP 流套接字时，将建立一个连接并从中读取密码 \&。密码必须是十六进制格式的
+6 个字节，每个字节由冒号 (":") 分隔，如以太网 MAC 地址，e\&.g\&., "aa:bb:cc:dd:ee:ff"\&。这意味着
+\fIWakeOnLan=secureon\fP\&。默认为 unset，当前值不会改变 \&。
+.RE
+.PP
+\fIPort=\fP
+.RS 4
+端口选项用于选择设备端口 \&。支持的值是:
+.PP
+\fBtp\fP
+.RS 4
+使用双绞线电缆作为介质的以太网接口。
+.RE
+.PP
+\fBaui\fP
+.RS 4
+附件元接口 (AUI)\&. 通常与集线器 \& 一起使用。
+.RE
+.PP
+\fBbnc\fP
+.RS 4
+使用 BNC 连接器和同轴电缆的以太网接口。
+.RE
+.PP
+\fBmii\fP
+.RS 4
+使用媒体独立接口 (MII)\& 的以太网接口。
+.RE
+.PP
+\fBfibre\fP
+.RS 4
+以光纤为介质的以太网接口。
+.RE
+.RE
+.PP
+\fIAdvertise=\fP
+.RS 4
+这设置了为自动协商通告的速度和双工操作模式。这意味着 `AutoNegotiation=yes`\&。支持的值是:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Supported advertise values\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Advertise
+T}:T{
+Speed (Mbps)
+T}:T{
+Duplex Mode
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+\fB10baset\-half\fP
+T}:T{
+10
+T}:T{
+half
+T}
+T{
+\fB10baset\-full\fP
+T}:T{
+10
+T}:T{
+full
+T}
+T{
+\fB100baset\-half\fP
+T}:T{
+100
+T}:T{
+half
+T}
+T{
+\fB100baset\-full\fP
+T}:T{
+100
+T}:T{
+full
+T}
+T{
+\fB1000baset\-half\fP
+T}:T{
+1000
+T}:T{
+half
+T}
+T{
+\fB1000baset\-full\fP
+T}:T{
+1000
+T}:T{
+full
+T}
+T{
+\fB10000baset\-full\fP
+T}:T{
+10000
+T}:T{
+full
+T}
+T{
+\fB2500basex\-full\fP
+T}:T{
+2500
+T}:T{
+full
+T}
+T{
+\fB1000basekx\-full\fP
+T}:T{
+1000
+T}:T{
+full
+T}
+T{
+\fB10000basekx4\-full\fP
+T}:T{
+10000
+T}:T{
+full
+T}
+T{
+\fB10000basekr\-full\fP
+T}:T{
+10000
+T}:T{
+full
+T}
+T{
+\fB10000baser\-fec\fP
+T}:T{
+10000
+T}:T{
+full
+T}
+T{
+\fB20000basemld2\-full\fP
+T}:T{
+20000
+T}:T{
+full
+T}
+T{
+\fB20000basekr2\-full\fP
+T}:T{
+20000
+T}:T{
+full
+T}
+.TE
+.sp 1
+默认情况下这是未设置的，i\&.e\&。所有可能的模式都将被公布 \&。可以多次指定此选项，在这种情况下，所有指定的速度和模式都会被公布
+\&。如果将空字符串分配给此选项，则会重置列表，并且所有先前的分配都无效 \&。
+.RE
+.PP
+\fIReceiveChecksumOffload=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，则启用用于入口网络数据包校验和的硬件卸载 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fITransmitChecksumOffload=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，则启用用于出口网络数据包校验和的硬件卸载 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fITCPSegmentationOffload=\fP
+.RS 4
+采用布尔值 \&。如果设置为真，则启用 TCP 分段卸载 (TSO)\&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fITCP6SegmentationOffload=\fP
+.RS 4
+采用布尔值 \&。如果设置为真，则启用 TCP6 分段卸载 (tx\-tcp6\-segmentation)\&。取消设置时，内核 \* (将使用 Aqs
+默认值 \&。
+.RE
+.PP
+\fIGenericSegmentationOffload=\fP
+.RS 4
+采用布尔值 \&。如果设置为真，泛型分段卸载 (GSO) 启用 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIGenericReceiveOffload=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，泛型 Receive Offload (GRO) 被启用 \&。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIGenericReceiveOffloadHardware=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，则启用硬件加速泛型 Receive Offload (GRO)\&。取消设置时，内核 \* (将使用 Aqs
+默认值 \&。
+.RE
+.PP
+\fILargeReceiveOffload=\fP
+.RS 4
+采用布尔值 \&。如果设置为真，则启用大型接收卸载 (LRO)\&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIReceiveVLANCTAGHardwareAcceleration=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，接收 VLAN CTAG 硬件加速被启用 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fITransmitVLANCTAGHardwareAcceleration=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，则启用传输 VLAN CTAG 硬件加速 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIReceiveVLANCTAGFilter=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，则启用 VLAN CTAG 上的接收过滤 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fITransmitVLANSTAGHardwareAcceleration=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，则启用传输 VLAN STAG 硬件加速 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fINTupleFilter=\fP
+.RS 4
+采用布尔值 \&。如果设置为 true，接收 N 元组过滤器和操作被启用 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIRxChannels=\fP, \fITxChannels=\fP, \fIOtherChannels=\fP, \fICombinedChannels=\fP
+.RS 4
+指定接收、传输、其他或组合通道的数量，分别为 \&。采用 1\&...4294967295 或 `max`\& 范围内的无符号整数。如果设置为
+"max"，将使用标明的硬件最大值 \&。未设置时，数字不会改变 \&。默认为取消设置 \&。
+.RE
+.PP
+\fIRxBufferSize=\fP, \fIRxMiniBufferSize=\fP, \fIRxJumboBufferSize=\fP,
+\fITxBufferSize=\fP
+.RS 4
+分别指定 NIC 接收缓冲区、迷您接收缓冲区、巨型接收缓冲区或传输缓冲区中待处理数据包的最大数量 \&。采用 1\&...4294967295 或
+`max`\& 范围内的无符号整数。如果设置为 "max"，将使用标明的硬件最大值 \&。未设置时，数字不会改变 \&。默认为取消设置 \&。
+.RE
+.PP
+\fIRxFlowControl=\fP
+.RS 4
+采用布尔值 \&。设置后，启用接收流量控制，也称为以太网接收暂停消息 (生成和发送以太网暂停帧) \&。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fITxFlowControl=\fP
+.RS 4
+采用布尔值 \&。设置后，启用传输流控制，也称为以太网传输暂停消息 (响应接收到的以太网暂停帧) \&。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIAutoNegotiationFlowControl=\fP
+.RS 4
+采用布尔值 \&。设置后，自动协商使接口能够与连接的对等方交换状态通告，以便两个设备可以就以太网暂停配置达成一致 \&。取消设置时，内核 \* (将使用
+Aqs 默认值 \&。
+.RE
+.PP
+\fIGenericSegmentOffloadMaxBytes=\fP
+.RS 4
+指定设备应接受 \& 的泛型段卸载 (GSO) 数据包的最大大小。支持常用的后缀 K、M、G，并将其理解为 1024\&
+的基数。1\&...65536\& 范围内的无符号整数。默认为取消设置 \&。
+.RE
+.PP
+\fIGenericSegmentOffloadMaxSegments=\fP
+.RS 4
+指定设备应接受 \& 的最大泛型段卸载 (GSO) 段数。1\&...65535\& 范围内的无符号整数。默认为取消设置 \&。
+.RE
+.PP
+\fIUseAdaptiveRxCoalesce=\fP, \fIUseAdaptiveTxCoalesce=\fP
+.RS 4
+布尔属性，设置后，enable/disable 自适应 Rx/Tx 合并 (如果硬件支持它) \&。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIRxCoalesceSec=\fP, \fIRxCoalesceIrqSec=\fP, \fIRxCoalesceLowSec=\fP,
+\fIRxCoalesceHighSec=\fP, \fITxCoalesceSec=\fP, \fITxCoalesceIrqSec=\fP,
+\fITxCoalesceLowSec=\fP, \fITxCoalesceHighSec=\fP
+.RS 4
+这些属性配置在发送 / 接收数据包后生成 Rx/Tx 中断之前的延迟。"Irq" 属性在主机服务 IRQ\& 时生效。"Low" 和 "High"
+属性在数据包速率低于低数据包速率阈值或超过高数据包速率阈值时生效 (如果启用自适应 Rx/Tx 合并)。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIRxMaxCoalescedFrames=\fP, \fIRxMaxCoalescedIrqFrames=\fP,
+\fIRxMaxCoalescedLowFrames=\fP, \fIRxMaxCoalescedHighFrames=\fP,
+\fITxMaxCoalescedFrames=\fP, \fITxMaxCoalescedIrqFrames=\fP,
+\fITxMaxCoalescedLowFrames=\fP, \fITxMaxCoalescedHighFrames=\fP
+.RS 4
+这些属性配置在生成 Rx/Tx 中断之前为 sent/received 的最大帧数 \&。"Irq" 属性在主机服务 IRQ\& 时生效。"Low" 和
+"High" 属性在数据包速率低于低数据包速率阈值或超过高数据包速率阈值时生效 (如果启用自适应 Rx/Tx 合并)。取消设置时，内核 \* (将使用
+Aqs 默认值 \&。
+.RE
+.PP
+\fICoalescePacketRateLow=\fP, \fICoalescePacketRateHigh=\fP
+.RS 4
+这些属性分别配置低和高数据包速率 (以每秒数据包表示) 阈值，并用于确定在启用自适应 Rx/Tx 合并的情况下低和高数据包速率的相应合并设置何时生效
+\&。如果未设置，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fICoalescePacketRateSampleIntervalSec=\fP
+.RS 4
+配置对用于自适应 Rx/Tx 合并的数据包速率进行采样的频率。此属性不能为零 \&。此属性支持的最低时间粒度是秒
+\&。部分秒数将在传递给内核之前四舍五入 \&。如果未设置，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIStatisticsBlockCoalesceSec=\fP
+.RS 4
+延迟驱动程序内存统计数据块更新多长时间 \&。如果驱动程序没有内存中的统计数据块，则忽略此属性 \&。此属性不能为零 \&。如果未设置，内核 \*
+(将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIMDI=\fP
+.RS 4
+指定接口的介质相关接口 (MDI) 模式 \&。MDI 描述了从物理层实现到用于承载传输的物理介质的接口。采用以下单词之一: "straight"
+(或等同于: "mdi")、"crossover" (或等同于: "mdi\-x"、"mdix") 和 `auto`\&。"straight" 时，使用
+MDI 直通方式 \&。"crossover" 时，将使用 MDI 交叉 (MDI\-X) 模式 \&。"auto" 时，自动检测 MDI 状态
+\&。默认为取消设置，内核 \*(Aqs 默认将被使用 \&。
+.RE
+.PP
+\fISR\-IOVVirtualFunctions=\fP
+.RS 4
+指定 SR\-IOV 虚拟函数 \&。采用 0\&...2147483647\& 范围内的整数。默认为未设置，并根据 [SR\-IOV] 部分中的
+\fIVirtualFunction=\fP 设置中指定的值自动确定 \&。
+.RE
+.SH "[SR\-IOV] SECTION OPTIONS"
+.PP
+[SR\-IOV] 部分接受以下键 \&。指定几个 [SR\-IOV] 部分来配置几个 SR\-IOVs\&。SR\-IOV 提供了将单个物理 PCI
+资源划分为虚拟 PCI 数的能力，然后可以将其注入 VM\&。在网络 VF 的情况下，SR\-IOV 通过允许流量绕过主机 \(cqs 网络栈 \&.
+.PP
+\fIVirtualFunction=\fP
+.RS 4
+指定虚拟函数 (VF)，轻量级 PCIe 函数，专门设计用于将数据移入和移出 \&。采用 0\&...2147483646\&
+范围内的整数。此选项是强制性的 \&。
+.RE
+.PP
+\fIVLANId=\fP
+.RS 4
+指定虚拟函数 \& 的 VLAN ID。采用 1\&...4095\& 范围内的整数。
+.RE
+.PP
+\fIQualityOfService=\fP
+.RS 4
+指定虚拟函数 \& 的服务质量。采用 1\&...4294967294\& 范围内的整数。
+.RE
+.PP
+\fIVLANProtocol=\fP
+.RS 4
+指定虚拟函数 \& 的 VLAN 协议。采用 "802\&.1Q" 或 `802\&.1ad`\&。
+.RE
+.PP
+\fIMACSpoofCheck=\fP
+.RS 4
+采用布尔值 \&。控制 MAC 欺骗检查 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIQueryReceiveSideScaling=\fP
+.RS 4
+采用布尔值 \&。切换虚拟函数 (VF)\& 的接收端缩放 (RSS) 配置查询功能。VF RSS 信息 (如 RSS 哈希密钥)
+在某些设备上可能被认为是敏感的，在这些设备上，此信息在 VF 和物理函数 (PF)\& 之间共享。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fITrust=\fP
+.RS 4
+采用布尔值 \&。允许设置虚拟函数 (VF)\& 的信任模式。设置后，VF 用户可以设置可能影响安全或者性能 \& 的特定，特性。取消设置时，内核 \*
+(将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fILinkState=\fP
+.RS 4
+允许设置虚拟函数 (VF)\& 的链接状态。采用布尔值或特殊值 `auto`\&。设置为 "auto" 意味着反映物理任数 (PF)
+链接状态，"yes" 允许 VF 与该主机上的其他 VF 通信，即使 PF 链接状态已关闭，"no" 导致硬件抛弃 VF 发送的任何数据包
+\&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIMACAddress=\fP
+.RS 4
+为虚数 \& 指定 MAC 地址。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&/usr/lib/systemd/network/99\-default\&.link\fP
+.PP
+systemd 附带的链接文件 99\-default\&.link 定义了链接 \& 的默认命名策略。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Link]
+NamePolicy=kernel database on\-board slot path
+MACAddressPolicy=persistent
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&/etc/systemd/network/10\-dmz\&.link\fP
+.PP
+此示例将固定名称 "dmz0" 分配给 MAC 地址为 00:a0:de:63:7a:e6 的接口:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Match]
+MACAddress=00:a0:de:63:7a:e6
+
+[Link]
+Name=dmz0
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fINamePolicy=\fP 没有设置，所以 \fIName=\fP 生效 \&。我们使用 "10\-" 前缀在列表的前面对这个文件进行排序 \&。注意需要在
+"99\-link" 之前，i\&.e\&。它需要一个数字前缀，才能产生任何效果 \&。
+.PP
+\fBExample\ \&3.\ \&Debugging \fP\fINamePolicy=\fP 赋值
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ sudo SYSTEMD_LOG_LEVEL=debug udevadm test\-builtin net_setup_link /sys/class/net/hub0
+\&...
+已解析的配置文件 /usr/lib/systemd/network/99\-default\&.link
+已解析的配置文件 /etc/systemd/network/10\-eth0\&.link
+ID_NET_DRIVER=cdc_ether
+配置文件 /etc/systemd/network/10\-eth0\&.link 适用于设备 hub0
+link_config: 自动协商未设置或启用，速度和双工不可写 \&。
+hub0: 设备有 name_assign_type=4
+使用默认接口命名方案 \*(Aqv240\*(Aq\&.
+hub0: 策略没有 \*(Aqt 产生一个名称，使用指定的 Name=hub0\&。
+ID_NET_LINK_FILE=/etc/systemd/network/10\-eth0\&.link
+ID_NET_NAME=hub0
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+在这种情况下显式 \fIName=\fP 配置胜出 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+sudo SYSTEMD_LOG_LEVEL=debug udevadm test\-builtin net_setup_link /sys/class/net/enp0s31f6
+\&...
+已解析的配置文件 /usr/lib/systemd/network/99\-default\&.link
+已解析的配置文件 /etc/systemd/network/10\-eth0\&.link
+已创建链接配置上下文 \&。
+ID_NET_DRIVER=e1000e
+配置文件 /usr/lib/systemd/network/99\-default\&.link 适用于设备 enp0s31f6
+link_config: 自动协商未设置或启用，速度和双工不可写 \&。
+enp0s31f6: 设备有 name_assign_type=4
+使用默认接口命名方案 \*(Aqv240\*(Aq\&.
+enp0s31f6: Policy *keep*: 保留现有的用户空间名称
+enp0s31f6: 设备有 addr_assign_type=0
+enp0s31f6: 设备上的 MAC 已经匹配策略 *persistent*
+ID_NET_LINK_FILE=/usr/lib/systemd/network/99\-default\&.link
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+在这种情况下，接口已经重命名，因此 99\-default\&.link 中指定为第一个选项的 \fBkeep\fP 策略意味着保留现有名称 \&。如果
+\fBkeep\fP 被删除，或者如果在重命名发生之前处于启动状态，我们可能会得到以下信息:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+enp0s31f6: 策略 *path* 产生 `enp0s31f6`\&。
+enp0s31f6: 设备有 addr_assign_type=0
+enp0s31f6: 设备上的 MAC 已经匹配策略 *persistent*
+ID_NET_LINK_FILE=/usr/lib/systemd/network/99\-default\&.link
+ID_NET_NAME=enp0s31f6
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，输出的详细信息可能会发生变化 \&。
+.PP
+\fBExample\ \&4.\ \&/etc/systemd/network/10\-internet\&.link\fP
+.PP
+此示例将固定名称 "internet0" 分配给设备路径为 "pci\-0000:00:1a\&.0\-*" 的接口:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Match]
+Path=pci\-0000:00:1a\&.0\-*
+
+[Link]
+Name=internet0
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&5.\ \&/etc/systemd/network/25\-wireless\&.link\fP
+.PP
+Here\*(Aqs 一个过于复杂的示例，显示大量 [Match] 和 [Link] 设置的使用 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Match]
+MACAddress=12:34:56:78:9a:bc
+Driver=brcmsmac
+Path=pci\-0000:02:00\&.0\-*
+Type=wlan
+Virtualization=no
+Host=my\-laptop
+Architecture=x86\-64
+
+[Link]
+Name=wireless0
+MTUBytes=1450
+BitsPerSecond=10M
+WakeOnLan=magic
+MACAddress=cb:a9:87:65:43:21
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-udevd.service\fP(8), \fBudevadm\fP(8), \fBsystemd.netdev\fP(5),
+\fBsystemd.network\fP(5), \fBsystemd\-network\-generator.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+系统和服务凭证
+.RS 4
+\%https://systemd.io/CREDENTIALS
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

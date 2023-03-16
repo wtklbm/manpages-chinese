@@ -1,0 +1,125 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2006, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sockatmark 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+sockatmark \- 确定套接字是否处于带外标记
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fBint sockatmark(int \fP\fIsockfd\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsockatmark\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBsockatmark\fP() 返回一个值，指示文件描述符 \fIsockfd\fP 引用的套接字是否处于带外标记。 如果套接字在标记处，则返回 1;
+如果套接字不在标记处，则返回 0。 此函数不去除带外标记。
+.SH "RETURN VALUE"
+如果套接字处于带外标记，则对 \fBsockatmark\fP() 的成功调用返回 1，否则返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIsockfd\fP 不是有效的文件描述符。
+.TP 
+\fBEINVAL\fP
+.\" POSIX.1 says ENOTTY for this case
+\fIsockfd\fP 不是可以应用 \fBsockatmark\fP() 的文件描述符。
+.SH VERSIONS
+在 glibc 2.2.4 中添加了 \fBsockatmark\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsockatmark\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+如果 \fBsockatmark\fP() 返回 1，则可以使用 \fBrecv\fP(2) 的 \fBMSG_OOB\fP 标志读取带外数据。
+.PP
+带外数据仅在某些流套接字协议上受支持。
+.PP
+可以从 \fBSIGURG\fP 信号的处理程序中安全地调用 \fBsockatmark\fP()。
+.PP
+\fBsockatmark\fP() 是使用 \fBSIOCATMARK\fP \fBioctl\fP(2) 操作实现的。
+.SH BUGS
+在 glibc 2.4 之前，\fBsockatmark\fP() 不起作用。
+.SH EXAMPLES
+接收到 \fBSIGURG\fP 信号后，可以使用以下代码读取 (并丢弃) 标记前的所有数据，然后读取标记处的数据字节:
+.PP
+.EX
+    char buf[BUF_LEN];
+    char oobdata;
+    int atmark, s;
+
+    for (;;) {
+        atmark = sockatmark(sockfd);
+        if (atmark == \-1) {
+            perror("sockatmark");
+            break;
+        }
+
+        if (atmark)
+            break;
+
+        s = read(sockfd, buf, BUF_LEN);
+        if (s == \-1)
+            perror("read");
+        if (s <= 0)
+            break;
+    }
+
+    if (atmark == 1) {
+        if (recv(sockfd, &oobdata, 1, MSG_OOB) == \-1) {
+            perror("recv");
+            ...
+        }
+    }
+.EE
+.SH "SEE ALSO"
+\fBfcntl\fP(2), \fBrecv\fP(2), \fBsend\fP(2), \fBtcp\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

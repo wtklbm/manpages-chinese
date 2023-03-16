@@ -1,0 +1,160 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" and Copyright 2007 Lee Schermerhorn, Hewlett Packard
+.\"
+.\" %%%LICENSE_START(VERBATIM_PROF)
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\"
+.\" Since the Linux kernel and libraries are constantly changing, this
+.\" manual page may be incorrect or out-of-date.  The author(s) assume no
+.\" responsibility for errors or omissions, or for damages resulting from
+.\" the use of the information contained herein.
+.\"
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-02-03, mtk, substantial wording changes and other improvements
+.\" 2007-08-27, Lee Schermerhorn <Lee.Schermerhorn@hp.com>
+.\"     more precise specification of behavior.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH set_mempolicy 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+set_mempolicy \- 为线程及其子线程设置默认的 NUMA 内存策略
+.SH LIBRARY
+NUMA (非统一内存访问) 策略库 (\fIlibnuma\fP、\fI\-lnuma\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <numaif.h>\fP
+.PP
+\fBlong set_mempolicy(int \fP\fImode\fP\fB, const unsigned long *\fP\fInodemask\fP\fB,\fP
+\fB                   unsigned long \fP\fImaxnode\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBset_mempolicy\fP() 将调用线程的 NUMA 内存策略 (由策略模式和零个或多个节点组成) 设置为
+\fImode\fP、\fInodemask\fP 和 \fImaxnode\fP 参数指定的值。
+.PP
+NUMA 机器具有不同的内存控制器，它们与特定 CPU 的距离不同。 内存策略定义了从哪个节点为线程分配内存。
+.PP
+这个系统调用定义了线程的默认策略。 线程策略管理在由 \fBmbind\fP(2) 设置的更具体策略控制的内存范围之外的进程地址空间中的页面分配。
+线程默认策略还控制使用带有 \fBMAP_PRIVATE\fP 标志的 \fBmmap\fP(2) 调用映射的内存映射文件的任何页面分配，线程只能从
+(loaded) 读取 (loaded)，以及使用带有 \fBMAP_SHARED\fP 标志的 \fBmmap\fP(2)
+调用映射的内存映射文件的分配，无论访问类型如何。 仅当为线程分配新页面时才应用该策略。 对于匿名内存，这是页面首次被线程接触的时间。
+.PP
+\fImode\fP 参数必须指定
+\fBMPOL_DEFAULT\fP、\fBMPOL_BIND\fP、\fBMPOL_INTERLEAVE\fP、\fBMPOL_PREFERRED\fP 或
+\fBMPOL_LOCAL\fP 之一 (下面将详细描述)。 除 \fBMPOL_DEFAULT\fP 之外的所有模式都要求调用者通过 \fInodemask\fP
+参数指定模式适用的一个或多个节点。
+.PP
+\fImode\fP 参数还可能包括一个可选的 \fImode flag\fP。 支持的 \fImode flags\fP 是:
+.TP 
+\fBMPOL_F_NUMA_BALANCING\fP (since Linux 5.12)
+.\" commit bda420b985054a3badafef23807c4b4fa38a3dff
+当 \fImode\fP 为 \fBMPOL_BIND\fP 时，如果内核支持，则为任务启用内核 NUMA 平衡。 如果该标志不受内核支持，或者与 \fImode\fP
+而不是 \fBMPOL_BIND\fP 一起使用，则返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+.TP 
+\fBMPOL_F_RELATIVE_NODES\fP (since Linux 2.6.26)
+非空 \fInodemask\fP 指定与进程当前 cpuset 允许的节点 ID 集相关的节点 ID。
+.TP 
+\fBMPOL_F_STATIC_NODES\fP (since Linux 2.6.26)
+非空 \fInodemask\fP 指定物理节点 ID。 当进程移动到不同的 cpuset 上下文时，Linux 不会重新映射
+\fInodemask\fP，当进程的当前 cpuset 上下文允许的节点集发生变化时，也不会。
+.PP
+\fInodemask\fP 指向包含最多 \fImaxnode\fP 位的节点 ID 的位掩码。 位掩码大小四舍五入为 \fIsizeof(unsigned long)\fP 的下一个倍数，但内核将只使用 \fImaxnode\fP 以内的位。 \fInodemask\fP 的 NULL 值或 \fImaxnode\fP
+的零值指定空节点集。 如果 \fImaxnode\fP 的值为零，则忽略 \fInodemask\fP 参数。
+.PP
+在需要 \fInodemask\fP 的地方，它必须包含至少一个在线节点，该节点由进程的当前 cpuset 上下文允许 (除非指定了
+\fBMPOL_F_STATIC_NODES\fP 模式标志)，并且包含内存。 如果在 \fImode\fP 中设置了
+\fBMPOL_F_STATIC_NODES\fP，并且所需的 \fInodemask\fP 不包含进程当前 cpuset 上下文所允许的节点，则内存策略将恢复为
+\fIlocal allocation\fP。 这会有效地覆盖指定的策略，直到进程的 cpuset 上下文包含 \fInodemask\fP 指定的一个或多个节点。
+.PP
+\fImode\fP 参数必须包含以下值之一:
+.TP 
+\fBMPOL_DEFAULT\fP
+此模式指定删除任何非默认线程内存策略，以便内存策略 "falls back" 成为系统默认策略。 系统默认策略是 `本地分配`\[em]，即在触发分配的
+CPU 节点上分配内存。 \fInodemask\fP 必须指定为 NULL。 如果 "local node" 不包含空闲内存，系统将尝试从 "near
+by" 节点分配内存。
+.TP 
+\fBMPOL_BIND\fP
+此模式定义了一个严格的策略，将内存分配限制在 \fInodemask\fP 中指定的节点。 如果 \fInodemask\fP
+指定了多个节点，页面分配将从具有最低数字节点 ID 的节点开始，直到该节点不包含可用内存。 然后，分配将从具有 \fInodemask\fP
+中指定的下一个最高节点 ID 的节点开始，依此类推，直到没有指定的节点包含可用内存。 不会从 \fInodemask\fP 中未指定的任何节点分配页面。
+.TP 
+\fBMPOL_INTERLEAVE\fP
+.\" NOTE:  the following sentence doesn't make sense in the context
+.\" of set_mempolicy() -- no memory area specified.
+.\" To be effective the memory area should be fairly large,
+.\" at least 1 MB or bigger.
+此模式以数字节点 ID 顺序在 \fInodemask\fP 中指定的节点之间交错页面分配。
+这通过跨多个节点分散页面和对这些页面的内存访问来优化带宽而不是延迟。 但是，对单个页面的访问仍将受限于单个节点的内存带宽。
+.TP 
+\fBMPOL_PREFERRED\fP
+此模式设置分配的首选节点。 内核将首先尝试从该节点分配页面，如果首选节点的可用内存不足，则回退到 "near by" 节点。 如果
+\fInodemask\fP 指定了多个节点 ID，则掩码中的第一个节点将被选为首选节点。 如果 \fInodemask\fP 和 \fImaxnode\fP
+参数指定空集，则策略指定 "local allocation" (就像上面讨论的系统默认策略)。
+.TP 
+\fBMPOL_LOCAL\fP (since Linux 3.8)
+.\" commit 479e2802d09f1e18a97262c4c6f8f17ae5884bd8
+.\" commit f2a07f40dbc603c15f8b06e6ec7f768af67b424f
+该模式指定 "local allocation"; 内存分配在触发分配的 CPU 节点 ("local node") 上。 \fInodemask\fP 和
+\fImaxnode\fP 参数必须指定空集。 如果 "local node" 的可用内存不足，内核将尝试从其他节点分配内存。
+只要此节点的内存可用，内核就会从 "local node" 分配内存。 如果进程的当前 cpuset 上下文不允许 "local
+node"，内核将尝试从其他节点分配内存。 只要进程的当前 cpuset 上下文允许，内核就会从 "local node" 分配内存。
+.PP
+线程内存策略在 \fBexecve\fP(2) 中保留，并由使用 \fBfork\fP(2) 或 \fBclone\fP(2) 创建的子线程继承。
+.SH "RETURN VALUE"
+成功时，\fBset_mempolicy\fP() 返回 0; 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fInodemask\fP 和 \fImaxnode\fP 指定的所有内存范围的一部分指向您的可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fImode\fP 无效。 或者，\fImode\fP 是 \fBMPOL_DEFAULT\fP 而 \fInodemask\fP 是非空的，或者 \fImode\fP 是
+\fBMPOL_BIND\fP 或 \fBMPOL_INTERLEAVE\fP 而 \fInodemask\fP 是空的。 或者，\fImaxnode\fP 指定超过一页的位。
+或者，\fInodemask\fP 指定一个或多个大于支持的最大节点 ID 的节点 ID。或者，\fInodemask\fP 指定的节点 ID
+均未联机且未被进程的当前 cpuset 上下文所允许，或者指定的节点均不包含内存。 或者，\fImode\fP 参数同时指定了
+\fBMPOL_F_STATIC_NODES\fP 和 \fBMPOL_F_RELATIVE_NODES\fP。
+或者，\fBMPOL_F_NUMA_BALANCING\fP 不受内核支持，或者与 \fImode\fP 而不是 \fBMPOL_BIND\fP 一起使用。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.SH VERSIONS
+\fBset_mempolicy\fP() 系统调用在 Linux 2.6.7 中加入。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+如果页面被换出，则不会记住内存策略。 当这样的页面被调回时，它将使用在分配页面时有效的线程或内存范围的策略。
+.PP
+有关库支持的信息，请参见 \fBnuma\fP(7)。
+.SH "SEE ALSO"
+\fBget_mempolicy\fP(2), \fBgetcpu\fP(2), \fBmbind\fP(2), \fBmmap\fP(2), \fBnuma\fP(3),
+\fBcpuset\fP(7), \fBnuma\fP(7), \fBnumactl\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

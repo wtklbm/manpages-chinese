@@ -1,0 +1,164 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 1996-2004 Hans Reiser.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH REISERFSCK 8 "January 2009" Reiserfsprogs\-3.6.27 
+.SH NAME
+reiserfsck\-ReiserFS 文件系统的检查工具。
+.SH SYNOPSIS
+.\" [ \fB-i\fR | \fB--interactive\fR ]
+.\" [ \fB-b\fR | \fB--scan-marked-in-bitmap \fIbitmap-filename\fR ]
+.\" [ \fB-h\fR | \fB--hash \fIhash-name\fR ]
+.\" [ \fB-g\fR | \fB--background\fR ]
+\fBreiserfsck\fP [ \fB\-aprVy\fP ] [ \fB\-\-rebuild\-sb\fP | \fB\-\-check\fP |
+\fB\-\-fix\-fixable\fP | \fB\-\-rebuild\-tree\fP | \fB\-\-clean\-attributes\fP ] [ \fB\-j\fP |
+\fB\-\-journal\fP \fIdevice\fP ] [ \fB\-z\fP | \fB\-\-adjust\-size\fP ] [ \fB\-n\fP | \fB\-\-nolog\fP ]
+[ \fB\-B\fP | \fB\-\-badblocks \fP\fIfile\fP ] [ \fB\-l\fP | \fB\-\-logfile \fP\fIfile\fP ] [ \fB\-q\fP
+| \fB\-\-quiet\fP ] [ \fB\-y\fP | \fB\-\-yes\fP ] [ \fB\-f\fP | \fB\-\-force\fP ] [ \fB\-S\fP |
+\fB\-\-scan\-whole\-partition\fP ] [ \fB\-\-no\-journal\-available\fP ] \fIdevice\fP
+.SH DESCRIPTION
+\fBReiserfsck\fP 在设备上搜索 Reiserfs 文件系统，重放任何必要的事务，然后检查或修复文件系统。
+.TP 
+\fIdevice\fP
+是对应于设备或分区的特殊文件 (例如，/dev/hdXX 用于集合开发环境磁盘分区或 /dev/sdXX 用于 SCSI 磁盘分区)。
+.SH OPTIONS
+.TP 
+\fB\-\-rebuild\-sb\fP
+该选项恢复 Reiserfs 分区上的超级块。 通常只有当 mount 报告 "read_super_block: can't find a
+reiserfs file system" 并且您确定 Reiserfs
+文件系统存在时才需要此选项。但是请记住，如果您使用了一些分区编辑器程序，但现在找不到文件系统，则可能是重新分区时出了问题，分区的起始位置已更改。如果是这样，与其在错误的地方重建超级块，不如先找到分区的正确起点。
+.TP 
+\fB\-\-check\fP
+此默认操作检查文件系统一致性和报告，但不修复它发现的任何损坏。此选项可用于只读文件系统挂载。
+.TP 
+\fB\-\-fix\-fixable\fP
+此选项可恢复某些不需要重建整个文件系统树 (\fB\-\-rebuild\-tree\fP) 的损坏。通常，如果 \fB\-\-check\fP 选项报告 `可以用
+\fB\-\-fix\-fixable\fP" 修复的损坏`，则只需要此选项。这包括: 将无效数据块指针清零、更正目录的 st_size 和
+st_blocks，以及删除无效目录条目。
+.TP 
+\fB\-\-rebuild\-tree\fP
+此选项使用在设备上找到的叶子节点重建整个文件系统树。 通常只有在 \fBreiserfsck \-\-check\fP 报告 "Running with
+\fB\-\-rebuild\-tree\fP is required" 时才需要此选项。强烈建议您在尝试 \fB\-\-rebuild\-tree\fP
+选项之前制作整个分区的备份副本。一旦 \fBreiserfsck \-\-rebuild\-tree\fP 启动，它必须完成它的工作
+(并且您不应该打断它)，否则文件系统将处于不可挂载状态以避免后续数据损坏。
+.TP 
+\fB\-\-clean\-attributes\fP
+此选项清除 Stat\-Data 项的保留字段。曾经有几天 reiserfs 中没有扩展属性。当它们被实现时，旧的分区需要首先被清理 \-\- 内核中的
+reiserfs 代码不关心其结构中未使用的字段。因此，如果您使用了一个带有 ReiserFS 文件系统的旧 (pre\-attrbutes)
+内核，并且您想要在那里使用扩展属性，您应该首先清理文件系统。
+.TP 
+\fB\-\-journal \fP\fIdevice \fP, \fB\-j \fP\fIdevice \fP
+此选项提供当前文件系统日志的设备名称。 当日志驻留在与主数据设备不同的设备上时需要此选项 (尽管可以使用专家选项
+\fB\-\-no\-journal\-available\fP) 避免此选项。
+.TP  
+.\" .B --interactive, -i
+.\" This makes \fBreiserfsck\fR to stop after each pass completed.
+.\" .TP
+\fB\-\-adjust\-size, \-z\fP
+此选项使 \fBreiserfsck\fP 更正大于最后发现字节偏移量的文件大小。 这意味着文件末尾的空洞将被删除。 小于最后发现的字节偏移量的文件大小由
+\fB\-\-fix\-fixable\fP 更正。
+.TP 
+\fB\-\-badblocks \fP\fIfile\fP, \fB\-B \fP\fI file\fP
+此选项将坏块列表设置为给定 `file` 中指定的块列表。在添加新列表之前清除文件系统坏块列表。它可以与 \fB\-\-fix\-fixable\fP
+一起使用来修复坏块列表 (参见 \fBdebugreiserfs \-B\fP). 如果设备有坏块，每次都必须加上 \fB\-\-rebuild\-tree\fP 选项。
+.TP 
+\fB\-\-logfile \fP\fIfile\fP, \fB\-l \fP\fI file\fP
+该选项使 \fBreiserfsck\fP 将它发现的任何损坏报告给指定的日志文件，而不是报告给标准错误。
+.TP 
+\fB\-\-nolog, \-n\fP
+此选项可防止 \fBreiserfsck\fP 报告任何类型的损坏。
+.TP 
+\fB\-\-quiet, \-q\fP
+该选项阻止 \fBreiserfsck\fP 报告其进度。
+.TP 
+\fB\-\-yes, \-y\fP
+此选项禁止 \fBreiserfsck\fP 在告诉您它将要做什么后要求您确认。它会让您确认。为安全起见，它不适用于 \fB\-\-rebuild\-tree\fP
+选项。
+.TP 
+\fB\-a\fP, \fB\-p\fP
+这些选项通常由 fsck \-A 在自动检查 /etc/fstab 中列出的那些分区时传递。这些选项使 \fBreiserfsck\fP
+打印有关指定文件系统的一些信息，检查超级块中的错误标志是否已设置并进行一些轻量级检查。如果这些检查显示损坏或指示在超级块中设置了 (可能可修复的)
+损坏的标志，则 \fBreiserfsck\fP 切换到修复可修复模式。如果发现在超级块中设置了指示致命损坏的标志，则 \fBreiserfsck\fP
+会以错误结束。
+.TP 
+\fB\-\-force, \-f\fP
+即使文件系统看起来很干净也强制检查。
+.TP 
+\fB\-V\fP
+此选项打印 reiserfsprogs 版本，然后退出。
+.TP 
+\fB\-r\fP
+这个选项什么都不做; 它只是为了向后兼容而提供的。
+.SH "EXPERT OPTIONS"
+除非您知道自己在做什么，否则请勿使用这些选项。 如果您因这些选项而丢失数据，我们概不负责。
+.TP 
+\fB\-\-no\-journal\-available\fP
+当日志设备不可用时，此选项允许 \fBreiserfsck\fP 继续。当日志位于主数据设备上时，此选项无效。注意: 此操作后，您必须使用
+\fBreiserfstune\fP 指定新的日志设备。
+.TP 
+\fB\-\-scan\-whole\-partition, \-S\fP
+此选项使 \fB\-\-rebuild\-tree\fP 扫描整个分区，而不仅仅是分区上的已用空间。
+.SH "AN EXAMPLE OF USING reiserfsck"
+1. 您认为 /dev/hda1 上的 reiserfs 分区可能有问题，或者您只想执行定期磁盘检查。
+
+2. 运行 \fBreiserfsck \-\-check \-\-logfile check.log /dev/hda1\fP。如果 \fBreiserfsck \-\-check\fP 以状态 0 退出，则表示未发现任何错误。
+
+3. 如果 \fBreiserfsck \-\-check\fP 以状态 1 退出 (并报告有关可修复的损坏)，则意味着您应该运行 \fBreiserfsck \-\-fix\-fixable \-\-logfile fixable.log /dev/hda1\fP。
+
+4. 如果 \fBreiserfsck \-\-check\fP 以状态 2 退出 (并报告有关致命损坏)，则意味着您需要运行 \fBreiserfsck \-\-rebuild\-tree\fP。 如果 \fBreiserfsck \-\-check\fP 以某种方式失败，您还应该运行 \fBreiserfsck \-\-rebuild\-tree\fP，但我们也鼓励您将其作为错误报告提交。
+
+5. 在运行 \fBreiserfsck \-\-rebuild\-tree\fP 之前，请在继续之前备份整个分区。然后运行 \fBreiserfsck \-\-rebuild\-tree \-\-logfile rebuild.log /dev/hda1\fP。
+
+6. 如果 \fBreiserfsck \-\-rebuild\-tree\fP
+步骤失败或没有恢复您预期的结果，请将此作为错误报告提交。尽量提供尽可能多的信息，包括您的平台和 Linux 内核版本。我们将尽力帮助解决问题。
+.SH "EXIT CODES"
+\fBreiserfsck\fP 使用以下退出代码:
+.br
+\\fI0\fP\-\ 没有错误。
+.br
+\\fI1\fP\-\ 文件系统错误已更正。
+.br
+\\fI2\fP\-\ 需要重新启动。
+.br
+\\fI4\fP\-\ 文件系统致命错误未更正，
+.br
+\\fBreiserfsck \-\-rebuild\-tree\fP 需要启动。
+.br
+\\fI6\fP\-\ 文件系统可修复错误未更正，
+.br
+\\fBreiserfsck \-\-fix\-fixable\fP 需要启动。
+.br
+\\fI8\fP\-\ 运算错误。
+.br
+\\fI16\fP\-\ 用法或语法错误。
+.br
+.SH AUTHOR
+此版本的 \fBreiserfsck\fP 由 Vitaly Fertman <vitaly@namesys.com> 编写。
+.SH BUGS
+请向 ReiserFS 开发人员 <reiserfs\-devel@vger.kernel.org> 报告错误，提供尽可能多的信息 \-\-
+您的硬件、内核、补丁、设置、所有打印的消息、日志文件; 检查系统日志文件以获取任何相关信息。
+.SH TODO
+更快的恢复，信号处理。
+.SH "SEE ALSO"
+\fBmkreiserfs\fP(8), \fBreiserfstune\fP(8)  \fBresize_reiserfs\fP(8),
+\fBdebugreiserfs\fP(8),
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

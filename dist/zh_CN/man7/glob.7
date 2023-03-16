@@ -1,0 +1,143 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1998 Andries Brouwer
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 2003-08-24 fix for / by John Kristoff + joey
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH glob 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+glob \- 通配路径名
+.SH DESCRIPTION
+很久以前，在 UNIX\V6 中，有一个扩展通配符模式的程序 \fI/etc/glob\fP。 不久之后，它就变成了 shell 内置的。
+.PP
+现在还有一个库例程 \fBglob\fP(3) 将为用户程序执行此函数。
+.PP
+规则如下 (POSIX.2，3.13)。
+.SS "Wildcard matching"
+如果字符串包含字符 \[aq]?\[aq]、\[aq]*\[aq] 或 \[aq][\[aq] 之一，则该字符串是通配符模式。Globbing
+是将通配符模式扩展到与该模式匹配的路径名列表中的操作。 匹配定义为:
+.PP
+\[aq]?\[aq] (不在括号之间) 匹配任何单个字符。
+.PP
+\[aq]*\[aq] (不在括号之间) 匹配任何字符串，包括空字符串。
+.PP
+\fBCharacter classes\fP
+.PP
+表达式 "\fI[...]\fP"，其中前导 \[aq][\[aq] 之后的第一个字符不是 \[aq]!\[aq]
+匹配单个字符，即括号中的任何字符。括号内的字符串不能为空; 因此 \[aq]]\[aq] 可以放在方括号之间，前提是它是第一个字符。
+(因此，"\fI[][!]\fP" 匹配三个字符 \[aq][\[aq]、\[aq]]\[aq] 和 \[aq]!\[aq]。)
+.PP
+\fBRanges\fP
+.PP
+有一个特殊约定: 由 \[aq]\-\[aq] 分隔的两个字符表示一个范围。 (因此，"\fI[A\-Fa\-f0\-9]\fP" 等同于
+"\fI[ABCDEFabcdef0123456789]\fP".) 可以在其字面量中包含 \[aq]\-\[aq]，使其成为括号之间的第一个或最后一个字符。
+(因此，"\fI[]\-]\fP" 仅匹配两个字符 \[aq]]\[aq] 和 \[aq]\-\[aq]，而 "\fI[\-\-0]\fP" 匹配三个字符
+\[aq]\-\[aq]、\[aq]。\[aq],\[aq] 0\[aq], 因为无法匹配 \[aq]/\[aq]。)
+.PP
+\fBComplementation\fP
+.PP
+表达式 "\fI[!...]\fP" 匹配单个字符，即与通过从中删除第一个 \[aq]!\[aq] 获得的表达式不匹配的任何字符。
+(因此，"\fI[!]a\-]\fP" 匹配除 \[aq]]\[aq]、\[aq] a\[aq] 和 \[aq]\-\[aq] 之外的任何单个字符。)
+.PP
+可以在 \[aq]?\[aq]、\[aq]*\[aq] 和 \[aq][\[aq] 前面加一个反斜杠来删除它们的特殊含义，或者，如果这是 shell
+命令行的一部分，将它们括在引号中。 在括号中，这些字符代表它们自己。 因此，"\fI[[?*\e]\fP" 匹配四个字符
+\[aq][\[aq]、\[aq]?\[aq]、\[aq]*\[aq] 和 \[aq]\e\[aq]。
+.SS Pathnames
+Globbing 分别应用于路径名的每个组件。 路径名中的 \[aq]/\[aq] 不能与 \[aq]?\[aq] 或 \[aq]*\[aq] 通配符或
+"\fI[.\-0]\fP" 等范围匹配。 包含显式 \[aq]/\[aq] 字符的范围在语法上是不正确的。 (POSIX 要求语法错误的模式保持不变。)
+.PP
+如果文件名以 \[aq].\[aq] 开头，则必须显式匹配此字符。 (因此，\fIrm\ *\fP 不会删除 .profile，\fItar\ c\ *\fP
+也不会归档您的所有文件; \fItar\ c\ .\fP 更好。)
+.SS "Empty lists"
+上面给出的漂亮而简单的规则: "expand a wildcard pattern into the list of matching
+pathnames" 是原始的 UNIX 定义。 它允许一个人拥有扩展为空列表的模式，如
+.PP
+.nf
+    xv \-wait 0 *.gif *.jpg
+.fi
+.PP
+可能没有 *.gif 文件存在 (这不是错误)。 但是，POSIX 要求通配符模式在句法不正确或匹配路径名列表为空时保持不变。 使用
+\fIbash\fP，可以使用此命令强制执行经典行为:
+.PP
+.in +4n
+.EX
+shopt \-s nullglob
+.EE
+.in
+.\" In Bash v1, by setting allow_null_glob_expansion=true
+.PP
+(其他地方也有类似的问题。 例如，旧脚本有
+.PP
+.in +4n
+.EX
+rm \`find . \-name "*\[ti]"\`
+.EE
+.in
+.PP
+新脚本需要
+.PP
+.in +4n
+.EX
+rm \-f nosuchfile \`find . \-name "*\[ti]"\`
+.EE
+.in
+.PP
+以避免来自使用空参数列表调用的 \fIrm\fP 的错误消息。)
+.SH NOTES
+.SS "Regular expressions"
+请注意，通配符模式不是正则表达式，尽管它们有点相似。 首先，它们匹配文件名，而不是文本，其次，约定不相同: 例如，在正则表达式中 \[aq]*\[aq]
+表示前面事物的零个或多个副本。
+.PP
+现在正则表达式有括号表达式，其中否定由 \[aq]\[ha]\[aq] 表示，POSIX 已声明通配符模式 "\fI[\[ha]...]\fP"
+的效果未定义。
+.SS "Character classes and internationalization"
+当然，范围最初是指 ASCII 范围，因此 "\fI[\ \-%]\fP" 代表 "\fI[\ !"#$%]\fP"，"\fI[a\-z]\fP" 代表 "any
+lowercase letter"。 一些 UNIX 实现对此进行了概括，因此范围 X\-Y 代表代码介于 X 和 Y 代码之间的字符集。
+然而，这要求用户知道本地系统上使用的字符编码，此外，如果本地字母表的整理顺序与字符代码的顺序不同，则不方便。 因此，POSIX
+极大地扩展了括号表示法，包括通配符模式和正则表达式。 在上面我们看到了括号表达式中可以出现的三种类型的项: 即 (i) 否定，(ii) 显式单个字符和
+(iii) 范围。 POSIX 以国际上更有用的方式指定范围，并添加了另外三种类型:
+.PP
+(iii) 范围 X\-Y 包含当前区域设置中 \fBLC_COLLATE\fP 类别定义的当前整理顺序中 X 和 Y (inclusive) 之间的所有字符。
+.PP
+(iv) 命名字符类，如
+.PP
+.nf
+[:alnum:]  [:alpha:]  [:blank:]  [:cntrl:]
+[:digit:]  [:graph:]  [:lower:]  [:print:]
+[:punct:]  [:space:]  [:upper:]  [:xdigit:]
+.fi
+.PP
+这样人们就可以说 "\fI[[:lower:]]\fP" 而不是 "\fI[a\-z]\fP"，并且在丹麦也能正常工作，丹麦的字母表中有 \[aq] z\[aq]
+之后的三个字母。 这些字符类由当前语言环境中的 \fBLC_CTYPE\fP 类别定义。
+.PP
+(v) 整理符号，如 "\fI[.ch.]\fP" 或 "\fI[.a\-acute.]\fP"，其中 "\fI[.\fP" 和 "\fI.]\fP"
+之间的字符串是为当前语言环境定义的整理元素。 请注意，这可能是一个多字符元素。
+.PP
+(vi) 等价类表达式，如 "\fI[=a=]\fP"，其中 "\fI[=\fP" 和 "\fI=]\fP"
+之间的字符串是来自其等价类的任何整理元素，如为当前语言环境定义的那样。 例如，"\fI[[=a=]]\fP" 可能等同于
+"\fI[a\('a\(`a\(:a\(^a]\fP"，即
+"\fI[a[.a\-acute.][.a\-grave.][.a\-umlaut.][.a\-circumflex.]]\fP"。
+.SH "SEE ALSO"
+\fBsh\fP(1), \fBfnmatch\fP(3), \fBglob\fP(3), \fBlocale\fP(7), \fBregex\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

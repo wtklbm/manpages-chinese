@@ -1,0 +1,99 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2001 Andries Brouwer <aeb@cwi.nl>.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH flockfile 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+flockfile, ftrylockfile, funlockfile \- 为标准输入输出锁定文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBvoid flockfile(FILE *\fP\fIfilehandle\fP\fB);\fP
+\fBint ftrylockfile(FILE *\fP\fIfilehandle\fP\fB);\fP
+\fBvoid funlockfile(FILE *\fP\fIfilehandle\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+以上所有函数:
+.nf
+    /* Since glibc 2.24: */ _POSIX_C_SOURCE >= 199309L
+        || /* glibc <= 2.23: */ _POSIX_C_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+标准输入输出函数是线程安全的。 这是通过为每个 \fIFILE\fP 对象分配一个锁定计数和 (如果锁定计数非零) 一个拥有线程来实现的。
+对于每个库调用，这些函数等待直到 \fIFILE\fP 对象不再被不同的线程锁定，然后锁定它，执行请求的 I/O，然后再次解锁对象。
+.PP
+(注: 此加锁与函数 \fBflock\fP(2)、\fBlockf\fP(3).) 等文件加锁无关
+.PP
+所有这些对于 C 程序员来说都是不可见的，但可能有两个原因希望进行更详细的控制。 一方面，也许一个线程的一系列 I/O 动作属于一起，不应被其他线程的
+I/O 中断。 另一方面，也许应该避免锁定开销以提高效率。
+.PP
+为此，线程可以显式锁定 \fIFILE\fP 对象，然后执行其一系列 I/O 操作，然后解锁。 这可以防止其他线程介于两者之间。
+如果这样做的原因是为了获得更高的效率，那么 I/O 可以使用标准输入输出功能的非锁定版本: 使用 \fBgetc_unlocked\fP(3) 和
+\fBputc_unlocked\fP(3) 而不是 \fBgetc\fP(3) 和 \fBputc\fP(3)。
+.PP
+\fBflockfile\fP() 函数等待 \fI*filehandle\fP 不再被不同线程锁定，然后使 \fI*filehandle\fP
+成为当前线程所有者，并增加锁定计数。
+.PP
+\fBfunlockfile\fP() 函数递减锁定计数。
+.PP
+\fBftrylockfile\fP() 函数是 \fBflockfile\fP() 的非阻塞版本。 如果其他线程拥有
+\fI*filehandle\fP，它什么都不做，否则它会获得所有权并增加锁定计数。
+.SH "RETURN VALUE"
+\fBftrylockfile\fP() 函数成功时返回零 (已获得锁)，失败时返回非零。
+.SH ERRORS
+None.
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBflockfile\fP(),
+\fBftrylockfile\fP(),
+\fBfunlockfile\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.PP
+当定义 \fB_POSIX_THREAD_SAFE_FUNCTIONS\fP 时，这些函数可用。
+.SH "SEE ALSO"
+\fBunlocked_stdio\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

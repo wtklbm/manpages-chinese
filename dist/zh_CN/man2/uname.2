@@ -1,0 +1,92 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2001 Andries Brouwer <aeb@cwi.nl>.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2007-07-05 mtk: Added details on underlying system call interfaces
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH uname 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+uname \- 获取有关当前内核的名称和信息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/utsname.h>\fP
+.PP
+\fBint uname(struct utsname *\fP\fIbuf\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBuname\fP() 在 \fIbuf\fP 指向的结构体中返回系统信息。 \fIutsname\fP 结构体在
+\fI<sys/utsname.h>\fP: 中定义
+.PP
+.in +4n
+.EX
+struct utsname {
+    char sysname[];    /* Operating system name (e.g., "Linux") */
+    char nodename[];   /* Name within communications network
+                          节点附加到的节点，如果有的话 */
+    char release[];    /* Operating system release
+                          (例如，"2.6.28") */
+    char version[];    /* Operating system version */
+    char machine[];    /* Hardware type identifier */
+#ifdef _GNU_SOURCE
+    char domainname[]; /* NIS or YP domain name */
+#endif
+};
+.EE
+.in
+.PP
+\fIstruct utsname\fP 中数组的长度未指定 (请参见注释) ; 这些字段由空字节 (\[aq]\e0\[aq]) 终止。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIbuf\fP 无效。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.4BSD.
+.PP
+\fIdomainname\fP 成员 (NIS 或 YP 域名) 是 GNU 扩展。
+.SH NOTES
+内核具有名称、发行版、版本和内置支持的机器类型。 反之，\fInodename\fP 字段是管理员配置的，用来匹配网络 (这个 BSD 历来称为
+"hostname"，是通过 \fBsethostname\fP(2)) 设置的。 同样，\fIdomainname\fP 字段通过
+\fBsetdomainname\fP(2) 设置。
+.PP
+结构体中字段的长度各不相同。 一些操作系统或库使用硬编码的 9 或 33 或 65 或 257。 其他系统使用 \fBSYS_NMLN\fP 或
+\fB_SYS_NMLN\fP 或 \fBUTSLEN\fP 或 \fB_UTSNAME_LENGTH\fP。 显然，使用这些常量中的任何一个都不是一个好主意; 只需使用
+sizeof(...)。 SVr4 使用 257，"to support Internet hostnames"\[em] 这是在野外可能遇到的最大值。
+.PP
+部分 utsname 信息也可以通过
+\fI/proc/sys/kernel/\fP{\fIostype\fP、\fIhostname\fP、\fIosrelease\fP、\fIversion\fP、\fIdomainname\fP}
+访问。
+.SS "C library/kernel differences"
+.\" That was back before Linux 1.0
+.\" That was also back before Linux 1.0
+随着时间的推移，\fIutsname\fP 结构体的大小增加导致了 \fBuname\fP(): \fIsys_olduname\fP() 的三个连续版本 (插槽
+\fI__NR_oldolduname\fP)、\fIsys_uname\fP() (插槽 \fI__NR_olduname\fP) 和
+\fIsys_newuname\fP() (插槽 \fI__NR_uname)\fP。第一个对所有字段使用长度 9; 第二个用了 65; 第三个也使用 65
+但添加了 \fIdomainname\fP 字段。 glibc \fBuname\fP() 包装器函数向应用程序隐藏这些细节，调用内核提供的最新版本的系统调用。
+.SH "SEE ALSO"
+\fBuname\fP(1), \fBgetdomainname\fP(2), \fBgethostname\fP(2), \fButs_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

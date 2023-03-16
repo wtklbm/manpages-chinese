@@ -1,0 +1,250 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Oct 1998 by Andi Kleen
+.\" Modified Oct 2003 by aeb
+.\" Modified 2004-07-01 by mtk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH send 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+send, sendto, sendmsg \- 在套接字上发送消息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fBssize_t send(int \fP\fIsockfd\fP\fB, const void \fP\fIbuf\fP\fB[.\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB, int \fP\fIflags\fP\fB);\fP
+\fBssize_t sendto(int \fP\fIsockfd\fP\fB, const void \fP\fIbuf\fP\fB[.\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB               const struct sockaddr *\fP\fIdest_addr\fP\fB, socklen_t \fP\fIaddrlen\fP\fB);\fP
+\fBssize_t sendmsg(int \fP\fIsockfd\fP\fB, const struct msghdr *\fP\fImsg\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+系统调用 \fBsend\fP()、\fBsendto\fP() 和 \fBsendmsg\fP() 用于将消息传输到另一个套接字。
+.PP
+只有当套接字处于 \fIconnected\fP 状态 (以便知道预期的接收者) 时，才能使用 \fBsend\fP() 调用。 \fBsend\fP() 和
+\fBwrite\fP(2) 之间的唯一区别是存在 \fIflags\fP。 \fIflags\fP 参数为零时，\fBsend\fP() 等同于 \fBwrite\fP(2)。
+还有，下面的调用
+.PP
+.in +4n
+.EX
+send(sockfd, buf, len, flags);
+.EE
+.in
+.PP
+相当于
+.PP
+.in +4n
+.EX
+sendto(sockfd, buf, len, flags, NULL, 0);
+.EE
+.in
+.PP
+参数 \fIsockfd\fP 是发送套接字的文件描述符。
+.PP
+如果在连接模式的 (\fBSOCK_STREAM\fP、\fBSOCK_SEQPACKET\fP) 套接字上使用 \fBsendto\fP()，则忽略参数
+\fIdest_addr\fP 和 \fIaddrlen\fP (非 NULL 和 0 时可能会返回错误 \fBEISCONN\fP)，实际不是套接字时返回错误
+\fBENOTCONN\fP 连接的。 否则，目标地址由 \fIdest_addr\fP 给出，\fIaddrlen\fP 指定其大小。 对于
+\fBsendmsg\fP()，目标地址由 \fImsg.msg_name\fP 给出，\fImsg.msg_namelen\fP 指定其大小。
+.PP
+对于 \fBsend\fP() 和 \fBsendto\fP()，消息在 \fIbuf\fP 中找到，长度为 \fIlen\fP。 对于 \fBsendmsg\fP()，消息由数组
+\fImsg.msg_iov\fP 的元素指向。 \fBsendmsg\fP() 调用还允许发送辅助数据 (也称为控制信息)。
+.PP
+如果消息太长而无法通过底层协议原子传递，则返回错误 \fBEMSGSIZE\fP，并且不传输消息。
+.PP
+\fBsend\fP() 中没有暗示交付失败的迹象。 本地检测到的错误由返回值 \-1 指示。
+.PP
+当消息不适合套接字的发送缓冲区时，\fBsend\fP() 通常会阻塞，除非套接字已置于非阻塞 I/O 模式。 在非阻塞模式下，在这种情况下它会失败并出现错误
+\fBEAGAIN\fP 或 \fBEWOULDBLOCK\fP。 \fBselect\fP(2) 调用可用于确定何时可以发送更多数据。
+.SS "The flags argument"
+.\" FIXME . ? document MSG_PROXY (which went away in Linux 2.3.15)
+\fIflags\fP 参数是零个或多个以下标志的按位或。
+.TP 
+\fBMSG_CONFIRM\fP (since Linux 2.3.15)
+告诉链路层发生了前进的进展: 您从对方那里得到了成功的回复。 如果链路层没有得到它，它将定期重新探测邻居 (例如，通过单播 ARP)。 仅在
+\fBSOCK_DGRAM\fP 和 \fBSOCK_RAW\fP 套接字上有效，目前仅针对 IPv4 和 IPv6 实现。 有关详细信息，请参见
+\fBarp\fP(7)。
+.TP 
+\fBMSG_DONTROUTE\fP
+不要使用网关发送数据包，只发送到直接连接的网络上的主机。 这通常仅由诊断或路由程序使用。 这仅针对路由的协议系列定义; 数据包套接字没有。
+.TP 
+\fBMSG_DONTWAIT\fP (since Linux 2.2)
+启用非阻塞操作; 如果操作会阻塞，则返回 \fBEAGAIN\fP 或 \fBEWOULDBLOCK\fP。 这提供了与设置 \fBO_NONBLOCK\fP 标志
+(通过 \fBfcntl\fP(2) \fBF_SETFL\fP 操作) 类似的行为，但不同之处在于 \fBMSG_DONTWAIT\fP 是每个调用选项，而
+\fBO_NONBLOCK\fP 是对打开文件描述的设置 (参见 \fBopen\fP(2))，它将影响调用进程以及保存引用同一打开文件描述的文件描述符的其他进程。
+.TP 
+\fBMSG_EOR\fP (since Linux 2.2)
+终止记录 (当支持此概念时，对于 \fBSOCK_SEQPACKET\fP) 类型的套接字。
+.TP 
+\fBMSG_MORE\fP (since Linux 2.4.4)
+调用方有更多数据要发送。 此标志与 TCP 套接字一起使用以获得与 \fBTCP_CORK\fP 套接字选项相同的效果 (请参见
+\fBtcp\fP(7))，不同之处在于此标志可以在每个调用的基础上设置。
+.IP
+从 Linux 2.6 开始，UDP
+套接字也支持此标志，并通知内核将设置此标志的调用中发送的所有数据打包到单个数据报中，仅在执行未指定此标志的调用时传输。 (另请参见
+\fBudp\fP(7).) 中描述的 \fBUDP_CORK\fP 套接字选项
+.TP 
+\fBMSG_NOSIGNAL\fP (since Linux 2.2)
+如果面向流的套接字上的对等方已关闭连接，则不要生成 \fBSIGPIPE\fP 信号。 仍然返回 \fBEPIPE\fP 错误。 这提供了与使用
+\fBsigaction\fP(2) 忽略 \fBSIGPIPE\fP 类似的行为，但是，虽然 \fBMSG_NOSIGNAL\fP 是每个调用特性但忽略
+\fBSIGPIPE\fP 会设置影响进程中所有线程的进程属性。
+.TP 
+\fBMSG_OOB\fP
+在支持此概念的套接字上发送 \fIout\-of\-band\fP 数据 (例如，\fBSOCK_STREAM\fP) 类型; 底层协议还必须支持
+\fIout\-of\-band\fP 数据。
+.TP 
+\fBMSG_FASTOPEN\fP (since Linux 3.7)
+尝试 TCP 快速打开 (RFC7413) 并通过执行隐式 \fBconnect\fP(2) 操作在 SYN 中发送数据，如 \fBconnect\fP(2) 和
+\fBwrite\fP(2) 的组合。 它会阻塞，直到数据被缓冲并且握手完成。 对于非阻塞套接字，它返回在 SYN 数据包中缓冲和发送的字节数。 如果
+cookie 在本地不可用，它会返回 \fBEINPROGRESS\fP，并自动发送带有快速打开 cookie 请求的 SYN。 调用者需要在 socket
+连接时重新写入数据。 出现错误时，如果握手失败，它会设置与 \fBconnect\fP(2) 相同的 \fIerrno\fP。 此标志需要在 sysctl
+\fInet.ipv4.tcp_fastopen\fP 上启用 TCP 快速打开客户端支持。
+.IP
+有关替代方法，请参见 \fBtcp\fP(7) 中的 \fBTCP_FASTOPEN_CONNECT\fP 套接字选项。
+.SS sendmsg()
+\fBsendmsg\fP() 使用的 \fImsghdr\fP 结构体定义如下:
+.PP
+.in +4n
+.EX
+struct msghdr {
+    void         *msg_name;       /* Optional address */
+    socklen_t     msg_namelen;    /* Size of address */
+    struct iovec *msg_iov;        /* Scatter/gather array */
+    size_t        msg_iovlen;     /* # elements in msg_iov */
+    void         *msg_control;    /* Ancillary data, see below */
+    size_t        msg_controllen; /* Ancillary data buffer len */
+    int           msg_flags;      /* Flags (unused) */
+};
+.EE
+.in
+.PP
+\fImsg_name\fP 字段用于未连接的套接字以指定数据报的目标地址。 它指向一个包含地址的缓冲区; \fImsg_namelen\fP
+字段应设置为地址的大小。 对于已连接的套接字，这些字段应分别指定为 NULL 和 0。
+.PP
+\fImsg_iov\fP 和 \fImsg_iovlen\fP 字段指定分散 \- 聚集位置，与 \fBwritev\fP(2) 一样。
+.PP
+您可以使用 \fImsg_control\fP 和 \fImsg_controllen\fP 成员发送控制信息 (辅助数据)。
+每个套接字内核可以处理的最大控制缓冲区长度受 \fI/proc/sys/net/core/optmem_max\fP 中的值限制; 请参见
+\fBsocket\fP(7)。 有关在各种套接字域中使用辅助数据的更多信息，请参见 \fBunix\fP(7) 和 \fBip\fP(7)。
+.PP
+.\" Still to be documented:
+.\"  Send file descriptors and user credentials using the
+.\"  msg_control* fields.
+\fImsg_flags\fP 字段被忽略。
+.SH "RETURN VALUE"
+成功时，这些调用返回发送的字节数。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+这些是套接字层产生的一些标准错误。 底层协议模块可能会生成并返回其他错误; 请参见各自的手册页。
+.TP 
+\fBEACCES\fP
+(对于由路径名标识的 UNIX 域套接字) 目标套接字文件的写权限被拒绝，或者路径前缀的目录之一的搜索权限被拒绝。 (见
+\fBpath_resolution\fP(7).)
+.IP
+(对于 UDP 套接字) 尝试发送到 network/broadcast 地址，就好像它是一个单播地址一样。
+.TP 
+\fBEAGAIN\fP or \fBEWOULDBLOCK\fP
+.\" Actually EAGAIN on Linux
+套接字被标记为非阻塞，请求的操作将阻塞。 POSIX.1\-2001
+允许在这种情况下返回任一错误，并且不要求这些常量具有相同的值，因此可移植应用程序应该检查这两种可能性。
+.TP 
+\fBEAGAIN\fP
+(Internet 域数据报套接字) \fIsockfd\fP
+引用的套接字之前未绑定到地址，并且在尝试将其绑定到临时端口时，确定临时端口范围内的所有端口号当前都在使用中。 请参见 \fBip\fP(7) 中对
+\fI/proc/sys/net/ipv4/ip_local_port_range\fP 的讨论。
+.TP 
+\fBEALREADY\fP
+另一个快速打开正在进行中。
+.TP 
+\fBEBADF\fP
+\fIsockfd\fP 不是有效的打开文件描述符。
+.TP 
+\fBECONNRESET\fP
+连接被对端重置。
+.TP 
+\fBEDESTADDRREQ\fP
+套接字不是连接模式，也没有设置对等地址。
+.TP 
+\fBEFAULT\fP
+为参数指定了无效的用户空间地址。
+.TP 
+\fBEINTR\fP
+在传输任何数据之前出现信号; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+传递的参数无效。
+.TP 
+\fBEISCONN\fP
+连接模式套接字已连接，但指定了接收者。 (现在要么返回此错误，要么忽略收件人规范。)
+.TP 
+\fBEMSGSIZE\fP
+.\" (e.g., SOCK_DGRAM )
+套接字类型要求以原子方式发送消息，而要发送的消息的大小使这成为不可能。
+.TP 
+\fBENOBUFS\fP
+网络接口的输出队列已满。 这一般表示接口已经停止发送，但也可能是瞬时拥塞引起的。 (通常情况下，这不会发生在 Linux
+中。当设备队列溢出时，数据包只是默默丢弃。)
+.TP 
+\fBENOMEM\fP
+没有可用内存。
+.TP 
+\fBENOTCONN\fP
+套接字未连接，并且未指定目标。
+.TP 
+\fBENOTSOCK\fP
+文件描述符 \fIsockfd\fP 不引用套接字。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIflags\fP 参数中的某些位不适合套接字类型。
+.TP 
+\fBEPIPE\fP
+本地端已在面向连接的套接字上关闭。 在这种情况下，进程也将收到 \fBSIGPIPE\fP，除非设置了 \fBMSG_NOSIGNAL\fP。
+.SH STANDARDS
+4.4BSD, SVr4, POSIX.1\-2001.  这些接口最早出现在 4.2BSD 中。
+.PP
+POSIX.1\-2001 仅描述了 \fBMSG_OOB\fP 和 \fBMSG_EOR\fP 标志。 POSIX.1\-2008 添加了
+\fBMSG_NOSIGNAL\fP 规范。 \fBMSG_CONFIRM\fP 标志是 Linux 扩展。
+.SH NOTES
+.\" glibc bug for msg_controllen raised 12 Mar 2006
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=2448
+.\" The problem is an underlying kernel issue: the size of the
+.\" __kernel_size_t type used to type these fields varies
+.\" across architectures, but socklen_t is always 32 bits,
+.\" as (at least with GCC) is int.
+根据 POSIX.1\-2001，\fImsghdr\fP 结构体的 \fImsg_controllen\fP 字段应键入
+\fIsocklen_t\fP，\fImsg_iovlen\fP 字段应键入 \fIint\fP，但 glibc 目前都键入 \fIsize_t\fP。
+.PP
+有关 Linux 特定系统调用的信息，请参见 \fBsendmmsg\fP(2)，该调用可用于在单个调用中传输多个数据报。
+.SH BUGS
+Linux 可能会返回 \fBEPIPE\fP 而不是 \fBENOTCONN\fP。
+.SH EXAMPLES
+\fBgetaddrinfo\fP(3) 中显示了 \fBsendto\fP() 的使用示例。
+.SH "SEE ALSO"
+\fBfcntl\fP(2), \fBgetsockopt\fP(2), \fBrecv\fP(2), \fBselect\fP(2), \fBsendfile\fP(2),
+\fBsendmmsg\fP(2), \fBshutdown\fP(2), \fBsocket\fP(2), \fBwrite\fP(2), \fBcmsg\fP(3),
+\fBip\fP(7), \fBipv6\fP(7), \fBsocket\fP(7), \fBtcp\fP(7), \fBudp\fP(7), \fBunix\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

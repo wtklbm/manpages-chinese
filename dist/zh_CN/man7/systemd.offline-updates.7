@@ -1,0 +1,233 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.OFFLINE\-UPDATES 7 "" "systemd 253" systemd.offline\-updates
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.offline\-updates \- 在 systemd 中实现离线更新
+.SH "IMPLEMENTING OFFLINE SYSTEM UPDATES"
+.PP
+本手册页描述了如何使用 systemd\& 实现 "offline" 系统更新。通过 "offline"
+操作系统更新，我们指的是在系统启动到特殊系统更新模式时运行的软件包安装和更新，以避免与当前正在运行的库和服务与磁盘上的库和服务冲突相关的问题。本文档的灵感来自这个
+\m[blue]\fBGNOME design whiteboard\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.PP
+逻辑:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+包管理器通过下载所有 (\&.rpm 或 \&.deb 或其他) 包来准备系统更新，以在特殊目录 /var/lib/system\-update (或
+package/upgrade 管理器的另一个目录 \* (Aqs 选择) \&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+当用户 OK\*(Aqed the update, the symlink/system\-update is created that points
+to /var/lib/system\-update (or wherever the directory with upgrade files
+located) and the system is rebooted\&. 此符号链接位于根目录中，因为我们需要在启动时尽早检查它，此时 /var /
+尚不可用 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+在新引导的早期，\fBsystemd\-system\-update\-generator\fP(8) 会检查 /system\-update 是否存在
+\&。如果是这样，它 (暂时且仅针对此引导) 将 (i\&.e\&. 符号链接) default\&.target 重定向到
+system\-update\&.target，这是一个引入基本系统的特殊目标
+(i\&.e\&.sysinit\&.target，因此所有文件系统都已安装，但几乎没有其他) 和系统更新单元 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+系统现在继续引导至 default\&.target，从而进入 system\-update\&.target\&。此目标拉入所有系统更新单元
+\&。只有一个服务应该执行更新 (请参见下一点)，所有其他服务应该干净利落地退出并返回 "success" 代码并且不执行任何操作 \&。更新服务应在
+sysinit\&.target 之后排序，以便在安装所有文件系统后开始更新 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+作为第一步，更新服务应检查 /system\-update 符号链接是否指向该更新服务使用的位置 \&。如果它不存在或指向不同的位置，则服务必须无错误退出
+\&。可以安装多个更新服务，并在并行中启动多个更新服务，并且只有重启前的符号链接 \fIcreated\fP 对应的工具才能执行任何操作 \&。在并行 \&
+中运行多个更新是不安全的。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+更新服务现在应该完成它的工作 \&。如果适用且可能，它应该创建一个文件系统快照，然后安装所有包 \&。完成后 (无论更新成功与否)
+必须重启机器，例如调用 \fBsystemctl reboot\fP\&。此外，在失败时脚本应该恢复到旧的文件系统快照 (没有符号链接) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+更新脚本应该仅在更新完成后退出 \&。预计执行更新的服务将导致计算机在完成后重新启动 \&。如果成功到达
+system\-update\&.target，则 i\&.e\&。所有更新服务都已运行，并且 /system\-update
+符号链接仍然存在，它将被删除并作为安全措施重新启动计算机 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 8.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  8." 4.2
+.\}
+重新启动后，现在 /system\-update 符号链接消失了，生成器不再 \*(Aqt 重定向
+default\&.target，系统现在再次启动到默认目标 \&。
+.RE
+.SH RECOMMENDATIONS
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+为了使事情变得更加健壮，我们建议通过分发包中的 \&.wants/ 符号链接将更新脚本挂接到
+system\-update\&.target，而不是依赖于包的 postinst 脚本中的 \fBsystemctl enable\fP\&。更具体地说，为您的更新脚本创建一个 \&.service 文件，没有 [Install] 部分，然后添加一个符号链接，如
+/usr/lib/systemd/system/system\-update\&.target\&.wants/foobar\&.service
+→\&.\&./foobar\&.service 到您的包 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+确保在更新脚本中尽早删除 /system\-update 符号链接，以避免在更新失败时出现重启循环 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+在更新脚本的服务文件中使用 \fIFailureAction=reboot\fP 以确保在更新失败时自动触发重启 \&。 如果您的脚本异常退出
+(通过非零错误代码或 signal/coredump) \&，\fIFailureAction=\fP
+确保指定的元被激活。如果您的脚本成功，您应该在您自己的代码中触发重启，例如通过调用 logind\*(Aqs \fBReboot()\fP 调用或调用
+\fBsystemctl reboot\fP\&。有关登录 D\-Bus API\& 的详细信息，请参见
+\fBorg.freedesktop.login1\fP(5)。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+更新服务应声明
+\fIDefaultDependencies=no\fP、\fIRequires=sysinit\&.target\fP、\fIAfter=sysinit\&.target\fP、\fIAfter=system\-update\-pre\&.target\fP、\fIBefore=system\-update\&.target\fP
+并明确引入它需要的任何其他服务 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+在启动到离线更新模式时始终运行辅助元可能是可取的，它本身不安装更新 \&。为此，创建一个包含
+\fIWants=system\-update\-pre\&.target\fP 和 \fIBefore=system\-update\-pre\&.target\fP 的
+\&.service 文件，并在 /usr/lib/systemd/system\-update\&.target\&.wants\&
+下添加指向该文件的符号链接。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.generator\fP(7),
+\fBsystemd\-system\-update\-generator\fP(8), \fBdnf.plugin.system\-upgrade\fP(8)
+.SH NOTES
+.IP " 1." 4
+GNOME 设计白板
+.RS 4
+\%https://wiki.gnome.org/Design/OS/SoftwareUpdates
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

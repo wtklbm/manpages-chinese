@@ -1,0 +1,106 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ANACRONTAB 5 2012\-11\-22 cronie "File Formats"
+.SH NAME
+/etc/anacrontab \- configuration file for Anacron
+.SH DESCRIPTION
+\fI/etc/anacrontab\fP 配置文件描述了 \fBanacron\fP(8) 控制的作业。 它可以包含三种类型的行: 职位描述行、环境分配行或空行。
+.PP
+职位描述行可以采用以下格式:
+.PP
+   以天为单位的周期以分钟为单位的延迟作业标识符命令
+.PP
+\fIperiod in days\fP 变量以天为单位指定作业的执行频率。 该变量可以用整数或宏 (@daily、@weekly、@monthly)
+表示，其中 @daily 表示与整数 1 相同的值，@weekly 与 7 相同，@monthly 表示作业运行每月一次，与月份的长短无关。
+.PP
+\fIdelay in minutes\fP 变量指定 anacron 在执行作业之前等待的分钟数 (如有必要)。 该变量由一个整数表示，其中 0
+表示无延迟。
+.PP
+\fIjob\-identifier\fP 变量指定日志文件中使用的作业的唯一名称。
+.PP
+\fIcommand\fP 变量指定要执行的命令。 该命令可以是 \fBls /proc >> /tmp/proc\fP
+之类的命令，也可以是执行自定义脚本的命令。
+.PP
+环境分配行可以采用以下格式:
+.PP
+   VAR=VALUE
+.PP
+\fIVAR\fP 周围的所有空格都被删除。 \fIVALUE\fP 周围不允许有空格 (除非您希望它们成为值的一部分)。
+指定的赋值从下一行开始生效，直到文件结束，或者到同一变量的下一次赋值。
+.PP
+\fISTART_HOURS_RANGE\fP 变量定义可以运行计划作业的时间间隔 (以小时为单位)。
+如果错过了这个时间间隔，例如，由于断电，则当天不会执行计划的作业。
+.PP
+\fIRANDOM_DELAY\fP 变量表示将添加到为每个作业指定的以分钟为单位的延迟变量的最大分钟数。 因此，将 \fIRANDOM_DELAY\fP 设置为
+12 会随机地为该特定 anacrontab 中的每个作业增加 0 到 12 分钟的延迟时间。 设置为 0 时，不添加随机延迟。
+.PP
+如果定义了 \fIMAILTO\fP (且非空)，邮件将发送到指定地址，否则使用系统用户。
+.PP
+如果定义了 \fIMAILFROM\fP (且非空)，则将其用作信封发送者地址，否则使用系统用户。
+.PP
+(注意: \fIMAILFROM\fP 和 \fIMAILTO\fP 变量都被扩展了，所以按照下面的例子设置它们可以正常工作:
+MAILFROM=cron\-$USER@cron.com ($USER 由系统用户替换) )
+.PP
+.PP
+空行是空白行、仅包含空格的行，或者是空格后跟 '#' 后跟任意注释的行。
+.PP
+您可以通过在行尾添加 '\e' 来继续一行到下一行。
+.PP
+如果您想禁用 Anacron，请在 \fI/etc/cron.hourly/jobs.deny\fP 文件中添加一行 \fI0anacron\fP，这是运行
+Anacron 的脚本的名称。
+.SH EXAMPLE
+此示例显示如何设置功能类似于 \fI/etc/crontab\fP 的 Anacron 作业，它在 6:00 到 8:00 之间启动所有常规作业
+\fIonly.\fP 指定最多 30 分钟的 \fIRANDOM_DELAY\fP。 作业将在队列中序列化运行，其中每个作业仅在前一个作业完成后才开始。
+.PP
+.nf
+# 环境变化
+SHELL=/bin/sh
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+RANDOM_DELAY=30
+# Anacron 作业将在早上 6 点到 8 点之间开始。
+START_HOURS_RANGE=6\-8
+# 延迟将为 5 分钟 + cron.daily 的 RANDOM_DELAY
+1		5	cron.daily		nice run\-parts /etc/cron.daily
+7 0 cron.weekly 不错的运行部件 /etc/cron.weekly
+@monthly 0 cron.monthly 不错的运行部分 /etc/cron.monthly
+.fi
+.SH "SEE ALSO"
+\fBanacron\fP(8), \fBcrontab\fP(1)
+.PP
+The Anacron \fIREADME\fP file.
+.SH AUTHOR
+.MT itzur@\:actcom.\:co.\:il
+Itai Tzur
+.ME
+.PP
+目前由
+.MT pasc@\:(debian.\:org|\:redellipse.\:net)
+Pascal Hakim
+.ME .
+维护
+.PP
+对于 Fedora，由
+.MT mmaslano@redhat.com
+维护 Marcela Mašláňová
+.ME .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

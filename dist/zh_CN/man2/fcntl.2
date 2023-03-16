@@ -1,0 +1,858 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\" and Copyright (C) 1993 Michael Haardt, Ian Jackson;
+.\" and Copyright (C) 1998 Jamie Lokier;
+.\" and Copyright (C) 2002-2010, 2014 Michael Kerrisk;
+.\" and Copyright (C) 2014 Jeff Layton
+.\" and Copyright (C) 2014 David Herrmann
+.\" and Copyright (C) 2017 Jens Axboe
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-09-26 by Andries Brouwer <aeb@cwi.nl>
+.\" and again on 960413 and 980804 and 981223.
+.\" Modified 1998-12-11 by Jamie Lokier <jamie@imbolc.ucc.ie>
+.\" Applied correction by Christian Ehrhardt - aeb, 990712
+.\" Modified 2002-04-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added note on F_SETFL and O_DIRECT
+.\"	Complete rewrite + expansion of material on file locking
+.\"	Incorporated description of F_NOTIFY, drawing on
+.\"		Stephen Rothwell's notes in Documentation/dnotify.txt.
+.\"	Added description of F_SETLEASE and F_GETLEASE
+.\" Corrected and polished, aeb, 020527.
+.\" Modified 2004-03-03 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Modified description of file leases: fixed some errors of detail
+.\"     Replaced the term "lease contestant" by "lease breaker"
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\" Modified 2004-12-08, added O_NOATIME after note from Martin Pool
+.\" 2004-12-10, mtk, noted F_GETOWN bug after suggestion from aeb.
+.\" 2005-04-08 Jamie Lokier <jamie@shareable.org>, mtk
+.\"	Described behavior of F_SETOWN/F_SETSIG in
+.\"	multithreaded processes, and generally cleaned
+.\"	up the discussion of F_SETOWN.
+.\" 2005-05-20, Johannes Nicolai <johannes.nicolai@hpi.uni-potsdam.de>,
+.\"	mtk: Noted F_SETOWN bug for socket file descriptor in Linux 2.4
+.\"	and earlier.  Added text on permissions required to send signal.
+.\" 2009-09-30, Michael Kerrisk
+.\"     Note obsolete F_SETOWN behavior with threads.
+.\"     Document F_SETOWN_EX and F_GETOWN_EX
+.\" 2010-06-17, Michael Kerrisk
+.\"	Document F_SETPIPE_SZ and F_GETPIPE_SZ.
+.\" 2014-07-08, David Herrmann <dh.herrmann@gmail.com>
+.\"     Document F_ADD_SEALS and F_GET_SEALS
+.\" 2017-06-26, Jens Axboe <axboe@kernel.dk>
+.\"     Document F_{GET,SET}_RW_HINT and F_{GET,SET}_FILE_RW_HINT
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fcntl 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fcntl \- 操作文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP
+.PP
+\fBint fcntl(int \fP\fIfd\fP\fB, int \fP\fIcmd\fP\fB, ... /* \fP\fIarg\fP\fB */ );\fP
+.fi
+.SH DESCRIPTION
+\fBfcntl\fP() 对打开的文件描述符 \fIfd\fP 执行下面描述的操作之一。 操作由 \fIcmd\fP 决定。
+.PP
+\fBfcntl\fP() 可以带一个可选的第三个参数。 是否需要这个参数由 \fIcmd\fP 决定。 所需的参数类型在每个 \fIcmd\fP 名称后的括号中指示
+(在大多数情况下，所需的类型是 \fIint\fP，我们使用名称 \fIarg\fP) 来标识参数，如果不需要参数，则指定 \fIvoid\fP。
+.PP
+以下某些操作仅在特定的 Linux 内核版本之后才受支持。 检查主机内核是否支持特定操作的首选方法是使用所需的 \fIcmd\fP 值调用
+\fBfcntl\fP()，然后测试调用是否失败并返回 \fBEINVAL\fP，表明内核无法识别该值。
+.SS "Duplicating a file descriptor"
+.TP 
+\fBF_DUPFD\fP (\fIint\fP)
+使用大于或等于 \fIarg\fP 的最小编号的可用文件描述符复制文件描述符 \fIfd\fP。 这与 \fBdup2\fP(2) 不同，后者完全使用指定的文件描述符。
+.IP
+成功时，返回新的文件描述符。
+.IP
+有关详细信息，请参见 \fBdup\fP(2)。
+.TP 
+\fBF_DUPFD_CLOEXEC\fP (\fIint\fP; since Linux 2.6.24)
+至于 \fBF_DUPFD\fP，不过额外设置了重复文件描述符的 close\-on\-exec 标志。 指定此标志允许程序避免额外的 \fBfcntl\fP()
+\fBF_SETFD\fP 操作来设置 \fBFD_CLOEXEC\fP 标志。 有关此标志为何有用的解释，请参见 \fBopen\fP(2) 中
+\fBO_CLOEXEC\fP 的说明。
+.SS "File descriptor flags"
+以下命令操作与文件描述符关联的标志。 目前，只定义了一个这样的标志: \fBFD_CLOEXEC\fP，close\-on\-exec 标志。 如果设置了
+\fBFD_CLOEXEC\fP 位，文件描述符将在成功的 \fBexecve\fP(2) 期间自动关闭。 (如果 \fBexecve\fP(2)
+失败，文件描述符将保持打开状态。) 如果未设置 \fBFD_CLOEXEC\fP 位，则文件描述符将在 \fBexecve\fP(2) 中保持打开状态。
+.TP 
+\fBF_GETFD\fP (\fIvoid\fP)
+返回 (作为函数结果) 文件描述符标志; \fIarg\fP 被忽略。
+.TP 
+\fBF_SETFD\fP (\fIint\fP)
+将文件描述符标志设置为 \fIarg\fP 指定的值。
+.PP
+在多线程程序中，在另一个线程执行 \fBfork\fP(2) 加 \fBexecve\fP(2) 的同时使用 \fBfcntl\fP() \fBF_SETFD\fP 设置
+close\-on\-exec 标志容易受到竞争条件的影响，可能会无意中将文件描述符泄露给在子进程中执行的程序.  有关详细信息和问题的补救措施，请参见
+\fBopen\fP(2) 中 \fBO_CLOEXEC\fP 标志的讨论。
+.SS "File status flags"
+.\" or
+.\" .BR creat (2),
+每个打开的文件描述都有某些关联的状态标志，由 \fBopen\fP(2) 初始化并可能由 \fBfcntl\fP() 修改。 重复的文件描述符 (由
+\fBdup\fP(2)、\fBfcntl\fP(F_DUPFD)、\fBfork\fP(2) 等创建) 引用相同的打开文件描述，因此共享相同的文件状态标志。
+.PP
+\fBopen\fP(2) 中描述了文件状态标志及其语义。
+.TP 
+\fBF_GETFL\fP (\fIvoid\fP)
+返回 (作为函数结果) 文件访问模式和文件状态标志; \fIarg\fP 被忽略。
+.TP 
+\fBF_SETFL\fP (\fIint\fP)
+将文件状态标志设置为 \fIarg\fP 指定的值。 文件访问模式 (\fBO_RDONLY\fP、\fBO_WRONLY\fP、\fBO_RDWR\fP) 和文件创建标志
+(即 \fIarg\fP 中的 \fBO_CREAT\fP、\fBO_EXCL\fP、\fBO_NOCTTY\fP、\fBO_TRUNC\fP) 被忽略。 在 Linux
+上，此命令只能更改 \fBO_APPEND\fP、\fBO_ASYNC\fP、\fBO_DIRECT\fP、\fBO_NOATIME\fP 和 \fBO_NONBLOCK\fP
+标志。 无法更改 \fBO_DSYNC\fP 和 \fBO_SYNC\fP 标志; 请参见下面的错误。
+.SS "Advisory record locking"
+Linux 实现传统的 ("process\-associated") UNIX 记录锁，由 POSIX 标准化。 对于具有更好语义的特定于 Linux
+的替代方案，请参见下面对打开文件描述锁的讨论。
+.PP
+\fBF_SETLK\fP、\fBF_SETLKW\fP 和 \fBF_GETLK\fP 用于获取、释放和测试记录锁 (也称为字节范围、文件段或文件区域锁) 的存在。
+第三个参数，\fIlock\fP，是指向结构体的指针，它至少有以下字段 (未指定顺序)。
+.PP
+.in +4n
+.EX
+struct flock {
+    ...
+    short l_type;    /* Type of lock: F_RDLCK,
+                        F_WRLCK, F_UNLCK */
+    short l_whence;  /* How to interpret l_start:
+                        SEEK_SET, SEEK_CUR, SEEK_END */
+    off_t l_start;   /* Starting offset for lock */
+    off_t l_len;     /* Number of bytes to lock */
+    pid_t l_pid;     /* PID of process blocking our lock
+                        (set by F_GETLK and F_OFD_GETLK) */
+    ...
+};
+.EE
+.in
+.PP
+该结构体的 \fIl_whence\fP、\fIl_start\fP 和 \fIl_len\fP 字段指定了我们希望锁定的字节范围。
+超过文件末尾的字节可能会被锁定，但不会锁定文件开头之前的字节。
+.PP
+\fIl_start\fP 是锁的起始偏移量，并相对于以下任一解释: 文件的开始 (如果 \fIl_whence\fP 是 \fBSEEK_SET\fP);
+当前文件偏移量 (如果 \fIl_whence\fP 是 \fBSEEK_CUR\fP); 或文件结尾 (如果 \fIl_whence\fP 是
+\fBSEEK_END\fP)。 在最后两种情况下，\fIl_start\fP 可以是 negative 数字，前提是偏移量不在文件开始之前。
+.PP
+\fIl_len\fP 指定要锁定的字节数。 如果 \fIl_len\fP 为正，则要锁定的范围涵盖字节 \fIl_start\fP 直至并包括
+\fIl_start\fP+\fIl_len\fP\-1。为 \fIl_len\fP 指定 0 具有特殊含义: 锁定从 \fIl_whence\fP 和 \fIl_start\fP
+指定的位置开始一直到文件末尾的所有字节，无论文件增长到多大。
+.PP
+POSIX.1\-2001 允许 (但不要求) 实现支持 negative \fIl_len\fP 值; 如果 \fIl_len\fP 为 negative，则
+\fIlock\fP 描述的区间涵盖字节 \fIl_start\fP+\fIl_len\fP 直至并包括 \fIl_start\fP\-1。这是从 Linux 2.4.21 和
+Linux 2.5.49 开始支持的。
+.PP
+\fIl_type\fP 字段可用于在文件上放置读 (\fBF_RDLCK\fP) 或写 (\fBF_WRLCK\fP) 锁。 任意数量的进程都可以在文件区域上持有读锁
+(共享锁)，但只有一个进程可以持有写锁 (排他锁)。 独占锁排除所有其他锁，包括共享锁和独占锁。 单个进程在文件区域上只能持有一种类型的锁;
+如果将新锁应用于已锁定的区域，则现有锁将转换为新的锁类型。
+(如果新锁指定的字节范围与现有锁的范围不完全一致，则此类转换可能涉及拆分、收缩或与现有锁合并。)
+.TP 
+\fBF_SETLK\fP (\fIstruct flock *\fP)
+在 \fIlock\fP 的 \fIl_whence\fP、\fIl_start\fP、\fIl_len\fP 字段指定的字节上获取锁 (当 \fIl_type\fP 为
+\fBF_RDLCK\fP 或 \fBF_WRLCK\fP) 时) 或释放锁 (当 \fIl_type\fP 为 \fBF_UNLCK\fP) 时)。
+如果另一个进程持有冲突锁，则此调用返回 \-1 并将 \fIerrno\fP 设置为 \fBEACCES\fP 或 \fBEAGAIN\fP。
+(在这种情况下返回的错误因实现而异，因此 POSIX 需要一个可移植的应用程序来检查这两个错误。)
+.TP 
+\fBF_SETLKW\fP (\fIstruct flock *\fP)
+至于 \fBF_SETLK\fP，但如果文件上持有冲突锁，则等待该锁被释放。 如果在等待时捕获到信号，则调用被中断并 (在信号处理程序返回后) 立即返回
+(返回值 \-1 和 \fIerrno\fP 设置为 \fBEINTR\fP; 请参见 \fBsignal\fP(7))。
+.TP 
+\fBF_GETLK\fP (\fIstruct flock *\fP)
+在对此调用的输入中，\fIlock\fP 描述了我们想要放置在文件上的锁。 如果可以放置锁，则 \fBfcntl\fP() 实际上并不放置，而是在 \fIlock\fP
+的 \fIl_type\fP 字段中返回 \fBF_UNLCK\fP，而结构体的其他字段保持不变。
+.IP
+如果一个或多个不兼容的锁会阻止放置此锁，则 \fBfcntl\fP() 会在 \fIlock\fP 的
+\fIl_type\fP、\fIl_whence\fP、\fIl_start\fP 和 \fIl_len\fP 字段中返回有关这些锁之一的详细信息。 如果冲突锁是传统的
+(process\-associated) 记录锁，则 \fIl_pid\fP 字段设置为持有该锁的进程的 PID。 如果冲突锁是打开的文件描述锁，则
+\fIl_pid\fP 设置为 \-1。 请注意，返回的信息在调用者检查时可能已经过时。
+.PP
+为了放置读锁，\fIfd\fP 必须打开以供读取。 为了放置写锁，\fIfd\fP 必须打开以进行写操作。 要放置两种类型的锁，请以读写方式打开文件。
+.PP
+当用 \fBF_SETLKW\fP 放置锁时，内核检测到 \fIdeadlocks\fP，由此两个或多个进程的锁请求相互阻塞，被其他进程持有的锁阻塞。
+例如，假设进程 A 持有文件第 100 字节的写锁，进程 B 持有文件第 200 字节的写锁。 如果每个进程然后尝试使用 \fBF_SETLKW\fP
+锁定已被另一个进程锁定的字节，那么在没有死锁检测的情况下，两个进程将无限期地保持阻塞状态。
+当内核检测到此类死锁时，它会导致其中一个阻塞锁请求立即失败，并显示错误 \fBEDEADLK\fP;
+遇到此类错误的应用程序应该释放它的一些锁以允许其他应用程序在尝试重新获得它所需的锁之前继续进行。 还检测到涉及两个以上进程的循环死锁。
+但是请注意，内核的死锁检测算法存在局限性。看到错误。
+.PP
+除了被显式 \fBF_UNLCK\fP 删除外，记录锁还会在进程终止时自动释放。
+.PP
+记录锁不会由通过 \fBfork\fP(2) 创建的子项继承，而是在 \fBexecve\fP(2) 中保留。
+.PP
+由于 \fBstdio\fP(3) 库执行的缓冲，应避免在该包中的例程中使用记录锁定; 改用 \fBread\fP(2) 和 \fBwrite\fP(2)。
+.PP
+上面描述的记录锁与进程相关联 (不同于下面描述的打开文件描述锁)。 这会带来一些不幸的后果:
+.IP \[bu] 3
+.\" (Additional file descriptors referring to the same file
+.\" may have been obtained by calls to
+.\" .BR open "(2), " dup "(2), " dup2 "(2), or " fcntl ().)
+如果进程关闭引用文件的 \fIany\fP 文件描述符，则释放进程对该文件的所有锁定，而不管获得锁定的文件 descriptor(s)。 这很糟糕:
+这意味着当库函数出于某种原因决定打开、读取和关闭同一文件时，进程可能会失去对 \fI/etc/passwd\fP 或 \fI/etc/mtab\fP 等文件的锁定。
+.IP \[bu]
+进程中的线程共享锁。 换句话说，多线程程序不能使用记录锁定来确保线程不会同时访问文件的同一区域。
+.PP
+打开文件描述锁解决了这两个问题。
+.SS "Open file description locks (non\-POSIX)"
+.\" FIXME . Review progress into POSIX
+.\" http://austingroupbugs.net/view.php?id=768
+打开文件描述锁是建议字节范围锁，其操作在大多数方面与上述传统记录锁相同。 这种锁定类型是特定于 Linux 的，并且从 Linux 3.15 开始可用。
+(Austin Group 提议在 POSIX.1 的下一个修订版中包含此锁类型。) 有关打开文件描述的解释，请参见 \fBopen\fP(2)。
+.PP
+这两种锁类型之间的主要区别在于，传统的记录锁与进程相关联，而打开文件描述锁与获取它们的打开文件描述相关联，这与使用 \fBflock\fP(2)
+获取的锁非常相似。 因此 (与传统的咨询记录锁不同)，打开文件描述锁在 \fBfork\fP(2) (以及 \fBclone\fP(2) 和
+\fBCLONE_FILES\fP)) 之间继承，并且仅在打开文件描述的最后一次关闭时自动释放，而不是在文件关闭时释放。
+.PP
+冲突的锁组合
+(即一个读锁和一个写锁或两个写锁)，其中一个锁是打开的文件描述锁，另一个是传统的记录锁冲突，即使它们由同一进程在同一文件描述符上获取也是如此.
+.PP
+通过相同的打开文件描述 (即通过相同的文件描述符，或通过 \fBfork\fP(2)、\fBdup\fP(2)、\fBfcntl\fP() \fBF_DUPFD\fP
+等创建的文件描述符的副本) 放置的打开文件描述锁始终兼容: 如果新锁是放置在一个已经锁定的区域，然后现有的锁被转换为新的锁类型。
+(此类转换可能会导致拆分、收缩或与现有锁合并，如上所述。)
+.PP
+另一方面，打开文件描述锁在通过不同的打开文件描述获取时可能会相互冲突。
+因此，多线程程序中的线程可以使用打开的文件描述锁来同步对文件区域的访问，方法是让每个线程在文件上执行自己的
+\fBopen\fP(2)，并通过生成的文件描述符应用锁。
+.PP
+与传统的咨询锁一样，\fBfcntl\fP() 的第三个参数 \fIlock\fP 是指向 \fIflock\fP 结构体的指针。
+与传统的记录锁相比，在使用下面描述的命令时，结构体的 \fIl_pid\fP 字段必须设置为零。
+.PP
+使用打开文件描述锁的命令类似于使用传统锁的命令:
+.TP 
+\fBF_OFD_SETLK\fP (\fIstruct flock *\fP)
+在 \fIlock\fP 的 \fIl_whence\fP、\fIl_start\fP、\fIl_len\fP 字段指定的字节上获取打开文件描述锁 (当 \fIl_type\fP 为
+\fBF_RDLCK\fP 或 \fBF_WRLCK\fP) 时) 或释放打开文件描述锁 (当 \fIl_type\fP 为 \fBF_UNLCK\fP) 时)。
+如果另一个进程持有冲突锁，则此调用返回 \-1 并将 \fIerrno\fP 设置为 \fBEAGAIN\fP。
+.TP 
+\fBF_OFD_SETLKW\fP (\fIstruct flock *\fP)
+至于 \fBF_OFD_SETLK\fP，但如果文件上持有冲突锁，则等待该锁被释放。 如果在等待时捕获到信号，则调用被中断并 (在信号处理程序返回后)
+立即返回 (返回值 \-1 和 \fIerrno\fP 设置为 \fBEINTR\fP; 请参见 \fBsignal\fP(7))。
+.TP 
+\fBF_OFD_GETLK\fP (\fIstruct flock *\fP)
+在对此调用的输入中，\fIlock\fP 描述了一个我们想要放置在文件上的打开的文件描述锁。 如果可以放置锁，则 \fBfcntl\fP() 实际上并不放置，而是在
+\fIlock\fP 的 \fIl_type\fP 字段中返回 \fBF_UNLCK\fP，而结构体的其他字段保持不变。
+如果一个或多个不兼容的锁会阻止放置此锁，则有关这些锁之一的详细信息将通过 \fIlock\fP 返回，如上文针对 \fBF_GETLK\fP 所述。
+.PP
+.\" commit 57b65325fe34ec4c917bc4e555144b4a94d9e1f7
+.\"
+在当前的实现中，没有对打开的文件描述锁进行死锁检测。 (这与进程关联的记录锁形成对比，内核会为后者执行死锁检测。)
+.SS "Mandatory locking"
+\fIWarning\fP: Linux 强制锁定的实现是不可靠的。 请参见下面的错误。 由于这些错误，以及该特性被认为很少使用的事实，自 Linux 4.5
+以来，强制锁定已成为一项可选特性由配置选项 (\fBCONFIG_MANDATORY_FILE_LOCKING\fP) 控制。 Linux 5.15
+及更高版本不再支持此，特性。
+.PP
+默认情况下，传统的 (process\-associated) 和打开的文件描述记录锁都是建议性的。 咨询锁不是强制执行的，仅在协作进程之间有用。
+.PP
+两种锁类型也可以是强制的。 对所有进程强制执行强制锁定。 如果进程试图执行不兼容的访问 (例如，对具有不兼容强制锁的文件区域执行 \fBread\fP(2)
+或 \fBwrite\fP(2)))，则结果取决于是否为其打开的文件描述启用了 \fBO_NONBLOCK\fP 标志。 如果未启用 \fBO_NONBLOCK\fP
+标志，则系统调用将被阻塞，直到锁被移除或转换为与访问兼容的模式。 如果启用了 \fBO_NONBLOCK\fP 标志，则系统调用会失败并出现错误
+\fBEAGAIN\fP。
+.PP
+要使用强制锁定，必须在包含要锁定的文件的文件系统和文件本身上启用强制锁定。 使用 \fBmount\fP(8) 的 "\-o mand" 选项或
+\fBmount\fP(2) 的 \fBMS_MANDLOCK\fP 标志在文件系统上启用强制锁定。 通过禁用文件的组执行权限并启用 set\-group\-ID
+权限位 (参见 \fBchmod\fP(1) 和 \fBchmod\fP(2)).
+.PP
+.\"
+POSIX 未指定强制锁定。 其他一些系统也支持强制锁定，尽管如何启用它的细节因系统而异。
+.SS "Lost locks"
+当在网络文件系统 (如 NFS) 上获得咨询锁时，锁可能会丢失。 这可能是由于服务器上的管理操作或由于网络分区 (即与服务器的网络连接丢失)
+持续时间足以使服务器假定客户端不再运行而发生的。
+.PP
+.\" commit ef1820f9be27b6ad158f433ab38002ab8131db4d
+当文件系统确定锁已丢失时，future \fBread\fP(2) 或 \fBwrite\fP(2) 请求可能会失败并出现错误 \fBEIO\fP。
+此错误将持续存在，直到移除锁或关闭文件描述符。 从 Linux 3.12 开始，至少 NFSv4 (包括所有次要版本) 都会发生这种情况。
+.PP
+.\"
+在这种情况下，某些版本的 UNIX 会发送信号 (\fBSIGLOST\fP)。 Linux 没有定义这个信号，也不提供任何丢失锁的异步通知。
+.SS "Managing signals"
+\fBF_GETOWN\fP、\fBF_SETOWN\fP、\fBF_GETOWN_EX\fP、\fBF_SETOWN_EX\fP、\fBF_GETSIG\fP 和
+\fBF_SETSIG\fP 用于管理 I/O 可用性信号:
+.TP 
+\fBF_GETOWN\fP (\fIvoid\fP)
+返回 (作为函数结果) 当前接收文件描述符 \fIfd\fP 上的事件的 \fBSIGIO\fP 和 \fBSIGURG\fP 信号的进程 ID 或进程组 ID。 进程
+ID 作为正值返回; 进程组 ID 作为 negative 值返回 (但请参见下面的 BUGS)。 \fIarg\fP 被忽略。
+.TP 
+\fBF_SETOWN\fP (\fIint\fP)
+为文件描述符 \fIfd\fP 上的事件设置将接收 \fBSIGIO\fP 和 \fBSIGURG\fP 信号的进程 ID 或进程组 ID。 目标进程或进程组 ID 在
+\fIarg\fP 中指定。 进程 ID 指定为正值; 进程组 ID 指定为 negative 值。 最常见的是，调用进程将自己指定为所有者
+(即，\fIarg\fP 被指定为 \fBgetpid\fP(2))。
+.IP
+除了设置文件描述符所有者之外，还必须在文件描述符上启用信号生成。 这是通过使用 \fBfcntl\fP() \fBF_SETFL\fP 命令在文件描述符上设置
+\fBO_ASYNC\fP 文件状态标志来完成的。 随后，只要文件描述符上的输入或输出成为可能，就会发送 \fBSIGIO\fP 信号。 \fBfcntl\fP()
+\fBF_SETSIG\fP 命令可用于获取 \fBSIGIO\fP 以外的信号的传送。
+.IP
+向 \fBF_SETOWN\fP 指定的所有者进程 (group) 发送信号需要进行与针对 \fBkill\fP(2) 描述的相同的权限检查，其中发送进程是使用
+\fBF_SETOWN\fP 的进程 (但请参见下面的 BUGS)。 如果此权限检查失败，则信号将被静默丢弃。 \fINote\fP: \fBF_SETOWN\fP
+操作记录调用者在 \fBfcntl\fP() 调用时的凭据，正是这些保存的凭据用于权限检查。
+.IP
+.\" The following appears to be rubbish.  It doesn't seem to
+.\" be true according to the kernel source, and I can write
+.\" a program that gets a terminal-generated SIGIO even though
+.\" it is not the foreground process group of the terminal.
+.\" -- MTK, 8 Apr 05
+.\"
+.\" If the file descriptor
+.\" .I fd
+.\" refers to a terminal device, then SIGIO
+.\" signals are sent to the foreground process group of the terminal.
+如果文件描述符 \fIfd\fP 引用套接字，则 \fBF_SETOWN\fP 还会选择当带外数据到达该套接字时传递的 \fBSIGURG\fP 信号的接收者。
+(\fBSIGURG\fP 在 \fBselect\fP(2) 将套接字报告为具有 `异常情况` 的任何情况下发送。)
+.IP
+以下内容在 Linux 2.6.x 及 Linux 2.6.11 之前是正确的:
+.RS
+.IP
+.\" The relevant place in the (2.6) kernel source is the
+.\" 'switch' in fs/fcntl.c::send_sigio_to_task() -- MTK, Apr 2005
+.\" send_sigurg()/send_sigurg_to_task() bypasses
+.\" kill_fasync()/send_sigio()/send_sigio_to_task()
+.\" to directly call send_group_sig_info()
+.\"	-- MTK, Apr 2005 (kernel 2.6.11)
+如果在使用支持线程组 (例如 NPTL) 的线程库运行的多线程进程中为 \fBF_SETSIG\fP 赋予非零值，则为 \fBF_SETOWN\fP
+赋予正值具有不同的含义: 不是标识整个进程的进程 ID，它是标识进程中特定线程的线程 ID。 因此，可能需要将 \fBgettid\fP(2) 的结果传递给
+\fBF_SETOWN\fP 而不是 \fBgetpid\fP(2)，以便在使用 \fBF_SETSIG\fP 时获得合理的结果。 (在当前的 Linux
+线程实现中，主线程的线程 ID 与其进程 ID 相同。这意味着单线程程序在这种情况下可以同样使用 \fBgettid\fP(2) 或
+\fBgetpid\fP(2)。) 但是请注意，本段中的语句确实不适用于为套接字上的带外数据生成的 \fBSIGURG\fP 信号:
+此信号始终发送到进程或进程组，具体取决于给 \fBF_SETOWN\fP 的值。
+.RE
+.IP
+以上行为在 Linux 2.6.12 中被意外丢弃，无法恢复。 从 Linux 2.6.32 开始，使用 \fBF_SETOWN_EX\fP 将
+\fBSIGIO\fP 和 \fBSIGURG\fP 信号指向特定线程。
+.TP 
+\fBF_GETOWN_EX\fP (\fIstruct f_owner_ex *\fP) (since Linux 2.6.32)
+返回由先前的 \fBF_SETOWN_EX\fP 操作定义的当前文件描述符所有者设置。 信息在 \fIarg\fP 指向的结构体中返回，其形式如下:
+.IP
+.in +4n
+.EX
+struct f_owner_ex {
+    int   type;
+    pid_t pid;
+};
+.EE
+.in
+.IP
+\fItype\fP 字段将具有值 \fBF_OWNER_TID\fP、\fBF_OWNER_PID\fP 或 \fBF_OWNER_PGRP\fP 之一。 \fIpid\fP
+字段是一个正整数，表示线程 ID、进程 ID 或进程组 ID。有关详细信息，请参见 \fBF_SETOWN_EX\fP。
+.TP 
+\fBF_SETOWN_EX\fP (\fIstruct f_owner_ex *\fP) (since Linux 2.6.32)
+此操作执行与 \fBF_SETOWN\fP 类似的任务。 它允许调用者将 I/O 可用性信号定向到特定线程、进程或进程组。 调用者通过 \fIarg\fP
+指定信号的目标，\fIarg\fP 是指向 \fIf_owner_ex\fP 结构体的指针。 \fItype\fP 字段具有以下值之一，这些值定义了 \fIpid\fP
+的解释方式:
+.RS
+.TP 
+\fBF_OWNER_TID\fP
+将信号发送给线程 ID (调用到 \fBclone\fP(2) 或 \fBgettid\fP(2)) 的返回值在 \fIpid\fP 中指定) 的线程。
+.TP 
+\fBF_OWNER_PID\fP
+将信号发送给在 \fIpid\fP 中指定 ID 的进程。
+.TP 
+\fBF_OWNER_PGRP\fP
+将信号发送给在 \fIpid\fP 中指定 ID 的进程组。 (请注意，与 \fBF_SETOWN\fP 不同，进程组 ID 在这里指定为正值。)
+.RE
+.TP 
+\fBF_GETSIG\fP (\fIvoid\fP)
+返回 (作为函数结果) 当输入或输出成为可能时发送的信号。 零值表示发送 \fBSIGIO\fP。 任何其他值 (包括 \fBSIGIO\fP)
+都是发送的信号，在这种情况下，如果与 \fBSA_SIGINFO\fP 一起安装，则信号处理程序可以使用其他信息。 \fIarg\fP 被忽略。
+.TP 
+\fBF_SETSIG\fP (\fIint\fP)
+.\"
+.\" The following was true only up until Linux 2.6.11:
+.\"
+.\" Additionally, passing a nonzero value to
+.\" .B F_SETSIG
+.\" changes the signal recipient from a whole process to a specific thread
+.\" within a process.
+.\" See the description of
+.\" .B F_SETOWN
+.\" for more details.
+将输入或输出变为可能时发送的信号设置为 \fIarg\fP 中给定的值。 零值表示发送默认的 \fBSIGIO\fP 信号。 任何其他值 (包括 \fBSIGIO\fP)
+都是要发送的信号，在这种情况下，如果与 \fBSA_SIGINFO\fP 一起安装，则信号处理程序可以使用其他信息。
+.IP
+通过使用具有非零值的 \fBF_SETSIG\fP，并为信号处理程序设置 \fBSA_SIGINFO\fP (请参见 \fBsigaction\fP(2))，有关 I/O
+事件的额外信息将传递给 \fIsiginfo_t\fP 结构体中的处理程序。 如果 \fIsi_code\fP 字段指示源是 \fBSI_SIGIO\fP，则
+\fIsi_fd\fP 字段给出与事件关联的文件描述符。 否则，没有指示哪些文件描述符处于挂起状态，您应该使用通常的机制
+(\fBselect\fP(2)、\fBpoll\fP(2)、\fBread\fP(2) 和 \fBO_NONBLOCK\fP 设置等) 来确定哪些文件描述符可用于 I/O。
+.IP
+请注意，\fIsi_fd\fP 中提供的文件描述符是在 \fBF_SETSIG\fP 操作期间指定的文件描述符。 这可能会导致不寻常的极端情况。
+如果文件描述符是重复的 (\fBdup\fP(2) 或类似的)，并且原始文件描述符已关闭，则将继续生成 I/O 事件，但 \fIsi_fd\fP
+字段将包含现在关闭的文件描述符的编号。
+.IP
+通过选择实时信号 (值 >= \fBSIGRTMIN\fP)，多个 I/O 事件可以使用相同的信号编号排队。 (排队取决于可用内存。)
+如果为信号处理程序设置 \fBSA_SIGINFO\fP，则额外信息可用，如上所述。
+.IP
+.\" See fs/fcntl.c::send_sigio_to_task() (2.4/2.6) sources -- MTK, Apr 05
+请注意，Linux 对可能排队到进程的实时信号的数量施加了限制 (请参见 \fBgetrlimit\fP(2) 和
+\fBsignal\fP(7))，如果达到此限制，则内核将恢复为传递 \fBSIGIO\fP，并将此信号传递给整个进程而不是特定线程。
+.PP
+使用这些机制，程序可以实现完全异步的 I/O 而无需在大多数时间使用 \fBselect\fP(2) 或 \fBpoll\fP(2)。
+.PP
+\fBO_ASYNC\fP 的使用特定于 BSD 和 Linux。 POSIX.1 中指定的 \fBF_GETOWN\fP 和 \fBF_SETOWN\fP
+的唯一用途是与套接字上的 \fBSIGURG\fP 信号一起使用。 (POSIX 不指定 \fBSIGIO\fP 信号。)
+\fBF_GETOWN_EX\fP、\fBF_SETOWN_EX\fP、\fBF_GETSIG\fP 和 \fBF_SETSIG\fP 是 Linux 特定的。 POSIX
+有异步 I/O 和 \fIaio_sigevent\fP 结构体来实现类似的事情; 这些也作为 GNU C 库 (glibc) 的一部分在 Linux
+中提供。
+.SS Leases
+\fBF_SETLEASE\fP 和 \fBF_GETLEASE\fP (从 Linux 2.4 开始) 用于在文件描述符 \fIfd\fP
+引用的打开文件描述上建立新租约，并检索当前租约。 文件租约提供了一种机制，当进程 ("lease breaker") 尝试 \fBopen\fP(2) 或
+\fBtruncate\fP(2) 文件描述符引用的文件时，持有租约的进程 ("lease holder") 会收到通知 (通过传递信号)。
+.TP 
+\fBF_SETLEASE\fP (\fIint\fP)
+根据整数 \fIarg\fP: 中指定的以下值设置或删除文件租约
+.RS
+.TP 
+\fBF_RDLCK\fP
+.\" The following became true in Linux 2.6.10:
+.\" See the man-pages-2.09 Changelog for further info.
+拿出一个读租约。 这将导致调用进程在文件打开写入或被截断时得到通知。 读取租约只能放置在以只读方式打开的文件描述符上。
+.TP 
+\fBF_WRLCK\fP
+取出写租约。 这将导致调用者在文件打开以进行读取或写入或被截断时得到通知。 仅当文件没有其他打开的文件描述符时，才可以在文件上放置写租约。
+.TP 
+\fBF_UNLCK\fP
+从文件中删除我们的租约。
+.RE
+.PP
+租约与打开的文件描述相关联 (请参见 \fBopen\fP(2)).  这意味着重复的文件描述符 (例如，由 \fBfork\fP(2) 或 \fBdup\fP(2))
+创建) 指的是同一个租约，并且可以使用这些描述符中的任何一个来修改或释放该租约。 此外，租约通过对这些重复文件描述符中的任何一个的显式
+\fBF_UNLCK\fP 操作释放，或者在所有此类文件描述符已关闭时释放。
+.PP
+只能对常规文件进行租赁。 一个非特权进程只能在 UID (owner) 与进程的文件系统 UID 匹配的文件上租用。 具有 \fBCAP_LEASE\fP
+功能的进程可以租用任意文件。
+.TP 
+\fBF_GETLEASE\fP (\fIvoid\fP)
+通过返回 \fBF_RDLCK\fP、\fBF_WRLCK\fP 或 \fBF_UNLCK\fP 来指示与文件描述符 \fIfd\fP
+关联的租用类型，分别指示读取租用、写入租用或无租用。 \fIarg\fP 被忽略。
+.PP
+当进程 ("lease breaker") 执行与通过 \fBF_SETLEASE\fP 建立的租约冲突的 \fBopen\fP(2) 或
+\fBtruncate\fP(2) 时，系统调用被内核阻塞，内核通过默认发送信号 (\fBSIGIO\fP 通知租约持有者)。
+租约持有者应通过执行任何清理工作来响应收到此信号，以准备文件被另一个进程访问 (例如，刷新缓存缓冲区)，然后删除或降级其租约。 通过执行将 \fIarg\fP
+指定为 \fBF_UNLCK\fP 的 \fBF_SETLEASE\fP 命令来删除租约。
+如果租约持有者当前持有文件的写租约，并且租约破坏者正在打开文件进行读取，那么租约持有者将租约降级为读租约就足够了。 这是通过执行将 \fIarg\fP 指定为
+\fBF_RDLCK\fP 的 \fBF_SETLEASE\fP 命令来完成的。
+.PP
+如果租约持有者未能在 \fI/proc/sys/fs/lease\-break\-time\fP
+中指定的秒数内降级或删除租约，则内核将强行删除或降级租约持有者的租约。
+.PP
+一旦租约中断开始，\fBF_GETLEASE\fP 返回目标租约类型 (\fBF_RDLCK\fP 或 \fBF_UNLCK\fP，取决于与租约破坏者兼容的类型)
+直到租约持有者自愿降级或删除租约或内核在租约后强行这样做休息计时器到期。
+.PP
+一旦租约被自愿或强制删除或降级，并且假设租约破坏者没有解锁其系统调用，内核允许租约破坏者的系统调用继续进行。
+.PP
+如果租约破坏者阻塞的 \fBopen\fP(2) 或 \fBtruncate\fP(2) 被信号处理程序中断，则系统调用失败并返回错误
+\fBEINTR\fP，但其他步骤仍会如上所述发生。 如果租约破坏者在 \fBopen\fP(2) 或 \fBtruncate\fP(2)
+中被阻塞时被信号杀死，则其他步骤仍会如上所述发生。 如果租约破坏者在调用 \fBopen\fP(2) 时指定了 \fBO_NONBLOCK\fP
+标志，则调用立即失败并返回错误 \fBEWOULDBLOCK\fP，但其他步骤仍会如上所述发生。
+.PP
+用于通知租赁持有人的默认信号是 \fBSIGIO\fP，但这可以使用 \fBF_SETSIG\fP 命令更改为 \fBfcntl\fP()。 如果执行
+\fBF_SETSIG\fP 命令 (即使指定 \fBSIGIO\fP)，并且使用 \fBSA_SIGINFO\fP 建立信号处理程序，则处理程序将接收
+\fIsiginfo_t\fP 结构体作为它的第二个参数，并且此参数的 \fIsi_fd\fP 字段将保存租用的文件描述符已被另一个进程访问的文件。
+(如果调用者对多个文件持有租约，这很有用。)
+.SS "File and directory change notification (dnotify)"
+.TP 
+\fBF_NOTIFY\fP (\fIint\fP)
+(从 Linux 2.4 起) 当 \fIfd\fP 引用的目录或它包含的任何文件发生更改时提供通知。 要通知的事件在 \fIarg\fP
+中指定，它是通过将以下零个或多个位组合在一起指定的位掩码:
+.PP
+.RS
+.PD 0
+.TP 
+\fBDN_ACCESS\fP
+文件被访问 (\fBread\fP(2)、\fBpread\fP(2)、\fBreadv\fP(2) 等)
+.TP 
+\fBDN_MODIFY\fP
+文件被修改为 (\fBwrite\fP(2)、\fBpwrite\fP(2)、\fBwritev\fP(2)、\fBtruncate\fP(2)、\fBftruncate\fP(2)
+等)。
+.TP 
+\fBDN_CREATE\fP
+在此目录中创建了一个文件
+(\fBopen\fP(2)、\fBcreat\fP(2)、\fBmknod\fP(2)、\fBmkdir\fP(2)、\fBlink\fP(2)、\fBsymlink\fP(2)、\fBrename\fP(2))。
+.TP 
+\fBDN_DELETE\fP
+一个文件被取消链接 (\fBunlink\fP(2)，\fBrename\fP(2) 到另一个目录，\fBrmdir\fP(2))。
+.TP 
+\fBDN_RENAME\fP
+此目录中的文件已重命名为 (\fBrename\fP(2))。
+.TP 
+\fBDN_ATTRIB\fP
+文件的属性更改为 (\fBchown\fP(2)、\fBchmod\fP(2)、\fButime\fP(2)、\fButimensat\fP(2) 等)。
+.PD
+.RE
+.IP
+(为了获得这些定义，必须在包含 \fIany\fP 头文件之前定义 \fB_GNU_SOURCE\fP 特性测试宏。)
+.IP
+目录通知通常是 "one\-shot"，应用程序必须重新注册才能接收进一步的通知。 或者，如果 \fBDN_MULTISHOT\fP 包含在 \fIarg\fP
+中，则通知将一直有效，直到明确删除。
+.IP
+.\" The following does seem a poor API-design choice...
+一系列 \fBF_NOTIFY\fP 请求是累积的，\fIarg\fP 中的事件被添加到已监视的集合中。 要禁用所有事件的通知，请将 \fIarg\fP 指定为
+\fBF_NOTIFY\fP 调用 0.
+.IP
+通知通过传递信号发生。 默认信号为 \fBSIGIO\fP，但这可以使用 \fBF_SETSIG\fP 命令更改为 \fBfcntl\fP()。
+(请注意，\fBSIGIO\fP 是非排队标准信号之一; 切换到实时信号的使用意味着多个通知可以排队到进程。) 在后一种情况下，信号处理程序接收
+\fIsiginfo_t\fP 结构体作为它的第二个参数 (如果处理程序是使用 \fBSA_SIGINFO\fP) 建立的，并且此结构体的 \fIsi_fd\fP
+字段包含生成通知的文件描述符 (在多个目录上建立通知时很有用)。
+.IP
+特别是在使用 \fBDN_MULTISHOT\fP 的时候，应该使用一个实时的信号来通知，这样多个通知就可以排队了。
+.IP
+\fBNOTE:\fP 新的应用程序应该使用 \fIinotify\fP 接口 (从 Linux 2.6.13
+开始可用)，它提供了一个更高级的接口来获取文件系统事件的通知。 请参见 \fBinotify\fP(7)。
+.SS "Changing the capacity of a pipe"
+.TP 
+\fBF_SETPIPE_SZ\fP (\fIint\fP; since Linux 2.6.35)
+将 \fIfd\fP 引用的管道容量更改为至少 \fIarg\fP 字节。 非特权进程可以将管道容量调整为系统页面大小和
+\fI/proc/sys/fs/pipe\-max\-size\fP 中定义的限制之间的任何值 (请参见 \fBproc\fP(5)).
+将管道容量设置为低于页面大小的尝试会自动四舍五入到页面大小。 非特权进程尝试将管道容量设置为 \fI/proc/sys/fs/pipe\-max\-size\fP
+中的限制以上会产生错误 \fBEPERM\fP; 特权进程 (\fBCAP_SYS_RESOURCE\fP) 可以覆盖限制。
+.IP
+为管道分配缓冲区时，如果方便实现，内核可以使用大于 \fIarg\fP 的容量。 (在当前的实现中，分配是请求大小的下一个更高的二次方页面大小倍数。)
+设置的实际容量 (以字节为单位) 作为函数结果返回。
+.IP
+尝试将管道容量设置为小于当前用于存储数据的缓冲区空间量会产生错误 \fBEBUSY\fP。
+.IP
+请注意，由于将数据写入管道时使用管道缓冲区页面的方式，可写入的字节数可能小于标称大小，具体取决于写入的大小。
+.TP 
+\fBF_GETPIPE_SZ\fP (\fIvoid\fP; since Linux 2.6.35)
+.\"
+返回 (作为函数结果) \fIfd\fP 所指管道的容量。
+.SS "File Sealing"
+文件密封限制了对给定文件的允许操作集。 对于在文件上设置的每个印章，从现在开始，对该文件的一组特定操作将失败并返回 \fBEPERM\fP。
+该文件据说是密封的。 默认的密封集取决于底层文件和文件系统的类型。 有关文件密封的概述、对其用途的讨论以及一些代码示例，请参见
+\fBmemfd_create\fP(2)。
+.PP
+目前，文件密封只能应用于 \fBmemfd_create\fP(2) 返回的文件描述符 (如果使用 \fBMFD_ALLOW_SEALING\fP)。
+在其他文件系统上，所有对密封件进行操作的 \fBfcntl\fP() 操作都将返回 \fBEINVAL\fP。
+.PP
+印章是 inode 的属性。 因此，所有引用同一 inode 的打开文件描述符共享同一组密封。 此外，封条永远无法移除，只能添加。
+.TP 
+\fBF_ADD_SEALS\fP (\fIint\fP; since Linux 3.17)
+将位掩码参数 \fIarg\fP 中给出的印章添加到文件描述符 \fIfd\fP 引用的索引节点的印章集。 封印无法再次移除。 一旦调用成功，内核立即强制执行密封。
+如果当前的印章集包括 \fBF_SEAL_SEAL\fP (见下文)，则此调用将被 \fBEPERM\fP 拒绝。 如果尚未设置
+\fBF_SEAL_SEAL\fP，则添加已设置的印章是空操作。 为了放置印章，文件描述符 \fIfd\fP 必须是可写的。
+.TP 
+\fBF_GET_SEALS\fP (\fIvoid\fP; since Linux 3.17)
+返回 (作为函数结果) \fIfd\fP 引用的 inode 的当前印章集。 如果未设置密封件，则返回 0。 如果文件不支持封装，则返回
+\-1，\fIerrno\fP 设置为 \fBEINVAL\fP。
+.PP
+可提供以下密封件:
+.TP 
+\fBF_SEAL_SEAL\fP
+如果设置了此密封，则使用 \fBF_ADD_SEALS\fP 对 \fBfcntl\fP() 的任何进一步调用都会失败，并显示错误 \fBEPERM\fP。
+因此，该密封件可防止对密封件组本身进行任何修改。 如果文件的初始印章集包括 \fBF_SEAL_SEAL\fP，则这实际上会导致印章集常量和锁定。
+.TP 
+\fBF_SEAL_SHRINK\fP
+如果设置了此印记，则无法缩小该文件的大小。 这会影响带有 \fBO_TRUNC\fP 标志的 \fBopen\fP(2) 以及 \fBtruncate\fP(2) 和
+\fBftruncate\fP(2)。 如果您尝试缩小有问题的文件，这些调用将失败并返回 \fBEPERM\fP。 增加文件大小仍然是可能的。
+.TP 
+\fBF_SEAL_GROW\fP
+如果设置了此密封，则无法增加相关文件的大小。 这会影响文件末尾以外的
+\fBwrite\fP(2)、\fBtruncate\fP(2)、\fBftruncate\fP(2) 和 \fBfallocate\fP(2)。
+如果您使用它们来增加文件大小，这些调用将失败并返回 \fBEPERM\fP。 如果您保持大小或缩小它，这些调用仍会按预期工作。
+.TP 
+\fBF_SEAL_WRITE\fP
+.\" One or more other seals are typically used with F_SEAL_WRITE
+.\" because, given a file with the F_SEAL_WRITE seal set, then,
+.\" while it would no longer be possible to (say) write zeros into
+.\" the last 100 bytes of a file, it would still be possible
+.\" to (say) shrink the file by 100 bytes using ftruncate(), and
+.\" then increase the file size by 100 bytes, which would have
+.\" the effect of replacing the last hundred bytes by zeros.
+.\"
+如果设置了这个封印，则不能修改文件的内容。 请注意，仍然可以并允许缩小或增大文件的大小。 因此，该密封件通常与其他密封件之一结合使用。 此印章影响
+\fBwrite\fP(2) 和 \fBfallocate\fP(2) (仅与 \fBFALLOC_FL_PUNCH_HOLE\fP 标志结合使用)。
+如果设置了此密封，则这些调用将失败并返回 \fBEPERM\fP。 此外，尝试通过 \fBmmap\fP(2) 创建新的共享、可写内存映射也会因 \fBEPERM\fP
+而失败。
+.IP
+如果存在任何可写共享映射，则使用 \fBF_ADD_SEALS\fP 操作设置 \fBF_SEAL_WRITE\fP 密封失败并返回 \fBEBUSY\fP。
+在添加此印章之前，必须取消映射此类映射。 此外，如果文件上有任何未决的异步 I/O 操作
+(\fBio_submit\fP(2))，所有未完成的写入都将被丢弃。
+.TP 
+\fBF_SEAL_FUTURE_WRITE\fP (since Linux 5.1)
+此封印的效果类似于 \fBF_SEAL_WRITE\fP，但文件的内容仍可通过在设置封印之前创建的共享可写映射进行修改。 任何通过 \fBmmap\fP(2)
+在文件上创建新的可写映射的尝试都将失败并返回 \fBEPERM\fP。 同样，尝试通过 \fBwrite\fP(2) 写入文件将失败并返回 \fBEPERM\fP。
+.IP
+.\"
+使用此密封，一个进程可以创建一个内存缓冲区，它可以继续修改该缓冲区，同时在 "read\-only" 基础上与其他进程共享该缓冲区。
+.SS "File read/write hints"
+写入生命周期提示可用于通知内核有关在给定 inode 上或通过特定打开文件描述进行写入的相对预期生命周期。 (有关打开文件描述的解释，请参见
+\fBopen\fP(2)。) 在此上下文中，术语 "write lifetime" 表示数据在被覆盖或 erased 之前将在媒体上存在的预期时间。
+.PP
+应用程序可以使用下面指定的不同提示值将写入分为不同的写入类别，以便在单个存储后端上运行的多个用户或应用程序可以以一致的方式聚合其 I/O 模式。
+但是，这些标志没有隐含的功能语义，不同的 I/O 类可以以任意方式使用 write 生命周期提示，只要提示使用一致即可。
+.PP
+可以对文件描述符 \fIfd\fP: 进行以下操作
+.TP 
+\fBF_GET_RW_HINT\fP (\fIuint64_t *\fP; since Linux 4.13)
+返回与 \fIfd\fP 引用的，底层 inode 关联的 read/write 提示的值。
+.TP 
+\fBF_SET_RW_HINT\fP (\fIuint64_t *\fP; since Linux 4.13)
+设置与 \fIfd\fP 引用的，底层 inode 关联的 read/write 提示值。 这个提示一直存在，直到它被显式修改或底层文件系统被卸载。
+.TP 
+\fBF_GET_FILE_RW_HINT\fP (\fIuint64_t *\fP; since Linux 4.13)
+返回与 \fIfd\fP 引用的打开文件描述关联的 read/write 提示的值。
+.TP 
+\fBF_SET_FILE_RW_HINT\fP (\fIuint64_t *\fP; since Linux 4.13)
+设置与 \fIfd\fP 引用的打开文件描述关联的 read/write 提示值。
+.PP
+如果未为打开的文件描述分配 read/write 提示，则它将使用分配给 inode 的值 (如果有)。
+.PP
+以下 read/write 提示自 Linux 4.13 起有效:
+.TP 
+\fBRWH_WRITE_LIFE_NOT_SET\fP
+没有设置具体提示。 这是默认值。
+.TP 
+\fBRWH_WRITE_LIFE_NONE\fP
+没有特定的写入生命周期与此文件或 inode 相关联。
+.TP 
+\fBRWH_WRITE_LIFE_SHORT\fP
+写入此 inode 或通过此打开文件描述写入的数据预计会有一个较短的生命周期。
+.TP 
+\fBRWH_WRITE_LIFE_MEDIUM\fP
+写入此 inode 或通过此打开文件描述写入的数据预计生命周长于使用 \fBRWH_WRITE_LIFE_SHORT\fP 写入的数据。
+.TP 
+\fBRWH_WRITE_LIFE_LONG\fP
+写入此 inode 或通过此打开文件描述写入的数据预计生命周长于使用 \fBRWH_WRITE_LIFE_MEDIUM\fP 写入的数据。
+.TP 
+\fBRWH_WRITE_LIFE_EXTREME\fP
+写入此 inode 或通过此打开文件描述写入的数据预计生命周长于使用 \fBRWH_WRITE_LIFE_LONG\fP 写入的数据。
+.PP
+所有特定于写入的提示都是相互关联的，不应赋予它们任何单独的绝对含义。
+.SH "RETURN VALUE"
+对于成功的调用，返回值取决于操作:
+.TP 
+\fBF_DUPFD\fP
+新的文件描述符。
+.TP 
+\fBF_GETFD\fP
+文件描述符标志的值。
+.TP 
+\fBF_GETFL\fP
+文件状态标志的值。
+.TP 
+\fBF_GETLEASE\fP
+文件描述符上的租约类型。
+.TP 
+\fBF_GETOWN\fP
+文件描述符所有者的值。
+.TP 
+\fBF_GETSIG\fP
+当读取或写入成为可能时发送的信号值，或者对于传统 \fBSIGIO\fP 行为为零。
+.TP 
+\fBF_GETPIPE_SZ\fP, \fBF_SETPIPE_SZ\fP
+管道容量。
+.TP 
+\fBF_GET_SEALS\fP
+标识已为 \fIfd\fP 引用的 inode 设置的密封的位掩码。
+.TP 
+All other commands
+Zero.
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP or \fBEAGAIN\fP
+其他进程持有的锁禁止操作。
+.TP 
+\fBEAGAIN\fP
+该操作被禁止，因为该文件已被另一个进程内存映射。
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是打开的文件描述符
+.TP 
+\fBEBADF\fP
+\fIcmd\fP 是 \fBF_SETLK\fP 或 \fBF_SETLKW\fP，文件描述符打开模式与请求的锁类型不匹配。
+.TP 
+\fBEBUSY\fP
+\fIcmd\fP 为 \fBF_SETPIPE_SZ\fP，\fIarg\fP 中指定的新管道容量小于管道中当前用于存储数据的缓冲区空间量。
+.TP 
+\fBEBUSY\fP
+\fIcmd\fP 是 \fBF_ADD_SEALS\fP，\fIarg\fP 包括 \fBF_SEAL_WRITE\fP，\fIfd\fP 所引用的文件存在一个可写的共享映射。
+.TP 
+\fBEDEADLK\fP
+检测到指定的 \fBF_SETLKW\fP 命令会导致死锁。
+.TP 
+\fBEFAULT\fP
+\fIlock\fP 在您可访问的地址空间之外。
+.TP 
+\fBEINTR\fP
+\fIcmd\fP 为 \fBF_SETLKW\fP 或 \fBF_OFD_SETLKW\fP 且运行被信号中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINTR\fP
+\fIcmd\fP 是 \fBF_GETLK\fP、\fBF_SETLK\fP、\fBF_OFD_GETLK\fP 或
+\fBF_OFD_SETLK\fP，并且在检查或获取锁之前操作被信号中断。 最有可能在锁定远程文件时 (例如，通过 NFS 锁定)，但有时也会在本地发生。
+.TP 
+\fBEINVAL\fP
+此内核无法识别 \fIcmd\fP 中指定的值。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 是 \fBF_ADD_SEALS\fP，\fIarg\fP 包含无法识别的密封位。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 是 \fBF_ADD_SEALS\fP 或 \fBF_GET_SEALS\fP，包含 \fIfd\fP 引用的 inode 的文件系统不支持密封。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 为 \fBF_DUPFD\fP，\fIarg\fP 为 negative 或大于最大允许值 (见
+\fBgetrlimit\fP(2)).\fBRLIMIT_NOFILE\fP 的讨论。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 是 \fBF_SETSIG\fP，\fIarg\fP 不是允许的信号编号。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 是 \fBF_OFD_SETLK\fP、\fBF_OFD_SETLKW\fP 或 \fBF_OFD_GETLK\fP，\fIl_pid\fP 未指定为零。
+.TP 
+\fBEMFILE\fP
+\fIcmd\fP 是 \fBF_DUPFD\fP，并且已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENOLCK\fP
+打开的段锁太多，锁表已满，或远程锁定协议失败 (例如，通过 NFS 锁定)。
+.TP 
+\fBENOTDIR\fP
+在 \fIcmd\fP 中指定了 \fBF_NOTIFY\fP，但 \fIfd\fP 未引用目录。
+.TP 
+\fBEPERM\fP
+\fIcmd\fP 为 \fBF_SETPIPE_SZ\fP 且已达到软或硬用户管道限制; 请参见 \fBpipe\fP(7)。
+.TP 
+\fBEPERM\fP
+试图清除设置了仅追加属性的文件上的 \fBO_APPEND\fP 标志。
+.TP 
+\fBEPERM\fP
+\fIcmd\fP 是 \fBF_ADD_SEALS\fP，但 \fIfd\fP 未打开以进行写入，或者文件上的当前印章集已经包含 \fBF_SEAL_SEAL\fP。
+.SH STANDARDS
+SVr4, 4.3BSD, POSIX.1\-2001.  POSIX.1\-2001 中仅指定了操作
+\fBF_DUPFD\fP、\fBF_GETFD\fP、\fBF_SETFD\fP、\fBF_GETFL\fP、\fBF_SETFL\fP、\fBF_GETLK\fP、\fBF_SETLK\fP
+和 \fBF_SETLKW\fP。
+.PP
+.\" .BR _BSD_SOURCE ,
+.\" or
+\fBF_GETOWN\fP 和 \fBF_SETOWN\fP 在 POSIX.1\-2001 中指定。 (要获得它们的定义，请将 \fB_XOPEN_SOURCE\fP
+的值定义为 500 或更大，或者将 \fB_POSIX_C_SOURCE\fP 的值定义为 200809L 或更大。)
+.PP
+\fBF_DUPFD_CLOEXEC\fP 在 POSIX.1\-2008 中指定。 (要获得此定义，请将 \fB_POSIX_C_SOURCE\fP 的值定义为
+200809L 或更大，或者将 \fB_XOPEN_SOURCE\fP 的值定义为 700 或更大。)
+.PP
+.\" .PP
+.\" SVr4 documents additional EIO, ENOLINK and EOVERFLOW error conditions.
+\fBF_GETOWN_EX\fP、\fBF_SETOWN_EX\fP、\fBF_SETPIPE_SZ\fP、\fBF_GETPIPE_SZ\fP、\fBF_GETSIG\fP、\fBF_SETSIG\fP、\fBF_NOTIFY\fP、\fBF_GETLEASE\fP
+和 \fBF_SETLEASE\fP 是特定于 Linux 的。 (定义 \fB_GNU_SOURCE\fP 宏以获得这些定义。)
+.PP
+\fBF_OFD_SETLK\fP、\fBF_OFD_SETLKW\fP 和 \fBF_OFD_GETLK\fP 是特定于 Linux 的 (必须定义
+\fB_GNU_SOURCE\fP 才能获得它们的定义)，但正在努力将它们包含在下一版本的 POSIX.1 中。
+.PP
+.\" FIXME . Once glibc adds support, add a note about FTM requirements
+\fBF_ADD_SEALS\fP 和 \fBF_GET_SEALS\fP 是特定于 Linux 的。
+.SH NOTES
+.\"
+\fBdup2\fP(2) 返回的错误与 \fBF_DUPFD\fP 返回的错误不同。
+.SS "File locking"
+.\"
+原始的 Linux \fBfcntl\fP() 系统调用不是为处理大文件偏移而设计的 (在 \fIflock\fP 结构体中)。 因此，在 Linux 2.4
+中增加了一个 \fBfcntl64\fP() 系统调用。 较新的系统调用采用不同的结构体来锁定文件 \fIflock64\fP 和相应的命令
+\fBF_GETLK64\fP、\fBF_SETLK64\fP 和 \fBF_SETLKW64\fP。 然而，这些细节可以被使用 glibc 的应用程序忽略，其
+\fBfcntl\fP() 包装器函数透明地使用更新的系统调用。
+.SS "Record locks"
+从 Linux 2.0 开始，\fBflock\fP(2) 和 \fBfcntl\fP() 放置的锁类型之间没有交互。
+.PP
+.\" e.g., Solaris 8 documents this field in fcntl(2), and Irix 6.5
+.\" documents it in fcntl(5).  mtk, May 2007
+.\" Also, FreeBSD documents it (Apr 2014).
+一些系统在 \fIstruct flock\fP 中有更多字段，例如 \fIl_sysid\fP (用于标识持有锁的机器)。
+显然，如果持有锁的进程可能存在于不同的机器上，那么单独的 \fIl_pid\fP 并不会很有用; 在 Linux 上，虽然存在于某些体系结构 (例如
+MIPS32) 上，但未使用此字段。
+.PP
+原始的 Linux \fBfcntl\fP() 系统调用不是为处理大文件偏移而设计的 (在 \fIflock\fP 结构体中)。 因此，在 Linux 2.4
+中增加了一个 \fBfcntl64\fP() 系统调用。 较新的系统调用采用不同的结构体来锁定文件 \fIflock64\fP 和相应的命令
+\fBF_GETLK64\fP、\fBF_SETLK64\fP 和 \fBF_SETLKW64\fP。 然而，这些细节可以被使用 glibc 的应用程序忽略，其
+\fBfcntl\fP() 包装器函数透明地使用更新的系统调用。
+.SS "Record locking and NFS"
+.\"
+.\" Neil Brown: With NFSv3 the failure mode is the reverse.  If
+.\"     the server loses contact with a client then any lock stays in place
+.\"     indefinitely ("why can't I read my mail"... I remember it well).
+.\"
+.\"
+.\" Jeff Layton:
+.\"     Note that this is not a firm timeout. The server runs a job
+.\"     periodically to clean out expired stateful objects, and it's likely
+.\"     that there is some time (maybe even up to another whole lease period)
+.\"     between when the timeout expires and the job actually runs. If the
+.\"     client gets a RENEW in there within that window, its lease will be
+.\"     renewed and its state preserved.
+.\"
+在 Linux 3.12 之前，如果 NFSv4 客户端与服务器失去联系一段时间 (定义为超过 90
+秒没有通信)，它可能会丢失并重新获得锁，而根本不会意识到这一事实。 (假定失去联系的时间段称为 NFSv4 租约时间。在 Linux NFS
+服务器上，这可以通过查看 \fI/proc/fs/nfsd/nfsv4leasetime\fP 来确定，它以秒为单位表示时间段。此文件的默认值为 90。)
+这种情况有潜在的数据损坏风险，因为另一个进程可能会在此期间获取锁并执行文件 I/O。
+.PP
+.\" commit ef1820f9be27b6ad158f433ab38002ab8131db4d
+.\" commit f6de7a39c181dfb8a2c534661a53c73afb3081cd
+自 Linux 3.12 以来，如果 NFSv4 客户端与服务器失去联系，则 "thinks" 持有锁的进程对文件的任何 I/O
+都将失败，直到该进程关闭并重新打开文件。 可以将内核参数 \fInfs.recover_lost_locks\fP 设置为 1 以获得 3.12
+之前的行为，客户端将在与服务器重新建立联系时尝试恢复丢失的锁。 由于随之而来的数据损坏风险，此参数默认为 0 (disabled)。
+.SH BUGS
+.SS F_SETFL
+.\" FIXME . According to POSIX.1-2001, O_SYNC should also be modifiable
+.\" via fcntl(2), but currently Linux does not permit this
+.\" See http://bugzilla.kernel.org/show_bug.cgi?id=5994
+无法使用 \fBF_SETFL\fP 更改 \fBO_DSYNC\fP 和 \fBO_SYNC\fP 标志的状态。 尝试更改这些标志的状态将被忽略。
+.SS F_GETOWN
+.\" glibc source: sysdeps/unix/sysv/linux/i386/sysdep.h
+.\" mtk, Dec 04: some limited testing on alpha and ia64 seems to
+.\" indicate that ANY negative PGID value will cause F_GETOWN
+.\" to misinterpret the return as an error. Some other architectures
+.\" seem to have the same range check as i386.
+某些体系结构 (特别是 i386) 上的 Linux 系统调用约定的限制意味着如果 \fBF_GETOWN\fP 返回的 (negative) 进程组 ID
+在 \-1 到 \-4095 范围内，则返回值被 glibc 错误地解释为系统调用; 也就是说，\fBfcntl\fP() 的返回值将是 \-1，而
+\fIerrno\fP 将包含 (positive) 进程组 ID。Linux 特有的 \fBF_GETOWN_EX\fP 操作避免了这个问题。 从 glibc
+2.11 开始，glibc 通过使用 \fBF_GETOWN_EX\fP 实现 \fBF_GETOWN\fP 使内核 \fBF_GETOWN\fP 问题不可见。
+.SS F_SETOWN
+.\"
+在 Linux 2.4 及更早版本中，当非特权进程使用 \fBF_SETOWN\fP 将套接字文件描述符的所有者指定为调用者以外的进程 (group)
+时，可能会发生错误。 在这种情况下，\fBfcntl\fP() 可以返回 \-1 并将 \fIerrno\fP 设置为 \fBEPERM\fP，即使所有者进程
+(group) 是调用者有权向其发送信号的进程。 尽管有此错误返回，文件描述符所有者已设置，并且信号将发送给所有者。
+.SS "Deadlock detection"
+.\"
+内核在处理 \fBF_SETLKW\fP 请求时采用的死锁检测算法可能会产生误报 (未能检测到死锁，使一组死锁进程无限期阻塞) 和在没有死锁时误报
+(\fBEDEADLK\fP 错误)。 例如，内核将其依赖项搜索的锁定深度限制为 10 步，这意味着将不会检测到超过该大小的循环死锁链。
+此外，当两个或多个使用 \fBclone\fP(2) \fBCLONE_FILES\fP 标志创建的进程放置看起来 (对内核)
+冲突的锁时，内核可能会错误地指示死锁。
+.SS "Mandatory locking"
+.\" http://marc.info/?l=linux-kernel&m=119013491707153&w=2
+.\"
+.\" Reconfirmed by Jeff Layton
+.\"     From: Jeff Layton <jlayton <at> redhat.com>
+.\"     Subject: Re: Status of fcntl() mandatory locking
+.\"     Newsgroups: gmane.linux.file-systems
+.\"     Date: 2014-04-28 10:07:57 GMT
+.\"     http://thread.gmane.org/gmane.linux.file-systems/84481/focus=84518
+Linux 强制锁实现受制于竞争状态，使其不可靠: 与锁重叠的 \fBwrite\fP(2) 调用可能在获取强制锁后修改数据; 与锁重叠的
+\fBread\fP(2) 调用可能会检测到仅在获取写锁后对数据所做的更改。 类似的竞争存在于强制锁和 \fBmmap\fP(2) 之间。
+因此，不建议依赖强制锁定。
+.SH "SEE ALSO"
+\fBdup2\fP(2), \fBflock\fP(2), \fBopen\fP(2), \fBsocket\fP(2), \fBlockf\fP(3),
+\fBcapabilities\fP(7), \fBfeature_test_macros\fP(7), \fBlslocks\fP(8)
+.PP
+Linux 内核源码目录 \fIlocks.txt\fP、\fImandatory\-locking.txt\fP、\fIdnotify.txt\fP
+\fIDocumentation/filesystems/\fP (在老内核上，这些文件直接在 \fIDocumentation/\fP
+目录下，\fImandatory\-locking.txt\fP 称为 \fImandatory.txt\fP)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,125 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1990, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"	@(#)recno.3	8.5 (Berkeley) 8/18/94
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH recno 3 2022\-12\-04 "Linux man\-pages 6.03" 
+.UC 7
+.SH NAME
+recno \- 记录号数据库访问方法
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h> #include <db.h>\fP
+.fi
+.SH DESCRIPTION
+\fINote well\fP: 此页面记录了在 glibc 2.1 之前提供的接口。 从 glibc 2.2 开始，glibc 不再提供这些接口。
+您可能正在寻找 \fIlibdb\fP 库提供的 API。
+.PP
+例程 \fBdbopen\fP(3) 是数据库文件的库接口。 一种受支持的文件格式是记录编号文件。 数据库访问方法的一般描述在 \fBdbopen\fP(3)
+中，此手册页仅描述 recno 特定信息。
+.PP
+记录号数据结构是以平面文件格式存储的可变或固定长度记录，通过逻辑记录号访问。 记录 5 的存在意味着记录 1 到 4 的存在，记录 1 的删除导致记录
+5 重新编号为记录 4，以及游标，如果位于记录 1 之后，向下移动一张唱片。
+.PP
+提供给 \fBdbopen\fP(3) 的 recno 访问方法特定数据结构体在 \fI<db.h>\fP 包含文件中定义如下:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    unsigned long flags;
+    unsigned int  cachesize;
+    unsigned int  psize;
+    int           lorder;
+    size_t        reclen;
+    unsigned char bval;
+    char         *bfname;
+} RECNOINFO;
+.EE
+.in
+.PP
+这个结构体的元素定义如下:
+.TP 
+\fIflags\fP
+标志值由以下任何值的 ORing 指定:
+.RS
+.TP 
+\fBR_FIXEDLEN\fP
+记录是固定长度的，不是字节分隔的。 结构体元素 \fIreclen\fP 指定记录的长度，结构体元素 \fIbval\fP 用作填充字符。
+插入到数据库中的任何长度小于 \fIreclen\fP 字节的记录都会自动填充。
+.TP 
+\fBR_NOKEY\fP
+在 \fBdbopen\fP(3) 指定的接口中，顺序记录检索填充了调用者的键和数据结构。 如果指定了 \fBR_NOKEY\fP 标志，则 \fIcursor\fP
+例程不需要填写关键字结构体。 这允许应用程序检索文件末尾的记录，而无需读取所有中间记录。
+.TP 
+\fBR_SNAPSHOT\fP
+此标志要求在调用 \fBdbopen\fP(3) 时拍摄文件的快照，而不是允许从原始文件中读取任何未修改的记录。
+.RE
+.TP 
+\fIcachesize\fP
+内存缓存的建议最大大小 (以字节为单位)。 该值为 \fBonly\fP 建议值，访问方法将分配更多内存而不是失败。 如果 \fIcachesize\fP 为 0
+(未指定大小)，则使用默认缓存。
+.TP 
+\fIpsize\fP
+recno 访问方法将其记录的内存副本存储在 btree 中。 该值是用于该树中节点的页面的大小 (以字节为单位)。 如果 \fIpsize\fP 为 0
+(未指定页面大小)，则根据底层文件系统 I/O 块大小选择页面大小。 有关更多信息，请参见 \fBbtree\fP(3)。
+.TP 
+\fIlorder\fP
+存储的数据库元数据中整数的字节顺序。 数字应以整数表示订单; 例如，大端顺序为数字 4,321。 如果 \fIlorder\fP 为 0
+(未指定顺序)，则使用当前主机顺序。
+.TP 
+\fIreclen\fP
+固定长度记录的长度。
+.TP 
+\fIbval\fP
+用于标记可变长度记录的记录结尾的定界字节和固定长度记录的填充字符。 如果没有指定值，换行符 ("\en") 用于标记变长记录的结尾，定长记录用空格填充。
+.TP 
+\fIbfname\fP
+recno 访问方法将其记录的内存副本存储在 btree 中。 如果 \fIbfname\fP 为非 NULL，则它指定 btree 文件的名称，就像指定为
+btree 文件的 \fBdbopen\fP(3) 的文件名一样。
+.PP
+\fIrecno\fP 访问方式使用的 key/data 对的数据部分与其他访问方式相同。 关键是不同的。 密钥的 \fIdata\fP 字段应该是指向
+\fIrecno_t\fP 类型内存位置的指针，如 \fI<db.h>\fP 包含文件中所定义。 此类型通常是可用于实现的最大无符号整数类型。
+密钥的 \fIsize\fP 字段应该是该类型的大小。
+.PP
+因为可能没有与底层 recno 访问方法文件关联的元数据，所以每次打开文件时都必须明确指定对默认值所做的任何更改 (例如，固定记录长度或字节分隔符值)。
+.PP
+在 \fBdbopen\fP(3) 指定的接口下，使用 \fIput\fP 接口新建记录，如果记录数比数据库中当前最大的记录数大 1 以上，会导致创建多条空记录。
+.SH ERRORS
+\fIrecno\fP 访问方法例程可能会失败并为库例程 \fBdbopen\fP(3) 或以下指定的任何错误设置 \fIerrno\fP:
+.TP 
+\fBEINVAL\fP
+试图将记录添加到太大而无法容纳的固定长度数据库。
+.SH BUGS
+仅支持大字节序和小字节序。
+.SH "SEE ALSO"
+\fBbtree\fP(3), \fBdbopen\fP(3), \fBhash\fP(3), \fBmpool\fP(3)
+.PP
+\fIDocument Processing in a Relational Database System\fP, Michael Stonebraker,
+Heidi Stettner, Joseph Kalash, Antonin Guttman, Nadene Lynn, Memorandum No.
+UCB/ERL M82/32, May 1982.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

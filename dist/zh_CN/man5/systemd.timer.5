@@ -1,0 +1,291 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.TIMER 5 "" "systemd 253" systemd.timer
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.timer \- 定时器元配置
+.SH SYNOPSIS
+.PP
+\fItimer\fP\&.timer
+.SH DESCRIPTION
+.PP
+名称以 "\&.timer" 结尾的元配置文件编码有关由 systemd 控制和监督的计时器的信息，用于基于计时器的激活 \&。
+.PP
+此手册页列出了特定于此元类型 \& 的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit]
+和 [Install] 部分 \&。计时器特定的配置选项在 [Timer] 部分 \& 中配置。
+.PP
+对于每个计时器文件，必须存在匹配的元文件，描述当计时器结束时要激活的元 \&。默认情况下，与定时器同名的服务 (后缀除外) 被激活 \&。示例:
+计时器文件 foo\&.timer 激活匹配服务 foo\&.service\&。激活的元可以由 \fIUnit=\fP (见下文) \& 控制。
+.PP
+请注意，如果要激活的元在计时器结束时已经处于活动状态，则它不会重新启动，而只是继续运行 \&。在这种情况下没有生成新服务实例的概念 \&。因此，设置了
+\fIRemainAfterExit=\fP 的服务 (即使在服务 \* (Aqs 主进程退出) 后仍然持续存在)
+通常不适合通过重复计时器激活，因为它们只会被激活一次，然后永远存在 \&.
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+隐式添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+计时器单元自动获得对它们应该激活的服务的 \fIBefore=\fP 依赖。
+.RE
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+定时器单元将自动在 sysinit\&.target 上具有类型 \fIRequires=\fP 和 \fIAfter=\fP 的依赖性，在
+timers\&.target 上具有类型 \fIBefore=\fP 的依赖性，以及在 shutdown\&.target 上具有
+\fIConflicts=\fP 和 \fIBefore=\fP 类型的依赖性，以确保它们在系统关闭之前干净地停止
+\&。只有涉及提前启动或延迟系统关闭的计时器单元才应禁用 \fIDefaultDependencies=\fP 选项 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+具有至少一个 \fIOnCalendar=\fP 指令的定时器单元获取一对额外的 \fIAfter=\fP 对 time\-set\&.target 和
+time\-sync\&.target 的依赖，以避免在系统时钟被正确设置之前启动 \&。有关这两个目标的详细信息，请参见
+\fBsystemd.special\fP(7)\&。
+.RE
+.SH OPTIONS
+.PP
+定时器元文件可能包括 [Unit] 和 [Install] 部分，它们在 \fBsystemd.unit\fP(5)\& 中描述。
+.PP
+定时器元文件必须包含一个 [Timer] 部分，其中包含有关它定义的定时器的信息 \&。定时器单元的 [Timer] 部分特定的选项如下:
+.PP
+\fIOnActiveSec=\fP, \fIOnBootSec=\fP, \fIOnStartupSec=\fP, \fIOnUnitActiveSec=\fP,
+\fIOnUnitInactiveSec=\fP
+.RS 4
+定义相对于不同起点的单调定时器:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Settings and their starting points\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Setting
+T}:T{
+Meaning
+T}
+.T&
+l l
+l l
+l l
+l l
+l l.
+T{
+\fIOnActiveSec=\fP
+T}:T{
+Defines a timer relative to the moment the timer unit itself is activated\&.
+T}
+T{
+\fIOnBootSec=\fP
+T}:T{
+Defines a timer relative to when the machine was booted up\&. In containers, for the system manager instance, this is mapped to \fIOnStartupSec=\fP, making both equivalent\&.
+T}
+T{
+\fIOnStartupSec=\fP
+T}:T{
+Defines a timer relative to when the service manager was first started\&. For system timer units this is very similar to \fIOnBootSec=\fP as the system service manager is generally started very early at boot\&. It\*(Aqs primarily useful when configured in units running in the per\-user service manager, as the user service manager is generally started on first login only, not already during boot\&.
+T}
+T{
+\fIOnUnitActiveSec=\fP
+T}:T{
+Defines a timer relative to when the unit the timer unit is activating was last activated\&.
+T}
+T{
+\fIOnUnitInactiveSec=\fP
+T}:T{
+Defines a timer relative to when the unit the timer unit is activating was last deactivated\&.
+T}
+.TE
+.sp 1
+多个指令可以由相同类型和不同类型组合，在这种情况下，只要任何指定的计时器表达式耗尽 \&，计时器元就会触发。例如，通过组合 \fIOnBootSec=\fP
+和 \fIOnUnitActiveSec=\fP，可以定义一个定时器，它以固定的时间间隔运行，并且每次激活特定的服务 \&。此外，单调时间表达式和
+\fIOnCalendar=\fP 日历表达式可以组合在同一个计时器元 \& 中。
+.sp
+指令的参数是以秒为单位配置的时间跨度 \&。例: "OnBootSec=50" 表示开机后 50s\&。参数还可以包括时间单位 \&。例:
+"OnBootSec=5h 30min" 表示开机后 5 小时 30 分钟 \&。时间跨度的语法详见 \fBsystemd.time\fP(7)\&。
+.sp
+如果在定时器元激活时用 \fIOnBootSec=\fP 或 \fIOnStartupSec=\fP 配置的定时器已经过去，则它会立即结束并启动配置的元
+\&。对于在其他指令中定义的计时器，情况并非如此 \&。
+.sp
+这些是单调计时器，独立于挂钟时间和时区 \&。如果计算机暂时挂起，单调时钟通常也会暂停 \&。请注意，如果使用
+\fIWakeSystem=\fP，则会选择一个不同的单调时钟，该时钟在系统挂起时继续前进，因此可以用作恢复系统的触发器 \&。
+.sp
+如果将空字符串分配给这些选项中的任何一个，则重置计时器列表 (单调计时器和 \fIOnCalendar=\fP 计时器，见下文)，并且所有先前的分配都将无效
+\&。
+.sp
+请注意，计时器不一定会在使用这些设置配置的精确时间到期，因为它们受下面的 \fIAccuracySec=\fP 设置的制约 \&。
+.RE
+.PP
+\fIOnCalendar=\fP
+.RS 4
+使用日历事件表达式定义实时 (i\&.e\&. wallclock) 计时器 \&。有关日历事件表达式 \& 语法的更多信息，请参见
+\fBsystemd.time\fP(7)。否则，语义类似于 \fIOnActiveSec=\fP 和相关设置 \&。
+.sp
+请注意，计时器不一定会在使用此设置配置的精确时间到期，因为它受下面的 \fIAccuracySec=\fP 设置的制约 \&。
+.sp
+可以多次指定，在这种情况下，只要任何指定的表达式用完 \&，定时器元就会触发。此外，日历定时器和单调定时器 (见上文) 可以在同一个定时器元 \&
+中组合。
+.sp
+如果将空字符串分配给这些选项中的任何一个，则重置计时器列表 (\fIOnCalendar=\fP 计时器和单调计时器，见上文)，并且所有先前的分配都将无效
+\&。
+.RE
+.PP
+\fIAccuracySec=\fP
+.RS 4
+用 \& 指定定时器应该流逝的精度。默认为 1 分钟 \&。定时器计划在一个时间窗口内流逝，该时间窗口从
+\fIOnCalendar=\fP、\fIOnActiveSec=\fP、\fIOnBootSec=\fP、\fIOnStartupSec=\fP、\fIOnUnitActiveSec=\fP
+或 \fIOnUnitInactiveSec=\fP 中指定的时间开始，到稍后用 \fIAccuracySec=\fP 配置的时间结束
+\&。在这个时间窗口内，到期时间将被放置在一个主机特定的、随机的、但稳定的位置，该位置在所有本地定时器单元之间同步。这样做是为了优化功耗以抑制不必要的
+CPU 唤醒 \&。为获得最佳精度，请将此选项设置为 1us\&。请注意，定时器仍然受制于通过
+\fBsystemd\-system.conf\fP(5)\*(Aqs \fITimerSlackNSec=\fP 设置 \& 配置的定时器松弛。有关详细信息，请参见
+\fBprctl\fP(2)\&。要优化功耗，请确保将此值设置得尽可能高，并根据需要设置得尽可能低 \&。
+.sp
+请注意，此设置主要是一个节能选项，允许合并 CPU 唤醒 \&。它不应该与 \fIRandomizedDelaySec=\fP (见下文)
+混淆，后者将随机值添加到计时器接下来应该经过的时间，其目的是相反的: 将计时器事件的过去延长到更长的时间段以减少工作负载尖峰
+\&。有关更多详细信息和解释以及两种设置如何一起发挥作用，请参见下文 \&。
+.RE
+.PP
+\fIRandomizedDelaySec=\fP
+.RS 4
+将定时器延迟一个随机选择的、在 0 和指定时间值之间均匀分布的时间量 \&。默认为 0，表示不应应用随机延迟
+\&。每个定时器元将在每次迭代前随机确定这个延迟，并且延迟将简单地添加到下一个确定的经过时间之上，除非用 \fIFixedRandomDelay=\fP
+修改，见下文 \&。
+.sp
+此设置可用于在特定时间间隔内延长调度类似配置的计时器事件，以防止它们同时触发所有事件，从而可能导致资源拥塞 \&。
+.sp
+请注意上面与 \fIAccuracySec=\fP 的关系: 后者允许服务管理器在指定的时间范围内合并定时器事件，以最大限度地减少唤醒，而此设置则相反:
+它在一个时间间隔内延长定时器事件，使其不太可能触发同时地 \&。如果 \fIRandomizedDelaySec=\fP 和 \fIAccuracySec=\fP
+一起使用，首先添加随机延迟，然后结果可能会进一步移动以将其与系统上发生的其他计时器事件合并。如上所述，\fIAccuracySec=\fP 默认为 1
+分钟，\fIRandomizedDelaySec=\fP 默认为 0，因此鼓励合并计时器事件 \&。为了在特定时间范围内最佳地延长定时器事件，将
+\fIAccuracySec=1us\fP 和 \fIRandomizedDelaySec=\fP 设置为某个更高的值 \&。
+.RE
+.PP
+\fIFixedRandomDelay=\fP
+.RS 4
+采用布尔型参数 \&。启用后，由 \fIRandomizedDelaySec=\fP 指定的随机偏移量将重新用于同一计时器的所有触发
+\&。对于给定的定时器元，偏移量取决于机器 ID、用户标识符和定时器名称，这意味着它在管理器重启之间是稳定的
+\&。这有效地为单个定时器创建了一个固定的偏移量，减少了该定时器触发的抖动，同时仍然避免与其他类似配置的定时器同时触发 \&。
+.sp
+如果 \fIRandomizedDelaySec=\fP 设置为 0\&，则此设置无效。默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIOnClockChange=\fP, \fIOnTimezoneChange=\fP
+.RS 4
+这些选项采用布尔型参数 \&。为 true 时，当系统时钟 (\fBCLOCK_REALTIME\fP) 相对于单调时钟
+(\fBCLOCK_MONOTONIC\fP) 发生跳变，或修改本地系统时区 \& 时，将触发服务元。这些选项可以单独使用，也可以与同一计时器元 \&
+中的其他计时器表达式 (见上文) 结合使用。这些选项默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIUnit=\fP
+.RS 4
+当这个计时器结束时要激活的元 \&。参数是一个元名，其后缀不是 "\&.timer"\&。如果未指定，则此值默认为与计时器元同名的服务，但后缀 \&
+除外。(见上文 \&。) 建议激活的元名和定时器的元名命名相同，只是后缀 \&。
+.RE
+.PP
+\fIPersistent=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，最后一次触发服务元的时间存储在磁盘 \&
+上。当计时器被激活时，如果在计时器处于非活动状态期间至少被触发一次，服务元将立即被触发 \&。尽管如此，此类触发仍受
+\fIRandomizedDelaySec=\fP\& 施加的延迟的影响。这对于在系统断电时赶上错过的服务运行很有用 \&。请注意，此设置仅对配置有
+\fIOnCalendar=\fP\& 的定时器有影响。默认为 \fBfalse\fP\&。
+.sp
+在定时器元上使用 \fBsystemctl clean \-\-what=state \&...\fP 从磁盘中删除此选项维护的时间戳文件
+\&。特别是，在卸载定时器元 \& 之前使用此命令。有关详细信息，请参见 \fBsystemctl\fP(1)\&。
+.RE
+.PP
+\fIWakeSystem=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，一个流逝的计时器将导致系统从挂起状态恢复，如果它被挂起并且系统支持此
+\&。请注意，此选项只会确保系统在适当的时间恢复，它不会在任何要完成的工作完成后再次挂起它 \&。默认为 \fBfalse\fP\&。
+.sp
+请注意，此功能需要特权，因此通常只能在系统服务管理器中使用 \&。
+.sp
+请注意，单调时钟定时器 (配置为
+\fIOnActiveSec=\fP、\fIOnBootSec=\fP、\fIOnStartupSec=\fP、\fIOnUnitActiveSec=\fP、\fIOnUnitInactiveSec=\fP，见上文)
+的行为会根据此选项而改变 \&。如果为假，则使用在系统挂起期间暂停的单调时钟
+(\fBCLOCK_MONOTONIC\fP)，如果为真，则使用在系统挂起期间继续前进的不同单调时钟
+(\fBCLOCK_BOOTTIME\fP)，有关详细信息，请参见 \fBclock_getres\fP(2)\&。
+.RE
+.PP
+\fIRemainAfterElapse=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，计时器将保持加载状态，即使在它过去并且关联的元 (如配置 \fIUnit=\fP，见上文) 再次停用 \&
+后，它的状态仍然可查询。如果为 false，则一旦关联的元元再次停用
+\&，将卸载不能再过期的经过计时器元元。关闭它对于瞬态定时器单元特别有用。注意这个设置在重复启动定时器时有效果元: 如果
+\fIRemainAfterElapse=\fP on，第二次启动定时器没有效果 \&。但是，如果 \fIRemainAfterElapse=\fP 为
+off，定时器元已经被卸载，则可以重新启动，从而可以多次触发服务 \&。默认为 \fBtrue\fP\&。
+.RE
+.PP
+检查 \fBsystemd.unit\fP(5)、\fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5) 以获得更多设置 \&。
+.SH "SEE ALSO"
+.PP
+将为触发单位设置包含触发细节的环境变量 \&。有关详细信息，请参见 \fBsystemd.exec\fP(5) 中的 "Environment
+Variables Set on Triggered Units" 部分 \&。
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd.unit\fP(5), \fBsystemd.service\fP(5),
+\fBsystemd.time\fP(7), \fBsystemd.directives\fP(7), \fBsystemd\-system.conf\fP(5),
+\fBprctl\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

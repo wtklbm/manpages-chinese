@@ -1,0 +1,1454 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" $Id: dialog.1,v 1.234 2022/07/28 08:13:25 tom Exp $
+.\" Copyright 2005-2021,2022  Thomas E. Dickey
+.\"
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU Lesser General Public License, version 2.1
+.\" as published by the Free Software Foundation.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" Lesser General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU Lesser General Public
+.\" License along with this program; if not, write to
+.\"	Free Software Foundation, Inc.
+.\"	51 Franklin St., Fifth Floor
+.\"	Boston, MA 02110, USA.
+.\"
+.\" definitions for renaming
+.ds p dialog
+.ds l dialog
+.ds L Dialog
+.ds D DIALOG
+.de  ES
+.ne 8
+.IP
+..
+.\"
+.de  Ex
+.RS +7
+.PP
+.nf
+.ft CW
+..
+.de  Ee
+.fi
+.ft R
+.RE
+..
+.de  bP
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
+..
+.\" Bulleted paragraph
+.ie  \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie  \n(.g .ds '' \(rq
+.el       .ds '' ''
+.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH \*D 1 "" "$Date: 2022/07/28 08:13:25 $" 
+.SH NAME
+dialog \- 显示来自 shell 脚本的对话框 boxes
+.SH SYNOPSIS
+\fB\*p \-\-clear\fP
+.br
+\fB\*p \-\-create\-rc \fP\fIfile\fP
+.br
+\fB\*p \-\-print\-maxsize\fP
+.br
+\fB\*p\fP \fIcommon\-options\fP \fIbox\-options\fP
+.SH DESCRIPTION
+\fB\*L\fP 是一个程序，可让您使用 shell 脚本中的对话框 boxes 提出各种问题或显示消息。 这些类型的对话框 boxes 都实现了
+(虽然不一定都编译成 \fB\*p\fP):
+.RS
+.LP
+.nh
+.na
+\fBbuildlist\fP, \fBcalendar\fP, \fBchecklist\fP, \fBdselect\fP, \fBeditbox\fP, \fBform\fP,
+\fBfselect\fP, \fBgauge\fP, \fBinfobox\fP, \fBinputbox\fP, \fBinputmenu\fP, \fBmenu\fP,
+\fBmixedform\fP, \fBmixedgauge\fP, \fBmsgbox\fP (message), \fBpasswordbox\fP,
+\fBpasswordform\fP, \fBpause\fP, \fBprgbox\fP, \fBprogrambox\fP, \fBprogressbox\fP,
+\fBtailbox\fP, X0221X、\fBtextbox\fP、\fBtimebox\fP、\fBtreeview\fP 和 \fByesno\fP (yes/no)。
+.ad
+.RE
+.PP
+您可以将多个对话框 box 放入一个脚本中:
+.bP
+使用 X00X token 强制 X01X 继续下一个对话框，除非您已按 ESC 键取消，或者
+.bP
+只需为下一个对话框 box 添加 tokens，形成一个链。 \*L 在对话框的返回代码为非零时停止链接，例如取消或否 (请参见诊断)。
+.PP
+一些小部件，例如清单，会将文本写入 \fB\*p\fP's 输出。 通常这是标准错误，但有一些选项可以更改它:
+\*(``\fB\-\-output\-fd\fP\*(''、\*(``\fB\-\-stderr\fP\*('' 和 \*(``\fB\-\-stdout\fP\*(''。
+如果按下取消按钮 (或 ESC)，则不会写入任何文本; 在这种情况下，\fB\*p\fP 会立即退出。
+.
+.\" ************************************************************************
+.SH OPTIONS
+所有选项都以 \*(``\fB\-\-\fP\*('' 开头 (两个 ASCII 连字符，方便那些使用具有异常语言环境支持的系统的用户)。
+.PP
+\*(``\fB\-\-\fP\*('' 本身用作转义符，即命令行上的下一个 token 不被视为选项。 这与 \fBgetopt\fP(1) 不同，后者使用
+token 将剩余的 tokens 视为 \fIparameters\fP 而不是 \fIoptions\fP。
+.RS
+.PP
+\fB\*p \-\-title \-\- \-\-Not an option\fP
+.br
+\fB\*p \-\-title This \-\- \-\-title is not an option\fP
+.RE
+.PP
+\fB\*L\fP 不使用 \fIparameters\fP，而是使用自己的 \fIoptions\fP 解析器。
+.PP
+当重复一个公共 (例如，非窗口小部件) 选项时，最后找到的选项将被使用。 布尔选项经过特殊处理，因此可以通过在前导 \*(``\fB\-\-\fP\*(''
+之后添加 (或省略) \*(``no\*('' 修饰符来取消它们。 例如，此处记录了 \fB\-\-no\-shadow\fP，但也接受了 \fB\-\-shadow\fP。
+.PP
+\*(``\fB\-\-args\fP\*('' 选项告诉 \fB\*p\fP 列出标准错误的命令行参数。 这在使用 \*(``\fB\-\-\fP\*('' 和
+\*(``\fB\-\-file\fP\*('' 调试复杂脚本时很有用，因为随着这些扩展，命令行可能会被重写。
+.PP
+\*(``\fB\-\-file\fP\*('' 选项告诉 \fB\*p\fP 从以其值命名的文件中读取参数。
+.RS
+\fB\*p \-\-file \fP\fIparameterfile\fP
+.RE
+.PP
+不在双引号内的空格将被丢弃 (使用反斜杠引用单个字符)。 结果被插入命令行，替换 \*(``\fB\-\-file\fP\*('' 及其选项值。
+命令行的解释从该点恢复。 如果 \fIparameterfile\fP 以 \*(``&\*('' 开头，\fB\*p\fP
+将以下文本解释为文件描述符编号而不是文件名。
+.PP
+大多数小部件接受 \fIheight\fP 和 \fIwidth\fP 参数，这些参数可用于自动调整小部件的大小以适应多行消息 \fIprompt\fP 值:
+.bP
+如果参数为 negative，则 \fB\*l\fP 使用屏幕尺寸。
+.bP
+如果参数为零，\fB\*l\fP 将使用小部件的最小尺寸来显示 \fIprompt\fP 和数据。
+.bP
+否则，\fB\*l\fP 使用给定的小部件大小。
+.
+.SS "Common Options"
+大多数常用选项在处理每个小部件之前都会重置。
+.
+.IP \fB\-\-ascii\-lines\fP
+不要围绕 boxes 绘制图形线，而是在同一位置绘制 ASCII\*(``+\*('' 和 \*(``\-\*(''。 另请详见
+\*(``\fB\-\-no\-lines\fP\*(''。
+.
+.IP "\fB\-\-aspect \fP\fIratio\fP"
+这使您在使用自动调整大小 (为高度和宽度指定 0) 时可以对 box 尺寸进行一些控制。 它代表宽度 / 高度。 默认值为 9，这意味着每 1 行高 9
+个字符宽。
+.
+.IP "\fB\-\-backtitle \fP\fIbacktitle\fP"
+指定要在屏幕顶部的背景上显示的 \fIbacktitle\fP 字符串。
+.
+.IP "\fB\-\-begin \fP\fIy x\fP"
+指定屏幕上对话框 box 左上角的位置。
+.
+.IP "\fB\-\-cancel\-label \fP\fIstring\fP"
+覆盖用于 \*(``Cancel\*('' 按钮的标签。
+.
+.IP \fB\-\-clear\fP
+清除小部件屏幕，仅保留 screen_color 背景。 当您将小部件与 \*(``\fB\-\-and\-widget\fP\*(''
+组合以擦除屏幕上前一个小部件的内容时使用此选项，这样它就不会在下一个小部件的内容下看到。 把这个理解为
+\*(``\fB\-\-keep\-window\fP\*('' 的补码。 要比较效果，请使用这些:
+.
+.ES
+所有三个小部件都可见，楼梯效果，顺序为 1、2、3:
+.Ex
+\*p \e
+                               \-\-begin 2 2 \-\-yesno "" 0 0 \e
+    \-\-and\-widget               \-\-begin 4 4 \-\-yesno "" 0 0 \e
+    \-\-and\-widget               \-\-begin 6 6 \-\-yesno "" 0 0
+.Ee
+.
+.ES
+只有最后一个小部件可见:
+.Ex
+\*p \e
+                 \-\-clear       \-\-begin 2 2 \-\-yesno "" 0 0 \e
+    \-\-and\-widget \-\-clear       \-\-begin 4 4 \-\-yesno "" 0 0 \e
+    \-\-and\-widget               \-\-begin 6 6 \-\-yesno "" 0 0
+.Ee
+.
+.ES
+所有三个小部件都可见，楼梯效果，顺序为 3、2、1:
+.Ex
+\*p \e
+                 \-\-keep\-window \-\-begin 2 2 \-\-yesno "" 0 0 \e
+    \-\-and\-widget \-\-keep\-window \-\-begin 4 4 \-\-yesno "" 0 0 \e
+    \-\-and\-widget               \-\-begin 6 6 \-\-yesno "" 0 0
+.Ee
+.
+.ES
+第一个和第三个小部件可见，楼梯效果，有序 3,1:
+.Ex
+\*p \e
+                 \-\-keep\-window \-\-begin 2 2 \-\-yesno "" 0 0 \e
+    \-\-and\-widget \-\-clear       \-\-begin 4 4 \-\-yesno "" 0 0 \e
+    \-\-and\-widget               \-\-begin 6 6 \-\-yesno "" 0 0
+.Ee
+.IP
+请注意，如果您想在对话程序退出后恢复原始控制台颜色并将游标移回原位，请使用 \fBclear\fP(1) 命令。 相反，如果您想在 \fB\*p\fP
+程序退出后清除屏幕并将游标移动到左下方，请使用 \fB\-\-erase\-on\-exit\fP\ 选项。
+.
+.IP \fB\-\-colors\fP
+通过以下字符解释对话框文本中嵌入的 \*(``\eZ\*('' 序列，它告诉 \fB\*p\fP 设置颜色或视频属性:
+.RS
+.bP
+0 到 7 是 curses 中使用的 ANSI 颜色编号: 分别为黑色、红色、绿色、黄色、蓝色、品红色、青色和白色。
+.bP
+粗体由 'b' 设置，由 'B' 重置。
+.bP
+反转由 'r' 置位，由 'R' 复位。
+.bP
+下划线由 'u' 设置，由 'U' 复位。
+.bP
+这些设置是累积的，例如，\*(``\eZb\eZ1\*('' 使以下文本变为粗体 (可能是亮的) 红色。
+.bP
+使用 \*(``\eZn\*('' 恢复正常设置。
+.RE
+.
+.IP "\fB\-\-column\-separator \fP\fIstring\fP"
+告诉 \fB\*p\fP 拆分 radio/checkboxes 的数据和出现给定字符串的菜单，并将拆分后的数据对齐到列中。
+.
+.IP \fB\-\-cr\-wrap\fP
+将对话框文本中嵌入的换行符解释为屏幕上的换行符。 否则，\fB\*p\fP 只会在需要适合文本 box 的地方换行。
+.IP
+即使您可以用它来控制换行符，\fB\*L\fP 仍然会换行对于 box 的宽度而言太长的任何行。 如果没有
+cr\-wrap，您的文本布局可能会被格式化为在脚本源代码中看起来不错，而不会影响它在对话框中的外观。
+.IP
+\fIcr\-wrap\fP 特性的实现取决于以下条件:
+.RS
+.bP
+字符串包含 \*(``\en\*('' 并且未使用 \fB\-\-no\-nl\-expand\fP 选项，或者
+.bP
+使用 \fB\-\-trim\fP 选项。
+.RE
+.IP
+有关详细信息，请参见 \fBWhitespace Options\fP。
+.
+.IP "\fB\-\-create\-rc \fP\fIfile\fP"
+当 \fB\*p\fP 支持运行时配置时，这可用于将样本配置文件转储到 \fIfile\fP 指定的文件中。
+.
+.IP \fB\-\-cursor\-off\-label\fP
+将最终游标放在按钮的末尾而不是按钮标签的第一个字符上。 当游标颜色与按钮标签文本颜色交互不良时，这有助于减少视觉混淆。
+.
+.IP "\fB\-\-date\-format \fP\fIformat\fP"
+如果主机提供 \fBstrftime\fP，此选项允许您指定为 \fB\-\-calendar\fP 小部件打印的日期格式。 一天中的时间 (小时、分钟、秒)
+是当前本地时间。
+.
+.IP \fB\-\-defaultno\fP
+将 \fByes/no\fP box 的默认值设为 \fBNo\fP。 同样，将提供 \*(``OK\*('' 和 \*(``Cancel\*('')
+的小部件的默认按钮视为 \fICancel\fP。 如果给定 \*(``\fB\-\-no\-cancel\fP\*('' 或
+\*(``\fB\-\-visit\-items\fP\*(''，这些选项会覆盖它，使默认按钮始终为 \*(``Yes\*('' (在内部与
+\*(``OK\*('') 相同。
+.
+.IP "\fB\-\-default\-button \fP\fIstring\fP"
+在小部件中设置默认的 (preselected) 按钮。 通过预选按钮，脚本使用户只需按 \fIEnter\fP 即可以最少的交互继续对话。
+.IP
+该选项的值是按钮的名称: \fIok\fP、\fIyes\fP、\fIcancel\fP、\fIno\fP、\fIhelp\fP\ 或 \fIextra\fP。
+.IP
+通常每个小部件中的第一个按钮是默认按钮。 显示的第一个按钮由小部件与 \*(``\fB\-\-no\-ok\fP\*('' 和
+\*(``\fB\-\-no\-cancel\fP\*('' 选项一起确定。 如果未给出此选项，则不会分配默认按钮。
+.
+.IP "\fB\-\-default\-item \fP\fIstring\fP"
+在清单、表单或菜单中设置默认项 box。 通常 box 中的第一项是默认的。
+.
+.IP \fB\-\-erase\-on\-exit\fP
+当 \fB\*p\fP 退出时，删除对话框小部件，将整个屏幕擦除为其原始背景颜色，并将最终游标放在左下角。
+.
+.IP "\fB\-\-exit\-label \fP\fIstring\fP"
+覆盖用于 \*(``EXIT\*('' 按钮的标签。
+.
+.IP \fB\-\-extra\-button\fP
+在 \*(``OK\*('' 和 \*(``Cancel\*('' 按钮之间显示一个额外的按钮。
+.IP
+额外的按钮出现在 \*(``Yes\*('' 和 \*(``No\*(\fIyesno\fP 小部件的 \*(rq 之间。
+.
+.IP "\fB\-\-extra\-label \fP\fIstring\fP"
+覆盖用于 \*(``Extra\*('' 按钮的标签。 注意: 对于输入菜单小部件，这默认为 \*(``Rename\*(''。
+.
+.IP \fB\-\-help\fP
+将帮助消息打印到标准输出并退出。 如果没有给出选项，或者给出了无法识别的选项，也会打印帮助消息。
+.
+.IP \fB\-\-help\-button\fP
+在 \*(``OK\*('' 和 \*(``Cancel\*(boxes 中的 \*(rq 按钮后显示一个帮助按钮，其中有一个标记项列表
+(即清单、单选列表、菜单和树视图 boxes) .
+.IP
+帮助按钮出现在 \*(``Yes\*('' 和 \*(``No\*(\fIyesno\fP 小部件的 \*(rq 之后。
+.IP
+退出时，返回状态指示已按下 `帮助` 按钮。 \fB\*L\fP 还在 token\*(``HELP\*('':
+.RS
+.bP
+如果还给出了 "\fB\-\-item\-help\fP"，则写入项 \- help 文本。
+.bP
+否则，写入项的标签 (第一个字段)。
+.RE
+.IP
+.IP
+您可以使用 \fB\-\-help\-tags\fP 选项或者设置 DIALOG_ITEM_HELP 环境变量来修改这些消息和退出状态。
+.IP
+此选项可应用于其他具有 \*(``OK\*('' 按钮，无论是否使用 \*(``Cancel\*('' 按钮。
+返回状态和输出不会针对其他小部件进行特殊处理; 帮助按钮只是一个额外的按钮。
+.
+.IP "\fB\-\-help\-label \fP\fIstring\fP"
+覆盖用于 \*(``Help\*('' 按钮的标签。
+.
+.IP \fB\-\-help\-status\fP
+如果选择了帮助按钮，则在项目 \- help\*(``HELP\*('' 信息之后写入检查列表、单选列表或表单信息。
+这可用于在处理帮助请求后重建清单的状态。
+.
+.IP \fB\-\-help\-tags\fP
+修改 \fB\-\-help\-button\fP 退出时写入的消息，使它们始终只是项的标记。 这不会影响退出状态代码。
+.
+.IP "\fB\-\-hfile \fP\fIfilename\fP"
+当用户按下 F1 时，使用文本框显示给定的文件。
+.
+.IP "\fB\-\-hline \fP\fIstring\fP"
+在小部件底部居中显示给定的字符串。
+.
+.IP \fB\-\-ignore\fP
+忽略 \fB\*p\fP 无法识别的选项。 无论如何忽略一些众所周知的如 \*(``\fB\-\-icon\fP\*(''，但这是与其他实现兼容的更好选择。
+.
+.IP "\fB\-\-input\-fd \fP\fIfd\fP"
+从给定的文件描述符读取键盘输入。 大多数 \fB\*p\fP 脚本从标准输入读取，但仪表小部件读取管道 (始终是标准输入)。 当 \fB\*p\fP
+尝试重新打开终端时，某些配置无法正常工作。 如果您的脚本必须在那种类型的环境中工作，请使用此选项 (适当调整文件描述符)。
+.
+.IP \fB\-\-insecure\fP
+通过为每个字符回显星号，使密码小部件更友好但更不安全。
+.
+.IP \fB\-\-iso\-week\fP
+根据 ISO\-8601 设置 \*(``\fB\-\-calendar\fP\*('' 选项中显示的周数的起始点，它从第一周开始编号，其中包括一月份的星期四。
+.
+.IP \fB\-\-item\-help\fP
+解释清单、单选列表和菜单的标签数据 boxes 添加一列显示在屏幕的底行，用于当前选择的项目。
+.
+.IP \fB\-\-keep\-tite\fP
+当使用 \fBncurses\fP 构建时，\fB\*p\fP 通常会检查它是否在 \fBxterm\fP
+中运行，并且在这种情况下会尝试抑制会使其切换到备用屏幕的初始化字符串。 在多次运行 \fB\*p\fP
+的脚本中，在正常屏幕和备用屏幕之间切换在视觉上会分散注意力。 使用此选项允许 \fB\*p\fP 使用这些初始化字符串。
+.
+.IP \fB\-\-keep\-window\fP
+通常，当 \fB\*p\fP 执行由 \*(``\fB\-\-and\-widget\fP\*('' 连接的多个 \fBtailboxbg\fP
+小部件时，它会通过在旧小部件上绘画来清除屏幕上的旧小部件。 使用此选项可以抑制重新绘制。
+.IP
+在退出时，\fB\*p\fP 重新绘制所有标记为 \*(``\fB\-\-keep\-window\fP\*('' 的小部件，即使它们不是 \fBtailboxbg\fP
+小部件。 这导致它们以相反的顺序重新绘制。 有关示例，请参见 \*(``\fB\-\-clear\fP\*('' 选项的讨论。
+.
+.IP \fB\-\-last\-key\fP
+在退出时，报告用户输入的最后一个键。 这是 curses 键代码而不是符号或字符值，并且仅针对绑定到操作的键报告。
+脚本可以使用它来区分绑定到同一操作的两个键。
+.
+.IP "\fB\-\-max\-input \fP\fIsize\fP"
+将输入字符串限制为给定大小。 如果未指定，则限制为 2048。
+.
+.IP \fB\-\-no\-cancel\fP
+在清单、输入框和菜单 box 模式中抑制 \*(``Cancel\*('' 按钮。 脚本仍然可以测试用户是否按 ESC 键取消退出。
+.
+.IP \fB\-\-no\-collapse\fP
+通常 \fB\*p\fP 将制表符转换为空格，并将多个空格减少为单个空格，用于显示在消息 boxes 等中的文本。使用此选项可禁用该，特性。
+请注意，\fB\*p\fP 仍将换行文本，具体取决于 \*(``\fB\-\-cr\-wrap\fP\*('' 和 \*(``\fB\-\-trim\fP\*('' 选项。
+.IP
+\fIno\-collapse\fP 特性的实现取决于以下条件:
+.RS
+.bP
+字符串包含 \*(``\en\*('' 并且未使用 \fB\-\-no\-nl\-expand\fP 选项，或者
+.bP
+不使用 \fB\-\-trim\fP 选项。
+.RE
+.IP
+有关详细信息，请参见 \fBWhitespace Options\fP。
+.
+.IP \fB\-\-no\-hot\-list\fP
+告诉 \fB\*p\fP 抑制列表的热键特性例如复选框、菜单。
+.IP
+通常，列表条目的第一个大写字符将突出显示，键入该字符会将焦点移至该条目。 此选项会抑制突出显示和移动。
+.IP
+按钮的热键 (\*(``OK\*('' ,\*(``Cancel\*('' 等) 不受影响。
+.
+.IP \fB\-\-no\-items\fP
+一些小部件 (清单、输入菜单、单选列表、菜单) 显示一个包含两列的列表 (一个 \*(``tag\*('' 和 \*(``item\*(''，即
+\*(``description\*('').  此选项告诉 \fB\*p\fP 读取较短的行，省略列表的 \*(``item\*('' 部分。
+这有时很有用，例如，如果标签提供了足够的信息。
+.IP
+另请详见 \fB\-\-no\-tags\fP。 如果给出了两个选项，则忽略此选项。
+.
+.IP \fB\-\-no\-kill\fP
+告诉 \fB\*p\fP 将 \fBtailboxbg\fP box 置于后台，将其进程 ID 打印到 \fB\*p\fP's 输出。 后台进程禁用 SIGHUP。
+.
+.IP "\fB\-\-no\-label \fP\fIstring\fP"
+覆盖用于 \*(``No\*('' 按钮的标签。
+.
+.IP \fB\-\-no\-lines\fP
+不要在 boxes 周围画线，而是在同一个地方画空间。 另请详见 \*(``\fB\-\-ascii\-lines\fP\*(''。
+.
+.IP \fB\-\-no\-mouse\fP
+不要启用鼠标。
+.
+.IP \fB\-\-no\-nl\-expand\fP
+不要将 \*(``\en\*(message/prompt 文本的 \*(rq 子字符串转换为字面量换行符。
+.IP
+仅当字符串包含 \*(``\en\*('' 以便有要转换的内容时，才使用 \fIno\-nl\-expand\fP 特性。
+.IP
+有关详细信息，请参见 \fBWhitespace Options\fP。
+.
+.IP \fB\-\-no\-ok\fP
+抑制 \*(``OK\*('' 按钮，使其不显示。 脚本仍然可以测试用户是否按下 \*(``Enter\*('' 键来接受数据:
+.RS
+.bP
+当使用 \fB\-\-no\-ok\fP 选项时，\*(``Enter\*('' 键始终作为 \*(``OK\*('' 按钮处理。 即默认绑定 \fILEAVE\fP
+虚拟键。
+.IP
+当不使用 \fB\-\-no\-ok\fP 时，您可以使用 \fITab\fP 键在小部件上的字段和按钮之间移动游标。 在这种情况下，如果游标位于按钮上，则
+\*(``Enter\*('' 键会激活当前按钮。
+.bP
+为了提供在使用 \fB\-\-no\-ok\fP 时想要激活按钮的情况，还有另一个虚拟键 \fILEAVE\fP，它激活当前按钮。 默认情况下，\fB^D\fP (EOF)
+绑定到该键。
+.RE
+.
+.IP \fB\-\-no\-shadow\fP
+抑制将绘制到每个对话框 box 右侧和底部的阴影。
+.
+.IP \fB\-\-no\-tags\fP
+一些小部件 (清单、输入菜单、单选列表、菜单) 显示一个包含两列的列表 (一个 \*(``tag\*('' 和
+\*(``description\*(''.  该标签对脚本很有用，但可能对用户没有帮助。 \fB\-\-no\-tags\fP 选项 (来自 Xdialog)
+可用于抑制显示的标签列。 与 \fB\-\-no\-items\fP 选项不同，这不会影响从脚本中读取的数据。
+.IP
+Xdialog 不显示类似构建列表和树视图小部件的标签列; \fB\*p\fP 做同样的事情。
+.IP
+通常 \fB\*p\fP 允许您通过将单个字符与标签的第一个字符匹配来快速移动到显示列表中的条目。 当给出 \fB\-\-no\-tags\fP 选项时，\fB\*p\fP
+匹配描述的第一个字符。 在任何一种情况下，匹配字符都会突出显示。
+.
+.IP "\fB\-\-ok\-label \fP\fIstring\fP"
+覆盖用于 \*(``OK\*('' 按钮的标签。
+.
+.IP "\fB\-\-output\-fd \fP\fIfd\fP"
+直接输出到给定的文件描述符。 大多数 \fB\*p\fP 脚本写入标准错误，但错误消息也可能写入标准错误，这取决于您的脚本。
+.
+.IP "\fB\-\-separator \fP\fIstring\fP"
+.IP "\fB\-\-output\-separator \fP\fIstring\fP"
+指定一个字符串，它将 \fB\*p\fP's 输出与检查列表分开，而不是换行符 (对于 \fB\-\-separate\-output\fP) 或空格。
+这适用于其他小部件，例如通常使用换行符的表单和编辑框。
+.
+.IP \fB\-\-print\-maxsize\fP
+打印对话框 boxes 的最大尺寸，即屏幕尺寸，到 \fB\*p\fP's 输出。 这可以单独使用，没有其他选项。
+.
+.IP \fB\-\-print\-size\fP
+初始化 box 时，将每个对话框 box 的大小打印到 \fB\*p\fP's 输出。
+.
+.IP "\fB\-\-print\-text\-only \fP\fIstring [ height [ width ] ]\fP"
+打印字符串，因为它将包装在消息 box 到 \fB\*p\fP's 输出中。
+.IP
+因为可选的 \fIheight\fP 和 \fIwidth\fP 默认为零，如果省略它们，\fB\*p\fP 会根据屏幕尺寸自动调整大小。
+.
+.IP "\fB\-\-print\-text\-size \fP\fIstring [ height [ width ] ]\fP"
+打印字符串的大小，因为它将包装在消息 box 中，到 \fB\*p\fP's 输出，如
+.Ex
+高度宽度
+.Ee
+.IP
+因为可选的 \fIheight\fP 和 \fIwidth\fP 参数默认为零，如果省略它们，\fB\*p\fP 会根据屏幕尺寸自动调整大小。
+.
+.IP \fB\-\-print\-version\fP
+将 \fB\*p\fP's 版本打印到 \fB\*p\fP's 输出。 这可以单独使用，没有其他选项。 它不会导致 \fB\*l\fP 自行退出。
+.
+.IP \fB\-\-quoted\fP
+通常 \fB\*p\fP 引用清单返回的字符串以及项 \- help 文本。 使用此选项根据需要引用所有字符串结果
+(即，如果字符串包含空格或单引号或双引号字符)。
+.
+.IP \fB\-\-reorder\fP
+默认情况下，构建列表小部件对输出 (right) 列表使用与输入 (left) 相同的顺序。 使用此选项告诉 \fB\*p\fP
+使用用户将选择添加到输出列表的顺序。
+.
+.IP \fB\-\-scrollbar\fP
+对于包含一组可滚动数据的小部件，在其右边距绘制一个滚动条。 这不响应鼠标。
+.
+.IP \fB\-\-separate\-output\fP
+对于某些小部件 (buildlist、checklist、treeview)，一次一行输出结果，不带引号。 这有利于另一个程序的解析。
+.
+.IP "\fB\-\-separate\-widget \fP\fIstring\fP"
+指定一个字符串，它将 \fB\*p\fP's 输出上的输出与每个小部件分开。 这用于简化解析具有多个小部件的对话框的结果。
+如果未给出此选项，则默认分隔符字符串是制表符。
+.
+.IP \fB\-\-single\-quoted\fP
+根据需要使用单引号 (如果不需要则不使用引号) 用于检查列表的输出以及项 \- 帮助文本。
+.IP
+如果未设置此选项，\fB\*p\fP 可能会在每个项目周围使用双引号。 无论哪种情况，\fB\*p\fP 都会添加反斜杠以使输出在 shell 脚本中有用。
+.IP
+如果字符串包含空格或单引号或双引号字符，则需要单引号。
+.
+.IP \fB\-\-size\-err\fP
+在尝试使用之前检查对话框 box 的结果大小，如果它大于屏幕则打印结果大小。 (此选项已过时，因为已检查所有新窗口调用)。
+.
+.IP "\fB\-\-sleep \fP\fIsecs\fP"
+在处理完对话框 box 后，让 (delay) 休眠指定的秒数。
+.
+.IP \fB\-\-stderr\fP
+直接输出到标准错误。 这是默认设置，因为 curses 通常将屏幕更新写入标准输出。
+.
+.IP \fB\-\-stdout\fP
+直接输出到标准输出。 提供此选项是为了与 Xdialog 兼容，但不建议在可移植脚本中使用它，因为 curses 通常会将其屏幕更新写入标准输出。
+如果您使用此选项，\fB\*p\fP 会尝试重新打开最终端以便它可以写入显示器。 根据平台和您的环境，这可能会失败。
+.
+.IP \fB\-\-tab\-correct\fP
+将每个制表符转换为一个或多个空格 (对于 \fBtextbox\fP 小部件; 否则为单个空格)。 否则，将根据 curses 库的解释呈现选项卡。
+\fB\-\-no\-collapse\fP 选项禁用选项卡扩展。
+.
+.IP "\fB\-\-tab\-len \fP\fIn\fP"
+如果给出了 \*(``\fB\-\-tab\-correct\fP\*('' 选项，请指定制表符占用的空格数。 默认值为 8。 此选项仅对 \fBtextbox\fP
+小部件有效。
+.
+.IP "\fB\-\-time\-format \fP\fIformat\fP"
+如果主机提供 \fBstrftime\fP，此选项允许您指定为 \fB\-\-timebox\fP 小部件打印的时间格式。 本例中的日、月、年值是针对当前本地时间的。
+.
+.IP "\fB\-\-timeout \fP\fIsecs\fP"
+如果在给定的秒数内没有用户响应，则超时。 零秒超时将被忽略。
+.IP
+通常，超时会导致在当前小部件中输入 ESC 字符，从而取消它。 其他小部件可能仍在屏幕上; 这些没有被取消。 设置 \fBDIALOG_TIMEOUT\fP
+环境变量，让 \fB\*l\fP 直接退出，即取消屏幕上的所有小部件。
+.IP
+\*(``\fB\-\-pause\fP\*('' 小部件忽略此选项。 如果背景 \*(``\fB\-\-tailboxbg\fP\*(''
+选项用于设置多个并发小部件，它也会被覆盖。
+.
+.IP "\fB\-\-title \fP\fItitle\fP"
+指定要显示在对话框 box 顶部的 \fItitle\fP 字符串。
+.
+.IP "\fB\-\-trace \fP\fIfilename\fP"
+将命令行参数、击键和其他信息记录到给定的文件中。 如果 \fB\*l\fP 读取配置文件，它也会被记录下来。 记录到 \fIgauge\fP 小部件的管道输入。
+使用 control/T 记录当前对话窗口的图片。
+.IP
+\fB\*p\fP 程序对一些命令行参数进行了特殊处理，并在处理时将其从参数列表中删除。 例如，如果第一个选项是 \fB\-\-trace\fP，则在 \fB\*p\fP
+初始化显示之前处理 (并删除) 它。
+.
+.IP "\fB\-\-week\-start \fP\fIday\fP"
+设置一周的起始日，在 \*(``\fB\-\-calendar\fP\*('' 选项中使用。 \fIday\fP 参数可以是
+.RS
+.bP
+一个数字 (0 到 6，周日到周六使用 POSIX) 或
+.bP
+特殊值 \*(``locale\*('' (这适用于使用 glibc 的系统，为 \fBlocale\fP 命令提供扩展，即 \fBfirst_weekday\fP
+值)。
+.bP
+匹配 \fBcalendar\fP 小部件中显示的星期几的缩写之一的字符串，例如，\*(``Mo\*('' for\*(``Monday\*(''.
+.RE
+.
+.IP \fB\-\-trim\fP
+消除前导空白，修剪字面量换行符和消息文本中的重复空白。
+.IP
+\fItrim\fP 特性的实现取决于以下条件:
+.RS
+.bP
+该字符串不包含 \*(``\en\*('' 或
+.bP
+使用 \fB\-\-no\-nl\-expand\fP 选项。
+.RE
+.IP
+有关详细信息，请参见 \fBWhitespace Options\fP。
+.
+.IP
+另请参见 \*(``\fB\-\-cr\-wrap\fP\*('' 和 \*(``\fB\-\-no\-collapse\fP\*('' 选项。
+.
+.IP \fB\-\-version\fP
+将 \fB\*p\fP's 版本打印到标准输出，然后退出。 另请详见 \*(``\fB\-\-print\-version\fP\*(''。
+.
+.IP \fB\-\-visit\-items\fP
+修改 checklist、radiolist、menubox、inputmenu 的 tab \- 遍历，将项的列表作为状态之一。
+这可用作视觉辅助，即游标位置可以帮助某些用户。
+.IP
+给出此选项时，游标最初位于列表上。 缩写 (标签的第一个字母) 适用于列表项。 如果您按 Tab 键切换到按钮行，则缩写适用于按钮。
+.
+.IP "\fB\-\-yes\-label \fP\fIstring\fP"
+覆盖用于 \*(``Yes\*('' 按钮的标签。
+.
+.\" ************************************************************************
+.SS "Box Options"
+所有对话框 boxes 至少有三个参数:
+.TP  7
+\fItext\fP
+box 的标题或内容。
+.TP  7
+\fIheight\fP
+对话框的高度 box。
+.TP  7
+\fIwidth\fP
+对话框的宽度 box。
+.PP
+其他参数取决于 box 类型。
+.
+.
+.IP "\fB\-\-buildlist \fP\fItext height width list\-height \fP[ \fItag item status \fP] \fI...\fP"
+\fBbuildlist\fP 对话框并排显示两个列表。 左侧列表显示未选中的项。 右边的列表显示选中的项目。 As 项 are selected or
+unselected, they move between the lists.
+.IP
+使用回车或 \*(``OK\*('' 按钮接受所选窗口中的当前值并退出。 使用所选窗口中显示的顺序写入结果。
+.IP
+每个条目的初始 on/off 状态由 \fIstatus\fP 指定。
+.IP
+该对话框的行为类似于 \fBmenu\fP，使用 \fB\-\-visit\-items\fP 控制是否允许游标直接访问列表。
+.RS
+.bP
+如果未给出 \fB\-\-visit\-items\fP，则制表符遍历使用两种状态 (OK/Cancel)。
+.bP
+如果给出 \fB\-\-visit\-items\fP，制表符遍历使用四种状态 (Left/Right/OK/Cancel)。
+.RE
+.IP
+无论是否给出 \fB\-\-visit\-items\fP，都可以使用默认的 \*(``^\*('' (left\-column) 和 \*(``$\*(''
+(right\-column) 键在两个列表之间移动突出显示。
+.IP
+退出时，将在 \fB\*p\fP's 输出上打印那些已打开条目的 \fItag\fP 字符串列表。
+.IP
+如果未给出 "\fB\-\-separate\-output\fP" 选项，将根据需要引用字符串以使脚本分隔它们变得简单。 默认情况下，这会根据需要使用双引号。
+请参见 \*(``\fB\-\-single\-quoted\fP\*('' 选项，它修改了引用行为。
+.
+.IP "\fB\-\-calendar \fP\fItext height width day month year\fP"
+\fBcalendar\fP box 在单独可调的 windows 中显示月、日和年。 如果缺少日、月或年的值或 negative，则使用当前日期的对应值。
+您可以使用向左、向上、向右和向下箭头来增加或减少其中的任何一个。 使用 vi 风格的 h、j、k 和 l 在一个月中的天数数组中移动。 使用 tab 或
+backtab 在 windows 之间移动。 如果年份为零，则当前日期用作初始值。
+.IP
+退出时，日期以 day/month/year 格式打印。 可以使用 \fB\-\-date\-format\fP 选项覆盖该格式。
+.
+.IP "\fB\-\-checklist \fP\fItext height width list\-height \fP[ \fItag item status \fP] \fI...\fP"
+\fBchecklist\fP box 类似于 \fBmenu\fP box; 有多个条目以菜单的形式呈现。 另一个区别是您可以通过将其 \fIstatus\fP 设置为
+\fIon\fP 来指示当前选择了哪个条目。 用户可以打开或关闭每个条目，而不是在条目中选择一个条目。 每个条目的初始 on/off 状态由
+\fIstatus\fP 指定。
+.IP
+退出时，将在 \fB\*p\fP's 输出上打印那些已打开条目的 \fItag\fP 字符串列表。
+.IP
+如果未给出 \*(``\fB\-\-separate\-output\fP\*('' 选项，将根据需要引用字符串以使脚本分隔它们变得简单。 默认情况下，这使用双引号
+(根据需要)。 请参见 \*(``\fB\-\-single\-quoted\fP\*('' 选项，它修改了引用行为。
+.
+.IP "\fB\-\-dselect \fP\fIfilepath height width\fP"
+目录选择对话框显示一个文本输入窗口，您可以在其中键入一个目录，在其上方是一个带有目录名称的 windows。
+.IP
+这里 \fBfilepath\fP 可以是文件路径，在这种情况下，目录窗口将显示路径的内容，文本输入窗口将包含预选目录。
+.IP
+使用 Tab 键或箭头键在 windows 之间移动。 在目录窗口中，使用 up/down 箭头键滚动当前选择。
+使用空格键将当前选择复制到文本输入窗口。
+.IP
+输入任何可打印字符会将焦点切换到文本输入窗口，输入该字符并将目录窗口滚动到最接近的匹配项。
+.IP
+使用回车或 \*(``OK\*('' 按钮接受文本输入窗口中的当前值并退出。
+.IP
+退出时，文本输入窗口的内容被写入 \fB\*p\fP's 输出。
+.
+.IP "\fB\-\-editbox \fP\fIfilepath height width\fP"
+edit\-box 对话框显示文件的副本。 您可以使用 \fIbackspace\fP、\fIdelete\fP 和游标键编辑它以更正输入错误。 它还识别
+pageup/pagedown。 与 \fB\-\-inputbox\fP 不同，您必须跳转到 \*(``OK\*('' 或 \*(``Cancel\*(''
+按钮以关闭对话框。 在 box 中按 \*(``Enter\*('' 键将拆分相应的行。
+.IP
+退出时，编辑窗口的内容写入 \fB\*p\fP's 输出。
+.
+.nf
+.IP "\fB\-\-form \fP\fItext height width formheight \fP[ \fIlabel y x item y x flen ilen \fP] \fI...\fP"
+.fi
+\fBform\fP 对话框显示一个由标签和字段组成的表单，这些标签和字段按脚本中给定的坐标定位在可滚动窗口中。 字段长度 \fIflen\fP 和输入长度
+\fIilen\fP 告诉字段可以有多长。 前者定义所选字段显示的长度，而后者定义字段中输入数据的允许长度。
+.RS
+.bP
+如果 \fIflen\fP 为零，则不能更改相应的字段。 字段的内容决定了显示的长度。
+.bP
+如果 \fIflen\fP 为 negative，则对应字段不可更改，\fIflen\fP 的取反值作为显示长度。
+.bP
+如果 \fIilen\fP 为零，则将其设置为 \fIflen\fP。
+.RE
+.IP
+使用 up/down 箭头 (或 control/N、control/P) 在字段之间移动。 使用制表符在 windows 之间移动。
+.IP
+退出时，表单字段的内容被写入 \fB\*p\fP's 输出，每个字段由换行符分隔。 用于填充不可编辑字段的文本 (\fIflen\fP 为零或 negative)
+未写出。
+.
+.
+.IP "\fB\-\-fselect \fP\fIfilepath height width\fP"
+\fBfselect\fP (file\-selection) 对话框显示一个文本输入窗口，您可以在其中键入文件名 (或目录)，在该窗口上方是两个
+windows 以及目录名和文件名。
+.IP
+这里 \fBfilepath\fP 可以是文件路径，在这种情况下，文件和目录 windows 将显示路径的内容，文本输入窗口将包含预选的文件名。
+.IP
+使用 Tab 键或箭头键在 windows 之间移动。 在目录或文件名 windows 中，使用 up/down 箭头键滚动当前选择。
+使用空格键将当前选择复制到文本输入窗口。
+.IP
+输入任何可打印字符会将焦点切换到文本输入窗口，输入该字符并将目录和文件名 windows 滚动到最接近的匹配项。
+.IP
+键入空格字符会强制 \fB\*p\fP 完成当前名称 (直至可能与多个条目匹配)。
+.IP
+使用回车或 \*(``OK\*('' 按钮接受文本输入窗口中的当前值并退出。
+.IP
+退出时，文本输入窗口的内容被写入 \fB\*p\fP's 输出。
+.
+.
+.IP "\fB\-\-gauge \fP\fItext height width [percent]\fP"
+\fBgauge\fP box 在 box 的底部显示一个仪表。 仪表指示百分比。 从标准输入中读取新百分比，每行一个整数。 仪表会更新以反映每个新的百分比。
+如果标准输入读取字符串 \*(``XXX\*(''，那么接下来的第一行将作为整数百分比，然后后续行直到另一个 \*(``XXX\*(''
+用于一个新的提示。 当标准输入达到 EOF 时，仪表退出。
+.IP
+\fIpercent\fP 值表示仪表中显示的初始百分比。 如果未指定，则为零。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 该小部件不接受任何输入，因此退出状态始终为 OK。
+.
+.
+.IP "\fB\-\-infobox \fP\fItext height width\fP"
+\fBinfo\fP box 基本上是 \fBmessage\fP box。 但是，在这种情况下，\fB\*p\fP 会在向用户显示消息后立即退出。 当 \fB\*p\fP
+退出时屏幕不会被清除，因此消息将一直保留在屏幕上，直到稍后调用 shell 脚本将其清除。
+当您想要通知用户某些操作正在进行可能需要一些时间才能完成时，这很有用。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 返回 OK 退出状态。
+.
+.
+.IP "\fB\-\-inputbox \fP\fItext height width [init]\fP"
+当您想提出要求用户输入字符串作为答案的问题时，\fBinput\fP box 很有用。 如果提供了 init，它用于初始化输入字符串。
+输入字符串时，\fIbackspace\fP、\fIdelete\fP 和游标键可用于更正输入错误。 如果输入字符串的长度超过对话框 box
+的长度，输入字段将滚动。
+.IP
+退出时，输入字符串将打印在 \fB\*p\fP's 输出上。
+.
+.
+.IP "\fB\-\-inputmenu \fP\fItext height width menu\-height \fP[ \fItag item \fP] \fI...\fP"
+\fBinputmenu\fP box 与普通的 \fBmenu\fP box 非常相似。 它们之间只有一些区别:
+.RS
+.TP  4
+1.
+条目不会自动居中，而是左调整。
+.TP 
+2.
+一个额外的按钮 (称为 \fIRename\/\fP) 意味着在按下时重命名当前项。
+.TP 
+3.
+可以通过按 \fIRename\fP 按钮重命名当前条目。 然后 \fB\*p\fP 将在 \fB\*p\fP's 输出上写入以下内容。
+.IP
+重命名 <tag> <item>
+.RE
+.
+.
+.IP "\fB\-\-menu \fP\fItext height width menu\-height \fP[ \fItag item \fP] \fI...\fP"
+顾名思义，\fBmenu\fP box 是一个对话框 box，可用于以菜单的形式呈现选项列表供用户选择。 选项按给定的顺序显示。 每个菜单项都包含一个
+\fItag\fP 字符串和一个 \fIitem\fP 字符串。 \fItag\fP 为该条目命名，以区别于菜单中的其他条目。 \fIitem\fP
+是条目所代表的选项的简短描述。 用户可以通过按游标键、\fItag\fP 的第一个字母作为热键或数字键 \fI1\fP 到 \fI9\fP 在菜单条目之间移动。
+菜单中一次显示 \fImenu\-height\fP 个条目，但如果条目多于此，菜单将滚动。
+.IP
+退出时，所选菜单条目的 \fItag\fP 将打印在 \fB\*p\fP's 输出上。 如果给出 \*(``\fB\-\-help\-button\fP\*(''
+选项，则当用户选择帮助按钮时，将打印相应的帮助文本。
+.
+.nf
+.IP "\fB\-\-mixedform \fP\fItext height width formheight \fP[ \fIlabel y x item y x flen ilen itype \fP] \fI...\fP"
+.fi
+\fBmixedform\fP 对话框显示一个由标签和字段组成的表单，很像 \fB\-\-form\fP 对话框。
+它的不同之处在于为每个字段的描述添加了一个字段类型参数。 类型中的每一位表示字段的一个属性:
+.RS
+.TP  5
+1
+隐藏的，例如密码字段。
+.TP  5
+2
+只读，例如，标签。
+.RE
+.
+.IP "\fB\-\-mixedgauge \fP\fItext height width percent \fP[ \fItag1 item1 \fP] \fI...\fP"
+\fBmixedgauge\fP box 在 box 的底部显示一个仪表。 仪表指示百分比。
+.IP
+它还在 box 的顶部显示 \fItag\/\fP\- 和 \fIitem\/\fP\-values 的列表。 有关标签值，请参见 \*l (3)。
+.IP
+\fItext\fP 显示为列表和仪表之间的标题。 \fIpercent\fP 值表示仪表中显示的初始百分比。
+.IP
+没有像 \fB\-\-gauge\fP 那样从标准输入读取数据。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 该小部件不接受任何输入，因此退出状态始终为 OK。
+.
+.IP "\fB\-\-msgbox \fP\fItext height width\fP"
+\fBmessage\fP box 与 \fByes/no\fP box 非常相似。 \fBmessage\fP box 和 \fByes/no\fP box 之间的唯一区别是
+\fBmessage\fP box 只有一个 \fBOK\fP 按钮。 您可以使用此对话框 box 来显示您喜欢的任何消息。 阅读消息后，用户可以按下
+\fIENTER\fP 键，这样 \fB\*p\fP 将退出，调用 shell 脚本可以继续运行。
+.IP
+如果消息对于空间而言太大，\fB\*p\fP 可能允许您滚动它，前提是底层的 curses 实现具有足够的能力。 在这种情况下，百分比显示在小部件的底部。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 仅提供一个 \*(``OK\*('' 按钮用于输入，但可能返回 ESC 退出状态。
+.
+.IP "\fB\-\-pause \fP\fItext height width seconds\fP"
+\fBpause\fP box 在 box 的底部显示一个仪表。 仪表指示距离暂停结束还剩多少秒。 当达到超时或用户按下 OK 按钮 (状态 OK)
+或用户按下 CANCEL 按钮或 Esc 键时，暂停退出。
+.IP "\fB\-\-passwordbox \fP\fItext height width [init]\fP"
+\fBpassword\fP box 类似于输入 box，除了不显示用户输入的文本。 这在提示输入密码或其他敏感信息时很有用。 请注意，如果在
+\*(``init\*('' 中传递了任何内容，它将在系统的进程表中被不经意的窥探者看到。 此外，为用户提供他们看不到的默认密码会让他们感到非常困惑。
+由于这些原因，强烈建议不要使用 \*(``init\*(''。 如果您不关心密码，请参见 \*(``\fB\-\-insecure\fP\*(''。
+.IP
+退出时，输入字符串将打印在 \fB\*p\fP's 输出上。
+.
+.
+.nf
+.IP "\fB\-\-passwordform \fP\fItext height width formheight \fP[ \fIlabel y x item y x flen ilen \fP] \fI...\fP"
+.fi
+这与 \fB\-\-form\fP 相同，只是所有文本字段都被视为 \fBpassword\fP 小部件而不是 \fBinputbox\fP 小部件。
+.
+.
+.IP "\fB\-\-prgbox \fP\fItext command height width\fP"
+.IP "\fB\-\-prgbox \fP\fIcommand height width\fP"
+\fBprgbox\fP 与 \fBprogrambox\fP 非常相似。
+.IP
+此对话框 box 用于显示指定为 \fBprgbox\fP 的参数的命令的输出。
+.IP
+命令完成后，用户可以按下 \fIENTER\fP 键，\fB\*l\fP 将退出，调用 shell 脚本可以继续运行。
+.IP
+如果给出四个参数，它会在标题下显示文本，从滚动文件的内容中划定。 如果仅给出三个参数，则省略此文本。
+.
+.
+.IP "\fB\-\-programbox \fP\fItext height width\fP"
+.IP "\fB\-\-programbox \fP\fIheight width\fP"
+\fBprogrambox\fP 与 \fBprogressbox\fP 非常相似。 \fBprogram\fP box 和 \fBprogress\fP box
+之间的唯一区别是 \fBprogram\fP box 显示 \fBOK\fP 按钮 (但仅在命令完成后)。
+.IP
+此对话框 box 用于显示命令的管道输出。 命令完成后，用户可以按下 \fIENTER\fP 键，\fB\*l\fP 将退出，调用 shell 脚本可以继续运行。
+.IP
+如果给出了三个参数，它会在标题下显示文本，从滚动文件的内容中划定。 如果只给出两个参数，则省略此文本。
+.
+.
+.IP "\fB\-\-progressbox \fP\fItext height width\fP"
+.IP "\fB\-\-progressbox \fP\fIheight width\fP"
+\fBprogressbox\fP 类似于 \fBtailbox\fP，除了
+.RS
+.TP  3
+a) rather than displaying the contents of a file,
+它显示命令的管道输出和
+.TP  3
+b) it will exit when it reaches the end of the file
+(没有 \*(``OK\* (\*(rq 按钮)。
+.RE
+.IP
+如果给出了三个参数，它会在标题下显示文本，从滚动文件的内容中划定。 如果只给出两个参数，则省略此文本。
+.
+.
+.IP "\fB\-\-radiolist \fP\fItext height width list\-height \fP [ \fItag item status \fP] \fI...\fP"
+\fBradiolist\fP box 类似于 \fBmenu\fP box。 唯一的区别是您可以通过将其 \fIstatus\fP 设置为 \fIon\fP
+来指示当前选择了哪个条目。
+.IP
+退出时，所选项目的标签被写入 \fB\*p\fP's 输出。
+.
+.
+.nf
+.IP "\fB\-\-rangebox \fP\fItext height width min\-value max\-value default\-value\fP"
+.fi
+允许用户从一系列值中进行选择，例如，使用滑块。 该对话框将当前值显示为条形图 (类似于仪表对话框)。 Tab 键或箭头键可在按钮和值之间移动游标。
+当游标在值上时，您可以通过以下方式对其进行编辑:
+.RS
+.TP  5
+left/right cursor movement to select a digit to modify
+.TP  5
++/\-
+字符到 increment/decrement 数字加一
+.TP  5
+0 through 9
+将数字设置为给定值
+.RE
+.IP
+在所有游标位置也可以识别某些键:
+.RS
+.TP  5
+home/end
+将值设置为其最大值或最小值
+.TP  5
+pageup/pagedown
+增加值，使滑块移动一列
+.RE
+.
+.
+.IP "\fB\-\-tailbox \fP\fIfile height width\fP"
+在对话框 box 中显示文件中的文本，如 \*(``tail\-f\*('' 命令。 使用 vi 样式 'h' 和 'l' 或箭头键滚动
+left/right。 '0' 重置滚动。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 仅提供一个 \*(``OK\*('' 按钮用于输入，但可能返回 ESC 退出状态。
+.
+.
+.IP "\fB\-\-tailboxbg \fP\fIfile height width\fP"
+在对话框 box 中显示文件中的文本作为后台任务，如 \*(``tail \-f&\*('' 命令。 使用 vi 样式 'h' 和 'l' 或箭头键滚动
+left/right。 '0' 重置滚动。
+.IP
+\* 如果屏幕上同时有其他小部件 (\fB\-\-and\-widget\fP)，L 会特别处理后台任务。 在关闭这些小部件之前
+(例如，\*(``OK\*('')，\fB\*p\fP 将在同一进程中执行所有 tailboxbg 小部件，轮询更新。
+您可以使用选项卡在屏幕上的小部件之间移动，并分别关闭它们，例如，通过按 \fIENTER\fP。 一旦非 tailboxbg 小部件关闭，\fB\*p\fP
+将自身的副本复制到后台，并在提供 \*(``\fB\-\-no\-kill\fP\*('' 选项时打印其进程 ID。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 仅提供一个 \*(``EXIT\*('' 按钮用于输入，但可能返回 ESC 退出状态。
+.IP
+NOTE: 旧版本的 \fB\*p\fP 立即分叉并尝试单独更新屏幕。 除了对性能不利之外，它是行不通的。 一些较旧的脚本可能无法与轮询方案一起正常工作。
+.
+.
+.IP "\fB\-\-textbox \fP\fIfile height width\fP"
+\fBtext\fP box 允许您在对话框 box 中显示文本文件的内容。 它就像一个简单的文本文件查看器。
+用户可以使用大多数键盘上提供的游标键、向上翻页键、向下翻页键和 \fIHOME/END\fP 键在文件中移动。 如果行太长而无法在 box 中显示，可以使用
+\fILEFT/RIGHT\fP 键水平滚动文本区域。 您还可以使用 vi 风格的键 h、j、k 和 l 代替游标键，并使用 B 或 N
+代替向上翻页和向下翻页键。 使用 vi 样式 'k' 和 'j' 或箭头键滚动 up/down。 使用 vi 样式 'h' 和 'l' 或箭头键滚动
+left/right。 '0' 重置 left/right 滚动。 为了更方便，还提供了 vi 风格的向前和向后搜索函数。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 仅提供一个 \*(``EXIT\*('' 按钮用于输入，但可能返回 ESC 退出状态。
+.
+.
+.IP "\fB\-\-timebox \fP\fItext height [width hour minute second]\fP"
+将显示一个对话框，允许您选择小时、分钟和秒。 如果小时、分钟或秒的值缺失或 negative，则使用当前日期的对应值。
+您可以使用向左、向上、向右和向下箭头来增加或减少其中的任何一个。 使用 tab 或 backtab 在 windows 之间移动。
+.IP
+退出时，结果以时: 分: 秒的形式打印。 可以使用 \fB\-\-time\-format\fP 选项覆盖该格式。
+.
+.
+.IP "\fB\-\-treeview \fP\fItext height width list\-height \fP[ \fItag item status depth \fP] \fI...\fP"
+显示组织为树的数据。 每组数据包含一个标签，要为该项目显示的文本，其状态 (\*(``on\*('' 或 \*(``off\*('') 和该项目在树。
+.IP
+只能选择一项 (如 \fBradiolist\fP).  标签不显示。
+.IP
+退出时，所选项目的标签被写入 \fB\*p\fP's 输出。
+.
+.
+.IP "\fB\-\-yesno \fP\fItext height width\fP"
+将显示 \fIheight\fP 行 \fIwidth\fP 列大小的 \fByes/no\fP 对话框 box。 \fItext\fP 指定的字符串显示在对话框 box 中。
+如果这个字符串太长，不能放在一行中，它会在适当的地方自动分成多行。 \fItext\fP 字符串还可以包含子字符串 "\fI\en\fP" 或换行符
+`\fI\en\fP' 以显式控制换行。 此对话框 box 对于要求用户回答是或否的问题很有用。 对话框 box 有一个 \fBYes\fP 按钮和一个 \fBNo\fP
+按钮，用户可以通过按 \fITAB\fP 键在这两个按钮之间切换。
+.IP
+退出时，没有文本写入 \fB\*p\fP's 输出。 除了 \*(``Yes\*('' 和 \*(``No\*('' 退出代码 (参见诊断) 之外，可能会返回
+ESC 退出状态。
+.IP
+用于 \*(``Yes\*('' 和 \*(``No\*('' 的代码与用于 \*(``OK\*('' 和 \*(``Cancel\*('
+\&'，内部没有区别。
+.
+.\" ************************************************************************
+.SS "Obsolete Options"
+.\" from cdialog 0.9a (Pako)
+.IP \fB\-\-beep\fP
+这用于告诉原始 cdialog 它应该在 tailboxbg 小部件的单独进程重新绘制屏幕时发出哔哔声。
+.
+.\" from cdialog 0.9a (Pako)
+.IP \fB\-\-beep\-after\fP
+用户通过按下其中一个按钮完成小部件后发出哔哔声。
+.
+.\" ************************************************************************
+.SS "Whitespace Options"
+.PP
+这些选项可用于在对话框读取脚本时转换空格 (空格、制表符、换行符) :
+.RS
+\fB\-\-cr\-wrap\fP、\fB\-\-no\-collapse\fP、\fB\-\-no\-nl\-expand\fP 和 \fB\-\-trim\fP
+.RE
+.PP
+选项不是独立的:
+.bP
+\fB\*L\fP 检查脚本是否包含至少一个 \*(``\en\*('' 和 (除非设置了 \fB\-\-no\-nl\-expand\fP) 将忽略
+\fB\-\-no\-collapse\fP 和 \fB\-\-trim\fP 选项。
+.bP
+检查 \*(``\en\*('' 和 \fB\-\-no\-nl\-expand\fP 选项后，\fB\*l\fP 处理 \fB\-\-trim\fP 选项。
+.IP
+如果 \fB\-\-trim\fP 选项生效，则 \fB\*l\fP 将忽略 \fB\-\-no\-collapse\fP。 它将制表符、空格 (和换行符，除非设置了
+\fB\-cr\-wrap\fP) 的序列更改为单个空格。
+.bP
+如果 \*(``\en\*('' 或 \fB\-\-trim\fP 情况均不适用，则 \fB\*l\fP 检查 \fB\-\-no\-collapse\fP
+以决定是否将制表符和空格序列减少为单个空格。
+.IP
+在这种情况下，\fB\*l\fP 忽略 \fB\-\-cr\-wrap\fP 并且不修改换行符。
+.PP
+考虑到这些依赖性，这里有一张表格总结了各种选项组合的行为。 该表假定脚本至少包含一个 \*(``\en\*(''，当 \fB\-\-no\-nl\-expand\fP
+选项未设置时。
+.na
+.RS 5
+.TS
+tab(/) ;
+lB lB lB lB lB
+lB lB lB lB lB
+_ _ _ _ _
+lw4 lw4 lw4 lw4 lw29.
+cr\-/no\-/no\-/trim/Result
+wrap/collapse/nl\-expand
+no/no/no/no/T{
+Convert tab to space.
+Convert newline to space.
+Convert \*(``\en\*('' to newline.
+T}
+no/no/no/yes/T{
+Convert tab to space.
+Convert newline to space.
+Convert \*(``\en\*('' to newline.
+T}
+no/no/yes/no/T{
+Convert tab to space.
+Do not convert newline to space.
+Convert multiple\-space to single.
+Show \*(``\en\*('' literally.
+T}
+no/no/yes/yes/T{
+Convert tab to space.
+Convert multiple\-space to single.
+Convert newline to space.
+Show \*(``\en\*('' literally.
+T}
+no/yes/no/no/T{
+Convert newline to space.
+Convert \*(``\en\*('' to newline.
+T}
+no/yes/no/yes/T{
+Convert newline to space.
+Convert \*(``\en\*('' to newline.
+T}
+no/yes/yes/no/T{
+Do not convert newline to space.
+Do not reduce multiple blanks.
+Show \*(``\en\*('' literally.
+T}
+no/yes/yes/yes/T{
+Convert multiple\-space to single.
+Convert newline to space.
+Show \*(``\en\*('' literally.
+T}
+yes/no/no/no/T{
+Convert tab to space.
+Wrap on newline.
+Convert \*(``\en\*('' to newline.
+T}
+yes/no/no/yes/T{
+Convert tab to space.
+Wrap on newline.
+Convert \*(``\en\*('' to newline.
+T}
+yes/no/yes/no/T{
+Convert tab to space.
+Do not convert newline to space.
+Convert multiple\-space to single.
+Show \*(``\en\*('' literally.
+T}
+yes/no/yes/yes/T{
+Convert tab to space.
+Convert multiple\-space to single.
+Wrap on newline.
+Show \*(``\en\*('' literally.
+T}
+yes/yes/no/no/T{
+Wrap on newline.
+Convert \*(``\en\*('' to newline.
+T}
+yes/yes/no/yes/T{
+Wrap on newline.
+Convert \*(``\en\*('' to newline.
+T}
+yes/yes/yes/no/T{
+Do not convert newline to space.
+Do not reduce multiple blanks.
+Show \*(``\en\*('' literally.
+T}
+yes/yes/yes/yes/T{
+Convert multiple\-space to single.
+Wrap on newline.
+Show \*(``\en\*('' literally.
+T}
+.TE
+.RE
+.ad
+.
+.\" ************************************************************************
+.SH "RUN\-TIME CONFIGURATION"
+.TP  4
+1.
+通过键入以下内容创建示例配置文件:
+.LP
+.Ex
+\*p \-\-create\-rc \fIfile\fP
+.Ee
+.TP  4
+2.
+开始时，\fB\*p\fP 确定要使用的设置如下:
+.RS
+.TP  4
+a)
+如果设置了环境变量 \fBDIALOGRC\fP，它的值决定了配置文件的名称。
+.TP  4
+b)
+如果找不到 (a) 中的文件，则使用文件 \fI$HOME/.dialogrc\fP 作为配置文件。
+.TP  4
+c)
+如果找不到 (b) 中的文件，尝试使用编译时确定的 GLOBALRC 文件，即 \fI/etc/dialogrc\fP。
+.TP  4
+d)
+如果找不到 (c) 中的文件，则使用默认编译。
+.RE
+.TP  4
+3.
+编辑示例配置文件并将其复制到 \fB\*p\fP 可以找到的某个位置，如上面的步骤 2 所述。
+.
+.\" ************************************************************************
+.SH "KEY BINDINGS"
+您可以通过添加到配置文件来覆盖或添加到 \fB\*p\fP 中的键绑定。 \fB\*L\fP's \fBbindkey\fP 命令 maps 单键对其内部编码。
+.Ex
+绑定键 \fIwidget\fP \fIcurses_key\fP \fIdialog_key\fP
+.Ee
+.PP
+\fIwidget\fP 名称可以是 \*(``*\*('' (所有小部件)，或特定小部件，例如 \fBtextbox\fP。 特定的小部件绑定覆盖
+\*(``*\*('' 绑定。 用户定义的绑定覆盖内置绑定。
+.PP
+\fIcurses_key\fP 可以用不同的形式表示:
+.bP
+它可以是从 \fBcurses.h\fP 派生的任何名称，例如，\*(``HELP\*('' 来自 \*(``KEY_HELP\*(''.
+.bP
+\fB\*L\fP 还可以识别 ANSI 控制字符，例如 \*(``^A\*(''、\*(``^?\*(''，以及 C1 控制字符，例如
+\*(``~A\*('' 和 \*(``~?\*(''。
+.bP
+最后，\fB\*l\fP 允许反斜杠转义为 in C。这些可以是八进制字符值，例如 \*(``\e033\*('' (ASCII
+转义字符)，或下表中列出的字符:
+.RS 10
+.TS
+tab(/) ;
+lI lI
+_ _
+l l .
+Escaped/Actual
+\eb/backspace
+\ef/换页
+\en/new line (line feed)
+\er/回车
+\es/space
+\et/tab
+\e^/\*(``^\*('' (caret)
+\e?/\*(``?\*('' (question mark)
+\e\e/\*(``\e\*('' (backslash)
+_
+.TE
+.RE
+.PP
+\fB\*L\fP's 内部键码名称对应于 \fBdlg_keys.h\fP 中的 \fBDLG_KEYS_ENUM\fP 类型，例如，\*(``HELP\*(''
+from\*(``DLGK_HELP\*(''.
+.SS "Widget Names"
+.PP
+一些小部件 (例如表单框) 有一个可以编辑字段的区域。
+这些在小部件的子窗口中进行管理，并且可能具有与主小部件不同的键绑定，因为子窗口使用不同的名称注册。
+.RS 5
+.TS
+tab(/) ;
+lI lI lI
+_ _ _
+l l l .
+Widget/Window name/Subwindow Name
+calendar/calendar
+checklist/checklist
+editbox/editbox/editbox2
+form/formbox/formfield
+fselect/fselect/fselect2
+inputbox/inputbox/inputbox2
+menu/menubox/menu
+msgbox/msgbox
+pause/pause
+progressbox/progressbox
+radiolist/radiolist
+tailbox/tailbox
+textbox/textbox/searchbox
+timebox/timebox
+yesno/yesno
+_
+.TE
+.RE
+.PP
+有些小部件实际上是其他小部件，使用内部设置来修改行为。 那些使用与实际小部件相同的小部件名称:
+.RS 5
+.TS
+tab(/) ;
+lI lI
+_ _
+l l .
+Widget/Actual Widget
+dselect/fselect
+infobox/msgbox
+inputmenu/menu
+mixedform/form
+passwordbox/inputbox
+passwordform/form
+prgbox/progressbox
+programbox/progressbox
+tailboxbg/tailbox
+_
+.TE
+.RE
+.SS "Built\-in Bindings"
+本手册页未列出每个小部件的键绑定，因为可以通过运行 \fB\*p\fP 获得详细信息。 如果您设置了 \fB\-\-trace\fP 选项，\fB\*p\fP
+会在注册时为每个小部件写入键绑定信息。
+.PP
+一些绑定是内置的，独立于特定的小部件:
+.TS
+tab(/) ;
+lI lI
+_ _
+l l .
+Key/Purpose
+Control\-I/forward tab\-traversal, e.g., with \fB\-\-tailboxbg\fP.
+Control\-L/repaints the screen.
+Control\-T/writes a screen dump to the \fB\-\-trace\fP file.
+Control\-V/suppresses special\-keys for the next input byte.
+DLGK_FIELD_NEXT/forward tab\-traversal, like Control\-I.
+DLGK_FIELD_PREV/backward tab\-traversal, like back\-tab.
+DLGK_HELPFILE/displays the help\-file specified with \fB\-\-hfile\fP.
+KEY_BTAB/backward tab\-traversal, e.g., with \fB\-\-tailboxbg\fP.
+_
+.TE
+
+.SS Example
+通常 \fB\*p\fP 使用不同的键在按钮和对话框的编辑部分之间导航与在编辑部分内导航。 也就是说，制表符 (和后退制表符) 遍历按钮
+(或按钮和编辑部分之间)，而箭头键遍历编辑部分内的字段。 选项卡也被认为是在小部件之间遍历的一种特殊情况，例如，当使用多个 tailboxbg
+小部件时。
+.PP
+一些用户可能希望使用相同的键在编辑部分内遍历和在按钮之间遍历。 通过在 \fBdlgk_keys.h\fP 中为 \*(``form\*(''
+(left/right/next/prev).  这是一个演示如何执行此操作的示例绑定:
+.Ex
+bindkey formfield TAB form_NEXT bindkey formbox TAB form_NEXT bindkey
+formfield BTAB form_prev bindkey formbox BTAB form_prev
+.Ee
+.PP
+这种类型的重新定义在其他小部件 (例如日历) 中不会有用，因为可能要遍历大量字段。
+.
+.\" ************************************************************************
+.SH ENVIRONMENT
+.TP  15
+\fBDIALOGOPTS\fP
+定义此变量以将任何常用选项应用于每个小部件。 大多数常用选项在处理每个小部件之前都会重置。 如果您在此环境变量中设置选项，它们将在重置后应用于
+\fB\*p\fP's 状态。 与在 \*(``\fB\-\-file\fP\*('' 选项中一样，解释双引号和反斜杠。
+.IP
+\*(``\fB\-\-file\fP\*('' 选项不被视为常用选项 (因此您不能将其嵌入此环境变量中)。
+.TP  15
+\fBDIALOGRC\fP
+如果要指定要使用的配置文件的名称，请定义此变量。
+.TP  15
+\fBDIALOG_CANCEL\fP
+.TP  15
+\fBDIALOG_ERROR\fP
+.TP  15
+\fBDIALOG_ESC\fP
+.TP  15
+\fBDIALOG_EXTRA\fP
+.TP  15
+\fBDIALOG_HELP\fP
+.TP  15
+\fBDIALOG_ITEM_HELP\fP
+.TP  15
+\fBDIALOG_TIMEOUT\fP
+.TP  15
+\fBDIALOG_OK\fP
+定义这些变量中的任何一个以更改退出代码
+.RS
+.bP
+Cancel (1),
+.bP
+error (\-1),
+.bP
+ESC (255),
+.bP
+Extra (3),
+.bP
+Help (2),
+.bP
+Help with \fB\-\-item\-help\fP (2),
+.bP
+Timeout (5), or
+.bP
+OK (0).
+.RE
+.IP
+通常 shell 脚本无法区分 \-1 和 255。
+.TP  15
+\fBDIALOG_TTY\fP
+将此变量设置为 \*(``1\*('' 以提供与旧版本 \fB\*p\fP 的兼容性，它假定如果脚本重定向标准输出，则给出
+\*(``\fB\-\-stdout\fP\*('' 选项。
+.SH FILES
+.TP  20
+\fI$HOME/.dialogrc\fP
+默认配置文件
+.SH EXAMPLES
+\fB\*p\fP 源代码包含几个示例，说明如何使用不同的 box 选项以及它们的外观。 只需查看源目录 \fBsamples/\fP 即可。
+.SH DIAGNOSTICS
+退出状态可能会被环境变量覆盖。 可以覆盖它们的默认值和相应的环境变量是:
+.TP  5
+0
+如果按下 \fBYES\fP 或 \fBOK\fP 按钮 (DIALOG_OK)。
+.TP  5
+1
+如果按下 \fBNo\fP 或 \fBCancel\fP 按钮 (DIALOG_CANCEL)。
+.TP  5
+2
+如果按下 \fBHelp\fP 按钮 (DIALOG_HELP)，
+.br
+除了下面关于 DIALOG_ITEM_HELP 的说明。
+.TP  5
+3
+如果按下 \fBExtra\fP 按钮 (DIALOG_EXTRA)。
+.TP  5
+4
+如果按下 \fBHelp\fP 按钮，
+.br
+并且设置了 \fB\-\-item\-help\fP 选项
+.br
+DIALOG_ITEM_HELP 环境变量设置为 4.
+.IP
+虽然任何退出代码都可以使用环境变量覆盖，但这种特殊情况是在 2004 年引入的，以简化兼容性。 \fB\*L\fP 在内部使用
+DIALOG_ITEM_HELP (4)，但除非还设置了环境变量，否则它会在退出时将其更改为 DIALOG_HELP (2)。
+.TP  5
+5
+如果超时到期并且 \fBDIALOG_TIMEOUT\fP 变量设置为 5.
+.TP  5
+\-1
+如果 \fB\*p\fP 内部发生错误 (DIALOG_ERROR) 或 \fB\*p\fP 退出，因为 \fIESC\fP 键 (DIALOG_ESC) 被按下。
+.
+.\" ************************************************************************
+.SH PORTABILITY
+\fB\*L\fP 与 X/Open 诅咒一起使用。 但是，一些实现有不足之处:
+.RS 3
+.bP
+HPUX 诅咒 (可能还有其他诅咒) 无法正确打开 \fInewterm\fP 函数的终端。 这通过阻止识别游标键和类似的转义序列来干扰 \fB\*p\fP's
+\fB\-\-input\-fd\fP 选项。
+.bP
+NetBSD 5.1 curses 对宽字符的支持不完整。 \fB\*p\fP 将构建，但并非所有示例都能正确显示。
+.RE
+.\" ************************************************************************
+.SH COMPATIBILITY
+您可能想要编写与其他 \fB\*l\fP\*(``clones\*(''.
+.SS "Original Dialog"
+首先，要考虑 \*(`` 原始 \*('' \fB\*p\fP 程序 (版本 0.3 到 0.9)。 它有一些拼写错误 (或不一致) 的选项。 \fB\*p\fP
+程序 maps 将那些已弃用的选项改为首选选项。 他们包括:
+.RS
+.TS
+tab(/) ;
+lI lI
+_ _
+l l.
+Option/Treatment
+\fB\-\-beep\-after\fP/ignored
+\fB\-\-guage\fP/mapped to \fB\-\-gauge\fP
+_
+.TE
+.RE
+.SS Xdialog
+这是一个 X 应用程序，而不是最终程序。 小心一些，可以编写适用于 \fBXdialog\fP 和 \fB\*p\fP 的有用脚本。
+.PP
+\fB\*p\fP 程序忽略了 \fBXdialog\fP: 识别的这些选项
+.RS
+.TS
+tab(/) ;
+lI lI
+_ _
+l l.
+Option/Treatment
+\fB\-\-allow\-close\fP/ignored
+\fB\-\-auto\-placement\fP/ignored
+\fB\-\-fixed\-font\fP/ignored
+\fB\-\-icon\fP/ignored
+\fB\-\-keep\-colors\fP/ignored
+\fB\-\-no\-close\fP/ignored
+\fB\-\-no\-cr\-wrap\fP/ignored
+\fB\-\-screen\-center\fP/ignored
+\fB\-\-separator\fP/mapped to \fB\-\-separate\-output\fP
+\fB\-\-smooth\fP/ignored
+\fB\-\-under\-mouse\fP/ignored
+\fB\-\-wmclass\fP/ignored
+_
+.TE
+.RE
+.PP
+\fBXdialog\fP's 联机帮助页有一节讨论它与 \fB\*p\fP 的兼容性。 联机帮助页中未显示一些差异。 例如，html 文档指出
+.RS
+.PP
+Note: 以前的 Xdialog 版本使用 \*(``\en\*('' (换行符) 作为清单小部件的结果分隔符; 这已更改为
+\*(``/\*(Xdialog v1.5.0 中的 \*(rq 以使其与 (c) dialog 兼容。 在使用 Xdialog 清单的旧脚本中，您必须在
+\fB\-\-checklist\fP 选项之前添加 \fB\-\-separate\-output\fP 选项。
+.RE
+.PP
+\fB\*L\fP 没有使用不同的分隔符; 差异可能是由于对某些脚本的混淆。
+.SS Whiptail
+然后是 \fBwhiptail\fP。 出于实用目的，它由 Debian 维护 (其上游开发人员所做的工作很少)。 其文档 (README.whiptail)
+声称
+.Ex
+\fBwhiptail\fP(1) 是 \*p (1) 的轻量级替代品，为 shell 脚本提供对话框 boxes。 它建立在 newt windowing
+库而不是 ncurses 库上，允许它在安装程序、救援磁盘等嵌入式环境中更小。
+
+whiptail 被设计为丢弃 \- 与 \*p 兼容，但特性较少: 一些对话框 boxes 未实现，例如
+tailbox、timebox、calendarbox 等。
+.Ee
+.PP
+比较实际大小 (Debian 测试，2007/1/10) : \fBwhiptail\fP、newt、popt 和 slang 库的总大小为 757\KB。
+\fB\*p\fP (计算 ncurses) 的可比较数字是 520\KB。 无视第一段。
+.PP
+第二段具有误导性，因为 \fBwhiptail\fP 也不适用于 \fB\*p\fP 的常见选项，例如仪表 box。 \fBwhiptail\fP 与 \fB\*p\fP
+的兼容性不如 1990 年代中期最初的对话框 0.4 程序。
+.PP
+\fBwhiptail\fP's 联机帮助页借用 \fB\*p\fP 的特性例如，但奇怪的是仅引用 \fB\*p\fP 版本到 0.4 (1994) 作为来源。
+也就是说，它的联机帮助页引用了从 \fB\*p\fP 的较新版本中借用的特性例如，
+.bP
+\fB\-\-gauge\fP (来自 0.5)
+.bP
+\fB\-\-passwordbox\fP (来自 1999 年的 Debian 更改)，
+.bP
+\fB\-\-default\-item\fP (来自 \fB\*p\fP 2000/02/22)，
+.bP
+\fB\-\-output\-fd\fP (来自 \fB\*p\fP 2002/08/14)。
+.PP
+Debian 使用 \fBwhiptail\fP 作为官方的 \fB\*p\fP 变体。
+.PP
+\fB\*p\fP 程序忽略或 maps 这些 \fBwhiptail\fP: 识别的选项
+.RS
+.TS
+tab(/) ;
+lI lI
+_ _
+l l.
+Option/Treatment
+\fB\-\-cancel\-button\fP/mapped to \fB\-\-cancel\-label\fP
+\fB\-\-fb\fP/ignored
+\fB\-\-fullbutton\fP/ignored
+\fB\-\-no\-button\fP/mapped to \fB\-\-no\-label\fP
+\fB\-\-nocancel\fP/mapped to \fB\-\-no\-cancel\fP
+\fB\-\-noitem\fP/mapped to \fB\-\-no\-items\fP
+\fB\-\-notags\fP/mapped to \fB\-\-no\-tags\fP
+\fB\-\-ok\-button\fP/mapped to \fB\-\-ok\-label\fP
+\fB\-\-scrolltext\fP/mapped to \fB\-\-scrollbar\fP
+\fB\-\-topleft\fP/mapped to \fB\-\-begin 0 0\fP
+\fB\-\-yes\-button\fP/mapped to \fB\-\-yes\-label\fP
+_
+.TE
+.RE
+.LP
+存在命令行选项未解决的视觉差异:
+.bP
+\fB\*p\fP 在窗口中居中列表。 \fBwhiptail\fP 通常将列表放在左边距上。
+.bP
+\fBwhiptail\fP 使用尖括号 (\*(``<\*('' 和 \*(``>\*('') 来标记按钮。 \fB\*p\fP 使用方括号。
+.bP
+\fBwhiptail\fP 用竖线标记字幕的界限。 \fB\*p\fP 不标记限制。
+.bP
+.\" ************************************************************************
+\fBwhiptail\fP 尝试用 up/down 箭头标记滚动条的 top/bottom 单元格。
+当它不能做到这一点时，它会用滚动条的背景颜色填充这些单元格并使用户感到困惑。 \fB\*p\fP 使用整个滚动条空间，从而获得更好的分辨率。
+.SH BUGS
+Perhaps.
+.SH AUTHOR
+.LP
+Thomas E.\&Dickey (0.9b 及以后的更新)
+.SH CONTRIBUTORS
+Kiran Cherupally\(zh_cn 混合形式和混合仪表小部件。
+.LP
+Tobias C.\& Rittweiler
+.LP
+Valery Reznic\(en 表单和进度框小部件。
+.LP
+Yura Kalinichenko 将仪表小部件改编为 \*(``pause\*(''。
+.PP
+这是 \fB\*p 0.9a\fP 早期版本的重写 (除非需要提供兼容性)，其作者如下:
+.bP
+Savio Lam \(en version 0.3, \*(``dialog\*(''
+.bP
+Stuart Herbert \(en patch for version 0.4
+.bP
+Marc Ewing\(zh_cn 仪表小部件。
+.bP
+Pasquale De Marco \*(``Pako\*('' \(en version 0.9a, \*(``cdialog\*(''
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

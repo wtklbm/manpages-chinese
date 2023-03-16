@@ -1,0 +1,167 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 1996-2004 Hans Reiser.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH REISERFSTUNE 8 "January 2009" Reiserfsprogs\-3.6.27 
+.SH NAME
+reiserfstune\-ReiserFS 文件系统的调整工具。
+.SH SYNOPSIS
+\fBreiserfstune\fP [ \fB\-f\fP ] [ \fB\-h\fP | \fB\-\-help\fP ] [ \fB\-j\fP |
+\fB\-\-journal\-device\fP \fIFILE\fP ] [ \fB\-\-no\-journal\-available\fP ] [
+\fB\-\-journal\-new\-device\fP \fIFILE\fP ] [ \fB\-\-make\-journal\-standard\fP ] [ \fB\-s\fP |
+\fB\-\-journal\-new\-size\fP \fIN\fP ] [ \fB\-o\fP | \fB\-\-journal\-new\-offset\fP \fIN\fP ] [
+\fB\-t\fP | \fB\-\-max\-transaction\-size\fP \fIN\fP ] [ \fB\-b\fP | \fB\-\-add\-badblocks\fP
+\fIfile\fP ] [ \fB\-B\fP | \fB\-\-badblocks\fP \fIfile\fP ] [ \fB\-u\fP | \fB\-\-uuid \fP\fIUUID\fP ] [
+\fB\-l\fP | \fB\-\-label \fP\fILABEL\fP ] [ \fB\-c\fP | \fB\-\-check\-interval \fP\fIinterval\-in\-days\fP ] [ \fB\-C\fP | \fB\-\-time\-last\-checked \fP\fItimestamp\fP ] [
+\fB\-m\fP | \fB\-\-max\-mnt\-count \fP\fIcount\fP ] [ \fB\-M\fP | \fB\-\-mnt\-count \fP\fIcount\fP ]
+\fIdevice\fP
+.SH DESCRIPTION
+\fBreiserfstune\fP 用于调整 ReiserFS。它可以更改两个日志参数
+(日志大小和最大事务大小)，并且可以将日志的位置移动到新的指定块设备。(旧的 ReiserFS 的日志可以保留未使用，或由用户选择丢弃。)
+除此之外，\fBreiserfstune\fP 可以将坏块列表存储到 ReiserFS 并设置 UUID 和 LABEL。 注意:
+在撰写本文时，重新定位的日志是为 ReiserFS 的一个特殊版本实现的，预计直到大约 Linux 2.5 才会被放入主流内核。
+这意味着，如果您拥有标准内核，则必须应用特殊补丁。如果没有这个补丁，内核将拒绝挂载新修改的文件系统。 如果您问我们为什么它不起作用，我们将收取 $25
+来向您解释。
+.PP
+也许这段代码最有趣的应用是将日志放在固态磁盘上。
+.TP 
+\fIdevice\fP
+是与新指定的块设备对应的特殊文件 (例如 /dev/hdXX 用于集成开发环境磁盘分区或 /dev/sdXX 用于 SCSI 磁盘分区)。
+.SH OPTIONS
+.TP 
+\fB\-h\fP | \fB\-\-help\fP
+打印使用信息并退出。
+.TP 
+\fB\-j\fP | \fB\-\-journal\-device\fP \fIFILE\fP
+\fIFILE\fP 是文件系统拥有当前日志 (运行 reiserfstune 之前的日志)
+的块设备的文件名。当日志已经在与主数据设备不同的设备上时需要此选项 (尽管可以使用
+\fB\-\-no\-journal\-available\fP). 如果您没有通过这个选项指定日志设备，reiserfstune 假设日志在主设备上。
+.TP 
+\fB\-\-no\-journal\-available\fP
+当当前日志的块设备不再可用时，允许 \fBreiserfstune\fP 继续。 如果磁盘损坏并且您将其移除 (并运行 fsck)，则可能会发生这种情况。
+.TP 
+\fB\-\-journal\-new\-device \fP\fIFILE\fP
+\fIFILE\fP 是块设备的文件名，它将包含文件系统的新日志。如果您不指定它，reiserfstune 假定日志设备保持不变。				
+.TP 	
+ \fB\-s\fP | \fB\-\-journal\-new\-size \fP\fIN\fP
+\fIN\fP 是新日志的大小参数。当日志位于单独的设备上时 \- 它的大小默认为该设备具有的块数。当日志与文件系统位于同一设备上时 \- 它的大小默认为
+\fImkreiserfs\fP 在创建文件系统时为日志分配的块数。两种情况的最小值为 513。
+.TP 
+ \fB\-o\fP | \fB\-\-journal\-new\-offset \fP\fIN\fP
+\fIN\fP 是一个以块为单位的偏移量，当日志位于一个单独的设备上时，日志将从这里开始。默认为 0。当日志与文件系统位于同一设备上时无效。
+大多数用户不需要使用此，特性。 当您希望来自多个文件系统的日志驻留在同一设备上，并且您不想或不能对该设备进行分区时，可以使用它。
+.TP 
+ \fB\-t\fP | \fB\-\-maximal\-transaction\-size \fP\fIN\fP
+\fIN\fP 是新日志的最大事务大小参数。默认和最大可能值为 1024 个块。它应该小于日志大小的一半。如果指定不正确，它将被调整。
+.TP 
+ \fB\-b\fP | \fB\-\-add\-badblocks\fP \fIfile\fP
+\fIFile\fP 是包含文件系统上要标记为坏块列表的文件的文件名。该列表被添加到坏块的 fs 列表中。
+.TP 
+ \fB\-B\fP | \fB\-\-badblocks\fP \fIfile\fP
+\fIFile\fP 是包含文件系统上要标记为坏块列表的文件的文件名。在将 \fIFile\fP 中指定的列表添加到 fs 之前，fs 上的坏块列表被清除。
+.TP 
+\fB\-f\fP | \fB\-\-force\fP 
+通常 \fBreiserfstune\fP 将拒绝更改在此日志重定位代码之前创建的文件系统的日志。这是因为如果您更改日志，则无法返回 (没有特殊选项
+\fB\-\-make\-journal\-standard\fP) 到缺少此特性并能够使用您的文件系统的旧内核。 该选项强制它这样做。多次指定可以避免要求确认。
+.TP 
+\fB\-\-make\-journal\-standard\fP 
+正如上面提到的，如果您的文件系统有非标准的日志，没有日志重定位代码就不能挂载到内核上。事情是可以改变的，唯一的条件是主设备上有标准日志大小 8193
+块的保留区域 (例如，如果您将标准日志转换为非标准日志，则会如此)。只需在将日志重新定位时指定此选项，或者如果您已经在主设备上拥有它，则无需重新定位。
+.TP 
+\fB\-u\fP | \fB\-\-uuid \fP\fIUUID\fP
+将文件系统的通用唯一标识符 (\fB UUID \fP) 设置为 \fIUUID\fP (另请参见 \fBuuidgen(8)\fP). UUID
+的格式是一系列由连字符分隔的十六进制数字，例如: "c1b9d5a2\-f162\-11cf\-9ece\-0020afc76f16"。
+.TP 
+\fB\-l\fP | \fB\-\-label \fP\fILABEL\fP
+设置文件系统的卷标。\fILABEL\fP 的长度最多为 16 个字符; 如果它超过 16 个字符，reiserfstune 将截断它。
+.TP 
+\fB\-c\fP | \fB\-\-check\-interval \fP\fIinterval\-in\-days\fP
+调整两次文件系统检查之间的最长时间。 "disable" 的值将禁用时间相关检查。"default" 的值将恢复编译时默认值。
+
+强烈建议启用 \fB\-m\fP (取决于挂载计数) 或 \fB\-c\fP (time\-dependent) 检查以强制定期对文件系统进行完整的
+\fBfsck.reiserfs(8)\fP 检查。如果不这样做可能会导致文件系统损坏 (由于磁盘、电缆、内存或内核错误) 被忽视，最终导致数据丢失或损坏。
+.TP 
+\fB\-C\fP | \fB\-\-time\-last\-checked \fP\fItimestamp\fP
+使用 fsck.reiserfs
+设置上次检查文件系统的时间。这在使用逻辑卷管理器制作文件系统的一致快照的脚本中很有用，然后在下班时间检查文件系统以确保它没有因硬件问题等而损坏。如果文件系统是干净的，那么这个选项可以用来设置在原始文件系统上的最后检查时间。time\-last\-checked
+的格式是国际日期格式，带有可选的时间说明符，即 YYYYMMDD [HH [MM [SS]]]。关键字 \fBnow\fP
+也被接受，在这种情况下，最后检查的时间将设置为当前时间。
+.TP 
+\fB\-m\fP | \fB\-\-max\-mnt\-count \fP\fImax\-mount\-count\fP
+调整 \fBfsck.reiserfs(8).\fP 检查文件系统的挂载次数如果 max\-mount\-count 为
+"disable"，\fBfsck.reiserfs(8)\fP 和内核将忽略文件系统的挂载次数。"default" 的值将恢复编译时默认值。
+
+交错强制检查文件系统的安装计数将避免在使用日志文件系统时同时检查所有文件系统。
+
+您应该认真考虑完全禁用挂载计数相关检查的后果。 损坏的磁盘驱动器、电缆、内存和内核错误都可能损坏文件系统，而不会将文件系统标记为脏或错误。
+如果您在您的文件系统上使用日志，您的文件系统将永远不会被标记为脏，所以它通常不会被检查。 内核检测到的文件系统错误仍会在下一次重新启动时强制执行
+fsck，但此时可能已经来不及防止数据丢失了。
+
+此选项需要一个内核，该内核支持在每次挂载时增加计数。此特性尚未合并到早于 2.6.25 的内核版本中。
+
+另请参见用于时间相关检查的 \fB\-c\fP 选项。
+.TP 
+\fB\-M\fP | \fB\-\-mnt\-count \fP\fIcount\fP
+设置文件系统的挂载次数。 如果设置的值大于 \fB\-m\fP 选项设置的 max\-mount\-counts 参数，\fBfsck.reiserfs(8)\fP
+将在下次重启时检查文件系统。
+.SH "POSSIBLE SCENARIOS OF USING REISERFSTUNE:"
+1. 您在 /dev/hda1 上有 ReiserFS，并且您希望它在设备 /dev/journal 上使用它的日志
+.nf
+.IP
+使用特殊 "relocatable journal support" 补丁修补的引导内核
+reiserfstune /dev/hda1 \-\-journal\-new\-device /dev/journal \-f
+安装 /dev/hda1 并使用。
+您想将最大交易大小更改为 512 个块
+reiserfstune \-t 512 /dev/hda1
+您想在另一个没有的内核上使用您的文件系统
+包含可重定位的日志支持。
+卸载 /dev/hda1
+reiserfstune /dev/hda1 \-j /dev/journal \-\-journal\-new\-device /dev/hda1 \-\-make\-journal\-standard
+安装 /dev/hda1 并使用。
+.LP
+2. 您希望在 /dev/hda1 上安装 ReiserFS 并且能够
+在不同期刊之间切换，包括位于
+包含文件系统的设备。
+.nf
+.IP
+使用特殊 "relocatable journal suppor t" 补丁修补的引导内核
+mkreiserfs /dev/hda1
+您有固态磁盘 (可能是 /dev/sda，它们通常看起来像 scsi 磁盘)
+reiserfstune \-\-journal\-new\-device /dev/sda1 \-f /dev/hda1
+您的 scsi 设备死了，现在是凌晨三点，您有一个额外的集成开发环境设备
+躺着
+reiserfsck \-\-no\-journal\-available /dev/hda1
+or
+reiserfsck \-\-rebuild\-tree \-\-no\-journal\-available /dev/hda1
+reiserfstune \-\-no\-journal\-available \-\-journal\-new\-device /dev/hda1 /dev/hda1
+在补丁内核下使用 /dev/hda1
+.SH AUTHOR
+此版本的 \fBreiserfstune\fP 由 Vladimir Demidov <vova@namesys.com> 和 Edward
+Shishkin <edward@namesys.com> 编写。
+.SH BUGS
+请向 ReiserFS 开发人员 <reiserfs\-devel@vger.kerne.org> 报告错误，提供尽可能多的信息 \-\-
+您的硬件、内核、补丁、设置、所有打印的消息; 检查系统日志文件以获取任何相关信息。
+.SH "SEE ALSO"
+\fBreiserfsck\fP(8), \fBdebugreiserfs\fP(8), \fBmkreiserfs\fP(8)
+
+ 
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

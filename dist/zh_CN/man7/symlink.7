@@ -1,0 +1,213 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992, 1993, 1994
+.\"	The Regents of the University of California.  All rights reserved.
+.\" and Copyright (C) 2008, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: BSD-3-Clause
+.\"
+.\"	@(#)symlink.7	8.3 (Berkeley) 3/31/94
+.\" $FreeBSD: src/bin/ln/symlink.7,v 1.30 2005/02/13 22:25:09 ru Exp $
+.\"
+.\" 2008-06-11, mtk, Taken from FreeBSD 6.2 and heavily edited for
+.\"     specific Linux details, improved readability, and man-pages style.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH symlink 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+symlink \- 符号链接处理
+.SH DESCRIPTION
+符号链接是充当指向其他文件的指针的文件。 要了解它们的行为，您必须首先了解硬链接的工作原理。
+.PP
+文件的硬链接与原始文件没有区别，因为它是对原始文件名下的对象的引用。 (准确地说: 文件的每个硬链接都是指向同一个 \fIinode number\fP
+的引用，其中 inode 编号是 inode 表的索引，它包含文件系统上所有文件的元数据。参见 \fBstat\fP(2).)
+对文件的更改是独立于用于引用文件的名称。 硬链接可能不引用目录 (以防止在文件系统树中出现循环的可能性，这会混淆许多程序)
+并且可能不引用不同文件系统上的文件 (因为索引节点号在文件系统中不是唯一的)。
+.PP
+符号链接是一种特殊类型的文件，其内容是一个字符串，该字符串是另一个文件的路径名，即链接所指的文件。 (可以使用 \fBreadlink\fP(2).)
+读取符号链接的内容换句话说，符号链接是指向另一个名称的指针，而不是指向底层对象的指针。 因此，符号链接可能指向目录并且可能跨越文件系统边界。
+.PP
+不要求符号链接引用的路径名应该存在。 引用不存在的路径名的符号链接称为 \fIdangling link\fP。
+.PP
+.\"
+由于符号链接及其引用对象共存于文件系统名称空间中，因此在区分链接本身和引用对象时可能会产生混淆。
+在历史系统上，命令和系统调用以某种特别的方式采用了它们自己的链接跟踪约定。 此处概述了在 Linux 和其他系统上实现的更统一方法的规则。
+重要的是站点本地应用程序也符合这些规则，以便用户界面尽可能一致。
+.SS "Magic links"
+有一类特殊的类似符号链接的对象，称为 "magic links"，可以在某些伪文件系统中找到，例如 \fBproc\fP(5) (示例包括
+\fI/proc/[pid]/exe\fP 和 \fI/proc/[pid]/fd/*\fP).
+与普通的符号链接不同，魔法链接不是通过路径名扩展来解析的，而是作为直接引用内核自己的文件句柄表示。
+因此，这些魔法链接允许用户访问无法通过正常路径引用的文件 (例如未链接的文件仍被正在运行的程序引用)。
+.PP
+.\"
+因为它们可以绕过普通的 \fBmount_namespaces\fP(7)\-based 限制，魔法链接在各种攻击中被用作攻击 vectors。
+.SS "Symbolic link ownership, permissions, and timestamps"
+可以使用 \fBlchown\fP(2) 更改现有符号链接的所有者和组。 符号链接的所有权唯一重要的时间是在设置了粘性位的目录中删除或重命名链接时 (请参见
+\fBstat\fP(2)).
+.PP
+可以使用 \fButimensat\fP(2) 或 \fBlutimes\fP(3) 更改符号链接的上次访问和上次修改时间戳。
+.PP
+.\" Linux does not currently implement an lchmod(2).
+在 Linux 上，普通符号链接的权限不用于任何操作; 权限始终为 0777 (所有用户类别的读、写和执行)，并且无法更改。
+.PP
+.\" .PP
+.\" The
+.\" 4.4BSD
+.\" system differs from historical
+.\" 4BSD
+.\" systems in that the system call
+.\" .BR chown (2)
+.\" has been changed to follow symbolic links.
+.\" The
+.\" .BR lchown (2)
+.\" system call was added later when the limitations of the new
+.\" .BR chown (2)
+.\" became apparent.
+但是，魔术链接不遵循此规则。 他们可以有一个非 0777 模式，尽管这个模式目前没有用于任何权限检查。
+.SS "Obtaining a file descriptor that refers to a symbolic link"
+将 \fBO_PATH\fP 和 \fBO_NOFOLLOW\fP 标志组合使用到 \fBopen\fP(2) 会产生一个文件描述符，该文件描述符可以作为
+\fIdirfd\fP 参数传递给系统调用，例如
+\fBfstatat\fP(2)、\fBfchownat\fP(2)、\fBfchmodat\fP(2)、\fBlinkat\fP(2) 和
+\fBreadlinkat\fP(2)，以便对符号链接本身进行操作 (而不是比它引用的文件)。
+.PP
+默认情况下 (即，如果未指定 \fBAT_SYMLINK_FOLLOW\fP 标志)，如果将 \fBname_to_handle_at\fP(2)
+应用于符号链接，它会为符号链接 (而不是它所引用的文件) 生成句柄。 然后可以通过在后续调用 \fBopen_by_handle_at\fP(2) 中指定
+\fBO_PATH\fP 标志来获取符号链接 (而不是它所引用的文件) 的文件描述符。 同样，该文件描述符可用于上述系统调用以对符号链接本身进行操作。
+.SS "Handling of symbolic links by system calls and commands"
+符号链接通过对链接本身进行操作或对链接引用的对象进行操作来处理。 在后一种情况下，应用程序或系统调用被称为 \fIfollow\fP 链接。
+符号链接可以引用其他符号链接，在这种情况下，链接将被解引用，直到找到不是符号链接的对象，找到引用不存在的文件的符号链接，或者检测到循环。
+(循环检测是通过对可能遵循的链接数设置上限来完成的，如果超过此限制，则会产生错误。)
+.PP
+需要讨论三个不同的领域。 它们如下:
+.IP \[bu] 3
+符号链接用作系统调用的文件名参数。
+.IP \[bu]
+符号链接指定为不遍历文件树的实用工具的命令行参数。
+.IP \[bu]
+遍历文件树的实用工具遇到的符号链接 (在命令行上指定或作为文件层次结构遍历的一部分遇到)。
+.PP
+.\"
+在描述系统调用和命令对符号链接的处理之前，我们需要一些术语。 给定 \fIa/b/c\fP 形式的路径名，最后一个斜线之前的部分 (即 \fIa/b\fP) 称为
+\fIdirname\fP 组件，最后一个斜线之后的部分 (即 \fIc\fP) 称为 \fIbasename\fP 组件。
+.SS "Treatment of symbolic links in system calls"
+第一个区域是符号链接，用作系统调用的文件名参数。
+.PP
+传递给系统调用的路径名中符号链接的处理如下:
+.IP (1) 5
+在路径名的 dirname 组件中，符号链接总是在几乎每个系统调用中跟随。 (对于命令也是如此。) 一个例外是
+\fBopenat2\fP(2)，它提供了可用于显式防止在 dirname 组件中跟随符号链接的标志。
+.IP (2)
+除下文所述外，所有系统调用都遵循路径名的基本名称部分中的符号链接。 例如，如果有一个指向名为 \fIafile\fP 的文件的符号链接
+\fIslink\fP，系统调用 \fIopen("slink" ...\&)\fP 将返回一个引用文件 \fIafile\fP 的文件描述符。
+.PP
+各种系统调用不遵循路径名的基本名称部分中的链接，而是对符号链接本身进行操作。 它们是:
+\fBlchown\fP(2)、\fBlgetxattr\fP(2)、\fBllistxattr\fP(2)、\fBlremovexattr\fP(2)、\fBlsetxattr\fP(2)、\fBlstat\fP(2)、\fBreadlink\fP(2)、\fBrename\fP(2)、\fBrmdir\fP(2)
+和 \fBunlink\fP(2)。
+.PP
+.\" Maybe one day: .BR fchownat (2)
+某些其他系统调用可选地遵循路径名的基本名称部分中的符号链接。 它们是:
+\fBfaccessat\fP(2)、\fBfchownat\fP(2)、\fBfstatat\fP(2)、\fBlinkat\fP(2)、\fBname_to_handle_at\fP(2)、\fBopen\fP(2)、\fBopenat\fP(2)、\fBopen_by_handle_at\fP(2)、\fButimensat\fP(2);
+有关详细信息，请参见他们的手册页。 因为 \fBremove\fP(3) 是 \fBunlink\fP(2) 的别名，所以那个库函数也不遵循符号链接。 当
+\fBrmdir\fP(2) 应用于符号链接时，它会失败并显示错误 \fBENOTDIR\fP。
+.PP
+\fBlink\fP(2) 值得特别讨论。 POSIX.1\-2001 指定如果 \fBlink\fP(2) 是符号链接，则它应该解释为 \fIoldpath\fP。
+但是，Linux 不会这样做。 (默认情况下，Solaris 是相同的，但可以使用合适的编译器选项获得 POSIX.1\-2001 指定的行为。)
+POSIX.1\-2008 更改了规范以允许实现中的任一行为。
+.SS "Commands not traversing a file tree"
+第二个区域是符号链接，指定为命令行文件名参数，指向不遍历文件树的命令。
+.PP
+除下文所述外，命令遵循名为命令行参数的符号链接。 例如，如果有一个指向名为 \fIafile\fP 的文件的符号链接 \fIslink\fP，则命令 \fIcat slink\fP 将显示文件 \fIafile\fP 的内容。
+.PP
+重要的是要意识到这条规则包括可以选择性地遍历文件树的命令; 例如，命令 \fIchown file\fP 包含在此规则中，而执行树遍历的命令 \fIchown\ \-R file\fP 则不包含。 (后者在下面的第三个区域中描述。)
+.PP
+例如，如果明确打算命令对符号链接进行操作而不是跟随符号链接 \[em]，则需要 \fIchown slink\fP 更改 \fIslink\fP
+所在的文件的所有权，无论它是否是符号链接 \[em] 那么应该使用 \fI\-h\fP 选项。 在上面的示例中，\fIchown root slink\fP 将更改
+\fIslink\fP 引用的文件的所有权，而 \fIchown\ \-h root slink\fP 将更改 \fIslink\fP 本身的所有权。
+.PP
+此规则有一些例外情况:
+.IP \[bu] 3
+\fBmv\fP(1) 和 \fBrm\fP(1) 命令不遵循名为参数的符号链接，而是分别尝试重命名和删除它们。
+(注意，如果符号链接通过相对路径引用文件，将它移动到另一个目录很可能会导致它停止工作，因为路径可能不再正确。)
+.IP \[bu]
+\fBls\fP(1) 命令也是该规则的一个例外。 为了与历史系统兼容 (当 \fBls\fP(1) 没有执行树遍历 \[em]，即未指定 \fI\-R\fP
+选项时)，如果指定了 \fI\-H\fP 或 \fI\-L\fP 选项，或者如果 \fI\-F\fP、\fI\-d\fP 或 \fI\-l\fP 选项未指定。 (\fBls\fP(1) 命令是
+\fI\-H\fP 和 \fI\-L\fP 选项影响其行为的唯一命令，即使它没有遍历文件树。)
+.IP \[bu]
+.\"
+.\"The 4.4BSD system differs from historical 4BSD systems in that the
+.\".BR chown (1)
+.\"and
+.\".BR chgrp (1)
+.\"commands follow symbolic links specified on the command line.
+\fBfile\fP(1) 命令也是该规则的一个例外。 默认情况下，\fBfile\fP(1) 命令不遵循名为参数的符号链接。 如果指定了 \fI\-L\fP 选项，则
+\fBfile\fP(1) 命令会跟随名为参数的符号链接。
+.SS "Commands traversing a file tree"
+以下命令可选择或始终遍历文件树:
+\fBchgrp\fP(1)、\fBchmod\fP(1)、\fBchown\fP(1)、\fBcp\fP(1)、\fBdu\fP(1)、\fBfind\fP(1)、\fBls\fP(1)、\fBpax\fP(1)、\fBrm\fP(1)
+和 \fBtar\fP(1)。
+.PP
+重要的是要认识到以下规则同样适用于文件树遍历期间遇到的符号链接和列为命令行参数的符号链接。
+.PP
+\fIfirst rule\fP 适用于引用文件而不是目录的符号链接。 适用于符号链接的操作是在链接本身上执行的，否则链接将被忽略。
+.PP
+命令 \fIrm\ \-r slink directory\fP 将删除 \fIslink\fP，以及 \fIdirectory\fP
+的树遍历中遇到的任何符号链接，因为符号链接可能会被删除。 \fBrm\fP(1) 在任何情况下都不会影响 \fIslink\fP 引用的文件。
+.PP
+\fIsecond rule\fP 适用于引用目录的符号链接。 指向目录的符号链接在默认情况下从不跟随。 这通常称为 "physical" 遍历，与
+"logical" 遍历相反 (其中跟随指向目录的符号链接)。
+.PP
+执行文件树遍历的命令 (应该) 尽可能一致地遵循某些约定:
+.IP \[bu] 3
+通过指定 \fI\-H\fP (对于 "half\-logical") 标志，可以使命令跟随命令行上命名的任何符号链接，而不管它们引用的文件类型。
+此标志旨在使命令行名称空间看起来像逻辑名称空间。 (注意，对于不总是执行文件树遍历的命令，如果未指定 \fI\-R\fP 标志，则 \fI\-H\fP 标志将被忽略。)
+.IP
+例如，命令 \fIchown\ \-HR user slink\fP 将遍历以 \fIslink\fP 指向的文件为根的文件层次结构。 请注意，\fI\-H\fP
+与前面讨论的 \fI\-h\fP 标志不同。 \fI\-H\fP
+标志导致在命令行上指定的符号链接被解引用，以用于要执行的操作和树遍历，就好像用户已经指定了符号链接指向的文件的名称一样。
+.IP \[bu]
+通过指定 \fI\-L\fP (对于 "logical")
+标志，可以使命令跟随命令行上命名的任何符号链接，以及遍历期间遇到的任何符号链接，而不管它们引用的文件类型如何。
+该标志旨在使整个名称空间看起来像逻辑名称空间。 (注意，对于不总是执行文件树遍历的命令，如果未指定 \fI\-R\fP 标志，则 \fI\-L\fP 标志将被忽略。)
+.IP
+例如，命令 \fIchown\ \-LR user slink\fP 将更改 \fIslink\fP 引用的文件的所有者。 如果 \fIslink\fP
+引用目录，\fBchown\fP 将遍历以其引用的目录为根的文件层次结构。 此外，如果在 \fBchown\fP 遍历的任何文件树中遇到任何符号链接，它们将以与
+\fIslink\fP 相同的方式处理。
+.IP \[bu]
+通过指定 \fI\-P\fP (对于 "physical") 标志，可以使命令提供默认行为。 此标志旨在使整个名称空间看起来像物理名称空间。
+.PP
+对于默认情况下不执行文件树遍历的命令，如果未指定 \fI\-R\fP 标志，则忽略 \fI\-H\fP、\fI\-L\fP 和 \fI\-P\fP 标志。 此外，您可以多次指定
+\fI\-H\fP、\fI\-L\fP 和 \fI\-P\fP 选项; 最后指定的一个决定了命令的行为。
+这旨在允许您为命令设置别名以以一种或另一种方式运行，然后在命令行上覆盖该行为。
+.PP
+\fBls\fP(1) 和 \fBrm\fP(1) 命令有以下规则的例外情况:
+.IP \[bu] 3
+\fBrm\fP(1) 命令对符号链接进行操作，而不是它引用的文件，因此永远不会遵循符号链接。 \fBrm\fP(1) 命令不支持 \fI\-H\fP、\fI\-L\fP 或
+\fI\-P\fP 选项。
+.IP \[bu]
+为了保持与历史系统的兼容性，\fBls\fP(1) 命令的行为略有不同。 如果不指定 \fI\-F\fP、\fI\-d\fP 或 \fI\-l\fP 选项，\fBls\fP(1)
+将遵循命令行中指定的符号链接。 如果指定了 \fI\-L\fP 标志，则 \fBls\fP(1)
+跟随所有符号链接，而不管它们的类型，无论是在命令行上指定的还是在树遍历中遇到的。
+.SH "SEE ALSO"
+\fBchgrp\fP(1), \fBchmod\fP(1), \fBfind\fP(1), \fBln\fP(1), \fBls\fP(1), \fBmv\fP(1),
+\fBnamei\fP(1), \fBrm\fP(1), \fBlchown\fP(2), \fBlink\fP(2), \fBlstat\fP(2),
+\fBreadlink\fP(2), \fBrename\fP(2), \fBsymlink\fP(2), \fBunlink\fP(2), \fButimensat\fP(2),
+\fBlutimes\fP(3), \fBpath_resolution\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,351 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2012 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mallopt 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mallopt \- 设置内存分配参数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <malloc.h>\fP
+.PP
+\fBint mallopt(int \fP\fIparam\fP\fB, int \fP\fIvalue\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmallopt\fP() 函数调整控制内存分配函数行为的参数 (参见 \fBmalloc\fP(3)).  \fIparam\fP
+参数指定要修改的参数，\fIvalue\fP 指定该参数的新值。
+.PP
+可以为 \fIparam\fP: 指定以下值
+.TP 
+\fBM_ARENA_MAX\fP
+如果此参数具有非零值，则它定义了可以创建的最大竞技场数量的硬限制。 arena 代表一个内存池，\fBmalloc\fP(3) (和类似的)
+调用可以使用它来服务分配请求。 Arenas 是线程安全的，因此可能有多个并发内存请求。 权衡是在线程数和竞技场数之间。
+您拥有所有权的竞技场越多，每线程争用越低，但内存使用率越高。
+.IP
+该参数默认值为 0，即根据 \fBM_ARENA_TEST\fP 的设置决定对 area 数量的限制。
+.IP
+此参数自 glibc 2.10 起通过 \fB\-\-enable\-experimental\-malloc\fP 可用，自 glibc 2.15 起默认可用。
+在某些版本的分配器中，创建的区域数量没有限制 (例如，CentOS 5、RHEL 5)。
+.IP
+当使用较新的 glibc 版本时，应用程序在某些情况下可能会在访问 arena 时表现出高争用。 在这些情况下，增加 \fBM_ARENA_MAX\fP
+以匹配线程数可能是有益的。 这在行为上类似于 tcmalloc 和 jemalloc 采取的策略 (例如，每线程分配池)。
+.TP 
+\fBM_ARENA_TEST\fP
+此参数指定一个值，以创建的竞技场数量为单位，此时将检查系统配置以确定对创建的竞技场数量的硬限制。 (有关竞技场的定义，请参见
+\fBM_ARENA_MAX\fP。)
+.IP
+arena 硬限制的计算是实现定义的，通常计算为可用 CPU 数量的倍数。 一旦计算出硬限制，结果就是最终的并限制竞技场的总数。
+.IP
+在 \fIsizeof(long)\fP 为 4 的系统上，\fBM_ARENA_TEST\fP 参数的默认值为 2; 否则默认值为 8.
+.IP
+此参数自 glibc 2.10 起通过 \fB\-\-enable\-experimental\-malloc\fP 可用，自 glibc 2.15 起默认可用。
+.IP
+当 \fBM_ARENA_MAX\fP 具有非零值时，不使用 \fBM_ARENA_TEST\fP 的值。
+.TP 
+\fBM_CHECK_ACTION\fP
+设置此参数可控制 glibc 在检测到各种编程错误时如何响应 (例如，两次释放同一指针)。 分配给此参数的值的 3 个最低有效位 (2、1 和 0)
+决定 glibc 行为，如下所示:
+.RS
+.TP 
+Bit 0
+如果设置了该位，则在 \fIstderr\fP 上打印一条单行消息，提供有关错误的详细信息。 该消息以字符串 "***\ glibc detected\ ***" 开头，后跟程序名称、检测到错误的内存分配函数名称、错误的简要描述以及检测到错误的内存地址。
+.TP 
+Bit 1
+如果设置了该位，则在打印出位 0 指定的任何错误消息后，程序将通过调用 \fBabort\fP(3) 终止。 自 glibc 2.4 以来，如果位 0
+也被设置，那么，在打印错误消息和终止之间，程序还以 \fBbacktrace\fP(3) 的方式打印栈跟踪，并以 \fI/proc/\fPpid\fI/maps\fP
+的方式打印进程的内存映射 (参见 \fBproc\fP(5)).
+.TP 
+Bit 2 (since glibc 2.4)
+仅当位 0 也被设置时，该位才有效。 如果设置了该位，则描述错误的单行消息将简化为仅包含检测到错误的号码的名称和错误的简要描述。
+.RE
+.IP
+\fIvalue\fP 中的其余位将被忽略。
+.IP
+综合以上细节，以下数值对 \fBM_CHECK_ACTION\fP: 有意义
+.RS 12
+.TP 
+\fB0\fP
+忽略错误情况; 继续执行 (结果未定义)。
+.TP 
+\fB1\fP
+打印详细的错误消息并继续执行。
+.TP 
+\fB2\fP
+停止程序。
+.TP 
+\fB3\fP
+打印详细的错误消息、栈跟踪和内存映射，并最终停止程序。
+.TP 
+\fB5\fP
+打印一条简单的错误消息并继续执行。
+.TP 
+\fB7\fP
+打印简单的错误消息、栈跟踪和内存映射，并终止程序。
+.RE
+.IP
+从 glibc 2.3.4 开始，\fBM_CHECK_ACTION\fP 参数的默认值为 3。 在 glibc 2.3.3 及更早版本中，默认值为 1.
+.IP
+使用非零 \fBM_CHECK_ACTION\fP 值可能很有用，否则崩溃可能会在很久以后发生，并且问题的真正原因很难找到。
+.TP 
+\fBM_MMAP_MAX\fP
+.\" The following text adapted from comments in the glibc source:
+此参数指定可以使用 \fBmmap\fP(2) 同时服务的最大分配请求数。 存在此参数是因为某些系统供 \fBmmap\fP(2)
+使用的内部表数量有限，使用多个内部表可能会降低性能。
+.IP
+默认值为 65,536，该值没有特殊意义，仅用作保护措施。 将此参数设置为 0 将禁止使用 \fBmmap\fP(2) 为大型分配请求提供服务。
+.TP 
+\fBM_MMAP_THRESHOLD\fP
+对于大于或等于由 \fBM_MMAP_THRESHOLD\fP 指定的限制 (以字节为单位) 且空闲列表无法满足的分配，内存分配函数使用 \fBmmap\fP(2)
+而不是使用 \fBsbrk\fP(2) 增加程序中断。
+.IP
+使用 \fBmmap\fP(2) 分配内存具有显着优势，即分配的内存块始终可以独立释放回系统。 (相比之下，只有在顶端释放内存时才能修剪堆。) 另一方面，使用
+\fBmmap\fP(2): 释放的空间有一些缺点，这些空间没有放在空闲列表中供以后分配重用; 内存可能会被浪费，因为 \fBmmap\fP(2)
+分配必须是页面对齐的; 并且内核必须执行将通过 \fBmmap\fP(2) 分配的内存清零的昂贵任务。 平衡这些因素导致
+\fBM_MMAP_THRESHOLD\fP 参数的默认设置为 128*1024。
+.IP
+该参数的下限为 0。 上限是 32 位系统上的 \fBDEFAULT_MMAP_THRESHOLD_MAX\fP: 512*1024 或 64 位系统上的
+\fI4*1024*1024*sizeof(long)\fP。
+.IP
+\fINote\fP: 如今，glibc 默认使用动态 mmap 阈值。 阈值初始值为 128*1024，但当大于当前阈值且小于或等于
+\fBDEFAULT_MMAP_THRESHOLD_MAX\fP 的块被释放时，阈值向上调整为释放块的大小。 当动态 mmap
+阈值生效时，修剪堆的阈值也会动态调整为动态 mmap 阈值的两倍。 如果设置了任何
+\fBM_TRIM_THRESHOLD\fP、\fBM_TOP_PAD\fP、\fBM_MMAP_THRESHOLD\fP 或 \fBM_MMAP_MAX\fP 参数，将禁用
+mmap 阈值的动态调整。
+.TP 
+\fBM_MXFAST\fP (since glibc 2.3)
+.\" The following text adapted from comments in the glibc sources:
+设置使用 "fastbins" 满足的内存分配请求的上限。 (此参数的度量单位是字节。) Fastbins
+是存储区域，用于保存相同大小的已释放内存块，而不合并相邻的空闲块。 通过从 fastbin
+分配，可以非常快速地处理相同大小的块的后续重新分配，尽管内存碎片和程序的整体内存占用量可能会增加。
+.IP
+此参数的默认值为 \fI64*sizeof(size_t)/4\fP (即 32 位体系结构上的 64)。 该参数的范围是 0 到
+\fI80*sizeof(size_t)/4\fP。 将 \fBM_MXFAST\fP 设置为 0 将禁用 fastbins。
+.TP 
+\fBM_PERTURB\fP (since glibc 2.4)
+如果此参数设置为非零值，则分配的内存字节 (通过 \fBcalloc\fP(3)) 分配的除外) 将初始化为 \fIvalue\fP
+的最低有效字节中的值的补码，并且当使用 \fBfree\fP(3) 释放分配的内存时，释放的字节是设置为 \fIvalue\fP 的最低有效字节。
+这对于检测程序错误地依赖于将分配的内存初始化为零或重用已释放内存中的值的错误很有用。
+.IP
+此参数的默认值为 0.
+.TP 
+\fBM_TOP_PAD\fP
+此参数定义调用 \fBsbrk\fP(2) 修改程序中断时要使用的填充量。 (该参数的计量单位为字节。) 该参数在以下情况下有效:
+.RS
+.IP \[bu] 3
+当程序中断增加时，\fBM_TOP_PAD\fP 字节将添加到 \fBsbrk\fP(2) 请求中。
+.IP \[bu]
+当由于调用 \fBfree\fP(3) 而修剪堆时 (请参见 \fBM_TRIM_THRESHOLD\fP) 的讨论)，这些空闲空间将保留在堆的顶部。
+.RE
+.IP
+在任何一种情况下，填充量总是四舍五入到系统页面边界。
+.IP
+修改 \fBM_TOP_PAD\fP 是增加系统调用次数 (当参数设置低时) 和浪费堆顶部未使用的内存 (当参数设置高时) 之间的权衡。
+.IP
+.\" DEFAULT_TOP_PAD in glibc source
+此参数的默认值为 128*1024。
+.TP 
+\fBM_TRIM_THRESHOLD\fP
+当堆顶部的连续空闲内存量增长到足够大时，\fBfree\fP(3) 使用 \fBsbrk\fP(2) 将此内存释放回系统。
+(这对于在释放大量内存后继续执行很长时间的程序很有用。) \fBM_TRIM_THRESHOLD\fP 参数指定在使用 \fBsbrk\fP(2)
+修剪堆之前此内存块必须达到的最小大小 (以字节为单位) .
+.IP
+此参数的默认值为 128*1024。 将 \fBM_TRIM_THRESHOLD\fP 设置为 \-1 会完全禁用修整。
+.IP
+.\"
+修改 \fBM_TRIM_THRESHOLD\fP 是增加系统调用次数 (当参数设置低时) 和浪费堆顶部未使用的内存 (当参数设置高时) 之间的权衡。
+.SS "Environment variables"
+可以定义多个环境变量来修改一些由 \fBmallopt\fP() 控制的相同参数。 使用这些变量的好处是不需要更改程序的源代码。
+为了有效，这些变量必须在第一次调用内存分配函数之前定义。 (如果通过 \fBmallopt\fP() 调整相同的参数，则 \fBmallopt\fP()
+设置优先。) 出于安全原因，这些变量在 set\-user\-ID 和 set\-group\-ID 程序中被忽略。
+.PP
+环境变量如下 (注意一些变量名末尾的下划线) :
+.TP 
+\fBMALLOC_ARENA_MAX\fP
+控制与 \fBmallopt\fP() \fBM_ARENA_MAX\fP 相同的参数。
+.TP 
+\fBMALLOC_ARENA_TEST\fP
+控制与 \fBmallopt\fP() \fBM_ARENA_TEST\fP 相同的参数。
+.TP 
+\fBMALLOC_CHECK_\fP
+.\" On glibc 2.12/x86, a simple malloc()+free() loop is about 70% slower
+.\" when MALLOC_CHECK_ was set.
+此环境变量控制与 \fBmallopt\fP() \fBM_CHECK_ACTION\fP 相同的参数。 如果此变量设置为非零值，则使用内存分配函数的特殊实现。
+(这是使用 \fBmalloc_hook\fP(3) 特性完成的。) 此实现执行额外的错误检查，但比内存分配标准集慢。 (此实现不会检测所有可能的错误;
+内存泄漏仍然可能发生。)
+.IP
+分配给该环境变量的值应该是单个数字，其含义如 \fBM_CHECK_ACTION\fP 所述。 超出初始数字的任何字符都将被忽略。
+.IP
+出于安全原因，对于 set\-user\-ID 和 set\-group\-ID 程序，默认情况下禁用 \fBMALLOC_CHECK_\fP 的效果。
+但是，如果文件 \fI/etc/suid\-debug\fP 存在 (文件内容无关紧要)，那么 \fBMALLOC_CHECK_\fP 也对 set\-user\-ID
+和 set\-group\-ID 程序有影响。
+.TP 
+\fBMALLOC_MMAP_MAX_\fP
+控制与 \fBmallopt\fP() \fBM_MMAP_MAX\fP 相同的参数。
+.TP 
+\fBMALLOC_MMAP_THRESHOLD_\fP
+控制与 \fBmallopt\fP() \fBM_MMAP_THRESHOLD\fP 相同的参数。
+.TP 
+\fBMALLOC_PERTURB_\fP
+控制与 \fBmallopt\fP() \fBM_PERTURB\fP 相同的参数。
+.TP 
+\fBMALLOC_TRIM_THRESHOLD_\fP
+控制与 \fBmallopt\fP() \fBM_TRIM_THRESHOLD\fP 相同的参数。
+.TP 
+\fBMALLOC_TOP_PAD_\fP
+控制与 \fBmallopt\fP() \fBM_TOP_PAD\fP 相同的参数。
+.SH "RETURN VALUE"
+成功时，\fBmallopt\fP() 返回 1。 出错时，它返回 0.
+.SH ERRORS
+.\" .SH VERSIONS
+.\" Available already in glibc 2.0, possibly earlier
+出错时，\fIerrno\fP 设置为 \fInot\fP。
+.SH STANDARDS
+.\" .SH NOTES
+POSIX 或 C 标准未指定此函数。 许多 System V 衍生产品中都存在类似的函数，但 \fIparam\fP 的值范围因系统而异。 SVID
+定义了选项 \fBM_MXFAST\fP、\fBM_NLBLKS\fP、\fBM_GRAIN\fP 和 \fBM_KEEP\fP，但只有第一个在 glibc 中实现。
+.SH BUGS
+为 \fIparam\fP 指定无效值不会产生错误。
+.PP
+.\" FIXME . This looks buggy:
+.\" setting the M_MXFAST limit rounds up:    (s + SIZE_SZ) & ~MALLOC_ALIGN_MASK)
+.\" malloc requests are rounded up:
+.\"    (req) + SIZE_SZ + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=12129
+glibc 实现中的计算错误意味着以下形式的调用:
+.PP
+.in +4n
+.EX
+mallopt(M_MXFAST, n)
+.EE
+.in
+.PP
+.\" Bins are multiples of 2 * sizeof(size_t) + sizeof(size_t)
+不会导致 fastbins 被用于所有大小不超过 \fIn\fP 的分配。 为确保获得预期结果，\fIn\fP 应四舍五入为下一个大于或等于
+\fI(2k+1)*sizeof(size_t)\fP 的倍数，其中 \fIk\fP 为整数。
+.PP
+.\" FIXME . http://sources.redhat.com/bugzilla/show_bug.cgi?id=12140
+如果 \fBmallopt\fP() 用于设置 \fBM_PERTURB\fP，那么，正如预期的那样，分配内存的字节被初始化为 \fIvalue\fP
+中字节的补码，当该内存被释放时，该区域的字节被初始化为 \fIvalue\fP 中指定的字节。 但是，在实现中存在
+off\-by\-\fIsizeof(size_t)\fP 错误: 不是精确地初始化调用 \fIfree(p)\fP 释放的内存块，而是初始化从
+\fIp+sizeof(size_t)\fP 开始的块。
+.SH EXAMPLES
+下面的程序演示了 \fBM_CHECK_ACTION\fP 的使用。 如果程序随 (integer) 命令行参数一起提供，则该参数用于设置
+\fBM_CHECK_ACTION\fP 参数。 然后程序分配一块内存，并释放它两次 (错误)。
+.PP
+下面的 shell 会话显示了当我们在 glibc 下运行这个程序时会发生什么，默认值为 \fBM_CHECK_ACTION\fP:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+main(): 从第一个 free() 调用返回
+***检测到 glibc*** ./a.out: 双重释放或损坏 (top): 0x09d30008 ***
+=== === = 回溯: === === ===
+/lib/libc.so.6(+0x6c501)[0x523501]
+/lib/libc.so.6(+0x6dd70)[0x524d70]
+/lib/libc.so.6(cfree+0x6d)[0x527e5d]
+\&./a.out[0x80485db]
+/lib/libc.so.6(__libc_start_main+0xe7)[0x4cdce7]
+\&./a.out[0x8048471]
+=== === = 内存 map: === === ==
+001e4000\-001fe000 r\-xp 00000000 08:06 1083555    /lib/libgcc_s.so.1
+001fe000\-001ff000 r\-\-p 00019000 08:06 1083555    /lib/libgcc_s.so.1
+[some lines omitted]
+b7814000\-b7817000 rw\-p 00000000 00:00 0
+bff53000\-bff74000 rw\-p 00000000 00:00 0          [stack]
+中止 (核心转储)
+.EE
+.in
+.PP
+以下运行显示了对 \fBM_CHECK_ACTION\fP: 使用其他值时的结果
+.PP
+.in +4n
+.EX
+$ \fB./a.out 1\fP             # 诊断错误并继续
+main(): 从第一个 free() 调用返回
+***检测到 glibc*** ./a.out: 双重释放或损坏 (top): 0x09cbe008 ***
+main(): 从第二个 free() 调用返回
+$ \fB./a.out 2\fP             # 终止没有错误信息
+main(): 从第一个 free() 调用返回
+中止 (核心转储)
+$ \fB./a.out 0\fP             # 忽略错误并继续
+main(): 从第一个 free() 调用返回
+main(): 从第二个 free() 调用返回
+.EE
+.in
+.PP
+下一次运行显示如何使用 \fBMALLOC_CHECK_\fP 环境变量设置相同的参数:
+.PP
+.in +4n
+.EX
+$ \fBMALLOC_CHECK_=1 ./a.out\fP
+main(): 从第一个 free() 调用返回
+***检测到 glibc*** ./a.out: free(): 无效指针: 0x092c2008 ***
+main(): 从第二个 free() 调用返回
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (mallopt.c)
+\&
+.EX
+#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    char *p;
+
+    if (argc > 1) {
+        if (mallopt(M_CHECK_ACTION, atoi(argv[1])) != 1) {
+            fprintf(stderr, "mallopt() failed");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    p = malloc(1000);
+    if (p == NULL) {
+        fprintf(stderr, "malloc() failed");
+        exit(EXIT_FAILURE);
+    }
+
+    free(p);
+    printf("%s(): returned from first free() call\en", __func__);
+
+    free(p);
+    printf("%s(): returned from second free() call\en", __func__);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBmmap\fP(2), \fBsbrk\fP(2), \fBmallinfo\fP(3), \fBmalloc\fP(3), \fBmalloc_hook\fP(3),
+\fBmalloc_info\fP(3), \fBmalloc_stats\fP(3), \fBmalloc_trim\fP(3), \fBmcheck\fP(3),
+\fBmtrace\fP(3), \fBposix_memalign\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

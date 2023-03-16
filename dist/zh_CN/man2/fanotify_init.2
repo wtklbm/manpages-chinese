@@ -1,0 +1,255 @@
+.\" -*- coding: UTF-8 -*-
+
+.\" Copyright (C) 2013, Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fanotify_init 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fanotify_init \- 创建并初始化 fanotify 组
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP            /* Definition of \fBO_*\fP constants */
+\fB#include <sys/fanotify.h>\fP
+.PP
+\fBint fanotify_init(unsigned int \fP\fIflags\fP\fB, unsigned int \fP\fIevent_f_flags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+有关 fanotify API 的概述，请参见 \fBfanotify\fP(7)。
+.PP
+\fBfanotify_init\fP() 初始化一个新的 fanotify 组并返回与该组关联的事件队列的文件描述符。
+.PP
+文件描述符用于调用 \fBfanotify_mark\fP(2) 以指定应为其创建 fanotify 事件的文件、目录、安装或文件系统。
+这些事件是通过读取文件描述符来接收的。 一些事件仅提供信息，表明文件已被访问。 其他事件可用于确定是否允许另一个应用程序访问文件或目录。
+通过写入文件描述符来授予访问文件系统对象的权限。
+.PP
+多个程序可能同时使用 fanotify 接口来监视相同的文件。
+.PP
+每个用户的 fanotify 组数量是有限的。 有关此限制的详细信息，请参见 \fBfanotify\fP(7)。
+.PP
+\fIflags\fP 参数包含一个定义监听应用程序通知类别的多位字段和指定文件描述符行为的进一步单位字段。
+.PP
+如果存在多个权限事件的侦听器，则通知类用于建立侦听器接收事件的顺序。
+.PP
+在 \fIflags\fP: 中只能指定以下通知类别之一
+.TP 
+\fBFAN_CLASS_PRE_CONTENT\fP
+该值允许接收通知文件已被访问的事件以及文件是否可以访问的权限决定事件。 它适用于需要在文件包含最终数据之前访问文件的事件侦听器。
+例如，此通知类可能由分层存储管理器使用。 使用此标志需要 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBFAN_CLASS_CONTENT\fP
+该值允许接收通知文件已被访问的事件以及文件是否可以访问的权限决定事件。 它适用于需要访问已包含最终内容的文件的事件侦听器。
+例如，此通知类可能会被恶意软件检测程序使用。 使用此标志需要 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBFAN_CLASS_NOTIF\fP
+这是默认值。 它不需要指定。 此值仅允许接收通知文件已被访问的事件。 无法在访问文件之前做出权限决定。
+.PP
+具有不同通知类的侦听器将按
+\fBFAN_CLASS_PRE_CONTENT\fP、\fBFAN_CLASS_CONTENT\fP、\fBFAN_CLASS_NOTIF\fP 的顺序接收事件。
+同一通知类中的侦听器的通知顺序未定义。
+.PP
+可以在 \fIflags\fP: 中另外设置以下位
+.TP 
+\fBFAN_CLOEXEC\fP
+在新文件描述符上设置 close\-on\-exec 标志 (\fBFD_CLOEXEC\fP)。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的说明。
+.TP 
+\fBFAN_NONBLOCK\fP
+为文件描述符启用非阻塞标志 (\fBO_NONBLOCK\fP)。 从文件描述符读取不会阻塞。 相反，如果没有可用数据，\fBread\fP(2) 将失败并显示错误
+\fBEAGAIN\fP。
+.TP 
+\fBFAN_UNLIMITED_QUEUE\fP
+取消对事件队列中事件数量的限制。 有关此限制的详细信息，请参见 \fBfanotify\fP(7)。 使用此标志需要 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBFAN_UNLIMITED_MARKS\fP
+取消对每个用户的 fanotify 标记数量的限制。 有关此限制的详细信息，请参见 \fBfanotify\fP(7)。 使用此标志需要
+\fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBFAN_REPORT_TID\fP (since Linux 4.20)
+.\" commit d0a6a87e40da49cfc7954c491d3065a25a641b29
+在提供给 \fBread\fP(2) 的 \fIstruct fanotify_event_metadata\fP 的 \fIpid\fP 字段中报告线程 ID
+(TID) 而不是进程 ID (PID) (参见 \fBfanotify\fP(7)).  使用此标志需要 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBFAN_ENABLE_AUDIT\fP (since Linux 4.15)
+.\" commit de8cd83e91bc3ee212b3e6ec6e4283af9e4ab269
+允许生成关于权限事件执行的访问调解的审计日志记录。 权限事件响应必须标有 \fBFAN_AUDIT\fP 标志才能生成审核日志记录。 使用此标志需要
+\fBCAP_AUDIT_WRITE\fP 功能。
+.TP 
+\fBFAN_REPORT_FID\fP (since Linux 5.1)
+.\" commit a8b13aa20afb69161b5123b4f1acc7ea0a03d360
+该值允许接收事件，这些事件包含有关与事件相关的底层文件系统对象的附加信息。 \fBFAN_EVENT_INFO_TYPE_FID\fP
+类型的附加记录封装了有关对象的信息，并与泛型事件元数据结构体一起包含在内。 用于表示与事件相关的对象的文件描述符被替换为文件句柄。
+它适用于可能发现使用文件句柄来标识比文件描述符更适合的对象的应用程序。 此外，它可用于监视对目录条目修改事件
+\fBFAN_CREATE\fP、\fBFAN_DELETE\fP、\fBFAN_MOVE\fP 和 \fBFAN_RENAME\fP 或
+\fBFAN_ATTRIB\fP、\fBFAN_DELETE_SELF\fP 和 \fBFAN_MOVE_SELF\fP 等事件感兴趣的目录或文件系统的应用程序。
+上述所有事件都需要一个 fanotify 组，该组通过文件句柄识别文件系统对象。 请注意，如果没有标志
+\fBFAN_REPORT_TARGET_FID\fP，对于目录条目修改事件，会有一条信息记录标识修改后的目录，而不是
+created/deleted/moved 子对象。 此标志不允许使用 \fBFAN_CLASS_CONTENT\fP 或
+\fBFAN_CLASS_PRE_CONTENT\fP，这将导致错误 \fBEINVAL\fP。 有关更多详细信息，请参见 \fBfanotify\fP(7)。
+.TP 
+\fBFAN_REPORT_DIR_FID\fP (since Linux 5.9)
+.\" commit 83b7a59896dd24015a34b7f00027f0ff3747972f
+使用此标志初始化的 fanotify 组的事件将包含 (请参见下面的例外情况) 有关与事件相关的目录对象的附加信息。
+\fBFAN_EVENT_INFO_TYPE_DFID\fP 类型的附加记录封装了有关目录对象的信息，并与泛型事件元数据结构体一起包含在内。
+对于发生在非目录对象上的事件，附加结构体包括标识父目录文件系统对象的文件句柄。
+请注意，无法保证在接收到事件时会在文件句柄信息所描述的位置找到目录文件系统对象。 当与标志 \fBFAN_REPORT_FID\fP
+结合使用时，可能会报告两条记录，其中包含发生在非目录对象上的事件，一条用于标识非目录对象本身，另一条用于标识父目录对象。
+请注意，在某些情况下，文件系统对象没有父对象，例如，当事件发生在未链接但打开的文件上时。 在那种情况下，使用 \fBFAN_REPORT_FID\fP
+标志，事件将只用一条记录来报告，以标识非目录对象本身，因为没有与事件关联的目录。 没有 \fBFAN_REPORT_FID\fP 标志，将不会报告任何事件。
+有关更多详细信息，请参见 \fBfanotify\fP(7)。
+.TP 
+\fBFAN_REPORT_NAME\fP (since Linux 5.9)
+.\" commit 929943b38daf817f2e6d303ea04401651fc3bc05
+使用此标志初始化的 fanotify 组事件将包含有关与事件相关的目录条目名称的附加信息。 该标志必须与标志 \fBFAN_REPORT_DIR_FID\fP
+一起提供。 在没有 \fBFAN_REPORT_DIR_FID\fP 的情况下提供此标志值将导致错误 \fBEINVAL\fP。 该标志可以与标志
+\fBFAN_REPORT_FID\fP 结合使用。 \fBFAN_EVENT_INFO_TYPE_DFID_NAME\fP
+类型的附加记录封装了有关目录条目的信息，与泛型事件元数据结构体一起包含，并替代了 \fBFAN_EVENT_INFO_TYPE_DFID\fP
+类型的附加信息记录。 附加记录包括一个文件句柄，它标识一个目录文件系统对象，后跟一个名称，该名称标识该目录中的一个条目。 对于目录条目修改事件
+\fBFAN_CREATE\fP、\fBFAN_DELETE\fP 和 \fBFAN_MOVE\fP，报告的名称是 created/deleted/moved
+目录条目的名称。 事件 \fBFAN_RENAME\fP 可能包含两条信息记录。 一个
+\fBFAN_EVENT_INFO_TYPE_OLD_DFID_NAME\fP 类型标识旧目录条目，另一个
+\fBFAN_EVENT_INFO_TYPE_NEW_DFID_NAME\fP 类型标识新目录条目。
+对于目录对象上发生的其他事件，报告的文件句柄是目录对象本身的文件句柄，报告的名称是 '.'。
+对于非目录对象上发生的其他事件，报告的文件句柄是父目录对象的文件句柄，报告的名称是事件发生时对象所在的目录条目的名称。
+此逻辑背后的基本原理是报告的目录文件句柄可以传递给 \fBopen_by_handle_at\fP(2)
+以获取打开的目录文件描述符，并且该文件描述符连同报告的名称可用于调用 \fBfstatat\fP(2)。 适用于记录类型
+\fBFAN_EVENT_INFO_TYPE_DFID\fP 的相同规则也适用于记录类型
+\fBFAN_EVENT_INFO_TYPE_DFID_NAME\fP:，如果非目录对象没有父对象，则事件将不会被报告，或者将在没有目录条目信息的情况下被报告。
+请注意，无法保证在接收到事件时会在目录条目信息所描述的位置找到文件系统对象。 有关更多详细信息，请参见 \fBfanotify\fP(7)。
+.TP 
+\fBFAN_REPORT_DFID_NAME\fP
+这是 (\fBFAN_REPORT_DIR_FID\fP|\fBFAN_REPORT_NAME\fP) 的同义词。
+.TP 
+\fBFAN_REPORT_TARGET_FID\fP (since Linux 5.17)
+.\" commit d61fd650e9d206a71fda789f02a1ced4b19944c4
+使用此标志初始化的 fanotify 组事件将包含有关与目录条目修改事件相关的子项的附加信息。 该标志必须与标志
+\fBFAN_REPORT_FID\fP、\fBFAN_REPORT_DIR_FID\fP 和 \fBFAN_REPORT_NAME\fP 一起提供。 否则将返回错误
+\fBEINVAL\fP。 对于目录条目修改事件 \fBFAN_CREATE\fP、\fBFAN_DELETE\fP、\fBFAN_MOVE\fP 和
+\fBFAN_RENAME\fP，除了类型
+\fBFAN_EVENT_INFO_TYPE_DFID\fP、\fBFAN_EVENT_INFO_TYPE_DFID_NAME\fP、\fBFAN_EVENT_INFO_TYPE_OLD_DFID_NAME\fP
+和 \fBFAN_EVENT_INFO_TYPE_NEW_DFID_NAME\fP 的信息记录之外，还报告类型
+\fBFAN_EVENT_INFO_TYPE_FID\fP 的附加记录。 附加记录包括一个文件句柄，用于标识目录条目所引用的文件系统子对象。
+.TP 
+\fBFAN_REPORT_DFID_NAME_TARGET\fP
+这是 (\fBFAN_REPORT_DFID_NAME\fP|\fBFAN_REPORT_FID\fP|\fBFAN_REPORT_TARGET_FID\fP)
+的同义词。
+.TP 
+\fBFAN_REPORT_PIDFD\fP (since Linux 5.15)
+.\" commit af579beb666aefb17e9a335c12c788c92932baf1
+使用此标志初始化的 fanotify 组事件将包含附加信息记录以及泛型 \fIfanotify_event_metadata\fP 结构体。
+该信息记录的类型为 \fBFAN_EVENT_INFO_TYPE_PIDFD\fP，并将包含负责生成事件的进程的 pidfd。 此信息记录对象中返回的
+pidfd 与调用 \fBpidfd_open\fP(2) 时返回的 pidfd 没有区别。
+此信息记录的用途是针对可能对可靠地确定负责生成事件的进程是否已被回收或终止感兴趣的应用程序。 当前不支持将 \fBFAN_REPORT_TID\fP 标志与
+\fBFAN_REPORT_PIDFD\fP 一起使用，尝试这样做将导致返回错误 \fBEINVAL\fP。 此限制目前由 pidfd API
+强加，因为它目前仅支持为线程组领导者创建 pidfds。 在 future 的某个时候可能会支持为非线程组领导者创建
+pidfds，因此最终可能会取消此限制。 有关信息记录的更多详细信息，请参见 \fBfanotify\fP(7)。
+.PP
+\fIevent_f_flags\fP 参数定义文件状态标志，这些标志将在为 fanotify 事件创建的打开文件描述中设置。 有关这些标志的详细信息，请参见
+\fBopen\fP(2) 中 \fIflags\fP 值的说明。 \fIevent_f_flags\fP 包含一个用于访问模式的多位字段。 该字段可以采用以下值:
+.TP 
+\fBO_RDONLY\fP
+该值只允许读访问。
+.TP 
+\fBO_WRONLY\fP
+该值只允许写访问。
+.TP 
+\fBO_RDWR\fP
+该值允许读取和写入访问。
+.PP
+可以在 \fIevent_f_flags\fP 中设置其他位。 最有用的值是:
+.TP 
+\fBO_LARGEFILE\fP
+启用对超过 2\GB 的文件的支持。 在 32 位系统上尝试打开由 fanotify 组监视的大文件时，未能设置此标志将导致 \fBEOVERFLOW\fP
+错误。
+.TP 
+\fBO_CLOEXEC\fP (since Linux 3.18)
+.\" commit 0b37e097a648aa71d4db1ad108001e95b69a2da4
+为文件描述符启用 close\-on\-exec 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP 标志的描述，了解这可能有用的原因。
+.PP
+以下也是允许的: \fBO_APPEND\fP、\fBO_DSYNC\fP、\fBO_NOATIME\fP、\fBO_NONBLOCK\fP 和 \fBO_SYNC\fP。 在
+\fIevent_f_flags\fP 中指定任何其他标志会产生错误 \fBEINVAL\fP (但请参见 BUGS)。
+.SH "RETURN VALUE"
+成功时，\fBfanotify_init\fP() 返回一个新的文件描述符。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+.\" commit 23c9deeb3285d34fd243abb3d6b9f07db60c3cf4
+在 \fIflags\fP 或 \fIevent_f_flags\fP 中传递了无效值。 \fBFAN_ALL_INIT_FLAGS\fP (自 Linux 4.20
+起已弃用) 定义 \fIflags\fP 的所有允许位。
+.TP 
+\fBEMFILE\fP
+该用户的 fanotify 组数超出限制。 有关此限制的详细信息，请参见 \fBfanotify\fP(7)。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENOMEM\fP
+为通知组分配内存失败。
+.TP 
+\fBENOSYS\fP
+这个内核没有实现 \fBfanotify_init\fP()。 仅当内核配置了 \fBCONFIG_FANOTIFY\fP 时，fanotify API 才可用。
+.TP 
+\fBEPERM\fP
+不允许该操作，因为调用方缺少所需的功能。
+.SH VERSIONS
+\fBfanotify_init\fP() 在 Linux 2.6.36 引入，在 Linux 2.6.37 启用。
+.PP
+.\" commit 7cea2a3c505e87a9d6afc78be4a7f7be636a73a7
+.\" commit 7cea2a3c505e87a9d6afc78be4a7f7be636a73a7
+在 Linux 5.13 之前，调用 \fBfanotify_init\fP() 需要 \fBCAP_SYS_ADMIN\fP 能力。 从 Linux 5.13
+开始，用户可以调用没有 \fBCAP_SYS_ADMIN\fP 能力的 \fBfanotify_init\fP() 来创建和初始化功能有限的 fanotify 组。
+.TP 
+The limitations imposed on an event listener created by a user without the
+\fBCAP_SYS_ADMIN\fP 能力如下:
+.RS
+.IP \[bu] 3
+用户无法使用 \fBFAN_UNLIMITED_QUEUE\fP 请求无限事件队列。
+.IP \[bu]
+用户不能使用 \fBFAN_UNLIMITED_MARKS\fP 请求无限数量的标记。
+.IP \[bu]
+用户不能请求使用通知类 \fBFAN_CLASS_CONTENT\fP 或 \fBFAN_CLASS_PRE_CONTENT\fP。 这意味着用户不能请求权限事件。
+.IP \[bu]
+用户需要创建一个通过文件句柄标识文件系统对象的组，例如，通过提供 \fBFAN_REPORT_FID\fP 标志。
+.IP \[bu]
+用户仅限于标记 inode。 不允许使用 \fBFAN_MARK_MOUNT\fP 或 \fBFAN_MARK_FILESYSTEM\fP 通过
+\fBfanotify_mark\fP() 标记挂载或文件系统。
+.IP \[bu]
+事件队列中的事件对象在非特权用户可用的信息方面受到限制。 用户也不会收到生成事件的 pid，除非侦听进程本身生成了事件。
+.RE
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH BUGS
+Linux 3.18 之前存在以下错误:
+.IP \[bu] 3
+.\" Fixed by commit 0b37e097a648aa71d4db1ad108001e95b69a2da4
+当传入 \fIevent_f_flags\fP 时 \fBO_CLOEXEC\fP 被忽略。
+.PP
+Linux 3.14 之前存在以下错误:
+.IP \[bu] 3
+.\" Fixed by commit 48149e9d3a7e924010a0daab30a6197b7d7b6580
+不检查 \fIevent_f_flags\fP 参数是否有无效标志。 可以设置仅供内部使用的标志，例如 \fBFMODE_EXEC\fP，因此会为从
+fanotify 文件描述符读取时返回的文件描述符设置。
+.SH "SEE ALSO"
+\fBfanotify_mark\fP(2), \fBfanotify\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

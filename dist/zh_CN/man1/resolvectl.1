@@ -1,0 +1,483 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RESOLVECTL 1 "" "systemd 253" resolvectl
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+resolvectl、resolvconf\-\- 解析域名、IPV4 和 IPv6 地址、DNS 资源记录和服务; 反省并重新配置 DNS 解析器
+.SH SYNOPSIS
+.HP \w'\fBresolvectl\fR\ 'u
+\fBresolvectl\fP [OPTIONS...] {COMMAND} [NAME...]
+.SH DESCRIPTION
+.PP
+\fBresolvectl\fP 可用于解析域名、IPv4 和 IPv6 地址、DNS 资源记录和与
+\fBsystemd\-resolved.service\fP(8) 解析器服务 \& 的服务。默认情况下，指定的参数列表将解析为主机名，检索它们的 IPv4
+和 IPv6 地址 \&。如果指定的参数被格式化为 IPv4 或 IPv6 地址，则执行反向操作，并检索指定地址的主机名 \&。
+.PP
+该程序 \*(Aqs 输出包含有关用于查找的协议以及发现数据的网络接口的信息 \&。它还包含有关信息是否可以通过身份验证的信息。本地 DNSSEC
+验证成功的所有数据都被视为已通过身份验证 \&。此外，所有来自本地、可信来源的数据也被报告为经过身份验证的，包括本地主机名的解析、"localhost"
+主机名或来自 /etc/hosts\& 的所有数据。
+.SH COMMANDS
+.PP
+\fBquery\fP \fIHOSTNAME|ADDRESS\fP\& ...
+.RS 4
+解析域名，以及 IPv4 和 IPv6 地址 \&。当与 \fB\-\-type=\fP 或 \fB\-\-class=\fP (见下文) 结合使用时，解析底层 DNS
+资源记录 \&。
+.sp
+如果指定了单标签域名，则根据配置的搜索域 \(em 除非指定了 \fB\-\-search=no\fP 或
+\fB\-\-type=\fP/\fB\-\-class=\fP，这两者都会关闭此逻辑 \&。
+.sp
+如果指定了国际域名，则在通过经典 DNS\(em 但不是通过 MulticastDNS 或 LLMNR\& 进行查找时，它会根据 IDNA
+规则自动转换。如果使用 \fB\-\-type=\fP/\fB\-\-class=\fP，则关闭 IDNA 转换并按指定处理域名 \&。
+.RE
+.PP
+\fBservice\fP [[\fINAME\fP] \fITYPE\fP] \fIDOMAIN\fP
+.RS 4
+解析 \m[blue]\fBDNS\-SD\fP\m[]\&\s-2\u[1]\d\s+2 和
+\m[blue]\fBSRV\fP\m[]\&\s-2\u[2]\d\s+2 服务，取决于指定的参数列表 \&。如果传递了三个参数，第一个假定为 DNS\-SD
+服务名称，第二个为 \fBSRV\fP 服务类型，第三个为要在 \& 中搜索的域。在这种情况下，将执行完整的 DNS\-SD 样式 \fBSRV\fP 和
+\fBTXT\fP 查找 \&。如果只指定两个参数，第一个被假定为 \fBSRV\fP 服务类型，第二个是要查找的域 \&。在这种情况下，没有请求 \fBTXT\fP
+资源记录 \&。最后，如果只指定一个参数，则假定它是一个域名，已经带有 \fBSRV\fP 类型前缀，并完成 \fBSRV\fP 查找 (没有 \fBTXT\fP)\&.
+.RE
+.PP
+\fBopenpgp\fP \fIEMAIL@DOMAIN\fP\& ...
+.RS 4
+查询存储为 \fBOPENPGPKEY\fP 资源记录的 PGP 密钥，请参见 \m[blue]\fBRFC 7929\fP\m[]\&\s-2\u[3]\d\s+2\&。将指定的电子邮件地址转换为相应的 DNS 域名，并打印任何 \fBOPENPGPKEY\fP 密钥
+\&。
+.RE
+.PP
+\fBtlsa\fP [\fIFAMILY\fP] \fIDOMAIN\fP[:\fIPORT\fP]\& ...
+.RS 4
+查询存储为 \fBTLSA\fP 资源记录的 TLS 公钥，请参见 \m[blue]\fBRFC 6698\fP\m[]\&\s-2\u[4]\d\s+2\&。将为每个以端口和系列
+("_\fIport\fP\&._\fIfamily\fP\&.\fIdomain\fP")\& 为前缀的指定名称执行查询。端口号可以在冒号 (":")
+后指定，否则默认使用 \fB443\fP\&。family 可以指定为第一个参数，否则使用 \fBtcp\fP\&。
+.RE
+.PP
+\fBstatus\fP [\fILINK\fP\&...]
+.RS 4
+显示当前有效的全局和每链接 DNS 设置 \&。如果未指定命令，则这是隐含的默认值 \&。
+.RE
+.PP
+\fBstatistics\fP
+.RS 4
+显示一般解析器统计信息，包括 DNSSEC 是否启用和可用的信息，以及解析和验证统计信息 \&。
+.RE
+.PP
+\fBreset\-statistics\fP
+.RS 4
+将 \fBstatistics\fP 中显示的统计计数器重置为零 \&。此操作需要 root 权限 \&。
+.RE
+.PP
+\fBflush\-caches\fP
+.RS 4
+刷新服务在本地维护的所有 DNS 资源记录缓存。这主要相当于将 \fBSIGUSR2\fP 发送到 \fBsystemd\-resolved\fP 服务 \&。
+.RE
+.PP
+\fBreset\-server\-features\fP
+.RS 4
+刷新解析器了解的有关特定服务器的所有特性级别信息，并确保服务器特性探测逻辑从下一个查找请求开始 \&。这主要相当于将 \fBSIGRTMIN+1\fP 发送到
+\fBsystemd\-resolved\fP 服务 \&。
+.RE
+.PP
+\fBdns\fP [\fILINK\fP [\fISERVER\fP\&...]], \fBdomain\fP [\fILINK\fP [\fIDOMAIN\fP\&...]],
+\fBdefault\-route\fP [\fILINK\fP [\fIBOOL\fP\&...]], \fBllmnr\fP [\fILINK\fP [\fIMODE\fP]],
+\fBmdns\fP [\fILINK\fP [\fIMODE\fP]], \fBdnssec\fP [\fILINK\fP [\fIMODE\fP]], \fBdnsovertls\fP
+[\fILINK\fP [\fIMODE\fP]], \fBnta\fP [\fILINK\fP [\fIDOMAIN\fP\&...]]
+.RS 4
+Get/set 每接口 DNS 配置 \&。这些命令可用于为网络接口配置各种 DNS 设置。这些命令可用于通知 \fBsystemd\-resolved\fP
+或 \fBsystemd\-networkd\fP 有关通过外部方式确定的每个接口 DNS 配置。\fBdns\fP 命令需要 DNS 服务器的 IPv4 或
+IPv6 地址规范来使用 \&。每个地址都可以选择采用以 ":" 分隔的端口号、以 "%" 分隔的网络接口名称或索引以及以 `#`\&
+分隔的服务器名称指示 (SNI)。当用端口号指定 IPv6 地址时，地址必须在方括号 \& 中。也就是说，可接受的完整格式是
+"111\&.222\&.333\&.444:9953%ifname#example\&.com" for IPv4 和
+"[1111:2222::3333]:9953%ifname#example\&.com" for IPv6\&。\fBdomain\fP 命令需要有效的
+DNS 域，可能以 "~" 为前缀，并配置每个接口搜索或仅路由域 \&。\fBdefault\-route\fP 命令需要一个布尔参数，并配置该链接是否可以用作
+DNS 查找的默认路由，i\&.e\&。如果它适合在域上查找，则没有为 \& 明确配置其他链接。\fBllmnr\fP、\fBmdns\fP、\fBdnssec\fP 和
+\fBdnsovertls\fP 命令可用于配置每个接口的 LLMNR、MulticastDNS、DNSSEC 和 DNSOverTLS 设置
+\&。最后，\fBnta\fP 命令可用于配置额外的每接口 DNSSEC NTA 域 \&。
+.sp
+命令 \fBdns\fP、\fBdomain\fP 和 \fBnta\fP 可以使用单个空字符串参数来清除它们各自的值列表 \&。
+.sp
+有关这些设置的详细信息、它们的可能值及其效果，请参见 \fBsystemd.network\fP(5)\& 中的相应设置。
+.RE
+.PP
+\fBrevert \fP\fILINK\fP
+.RS 4
+还原每个接口的 DNS 配置 \&。如果还原 DNS 配置，则所有每个接口的 DNS 设置都将重置为其默认值，从而消除
+\fBdns\fP、\fBdomain\fP、\fBdefault\-route\fP、\fBllmnr\fP、\fBmdns\fP、\fBdnssec\fP、\fBdnsovertls\fP、\fBnta\fP\&
+的所有影响。请注意，当网络接口消失时，所有配置都会自动丢失，在这种情况下不需要显式恢复 \&。
+.RE
+.PP
+\fBmonitor\fP
+.RS 4
+显示连续的本地客户端解析查询及其响应 \&。每当本地查询完成时，查询 \*(显示 Aqs DNS 资源查找密钥和资源记录
+\&。请注意，这仅显示本地发出的查询，并不立即与提交到配置的 DNS 服务器或 LLMNR 或 MulticastDNS 区域的 DNS
+请求相关，因为查找可能会从本地缓存中得到答复，或者可能导致多个 DNS 事务 (例如到验证 DNSSEC 信息) \&。如果遵循 CNAME/CNAME
+重定向链，将为链的每个元素显示一个单独的查询 \&。使用 \fB\-\-json=\fP 启用 JSON 输出 \&。
+.RE
+.PP
+\fBlog\-level\fP [\fILEVEL\fP]
+.RS 4
+如果没有给出参数，则打印管理器当前的日志级别 \&。如果提供了可选的参数 \fILEVEL\fP，则该命令会将管理器的当前日志级别更改为 \fILEVEL\fP
+(接受与 \fBsystemd\fP(1))\& 中描述的 \fB\-\-log\-level=\fP 相同的值。
+.RE
+.SH OPTIONS
+.PP
+\fB\-4\fP, \fB\-6\fP
+.RS 4
+默认情况下，在解析主机名时，会同时获取 IPv4 和 IPv6 地址 \&。通过指定 \fB\-4\fP，仅请求 IPv4 地址，通过指定 \fB\-6\fP，仅请求
+IPv6 地址 \&。
+.RE
+.PP
+\fB\-i\fP \fIINTERFACE\fP, \fB\-\-interface=\fP\fIINTERFACE\fP
+.RS 4
+指定执行查询的网络接口 \&。这可以指定为数字接口索引或网络接口字符串 (e\&.g\&. "en0")\&。请注意，如果使用系统范围的 DNS 配置
+(如在 /etc/resolv\&.conf 或 /etc/systemd/resolved\&.conf 中配置) 代替每个链接配置，则此选项无效
+\&。
+.RE
+.PP
+\fB\-p\fP \fIPROTOCOL\fP, \fB\-\-protocol=\fP\fIPROTOCOL\fP
+.RS 4
+指定查询的网络协议 \&。可能是 "dns" (i\&.e\&。经典单播 DNS)、"llmnr" (\m[blue]\fBLink\-Local Multicast Name Resolution\fP\m[]\&\s-2\u[5]\d\s+2)、"llmnr\-ipv4"、"llmnr\-ipv6"
+(通过指定的底层 IP 协议的 LLMNR)、"mdns" (\m[blue]\fBMulticast DNS\fP\m[]\&\s-2\u[6]\d\s+2)、"mdns\-ipv4"、"mdns\-ipv6" (通过指定的底层 IP 协议的 MDNS) 之一
+\&。默认情况下，查找是通过适合查找的所有协议完成的。如果使用，限制可能使用的协议集 \&。多次使用此选项可同时通过多个协议进行解析 \&。设置
+"llmnr" 与使用 "llmnr\-ipv4" 和通过 `llmnr\-ipv6`\&
+指定此开关一次相同。请注意，此选项不会强制服务使用指定协议解析操作，因为这可能需要合适的网络接口和配置 \&。特殊值 "help" 可用于列出已知值
+\&。
+.RE
+.PP
+\fB\-t\fP \fITYPE\fP, \fB\-\-type=\fP\fITYPE\fP, \fB\-c\fP \fICLASS\fP, \fB\-\-class=\fP\fICLASS\fP
+.RS 4
+与 \fBquery\fP 命令结合使用时，指定 DNS 资源记录类型 (e\&.g\&.\fBA\fP,\fBAAAA\fP,\fBMX\fP,\&...) 和类
+(e\&.g\&.\fBIN\fP,\fBANY\fP，\&...) 去查查看 \&。如果使用这些选项，则请求匹配指定类和类型的 DNS 资源记录集
+\&。如果只指定了一个类型，类默认为 \fBIN\fP\&。特殊值 "help" 可用于列出已知值 \&。
+.sp
+如果没有这些选项，\fBresolvectl query\fP 提供高级域名到地址和地址到域名解析 \&。通过这些选项，它提供了底层 DNS 资源记录解析
+\&。使用这些选项时，搜索域逻辑会自动关闭，i\&.e\&。指定的域名需要是完全限定的域名 \&。此外，IDNA
+内部域名翻译也被关闭，i\&.e\&。国际域名应以 "xn\-\-\&..." 表示法指定，除非需要在 MulticastDNS/LLMNR
+中查找，在这种情况下应使用 UTF\-8 字符 \&。
+.RE
+.PP
+\fB\-\-service\-address=\fP\fIBOOL\fP
+.RS 4
+采用布尔参数 \&。如果为 true (默认值)，则在使用 \fB\-\-service\fP 进行服务查找时，\fBSRV\fP 资源记录中包含的主机名也会被解析
+\&。
+.RE
+.PP
+\fB\-\-service\-txt=\fP\fIBOOL\fP
+.RS 4
+采用布尔参数 \&。如果为 true (默认值)，则在使用 \fB\-\-service\fP 进行 DNS\-SD 服务查找时，\fBTXT\fP
+服务元数据记录也会被解析 \&。
+.RE
+.PP
+\fB\-\-cname=\fP\fIBOOL\fP
+.RS 4
+采用布尔参数 \&。如果为 true (默认值)，则遵循 DNS \fBCNAME\fP 或 \fBDNAME\fP 重定向 \&。否则，如果解析时遇到 CNAME
+或 DNAME 记录，则返回错误 \&。
+.RE
+.PP
+\fB\-\-validate=\fP\fIBOOL\fP
+.RS 4
+接受一个布尔参数; 与 \fBquery\fP\& 一起使用。如果为 true (默认值)，DNSSEC 验证将照常应用 \(em 在为网络和整个
+systemd\-resolved\&.service 启用的情况下 \&。如果为 false，则针对特定查询禁用 DNSSEC
+验证，无论它是针对网络还是在服务中启用 \&。请注意，将此选项设置为 true 不会强制在关闭 DNSSEC 的 systems/networks
+上进行 DNSSEC 验证 \&。此选项仅适用于在其他启用的情况下关闭此类验证，而不适用于在其他情况下禁用的验证 \&。
+.RE
+.PP
+\fB\-\-synthesize=\fP\fIBOOL\fP
+.RS 4
+接受一个布尔参数; 与 \fBquery\fP\& 一起使用。如果为 true (默认值)，则选择域在本地系统上解析，其中包括
+"localhost"、"_gateway"、"_outbound"、"_localdnsstub" 和 "_localdnsproxy" 或
+/etc/hosts\& 中的条目。如果为 false，则这些域不会在本地解析，并且要么失败 (对于 "localhost"、"_gateway" 或
+"_outbound" 等)，要么通过常规 DNS/mDNS/LLMNR 查找 (对于 /etc/hosts 条目) 转到网络 \&。
+.RE
+.PP
+\fB\-\-cache=\fP\fIBOOL\fP
+.RS 4
+接受一个布尔参数; 与 \fBquery\fP\& 一起使用。如果为 true (默认值)，查找将使用本地 DNS 资源记录缓存 \&。如果为
+false，查找将路由到网络，而不管本地缓存中是否已经可用 \&。
+.RE
+.PP
+\fB\-\-zone=\fP\fIBOOL\fP
+.RS 4
+接受一个布尔参数; 与 \fBquery\fP\& 一起使用。如果为 true (默认值)，则从本地注册的 LLMNR 或 mDNS 资源记录 (如果已定义)
+回答查找。如果为 false，本地注册的 LLMNR/mDNS 记录不被考虑用于查找请求 \&。
+.RE
+.PP
+\fB\-\-trust\-anchor=\fP\fIBOOL\fP
+.RS 4
+接受一个布尔参数; 与 \fBquery\fP\& 一起使用。如果为 true (默认值)，则 DS 和 DNSKEY 的查找会在可能的情况下从本地
+DNSSEC 信任锚应答 \&。如果为 false，则查找请求不考虑本地信任库 \&。
+.RE
+.PP
+\fB\-\-network=\fP\fIBOOL\fP
+.RS 4
+接受一个布尔参数; 与 \fBquery\fP\& 一起使用。如果为 true (默认值)，如果无法在本地合成，则通过 DNS、LLMNR 或 mDNS
+网络请求回答查找，或者从本地缓存、区域或信任锚 (见上文) 回答查找 \&。如果为
+false，则请求不会从网络得到答复，因此如果没有指定的来源可以答复它们，请求将失败 \&。
+.RE
+.PP
+\fB\-\-search=\fP\fIBOOL\fP
+.RS 4
+采用布尔参数 \&。如果为真 (默认)，任何指定的单标签主机名将在搜索域列表中配置的域中搜索，如果它是非空的 \&。否则，搜索域逻辑被禁用
+\&。请注意，如果使用 \fB\-\-type=\fP (见上文)，则此选项无效，在这种情况下，搜索域逻辑将无条件关闭 \&。
+.RE
+.PP
+\fB\-\-raw\fP[=payload|packet]
+.RS 4
+将答案转储为二进制数据 \&。如果没有参数或者参数为 "payload"，则导出包的载荷 \&。如果参数是
+"packet"，则整个数据包以有线格式转储，并以指定为小端 64 位数字的长度为前缀 \&。这种格式允许转储多个数据包并明确解析 \&。
+.RE
+.PP
+\fB\-\-legend=\fP\fIBOOL\fP
+.RS 4
+采用布尔参数 \&。如果为 true (默认值)，则显示有关查询响应的列标题和元信息 \&。否则，此输出将被抑制 \&。
+.RE
+.PP
+\fB\-\-json=\fP\fIMODE\fP
+.RS 4
+显示格式为 JSON\& 的输出。期望 "short" (用于尽可能短的输出，没有任何冗余空格或换行符)、"pretty"
+(用于相同版本的漂亮版本，带有缩进和换行符) 或 "off" (关闭 JSON 输出，默认值) \&。
+.RE
+.PP
+\fB\-j\fP
+.RS 4
+\fB\-\-json=auto\fP 的缩写
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "COMPATIBILITY WITH RESOLVCONF(8)"
+.PP
+\fBresolvectl\fP 是一个多调二进制 \&。当作为 "resolvconf" 调用时 (通常通过此名称到 \fBresolvectl\fP
+二进制文件的符号链接来实现)，它在有限的 \fBresolvconf\fP(8) 兼容模式下运行 \&。它接受大部分相同的参数并将所有数据推送到
+\fBsystemd\-resolved.service\fP(8)，类似于 \fBdns\fP 和 \fBdomain\fP 命令的操作方式
+\&。请注意，\fBsystemd\-resolved\&.service\fP 是唯一受支持的后端，这与此命令的其他实现不同 \&。
+.PP
+/etc/resolv\&.conf will only be updated with servers added with this command
+when /etc/resolv\&.conf is a symlink to /run/systemd/resolve/resolv\&.conf,
+and not a static file\&. See the discussion of /etc/resolv\&.conf handling
+in \fBsystemd\-resolved.service\fP(8)\&.
+.PP
+并非其他实现支持的所有操作都是原生支持的。Specifically:
+.PP
+\fB\-a\fP
+.RS 4
+使用 \fBsystemd\-resolved\fP\& 注册每个接口的 DNS 配置数据。期望网络接口名称仅作为命令行参数 \&。从其标准输入读取
+\fBresolv.conf\fP(5)\-compatible DNS 配置数据 \&。相关字段是 "nameserver" 和
+`域`/`搜索`\&。此命令与使用 \fBdns\fP 和 \fBdomain\fP 命令的组合调用 \fBresolvectl\fP 基本相同 \&。
+.RE
+.PP
+\fB\-d\fP
+.RS 4
+使用 \fBsystemd\-resolved\fP\& 注销每个接口的 DNS 配置数据。此命令与调用 \fBresolvectl revert\fP\&
+基本相同。
+.RE
+.PP
+\fB\-f\fP
+.RS 4
+当指定 \fB\-a\fP 和 \fB\-d\fP 时，将不会抱怨缺少网络接口，并且在这种情况下将静默执行任何操作 \&。
+.RE
+.PP
+\fB\-x\fP
+.RS 4
+仅部分支持 "exclusive" 操作的此开关 \&。它映射到额外配置的搜索域 "~\&."\(em i\&.e\&。确保 DNS
+流量优先路由到此接口上的 DNS 服务器，除非在其他接口上配置了其他更具体的域 \&。
+.RE
+.PP
+\fB\-m\fP, \fB\-p\fP
+.RS 4
+这些开关不受支持，并被静默忽略 \&。
+.RE
+.PP
+\fB\-u\fP, \fB\-I\fP, \fB\-i\fP, \fB\-l\fP, \fB\-R\fP, \fB\-r\fP, \fB\-v\fP, \fB\-V\fP, \fB\-\-enable\-updates\fP,
+\fB\-\-disable\-updates\fP, \fB\-\-are\-updates\-enabled\fP
+.RS 4
+不支持这些开关，如果使用该命令将失败 \&。
+.RE
+.PP
+有关这些命令行选项 \& 的详细信息，请参见 \fBresolvconf\fP(8)。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Retrieve the addresses of the "www\&.0pointer\&.net" domain (A and AAAA resource records)\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ resolvectl 查询 www\&.0pointer\&.net
+www\&.0pointer\&.net: 2a01:238:43ed:c300:10c3:bcf3:3266:da74
+                  85\&.214\&.157\&.71
+
+\-\- 通过协议 DNS 在 611\&.6ms\& 中获取的信息。
+\-\- 数据是否经过验证: 否
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Retrieve the domain of the "85\&.214\&.157\&.71" IP address (PTR resource record)\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ resolvectl 查询 85\&.214\&.157\&.71
+85\&.214\&.157\&.71: gardel\&.0pointer\&.net
+
+\-\- 在 1\&.2997s\& 中通过 DNS 协议获取的信息。
+\-\- 数据是否经过验证: 否
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&Retrieve the MX record of the "yahoo\&.com" domain\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ resolvectl\-\-legend=no \-t MX 查询 yahoo\&.com
+雅虎 \&.com\&。在 MX 1 mta7\&.am0\&.yahoodns\&.net
+雅虎 \&.com\&。在 MX 1 mta6\&.am0\&.yahoodns\&.net
+雅虎 \&.com\&。在 MX 1 mta5\&.am0\&.yahoodns\&.net
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&Resolve an SRV service\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ resolvectl 服务 _xmpp\-server\&._tcp gmail\&.com
+_xmpp\-server\&._tcp/gmail\&.com: alt1\&.xmpp\-server\&.l\&.google\&.com:5269 [priority=20, weight=0]
+                             173\&.194\&.210\&.125
+                             alt4\&.xmpp\-server\&.l\&.google\&.com:5269 [priority=20, weight=0]
+                             173\&.194\&.65\&.125
+                             \&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&5.\ \&Retrieve a PGP key (OPENPGP resource record)\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ resolvectl openpgp zbyszek@fedoraproject\&.org
+d08ee310438ca124a6149ea5cc21b6313b390dce485576eff96f8722\&._openpgpkey\&.fedoraproject\&.org\&。在 OPENPGPKEY 中
+        mQINBFBHPMsBEACeInGYJCb+7TurKfb6wGyTottCDtiSJB310i37/6ZYoeIay/5soJjlMyf
+        MFQ9T2XNT/0LM6gTa0MpC1st9LnzYTMsT6tzRly1D1UbVI6xw0g0vE5y2Cjk3xUwAynCsSs
+        \&...
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&6.\ \&Retrieve a TLS key (TLSA resource record)\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ resolvectl tlsa tcp fedoraproject\&.org:443
+_443\&._tcp\&.fedoraproject\&.org 在 TLSA 0 0 1 19400be5b7a31fb733917700789d2f0a2471c0c9d506c0e504c06c16d7cb17c0
+        \-\- 证书 \&。用法: CA 约束
+        \-\- 选择器: 完整证书
+        \-\- 匹配类型: SHA\-256
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+"tcp" 和 ":443" 是可选的，可以跳过 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-resolved.service\fP(8), \fBsystemd.dnssd\fP(5),
+\fBsystemd\-networkd.service\fP(8), \fBresolvconf\fP(8)
+.SH NOTES
+.IP " 1." 4
+DNS\-SD
+.RS 4
+\%https://tools.ietf.org/html/rfc6763
+.RE
+.IP " 2." 4
+SRV
+.RS 4
+\%https://tools.ietf.org/html/rfc2782
+.RE
+.IP " 3." 4
+RFC 7929
+.RS 4
+\%https://tools.ietf.org/html/rfc7929
+.RE
+.IP " 4." 4
+RFC 6698
+.RS 4
+\%https://tools.ietf.org/html/rfc6698
+.RE
+.IP " 5." 4
+链路本地多播名称解析
+.RS 4
+\%https://tools.ietf.org/html/rfc4795
+.RE
+.IP " 6." 4
+组播 DNS
+.RS 4
+\%https://www.ietf.org/rfc/rfc6762.txt
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

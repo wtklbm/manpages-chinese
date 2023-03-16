@@ -1,0 +1,227 @@
+.\" -*- coding: UTF-8 -*-
+.\"/* Copyright 1988,1990,1993,1994 by Paul Vixie
+.\" * All rights reserved
+.\" */
+.\"
+.\" Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
+.\" Copyright (c) 1997,2000 by Internet Software Consortium, Inc.
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+.\" OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\" $Id: crontab.5,v 1.6 2004/01/23 19:03:33 vixie Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH CRONTAB 5 2012\-11\-22 cronie "File Formats"
+.SH NAME
+crontab \- 用于安排程序执行的文件
+.SH DESCRIPTION
+\fIcrontab\fP 文件以以下简化方式包含 \fBcron\fP(8) 守护程序的说明: "run this command at this time on
+this date"。 每个用户都可以定义自己的 crontab。 在任何给定的 crontab 中定义的命令在拥有该特定 crontab
+的用户下执行。 Uucp 和 News 通常有它们自己的 crontabs，消除了明确运行 \fBsu\fP(1) 作为 cron 命令的一部分的需要。
+.PP
+空行、前导空格和制表符将被忽略。 第一个非空白字符是井号 (#) 的行是注释，不会被处理。 请注意，注释不允许与 cron
+命令出现在同一行，因为它们被视为命令的一部分。 同样，注释也不允许与环境变量设置在同一行。
+.PP
+crontab 中的活动行是环境设置或 cron 命令。 环境设置的形式为:
+.PP
+   name = value
+.PP
+其中等号 (=) 周围的空格是可选的，\fIvalue\fP 中任何后续的非前导空格都是分配给 \fIname\fP 的值的一部分。 \fIvalue\fP
+字符串可以放在引号中 (单引号或双引号，但匹配) 以保留前导或尾随空格。
+.PP
+几个环境变量由 \fBcron\fP(8) 守护程序自动设置。 \fISHELL\fP 设置为 /bin/sh，\fILOGNAME\fP 和 \fIHOME\fP 从
+crontab 所有者的 /etc/passwd 行设置。 \fIHOME\fP 和 \fISHELL\fP 可以通过 crontab 中的设置覆盖;
+LOGNAME 不行。
+.PP
+(注意: \fILOGNAME\fP 变量有时在 BSD 系统上称为 \fIUSER\fP，并且也是自动设置的)。
+.PP
+除了 \fILOGNAME\fP、\fIHOME\fP 和 \fISHELL\fP 之外，如果由于在该特定 crontab
+中运行任何命令而需要发送邮件，\fBcron\fP(8) 还会查看 \fIMAILTO\fP 变量。 如果定义了 \fIMAILTO\fP
+(且非空)，邮件将发送到指定地址。 如果定义了 \fIMAILTO\fP 但 (\fIMAILTO=""\fP) 为空，则不发送邮件。 否则，邮件将发送给
+crontab 的所有者。 如果您决定使用 /bin/mail 而不是 /usr/lib/sendmail 作为邮件程序，则此选项很有用。 请注意
+/bin/mail 不提供别名并且 UUCP 通常不读取其邮件。 如果 \fIMAILFROM\fP 被定义 (并且非空)，它被用作信封发送者地址，否则，使用
+`root`。
+.PP
+(注意: \fIMAILFROM\fP 和 \fIMAILTO\fP 变量都被扩展了，所以按照下面的例子设置它们可以正常工作:
+MAILFROM=cron\-$USER@cron.com ($USER 由系统用户替换) )
+.PP
+默认情况下，cron 使用 'text/plain' 的 'Content\-Type:' 标头发送邮件，'charset=' 参数设置为启动
+\fBcrond\fP(8) 的区域设置的 'charmap/codeset'，即默认系统区域设置，如果没有设置 LC_*环境变量，或者由
+LC_*环境变量指定的语言环境 (参见 \fBlocale\fP(7)).  通过将 crontab 中的 \fICONTENT_TYPE\fP 和
+\fICONTENT_TRANSFER_ENCODING\fP 变量设置为这些名称的邮件标头的正确值，可以使用不同的字符编码来邮寄 cron 作业输出。
+.PP
+\fICRON_TZ\fP 变量指定特定于 cron 表的时区。 用户应根据指定的时区在表中输入时间。 用于写入日志文件的时间取自守护进程运行的本地时区。
+.PP
+\fIMLS_LEVEL\fP 环境变量为同一个 crontab 中的多个 per\-job SELinux 安全上下文提供支持。 默认情况下，cron
+作业使用创建 crontab 文件的用户的默认 SELinux 安全上下文执行。
+当使用多个安全级别和角色时，这可能还不够，因为同一用户可能以不同的角色或不同的安全级别运行。 有关角色和 SELinux MLS/MCS
+的更多信息，请参见本文后面提到的 \fBselinux\fP(8) 和 crontab 示例。 您可以将 \fIMLS_LEVEL\fP 变量设置为 SELinux
+安全上下文字符串，指定您希望在其中运行作业的特定 SELinux 安全上下文。 然后 \fBcrond\fP
+将设置那些满足特定安全上下文规范的作业的执行上下文。 有关详细信息，请参见 \fBcrontab\fP(1)\-s\ 选项。
+.PP
+\fIRANDOM_DELAY\fP 变量允许将作业启动延迟随机分钟数，上限由变量指定。随机比例因子是在 cron
+守护进程启动期间确定的，因此它在守护进程的整个运行时间内保持常量。
+.PP
+cron 命令的格式类似于 V7 标准，具有许多向上兼容的扩展。 每行有五个时间和日期字段，后跟一个 \fBuser\fPname (如果这是
+\fBsystem\fP crontab 文件)，然后是一个命令。 当 'minute'、'hour' 和 `一年中的月份`
+字段与当前时间匹配时，\fBcron\fP(8) 执行命令，\fIand\fP 至少两个 'day' 字段 (`月份中的某天` 或 `星期几`)
+中的一个与当前时间匹配时间 (见下面的 "Note")。
+.PP
+请注意，这意味着不存在的时间 (例如夏令时转换期间的 "missing hours") 将永远不会匹配，从而导致在 "missing times"
+期间安排的作业无法运行。 同样，出现不止一次的时间 (同样，在夏令时转换期间) 将导致匹配作业运行两次。
+.PP
+\fBcron\fP(8) 每分钟检查一次 cron 条目。
+.PP
+时间和日期字段是:
+.IP
+.ta 1.5i
+字段允许值
+.br
+\-\-\-\-\-	\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+.br
+minute	0\-59
+.br
+hour	0\-23
+.br
+每月 1\-31 日
+.br
+第 1\-12 个月 (或名称，见下文)
+.br
+星期几 0\-7 (0 或 7 是星期日，或使用名称)
+.br
+.PP
+字段可能包含星号 (*)，它始终代表 "first\-last"。
+.PP
+允许数字范围。 范围是用连字符分隔的两个数字。 指定的范围包括在内。 例如，'hours' 条目的 8\-11 指定在第 8、9、10 和 11
+小时执行。第一个数字必须小于或等于第二个数字。
+.PP
+可以使用一个范围内的执行时间的随机化。 选取范围内的随机数，该范围指定为两个用波浪号分隔的数字。 指定的范围包括在内。 例如，对于 'minutes'
+条目，6~15 会在 6 到 15 范围内随机选择一分钟。 解析 crontab 文件时会选择随机数。
+第一个数字必须小于或等于第二个数字。您可以省略一个或两个指定范围的数字。 例如，对于 'minutes' 条目，~ 在 0 到 59
+范围内随机选择一分钟。
+.PP
+列表是允许的。 列表是由逗号分隔的一组数字 (或范围)。 示例: "1,2,5,9"、"0\-4,8\-12"。
+.PP
+步长值可以与范围结合使用。 在带有 "/<number>" 的范围之后指定跳过该范围内的数字值。 例如，"0\-23/2" 可用于
+\&'hours' 字段以指定每隔一小时执行一次命令 (V7 标准中的备选方案是
+"0,\:2,\:4,\:6,\:8,\:10,\:12,\:14,\:16,\:18,\:20,\:22")。
+星号后也允许使用步长值，因此如果指定每两小时运行一次作业，您可以使用 "*/2"。
+.PP
+名称也可用于 'month' 和 `星期几` 字段。 使用特定日期或月份的前三个字母 (不区分大小写)。 允许范围和名称列表。示例:
+"mon,wed,fri"、"jan\-mar"。
+.PP
+如果所有者的 UID 是 0 (root)，则 crontab 条目的第一个字符可以是 "\-" 字符。这将防止 cron
+写入有关正在执行的命令的系统日志消息。
+.PP
+"sixth" 字段 (该行的其余部分) 指定要运行的命令。 该行的整个命令部分，直到换行符或 "%" 字符，将由 /bin/sh 或由
+cronfile 的 SHELL 变量中指定的 shell 执行。 命令中的 "%" 字符，除非用反斜杠 (\e) 转义，否则将更改为换行符，并且第一个
+% 之后的所有数据将作为标准输入发送到命令。
+.PP
+Note: 命令执行的日期可以在以下两个字段中指定 \(em 'day of month', and 'day of week'.
+如果两个字段都被限制 (即不包含 "*" 字符)，则当 \fIeither\fP 字段与当前时间匹配时，将运行该命令。 例如，
+.br
+"30 4 1,15 * 5" 会导致命令在每个月的 1 号和 15 号以及每个星期五的凌晨 4:30 运行。
+.PP
+可以在安装前使用 \-T 选项测试 crontab 文件语法。有关详细信息，请参见 \fBcrontab\fP(1)。
+.SH "EXAMPLE CRON FILE"
+.nf
+# 使用 /bin/sh 运行命令，无论 /etc/passwd 说什么
+SHELL=/bin/sh
+# 将任何输出邮寄给 `paul'，无论这是谁的 crontab
+MAILTO=paul
+#
+CRON_TZ=Japan
+# 每天午夜后五分钟运行
+5 0 * * *       $HOME/bin/daily.job >> $HOME/tmp/out 2>&1
+# 在每个月的第一天下午 2:15 运行 \-\- 输出邮寄给保罗
+15 14 1 * *     $HOME/bin/monthly
+# run at 10 pm on weekdays, annoy Joe
+0 22 * * 1\-5    mail \-s "It's 10pm" joe%Joe,%%Where are your kids?%
+23 0\-23/2 * * * echo "run 23 minutes after midn, 2am, 4am ..., everyday"
+5 4 * * sun     echo "run at 5 after 4 every sunday"
+.fi
+.SH "Jobs in /etc/cron.d/"
+\fIcron.d\fP 和 \fI/etc/crontab\fP 中的作业是系统作业，通常供多个用户使用，因此还需要用户名。 第一行的 MAILTO 是可选的。
+.SH "EXAMPLE OF A JOB IN /etc/cron.d/job"
+.nf
+#login 作为根
+#create job with preferred editor (e.g. vim)
+MAILTO=root
+* * * * * root touch /tmp/file
+.fi
+.SH "SELinux with multi level security (MLS)"
+在 crontab 中，通过 \fIcrontab \-s\fP 指定安全级别或在 crontab 的第一行指定所需级别很重要。 每个级别都在
+\fI/etc/selinux/targeted/seusers\fP 中指定。 在 MLS 模式下使用 crontab 时，特别重要的是:
+.br
+\- check/change 的实际作用，
+.br
+\- 设置正确的 \fIrole for\fP \fIdirectory\fP，用于 input/output。
+.SH "EXAMPLE FOR SELINUX MLS"
+.nf
+# 以根用户身份登录
+newrole \-r sysadm_r
+mkdir /tmp/SystemHigh
+chcon \-l SystemHigh /tmp/SystemHigh
+crontab \-e
+# write in crontab file
+MLS_LEVEL=SystemHigh
+0\-59 * * * * id \-Z > /tmp/SystemHigh/crontest
+.fi
+.SH FILES
+\fI/etc/crontab\fP 主系统 crontab 文件。 \fI/var/spool/cron/\fP 存放用户定义的 crontab 的目录。
+\fI/etc/cron.d/\fP 存放系统 crontabs 的目录。
+.SH "SEE ALSO"
+\fBcron\fP(8), \fBcrontab\fP(1)
+.SH EXTENSIONS
+支持这些特殊时间规范 "nicknames"，它替换了 5 个初始时间和日期字段，并以 '@' 字符为前缀:
+.PP
+.nf
+@reboot    : 重启后运行一次。
+@yearly : 每年运行一次，即。 "0 0 1 1 *".
+@annually : 每年运行一次，即。 "0 0 1 1 *".
+@monthly : 每月运行一次，即。"0 0 1 * *".
+@weekly : 每周运行一次，即。 "0 0 * * 0".
+@daily : 每天运行一次，即。  "0 0 * * *".
+@hourly : 每小时运行一次，即。"0 * * * *".
+.fi
+.SH CAVEATS
+\fBcrontab\fP 文件必须是常规文件或到常规文件的符号链接，除所有者外，其他任何人都不能执行或写入它们。 可以通过在 crond 命令行上使用
+\fB\-p\fP 选项来覆盖此要求。 如果正在使用 inotify 支持，则 cron 守护程序不会自动注意到符号链接 crontab 中的更改。 cron
+守护程序必须接收 SIGHUP 信号才能重新加载 crontab。 这是 inotify API 的限制。
+.PP
+cron 要求 crontab 中的每个条目都以换行符结尾。 如果 crontab 中的最后一个条目缺少换行符 (即 \& 由 EOF 终止)，cron
+将认为 crontab (至少部分) 已损坏。 警告将写入系统日志。
+.SH AUTHOR
+.MT vixie@isc.org
+保罗维克西
+.ME
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

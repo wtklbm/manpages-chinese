@@ -1,0 +1,183 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_getattr_default_np 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_getattr_default_np, pthread_setattr_default_np,\- 获取或设置默认的线程创建属性
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_getattr_default_np(pthread_attr_t *\fP\fIattr\fP\fB);\fP
+\fBint pthread_setattr_default_np(const pthread_attr_t *\fP\fIattr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_setattr_default_np\fP() 函数设置用于创建新线程的默认属性，即当使用第二个参数 NULL 调用
+\fBpthread_create\fP(3) 时使用的属性。 默认属性是使用 \fI*attr\fP 中提供的属性设置的，\fI*attr\fP
+是一个先前初始化的线程属性对象。 请注意有关提供的属性对象的以下详细信息:
+.IP \[bu] 3
+对象中的属性设置必须有效。
+.IP \[bu]
+不得在对象中设置 \fIstack address\fP 属性。
+.IP \[bu]
+将 \fIstack size\fP 属性设置为零意味着保留默认栈大小不变。
+.PP
+\fBpthread_getattr_default_np\fP() 函数初始化 \fIattr\fP 引用的线程属性对象，以便它包含用于线程创建的默认属性。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+(\fBpthread_setattr_default_np\fP()) \fIattr\fP 中的某个属性设置无效，或者在 \fIattr\fP 中设置了栈地址属性。
+.TP 
+\fBENOMEM\fP
+.\" Can happen (but unlikely) while trying to allocate memory for cpuset
+(\fBpthread_setattr_default_np\fP()) 内存不足。
+.SH VERSIONS
+这些函数从 glibc 2.18 开始可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_getattr_default_np\fP(),
+\fBpthread_setattr_default_np\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是非标准的 GNU 扩展; 因此，它们的名称中有后缀 "_np" (nonportable)。
+.SH EXAMPLES
+下面的程序使用 \fBpthread_getattr_default_np\fP() 获取默认的线程创建属性，然后从返回的线程属性对象中显示各种设置。
+运行程序时，我们看到以下输出:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+Stack size:          8388608
+Guard size:          4096
+Scheduling policy:   SCHED_OTHER
+Scheduling priority: 0
+Detach state:        JOINABLE
+Inherit scheduler:   INHERIT
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_getattr_default_np.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+static void
+display_pthread_attr(pthread_attr_t *attr)
+{
+    int s;
+    size_t stacksize;
+    size_t guardsize;
+    int policy;
+    struct sched_param schedparam;
+    int detachstate;
+    int inheritsched;
+
+    s = pthread_attr_getstacksize(attr, &stacksize);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getstacksize");
+    printf("Stack size:          %zd\en", stacksize);
+
+    s = pthread_attr_getguardsize(attr, &guardsize);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getguardsize");
+    printf("Guard size:          %zd\en", guardsize);
+
+    s = pthread_attr_getschedpolicy(attr, &policy);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getschedpolicy");
+    printf("Scheduling policy:   %s\en",
+           (policy == SCHED_FIFO) ? "SCHED_FIFO" :
+           (policy == SCHED_RR) ? "SCHED_RR" :
+           (policy == SCHED_OTHER) ? "SCHED_OTHER" : "[unknown]");
+
+    s = pthread_attr_getschedparam(attr, &schedparam);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getschedparam");
+    printf("Scheduling priority: %d\en", schedparam.sched_priority);
+
+    s = pthread_attr_getdetachstate(attr, &detachstate);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getdetachstate");
+    printf("Detach state:        %s\en",
+           (detachstate == PTHREAD_CREATE_DETACHED) ? "DETACHED" :
+           (detachstate == PTHREAD_CREATE_JOINABLE) ? "JOINABLE" :
+           "???");
+
+    s = pthread_attr_getinheritsched(attr, &inheritsched);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getinheritsched");
+    printf("Inherit scheduler:   %s\en",
+           (inheritsched == PTHREAD_INHERIT_SCHED) ? "INHERIT" :
+           (inheritsched == PTHREAD_EXPLICIT_SCHED) ? "EXPLICIT" :
+           "???");
+}
+
+int
+main(void)
+{
+    int s;
+    pthread_attr_t attr;
+
+    s = pthread_getattr_default_np(&attr);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_getattr_default_np");
+
+    display_pthread_attr(&attr);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBpthread_attr_getaffinity_np\fP(3), \fBpthread_attr_getdetachstate\fP(3),
+\fBpthread_attr_getguardsize\fP(3), \fBpthread_attr_getinheritsched\fP(3),
+\fBpthread_attr_getschedparam\fP(3), \fBpthread_attr_getschedpolicy\fP(3),
+\fBpthread_attr_getscope\fP(3), \fBpthread_attr_getstack\fP(3),
+\fBpthread_attr_getstackaddr\fP(3), \fBpthread_attr_getstacksize\fP(3),
+\fBpthread_attr_init\fP(3), \fBpthread_create\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

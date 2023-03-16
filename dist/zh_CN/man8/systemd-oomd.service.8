@@ -1,0 +1,121 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-OOMD\&.SERVICE 8 "" "systemd 253" systemd\-oomd.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-oomd.service, systemd\-oomd \- 用户空间内存不足的 (OOM) 杀手
+.SH SYNOPSIS
+.PP
+systemd\-oomd\&.service
+.PP
+/usr/lib/systemd/systemd\-oomd
+.SH DESCRIPTION
+.PP
+\fBsystemd\-oomd\fP 是一个系统服务，它使用 cgroups\-v2 和压力停顿信息 (PSI) 来监控并在内核空间发生 OOM
+之前采取纠正措施 \&。
+.PP
+您可以通过在元配置中设置 \fIManagedOOMSwap=\fP 和 \fIManagedOOMMemoryPressure=\fP
+来启用对单元的监视和操作，请参见 \fBsystemd.resource\-control\fP(5)\&。\fBsystemd\-oomd\fP 在启动时从
+\fBsystemd\fP(1) 检索有关此类单元的信息，并监视后续更改 \&。
+.PP
+\fIManagedOOMSwap=\fP 或 \fIManagedOOMMemoryPressure=\fP 设置为 \fBkill\fP 的 Cgroups
+单元将被监控 \&。 \fBsystemd\-oomd\fP 定期轮询系统和那些 cgroup 的 PSI 统计数据，以决定何时采取行动
+\&。如果超出配置的限制，\fBsystemd\-oomd\fP 将选择一个 cgroup 终止，并向其中的所有进程发送
+\fBSIGKILL\fP\&。请注意，只有后代 cgroup 才有资格被杀死; 其属性设置为 \fBkill\fP 的元不是候选者 (除非其祖先之一将其属性设置为
+\fBkill\fP)\&。此外，只有叶 cgroups 和 memory\&.oom\&.group 设置为 \fB1\fP 的 cgroups 是合格的候选者;
+在 \fBsystemd.service\fP(5)\& 中查看 \fIOOMPolicy=\fP。
+.PP
+\fBoomctl\fP(1) 可用于列出监控的 cgroups 和压力信息 \&。
+.PP
+有关此服务配置的更多信息，请参见 \fBoomd.conf\fP(5)。
+.SH "SYSTEM REQUIREMENTS AND CONFIGURATION"
+.PP
+系统必须运行具有完全统一的 cgroup 层次结构的 systemd，以实现预期的 cgroups\-v2 特性 \&。此外，必须为
+\fBsystemd\-oomd\fP\& 监视的所有单元打开内存记帐。打开内存记帐的最简单方法是确保在 \fBsystemd\-system.conf\fP(5)\&
+中将 \fIDefaultMemoryAccounting=\fP 的值设置为 \fBtrue\fP。
+.PP
+内核必须在 PSI 支持下编译 \&。这在 Linux 4\&.20 及以上 \& 中可用。
+.PP
+强烈建议系统为 \fBsystemd\-oomd\fP 启用交换以优化 \&。启用交换后，系统将花费足够的时间交换页面以让 \fBsystemd\-oomd\fP
+react\&。如果没有交换，系统会更快地进入活锁状态，并且可能会阻止 \fBsystemd\-oomd\fP 在合理的时间内响应 \&。有关 swap\&
+的更多详细信息，请参见 \m[blue]\fB"In defence of swap: common misconceptions"\fP\m[]\&\s-2\u[1]\d\s+2。在没有交换的系统上，任何基于交换的操作都将被忽略 \&。虽然
+\fBsystemd\-oomd\fP 可以在此类系统上执行基于压力的操作，但压力增加会更加突然，可能需要更多调整才能获得所需的阈值和行为 \&。
+.PP
+请注意，如果您打算在 user\&.slice、user\-$UID\&.slice 或它们的祖先 cgroup 上启用监控和操作，强烈建议您的程序由
+systemd 用户管理器管理，以防止在 same session 作用域 (从而避免内存密集型任务触发 \fBsystemd\-oomd\fP 杀死
+cgroup 下的所有东西的情况) \&。如果您 \*(Aqre 使用像 GNOME 或 KDE 这样的桌面环境，它已经使用 systemd
+用户管理器生成许多会话组件 \&。
+.SH "USAGE RECOMMENDATIONS"
+.PP
+\fIManagedOOMSwap=\fP 使用系统范围的交换值，因此将它设置在根切片 \-\&.slice 上，并允许所有后代 cgroups
+成为合格的候选者可能是最有意义的 \&。
+.PP
+\fIManagedOOMMemoryPressure=\fP 倾向于在根切片 \& 下面的 cgroups
+上工作得更好。对于往往具有对延迟敏感度较低的进程的单元 (例如 \&.g\&.system\&.slice)，可以接受更高的限制，例如默认的
+60%，因为这些进程通常可以安然度过因内存不足而导致的减速没有严重的后果 \&。但是，像 user@$UID\&.service 这样的东西可能更喜欢像
+40%\& 这样低得多的值。
+.SH OPTIONS
+.PP
+\fB\-\-dry\-run\fP
+.RS 4
+触发 kill 时试运行 \fBsystemd\-oomd\fP:，将其打印到日志而不是杀死 cgroup\&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-system.conf\fP(5), \fBsystemd.resource\-control\fP(5),
+\fBoomd.conf\fP(5), \fBoomctl\fP(1)
+.SH NOTES
+.IP " 1." 4
+"为互换辩护: 常见的误解"
+.RS 4
+\%https://chrisdown.name/2018/01/02/in\-defence\-of\-swap.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

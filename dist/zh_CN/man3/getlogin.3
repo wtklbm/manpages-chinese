@@ -1,0 +1,168 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1995  James R. Van Zandt <jrv@vanzandt.mv.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Changed Tue Sep 19 01:49:29 1995, aeb: moved from man2 to man3
+.\"  added ref to /etc/utmp, added BUGS section, etc.
+.\" modified 2003 Walter Harms, aeb - added getlogin_r, note on stdin use
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getlogin 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getlogin, getlogin_r, cuserid \- 获取用户名
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBchar *getlogin(void);\fP
+\fBint getlogin_r(char \fP\fIbuf\fP\fB[.\fP\fIbufsize\fP\fB], size_t \fP\fIbufsize\fP\fB);\fP
+.PP
+\fB#include <stdio.h>\fP
+.PP
+\fBchar *cuserid(char *\fP\fIstring\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetlogin_r\fP():
+.nf
+.\" Deprecated: _REENTRANT ||
+    _POSIX_C_SOURCE >= 199506L
+.fi
+.PP
+\fBcuserid\fP():
+.nf
+    由于 glibc 2.24:
+        (_XOPEN_SOURCE && ! (_POSIX_C_SOURCE >= 200112L)
+            || _GNU_SOURCE
+    直到并包括 glibc 2.23:
+        _XOPEN_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetlogin\fP() 返回一个指向字符串的指针，该字符串包含登录到进程控制端的用户名，如果无法确定此信息，则返回一个空指针。
+该字符串是静态分配的，可能会在后续调用此函数或 \fBcuserid\fP() 时被覆盖。
+.PP
+\fBgetlogin_r\fP() 在大小为 \fIbufsize\fP 的数组 \fIbuf\fP 中返回相同的用户名。
+.PP
+\fBcuserid\fP() 返回一个指向字符串的指针，该字符串包含与进程的有效用户 ID 关联的用户名。 如果 \fIstring\fP
+不是空指针，它应该是一个至少能容纳 \fBL_cuserid\fP 个字符的数组; 该字符串在此数组中返回。 否则，返回指向静态区域中的字符串的指针。
+此字符串是静态分配的，可能会在后续调用此函数或 \fBgetlogin\fP() 时被覆盖。
+.PP
+宏 \fBL_cuserid\fP 是一个整数常量，表示您可能需要存储用户名的数组长度。 \fBL_cuserid\fP 在
+\fI<stdio.h>\fP 中声明。
+.PP
+这些函数让您的程序明确识别正在运行 (\fBcuserid\fP()) 的用户或登录此会话 (\fBgetlogin\fP()) 的用户。 (当涉及设置用户 ID
+程序时，这些可能会有所不同。)
+.PP
+对于大多数用途，使用环境变量 \fBLOGNAME\fP 找出用户是谁更有用。 正是因为用户可以任意设置 \fBLOGNAME\fP，所以更加灵活。
+.SH "RETURN VALUE"
+\fBgetlogin\fP() 成功时返回指向用户名的指针，失败时返回 NULL，\fIerrno\fP 设置为指示错误。 \fBgetlogin_r\fP()
+成功时返回 0，失败时返回非零值。
+.SH ERRORS
+POSIX 指定:
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENXIO\fP
+调用进程没有控制终端。
+.TP 
+\fBERANGE\fP
+(getlogin_r) 用户名的长度，包括终止空字节 (\[aq]\e0\[aq])，大于 \fIbufsize\fP。
+.PP
+Linux/glibc 还有:
+.TP 
+\fBENOENT\fP
+utmp 文件中没有相应的条目。
+.TP 
+\fBENOMEM\fP
+内存不足，无法分配密码结构体。
+.TP 
+\fBENOTTY\fP
+标准输入没有提到终点。 (见错误。)
+.SH FILES
+.TP 
+\fI/etc/passwd\fP
+密码数据库文件
+.TP 
+\fI/var/run/utmp\fP
+(传统上是 \fI/etc/utmp\fP; 一些 libc 版本使用 \fI/var/adm/utmp\fP)
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetlogin\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:getlogin race:utent
+sig:ALRM timer locale
+T}
+T{
+\fBgetlogin_r\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:utent sig:ALRM timer
+locale
+T}
+T{
+\fBcuserid\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:cuserid/!string locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:utent\fP 中的 \fIutent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetutent\fP(3)、\fBgetutent\fP(3) 或 \fBendutent\fP(3) 中的任何一个，则可能发生数据竞争。
+\fBgetlogin\fP() 和 \fBgetlogin_r\fP() 调用那些函数，所以我们用 race:utent 来提醒用户。
+.SH STANDARDS
+\fBgetlogin\fP() 和 \fBgetlogin_r\fP(): POSIX.1\-2001、POSIX.1\-2008。
+.PP
+System V 有一个 \fBcuserid\fP() 函数，它使用真实用户 ID 而不是有效用户 ID。\fBcuserid\fP() 函数包含在 1988
+版的 POSIX 中，但从 1990 版中移除。 它出现在 SUSv2 中，但在 POSIX.1\-2001 中被删除。
+.PP
+OpenBSD 有 \fBgetlogin\fP() 和 \fBsetlogin\fP()，以及与会话关联的用户名，即使它没有控制终端。
+.SH BUGS
+不幸的是，愚弄 \fBgetlogin\fP() 通常很容易。 有时它根本不起作用，因为某些程序弄乱了 utmp 文件。 通常，它只提供登录名的前 8
+个字符。 当前登录我们程序的控制终端的用户不必是启动它的用户。 出于与安全相关的目的，避免使用 \fBgetlogin\fP()。
+.PP
+请注意，glibc 不遵循 POSIX 规范，而是使用 \fIstdin\fP 而不是 \fI/dev/tty\fP。 一个错误。 (其他最近的系统，如 SunOS
+5.8 和 HP\-UX 11.11 和 FreeBSD 4.8 也都在重定向 \fIstdin\fP 时返回登录名。)
+.PP
+没有人确切知道 \fBcuserid\fP() 的作用; 在便携式程序中避免使用它。 或者完全避免它: 使用 \fIgetpwuid(geteuid())\fP
+代替，如果那是您的意思。 或者完全避免它: 使用 \fIgetpwuid(geteuid())\fP 代替，如果那是您的意思。
+.SH "SEE ALSO"
+\fBlogname\fP(1), \fBgeteuid\fP(2), \fBgetuid\fP(2), \fButmp\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,353 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.JOURNAL\-FIELDS 7 "" "systemd 253" systemd.journal\-fields
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.journal\-fields \- 特殊期刊字段
+.SH DESCRIPTION
+.PP
+日志中的条目 (由 \fBsystemd\-journald.service\fP(8)) 编写) 在语法上类似于 UNIX
+进程环境块，但字段值可能包含二进制数据，并且允许使用非唯一字段名称 \&。主要地，字段值被格式化为 UTF\-8 文本字符串 \ (em
+二进制编码仅用于格式化为 UTF\-8 文本字符串毫无意义的地方
+\&。新字段可以由应用程序自由定义，但有少数字段有特殊含义，如下所示。通常，字段每个日志条目可能只出现一次，但也有特殊的例外:
+某些字段可能每个条目出现多次，在这种情况下，这在下面明确提到 \&。尽管日志子系统对哪些字段接受非唯一值没有限制，但强烈建议避免对下面列出的字段依赖此
+(除非另有列出，如前所述) 以避免与其他字段不必要的不兼容应用 \&。
+.SH "USER JOURNAL FIELDS"
+.PP
+用户字段是直接从客户端传递过来的字段，存储在 journal\& 中。
+.PP
+\fIMESSAGE=\fP
+.RS 4
+此条目的人类可读消息字符串 \&。这应该是向用户显示的主要文本 \&。它通常不被翻译 (但在某些情况下可能被翻译)，并且不应该被解析为元数据
+\&。为了在单个日志条目中编码多行，用换行符 (ASCII 代码 10) 分隔它们，但将它们编码为单个 \fIMESSAGE=\fP 字段
+\&。不要将此字段类型的多个值添加到同一条目 (另见上文)，因为消费应用程序通常不希望这样做，并且不太可能在这种情况下显示所有值 \&。
+.RE
+.PP
+\fIMESSAGE_ID=\fP
+.RS 4
+一个 128 位的消息标识符 ID，用于识别某些消息类型，如果需要的话 \&。这应该包含一个 128 位
+ID，格式为小写十六进制字符串，没有任何分隔破折号或类似的 \&。建议这是一个 UUID 兼容的 ID，但这不是强制的，并且格式不同
+\&。开发人员可以为此目的使用 \fBsystemd\-id128 new\fP\& 生成一个新 ID。
+.RE
+.PP
+\fIPRIORITY=\fP
+.RS 4
+0 ("emerg") 和 7 ("debug") 之间的优先级值，格式为十进制字符串 \&。该字段与 syslog\*(Aqs 优先级概念 \&.
+.RE
+.PP
+\fICODE_FILE=\fP, \fICODE_LINE=\fP, \fICODE_FUNC=\fP
+.RS 4
+生成此消息的代码位置 (如果已知) \&。包含源文件名、行号和函数名 \&。
+.RE
+.PP
+\fIERRNO=\fP
+.RS 4
+导致此条目的底层 Unix 错误号 (如果有) \&。包含格式化为十进制字符串 \& 的 \fBerrno\fP(3) 的数值。
+.RE
+.PP
+\fIINVOCATION_ID=\fP, \fIUSER_INVOCATION_ID=\fP
+.RS 4
+一个随机的、唯一的 128 位 ID，标识元 \& 的每个运行时周期。这与 \fI_SYSTEMD_INVOCATION_ID\fP
+的不同之处在于它仅用于来自 systemd 代码的消息 (例如 \&.g\&. 来自 system/user 管理器或来自执行 systemd
+相关设置的分叉进程的日志) \&。
+.RE
+.PP
+\fISYSLOG_FACILITY=\fP, \fISYSLOG_IDENTIFIER=\fP, \fISYSLOG_PID=\fP,
+\fISYSLOG_TIMESTAMP=\fP
+.RS 4
+系统日志兼容性字段包含设施 (格式为十进制字符串)、标识符字符串 (i\&.e\&."tag")、客户端 PID 和原始数据报中指定的时间戳
+\&。(注意标签通常来源于 glibc\*(Aqs \fIprogram_invocation_short_name\fP 变量，见
+\fBprogram_invocation_short_name\fP(3)\&.)
+.sp
+请注意，日志服务不会验证名称不带下划线前缀的任何结构化日志字段的值，这包括任何 syslog 相关字段，例如这些 \&。因此，提供设施、PID
+或日志级别的应用程序应该以正确的格式执行，i\&.e\&。作为格式化为十进制字符串 \& 的数字整数。
+.RE
+.PP
+\fISYSLOG_RAW=\fP
+.RS 4
+系统日志数据报中接收到的系统日志行的原始内容 \&。仅当 \fIMESSAGE=\fP 字段与原始有效，载荷，相比被修改或时间戳无法正确定位且不包含在
+\fISYSLOG_TIMESTAMP=\fP\& 中时，才会包含此字段。当消息包含前导或尾随空格 (尾随和前导空格被去除) 或包含嵌入的 \fBNUL\fP 字节
+(\fBNUL\fP 字节及其后的任何内容不包括在内) \& 时，将发生消息截断。因此，原始系统日志行要么存储为 \fISYSLOG_RAW=\fP，要么可以根据
+\fIMESSAGE=\fP\& 中存储的优先级和设施、时间戳、标识符和消息有效，载荷，重新创建。
+.RE
+.PP
+\fIDOCUMENTATION=\fP
+.RS 4
+包含有关日志消息主题的更多信息的文档 URL\&。\fBjournalctl\fP 等工具将在其输出中包含指向以这种方式指定的 URL 的超链接 \&。应该是
+"http://"、"https://"、"file:/"、"man:" 或 "info:" URL\&。
+.RE
+.PP
+\fITID=\fP
+.RS 4
+日志消息源自 \& 的数字线程 ID (TID)。
+.RE
+.PP
+\fIUNIT=\fP, \fIUSER_UNIT=\fP
+.RS 4
+一个元 \& 的名称。由系统和用户管理器在记录特定单位时使用 \&。
+.sp
+当 \fB\-\-unit=\fP\fIname\fP 或 \fB\-\-user\-unit=\fP\fIname\fP 与 \fBjournalctl\fP(1) 一起使用时，将生成包含
+"UNIT=\fIname\fP\&.service" 或 "USER_UNIT=\fIname\fP\&.service" 的匹配模式 \&。
+.RE
+.SH "TRUSTED JOURNAL FIELDS"
+.PP
+带下划线前缀的字段是可信字段，i\&.e\&。由日志隐式添加且不能由客户端代码更改的字段 \&。
+.PP
+\fI_PID=\fP, \fI_UID=\fP, \fI_GID=\fP
+.RS 4
+日记条目源自的进程的进程、用户和组 ID，格式为十进制字符串 \&。请注意，通过分叉进程的 "stdout" 或 "stderr"
+获取的条目将包含对父进程有效的凭据 (启动与 \fBsystemd\-journald\fP)\& 的连接。
+.RE
+.PP
+\fI_COMM=\fP, \fI_EXE=\fP, \fI_CMDLINE=\fP
+.RS 4
+日志条目源自 \& 的进程的名称、可执行路径和命令行。
+.RE
+.PP
+\fI_CAP_EFFECTIVE=\fP
+.RS 4
+日记帐分录源自 \& 的进程的有效 \fBcapabilities\fP(7)。
+.RE
+.PP
+\fI_AUDIT_SESSION=\fP, \fI_AUDIT_LOGINUID=\fP
+.RS 4
+日志条目源自的进程的会话和登录 UID，由内核审计子系统维护 \&。
+.RE
+.PP
+\fI_SYSTEMD_CGROUP=\fP, \fI_SYSTEMD_SLICE=\fP, \fI_SYSTEMD_UNIT=\fP,
+\fI_SYSTEMD_USER_UNIT=\fP, \fI_SYSTEMD_USER_SLICE=\fP, \fI_SYSTEMD_SESSION=\fP,
+\fI_SYSTEMD_OWNER_UID=\fP
+.RS 4
+systemd 层级中的控制组路径、systemd 分片元名、systemd 元名、systemd 用户管理器中的元名 (如果有)、systemd 会话
+ID (如果有)、systemd 用户的 owner UID 日记条目源自 \& 的进程的元或 systemd 会话 (如果有)。
+.RE
+.PP
+\fI_SELINUX_CONTEXT=\fP
+.RS 4
+日志条目源自 \& 的进程的 SELinux 安全上下文 (label)。
+.RE
+.PP
+\fI_SOURCE_REALTIME_TIMESTAMP=\fP
+.RS 4
+消息的最早可信时间戳 (如果已知) 不同于日志的接收时间 \&。这是自纪元 UTC 以来的微秒时间，格式为十进制字符串 \&。
+.RE
+.PP
+\fI_BOOT_ID=\fP
+.RS 4
+生成消息的引导的内核引导 ID，格式为 128 位十六进制字符串 \&。
+.RE
+.PP
+\fI_MACHINE_ID=\fP
+.RS 4
+原始主机的机器 ID，在 \fBmachine\-id\fP(5)\& 中可用。
+.RE
+.PP
+\fI_SYSTEMD_INVOCATION_ID=\fP
+.RS 4
+生成消息的单元的运行时周期的调用 ID，可用于 \fI$INVOCATION_ID\fP 中单元的进程 (参见 \fBsystemd.exec\fP(5))\&.
+.RE
+.PP
+\fI_HOSTNAME=\fP
+.RS 4
+始发主机的名称 \&。
+.RE
+.PP
+\fI_TRANSPORT=\fP
+.RS 4
+日志服务如何接收条目 \&。有效的传输是:
+.PP
+\fBaudit\fP
+.RS 4
+对于那些从内核审计子系统读取的
+.RE
+.PP
+\fBdriver\fP
+.RS 4
+对于内部生成的消息
+.RE
+.PP
+\fBsyslog\fP
+.RS 4
+对于那些通过带有 syslog 协议的本地 syslog 套接字接收的
+.RE
+.PP
+\fBjournal\fP
+.RS 4
+对于通过原生日志协议接收的那些
+.RE
+.PP
+\fBstdout\fP
+.RS 4
+对于那些从服务读取的 \*(Aqs 标准输出或错误输出
+.RE
+.PP
+\fBkernel\fP
+.RS 4
+对于那些从内核中读取的
+.RE
+.RE
+.PP
+\fI_STREAM_ID=\fP
+.RS 4
+仅适用于 "_TRANSPORT=stdout" 记录: 指定流连接首次创建时分配的随机 128 位 ID\&。此 ID
+可用于从日志记录中重建单个日志流: 所有带有相同流 ID 的日志记录都来自相同的流 \&。
+.RE
+.PP
+\fI_LINE_BREAK=\fP
+.RS 4
+仅适用于 "_TRANSPORT=stdout" 记录: 表示标准 output/error 流中的日志消息未以普通换行符
+(`\en`、i\&.e\&. ASCII 10) \& 终止。具体来说，当设置此字段是 \fBnul\fP (如果行以 \fBNUL\fP
+字节终止)、\fBline\-max\fP (如果达到最大日志行长度，如在 \fBjournald.conf\fP(5)) 中配置
+\fILineMax=\fP、\fBeof\fP (如果这是最后一个日志) 流的记录和流结束时没有最后的换行符) 或 \fBpid\-change\fP
+(如果生成日志输出的进程在一行的中间发生更改) \&。请注意，当正常的换行符被替换时，不会生成此记录用于标记日志行结束 \&。
+.RE
+.PP
+\fI_NAMESPACE=\fP
+.RS 4
+如果此文件由管理非默认日志命名空间的 \fBsystemd\-journald\fP 实例写入，则此字段包含命名空间标识符 \&。有关日志名称空间 \&
+的详细信息，请参见 \fBsystemd\-journald.service\fP(8)。
+.RE
+.PP
+\fI_RUNTIME_SCOPE=\fP
+.RS 4
+一个字符串字段，指定在其中记录消息的运行时作用域 \&。如果是 "initrd"，则当系统在 initrd\& 中运行时处理日志消息。如果为
+"system"，则日志消息是在系统将执行切换到主机根文件系统 \& 之后生成的。
+.RE
+.SH "KERNEL JOURNAL FIELDS"
+.PP
+内核字段是源自内核并存储在日志中的消息使用的字段。
+.PP
+\fI_KERNEL_DEVICE=\fP
+.RS 4
+内核设备名 \&。如果该条目与块设备关联，则包含设备节点的主要和次要编号，以 ":" 分隔并以 `b`\& 为前缀。与字符设备类似，但以 `c`\&
+为前缀。对于网络设备，这是以 `n`\& 为前缀的接口索引。对于所有其他设备，这是以 "+" 为前缀的子系统名称，后面是 ":"，然后是内核设备名称
+\&。
+.RE
+.PP
+\fI_KERNEL_SUBSYSTEM=\fP
+.RS 4
+内核子系统名称 \&。
+.RE
+.PP
+\fI_UDEV_SYSNAME=\fP
+.RS 4
+在 /sys/\& 下的设备树中显示的内核设备名称。
+.RE
+.PP
+\fI_UDEV_DEVNODE=\fP
+.RS 4
+/dev/\& 中此设备的设备节点路径。
+.RE
+.PP
+\fI_UDEV_DEVLINK=\fP
+.RS 4
+指向 /dev/\& 中设备节点的附加符号链接名称。每个条目经常多次设置此字段 \&。
+.RE
+.SH "FIELDS TO LOG ON BEHALF OF A DIFFERENT PROGRAM"
+.PP
+程序使用此部分中的字段来指定它们正在代表另一个程序或元 \& 登录。
+.PP
+\fBsystemd\-coredump\fP 核心转储内核助手使用的字段:
+.PP
+\fICOREDUMP_UNIT=\fP, \fICOREDUMP_USER_UNIT=\fP
+.RS 4
+用于注解包含来自系统和会话单元的核心转储的消息 \&。请参见 \fBcoredumpctl\fP(1)\&。
+.RE
+.PP
+特权程序 (当前 UID 0) 可以将 \fIOBJECT_PID=\fP 附加到消息 \&。这将指示 \fBsystemd\-journald\fP
+代表调用者附加其他字段:
+.PP
+\fIOBJECT_PID=\fP\fIPID\fP
+.RS 4
+此消息所属的程序的 PID\&。
+.RE
+.PP
+\fIOBJECT_UID=\fP, \fIOBJECT_GID=\fP, \fIOBJECT_COMM=\fP, \fIOBJECT_EXE=\fP,
+\fIOBJECT_CMDLINE=\fP, \fIOBJECT_AUDIT_SESSION=\fP, \fIOBJECT_AUDIT_LOGINUID=\fP,
+\fIOBJECT_SYSTEMD_CGROUP=\fP, \fIOBJECT_SYSTEMD_SESSION=\fP,
+\fIOBJECT_SYSTEMD_OWNER_UID=\fP, \fIOBJECT_SYSTEMD_UNIT=\fP,
+\fIOBJECT_SYSTEMD_USER_UNIT=\fP
+.RS 4
+这些是由 \fBsystemd\-journald\fP\& 自动添加的附加字段。它们的含义与上述
+\fI_UID=\fP、\fI_GID=\fP、\fI_COMM=\fP、\fI_EXE=\fP、\fI_CMDLINE=\fP、\fI_AUDIT_SESSION=\fP、\fI_AUDIT_LOGINUID=\fP、\fI_SYSTEMD_CGROUP=\fP、\fI_SYSTEMD_SESSION=\fP、\fI_SYSTEMD_UNIT=\fP、\fI_SYSTEMD_USER_UNIT=\fP、\fI_SYSTEMD_OWNER_UID=\fP
+相同，只是描述的是 \fIPID\fP 标识的进程，而不是记录日志的进程消息 \&。
+.RE
+.SH "ADDRESS FIELDS"
+.PP
+在序列化为 \m[blue]\fBJournal Export Format\fP\m[]\&\s-2\u[1]\d\s+2 或
+\m[blue]\fBJournal JSON Format\fP\m[]\&\s-2\u[2]\d\s+2
+等外部格式的过程中，日记条目的地址被序列化为以双下划线 \& 为前缀的字段。请注意，当存储在日志中时，这些不是适当的字段，而是用于寻址条目的元数据
+\&。它们不能通过 \fBsd_journal_send\fP(3)\& 等调用作为结构化日志条目的一部分写入。它们也不能用作
+\fBsd_journal_add_match\fP(3)\& 的匹配项。
+.PP
+\fI__CURSOR=\fP
+.RS 4
+条目 \& 的游标。游标是一个不透明的文本字符串，它唯一地描述了条目在日志中的位置，并且可以跨机器、平台和日志文件移植 \&。
+.RE
+.PP
+\fI__REALTIME_TIMESTAMP=\fP
+.RS 4
+日志收到条目时的挂钟时间 (\fBCLOCK_REALTIME\fP)，自纪元 UTC 以来以微秒为单位，格式为十进制字符串 \&。这与
+"_SOURCE_REALTIME_TIMESTAMP=" 具有不同的属性，因为它通常稍晚但更可能是单调的 \&。
+.RE
+.PP
+\fI__MONOTONIC_TIMESTAMP=\fP
+.RS 4
+日志接收条目时的单调时间 (\fBCLOCK_MONOTONIC\fP)，以微秒为单位，格式为十进制字符串 \&。要用作条目地址，应将其与
+`_BOOT_ID="\& 中的引导 ID 结合使用。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-journald.service\fP(8), \fBjournalctl\fP(1),
+\fBjournald.conf\fP(5), \fBsd\-journal\fP(3), \fBcoredumpctl\fP(1),
+\fBsystemd.directives\fP(7)
+.SH NOTES
+.IP " 1." 4
+期刊导出格式
+.RS 4
+\%https://systemd.io/JOURNAL_EXPORT_FORMATS#journal\-export\-format
+.RE
+.IP " 2." 4
+日志 JSON 格式
+.RS 4
+\%https://systemd.io/JOURNAL_EXPORT_FORMATS#journal\-json\-format
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

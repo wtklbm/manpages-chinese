@@ -1,0 +1,273 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" starting from a version by Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 2008-10-10, mtk: describe eventfd2(), and EFD_NONBLOCK and EFD_CLOEXEC
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH eventfd 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+eventfd \- 为事件通知创建一个文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/eventfd.h>\fP
+.PP
+\fBint eventfd(unsigned int \fP\fIinitval\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBeventfd\fP() 创建了一个 "eventfd object"，它可以被用户空间应用程序用作事件 wait/notify
+机制，并被内核用来通知用户空间应用程序事件。 该对象包含一个由内核维护的无符号 64 位整数 (\fIuint64_t\fP) 计数器。 该计数器用参数
+\fIinitval\fP 中指定的值初始化。
+.PP
+作为它的返回值，\fBeventfd\fP() 返回一个新的文件描述符，可用于引用 eventfd 对象。
+.PP
+以下值可能在 \fIflags\fP 中按位或运算以改变 \fBeventfd\fP(): 的行为
+.TP 
+\fBEFD_CLOEXEC\fP (since Linux 2.6.27)
+在新文件描述符上设置 close\-on\-exec (\fBFD_CLOEXEC\fP) 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的描述，了解这可能有用的原因。
+.TP 
+\fBEFD_NONBLOCK\fP (since Linux 2.6.27)
+在打开的文件描述中设置 \fBO_NONBLOCK\fP 文件状态标志 (请参见新文件描述符引用的 \fBopen\fP(2))。 使用此标志可节省对
+\fBfcntl\fP(2) 的额外调用以实现相同的结果。
+.TP 
+\fBEFD_SEMAPHORE\fP (since Linux 2.6.30)
+为从新文件描述符读取提供类似信号量的语义。 见下文。
+.PP
+直到 Linux 2.6.26，\fIflags\fP 参数未使用，必须指定为零。
+.PP
+可以对 \fBeventfd\fP(): 返回的文件描述符进行如下操作
+.TP 
+\fBread\fP(2)
+每个成功的 \fBread\fP(2) 返回一个 8 字节整数。 如果提供的缓冲区大小小于 8 字节，则 \fBread\fP(2) 会失败并显示错误
+\fBEINVAL\fP。
+.IP
+\fBread\fP(2) 返回的值采用主机字节顺序 \[em]，即主机上整数的原生字节顺序。
+.IP
+\fBread\fP(2) 的语义取决于 eventfd 计数器当前是否具有非零值以及在创建 eventfd 文件描述符时是否指定了
+\fBEFD_SEMAPHORE\fP 标志:
+.RS
+.IP \[bu] 3
+如果未指定 \fBEFD_SEMAPHORE\fP 且 eventfd 计数器具有非零值，则 \fBread\fP(2) 返回包含该值的 8
+个字节，并且计数器的值重置为零。
+.IP \[bu]
+如果指定了 \fBEFD_SEMAPHORE\fP 并且 eventfd 计数器具有非零值，则 \fBread\fP(2) 返回包含值 1 的 8
+个字节，并且计数器的值递减 1.
+.IP \[bu]
+如果调用 \fBread\fP(2) 时 eventfd 计数器为零，则调用要么阻塞直到计数器变为非零 (此时，\fBread\fP(2)
+如上所述进行)，要么失败并返回错误 \fBEAGAIN\fP (如果文件描述符已生成) 非阻塞。
+.RE
+.TP 
+\fBwrite\fP(2)
+\fBwrite\fP(2) 调用将其缓冲区中提供的 8 字节整数值添加到计数器中。 可以存储在计数器中的最大值是最大的无符号 64 位值减 1 (即
+0xfffffffffffffffe)。 如果添加会导致计数器的值超过最大值，则 \fBwrite\fP(2) 要么阻塞直到对文件描述符执行
+\fBread\fP(2)，要么失败并返回错误 \fBEAGAIN\fP (如果文件描述符已设为非阻塞)。
+.IP
+如果提供的缓冲区的大小小于 8 字节，或者如果尝试写入值 0xffffffffffffffff，则 \fBwrite\fP(2) 会失败并出现错误
+\fBEINVAL\fP。
+.TP 
+\fBpoll\fP(2), \fBselect\fP(2) (and similar)
+返回的文件描述符支持 \fBpoll\fP(2) (也类似 \fBepoll\fP(7)) 和 \fBselect\fP(2)，如下:
+.RS
+.IP \[bu] 3
+如果计数器的值大于 0.
+.IP \[bu]
+文件描述符是可写的 (\fBselect\fP(2) \fIwritefds\fP 参数; \fBpoll\fP(2) \fBPOLLOUT\fP 标志) 如果可以写入至少
+"1" 的值而不阻塞。
+.IP \[bu]
+如果检测到计数器值溢出，则 \fBselect\fP(2) 指示文件描述符可读可写，\fBpoll\fP(2) 返回 \fBPOLLERR\fP 事件。
+如上所述，\fBwrite\fP(2) 永远不会溢出计数器。 但是，如果 KAIO 子系统执行了 2\[ha] 64 eventfd "signal
+posts"，则可能会发生溢出 (理论上可能，但实际上不太可能)。 如果发生溢出，则 \fBread\fP(2) 将返回最大 \fIuint64_t\fP 值 (即
+0xffffffffffffffff)。
+.RE
+.IP
+eventfd 文件描述符还支持其他文件描述符多路复用 API: \fBpselect\fP(2) 和 \fBppoll\fP(2)。
+.TP 
+\fBclose\fP(2)
+当不再需要文件描述符时，应该将其关闭。 当与同一 eventfd 对象关联的所有文件描述符都已关闭时，内核将释放该对象的资源。
+.PP
+\fBeventfd\fP() 创建的文件描述符的副本由 \fBfork\fP(2) 生成的子进程继承。 重复的文件描述符与同一个 eventfd 对象相关联。 由
+\fBeventfd\fP() 创建的文件描述符在 \fBexecve\fP(2) 中保留，除非已设置 close\-on\-exec 标志。
+.SH "RETURN VALUE"
+成功时，\fBeventfd\fP() 返回一个新的 eventfd 文件描述符。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了一个不受支持的值。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENODEV\fP
+.\" Note from Davide:
+.\" The ENODEV error is basically never going to happen if
+.\" the kernel boots correctly. That error happen only if during
+.\" the kernel initialization, some error occur in the anonymous
+.\" inode source initialization.
+无法安装 (internal) 匿名 inode 设备。
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建新的 eventfd 文件描述符。
+.SH VERSIONS
+.\" eventfd() is in glibc 2.7, but reportedly does not build
+\fBeventfd\fP() 从 Linux 2.6.22 开始可用。 从 glibc 2.8 开始提供工作支持。 \fBeventfd2\fP() 系统调用
+(见注释) 自 Linux 2.6.27 起可用。 从 glibc 2.9 开始，如果内核支持，\fBeventfd\fP() 包装器将使用
+\fBeventfd2\fP() 系统调用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBeventfd\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBeventfd\fP() 和 \fBeventfd2\fP() 是特定于 Linux 的。
+.SH NOTES
+应用程序可以使用 eventfd 文件描述符而不是管道 (请参见 \fBpipe\fP(2))，在所有情况下，管道仅用于发出事件信号。 eventfd
+文件描述符的内核开销比管道低得多，并且只需要一个文件描述符 (管道需要两个)。
+.PP
+.\" or eventually syslets/threadlets
+当在内核中使用时，eventfd 文件描述符可以提供从内核到用户空间的桥梁，例如，允许像 KAIO (内核 AIO)
+这样的功能向文件描述符发出某些操作已完成的信号。
+.PP
+关于 eventfd 文件描述符的一个关键点是它可以像使用 \fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7)
+的任何其他文件描述符一样被监视。 这意味着应用程序可以同时监视 "traditional" 文件的准备情况以及支持 eventfd
+接口的其他内核机制的准备情况。 (如果没有 \fBeventfd\fP() 接口，这些机制无法通过 \fBselect\fP(2)、\fBpoll\fP(2) 或
+\fBepoll\fP(7).) 进行多路复用
+.PP
+.\"
+可以通过进程的 \fI/proc/\fPpid\fI/fdinfo\fP 目录中相应文件描述符的条目查看 eventfd 计数器的当前值。 有关详细信息，请参见
+\fBproc\fP(5)。
+.SS "C library/kernel differences"
+有两个底层 Linux 系统调用: \fBeventfd\fP() 和更新的 \fBeventfd2\fP()。 以前的系统调用没有实现 \fIflags\fP 参数。
+后一个系统调用实现上述 \fIflags\fP 值。 glibc 包装器函数将在可用的地方使用 \fBeventfd2\fP()。
+.SS "Additional glibc features"
+GNU C 库定义了一个额外的类型，以及两个试图抽象一些读写 eventfd 文件描述符的细节的函数:
+.PP
+.in +4n
+.EX
+typedef uint64_t eventfd_t;
+
+int eventfd_read(int fd, eventfd_t *value);
+int eventfd_write(int fd, eventfd_t value);
+.EE
+.in
+.PP
+函数对 eventfd 文件描述符执行读写操作，如果传输的字节数正确则返回 0，否则返回 \-1。
+.SH EXAMPLES
+下面的程序创建一个 eventfd 文件描述符，然后 fork 以创建一个子进程。 当父进程短暂睡眠时，子进程将程序命令行中提供的每个整数写入
+eventfd 文件描述符。 当父母完成休眠后，它从 eventfd 文件描述符中读取。
+.PP
+以下 shell 会话显示了该程序的示例运行:
+.PP
+.in +4n
+.EX
+$\fB ./a.out 1 2 4 7 14\fP
+子节点写 1 到 efd
+子节点写 2 到 efd
+子节点写 4 到 efd
+子节点写 7 到 efd
+子节点写 14 到 efd
+子完成写循环
+即将阅读的家长
+父级从 efd 读取 28 (0x1c)
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (eventfd.c)
+\&
+.EX
+#include <err.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int       efd;
+    uint64_t  u;
+    ssize_t   s;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <num>...\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    efd = eventfd(0, 0);
+    if (efd == \-1)
+        err(EXIT_FAILURE, "eventfd");
+
+    switch (fork()) {
+    case 0:
+        for (size_t j = 1;  j < argc; j++) {
+            printf("Child writing %s to efd\en", argv[j]);
+            u = strtoull(argv[j], NULL, 0);
+                    /* strtoull() allows various bases */
+            s = write(efd, &u, sizeof(uint64_t));
+            if (s != sizeof(uint64_t))
+                err(EXIT_FAILURE, "write");
+        }
+        printf("Child completed write loop\en");
+
+        exit(EXIT_SUCCESS);
+
+    default:
+        sleep(2);
+
+        printf("Parent about to read\en");
+        s = read(efd, &u, sizeof(uint64_t));
+        if (s != sizeof(uint64_t))
+            err(EXIT_FAILURE, "read");
+        printf("Parent read %"PRIu64" (%#"PRIx64") from efd\en", u, u);
+        exit(EXIT_SUCCESS);
+
+    case \-1:
+        err(EXIT_FAILURE, "fork");
+    }
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfutex\fP(2), \fBpipe\fP(2), \fBpoll\fP(2), \fBread\fP(2), \fBselect\fP(2),
+\fBsignalfd\fP(2), \fBtimerfd_create\fP(2), \fBwrite\fP(2), \fBepoll\fP(7),
+\fBsem_overview\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

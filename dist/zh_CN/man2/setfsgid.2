@@ -1,0 +1,77 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1995, Thomas K. Dyas <tdyas@eden.rutgers.edu>
+.\" and Copyright (C) 2019, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Created   1995-08-06 Thomas K. Dyas <tdyas@eden.rutgers.edu>
+.\" Modified  2000-07-01 aeb
+.\" Modified  2002-07-23 aeb
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setfsgid 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+setfsgid \- 设置用于文件系统检查的组标识
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/fsuid.h>\fP
+.PP
+\fBint setfsgid(gid_t \fP\fIfsgid\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+在 Linux 上，进程同时具有文件系统组 ID 和有效组 ID。(Linux\-specific) 文件系统组 ID
+用于访问文件系统对象时的权限检查，而有效组 ID 用于一些其他类型的权限检查 (参见 \fBcredentials\fP(7)).
+.PP
+通常，进程的文件系统组 ID 的值与其有效组 ID 的值相同。之所以如此，是因为每当更改进程的有效组 ID 时，内核也会将文件系统组 ID
+更改为与有效组 ID 的新值相同。通过使用 \fBsetfsgid\fP() 将其文件系统组 ID 更改为 \fIfsgid\fP
+中给定的值，进程可以导致其文件系统组 ID 的值与其有效组 ID 不同。
+.PP
+仅当调用者是超级用户或 \fIfsgid\fP 匹配调用者的真实组 ID、有效组 ID、保存的组组 ID 或当前文件系统用户 ID
+时，\fBsetfsgid\fP() 才会成功。
+.SH "RETURN VALUE"
+无论成功还是失败，这个调用都会返回调用者之前的文件系统组 ID。
+.SH VERSIONS
+.\" This system call is present since Linux 1.1.44
+.\" and in libc since libc 4.7.6.
+本系统调用从 Linux 1.2 起就存在。
+.SH STANDARDS
+\fBsetfsgid\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+文件系统组 ID 概念和 \fBsetfsgid\fP() 系统调用是出于历史原因而发明的，它们不再适用于现代 Linux 内核。 请参见
+\fBsetfsuid\fP(2) 了解为什么现在不需要同时使用 \fBsetfsuid\fP(2) 和 \fBsetfsgid\fP() 的讨论。
+.PP
+原来的 Linux \fBsetfsgid\fP() 系统调用只支持 16 位组 ID。 随后 Linux 2.4 增加了 \fBsetfsgid32\fP()
+支持 32 位 ID。 glibc \fBsetfsgid\fP() 包装器函数透明地处理内核版本之间的差异。
+.SS "C library/kernel differences"
+在 glibc 2.15 及更早版本中，当此系统调用的包装器确定参数不能在没有整数截断的情况下传递给内核 (因为内核较旧且不支持 32 位组
+ID)，它将返回 \-1 和将 \fIerrno\fP 设置为 \fBEINVAL\fP 而无需尝试系统调用。
+.SH BUGS
+不会向调用者返回任何类型的错误指示，并且成功和不成功的调用都返回相同的值这一事实使得无法直接确定调用是成功还是失败。
+相反，调用者必须求助于查看来自进一步调用 (例如 \fIsetfsgid(\-1)\fP (将始终失败) ) 的返回值，以确定之前对 \fBsetfsgid\fP()
+的调用是否更改了文件系统组 ID。最起码调用失败时应该返回 \fBEPERM\fP (因为调用者没有 \fBCAP_SETGID\fP 能力)。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBsetfsuid\fP(2), \fBcapabilities\fP(7), \fBcredentials\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

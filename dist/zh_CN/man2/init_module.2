@@ -1,0 +1,211 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2012 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" A few fragments remain from a version
+.\" Copyright (C) 1996 Free Software Foundation, Inc.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH init_module 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+init_module, finit_module \- 加载内核模块
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/module.h>\fP    /* Definition of \fBMODULE_*\fP constants */
+\fB#include <sys/syscall.h>\fP     /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_init_module, void \fP\fImodule_image\fP\fB[.\fP\fIlen\fP\fB], unsigned long \fP\fIlen\fP\fB,\fP
+\fB            const char *\fP\fIparam_values\fP\fB);\fP
+\fBint syscall(SYS_finit_module, int \fP\fIfd\fP\fB,\fP
+\fB            const char *\fP\fIparam_values\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBinit_module\fP() 将 ELF 映像加载到内核空间，执行任何必要的符号重定位，将模块参数初始化为调用者提供的值，然后运行模块的
+\fIinit\fP 函数。 此系统调用需要权限。
+.PP
+\fImodule_image\fP 参数指向包含要加载的二进制图像的缓冲区; \fIlen\fP 指定该缓冲区的大小。 模块映像应该是为正在运行的内核构建的有效
+ELF 映像。
+.PP
+\fIparam_values\fP 参数是一个字符串，包含以空格分隔的模块参数值规范 (在模块内部使用 \fBmodule_param\fP() 和
+\fBmodule_param_array\fP()) 定义。 内核解析这个字符串并初始化指定的参数。 每个参数规范都具有以下形式:
+.PP
+\fIname\fP[\fB=\fP\fIvalue\fP[\fB,\fP\fIvalue\fP...]]
+.PP
+参数 \fIname\fP 是使用 \fImodule_param\fP() 在模块中定义的参数之一 (请参见 Linux 内核源文件
+\fIinclude/linux/moduleparam.h\fP).  对于 \fIbool\fP 和 \fIinvbool\fP 参数，参数 \fIvalue\fP
+是可选的。 数组参数的值指定为逗号分隔的列表。
+.SS finit_module()
+.\" commit 34e1169d996ab148490c01b65b4ee371cf8ffba2
+.\" https://lwn.net/Articles/519010/
+\fBfinit_module\fP() 系统调用和 \fBinit_module\fP() 一样，只是从文件描述符 \fIfd\fP 中读取要加载的模块。
+当可以从文件系统中的位置确定内核模块的真实性时，它很有用; 在可能的情况下，可以避免使用加密签名模块来确定模块真实性的开销。
+\fIparam_values\fP 参数与 \fBinit_module\fP() 相同。
+.PP
+.\" commit 2f3238aebedb243804f58d62d57244edec4149b2
+\fIflags\fP 参数修改了 \fBfinit_module\fP() 的操作。 它是通过对以下标志中的零个或多个进行 `或` 运算而创建的位掩码值:
+.TP 
+\fBMODULE_INIT_IGNORE_MODVERSIONS\fP
+忽略符号版本哈希。
+.TP 
+\fBMODULE_INIT_IGNORE_VERMAGIC\fP
+忽略内核版本魔法。
+.PP
+.\" http://www.tldp.org/HOWTO/Module-HOWTO/basekerncompat.html
+.\" is dated, but informative
+模块中内置了一些安全检查，以确保它与加载它的内核相匹配。 这些检查会在构建模块时记录下来，并在加载模块时进行验证。 首先，模块记录一个
+"vermagic" 字符串，其中包含内核版本号和显着，特性 (例如 CPU 类型)。 其次，如果模块是在启用
+\fBCONFIG_MODVERSIONS\fP 配置选项的情况下构建的，则会为模块使用的每个符号记录一个版本哈希。
+该散列基于符号命名的函数的参数类型和返回值。 在这种情况下，"vermagic" 字符串中的内核版本号将被忽略，因为假定符号版本哈希值足够可靠。
+.PP
+使用 \fBMODULE_INIT_IGNORE_VERMAGIC\fP 标志表示要忽略 "vermagic" 字符串，使用
+\fBMODULE_INIT_IGNORE_MODVERSIONS\fP 标志表示要忽略符号版本散列。 如果内核被构建为允许强制加载 (即，配置了
+\fBCONFIG_MODULE_FORCE_LOAD\fP)，则加载将继续，否则它会失败，并显示错误 \fBENOEXEC\fP，这是对格式错误的模块的预期)。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADMSG\fP (since Linux 3.7)
+模块签名格式错误。
+.TP 
+\fBEBUSY\fP
+尝试通过此模块解析符号引用时超时。
+.TP 
+\fBEFAULT\fP
+地址参数指的是进程可访问地址空间之外的位置。
+.TP 
+\fBENOKEY\fP (since Linux 3.7)
+.\" commit 48ba2462ace6072741fd8d0058207d630ce93bf1
+.\" commit 1d0059f3a468825b5fc5405c636a2f6e02707ffa
+.\" commit 106a4ee258d14818467829bf0e12aeae14c16cd7
+模块签名无效或内核没有此模块的密钥。 仅当内核配置为 \fBCONFIG_MODULE_SIG_FORCE\fP 时才会返回此错误;
+如果内核未配置此选项，则无效或未签名的模块只会污染内核。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBEPERM\fP
+调用者没有特权 (没有 \fBCAP_SYS_MODULE\fP 能力)，或者模块加载被禁用 (参见 \fBproc\fP(5)) 中的
+\fI/proc/sys/kernel/modules_disabled\fP。
+.PP
+\fBinit_module\fP(): 可能额外出现以下错误
+.TP 
+\fBEEXIST\fP
+已加载具有此名称的模块。
+.TP 
+\fBEINVAL\fP
+.\" .TP
+.\" .BR EINVAL " (Linux 2.4 and earlier)"
+.\" Some
+.\" .I image
+.\" slot is filled in incorrectly,
+.\" .I image\->name
+.\" does not correspond to the original module name, some
+.\" .I image\->deps
+.\" entry does not correspond to a loaded module,
+.\" or some other similar inconsistency.
+\fIparam_values\fP 无效，或 \fImodule_image\fP 中的部分 ELF 映像包含不一致。
+.TP 
+\fBENOEXEC\fP
+\fImodule_image\fP 中提供的二进制映像不是 ELF 映像，或者是无效的 ELF 映像或用于不同的体系结构。
+.PP
+\fBfinit_module\fP(): 可能额外出现以下错误
+.TP 
+\fBEBADF\fP
+\fIfd\fP 引用的文件未打开以供读取。
+.TP 
+\fBEFBIG\fP
+\fIfd\fP 引用的文件太大。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 无效。
+.TP 
+\fBENOEXEC\fP
+\fIfd\fP 不引用打开的文件。
+.TP 
+\fBETXTBSY\fP (since Linux 4.7)
+.\" commit 39d637af5aa7577f655c58b9e55587566c63a0af
+\fIfd\fP 引用的文件以读写方式打开。
+.PP
+除了上述错误外，如果执行模块的 \fIinit\fP 函数并返回错误，则 \fBinit_module\fP() 或 \fBfinit_module\fP()
+失败，\fIerrno\fP 设置为 \fIinit\fP 函数返回的值。
+.SH VERSIONS
+\fBfinit_module\fP() 从 Linux 3.8 开始可用。
+.SH STANDARDS
+\fBinit_module\fP() 和 \fBfinit_module\fP() 是特定于 Linux 的。
+.SH NOTES
+glibc 不支持 \fBinit_module\fP() 系统调用。 glibc 头文件中没有提供声明，但是，由于历史的怪癖，glibc 2.23 之前的
+glibc 版本确实为该系统导出了 ABI 调用。 因此，为了使用这个系统调用，(在 glibc 2.23 之前) 在您的代码中手动声明接口就足够了;
+或者，您可以使用 \fBsyscall\fP(2) 调用系统调用。
+.PP
+有关当前加载模块的信息可以在 \fI/proc/modules\fP 和 \fI/sys/module\fP 下每个模块子目录下的文件树中找到。
+.PP
+有关一些有用的背景信息，请参见 Linux 内核源文件 \fIinclude/linux/module.h\fP。
+.SS "Linux 2.4 and earlier"
+在 Linux 2.4 及更早版本中，\fBinit_module\fP() 系统调用有很大不同:
+.PP
+\fB#include <linux/module.h>\fP
+.PP
+\fB int init_module(const char *\fP\fIname\fP\fB, struct module *\fP\fIimage\fP\fB);\fP
+.PP
+(用户空间应用程序可以通过调用 \fBquery_module\fP() 来检测哪个版本的 \fBinit_module\fP() 可用; 后者调用失败并在
+Linux 2.6 及更高版本上出现错误 \fBENOSYS\fP。)
+.PP
+旧版本的系统调用将 \fIimage\fP 指向的重定位模块镜像加载到内核空间，并运行模块的 \fIinit\fP 函数。 调用者负责提供重定位的图像 (因为
+Linux 2.6，\fBinit_module\fP() 系统调用做重定位)。
+.PP
+模块图像以模块结构体开头，然后是适当的代码和数据。 从 Linux 2.2 开始，模块结构体定义如下:
+.PP
+.in +4n
+.EX
+struct module {
+    unsigned long         size_of_struct;
+    struct module        *next;
+    const char           *name;
+    unsigned long         size;
+    long                  usecount;
+    unsigned long         flags;
+    unsigned int          nsyms;
+    unsigned int          ndeps;
+    struct module_symbol *syms;
+    struct module_ref    *deps;
+    struct module_ref    *refs;
+    int                 (*init)(void);
+    void                (*cleanup)(void);
+    const struct exception_table_entry *ex_table_start;
+    const struct exception_table_entry *ex_table_end;
+#ifdef __alpha__
+    unsigned long gp;
+#endif
+};
+.EE
+.in
+.PP
+除 \fInext\fP 和 \fIrefs\fP 外，所有指针字段都应指向模块主体内，并根据内核空间的需要进行初始化，即与模块的其余部分一起重新定位。
+.SH "SEE ALSO"
+\fBcreate_module\fP(2), \fBdelete_module\fP(2), \fBquery_module\fP(2), \fBlsmod\fP(8),
+\fBmodprobe\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

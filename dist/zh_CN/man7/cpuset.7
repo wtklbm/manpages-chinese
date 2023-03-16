@@ -1,0 +1,746 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2008 Silicon Graphics, Inc.
+.\"
+.\" Author: Paul Jackson (http://oss.sgi.com/projects/cpusets)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-only
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH cpuset 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+cpuset \- 将进程限制在处理器和内存节点子集
+.SH DESCRIPTION
+cpuset 文件系统是内核 cpuset 机制的伪文件系统接口，用于控制进程的处理器放置和内存放置。 它通常安装在 \fI/dev/cpuset\fP。
+.PP
+在内核编译时内置对 cpuset 的支持的系统上，所有进程都附加到一个 cpuset，并且 cpuset 始终存在。 如果系统支持
+cpuset，那么它在文件 \fI/proc/filesystems\fP 中会有条目 \fBnodev cpuset\fP。 通过挂载 cpuset 文件系统
+(参见下面的 \fBEXAMPLES\fP 部分)，管理员可以在系统上配置 cpuset 以控制进程在该系统上的处理器和内存布局。 默认情况下，如果系统上的
+cpuset 配置没有被修改，或者 cpuset 文件系统甚至没有挂载，那么 cpuset 机制虽然存在，但对系统的行为没有影响。
+.PP
+cpuset 定义了 CPU 和内存节点的列表。
+.PP
+系统的 CPU 包括进程可以在其上执行的所有逻辑处理单元，包括 (如果存在) 封装内的多个处理器内核和处理器内核内的 Hyper\-Threads。
+内存节点包括所有不同的主内存库; 小型和 SMP 系统通常只有一个内存节点包含系统的所有主内存，而 NUMA (非统一内存访问) 系统则有多个内存节点。
+.PP
+CPUset 表示为分层伪文件系统中的目录，其中分层结构中的顶级目录 (\fI/dev/cpuset\fP) 表示整个系统 (所有在线 CPU
+和内存节点)，并且作为另一个父 cpuset 的子 (descendant) 的任何 cpuset 包含该父 cpuset 的子集 CPU 和内存节点。
+代表 cpuset 的目录和文件具有正常的文件系统权限。
+.PP
+系统中的每个进程都属于一个 cpuset。 进程被限制只能在它所属的 cpuset 中的 CPU 上运行，并且只能在该 cpuset
+中的内存节点上分配内存。 当一个进程 \fBfork\fP(2)s 时，子进程被放置在与其父进程相同的 cpuset 中。
+如果有足够的特权，一个进程可以从一个 cpuset 移动到另一个 cpuset，并且可以更改现有 cpuset 的允许的 CPU 和内存节点。
+.PP
+当系统开始启动时，会定义一个单独的 cpuset，其中包括系统上的所有 CPU 和内存节点，并且所有进程都在该 cpuset 中。
+在引导过程中，或稍后在正常系统操作期间，可能会创建其他 cpuset，作为此顶级 cpuset
+的子目录，在系统管理员的控制下，并且进程可能会放置在这些其他 cpuset 中。
+.PP
+CPUsets 与内核中的 \fBsched_setaffinity\fP(2) 调度关联机制以及 \fBmbind\fP(2) 和
+\fBset_mempolicy\fP(2) 内存放置机制集成在一起。 这些机制都不允许进程使用该进程的 cpuset 不允许的 CPU 或内存节点。
+如果对进程的 cpuset 放置的更改与这些其他机制冲突，则 cpuset 放置将被强制执行，即使这意味着覆盖这些其他机制。
+内核通过默默地将这些其他机制请求的 CPU 和内存节点限制为调用进程的 cpuset 允许的 CPU 和内存节点来完成此覆盖。
+这可能会导致这些其他调用返回错误，例如，如果在该请求被限制在调用进程的 cpuset 之后，这样的调用最终请求一组空的 CPU 或内存节点。
+.PP
+通常，cpuset 用于管理一组协作进程 (例如批处理调度程序作业) 的 CPU
+和内存节点限制，而这些其他机制用于管理该组或作业中各个进程或内存区域的放置。
+.SH FILES
+\fI/dev/cpuset\fP 下面的每个目录代表一个 cpuset 并包含一组固定的伪文件，描述该 cpuset 的状态。
+.PP
+使用 \fBmkdir\fP(2) 系统调用或 \fBmkdir\fP(1) 命令创建新的 cpuset。 cpuset 的属性，例如它的标志、允许的 CPU
+和内存节点以及附加的进程，通过读取或写入该 cpuset 目录中的适当文件来查询和修改，如下所列。
+.PP
+作为 \fBmkdir\fP(2) 调用的结果，每个 cpuset 目录中的伪文件在创建 cpuset 时自动创建。 无法直接添加或删除这些伪文件。
+.PP
+可以使用 \fBrmdir\fP(2) 或 \fBrmdir\fP(1) 删除不包含子 cpuset 目录且没有附加进程的 cpuset 目录。
+在删除目录之前，没有必要也不可能删除目录中的伪文件。
+.PP
+每个 cpuset 目录中的伪文件都是小文本文件，可以使用传统的 shell 实用工具如 \fBcat\fP(1) 和 \fBecho\fP(1)
+读取和写入，或者通过使用文件 I/O 库函数或系统调用从程序读取和写入，如 \fBopen\fP(2)，\fBread\fP(2)，\fBwrite\fP(2) 和
+\fBclose\fP(2)。
+.PP
+.\" ====================== tasks ======================
+cpuset 目录中的伪文件表示内部内核状态，并且在磁盘上没有任何持久映像。 下面列出并描述了这些每个 cpuset 文件中的每一个。
+.TP 
+\fItasks\fP
+该 cpuset 中进程的进程 ID (PIDs) 的列表。 该列表被格式化为一系列 ASCII 十进制数字，每个数字后跟一个换行符。 通过将进程的
+PID 写入该 cpuset 的 \fItasks\fP 文件 (带或不带尾随换行符)，可以将进程添加到 cpuset (自动将其从先前包含它的 cpuset
+中删除)。
+.IP
+.\" =================== notify_on_release ===================
+\fBWarning:\fP 一次只能将一个 PID 写入 \fItasks\fP 文件。 如果写入包含多个 PID 的字符串，则仅使用第一个。
+.TP 
+\fInotify_on_release\fP
+.\" ====================== cpus ======================
+标志 (0 或 1)。 如果设置 (1)，该 cpuset 将在释放后接受特殊处理，即在所有进程停止使用它 (即终止或移动到不同的 cpuset)
+并且所有子 cpuset 目录已被删除之后。 请参见下面的 \fBNotify On Release\fP 部分。
+.TP 
+\fIcpuset.cpus\fP
+允许执行该 cpuset 中的进程的 CPU 的物理编号列表。 有关 \fIcpus\fP 格式的说明，请参见下面的 \fBList Format\fP。
+.IP
+.\" ==================== cpu_exclusive ====================
+可以通过将新列表写入其 \fIcpus\fP 文件来更改 cpuset 允许的 CPU。
+.TP 
+\fIcpuset.cpu_exclusive\fP
+标志 (0 或 1)。 如果设置 (1)，则 cpuset 独占使用其 CPU (没有兄弟或堂兄弟 cpuset 可能与 CPU 重叠)。
+默认情况下，这是关闭的 (0)。 新创建的 cpusets 最初也将其默认为关闭 (0)。
+.IP
+.\" ====================== mems ======================
+如果两个 cpuset 在 \fI/dev/cpuset\fP 层次结构中共享相同的父 cpuset，则它们是 \fIsibling\fP cpuset。 如果两个
+cpuset 都不是另一个的祖先，则它们是 \fIcousin\fP cpuset。 无论 \fIcpu_exclusive\fP 设置如何，如果一个 cpuset
+是另一个 cpuset 的祖先，并且如果这两个 cpuset 都具有非空 \fIcpus\fP，则它们的 \fIcpus\fP 必须重叠，因为任何 cpuset 的
+\fIcpus\fP 始终是其父 cpuset 的 \fIcpus\fP 的子集。
+.TP 
+\fIcpuset.mems\fP
+.\" ==================== mem_exclusive ====================
+允许此 cpuset 中的进程在其上分配内存的内存节点列表。 有关 \fImems\fP 格式的说明，请参见下面的 \fBList Format\fP。
+.TP 
+\fIcpuset.mem_exclusive\fP
+标志 (0 或 1)。 如果设置 (1)，则 cpuset 独占使用其内存节点 (兄弟姐妹或堂兄弟姐妹不得重叠)。 此外，如果设置 (1)，则
+cpuset 是 \fBHardwall\fP cpuset (见下文)。 默认情况下，这是关闭的 (0)。 新创建的 cpusets 最初也将其默认为关闭
+(0)。
+.IP
+.\" ==================== mem_hardwall ====================
+无论 \fImem_exclusive\fP 设置如何，如果一个 cpuset 是另一个 cpuset 的祖先，那么它们的内存节点必须重叠，因为任何
+cpuset 的内存节点始终是该 cpuset 的父 cpuset 的内存节点的子集。
+.TP 
+\fIcpuset.mem_hardwall\fP (since Linux 2.6.26)
+.\" ==================== memory_migrate ====================
+标志 (0 或 1)。 如果设置 (1)，cpuset 是 \fBHardwall\fP cpuset (见下文)。 与 \fBmem_exclusive\fP
+不同，标记为 \fBmem_hardwall\fP 的 cpuset 是否可以与同级或近亲 cpuset 有重叠的内存节点没有限制。 默认情况下，这是关闭的
+(0)。 新创建的 cpusets 最初也将其默认为关闭 (0)。
+.TP 
+\fIcpuset.memory_migrate\fP (since Linux 2.6.16)
+.\" ==================== memory_pressure ====================
+标志 (0 或 1)。 如果设置 (1)，则启用内存迁移。 默认情况下，这是关闭的 (0)。 请参见下面的 \fBMemory Migration\fP
+部分。
+.TP 
+\fIcpuset.memory_pressure\fP (since Linux 2.6.16)
+.\" ================= memory_pressure_enabled =================
+衡量此 cpuset 中的进程造成了多少内存压力。 请参见下面的 \fBMemory Pressure\fP 部分。 除非启用
+\fImemory_pressure_enabled\fP，否则 (0) 的值始终为零。 该文件是只读的。 请参见下面的 \fBWARNINGS\fP 部分。
+.TP 
+\fIcpuset.memory_pressure_enabled\fP (since Linux 2.6.16)
+.\" ================== memory_spread_page ==================
+标志 (0 或 1)。 该文件仅存在于根 cpuset 中，通常为 \fI/dev/cpuset\fP。 如果设置 (1)，则系统中的所有 cpuset
+都启用 \fImemory_pressure\fP 计算。 默认情况下，这是关闭的 (0)。 请参见下面的 \fBMemory Pressure\fP 部分。
+.TP 
+\fIcpuset.memory_spread_page\fP (since Linux 2.6.17)
+.\" ================== memory_spread_slab ==================
+标志 (0 或 1)。 如果设置 (1)，内核页面缓存 (文件系统缓冲区) 中的页面将均匀分布在整个 cpuset 中。 默认情况下，它在顶级
+cpuset 中关闭 (0)，并从新创建的 cpuset 中的父 cpuset 继承。 请参见下面的 \fBMemory Spread\fP 部分。
+.TP 
+\fIcpuset.memory_spread_slab\fP (since Linux 2.6.17)
+.\" ================== sched_load_balance ==================
+标志 (0 或 1)。 如果设置 (1)，则文件 I/O (目录和 inode 结构) 的内核 slab 缓存均匀分布在整个 cpuset 中。
+默认情况下，在 top cpuset 中关闭 (0)，并在新创建的 cpuset 中继承自父 cpuset。 请参见下面的 \fBMemory Spread\fP 部分。
+.TP 
+\fIcpuset.sched_load_balance\fP (since Linux 2.6.24)
+.\" ================== sched_relax_domain_level ==================
+标志 (0 或 1)。 如果设置 (1，默认值)，内核将根据该 cpuset 中允许的 CPU 自动负载平衡该 cpuset 中的进程。 如果清除
+(0)，内核将避免在此 cpuset 中进行负载平衡进程，\fIunless\fP 一些其他具有重叠 CPU 的 cpuset 设置了其
+\fIsched_load_balance\fP 标志。 有关更多详细信息，请参见下面的 \fBScheduler Load Balancing\fP。
+.TP 
+\fIcpuset.sched_relax_domain_level\fP (since Linux 2.6.26)
+.\" ================== proc cpuset ==================
+整数，介于 \-1 和一个小的正值之间。 \fIsched_relax_domain_level\fP 控制 CPU 范围的宽度，内核调度程序在该范围内执行
+immediate 跨 CPU 可运行任务的重新平衡。 如果禁用 \fIsched_load_balance\fP，则
+\fIsched_relax_domain_level\fP 的设置无关紧要，因为没有完成此类负载平衡。 如果启用
+\fIsched_load_balance\fP，则 \fIsched_relax_domain_level\fP 的值越高，尝试 immediate 负载平衡的
+CPU 范围越广。 有关更多详细信息，请参见下面的 \fBScheduler Relax Domain Level\fP。
+.PP
+.\" ================== proc status ==================
+除了 \fI/dev/cpuset\fP 下每个目录中的上述伪文件外，每个进程都有一个伪文件
+\fI/proc/<pid>/cpuset\fP，它显示进程的 cpuset 目录相对于 cpuset 文件系统根目录的路径。
+.PP
+此外，每个进程的 \fI/proc/<pid>/status\fP 文件都添加了四行，以 \fBMask Format\fP 和 \fBList Format\fP 两种格式 (见下文) 显示进程的 \fICpus_allowed\fP (它可能在哪些 CPU 上调度) 和 \fIMems_allowed\fP
+(它可能在哪些内存节点上获取内存) 如下例所示:
+.PP
+.in +4n
+.EX
+Cpus_allowed:   ffffffff,ffffffff,ffffffff,ffffffff
+Cpus_allowed_list:     0\-127
+Mems_allowed:   ffffffff,ffffffff
+Mems_allowed_list:     0\-63
+.EE
+.in
+.PP
+.\" ================== EXTENDED CAPABILITIES ==================
+Linux 2.6.24 中增加了 "allowed" 字段; "allowed_list" 字段已添加到 Linux 2.6.26 中。
+.SH "EXTENDED CAPABILITIES"
+.\" ================== Exclusive Cpusets ==================
+除了控制允许进程使用哪个 \fIcpus\fP 和 \fImems\fP 之外，cpusets 还提供以下扩展功能。
+.SS "Exclusive cpusets"
+如果一个 cpuset 被标记为 \fIcpu_exclusive\fP 或 \fImem_exclusive\fP，则除了直接祖先或后代之外，没有其他
+cpuset 可以共享任何相同的 CPU 或内存节点。
+.PP
+.\" ================== Hardwall ==================
+\fImem_exclusive\fP 的 cpuset 限制内核对缓冲区缓存页面和内核在多个用户之间共享的其他内部内核数据页面的分配。 所有
+cpuset，无论是否为 \fImem_exclusive\fP，都限制为用户空间分配内存。
+这允许配置一个系统，以便几个独立的作业可以共享公共内核数据，同时将每个作业的用户分配隔离在它自己的 cpuset 中。 为此，构建一个大型
+\fImem_exclusive\fP cpuset 来容纳所有作业，并为每个单独的作业构建子 non\-\fImem_exclusive\fP cpuset。
+只允许将少量内核内存 (例如来自中断处理程序的请求) 放置在 \fImem_exclusive\fP cpuset 之外的内存节点上。
+.SS Hardwall
+设置了 \fImem_exclusive\fP 或 \fImem_hardwall\fP 的 cpuset 是 \fIhardwall\fP cpuset。
+\fIhardwall\fP cpuset 限制内核对页面、缓冲区和内核在多个用户之间共享的其他数据的分配。 所有 cpuset，无论是否为
+\fIhardwall\fP，都限制为用户空间分配内存。
+.PP
+这允许配置一个系统，以便几个独立的作业可以共享公共内核数据，例如文件系统页面，同时将每个作业的用户分配隔离在它自己的 cpuset 中。
+为此，构建一个大型 \fIhardwall\fP cpuset 来容纳所有作业，并为每个单独的作业构建不是 \fIhardwall\fP cpuset 的子
+cpuset。
+.PP
+.\" ================== Notify On Release ==================
+即使是 \fIhardwall\fP cpuset，也只允许使用少量内核内存，例如来自中断处理程序的请求。
+.SS "Notify on release"
+如果 \fInotify_on_release\fP 标志在 cpuset 中启用 (1)，则每当 cpuset 中的最后一个进程离开 (退出或附加到其他
+cpuset) 并且该 cpuset 的最后一个子 cpuset 被删除时，内核将运行命令
+\fI/sbin/cpuset_release_agent\fP，提供废弃 cpuset 的路径名 (相对于 cpuset 文件系统的挂载点)。
+这可以自动删除废弃的 cpuset。
+.PP
+系统启动时根 cpuset 中 \fInotify_on_release\fP 的默认值是禁用 (0)。 其他 cpuset 在创建时的默认值是其父级
+\fInotify_on_release\fP 设置的当前值。
+.PP
+调用 \fI/sbin/cpuset_release_agent\fP 命令，\fIargv[1]\fP 中待释放 cpuset 的名称为
+(\fI/dev/cpuset\fP 相对路径)。
+.PP
+命令 \fI/sbin/cpuset_release_agent\fP 的通常内容只是 shell 脚本:
+.PP
+.in +4n
+.EX
+#!/bin/sh
+rmdir /dev/cpuset/$1
+.EE
+.in
+.PP
+.\" ================== Memory Pressure ==================
+与下面的其他标志值一样，可以通过将 ASCII 数字 0 或 1 (带有可选的尾随换行符) 写入文件来更改此标志，以分别清除或设置标志。
+.SS "Memory pressure"
+cpuset 的 \fImemory_pressure\fP 提供了一个简单的 per\-cpuset 运行平均速率，cpuset 中的进程试图释放
+cpuset 节点上正在使用的内存以满足额外的内存请求。
+.PP
+这使监视在专用 cpuset 中运行的作业的批处理管理器能够有效地检测该作业导致的内存压力级别。
+.PP
+这在运行大量提交作业的严格管理的系统上很有用，这些系统可能会选择终止或重新确定试图使用比分配给它们的节点上允许的更多内存的作业的优先级，以及紧密耦合的、长时间运行的、大规模并行的系统。科学计算作业如果开始使用超过允许的内存，将大大无法满足所需的性能目标。
+.PP
+这种机制为批处理管理器提供了一种非常经济的方式来监视 cpuset 的内存压力迹象。
+如果检测到内存压力迹象，则由批处理管理器或其他用户代码决定采取什么操作。
+.PP
+除非通过设置伪文件 \fI/dev/cpuset/cpuset.memory_pressure_enabled\fP 启用内存压力计算，否则不会为任何
+cpuset 计算它，并且从任何 \fImemory_pressure\fP 读取总是返回零，如 ASCII 字符串 "0\en" 所示。 请参见下面的
+\fBWARNINGS\fP 部分。
+.PP
+由于以下原因，采用每个 cpuset 的运行平均值:
+.IP \[bu] 3
+因为这个计量是按 cpuset
+而不是按进程或按虚拟内存区域的，所以在大型系统上由批处理调度程序监视此指标所施加的系统负载会急剧减少，因为可以避免在每组查询上扫描任务列表.
+.IP \[bu]
+因为这个仪表是一个运行平均值而不是一个累加计数器，批处理调度程序可以通过一次读取来检测内存压力，而不是必须在一段时间内读取和累加结果。
+.IP \[bu]
+因为这个计量器是按 cpuset 而不是按进程，批处理调度程序可以通过一次读取获得 cpuset 中的关键信息 \[em]
+内存压力，而不必查询和累积所有的结果 (动态变化的) cpuset 中的进程集。
+.PP
+cpuset 的 \fImemory_pressure\fP 是使用保留在内核中的 per\-cpuset 简单数字滤波器计算的。 对于每个
+cpuset，此过滤器跟踪附加到该 cpuset 的进程最近进入内核直接回收代码的速率。
+.PP
+每当进程必须通过首先找到一些其他页面来重新利用来满足内存页面请求时，就会输入内核直接回收代码，因为缺少任何可用的已经空闲的页面。
+脏文件系统页面通过首先将它们写入磁盘来重新调整用途。
+未修改的文件系统缓冲页面通过简单地丢弃它们来重新调整用途，但如果再次需要该页面，则必须从磁盘重新读取它。
+.PP
+.\" ================== Memory Spread ==================
+\fIcpuset.memory_pressure\fP 文件提供了一个整数，表示由 cpuset 中的任何进程引起的直接回收代码的最近 (半衰期为 10
+秒) 条目速率，以每秒尝试回收的次数为单位乘以 1000。
+.SS "Memory spread"
+每个 cpuset 有两个布尔标志文件，用于控制内核为文件系统缓冲区和相关内核数据结构分配页面的位置。 它们被称为
+\fIcpuset.memory_spread_page\fP 和 \fIcpuset.memory_spread_slab\fP。
+.PP
+如果设置了 per\-cpuset 布尔标志文件 \fIcpuset.memory_spread_page\fP，那么内核会将文件系统缓冲区 (页面缓存)
+均匀分布在允许故障进程使用的所有节点上，而不是优先将这些页面放在故障进程所在的节点上。进程正在运行。
+.PP
+如果每个 cpuset 布尔标志文件 \fIcpuset.memory_spread_slab\fP 被设置，那么内核将分散一些与文件系统相关的 slab
+缓存，例如用于索引节点和目录条目的缓存，均匀地分布在允许故障进程使用的所有节点上，而不是优先选择将这些页面放在进程运行的节点上。
+.PP
+这些标志的设置不影响字段 (参见进程的 \fBbrk\fP(2)) 或栈段页面。
+.PP
+默认情况下，这两种内存分配都处于关闭状态，内核更喜欢在运行请求进程的本地节点上分配内存页面。 如果进程的 NUMA 内存策略或 cpuset
+配置不允许该节点，或者该节点上的可用内存页不足，则内核将查找允许的最近节点并具有足够的可用内存。
+.PP
+创建新的 cpuset 时，它们会继承其父级的内存分布设置。
+.PP
+设置内存传播会导致受影响的页面或 slab 缓存的分配忽略进程的 NUMA 内存策略，而是传播。 然而，这些由 cpuset
+指定的内存扩展引起的内存布局变化的影响对 \fBmbind\fP(2) 或 \fBset_mempolicy\fP(2) 调用是隐藏的。 这两个 NUMA
+内存策略调用似乎总是表现得好像没有 cpuset 指定的内存扩展有效，即使它是有效的。 如果随后关闭了 cpuset 内存扩展，则这些调用最近指定的
+NUMA 内存策略将自动重新应用。
+.PP
+\fIcpuset.memory_spread_page\fP 和 \fIcpuset.memory_spread_slab\fP 都是布尔标志文件。
+默认情况下，它们包含 "0"，这意味着该 cpuset 的特性是关闭的。 如果将 "1" 写入该文件，则会打开指定的，特性。
+.PP
+Cpuset 指定的内存分布的行为类似于 (在其他上下文中) 所谓的循环或交错内存放置。
+.PP
+Cpuset 指定的内存分布可以为以下作业提供显着的性能改进:
+.IP \[bu] 3
+需要将线程本地数据放置在靠近 CPU 的内存节点上，这些 CPU 正在运行最频繁访问该数据的线程; 但是也
+.IP \[bu]
+需要访问大型文件系统数据集，这些数据集必须分布在作业 cpuset 中的多个节点上才能适应。
+.PP
+.\" ================== Memory Migration ==================
+如果没有此策略，作业 cpuset 中节点之间的内存分配可能会变得非常不均匀，尤其是对于可能只有一个线程初始化或读取数据集的作业。
+.SS "Memory migration"
+通常，在 \fIcpuset.memory_migrate\fP 的默认设置 (disabled) 下，一旦分配了一个页面
+(给定主内存的物理页面)，那么该页面将保留在分配它的任何节点上，只要它保持分配状态，即使 cpuset 的内存放置政策 \fImems\fP 随后发生变化。
+.PP
+当 cpuset 中启用内存迁移时，如果更改了 cpuset 的 \fImems\fP 设置，则 cpuset
+中任何进程正在使用的位于不再允许的内存节点上的任何内存页面将被迁移到不再允许的内存节点被允许。
+.PP
+此外，如果一个进程被移动到启用了 \fImemory_migrate\fP 的 cpuset 中，它使用的任何内存页面在其先前 cpuset
+允许的内存节点上，但在其新 cpuset 中不允许，将被迁移到允许的内存节点新的 cpuset。
+.PP
+.\" ================== Scheduler Load Balancing ==================
+如果可能，在这些迁移操作期间会保留已迁移页面在 cpuset 中的相对位置。 例如，如果该页面位于先前 cpuset
+的第二个有效节点上，则该页面将尽可能放置在新 cpuset 的第二个有效节点上。
+.SS "Scheduler load balancing"
+内核调度程序自动对进程进行负载平衡。 如果一个 CPU 未充分利用，内核将在其他更，重载，的 CPU 上寻找进程，并将这些进程移动到未充分利用的
+CPU，在 cpusets 和 \fBsched_setaffinity\fP(2) 等放置机制的约束下。
+.PP
+负载平衡的算法成本及其对关键共享内核数据结构 (例如进程列表) 的影响随着被平衡的 CPU 数量的增加而不是线性增加。 例如，在一大组 CPU
+之间进行负载均衡比在两组较小的 CPU 之间进行负载均衡的成本更高，每组 CPU 的大小都是较大组的一半。 (被平衡的 CPU
+数量和负载平衡成本之间的精确关系取决于内核进程调度程序的实现细节，随着时间的推移，随着改进的内核调度程序算法的实现，它会发生变化。)
+.PP
+每个 cpuset 标志 \fIsched_load_balance\fP
+提供了一种机制来在不需要它的情况下抑制这种自动调度程序负载平衡，并且抑制它会带来有值的性能优势。
+.PP
+默认情况下，负载平衡在所有 CPU 之间完成，除了那些使用内核启动时间 "isolcpus=" 参数标记为隔离的 CPU 之外。 (请参见下面的
+\fBScheduler Relax Domain Level\fP 以更改此默认值。)
+.PP
+这种跨所有 CPU 的默认负载平衡不太适合以下两种情况:
+.IP \[bu] 3
+在大型系统上，跨多个 CPU 进行负载平衡非常昂贵。 如果使用 cpusets 管理系统以将独立作业放置在不同的 CPU 集上，则不需要完全负载平衡。
+.IP \[bu]
+在某些 CPU 上支持实时的系统需要最小化这些 CPU 上的系统开销，包括在不需要时避免进程负载平衡。
+.PP
+当每个 cpuset 标志 \fIsched_load_balance\fP 启用 (默认设置) 时，它请求在该 cpuset 允许的 CPU 中的所有
+CPU 之间进行负载平衡，确保负载平衡可以移动一个进程 (不是以其他方式固定，如 \fBsched_setaffinity\fP(2)) 来自该 cpuset
+中的任何 CPU cpuset 到任何其他。
+.PP
+当每个 cpuset 标志 \fIsched_load_balance\fP 被禁用时，调度程序将避免在该 cpuset 中的 CPU
+之间进行负载平衡，\fIexcept\fP 是必要的，因为一些重叠的 cpuset 启用了 \fIsched_load_balance\fP。
+.PP
+因此，例如，如果顶级 cpuset 启用了标志 \fIsched_load_balance\fP，则调度程序将在所有 CPU 之间进行负载平衡，而其他
+cpuset 中的 \fIsched_load_balance\fP 标志的设置无效，因为我们已经完全负载平衡。
+.PP
+因此，在上述两种情况下，应该在 top cpuset 中禁用标志 \fIsched_load_balance\fP，只有一些较小的子 cpuset
+才会启用此标志。
+.PP
+执行此操作时，您通常不希望在可能使用大量 CPU 的顶级 cpuset 中保留任何未固定的进程，因为此类进程可能会被人为地限制为某些 CPU
+子集，具体取决于后代中此标志设置的细节 cpusets。 即使这样的进程可以使用其他一些 CPU 中的空闲 CPU
+周期，内核调度程序也可能不会考虑将该进程负载平衡到未充分利用的 CPU 的可能性。
+.PP
+.\" ================== Scheduler Relax Domain Level ==================
+当然，固定到特定 CPU 的进程可以留在禁用 \fIsched_load_balance\fP 的 cpuset 中，因为这些进程无论如何都不会去其他地方。
+.SS "Scheduler relax domain level"
+只要 CPU 空闲或另一个任务可运行，内核调度程序就会执行 immediate 负载平衡。 这种负载平衡可确保尽可能多的 CPU 有效地用于运行任务。
+内核还根据 \fBtime\fP(7) 中描述的软件时钟执行周期性负载平衡。 \fIsched_relax_domain_level\fP 的设置只适用于
+immediate 负载均衡。 无论 \fIsched_relax_domain_level\fP 设置如何，都会尝试对所有 CPU 进行周期性负载平衡
+(除非通过关闭 \fIsched_load_balance\fP.) 禁用。当然，在任何情况下，任务将被安排为仅在其 cpuset 允许的 CPU 上运行，如
+\fBsched_setaffinity\fP(2) 系统调用所修改的那样。
+.PP
+在小型系统上，例如那些只有几个 CPU 的系统，immediate 负载平衡对于提高系统交互性和最小化浪费的空闲 CPU 周期很有用。
+但是在大型系统上，尝试在大量 CPU 之间实现 immediate 负载平衡的成本可能比其值更高，具体取决于作业组合和硬件的特定性能特征。
+.PP
+\fIsched_relax_domain_level\fP 的小整数值的确切含义将取决于内核调度程序代码的内部实现细节和硬件的非统一架构。
+这两者都会随着时间的推移而发展，并因系统架构和内核版本而异。
+.PP
+在撰写本文时，当 Linux 2.6.26 中引入此功能时，在某些流行的体系结构上，\fIsched_relax_domain_level\fP
+的正值具有以下含义。
+.PP
+.PD 0
+.TP 
+\fB1\fP
+在同一个核心上跨 Hyper\-Thread 兄弟执行 immediate 负载平衡。
+.TP 
+\fB2\fP
+在同一包中的其他内核之间执行 immediate 负载平衡。
+.TP 
+\fB3\fP
+在同一节点或刀片上的其他 CPU 之间执行 immediate 负载平衡。
+.TP 
+\fB4\fP
+在多个 (实现细节) 节点 [On NUMA systems] 上执行 immediate 负载平衡。
+.TP 
+\fB5\fP
+对系统 [On NUMA systems] 中的所有 CPU 执行 immediate 负载平衡。
+.PD
+.PP
+零 (0) 的 \fIsched_relax_domain_level\fP 值始终意味着不执行 immediate
+负载平衡，因此负载平衡仅定期进行，而不是在 CPU 可用或另一个任务可运行时立即进行。
+.PP
+\fIsched_relax_domain_level\fP 值减一 (\-1) 总是表示使用系统默认值。 系统默认值可能因体系结构和内核版本而异。
+该系统默认值可以通过内核启动时 "relax_domain_level=" 参数更改。
+.PP
+如果多个重叠的 cpuset 具有冲突的 \fIsched_relax_domain_level\fP 值，则最高的此类值适用于任何重叠 cpuset
+中的所有 CPU。 在这种情况下，值 \fBminus one (\-1)\fP 是最低值，被任何其他值覆盖，值 \fBzero (0)\fP 是下一个最低值。
+.SH FORMATS
+.\" ================== Mask Format ==================
+以下格式用于表示 CPU 和内存节点的集合。
+.SS "Mask format"
+\fBMask Format\fP 用于表示 \fI/proc/<pid>/status\fP 文件中的 CPU 和内存节点位掩码。
+.PP
+此格式以十六进制显示每个 32 位字 (使用 ASCII 字符 "0"\-"9" 和 "a"\-"f") ; 如果需要，单词用前导零填充。
+对于长于一个单词的掩码，单词之间使用逗号分隔符。 单词以大端顺序显示，最高有效位在前。 单词中的十六进制数字也是大端顺序。
+.PP
+根据位掩码的大小，显示的 32 位字的数量是显示位掩码的所有位所需的最小数量。
+.PP
+\fBMask Format\fP: 的例子
+.PP
+.in +4n
+.EX
+00000001                        # 位 0 设置
+40000000,00000000,00000000      # 只是位 94 设置
+00000001,00000000,00000000      # 位 64 设置
+000000ff,00000000               # 位 32\-39 设置
+00000000,000e3862               #1,5,6,11\-13,17\-19 组
+.EE
+.in
+.PP
+具有位 0、1、2、4、8、16、32 和 64 集的掩码显示为:
+.PP
+.in +4n
+.EX
+00000001,00000001,00010117
+.EE
+.in
+.PP
+.\" ================== List Format ==================
+第一个 "1" 用于位 64，第二个用于位 32，第三个用于位 16，第四个用于位 8，第五个用于位 4，"7" 用于位 2、1 和 0.
+.SS "List format"
+\fIcpus\fP 和 \fImems\fP 的 \fBList Format\fP 是 CPU 或内存节点编号和编号范围的逗号分隔列表，采用 ASCII 十进制格式。
+.PP
+\fBList Format\fP: 的例子
+.PP
+.in +4n
+.EX
+0\-4,9           # 位 0、1、2、3、4 和 9 设置
+0\-2,7,12\-14     # 位 0、1、2、7、12、13 和 14 设置
+.EE
+.in
+.\" ================== RULES ==================
+.SH RULES
+以下规则适用于每个 cpuset:
+.IP \[bu] 3
+它的 CPU 和内存节点必须是其父节点的 (可能相等的) 子集。
+.IP \[bu]
+只有当它的父对象是 \fIcpu_exclusive\fP 时，它才能被标记为 \fIcpu_exclusive\fP。
+.IP \[bu]
+只有当它的父对象是 \fImem_exclusive\fP 时，它才能被标记为 \fImem_exclusive\fP。
+.IP \[bu]
+如果它是 \fIcpu_exclusive\fP，它的 CPU 可能不会与任何兄弟重叠。
+.IP \[bu]
+.\" ================== PERMISSIONS ==================
+如果是 \fImem_exclusive\fP，它的内存节点可能不会与任何兄弟重叠。
+.SH PERMISSIONS
+cpuset 的权限由 cpuset 文件系统中的目录和伪文件的权限决定，通常挂载在 \fI/dev/cpuset\fP。
+.PP
+例如，如果进程可以为该 cpuset 写入 \fItasks\fP 文件，则它可以将自己放在其他 cpuset 中 (而不是当前的 cpuset)。
+这需要对包含目录的执行权限和对 \fItasks\fP 文件的写入权限。
+.PP
+一个额外的约束被应用于将一些其他进程放置在 cpuset 中的请求。 一个进程可能不会将另一个进程附加到 cpuset，除非它有权向该进程发送信号
+(参见 \fBkill\fP(2)).
+.PP
+如果进程可以访问和写入父 cpuset 目录，则它可以创建子 cpuset。 如果它可以访问该 cpuset 的目录 (对每个父目录的执行权限)
+并写入相应的 \fIcpus\fP 或 \fImems\fP 文件，则它可以修改 cpuset 中的 CPU 或内存节点。
+.PP
+评估这些权限的方式与评估正常文件系统操作权限的方式之间存在细微差别。 内核从进程的当前工作目录开始解释相对路径名。 即使一个人正在对 cpuset
+文件进行操作，相对路径名也会相对于进程的当前工作目录进行解释，而不是相对于进程的当前 cpuset。 可以使用相对于进程当前 cpuset 的
+cpuset 路径的唯一方法是，如果进程的当前工作目录是它的 cpuset (它首先对 \fI/dev/cpuset\fP 下面的 cpuset 目录执行
+\fBcd\fP 或 \fBchdir\fP(2)，这有点不寻常) 或者如果一些用户代码将相对 cpuset 路径转换为完整的文件系统路径。
+.PP
+.\" ================== WARNINGS ==================
+理论上，这意味着用户代码应该使用绝对路径名指定 cpuset，这需要知道 cpuset 文件系统的挂载点 (通常但不一定是
+\fI/dev/cpuset\fP).  实际上，作者所知道的所有用户级代码都简单地假定，如果挂载了 cpuset 文件系统，那么它将挂载在
+\fI/dev/cpuset\fP。 此外，仔细编写的用户代码通常会验证伪文件 \fI/dev/cpuset/tasks\fP 的存在，以验证 cpuset
+伪文件系统当前是否已挂载。
+.SH WARNINGS
+.SS "Enabling memory_pressure"
+默认情况下，每个 cpuset 文件 \fIcpuset.memory_pressure\fP 始终包含零 (0)。 除非通过将 "1" 写入伪文件
+\fI/dev/cpuset/cpuset.memory_pressure_enabled\fP 来启用此特性否则内核不会计算每个 cpuset
+\fImemory_pressure\fP。
+.SS "Using the echo command"
+.\" Gack!  csh(1)'s echo does this
+在 shell 提示符下使用 \fBecho\fP 命令更改 cpuset 文件的值时，请注意，如果 \fBwrite\fP(2) 系统调用失败，某些 shells
+中的内置 \fBecho\fP 命令不会显示错误消息。 例如，如果命令:
+.PP
+.in +4n
+.EX
+回声 19 > cpuset.mems
+.EE
+.in
+.PP
+failed because memory node 19 was not allowed (也许当前系统没有内存节点 19)，那么 \fBecho\fP
+命令可能不会显示任何错误。 最好使用 \fB/bin/echo\fP 外部命令更改 cpuset 文件设置，因为此命令会显示 \fBwrite\fP(2)
+错误，如示例所示:
+.PP
+.in +4n
+.EX
+/bin/echo 19 > cpuset.mems
+/bin/echo: write error: Invalid argument
+.EE
+.in
+.\" ================== EXCEPTIONS ==================
+.SH EXCEPTIONS
+.SS "Memory placement"
+由于以下原因，并非所有系统内存分配都受 cpuset 的限制。
+.PP
+如果使用热插拔功能移除当前分配给一个 cpuset 的所有 CPU，那么内核将自动更新附加到该 cpuset 中 CPU 的所有进程的
+\fIcpus_allowed\fP 以允许所有 CPU。 当用于移除内存节点的内存热插拔功能可用时，预计也会出现类似的例外情况。 通常，内核更愿意违反
+cpuset 放置，而不是让一个已使其所有允许的 CPU 或内存节点脱机的进程挨饿。 当使用热插拔添加或删除此类资源时，用户代码应重新配置
+cpusets 以仅引用在线 CPU 和内存节点。
+.PP
+一些内核关键的内部内存分配请求，标记为 GFP_ATOMIC，必须立即得到满足。 如果这些分配之一失败，内核可能会丢弃某些请求或出现故障。
+如果在当前进程的 cpuset 中不能满足这样的请求，那么我们将放松 cpuset，并在我们可以找到的任何地方寻找内存。 违反 cpuset
+比向内核施加压力要好。
+.PP
+内核驱动程序在处理中断时请求的内存分配缺少任何相关的进程上下文，并且不受 cpuset 的限制。
+.SS "Renaming cpusets"
+.\" ================== ERRORS ==================
+您可以使用 \fBrename\fP(2) 系统调用来重命名 cpuset。 只支持简单重命名; 也就是说，允许更改 cpuset
+目录的名称，但不允许将目录移动到不同的目录。
+.SH ERRORS
+cpusets 的 Linux 内核实现设置 \fIerrno\fP 以指定影响 cpusets 的失败系统调用的原因。
+.PP
+可能的 \fIerrno\fP 设置及其在失败的 cpuset 调用上设置时的含义如下所列。
+.TP 
+\fBE2BIG\fP
+尝试在长度大于某些内核确定的此类写入长度上限的特殊 cpuset 文件上执行 \fBwrite\fP(2)。
+.TP 
+\fBEACCES\fP
+当一个人没有移动该进程的权限时，尝试将进程的进程 ID (PID) \fBwrite\fP(2) 到 cpuset \fItasks\fP 文件。
+.TP 
+\fBEACCES\fP
+尝试使用 \fBwrite\fP(2) 将 CPU 或内存节点添加到 cpuset，而该 CPU 或内存节点尚不在其父节点中。
+.TP 
+\fBEACCES\fP
+尝试在父级缺少相同设置的 cpuset 上使用 \fBwrite\fP(2)、\fIcpuset.cpu_exclusive\fP 或
+\fIcpuset.mem_exclusive\fP 进行设置。
+.TP 
+\fBEACCES\fP
+试图 \fBwrite\fP(2) 一个 \fIcpuset.memory_pressure\fP 文件。
+.TP 
+\fBEACCES\fP
+试图在 cpuset 目录中创建文件。
+.TP 
+\fBEBUSY\fP
+尝试使用 \fBrmdir\fP(2) 删除带有附加进程的 cpuset。
+.TP 
+\fBEBUSY\fP
+尝试使用 \fBrmdir\fP(2) 删除带有子 cpuset 的 cpuset。
+.TP 
+\fBEBUSY\fP
+试图从一个 cpuset 中删除一个 CPU 或内存节点，该 cpuset 也位于该 cpuset 的子节点中。
+.TP 
+\fBEEXIST\fP
+试图使用 \fBmkdir\fP(2) 创建一个已经存在的 cpuset。
+.TP 
+\fBEEXIST\fP
+试图 \fBrename\fP(2) 一个 cpuset 到一个已经存在的名称。
+.TP 
+\fBEFAULT\fP
+尝试使用在写入进程可访问地址空间之外的缓冲区将 cpuset 文件 \fBread\fP(2) 或 \fBwrite\fP(2)。
+.TP 
+\fBEINVAL\fP
+尝试使用 \fBwrite\fP(2) 以违反该 cpuset 或其任何兄弟的 \fIcpu_exclusive\fP 或 \fImem_exclusive\fP
+属性的方式更改 cpuset。
+.TP 
+\fBEINVAL\fP
+尝试将空的 \fIcpuset.cpus\fP 或 \fIcpuset.mems\fP 列表 \fBwrite\fP(2) 到具有附加进程或子 cpuset 的
+cpuset。
+.TP 
+\fBEINVAL\fP
+尝试将 \fBwrite\fP(2) \fIcpuset.cpus\fP 或 \fIcpuset.mems\fP 列表包含第二个数字小于第一个数字的范围。
+.TP 
+\fBEINVAL\fP
+尝试将 \fBwrite\fP(2) \fIcpuset.cpus\fP 或 \fIcpuset.mems\fP 列表包含在字符串中的无效字符。
+.TP 
+\fBEINVAL\fP
+尝试将列表 \fBwrite\fP(2) 到不包含任何联机 CPU 的 \fIcpuset.cpus\fP 文件。
+.TP 
+\fBEINVAL\fP
+尝试将列表 \fBwrite\fP(2) 到不包含任何联机内存节点的 \fIcpuset.mems\fP 文件。
+.TP 
+\fBEINVAL\fP
+尝试将列表 \fBwrite\fP(2) 到 \fIcpuset.mems\fP 文件，其中包含一个没有内存的节点。
+.TP 
+\fBEIO\fP
+尝试将字符串 \fBwrite\fP(2) 到不以 ASCII 十进制整数开头的 cpuset \fItasks\fP 文件。
+.TP 
+\fBEIO\fP
+试图将一个 cpuset \fBrename\fP(2) 放入不同的目录。
+.TP 
+\fBENAMETOOLONG\fP
+尝试为一个长于内核页面大小的 cpuset 路径 \fBread\fP(2) 一个 \fI/proc/<pid>/cpuset\fP 文件。
+.TP 
+\fBENAMETOOLONG\fP
+尝试使用 \fBmkdir\fP(2) 创建其基本目录名称超过 255 个字符的 cpuset。
+.TP 
+\fBENAMETOOLONG\fP
+尝试使用 \fBmkdir\fP(2) 创建一个 cpuset，其完整路径名 (包括安装点 (通常为 "/dev/cpuset/") 前缀) 超过 4095
+个字符。
+.TP 
+\fBENODEV\fP
+在尝试对 cpuset 目录中的一个伪文件执行 \fBwrite\fP(2) 时，另一个进程删除了 cpuset。
+.TP 
+\fBENOENT\fP
+尝试使用 \fBmkdir\fP(2) 在不存在的父 cpuset 中创建 cpuset。
+.TP 
+\fBENOENT\fP
+试图 \fBaccess\fP(2) 或 \fBopen\fP(2) cpuset 目录中不存在的文件。
+.TP 
+\fBENOMEM\fP
+内核内存不足; 可能发生在影响 cpuset 的各种系统调用上，但前提是系统内存极度不足。
+.TP 
+\fBENOSPC\fP
+当 cpuset 具有空 \fIcpuset.cpus\fP 或空 \fIcpuset.mems\fP 设置时，尝试将进程的进程 ID (PID)
+\fBwrite\fP(2) 写入 cpuset \fItasks\fP 文件。
+.TP 
+\fBENOSPC\fP
+尝试将空的 \fIcpuset.cpus\fP 或 \fIcpuset.mems\fP 设置 \fBwrite\fP(2) 到附加了任务的 cpuset。
+.TP 
+\fBENOTDIR\fP
+试图 \fBrename\fP(2) 一个不存在的 cpuset。
+.TP 
+\fBEPERM\fP
+试图从 cpuset 目录中删除文件。
+.TP 
+\fBERANGE\fP
+向内核指定了一个 \fIcpuset.cpus\fP 或 \fIcpuset.mems\fP 列表，其中包含一个太大而内核无法在其位掩码中设置的数字。
+.TP 
+\fBESRCH\fP
+.\" ================== VERSIONS ==================
+尝试将不存在的进程的进程 ID (PID) \fBwrite\fP(2) 写入 cpuset \fItasks\fP 文件。
+.SH VERSIONS
+.\" ================== NOTES ==================
+CPUsets 出现在 Linux 2.6.12。
+.SH NOTES
+.\" ================== BUGS ==================
+尽管名称如此，但 \fIpid\fP 参数实际上是一个线程 ID，线程组中的每个线程都可以附加到不同的 cpuset。 从调用到 \fBgettid\fP(2)
+的返回值可以在参数 \fIpid\fP 中传递。
+.SH BUGS
+.\" ================== EXAMPLES ==================
+可以打开 \fIcpuset.memory_pressure\fP cpuset 文件进行写入、创建或截断，但随后 \fBwrite\fP(2)
+失败，\fIerrno\fP 设置为 \fBEACCES\fP，\fBopen\fP(2) 上的创建和截断选项无效。
+.SH EXAMPLES
+以下示例演示了使用 shell 命令查询和设置 cpuset 选项。
+.SS "Creating and attaching to a cpuset."
+要创建一个新的 cpuset 并将当前命令 shell 附加到它，步骤是:
+.PP
+.PD 0
+.IP (1) 5
+mkdir /dev/cpuset (if not already done)
+.IP (2)
+mount \-t cpuset none /dev/cpuset (if not already done)
+.IP (3)
+使用 \fBmkdir\fP(1) 创建新的 cpuset。
+.IP (4)
+将 CPU 和内存节点分配给新的 cpuset。
+.IP (5)
+将 shell 附加到新的 cpuset。
+.PD
+.PP
+例如，以下命令序列将设置一个名为 "Charlie" 的 cpuset，仅包含 CPU 2 和 3，以及内存节点 1，然后将当前的 shell 附加到该
+cpuset。
+.PP
+.in +4n
+.EX
+$\fB mkdir /dev/cpuset\fP
+$\fB mount \-t cpuset cpuset /dev/cpuset\fP
+$\fB cd /dev/cpuset\fP
+$\fB mkdir Charlie\fP
+$\fB cd Charlie\fP
+$\fB /bin/echo 2\-3 > cpuset.cpus\fP
+$\fB /bin/echo 1 > cpuset.mems\fP
+$\fB /bin/echo $$ > tasks\fP
+# 当前的 shell 现在运行在 cpuset Charlie
+# 下一行应该显示 \[aq]/Charlie\[aq]
+$\fB cat /proc/self/cpuset\fP
+.EE
+.in
+.\"
+.SS "Migrating a job to different memory nodes."
+要将作业 (附加到 cpuset 的一组进程) 迁移到系统中的不同 CPU 和内存节点，包括移动当前分配给该作业的内存页面，请执行以下步骤。
+.PP
+.PD 0
+.IP (1) 5
+假设我们要将 cpuset \fIalpha\fP (CPU 4\[en] 7 和内存节点 2\[en] 3) 中的作业移动到新的 cpuset
+\fIbeta\fP (CPU 16\[en] 19 和内存节点 8\[en]) 9).
+.IP (2)
+首先创建新的 cpuset \fIbeta\fP。
+.IP (3)
+然后在 \fIbeta\fP 中允许 CPU 16\[en] 19 和内存节点 8\[en] 9。
+.IP (4)
+然后在 \fIbeta\fP 中启用 \fImemory_migration\fP。
+.IP (5)
+然后将每个进程从 \fIalpha\fP 移动到 \fIbeta\fP。
+.PD
+.PP
+以下命令序列完成此操作。
+.PP
+.in +4n
+.EX
+$\fB cd /dev/cpuset\fP
+$\fB mkdir beta\fP
+$\fB cd beta\fP
+$\fB /bin/echo 16\-19 > cpuset.cpus\fP
+$\fB /bin/echo 8\-9 > cpuset.mems\fP
+$\fB /bin/echo 1 > cpuset.memory_migrate\fP
+$\fB while read i; do /bin/echo $i; done < ../alpha/tasks > tasks\fP
+.EE
+.in
+.PP
+上面应该将 \fIalpha\fP 中的任何进程移动到 \fIbeta\fP，并将这些进程在内存节点 2\[en] 3 上的任何内存分别移动到内存节点 8\[en]
+9。
+.PP
+请注意，上面序列的最后一步没有执行:
+.PP
+.in +4n
+.EX
+$\fB cp ../alpha/tasks tasks\fP
+.EE
+.in
+.PP
+\fIwhile\fP 循环，而不是看似更容易使用的 \fBcp\fP(1) 命令，是必要的，因为一次只能将一个进程 PID 写入 \fItasks\fP 文件。
+.PP
+通过使用 \fBsed\fP(1): 的 \fB\-u\fP (unbuffered) 选项，可以更有效地实现与 \fIwhile\fP 循环相同的效果 (一次写入一个
+PID)，只需更少的击键和适用于任何 shell 的语法，但更晦涩难懂
+.PP
+.in +4n
+.EX
+$\fB sed \-un p < ../alpha/tasks > tasks\fP
+.EE
+.in
+.\" ================== SEE ALSO ==================
+.SH "SEE ALSO"
+\fBtaskset\fP(1), \fBget_mempolicy\fP(2), \fBgetcpu\fP(2), \fBmbind\fP(2),
+\fBsched_getaffinity\fP(2), \fBsched_setaffinity\fP(2), \fBsched_setscheduler\fP(2),
+\fBset_mempolicy\fP(2), \fBCPU_SET\fP(3), \fBproc\fP(5), \fBcgroups\fP(7), \fBnuma\fP(7),
+\fBsched\fP(7), \fBmigratepages\fP(8), \fBnumactl\fP(8)
+.PP
+.\" commit 45ce80fb6b6f9594d1396d44dd7e7c02d596fef8
+Linux 内核源代码树中的 \fIDocumentation/admin\-guide/cgroup\-v1/cpusets.rst\fP (或
+\fIDocumentation/cgroup\-v1/cpusets.txt\fP 在 Linux 4.18
+之前，\fIDocumentation/cpusets.txt\fP 在 Linux 2.6.29 之前)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,151 @@
+.\" -*- coding: UTF-8 -*-
+.\"  Copyright (C) 2003  Davide Libenzi
+.\"  Davide Libenzi <davidel@xmailserver.org>
+.\" and Copyright 2007, 2012, 2014, 2018 Michael Kerrisk <tk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 2007-04-30: mtk, Added description of epoll_pwait()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH epoll_wait 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+epoll_wait, epoll_pwait, epoll_pwait2 \- 等待 epoll 文件描述符上的 I/O 事件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/epoll.h>\fP
+.PP
+\fBint epoll_wait(int \fP\fIepfd\fP\fB, struct epoll_event *\fP\fIevents\fP\fB,\fP
+\fB               int \fP\fImaxevents\fP\fB, int \fP\fItimeout\fP\fB);\fP
+\fBint epoll_pwait(int \fP\fIepfd\fP\fB, struct epoll_event *\fP\fIevents\fP\fB,\fP
+\fB               int \fP\fImaxevents\fP\fB, int \fP\fItimeout\fP\fB,\fP
+\fB               const sigset_t *_Nullable \fP\fIsigmask\fP\fB);\fP
+\fBint epoll_pwait2(int \fP\fIepfd\fP\fB, struct epoll_event *\fP\fIevents\fP\fB,\fP
+\fB               int \fP\fImaxevents\fP\fB, const struct timespec *_Nullable \fP\fItimeout\fP\fB,\fP
+\fB               const sigset_t *_Nullable \fP\fIsigmask\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBepoll_wait\fP() 系统调用等待文件描述符 \fIepfd\fP 引用的 \fBepoll\fP(7) 实例上的事件。 \fIevents\fP
+指向的缓冲区用于从就绪列表中返回有关兴趣列表中具有一些可用事件的文件描述符的信息。 \fBepoll_wait\fP() 最多返回 \fImaxevents\fP。
+\fImaxevents\fP 参数必须大于零。
+.PP
+\fItimeout\fP 参数指定 \fBepoll_wait\fP() 将阻塞的毫秒数。 时间是根据 \fBCLOCK_MONOTONIC\fP 时钟测量的。
+.PP
+调用 \fBepoll_wait\fP() 将阻塞，直到:
+.IP \[bu] 3
+文件描述符传递一个事件;
+.IP \[bu]
+调用被信号处理程序中断; or
+.IP \[bu]
+超时到期。
+.PP
+请注意，\fItimeout\fP 间隔将向上舍入到系统时钟粒度，内核调度延迟意味着阻塞间隔可能会稍微超出。 将 \fItimeout\fP 指定为 \-1 会导致
+\fBepoll_wait\fP() 无限期阻塞，而将 \fItimeout\fP 指定为零会导致 \fBepoll_wait\fP()
+立即返回，即使没有可用事件也是如此。
+.PP
+\fIstruct epoll_event\fP 在 \fBepoll_event\fP(3type) 中描述。
+.PP
+每个返回的 \fIepoll_event\fP 结构体的 \fIdata\fP 字段包含与在最近调用 \fBepoll_ctl\fP(2)
+(\fBEPOLL_CTL_ADD\fP、\fBEPOLL_CTL_MOD\fP) 中指定的相同数据，用于相应的打开文件描述符。
+.PP
+.\"
+\fIevents\fP 字段是一个位掩码，指示相应打开文件描述所发生的事件。 有关可能出现在该掩码中的位的列表，请参见 \fBepoll_ctl\fP(2)。
+.SS epoll_pwait()
+\fBepoll_wait\fP() 和 \fBepoll_pwait\fP() 之间的关系类似于 \fBselect\fP(2) 和 \fBpselect\fP(2):
+之间的关系，例如 \fBpselect\fP(2)，\fBepoll_pwait\fP() 允许应用程序安全地等待，直到文件描述符准备好或捕获到信号。
+.PP
+以下 \fBepoll_pwait\fP() 调用:
+.PP
+.in +4n
+.EX
+ready = epoll_pwait(epfd, &events, maxevents, timeout, &sigmask);
+.EE
+.in
+.PP
+相当于 \fIatomically\fP 执行以下调用:
+.PP
+.in +4n
+.EX
+sigset_t origmask;
+
+pthread_sigmask(SIG_SETMASK, &sigmask, &origmask);
+ready = epoll_wait(epfd, &events, maxevents, timeout);
+pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+.EE
+.in
+.PP
+.\"
+\fIsigmask\fP 参数可以指定为 NULL，在这种情况下 \fBepoll_pwait\fP() 等同于 \fBepoll_wait\fP()。
+.SS epoll_pwait2()
+\fBepoll_pwait2\fP() 系统调用等同于 \fBepoll_pwait\fP() 除了 \fItimeout\fP 参数。 它需要一个
+\fItimespec\fP 类型的参数才能指定纳秒分辨率超时。 这个参数函数在 \fBpselect\fP(2) 和 \fBppoll\fP(2) 中是一样的。 如果
+\fItimeout\fP 为 NULL，则 \fBepoll_pwait2\fP() 可以无限期阻塞。
+.SH "RETURN VALUE"
+成功时，\fBepoll_wait\fP() 返回为请求的 I/O 准备好的文件描述符数，如果在请求的 \fItimeout\fP
+毫秒内没有文件描述符准备就绪，则返回零。 失败时，\fBepoll_wait\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIepfd\fP 不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIevents\fP 指向的内存区域不能用写权限访问。
+.TP 
+\fBEINTR\fP
+在 (1) 任何请求的事件发生或 (2) \fItimeout\fP 过期之前调用被信号处理程序中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fIepfd\fP 不是 \fBepoll\fP 文件描述符，或者 \fImaxevents\fP 小于或等于零。
+.SH VERSIONS
+.\" To be precise: kernel 2.5.44.
+.\" The interface should be finalized by Linux 2.5.66.
+在 Linux 2.6 中添加了 \fBepoll_wait\fP()。 glibc 2.3.2 中提供了库支持。
+.PP
+在 Linux 2.6.19 中添加了 \fBepoll_pwait\fP()。 glibc 2.6 中提供了库支持。
+.PP
+在 Linux 5.11 中添加了 \fBepoll_pwait2\fP()。
+.SH STANDARDS
+\fBepoll_wait\fP()、\fBepoll_pwait\fP() 和 \fBepoll_pwait2\fP() 是特定于 Linux 的。
+.SH NOTES
+当一个线程在对 \fBepoll_wait\fP() 的调用中被阻塞时，另一个线程可以将文件描述符添加到等待的 \fBepoll\fP 实例。
+如果新的文件描述符准备就绪，它会导致 \fBepoll_wait\fP() 调用解锁。
+.PP
+如果在调用 \fBepoll_wait\fP() 时有多个 \fImaxevents\fP 文件描述符就绪，则连续的 \fBepoll_wait\fP()
+调用将循环遍历就绪文件描述符集。
+此行为有助于避免饥饿情况，在这种情况下，进程无法注意到其他文件描述符已准备就绪，因为它专注于一组已知已准备就绪的文件描述符。
+.PP
+请注意，可以在兴趣列表当前为空的 \fBepoll\fP 实例上调用 \fBepoll_wait\fP()
+(或者由于文件描述符已关闭或从另一个线程的兴趣中删除，其兴趣列表变为空)。 调用将阻塞，直到稍后将某个文件描述符添加到兴趣列表 (在另一个线程中)
+并且该文件描述符准备就绪。
+.SS "C library/kernel differences"
+原始 \fBepoll_pwait\fP() 和 \fBepoll_pwait2\fP() 系统调用有第六个参数 \fIsize_t sigsetsize\fP，它指定
+\fIsigmask\fP 参数的字节大小。 glibc \fBepoll_pwait\fP() 包装器函数将此参数指定为固定值 (等于
+\fIsizeof(sigset_t)\fP).
+.SH BUGS
+在 Linux 2.6.37 之前，大于大约 \fILONG_MAX / HZ\fP 毫秒的 \fItimeout\fP 值被视为 \-1 (即无穷大)。
+因此，例如，在 \fIsizeof(long)\fP 为 4 且内核 \fIHZ\fP 值为 1000 的系统上，这意味着大于 35.79
+分钟的超时将被视为无穷大。
+.SH "SEE ALSO"
+\fBepoll_create\fP(2), \fBepoll_ctl\fP(2), \fBepoll\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

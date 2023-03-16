@@ -1,0 +1,176 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1991 Regents of the University of California.
+.\" and Copyright (C) 2007, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)getpgrp.2	6.4 (Berkeley) 3/10/91
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-04-15 by Michael Chastain <mec@shell.portal.com>:
+.\"   Added 'getpgid'.
+.\" Modified 1996-07-21 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-11-06 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1999-09-02 by Michael Haardt <michael@moria.de>
+.\" Modified 2002-01-18 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2003-01-20 by Andries Brouwer <aeb@cwi.nl>
+.\" 2007-07-25, mtk, fairly substantial rewrites and rearrangements
+.\" of text.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setpgid 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+setpgid、getpgid、setpgrp、getpgrp\-set/get 进程组
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint setpgid(pid_t \fP\fIpid\fP\fB, pid_t \fP\fIpgid\fP\fB);\fP
+\fBpid_t getpgid(pid_t \fP\fIpid\fP\fB);\fP
+.PP
+\fBpid_t getpgrp(void);\fP                            /* POSIX.1 version */
+\fB[[deprecated]] pid_t getpgrp(pid_t \fP\fIpid\fP\fB);\fP        /* BSD version */
+.PP
+\fBint setpgrp(void);\fP                              /* System V version */
+\fB[[deprecated]] int setpgrp(pid_t \fP\fIpid\fP\fB, pid_t \fP\fIpgid\fP\fB);\fP  /* BSD version */
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetpgid\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+.fi
+.PP
+\fBsetpgrp\fP() (POSIX.1):
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE
+.fi
+.PP
+\fBsetpgrp\fP() (BSD), \fBgetpgrp\fP() (BSD):
+.nf
+    [These are available only before glibc 2.19]
+    _BSD_SOURCE &&
+        ! (_POSIX_SOURCE || _POSIX_C_SOURCE || _XOPEN_SOURCE
+            || _GNU_SOURCE || _SVID_SOURCE)
+.fi
+.SH DESCRIPTION
+这些接口都在 Linux 上可用，用于获取和设置进程的进程组 ID (PGID)。 首选的、POSIX.1 指定的方法是:
+\fBgetpgrp\fP(void)，用于检索调用进程的 PGID; 和 \fBsetpgid\fP()，用于设置进程的 PGID。
+.PP
+\fBsetpgid\fP() 将 \fIpid\fP 指定的进程的 PGID 设置为 \fIpgid\fP。 如果 \fIpid\fP 为零，则使用调用进程的进程 ID。
+如果 \fIpgid\fP 为零，则 \fIpid\fP 指定的进程的 PGID 与其进程 ID 相同。如果 \fBsetpgid\fP()
+用于将一个进程从一个进程组移动到另一个进程组 (如某些 shells 在创建管道时所做的那样)，则两个进程组必须是同一会话的一部分 (请参见
+\fBsetsid\fP(2) 和 \fBcredentials\fP(7)).  在这种情况下，\fIpgid\fP 指定要加入的现有进程组，并且该组的会话 ID
+必须与加入进程的会话 ID 匹配。
+.PP
+\fBgetpgrp\fP() 的 POSIX.1 版本不带参数，返回调用进程的 PGID。
+.PP
+\fBgetpgid\fP() 返回 \fIpid\fP 指定的进程的 PGID。 如果 \fIpid\fP 为零，则使用调用进程的进程 ID。
+(很少需要检索除调用者以外的进程的 PGID，POSIX.1 \fBgetpgrp\fP() 更适合该任务。)
+.PP
+System\V\-style \fBsetpgrp\fP()，不带参数，等同于 \fIsetpgid(0,\ 0)\fP。
+.PP
+BSD 特定的 \fBsetpgrp\fP() 调用，它采用参数 \fIpid\fP 和 \fIpgid\fP，是一个包装器函数调用
+.PP
+.in +4n
+.EX
+setpgid(pid, pgid)
+.EE
+.in
+.PP
+.\" The true BSD setpgrp() system call differs in allowing the PGID
+.\" to be set to arbitrary values, rather than being restricted to
+.\" PGIDs in the same session.
+从 glibc 2.19 开始，BSD 特定的 \fBsetpgrp\fP() 函数不再被 \fI<unistd.h>\fP 公开;
+调用应替换为上面显示的 \fBsetpgid\fP() 调用。
+.PP
+BSD 特定的 \fBgetpgrp\fP() 调用，它采用单个 \fIpid\fP 参数，是一个包装函数调用
+.PP
+.in +4n
+.EX
+getpgid(pid)
+.EE
+.in
+.PP
+从 glibc 2.19 开始，BSD 特定的 \fBgetpgrp\fP() 函数不再被 \fI<unistd.h>\fP 公开;
+应将调用替换为对不带参数的 POSIX.1 \fBgetpgrp\fP() 的调用 (如果意图是获取调用者的 PGID)，或替换为上面显示的
+\fBgetpgid\fP() 调用。
+.SH "RETURN VALUE"
+成功时，\fBsetpgid\fP() 和 \fBsetpgrp\fP() 返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+POSIX.1 \fBgetpgrp\fP() 总是返回调用者的 PGID。
+.PP
+\fBgetpgid\fP() 和 BSD 特定的 \fBgetpgrp\fP() 在成功时返回一个进程组。 出错时返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+尝试更改调用进程的其中一个子进程的进程组 ID，并且该子进程已经执行了 \fBexecve\fP(2)
+(\fBsetpgid\fP()、\fBsetpgrp\fP())。
+.TP 
+\fBEINVAL\fP
+\fIpgid\fP 小于 0 (\fBsetpgid\fP()、\fBsetpgrp\fP())。
+.TP 
+\fBEPERM\fP
+试图将进程移动到不同会话中的进程组中，或者更改调用进程的其中一个子进程的进程组 ID，而该子进程在不同的会话中，或者更改进程组 ID 会话负责人
+(\fBsetpgid\fP()，\fBsetpgrp\fP())。
+.TP 
+\fBESRCH\fP
+对于 \fBgetpgid\fP(): \fIpid\fP 不匹配任何进程。 对于 \fBsetpgid\fP():，\fIpid\fP 不是调用进程，也不是调用进程的子进程。
+.SH STANDARDS
+\fBsetpgid\fP() 和 \fBgetpgrp\fP() 不带参数的版本符合 POSIX.1\-2001。
+.PP
+POSIX.1\-2001 还指定了 \fBgetpgid\fP() 和没有参数的 \fBsetpgrp\fP() 版本。 (POSIX.1\-2008 将此
+\fBsetpgrp\fP() 规范标记为已过时。)
+.PP
+\fBgetpgrp\fP() 的 1 参数版本和 \fBsetpgrp\fP() 的 2 参数版本是从 4.2BSD 派生出来的，POSIX.1 没有规定。
+.SH NOTES
+通过 \fBfork\fP(2) 创建的子进程继承其父进程组 ID。PGID 在 \fBexecve\fP(2) 中保留。
+.PP
+每个进程组都是一个会话的成员，每个进程都是其进程组所属的会话的成员。 (见 \fBcredentials\fP(7).)
+.PP
+一个会话可以有一个控制终端。 在任何时候，会话中的一个 (并且只有一个) 进程组可以是终端的前台进程组; 其余进程组在后台。 如果终端产生信号
+(例如，键入中断键产生 \fBSIGINT\fP)，该信号被发送到前台进程组。 (有关生成信号的字符的说明，请参见 \fBtermios\fP(3)。)
+只有前台进程组可能来自最终端的 \fBread\fP(2); 如果后台进程组尝试从最终端到 \fBread\fP(2)，则向该组发送一个 \fBSIGTTIN\fP
+信号，该信号将其挂起。 \fBtcgetpgrp\fP(3) 和 \fBtcsetpgrp\fP(3) 函数用于 get/set 控制终端的前台进程组。
+.PP
+\fBsetpgid\fP() 和 \fBgetpgrp\fP() 调用被 \fBbash\fP(1) 等程序用来创建进程组以实现 shell 作业控制。
+.PP
+.\" exit.3 refers to the following text:
+如果一个进程的终止导致一个进程组成为孤立进程，并且如果新孤立进程组的任何成员停止，那么一个 \fBSIGHUP\fP 信号和一个 \fBSIGCONT\fP
+信号将被发送到新孤立进程组中的每个进程。 孤立进程组是这样一个进程组，其中进程组的每个成员的父进程本身也是进程组的成员，或者是不同会话中进程组的成员
+(另请参见 \fBcredentials\fP(7)).
+.SH "SEE ALSO"
+\fBgetuid\fP(2), \fBsetsid\fP(2), \fBtcgetpgrp\fP(3), \fBtcsetpgrp\fP(3), \fBtermios\fP(3),
+\fBcredentials\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,278 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: umount
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-08-04
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH UMOUNT 8 2022\-08\-04 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+umount \- 卸载文件系统
+.SH SYNOPSIS
+.sp
+\fBumount\fP \fB\-a\fP [\fB\-dflnrv\fP] [\fB\-t\fP \fIfstype\fP] [\fB\-O\fP \fIoption\fP...]
+.sp
+\fBumount\fP [\fB\-dflnrv\fP] {\fIdirectory\fP|\fIdevice\fP}
+.sp
+\fBumount\fP \fB\-h\fP|\fB\-V\fP
+.SH DESCRIPTION
+.sp
+\fBumount\fP 命令将提到的 filesystem(s)
+从文件层次结构中分离出来。文件系统是通过给出它被挂载的目录来指定的。提供文件系统所在的特殊设备也可能有效，但已过时，主要是因为如果该设备挂载在多个目录上，它将失败。
+.sp
+请注意，当文件系统处于 \(aqbusy\(aq \-
+例如，当它上面有打开的文件，或者当某些进程在那里有它的工作目录，或者当它上面的交换文件正在使用中时，不能卸载文件系统。有问题的进程甚至可能是
+\fBumount\fP 本身 \-\- 它打开 libc，而 libc 又可能打开例如语言环境文件。惰性卸载避免了这个问题，但它可能会引入其他问题。请参见下面的
+\fB\-\-lazy\fP 说明。
+.SH OPTIONS
+.sp
+\fB\-a\fP, \fB\-\-all\fP
+.RS 4
+\fI/proc/self/mountinfo\fP (或已弃用的 \fI/etc/mtab\fP))
+中描述的所有文件系统都已卸载，proc、devfs、devpts、sysfs、rpc_pipefs 和 nfsd 文件系统除外。这个文件系统列表可能会被
+\fB\-\-types\fP umount 选项替换。
+.RE
+.sp
+\fB\-A\fP, \fB\-\-all\-targets\fP
+.RS 4
+卸载指定文件系统当前挂载命名空间中的所有挂载点。文件系统可以由挂载点之一或设备名称 (或 UUID 等) 指定。当此选项与 \fB\-\-recursive\fP
+一起使用时，文件系统中的所有嵌套挂载都将递归卸载。此选项仅在 \fI/etc/mtab\fP 是 \fI/proc/mounts\fP 的符号链接的系统上受支持。
+.RE
+.sp
+\fB\-c\fP, \fB\-\-no\-canonicalize\fP
+.RS 4
+不要规范化路径。路径规范化基于 \fBstat\fP(2) 和 \fBreadlink\fP(2) 系统调用。这些系统调用在某些情况下可能会挂起
+(例如，如果服务器不可用，则在 NFS 上)。该选项必须与安装点的规范路径一起使用。
+.sp
+对于非 root 用户，\fBumount\fP 会默默地忽略此选项。
+.sp
+有关此选项的更多详细信息，请参见 \fBmount\fP(8) 手册页。请注意，\fBumount\fP 不会将此选项传递给
+\fB/sbin/umount.\fP\fItype\fP 助手。
+.RE
+.sp
+\fB\-d\fP, \fB\-\-detach\-loop\fP
+.RS 4
+当卸载的设备是循环设备时，也释放这个循环设备。对于由 \fBmount\fP(8) 初始化的设备，此选项是不必要的，在这种情况下，"autoclear"
+功能默认启用。
+.RE
+.sp
+\fB\-\-fake\fP
+.RS 4
+导致除了实际系统调用或 umount helper 执行之外的所有操作; 这 \(aqfakes\(aq 卸载文件系统。它可用于从已弃用的
+\fI/etc/mtab\fP 中删除先前使用 \fB\-n\fP 选项卸载的条目。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-force\fP
+.RS 4
+强制卸载 (在无法访问 NFS 系统的情况下)。
+.sp
+请注意，此选项不保证 umount 命令不会挂起。它 \(cqs 强烈建议使用没有符号链接的绝对路径，以避免在 \fBumount\fP 中对无法访问的
+NFS 进行不必要的 \fBreadlink\fP(2) 和 \fBstat\fP(2) 系统调用。
+.RE
+.sp
+\fB\-i\fP, \fB\-\-internal\-only\fP
+.RS 4
+不要调用 \fB/sbin/umount.\fP\fIfilesystem\fP 助手，即使它存在。默认情况下，如果存在这样的帮助程序，则会调用它。
+.RE
+.sp
+\fB\-l\fP, \fB\-\-lazy\fP
+.RS 4
+懒惰卸载。现在从文件层次结构中分离文件系统，并在它不再忙时立即清除对该文件系统的所有引用。
+.sp
+如果您 \(cqre 打算将此选项用于网络文件系统或具有子挂载的本地文件系统，则系统将在接近 future 时重新启动。\fBumount \-l\fP
+的推荐用例是防止由于无法访问的网络共享而在关机时挂起，而正常的 \fBumount\fP 将因服务器停机或网络分区而挂起。重新安装份额将是不可能的。
+.RE
+.sp
+\fB\-N\fP, \fB\-\-namespace\fP \fIns\fP
+.RS 4
+在 \fIns\fP 指定的挂载命名空间中执行 \fBumount\fP。\fIns\fP 是在该命名空间中运行的进程的 PID 或代表该命名空间的特殊文件。
+.sp
+\fBumount\fP 读 \fI/etc/fstab\fP，写 \fI/etc/mtab\fP (或写 \fI/run/mount\fP) 调用 \fBumount\fP(2)
+系统调用) 时切换到命名空间，否则运行在原命名空间。这意味着目标挂载命名空间不必包含执行 \fBumount\fP(2) 命令所需的任何库或其他要求。
+.sp
+有关更多信息，请参见 \fBmount_namespaces\fP(7)。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-no\-mtab\fP
+.RS 4
+卸载而不写入 \fI/etc/mtab\fP。
+.RE
+.sp
+\fB\-O\fP, \fB\-\-test\-opts\fP \fIoption\fP ...
+.RS 4
+仅卸载在 \fI/etc/fstab\fP 中设置了指定选项的文件系统。可以在逗号分隔的列表中指定多个选项。每个选项都可以加上 \fBno\fP
+前缀，以指示不应对此选项采取任何操作。
+.RE
+.sp
+\fB\-q\fP, \fB\-\-quiet\fP
+.RS 4
+抑制 "not mounted" 错误消息。
+.RE
+.sp
+\fB\-R\fP, \fB\-\-recursive\fP
+.RS 4
+递归卸载每个指定的目录。如果链中的任何卸载操作因任何原因失败，每个目录的递归将停止。挂载点之间的关系由 \fI/proc/self/mountinfo\fP
+条目确定。文件系统必须由挂载点路径指定; 不支持按设备名称 (或 UUID) 递归卸载。从版本 2.37 开始，它还卸载所有过度安装的文件系统
+(同一安装点上的更多文件系统)。
+.RE
+.sp
+\fB\-r\fP, \fB\-\-read\-only\fP
+.RS 4
+当卸载失败时，尝试以只读方式重新挂载文件系统。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-types\fP \fItype\fP ...
+.RS 4
+指示应仅对指定 \fItype\fP 的文件系统执行操作。可以在逗号分隔的列表中指定不止一种类型。文件系统类型列表可以以 \fBno\fP
+为前缀，以指示不应对所有提到的类型采取任何操作。请注意，\fBumount\fP 从内核 (\fI/proc/mounts\fP)
+读取有关已安装文件系统的信息，并且文件系统名称可能与 \fI/etc/fstab\fP 中使用的文件系统名称不同 (例如，"nfs4" 与 "nfs")。
+.RE
+.sp
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+详细模式。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH "NON\-SUPERUSER UMOUNTS"
+.sp
+通常，只有超级用户可以卸载文件系统。然而，当 \fIfstab\fP 在一行中包含 \fBuser\fP
+选项时，任何人都可以卸载相应的文件系统。有关详细信息，请参见 \fBmount\fP(8) 手册页。
+.sp
+从版本 2.34 开始，如果内核挂载表包含用户 \(cqs ID，则 \fBumount\fP 命令也可用于对 fuse
+文件系统执行卸载操作。在这种情况下，不需要 \fIfstab\fP \fBuser=\fP 挂载选项。
+.sp
+由于内部 \fBlibmount\fP 安全规则用户权限不足时，2.35 版 \fBumount\fP 命令不会退出。它丢掉 suid 权限并继续作为普通的非
+root 用户。这可用于支持不需要 root 权限的用例 (例如，fuse 文件系统、用户名称空间等)。
+.SH "LOOP DEVICE"
+.sp
+\fBumount\fP 命令将独立于 \fI/etc/mtab\fP 自动分离先前由 \fBmount\fP(8) 命令初始化的环路设备。
+.sp
+在这种情况下，设备使用 "autoclear" 标志进行初始化 (有关更多详细信息，请参见 \fBlosetup\fP(8) 输出)，否则需要使用选项
+\fB\-\-detach\-loop\fP 或调用 \fBlosetup \-d\fP \fIdevice\fP。自 Linux 2.6.25 起支持自动清除，特性。
+.SH "EXTERNAL HELPERS"
+.sp
+外部卸载助手的语法是:
+.RS 3
+.ll -.6i
+.sp
+\fBumount.\fP\fIsuffix\fP {\fIdirectory\fP|\fIdevice\fP} [\fB\-flnrv\fP] [\fB\-N\fP
+\fInamespace\fP] [\fB\-t\fP \fItype\fP.\fIsubtype\fP]
+.br
+.RE
+.ll
+.sp
+其中 \fIsuffix\fP 是文件系统类型 (或来自 mtab 文件中 \fBuhelper=\fP 或 \fBhelper=\fP 标记的值)。\fB\-t\fP
+选项可用于具有子类型支持的文件系统。例如:
+.RS 3
+.ll -.6i
+.sp
+\fBumount.fuse \-t fuse.sshfs\fP
+.br
+.RE
+.ll
+.sp
+当普通用户需要能够卸载 \fI/etc/fstab\fP 中未定义的挂载点时 (例如，对于由 \fBudisks\fP(1))
+挂载的设备)，\fBuhelper=\fP\fIsomething\fP 标记 (非特权助手) 会出现在 \fI/etc/mtab\fP 文件中。
+.sp
+\fImtab\fP 文件中的 \fBhelper=\fP\fItype\fP 标记会将所有卸载请求重定向到独立于 UID 的
+\fB/sbin/umount.\fP\fItype\fP 助手。
+.sp
+请注意，\fI/etc/mtab\fP 目前已弃用，\fBhelper=\fP 和其他用户空间挂载选项由 \fBlibmount\fP 维护。
+.SH ENVIRONMENT
+.sp
+\fBLIBMOUNT_FSTAB\fP=<path>
+.RS 4
+覆盖 \fIfstab\fP 文件的默认位置 (\fBsuid\fP) 忽略
+.RE
+.sp
+\fBLIBMOUNT_MTAB\fP=<path>
+.RS 4
+覆盖 \fImtab\fP 文件的默认位置 (\fBsuid\fP) 忽略
+.RE
+.sp
+\fBLIBMOUNT_DEBUG\fP=all
+.RS 4
+启用 \fBlibmount\fP 调试输出
+.RE
+.SH FILES
+.sp
+\fI/etc/mtab\fP
+.RS 4
+挂载文件系统表 (已弃用，通常由指向 \fI/proc/mounts\fP) 的符号链接代替
+.RE
+.sp
+\fI/etc/fstab\fP
+.RS 4
+已知文件系统表
+.RE
+.sp
+\fI/proc/self/mountinfo\fP
+.RS 4
+内核生成的已挂载文件系统表。
+.RE
+.SH HISTORY
+.sp
+\fBumount\fP 命令出现在 Version 6 AT&T UNIX 中。
+.SH "SEE ALSO"
+.sp
+\fBumount\fP(2), \fBlosetup\fP(8), \fBmount_namespaces\fP(7), \fBmount\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBumount\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

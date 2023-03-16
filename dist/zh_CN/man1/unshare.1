@@ -1,0 +1,468 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: unshare
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: User Commands
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH UNSHARE 1 2022\-05\-11 "util\-linux 2.38.1" "User Commands"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+unshare \- 在新命名空间中运行程序
+.SH SYNOPSIS
+.sp
+\fBunshare\fP [options] [\fIprogram\fP [\fIarguments\fP]]
+.SH DESCRIPTION
+.sp
+\fBunshare\fP 命令创建新的名称空间 (由下面描述的命令行选项指定)，然后执行指定的 \fIprogram\fP。如果未给出
+\fIprogram\fP，则运行 "${SHELL}" (默认值: \fI/bin/sh\fP).
+.sp
+默认情况下，一个新的命名空间只有在它有成员进程时才会存在。通过将挂载 /proc/\fIpid\fP/ns/\fItype\fP
+文件绑定到文件系统路径，即使新命名空间没有成员进程，也可以使其持久化。即使在 \fIprogram\fP 终止后，以这种方式持久化的名称空间随后也可以使用
+\fBnsenter\fP(1) 进入 (除了需要永久运行的 init 进程的 PID 名称空间)。一旦不再需要持久命名空间，就可以通过使用
+\fBumount\fP(8) 删除绑定挂载来取消持久化。有关详细信息，请参见 \fBEXAMPLES\fP 部分。
+.sp
+\fBunshare\fP 自 util\-linux 版本 2.36 使用 \fI/proc/[pid]/ns/pid_for_children\fP 和
+\fI/proc/[pid]/ns/time_for_children\fP 文件作为持久 PID 和 TIME 命名空间。此更改需要 Linux 内核
+4.17 或更新版本。
+.sp
+可以使用 \fBunshare\fP: 创建以下类型的名称空间
+.sp
+\fBmount namespace\fP
+.RS 4
+挂载和卸载文件系统不会影响系统的其余部分，除了明确标记为共享的文件系统 (使用 \fBmount \-\-make\-shared\fP; 有关 \fBshared\fP
+标志，请参见 \fI/proc/self/mountinfo\fP 或 \fBfindmnt \-o+PROPAGATION\fP)。有关详细信息，请参见
+\fBmount_namespaces\fP(7)。
+.sp
+\fBunshare\fP 自 util\-linux 版本 2.27 自动将传播设置为新挂载命名空间中的 \fBprivate\fP
+以确保新命名空间确实未共享。\(cqs 可以使用选项 \fB\-\-propagation unchanged\fP 禁用此，特性。请注意，\fBprivate\fP
+是内核默认值。
+.RE
+.sp
+\fBUTS namespace\fP
+.RS 4
+设置主机名或域名不会影响系统的其余部分。有关详细信息，请参见 \fButs_namespaces\fP(7)。
+.RE
+.sp
+\fBIPC namespace\fP
+.RS 4
+该进程将为 POSIX 消息队列以及 System V 消息队列、信号量集和共享内存段提供独立的命名空间。有关详细信息，请参见
+\fBipc_namespaces\fP(7)。
+.RE
+.sp
+\fBnetwork namespace\fP
+.RS 4
+该进程将具有独立的 IPv4 和 IPv6 栈、IP 路由表、防火墙规则、\fI/proc/net\fP 和 \fI/sys/class/net\fP
+目录树、套接字等。有关详细信息，请参见 \fBnetwork_namespaces\fP(7)。
+.RE
+.sp
+\fBPID namespace\fP
+.RS 4
+子进程将拥有一组与父进程不同的 PID 到进程的映射。有关详细信息，请参见 \fBpid_namespaces\fP(7)。
+.RE
+.sp
+\fBcgroup namespace\fP
+.RS 4
+该进程将具有 \fI/proc/self/cgroup\fP 的虚拟化视图，新的 cgroup 挂载将以命名空间 cgroup root
+为根。有关详细信息，请参见 \fBcgroup_namespaces\fP(7)。
+.RE
+.sp
+\fBuser namespace\fP
+.RS 4
+该进程将具有一组不同的 UID、GID 和功能。有关详细信息，请参见 \fBuser_namespaces\fP(7)。
+.RE
+.sp
+\fBtime namespace\fP
+.RS 4
+进程可以有 \fBCLOCK_MONOTONIC\fP 或者 \fBCLOCK_BOOTTIME\fP 的不同视图，可以使用
+\fI/proc/self/timens_offsets\fP 进行更改。有关详细信息，请参见 \fBtime_namespaces\fP(7)。
+.RE
+.SH OPTIONS
+.sp
+\fB\-i\fP, \fB\-\-ipc\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的 IPC 命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。
+.RE
+.sp
+\fB\-m\fP, \fB\-\-mount\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的挂载命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。请注意，\fIfile\fP
+必须位于传播类型不是 \fBshared\fP (或错误结果) 的挂载上。当不确定当前设置时使用命令 \fBfindmnt \-o+PROPAGATION\fP。另请参见下面的示例。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-net\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的网络命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。
+.RE
+.sp
+\fB\-p\fP, \fB\-\-pid\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的 PID 命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。(如果未同时指定
+\fB\-\-fork\fP 选项，则持久 PID 名称空间的创建将失败。)
+.sp
+另请参见 \fB\-\-fork\fP 和 \fB\-\-mount\-proc\fP 选项。
+.RE
+.sp
+\fB\-u\fP, \fB\-\-uts\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的 UTS 命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。
+.RE
+.sp
+\fB\-U\fP, \fB\-\-user\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的用户命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。
+.RE
+.sp
+\fB\-C\fP, \fB\-\-cgroup\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的 cgroup 命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。
+.RE
+.sp
+\fB\-T\fP, \fB\-\-time\fP[\fB=\fP\fIfile\fP]
+.RS 4
+创建一个新的时间命名空间。如果指定了 \fIfile\fP，则命名空间通过在 \fIfile\fP 处创建绑定挂载而持久化。\fB\-\-monotonic\fP 和
+\fB\-\-boottime\fP 选项可用于指定时间命名空间中相应的偏移量。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-fork\fP
+.RS 4
+Fork 指定 \fIprogram\fP 作为 \fBunshare\fP 的子进程而不是直接运行它。这在创建新的 PID 名称空间时很有用。请注意，当
+\fBunshare\fP 正在等待子进程时，它会忽略 \fBSIGINT\fP 和 \fBSIGTERM\fP，并且不会向子进程转发任何信号。有必要向子进程发送信号。
+.RE
+.sp
+\fB\-\-keep\-caps\fP
+.RS 4
+当给出 \fB\-\-user\fP 选项时，确保在用户命名空间中授予的能力保留在子进程中。
+.RE
+.sp
+\fB\-\-kill\-child\fP[\fB=\fP\fIsigname\fP]
+.RS 4
+当 \fBunshare\fP 终止时，将 \fIsigname\fP 发送到派生的子进程。与 \fB\-\-pid\fP 结合使用，可以轻松可靠地杀死 \fBunshare\fP
+下面的整个进程树。如果没有给出，\fIsigname\fP 默认为 \fBSIGKILL\fP。该选项表示 \fB\-\-fork\fP。
+.RE
+.sp
+\fB\-\-mount\-proc\fP[\fB=\fP\fImountpoint\fP]
+.RS 4
+在运行程序之前，将 proc 文件系统挂载到 \fImountpoint\fP (默认为 \fI/proc\fP)。这在创建新的 PID
+名称空间时很有用。它还意味着创建一个新的挂载命名空间，因为 \fI/proc\fP 挂载否则会弄乱系统上的现有程序。新的 proc 文件系统被显式挂载为私有
+(使用 \fBMS_PRIVATE\fP|\fBMS_REC\fP).
+.RE
+.sp
+\fB\-\-map\-user=\fP\fIuid|name\fP
+.RS 4
+只有当当前有效的用户 ID 映射到 \fIuid\fP 后，才能运行程序。如果多次指定此选项，则最后一次出现的优先。该选项表示 \fB\-\-user\fP。
+.RE
+.sp
+\fB\-\-map\-users=\fP\fIouteruid,inneruid,count\fP|\fBauto\fP
+.RS 4
+仅当从 \fIouteruid\fP 开始的大小为 \fIcount\fP 的用户 ID 块映射到从 \fIinneruid\fP 开始的用户 ID
+块后，才运行该程序。此映射是使用 \fBnewuidmap\fP(1) 创建的。如果用户 ID 范围与 \fB\-\-map\-user\fP 指定的映射重叠，则
+"hole" 将从映射中删除。这可能会导致映射的最高用户 ID 未被映射。特殊值 \fBauto\fP 将 map 有效用户拥有所有权的第一个用户 ID
+块，从 \fI/etc/subuid\fP 到从用户 ID 0 开始的块。如果多次指定此选项，则最后一次出现的优先。该选项表示 \fB\-\-user\fP。
+.RE
+.sp
+\fB\-\-map\-group=\fP\fIgid|name\fP
+.RS 4
+只有当当前有效的组 ID 映射到 \fIgid\fP 后，才能运行程序。如果多次指定此选项，则最后一次出现的优先。该选项表示
+\fB\-\-setgroups=deny\fP 和 \fB\-\-user\fP。
+.RE
+.sp
+\fB\-\-map\-groups=\fP\fIoutergid,innergid,count\fP|\fBauto\fP
+.RS 4
+仅当从 \fIoutergid\fP 开始的大小为 \fIcount\fP 的组 ID 块映射到从 \fIinnergid\fP 开始的组 ID
+块后，才运行该程序。此映射是使用 \fBnewgidmap\fP(1) 创建的。如果组 ID 的范围与 \fB\-\-map\-group\fP 指定的映射重叠，则
+"hole" 将从映射中删除。这可能会导致映射的最高组 ID 未被映射。特殊值 \fBauto\fP 将 map 有效用户拥有所有权的第一个用户 ID 块，从
+\fI/etc/subgid\fP 到从组 ID 0 开始的块。如果多次指定此选项，则最后一次出现的优先。该选项表示 \fB\-\-user\fP。
+.RE
+.sp
+\fB\-\-map\-auto\fP
+.RS 4
+Map 有效用户拥有所有权的第一个用户 ID 从 \fI/etc/subuid\fP 到从用户 ID 0 开始的块。同样，map 也是有效组从
+\fI/etc/subgid\fP 到从组 ID 0 开始的块所拥有所有权的组 ID 的第一个块。此选项旨在处理以下常见情况，即第一块从属用户和组 ID 可以
+map 整个用户和组 ID 空间。此选项等同于指定 \fB\-\-map\-users=auto\fP 和 \fB\-\-map\-groups=auto\fP。
+.RE
+.sp
+\fB\-r\fP, \fB\-\-map\-root\-user\fP
+.RS 4
+只有在当前有效的用户和组 ID 映射到新创建的用户命名空间中的超级用户 UID 和 GID
+之后，才能运行该程序。这使得即使在非特权运行时也可以方便地获得管理新创建的命名空间的各个方面所需的功能
+(例如在网络命名空间中配置接口或在挂载命名空间中安装文件系统)。作为一个纯粹的便利特性它不支持更复杂的用例，例如映射多个范围的 UID 和
+GID。该选项表示 \fB\-\-setgroups=deny\fP 和 \fB\-\-user\fP。该选项等同于 \fB\-\-map\-user=0 \-\-map\-group=0\fP。
+.RE
+.sp
+\fB\-c\fP, \fB\-\-map\-current\-user\fP
+.RS 4
+只有在当前有效的用户和组 ID 映射到新创建的用户命名空间中的相同 UID 和 GID 后，才能运行该程序。该选项表示
+\fB\-\-setgroups=deny\fP 和 \fB\-\-user\fP。该选项等同于 \fB\-\-map\-user=$(id \-ru) \-\-map\-group=$(id \-rg)\fP。
+.RE
+.sp
+\fB\-\-propagation private\fP|\fBshared\fP|\fBslave\fP|\fBunchanged\fP
+.RS 4
+在新的挂载命名空间中递归设置挂载传播标志。默认设置是将传播设置为 \fIprivate\fP。可以使用参数 \fBunchanged\fP
+禁用此，特性。当不请求挂载命名空间 (\fB\-\-mount\fP) 时，该选项将被静默忽略。
+.RE
+.sp
+\fB\-\-setgroups allow\fP|\fBdeny\fP
+.RS 4
+允许或拒绝用户命名空间中的 \fBsetgroups\fP(2) 系统调用。
+.sp
+为了能够调用 \fBsetgroups\fP(2)，调用进程至少要有 \fBCAP_SETGID\fP。但是由于 Linux 3.19 应用了进一步的限制:
+只有在设置了 GID map (\fB/proc/\fP\fIpid\fP*/gid_map*) 之后，内核才会授予调用 \fBsetgroups\fP(2)
+的权限。当启用 \fBsetgroups\fP(2) (即 \fBallow\fP，默认值) 时，GID map 可由 root 写入，而当永久禁用
+\fBsetgroups\fP(2) (使用 \fBdeny\fP).
+.RE
+.sp
+\fB\-R\fP, \fB\-\-root=\fP\fIdir\fP
+.RS 4
+运行命令并将根目录设置为 \fIdir\fP。
+.RE
+.sp
+\fB\-w\fP, \fB\-\-wd=\fP\fIdir\fP
+.RS 4
+将工作目录更改为 \fIdir\fP。
+.RE
+.sp
+\fB\-S\fP, \fB\-\-setuid\fP \fIuid\fP
+.RS 4
+设置将在输入的命名空间中使用的用户 ID。
+.RE
+.sp
+\fB\-G\fP, \fB\-\-setgid\fP \fIgid\fP
+.RS 4
+设置将在输入的命名空间和丢弃补充组中使用的组 ID。
+.RE
+.sp
+\fB\-\-monotonic\fP \fIoffset\fP
+.RS 4
+设置将在输入的时间命名空间中使用的 \fBCLOCK_MONOTONIC\fP 的偏移量。此选项需要取消与 \fB\-\-time\fP 共享时间命名空间。
+.RE
+.sp
+\fB\-\-boottime\fP \fIoffset\fP
+.RS 4
+设置将在输入的时间命名空间中使用的 \fBCLOCK_BOOTTIME\fP 的偏移量。此选项需要取消与 \fB\-\-time\fP 共享时间命名空间。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH NOTES
+.sp
+proc 和 sysfs 文件系统以 root
+身份挂载在用户命名空间中必须受到限制，以便权限较低的用户无法获得对权限较高的用户无法访问的敏感文件的更多访问权限。简而言之，proc 和 sysfs
+的规则尽可能接近绑定安装。
+.SH EXAMPLES
+.sp
+以下命令创建一个 PID 命名空间，使用 \fB\-\-fork\fP 确保执行的命令在子进程中执行 (作为命名空间中的第一个进程) 具有 PID
+1。\fB\-\-mount\-proc\fP 选项确保同时创建一个新的挂载命名空间，并挂载一个新的 \fBproc\fP(5) 文件系统，其中包含与新 PID
+命名空间对应的信息。当 \fBreadlink\fP(1) 命令终止时，新命名空间将自动拆除。
+.sp
+.if  n .RS 4
+.nf
+.fam C
+# unshare \-\-fork \-\-pid \-\-mount\-proc readlink /proc/self
+1
+.fam
+.fi
+.if  n .RE
+.sp
+作为非特权用户，创建一个新的用户命名空间，其中用户 \(cqs 凭据映射到命名空间内的根 ID:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+$ id \-u; id \-g
+1000
+1000
+$ unshare \-\-user \-\-map\-root \-user \(rs
+        sh \-c \(aq\(aqwhoami; cat /proc/self/uid_map /proc/self/gid_map\(aq\(aq
+root
+         0       1000          1
+         0       1000          1
+.fam
+.fi
+.if  n .RE
+.sp
+作为非特权用户，创建一个用户命名空间，其中前 65536 个 ID 都被映射，并且用户 \(cqs 凭据被映射到命名空间内的根 ID。map 由
+\fBsubuid\fP(5) 和 \fBsubgid\fP(5) 分配的从属 ID 决定。通过创建用户 ID 为 1 和组 ID 为 1
+的文件来演示此映射。为简洁起见，仅显示用户 ID 映射:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+$ id \-u
+1000
+$ cat /etc/subuid
+1000:100000:65536
+$ unshare \-\-user \-\-map\-auto \-\-map\-root\-user
+# id \-u
+0
+# cat /proc/self/uid_map
+         0       1000          1
+         1     100000      65535
+# touch file;  chown 1:1 file
+# ls \-ln \-\-time\-style=+ file
+\-rw\-r\-\-r\-\- 1 1 1 0  file
+# 出口
+$ ls \-ln \-\-time\-style=+ file
+\-rw\-r\-\-r\-\- 1 100000 100000 0  file
+.fam
+.fi
+.if  n .RE
+.sp
+以下命令中的第一个创建一个新的持久 UTS 命名空间并修改在该命名空间中看到的主机名。然后使用 \fBnsenter\fP(1)
+输入名称空间以显示修改后的主机名; 此步骤演示了 UTS 命名空间继续存在，即使命名空间在 \fBunshare\fP
+命令终止后没有成员进程。然后通过删除绑定安装来销毁命名空间。
+.sp
+.if  n .RS 4
+.nf
+.fam C
+# touch /root/uts\-ns
+# unshare \-\-uts=/root/uts\-ns hostname FOO
+# nsenter \-\-uts=/root/uts\-ns hostname
+FOO
+# umount /root/uts\-ns
+.fam
+.fi
+.if  n .RE
+.sp
+以下命令建立一个由绑定挂载 \fI/root/namespaces/mnt\fP 引用的持久挂载命名空间。为了确保绑定挂载的创建成功，将父目录
+(\fI/root/namespaces\fP) 设为传播类型不是 \fBshared\fP 的绑定挂载。
+.sp
+.if  n .RS 4
+.nf
+.fam C
+# mount \-\-bind /root/namespaces /root/namespaces
+# mount \-\-make\-private /root/namespaces
+# touch /root/namespaces/mnt
+# unshare \-\-mount=/root/namespaces/mnt
+.fam
+.fi
+.if  n .RE
+.sp
+以下命令演示了在创建 PID 命名空间时使用 \fB\-\-kill\-child\fP 选项，以确保在 \fBunshare\fP 被杀死时，PID
+命名空间内的所有进程都被杀死。
+.sp
+.if  n .RS 4
+.nf
+.fam C
+# set +m                # Don\(aqt 打印作业状态信息
+
+
+# unshare \-\-pid \-\-fork \-\-mount\-proc \-\-kill\-child \-\- \(rs
+
+
+       bash \-\-norc \-c \(aq\(aq(sleep 555 &) && (ps a &) && sleep 999\(aq\(aq &
+[1] 53456
+#     PID TTY      STAT   TIME COMMAND
+      1 pts/3    S+     0:00 sleep 999
+      3 pts/3    S+     0:00 sleep 555
+      5 pts/3    R+     0:00 ps a
+
+# ps h \-o \(aqcomm\(aq $!     # 显示后台作业是 unshare (1)
+unshare
+# kill $!                # Kill unshare(1)
+# pidof sleep
+.fam
+.fi
+.if  n .RE
+.sp
+\fBpidof\fP(1) 命令不打印任何输出，因为 \fBsleep\fP 进程已被终止。更准确地说，当命名空间 (即命名空间 \ (cqs init 进程)
+中具有 PID 1 的 \fBsleep\fP 进程被终止时，这会导致命名空间中的所有其他进程被终止。相比之下，未使用 \fB\-\-kill\-child\fP
+选项的一系列类似命令表明，当 \fBunshare\fP 终止时，PID 命名空间中的进程不会被杀死:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+# unshare \-\-pid \-\-fork \-\-mount\-proc \-\- \(rs
+
+
+       bash \-\-norc \-c \(aq\(aq(sleep 555 &) && (ps a &) && sleep 999\(aq\(aq &
+[1] 53479
+#     PID TTY      STAT   TIME COMMAND
+      1 pts/3    S+     0:00 sleep 999
+      3 pts/3    S+     0:00 sleep 555
+      5 pts/3    R+     0:00 ps a
+
+# kill $!
+# pidof sleep
+53482 53480
+.fam
+.fi
+.if  n .RE
+.sp
+以下示例演示了时间命名空间的创建，其中启动时间时钟设置为过去几年的时间点:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+# uptime \-p             # 在初始时间命名空间中显示正常运行时间
+最多 21 小时 30 分钟
+# unshare \-\-time \-\-fork \-\-boottime 300000000 uptime \-p
+up 9 years, 28 weeks, 1 day, 2 hours, 50 minutes
+.fam
+.fi
+.if  n .RE
+.SH AUTHORS
+.sp
+.MTO dottedmag\(atdottedmag.net "Mikhail Gusarov" ,
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBnewuidmap\fP(1)  \fBnewgidmap\fP(1)  \fBclone\fP(2), \fBunshare\fP(2),
+\fBnamespaces\fP(7), \fBmount\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBunshare\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

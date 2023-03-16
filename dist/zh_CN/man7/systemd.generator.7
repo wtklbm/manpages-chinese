@@ -1,0 +1,363 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.GENERATOR 7 "" "systemd 253" systemd.generator
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.generator \- systemd unit generators
+.SH SYNOPSIS
+.HP \w'\fB/path/to/generator\fR\ 'u
+\fB/path/to/generator\fP \fInormal\-dir\fP [\fIearly\-dir\fP] [\fIlate\-dir\fP]
+.PP
+.nf
+/run/systemd/system\-generators/*
+/etc/systemd/system\-generators/*
+/usr/local/lib/systemd/system\-generators/*
+/usr/lib/systemd/system\-generators/*
+.fi
+.PP
+.nf
+/run/systemd/user\-generators/*
+/etc/systemd/user\-generators/*
+/usr/local/lib/systemd/user\-generators/*
+/usr/lib/systemd/user\-generators/*
+.fi
+.sp
+.SH DESCRIPTION
+.PP
+生成器是放置在 /usr/lib/systemd/system\-generators/ 和上面列出的其他目录中的小型可执行文件 \&。
+\fBsystemd\fP(1) 将在启动时和配置重新加载时很早地执行这些二进制文件 \(em before 元文件加载
+\&。它们的主要目的是将非服务管理器本地的配置和执行上下文参数转换为动态生成的元文件、符号链接或元文件丢弃 \-
+ins，以便它们可以扩展服务管理器随后加载和操作的元文件层次结构 \&。
+.PP
+\fBsystemd\fP 将调用每个生成器具有三个用于生成器输出的目录路径 \&。在这三个目录中，生成器可以动态生成元文件 (常规文件、实例和模板)、元文件
+\&.d/ 丢弃 \- ins，并创建指向元文件的符号链接以添加其他依赖项、创建别名或实例化现有模板
+\&。这些目录包含在元加载路径中，允许生成的配置扩展或覆盖现有定义 \&。对于测试，生成器可以只用一个参数调用;
+在这种情况下，生成器应该假定所有三个路径都是相同的 \&。
+.PP
+生成器输出的目录路径因优先级而异: \&.../generator\&.early 的优先级高于 /etc / 中的管理配置，而
+\&.../generator 的优先级低于 /etc / 但高于 /usr / 中的供应商配置，并且 \&.../generator\&.late
+的优先级低于所有其他配置 \&。请参见下一节以及 \fBsystemd.unit\fP(5)\& 中元加载路径和元覆盖的讨论。
+.PP
+生成器从编译期间确定的一组路径加载，如上所示 \&。系统和用户生成器从名称分别以 system\-generators / 和
+user\-generators / 结尾的目录加载 \&。在前面列出的目录中找到的生成器会覆盖列表中较低目录中具有相同名称的生成器。/dev/null
+的符号链接或空文件可用于屏蔽生成器，从而防止它运行 \&。请注意，对于元加载路径，优先级最高的两个目录的顺序是相反的，/run/ 中的生成器会覆盖
+/etc/\& 中的生成器。
+.PP
+安装新的生成器或更新配置后，可能会执行 \fBsystemctl daemon\-reload\fP\&。这将删除之前由生成器创建的配置，重新运行所有生成器，并导致 \fBsystemd\fP
+从磁盘重新加载单元。有关详细信息，请参见 \fBsystemctl\fP(1)\&。
+.SH "OUTPUT DIRECTORIES"
+.PP
+使用三个参数调用生成器: 生成器可以放置其生成的元文件或符号链接 \& 的目录路径。默认情况下，这些路径是包含在 \fBsystemd\fP
+的搜索路径中的运行时目录，但出于调试目的，可以使用不同的路径调用生成器 \&。如果只提供一个参数，生成器应该使用与三个输出路径相同的目录 \&。
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+\fInormal\-dir\fP
+.sp
+在正常使用中，系统生成器为 /run/systemd/generator，用户生成器为
+$XDG_RUNTIME_DIR/generator\&。放置在此目录中的元文件优先于供应商元配置，但不高于原生 user/administrator
+元配置 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+\fIearly\-dir\fP
+.sp
+在正常使用中，对于系统生成器是 /run/systemd/generator\&.early，对于用户生成器是
+$XDG_RUNTIME_DIR/generator\&.early。放置在这个目录中的元文件会覆盖 /usr/、/run/ 和 /etc/\&
+中的元文件。这意味着放置在该目录中的元文件优先于所有正常配置，包括供应商和用户 / 管理员 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+\fIlate\-dir\fP
+.sp
+在正常使用中，对于系统生成器是 /run/systemd/generator\&.late，对于用户生成器是
+$XDG_RUNTIME_DIR/generator\&.late。该目录可用于扩展元文件树而不覆盖任何其他元文件 \&。供应商或
+user/administrator 提供的任何原生配置文件优先 \&。
+.RE
+.PP
+Note: 生成器 \fImust not\fP 写入其他位置或以其他方式更改系统状态 \&。生成器输出应该只持续到下一个 \fBdaemon\-reload\fP
+或 \fBdaemon\-reexec\fP; 如果生成器被替换或屏蔽，它的效果应该消失 \&。
+.SH ENVIRONMENT
+.PP
+服务管理器在调用生成器可执行文件时设置了一些环境变量 \&。它们携带有关生成器执行上下文的信息，以简化将生成器条件化到特定环境 \&。设置以下环境变量:
+.PP
+\fI$SYSTEMD_SCOPE\fP
+.RS 4
+如果从系统服务管理器调用生成器，则此变量设置为 "system"; 如果从每用户服务管理器调用，它被设置为 `用户`\&。
+.RE
+.PP
+\fI$SYSTEMD_IN_INITRD\fP
+.RS 4
+如果生成器作为 initrd 的一部分运行，则将其设置为 `1`\&。如果它是从常规主机运行的 (i\&.e\&. 在从 initrd
+转换到主机之后)，它被设置为 `0`\&。此环境变量仅为系统生成器设置 \&。
+.RE
+.PP
+\fI$SYSTEMD_FIRST_BOOT\fP
+.RS 4
+如果将此启动周期视为 "first boot"，则将其设置为 "1"; 如果是后续的常规引导，则将其设置为 `0`\&。有关详细信息，请参见
+\fBsystemd.unit\fP(5)\& 中 \fIConditionFirstBoot=\fP 的文档。此环境变量仅为系统生成器设置 \&。
+.RE
+.PP
+\fI$SYSTEMD_VIRTUALIZATION\fP
+.RS 4
+如果服务管理器在虚拟化环境中运行，则 \fI$SYSTEMD_VIRTUALIZATION\fP 设置为一对字符串，以冒号 \& 分隔。第一个字符串是
+"vm" 或 "container"，对虚拟化类型进行分类 \&。第二个字符串标识虚拟化技术的实现 \&。如果未检测到虚拟化，则不会设置此变量
+\&。此数据与 \fBsystemd\-detect\-virt\fP(1) 检测和报告的数据相同，并使用相同的虚拟化实现标识符词汇表。
+.RE
+.PP
+\fI$SYSTEMD_ARCHITECTURE\fP
+.RS 4
+此变量设置为报告的系统体系结构的短标识符 \&。有关定义值的详细信息，请参见 \fBsystemd.unit\fP(5)\& 中
+\fIConditionArchitecture=\fP 的文档。
+.RE
+.SH "NOTES ABOUT WRITING GENERATORS"
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+所有生成器都在并行 \& 中执行。这意味着所有可执行文件都在同一时间启动，并且需要能够处理这种并行性 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+生成器在启动时运行得非常早，不能依赖任何外部服务 \&。他们可能不会与任何其他进程对话。这包括简单的事情，例如记录到 \fBsyslog\fP(3) 或
+\fBsystemd\fP 本身 (这意味着: 没有 \fBsystemctl\fP(1))! 生成器运行后安装非必要的文件系统，如 /var / 和
+/home/。然而，生成器可以依赖于可用的最基本的内核功能，以及挂载的 /sys/、/proc/、/dev/、/usr/ 和 /run / 文件系统
+\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+重新加载配置时，生成器写入的单元将被删除 \&。这意味着生成的单元的生命周期与 \fBsystemd\fP 本身的重新加载周期密切相关 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+生成器应该只用于生成元文件，\&.d/*\&.conf 丢弃它们的插件和它们的符号链接，而不是任何其他类型的非元相关配置
+\&。由于上面提到的生命周期逻辑，生成器不适合为其他服务生成动态配置
+\&。如果您需要为其他服务生成动态配置，请在您订购的正常服务中执行，然后再订购相关服务 \&。
+.sp
+请注意，使用服务元文件的 \fIStandardInputData=\fP/\fIStandardInputText=\fP 设置 (请参见
+\fBsystemd.exec\fP(5))，可以使任意输入数据 (包括特定于守护程序的配置)
+成为元定义的一部分，这通常足以将其他程序的数据或配置嵌入到元中以本地方式保存文件 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+由于 \fBsyslog\fP(3) 不可用 (见上文)，因此必须将日志消息写入 /dev/kmsg\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+生成器应始终在生成文件顶部的注释中包含自己的名称，以便用户可以轻松找出哪个组件创建或修改了特定的元 \&。
+.sp
+\fISourcePath=\fP 指令应该在生成的文件中使用，以指定它们从中生成的源配置文件 \&。这让用户更容易理解，还有一个好处是 systemd
+可以警告用户有关磁盘上已更改但 systemd\& 尚未读取的配置文件。\fISourcePath=\fP 值不必是物理文件系统中的文件
+\&。例如，生成器查看内核命令行的常见情况，应该使用 \fBSourcePath=/proc/cmdline\fP\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+生成器可能会写出动态元文件，或者只是将元文件挂接到其他单元，通常使用 \&.wants/ 或 \&.requires/ 符号链接
+\&。通常，使用生成器从 /usr / 简单地实例化一个模板元文件比写出完全动态的元文件 \& 更好。当然，这只有在使用单个参数时才有效 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果您细心的话，您可以在 shell 脚本中实现生成器 \&。然而，我们确实推荐 C 代码，因为生成器是同步执行的，因此如果它们很慢
+\&，则会延迟整个启动。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+关于重写语义: 在考虑重写语义时，我们尝试遵循两条规则:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+用户配置应覆盖供应商配置 \&。这个 (mostly) 意味着 /etc / 中的内容应该覆盖 /usr/\& 中的内容。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+原生配置应覆盖非原生配置 \&。这个 (mostly) 意味着您生成的东西永远不应该为了同样的目的覆盖原生元文件 \&。
+.RE
+.sp
+在这两个规则中，第一个规则可能是更重要的，并且有时会破坏第二个规则 \&。因此，在决定是使用 argv[1]、argv[2] 还是 argv[3]
+时，您的默认选择可能应该是 argv[1]\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+请三思而后行，而不是现在开始为遗留配置文件格式编写各种生成器! 弃用旧东西而不是人为地让它保持活力通常是一个更好的主意 \&。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&systemd\-fstab\-generator\fP
+.PP
+\fBsystemd\-fstab\-generator\fP(8) 将 /etc/fstab 转换为原生挂载单元 \&。它使用 argv[1]
+作为放置生成的元文件的位置，以便允许用户使用他们自己的原生元文件覆盖 /etc/fstab，同时也确保 /etc/fstab 覆盖来自 /usr/\&
+的任何供应商默认值。
+.PP
+编辑 /etc/fstab 后，用户应调用 \fBsystemctl daemon\-reload\fP\&。这将重新运行所有生成器并导致 \fBsystemd\fP
+从磁盘重新加载单元。要实际挂载添加到 fstab 的新目录，可以使用 \fBsystemctl start \fP\fI/path/to/mountpoint\fP
+或 \fBsystemctl start local\-fs\&.target\fP\&。
+.PP
+\fBExample\ \&2.\ \&systemd\-system\-update\-generator\fP
+.PP
+如果安排了系统更新 \&，\fBsystemd\-system\-update\-generator\fP(8) 会临时将 default\&.target
+重定向到 system\-update\&.target。由于这需要覆盖 default\&.target 的默认用户配置，因此它使用
+argv[2]\&。有关此逻辑的详细信息，请参见 \fBsystemd.offline\-updates\fP(7)\&。
+.PP
+\fBExample\ \&3.\ \&Debugging a generator\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+dir=$(mktemp \-d)
+SYSTEMD_LOG_LEVEL=debug /usr/lib/systemd/system\-generators/systemd\-fstab\-generator \e
+        "$dir" "$dir" "$dir"
+find $dir
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-cryptsetup\-generator\fP(8),
+\fBsystemd\-debug\-generator\fP(8), \fBsystemd\-fstab\-generator\fP(8), \fBfstab\fP(5),
+\fBsystemd\-getty\-generator\fP(8), \fBsystemd\-gpt\-auto\-generator\fP(8),
+\fBsystemd\-hibernate\-resume\-generator\fP(8), \fBsystemd\-rc\-local\-generator\fP(8),
+\fBsystemd\-system\-update\-generator\fP(8), \fBsystemd\-sysv\-generator\fP(8),
+\fBsystemd\-xdg\-autostart\-generator\fP(8), \fBsystemd.unit\fP(5), \fBsystemctl\fP(1),
+\fBsystemd.environment\-generator\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

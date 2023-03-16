@@ -1,0 +1,168 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mq_getattr 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+mq_getattr、mq_setattr\-get/set 消息队列属性
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <mqueue.h>\fP
+.PP
+\fBint mq_getattr(mqd_t \fP\fImqdes\fP\fB, struct mq_attr *\fP\fIattr\fP\fB);\fP
+\fBint mq_setattr(mqd_t \fP\fImqdes\fP\fB, const struct mq_attr *restrict \fP\fInewattr\fP\fB,\fP
+\fB               struct mq_attr *restrict \fP\fIoldattr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmq_getattr\fP() 和 \fBmq_setattr\fP() 分别检索和修改消息队列描述符 \fImqdes\fP 所引用的消息队列的属性。
+.PP
+\fBmq_getattr\fP() 在 \fIattr\fP 指向的缓冲区中返回一个 \fImq_attr\fP 结构体。 这个结构体定义为:
+.PP
+.in +4n
+.EX
+struct mq_attr {
+    long mq_flags;       /* Flags: 0 or O_NONBLOCK */
+    long mq_maxmsg;      /* Max. # of messages on queue */
+    long mq_msgsize;     /* Max. message size (bytes) */
+    long mq_curmsgs;     /* # of messages currently in queue */
+};
+.EE
+.in
+.PP
+\fImq_flags\fP 字段包含与打开消息队列描述关联的标志。 当队列由 \fBmq_open\fP(3) 创建时，该字段被初始化。
+唯一可以出现在该字段中的标志是 \fBO_NONBLOCK\fP。
+.PP
+\fImq_maxmsg\fP 和 \fImq_msgsize\fP 字段是在 \fBmq_open\fP(3) 创建消息队列时设置的。 \fImq_maxmsg\fP
+字段是可以使用 \fBmq_send\fP(3) 放置在队列中的消息数的上限。 \fImq_msgsize\fP 字段是可以放置在队列中的消息大小的上限。
+这两个字段的值都必须大于零。 \fBmq_overview\fP(7) 中描述了两个 \fI/proc\fP 文件，它们对这些字段的值设置了上限。
+.PP
+\fImq_curmsgs\fP 字段返回队列中当前保存的消息数。
+.PP
+\fBmq_setattr\fP() 使用 \fInewattr\fP 指向的 \fImq_attr\fP 结构体中提供的信息设置消息队列属性。 唯一可以修改的属性是
+\fImq_flags\fP 中 \fBO_NONBLOCK\fP 标志的设置。 \fInewattr\fP 中的其他字段将被忽略。 如果 \fIoldattr\fP 字段不为
+NULL，则它指向的缓冲区用于返回 \fImq_attr\fP 结构体，其中包含与 \fBmq_getattr\fP() 返回的信息相同的信息。
+.SH "RETURN VALUE"
+成功时 \fBmq_getattr\fP() 和 \fBmq_setattr\fP() 返回 0; 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fImqdes\fP 中指定的消息队列描述符无效。
+.TP 
+\fBEINVAL\fP
+\fInewattr\->mq_flags\fP 包含 \fBO_NONBLOCK\fP 以外的设置位。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmq_getattr\fP(),
+\fBmq_setattr\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在 Linux 上，\fBmq_getattr\fP() 和 \fBmq_setattr\fP() 是在 \fBmq_getsetattr\fP(2)
+系统调用之上分层的库函数。
+.SH EXAMPLES
+下面的程序可用于显示分配给消息队列的默认 \fImq_maxmsg\fP 和 \fImq_msgsize\fP 值，该消息队列是使用对 \fBmq_open\fP(3)
+的调用创建的，其中 \fIattr\fP 参数为 NULL。 这是该程序的示例运行:
+.PP
+.in +4n
+.EX
+$ \fB./a.out /testq\fP
+队列中的最大消息数: 10
+最大消息大小: 8192
+.EE
+.in
+.PP
+从 Linux 3.5 开始，以下 \fI/proc\fP 文件 (\fBmq_overview\fP(7)) 中描述的) 可用于控制默认值:
+.PP
+.in +4n
+.EX
+$ \fBuname \-sr\fP
+Linux 3.8.0
+$ \fBcat /proc/sys/fs/mqueue/msg_default\fP
+10
+$ \fBcat /proc/sys/fs/mqueue/msgsize_default\fP
+8192
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (mq_getattr.c)
+\&
+.EX
+#include <fcntl.h>
+#include <mqueue.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    mqd_t mqd;
+    struct mq_attr attr;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s mq\-name\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    mqd = mq_open(argv[1], O_CREAT | O_EXCL, 0600, NULL);
+    if (mqd == (mqd_t) \-1)
+        errExit("mq_open");
+
+    if (mq_getattr(mqd, &attr) == \-1)
+        errExit("mq_getattr");
+
+    printf("Maximum # of messages on queue:   %ld\en", attr.mq_maxmsg);
+    printf("Maximum message size:             %ld\en", attr.mq_msgsize);
+
+    if (mq_unlink(argv[1]) == \-1)
+        errExit("mq_unlink");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBmq_close\fP(3), \fBmq_notify\fP(3), \fBmq_open\fP(3), \fBmq_receive\fP(3),
+\fBmq_send\fP(3), \fBmq_unlink\fP(3), \fBmq_overview\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

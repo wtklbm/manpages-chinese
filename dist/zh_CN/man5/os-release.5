@@ -1,0 +1,516 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH OS\-RELEASE 5 "" "systemd 253" os\-release
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+os\-release, initrd\-release, extension\-release \- 操作系统标识
+.SH SYNOPSIS
+.PP
+/etc/os\-release
+.PP
+/usr/lib/os\-release
+.PP
+/etc/initrd\-release
+.PP
+/usr/lib/extension\-release\&.d/extension\-release\&.\fIIMAGE\fP
+.SH DESCRIPTION
+.PP
+/etc/os\-release 和 /usr/lib/os\-release 文件包含操作系统标识数据 \&。
+.PP
+os\-release 的格式是以换行符分隔的环境类 shell 兼容变量赋值列表 \&。可以从 Bourne shell
+脚本获取配置，但是，除了变量分配之外，不支持 shell 特性 (这意味着明确不支持变量扩展)，允许应用程序读取文件而无需实现 shell
+兼容的执行引擎 \&. 如果变量赋值包含空格、分号或 A\(enZ, a\(enz,
+0\(en9\&. (不包括这些特殊字符的赋值也可以用引号引起来，但这是可选的 \&。) Shell 特殊字符 (`$`、引号、反斜杠、反引号)
+必须按照 shell 样式 \& 用反斜杠转义。所有字符串都应采用 UTF\-8 编码，不可打印的字符不应使用 \&。不支持串联多个单独引用的字符串
+\&。以 "#" 开头的行被视为注释 \&。允许和忽略空行 \&。
+.PP
+文件 /etc/os\-release 优先于
+/usr/os\-release\&。应用程序应该检查前者，如果它存在则独占使用它的数据，如果它不存在则只回退到
+/usr/lib/os\-release\&。应用程序不应同时从两个文件中读取数据 \&。 /usr/lib/os\-release
+是作为供应商树的一部分存储操作系统版本信息的推荐位置。 /etc/os\-release 应该是 /usr/lib/os\-release
+的相对符号链接，以提供与只查看 /etc/\& 的应用程序的兼容性。相对符号链接而不是绝对符号链接是必要的，以避免在 chroot 或 initrd
+环境 (例如 dracut\&) 中断开链接。
+.PP
+os\-release 包含操作系统供应商定义的数据，管理员通常不应更改 \&。
+.PP
+由于此文件仅对名称和标识符进行编码，因此不应对其进行本地化 \&。
+.PP
+/etc/os\-release 和 /usr/lib/os\-release
+文件可能是其他文件的符号链接，但重要的是该文件从最早的启动时就可用，因此必须位于根文件系统 \&。
+.PP
+os\-release 不得包含重复键 \&。尽管如此，readers 应该在文件中稍后选择条目以防重复，类似于 shell 获取文件的方式
+\&。reader 可能会警告重复条目 \&。
+.PP
+有关 os\-release 的详细说明，请参见 \m[blue]\fBAnnouncement of /etc/os\-release\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.SS /etc/initrd\-release
+.PP
+在 \m[blue]\fBinitrd\fP\m[]\&\s-2\u[2]\d\s+2 中，/etc/initrd\-release 的作用和主系统中的
+os\-release 一样。此外，该文件的存在意味着系统处于 initrd 阶段。 /etc/os\-release 应该符号链接到
+/etc/initrd\-release (反之亦然)，这样只查找 /etc/os\-release (如上所述) 的程序才能正常工作 \&。
+.PP
+本文档的其余部分讨论 os\-release 应该理解为也适用于 initrd\-release\&。
+.SS /usr/lib/extension\-release\&.d/extension\-release\&.\fIIMAGE\fP
+.PP
+/usr/lib/extension\-release\&.d/extension\-release\&.\fIIMAGE\fP plays the same
+role for extension images as os\-release for the main system, and follows the
+syntax and rules as described in the \m[blue]\fBPortable Services Documentation\fP\m[]\&\s-2\u[3]\d\s+2\&. The purpose of this file is to
+identify the extension and to allow the operating system to verify that the
+extension image matches the base OS\&. This is typically implemented by
+checking that the \fIID=\fP options match, and either \fISYSEXT_LEVEL=\fP exists
+and matches too, or if it is not present, \fIVERSION_ID=\fP exists and
+matches\&. This ensures ABI/API compatibility between the layers and
+prevents merging of an incompatible image in an overlay\&.
+.PP
+在 extension\-release\&.\fIIMAGE\fP 文件名中，\fIIMAGE\fP 部分必须与删除后缀 \&
+的包含图像的文件名完全匹配。如果无法保证图像文件名是稳定的并且不会 \*(Aqt 在构建和部署阶段之间发生变化，则可以放宽此检查:
+如果此文件中恰好存在一个名称与 "extension\-release\&.*" 匹配的文件目录，并且文件被标记为
+\fIuser\&.extension\-release\&.strict\fP \fBxattr\fP(7) 设置为字符串 "0"，它将被用来代替 \&。
+.PP
+本文档中讨论 os\-release 的其余部分应该理解为也适用于扩展版本 \&。
+.SH OPTIONS
+.PP
+可以使用 os\-release 设置以下操作系统标识参数:
+.SS "General information identifying the operating system"
+.PP
+\fINAME=\fP
+.RS 4
+一个标识操作系统的字符串，没有版本组件，适合向用户显示 \&。如果未设置，则可以使用默认值 "NAME=Linux"\&。
+.sp
+示例: "NAME=Fedora"、"NAME="Debian GNU/Linux""\&。
+.RE
+.PP
+\fIID=\fP
+.RS 4
+小写字符串 (0\(en9, a\(enz, "\&.", "_" 和 "\-") 之外没有空格或其他字符)
+标识操作系统，不包括任何版本信息，适合由脚本处理或在生成的文件名中使用 \&. 如果未设置，则可以使用默认值
+"ID=linux"\&。请注意，即使此字符串可能不包含需要 shell 引号的字符，但仍然可以使用引号 \&。
+.sp
+示例: "ID=fedora"、`ID=debian`\&。
+.RE
+.PP
+\fIID_LIKE=\fP
+.RS 4
+以空格分隔的操作系统标识符列表，其语法与 \fIID=\fP 设置 \&
+相同。它应该列出在打包和编程接口方面与本地操作系统密切相关的操作系统的标识符，例如列出一个或多个本地操作系统是派生自 \&
+的操作系统标识符。一个操作系统通常应该只列出它本身是派生的其他操作系统标识符，而不是从它派生的任何操作系统，尽管对称关系是可能的
+\&。如果构建脚本等需要识别本地操作系统并且 \fIID=\fP 的值无法识别
+\&，则应检查此变量。操作系统应按照本地操作系统与所列操作系统的相关程度的顺序列出，从最接近的 \& 开始。该字段是可选的 \&。
+.sp
+示例: 对于具有 "ID=centos" 的操作系统，`ID_LIKE="rhel fedora"" 的分配将是合适的 \&。对于具有
+"ID=ubuntu" 的操作系统，分配 "ID_LIKE=debian" 是合适的 \&。
+.RE
+.PP
+\fIPRETTY_NAME=\fP
+.RS 4
+一个漂亮的操作系统名称，其格式适合呈现给用户 \&。可能包含也可能不包含某种发布代码名称或操作系统版本，视情况而定 \&。如果未设置，则可以使用默认值
+`PRETTY_NAME="Linux""
+.sp
+示例: `PRETTY_NAME="Fedora 17 (Beefy Miracle)""\&。
+.RE
+.PP
+\fICPE_NAME=\fP
+.RS 4
+操作系统的 CPE 名称，采用 URI 绑定语法，遵循 NIST\& 建议的 \m[blue]\fBCommon Platform Enumeration Specification\fP\m[]\&\s-2\u[4]\d\s+2。该字段是可选的 \&。
+.sp
+示例: `CPE_NAME="cpe://o:fedoraproject:fedora:17""
+.RE
+.PP
+\fIVARIANT=\fP
+.RS 4
+一个字符串，用于标识适合向用户显示的操作系统的特定变体或版本
+\&。该字段可用于通知用户该系统的配置受一组特定的不同规则或默认配置设置的约束。此字段是可选的，可能不会在所有系统上实现 \&。
+.sp
+示例: `VARIANT=" 服务器版 ""、"VARIANT="智能冰箱版""\&。
+.sp
+Note: 此字段仅用于显示目的 \&。\fIVARIANT_ID\fP 字段应用于做出编程决策 \&。
+.RE
+.PP
+\fIVARIANT_ID=\fP
+.RS 4
+小写字符串 (在 0\(en9, a\(enz, "\&.", "_" and "\-") 之外没有空格或其他字符)，标识操作系统的特定变体或版本
+\&。这可能会被其他包解释以确定不同的默认配置 \&。此字段是可选的，可能不会在所有系统上实现 \&。
+.sp
+示例: "VARIANT_ID=server"、`VARIANT_ID=embedded`\&。
+.RE
+.SS "Information about the version of the operating system"
+.PP
+\fIVERSION=\fP
+.RS 4
+标识操作系统版本的字符串，不包括任何操作系统名称信息，可能包括发布代码名称，适合向用户显示 \&。该字段是可选的 \&。
+.sp
+示例: "VERSION=17"、`VERSION="17 (Beefy Miracle)""\&。
+.RE
+.PP
+\fIVERSION_ID=\fP
+.RS 4
+标识操作系统版本的小写字符串 (主要是数字，没有空格或 0\(en9, a\(enz, "\&.", "_" 和 "\-")
+之外的其他字符，不包括任何操作系统名称信息或发布代码名称，并且适用用于通过脚本处理或在生成的文件名中使用 \&。该字段是可选的 \&。
+.sp
+示例: "VERSION_ID=17"、`VERSION_ID=11\&.04`\&。
+.RE
+.PP
+\fIVERSION_CODENAME=\fP
+.RS 4
+标识操作系统发布代号的小写字符串 (0\(en9, a\(enz, "\&.", "_" and "\-") 之外没有空格或其他字符)
+标识操作系统发布代号，不包括任何操作系统名称信息或发布版本，适合处理通过脚本或在生成的文件名中使用 \&。此字段是可选的，可能不会在所有系统上实现
+\&。
+.sp
+示例: "VERSION_CODENAME=buster"、`VERSION_CODENAME=xenial`\&。
+.RE
+.PP
+\fIBUILD_ID=\fP
+.RS 4
+唯一标识最初用作安装基础的系统映像的字符串 \&。在大多数情况下，\fIVERSION_ID\fP 或
+\fIIMAGE_ID\fP+\fIIMAGE_VERSION\fP 在更新期间替换整个系统映像时进行更新 \&。 \fIBUILD_ID\fP
+可用于原始安装映像版本很重要的发行版: \fIVERSION_ID\fP 会在增量系统更新期间更改，但 \fIBUILD_ID\fP 不会 \&。该字段是可选的
+\&。
+.sp
+示例: `BUILD_ID="2013\-03\-20\&.3""、"BUILD_ID=201303203"\&。
+.RE
+.PP
+\fIIMAGE_ID=\fP
+.RS 4
+小写字符串 (0\(en9, a\(enz, "\&.", "_" and "\-") 之外没有空格或其他字符)，标识操作系统的特定映像
+\&。这应该用于准备、构建、运送和更新操作系统映像作为全面、一致的操作系统映像的环境。此字段是可选的，可能不会在所有系统上实现，特别是那些不是通过图像管理但放在一起并从单个包更新的系统以及在本地系统上
+\&。
+.sp
+示例: "IMAGE_ID=vendorx\-cashier\-system"、`IMAGE_ID=netbook\-image`\&。
+.RE
+.PP
+\fIIMAGE_VERSION=\fP
+.RS 4
+小写字符串 (主要是数字，没有空格或 0\(en9, a\(enz, "\&.", "_" and "\-") 之外的其他字符) 标识操作系统映像版本
+\&。这应该与上面描述的 \fIIMAGE_ID\fP 一起使用，以识别同一图像的不同版本 \&。
+.sp
+示例: "IMAGE_VERSION=33"、`IMAGE_VERSION=47\&.1rc1`\&。
+.RE
+.PP
+总结一下: 如果映像更新是作为综合单元构建和交付的，\fIIMAGE_ID\fP+\fIIMAGE_VERSION\fP
+是最合适的。否则，如果更新最终完全替换了以前安装的内容，就像在典型的二进制分发中一样，则应该使用 \fIVERSION_ID\fP 来标识操作系统的主要版本
+\&。 当原始系统映像版本很重要 \& 时，可以使用 \fIBUILD_ID\fP 代替 \fIVERSION_ID\fP 或与 \fIVERSION_ID\fP
+一起使用。
+.SS "Presentation information and links"
+.PP
+\fIHOME_URL=\fP, \fIDOCUMENTATION_URL=\fP, \fISUPPORT_URL=\fP, \fIBUG_REPORT_URL=\fP,
+\fIPRIVACY_POLICY_URL=\fP
+.RS 4
+Internet 上与操作系统相关的资源链接。 \fIHOME_URL=\fP 应该是指操作系统的主页，或者是某个操作系统特定版本的主页 \&。
+\fIDOCUMENTATION_URL=\fP 应参考此操作系统的主要文档页面 \&。 \fISUPPORT_URL=\fP
+应该参考操作系统的主要支持页面，如果有 \&。这主要用于供应商提供支持的操作系统。 \fIBUG_REPORT_URL=\fP
+应该参考操作系统的主要错误报告页面，如果有 \&。这主要用于依赖社区 QA\& 的操作系统。 \fIPRIVACY_POLICY_URL=\fP
+应参考操作系统的主要隐私政策页面，如果有 \&。这些设置是可选的，并且只提供其中的一些设置是常见的 \&。这些 URL 旨在显示在 "About
+this system" 用户界面中，链接后面带有 "About this Operating System"、"Obtain
+Support"、"Report a Bug" 或 `隐私政策`\& 等标题。这些值应该在 \m[blue]\fBRFC3986 format\fP\m[]\&\s-2\u[5]\d\s+2 中，并且应该是 "http:" 或 "https:" URL，并且可能是 "mailto:"
+或 `tel:`\&。每个设置中只能列出一个 URL\&。如果需要引用多个资源，建议提供一个链接所有可用资源的在线登陆页面 \&。
+.sp
+示例:
+`HOME_URL="https://fedoraproject\&.org/""、"BUG_REPORT_URL="https://bugzilla\&.redhat\&.com/""\&。
+.RE
+.PP
+\fISUPPORT_END=\fP
+.RS 4
+对该版本操作系统的支持结束的日期 \&。("lack of support"
+的确切含义因供应商而异，但通常用户应该假设不会提供更新，包括安全修复程序。) 该值为 ISO 8601 格式 "YYYY\-MM\-DD"
+中的日期，并指定支持 \fIis not\fP 的第一天假如 \&。
+.sp
+例如，"SUPPORT_END=2001\-01\-01" 表示系统支持到上个千年的最后一天结束 \&。
+.RE
+.PP
+\fILOGO=\fP
+.RS 4
+一个字符串，指定 \m[blue]\fBfreedesktop\&.org Icon Theme Specification\fP\m[]\&\s-2\u[6]\d\s+2\& 定义的图标的名称。图形应用程序可以使用它来显示操作系统 \*(Aqs
+或分销商 \*(Aqs 徽标 \&。该字段是可选的，不一定在所有系统上都实现 \&。
+.sp
+示例: "LOGO=fedora\-logo"、"LOGO=distributor\-logo\-opensuse"
+.RE
+.PP
+\fIANSI_COLOR=\fP
+.RS 4
+在控制台上显示操作系统名称时建议的显示颜色 \&。这应该指定为适合包含在 ESC 中的字符串 [m ANSI/ECMA\-48 用于设置图形再现的转义码
+\&。该字段是可选的 \&。
+.sp
+示例: `ANSI_COLOR="0;31""表示红色，"ANSI_COLOR="1;34"" 表示浅蓝色，或
+"ANSI_COLOR="0;38;2;60;110;180"" 表示 Fedora 蓝色 \&.
+.RE
+.SS "Distribution\-level defaults and metadata"
+.PP
+\fIDEFAULT_HOSTNAME=\fP
+.RS 4
+如果 \fBhostname\fP(5) 不存在且没有其他配置源指定主机名 \&，则指定主机名的字符串。必须是单个 DNS 标签 (由 7 位 ASCII
+小写字符组成且没有空格或点的字符串，限于 DNS 域名标签允许的格式)，或者由单个点分隔的此类标签序列形成一个有效的 DNS
+FQDN\&。主机名必须最多 64 个字符，这是 Linux 限制 (DNS 允许更长的名称) \&。
+.sp
+有关 \fBsystemd\-hostnamed.service\fP(8) 如何确定回退主机名 \& 的说明，请参见
+\fBorg.freedesktop.hostname1\fP(5)。
+.RE
+.PP
+\fIARCHITECTURE=\fP
+.RS 4
+一个字符串，指定用户空间二进制文件需要哪种 CPU 架构 \&。体系结构标识符与 \fBsystemd.unit\fP(5)\& 中描述的
+\fIConditionArchitecture=\fP 相同。该字段是可选的，仅应在仅支持单一体系结构时使用 \&。当在 GPT
+分区中使用已经对架构进行编码的 GUID 类型时，它可能会提供冗余信息。如果不是这种情况，则应在扩展图像
+e\&.g\&. 中指定体系结构，以防止不兼容的主机加载它 \&。
+.RE
+.PP
+\fISYSEXT_LEVEL=\fP
+.RS 4
+小写字符串 (主要是数字，没有空格或 0\(en9, a\(enz, "\&.", "_" and "\-") 之外的其他字符)
+标识操作系统扩展支持级别，以指示支持哪些扩展图像 \&。有关更多信息，请参见
+/usr/lib/extension\-release\&.d/extension\-release\&.\fIIMAGE\fP、\m[blue]\fBinitrd\fP\m[]\&\s-2\u[2]\d\s+2
+和 \fBsystemd\-sysext\fP(8))\&。
+.sp
+示例: "SYSEXT_LEVEL=2"、`SYSEXT_LEVEL=15\&.14`\&。
+.RE
+.PP
+\fISYSEXT_SCOPE=\fP
+.RS 4
+采用一个或多个字符串 "system"、"initrd" 和 "portable"\& 的空格分隔列表。该字段仅在
+extension\-release\&.d/ 文件中支持，表示系统扩展适用于哪些环境: i\&.e\&。到常规系统、initrds 或便携式服务映像
+\&。如果未指定，则隐含 "SYSEXT_SCOPE=system
+portable"，i\&.e\&。没有该字段的任何系统扩展都适用于常规系统和可移植服务环境，但不适用于 initrd 环境 \&。
+.RE
+.PP
+\fIPORTABLE_PREFIXES=\fP
+.RS 4
+为 \m[blue]\fBPortable Services Documentation\fP\m[]\&\s-2\u[3]\d\s+2 逻辑 \&
+获取一个或多个有效前缀匹配字符串的空格分隔列表。该字段有两个用途: 它是信息性的，识别可移植服务映像本身
+(并因此允许它们与其他操作系统映像区分开来，例如可启动系统映像) \&。当附加可移植服务图像时也使用它:
+根据此处指定的列表检查指定或隐含的可移植服务前缀，以强制限制图像如何附加到系统 \&。
+.RE
+.SS Notes
+.PP
+如果您使用此文件来确定操作系统或其特定版本，请使用 \fIID\fP 和 \fIVERSION_ID\fP 字段，可能使用 \fIID_LIKE\fP 作为
+\fIID\fP\& 的后备。在查找操作系统标识字符串以呈现给用户时，使用 \fIPRETTY_NAME\fP 字段 \&。
+.PP
+请注意，操作系统供应商可能选择不提供版本信息，例如为了适应滚动发布 \&。在这种情况下，\fIVERSION\fP 和 \fIVERSION_ID\fP 可能未设置
+\&。应用程序不应依赖这些字段来设置 \&。
+.PP
+操作系统供应商可能会扩展文件格式并引入新字段 \&。强烈建议使用操作系统特定名称作为新字段的前缀，以避免名称冲突
+\&。读取此文件的应用程序必须忽略未知字段 \&。
+.PP
+示例: `DEBIAN_BTS="debbugs://bugs\&.debian\&.org/""\&。
+.PP
+容器和沙箱运行时管理器可以通过提供主机 \*(Aqs /etc/os\-release (如果可用，否则 /usr/lib/os\-release
+作为后备) 作为 /run/os\-release\& 来使主机 \*(Aqs 标识数据对应用程序可用。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&os\-release file for Fedora Workstation\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+NAME=Fedora
+VERSION="32 (Workstation Edition)"
+ID=fedora
+VERSION_ID=32
+PRETTY_NAME="Fedora 32 (Workstation Edition)"
+ANSI_COLOR="0;38;2;60;110;180"
+LOGO=fedora\-logo\-icon
+CPE_NAME="cpe:/o:fedoraproject:fedora:32"
+HOME_URL="https://fedoraproject\&.org/"
+DOCUMENTATION_URL="https://docs\&.fedoraproject\&.org/en\-US/fedora/f32/system\-administrators\-guide/"
+SUPPORT_URL="https://fedoraproject\&.org/wiki/Communicating_and_getting_help"
+BUG_REPORT_URL="https://bugzilla\&.redhat\&.com/"
+REDHAT_BUGZILLA_PRODUCT="Fedora"
+REDHAT_BUGZILLA_PRODUCT_VERSION=32
+REDHAT_SUPPORT_PRODUCT="Fedora"
+REDHAT_SUPPORT_PRODUCT_VERSION=32
+PRIVACY_POLICY_URL="https://fedoraproject\&.org/wiki/Legal:PrivacyPolicy"
+VARIANT="Workstation Edition"
+VARIANT_ID=workstation
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&extension\-release file for an extension for Fedora Workstation 32\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+ID=fedora
+VERSION_ID=32
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&Reading os\-release in sh(1)\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#!/bin/sh \-eu
+# SPDX\-License\-Identifier: MIT\-0
+
+test \-e /etc/os\-release && os_release=\*(Aq/etc/os\-release\*(Aq || os_release=\*(Aq/usr/lib/os\-release\*(Aq
+\&. "${os_release}"
+
+echo "Running on ${PRETTY_NAME:\-Linux}"
+
+if [ "${ID:\-linux}" = "debian" ] || [ "${ID_LIKE#*debian*}" != "${ID_LIKE}" ];  then
+    echo "Looks like Debian!"
+fi
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&Reading os\-release in python(1) (versions >= 3\&.10)\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#!/usr/bin/python
+# SPDX\-License\-Identifier: MIT\-0
+
+import platform
+os_release = platform\&.freedesktop_os_release()
+
+pretty_name = os_release\&.get(\*(AqPRETTY_NAME\*(Aq, \*(AqLinux\*(Aq)
+print(f\*(AqRunning on {pretty_name!r}\*(Aq)
+
+if \*(Aqfedora\*(Aq in [os_release\&.get(\*(AqID\*(Aq, \*(Aqlinux\*(Aq),
+                *os_release\&.get(\*(AqID_LIKE\*(Aq, \*(Aq\*(Aq)\&.split()]:
+    print(\*(AqLooks like Fedora!\*(Aq)
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+有关详细信息，请参见 \m[blue]\fBplatform\&.freedesktop_os_release\fP\m[]\&\s-2\u[7]\d\s+2
+的文档 \&。
+.PP
+\fBExample\ \&5.\ \&Reading os\-release in python(1) (any version)\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#!/usr/bin/python
+# SPDX\-License\-Identifier: MIT\-0
+
+import ast
+import re
+import sys
+
+def read_os_release():
+    try:
+        filename = \*(Aq/etc/os\-release\*(Aq
+        f = open(filename)
+    except FileNotFoundError:
+        filename = \*(Aq/usr/lib/os\-release\*(Aq
+        f = open(filename)
+
+    for line_number, line in enumerate(f, start=1):
+        line = line\&.rstrip()
+        if not line or line\&.startswith(\*(Aq#\*(Aq):
+            continue
+        m = re\&.match(r\*(Aq([A\-Z][A\-Z_0\-9]+)=(\&.*)\*(Aq, line)
+        if m:
+            name, val = m\&.groups()
+            if val and val[0] in \*(Aq"\e\*(Aq\*(Aq:
+                val = ast\&.literal_eval(val)
+            yield name, val
+        else:
+            print(f\*(Aq{filename}:{line_number}: bad line {line!r}\*(Aq,
+                  file=sys\&.stderr)
+
+os_release = dict(read_os_release())
+
+pretty_name = os_release\&.get(\*(AqPRETTY_NAME\*(Aq, \*(AqLinux\*(Aq)
+print(f\*(AqRunning on {pretty_name!r}\*(Aq)
+
+if \*(Aqdebian\*(Aq in [os_release\&.get(\*(AqID\*(Aq, \*(Aqlinux\*(Aq),
+                *os_release\&.get(\*(AqID_LIKE\*(Aq, \*(Aq\*(Aq)\&.split()]:
+    print(\*(AqLooks like Debian!\*(Aq)
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，大多数情况下首选使用内置实现的上述版本，此处提供开放编码版本用于引用 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBlsb_release\fP(1), \fBhostname\fP(5), \fBmachine\-id\fP(5),
+\fBmachine\-info\fP(5)
+.SH NOTES
+.IP " 1." 4
+/etc/os\-release 公告
+.RS 4
+\%http://0pointer.de/blog/projects/os\-release
+.RE
+.IP " 2." 4
+initrd
+.RS 4
+\%https://docs.kernel.org/admin\-guide/initrd.html
+.RE
+.IP " 3." 4
+便携式服务文档
+.RS 4
+\%https://systemd.io/PORTABLE_SERVICES
+.RE
+.IP " 4." 4
+通用平台枚举规范
+.RS 4
+\%http://scap.nist.gov/specifications/cpe/
+.RE
+.IP " 5." 4
+RFC3986 格式
+.RS 4
+\%https://tools.ietf.org/html/rfc3986
+.RE
+.IP " 6." 4
+freedesktop.org 图标主题规范
+.RS 4
+\%https://standards.freedesktop.org/icon\-theme\-spec/latest
+.RE
+.IP " 7." 4
+
+      \fBplatform.freedesktop_os_release\fP
+.RS 4
+\%https://docs.python.org/3/library/platform.html#platform.freedesktop_os_release
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

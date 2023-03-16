@@ -1,0 +1,588 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.SOCKET 5 "" "systemd 253" systemd.socket
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.socket \- 套接字元配置
+.SH SYNOPSIS
+.PP
+\fIsocket\fP\&.socket
+.SH DESCRIPTION
+.PP
+名称以 "\&.socket" 结尾的元配置文件编码有关 IPC 或网络套接字或由 systemd 控制和监督的文件系统 FIFO
+的信息，用于基于套接字的激活 \&。
+.PP
+此手册页列出了特定于此元类型 \& 的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit]
+和 [Install] 部分 \&。套接字特定的配置选项在 [Socket] 部分 \& 中配置。
+.PP
+其他选项在 \fBsystemd.exec\fP(5) 中列出，它定义了执行
+\fBExecStartPre=\fP、\fBExecStartPost=\fP、\fBExecStopPre=\fP 和 \fBExecStopPost=\fP
+命令的执行环境，在 \fBsystemd.kill\fP(5) 中列出了进程终止的方式，在 \fBsystemd.resource\-control\fP(5)
+中列出了为进程配置资源控制设置的选项套接字 \&。
+.PP
+对于每个套接字元，必须存在匹配的服务元，描述在套接字上传入流量时启动的服务 (有关 \&.service units 的更多信息，请参见
+\fBsystemd.service\fP(5)) \&。\&.service 元的名称默认与 \&.socket 元的名称相同，但可以使用下面描述的
+\fBService=\fP 选项更改 \&。根据下面描述的 \fBAccept=\fP 选项的设置，此 \&.service 单元必须像 \&.socket
+单元一样命名，但替换后缀，除非被 \fBService=\fP 覆盖; 或者它必须是一个以相同方式命名的模板元 \&。示例: 套接字文件
+foo\&.socket 需要匹配服务 foo\&.service，如果设置了 \fBAccept=no\fP\&。如果设置了
+\fBAccept=yes\fP，则服务模板 foo@\&.service 必须存在，每个传入连接 \& 都会从该模板实例化服务。
+.PP
+没有添加从套接字到服务的隐式 \fIWantedBy=\fP 或 \fIRequiredBy=\fP 依赖性
+\&。这意味着服务可以在没有套接字的情况下启动，在这种情况下它必须能够自己打开套接字 \&。为了防止这种情况，可以添加显式的 \fIRequires=\fP
+依赖性 \&。
+.PP
+套接字单元可用于实现按需启动服务，以及并行启动服务。请参见末尾链接的博客故事以获取介绍 \&。
+.PP
+请注意，为使用套接字单元激活套接字而配置的守护程序软件需要能够通过 systemd\*(Aqs 原生套接字传递接口接受来自 systemd 的套接字
+(有关使用的精确协议和文件顺序的详细信息，请参见 \fBsd_listen_fds\fP(3) 描述符被传递) 或通过传统的
+\fBinetd\fP(8)\-style 套接字传递 (i\&.e\&. 通过标准输入和输出传入的套接字，使用服务文件中的
+\fIStandardInput=socket\fP)\&.
+.PP
+所有通过 \&.socket 单元分配的网络套接字都在主机 \*(Aqs 网络命名空间中分配 (参见
+\fBnetwork_namespaces\fP(7))\&. 然而，这并不意味着由配置的套接字元激活的服务必须是主机的一部分 \*(Aqs
+网络名称空间也是如此 \&。在它们自己的网络命名空间中运行服务 (例如通过 \fIPrivateNetwork=\fP，参见
+\fBsystemd.exec\fP(5))，仅从主机 \* (Aqs 命名空间 \&. 在主机内的此类设置通信中 \*(Aqs
+网络名称空间仅允许通过传入的激活套接字，而从服务代码本身分配的所有套接字将与服务相关联 \*(Aqs 自己的名称空间，因此可能受限制配置 \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+隐式添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+套接字单元自动获得对它们激活的服务单元的 \fIBefore=\fP 依赖。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+引用文件系统路径的套接字单元 (例如 \fBAF_UNIX\fP 套接字或 FIFO) 隐式获得对访问这些路径所需的所有安装单元的 \fIRequires=\fP
+和 \fIAfter=\fP 依赖性 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+使用 \fIBindToDevice=\fP 设置的套接字单元自动获得对封装指定网络接口的设备元的 \fIBindsTo=\fP 和 \fIAfter=\fP 依赖。
+.RE
+.PP
+如 \fBsystemd.exec\fP(5) 和 \fBsystemd.resource\-control\fP(5)\&
+中所述，可能会添加额外的隐式依赖项作为执行和资源控制参数的结果。
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+套接字单元自动获得对套接字 \&.target\& 的 \fIBefore=\fP 依赖。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+套接字单元自动获得一对 \fIAfter=\fP 和 \fIRequires=\fP 对 sysinit\&.target 的依赖性，以及一对 \fIBefore=\fP
+和 \fIConflicts=\fP 对 shutdown\&.target\&
+的依赖性。这些依赖关系确保套接字单元在启动时在正常服务之前启动，并在关机时停止 \&。只有涉及早期启动或晚期系统关闭的套接字才应禁用
+\fIDefaultDependencies=\fP 选项 \&。
+.RE
+.SH OPTIONS
+.PP
+套接字元文件可能包括 [Unit] 和 [Install] 部分，它们在 \fBsystemd.unit\fP(5)\& 中描述。
+.PP
+套接字元文件必须包含一个 [Socket] 部分，它携带有关它所管理的套接字或 FIFO 的信息 \&。本节中可能使用的许多选项与其他元类型共享
+\&。这些选项记录在 \fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5)\& 中。特定于套接字单元 [Socket]
+部分的选项如下:
+.PP
+\fIListenStream=\fP, \fIListenDatagram=\fP, \fIListenSequentialPacket=\fP
+.RS 4
+分别为流 (\fBSOCK_STREAM\fP)、数据报 (\fBSOCK_DGRAM\fP) 或顺序数据包 (\fBSOCK_SEQPACKET\fP)
+套接字指定要侦听的地址 \&。地址可以写成多种格式:
+.sp
+如果地址以斜杠 ("/") 开头，则它被读取为 \fBAF_UNIX\fP 套接字系列中的文件系统套接字 \&。
+.sp
+如果地址以 at 符号 ("@") 开头，则它被读取为 \fBAF_UNIX\fP 系列中的抽象命名空间套接字 \&。"@" 在绑定前被替换为 \fBNUL\fP
+字符 \&。详见 \fBunix\fP(7)\&。
+.sp
+如果地址字符串是单个数字，则将其读取为端口号以通过 IPv6\& 侦听。根据 \fIBindIPv6Only=\fP 的值 (见下文)，这可能会导致服务通过
+IPv6 和 IPv4 (default) 或仅通过 IPv6\& 可用。
+.sp
+如果地址字符串是 "\fIv\&.w\&.x\&.y\fP:\fIz\fP" 格式的字符串，则解释为 IPv4 地址 \fIv\&.w\&.x\&.y\fP 和端口
+\fIz\fP\&。
+.sp
+如果地址字符串是 "[\fIx\fP]:\fIy\fP" 格式的字符串，则解释为 IPv6 地址 \fIx\fP 和端口 \fIy\fP\&。可以在 "%"
+符号后指定一个可选的接口作用域 (接口名称或编号) :
+"[\fIx\fP]:\fIy\fP%\fIdev\fP"\&。接口作用域仅对链接本地地址有用，因为内核在其他情况下会忽略它们 \&。请注意，如果地址指定为
+IPv6，它可能仍会通过 IPv4 提供服务，具体取决于 \fIBindIPv6Only=\fP 设置 (见下文) \&。
+.sp
+如果地址字符串是 "vsock:\fIx\fP:\fIy\fP" 格式的字符串，则在 \fBAF_VSOCK\fP 系列 \& 中的端口 \fIy\fP 地址上读取为 CID
+\fIx\fP。CID 是 \fBAF_VSOCK\fP 中一个唯一的 32 位整数标识符，类似于 IP 地址 \&。指定 CID 是可选的，可以设置为空字符串
+\&。
+.sp
+请注意，\fBSOCK_SEQPACKET\fP (i\&.e\&。\fIListenSequentialPacket=\fP) 仅适用于 \fBAF_UNIX\fP
+套接字 \&。 \fBSOCK_STREAM\fP (i\&.e\&.\fIListenStream=\fP) 用于 IP 套接字时指的是 TCP
+套接字，\fBSOCK_DGRAM\fP (i\&.e\&.\fIListenDatagram=\fP) 用于 UDP\&.
+.sp
+这些选项可以指定多次，在这种情况下，任何套接字上的传入流量都将触发服务激活，并且所有列出的套接字都将传递给服务，无论它们是否有传入流量
+\&。如果将空字符串分配给这些选项中的任何一个，将重置要侦听的地址列表，所有先前使用这些选项中的任何一个都将无效 \&。
+.sp
+也可以在使用 \fIService=\fP 时同一个服务有多个套接字元，该服务将接收所有套接字单元中配置的所有套接字 \&。一个元配置的 socket
+按照配置顺序传递，但不指定 socket 单元之间的顺序 \&。
+.sp
+如果此处使用 IP 地址，通常需要在配置它的接口启动和运行之前监听它，甚至不管它是否会在任何时候启动和运行 \&。为了解决这个问题，建议设置下面描述的
+\fIFreeBind=\fP 选项 \&。
+.RE
+.PP
+\fIListenFIFO=\fP
+.RS 4
+指定要侦听的文件系统 FIFO (有关详细信息，请参见 \fBfifo\fP(7))。这需要一个绝对文件系统路径作为参数 \&。否则行为与上面的
+\fIListenDatagram=\fP 指令非常相似 \&。
+.RE
+.PP
+\fIListenSpecial=\fP
+.RS 4
+指定文件系统中的一个特殊文件来侦听 \&。这需要一个绝对文件系统路径作为参数 \&。否则行为与上面的 \fIListenFIFO=\fP 指令非常相似
+\&。使用它打开字符设备节点以及 /proc / 和 /sys/\& 中的特殊文件。
+.RE
+.PP
+\fIListenNetlink=\fP
+.RS 4
+指定一个 Netlink 系列以创建用于侦听 \& 的套接字。这需要一个引用 \fBAF_NETLINK\fP 系列名称的短字符串 (例如 \fIaudit\fP
+或 \fIkobject\-uevent\fP) 作为参数，可选地后缀为空格，后跟多播组整数 \&。否则行为与上面的 \fIListenDatagram=\fP
+指令非常相似 \&。
+.RE
+.PP
+\fIListenMessageQueue=\fP
+.RS 4
+指定要侦听的 POSIX 消息队列名称 (有关详细信息，请参见 \fBmq_overview\fP(7)) \&。这需要一个有效的消息队列名称
+(i\&.e\&。以 "/" 开头) \&。否则行为与上面的 \fIListenFIFO=\fP 指令非常相似 \&。Linux
+上的消息队列描述符实际上是文件描述符，可以在进程之间继承 \&。
+.RE
+.PP
+\fIListenUSBFunction=\fP
+.RS 4
+指定要侦听的 \m[blue]\fBUSB FunctionFS\fP\m[]\&\s-2\u[1]\d\s+2 端点位置，以实现 USB gadget 函数
+\&。这需要 FunctionFS 挂载点的绝对文件系统路径作为参数 \&。否则行为与上面的 \fIListenFIFO=\fP 指令非常相似
+\&。使用它打开 FunctionFS 端点 ep0\&。使用此选项时，激活的服务必须设置 \fIUSBFunctionDescriptors=\fP 和
+\fIUSBFunctionStrings=\fP 选项 \&。
+.RE
+.PP
+\fISocketProtocol=\fP
+.RS 4
+采用 \fBudplite\fP 或 \fBsctp\fP\& 之一。套接字将分别使用 UDP\-Lite (\fBIPPROTO_UDPLITE\fP) 或 SCTP
+(\fBIPPROTO_SCTP\fP) 协议 \&。
+.RE
+.PP
+\fIBindIPv6Only=\fP
+.RS 4
+采用 \fBdefault\fP、\fBboth\fP 或 \fBipv6\-only\fP\& 之一。控制 IPV6_V6ONLY 套接字选项 (详见
+\fBipv6\fP(7)) \&。如果 \fBboth\fP，绑定的 IPv6 套接字将可以通过 IPv4 和 IPv6\& 访问。如果是
+\fBipv6\-only\fP，它们将只能通过 IPv6 访问 \&。如果 \fBdefault\fP (这是默认值，令人惊讶! )，则使用系统范围的默认设置，由
+/proc/sys/net/ipv6/bindv6only 控制，而 /proc/sys/net/ipv6/bindv6only 又默认为等同于
+\fBboth\fP\&。
+.RE
+.PP
+\fIBacklog=\fP
+.RS 4
+取一个无符号整数参数 \&。指定尚未接受的队列连接数 \&。此设置仅对流和顺序数据包套接字很重要 \&。有关详细信息，请参见
+\fBlisten\fP(2)\&。默认为 SOMAXCONN (128)\&。
+.RE
+.PP
+\fIBindToDevice=\fP
+.RS 4
+指定网络接口名称以将此套接字绑定到 \&。如果设置，将只接受来自指定网络接口的流量 \&。这控制了 \fBSO_BINDTODEVICE\fP 套接字选项
+(详见 \fBsocket\fP(7)) \&。如果使用此选项，则会创建此套接字单元对网络接口设备单元的隐式依赖项 (请参见
+\fBsystemd.device\fP(5))\&。请注意，设置此参数可能会导致将其他依赖项添加到单元 (请参见上文) \&。
+.RE
+.PP
+\fISocketUser=\fP, \fISocketGroup=\fP
+.RS 4
+采用 UNIX user/group 名称 \&。指定后，文件系统中的所有 \fBAF_UNIX\fP 套接字和 FIFO 节点都属于指定的用户和组
+\&。如果未设置 (默认)，则节点由根 user/group (如果在系统上下文中运行) 或调用 user/group (如果在用户上下文中运行) \&
+所有。如果只指定了一个用户，没有指定组，那么组是从用户派生的 \*(Aqs 默认组 \&。
+.RE
+.PP
+\fISocketMode=\fP
+.RS 4
+如果侦听文件系统套接字或 FIFO，此选项指定创建文件节点时使用的文件系统访问模式 \&。采用八进制表示法 \& 的访问模式。默认为 0666\&。
+.RE
+.PP
+\fIDirectoryMode=\fP
+.RS 4
+如果在文件系统套接字或 FIFO 上监听，父目录会在需要时自动创建 \&。此选项指定创建这些目录时使用的文件系统访问模式 \&。采用八进制表示法 \&
+的访问模式。默认为 0755\&。
+.RE
+.PP
+\fIAccept=\fP
+.RS 4
+采用布尔型参数 \&。如果是，则为每个传入连接生成一个服务实例，并且只将连接套接字传递给它
+\&。如果不是，所有监听套接字本身都被传递给启动的服务元，并且只为所有连接生成一个服务元 (参见上文) \&。对于数据报套接字和
+FIFO，此值将被忽略，其中单个服务元无条件地处理所有传入流量 \&。默认为 \fBno\fP\&。出于性能原因，建议仅以适合 \fBAccept=no\fP\&
+的方式编写新的守护进程。在 \fBAF_UNIX\fP 套接字上侦听的守护进程可以，但不需要，在退出之前调用接收到的套接字上的
+\fBclose\fP(2)。但是，它不能取消套接字与文件系统的链接 \&。它不应在通过 \fIAccept=no\fP 获得的套接字上调用
+\fBshutdown\fP(2)，但它可以为通过 \fIAccept=yes\fP set\& 获得的套接字调用 \fBshutdown\fP(2)。设置
+\fIAccept=yes\fP 最有用的是允许设计用于 \fBinetd\fP(8) 的守护进程无需修改即可使用 systemd 套接字激活 \&。
+.sp
+对于 IPv4 和 IPv6 连接，\fIREMOTE_ADDR\fP 环境变量将包含远程 IP 地址，\fIREMOTE_PORT\fP 将包含远程端口
+\&。这与 CGI\& 使用的格式相同。对于 \fBSOCK_RAW\fP，端口是 IP 协议 \&。
+.sp
+对于通过 \fIAccept=yes\fP 激活的服务实例，建议设置
+\fICollectMode=inactive\-or\-failed\fP，保证连接失败的服务被清理并释放内存，不累积 \&。
+.RE
+.PP
+\fIWritable=\fP
+.RS 4
+采用布尔型参数 \&。只能与 \fIListenSpecial=\fP\& 一起使用。如果为真，则指定的特殊文件以读写模式打开，如果为假，则以只读模式
+\&。默认为 false\&。
+.RE
+.PP
+\fIFlushPending=\fP
+.RS 4
+采用布尔型参数 \&。只能在 \fBAccept=no\fP\& 时使用。如果是，则套接字 \*(Aqs 缓冲区在触发的服务退出后被清除
+\&。这会导致任何挂起的数据被刷新并拒绝任何挂起的传入连接 \&。如果否，套接字 \*(Aqs 缓冲区将 \*(Aqt
+被清除，允许服务在重启后处理任何挂起的连接，这是通常预期的行为 \&。默认为 \fBno\fP\&。
+.RE
+.PP
+\fIMaxConnections=\fP
+.RS 4
+设置 \fBAccept=yes\fP 时同时运行服务实例的最大连接数 \&。如果有更多并发连接进来，它们将被拒绝，直到至少一个现有连接被终止
+\&。此设置对配置有 \fBAccept=no\fP 或数据报套接字 \& 的套接字没有影响。默认为 64\&。
+.RE
+.PP
+\fIMaxConnectionsPerSource=\fP
+.RS 4
+每个源 IP 地址的服务最大连接数 \&。这与上面的 \fIMaxConnections=\fP 指令非常相似 \&。默认禁用 \&。
+.RE
+.PP
+\fIKeepAlive=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，TCP/IP 栈将在 2 小时后 (取决于 /proc/sys/net/ipv4/tcp_keepalive_time
+的配置) 为该套接字上接受的所有 TCP 流发送一个保持活动消息 \&。这控制 \fBSO_KEEPALIVE\fP 套接字选项 (有关详细信息，请参见
+\fBsocket\fP(7) 和 \m[blue]\fBTCP Keepalive HOWTO\fP\m[]\&\s-2\u[2]\d\s+2\&。) 默认为
+\fBfalse\fP\&。
+.RE
+.PP
+\fIKeepAliveTimeSec=\fP
+.RS 4
+将时间 (以秒为单位) 作为参数 \&。在 TCP 开始发送保活探测之前，连接需要保持空闲。这控制 TCP_KEEPIDLE 套接字选项
+(有关详细信息，请参见 \fBsocket\fP(7) 和 \m[blue]\fBTCP Keepalive HOWTO\fP\m[]\&\s-2\u[2]\d\s+2\&。) 默认值为 7200 秒 (2 小时) \&。
+.RE
+.PP
+\fIKeepAliveIntervalSec=\fP
+.RS 4
+如果已在此套接字上设置套接字选项 \fBSO_KEEPALIVE\fP，则将时间 (以秒为单位) 作为各个保持活动探测之间的参数。这控制
+\fBTCP_KEEPINTVL\fP 套接字选项 (有关详细信息，请参见 \fBsocket\fP(7) 和 \m[blue]\fBTCP Keepalive HOWTO\fP\m[]\&\s-2\u[2]\d\s+2\&。) 默认值为 75 秒 \&。
+.RE
+.PP
+\fIKeepAliveProbes=\fP
+.RS 4
+取一个整数作为参数 \&。它是在考虑连接已死并通知应用层之前要发送的未确认探测数 \&。这控制 TCP_KEEPCNT 套接字选项
+(有关详细信息，请参见 \fBsocket\fP(7) 和 \m[blue]\fBTCP Keepalive HOWTO\fP\m[]\&\s-2\u[2]\d\s+2\&。) 默认值为 9\&。
+.RE
+.PP
+\fINoDelay=\fP
+.RS 4
+采用布尔型参数 \&。TCP Nagle\*(Aqs 算法的工作原理是组合许多小的传出消息，并一次发送它们 \&。这控制 TCP_NODELAY
+套接字选项 (参见 \fBtcp\fP(7))\&. 默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIPriority=\fP
+.RS 4
+采用一个整数参数来控制从该套接字发送的所有流量的优先级 \&。这控制 \fBSO_PRIORITY\fP 套接字选项 (有关详细信息，请参见
+\fBsocket\fP(7)\&。) \&。
+.RE
+.PP
+\fIDeferAcceptSec=\fP
+.RS 4
+将时间 (以秒为单位) 作为参数 \&。如果设置，监听进程只有在数据到达套接字时才会被唤醒，而不是在连接建立时立即被唤醒 \&。设置此选项时，将使用
+\fBTCP_DEFER_ACCEPT\fP 套接字选项 (参见 \fBtcp\fP(7))，内核将忽略没有任何数据的初始 ACK 数据包
+\&。参数指定内核在退回到接受空 ACK 数据包 \& 的正常行为之前应等待传入数据的大致时间量。此选项对于客户端首先发送数据的协议 (例如
+\&.g\&.HTTP，与 SMTP 不同) 是有益的，因为服务器进程在采取任何操作之前不会被不必要地唤醒 \&。
+.sp
+如果客户端也使用 \fBTCP_DEFER_ACCEPT\fP 选项，初始连接的延迟可能会降低，因为内核会在建立连接的最后一个数据包 ("three\-way
+handshake" 中的第三个数据包) \& 中发送数据。
+.sp
+默认禁用 \&。
+.RE
+.PP
+\fIReceiveBuffer=\fP, \fISendBuffer=\fP
+.RS 4
+取一个整数参数，分别控制此套接字的接收或发送缓冲区大小 \&。这控制 \fBSO_RCVBUF\fP 和 \fBSO_SNDBUF\fP 套接字选项
+(有关详细信息，请参见 \fBsocket\fP(7)\&。) \&。支持常用的后缀 K、M、G，并将其理解为 1024\& 的基数。
+.RE
+.PP
+\fIIPTOS=\fP
+.RS 4
+采用一个整数参数来控制从此套接字生成的数据包的 IP 服务类型字段 \&。这控制 \fBIP_TOS\fP 套接字选项 (有关详细信息，请参见
+\fBip\fP(7)\&。) \&。可以指定一个数字字符串或 \fBlow\-delay\fP、\fBthroughput\fP、\fBreliability\fP 或
+\fBlow\-cost\fP 之一 \&。
+.RE
+.PP
+\fIIPTTL=\fP
+.RS 4
+采用一个整数参数来控制从该套接字生成的数据包的 IPv4 Time\-To\-Live/IPv6 跳数字段 \&。这将设置
+\fBIP_TTL\fP/\fBIPV6_UNICAST_HOPS\fP 套接字选项 (有关详细信息，请参见 \fBip\fP(7) 和 \fBipv6\fP(7)。)
+.RE
+.PP
+\fIMark=\fP
+.RS 4
+取一个整数值 \&。控制此套接字生成的数据包的防火墙标记 \&。这可以在防火墙逻辑中用于过滤来自该套接字的数据包。这会设置 \fBSO_MARK\fP
+套接字选项 \&。有关详细信息，请参见 \fBiptables\fP(8)\&。
+.RE
+.PP
+\fIReusePort=\fP
+.RS 4
+取一个布尔值 \&。如果为真，则允许多个 \fBbind\fP(2)s 连接到此 TCP 或 UDP 端口 \&。这控制 \fBSO_REUSEPORT\fP
+套接字选项 \&。有关详细信息，请参见 \fBsocket\fP(7)\&。
+.RE
+.PP
+\fISmackLabel=\fP, \fISmackLabelIPIn=\fP, \fISmackLabelIPOut=\fP
+.RS 4
+接受一个字符串值 \&。分别控制扩展属性 "security\&.SMACK64"、"security\&.SMACK64IPIN" 和
+"security\&.SMACK64IPOUT"，i\&.e\&。FIFO 的安全标签，或者套接字的传入或传出连接的安全标签，分别为
+\&。有关详细信息，请参见 \m[blue]\fBSmack\fP\m[]\&\s-2\u[3]\d\s+2\&。
+.RE
+.PP
+\fISELinuxContextFromNet=\fP
+.RS 4
+采用布尔型参数 \&。当为真时，systemd 将尝试从对等方通过网络传递的信息中找出用于实例化服务的 SELinux
+标签。请注意，仅使用来自对等方提供的信息的安全级别。生成的 SELinux 上下文的其他部分源自由套接字元有效触发的目标二进制文件或
+\fISELinuxContext=\fP 选项 \& 的值。只有在单个套接字文件描述符 i\&.e\&
+中传递激活的服务时，此配置选项才适用。具有连接到套接字的标准输入的服务实例或仅由一个套接字触发的服务元 \&。另请注意，此选项仅在部署 MLS/MCS
+SELinux 策略时有用 \&。默认为 `假`\&。
+.RE
+.PP
+\fIPipeSize=\fP
+.RS 4
+采用以字节为单位的大小 \&。控制在此套接字中配置的 FIFO 的管道缓冲区大小元 \&。有关详细信息，请参见
+\fBfcntl\fP(2)\&。支持常用的后缀 K、M、G，并将其理解为 1024\& 的基数。
+.RE
+.PP
+\fIMessageQueueMaxMessages=\fP, \fIMessageQueueMessageSize=\fP
+.RS 4
+这两个设置采用整数值，并在创建消息队列时分别控制 mq_maxmsg 字段或 mq_msgsize 字段。请注意，这些变量中的一个或两个都不需要设置
+\&。有关详细信息，请参见 \fBmq_setattr\fP(3)\&。
+.RE
+.PP
+\fIFreeBind=\fP
+.RS 4
+取一个布尔值 \&。控制套接字是否可以绑定到非本地 IP 地址 \&。这对于在网络接口上成功配置 IP 地址之前配置侦听特定 IP 地址的套接字很有用
+\&。这会设置 \fBIP_FREEBIND\fP/\fBIPV6_FREEBIND\fP 套接字选项 \&。出于稳健性原因，建议在将套接字绑定到特定 IP
+地址时使用此选项 \&。默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fITransparent=\fP
+.RS 4
+取一个布尔值 \&。控制 \fBIP_TRANSPARENT\fP/\fBIPV6_TRANSPARENT\fP 套接字选项 \&。默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIBroadcast=\fP
+.RS 4
+取一个布尔值 \&。这控制 \fBSO_BROADCAST\fP 套接字选项，它允许从该套接字发送广播数据报 \&。默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIPassCredentials=\fP
+.RS 4
+取一个布尔值 \&。这控制 \fBSO_PASSCRED\fP 套接字选项，它允许 \fBAF_UNIX\fP 套接字在辅助消息中接收发送进程的凭据 \&。默认为
+\fBfalse\fP\&。
+.RE
+.PP
+\fIPassSecurity=\fP
+.RS 4
+取一个布尔值 \&。这控制 \fBSO_PASSSEC\fP 套接字选项，它允许 \fBAF_UNIX\fP 套接字在辅助消息中接收发送进程的安全上下文
+\&。默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIPassPacketInfo=\fP
+.RS 4
+取一个布尔值 \&。这控制 \fBIP_PKTINFO\fP、\fBIPV6_RECVPKTINFO\fP、\fBNETLINK_PKTINFO\fP 或
+\fBPACKET_AUXDATA\fP 套接字选项，这些选项允许在 \fBAF_INET\fP、\fBAF_INET6\fP、\fBAF_UNIX\fP 和
+\fBAF_PACKET\fP 套接字上接收额外的每个数据包元数据作为辅助消息 \&。默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fITimestamping=\fP
+.RS 4
+采用 "off"、"us" (别名: "usec"、"\(mcs") 或 "ns" (别名: "nsec") \& 之一。这控制
+\fBSO_TIMESTAMP\fP 或 \fBSO_TIMESTAMPNS\fP 套接字选项，并启用入口网络流量是否应携带时间戳元数据 \&。默认为
+\fBoff\fP\&。
+.RE
+.PP
+\fITCPCongestion=\fP
+.RS 4
+接受一个字符串值 \&。控制此套接字使用的 TCP 拥塞算法。应该是 "westwood"、"veno"、"cubic"、"lp" 或 IP
+栈支持的任何其他可用算法之一。此设置仅适用于流套接字 \&。
+.RE
+.PP
+\fIExecStartPre=\fP, \fIExecStartPost=\fP
+.RS 4
+取一个或多个命令行，分别在创建和绑定监听 sockets/FIFOs 之前或之后执行 \&。命令行的第一个 token
+必须是绝对文件名，然后是进程的参数 \&。可以按照与用于服务元文件的 \fIExecStartPre=\fP 相同的方案指定多个命令行 \&。
+.RE
+.PP
+\fIExecStopPre=\fP, \fIExecStopPost=\fP
+.RS 4
+在侦听 sockets/FIFOs 之前或之后执行的附加命令分别关闭和删除 \&。可以按照与用于服务元文件的 \fIExecStartPre=\fP
+相同的方案指定多个命令行 \&。
+.RE
+.PP
+\fITimeoutSec=\fP
+.RS 4
+配置等待 \fIExecStartPre=\fP、\fIExecStartPost=\fP、\fIExecStopPre=\fP 和 \fIExecStopPost=\fP
+中指定的命令完成的时间 \&。如果命令在配置的时间内没有退出，套接字将被认为失败并再次关闭 \&。所有仍在运行的命令将通过 \fBSIGTERM\fP
+强制终止，并在再次延迟此时间后使用 \fBSIGKILL\fP\&。(见 \fBsystemd.kill\fP(5)\&.) 中的 \fBKillMode=\fP
+以秒为单位取一个元 \- less 值，或者一个时间跨度值，例如 `5min 20s`\&。通过 "0" 来禁用超时逻辑 \&。默认为管理器配置文件中的
+\fIDefaultTimeoutStartSec=\fP (请参见 \fBsystemd\-system.conf\fP(5))\&.
+.RE
+.PP
+\fIService=\fP
+.RS 4
+指定要在传入流量上激活的服务元名称 \&。此设置仅适用于带有 \fIAccept=no\fP\& 的套接字。它默认为与套接字同名的服务 (替换后缀)
+\&。在大多数情况下，没有必要使用此选项 \&。请注意，设置此参数可能会导致将其他依赖项添加到元 (见上文) \&。
+.RE
+.PP
+\fIRemoveOnStop=\fP
+.RS 4
+采用布尔型参数 \&。如果启用，此套接字创建的任何文件节点在停止时都将被删除 \&。这适用于文件系统中的 \fBAF_UNIX\fP 套接字、POSIX
+消息队列、FIFO，以及使用 \fISymlinks=\fP\&
+配置的指向它们的任何符号链接。通常，没有必要使用这个选项，也不推荐使用，因为服务可能会在套接字单元终止后继续运行，并且仍然可以通过它们的文件系统节点
+\& 与它们通信。默认关闭 \&。
+.RE
+.PP
+\fISymlinks=\fP
+.RS 4
+获取文件系统路径列表 \&。指定的路径将被创建为指向此套接字的 \fBAF_UNIX\fP 套接字路径或 FIFO 路径的符号链接元
+\&。如果使用该设置，则文件系统中只能配置一个 \fBAF_UNIX\fP socket 或为 socket 元 \& 配置一个
+FIFO。使用此选项管理套接字的一个或多个符号链接别名，将它们的生命周期绑定在一起
+\&。请注意，如果符号链接的创建失败，这对于套接字元来说不被认为是致命的，并且套接字元可能仍会启动 \&。如果分配了一个空字符串，路径列表将被重置
+\&。默认为空列表 \&。
+.RE
+.PP
+\fIFileDescriptorName=\fP
+.RS 4
+为这个套接字元封装的所有文件描述符分配一个名称 \&。如果传递了多个 fds，这有助于激活的服务识别特定的文件描述符。服务可以使用
+\fBsd_listen_fds_with_names\fP(3) 调用来获取为接收到的文件描述符配置的名称 \&。名称可以包含任何 ASCII
+字符，但必须排除控制字符和 ":"，并且长度不能超过 255 个字符 \&。如果不使用此设置，文件描述符名称默认为套接字名称元，包括其
+\&.socket 后缀 \&。
+.RE
+.PP
+\fITriggerLimitIntervalSec=\fP, \fITriggerLimitBurst=\fP
+.RS 4
+配置在特定时间间隔内激活此套接字单元的频率限制 \&。\fITriggerLimitIntervalSec=\fP 可用于以通常的时间单位
+"us"、"ms"、"s"、"min"、"h"、\&... 并且默认为 2s (有关所理解的各种时间单位的详细信息，请参见
+\fBsystemd.time\fP(7)) \&。\fITriggerLimitBurst=\fP
+设置采用正整数值并指定每个时间间隔允许的激活次数，\fIAccept=yes\fP 套接字默认为 200 (因此默认允许每 2 秒激活 200 次)，否则为
+20 (每 2 秒激活 20 次) \&。设置为 0 以禁用任何形式的触发速率限制
+\&。如果达到限制，套接字元将置于故障模式，并且在重新启动之前将无法连接。请注意，此限制在服务激活入队之前强制执行 \&。
+.RE
+.PP
+检查 \fBsystemd.unit\fP(5)、\fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5) 以获得更多设置 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd\-system.conf\fP(5),
+\fBsystemd.unit\fP(5), \fBsystemd.exec\fP(5), \fBsystemd.kill\fP(5),
+\fBsystemd.resource\-control\fP(5), \fBsystemd.service\fP(5),
+\fBsystemd.directives\fP(7), \fBsd_listen_fds\fP(3),
+\fBsd_listen_fds_with_names\fP(3)
+.PP
+有关更多详细说明，请参见 "systemd for Developers" 系列: \m[blue]\fBSocket Activation\fP\m[]\&\s-2\u[4]\d\s+2、\m[blue]\fBSocket Activation, part II\fP\m[]\&\s-2\u[5]\d\s+2、\m[blue]\fBConverting inetd Services\fP\m[]\&\s-2\u[6]\d\s+2、\m[blue]\fBSocket Activated Internet Services and OS Containers\fP\m[]\&\s-2\u[7]\d\s+2\&。
+.SH NOTES
+.IP " 1." 4
+USB 功能 FS
+.RS 4
+\%https://docs.kernel.org/usb/functionfs.html
+.RE
+.IP " 2." 4
+TCP 保活指南
+.RS 4
+\%http://www.tldp.org/HOWTO/html_single/TCP\-Keepalive\-HOWTO/
+.RE
+.IP " 3." 4
+Smack
+.RS 4
+\%https://docs.kernel.org/admin\-guide/LSM/Smack.html
+.RE
+.IP " 4." 4
+套接字激活
+.RS 4
+\%http://0pointer.de/blog/projects/socket\-activation.html
+.RE
+.IP " 5." 4
+套接字激活，第二部分
+.RS 4
+\%http://0pointer.de/blog/projects/socket\-activation2.html
+.RE
+.IP " 6." 4
+转换 inetd 服务
+.RS 4
+\%http://0pointer.de/blog/projects/inetd.html
+.RE
+.IP " 7." 4
+套接字激活的互联网服务和操作系统容器
+.RS 4
+\%http://0pointer.de/blog/projects/socket\-activated\-containers.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

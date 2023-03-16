@@ -1,0 +1,163 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\" and Copyright (C) 1993 Michael Haardt, Ian Jackson.
+.\" and Copyright (C) 2005, 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1993-07-21, Rik Faith <faith@cs.unc.edu>
+.\" Modified 1994-08-21, Michael Chastain <mec@shell.portal.com>:
+.\"   Fixed typos.
+.\" Modified 1997-01-31, Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2002-09-28, aeb
+.\" 2009-01-12, mtk, reordered text in DESCRIPTION and added some
+.\"     details for dup2().
+.\" 2008-10-09, mtk: add description of dup3()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dup 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+dup, dup2, dup3 \- 复制一个文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint dup(int \fP\fIoldfd\fP\fB);\fP
+\fBint dup2(int \fP\fIoldfd\fP\fB, int \fP\fInewfd\fP\fB);\fP
+.PP
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP              /* Definition of \fBO_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint dup3(int \fP\fIoldfd\fP\fB, int \fP\fInewfd\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBdup\fP() 系统调用分配一个新的文件描述符，该文件描述符引用与描述符 \fIoldfd\fP 相同的打开文件描述。 (有关打开文件描述的解释，请参见
+\fBopen\fP(2).) 新文件描述符编号保证是调用进程中未使用的编号最小的文件描述符。
+.PP
+成功返回后，新旧文件描述符可以互换使用。 由于两个文件描述符引用相同的打开文件描述，因此它们共享文件偏移量和文件状态标志;
+例如，如果通过在其中一个文件描述符上使用 \fBlseek\fP(2) 来修改文件偏移量，则另一个文件描述符的偏移量也会更改。
+.PP
+.\"
+这两个文件描述符不共享文件描述符标志 (close\-on\-exec 标志)。 close\-on\-exec 标志 (\fBFD_CLOEXEC\fP; 请参见
+\fBfcntl\fP(2)) 以了解重复描述符已关闭。
+.SS dup2()
+\fBdup2\fP() 系统调用执行与 \fBdup\fP() 相同的任务，但它不是使用编号最小的未使用文件描述符，而是使用 \fInewfd\fP
+中指定的文件描述符编号。 换句话说，文件描述符 \fInewfd\fP 被调整，因此它现在引用与 \fIoldfd\fP 相同的打开文件描述。
+.PP
+如果文件描述符 \fInewfd\fP 之前被打开过，它会在被重新使用之前被关闭; 关闭以静默方式执行 (即 \fBdup2\fP()) 不报告关闭期间的任何错误。
+.PP
+关闭和重新使用文件描述符 \fInewfd\fP 的步骤执行 \fIatomically\fP。 这很重要，因为尝试使用 \fBclose\fP(2) 和
+\fBdup\fP() 实现等效功能会受到竞争状态的影响，因此 \fInewfd\fP 可能会在两个步骤之间重复使用。
+这种重用可能会发生，因为主程序被分配文件描述符的信号处理程序中断，或者因为并行线程分配文件描述符。
+.PP
+请注意以下几点:
+.IP \[bu] 3
+如果 \fIoldfd\fP 不是有效的文件描述符，则调用失败，并且 \fInewfd\fP 不会关闭。
+.IP \[bu]
+.\"
+如果 \fIoldfd\fP 是一个有效的文件描述符，并且 \fInewfd\fP 与 \fIoldfd\fP 具有相同的值，则 \fBdup2\fP() 什么都不做，并返回
+\fInewfd\fP。
+.SS dup3()
+\fBdup3\fP() 与 \fBdup2\fP() 相同，不同之处在于:
+.IP \[bu] 3
+调用者可以通过在 \fIflags\fP 中指定 \fBO_CLOEXEC\fP 来强制为新文件描述符设置 close\-on\-exec 标志。 请参见
+\fBopen\fP(2) 中相同标志的描述，了解这可能有用的原因。
+.IP \[bu]
+.\" Ulrich Drepper, LKML, 2008-10-09:
+.\"	We deliberately decided on this change.  Otherwise, what is the
+.\"	result of dup3(fd, fd, O_CLOEXEC)?
+如果 \fIoldfd\fP 等于 \fInewfd\fP，则 \fBdup3\fP() 失败并出现错误 \fBEINVAL\fP。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回新的文件描述符。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIoldfd\fP 不是打开的文件描述符。
+.TP 
+\fBEBADF\fP
+\fInewfd\fP 超出了文件描述符的允许范围 (请参见 \fBgetrlimit\fP(2)).h 中对 \fBRLIMIT_NOFILE\fP 的讨论)。
+.TP 
+\fBEBUSY\fP
+(仅限 Linux) 这可能会在与 \fBopen\fP(2) 和 \fBdup\fP() 的竞争条件期间由 \fBdup2\fP() 或 \fBdup3\fP() 返回。
+.TP 
+\fBEINTR\fP
+\fBdup2\fP() 或 \fBdup3\fP() 调用被信号中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+(\fBdup3\fP()) \fIflags\fP 包含无效值。
+.TP 
+\fBEINVAL\fP
+(\fBdup3\fP()) \fIoldfd\fP 等于 \fInewfd\fP。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制 (请参见 \fBgetrlimit\fP(2)) 中对 \fBRLIMIT_NOFILE\fP 的讨论)。
+.SH VERSIONS
+\fBdup3\fP() 在 Linux 2.6.27 中加入; glibc 支持从 glibc 2.9 开始可用。
+.SH STANDARDS
+\fBdup\fP(), \fBdup2\fP(): POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.PP
+.\" SVr4 documents additional
+.\" EINTR and ENOLINK error conditions.  POSIX.1 adds EINTR.
+.\" The EBUSY return is Linux-specific.
+\fBdup3\fP() 是特定于 Linux 的。
+.SH NOTES
+当 \fInewfd\fP 越界时，\fBdup2\fP() 返回的错误与 \fBfcntl(\fP...、\fBF_DUPFD\fP、...\fB)\fP 返回的错误不同。
+在某些系统上，\fBdup2\fP() 有时也像 \fBF_DUPFD\fP 一样返回 \fBEINVAL\fP。
+.PP
+如果 \fInewfd\fP 是打开的，那么在 \fBclose\fP(2) 时间报告的任何错误都将丢失。 如果这是一个问题，那么 \[em]
+除非程序是单线程的并且不在信号处理程序中分配文件描述符 \[em] 正确的方法是 \fInot\fP 在调用 \fBdup2\fP() 之前关闭
+\fInewfd\fP，因为描述的竞争条件多于。 相反，可以使用类似下面的代码:
+.PP
+.in +4n
+.EX
+/* Obtain a duplicate of \[aq]newfd\[aq] that can subsequently
+   be used to check for close() errors; an EBADF error
+   means that \[aq]newfd\[aq] was not open. */
+
+tmpfd = dup(newfd);
+if (tmpfd == \-1 && errno != EBADF) {
+    /* Handle unexpected dup() error. */
+}
+
+/* Atomically duplicate \[aq]oldfd\[aq] on \[aq]newfd\[aq]. */
+
+if (dup2(oldfd, newfd) == \-1) {
+    /* Handle dup2() error. */
+}
+
+/* Now check for close() errors on the file originally
+   referred to by \[aq]newfd\[aq]. */
+
+if (tmpfd != \-1) {
+    if (close(tmpfd) == \-1) {
+        /* Handle errors from close. */
+    }
+}
+.EE
+.in
+.SH "SEE ALSO"
+\fBclose\fP(2), \fBfcntl\fP(2), \fBopen\fP(2), \fBpidfd_getfd\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

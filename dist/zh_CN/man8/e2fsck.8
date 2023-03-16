@@ -1,0 +1,248 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under the terms of the GNU Public License.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH E2FSCK 8 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+e2fsck \- 检查 Linux ext2/ext3/ext4 文件系统
+.SH SYNOPSIS
+\fBe2fsck\fP [ \fB\-pacnyrdfkvtDFV\fP ] [ \fB\-b\fP \fIsuperblock\fP ] [ \fB\-B\fP
+\fIblocksize\fP ] [ \fB\-l\fP|\fB\-L\fP \fIbad_blocks_file\fP ] [ \fB\-C\fP \fIfd\fP ] [ \fB\-j\fP
+\fIexternal\-journal\fP ] [ \fB\-E\fP \fIextended_options\fP ] [ \fB\-z\fP \fIundo_file\fP ]
+\fIdevice\fP
+.SH DESCRIPTION
+\fBe2fsck\fP 用于检查 ext2/ext3/ext4 系列文件系统。 对于使用日志的 ext3 和 ext4
+文件系统，如果系统在没有任何错误的情况下不干净地关闭，通常，在日志中重放提交的事务后，文件系统应该被标记为干净的。
+因此，对于使用日志记录的文件系统，\fBe2fsck\fP 通常会重放日志并退出，除非它的超级块指示需要进一步检查。
+.PP
+\fIdevice\fP 是块设备 (例如，\fI/dev/sdc1\fP) 或包含文件系统的文件。
+.PP
+请注意，通常在挂载的文件系统上运行 \fBe2fsck\fP 是不安全的。 唯一的例外是指定了 \fB\-n\fP 选项，并且指定了 \fB\-c\fP、\fB\-l\fP 或
+\fB\-L\fP 选项。 但是，即使这样做是安全的，如果挂载了文件系统，\fBe2fsck\fP 打印的结果也是无效的。 如果 \fBe2fsck\fP
+询问您是否应该检查已安装的文件系统，唯一正确的答案是 `否`。 只有真正知道自己在做什么的专家才应该考虑以任何其他方式回答这个问题。
+.PP
+如果 \fBe2fsck\fP 以交互模式运行 (意味着没有指定 \fB\-y\fP、\fB\-n\fP 或 \fB\-p\fP)，程序将要求用户修复在文件系统中发现的每个问题。
+\&'y' 的响应将修复错误; 'n' 将不修复错误; 'a' 将解决问题和所有后续问题; 按 Enter 将继续默认响应，该响应打印在问号之前。 按
+Control\-C 立即终止 e2fsck。
+.SH OPTIONS
+.TP 
+\fB\-a\fP
+该选项与 \fB\-p\fP 选项的作用相同。 它只是为了向后兼容而提供的; 建议人们尽可能使用 \fB\-p\fP 选项。
+.TP 
+\fB\-b\fP\fI superblock\fP
+不使用普通超级块，而是使用 \fIsuperblock\fP 指定的替代超级块。 当主超级块已损坏时通常使用此选项。
+备份超级块的位置取决于文件系统的块大小、每组的块数以及 \fBsparse_super\fP 等特性。
+.IP
+额外的备份超级块可以通过使用 \fBmke2fs\fP 程序使用 \fB\-n\fP 选项打印出超级块存在的位置来确定，假设 \fBmke2fs\fP
+提供了与文件系统布局一致的参数 (例如块大小，每组块，\fBsparse_super\fP 等) .
+.IP
+如果指定了替代超级块并且文件系统未以只读方式打开，e2fsck 将确保在文件系统检查完成后正确更新主超级块。
+.TP 
+\fB\-B\fP\fI blocksize\fP
+通常，\fBe2fsck\fP 会搜索各种不同块大小的超级块，试图找到合适的块大小。 在某些情况下，这种搜索可能会被愚弄。 此选项强制 \fBe2fsck\fP
+仅尝试将超级块定位在特定的块大小。 如果未找到超级块，\fBe2fsck\fP 将终止并出现致命错误。
+.TP 
+\fB\-c\fP
+此选项导致 \fBe2fsck\fP 使用 \fBbadblocks\fP(8) 程序对设备进行只读扫描，以查找任何坏块。 如果发现任何坏块，则将它们添加到坏块
+inode 中，以防止将它们分配给文件或目录。 如果这个选项被指定了两次，那么坏块扫描将使用非破坏性的读写测试来完成。
+.TP 
+\fB\-C\fP\fI fd\fP
+该选项使 \fBe2fsck\fP 将完成信息写入指定的文件描述符，以便可以监视文件系统检查的进度。 此选项通常由运行 \fBe2fsck\fP 的程序使用。
+如果文件描述符编号为 negative，那么将使用文件描述符的绝对值，并且最初会抑制进度信息。 稍后可以通过向 \fBe2fsck\fP 进程发送
+SIGUSR1 信号来启用它。 如果指定的文件描述符为 0，\fBe2fsck\fP 将在处理其业务时打印一个完成栏。 这要求 e2fsck
+在视频控制台或终端上运行。
+.TP 
+\fB\-d\fP
+打印调试输出 (无用，除非您正在调试 \fBe2fsck\fP).
+.TP 
+\fB\-D\fP
+优化文件系统中的目录。 此选项会导致 e2fsck
+尝试优化所有目录，如果文件系统支持目录索引，则通过重新索引它们，或者通过对较小目录的目录进行排序和压缩，或者使用传统线性目录的文件系统。
+.IP
+即使没有 \fB\-D\fP 选项，\fBe2fsck\fP 有时也可能会优化一些目录 \-\-\-
+例如，如果目录索引已启用并且目录未被索引并且可以从索引中受益，或者索引结构已损坏并且需要重建。 \fB\-D\fP 选项强制优化文件系统中的所有目录。
+这有时会使它们变得更小并且搜索起来稍微更快，但在实践中，您应该很少需要使用这个选项。
+.IP
+\fB\-D\fP 选项将检测单个目录中具有重复名称的目录条目，出于性能原因，e2fsck 通常不会强制执行。
+.TP 
+\fB\-E\fP\fI extended_options\fP
+设置 e2fsck 扩展选项。 扩展选项以逗号分隔，并且可以使用等号 ('=') 来获取参数。 支持以下选项:
+.RS 1.2i
+.TP 
+\fBea_ver=\fP\fIextended_attribute_version\fP
+设置 \fBe2fsck\fP 在检查文件系统时需要的扩展属性块的版本。 版本号可以是 1 或 2。 默认的扩展属性版本格式是 2.
+.TP 
+\fBjournal_only\fP
+仅在需要时重播日志，但不执行任何进一步的检查或修复。
+.TP 
+\fBfragcheck\fP
+在第 1 遍期间，打印文件系统中文件的任何不连续块的详细报告。
+.TP 
+\fBdiscard\fP
+尝试在完整文件系统检查后丢弃空闲块和未使用的 inode 块 (丢弃块在固态设备和稀疏 /
+精简配置存储上很有用)。请注意，只有在文件系统已完全检查并且不包含可识别的错误时，丢弃才会在第 5 步中完成。但是，在某些情况下，\fBe2fsck\fP
+可能无法完全识别问题，因此在这种情况下，此选项可能会阻止您进一步手动恢复数据。
+.TP 
+\fBnodiscard\fP
+不要试图丢弃空闲块和未使用的 inode 块。该选项与丢弃选项正好相反。这是默认设置。
+.TP 
+\fBno_optimize_extents\fP
+不要通过消除不必要的宽度或深度来优化范围树。 这也可以在 \fB/etc/e2fsck.conf\fP 的选项部分启用。
+.TP 
+\fBoptimize_extents\fP
+通过消除不必要的宽度或深度来优化范围树。 这是默认值，除非在 \fB/etc/e2fsck.conf\fP 中另有说明。
+.TP 
+\fBinode_count_fullmap\fP
+在检查具有大量硬链接文件的文件系统时，使用内存换取速度。 所需的内存量与文件系统中的索引节点数成正比。 对于大型文件系统，这可能是千兆字节的内存。
+(例如，如果启用此优化，具有 2.8 十亿 inode 的 40TB 文件系统将消耗额外的 5.7 GB 内存。) 也可以在
+\fB/etc/e2fsck.conf\fP 的选项部分启用此优化。
+.TP 
+\fBno_inode_count_fullmap\fP
+禁用 \fBinode_count_fullmap\fP 优化。 这是默认值，除非在 \fB/etc/e2fsck.conf\fP 中另有说明。
+.TP 
+\fBreadahead_kb\fP
+使用这么多 KiB 的内存来预取元数据，以期减少 e2fsck 运行时间。 默认情况下，这被设置为两个块组的 inode 表的大小 (在常规 ext4
+文件系统上通常为 4MiB) ; 如果此数量超过总物理内存的 1/50th，则禁用预读。 将其设置为零以完全禁用预读。
+.TP 
+\fBbmap2extent\fP
+将块映射文件转换为范围映射文件。
+.TP 
+\fBfixes_only\fP
+只修复损坏的元数据; 不要优化 htree 目录或压缩扩展树。 此选项与 \-D 和 \-E bmap2extent 选项不兼容。
+.TP 
+\fBcheck_encoding\fP
+在不区分大小写的目录中强制验证编码文件名。 如果文件系统启用了严格标志，则这是默认模式。
+.TP 
+\fBunshare_blocks\fP
+如果文件系统有共享块，并且启用了共享块只读特性那么这将取消共享所有共享块并取消设置只读特性位。如果没有足够的可用空间，则操作将失败。
+如果文件系统没有只读特性位，但无论如何都有共享块，则此选项将无效。请注意，使用此选项时，如果没有可用空间来克隆块，则不会提示删除文件，而是操作失败。
+.IP
+请注意，unshare_blocks 暗示 "\-f" 选项以确保运行所有通道。此外，如果还指定了 "\-n"，e2fsck
+将模拟尝试分配足够的空间来进行重复数据删除。如果失败，退出代码将为非零。
+.RE
+.TP 
+\fB\-f\fP
+即使文件系统看起来很干净也强制检查。
+.TP 
+\fB\-F\fP
+在开始之前刷新文件系统设备的缓冲区高速缓存。 只有在进行 \fBe2fsck\fP 计时赛时才真正有用。
+.TP 
+\fB\-j\fP\fI external\-journal\fP
+设置可以找到此文件系统的外部日志的路径名。
+.TP 
+\fB\-k\fP
+当与 \fB\-c\fP 选项结合使用时，坏块列表中的任何现有坏块都会被保留，运行 \fBbadblocks\fP(8) 发现的任何新坏块都将添加到现有坏块列表中。
+.TP 
+\fB\-l\fP\fI filename\fP
+将 \fIfilename\fP 指定的文件中列出的块号添加到坏块列表中。 该文件的格式与 \fBbadblocks\fP(8) 程序生成的格式相同。
+请注意，块编号基于文件系统的块大小。 因此，必须为 \fBbadblocks\fP(8) 指定文件系统的块大小才能获得正确的结果。 因此，将 \fB\-c\fP
+选项用于 \fBe2fsck\fP 会更加简单和安全，因为它将确保将正确的参数传递给 \fBbadblocks\fP 程序。
+.TP 
+\fB\-L\fP\fI filename\fP
+设置坏块列表为 \fIfilename\fP 指定的块列表。 (此选项与 \fB\-l\fP 选项相同，只是在将文件中列出的块添加到坏块列表之前清除坏块列表。)
+.TP 
+\fB\-n\fP
+以只读方式打开文件系统，假设所有问题的答案都是 `否`。 允许以非交互方式使用 \fBe2fsck\fP。 此选项不能与 \fB\-p\fP 或 \fB\-y\fP
+选项同时指定。
+.TP 
+\fB\-p\fP
+自动修复 ("preen") 文件系统。 此选项将使 \fBe2fsck\fP 自动修复任何无需人工干预即可安全修复的文件系统问题。 如果 \fBe2fsck\fP
+发现一个问题，可能需要系统管理员采取额外的纠正措施，\fBe2fsck\fP 将打印问题的描述，然后以逻辑或运算的值 4 退出退出代码。 (请参见
+\fBEXIT CODE\fP 部分。) 此选项通常由系统的引导脚本使用。 它不能与 \fB\-n\fP 或 \fB\-y\fP 选项同时指定。
+.TP 
+\fB\-r\fP
+这个选项什么都不做; 它只是为了向后兼容而提供的。
+.TP 
+\fB\-t\fP
+打印 \fBe2fsck\fP 的计时统计信息。 如果此选项被使用两次，附加的计时统计信息将逐次打印出来。
+.TP 
+\fB\-v\fP
+详细模式。
+.TP 
+\fB\-V\fP
+打印版本信息并退出。
+.TP 
+\fB\-y\fP
+假设对所有问题的回答都是 `是`; 允许以非交互方式使用 \fBe2fsck\fP。 此选项不能与 \fB\-n\fP 或 \fB\-p\fP 选项同时指定。
+.TP 
+\fB\-z\fP\fI undo_file\fP
+在覆盖文件系统块之前，将块的旧内容写入撤消文件。 如果出现问题，此撤消文件可与 e2undo(8) 一起使用以恢复文件系统的旧内容。 如果空字符串作为
+undo_file 参数传递，则撤消文件将写入通过 \fIE2FSPROGS_UNDO_DIR\fP 环境变量指定的目录中名为
+e2fsck\-\fIdevice\fP.e2undo 的文件。
+
+WARNING: 撤消文件不能用于从电源或系统崩溃中恢复。
+.SH "EXIT CODE"
+\fBe2fsck\fP 返回的退出代码是以下条件的总和:
+.br
+\0\-\ 没有错误
+.br
+\1\-\ 文件系统错误更正
+.br
+\2\-\ 文件系统错误更正，系统应该
+.br
+\\\\ 重新启动
+.br
+\4\-\ 文件系统错误未更正
+.br
+\8\-\ 运算错误
+.br
+\16\-\ 用法或语法错误
+.br
+\32\E2fsck 被用户请求取消
+.br
+\128\-\ 共享库错误
+.br
+.SH SIGNALS
+以下信号发送到 \fBe2fsck\fP 时具有以下效果。
+.TP 
+\fBSIGUSR1\fP
+该信号使 \fBe2fsck\fP 开始显示完成栏或发出进度信息。 (参见 \fB\-C\fP 选项的讨论。)
+.TP 
+\fBSIGUSR2\fP
+该信号导致 \fBe2fsck\fP 停止显示完成栏或发出进度信息。
+.SH "REPORTING BUGS"
+几乎任何软件都会有错误。 如果您设法找到导致 \fBe2fsck\fP 崩溃或 \fBe2fsck\fP 无法修复的文件系统，请向作者报告。
+.PP
+请在您的错误报告中包含尽可能多的信息。 理想情况下，包括 \fBe2fsck\fP 运行的完整记录，这样我就可以准确地看到显示的错误消息。 (确保
+\fBe2fsck\fP 打印的消息是英文的; 如果您的系统已配置为将 \fBe2fsck\fP's 消息翻译成另一种语言，请将 \fBLC_ALL\fP 环境变量设置为
+\fBC\fP，以便 e2fsck 输出的抄本对我有用.) 如果您有一个可写的文件系统，可以存储抄本，\fBscript\fP(1) 程序是将 \fBe2fsck\fP
+的输出保存到文件的便捷方法。
+.PP
+发送 \fBdumpe2fs\fP(8) 的输出也很有用。 如果一个或多个特定 inode 似乎给 \fBe2fsck\fP 带来了麻烦，请尝试运行
+\fBdebugfs\fP(8) 命令并发送在相关 inode(s) 上运行的 \fBstat\fP(1u) 命令的输出。 如果 inode
+是一个目录，\fBdebugfs\fP \fIdump\fP 命令将允许您提取目录 inode 的内容，可以在第一次通过 \fBuuencode\fP(1)
+运行后发送给我。 您可以发送以帮助重现错误的最有用的数据是文件系统的压缩原始图像转储，使用 \fBe2image\fP(8) 生成。 有关详细信息，请参见
+\fBe2image\fP(8) 手册页。
+.PP
+始终包括 \fBe2fsck\fP 在运行时显示的完整版本字符串，以便我知道您正在运行哪个版本。
+.SH ENVIRONMENT
+.TP 
+\fBE2FSCK_CONFIG\fP
+确定配置文件的位置 (参见 \fBe2fsck.conf\fP(5)).
+.SH AUTHOR
+此版本的 \fBe2fsck\fP 由 Theodore Ts'o <tytso@mit.edu> 编写。
+.SH "SEE ALSO"
+\fBe2fsck.conf\fP(5), \fBbadblocks\fP(8), \fBdumpe2fs\fP(8), \fBdebugfs\fP(8),
+\fBe2image\fP(8), \fBmke2fs\fP(8), \fBtune2fs\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

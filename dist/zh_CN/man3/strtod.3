@@ -1,0 +1,135 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1990, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" the American National Standards Committee X3, on Information
+.\" Processing Systems.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)strtod.3	5.3 (Berkeley) 6/29/91
+.\"
+.\" Modified Sun Aug 21 17:16:22 1994 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Sat May 04 19:34:31 MET DST 1996 by Michael Haardt
+.\"   (michael@cantor.informatik.rwth-aachen.de)
+.\" Added strof, strtold, aeb, 2001-06-07
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strtod 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strtod、strtof、strtold \- 将 ASCII 字符串转换为浮点数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBdouble strtod(const char *restrict \fP\fInptr\fP\fB, char **restrict \fP\fIendptr\fP\fB);\fP
+\fBfloat strtof(const char *restrict \fP\fInptr\fP\fB, char **restrict \fP\fIendptr\fP\fB);\fP
+\fBlong double strtold(const char *restrict \fP\fInptr\fP\fB, char **restrict \fP\fIendptr\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBstrtof\fP(), \fBstrtold\fP():
+.nf
+    _ISOC99_ 源 ||_POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBstrtod\fP()、\fBstrtof\fP() 和 \fBstrtold\fP() 函数分别将 \fInptr\fP 指向的字符串的初始部分转换为
+\fIdouble\fP、\fIfloat\fP 和 \fIlong double\fP 表示形式。
+.PP
+字符串 (的初始部分) 的预期形式是 \fBisspace\fP(3) 识别的可选前导空格、可选的加号 (\[aq]+\[aq]) 或减号
+(\[aq]\-\[aq])，然后 (i) 是十进制数，或者 (ii) 是十六进制数，或者 (iii) 是无穷大，或者 (iv) 一个 NAN
+(not\-a\-number)。
+.PP
+\fIdecimal number\fP 由一个非空的十进制数字序列组成，可能包含一个基数字符 (小数点，依赖于区域设置，通常是
+\[aq].\[aq])，后面可选地跟一个十进制指数。 十进制指数由 \[aq] E\[aq] 或 \[aq] e\[aq]
+组成，后跟可选的加号或减号，然后是非空的十进制数字序列，表示乘以幂的 10。
+.PP
+\fIhexadecimal number\fP 由 "0x" 或 "0X" 组成，后跟可能包含基数字符的非空十六进制数字序列，后跟可选的二进制指数。
+二进制指数由 \[aq] P\[aq] 或 \[aq] p\[aq] 组成，后跟可选的加号或减号，然后是非空的十进制数字序列，表示乘以幂 2.
+必须至少存在基数字符和二进制指数之一。
+.PP
+\fIinfinity\fP 是 "INF" 或 "INFINITY"，不区分大小写。
+.PP
+\fINAN\fP 是 "NAN" (忽略大小写) 后跟一个字符串 \fI(n\-char\-sequence)\fP，其中 \fIn\-char\-sequence\fP
+以依赖于实现的方式指定 NAN 的类型 (参见注释)。
+.SH "RETURN VALUE"
+这些函数返回转换后的值，如果有的话。
+.PP
+如果 \fIendptr\fP 不为 NULL，则指向转换中使用的最后一个字符之后的字符的指针将存储在 \fIendptr\fP 引用的位置。
+.PP
+如果未执行任何转换，则返回零并且 (除非 \fIendptr\fP 为空) \fInptr\fP 的值存储在 \fIendptr\fP 引用的位置。
+.PP
+如果正确的值会导致溢出，则返回正负 \fBHUGE_VAL\fP、\fBHUGE_VALF\fP 或 \fBHUGE_VALL\fP
+(根据值的返回类型和符号)，\fBERANGE\fP 存储在 \fIerrno\fP 中。
+.PP
+如果正确的值会导致下溢，则返回大小不大于 \fBDBL_MIN\fP、\fBFLT_MIN\fP 或 \fBLDBL_MIN\fP 的值，并将 \fBERANGE\fP 存储在
+\fIerrno\fP 中。
+.SH ERRORS
+.TP 
+\fBERANGE\fP
+发生溢出或下溢。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrtod\fP(),
+\fBstrtof\fP(),
+\fBstrtold\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99.
+.SH NOTES
+由于成功和失败都可以合法地返回 0，因此调用程序应在调用之前将 \fIerrno\fP 设置为 0，然后通过检查调用之后 \fIerrno\fP
+是否具有非零值来确定是否发生错误。
+.PP
+.\" From glibc 2.8's stdlib/strtod_l.c:
+.\"     We expect it to be a number which is put in the
+.\"     mantissa of the number.
+.\" It looks as though at least FreeBSD (according to the manual) does
+.\" something similar.
+.\" C11 says: "An implementation may use the n-char sequence to determine
+.\"	extra information to be represented in the NaN's significant."
+在 glibc 实现中，可选地跟在 "NAN" 之后的 \fIn\-char\-sequence\fP 被解释为一个整数 (带有可选的 '0' 或 '0x'
+前缀以选择基数 8 或 16)，它将被放置在返回值的尾数部分中。
+.SH EXAMPLES
+请参见 \fBstrtol\fP(3) 手册页上的示例; 本手册页中描述的函数的使用是类似的。
+.SH "SEE ALSO"
+\fBatof\fP(3), \fBatoi\fP(3), \fBatol\fP(3), \fBnan\fP(3), \fBnanf\fP(3), \fBnanl\fP(3),
+\fBstrfromd\fP(3), \fBstrtol\fP(3), \fBstrtoul\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

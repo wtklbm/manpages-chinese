@@ -1,0 +1,115 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH random_r 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+random_r、srandom_r、initstate_r、setstate_r \- 可重入随机数生成器
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint random_r(struct random_data *restrict \fP\fIbuf\fP\fB,\fP
+\fB             int32_t *restrict \fP\fIresult\fP\fB);\fP
+\fBint srandom_r(unsigned int \fP\fIseed\fP\fB, struct random_data *\fP\fIbuf\fP\fB);\fP
+.PP
+\fBint initstate_r(unsigned int \fP\fIseed\fP\fB, char \fP\fIstatebuf\fP\fB[restrict .\fP\fIstatelen\fP\fB],\fP
+\fB             size_t \fP\fIstatelen\fP\fB, struct random_data *restrict \fP\fIbuf\fP\fB);\fP
+\fBint setstate_r(char *restrict \fP\fIstatebuf\fP\fB,\fP
+\fB             struct random_data *restrict \fP\fIbuf\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBrandom_r\fP(), \fBsrandom_r\fP(), \fBinitstate_r\fP(), \fBsetstate_r\fP():
+.nf
+    /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE || _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数是 \fBrandom\fP(3) 中描述的函数的可重入等价物。 它们适用于多线程程序，其中每个线程都需要获得一个独立的、可重现的随机数序列。
+.PP
+\fBrandom_r\fP() 函数与 \fBrandom\fP(3) 类似，不同之处在于它不使用全局变量中维护的状态信息，而是使用 \fIbuf\fP
+指向的参数中的状态信息，该参数必须事先由 \fBinitstate_r\fP() 初始化。 生成的随机数在参数 \fIresult\fP 中返回。
+.PP
+\fBsrandom_r\fP() 函数与 \fBsrandom\fP(3) 类似，不同之处在于它为随机数生成器初始化 seed，该随机数生成器的状态在
+\fIbuf\fP 指向的对象中维护，而 \fIbuf\fP 必须事先由 \fBinitstate_r\fP() 初始化，而不是与全局状态变量关联的 seed。
+.PP
+\fBinitstate_r\fP() 函数与 \fBinitstate\fP(3) 类似，不同之处在于它初始化 \fIbuf\fP
+指向的对象中的状态，而不是初始化全局状态变量。 在调用此函数之前，必须将 \fIbuf.state\fP 字段初始化为 NULL。
+\fBinitstate_r\fP() 函数在 \fIbuf\fP 指向的结构体内记录了一个指向 \fIstatebuf\fP 参数的指针。 因此，只要 \fIbuf\fP
+仍在使用中，就不应释放 \fIstatebuf\fP。 (因此，\fIstatebuf\fP 通常应分配为静态变量，或使用 \fBmalloc\fP(3)
+或类似变量在堆上分配。)
+.PP
+\fBsetstate_r\fP() 函数与 \fBsetstate\fP(3) 类似，不同之处在于它修改 \fIbuf\fP
+指向的对象中的状态，而不是修改全局状态变量。 \fIstate\fP 必须首先使用 \fBinitstate_r\fP() 进行初始化，或者是之前调用
+\fBsetstate_r\fP() 的结果。
+.SH "RETURN VALUE"
+所有这些函数在成功时返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fBinitstate_r\fP() 指定了少于 8 字节的状态数组。
+.TP 
+\fBEINVAL\fP
+\fBsetstate_r\fP() 的 \fIstatebuf\fP 或 \fIbuf\fP 参数为 NULL。
+.TP 
+\fBEINVAL\fP
+\fBrandom_r\fP() 的 \fIbuf\fP 或 \fIresult\fP 参数为 NULL。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBrandom_r\fP(),
+\fBsrandom_r\fP(),
+\fBinitstate_r\fP(),
+\fBsetstate_r\fP()
+T}	Thread safety	MT\-Safe race:buf
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.\" These functions appear to be on Tru64, but don't seem to be on
+.\" Solaris, HP-UX, or FreeBSD.
+这些函数是非标准的 glibc 扩展。
+.SH BUGS
+.\" FIXME . https://sourceware.org/bugzilla/show_bug.cgi?id=3662
+\fBinitstate_r\fP() 界面令人困惑。 看起来 \fIrandom_data\fP 类型是不透明的，但实现要求用户将 \fIbuf.state\fP
+字段初始化为 NULL 或在调用之前将整个结构体清零。
+.SH "SEE ALSO"
+\fBdrand48\fP(3), \fBrand\fP(3), \fBrandom\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

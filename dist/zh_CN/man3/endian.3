@@ -1,0 +1,138 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2009, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\" a few pieces remain from an earlier version
+.\" Copyright (C) 2008, Nanno Langstraat <nal@ii.nl>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH endian 3 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+htobe16, htole16, be16toh, le16toh, htobe32, htole32, be32toh, le32toh,
+htobe64, htole64, be64toh, le64toh \- 在主机和 big\-/little\-endian 字节顺序之间转换值
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <endian.h>\fP
+.PP
+\fBuint16_t htobe16(uint16_t \fP\fIhost_16bits\fP\fB);\fP
+\fBuint16_t htole16(uint16_t \fP\fIhost_16bits\fP\fB);\fP
+\fBuint16_t be16toh(uint16_t \fP\fIbig_endian_16bits\fP\fB);\fP
+\fBuint16_t le16toh(uint16_t \fP\fIlittle_endian_16bits\fP\fB);\fP
+.PP
+\fBuint32_t htobe32(uint32_t \fP\fIhost_32bits\fP\fB);\fP
+\fBuint32_t htole32(uint32_t \fP\fIhost_32bits\fP\fB);\fP
+\fBuint32_t be32toh(uint32_t \fP\fIbig_endian_32bits\fP\fB);\fP
+\fBuint32_t le32toh(uint32_t \fP\fIlittle_endian_32bits\fP\fB);\fP
+.PP
+\fBuint64_t htobe64(uint64_t \fP\fIhost_64bits\fP\fB);\fP
+\fBuint64_t htole64(uint64_t \fP\fIhost_64bits\fP\fB);\fP
+\fBuint64_t be64toh(uint64_t \fP\fIbig_endian_64bits\fP\fB);\fP
+\fBuint64_t le64toh(uint64_t \fP\fIlittle_endian_64bits\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.ad l
+.PP
+\fBhtobe16\fP(), \fBhtole16\fP(), \fBbe16toh\fP(), \fBle16toh\fP(), \fBhtobe32\fP(),
+\fBhtole32\fP(), \fBbe32toh\fP(), \fBle32toh\fP(), \fBhtobe64\fP(), \fBhtole64\fP(),
+\fBbe64toh\fP(), \fBle64toh\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    在 x00X 及之前的 glibc 中:
+        _BSD_SOURCE
+.fi
+.ad
+.SH DESCRIPTION
+这些函数将整数值的字节编码从当前 CPU ("host") 使用的字节顺序转换为小端字节序和大端字节序。
+.PP
+每个函数名称中的数字 \fInn\fP 表示该函数处理的整数大小，可以是 16、32 或 64 位。
+.PP
+具有 "htobe\fInn\fP" 形式名称的函数从主机字节顺序转换为大端顺序。
+.PP
+具有 "htole\fInn\fP" 形式名称的函数从主机字节顺序转换为小端顺序。
+.PP
+具有 "be\fInn\fPtoh" 形式名称的函数从大端顺序转换为主机字节顺序。
+.PP
+具有 "le\fInn\fPtoh" 形式名称的函数从小端顺序转换为主机字节顺序。
+.SH VERSIONS
+这些函数是在 glibc 2.9 中添加的。
+.SH STANDARDS
+这些函数是非标准的。 BSD 上也有类似的数，其中所需的头文件是 \fI<sys/endian.h>\fP 而不是
+\fI<endian.h>\fP。 不幸的是，NetBSD、FreeBSD 和 glibc 没有遵循这些函数的原始 OpenBSD
+命名约定，因此 \fInn\fP 组件总是出现在函数名称的末尾 (因此，例如，在 NetBSD、FreeBSD 和 glibc 中，等价的 OpenBSD 的
+"betoh32" 是 "be32toh")。
+.SH NOTES
+这些函数与较早的函数 \fBbyteorder\fP(3) 家族相似。 例如，\fBbe32toh\fP() 与 \fBntohl\fP() 相同。
+.PP
+\fBbyteorder\fP(3) 函数的优点是它们是所有 UNIX 系统上可用的标准函数。 另一方面，它们是为在 TCP/IP
+上下文中使用而设计的，这意味着它们缺少本页中描述的 64 位和小端变体。
+.SH EXAMPLES
+下面的程序显示了将整数从主机字节顺序转换为小端字节序和大端字节序的结果。 由于主机字节顺序是小端或大端，因此这些转换中只有一个会产生影响。 当我们在
+x86\-32 等小端系统上运行这个程序时，我们会看到以下内容:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+x.u32 = 0x44332211
+htole32(x.u32) = 0x44332211
+htobe32(x.u32) = 0x11223344
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (endian.c)
+\&
+.EX
+#include <endian.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    union {
+        uint32_t u32;
+        uint8_t arr[4];
+    } x;
+
+    x.arr [0]=0x11;/*最低地址字节*/
+    x.arr[1] = 0x22;
+    x.arr[2] = 0x33;
+    x.arr [3]=0x44;/*最高地址字节*/
+
+    printf("x.u32 = %#x\en", x.u32);
+    printf("htole32(x.u32) = %#x\en", htole32(x.u32));
+    printf("htobe32(x.u32) = %#x\en", htobe32(x.u32));
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBbswap\fP(3), \fBbyteorder\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

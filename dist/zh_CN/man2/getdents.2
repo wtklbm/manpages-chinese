@@ -1,0 +1,251 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1995 Andries Brouwer (aeb@cwi.nl)
+.\" and Copyright 2008, 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Written 11 June 1995 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 22 July 1995 by Michael Chastain <mec@duracef.shout.net>:
+.\"   Derived from 'readdir.2'.
+.\" Modified Tue Oct 22 08:11:14 EDT 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getdents 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getdents, getdents64 \- 获取目录条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBlong syscall(SYS_getdents, unsigned int \fP\fIfd\fP\fB, struct linux_dirent *\fP\fIdirp\fP\fB,\fP
+\fB             unsigned int \fP\fIcount\fP\fB);\fP
+.PP
+\fB#define _GNU_SOURCE\fP           /* See feature_test_macros(7) */
+\fB#include <dirent.h>\fP
+.PP
+\fBssize_t getdents64(int \fP\fIfd\fP\fB, void \fP\fIdirp\fP\fB[.\fP\fIcount\fP\fB], size_t \fP\fIcount\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBgetdents\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.PP
+\fINote\fP: glibc 中没有 \fIstruct linux_dirent\fP 的定义; 见注释。
+.SH DESCRIPTION
+这些不是您感兴趣的接口。 查看 \fBreaddir\fP(3)，了解符合 POSIX 的 C 库接口。 此页面记录了裸内核系统调用接口。
+.SS getdents()
+系统调用 \fBgetdents\fP() 从打开的文件描述符 \fIfd\fP 指向的目录中读取几个 \fIlinux_dirent\fP 结构到 \fIdirp\fP
+指向的缓冲区中。 参数 \fIcount\fP 指定该缓冲区的大小。
+.PP
+\fIlinux_dirent\fP 结构体声明如下:
+.PP
+.in +4n
+.EX
+struct linux_dirent {
+    unsigned long  d_ino;     /* Inode number */ 
+    unsigned long  d_off;     /* Offset to next \fIlinux_dirent\fP */
+    unsigned short d_reclen;  /* Length of this \fIlinux_dirent\fP */
+    char           d_name[];  /* Filename (null\-terminated) */
+                      /* length is actually (d_reclen \- 2 \-
+                         offsetof(struct linux_dirent, d_name)) */
+    /*
+    char           pad;       // Zero padding byte
+    char           d_type;    // File type (only since Linux
+                              //2.6.4); 偏移量是 (d_reclen\-1)
+    */
+}
+.EE
+.in
+.PP
+\fId_ino\fP 是 inode 编号。 \fId_off\fP 是从目录开始到下一个 \fIlinux_dirent\fP 开始的距离。 \fId_reclen\fP
+就是这整个 \fIlinux_dirent\fP 的大小。 \fId_name\fP 是一个以 null 结尾的文件名。
+.PP
+\fId_type\fP 是结构体末尾的一个字节，表示文件类型。 它包含以下值之一 (在 \fI<dirent.h>\fP): 中定义
+.TP  12
+\fBDT_BLK\fP
+这是块设备。
+.TP 
+\fBDT_CHR\fP
+这是一个字符设备。
+.TP 
+\fBDT_DIR\fP
+这是一个目录。
+.TP 
+\fBDT_FIFO\fP
+这是命名管道 (FIFO)。
+.TP 
+\fBDT_LNK\fP
+这是一个符号链接。
+.TP 
+\fBDT_REG\fP
+这是一个常规文件。
+.TP 
+\fBDT_SOCK\fP
+这是一个 UNIX 域套接字。
+.TP 
+\fBDT_UNKNOWN\fP
+文件类型未知。
+.PP
+\fId_type\fP 字段是从 Linux 2.6.4 开始实现的。 它占用的空间以前是 \fIlinux_dirent\fP 结构体中的零填充字节。 因此，在
+Linux 2.6.3 及之前的内核上，尝试访问该字段总是提供值 0 (\fBDT_UNKNOWN\fP)。
+.PP
+.\" kernel 2.6.27
+.\" The same sentence is in readdir.2
+目前，只有一些文件系统 (其中: Btrfs、ext2、ext3 和 ext4) 完全支持返回 \fId_type\fP 中的文件类型。
+所有应用程序都必须正确处理 \fBDT_UNKNOWN\fP 的返回。
+.SS getdents64()
+原来的 Linux \fBgetdents\fP() 系统调用不处理大文件系统和大文件偏移量。 因此，Linux 2.4 添加了
+\fBgetdents64\fP()，\fId_ino\fP 和 \fId_off\fP 字段的类型更广泛。 此外，\fBgetdents64\fP() 支持显式
+\fId_type\fP 字段。
+.PP
+\fBgetdents64\fP() 系统调用类似于 \fBgetdents\fP()，除了它的第二个参数是指向包含以下类型结构的缓冲区的指针:
+.PP
+.in +4n
+.EX
+struct linux_dirent64 {
+    ino64_t        d_ino;    /* 64\-bit inode number */
+    off64_t        d_off;    /* 64\-bit offset to next structure */
+    unsigned short d_reclen; /* Size of this dirent */
+    unsigned char  d_type;   /* File type */
+    char           d_name[]; /* Filename (null\-terminated) */
+};
+.EE
+.in
+.SH "RETURN VALUE"
+成功时，返回读取的字节数。 在目录末尾，返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+无效的文件描述符 \fIfd\fP。
+.TP 
+\fBEFAULT\fP
+参数指向调用进程的地址空间之外。
+.TP 
+\fBEINVAL\fP
+结果缓冲区太小。
+.TP 
+\fBENOENT\fP
+没有这样的目录。
+.TP 
+\fBENOTDIR\fP
+文件描述符不引用目录。
+.SH STANDARDS
+.\" SVr4 documents additional ENOLINK, EIO error conditions.
+SVr4.
+.SH NOTES
+在 glibc 2.30 中添加了对 \fBgetdents64\fP() 的库支持; glibc 不提供 \fBgetdents\fP() 的包装器; 使用
+\fBsyscall\fP(2) 调用 \fBgetdents\fP() (或早期 glibc 版本上的 \fBgetdents64\fP())。
+在这种情况下，您需要自己定义 \fIlinux_dirent\fP 或 \fIlinux_dirent64\fP 结构体。
+.PP
+可能您想使用 \fBreaddir\fP(3) 而不是这些系统调用。
+.PP
+这些调用取代了 \fBreaddir\fP(2)。
+.SH EXAMPLES
+.\" FIXME The example program needs to be revised, since it uses the older
+.\" getdents() system call and the structure with smaller field widths.
+下面的程序演示了 \fBgetdents\fP() 的使用。 以下输出显示了我们在 ext2 目录上运行此程序时看到的示例:
+.PP
+.in +4n
+.EX
+$\fB ./a.out /testfs/\fP
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\- nread=120 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+inode#    file type  d_reclen  d_off   d_name
+       2  directory    16         12  .
+       2  directory    16         24  ..
+      11  directory    24         44  lost+found
+      12  regular      16         56  a
+  228929  directory    16         68  sub
+   16353  directory    16         80  sub2
+  130817  directory    16       4096  sub3
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (getdents.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <dirent.h>     /* Defines DT_* constants */
+#include <err.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+struct linux_dirent {
+    unsigned long  d_ino;
+    off_t          d_off;
+    unsigned short d_reclen;
+    char           d_name[];
+};
+
+#define BUF_SIZE 1024
+
+int
+main(int argc, char *argv[])
+{
+    int                  fd;
+    char                 d_type;
+    char                 buf[BUF_SIZE];
+    long                 nread;
+    struct linux_dirent  *d;
+
+    fd = open(argc > 1 ? argv[1] : ".", O_RDONLY | O_DIRECTORY);
+    if (fd == \-1)
+        err(EXIT_FAILURE, "open");
+
+    for (;;) {
+        nread = syscall(SYS_getdents, fd, buf, BUF_SIZE);
+        if (nread == \-1)
+            err(EXIT_FAILURE, "getdents");
+
+        if (nread == 0)
+            break;
+
+        printf("\-\-\-\-\-\-\-\-\-\-\-\-\-\-\- nread=%ld \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\en", nread);
+        printf("inode#    file type  d_reclen  d_off   d_name\en");
+        for (size_t bpos = 0; bpos < nread;) {
+            d = (struct linux_dirent *) (buf + bpos);
+            printf("%8lu  ", d\->d_ino);
+            d_type = *(buf + bpos + d\->d_reclen \- 1);
+            printf("%\-10s ", (d_type == DT_REG) ?  "regular" :
+                             (d_type == DT_DIR) ?  "directory" :
+                             (d_type == DT_FIFO) ? "FIFO" :
+                             (d_type == DT_SOCK) ? "socket" :
+                             (d_type == DT_LNK) ?  "symlink" :
+                             (d_type == DT_BLK) ?  "block dev" :
+                             (d_type == DT_CHR) ?  "char dev" : "???");
+            printf("%4d %10jd  %s\en", d\->d_reclen,
+                   (intmax_t) d\->d_off, d\->d_name);
+            bpos += d\->d_reclen;
+        }
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBreaddir\fP(2), \fBreaddir\fP(3), \fBinode\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,233 @@
+.\" -*- coding: UTF-8 -*-
+.\"
+.\" rpc.gssd(8)
+.\"
+.\" Copyright (C) 2003 J. Bruce Fields <bfields@umich.edu>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rpc.gssd 8 "20 Feb 2013"  
+.SH NAME
+rpc.gssd\-RPCSEC_GSS 守护进程
+.SH SYNOPSIS
+\fBrpc.gssd\fP [\fB\-DfMnlvrHC\fP] [\fB\-k\fP \fIkeytab\fP] [\fB\-p\fP \fIpipefsdir\fP] [\fB\-d\fP
+\fIccachedir\fP] [\fB\-t\fP \fItimeout\fP] [\fB\-T\fP \fItimeout\fP] [\fB\-U\fP \fItimeout\fP]
+[\fB\-R\fP \fIrealm\fP]
+.SH INTRODUCTION
+RFC 5403 中定义的 RPCSEC_GSS 协议用于为基于 RPC 的协议 (如 NFS) 提供强大的安全性。
+.P
+在使用 RPCSEC_GSS 交换 RPC 请求之前，RPC 客户端必须建立一个 GSS \fIsecurity context\fP。 安全上下文是启用
+GSS\-API 安全服务的网络传输两端的共享状态。
+.P
+安全上下文是使用 \fIsecurity credentials\fP 建立的。
+凭据授予对安全网络服务的临时访问权，就像火车票授予临时访问权以使用铁路服务一样。
+.P
+用户通常通过向 \fBkinit\fP(1) 命令提供密码或在登录时通过 PAM 库来获取凭据。 使用 \fIuser principal\fP 获得的凭证称为
+\fIuser credential\fP (有关主体的更多信息，请参见 \fBkerberos\fP(1))。
+.P
+某些操作需要不代表特定用户或代表主机本身的凭据。 这种凭证称为 \fImachine credential\fP。
+.P
+主机使用 \fIservice principal\fP 建立其机器凭证，其加密密码存储在称为 \fIkeytab\fP 的本地文件中。
+只要主机可以更新机器凭证，它就可以在没有用户干预的情况下保持有效。
+.P
+一旦获得，凭据通常存储在具有众所周知路径名的本地临时文件中。
+.SH DESCRIPTION
+为了使用这些凭证文件建立 GSS 安全上下文，Linux 内核 RPC 客户端依赖于一个名为 \fBrpc.gssd\fP 的用户空间守护进程。
+\fBrpc.gssd\fP 守护进程使用 rpc_pipefs 文件系统与内核通信。
+.SS "User Credentials"
+当用户使用诸如 \fBkinit\fP(1) 之类的命令进行身份验证时，生成的凭据将存储在一个文件中，该文件具有使用用户的 UID 构建的众所周知的名称。
+.P
+为了代表特定的 Kerberos 身份验证用户与 NFS 服务器交互，Linux 内核 RPC 客户端请求 \fBrpc.gssd\fP
+使用该用户的凭证文件中的凭证初始化安全上下文。
+.P
+通常，凭证文件放在 \fI/tmp\fP 中。 但是，\fBrpc.gssd\fP 可以在多个目录中搜索凭据文件。 详见 \fB\-d\fP 选项的说明。
+.SS "Machine Credentials"
+\fBrpc.gssd\fP 按以下顺序搜索默认密钥表 \fI/etc/krb5.keytab\fP，以获取在建立机器凭据时要使用的主体和密码。
+对于搜索，rpc.gssd 将 <hostname> 和 <REALM> 替换为本地系统的主机名和 Kerberos
+领域。
+.sp
+   <HOSTNAME>$@<REALM>
+.br
+   root/<hostname>@<REALM>
+.br
+   nfs/<hostname>@<REALM>
+.br
+   host/<hostname>@<REALM>
+.br
+   root/<anyname>@<REALM>
+.br
+   nfs/<anyname>@<REALM>
+.br
+   host/<anyname>@<REALM>
+.sp
+如果 rpc.gssd 没有找到与本地主机名匹配的服务主体，则它会选择 <anyname> 条目之一，例如，如果 DHCP
+动态分配本地主机名。 <anyname> 设施允许在多个系统上使用相同的密钥表。
+但是，使用相同的服务主体在多台主机上建立机器凭证可能会造成不必要的安全风险，因此不建议这样做。
+.P
+请注意，当本地系统使用 Samba 加入 Active Directory 域时，<HOSTNAME>$@<REALM>
+是启用 Kerberized NFS 的用户主体。 密钥表为此主体提供密码。
+.P
+如果 \fI/etc/krb5.keytab\fP 不存在或不提供这些主体之一，您可以使用 \fB\-k\fP 选项指定不同的密钥表。
+.SS "Credentials for UID 0"
+UID 0 是一个特例。 默认情况下，\fBrpc.gssd\fP 使用系统的机器凭据进行需要 GSS 身份验证的 UID 0 访问。
+这在访问需要身份验证的网络资源时限制了 root 用户的权限。
+.P
+如果您想强制 root 用户获取用户凭证而不是使用本地系统的机器凭证，请在启动 \fBrpc.gssd\fP 时指定 \fB\-n\fP 选项。
+.P
+当指定 \fB\-n\fP 时，内核会继续请求使用机器凭证建立的 GSS 上下文，以进行 NFSv4 操作，例如 SETCLIENTID 或
+RENEW，管理状态。 如果 \fBrpc.gssd\fP 无法获取机器凭据 (例如，本地系统没有密钥表)，则需要机器凭据的 NFSv4 操作将失败。
+.SS "Encryption types"
+领域管理员可以选择将以多种不同加密类型编码的密钥添加到本地系统的密钥表中。 例如，主机 / 主体可能具有
+\fBaes256\-cts\-hmac\-sha1\-96\fP、\fBaes128\-cts\-hmac\-sha1\-96\fP、\fBdes3\-cbc\-sha1\fP 和
+\fBarcfour\-hmac\fP 加密类型的密钥。 这允许 \fBrpc.gssd\fP 选择目标 NFS 服务器支持的适当加密类型。
+.P
+这些加密类型比传统的单 DES 加密类型更强大。 要在服务器仅支持弱加密类型的环境中进行互操作，您可以通过在启动 \fBrpc.gssd\fP 时指定
+\fB\-l\fP 选项来限制您的客户端仅使用单 DES 加密类型。
+.SH OPTIONS
+.TP 
+\fB\-D\fP
+传递给 GSSAPI 进行身份验证的服务器名称通常与请求的名称完全相同。 例如，对于 NFS，它是 "servername:/path"
+安装请求中的服务器名称。 仅当此服务器名称显示为 IP 地址 (IPv4 或 IPv6) 或不合格名称 (无点) 时，才会执行反向 DNS
+查找以获取规范服务器名称。
+
+如果存在 \fB\-D\fP，则将使用 \fIalways\fP 进行反向 DNS 查找，即使服务器名称看起来像规范名称也是如此。
+因此，如果经常使用部分限定或非规范名称，则需要它。
+
+使用 \fB\-D\fP 会引入安全漏洞，因此建议不要使用 \fB\-D\fP，并且在请求服务时始终使用规范名称。
+.TP 
+\fB\-f\fP
+在前台运行 \fBrpc.gssd\fP 并将输出发送到标准错误 (与 syslogd 相反)
+.TP 
+\fB\-n\fP
+指定后，UID 0 将强制获取用户凭据，而不是本地系统的机器凭据。
+.TP 
+\fB\-k \fP\fIkeytab\fP
+告诉 \fBrpc.gssd\fP 使用在 \fIkeytab\fP 中找到的密钥来获取机器凭证。 默认值为 \fI/etc/krb5.keytab\fP。
+.TP 
+\fB\-l\fP
+指定后，将 \fBrpc.gssd\fP 限制为弱加密类型 (例如 \fBdes\-cbc\-crc\fP) 的会话。 仅当本地系统的 Kerberos
+库支持可设置的加密类型时，此选项才可用。
+.TP 
+\fB\-p \fP\fIpath\fP
+告诉 \fBrpc.gssd\fP 到哪里寻找 rpc_pipefs 文件系统。 默认值为 \fI/var/lib/nfs/rpc_pipefs\fP。
+.TP 
+\fB\-d \fP\fIsearch\-path\fP
+此选项指定 \fBrpc.gssd\fP 搜索凭据文件的冒号分隔目录列表。 默认值为 \fI/tmp:/run/user/%U\fP。 可以指定字面量序列 "%U"
+来替换正在为其搜索凭据的用户的 UID。
+.TP 
+\fB\-M\fP
+默认情况下，机器凭据存储在凭据目录搜索路径的第一个目录中的文件中 (请参见 \fB\-d\fP 选项)。 设置 \fB\-M\fP 后，\fBrpc.gssd\fP
+会将计算机凭据存储在内存中。
+.TP 
+\fB\-v\fP
+增加输出的详细程度 (可以多次指定)。
+.TP 
+\fB\-r\fP
+如果 RPCSEC_GSS 库支持设置调试级别，则增加输出的详细程度 (可以指定多次)。
+.TP 
+\fB\-R \fP\fIrealm\fP
+在扫描用于创建上下文的可用凭据缓存文件时，将首选来自此 \fIrealm\fP 的 Kerberos 票证。 默认情况下，首选 Kerberos
+配置文件中配置的默认领域。
+.TP 
+\fB\-t \fP\fItimeout\fP
+内核 GSS 上下文的超时 (以秒为单位)。此选项允许您强制在 \fItimeout\fP 秒后协商新的内核上下文，这允许频繁更改 Kerberos
+票证和身份。 默认情况下没有显式超时，这意味着内核上下文将在其创建时使用的 Kerberos 服务票证的生命周期内存活。
+.TP 
+\fB\-T \fP\fItimeout\fP
+在为用户建立经过身份验证的 gss 上下文时创建与服务器的 RPC 连接的超时时间 (以秒为单位)。 默认超时设置为 5 秒。 如果您收到类似
+"WARNING: can't create tcp rpc_clnt to server %servername% for user with uid
+%uid%: RPC: Remote system error \- Connection timed out" 的消息，您应该考虑增加此超时。
+.TP 
+\fB\-U \fP\fItimeout\fP
+upcall 线程超时，以秒为单位。 执行时间超过 \fItimeout\fP 秒的线程将导致记录一条错误消息。 默认 \fItimeout\fP 为 30 秒。
+最小值为 5 秒。 最大值为 600 秒。
+.TP 
+\fB\-C\fP
+除了为已超时的线程记录错误消息外，线程将被取消并向内核报告 \-ETIMEDOUT 错误。
+.TP 
+\fB\-H\fP
+避免将 $HOME 设置为 "/"。这允许 rpc.gssd 读取每个用户的 k5identity 文件，而不是尝试为每个用户读取
+/.k5identity。
+
+如果未设置 \fB\-H\fP，rpc.gssd 将使用在 /var/client.keytab 中找到的第一个匹配项，并且不会使用基于
+$HOME/.k5identity 中列出的主机或者服务参数的主体。
+.SH "CONFIGURATION FILE"
+许多可以在命令行上设置的选项也可以通过在 \fI/etc/nfs.conf\fP 配置文件的 \fB[gssd]\fP 部分中设置的值来控制。 认可的值包括:
+.TP 
+\fBverbosity\fP
+相当于 \fB\-v\fP 的编号的值。
+.TP 
+\fBrpc\-verbosity\fP
+相当于 \fB\-r\fP 的编号的值。
+.TP 
+\fBuse\-memcache\fP
+相当于 \fB\-M\fP 的布尔标志。
+.TP 
+\fBuse\-machine\-creds\fP
+布尔标志。设置为 \fBfalse\fP 相当于给出 \fB\-n\fP 标志。
+.TP 
+\fBavoid\-dns\fP
+设置为 \fBfalse\fP 等同于提供 \fB\-D\fP 标志。
+.TP 
+\fBlimit\-to\-legacy\-enctypes\fP
+相当于 \fB\-l\fP。
+.TP 
+\fBcontext\-timeout\fP
+相当于 \fB\-t\fP。
+.TP 
+\fBrpc\-timeout\fP
+相当于 \fB\-T\fP。
+.TP 
+\fBkeytab\-file\fP
+相当于 \fB\-k\fP。
+.TP 
+\fBcred\-cache\-directory\fP
+相当于 \fB\-d\fP。
+.TP 
+\fBpreferred\-realm\fP
+相当于 \fB\-R\fP。
+.TP 
+\fBupcall\-timeout\fP
+相当于 \fB\-U\fP。
+.TP 
+\fBcancel\-timed\-out\-upcalls\fP
+设置为 \fBtrue\fP 等同于提供 \fB\-C\fP 标志。
+.TP 
+\fBset\-home\fP
+设置为 \fBfalse\fP 等同于提供 \fB\-H\fP 标志。
+.P
+此外，从 \fB[general]\fP 部分识别以下值:
+.TP 
+\fBpipefs\-directory\fP
+相当于 \fB\-p\fP。
+
+.SH "SEE ALSO"
+\fBrpc.svcgssd\fP(8), \fBkerberos\fP(1), \fBkinit\fP(1), \fBkrb5.conf\fP(5)
+.SH AUTHORS
+.br
+挖歌 <dugsong@umich.edu>
+.br
+安迪・亚当森 <andros@umich.edu>
+.br
+马吕斯・阿莫特・埃里克森 <marius@umich.edu>
+.br
+J. 布鲁斯菲尔兹 <bfields@umich.edu>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

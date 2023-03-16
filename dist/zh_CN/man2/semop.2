@@ -1,0 +1,240 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1996-10-22, Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2002-01-08, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2003-04-28, Ernie Petrides <petrides@redhat.com>
+.\" Modified 2004-05-27, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified, 11 Nov 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language and formatting clean-ups
+.\"	Added notes on /proc files
+.\" 2005-04-08, mtk, Noted kernel version numbers for semtimedop()
+.\" 2007-07-09, mtk, Added an EXAMPLE code segment.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH semop 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+semop、semtimedop\-System V 信号量操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/sem.h>\fP
+.PP
+\fBint semop(int \fP\fIsemid\fP\fB, struct sembuf *\fP\fIsops\fP\fB, size_t \fP\fInsops\fP\fB);\fP
+\fBint semtimedop(int \fP\fIsemid\fP\fB, struct sembuf *\fP\fIsops\fP\fB, size_t \fP\fInsops\fP\fB,\fP
+\fB               const struct timespec *_Nullable \fP\fItimeout\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsemtimedop\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+System\V 信号量集中的每个信号量都有以下关联值:
+.PP
+.in +4n
+.EX
+unsigned short  semval;    /* semaphore value */
+unsigned short  semzcnt;   /* # waiting for zero */
+unsigned short  semncnt;   /* # waiting for increase */
+pid_t           sempid;    /* PID of process that last
+                             modified the semaphore value */
+.EE
+.in
+.PP
+\fBsemop\fP() 对 \fIsemid\fP 指示的集合中的选定信号量执行操作。 \fIsops\fP 指向的数组中的每个 \fInsops\fP
+元素都是一个结构体，它指定要在单个信号量上执行的操作。 此结构体的元素类型为 \fIstruct sembuf\fP，包含以下成员:
+.PP
+.in +4n
+.EX
+unsigned short sem_num;   /* semaphore number */
+short          sem_op;    /* semaphore operation */
+short          sem_flg;   /* operation flags */
+.EE
+.in
+.PP
+\fIsem_flg\fP 中识别的标志是 \fBIPC_NOWAIT\fP 和 \fBSEM_UNDO\fP。 如果一个操作指定了
+\fBSEM_UNDO\fP，那么它会在进程终止时自动撤销。
+.PP
+\fIsops\fP 中包含的一组操作在 \fIarray order\fP 和 \fIatomically\fP
+中执行，即这些操作要么作为一个完整的单元执行，要么根本不执行。 如果不能立即执行所有操作，系统调用的行为取决于各个 \fIsem_flg\fP 字段中
+\fBIPC_NOWAIT\fP 标志的存在，如下所述。
+.PP
+每个操作都在信号量集合的 \fIsem_num\fP\-th 信号量上执行，其中该集合的第一个信号量编号为 0。 共有三种操作类型，以 \fIsem_op\fP
+的值区分。
+.PP
+如果 \fIsem_op\fP 是正整数，则该操作将此值添加到信号量值 (\fIsemval\fP)。 此外，如果为该操作指定了
+\fBSEM_UNDO\fP，系统将从该信号量的信号量调整 (\fIsemadj\fP) 值中减去值 \fIsem_op\fP。 此操作始终可以继续 \[em]
+它从不强制线程等待。 调用进程必须对信号量集具有更改权限。
+.PP
+如果 \fIsem_op\fP 为零，则进程必须对信号量集具有读取权限。 这是一个 "wait\-for\-zero" 操作: 如果 \fIsemval\fP
+为零，操作可以立即进行。 否则，如果在 \fIsem_flg\fP 中指定了 \fBIPC_NOWAIT\fP，则 \fBsemop\fP() 失败，\fIerrno\fP
+设置为 \fBEAGAIN\fP (并且不执行 \fIsops\fP 中的任何操作)。 否则，\fIsemzcnt\fP (等待此信号量值变为零的线程数) 递增
+1，并且线程休眠直到发生以下情况之一:
+.IP \[bu] 3
+\fIsemval\fP 变为 0，此时 \fIsemzcnt\fP 的值递减。
+.IP \[bu]
+信号量集被删除: \fBsemop\fP() 失败，\fIerrno\fP 设置为 \fBEIDRM\fP。
+.IP \[bu]
+调用线程捕捉到一个信号: \fIsemzcnt\fP 的值递减并且 \fBsemop\fP() 失败，\fIerrno\fP 设置为 \fBEINTR\fP。
+.PP
+如果 \fIsem_op\fP 小于零，则进程必须对信号量集具有更改权限。 如果 \fIsemval\fP 大于或等于 \fIsem_op\fP
+的绝对值，则立即进行运算: \fIsemval\fP 减去 \fIsem_op\fP 的绝对值，如果指定 \fBSEM_UNDO\fP 则系统将 \fIsem_op\fP
+的绝对值加到此信号量的信号量调整 (\fIsemadj\fP) 值。 如果 \fIsem_op\fP 的绝对值大于 \fIsemval\fP，并且 \fIsem_flg\fP
+中指定了 \fBIPC_NOWAIT\fP，则 \fBsemop\fP() 失败，\fIerrno\fP 设置为 \fBEAGAIN\fP (并且不执行 \fIsops\fP
+中的任何操作)。 否则，\fIsemncnt\fP (等待此信号量值增加的线程的计数器) 递增 1，并且线程休眠直到发生以下情况之一:
+.IP \[bu] 3
+\fIsemval\fP 变得大于或等于 \fIsem_op\fP: 的绝对值，操作现在继续进行，如上所述。
+.IP \[bu]
+信号量集从系统中删除: \fBsemop\fP() 失败，\fIerrno\fP 设置为 \fBEIDRM\fP。
+.IP \[bu]
+调用线程捕捉到一个信号: \fIsemncnt\fP 的值递减并且 \fBsemop\fP() 失败，\fIerrno\fP 设置为 \fBEINTR\fP。
+.PP
+.\" and
+.\" .I sem_ctime
+成功完成后，\fIsops\fP 指向的数组中指定的每个信号量的 \fIsempid\fP 值都设置为调用者的进程 ID。此外，\fIsem_otime\fP
+设置为当前时间。
+.SS semtimedop()
+\fBsemtimedop\fP() 的行为与 \fBsemop\fP() 相同，只是在调用线程休眠的情况下，休眠的持续时间受 \fItimespec\fP
+结构体指定的经过时间限制，其地址在 \fItimeout\fP 参数中传递。
+(此睡眠间隔将向上舍入到系统时钟粒度，内核调度延迟意味着该间隔可能会出现少量超时。) 如果已达到指定的时间限制，则 \fBsemtimedop\fP()
+失败，\fIerrno\fP 设置为 \fBEAGAIN\fP (并且没有任何执行 \fIsops\fP 中的操作)。 如果 \fItimeout\fP 参数为 NULL，则
+\fBsemtimedop\fP() 的行为与 \fBsemop\fP() 完全相同。
+.PP
+请注意，如果 \fBsemtimedop\fP() 被信号中断，导致调用失败并出现错误 \fBEINTR\fP，则 \fItimeout\fP 的内容保持不变。
+.SH "RETURN VALUE"
+成功时，\fBsemop\fP() 和 \fBsemtimedop\fP() 返回 0。 失败时，它们返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBE2BIG\fP
+参数 \fInsops\fP 大于 \fBSEMOPM\fP，即每个系统调用允许的最大操作数。
+.TP 
+\fBEACCES\fP
+调用进程没有执行指定信号量操作所需的权限，并且在管理其 IPC 命名空间的用户命名空间中不具有 \fBCAP_IPC_OWNER\fP 能力。
+.TP 
+\fBEAGAIN\fP
+操作无法立即进行，\fIsem_flg\fP 中指定了 \fBIPC_NOWAIT\fP，或者 \fItimeout\fP 中指定的时间限制已过期。
+.TP 
+\fBEFAULT\fP
+在 \fIsops\fP 或 \fItimeout\fP 参数中指定的地址不可访问。
+.TP 
+\fBEFBIG\fP
+对于某些操作，\fIsem_num\fP 的值小于 0 或大于或等于集合中的信号量数。
+.TP 
+\fBEIDRM\fP
+信号量集已删除。
+.TP 
+\fBEINTR\fP
+在这个系统调用中被阻塞时，线程捕获到一个信号; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+信号量集不存在，或者 \fIsemid\fP 小于零，或者 \fInsops\fP 具有非正值。
+.TP 
+\fBENOMEM\fP
+某些操作的 \fIsem_flg\fP 指定了 \fBSEM_UNDO\fP 并且系统没有足够的内存来分配撤消结构体。
+.TP 
+\fBERANGE\fP
+对于某些操作，\fIsem_op+semval\fP 大于 \fBSEMVMX\fP，\fIsemval\fP 的最大值取决于实现。
+.SH VERSIONS
+\fBsemtimedop\fP() 首次出现在 Linux 2.5.52 中，随后被移植到 Linux 2.4.22 中。 glibc 对
+\fBsemtimedop\fP() 的支持首先出现在 Linux 2.3.3 中。
+.SH STANDARDS
+.\" SVr4 documents additional error conditions EINVAL, EFBIG, ENOSPC.
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.SH NOTES
+进程的 \fIsem_undo\fP 结构不是由 \fBfork\fP(2) 生成的子进程继承的，而是跨 \fBexecve\fP(2) 系统调用继承的。
+.PP
+\fBsemop\fP() 在被信号处理程序中断后永远不会自动重新启动，无论在建立信号处理程序时 \fBSA_RESTART\fP 标志的设置如何。
+.PP
+信号量调整 (\fIsemadj\fP) 值是每个进程的每个信号量整数，它是对指定 \fBSEM_UNDO\fP 标志的信号量执行的所有操作的负和。
+每个进程都有一个 \fIsemadj\fP 值列表 \[em] 它使用 \fBSEM_UNDO\fP 操作的每个信号量都有一个值。 当一个进程终止时，它的每个信号量
+\fIsemadj\fP 值都被添加到相应的信号量，从而消除该进程对信号量的操作的影响 (但请参见下面的错误)。 当使用 \fBSETVAL\fP 或
+\fBSETALL\fP 请求直接将信号量的值设置为 \fBsemctl\fP(2) 时，所有进程中对应的 \fIsemadj\fP 值将被清除。 \fBclone\fP(2)
+\fBCLONE_SYSVSEM\fP 标志允许多个进程共享一个 \fIsemadj\fP 列表; 详见 \fBclone\fP(2)。
+.PP
+信号量的 \fIsemval\fP、\fIsempid\fP、\fIsemzcnt\fP 和 \fIsemnct\fP 值都可以使用适当的 \fBsemctl\fP(2)
+调用来检索。
+.SS "Semaphore limits"
+以下信号量集资源限制会影响 \fBsemop\fP() 调用:
+.TP 
+\fBSEMOPM\fP
+.\" commit e843e7d2c88b7db107a86bd2c7145dc715c058f4
+.\" This /proc file is not available in Linux 2.2 and earlier -- MTK
+.\" See comment in Linux 3.19 source file include/uapi/linux/sem.h
+一个 \fBsemop\fP() 调用允许的最大操作数。 在 Linux 3.19 之前，此限制的默认值为 32。 从 Linux 3.19 开始，默认值为
+500。 在 Linux 上，可以通过 \fI/proc/sys/kernel/sem\fP 的第三个字段读取和修改此限制。 \fINote\fP:
+此限制不应提高到 1000 以上，因为在分配内存以复制 \fIsops\fP 数组时，\fBsemop\fP() 存在因内核内存碎片而失败的风险。
+.TP 
+\fBSEMVMX\fP
+\fIsemval\fP: 实现相关的 (32767) 的最大允许值。
+.PP
+该实现对退出时调整最大值 (\fBSEMAEM\fP)、系统范围内撤消结构的最大数量 (\fBSEMMNU\fP)
+和每个进程撤消条目的最大数量系统参数没有内部数限制。
+.SH BUGS
+当一个进程终止时，它的一组关联的 \fIsemadj\fP 结构用于撤销它使用 \fBSEM_UNDO\fP 标志执行的所有信号量操作的影响。 这就带来了一个困难:
+如果这些信号量调整中的一个 (或多个) 会导致试图将信号量的值降低到零以下，那么实现应该做什么? 一种可能的方法是阻塞，直到可以执行所有信号量调整。
+然而，这是不可取的，因为它可能会强制进程终止阻塞任意长的时间。 另一种可能性是可以完全忽略此类信号量调整 (有点类似于在为信号量操作指定
+\fBIPC_NOWAIT\fP 时失败)。 Linux 采用第三种方法: 尽可能减小信号量值 (即减小到零) 并允许进程立即终止。
+.PP
+.\" The bug report:
+.\" http://marc.theaimsgroup.com/?l=linux-kernel&m=110260821123863&w=2
+.\" the fix:
+.\" http://marc.theaimsgroup.com/?l=linux-kernel&m=110261701025794&w=2
+在 Linux 2.6.x、x <= 10 中，存在一个错误，在某些情况下会阻止等待信号量值变为零的线程在该值实际变为零时被唤醒。 此错误已在
+Linux 2.6.11 中修复。
+.SH EXAMPLES
+以下代码段使用 \fBsemop\fP() 原子地等待信号量 0 的值变为零，然后将信号量值递增 1。
+.PP
+.in +4n
+.EX
+struct sembuf sops[2];
+int semid;
+
+/* Code to set \fIsemid\fP omitted */
+
+sops[0].sem_num = 0;        /* Operate on semaphore 0 */
+sops[0].sem_op = 0;         /* Wait for value to equal 0 */
+sops[0].sem_flg = 0;
+
+sops[1].sem_num = 0;        /* Operate on semaphore 0 */
+sops[1].sem_op = 1;         /* Increment value by one */
+sops[1].sem_flg = 0;
+
+if (semop(semid, sops, 2) == \-1) {
+    perror("semop");
+    exit(EXIT_FAILURE);
+}
+.EE
+.in
+.PP
+可以在 \fBshmop\fP(2) 中找到使用 \fBsemop\fP() 的进一步示例。
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBsemctl\fP(2), \fBsemget\fP(2), \fBsigaction\fP(2),
+\fBcapabilities\fP(7), \fBsem_overview\fP(7), \fBsysvipc\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

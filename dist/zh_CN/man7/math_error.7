@@ -1,0 +1,130 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH math_error 7 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+math_error \- 从数学函数中检测错误
+.SH SYNOPSIS
+.nf
+\fB#include <math.h>\fP
+\fB#include <errno.h>\fP
+\fB#include <fenv.h>\fP
+.fi
+.SH DESCRIPTION
+当发生错误时，大多数库函数通过返回一个特殊值 (例如，\-1 或 NULL) 来指示这一事实。 因为它们通常返回浮点数，所以在
+\fI<math.h>\fP 中声明的数学函数表示使用其他机制的错误。 有两种错误报告机制: 旧的设置 \fIerrno\fP; 较新的使用
+\fBfenv\fP(3) 中描述的浮点异常机制 (\fBfeclearexcept\fP(3) 和 \fBfetestexcept\fP(3) 的使用，如下所述)。
+.PP
+需要检查数学函数错误的可移植程序应将 \fIerrno\fP 设置为零，并进行以下调用
+.PP
+.in +4n
+.EX
+feclearexcept(FE_ALL_EXCEPT);
+.EE
+.in
+.PP
+在调用数学函数之前。
+.PP
+从数学函数返回时，如果 \fIerrno\fP 为非零，或以下调用 (参见 \fBfenv\fP(3)) 返回非零
+.PP
+.in +4n
+.EX
+fetestexcept(FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW |
+             FE_UNDERFLOW);
+.EE
+.in
+.PP
+.\" enum
+.\" {
+.\" FE_INVALID = 0x01,
+.\" __FE_DENORM = 0x02,
+.\" FE_DIVBYZERO = 0x04,
+.\" FE_OVERFLOW = 0x08,
+.\" FE_UNDERFLOW = 0x10,
+.\" FE_INEXACT = 0x20
+.\" };
+那么数学函数就出现了错误。
+.PP
+数学函数可能出现的错误情况如下所述。
+.SS "Domain error"
+\fIdomain error\fP 发生在当数学函数提供一个参数时，该参数的值落在定义函数的域之外 (例如，给 \fBlog\fP(3)) 一个 negative
+参数。 当发生域错误时，数学函数通常会返回 NaN (虽然有些函数在这种情况下会返回不同的值) ; \fIerrno\fP 设置为 \fBEDOM\fP，并引发
+"invalid" (\fBFE_INVALID\fP) 浮点异常。
+.SS "Pole error"
+当一个函数的数学结果是一个精确的无穷大 (例如，0 的对数是 negative 无穷大) 时，就会出现 \fIpole error\fP。
+当发生极点错误时，函数返回 (signed) 值 \fBHUGE_VAL\fP、\fBHUGE_VALF\fP 或
+\fBHUGE_VALL\fP，具体取决于函数结果类型是 \fIdouble\fP、\fIfloat\fP 还是 \fIlong double\fP。
+结果的符号是函数在数学上正确的符号。 \fIerrno\fP 设置为 \fBERANGE\fP，并引发 "divide\-by\-zero"
+(\fBFE_DIVBYZERO\fP) 浮点异常。
+.SS "Range error"
+当函数结果的大小意味着它不能在函数的结果类型中表示时，会出现 \fIrange error\fP。 函数的返回值取决于范围错误是上溢还是下溢。
+.PP
+如果结果是有限的，但太大而无法在结果类型中表示，则为浮动结果 \fIoverflows\fP。 当发生溢出时，函数返回值
+\fBHUGE_VAL\fP、\fBHUGE_VALF\fP 或 \fBHUGE_VALL\fP，具体取决于函数结果类型是 \fIdouble\fP、\fIfloat\fP 还是
+\fIlong double\fP。 \fIerrno\fP 设置为 \fBERANGE\fP，并引发 "overflow" (\fBFE_OVERFLOW\fP) 浮点异常。
+.PP
+如果结果太小而无法在结果类型中表示，则为浮动结果 \fIunderflows\fP。 如果发生下溢，数学函数通常会返回 0.0 (C99 表示函数应返回
+"an implementation\-defined value whose magnitude is no greater than the
+smallest normalized positive number in the specified type")。 \fIerrno\fP 可能会设置为
+\fBERANGE\fP，并且可能会引发 "underflow" (\fBFE_UNDERFLOW\fP) 浮点异常。
+.PP
+如果提供的参数值或正确的函数结果是 \fIsubnormal\fP，一些函数会传递一个范围错误。 subnormal
+值是一个非零值，但其幅度非常小以至于无法以规范化形式表示 (即，有效位的最高有效位为 1)。 subnormal
+数的表示将在尾数中包含一个或多个前导零。
+.SH NOTES
+.\" See CONFORMANCE in the glibc 2.8 (and earlier) source.
+glibc 不支持 C99 和 POSIX.1 指定的 \fImath_errhandling\fP 标识符。 该标识符应该指示正在使用两种错误通知机制
+(\fIerrno\fP 中的哪一种，可通过 \fBfetestexcept\fP(3)) 检索异常。 标准要求至少使用一种，但允许两种都可用。 目前 glibc
+下的 (glibc 2.8) 情况比较乱。 大多数 (但不是全部) 函数引发错误异常。 有的还设置 \fIerrno\fP。 一些函数设置
+\fIerrno\fP，但不引发异常。 极少数函数两者都不做。 有关详细信息，请参见各个手册页。
+.PP
+.\" http://www.securecoding.cert.org/confluence/display/seccode/FLP32-C.+Prevent+or+detect+domain+and+range+errors+in+math+functions
+为了避免使用 \fIerrno\fP 和 \fBfetestexcept\fP(3) 进行错误检查的复杂性，通常建议在每次调用之前检查错误的参数值。
+例如，以下代码确保 \fBlog\fP(3)'s 参数不是 NaN 且不为零 (极点错误) 或小于零 (域错误) :
+.PP
+.in +4n
+.EX
+double x, r;
+
+if (isnan(x) || islessequal(x, 0)) {
+    /* Deal with NaN / pole error / domain error */
+}
+
+r = log(x);
+.EE
+.in
+.PP
+本页的讨论不适用于复杂的数学函数 (即 \fI<complex.h>\fP) 声明的那些，一般不需要 C99 和 POSIX.1 返回错误。
+.PP
+\fBgcc\fP(1) \fI\-fno\-math\-errno\fP 选项使可执行文件采用一些比标准实现更快的数学函数的实现，但不会将 \fIerrno\fP
+设置为错误。 (\fBgcc\fP(1) \fI\-ffast\-math\fP 选项也使 \fI\-fno\-math\-errno\fP.) 错误，使用
+\fBfetestexcept\fP(3) 仍然可以测试。
+.SH "SEE ALSO"
+\fBgcc\fP(1), \fBerrno\fP(3), \fBfenv\fP(3), \fBfpclassify\fP(3), \fBINFINITY\fP(3),
+\fBisgreater\fP(3), \fBmatherr\fP(3), \fBnan\fP(3)
+.PP
+\fIinfo libc\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

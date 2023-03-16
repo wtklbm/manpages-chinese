@@ -1,0 +1,571 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH UDEV 7 "" "systemd 253" udev
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+udev \- 动态设备管理
+.SH DESCRIPTION
+.PP
+udev 为系统软件提供设备事件，管理设备节点的权限，并可能在 /dev / 目录中创建额外的符号链接，或重命名网络接口
+\&。内核通常只是根据发现的顺序分配不可预测的设备名称。有意义的符号链接或网络设备名称提供了一种根据设备属性或当前配置可靠地识别设备的方法。
+.PP
+udev 守护进程 \fBsystemd\-udevd.service\fP(8) 直接从内核接收设备
+uevents，无论何时在系统中添加或删除设备，或者它更改其状态 \&。当 udev
+接收到设备事件时，它会将其配置的规则集与各种设备属性进行匹配，以识别设备。匹配的规则可能会提供额外的设备信息以存储在 udev
+数据库中或用于创建有意义的符号链接名称 \&。
+.PP
+udev 进程的所有设备信息都存储在 udev 数据库中，并发送给可能的事件订阅者。库 libudev\& 提供对所有存储数据和事件源的访问。
+.SH "RULES FILES"
+.PP
+udev 规则是从位于系统规则目录 /usr/lib/udev/rules\&.d 和
+/usr/local/lib/udev/rules\&.d、可变运行时目录 /run/udev/rules\&.d 和本地管理目录
+/etc/rules\&.d\& 中的文件读取的。所有规则文件都按词法顺序统一排序和处理，而不管它们所在的目录
+\&。但是，具有相同文件名的文件会相互替换 \&。/etc/ 中的文件优先级最高，/run/ 中的文件优先于 /usr/\&
+下的同名文件。如果需要，这可用于使用本地文件覆盖系统提供的规则文件; /etc/ 中的符号链接与 /usr/lib/ 中的规则文件同名，指向
+/dev/null，完全禁用规则文件 \&。规则文件的扩展名必须是 \&.rules; 其他扩展被忽略 \&。
+.PP
+规则文件中的每一行都至少包含一个键值对 \&。除了空行或以 "#" 开头的行，忽略 \&。有两种键: 匹配和赋值
+\&。如果所有匹配键都与其值匹配，则应用该规则并且分配键获得分配的指定值 \&。
+.PP
+匹配规则可以重命名网络接口，添加指向设备节点的符号链接，或运行指定的程序作为事件处理的一部分。
+.PP
+规则由一个或多个键 \- 运算符 \- 值表达式 \& 的逗号分隔列表组成。每个表达式都有不同的效果，具体取决于使用的键和运算符 \&。
+.SS Operators
+.PP
+"=="
+.RS 4
+比较是否相等 \&。(指定的键具有指定的值 \&。)
+.RE
+.PP
+"!="
+.RS 4
+比较不等式 \&。(指定的键没有 \* (Aqt 有指定的值，或者指定的键根本不存在 \&。)
+.RE
+.PP
+"="
+.RS 4
+为键赋值 \&。代表列表的键被重置，并且只有这个单个值被分配 \&。
+.RE
+.PP
+"+="
+.RS 4
+将值添加到包含条目列表的键 \&。
+.RE
+.PP
+"\-="
+.RS 4
+从包含条目列表的键中删除值 \&。
+.RE
+.PP
+":="
+.RS 4
+最后给 key 赋值; 不允许任何以后的更改 \&。
+.RE
+.SS Values
+.PP
+值被写成双引号字符串，例如 ("string")\&。要在值中包含引号 (")，请在其前面加上反斜杠
+(\e")\&。任何其他出现的反斜杠后跟字符都不会被转义 \&。即，"\et\en" 被视为四个字符: 反斜杠、小写 t、反斜杠、小写 n\&。
+.PP
+该字符串可以使用小写字母 e (e"string\en") 作为前缀，以将字符串标记为 \m[blue]\fBC\-style escaped\fP\m[]\&\s-2\u[1]\d\s+2\&。例如，e"string\en" 被解析为 7 个字符: 6 个小写字母和一个换行符
+\&。当内核驱动程序需要它们 \& 时，这对于编写特殊字符很有用。
+.PP
+请注意，\fBNUL\fP 不允许出现在任一字符串变体 \& 中。
+.SS Keys
+.PP
+以下键名可用于匹配设备属性 \&。一些密钥还匹配 sysfs 中父设备的属性，而不仅仅是生成事件的设备
+\&。如果在单个规则中指定了与父设备匹配的多个密钥，则所有这些密钥必须在同一个父设备上匹配 \&。
+.PP
+\fIACTION\fP
+.RS 4
+匹配事件动作的名称 \&。
+.RE
+.PP
+\fIDEVPATH\fP
+.RS 4
+匹配事件设备的开发路径 \&。
+.RE
+.PP
+\fIKERNEL\fP
+.RS 4
+匹配事件设备的名称 \&。
+.RE
+.PP
+\fIKERNELS\fP
+.RS 4
+向上搜索 devpath 以查找匹配的设备名称 \&。
+.RE
+.PP
+\fINAME\fP
+.RS 4
+匹配网络接口的名称 \&。一旦在前面的规则之一中设置了 NAME 键，就可以使用它。
+.RE
+.PP
+\fISYMLINK\fP
+.RS 4
+匹配以节点为目标的符号链接的名称 \&。一旦在前面的规则之一中设置了 SYMLINK 键，就可以使用它。可能有多个符号链接; 只有一个需要匹配 \&。
+.RE
+.PP
+\fISUBSYSTEM\fP
+.RS 4
+匹配事件设备的子系统 \&。
+.RE
+.PP
+\fISUBSYSTEMS\fP
+.RS 4
+向上搜索 devpath 以查找匹配的设备子系统名称 \&。
+.RE
+.PP
+\fIDRIVER\fP
+.RS 4
+匹配事件设备的驱动名称 \&。仅在事件生成时为绑定到驱动程序的设备设置此键 \&。
+.RE
+.PP
+\fIDRIVERS\fP
+.RS 4
+向上搜索 devpath 以查找匹配的设备驱动程序名称 \&。
+.RE
+.PP
+\fIATTR{\fP\fIfilename\fP\fI}\fP
+.RS 4
+匹配事件设备的 sysfs 属性值 \&。
+.sp
+属性值中的尾随空格将被忽略，除非指定的匹配值本身包含尾随空格 \&。
+.RE
+.PP
+\fIATTRS{\fP\fIfilename\fP\fI}\fP
+.RS 4
+在 devpath 向上搜索具有匹配 sysfs 属性值 \& 的设备。如果指定了多个 \fIATTRS\fP 匹配项，则所有匹配项都必须在同一设备上匹配
+\&。
+.sp
+属性值中的尾随空格将被忽略，除非指定的匹配值本身包含尾随空格 \&。
+.RE
+.PP
+\fISYSCTL{\fP\fIkernel parameter\fP\fI}\fP
+.RS 4
+匹配一个内核参数值 \&。
+.RE
+.PP
+\fIENV{\fP\fIkey\fP\fI}\fP
+.RS 4
+匹配设备属性值 \&。
+.RE
+.PP
+\fICONST{\fP\fIkey\fP\fI}\fP
+.RS 4
+匹配系统范围的常量 \&。支持的键是:
+.PP
+"arch"
+.RS 4
+系统 \*(Aqs 架构 \&. 有关可能的值 \&，请参见 \fBsystemd.unit\fP(5) 中的
+\fBConditionArchitecture=\fP。
+.RE
+.PP
+"virt"
+.RS 4
+System\*(Aqs 虚拟化环境 \&. 有关可能的值 \&，请参见 \fBsystemd\-detect\-virt\fP(1)。
+.RE
+.sp
+未知键永远不会匹配 \&。
+.RE
+.PP
+\fITAG\fP
+.RS 4
+匹配设备标签 \&。
+.RE
+.PP
+\fITAGS\fP
+.RS 4
+向上搜索 devpath 以查找具有匹配标记 \& 的设备。
+.RE
+.PP
+\fITEST{\fP\fIoctal mode mask\fP\fI}\fP
+.RS 4
+测试文件是否存在 \&。如果需要，可以指定八进制模式掩码 \&。
+.RE
+.PP
+\fIPROGRAM\fP
+.RS 4
+执行程序判断是否匹配; 如果程序成功返回则键为真 \&。设备属性可用于环境中执行的程序 \&。该程序 \*(Aqs 标准输出在 \fIRESULT\fP 键
+\& 中可用。
+.sp
+这只能用于运行时间非常短的前台任务 \&。详见 \fIRUN\fP\&。
+.sp
+注意一个规则中可以指定多个 \fIPROGRAM\fP 键，"="、":="、"+=" 等同于 `==`\&。
+.RE
+.PP
+\fIRESULT\fP
+.RS 4
+匹配最后一个 \fIPROGRAM\fP 调用 \& 的返回字符串。这个键可以在 \fIPROGRAM\fP 调用 \& 之后的相同或任何后续规则中使用。
+.RE
+.PP
+大多数字段支持 shell glob 模式匹配和备用模式 \&。支持以下特殊字符:
+.PP
+"*"
+.RS 4
+匹配零个或多个字符 \&。
+.RE
+.PP
+"?"
+.RS 4
+匹配任何单个字符 \&。
+.RE
+.PP
+"[]"
+.RS 4
+匹配方括号 \& 中指定的任何单个字符。例如，模式字符串 "tty[SR]" 将匹配 "ttyS" 或 `ttyR`\&。还通过 "\-" 字符 \&
+支持范围。例如，要匹配所有数字的范围，可以使用模式 "[0\-9]"\&。如果 "[" 之后的第一个字符是 "!"，则匹配任何未包含的字符 \&。
+.RE
+.PP
+"|"
+.RS 4
+分隔替代模式 \&。例如，模式字符串 "abc|x*" 将匹配 "abc" 或 `x*`\&。
+.RE
+.PP
+以下键可以获得分配的值:
+.PP
+\fINAME\fP
+.RS 4
+用于网络接口的名称 \&。有关设置接口名称 \& 的高级机制，请参见 \fBsystemd.link\fP(5)。udev
+无法更改设备节点的名称，只能创建额外的符号链接 \&。
+.RE
+.PP
+\fISYMLINK\fP
+.RS 4
+以节点为目标的符号链接的名称 \&。每个匹配规则都会将此值添加到要创建的符号链表中 \&。
+.sp
+命名符号链接的字符集是有限的 \&。允许的字符是 "0\-9A\-Za\-z#+\-\&.:=@_/"、有效的 UTF\-8 字符序列和 "\ex00"
+十六进制编码 \&。所有其他字符都替换为 "_" 字符 \&。
+.sp
+可以通过用空格字符 \& 分隔名称来指定多个符号链接。如果多个设备使用相同的名称，则链接始终指向具有最高 link_priority\&
+的设备。如果当前设备消失，则重新评估链接，具有下一个最高 link_priority 的设备成为链接的所有者。如果未指定
+link_priority，则设备的顺序 (以及其中一个拥有该链接) 是未定义的 \&。
+.sp
+符号链接名称绝不能与内核冲突 \*(Aqs 默认设备节点名称，因为这会导致不可预测的行为 \&。
+.RE
+.PP
+\fIOWNER\fP, \fIGROUP\fP, \fIMODE\fP
+.RS 4
+设备节点的权限 \&。每个指定的值都会覆盖编译的默认值 \&。
+.RE
+.PP
+\fISECLABEL{\fP\fImodule\fP\fI}\fP
+.RS 4
+将指定的 Linux 安全模块标签应用于设备节点 \&。
+.RE
+.PP
+\fIATTR{\fP\fIkey\fP\fI}\fP
+.RS 4
+应写入事件设备的 sysfs 属性的值。
+.RE
+.PP
+\fISYSCTL{\fP\fIkernel parameter\fP\fI}\fP
+.RS 4
+应该写入内核参数的值 \&。
+.RE
+.PP
+\fIENV{\fP\fIkey\fP\fI}\fP
+.RS 4
+设置设备属性值 \&。具有前导 "\&." 的属性名称既不会存储在数据库中，也不会导出到事件或外部工具 (例如，通过 \fIPROGRAM\fP 匹配键运行)
+\&。
+.RE
+.PP
+\fITAG\fP
+.RS 4
+将标签附加到设备 \&。这用于为 libudev\*(Aqs 监控功能的用户过滤事件，或枚举一组标记设备
+\&。只有少数标签附加到设备时，实现才能有效地工作 \&。它仅用于具有特定设备过滤器要求的上下文中，而不是作为通用标志
+\&。过度使用可能会导致事件处理效率低下 \&。
+.RE
+.PP
+\fIRUN{\fP\fItype\fP\fI}\fP
+.RS 4
+指定在处理完事件的所有规则后要执行的程序 \&。对于 "+="，此调用被添加到列表中，对于 "=" 或 ":="，它替换列表中的任何先前内容
+\&。请注意，下面描述的 "program" 和 "builtin" 类型共享一个公共列表，因此使用 ":=" 和 "=" 清除列表会影响这两种类型
+\&。
+.sp
+\fItype\fP 可能是:
+.PP
+"program"
+.RS 4
+执行指定为分配值 \& 的外部程序。如果没有给出绝对路径，则程序应该位于 /usr/lib/udev; 否则，必须指定绝对路径 \&。
+.sp
+如果没有指定 \fItype\fP\&，这是默认设置。
+.RE
+.PP
+"builtin"
+.RS 4
+作为 \fIprogram\fP，但使用内置程序之一而不是外部程序 \&。
+.RE
+.sp
+程序名和后面的参数之间用空格 \& 隔开。单引号可以用来指定带空格 \& 的参数。
+.sp
+这只能用于运行时间非常短的前台任务 \&。长时间运行事件进程可能会阻止此设备或相关设备的所有进一步事件 \&。
+.sp
+请注意，由于在 systemd\-udevd\&.service\& 上强制执行的默认沙箱，在 udev 规则内不允许运行访问网络或
+mount/unmount 文件系统的程序。
+.sp
+不允许启动守护进程或其他长时间运行的进程; 事件处理完成后，分叉的进程，无论是否分离，都将被无条件杀死。为了从 udev
+规则激活长时间运行的进程，提供服务元并使用 \fISYSTEMD_WANTS\fP 设备属性 \& 从 udev 设备中拉入它。有关详细信息，请参见
+\fBsystemd.device\fP(5)\&。
+.RE
+.PP
+\fILABEL\fP
+.RS 4
+\fIGOTO\fP 可能跳转到的命名标签 \&。
+.RE
+.PP
+\fIGOTO\fP
+.RS 4
+跳转到具有匹配名称 \& 的下一个 \fILABEL\fP。
+.RE
+.PP
+\fIIMPORT{\fP\fItype\fP\fI}\fP
+.RS 4
+导入一组变量作为设备属性，取决于 \fItype\fP:
+.PP
+"program"
+.RS 4
+执行指定为赋值的外部程序，如果成功返回，则导入其输出，该输出必须采用环境键格式 \&。路径规范、command/argument 分隔和引用与
+\fIRUN\fP\& 中的一样。
+.RE
+.PP
+"builtin"
+.RS 4
+与 "program" 类似，但使用内置程序之一而不是外部程序 \&。
+.RE
+.PP
+"file"
+.RS 4
+导入指定为赋值的文本文件，其内容必须为环境键格式 \&。
+.RE
+.PP
+"db"
+.RS 4
+从当前设备数据库导入指定为分配值的单个属性 \&。这仅在数据库已被较早的事件填充时才有效 \&。
+.RE
+.PP
+"cmdline"
+.RS 4
+从内核命令行导入单个属性 \&。对于简单标志，属性值设置为 `1`\&。
+.RE
+.PP
+"parent"
+.RS 4
+通过读取父设备的数据库条目，从父设备导入存储的密钥。分配给 \fBIMPORT{parent}\fP 的值用作要导入的键名称的过滤器 (使用相同的 shell
+glob 模式匹配用于比较) \&。
+.RE
+.sp
+这只能用于运行时间非常短的前台任务 \&。有关详细信息，请参见 \fBRUN\fP\&。
+.sp
+注意一个规则中可以指定多个 \fIIMPORT{}\fP 键，"="、":="、"+=" 等同于 `==`\&。如果导入成功，则该键为真，除非使用 "!="
+作为运算符，如果导入失败 \&，则该键为真。
+.RE
+.PP
+\fIOPTIONS\fP
+.RS 4
+规则和设备选项:
+.PP
+\fBlink_priority=\fP\fIvalue\fP
+.RS 4
+指定创建的符号链接的优先级 \&。具有更高优先级的设备会覆盖其他设备的现有符号链接 \&。默认值为 0\&。
+.RE
+.PP
+\fBstring_escape=\fP\fInone|replace\fP
+.RS 4
+当 "replace" 时，分配给 \fINAME\fP、\fISYMLINK\fP、\fIENV{\fP\fIkey\fP\fI}\fP 的字符串中可能不安全的字符被替换为
+\&。当 "none" 时，不进行替换 \&。未设置时，对 \fINAME\fP、\fISYMLINK\fP 执行替换，但不对
+\fIENV{\fP\fIkey\fP\fI}\fP\& 执行替换。默认为取消设置 \&。
+.RE
+.PP
+\fBstatic_node=\fP
+.RS 4
+将此规则中指定的权限应用于具有指定名称的静态设备节点 \&。此外，对于此规则中指定的每个标记，在目录
+/run/udev/static_node\-tags/\fItag\fP 中创建一个符号链接，指向具有指定名称的静态设备节点 \&。静态设备节点创建在
+systemd\-udevd 启动之前由 systemd\-tmpfiles 执行 \&。静态节点可能没有对应的内核设备;
+它们用于在访问时触发自动内核模块加载 \&。
+.RE
+.PP
+\fBwatch\fP
+.RS 4
+用 inotify 监视设备节点; 当节点打开写入后关闭时，会合成一个 change uevent\&。
+.RE
+.PP
+\fBnowatch\fP
+.RS 4
+使用 inotify\& 禁用对设备节点的监视。
+.RE
+.PP
+\fBdb_persist\fP
+.RS 4
+在事件设备的 udev 数据库条目上设置标志 (粘滞位) \&。即使调用 \fBudevadm info \-\-cleanup\-db\fP\&，设备属性也会保存在数据库中。此选项在某些情况下 (例如 \&.g\&. Device Mapper 设备)
+很有用，可用于在从 initrd\& 转换时保持设备状态。
+.RE
+.PP
+\fBlog_level=\fP\fIlevel\fP
+.RS 4
+采用日志级别名称，如 "debug" 或 "info"，或特殊值 `reset`\&。当指定日志级别名称时，最大日志级别更改为该级别 \&。当设置
+"reset" 时，先前指定的日志级别将被撤销 \&。默认为 \fBsystemd\-udevd\fP\& 主进程的日志级别。
+.sp
+这在调试某些设备的事件时可能很有用 \&。请注意，在处理包含此规则的行时应用日志级别
+\&。所以，为了调试，建议在前面的地方指定，e\&.g\&.，00\-debug\&.rules\& 的第一行。
+.sp
+调试网络接口的 uevent 处理示例:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /etc/udev/rules\&.d/00\-debug\-net\&.rules
+SUBSYSTEM=="net", OPTIONS="log_level=debug"
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.RE
+.PP
+\fINAME\fP、\fISYMLINK\fP、\fIPROGRAM\fP、\fIOWNER\fP、\fIGROUP\fP、\fIMODE\fP、\fISECLABEL\fP 和 \fIRUN\fP
+字段支持简单的字符串替换 \&。\fIRUN\fP 替换是在处理完所有规则之后执行的，就在程序执行之前，允许使用由早期匹配规则设置的设备属性
+\&。对于所有其他字段，替换是在处理单个规则时执行的 \&。可用的替代品是:
+.PP
+\fB$kernel\fP, \fB%k\fP
+.RS 4
+此设备的内核名称 \&。
+.RE
+.PP
+\fB$number\fP, \fB%n\fP
+.RS 4
+此设备的内核编号 \&。例如，"sda3" 的内核编号为 3\&。
+.RE
+.PP
+\fB$devpath\fP, \fB%p\fP
+.RS 4
+设备的开发路径 \&。
+.RE
+.PP
+\fB$id\fP, \fB%b\fP
+.RS 4
+在向上搜索 \fBSUBSYSTEMS\fP、\fBKERNELS\fP、\fBDRIVERS\fP 和 \fBATTRS\fP\& 的 devpath 时匹配的设备名称。
+.RE
+.PP
+\fB$driver\fP
+.RS 4
+在向上搜索 \fBSUBSYSTEMS\fP、\fBKERNELS\fP、\fBDRIVERS\fP 和 \fBATTRS\fP\& 的 devpath
+时，设备的驱动程序名称匹配。
+.RE
+.PP
+\fB$attr{\fP\fIfile\fP\fB}\fP, \fB%s{\fP\fIfile\fP\fB}\fP
+.RS 4
+在规则的所有键都匹配的设备上找到的 sysfs 属性的值 \&。如果匹配的设备没有这样的属性，并且之前的
+\fBKERNELS\fP、\fBSUBSYSTEMS\fP、\fBDRIVERS\fP 或 \fBATTRS\fP 测试选择了父设备，则使用该父设备的属性 \&。
+.sp
+如果该属性是符号链接，则符号链接目标的最后一个元素作为值 \& 返回。
+.RE
+.PP
+\fB$env{\fP\fIkey\fP\fB}\fP, \fB%E{\fP\fIkey\fP\fB}\fP
+.RS 4
+设备属性值 \&。
+.RE
+.PP
+\fB$major\fP, \fB%M\fP
+.RS 4
+设备的内核主要编号 \&。
+.RE
+.PP
+\fB$minor\fP, \fB%m\fP
+.RS 4
+设备的内核次要编号 \&。
+.RE
+.PP
+\fB$result\fP, \fB%c\fP
+.RS 4
+使用 \fIPROGRAM\fP\& 请求的外部程序返回的字符串。可以通过将部分编号指定为属性来选择由空格字符分隔的字符串的单个部分: `%c
+{N}`\&。如果数字后跟 "+" 字符，则这部分加上结果字符串的所有剩余部分将被替换: `%c {N+}`\&。
+.RE
+.PP
+\fB$parent\fP, \fB%P\fP
+.RS 4
+父设备的节点名称 \&。
+.RE
+.PP
+\fB$name\fP
+.RS 4
+设备的当前名称 \&。如果没有被规则改变，它就是内核设备的名称 \&。
+.RE
+.PP
+\fB$links\fP
+.RS 4
+当前符号链接的空格分隔列表 \&。该值仅在删除事件期间设置，或者如果较早的规则分配了值 \&。
+.RE
+.PP
+\fB$root\fP, \fB%r\fP
+.RS 4
+udev_root 值 \&。
+.RE
+.PP
+\fB$sys\fP, \fB%S\fP
+.RS 4
+sysfs 挂载点 \&。
+.RE
+.PP
+\fB$devnode\fP, \fB%N\fP
+.RS 4
+设备节点的名称 \&。
+.RE
+.PP
+\fB%%\fP
+.RS 4
+"%" 字符本身 \&。
+.RE
+.PP
+\fB$$\fP
+.RS 4
+"$" 字符本身 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-udevd.service\fP(8), \fBudevadm\fP(8), \fBsystemd.link\fP(5)
+.SH NOTES
+.IP " 1." 4
+C 风格转义
+.RS 4
+\%https://en.wikipedia.org/wiki/Escape_sequences_in_C#Table_of_escape_sequences
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,110 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1983, 1991, 1993
+.\"     The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)rexec.3     8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: src/lib/libcompat/4.3/rexec.3,v 1.12 2004/07/02 23:52:14 ru Exp $
+.\"
+.\" Taken from FreeBSD 5.4; not checked against Linux reality (mtk)
+.\"
+.\" 2013-06-21, mtk, Converted from mdoc to man macros
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rexec 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+rexec, rexec_af \- 将流返回到远程命令
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <netdb.h>\fP
+.PP
+\fB[[deprecated]]\fP
+\fBint rexec(char **restrict \fP\fIahost\fP\fB, int \fP\fIinport\fP\fB,\fP
+\fB          const char *restrict \fP\fIuser\fP\fB, const char *restrict \fP\fIpasswd\fP\fB,\fP
+\fB          const char *restrict \fP\fIcmd\fP\fB, int *restrict \fP\fIfd2p\fP\fB);\fP
+.PP
+\fB[[deprecated]]\fP
+\fBint rexec_af(char **restrict \fP\fIahost\fP\fB, int \fP\fIinport\fP\fB,\fP
+\fB          const char *restrict \fP\fIuser\fP\fB, const char *restrict \fP\fIpasswd\fP\fB,\fP
+\fB          const char *restrict \fP\fIcmd\fP\fB, int *restrict \fP\fIfd2p\fP\fB,\fP
+\fB          sa_family_t \fP\fIaf\fP\fB);\fP
+.fi
+.PP
+\fBrexec\fP(), \fBrexec_af\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    在 x00X 及之前的 glibc 中:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+该接口已被 \fBrcmd\fP(3) 废弃。
+.PP
+\fBrexec\fP() 函数使用 \fBgethostbyname\fP(3) 查找主机 \fI*ahost\fP，如果主机不存在则返回 \-1。
+否则，\fI*ahost\fP 设置为主机的标准名称。 如果同时指定了用户名和密码，则这些将用于向外部主机进行身份验证; 否则会在环境和用户主目录中的
+\&\fI.netrc\fP 文件中搜索适当的信息。 如果所有这些都失败了，系统会提示用户输入信息。
+.PP
+端口 \fIinport\fP 指定用于连接的知名 DARPA Internet 端口; 调用 \fIgetservbyname("exec", "tcp")\fP
+(参见 \fBgetservent\fP(3)) 将返回指向包含必要端口的结构体的指针。 \fBrexecd\fP(8) 中详细描述了连接协议。
+.PP
+如果连接成功，则将 Internet 域中类型为 \fBSOCK_STREAM\fP 的套接字返回给调用者，并作为 \fIstdin\fP 和 \fIstdout\fP
+提供给远程命令。 如果 \fIfd2p\fP 不为零，则将设置一个到控制进程的辅助通道，并将其文件描述符放置在 \fI*fd2p\fP 中。
+控制进程将返回此通道上命令 (元 2) 的诊断输出，并且还将此通道上的字节作为 UNIX 信号编号接受，以转发到命令的进程组。
+返回的诊断信息不包括远程授权失败，因为二次连接是在验证授权后建立的。 如果 \fIfd2p\fP 为 0，则 \fIstderr\fP (远程命令的元 2) 将与
+\fIstdout\fP 相同，并且没有规定向远程进程发送任意信号，尽管您可以通过使用 out 来引起它的注意带内数据。
+.SS rexec_af()
+\fBrexec\fP() 函数优于 IPv4 (\fBAF_INET\fP)。 相比之下，\fBrexec_af\fP()
+函数提供了一个额外的参数，\fIaf\fP，它允许调用者选择协议。 该参数可以指定为 \fBAF_INET\fP、\fBAF_INET6\fP 或
+\fBAF_UNSPEC\fP (以允许实现选择协议)。
+.SH VERSIONS
+在 glibc 2.2 中添加了 \fBrexec_af\fP() 函数。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBrexec\fP(),
+\fBrexec_af\fP()
+T}	Thread safety	MT\-Unsafe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数不在 POSIX.1 中。 \fBrexec\fP() 函数最早出现在 4.2BSD 中，现在出现在 BSD、Solaris 和许多其他系统上。
+\fBrexec_af\fP() 函数是最近的，而且不太普遍。
+.SH BUGS
+\fBrexec\fP() 函数通过网络发送未加密的密码。
+.PP
+底层服务被认为是一个很大的安全 hole，因此在许多站点上都没有启用; 请参见 \fBrexecd\fP(8) 的解释。
+.SH "SEE ALSO"
+\fBrcmd\fP(3), \fBrexecd\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

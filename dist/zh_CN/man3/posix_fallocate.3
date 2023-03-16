@@ -1,0 +1,123 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2006, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH posix_fallocate 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+posix_fallocate \- 分配文件空间
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP
+.PP
+\fBint posix_fallocate(int \fP\fIfd\fP\fB, off_t \fP\fIoffset\fP\fB, off_t \fP\fIlen\fP\fB);\fP
+.fi
+.PP
+.ad l
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBposix_fallocate\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+函数 \fBposix_fallocate\fP() 确保为文件描述符 \fIfd\fP 引用的文件分配从 \fIoffset\fP 开始到 \fIlen\fP
+字节范围内的字节的磁盘空间。 调用 \fBposix_fallocate\fP() 成功后，保证后续写入指定范围内的字节不会因为磁盘空间不足而失败。
+.PP
+如果文件的大小小于 \fIoffset\fP+\fIlen\fP，则将文件增加到这个大小; 否则文件大小保持不变。
+.SH "RETURN VALUE"
+\fBposix_fallocate\fP() 成功时返回零，失败时返回错误号。 请注意，\fIerrno\fP 未设置。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符，或者未打开以进行写入。
+.TP 
+\fBEFBIG\fP
+\fIoffset+len\fP 超过最大文件大小。
+.TP 
+\fBEINTR\fP
+执行期间捕获到信号。
+.TP 
+\fBEINVAL\fP
+\fIoffset\fP 小于 0，或者 \fIlen\fP 小于等于 0，或者底层文件系统不支持该操作。
+.TP 
+\fBENODEV\fP
+\fIfd\fP 不引用常规文件。
+.TP 
+\fBENOSPC\fP
+包含 \fIfd\fP 引用的文件的设备上没有足够的剩余空间。
+.TP 
+\fBEOPNOTSUPP\fP
+包含 \fIfd\fP 引用的文件的文件系统不支持此操作。 不执行注释中显示的仿真的 C 库可能会返回此错误代码，例如 musl libc。
+.TP 
+\fBESPIPE\fP
+\fIfd\fP 指的是管道。
+.SH VERSIONS
+\fBposix_fallocate\fP() 自 glibc 2.1.94 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBposix_fallocate\fP()
+T}	Thread safety	T{
+MT\-Safe (but see NOTES)
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001.
+.PP
+POSIX.1\-2008 表示如果 \fIlen\fP 为 0 或 \fIoffset\fP 小于 0，则实现 \fIshall\fP 会给出 \fBEINVAL\fP 错误。
+POSIX.1\-2001 表示如果 \fIlen\fP 小于 0 或 \fIoffset\fP 小于 0，则实现 \fIshall\fP 给出 \fBEINVAL\fP
+错误，如果 \fIlen\fP 等于零，则 \fImay\fP 给出错误。
+.SH NOTES
+在 glibc 实现中，\fBposix_fallocate\fP() 是使用 \fBfallocate\fP(2) 系统调用实现的，它是 MT 安全的。
+如果底层文件系统不支持 \fBfallocate\fP(2)，则将模拟该操作，但要注意以下几点:
+.IP \[bu] 3
+仿真效率低下。
+.IP \[bu]
+有一个竞争条件，其中并发从另一个线程或进程写入的内容可能会被空字节覆盖。
+.IP \[bu]
+有一个竞争条件，其中并发文件大小由另一个线程或进程增加可能导致文件大小小于预期。
+.IP \[bu]
+如果已使用 \fBO_APPEND\fP 或 \fBO_WRONLY\fP 标志打开 \fIfd\fP，则函数将失败并显示错误 \fBEBADF\fP。
+.PP
+通常，仿真不是 MT 安全的。 在 Linux 上，如果应用程序不能容忍仿真警告，则它们可以使用 \fBfallocate\fP(2)。
+通常，仅当应用程序计划在返回 \fBEOPNOTSUPP\fP 时终止操作时才建议这样做，否则应用程序本身将需要实现回退，并出现与 glibc
+提供的仿真相同的所有问题。
+.SH "SEE ALSO"
+\fBfallocate\fP(1), \fBfallocate\fP(2), \fBlseek\fP(2), \fBposix_fadvise\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

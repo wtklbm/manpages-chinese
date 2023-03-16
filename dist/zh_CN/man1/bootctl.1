@@ -1,0 +1,487 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH BOOTCTL 1 "" "systemd 253" bootctl
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+bootctl \- 控制 EFI 固件引导设置和管理引导加载程序
+.SH SYNOPSIS
+.HP \w'\fBbootctl\fR\ 'u
+\fBbootctl\fP [OPTIONS...] {COMMAND}
+.SH DESCRIPTION
+.PP
+\fBbootctl\fP 可以检查 EFI 固件和引导加载程序状态，列出和管理可用的引导加载程序和引导加载程序条目，以及在当前系统上安装、更新或删除
+\fBsystemd\-boot\fP(7) 引导加载程序 \&。
+.SH "GENERIC EFI FIRMWARE/BOOT LOADER COMMANDS"
+.PP
+这些命令在任何 EFI 系统上都可用，与使用的引导加载程序无关。
+.PP
+\fBstatus\fP
+.RS 4
+显示有关系统固件的简要信息、用于引导系统的引导加载程序、ESP 中当前可用的引导加载程序、固件中列出的引导加载程序 \*(Aqs
+引导加载程序列表和当前默认引导加载程序条目 \&。如果未指定命令，则这是隐含的默认值 \&。
+.sp
+有关输出 \& 的详细信息，请参见下面的示例。
+.RE
+.PP
+\fBreboot\-to\-firmware\fP [\fIBOOL\fP]
+.RS 4
+查询或设置 EFI 固件的 "Reboot\-Into\-Firmware\-Setup" 标志
+\&。采用一个布尔参数，它控制是否在下次系统重启时显示固件设置 \&。如果省略参数则显示该标志的当前状态，或者是否支持该标志 \&。这控制与
+\fBsystemctl reboot \-\-firmware\-setup\fP 相同的标志，但更底层并允许独立于实际请求重启 \& 设置标志。
+.sp
+提示: 使用 \fBsystemctl reboot \-\-firmware\-setup\fP 重启一次进入固件设置 \&。有关详细信息，请参见
+\fBsystemctl\fP(1)\&。
+.RE
+.PP
+\fBsystemd\-efi\-options\fP [\fISTRING\fP]
+.RS 4
+在不使用可选参数调用时，打印 "SystemdOptions" EFI 变量 \& 的当前值。当使用参数调用时，将变量设置为该值 \&。有关该变量 \&
+的含义，请参见 \fBsystemd\fP(1)。
+.RE
+.SH "BOOT LOADER SPECIFICATION COMMANDS"
+.PP
+这些命令可用于所有实现 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2
+的引导加载程序，例如 \fBsystemd\-boot\fP\&。
+.PP
+\fBlist\fP
+.RS 4
+显示实现 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2
+的所有可用引导加载程序条目，以及由实现 \m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[2]\d\s+2\&
+的引导加载程序发现或自动生成的任何其他条目。可以使用 \fB\-\-json=\fP\& 请求 JSON 输出。
+.sp
+有关输出 \& 的详细信息，请参见下面的示例。
+.RE
+.PP
+\fBunlink\fP \fIID\fP
+.RS 4
+删除引导加载程序条目，包括它引用的文件 \&。采用单个引导加载程序条目 ID 字符串或 glob 模式作为参数
+\&。仅当没有其他条目引用它们时，才会删除诸如内核或 initrd 之类的引用文件 \&。
+.RE
+.PP
+\fBcleanup\fP
+.RS 4
+从 ESP 和 XBOOTLDR 分区中删除属于条目 token 但未在任何引导加载程序条目中引用的文件 \&。
+.RE
+.SH "BOOT LOADER INTERFACE COMMANDS"
+.PP
+这些命令可用于所有实现 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2 和
+\m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[2]\d\s+2 的引导加载程序，例如
+\fBsystemd\-boot\fP\&。
+.PP
+\fBset\-default\fP \fIID\fP, \fBset\-oneshot\fP \fIID\fP
+.RS 4
+设置默认引导加载程序条目 \&。采用单个引导加载程序条目 ID 字符串或 glob 模式作为参数 \&。\fBset\-oneshot\fP
+命令仅为下次启动设置默认条目，\fBset\-default\fP 将为所有 future 启动永久设置它 \&。
+.sp
+\fBbootctl list\fP 可用于列出可用的引导加载程序条目及其 ID\&。
+.sp
+此外，boot loader entry ID 可以指定为以下之一: \fB@default\fP、\fB@oneshot\fP 或
+\fB@current\fP，分别对应当前所有 future 引导的默认 boot loader 条目、当前默认的下次引导的 boot loader
+条目以及当前引导的引导加载程序入口 \&。这些特殊 ID 被解析为 EFI 变量
+\fILoaderEntryDefault\fP、\fILoaderEntryOneShot\fP 和 \fILoaderEntrySelected\fP
+的当前值，有关详细信息，请参见 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2\&。这些特殊 ID
+主要用作一种快速方法，可以使当前引导的引导加载程序条目永久成为默认选择，或者将下一次引导的默认引导加载程序条目升级为所有 future
+引导的默认引导加载程序条目，但可能会被使用对于其他操作也是 \&。
+.sp
+如果设置为 \fB@saved\fP，所选条目将在每次引导时保存为 EFI 变量，并在下次引导加载程序启动时自动选择 \&。
+.sp
+当一个空字符串 ("") 被指定为 ID 时，相应的 EFI 变量将被取消设置 \&。
+.sp
+提示: 使用 \fBsystemctl reboot \-\-boot\-loader\-entry=\fP\fIID\fP 重新启动到特定的启动项，使用
+\fBsystemctl reboot \-\-boot\-loader\-menu=\fP\fItimeout\fP 重新启动到引导加载程序菜单一次
+\&。有关详细信息，请参见 \fBsystemctl\fP(1)\&。
+.RE
+.PP
+\fBset\-timeout\fP \fITIMEOUT\fP, \fBset\-timeout\-oneshot\fP \fITIMEOUT\fP
+.RS 4
+以秒为单位设置引导加载程序菜单超时 \&。\fBset\-timeout\-oneshot\fP 命令将只为下次启动设置超时。有关时间跨度 \&
+语法的详细信息，请参见 \fBsystemd.time\fP(7)。
+.sp
+如果将其设置为 \fBmenu\-hidden\fP 或 \fB0\fP，则不显示任何菜单，默认条目将立即启动，而将其设置为 \fBmenu\-force\fP
+将禁用超时，同时始终显示菜单 \&。当指定空字符串 ("") 时，引导加载程序将恢复为默认菜单超时 \&。
+.RE
+.SH "SYSTEMD\-BOOT COMMANDS"
+.PP
+这些命令管理 \fBsystemd\-boot\fP EFI 引导加载程序，并且不与其他引导加载程序一起工作 \&。
+.PP
+\fBinstall\fP
+.RS 4
+将 \fBsystemd\-boot\fP 安装到 EFI 系统分区 \&。\fBsystemd\-boot\fP 的副本将作为 EFI
+default/fallback 加载程序存储在 \fIESP\fP/EFI/BOOT/BOOT*\&.EFI\&。然后将引导加载程序添加到固件的顶部
+\*(Aqs 引导加载程序列表 \&。
+.RE
+.PP
+\fBupdate\fP
+.RS 4
+如果可用版本比 EFI 系统分区中安装的版本更新，则更新所有已安装的 \fBsystemd\-boot\fP(7) 版本 \&。这还包括位于
+\fIESP\fP/EFI/BOOT/BOOT*\&.EFI\& 的 EFI default/fallback 加载器。然后将引导加载程序添加到固件的末尾
+\*(Aqs boot loader list if missing\&.
+.RE
+.PP
+\fBremove\fP
+.RS 4
+从 EFI 系统分区和固件中删除所有已安装的 \fBsystemd\-boot\fP 版本 \*(Aqs 引导加载程序列表 \&。
+.RE
+.PP
+\fBis\-installed\fP
+.RS 4
+检查 ESP\& 中是否安装了 \fBsystemd\-boot\fP。请注意，单个 ESP 可能托管多个引导加载程序; 因此，这将检查
+\fBsystemd\-boot\fP 是否是 (可能是许多) 已安装的引导加载程序之一 \(em 并且它既不是默认值也不是在任何 EFI 变量 \&.
+.RE
+.PP
+\fBrandom\-seed\fP
+.RS 4
+生成一个随机的 seed 并将其存储在 EFI 系统分区中，供 \fBsystemd\-boot\fP 引导加载程序使用 \&。此外，生成一个随机的
+\*(Aqsystem token\*(Aq 并将其作为 EFI 变量持久存储，如果之前没有设置的话 \&。如果引导加载程序在 ESP 中找到随机
+seed 并在 EFI 变量中找到系统 token，它将派生一个随机 seed 传递给操作系统，并根据两者的组合派生一个新的 seed 存储在 ESP
+中。传递给操作系统的随机 seed 记入内核 \*(系统管理器在早期引导期间的 Aqs 熵池，并允许用户空间使用在早期完全初始化的熵池启动
+\&。另请详见 \fBsystemd\-boot\-random\-seed.service\fP(8)\&。
+.sp
+有关详细信息，请参见 \m[blue]\fBRandom Seeds\fP\m[]\&\s-2\u[3]\d\s+2\&。
+.RE
+.SH "KERNEL IMAGE COMMANDS"
+.PP
+\fBkernel\-identify\fP \fIkernel\fP
+.RS 4
+将内核映像作为参数 \&。检查映像是哪种内核 \&。返回 "uki"、"pe" 和 `未知`\& 之一。
+.RE
+.PP
+\fBkernel\-inspect\fP \fIkernel\fP
+.RS 4
+将内核映像作为参数 \&。打印有关图像的详细信息 \&。
+.RE
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-esp\-path=\fP
+.RS 4
+EFI 系统分区 (ESP)\& 的路径。如果不指定，则依次检查 /efi/、/boot/、/boot/efi/\&。建议将 ESP 挂载到
+/efi/，如果可能的话 \&。
+.RE
+.PP
+\fB\-\-boot\-path=\fP
+.RS 4
+扩展引导加载程序分区的路径，如 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2\&
+中所定义。如果未指定，/boot/ 被选中 \&。如果可能，建议将 Extended Boot Loader 分区挂载到 /boot/。
+.RE
+.PP
+\fB\-\-root=\fP\fIroot\fP
+.RS 4
+将目录路径作为参数 \&。所有路径都将以给定的备用 \fIroot\fP 路径为前缀，包括配置搜索路径 \&。
+.RE
+.PP
+\fB\-\-image=\fP\fIimage\fP
+.RS 4
+采用磁盘映像文件或块设备节点的路径 \&。如果指定，所有操作都将应用于指定磁盘映像中的文件系统 \&。该选项与 \fB\-\-root=\fP
+类似，但对存储在磁盘映像或块设备 \& 中的文件系统进行操作。磁盘映像应该在 GPT 分区表中仅包含一个文件系统或一组文件系统，紧跟在
+\m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[4]\d\s+2\&
+之后。有关支持的磁盘映像的更多信息，请参见同名的 \fBsystemd\-nspawn\fP(1)\*(Aqs 开关 \&。
+.RE
+.PP
+\fB\-\-install\-source=\fP
+.RS 4
+使用 \fB\-\-root=\fP 或 \fB\-\-image=\fP 安装二进制文件时，选择从哪里获取它们 \&。采用 "auto" (默认)、"image" 或
+`主机`\& 之一。使用 "auto" 二进制文件将从指定的目录或图像中选取，如果没有找到它们将从主机 \& 中选取。对于 "image" 或
+"host"，如果在所选源中找不到二进制文件 \&，则不会执行回退搜索。
+.RE
+.PP
+\fB\-p\fP, \fB\-\-print\-esp\-path\fP
+.RS 4
+此选项修改 \fBstatus\fP\& 的行为。仅将 EFI 系统分区 (ESP) 的路径打印到标准输出并退出 \&。
+.RE
+.PP
+\fB\-x\fP, \fB\-\-print\-boot\-path\fP
+.RS 4
+此选项修改 \fBstatus\fP\& 的行为。仅打印扩展引导加载程序分区的路径 (如果存在)，否则打印 ESP 的路径至标准输出并退出
+\&。此命令可用于确定引导加载程序条目的放置位置，因为它们最好放在扩展引导加载程序分区 (如果存在) 中，否则放在 ESP 中 \&。
+.sp
+Boot Loader Specification Type #1 条目通常应放在目录 `$(bootctl
+\-x)/loader/entries/`\& 中。该目录的存在也可以用作引导加载程序条目支持在系统上可用的指示 \&。同样，引导加载程序规范类型 #2
+条目应放在目录 `$(bootctl \-x)/EFI/Linux/`\& 中。
+.sp
+请注意，此选项 (类似于上面提到的 \fB\-\-print\-booth\-path\fP 选项) 独立于所使用的引导加载程序 i\&.e\&。也没有安装
+\fBsystemd\-boot\fP\&。
+.RE
+.PP
+\fB\-\-no\-variables\fP
+.RS 4
+请勿触摸存储在 EFI 变量 \& 中的固件 \*(Aqs 引导加载程序列表。
+.RE
+.PP
+\fB\-\-graceful\fP
+.RS 4
+当无法找到 EFI 系统分区、无法写入 EFI 变量或已安装不同的或更新的引导加载程序时忽略失败 \&。目前仅适用于
+\fBis\-installed\fP、\fBupdate\fP 和 \fBrandom\-seed\fP 动词 \&。
+.RE
+.PP
+\fB\-q\fP, \fB\-\-quiet\fP
+.RS 4
+禁止打印各种命令的结果以及有关 ESP 不可用的提示 \&。
+.RE
+.PP
+\fB\-\-make\-entry\-directory=yes|no\fP
+.RS 4
+在 \fBinstall\fP 和 \fBremove\fP 期间分别控制包含内核和 initrd 映像等资源的文件系统上 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2 类型 #1 入口目录的创建和删除 \&。该目录以条目 token
+命名，正如下面描述的 \fB\-\-entry\-token=\fP 参数所指定的那样，并紧邻 \fI$BOOT\fP 根目录 (i\&.e\&。在
+\fB\-\-print\-boot\-path\fP 选项返回的文件系统之下，见上文) \&. 默认为 `否`\&。
+.RE
+.PP
+\fB\-\-entry\-token=\fP
+.RS 4
+控制如何命名和识别此操作系统安装的引导加载程序条目 \&。在 \fBinstall\fP 期间接受，并将
+"auto"、"machine\-id"、"os\-id"、"os\-image\-id" 之一或以 "literal:" 为前缀的任意字符串作为参数 \&。
+.sp
+如果设置为 \fBmachine\-id\fP，条目将以运行系统的机器 ID 命名
+(e\&.g\&. "b0e793a9baf14b5fa13ecbe84ff637ac")\&。有关机器 ID 概念和文件 \& 的详细信息，请参见
+\fBmachine\-id\fP(5)。
+.sp
+如果设置为 \fBos\-id\fP，条目将以运行系统的操作系统 ID 命名，即 i\&.e\&。\fBos\-release\fP(5)
+(e\&.g\&. "fedora")\& 的 \fIID=\fP 字段。同样，如果设置为 \fBos\-image\-id\fP，条目将以运行系统的操作系统映像 ID
+命名，即 i\&.e\&。os\-release 的 \fIIMAGE_ID=\fP 字段
+(e\&.g\&. "vendorx\-cashier\-system")\&。
+.sp
+如果设置为 \fBauto\fP (默认值)，如果存在 /etc/kernel/entry\-token 文件，将读取该文件，并使用存储的值
+\&。否则，如果本地机器 ID 已初始化，则使用它 \&。否则，如果设置 \&，将使用来自 os\-release 的
+\fIIMAGE_ID=\fP。否则，如果设置 \&，将使用来自 os\-release 的 \fIID=\fP。
+.sp
+除非设置为 "machine\-id"，否则当使用 \fB\-\-make\-entry\-directory=yes\fP 时，选定的 token 字符串将写入文件
+/etc/kernel/entry\-token，以确保它将用于 future 条目 \&。该文件也由 \fBkernel\-install\fP(8)
+读取，以识别在哪个名称下为新安装的内核生成引导加载程序条目，或确定用于删除旧内核的条目名称 \&。
+.sp
+通常最好使用机器 ID 来命名条目，但是在某些情况下，使用其他标识符也是一个不错的选择 \&。具体来说: 如果机器 ID 所包含的标识数据不应存储在
+(unencrypted) \fI$BOOT\fP 分区中，或者 ID 应在首次启动时生成并且在准备条目时不知道 \&。请注意，使用机器 ID
+的好处是同一操作系统的多个并行安装可以在同一介质中共存，并且它们可以独立更新它们的引导加载程序条目。当使用另一个标识符 (例如操作系统 ID
+或操作系统映像 ID) 时，同一操作系统的并行安装将尝试使用相同的条目名称 \&。为了支持并行安装，安装程序在添加第二个安装时必须使用不同的条目
+token\&。
+.RE
+.PP
+\fB\-\-all\-architectures\fP
+.RS 4
+为所有支持的 EFI 架构安装二进制文件 (这意味着 \fB\-\-no\-variables\fP)\&.
+.RE
+.PP
+\fB\-\-efi\-boot\-option\-description=\fP
+.RS 4
+添加到固件的条目说明 \*(Aqs 启动选项列表 \&。默认为 `Linux 启动管理器`\&。
+.sp
+通常最好使用默认条目名称 "Linux Boot Manager"，因为只应使用一个安装到单个 ESP
+分区的引导加载程序来引导在系统中安装的各种磁盘上找到的任意数量的操作系统安装 \&。具体来说，发行版不应使用此标志在引导选项列表中安装品牌条目
+\&。然而，在有多个磁盘的情况下，每个磁盘都有自己的 ESP 分区，更容易识别固件中使用的引导加载程序可能是有益的 \*(Aqs 引导选项菜单 \&。
+.RE
+.PP
+\fB\-\-dry\-run\fP
+.RS 4
+试运行 \fB\-\-unlink\fP 和 \fB\-\-cleanup\fP\&。
+.sp
+在试运行模式下，取消链接和清理操作仅打印将被删除的文件，而不会实际删除它们 \&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-\-json=\fP\fIMODE\fP
+.RS 4
+显示格式为 JSON\& 的输出。期望 "short" (用于尽可能短的输出，没有任何冗余空格或换行符)、"pretty"
+(用于相同版本的漂亮版本，带有缩进和换行符) 或 "off" (关闭 JSON 输出，默认值) \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "SIGNED \&.EFI FILES"
+.PP
+\fBbootctl\fP \fBinstall\fP 和 \fBupdate\fP 将首先查找以 "\&.efi\&.signed" 后缀结尾的
+\fBsystemd\-boot\fP 文件，然后复制该文件而不是普通的 "\&.efi" 文件 \&。这允许发行版或最终用户为 UEFI
+SecureBoot\& 提供签名图像。
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH ENVIRONMENT
+.PP
+如果设置了 \fI$SYSTEMD_RELAX_ESP_CHECKS=1\fP，则 ESP 的验证检查会放宽，并且用 \fB\-\-esp\-path=\fP
+指定的路径可以引用任何类型的分区上的任何类型的文件系统 \&。
+.PP
+同样，\fI$SYSTEMD_RELAX_XBOOTLDR_CHECKS=1\fP 关闭了扩展引导加载程序分区的一些验证检查。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Output from status and list\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ \fBbootctl status\fP
+System:
+     固件: UEFI 2\&.40 (\fIfirmware\-version\fP) ← 固件供应商和版本
+  安全启动: 禁用 (setup) ← 安全启动状态
+ TPM2 支持: 是
+ 引导至固件: 支持 ← 固件是否支持引导至自身
+
+当前引导加载程序: ← 有关 sd\-boot 或其他引导加载程序的详细信息
+      产品: 实现 \m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[2]\d\s+2 的 systemd\-boot \fIversion\fP
+     特性: ✓ 开机计数
+               ✓ 菜单超时控制
+               ✓ 一次性菜单超时控制
+               ✓ 默认入口控制
+               ✓ 一次性进入控制
+               ✓ 支持 XBOOTLDR 分区
+               ✓ 支持将随机 seed 传递给操作系统
+               ✓ 加载丢弃 \- in 驱动程序
+               ✓ Boot loader 设置 ESP 信息
+          ESP: /dev/disk/by\-partuuid/01234567\-89ab\-cdef\-dead\-beef00000000
+         文件: └─/EFI/systemd\-bootx64\&.efi
+
+Random Seed: ← random seed 用于早期启动的熵
+ 传递给操作系统: 是
+ 系统 Token: 设置
+       存在: 是
+
+ESP 上可用的引导加载程序:
+          ESP: /boot/efi (/dev/disk/by\-partuuid/01234567\-89ab\-cdef\-dead\-beef00000000)
+         文件: └─/EFI/systemd\-bootx64\&.efi (systemd\-boot 251
+         文件: └─/EFI/BOOTX64\&.EFI (systemd\-boot 251
+
+在 EFI 变量中列出的引导加载程序:
+        标题: Linux 启动管理器
+           编号: 0x0001
+       状态: 活动，引导顺序
+    分区: /dev/by\-partuuid/\&...
+         文件: └─/EFI/systemd\-bootx64\&.efi
+
+        标题: Fedora
+           ID: 0x0000
+       状态: 活动，引导顺序
+    分区: /dev/by\-partuuid/\&...
+         文件: └─/EFI/shimx64\&.efi
+
+        标题: Linux\-Firmware\-Updater
+           编号: 0x0002
+       状态: 活动，引导顺序
+    分区: /dev/by\-partuuid/\&...
+         文件: └─/EFI/fwupdx64\&.efi
+
+引导加载程序条目:
+        $BOOT: /boot/efi (/dev/disk/by\-partuuid/01234567\-89ab\-cdef\-dead\-beef00000000)
+
+默认引导加载程序条目:
+         类型: 引导加载程序规格类型 #1 (\&.conf)
+        标题: Fedora Linux 36 (工作站版)
+           id: \&...
+       source: /boot/efi/loader/entries/\fIentry\-token\fP\-\fIkernel\-version\fP\&.conf
+      version: \fIkernel\-version\fP
+   machine\-id: \&...
+        linux: /\fIentry\-token\fP/\fIkernel\-version\fP/linux
+       initrd: /\fIentry\-token\fP/\fIkernel\-version\fP/initrd
+      options: root=\& ...
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ \fBbootctl list\fP
+引导加载程序条目:
+         类型: 引导加载程序规格类型 #1 (\&.conf)
+        标题: Fedora Linux 36 (工作站版) (default) (selected)
+           id: \&...
+       source: /boot/efi/loader/entries/\fIentry\-token\fP\-\fIkernel\-version\fP\&.conf
+      version: \fIkernel\-version\fP
+   machine\-id: \&...
+        linux: /\fIentry\-token\fP/\fIkernel\-version\fP/linux
+       initrd: /\fIentry\-token\fP/\fIkernel\-version\fP/initrd
+      options: root=\& ...
+
+         类型: 引导加载程序规格类型 #2 (\&.efi)
+        标题: Fedora Linux 35 (工作站版)
+           id: \&...
+       来源: /boot/efi/EFI/Linux/fedora\-\fIkernel\-version\fP\&.efi
+      version: \fIkernel\-version\fP
+   machine\-id: \&...
+        linux: /EFI/Linux/fedora\-\fIkernel\-version\fP\&.efi
+      options: root=\& ...
+
+         类型: 自动
+        title: 重启进入固件界面
+           id: 自动重启到固件设置
+       来源: /sys/firmware/efi/efivars/LoaderEntries\-4a67b082\-0a4c\-41cf\-b6c7\-440b29bb8c4f
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+在清单中，"(default)" 指定默认将使用的条目，"(selected)" 指定上次选择的条目 (i\&.e\&. 当前正在运行) \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-boot\fP(7), \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2, \m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[2]\d\s+2, \fBsystemd\-boot\-random\-seed.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+引导装载程序规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/boot_loader_specification
+.RE
+.IP " 2." 4
+引导加载程序接口
+.RS 4
+\%https://systemd.io/BOOT_LOADER_INTERFACE
+.RE
+.IP " 3." 4
+随机种子
+.RS 4
+\%https://systemd.io/RANDOM_SEEDS
+.RE
+.IP " 4." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

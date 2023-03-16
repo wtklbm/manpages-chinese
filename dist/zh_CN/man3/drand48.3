@@ -1,0 +1,153 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 19:46:03 1993 by Rik Faith (faith@cs.unc.edu)
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH drand48 3 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+drand48, erand48, lrand48, nrand48, mrand48, jrand48, srand48, seed48,
+lcong48 \- 生成均匀分布的伪随机数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBdouble drand48(void);\fP
+\fBdouble erand48(unsigned short \fP\fIxsubi\fP\fB[3]);\fP
+.PP
+\fBlong lrand48(void);\fP
+\fBlong nrand48(unsigned short \fP\fIxsubi\fP\fB[3]);\fP
+.PP
+\fBlong mrand48(void);\fP
+\fBlong jrand48(unsigned short \fP\fIxsubi\fP\fB[3]);\fP
+.PP
+\fBvoid srand48(long \fP\fIseedval\fP\fB);\fP
+\fBunsigned short *seed48(unsigned short \fP\fIseed16v\fP\fB[3]);\fP
+\fBvoid lcong48(unsigned short \fP\fIparam\fP\fB[7]);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+.\" .BR drand48 (),
+.\" .BR erand48 (),
+.\" .BR lrand48 (),
+.\" .BR nrand48 (),
+.\" .BR mrand48 (),
+.\" .BR jrand48 (),
+.\" .BR srand48 (),
+.\" .BR seed48 (),
+.\" .BR lcong48 ():
+以上所有函数:
+.nf
+    _XOPEN_SOURCE
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+这些随机数使用线性同余算法和 48 位整数算法生成伪随机数。
+.PP
+\fBdrand48\fP() 和 \fBerand48\fP() 函数返回在区间 [0.0,\1.0) 上均匀分布的非负双精度浮点值。
+.PP
+\fBlrand48\fP() 和 \fBnrand48\fP() 函数返回在区间 [0,\2\[ha] 31) 上均匀分布的非负长整数。
+.PP
+\fBmrand48\fP() 和 \fBjrand48\fP() 函数返回在区间 [\-2\[ha] 31,\2\[ha] 31) 上均匀分布的有符号长整数。
+.PP
+\fBsrand48\fP()、\fBseed48\fP()、\fBlcong48\fP() 函数为初始化函数，在使用
+\fBdrand48\fP()、\fBlrand48\fP()、\fBmrand48\fP() 前应调用其中之一。 函数
+\fBerand48\fP()、\fBnrand48\fP() 和 \fBjrand48\fP() 不需要先调用初始化函数。
+.PP
+根据线性同余公式，所有函数都通过生成一个 48 位整数序列 \fIXi\fP 来工作:
+.PP
+.in +4n
+.EX
+\fBXn+1 = (aXn + c) mod m, where n >= 0\fP
+.EE
+.in
+.PP
+参数 \fIm\fP =2\[ha] 48，因此执行 48 位整数运算。 除非调用 \fBlcong48\fP()，否则 \fIa\fP 和 \fIc\fP 由下式给出:
+.PP
+.in +4n
+.EX
+\fBa = 0x5DEECE66D\fP
+\fBc = 0xB\fP
+.EE
+.in
+.PP
+\fBdrand48\fP()、\fBerand48\fP()、\fBlrand48\fP()、\fBnrand48\fP()、\fBmrand48\fP() 或
+\fBjrand48\fP() 中任一个返回的值是通过首先生成序列中的下一个 48 位 \fIXi\fP 来计算的。 然后根据要返回的数据项的类型，从 \fIXi\fP
+的高位复制适当的位数，转化为返回值。
+.PP
+函数 \fBdrand48\fP()、\fBlrand48\fP() 和 \fBmrand48\fP() 将最后生成的 48 位 \fIXi\fP 存储在内部缓冲区中。 函数
+\fBerand48\fP()、\fBnrand48\fP() 和 \fBjrand48\fP() 要求调用程序为数组参数 \fIxsubi\fP 中的连续 \fIXi\fP
+值提供存储。 在第一次调用函数之前，将 \fIXi\fP 的初始值放入数组中来初始化函数。
+.PP
+初始化函数 \fBsrand48\fP() 将 \fIXi\fP 的高 32 位设置为参数 \fIseedval\fP。 低位 16 位设置为任意值 0x330E。
+.PP
+初始化函数 \fBseed48\fP() 将 \fIXi\fP 的值设置为数组参数 \fIseed16v\fP 中指定的 48 位值。 \fIXi\fP
+的先前值被复制到内部缓冲区中，\fBseed48\fP() 返回指向该缓冲区的指针。
+.PP
+初始化函数 \fBlcong48\fP() 允许用户指定 \fIXi\fP、\fIa\fP 和 \fIc\fP 的初始值。 数组参数元素 \fIparam[0\-2]\fP 指定
+\fIXi\fP，\fIparam[3\-5]\fP 指定 \fIa\fP，\fIparam[6]\fP 指定 \fIc\fP。 在调用 \fBlcong48\fP() 之后，对
+\fBsrand48\fP() 或 \fBseed48\fP() 的后续调用将恢复 \fIa\fP 和 \fIc\fP 的标准值。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBdrand48\fP(),
+\fBerand48\fP(),
+\fBlrand48\fP(),
+\fBnrand48\fP(),
+\fBmrand48\fP(),
+\fBjrand48\fP(),
+\fBsrand48\fP(),
+\fBseed48\fP(),
+\fBlcong48\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:drand48
+T}
+.TE
+.hy
+.ad
+.sp 1
+.PP
+上面的任数记录了随机数生成器的全局状态信息，所以它们不是线程安全的。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.SH "SEE ALSO"
+\fBrand\fP(3), \fBrandom\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

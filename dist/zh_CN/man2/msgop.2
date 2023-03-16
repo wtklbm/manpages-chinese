@@ -1,0 +1,389 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Giorgio Ciucci <giorgio@crcc.it>
+.\" and Copyright 2015 Bill Pemberton <wfp5p@worldbroken.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Tue Oct 22 16:40:11 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Mon Jul 10 21:09:59 2000 by aeb
+.\" Modified 1 Jun 2002, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language clean-ups.
+.\"	Enhanced and corrected information on msg_qbytes, MSGMNB and MSGMAX
+.\"	Added note on restart behavior of msgsnd() and msgrcv()
+.\"	Formatting clean-ups (argument and field names marked as .I
+.\"		instead of .B)
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\" Modified, 11 Nov 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language and formatting clean-ups
+.\"	Added notes on /proc files
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH MSGOP 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+msgrcv、msgsnd\-System V 消息队列操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/msg.h>\fP
+.PP
+\fBint msgsnd(int \fP\fImsqid\fP\fB, const void \fP\fImsgp\fP\fB[.\fP\fImsgsz\fP\fB], size_t \fP\fImsgsz\fP\fB,\fP
+\fB               int \fP\fImsgflg\fP\fB);\fP
+.PP
+\fBssize_t msgrcv(int \fP\fImsqid\fP\fB, void \fP\fImsgp\fP\fB[.\fP\fImsgsz\fP\fB], size_t \fP\fImsgsz\fP\fB, long \fP\fImsgtyp\fP\fB,\fP
+\fB               int \fP\fImsgflg\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmsgsnd\fP() 和 \fBmsgrcv\fP() 系统调用用于向 System\V 消息队列发送消息和从中接收消息。
+调用进程必须对消息队列具有写入权限才能发送消息，并具有读取权限才能接收消息。
+.PP
+\fImsgp\fP 参数是指向调用者定义的结构体的指针，具有以下一般形式:
+.PP
+.in +4n
+.EX
+struct msgbuf {
+    long mtype;       /* message type, must be > 0 */
+    char mtext[1];    /* message data */
+};
+.EE
+.in
+.PP
+\fImtext\fP 字段是一个数组 (或其他结构体)，其大小由非负整数值 \fImsgsz\fP 指定。 零长度的消息 (即没有 \fImtext\fP 字段)
+是允许的。 \fImtype\fP 字段必须具有严格的正整数值。 接收进程可以使用该值来选择消息 (参见下面对 \fBmsgrcv\fP() 的描述)。
+.SS msgsnd()
+\fBmsgsnd\fP() 系统调用将 \fImsgp\fP 指向的消息副本追加到标识符为 \fImsqid\fP 指定的消息队列中。
+.PP
+如果队列中有足够的可用空间，\fBmsgsnd\fP() 会立即成功。 队列容量由消息队列的关联数据结构体中的 \fImsg_qbytes\fP 字段控制。
+在队列创建期间，此字段被初始化为 \fBMSGMNB\fP 字节，但可以使用 \fBmsgctl\fP(2) 修改此限制。
+如果满足以下任一条件，则认为消息队列已满:
+.IP \[bu] 3
+向队列中添加新消息会导致队列中的总字节数超过队列的最大大小 (\fImsg_qbytes\fP 字段)。
+.IP \[bu]
+向队列中添加另一条消息会导致队列中的消息总数超过队列的最大大小 (\fImsg_qbytes\fP 字段)。
+此检查对于防止将无限数量的零长度消息放置在队列中是必要的。 尽管此类消息不包含任何数据，但它们仍然会消耗 (locked) 内核内存。
+.PP
+如果队列中可用空间不足，则 \fBmsgsnd\fP() 的默认行为是阻塞，直到有可用空间为止。 如果在 \fImsgflg\fP 中指定了
+\fBIPC_NOWAIT\fP，则调用会失败并返回错误 \fBEAGAIN\fP。
+.PP
+如果出现以下情况，被阻止的 \fBmsgsnd\fP() 调用也可能会失败:
+.IP \[bu] 3
+队列被移除，在这种情况下系统调用失败，\fIerrno\fP 设置为 \fBEIDRM\fP; or
+.IP \[bu]
+信号被捕获，在这种情况下系统调用失败，\fIerrno\fP 设置为 \fBEINTR\fP;\fBsee\fP \fBsignal\fP(7)。 (\fBmsgsnd\fP()
+在被信号处理程序中断后永远不会自动重新启动，无论在建立信号处理程序时 \fBSA_RESTART\fP 标志的设置如何。)
+.PP
+成功完成后，消息队列数据结构体更新如下:
+.IP \[bu] 3
+\fImsg_lspid\fP 设置为调用进程的进程 ID。
+.IP \[bu]
+\fImsg_qnum\fP 递增 1.
+.IP \[bu]
+\fImsg_stime\fP 设置为当前时间。
+.SS msgrcv()
+\fBmsgrcv\fP() 系统调用从 \fImsqid\fP 指定的队列中取出一条消息，放入 \fImsgp\fP 指向的缓冲区中。
+.PP
+参数 \fImsgsz\fP 指定 \fImsgp\fP 参数指向的结构体的成员 \fImtext\fP 的最大字节数。 如果消息文本的长度大于
+\fImsgsz\fP，则行为取决于 \fImsgflg\fP 中是否指定了 \fBMSG_NOERROR\fP。 如果指定
+\fBMSG_NOERROR\fP，则消息文本将被截断 (截断的部分将丢失) ; 如果未指定
+\fBMSG_NOERROR\fP，则消息不会从队列中删除，系统调用将无法返回 \-1，\fIerrno\fP 设置为 \fBE2BIG\fP。
+.PP
+除非在 \fImsgflg\fP 中指定 \fBMSG_COPY\fP (见下文)，否则 \fImsgtyp\fP 参数指定请求的消息类型，如下所示:
+.IP \[bu] 3
+如果 \fImsgtyp\fP 为 0，则读取队列中的第一条消息。
+.IP \[bu]
+如果 \fImsgtyp\fP 大于 0，则读取队列中 \fImsgtyp\fP 类型的第一条消息，除非在 \fImsgflg\fP 中指定了
+\fBMSG_EXCEPT\fP，在这种情况下，将读取队列中类型不等于 \fImsgtyp\fP 的第一条消息。
+.IP \[bu]
+如果 \fImsgtyp\fP 小于 0，则读取队列中类型最低且小于或等于 \fImsgtyp\fP 绝对值的第一条消息。
+.PP
+\fImsgflg\fP 参数是一个位掩码，通过对以下标志中的零个或多个进行 `或` 运算来构造:
+.TP 
+\fBIPC_NOWAIT\fP
+如果队列中没有请求类型的消息，则立即返回。 系统调用失败，\fIerrno\fP 设置为 \fBENOMSG\fP。
+.TP 
+\fBMSG_COPY\fP (since Linux 3.8)
+.\" commit 4a674f34ba04a002244edaf891b5da7fc1473ae8
+在 \fImsgtyp\fP 指定的队列中的序号位置非破坏性地获取消息的副本 (消息被认为是从 0 开始编号)。
+.IP
+此标志必须与 \fBIPC_NOWAIT\fP 一起指定，结果是，如果在给定位置没有可用消息，调用将立即失败并返回错误 \fBENOMSG\fP。
+因为它们以正交方式改变 \fImsgtyp\fP 的含义，所以 \fBMSG_COPY\fP 和 \fBMSG_EXCEPT\fP 可能不会同时在 \fImsgflg\fP
+中指定。
+.IP
+\fBMSG_COPY\fP 标志是为内核检查点恢复工具的实现而添加的，并且仅当内核是使用 \fBCONFIG_CHECKPOINT_RESTORE\fP
+选项构建时才可用。
+.TP 
+\fBMSG_EXCEPT\fP
+与大于 0 的 \fImsgtyp\fP 一起使用，以读取队列中消息类型与 \fImsgtyp\fP 不同的第一条消息。
+.TP 
+\fBMSG_NOERROR\fP
+如果长度超过 \fImsgsz\fP 字节，则截断消息文本。
+.PP
+如果请求类型的消息不可用且 \fImsgflg\fP 中未指定 \fBIPC_NOWAIT\fP，则调用进程将被阻塞，直到出现以下情况之一:
+.IP \[bu] 3
+所需类型的消息被放置在队列中。
+.IP \[bu]
+消息队列已从系统中删除。 在这种情况下，系统调用失败，\fIerrno\fP 设置为 \fBEIDRM\fP。
+.IP \[bu]
+调用进程捕获一个信号。 在这种情况下，系统调用失败，\fIerrno\fP 设置为 \fBEINTR\fP。 (\fBmsgrcv\fP()
+在被信号处理程序中断后永远不会自动重新启动，无论在建立信号处理程序时 \fBSA_RESTART\fP 标志的设置如何。)
+.PP
+成功完成后，消息队列数据结构体更新如下:
+.IP
+\fImsg_lrpid\fP 设置为调用进程的进程 ID。
+.IP
+\fImsg_qnum\fP 递减 1.
+.IP
+\fImsg_rtime\fP 设置为当前时间。
+.SH "RETURN VALUE"
+成功时，\fBmsgsnd\fP() 返回 0，\fBmsgrcv\fP() 返回实际复制到 \fImtext\fP 数组中的字节数。 失败时，两个函数都返回
+\-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBmsgsnd\fP() 可能会因以下错误而失败:
+.TP 
+\fBEACCES\fP
+调用进程没有消息队列的写入权限，在管理其 IPC 命名空间的用户命名空间中没有 \fBCAP_IPC_OWNER\fP 能力。
+.TP 
+\fBEAGAIN\fP
+由于队列的 \fImsg_qbytes\fP 限制以及 \fImsgflg\fP 中指定的 \fBIPC_NOWAIT\fP，无法发送消息。
+.TP 
+\fBEFAULT\fP
+\fImsgp\fP 指向的地址不可访问。
+.TP 
+\fBEIDRM\fP
+消息队列已删除。
+.TP 
+\fBEINTR\fP
+在消息队列已满的情况下休眠，该进程捕获了一个信号。
+.TP 
+\fBEINVAL\fP
+无效的 \fImsqid\fP 值，或非正的 \fImtype\fP 值，或无效的 \fImsgsz\fP 值 (小于 0 或大于系统值 \fBMSGMAX\fP)。
+.TP 
+\fBENOMEM\fP
+系统没有足够的内存来复制 \fImsgp\fP 指向的消息。
+.PP
+\fBmsgrcv\fP() 可能会因以下错误而失败:
+.TP 
+\fBE2BIG\fP
+消息文本长度大于 \fImsgsz\fP，并且 \fImsgflg\fP 中未指定 \fBMSG_NOERROR\fP。
+.TP 
+\fBEACCES\fP
+调用进程没有消息队列的读取权限，并且在管理其 IPC 命名空间的用户命名空间中没有 \fBCAP_IPC_OWNER\fP 能力。
+.TP 
+\fBEFAULT\fP
+\fImsgp\fP 指向的地址不可访问。
+.TP 
+\fBEIDRM\fP
+当进程休眠以接收消息时，消息队列被删除。
+.TP 
+\fBEINTR\fP
+当进程休眠以接收消息时，进程捕获了一个信号; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fImsqid\fP 无效，或 \fImsgsz\fP 小于 0.
+.TP 
+\fBEINVAL\fP (since Linux 3.14)
+\fImsgflg\fP 指定了 \fBMSG_COPY\fP，但没有指定 \fBIPC_NOWAIT\fP。
+.TP 
+\fBEINVAL\fP (since Linux 3.14)
+\fImsgflg\fP 同时指定了 \fBMSG_COPY\fP 和 \fBMSG_EXCEPT\fP。
+.TP 
+\fBENOMSG\fP
+在 \fImsgflg\fP 中指定了 \fBIPC_NOWAIT\fP，消息队列中不存在请求类型的消息。
+.TP 
+\fBENOMSG\fP
+在 \fImsgflg\fP 中指定了 \fBIPC_NOWAIT\fP 和 \fBMSG_COPY\fP，并且队列包含少于 \fImsgtyp\fP 的消息。
+.TP 
+\fBENOSYS\fP (since Linux 3.8)
+\fBMSG_COPY\fP 和 \fBIPC_NOWAIT\fP 都在 \fImsgflg\fP 中指定，而这个内核没有配置
+\fBCONFIG_CHECKPOINT_RESTORE\fP。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.PP
+.\" MSG_COPY since glibc 2.18
+\fBMSG_EXCEPT\fP 和 \fBMSG_COPY\fP 标志是特定于 Linux 的; 它们的定义可以通过定义 \fB_GNU_SOURCE\fP
+特性测试宏来获得。
+.SH NOTES
+\fImsgp\fP 参数在 glibc 2.0 和 2.1 中声明为 \fIstruct msgbuf\ *\fP。 根据 SUSv2 和 SUSv3
+的要求，它在 glibc 2.2 及更高版本中声明为 \fIvoid\ *\fP。
+.PP
+以下对消息队列资源的限制会影响 \fBmsgsnd\fP() 调用:
+.TP 
+\fBMSGMAX\fP
+消息文本的最大大小，以字节为单位 (默认值: 8192 字节)。 在 Linux 上，可以通过 \fI/proc/sys/kernel/msgmax\fP
+读取和修改此限制。
+.TP 
+\fBMSGMNB\fP
+消息队列中可以容纳的最大字节数 (默认值: 16384 字节)。 在 Linux 上，可以通过 \fI/proc/sys/kernel/msgmnb\fP
+读取和修改此限制。 特权进程 (Linux: 具有 \fBCAP_SYS_RESOURCE\fP 功能的进程) 可以使用 \fBmsgctl\fP(2)
+\fBIPC_SET\fP 操作将消息队列的大小增加到 \fBMSGMNB\fP 以上。
+.PP
+该实现对消息头 (\fBMSGTQL\fP) 的数量和消息池 (\fBMSGPOOL\fP) 中的字节数没有内部数量系统范围的限制。
+.SH BUGS
+.\" http://marc.info/?l=linux-kernel&m=139048542803605&w=2
+.\" commit 4f87dac386cc43d5525da7a939d4b4e7edbea22c
+在 Linux 3.13 及更早版本中，如果使用 \fBMSG_COPY\fP 标志调用 \fBmsgrcv\fP()，但没有
+\fBIPC_NOWAIT\fP，并且消息队列包含的消息少于 \fImsgtyp\fP 消息，则调用将阻塞，直到下一条消息写入队列。 届时，调用将返回消息的副本
+\fIregardless\fP，表明该消息是否位于序号位置 \fImsgtyp\fP。 此错误已在 Linux 3.14 中修复。
+.PP
+.\" http://marc.info/?l=linux-kernel&m=139048542803605&w=2
+.\" commit 4f87dac386cc43d5525da7a939d4b4e7edbea22c
+在 \fImsgflg\fP 中同时指定 \fBMSG_COPY\fP 和 \fBMSC_EXCEPT\fP 是一个逻辑错误 (因为这些标志对 \fImsgtyp\fP)
+施加了不同的解释。 在 Linux 3.13 及更早版本中，\fBmsgrcv\fP() 未诊断出此错误。 此错误已在 Linux 3.14 中修复。
+.SH EXAMPLES
+下面的程序演示了 \fBmsgsnd\fP() 和 \fBmsgrcv\fP() 的使用。
+.PP
+该示例程序首先使用 \fB\-s\fP 选项运行以发送消息，然后使用 \fB\-r\fP 选项再次运行以接收消息。
+.PP
+以下 shell 会话显示了该程序的示例运行:
+.PP
+.in +4n
+.EX
+$\fB ./a.out \-s\fP
+发送: 消息于 2015 年 3 月 4 日星期三 16:25:45
+
+$\fB ./a.out \-r\fP
+收到的消息: 2015 年 3 月 4 日星期三 16:25:45 的消息
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (msgop.c)
+\&
+.EX
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <time.h>
+#include <unistd.h>
+
+struct msgbuf {
+    long mtype;
+    char mtext[80];
+};
+
+static void
+usage(char *prog_name, char *msg)
+{
+    if (msg != NULL)
+        fputs(msg, stderr);
+
+    fprintf(stderr, "Usage: %s [options]\en", prog_name);
+    fprintf(stderr, "Options are:\en");
+    fprintf(stderr, "\-s        send message using msgsnd()\en");
+    fprintf(stderr, "\-r        read message using msgrcv()\en");
+    fprintf(stderr, "\-t        message type (default is 1)\en");
+    fprintf(stderr, "\-k        message queue key (default is 1234)\en");
+    exit(EXIT_FAILURE);
+}
+
+static void
+send_msg(int qid, int msgtype)
+{
+    time_t         t;
+    struct msgbuf  msg;
+
+    msg.mtype = msgtype;
+
+    time(&t);
+    snprintf(msg.mtext, sizeof(msg.mtext), "a message at %s",
+             ctime(&t));
+
+    if (msgsnd(qid, &msg, sizeof(msg.mtext),
+               IPC_NOWAIT) == \-1)
+    {
+        perror("msgsnd error");
+        exit(EXIT_FAILURE);
+    }
+    printf("sent: %s\en", msg.mtext);
+}
+
+static void
+get_msg(int qid, int msgtype)
+{
+    struct msgbuf msg;
+
+    if (msgrcv(qid, &msg, sizeof(msg.mtext), msgtype,
+               MSG_NOERROR | IPC_NOWAIT) == \-1) {
+        if (errno != ENOMSG) {
+            perror("msgrcv");
+            exit(EXIT_FAILURE);
+        }
+        printf("No message available for msgrcv()\en");
+    } else {
+        printf("message received: %s\en", msg.mtext);
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    int  qid, opt;
+    int  mode = 0;                /* 1 = send, 2 = receive */
+    int  msgtype = 1;
+    int  msgkey = 1234;
+
+    while ((opt = getopt(argc, argv, "srt:k:")) != \-1) {
+        switch (opt) {
+        case \[aq]s\[aq]:
+            mode = 1;
+            break;   
+        case \[aq]r\[aq]:
+            mode = 2;
+            break;
+        case \[aq]t\[aq]:
+            msgtype = atoi(optarg);
+            if (msgtype <= 0)
+                usage(argv[0], "\-t option must be greater than 0\en");
+            break;
+        case \[aq]k\[aq]:
+            msgkey = atoi(optarg);
+            break;
+        default:
+            usage(argv[0], "Unrecognized option\en");
+        }
+    }
+
+    if (mode == 0)
+        usage(argv[0], "must use either \-s or \-r option\en");
+
+    qid = msgget(msgkey, IPC_CREAT | 0666);
+
+    if (qid == \-1) {
+        perror("msgget");
+        exit(EXIT_FAILURE);
+    }
+
+    if (mode == 2)
+        get_msg(qid, msgtype);
+    else
+        send_msg(qid, msgtype);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBmsgctl\fP(2), \fBmsgget\fP(2), \fBcapabilities\fP(7), \fBmq_overview\fP(7),
+\fBsysvipc\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

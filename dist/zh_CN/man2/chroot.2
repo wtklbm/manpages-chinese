@@ -1,0 +1,131 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-21 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1994-08-21 by Michael Chastain <mec@shell.portal.com>
+.\" Modified 1996-06-13 by aeb
+.\" Modified 1996-11-06 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1997-08-21 by Joseph S. Myers <jsm28@cam.ac.uk>
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH chroot 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+chroot \- 更改根目录
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint chroot(const char *\fP\fIpath\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBchroot\fP():
+.nf
+    由于 glibc 2.2.2:
+        _XOPEN_SOURCE && ! (_POSIX_C_SOURCE >= 200112L)
+            || /* Since glibc 2.20: */ _DEFAULT_SOURCE
+            || /* glibc <= 2.19: */ _BSD_SOURCE
+    在 glibc 2.2.2 之前:
+        none
+.fi
+.SH DESCRIPTION
+\fBchroot\fP() 将调用进程的根目录更改为 \fIpath\fP 中指定的目录。 该目录将用于以 \fI/\fP 开头的路径名。
+根目录由调用进程的所有子进程继承。
+.PP
+只有特权进程 (Linux: 在其用户命名空间中具有 \fBCAP_SYS_CHROOT\fP 功能的进程) 可以调用 \fBchroot\fP()。
+.PP
+这个调整改变了路径名解析过程中的一个成分，并且什么都不做。 特别是，它不打算用于任何类型的安全目的，既不完全沙盒进程也不限制文件系统系统调用。
+过去，守护进程使用 \fBchroot\fP() 来限制自己，然后再将不受信任的用户提供的路径传递给系统调用，例如 \fBopen\fP(2)。
+但是，如果将文件夹移出 chroot 目录，攻击者也可以利用它离开 chroot 目录。 最简单的方法就是 \fBchdir\fP(2)
+到要移动的目录下，等它移动出来，再打开 ../../../etc/passwd 这样的路径。
+.PP
+.\" This is how the "slightly trickier variation" works:
+.\" https://github.com/QubesOS/qubes-secpack/blob/master/QSBs/qsb-014-2015.txt#L142
+如果不允许 \fBchdir\fP(2)，则在某些情况下也可以使用稍微复杂一些的变体。 如果一个守护进程允许指定一个 "chroot
+directory"，这通常意味着如果您想阻止远程用户访问 chroot 目录之外的文件，您必须确保文件夹永远不会被移出它。
+.PP
+这个调用不会改变当前的工作目录，所以调用 \[aq]\fI.\fP\[aq] 之后可以在 \[aq]\fI/\fP\[aq]
+根的树之外。特别是，超级用户可以通过以下方式逃离 "chroot jail":
+.PP
+.in +4n
+.EX
+mkdir foo;  chroot foo;  cd ..
+.EE
+.in
+.PP
+此调用不会关闭打开的文件描述符，并且此类文件描述符可能允许访问 chroot 树之外的文件。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+根据文件系统，可能会返回其他错误。 下面列出了更一般的错误:
+.TP 
+\fBEACCES\fP
+.\" Also search permission is required on the final component,
+.\" maybe just to guarantee that it is a directory?
+路径前缀的某个组件的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEFAULT\fP
+\fIpath\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEIO\fP
+发生 I/O 错误。
+.TP 
+\fBELOOP\fP
+解析 \fIpath\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpath\fP 太长。
+.TP 
+\fBENOENT\fP
+该文件不存在。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOTDIR\fP
+\fIpath\fP 的组件不是目录。
+.TP 
+\fBEPERM\fP
+调用者没有足够的权限。
+.SH STANDARDS
+.\" SVr4 documents additional EINTR, ENOLINK and EMULTIHOP error conditions.
+.\" X/OPEN does not document EIO, ENOMEM or EFAULT error conditions.
+SVr4、4.4BSD、SUSv2 (标记为 LEGACY)。 这个函数不是 POSIX.1\-2001 的一部分。
+.SH NOTES
+通过 \fBfork\fP(2) 创建的子进程继承其父进程的根目录。 \fBexecve\fP(2) 保留根目录不变。
+.PP
+魔法符号链接 \fI/proc/[pid]/root\fP 可用于发现进程的根目录; 详见 \fBproc\fP(5)。
+.PP
+FreeBSD 有更强的 \fBjail\fP() 系统调用。
+.SH "SEE ALSO"
+\fBchroot\fP(1), \fBchdir\fP(2), \fBpivot_root\fP(2), \fBpath_resolution\fP(7),
+\fBswitch_root\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

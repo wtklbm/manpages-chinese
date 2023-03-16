@@ -1,0 +1,112 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH BADBLOCKS 8 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+badblocks \- 在设备中搜索坏块
+.SH SYNOPSIS
+\fBbadblocks\fP [ \fB\-svwnfBX\fP ] [ \fB\-b\fP \fIblock_size\fP ] [ \fB\-c\fP
+\fIblocks_at_once\fP ] [ \fB\-d\fP \fIread_delay_factor\fP ] [ \fB\-e\fP \fImax_bad_blocks\fP
+] [ \fB\-i\fP \fIinput_file\fP ] [ \fB\-o\fP \fIoutput_file\fP ] [ \fB\-p\fP \fInum_passes\fP ] [
+\fB\-t\fP \fItest_pattern\fP ] \fIdevice\fP [ \fIlast_block\fP ] [ \fIfirst_block\fP ]
+.SH DESCRIPTION
+\fBbadblocks\fP 用于搜索设备 (通常是磁盘分区) 上的坏块。 \fIdevice\fP 为设备对应的特殊文件 (如 \fI/dev/hdc1\fP).
+\fIlast_block\fP 是要检查的最后一个块; 如果未指定，则默认使用设备上的最后一个块。 \fIfirst_block\fP
+是一个可选参数，指定测试的起始块号，它允许测试从磁盘的中间开始。 如果未指定，则默认使用磁盘上的第一个块。
+.PP
+\fBImportant note:\fP 如果要将 \fBbadblocks\fP 的输出提供给 \fBe2fsck\fP 或 \fBmke2fs\fP
+程序，正确指定块大小很重要，因为生成的块编号非常依赖于文件系统使用的块大小。 因此，强烈建议 \fBnot\fP 用户直接运行
+\fBbadblocks\fP，而应使用 \fBe2fsck\fP 和 \fBmke2fs\fP 程序的 \fB\-c\fP 选项。
+.SH OPTIONS
+.TP 
+\fB\-b\fP\fI block_size\fP
+以字节为单位指定块的大小。 默认值为 1024。
+.TP 
+\fB\-c\fP\fI number of blocks\fP
+是一次测试的块数。 默认值为 64。
+.TP 
+\fB\-d\fP\fI read delay factor\fP
+如果在读取操作中没有遇到错误，则此参数如果传递且非零，将导致坏块在读取之间休眠; 延迟将计算为执行读取操作所用时间的百分比。换句话说，值 100
+将导致每次读取延迟前一次读取所用的量，而值 200 将延迟两倍的量。
+.TP 
+\fB\-e\fP\fI max bad block count\fP
+在终止测试之前指定最大坏块数。 默认值为 0，表示测试将继续，直到达到测试范围的末尾。
+.TP 
+\fB\-f\fP
+通常情况下，badblocks 会拒绝对挂载的设备进行 read/write
+或非破坏性测试，因为即使以只读方式挂载，这两者都可能导致系统崩溃或者损坏文件系统。 这可以使用 \fB\-f\fP 标志覆盖，但几乎不应该使用 \-\-\-
+如果您认为您比 \fBbadblocks\fP 程序更聪明，您几乎可以肯定不是。 唯一可以安全使用此选项的情况是 /etc/mtab
+文件不正确，并且设备确实未安装。
+.TP 
+\fB\-i\fP\fI input_file\fP
+阅读已经存在的已知坏块列表。 \fBBadblocks\fP 将跳过测试这些块，因为它们已知是错误的。 如果 \fIinput_file\fP 被指定为
+"\-"，列表将从标准输入中读取。 此列表中列出的块将从标准输出或输出文件中生成的 \fInew\fP 坏块列表中删除。 \fBdumpe2fs\fP(8) 的
+\fB\-b\fP 选项可用于检索现有文件系统上当前标记为坏块的列表，格式适合与此选项一起使用。
+.TP 
+\fB\-n\fP
+使用非破坏性读写模式。 默认情况下，只进行非破坏性只读测试。 此选项不得与 \fB\-w\fP 选项结合使用，因为它们是互斥的。
+.TP 
+\fB\-o\fP\fI output_file\fP
+将坏块列表写入指定文件。 如果没有此选项，\fBbadblocks\fP 将在其标准输出中显示列表。 此文件的格式适合以下人员使用
+.
+\fBe2fsck\fP(8) 或 \fBmke2fs\fP(8) 中的 \fB\-l\fP 选项。
+.TP 
+\fB\-p\fP\fI num_passes\fP
+重复扫描磁盘，直到连续 num_passes 次磁盘扫描没有发现新块。 默认为 0，表示 \fBbadblocks\fP 将在第一次通过后退出。
+.TP 
+\fB\-s\fP
+通过写出当前坏块通过磁盘的粗略完成百分比来显示扫描进度。 请注意，badblocks 可能会对磁盘进行多次测试，特别是如果用户请求 \fB\-p\fP 或
+\fB\-w\fP 选项。
+.TP 
+\fB\-t\fP\fI test_pattern\fP
+指定要读取 (和写入) 到磁盘块的测试模式。 \fItest_pattern\fP 可以是介于 0 和 ULONG_MAX\-1 之间的数值，也可以是单词
+"random"，它指定块应填充随机位模式。 对于 read/write (\fB\-w\fP) 和非破坏性 (\fB\-n\fP)
+模式，可以通过为每个所需的测试模式指定 \fB\-t\fP 选项来指定一个或多个测试模式。 对于只读模式，只能指定一个模式，它可能不是 "random"。
+具有模式的只读测试假定指定的模式之前已写入磁盘 \-\- 否则，大量块将无法通过验证。
+如果指定了多个模式，那么在继续下一个模式之前，将使用一个模式测试所有块。
+.TP 
+\fB\-v\fP
+详细模式。 将读取错误、写入错误和数据损坏的次数写入标准错误。
+.TP 
+\fB\-w\fP
+使用写模式测试。使用此选项，\fBbadblocks\fP 通过在设备的每个块上写入一些模式
+(0xaa、0x55、0xff、0x00)、读取每个块并比较内容来扫描坏块。 此选项不能与 \fB\-n\fP 选项结合使用，因为它们是互斥的。
+.TP 
+\fB\-B\fP
+使用缓冲 I/O，不要使用直接 I/O，即使它可用。
+.TP 
+\fB\-X\fP
+内部标志仅供 \fBe2fsck\fP(8) 和 \fBmke2fs\fP(8) 使用。 它绕过独占模式在用设备安全检查。
+.SH WARNING
+切勿在包含现有文件系统的设备上使用 \fB\-w\fP 选项。 此选项会删除数据! 如果要在现有文件系统上执行写模式测试，请改用 \fB\-n\fP 选项。
+它速度较慢，但会保留您的数据。
+.PP
+\fB\-e\fP 选项将导致 badblocks 输出可能不完整的坏块列表。因此，建议仅在想知道设备上是否存在任何坏块时才使用它，而不是在需要坏块列表时使用。
+.SH AUTHOR
+\fBbadblocks\fP 由 Remy Card <Remy.Card@linux.org> 编写。 目前的维护者是 Theodore
+Ts'o <tytso@alum.mit.edu>。 由 David Beattie
+<dbeattie@softhome.net> 实现的非破坏性 read/write 测试。
+.SH AVAILABILITY
+\fBbadblocks\fP 是 e2fsprogs 包的一部分，可从 http://e2fsprogs.sourceforge.net 获得。
+.SH "SEE ALSO"
+\fBe2fsck\fP(8), \fBmke2fs\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

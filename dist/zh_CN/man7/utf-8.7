@@ -1,0 +1,150 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) Markus Kuhn, 1996, 2001
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 1995-11-26  Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"      First version written
+.\" 2001-05-11  Markus Kuhn <mgk25@cl.cam.ac.uk>
+.\"      Update
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH UTF\-8 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+UTF\-8 \- 一种 ASCII 兼容的多字节 Unicode 编码
+.SH DESCRIPTION
+Unicode 3.0 字符集占用 16 位代码空间。 最明显的 Unicode 编码 (称为 UCS\-2) 由一系列 16 位字组成。
+此类字符串可以包含 \[em] 作为许多 16 位字符 \[em] 字节的一部分，例如 \[aq]\e0\[aq] 或
+\[aq]/\[aq]，它们在文件名和其他 C 库函数参数。 此外，大多数 UNIX 工具都需要 ASCII 文件，并且在不进行重大修改的情况下无法将
+16 位字作为字符读取。 由于这些原因，UCS\-2 在文件名、文本文件、环境变量等方面不是合适的 Unicode 外部编码。 ISO 10646
+通用字符集 (UCS)，Unicode 的超集，占用更大的代码空间 \[em] 31\bits\[em]，明显的 UCS\-4 编码 (32 位字序列)
+也有同样的问题.
+.PP
+Unicode 和 UCS 的 UTF\-8 编码不存在这些问题，是 Unicode 在 UNIX 风格操作系统上使用的常用方式。
+.SS Properties
+UTF\-8 编码具有以下优良特性:
+.TP  0.2i
+*
+UCS 字符 0x00000000 到 0x0000007f (经典的 US\-ASCII 字符) 被简单地编码为字节 0x00 到 0x7f
+(ASCII 兼容性)。 这意味着仅包含 7 位 ASCII 字符的文件和字符串在 ASCII 和 UTF\-8 下具有相同的编码。
+.TP 
+*
+所有大于 0x7f 的 UCS 字符都被编码为仅由 0x80 到 0xfd 范围内的字节组成的多字节序列，因此没有 ASCII
+字节可以作为另一个字符的一部分出现，并且没有问题，例如，\[aq]\e0\[aq] 或 \[aq]/\[aq]。
+.TP 
+*
+UCS\-4 字符串的字典排序顺序被保留。
+.TP 
+*
+所有可能的 2\[ha] 31 UCS 代码都可以使用 UTF\-8 进行编码。
+.TP 
+*
+字节 0xc0、0xc1、0xfe 和 0xff 从不用于 UTF\-8 编码。
+.TP 
+*
+表示单个非 ASCII UCS 字符的多字节序列的第一个字节始终在 0xc2 到 0xfd 的范围内，并指示该多字节序列的长度。
+多字节序列中的所有其他字节都在 0x80 到 0xbf 的范围内。 这允许轻松重新同步并使编码无状态并且对丢失字节具有鲁棒性。
+.TP 
+*
+UTF\-8 编码的 UCS 字符最长可达 6 个字节，但 Unicode 标准规定不超过 0x10ffff 的字符，因此 Unicode 字符在
+UTF\-8 中最多只能有 4 个字节长。
+.SS Encoding
+以下字节序列用于表示一个字符。 要使用的序列取决于字符的 UCS 代码编号:
+.TP  0.4i
+0x00000000 \- 0x0000007F:
+0\fIxxxxxxx\fP
+.TP 
+0x00000080 \- 0x000007FF:
+110\fIxxxxx\fP 10\fIxxxxxx\fP
+.TP 
+0x00000800 \- 0x0000FFFF:
+1110\fIxxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP
+.TP 
+0x00010000 \- 0x001FFFFF:
+11110\fIxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP
+.TP 
+0x00200000 \- 0x03FFFFFF:
+111110\fIxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP
+.TP 
+0x04000000 \- 0x7FFFFFFF:
+1111110\fIx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP 10\fIxxxxxx\fP
+.PP
+\fIxxx\fP 位的位置用二进制表示的字符代码编号的位填充，最高有效位在前 (big\-endian)。
+只能使用能够表示字符代码编号的尽可能短的多字节序列。
+.PP
+UCS 代码值 0xd800\[en] 0xdfff (UTF\-16 代理项) 以及 0xfffe 和 0xffff (UCS 非字符) 不应出现在符合
+UTF\-8 流中。 根据 RFC 3629，不应使用高于 U+10FFFF 的点，它将字符限制为四个字节。
+.SS Example
+Unicode 字符 0xa9 =1010 1001 (版权符号) 在 UTF\-8 中编码为
+.PP
+.RS
+11000010 10101001 = 0xc2 0xa9
+.RE
+.PP
+字符 0x2260 =0010 0010 0110 0000 ("not equal" 符号) 编码为:
+.PP
+.RS
+11100010 10001001 10100000 = 0xe2 0x89 0xa0
+.RE
+.SS "Application notes"
+用户必须选择 UTF\-8 语言环境，例如
+.PP
+.RS
+导出 LANG=en_GB.UTF\-8
+.RE
+.PP
+为了激活应用程序中的 UTF\-8 支持。
+.PP
+必须知道使用的字符编码的应用程序软件应该始终设置区域设置，例如
+.PP
+.RS
+setlocale(LC_CTYPE, "")
+.RE
+.PP
+然后程序员可以测试表达式
+.PP
+.RS
+strcmp(nl_langinfo(CODESET), "UTF\-8") == 0
+.RE
+.PP
+确定是否选择了 UTF\-8 语言环境，因此所有明文标准输入和输出、最终通信、明文文件内容、文件名和环境变量是否都在 UTF\-8 中编码。
+.PP
+习惯于单字节编码 (如 US\-ASCII 或 ISO 8859) 的程序员必须意识到，到目前为止所做的两个假设在 UTF\-8 语言环境中不再有效。
+首先，单个字节不一定再对应于单个字符。 其次，由于 UTF\-8
+模式下的现代终端仿真器还支持中文、日文和韩文双角字符以及非间距组合字符，因此输出单个字符不一定像在 ASCII 中那样将游标前进一个位置。
+\fBmbsrtowcs\fP(3)、\fBwcswidth\fP(3) 之类的库函数今天应该是用来统计字符和游标位置的。
+.PP
+从 ISO 2022 编码方案 (例如 VT100 终端使用的编码方案) 切换到 UTF\-8 的官方 ESC 序列是 ESC % G
+("\ex1b%G")。 从 UTF\-8 到 ISO 2022 对应的返回序列是 ESC %@("\ex1b%@")。 其他 ISO 2022 序列
+(例如用于切换 G0 和 G1 集) 不适用于 UTF\-8 模式。
+.SS Security
+Unicode 和 UCS 标准要求 UTF\-8 的生产者应尽可能使用最短的形式，例如，生产首字节为 0xc0 的两字节序列是不合格的。 Unicode
+3.1 添加了符合要求的程序不得在其输入中接受非最短形式的要求。 这是出于安全原因: 如果检查用户输入是否存在可能的安全违规，程序可能只检查
+"/../" 或 ";" 或 NUL 的 ASCII 版本，而忽略有许多非 ASCII 方式以非最短的方式表示这些内容 UTF\-8 编码。
+.SS Standards
+.\" .SH AUTHOR
+.\" Markus Kuhn <mgk25@cl.cam.ac.uk>
+ISO/IEC 10646\-1:2000，Unicode 3.1，RFC\3629，计划 9.
+.SH "SEE ALSO"
+\fBlocale\fP(1), \fBnl_langinfo\fP(3), \fBsetlocale\fP(3), \fBcharsets\fP(7),
+\fBunicode\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

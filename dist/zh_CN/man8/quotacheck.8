@@ -1,0 +1,121 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH quotacheck 8 "Fri Jul 20 2001"  
+.SH NAME
+quotacheck \- 扫描文件系统的磁盘使用情况，创建、检查和修复配额文件
+.SH SYNOPSIS
+\fBquotacheck\fP [ \fB\-gubcfinvdMmR\fP ] [ \fB\-F\fP \fIquota\-format\fP ] \fB\-a\fP |
+\fIfilesystem\fP
+.br
+.SH DESCRIPTION
+\fBquotacheck\fP 检查每个文件系统，构建当前磁盘使用情况表，并将该表与文件系统的磁盘配额文件中记录的表进行比较 (如果指定选项
+\fB\-c\fP，则省略此步骤)。如果检测到任何不一致，配额文件和不正确配额的当前系统副本都会更新 (后者仅在检查活动文件系统时才会发生，这是不建议的)。
+默认情况下，仅检查用户配额。 \fBquotacheck\fP 期望每个文件系统都被检查为在相关文件系统的根目录下有名为 \fI[a]quota.user\fP 和
+\fI[a]quota.group\fP 的配额文件。 如果文件不存在，\fBquotacheck\fP 将创建它。
+.PP
+如果配额文件损坏，\fBquotacheck\fP 会尝试保存尽可能多的数据。 拯救数据可能需要用户干预。如果没有额外的选项，\fBquotacheck\fP
+将在这种情况下简单地退出。在交互模式下 (选项 \fB\-i\fP)，会询问用户的意见。也可以从命令行提供建议 (请参见选项 \fB\-n\fP)，这在
+\fBquotacheck\fP 自动运行 (即从脚本) 并且失败是不可接受的情况下很有用。
+.PP
+\fBquotacheck\fP 应该在每次系统引导和挂载无效文件系统时运行。 这最有可能发生在系统崩溃之后。
+.PP
+强烈建议在为文件系统关闭配额的情况下运行 \fBquotacheck\fP。否则，可能会导致配额文件中的数据损坏或丢失。 在实时文件系统上运行
+\fBquotacheck\fP 也是不明智的，因为在扫描期间实际使用情况可能会发生变化。 为了防止这种情况，\fBquotacheck\fP
+尝试在开始扫描之前以只读方式重新挂载文件系统。 扫描完成后，它会以读写方式重新挂载文件系统。您可以使用选项 \fB\-m\fP 禁用它。 您还可以使用选项
+\fB\-M\fP 使 \fBquotacheck\fP 忽略以只读方式重新挂载文件系统的失败。
+.SH OPTIONS
+.TP 
+\fB\-b, \-\-backup\fP
+强制 \fBquotacheck\fP 在写入新数据之前备份配额文件。
+.TP 
+\fB\-v, \-\-verbose\fP
+\fBquotacheck\fP 报告其运行过程。 通常它会安静地运行。 如果该选项被指定两次，则还会打印当前目录 (请注意，打印会显着减慢扫描速度)。
+.TP 
+\fB\-d, \-\-debug\fP
+启用调试模式。 它将产生大量可用于调试程序的信息。输出非常冗长，扫描会很慢。
+.TP 
+\fB\-u, \-\-user\fP
+仅检查 \fI/etc/mtab\fP 中或指定文件系统上列出的用户配额。 这是默认操作。
+.TP 
+\fB\-g, \-\-group\fP
+仅检查 \fI/etc/mtab\fP 中或指定文件系统上列出的组配额。
+.TP 
+\fB\-c, \-\-create\-files\fP
+不要读取现有的配额文件。只需执行新扫描并将其保存到磁盘即可。 当找不到旧配额文件时，\fBquotacheck\fP 也会跳过扫描。
+.TP 
+\fB\-f, \-\-force\fP
+在启用配额的文件系统上强制检查和写入新的配额文件。不建议这样做，因为创建的配额文件可能不同步。
+.TP 
+\fB\-M, \-\-try\-remount\fP
+如果重新挂载失败，此标志会强制以读写模式检查文件系统。仅当您确定在扫描时没有进程会写入文件系统时才执行此操作。
+.TP 
+\fB\-m, \-\-no\-remount\fP
+不要尝试以只读方式重新挂载文件系统。请参见选项 \fB\-M\fP 的注释。
+.TP 
+\fB\-i, \-\-interactive\fP
+交互模式。默认情况下，\fBquotacheck\fP 在发现错误时退出。在交互模式下，用户被要求输入。 请参见选项 \fB\-n\fP。
+.TP 
+\fB\-n, \-\-use\-first\-dquot\fP
+如果配额文件损坏，则可能存在单个用户或组 ID 的重复条目。 通常在这种情况下，\fBquotacheck\fP
+退出或要求用户输入。设置此选项后，始终使用找到的第一个条目 (此选项也适用于交互模式)。
+.TP 
+\fB\-F, \-\-format=\fP\fIformat\-name\fP
+检查并修复指定格式的配额文件 (即不执行格式自动检测)。建议这样做，因为检测可能无法很好地检测损坏的配额文件。 可能的格式名称是: \fBvfsold\fP
+Original quota format with 16\-bit UIDs/GIDs, \fBvfsv0\fP Quota format with
+32\-bit UIDs/GIDs, 64\-bit space usage, 32\-bit inode usage and limits,
+\fBvfsv1\fP Quota format with 64\-bit quota 限制和使用，\fBrpc\fP (NFS 配额)，\fBxfs\fP (XFS
+文件系统配额)
+.TP 
+\fB\-a, \-\-all\fP
+检查 \fB/etc/mtab\fP 中所有挂载的非 NFS 文件系统
+.TP 
+\fB\-R, \-\-exclude\-root\fP
+当与 \fB\-a\fP 选项一起使用时，将检查除根文件系统之外的所有文件系统的配额。
+
+.SH NOTE
+\fBquotacheck\fP 只能由超级用户运行。大概不允许非特权用户读取给定文件系统上的所有目录。
+
+.SH "SEE ALSO"
+\fBquota\fP(1), \fBquotactl\fP(2), \fBfstab\fP(5), \fBquotaon\fP(8), \fBrepquota\fP(8),
+\fBconvertquota\fP(8), \fBsetquota\fP(8), \fBedquota\fP(8), \fBfsck\fP(8), \fBefsck\fP(8),
+\fBe2fsck\fP(8), \fBxfsck\fP(8)
+
+.SH FILES
+.PD 0
+.TP  15
+\fBaquota.user or aquota.group\fP
+位于具有配额的文件系统根目录 (版本 2 配额，非 XFS 文件系统)
+.TP  15
+\fBquota.user or quota.group\fP
+位于具有配额的文件系统根目录 (版本 1 配额，非 XFS 文件系统)
+.TP 
+\fB/etc/mtab\fP
+挂载文件系统的名称和位置
+.SH AUTHOR
+简・卡拉 \<jack@suse.cz\>
+.br
+基于旧的 \fBquotacheck\fP:
+.br
+爱德华图恩德 \<ed@elm.net\>
+.br
+Marco van Wieringen \<mvw@planets.elm.net\>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

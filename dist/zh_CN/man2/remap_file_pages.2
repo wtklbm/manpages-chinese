@@ -1,0 +1,100 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2003, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2003-12-10 Initial creation, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2004-10-28 aeb, corrected prototype, prot must be 0
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH remap_file_pages 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+remap_file_pages \- 创建非线性文件映射
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <sys/mman.h>\fP
+.PP
+\fB[[deprecated]] int remap_file_pages(void \fP\fIaddr\fP\fB[.\fP\fIsize\fP\fB], size_t \fP\fIsize\fP\fB,\fP
+\fB                                    int \fP\fIprot\fP\fB, size_t \fP\fIpgoff\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" commit 33041a0d76d3c3e0aff28ac95a2ffdedf1282dbc
+.\" http://lwn.net/Articles/597632/
+.\" commit c8d78c1823f46519473949d33f0d1d33fe21ea16
+\fBNote\fP: 此系统调用从 Linux 3.16 开始被标记为已弃用。 在 Linux 4.0 中，实现被较慢的内核内仿真所取代。
+那些使用该系统调用的少数应用程序应该考虑迁移到替代方案。 进行此更改是因为此系统调用的内核代码很复杂，而且据信很少有人使用，甚至可能完全没有使用。
+虽然它在 32 位系统的数据库应用程序中有一些用例，但这些用例在 64 位系统上并不存在。
+.PP
+\fBremap_file_pages\fP() 系统调用用于创建非线性映射，即文件的页面在内存中映射为非顺序的映射。 使用
+\fBremap_file_pages\fP() 优于重复调用 \fBmmap\fP(2) 的优点是前一种方法不需要内核创建额外的 VMA (虚拟内存区域)
+数据结构。
+.PP
+要创建非线性映射，我们执行以下步骤:
+.TP  3
+1.
+使用 \fBmmap\fP(2) 创建一个映射 (最初是线性的)。 此映射必须使用 \fBMAP_SHARED\fP 标志创建。
+.TP 
+2.
+使用一次或多次调用 \fBremap_file_pages\fP() 来重新安排映射页面和文件页面之间的对应关系。 可以将一个文件的同一页 map
+到映射区域内的多个位置。
+.PP
+\fIpgoff\fP 和 \fIsize\fP 参数指定映射中要重定位的文件区域: \fIpgoff\fP 是以系统页面大小为单位的文件偏移量; \fIsize\fP
+是以字节为单位的区域长度。
+.PP
+\fIaddr\fP 参数有两个用途。 首先，它标识我们要重新排列其页面的映射。 因此，\fIaddr\fP 必须是落在先前由调用映射到 \fBmmap\fP(2)
+的区域内的地址。 其次，\fIaddr\fP 指定 \fIpgoff\fP 和 \fIsize\fP 标识的文件页将放置的地址。
+.PP
+.\" This rounding is weird, and not consistent with the treatment of
+.\" the analogous arguments for munmap()/mprotect() and for mlock().
+.\" MTK, 14 Sep 2005
+\fIaddr\fP 和 \fIsize\fP 中指定的值应该是系统页面大小的倍数。 如果不是，则内核将 \fIboth\fP 值 \fIdown\fP
+舍入为最接近的页面大小倍数。
+.PP
+\fIprot\fP 参数必须指定为 0.
+.PP
+\fIflags\fP 参数与 \fBmmap\fP(2) 具有相同的含义，但忽略 \fBMAP_NONBLOCK\fP 以外的所有标志。
+.SH "RETURN VALUE"
+成功时，\fBremap_file_pages\fP() 返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIaddr\fP 未引用使用 \fBMAP_SHARED\fP 标志创建的有效映射。
+.TP 
+\fBEINVAL\fP
+.\" And possibly others from vma->vm_ops->populate()
+\fIaddr\fP、\fIsize\fP、\fIprot\fP 或 \fIpgoff\fP 无效。
+.SH VERSIONS
+\fBremap_file_pages\fP() 系统调用出现在 Linux 2.5.46; 在 glibc 2.3.3 中添加了 glibc 支持。
+.SH STANDARDS
+\fBremap_file_pages\fP() 系统调用是 Linux 特有的。
+.SH NOTES
+.\" commit 3ee6dafc677a68e461a7ddafc94a580ebab80735
+从 Linux 2.6.23 开始，\fBremap_file_pages\fP() 仅在内存文件系统 (例如 \fBtmpfs\fP(5)、hugetlbfs 或
+ramfs) 上创建非线性映射。 在具有后备存储的文件系统上，\fBremap_file_pages\fP() 并不比使用 \fBmmap\fP(2)
+更有效地调整文件的哪些部分映射到哪些地址。
+.SH "SEE ALSO"
+\fBgetpagesize\fP(2), \fBmmap\fP(2), \fBmmap2\fP(2), \fBmprotect\fP(2), \fBmremap\fP(2),
+\fBmsync\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

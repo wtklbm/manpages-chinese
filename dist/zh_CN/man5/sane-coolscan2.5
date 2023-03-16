@@ -1,0 +1,153 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-coolscan2 5 "11 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-coolscan2
+.SH NAME
+sane\-coolscan2 \- 尼康 Coolscan 胶片扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-coolscan2\fP 库实现了一个 SANE (现在可以轻松访问扫描仪) 后端，可以访问尼康 Coolscan 胶片扫描仪。
+这个后端的一些函数应该算是 \fBbeta\-quality\fP
+软件了。大多数函数已经稳定了很长时间，但是新的开发当然不能也不会从第一天开始就正确的函数。请向后端的维护者报告任何奇怪的行为。
+
+.PP
+目前，已知以下扫描器可以使用此后端:
+.PP
+.RS
+.nf
+\f (CRModel: 连接类型
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-  \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+LS\-30 (Coolscan III)         SCSI
+LS\-2000                      SCSI
+LS\-40 ED (Coolscan IV)       USB
+LS\-4000 ED                   IEEE 1394
+LS\-8000 ED                   IEEE 1394\fR
+.fi
+.RE
+
+请发邮件给后台作者 (andras@users.sourceforge.net)，报告成功或失败。
+
+.SH OPTIONS
+后端支持的选项可以通过 \fBscanimage\fP(1) 等程序的命令行选项来选择，也可以通过 \fBxscanimage\fP(1) 或
+\fBxsane\fP(1) 中的 GUI 元素来选择。
+
+可以使用以下命令列出有效的命令行选项及其语法:
+.PP
+.RS
+扫描图像 \-\-help \-d coolscan2:<interface>:<device>
+.RE
+.PP
+其中 <interface> 和 <device> 指定有问题的设备，如配置文件中所示 (请参见下一节)。可以省略
+\fB\-d\fP 参数及其参数以获取有关第一个识别的扫描仪的信息。使用命令:
+.PP
+.RS
+扫描图像 \-L
+.RE
+.PP
+列出您的 SANE 安装识别的所有设备。
+
+这些选项应该通过前端给出的描述或工具提示进行完整描述。以下是一些最重要的选项的描述，这些选项必须使用它们提供给 \fBscanimage\fP(1): 的语法
+.TP 
+\fB\-\-frame <n>\fP
+如果使用电动胶片进纸器或 APS 适配器，此选项指定要在哪个帧上操作。帧号 \fI<n>\fP 的范围从 1 到可用帧数，每次初始化后端时
+(通常是每次启动前端时) 都会检测到。
+.TP 
+\fB\-\-subframe <x>\fP
+此选项将扫描窗口移动指定的量 (默认单位为毫米)。
+.TP 
+\fB\-\-infrared=yes/no\fP
+如果设置为 "yes"，扫描器将读取红外通道，从而允许在软件中删除缺陷。在第二次扫描期间读取红外图像，没有更改任何选项。在两次扫描之间不得重新启动后端。
+如果使用 \fBscanimage\fP(1)，请使用 \fB\-\-batch\-count=2\fP 执行批量扫描以获取 IR 信息。
+.TP 
+\fB\-\-depth <n>\fP
+这里 <n> 可以是 8 或扫描器支持的最大位数 (10、12 或 14)。它指定扫描器在将扫描数据发送到后端之前是否将扫描数据减少到
+8 位。如果使用 8 位，则会丢失一些信息，从而丢失图像质量，但与更高的深度相比，数据量更小。此外，许多成像程序和图像格式无法处理大于 8 位的深度。
+.TP 
+\fB\-\-autofocus\fP
+执行自动对焦操作。除非其他选项 ( \fB\-\-focus\-on\-centre\fP 和朋友) 另有规定，否则对焦将在所选扫描区域的中心进行。
+.TP 
+\fB\-\-ae\-wb\fP
+.TP 
+\fB\-\-ae\fP
+执行预扫描以自动计算曝光值。 \fB\-\-ae\-wb\fP 会保持白平衡，而 \fB\-\-ae\fP 会分别调整每个通道。
+.TP 
+\fB\-\-exposure\fP
+将所有曝光时间乘以该值。这允许在不修改白平衡的情况下进行曝光校正。
+.TP 
+\fB\-\-load\fP
+使用载玻片装载器时装载下一张载玻片 (仅适用于 SF\-200 散装进纸器)。
+.TP 
+\fB\-\-eject\fP
+使用载玻片加载器时弹出胶片或已安装的载玻片。
+.TP 
+\fB\-\-reset\fP
+重置扫描仪。扫描仪将执行与打开电源时相同的操作: 它将弹出胶片条 (使用 SF\-200 散装进纸器)
+并自行校准。每当扫描仪拒绝正确加载胶片时使用此选项，结果 \fB\-\-eject\fP 无法工作。
+
+.SH "CONFIGURATION FILE"
+配置文件 \fI/etc/sane.d/coolscan2.conf\fP 指定后端将使用的 device(s)。由于支持的连接类型 SCSI、USB 和
+IEEE 1394 的性质，SANE 发行版提供的默认配置文件无需编辑即可使用。
+
+配置文件中的每一行都是以下之一，其中所有条目都区分大小写:
+.TP 
+\fIblank or starting with a '#' character\fP
+这些行将被忽略，因此 '#' 可用于包含注释。
+.TP 
+\fIcontaining only the word "auto"\fP
+这指示后端通过扫描总线以查找具有已知标识符的设备来探测扫描仪。这是不存在配置文件时的默认操作。
+.TP 
+\fIa line of the form <interface>:<device>\fP
+这里的 <interface> 可以是 "scsi" 或 "usb" 其中之一，<device>
+是扫描仪的设备文件。请注意，IEEE 1394 设备由内核中的 SBP\-2 模块处理，并且在 SANE 中显示为 SCSI 设备。
+
+.SH FILES
+.TP 
+\fI/usr/lib/sane/libsane\-coolscan2.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-coolscan2.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.TP 
+\fI/etc/sane.d/coolscan2.conf\fP
+此后端的配置文件，每次初始化后端时读取。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_DEBUG_COOLSCAN2\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 128 请求打印所有调试输出。 较小的级别减少冗长。
+
+.SH "SEE ALSO"
+\fBsane\-scsi\fP(5), \fBsane\-usb\fP(5), \fBscanimage\fP(1), \fBxscanimage\fP(1),
+\fBxsane\fP(1)
+
+.SH BUGS
+目前，SANE 协议不允许在硬件发生变化时自动更新选项。因此 \fB\-\-frame\fP 选项的选择数量将在后端初始化时固定
+(通常是在用户运行前端时)。特别是后台初始化时，如果自动送片机中没有片片，则根本不会出现 \fB\-\-frame\fP
+选项。此外，强烈建议在更换胶片适配器后重新启动前端。
+
+2.4.19 之前的 Linux 内核有一个补丁，可以将来自 IEEE 1394 扫描仪的查询数据截断为 36
+字节，从而丢弃有关扫描仪的重要信息。因此，IEEE 1394 模型仅适用于 2.4.19 或更高版本。
+
+目前没有真正已知的错误，请向后端维护者或 SANE 开发人员的电子邮件列表报告任何错误。
+
+.SH AUTHORS
+后端由 Andr\['a] 的 Major \fI<andras@users.sourceforge.net>\fP 编写和维护。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

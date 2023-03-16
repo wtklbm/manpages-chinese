@@ -1,0 +1,153 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-CRYPTSETUP\-GENERATOR 8 "" "systemd 253" systemd\-cryptsetup\-generator
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-cryptsetup\-generator \- Unit generator for /etc/crypttab
+.SH SYNOPSIS
+.PP
+/usr/lib/systemd/system\-generators/systemd\-cryptsetup\-generator
+.SH DESCRIPTION
+.PP
+systemd\-cryptsetup\-generator 是一个生成器，它在引导早期和重新加载系统管理器的配置时将 /etc/crypttab
+转换为原生 systemd 单元。这将根据需要创建 \fBsystemd\-cryptsetup@.service\fP(8) 单元 \&。
+.PP
+systemd\-cryptsetup\-generator 实现 \fBsystemd.generator\fP(7)\&。
+.SH "KERNEL COMMAND LINE"
+.PP
+systemd\-cryptsetup\-generator 理解以下内核命令行参数:
+.PP
+\fIluks=\fP, \fIrd\&.luks=\fP
+.RS 4
+采用布尔型参数 \&。默认为 `是`\&。如果为 "no"，则完全禁用生成器 \&。 \fIrd\&.luks=\fP 仅在 initrd 中有效，而
+\fIluks=\fP 在主系统和 initrd\& 中均有效。
+.RE
+.PP
+\fIluks\&.crypttab=\fP, \fIrd\&.luks\&.crypttab=\fP
+.RS 4
+采用布尔型参数 \&。默认为 `是`\&。如果 "no"，导致生成器忽略在 /etc/crypttab 中配置的任何设备，但是
+(\fIluks\&.uuid=\fP 仍然可以工作) \&。\fIrd\&.luks\&.crypttab=\fP 仅在 initrd 中有效，而
+\fIluks\&.crypttab=\fP 在主系统和 initrd\& 中均有效。
+.RE
+.PP
+\fIluks\&.uuid=\fP, \fIrd\&.luks\&.uuid=\fP
+.RS 4
+将 LUKS 超级块 UUID 作为参数 \&。这将激活指定的设备作为引导过程的一部分，就像它在 /etc/crypttab\&
+中列出一样。可以多次指定此选项以设置多个设备 \&。 \fIrd\&.luks\&.uuid=\fP 仅在 initrd 中被接受，而
+\fIluks\&.uuid=\fP 被主系统和 initrd\& 中都接受。
+.sp
+如果 /etc/crypttab 包含具有相同 UUID 的条目，则将使用此处指定的名称、密钥文件和选项 \&。否则，该设备将具有名称
+`luks\-UUID`\&。
+.sp
+如果 /etc/crypttab 存在，只有那些在内核命令行指定的 UUID 才会在 initrd 或真正的 root\& 中被激活。
+.RE
+.PP
+\fIluks\&.name=\fP, \fIrd\&.luks\&.name=\fP
+.RS 4
+采用 LUKS 超级块 UUID，后跟 "=" 和名称 \&。这意味着 \fIrd\&.luks\&.uuid=\fP 或
+\fIluks\&.uuid=\fP，并且还会使 UUID 给出的 LUKS 设备出现在提供的名称 \& 下。
+.sp
+该参数类似于第一个 \fBcrypttab\fP(5) 字段 \fIvolume\-name\fP\&。
+.sp
+\fIrd\&.luks\&.name=\fP 仅在 initrd 中被接受，而 \fIluks\&.name=\fP 被主系统和 initrd\& 中都接受。
+.RE
+.PP
+\fIluks\&.data=\fP, \fIrd\&.luks\&.data=\fP
+.RS 4
+采用 LUKS 超级块 UUID，后跟 "=" 和用于托管加密数据的设备的块设备规范。
+.sp
+对于 \fIrd\&.luks\&.uuid=\fP 或 \fIluks\&.uuid=\fP 指定的条目，数据设备将设置为相应 UUID\& 的
+\fIrd\&.luks\&.data=\fP 或 \fIluks\&.data=\fP 指定的设备。
+.sp
+LUKS 数据设备参数对于指定具有在包含 "header=" 参数 \& 的 \fIluks\&.options\fP
+条目中指定的分离标头的加密数据设备很有用。例如，\fIrd\&.luks\&.uuid=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40
+\fIrd\&.luks\&.options=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40=header=/path/to/luks\&.hdr
+\fIrd\&.luks\&.data=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40=/dev/sdx\&。因此，在这种情况下，我们将尝试解锁由数据设备
+"/dev/sdx" 和放在 "/path/to/luks\&.hdr" 文件中的 LUKS 标头 (metadata) 组装的 LUKS
+设备。此语法目前仅在每个设备的基础上受支持，i\&.e\&。您必须指定 LUKS 设备 UUID\&。
+.sp
+该参数类似于第二个 \fBcrypttab\fP(5) 字段 \fIencrypted\-device\fP\&。
+.sp
+\fIrd\&.luks\&.data=\fP 仅在 initrd 中被接受，而 \fIluks\&.data=\fP 被主系统和 initrd\& 中都接受。
+.RE
+.PP
+\fIluks\&.key=\fP, \fIrd\&.luks\&.key=\fP
+.RS 4
+将密码文件名作为参数或 LUKS 超级块 UUID 后跟 "=" 和密码文件名 \&。
+.sp
+对于那些用 \fIrd\&.luks\&.uuid=\fP 或 \fIluks\&.uuid=\fP 指定的条目，密码文件将设置为相应 UUID 的
+\fIrd\&.luks\&.key=\fP 或 \fIluks\&.key=\fP 指定的文件，或者没有 UUID\& 指定的密码文件。
+.sp
+也可以指定在我们尝试解锁 LUKS 设备之前应该安装的外部设备 \&。systemd\-cryptsetup 将使用存储在该设备上的密码文件
+\&。包含密码文件的设备通过将冒号和设备标识符追加到密码文件路径 \&
+来指定。例如，\fIrd\&.luks\&.uuid=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40
+\fIrd\&.luks\&.key=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40=/keyfile:LABEL=keydev\&。因此，在这种情况下，我们将尝试挂载驻留在标签为
+`keydev`\& 的块设备上的文件系统。此语法目前仅在每个设备的基础上受支持，i\&.e\&。您必须指定 LUKS 设备 UUID\&。
+.sp
+该参数类似于第三个 \fBcrypttab\fP(5) 字段 \fIkey\-file\fP\&。
+.sp
+\fIrd\&.luks\&.key=\fP 仅在 initrd 中被接受，而 \fIluks\&.key=\fP 被主系统和 initrd\& 中都接受。
+.RE
+.PP
+\fIluks\&.options=\fP, \fIrd\&.luks\&.options=\fP
+.RS 4
+采用 LUKS 超级块 UUID，后跟 "=" 和一串用逗号分隔的选项，如参数 \&。这将覆盖给定 UUID\& 的选项。
+.sp
+如果只指定了一个选项列表，没有 UUID，它们适用于任何没有在别处指定的 UUID，并且没有在 /etc/crypttab\& 中的条目。
+.sp
+该参数类似于第四个 \fBcrypttab\fP(5) 字段 \fIoptions\fP\&。
+.sp
+可以指定在我们尝试解锁 LUKS 设备之前应该安装的外部设备 \&。systemd\-cryptsetup 将通过将 \fIluks\&.data\fP
+中指定的数据设备与在 "header=" 参数 \& 中找到的分离 LUKS 标头组合来组装 LUKS
+设备。例如，\fIrd\&.luks\&.uuid=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40
+\fIrd\&.luks\&.options=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40=header=/luks\&.hdr:LABEL=hdrdev
+\fIrd\&.luks\&.data=\fPb40f1abf\-2a53\-400a\-889a\-2eccc27eaa40=/dev/sdx\&。因此，在这种情况下，我们将尝试挂载驻留在标签为
+"hdrdev" 的块设备上的文件系统，并在该文件系统上查找 "luks\&.hdr"\&。所述标头将用于解锁存储在 /dev/sdx\& 上的
+(decrypt) 加密数据。此语法目前仅在每个设备的基础上受支持，i\&.e\&。您必须指定 LUKS 设备 UUID\&。
+.sp
+\fIrd\&.luks\&.options=\fP 仅由初始 RAM 磁盘 (initrd) 提供，而 \fIluks\&.options=\fP 由主系统和
+initrd\& 提供。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBcrypttab\fP(5), \fBsystemd\-cryptsetup@.service\fP(8),
+\fBsystemd\-cryptenroll\fP(1), \fBcryptsetup\fP(8), \fBsystemd\-fstab\-generator\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,159 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-canon_pp 5 "11 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-canon_pp
+.SH NAME
+sane\-canon_pp \- 佳能 CanoScan 并行端口平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-canon_pp\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对以下佳能平板扫描仪的访问:
+.PP
+.RS
+CanoScan FB320P
+.br
+CanoScan FB620P
+.br
+CanoScan FB330P
+.br
+CanoScan FB630P
+.br
+CanoScan N340P
+.br
+CanoScan N640P
+.br
+CanoScan N640P 前
+.br
+.RE
+.PP
+不支持 USB 扫描仪，并且没有计划在 future 中支持它们。 其他项目正在致力于支持 USB 扫描仪。有关详细信息，请参见 \fIPROJECTS\fP
+文件。 FB310P 和 FB610P 是重新标记的 Avision 扫描仪，它们使用不同的命令集，因此 future 中的此后端不太可能支持。
+.PP
+IMPORTANT: 这是阿尔法代码。虽然我们已尽一切努力使其尽可能可靠，但它并不总是按预期工作。 反馈仍然值得赞赏。
+请将任何错误报告发送给网页上列出的维护人员 (在下面的 \fBSEE ALSO\fP 中列出)。
+
+.SH "DEVICE NAMES"
+该后端需要 \fBlibieee1284\fP(3) 提供的形式的设备名称。 这些名称高度依赖于操作系统和版本。
+
+在 Linux 2.4 内核上，这将是 \fIparport0\fP 或更早版本 (2.2 及之前) 的形式，内核可能会产生像 \fI0x378\fP
+(端口的基地址) 或简单的 \fI0\fP 之类的名称，具体取决于您的模块配置。 检查 \fI/proc/parport\fP 的内容是否存在。
+如果您不想指定默认端口 (或不知道它的名称)，后端应该能够检测到您的扫描仪所在的端口。
+
+.SH CONFIGURATION
+\fIcanon_pp.conf\fP 文件的内容是供驱动程序使用的选项列表。 空行和以哈希标记 (#) 开头的行将被忽略。
+.PP
+目前支持的选项有 \fBieee1284\fP、\fBcalibrate\fP、\fBinit_mode\fP 和 \fBforce_nibble\fP
+
+选项 \fBieee1284\fP \fIport\-name\fP 定义要使用的端口。 端口名称的格式取决于操作系统，基于 libieee1284 提供的名称。
+请只使用这些行中的一行，否则除了一行之外的所有行都将被忽略。
+
+选项 \fBcalibrate\fP \fIcal\-file\fP \fI[port\-name]\fP 定义每个端口要使用的校准文件。 如果您只有一个
+parport，端口名参数可以省略 \- 但要小心，因为这会导致多扫描仪系统出现问题。
+您可以根据需要拥有任意数量的这些行，只要每行都有唯一的端口名称即可。 波浪号 (`~') 字符是可以接受的，并将扩展为 HOME 环境的值。
+
+选项 \fBinit_mode\fP \fI<AUTO|FB620P|FB630P>\fP \fI[portname]\fP
+定义在每个端口的基础上使用哪种初始化 (wake\-up) 模式。 如果您只有一个 parport，端口名参数可以省略 \-
+但要小心，因为这可能会导致多扫描仪系统出现问题。 您可以根据需要拥有任意数量的这些行，只要每行都有唯一的端口名称即可。 有效的初始化模式是 FB620P
+(在数据引脚上选通 10101010 和 01010101)，FB630P (在数据引脚上选通 11001100 和 00110011) 和
+AUTO，它将首先尝试 FB630P 模式，然后再尝试 FB620P 模式。 FB320P 也使用 FB620P 模式。 FB330P、N340P 和
+N640P 使用 FB630P 模式。
+
+选项 \fBforce_nibble\fP 强制驱动程序使用半字节模式，即使 libieee1284 报告 ECP 模式工作。 这解决了库报告 ECP
+模式工作的罕见问题，然后不工作。
+
+.SH TIPS
+.PP
+扫描前点击 "Calibrate" 按钮。 它极大地提高了扫描质量。
+.PP
+要启用扫描仪的自动检测，请取消注释 \fI/etc/sane.d/dll.conf\fP 中的 "canon_pp" 行
+.PP
+.SH FILES
+.TP 
+\fI/etc/sane.d/canon_pp.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-canon_pp.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-canon_pp.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_CANON_PP\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 更高的调试级别会增加输出的冗长程度。
+
+示例: export SANE_DEBUG_CANON_PP=4
+.SH NOTES
+\fBFeatures available in the Windows interface\fP
+.TP 
+\fBBrightness and Contrast\fP
+这些都没有实现，而且可能永远不会实现。 这些似乎完全在软件中实现。 如果您需要这些特性请使用 GIMP 或类似程序。
+.TP 
+\fBDescreen Mode\fP
+在我们的第一个分析中，这似乎只是使用抗混叠滤波器进行过采样。 同样，它似乎完全在软件中实现，因此 GIMP 是目前最好的选择。
+.TP 
+\fBGamma Tables\fP
+这正在调查中，但目前只会加载一个简单的伽马配置文件 (即: 校准期间返回的配置文件)。
+.PP
+\fBCommunication Problems\fP
+.PP
+libieee1284 中的 ECP 模式并不总是正常工作，即使使用新硬件也是如此。 我们认为这是一个 ppdev 问题。 如果您将配置文件更改为包含
+\fBforce_nibble\fP，问题就会消失，但您将只能以半字节模式进行扫描。
+.PP
+有时扫描仪可能处于我们的代码无法恢复它的状态。 如果后端报告不存在扫描仪，请尝试拔下电源并重新插入。 也可以尝试从直通端口拔下打印机。
+.PP
+当您第一次插入电源时，扫描器不会正确响应我们的命令。 您可能会发现，如果您在插入电源后立即尝试扫描，后端会错误地报告您没有扫描仪。
+为避免这种情况，请在尝试任何扫描之前给它大约 10 秒的时间进行自我重置。
+.PP
+\fBRepeated Lines\fP
+.PP
+有时在高分辨率 (即 600dpi) 下您会注意到出现两次的线条。 这些线对应于扫描头在扫描期间停止的点 (每次内部 64kb
+缓冲区已满时它都会停止)。 基本上这是扫描仪内部的机械问题，start/stop 事件的移动公差大于 1/600 英寸。 我从未尝试过 windows
+驱动程序，所以我不确定它是如何 (或是否) 解决这个问题的，但由于我们不知道如何倒回扫描仪头以再次执行这些操作，因此目前没有很好的方法处理问题。
+.PP
+\fBGrey\-scale Scans\fP
+.PP
+请注意，扫描仪使用绿色 LED 读取灰度扫描，这意味着绿色的东西会比正常情况下看起来更亮，红色和蓝色的项目会比正常情况下看起来更暗。
+对于彩色项的高精度灰度扫描，最好只进行彩色扫描，然后在 GIMP 等图形软件中转换为灰度。
+.PP
+\fBFB620P/FB320P Caveats\fP
+.PP
+这些模型不能以与其他模型相同的方式重置。 windows 驱动程序也不知道如何重置它们 \- 当留下不一致的扫描仪时，它将开始扫描页面的一半!
+.PP
+已知终止可在 FB*30P 型号上正常工作，但已知在 FB*20P 型号上会损坏。 我测试过的 FB620P
+在使用我们知道的方法中止扫描后只会返回垃圾。 最终停止能够使扫描仪处于可以关闭的状态，但不能进行另一次扫描。
+
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-dll(5),\fP \fBlibieee1284\fP(3),
+.br
+\fIhttp://canon\-fb330p.sourceforge.net/\fP
+
+.SH AUTHOR
+这个后端主要是 Simon Krix (逆向工程) 和 Matthew Duggan (SANE 接口) 的工作。
+.PP
+非常感谢 Kevin Easton 的评论和帮助，以及 Kent A. 感谢 Signorini 在 N340P 方面的帮助。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

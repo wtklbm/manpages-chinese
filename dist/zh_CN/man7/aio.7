@@ -1,0 +1,384 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2010 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH AIO 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+aio\-POSIX 异步 I/O 概述
+.SH DESCRIPTION
+POSIX 异步 I/O (AIO) 接口允许应用程序启动一个或多个异步执行的 I/O 操作 (即，在后台)。 应用程序可以选择以多种方式接收 I/O
+操作完成的通知: 通过传递信号、通过实例化线程或根本不通知。
+.PP
+POSIX AIO 接口由以下函数组成:
+.TP 
+\fBaio_read\fP(3)
+排队读取请求。 这是 \fBread\fP(2) 的异步模拟。
+.TP 
+\fBaio_write\fP(3)
+排队写入请求。 这是 \fBwrite\fP(2) 的异步模拟。
+.TP 
+\fBaio_fsync\fP(3)
+为文件描述符上的 I/O 操作排队同步请求。 这是 \fBfsync\fP(2) 和 \fBfdatasync\fP(2) 的异步模拟。
+.TP 
+\fBaio_error\fP(3)
+获取排队 I/O 请求的错误状态。
+.TP 
+\fBaio_return\fP(3)
+获取完成的 I/O 请求的返回状态。
+.TP 
+\fBaio_suspend\fP(3)
+挂起调用方，直到一组指定的 I/O 请求中的一个或多个完成。
+.TP 
+\fBaio_cancel\fP(3)
+尝试取消对指定文件描述符的未完成的 I/O 请求。
+.TP 
+\fBlio_listio\fP(3)
+使用单个函数调用对多个 I/O 请求进行排队。
+.PP
+\fIaiocb\fP (`异步 I/O 控制块`) 结构定义了控制 I/O 操作的参数。 这种类型的参数与上面列出的所有函数一起使用。
+此结构体具有以下形式:
+.PP
+.in +4n
+.EX
+#include <aiocb.h>
+
+struct aiocb {
+    /* The order of these fields is implementation\-dependent */
+
+    int             aio_fildes;     /* File descriptor */
+    off_t           aio_offset;     /* File offset */
+    volatile void  *aio_buf;         /* Location of buffer */
+    size_t          aio_nbytes;     /* Length of transfer */
+    int             aio_reqprio;    /* Request priority */
+    struct sigevent aio_sigevent;    /* Notification method */
+    int             aio_lio_opcode; /* Operation to be performed;
+                                       lio_listio() only */
+
+    /* Various implementation\-internal fields not shown */
+};
+
+/* Operation codes for \[aq]aio_lio_opcode\[aq]: */
+
+enum { LIO_READ, LIO_WRITE, LIO_NOP };
+.EE
+.in
+.PP
+这个结构体的字段如下:
+.TP 
+\fIaio_fildes\fP
+要对其执行 I/O 操作的文件描述符。
+.TP 
+\fIaio_offset\fP
+这是要执行 I/O 操作的文件偏移量。
+.TP 
+\fIaio_buf\fP
+这是用于为读取或写入操作传输数据的缓冲区。
+.TP 
+\fIaio_nbytes\fP
+这是 \fIaio_buf\fP 指向的缓冲区的大小。
+.TP 
+\fIaio_reqprio\fP
+该字段指定一个值，从调用线程的实时优先级中减去该值以确定执行此 I/O 请求的优先级 (请参见
+\fBpthread_setschedparam\fP(3)).  指定的值必须介于 0 和
+\fIsysconf(_SC_AIO_PRIO_DELTA_MAX)\fP 返回的值之间。 文件同步操作忽略此字段。
+.TP 
+\fIaio_sigevent\fP
+该字段是一个结构体，指定在异步 I/O 操作完成时如何通知调用者。 \fIaio_sigevent.sigev_notify\fP 的可能值为
+\fBSIGEV_NONE\fP、\fBSIGEV_SIGNAL\fP 和 \fBSIGEV_THREAD\fP。 有关详细信息，请参见 \fBsigevent\fP(7)。
+.TP 
+\fIaio_lio_opcode\fP
+要执行的操作类型; 仅用于 \fBlio_listio\fP(3)。
+.PP
+除了上面列出的标准函数外，GNU C 库还为 POSIX AIO API 提供以下扩展:
+.TP 
+\fBaio_init\fP(3)
+设置参数以调整 glibc POSIX AIO 实现的行为。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIaiocb\fP 结构体的 \fIaio_reqprio\fP 字段小于 0，或大于调用 \fIsysconf(_SC_AIO_PRIO_DELTA_MAX)\fP
+返回的限制。
+.SH VERSIONS
+自 glibc 2.1 以来，glibc 提供了 POSIX AIO 接口。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在使用之前将控制块缓冲区清零是个好主意 (请参见 \fBmemset\fP(3)).  当 I/O 操作正在进行时，不得更改控制块缓冲区和
+\fIaio_buf\fP 指向的缓冲区。 在 I/O 操作完成之前，这些缓冲区必须保持有效。
+.PP
+使用相同 \fIaiocb\fP 结构体的同时异步读取或写入操作会产生未定义的结果。
+.PP
+.\" http://lse.sourceforge.net/io/aio.html
+.\" http://lse.sourceforge.net/io/aionotes.txt
+.\" http://lwn.net/Articles/148755/
+当前的 Linux POSIX AIO 实现由 glibc 在用户空间中提供。 这有很多限制，最明显的是维护多个线程来执行 I/O
+操作非常昂贵并且扩展性差。 基于内核状态机的异步 I/O 实现的工作已经进行了一段时间 (参见
+\fBio_submit\fP(2)、\fBio_setup\fP(2)、\fBio_cancel\fP(2)、\fBio_destroy\fP(2)、\fBio_getevents\fP(2))，但该实现尚未成熟到
+POSIX AIO 实现可以使用内核系统调用完全重新实现。
+.SH EXAMPLES
+下面的程序打开在其命令行参数中命名的每个文件，并使用 \fBaio_read\fP(3) 对生成的文件描述符进行请求排队。 然后程序循环，定期监视仍在使用
+\fBaio_error\fP(3) 进行的每个 I/O 操作。 每个 I/O 请求都设置为通过传递信号来提供通知。 在所有 I/O 请求完成后，程序使用
+\fBaio_return\fP(3) 检索它们的状态。
+.PP
+\fBSIGQUIT\fP 信号 (通过键入 control\-\e 生成) 使程序使用 \fBaio_cancel\fP(3) 请求取消每个未完成的请求。
+.PP
+这是我们在运行该程序时可能会看到的示例。 在此示例中，程序将两个标准输入请求排队，这些请求由包含 "abc" 和 "x" 的两行输入满足。
+.PP
+.in +4n
+.EX
+$ \fB./a.out /dev/stdin /dev/stdin\fP
+在描述符 3 上打开 /dev/stdin
+在描述符 4 上打开 /dev/stdin
+aio_error():
+    对于请求 0 (描述符 3) : 进行中
+    对于请求 1 (描述符 4) : 进行中
+\fBabc\fP
+I/O 接收到完成信号
+aio_error():
+    对于请求 0 (描述符 3) : I/O 成功
+    对于请求 1 (描述符 4) : 进行中
+aio_error():
+    对于请求 1 (描述符 4) : 进行中
+\fBx\fP
+I/O 接收到完成信号
+aio_error():
+    对于请求 1 (描述符 4) : I/O 成功
+所有 I/O 请求已完成
+aio_return():
+    对于请求 0 (描述符 3) : 4
+    对于请求 1 (描述符 4) : 2
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
+#include <aio.h>
+#include <signal.h>
+
+#define BUF_SIZE 20     /* Size of buffers for read operations */
+
+#define errExit(msg) do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+struct ioRequest {      /* Application\-defined structure for tracking
+                           I/O requests */
+    int           reqNum;
+    int           status;
+    struct aiocb *aiocbp;
+};
+
+static volatile sig_atomic_t gotSIGQUIT = 0;
+                        /* On delivery of SIGQUIT, we attempt to
+                           cancel all outstanding I/O requests */
+
+static void             /* Handler for SIGQUIT */
+quitHandler(int sig)
+{
+    gotSIGQUIT = 1;
+}
+
+#define IO_SIGNAL SIGUSR1   /* Signal used to notify I/O completion */
+
+static void                 /* Handler for I/O completion signal */
+aioSigHandler(int sig, siginfo_t *si, void *ucontext)
+{
+    if (si\->si_code == SI_ASYNCIO) {
+        write(STDOUT_FILENO, "I/O completion signal received\en", 31);
+
+        /* The corresponding ioRequest structure would be available as
+               struct ioRequest *ioReq = si\->si_value.sival_ptr;
+           and the file descriptor would then be available via
+               ioReq\->aiocbp\->aio_fildes */
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    struct sigaction sa;
+    int s;
+    int numReqs;        /* Total number of queued I/O requests */
+    int openReqs;        /* Number of I/O requests still in progress */
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <pathname> <pathname>...\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    numReqs = argc \- 1;
+
+    /* Allocate our arrays. */
+
+    struct ioRequest *ioList = calloc(numReqs, sizeof(*ioList));
+    if (ioList == NULL)
+        errExit("calloc");
+
+    struct aiocb *aiocbList = calloc(numReqs, sizeof(*aiocbList));
+    if (aiocbList == NULL)
+        errExit("calloc");
+
+    /* Establish handlers for SIGQUIT and the I/O completion signal. */
+
+    sa.sa_flags = SA_RESTART;
+    sigemptyset(&sa.sa_mask);
+
+    sa.sa_handler = quitHandler;
+    if (sigaction(SIGQUIT, &sa, NULL) == \-1)
+        errExit("sigaction");
+
+    sa.sa_flags = SA_RESTART | SA_SIGINFO;
+    sa.sa_sigaction = aioSigHandler;
+    if (sigaction(IO_SIGNAL, &sa, NULL) == \-1)
+        errExit("sigaction");
+
+    /* Open each file specified on the command line, and queue
+       a read request on the resulting file descriptor. */
+
+    for (size_t j = 0; j < numReqs; j++) {
+        ioList[j].reqNum = j;
+        ioList[j].status = EINPROGRESS;
+        ioList[j].aiocbp = &aiocbList[j];
+
+        ioList[j].aiocbp\->aio_fildes = open(argv[j + 1], O_RDONLY);
+        if (ioList[j].aiocbp\->aio_fildes == \-1)
+            errExit("open");
+        printf("opened %s on descriptor %d\en", argv[j + 1],
+                ioList[j].aiocbp\->aio_fildes);
+
+        ioList[j].aiocbp\->aio_buf = malloc(BUF_SIZE);
+        if (ioList[j].aiocbp\->aio_buf == NULL)
+            errExit("malloc");
+
+        ioList[j].aiocbp\->aio_nbytes = BUF_SIZE;
+        ioList[j].aiocbp\->aio_reqprio = 0;
+        ioList[j].aiocbp\->aio_offset = 0;
+        ioList[j].aiocbp\->aio_sigevent.sigev_notify = SIGEV_SIGNAL;
+        ioList[j].aiocbp\->aio_sigevent.sigev_signo = IO_SIGNAL;
+        ioList[j].aiocbp\->aio_sigevent.sigev_value.sival_ptr =
+                                &ioList[j];
+
+        s = aio_read(ioList[j].aiocbp);
+        if (s == \-1)
+            errExit("aio_read");
+    }
+
+    openReqs = numReqs;
+
+    /* Loop, monitoring status of I/O requests. */
+
+    while (openReqs > 0) {
+        sleep(3);       /* Delay between each monitoring step */
+
+        if (gotSIGQUIT) {
+
+            /* On receipt of SIGQUIT, attempt to cancel each of the
+               outstanding I/O requests, and display status returned
+               from the cancelation requests. */
+
+            printf("got SIGQUIT; canceling I/O requests: \en");
+
+            for (size_t j = 0; j < numReqs; j++) {
+                if (ioList[j].status == EINPROGRESS) {
+                    printf("    Request %zu on descriptor %d:", j,
+                            ioList[j].aiocbp\->aio_fildes);
+                    s = aio_cancel(ioList[j].aiocbp\->aio_fildes,
+                            ioList[j].aiocbp);
+                    if (s == AIO_CANCELED)
+                        printf("I/O canceled\en");
+                    else  if (s == AIO_NOTCANCELED)
+                        printf("I/O not canceled\en");
+                    else if (s == AIO_ALLDONE)
+                        printf("I/O all done\en");
+                    else
+                        perror("aio_cancel");
+                }
+            }
+
+            gotSIGQUIT = 0;
+        }
+
+        /* Check the status of each I/O request that is still
+           in progress. */
+
+        printf("aio_error():\en");
+        for (size_t j = 0; j < numReqs; j++) {
+            if (ioList[j].status == EINPROGRESS) {
+                printf("    for request %zu (descriptor %d): ",
+                        j, ioList[j].aiocbp\->aio_fildes);
+                ioList[j].status = aio_error(ioList[j].aiocbp);
+
+                switch (ioList[j].status) {
+                case 0:
+                    printf("I/O succeeded\en");
+                    break;   
+                case EINPROGRESS:
+                    printf("In progress\en");
+                    break;
+                case ECANCELED:
+                    printf("Canceled\en");
+                    break;
+                default:
+                    perror("aio_error");
+                    break;
+                }
+
+                if (ioList[j].status != EINPROGRESS)
+                    openReqs\-\-;
+            }
+        }
+    }
+
+    printf("All I/O requests completed\en");
+
+    /* Check status return of all I/O requests. */
+
+    printf("aio_return():\en");
+    for (size_t j = 0; j < numReqs; j++) {
+        ssize_t s;
+
+        s = aio_return(ioList[j].aiocbp);
+        printf("    for request %zu (descriptor %d): %zd\en",
+                j, ioList[j].aiocbp\->aio_fildes, s);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBio_cancel\fP(2), \fBio_destroy\fP(2), \fBio_getevents\fP(2), \fBio_setup\fP(2),
+\fBio_submit\fP(2), \fBaio_cancel\fP(3), \fBaio_error\fP(3), \fBaio_init\fP(3),
+\fBaio_read\fP(3), \fBaio_return\fP(3), \fBaio_write\fP(3), \fBlio_listio\fP(3)
+.PP
+"Asynchronous I/O Support in Linux 2.5"、Bhattacharya、Pratt、Pulavarty 和
+Morgan，Linux 研讨会论文集，2003 年，
+.UR https://www.kernel.org/doc/ols/2003/ols2003\-pages\-351\-366.pdf
+.UE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

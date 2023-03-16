@@ -1,0 +1,215 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\" and Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified 1993-07-24 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 1995-08-14 by Arnt Gulbrandsen <agulbra@troll.no>
+.\" Modified 2002-07-27 by Walter Harms
+.\" 	(walter.harms@informatik.uni-oldenburg.de)
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pow 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pow, powf, powl \- 幂数
+.SH LIBRARY
+数学库 (\fIlibm\fP、\fI\-lm\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <math.h>\fP
+.PP
+\fBdouble pow(double \fP\fIx\fP\fB, double \fP\fIy\fP\fB);\fP
+\fBfloat powf(float \fP\fIx\fP\fB, float \fP\fIy\fP\fB);\fP
+\fBlong double powl(long double \fP\fIx\fP\fB, long double \fP\fIy\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpowf\fP(), \fBpowl\fP():
+.nf
+    _ISOC99_ 源 ||_POSIX_C_SOURCE >= 200112L
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数返回 \fIx\fP 的 \fIy\fP 次方的值。
+.SH "RETURN VALUE"
+成功时，这些函数将 \fIx\fP 的值返回到 \fIy\fP 的幂。
+.PP
+.\" The range error is generated at least as far back as glibc 2.4
+如果结果溢出，则发生范围错误，而函数分别返回 \fBHUGE_VAL\fP、\fBHUGE_VALF\fP 或 \fBHUGE_VALL\fP，并带有数学上正确的符号。
+.PP
+.\" POSIX.1 does not specify the sign of the zero,
+.\" but http://sources.redhat.com/bugzilla/show_bug.cgi?id=2678
+.\" points out that the zero has the wrong sign in some cases.
+如果结果下溢且不可表示，则会发生范围错误，并返回带有适当符号的 0.0。
+.PP
+.\" pow(\(+-0, <0 [[odd]]) = HUGE_VAL*
+若 \fIx\fP 为 + 0 或 \-0，\fIy\fP 为小于 0 的奇数，则极点错误，返回 \fBHUGE_VAL\fP、\fBHUGE_VALF\fP 或
+\fBHUGE_VALL\fP，与 \fIx\fP 同号。
+.PP
+.\" pow(\(+-0, <0 [[!odd]]) = HUGE_VAL*
+.\" The pole error is generated at least as far back as glibc 2.4
+如果 \fIx\fP 为 + 0 或 \-0，且 \fIy\fP 小于 0 且不是奇数，则发生极点错误并返回 +\fBHUGE_VAL\fP、+\fBHUGE_VALF\fP 或
++\fBHUGE_VALL\fP。
+.PP
+.\" pow(\(+-0, >0 [[odd]]) = \(+-0
+如果 \fIx\fP 为 + 0 (\-0)，且 \fIy\fP 为大于 0 的奇数，则结果为 + 0 (\-0)。
+.PP
+.\" pow(\(+-0, >0 [[!odd]]) = +0
+如果 \fIx\fP 为 0，且 \fIy\fP 大于 0 且不是奇数，则结果为 + 0。
+.PP
+.\" pow(-1, \(+-INFINITY) = 1.0
+如果 \fIx\fP 为 \-1，且 \fIy\fP 为正无穷大或，负 无穷大，则结果为 1.0。
+.PP
+.\" pow(+1, y) = 1.0
+如果 \fIx\fP 为 + 1，则结果为 1.0 (即使 \fIy\fP 为 NaN)。
+.PP
+.\" pow(x, \(+-0) = 1.0
+如果 \fIy\fP 为 0，则结果为 1.0 (即使 \fIx\fP 为 NaN)。
+.PP
+.\" pow(<0, y) = NaN
+.\" The domain error is generated at least as far back as glibc 2.4
+如果 \fIx\fP 是一个小于 0 的有限值，而 \fIy\fP 是一个有限非整数，则会发生域错误，并返回 NaN。
+.PP
+.\" pow(|x|<1, -INFINITY) = INFINITY
+如果 \fIx\fP 的绝对值小于 1，且 \fIy\fP 为，负 无穷大，则结果为正无穷大。
+.PP
+.\" pow(|x|>1, -INFINITY) = +0
+如果 \fIx\fP 的绝对值大于 1，且 \fIy\fP 为，负 无穷大，则结果为 + 0。
+.PP
+.\" pow(|x|<1, INFINITY) = +0
+如果 \fIx\fP 的绝对值小于 1，且 \fIy\fP 为正无穷大，则结果为 + 0。
+.PP
+.\" pow(|x|>1, INFINITY) = INFINITY
+如果 \fIx\fP 的绝对值大于 1，且 \fIy\fP 为正无穷大，则结果为正无穷大。
+.PP
+.\" pow(-INFINITY, <0 [[odd]]) = -0
+如果 \fIx\fP 为 negative 无穷大，且 \fIy\fP 为小于 0 的奇数，则结果为 \-0。
+.PP
+.\" pow(-INFINITY, <0 [[!odd]]) = +0
+如果 \fIx\fP 为 negative 无穷大，且 \fIy\fP 小于 0 且不是奇数，则结果为 + 0。
+.PP
+.\" pow(-INFINITY, >0 [[odd]]) = -INFINITY
+如果 \fIx\fP 为 negative 无穷大，且 \fIy\fP 为大于 0 的奇数，则结果为 negative 无穷大。
+.PP
+.\" pow(-INFINITY, >0 [[!odd]]) = INFINITY
+如果 \fIx\fP 为 negative 无穷大，且 \fIy\fP 大于 0 且不是奇数，则结果为正无穷大。
+.PP
+.\" pow(INFINITY, <0) = +0
+如果 \fIx\fP 为正无穷大且 \fIy\fP 小于 0，则结果为 + 0。
+.PP
+.\" pow(INFINITY, >0) = INFINITY
+如果 \fIx\fP 为正无穷大，且 \fIy\fP 大于 0，则结果为正无穷大。
+.PP
+.\" pow(NaN, y) or pow(x, NaN) = NaN
+除上述规定外，如果 \fIx\fP 或 \fIy\fP 为 NaN，则结果为 NaN。
+.SH ERRORS
+.\" FIXME . review status of this error
+.\" longstanding bug report for glibc:
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=369
+.\" For negative x, and -large and +large y, glibc 2.8 gives incorrect
+.\" results
+.\" pow(-0.5,-DBL_MAX)=nan
+.\" EDOM FE_INVALID nan; fail-errno fail-except fail-result;
+.\" FAIL (expected: range-error-overflow (ERANGE, FE_OVERFLOW); +INF)
+.\"
+.\" pow(-1.5,-DBL_MAX)=nan
+.\" EDOM FE_INVALID nan; fail-errno fail-except fail-result;
+.\" FAIL (expected: range-error-underflow (ERANGE, FE_UNDERFLOW); +0)
+.\"
+.\" pow(-0.5,DBL_MAX)=nan
+.\" EDOM FE_INVALID nan; fail-errno fail-except fail-result;
+.\" FAIL (expected: range-error-underflow (ERANGE, FE_UNDERFLOW); +0)
+.\"
+.\" pow(-1.5,DBL_MAX)=nan
+.\" EDOM FE_INVALID nan; fail-errno fail-except fail-result;
+.\" FAIL (expected: range-error-overflow (ERANGE, FE_OVERFLOW); +INF)
+有关如何确定调用这些函数时是否发生错误的信息，请参见 \fBmath_error\fP(7)。
+.PP
+可能会出现以下错误:
+.TP 
+Domain error: \fIx\fP is negative, and \fIy\fP is a finite noninteger
+\fIerrno\fP 设置为 \fBEDOM\fP。 引发无效浮点异常 (\fBFE_INVALID\fP)。
+.TP 
+Pole error: \fIx\fP is zero, and \fIy\fP is negative
+\fIerrno\fP 设置为 \fBERANGE\fP (但请参见 BUGS)。 引发被零除浮点异常 (\fBFE_DIVBYZERO\fP)。
+.TP 
+Range error: the result overflows
+\fIerrno\fP 设置为 \fBERANGE\fP。 引发溢出浮点异常 (\fBFE_OVERFLOW\fP)。
+.TP 
+Range error: the result underflows
+\fIerrno\fP 设置为 \fBERANGE\fP。 引发下溢浮点异常 (\fBFE_UNDERFLOW\fP)。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpow\fP(),
+\fBpowf\fP(),
+\fBpowl\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+C99, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+返回 \fIdouble\fP 的变体也符合 SVr4、4.3BSD。
+.SH BUGS
+.SS "Historical bugs (now fixed)"
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=13932
+.\" commit c3d466cba1692708a19c6ff829d0386c83a0c6e5
+在 glibc 2.28 之前，在某些体系结构 (例如 x86\-64) 上，\fBpow\fP() 对于某些输入的速度可能比其他附近的输入慢 10,000
+倍以上。 这仅影响 \fBpow\fP()，而不影响 \fBpowf\fP() 或 \fBpowl\fP()。 此问题已在 glibc 2.28 中修复。
+.PP
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=3866
+在 glibc 2.16 中修复了 \fBpow\fP() 的 glibc 实现中的一些错误。
+.PP
+.\"
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=6776
+.\" or possibly 2.9, I haven't found the source code change
+.\" and I don't have a 2.9 system to test
+在 glibc 2.9 和更早版本中，当出现极点错误时，\fIerrno\fP 被设置为 \fBEDOM\fP 而不是 POSIX 规定的 \fBERANGE\fP。 自
+glibc 2.10 以来，glibc 做了正确的事情。
+.PP
+.\" Actually, glibc 2.3.2 is the earliest test result I have; so yet
+.\" to confirm if this error occurs only in glibc 2.3.2.
+在 glibc 2.3.2 及更早版本中，当发生上溢或下溢错误时，glibc 的 \fBpow\fP() 除了上溢或下溢异常外，还会生成一个伪造的无效浮点异常
+(\fBFE_INVALID\fP)。
+.SH "SEE ALSO"
+\fBcbrt\fP(3), \fBcpow\fP(3), \fBsqrt\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

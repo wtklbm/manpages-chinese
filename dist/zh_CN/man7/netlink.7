@@ -1,0 +1,431 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (c) 1998 by Andi Kleen.
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Based on the original comments from Alexey Kuznetsov
+.\" Modified 2005-12-27 by Hasso Tepper <hasso@estpak.ee>
+.\" $Id: netlink.7,v 1.8 2000/06/22 13:23:00 ak Exp $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH netlink 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+netlink \- 内核和用户空间之间的通信 (AF_NETLINK)
+.SH SYNOPSIS
+.nf
+\fB#include <asm/types.h>\fP
+\fB#include <sys/socket.h>\fP
+\fB#include <linux/netlink.h>\fP
+.PP
+\fBnetlink_socket = socket(AF_NETLINK, \fP\fIsocket_type\fP\fB, \fP\fInetlink_family\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+Netlink 用于在内核和用户空间进程之间传输信息。 它由用于用户空间进程的基于套接字的标准接口和用于内核模块的内部内核 API 组成。
+本手册页中未记录内部内核接口。 还有一个过时的 netlink 接口，通过 netlink 字符设备; 此接口未在此处记录，仅用于向后兼容。
+.PP
+Netlink 是一种面向数据报的服务。 \fBSOCK_RAW\fP 和 \fBSOCK_DGRAM\fP 都是 \fIsocket_type\fP 的有效值。
+但是，netlink 协议不区分数据报和原始套接字。
+.PP
+\fInetlink_family\fP 选择要与之通信的内核模块或网络链接组。 当前分配的 netlink 系列是:
+.TP 
+\fBNETLINK_ROUTE\fP
+接收路由和链路更新，可用于修改路由表 (IPv4 和 IPv6)、IP 地址、链路参数、邻居设置、排队规则、流量类别和数据包分类器 (参见
+\fBrtnetlink\fP(7)).
+.TP 
+\fBNETLINK_W1\fP (Linux 2.6.13 to Linux 2.16.17)
+来自 1\-wire 子系统的消息。
+.TP 
+\fBNETLINK_USERSOCK\fP
+为用户模式套接字协议保留。
+.TP 
+\fBNETLINK_FIREWALL\fP (up to and including Linux 3.4)
+.\" removed by commit d16cf20e2f2f13411eece7f7fb72c17d141c4a84
+将 IPv4 数据包从 netfilter 传输到用户空间。 由 \fIip_queue\fP 内核模块使用。 在宣布过时很长一段时间后 (支持更高级的
+\fInfnetlink_queue\fP 特性)，\fBNETLINK_FIREWALL\fP 在 Linux 3.5 中被删除。
+.TP 
+\fBNETLINK_SOCK_DIAG\fP (since Linux 3.3)
+.\" commit 7f1fb60c4fc9fb29fbb406ac8c4cfb4e59e168d6
+从内核查询各种协议族的 socket 信息 (见 \fBsock_diag\fP(7)).
+.TP 
+\fBNETLINK_INET_DIAG\fP (since Linux 2.6.14)
+\fBNETLINK_SOCK_DIAG\fP 的过时同义词。
+.TP 
+\fBNETLINK_NFLOG\fP (up to and including Linux 3.16)
+Netfilter/iptables ULOG.
+.TP 
+\fBNETLINK_XFRM\fP
+.\" FIXME More details on NETLINK_XFRM needed.
+IPsec.
+.TP 
+\fBNETLINK_SELINUX\fP (since Linux 2.6.4)
+SELinux 事件通知。
+.TP 
+\fBNETLINK_ISCSI\fP (since Linux 2.6.15)
+.\" FIXME More details on NETLINK_ISCSI needed.
+Open\-iSCSI.
+.TP 
+\fBNETLINK_AUDIT\fP (since Linux 2.6.6)
+.\" FIXME More details on NETLINK_AUDIT needed.
+Auditing.
+.TP 
+\fBNETLINK_FIB_LOOKUP\fP (since Linux 2.6.13)
+.\" FIXME More details on NETLINK_FIB_LOOKUP needed.
+从用户空间访问 FIB 查找。
+.TP 
+\fBNETLINK_CONNECTOR\fP (since Linux 2.6.14)
+.\" commit baa293e9544bea71361950d071579f0e4d5713ed
+内核连接器。 有关详细信息，请参见 Linux 内核源代码树中的 \fIDocumentation/driver\-api/connector.rst\fP
+(或 Linux 5.2 和更早版本中的 \fI/Documentation/connector/connector.*\fP)。
+.TP 
+\fBNETLINK_NETFILTER\fP (since Linux 2.6.14)
+.\" FIXME More details on NETLINK_NETFILTER needed.
+Netfilter 子系统。
+.TP 
+\fBNETLINK_SCSITRANSPORT\fP (since Linux 2.6.19)
+.\" commit 84314fd4740ad73550c76dee4a9578979d84af48
+.\" FIXME More details on NETLINK_SCSITRANSPORT needed.
+SCSI 传输。
+.TP 
+\fBNETLINK_RDMA\fP (since Linux 3.0)
+.\" commit b2cbae2c248776d81cc265ff7d48405b6a4cc463
+.\" FIXME More details on NETLINK_RDMA needed.
+无限带宽 RDMA。
+.TP 
+\fBNETLINK_IP6_FW\fP (up to and including Linux 3.4)
+将 IPv6 数据包从 netfilter 传输到用户空间。 由 \fIip6_queue\fP 内核模块使用。
+.TP 
+\fBNETLINK_DNRTMSG\fP
+DECnet 路由消息。
+.TP 
+\fBNETLINK_KOBJECT_UEVENT\fP (since Linux 2.6.10)
+.\" FIXME More details on NETLINK_KOBJECT_UEVENT needed.
+内核消息到用户空间。
+.TP 
+\fBNETLINK_GENERIC\fP (since Linux 2.6.15)
+泛型 netlink 系列，用于简化 netlink 的使用。
+.TP 
+\fBNETLINK_CRYPTO\fP (since Linux 3.2)
+.\" commit a38f7907b926e4c6c7d389ad96cc38cec2e5a9e9
+.\" Author: Steffen Klassert <steffen.klassert@secunet.com>
+Netlink 接口请求有关使用内核加密 API 注册的密码的信息，并允许配置内核加密 API。
+.PP
+Netlink 消息由带有一个或多个 \fInlmsghdr\fP 标头和相关，载荷，的字节流组成。 只能使用标准 \fBNLMSG_*\fP 宏访问字节流。
+有关详细信息，请参见 \fBnetlink\fP(3)。
+.PP
+在多部分消息中 (多个 \fInlmsghdr\fP 标头与一个字节流中的相关，载荷)，第一个和所有后续标头都设置了 \fBNLM_F_MULTI\fP
+标志，但最后一个标头的类型为 \fBNLMSG_DONE\fP。
+.PP
+在每个 \fInlmsghdr\fP 之后是有效载荷。
+.PP
+.in +4n
+.EX
+struct nlmsghdr {
+    __u32 nlmsg_len;    /* Length of message including header */
+    __u16 nlmsg_type;   /* Type of message content */
+    __u16 nlmsg_flags;  /* Additional flags */
+    __u32 nlmsg_seq;    /* Sequence number */
+    __u32 nlmsg_pid;    /* Sender port ID */
+};
+.EE
+.in
+.PP
+\fInlmsg_type\fP 可以是标准消息类型之一: \fBNLMSG_NOOP\fP 消息将被忽略，\fBNLMSG_ERROR\fP
+消息发出错误信号并且有效，载荷，包含 \fInlmsgerr\fP 结构体，\fBNLMSG_DONE\fP 消息终止多部分消息。
+错误消息会，追加，原始请求，除非用户请求限制错误消息，并在请求时获取额外的错误数据。
+.PP
+.in +4n
+.EX
+struct nlmsgerr {
+    int error;        /* Negative errno or 0 for acknowledgements */  
+    struct nlmsghdr msg;  /* Message header that caused the error */
+    /*
+     * 后接消息内容
+     * 除非设置了 NETLINK_CAP_ACK
+     * 或 ACK 表示成功 (错误 == 0)。
+     * 例如带有属性的泛型 Netlink 消息。
+     * 消息长度与 NLMSG_ALIGN() 对齐
+     */
+    /*
+     * 后跟在枚举 nlmsgerr_attrs 中定义的 TLV
+     * 如果设置了 NETLINK_EXT_ACK
+     */
+};
+.EE
+.in
+.PP
+netlink 系列通常指定更多的消息类型，请参见相应的手册页，例如，\fBNETLINK_ROUTE\fP 为 \fBrtnetlink\fP(7)。
+.nh
+.ad l
+.TS
+tab(:);
+l s
+lB lx.
+Standard flag bits in \fInlmsg_flags\fP
+_
+NLM_F_REQUEST:T{
+Must be set on all request messages.
+T}
+NLM_F_MULTI:T{
+The message is part of a multipart message terminated by
+\fBNLMSG_DONE\fP.
+T}
+NLM_F_ACK:T{
+Request for an acknowledgement on success.
+T}
+NLM_F_ECHO:T{
+Echo this request.
+T}
+.TE
+.ad
+.hy
+.\" No right adjustment for text blocks in tables
+.nh
+.ad l
+.TS
+tab(:);
+l s
+lB lx.
+Additional flag bits for GET requests
+_
+NLM_F_ROOT:T{
+Return the complete table instead of a single entry.
+T}
+NLM_F_MATCH:T{
+Return all entries matching criteria passed in message content.
+Not implemented yet.
+T}
+NLM_F_ATOMIC:T{
+Return an atomic snapshot of the table.
+T}
+NLM_F_DUMP:T{
+Convenience macro; equivalent to
+(NLM_F_ROOT|NLM_F_MATCH).
+T}
+.TE
+.ad
+.hy
+.\" FIXME NLM_F_ATOMIC is not used anymore?
+.PP
+请注意，\fBNLM_F_ATOMIC\fP 需要 \fBCAP_NET_ADMIN\fP 功能或有效 UID 0.
+.nh
+.ad l
+.TS
+tab(:);
+l s
+lB lx.
+Additional flag bits for NEW requests
+_
+NLM_F_REPLACE:T{
+Replace existing matching object.
+T}
+NLM_F_EXCL:T{
+Don't replace if the object already exists.
+T}
+NLM_F_CREATE:T{
+Create object if it doesn't already exist.
+T}
+NLM_F_APPEND:T{
+Add to the end of the object list.
+T}
+.TE
+.ad
+.hy
+.PP
+\fInlmsg_seq\fP 和 \fInlmsg_pid\fP 用于跟踪消息。 \fInlmsg_pid\fP 显示消息的来源。 请注意，如果消息源自 netlink
+套接字，则 \fInlmsg_pid\fP 和进程的 PID 之间不是 1:1 的关系。 有关详细信息，请参见 \fBADDRESS FORMATS\fP 部分。
+.PP
+.\" FIXME Explain more about nlmsg_seq and nlmsg_pid.
+\fInlmsg_seq\fP 和 \fInlmsg_pid\fP 对 netlink 核心都是不透明的。
+.PP
+Netlink 不是一个可靠的协议。 它会尽力向其 destination(s) 传递消息，但可能会在内存不足或其他错误发生时丢弃消息。
+为了可靠传输，发送方可以通过设置 \fBNLM_F_ACK\fP 标志请求接收方的确认。 确认是错误字段设置为 0 的 \fBNLMSG_ERROR\fP 数据包。
+应用程序必须自己为收到的消息生成确认。 内核尝试为每个失败的数据包发送一条 \fBNLMSG_ERROR\fP 消息。 用户进程也应该遵循这个约定。
+.PP
+然而，从内核到用户的可靠传输在任何情况下都是不可能的。 如果套接字缓冲区已满，内核将无法发送 netlink 消息:
+消息将丢弃，内核和用户空间进程将不再具有相同的内核状态视图。 由应用程序检测何时发生这种情况 (通过 \fBrecvmsg\fP(2)) 返回的
+\fBENOBUFS\fP 错误并重新同步。
+.SS "Address formats"
+\fIsockaddr_nl\fP 结构体描述了用户空间或内核中的 netlink 客户端。 \fIsockaddr_nl\fP 可以是单播 (仅发送给一个对等体)
+或发送给 netlink 多播组 (\fInl_groups\fP 不等于 0)。
+.PP
+.in +4n
+.EX
+struct sockaddr_nl {
+    sa_family_t     nl_family;  /* AF_NETLINK */
+    unsigned short  nl_pad;     /* Zero */
+    pid_t           nl_pid;     /* Port ID */
+    __u32           nl_groups;  /* Multicast groups mask */
+};
+.EE
+.in
+.PP
+\fInl_pid\fP 是 netlink socket 的单播地址。 如果目标在内核中，则它始终为 0。 对于用户空间进程，\fInl_pid\fP
+通常是拥有目标套接字的进程的 PID。 但是，\fInl_pid\fP 标识的是 netlink 套接字，而不是进程。 如果一个进程拥有多个 netlink
+套接字，那么 \fInl_pid\fP 最多只能等于一个套接字的进程 ID。 有两种方法可以将 \fInl_pid\fP 分配给 netlink 套接字。
+如果应用程序在调用 \fBbind\fP(2) 之前设置 \fInl_pid\fP，则由应用程序来确保 \fInl_pid\fP 是唯一的。 如果应用程序将它设置为
+0，内核会负责分配它。 内核将进程 ID 分配给进程打开的第一个 netlink 套接字，并为进程随后创建的每个 netlink 套接字分配一个唯一的
+\fInl_pid\fP。
+.PP
+.\" commit d629b836d151d43332492651dd841d32e57ebe3b
+\fInl_groups\fP 是一个位掩码，每一位代表一个网络链接组号。 每个 netlink 系列都有一组 32 个多播组。 当在套接字上调用
+\fBbind\fP(2) 时，\fIsockaddr_nl\fP 中的 \fInl_groups\fP 字段应设置为它希望收听的组的位掩码。
+该字段的默认值为零，这意味着将不会接收到多播。 当套接字调用 \fBsendmsg\fP(2) 或执行 \fBconnect\fP(2) 时，通过将
+\fInl_groups\fP 设置为它希望发送到的组的位掩码，套接字可以将消息多播到任何多播组。 只有有效 UID 为 0 或具有
+\fBCAP_NET_ADMIN\fP 能力的进程才能发送或侦听 netlink 多播组。 从 Linux 2.6.13 开始，消息不能广播到多个组。
+对多播组收到的消息的任何回复都应发送回发送 PID 和多播组。 某些 Linux 内核子系统可能还允许其他用户发送或者接收消息。 与 Linux 3.0
+一样，\fBNETLINK_KOBJECT_UEVENT\fP、\fBNETLINK_GENERIC\fP、\fBNETLINK_ROUTE\fP 和
+\fBNETLINK_SELINUX\fP 组允许其他用户接收消息。 没有组允许其他用户发送消息。
+.SS "Socket options"
+要设置或获取 netlink 套接字选项，请调用 \fBgetsockopt\fP(2) 读取或 \fBsetsockopt\fP(2)
+写入选项，并将选项级别参数设置为 \fBSOL_NETLINK\fP。 除非另有说明，否则 \fIoptval\fP 是指向 \fIint\fP 的指针。
+.TP 
+\fBNETLINK_PKTINFO\fP (since Linux 2.6.14)
+.\"	commit 9a4595bc7e67962f13232ee55a64e063062c3a99
+.\"	Author: Patrick McHardy <kaber@trash.net>
+为接收到的数据包启用 \fBnl_pktinfo\fP 控制消息以获得扩展目标组号。
+.TP 
+\fBNETLINK_ADD_MEMBERSHIP\fP,\ \fBNETLINK_DROP_MEMBERSHIP\fP (since Linux 2.6.14)
+.\"	commit 9a4595bc7e67962f13232ee55a64e063062c3a99
+.\"	Author: Patrick McHardy <kaber@trash.net>
+Join/leave 由 \fIoptval\fP 指定的组。
+.TP 
+\fBNETLINK_LIST_MEMBERSHIPS\fP (since Linux 4.2)
+.\"	commit b42be38b2778eda2237fc759e55e3b698b05b315
+.\"	Author: David Herrmann <dh.herrmann@gmail.com>
+检索套接字所属的所有组。 \fIoptval\fP 是指向 \fB__u32\fP 的指针，\fIoptlen\fP 是数组的大小。
+该数组填充了套接字的完整成员集，所需的数组大小在 \fIoptlen\fP 中返回。
+.TP 
+\fBNETLINK_BROADCAST_ERROR\fP (since Linux 2.6.30)
+.\"	commit be0c22a46cfb79ab2342bb28fde99afa94ef868e
+.\"	Author: Pablo Neira Ayuso <pablo@netfilter.org>
+未设置时，\fBnetlink_broadcast()\fP 仅报告 \fBESRCH\fP 错误并忽略 \fBENOBUFS\fP 错误。
+.TP 
+\fBNETLINK_NO_ENOBUFS\fP (since Linux 2.6.30)
+.\"	commit 38938bfe3489394e2eed5e40c9bb8f66a2ce1405
+.\"	Author: Pablo Neira Ayuso <pablo@netfilter.org>
+单播和广播侦听器可以使用此标志来避免接收 \fBENOBUFS\fP 错误。
+.TP 
+\fBNETLINK_LISTEN_ALL_NSID\fP (since Linux 4.2)
+.\"	commit 59324cf35aba5336b611074028777838a963d03b
+.\"	Author: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+设置后，此套接字将从所有网络名称空间接收网络链接通知，这些网络名称空间已将 \fInsid\fP 分配到已打开套接字的网络名称空间中。 \fInsid\fP
+通过辅助数据发送到用户空间。
+.TP 
+\fBNETLINK_CAP_ACK\fP (since Linux 4.3)
+.\"	commit 0a6a3a23ea6efde079a5b77688541a98bf202721
+.\"	Author: Christophe Ricard <christophe.ricard@gmail.com>
+内核可能无法为返回用户空间的确认消息分配必要的空间。 此选项会删除原始网络链接消息的有效，载荷。 netlink
+消息头仍然包含在内，因此用户可以从序列号猜测哪个消息触发了确认。
+.SH VERSIONS
+netlink 的 socket 接口首先出现 Linux 2.2。
+.PP
+Linux 2.0 支持更原始的基于设备的网络链接接口 (仍可作为兼容性选项使用)。 此处不描述这个过时的接口。
+.SH NOTES
+通过 \fIlibnetlink\fP 或 \fIlibnl\fP 使用 netlink 通常比通过底层内核接口更好。
+.SH BUGS
+此手册页不完整。
+.SH EXAMPLES
+下面的示例创建一个 \fBNETLINK_ROUTE\fP netlink 套接字，它将侦听 \fBRTMGRP_LINK\fP (网络接口
+create/delete/up/down 事件) 和 \fBRTMGRP_IPV4_IFADDR\fP (IPv4 地址 add/delete 事件)
+多播组。
+.PP
+.in +4n
+.EX
+struct sockaddr_nl sa;
+
+memset(&sa, 0, sizeof(sa));
+sa.nl_family = AF_NETLINK;
+sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
+
+fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+bind(fd, (struct sockaddr *) &sa, sizeof(sa));
+.EE
+.in
+.PP
+下一个示例演示如何向内核 (pid 0) 发送 netlink 消息。 请注意，应用程序必须注意消息序列号，以便可靠地跟踪确认。
+.PP
+.in +4n
+.EX
+struct nlmsghdr *nh;     /* The nlmsghdr with payload to send */
+struct sockaddr_nl sa;
+struct iovec iov = { nh, nh\->nlmsg_len };
+struct msghdr msg;
+
+msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
+memset(&sa, 0, sizeof(sa));
+sa.nl_family = AF_NETLINK;
+nh\->nlmsg_pid = 0;
+nh\->nlmsg_seq = ++sequence_number;
+/* Request an ack from kernel by setting NLM_F_ACK */
+nh\->nlmsg_flags |= NLM_F_ACK;
+
+sendmsg(fd, &msg, 0);
+.EE
+.in
+.PP
+最后一个例子是关于读取网络链接消息。
+.PP
+.in +4n
+.EX
+int len;
+/* 8192 避免平台上的消息截断
+   页面大小 > 4096 */
+struct nlmsghdr buf[8192/sizeof(struct nlmsghdr)];
+struct iovec iov = { buf, sizeof(buf) };
+struct sockaddr_nl sa;
+struct msghdr msg;
+struct nlmsghdr *nh;
+
+msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
+len = recvmsg(fd, &msg, 0);
+
+for (nh = (struct nlmsghdr *) buf; NLMSG_OK (nh, len);
+     nh = NLMSG_NEXT (nh, len)) {
+    /* The end of multipart message */
+    if (nh\->nlmsg_type == NLMSG_DONE)
+        return;
+
+    if (nh\->nlmsg_type == NLMSG_ERROR)
+        /* Do some error handling */
+    ...
+
+    /* Continue with parsing payload */
+    ...
+}
+.EE
+.in
+.SH "SEE ALSO"
+\fBcmsg\fP(3), \fBnetlink\fP(3), \fBcapabilities\fP(7), \fBrtnetlink\fP(7),
+\fBsock_diag\fP(7)
+.PP
+.UR ftp://ftp.inr.ac.ru\:/ip\-routing\:/iproute2*
+有关 libnetlink
+.UE
+的信息
+.PP
+.UR http://www.infradead.org\:/\[ti]tgr\:/libnl/
+关于 libnl
+.UE
+的信息
+.PP
+RFC 3549 "Linux Netlink as an IP Services Protocol"
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

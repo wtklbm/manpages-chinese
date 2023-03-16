@@ -1,0 +1,122 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This manpage is Copyright (C) 1996 Michael Haardt.
+.\" Updates Nov 1998, Andries Brouwer
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mouse 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+鼠标 \- 串行鼠标接口
+.SH CONFIGURATION
+串行鼠标连接到串行 RS232/V24 拨出线，有关说明，请参见 \fBttyS\fP(4)。
+.SH DESCRIPTION
+.SS Introduction
+用于串行鼠标的常用 9 针插头的引出线是:
+.PP
+.TS
+center;
+r c l.
+pin	name	used for
+2	RX	Data
+3	TX	\-12 V, Imax = 10 mA
+4	DTR	+12 V, Imax = 10 mA
+7	RTS	+12 V, Imax = 10 mA
+5	GND	Ground
+.TE
+.PP
+这是规格，实际上 9 V 对大多数鼠标来说就足够了。
+.PP
+鼠标驱动程序可以通过抛弃 RTS 来识别鼠标。 大约 14 毫秒后，鼠标将在数据线上发送 0x4D (\[aq]M\[aq])。 再过 63
+毫秒后，Microsoft 兼容的 3 键鼠标将发送 0x33 (\[aq]3\[aq])。
+.PP
+相对鼠标移动发送为 \fIdx\fP (正向表示向右) 和 \fIdy\fP (正向表示向下)。 各种鼠标可以以不同的速度运行。 要选择速度，请在速度
+9600、4800、2400 和 1200 bit/s 之间循环，每次写入下表中的两个字符并等待 0.1 秒。 下表显示了可用的速度和选择它们的字符串:
+.PP
+.TS
+center;
+l l.
+bit/s	string
+9600	*q
+4800	*p
+2400	*o
+1200	*n
+.TE
+.PP
+数据包的第一个字节可用于同步目的。
+.SS "Microsoft protocol"
+\fBMicrosoft\fP 协议在 1200 bits/sec 的速度下使用 1 个起始位、7 个数据位、无奇偶校验和 1 个停止位。 数据以 3
+字节数据包的形式发送到 RxD。 \fIdx\fP 和 \fIdy\fP 运动作为二进制补码发送，按下左 (right) 按钮时设置 \fIlb\fP (\fIrb\fP):
+.PP
+.TS
+center;
+r c c c c c c c.
+byte	d6	d5	d4	d3	d2	d1	d0
+1	1	lb	rb	dy7	dy6	dx7	dx6
+2	0	dx5	dx4	dx3	dx2	dx1	dx0
+3	0	dy5	dy4	dy3	dy2	dy1	dy0
+.TE
+.SS "3\-button Microsoft protocol"
+原始 Microsoft 鼠标只有两个按钮。 但是，有些三键鼠标也使用 Microsoft 协议。
+通过发送零移动且未按下任何按钮的数据包来报告按下或释放中间按钮。 (因此，与其他两个按钮不同，中间按钮的状态不会在每个数据包中报告。)
+.SS "Logitech protocol"
+罗技系列三键鼠标使用微软协议的不同扩展: 当中间按钮弹起时，发送上面的 3 字节数据包。 当按下中间按钮时，将发送一个 4 字节的数据包，其中第 4
+个字节的值为 0x20 (或至少设置了 0x20 位)。 特别是，当没有其他按钮按下时，按下中间按钮将报告为 0,0,0,0x20。
+.SS "Mousesystems protocol"
+\fBMousesystems\fP 协议在 1200 bits/sec 的速度下使用 1 个起始位，8 个数据位，无奇偶校验，2 个停止位。 数据以 5
+字节数据包的形式发送到 RxD。 \fIdx\fP 作为两个二进制补码值的和发送，\fIdy\fP 作为两个二进制补码值的负和发送。 \fIlb\fP
+(\fImb\fP、\fIrb\fP) 按下左 (中、右) 键时清零:
+.PP
+.TS
+center;
+r c c c c c c c c.
+byte	d7	d6	d5	d4	d3	d2	d1	d0
+1	1	0	0	0	0	lb	mb	rb
+2	0	dxa6	dxa5	dxa4	dxa3	dxa2	dxa1	dxa0
+3	0	dya6	dya5	dya4	dya3	dya2	dya1	dya0
+4	0	dxb6	dxb5	dxb4	dxb3	dxb2	dxb1	dxb0
+5	0	dyb6	dyb5	dyb4	dyb3	dyb2	dyb1	dyb0
+.TE
+.PP
+字节 4 和 5 描述了自传输字节 2 和 3 以来发生的变化。
+.SS "Sun protocol"
+\fBSun\fP 协议是上述 5 字节 Mousesystems 协议的 3 字节版本: 最后两个字节未发送。
+.SS "MM protocol"
+\fBMM\fP 协议采用 1 个起始位、8 个数据位、奇校验、1 个停止位，速度为 1200 bits/sec。 数据以 3 字节数据包的形式发送到
+RxD。 \fIdx\fP 和 \fIdy\fP 作为单符号值发送，符号位表示 negative 值。 \fIlb\fP (\fImb\fP, \fIrb\fP) 分别在按下左
+(中、右) 键时设置:
+.PP
+.TS
+center;
+r c c c c c c c c.
+byte	d7	d6	d5	d4	d3	d2	d1	d0
+1	1	0	0	dxs	dys	lb	mb	rb
+2	0	dx6	dx5	dx4	dx3	dx2	dx1	dx0
+3	0	dy6	dy5	dy4	dy3	dy2	dy1	dy0
+.TE
+.SH FILES
+.TP 
+\fI/dev/mouse\fP
+指向鼠标设备的常用符号链接。
+.SH "SEE ALSO"
+\fBttyS\fP(4), \fBgpm\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

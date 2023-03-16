@@ -1,0 +1,127 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sun Mar 28 00:25:51 1993, David Metcalfe
+.\" Modified Sat Jul 24 18:13:39 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Sun Aug 20 21:47:07 2000, aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH random 3 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+random, srandom, initstate, setstate \- 随机数生成器
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBlong random(void);\fP
+\fBvoid srandom(unsigned int \fP\fIseed\fP\fB);\fP
+.PP
+\fBchar *initstate(unsigned int \fP\fIseed\fP\fB, char \fP\fIstate\fP\fB[.\fP\fIn\fP\fB], size_t \fP\fIn\fP\fB);\fP
+\fBchar *setstate(char *\fP\fIstate\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBrandom\fP(), \fBsrandom\fP(), \fBinitstate\fP(), \fBsetstate\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE || _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBrandom\fP() 函数使用非线性加性反馈随机数生成器，该随机数生成器使用大小为 31 的长整数的默认表来返回 0 到 2\[ha] 31\1
+范围内的连续伪随机数。 这个随机数发生器的周期很大，大约是 \fI16\ *\ ((2\[ha]31)\ \-\ 1)\fP。
+.PP
+\fBsrandom\fP() 函数将其参数设置为 seed，以便 \fBrandom\fP() 返回一个新的伪随机整数序列。 这些序列可以通过使用相同的 seed
+值调用 \fBsrandom\fP() 来重复。 如果未提供 seed 值，则 \fBrandom\fP() 函数自动使用值为 1.
+.PP
+\fBinitstate\fP() 函数允许初始化状态数组 \fIstate\fP 以供 \fBrandom\fP() 使用。 \fBinitstate\fP() 使用状态数组
+\fIn\fP 的大小来决定它应该使用多复杂的随机数生成器 \[em] 状态数组越大，随机数就越好。 状态数组 \fIn\fP 大小的当前 "optimal" 值为
+8、32、64、128 和 256 字节; 其他数额将向下舍入至最接近的已知数额。 使用少于 8 个字节会导致错误。 \fIseed\fP 为初始化的
+seed，指定随机数序列的起始点，并规定在同一点重新开始。
+.PP
+\fBsetstate\fP() 函数更改 \fBrandom\fP() 函数使用的状态数组。 状态数组 \fIstate\fP 用于随机数生成，直到下一次调用
+\fBinitstate\fP() 或 \fBsetstate\fP()。 \fIstate\fP 必须首先使用 \fBinitstate\fP() 进行初始化，或者是之前调用
+\fBsetstate\fP() 的结果。
+.SH "RETURN VALUE"
+\fBrandom\fP() 函数返回 0 到 \fI(2\[ha]31)\ \-\ 1\fP 之间的值。 \fBsrandom\fP() 函数不返回任何值。
+.PP
+\fBinitstate\fP() 函数返回指向前一个状态数组的指针。 失败时，它返回 NULL，并设置 \fIerrno\fP 以指示错误。
+.PP
+成功时，\fBsetstate\fP() 返回指向先前状态数组的指针。 失败时，它返回 NULL，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+给 \fBsetstate\fP() 的 \fIstate\fP 参数是 NULL。
+.TP 
+\fBEINVAL\fP
+\fBinitstate\fP() 指定了少于 8 字节的状态数组。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBrandom\fP(),
+\fBsrandom\fP(),
+\fBinitstate\fP(),
+\fBsetstate\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, 4.3BSD.
+.SH NOTES
+\fBrandom\fP() 函数不应用于需要可重现行为的多线程程序中。 为此目的使用 \fBrandom_r\fP(3)。
+.PP
+随机数生成是一个复杂的话题。 \fINumerical Recipes in C: The Art of Scientific Computing\fP
+(William H.\&Press、Brian P.\&Flannery、Saul A.\&Teukolsky、William
+T.\&Vetterling; 纽约: 剑桥大学出版社，2007 年，第 3 版) 提供了关于实用随机的精彩讨论 \- 第 7 章 (随机数)
+中的数字生成问题。
+.PP
+有关更深入地涵盖许多实际问题的理论讨论，请参见 Donald E.\&Knuth 的 \fIThe Art of Computer Programming\fP，第 2 卷 (半数值算法)，第 2 版中的第 3 章 (随机数) ; 马萨诸塞州雷丁: Addison\-Wesley
+出版公司，1981 年。
+.SH BUGS
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=15380
+根据 POSIX，\fBinitstate\fP() 应该在出错时返回 NULL。 在 glibc 实现中，\fIerrno\fP (如指定的那样)
+设置为错误，但函数不返回 NULL。
+.SH "SEE ALSO"
+\fBgetrandom\fP(2), \fBdrand48\fP(3), \fBrand\fP(3), \fBrandom_r\fP(3), \fBsrand\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

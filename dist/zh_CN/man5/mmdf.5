@@ -1,0 +1,125 @@
+.\" -*- coding: UTF-8 -*-
+.\" Project   : tin
+.\" Module    : mmdf.5
+.\" Author    : U. Janssen
+.\" Created   : 2002-02-18
+.\" Updated   :
+.\" Notes     : needs a lot of work
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mmdf 5 "February 18th, 2002" Unix "User Manuals"
+.\"
+.SH NAME
+.\"
+MMDF \- 多通备忘录分发工具邮箱格式
+.SH DESCRIPTION
+本文档描述了一些 MTA 和 MUA 使用的 \fBMMDF\fP 邮箱格式 (即 \fBscomail\fP(1))，用于在本地存储邮件消息。
+.PP
+\fBMMDF\fP 邮箱是包含任意数量电子邮件的文本文件。 每条消息都包含一个邮戳，然后是根据 \fBRFC822\fP/\fBRFC2822\fP
+格式设置的电子邮件消息，然后是邮戳。文件格式是面向行的。行由换行符 (ASCII 10) 分隔。邮戳行由四个字符 "^A^A^A^A"
+(Control\-A; ASCII 1) 组成。
+.TP 
+Example of a \fBMMDF\fP mailbox holding two mails:
+.RS
+.nf
+.sp
+^A^A^A^A
+.br
+来自: example@example.com
+.br
+至: example@example.org
+.br
+主题: 测试
+.br
+.sp
+.br
+>From what I learned about the MMDF\-format:
+.br
+.br
+^A^A^A^A
+.br
+^A^A^A^A
+.br
+来自: example@example.com
+.br
+至: example@example.org
+.br
+主题: 测试 2
+.br
+.sp
+.br
+bar
+.br
+^A^A^A^A
+.fi
+.RE
+.PP
+与大多数其他单文件邮箱格式 (如 MBOXO 和 MBOXRD) 相比 (参见 \fBmbox\fP(5))，\fBMMDF\fP 邮箱中不需要
+quote/dequote 发送者` 行，因为此类行在此格式中没有特殊含义。
+.PP
+.\"
+如果修改时间 (通常通过非空邮箱文件的 \fBstat\fP(2)) 确定) 大于文件有新邮件的访问时间。许多 MUA 在每条消息中放置一个 Status:
+标头，以指示哪些消息已被阅读。
+.SH LOCKING
+由于 \fBMMDF\fP 文件在并行中经常被多个程序访问，所以 \fBMMDF\fP 文件一般不应该在没有锁定的情况下访问。
+.PP
+通常使用三种不同的锁定机制 (及其组合) :
+.IP \(bu
+\fBfcntl\fP(2) 锁定主要用于最近的 POSIX 兼容系统。如果通过网络文件系统 (NFS) 访问 \fBMMDF\fP
+文件，则特别建议使用这种锁定方法，因为它似乎是可靠地使 NFS 客户端缓存无效的唯一方法。
+.IP \(bu
+\fBflock\fP(2) 锁定主要用于基于 BSD 的系统。
+.IP \(bu
+点锁用于各种系统。为了锁定名为 \fIfolder\fP 的 \fBMMDF\fP 文件，应用程序首先在 \fIfolder\fP
+所在的目录中创建一个具有唯一名称的临时文件。应用程序然后尝试使用 \fBlink\fP(2) 系统调用创建一个名为 \fIfolder.lock\fP
+的硬链接到临时文件。应使用 \fBstat\fP(2) 调用额外验证 \fBlink\fP(2)
+系统调用是否成功。如果链接成功，则邮件文件夹被认为是点锁定的。然后可以安全地解除临时文件的链接。
+.IP ""
+为了释放锁定，应用程序只需取消链接 \fIfolder.lock\fP 文件。
+.PP
+如果结合了多种方法，实现者应确保使用 \fBfcntl\fP(2) 和 \fBflock\fP(2) 系统调用的非阻塞变体以避免死锁。
+.PP
+如果结合了多种方法，则在获得所有单独的锁之前，不得认为 \fBMMDF\fP
+文件已成功锁定。当其中一种锁定方法失败时，应用程序应释放它成功获得的所有锁定，并在适当的延迟后从头开始重新启动整个锁定过程。
+.PP
+.\"
+.\" .SH FILES
+.\" /usr/spool/mmdf/lock/home
+.\" $HOME/Mail/
+.\"
+.\" .SH SECURITY
+.\"
+特定系统上使用的锁定机制是本地策略的问题，并且应该被系统上安装的所有访问 \fBMMDF\fP 文件的应用程序一致使用。否则可能会导调用子邮件数据丢失和
+\fBMMDF\fP 文件损坏。
+.SH "CONFORMING TO"
+.\"
+\fBMMDF\fP 不是任何当前支持的标准的一部分。
+.SH HISTORY
+.\"
+\fBMMDF\fP 由 Dave Crocker 在特拉华大学开发。
+.SH "SEE ALSO"
+\fBscomail\fP(1), \fBfcntl\fP(2), \fBflock\fP(2), \fBlink\fP(2), \fBstat\fP(2), \fBmbox\fP(5),
+\fBRFC822\fP, \fBRFC2822\fP
+
+.SH AUTHOR
+乌尔斯詹森 <urs@tin.org>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

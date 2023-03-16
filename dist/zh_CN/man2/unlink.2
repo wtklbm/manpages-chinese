@@ -1,0 +1,175 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Ian Jackson
+.\"             and Copyright (C) 2006, 2014 Michael Kerrisk.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-09-08 by Arnt Gulbrandsen <agulbra@troll.no>
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2001-05-17 by aeb
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH unlink 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+unlink, unlinkat \- 删除一个名字，可能还有它引用的文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint unlink(const char *\fP\fIpathname\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of \fBAT_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint unlinkat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBunlinkat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBunlink\fP() 从文件系统中删除一个名称。
+如果该名称是指向文件的最后一个链接，并且没有进程打开该文件，则该文件将被删除，并且它使用的空间可以重新使用。
+.PP
+如果该名称是文件的最后一个链接，但任何进程仍打开该文件，则该文件将一直存在，直到引用它的最后一个文件描述符关闭。
+.PP
+如果名称引用符号链接，则删除该链接。
+.PP
+如果名称引用套接字、FIFO 或设备，则删除它的名称，但打开该对象的进程可以继续使用它。
+.SS unlinkat()
+\fBunlinkat\fP() 系统调用的运行方式与 \fBunlink\fP() 或 \fBrmdir\fP(2) (取决于 \fIflags\fP 是否包含
+\fBAT_REMOVEDIR\fP 标志) 完全相同，除了此处描述的差异。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBunlink\fP() 和 \fBrmdir\fP(2) 对相对路径名所做的那样) .
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的并且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBunlink\fP() 和 \fBrmdir\fP(2)).
+.PP
+如果 \fIpathname\fP 中给出的路径名是绝对路径，则忽略 \fIdirfd\fP。
+.PP
+\fIflags\fP 是一个位掩码，可以指定为 0，或者通过将控制 \fBunlinkat\fP() 操作的标志值组合在一起。 目前，只定义了一个这样的标志:
+.TP 
+\fBAT_REMOVEDIR\fP
+默认情况下，\fBunlinkat\fP() 在 \fIpathname\fP 上执行 \fBunlink\fP() 的等效操作。 如果指定了
+\fBAT_REMOVEDIR\fP 标志，则在 \fIpathname\fP 上执行与 \fBrmdir\fP(2) 等效的操作。
+.PP
+有关对 \fBunlinkat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+进程的有效 UID 不允许对包含 \fIpathname\fP 的目录进行写访问，或者 \fIpathname\fP 中的目录之一不允许搜索权限。 (另见
+\fBpath_resolution\fP(7).)
+.TP 
+\fBEBUSY\fP
+文件 \fIpathname\fP 无法取消链接，因为它正在被系统或其他进程使用; 例如，它是一个挂载点或 NFS 客户端软件创建它来表示一个活动但无名的
+inode (`NFS 愚蠢地重命名`)。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEIO\fP
+发生 I/O 错误。
+.TP 
+\fBEISDIR\fP
+\fIpathname\fP 指的是一个目录。 (这是自 Linux 2.1.132 以来返回的非 POSIX 值。)
+.TP 
+\fBELOOP\fP
+翻译 \fIpathname\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长了。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 中的组件不存在或者是悬垂符号链接，或者 \fIpathname\fP 为空。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOTDIR\fP
+在 \fIpathname\fP 中用作目录的组件实际上不是目录。
+.TP 
+\fBEPERM\fP
+系统不允许取消目录链接，或者取消目录链接需要调用进程没有的权限。 (这是 POSIX 规定的错误返回; 如上所述，对于这种情况，Linux 返回
+\fBEISDIR\fP。)
+.TP 
+\fBEPERM\fP (Linux only)
+文件系统不允许取消文件链接。
+.TP 
+\fBEPERM\fP or \fBEACCES\fP
+包含 \fIpathname\fP 的目录设置了粘性位 (\fBS_ISVTX\fP)，进程的有效 UID 既不是要删除的文件的 UID，也不是包含它的目录的
+UID，进程没有特权 (Linux: 没有 \fBCAP_FOWNER\fP 能力)。
+.TP 
+\fBEPERM\fP
+要取消链接的文件标记为不可更改或仅，追加。 (见 \fBioctl_iflags\fP(2).)
+.TP 
+\fBEROFS\fP
+\fIpathname\fP 指的是只读文件系统上的文件。
+.PP
+发生在 \fBunlink\fP() 和 \fBrmdir\fP(2) 上的相同错误也可能发生在 \fBunlinkat\fP() 上。 \fBunlinkat\fP():
+可能会出现以下其他错误
+.TP 
+\fBEBADF\fP
+\fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了无效的标志值。
+.TP 
+\fBEISDIR\fP
+\fIpathname\fP 指的是目录，\fIflags\fP 中没有指定 \fBAT_REMOVEDIR\fP。
+.TP 
+\fBENOTDIR\fP
+\fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.SH VERSIONS
+\fBunlinkat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+.\" SVr4 documents additional error
+.\" conditions EINTR, EMULTIHOP, ETXTBSY, ENOLINK.
+\fBunlink\fP(): SVr4, 4.3BSD, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBunlinkat\fP(): POSIX.1\-2008.
+.SH NOTES
+.SS "glibc notes"
+在 \fBunlinkat\fP() 不可用的旧内核上，glibc 包装器函数退回到使用 \fBunlink\fP() 或 \fBrmdir\fP(2)。 当
+\fIpathname\fP 是相对路径名时，glibc 根据 \fI/proc/self/fd\fP 中对应于 \fIdirfd\fP 参数的符号链接构造路径名。
+.SH BUGS
+NFS 底层协议的缺陷可能导致仍在使用的文件意外消失。
+.SH "SEE ALSO"
+\fBrm\fP(1), \fBunlink\fP(1), \fBchmod\fP(2), \fBlink\fP(2), \fBmknod\fP(2), \fBopen\fP(2),
+\fBrename\fP(2), \fBrmdir\fP(2), \fBmkfifo\fP(3), \fBremove\fP(3),
+\fBpath_resolution\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

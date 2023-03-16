@@ -1,0 +1,100 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH aio_cancel 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+aio_cancel \- 取消未完成的异步 I/O 请求
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <aio.h>\fP
+.PP
+\fBint aio_cancel(int \fP\fIfd\fP\fB, struct aiocb *\fP\fIaiocbp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBaio_cancel\fP() 函数尝试取消对文件描述符 \fIfd\fP 的未完成异步 I/O 请求。 如果 \fIaiocbp\fP 为
+NULL，则取消所有此类请求。 否则，只取消 \fIaiocbp\fP 指向的控制块所描述的请求。 (有关 \fIaiocb\fP 结构体的说明，请参见
+\fBaio\fP(7)。)
+.PP
+对于取消的请求，会发生正常的异步通知 (请参见 \fBaio\fP(7) 和 \fBsigevent\fP(7)).  请求返回状态
+(\fBaio_return\fP(3)) 设置为 \-1，请求错误状态 (\fBaio_error\fP(3)) 设置为 \fBECANCELED\fP。
+不能取消的请求的控制块没有改变。
+.PP
+如果请求不能被取消，那么它将在执行 I/O 操作后以通常的方式终止。 (在这种情况下，\fBaio_error\fP(3) 将返回状态
+\fBEINPROGRESSS\fP.)
+.PP
+如果 \fIaiocbp\fP 不为 NULL，并且 \fIfd\fP 与启动异步操作的文件描述符不同，则会出现未指定的结果。
+.PP
+.\" FreeBSD: not those on raw disk devices.
+哪些操作是可取消的是实现定义的。
+.SH "RETURN VALUE"
+\fBaio_cancel\fP() 函数返回以下值之一:
+.TP 
+\fBAIO_CANCELED\fP
+所有请求均已成功取消。
+.TP 
+\fBAIO_NOTCANCELED\fP
+至少有一个指定的请求没有被取消，因为它正在进行中。 在这种情况下，可以使用 \fBaio_error\fP(3) 检查单个请求的状态。
+.TP 
+\fBAIO_ALLDONE\fP
+在调用之前所有请求都已经完成。
+.TP 
+\-1
+发生错误。 通过查看 \fIerrno\fP 可以找到错误原因。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBENOSYS\fP
+\fBaio_cancel\fP() 未实现。
+.SH VERSIONS
+\fBaio_cancel\fP() 函数自 glibc 2.1 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBaio_cancel\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH EXAMPLES
+请参见 \fBaio\fP(7)。
+.SH "SEE ALSO"
+\fBaio_error\fP(3), \fBaio_fsync\fP(3), \fBaio_read\fP(3), \fBaio_return\fP(3),
+\fBaio_suspend\fP(3), \fBaio_write\fP(3), \fBlio_listio\fP(3), \fBaio\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

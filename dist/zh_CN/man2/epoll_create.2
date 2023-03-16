@@ -1,0 +1,95 @@
+.\" -*- coding: UTF-8 -*-
+.\"  Copyright (C) 2003  Davide Libenzi
+.\" and Copyright 2008, 2009, 2012 Michael Kerrisk <tk.manpages@gmail.com>
+.\"  Davide Libenzi <davidel@xmailserver.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified 2004-06-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2005-04-04 by Marko Kohtala <marko.kohtala@gmail.com>
+.\" 2008-10-10, mtk: add description of epoll_create1()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH epoll_create 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+epoll_create, epoll_create1 \- 打开一个 epoll 文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/epoll.h>\fP
+.PP
+\fBint epoll_create(int \fP\fIsize\fP\fB);\fP
+\fBint epoll_create1(int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBepoll_create\fP() 创建一个新的 \fBepoll\fP(7) 实例。 自 Linux 2.6.8 起，忽略 \fIsize\fP
+参数，但必须大于零; 见注释。
+.PP
+\fBepoll_create\fP() 返回一个引用新 epoll 实例的文件描述符。 该文件描述符用于对 \fBepoll\fP 接口的所有后续调用。
+当不再需要时，应使用 \fBclose\fP(2) 关闭 \fBepoll_create\fP() 返回的文件描述符。 当引用 epoll
+实例的所有文件描述符都已关闭时，内核销毁该实例并释放相关资源以供重用。
+.SS epoll_create1()
+如果 \fIflags\fP 为 0，则除了 \fIsize\fP 参数为丢弃之外，\fBepoll_create1\fP() 与 \fBepoll_create\fP()
+相同。 \fIflags\fP 中可以包含以下值以获得不同的行为:
+.TP 
+\fBEPOLL_CLOEXEC\fP
+在新文件描述符上设置 close\-on\-exec (\fBFD_CLOEXEC\fP) 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的描述，了解这可能有用的原因。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回一个文件描述符 (一个非负整数)。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIsize\fP 不是正数。
+.TP 
+\fBEINVAL\fP
+(\fBepoll_create1\fP()) \fIflags\fP 中指定的值无效。
+.TP 
+\fBEMFILE\fP
+遇到了由 \fI/proc/sys/fs/epoll/max_user_instances\fP 强加的每个用户对 epoll 实例数量的限制。
+有关详细信息，请参见 \fBepoll\fP(7)。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建内核对象。
+.SH VERSIONS
+在 Linux 2.6 中添加了 \fBepoll_create\fP()。 glibc 2.3.2 中提供了库支持。
+.PP
+.\" To be precise: kernel 2.5.44.
+.\" The interface should be finalized by Linux kernel 2.5.66.
+在 Linux 2.6.27 中添加了 \fBepoll_create1\fP()。 glibc 2.9 中提供了库支持。
+.SH STANDARDS
+\fBepoll_create\fP() 和 \fBepoll_create1\fP() 是特定于 Linux 的。
+.SH NOTES
+在最初的 \fBepoll_create\fP() 实现中，\fIsize\fP 参数通知内核调用者希望添加到 \fBepoll\fP 实例的文件描述符的数量。
+内核使用此信息作为初始分配给描述事件的内部数据结构的空间量的提示。 (如有必要，如果调用者的使用量超过 \fIsize\fP.)
+中给出的提示，内核将分配更多空间如今，不再需要此提示 (内核动态调整所需数据结构的大小而不需要提示)，但 \fIsize\fP 仍必须大于零，以确保新
+\fBepoll\fP 应用程序在旧内核上运行时的向后兼容性。
+.SH "SEE ALSO"
+\fBclose\fP(2), \fBepoll_ctl\fP(2), \fBepoll_wait\fP(2), \fBepoll\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

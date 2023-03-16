@@ -1,0 +1,294 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 Michael Haardt (michael@moria.de)
+.\" and copyright (c) 1999 Andries Brouwer (aeb@cwi.nl)
+.\" and copyright (c) 2006 Justin Pryzby <justinpryzby@users.sf.net>
+.\" and copyright (c) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified Sun Jul 25 11:02:22 1993 by Rik Faith (faith@cs.unc.edu)
+.\" 2006-05-24, Justin Pryzby <justinpryzby@users.sf.net>
+.\"  	document FTW_ACTIONRETVAL; include .SH RETURN VALUE;
+.\" 2006-05-24, Justin Pryzby <justinpryzby@users.sf.net> and
+.\"	Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 	reorganized and rewrote much of the page
+.\" 2006-05-24, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added an example program.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ftw 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ftw, nftw \- 文件树遍历
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <ftw.h>\fP
+.PP
+\fBint nftw(const char *\fP\fIdirpath\fP\fB,\fP
+\fB        int (*\fP\fIfn\fP\fB)(const char *\fP\fIfpath\fP\fB, const struct stat *\fP\fIsb\fP\fB,\fP
+\fB                  int \fP\fItypeflag\fP\fB, struct FTW *\fP\fIftwbuf\fP\fB),\fP
+\fB        int \fP\fInopenfd\fP\fB, int \fP\fIflags\fP\fB);\fP
+.PP
+\fB[[deprecated]]\fP
+\fBint ftw(const char *\fP\fIdirpath\fP\fB,\fP
+\fB        int (*\fP\fIfn\fP\fB)(const char *\fP\fIfpath\fP\fB, const struct stat *\fP\fIsb\fP\fB,\fP
+\fB                  int \fP\fItypeflag\fP\fB),\fP
+\fB        int \fP\fInopenfd\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBnftw\fP():
+.nf
+    _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+\fBnftw\fP() 遍历位于目录 \fIdirpath\fP 下的目录树，并为树中的每个条目调用一次 \fIfn\fP()。
+默认情况下，目录在它们包含的文件和子目录之前被处理 (前序遍历)。
+.PP
+为了避免用完调用进程的所有文件描述符，\fInopenfd\fP 指定了 \fBnftw\fP() 将同时打开的最大目录数。
+当搜索深度超过这个深度时，\fBnftw\fP() 会变慢，因为目录必须关闭并重新打开。 \fBnftw\fP() 最多为目录树中的每一层使用一个文件描述符。
+.PP
+对于在树中找到的每个条目，\fBnftw\fP() 使用四个参数调用 \fIfn\fP(): \fIfpath\fP、\fIsb\fP、\fItypeflag\fP 和
+\fIftwbuf\fP。 \fIfpath\fP 是条目的路径名，如果 \fIdirpath\fP 表示为相对路径名，则表示为调用进程在调用 \fBnftw\fP()
+时相对于调用进程当前工作目录的路径名，或者表示为绝对路径名，如果 \fIdirpath\fP 是表示为绝对路径名。 \fIsb\fP 是指向 \fIstat\fP
+结构体的指针，由调用返回到 \fIfpath\fP 的 \fBstat\fP(2)。
+.PP
+传递给 \fIfn\fP() 的 \fItypeflag\fP 参数是一个具有以下值之一的整数:
+.TP 
+\fBFTW_F\fP
+\fIfpath\fP 是一个普通文件。
+.TP 
+\fBFTW_D\fP
+\fIfpath\fP 是一个目录。
+.TP 
+\fBFTW_DNR\fP
+\fIfpath\fP 是一个无法读取的目录。
+.TP 
+\fBFTW_DP\fP
+\fIfpath\fP 是目录，\fIflags\fP 中指定了 \fBFTW_DEPTH\fP。 (如果在 \fIflags\fP 中没有指定
+\fBFTW_DEPTH\fP，那么将始终访问 \fItypeflag\fP 设置为 \fBFTW_D\fP.) 的目录 \fIfpath\fP 内的所有文件和子目录都已处理。
+.TP 
+\fBFTW_NS\fP
+\fBstat\fP(2) 调用在 \fIfpath\fP 上失败，这不是符号链接。 可能的原因是调用者对父目录有读权限，所以可以看到文件名
+\fIfpath\fP，但没有执行权限，所以无法访问 \fBstat\fP(2) 文件。 \fIsb\fP 指向的缓冲区的内容未定义。
+.TP 
+\fBFTW_SL\fP
+.\" To obtain the definition of this constant from
+.\" .IR <ftw.h> ,
+.\" either
+.\" .B _BSD_SOURCE
+.\" must be defined, or
+.\" .BR _XOPEN_SOURCE
+.\" must be defined with a value of 500 or more.
+\fIfpath\fP 是符号链接，\fIflags\fP 中设置了 \fBFTW_PHYS\fP。
+.TP 
+\fBFTW_SLN\fP
+\fIfpath\fP 是指向不存在文件的符号链接。 (仅当未设置 \fBFTW_PHYS\fP 时才会发生这种情况。) 在这种情况下，传递给 \fIfn\fP() 的
+\fIsb\fP 参数包含通过对 "dangling" 符号链接执行 \fBlstat\fP(2) 返回的信息。 (但请参见错误。)
+.PP
+\fBnftw\fP() 调用 \fIfn\fP() 时提供的第四个参数 (\fIftwbuf\fP) 是一个指向 \fIFTW\fP: 类型结构体的指针
+.PP
+.in +4n
+.EX
+struct FTW {
+    int base;
+    int level;
+};
+.EE
+.in
+.PP
+\fIbase\fP 是 \fIfpath\fP 中给出的路径名中文件名 (即基本名称部分) 的偏移量。 \fIlevel\fP 是目录树中 \fIfpath\fP
+的深度，相对于深度为 0 的树 (\fIdirpath\fP 的根。
+.PP
+要停止树遍历，\fIfn\fP() 返回一个非零值; 该值将成为 \fBnftw\fP() 的返回值。 只要 \fIfn\fP() 返回 0，\fBnftw\fP()
+就会继续，直到它遍历了整棵树，在这种情况下它会返回零，或者直到它遇到错误 (例如 \fBmalloc\fP(3) 失败)，在这种情况下它会返回 \-1。
+.PP
+因为 \fBnftw\fP() 使用动态数据结构，所以退出树遍历的唯一安全方法是从 \fIfn\fP() 返回一个非零值。
+为了允许信号终止行走而不导致内存泄漏，让处理程序设置一个由 \fIfn\fP() 检查的全局标志。 \fIDon't\fP 使用 \fBlongjmp\fP(3)
+除非程序要终止。
+.PP
+\fBnftw\fP() 的 \fIflags\fP 参数由以下标志中的零个或多个或运算组成:
+.TP 
+\fBFTW_ACTIONRETVAL\fP (since glibc 2.3.3)
+如果设置了这个特定于 glibc 的标志，则 \fBnftw\fP() 会以不同方式处理来自 \fIfn\fP() 的返回值。 \fIfn\fP() 应返回以下值之一:
+.RS
+.TP 
+\fBFTW_CONTINUE\fP
+指示 \fBnftw\fP() 正常继续。
+.TP 
+\fBFTW_SKIP_SIBLINGS\fP
+.\" If \fBFTW_DEPTH\fP
+.\" is set, the entry's parent directory is processed next (with
+.\" \fIflag\fP set to \fBFTW_DP\fP).
+如果 \fIfn\fP() 返回此值，则将跳过当前条目的兄弟项，并在父项中继续处理。
+.TP 
+\fBFTW_SKIP_SUBTREE\fP
+如果调用 \fIfn\fP() 的条目是目录 (\fItypeflag\fP 是 \fBFTW_D\fP)，则此返回值将阻止该目录中的对象作为参数传递给 \fIfn\fP()。
+\fBnftw\fP() 继续处理目录的下一个兄弟。
+.TP 
+\fBFTW_STOP\fP
+使 \fBnftw\fP() 立即返回并返回值 \fBFTW_STOP\fP。
+.PP
+其他返回值可能与 future 中的新操作相关联; \fIfn\fP() 不应返回上面列出的值以外的值。
+.PP
+必须定义特性测试宏 \fB_GNU_SOURCE\fP (在包含 \fIany\fP 头文件之前)，以便从 \fI<ftw.h>\fP 获取
+\fBFTW_ACTIONRETVAL\fP 的定义。
+.RE
+.TP 
+\fBFTW_CHDIR\fP
+如果设置，则在处理其内容之前对每个目录执行 \fBchdir\fP(2)。 如果程序需要在 \fIfpath\fP 所在的目录中执行某些操作，这将很有用。
+(指定此标志对在 \fIfn\fP.) 的 \fIfpath\fP 参数中传递的路径名没有影响
+.TP 
+\fBFTW_DEPTH\fP
+如果设置，则进行后序遍历，即调用 \fIfn\fP() 为目录本身 \fIafter\fP 处理目录及其子目录的内容。 (默认情况下，每个目录都处理
+\fIbefore\fP 其内容。)
+.TP 
+\fBFTW_MOUNT\fP
+如果设置，则留在同一个文件系统中 (即，不要交叉挂载点)。
+.TP 
+\fBFTW_PHYS\fP
+如果设置，则不要遵循符号链接。 (这就是您想要的。) 如果没有设置，则跟随符号链接，但没有文件被报告两次。
+.IP
+如果未设置 \fBFTW_PHYS\fP，但设置了 \fBFTW_DEPTH\fP，则永远不会为将成为其自身后代的目录调用函数 \fIfn\fP()。
+.SS ftw()
+\fBftw\fP() 是一个较旧的函数，它提供了 \fBnftw\fP() 的一部分功能。 显着差异如下:
+.IP \[bu] 3
+\fBftw\fP() 没有 \fIflags\fP 参数。 它的行为与在 \fIflags\fP 指定为零的情况下调用 \fBnftw\fP() 时的行为相同。
+.IP \[bu]
+回调函数 \fIfn\fP() 没有提供第四个参数。
+.IP \[bu]
+通过提供给 \fIfn\fP() 的 \fItypeflag\fP 参数传递的值范围较小: 只有
+\fBFTW_F\fP、\fBFTW_D\fP、\fBFTW_DNR\fP、\fBFTW_NS\fP 和 (possibly) \fBFTW_SL\fP。
+.SH "RETURN VALUE"
+这些函数在成功时返回 0，如果发生错误则返回 \-1。
+.PP
+如果 \fIfn\fP() 返回非零值，则树遍历终止，\fIfn\fP() 返回的值作为 \fBftw\fP() 或 \fBnftw\fP() 的结果返回。
+.PP
+如果使用 \fBFTW_ACTIONRETVAL\fP 标志调用 \fBnftw\fP()，则 \fIfn\fP() 应该使用的唯一非零值来终止树遍历是
+\fBFTW_STOP\fP，并且该值作为 \fBnftw\fP() 的结果返回。
+.SH VERSIONS
+\fBnftw\fP() 自 glibc 2.1 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBnftw\fP()
+T}	Thread safety	MT\-Safe cwd
+T{
+\fBftw\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, SUSv1.  POSIX.1\-2008 将 \fBftw\fP() 标记为已过时。
+.SH NOTES
+POSIX.1\-2008 指出，如果 \fIfn\fP 不保留当前工作目录，则结果未指定。
+.PP
+在 SUSv1 中引入了函数 \fBnftw\fP() 和 \fBFTW_SL\fP 与 \fBftw\fP() 的使用。
+.PP
+在某些实现中 (例如，glibc)，\fBftw\fP() 永远不会使用 \fBFTW_SL\fP，在其他系统上，\fBFTW_SL\fP
+仅用于不指向现有文件的符号链接，而在其他系统上，\fBftw\fP() 将再次为每个符号链接使用 \fBFTW_SL\fP。 如果 \fIfpath\fP
+是符号链接，\fBstat\fP(2) 失败，POSIX.1\-2008 声明在 \fItypeflag\fP 中传递的是 \fBFTW_NS\fP 还是
+\fBFTW_SL\fP 是未定义的。 要获得可预测的结果，请使用 \fBnftw\fP()。
+.SH BUGS
+.\" https://bugzilla.redhat.com/show_bug.cgi?id=1422736
+.\" http://austingroupbugs.net/view.php?id=1121
+.\" glibc commit 6ba205b2c35e3e024c8c12d2ee1b73363e84da87
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=23501
+根据 POSIX.1\-2008，当传递给 \fIfn\fP() 的 \fItypeflag\fP 参数包含 \fBFTW_SLN\fP 时，\fIsb\fP
+指向的缓冲区应该包含悬垂符号链接的信息 (通过在链接上调用 \fBlstat\fP(2) 获得)。 在这一点上，早期的 glibc 版本正确地遵循了
+POSIX 规范。 但是，由于在 glibc 2.4 中引入了回归，当 \fBFTW_SLN\fP 传入 \fItypeflag\fP 时，\fIsb\fP
+指向的缓冲区的内容未定义。 (更准确地说，缓冲区的内容在这种情况下保持不变。) 这种回归最终在 glibc 2.30 中得到修复，因此 glibc 实现
+(再次) 遵循 POSIX 规范。
+.SH EXAMPLES
+以下程序遍历其第一个命令行参数中指定的路径下的目录树，如果未提供参数，则遍历当前目录下的目录树。 它显示有关每个文件的各种信息。
+第二个命令行参数可以用来指定控制调用 \fBnftw\fP() 时分配给 \fIflags\fP 参数的值的字符。
+.SS "Program source"
+.\" SRC BEGIN (ftw.c)
+\&
+.EX
+#define _XOPEN_SOURCE 500
+#include <ftw.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static int
+display_info (const char *fpath, const 结构体 stat *sb,
+             int tflag, struct FTW *ftwbuf)
+{
+    printf("%\-3s %2d ",
+           (tflag == FTW_D) ?   "d"   : (tflag == FTW_DNR) ? "dnr" :
+           (tflag == FTW_DP) ?  "dp"  : (tflag == FTW_F) ?   "f" :
+           (tflag == FTW_NS) ?  "ns"  : (tflag == FTW_SL) ?  "sl" :
+           (tflag == FTW_SLN) ? "sln" : "???",
+           ftwbuf\->level);
+
+    if (tflag == FTW_NS)
+        printf("\-\-\-\-\-\-\-");
+    else
+        printf("%7jd", (intmax_t) sb\->st_size);
+
+    printf("   %\-40s %d %s\en",
+           fpath, ftwbuf\->base, fpath + ftwbuf\->base);
+
+    return 0;            /* To tell nftw() to continue */
+}
+
+int
+main(int argc, char *argv[])
+{
+    int flags = 0;
+
+    if (argc > 2 && strchr(argv[2], \[aq]d\[aq]) != NULL)
+        flags |= FTW_DEPTH;
+    if (argc > 2 && strchr(argv[2], \[aq]p\[aq]) != NULL)
+        flags |= FTW_PHYS;
+
+    if (nftw((argc < 2) ? "." : argv[1], display_info, 20, flags)
+        == \-1)
+    {
+        perror("nftw");
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBstat\fP(2), \fBfts\fP(3), \fBreaddir\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

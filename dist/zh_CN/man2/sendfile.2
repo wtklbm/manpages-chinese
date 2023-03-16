@@ -1,0 +1,146 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1998 Pawel Krawczyk.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: sendfile.2,v 1.5 1999/05/18 11:54:11 freitag Exp $
+.\" 2000-11-19 bert hubert <ahu@ds9a.nl>: in_fd cannot be socket
+.\"
+.\" 2004-12-17, mtk
+.\"	updated description of in_fd and out_fd for 2.6
+.\"	Various wording and formatting changes
+.\"
+.\" 2005-03-31 Martin Pool <mbp@sourcefrog.net> mmap() improvements
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sendfile 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+sendfile \- 在文件描述符之间传输数据
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/sendfile.h>\fP
+.PP
+.\" The below is too ugly. Comments about glibc versions belong
+.\" in the notes, not in the header.
+.\"
+.\" .B #include <features.h>
+.\" .B #if (__GLIBC__==2 && __GLIBC_MINOR__>=1) || __GLIBC__>2
+.\" .B #include <sys/sendfile.h>
+.\" #else
+.\" .B #include <sys/types.h>
+.\" .B /* No system prototype before glibc 2.1. */
+.\" .BI "ssize_t sendfile(int" " out_fd" ", int" " in_fd" ", off_t *" \
+.\"                       offset ", size_t" " count" )
+.\" .B #endif
+.\"
+\fBssize_t sendfile(int\fP\fI out_fd\fP\fB, int\fP\fI in_fd\fP\fB, off_t *_Nullable \fP\fIoffset\fP\fB,\fP
+\fB                 size_t\fP\fI count\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsendfile\fP() 在一个文件描述符和另一个文件描述符之间复制数据。 因为这种复制是在内核中完成的，所以 \fBsendfile\fP() 比
+\fBread\fP(2) 和 \fBwrite\fP(2) 的组合更有效，后者需要将数据传入和传出用户空间。
+.PP
+\fIin_fd\fP 应该是为读取而打开的文件描述符，\fIout_fd\fP 应该是为写入而打开的描述符。
+.PP
+如果 \fIoffset\fP 不为 NULL，则它指向一个变量，该变量保存文件偏移量，\fBsendfile\fP() 将从该偏移量开始从 \fIin_fd\fP
+读取数据。 当 \fBsendfile\fP() 返回时，此变量将设置为读取的最后一个字节之后的字节的偏移量。 如果 \fIoffset\fP 不为 NULL，则
+\fBsendfile\fP() 不修改 \fIin_fd\fP 的文件偏移量; 否则调整文件偏移以反映从 \fIin_fd\fP 读取的字节数。
+.PP
+如果 \fIoffset\fP 为 NULL，则从文件偏移量开始从 \fIin_fd\fP 读取数据，文件偏移量将由调用更新。
+.PP
+\fIcount\fP 是要在文件描述符之间复制的字节数。
+.PP
+\fIin_fd\fP 参数必须对应一个支持 \fBmmap\fP(2)\-like 操作的文件 (即不能是套接字)。
+.PP
+在 Linux 2.6.33 之前，\fIout_fd\fP 必须指套接字。 由于 Linux 2.6.33 它可以是任何文件。 如果是常规文件，则
+\fBsendfile\fP() 会适当更改文件偏移量。
+.SH "RETURN VALUE"
+如果传输成功，则返回写入 \fIout_fd\fP 的字节数。 请注意，对 \fBsendfile\fP() 的成功调用可能会写入比请求更少的字节;
+如果有未发送的字节，调用者应该准备重试调用。 另请详见注释。
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+已使用 \fBO_NONBLOCK\fP 选择了非阻塞 I/O，写入将阻塞。
+.TP 
+\fBEBADF\fP
+输入文件未打开进行读取或输出文件未打开进行写入。
+.TP 
+\fBEFAULT\fP
+地址错误。
+.TP 
+\fBEINVAL\fP
+描述符无效或已锁定，或者 \fBmmap\fP(2)\-like 操作不可用于 \fIin_fd\fP，或者 \fIcount\fP 为 negative。
+.TP 
+\fBEINVAL\fP
+\fIout_fd\fP 设置了 \fBO_APPEND\fP 标志。 \fBsendfile\fP() 当前不支持此功能。
+.TP 
+\fBEIO\fP
+从 \fIin_fd\fP 读取时发生未指定的错误。
+.TP 
+\fBENOMEM\fP
+内存不足，无法从 \fIin_fd\fP 读取。
+.TP 
+\fBEOVERFLOW\fP
+\fIcount\fP 太大，操作将导致超过输入文件或输出文件的最大大小。
+.TP 
+\fBESPIPE\fP
+\fIoffset\fP 不是 NULL 但输入文件不可查找。
+.SH VERSIONS
+\fBsendfile\fP() 最早出现在 Linux 2.2。 包含文件 \fI<sys/sendfile.h>\fP 自 glibc 2.1
+以来就存在。
+.SH STANDARDS
+POSIX.1\-2001 和其他标准中均未指定。
+.PP
+其他 UNIX 系统使用不同的语义和原型实现 \fBsendfile\fP()。 它不应该在可移植程序中使用。
+.SH NOTES
+.\" commit e28cc71572da38a5a12c1cfe4d7032017adccf69
+\fBsendfile\fP() 最多传输 0x7ffff000 (2,147,479,552) 个字节，返回实际传输的字节数。 (在 32 位和 64
+位系统上都是如此。)
+.PP
+如果您计划使用 \fBsendfile\fP() 将文件发送到 TCP 套接字，但需要在文件内容之前发送一些标头数据，您会发现使用 \fBtcp\fP(7)
+中描述的 \fBTCP_CORK\fP 选项很有用，可以最大限度地减少数据包的数量和调整性能。
+.PP
+在 Linux 2.4 及更早版本中，\fIout_fd\fP 也可以指代一个普通文件; 这种可能性在 Linux 2.6.x 内核系列中消失了，但在
+Linux 2.6.33 中恢复了。
+.PP
+最初的 Linux \fBsendfile\fP() 系统调用并不是为处理大文件偏移而设计的。 因此，Linux 2.4 添加了
+\fBsendfile64\fP()，\fIoffset\fP 参数的类型更宽。 glibc \fBsendfile\fP() 包装器函数透明地处理内核差异。
+.PP
+在 \fBsendfile\fP() 因 \fBEINVAL\fP 或 \fBENOSYS\fP 而失败的情况下，应用程序可能希望回退到 \fBread\fP(2) 和
+\fBwrite\fP(2)。
+.PP
+如果 \fIout_fd\fP 引用具有零拷贝支持的套接字或管道，则调用者必须确保 \fIin_fd\fP 引用的文件的传输部分保持不变，直到 \fIout_fd\fP
+另一端的 reader 消耗了传输的数据。
+.PP
+特定于 Linux 的 \fBsplice\fP(2) 调用支持在任意文件描述符之间传输数据，前提是其中一个 (或两个) 是管道。
+.SH "SEE ALSO"
+\fBcopy_file_range\fP(2), \fBmmap\fP(2), \fBopen\fP(2), \fBsocket\fP(2), \fBsplice\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

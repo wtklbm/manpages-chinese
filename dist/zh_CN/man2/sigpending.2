@@ -1,0 +1,85 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2005 Michael Kerrisk
+.\" based on earlier work by faith@cs.unc.edu and
+.\" Mike Battersby <mib@deakin.edu.au>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2005-09-15, mtk, Created new page by splitting off from sigaction.2
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigpending 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+sigpending, rt_sigpending \- examine pending signals
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint sigpending(sigset_t *\fP\fIset\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigpending\fP():
+.nf
+    _POSIX_C_SOURCE
+.fi
+.SH DESCRIPTION
+\fBsigpending\fP() 返回一组等待传递给调用线程的信号 (即，在阻塞时发出的信号)。 挂起信号的掩码在 \fIset\fP 中返回。
+.SH "RETURN VALUE"
+\fBsigpending\fP() 成功返回 0。 失败时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIset\fP 指向的内存不是进程地址空间的有效部分。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+有关操作信号集的详细信息，请参见 \fBsigsetops\fP(3)。
+.PP
+如果信号既被阻塞又具有 "ignored" 的配置，则在生成时将 \fInot\fP 添加到未决信号的掩码中。
+.PP
+线程挂起的信号集是该线程挂起的信号集和整个进程挂起的信号集的 union; 请参见 \fBsignal\fP(7)。
+.PP
+.\"
+通过 \fBfork\fP(2) 创建的子节点最初有一个空的挂起信号集; 挂起的信号集保存在 \fBexecve\fP(2) 中。
+.SS "C library/kernel differences"
+.\" This argument is currently required to be less than or equal to
+.\" .IR sizeof(sigset_t)
+.\" (or the error
+.\" .B EINVAL
+.\" results).
+.\"
+原来的 Linux 系统调用被命名为 \fBsigpending\fP()。 然而，随着 Linux 2.2 中实时信号的添加，该系统调用支持的固定大小的
+32 位 \fIsigset_t\fP 参数不再适用。 因此，增加了一个新的系统调用，\fBrt_sigpending\fP()，以支持扩大的
+\fIsigset_t\fP 类型。 新系统调用取第二个参数 \fIsize_t sigsetsize\fP，指定 \fIset\fP 中信号集的字节大小。 glibc
+\fBsigpending\fP() 包装器函数向我们隐藏了这些细节，在内核提供 \fBrt_sigpending\fP() 时透明地调用它。
+.SH BUGS
+直到并包括 glibc 2.2.1，\fBsigpending\fP() 的包装器函数中存在一个错误，这意味着未正确返回有关未决实时信号的信息。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2), \fBsigprocmask\fP(2),
+\fBsigsuspend\fP(2), \fBsigsetops\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

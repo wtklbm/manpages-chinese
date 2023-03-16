@@ -1,0 +1,240 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dlinfo 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+dlinfo \- 获取有关动态加载对象的信息
+.SH LIBRARY
+Dynamic linking library (\fIlibdl\fP, \fI\-ldl\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP
+\fB#include <link.h>\fP
+\fB#include <dlfcn.h>\fP
+.PP
+\fBint dlinfo(void *restrict \fPhandle\fB, int \fPrequest\fB, void *restrict \fPinfo\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBdlinfo\fP() 函数获取 \fIhandle\fP 引用的动态加载对象的信息 (通常通过较早的调用 \fBdlopen\fP(3) 或
+\fBdlmopen\fP(3)) 获取。 \fIrequest\fP 参数指定要返回的信息。 \fIinfo\fP 参数是指向缓冲区的指针，用于存储调用返回的信息;
+这个参数的类型取决于 \fIrequest\fP。
+.PP
+\fIrequest\fP 支持以下值 (括号中显示 \fIinfo\fP 的相应类型) :
+.TP 
+\fBRTLD_DI_LMID\fP (\fILmid_t *\fP)
+获取加载 \fIhandle\fP 的 link\-map 列表 (namespace) 的 ID。
+.TP 
+\fBRTLD_DI_LINKMAP\fP (\fIstruct link_map **\fP)
+获取指向 \fIhandle\fP 对应的 \fIlink_map\fP 结构体的指针。 \fIinfo\fP 参数指向 \fIlink_map\fP 结构体的指针，在
+\fI<link.h>\fP 中定义为:
+.IP
+.in +4n
+.EX
+struct link_map {
+    ElfW(Addr) l_addr;  /* Difference between the
+                           address in the ELF file and
+                           the address in memory */
+    char      *l_name;   /* Absolute pathname where
+                           object was found */
+    ElfW(Dyn) *l_ld;    /* Dynamic section of the
+                           shared object */
+    struct link_map *l_next, *l_prev;
+                        /* Chain of loaded objects */
+
+    /* Plus additional fields private to the
+       implementation */
+};
+.EE
+.in
+.TP 
+\fBRTLD_DI_ORIGIN\fP (\fIchar *\fP)
+将 \fIhandle\fP 对应的共享对象源的路径名复制到 \fIinfo\fP 指向的位置。
+.TP 
+\fBRTLD_DI_SERINFO\fP (\fIDl_serinfo *\fP)
+获取 \fIhandle\fP 引用的共享对象的库搜索路径。 \fIinfo\fP 参数是指向包含搜索路径的 \fIDl_serinfo\fP 的指针。
+由于搜索路径的数量可能会有所不同，因此 \fIinfo\fP 指向的结构体的大小可能会有所不同。 下面描述的 \fBRTLD_DI_SERINFOSIZE\fP
+请求允许应用程序适当地调整缓冲区的大小。 调用者必须执行以下步骤:
+.RS
+.IP (1) 5
+使用 \fBRTLD_DI_SERINFOSIZE\fP 请求填充 \fIDl_serinfo\fP 结构体，其中 (\fIdls_size\fP) 的结构体大小为后续
+\fBRTLD_DI_SERINFO\fP 请求所需的结构体。
+.IP (2)
+分配正确大小 (\fIdls_size\fP) 的 \fIDl_serinfo\fP 缓冲区。
+.IP (3)
+使用进一步的 \fBRTLD_DI_SERINFOSIZE\fP 请求来填充在上一步中分配的缓冲区的 \fIdls_size\fP 和 \fIdls_cnt\fP 字段。
+.IP (4)
+使用 \fBRTLD_DI_SERINFO\fP 获取库搜索路径。
+.RE
+.IP
+\fIDl_serinfo\fP 结构体定义如下:
+.IP
+.in +4n
+.EX
+typedef 结构体 {
+    size_t dls_size;           /* Size in bytes of
+                                  整个缓冲区 */
+    unsigned int dls_cnt;      /* Number of elements
+                                  在 \[aq] dls_serpath\[aq] */
+    Dl_serpath dls_serpath[1];/* 实际上更长，
+                                  \[aq] dls_cnt\[aq] 元素 */
+} Dl_serinfo;
+.EE
+.in
+.IP
+上述结构体中的每个 \fIdls_serpath\fP 元素都是以下形式的结构体:
+.IP
+.in +4n
+.EX
+typedef 结构体 {
+    char *dls_name;            /* Name of library search
+                                  路径目录 */
+    unsigned int dls_flags;    /* Indicates where this
+                                  目录来自 */
+} Dl_serpath;
+.EE
+.in
+.IP
+\fIdls_flags\fP 字段当前未使用，始终包含零。
+.TP 
+\fBRTLD_DI_SERINFOSIZE\fP (\fIDl_serinfo *\fP)
+使用适合分配缓冲区以供后续 \fBRTLD_DI_SERINFO\fP 请求使用的值填充 \fIinfo\fP 指向的 \fIDl_serinfo\fP 结构体的
+\fIdls_size\fP 和 \fIdls_cnt\fP 字段。
+.TP 
+\fBRTLD_DI_TLS_MODID\fP (\fIsize_t *\fP, since glibc 2.4)
+获取此共享对象的 TLS (线程本地存储) 段的模块 ID，如在 TLS 重定位中使用的那样。 如果此对象未定义 TLS 段，则将零放入
+\fI*info\fP。
+.TP 
+\fBRTLD_DI_TLS_DATA\fP (\fIvoid **\fP, since glibc 2.4)
+获取指向与此共享对象的 TLS 段对应的调用线程的 TLS 块的指针。 如果该对象没有定义 PT_TLS 段，或者如果调用线程没有为其分配块，则
+NULL 被放置在 \fI*info\fP 中。
+.SH "RETURN VALUE"
+成功时，\fBdlinfo\fP() 返回 0。 失败时返回 \-1; 可以使用 \fBdlerror\fP(3) 诊断错误原因。
+.SH VERSIONS
+\fBdlinfo\fP() 最早出现在 glibc 2.3.3 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBdlinfo\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这个函数是一个非标准的 GNU 扩展。
+.SH NOTES
+这个函数来源于同名的 Solaris 函数，也出现在其他一些系统上。 各种实现支持的请求集仅部分重叠。
+.SH EXAMPLES
+下面的程序使用 \fBdlopen\fP(3) 打开共享对象，然后使用 \fBRTLD_DI_SERINFOSIZE\fP 和 \fBRTLD_DI_SERINFO\fP
+请求获取库的库搜索路径列表。 这是我们在运行程序时可能会看到的示例:
+.PP
+.in +4n
+.EX
+$ \fB./a.out /lib64/libm.so.6\fP
+dls_serpath[0].dls_name = /lib64
+dls_serpath[1].dls_name = /usr/lib64
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (dlinfo.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <link.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    void *handle;
+    Dl_serinfo serinfo;
+    Dl_serinfo *sip;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <libpath>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Obtain a handle for shared object specified on command line. */
+
+    handle = dlopen(argv[1], RTLD_NOW);
+    if (handle == NULL) {
+        fprintf(stderr, "dlopen() failed: %s\en", dlerror());
+        exit(EXIT_FAILURE);
+    }
+
+    /* Discover the size of the buffer that we must pass to
+       RTLD_DI_SERINFO. */
+
+    if (dlinfo(handle, RTLD_DI_SERINFOSIZE, &serinfo) == \-1) {
+        fprintf(stderr, "RTLD_DI_SERINFOSIZE failed: %s\en", dlerror());
+        exit(EXIT_FAILURE);
+    }
+
+    /* Allocate the buffer for use with RTLD_DI_SERINFO. */
+
+    sip = malloc(serinfo.dls_size);
+    if (sip == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Initialize the \[aq]dls_size\[aq] and \[aq]dls_cnt\[aq] fields in the newly
+       allocated buffer. */
+
+    if (dlinfo(handle, RTLD_DI_SERINFOSIZE, sip) == \-1) {
+        fprintf(stderr, "RTLD_DI_SERINFOSIZE failed: %s\en", dlerror());
+        exit(EXIT_FAILURE);
+    }
+
+    /* Fetch and print library search list. */
+
+    if (dlinfo(handle, RTLD_DI_SERINFO, sip) == \-1) {
+        fprintf(stderr, "RTLD_DI_SERINFO failed: %s\en", dlerror());
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t j = 0; j < serinfo.dls_cnt; j++)
+        printf("dls_serpath[%zu].dls_name = %s\en",
+               j, sip\->dls_serpath[j].dls_name);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBdl_iterate_phdr\fP(3), \fBdladdr\fP(3), \fBdlerror\fP(3), \fBdlopen\fP(3),
+\fBdlsym\fP(3), \fBld.so\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

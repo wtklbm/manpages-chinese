@@ -1,0 +1,157 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2008, George Spelvin <linux@horizon.com>,
+.\" and Copyright (C) 2008, Matt Mackall <mpm@selenic.com>
+.\" and Copyright (C) 2016, Laurent Georget <laurent.georget@supelec.fr>
+.\" and Copyright (C) 2016, Nikos Mavrogiannopoulos <nmav@redhat.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" The following web page is quite informative:
+.\" http://www.2uo.de/myths-about-urandom/
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH random 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+random \- 获取随机性的接口概述
+.SH DESCRIPTION
+内核随机数生成器依赖于从设备驱动程序和其他环境噪声源收集的熵到 seed 加密安全伪随机数生成器 (CSPRNG)。 它是为安全而不是速度而设计的。
+.PP
+以下接口提供对内核 CSPRNG 输出的访问:
+.IP \[bu] 3
+\fI/dev/urandom\fP 和 \fI/dev/random\fP 设备，均在 \fBrandom\fP(4) 中进行了描述。 这些设备很早就出现在 Linux
+上，并且在许多其他系统上也可用。
+.IP \[bu]
+.\"
+特定于 Linux 的 \fBgetrandom\fP(2) 系统调用，从 Linux 3.17 开始可用。 此系统调用提供对与
+\fI/dev/urandom\fP 相同的源 (在本页中称为 \fIurandom\fP 源) 或与 \fI/dev/random\fP 相同的源 (在本页中称为
+\fIrandom\fP 源) 的访问。 默认为 \fIurandom\fP 源; 通过将 \fBGRND_RANDOM\fP 标志指定给系统调用来选择
+\fIrandom\fP 源。 (\fBgetentropy\fP(3) 函数在 \fBgetrandom\fP(2).) 之上提供了一个稍微更便携的接口
+.SS "Initialization of the entropy pool"
+内核从环境中收集一些熵。 当收集到足够数量的随机位时，熵池被认为已初始化。
+.SS "Choice of random source"
+除非您正在进行长期密钥生成 (而且很可能甚至不会)，否则您可能不应该从 \fI/dev/random\fP 设备读取或使用带有 \fBGRND_RANDOM\fP
+标志的 \fBgetrandom\fP(2)。 相反，要么从 \fI/dev/urandom\fP 设备读取，要么使用不带 \fBGRND_RANDOM\fP 标志的
+\fBgetrandom\fP(2)。 用于 \fIurandom\fP 源的加密算法非常保守，因此应该足以满足所有目的。
+.PP
+.\"
+\fBGRND_RANDOM\fP 和从 \fI/dev/random\fP 读取的缺点是操作可能会无限期阻塞。 此外，处理在使用 \fBGRND_RANDOM\fP
+或从 \fI/dev/random\fP 读取时可能发生的部分完成的请求会增加代码的复杂性。
+.SS "Monte Carlo and other probabilistic sampling applications"
+.\"
+使用这些接口为蒙特卡洛模拟或其他做概率采样的 programs/algorithms 提供大量数据会很慢。
+此外，它是不必要的，因为此类应用程序不需要密码安全的随机数。 取而代之的是，使用本页中描述的接口为 seed
+获取少量数据，这是一个供此类应用程序使用的用户空间伪随机数生成器。
+.SS "Comparison between getrandom, /dev/urandom, and /dev/random"
+下表总结了可用于获取随机性的各种接口的行为。 \fBGRND_NONBLOCK\fP 是一个标志，可用于控制 \fBgetrandom\fP(2) 的阻塞行为。
+该表的最后一列考虑了熵池尚未初始化时可能在早期启动时发生的情况。
+.ad l
+.TS
+allbox;
+lbw13 lbw12 lbw14 lbw18
+l l l l.
+Interface	Pool	T{
+Blocking
+\%behavior
+T}	T{
+Behavior when pool is not yet ready
+T}
+T{
+\fI/dev/random\fP
+T}	T{
+Blocking pool
+T}	T{
+If entropy too low, blocks until there is enough entropy again
+T}	T{
+Blocks until enough entropy gathered
+T}
+T{
+\fI/dev/urandom\fP
+T}	T{
+CSPRNG output
+T}	T{
+Never blocks
+T}	T{
+Returns output from uninitialized CSPRNG (may be low entropy and unsuitable for cryptography)
+T}
+T{
+\fBgetrandom\fP()
+T}	T{
+Same as
+\fI/dev/urandom\fP
+T}	T{
+Does not block once is pool ready
+T}	T{
+Blocks until pool ready
+T}
+T{
+\fBgetrandom\fP()
+\fBGRND_RANDOM\fP
+T}	T{
+Same as
+\fI/dev/random\fP
+T}	T{
+If entropy too low, blocks until there is enough entropy again
+T}	T{
+Blocks until pool ready
+T}
+T{
+\fBgetrandom\fP()
+\fBGRND_NONBLOCK\fP
+T}	T{
+Same as
+\fI/dev/urandom\fP
+T}	T{
+Does not block once is pool ready
+T}	T{
+\fBEAGAIN\fP
+T}
+T{
+\fBgetrandom\fP()
+\fBGRND_RANDOM\fP
++
+\fBGRND_NONBLOCK\fP
+T}	T{
+Same as
+\fI/dev/random\fP
+T}	T{
+\fBEAGAIN\fP
+if not enough entropy available
+T}	T{
+\fBEAGAIN\fP
+T}
+.TE
+.ad
+.\"
+.SS "Generating cryptographic keys"
+生成加密密钥所需的 seed 材料的数量等于密钥的有效密钥大小。 例如，3072 位 RSA 或 Diffie\-Hellman 私钥的有效密钥大小为
+128 位 (需要大约 2\[ha] 128 次操作才能破解)，因此密钥生成器只需要 seed 的 128 位 (16 字节) 来自
+\fI/dev/random\fP 的材料。
+.PP
+.\"
+虽然高于该最小值的一些安全余量是合理的，但作为对 CSPRNG 算法缺陷的防范，目前没有可用的加密原语可以期望超过 256
+位的安全性，因此如果任何程序从中读取超过 256 位 (32 字节) 每次调用或每个合理的重新播种间隔 (不少于一分钟)
+的内核随机池，这应该被视为其加密技术是 \fInot\fP 巧妙实现的标志。
+.SH "SEE ALSO"
+\fBgetrandom\fP(2), \fBgetauxval\fP(3), \fBgetentropy\fP(3), \fBrandom\fP(4),
+\fBurandom\fP(4), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

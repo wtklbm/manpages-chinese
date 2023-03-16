@@ -1,0 +1,226 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\" and Copyright (C) 2006, 2014 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-21 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1997-01-12 by Michael Haardt
+.\"   <michael@cantor.informatik.rwth-aachen.de>: NFS details
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH chmod 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+chmod、fchmod、fchmodat \- 更改文件的权限
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint chmod(const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+\fBint fchmod(int \fP\fIfd\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>\fP           /* Definition of AT_* constants */
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint fchmodat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+.nf
+.\"        || (_XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED)
+.\"        || (_XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED)
+\fBfchmod\fP():
+    由于 glibc 2.24:
+        _POSIX_C_SOURCE >= 199309L
+    glibc 2.19 到 glibc 2.23
+        _POSIX_C_SOURCE
+    glibc 2.16 到 glibc 2.19:
+        _BSD_SOURCE || _POSIX_C_SOURCE
+    glibc 2.12 到 glibc 2.16:
+        _BSD_SOURCE || _XOPEN_SOURCE >= 500
+            || _POSIX_C_SOURCE >= 200809L
+    glibc 2.11 及更早版本:
+        _BSD_SOURCE || _XOPEN_SOURCE >= 500
+.fi
+.PP
+\fBfchmodat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBchmod\fP() 和 \fBfchmod\fP() 系统调用更改文件的模式位。 (文件模式由文件权限位加上设置用户 ID、设置组 ID 和粘性位组成。)
+这些系统调用仅在指定文件的方式上有所不同:
+.IP \[bu] 3
+\fBchmod\fP() 更改指定文件的模式，其路径名在 \fIpathname\fP 中给出，如果它是符号链接，则解引用。
+.IP \[bu]
+\fBfchmod\fP() 更改打开的文件描述符 \fIfd\fP 引用的文件的模式。
+.PP
+新文件模式在 \fImode\fP 中指定，它是通过对以下零个或多个进行或运算而创建的位掩码:
+.TP  18
+\fBS_ISUID\fP  (04000)
+set\-user\-ID (在 \fBexecve\fP(2)) 上设置进程有效用户 ID
+.TP 
+\fBS_ISGID\fP  (02000)
+set\-group\-ID (在 \fBexecve\fP(2) 上设置进程有效组 ID; 强制锁定，如 \fBfcntl\fP(2) 中所述;
+从父目录中获取新文件的组，如 \fBchown\fP(2) 和 \fBmkdir\fP(2)) 中所述
+.TP 
+\fBS_ISVTX\fP  (01000)
+粘性位 (限制删除标志，如 \fBunlink\fP(2)) 中所述
+.TP 
+\fBS_IRUSR\fP  (00400)
+所有者阅读
+.TP 
+\fBS_IWUSR\fP  (00200)
+所有者写的
+.TP 
+\fBS_IXUSR\fP  (00100)
+execute/search by owner ("search" 适用于目录，表示可以访问目录内的条目)
+.TP 
+\fBS_IRGRP\fP  (00040)
+分组阅读
+.TP 
+\fBS_IWGRP\fP  (00020)
+按组写
+.TP 
+\fBS_IXGRP\fP  (00010)
+execute/search 按组
+.TP 
+\fBS_IROTH\fP  (00004)
+别人读
+.TP 
+\fBS_IWOTH\fP  (00002)
+别人写的
+.TP 
+\fBS_IXOTH\fP  (00001)
+别人的 execute/search
+.PP
+调用进程的有效 UID 必须与文件的所有者相匹配，否则该进程必须具有特权 (Linux: 它必须具有 \fBCAP_FOWNER\fP 能力)。
+.PP
+如果调用进程没有特权 (Linux: 不具备 \fBCAP_FSETID\fP 能力)，并且文件的组与进程的有效组 ID 或其补充组 ID
+之一不匹配，\fBS_ISGID\fP 位将被关闭，但这不会导致返回错误。
+.PP
+作为一项安全措施，根据文件系统的不同，如果写入文件，set\-user\-ID 和 set\-group\-ID 执行位可能会被关闭。 (在 Linux
+上，如果写入进程不具备 \fBCAP_FSETID\fP 能力，就会出现这种情况。) 在某些文件系统上，只有超级用户才能设置粘滞位，这可能具有特殊的含义。
+对于粘性位，以及目录上的设置用户 ID 和设置组 ID 位，请参见 \fBinode\fP(7)。
+.PP
+.\"
+.\"
+在 NFS 文件系统上，限制权限会立即影响已经打开的文件，因为访问控制是在服务器上完成的，但打开的文件是由客户端维护的。
+如果在其他客户端上启用了属性缓存，则可能会延迟为其他客户端扩展权限。
+.SS fchmodat()
+\fBfchmodat\fP() 系统调用的操作方式与 \fBchmod\fP() 完全相同，除了此处描述的差异。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBchmod\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBchmod\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+\fIflags\fP 可以是 0，也可以包含以下标志:
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+如果 \fIpathname\fP 是一个符号链接，不要解引它: 而是对链接本身进行操作。 此标志当前未实现。
+.PP
+有关对 \fBfchmodat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+根据文件系统的不同，可能会返回下面列出的错误以外的错误。
+.PP
+下面列出了 \fBchmod\fP() 的更一般的错误:
+.TP 
+\fBEACCES\fP
+路径前缀的某个组件的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+(\fBfchmod\fP()) 文件描述符 \fIfd\fP 无效。
+.TP 
+\fBEBADF\fP
+(\fBfchmodat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+(\fBfchmodat\fP()) \fIflags\fP 中指定的标志无效。
+.TP 
+\fBEIO\fP
+发生 I/O 错误。
+.TP 
+\fBELOOP\fP
+解析 \fIpathname\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长。
+.TP 
+\fBENOENT\fP
+该文件不存在。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOTDIR\fP
+路径前缀的组成部分不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBfchmodat\fP()) \fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.TP 
+\fBENOTSUP\fP
+(\fBfchmodat\fP()) \fIflags\fP 指定 \fBAT_SYMLINK_NOFOLLOW\fP，不支持。
+.TP 
+\fBEPERM\fP
+有效的 UID 与文件的所有者不匹配，进程没有特权 (Linux: 它没有 \fBCAP_FOWNER\fP 能力)。
+.TP 
+\fBEPERM\fP
+该文件被标记为不可更改或仅，追加。 (见 \fBioctl_iflags\fP(2).)
+.TP 
+\fBEROFS\fP
+命名文件驻留在只读文件系统上。
+.SH VERSIONS
+\fBfchmodat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+\fBchmod\fP(), \fBfchmod\fP(): 4.4BSD, SVr4, POSIX.1\-2001i, POSIX.1\-2008.
+.PP
+\fBfchmodat\fP(): POSIX.1\-2008.
+.SH NOTES
+.SS "C library/kernel differences"
+GNU C 库 \fBfchmodat\fP() 包装器函数实现了本页中描述的 POSIX 指定接口。 此接口不同于底层 Linux 系统调用，后者
+\fInot\fP 有一个 \fIflags\fP 参数。
+.SS "glibc notes"
+在 \fBfchmodat\fP() 不可用的旧内核上，glibc 包装器函数退回到使用 \fBchmod\fP()。 当 \fIpathname\fP
+是相对路径名时，glibc 根据 \fI/proc/self/fd\fP 中对应于 \fIdirfd\fP 参数的符号链接构造路径名。
+.SH "SEE ALSO"
+\fBchmod\fP(1), \fBchown\fP(2), \fBexecve\fP(2), \fBopen\fP(2), \fBstat\fP(2), \fBinode\fP(7),
+\fBpath_resolution\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

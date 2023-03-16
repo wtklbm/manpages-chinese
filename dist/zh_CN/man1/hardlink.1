@@ -1,0 +1,221 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: hardlink
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-08-04
+.\"    Manual: User Commands
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH HARDLINK 1 2022\-08\-04 "util\-linux 2.38.1" "User Commands"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+硬链接 \- 链接文件的多个副本
+.SH SYNOPSIS
+.sp
+\fBhardlink\fP [options] [\fIdirectory\fP|\fIfile\fP] ...
+.SH DESCRIPTION
+.sp
+\fBhardlink\fP 是一种工具，可以用硬链接或写时复制克隆替换文件副本，从而节省空间。
+.sp
+\fBhardlink\fP 首先创建文件大小的二叉树，然后比较具有相同大小的文件的内容。有两种基本的内容比较方法。\fBmemcmp\fP
+方式直接从文件中读取数据块进行比较。另一种方法基于校验和 (如 SHA256) ; 在这种情况下，对于每个数据块，Linux 内核加密 API
+会计算一个校验和，并且此校验和存储在用户空间中并用于文件比较。
+.sp
+对于每个文件，还会缓存一个 "intro" 缓冲区 (32 字节)。此缓冲区独立于比较方法和请求的缓存大小和 io 大小使用。 "intro"
+缓冲区大大减少了对数据内容的操作，因为文件通常与开始时不同。
+.SH OPTIONS
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.sp
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+详细输出，向用户解释正在做什么。如果指定一次，则显示每个硬链接文件。如果指定两次，它还会显示每个比较。
+.RE
+.sp
+\fB\-q\fP, \fB\-\-quiet\fP
+.RS 4
+安静模式，不要 \(cqt 打印任何东西。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-dry\-run\fP
+.RS 4
+不采取行动，只打印将要发生的事情。
+.RE
+.sp
+\fB\-y\fP, \fB\-\-method\fP \fIname\fP
+.RS 4
+设置文件内容比较方式。当前支持的方法有 sha256、sha1、crc32c 和 memcmp。如果 Linux Crypto API 不可用，则默认为
+sha256 或 memcmp。基于校验和的方法以零拷贝方式实现，在这种情况下，文件内容不会复制到用户空间，所有计算都在内核中完成。
+.RE
+.sp
+\fB\-\-reflink\fP[=\fIwhen\fP]
+.RS 4
+创建写时复制克隆 (又名重新链接) 而不是硬链接。重新链接的文件仅共享磁盘数据，但文件模式和所有者可以不同。它 \(cqs 建议将其与
+\fB\-\-ignore\-owner\fP 和 \fB\-\-ignore\-mode\fP 选项一起使用。此选项暗示 \fB\-\-skip\-reflinks\fP
+忽略已克隆的文件。
+.sp
+可选参数 \fIwhen\fP 可以是 \fBnever\fP、\fBalways\fP 或 \fBauto\fP。如果省略 \fIwhen\fP 参数，则默认为
+\fBauto\fP，在这种情况下，\fBhardlink\fP 检查文件系统类型并仅在 BTRFS 和 XFS
+上使用引用链接，并且在创建引用链接时无法回退到硬链接。 参数 \fBalways\fP 禁用文件系统类型检测和回退到硬链接，在这种情况下，只允许重新链接。
+.RE
+.sp
+\fB\-\-skip\-reflinks\fP
+.RS 4
+忽略已经克隆的文件。创建经典硬链接时，可以在没有 \fB\-\-reflink\fP 的情况下使用此选项。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-respect\-name\fP
+.RS 4
+只尝试链接具有相同 (基本) 名称的文件。它 \(cqs 强烈建议使用长选项而不是 \fB\-f\fP，它被其他 \fBhardlink\fP 实现以不同的方式解释。
+.RE
+.sp
+\fB\-p\fP, \fB\-\-ignore\-mode\fP
+.RS 4
+链接和比较文件，即使它们的模式不同。结果可能有点不可预测。
+.RE
+.sp
+\fB\-o\fP, \fB\-\-ignore\-owner\fP
+.RS 4
+链接和比较文件，即使它们的所有者信息 (用户和组) 不同。结果可能无法预测。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-ignore\-time\fP
+.RS 4
+链接和比较文件，即使它们的修改时间不同。这通常是一个不错的选择。
+.RE
+.sp
+\fB\-c\fP \fB\-\-content\fP
+.RS 4
+判断两个文件是否相等时，只考虑文件内容，不考虑属性。与 \fB\-pot\fP 相同。
+.RE
+.sp
+\fB\-X\fP, \fB\-\-respect\-xattrs\fP
+.RS 4
+只尝试链接具有相同扩展属性的文件。
+.RE
+.sp
+\fB\-m\fP, \fB\-\-maximize\fP
+.RS 4
+在相等的文件中，保留链接数最高的文件。
+.RE
+.sp
+\fB\-M\fP, \fB\-\-minimize\fP
+.RS 4
+在相等的文件中，保留链接数最少的文件。
+.RE
+.sp
+\fB\-O\fP, \fB\-\-keep\-oldest\fP
+.RS 4
+在相等的文件中，保留最旧的文件 (最近修改时间最少)。默认情况下，保留最新的文件。如果指定 \fB\-\-maximize\fP 或
+\fB\-\-minimize\fP，则链接计数优先于修改时间。
+.RE
+.sp
+\fB\-x\fP, \fB\-\-exclude\fP \fIregex\fP
+.RS 4
+排除文件比较和链接的正则表达式。
+.RE
+.sp
+\fB\-i\fP, \fB\-\-include\fP \fIregex\fP
+.RS 4
+包含文件的正则表达式。如果已给出选项 \fB\-\-exclude\fP，则此选项会重新包含原本会被排除的文件。如果在没有 \fB\-\-exclude\fP
+的情况下使用该选项，则仅包含与模式匹配的文件。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-minimum\-size\fP \fIsize\fP
+.RS 4
+要考虑的最小尺寸。默认为 1，因此不会链接空文件。\fIsize\fP 参数后面可以跟乘法后缀 KiB (=1024)、MiB
+(=1024*1024)，依此类推表示 GiB、TiB、PiB、EiB、ZiB 和 YiB ("iB" 是可选的，例如，"K" 与 "KiB"
+的含义相同)。
+.RE
+.sp
+\fB\-S\fP, \fB\-\-maximum\-size\fP \fIsize\fP
+.RS 4
+要考虑的最大尺寸。默认情况下这是 0，0 具有无限的特殊含义。\fIsize\fP 参数后面可以跟乘法后缀 KiB (=1024)、MiB
+(=1024*1024)，依此类推表示 GiB、TiB、PiB、EiB、ZiB 和 YiB ("iB" 是可选的，例如，"K" 与 "KiB"
+的含义相同)。
+.RE
+.sp
+\fB\-b\fP, \fB\-\-io\-size\fP \fIsize\fP
+.RS 4
+比较文件内容时使用的 \fBread\fP(2) 或 \fBsendfile\fP(2) 缓冲区的大小。 \fIsize\fP 参数后面可以跟乘法后缀 KiB、MiB
+等。"iB" 是可选的，例如 "K" 与 "KiB" 含义相同。memcmp 方法的默认值为 8KiB，其他方法的默认值为 1MiB。唯一的
+memcmp 方法使用进程内存作为缓冲区，其他方法使用零拷贝方式，I/O 操作在内核中完成。可以动态更改大小以适应许多缓存的内容校验和。
+.RE
+.sp
+\fB\-r\fP, \fB\-\-cache\-size\fP \fIsize\fP
+.RS 4
+内容校验和缓存的大小。所有非 memcmp 方法都为每个文件内容块计算校验和 (参见
+\fB\-\-io\-size\fP)，这些校验和被缓存以供下一次比较。大小对于大文件或大量相同大小的文件很重要。默认值为 10MiB。
+.RE
+.SH ARGUMENTS
+.sp
+\fBhardlink\fP 采用一个或多个目录，这些目录将被搜索以查找要链接的文件。
+.SH BUGS
+.sp
+最初的 \fBhardlink\fP 实现使用选项 \fB\-f\fP 来强制在文件系统之间创建硬链接。当前的 \fBhardlink\fP 不再支持这种很少使用的，特性。
+.sp
+\fBhardlink\fP
+假设它所操作的树在操作期间不会改变。如果一棵树确实改变了，结果是不确定的并且有潜在的危险。例如，如果常规文件被设备替换，\fBhardlink\fP
+可能会开始从设备读取。如果路径的组成部分被符号链接替换或文件权限更改，则可能会危及安全性。不要在变化的树或由其他用户控制的树上运行
+\fBhardlink\fP。
+.SH AUTHOR
+.sp
+有多个 \fBhardlink\fP 实现。第一个实现来自 Jakub Jelinek 的 Fedora 发行版，该实现已在 v2.34 到 v2.36
+版本之间的 util\-linux 中使用。当前的实现基于 Julian Andres Klode 的 Debian 版本。
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBhardlink\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

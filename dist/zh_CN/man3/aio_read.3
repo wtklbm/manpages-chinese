@@ -1,0 +1,114 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH aio_read 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+aio_read \- 异步读取
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <aio.h>\fP
+.PP
+\fBint aio_read(struct aiocb *\fP\fIaiocbp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBaio_read\fP() 函数将 \fIaiocbp\fP 指向的缓冲区描述的 I/O 请求排队。 这个函数是 \fBread\fP(2) 的异步模拟。
+调用的参数
+.PP
+.in +4n
+.EX
+read(fd, buf, count)
+.EE
+.in
+.PP
+(按顺序) 对应 \fIaiocbp\fP 指向的结构体的字段 \fIaio_fildes\fP、\fIaio_buf\fP、\fIaio_nbytes\fP。 (有关
+\fIaiocb\fP 结构体的说明，请参见 \fBaio\fP(7)。)
+.PP
+无论文件偏移量如何，都从绝对位置 \fIaiocbp\->aio_offset\fP 开始读取数据。 在调用之后，文件偏移量的值是未指定的。
+.PP
+"asynchronous" 表示这个调用在请求入队后立即返回; 当调用返回时，读取可能已经完成，也可能没有完成。 一项测试使用
+\fBaio_error\fP(3) 完成。 一个完成的 I/O 操作的返回状态可以通过 \fBaio_return\fP(3) 获取。 适当设置
+\fIaiocbp\->aio_sigevent\fP 可以获得 I/O 完成的异步通知; 详见 \fBsigevent\fP(7)。
+.PP
+如果定义了 \fB_POSIX_PRIORITIZED_IO\fP，并且此文件支持它，则提交异步操作的优先级等于调用进程的优先级减去
+\fIaiocbp\->aio_reqprio\fP。
+.PP
+\fIaiocbp\->aio_lio_opcode\fP 字段被忽略。
+.PP
+不会从常规文件中读取超出其最大偏移量的数据。
+.SH "RETURN VALUE"
+成功时，返回 0。 出错时，请求未入队，返回 \-1，并设置 \fIerrno\fP 以指示错误。 如果稍后检测到错误，将通过 \fBaio_return\fP(3)
+(返回状态 \-1) 和 \fBaio_error\fP(3) (错误状态 \[em] 无论在 \fIerrno\fP 中得到什么，例如 \fBEBADF\fP)
+都会报告。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+资源不足。
+.TP 
+\fBEBADF\fP
+\fIaio_fildes\fP 不是打开以供读取的有效文件描述符。
+.TP 
+\fBEINVAL\fP
+\fIaio_offset\fP、\fIaio_reqprio\fP 或 \fIaio_nbytes\fP 中的一个或多个无效。
+.TP 
+\fBENOSYS\fP
+\fBaio_read\fP() 未实现。
+.TP 
+\fBEOVERFLOW\fP
+该文件是一个普通文件，我们在文件末尾之前开始读取并且至少需要一个字节，但起始位置超过了该文件的最大偏移量。
+.SH VERSIONS
+\fBaio_read\fP() 函数自 glibc 2.1 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBaio_read\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+.\" or the control block of the operation
+使用前将控制块清零是个好主意。 读取操作正在进行时不得更改控制块。 正在读入的缓冲区在操作期间不得访问，否则可能会出现未定义的结果。
+涉及的存储区必须保持有效。
+.PP
+指定相同 \fIaiocb\fP 结构体的同时 I/O 操作会产生未定义的结果。
+.SH EXAMPLES
+请参见 \fBaio\fP(7)。
+.SH "SEE ALSO"
+\fBaio_cancel\fP(3), \fBaio_error\fP(3), \fBaio_fsync\fP(3), \fBaio_return\fP(3),
+\fBaio_suspend\fP(3), \fBaio_write\fP(3), \fBlio_listio\fP(3), \fBaio\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

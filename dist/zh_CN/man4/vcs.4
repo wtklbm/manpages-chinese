@@ -1,0 +1,149 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1995 James R. Van Zandt <jrv@vanzandt.mv.com>
+.\" Sat Feb 18 09:11:07 EST 1995
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified, Sun Feb 26 15:08:05 1995, faith@cs.unc.edu
+.\" 2007-12-17, Samuel Thibault <samuel.thibault@ens-lyon.org>:
+.\"     document the VT_GETHIFONTMASK ioctl
+.\" "
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH vcs 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+vcs, vcsa \- 虚拟控制台内存
+.SH DESCRIPTION
+\fI/dev/vcs0\fP 是一个字符设备，主设备号为 7，次设备号为 0，通常模式为 0644，所有权为 root:tty。
+指的是当前显示的虚拟控制台终端的内存。
+.PP
+\fI/dev/vcs[1\-63]\fP 是虚拟控制台终端的字符设备，它们的主设备号为 7，次设备号为 1 到 63，通常模式为 0644，所有权为
+root:tty。 \fI/dev/vcsa[0\-63]\fP 是相同的，但使用包含属性的 \fIunsigned short\fPs
+(按主机字节顺序)，并以给出屏幕尺寸和游标位置的四个字节为前缀: \fIlines\fP、\fIcolumns\fP、\fIx\fP、\fIy\fP。 (\fIx\fP = \fIy\fP
+=0 在屏幕的左上角。)
+.PP
+当加载 512 字符的字体时，可以通过在 \fI/dev/tty[1\-63]\fP 上应用 \fBioctl\fP(2) \fBVT_GETHIFONTMASK\fP
+操作 (从 Linux 2.6.18 开始可用) 来获取第 9 位位置; 该值在第三个 \fBioctl\fP(2) 参数指向的 \fIunsigned short\fP 中返回。
+.PP
+这些设备取代了 \fBioctl_console\fP(2) 的屏幕转储 \fBioctl\fP(2) 操作，因此系统管理员可以使用文件系统权限来控制访问。
+.PP
+前八个虚拟控制台的设备可以通过以下方式创建:
+.PP
+.in +4n
+.EX
+对于 0 1 2 3 4 5 6 7 8 中的 x; do
+    mknod \-m 644 /dev/vcs$x c 7 $x;
+    mknod \-m 644 /dev/vcsa$x c 7 $[$x+128];
+done
+chown root:tty /dev/vcs*
+.EE
+.in
+.PP
+不支持 \fBioctl\fP(2) 请求。
+.SH FILES
+\fI/dev/vcs[0\-63]\fP
+.br
+.\" .SH AUTHOR
+.\" Andries Brouwer <aeb@cwi.nl>
+\fI/dev/vcsa[0\-63]\fP
+.SH VERSIONS
+与 Linux 1.1.92 一起推出。
+.SH EXAMPLES
+您可以通过切换到 vt1 并键入来在 vt3 上进行屏幕转储
+.PP
+.in +4n
+.EX
+cat /dev/vcs3 >foo
+.EE
+.in
+.PP
+请注意，输出不包含换行符，因此可能需要进行一些处理，例如
+.PP
+.in +4n
+.EX
+折叠 \-w 81 /dev/vcs3 |lpr
+.EE
+.in
+.PP
+或 (horrors)
+.PP
+.in +4n
+.EX
+setterm \-dump 3 \-file /proc/self/fd/1
+.EE
+.in
+.PP
+\fI/dev/vcsa0\fP 设备用于盲文支持。
+.PP
+该程序显示第二个虚拟控制台游标下的字符和屏幕属性，然后更改那里的背景颜色:
+.PP
+.EX
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/vt.h>
+
+int
+main(void)
+{
+    int fd;
+    char *device = "/dev/vcsa2";
+    char *console = "/dev/tty2";
+    struct {unsigned char lines, cols, x, y;} scrn;
+    unsigned short s;
+    unsigned short mask;
+    unsigned char attrib;
+    int ch;
+
+    fd = open(console, O_RDWR);
+    if (fd < 0) { 
+        perror(console);
+        exit(EXIT_FAILURE);
+    }
+    if (ioctl(fd, VT_GETHIFONTMASK, &mask) < 0) {
+        perror("VT_GETHIFONTMASK");
+        exit(EXIT_FAILURE);
+    }
+    (void) close(fd);
+    fd = open(device, O_RDWR);
+    if (fd < 0) {
+        perror(device);
+        exit(EXIT_FAILURE);
+    }
+    (void) read(fd, &scrn, 4);
+    (void) lseek(fd, 4 + 2*(scrn.y*scrn.cols + scrn.x), SEEK_SET);
+    (void) read(fd, &s, 2);
+    ch = s & 0xff;
+    if (s & mask)
+        ch |= 0x100;
+    attrib = ((s & \[ti]mask) >> 8);
+    printf("ch=%#03x attrib=%#02x\en", ch, attrib);
+    s \[ha]= 0x1000;
+    (void) lseek(fd, \-2, SEEK_CUR);
+    (void) write(fd, &s, 2);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBioctl_console\fP(2), \fBtty\fP(4), \fBttyS\fP(4), \fBgpm\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

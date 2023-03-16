@@ -1,0 +1,330 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSUSERS\&.D 5 "" "systemd 253" sysusers.d
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+sysusers.d \- Declarative allocation of system users and groups
+.SH SYNOPSIS
+.PP
+/etc/sysusers\&.d/*\&.conf
+.PP
+/run/sysusers\&.d/*\&.conf
+.PP
+/usr/lib/sysusers\&.d/*\&.conf
+.sp
+.nf
+#Type Name       ID                  GECOS              Home directory Shell
+u     user_name  uid                 "User Description" /home/dir      /path/to/shell
+u     user_name  uid:gid             "User Description" /home/dir      /path/to/shell
+u     user_name  /file/owned/by/user "User Description" /home/dir      /path/to/shell
+g     group_name gid
+g     group_name /file/owned/by/group
+m     user_name  group_name
+r     \-          lowest\-highest
+.fi
+.SH DESCRIPTION
+.PP
+\fBsystemd\-sysusers\fP 使用 sysusers\&.d 目录中的文件创建系统用户和组，并将用户添加到组中，在包安装或启动时
+\&。这个工具可能只用于分配系统用户和组，它对创建非系统 (i\&.e\&.regular, "human") 用户和组没有用，因为它直接访问
+/etc/passwd 和 /etc/group，绕过任何更多复杂的用户数据库，例如任何涉及 NIS 或 LDAP\& 的数据库。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+每个配置文件的命名格式为 \fIpackage\fP\&.conf 或
+\fIpackage\fP\-\fIpart\fP\&.conf\&。当需要轻松覆盖配置的这一部分时，应使用第二个变体。
+.PP
+/etc/sysusers\&.d 中的文件覆盖 /usr/lib/sysusers\&.d 和 /run/sysusers\&.d\&
+中同名的文件。/run/sysusers\&.d 中的文件覆盖 /usr/sysusers\&.d\& 中同名的文件。软件包应将其配置文件安装在
+/usr/sysusers\&.d\& 中。/etc/sysusers\&.d
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。所有配置文件都按字典顺序按文件名排序，而不管它们位于哪个目录中
+\&。如果多个文件指定相同的路径，将应用字典中最早名称的文件中的条目 \&。相同用户名和组名的所有后续条目都将记录为警告 \&。
+.PP
+如果管理员想要禁用供应商提供的配置文件，推荐的方法是在 /etc/sysusers\&.d/ 中放置一个指向 /dev/null
+的符号链接，具有相同的文件名 \&。
+.SH "CONFIGURATION FILE FORMAT"
+.PP
+文件格式为每个用户或组一行，包含名称、ID、GECOS 字段描述、主目录和登录名 shell:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#Type Name     ID             GECOS                 Home directory Shell
+u     httpd    404            "HTTP User"
+u     _authd   /usr/bin/authd "Authorization user"
+u     postgres \-              "Postgresql Database" /var/lib/pgsql /usr/libexec/postgresdb
+g     input    \-              \-
+m     _authd   input
+u     root     0              "Superuser"           /root          /bin/zsh
+r     \-        500\-900
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+空行和以 "#" 字符开头的行将被忽略，可用于注释 \&。
+.SS Type
+.PP
+该类型由单个字母 \& 组成。可以理解以下线型:
+.PP
+\fIu\fP
+.RS 4
+如果指定名称的系统用户和组尚不存在，请创建它们 \&。用户 \*(Aqs 主组将设置为具有相同名称的组，除非 ID 字段指定它
+\&。该帐户将被禁用，因此不允许登录 \&。
+.RE
+.PP
+\fIg\fP
+.RS 4
+如果指定名称的系统组不存在，请创建它 \&。请注意，\fIu\fP 隐式创建了一个匹配组 \&。该组将在没有设置密码的情况下创建 \&。
+.RE
+.PP
+\fIm\fP
+.RS 4
+将用户添加到组 \&。如果用户或组尚不存在，它们将被隐式创建 \&。
+.RE
+.PP
+\fIr\fP
+.RS 4
+将一系列数字 UIDs/GIDs 添加到池中以从 \& 分配新的 UID 和 GID。如果没有指定这种类型的行，UIDs/GIDs
+的范围将设置为一些编译默认值 \&。请注意，UID 和 GID 都是从同一个池中分配的，以确保同名的用户和组很可能携带相同的数字 UID 和
+GID\&。
+.RE
+.SS Name
+.PP
+名称字段指定用户或组名称 \&。指定的名称必须仅包含字符 a\-z、A\-Z、0\-9、"_" 和 "\-"，但第一个字符必须是 a\-z、A\-Z 或 "_"
+中的一个 (i\&.e\&。数字和 "\-" 不允许作为第一个字符) \&。user/group 名称必须至少有一个字符，最多 31\&。
+.PP
+有关 user/group 名称语法的更多详细信息，请参见 \m[blue]\fBUser/Group Name Syntax\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.PP
+强烈建议选择不太可能与管理员创建的普通用户冲突的用户名和组名。保证这一点的一个好方案是在所有系统和组名称前加上下划线，并避免使用泛型名称 \&。
+.PP
+对于 \fIm\fP 行，此字段应包含要添加到组的用户名 \&。
+.PP
+对于 \fIr\fP 类型的行，该字段应设置为 `\-`\&。
+.SS ID
+.PP
+对于 \fIu\fP 和 \fIg\fP，用户 / 组的数字 32 位 UID 或 GID\&。不要使用 ID 65535 或
+4294967295，因为它们具有特殊的占位符含义 \&。指定 "\-" 为用户或组自动分配 UID/GID (强烈推荐，除非绝对需要使用特定的 UID
+或 GID) \&。或者，在文件系统中指定一个绝对路径 \&。在这种情况下，UID/GID 是从路径 \*(Aqs
+owner/group\&. 这对于创建其 UID/GID 与预先存在的文件 (例如 SUID 或 SGID 二进制文件) \&
+的所有者相匹配的用户很有用。支持语法 "\fIuid\fP:\fIgid\fP" 和 "\fIuid\fP:\fIgroupname\fP" 以允许创建具有特定主要组的用户
+\&。给定的组必须显式创建，或者它必须已经存在 \&。还支持在这些语法中为 UID 指定 "\-"\&。
+.PP
+对于 \fIm\fP 行，此字段应包含要添加到用户的组名称 \&。
+.PP
+对于类型为 \fIr\fP 的行，此字段应设置为 "FROM\-TO" 格式的 UID/GID 范围，其中两个值的格式均为十进制 ASCII 数字
+\&。或者，可以将单个 UID/GID 指定为十进制 ASCII 数字 \&。
+.SS GECOS
+.PP
+要创建的用户的简短描述性字符串，用引号 \& 括起来。请注意，该字段不能包含冒号 \&。
+.PP
+仅适用于 \fIu\fP 类型的行，否则应保持未设置 (或 "\-") \&。
+.SS "Home Directory"
+.PP
+新系统用户的主目录 \&。如果省略，默认为根目录 \&。
+.PP
+仅适用于 \fIu\fP 类型的行，否则应保持未设置 (或 "\-") \&。建议省略这个，除非软件严格要求设置主目录 \&。
+.PP
+\fBsystemd\-sysusers\fP 只在用户数据库中设置 home 目录记录 \&。要实际创建目录，请考虑添加相应的
+\fBtmpfiles.d\fP(5) 片段 \&。
+.SS Shell
+.PP
+用户的登录名 shell\&。如果未指定，这将设置为 /usr/sbin/nologin，除非用户的 UID 为 0，在这种情况下将使用
+/bin/sh\&。
+.PP
+仅适用于 \fIu\fP 类型的行，否则应保持未设置 (或 "\-") \&。建议省略这个，除非必须使用一个 shell 不同的
+/usr/sbin/nologin\&。
+.SH SPECIFIERS
+.PP
+说明符可用于 "Name"、"ID"、"GECOS"、"Home directory" 和 "Shell" 字段
+\&。未知或无法解析的说明符被视为无效配置 \&。理解以下扩展:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Specifiers available\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"%a"
+T}:T{
+Architecture
+T}:T{
+A short string identifying the architecture of the local system\&. A string such as \fBx86\fP, \fBx86\-64\fP or \fBarm64\fP\&. See the architectures defined for \fIConditionArchitecture=\fP in \fBsystemd.unit\fP(5) for a full list\&.
+T}
+T{
+"%A"
+T}:T{
+Operating system image version
+T}:T{
+The operating system image version identifier of the running system, as read from the \fIIMAGE_VERSION=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%b"
+T}:T{
+Boot ID
+T}:T{
+The boot ID of the running system, formatted as string\&. See \fBrandom\fP(4) for more information\&.
+T}
+T{
+"%B"
+T}:T{
+Operating system build ID
+T}:T{
+The operating system build identifier of the running system, as read from the \fIBUILD_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%H"
+T}:T{
+Host name
+T}:T{
+The hostname of the running system\&.
+T}
+T{
+"%l"
+T}:T{
+Short host name
+T}:T{
+The hostname of the running system, truncated at the first dot to remove any domain component\&.
+T}
+T{
+"%m"
+T}:T{
+Machine ID
+T}:T{
+The machine ID of the running system, formatted as string\&. See \fBmachine\-id\fP(5) for more information\&.
+T}
+T{
+"%M"
+T}:T{
+Operating system image identifier
+T}:T{
+The operating system image identifier of the running system, as read from the \fIIMAGE_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%o"
+T}:T{
+Operating system ID
+T}:T{
+The operating system identifier of the running system, as read from the \fIID=\fP field of /etc/os\-release\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%T"
+T}:T{
+Directory for temporary files
+T}:T{
+This is either /tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%v"
+T}:T{
+Kernel release
+T}:T{
+Identical to \fBuname \-r\fP output\&.
+T}
+T{
+"%V"
+T}:T{
+Directory for larger and persistent temporary files
+T}:T{
+This is either /var/tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%w"
+T}:T{
+Operating system version ID
+T}:T{
+The operating system version identifier of the running system, as read from the \fIVERSION_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%W"
+T}:T{
+Operating system variant ID
+T}:T{
+The operating system variant identifier of the running system, as read from the \fIVARIANT_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%%"
+T}:T{
+Single percent sign
+T}:T{
+Use "%%" in place of "%" to specify a single percent sign\&.
+T}
+.TE
+.sp 1
+.SH IDEMPOTENCE
+.PP
+请注意，如果指定的用户或组已经存在或者用户是指定组的成员，\fBsystemd\-sysusers\fP 将不执行任何操作，因此通常没有理由覆盖
+sysusers\&.d 供应商配置，除非阻止创建某些用户或组 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-sysusers\fP(8)
+.SH NOTES
+.IP " 1." 4
+User/Group 名称语法
+.RS 4
+\%https://systemd.io/USER_NAMES
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

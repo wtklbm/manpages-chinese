@@ -1,0 +1,180 @@
+.\" -*- coding: UTF-8 -*-
+.\"***************************************************************************
+.\" Copyright 2018-2020,2021 Thomas E. Dickey                                *
+.\" Copyright 1998-2011,2017 Free Software Foundation, Inc.                  *
+.\"                                                                          *
+.\" Permission is hereby granted, free of charge, to any person obtaining a  *
+.\" copy of this software and associated documentation files (the            *
+.\" "Software"), to deal in the Software without restriction, including      *
+.\" without limitation the rights to use, copy, modify, merge, publish,      *
+.\" distribute, distribute with modifications, sublicense, and/or sell       *
+.\" copies of the Software, and to permit persons to whom the Software is    *
+.\" furnished to do so, subject to the following conditions:                 *
+.\"                                                                          *
+.\" The above copyright notice and this permission notice shall be included  *
+.\" in all copies or substantial portions of the Software.                   *
+.\"                                                                          *
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+.\" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+.\" IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+.\" DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+.\" OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+.\" THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+.\"                                                                          *
+.\" Except as contained in this notice, the name(s) of the above copyright   *
+.\" holders shall not be used in advertising or otherwise to promote the     *
+.\" sale, use or other dealings in this Software without prior written       *
+.\" authorization.                                                           *
+.\"***************************************************************************
+.\"
+.\" $Id: term.7,v 1.31 2021/12/25 17:39:16 tom Exp $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH term 7   
+.ie  \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie  \n(.g .ds '' \(rq
+.el       .ds '' ''
+.ds n 5
+.ds d /usr/share/terminfo
+.SH NAME
+term \- 命名终端类型的约定
+.SH DESCRIPTION
+.PP
+环境变量 \fBTERM\fP 通常应包含您正在使用的终端、控制台或显示设备类型的类型名称。
+此信息对于所有面向屏幕的程序都至关重要，包括您的编辑器和邮件程序。
+.PP
+默认 \fBTERM\fP 值将由 \fB/etc/inittab\fP (例如，System\-V\-like UNIXes) 或 \fB/etc/ttys\fP (BSD
+UNIXes) 逐行设置。 这对于工作站和微型计算机控制台几乎总是足够的。
+.PP
+如果您使用拨号线路，连接到它的设备类型可能会有所不同。 较旧的 UNIX 系统预先设置了一个非常愚蠢的终端类型，如 \*(``dumb\*('' 或
+\*(``dialup\*(拨号线路上的 \*(rq。 较新的可能会预设 \*(``vt100\*(''，反映了 DEC VT100
+兼容终端和个人计算机仿真器的流行。
+.PP
+现代 telnet 将您的 \fBTERM\fP 环境变量从本地端传递到远程端。 如果您的类型的远程 terminfo 或 termcap
+条目与您的不兼容，则可能会出现问题，但这种情况很少见，并且几乎总是可以通过显式导出 \*(``vt100\*('' (假设您实际上使用
+VT100\-superset 控制台、最终端或最终端模拟器)。
+.PP
+在任何情况下，您都可以根据自己的喜好在 shell 配置文件中覆盖系统 \fBTERM\fP 设置。 \fBtset\fP(1) 实用程序可能会有所帮助;
+您可以给它一组规则，用于根据 tty 设备和波特率推断或请求终端类型。
+.PP
+如果您创建了包含选项 (例如可视铃或反向视频) 的自定义条目，您希望覆盖线路的系统默认类型，则设置您自己的 \fBTERM\fP 值也可能有用。
+.PP
+终端类型描述存储为 \*d 下的能力数据文件。 要浏览系统识别的所有最终名称的列表，请执行
+.sp
+  toe | more
+.sp
+来自您的 shell。 这些功能文件采用针对检索速度进行了优化的二进制格式 (与它们所取代的旧的基于文本的 \fBtermcap\fP 格式不同) ;
+要检查条目，您必须使用 \fBinfocmp\fP(1M) 命令。 调用它如下:
+.sp
+  infocmp \fIentry_name\fP
+.sp
+其中 \fIentry_name\fP 是您要检查的类型的名称 (其功能文件的名称是 \*d 的子目录，以其第一个字母命名)。 此命令以
+\fBterminfo\fP(\*n) 描述的文本格式转储功能文件。
+.PP
+\fBterminfo\fP(\*n) 描述的第一行给出了 terminfo 知道终端的名称，由 \*(``|\*('' (pipe\-bar)
+字符分隔，姓氏字段以逗号结尾。 第一个名称字段是类型的 \fIprimary name\fP，是设置 \fBTERM\fP 时使用的名称。 姓氏字段
+(如果与第一个不同) 实际上是对最终类型的描述 (它可能包含空白; 其他必须是单个单词)。 第一个和最后一个 (如果存在)
+之间的名称字段是最终的别名，通常保留历史名称以保持兼容性。
+.PP
+有一些关于如何选择最终端主要名称的约定，有助于保持它们的信息性和唯一性。 这是命名终端的分步指南，还解释了如何解析它们:
+.PP
+首先，选择一个根名称。 根将由一个小写字母和最多七个小写字母或数字组成。 您需要避免在根名称中使用标点符号，因为它们被用作和解释为文件名，而嵌入其中的
+shell 元字符 (例如 !、$、*、? 等) 可能会导致奇怪且无用的行为。 斜杠 (/) 或任何其他任何文件系统都可以解释的字符 (\e、$、[,
+]) 尤其危险 (terminfo 是平台无关的，选择带有特殊字符的名称有朝一日可能会使 future 端口)。 只要每个根名称最多有一个，点 (.)
+字符就相对安全; 一些历史术语信息名称使用它。
+.PP
+终端或工作站控制台类型的根名称几乎总是以供应商前缀 (例如 Hewlett\-Packard 的 \fBhp\fP、Wyse 的 \fBwy\fP 或 AT&T
+终端的 \fBatt\fP) 或 VT 的终端线 (\fBvt\fP 的通用名称开头 DEC 系列终端，或用于 Sun Microsystems 工作站控制台的
+\fBsun\fP，或用于 ADDS Regent 系列的 \fBregent\fP。 您可以列出术语信息树以查看哪些前缀已被普遍使用。
+根名称前缀应在适当的时候跟上型号; 因此 \fBvt100\fP、\fBhp2621\fP、\fBwy50\fP。
+.PP
+PC\-Unix 控制台类型的根名称应该是操作系统名称，即 \fBlinux\fP、\fBbsdos\fP、\fBfreebsd\fP、\fBnetbsd\fP。 它应该是
+\fInot\fP 是 \fBconsole\fP 或任何其他可能在多平台环境中引起混淆的泛型!
+如果后面是型号，则它应指示操作系统版本级别或控制台驱动程序版本级别。
+.PP
+终端仿真器的根名称 (假设它不符合标准 ANSI 或 vt100 类型之一) 应该是程序名称或易于识别的缩写 (即
+\fBversaterm\fP、\fBctrm\fP).
+.PP
+在根名称之后，您可以添加任何合理数量的连字符分隔的特性后缀。
+.TP  5
+2p
+有两页内存。 同样是 4p、8p 等。
+.TP  5
+mc
+魔法饼干。某些终端 (尤其是较旧的 Wyses) 只能支持一种属性而不会丢失 magic\-cookie。 他们的基本条目通常与另一个具有此后缀并使用魔术
+cookie 来支持多个属性的条目配对。
+.TP  5
+\-am
+启用自动边距 (右边距环绕)。
+.TP  5
+\-m
+单声道模式 \- 抑制颜色支持。
+.TP  5
+\-na
+没有箭头键 \- termcap 忽略最终端上实际存在的箭头键，因此用户可以在本地使用箭头键。
+.TP  5
+\-nam
+无自动保证金 \- 抑制 am 功能。
+.TP  5
+\-nl
+无标签 \- 抑制软标签。
+.TP  5
+\-nsl
+无状态行 \- 抑制状态行。
+.TP  5
+\-pp
+有一个使用的打印机端口。
+.TP  5
+\-rv
+终端处于反向视频模式 (白底黑字)。
+.TP  5
+\-s
+启用状态行。
+.TP  5
+\-vb
+使用可见的铃 (flash) 而不是哔哔声。
+.TP  5
+\-w
+宽的; 终端处于 132 列模式。
+.PP
+按照惯例，如果您的最终类型是用于指定行高的变体，则该后缀应该排在第一位。 因此，对于一个假设的 FuBarCo 型号 2317 终端，在 30
+行模式下使用反向视频，最好的形式是 \fBfubar\-30\-rv\fP (而不是，比方说，\*(``fubar\-rv\-30\*(''.
+.PP
+终端类型不是作为独立条目编写的，而是作为通过 \fBuse\fP 功能插入其他条目的组件，通过使用嵌入式加号而不是破折号来区分。
+.PP
+使用终端类型来控制显示的命令通常接受 \-T 选项，该选项接受终端名称参数。 当没有指定 \-T 选项时，此类程序应回退到 \fBTERM\fP 环境变量。
+.SH PORTABILITY
+为了最大程度地与旧的 System V UNIX 兼容，名称和别名的前 14 个字符应该是唯一的。
+.SH FILES
+.TP  5
+\*d/?/*
+编译终端能力数据库
+.TP  5
+/etc/inittab
+tty 线路初始化 (类似 AT&T 的 UNIX)
+.TP  5
+/etc/ttys
+tty 线路初始化 (BSD\-like UNIXes)
+.SH "SEE ALSO"
+\fBcurses\fP(3X), \fBterminfo\fP(\*n), \fBterm\fP(\*n).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

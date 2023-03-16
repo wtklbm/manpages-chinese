@@ -1,0 +1,132 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2002 Walter Harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Heavily based on glibc documentation
+.\" Polished, added docs, removed glibc doc bug, 2002-07-20, aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH __malloc_hook 3 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+__malloc_hook, __malloc_initialize_hook, __memalign_hook, __free_hook,
+__realloc_hook, __after_morecore_hook\-malloc 调试变量 (DEPRECATED)
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <malloc.h>\fP
+.PP
+\fBvoid *(*volatile __malloc_hook)(size_t \fP\fIsize\fP\fB, const void *\fP\fIcaller\fP\fB);\fP
+.PP
+\fBvoid *(*volatile __realloc_hook)(void *\fP\fIptr\fP\fB, size_t \fP\fIsize\fP\fB,\fP
+\fB                         const void *\fP\fIcaller\fP\fB);\fP
+.PP
+\fBvoid *(*volatile __memalign_hook)(size_t \fP\fIalignment\fP\fB, size_t \fP\fIsize\fP\fB,\fP
+\fB                         const void *\fP\fIcaller\fP\fB);\fP
+.PP
+\fBvoid (*volatile __free_hook)(void *\fP\fIptr\fP\fB, const void *\fP\fIcaller\fP\fB);\fP
+.PP
+\fBvoid (*__malloc_initialize_hook)(void);\fP
+.PP
+\fBvoid (*volatile __after_morecore_hook)(void);\fP
+.fi
+.SH DESCRIPTION
+GNU C 库允许您通过指定适当的，钩子，函数来修改 \fBmalloc\fP(3)、\fBrealloc\fP(3) 和 \fBfree\fP(3) 的行为。
+例如，您可以使用这些，钩子，来帮助调试使用动态内存分配的程序。
+.PP
+变量 \fB__malloc_initialize_hook\fP 指向一个函数，它在 malloc 实现初始化时被调用一次。
+这是一个弱变量，因此可以在应用程序中使用如下定义覆盖它:
+.PP
+.in +4n
+.EX
+void (*__malloc_initialize_hook)(void) = my_init_hook;
+.EE
+.in
+.PP
+现在函数 \fImy_init_hook\fP() 可以做所有钩子的初始化了。
+.PP
+\fB__malloc_hook\fP、\fB__realloc_hook\fP、\fB__memalign_hook\fP、\fB__free_hook\fP
+所指向的四个函数的原型分别类似于函数
+\fBmalloc\fP(3)、\fBrealloc\fP(3)、\fBmemalign\fP(3)、\fBfree\fP(3)，只是它们的最后一个参数 \fIcaller\fP
+给出了 \fBmalloc\fP(3) 的调用者地址等。
+.PP
+变量 \fB__after_morecore_hook\fP 指向每次在 \fBsbrk\fP(2) 被请求更多内存后调用的函数。
+.SH STANDARDS
+这些函数是 GNU 的扩展名。
+.SH NOTES
+.\" https://bugzilla.redhat.com/show_bug.cgi?id=450187
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=9957
+使用这些钩子函数在多线程程序中是不安全的，现在已经弃用了。 从 glibc 2.24 开始，\fB__malloc_initialize_hook\fP
+变量已从 API 中删除，从 glibc 2.34 开始，所有 hook 变量已从 API 中删除。 程序员应该改为通过定义和导出
+\fBmalloc\fP()、\fBfree\fP()、\fBrealloc\fP() 和 \fBcalloc\fP() 来抢占对相关函数的调用。
+.SH EXAMPLES
+这是一个如何使用这些变量的简短示例。
+.PP
+.EX
+#include <stdio.h>
+#include <malloc.h>
+
+/* Prototypes for our hooks */
+static void my_init_hook(void);
+static void *my_malloc_hook(size_t, const void *);
+
+/* Variables to save original hooks */
+static void *(*old_malloc_hook)(size_t, const void *);
+
+/* Override initializing hook from the C library */
+void (*__malloc_initialize_hook)(void) = my_init_hook;
+
+static void
+my_init_hook(void)
+{
+    old_malloc_hook = __malloc_hook;
+    __malloc_hook = my_malloc_hook;
+}
+
+static void *
+my_malloc_hook(size_t size, const void *caller)
+{
+    void *result;
+
+    /* Restore all old hooks */
+    __malloc_hook = old_malloc_hook;
+
+    /* Call recursively */
+    result = malloc(size);
+
+    /* Save underlying hooks */
+    old_malloc_hook = __malloc_hook;
+
+    /* printf() might call malloc(), so protect it too */
+    printf("malloc(%zu) called from %p returns %p\en",
+            size, caller, result);
+
+    /* Restore our own hooks */
+    __malloc_hook = my_malloc_hook;
+
+    return result;
+}
+.EE
+.SH "SEE ALSO"
+\fBmallinfo\fP(3), \fBmalloc\fP(3), \fBmcheck\fP(3), \fBmtrace\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,225 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2005, 2012, 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fmemopen 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fmemopen \- 将内存作为流打开
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBFILE *fmemopen(void \fP\fIbuf\fP\fB[.\fP\fIsize\fP\fB], size_t \fP\fIsize\fP\fB, const char *\fP\fImode\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBfmemopen\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBfmemopen\fP() 函数打开一个允许 \fImode\fP 指定的访问的流。 该流允许在 \fIbuf\fP 指向的字符串或内存缓冲区上执行 I/O。
+.PP
+\fImode\fP 参数指定流上 I/O 的语义，并且是以下之一:
+.TP 
+\fIr\fP
+流已打开以供读取。
+.TP 
+\fIw\fP
+流已打开以供写入。
+.TP 
+\fIa\fP
+追加; 打开流进行写入，并将初始缓冲区位置设置为第一个空字节。
+.TP 
+\fIr+\fP
+打开流进行读写。
+.TP 
+\fIw+\fP
+打开流进行读写。 缓冲区内容被截断 (即，\[aq]\e0\[aq] 被放置在缓冲区的第一个字节中)。
+.TP 
+\fIa+\fP
+追加; 打开流进行读写，初始缓冲区位置设置为第一个空字节。
+.PP
+该流维护当前位置的概念，即执行下一个 I/O 操作的位置。 当前位置由 I/O 操作隐式更新。 它可以使用 \fBfseek\fP(3) 显式更新，并使用
+\fBftell\fP(3) 确定。 在除追加之外的所有模式中，初始位置都设置为缓冲区的开头。 在，追加，模式下，如果在缓冲区中没有发现空字节，则初始位置为
+\fIsize+1\fP。
+.PP
+如果 \fIbuf\fP 指定为 NULL，则 \fBfmemopen\fP() 分配 \fIsize\fP 字节的缓冲区。
+这对于想要将数据写入临时缓冲区然后再次读回的应用程序很有用。 初始位置设置为缓冲区的开头。 当流关闭时，缓冲区会自动释放。
+请注意，调用者无法获得指向此调用分配的临时缓冲区的指针 (但请参见 \fBopen_memstream\fP(3)).
+.PP
+如果 \fIbuf\fP 不为 NULL，则它应该指向调用者分配的至少 \fIsize\fP 字节的缓冲区。
+.PP
+当一个已经打开写入的流被刷新 (\fBfflush\fP(3)) 或关闭 (\fBfclose\fP(3)) 时，如果有空间，一个空字节将被写入缓冲区的末尾。
+调用者应确保缓冲区中有一个额外的字节可用 (并且 \fIsize\fP 计算该字节) 以允许这样做。
+.PP
+在为读取而打开的流中，缓冲区中的空字节 (\[aq]\e0\[aq]) 不会导致读取操作返回文件结束指示。 仅当当前缓冲区位置超出缓冲区开头
+\fIsize\fP 字节时，从缓冲区读取才会指示文件结束。
+.PP
+写操作发生在当前位置 (对于，追加，模式以外的模式)，或者在流的当前大小 (对于，追加，模式)。
+.PP
+尝试向缓冲区写入超过 \fIsize\fP 个字节会导致错误。 默认情况下，此类错误仅在刷新 \fIstdio\fP 缓冲区时可见 (由于缺少数据)。
+使用以下调整禁用缓冲可能有助于在输出操作时检测错误:
+.PP
+.in +4n
+.EX
+setbuf(stream, NULL);
+.EE
+.in
+.SH "RETURN VALUE"
+成功完成后，\fBfmemopen\fP() 返回一个 \fIFILE\fP 指针。 否则，返回 NULL 并设置 \fIerrno\fP 以指示错误。
+.SH VERSIONS
+\fBfmemopen\fP() 在 glibc 1.0.x 中已经可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfmemopen\fP(),
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2008。此函数未在 POSIX.1\-2001 中指定，并且未在其他系统上广泛使用。
+.PP
+.\" http://austingroupbugs.net/view.php?id=396
+POSIX.1\-2008 指定 \fImode\fP 中的 \[aq] b\[aq] 应被忽略。 然而，技术勘误 1
+调整了标准以允许对这种情况进行特定于实现的处理，从而允许对 \[aq] b\[aq] 进行 glibc 处理。
+.SH NOTES
+没有与此函数返回的文件流关联的文件描述符 (即，如果在返回的流上调用 \fBfileno\fP(3) 将返回错误)。
+.PP
+.\"
+在 glibc 2.22 中，二进制模式 (见下文) 被移除，\fBfmemopen\fP()
+实现中的许多长期存在的错误得到修复，并为此接口创建了一个新的版本化符号。
+.SS "Binary mode"
+从 glibc 2.9 到 glibc 2.21，\fBfmemopen\fP() 的 glibc 实现支持 "binary" 模式，通过将字母 \[aq]
+b\[aq] 指定为 \fImode\fP 中的第二个字符来启用。 在这种模式下，写入不会隐式添加终止空字节，并且 \fBfseek\fP(3)
+\fBSEEK_END\fP 是相对于缓冲区的末尾 (即 \fIsize\fP 参数指定的值)，而不是当前字符串长度。
+.PP
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=12836
+一个 API 错误影响了二进制模式的实现: 要指定二进制模式，\[aq] b\[aq] 必须是 \fImode\fP 中的 \fIsecond\fP 字符。
+因此，例如，"wb+" 具有所需的效果，但 "w+b" 则没有。 这与 \fBfopen\fP(3) 对 \fImode\fP 的处理不一致。
+.PP
+在 glibc 2.22 中删除了二进制模式; \fImode\fP 中指定的 a\[aq] b\[aq] 无效。
+.SH BUGS
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=11216
+在 glibc 2.22 之前，如果 \fIsize\fP 指定为零，\fBfmemopen\fP() 将失败并显示错误 \fBEINVAL\fP。
+如果这种情况成功地创建了一个流，然后在第一次尝试读取时返回文件结尾，那将更加一致; 自 glibc 2.22 以来，glibc 实现提供了该行为。
+.PP
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=13152
+在 glibc 2.22 之前，为 \fBfmemopen\fP() 指定，追加，模式 ("a" 或 "a+") 会将初始缓冲区位置设置为第一个空字节，但是
+(如果当前位置重置为流末尾以外的位置) 不会强制后续写入，追加，在流的末尾。 此错误已在 glibc 2.22 中修复。
+.PP
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=13151
+在 glibc 2.22 之前，如果 \fImode\fP 参数到 \fBfmemopen\fP() 指定 append ("a" 或 "a+")，而
+\fIsize\fP 参数没有覆盖 \fIbuf\fP 中的空字节，那么根据 POSIX.1\-2008，初始缓冲区位置应该设置为缓冲区结束后的下一个字节。
+然而，在这种情况下，glibc \fBfmemopen\fP() 将缓冲区位置设置为 \-1。 此错误已在 glibc 2.22 中修复。
+.PP
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=14292
+在 glibc 2.22 之前，当对 \fBfmemopen\fP() 创建的流执行 \fIwhence\fP 值为 \fBSEEK_END\fP 的调用到
+\fBfseek\fP(3) 时，\fIoffset\fP 从流结束位置开始为 \fIsubtracted\fP，而不是添加。 此错误已在 glibc 2.22 中修复。
+.PP
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=6544
+glibc 2.9 添加 \fBfmemopen\fP() 的 "binary" 模式悄悄改变了 ABI: 以前，\fBfmemopen\fP() 忽略了
+\fImode\fP 中的 \[aq] b\[aq]。
+.SH EXAMPLES
+下面的程序使用 \fBfmemopen\fP() 打开输入缓冲区，使用 \fBopen_memstream\fP(3) 打开动态大小的输出缓冲区。
+该程序扫描其输入字符串 (取自程序的第一个命令行参数) 读取整数，并将这些整数的平方写入输出缓冲区。 该程序产生的输出示例如下:
+.PP
+.in +4n
+.EX
+$\fB ./a.out \[aq]1 23 43\[aq]\fP
+size=11; ptr=1 529 1849
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (fmemopen.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    FILE *out, *in;
+    int v, s;
+    size_t size;
+    char *ptr;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s \[aq]<num>...\[aq]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    in = fmemopen(argv[1], strlen(argv[1]), "r");
+    if (in == NULL)
+        err(EXIT_FAILURE, "fmemopen");
+
+    out = open_memstream(&ptr, &size);
+    if (out == NULL)
+        err(EXIT_FAILURE, "open_memstream");
+
+    for (;;) {
+        s = fscanf(in, "%d", &v);
+        if (s <= 0)
+            break;
+
+        s = fprintf(out, "%d ", v * v);
+        if (s == \-1)
+            err(EXIT_FAILURE, "fprintf");
+    }
+
+    fclose(in);
+    fclose(out);
+
+    printf("size=%zu; ptr=%s\en", size, ptr);
+
+    free(ptr);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfopen\fP(3), \fBfopencookie\fP(3), \fBopen_memstream\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

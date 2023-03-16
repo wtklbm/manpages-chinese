@@ -1,0 +1,102 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-PSTORE\&.SERVICE 8 "" "systemd 253" systemd\-pstore.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-pstore.service, systemd\-pstore \- 归档 pstore 内容的服务
+.SH SYNOPSIS
+.PP
+/usr/lib/systemd/systemd\-pstore
+.PP
+systemd\-pstore\&.service
+.SH DESCRIPTION
+.PP
+systemd\-pstore\&.service 是一个系统服务，它将 Linux 持久存储文件系统 pstore 的内容归档到其他存储，从而保留
+pstore 中包含的现有信息，并为 future 错误事件清除 pstore 存储 \&。
+.PP
+Linux 提供了一个持久化存储文件系统 pstore，可以在内核死机 (或重启或掉电) 时存储错误记录 \&。这些记录又可以被引用来调试内核问题
+(目前内核将内核日志的尾部存储到 pstore 中，其中还包含栈回溯) \&。
+.PP
+pstore 文件系统支持 map 到持久化存储上的各种后端，例如 ACPI ERST 和 UEFI 变量 \&。pstore
+后端通常提供相对少量的持久存储，例如 \&.g\&。64KiB，可以快速填满从而防止后续内核崩溃记录错误 \&。因此需要监控和提取 pstore
+的内容，这样 future 的内核问题也可以在 pstore 中记录信息。
+.PP
+pstore 服务独立于 kdump 服务 \&。特别是在云环境中，主机和来宾文件系统位于远程文件系统 (例如 iSCSI 或 NFS) 上，因此
+kdump 依赖于 (隐式或者显式) 网络软件*和*硬件*和*的正确操作基础设施 \&。因此可能无法将内核核心转储捕获到文件，因为可能无法通过网络写入
+\&。
+.PP
+另一方面，pstore 后端完全是本地的，它提供了一个存储错误记录的路径，这些错误记录将在重启后继续存在并有助于事后调试 \&。
+.PP
+\fBsystemd\-pstore\fP 可执行文件执行实际工作 \&。启动时，读取 pstore\&.conf 文件并根据选项 \& 处理
+/sys/fs/pstore/ 目录内容。Pstore 文件被写入日志，并可选择保存到 /var/pstore/\&。
+.SH CONFIGURATION
+.PP
+\fBsystemd\-pstore\fP 的行为是通过配置文件 /etc/systemd/pstore\&.conf 和相应的片段
+/etc/pstore\&.conf\&.d/*\&.conf 配置的，参见 \fBpstore.conf\fP(5)\&。
+.SS "Disabling pstore processing"
+.PP
+要通过 \fBsystemd\-pstore\fP 禁用 pstore 处理，请设置
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+Storage=none
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+in \fBpstore.conf\fP(5)\&.
+.SS "Kernel parameters"
+.PP
+内核有两个参数，/sys/module/kernel/parameters/crash_kexec_post_notifiers 和
+/sys/module/printk/parameters/always_kmsg_dump，控制写入
+pstore\&。第一个可以在出现崩溃或崩溃时将内核日志 (包括栈跟踪) 存储到 pstore 中，第二个可以在正常关闭 (关机、重启、暂停) \&
+时将内核日志存储到 pstore 中。这些参数可以通过 \fBtmpfiles.d\fP(5) 机制进行管理，特别是文件
+/usr/systemd\-pstore\&.conf\&。
+.SH USAGE
+.PP
+日志中存储的数据可以像往常一样用 \fBjournalctl\fP(1)\& 查看。
+.SH "SEE ALSO"
+.PP
+\fBpstore.conf\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

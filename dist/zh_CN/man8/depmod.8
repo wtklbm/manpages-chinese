@@ -1,0 +1,165 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: depmod
+.\"    Author: Jon Masters <jcm@jonmasters.org>
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 06/30/2022
+.\"    Manual: depmod
+.\"    Source: kmod
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH DEPMOD 8 06/30/2022 kmod depmod
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+depmod \- 生成 modules\&.dep 和 map 文件 \&。
+.SH SYNOPSIS
+.HP \w'\fBdepmod\fR\ 'u
+\fBdepmod\fP [\fB\-b\ \fP\fIbasedir\fP] [\fB\-e\fP] [\fB\-E\ \fP\fIModule\&.symvers\fP] [\fB\-F\ \fP\fISystem\&.map\fP] [\fB\-n\fP] [\fB\-v\fP] [\fB\-A\fP] [\fB\-P\ \fP\fIprefix\fP] [\fB\-w\fP]
+[\fIversion\fP]
+.HP \w'\fBdepmod\fR\ 'u
+\fBdepmod\fP [\fB\-e\fP] [\fB\-E\ \fP\fIModule\&.symvers\fP] [\fB\-F\ \fP\fISystem\&.map\fP]
+[\fB\-n\fP] [\fB\-v\fP] [\fB\-P\ \fP\fIprefix\fP] [\fB\-w\fP] [\fIversion\fP] [\fIfilename\fP...]
+.SH DESCRIPTION
+.PP
+Linux 内核模块可以提供服务 (称为 "symbols") 供其他模块使用 (使用代码中的 EXPORT_SYMBOL 变体之一)
+\&。如果第二个模块使用这个符号，那么第二个模块显然依赖于第一个模块 \&。这些依赖关系可能会变得非常复杂 \&。
+.PP
+\fBdepmod\fP 通过读取 /lib/modules/\fIversion\fP 下的每个模块并确定它导出什么符号以及它需要什么符号来创建模块依赖关系列表
+\&。默认情况下，这个列表被写入 modules\&.dep 和一个名为 modules\&.dep\&.bin 的二进制散列版本，在同一目录中
+\&。如果在命令行上给出了文件名，则只会检查那些模块 (除非列出所有模块，否则很少有用) \&。\fBdepmod\fP 还在名为
+modules\&.symbols 的文件及其二进制散列版本 modules\&.symbols\&.bin\&
+中创建了模块提供的符号列表。最后，如果模块提供特殊设备名称 (devname)，则 \fBdepmod\fP 将输出一个名为
+modules\&.devname 的文件，该文件应在引导时填充到 /dev (通过诸如 systemd\-tmpfiles 之类的实用程序) \&。
+.PP
+如果提供了 \fIversion\fP，则使用该内核版本 \*(Aqs 模块目录而不是当前内核版本 (由 \fBuname \-r\fP)\& 返回)。
+.SH OPTIONS
+.PP
+\fB\-a\fP, \fB\-\-all\fP
+.RS 4
+探测所有模块 \&。如果命令行中没有给出文件名 \&，则默认情况下启用此选项。
+.RE
+.PP
+\fB\-A\fP, \fB\-\-quick\fP
+.RS 4
+在完成任何工作之前，此选项会扫描以查看是否有任何模块比 modules\&.dep 文件更新: 如果不是，它会静默退出而不是重新生成文件 \&。
+.RE
+.PP
+\fB\-b \fP\fIbasedir\fP, \fB\-\-basedir \fP\fIbasedir\fP
+.RS 4
+如果您的模块当前不在 (normal) 目录 /lib/modules/\fIversion\fP 中，而是在临时区域中，您可以指定一个
+\fIbasedir\fP，它被附加到目录名称 \&。该 \fIbasedir\fP 已从生成的 modules\&.dep 文件中剥离，因此可以将其移至正常位置
+\&。如果您是需要预先生成元数据文件而不是稍后再次运行 depmod 的发行版供应商，请使用此选项 \&。
+.RE
+.PP
+\fB\-C\fP, \fB\-\-config \fP\fIfile or directory\fP
+.RS 4
+此选项会覆盖 /etc/depmod\&.d/\& 中的默认配置目录。
+.RE
+.PP
+\fB\-e\fP, \fB\-\-errsyms\fP
+.RS 4
+当与 \fB\-F\fP 选项结合使用时，它会报告模块需要但其他模块或内核未提供的任何符号 \&。通常，模块未提供的任何符号都被假定为内核提供
+(在完美世界中应该是这样)，但这种假设可能会被打破，尤其是当额外更新的第三方驱动程序未正确安装或构建不正确时 \&。
+.RE
+.PP
+\fB\-E\fP, \fB\-\-symvers\fP
+.RS 4
+当与 \fB\-e\fP 选项结合使用时，它会报告模块提供的任何符号版本与内核在其 Module\&.symvers\& 中提供的符号版本不匹配。该选项与
+\fB\-F\fP\& 互不兼容。
+.RE
+.PP
+\fB\-F\fP, \fB\-\-filesyms \fP\fISystem\&.map\fP
+.RS 4
+与构建内核时生成的 System\&.map 一起提供，这允许 \fB\-e\fP 选项报告未解析的符号 \&。该选项与 \fB\-E\fP\& 互不兼容。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印帮助信息并退出 \&。
+.RE
+.PP
+\fB\-n\fP, \fB\-\-show\fP, \fB\-\-dry\-run\fP
+.RS 4
+这会将生成的 modules\&.dep 和各种 map 文件发送到标准输出，而不是将它们写入模块目录 \&。
+.RE
+.PP
+\fB\-P\fP
+.RS 4
+一些体系结构在符号前加上无关字符 \&。这指定了一个前缀字符 (例如 \*(Aq_\*(Aq) 忽略 \&。
+.RE
+.PP
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+在详细模式下，\fBdepmod\fP 将打印 (到 stdout) 每个模块依赖的所有符号和模块 \* (提供该符号的 Aqs 文件名 \&.
+.RE
+.PP
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+显示程序版本并退出 \&。请参见下文了解在旧内核上运行时的注意事项 \&。
+.RE
+.PP
+\fB\-w\fP
+.RS 4
+对重复依赖项、别名、符号版本等发出警告 \&。
+.RE
+.SH COPYRIGHT
+.PP
+本手册页最初版权所有 2002，Rusty Russell，IBM Corporation\&。部分版权归 Jon Masters 和其他人 \&。
+.SH "SEE ALSO"
+.PP
+\fBdepmod.d\fP(5), \fBmodprobe\fP(8), \fBmodules.dep\fP(5)
+.SH AUTHORS
+.PP
+\fBJon Masters\fP <\&jcm@jonmasters\&.org\&>
+.RS 4
+Developer
+.RE
+.PP
+\fBRobby Workman\fP <\&rworkman@slackware\&.com\&>
+.RS 4
+Developer
+.RE
+.PP
+\fBLucas De Marchi\fP <\&lucas\&.de\&.marchi@gmail\&.com\&>
+.RS 4
+Developer
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

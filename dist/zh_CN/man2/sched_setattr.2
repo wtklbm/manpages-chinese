@@ -1,0 +1,247 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2014 Peter Zijlstra <peterz@infradead.org>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sched_setattr 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+sched_setattr, sched_getattr \- 设置和获取调度策略和属性
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sched.h>\fP            /* Definition of \fBSCHED_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_sched_setattr, pid_t \fP\fIpid\fP\fB, struct sched_attr *\fP\fIattr\fP\fB,\fP
+\fB            unsigned int \fP\fIflags\fP\fB);\fP
+\fBint syscall(SYS_sched_getattr, pid_t \fP\fIpid\fP\fB, struct sched_attr *\fP\fIattr\fP\fB,\fP
+\fB            unsigned int \fP\fIsize\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.\" FIXME . Add feature test macro requirements
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+.SS sched_setattr()
+\fBsched_setattr\fP() 系统调用为 \fIpid\fP 指定 ID 的线程设置调度策略和关联属性。 如果 \fIpid\fP
+等于零，调用线程的调度策略和属性将被设置。
+.PP
+目前，Linux 支持以下 "normal" (即非实时) 调度策略作为 \fIpolicy\fP: 中可能指定的值
+.TP  14
+\fBSCHED_OTHER\fP
+.\" In the 2.6 kernel sources, SCHED_OTHER is actually called
+.\" SCHED_NORMAL.
+标准循环分时策略;
+.TP 
+\fBSCHED_BATCH\fP
+用于 "batch" 风格的流程执行; and
+.TP 
+\fBSCHED_IDLE\fP
+用于运行 \fIvery\fP 低优先级后台作业。
+.PP
+还支持各种 "real\-time" 策略，适用于需要精确控制选择可运行线程执行方式的特殊时间关键型应用程序。
+有关管理进程何时可以使用这些策略的规则，请参见 \fBsched\fP(7)。 \fIpolicy\fP 中可以指定的实时策略有:
+.TP  14
+\fBSCHED_FIFO\fP
+先进先出政策; and
+.TP 
+\fBSCHED_RR\fP
+循环策略。
+.PP
+Linux 还提供了以下策略:
+.TP  14
+\fBSCHED_DEADLINE\fP
+截止日期安排政策; 详见 \fBsched\fP(7)。
+.PP
+\fIattr\fP 参数是指向结构体的指针，该结构体定义了指定线程的新调度策略和属性。 此结构体具有以下形式:
+.PP
+.in +4n
+.EX
+struct sched_attr {
+    u32 size;              /* Size of this structure */
+    u32 sched_policy;      /* Policy (SCHED_*) */
+    u64 sched_flags;       /* Flags */
+    s32 sched_nice;        /* Nice value (SCHED_OTHER,
+                              SCHED_BATCH) */
+    u32 sched_priority;    /* Static priority (SCHED_FIFO,
+                              SCHED_RR) */
+    /* Remaining fields are for SCHED_DEADLINE */
+    u64 sched_runtime;
+    u64 sched_deadline;
+    u64 sched_period;
+};
+.EE
+.in
+.PP
+\fIsched_attr\fP 结构体的字段如下:
+.TP 
+\fBsize\fP
+该字段应设置为结构体的大小 (以字节为单位)，如 \fIsizeof(struct sched_attr)\fP。
+如果提供的结构体小于内核结构体，则假定任何其他字段为 '0'。 如果提供的结构体大于内核结构体，内核验证所有附加字段是否为 0;
+如果不是，\fBsched_setattr\fP() 将失败并返回错误 \fBE2BIG\fP 并更新 \fIsize\fP 以包含内核结构体的大小。
+.IP
+当用户空间 \fIsched_attr\fP 结构体的大小与内核结构体的大小不匹配时，上述行为允许接口的 future 可扩展性。 如果内核
+\fIsched_attr\fP 结构体的大小增加，通过超大结构的畸形应用程序将不会在 future 中中断。 在 future
+中，它还可以允许了解更大用户空间 \fIsched_attr\fP 结构体的应用程序确定它们是否在不支持更大结构体的旧内核上运行。
+.TP 
+\fIsched_policy\fP
+该字段指定调度策略，作为上面列出的 \fBSCHED_*\fP 值之一。
+.TP 
+\fIsched_flags\fP
+该字段包含零个或多个以下标志，这些标志通过或运算组合在一起以控制调度行为:
+.RS
+.TP 
+\fBSCHED_FLAG_RESET_ON_FORK\fP
+\fBfork\fP(2) 创建的子节点不继承特权调度策略。 有关详细信息，请参见 \fBsched\fP(7)。
+.TP 
+\fBSCHED_FLAG_RECLAIM\fP (since Linux 4.13)
+.\" 2d4283e9d583a3ee8cfb1cbb9c1270614df4c29d
+.\" Bandwidth reclaim is done via the GRUB algorithm; see
+.\" Documentation/scheduler/sched-deadline.txt
+此标志允许 \fBSCHED_DEADLINE\fP 线程回收其他实时线程未使用的带宽。
+.TP 
+\fBSCHED_FLAG_DL_OVERRUN\fP (since Linux 4.16)
+.\" commit 34be39305a77b8b1ec9f279163c7cdb6cc719b91
+此标志允许应用程序获得有关 \fBSCHED_DEADLINE\fP 线程中运行时超限的通知。 这种超限可能是由 (例如)
+粗略的执行时间计算或不正确的参数分配引起的。 通知采用每次超限时生成的 \fBSIGXCPU\fP 信号的形式。
+.IP
+这个 \fBSIGXCPU\fP 信号是 \fIprocess\-directed\fP (参见 \fBsignal\fP(7)) 而不是线程导向的。 这可能是一个错误。
+一方面，\fBsched_setattr\fP() 用于设置每线程属性。
+另一方面，如果进程定向信号被传送到进程内的线程而不是运行时超限的线程，则应用程序无法知道哪个线程超限。
+.RE
+.TP 
+\fIsched_nice\fP
+该字段指定将 \fIsched_policy\fP 指定为 \fBSCHED_OTHER\fP 或 \fBSCHED_BATCH\fP 时要设置的 nice 值。
+nice 值是 \-20 (高优先级) 到 + 19 (低优先级) 范围内的数字; 请参见 \fBsched\fP(7)。
+.TP 
+\fIsched_priority\fP
+该字段指定在将 \fIsched_policy\fP 指定为 \fBSCHED_FIFO\fP 或 \fBSCHED_RR\fP 时要设置的静态优先级。
+这些策略允许的优先级范围可以使用 \fBsched_get_priority_min\fP(2) 和 \fBsched_get_priority_max\fP(2)
+来确定。 对于其他策略，此字段必须指定为 0.
+.TP 
+\fIsched_runtime\fP
+该字段指定截止时间调度的 "Runtime" 参数。 该值以纳秒表示。 该字段和接下来的两个字段仅用于 \fBSCHED_DEADLINE\fP 调度;
+有关详细信息，请参见 \fBsched\fP(7)。
+.TP 
+\fIsched_deadline\fP
+该字段指定截止时间调度的 "Deadline" 参数。 该值以纳秒表示。
+.TP 
+\fIsched_period\fP
+该字段指定截止时间调度的 "Period" 参数。 该值以纳秒表示。
+.PP
+.\"
+.\"
+提供 \fIflags\fP 参数以允许对接口进行 future 扩展; 在当前的实现中，它必须被指定为 0.
+.SS sched_getattr()
+\fBsched_getattr\fP() 系统调用为在 \fIpid\fP 中指定 ID 的线程获取调度策略和相关属性。 如果 \fIpid\fP
+等于零，将检索调用线程的调度策略和属性。
+.PP
+\fIsize\fP 参数应设置为用户空间已知的 \fIsched_attr\fP 结构体的大小。 该值必须至少与最初发布的 \fIsched_attr\fP
+结构体的大小一样大，否则调用将失败并出现错误 \fBEINVAL\fP。
+.PP
+检索到的调度属性放置在 \fIattr\fP 指向的 \fIsched_attr\fP 结构体的字段中。 内核将 \fIattr.size\fP 设置为其
+\fIsched_attr\fP 结构体的大小。
+.PP
+如果调用者提供的 \fIattr\fP 缓冲区大于内核的 \fIsched_attr\fP 结构体，则不会触及用户空间结构体中的额外字节。
+如果调用者提供的结构体小于内核 \fIsched_attr\fP 结构体，内核将默默地不返回任何将存储在提供的空间之外的值。 与
+\fBsched_setattr\fP() 一样，这些语义允许接口的 future 可扩展性。
+.PP
+提供 \fIflags\fP 参数以允许对接口进行 future 扩展; 在当前的实现中，它必须被指定为 0.
+.SH "RETURN VALUE"
+成功时，\fBsched_setattr\fP() 和 \fBsched_getattr\fP() 返回 0。 出错时返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+\fBsched_getattr\fP() 和 \fBsched_setattr\fP() 都可能因以下原因而失败:
+.TP 
+\fBEINVAL\fP
+\fIattr\fP 为空; 或 \fIpid\fP 为 negative; 或 \fIflags\fP 不为零。
+.TP 
+\fBESRCH\fP
+找不到 ID 为 \fIpid\fP 的线程。
+.PP
+此外，\fBsched_getattr\fP() 可能因以下原因而失败:
+.TP 
+\fBE2BIG\fP
+\fIsize\fP 和 \fIattr\fP 指定的缓冲区太小。
+.TP 
+\fBEINVAL\fP
+\fIsize\fP 无效; 也就是说，它小于 \fIsched_attr\fP 结构体 (48 字节) 的初始版本或大于系统页面大小。
+.PP
+此外，\fBsched_setattr\fP() 可能因以下原因而失败:
+.TP 
+\fBE2BIG\fP
+\fIsize\fP 和 \fIattr\fP 指定的缓冲区大于内核结构体，并且一个或多个超出的字节为非零。
+.TP 
+\fBEBUSY\fP
+\fBSCHED_DEADLINE\fP 准入控制失败，参见 \fBsched\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fIattr.sched_policy\fP 不是公认的政策之一; \fIattr.sched_flags\fP 包含
+\fBSCHED_FLAG_RESET_ON_FORK\fP 以外的标志; 或者 \fIattr.sched_priority\fP 无效; 或
+\fIattr.sched_policy\fP 为 \fBSCHED_DEADLINE\fP，\fIattr\fP 中的期限调度参数无效。
+.TP 
+\fBEPERM\fP
+调用者没有适当的权限。
+.TP 
+\fBEPERM\fP
+\fIpid\fP 指定的线程的 CPU 亲和性掩码不包括系统中的所有 CPU (请参见 \fBsched_setaffinity\fP(2)).
+.SH VERSIONS
+.\" FIXME . Add glibc version
+这些系统调用首先出现在 Linux 3.14 中。
+.SH STANDARDS
+这些系统调用是非标准的 Linux 扩展。
+.SH NOTES
+glibc 不为这些系统调用提供包装器; 使用 \fBsyscall\fP(2) 调用它们。
+.PP
+\fBsched_setattr\fP() 提供
+\fBsched_setscheduler\fP(2)、\fBsched_setparam\fP(2)、\fBnice\fP(2) 和 \fBsetpriority\fP(2)
+(除了设置属于指定用户的所有进程或指定组中的所有进程的优先级的能力之外) 功能的超集。 类似地，\fBsched_getattr\fP() 提供
+\fBsched_getscheduler\fP(2)、\fBsched_getparam\fP(2) 和 (partially)
+\fBgetpriority\fP(2) 功能的超集。
+.SH BUGS
+.\" FIXME . patch sent to Peter Zijlstra
+在 Linux 到 3.15 的版本中，对于错误中描述的情况，\fBsched_setattr\fP() 失败并显示错误 \fBEFAULT\fP 而不是
+\fBE2BIG\fP。
+.PP
+.\" In Linux versions up to up 3.15,
+.\" FIXME . patch from Peter Zijlstra pending
+.\" .BR sched_setattr ()
+.\" allowed a negative
+.\" .I attr.sched_policy
+.\" value.
+在 Linux 5.3 之前，如果内核 \fIsched_attr\fP 结构体大于用户空间传递的 \fIsize\fP，则 \fBsched_getattr\fP()
+失败并出现错误 \fBEFBIG\fP。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBchrt\fP(1), \fBnice\fP(2), \fBsched_get_priority_max\fP(2),
+\fBsched_get_priority_min\fP(2), \fBsched_getaffinity\fP(2), \fBsched_getparam\fP(2),
+\fBsched_getscheduler\fP(2), \fBsched_rr_get_interval\fP(2),
+\fBsched_setaffinity\fP(2), \fBsched_setparam\fP(2), \fBsched_setscheduler\fP(2),
+\fBsched_yield\fP(2), \fBsetpriority\fP(2), \fBpthread_getschedparam\fP(3),
+\fBpthread_setschedparam\fP(3), \fBpthread_setschedprio\fP(3), \fBcapabilities\fP(7),
+\fBcpuset\fP(7), \fBsched\fP(7)
+.ad
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

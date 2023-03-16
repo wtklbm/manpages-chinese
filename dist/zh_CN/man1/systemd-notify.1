@@ -1,0 +1,175 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-NOTIFY 1 "" "systemd 253" systemd\-notify
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-notify \- 通知服务管理器启动完成和其他守护进程状态变化
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-notify\ \fR\fB[OPTIONS...]\fR\fB\ \fR\fB[VARIABLE=VALUE...]\fR\ 'u
+\fBsystemd\-notify \fP\fB[OPTIONS...]\fP\fB \fP\fB[VARIABLE=VALUE...]\fP
+.SH DESCRIPTION
+.PP
+\fBsystemd\-notify\fP 可能会被服务脚本调用，以通知调用服务管理器状态变化 \&。它可用于发送任意信息，编码为类似环境块的字符串列表
+\&。最重要的是，它可以用于启动完成通知 \&。
+.PP
+这主要只是 \fBsd_notify()\fP 的包装器，并使此功能可用于 shell 脚本 \&。有关详细信息，请参见 \fBsd_notify\fP(3)\&。
+.PP
+命令行可以携带环境变量列表作为状态更新的一部分发送 \&。
+.PP
+请注意，systemd 将拒绝接收来自此命令的状态更新，除非为服务正确设置了 \fINotifyAccess=\fP 元此命令是从 \&
+调用的。有关详细信息，请参见 \fBsystemd.service\fP(5)\&。
+.PP
+请注意，只有在服务管理器处理消息时发送进程仍然存在，或者服务管理器显式运行时跟踪发送进程 \& 时，\fBsd_notify()\fP
+通知才可能正确地归因于单元。后者是服务管理器最初分叉进程的情况，i\&.e\&。在匹配 \fINotifyAccess=\fP\fBmain\fP 或
+\fINotifyAccess=\fP\fBexec\fP\& 的所有进程上。反之，如果单元的一个辅助进程发送一个 \fBsd_notify()\fP
+消息并立即退出，服务管理器可能无法正确地将消息归因于单元，因此将忽略它，即使为它设置了 \fINotifyAccess=\fP\fBall\fP\&。要处理此
+\fBsystemd\-notify\fP 将等待通知消息已被服务管理器处理 \&。当使用 \fB\-\-no\-block\fP
+时，这种用于接收通知的同步被禁用，因此如果调用进程不是服务管理器或由服务管理器派生 \&，则可能会发生上述竞争。
+.PP
+\fBsystemd\-notify\fP 将首先尝试调用 \fBsd_notify()\fP，假装拥有 \fBsystemd\-notify\fP 的父进程的 PID
+(i\&.e\&。调用进程) \&。这只有在以足够的权限调用时才会成功 \&。失败时，它将回退到在自己的 PID\& 下调用它。此行为很有用，以便当从
+shell 脚本调用该工具时，shell 进程 \(em 而不是 \fBsystemd\-notify\fP 进程 \(em 显示为消息的发送者，如果
+shell 进程是主进程，这反过来很有用服务，由于 \fINotifyAccess=\fP\fBall\fP\& 的限制。使用 \fB\-\-pid=\fP 开关调整此行为
+\&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-ready\fP
+.RS 4
+通知调用服务管理器有关服务启动或配置重新加载完成 \&。这相当于 \fBsystemd\-notify READY=1\fP\&。有关此选项语义的详细信息，请参见 \fBsd_notify\fP(3)\&。
+.RE
+.PP
+\fB\-\-reloading\fP
+.RS 4
+通知调用服务管理器有关配置重新加载周期的开始 \&。这等同于 \fBsystemd\-notify RELOADING=1\fP (但也隐式设置
+\fIType=notify\-reload\fP 服务所需的 \fIMONOTONIC_USEC=\fP 字段，有关详细信息，请参见
+\fBsystemd.service\fP(5)) \&。有关此选项语义的详细信息，请参见 \fBsd_notify\fP(3)\&。
+.RE
+.PP
+\fB\-\-stopping\fP
+.RS 4
+通知调用服务管理器有关服务关闭阶段的开始 \&。这相当于 \fBsystemd\-notify STOPPING=1\fP\&。有关此选项语义的详细信息，请参见
+\fBsd_notify\fP(3)\&。
+.RE
+.PP
+\fB\-\-pid=\fP
+.RS 4
+将服务的主要 PID 告知服务管理器 \&。取一个 PID 为参数 \&。如果参数指定为 "auto" 或省略，则使用调用
+\fBsystemd\-notify\fP 的进程的 PID，除非 \*(Aqs the service manager\&. 如果参数指定为
+"self"，则使用 \fBsystemd\-notify\fP 命令本身的 PID，如果指定 "parent"，则调用进程 \*(使用 Aq PID\(em
+即使它是服务管理器 \&。后者相当于 \fBsystemd\-notify MAINPID=$PID\fP\&。有关此选项语义的详细信息，请参见
+\fBsd_notify\fP(3)\&。
+.sp
+如果此开关用于来自应成为服务的新主进程的进程的 \fBsystemd\-notify\fP 调用 \(em 并且不是由服务管理器 (或当前主进程) 派生的进程
+\(em，那么它必须在服务元文件中设置 \fINotifyAccess=all\fP，否则出于安全原因，通知将被忽略 \&。有关详细信息，请参见
+\fBsystemd.service\fP(5)\&。
+.RE
+.PP
+\fB\-\-uid=\fP\fIUSER\fP
+.RS 4
+设置用户 ID 以从 \& 发送通知。采用 UNIX 用户名或数字 UID\&。当指定时，通知消息将作为发送者以指定的 UID
+发送，代替用户命令被调用为 \&。此选项需要足够的权限才能操作进程的用户身份 \&。
+.RE
+.PP
+\fB\-\-status=\fP
+.RS 4
+将守护程序的自由格式的人类可读状态字符串发送到服务管理器 \&。此选项将状态字符串作为参数 \&。这相当于 \fBsystemd\-notify STATUS=\&...\fP\&。有关此选项语义的详细信息，请参见 \fBsd_notify\fP(3)\&。此信息显示在
+\fBsystemctl\fP(1)\*(Aqs \fBstatus\fP 输出等地方 \&。
+.RE
+.PP
+\fB\-\-booted\fP
+.RS 4
+如果系统是使用 systemd 启动的，则返回 0，否则返回非零 \&。如果传递此选项，则不发送任何消息 \&。因此，此选项与其他选项无关
+\&。有关此选项语义的详细信息，请参见 \fBsd_booted\fP(3)\&。检查此状态的另一种方法是使用 \fBis\-system\-running\fP 命令
+\& 调用 \fBsystemctl\fP(1)。如果系统不是使用 systemd\& 启动的，它将返回 "offline"。
+.RE
+.PP
+\fB\-\-no\-block\fP
+.RS 4
+不要同步等待请求的操作完成 \&。仅当 \fBsystemd\-notify\fP 由服务管理器生成，或者调用进程由服务管理器直接生成并且具有足够的权限允许
+\fBsystemd\-notify\fP 代表它发送通知时，才建议使用此选项 \&。在所有其他情况下，使用此选项设置发送通知很容易出现竞争状态。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH EXAMPLE
+.PP
+\fBExample\ \&1.\ \&Start\-up Notification and Status Updates\fP
+.PP
+一个简单的 shell 守护进程，在设置其通信通道 \& 后发送启动通知。在运行时，它向初始化系统发送进一步的状态更新:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#!/bin/sh
+
+mkfifo /tmp/waldo
+systemd\-notify\-\-ready\-\-status="等待数据 \&..."
+
+尽管 : ; 做
+        读取 \-r < /tmp/waldo
+        systemd\-notify\-\-status="正在处理 $a"
+
+        # 用 $a\& 做点什么...
+
+        systemd\-notify\-\-status="等待数据 \&..."
+done
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd.unit\fP(5), \fBsystemd.service\fP(5),
+\fBsd_notify\fP(3), \fBsd_booted\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,109 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2006, 2014, Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fexecve 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+fexecve \- 执行通过文件描述符指定的程序
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint fexecve(int \fP\fIfd\fP\fB, char *const \fP\fIargv\fP\fB[], char *const \fP\fIenvp\fP\fB[]);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBfexecve\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBfexecve\fP() 执行与 \fBexecve\fP(2) 相同的任务，区别在于要执行的文件是通过文件描述符 \fIfd\fP
+指定的，而不是通过路径名指定的。 文件描述符 \fIfd\fP 必须以只读 (\fBO_RDONLY\fP) 或带有 \fBO_PATH\fP
+标志的方式打开，并且调用者必须有权执行它所引用的文件。
+.SH "RETURN VALUE"
+对 \fBfexecve\fP() 的成功调用永远不会返回。 出错时，函数确实返回，结果值为 \-1，\fIerrno\fP 设置为指示错误。
+.SH ERRORS
+错误与 \fBexecve\fP(2) 相同，但增加了以下内容:
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 不是有效的文件描述符，或者 \fIargv\fP 为 NULL，或者 \fIenvp\fP 为 NULL。
+.TP 
+\fBENOENT\fP
+在 \fIfd\fP 上设置了 close\-on\-exec 标志，\fIfd\fP 指的是一个脚本。 查看错误。
+.TP 
+\fBENOSYS\fP
+内核没有提供 \fBexecveat\fP(2) 系统调用，无法访问 \fI/proc\fP 文件系统。
+.SH VERSIONS
+\fBfexecve\fP() 是从 glibc 2.3.2 开始实现的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfexecve\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2008。此函数未在 POSIX.1\-2001 中指定，并且未在其他系统上广泛使用。 它在 POSIX.1\-2008 中指定。
+.SH NOTES
+.\" glibc commit 43ffc53a352a67672210c9dd4959f6c6b7407e60
+在具有 2.26 及更早版本 glibc 的 Linux 上，\fBfexecve\fP() 是使用 \fBproc\fP(5) 文件系统实现的，因此
+\fI/proc\fP 需要在调用时挂载并可用。 从 glibc 2.27 开始，如果底层内核支持 \fBexecveat\fP(2) 系统调用，那么
+\fBfexecve\fP() 就是使用该系统调用实现的，好处是 \fI/proc\fP 不需要挂载。
+.PP
+\fBfexecve\fP() 背后的想法是允许调用者在执行之前验证 (checksum) 可执行文件的内容。 简单地打开文件，对内容进行校验和，然后执行
+\fBexecve\fP(2) 是不够的，因为在这两个步骤之间，文件名或路径名的目录前缀可能已经交换 (例如，通过修改目标一个符号链接)。
+\fBfexecve\fP() 并没有缓解文件的 \fIcontents\fP 可以在校验和和调用到 \fBfexecve\fP() 之间更改的问题;
+为此，解决方案是确保文件的权限防止它被恶意用户修改。
+.PP
+使用 \fBfexecve\fP() 时的自然习惯是在 \fIfd\fP 上设置 close\-on\-exec 标志，这样文件描述符就不会泄漏到正在执行的程序中。
+这种方法很自然，原因有二。 首先，它可以防止不必要地使用文件描述符。 (执行的程序通常不需要引用程序本身的文件描述符。) 其次，如果递归使用
+\fBfexecve\fP()，使用 close\-on\-exec
+标志可以防止文件描述符耗尽，因为每个步骤都会导致文件描述符耗尽在递归中会导致将一个文件描述符传递给新程序。 (但请参见错误。)
+.SH BUGS
+如果 \fIfd\fP 引用脚本 (即，它是一个可执行文本文件，命名脚本解释器的第一行以字符 \fI#!\fP) 开头，并且已为 \fIfd\fP 设置了
+close\-on\-exec 标志，则 \fBfexecve\fP() 失败并显示错误 \fBENOENT\fP。 发生此错误的原因是，在执行脚本解释器时，\fIfd\fP
+已因 close\-on\-exec 标志而关闭。 因此，如果 \fIfd\fP 引用脚本，则不能在 \fIfd\fP 上设置 close\-on\-exec
+标志，从而导致 NOTES 中描述的问题。
+.SH "SEE ALSO"
+\fBexecve\fP(2), \fBexecveat\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

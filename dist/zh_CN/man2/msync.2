@@ -1,0 +1,90 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1996 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH msync 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+msync \- 将文件与内存 map 同步
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mman.h>\fP
+.PP
+\fBint msync(void \fP\fIaddr\fP\fB[.\fP\fIlength\fP\fB], size_t \fP\fIlength\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmsync\fP() 将对使用 \fBmmap\fP(2) 映射到内存的文件的核心副本所做的更改刷新回文件系统。 如果不使用此调用，则无法保证在调用
+\fBmunmap\fP(2) 之前写回更改。 更准确地说，文件中对应于从 \fIaddr\fP 开始且长度为 \fIlength\fP 的内存区域的部分被更新。
+.PP
+\fIflags\fP 参数应准确指定 \fBMS_ASYNC\fP 和 \fBMS_SYNC\fP 之一，并且可以另外包括 \fBMS_INVALIDATE\fP 位。
+这些位具有以下含义:
+.TP 
+\fBMS_ASYNC\fP
+指定安排更新，但调用立即返回。
+.TP 
+\fBMS_SYNC\fP
+请求更新并等待更新完成。
+.TP 
+\fBMS_INVALIDATE\fP
+.\" Since Linux 2.4, this seems to be a no-op (other than the
+.\" EBUSY check for VM_LOCKED).
+要求使同一文件的其他映射无效 (以便它们可以用刚刚写入的新值进行更新)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBUSY\fP
+在 \fIflags\fP 中指定了 \fBMS_INVALIDATE\fP，对于指定的地址范围存在内存锁。
+.TP 
+\fBEINVAL\fP
+\fIaddr\fP 不是 PAGESIZE 的倍数; 或 \fBMS_ASYNC\fP 以外的任何位 | \fBMS_INVALIDATE\fP |
+\fBMS_SYNC\fP 设置在 \fIflags\fP; 或者 \fBMS_SYNC\fP 和 \fBMS_ASYNC\fP 都设置在 \fIflags\fP 中。
+.TP 
+\fBENOMEM\fP
+指示的内存 (或其中的一部分) 未映射。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.PP
+这个调用是在 Linux 1.3.21 引入的，后来用 \fBEFAULT\fP 代替了 \fBENOMEM\fP。 在 Linux 2.4.19 中，这被更改为
+POSIX 值 \fBENOMEM\fP。
+.PP
+.\" POSIX.1-2001: It shall be defined to -1 or 0 or 200112L.
+.\" -1: unavailable, 0: ask using sysconf().
+.\" glibc defines them to 1.
+在 \fBmsync\fP() 可用的 POSIX 系统上，\fB_POSIX_MAPPED_FILES\fP 和
+\fB_POSIX_SYNCHRONIZED_IO\fP 都在 \fI<unistd.h>\fP 中定义为大于 0 的值。 (另见
+\fBsysconf\fP(3).)
+.SH NOTES
+.\" commit 204ec841fbea3e5138168edbc3a76d46747cc987
+根据 POSIX，必须在 \fIflags\fP 中指定 \fBMS_SYNC\fP 或 \fBMS_ASYNC\fP，并且确实未能包含这些标志之一将导致
+\fBmsync\fP() 在某些系统上失败。 但是，Linux 允许对 \fBmsync\fP() 的调用，它既不指定这些标志，又具有 (currently)
+等同于指定 \fBMS_ASYNC\fP 的语义。 (由于 Linux 2.6.19，\fBMS_ASYNC\fP
+实际上是一个空操作，因为内核正确地跟踪脏页并在必要时将它们刷新到存储。) 尽管有 Linux 行为，可移植的、future 证明应用程序应该确保它们指定
+\fBMS_SYNC\fP 或 \fBMS_ASYNC\fP 在 \fIflags\fP。
+.SH "SEE ALSO"
+\fBmmap\fP(2)
+.PP
+B.O. Gallmeister, POSIX.4, O'Reilly, pp. 128\[zh] 129 和 389\[zh] 391。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

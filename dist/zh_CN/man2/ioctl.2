@@ -1,0 +1,111 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1980, 1991 Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)ioctl.2	6.4 (Berkeley) 3/10/91
+.\"
+.\" Modified 1993-07-23 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1999-06-25 by Rachael Munns <vashti@dream.org.uk>
+.\" Modified 2000-09-21 by Andries Brouwer <aeb@cwi.nl>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl\-\- 控制设备
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/ioctl.h>\fP
+.PP
+.\" POSIX says 'request' is int, but glibc has the above
+.\" See https://bugzilla.kernel.org/show_bug.cgi?id=42705
+\fBint ioctl(int \fP\fIfd\fP\fB, unsigned long \fP\fIrequest\fP\fB, ...);\fP
+.fi
+.SH DESCRIPTION
+\fBioctl\fP() 系统调用操作特殊文件的底层设备参数。 特别是，字符特殊文件 (例如，终端) 的许多操作特性可以用 \fBioctl\fP()
+请求来控制。 参数 \fIfd\fP 必须是一个打开的文件描述符。
+.PP
+第二个参数是依赖于设备的请求代码。 第三个参数是指向内存的无类型指针。 它传统上是 \fBchar *\fP\fIargp\fP (从 \fBvoid *\fP 成为有效
+C 之前的日子开始)，并且将在本次讨论中如此命名。
+.PP
+一个 \fBioctl\fP() \fIrequest\fP 里面编码了参数是 \fIin\fP 参数还是 \fIout\fP 参数，以及参数 \fIargp\fP 的字节大小。
+用于指定 \fBioctl\fP() \fIrequest\fP 的宏和定义位于文件 \fI<sys/ioctl.h>\fP 中。 见注释。
+.SH "RETURN VALUE"
+通常，成功返回零。 一些 \fBioctl\fP() 请求使用返回值作为输出参数，并在成功时返回一个非负值。 出错时返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIargp\fP 引用不可访问的内存区域。
+.TP 
+\fBEINVAL\fP
+\fIrequest\fP 或 \fIargp\fP 无效。
+.TP 
+\fBENOTTY\fP
+\fIfd\fP 不与字符特殊设备相关联。
+.TP 
+\fBENOTTY\fP
+指定的请求不适用于文件描述符 \fIfd\fP 引用的对象类型。
+.SH STANDARDS
+没有单一的标准。 \fBioctl\fP() 的参数、返回和语义根据所讨论的设备驱动程序而有所不同 (调用用作不完全适合 UNIX 流 I/O
+模型的操作的包罗万象)。
+.PP
+\fBioctl\fP() 系统调用出现在 Version 7 AT&T UNIX 中。
+.SH NOTES
+.\"
+为了使用这个调用，需要一个打开的文件描述符。 通常 \fBopen\fP(2) 调用有不需要的副作用，在 Linux 下可以通过给它
+\fBO_NONBLOCK\fP 标志来避免。
+.SS "ioctl structure"
+.\" added two sections - aeb
+Ioctl 命令值是 32 位常量。 原则上这些常量是完全任意的，但人们试图在其中构建一些结构体。
+.PP
+旧的 Linux 情况主要是 16 位常量，其中最后一个字节是一个序列号，前面的 byte(s) 给出了一个指示驱动程序的类型。 有时使用主要编号:
+0x03 用于 \fBHDIO_*\fP ioctl，0x06 用于 \fBLP*\fP ioctl。 有时会使用一个或多个 ASCII 字母。
+例如，\fBTCGETS\fP 的值为 0x00005401，其中 0x54 =\[aq] T\[aq] 表示终端驱动程序，\fBCYGETTIMEOUT\fP
+的值为 0x00435906，其中 0x43 0x59 =\[aq] C\[aq]\[aq] Y\[aq] 表示 cyclades 驱动程序。
+.PP
+后来 (0.98p5) 一些更多的信息被内置到号码中。 一个有 2 个方向位 (00: 无，01: 写，10: 读，11: read/write)，后跟
+14 个大小位 (给出参数的大小)，然后是一个 8 位类型 (收集 ioctls 分组用于一个共同的目的或一个共同的驱动程序) 和一个 8 位序列号。
+.PP
+描述这个结构体的宏存在于 \fI<asm/ioctl.h>\fP 中，分别是 \fB_IO(type,nr)\fP 和
+\fB{_IOR,_IOW,_IOWR}(type,nr,size)\fP。 他们使用 \fIsizeof(size)\fP，因此 size 在这里用词不当:
+第三个参数是数据类型。
+.PP
+请注意，大小位非常不可靠: 在很多情况下它们是错误的，要么是因为使用 \fIsizeof(sizeof(struct))\fP 的 buggy
+宏，要么是因为遗留值。
+.PP
+因此，似乎新的结构体只是带来了缺点: 它无助于检查，但它会导致各种体系结构的值不同。
+.SH "SEE ALSO"
+.\" .BR mt (4),
+\fBexecve\fP(2), \fBfcntl\fP(2), \fBioctl_console\fP(2), \fBioctl_fat\fP(2),
+\fBioctl_ficlone\fP(2), \fBioctl_ficlonerange\fP(2), \fBioctl_fideduperange\fP(2),
+\fBioctl_fslabel\fP(2), \fBioctl_getfsmap\fP(2), \fBioctl_iflags\fP(2),
+\fBioctl_ns\fP(2), \fBioctl_tty\fP(2), \fBioctl_userfaultfd\fP(2), \fBopen\fP(2),
+\fBsd\fP(4), \fBtty\fP(4)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

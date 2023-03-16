@@ -1,0 +1,84 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1995, Thomas K. Dyas <tdyas@eden.rutgers.edu>
+.\" and Copyright (C) 2013, 2019, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Created   1995-08-06 Thomas K. Dyas <tdyas@eden.rutgers.edu>
+.\" Modified  2000-07-01 aeb
+.\" Modified  2002-07-23 aeb
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setfsuid 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+setfsuid \- 设置用于文件系统检查的用户身份
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/fsuid.h>\fP
+.PP
+\fBint setfsuid(uid_t \fP\fIfsuid\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+在 Linux 上，进程同时具有文件系统用户 ID 和有效用户 ID。(Linux\-specific) 文件系统用户 ID
+用于访问文件系统对象时的权限检查，而有效用户 ID 用于各种其他类型的权限检查 (参见 \fBcredentials\fP(7)).
+.PP
+通常，进程的文件系统用户 ID 的值与其有效用户 ID 的值相同。之所以如此，是因为每当更改进程的有效用户 ID 时，内核也会将文件系统用户 ID
+更改为与有效用户 ID 的新值相同。通过使用 \fBsetfsuid\fP() 将其文件系统用户 ID 更改为 \fIfsuid\fP
+中给定的值，进程可以导致其文件系统用户 ID 的值与其有效用户 ID 不同。
+.PP
+对 \fBsetfsuid\fP() 和 \fBsetfsgid\fP(2) 的显式调用是 (were)，通常仅由 Linux NFS
+服务器等程序使用，这些程序需要更改用于文件访问的用户和组 ID，而无需相应更改真实有效的用户和组 ID。 NFS 服务器等程序的普通用户 ID 的更改是
+(was) 和安全 hole，可以将其暴露给不需要的信号。 (但是，这个问题是历史性的; 见下文。)
+.PP
+仅当调用者是超级用户或者 \fIfsuid\fP 与调用者的真实用户 ID、有效用户 ID、保存的用户 ID 或当前文件系统用户 ID
+匹配时，\fBsetfsuid\fP() 才会成功。
+.SH "RETURN VALUE"
+无论成功还是失败，这个调用都会返回调用者之前的文件系统用户 ID。
+.SH VERSIONS
+.\" This system call is present since Linux 1.1.44
+.\" and in libc since libc 4.7.6.
+本系统调用从 Linux 1.2 起就存在。
+.SH STANDARDS
+\fBsetfsuid\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+在引入此系统调用时，一个进程可以向具有相同有效用户 ID 的另一个进程发送信号。这意味着，如果一个特权进程为了文件权限检查而更改了它的有效用户
+ID，那么它可能会容易受到另一个具有相同用户 ID 的 (unprivileged) 进程发送的信号的攻击。因此添加了文件系统用户 ID
+属性，以允许进程更改其用户 ID 以进行文件权限检查，同时不会变得容易受到不需要的信号的影响。 自 Linux 2.0 以来，信号权限处理有所不同
+(请参见 \fBkill\fP(2))，因此进程可以更改其有效用户 ID 而不会受到来自不需要进程的信号的影响。 因此，现在不需要
+\fBsetfsuid\fP()，在新应用程序中应该避免使用它 (对于 \fBsetfsgid\fP(2)) 也是如此)。
+.PP
+原来的 Linux \fBsetfsuid\fP() 系统调用只支持 16 位用户 ID。 随后 Linux 2.4 增加了 \fBsetfsuid32\fP()
+支持 32 位 ID。 glibc \fBsetfsuid\fP() 包装器函数透明地处理内核版本之间的差异。
+.SS "C library/kernel differences"
+在 glibc 2.15 及更早版本中，当此系统调用的包装器确定参数不能在没有整数截断的情况下传递给内核 (因为内核较旧且不支持 32 位用户
+ID)，它将返回 \-1 和将 \fIerrno\fP 设置为 \fBEINVAL\fP 而无需尝试系统调用。
+.SH BUGS
+不会向调用者返回任何类型的错误指示，并且成功和不成功的调用都返回相同的值这一事实使得无法直接确定调用是成功还是失败。
+相反，调用者必须求助于查看来自进一步调用 (例如 \fIsetfsuid(\-1)\fP (将始终失败) ) 的返回值，以确定之前对 \fBsetfsuid\fP()
+的调用是否更改了文件系统用户 ID。最起码调用失败时应该返回 \fBEPERM\fP (因为调用者没有 \fBCAP_SETUID\fP 能力)。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBsetfsgid\fP(2), \fBcapabilities\fP(7), \fBcredentials\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

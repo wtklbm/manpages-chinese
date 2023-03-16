@@ -1,0 +1,221 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\" and Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\"     libc.info (from glibc distribution)
+.\" Modified Sat Jul 24 19:12:00 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Sun Sep  3 20:29:36 1995 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" Changed network into host byte order (for inet_network),
+.\"     Andreas Jaeger <aj@arthur.rhein-neckar.de>, 980130.
+.\" 2008-06-19, mtk
+.\"     Describe the various address forms supported by inet_aton().
+.\"     Clarify discussion of inet_lnaof(), inet_netof(), and inet_makeaddr().
+.\"     Add discussion of Classful Addressing, noting that it is obsolete.
+.\"     Added an EXAMPLE program.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH inet 3 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+inet_aton、inet_addr、inet_network、inet_ntoa、inet_makeaddr、inet_lnaof、inet_netof\-Internet
+地址操作例程
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <netinet/in.h>\fP
+\fB#include <arpa/inet.h>\fP
+.PP
+\fBint inet_aton(const char *\fP\fIcp\fP\fB, struct in_addr *\fP\fIinp\fP\fB);\fP
+.PP
+\fBin_addr_t inet_addr(const char *\fP\fIcp\fP\fB);\fP
+\fBin_addr_t inet_network(const char *\fP\fIcp\fP\fB);\fP
+.PP
+\fB[[deprecated]] char *inet_ntoa(struct in_addr \fP\fIin\fP\fB);\fP
+.PP
+\fBstruct in_addr inet_makeaddr(in_addr_t \fP\fInet\fP\fB, in_addr_t \fP\fIhost\fP\fB);\fP
+.PP
+\fBin_addr_t inet_lnaof(struct in_addr \fP\fIin\fP\fB);\fP
+\fBin_addr_t inet_netof(struct in_addr \fP\fIin\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBinet_aton\fP(), \fBinet_ntoa\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    在 x00X 及之前的 glibc 中:
+        _BSD_SOURCE || _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBinet_aton\fP() 将 Internet 主机地址 \fIcp\fP 从 IPv4 数字和点表示法转换为二进制形式 (以网络字节顺序) 并将其存储在
+\fIinp\fP 指向的结构体中。 如果地址有效，\fBinet_aton\fP() 返回非零值，否则返回零值。 \fIcp\fP 中提供的地址可以采用以下形式之一:
+.TP  10
+\fIa.b.c.d\fP
+四个数字部分中的每一个都指定了地址的一个字节; 字节按从左到右的顺序分配以产生二进制地址。
+.TP 
+\fIa.b.c\fP
+\fIa\fP 和 \fIb\fP 部分指定二进制地址的前两个字节。 \fIc\fP 部分被解释为定义二进制地址最右边两个字节的 16 位值。 此表示法适用于指定
+(outmoded) B 类网络地址。
+.TP 
+\fIa.b\fP
+\fIa\fP 部分指定二进制地址的第一个字节。 \fIb\fP 部分被解释为一个 24 位值，它定义了二进制地址最右边的三个字节。 此表示法适用于指定
+(outmoded) A 类网络地址。
+.TP 
+\fIa\fP
+值 \fIa\fP 被解释为 32 位值，直接存储到二进制地址中，无需任何字节重新排列。
+.PP
+在所有上述形式中，点分地址的组成部分可以指定为十进制、八进制 (带前导 \fI0\fP)，或十六进制，带前导 \fI0X\fP)。任何这些形式的地址统称为
+\fIIPV4 numbers\-and\-dots notation\fP。 恰好使用四位十进制数的形式称为 \fIIPv4 dotted\-decimal notation\fP (或有时: \fIIPv4 dotted\-quad notation\fP)。
+.PP
+如果提供的字符串被成功解释，\fBinet_aton\fP() 返回 1，如果字符串无效则返回 0 ((\fBerrno\fP 是 \fInot\fP 错误设置)。
+.PP
+\fBinet_addr\fP() 函数将 Internet 主机地址 \fIcp\fP 从 IPv4 数字和点表示法转换为网络字节顺序的二进制数据。
+如果输入无效，则返回 \fBINADDR_NONE\fP (通常为 \-1)。 使用这个函数是有问题的，因为 \-1 是一个有效的地址
+(255.255.255.255)。 避免使用它以支持 \fBinet_aton\fP()、\fBinet_pton\fP(3) 或
+\fBgetaddrinfo\fP(3)，它们提供了一种更清晰的方式来指示错误返回。
+.PP
+\fBinet_network\fP() 函数将 \fIcp\fP (IPv4 数字和点表示法中的字符串) 转换为适合用作 Internet
+网络地址的主机字节顺序的数字。 成功时，返回转换后的地址。 如果输入无效，则返回 \-1。
+.PP
+\fBinet_ntoa\fP() 函数将以网络字节顺序给出的 Internet 主机地址 \fIin\fP 转换为 IPv4 点分十进制表示法中的字符串。
+该字符串在静态分配的缓冲区中返回，后续调用将覆盖该缓冲区。
+.PP
+\fBinet_lnaof\fP() 函数返回 Internet 地址 \fIin\fP 的本地网络地址部分。 返回值以主机字节顺序排列。
+.PP
+\fBinet_netof\fP() 函数返回 Internet 地址 \fIin\fP 的网络号部分。 返回值以主机字节顺序排列。
+.PP
+\fBinet_makeaddr\fP() 函数是 \fBinet_netof\fP() 和 \fBinet_lnaof\fP() 的逆数。 它以网络字节顺序返回一个
+Internet 主机地址，该地址是通过将网络号 \fInet\fP 与本地地址 \fIhost\fP 组合而成的，两者均以主机字节顺序排列。
+.PP
+在 \fBinet_ntoa\fP()、\fBinet_makeaddr\fP()、\fBinet_lnaof\fP() 和 \fBinet_netof\fP()
+中使用的结构体 \fIin_addr\fP 在 \fI<netinet/in.h>\fP 中定义为:
+.PP
+.in +4n
+.EX
+typedef uint32_t in_addr_t;
+
+struct in_addr {
+    in_addr_t s_addr;
+};
+.EE
+.in
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBinet_aton\fP(),
+\fBinet_addr\fP(),
+\fBinet_network\fP(),
+\fBinet_ntoa\fP()
+T}	Thread safety	MT\-Safe locale
+T{
+\fBinet_makeaddr\fP(),
+\fBinet_lnaof\fP(),
+\fBinet_netof\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBinet_addr\fP(), \fBinet_ntoa\fP(): POSIX.1\-2001, POSIX.1\-2008, 4.3BSD.
+.PP
+\fBinet_aton\fP() 未在 POSIX.1 中指定，但在大多数系统上可用。
+.SH NOTES
+在 x86 架构上，主机字节顺序是最低有效字节在前 (小端)，而网络字节顺序，如 Internet 上使用的那样，是最高有效字节在前 (大端)。
+.PP
+\fBinet_lnaof\fP()、\fBinet_netof\fP() 和 \fBinet_makeaddr\fP() 是传统的函数，假定它们正在处理
+\fIclassful network addresses\fP。 有类网络将 IPv4 网络地址按字节边界划分为主机和网络组件，如下所示:
+.TP  10
+Class A
+此地址类型由 (按网络字节排序的) 地址的最高有效位中的值 0 指示。 网络地址包含在最高有效字节中，主机地址占据剩余的三个字节。
+.TP 
+Class B
+该地址类型由地址最高有效两位中的二进制值 10 指示。 网络地址包含在两个最高有效字节中，主机地址占据剩余的两个字节。
+.TP 
+Class C
+该地址类型由地址最高三位中的二进制值 110 指示。 网络地址包含在三个最高有效字节中，主机地址占据剩余字节。
+.PP
+有类网络地址现在已过时，已被无类域间路由 (CIDR) 取代，它将地址划分为任意位 (而不是字节) 边界的网络和主机组件。
+.SH EXAMPLES
+\fBinet_aton\fP() 和 \fBinet_ntoa\fP() 的使用示例如下所示。 以下是一些示例运行:
+.PP
+.in +4n
+.EX
+$\fB ./a.out 226.000.000.037\fP      # 最后一个字节是八进制的
+226.0.0.31
+$\fB ./a.out 0x7f.1         \fP      # 第一个字节是十六进制
+127.0.0.1
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (inet.c)
+\&
+.EX
+#define _DEFAULT_SOURCE
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    struct in_addr addr;
+
+    if (argc != 2) {
+        fprintf(stderr, "%s <dotted\-address>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (inet_aton(argv[1], &addr) == 0) {
+        fprintf(stderr, "Invalid address\en");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("%s\en", inet_ntoa(addr));
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBbyteorder\fP(3), \fBgetaddrinfo\fP(3), \fBgethostbyname\fP(3), \fBgetnameinfo\fP(3),
+\fBgetnetent\fP(3), \fBinet_net_pton\fP(3), \fBinet_ntop\fP(3), \fBinet_pton\fP(3),
+\fBhosts\fP(5), \fBnetworks\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

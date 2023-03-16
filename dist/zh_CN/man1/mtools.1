@@ -1,0 +1,371 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mtools 1 22Oct22 mtools\-4.0.42 
+.SH Name
+mtools \- 用于访问 Unix 中的 DOS 磁盘的实用工具。
+.de  TQ
+.br
+.ns
+.TP \\$1
+..
+
+'\" t
+.tr \(is'
+.tr \(if`
+.tr \(pd"
+
+.PP
+.SH Introduction
+Mtools 是一个允许 Unix 系统操作 MS\-DOS 文件的工具集合: 在 MS\-DOS 文件系统 (通常是软盘) 上读取、写入和移动文件。
+在合理的情况下，每个程序都会尝试模拟 MS\-DOS 等效命令。但是，没有效仿 DOS
+的不必要的限制和怪癖。例如，可以将子目录从一个子目录移动到另一个子目录。
+.PP
+Mtools 足以访问 MS\-DOS 文件系统。 例如，\&\f(CWmdir a:\fP 之类的命令无需任何初步安装或初始化即可在 \&\f(CWa:\fP
+软盘上运行 (假设默认 \&\&\f(CW\(if/etc/mtools.conf\(is\fP 在您的机器上运行)。 使用
+mtools，也可以在不卸载和安装的情况下更换软盘。
+.PP
+.SH Where\ to\ get\ mtools
+.PP
+可以在以下位置 (及其镜像) 找到 Mtools:
+ 
+.nf
+.in +0.3i
+\fBhttp://ftp.gnu.org/gnu/mtools/mtools\-4.0.42.tar.gz\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&\fR
+.PP
+这些补丁名为 \&\&\f(CWmtools\-\fP\fIversion\fP\&\f(CW\-\fP\fIddmm\fP\&\f(CW.taz\fP，其中版本代表基本版本，\fIdd\fP
+代表日期，\fImm\fP 代表月份。由于空间不足，我通常只留下最新的补丁。
+.PP
+在 info\-mtools@gnu.org 有一个 mtools 邮件列表。请将所有错误报告发送到此列表。 您可以在
+https://lists.gnu.org/mailman/listinfo/info\-mtools 订阅列表。(请注意，请删除 "@"
+周围的空格。我将它们留在那里是为了愚弄垃圾邮件机器人。) 除了 Linux 公告新闻组之外，新 mtools 版本的公告也将发送到列表中。
+邮件列表存档在 http://lists.gnu.org/pipermail/info\-mtools/
+.PP
+.SH Common\ features\ of\ all\ mtools\ commands
+.PP
+.SS Options\ and\ filenames
+MS\-DOS 文件名由一个驱动器号和一个冒号、一个子目录和一个文件名组成。只有文件名部分是必需的，驱动器号和子目录是可选的。不带盘符的文件名是指
+Unix 文件。子目录名称可以使用 \&'\&\f(CW/\fP' 或 '\&\f(CW\e\fP' 分隔符。 使用 '\&\f(CW\e\fP'
+分隔符或通配符需要将名称括在引号中以保护它们免受 shell 的影响。但是，Unix 文件名中的通配符不应该用引号括起来，因为这里我们用 \fBwant\fP
+shell 来扩展它们。
+.PP
+正则表达式 "pattern matching" 例程遵循 Unix 风格的规则。 例如，`\&\f(CW*\fP' 代替 `\&\f(CW*.*\fP' 匹配所有
+MS\-DOS 文件。 在模式匹配期间忽略存档、隐藏、只读和系统属性位。
+.PP
+所有选项都使用 \&\f(CW\-\fP (minus) 作为它们的第一个字符，而不是像您在 MS\-DOS 中期望的那样使用 \&\&\f(CW/\fP。
+.PP
+大多数 mtools 命令允许多个文件名参数，这不遵循 MS\-DOS 约定，但对用户更友好。
+.PP
+大多数 mtools 命令都允许使用选项来指示它们如何处理文件名冲突。有关这些的更多详细信息，请参见部分名称冲突。
+.PP
+所有命令都接受允许指定图像文件的 \&\f(CW\-i\fP 标志 (请参见驱动器号部分)。
+.PP
+所有命令都接受打印版本的 \&\f(CW\-V\fP 标志，并且大多数都接受 \&\f(CW\-v\fP
+标志，它会打开详细模式。在详细模式下，除非另有说明，否则这些命令会打印出它们所作用的 MS\-DOS
+文件的名称。有关每个命令特定的选项的描述，请参见命令部分。
+.PP
+.SS Drive\ letters
+.PP
+驱动器号的含义取决于目标体系结构。 但是，在大多数目标体系结构上，驱动器 A 是第一个软盘驱动器，驱动器 B 是第二个软盘驱动器 (如果可用)，驱动器
+J 是 Jaz 驱动器 (如果可用)，驱动器 Z 是 Zip 驱动器 (如果可用)。 在设备名称源自 SCSI id 的那些系统上，假定 Jaz
+驱动器位于 SCSI 目标 4，而 Zip 位于 SCSI 目标 5 (出厂默认设置)。 在 Linux 上，假定两个驱动器都是 SCSI 总线
+(/dev/sdb) 上的第二个驱动器。可以使用配置文件更改默认设置 (请参见配置部分)。
+.PP
+驱动器号: (colon) 具有特殊含义。它用于访问使用 \&\&\f(CW\-i\fP 选项在命令行上直接指定的图像文件。
+.PP
+Example:
+ 
+.nf
+.in +0.3i
+\fB mcopy \-i my\-image\-file.bin ::file1 ::file2 .\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&\fR
+.PP
+这会将 \&\f(CWfile1\fP 和 \&\f(CWfile2\fP 从图像文件 (\&\f(CWmy\-image\-file.bin\fP) 复制到 \&\f(CW/tmp\fP
+目录。
+.PP
+您还可以通过在文件名中包含 \&\&\f(CW@@\fP\fIoffset\fP 来提供图像文件中的偏移量。
+.PP
+Example:
+ 
+.nf
+.in +0.3i
+\fB mcopy \-i my\-image\-file.bin@@1M ::file1 ::file2 .\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&\fR
+.PP
+这将在文件中 1M 的偏移量处查找图像，而不是在其开头。
+.PP
+.SS Current\ working\ directory
+.PP
+\&\f(CWmcd\fP 命令 (\(ifmcd\(is) 用于建立设备和当前工作目录 (相对于 MS\-DOS 文件系统)，否则默认假定为
+\&\f(CWA:/\fP。然而，与 MS\-DOS 不同的是，所有驱动器只有一个工作目录，而不是每个驱动器一个。
+.PP
+.SS VFAT\-style\ long\ file\ names
+.PP
+此版本的 mtools 支持 VFAT 样式的长文件名。如果 Unix
+文件名太长，无法放入短的 DOS 名称中，它存储为
+VFAT 长名称，并生成伴随的短名称。这个短
+名称是您在使用 7.0 之前的版本检查磁盘时看到的内容
+的。
+ 下表显示了短名称的一些示例:
+.PP
+ 
+.nf
+.in +0.3i
+\fBLong name       MS\-DOS name     Reason for the change \-\-\-\-\-\-\-\-\-       \-\-\-\-\-\-\-\-\-\-      \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\- thisisatest     THISIS~1        filename too long alain.knaff     ALAIN~1.KNA     extension too long prn.txt         PRN~1.TXT       PRN is a device name \&\&.abc            ABC~1           null filename hot+cold        HOT_CO~1        illegal character\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&\fR
+.PP
+ 如您所见，以下转换恰好派生了一个简短的
+name:
+.TP 
+* \ \ 
+非法字符被替换为下划线。非法字符为 \&\f(CW;+=[]',\e"*\e\e<>/?:|\fP。
+.TP 
+* \ \ 
+不能解释为主要 name/extension 分隔符的额外点已被删除
+.TP 
+* \ \ 
+生成一个 \&\f(CW~\fP\fIn\fP 号，
+.TP 
+* \ \ 
+名称被缩短以适应 8+3 限制
+.PP
+ 最初的 Unix 风格的文件名 (无论长短) 也被称为
+\fIprimary\fP 名称，派生的简称也称为
+\&\fIsecondary\fP 名称。
+.PP
+ Example:
+ 
+.nf
+.in +0.3i
+\fB mcopy /etc/motd a:Reallylongname\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&Mtools 为 Reallylongname 创建一个 VFAT 条目，并使用 REALLYLO 作为短名称。reallylongname
+是主要名称，REALLYLO 是次要名称。
+ 
+.nf
+.in +0.3i
+\fB mcopy /etc/motd a:motd\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&Motd 符合 DOS 文件名限制。Mtools 不需要派生另一个名称。motd 是主要名称，没有次要名称。
+.PP
+ 简而言之: 主名称是长名称 (如果存在的话)，或者
+如果没有长名称，则为短名称。
+.PP
+ 虽然 VFAT 比 FAT 灵活多了，但还是有名字的
+这是不可接受的，即使在 VFAT 中也是如此。还是有一些违法的
+字符离开 (\&\f(CW\e"*\e\e<>/?:|\fP)，设备名称仍然
+reserved.
+.PP
+ 
+.nf
+.in +0.3i
+\fBUnix name       Long name       Reason for the change \-\-\-\-\-\-\-\-\-       \-\-\-\-\-\-\-\-\-\-      \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\- prn             prn\-1           PRN is a device name ab:c            ab_c\-1          illegal character\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&\fR
+.PP
+ 如您所见，如果一个长名称是
+illegal:
+.TP 
+* \ \ 
+非法字符替换为下划线，
+.TP 
+* \ \ 
+生成一个 \&\f(CW\-\fP\fIn\fP 号，
+.PP
+.SS Name\ clashes
+.PP
+将文件写入磁盘时，其长名或短名可能会与已存在的文件或目录发生冲突。所有创建新目录条目的命令都可能发生这种情况，例如
+\&\f(CWmcopy\fP、\&\&\f(CWmmd\fP、\&\f(CWmren\fP、\&\f(CWmmove\fP。当发生名称冲突时，mtools
+会询问您应该做什么。它提供了几种选择:
+.TP 
+\&\&\f(CWoverwrite\fP\ 
+覆盖现有文件。无法用文件覆盖目录。
+.TP 
+\&\&\f(CWrename\fP\ 
+重命名新创建的文件。Mtools 提示输入新文件名
+.TP 
+\&\&\f(CWautorename\fP\ 
+重命名新创建的文件。mtools 自己取名字，不提示
+.TP 
+\&\&\f(CWskip\fP\ 
+放弃这个文件，并移动到下一个 (如果有的话)
+.PP
+要选择这些操作中的一个，请在提示符处键入其第一个字母。如果您使用小写字母，则该操作仅适用于此文件，如果您使用大写字母，则该操作适用于所有文件，并且不会再次提示您。
+.PP
+调用 mtools 时，您还可以在命令行上选择操作 (针对所有文件) :
+.TP 
+\&\&\f(CW\-D\ o\fP\ 
+默认情况下覆盖主要名称。
+.TP 
+\&\&\f(CW\-D\ O\fP\ 
+默认情况下覆盖辅助名称。
+.TP 
+\&\&\f(CW\-D\ r\fP\ 
+默认重命名主要名称。
+.TP 
+\&\&\f(CW\-D\ R\fP\ 
+默认重命名辅助名称。
+.TP 
+\&\&\f(CW\-D\ a\fP\ 
+默认情况下自动重命名主要名称。
+.TP 
+\&\&\f(CW\-D\ A\fP\ 
+默认情况下自动重命名辅助名称。
+.TP 
+\&\&\f(CW\-D\ s\fP\ 
+默认情况下跳过主要名称。
+.TP 
+\&\&\f(CW\-D\ S\fP\ 
+默认跳过辅助名称。
+.TP 
+\&\&\f(CW\-D\ m\fP\ 
+询问用户如何处理主名称。
+.TP 
+\&\&\f(CW\-D\ M\fP\ 
+询问用户如何处理辅助名称。
+.PP
+请注意，对于命令行开关，lower/upper 区分 primary/secondary 名称，而对于交互式选择，lower/upper 区分
+just\-this\-time/always。
+.PP
+主要名称是 Windows 95 或 Windows NT 中显示的名称: 即如果存在则为长名称，否则为短名称。 次要名称是 "hidden"
+名称，即如果存在长名称则为短名称。
+.PP
+默认情况下，如果主要名称发生冲突，则会提示用户，并且会自动重命名次要名称。
+.PP
+如果 Unix 目录中发生名称冲突，mtools 只会询问是覆盖该文件还是跳过它。
+.PP
+.SS Case\ sensitivity\ of\ the\ VFAT\ file\ system
+.PP
+VFAT 文件系统能够记住文件名的大小写。但是，不允许仅大小写不同的文件名在同一目录中共存。例如，如果您在 VFAT 文件系统上存储一个名为
+LongFileName 的文件，mdir 会将此文件显示为 LongFileName，而不是 Longfilename。但是，如果您随后尝试将
+LongFilename 添加到同一目录，则会被拒绝，因为冲突检查会忽略大小写。
+.PP
+VFAT 文件系统允许您在属性字节中存储文件名的大小写，如果文件名的所有字母都是相同的大小写，并且如果扩展名的所有字母也是相同的大小写。Mtools
+在显示文件时使用此信息，并在复制到 Unix 目录时生成 Unix 文件名。当应用于使用 7.0 之前版本的 DOS
+编写的文件时，这可能会产生意想不到的结果: 事实上，旧式文件名 map 全部大写。这与用于生成小写 Unix 文件名的旧版本 mtools 的行为不同。
+.PP
+.SS high\ capacity\ formats
+.PP
+Mtools 支持多种格式，允许在磁盘上存储比平常更多的数据。由于操作系统功能不同，并非所有操作系统都支持这些格式。Mtools
+在支持的地方透明地识别这些格式。
+.PP
+为了格式化这些磁盘，您需要使用特定于操作系统的工具。对于 Linux，可以在 \&\&\f(CWfdutils\fP 包中的以下位置找到合适的软盘工具~:
+ 
+.nf
+.in +0.3i
+\fB\&\fP\&\f(CWhttp://www.fdutils.linux.lu/.\fP
+.fi
+.in -0.3i
+.PP
+ 
+\&\fR
+.PP
+有关详细信息，请参见该软件包中包含的手册页: 使用 \&\&\f(CWsuperformat\fP 格式化除 XDF 之外的所有格式，并使用
+\&\&\f(CWxdfcopy\fP 格式化 XDF。
+.PP
+.SS \ \ More\ sectors
+.PP
+在磁盘上容纳更多数据的最古老方法是使用更多扇区和更多柱面。虽然标准格式使用 80 个柱面和 18 个扇区 (在 3 1/2
+高密度磁盘上)，但最多可以使用 83 个柱面 (在大多数驱动器上) 和 21 个扇区。此方法允许在 3 1/2 HD 磁盘上存储多达
+1743K。然而，21 扇区磁盘的速度是标准 18 扇区磁盘的两倍，因为扇区之间的距离非常近，我们需要将它们交错放置。20 扇区格式不存在此问题。
+.PP
+许多 DOS 共享软件实用工具 (例如 \&\&\f(CWfdformat\fP 和 \&\f(CWvgacopy\fP)
+都支持这些格式。比尔盖茨无限狂妄自大，他相信这是他发明的，并将其命名为 \&\f(CW\(ifDMF disks\(is\fP 或
+\&\&\f(CW\(ifWindows formatted disks\(is\fP。但实际上，它早在几年前就已经存在了! Mtools 在
+Linux、SunOS 和 DELL Unix PC 上支持这些格式。
+.PP
+.SS \ \ Bigger\ sectors
+通过使用更大的扇区，可以超出标准 512 字节扇区所能获得的容量。这是因为扇区标题。扇区头具有相同的大小，而不管扇区中有多少数据字节。因此，我们通过使用
+\&\fIfewer\fP 来节省一些空间，但扇区更大。例如，1 个 4K 扇区只占用一次头空间，而 8 个 512 字节的扇区也有 8
+个头，用于相同数量的有用数据。
+.PP
+此方法允许在 3 1/2 HD 磁盘上存储多达 1992K。
+.PP
+Mtools 仅在 Linux 上支持这些格式。
+.PP
+.SS \ \ 2m
+.PP
+2m 格式最初是由 Ciriaco Garcia de Celis 发明的。它还使用比平常更大的扇区，以便在磁盘上容纳更多数据。
+但是，它在第一个柱面上使用标准格式 (18 个扇区，每个扇区 512 字节)，以便使这些磁盘更容易被 DOS
+处理。实际上，此方法允许您拥有标准大小的引导扇区，其中包含应如何读取磁盘其余部分的描述。
+.PP
+但是，这样做的缺点是第一个柱面可以容纳的数据少于其他柱面。不幸的是，DOS 只能处理每个磁道包含相同数据量的磁盘。因此 2m 通过使用 \fIshadow FAT\fP 隐藏了第一个轨道包含较少数据的事实。(通常，DOS 将 FAT 存储在两个相同的副本中，以增加安全性。XDF 只存储一个副本，但告诉 DOS
+它存储两个。因此，第二个 FAT 副本占用的空间被节省了。) 这也意味着您应该 \fBnever use a 2m disk to store anything else than a DOS file system\fP。
+.PP
+Mtools 仅在 Linux 上支持这些格式。
+.PP
+.SS \ \ XDF
+.PP
+XDF 是 OS/2 使用的一种高容量格式。每个磁盘可以容纳 1840 K。这低于最好的 2m 格式，但它的主要优点是速度快: 每个轨道 600
+毫秒。这比 21 扇区格式快，几乎与标准 18 扇区格式一样快。为了访问这些磁盘，请确保 mtools 已编译为支持 XDF，并在配置文件中为驱动器设置
+\&\f(CWuse_xdf\fP 变量。请参见编译 mtools 部分和 \(ifmiscellaneous 变量
+\(是，以获取有关如何执行此操作的详细信息。快速 XDF 访问仅适用于比 1.1.34 更新的 Linux 内核。
+.PP
+Mtools 仅在 Linux 上支持此格式。
+.PP
+\&\fBCaution / Attention distributors\fP: 如果 mtools 在比 1.3.34 更新的 Linux
+内核上编译，它不会在旧内核上运行。但是，如果它是在较旧的内核上编译的，它仍然可以在较新的内核上运行，只是 XDF 访问速度较慢。建议发行版作者仅包含在
+1.3.34 之前的内核上编译的 mtools 二进制文件，直到 2.0 发布。当 2.0 发布时，可以 (并且应该) 分发在较新内核上编译的
+mtools 二进制文件。在早于 1.3.34 的内核上编译的 Mtools 二进制文件不会在任何 2.1 内核或更高版本上运行。
+.PP
+.SS Exit\ codes
+所有 Mtools 命令在成功时返回 0，在完全失败时返回 1，或在部分失败时返回 2。 所有 Mtools
+命令在继续之前都会执行一些健全性检查，以确保磁盘确实是 MS\-DOS 磁盘 (而不是 ext2 或 MINIX
+磁盘)。这些检查可能会拒绝部分损坏的磁盘，否则这些磁盘可能仍然可读。要避免这些检查，请设置 MTOOLS_SKIP_CHECK
+环境变量或相应的配置文件变量 (请参见全局变量部分)
+.SS Bugs
+没有猜测正确设备 (当支持多个磁盘容量时) 的一个不幸的副作用是设备驱动程序偶尔会出现错误消息。 这些可以安全地忽略。
+.PP
+脂肪检查代码在使用 2.0.7 之前的 mtools mformatted 的 1.72 Mb 磁盘上阻塞。设置环境变量
+MTOOLS_FAT_COMPATIBILITY (或相应的配置文件变量，\(ifglobal 变量 \(is)) 以绕过脂肪检查。
+.PP
+.SH 也可以看看
+floppyd_installtest mattrib mbadblocks mcd mcopy mdel mdeltree mdir mdu
+mformat minfo mkmanifest mlabel mmd mmount mmove mrd mren mshortname
+mshowfat mtoolstest mtype
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,186 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\"
+.\" Modified 1993-07-24 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 2003-11-15 by aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getgrnam 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getgrnam、getgrnam_r、getgrgid、getgrgid_r \- 获取组文件条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <grp.h>\fP
+.PP
+\fBstruct group *getgrnam(const char *\fP\fIname\fP\fB);\fP
+\fBstruct group *getgrgid(gid_t \fP\fIgid\fP\fB);\fP
+.PP
+\fBint getgrnam_r(const char *restrict \fP\fIname\fP\fB, struct group *restrict \fP\fIgrp\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP 
+\fB               struct group **restrict \fP\fIresult\fP\fB);\fP
+\fBint getgrgid_r(gid_t \fP\fIgid\fP\fB, struct group *restrict \fP\fIgrp\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB               struct group **restrict \fP\fIresult\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetgrnam_r\fP(), \fBgetgrgid_r\fP():
+.nf
+    _POSIX_C_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetgrnam\fP() 函数返回一个指向结构体的指针，该结构体包含与组名称 \fIname\fP 匹配的组数据库 (例如，本地组文件
+\fI/etc/group\fP、NIS 和 LDAP) 中记录的断开字段。
+.PP
+\fBgetgrgid\fP() 函数返回一个指向结构体的指针，该结构体包含组数据库中与组 ID \fIgid\fP 匹配的记录的断开字段。
+.PP
+\fIgroup\fP 结构体在 \fI<grp.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct group {
+    char   *gr_name;        /* group name */
+    char   *gr_passwd;      /* group password */
+    gid_t   gr_gid;         /* group ID */
+    char  **gr_mem;         /* NULL\-terminated array of pointers
+                               组成员的名字 */
+};
+.EE
+.in
+.PP
+有关此结构体字段的更多信息，请参见 \fBgroup\fP(5)。
+.PP
+\fBgetgrnam_r\fP() 和 \fBgetgrgid_r\fP() 函数获取与 \fBgetgrnam\fP() 和 \fBgetgrgid\fP()
+相同的信息，但将检索到的 \fIgroup\fP 结构体存储在 \fIgrp\fP 指向的空间中。 \fIgroup\fP 结构体的成员指向的字符串字段存储在大小为
+\fIbuflen\fP 的缓冲区 \fIbuf\fP 中。 指向结果 (如果成功) 或 NULL (如果未找到条目或发生错误) 的指针存储在 \fI*result\fP
+中。
+.PP
+调用
+.PP
+.in +4n
+.EX
+sysconf(_SC_GETGR_R_SIZE_MAX)
+.EE
+.in
+.PP
+返回 \-1 (不更改 \fIerrno\fP) 或 \fIbuf\fP 的初始建议大小。 (如果这个大小太小，调用会失败并返回
+\fBERANGE\fP，在这种情况下，调用者可以使用更大的缓冲区重试。)
+.SH "RETURN VALUE"
+\fBgetgrnam\fP() 和 \fBgetgrgid\fP() 函数返回指向 \fIgroup\fP 结构体的指针，如果未找到匹配条目或发生错误，则返回
+NULL。 如果发生错误，则设置 \fIerrno\fP 以指示错误。 如果要在调用后检查 \fIerrno\fP，则应在调用前将其设置为零。
+.PP
+返回值可能指向一个静态区域，并可能被随后对 \fBgetgrent\fP(3)、\fBgetgrgid\fP() 或 \fBgetgrnam\fP() 的调用覆盖。
+(不要将返回的指针传递给 \fBfree\fP(3).)
+.PP
+成功时，\fBgetgrnam_r\fP() 和 \fBgetgrgid_r\fP() 返回零，并将 \fI*result\fP 设置为 \fIgrp\fP。
+如果没有找到匹配的组记录，则这些函数返回 0 并将 NULL 存储在 \fI*result\fP 中。 如果出现错误，则返回错误编号，并将 NULL 存储在
+\fI*result\fP 中。
+.SH ERRORS
+.TP 
+\fB0\fP or \fBENOENT\fP or \fBESRCH\fP or \fBEBADF\fP or \fBEPERM\fP or ...
+找不到给定的 \fIname\fP 或 \fIgid\fP。
+.TP 
+\fBEINTR\fP
+一个信号被捕捉到; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEIO\fP
+I/O 错误。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOMEM\fP
+.\" not in POSIX
+.\" to allocate the group structure, or to allocate buffers
+内存不足，无法分配 \fIgroup\fP 结构体。
+.TP 
+\fBERANGE\fP
+提供的缓冲区空间不足。
+.SH FILES
+.TP 
+\fI/etc/group\fP
+本地组数据库文件
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetgrnam\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:grnam locale
+T}
+T{
+\fBgetgrgid\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:grgid locale
+T}
+T{
+\fBgetgrnam_r\fP(),
+\fBgetgrgid_r\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.SH NOTES
+.\" POSIX.1-2001, POSIX.1-2008
+.\" more precisely:
+.\" AIX 5.1 - gives ESRCH
+.\" OSF1 4.0g - gives EWOULDBLOCK
+.\" libc, glibc up to glibc 2.6, Irix 6.5 - give ENOENT
+.\" since glibc 2.7 - give 0
+.\" FreeBSD 4.8, OpenBSD 3.2, NetBSD 1.6 - give EPERM
+.\" SunOS 5.8 - gives EBADF
+.\" Tru64 5.1b, HP-UX-11i, SunOS 5.7 - give 0
+上面在 "RETURN VALUE" 下给出的公式来自 POSIX.1。 它不会调用 "not found" 错误，因此不会指定 \fIerrno\fP
+在这种情况下可能具有的值。 但这使得无法识别错误。 有人可能会争辩说，根据 POSIX，如果找不到条目，\fIerrno\fP 应该保持不变。 在各种类
+UNIX 系统上进行的实验表明，在这种情况下会出现许多不同的值:
+0、ENOENT、EBADF、ESRCH、EWOULDBLOCK、EPERM，可能还有其他值。
+.SH "SEE ALSO"
+\fBendgrent\fP(3), \fBfgetgrent\fP(3), \fBgetgrent\fP(3), \fBgetpwnam\fP(3),
+\fBsetgrent\fP(3), \fBgroup\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

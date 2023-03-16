@@ -1,0 +1,411 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2006, 2008 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH core 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+核心 \- 核心转储文件
+.SH DESCRIPTION
+某些信号的默认操作是导致进程终止并生成 \fIcore dump file\fP，这是一个包含终止时进程内存映像的文件。 该映像可用于调试器
+(例如，\fBgdb\fP(1))，以检查程序终止时的状态。 可以在 \fBsignal\fP(7) 中找到导致进程转储核心的信号列表。
+.PP
+一个进程可以设置它的软 \fBRLIMIT_CORE\fP 资源限制来限制如果它接收到 "core dump" 信号将产生的核心转储文件的大小; 详见
+\fBgetrlimit\fP(2)。
+.PP
+有多种情况不会产生核心转储文件:
+.IP \[bu] 3
+该进程没有写入核心文件的权限。 (默认情况下，核心文件名为 \fIcore\fP 或 \fIcore.pid\fP，其中 \fIpid\fP 是转储核心的进程的
+ID，并在当前工作目录中创建。有关命名的详细信息，请参见下文。)
+如果目录写入核心文件失败要在其中创建的文件不可写，或者如果存在同名文件且不可写或不是常规文件 (例如，它是目录或符号链接)。
+.IP \[bu]
+一个与核心转储同名的 (可写，常规) 文件已经存在，但指向该文件的硬链接不止一个。
+.IP \[bu]
+创建核心转储文件的文件系统已满; 或者已经用完 inode; 或以只读方式挂载; 或者用户已达到文件系统的配额。
+.IP \[bu]
+要创建核心转储文件的目录不存在。
+.IP \[bu]
+进程的 \fBRLIMIT_CORE\fP (核心文件大小) 或 \fBRLIMIT_FSIZE\fP (文件大小) 资源限制设置为零; 请参见
+\fBgetrlimit\fP(2) 和 \fBcsh\fP(1)) 中 shell 的 \fIulimit\fP 命令 (\fIlimit\fP 的文档。
+但是，如果系统配置为通过管道将核心转储传递给程序，则 \fBRLIMIT_CORE\fP 将被忽略。
+.IP \[bu]
+进程正在执行的二进制文件没有启用读取权限。 (这是一种安全措施，可确保内容不可读的可执行文件不会产生包含可执行文件映像的 \[em] 可能可读
+\[em] 核心转储。)
+.IP \[bu]
+.\" FIXME . Perhaps relocate discussion of /proc/sys/fs/suid_dumpable
+.\" and PR_SET_DUMPABLE to this page?
+进程正在执行设置用户 ID (set\-group\-ID) 程序，该程序由用户 (group) 所有，而不是进程的真实用户 (group)
+ID，或者进程正在执行具有文件功能的程序 (请参见 \fBcapabilities\fP(7)).  (不过看 \fBprctl\fP(2)
+\fBPR_SET_DUMPABLE\fP 操作的说明，\fBproc\fP(5).) 中 \fI/proc/sys/fs/suid_dumpable\fP 文件的说明
+.IP \[bu]
+\fI/proc/sys/kernel/core_pattern\fP 为空，\fI/proc/sys/kernel/core_uses_pid\fP 包含值 0。
+(这些文件在下面描述。) 请注意，如果 \fI/proc/sys/kernel/core_pattern\fP 为空且
+\fI/proc/sys/kernel/core_uses_pid\fP 包含值 1，则核心转储文件将具有 \fI.pid\fP 形式的名称，并且除非使用
+\fBls\fP(1) \fI\-a\fP 选项，否则此类文件将被隐藏。
+.IP \[bu]
+.\" commit 046d662f481830e652ac34cd112249adde16452a
+(从 Linux 3.7 开始) 内核配置时没有 \fBCONFIG_COREDUMP\fP 选项。
+.PP
+此外，如果使用 \fBmadvise\fP(2) \fBMADV_DONTDUMP\fP 标志，核心转储可能会排除进程的部分地址空间。
+.PP
+.\"
+在使用 \fBsystemd\fP(1) 作为 \fIinit\fP 框架的系统上，核心转储可能会被放置在由 \fBsystemd\fP(1) 确定的位置。
+有关详细信息，请参见下文。
+.SS "Naming of core dump files"
+默认情况下，核心转储文件名为 \fIcore\fP，但 \fI/proc/sys/kernel/core_pattern\fP 文件 (自 Linux、2.6 和
+2.4.21 起) 可以设置为定义用于命名核心转储文件的模板。 该模板可以包含 % 说明符，在创建核心文件时，这些说明符将被以下值替换:
+.PP
+.RS 4
+.PD 0
+.TP  4
+%%
+单个 % 字符。
+.TP 
+%c
+崩溃进程的核心文件大小软资源限制 (自 Linux 2.6.24 起)。
+.TP 
+%d
+.\" Added in git commit 12a2b4b2241e318b4f6df31228e4272d2c2968a1
+转储模式 \[em] 与 \fBprctl\fP(2) \fBPR_GET_DUMPABLE\fP 返回的值相同 (自 Linux 3.7 起)。
+.TP 
+%e
+进程或线程的 \fIcomm\fP 值，通常与可执行文件名相同 (没有路径前缀，并被截断为最多 15 个字符)，但可能已被修改为不同的内容; 请参见
+\fBproc\fP(5) 中对 \fI/proc/\fPpid\fI/comm\fP 和 \fI/proc/\fPpid\fI/task/\fPtid\fI/comm\fP 的讨论。
+.TP 
+%E
+可执行文件的路径名，斜线 (\[aq]/\[aq]) 替换为感叹号 (\[aq]!\[aq]) (自 Linux 3.0 起)。
+.TP 
+%g
+转储进程的数字真实 GID。
+.TP 
+%h
+主机名 (与 \fBuname\fP(2)) 返回的 \fInodename\fP 相同。
+.TP 
+%i
+.\" commit b03023ecbdb76c1dec86b41ed80b123c22783220
+触发核心转储的线程的 TID，如线程所在的 PID 命名空间中所示 (自 Linux 3.18 起)。
+.TP 
+%I
+.\" commit b03023ecbdb76c1dec86b41ed80b123c22783220
+触发核心转储的线程的 TID，如初始 PID 命名空间中所示 (自 Linux 3.18 起)。
+.TP 
+%p
+转储进程的 PID，如进程所在的 PID 命名空间中所示。
+.TP 
+%P
+.\" Added in git commit 65aafb1e7484b7434a0c1d4c593191ebe5776a2f
+转储进程的 PID，如初始 PID 命名空间中所示 (自 Linux 3.12 起)。
+.TP 
+%s
+导致转储的信号数。
+.TP 
+%t
+转储时间，以自纪元 1970\-01\-01 00:00:00 +0000 (UTC) 以来的秒数表示。
+.TP 
+%u
+转储进程的数字真实 UID。
+.PD
+.RE
+.PP
+模板末尾的单个 % 是来自核心文件名的丢弃，% 后跟除上述字符之外的任何字符的组合也是如此。 模板中的所有其他字符都成为核心文件名的字面量部分。
+该模板可能包含 \[aq]/\[aq] 字符，这些字符被解释为目录名称的分隔符。 生成的核心文件名的最大大小为 128 字节 (Linux 2.6.19
+之前为 64 字节)。 此文件中的默认值为 "core"。 为了向后兼容，如果 \fI/proc/sys/kernel/core_pattern\fP 不包括
+\fI%p\fP 并且 \fI/proc/sys/kernel/core_uses_pid\fP (见下文) 不为零，则 .PID 将追加到核心文件名。
+.PP
+路径根据崩溃过程的活动设置进行解释。 这意味着崩溃进程的挂载命名空间 (参见 \fBmount_namespaces\fP(7))，其当前工作目录 (通过
+\fBgetcwd\fP(2)) 找到) 及其根目录 (参见 \fBchroot\fP(2)).
+.PP
+从 Linux 2.4 开始，Linux 也提供了更原始的控制 core dump 文件名称的方法。 如果
+\fI/proc/sys/kernel/core_uses_pid\fP 文件包含值 0，则核心转储文件将简单命名为 \fIcore\fP。
+如果此文件包含非零值，则核心转储文件将进程 ID 包含在 \fIcore.PID\fP 形式的名称中。
+.PP
+.\" 9520628e8ceb69fa9a4aee6b57f22675d9e1b709
+从 Linux 3.6 开始，如果 \fI/proc/sys/fs/suid_dumpable\fP 设置为 2
+("suidsafe")，模式必须是绝对路径名 (以前导 \[aq]/\[aq] 字符开头) 或管道，如下定义。
+.SS "Piping core dumps to a program"
+从 Linux 2.6.19 开始，Linux 支持 \fI/proc/sys/kernel/core_pattern\fP 文件的替代语法。
+如果该文件的第一个字符是管道符号 (\fB|\fP)，则该行的其余部分将被解释为要执行的用户空间程序 (或脚本) 的命令行。
+.PP
+.\" commit 315c69261dd3fa12dbc830d4fa00d1fad98d3b03
+自 Linux 5.3.0 起，管道模板按空格拆分为参数列表 \fIbefore\fP，扩展了模板参数。
+在较早的内核中，首先扩展模板参数，然后将生成的字符串按空格拆分为参数列表。 这意味着在早期的内核中，由 \fI%e\fP 和 \fI%E\fP
+模板参数添加的可执行文件名称可能会拆分为多个参数。
+因此核心转储处理程序需要将可执行文件名称作为最后一个参数，并确保它使用空格连接可执行文件名称的所有部分。
+包含多个空格的可执行文件名称在早期内核中无法正确表示，这意味着核心转储处理程序需要使用机制来查找可执行文件名称。
+.PP
+核心转储不是写入文件，而是作为程序的标准输入。 请注意以下几点:
+.IP \[bu] 3
+该程序必须使用绝对路径名 (或相对于根目录的路径名 \fI/\fP)，并且必须紧跟在 '|' 字符之后。
+.IP \[bu]
+命令行参数可以包含上面列出的任何 % 说明符。 例如，要传递正在转储的进程的 PID，请在参数中指定 \fI%p\fP。
+.IP \[bu]
+为运行该程序而创建的进程作为用户和组 \fIroot\fP 运行。
+.IP \[bu]
+以 \fIroot\fP 运行不会带来任何特殊的安全绕过。 也就是说，LSM (例如 SELinux) 仍然处于活动状态，并且可能会阻止处理程序通过
+\fI/proc/\fPpid 访问有关崩溃进程的详细信息。
+.IP \[bu]
+程序路径名根据初始挂载命名空间进行解释，因为它始终在那里执行。 它不受崩溃进程的设置 (例如，根目录、挂载命名空间、当前工作目录) 的影响。
+.IP \[bu]
+该进程在初始命名空间 (PID、mount、user 等) 中运行，而不是在崩溃进程的命名空间中运行。 如果需要，可以使用 \fI%P\fP
+等说明符找到正确的 \fI/proc/\fPpid 目录，使用 probe/enter 找到崩溃进程的命名空间。
+.IP \[bu]
+该进程以其当前工作目录作为根目录启动。 如果需要，可以使用 \fI%P\fP 说明符提供的值通过 \fI/proc/\fPpid\fI/cwd\fP
+更改到转储进程的位置，从而更改到转储进程的工作目录。
+.IP \[bu]
+命令行参数可以提供给程序 (自 Linux 2.6.24 起)，由空格分隔 (最多 128 字节的总行长度)。
+.IP \[bu]
+.\"
+对于通过此机制通过管道传输到程序的核心转储，不强制执行 \fBRLIMIT_CORE\fP 限制。
+.SS /proc/sys/kernel/core_pipe_limit
+当通过管道收集核心转储到用户空间程序时，收集程序从该进程的 \fI/proc/\fPpid 目录收集有关崩溃进程的数据可能很有用。
+为了安全地执行此操作，内核必须等待收集核心转储的程序退出，以免过早地删除崩溃进程的 \fI/proc/\fPpid 文件。
+这反过来又产生了一种可能性，即行为不当的收集程序可以通过简单地从不退出来阻止对崩溃进程的收割。
+.PP
+.\" commit a293980c2e261bd5b0d2a77340dd04f684caff58
+由于 Linux 2.6.32，\fI/proc/sys/kernel/core_pipe_limit\fP 可以用来抵御这种可能性。
+该文件中的值定义了有多少并发崩溃进程可以通过管道传输到并行中的用户空间程序。 如果超过此值，则在内核日志中记录高于此值的崩溃进程，并跳过它们的核心转储。
+.PP
+.\"
+此文件中的值 0 是特殊的。 它表示可以在并行中捕获无限进程，但不会发生等待 (即，收集程序不能保证访问
+\fI/proc/<crashing\-PID>\fP).  该文件的默认值为 0.
+.SS "Controlling which mappings are written to the core dump"
+从 Linux 2.6.23 开始，Linux 特有的 \fI/proc/\fPpid\fI/coredump_filter\fP 文件可以用来控制在对应进程 ID
+的进程进行 core dump 时，将哪些内存段写入 core dump 文件。
+.PP
+文件中的值是内存映射类型的位掩码 (参见 \fBmmap\fP(2)).  如果在掩码中设置了某个位，则转储相应类型的内存映射; 否则它们不会被丢弃。
+该文件中的位具有以下含义:
+.PP
+.PD 0
+.RS 4
+.TP 
+bit 0
+转储匿名私有映射。
+.TP 
+bit 1
+转储匿名共享映射。
+.TP 
+bit 2
+转储文件支持的私有映射。
+.TP 
+bit 3
+.\" file-backed shared mappings of course also update the underlying
+.\" mapped file.
+转储文件支持的共享映射。
+.TP 
+bit 4 (since Linux 2.6.24)
+转储 ELF 标头。
+.TP 
+bit 5 (since Linux 2.6.28)
+转储私有大页面。
+.TP 
+bit 6 (since Linux 2.6.28)
+转储共享大页面。
+.TP 
+bit 7 (since Linux 4.4)
+.\" commit ab27a8d04b32b6ee8c30c14c4afd1058e8addc82
+转储私有 DAX 页面。
+.TP 
+bit 8 (since Linux 4.4)
+.\" commit ab27a8d04b32b6ee8c30c14c4afd1058e8addc82
+转储共享 DAX 页面。
+.RE
+.PD
+.PP
+默认情况下，设置以下位: 0、1、4 (如果启用了 \fBCONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS\fP 内核配置选项) 和
+5。 可以在启动时使用 \fIcoredump_filter\fP 启动选项修改此默认值。
+.PP
+该文件的值以十六进制显示。 (因此默认值显示为 33。)
+.PP
+内存映射的 I/O 页面 (例如帧缓冲区) 永远不会被转储，虚拟 DSO (\fBvdso\fP(7)) 页面总是被转储，无论
+\fIcoredump_filter\fP 值如何。
+.PP
+通过 \fBfork\fP(2) 创建的子进程继承其父进程的 \fIcoredump_filter\fP 值; \fIcoredump_filter\fP 值在
+\fBexecve\fP(2) 中保留。
+.PP
+在运行程序之前在父 shell 中设置 \fIcoredump_filter\fP 可能很有用，例如:
+.PP
+.in +4n
+.EX
+$\fB echo 0x7 > /proc/self/coredump_filter\fP
+$\fB ./some_program\fP
+.EE
+.in
+.PP
+.\"
+仅当使用 \fBCONFIG_ELF_CORE\fP 配置选项构建内核时才提供此文件。
+.SS "Core dumps and systemd"
+在使用 \fBsystemd\fP(1) \fIinit\fP 框架的系统上，核心转储可能放置在由 \fBsystemd\fP(1) 确定的位置。
+为此，\fBsystemd\fP(1) 使用了 \fIcore_pattern\fP 特性允许将核心转储管道传输到程序。 可以通过检查核心转储是否通过管道传输到
+\fBsystemd\-coredump\fP(8) 程序来验证这一点:
+.PP
+.in +4n
+.EX
+$ \fBcat /proc/sys/kernel/core_pattern\fP
+|/usr/lib/systemd/systemd\-coredump %P %u %g %s %t %c %e
+.EE
+.in
+.PP
+在这种情况下，核心转储将放置在为 \fBsystemd\-coredump\fP(8) 配置的位置，通常作为目录
+\fI/var/lib/systemd/coredump/\fP 中的 \fBlz4\fP(1) 压缩文件。 可以使用 \fBcoredumpctl\fP(1): 列出
+\fBsystemd\-coredump\fP(8) 记录的核心转储
+.PP
+.EX
+$ \fBcoredumpctl list | tail \-5\fP
+周三 2017\-10\-11 22:25:30 CEST 2748 1000 1000 3 礼物 /usr/bin/sleep
+周四 2017\-10\-12 06:29:10 CEST 2716 1000 1000 3 礼物 /usr/bin/sleep
+周四 2017\-10\-12 06:30:50 CEST 2767 1000 1000 3 礼物 /usr/bin/sleep
+Thu 2017\-10\-12 06:37:40 CEST 2918 1000 1000 3 礼物 /usr/bin/cat
+周四 2017\-10\-12 08:13:07 CEST 2955 1000 1000 3 礼物 /usr/bin/cat
+.EE
+.PP
+为每个核心转储显示的信息包括转储的日期和时间、转储进程的 PID、UID 和 GID、导致核心转储的信号编号以及转储正在运行的可执行文件的路径名过程。
+\fBcoredumpctl\fP(1) 的各种选项允许将指定的核心转储文件从 \fBsystemd\fP(1) 位置提取到指定文件中。 例如，要将上面显示的
+PID 2955 的核心转储提取到当前目录中名为 \fIcore\fP 的文件中，可以使用:
+.PP
+.in +4n
+.EX
+$ \fBcoredumpctl dump 2955 \-o core\fP
+.EE
+.in
+.PP
+有关更多详细信息，请参见 \fBcoredumpctl\fP(1) 手册页。
+.PP
+要 (persistently) 禁用存档核心转储的 \fBsystemd\fP(1) 机制，恢复到更像传统 Linux 行为的方式，可以使用类似以下内容设置
+\fBsystemd\fP(1) 机制的覆盖:
+.PP
+.in +4n
+.EX
+# \fBecho "kernel.core_pattern=core.%p" > \e\fP
+               \fB/etc/sysctl.d/50\-coredump.conf\fP
+# \fB/lib/systemd/systemd\-sysctl\fP
+.EE
+.in
+.PP
+也可以临时 (即，直到下一次重新启动) 使用如下命令更改 \fIcore_pattern\fP 设置
+(这会导致核心转储文件的名称包括可执行文件名称以及触发核心转储) :
+.PP
+.in +4n
+.EX
+# \fBsysctl \-w kernel.core_pattern="%e\-%s.core"\fP
+.EE
+.in
+.\"
+.SH NOTES
+\fBgdb\fP(1) \fIgcore\fP 命令可用于获取正在运行的进程的核心转储。
+.PP
+.\" Changed with commit 6409324b385f3f63a03645b4422e3be67348d922
+.\" Always including the PID in the name of the core file made
+.\" sense for LinuxThreads, where each thread had a unique PID,
+.\" but doesn't seem to serve any purpose with NPTL, where all the
+.\" threads in a process share the same PID (as POSIX.1 requires).
+.\" Probably the behavior is maintained so that applications using
+.\" LinuxThreads continue appending the PID (the kernel has no easy
+.\" way of telling which threading implementation the user-space
+.\" application is using). -- mtk, April 2006
+在 2.6.27 及之前的 Linux 版本中，如果一个多线程进程 (或者更准确地说，一个通过使用 \fBclone\fP(2)) 的 \fBCLONE_VM\fP
+标志创建并与另一个进程共享内存的进程转储核心)，则进程 ID 始终追加到核心文件名，除非进程 ID 已经通过
+\fI/proc/sys/kernel/core_pattern\fP 中的 \fI%p\fP 规范包含在文件名的其他地方。 (这在使用过时的
+LinuxThreads 实现时主要有用，其中进程的每个线程都有不同的 PID。)
+.SH EXAMPLES
+下面的程序可用于演示 \fI/proc/sys/kernel/core_pattern\fP 文件中管道语法的使用。 下面的 shell
+会话演示了这个程序的使用 (编译创建一个名为 \fIcore_pattern_pipe_test\fP): 的可执行文件
+.PP
+.in +4n
+.EX
+$\fB cc \-o core_pattern_pipe_test core_pattern_pipe_test.c\fP
+$\fB su\fP
+Password:
+#\fB echo \[dq]|$PWD/core_pattern_pipe_test %p UID=%u GID=%g sig=%s\[dq] > \e\fP
+\fB/proc/sys/kernel/core_pattern\fP
+#\fB exit\fP
+$\fB sleep 100\fP
+\fB\[ha]\e\fP                     # 类型控制反斜杠
+退出 (核心转储)
+$\fB cat core.info\fP
+argc=5
+argc[0]=</home/mtk/core_pattern_pipe_test>
+argc[1]=<20575>
+argc[2]=<UID=1000>
+argc[3]=<GID=100>
+argc[4]=<sig=3>
+核心转储中的总字节数: 282624
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+/* core_pattern_pipe_test.c */
+
+#define _GNU_SOURCE
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define BUF_SIZE 1024
+
+int
+main(int argc, char *argv[])
+{
+    ssize_t nread, tot;
+    char buf[BUF_SIZE];
+    FILE *fp;
+    char cwd[PATH_MAX];
+
+    /* Change our current working directory to that of the
+       crashing process. */
+
+    snprintf(cwd, PATH_MAX, "/proc/%s/cwd", argv[1]);
+    chdir(cwd);
+
+    /* Write output to file "core.info" in that directory. */
+
+    fp = fopen("core.info", "w+");
+    if (fp == NULL)
+        exit(EXIT_FAILURE);
+
+    /* Display command\-line arguments given to core_pattern
+       pipe program. */
+
+    fprintf(fp, "argc=%d\en", argc);
+    for (size_t j = 0; j < argc; j++)
+        fprintf(fp, "argc[%zu]=<%s>\en", j, argv[j]);
+
+    /* Count bytes in standard input (the core dump). */
+
+    tot = 0;
+    while ((nread = read(STDIN_FILENO, buf, BUF_SIZE)) > 0)
+        tot += nread;
+    fprintf(fp, "Total bytes in core dump: %zd\en", tot);
+
+    fclose(fp);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBbash\fP(1), \fBcoredumpctl\fP(1), \fBgdb\fP(1), \fBgetrlimit\fP(2), \fBmmap\fP(2),
+\fBprctl\fP(2), \fBsigaction\fP(2), \fBelf\fP(5), \fBproc\fP(5), \fBpthreads\fP(7),
+\fBsignal\fP(7), \fBsystemd\-coredump\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

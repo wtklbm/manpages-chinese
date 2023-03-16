@@ -1,0 +1,180 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2001 by John Levon <moz@compsoc.man.ac.uk>
+.\" Based in part on GNU libc documentation.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2001-10-11, 2003-08-22, aeb, added some details
+.\" 2012-03-23, Michael Kerrisk <mtk.manpages@mail.com>
+.\"     Document pvalloc() and aligned_alloc()
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH posix_memalign 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+posix_memalign, aligned_alloc, memalign, valloc, pvalloc \- 分配对齐内存
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint posix_memalign(void **\fP\fImemptr\fP\fB, size_t \fP\fIalignment\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+\fBvoid *aligned_alloc(size_t \fP\fIalignment\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+\fBvoid *valloc(size_t \fP\fIsize\fP\fB);\fP
+.PP
+\fB#include <malloc.h>\fP
+.PP
+\fBvoid *memalign(size_t \fP\fIalignment\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+\fBvoid *pvalloc(size_t \fP\fIsize\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBposix_memalign\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.PP
+\fBaligned_alloc\fP():
+.nf
+    _ISOC11_SOURCE
+.fi
+.PP
+\fBvalloc\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    由于 glibc 2.12:
+        (_XOPEN_SOURCE >= 500) && !(_POSIX_C_SOURCE >= 200112L)
+            || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+            || /* glibc <= 2.19: */ _SVID_SOURCE || _BSD_SOURCE
+    在 glibc 2.12 之前:
+        _BSD_SOURCE || _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+.\" glibc does this:
+函数 \fBposix_memalign\fP() 分配 \fIsize\fP 字节，并将分配内存的地址放在 \fI*memptr\fP 中。 分配内存的地址将是
+\fIalignment\fP 的倍数，必须是 2 的幂和 \fIsizeof(void\ *)\fP 的倍数。 该地址稍后可以成功传递给 \fBfree\fP(3)。
+如果 \fIsize\fP 为 0，则 \fI*memptr\fP 中的值要么为 NULL，要么为唯一指针值。
+.PP
+.\" The behavior of memalign() for size==0 is as for posix_memalign()
+.\" but no standards govern this.
+过时的函数 \fBmemalign\fP() 分配 \fIsize\fP 字节并返回指向已分配内存的指针。 内存地址将是 \fIalignment\fP 的倍数，它必须是
+2 的幂。
+.PP
+函数 \fBaligned_alloc\fP() 与 \fBmemalign\fP() 相同，只是增加了 \fIsize\fP 应该是 \fIalignment\fP
+的倍数的限制。
+.PP
+过时的函数 \fBvalloc\fP() 分配 \fIsize\fP 字节并返回指向已分配内存的指针。 内存地址将是页面大小的倍数。 它相当于
+\fImemalign(sysconf(_SC_PAGESIZE),size)\fP。
+.PP
+过时的函数 \fBpvalloc\fP() 与 \fBvalloc\fP() 类似，但将分配的大小四舍五入为系统页面大小的下一个倍数。
+.PP
+对于所有这些函数，内存都没有归零。
+.SH "RETURN VALUE"
+\fBaligned_alloc\fP()、\fBmemalign\fP()、\fBvalloc\fP() 和 \fBpvalloc\fP()
+在成功时返回指向已分配内存的指针。 出错时返回 NULL，并设置 \fIerrno\fP 以指示错误。
+.PP
+.\" http://austingroupbugs.net/view.php?id=520
+\fBposix_memalign\fP() 成功时返回零，失败时返回下一节中列出的错误值之一。 \fIerrno\fP 的值未设置。 在 Linux
+(和其他系统) 上，\fBposix_memalign\fP() 不会在失败时修改 \fImemptr\fP。 在 POSIX.1\-2008 TC2
+中添加了标准化此行为的要求。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIalignment\fP 参数不是二的幂，也不是 \fIsizeof(void\ *)\fP 的倍数。
+.TP 
+\fBENOMEM\fP
+内存不足，无法满足分配请求。
+.SH VERSIONS
+函数 \fBmemalign\fP()、\fBvalloc\fP() 和 \fBpvalloc\fP() 至少从 glibc 2.0 开始可用。
+.PP
+在 glibc 2.16 中添加了函数 \fBaligned_alloc\fP()。
+.PP
+函数 \fBposix_memalign\fP() 从 glibc 2.1.91 开始可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBaligned_alloc\fP(),
+\fBmemalign\fP(),
+\fBposix_memalign\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBvalloc\fP(),
+\fBpvalloc\fP()
+T}	Thread safety	MT\-Unsafe init
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+函数 \fBvalloc\fP() 出现在 3.0BSD。 它在 4.3BSD 中被记录为已过时，在 SUSv2 中被记录为旧版。 它不会出现在
+POSIX.1 中。
+.PP
+函数 \fBpvalloc\fP() 是 GNU 的扩展。
+.PP
+函数 \fBmemalign\fP() 出现在 SunOS 4.1.3 中，但没有出现在 4.4BSD 中。
+.PP
+函数 \fBposix_memalign\fP() 来自 POSIX.1d，在 POSIX.1\-2001 和 POSIX.1\-2008 中指定。
+.PP
+.\"
+函数 \fBaligned_alloc\fP() 在 C11 标准中指定。
+.SS Headers
+每个人都同意在 \fI<stdlib.h>\fP 中声明 \fBposix_memalign\fP()。
+.PP
+在某些系统上，\fBmemalign\fP() 在 \fI<stdlib.h>\fP 而不是 \fI<malloc.h>\fP 中声明。
+.PP
+.\" Libc4,5 and
+根据 SUSv2，\fBvalloc\fP() 在 \fI<stdlib.h>\fP 中声明。 glibc 在
+\fI<malloc.h>\fP 中声明它，如果定义了合适的特性测试宏，也在 \fI<stdlib.h>\fP 中声明它
+(见上文)。
+.SH NOTES
+在许多系统上存在对齐限制，例如，用于直接块设备 I/O 的缓冲区。 POSIX 指定
+\fIpathconf(path,_PC_REC_XFER_ALIGN)\fP 调用，告诉需要什么对齐。 现在可以使用 \fBposix_memalign\fP()
+来满足这一要求。
+.PP
+\fBposix_memalign\fP() 验证 \fIalignment\fP 是否符合上述要求。 \fBmemalign\fP() 可能不会检查
+\fIalignment\fP 参数是否正确。
+.PP
+.\" Other systems allow passing the result of
+.\" .IR valloc ()
+.\" to
+.\" .IR free (3),
+.\" but not to
+.\" .IR realloc (3).
+POSIX 要求可以使用 \fBfree\fP(3) 释放从 \fBposix_memalign\fP() 获得的内存。 某些系统无法回收分配给
+\fBmemalign\fP() 或 \fBvalloc\fP() 的内存 (因为只能将从 \fBmalloc\fP(3) 获得的指针传递给 \fBfree\fP(3)，而例如
+\fBmemalign\fP() 会调用 \fBmalloc\fP(3)，然后对齐获得的值)。 glibc 实现允许使用 \fBfree\fP(3)
+回收从任何这些函数中获得的内存。
+.PP
+glibc \fBmalloc\fP(3) 始终返回 8 字节对齐的内存地址，因此仅当您需要更大的对齐值时才需要这些函数。
+.SH "SEE ALSO"
+\fBbrk\fP(2), \fBgetpagesize\fP(2), \fBfree\fP(3), \fBmalloc\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

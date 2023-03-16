@@ -1,0 +1,218 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1997 John S. Kallal (kallal@voicenet.com)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Some changes by tytso and aeb.
+.\"
+.\" 2004-12-16, John V. Belmonte/mtk, Updated init and quit scripts
+.\" 2004-04-08, AEB, Improved description of read from /dev/urandom
+.\" 2008-06-20, George Spelvin <linux@horizon.com>,
+.\"             Matt Mackall <mpm@selenic.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH random 4 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+random, urandom \- 内核随机数源设备
+.SH SYNOPSIS
+.nf
+#include <linux/random.h>
+.PP
+\fBint ioctl(\fP\fIfd\fP\fB, RND\fP\fIrequest\fP\fB, \fP\fIparam\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+字符特殊文件 \fI/dev/random\fP 和 \fI/dev/urandom\fP (从 Linux 1.3.30 开始存在)
+提供了内核随机数生成器的接口。 文件 \fI/dev/random\fP 的主设备号为 1，次设备号为 8。 文件 \fI/dev/urandom\fP 有主设备号
+1 和次设备号 9.
+.PP
+随机数生成器将来自设备驱动程序和其他来源的环境噪声收集到熵池中。 生成器还保留对熵池中噪声位数的估计。 从这个熵池中，随机数被创建。
+.PP
+Linux 3.17 及以后版本提供更简单安全的 \fBgetrandom\fP(2) 接口，无需特殊文件; 有关详细信息，请参见
+\fBgetrandom\fP(2) 手册页。
+.PP
+读取时，\fI/dev/urandom\fP 设备使用从熵池播种的伪随机数生成器返回随机字节。 从此设备读取不会阻塞 (即，不会让出
+CPU)，但在请求大量数据时可能会产生明显的延迟。
+.PP
+.\" This is a real problem; see
+.\" commit 9b4d008787f864f17d008c9c15bbe8a0f7e2fc24
+在早期启动期间读取时，\fI/dev/urandom\fP 可能会在熵池初始化之前返回数据。 如果这在您的应用程序中很重要，请改用
+\fBgetrandom\fP(2) 或 \fI/dev/random\fP。
+.PP
+\fI/dev/random\fP 设备是一种遗留接口，可追溯到 \fI/dev/urandom\fP 实现中使用的加密原语未得到广泛信任的时期。
+它将仅在熵池中估计的新鲜噪声位数内返回随机字节，必要时进行阻塞。 \fI/dev/random\fP 适用于需要高质量随机性的应用，并且可以承受不确定的延迟。
+.PP
+当熵池为空时，从 \fI/dev/random\fP 读取将阻塞，直到收集到额外的环境噪声。 从 Linux 5.6 开始，\fBO_NONBLOCK\fP
+标志被忽略，因为 \fI/dev/random\fP 将不再阻塞，除非在早期启动过程中。 在早期版本中，如果使用 \fBO_NONBLOCK\fP 标志为
+\fI/dev/random\fP 调用 \fBopen\fP(2)，则如果请求的字节数不可用，后续的 \fBread\fP(2) 将不会阻塞。 相反，返回可用字节。
+如果没有可用字节，\fBread\fP(2) 将返回 \-1，\fIerrno\fP 将设置为 \fBEAGAIN\fP。
+.PP
+打开 \fI/dev/urandom\fP 时，\fBO_NONBLOCK\fP 标志无效。 当为设备 \fI/dev/urandom\fP 调用 \fBread\fP(2)
+时，最多 256 字节的读取将返回请求的字节数，并且不会被信号处理程序中断。
+如果缓冲区被信号处理程序中断，则读取超过此限制的缓冲区可能返回少于请求的字节数或失败并返回错误 \fBEINTR\fP。
+.PP
+.\" commit 79a8468747c5f95ed3d5ce8376a3e82e0c5857fc
+.\" SEC_XFER_SIZE in drivers/char/random.c
+从 Linux 3.16 开始，\fI/dev/urandom\fP 的 \fBread\fP(2) 最多返回 32\MB。 \fI/dev/random\fP 的
+\fBread\fP(2) 将返回最多 512 个字节 (Linux 2.6.12 之前的 340 个字节)。
+.PP
+写入 \fI/dev/random\fP 或 \fI/dev/urandom\fP 将使用写入的数据更新熵池，但这不会导致更高的熵计数。
+这意味着它会影响从两个文件读取的内容，但不会使从 \fI/dev/random\fP 的读取速度更快。
+.SS Usage
+\fI/dev/random\fP 接口被认为是传统接口，\fI/dev/urandom\fP
+在所有用例中都是首选和足够的，除了在早期启动期间需要随机性的应用程序; 对于这些应用程序，必须改用
+\fBgetrandom\fP(2)，因为它将阻塞直到熵池被初始化。
+.PP
+.\"
+如果 seed 文件按照下面的建议在重新启动后保存，则输出在启动序列中重新加载后就可以加密安全地抵御没有本地 root
+访问权限的攻击者，并且非常适合网络加密会话密钥。 (至少自 2000 年以来，所有主要的 Linux 发行版都在重新启动后保存了 seed 文件。)
+由于从 \fI/dev/random\fP 读取可能会阻塞，用户通常希望以非阻塞模式打开它 (或执行超时读取)，并提供某种用户如果所需的熵不是立即可用的通知。
+.SS Configuration
+如果您的系统还没有创建 \fI/dev/random\fP 和 \fI/dev/urandom\fP，可以使用以下命令创建它们:
+.PP
+.in +4n
+.EX
+mknod \-m 666 /dev/random c 1 8
+mknod \-m 666 /dev/urandom c 1 9
+chown root:root /dev/random /dev/urandom
+.EE
+.in
+.PP
+当 Linux 系统在没有太多操作员交互的情况下启动时，熵池可能处于相当可预测的状态。 这将熵池中的实际噪声量减少到低于估计值。
+为了抵消这种影响，它有助于在关闭和启动过程中携带熵池信息。 为此，将这些行添加到在 Linux 系统启动序列期间运行的适当脚本中:
+.PP
+.in +4n
+.EX
+echo "Initializing random number generator..."
+random_seed=/var/run/random\-seed
+# Carry a random seed from start\-up to start\-up
+# Load and then  save the whole entropy pool
+if [ \-f $random_seed ];  then
+    cat $random_seed >/dev/urandom
+else
+    touch $random_seed
+fi
+chmod 600 $random_seed
+poolfile=/proc/sys/kernel/random/poolsize
+[ \-r $poolfile ] && bits=$(cat $poolfile) || bits=4096
+bytes=$(expr $bits / 8)
+dd if=/dev/urandom of=$random_seed count=1 bs=$bytes
+.EE
+.in
+.PP
+此外，在 Linux 系统关闭期间运行的适当脚本中添加以下行:
+.PP
+.in +4n
+.EX
+# 从关机到开机携带一个随机的 seed
+# 保存整个熵池
+echo "Saving random seed..."
+random_seed=/var/run/random\-seed
+touch $random_seed
+chmod 600 $random_seed
+poolfile=/proc/sys/kernel/random/poolsize
+[ \-r $poolfile ] && bits=$(cat $poolfile) || bits=4096
+bytes=$(expr $bits / 8)
+dd if=/dev/urandom of=$random_seed count=1 bs=$bytes
+.EE
+.in
+.PP
+.\"
+在上面的示例中，我们假设 Linux 2.6.0 或更高版本，其中 \fI/proc/sys/kernel/random/poolsize\fP
+以位为单位返回熵池的大小 (见下文)。
+.SS "/proc interfaces"
+目录 \fI/proc/sys/kernel/random\fP 中的文件 (自 Linux 2.3.16 起存在) 提供有关 \fI/dev/random\fP
+设备的附加信息:
+.TP 
+\fIentropy_avail\fP
+这个只读文件给出了可用的熵，以位为单位。 这将是 0 到 4096 范围内的数字。
+.TP 
+\fIpoolsize\fP
+该文件给出了熵池的大小。 该文件的语义因内核版本而异:
+.RS
+.TP 
+Linux 2.4:
+该文件给出了 \fIbytes\fP 中熵池的大小。 通常，此文件的值为 512，但它是可写的，并且可以更改为算法可用的任何值。 选项为
+32、64、128、256、512、1024 或 2048。
+.TP 
+Linux 2.6 and later:
+这个文件是只读的，给出了 \fIbits\fP 中熵池的大小。 它包含值 4096。
+.RE
+.TP 
+\fIread_wakeup_threshold\fP
+该文件包含唤醒处于睡眠状态等待来自 \fI/dev/random\fP 的熵的进程所需的熵位数。 默认值为 64。
+.TP 
+\fIwrite_wakeup_threshold\fP
+该文件包含熵的位数，低于该位数我们会唤醒执行 \fBselect\fP(2) 或 \fBpoll\fP(2) 以对 \fI/dev/random\fP 进行写访问的进程。
+可以通过写入文件来更改这些值。
+.TP 
+\fIuuid\fP and \fIboot_id\fP
+.\"
+这些只读文件包含随机字符串，例如 6fd5a44b\-35f4\-4ad4\-a9b9\-6b9be13e1fe9。 前者每次读取重新生成，后者生成一次。
+.SS "ioctl(2) interface"
+以下 \fBioctl\fP(2) 请求是在连接到 \fI/dev/random\fP 或 \fI/dev/urandom\fP 的文件描述符上定义的。
+执行的所有请求将与影响 \fI/dev/random\fP 和 \fI/dev/urandom\fP 的输入熵池交互。 除 \fBRNDGETENTCNT\fP
+之外的所有请求都需要 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBRNDGETENTCNT\fP
+检索输入池的熵计数，内容将与 proc 下的 \fIentropy_avail\fP 文件相同。 结果将存储在参数指向的 int 中。
+.TP 
+\fBRNDADDTOENTCNT\fP
+通过参数指向的值增加或减少输入池的熵计数。
+.TP 
+\fBRNDGETPOOL\fP
+在 Linux 2.6.9 中删除。
+.TP 
+\fBRNDADDENTROPY\fP
+向输入池添加一些额外的熵，增加熵计数。 这不同于写入 \fI/dev/random\fP 或
+\fI/dev/urandom\fP，后者仅添加一些数据但不会增加熵计数。 使用以下结构体:
+.IP
+.in +4n
+.EX
+struct rand_pool_info {
+    int    entropy_count;
+    int    buf_size;
+    __u32  buf[0];
+};
+.EE
+.in
+.IP
+这里 \fIentropy_count\fP 是添加到 (或从中减去) 熵计数的值，\fIbuf\fP 是大小为 \fIbuf_size\fP
+的缓冲区，它被添加到熵池中。
+.TP 
+\fBRNDZAPENTCNT\fP, \fBRNDCLEARPOOL\fP
+将所有池的熵计数归零，并向池中添加一些系统数据 (例如挂钟)。
+.SH FILES
+\fI/dev/random\fP
+.br
+\fI/dev/urandom\fP
+.SH NOTES
+有关可用于获取随机性的各种接口的概述和比较，请参见 \fBrandom\fP(7)。
+.SH BUGS
+.\" .SH AUTHOR
+.\" The kernel's random number generator was written by
+.\" Theodore Ts'o (tytso@athena.mit.edu).
+在早期启动期间，从 \fI/dev/urandom\fP 读取可能会在熵池初始化之前返回数据。
+.SH "SEE ALSO"
+\fBmknod\fP(1), \fBgetrandom\fP(2), \fBrandom\fP(7)
+.PP
+RFC\ 1750, "Randomness Recommendations for Security"
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

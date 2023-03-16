@@ -1,0 +1,815 @@
+.\" -*- coding: UTF-8 -*-
+.\"@(#)nfs.5"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NFS 5 "9 October 2012"  
+.SH NAME
+nfs\-\fBnfs\fP 文件系统的 fstab 格式和选项
+.SH SYNOPSIS
+\fI/etc/fstab\fP
+.SH DESCRIPTION
+NFS 是 Sun Microsystems 于 1984 年创建的 Internet 标准协议。NFS
+的开发是为了允许驻留在局域网上的系统之间共享文件。 根据内核配置，Linux NFS 客户端可能支持 NFS 版本 3、4.0、4.1 或 4.2。
+.P
+\fBmount\fP(8) 命令在给定的安装点将文件系统附加到系统的名称空间层次结构。 \fI/etc/fstab\fP 文件描述了 \fBmount\fP(8)
+应该如何从各种独立的文件系统 (包括由 NFS 服务器导出的文件系统) 组装一个系统的文件名层次结构。 \fI/etc/fstab\fP
+文件中的每一行都描述了一个文件系统、它的挂载点以及该挂载点的一组默认挂载选项。
+.P
+对于 NFS 文件系统挂载，\fI/etc/fstab\fP
+文件中的一行指定服务器名称、要挂载的导出服务器目录的路径名、作为挂载点的本地目录、正在挂载的文件系统类型以及列表控制文件系统挂载方式的挂载选项以及
+NFS 客户端在访问此挂载点上的文件时的行为方式。 NFS 不使用每一行的第五和第六字段，因此通常每个字段都包含数字零。例如:
+.P
+.nf
+.ta 8n +14n +14n +9n +20n
+	server:path	/mountpoint	fstype	option,option,...	0 0
+.fi
+.P
+服务器的主机名和导出路径名用冒号分隔，而挂载选项用逗号分隔。其余字段由空格或制表符分隔。
+.P
+服务器的主机名可以是不合格的主机名、完全合格的域名、带点的四边形 IPv4 地址或用方括号括起来的 IPv6 地址。 链路本地和站点本地 IPv6
+地址必须附有接口标识符。 有关指定原始 IPv6 地址的详细信息，请参见 \fBipv6\fP(7)。
+.P
+\fIfstype\fP 字段包含 "nfs"。 不推荐在 \fI/etc/fstab\fP 中使用 "nfs4" fstype。
+.SH "MOUNT OPTIONS"
+有关适用于所有文件系统的泛型挂载选项的说明，请参见 \fBmount\fP(8)。如果不需要指定任何安装选项，请在 \fI/etc/fstab\fP 中使用泛型选项
+\fBdefaults\fP。
+.DT
+.SS "Options supported by all versions"
+这些选项适用于任何 NFS 版本。
+.TP  1.5i
+\fBnfsvers=\fP\fIn\fP
+用于联系服务器的 NFS 服务的 NFS 协议版本号。 如果服务器不支持请求的版本，挂载请求将失败。 如果未指定此选项，则客户端首先尝试版本
+4.2，然后向下协商，直到找到服务器支持的版本。
+.TP  1.5i
+\fBvers=\fP\fIn\fP
+此选项是 \fBnfsvers\fP 选项的替代选项。 包含它是为了与其他操作系统兼容
+.TP  1.5i
+\fBsoft\fP / \fBhard\fP
+确定 NFS 客户端在 NFS 请求超时后的恢复行为。 如果两个选项均未指定 (或者指定了 \fBhard\fP 选项)，则会无限期地重试 NFS 请求。
+如果指定了 \fBsoft\fP 选项，则 NFS 客户端在发送 \fBretrans\fP 重传后会导致 NFS 请求失败，从而导致 NFS
+客户端向调用应用程序返回错误。
+.IP
+\fINB:\fP 在某些情况下，所谓的 "soft" 超时会导致静默数据损坏。因此，仅当客户端响应比数据完整性更重要时才使用 \fBsoft\fP 选项。 使用
+NFS over TCP 或增加 \fBretrans\fP 选项的值可以减轻使用 \fBsoft\fP 选项的一些风险。
+.TP  1.5i
+\fBsoftreval\fP / \fBnosoftreval\fP
+在 NFS 服务器关闭的情况下，允许 NFS 客户端在 \fBretrans\fP 尝试重新验证缓存超时后继续提供缓存中的路径和属性可能很有用。
+例如，当尝试从永久关闭的服务器上卸载文件系统树时，这可能会有所帮助。
+.IP
+可以将 \fBsoftreval\fP 与 \fBsoft\fP 挂载选项结合使用，在这种情况下，无法从缓存中提供的操作将超时并在 \fBretrans\fP
+尝试后返回错误。与默认 \fBhard\fP 安装选项的组合意味着那些未缓存的操作将继续重试，直到从服务器收到响应。
+.IP
+Note: 默认挂载选项是 \fBnosoftreval\fP，它不允许在重新验证失败时回退到缓存，而是遵循 \fBhard\fP 或 \fBsoft\fP
+挂载选项规定的行为。
+.TP  1.5i
+\fBintr\fP / \fBnointr\fP
+提供此选项是为了向后兼容。 它在内核 2.6.25 之后被忽略。
+.TP  1.5i
+\fBtimeo=\fP\fIn\fP
+NFS 客户端在重试 NFS 请求之前等待响应的时间 (以十分之一秒为单位)。
+.IP
+对于基于 TCP 的 NFS，默认的 \fBtimeo\fP 值为 600 (60 秒)。 NFS 客户端执行线性退避: 每次重新传输后，超时时间都会增加
+\fBtimeo\fP，达到最大值 600 秒。
+.IP
+但是，对于 UDP 上的 NFS，客户端使用自适应算法为频繁使用的请求类型 (例如 READ 和 WRITE 请求)
+估计适当的超时值，但对不常用的请求类型 (例如 FSINFO 请求) 使用 \fBtimeo\fP 设置。 如果未指定 \fBtimeo\fP 选项，则在 1.1
+秒后重试不常用的请求类型。 每次重新传输后，NFS 客户端都会将该请求的超时时间加倍，最大超时长度为 60 秒。
+.TP  1.5i
+\fBretrans=\fP\fIn\fP
+NFS 客户端在尝试进一步恢复操作之前重试请求的次数。如果未指定 \fBretrans\fP 选项，则 NFS 客户端会尝试每个 UDP 请求三次，每个
+TCP 请求两次。
+.IP
+NFS 客户端在 \fBretrans\fP 重试后生成 "server not responding" 消息，然后尝试进一步恢复 (取决于 \fBhard\fP
+安装选项是否有效)。
+.TP  1.5i
+\fBrsize=\fP\fIn\fP
+从 NFS 服务器上的文件读取数据时，NFS 客户端可以接收的每个网络 READ 请求中的最大字节数。 每个 NFS READ
+请求的实际数据，载荷，大小等于或小于 \fBrsize\fP 设置。Linux NFS 客户端支持的最大读取，载荷，为 1,048,576 字节 (1
+兆字节)。
+.IP
+\fBrsize\fP 的值是 1024 的正整数倍。 低于 1024 的指定 \fBrsize\fP 值被替换为 4096; 大于 1048576 的值将替换为
+1048576。如果指定值在支持的范围内但不是 1024 的倍数，则它会向下舍入到最接近的 1024 的倍数。
+.IP
+如果未指定 \fBrsize\fP 值，或者如果指定的 \fBrsize\fP 值大于客户端或服务器可以支持的最大值，则客户端和服务器协商它们都可以支持的最大
+\fBrsize\fP 值。
+.IP
+\fBmount\fP(8) 命令行中指定的 \fBrsize\fP 安装选项出现在 \fI/etc/mtab\fP 文件中。但是，客户端和服务器协商的有效
+\fBrsize\fP 值在 \fI/proc/mounts\fP 文件中报告。
+.TP  1.5i
+\fBwsize=\fP\fIn\fP
+NFS 客户端在将数据写入 NFS 服务器上的文件时可以发送的每个网络 WRITE 请求的最大字节数。每个 NFS WRITE
+请求的实际数据，载荷，大小等于或小于 \fBwsize\fP 设置。Linux NFS 客户端支持的最大写入，载荷，为 1,048,576 字节 (1
+兆字节)。
+.IP
+与 \fBrsize\fP 类似，\fBwsize\fP 的值是 1024 的正整数倍。 低于 1024 的指定 \fBwsize\fP 值被替换为 4096; 大于
+1048576 的值将替换为 1048576。如果指定值在支持的范围内但不是 1024 的倍数，则它会向下舍入到最接近的 1024 的倍数。
+.IP
+如果未指定 \fBwsize\fP 值，或者如果指定的 \fBwsize\fP 值大于客户端或服务器可以支持的最大值，则客户端和服务器协商它们都可以支持的最大
+\fBwsize\fP 值。
+.IP
+\fBmount\fP(8) 命令行中指定的 \fBwsize\fP 安装选项出现在 \fI/etc/mtab\fP 文件中。但是，客户端和服务器协商的有效
+\fBwsize\fP 值在 \fI/proc/mounts\fP 文件中报告。
+.TP  1.5i
+\fBac\fP / \fBnoac\fP
+选择客户端是否可以缓存文件属性。如果两个选项均未指定 (或指定了 \fBac\fP)，则客户端缓存文件属性。
+.IP
+为了提高性能，NFS 客户端缓存文件属性。每隔几秒钟，NFS 客户端就会检查每个文件属性的服务器版本以进行更新。
+在客户端再次检查服务器之前，在这些小间隔内发生在服务器上的更改不会被检测到。\fBnoac\fP
+选项阻止客户端缓存文件属性，以便应用程序可以更快地检测服务器上的文件更改。
+.IP
+除了防止客户端缓存文件属性外，\fBnoac\fP 选项还强制应用程序写入变为同步，以便对文件的本地更改立即在服务器上可见。
+这样，其他客户端在检查文件属性时可以快速检测到最近的写入。
+.IP
+使用 \fBnoac\fP 选项可在访问相同文件的 NFS 客户端之间提供更高的缓存一致性，但它会带来显着的性能损失。 因此，鼓励明智地使用文件锁定。
+数据和元数据一致性部分包含对这些权衡的详细讨论。
+.TP  1.5i
+\fBacregmin=\fP\fIn\fP
+NFS 客户端在从服务器请求新属性信息之前缓存常规文件属性的最短时间 (以秒为单位)。 如果未指定此选项，则 NFS 客户端使用最少 3 秒。
+有关属性缓存的完整讨论，请参见 DATA AND METADATA COHERENCE 部分。
+.TP  1.5i
+\fBacregmax=\fP\fIn\fP
+NFS 客户端在从服务器请求新属性信息之前缓存常规文件属性的最长时间 (以秒为单位)。 如果未指定此选项，则 NFS 客户端使用 60 秒的最大值。
+有关属性缓存的完整讨论，请参见 DATA AND METADATA COHERENCE 部分。
+.TP  1.5i
+\fBacdirmin=\fP\fIn\fP
+NFS 客户端在从服务器请求新属性信息之前缓存目录属性的最短时间 (以秒为单位)。 如果未指定此选项，则 NFS 客户端使用 30 秒的最小值。
+有关属性缓存的完整讨论，请参见 DATA AND METADATA COHERENCE 部分。
+.TP  1.5i
+\fBacdirmax=\fP\fIn\fP
+NFS 客户端在从服务器请求新属性信息之前缓存目录属性的最长时间 (以秒为单位)。 如果未指定此选项，则 NFS 客户端使用 60 秒的最大值。
+有关属性缓存的完整讨论，请参见 DATA AND METADATA COHERENCE 部分。
+.TP  1.5i
+\fBactimeo=\fP\fIn\fP
+使用 \fBactimeo\fP 将所有 \fBacregmin\fP、\fBacregmax\fP、\fBacdirmin\fP 和 \fBacdirmax\fP 设置为相同的值。
+如果未指定此选项，NFS 客户端将使用上面列出的每个选项的默认值。
+.TP  1.5i
+\fBbg\fP / \fBfg\fP
+确定在尝试安装导出失败时 \fBmount\fP(8) 命令的行为方式。 如果安装请求的任何部分超时或完全失败，\fBfg\fP 选项会导致 \fBmount\fP(8)
+以错误状态退出。 这称为 "foreground" 挂载，如果既未指定 \fBfg\fP 也未指定 \fBbg\fP 挂载选项，则这是默认行为。
+.IP
+如果指定了 \fBbg\fP 选项，则超时或失败会导致 \fBmount\fP(8) 命令 fork 一个继续尝试装载导出的子进程。 父级立即返回零退出代码。
+这称为 "background" 安装。
+.IP
+如果本地挂载点目录丢失，\fBmount\fP(8) 命令就好像挂载请求超时一样。 这允许在 \fI/etc/fstab\fP 中指定的嵌套 NFS
+安装在系统初始化期间以任何顺序进行，即使某些 NFS 服务器尚不可用。 或者，可以使用自动挂载器解决这些问题 (有关详细信息，请参见
+\fBautomount\fP(8))。
+.TP  1.5i
+\fBnconnect=\fPn
+当使用面向连接的协议 (如 TCP) 时，有时在客户端和服务器之间建立多个连接可能是有利的。例如，如果您的客户端或者服务器配备了多个网络接口卡
+(NICs)，使用多个连接来分散负载可能会提高整体性能。 在这种情况下，\fBnconnect\fP
+选项允许用户指定应在客户端和服务器之间建立的连接数，上限为 16。
+.IP
+请注意，某些 pNFS 驱动程序也可能使用 \fBnconnect\fP 选项来决定要设置多少连接到数据服务器。
+.TP  1.5i
+\fBmax_connect=\fPn
+虽然 \fBnconnect\fP 选项对可以建立到给定服务器 IP 的连接数设置了限制，但 \fBmax_connect\fP 选项允许用户指定到属于同一
+NFSv4.1 + 服务器的不同服务器 IP 的最大连接数 (会话中继连接) 上限为 16。当客户端发现它为一个已经存在的服务器建立了一个客户端
+ID，而不是丢弃新创建的网络传输时，客户端会将这个新连接添加到该 RPC 客户端的可用传输列表中。
+.TP  1.5i
+\fBrdirplus\fP / \fBnordirplus\fP
+选择是使用 NFS v3 还是 v4 READDIRPLUS 请求。 如果未指定此选项，则 NFS 客户端使用 NFS v3 或 v4 安装上的
+READDIRPLUS 请求来读取小目录。 如果客户端只对所有目录使用 READDIR 请求，一些应用程序的性能会更好。
+.TP  1.5i
+\fBretry=\fP\fIn\fP
+\fBmount\fP(8) 命令在放弃之前在前台或后台重试 NFS 安装操作的分钟数。 如果未指定此选项，则前台挂载的默认值为 2 分钟，后台挂载的默认值为
+10000 分钟 (一周不到 80 分钟)。 如果指定零值，则 \fBmount\fP(8) 命令会在第一次失败后立即退出。
+.IP
+请注意，这只会影响重试次数，不会影响每次重试造成的延迟。 对于 UDP，每次重试所需的时间由 \fBtimeo\fP 和 \fBretrans\fP
+选项确定，默认情况下约为 7 秒。 对于 TCP，默认值为 3 分钟，但系统 TCP 连接超时有时会将每次重新传输的超时限制在 2 分钟左右。
+.TP  1.5i
+\fBsec=\fP\fIflavors\fP
+一个或多个安全风格的冒号分隔列表，用于访问已安装导出上的文件。如果服务器不支持这些风格中的任何一种，则安装操作将失败。 如果未指定
+\fBsec=\fP，则客户端会尝试查找客户端和服务器都支持的安全风格。 有效的 \fIflavors\fP 是
+\fBnone\fP、\fBsys\fP、\fBkrb5\fP、\fBkrb5i\fP 和 \fBkrb5p\fP。 有关详细信息，请参见安全注意事项部分。
+.TP  1.5i
+\fBsharecache\fP / \fBnosharecache\fP
+确定在同时多次安装同一导出时如何共享客户端的数据缓存和属性缓存。
+使用相同的缓存可以减少客户端的内存需求，并在通过不同的安装点访问相同的远程文件时向应用程序呈现相同的文件内容。
+.IP
+如果两个选项均未指定，或者指定了 \fBsharecache\fP 选项，则单个缓存将用于访问同一导出的所有安装点。 如果指定了
+\fBnosharecache\fP 选项，则该安装点将获得唯一的缓存。
+请注意，当共享数据和属性缓存时，第一个挂载点的挂载选项将对同一导出的后续并发挂载生效。
+.IP
+从内核 2.6.18 开始，\fBnosharecache\fP
+指定的行为是遗留缓存行为。这被认为是一种数据风险，因为在对其中一个副本进行本地更新后，同一客户端上同一文件的多个缓存副本可能会变得不同步。
+.TP  1.5i
+\fBresvport\fP / \fBnoresvport\fP
+指定 NFS 客户端在与此安装点的 NFS 服务器通信时是否应使用特权源端口。 如果未指定此选项，或指定了 \fBresvport\fP 选项，则 NFS
+客户端使用特权源端口。 如果指定 \fBnoresvport\fP 选项，则 NFS 客户端使用非特权源端口。 2.6.28 及更高版本的内核支持此选项。
+.IP
+使用非特权源端口有助于增加客户端上允许的最大 NFS 安装点数，但 NFS 服务器必须配置为允许客户端通过非特权源端口进行连接。
+.IP
+有关重要详细信息，请参见安全注意事项部分。
+.TP  1.5i
+\fBlookupcache=\fP\fImode\fP
+指定内核如何管理给定安装点的目录条目缓存。 \fImode\fP 可以是 \fBall\fP、\fBnone\fP、\fBpos\fP 或 \fBpositive\fP 之一。
+2.6.28 及更高版本的内核支持此选项。
+.IP
+Linux NFS 客户端缓存所有 NFS LOOKUP 请求的结果。 如果服务器上存在请求的目录条目，则结果称为 \fIpositive\fP。
+如果请求的目录条目在服务器上不存在，则结果称为 \fInegative\fP。
+.IP
+如果未指定此选项，或者指定了 \fBall\fP，则客户端假定这两种类型的目录缓存条目均有效，直到其父目录的缓存属性过期为止。
+.IP
+如果指定了 \fBpos\fP 或 \fBpositive\fP，则客户端假定正项在其父目录的缓存属性过期之前有效，但总是在应用程序可以使用它们之前重新验证
+negative 整体。
+.IP
+如果指定了 \fBnone\fP，客户端会在应用程序使用它们之前重新验证这两种类型的目录缓存条目。
+这允许快速检测由其他客户端创建或删除的文件，但会影响应用程序和服务器性能。
+.IP
+数据和元数据一致性部分包含对这些权衡的详细讨论。
+.TP  1.5i
+\fBfsc\fP / \fBnofsc\fP
+Enable/Disables 使用 FS\-Cache 设施将 (read\-only) 数据页缓存到本地磁盘。有关如何配置 FS\-Cache
+设施的详细信息，请参见 cachefilesd(8) 和
+<kernel_source>/Documentation/filesystems/caching。 默认值为 nofsc。
+.TP  1.5i
+\fBsloppy\fP
+\fBsloppy\fP 选项是指定 \fBmount.nfs\fP \-s \fBoption.\fP 的替代方法
+
+.SS "Options for NFS versions 2 and 3 only"
+仅将这些选项与上一节中的选项一起用于 NFS 版本 2 和 3。
+.TP  1.5i
+\fBproto=\fP\fInetid\fP
+\fInetid\fP 确定用于与 NFS 服务器通信的传输。 可用选项有 \fBudp\fP、\fBudp6\fP、\fBtcp\fP、\fBtcp6\fP、\fBrdma\fP 和
+\fBrdma6\fP。 那些以 \fB6\fP 结尾的地址使用 IPv6 地址，并且仅当内置了对 TI\-RPC 的支持时才可用。其他人使用 IPv4 地址。
+.IP
+每个传输协议使用不同的默认 \fBretrans\fP 和 \fBtimeo\fP 设置。 有关详细信息，请参见这两个挂载选项的说明。
+.IP
+除了控制 NFS 客户端如何向服务器传输请求外，此挂载选项还控制 \fBmount\fP(8) 命令如何与服务器的 rpcbind 和 mountd
+服务通信。 指定使用 TCP 的 netid 会强制来自 \fBmount\fP(8) 命令和 NFS 客户端的所有流量都使用 TCP。 指定使用 UDP 的
+netid 会强制所有流量类型使用 UDP。
+.IP
+\fBBefore using NFS over UDP, refer to the TRANSPORT METHODS section.\fP
+.IP
+如果未指定 \fBproto\fP 安装选项，则 \fBmount\fP(8) 命令会发现服务器支持的协议并为每个服务选择适当的传输。
+有关更多详细信息，请参见传输方法部分。
+.TP  1.5i
+\fBudp\fP
+\fBudp\fP 选项是指定 \fBproto=udp.\fP 的替代方法。包含它是为了与其他操作系统兼容。
+.IP
+\fBBefore using NFS over UDP, refer to the TRANSPORT METHODS section.\fP
+.TP  1.5i
+\fBtcp\fP
+\fBtcp\fP 选项是指定 \fBproto=tcp.\fP 的替代方法。包含它是为了与其他操作系统兼容。
+.TP  1.5i
+\fBrdma\fP
+\fBrdma\fP 选项是指定 \fBproto=rdma.\fP 的替代方法
+.TP  1.5i
+\fBport=\fP\fIn\fP
+服务器的 NFS 服务端口的数值。 如果指定端口上服务器的 NFS 服务不可用，挂载请求将失败。
+.IP
+如果未指定此选项，或者指定的端口值为 0，则 NFS 客户端使用服务器的 rpcbind 服务通告的 NFS 服务端口号。 如果服务器的 rpcbind
+服务不可用、服务器的 NFS 服务未向其 rpcbind 服务注册或服务器的 NFS 服务在通告端口上不可用，则挂载请求失败。
+.TP  1.5i
+\fBmountport=\fP\fIn\fP
+服务器的 mountd 端口的数值。 如果服务器的 mountd 服务在指定端口上不可用，则挂载请求失败。
+.IP
+如果未指定此选项，或者指定的端口值为 0，则 \fBmount\fP(8) 命令使用服务器的 rpcbind 服务通告的 mountd 服务端口号。
+如果服务器的 rpcbind 服务不可用，服务器的 mountd 服务没有注册到它的 rpcbind 服务，或者服务器的 mountd
+服务在通告的端口上不可用，则挂载请求失败。
+.IP
+通过阻止 rpcbind 协议的防火墙安装 NFS 服务器时，可以使用此选项。
+.TP  1.5i
+\fBmountproto=\fP\fInetid\fP
+NFS 客户端在执行此挂载请求时以及稍后卸载此挂载点时用于将请求传输到 NFS 服务器的 mountd 服务的传输。
+.IP
+\fInetid\fP 可以是使用 IPv4 地址的 \fBudp\fP 和 \fBtcp\fP 之一，或者如果 TI\-RPC 内置到 \fBmount.nfs\fP
+命令中，则可以是使用 IPv6 地址的 \fBudp6\fP 和 \fBtcp6\fP。
+.IP
+通过阻止特定传输的防火墙安装 NFS 服务器时，可以使用此选项。 当与 \fBproto\fP 选项结合使用时，可以为 mountd 请求和 NFS
+请求指定不同的传输。 如果服务器的 mountd 服务无法通过指定的传输方式使用，则挂载请求失败。
+.IP
+有关 \fBmountproto\fP 安装选项如何与 \fBproto\fP 安装选项交互的更多信息，请参见传输方法部分。
+.TP  1.5i
+\fBmounthost=\fP\fIname\fP
+运行 mountd 的主机的主机名。 如果未指定此选项，则 \fBmount\fP(8) 命令假定 mountd 服务与 NFS 服务在同一主机上运行。
+.TP  1.5i
+\fBmountvers=\fP\fIn\fP
+用于联系服务器的 mountd 的 RPC 版本号。 如果未指定此选项，客户端将使用适合请求的 NFS 版本的版本号。 当多个 NFS
+服务在同一个远程服务器主机上运行时，此选项很有用。
+.TP  1.5i
+\fBnamlen=\fP\fIn\fP
+此挂载上路径名组件的最大长度。 如果未指定此选项，则最大长度与服务器协商。在大多数情况下，此最大长度为 255 个字符。
+.IP
+NFS 的一些早期版本不支持这种协商。 使用此选项可确保 \fBpathconf\fP(3) 在这种情况下向应用程序报告正确的最大组件长度。
+.TP  1.5i
+\fBlock\fP / \fBnolock\fP
+选择是否使用 NLM 边带协议锁定服务器上的文件。 如果两个选项均未指定 (或指定了 \fBlock\fP)，则 NLM 锁定用于此安装点。 使用
+\fBnolock\fP 选项时，应用程序可以锁定文件，但此类锁定仅提供对同一客户端上运行的其他应用程序的排除。 远程应用程序不受这些锁的影响。
+.IP
+使用 NFS 挂载 \fI/var\fP 时，必须使用 \fBnolock\fP 选项禁用 NLM 锁定，因为 \fI/var\fP 包含 Linux 上的 NLM
+实现使用的文件。 在不支持 NLM 协议的 NFS 服务器上安装导出时，也需要使用 \fBnolock\fP 选项。
+.TP  1.5i
+\fBcto\fP / \fBnocto\fP
+选择是否使用接近开放的缓存一致性语义。 如果未指定任何选项 (或指定 \fBcto\fP)，则客户端使用接近打开的缓存一致性语义。如果指定了 \fBnocto\fP
+选项，则客户端使用非标准启发式方法来确定服务器上的文件何时发生更改。
+.IP
+使用 \fBnocto\fP 选项可以提高只读挂载的性能，但仅当服务器上的数据只是偶尔更改时才应使用。 DATA AND METADATA COHERENCE
+部分更详细地讨论了此选项的行为。
+.TP  1.5i
+\fBacl\fP / \fBnoacl\fP
+选择是否在此安装点上使用 NFSACL 边带协议。 NFSACL 边带协议是在 Solaris 中实现的专有协议，用于管理访问控制列表。NFSACL
+从未成为 NFS 协议规范的标准部分。
+.IP
+如果 \fBacl\fP 和 \fBnoacl\fP 选项都没有指定，NFS 客户端会与服务器协商，看是否支持 NFSACL 协议，如果服务器支持，则使用它。
+如果协商导致客户端或服务器出现问题，则可能需要禁用 NFSACL 边带协议。 有关详细信息，请参见安全注意事项部分。
+.TP  1.5i
+\fBlocal_lock=\fPmechanism
+指定是否对 flock 和 POSIX 锁定机制中的任何一个或两者使用本地锁定。 \fImechanism\fP 可以是
+\fBall\fP、\fBflock\fP、\fBposix\fP 或 \fBnone\fP 之一。 2.6.37 及更高版本的内核支持此选项。
+.IP
+Linux NFS
+客户端提供了一种在本地进行锁定的方法。这意味着，应用程序可以锁定文件，但此类锁定仅针对在同一客户端上运行的其他应用程序提供排斥。远程应用程序不受这些锁的影响。
+.IP
+如果未指定此选项，或者指定了 \fBnone\fP，则客户端假定锁不是本地的。
+.IP
+如果指定了 \fBall\fP，则客户端假定 flock 和 POSIX 锁都是本地的。
+.IP
+如果指定 \fBflock\fP，则客户端假定只有 flock 锁是本地的，并在使用 POSIX 锁时使用 NLM 边带协议来锁定文件。
+.IP
+如果指定 \fBposix\fP，则客户端假定 POSIX 锁是本地锁，并在使用 flock 锁时使用 NLM 边带协议来锁定文件。
+.IP
+要支持类似于 NFS 客户端 < 2.6.12 的旧群行为，请使用 'local_lock=flock'。当通过 Samba 将 NFS
+挂载导出为 Samba maps Windows 共享模式锁定为群时，此选项是必需的。由于 NFS 客户端 > 2.6.12 是通过模拟
+POSIX 锁来实现 flock 的，这会导致锁冲突。
+.IP
+NOTE: 当一起使用时，'local_lock' 挂载选项将被 'nolock'/'lock' 挂载选项覆盖。
+.SS "Options for NFS version 4 only"
+对于 NFS 版本 4.0 和更高版本，请使用这些选项以及上面第一小节中的选项。
+.TP  1.5i
+\fBproto=\fP\fInetid\fP
+\fInetid\fP 确定用于与 NFS 服务器通信的传输。 支持的选项有 \fBtcp\fP、\fBtcp6\fP、\fBrdma\fP 和 \fBrdma6\fP。
+\fBtcp6\fP 使用 IPv6 地址，并且仅在内置了对 TI\-RPC 的支持时才可用。其他两个都使用 IPv4 地址。
+.IP
+所有 NFS 版本 4 服务器都需要支持 TCP，因此如果未指定此挂载选项，NFS 版本 4 客户端将使用 TCP 协议。
+有关更多详细信息，请参见传输方法部分。
+.TP  1.5i
+\fBminorversion=\fP\fIn\fP
+指定协议次要版本号。 NFSv4 引入了 "minor versioning,"，其中可以在不影响 NFS 协议版本号的情况下引入 NFS
+协议增强功能。 在内核 2.6.38 之前，次要版本始终为零，无法识别该选项。 在此内核之后，指定 "minorversion=1"
+可启用许多高级特性例如 NFSv4 会话。
+.IP
+最近的内核允许使用 \fBvers=\fP 选项指定次要版本。 例如，指定 \fBvers=4.1\fP 与指定 \fBvers=4,minorversion=1\fP
+相同。
+.TP  1.5i
+\fBport=\fP\fIn\fP
+服务器的 NFS 服务端口的数值。 如果指定端口上服务器的 NFS 服务不可用，挂载请求将失败。
+.IP
+如果未指定此安装选项，NFS 客户端将使用标准 NFS 端口号 2049，而无需首先检查服务器的 rpcbind 服务。 这允许 NFS 版本 4
+客户端通过可能阻止 rpcbind 请求的防火墙联系 NFS 版本 4 服务器。
+.IP
+如果指定的端口值为 0，则 NFS 客户端使用服务器的 rpcbind 服务通告的 NFS 服务端口号。 如果服务器的 rpcbind
+服务不可用、服务器的 NFS 服务未向其 rpcbind 服务注册或服务器的 NFS 服务在通告端口上不可用，则挂载请求失败。
+.TP  1.5i
+\fBcto\fP / \fBnocto\fP
+选择是否为此挂载点上的 NFS 目录使用接近开放的高速缓存一致性语义。 如果既未指定 \fBcto\fP 也未指定
+\fBnocto\fP，则默认为目录使用接近开放的缓存一致性语义。
+.IP
+文件数据缓存行为不受此选项的影响。 DATA AND METADATA COHERENCE 部分更详细地讨论了此选项的行为。
+.TP  1.5i
+\fBclientaddr=\fP\fIn.n.n.n\fP
+.TP  1.5i
+\fBclientaddr=\fP\fIn:n:\fP\fB...\fP\fI:n\fP
+指定单个 IPv4 地址 (以点分四组形式) 或非链接本地 IPv6 地址，NFS 客户端通告该地址以允许服务器对此安装点上的文件执行 NFS 版本
+4.0 回调请求。如果服务器无法与客户端建立回调连接，性能可能会下降，或者对文件的访问可能会暂时挂起。 可以指定一个 IPv4_ANY
+(0.0.0.0) 值或等效的 IPv6 任何地址，这将向 NFS 服务器发出信号，表明此 NFS 客户端不需要委派。
+.IP
+如果未指定此选项，则 \fBmount\fP(8) 命令会尝试自动发现适当的回调地址。 然而，自动发现过程并不完美。
+在存在多个客户端网络接口、特殊路由策略或非典型网络拓扑的情况下，可能很难确定用于回调的确切地址。
+.IP
+NFS 协议版本 4.1 和 4.2 使用客户端建立的 TCP 连接进行回调请求，因此不需要服务端连接客户端。 因此，此选项仅影响 NFS 版本 4.0
+挂载。
+.TP  1.5i
+\fBmigration\fP / \fBnomigration\fP
+选择客户端是否使用与 NFSv4 透明状态迁移 (TSM) 兼容的标识字符串。 如果安装的服务器支持使用 TSM 进行 NFSv4 迁移，请指定
+\fBmigration\fP 选项。
+.IP
+某些服务器特性在面对迁移兼容的标识字符串时表现不佳。 \fBnomigration\fP 选项保留了与传统 NFS 服务器兼容的传统客户端标识字符串的使用。
+如果未指定任何选项，这也是行为。 当客户端通过传统的标识字符串标识自己时，不能透明地迁移客户端的打开和锁定状态。
+.IP
+此安装选项对比零更新的 NFSv4 次要版本没有影响，它始终使用与 TSM 兼容的客户端标识字符串。
+.SH "nfs4 FILE SYSTEM TYPE"
+\fBnfs4\fP 文件系统类型是用于指定 NFSv4 用法的旧语法。它仍然可以与所有 NFSv4 特定和通用选项一起使用，但 \fBnfsvers\fP
+安装选项除外。
+.SH "MOUNT CONFIGURATION FILE"
+如果 mount 命令配置为执行此操作，则也可以在 \fI/etc/nfsmount.conf\fP
+文件中配置上一节中描述的所有安装选项。有关详细信息，请参见 \fBnfsmount.conf(5)\fP。
+.SH EXAMPLES
+安装选项。 要使用 NFS 版本 3 挂载，请使用 \fBnfs\fP 文件系统类型并指定 \fBnfsvers=3\fP 挂载选项。 要使用 NFS 版本 4
+挂载，请使用 \fBnfs\fP 文件系统类型 (带有 \fBnfsvers=4\fP 挂载选项) 或 \fBnfs4\fP 文件系统类型。
+.P
+以下来自 \fI/etc/fstab\fP 文件的示例导致 mount 命令为 NFS 行为协商合理的默认值。
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	服务器: /export/mnt nfs 默认值 0 0
+.fi
+.P
+此示例说明如何使用 NFS 版本 4 通过 TCP 和 Kerberos 5 相互身份验证进行挂载。
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	服务器: /export/mnt nfs4 sec=krb5 0 0
+.fi
+.P
+此示例说明如何使用 NFS 版本 4 通过 TCP 和 Kerberos 5 隐私或数据完整性模式进行挂载。
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	服务器: /export/mnt nfs4 sec=krb5p:krb5i 0 0
+.fi
+.P
+此示例可用于通过 NFS 挂载 /usr。
+.P
+.nf
+.ta 8n +16n +6n +6n +30n
+	服务器: /export/usr nfs ro,nolock,nocto,actimeo=3600 0 0
+.fi
+.P
+此示例说明如何使用原始 IPv6 链接本地地址安装 NFS 服务器。
+.P
+.nf
+.ta 8n +40n +5n +4n +9n
+	[fe80::215:c5ff:fb3e:e2b1% eth0]:/export/mnt nfs 默认值 0 0
+.fi
+.SH "TRANSPORT METHODS"
+NFS 客户端通过远程过程调用或 \fIRPCs\fP 向 NFS 服务器发送请求。 RPC
+客户端自动发现远程服务端点，处理每个请求的身份验证，调整客户端和服务器上不同字节字节序的请求参数，并重新传输可能已被网络或服务器丢失的请求。 RPC
+请求和回复通过网络传输。
+.P
+在大多数情况下，\fBmount\fP(8) 命令、NFS 客户端和 NFS 服务器可以自动协商挂载点的正确传输和数据传输大小设置。
+然而，在某些情况下，使用挂载选项明确指定这些设置是值得的。
+.P
+传统上，NFS 客户端专门使用 UDP 传输来向服务器传输请求。 尽管它的实现很简单，但基于 UDP 的 NFS
+有许多限制，阻碍了一些常见部署环境中的平稳运行和良好性能。 即使是很小的丢包率也会导致整个 NFS 请求丢失;
+因此，重传超时通常在亚秒级范围内，以允许客户端从丢弃请求中快速恢复，但这可能会导致额外的网络流量和服务器负载。
+.P
+但是，UDP 在网络 MTU 相对于 NFS 数据传输大小较大的特殊设置中 (例如启用巨型以太网帧的网络环境) 可能非常有效。 在此类环境中，建议调整
+\fBrsize\fP 和 \fBwsize\fP 设置，以便每个 NFS 读取或写入请求仅适合几个网络帧 (甚至单个帧)。 这降低了单个 MTU
+大小的网络帧丢失导致整个大型读取或写入请求丢失的可能性。
+.P
+TCP 是用于所有现代 NFS 实现的默认传输协议。 它在几乎所有可以想到的网络环境中都表现良好，并为防止因网络不可靠而导致的数据损坏提供了极好的保证。
+TCP 通常是通过网络防火墙安装服务器的要求。
+.P
+在正常情况下，网络丢弃数据包比 NFS 服务器丢弃请求要频繁得多。 因此，无需为 NFS over TCP 设置激进的重传超时设置。NFS over
+TCP 的典型超时设置在一到十分钟之间。 在客户端用完它的重新传输 (\fBretrans\fP 挂载选项的值)
+后，它假定发生了网络分区，并尝试在新的套接字上重新连接到服务器。由于 TCP 本身使网络数据传输可靠，因此可以安全地允许 \fBrsize\fP 和
+\fBwsize\fP 默认为客户端和服务器都支持的最大值，而与网络的 MTU 大小无关。
+.SS "Using the mountproto mount option"
+本节仅适用于 NFS 版本 3 挂载，因为 NFS 版本 4 不使用单独的协议进行挂载请求。
+.P
+Linux NFS 客户端可以使用不同的传输来联系 NFS 服务器的 rpcbind 服务、其 mountd 服务、其网络锁管理器 (NLM) 服务及其
+NFS 服务。 Linux NFS 客户端为每个安装点使用的确切传输取决于传输安装选项的设置，包括
+\fBproto\fP、\fBmountproto\fP、\fBudp\fP 和 \fBtcp\fP。
+.P
+无论指定什么传输选项，客户端都通过 UDP 发送网络状态管理器 (NSM) 通知，但同时在 UDP 和 TCP 上侦听服务器 NSM 通知。 NFS
+访问控制列表 (NFSACL) 协议与主要 NFS 服务共享相同的传输。
+.P
+如果未指定传输选项，则 Linux NFS 客户端默认使用 UDP 联系服务器的 mountd 服务，并使用 TCP 联系其 NLM 和 NFS 服务。
+.P
+如果服务器不支持这些服务的这些传输，\fBmount\fP(8) 命令会尝试发现服务器支持的内容，然后使用发现的传输重试安装请求。
+如果服务器未通告客户端支持的任何传输或配置错误，则挂载请求失败。 如果 \fBbg\fP 选项有效，mount 命令将自身置于后台并继续尝试指定的安装请求。
+.P
+当指定了 \fBproto\fP 选项、\fBudp\fP 选项或 \fBtcp\fP 选项但未指定 \fBmountproto\fP 选项时，指定的传输将用于联系服务器的
+mountd 服务以及 NLM 和 NFS 服务。
+.P
+如果指定了 \fBmountproto\fP 选项但未指定 \fBproto\fP、\fBudp\fP 或 \fBtcp\fP 选项，则指定的传输将用于初始 mountd
+请求，但 mount 命令会尝试发现服务器对 NFS 协议的支持，如果是，则首选 TCP 两种传输方式均受支持。
+.P
+如果同时指定了 \fBmountproto\fP 和 \fBproto\fP (或 \fBudp\fP 或 \fBtcp\fP) 选项)，则 \fBmountproto\fP
+选项指定的传输用于初始 mountd 请求，\fBproto\fP 选项 (或 \fBudp\fP 或 \fBtcp\fP 选项) 指定的传输用于
+NFS，无论这些选项以何种顺序出现。 如果指定了这些选项，则不会执行自动服务发现。
+.P
+如果在同一安装命令行上多次指定 \fBproto\fP、\fBudp\fP、\fBtcp\fP 或 \fBmountproto\fP
+选项中的任何一个，则这些选项中每一个的最右侧实例的值将生效。
+.SS "Using NFS over UDP on high\-speed links"
+在千兆 \fBcan cause silent data corruption\fP 等高速链路上使用 NFS over UDP。
+.P
+该问题可能在高负载时触发，并且是由 IP 片段重组问题引起的。NFS 读取和写入通常传输 4 KB 或更大的 UDP
+数据包，这些数据包必须分成几个片段才能通过以太网链路发送，默认情况下将数据包限制为 1500 字节。这个过程发生在 IP 网络层，称为分片。
+.P
+为了识别属于一起的片段，IP 为每个数据包分配一个 16 位的 \fIIP ID\fP 值; 从同一个 UDP 数据包生成的片段将具有相同的 IP
+ID。接收系统会收集这些分片并将它们组合起来形成原始的 UDP 数据包。这个过程称为重组。数据包重组的默认超时时间为 30 秒;
+如果网络栈在此间隔内没有收到给定数据包的所有片段，它会假设丢失的 fragment(s) 丢失并丢弃它已经收到的那些。
+.P
+这在高速链路上产生的问题是在 30 秒内发送超过 65536 个数据包是可能的。事实上，对于繁重的 NFS 流量，您可以观察到 IP ID 在大约 5
+秒后重复出现。
+.P
+这对重组有严重影响: 如果一个片段丢失，另一个片段 \fIfrom a different packet\fP 但与 \fIsame IP ID\fP 将在 30
+秒超时内到达，网络栈将组合这些片段以形成一个新的数据包。大多数时候，IP 之上的网络层会检测到这种不匹配的重组 \-\- 在 UDP 的情况下，UDP
+校验和 (整个数据包有效，载荷，的 16 位校验和) 通常不匹配，UDP 将丢弃坏数据包。
+.P
+但是，UDP 校验和仅为 16 位，因此即使数据包有效，载荷，是完全随机的 (通常情况并非如此)，它也有 65536
+分之一的机会匹配。如果是这种情况，将发生静默数据损坏。
+.P
+应该认真对待这种潜力，至少在千兆以太网上。 100Mbit/s 的网络速度应该被认为问题较小，因为对于大多数流量模式，IP ID 环绕将花费比 30
+秒更长的时间。
+.P
+因此强烈建议使用 \fBNFS over TCP where possible\fP，因为 TCP 不执行分段。
+.P
+如果您绝对必须在千兆以太网上使用 NFS over UDP，可以采取一些步骤来缓解问题并降低损坏的可能性:
+.TP  +1.5i
+\fIJumbo frames:\fP
+许多千兆网卡能够传输大于传统以太网 1500 字节限制的帧，通常为 9000 字节。使用 9000 字节的巨型帧将允许您以 8K 的页面大小在 UDP
+上运行 NFS 而不会产生碎片。当然，这只有在所有涉及的站都支持巨型帧的情况下才可行。
+.IP
+要使机器能够在支持它的卡上发送巨型帧，将接口的 MTU 值配置为 9000 就足够了。
+.TP  +1.5i
+\fILower reassembly timeout:\fP
+通过将此超时时间降低到 IP ID 计数器回绕所需的时间以下，也可以防止片段的不正确重组。为此，只需将新的超时值 (以秒为单位) 写入文件
+\fB/proc/sys/net/ipv4/ipfrag_time\fP。
+.IP
+2 秒的值将大大降低单个千兆链路上 IPID 冲突的可能性，同时在接收来自远距离对等点的碎片流量时仍允许合理的超时。
+.SH "DATA AND METADATA COHERENCE"
+一些现代集群文件系统在其客户端之间提供完美的缓存一致性。 在不同的 NFS 客户端之间实现完美的缓存一致性是非常昂贵的，尤其是在广域网上。 因此，NFS
+满足于满足大多数文件共享类型要求的较弱缓存一致性。
+.SS "Close\-to\-open cache consistency"
+通常文件共享是完全顺序的。 首先，客户端 A 打开一个文件，向其中写入一些内容，然后将其关闭。 然后客户端 B 打开同一个文件，并读取更改。
+.P
+当应用程序打开存储在 NFS 版本 3 服务器上的文件时，NFS 客户端会通过发送 GETATTR 或 ACCESS
+请求检查该文件是否存在于服务器上并允许打开者使用。 NFS 客户端发送这些请求，而不管文件的缓存属性是否新鲜。
+.P
+当应用程序关闭文件时，NFS 客户端将任何未决的更改写回文件，以便下一个打开者可以查看更改。 这也使 NFS 客户端有机会通过 \fBclose\fP(2)
+的返回码向应用程序报告写入错误。
+.P
+打开时检查和关闭时刷新的行为称为 \fIclose\-to\-open cache consistency\fP 或 \fICTO\fP。 可以使用 \fBnocto\fP
+安装选项为整个安装点禁用它。
+.SS "Weak cache consistency"
+客户端的数据缓存仍有机会包含陈旧数据。 NFS 版本 3 协议引入了 "weak cache consistency" (也称为
+WCC)，它提供了一种在单个请求前后有效检查文件属性的方法。 这允许客户帮助识别其他客户可能做出的更改。
+.P
+当客户端使用多个同时更新同一文件的并发操作时 (例如，在异步回写期间)，仍然很难判断是该客户端的更新还是其他客户端的更新更改了文件。
+.SS "Attribute caching"
+使用 \fBnoac\fP 挂载选项可实现多个客户端之间的属性缓存一致性。 几乎每个文件系统操作都会检查文件属性信息。
+客户端将此信息缓存一段时间以减少网络和服务器负载。 当 \fBnoac\fP
+生效时，客户端的文件属性缓存被禁用，因此每个需要检查文件属性的操作都被迫返回到服务器。 这允许客户端以许多额外的网络操作为代价非常快速地查看文件的更改。
+.P
+注意不要将 \fBnoac\fP 选项与 "no data caching." 混淆 \fBnoac\fP
+挂载选项会阻止客户端缓存文件元数据，但仍然存在可能导致客户端和服务器之间的数据缓存不一致的竞争。
+.P
+NFS 协议的设计目的不是为了在没有某种类型的应用程序序列化的情况下支持真正的集群文件系统缓存一致性。
+如果需要客户端之间的绝对缓存一致性，应用程序应该使用文件锁定。或者，应用程序也可以使用 O_DIRECT 标志打开它们的文件以完全禁用数据缓存。
+.SS "File timestamp maintenance"
+NFS 服务器负责管理文件和目录时间戳 (\fBatime\fP、\fBctime\fP 和 \fBmtime\fP)。 当在 NFS
+服务器上访问或更新文件时，文件的时间戳将被更新，就像它们在应用程序的本地文件系统上一样。
+.P
+NFS 客户端缓存文件属性，包括时间戳。 当从 NFS 服务器检索文件的属性时，文件的时间戳在 NFS 客户端上更新。 因此，在 NFS
+服务器上的时间戳更新出现在 NFS 客户端上的应用程序之前可能会有一些延迟。
+.P
+为了符合 POSIX 文件系统标准，Linux NFS 客户端依靠 NFS 服务器来保持文件的 \fBmtime\fP 和 \fBctime\fP 时间戳正确最新。
+它通过在通过系统调用 (例如 \fBstat\fP(2)) 向应用程序报告 \fBmtime\fP 之前将本地数据更改刷新到服务器来实现这一点。
+.P
+然而，Linux 客户端更宽松地处理 \fBatime\fP 更新。 NFS 客户端通过缓存数据保持良好的性能，但这意味着通常更新 \fBatime\fP
+的应用程序读取不会反映到实际维护文件 \fBatime\fP 的服务器。
+.P
+由于这种缓存行为，Linux NFS 客户端不支持泛型 atime 相关的挂载选项。 有关这些选项的详细信息，请参见 \fBmount\fP(8)。
+.P
+特别是，\fBatime\fP/\fBnoatime\fP、\fBdiratime\fP/\fBnodiratime\fP、\fBrelatime\fP/\fBnorelatime\fP
+和 \fBstrictatime\fP/\fBnostrictatime\fP 挂载选项对 NFS 挂载没有影响。
+.P
+\fI/proc/mounts\fP 可能会报告在 NFS 挂载上设置了 \fBrelatime\fP 挂载选项，但实际上 \fBatime\fP 语义始终如此处所述，与
+\fBrelatime\fP 语义不同。
+.SS "Directory entry caching"
+Linux NFS 客户端缓存所有 NFS LOOKUP 请求的结果。 如果服务器上存在请求的目录条目，则结果称为 \fIpositive\fP 查找结果。
+如果所请求的目录条目在服务器上不存在 (即服务器返回 ENOENT)，则该结果称为 \fInegative\fP 查找结果。
+.P
+为了检测目录条目何时在服务器上添加或删除，Linux NFS 客户端监视目录的 mtime。 如果客户端检测到目录的 mtime
+发生变化，则客户端丢掉该目录的所有缓存 LOOKUP 结果。 由于目录的 mtime 是缓存属性，因此可能需要一些时间才能让客户端注意到它已更改。
+有关目录的 mtime 缓存多长时间的更多信息，请参见 \fBacdirmin\fP、\fBacdirmax\fP 和 \fBnoac\fP 安装选项的描述。
+.P
+缓存目录条目可提高不与其他客户端上的应用程序共享文件的应用程序的性能。
+但是，使用有关目录的缓存信息可能会干扰在多个客户端上同时运行并且需要快速检测文件的创建或删除的应用程序。 \fBlookupcache\fP
+挂载选项允许对目录条目缓存行为进行一些调整。
+.P
+在内核发布 2.6.28 之前，Linux NFS 客户端仅跟踪肯定的查找结果。
+这允许应用程序快速检测其他客户端创建的新目录条目，同时仍然提供缓存的一些性能优势。 如果应用程序依赖于 Linux NFS
+客户端以前的查找缓存行为，则可以使用 \fBlookupcache=positive\fP。
+.P
+如果客户端忽略其缓存并验证服务器的每个应用程序查找请求，则该客户端可以立即检测到何时创建或删除了另一个客户端的新目录条目。 您可以使用
+\fBlookupcache=none\fP 指定此行为。 如果客户端不缓存目录条目，则所需的额外 NFS 请求会导致性能下降。 与使用 \fBnoac\fP
+相比，禁用查找缓存会导致更少的性能损失，并且对 NFS 客户端缓存文件属性的方式没有影响。
+.P
+.SS "The sync mount option"
+NFS 客户端对待 \fBsync\fP 挂载选项的方式不同于某些其他文件系统 (有关泛型 \fBsync\fP 和 \fBasync\fP 挂载选项的说明，请参见
+\fBmount\fP(8))。 如果既未指定 \fBsync\fP 也未指定 \fBasync\fP (或者指定了 \fBasync\fP 选项)，则 NFS
+客户端会延迟向服务器发送应用程序写入，直到发生以下任一事件:
+.IP
+内存压力迫使回收系统内存资源。
+.IP
+应用程序使用 \fBsync\fP(2)、\fBmsync\fP(2) 或 \fBfsync\fP(3) 显式刷新文件数据。
+.IP
+应用程序关闭带有 \fBclose\fP(2) 的文件。
+.IP
+该文件是 locked/unlocked 通过 \fBfcntl\fP(2)。
+.P
+换句话说，在正常情况下，应用程序写入的数据可能不会立即出现在托管该文件的服务器上。
+.P
+如果在挂载点上指定了 \fBsync\fP 选项，则任何将数据写入该挂载点上的文件的系统调用都会导致在系统调用将控制权返回给用户空间之前将该数据刷新到服务器。
+这在客户端之间提供了更大的数据缓存一致性，但性能成本很高。
+.P
+应用程序可以使用 O_SYNC 打开标志强制应用程序对单个文件的写入立即转到服务器，而无需使用 \fBsync\fP 安装选项。
+.SS "Using file locks with NFS"
+Network Lock Manager 协议是一个单独的边带协议，用于管理 NFS 版本 3 中的文件锁。
+为了在客户端或服务器重启后支持锁定恢复，还需要第二个边带协议 \-\- 称为网络状态管理器协议。 在 NFS 版本 4 中，主要 NFS
+协议直接支持文件锁定，不使用 NLM 和 NSM sideband 协议。
+.P
+在大多数情况下，NLM 和 NSM 服务会自动启动，不需要额外的配置。 使用完全限定的域名配置所有 NFS 客户端，以确保 NFS
+服务器可以找到客户端以通知它们服务器重新启动。
+.P
+NLM 仅支持咨询文件锁。 要锁定 NFS 文件，请将 \fBfcntl\fP(2) 与 F_GETLK 和 F_SETLK 命令一起使用。 NFS
+客户端将通过 \fBflock\fP(2) 获得的文件锁转换为建议锁。
+.P
+当安装不支持 NLM 协议的服务器时，或者当通过阻止 NLM 服务端口的防火墙安装 NFS 服务器时，指定 \fBnolock\fP 安装选项。使用 NFS
+挂载 \fI/var\fP 时，必须使用 \fBnolock\fP 选项禁用 NLM 锁定，因为 \fI/var\fP 包含 Linux 上的 NLM 实现使用的文件。
+.P
+还可能建议指定 \fBnolock\fP 选项以提高在单个客户端上运行并广泛使用文件锁的专有应用程序的性能。
+.SS "NFS version 4 caching features"
+NFS 版本 4 客户端的数据和元数据缓存行为与早期版本类似。 但是，NFS 版本 4 添加了两个改进缓存行为的，特性: \fIchange attributes\fP 和 \fIfile delegation\fP。
+.P
+\fIchange attribute\fP 是 NFS 文件和目录元数据的新部分，用于跟踪数据更改。
+它取代了文件修改和更改时间戳的使用，作为客户端验证其缓存内容的一种方式。 但是，更改属性独立于服务器或客户端上的时间戳分辨率。
+.P
+\fIfile delegation\fP 是 NFS 版本 4 客户端和服务器之间的合同，它允许客户端临时处理文件，就好像没有其他客户端正在访问它一样。
+如果另一个客户端试图访问该文件，则服务器 promises 通知客户端 (通过回调请求)。
+将文件委托给客户端后，客户端可以主动缓存该文件的数据和元数据，而无需联系服务器。
+.P
+文件委托有两种类型: \fIread\fP 和 \fIwrite\fP。 \fIread\fP 委托意味着服务器通知客户端任何其他客户端想要写入文件。 \fIwrite\fP
+委托意味着客户端会收到有关读取或写入访问者的通知。
+.P
+服务器在文件打开时授予文件委托，并且当另一个客户端想要访问与已授予的任何委托冲突的文件时，可以随时撤回委托。 不支持对目录的委派。
+.P
+为了支持委托回调，服务器在客户端与服务器的初始联系期间检查到客户端的网络返回路径。 如果无法与客户端建立联系，则服务器不会向该客户端授予任何委托。
+.SH "SECURITY CONSIDERATIONS"
+NFS 服务器控制对文件数据的访问，但它们依赖于它们的 RPC 实现来提供 NFS 请求的身份验证。 传统的 NFS
+访问控制模仿本地文件系统中提供的标准模式位访问控制。 传统的 RPC 认证是用一个数字代表每个用户 (通常是用户自己的
+uid)，一个数字代表用户所在的组 (用户的 gid)，一组最多 16 个辅助组号代表用户可能加入的其他组成为会员。
+.P
+通常，文件数据和用户 ID 值在网络上显示为未加密 (即 "in the clear")。 此外，NFS 版本 2 和 3
+使用单独的边带协议来安装、锁定和解锁文件，以及报告客户端和服务器的系统状态。 这些辅助协议不使用身份验证。
+.P
+除了将这些边带协议与主要 NFS 协议相结合之外，NFS 版本 4 还引入了更高级的访问控制、身份验证和传输中数据保护形式。 NFS 版本 4
+规范要求支持提供 per\-RPC 完整性检查和加密的强身份验证和安全风格。 因为 NFS 版本 4 将边带协议的数量合并到主要 NFS
+协议中，所以新的安全特性适用于所有 NFS 版本 4 操作，包括挂载、文件锁定等。 RPCGSS 身份验证也可以与 NFS 版本 2 和 3
+一起使用，但它不保护它们的边带协议。
+.P
+\fBsec\fP 挂载选项指定用于代表该 NFS 挂载点上的用户进行操作的安全类型。 指定 \fBsec=krb5\fP 可在每个 RPC
+请求中提供用户身份的加密证明。 这为访问服务器上数据的用户的身份提供了强有力的验证。 请注意，除了添加此安装选项之外，还需要其他配置才能启用
+Kerberos 安全性。 有关详细信息，请参见 \fBrpc.gssd\fP(8) 手册页。
+.P
+支持两种额外的 Kerberos 安全性: \fBkrb5i\fP 和 \fBkrb5p\fP。 \fBkrb5i\fP 安全风格为每个 RPC
+请求中的数据未被篡改提供了强大的加密保证。 \fBkrb5p\fP 安全风格对每个 RPC 请求进行加密，以防止数据在网络传输过程中暴露;
+但是，在使用完整性检查或加密时预计会产生一些性能影响。 还提供对其他形式的加密安全性的类似支持。
+.SS "NFS version 4 filesystem crossing"
+NFS 版本 4 协议允许客户端在客户端跨入服务器上的新文件系统时重新协商安全风格。 新协商的风格只影响新文件系统的访问。
+.P
+这种协商通常发生在客户端从服务器的伪 fs 进入服务器导出的物理文件系统之一时，该文件系统通常具有比伪 fs 更严格的安全设置。
+.SS "NFS version 4 Leases"
+在 NFS 版本 4 中，租约是服务器不可撤销地授予客户端文件锁的期限。 一旦租约到期，服务器可能会撤销这些锁。 客户端定期更新租约以防止锁被撤销。
+.P
+NFS 版本 4 服务器重新启动后，每个客户端都会在操作可以继续之前告知服务器其租约下的现有文件打开和锁定状态。
+如果客户端重新启动，服务器会释放与该客户端租约相关的所有打开和锁定状态。
+.P
+因此，在建立租约时，客户端必须向服务器表明自己的身份。 每个客户端都提供一个任意字符串以区别于其他客户端。 客户端管理员可以使用
+\fInfs4.nfs4_unique_id\fP 模块参数补充默认身份字符串，以避免与其他客户端身份字符串发生冲突。
+.P
+客户端在建立租约时也使用独特的安全风格和主体。
+如果两个客户端提供相同的身份字符串，服务器可以使用客户端主体来区分它们，从而安全地防止一个客户端干扰另一个的租约。
+.P
+Linux NFS 客户端在每个 NFS 版本 4 服务器上建立一个租约。 租约管理操作 (例如租约更新)
+不是代表特定文件、锁、用户或安装点完成的，而是代表拥有该租约的客户端完成的。
+客户端在客户端重新启动时使用一致的身份字符串、安全风格和主体，以确保服务器能够及时获得过期的租约状态。
+.P
+当 Kerberos 在 Linux NFS 客户端上配置时 (即，该客户端上有一个 \fI/etc/krb5.keytab\fP)，客户端会尝试使用
+Kerberos 安全风格来执行其租约管理操作。 Kerberos 为每个客户端提供安全的身份验证。 默认情况下，客户端为此目的在其
+\fI/etc/krb5.keytab\fP 中使用 \fIhost/\fP 或 \fInfs/\fP 服务主体，如 \fBrpc.gssd\fP(8) 中所述。
+.P
+如果客户端配置了 Kerberos，但服务器没有配置，或者如果客户端没有密钥表或必需的服务主体，则客户端使用 \fIAUTH_SYS\fP 和 UID 0
+进行租约管理。
+.SS "Using non\-privileged source ports"
+NFS 客户端通常通过网络套接字与 NFS 服务器通信。 套接字的每一端都被分配了一个端口值，它只是一个介于 1 和 65535
+之间的数字，用于区分同一 IP 地址的套接字端点。 套接字由一个元组唯一定义，该元组包括传输协议 (TCP 或 UDP) 以及两个端点的端口值和 IP
+地址。
+.P
+NFS 客户端可以为其套接字选择任何源端口值，但通常选择 \fIprivileged\fP 端口。 特权端口是小于 1024 的端口值。 只有具有 root
+权限的进程才能创建具有特权源端口的套接字。
+.P
+可以选择的特权源端口的确切范围由一对 sysctl 设置，以避免选择众所周知的端口，例如 ssh 使用的端口。 这意味着 NFS
+客户端可用的源端口数，以及因此可以同时使用的套接字连接数，实际上仅限于几百个。
+.P
+如上所述，传统的默认 NFS 身份验证方案 (称为 AUTH_SYS) 依赖于发送本地 UID 和 GID 编号来识别发出 NFS 请求的用户。 NFS
+服务器假设如果连接来自特权端口，则此连接上的 NFS 请求中的 UID 和 GID 编号已由客户端的内核或其他一些本地机构验证。
+这是一个容易欺骗的系统，但在受信任主机之间的受信任物理网络上，它完全足够了。
+.P
+粗略地说，一个套接字用于每个 NFS 挂载点。 如果客户端也可以使用非特权源端口，则允许的套接字数量以及并发挂载点的最大数量会大得多。
+.P
+使用非特权源端口可能会在某种程度上损害服务器安全性，因为 AUTH_SYS 挂载点上的任何用户现在在发出 NFS 请求时都可以伪装成任何其他用户。
+因此，默认情况下 NFS 服务器不支持此功能。 他们通常通过导出选项明确允许它。
+.P
+为了在允许尽可能多的挂载点的同时保持良好的安全性，最好仅在服务器和客户端都需要强身份验证 (例如 Kerberos) 时才允许非特权客户端连接。
+.SS "Mounting through a firewall"
+防火墙可能驻留在 NFS 客户端和服务器之间，或者客户端或服务器可能通过 IP 过滤规则阻止其自己的某些端口。 仍然可以通过防火墙安装 NFS
+服务器，尽管某些 \fBmount\fP(8) 命令的自动服务端点发现机制可能不起作用; 这需要您通过 NFS 安装选项提供特定的端点详细信息。
+.P
+NFS 服务器通常运行一个 portmapper 或 rpcbind 守护进程来向客户端公布它们的服务端点。客户端使用 rpcbind 守护进程来确定:
+.IP
+每个基于 RPC 的服务使用什么网络端口
+.IP
+每个基于 RPC 的服务支持哪些传输协议
+.P
+rpcbind 守护进程使用众所周知的端口号 (111) 来帮助客户端找到服务端点。 尽管 NFS 通常使用标准端口号 (2049)，但 NLM
+服务等辅助服务可以随机选择任何未使用的端口号。
+.P
+常见的防火墙配置会阻止众所周知的 rpcbind 端口。 在没有 rpcbind 服务的情况下，服务器管理员固定 NFS
+相关服务的端口号，以便防火墙可以允许访问特定的 NFS 服务端口。 然后，客户端管理员通过 \fBmount\fP(8) 命令的 \fBmountport\fP
+选项指定 mountd 服务的端口号。 如果防火墙阻止其中一种传输，则可能还需要强制使用 TCP 或 UDP。
+.SS "NFS Access Control Lists"
+Solaris 允许 NFS 版本 3 客户端直接访问存储在其本地文件系统中的 POSIX 访问控制列表。 这种称为 NFSACL
+的专有边带协议提供了比模式位更丰富的访问控制。 Linux 实现此协议是为了与 Solaris NFS 实现兼容。 然而，NFSACL 协议从未成为
+NFS 版本 3 规范的标准部分。
+.P
+NFS 版本 4 规范要求新版本的访问控制列表在语义上比 POSIX ACL 更丰富。 NFS 版本 4 ACL 与 POSIX ACL 不完全兼容;
+因此，在混合 POSIX ACL 和 NFS 版本的环境中需要在两者之间进行一些转换 4.
+.SH "THE REMOUNT OPTION"
+可以使用 \fBremount\fP 选项在 NFS 挂载点上修改 \fBrw\fP 和 \fBsync\fP 等泛型挂载选项。 有关泛型安装选项的更多信息，请参见
+\fBmount\fP(8)。
+.P
+除了少数例外，NFS 特定的选项在重新安装期间无法修改。 例如，底层传输或 NFS 版本不能通过重新安装来更改。
+.P
+在使用 \fBnoac\fP 选项安装的 NFS 文件系统上执行重新安装可能会产生意想不到的后果。 \fBnoac\fP 选项是泛型选项 \fBsync\fP 和 NFS
+特定选项 \fBactimeo=0\fP 的组合。
+.SS "Unmounting after a remount"
+对于使用 NFS 版本 2 或 3 的安装点，NFS umount 子命令取决于了解用于执行 MNT 操作的原始安装选项集。 这些选项通过 NFS
+mount 子命令存储在磁盘上，并且可以通过重新挂载 erased。
+.P
+为确保在重新挂载期间保存的挂载选项不是 erased，请在重新挂载期间指定本地挂载目录或服务器主机名和导出路径名，但不能同时指定两者。 例如，
+.P
+.nf
+.ta 8n
+	mount \-o remount,ro /mnt
+.fi
+.P
+将安装选项 \fBro\fP 与已保存在磁盘上的安装选项合并，用于安装在 /mnt 的 NFS 服务器。
+.SH FILES
+.TP  1.5i
+\fI/etc/fstab\fP
+文件系统表
+.TP  1.5i
+\fI/etc/nfsmount.conf\fP
+NFS 挂载的配置文件
+.SH NOTES
+在 2.4.7 之前，Linux NFS 客户端不支持 NFS over TCP。
+.P
+在 2.4.20 之前，Linux NFS 客户端使用启发式方法来确定缓存的文件数据是否仍然有效，而不是使用上述标准的接近打开的缓存一致性方法。
+.P
+从 2.4.22 开始，Linux NFS 客户端使用基于 Van Jacobsen 的 RTT 估计器来确定在 UDP 上使用 NFS
+时的重传超时值。
+.P
+2.6.0 之前，Linux NFS 客户端不支持 NFS 版本 4.
+.P
+在 2.6.8 之前，当 \fBrsize\fP 和 \fBwsize\fP 设置小于系统的页面大小时，Linux NFS 客户端仅使用同步读写。
+.P
+Linux 客户端对协议版本的支持取决于内核是否使用选项
+CONFIG_NFS_V2、CONFIG_NFS_V3、CONFIG_NFS_V4、CONFIG_NFS_V4_1 和 CONFIG_NFS_V4_2
+构建。
+.SH "SEE ALSO"
+\fBfstab\fP(5), \fBmount\fP(8), \fBumount\fP(8), \fBmount.nfs\fP(5), \fBumount.nfs\fP(5),
+\fBexports\fP(5), \fBnfsmount.conf\fP(5), \fBnetconfig\fP(5), \fBipv6\fP(7), \fBnfsd\fP(8),
+\fBsm\-notify\fP(8), \fBrpc.statd\fP(8), \fBrpc.idmapd\fP(8), \fBrpc.gssd\fP(8),
+\fBrpc.svcgssd\fP(8), \fBkerberos\fP(1)
+.sp
+UDP 规范的 RFC 768。
+.br
+TCP 规范的 RFC 793。
+.br
+NFS 版本 3 规范的 RFC 1813。
+.br
+XDR 规范的 RFC 1832。
+.br
+RFC 1833 用于 RPC 绑定规范。
+.br
+RFC 2203 用于 RPCSEC GSS API 协议规范。
+.br
+NFS 版本 4.0 规范的 RFC 7530。
+.br
+NFS 版本 4.1 规范的 RFC 5661。
+.br
+NFS 版本 4.2 规范的 RFC 7862。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

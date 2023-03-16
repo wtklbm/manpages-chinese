@@ -1,0 +1,165 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 2006 Silicon Graphics, Inc.
+.\"                               Christoph Lameter
+.\"
+.\" %%%LICENSE_START(VERBATIM_TWO_PARA)
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\" %%%LICENSE_END
+.\"
+.\" FIXME Should programs normally be using move_pages() directly, or should
+.\" they rather be using interfaces in the numactl package?
+.\" (e.g., compare with recommendation in mbind(2)).
+.\" Does this page need to give advice on this topic?
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH move_pages 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+move_pages \- 将进程的各个页面移动到另一个节点
+.SH LIBRARY
+NUMA (非统一内存访问) 策略库 (\fIlibnuma\fP、\fI\-lnuma\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <numaif.h>\fP
+.PP
+\fBlong move_pages(int \fP\fIpid\fP\fB, unsigned long \fP\fIcount\fP\fB, void *\fP\fIpages\fP\fB[.\fP\fIcount\fP\fB],\fP
+\fB                const int \fP\fInodes\fP\fB[.\fP\fIcount\fP\fB], int \fP\fIstatus\fP\fB[.\fP\fIcount\fP\fB], int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmove_pages\fP() 将进程 \fIpid\fP 指定的 \fIpages\fP 移动到 \fInodes\fP 指定的内存节点。 移动的结果反映在
+\fIstatus\fP 中。 \fIflags\fP 表示对要移动的页面的约束。
+.PP
+\fIpid\fP 是要移动页面的进程的 ID。 如果 \fIpid\fP 为 0，则 \fBmove_pages\fP() 移动调用进程的页面。
+.PP
+要在另一个进程中移动页面需要以下权限:
+.IP \[bu] 3
+直到并包括 Linux 4.12: 调用者必须具有特权 (\fBCAP_SYS_NICE\fP)，或者调用进程的真实或有效用户 ID
+必须与目标进程的真实或已保存的用户 ID 相匹配。
+.IP \[bu]
+.\" commit 197e7e521384a23b9e585178f3f11c9fa08274b9
+旧规则允许调用者发现内核做出的各种虚拟地址选择，这可能导致地址空间布局随机化失败，因为进程拥有与调用者相同的 UID，规则从 Linux 4.13
+开始更改。 自 Linux 4.13 起，权限由针对目标进程的 ptrace 访问模式 \fBPTRACE_MODE_READ_REALCREDS\fP
+检查控制; 请参见 \fBptrace\fP(2)。
+.PP
+\fIcount\fP 是要移动的页数。 它定义了三个数组 \fIpages\fP、\fInodes\fP 和 \fIstatus\fP 的大小。
+.PP
+.\" FIXME Describe the result if pointers in the 'pages' array are
+.\" not aligned to page boundaries
+\fIpages\fP 是指向应该移动的页面的指针数组。 这些是应该与页面边界对齐的指针。 地址指定为 \fIpid\fP 指定的进程所见。
+.PP
+\fInodes\fP 是一个整数数组，指定每个页面的所需位置。 数组中的每个元素都是一个节点号。 \fInodes\fP 也可以为
+NULL，在这种情况下，\fBmove_pages\fP() 不会移动任何页面，而是返回 \fIstatus\fP 数组中每个页面当前所在的节点。
+可能需要获取每个页面的状态以确定需要移动的页面。
+.PP
+\fIstatus\fP 是一个整数数组，返回每个页面的状态。 仅当 \fBmove_pages\fP() 未返回错误时，该数组才包含有效值。
+将数组预初始化为不能代表真实 numa 节点的值或状态数组的有效错误可能有助于识别已迁移的页面。
+.PP
+\fIflags\fP 指定要移动的页面类型。 \fBMPOL_MF_MOVE\fP 意味着只有进程独占使用的页面才会被移动。
+\fBMPOL_MF_MOVE_ALL\fP 表示多个进程之间共享的页面也可以移动。 该进程必须具有 (\fBCAP_SYS_NICE\fP) 特权才能使用
+\fBMPOL_MF_MOVE_ALL\fP。
+.SS "Page states in the status array"
+在 \fIstatus\fP 数组的每个元素中可以返回以下值。
+.TP 
+\fB0..MAX_NUMNODES\fP
+标识页面所在的节点。
+.TP 
+\fB\-EACCES\fP
+页面被多个进程映射，只有指定 \fBMPOL_MF_MOVE_ALL\fP 才能移动。
+.TP 
+\fB\-EBUSY\fP
+该页面当前正忙，无法移动。 稍后再试。 如果一个页面正在经历 I/O 或另一个内核子系统正在对该页面进行引用，则会发生这种情况。
+.TP 
+\fB\-EFAULT\fP
+这是一个零页或内存区域未被进程映射。
+.TP 
+\fB\-EIO\fP
+无法写回页面。 该页面必须被写回才能移动它，因为该页面是脏的，并且文件系统不提供允许移动脏页面的迁移函数。
+.TP 
+\fB\-EINVAL\fP
+不能移动脏页。 文件系统不提供迁移函数，也没有回写页面的能力。
+.TP 
+\fB\-ENOENT\fP
+该页面不存在。
+.TP 
+\fB\-ENOMEM\fP
+无法在目标节点上分配内存。
+.SH "RETURN VALUE"
+.\" FIXME . Is the following quite true: does the wrapper in numactl
+.\" do the right thing?
+成功时 \fBmove_pages\fP() 返回零。 出错时，它返回 \-1，并设置 \fIerrno\fP 以指示错误。 如果返回正值，则为未迁移的页数。
+.SH ERRORS
+.TP 
+\fBPositive value\fP
+.\" commit a49bd4d7163707de377aee062f17befef6da891b
+非致命原因导致的非迁移页数 (自 Linux 4.17 起)。
+.TP 
+\fBE2BIG\fP
+.\" commit 3140a2273009c01c27d316f35ab76a37e105fdd8
+页面太多，无法移动。 从 Linux 2.6.29 开始，内核不再产生这个错误。
+.TP 
+\fBEACCES\fP
+.\" FIXME Clarify "current cpuset" in the description of the EACCES error.
+.\" Is that the cpuset of the caller or the target?
+当前 cpuset 不允许其中一个目标节点。
+.TP 
+\fBEFAULT\fP
+无法访问参数数组。
+.TP 
+\fBEINVAL\fP
+指定了 \fBMPOL_MF_MOVE\fP 和 \fBMPOL_MF_MOVE_ALL\fP 以外的标志，或者试图迁移内核线程的页面。
+.TP 
+\fBENODEV\fP
+其中一个目标节点不在线。
+.TP 
+\fBEPERM\fP
+调用者在没有足够权限 (\fBCAP_SYS_NICE\fP) 的情况下指定了 \fBMPOL_MF_MOVE_ALL\fP。
+或者，调用者试图移动属于另一个用户的进程的页面，但没有这样做的权限 (\fBCAP_SYS_NICE\fP)。
+.TP 
+\fBESRCH\fP
+进程不存在。
+.SH VERSIONS
+\fBmove_pages\fP() 最早出现在 Linux 2.6.18。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+有关库支持的信息，请参见 \fBnuma\fP(7)。
+.PP
+.\" FIXME Clarify "current cpuset".  Is that the cpuset of the caller
+.\" or the target?
+使用带有 \fBMPOL_F_MEMS_ALLOWED\fP 标志的 \fBget_mempolicy\fP(2) 来获取当前 cpuset 允许的节点集。
+请注意，此信息随时可能因 cpuset 的手动或自动重新配置而更改。
+.PP
+使用此函数可能会导致其位置 (node) 违反为指定地址建立的内存策略的页面 (请参见 \fBmbind\fP(2)) 或者指定进程 (请参见
+\fBset_mempolicy\fP(2)).  也就是说，内存策略不限制 \fBmove_pages\fP() 使用的目标节点。
+.PP
+\fI<numaif.h>\fP 标头不包含在 glibc 中，但需要安装 \fIlibnuma\-devel\fP 或类似的包。
+.SH "SEE ALSO"
+\fBget_mempolicy\fP(2), \fBmbind\fP(2), \fBset_mempolicy\fP(2), \fBnuma\fP(3),
+\fBnuma_maps\fP(5), \fBcpuset\fP(7), \fBnuma\fP(7), \fBmigratepages\fP(8),
+\fBnumastat\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

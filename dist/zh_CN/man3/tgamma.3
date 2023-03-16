@@ -1,0 +1,158 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2002 Walter Harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Based on glibc infopages
+.\" and Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\" Modified 2004-11-15, fixed error noted by Fabian Kreutz
+.\"	 <kreutz@dbs.uni-hannover.de>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tgamma 3 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+tgamma, tgammaf, tgammal \- 真正的伽玛函数
+.SH LIBRARY
+数学库 (\fIlibm\fP、\fI\-lm\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <math.h>\fP
+.PP
+\fBdouble tgamma(double \fP\fIx\fP\fB);\fP
+\fBfloat tgammaf(float \fP\fIx\fP\fB);\fP
+\fBlong double tgammal(long double \fP\fIx\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBtgamma\fP(), \fBtgammaf\fP(), \fBtgammal\fP():
+.nf
+    _ISOC99_ 源 ||_POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+这些函数计算出 \fIx\fP 的 Gamma 函数。
+.PP
+Gamma 函数定义为
+.PP
+.RS
+Gamma(x) = 从 0 到 t\[ha](x\-1) e\[ha]\-t dt 无穷大的积分
+.RE
+.PP
+它是为除非正整数以外的每个实数定义的。 对于非负整数 \fIm\fP，一个有
+.PP
+.RS
+Gamma(m+1) = m!
+.RE
+.PP
+并且，更一般地，对于所有 \fIx\fP:
+.PP
+.RS
+Gamma(x+1) = x * Gamma(x)
+.RE
+.PP
+此外，以下对于极点以外的所有 \fIx\fP 值均有效:
+.PP
+.RS
+Gamma(x) * Gamma(1 \- x) = PI / sin(PI * x)
+.RE
+.SH "RETURN VALUE"
+成功时，这些函数返回 Gamma(x)。
+.PP
+如果 \fIx\fP 是 NaN，则返回 NaN。
+.PP
+如果 \fIx\fP 为正无穷大，则返回正无穷大。
+.PP
+如果 \fIx\fP 是一个 negative 整数，或者是 negative 无穷大，则会发生域错误，并返回 NaN。
+.PP
+如果结果溢出，则发生范围错误，而函数分别返回 \fBHUGE_VAL\fP、\fBHUGE_VALF\fP 或 \fBHUGE_VALL\fP，并带有正确的数学符号。
+.PP
+如果结果下溢，则发生范围错误，且函数返回 0，并带有正确的数学符号。
+.PP
+如果 \fIx\fP 为 \-0 或 + 0，则出现极点错误，函数分别返回 \fBHUGE_VAL\fP、\fBHUGE_VALF\fP 或 \fBHUGE_VALL\fP，与
+0.
+.SH ERRORS
+有关如何确定调用这些函数时是否发生错误的信息，请参见 \fBmath_error\fP(7)。
+.PP
+可能会出现以下错误:
+.TP 
+Domain error: \fIx\fP is a negative integer, or negative infinity
+\fIerrno\fP 设置为 \fBEDOM\fP。 引发无效浮点异常 (\fBFE_INVALID\fP) (但请参见 BUGS)。
+.TP 
+Pole error: \fIx\fP is +0 or \-0
+\fIerrno\fP 设置为 \fBERANGE\fP。 引发被零除浮点异常 (\fBFE_DIVBYZERO\fP)。
+.TP 
+Range error: result overflow
+\fIerrno\fP 设置为 \fBERANGE\fP。 引发溢出浮点异常 (\fBFE_OVERFLOW\fP)。
+.PP
+glibc 还会给出以下未在 C99 或 POSIX.1\-2001 中指定的错误。
+.TP 
+Range error: result underflow
+.\" e.g., tgamma(-172.5) on glibc 2.8/x86-32
+.\" .I errno
+.\" is set to
+.\" .BR ERANGE .
+.\" glibc (as at 2.8) also supports an inexact
+.\" exception for various cases.
+引发下溢浮点异常 (\fBFE_UNDERFLOW\fP)，并将 \fIerrno\fP 设置为 \fBERANGE\fP。
+.SH VERSIONS
+这些函数是在 glibc 2.1 中添加的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBtgamma\fP(),
+\fBtgammaf\fP(),
+\fBtgammal\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+C99, POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+这个函数必须称为 "true gamma function"，因为已经有一个函数 \fBgamma\fP(3) 返回其他内容 (有关详细信息，请参见
+\fBgamma\fP(3))。
+.SH BUGS
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=6809
+在 glibc 2.18 之前，这些函数的 glibc 实现并没有在 \fIx\fP 为 negative 无穷大时将 \fIerrno\fP 设置为
+\fBEDOM\fP。
+.PP
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=6810
+在 glibc 2.19 之前，这些函数的 glibc 实现没有在下溢范围错误上将 \fIerrno\fP 设置为 \fBERANGE\fP。
+.PP
+.\"
+在 glibc 版本 2.3.3 和更早版本中，+0 或 \-0 的参数错误地产生域错误 (\fIerrno\fP 设置为 \fBEDOM\fP 并引发
+\fBFE_INVALID\fP 异常)，而不是极点错误。
+.SH "SEE ALSO"
+\fBgamma\fP(3), \fBlgamma\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

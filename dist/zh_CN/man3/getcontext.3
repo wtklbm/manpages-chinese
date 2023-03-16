@@ -1,0 +1,113 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2001 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getcontext 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+getcontext, setcontext \- 获取或设置用户上下文
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <ucontext.h>\fP
+.PP
+\fBint getcontext(ucontext_t *\fP\fIucp\fP\fB);\fP
+\fBint setcontext(const ucontext_t *\fP\fIucp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+在类似 System V 的环境中，有 \fI<ucontext.h>\fP 中定义的两种类型 \fImcontext_t\fP 和
+\fIucontext_t\fP 以及允许进程内多个控制线程之间的用户级上下文切换的四个函数
+\fBgetcontext\fP()、\fBsetcontext\fP()、\fBmakecontext\fP(3) 和 \fBswapcontext\fP(3)。
+.PP
+\fImcontext_t\fP 类型与机器相关且不透明。 \fIucontext_t\fP 类型是一个结构体，至少有以下字段:
+.PP
+.in +4n
+.EX
+typedef struct ucontext_t {
+    struct ucontext_t *uc_link;
+    sigset_t          uc_sigmask;
+    stack_t           uc_stack;
+    mcontext_t        uc_mcontext;
+    ...
+} ucontext_t;
+.EE
+.in
+.PP
+\fIsigset_t\fP 和 \fIstack_t\fP 在 \fI<signal.h>\fP 中定义。 这里 \fIuc_link\fP
+指向当前上下文终止时将恢复的上下文 (如果当前上下文是使用 \fBmakecontext\fP(3)) 创建的，则 \fIuc_sigmask\fP
+是在此上下文中阻塞的信号集 (请参见 \fBsigprocmask\fP(2))，\fIuc_stack\fP 是此上下文使用的栈 (请参见
+\fBsigaltstack\fP(2)) 和 \fIuc_mcontext\fP 是已保存上下文的特定于机器的表示，其中包括调用线程的机器寄存器。
+.PP
+函数 \fBgetcontext\fP() 将 \fIucp\fP 指向的结构体初始化为当前活动的上下文。
+.PP
+函数 \fBsetcontext\fP() 恢复 \fIucp\fP 指向的用户上下文。 成功的调用不会返回。 上下文应该已经通过调用
+\fBgetcontext\fP() 或 \fBmakecontext\fP(3) 获得，或者作为第三个参数接收到信号处理程序 (请参见
+\fBsigaction\fP(2)) 中对 \fBSA_SIGINFO\fP 标志的讨论)。
+.PP
+如果上下文是通过 \fBgetcontext\fP() 的调用获得的，程序将继续执行，就好像这个调用刚刚返回一样。
+.PP
+如果上下文是通过调用 \fBmakecontext\fP(3) 获得的，则程序执行将继续调用到函数 \fIfunc\fP，指定为调用到
+\fBmakecontext\fP(3) 的第二个函数。 当函数 \fIfunc\fP 返回时，我们继续将结构体 \fIucp\fP 的 \fIuc_link\fP
+成员指定为该调用到 \fBmakecontext\fP(3) 的第一个参数。 当该成员为 NULL 时，线程退出。
+.PP
+如果上下文是通过调用信号处理程序获得的，那么旧的标准文本会说 "program execution continues with the program
+instruction following the instruction interrupted by the signal"。 但是在 SUSv2
+中去掉了这句话，现在的判决是 "the result is unspecified"。
+.SH "RETURN VALUE"
+成功时 \fBgetcontext\fP() 返回 0，\fBsetcontext\fP() 不返回。 出错时，都返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+没有定义。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetcontext\fP(),
+\fBsetcontext\fP()
+T}	Thread safety	MT\-Safe race:ucp
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+SUSv2, POSIX.1\-2001.  POSIX.1\-2008 删除了 \fBgetcontext\fP()
+的规范，引用了可移植性问题，并建议重写应用程序以改为使用 POSIX 线程。
+.SH NOTES
+这种机制最早的化身是 \fBsetjmp\fP(3)/\fBlongjmp\fP(3) 机制。 由于这没有定义信号上下文的处理，下一阶段是
+\fBsigsetjmp\fP(3)/\fBsiglongjmp\fP(3) 对。 目前的机制提供了更多的控制。 另一方面，没有简单的方法来检测
+\fBgetcontext\fP() 的返回是来自第一个调用还是通过 \fBsetcontext\fP() 调用。
+用户必须发明他们自己的记录设备，并且寄存器变量不会做，因为寄存器被恢复。
+.PP
+当信号发生时，当前用户上下文被保存，内核为信号处理程序创建一个新的上下文。 不要让处理程序使用
+\fBlongjmp\fP(3):，它是未定义的上下文会发生什么。 请改用 \fBsiglongjmp\fP(3) 或 \fBsetcontext\fP()。
+.SH "SEE ALSO"
+\fBsigaction\fP(2), \fBsigaltstack\fP(2), \fBsigprocmask\fP(2), \fBlongjmp\fP(3),
+\fBmakecontext\fP(3), \fBsigsetjmp\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

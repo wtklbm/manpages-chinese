@@ -1,0 +1,179 @@
+.\" -*- coding: UTF-8 -*-
+.\" tapestat manual page - (C) 2015 Hewlett-Packard Development Company, L.P.
+.\" Maintained by Sebastien Godard (sysstat <at> orange.fr)
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH TAPESTAT 1 "DECEMBER 2022" Linux "Linux User's Manual"
+.SH NAME
+tapestat \- 报告磁带统计信息。
+
+.SH SYNOPSIS
+\fBtapestat [ \-k | \-m ] [ \-t ] [ \-V ] [ \-y ] [ \-z ] [ \-\-human ] [\fP \fIinterval \fP\fB[ \fP\fIcount \fP\fB] ]\fP
+
+.SH DESCRIPTION
+\fBtapestat\fP 命令用于监视连接到系统的磁带机的活动。
+.PP
+\fBtapestat \fPcommand 生成的第一份报告提供有关自系统启动以来的时间的统计信息，除非使用 \fB\-y\fP 选项，当第一份报告被省略时。
+每个后续报告涵盖自上次报告以来的时间。
+.PP
+\fIinterval\fP 参数指定每次报告之间的时间间隔 (以秒为单位)。\fIcount\fP 参数可以与 \fIinterval \fPparameter
+一起指定。如果指定了 \fIcount \fPparameter，则 \fIcount\fP 的值决定了 \fIinterval \fPseconds
+相隔生成的报告数量。如果在没有 \fIcount\fP 参数的情况下指定 \fIinterval \fPparameter，则 \fBtapestat\fP
+命令会连续生成报告。
+
+.SH REPORT
+\fBtapestat\fP 报告提供连接到系统的每个磁带驱动器的统计信息。 显示以下数据:
+.IP r/s
+发出的读取数表示为在该时间间隔内平均每秒的读取数。
+.IP w/s
+发出的写入数表示为在该时间间隔内平均每秒的次数。
+.IP "kB_read/s | MB_read/s"
+以千字节 (默认情况下或如果选项 \fB\-k \fPused) 或兆字节 (如果使用选项 \fB\-m\fP) ) 表示的平均间隔内每秒读取的数据量。
+.IP "kB_wrtn/s | MB_wrtn/s"
+写入的数据量以千字节 (默认情况下或如果选项 \fB\-k \fPused) 或兆字节 (如果使用选项 \fB\-m\fP) ) 为间隔平均每秒。
+.IP %Rd
+Read percentage wait \- 等待读取请求完成所用时间的百分比。 时间是从请求被分派到 SCSI 中间层到它发出完成信号为止。
+.IP %Wr
+Write percentage wait \- 等待写请求完成所用时间的百分比。时间是从请求被分派到 SCSI 中间层到它发出完成信号为止。
+.IP %Oa
+总体等待百分比 \- 等待任何 I/O 请求完成 (读取、写入和其他) 所花费的时间间隔的百分比。
+.IP Rs/s
+I/Os 的数量，表示为在遇到非零残差值的时间间隔内平均每秒的数量。
+.IP Ot/s
+I/Os 的数量，以间隔内平均每秒的数量表示，包括在 "other" 中。其他 I/O 包括对磁带驱动程序进行的 ioctl
+调用和磁带驱动程序执行的隐式操作，例如关闭时倒带 (对于实现关闭时倒带的磁带设备)。它不包括使用磁带驱动程序之外的方法 (例如通过 sg ioctls)
+执行的任何 I/O。
+
+.SH OPTIONS
+.TP 
+\fB\-\-human\fP
+以人类可读格式打印大小 (例如 1.0k、1.2M 等) 使用此选项显示的单位将取代与度量相关的任何其他默认单位 (例如千字节、扇区...)。
+.TP 
+\fB\-k\fP
+以每秒千字节而不是兆字节为单位显示写入或读取的数据量。 该选项与 \fB\-m\fP 互斥。
+.TP 
+\fB\-m\fP
+以每秒兆字节而不是千字节显示写入或读取的数据量。 该选项与 \fB\-k\fP 互斥。
+.TP 
+\fB\-t\fP
+显示时间戳。时间戳格式可能取决于 \fBS_TIME_FORMAT \fPenvironment 变量的值 (见下文)。
+.TP 
+\fB\-V\fP
+打印版本并退出。
+.TP 
+\fB\-y\fP
+忽略自启动以来显示值的初始统计信息。
+.TP 
+\fB\-z\fP
+告诉 \fBtapestat\fP 忽略在采样期间没有活动的任何磁带的输出。
+
+.SH CONSIDERATIONS
+百分比值 (读取、写入或其他) 可能大于 100% (\fBtapestat\fP 命令永远不会显示大于 999 的百分比值)。 如果在间隔时间为 5
+秒的情况下倒带磁带需要 40 秒，则 %Oa 值在倒带完成之前的间隔中将显示为 0，然后在倒带完成时显示为大约 800%。
+
+如果磁带驱动器停止读取或写入然后重新启动 (即停止流式传输)，则 %Rd 和 %Wr 将观察到类似的值。在这种情况下，您可能会看到 r/s 或 w/s
+抛弃为零，并且继续读取或写入时 % Rd/%Wr 值可能高于 100 (取决于重新开始写入或读取所需的时间)。
+如果它经常发生，这只是一个问题，因为它可能会导致磁带磨损并影响备份时间。
+
+对于快速磁带驱动器，您可能会看到较低的等待时间百分比。 这并不表示磁带机有问题。对于较慢的磁带驱动器 (例如老一代 DDS 驱动器)，磁带
+(和磁带驱动器) 的速度比文件系统 I/O 慢得多，等待时间百分比可能更高。对于更快的磁带驱动器 (例如
+LTO)，等待时间的百分比可能会更低，因为由于更高的吞吐量，写入或读取磁带的程序将执行更多的文件系统 I/O。
+
+尽管磁带统计信息是在内核中使用原子变量实现的，但它们不能作为一个组以原子方式读取。所有统计值都是从 \fI/sys\fP
+下的不同文件中读取的，因此在为一个磁带驱动器读取不同文件时可能会出现 I/O 完成。这可能会导致设备的一组统计信息包含 I/O 完成之前和之后的一些值。
+
+此命令在计算每秒统计信息时使用向下舍入作为舍入方法。 例如，如果您正在使用 \fBdd \fPto 将一个磁带复制到另一个磁带并以 5 秒的间隔运行
+\fBtapestat\fP，并且在该间隔内有 3210 次写入和 3209 次读取，则 w/s 将显示 642，r/s 将显示 641 (641.8
+向下舍入为 641)。在这种情况下，如果复制的是 tar 存档 (块大小为 10k)，您还会看到 kB_read/s 和 kB_wrtn/s
+之间的差异为 2 (一个 I/O 10k 的大小除以 5 秒的间隔时间)。相反，如果有 3210 次写入和 3211 次读取，w/s 和 r/s
+都将显示 642，但您仍然会看到 2 kB/s 的 kB_read/s 和 kB_wrtn/s 值之间的差异。
+
+此命令以秒为单位提供间隔。但是在内部，间隔是按设备跟踪的，并且可能会对报告的每秒统计数据产生影响。
+捕获每组统计信息的时间与这些统计信息一起保存。当前时间和之前时间之间的差异将转换为毫秒以用于计算。 如果我们使用在使用 \fBdd\fP
+的两个磁带驱动器之间复制的 tar 存档示例，我们可以看看这对报告的统计数据有何影响。 如果两个设备都报告了 28900
+千字节的传输量，并且读取磁带驱动器的间隔为 5001 毫秒，而写入磁带驱动器的间隔为 5000 毫秒，则计算结果为 5778 kB_read/s 和
+5780 kB_wrtn/s。
+
+I/O 完成期间的一些检索统计数据、向下舍入和间隔期间的小差异对计算的统计数据的影响应该是最小的，但可能不为零。
+
+.SH ENVIRONMENT
+\fBtapestat\fP 命令考虑了以下环境变量:
+.TP 
+\fBS_COLORS\fP
+默认情况下，当输出连接到终端时，统计信息以颜色显示。 使用此变量更改设置。此变量的可能值为 \fInever\fP、\fIalways \fPor \fIauto\fP
+(后者等同于默认设置)。
+.br
+请注意，用于显示值的颜色 (红色、黄色或其他颜色) 并不能仅仅因为颜色而指示任何类型的问题。它仅表示不同的值范围。
+.TP 
+\fBS_COLORS_SGR\fP
+指定用于显示最终端统计信息的颜色和其他属性。 它的值是以冒号分隔的功能列表，默认为
+\fBI=32;22:N=34;1:W=35;1:X=31;1:Z=34;22\fP。 支持的功能是:
+.RS
+.TP 
+\fBI=\fP
+磁带名称的 SGR (选择图形再现) 子字符串。
+.TP 
+\fBN=\fP
+非零统计值的 SGR 子串。
+.TP 
+\fBW=\fP (or \fBM=\fP)
+百分比值在 75% 到 90% 范围内 (或在 10% 到 25% 范围内，具体取决于指标的含义) 的 SGR 子字符串。
+.TP 
+\fBX=\fP (or \fBH=\fP)
+百分比值大于或等于 90% (或小于或等于 10%，具体取决于指标的含义) 的 SGR 子字符串。
+.TP 
+\fBZ=\fP
+零值的 SGR 子串。
+.RE
+.TP 
+\fBS_TIME_FORMAT\fP
+如果此变量存在且其值为 \fBISO\fP，则在报告标题中打印日期时将忽略当前区域设置。\fBtapestat\fP 命令将改为使用 ISO 8601 格式
+(YYYY\-MM\-DD)。 使用选项 \fB\-t\fP 显示的时间戳也将符合 ISO 8601 格式。
+
+.SH BUGS
+必须安装 \fI/sys \fPfilesystem 才能使 \fBtapestat\fP 工作。它不适用于不支持 sysfs 的内核
+.PP
+此命令需要内核版本 4.2 或更高版本 (或磁带统计支持向后移植到更早的内核版本)。
+.PP
+Although \fBtapestat\fP speaks of kilobytes (kB), megabytes (MB)..., it
+actually uses kibibytes (kiB), mebibytes (MiB)...  1 kibibyte 等于 1024
+bytes，1 mebibyte 等于 1024 kibibytes。
+
+.SH FILES
+\fI/sys/class/scsi_tape/st<num>/stats/*\fP
+.RS
+磁带设备的统计文件。
+.RE
+.PP
+\fI/proc/uptime \fPcontains 系统正常运行时间。
+
+.SH AUTHOR
+Shane M. 的初步修订。西摩 (shane.seymour <at> hpe.com)
+.br
+由 Sebastien Godard 修改为 sysstat (sysstat <at> orange.fr)
+
+.SH "SEE ALSO"
+\fBiostat\fP(1), \fBmpstat\fP(1)
+.PP
+\fIhttps://github.com/sysstat/sysstat\fP
+.br
+\fIhttp://pagesperso\-orange.fr/sebastien.godard/\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

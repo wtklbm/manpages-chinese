@@ -1,0 +1,393 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is copyright (C) 1992 Drew Eckhardt,
+.\"     copyright (C) 1995 Michael Shields,
+.\"     copyright (C) 2001 Paul Sheer,
+.\"     copyright (C) 2006, 2019 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-05-18 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" Sun Feb 11 14:07:00 MET 1996  Martin Schulze  <joey@linux.de>
+.\"	* layout slightly modified
+.\"
+.\" Modified Mon Oct 21 23:05:29 EDT 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Thu Feb 24 01:41:09 CET 2000 by aeb
+.\" Modified Thu Feb  9 22:32:09 CET 2001 by bert hubert <ahu@ds9a.nl>, aeb
+.\" Modified Mon Nov 11 14:35:00 PST 2002 by Ben Woodard <ben@zork.net>
+.\" 2005-03-11, mtk, modified pselect() text (it is now a system
+.\"     call in Linux 2.6.16.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH select 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+选择、pselect、FD_CLR、FD_ISSET、FD_SET、FD_ZERO、fd_set \- 同步 I/O 多路复用
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/select.h>\fP
+.PP
+\fBtypedef\fP /* ...  */ \fBfd_set;\fP
+.PP
+\fBint select(int \fP\fInfds\fP\fB, fd_set *_Nullable restrict \fP\fIreadfds\fP\fB,\fP
+\fB           fd_set *_Nullable restrict \fP\fIwritefds\fP\fB,\fP
+\fB           fd_set *_Nullable restrict \fP\fIexceptfds\fP\fB,\fP
+\fB           struct timeval *_Nullable restrict \fP\fItimeout\fP\fB);\fP
+.PP
+\fBvoid FD_CLR(int \fP\fIfd\fP\fB, fd_set *\fP\fIset\fP\fB);\fP
+\fBint  FD_ISSET(int \fP\fIfd\fP\fB, fd_set *\fP\fIset\fP\fB);\fP
+\fBvoid FD_SET(int \fP\fIfd\fP\fB, fd_set *\fP\fIset\fP\fB);\fP
+\fBvoid FD_ZERO(fd_set *\fP\fIset\fP\fB);\fP
+.PP
+\fBint pselect(int \fP\fInfds\fP\fB, fd_set *_Nullable restrict \fP\fIreadfds\fP\fB,\fP
+\fB           fd_set *_Nullable restrict \fP\fIwritefds\fP\fB,\fP
+\fB           fd_set *_Nullable restrict \fP\fIexceptfds\fP\fB,\fP
+\fB           const struct timespec *_Nullable restrict \fP\fItimeout\fP\fB,\fP
+\fB           const sigset_t *_Nullable restrict \fP\fIsigmask\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpselect\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBWARNING\fP: \fBselect\fP() 只能监视小于 \fBFD_SETSIZE\fP (1024) 的文件描述符数 \[em]
+对于许多现代应用程序来说是一个不合理的低限制 \[em] 并且此限制不会改变。 所有现代应用程序都应该改用 \fBpoll\fP(2) 或
+\fBepoll\fP(7)，它们不受此限制。
+.PP
+.\"
+\fBselect\fP() 允许程序监视多个文件描述符，等待一个或多个文件描述符变为 "ready" 以进行某类 I/O 操作 (例如，输入可能)。
+如果可以执行相应的 I/O 操作 (例如，\fBread\fP(2) 或足够小的 \fBwrite\fP(2)) 而不会阻塞)，则认为文件描述符就绪。
+.SS fd_set
+.\"
+可以表示一组文件描述符的结构体类型。 根据 POSIX，一个 \fIfd_set\fP 结构体中文件描述符的最大数量是宏 \fBFD_SETSIZE\fP 的值。
+.SS "File descriptor sets"
+\fBselect\fP() 的主要参数是三个 "sets" 的文件描述符 (声明为 \fIfd_set\fP)
+类型，它允许调用者在指定的文件描述符集上等待三类事件。 如果没有文件描述符要监视相应的事件类，则每个 \fIfd_set\fP 参数都可以指定为 NULL。
+.PP
+\fBNote well\fP: 返回时，每个文件描述符集都被修改以指示当前哪些文件描述符是 "ready"。 因此，如果在循环中使用
+\fBselect\fP()，则在每个调用之前设置 \fImust be reinitialized\fP。
+.PP
+可以使用以下宏操作文件描述符集的内容:
+.TP 
+\fBFD_ZERO\fP()
+此宏清除 (从中删除所有文件描述符) \fIset\fP。 它应该被用作初始化文件描述符集的第一步。
+.TP 
+\fBFD_SET\fP()
+这个宏将文件描述符 \fIfd\fP 添加到 \fIset\fP。 添加已存在于集合中的文件描述符是空操作，不会产生错误。
+.TP 
+\fBFD_CLR\fP()
+这个宏从 \fIset\fP 中删除文件描述符 \fIfd\fP。 删除集合中不存在的文件描述符是空操作，不会产生错误。
+.TP 
+\fBFD_ISSET\fP()
+.\"
+\fBselect\fP() 根据下面描述的规则修改集合的内容。 调用 \fBselect\fP() 后，\fBFD_ISSET\fP()
+宏可用于测试文件描述符是否仍存在于集合中。 如果文件描述符 \fIfd\fP 存在于 \fIset\fP 中，则 \fBFD_ISSET\fP() 返回非零，否则返回零。
+.SS Arguments
+\fBselect\fP() 的参数如下:
+.TP 
+\fIreadfds\fP
+监视该集合中的文件描述符以查看它们是否已准备好读取。 如果读取操作不会阻塞，则文件描述符已准备好读取; 特别是，文件描述符也在文件末尾准备就绪。
+.IP
+\fBselect\fP() 返回后，\fIreadfds\fP 将清除所有文件描述符，除了那些准备好读取的文件描述符。
+.TP 
+\fIwritefds\fP
+监视该集合中的文件描述符以查看它们是否已准备好写入。 如果写操作不会阻塞，则文件描述符已准备好写入。
+但是，即使文件描述符指示为可写，大型写入仍可能会阻塞。
+.IP
+\fBselect\fP() 返回后，\fIwritefds\fP 将清除所有文件描述符，除了那些准备好写入的文件描述符。
+.TP 
+\fIexceptfds\fP
+监视此集合中的文件描述符以查找 "exceptional conditions"。 有关某些异常情况的示例，请参见 \fBpoll\fP(2) 中对
+\fBPOLLPRI\fP 的讨论。
+.IP
+在 \fBselect\fP() 返回后，\fIexceptfds\fP 将清除所有文件描述符，除了发生异常情况的文件描述符。
+.TP 
+\fInfds\fP
+此参数应设置为三组中任何一组中编号最大的文件描述符加 1。 检查每个集合中指示的文件描述符，直到达到此限制 (但请参见 BUGS)。
+.TP 
+\fItimeout\fP
+\fItimeout\fP 参数是一个 \fItimeval\fP 结构体 (如下所示)，它指定 \fBselect\fP() 应该阻塞等待文件描述符准备就绪的时间间隔。
+调用将阻塞，直到:
+.RS
+.IP \[bu] 3
+文件描述符准备就绪;
+.IP \[bu]
+调用被信号处理程序中断; or
+.IP \[bu]
+超时到期。
+.RE
+.IP
+请注意，\fItimeout\fP 间隔将向上舍入到系统时钟粒度，内核调度延迟意味着阻塞间隔可能会稍微超出。
+.IP
+如果 \fItimeval\fP 结构体的两个字段都为零，则 \fBselect\fP() 立即返回。 (这对于轮询很有用。)
+.IP
+.\"
+如果 \fItimeout\fP 被指定为 NULL，则 \fBselect\fP() 无限期地阻塞等待文件描述符准备就绪。
+.SS pselect()
+\fBpselect\fP() 系统调用允许应用程序安全地等待，直到文件描述符准备好或捕获到信号。
+.PP
+\fBselect\fP() 和 \fBpselect\fP() 的操作是相同的，除了以下三个区别:
+.IP \[bu] 3
+\fBselect\fP() 使用的超时是 \fIstruct timeval\fP (秒和微秒)，而 \fBpselect\fP() 使用 \fIstruct timespec\fP (秒和纳秒)。
+.IP \[bu]
+\fBselect\fP() 可能会更新 \fItimeout\fP 参数以指示还剩多少时间。 \fBpselect\fP() 不改变这个参数。
+.IP \[bu]
+\fBselect\fP() 没有 \fIsigmask\fP 参数，并且表现为用 NULL \fIsigmask\fP 调用的 \fBpselect\fP()。
+.PP
+\fIsigmask\fP 是指向信号掩码的指针 (参见 \fBsigprocmask\fP(2)); 如果不为 NULL，则 \fBpselect\fP() 先用
+\fIsigmask\fP 指向的信号掩码替换当前信号掩码，然后做 "select" 函数，然后恢复原来的信号掩码。 (如果 \fIsigmask\fP 为
+NULL，则在 \fBpselect\fP() 调用期间不修改信号掩码。)
+.PP
+除了 \fItimeout\fP 参数精度不同外，\fBpselect\fP() 调用如下:
+.PP
+.in +4n
+.EX
+ready = pselect(nfds, &readfds, &writefds, &exceptfds,
+                timeout, &sigmask);
+.EE
+.in
+.PP
+相当于 \fIatomically\fP 执行以下调用:
+.PP
+.in +4n
+.EX
+sigset_t origmask;
+
+pthread_sigmask(SIG_SETMASK, &sigmask, &origmask);
+ready = select(nfds, &readfds, &writefds, &exceptfds, timeout);
+pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+.EE
+.in
+.PP
+需要 \fBpselect\fP() 的原因是，如果要等待信号或文件描述符准备就绪，则需要进行原子测试以防止竞争状态。
+(假设信号处理程序设置一个全局标志并返回。然后如果信号在测试之后但就在调用之前到达，则对这个全局标志的测试后跟 \fBselect\fP()
+的调用可能会无限期挂起。相比之下，\fBpselect\fP() 允许一个人先 block signals, handle the signals that
+have income, then adjust use \fBpselect\fP() with the desired \fIsigmask\fP,
+avoiding the race.)
+.SS "The timeout"
+\fBselect\fP() 的 \fItimeout\fP 参数是以下类型的结构体:
+.PP
+.in +4n
+.EX
+struct timeval {
+    time_t      tv_sec;         /* seconds */
+    suseconds_t tv_usec;        /* microseconds */
+};
+.EE
+.in
+.PP
+\fBpselect\fP() 对应的参数是 \fBtimespec\fP(3) 结构体。
+.PP
+.\" .PP - it is rumored that:
+.\" On BSD, when a timeout occurs, the file descriptor bits are not changed.
+.\" - it is certainly true that:
+.\" Linux follows SUSv2 and sets the bit masks to zero upon a timeout.
+在 Linux 上，\fBselect\fP() 修改 \fItimeout\fP 以反映未睡眠的时间量; 大多数其他实现不这样做。 (POSIX.1
+允许任何一种行为。) 当读取 \fItimeout\fP 的 Linux 代码被移植到其他操作系统时，以及当代码被移植到 Linux 时，在循环中为多个
+\fBselect\fP()s 重用 \fIstruct timeval\fP 而不重新初始化它时，这都会导致问题。 在 \fBselect\fP() 返回后，将
+\fItimeout\fP 视为未定义。
+.SH "RETURN VALUE"
+成功时，\fBselect\fP() 和 \fBpselect\fP() 返回三个返回的描述符集中包含的文件描述符的数量 (即
+\fIreadfds\fP、\fIwritefds\fP、\fIexceptfds\fP) 中设置的总位数。 如果在任何文件描述符就绪之前超时已过期，则返回值可能为零。
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误; 文件描述符集未修改，\fItimeout\fP 变为未定义。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+其中一个集合中给出了无效的文件描述符。 (可能是一个已经关闭的文件描述符，或者发生错误的文件描述符。) 但是，请参见 BUGS。
+.TP 
+\fBEINTR\fP
+一个信号被捕捉到; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fInfds\fP 为 negative 或超出 \fBRLIMIT_NOFILE\fP 资源限制 (参见 \fBgetrlimit\fP(2)).
+.TP 
+\fBEINVAL\fP
+\fItimeout\fP 中包含的值无效。
+.TP 
+\fBENOMEM\fP
+无法为内部表分配内存。
+.SH VERSIONS
+在 Linux 2.6.16 中添加了 \fBpselect\fP()。 在此之前，\fBpselect\fP() 是在 glibc 中模拟的 (但请参见
+BUGS)。
+.SH STANDARDS
+\fBselect\fP() 符合 POSIX.1\-2001、POSIX.1\-2008，4.4BSD (\fBselect\fP() 最早出现在 4.2BSD)。
+通常可移植的 to/from 非 BSD 系统支持 BSD 套接字层的克隆 (包括 System\V 变体)。 但是，请注意，System\V
+变体通常会在返回前设置超时，变体，但 BSD 变体不会。
+.PP
+\fBpselect\fP() 在 POSIX.1g、POSIX.1\-2001 和 POSIX.1\-2008 中定义。
+.PP
+\fBfd_set\fP 在 POSIX.1\-2001 及更高版本中定义。
+.SH NOTES
+以下标头还提供了 \fIfd_set\fP 类型: \fI<sys/time.h>\fP。
+.PP
+\fIfd_set\fP 是固定大小的缓冲区。 使用值为 negative 或等于或大于 \fBFD_SETSIZE\fP 的 \fIfd\fP 值执行
+\fBFD_CLR\fP() 或 \fBFD_SET\fP() 将导致未定义的行为。 此外，POSIX 要求 \fIfd\fP 是有效的文件描述符。
+.PP
+\fBselect\fP() 和 \fBpselect\fP() 的操作不受 \fBO_NONBLOCK\fP 标志的影响。
+.PP
+.\" Darwin, according to a report by Jeremy Sequoia, relayed by Josh Triplett
+.\"
+在其他一些 UNIX 系统上，如果系统无法分配内核内部资源，则 \fBselect\fP() 可能会失败并显示错误 \fBEAGAIN\fP，而不是像 Linux
+那样的 \fBENOMEM\fP。 POSIX 为 \fBpoll\fP(2) 指定此错误，但不为 \fBselect\fP() 指定。 可移植程序可能希望检查
+\fBEAGAIN\fP 并循环，就像 \fBEINTR\fP 一样。
+.SS "The self\-pipe trick"
+.\"
+在缺少 \fBpselect\fP() 的系统上，可以使用自管道技巧实现可靠 (且更便携) 的信号捕获。
+在这种技术中，信号处理程序将一个字节写入管道，管道的另一端由主程序中的 \fBselect\fP() 监视。
+(为避免在写入可能已满的管道或从可能为空的管道读取时可能发生阻塞，在读取和写入管道时使用非阻塞 I/O。)
+.SS "Emulating usleep(3)"
+.\"
+在 \fBusleep\fP(3) 出现之前，一些代码使用调用于 \fBselect\fP()，所有三个集合都为空，\fInfds\fP 为零，非 NULL
+\fItimeout\fP 作为一种相当可移植的亚秒级精度休眠方式。
+.SS "Correspondence between select() and poll() notifications"
+.\" fs/select.c
+在 Linux 内核源码中，我们发现如下定义，分别是 \fBselect\fP() 的可读、可写、异常情况通知与
+\fBpoll\fP(2)、\fBepoll\fP(7): 提供的事件通知的对应关系
+.PP
+.in +4n
+.EX
+#define POLLIN_SET  (EPOLLRDNORM | EPOLLRDBAND | EPOLLIN |
+                     EPOLLHUP | EPOLLERR)
+                   /* Ready for reading */
+#define POLLOUT_SET (EPOLLWRBAND | EPOLLWRNORM | EPOLLOUT |
+                     EPOLLERR)
+                   /* Ready for writing */
+#define POLLEX_SET  (EPOLLPRI)
+                   /* Exceptional condition */
+.EE
+.in
+.\"
+.SS "Multithreaded applications"
+.\"
+如果 \fBselect\fP() 正在监视的文件描述符在另一个线程中关闭，则结果未指定。 在某些 UNIX 系统上，\fBselect\fP()
+解除阻塞并返回，并指示文件描述符已准备就绪 (后续的 I/O 操作可能会因错误而失败，除非另一个进程在 \fBselect\fP() 返回和执行 I/O
+操作之间重新打开文件描述符) .  在 Linux (和其他一些系统) 上，关闭另一个线程中的文件描述符对 \fBselect\fP() 没有影响。
+在总结中，任何依赖于此场景中特定行为的应用程序都必须被视为 buggy。
+.SS "C library/kernel differences"
+Linux 内核允许任意大小的文件描述符集，根据 \fInfds\fP 的值确定要检查的集的长度。 但是，在 glibc 实现中，\fIfd_set\fP
+类型的大小是固定的。 另请详见错误。
+.PP
+本页中描述的 \fBpselect\fP() 接口由 glibc 实现。 底层 Linux 系统调用命名为 \fBpselect6\fP()。 此系统调用与
+glibc 包装器函数的行为有些不同。
+.PP
+Linux \fBpselect6\fP() 系统调用修改其 \fItimeout\fP 参数。 但是，glibc
+包装器函数通过使用传递给系统调用的超时参数的局部变量来隐藏此行为。 因此，glibc \fBpselect\fP() 函数不会修改其 \fItimeout\fP
+参数; 这是 POSIX.1\-2001 要求的行为。
+.PP
+\fBpselect6\fP() 系统调用的最终参数不是 \fIsigset_t\ *\fP 指针，而是以下形式的结构体:
+.PP
+.in +4n
+.EX
+struct {
+    const kernel_sigset_t *ss;   /* Pointer to signal set */
+    size_t ss_len; /* 对象的大小 (以字节为单位)
+                                    由 \[aq] ss\[aq] 指向 */
+};
+.EE
+.in
+.PP
+.\"
+这允许系统调用获得指向信号集的指针及其大小，同时考虑到大多数体系结构最多支持 6 个系统调用的参数。 有关信号集的内核和 libc
+概念之间差异的讨论，请参见 \fBsigprocmask\fP(2)。
+.SS "Historical glibc details"
+glibc 2.0 提供了不带 \fIsigmask\fP 参数的 \fBpselect\fP() 的错误版本。
+.PP
+从 glibc 2.1 到 glibc 2.2.1，必须定义 \fB_GNU_SOURCE\fP 才能从 \fI<sys/select.h>\fP
+获得 \fBpselect\fP() 的声明。
+.SH BUGS
+POSIX 允许实现定义一个上限，通过常量 \fBFD_SETSIZE\fP 公布，关于可以在文件描述符集中指定的文件描述符范围。 Linux
+内核没有施加固定限制，但 glibc 实现使 \fIfd_set\fP 成为固定大小的类型，\fBFD_SETSIZE\fP 定义为 1024，\fBFD_*\fP()
+宏根据该限制运行。 要监视大于 1023 的文件描述符，请改用 \fBpoll\fP(2) 或 \fBepoll\fP(7)。
+.PP
+\fIfd_set\fP 参数作为值 \- 结果参数的实现是 \fBpoll\fP(2) 和 \fBepoll\fP(7) 中避免的设计错误。
+.PP
+根据 POSIX，\fBselect\fP() 应该检查三个文件描述符集中所有指定的文件描述符，直到限制 \fInfds\-1\fP。
+但是，当前的实现会忽略这些集合中任何大于进程当前打开的最大文件描述符数的文件描述符。 根据
+POSIX，在其中一个集合中指定的任何此类文件描述符都应导致错误 \fBEBADF\fP。
+.PP
+从 glibc 2.1 开始，glibc 提供了使用 \fBsigprocmask\fP(2) 和 \fBselect\fP() 实现的 \fBpselect\fP()
+仿真。 这种实现仍然容易受到 \fBpselect\fP() 旨在防止的竞争条件的影响。 glibc 的现代版本在提供它的内核上使用 (race\-free)
+\fBpselect\fP() 系统调用。
+.PP
+.\" Stevens discusses a case where accept can block after select
+.\" returns successfully because of an intervening RST from the client.
+.\" Maybe the kernel should have returned EIO in such a situation?
+在 Linux 上，\fBselect\fP() 可能会将套接字文件描述符报告为 "ready for reading"，但随后的读取会阻塞。
+例如，这可能发生在数据已到达但检查时校验和错误并被丢弃的情况下。 可能存在文件描述符被虚假报告为就绪的其他情况。 因此，在不应阻塞的套接字上使用
+\fBO_NONBLOCK\fP 可能更安全。
+.PP
+在 Linux 上，如果调用被信号处理程序中断 (即 \fBEINTR\fP 错误返回)，\fBselect\fP() 也会修改 \fItimeout\fP。
+POSIX.1 不允许这样做。 Linux \fBpselect\fP() 系统调用具有相同的行为，但 glibc 包装器通过在内部将 \fItimeout\fP
+复制到局部变量并将该变量传递给系统调用来隐藏此行为。
+.SH EXAMPLES
+.\" SRC BEGIN (select.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/select.h>
+
+int
+main(void)
+{
+    int             retval;
+    fd_set          rfds;
+    struct timeval  tv;
+
+    /* Watch stdin (fd 0) to see when it has input. */
+
+    FD_ZERO(&rfds);
+    FD_SET(0, &rfds);
+
+    /* Wait up to five seconds. */
+
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    retval = select(1, &rfds, NULL, NULL, &tv);
+    /* Don\[aq]t rely on the value of tv now!  */
+
+    if (retval == \-1)
+        perror("select()");
+    else  if (retval)
+        printf("Data is available now.\en");
+        /* FD_ISSET(0, &rfds) will be true.  */
+    else
+        printf("No data within five seconds.\en");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBaccept\fP(2), \fBconnect\fP(2), \fBpoll\fP(2), \fBread\fP(2), \fBrecv\fP(2),
+\fBrestart_syscall\fP(2), \fBsend\fP(2), \fBsigprocmask\fP(2), \fBwrite\fP(2),
+\fBtimespec\fP(3), \fBepoll\fP(7), \fBtime\fP(7)
+.PP
+有关包含讨论和示例的教程，请参见 \fBselect_tut\fP(2)。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

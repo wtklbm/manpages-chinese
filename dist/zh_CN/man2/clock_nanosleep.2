@@ -1,0 +1,145 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2008, Linux Foundation, written by Michael Kerrisk
+.\" <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH clock_nanosleep 2 2023\-02\-12 "Linux man\-pages 6.03" 
+.SH NAME
+clock_nanosleep \- 具有可指定时钟的高分辨率睡眠
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)、自 glibc 2.17
+.PP
+在 glibc 2.17、实时库 (\fIlibrt\fP、\fI\-lrt\fP) 之前
+.SH SYNOPSIS
+\fB#include <time.h>\fP
+.nf
+.PP
+\fBint clock_nanosleep(clockid_t \fP\fIclockid\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB                    const struct timespec *\fP\fIrequest\fP\fB,\fP
+\fB                    struct timespec *_Nullable \fP\fIremain\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBclock_nanosleep\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+与 \fBnanosleep\fP(2) 一样，\fBclock_nanosleep\fP() 允许调用线程以纳秒精度指定的时间间隔休眠。
+它的不同之处在于允许调用者选择要测量睡眠间隔的时钟，以及允许将睡眠间隔指定为绝对值或相对值。
+.PP
+传递给此调用和由此调用返回的时间值使用 \fBtimespec\fP(3) 结构指定。
+.PP
+.\" Look in time/posix-timers.c (kernel 5.6 sources) for the
+.\" 'struct k_clock' structures that have an 'nsleep' method
+\fIclockid\fP 参数指定要测量睡眠间隔的时钟。 此参数可以具有以下值之一:
+.TP 
+\fBCLOCK_REALTIME\fP
+一个可设置的系统级实时时钟。
+.TP 
+\fBCLOCK_TAI\fP (since Linux 3.10)
+从挂钟时间派生但忽略闰秒的系统范围时钟。
+.TP 
+\fBCLOCK_MONOTONIC\fP
+.\" On Linux this clock measures time since boot.
+一个不可设置的、单调递增的时钟，它测量自过去某个未指定的时间点以来的时间，该时间点在系统启动后不会改变。
+.TP 
+\fBCLOCK_BOOTTIME\fP (since Linux 2.6.39)
+与 \fBCLOCK_MONOTONIC\fP 相同，只是它还包括系统挂起的任何时间。
+.TP 
+\fBCLOCK_PROCESS_CPUTIME_ID\fP
+.\" There is some trickery between glibc and the kernel
+.\" to deal with the CLOCK_PROCESS_CPUTIME_ID case.
+一个可设置的每进程时钟，用于测量进程中所有线程消耗的 CPU 时间。
+.PP
+.\" Sleeping against CLOCK_REALTIME_ALARM and CLOCK_BOOTTIME_ALARM
+.\" is also possible (tested), with CAP_WAKE_ALARM, but I'm not
+.\" sure if this is useful or needs to be documented.
+有关这些时钟的更多详细信息，请参见 \fBclock_getres\fP(2)。 此外，\fBclock_getcpuclockid\fP(3) 和
+\fBpthread_getcpuclockid\fP(3) 返回的 CPU 时钟 ID 也可以在 \fIclockid\fP 中传递。
+.PP
+如果 \fIflags\fP 为 0，则 \fIrequest\fP 中指定的值被解释为相对于 \fIclockid\fP 指定的时钟当前值的间隔。
+.PP
+如果 \fIflags\fP 是 \fBTIMER_ABSTIME\fP，则 \fIrequest\fP 被解释为由时钟 \fIclockid\fP 测量的绝对时间。 如果
+\fIrequest\fP 小于或等于时钟的当前值，则 \fBclock_nanosleep\fP() 立即返回而不挂起调用线程。
+.PP
+\fBclock_nanosleep\fP() 挂起调用线程的执行，直到至少 \fIrequest\fP
+指定的时间已经过去，或者传递了导致调用信号处理程序或终止进程的信号。
+.PP
+如果调用被信号处理程序中断，\fBclock_nanosleep\fP() 将失败并返回错误 \fBEINTR\fP。 此外，如果 \fIremain\fP 不为
+NULL，并且 \fIflags\fP 不是 \fBTIMER_ABSTIME\fP，则返回 \fIremain\fP 中剩余的未睡眠时间。 然后可以使用此值再次调用
+\fBclock_nanosleep\fP() 并完成 (relative) 睡眠。
+.SH "RETURN VALUE"
+在请求的时间间隔内成功休眠后，\fBclock_nanosleep\fP() 返回 0。 如果调用被信号处理程序中断或遇到错误，则它返回 ERRORS
+中列出的正错误号之一。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIrequest\fP 或 \fIremain\fP 指定了无效地址。
+.TP 
+\fBEINTR\fP
+睡眠被信号处理程序打断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fItv_nsec\fP 字段中的值不在 [0, 999999999] 或 \fItv_sec\fP 范围内，是 negative。
+.TP 
+\fBEINVAL\fP
+\fIclockid\fP 无效。 (\fBCLOCK_THREAD_CPUTIME_ID\fP 不是 \fIclockid\fP.) 的允许值
+.TP 
+\fBENOTSUP\fP
+内核不支持针对此 \fIclockid\fP 休眠。
+.SH VERSIONS
+\fBclock_nanosleep\fP() 系统调用最早出现在 Linux 2.6。 从 glibc 2.1 开始提供支持。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+如果 \fIrequest\fP 中指定的时间间隔不是底层时钟粒度的精确倍数 (请参见 \fBtime\fP(7))，则该时间间隔将四舍五入为下一个倍数。
+此外，在睡眠完成后，在 CPU 再次空闲以再次执行调用线程之前可能仍然存在延迟。
+.PP
+使用绝对计时器对于防止 \fBnanosleep\fP(2) 中描述的类型的计时器漂移问题很有用。
+(此类问题在尝试重新启动反复被信号中断的相对睡眠的程序中会加剧。) 要执行避免这些问题的相对睡眠，请为所需时钟调使用
+\fBclock_gettime\fP(2)，将所需间隔添加到返回的时间值，以及然后用 \fBTIMER_ABSTIME\fP 标志调用
+\fBclock_nanosleep\fP()。
+.PP
+\fBclock_nanosleep\fP() 在被信号处理程序中断后永远不会重新启动，无论使用 \fBsigaction\fP(2) \fBSA_RESTART\fP
+标志如何。
+.PP
+当 \fIflags\fP 为 \fBTIMER_ABSTIME\fP 时，\fIremain\fP 参数未使用且不必要。 (可以使用相同的 \fIrequest\fP
+参数重新启动绝对睡眠。)
+.PP
+POSIX.1 指定 \fBclock_nanosleep\fP() 对信号配置或信号屏蔽没有影响。
+.PP
+POSIX.1 指定通过 \fBclock_settime\fP(2) 改变 \fBCLOCK_REALTIME\fP 时钟的值后，将使用新的时钟值来确定阻塞在绝对
+\fBclock_nanosleep\fP() 上的线程唤醒的时间; 如果新的时钟值超过睡眠间隔结束，则 \fBclock_nanosleep\fP()
+调用将立即返回。
+.PP
+POSIX.1 指定通过 \fBclock_settime\fP(2) 更改 \fBCLOCK_REALTIME\fP 时钟的值不应影响在相关
+\fBclock_nanosleep\fP() 上阻塞的线程。
+.SH "SEE ALSO"
+\fBclock_getres\fP(2), \fBnanosleep\fP(2), \fBrestart_syscall\fP(2),
+\fBtimer_create\fP(2), \fBsleep\fP(3), \fBtimespec\fP(3), \fBusleep\fP(3), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

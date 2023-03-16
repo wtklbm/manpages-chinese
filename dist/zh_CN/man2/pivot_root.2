@@ -1,0 +1,292 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2019 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" A very few fragments remain from an earlier page written by
+.\" Werner Almesberger in 2000
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pivot_root 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pivot_root \- 更改根挂载
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_pivot_root, const char *\fP\fInew_root\fP\fB, const char *\fP\fIput_old\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBpivot_root\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBpivot_root\fP() 更改调用进程的挂载命名空间中的根挂载。 更准确地说，它将根挂载移动到目录 \fIput_old\fP 并使
+\fInew_root\fP 成为新的根挂载。 调用进程必须在拥有调用者挂载命名空间的用户命名空间中具有 \fBCAP_SYS_ADMIN\fP 能力。
+.PP
+\fBpivot_root\fP() 将同一挂载命名空间中每个进程或线程的根目录和当前工作目录更改为 \fInew_root\fP，如果它们指向旧的根目录。
+(另请参见注释。) 另一方面，\fBpivot_root\fP() 不会更改调用者的当前工作目录 (除非它位于旧的根目录中)，因此它后面应该跟一个
+\fBchdir("/")\fP 调用。
+.PP
+以下限制适用:
+.IP \[bu] 3
+\fInew_root\fP 和 \fIput_old\fP 必须是目录。
+.IP \[bu]
+\fInew_root\fP 和 \fIput_old\fP 不得与当前根位于同一挂载上。
+.IP \[bu]
+\fIput_old\fP 必须在 \fInew_root\fP 之上或之下; 也就是说，向 \fIput_old\fP 指向的路径名添加一些非负数的 "\fI/..\fP"
+后缀必须产生与 \fInew_root\fP 相同的目录。
+.IP \[bu]
+\fInew_root\fP 必须是挂载点的路径，但不能是 \fI"/"\fP。 还不是安装点的路径可以通过将路径绑定安装到自身来转换为一个路径。
+.IP \[bu]
+\fInew_root\fP 的父挂载和当前根目录的父挂载的传播类型不能是 \fBMS_SHARED\fP; 同样，如果 \fIput_old\fP
+是一个现有的安装点，它的传播类型不能是 \fBMS_SHARED\fP。 这些限制确保 \fBpivot_root\fP()
+永远不会将任何更改传播到另一个挂载命名空间。
+.IP \[bu]
+当前根目录必须是挂载点。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBpivot_root\fP() 可能会失败并出现与 \fBstat\fP(2) 相同的任何错误。 此外，它可能会因以下错误而失败:
+.TP 
+\fBEBUSY\fP
+.\" Reconfirmed that the following error occurs on Linux 5.0 by
+.\" specifying 'new_root' as "/rootfs" and 'put_old' as
+.\" "/rootfs/oldrootfs", and *not* bind mounting "/rootfs" on top of
+.\" itself. Of course, this is an odd situation, since a later check
+.\" in the kernel code will in any case yield EINVAL if 'new_root' is
+.\" not a mount point. However, when the system call was first added,
+.\" 'new_root' was not required to be a mount point. So, this
+.\" error is nowadays probably just the result of crufty accumulation.
+.\" This error can also occur if we bind mount "/" on top of itself
+.\" and try to specify "/" as the 'new' (again, an odd situation). So,
+.\" the EBUSY check in the kernel does still seem necessary to prevent
+.\" that case.  Furthermore, the "or put_old" piece is probably
+.\" redundant text (although the check is in the kernel), since,
+.\" in another check, 'put_old' is required to be under 'new_root'.
+\fInew_root\fP 或 \fIput_old\fP 位于当前的根装载上。 (此错误涵盖 \fInew_root\fP 为 \fI"/"\fP.) 的病态情况
+.TP 
+\fBEINVAL\fP
+\fInew_root\fP 不是挂载点。
+.TP 
+\fBEINVAL\fP
+\fIput_old\fP 不在 \fInew_root\fP 之上或之下。
+.TP 
+\fBEINVAL\fP
+当前根目录不是挂载点 (因为较早的 \fBchroot\fP(2)).
+.TP 
+\fBEINVAL\fP
+当前根在 rootfs (初始 ramfs) 挂载上; 见注释。
+.TP 
+\fBEINVAL\fP
+\fInew_root\fP 处的安装点或该安装点的父安装点的传播类型为 \fBMS_SHARED\fP。
+.TP 
+\fBEINVAL\fP
+\fIput_old\fP 是挂载点，传播类型为 \fBMS_SHARED\fP。
+.TP 
+\fBENOTDIR\fP
+\fInew_root\fP 或 \fIput_old\fP 不是目录。
+.TP 
+\fBEPERM\fP
+调用进程没有 \fBCAP_SYS_ADMIN\fP 能力。
+.SH VERSIONS
+\fBpivot_root\fP() 是在 Linux 2.3.41 中引入的。
+.SH STANDARDS
+\fBpivot_root\fP() 是特定于 Linux 的，因此不可移植。
+.SH NOTES
+\fBpivot_root\fP(8) 提供了该系统调用的命令行界面。
+.PP
+\fBpivot_root\fP() 允许调用者切换到新的根文件系统，同时将旧的根挂载放置在 \fInew_root\fP 下的某个位置，随后可以从该位置卸载它。
+(它将所有在旧根目录上具有根目录或当前工作目录的进程移动到新根目录的事实释放了用户的旧根目录，允许更容易地卸载旧根挂载。)
+.PP
+\fBpivot_root\fP() 的一个用途是在系统启动期间，当系统挂载一个临时根文件系统 (例如
+\fBinitrd\fP(4)))，然后挂载真正的根文件系统，并最终将后者变成所有相关进程和线程的根目录。 现代用途是在创建容器期间设置根文件系统。
+.PP
+\fBpivot_root\fP()
+以描述中提到的方式修改进程根目录和当前工作目录的事实是必要的，以防止内核线程使旧的根挂载忙于它们的根目录和当前工作目录，即使它们从不以任何方式访问文件系统.
+.PP
+.\"
+rootfs (初始 ramfs) 不能是 \fBpivot_root\fP()ed。在这种情况下更改根文件系统的推荐方法是删除 rootfs
+中的所有内容，用新根覆盖 rootfs，将 \fIstdin\fP/\fIstdout\fP/\fIstderr\fP 附加到新
+\fI/dev/console\fP，然后执行新 \fBinit\fP(1)。 存在此过程的帮助程序; 请参见 \fBswitch_root\fP(8)。
+.SS "pivot_root(\[dq].\[dq], \[dq].\[dq])"
+\fInew_root\fP 和 \fIput_old\fP 可能是同一个目录。 特别是，以下序列允许 pivot\-root 操作，而无需创建和删除临时目录:
+.PP
+.in +4n
+.EX
+chdir(new_root);
+pivot_root(".", ".");
+umount2(".", MNT_DETACH);
+.EE
+.in
+.PP
+.\"
+此序列成功，因为 \fBpivot_root\fP() 调用将旧的根安装点堆叠在 \fI/\fP 的新根安装点之上。
+此时，调用进程的根目录和当前工作目录指向新的根挂载点 (\fInew_root\fP)。 在随后的 \fBumount\fP() 调用期间，\fI"."\fP 的解析从
+\fInew_root\fP 开始，然后向上移动堆叠在 \fI/\fP 的安装列表，结果旧的根安装点被卸载。
+.SS "Historical notes"
+多年来，该手册页载有以下文本:
+.RS
+.PP
+\fBpivot_root\fP() 可能会也可能不会更改使用旧根目录的任何进程或线程的当前根目录和当前工作目录。 \fBpivot_root\fP()
+的调用者必须确保在旧根目录下具有根目录或当前工作目录的进程在任何一种情况下都能正确运行。 确保这一点的一种简单方法是在调用
+\fBpivot_root\fP() 之前将其根目录和当前工作目录更改为 \fInew_root\fP。
+.RE
+.PP
+这篇文章写在系统调用实现甚至在内核中最终确定之前，可能是为了警告当时的用户，在最终发布之前实现可能会发生变化。 但是，DESCRIPTION
+中所述的行为自此系统调用首次实现以来一直保持一致，现在不会改变。
+.SH EXAMPLES
+.\" FIXME
+.\" Would it be better, because simpler, to use unshare(2)
+.\" rather than clone(2) in the example below?
+下面的程序演示了在使用 \fBclone\fP(2) 创建的挂载命名空间中使用 \fBpivot_root\fP()。
+在转到程序第一个命令行参数中指定的根目录后，由 \fBclone\fP(2) 创建的子目录将执行其余命令行参数中指定的程序。
+.PP
+我们通过创建一个将用作新根文件系统的目录并将 (静态链接的) \fBbusybox\fP(1) 可执行文件的副本放置在该目录中来演示该程序。
+.PP
+.in +4n
+.EX
+$ \fBmkdir /tmp/rootfs\fP
+$ \fBls \-id /tmp/rootfs\fP    # 显示新根目录的 inode 号
+319459 /tmp/rootfs
+$ \fBls \-id /tmp/rootfs\fP    # 显示新根目录的 inode 号
+$ \fBls \-id /tmp/rootfs\fP    # 显示新根目录的 inode 号
+bbsh$ \fBPATH=/\fP
+bbsh$ \fBbusybox ln busybox ln\fP
+bbsh$ \fBln busybox echo\fP
+bbsh$ \fBln busybox ls\fP
+bbsh$ \fBls\fP
+busybox  echo     ln       ls
+bbsh$ \fBls \-id /\fP          # Compare with inode number above
+319459 /
+bbsh$ \fBecho \[aq]您好世界\[aq]\fP
+hello world
+.EE
+.in
+.SS "Program source"
+\&
+.PP
+.\" SRC BEGIN (pivot_root.c)
+.EX
+/* pivot_root_demo.c */
+
+#define _GNU_SOURCE
+#include <err.h>
+#include <limits.h>
+#include <sched.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+static int
+pivot_root(const char *new_root, const char *put_old)
+{
+    return syscall(SYS_pivot_root, new_root, put_old);
+}
+
+#define STACK_SIZE (1024 * 1024)
+
+static int              /* Startup function for cloned child */
+child(void *arg)
+{
+    char        path[PATH_MAX];
+    char        **args = arg;
+    char        *new_root = args[0];
+    const char  *put_old = "/oldrootfs";
+
+    /* Ensure that \[aq]new_root\[aq] and its parent mount don\[aq]t have
+       shared propagation (which would cause pivot_root() to
+       return an error), and prevent propagation of mount
+       events to the initial mount namespace. */
+
+    if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) == \-1)
+        err(EXIT_FAILURE, "mount\-MS_PRIVATE");
+
+    /* Ensure that \[aq]new_root\[aq] is a mount point. */
+
+    if (mount(new_root, new_root, NULL, MS_BIND, NULL) == \-1)
+        err(EXIT_FAILURE, "mount\-MS_BIND");
+
+    /* Create directory to which old root will be pivoted. */
+
+    snprintf(path, sizeof(path), "%s/%s", new_root, put_old);
+    if (mkdir(path, 0777) == \-1)
+        err(EXIT_FAILURE, "mkdir");
+
+    /* And pivot the root filesystem. */
+
+    if (pivot_root(new_root, path) == \-1)
+        err(EXIT_FAILURE, "pivot_root");
+
+    /* Switch the current working directory to "/". */
+
+    if (chdir("/") == \-1)
+        err(EXIT_FAILURE, "chdir");
+
+    /* Unmount old root and remove mount point. */
+
+    if (umount2(put_old, MNT_DETACH) == \-1)
+        perror("umount2");
+    if (rmdir(put_old) == \-1)
+        perror("rmdir");
+
+    /* Execute the command specified in argv[1]... */
+
+    execv(args[1], &args[1]);
+    err(EXIT_FAILURE, "execv");
+}
+
+int
+main(int argc, char *argv[])
+{
+    char *stack;
+
+    /* Create a child process in a new mount namespace. */
+
+    stack = mmap(NULL, STACK_SIZE, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, \-1, 0);
+    if (stack == MAP_FAILED)
+        err(EXIT_FAILURE, "mmap");
+
+    if (clone(child, stack + STACK_SIZE,
+              CLONE_NEWNS | SIGCHLD, &argv[1]) == \-1)
+        err(EXIT_FAILURE, "clone");
+
+    /* Parent falls through to here; wait for child. */
+
+    if (wait(NULL) == \-1)
+        err(EXIT_FAILURE, "wait");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBchdir\fP(2), \fBchroot\fP(2), \fBmount\fP(2), \fBstat\fP(2), \fBinitrd\fP(4),
+\fBmount_namespaces\fP(7), \fBpivot_root\fP(8), \fBswitch_root\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

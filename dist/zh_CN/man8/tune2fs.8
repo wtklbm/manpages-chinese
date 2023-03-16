@@ -1,0 +1,435 @@
+.\" -*- coding: UTF-8 -*-
+.\" Revision 1.0 93/06/3 23:00  chk
+.\" Initial revision
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH TUNE2FS 8 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+tune2fs \- 在 ext2/ext3/ext4 文件系统上调整可调文件系统参数
+.SH SYNOPSIS
+\fBtune2fs\fP [ \fB\-l\fP ] [ \fB\-c\fP \fImax\-mount\-counts\fP ] [ \fB\-e\fP
+\fIerrors\-behavior\fP ] [ \fB\-f\fP ] [ \fB\-i\fP \fIinterval\-between\-checks\fP ] [ \fB\-I\fP
+\fInew_inode_size\fP ] [ \fB\-j\fP ] [ \fB\-J\fP \fIjournal\-options\fP ] [ \fB\-m\fP
+\fIreserved\-blocks\-percentage\fP ] [ \fB\-o\fP [^]mount\-options\fI[,...]\fP ] [ \fB\-r\fP
+\fIreserved\-blocks\-count\fP ] [ \fB\-u\fP \fIuser\fP ] [ \fB\-g\fP \fIgroup\fP ] [ \fB\-C\fP
+\fImount\-count\fP ] [ \fB\-E\fP \fIextended\-options\fP ] [ \fB\-L\fP \fIvolume\-label\fP ] [
+\fB\-M\fP \fIlast\-mounted\-directory\fP ] [ \fB\-O\fP [^]\fIfeature\fP[,...] ] [ \fB\-Q\fP
+\fIquota\-options\fP ] [ \fB\-T\fP \fItime\-last\-checked\fP ] [ \fB\-U\fP \fIUUID\fP ] [ \fB\-z\fP
+\fIundo_file\fP ] 设备
+.SH DESCRIPTION
+\fBtune2fs\fP 允许系统管理员调整 Linux ext2、ext3 或 ext4 文件系统上的各种可调文件系统参数。 这些选项的当前值可以通过使用
+\fBtune2fs\fP(8) 程序的 \fB\-l\fP 选项或使用 \fBdumpe2fs\fP(8) 程序来显示。
+.PP
+\fIdevice\fP 说明符可以是文件名 (即 /dev/sda1)，也可以是 LABEL 或 UUID 说明符:
+"\fBLABEL=\fP\fIvolume\-label\fP" 或 "\fBUUID=\fP\fIuuid\fP"。 (即，LABEL=home 或
+UUID=e40486c6\-84d5\-4f2f\-b99c\-032281799c9d)。
+.SH OPTIONS
+.TP 
+\fB\-c\fP\fI max\-mount\-counts\fP
+调整 \fBe2fsck\fP(8) 检查文件系统之前的挂载次数。 如果 \fImax\-mount\-counts\fP 是字符串 "random"，tune2fs
+将使用 20 到 40 之间的随机值。 如果 \fImax\-mount\-counts\fP 为 0 或 \-1，文件系统的挂载次数将被 \fBe2fsck\fP(8)
+和内核忽略。
+.sp
+交错强制检查文件系统的安装计数将避免在使用日志文件系统时同时检查所有文件系统。
+.sp
+默认情况下禁用与挂载计数相关的检查，以避免在 e2fsck 工作时意外长时间重启。
+如果您担心由内核错误的潜在硬件问题引起的文件系统损坏，比安装计数相关检查更好的解决方案是使用 \fBe2scrub\fP(8) 程序。
+但是，这确实需要将文件系统放在 LVM 卷上。
+.TP 
+\fB\-C\fP\fI mount\-count\fP
+设置文件系统的挂载次数。 如果设置的值大于 \fB\-c\fP 选项设置的 max\-mount\-counts 参数，\fBe2fsck\fP(8)
+将在下次重新启动时检查文件系统。
+.TP 
+\fB\-e\fP\fI error\-behavior\fP
+检测到错误时更改内核代码的行为。 在所有情况下，文件系统错误都会导致 \fBe2fsck\fP(8) 在下次启动时检查文件系统。
+\fIerror\-behavior\fP 可以是以下之一:
+.RS 1.2i
+.TP  1.2i
+\fBcontinue\fP
+继续正常执行。
+.TP 
+\fBremount\-ro\fP
+以只读方式重新挂载文件系统。
+.TP 
+\fBpanic\fP
+导致内核 panic。
+.RE
+.TP 
+\fB\-E\fP\fI extended\-options\fP
+为文件系统设置扩展选项。 扩展选项以逗号分隔，并且可以使用等号 ('=') 来获取参数。 支持以下扩展选项:
+.RS 1.2i
+.TP 
+\fBclear_mmp\fP
+将 MMP 块 (如果有) 重置为干净状态。 仅在绝对确定设备当前未挂载或未被 fscked 时使用，否则可能导致重大文件系统损坏。 需要 '\-f'。
+.TP 
+\fBmmp_update_interval=\fP\fIinterval\fP
+将初始 MMP 更新间隔调整为 \fIinterval\fP 秒。 将 \fIinterval\fP 指定为 0 意味着使用默认间隔。 指定的时间间隔必须小于
+300 秒。 需要启用 \fBmmp\fP 特性。
+.TP 
+\fBstride=\fP\fIstride\-size\fP
+使用 \fIstride\-size\fP 文件系统块为 RAID 阵列配置文件系统。这是在移动到下一个磁盘之前读取或写入磁盘的块数。这主要影响
+\fBmke2fs\fP(2) 时间位图等文件系统元数据的放置，以避免将它们放置在单个磁盘上，这会损害性能。 它也可以被块分配器使用。
+.TP 
+\fBstripe_width=\fP\fIstripe\-width\fP
+为每个条带使用 \fIstripe\-width\fP 文件系统块的 RAID 阵列配置文件系统。这通常是 stride\-size * N，其中 N 是
+RAID 中数据磁盘的数量 (例如 RAID 5 N+1、RAID 6 N+2)。 这允许块分配器在写入数据时尽可能防止读取 \- 修改 \- 写入
+RAID 条带中的奇偶校验。
+.TP 
+\fBhash_alg=\fP\fIhash\-alg\fP
+设置用于具有散列 b 树目录的文件系统的默认散列算法。 接受的有效算法是: \fIlegacy\fP、\fIhalf_md4\fP 和 \fItea\fP。
+.TP 
+\fBencoding=\fP\fIencoding\-name\fP
+在超级块中启用 \fIcasefold\fP 特性并将 \fIencoding\-name\fP 设置为要使用的编码。 如果未指定
+\fIencoding\-name\fP，则使用 utf8。如果之前启用了 casefold，则无法更改编码。
+.TP 
+\fBencoding_flags=\fP\fIencoding\-flags\fP
+定义文件名字符编码操作的参数。 如果未使用此参数更改标志，则使用其默认值。 \fIencoding\-flags\fP 应该是要启用的以逗号分隔的标志列表。
+如果之前启用了 casefold，则无法更改标志。
+
+现在唯一可以设置的标志是 \fIstrict\fP，这意味着文件系统应该拒绝无效的字符串。 在默认配置中，\fIstrict\fP 标志被禁用。
+.TP 
+\fBmount_opts=\fP\fImount_option_string\fP
+设置一组默认挂载选项，这些选项将在挂载文件系统时使用。 与可以使用 \fB\-o\fP
+选项指定的基于位掩码的默认挂载选项不同，\fImount_option_string\fP 是一个最大长度为 63 字节的任意字符串，它存储在超级块中。
+.IP
+ext4 文件系统驱动程序将首先应用基于位掩码的默认选项，然后在解析从 \fBmount\fP(8) 程序传递的挂载选项之前解析
+\fImount_option_string\fP。
+.IP
+此超级块设置仅在 2.6.35 + 内核中有效; 而不是 ext2 和 ext3 文件系统驱动程序。
+.TP 
+\fBorphan_file_size=\fP\fIsize\fP
+设置文件大小以跟踪未链接但仍打开的 inode 和正在截断的 inode。较大的文件允许更好的可扩展性，每个 cpu 保留几个块是理想的。
+.TP 
+\fBforce_fsck\fP
+在文件系统超级块中设置一个标志，指示已发现错误。 这将强制 fsck 在下一次挂载时运行。
+.TP 
+\fBtest_fs\fP
+在文件系统超级块中设置一个标志，表明它可以使用实验性内核代码挂载，例如 ext4dev 文件系统。
+.TP 
+\fB^test_fs\fP
+清除 test_fs 标志，表明文件系统只能使用生产级文件系统代码进行挂载。
+.RE
+.TP 
+\fB\-f\fP
+即使遇到错误也强制 tune2fs 操作完成。 当从具有外部日志 (或已损坏以致似乎具有外部日志) 但外部日志不可用的文件系统中删除
+\fBhas_journal\fP 文件系统特性时，此选项很有用。 如果文件系统似乎需要日志重播，则必须指定 \fB\-f\fP 标志两次才能继续。
+.sp
+\fBWARNING:\fP 从未完全卸载的文件系统中删除外部日志而不首先重放外部日志可能会导致严重的数据丢失和文件系统损坏。
+.TP 
+\fB\-g\fP\fI group\fP
+设置可以使用保留文件系统块的组。 \fIgroup\fP 参数可以是数字 gid 或组名。 如果给出了组名，则在将其存储到超级块之前将其转换为数字 gid。
+.TP 
+\fB\-i  \fP\fIinterval\-between\-checks\fP[\fBd\fP|\fBm\fP|\fBw\fP]
+调整两次文件系统检查之间的最长时间。 无后缀或 \fBd\fP 会将数字 \fIinterval\-between\-checks\fP 解释为天数，将 \fBm\fP
+解释为月数，将 \fBw\fP 解释为周数。 零值将禁用时间相关检查。
+.sp
+禁用这些定期检查有优点和缺点; 有关详细信息，请参见 \fB\-c\fP (安装计数相关检查) 选项下的讨论。
+.TP 
+\fB\-I\fP
+更改文件系统使用的 inode 大小。 这需要重写 inode 表，所以需要先使用 \fBe2fsck\fP(8) 检查文件系统的一致性。
+此操作也可能需要一段时间，如果在转换文件系统的过程中被中断，文件系统可能会损坏并丢失数据。 建议在更改 inode 大小之前备份文件系统。
+.IP
+inode 大小为 128 字节的文件系统不支持 2038 年 1 月 19 日之后的时间戳。 256 字节或更大的索引节点将支持扩展时间戳、项目
+ID，以及在索引节点表中存储一些扩展属性以提高性能的能力。
+.TP 
+\fB\-j\fP
+将 ext3 日志添加到文件系统。 如果未指定 \fB\-J\fP 选项，则默认日志参数将用于创建存储在文件系统中的适当大小的日志 (给定文件系统的大小)。
+请注意，您必须使用具有 ext3 支持的内核才能实际使用该日志。
+.IP
+如果此选项用于在已挂载的文件系统上创建日志，则将在文件系统的顶级目录中创建一个不可更改的文件 \fB.journal\fP，因为这是创建日志 inode
+的唯一安全方法，同时文件系统已挂载。 当 ext3 日志可见时，删除它或在挂载文件系统时修改它是不安全的; 由于这个原因，该文件被标记为不可改变。
+在检查卸载的文件系统时，\fBe2fsck\fP(8) 会自动将 \fB.journal\fP 文件移动到不可见的保留日志 inode。
+对于除根文件系统之外的所有文件系统，这应该在下一个重启周期中自动自然地发生。 由于根文件系统是以只读方式安装的，因此必须从救援软盘运行
+\fBe2fsck\fP(8) 才能实现此转换。
+.IP
+在某些发行版上，例如 Debian，如果使用初始 ramdisk，如果 \fB/etc/fstab\fP 文件指定 ext3
+文件系统作为根文件系统，initrd 脚本会自动将 ext2 根文件系统转换为 ext3，以避免需要使用用于将 ext3
+日志添加到根文件系统的救援软盘。
+.TP 
+\fB\-J\fP journal\-options
+覆盖默认的 ext3 日志参数。日志选项以逗号分隔，并且可以使用等号 ('=') 来获取参数。 支持以下日志选项:
+.RS 1.2i
+.TP 
+\fBsize=\fP\fIjournal\-size\fP
+创建存储在 \fIjournal\-size\fP 兆字节大小的文件系统中的日志。 日志的大小必须至少为 1024 个文件系统块 (即，如果使用 1k 块，则为
+1MB，如果使用 4k 块，则为 4MB，等等) 并且不得超过 10,240,000 个文件系统块。 文件系统中必须有足够的可用空间来创建该大小的日志。
+.TP 
+\fBfast_commit_size=\fP\fIfast\-commit\-size\fP
+创建一个额外的 \fIfast\-commit\-size\fP 千字节大小的快速提交日志区域。 此选项仅在文件系统上启用 \fBfast_commit\fP
+特性时有效。如果未指定此选项并且启用了 \fBfast_commit\fP 特性则快速提交区域大小默认为 \fIjournal\-size\fP/64 兆字节。具有
+\fBfast_commit\fP 特性集的日志的总大小为 \fIjournal\-size\fP + (\fIfast\-commit\-size\fP * 1024)
+兆字节。日志总大小不得超过 10,240,000 个文件系统块或文件系统总大小的一半 (以较小者为准)。
+.TP 
+\fBlocation\fP\fI=journal\-location\fP
+指定日志的位置。 参数 \fIjournal\-location\fP 可以指定为块号，或者如果该数字具有单位后缀 (例如，'M'、'G'
+等)，则将其解释为距文件系统开头的偏移量。
+.TP 
+\fBdevice=\fP\fIexternal\-journal\fP
+将文件系统附加到位于 \fIexternal\-journal\fP 上的日志块设备。 外部日志必须已经使用命令创建
+.IP
+\fBmke2fs \-O journal_dev\fP \fIexternal\-journal\fP
+.IP
+请注意，\fIexternal\-journal\fP 必须格式化为与将使用它的文件系统相同的块大小。 此外，虽然支持将多个文件系统附加到单个外部日志，但
+Linux 内核和 \fBe2fsck\fP(8) 目前尚不支持共享外部日志。
+.IP
+除了直接指定设备名称，\fIexternal\-journal\fP 也可以由 \fBLABEL=\fP\fIlabel\fP 或 \fBUUID=\fP\fIUUID\fP
+指定，以通过卷标或存储在日志开头的 ext2 超级块中的 UUID 来定位外部日志。 使用 \fBdumpe2fs\fP(8) 显示日志设备的卷标和
+UUID。 另请详见 \fBtune2fs\fP(8) 的 \fB\-L\fP 选项。
+.RE
+.IP
+只能为文件系统提供 \fBsize\fP 或 \fBdevice\fP 选项之一。
+.TP 
+\fB\-l\fP
+列出文件系统超级块的内容，包括可以通过该程序设置的参数的当前值。
+.TP 
+\fB\-L\fP\fI volume\-label\fP
+设置文件系统的卷标。 Ext2 文件系统标签最长可达 16 个字符; 如果 \fIvolume\-label\fP 超过 16 个字符，\fBtune2fs\fP
+将截断它并打印一条警告。 对于其他支持联机标签操作并已挂载 \fBtune2fs\fP 的文件系统，它也可以正常工作，但它根本不会尝试截断
+\fIvolume\-label\fP。 通过指定 \fBLABEL=\fP\fIvolume\-label\fP 而不是像 \fB/dev/hda5\fP
+这样的块特殊设备名称，\fBmount\fP(8)、\fBfsck\fP(8) 和 \fB/etc/fstab\fP(5) (可能还有其他) 可以使用卷标。
+.TP 
+\fB\-m\fP\fI reserved\-blocks\-percentage\fP
+设置只能由特权进程分配的文件系统的百分比。 保留一定数量的文件系统块供特权进程使用是为了避免文件系统碎片化，并允许系统守护进程 (例如
+\fBsyslogd\fP(8)) 在阻止非特权进程写入文件系统后继续正确地执行任务。 通常，保留块的默认百分比为 5%。
+.TP 
+\fB\-M\fP\fI last\-mounted\-directory\fP
+设置文件系统的最后挂载目录。
+.TP 
+\fB\-o\fP [^]\fImount\-option\fP[,...]
+设置或清除文件系统中指示的默认安装选项。 默认挂载选项可以被 \fB/etc/fstab\fP(5) 或命令行参数指定的挂载选项覆盖 \fBmount\fP(8)。
+较旧的内核可能不支持此，特性; 特别是，早于 2.4.20 的内核几乎肯定会忽略超级块中的默认安装选项字段。
+.IP
+可以通过用逗号分隔特性来清除或设置多个安装选项。 以脱字符 ('^') 为前缀的挂载选项将在文件系统的超级块中被清除; 没有前缀字符或前缀为加号
+('+') 的挂载选项将被添加到文件系统。
+.IP
+可以使用 \fBtune2fs\fP: 设置或清除以下挂载选项
+.RS 1.2i
+.TP 
+\fBdebug\fP
+为此文件系统启用调试代码。
+.TP 
+\fBbsdgroups\fP
+创建新文件时模拟 BSD 行为: 它们将采用创建它们的目录的组 ID。 标准的 System V 行为是默认的，新创建的文件采用当前进程的
+fsgid，除非目录设置了 setgid 位，在这种情况下，它从父目录获取 gid，并且还设置了 setgid 位如果它本身就是一个目录。
+.TP 
+\fBuser_xattr\fP
+启用用户指定的扩展属性。
+.TP 
+\fBacl\fP
+启用 Posix 访问控制列表。
+.TP 
+\fBuid16\fP
+禁用 32 位 UID 和 GID。 这是为了与仅存储和期望 16 位值的旧内核的互操作性。
+.TP 
+\fBjournal_data\fP
+当文件系统在启用日志记录的情况下挂载时，所有数据 (不仅仅是元数据) 在写入主文件系统之前都会提交到日志中。
+.TP 
+\fBjournal_data_ordered\fP
+当文件系统在启用日志记录的情况下挂载时，所有数据在其元数据提交到日志之前被直接强制输出到主文件系统。
+.TP 
+\fBjournal_data_writeback\fP
+当文件系统在启用日志记录的情况下挂载时，数据可能会在其元数据提交到日志后写入主文件系统。
+这可能会增加吞吐量，但是，它可能会允许旧数据在崩溃和日志恢复后出现在文件中。
+.TP 
+\fBnobarrier\fP
+文件系统将在禁用日志中的屏障操作的情况下安装。 (目前只有 2.6.35 + 内核中的 ext4 文件系统驱动程序支持此选项。)
+.TP 
+\fBblock_validity\fP
+文件系统将在启用 block_validity 选项的情况下安装，这会导致在从文件系统读取或写入后执行额外的检查。 这可以防止损坏的元数据块通过覆盖部分
+inode 表或块组描述符而导致文件系统损坏。 这是以增加内存和 CPU 开销为代价的，因此它仅用于调试目的。 (目前只有 2.6.35 + 内核中的
+ext4 文件系统驱动程序支持此选项。)
+.TP 
+\fBdiscard\fP
+文件系统将使用 discard 挂载选项进行挂载。 这将导致文件系统驱动程序尝试使用某些存储设备 (例如 SSD
+和某些企业存储阵列中可用的自动精简配置驱动器) 的 trim/discard 特性来通知存储设备属于已删除文件的块可以重新用于其他目的。 (目前只有
+2.6.35 + 内核中的 ext4 文件系统驱动程序支持此选项。)
+.TP 
+\fBnodelalloc\fP
+文件系统将使用 nodelalloc 挂载选项进行挂载。 这将禁用延迟分配，特性。 (目前只有 2.6.35 + 内核中的 ext4
+文件系统驱动程序支持此选项。)
+.RE
+.TP 
+\fB\-O\fP [^]\fIfeature\fP[,...]
+在文件系统中设置或清除指示的文件系统，特性 (options)。 可以通过用逗号分隔特性来清除或设置多个文件系统，特性。 以脱字符 ('^')
+为前缀的文件系统特性将在文件系统的超级块中被清除; 没有前缀字符或前缀为加号 ('+') 的文件系统特性将添加到文件系统。
+有关文件系统特性的详细说明，请参见手册页 \fBext4\fP(5)。
+.IP
+可以使用 \fBtune2fs\fP: 设置或清除以下文件系统，特性
+.RS 1.2i
+.TP 
+\fB64bit\fP
+使文件系统大于 2^32 块。
+.TP 
+\fBcasefold\fP
+启用对文件系统级大小写的支持。 只有当文件系统没有具有 \fBF\fP 属性的目录时，才可以清除该选项。
+.TP 
+\fBdir_index\fP
+使用散列 b 树来加快对大型目录的查找。
+.TP 
+\fBdir_nlink\fP
+每个目录允许超过 65000 个子目录。
+.TP 
+\fBea_inode\fP
+如有必要，允许将每个扩展属性的值放置在单独 inode 的数据块中，从而增加每个文件的扩展属性的大小和数量限制。 \fBTune2fs\fP
+目前只支持设置这个文件系统特性。
+.TP 
+\fBencrypt\fP
+启用对文件系统级加密的支持。 \fBTune2fs\fP 目前只支持设置这个文件系统特性。
+.TP 
+\fBextent\fP
+允许使用范围树来存储数据块在 inode 中的位置。 \fBTune2fs\fP 目前只支持设置这个文件系统特性。
+.TP 
+\fBextra_isize\fP
+启用 ext4 使用的扩展 inode 字段。
+.TP 
+\fBfiletype\fP
+将文件类型信息存储在目录条目中。
+.TP 
+\fBflex_bg\fP
+允许将块组的位图和 inode 表放置在存储介质上的任何位置。 \fBTune2fs\fP 不会重新组织 inode 表和分配位图的位置，就像
+\fBmke2fs\fP(8) 在创建启用了 \fBflex_bg\fP 的新格式化文件系统时所做的那样。
+.TP 
+\fBhas_journal\fP
+使用日志来确保文件系统的一致性，即使是在不正常的关闭期间也是如此。 设置文件系统特性等同于使用 \fB\-j\fP 选项。
+.TP 
+.TP 
+\fBfast_commit\fP
+启用快速提交日志特性以改善 fsync 延迟。
+.TP 
+\fBlarge_dir\fP
+增加每个目录的文件数限制。 \fBTune2fs\fP 目前只支持设置这个文件系统特性。
+.TP 
+\fBhuge_file\fP
+支持大于 2 TB 的文件。
+.TP 
+\fBlarge_file\fP
+文件系统可以包含大于 2GB 的文件。
+.TP 
+\fBmetadata_csum\fP
+存储校验和以保护每个元数据块中的内容。
+.TP 
+\fBmetadata_csum_seed\fP
+允许文件系统将元数据校验和 seed 存储在超级块中，使管理员能够在挂载时使用 \fBmetadata_csum\fP 特性更改文件系统的 UUID。
+.TP 
+\fBmmp\fP
+启用或禁用多重装载保护 (MMP) 特性。
+.TP 
+\fBproject\fP
+启用项目 ID 跟踪。 这用于项目配额跟踪。
+.TP 
+\fBquota\fP
+启用内部文件系统配额索引节点。
+.TP 
+\fBread\-only\fP
+强制内核以只读方式挂载文件系统。
+.TP 
+\fBresize_inode\fP
+保留空间以便块组描述符表可以在 future 中增长。 \fBTune2fs\fP 只支持清除这个文件系统，特性。
+.TP 
+\fBsparse_super\fP
+限制备份超级块的数量以节省大型文件系统上的空间。 \fBTune2fs\fP 目前只支持设置这个文件系统特性。
+.TP 
+\fBstable_inodes\fP
+防止文件系统缩小或更改其 UUID，以允许使用利用 inode 编号和 UUID 的专用加密设置。 \fBTune2fs\fP
+目前只支持设置这个文件系统特性。
+.TP 
+\fBuninit_bg\fP
+允许内核延迟初始化位图和 inode 表，并为文件系统中未使用的 inode 保留高水位线，以减少 \fBe2fsck\fP(8) 时间。
+启用此特性后的第一个 e2fsck 运行将占用全部时间，但后续的 e2fsck 运行将只占用原始时间的一小部分，具体取决于文件系统的满载程度。
+.TP 
+\fBverity\fP
+启用对 verity 保护文件的支持。 \fBTune2fs\fP 目前只支持设置这个文件系统特性。
+.RE
+.IP
+设置或清除 \fBsparse_super\fP、\fBuninit_bg\fP、\fBfiletype\fP 或 \fBresize_inode\fP
+文件系统特性后，可能需要使用 \fBe2fsck\fP(8) 检查文件系统以将文件系统返回到一致状态。 \fBTune2fs\fP
+将打印一条消息，请求系统管理员在必要时运行 \fBe2fsck\fP(8)。 设置 \fBdir_index\fP 特性后，可以运行 \fBe2fsck \-D\fP
+将现有目录转换为散列 B 树格式。 启用某些文件系统特性可能会阻止文件系统被不支持这些特性的内核挂载。 特别是，只有 ext4 文件系统支持
+\fBuninit_bg\fP 和 \fBflex_bg\fP 特性。
+.TP 
+\fB\-r\fP\fI reserved\-blocks\-count\fP
+设置保留的文件系统块数。
+.TP 
+\fB\-Q\fP\fI quota\-options\fP
+在超级块上设置 'quota' 特性并处理给定配额类型的配额文件。配额选项可以是以下一项或多项:
+.RS 1.2i
+.TP 
+\fB[^]usrquota\fP
+Sets/clears 超级块中的用户配额索引节点。
+.TP 
+\fB[^]grpquota\fP
+Sets/clears 超级块中的组配额索引节点。
+.TP 
+\fB[^]prjquota\fP
+Sets/clears 超级块中的项目配额索引节点。
+.RE
+.TP 
+\fB\-T\fP\fI time\-last\-checked\fP
+使用 \fBe2fsck\fP 设置上次检查文件系统的时间。 使用当前 (local) 时区解释时间。
+这在使用逻辑卷管理器制作文件系统的一致快照的脚本中很有用，然后在下班时间检查文件系统以确保它没有因硬件问题等而损坏。如果文件系统是干净的，那么这个选项可以用来设置在原始文件系统上最后一次检查的时间。
+\fItime\-last\-checked\fP 的格式是国际日期格式，带有可选的时间说明符，即 YYYYMMDD [HH [MM [SS]]]。 关键字
+\fBnow\fP 也被接受，在这种情况下，最后检查的时间将设置为当前时间。
+.TP 
+\fB\-u\fP\fI user\fP
+设置可以使用保留文件系统块的用户。 \fIuser\fP 可以是数字 uid 或用户名。 如果给出了用户名，它会在存储到超级块之前转换为数字 uid。
+.TP 
+\fB\-U\fP\fI UUID\fP
+将文件系统的全球唯一标识 (UUID) 设置为 \fIUUID\fP。 UUID 的格式是由连字符分隔的一系列十六进制数字，例如:
+"c1b9d5a2\-f162\-11cf\-9ece\-0020afc76f16"。 \fIUUID\fP 参数也可以是以下之一:
+.RS 1.2i
+.TP 
+\fIclear\fP
+清除文件系统 UUID
+.TP 
+\fIrandom\fP
+生成一个新的随机生成的 UUID
+.TP 
+\fItime\fP
+生成一个新的基于时间的 UUID
+.RE
+.IP
+通过指定 \fBUUID=\fP\fIuuid\fP 而不是像 \fB/dev/hda1\fP 这样的块特殊设备名称，UUID 可以被
+\fBmount\fP(8)、\fBfsck\fP(8) 和 \fB/etc/fstab\fP(5) (可能还有其他) 使用。
+.IP
+有关更多信息，请参见 \fBuuidgen\fP(8)。 如果系统没有像 \fI/dev/random\fP 或 \fI/dev/urandom\fP
+这样好的随机数生成器，\fBtune2fs\fP 将自动使用基于时间的 UUID 而不是随机生成的 UUID。
+.TP 
+\fB\-z\fP\fI undo_file\fP
+在覆盖文件系统块之前，将块的旧内容写入撤消文件。 如果出现问题，此撤消文件可与 e2undo(8) 一起使用以恢复文件系统的旧内容。 如果空字符串作为
+undo_file 参数传递，则撤消文件将写入通过 \fIE2FSPROGS_UNDO_DIR\fP 环境变量指定的目录中名为
+tune2fs\-\fIdevice\fP.e2undo 的文件。
+
+WARNING: 撤消文件不能用于从电源或系统崩溃中恢复。
+.SH BUGS
+我们还没有发现任何错误。 这并不意味着没有任何...
+.SH AUTHOR
+\fBtune2fs\fP 由 Remy Card <Remy.Card@linux.org> 编写。 它目前由 Theodore Ts'o
+<tytso@alum.mit.edu> 维护。 \fBtune2fs\fP 使用由 Theodore Ts'o
+<tytso@mit.edu> 编写的 ext2fs 库。 本手册页由 Christian Kuhtz
+<chk@data\-hh.Hanse.DE> 编写。 Uwe Ohse <uwe@tirka.gun.de>
+添加了时间相关检查。
+.SH AVAILABILITY
+\fBtune2fs\fP 是 e2fsprogs 包的一部分，可从 http://e2fsprogs.sourceforge.net 获得。
+.SH "SEE ALSO"
+\fBdebugfs\fP(8), \fBdumpe2fs\fP(8), \fBe2fsck\fP(8), \fBmke2fs\fP(8), \fBext4\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,187 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" The pathconf note is from Walter Harms
+.\" This is not a system call on Linux
+.\"
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH statvfs 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+statvfs, fstatvfs \- 获取文件系统统计信息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/statvfs.h>\fP
+.PP
+\fBint statvfs(const char *restrict \fP\fIpath\fP\fB, struct statvfs *restrict \fP\fIbuf\fP\fB);\fP
+\fBint fstatvfs(int \fP\fIfd\fP\fB, struct statvfs *\fP\fIbuf\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+函数 \fBstatvfs\fP() 返回有关已安装文件系统的信息。 \fIpath\fP 是挂载文件系统中任何文件的路径名。 \fIbuf\fP 是指向
+\fIstatvfs\fP 结构体的指针，大致定义如下:
+.PP
+.in +4n
+.EX
+struct statvfs {
+    unsigned long  f_bsize;    /* Filesystem block size */
+    unsigned long  f_frsize;   /* Fragment size */
+    fsblkcnt_t     f_blocks;   /* Size of fs in f_frsize units */
+    fsblkcnt_t     f_bfree;    /* Number of free blocks */
+    fsblkcnt_t     f_bavail;   /* Number of free blocks for
+                                  unprivileged users */ 
+    fsfilcnt_t     f_files;    /* Number of inodes */
+    fsfilcnt_t     f_ffree;    /* Number of free inodes */
+    fsfilcnt_t     f_favail;   /* Number of free inodes for
+                                  unprivileged users */
+    unsigned long  f_fsid;     /* Filesystem ID */
+    unsigned long  f_flag;     /* Mount flags */
+    unsigned long  f_namemax;  /* Maximum filename length */
+};
+.EE
+.in
+.PP
+这里类型 \fIfsblkcnt_t\fP 和 \fIfsfilcnt_t\fP 在 \fI<sys/types.h>\fP 中定义。 两者都曾经是
+\fIunsigned long\fP。
+.PP
+.\" XXX Keep this list in sync with statfs(2)
+\fIf_flag\fP 字段是一个位掩码，表示挂载此文件系统时使用的各种选项。 它包含零个或多个以下标志:
+.TP 
+\fBST_MANDLOCK\fP
+文件系统允许强制锁定 (参见 \fBfcntl\fP(2)).
+.TP 
+\fBST_NOATIME\fP
+不更新访问时间; 请参见 \fBmount\fP(2)。
+.TP 
+\fBST_NODEV\fP
+禁止访问此文件系统上的设备特殊文件。
+.TP 
+\fBST_NODIRATIME\fP
+不更新目录访问时间; 请参见 \fBmount\fP(2)。
+.TP 
+\fBST_NOEXEC\fP
+在此文件系统上不允许执行程序。
+.TP 
+\fBST_NOSUID\fP
+对于此文件系统上的可执行文件，\fBexec\fP(3) 会忽略 set\-user\-ID 和 set\-group\-ID 位
+.TP 
+\fBST_RDONLY\fP
+该文件系统以只读方式挂载。
+.TP 
+\fBST_RELATIME\fP
+更新一个相对于 mtime/ctime 的时间; 请参见 \fBmount\fP(2)。
+.TP 
+\fBST_SYNCHRONOUS\fP
+写入会立即同步到文件系统 (请参见 \fBopen\fP(2)).h 中对 \fBO_SYNC\fP 的描述)。
+.PP
+未指定返回的结构体的所有成员是否在所有文件系统上都具有有意义的值。
+.PP
+\fBfstatvfs\fP() 返回关于描述符 \fIfd\fP 引用的打开文件的相同信息。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+(\fBstatvfs\fP()) 对 \fIpath\fP 路径前缀的组件的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+(\fBfstatvfs\fP()) \fIfd\fP 不是有效的打开文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIBuf\fP 或 \fIpath\fP 指向无效地址。
+.TP 
+\fBEINTR\fP
+这个调用被一个信号打断了; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEIO\fP
+从文件系统读取时发生 I/O 错误。
+.TP 
+\fBELOOP\fP
+(\fBstatvfs\fP()) 翻译 \fIpath\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+(\fBstatvfs\fP()) \fIpath\fP 太长。
+.TP 
+\fBENOENT\fP
+(\fBstatvfs\fP()) \fIpath\fP 引用的文件不存在。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOSYS\fP
+文件系统不支持这个调用。
+.TP 
+\fBENOTDIR\fP
+(\fBstatvfs\fP()) \fIpath\fP 的路径前缀的组成部分不是目录。
+.TP 
+\fBEOVERFLOW\fP
+有些值太大，无法在返回的结构体中表示。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstatvfs\fP(),
+\fBfstatvfs\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.PP
+POSIX.1 中仅指定了 \fIf_flag\fP 字段的 \fBST_NOSUID\fP 和 \fBST_RDONLY\fP 标志。 要获得其余标志的定义，必须定义
+\fB_GNU_SOURCE\fP。
+.SH NOTES
+Linux 内核有系统调用 \fBstatfs\fP(2) 和 \fBfstatfs\fP(2) 来支持这个库调用。
+.PP
+.\" glibc commit 3cdaa6adb113a088fdfb87aa6d7747557eccc58d
+在 glibc 2.13 之前，\fBstatvfs\fP() 通过扫描 \fI/proc/mounts\fP 中显示的挂载选项来填充 \fIf_flag\fP
+字段的位。 但是，从 Linux 2.6.36 开始，底层 \fBstatfs\fP(2) 系统调用通过 \fIf_flags\fP 字段提供必要的信息，并且从
+glibc 2.13 开始，\fBstatvfs\fP() 函数将使用来自该字段的信息，而不是扫描 \fI/proc/mounts\fP。
+.PP
+glibc 的实现
+.PP
+.in +4n
+.EX
+pathconf(path, _PC_REC_XFER_ALIGN);
+pathconf(path, _PC_ALLOC_SIZE_MIN);
+pathconf(path, _PC_REC_MIN_XFER_SIZE);
+.EE
+.in
+.PP
+分别使用调用到 \fBstatvfs\fP() 和参数 \fIpath\fP 返回的 \fIf_frsize\fP、\fIf_frsize\fP 和 \fIf_bsize\fP
+字段。
+.SH "SEE ALSO"
+\fBstatfs\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,125 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ENVIRONMENT\&.D 5 "" "systemd 253" environment.d
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+environment.d \- 用户服务环境定义
+.SH SYNOPSIS
+.PP
+~/\&.config/environment\&.d/*\&.conf
+.PP
+/etc/environment\&.d/*\&.conf
+.PP
+/run/environment\&.d/*\&.conf
+.PP
+/usr/lib/environment\&.d/*\&.conf
+.PP
+/etc/environment
+.SH DESCRIPTION
+.PP
+environment\&.d/ 目录中的配置文件包含由 systemd 用户实例启动的服务的环境变量分配列表。
+\fBsystemd\-environment\-d\-generator\fP(8) 解析它们并更新由 systemd 用户实例导出的环境
+\&。请参见下面关于哪些进程继承那些变量 \& 的讨论。
+.PP
+建议对文件名使用数字前缀以简化排序 \&。
+.PP
+为了向后兼容，安装了指向 /etc/environment 的符号链接，因此该文件也被解析 \&。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+配置文件从 /etc/、/run/、/usr/local/lib/ 和 /usr/lib/ 中的目录中读取，按照优先顺序，如上面的 SYNOPSIS
+部分中所列 \&。文件必须具有 "\&.conf" 扩展名 \&。/etc/ 中的文件覆盖 /run/、/usr/local/lib/ 和
+/usr/lib/\& 中的同名文件。/run/ 中的文件覆盖 /usr/\& 下的同名文件。
+.PP
+所有配置文件都按字典顺序按文件名排序，而不管它们位于哪个目录中 \&。如果多个文件指定相同的选项，则文件中具有字典顺序最新名称的条目将优先
+\&。因此，某个文件中的配置可能会被完全替换 (通过将具有相同名称的文件放在具有更高优先级的目录中)，或者可能会更改个别设置
+(通过在具有不同名称的文件中指定其他设置) 稍后订购) \&。
+.PP
+包应将其配置文件安装在 /usr/lib/ (分发包) 或 /usr/local/lib/ (本地安装) \& 中。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。建议在所有文件名前加上一个两位数字和一个破折号，以简化文件的排序
+\&。
+.PP
+如果管理员想禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同
+\&。如果供应商配置文件包含在 initrd 映像中，则必须重新生成映像 \&。
+.SH "CONFIGURATION FORMAT"
+.PP
+配置文件包含 "\fIKEY\fP=\fIVALUE\fP" 环境变量分配列表，由换行符 \& 分隔。这些赋值的右侧可以引用先前定义的环境变量，使用
+"${OTHER_KEY}" 和 "$OTHER_KEY" 格式 \&。也可以使用 "${\fIFOO\fP:\-\fIDEFAULT_VALUE\fP}" 以与
+"${\fIFOO\fP}" 相同的方式扩展，除非扩展为空，在这种情况下它扩展为 \fIDEFAULT_VALUE\fP，并使用
+"${\fIFOO\fP:+\fIALTERNATE_VALUE\fP}" 扩展为 \fIALTERNATE_VALUE\fP，只要 "${\fIFOO\fP}" 扩展为非空值
+\&。不支持 shell 语法的其他元素 \&。
+.PP
+每个 \fIKEY\fP 必须是一个有效的变量名 \&。空行和以注释字符 "#" 开头的行将被忽略 \&。
+.SS Example
+.PP
+\fBExample\ \&1.\ \&Setup environment to allow access to a program installed in /opt/foo\fP
+.PP
+/etc/environment\&.d/60\-foo\&.conf:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+        FOO_DEBUG=force\-software\-gl,log\-verbose
+        PATH=/opt/foo/bin:$PATH
+        LD_LIBRARY_PATH=/opt/foo/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+        XDG_DATA_DIRS=/opt/foo/share:${XDG_DATA_DIRS:\-/usr/local/share/:/usr/share/}
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.SH APPLICABILITY
+.PP
+user@\fIuid\fP\&.service 系统服务中启动的用户管理器 (\fBsystemd \-\-user\fP 实例导出的环境变量)
+适用于该管理器启动的任何服务 \&。特别是，这可能包括运行用户 shells\& 的服务。例如在 GNOME 环境下，图形终端模拟器以
+gnome\-terminal\-server\&.service 用户元运行，而终端运行用户 shell，这样 shell 会继承用户管理器导出的环境变量
+\&。对于 shell 的其他实例，不是由用户管理器启动的，它们继承的环境由启动它们的程序定义 \&。提示:
+一般情况下，\fBsystemd.service\fP(5) 单元包含由 systemd 启动的程序，而 \fBsystemd.scope\fP(5)
+单元包含由其他 \& 启动的程序。
+.PP
+具体来说，对于 ssh 登录，\fBsshd\fP(8) 服务构建了一个环境，该环境是从远程系统转发并由 \fBsshd\fP 定义的变量的组合，请参见
+\fBssh\fP(1)\& 中的讨论。图形显示会话将具有类似的机制来定义环境 \&。请注意，某些管理器会查询导出环境的 systemd
+用户实例，并将此配置注入他们启动的程序，使用 \fBsystemctl show\-environment\fP 或底层 D\-Bus 调用 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-environment\-d\-generator\fP(8),
+\fBsystemd.environment\-generator\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,145 @@
+.\" -*- coding: UTF-8 -*-
+.\"
+.\" nfsd(7) - The nfsd filesystem
+.\"
+.\" Copyright (C) 2003 Neil Brown <neilb@cse.unsw.edu.au>
+.\" Licensed for public use under the terms of the FSF
+.\" General Public License (GPL) version 2.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH nfsd 7 "3 July 2003"  
+.SH NAME
+nfsd \- 用于控制 Linux NFS 服务器的特殊文件系统
+.SH SYNPOSIS
+\fBmount \-t nfsd nfsd /proc/fs/nfsd\fP
+.SH DESCRIPTION
+\fBnfsd\fP 文件系统是一个特殊的文件系统，它提供对 Linux NFS 服务器的访问。 写入此文件系统中的文件会影响服务器。
+从中读取可以提供有关服务器的信息。
+.P
+除了这个文件系统，\fBprocfs\fP 文件系统中还有一组文件 (通常安装在 \fB/proc\fP)，用于控制 NFS 服务器。 本手册页描述了所有这些文件。
+.P
+\fIexportfs\fP 和 \fImountd\fP 程序 (nfs\-utils 包的一部分) 期望找到这个安装在 \fB/proc/fs/nfsd\fP 或
+\fB/proc/fs/nfs\fP 的文件系统。
+.SH DETAILS
+\fBnfsd\fP 文件系统中的文件包括:
+.TP 
+\fBexports\fP
+该文件包含当前导出的文件系统列表和每个文件系统导出到的客户端，以及该 client/filesystem 对的导出选项列表。 这类似于 2.4 中的
+\fB/proc/fs/nfs/exports\fP 文件。 一个区别是客户端不一定只对应一台主机。 它可以响应被相同对待的大量主机。
+
+文件的每一行都包含路径名、客户端名称和括号中的多个选项。 路径名或客户端名称中的任何空格、制表符、换行符或反斜杠字符都将替换为反斜杠后跟该字符的八进制
+ASCII 代码。
+
+.TP 
+\fBthreads\fP
+该文件表示当前正在运行的 \fBnfsd\fP 线程数。 读取它会显示线程数。 写入 ASCII 十进制数将导致更改线程数 (根据需要增加或减少)
+以达到该数字。
+
+.TP 
+\fBfilehandle\fP
+这是一个有点不寻常的文件，因为从中读取的内容取决于刚刚写入的内容。 它提供了一个事务接口，程序可以在其中打开文件、写入请求和读取响应。
+如果两个独立的程序同时打开、写入和读取，它们的请求将不会混淆。
+
+写入 \fBfilehandle\fP 的请求应该是客户端名称、路径名称和字节数。 这之后应该跟一个换行符，用空格分隔字段，以及特殊字符的八进制引号。
+
+在编写此代码时，程序将能够读回导出到给定客户端的该路径的文件句柄。 文件句柄的长度最多为给定的字节数。
+
+文件句柄将以十六进制表示，前导 '\ex'。
+
+.TP 
+\fBclients/\fP
+此目录包含每个 NFSv4 客户端的子目录。 该子目录下的每个文件都以 YAML 格式提供了有关客户端的一些详细信息。 此外，将 "expire\en"
+写入 \fBctl\fP 文件将强制服务器立即撤销该客户端持有的所有状态。
+
+.PP
+\fBprocfs\fP 文件系统中的目录 \fB/proc/net/rpc\fP 包含许多文件和目录。 这些文件包含可以使用 \fInfsstat\fP
+程序显示的统计信息。 这些目录包含有关 NFS 服务器维护的各种缓存的信息，以跟踪不同客户端对不同文件系统的访问权限。 缓存是:
+
+.TP 
+\fBauth.unix.ip\fP
+此缓存包含从 IP 地址到身份验证域名称的映射，IP 地址应被视为其中的一部分。
+
+.TP 
+\fBnfsd.export\fP
+此缓存包含从目录和域到导出选项的映射。
+
+.TP 
+\fBnfsd.fh\fP
+此缓存包含从域和文件系统标识符到目录的映射。 文件系统标识符存储在文件句柄中，由指示标识符类型的数字和指示标识符内容的十六进制字节数组成。
+
+.PP
+每个代表缓存的目录可以容纳 1 到 3 个文件。 他们是:
+.TP 
+\fBflush\fP
+当纪元 (1970 年 1 月 1 日) 写入此文件后的几秒内，缓存中在该文件之前最后更新的所有条目都将失效并被清除。 在 future 中写入时间
+(自纪元以来的秒数) 将刷新所有内容。 这是唯一始终存在的文件。
+
+.TP 
+\fBcontent\fP
+该文件 (如果存在) 包含缓存中所有条目的文本表示，每行一个。 如果一个条目仍在缓存中 (因为它正在被积极使用) 但已经过期或无效，它将作为评论
+(带有前导散列字符) 显示。
+
+.TP 
+\fBchannel\fP
+此文件 (如果存在) 充当通道，用于将来自基于内核的 nfs 服务器的请求传递给用户空间程序进行处理。
+
+当内核需要一些不在缓存中的信息时，它会在 \fBchannel\fP 文件中显示一行，给出信息的键。
+用户空间程序应该读取它，找到答案，并写下包含密钥、到期时间和内容的一行。 例如内核可能使
+.ti +5
+nfsd 127.0.0.1
+.br
+出现在 \fBauth.unix.ip/content\fP 文件中。 用户空间程序可能会写
+.ti +5
+nfsd 127.0.0.1 1057206953 本地主机
+.br
+表明 127.0.0.1 应该 map 到本地主机，至少现在是这样。
+
+如果程序使用 select(2) 或 poll(2) 来发现它是否可以从 \fBchannel\fP
+中读取，那么它永远不会看到文件结尾，但是当所有请求都已得到答复时，它将阻塞直到出现另一个请求。
+
+.PP
+在 \fB/proc\fP 文件系统中有 4 个文件可用于启用对 nfsd 和相关代码的额外跟踪。 他们是:
+.in +5
+\fB/proc/sys/sunrpc/nfs_debug\fP
+.br
+\fB/proc/sys/sunrpc/nfsd_debug\fP
+.br
+\fB/proc/sys/sunrpc/nlm_debug\fP
+.br
+\fB/proc/sys/sunrpc/rpc_debug\fP
+.br
+.in -5
+它们分别控制 NFS 客户端、NFS 服务器、网络锁管理器 (lockd) 和底层 RPC 层的跟踪。 可以从这些文件中读取或写入十进制数。
+每个数字代表一个位模式，其中设置的位会导致启用某些类别的跟踪。 查阅内核头文件以找出什么数字对应于什么跟踪。
+
+.SH NOTES
+该文件系统仅适用于 Linux 2.6 和更高版本的内核 (以及 2.6 之前的 2.5 开发系列的后续部分)。 此手册页不适用于 2.4 及更早版本。
+.P
+以前 nfsctl 系统调用用于 nfsd 和用户实用工具之间的通信。 该系统调用在内核版本 3.1 中被删除。 如有必要，较旧的 nfs\-utils
+版本能够回退到 nfsctl; 已从 nfs\-utils 1.3.5 中删除。
+
+.SH "SEE ALSO"
+\fBnfsd\fP(8), \fBrpc.nfsd\fP(8), \fBexports\fP(5), \fBnfsstat\fP(8), \fBmountd\fP(8)
+\fBexportfs\fP(8).
+
+.SH AUTHOR
+NeilBrown
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

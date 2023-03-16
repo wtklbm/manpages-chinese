@@ -1,0 +1,163 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 7/93 by Darren Senn <sinster@scintilla.santa-clara.ca.us>
+.\" and Copyright (C) 2016, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Based on a similar page Copyright 1992 by Rick Faith
+.\"
+.\" %%%LICENSE_START(FREELY_REDISTRIBUTABLE)
+.\" May be freely distributed and modified
+.\" %%%LICENSE_END
+.\"
+.\" Modified Tue Oct 22 00:22:35 EDT 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" 2005-04-06 mtk, Matthias Lang <matthias@corelatus.se>
+.\" 	Noted MAX_SEC_IN_JIFFIES ceiling
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getitimer 2 2023\-02\-12 "Linux man\-pages 6.03" 
+.SH NAME
+getitimer、setitimer \- 获取或设置间隔计时器的值
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/time.h>\fP
+.PP
+\fBint getitimer(int \fP\fIwhich\fP\fB, struct itimerval *\fP\fIcurr_value\fP\fB);\fP
+\fBint setitimer(int \fP\fIwhich\fP\fB, const struct itimerval *restrict \fP\fInew_value\fP\fB,\fP
+\fB              struct itimerval *_Nullable restrict \fP\fIold_value\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些系统调用提供对间隔计时器的访问，即最初在 future 中的某个时间点到期的计时器，之后以固定的时间间隔 (optionally) 到期。
+当计时器到期时，会为调用进程生成一个信号，并将计时器重置为指定的时间间隔 (如果时间间隔不为零)。
+.PP
+提供了通过 \fIwhich\fP 参数 \[em] 指定的三种类型的定时器 \[em]，每一种都针对不同的时钟计数，并在定时器到期时生成不同的信号:
+.TP 
+\fBITIMER_REAL\fP
+该计时器以实际 (即挂钟) 时间倒计时。 每次到期时，都会生成一个 \fBSIGALRM\fP 信号。
+.TP 
+\fBITIMER_VIRTUAL\fP
+该计时器对进程消耗的用户模式 CPU 时间进行倒计时。 (测量值包括进程中所有线程消耗的 CPU 时间。) 每次到期时，都会生成一个
+\fBSIGVTALRM\fP 信号。
+.TP 
+\fBITIMER_PROF\fP
+该计时器对进程消耗的总 (即用户和系统) CPU 时间进行倒计时。 (测量值包括进程中所有线程消耗的 CPU 时间。) 每次到期时，都会生成一个
+\fBSIGPROF\fP 信号。
+.IP
+结合 \fBITIMER_VIRTUAL\fP，此计时器可用于分析进程消耗的用户和系统 CPU 时间。
+.PP
+一个进程只有三种定时器中的一种。
+.PP
+定时器值由以下结构定义:
+.PP
+.in +4n
+.EX
+struct itimerval {
+    struct timeval it_interval; /* Interval for periodic timer */
+    struct timeval it_value;    /* Time until next expiration */
+};
+
+struct timeval {
+    time_t      tv_sec;         /* seconds */
+    suseconds_t tv_usec;        /* microseconds */
+};
+.EE
+.in
+.\"
+.SS getitimer()
+函数 \fBgetitimer\fP() 将 \fIwhich\fP 指定的定时器的当前值放在 \fIcurr_value\fP 指向的缓冲区中。
+.PP
+\fIit_value\fP 子结构填充了指定计时器下一次到期之前剩余的时间量。 该值随着定时器倒计时而变化，并在定时器超时时重置为
+\fIit_interval\fP。 如果 \fIit_value\fP 的两个字段都为零，则该定时器当前处于解除状态 (inactive)。
+.PP
+\fIit_interval\fP 子结构填充有定时器间隔。 如果 \fIit_interval\fP 的两个字段都为零，那么这是一个单次定时器
+(即，它只过期一次)。
+.SS setitimer()
+函数 \fBsetitimer\fP() 分支或解除 \fIwhich\fP 指定的定时器，通过将定时器设置为 \fInew_value\fP 指定的值。 如果
+\fIold_value\fP 为非 NULL，则它指向的缓冲区用于返回定时器的先前值 (即与 \fBgetitimer\fP()) 返回的相同信息。
+.PP
+如果 \fInew_value.it_value\fP 中的任一字段不为零，则定时器会在指定时间初始到期。 如果 \fInew_value.it_value\fP
+中的两个字段都为零，则定时器被解除。
+.PP
+\fInew_value.it_interval\fP 字段指定定时器的新间隔; 如果它的两个子字段都为零，则定时器是单次的。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fInew_value\fP、\fIold_value\fP 或 \fIcurr_value\fP 不是有效的指针。
+.TP 
+\fBEINVAL\fP
+\fIwhich\fP 不是 \fBITIMER_REAL\fP、\fBITIMER_VIRTUAL\fP 或 \fBITIMER_PROF\fP 之一; 或者 (自
+Linux 2.6.22 起) \fInew_value\fP 指向的结构体中的 \fItv_usec\fP 字段之一包含超出 [0, 999999] 范围的值。
+.SH STANDARDS
+POSIX.1\-2001，SVr4，4.4BSD (这个调用最早出现在 4.2BSD)。 POSIX.1\-2008 标记 \fBgetitimer\fP()
+和 \fBsetitimer\fP() 已过时，建议改用 POSIX 计时器 API
+((\fBtimer_gettime\fP(2)、\fBtimer_settime\fP(2) 等)。
+.SH NOTES
+定时器永远不会在请求的时间之前过期，但可能会在某个 (short) 时间后过期，这取决于系统定时器分辨率和系统负载; 请参见 \fBtime\fP(7)。
+(但请参见下面的 BUGS。) 如果在进程处于活动状态时计时器到期 (对于 \fBITIMER_VIRTUAL\fP) 始终为真，则信号将在生成时立即传递。
+.PP
+通过 \fBfork\fP(2) 创建的子项不会继承其父项的间隔计时器。 间隔计时器在 \fBexecve\fP(2) 中保留。
+.PP
+POSIX.1 未指定 \fBsetitimer\fP() 与三个接口 \fBalarm\fP(2)、\fBsleep\fP(3) 和 \fBusleep\fP(3)
+之间的交互。
+.PP
+标准对调用的含义没有说明:
+.PP
+.in +4n
+.EX
+setitimer(which, NULL, &old_value);
+.EE
+.in
+.PP
+许多系统 (Solaris、BSD，也许还有其他系统) 将其视为等同于:
+.PP
+.in +4n
+.EX
+getitimer(which, &old_value);
+.EE
+.in
+.PP
+在 Linux 中，这被视为等同于其中 \fInew_value\fP 字段为零的调用; 也就是说，定时器被禁用。 \fIDon't use this Linux misfeature\fP: 它不可移植且不必要。
+.SH BUGS
+信号的生成和传递是不同的，上面列出的每个信号只有一个实例可能正在等待进程。 在非常重的负载下，\fBITIMER_REAL\fP
+计时器可能会在前一个到期信号传递之前到期。 此类事件中的第二个信号将丢失。
+.PP
+在 Linux 2.6.16 之前，定时器值以 jiffies 表示。 如果发出请求，则设置一个计时器，其 jiffies 表示超过
+\fBMAX_SEC_IN_JIFFIES\fP (在 \fIinclude/linux/jiffies.h\fP) 中定义)，然后计时器将被静默截断为该上限值。
+在 Linux/i386 上 (从 Linux 2.6.13 开始，默认的 jiffy 是 0.004 秒)，这意味着计时器的上限值大约是 99.42
+天。 从 Linux 2.6.16 开始，内核多次使用不同的内部表示，并且这个上限被移除了。
+.PP
+.\" 4 Jul 2005: It looks like this bug may remain in Linux 2.4.x.
+.\"	http://lkml.org/lkml/2005/7/1/165
+在某些系统 (包括 i386) 上，Linux 2.6.12 之前的 Linux 内核有一个错误，在某些情况下会导致定时器过早过期，最多可达一瞬间。
+此错误已在 Linux 2.6.12 中修复。
+.PP
+.\" Bugzilla report 25 Apr 2006:
+.\" http://bugzilla.kernel.org/show_bug.cgi?id=6443
+.\" "setitimer() should reject noncanonical arguments"
+POSIX.1\-2001 规定，如果指定的 \fItv_usec\fP 值超出 [0, 999999] 范围，则 \fBsetitimer\fP() 应该失败。
+但是，直到 Linux 2.6.21，Linux 都没有报错，而是默默的给定时器调整对应的秒数。 从 Linux 2.6.22
+开始，此不一致已得到修复: 不正确的 \fItv_usec\fP 值会导致 \fBEINVAL\fP 错误。
+.SH "SEE ALSO"
+\fBgettimeofday\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2), \fBtimer_create\fP(2),
+\fBtimerfd_create\fP(2), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,254 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2002 Robert Love
+.\" and Copyright (C) 2006, 2015 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 2002-11-19 Robert Love <rml@tech9.net> - initial version
+.\" 2004-04-20 mtk - fixed description of return value
+.\" 2004-04-22 aeb - added glibc prototype history
+.\" 2005-05-03 mtk - noted that sched_setaffinity may cause thread
+.\"	migration and that CPU affinity is a per-thread attribute.
+.\" 2006-02-03 mtk -- Major rewrite
+.\" 2008-11-12, mtk, removed CPU_*() macro descriptions to a
+.\" separate CPU_SET(3) page.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sched_setaffinity 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+sched_setaffinity、sched_getaffinity \- 设置和获取线程的 CPU 亲和性掩码
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <sched.h>\fP
+.PP
+\fBint sched_setaffinity(pid_t \fP\fIpid\fP\fB, size_t \fP\fIcpusetsize\fP\fB,\fP
+\fB                      const cpu_set_t *\fP\fImask\fP\fB);\fP
+\fBint sched_getaffinity(pid_t \fP\fIpid\fP\fB, size_t \fP\fIcpusetsize\fP\fB,\fP
+\fB                      cpu_set_t *\fP\fImask\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+线程的 CPU 亲和性掩码决定了它有资格运行的 CPU 集。 在多处理器系统上，设置 CPU 关联掩码可用于获得性能优势。 例如，通过将一个 CPU
+专用于特定线程 (即设置该线程的亲和性掩码以指定单个 CPU，并设置所有其他线程的亲和性掩码以排除该 CPU)，可以确保最大执行速度对于那个线程。
+限制线程在单个 CPU 上运行还可以避免当线程停止在一个 CPU 上执行然后重新开始在不同 CPU 上执行时发生的缓存失效导致的性能成本。
+.PP
+CPU 关联掩码由 \fIcpu_set_t\fP 结构体表示，"CPU set" 由 \fImask\fP 指向。 \fBCPU_SET\fP(3)
+中描述了一组用于操作 CPU 集的宏。
+.PP
+\fBsched_setaffinity\fP() 将 ID 为 \fIpid\fP 的线程的 CPU affinity mask 设置为 \fImask\fP
+指定的值。 如果 \fIpid\fP 为零，则使用调用线程。 参数 \fIcpusetsize\fP 是 \fImask\fP 指向的数据的长度 (以字节为单位)。
+通常这个参数会被指定为 \fIsizeof(cpu_set_t)\fP。
+.PP
+如果 \fIpid\fP 指定的线程当前未在 \fImask\fP 中指定的 CPU 之一上运行，则该线程将迁移到 \fImask\fP 中指定的 CPU 之一。
+.PP
+\fBsched_getaffinity\fP() 将 ID 为 \fIpid\fP 的线程的 affinity mask 写入 \fImask\fP 指向的
+\fIcpu_set_t\fP 结构体。 \fIcpusetsize\fP 参数指定 \fImask\fP 的大小 (以字节为单位)。 如果 \fIpid\fP
+为零，则返回调用线程的掩码。
+.SH "RETURN VALUE"
+成功时，\fBsched_setaffinity\fP() 和 \fBsched_getaffinity\fP() 返回 0 (但请参见下面的 "C
+library/kernel differences"，其中指出底层 \fBsched_getaffinity\fP() 的返回值不同)。 失败时，返回
+\-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+提供的内存地址无效。
+.TP 
+\fBEINVAL\fP
+根据 \fIcpuset\fP cgroups 或 \fBcpuset\fP(7) 中描述的 "cpuset" 机制可能施加的任何限制，关联位掩码 \fImask\fP
+不包含当前物理上位于系统上并允许线程使用的处理器。
+.TP 
+\fBEINVAL\fP
+(\fBsched_getaffinity\fP() 和 Linux 2.6.9 之前的 \fBsched_setaffinity\fP())
+\fIcpusetsize\fP 小于内核使用的亲和掩码的大小。
+.TP 
+\fBEPERM\fP
+(\fBsched_setaffinity\fP()) 调用线程没有适当的权限。 调用者需要一个有效用户 ID 等于 \fIpid\fP 标识的线程的真实用户 ID
+或有效用户 ID，或者它必须在线程 \fIpid\fP 的用户命名空间中拥有 \fBCAP_SYS_NICE\fP 能力。
+.TP 
+\fBESRCH\fP
+找不到 ID 为 \fIpid\fP 的线程。
+.SH VERSIONS
+Linux 内核 2.5.8 中引入了 CPU 亲和系统调用。 glibc 2.3 中引入了系统调用包装器。 最初，glibc 接口包含一个
+\fIcpusetsize\fP 参数，类型为 \fIunsigned int\fP。 在 glibc 2.3.3 中，\fIcpusetsize\fP
+参数被删除，但随后在 glibc 2.3.4 中恢复，类型为 \fIsize_t\fP。
+.SH STANDARDS
+这些系统调用是特定于 Linux 的。
+.SH NOTES
+在调用 \fBsched_setaffinity\fP() 之后，线程将实际运行的 CPU 集合是 \fImask\fP 参数中指定的集合与系统中实际存在的 CPU
+集合的交集。 如果正在使用 \fBcpuset\fP(7) 中描述的 "cpuset" 机制，系统可能会进一步限制线程运行的 CPU 集。
+这些对线程将在其上运行的实际 CPU 集的限制是由内核悄悄施加的。
+.PP
+有多种方法可以确定系统上可用的 CPU 数量，包括: 检查 \fI/proc/cpuinfo\fP 的内容; 使用 \fBsysconf\fP(3) 获取
+\fB_SC_NPROCESSORS_CONF\fP 和 \fB_SC_NPROCESSORS_ONLN\fP 参数的值; 并检查
+\fI/sys/devices/system/cpu/\fP 下的 CPU 目录列表。
+.PP
+\fBsched\fP(7) 有 Linux 调度方案的描述。
+.PP
+affinity mask 是一个每线程属性，可以为线程组中的每个线程独立调整。 从调用到 \fBgettid\fP(2) 的返回值可以在参数 \fIpid\fP
+中传递。 将 \fIpid\fP 指定为 0 将为调用线程设置属性，并将调用返回的值传递给 \fBgetpid\fP(2) 将为线程组的主线程设置属性。
+(如果您使用的是 POSIX 线程 API，则使用 \fBpthread_setaffinity_np\fP(3) 而不是
+\fBsched_setaffinity\fP().)
+.PP
+\fIisolcpus\fP 引导选项可用于在引导时隔离一个或多个 CPU，以便没有进程被调度到这些 CPU 上。 使用此引导选项后，将进程调度到独立 CPU
+上的唯一方法是通过 \fBsched_setaffinity\fP() 或 \fBcpuset\fP(7) 机制。 有关详细信息，请参见内核源文件
+\fIDocumentation/admin\-guide/kernel\-parameters.txt\fP。 如该文件中所述，\fIisolcpus\fP 是隔离
+CPU 的首选机制 (相对于手动设置系统上所有进程的 CPU 关联的替代方法)。
+.PP
+通过 \fBfork\fP(2) 创建的子进程继承其父进程的 CPU 关联掩码。 关联掩码在 \fBexecve\fP(2) 中保留。
+.SS "C library/kernel differences"
+本手册页描述了 CPU 关联调用的 glibc 接口。 实际系统调用接口略有不同，\fImask\fP 被打成 \fIunsigned long\ *\fP，反映了
+CPU 集的底层实现是一个简单的位掩码。
+.PP
+成功时，原始 \fBsched_getaffinity\fP() 系统调用返回复制到 \fImask\fP 缓冲区中的字节数; 这将是 \fIcpusetsize\fP
+的最小值和 \fIcpumask_t\fP 数据类型的大小 (以字节为单位)，内核在内部使用它来表示 CPU 设置位掩码。
+.SS "Handling systems with large CPU affinity masks"
+.\" FIXME . See https://sourceware.org/bugzilla/show_bug.cgi?id=15630
+.\" and https://sourceware.org/ml/libc-alpha/2013-07/msg00288.html
+底层系统调用 (将 CPU 掩码表示为 \fIunsigned long\ *\fP) 类型的位掩码) 对 CPU 掩码的大小没有限制。 然而，glibc
+使用的 \fIcpu_set_t\fP 数据类型的大小固定为 128 字节，这意味着可以表示的最大 CPU 数量为 1023。 如果内核 CPU 关联掩码大于
+1024，则调用以下形式:
+.PP
+.in +4n
+.EX
+sched_getaffinity(pid, sizeof(cpu_set_t), &mask);
+.EE
+.in
+.PP
+fail with the error \fBEINVAL\fP，底层系统调用于 \fIcpusetsize\fP 中指定的 \fImask\fP 大小小于内核使用的
+affinity mask 大小的情况下产生的错误。 (根据系统 CPU 拓扑，内核关联掩码可能远大于系统中活动 CPU 的数量。)
+.PP
+在具有大型内核 CPU 亲和性掩码的系统上工作时，必须动态分配 \fImask\fP 参数 (请参见 \fBCPU_ALLOC\fP(3)).
+目前，唯一的方法是通过使用 \fBsched_getaffinity\fP() 调用来探测所需掩码的大小，并增加掩码大小 (直到调用不会因错误
+\fBEINVAL\fP) 而失败。
+.PP
+请注意，\fBCPU_ALLOC\fP(3) 可能会分配比请求的稍大的 CPU 集 (因为 CPU 集是作为以 \fIsizeof(long)\fP)
+为单位分配的位掩码实现的。 因此，\fBsched_getaffinity\fP() 可以设置超出请求分配大小的位，因为内核会看到一些额外的位。
+因此，调用者应该遍历返回集合中的位，计算已设置的位，并在达到 \fBCPU_COUNT\fP(3) 返回的值时停止 (而不是遍历请求分配的位数)。
+.SH EXAMPLES
+下面的程序创建了一个子进程。 然后，父进程和子进程各自将自己分配给指定的 CPU，并执行相同的循环，这些循环会消耗一些 CPU 时间。
+在终止之前，父母等待子节点完成。 该程序采用三个命令行参数: 父进程的 CPU 编号、子进程的 CPU 编号以及两个进程应执行的循环迭代次数。
+.PP
+如下面的示例运行所示，运行程序时消耗的实际时间和 CPU 时间量将取决于内核内缓存效果以及进程是否使用相同的 CPU。
+.PP
+我们首先使用 \fBlscpu\fP(1) 来确定这个 (x86) 系统有两个核心，每个核心有两个 CPU:
+.PP
+.in +4n
+.EX
+$ \fBlscpu | egrep \-i \[aq]core.*:|socket\[aq]\fP
+Thread(s) 每核心: 2
+Core(s) 每个插槽: 2
+Socket(s):             1
+.EE
+.in
+.PP
+然后，我们针对三种情况对示例程序的运行进行计时: 两个进程都运行在同一个 CPU 上; 两个进程在同一内核的不同 CPU 上运行;
+并且两个进程都在不同内核的不同 CPU 上运行。
+.PP
+.in +4n
+.EX
+$ \fBtime \-p ./a.out 0 0 100000000\fP
+真正的 14.75
+用户 3.02
+系统 11.73
+系统 11.73
+真正的 11.52
+用户 3.98
+sys 19.06
+sys 19.06
+real 7.89
+user 3.29
+sys 12.07
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (sched_setaffinity.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int           parentCPU, childCPU;
+    cpu_set_t     set;
+    unsigned int  nloops;
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s parent\-cpu child\-cpu num\-loops\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    parentCPU = atoi(argv[1]);
+    childCPU = atoi(argv[2]);
+    nloops = atoi(argv[3]);
+
+    CPU_ZERO(&set);
+
+    switch (fork()) {
+    case \-1:            /* Error */
+        err(EXIT_FAILURE, "fork");
+
+    case 0:             /* Child */
+        CPU_SET(childCPU, &set);
+
+        if (sched_setaffinity(getpid(), sizeof(set), &set) == \-1)
+            err(EXIT_FAILURE, "sched_setaffinity");
+
+        for (unsigned int j = 0; j < nloops; j++)
+            getppid();
+
+        exit(EXIT_SUCCESS);
+
+    default:            /* Parent */
+        CPU_SET(parentCPU, &set);
+
+        if (sched_setaffinity(getpid(), sizeof(set), &set) == \-1)
+            err(EXIT_FAILURE, "sched_setaffinity");
+
+        for (unsigned int j = 0; j < nloops; j++)
+            getppid();
+
+        wait(NULL);     /* Wait for child to terminate */
+        exit(EXIT_SUCCESS);
+    }
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBlscpu\fP(1), \fBnproc\fP(1), \fBtaskset\fP(1), \fBclone\fP(2), \fBgetcpu\fP(2),
+\fBgetpriority\fP(2), \fBgettid\fP(2), \fBnice\fP(2), \fBsched_get_priority_max\fP(2),
+\fBsched_get_priority_min\fP(2), \fBsched_getscheduler\fP(2),
+\fBsched_setscheduler\fP(2), \fBsetpriority\fP(2), \fBCPU_SET\fP(3),
+\fBget_nprocs\fP(3), \fBpthread_setaffinity_np\fP(3), \fBsched_getcpu\fP(3),
+\fBcapabilities\fP(7), \fBcpuset\fP(7), \fBsched\fP(7), \fBnumactl\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

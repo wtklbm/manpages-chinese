@@ -1,0 +1,1202 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2016 Eugene Syromyatnikov <evgsyr@gmail.com>
+.\" A very few fragments remain from an earlier version of this page
+.\" written by David Howells (dhowells@redhat.com)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH keyctl 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+keyctl \- 操纵内核的密钥管理工具
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.PP
+或者，Linux 密钥管理实用工具 (\fIlibkeyutils\fP、\fI\-lkeyutils\fP); 见注释。
+.SH SYNOPSIS
+.nf
+\fB#include <linux/keyctl.h>\fP     /* Definition of \fBKEY*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBlong syscall(SYS_keyctl, int \fP\fIoperation\fP\fB, unsigned long \fP\fIarg2\fP\fB,\fP
+\fB             unsigned long \fP\fIarg3\fP\fB, unsigned long \fP\fIarg4\fP\fB,\fP
+\fB             unsigned long \fP\fIarg5\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBkeyctl\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBkeyctl\fP() 允许用户空间程序执行键操作。
+.PP
+\fBkeyctl\fP() 执行的操作由 \fIoperation\fP 参数的值决定。 这些操作中的每一个都由 \fIlibkeyutils\fP 库 (由
+\fIkeyutils\fP 包提供) 包装成单独的函数 (如下所述) 以允许编译器检查类型。
+.PP
+\fIoperation\fP 的允许值为:
+.TP 
+\fBKEYCTL_GET_KEYRING_ID\fP (since Linux 2.6.10)
+Map 一个特殊的密钥 ID 到这个过程的真实密钥 ID。
+.IP
+此操作查找其 ID 在 \fIarg2\fP 中提供的特殊密钥 (转换为 \fIkey_serial_t\fP).  如果找到特殊密钥，则返回相应真实密钥的 ID
+作为函数结果。 可以在 \fIarg2\fP: 中指定以下值
+.RS
+.TP 
+\fBKEY_SPEC_THREAD_KEYRING\fP
+这指定了调用线程的线程特定密钥环。 请参见 \fBthread\-keyring\fP(7)。
+.TP 
+\fBKEY_SPEC_PROCESS_KEYRING\fP
+这指定了调用者的特定于进程的密钥环。 请参见 \fBprocess\-keyring\fP(7)。
+.TP 
+\fBKEY_SPEC_SESSION_KEYRING\fP
+这指定了调用者的特定于会话的密钥环。 请参见 \fBsession\-keyring\fP(7)。
+.TP 
+\fBKEY_SPEC_USER_KEYRING\fP
+这指定了调用者的特定于 UID 的密钥环。 请参见 \fBuser\-keyring\fP(7)。
+.TP 
+\fBKEY_SPEC_USER_SESSION_KEYRING\fP
+这指定调用者的 UID 会话密钥环。 请参见 \fBuser\-session\-keyring\fP(7)。
+.TP 
+\fBKEY_SPEC_REQKEY_AUTH_KEY\fP (since Linux 2.6.16)
+.\"            commit b5f545c880a2a47947ba2118b2509644ab7a2969
+这指定了由 \fBrequest_key\fP(2) 创建并传递给它生成密钥的进程的授权密钥。 该密钥仅在内核传递了授权密钥的
+\fBrequest\-key\fP(8)\-style 程序中可用，一旦请求的密钥被实例化，该密钥将不再可用; 请参见 \fBrequest_key\fP(2)。
+.TP 
+\fBKEY_SPEC_REQUESTOR_KEYRING\fP (since Linux 2.6.29)
+.\"            commit 8bbf4976b59fc9fc2861e79cab7beb3f6d647640
+这指定了 \fBrequest_key\fP(2) 目标密钥环的密钥 ID。 该密钥环仅在内核传递了授权密钥的 \fBrequest\-key\fP(8)\-style
+程序中可用，一旦请求的密钥被实例化，该密钥环将不再可用; 请参见 \fBrequest_key\fP(2)。
+.RE
+.IP
+.\" The keyctl_get_keyring_ID.3 page says that a new key
+.\" "will be created *if it is appropriate to do so**. What is the
+.\" determiner for appropriate?
+.\" David Howells: Some special keys such as KEY_SPEC_REQKEY_AUTH_KEY
+.\" wouldn't get created but user/user-session/session keyring would
+.\" be created.
+\fIarg2\fP 中指定的键不存在时的行为取决于 \fIarg3\fP 的值 (转换为 \fIint\fP)。 如果 \fIarg3\fP 包含非零值，那么 \[em]
+如果这样做是合适的 (例如，在查找用户、用户会话或会话密钥时) \[em] 将创建一个新密钥及其真实密钥 ID 作为函数结果返回。
+否则，操作将失败并出现错误 \fBENOKEY\fP。
+.IP
+如果在 \fIarg2\fP 中指定了有效的密钥 ID，并且该密钥存在，则此操作仅返回密钥 ID。如果密钥不存在，调用将失败并返回错误 \fBENOKEY\fP。
+.IP
+调用者必须对密钥环具有 \fIsearch\fP 权限才能找到它。
+.IP
+参数 \fIarg4\fP 和 \fIarg5\fP 被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_get_keyring_ID\fP(3) 公开。
+.TP 
+\fBKEYCTL_JOIN_SESSION_KEYRING\fP (since Linux 2.6.10)
+.\" This may be useful in conjunction with some sort of
+.\" session management framework that is employed by the application.
+用新的会话密钥环替换此进程订阅的会话密钥环。
+.IP
+如果 \fIarg2\fP 为 NULL，则创建一个描述为 "_ses" 的匿名密钥环，并且该进程订阅该密钥环作为它的会话密钥环，从而取代先前的会话密钥环。
+.IP
+否则，\fIarg2\fP (转换为 \fIchar\ *\fP) 被视为密钥环的描述 (name)，行为如下:
+.RS
+.IP \[bu] 3
+如果存在具有匹配描述的密钥环，则进程将尽可能尝试订阅该密钥环作为它的会话密钥环; 如果不可能，则返回错误。 为了订阅密钥环，调用者必须对密钥环具有
+\fIsearch\fP 权限。
+.IP \[bu]
+如果不存在具有匹配描述的密钥环，则创建具有指定描述的新密钥环，并且该进程订阅该密钥环作为它的会话密钥环。
+.RE
+.IP
+参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_join_session_keyring\fP(3) 公开。
+.TP 
+\fBKEYCTL_UPDATE\fP (since Linux 2.6.10)
+更新密钥的数据，载荷。
+.IP
+\fIarg2\fP 参数 (转换为 \fIkey_serial_t\fP) 指定要更新的密钥的 ID。 \fIarg3\fP 参数 (转换为 \fIvoid\ *\fP)
+指向新的有效，载荷，和 \fIarg4\fP (转换为 \fIsize_t\fP) 包含以字节为单位的新有效，载荷，大小。
+.IP
+调用方必须对指定的密钥具有 \fIwrite\fP 权限，并且密钥类型必须支持更新。
+.IP
+一个负实例化的键 (见 \fBKEYCTL_REJECT\fP) 的描述) 可以用这个操作正实例化。
+.IP
+\fIarg5\fP 参数被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_update\fP(3) 公开。
+.TP 
+\fBKEYCTL_REVOKE\fP (since Linux 2.6.10)
+使用 \fIarg2\fP 中提供的 ID 撤销密钥 (转换为 \fIkey_serial_t\fP)。 关键是预定垃圾集合;
+它将不再可找到，并且将无法用于进一步的操作。 进一步尝试使用该密钥将失败，并显示错误 \fBEKEYREVOKED\fP。
+.IP
+.\" Keys with the KEY_FLAG_KEEP bit set cause an EPERM
+.\" error for KEYCTL_REVOKE. Does this need to be documented?
+.\" David Howells: No significance for user space.
+调用者必须对密钥具有 \fIwrite\fP 或 \fIsetattr\fP 权限。
+.IP
+参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_revoke\fP(3) 公开。
+.TP 
+\fBKEYCTL_CHOWN\fP (since Linux 2.6.10)
+更改密钥的所有权 (用户和组 ID)。
+.IP
+\fIarg2\fP 参数 (转换为 \fIkey_serial_t\fP) 包含密钥 ID。\fIarg3\fP 参数 (转换为 \fIuid_t\fP) 包含新用户 ID
+(或 \-1，以防不应更改用户 ID) )。 \fIarg4\fP 参数 (转换为 \fIgid_t\fP) 包含新的组 ID (或 \-1，以防不应更改组 ID)。
+.IP
+密钥必须授予调用方 \fIsetattr\fP 权限。
+.IP
+要更改 UID，或将 GID 更改为调用者不属于的组，调用者必须具有 \fBCAP_SYS_ADMIN\fP 能力 (请参见
+\fBcapabilities\fP(7)).
+.IP
+如果要更改 UID，新用户必须有足够的配额来接受密钥。 如果 UID 更改，配额扣除将从旧用户转移到新用户。
+.IP
+\fIarg5\fP 参数被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_chown\fP(3) 公开。
+.TP 
+\fBKEYCTL_SETPERM\fP (since Linux 2.6.10)
+将 \fIarg2\fP 参数 (转换为 \fIkey_serial_t\fP)) 中提供的 ID 密钥的权限更改为 \fIarg3\fP 参数 (转换为
+\fIkey_perm_t\fP).
+.IP
+如果调用者没有 \fBCAP_SYS_ADMIN\fP 能力，它只能更改它拥有所有权的密钥的权限。 (更准确地说: 调用者的文件系统 UID 必须与密钥的
+UID 相匹配。)
+.IP
+.\" FIXME Above, is it really intended that a privileged process can't
+.\" override the lack of the 'setattr' permission?
+密钥必须将调用者能力的 \fIsetattr\fP 权限授予调用者 \fIregardless\fP。
+.IP
+\fIarg3\fP 中的权限为以下每个用户类别指定可用操作的掩码:
+.RS
+.TP 
+\fIpossessor\fP (since Linux 2.6.14)
+.\" commit 664cceb0093b755739e56572b836a99104ee8a75
+这是授予拥有密钥的进程的权限 (它是否可搜索地附加到进程的密钥环之一) ; 请参见 \fBkeyrings\fP(7)。
+.TP 
+\fIuser\fP
+这是授予文件系统 UID 与密钥 UID 匹配的进程的权限。
+.TP 
+\fIgroup\fP
+这是授予文件系统 GID 或其任何补充 GID 与密钥的 GID 匹配的进程的权限。
+.TP 
+\fIother\fP
+这是授予与 \fIuser\fP 和 \fIgroup\fP 类别不匹配的其他进程的权限。
+.RE
+.IP
+\fIuser\fP、\fIgroup\fP、\fIother\fP 类别是互斥的: 如果进程匹配 \fIuser\fP 类别，则不会获得 \fIgroup\fP 类别授予的权限;
+如果进程匹配 \fIuser\fP 或 \fIgroup\fP 类别，则它不会收到 \fIother\fP 类别中授予的权限。
+.IP
+\fIpossessor\fP 类别授予的权限与来自 \fIuser\fP、\fIgroup\fP 或 \fIother\fP 类别的授权是累积的。
+.IP
+每个权限掩码的大小为八位，目前仅使用了六位。 可用的权限是:
+.RS
+.TP 
+\fIview\fP
+此权限允许读取密钥的属性。
+.IP
+\fBKEYCTL_DESCRIBE\fP 操作需要此权限。
+.IP
+每个类别的权限位是 \fBKEY_POS_VIEW\fP、\fBKEY_USR_VIEW\fP、\fBKEY_GRP_VIEW\fP 和 \fBKEY_OTH_VIEW\fP。
+.TP 
+\fIread\fP
+此权限允许读取密钥的有效，载荷。
+.IP
+\fBKEYCTL_READ\fP 操作需要此权限。
+.IP
+每个类别的权限位是 \fBKEY_POS_READ\fP、\fBKEY_USR_READ\fP、\fBKEY_GRP_READ\fP 和 \fBKEY_OTH_READ\fP。
+.TP 
+\fIwrite\fP
+此权限允许更新或实例化密钥的有效，载荷。 对于密钥环，它允许密钥与密钥环链接和取消链接，
+.IP
+\fBKEYCTL_UPDATE\fP、\fBKEYCTL_REVOKE\fP、\fBKEYCTL_CLEAR\fP、\fBKEYCTL_LINK\fP 和
+\fBKEYCTL_UNLINK\fP 操作需要此权限。
+.IP
+每个类别的权限位是 \fBKEY_POS_WRITE\fP、\fBKEY_USR_WRITE\fP、\fBKEY_GRP_WRITE\fP 和
+\fBKEY_OTH_WRITE\fP。
+.TP 
+\fIsearch\fP
+此权限允许搜索密钥环并找到密钥。 搜索只能递归到具有 \fIsearch\fP 权限集的嵌套密钥环中。
+.IP
+\fBKEYCTL_GET_KEYRING_ID\fP、\fBKEYCTL_JOIN_SESSION_KEYRING\fP、\fBKEYCTL_SEARCH\fP 和
+\fBKEYCTL_INVALIDATE\fP 操作需要此权限。
+.IP
+每个类别的权限位是 \fBKEY_POS_SEARCH\fP、\fBKEY_USR_SEARCH\fP、\fBKEY_GRP_SEARCH\fP 和
+\fBKEY_OTH_SEARCH\fP。
+.TP 
+\fIlink\fP
+此权限允许链接到密钥或密钥环。
+.IP
+\fBKEYCTL_LINK\fP 和 \fBKEYCTL_SESSION_TO_PARENT\fP 操作需要此权限。
+.IP
+每个类别的权限位是 \fBKEY_POS_LINK\fP、\fBKEY_USR_LINK\fP、\fBKEY_GRP_LINK\fP 和 \fBKEY_OTH_LINK\fP。
+.TP 
+\fIsetattr\fP (since Linux 2.6.15).
+此权限允许更改密钥的 UID、GID 和权限掩码。
+.IP
+\fBKEYCTL_REVOKE\fP、\fBKEYCTL_CHOWN\fP 和 \fBKEYCTL_SETPERM\fP 操作需要此权限。
+.IP
+每个类别的权限位是 \fBKEY_POS_SETATTR\fP、\fBKEY_USR_SETATTR\fP、\fBKEY_GRP_SETATTR\fP 和
+\fBKEY_OTH_SETATTR\fP。
+.RE
+.IP
+为方便起见，将以下宏定义为每个用户类别中所有权限位的掩码: \fBKEY_POS_ALL\fP、\fBKEY_USR_ALL\fP、\fBKEY_GRP_ALL\fP 和
+\fBKEY_OTH_ALL\fP。
+.IP
+\fIarg4\fP 和 \fIarg5\fP 参数被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_setperm\fP(3) 公开。
+.TP 
+\fBKEYCTL_DESCRIBE\fP (since Linux 2.6.10)
+获取描述指定键的属性的字符串。
+.IP
+需要描述的 key 的 ID 在 \fIarg2\fP 中指定 (强制转换为 \fIkey_serial_t\fP).  在 \fIarg3\fP
+指向的缓冲区中返回描述性字符串 (转换为 \fIchar\~*\fP); \fIarg4\fP (转换为 \fIsize_t\fP) 以字节为单位指定该缓冲区的大小。
+.IP
+密钥必须授予调用方 \fIview\fP 权限。
+.IP
+返回的字符串以 null 结尾，并包含有关密钥的以下信息:
+.IP
+.in +4n
+\fItype\fP;\fIuid\fP;\fIgid\fP;\fIperm\fP;\fIdescription\fP
+.in
+.IP
+上面 \fItype\fP 和 \fIdescription\fP 是字符串，\fIuid\fP 和 \fIgid\fP 是十进制字符串，\fIperm\fP 是十六进制权限掩码。
+描述性字符串使用以下格式编写:
+.IP
+.in +4n
+.EX
+%s;%d;%d;%08x;%s
+.EE
+.in
+.IP
+.\" FIXME But, the kernel does not enforce the requirement
+.\" that the key description contains no semicolons!
+.\" So, user space has no guarantee here??
+.\" Either something more needs to be said here,
+.\" or a kernel fix is required.
+\fBNote: the intention is that the descriptive string should\fP \fBbe extensible in future kernel versions.\fP 特别是 \fIdescription\fP 字段将不包含分号;
+应该通过从字符串末尾向后查找最后一个分号来解析它。 这允许将 future 分号分隔的字段插入到 future 的描述性字符串中。
+.IP
+.\" Function commentary says it copies up to buflen bytes, but see the
+.\" (buffer && buflen >= ret) condition in keyctl_describe_key() in
+.\" security/keyctl.c
+仅当 \fIarg3\fP 为非 NULL 且指定的缓冲区大小足以接受描述性字符串 (包括终止空字节) 时，才会尝试写入缓冲区。
+为了确定缓冲区大小是否太小，请检查操作的返回值是否大于 \fIarg4\fP。
+.IP
+\fIarg5\fP 参数被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_describe\fP(3) 公开。
+.TP 
+\fBKEYCTL_CLEAR\fP
+清除密钥环的内容 (即取消所有密钥的链接)。
+.IP
+.\" or the error ENOTDIR results
+.\" According to Documentation/security/keys.txt:
+.\"     This function can also be used to clear special kernel keyrings if they
+.\"     are appropriately marked if the user has CAP_SYS_ADMIN capability.  The
+.\"     DNS resolver cache keyring is an example of this.
+密钥的 ID (必须是密钥环类型) 在 \fIarg2\fP 中提供 (转换为 \fIkey_serial_t\fP).
+.IP
+调用者必须对密钥环具有 \fIwrite\fP 权限。
+.IP
+参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_clear\fP(3) 公开。
+.TP 
+\fBKEYCTL_LINK\fP (since Linux 2.6.10)
+创建从密钥环到密钥的链接。
+.IP
+要链接的密钥在 \fIarg2\fP 中指定 (转换为 \fIkey_serial_t\fP); 密钥环在 \fIarg3\fP 中指定 (转换为
+\fIkey_serial_t\fP).
+.IP
+如果具有相同类型和描述的密钥已链接到密钥环中，则该密钥将从密钥环中移出。
+.IP
+在创建链接之前，内核检查密钥环的嵌套，如果链接会产生循环或密钥环的嵌套太深，则返回适当的错误 (密钥环嵌套的限制由内核常量
+\fBKEYRING_SEARCH_MAX_DEPTH\fP 决定，用值 6 定义，并且在递归搜索密钥环时防止内核栈溢出是必要的)。
+.IP
+调用者必须对添加的密钥具有 \fIlink\fP 权限，对密钥环具有 \fIwrite\fP 权限。
+.IP
+参数 \fIarg4\fP 和 \fIarg5\fP 被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_link\fP(3) 公开。
+.TP 
+\fBKEYCTL_UNLINK\fP (since Linux 2.6.10)
+取消密钥与密钥环的链接。
+.IP
+要取消链接的密钥的 ID 在 \fIarg2\fP 中指定 (转换为 \fIkey_serial_t\fP); 要取消链接的密钥环的 ID 在 \fIarg3\fP
+中指定 (转换为 \fIkey_serial_t\fP).
+.IP
+如果密钥当前未链接到密钥环，则会产生错误。
+.IP
+调用者必须对要从中删除密钥的密钥环具有 \fIwrite\fP 权限。
+.IP
+如果一个密钥的最后一个链接被删除，那么该密钥将被安排销毁。
+.IP
+参数 \fIarg4\fP 和 \fIarg5\fP 被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_unlink\fP(3) 公开。
+.TP 
+\fBKEYCTL_SEARCH\fP (since Linux 2.6.10)
+在密钥环树中搜索密钥，返回其 ID 并可选择将其链接到指定的密钥环。
+.IP
+要搜索的树是通过传递 \fIarg2\fP 中头密钥环的 ID 指定的 (转换为 \fIkey_serial_t\fP).  搜索以广度优先和递归方式执行。
+.IP
+\fIarg3\fP 和 \fIarg4\fP 参数指定要搜索的键: \fIarg3\fP (转换为 \fIchar\~*\fP) 包含键类型 (大小为 32
+字节的空终止字符串，包括终止空字节) 和 \fIarg4\fP (转换为 \fIchar\~*\fP) 包含密钥的描述 (一个空终止字符串，最大 4096
+字节，包括终止空字节)。
+.IP
+源密钥环必须向调用者授予 \fIsearch\fP 权限。 执行递归搜索时，只会搜索授予调用者 \fIsearch\fP 权限的密钥环。 只能找到调用方具有
+\fIsearch\fP 权限的密钥。
+.IP
+如果找到密钥，则将其 ID 作为函数结果返回。
+.IP
+如果找到密钥并且 \fIarg5\fP (转换为 \fIkey_serial_t\fP)) 为非零值，则根据与 \fBKEYCTL_LINK\fP
+相同的约束和规则，将密钥链接到密钥环中，密钥环的 ID 在 \fIarg5\fP 中指定。 如果 \fIarg5\fP
+中指定的目标密钥环已经包含指向具有相同类型和描述的密钥的链接，则该链接将被指向此操作找到的密钥的链接所取代。
+.IP
+除了有效的现有密钥环 ID，源 (\fIarg2\fP) 和目标 (\fIarg5\fP) 密钥环可以是 \fBKEYCTL_GET_KEYRING_ID\fP
+下列出的特殊密钥环 ID 之一。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_search\fP(3) 公开。
+.TP 
+\fBKEYCTL_READ\fP (since Linux 2.6.10)
+读取密钥的有效，载荷，数据。
+.IP
+.\" including KEY_SPEC_REQKEY_AUTH_KEY
+要读取其有效，载荷，的密钥的 ID 在 \fIarg2\fP 中指定 (转换为 \fIkey_serial_t\fP).  这可以是现有密钥的 ID，也可以是为
+\fBKEYCTL_GET_KEYRING_ID\fP 列出的任何特殊密钥 ID。
+.IP
+载荷被放置在 \fIarg3\fP 指向的缓冲区中 (cast to \fIchar\ *\fP); 该缓冲区的大小必须在 \fIarg4\fP 中指定 (转换为
+\fIsize_t\fP)。
+.IP
+返回的数据将根据密钥类型进行处理以进行展示。 例如，密钥环将返回一个 \fIkey_serial_t\fP 条目数组，表示与其链接的所有密钥的 ID。
+\fIuser\fP 键类型将按原样返回其数据。 如果键类型未实现此函数，则操作失败并显示错误 \fBEOPNOTSUPP\fP。
+.IP
+如果 \fIarg3\fP 不为 NULL，则将尽可能多的有效，载荷，数据复制到缓冲区中。 成功返回时，返回值始终是，载荷，数据的总大小。
+要确定缓冲区是否足够大，请检查返回值是否小于或等于 \fIarg4\fP 中提供的值。
+.IP
+密钥必须授予调用者 \fIread\fP 权限，或者在从进程密钥环中搜索时授予调用者 \fIsearch\fP 权限 (即拥有密钥)。
+.IP
+\fIarg5\fP 参数被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_read\fP(3) 公开。
+.TP 
+\fBKEYCTL_INSTANTIATE\fP (since Linux 2.6.10)
+(Positively) 使用指定的有效，载荷，实例化未实例化的密钥。
+.IP
+要实例化的密钥的 ID 在 \fIarg2\fP 中提供 (转换为 \fIkey_serial_t\fP).
+.IP
+密钥，载荷，在 \fIarg3\fP 指向的缓冲区中指定 (转换为 \fIvoid\ *\fP); 该缓冲区的大小在 \fIarg4\fP 中指定 (转换为
+\fIsize_t\fP)。
+.IP
+如果密钥类型支持 (例如，它是密钥环)，则有效，载荷，可以是 NULL 指针并且缓冲区大小可以是 0。
+.IP
+如果有效载荷数据格式错误或无效，操作可能会失败。
+.IP
+如果 \fIarg5\fP (转换为 \fIkey_serial_t\fP)) 是非零的，那么，根据与 \fBKEYCTL_LINK\fP
+相同的约束和规则，实例化的密钥链接到其 ID 在 \fIarg5\fP 中指定的密钥环。
+.IP
+调用者必须有适当的授权密钥，一旦未实例化的密钥被实例化，授权密钥就会被撤销。 换句话说，此操作只能从 \fBrequest\-key\fP(8)\-style
+程序进行。 有关未实例化密钥和密钥实例化的说明，请参见 \fBrequest_key\fP(2)。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_instantiate\fP(3) 公开。
+.TP 
+\fBKEYCTL_NEGATE\fP (since Linux 2.6.10)
+负实例化一个未实例化的键。
+.IP
+这个操作等同于调用:
+.IP
+.in +4n
+.EX
+keyctl(KEYCTL_REJECT, arg2, arg3, ENOKEY, arg4);
+.EE
+.in
+.IP
+\fIarg5\fP 参数被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_negate\fP(3) 公开。
+.TP 
+\fBKEYCTL_SET_REQKEY_KEYRING\fP (since Linux 2.6.13)
+.\" I.e., calls to the kernel's internal request_key() interface,
+.\" which is distinct from the request_key(2) system call (which
+.\" ultimately employs the kernel-internal interface).
+设置隐式请求的密钥将为此线程链接到的默认密钥环，并返回先前的设置。 隐式密钥请求是由内部内核组件发出的请求，例如在打开 AFS 或 NFS
+文件系统上的文件时可能发生的请求。 当从用户空间请求密钥时，设置默认密钥环也有影响; 详见 \fBrequest_key\fP(2)。
+.IP
+\fIarg2\fP 参数 (转换为 \fIint\fP) 应包含以下值之一，以指定新的默认密钥环:
+.RS
+.TP 
+\fBKEY_REQKEY_DEFL_NO_CHANGE\fP
+不要更改默认密钥环。 这可用于发现当前的默认密钥环 (无需更改)。
+.TP 
+\fBKEY_REQKEY_DEFL_DEFAULT\fP
+这选择了默认行为，即如果有线程特定的密钥环，则使用特定于进程的密钥环，否则使用会话密钥环，否则使用 UID 特定的会话密钥环，否则用户特定的密钥环。
+.TP 
+\fBKEY_REQKEY_DEFL_THREAD_KEYRING\fP
+使用线程特定的密钥环 (\fBthread\-keyring\fP(7)) 作为新的默认密钥环。
+.TP 
+\fBKEY_REQKEY_DEFL_PROCESS_KEYRING\fP
+使用特定于进程的密钥环 (\fBprocess\-keyring\fP(7)) 作为新的默认密钥环。
+.TP 
+\fBKEY_REQKEY_DEFL_SESSION_KEYRING\fP
+使用特定于会话的密钥环 (\fBsession\-keyring\fP(7)) 作为新的默认密钥环。
+.TP 
+\fBKEY_REQKEY_DEFL_USER_KEYRING\fP
+使用特定于 UID 的密钥环 (\fBuser\-keyring\fP(7)) 作为新的默认密钥环。
+.TP 
+\fBKEY_REQKEY_DEFL_USER_SESSION_KEYRING\fP
+使用特定于 UID 的会话密钥环 (\fBuser\-session\-keyring\fP(7)) 作为新的默认密钥环。
+.TP 
+\fBKEY_REQKEY_DEFL_REQUESTOR_KEYRING\fP (since Linux 2.6.29)
+.\" 8bbf4976b59fc9fc2861e79cab7beb3f6d647640
+.\" FIXME The preceding explanation needs to be expanded.
+.\" Is the following correct:
+.\"
+.\"	The requestor keyring is the dest_keyring that
+.\"	was supplied to a call to request_key(2)?
+.\"
+.\" David Howells said: to be checked
+使用请求者密钥环。
+.RE
+.IP
+.\" (including the still-unsupported KEY_REQKEY_DEFL_GROUP_KEYRING)
+所有其他值均无效。
+.IP
+参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.IP
+此操作控制的设置由 \fBfork\fP(2) 的子级继承并在 \fBexecve\fP(2) 中保留。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_set_reqkey_keyring\fP(3) 公开。
+.TP 
+\fBKEYCTL_SET_TIMEOUT\fP (since Linux 2.6.16)
+在键上设置超时。
+.IP
+密钥的 ID 在 \fIarg2\fP 中指定 (转换为 \fIkey_serial_t\fP).  超时值 (从当前时间算起的秒数) 在 \fIarg3\fP 中指定
+(转换为 \fIunsigned int\fP)。 超时是根据实时时钟测量的。
+.IP
+将超时值指定为 0 会清除键上的任何现有超时。
+.IP
+\fI/proc/keys\fP 文件显示每个密钥到期前的剩余时间。 (这是发现键超时的唯一方法。)
+.IP
+调用者必须拥有密钥的 \fIsetattr\fP 权限或持有密钥的实例化授权 token (参见 \fBrequest_key\fP(2)).
+.IP
+超时到期后，密钥和指向密钥的任何链接将被自动垃圾收集。 随后尝试访问该密钥将失败，并显示错误 \fBEKEYEXPIRED\fP。
+.IP
+此操作不能用于为已撤销、过期或负实例化的密钥设置超时。
+.IP
+参数 \fIarg4\fP 和 \fIarg5\fP 被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_set_timeout\fP(3) 公开。
+.TP 
+\fBKEYCTL_ASSUME_AUTHORITY\fP (since Linux 2.6.16)
+承担 (或放弃) 调用线程实例化密钥的权限。
+.IP
+\fIarg2\fP 参数 (转换为 \fIkey_serial_t\fP) 指定一个非零密钥 ID 来承担权限，或值 0 来取消权限。
+.IP
+如果 \fIarg2\fP 不为零，则它指定要假定权限的未实例化密钥的 ID。 然后可以使用
+\fBKEYCTL_INSTANTIATE\fP、\fBKEYCTL_INSTANTIATE_IOV\fP、\fBKEYCTL_REJECT\fP 或
+\fBKEYCTL_NEGATE\fP 之一实例化该密钥。 一旦密钥被实例化，线程将自动取消实例化密钥的权限。
+.IP
+仅当调用线程在其密钥环中存在与指定密钥关联的授权密钥时，才能假定对密钥的授权。 (换句话说，\fBKEYCTL_ASSUME_AUTHORITY\fP
+操作只能在 \fBrequest\-key\fP(8)\-style 程序中使用; 有关如何使用此操作的说明，请参见 \fBrequest_key\fP(2)。)
+调用者必须对授权密钥具有 \fIsearch\fP 权限。
+.IP
+如果指定的密钥具有匹配的授权密钥，则返回该密钥的 ID。 可以读取授权密钥 (\fBKEYCTL_READ\fP) 以获取传递给
+\fBrequest_key\fP(2) 的标注信息。
+.IP
+如果 \fIarg2\fP 中给定的 ID 为 0，则 (divested) 清空当前承担的权限，返回 0 值。
+.IP
+\fBKEYCTL_ASSUME_AUTHORITY\fP 机制允许像 \fBrequest\-key\fP(8)
+这样的程序获得必要的权限来实例化一个新的未实例化的密钥，该密钥是由于调用 \fBrequest_key\fP(2) 而创建的。 有关详细信息，请参见
+\fBrequest_key\fP(2) 和内核源文件 \fIDocumentation/security/keys\-request\-key.txt\fP。
+.IP
+参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_assume_authority\fP(3) 公开。
+.TP 
+\fBKEYCTL_GET_SECURITY\fP (since Linux 2.6.26)
+.\" commit 70a5bb72b55e82fbfbf1e22cae6975fac58a1e2d
+获取指定密钥的 LSM (Linux 安全模块) 安全标签。
+.IP
+要获取其安全标签的密钥的 ID 在 \fIarg2\fP 中指定 (转换为 \fIkey_serial_t\fP).  安全标签 (以空字节结束) 将被放置在
+\fIarg3\fP 参数指向的缓冲区中 (转换为 \fIchar\ *\fP); 缓冲区的大小必须在 \fIarg4\fP 中提供 (转换为 \fIsize_t\fP).
+.IP
+如果 \fIarg3\fP 指定为 NULL 或 \fIarg4\fP 中指定的缓冲区大小太小，则安全标签字符串的完整大小 (包括终止空字节)
+作为函数返回，并且不会将任何内容复制到缓冲区。
+.IP
+调用者必须对指定键具有 \fIview\fP 权限。
+.IP
+返回的安全标签字符串将以适用于有效 LSM 的形式呈现。 例如，对于 SELinux，它可能看起来像:
+.IP
+.in +4n
+.EX
+unconfined_u:unconfined_r:unconfined_t:s0\-s0:c0.c1023
+.EE
+.in
+.IP
+如果当前没有 LSM 生效，则缓冲区中会放置一个空字符串。
+.IP
+\fIarg5\fP 参数被忽略。
+.IP
+此操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_get_security\fP(3) 和
+\fBkeyctl_get_security_alloc\fP(3) 公开。
+.TP 
+\fBKEYCTL_SESSION_TO_PARENT\fP (since Linux 2.6.32)
+.\" commit ee18d64c1f632043a02e6f5ba5e045bb26a5465f
+.\" What is the use case for KEYCTL_SESSION_TO_PARENT?
+.\" David Howells: the Process Authentication Groups people requested this,
+.\" but then didn't use it; maybe there are no users.
+将调用进程的 \fIparent\fP 订阅的会话密钥环替换为调用进程的会话密钥环。
+.IP
+密钥环将在父进程下一次从内核空间转换到用户空间时在父进程中被替换。
+.IP
+密钥环必须存在并且必须授予调用者 \fIlink\fP 权限。 父进程必须是单线程的，并且与该进程具有相同的有效所有权，并且不能是 set\-user\-ID 或
+set\-group\-ID。 父进程现有会话密钥环的 UID (如果它有一个)，以及调用者会话密钥环的 UID 与调用者的有效 UID 非常匹配。
+.IP
+受此操作影响的是父进程这一事实允许诸如 shell 之类的程序启动一个子进程，该子进程使用此操作来更改 shell 的会话密钥环。 (这就是
+\fBkeyctl\fP(1) \fBnew_session\fP 命令的作用。)
+.IP
+参数 \fIarg2\fP、\fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_session_to_parent\fP(3) 公开。
+.TP 
+\fBKEYCTL_REJECT\fP (since Linux 2.6.39)
+.\" commit fdd1b94581782a2ddf9124414e5b7a5f48ce2f9c
+将密钥标记为负实例化并在密钥上设置过期计时器。 此操作提供了早期 \fBKEYCTL_NEGATE\fP 操作功能的超集。
+.IP
+要进行负实例化的键的 ID 在 \fIarg2\fP 中指定 (转换为 \fIkey_serial_t\fP).  \fIarg3\fP (cast to
+\fIunsigned int\fP) 参数指定 key 的生命周期，以秒为单位。 \fIarg4\fP 参数 (转换为 \fIunsigned int\fP)
+指定搜索命中此键时要返回的错误; 通常，这是 \fBEKEYREJECTED\fP、\fBEKEYREVOKED\fP 或 \fBEKEYEXPIRED\fP 之一。
+.IP
+如果 \fIarg5\fP (转换为 \fIkey_serial_t\fP)) 为非零值，则根据与 \fBKEYCTL_LINK\fP
+相同的约束和规则，将负实例化的密钥链接到其 ID 在 \fIarg5\fP 中指定的密钥环中。
+.IP
+调用方必须具有适当的授权密钥。 换句话说，此操作只能从 \fBrequest\-key\fP(8)\-style 程序进行。 请参见
+\fBrequest_key\fP(2)。
+.IP
+调用者必须有适当的授权密钥，一旦未实例化的密钥被实例化，授权密钥就会被撤销。 换句话说，此操作只能从 \fBrequest\-key\fP(8)\-style
+程序进行。 有关未实例化密钥和密钥实例化的说明，请参见 \fBrequest_key\fP(2)。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_reject\fP(3) 公开。
+.TP 
+\fBKEYCTL_INSTANTIATE_IOV\fP (since Linux 2.6.39)
+.\" commit ee009e4a0d4555ed522a631bae9896399674f063
+使用通过缓冲区的 vector 指定的有效，载荷，实例化未实例化的密钥。
+.IP
+此操作与 \fBKEYCTL_INSTANTIATE\fP 相同，但有效，载荷，数据被指定为 \fIiovec\fP 结构的数组 (请参见
+\fBiovec\fP(3type)).
+.IP
+指向，载荷 vector 的指针在 \fIarg3\fP 中指定 (转换为 \fIconst struct iovec\~*\fP).  vector 中的项数在
+\fIarg4\fP 中指定 (转换为 \fIunsigned int\fP).
+.IP
+\fIarg2\fP (密钥 ID) 和 \fIarg5\fP (密钥环 ID) 被解释为 \fBKEYCTL_INSTANTIATE\fP。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_instantiate_iov\fP(3) 公开。
+.TP 
+\fBKEYCTL_INVALIDATE\fP (since Linux 3.5)
+.\" commit fd75815f727f157a05f4c96b5294a4617c0557da
+将密钥标记为无效。
+.IP
+要失效的密钥的 ID 在 \fIarg2\fP 中指定 (转换为 \fIkey_serial_t\fP).
+.IP
+.\" CAP_SYS_ADMIN is permitted to invalidate certain special keys
+要使密钥无效，调用者必须对该密钥具有 \fIsearch\fP 权限。
+.IP
+此操作将密钥标记为无效并安排 immediate 垃圾集合。 垃圾回收从所有密钥环中删除无效的密钥，并在其引用计数达到零时删除该密钥。
+执行此操作后，所有搜索都会忽略该键，即使它尚未删除。
+.IP
+标记为无效的键立即对正常键操作不可见，尽管它们在 \fI/proc/keys\fP 中仍然可见 (标有 'i' 标志) 直到它们被实际删除。
+.IP
+参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_invalidate\fP(3) 公开。
+.TP 
+\fBKEYCTL_GET_PERSISTENT\fP (since Linux 3.13)
+.\" commit f36f8c75ae2e7d4da34f4c908cebdb4aa42c977e
+获取指定用户的永久密钥环 (\fBpersistent\-keyring\fP(7)) 并将其链接到指定的密钥环。
+.IP
+用户 ID 在 \fIarg2\fP 中指定 (强制转换为 \fIuid_t\fP)。 如果指定值 \-1，则使用调用者的真实用户 ID。 目标密钥环的 ID 在
+\fIarg3\fP 中指定 (转换为 \fIkey_serial_t\fP).
+.IP
+调用者必须在其用户命名空间中具有 \fBCAP_SETUID\fP 功能，以便为与调用者的真实或有效用户 ID 不匹配的用户 ID 获取持久密钥环。
+.IP
+如果调用成功，则将指向持久密钥环的链接添加到其 ID 在 \fIarg3\fP 中指定的密钥环。
+.IP
+调用者必须对密钥环具有 \fIwrite\fP 权限。
+.IP
+如果持久密钥环不存在，内核将创建它。
+.IP
+每次执行 \fBKEYCTL_GET_PERSISTENT\fP 操作时，持久密钥环都会将其过期超时重置为以下值:
+.IP
+.in +4n
+.EX
+/proc/sys/kernel/keys/persistent_keyring_expiry
+.EE
+.in
+.IP
+如果达到超时，持久密钥环将被删除，然后它固定的所有内容都可以被垃圾收集。
+.IP
+Linux 3.13 中添加了永久密钥环。
+.IP
+参数 \fIarg4\fP 和 \fIarg5\fP 被忽略。
+.IP
+该操作由 \fIlibkeyutils\fP 通过函数 \fBkeyctl_get_persistent\fP(3) 公开。
+.TP 
+\fBKEYCTL_DH_COMPUTE\fP (since Linux 4.7)
+.\" commit ddbb41148724367394d0880c516bfaeed127b52e
+计算 Diffie\-Hellman 共享密钥或公钥，可选择对结果应用密钥推导函数 (KDF)。
+.IP
+\fIarg2\fP 参数是指向一组参数的指针，其中包含用于 Diffie\-Hellman 计算的三个 \fI"user"\fP
+密钥的序列号，封装在以下形式的结构体中:
+.IP
+.in +4n
+.EX
+struct keyctl_dh_params {
+    int32_t private; /* The local private key */
+    int32_t prime; /* The prime, known to both parties */
+    int32_t base;  /* The base integer: either a shared
+                      generator or the remote public key */
+};
+.EE
+.in
+.IP
+此结构体中指定的三个键中的每一个都必须授予调用方 \fIread\fP 权限。 这些密钥的有效，载荷，用于计算 Diffie\-Hellman 结果，如下所示:
+.IP
+.in +4n
+.EX
+基础 \[ha] 私有模组素数
+.EE
+.in
+.IP
+如果基础是共享生成器，则结果是本地公钥。 如果基础是远程公钥，则结果是共享秘密。
+.IP
+\fIarg3\fP 参数 (转换为 \fIchar\~*\fP) 指向放置计算结果的缓冲区。 该缓冲区的大小在 \fIarg4\fP 中指定 (转换为
+\fIsize_t\fP)。
+.IP
+缓冲区必须足够大以容纳输出数据，否则将返回错误。 如果 \fIarg4\fP 指定为零，在这种情况下不使用缓冲区并且操作返回所需的最小缓冲区大小
+(即素数的长度)。
+.IP
+Diffie\-Hellman 计算可以在用户空间中执行，但需要多精度整数 (MPI) 库。 将实现移动到内核中可以访问内核 MPI
+实现，并允许访问安全或加速硬件。
+.IP
+.\" commit f1c316a3ab9d24df6022682422fe897492f2c0c8
+将 DH 计算支持添加到 \fBkeyctl\fP() 系统调用被认为是一个很好的选择，因为 DH 算法用于派生共享密钥; 它还允许密钥类型确定哪个 DH
+实现 (软件或硬件) 是合适的。
+.IP
+如果 \fIarg5\fP 参数为 \fBNULL\fP，则返回 DH 结果本身。 否则 (自 Linux 4.12 起)，它是指向结构体的指针，它指定要应用的
+KDF 操作的参数:
+.IP
+.in +4n
+.EX
+struct keyctl_kdf_params {
+    char *hashname;     /* Hash algorithm name */
+    char *otherinfo;    /* SP800\-56A OtherInfo */
+    __u32 otherinfolen; /* Length of otherinfo data */
+    __u32 __spare[8];   /* Reserved */
+};
+.EE
+.in
+.IP
+\fIhashname\fP 字段是一个以 null 结尾的字符串，它指定了一个哈希名称 (在内核的加密 API 中可用; 可用的哈希列表很难观察; 请参见
+.UR https://www.kernel.org\:/doc\:/html\:/latest\:/crypto\:/architecture.html
+"Kernel Crypto API Architecture"
+.UE
+文档以获取有关哈希名称如何使用的信息构造和您的内核的源和配置关于什么密码和类型 \fBCRYPTO_ALG_TYPE_SHASH\fP 模板可用) 应用于
+DH 导致 KDF 操作。
+.IP
+\fIotherinfo\fP 字段是 \fIOtherInfo\fP 数据，如 SP800\-56A 5.8.1.2 部分所述，并且是特定于算法的。 该数据与 DH
+操作的结果连接在一起，并作为输入提供给 KDF 操作。 它的大小在 \fIotherinfolen\fP 字段中提供，并受
+\fIsecurity/keys/internal.h\fP 中定义的 \fBKEYCTL_KDF_MAX_OI_LEN\fP 常量限制为值 64。
+.IP
+.\" commit 4f9dabfaf8df971f8a3b6aa324f8f817be38d538
+\fB__spare\fP 字段当前未使用。 它在 Linux 4.13 之前被忽略 (但仍然应该是用户可寻址的，因为它被复制到内核)，并且从 Linux
+4.13 开始应该包含零。
+.IP
+KDF 实现符合 SP800\-56A 以及 SP800\-108 (计数器 KDF)。
+.IP
+.\" keyutils commit 742c9d7b94051d3b21f9f61a73ed6b5f3544cb82
+.\" keyutils commit d68a981e5db41d059ac782071c35d1e8f3aaf61c
+此操作由 \fIlibkeyutils\fP (从 \fIlibkeyutils\fP 1.5.10 开始) 通过函数
+\fBkeyctl_dh_compute\fP(3) 和 \fBkeyctl_dh_compute_alloc\fP(3) 公开。
+.TP 
+\fBKEYCTL_RESTRICT_KEYRING\fP (since Linux 4.12)
+.\" commit 6563c91fd645556c7801748f15bc727c77fcd311
+.\" commit 7228b66aaf723a623e578aa4db7d083bb39546c9
+使用 \fIarg2\fP 中提供的 ID 对密钥环应用密钥链接限制 (转换为 \fIkey_serial_t\fP).  调用者必须对密钥具有
+\fIsetattr\fP 权限。 如果 \fIarg3\fP 为 NULL，则阻止任何向密钥环添加密钥的尝试; 否则它包含一个指向带有键类型名称的字符串的指针，而
+\fIarg4\fP 包含一个指向描述特定类型限制的字符串的指针。 从 Linux 4.12 开始，只有类型 "asymmetric" 定义了限制:
+.RS
+.TP 
+\fBbuiltin_trusted\fP
+仅允许由链接到内置密钥环 (".builtin_trusted_keys") 的密钥签名的密钥。
+.TP 
+\fBbuiltin_and_secondary_trusted\fP
+仅允许由链接到辅助密钥环 (".secondary_trusted_keys")
+的密钥签名的密钥，或者通过扩展，内置密钥环中的密钥，因为后者链接到前者。
+.TP 
+\fBkey_or_keyring:\fP\fIkey\fP
+.TQ
+\fBkey_or_keyring:\fP\fIkey\fP\fB:chain\fP
+如果 \fIkey\fP 指定类型为 "asymmetric" 的密钥的 ID，则仅允许使用此密钥签名的密钥。
+.IP
+如果 \fIkey\fP 指定密钥环的 ID，则只允许由链接到该密钥环的密钥签名的密钥。
+.IP
+如果指定了 ":chain"，则还允许使用链接到目标密钥环 (即具有 \fIarg2\fP 参数中指定 ID 的密钥环) 的密钥签名的密钥。
+.RE
+.IP
+请注意，只能为指定的密钥环配置一次限制; 一旦设置了限制，它就不能被覆盖。
+.IP
+.\" FIXME Document KEYCTL_RESTRICT_KEYRING, added in Linux 4.12
+.\"     commit 6563c91fd645556c7801748f15bc727c77fcd311
+.\"     Author: Mat Martineau <mathew.j.martineau@linux.intel.com>
+.\" See Documentation/security/keys.txt
+参数 \fIarg5\fP 被忽略。
+.SH "RETURN VALUE"
+对于成功的调用，返回值取决于操作:
+.TP 
+\fBKEYCTL_GET_KEYRING_ID\fP
+请求的密钥环的 ID。
+.TP 
+\fBKEYCTL_JOIN_SESSION_KEYRING\fP
+已加入会话密钥环的 ID。
+.TP 
+\fBKEYCTL_DESCRIBE\fP
+描述的大小 (包括终止空字节)，与提供的缓冲区大小无关。
+.TP 
+\fBKEYCTL_SEARCH\fP
+找到的密钥的 ID。
+.TP 
+\fBKEYCTL_READ\fP
+密钥中可用的数据量，与提供的缓冲区大小无关。
+.TP 
+\fBKEYCTL_SET_REQKEY_KEYRING\fP
+隐式请求的密钥链接到的先前默认密钥环的 ID (\fBKEY_REQKEY_DEFL_USER_*\fP).
+.TP 
+\fBKEYCTL_ASSUME_AUTHORITY\fP
+如果给定的 ID 为 0，则为 0; 如果提供了非零密钥 ID，则为与指定密钥匹配的授权密钥的 ID。
+.TP 
+\fBKEYCTL_GET_SECURITY\fP
+LSM 安全标签字符串的大小 (包括终止空字节)，与提供的缓冲区大小无关。
+.TP 
+\fBKEYCTL_GET_PERSISTENT\fP
+持久密钥环的 ID。
+.TP 
+\fBKEYCTL_DH_COMPUTE\fP
+复制到缓冲区的字节数，或者，如果 \fIarg4\fP 为 0，则为所需的缓冲区大小。
+.TP 
+All other operations
+Zero.
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+不允许请求的操作。
+.TP 
+\fBEAGAIN\fP
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP，加密模块初始化期间出错。
+.TP 
+\fBEDEADLK\fP
+\fIoperation\fP 是 \fBKEYCTL_LINK\fP，请求的链接将导致循环。
+.TP 
+\fBEDEADLK\fP
+\fIoperation\fP 是 \fBKEYCTL_RESTRICT_KEYRING\fP，请求的密钥环限制将导致循环。
+.TP 
+\fBEDQUOT\fP
+通过创建密钥或将其链接到密钥环，将超过调用者用户的密钥配额。
+.TP 
+\fBEEXIST\fP
+\fIoperation\fP 是 \fBKEYCTL_RESTRICT_KEYRING\fP 并且 \fIarg2\fP 中提供的密钥环参数已经设置了限制。
+.TP 
+\fBEFAULT\fP
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP 并且以下操作之一失败:
+.RS
+.IP \[bu] 3
+从用户空间复制 \fIarg2\fP 参数中提供的 \fIstruct keyctl_dh_params\fP;
+.IP \[bu]
+从用户空间复制非 NULL \fIarg5\fP 参数中提供的 \fIstruct keyctl_kdf_params\fP (以防内核支持对 DH 操作结果执行
+KDF 操作) ;
+.IP \[bu]
+从用户空间复制 \fIstruct keyctl_kdf_params\fP 的 \fIhashname\fP 字段指向的数据;
+.IP \[bu]
+如果 \fIotherinfolen\fP 字段不为零，则从用户空间复制 \fIstruct keyctl_kdf_params\fP 的 \fIotherinfo\fP
+字段指向的数据;
+.IP \[bu]
+将结果复制到用户空间。
+.RE
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 是 \fBKEYCTL_SETPERM\fP，在 \fIarg3\fP 中指定了无效的权限位。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 是 \fBKEYCTL_SEARCH\fP，\fIarg4\fP 中的描述 (包括终止空字节) 的大小超过 4096 字节。
+.TP 
+\fBEINVAL\fP
+\fIarg3\fP (密钥类型) 或 \fIarg4\fP (密钥描述) 中指定的字符串 (包括终止空字节) 的大小超过限制 (分别为 32 字节和 4096
+字节)。
+.TP 
+\fBEINVAL\fP (before Linux 4.12)
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP，参数 \fIarg5\fP 是非 NULL。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP 并且所提供的散列算法的摘要大小为零。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP，提供的缓冲区大小不足以保存结果。 提供 0 作为缓冲区大小以获得最小缓冲区大小。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP，\fIarg5\fP 参数指向的 \fIstruct keyctl_kdf_params\fP 的 \fIhashname\fP 字段中提供的哈希名称太大
+(限制是特定于实现的，并且因内核版本而异，但它被认为足够大以用于所有有效的算法名称)。
+.TP 
+\fBEINVAL\fP
+.\" commit 4f9dabfaf8df971f8a3b6aa324f8f817be38d538
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP，\fIarg5\fP 参数中提供的 \fIstruct keyctl_kdf_params\fP 的 \fI__spare\fP 字段包含非零值。
+.TP 
+\fBEKEYEXPIRED\fP
+找到或指定了过期的密钥。
+.TP 
+\fBEKEYREJECTED\fP
+找到或指定了一个被拒绝的密钥。
+.TP 
+\fBEKEYREVOKED\fP
+找到或指定了一个已撤销的密钥。
+.TP 
+\fBELOOP\fP
+\fIoperation\fP 是 \fBKEYCTL_LINK\fP，请求的链接会导致超过密钥环的最大嵌套深度。
+.TP 
+\fBEMSGSIZE\fP
+\fIoperation\fP 为 \fBKEYCTL_DH_COMPUTE\fP 且缓冲区长度超过 \fBKEYCTL_KDF_MAX_OUTPUT_LEN\fP
+(当前为 1024) 或 \fIarg5\fP 传入的 \fIstruct keyctl_kdf_parms\fP 的 \fIotherinfolen\fP 字段超过
+\fBKEYCTL_KDF_MAX_OI_LEN\fP (当前为 64)。
+.TP 
+\fBENFILE\fP (before Linux 3.13)
+.\" commit b2a4df200d570b2c33a57e1ebfa5896e4bc81b69
+\fIoperation\fP 是 \fBKEYCTL_LINK\fP，密钥环已满。 (在 Linux 3.13 之前，存储 keyring
+链接的可用空间仅限于单页内存; 从 Linux 3.13 开始，没有固定的限制。)
+.TP 
+\fBENOENT\fP
+\fIoperation\fP 是 \fBKEYCTL_UNLINK\fP，要取消链接的密钥未链接到密钥环。
+.TP 
+\fBENOENT\fP
+\fIoperation\fP 为 \fBKEYCTL_DH_COMPUTE\fP，\fIarg5\fP 参数指向的 \fIstruct keyctl_kdf_params\fP 的 \fIhashname\fP 字段中指定的哈希算法尚未找到。
+.TP 
+\fBENOENT\fP
+\fIoperation\fP 为 \fBKEYCTL_RESTRICT_KEYRING\fP，\fIarg3\fP 参数中提供的类型不支持设置键链接限制。
+.TP 
+\fBENOKEY\fP
+找不到匹配的键或指定了无效的键。
+.TP 
+\fBENOKEY\fP
+\fIoperation\fP 中指定了值 \fBKEYCTL_GET_KEYRING_ID\fP，\fIarg2\fP 中指定的键不存在，\fIarg3\fP 为零
+(表示键不存在则不创建)。
+.TP 
+\fBENOMEM\fP
+在执行 syscall 期间，内核内存分配例程之一失败。
+.TP 
+\fBENOTDIR\fP
+需要密钥环类型的密钥，但提供了具有不同类型的密钥的 ID。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIoperation\fP 为 \fBKEYCTL_READ\fP 且密钥类型不支持读取 (例如，类型为 \fI"login"\fP)。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIoperation\fP 为 \fBKEYCTL_UPDATE\fP，密钥类型不支持更新。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIoperation\fP 为 \fBKEYCTL_RESTRICT_KEYRING\fP，\fIarg3\fP 参数中提供的类型为
+"asymmetric"，\fIarg4\fP 中提供的限制规范中指定的密钥具有 "asymmetric" 或 "keyring" 以外的类型。
+.TP 
+\fBEPERM\fP
+\fIoperation\fP 是 \fBKEYCTL_GET_PERSISTENT\fP，\fIarg2\fP 指定了调用线程的真实或有效 UID 以外的
+UID，并且调用者没有 \fBCAP_SETUID\fP 能力。
+.TP 
+\fBEPERM\fP
+\fIoperation\fP 是 \fBKEYCTL_SESSION_TO_PARENT\fP 并且: 父进程的所有 UID (GIDs) 与调用进程的有效
+UID (GID) 不匹配; 父级现有会话密钥环的 UID 或调用者会话密钥环的 UID 与调用者的有效 UID 不匹配; 父进程不是单线程;
+或者父进程是 \fBinit\fP(1) 或内核线程。
+.TP 
+\fBETIMEDOUT\fP
+\fIoperation\fP 是 \fBKEYCTL_DH_COMPUTE\fP，加密模块的初始化已超时。
+.SH VERSIONS
+本系统调用最早出现在 Linux 2.6.10。
+.SH STANDARDS
+这个系统调用是一个非标准的 Linux 扩展。
+.SH NOTES
+\fIlibkeyutils\fP 库中提供了一个包装器。 (随附的软件包提供了 \fI<keyutils.h>\fP 头文件。)
+但是，与其直接使用该系统调用，不如使用上面各个操作描述中提到的各种库函数。
+.SH EXAMPLES
+下面的程序提供了 \fIkeyutils\fP 包提供的 \fBrequest\-key\fP(8) 程序功能的子集。
+为了提供信息，该程序将各种信息记录在日志文件中。
+.PP
+如 \fBrequest_key\fP(2) 中所述，\fBrequest\-key\fP(8) 程序是使用命令行参数调用的，该参数描述了要实例化的密钥。
+示例程序获取并记录这些参数。 该程序假定有权实例化所请求的密钥，然后实例化该密钥。
+.PP
+下面的 shell 会话演示了这个程序的使用。 在 session 中，我们编译程序，然后用它来临时替代标准的 \fBrequest\-key\fP(8)
+程序。 (请注意，在某些系统上暂时禁用标准 \fBrequest\-key\fP(8) 程序可能不安全。) 在安装我们的示例程序时，我们使用
+\fBrequest_key\fP(2) 中显示的示例程序来请求密钥。
+.PP
+.in +4n
+.EX
+$ \fBcc \-o key_instantiate key_instantiate.c \-lkeyutils\fP
+$ \fBsudo mv /sbin/request\-key /sbin/request\-key.backup\fP
+$ \fBsudo cp key_instantiate /sbin/request\-key\fP
+$ \fB./t_request_key user mykey somepayloaddata\fP
+密钥 ID 是 20d035bf
+密钥 ID 是 20d035bf
+.EE
+.in
+.PP
+查看此程序创建的日志文件，我们可以看到提供给示例程序的命令行参数:
+.PP
+.in +4n
+.EX
+$ \fBcat /tmp/key_instantiate.log\fP
+时间: 2016 年 11 月 7 日星期一 13:06:47
+
+命令行参数:
+  argv[0]:            /sbin/request\-key
+  操作: 创建
+  key_to_instantiate: 20d035bf
+  用户标识符: 1000
+  GID:                1000
+  thread_keyring:     0
+  process_keyring:    0
+  会话密钥环: 256e6a6
+
+密钥说明: user;1000;1000;3f010000;mykey
+授权密钥，载荷: somepayloaddata
+目标密钥环: 256e6a6
+授权密钥说明: .request_key_auth;1000;1000;0b010000;20d035bf
+.EE
+.in
+.PP
+上面输出的最后几行表明示例程序能够获取:
+.IP \[bu] 3
+要实例化的密钥的描述，其中包括密钥 (\fImykey\fP) 的名称;
+.IP \[bu]
+授权密钥的有效，载荷，由传递给 \fBrequest_key\fP(2) 的数据 (\fIsomepayloaddata\fP) 组成;
+.IP \[bu]
+在调用于 \fBrequest_key\fP(2) 中指定的目标密钥环; and
+.IP \[bu]
+authorization key 的描述，这里可以看到 authorization key 的名称与要实例化的 key ID
+(\fI20d035bf\fP) 相匹配。
+.PP
+\fBrequest_key\fP(2) 中的示例程序将目标密钥环指定为 \fBKEY_SPEC_SESSION_KEYRING\fP。 通过检查
+\fI/proc/keys\fP 的内容，我们可以看到它被转换为上面日志输出中显示的目标密钥环 (\fI0256e6a6\fP) 的 ID;
+我们还可以看到新创建的密钥，名称为 \fImykey\fP，ID 为 \fI20d035bf\fP。
+.PP
+.in +4n
+.EX
+$ \fBcat /proc/keys | egrep \[aq]mykey|256e6a6\[aq]\fP
+0256e6a6 I\-\-Q\-\-\-  194 perm 3f030000  1000  1000 keyring  _ses: 3
+20d035bf I\-\-Q\-\-\-    1 perm 3f010000  1000  1000 user     mykey: 16
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (key_instantiate.c)
+\&
+.EX
+/* key_instantiate.c */
+
+#include <errno.h>
+#include <keyutils.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <time.h>
+
+#ifndef KEY_SPEC_REQUESTOR_KEYRING
+#define KEY_SPEC_REQUESTOR_KEYRING      (\-8)
+#endif
+
+int
+main(int argc, char *argv[])
+{
+    int           akp_size;       /* Size of auth_key_payload */
+    int           auth_key;
+    char          dbuf[256];
+    char          auth_key_payload[256];
+    char          *operation;
+    FILE          *fp;
+    gid_t         gid;
+    uid_t         uid;
+    time_t        t;
+    key_serial_t  key_to_instantiate, dest_keyring;
+    key_serial_t  thread_keyring, process_keyring, session_keyring;
+
+    if (argc != 8) {
+        fprintf(stderr, "Usage: %s op key uid gid thread_keyring "
+                        "process_keyring session_keyring\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fp = fopen("/tmp/key_instantiate.log", "w");
+    if (fp == NULL)
+        exit(EXIT_FAILURE);
+
+    setbuf(fp, NULL);
+
+    t = time(NULL);
+    fprintf(fp, "Time: %s\en", ctime(&t));
+
+    /*
+     * 内核传递一组固定的参数给程序
+     * 它执行; 把他们拿来。
+     */
+    operation = argv[1];
+    key_to_instantiate = atoi(argv[2]);
+    uid = atoi(argv[3]);
+    gid = atoi(argv[4]);
+    thread_keyring = atoi(argv[5]);
+    process_keyring = atoi(argv[6]);
+    session_keyring = atoi(argv[7]);
+
+    fprintf(fp, "Command line arguments:\en");
+    fprintf(fp, "  argv[0]:            %s\en", argv[0]);
+    fprintf(fp, "  operation:          %s\en", operation);
+    fprintf(fp, "  key_to_instantiate: %jx\en",
+            (uintmax_t) key_to_instantiate);
+    fprintf(fp, "  UID:                %jd\en", (intmax_t) uid);
+    fprintf(fp, "  GID:                %jd\en", (intmax_t) gid);
+    fprintf(fp, "  thread_keyring:     %jx\en",
+            (uintmax_t) thread_keyring);
+    fprintf(fp, "  process_keyring:    %jx\en",
+            (uintmax_t) process_keyring);
+    fprintf(fp, "  session_keyring:    %jx\en",
+            (uintmax_t) session_keyring);
+    fprintf(fp, "\en");
+
+    /*
+     * 假定有权实例化 argv[2] 中命名的密钥。
+     */
+    if (keyctl(KEYCTL_ASSUME_AUTHORITY, key_to_instantiate) == \-1) {
+        fprintf(fp, "KEYCTL_ASSUME_AUTHORITY failed: %s\en",
+                strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 获取要实例化的键的描述。
+     */
+    if (keyctl(KEYCTL_DESCRIBE, key_to_instantiate,
+               dbuf, sizeof(dbuf)) == \-1) {
+        fprintf(fp, "KEYCTL_DESCRIBE failed: %s\en", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(fp, "Key description:      %s\en", dbuf);
+
+    /*
+     * 获取授权密钥的有效，载荷，即
+     * 实际上是给 request_key() 的标注数据。
+     */
+    akp_size = keyctl(KEYCTL_READ, KEY_SPEC_REQKEY_AUTH_KEY,
+                      auth_key_payload, sizeof(auth_key_payload));
+    if (akp_size == \-1) {
+        fprintf(fp, "KEYCTL_READ failed: %s\en", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    auth_key_payload[akp_size] = \[aq]\e0\[aq];
+    fprintf(fp, "Auth key payload:     %s\en", auth_key_payload);
+
+    /*
+     * 为了感兴趣，获取授权密钥的 ID 和
+     * 显示它。
+     */
+    auth_key = keyctl(KEYCTL_GET_KEYRING_ID,
+                      KEY_SPEC_REQKEY_AUTH_KEY);
+    if (auth_key == \-1) {
+        fprintf(fp, "KEYCTL_GET_KEYRING_ID failed: %s\en",
+                strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(fp, "Auth key ID:          %jx\en", (uintmax_t) auth_key);
+
+    /*
+     * 获取 request_key(2) 目标密钥环的密钥 ID。
+     */
+    dest_keyring = keyctl(KEYCTL_GET_KEYRING_ID,
+                          KEY_SPEC_REQUESTOR_KEYRING);
+    if (dest_keyring == \-1) {
+        fprintf(fp, "KEYCTL_GET_KEYRING_ID failed: %s\en",
+                strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(fp, "Destination keyring:  %jx\en", (uintmax_t) dest_keyring);
+
+    /*
+     * 获取授权密钥的描述。This
+     * 允许我们查看密钥类型、UID、GID、权限，
+     * 和密钥的描述 (name)。除其他事项外，
+     * 我们会看到密钥的名称是十六进制的
+     * 表示要实例化的键的 ID 的字符串。
+     */
+    if (keyctl(KEYCTL_DESCRIBE, KEY_SPEC_REQKEY_AUTH_KEY,
+               dbuf, sizeof(dbuf)) == \-1)
+    {
+        fprintf(fp, "KEYCTL_DESCRIBE failed: %s\en", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(fp, "Auth key description: %s\en", dbuf);
+
+    /*
+     * 使用提供的标注数据实例化密钥
+     * 在授权密钥的有效，载荷，中。
+     */
+    if (keyctl(KEYCTL_INSTANTIATE, key_to_instantiate,
+               auth_key_payload, akp_size + 1, dest_keyring) == \-1)
+    {
+        fprintf(fp, "KEYCTL_INSTANTIATE failed: %s\en",
+                strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+.\"     .BR find_key_by_type_and_name (3)
+.\"     There is a man page, but this function seems not to exist
+\fBkeyctl\fP(1), \fBadd_key\fP(2), \fBrequest_key\fP(2), \fBkeyctl\fP(3),
+\fBkeyctl_assume_authority\fP(3), \fBkeyctl_chown\fP(3), \fBkeyctl_clear\fP(3),
+\fBkeyctl_describe\fP(3), \fBkeyctl_describe_alloc\fP(3), \fBkeyctl_dh_compute\fP(3),
+\fBkeyctl_dh_compute_alloc\fP(3), \fBkeyctl_get_keyring_ID\fP(3),
+\fBkeyctl_get_persistent\fP(3), \fBkeyctl_get_security\fP(3),
+\fBkeyctl_get_security_alloc\fP(3), \fBkeyctl_instantiate\fP(3),
+\fBkeyctl_instantiate_iov\fP(3), \fBkeyctl_invalidate\fP(3),
+\fBkeyctl_join_session_keyring\fP(3), \fBkeyctl_link\fP(3), \fBkeyctl_negate\fP(3),
+\fBkeyctl_read\fP(3), \fBkeyctl_read_alloc\fP(3), \fBkeyctl_reject\fP(3),
+\fBkeyctl_revoke\fP(3), \fBkeyctl_search\fP(3), \fBkeyctl_session_to_parent\fP(3),
+\fBkeyctl_set_reqkey_keyring\fP(3), \fBkeyctl_set_timeout\fP(3),
+\fBkeyctl_setperm\fP(3), \fBkeyctl_unlink\fP(3), \fBkeyctl_update\fP(3),
+\fBrecursive_key_scan\fP(3), \fBrecursive_session_key_scan\fP(3),
+\fBcapabilities\fP(7), \fBcredentials\fP(7), \fBkeyrings\fP(7), \fBkeyutils\fP(7),
+\fBpersistent\-keyring\fP(7), \fBprocess\-keyring\fP(7), \fBsession\-keyring\fP(7),
+\fBthread\-keyring\fP(7), \fBuser\-keyring\fP(7), \fBuser_namespaces\fP(7),
+\fBuser\-session\-keyring\fP(7), \fBrequest\-key\fP(8)
+.PP
+\fIDocumentation/security/keys/\fP 下的内核源文件 (或者，在 Linux 4.13 之前，在文件
+\fIDocumentation/security/keys.txt\fP).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,162 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)exec.3	6.4 (Berkeley) 4/19/91
+.\"
+.\" Converted for Linux, Mon Nov 29 11:12:48 1993, faith@cs.unc.edu
+.\" Updated more for Linux, Tue Jul 15 11:54:18 1997, pacman@cqc.com
+.\" Modified, 24 Jun 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added note on casting NULL
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH exec 3 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+execl, execlp, execle, execv, execvp, execvpe \- 执行一个文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBextern char **environ;\fP
+.PP
+\fBint execl(const char *\fP\fIpathname\fP\fB, const char *\fP\fIarg\fP\fB, ...\fP
+\fBint execl(const char *\fP\fIpathname\fP\fB, const char *\fP\fIarg\fP\fB, ...\fP
+\fBint execlp(const char *\fP\fIfile\fP\fB, const char *\fP\fIarg\fP\fB, ...\fP
+\fBint execlp(const char *\fP\fIfile\fP\fB, const char *\fP\fIarg\fP\fB, ...\fP
+\fBint execle(const char *\fP\fIpathname\fP\fB, const char *\fP\fIarg\fP\fB, ...\fP
+\fB                /*, (char *) NULL, char *const \fP\fIenvp\fP\fB[] */);\fP
+\fBint execv(const char *\fP\fIpathname\fP\fB, char *const \fP\fIargv\fP\fB[]);\fP
+\fBint execvp(const char *\fP\fIfile\fP\fB, char *const \fP\fIargv\fP\fB[]);\fP
+\fBint execvpe(const char *\fP\fIfile\fP\fB, char *const \fP\fIargv\fP\fB[], char *const \fP\fIenvp\fP\fB[]);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBexecvpe\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+函数的 \fBexec\fP() 系列用新的过程映像替换了当前的过程映像。 本手册页中描述的函数位于 \fBexecve\fP(2) 之上。
+(有关替换当前过程映像的更多详细信息，请参见 \fBexecve\fP(2) 的手册页。)
+.PP
+这些函数的开头参数是要执行的文件名。
+.PP
+.\"
+函数可以根据 "exec" 前缀后面的字母进行分组。
+.SS "l \- execl(), execlp(), execle()"
+\fIconst char\ *arg\fP 和随后的省略号可以被认为是 \fIarg0\fP、\fIarg1\fP、\&...、\fIargn\fP。
+它们一起描述了一个或多个指向以空字符结尾的字符串的指针的列表，这些字符串表示可用于已执行程序的参数列表。
+按照惯例，第一个参数应该指向与正在执行的文件关联的文件名。 参数 \fImust\fP 的列表由空指针终止，并且由于这些是可变函数，因此必须将此指针强制转换为
+\fI(char\ *) NULL\fP。
+.PP
+.\"
+与 'l' 函数相比，'v' 函数 (below) 将执行程序的命令行参数指定为 vector。
+.SS "v \- execv(), execvp(), execvpe()"
+\fIchar\ *const argv[]\fP 参数是指向空终止字符串的指针数组，表示新程序可用的参数列表。
+按照惯例，第一个参数应该指向与正在执行的文件关联的文件名。 指针数组 \fImust\fP 由空指针终止。
+.SS "e \- execle(), execvpe()"
+新过程映像的环境通过参数 \fIenvp\fP 指定。 \fIenvp\fP 参数是指向空终止字符串的指针数组，\fImust\fP 由空指针终止。
+.PP
+所有其他 \fBexec\fP() 函数 (后缀不包括 'e') 从调用进程中的外部变量 \fIenviron\fP 中获取新进程映像的环境。
+.SS "p \- execlp(), execvp(), execvpe()"
+如果指定的文件名不包含斜线 (/) 字符，这些函数会重复 shell 在搜索可执行文件时的操作。 该文件在 \fBPATH\fP
+环境变量中指定的以冒号分隔的目录路径名列表中查找。 如果未定义此变量，则路径列表默认为包含 \fIconfstr(_CS_PATH)\fP 返回的目录
+(通常返回值 "/bin:/usr/bin") 以及可能还包含当前工作目录的列表; 有关详细信息，请参见注释。
+.PP
+\fBexecvpe\fP() 使用来自调用者环境的 \fBPATH\fP 的值搜索程序，而不是来自 \fIenvp\fP 参数。
+.PP
+如果指定的文件名包含斜杠字符，则忽略 \fBPATH\fP，并执行指定路径名的文件。
+.PP
+此外，某些错误会被特殊处理。
+.PP
+如果文件的权限被拒绝 (尝试 \fBexecve\fP(2) 失败，错误为 \fBEACCES\fP)，这些函数将继续搜索搜索路径的其余部分。
+但是，如果没有找到其他文件，它们将返回并将 \fIerrno\fP 设置为 \fBEACCES\fP。
+.PP
+如果无法识别文件头 (尝试的 \fBexecve\fP(2) 失败并出现错误 \fBENOEXEC\fP)，则这些函数将执行 shell (\fI/bin/sh\fP)
+并将文件路径作为它的第一个参数。 (如果此尝试失败，则不会进行进一步搜索。)
+.PP
+所有其他 \fBexec\fP() 函数 (后缀中不包括 'p') 将第一个参数作为标识要执行的程序的 (相对或绝对) 路径名。
+.SH "RETURN VALUE"
+\fBexec\fP() 函数仅在发生错误时返回。 返回值为 \-1，设置 \fIerrno\fP 表示错误。
+.SH ERRORS
+所有这些函数都可能失败并为 \fBexecve\fP(2) 指定的任何错误设置 \fIerrno\fP。
+.SH VERSIONS
+\fBexecvpe\fP() 函数最早出现在 glibc 2.11 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBexecl\fP(),
+\fBexecle\fP(),
+\fBexecv\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBexeclp\fP(),
+\fBexecvp\fP(),
+\fBexecvpe\fP()
+T}	Thread safety	MT\-Safe env
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBexecvpe\fP() 函数是 GNU 的扩展。
+.SH NOTES
+.\" glibc commit 1eb8930608705702d5746e5491bab4e4429fcb83
+默认搜索路径 (当环境不包含变量 \fBPATH\fP) 时使用) 显示系统间的一些差异。 它通常包括 \fI/bin\fP 和 \fI/usr/bin\fP
+(按此顺序)，也可能包括当前工作目录。 在其他一些系统上，当前工作包括在 \fI/bin\fP 和 \fI/usr/bin\fP 之后，作为一种反木马程序。
+glibc 实现长期遵循传统的默认设置，即当前工作目录包含在搜索路径的开头。 然而，在 glibc 2.24
+开发过程中的一些代码重构导致当前工作目录与默认搜索路径完全不同。 这种意外的行为改变被认为是轻微有益的，并且不会被恢复。
+.PP
+尝试执行文件时出现错误时 \fBexeclp\fP() 和 \fBexecvp\fP() 的行为是历史惯例，但传统上没有记录，也没有由 POSIX 标准指定。
+如果遇到 \fBETXTBSY\fP，BSD (可能还有其他系统) 会自动休眠并重试。 Linux 将其视为硬错误并立即返回。
+.PP
+传统上，函数 \fBexeclp\fP() 和 \fBexecvp\fP() 会忽略除上述错误以及 \fBENOMEM\fP 和 \fBE2BIG\fP
+之外的所有错误，然后返回。 如果发生上述错误以外的任何错误，它们现在会返回。
+.SH BUGS
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=19534
+.\"
+在 glibc 2.24 之前，\fBexecl\fP() 和 \fBexecle\fP() 在内部使用
+\fBrealloc\fP(3)，因此不是异步信号安全的，这违反了 POSIX.1 的要求。 这已在 glibc 2.24 中修复。
+.SS "Architecture\-specific details"
+在 sparc 和 sparc64 上，\fBexecv\fP() 由内核 (原型如上所示) 作为系统调用提供，用于与 SunOS 兼容。 这个函数是
+\fBexecv\fP() 包装器函数在这些架构上使用的 \fInot\fP。
+.SH "SEE ALSO"
+\fBsh\fP(1), \fBexecve\fP(2), \fBexecveat\fP(2), \fBfork\fP(2), \fBptrace\fP(2),
+\fBfexecve\fP(3), \fBsystem\fP(3), \fBenviron\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

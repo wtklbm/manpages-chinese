@@ -1,0 +1,139 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sched_setscheduler 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+sched_setscheduler, sched_getscheduler \- 设置和获取调度 policy/parameters
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sched.h>\fP
+.PP
+\fBint sched_setscheduler(pid_t \fP\fIpid\fP\fB, int \fP\fIpolicy\fP\fB,\fP
+\fB                       const struct sched_param *\fP\fIparam\fP\fB);\fP
+\fBint sched_getscheduler(pid_t \fP\fIpid\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsched_setscheduler\fP() 系统调用为 \fIpid\fP 中指定 ID 的线程设置调度策略和参数。 如果 \fIpid\fP
+等于零，调用线程的调度策略和参数将被设置。
+.PP
+调度参数在 \fIparam\fP 参数中指定，它是指向以下形式的结构体的指针:
+.PP
+.in +4n
+.EX
+struct sched_param {
+    ...
+    int sched_priority;
+    ...
+};
+.EE
+.in
+.PP
+在当前的实现中，结构体只包含一个字段，\fIsched_priority\fP。 \fIparam\fP 的解释取决于所选策略。
+.PP
+目前，Linux 支持以下 "normal" (即非实时) 调度策略作为 \fIpolicy\fP: 中可能指定的值
+.TP  14
+\fBSCHED_OTHER\fP
+.\" In the 2.6 kernel sources, SCHED_OTHER is actually called
+.\" SCHED_NORMAL.
+标准循环分时策略;
+.TP 
+\fBSCHED_BATCH\fP
+用于 "batch" 风格的流程执行; and
+.TP 
+\fBSCHED_IDLE\fP
+用于运行 \fIvery\fP 低优先级后台作业。
+.PP
+对于上述每项政策，\fIparam\->sched_priority\fP 必须是 0.
+.PP
+还支持各种 "real\-time" 策略，适用于需要精确控制选择可运行线程执行方式的特殊时间关键型应用程序。
+有关管理进程何时可以使用这些策略的规则，请参见 \fBsched\fP(7)。 \fIpolicy\fP 中可以指定的实时策略有:
+.TP  14
+\fBSCHED_FIFO\fP
+先进先出政策; and
+.TP 
+\fBSCHED_RR\fP
+循环策略。
+.PP
+对于上面的每一个策略，\fIparam\->sched_priority\fP 都为线程指定了一个调度优先级。 这是用指定的 \fIpolicy\fP 调用
+\fBsched_get_priority_min\fP(2) 和 \fBsched_get_priority_max\fP(2) 返回的范围内的数字。 在
+Linux 上，这些系统调用分别返回 1 和 99。
+.PP
+从 Linux 2.6.32 开始，在调用 \fBsched_setscheduler\fP() 时，\fBSCHED_RESET_ON_FORK\fP 标志可以在
+\fIpolicy\fP 中进行 ORed。 由于包含此标志，\fBfork\fP(2) 创建的子级不会继承特权调度策略。 有关详细信息，请参见
+\fBsched\fP(7)。
+.PP
+\fBsched_getscheduler\fP() 返回由 \fIpid\fP 标识的线程的当前调度策略。 如果 \fIpid\fP 等于零，调用线程的策略将被检索。
+.SH "RETURN VALUE"
+成功时，\fBsched_setscheduler\fP() 返回零。 成功时，\fBsched_getscheduler\fP() 返回线程的策略 (非负整数)。
+出错时，两个调用都返回 \-1，并且设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+无效参数: \fIpid\fP 为 negative 或 \fIparam\fP 为 NULL。
+.TP 
+\fBEINVAL\fP
+(\fBsched_setscheduler\fP()) \fIpolicy\fP 不是公认的策略之一。
+.TP 
+\fBEINVAL\fP
+(\fBsched_setscheduler\fP()) \fIparam\fP 对于指定的 \fIpolicy\fP 没有意义。
+.TP 
+\fBEPERM\fP
+调用线程没有适当的权限。
+.TP 
+\fBESRCH\fP
+找不到 ID 为 \fIpid\fP 的线程。
+.SH STANDARDS
+POSIX.1\-2001、POSIX.1\-2008 (但请参见下面的错误)。 \fBSCHED_BATCH\fP 和 \fBSCHED_IDLE\fP 策略是特定于
+Linux 的。
+.SH NOTES
+有关上述所有 "normal" 和 "real\-time" 调度策略语义的更多详细信息，请参见 \fBsched\fP(7) 手册页。
+该页面还描述了一个附加策略 \fBSCHED_DEADLINE\fP，它只能通过 \fBsched_setattr\fP(2) 进行设置。
+.PP
+\fBsched_setscheduler\fP() 和 \fBsched_getscheduler\fP() 可用的 POSIX 系统在
+\fI<unistd.h>\fP 中定义 \fB_POSIX_PRIORITY_SCHEDULING\fP。
+.PP
+POSIX.1 没有详细说明非特权线程调用 \fBsched_setscheduler\fP() 所需的权限，并且细节因系统而异。 例如，Solaris 7
+手册页说调用者的真实或有效用户 ID 必须与目标的真实用户 ID 或存储集用户 ID 匹配。
+.PP
+调度策略和参数实际上是 Linux 上的每线程属性。 从调用到 \fBgettid\fP(2) 的返回值可以在参数 \fIpid\fP 中传递。 指定 \fIpid\fP
+为 0 将对调用线程的属性进行操作，将调用返回的值传递给 \fBgetpid\fP(2) 将对线程组主线程的属性进行操作。 (如果您使用 POSIX 线程
+API，则使用 \fBpthread_setschedparam\fP(3)、\fBpthread_getschedparam\fP(3) 和
+\fBpthread_setschedprio\fP(3)，而不是 \fBsched_*\fP(2) 系统调用。)
+.SH BUGS
+POSIX.1 表示成功时，\fBsched_setscheduler\fP() 应该返回之前的调度策略。 Linux
+\fBsched_setscheduler\fP() 不符合这个要求，因为它总是在成功时返回 0。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBchrt\fP(1), \fBnice\fP(2), \fBsched_get_priority_max\fP(2),
+\fBsched_get_priority_min\fP(2), \fBsched_getaffinity\fP(2), \fBsched_getattr\fP(2),
+\fBsched_getparam\fP(2), \fBsched_rr_get_interval\fP(2), \fBsched_setaffinity\fP(2),
+\fBsched_setattr\fP(2), \fBsched_setparam\fP(2), \fBsched_yield\fP(2),
+\fBsetpriority\fP(2), \fBcapabilities\fP(7), \fBcpuset\fP(7), \fBsched\fP(7)
+.ad
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

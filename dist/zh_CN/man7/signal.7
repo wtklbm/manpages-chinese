@@ -1,0 +1,536 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\" and Copyright (c) 2002, 2006, 2020 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 17:34:08 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Sun Jan  7 01:41:27 1996 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Sun Apr 14 12:02:29 1996 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Sat Nov 13 16:28:23 1999 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified 10 Apr 2002, by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified  7 Jun 2002, by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added information on real-time signals
+.\" Modified 13 Jun 2002, by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Noted that SIGSTKFLT is in fact unused
+.\" 2004-12-03, Modified mtk, added notes on RLIMIT_SIGPENDING
+.\" 2006-04-24, mtk, Added text on changing signal dispositions,
+.\"		signal mask, and pending signals.
+.\" 2008-07-04, mtk:
+.\"     Added section on system call restarting (SA_RESTART)
+.\"     Added section on stop/cont signals interrupting syscalls.
+.\" 2008-10-05, mtk: various additions
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH signal 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+信号 \- 信号概述
+.SH DESCRIPTION
+Linux 同时支持 POSIX 可靠信号 (以下简称 "standard signals") 和 POSIX 实时信号。
+.SS "Signal dispositions"
+每个信号都有一个当前的 \fIdisposition\fP，它决定了进程在传递信号时的行为方式。
+.PP
+下表 "Action" 列中的条目指定每个信号的默认配置，如下所示:
+.TP 
+Term
+默认操作是终止进程。
+.TP 
+Ign
+默认操作是忽略信号。
+.TP 
+Core
+默认操作是终止进程并转储核心 (请参见 \fBcore\fP(5)).
+.TP 
+Stop
+默认操作是停止进程。
+.TP 
+Cont
+如果进程当前已停止，则默认操作是继续该进程。
+.PP
+进程可以使用 \fBsigaction\fP(2) 或 \fBsignal\fP(2) 更改信号的配置。 (后者在建立信号处理程序时可移植性较差;
+有关详细信息，请参见 \fBsignal\fP(2)。) 使用这些系统调用，进程可以选择以下行为之一在信号传递时发生: 执行默认操作; 忽略信号; 或使用
+\fIsignal handler\fP 捕获信号，这是一个程序员定义的函数，它会在信号传递时自动调用。
+.PP
+默认情况下，在正常进程栈上调用信号处理程序。 可以安排信号处理程序使用备用栈; 有关如何执行此操作以及何时可能有用的讨论，请参见
+\fBsigaltstack\fP(2)。
+.PP
+信号处置是每个进程的属性: 在多线程应用程序中，特定信号的处置对所有线程都是相同的。
+.PP
+通过 \fBfork\fP(2) 创建的子级继承其父级信号配置的副本。 在 \fBexecve\fP(2) 期间，处理信号的配置被重置为默认值;
+忽略信号的配置保持不变。
+.SS "Sending a signal"
+以下系统调用和库函数允许调用者发送信号:
+.TP 
+\fBraise\fP(3)
+向调用线程发送信号。
+.TP 
+\fBkill\fP(2)
+向指定进程、指定进程组的所有成员或系统上的所有进程发送信号。
+.TP 
+\fBpidfd_send_signal\fP(2)
+向由 PID 文件描述符标识的进程发送信号。
+.TP 
+\fBkillpg\fP(3)
+向指定进程组的所有成员发送信号。
+.TP 
+\fBpthread_kill\fP(3)
+向与调用者位于同一进程中的指定 POSIX 线程发送信号。
+.TP 
+\fBtgkill\fP(2)
+向特定进程中的指定线程发送信号。 (这是用来实现 \fBpthread_kill\fP(3).) 的系统调用
+.TP 
+\fBsigqueue\fP(3)
+将带有伴随数据的实时信号发送到指定进程。
+.SS "Waiting for a signal to be caught"
+以下系统调用暂停调用线程的执行，直到捕获到信号 (或未处理的信号终止进程) :
+.TP 
+\fBpause\fP(2)
+暂停执行直到捕获到任何信号。
+.TP 
+\fBsigsuspend\fP(2)
+.\"
+临时更改信号掩码 (见下文) 并暂停执行，直到捕获到未掩码的信号之一。
+.SS "Synchronously accepting a signal"
+同步接受信号不是通过信号处理程序异步捕获信号，而是阻塞执行直到信号被传递，此时内核将有关信号的信息返回给调用者。 有两种通用方法可以做到这一点:
+.IP \[bu] 3
+\fBsigwaitinfo\fP(2)、\fBsigtimedwait\fP(2) 和 \fBsigwait\fP(3) 暂停执行，直到传递指定集中的信号之一。
+这些调用中的每一个都返回有关所传递信号的信息。
+.IP \[bu]
+\fBsignalfd\fP(2) 返回一个文件描述符，可用于读取有关传递给调用者的信号的信息。 此文件描述符中的每个 \fBread\fP(2) 都会阻塞，直到
+\fBsignalfd\fP(2) 调用中指定的集合中的信号之一被传递给调用者。 \fBread\fP(2) 返回的缓冲区包含描述信号的结构体。
+.SS "Signal mask and pending signals"
+一个信号可能是 \fIblocked\fP，意思是要等到后来解封后才会下发。 在信号生成和传送之间的时间称为 \fIpending\fP。
+.PP
+一个进程中的每个线程都有一个独立的 \fIsignal mask\fP，表示线程当前阻塞的信号集。 线程可以使用 \fBpthread_sigmask\fP(3)
+操纵其信号掩码。 在传统的单线程应用程序中，\fBsigprocmask\fP(2) 可用于操作信号掩码。
+.PP
+通过 \fBfork\fP(2) 创建的子级继承其父级信号掩码的副本; 信号掩码在 \fBexecve\fP(2) 中保留。
+.PP
+信号可以是进程导向的或线程导向的。 流程导向信号是针对 (并因此等待) 整个流程的信号。
+信号可能是进程导向的，因为它是由内核出于硬件异常以外的原因生成的，或者因为它是使用 \fBkill\fP(2) 或 \fBsigqueue\fP(3) 发送的。
+线程定向信号是针对特定线程的信号。 信号可能是线程导向的，因为它是由于执行触发硬件异常的特定机器语言指令而生成的 (例如，\fBSIGSEGV\fP
+表示无效内存访问，或 \fBSIGFPE\fP 表示数学错误)，或者因为它是有针对性的在特定线程中使用 \fBtgkill\fP(2) 或
+\fBpthread_kill\fP(3) 等接口。
+.PP
+.\" Joseph C. Sible notes:
+.\" On Linux, if the main thread has the signal unblocked, then the kernel
+.\" will always deliver the signal there, citing this kernel code
+.\"
+.\"     Per this comment in kernel/signal.c since time immemorial:
+.\"
+.\"     /*
+.\"     * Now find a thread we can wake up to take the signal off the queue.
+.\"     *
+.\"     * If the main thread wants the signal, it gets first crack.
+.\"     * Probably the least surprising to the average bear.
+.\"     */
+.\"
+.\" But this does not mean the signal will be delivered only in the
+.\" main thread, since if a handler is already executing in the main thread
+.\" (and thus the signal is blocked in that thread), then a further
+.\" might be delivered in a different thread.
+.\"
+一个进程导向的信号可以传递给当前没有阻塞信号的任何一个线程。 如果不止一个线程的信号被解除阻塞，那么内核会选择一个任意线程来传递信号。
+.PP
+线程可以使用 \fBsigpending\fP(2) 获得它当前挂起的信号集。 该集合将由挂起的进程导向信号集的 union 和调用线程的挂起信号集组成。
+.PP
+.\"
+通过 \fBfork\fP(2) 创建的子节点最初有一个空的挂起信号集; 挂起的信号集保存在 \fBexecve\fP(2) 中。
+.SS "Execution of signal handlers"
+每当从内核模式转换到用户模式执行时 (例如，从系统调用返回或将线程调度到 CPU
+上)，内核会检查是否有未决的未阻塞信号，进程已为此建立了一个信号处理程序。 如果存在这样的待处理信号，则会发生以下步骤:
+.IP (1) 5
+内核为执行信号处理程序执行必要的准备步骤:
+.RS
+.IP (1.1) 7
+该信号从待处理信号集中移除。
+.IP (1.2)
+如果信号处理程序由指定 \fBSA_ONSTACK\fP 标志的 \fBsigaction\fP(2) 调用安装，并且线程定义了备用信号栈 (使用
+\fBsigaltstack\fP(2))，则安装该栈。
+.IP (1.3)
+各种与信号相关的上下文被保存到在栈上创建的特殊帧中。 保存的信息包括:
+.RS
+.IP \[bu] 3
+程序计数器寄存器 (即信号处理程序返回时应执行的主程序中下一条指令的地址) ;
+.IP \[bu]
+恢复中断程序所需的特定于体系结构的寄存器状态;
+.IP \[bu]
+线程的当前信号掩码;
+.IP \[bu]
+线程的备用信号栈设置。
+.RE
+.IP
+(如果信号处理程序是使用 \fBsigaction\fP(2) \fBSA_SIGINFO\fP 标志安装的，则可以通过信号处理程序的第三个参数指向的
+\fIucontext_t\fP 对象访问上述信息。)
+.IP (1.4)
+当向 \fBsigprocmask\fP(2) 注册处理程序时，在 \fIact\->sa_mask\fP 中指定的任何信号都将添加到线程的信号掩码中。
+传递的信号也被添加到信号掩码中，除非在注册处理程序时指定了 \fBSA_NODEFER\fP。 这些信号因此在处理程序执行时被阻塞。
+.RE
+.IP (2)
+内核在栈上为信号处理程序创建一个帧。
+内核将线程的程序计数器设置为指向信号处理程序函数的第一条指令，并将该函数的返回地址配置为指向一段称为信号蹦床的用户空间代码 (在
+\fBsigreturn\fP(2)).
+.IP (3)
+内核将控制权交还给用户空间，在用户空间中，信号处理程序函数开始执行。
+.IP (4)
+当信号处理程序返回时，控制传递给信号蹦床代码。
+.IP (5)
+信号蹦床调用 \fBsigreturn\fP(2)，这是一个系统调用，它使用在步骤 1 中创建的栈帧中的信息将线程恢复到调用信号处理程序之前的状态。
+作为此过程的一部分，线程的信号掩码和备用信号栈设置将被恢复。 对 \fBsigreturn\fP(2)
+的调用完成后，内核将控制权交还给用户空间，线程从被信号处理程序中断的位置重新开始执行。
+.PP
+请注意，如果信号处理程序没有返回 (例如，控制从使用 \fBsiglongjmp\fP(3) 的处理程序移出，或者处理程序使用 \fBexecve\fP(2))
+执行新程序，则不会执行最后一步。 特别是，在这种情况下，程序员有责任恢复信号掩码的状态 (使用
+\fBsigprocmask\fP(2))，如果需要解锁在进入信号处理程序时被阻塞的信号。 (请注意，\fBsiglongjmp\fP(3)
+可能会或可能不会恢复信号掩码，具体取决于在相应调用中指定的 \fIsavesigs\fP 值到 \fBsigsetjmp\fP(3).)
+.PP
+.\"
+从内核的角度来看，信号处理程序代码的执行与任何其他用户空间代码的执行完全相同。
+也就是说，内核不会记录任何表明线程当前正在信号处理程序内部执行的特殊状态信息。 所有必要的状态信息都保存在用户空间寄存器和用户空间栈中。
+因此，可以调用嵌套信号处理程序的深度仅受用户空间栈 (和明智的软件设计! ) 的限制。
+.SS "Standard signals"
+Linux 支持下列标准信号。 表格的第二列表示哪个标准 (如果有的话) 指定了信号: "P1990" 表示信号在原始 POSIX.1\-1990
+标准中描述; "P2001" 表示信号是在 SUSv2 和 POSIX.1\-2001 中加入的。
+.TS
+l c c l
+____
+lB c c l.
+Signal	Standard	Action	Comment
+SIGABRT	P1990	Core	Abort signal from \fBabort\fP(3)
+SIGALRM	P1990	Term	Timer signal from \fBalarm\fP(2)
+SIGBUS	P2001	Core	Bus error (bad memory access)
+SIGCHLD	P1990	Ign	Child stopped or terminated
+SIGCLD	\-	Ign	A synonym for \fBSIGCHLD\fP
+SIGCONT	P1990	Cont	Continue if stopped
+SIGEMT	\-	Term	Emulator trap
+SIGFPE	P1990	Core	Floating\-point exception
+SIGHUP	P1990	Term	Hangup detected on controlling terminal
+			or death of controlling process
+SIGILL	P1990	Core	Illegal Instruction
+SIGINFO	\-		A synonym for \fBSIGPWR\fP
+SIGINT	P1990	Term	Interrupt from keyboard
+SIGIO	\-	Term	I/O now possible (4.2BSD)
+SIGIOT	\-	Core	IOT trap. A synonym for \fBSIGABRT\fP
+SIGKILL	P1990	Term	Kill signal
+SIGLOST	\-	Term	File lock lost (unused)
+SIGPIPE	P1990	Term	Broken pipe: write to pipe with no
+			readers; see \fBpipe\fP(7)
+SIGPOLL	P2001	Term	Pollable event (Sys V);
+			synonym for \fBSIGIO\fP
+SIGPROF	P2001	Term	Profiling timer expired
+SIGPWR	\-	Term	Power failure (System V)
+SIGQUIT	P1990	Core	Quit from keyboard
+SIGSEGV	P1990	Core	Invalid memory reference
+SIGSTKFLT	\-	Term	Stack fault on coprocessor (unused)
+SIGSTOP	P1990	Stop	Stop process
+SIGTSTP	P1990	Stop	Stop typed at terminal
+SIGSYS	P2001	Core	Bad system call (SVr4);
+			see also \fBseccomp\fP(2)
+SIGTERM	P1990	Term	Termination signal
+SIGTRAP	P2001	Core	Trace/breakpoint trap
+SIGTTIN	P1990	Stop	Terminal input for background process
+SIGTTOU	P1990	Stop	Terminal output for background process
+SIGUNUSED	\-	Core	Synonymous with \fBSIGSYS\fP
+SIGURG	P2001	Ign	Urgent condition on socket (4.2BSD)
+SIGUSR1	P1990	Term	User\-defined signal 1
+SIGUSR2	P1990	Term	User\-defined signal 2
+SIGVTALRM	P2001	Term	Virtual alarm clock (4.2BSD)
+SIGXCPU	P2001	Core	CPU time limit exceeded (4.2BSD);
+			see \fBsetrlimit\fP(2)
+SIGXFSZ	P2001	Core	File size limit exceeded (4.2BSD);
+			see \fBsetrlimit\fP(2)
+SIGWINCH	\-	Ign	Window resize signal (4.3BSD, Sun)
+.TE
+.PP
+不能捕获、阻止或忽略信号 \fBSIGKILL\fP 和 \fBSIGSTOP\fP。
+.PP
+在 Linux 2.2 之前 (包括 Linux 2.2)，\fBSIGSYS\fP、\fBSIGXCPU\fP、\fBSIGXFSZ\fP 和 (在 SPARC 和
+MIPS 以外的架构上) \fBSIGBUS\fP 的默认行为是终止进程 (没有核心转储)。 (在其他一些 UNIX 系统上，\fBSIGXCPU\fP 和
+\fBSIGXFSZ\fP 的默认操作是在没有核心转储的情况下终止进程。) Linux 2.4 符合这些信号的 POSIX.1\-2001
+要求，通过核心转储终止进程。
+.PP
+\fBSIGEMT\fP 未在 POSIX.1\-2001 中指定，但仍然出现在大多数其他 UNIX 系统中，其默认操作通常是使用核心转储终止进程。
+.PP
+\fBSIGPWR\fP (在 POSIX.1\-2001 中未指定) 通常在它出现的其他 UNIX 系统上默认被忽略。
+.PP
+.\"
+\fBSIGIO\fP (未在 POSIX.1\-2001 中指定) 在其他几个 UNIX 系统上默认被忽略。
+.SS "Queueing and delivery semantics for standard signals"
+如果进程有多个标准信号未决，则未指定信号传递的顺序。
+.PP
+.\"
+标准信号不排队。 如果一个标准信号的多个实例在该信号被阻塞时生成，则只有一个信号实例被标记为未决 (并且信号在未被阻塞时将只传递一次)。
+在标准信号已经挂起的情况下，\fIsiginfo_t\fP 结构体 (请参见与该信号关联的 \fBsigaction\fP(2)))
+不会在同一信号的后续实例到达时被覆盖。 因此，进程将接收与信号的第一个实例相关联的信息。
+.SS "Signal numbering for standard signals"
+每个信号的数值在下表中给出。 如表中所示，许多信号在不同的体系结构上具有不同的数值。 每个表行中的第一个数值显示 x86、ARM
+和大多数其他架构上的信号编号; 第二个值用于 Alpha 和 SPARC; 第三个是 MIPS; 最后一个是 PARISC。 破折号 (\-)
+表示相应架构上没有信号。
+.TS
+l c c c c l
+l c c c c l
+______
+lB c c c c l.
+Signal	x86/ARM	Alpha/	MIPS	PARISC	Notes
+	most others	SPARC
+SIGHUP	\01	\01	\01	\01
+SIGINT	\02	\02	\02	\02
+SIGQUIT	\03	\03	\03	\03
+SIGILL	\04	\04	\04	\04
+SIGTRAP	\05	\05	\05	\05
+SIGABRT	\06	\06	\06	\06
+SIGIOT	\06	\06	\06	\06
+SIGBUS	\07	10	10	10
+SIGEMT	\-	\07	\07	\-
+SIGFPE	\08	\08	\08	\08
+SIGKILL	\09	\09	\09	\09
+SIGUSR1	10	30	16	16
+SIGSEGV	11	11	11	11
+SIGUSR2	12	31	17	17
+SIGPIPE	13	13	13	13
+SIGALRM	14	14	14	14
+SIGTERM	15	15	15	15
+SIGSTKFLT	16	\-	\-	\07
+SIGCHLD	17	20	18	18
+SIGCLD	\-	\-	18	\-
+SIGCONT	18	19	25	26
+SIGSTOP	19	17	23	24
+SIGTSTP	20	18	24	25
+SIGTTIN	21	21	26	27
+SIGTTOU	22	22	27	28
+SIGURG	23	16	21	29
+SIGXCPU	24	24	30	12
+SIGXFSZ	25	25	31	30
+SIGVTALRM	26	26	28	20
+SIGPROF	27	27	29	21
+SIGWINCH	28	28	20	23
+SIGIO	29	23	22	22
+SIGPOLL					Same as SIGIO
+SIGPWR	30	29/\-	19	19
+SIGINFO	\-	29/\-	\-	\-
+SIGLOST	\-	\-/29	\-	\-
+SIGSYS	31	12	12	31
+SIGUNUSED	31	\-	\-	31
+.TE
+.PP
+请注意以下事项:
+.IP \[bu] 3
+在定义的地方，\fBSIGUNUSED\fP 与 \fBSIGSYS\fP 同义。 从 glibc 2.26 开始，\fBSIGUNUSED\fP 不再定义在任何架构上。
+.IP \[bu]
+.\"
+信号 29 在 Alpha 上是 \fBSIGINFO\fP/\fBSIGPWR\fP (相同值的同义词)，但在 SPARC 上是 \fBSIGLOST\fP。
+.SS "Real\-time signals"
+从 Linux 2.2 开始，Linux 支持最初在 POSIX.1b 实时扩展中定义的实时信号 (现在包含在 POSIX.1\-2001 中)。
+支持的实时信号范围由宏 \fBSIGRTMIN\fP 和 \fBSIGRTMAX\fP 定义。 POSIX.1\-2001 要求实现至少支持
+\fB_POSIX_RTSIG_MAX\fP (8) 实时信号。
+.PP
+Linux 内核支持 33 种不同的实时信号，编号为 32 到 64。 然而，glibc POSIX 线程实现在内部使用两个 (对于 NPTL) 或三个
+(对于 LinuxThreads) 实时信号 (参见 \fBpthreads\fP(7))，并适当调整 \fBSIGRTMIN\fP 的值 (到 34 或 35)。
+因为可用实时信号的范围根据 glibc 线程实现而变化 (并且根据可用内核和 glibc，这种变化可能在运行时发生)，而且实时信号的范围确实在 UNIX
+系统中变化，程序应该 \fInever refer to real\-time signals using hard\-coded numbers\fP，但应始终使用符号 \fBSIGRTMIN\fP+n 来指代实时信号，并包括适当的 (run\-time) 检查以确保
+\fBSIGRTMIN\fP+n 不超过 \fBSIGRTMAX\fP。
+.PP
+与标准信号不同，实时信号没有预定义的含义: 整组实时信号可用于应用程序定义的目的。
+.PP
+未处理的实时信号的默认操作是终止接收进程。
+.PP
+实时信号有以下区别:
+.IP \[bu] 3
+实时信号的多个实例可以排队。 相比之下，如果一个标准信号的多个实例在该信号当前被阻塞时被传送，则只有一个实例被排队。
+.IP \[bu]
+如果使用 \fBsigqueue\fP(3) 发送信号，则可以随信号一起发送伴随值 (整数或指针)。 如果接收进程使用 \fBsigaction\fP(2) 的
+\fBSA_SIGINFO\fP 标志为该信号建立处理程序，则它可以通过作为第二个参数传递给处理程序的 \fIsiginfo_t\fP 结构体的
+\fIsi_value\fP 字段获取该数据。 此外，该结构体的 \fIsi_pid\fP 和 \fIsi_uid\fP 字段可用于获取发送信号的进程的 PID
+和真实用户 ID。
+.IP \[bu]
+实时信号以有保证的顺序传送。 相同类型的多个实时信号按发送顺序传送。 如果将不同的实时信号发送到一个进程，它们将从编号最小的信号开始传送。
+(即，低编号信号具有最高优先级。) 相比之下，如果多个标准信号正在等待一个进程，则它们的传递顺序是未指定的。
+.PP
+如果进程的标准信号和实时信号都处于挂起状态，POSIX 将不指定哪个先传送。 与许多其他实现一样，Linux 在这种情况下优先考虑标准信号。
+.PP
+根据 POSIX，一个实现应该允许至少 \fB_POSIX_SIGQUEUE_MAX\fP (32) 个实时信号排队到一个进程。 但是，Linux
+做事的方式不同。 在 Linux 2.6.7 之前，Linux 对所有进程的排队实时信号数量施加了系统范围的限制。 可以通过
+\fI/proc/sys/kernel/rtsig\-max\fP 文件查看和 (有权限) 更改此限制。 相关文件
+\fI/proc/sys/kernel/rtsig\-nr\fP 可用于查明当前有多少实时信号在排队。 在 Linux 2.6.8 中，这些 \fI/proc\fP
+接口被 \fBRLIMIT_SIGPENDING\fP 资源限制取代，它指定了每个用户对排队信号的限制; 有关详细信息，请参见
+\fBsetrlimit\fP(2)。
+.PP
+添加实时信号需要将信号集结构体 (\fIsigset_t\fP) 从 32 位扩展到 64 位。 因此，各种系统调用被支持更大信号集的新系统调用所取代。
+新旧系统调用如下:
+.TS
+lb lb
+l l.
+Linux 2.0 and earlier	Linux 2.2 and later
+\fBsigaction\fP(2)	\fBrt_sigaction\fP(2)
+\fBsigpending\fP(2)	\fBrt_sigpending\fP(2)
+\fBsigprocmask\fP(2)	\fBrt_sigprocmask\fP(2)
+\fBsigreturn\fP(2)	\fBrt_sigreturn\fP(2)
+\fBsigsuspend\fP(2)	\fBrt_sigsuspend\fP(2)
+\fBsigtimedwait\fP(2)	\fBrt_sigtimedwait\fP(2)
+.TE
+.\"
+.SS "Interruption of system calls and library functions by signal handlers"
+如果在系统调用或库函数调用被阻塞时调用信号处理程序，则:
+.IP \[bu] 3
+信号处理程序返回后自动重启调用; or
+.IP \[bu]
+调用失败，错误为 \fBEINTR\fP。
+.PP
+发生这两种行为中的哪一种取决于接口以及信号处理程序是否使用 \fBSA_RESTART\fP 标志建立 (请参见 \fBsigaction\fP(2)).
+UNIX 系统的详细信息各不相同; 下面是 Linux 的详细信息。
+.PP
+.\" The following system calls use ERESTARTSYS,
+.\" so that they are restartable
+如果对以下接口之一的阻塞调用被信号处理程序中断，如果使用了 \fBSA_RESTART\fP 标志，则调用将在信号处理程序返回后自动重新启动;
+否则调用失败并出现错误 \fBEINTR\fP:
+.IP \[bu] 3
+\fBread\fP(2)、\fBreadv\fP(2)、\fBwrite\fP(2)、\fBwritev\fP(2) 和 \fBioctl\fP(2) 调用 "slow" 设备。
+"slow" 设备是 I/O 调用可能无限期阻塞的设备，例如终端、管道或套接字。 如果慢速设备上的 I/O
+调用在被信号处理程序中断时已经传输了一些数据，则调用将返回成功状态 (通常是传输的字节数)。 请注意，根据此定义，(local) 磁盘不是慢速设备;
+I/O 对磁盘设备的操作不会被信号中断。
+.IP \[bu]
+\fBopen\fP(2)，如果它可以阻塞 (例如，打开 FIFO 时; 参见 \fBfifo\fP(7))。
+.IP \[bu]
+\fBwait\fP(2)、\fBwait3\fP(2)、\fBwait4\fP(2)、\fBwaitid\fP(2) 和 \fBwaitpid\fP(2)。
+.IP \[bu]
+.\" If a timeout (setsockopt()) is in effect on the socket, then these
+.\" system calls switch to using EINTR.  Consequently, they and are not
+.\" automatically restarted, and they show the stop/cont behavior
+.\" described below.  (Verified from Linux 2.6.26 source, and by experiment; mtk)
+.\" FIXME What about sendmmsg()?
+套接字接口:
+\fBaccept\fP(2)、\fBconnect\fP(2)、\fBrecv\fP(2)、\fBrecvfrom\fP(2)、\fBrecvmmsg\fP(2)、\fBrecvmsg\fP(2)、\fBsend\fP(2)、\fBsendto\fP(2)
+和 \fBsendmsg\fP(2)，除非已在套接字上设置超时 (见下文)。
+.IP \[bu]
+文件锁定接口: \fBflock\fP(2) 和 \fBfcntl\fP(2) 的 \fBF_SETLKW\fP、\fBF_OFD_SETLKW\fP 操作
+.IP \[bu]
+POSIX 消息队列接口:
+\fBmq_receive\fP(3)、\fBmq_timedreceive\fP(3)、\fBmq_send\fP(3)、\fBmq_timedsend\fP(3)。
+.IP \[bu]
+.\" commit 72c1bbf308c75a136803d2d76d0e18258be14c7a
+\fBfutex\fP(2) \fBFUTEX_WAIT\fP (从 Linux 2.6.22 开始; 之前，总是因 \fBEINTR\fP) 而失败。
+.IP \[bu]
+\fBgetrandom\fP(2).
+.IP \[bu]
+\fBpthread_mutex_lock\fP(3)、\fBpthread_cond_wait\fP(3) 和相关 API。
+.IP \[bu]
+\fBfutex\fP(2)  \fBFUTEX_WAIT_BITSET\fP.
+.IP \[bu]
+.\" as a consequence of the 2.6.22 changes in the futex() implementation
+POSIX 信号量接口: \fBsem_wait\fP(3) 和 \fBsem_timedwait\fP(3) (从 Linux 2.6.22 开始;
+之前，\fBEINTR\fP) 总是失败。
+.IP \[bu]
+.\" commit 1ca39ab9d21ac93f94b9e3eb364ea9a5cf2aba06
+来自 \fBinotify\fP(7) 文件描述符的 \fBread\fP(2) (从 Linux 3.8 开始; 之前，总是因 \fBEINTR\fP) 而失败。
+.PP
+.\" These are the system calls that give EINTR or ERESTARTNOHAND
+.\" on interruption by a signal handler.
+无论使用 \fBSA_RESTART\fP，以下接口在被信号处理程序中断后永远不会重新启动; 当被信号处理程序中断时，它们总是失败并返回错误
+\fBEINTR\fP:
+.IP \[bu] 3
+"Input" 套接字接口，当在使用
+\fBsetsockopt\fP(2):、\fBaccept\fP(2)、\fBrecv\fP(2)、\fBrecvfrom\fP(2)、\fBrecvmmsg\fP(2)
+(也带有非 NULL \fItimeout\fP 参数) 和 \fBrecvmsg\fP(2) 的套接字上设置超时 (\fBSO_RCVTIMEO\fP) 时。
+.IP \[bu]
+.\" FIXME What about sendmmsg()?
+"Output" 套接字接口，当在使用 \fBsetsockopt\fP(2): \fBconnect\fP(2)、\fBsend\fP(2)、\fBsendto\fP(2)
+和 \fBsendmsg\fP(2) 的套接字上设置超时 (\fBSO_RCVTIMEO\fP) 时。
+.IP \[bu]
+用于等待信号的接口:
+\fBpause\fP(2)、\fBsigsuspend\fP(2)、\fBsigtimedwait\fP(2)、\fBsigwaitinfo\fP(2)。
+.IP \[bu]
+文件描述符复用接口:
+\fBepoll_wait\fP(2)、\fBepoll_pwait\fP(2)、\fBpoll\fP(2)、\fBppoll\fP(2)、\fBselect\fP(2)、\fBpselect\fP(2)。
+.IP \[bu]
+.\" On some other systems, SA_RESTART does restart these system calls
+System V IPC 接口: \fBmsgrcv\fP(2)、\fBmsgsnd\fP(2)、\fBsemop\fP(2) 和 \fBsemtimedop\fP(2)。
+.IP \[bu]
+休眠接口: \fBclock_nanosleep\fP(2)、\fBnanosleep\fP(2)、\fBusleep\fP(3)。
+.IP \[bu]
+\fBio_getevents\fP(2).
+.PP
+如果被处理程序中断，\fBsleep\fP(3) 函数也永远不会重新启动，但会返回成功: 睡眠剩余的秒数。
+.PP
+.\"
+在某些情况下，\fBseccomp\fP(2) 用户空间通知特性可能导致系统调用重新启动，否则 \fBSA_RESTART\fP 将永远不会重新启动;
+有关详细信息，请参见 \fBseccomp_unotify\fP(2)。
+.SS "Interruption of system calls and library functions by stop signals"
+在 Linux 上，即使没有信号处理程序，在进程被其中一个停止信号停止然后通过 \fBSIGCONT\fP 恢复后，某些阻塞接口也会失败并显示错误
+\fBEINTR\fP。 这种行为不受 POSIX.1 的认可，也不会发生在其他系统上。
+.PP
+显示此行为的 Linux 接口是:
+.IP \[bu] 3
+"Input" 套接字接口，当在使用
+\fBsetsockopt\fP(2):、\fBaccept\fP(2)、\fBrecv\fP(2)、\fBrecvfrom\fP(2)、\fBrecvmmsg\fP(2)
+(也带有非 NULL \fItimeout\fP 参数) 和 \fBrecvmsg\fP(2) 的套接字上设置超时 (\fBSO_RCVTIMEO\fP) 时。
+.IP \[bu]
+.\" FIXME What about sendmmsg()?
+"Output" 套接字接口，当使用 \fBsetsockopt\fP(2): \fBconnect\fP(2)、\fBsend\fP(2)、\fBsendto\fP(2) 和
+\fBsendmsg\fP(2) 的套接字上设置了超时 (\fBSO_RCVTIMEO\fP) 时，如果设置了发送超时 (\fBSO_SNDTIMEO\fP)。
+.IP \[bu]
+\fBepoll_wait\fP(2), \fBepoll_pwait\fP(2).
+.IP \[bu]
+\fBsemop\fP(2), \fBsemtimedop\fP(2).
+.IP \[bu]
+\fBsigtimedwait\fP(2), \fBsigwaitinfo\fP(2).
+.IP \[bu]
+.\" commit 1ca39ab9d21ac93f94b9e3eb364ea9a5cf2aba06
+Linux 3.7 及更早版本: 来自 \fBinotify\fP(7) 文件描述符的 \fBread\fP(2)
+.IP \[bu]
+Linux 2.6.21 及更早版本: \fBfutex\fP(2)
+\fBFUTEX_WAIT\fP、\fBsem_timedwait\fP(3)、\fBsem_wait\fP(3)。
+.IP \[bu]
+Linux 2.6.8 及更早版本: \fBmsgrcv\fP(2)、\fBmsgsnd\fP(2)。
+.IP \[bu]
+Linux 2.4 及更早版本: \fBnanosleep\fP(2)。
+.SH STANDARDS
+POSIX.1，除非另有说明。
+.SH NOTES
+有关 async\-signal\-safe 函数的讨论，请参见 \fBsignal\-safety\fP(7)。
+.PP
+\fI/proc/[pid]/task/[tid]/status\fP 文件包含各种字段，这些字段显示线程正在阻塞 (\fISigBlk\fP)、捕获
+(\fISigCgt\fP) 或忽略 (\fISigIgn\fP) 的信号。 (捕获或忽略的信号集在进程中的所有线程中都是相同的。) 其他字段显示指向线程
+(\fISigPnd\fP) 的挂起信号集以及指向线程 (\fISigPnd\fP) 的挂起信号集。整个过程 (\fIShdPnd\fP)。
+\fI/proc/[pid]/status\fP 中的相应字段显示主线程的信息。 有关详细信息，请参见 \fBproc\fP(5)。
+.SH BUGS
+作为硬件异常的结果，可以传送六个信号: \fBSIGBUS\fP、\fBSIGEMT\fP、\fBSIGFPE\fP、\fBSIGILL\fP、\fBSIGSEGV\fP 和
+\fBSIGTRAP\fP。 对于任何给定的硬件异常，这些信号中的哪一个被传递，没有记录并且并不总是有意义。
+.PP
+例如，导致在一种 CPU 架构上交付 \fBSIGSEGV\fP 的无效内存访问可能会导致在另一种架构上交付 \fBSIGBUS\fP，反之亦然。
+.PP
+再举一个例子，使用带有禁止参数 (3 或 128 以外的任何数字) 的 x86 \fIint\fP 指令会导致传送 \fBSIGSEGV\fP，尽管
+\fBSIGILL\fP 更有意义，因为 CPU 向内核报告禁止操作的方式。
+.SH "SEE ALSO"
+\fBkill\fP(1), \fBclone\fP(2), \fBgetrlimit\fP(2), \fBkill\fP(2),
+\fBpidfd_send_signal\fP(2), \fBrestart_syscall\fP(2), \fBrt_sigqueueinfo\fP(2),
+\fBsetitimer\fP(2), \fBsetrlimit\fP(2), \fBsgetmask\fP(2), \fBsigaction\fP(2),
+\fBsigaltstack\fP(2), \fBsignal\fP(2), \fBsignalfd\fP(2), \fBsigpending\fP(2),
+\fBsigprocmask\fP(2), \fBsigreturn\fP(2), \fBsigsuspend\fP(2), \fBsigwaitinfo\fP(2),
+\fBabort\fP(3), \fBbsd_signal\fP(3), \fBkillpg\fP(3), \fBlongjmp\fP(3),
+\fBpthread_sigqueue\fP(3), \fBraise\fP(3), \fBsigqueue\fP(3), \fBsigset\fP(3),
+\fBsigsetops\fP(3), \fBsigvec\fP(3), \fBsigwait\fP(3), \fBstrsignal\fP(3),
+\fBswapcontext\fP(3), \fBsysv_signal\fP(3), \fBcore\fP(5), \fBproc\fP(5), \fBnptl\fP(7),
+\fBpthreads\fP(7), \fBsigevent\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

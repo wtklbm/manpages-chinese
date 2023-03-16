@@ -1,0 +1,176 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: cmsg.3,v 1.8 2000/12/20 18:10:31 ak Exp $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH CMSG 3 2022\-10\-29 "Linux man\-pages 6.03" 
+.SH NAME
+CMSG_ALIGN、CMSG_SPACE、CMSG_NXTHDR、CMSG_FIRSTHDR \- 访问辅助数据
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fBstruct cmsghdr *CMSG_FIRSTHDR(struct msghdr *\fP\fImsgh\fP\fB);\fP
+\fBstruct cmsghdr *CMSG_NXTHDR(struct msghdr *\fP\fImsgh\fP\fB,\fP
+\fB                            struct cmsghdr *\fPcmsg\fB);\fP
+\fBsize_t CMSG_ALIGN(size_t \fP\fIlength\fP\fB);\fP
+\fBsize_t CMSG_SPACE(size_t \fP\fIlength\fP\fB);\fP
+\fBsize_t CMSG_LEN(size_t \fP\fIlength\fP\fB);\fP
+\fBunsigned char *CMSG_DATA(struct cmsghdr *\fP\fIcmsg\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些宏用于创建和访问不属于套接字，载荷，的控制消息 (也称为辅助数据)。
+此控制信息可能包括接收数据包的接口、各种很少使用的标头字段、扩展的错误描述、一组文件描述符或 UNIX 凭证。
+例如，控制消息可用于发送额外的报头字段，例如 IP 选项。 辅助数据通过调用 \fBsendmsg\fP(2) 发送，通过调用 \fBrecvmsg\fP(2)
+接收。 有关详细信息，请参见他们的手册页。
+.PP
+辅助数据是带有，追加，数据的 \fIcmsghdr\fP 结构序列。 有关可用的控制消息类型，请参见特定的协议手册页。 可以使用
+\fI/proc/sys/net/core/optmem_max\fP 设置每个套接字允许的最大辅助缓冲区大小; 请参见 \fBsocket\fP(7)。
+.PP
+\fIcmsghdr\fP 结构体定义如下:
+.PP
+.in +4n
+.EX
+struct cmsghdr {
+    size_t cmsg_len;    /* Data byte count, including header
+                           (type is socklen_t in POSIX) */
+    int    cmsg_level;  /* Originating protocol */
+    int    cmsg_type;   /* Protocol\-specific type */
+/* followed by
+   unsigned char cmsg_data[]; */
+};
+.EE
+.in
+.PP
+永远不应直接访问 \fIcmsghdr\fP 结构的序列。 相反，仅使用以下宏:
+.TP 
+\fBCMSG_FIRSTHDR\fP()
+返回指向与传递的 \fImsghdr\fP 关联的辅助数据缓冲区中的第一个 \fIcmsghdr\fP 的指针。 如果缓冲区中没有足够的空间用于
+\fIcmsghdr\fP，则返回 NULL。
+.TP 
+\fBCMSG_NXTHDR\fP()
+在传递的 \fIcmsghdr\fP 之后返回下一个有效的 \fIcmsghdr\fP。 当缓冲区中没有足够的空间时，它返回 NULL。
+.IP
+当初始化包含一系列 \fIcmsghdr\fP 结构的缓冲区时 (例如，要与 \fBsendmsg\fP(2)) 一起发送，该缓冲区应首先被零初始化以确保
+\fBCMSG_NXTHDR\fP() 的正确操作。
+.TP 
+\fBCMSG_ALIGN\fP(),
+给定一个长度，返回它包括所需的对齐方式。 这是一个常量的表达。
+.TP 
+\fBCMSG_SPACE\fP()
+返回具有传递的数据长度有效，载荷，的辅助元素占用的字节数。 这是一个常量的表达。
+.TP 
+\fBCMSG_DATA\fP()
+返回指向 \fIcmsghdr\fP 的数据部分的指针。 不能假设返回的指针适合访问任意，载荷，数据类型。
+应用程序不应将其转换为与，载荷，匹配的指针类型，而应使用 \fBmemcpy\fP(3) 将数据复制到适当声明的对象或从中复制数据。
+.TP 
+\fBCMSG_LEN\fP()
+返回存储在 \fIcmsghdr\fP 结构体的 \fIcmsg_len\fP 成员中的值，同时考虑任何必要的对齐。 它将数据长度作为参数。 这是一个常量的表达。
+.PP
+要创建辅助数据，首先用控制消息缓冲区的长度初始化 \fImsghdr\fP 的 \fImsg_controllen\fP 成员。 在 \fImsghdr\fP 上使用
+\fBCMSG_FIRSTHDR\fP() 获取第一个控制消息，使用 \fBCMSG_NXTHDR\fP() 获取所有后续控制消息。 在每个控制消息中，初始化
+\fIcmsg_len\fP (使用 \fBCMSG_LEN\fP())，其他 \fIcmsghdr\fP 标头字段，以及使用 \fBCMSG_DATA\fP() 的数据部分。
+最后，\fImsghdr\fP 的 \fImsg_controllen\fP 字段应设置为缓冲区中所有控制消息长度的 \fBCMSG_SPACE\fP() 之和。 有关
+\fImsghdr\fP 的更多信息，请参见 \fBrecvmsg\fP(2)。
+.SH STANDARDS
+.\" https://www.austingroupbugs.net/view.php?id=978#c3242
+此辅助数据模型符合 POSIX.1g 草案、4.4BSD\-Lite、RFC\2292 和 SUSv2 中描述的 IPv6 高级 API。
+\fBCMSG_FIRSTHDR\fP()、\fBCMSG_NXTHDR\fP() 和 \fBCMSG_DATA\fP() 在 POSIX.1\-2008 中指定。
+\fBCMSG_SPACE\fP() 和 \fBCMSG_LEN\fP() 将包含在下一个 POSIX 版本 (第 8 期) 中。
+.PP
+\fBCMSG_ALIGN\fP() 是 Linux 的扩展。
+.SH NOTES
+为了可移植性，应仅使用此处描述的宏来访问辅助数据。 \fBCMSG_ALIGN\fP() 是 Linux 的扩展，不应在可移植程序中使用。
+.PP
+Linux、\fBCMSG_LEN\fP()、\fBCMSG_DATA\fP()、\fBCMSG_ALIGN\fP() 是常量表达式
+(假设它们的参数是常量)，意思是这些值可以用来声明全局变量的大小。 然而，这可能不可移植。
+.SH EXAMPLES
+此代码在接收到的辅助缓冲区中查找 \fBIP_TTL\fP 选项:
+.PP
+.in +4n
+.EX
+struct msghdr msgh;
+struct cmsghdr *cmsg;
+int received_ttl;
+
+/* Receive auxiliary data in msgh */
+
+for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != NULL;
+        cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
+    if (cmsg\->cmsg_level == IPPROTO_IP
+            && cmsg\->cmsg_type == IP_TTL) {
+        memcpy(&receive_ttl, CMSG_DATA(cmsg), sizeof(received_ttl));
+        break;
+    }
+}
+
+if (cmsg == NULL) {
+    /* Error: IP_TTL not enabled or small buffer or I/O error */
+}
+.EE
+.in
+.PP
+下面的代码使用 \fBSCM_RIGHTS\fP: 通过 UNIX 域套接字传递文件描述符数组
+.PP
+.in +4n
+.EX
+struct msghdr msg = { 0 };
+struct cmsghdr *cmsg;
+int myfds[NUM_FD];  /* Contains the file descriptors to pass */
+char iobuf[1];
+struct iovec io = {
+    .iov_base = iobuf,
+    .iov_len = sizeof(iobuf)
+};
+union {         /* Ancillary data buffer, wrapped in a union
+                   为了确保它适当对齐 */
+    char buf[CMSG_SPACE(sizeof(myfds))];
+    struct cmsghdr align;
+} u;
+
+msg.msg_iov = &io;
+msg.msg_iovlen = 1;
+msg.msg_control = u.buf;
+msg.msg_controllen = sizeof(u.buf);
+cmsg = CMSG_FIRSTHDR(&msg);
+cmsg\->cmsg_level = SOL_SOCKET;
+cmsg\->cmsg_type = SCM_RIGHTS;
+cmsg\->cmsg_len = CMSG_LEN(sizeof(myfds));
+memcpy(CMSG_DATA(cmsg), myfds, sizeof(myfds));
+.EE
+.in
+.PP
+有关显示通过 UNIX 域套接字传递文件描述符的完整代码示例，请参见 \fBseccomp_unotify\fP(2)。
+.SH "SEE ALSO"
+\fBrecvmsg\fP(2), \fBsendmsg\fP(2)
+.PP
+RFC\ 2292
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

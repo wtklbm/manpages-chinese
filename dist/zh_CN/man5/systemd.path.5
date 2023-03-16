@@ -1,0 +1,171 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.PATH 5 "" "systemd 253" systemd.path
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.path \- 路径元配置
+.SH SYNOPSIS
+.PP
+\fIpath\fP\&.path
+.SH DESCRIPTION
+.PP
+一个以 "\&.path" 结尾的元配置文件编码了有关 systemd 监控的路径的信息，用于基于路径的激活 \&。
+.PP
+此手册页列出了特定于此元类型 \& 的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit]
+和 [Install] 部分 \&。特定于路径的配置选项在 [Path] 部分 \& 中配置。
+.PP
+对于每个路径文件，必须存在一个匹配的元文件，描述当路径改变时激活的元 \&。默认情况下，与路径同名的服务 (后缀除外) 被激活 \&。示例: 路径文件
+foo\&.path 激活匹配服务 foo\&.service\&。激活的元可以由 \fIUnit=\fP (见下文) \& 控制。
+.PP
+在内部，路径单元使用 \fBinotify\fP(7) API 来监控文件系统 \&。因此，它受到与 inotify 相同的限制，例如不能用于监视远程 NFS
+文件系统上其他机器更改的文件或目录 \&。
+.PP
+当由路径元触发的服务元终止时 (无论退出成功还是失败)，立即再次检查被监视的路径，并相应地立即重新启动服务 \&。为了防止在这个
+trigger/start 循环中出现忙循环，对服务元强制执行启动速率限制，请参见 \fBsystemd.unit\fP(5)\& 中的
+\fIStartLimitIntervalSec=\fP 和
+\fIStartLimitBurst=\fP。与其他服务失败不同，达到启动速率限制的错误条件从服务元传播到路径元并导致路径元也失败，从而结束循环 \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+隐式添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果一个路径元在文件系统层次结构中的另一个挂载元之下，则两个单元之间的要求和顺序依赖性都会自动创建 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在路径元和它应该激活的元之间添加了一个隐式的 \fIBefore=\fP 依赖 \&。
+.RE
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+路径单元将自动在 paths\&.target 上具有类型 \fIBefore=\fP 的依赖性，在 sysinit\&.target 上具有类型
+\fIAfter=\fP 和 \fIRequires=\fP 的依赖性，并在 shutdown\&.target\& 上具有类型 \fIConflicts=\fP 和
+\fIBefore=\fP 的依赖性。这些确保路径单元在系统关闭之前干净地终止 \&。只有涉及早期启动或晚期系统关闭的路径单元才应禁用
+\fIDefaultDependencies=\fP 选项 \&。
+.RE
+.PP
+.SH OPTIONS
+.PP
+路径元文件可能包括 [Unit] 和 [Install] 部分，在 \fBsystemd.unit\fP(5)\& 中描述。
+.PP
+路径元文件必须包含一个 [Path] 部分，其中包含有关它监视的路径或路径的信息 \&。特定于路径单元的 [Path] 部分的选项如下:
+.PP
+\fIPathExists=\fP, \fIPathExistsGlob=\fP, \fIPathChanged=\fP, \fIPathModified=\fP,
+\fIDirectoryNotEmpty=\fP
+.RS 4
+定义监视某些更改的路径: \fIPathExists=\fP 可用于监视文件或目录的存在 \&。如果指定的文件存在，则配置的元被激活 \&。
+\fIPathExistsGlob=\fP 的工作方式类似，但检查是否存在至少一个匹配指定通配模式的文件 \&。 \fIPathChanged=\fP
+可用于监视文件或目录并在其更改时激活配置的元 \&。它不会在每次写入监视文件时激活，但如果打开用于写入的文件关闭 \&，它会被激活。
+\fIPathModified=\fP 类似，但另外它也会在简单写入监视文件时被激活 \&。 \fIDirectoryNotEmpty=\fP
+可用于监视一个目录并在它包含至少一个文件时激活配置的单元 \&。
+.sp
+这些指令的参数必须是绝对文件系统路径 \&。
+.sp
+可以组合多个相同类型和不同类型的指令来监视多个路径
+\&。如果将空字符串分配给这些选项中的任何一个，将重置要监视的路径列表，并且这些选项的任何先前分配都不会产生任何影响 \&。
+.sp
+如果路径已经存在 (如果是 \fIPathExists=\fP 和 \fIPathExistsGlob=\fP) 或者目录已经不为空 (如果是
+\fIDirectoryNotEmpty=\fP) 在路径元被激活时，那么配置的元也立即被激活 \&。类似的东西不适用于 \fIPathChanged=\fP 和
+\fIPathModified=\fP\&。
+.sp
+如果路径本身或任何包含的目录不可访问，\fBsystemd\fP 将监视权限更改，并在权限允许时注意到条件已满足 \&。
+.RE
+.PP
+\fIUnit=\fP
+.RS 4
+当任何配置的路径更改时激活的元 \&。参数是元名，后缀不是 "\&.path"\&。如果未指定，则此值默认为与路径元同名的服务，但后缀 \&
+除外。(见上文 \&。) 建议激活的元名和路径元名的元名命名相同，除了后缀 \&。
+.RE
+.PP
+\fIMakeDirectory=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，则在 watch\& 之前创建要监视的目录。\fIPathExists=\fP settings\&
+忽略此选项。默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIDirectoryMode=\fP
+.RS 4
+如果启用 \fIMakeDirectory=\fP，请使用此处指定的模式创建有问题的目录 \&。采用八进制表示法 \& 的访问模式。默认为
+\fB0755\fP\&。
+.RE
+.PP
+\fITriggerLimitIntervalSec=\fP, \fITriggerLimitBurst=\fP
+.RS 4
+配置此路径元在特定时间间隔内激活的频率限制 \&。\fITriggerLimitIntervalSec=\fP 可用于以通常的时间单位
+"us"、"ms"、"s"、"min"、"h"、\&... 并且默认为 2s\&。有关了解的各种时间单位的详细信息，请参见
+\fBsystemd.time\fP(7)。\fITriggerLimitBurst=\fP 设置采用正整数值并指定每个时间间隔允许的激活次数，默认为
+200\&。设置为 0 以禁用任何形式的触发速率限制 \&。如果达到限制，元将置于故障模式，并且在重新启动之前不会再监视路径
+\&。请注意，此限制在服务激活入队之前强制执行 \&。
+.RE
+.PP
+检查 \fBsystemd.unit\fP(5)、\fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5) 以获得更多设置 \&。
+.SH "SEE ALSO"
+.PP
+将为触发单位设置包含触发细节的环境变量 \&。有关详细信息，请参见 \fBsystemd.exec\fP(5) 中的 "Environment
+Variables Set on Triggered Units" 部分 \&。
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd.unit\fP(5), \fBsystemd.service\fP(5),
+\fBinotify\fP(7), \fBsystemd.directives\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,118 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_tryjoin_np 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_tryjoin_np、pthread_timedjoin_np \- 尝试加入已终止的线程
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_tryjoin_np(pthread_t \fP\fIthread\fP\fB, void **\fP\fIretval\fP\fB);\fP
+\fBint pthread_timedjoin_np(pthread_t \fP\fIthread\fP\fB, void **\fP\fIretval\fP\fB,\fP
+\fB                         const struct timespec *\fP\fIabstime\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+除了本页描述的差异外，这些函数的操作方式与 \fBpthread_join\fP(3) 相同。
+.PP
+\fBpthread_tryjoin_np\fP() 函数与线程 \fIthread\fP 执行非阻塞连接，返回 \fI*retval\fP 中线程的退出状态。 如果
+\fIthread\fP 尚未终止，则调用会返回错误，而不是像 \fBpthread_join\fP(3) 那样阻塞。
+.PP
+\fBpthread_timedjoin_np\fP() 函数执行 join\-with\-timeout。 如果 \fIthread\fP
+尚未终止，则调用会阻塞，直到达到 \fIabstime\fP 中指定的最大时间 (根据 \fBCLOCK_REALTIME\fP 时钟测量)。 如果在
+\fIthread\fP 终止之前超时到期，调用将返回错误。 \fIabstime\fP 参数是 \fBtimespec\fP(3) 结构体，指定自纪元以来测量的绝对时间
+(参见 \fBtime\fP(2)).
+.SH "RETURN VALUE"
+成功时，这些函数返回 0; 出错时，他们返回一个错误号。
+.SH ERRORS
+这些函数可能会失败并出现与 \fBpthread_join\fP(3) 相同的错误。 \fBpthread_tryjoin_np\fP() 还可能因以下错误而失败:
+.TP 
+\fBEBUSY\fP
+\fIthread\fP 在调用时尚未终止。
+.PP
+\fBpthread_timedjoin_np\fP() 还可能因以下错误而失败:
+.TP 
+\fBEINVAL\fP
+\fIabstime\fP 值无效 (\fItv_sec\fP 小于 0 或 \fItv_nsec\fP 大于 1e9)。
+.TP 
+\fBETIMEDOUT\fP
+调用在 \fIthread\fP 终止之前超时。
+.PP
+\fBpthread_timedjoin_np\fP() 从不返回错误 \fBEINTR\fP。
+.SH VERSIONS
+这些函数是在 glibc 2.3.3 中添加的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_tryjoin_np\fP(),
+\fBpthread_timedjoin_np\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是非标准的 GNU 扩展; 因此名称中有后缀 "_np" (nonportable)。
+.SH BUGS
+\fBpthread_timedjoin_np\fP() 函数通过内部计算相对睡眠间隔来测量时间，然后根据 \fBCLOCK_MONOTONIC\fP 时钟而不是
+\fBCLOCK_REALTIME\fP 时钟测量该间隔。 因此，超时不受 \fBCLOCK_REALTIME\fP 时钟的不连续变化的影响。
+.SH EXAMPLES
+以下代码等待加入最多 5 秒:
+.PP
+.in +4n
+.EX
+struct timespec ts;
+int s;
+
+\&...
+
+if (clock_gettime(CLOCK_REALTIME, &ts) == \-1) {
+    /* Handle error */
+}
+
+ts.tv_sec += 5;
+
+小号 = pthread_timedjoin_np(thread, NULL, &ts);
+if (s != 0) {
+    /* Handle error */
+}
+.EE
+.in
+.SH "SEE ALSO"
+\fBclock_gettime\fP(2), \fBpthread_exit\fP(3), \fBpthread_join\fP(3), \fBtimespec\fP(3),
+\fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

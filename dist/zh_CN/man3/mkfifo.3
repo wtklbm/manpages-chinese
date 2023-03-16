@@ -1,0 +1,140 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This manpage is Copyright (C) 1995 James R. Van Zandt <jrv@vanzandt.mv.com>
+.\" and Copyright (C) 2006, 2014 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" changed section from 2 to 3, aeb, 950919
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mkfifo 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mkfifo, mkfifoat \- 创建一个 FIFO 特殊文件 (命名管道)
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint mkfifo(const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of AT_* constants */
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint mkfifoat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmkfifoat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBmkfifo\fP() 创建一个名为 \fIpathname\fP 的 FIFO 专用文件。 \fImode\fP 指定 FIFO 的权限。 它由进程的
+\fBumask\fP 按通常方式修改: 创建文件的权限为 \fB(\fP\fImode\fP\fB&\[ti] umask)\fP。
+.PP
+FIFO 专用文件类似于管道，只是创建方式不同。 不是匿名通信通道，而是通过调用 \fBmkfifo\fP() 将 FIFO 特殊文件输入文件系统。
+.PP
+一旦以这种方式创建了一个 FIFO 特殊文件，任何进程都可以像打开普通文件一样打开它进行读取或写入。
+但是，它必须同时在两端打开，然后才能继续对其进行任何输入或输出操作。 打开 FIFO 进行读取通常会阻塞，直到其他进程打开相同的 FIFO
+进行写入，反之亦然。 有关 FIFO 特殊文件的非阻塞处理，请参见 \fBfifo\fP(7)。
+.SS mkfifoat()
+\fBmkfifoat\fP() 函数的操作方式与 \fBmkfifo\fP() 完全相同，除了此处描述的不同之处。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBmkfifo\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBmkfifo\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+有关对 \fBmkfifoat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+成功时 \fBmkfifo\fP() 和 \fBmkfifoat\fP() 返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fIpathname\fP 中的目录之一不允许搜索 (execute) 权限。
+.TP 
+\fBEBADF\fP
+(\fBmkfifoat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEDQUOT\fP
+文件系统上用户的磁盘块或 inode 配额已用完。
+.TP 
+\fBEEXIST\fP
+\fIpathname\fP 已经存在。 这包括 \fIpathname\fP 是符号链接的情况，悬垂与否。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 的总长度大于 \fBPATH_MAX\fP，或者单个文件名组件的长度大于 \fBNAME_MAX\fP。 在 GNU
+系统中，没有对整个文件名长度施加限制，但某些文件系统可能会对组件的长度进行限制。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 中的目录组件不存在或者是悬垂符号链接。
+.TP 
+\fBENOSPC\fP
+目录或文件系统没有空间容纳新文件。
+.TP 
+\fBENOTDIR\fP
+在 \fIpathname\fP 中用作目录的组件实际上不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBmkfifoat\fP()) \fIpathname\fP 是相对路径名，\fIdirfd\fP 是指文件而非目录的文件描述符。
+.TP 
+\fBEROFS\fP
+\fIpathname\fP 指的是只读文件系统。
+.SH VERSIONS
+在 glibc 2.4 中添加了 \fBmkfifoat\fP()。 它是使用 \fBmknodat\fP(2) 实现的，从 Linux 2.6.16 开始可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmkfifo\fP(),
+\fBmkfifoat\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBmkfifo\fP(): POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBmkfifoat\fP(): POSIX.1\-2008.
+.SH "SEE ALSO"
+\fBmkfifo\fP(1), \fBclose\fP(2), \fBopen\fP(2), \fBread\fP(2), \fBstat\fP(2), \fBumask\fP(2),
+\fBwrite\fP(2), \fBfifo\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

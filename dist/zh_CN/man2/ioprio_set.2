@@ -1,0 +1,185 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) International Business Machines orp., 2006
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" HISTORY:
+.\" 2006-04-27, created by Eduardo M. Fleury <efleury@br.ibm.com>
+.\" with various additions by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioprio_set 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ioprio_get, ioprio_set\-get/set I/O 调度类和优先级
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/ioprio.h>    \fP/* Definition of \fBIOPRIO_*\fP constants */
+\fB#include <sys/syscall.h>     \fP/* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_ioprio_get, int \fP\fIwhich\fP\fB, int \fP\fIwho\fP\fB);\fP
+\fBint syscall(SYS_ioprio_set, int \fP\fIwhich\fP\fB, int \fP\fIwho\fP\fB, int \fP\fIioprio\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBioprio_get\fP() 和 \fBioprio_set\fP() 系统调用获取和设置一个或多个线程的 I/O 调度类和优先级。
+.PP
+\fIwhich\fP 和 \fIwho\fP 参数标识系统调用在其上运行的 thread(s)。 \fIwhich\fP 参数确定 \fIwho\fP
+的解释方式，并具有以下值之一:
+.TP 
+\fBIOPRIO_WHO_PROCESS\fP
+\fIwho\fP 是标识单个进程或线程的进程 ID 或线程 ID。 如果 \fIwho\fP 为 0，则在调用线程上进行操作。
+.TP 
+\fBIOPRIO_WHO_PGRP\fP
+\fIwho\fP 是进程组 ID，标识进程组的所有成员。 如果 \fIwho\fP 为 0，则对调用者所属的进程组进行操作。
+.TP 
+\fBIOPRIO_WHO_USER\fP
+.\" FIXME . Need to document the behavior when 'who" is specified as 0
+.\" See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=652443
+\fIwho\fP 是一个用户 ID，标识所有具有匹配的真实 UID 的进程。
+.PP
+如果调用 \fBioprio_get\fP() 时指定 \fIwhich\fP 为 \fBIOPRIO_WHO_PGRP\fP 或
+\fBIOPRIO_WHO_USER\fP，且有多个进程匹配 \fIwho\fP，则返回优先级为所有匹配进程中最高的。
+如果一个优先级属于更高优先级，则称其优先级高于另一个 (\fBIOPRIO_CLASS_RT\fP 是最高优先级; \fBIOPRIO_CLASS_IDLE\fP
+是最低的) 或者如果它与另一个进程属于相同的优先级但具有更高的优先级 (较低的优先级数字意味着较高的优先级)。
+.PP
+给 \fBioprio_set\fP() 的 \fIioprio\fP 参数是一个位掩码，指定调度类和分配给目标 process(es) 的优先级。
+以下宏用于组装和分解 \fIioprio\fP 值:
+.TP 
+\fBIOPRIO_PRIO_VALUE(\fP\fIclass\fP\fB, \fP\fIdata\fP\fB)\fP
+给定一个调度 \fIclass\fP 和优先级 (\fIdata\fP)，这个宏将这两个值组合起来产生一个 \fIioprio\fP 值，它作为宏的结果返回。
+.TP 
+\fBIOPRIO_PRIO_CLASS(\fP\fImask\fP\fB)\fP
+给定 \fImask\fP (\fIioprio\fP 值)，此宏返回其 I/O 类组件，即值
+\fBIOPRIO_CLASS_RT\fP、\fBIOPRIO_CLASS_BE\fP 或 \fBIOPRIO_CLASS_IDLE\fP 之一。
+.TP 
+\fBIOPRIO_PRIO_DATA(\fP\fImask\fP\fB)\fP
+给定 \fImask\fP (\fIioprio\fP 值)，此宏返回其优先级 (\fIdata\fP) 组件。
+.PP
+有关调度类和优先级的更多信息，以及将 \fIioprio\fP 指定为的含义，请参见注释部分 0.
+.PP
+读取和同步 (\fBO_DIRECT\fP、\fBO_SYNC\fP) 写入支持 I/O 优先级。 异步写入不支持 I/O
+优先级，因为它们是在弄脏内存的程序上下文之外发出的，因此程序特定的优先级不适用。
+.SH "RETURN VALUE"
+成功时，\fBioprio_get\fP() 返回与 \fIwhich\fP 和 \fIwho\fP 中指定的条件匹配的任何进程中具有最高 I/O 优先级的进程的
+\fIioprio\fP 值。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+成功时，\fBioprio_set\fP() 返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIwhich\fP 或 \fIioprio\fP 的值无效。 有关 \fIioprio\fP 的可用调度程序类和优先级，请参见注释部分。
+.TP 
+\fBEPERM\fP
+调用进程没有将此 \fIioprio\fP 分配给指定的 process(es) 所需的特权。 有关 \fBioprio_set\fP()
+所需权限的更多信息，请参见注释部分。
+.TP 
+\fBESRCH\fP
+找不到与 \fIwhich\fP 和 \fIwho\fP 中的规范相匹配的 process(es)。
+.SH VERSIONS
+自内核 2.6.13 以来，这些系统调用在 Linux 上可用。
+.SH STANDARDS
+这些系统调用是特定于 Linux 的。
+.SH NOTES
+两个或多个进程或线程可以共享一个 I/O 上下文。 当使用 \fBCLONE_IO\fP 标志调用 \fBclone\fP(2) 时就是这种情况。
+但是，默认情况下，进程的不同线程将 \fBnot\fP 共享相同的 I/O 上下文。 这意味着如果您想改变进程中所有线程的 I/O
+优先级，您可能需要在每个线程上调用 \fBioprio_set\fP()。 此操作所需的线程 ID 是 \fBgettid\fP(2) 或 \fBclone\fP(2)
+返回的线程 ID。
+.PP
+这些系统调用仅在与支持 I/O 优先级的 I/O 调度程序结合使用时才有效。 在内核 2.6.17 中，唯一的此类调度程序是 Completely
+Fair Queuing (CFQ) I/O 调度程序。
+.PP
+.\" commit 8ec680e4c3ec818efd1652f15199ed1c216ab550
+如果没有为线程设置 I/O 调度程序，则默认 I/O 优先级将遵循 CPU nice 值 (\fBsetpriority\fP(2))。 在 Linux
+2.6.24 之前，一旦使用 \fBioprio_set\fP() 设置了 I/O 优先级，就无法将 I/O 调度行为重置为默认值。 从 Linux
+2.6.24 开始，将 \fIioprio\fP 指定为 0 可用于重置为默认的 I/O 调度行为。
+.SS "Selecting an I/O scheduler"
+I/O 调度程序是通过特殊文件 \fI/sys/block/<device>/queue/scheduler\fP 在每个设备的基础上选择的。
+.PP
+可以通过 \fI/sys\fP 文件系统查看当前的 I/O 调度程序。 例如，以下命令显示内核中当前加载的所有调度程序的列表:
+.PP
+.in +4n
+.EX
+$\fB cat /sys/block/sda/queue/scheduler\fP
+noop 预期期限 [cfq]
+.EE
+.in
+.PP
+括号中的调度程序是示例中实际用于设备 (\fIsda\fP 的调度程序)。 通过将新调度程序的名称写入此文件来设置另一个调度程序。 例如，以下命令会将
+\fIsda\fP 设备的调度程序设置为 \fIcfq\fP:
+.PP
+.in +4n
+.EX
+$\fB su\fP
+Password:
+#\fB echo cfq > /sys/block/sda/queue/scheduler\fP
+.EE
+.in
+.\"
+.SS "The Completely Fair Queuing (CFQ) I/O scheduler"
+从版本 3 (也称为 CFQ Time Sliced) 开始，CFQ 实现了类似于 CPU 调度的 I/O nice 级别。 这些 nice
+级别分为三个调度类，每个包含一个或多个优先级:
+.TP 
+\fBIOPRIO_CLASS_RT\fP (1)
+这是实时 I/O 类。 这个调度类被赋予比任何其他类更高的优先级: 来自这个类的进程每次都优先访问磁盘。 因此，这个 I/O 类需要小心使用: 一个
+I/O 实时进程可能会使整个系统饿死。 在实时类中，有 8 个级别的类数据 (priority)，用于确定此进程在每个服务上需要磁盘的确切时间。
+最高实时优先级为 0; 最低的是 7。 在 future 中，这可能会更改为更直接地映射到性能，而是传递所需的数据速率。
+.TP 
+\fBIOPRIO_CLASS_BE\fP (2)
+这是尽力而为的调度类，它是任何未设置特定 I/O 优先级的进程的默认值。 类数据 (priority) 决定进程将获得多少 I/O 带宽。
+尽力而为优先级类似于 CPU nice 值 (参见 \fBgetpriority\fP(2)).  优先级确定相对于尽力而为调度类中的其他进程的优先级。
+优先级范围从 0 (highest) 到 7 (lowest)。
+.TP 
+\fBIOPRIO_CLASS_IDLE\fP (3)
+这是空闲调度类。 只有当没有其他人需要磁盘时，在此级别运行的进程才会获得 I/O 时间。 空闲类没有类数据。
+将此优先级分配给进程时需要注意，因为如果更高优先级的进程不断访问磁盘，它可能会变得饥饿。
+.PP
+有关 CFQ I/O 调度程序和示例程序的更多信息，请参见内核源文件 \fIDocumentation/block/ioprio.txt\fP。
+.SS "Required permissions to set I/O priorities"
+根据两个标准授予或拒绝更改进程优先级的权限:
+.TP 
+\fBProcess ownership\fP
+非特权进程只能为其真实 UID 与调用进程的真实或有效 UID 相匹配的进程设置 I/O 优先级。 具有 \fBCAP_SYS_NICE\fP
+能力的进程可以改变任何进程的优先级。
+.TP 
+\fBWhat is the desired priority\fP
+尝试设置非常高的优先级 (\fBIOPRIO_CLASS_RT\fP) 需要 \fBCAP_SYS_ADMIN\fP 功能。 到 Linux 2.6.24 还需要
+\fBCAP_SYS_ADMIN\fP 设置一个很低优先级的 (\fBIOPRIO_CLASS_IDLE\fP)，但是从 Linux 2.6.25
+开始就不需要这个了。
+.PP
+对 \fBioprio_set\fP() 的调用必须遵循这两个规则，否则调用将失败并显示错误 \fBEPERM\fP。
+.SH BUGS
+.\" 6 May 07: Bug report raised:
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=4464
+.\" Ulrich Drepper replied that he wasn't going to add these
+.\" to glibc.
+glibc 还没有提供合适的头文件来定义本页描述的函数原型和宏。 可以在 \fIlinux/ioprio.h\fP 中找到合适的定义。
+.SH "SEE ALSO"
+\fBionice\fP(1), \fBgetpriority\fP(2), \fBopen\fP(2), \fBcapabilities\fP(7),
+\fBcgroups\fP(7)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/block/ioprio.txt\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,471 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016, IBM Corporation.
+.\" Written by Mike Rapoport <rppt@linux.vnet.ibm.com>
+.\" and Copyright (C) 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_userfaultfd 2 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_userfaultfd \- 创建一个文件描述符来处理用户空间中的页面错误
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/userfaultfd.h>\fP  /* Definition of \fBUFFD*\fP constants */
+\fB#include <sys/ioctl.h>\fP
+.PP
+\fBint ioctl(int \fP\fIfd\fP\fB, int \fP\fIcmd\fP\fB, ...);\fP
+.fi
+.SH DESCRIPTION
+可以对 userfaultfd 对象执行各种 \fBioctl\fP(2) 操作 (通过调用 \fBuserfaultfd\fP(2)) 使用以下形式调用创建:
+.PP
+.in +4n
+.EX
+ioctl(fd, cmd, argp);
+.EE
+.in
+在上面，\fIfd\fP 是引用 userfaultfd 对象的文件描述符，\fIcmd\fP 是下面列出的命令之一，\fIargp\fP 是指向特定于 \fIcmd\fP
+的数据结构体的指针。
+.PP
+.\"
+下面描述了各种 \fBioctl\fP(2) 操作。 \fBUFFDIO_API\fP、\fBUFFDIO_REGISTER\fP 和
+\fBUFFDIO_UNREGISTER\fP 操作用于 \fIconfigure\fP userfaultfd 行为。
+这些操作允许调用者选择启用哪些特性以及将哪些类型的事件传递给应用程序。 其余操作是 \fIrange\fP 操作。
+这些操作使调用应用程序能够解决页面错误事件。
+.SS UFFDIO_API
+(自 Linux 4.3 起。) 启用 userfaultfd 操作并执行 API 握手。
+.PP
+\fIargp\fP 参数是指向 \fIuffdio_api\fP 结构体的指针，定义为:
+.PP
+.in +4n
+.EX
+struct uffdio_api {
+    __u64 api;        /* Requested API version (input) */
+    __u64 features;   /* Requested features (input/output) */
+    __u64 ioctls;     /* Available ioctl() operations (output) */
+};
+.EE
+.in
+.PP
+\fIapi\fP 字段表示应用程序请求的 API 版本。
+.PP
+内核验证它是否可以支持请求的 API 版本，并将 \fIfeatures\fP 和 \fIioctls\fP 字段设置为表示所有可用特性的位掩码和可用的泛型
+\fBioctl\fP(2) 操作。
+.PP
+在 Linux 4.11 之前，\fIfeatures\fP 字段必须在调用于 \fBUFFDIO_API\fP 之前被初始化为零，并且内核在从
+\fBioctl\fP(2) 返回时将零 (即没有特性位) 放置在 \fIfeatures\fP 字段中。
+.PP
+从 Linux 4.11 开始，\fIfeatures\fP 字段可用于询问是否支持特定特性并显式启用默认禁用的 userfaultfd 特性。 内核总是报告
+\fIfeatures\fP 字段中的所有可用，特性。
+.PP
+.\" FIXME add more details about feature negotiation and enablement
+要启用 userfaultfd 特性应用程序应该在 \fIfeatures\fP 字段中设置一个对应于它想要启用的每个特性的位。
+如果内核支持所有请求的特性它将启用它们。 否则它将把返回的 \fIuffdio_api\fP 结构体清零并返回 \fBEINVAL\fP。
+.PP
+可以设置以下特性位:
+.TP 
+\fBUFFD_FEATURE_EVENT_FORK\fP (since Linux 4.11)
+启用此特性后，与父进程关联的 userfaultfd 对象将在 \fBfork\fP(2) 期间复制到子进程中，并将 \fBUFFD_EVENT_FORK\fP
+事件传递给 userfaultfd 监视器
+.TP 
+\fBUFFD_FEATURE_EVENT_REMAP\fP (since Linux 4.11)
+如果启用此特性当故障进程调用 \fBmremap\fP(2) 时，userfaultfd 监视器将接收到类型为 \fBUFFD_EVENT_REMAP\fP
+的事件。
+.TP 
+\fBUFFD_FEATURE_EVENT_REMOVE\fP (since Linux 4.11)
+如果启用此特性当故障进程使用 \fBMADV_DONTNEED\fP 或 \fBMADV_REMOVE\fP 建议值调用 \fBmadvise\fP(2)
+以释放虚拟内存区域时，userfaultfd 监视器将接收到类型为 \fBUFFD_EVENT_REMOVE\fP 的事件。
+.TP 
+\fBUFFD_FEATURE_EVENT_UNMAP\fP (since Linux 4.11)
+如果启用此特性当故障进程使用 \fBmunmap\fP(2) 显式取消映射虚拟内存时，或在 \fBmmap\fP(2) 或 \fBmremap\fP(2)
+期间隐式取消映射时，userfaultfd 监视器将收到 \fBUFFD_EVENT_UNMAP\fP 类型的事件。
+.TP 
+\fBUFFD_FEATURE_MISSING_HUGETLBFS\fP (since Linux 4.11)
+如果设置了这个特性位，内核支持在 hugetlbfs 虚拟内存区域上注册 userfaultfd 范围
+.TP 
+\fBUFFD_FEATURE_MISSING_SHMEM\fP (since Linux 4.11)
+如果设置了此特性位，则内核支持在共享内存区域上注册 userfaultfd 范围。 这包括所有内核共享内存 API: System V
+共享内存、\fBtmpfs\fP(5)、\fI/dev/zero\fP 的共享映射、设置了 \fBMAP_SHARED\fP 标志的
+\fBmmap\fP(2)、\fBmemfd_create\fP(2) 等等。
+.TP 
+\fBUFFD_FEATURE_SIGBUS\fP (since Linux 4.14)
+.\" commit 2d6d6f5a09a96cc1fec7ed992b825e05f64cb50e
+如果设置了此特性位，则不会传送任何页面错误事件 (\fBUFFD_EVENT_PAGEFAULT\fP)。 相反，\fBSIGBUS\fP 信号将发送到故障进程。
+使用此特性的应用程序将不需要使用 userfaultfd 监视器来处理对向 userfaultfd 注册的区域的内存访问。
+.TP 
+\fBUFFD_FEATURE_THREAD_ID\fP (since Linux 4.14)
+如果设置了此特性位，则 \fIuffd_msg.pagefault.feat.ptid\fP 将设置为每个页面错误消息的错误线程 ID。
+.TP 
+\fBUFFD_FEATURE_MINOR_HUGETLBFS\fP (since Linux 5.13)
+如果设置了此特性位，则内核支持在 hugetlbfs 支持的内存区域上以次要模式注册 userfaultfd 范围。
+.TP 
+\fBUFFD_FEATURE_MINOR_SHMEM\fP (since Linux 5.14)
+如果设置了此特性位，则内核支持在 shmem 支持的内存区域上以次要模式注册 userfaultfd 范围。
+.PP
+.\" FIXME This user-space API seems not fully polished. Why are there
+.\" not constants defined for each of the bit-mask values listed below?
+返回的 \fIioctls\fP 字段可以包含以下位:
+.TP 
+\fB1 << _UFFDIO_API\fP
+支持 \fBUFFDIO_API\fP 操作。
+.TP 
+\fB1 << _UFFDIO_REGISTER\fP
+支持 \fBUFFDIO_REGISTER\fP 操作。
+.TP 
+\fB1 << _UFFDIO_UNREGISTER\fP
+支持 \fBUFFDIO_UNREGISTER\fP 操作。
+.PP
+此 \fBioctl\fP(2) 操作成功时返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。 可能的错误包括:
+.TP 
+\fBEFAULT\fP
+\fIargp\fP 指的是调用进程可访问地址空间之外的地址。
+.TP 
+\fBEINVAL\fP
+先前的 \fBUFFDIO_API\fP 操作已启用 userfaultfd。
+.TP 
+\fBEINVAL\fP
+.\" FIXME In the above error case, the returned 'uffdio_api' structure is
+.\" zeroed out. Why is this done? This should be explained in the manual page.
+.\"
+.\" Mike Rapoport:
+.\"     In my understanding the uffdio_api
+.\"     structure is zeroed to allow the caller
+.\"     to distinguish the reasons for -EINVAL.
+.\"
+该内核不支持在 \fIapi\fP 字段中请求的 API 版本，或者传递给内核的 \fIfeatures\fP 字段包含当前内核版本不支持的特性位。
+.SS UFFDIO_REGISTER
+(从 Linux 4.3 开始。) 用 userfaultfd 对象注册一个内存地址范围。 范围内的页面必须是 "compatible"。
+请参见下面的寄存器模式列表，了解每种模式的兼容内存后端。
+.PP
+\fIargp\fP 参数是指向 \fIuffdio_register\fP 结构体的指针，定义为:
+.PP
+.in +4n
+.EX
+struct uffdio_range {
+    __u64 start;    /* Start of range */
+    __u64 len;      /* Length of range (bytes) */
+};
+
+struct uffdio_register {
+    struct uffdio_range range;
+    __u64 mode;     /* Desired mode of operation (input) */
+    __u64 ioctls;   /* Available ioctl() operations (output) */
+};
+.EE
+.in
+.PP
+\fIrange\fP 字段定义了一个内存范围，从 \fIstart\fP 开始，一直到应该由 userfaultfd 处理的 \fIlen\fP 字节。
+.PP
+\fImode\fP 字段定义了该内存区域所需的操作模式。 可以对以下值进行按位或运算以设置指定范围的 userfaultfd 模式:
+.TP 
+\fBUFFDIO_REGISTER_MODE_MISSING\fP
+跟踪丢失页面的页面错误。 从 Linux 4.3 开始，只有私有匿名范围是兼容的。 自 Linux 4.11 起，hugetlbfs
+和共享内存范围也兼容。
+.TP 
+\fBUFFDIO_REGISTER_MODE_WP\fP
+跟踪写保护页面上的页面错误。 从 Linux 5.7 开始，只有私有匿名范围是兼容的。
+.TP 
+\fBUFFDIO_REGISTER_MODE_MINOR\fP
+跟踪次要页面错误。 从 Linux 5.13 开始，只有 hugetlbfs 范围是兼容的。 从 Linux 5.14 开始，添加了与 shmem
+范围的兼容性。
+.PP
+如果操作成功，内核修改 \fIioctls\fP 位掩码字段以指示哪些 \fBioctl\fP(2) 操作可用于指定范围。 此返回的位掩码可以包含以下位:
+.TP 
+\fB1 << _UFFDIO_COPY\fP
+支持 \fBUFFDIO_COPY\fP 操作。
+.TP 
+\fB1 << _UFFDIO_WAKE\fP
+支持 \fBUFFDIO_WAKE\fP 操作。
+.TP 
+\fB1 << _UFFDIO_WRITEPROTECT\fP
+The \fBUFFDIO_WRITEPROTECT\fP
+.TP 
+\fB1 << _UFFDIO_ZEROPAGE\fP
+支持 \fBUFFDIO_ZEROPAGE\fP 操作。
+.TP 
+\fB1 << _UFFDIO_CONTINUE\fP
+支持 \fBUFFDIO_CONTINUE\fP 操作。
+.PP
+.\" FIXME Is the following error list correct?
+.\"
+此 \fBioctl\fP(2) 操作成功时返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。 可能的错误包括:
+.TP 
+\fBEBUSY\fP
+指定范围内的映射已注册到另一个 userfaultfd 对象。
+.TP 
+\fBEFAULT\fP
+\fIargp\fP 指的是调用进程可访问地址空间之外的地址。
+.TP 
+\fBEINVAL\fP
+在 \fImode\fP 字段中指定了无效或不受支持的位; 或者 \fImode\fP 字段为零。
+.TP 
+\fBEINVAL\fP
+指定的地址范围内没有映射。
+.TP 
+\fBEINVAL\fP
+\fIrange.start\fP 或 \fIrange.len\fP 不是系统页面大小的倍数; 或者，\fIrange.len\fP 为零; 否则这些字段无效。
+.TP 
+\fBEINVAL\fP
+.\" Mike Rapoport:
+.\" ENOMEM if the process is exiting and the
+.\" mm_struct has gone by the time userfault grabs it.
+在指定的地址范围内存在不兼容的映射。
+.SS UFFDIO_UNREGISTER
+(从 Linux 4.3 开始。) 从 userfaultfd 中注销一个内存地址范围。 范围内的页面必须是 "compatible" (见
+\fBUFFDIO_REGISTER\fP.) 的说明
+.PP
+要取消注册的地址范围在 \fIargp\fP 指向的 \fIuffdio_range\fP 结构体中指定。
+.PP
+此 \fBioctl\fP(2) 操作成功时返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。 可能的错误包括:
+.TP 
+\fBEINVAL\fP
+\fIufdio_range\fP 结构体的 \fIstart\fP 或 \fIlen\fP 字段不是系统页面大小的倍数; 或者 \fIlen\fP 字段为零;
+否则这些字段无效。
+.TP 
+\fBEINVAL\fP
+在指定的地址范围内存在不兼容的映射。
+.TP 
+\fBEINVAL\fP
+.\"
+指定的地址范围内没有映射。
+.SS UFFDIO_COPY
+(从 Linux 4.3 开始。) 以原子方式将连续的内存块复制到 userfault 注册范围内，并可选择唤醒阻塞的线程。
+源地址和目标地址以及要复制的字节数由 \fIargp\fP: 指向的 \fIuffdio_copy\fP 结构体的 \fIsrc\fP、\fIdst\fP 和 \fIlen\fP
+字段指定
+.PP
+.in +4n
+.EX
+struct uffdio_copy {
+    __u64 dst;    /* Destination of copy */
+    __u64 src;    /* Source of copy */
+    __u64 len;    /* Number of bytes to copy */
+    __u64 mode;   /* Flags controlling behavior of copy */
+    __s64 copy;   /* Number of bytes copied, or negated error */
+};
+.EE
+.in
+.PP
+可以在 \fImode\fP 中对以下值进行按位或运算，以更改 \fBUFFDIO_COPY\fP 操作的行为:
+.TP 
+\fBUFFDIO_COPY_MODE_DONTWAKE\fP
+不要唤醒等待页面错误解决的线程
+.TP 
+\fBUFFDIO_COPY_MODE_WP\fP
+复制具有只读权限的页面。 这允许用户捕获对页面的下一次写入，这将阻止并生成另一个写保护用户错误消息。 这仅在为注册范围启用
+\fBUFFDIO_REGISTER_MODE_MISSING\fP 和 \fBUFFDIO_REGISTER_MODE_WP\fP 模式时使用。
+.PP
+.\" FIXME Above: Why is the 'copy' field used to return error values?
+.\" This should be explained in the manual page.
+内核使用 \fIcopy\fP 字段返回实际复制的字节数或错误 (否定的 \fIerrno\fP\-style 值)。 如果 \fIcopy\fP 中返回的值与
+\fIlen\fP 中指定的值不匹配，则操作失败并显示错误 \fBEAGAIN\fP。 \fIcopy\fP 字段是只输出的; 它不会被 \fBUFFDIO_COPY\fP
+操作读取。
+.PP
+此 \fBioctl\fP(2) 操作成功时返回 0。 在这种情况下，整个区域都被复制了。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+可能的错误包括:
+.TP 
+\fBEAGAIN\fP
+复制的字节数 (即 \fIcopy\fP 字段中返回的值) 不等于 \fIlen\fP 字段中指定的值。
+.TP 
+\fBEINVAL\fP
+\fIdst\fP 或 \fIlen\fP 不是系统页面大小的倍数，或者 \fIsrc\fP 和 \fIlen\fP 或 \fIdst\fP 和 \fIlen\fP 指定的范围无效。
+.TP 
+\fBEINVAL\fP
+在 \fImode\fP 字段中指定了无效位。
+.TP 
+\fBENOENT\fP (since Linux 4.11)
+故障进程在执行 \fBUFFDIO_COPY\fP 操作的同时更改了其虚拟内存布局。
+.TP 
+\fBENOSPC\fP (from Linux 4.11 until Linux 4.13)
+\fBUFFDIO_COPY\fP 操作时故障进程已退出。
+.TP 
+\fBESRCH\fP (since Linux 4.13)
+.\"
+\fBUFFDIO_COPY\fP 操作时故障进程已退出。
+.SS UFFDIO_ZEROPAGE
+(自 Linux 4.3 起。) 将使用 userfaultfd 注册的内存范围清零。
+.PP
+请求范围由 \fIargp\fP: 指向的 \fIuffdio_zeropage\fP 结构体的 \fIrange\fP 字段指定
+.PP
+.in +4n
+.EX
+struct uffdio_zeropage {
+    struct uffdio_range range;
+    __u64 mode;     /* Flags controlling behavior of copy */
+    __s64 zeropage; /* Number of bytes zeroed, or negated error */
+};
+.EE
+.in
+.PP
+可以在 \fImode\fP 中对以下值进行按位或运算，以更改 \fBUFFDIO_ZEROPAGE\fP 操作的行为:
+.TP 
+\fBUFFDIO_ZEROPAGE_MODE_DONTWAKE\fP
+不要唤醒等待页面错误解决的线程。
+.PP
+.\" FIXME Why is the 'zeropage' field used to return error values?
+.\" This should be explained in the manual page.
+内核使用 \fIzeropage\fP 字段返回实际归零的字节数，或者以与 \fBUFFDIO_COPY\fP 相同的方式返回错误。 如果 \fIzeropage\fP
+字段中返回的值与 \fIrange.len\fP 中指定的值不匹配，则操作失败并显示错误 \fBEAGAIN\fP。 \fIzeropage\fP 字段是只输出的;
+它不会被 \fBUFFDIO_ZEROPAGE\fP 操作读取。
+.PP
+此 \fBioctl\fP(2) 操作成功时返回 0。 在这种情况下，整个区域都归零了。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+可能的错误包括:
+.TP 
+\fBEAGAIN\fP
+归零的字节数 (即 \fIzeropage\fP 字段中返回的值) 不等于 \fIrange.len\fP 字段中指定的值。
+.TP 
+\fBEINVAL\fP
+\fIrange.start\fP 或 \fIrange.len\fP 不是系统页面大小的倍数; 或 \fIrange.len\fP 为零; 或者指定的范围无效。
+.TP 
+\fBEINVAL\fP
+在 \fImode\fP 字段中指定了无效位。
+.TP 
+\fBESRCH\fP (since Linux 4.13)
+.\"
+\fBUFFDIO_ZEROPAGE\fP 操作时故障进程已退出。
+.SS UFFDIO_WAKE
+(自 Linux 4.3 起。) 唤醒等待指定内存地址范围内页面错误解决的线程。
+.PP
+\fBUFFDIO_WAKE\fP 操作与在 \fImode\fP 字段中设置了 \fBUFFDIO_COPY_MODE_DONTWAKE\fP 或
+\fBUFFDIO_ZEROPAGE_MODE_DONTWAKE\fP 位的 \fBUFFDIO_COPY\fP 和 \fBUFFDIO_ZEROPAGE\fP
+操作结合使用。 userfault 监视器可以批量执行多个 \fBUFFDIO_COPY\fP 和 \fBUFFDIO_ZEROPAGE\fP 操作，然后使用
+\fBUFFDIO_WAKE\fP 显式唤醒故障线程。
+.PP
+\fIargp\fP 参数是指向指定地址范围的 \fIuffdio_range\fP 结构体 (如上所示) 的指针。
+.PP
+此 \fBioctl\fP(2) 操作成功时返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。 可能的错误包括:
+.TP 
+\fBEINVAL\fP
+\fIufdio_range\fP 结构体的 \fIstart\fP 或 \fIlen\fP 字段不是系统页面大小的倍数; 或 \fIlen\fP 为零; 或者指定的范围无效。
+.SS "UFFDIO_WRITEPROTECT (Since Linux 5.7)"
+对以模式 \fBUFFDIO_REGISTER_MODE_WP\fP 注册的 userfaultfd 注册内存范围进行写保护或写取消保护。
+.PP
+\fIargp\fP 参数是指向 \fIuffdio_range\fP 结构体的指针，如下所示:
+.PP
+.in +4n
+.EX
+struct uffdio_writeprotect {
+    struct uffdio_range range; /* Range to change write permission*/
+    __u64 mode;                /* Mode to change write permission */
+};
+.EE
+.in
+.PP
+此结构体支持两种模式位:
+.TP 
+\fBUFFDIO_WRITEPROTECT_MODE_WP\fP
+设置此模式位时，ioctl 将对 \fIrange\fP 指定的内存范围进行写保护操作。 否则将是对指定范围的写取消保护操作，可用于解决
+userfaultfd 写保护页面错误。
+.TP 
+\fBUFFDIO_WRITEPROTECT_MODE_DONTWAKE\fP
+设置此模式位时，不要唤醒任何在操作后等待页面错误解决的线程。 仅当未指定 \fBUFFDIO_WRITEPROTECT_MODE_WP\fP 时才可以指定。
+.PP
+此 \fBioctl\fP(2) 操作成功时返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。 可能的错误包括:
+.TP 
+\fBEINVAL\fP
+\fIufdio_range\fP 结构体的 \fIstart\fP 或 \fIlen\fP 字段不是系统页面大小的倍数; 或 \fIlen\fP 为零; 或者指定的范围无效。
+.TP 
+\fBEAGAIN\fP
+进程被中断; 重试此调用。
+.TP 
+\fBENOENT\fP
+\fIrange\fP 中指定的范围无效。 比如虚拟地址不存在，或者没有注册 userfaultfd 写保护模式。
+.TP 
+\fBEFAULT\fP
+.\"
+处理过程中遇到泛型故障。
+.SS UFFDIO_CONTINUE
+(自 Linux 5.13 起。) 通过为页面缓存中的现有页面安装页面表条目来解决轻微的页面错误。
+.PP
+\fIargp\fP 参数是指向 \fIuffdio_continue\fP 结构体的指针，如下所示:
+.PP
+.in +4n
+.EX
+struct uffdio_continue {
+    struct uffdio_range range;
+                   /* Range to install PTEs for and continue */
+    __u64 mode;    /* Flags controlling the behavior of continue */
+    __s64 mapped;  /* Number of bytes mapped, or negated error */
+};
+.EE
+.in
+.PP
+可以在 \fImode\fP 中对以下值进行按位或运算，以更改 \fBUFFDIO_CONTINUE\fP 操作的行为:
+.TP 
+\fBUFFDIO_CONTINUE_MODE_DONTWAKE\fP
+不要唤醒等待页面错误解决的线程。
+.PP
+内核使用 \fImapped\fP 字段返回实际映射的字节数，或者以与 \fBUFFDIO_COPY\fP 相同的方式返回错误。 如果 \fImapped\fP
+字段中返回的值与 \fIrange.len\fP 中指定的值不匹配，则操作失败并显示错误 \fBEAGAIN\fP。 \fImapped\fP 字段是只输出的; 它不会被
+\fBUFFDIO_CONTINUE\fP 操作读取。
+.PP
+此 \fBioctl\fP(2) 操作成功时返回 0。 在这种情况下，整个区域都被映射了。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+可能的错误包括:
+.TP 
+\fBEAGAIN\fP
+映射的字节数 (即 \fImapped\fP 字段中返回的值) 不等于 \fIrange.len\fP 字段中指定的值。
+.TP 
+\fBEINVAL\fP
+\fIrange.start\fP 或 \fIrange.len\fP 不是系统页面大小的倍数; 或 \fIrange.len\fP 为零; 或者指定的范围无效。
+.TP 
+\fBEINVAL\fP
+在 \fImode\fP 字段中指定了无效位。
+.TP 
+\fBEEXIST\fP
+给定范围内已映射一个或多个页面。
+.TP 
+\fBENOENT\fP
+故障进程在执行 \fBUFFDIO_CONTINUE\fP 操作的同时更改了其虚拟内存布局。
+.TP 
+\fBENOMEM\fP
+分配设置页表映射所需的内存失败。
+.TP 
+\fBEFAULT\fP
+在给定范围的页面缓存中找不到现有页面。
+.TP 
+\fBESRCH\fP
+.\"
+\fBUFFDIO_CONTINUE\fP 操作时故障进程已退出。
+.SH "RETURN VALUE"
+请参见上面对各个操作的描述。
+.SH ERRORS
+请参见上面对各个操作的描述。 此外，上述所有操作都可能出现以下一般错误:
+.TP 
+\fBEFAULT\fP
+\fIargp\fP 未指向有效的内存地址。
+.TP 
+\fBEINVAL\fP
+(对于除 \fBUFFDIO_API\fP.) 之外的所有操作，尚未启用 userfaultfd 对象 (通过 \fBUFFDIO_API\fP 操作)。
+.SH STANDARDS
+这些 \fBioctl\fP(2) 操作是特定于 Linux 的。
+.SH BUGS
+为了检测可用的 userfault 特性并启用这些特性的某些子集，userfaultfd 文件描述符必须在查询特性可用性的第一个
+\fBUFFDIO_API\fP 操作之后关闭，并在实际启用所需特性的第二个 \fBUFFDIO_API\fP 操作之前重新打开。
+.SH EXAMPLES
+请参见 \fBuserfaultfd\fP(2)。
+.SH "SEE ALSO"
+\fBioctl\fP(2), \fBmmap\fP(2), \fBuserfaultfd\fP(2)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/admin\-guide/mm/userfaultfd.rst\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,237 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Michael Haardt, Ian Jackson.
+.\" and Copyright (C) 2004, 2006, 2007, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1993-07-21 Rik Faith (faith@cs.unc.edu)
+.\" Modified 1994-08-21 by Michael Chastain (mec@shell.portal.com):
+.\"   Removed note about old kernel (pre-1.1.44) using wrong id on path.
+.\" Modified 1996-03-18 by Martin Schulze (joey@infodrom.north.de):
+.\"   Stated more clearly how it behaves with symbolic links.
+.\" Added correction due to Nick Duffek (nsd@bbc.com), aeb, 960426
+.\" Modified 1996-09-07 by Michael Haardt:
+.\"   Restrictions for NFS
+.\" Modified 1997-09-09 by Joseph S. Myers <jsm28@cam.ac.uk>
+.\" Modified 1998-01-13 by Michael Haardt:
+.\"   Using access is often insecure
+.\" Modified 2001-10-16 by aeb
+.\" Modified 2002-04-23 by Roger Luethi <rl@hellgate.ch>
+.\" Modified 2004-06-23 by Michael Kerrisk
+.\" 2007-06-10, mtk, various parts rewritten, and added BUGS section.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH access 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+access, faccessat, faccessat2 \- 检查用户对文件的权限
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint access(const char *\fP\fIpathname\fP\fB, int \fP\fImode\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>\fP            /* Definition of \fBAT_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint faccessat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, int \fP\fImode\fP\fB, int \fP\fIflags\fP\fB);\fP
+                /* But see C library/kernel differences, below */
+.PP
+\fB#include <fcntl.h>\fP            /* Definition of \fBAT_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_faccessat2,\fP
+\fB            int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, int \fP\fImode\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBfaccessat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBaccess\fP() 检查调用进程是否可以访问文件 \fIpathname\fP。 如果 \fIpathname\fP 是符号链接，则解引用。
+.PP
+.\" F_OK is defined as 0 on every system that I know of.
+\fImode\fP 指定要执行的可访问性 check(s)，它可以是值 \fBF_OK\fP，或者是由 \fBR_OK\fP、\fBW_OK\fP 和 \fBX_OK\fP
+中的一个或多个按位或组成的掩码。 \fBF_OK\fP 测试文件是否存在。 \fBR_OK\fP、\fBW_OK\fP 和 \fBX_OK\fP
+分别测试文件是否存在并授予读、写和执行权限。
+.PP
+检查是使用调用进程的 \fIreal\fP UID 和 GID 完成的，而不是像实际尝试操作时那样使用有效 ID (例如，文件上的 \fBopen\fP(2)))。
+同样，对于 root 用户，检查使用的是允许的能力集，而不是有效的能力集; 对于非 root 用户，检查使用一组空的功能。
+.PP
+这允许设置用户 ID 程序和赋予能力的程序轻松确定调用用户的权限。 换句话说，\fBaccess\fP() 不回答 "can I
+read/write/execute this file?" 的问题。 它回答了一个略有不同的问题: "(assuming I'm a setuid
+binary) can \fIthe user who invoked me\fP read/write/execute this file?"，它使设置用户
+ID 的程序有可能防止恶意用户导致它们读取用户不应读取的文件。
+.PP
+如果调用进程是特权进程 (即，它的真实 UID 为零)，并且对任何文件所有者、组或其他人启用了执行权限，则对常规文件的 \fBX_OK\fP 检查会成功。
+.SS faccessat()
+\fBfaccessat\fP() 的操作方式与 \fBaccess\fP() 完全相同，除了此处描述的不同之处。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBaccess\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBaccess\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+\fIflags\fP 是通过将以下零个或多个值组合在一起构成的:
+.TP 
+\fBAT_EACCESS\fP
+使用有效的用户和组 ID 执行访问检查。 默认情况下，\fBfaccessat\fP() 使用真实 ID (如 \fBaccess\fP()).
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+如果 \fIpathname\fP 是符号链接，请不要解引它: 而是返回有关链接本身的信息。
+.PP
+.\"
+有关对 \fBfaccessat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SS faccessat2()
+上面给出的 \fBfaccessat\fP() 的描述对应于 POSIX.1 和 glibc 提供的实现。 然而，glibc 实现是一个不完美的仿真 (参见
+BUGS)，掩盖了原始 Linux \fBfaccessat\fP() 系统调用没有 \fIflags\fP 参数这一事实。 为了正确实现，Linux 5.8
+添加了 \fBfaccessat2\fP() 系统调用，它支持 \fIflags\fP 参数并允许正确实现 \fBfaccessat\fP() 包装器函数。
+.SH "RETURN VALUE"
+成功时 (授予所有请求的权限，或者 \fImode\fP 是 \fBF_OK\fP 并且文件存在)，返回零。 出错时 (\fImode\fP
+中至少有一位请求的权限被拒绝，或者 \fImode\fP 是 \fBF_OK\fP 并且文件不存在，或者发生其他错误)，返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+请求的文件访问权限将被拒绝，或者 \fIpathname\fP 路径前缀中的目录之一的搜索权限将被拒绝。 (另见
+\fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+(\fBfaccessat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP
+(\fBfaccessat\fP()) 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fImode\fP 指定不正确。
+.TP 
+\fBEINVAL\fP
+(\fBfaccessat\fP()) \fIflags\fP 中指定的标志无效。
+.TP 
+\fBEIO\fP
+发生 I/O 错误。
+.TP 
+\fBELOOP\fP
+解析 \fIpathname\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 的组件不存在或者是悬垂符号链接。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOTDIR\fP
+在 \fIpathname\fP 中用作目录的组件实际上不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBfaccessat\fP()) \fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.TP 
+\fBEPERM\fP
+已请求对设置了不变标志的文件的写入权限。 另请详见 \fBioctl_iflags\fP(2)。
+.TP 
+\fBEROFS\fP
+为只读文件系统上的文件请求了写权限。
+.TP 
+\fBETXTBSY\fP
+请求对正在执行的可执行文件进行写访问。
+.SH VERSIONS
+\fBfaccessat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.PP
+在 Linux 5.8 中添加了 \fBfaccessat2\fP()。
+.SH STANDARDS
+\fBaccess\fP(): SVr4, 4.3BSD, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBfaccessat\fP(): POSIX.1\-2008.
+.PP
+\fBfaccessat2\fP(): Linux 专用。
+.SH NOTES
+\fBWarning\fP: 使用这些调用来检查用户是否有权，例如，在实际打开文件之前使用 \fBopen\fP(2) 创建安全
+hole，因为用户可能会利用检查和打开文件之间的短时间间隔来操作它。 \fBWarning\fP:
+使用这些调用来检查用户是否有权，例如，在实际打开文件之前使用 \fBopen\fP(2) 创建安全
+hole，因为用户可能会利用检查和打开文件之间的短时间间隔来操作它。 (在刚刚描述的例子中，一个更安全的替代方案是暂时将进程的有效用户 ID 切换为真实
+ID，然后调用 \fBopen\fP(2).)
+.PP
+\fBaccess\fP() 总是解引用符号链接。 如果您需要检查符号链接的权限，请使用带有标志 \fBAT_SYMLINK_NOFOLLOW\fP 的
+\fBfaccessat\fP()。
+.PP
+如果 \fImode\fP 中的任何访问类型被拒绝，即使允许 \fImode\fP 中的某些其他访问类型，这些调用也会返回错误。
+.PP
+.\" HPU-UX 11 and Tru64 5.1 do this.
+如果调用进程具有适当的权限 (即，是超级用户)，则 POSIX.1\-2001 允许实现指示 \fBX_OK\fP 检查成功，即使没有设置任何执行文件权限位。
+Linux 不这样做。
+.PP
+仅当 \fIpathname\fP 路径前缀中的每个目录的权限授予搜索 (即执行) 访问权限时，文件才可访问。 如果任何目录不可访问，则
+\fBaccess\fP() 调用失败，无论文件本身的权限如何。
+.PP
+只检查访问位，不检查文件类型或内容。 因此，如果发现一个目录是可写的，那很可能意味着该目录可以创建文件，而不是该目录可以作为文件写入。 同样，一个
+DOS 文件可能被报告为可执行文件，但 \fBexecve\fP(2) 调用仍然会失败。
+.PP
+.\"
+.\"
+这些调用在启用了 UID 映射的 NFSv2 文件系统上可能无法正常工作，因为 UID 映射是在服务器上完成的，并且对检查权限的客户端隐藏。 (NFS
+版本 3 和更高版本在服务器上执行检查。) FUSE 安装可能会出现类似的问题。
+.SS "C library/kernel differences"
+.\"
+原始的 \fBfaccessat\fP() 系统调用只需要前三个参数。 \fBAT_EACCESS\fP 和 \fBAT_SYMLINK_NOFOLLOW\fP
+标志实际上是在 \fBfaccessat\fP() 的 glibc 包装器函数中实现的。 如果指定了这些标志中的任何一个，则包装器函数会使用
+\fBfstatat\fP(2) 来确定访问权限，但请参见 BUGS。
+.SS "glibc notes"
+在 \fBfaccessat\fP() 不可用的旧内核上 (以及未指定 \fBAT_EACCESS\fP 和 \fBAT_SYMLINK_NOFOLLOW\fP
+标志时)，glibc 包装器函数回退到使用 \fBaccess\fP()。 当 \fIpathname\fP 是相对路径名时，glibc 根据
+\fI/proc/self/fd\fP 中对应于 \fIdirfd\fP 参数的符号链接构造路径名。
+.SH BUGS
+由于 Linux 内核的 \fBfaccessat\fP() 系统调用不支持 \fIflags\fP 参数，glibc 2.32 和更早版本中提供的 glibc
+\fBfaccessat\fP() 包装器函数使用 \fBfaccessat\fP() 系统调用和 \fBfstatat\fP(2) 的组合来模拟所需的功能。
+但是，此仿真不考虑 ACL。 从 glibc 2.33 开始，包装函数函数通过使用由底层内核提供的 \fBfaccessat2\fP()
+系统调用来避免这个错误。
+.PP
+.\" This behavior appears to have been an implementation accident.
+在 Linux 2.4 (及更早版本) 中，超级用户的 \fBX_OK\fP 测试处理有些奇怪。 如果对非目录文件禁用所有类别的执行权限，则返回 \-1 的唯一
+\fBaccess\fP() 测试是在将 \fImode\fP 指定为 \fBX_OK\fP 时; 如果在 \fImode\fP 中也指定了 \fBR_OK\fP 或
+\fBW_OK\fP，则 \fBaccess\fP() 对此类文件返回 0。 早期的 Linux 2.6 (直至并包括 Linux 2.6.3) 的行为方式也与
+Linux 2.4 相同。
+.PP
+在 Linux 2.6.20 之前，如果 \fBMS_NOEXEC\fP 标志用于 \fBmount\fP(2) 底层文件系统，这些调用将忽略
+\fBMS_NOEXEC\fP 标志的影响。 自 Linux 2.6.20 以来，\fBMS_NOEXEC\fP 标志受到尊重。
+.SH "SEE ALSO"
+\fBchmod\fP(2), \fBchown\fP(2), \fBopen\fP(2), \fBsetgid\fP(2), \fBsetuid\fP(2),
+\fBstat\fP(2), \fBeuidaccess\fP(3), \fBcredentials\fP(7), \fBpath_resolution\fP(7),
+\fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

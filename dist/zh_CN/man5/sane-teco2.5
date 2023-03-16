@@ -1,0 +1,206 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-teco2 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-teco2
+.SH NAME
+sane\-teco2 \- 用于 TECO/RELISYS 扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-teco2\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对一些 TECO SCSI 平板扫描仪的访问。这个后端应该算是
+\fBbeta\-quality\fP 软件了! 东元扫描仪以各种品牌出售，例如 Mustek、Relisys、Piotech、Primax、TRUST。
+这个后端可能支持也可能不支持您的。
+.PP
+应该与这个后端一起工作的扫描仪是:
+.PP
+.RS
+.nf
+\f (CR Vendor Model 东元模型状态
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\- \-\-\-\-\-\-\-\-\-\-\-\-\-\-  \-\-\-\-\-\-\-\-\-\-\-
+  Mustek ScanMagic 4830S VM3575 未经测试
+  Primax Jewel 4800 VM356A 好
+  Primax Profi 9600 VM6575 基本型
+  Primax Profi 19200 VM6586 好
+  Relisys APOLLO Express 3 VM356A 基础版
+  Relisys APOLLO Express 6 VM6565 好
+  Relisys APOLLO Express 12 ? 未经测试
+  Relisys AVEC II S3 VM3564 良好
+  Relisys AVEC Super 3 VM3575 基础
+  Relisys SCORPIO Pro VM6575 不错
+  Relisys SCORPIO Pro\-S VM6586 未测试
+  Relisys SCORPIO Super 3     VM3575         good\fR
+.fi
+.RE
+
+对于所有这些扫描仪，线条和灰色模式效果很好。但是，它们中的大多数不支持彩色模式下的少数几种分辨率。有关每个扫描仪的确切状态，请参见后端主页 (在
+AUTHOR 下)。
+
+请注意，不会直接支持未经测试的扫描仪。您应该为此联系作者。
+
+通常可以在扫描仪背面找到 TECO VM 编号。它也是 FCC ID 的一部分。
+
+后端支持的选项可以通过 \fBscanimage\fP(1) 等程序的命令行选项进行选择，也可以通过
+\fBxscanimage\fP(1)、\fBxsane\fP(1)、\fBquiteinsane\fP(1) 或 \fBkooka\fP(1) 中的 GUI 元素进行选择。
+
+.br
+如果您使用此处未列出的扫描仪获得成功，或者您发现任何奇怪的行为，请向后端维护人员或 SANE 邮件列表报告。
+
+.SH OPTIONS
+可以使用以下命令列出有效的命令行选项及其语法:
+
+.RS
+扫描图像 \-\-help \-d teco2
+.RE
+
+.TP 
+\fBScan Mode\fP
+
+.TP 
+\fB\-\-mode Lineart|Gray|Color\fP
+选择扫描仪的基本操作模式。 \fILineart\fP 模式仅为黑白模式 (1 位)。 \fIGray\fP 模式将产生 256 级灰度 (8 位)。
+\fIColor\fP 将生成 24 位彩色图像。
+
+.TP 
+\fB\-\-resolution 1..600\fP
+选择扫描分辨率。对于 \fILineart\fP 和 \fIGray\fP，扫描仪可以执行 1 到 600 之间的所有分辨率，以 1 为增量。 对于
+\fIColor\fP，可以使用一组有限的分辨率。
+
+\fBNote:\fP ydpi > 300 (300 x 600) 或 600 (600 x 1200) 的所有值都会导致扫描比例错误。可以使用
+imagemagick 中的以下 \fBconvert\fP(1) 命令调整比例:
+.br
+\fIconvert \-geometry (dpi/max_xdpi * 100%)x100%\fP
+.br
+max_xdpi 适用于 300 dpi 的 vm3575 常量，例如 600dpi 调整方式: 转换 \-geometry 200% x100%
+
+.TP 
+\fB\-\-preview\fP
+请求预览扫描。用于该扫描的分辨率为 50 dpi (对于 VM356A 和 VM6575 为 75 dpi) 并且扫描区域是允许的最大区域。
+扫描模式由用户选择。默认为 "no"。
+
+.TP 
+\fBGeometry options\fP
+
+.TP 
+\fB\-l, \-t, \-x,  \-y\fP
+控制扫描区域: \fB\-l\fP 设置左上角的 x 坐标，\fB\-t\fP 设置左上角的 y 坐标，\fB\-x\fP 选择扫描区域的宽度，\fB\-y\fP
+设置扫描区域的高度。默认情况下，所有参数均以毫米为单位指定。
+
+
+.TP 
+\fBEnhancement options\fP
+
+.TP 
+\fB\-\-custom\-gamma (no custom gamma option for the VM3564 and VM356A)\fP
+(仅限颜色模式) 允许用户指定伽马表 (请参见接下来的 3 个参数)。
+
+.SH "OPTIONS FOR COLOR MODE"
+这些选项仅对扫描模式 \fIColor\fP 有效。
+
+.TP 
+\fB\-\-red\-gamma\-table\fP
+可用于为红色通道下载用户定义的伽玛表。该表的长度必须为 256 字节。
+
+.TP 
+\fB\-\-green\-gamma\-table\fP
+可用于为绿色通道下载用户定义的伽玛表。该表的长度必须为 256 字节。
+
+.TP 
+\fB\-\-blue\-gamma\-table\fP
+可用于下载用户定义的蓝色通道伽玛表。该表的长度必须为 256 字节。
+
+.SH "OPTIONS ONLY FOR VM3564, VM356A, VM3575 and VM6575"
+这些选项仅适用于 VM3564、VM356A、VM3575 和 VM6575 型号。
+.TP 
+\fB\-\-white\-level\-r 0..64\fP
+选择当通过更改加载到扫描仪中的校准值来扫描某些纸张时，应将何种红色辐射级别视为 "white"。按以下步骤缩放 0..64 1.
+
+.TP 
+\fB\-\-white\-level\-g 0..64\fP
+当通过更改加载到扫描仪的校准值来扫描某些纸张时，选择应将何种绿色辐射级别视为 "white"。按以下步骤缩放 0..64 1.
+
+.TP 
+\fB\-\-white\-level\-b 0..64\fP
+当通过更改加载到扫描仪的校准值来扫描某些纸张时，选择应将什么蓝色辐射级别视为 "white"。按以下步骤缩放 0..64 1.
+
+
+.SH "CONFIGURATION FILE"
+配置文件 \fI/etc/sane.d/teco2.conf\fP 只支持一项: 要使用的设备名称 (例如 \fI/dev/scanner\fP).
+
+
+.SH FILES
+.TP 
+\fI/usr/lib/sane/libsane\-teco2.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-teco2.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_DEBUG_TECO2\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。例如，值 128 请求打印所有调试输出。较小的级别减少冗长。
+.TP 
+\fBSANE_TECO2_CAL_ALGO\fP
+0 或 1。选择校准算法。值为 1 似乎可以在 VM356A、VM3575 上提供更好的扫描。 欢迎提供反馈。 对于
+VM3564、VM356A、VM3575、VM6575 默认为 1。 对于其他支持的类型默认 0.
+
+
+.SH LIMITATIONS
+windows TWAIN 驱动程序比这个 SANE 后端有更多的选项。然而，它们只是软件调整。此后端仅实现扫描仪可以支持的内容。
+
+
+.SH BUGS
+很多。这个后端的部分仍在开发中。
+
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBscanimage\fP(1), \fBxscanimage\fP(1), \fBxsane\fP(1)
+
+
+.SH AUTHORS
+.TP 
+Frank Zago
+\fIhttp://www.zago.net/sane/#teco2\fP
+.TP 
+The package is actively maintained by Gerard Klaver.
+\fIhttp://gkall.hobby.nl/teco2.html\fP
+
+
+
+
+.SH CREDITS
+
+谢谢:
+.TP 
+Gerard Klaver for his relentless VM3575 testings and contributed a patch to support the VM3564 and VM356A.
+.TP 
+Mark Plowman for providing the first SCSI traces from a VM3575.
+.TP 
+Andreas Klaedtke for providing the first SCSI traces from a VM6586 and for his testing, and to Stefan von Dombrowski for his testing.
+.TP 
+Nicolas Peyresaubes for providing the first SCSI traces from a VM656A and for his testing.
+.TP 
+Dave Parker for testing the support for the VM6575.
+.TP 
+Michael Hoeller for testing the support for the VM356A.
+.TP 
+Christoph Hoeffner for testing the support for the VM3564 (Relisys AVEC II S3 firmware 1.09).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

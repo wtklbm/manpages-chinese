@@ -1,0 +1,137 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-CRYPTSETUP@\&.SERVICE 8 "" "systemd 253" systemd\-cryptsetup@.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-cryptsetup@.service, systemd\-cryptsetup \- 全盘解密逻辑
+.SH SYNOPSIS
+.PP
+systemd\-cryptsetup@\&.service
+.PP
+system\-systemd\ex2dcryptsetup\&.slice
+.PP
+/usr/lib/systemd/systemd\-cryptsetup
+.SH DESCRIPTION
+.PP
+systemd\-cryptsetup@\&.service 是一个负责设置加密块设备的服务。它为每个需要解密才能访问的设备实例化。
+.PP
+systemd\-cryptsetup@\&.service 实例是 system\-systemd\ex2dcryptsetup\&.slice
+切片的一部分，它仅在关闭程序的最后阶段才被销毁 \&。这允许加密设备一直保持到文件系统被卸载 \&。
+.PP
+systemd\-cryptsetup@\&.service 将通过 \m[blue]\fBpassword agent logic\fP\m[]\&\s-2\u[1]\d\s+2 询问硬盘密码，以便在启动时和运行时使用正确的机制向用户查询密码 \&。
+.PP
+在早期引导和重新加载系统管理器配置时，/etc/crypttab 被 \fBsystemd\-cryptsetup\-generator\fP(8)\& 转换为
+systemd\-cryptsetup@\&.service 单元。
+.PP
+为了解锁卷，需要密码或二进制密钥 \&。 systemd\-cryptsetup@\&.service
+尝试通过以下机制获取合适的密码或二进制密钥，按顺序尝试:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果显式配置了密钥文件 (通过 /etc/crypttab 中的第三列)，则使用从中读取的密钥 \&。如果配置了 PKCS#11 token、FIDO2
+token 或 TPM2 设备 (使用 \fIpkcs11\-uri=\fP、\fIfido2\-device=\fP、\fItpm2\-device=\fP
+选项)，则密钥在使用前解密 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+如果没有以这种方式显式配置密钥文件，则会自动从 /etc/cryptsetup\-keys\&.d/\fIvolume\fP\&.key 和
+/run/cryptsetup\-keys\&.d/\fIvolume\fP\&.key 加载密钥文件 (如果存在) \&。同样，如果配置了
+PKCS#11/TPM2 token/device，则以这种方式找到的任何密钥在使用前都会被解密 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+如果指定了 \fItry\-empty\-password\fP 选项，则会尝试使用空密码 \& 解锁卷。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+然后检查内核密钥环是否有以前尝试过的合适的缓存密码。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+最后，除非设置了 \fIheadless\fP 选项 \&，否则可能会多次询问用户密码。
+.RE
+.PP
+如果无法通过上述任何机制获取合适的密钥，则批量激活失败 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-cryptsetup\-generator\fP(8), \fBcrypttab\fP(5),
+\fBsystemd\-cryptenroll\fP(1), \fBcryptsetup\fP(8)
+.SH NOTES
+.IP " 1." 4
+密码代理逻辑
+.RS 4
+\%https://systemd.io/PASSWORD_AGENTS/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

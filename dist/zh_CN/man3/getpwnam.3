@@ -1,0 +1,252 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\" and Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's "POSIX Programmer's Guide" (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\"
+.\" Modified 1993-07-24 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 1996-05-27 by Martin Schulze (joey@linux.de)
+.\" Modified 2003-11-15 by aeb
+.\" 2008-11-07, mtk, Added an example program for getpwnam_r().
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getpwnam 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getpwnam、getpwnam_r、getpwuid、getpwuid_r \- 获取密码文件条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <pwd.h>\fP
+.PP
+\fBstruct passwd *getpwnam(const char *\fP\fIname\fP\fB);\fP
+\fBstruct passwd *getpwuid(uid_t \fP\fIuid\fP\fB);\fP
+.PP
+\fBint getpwnam_r(const char *restrict \fP\fIname\fP\fB, struct passwd *restrict \fP\fIpwd\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP 
+\fB               struct passwd **restrict \fP\fIresult\fP\fB);\fP
+\fBint getpwuid_r(uid_t \fP\fIuid\fP\fB, struct passwd *restrict \fP\fIpwd\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB               struct passwd **restrict \fP\fIresult\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetpwnam_r\fP(), \fBgetpwuid_r\fP():
+.nf
+    _POSIX_C_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetpwnam\fP() 函数返回一个指向结构体的指针，该结构体包含与用户名 \fIname\fP 匹配的密码数据库 (例如，本地密码文件
+\fI/etc/passwd\fP、NIS 和 LDAP) 中记录的断开字段。
+.PP
+\fBgetpwuid\fP() 函数返回一个指向结构体的指针，该结构体包含密码数据库中与用户 ID \fIuid\fP 匹配的记录的断开字段。
+.PP
+\fIpasswd\fP 结构体在 \fI<pwd.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct passwd {
+    char   *pw_name;       /* username */
+    char   *pw_passwd;     /* user password */
+    uid_t   pw_uid;        /* user ID */
+    gid_t   pw_gid;        /* group ID */
+    char   *pw_gecos;      /* user information */
+    char   *pw_dir;        /* home directory */
+    char   *pw_shell;      /* shell program */
+};
+.EE
+.in
+.PP
+有关这些字段的更多信息，请参见 \fBpasswd\fP(5)。
+.PP
+\fBgetpwnam_r\fP() 和 \fBgetpwuid_r\fP() 函数获取与 \fBgetpwnam\fP() 和 \fBgetpwuid\fP()
+相同的信息，但将检索到的 \fIpasswd\fP 结构体存储在 \fIpwd\fP 指向的空间中。 \fIpasswd\fP 结构体的成员指向的字符串字段存储在大小为
+\fIbuflen\fP 的缓冲区 \fIbuf\fP 中。 指向结果 (如果成功) 或 NULL (如果未找到条目或发生错误) 的指针存储在 \fI*result\fP
+中。
+.PP
+调用
+.PP
+.in +4n
+.EX
+sysconf(_SC_GETPW_R_SIZE_MAX)
+.EE
+.in
+.PP
+返回 \-1 (不更改 \fIerrno\fP) 或 \fIbuf\fP 的初始建议大小。 (如果这个大小太小，调用会失败并返回
+\fBERANGE\fP，在这种情况下，调用者可以使用更大的缓冲区重试。)
+.SH "RETURN VALUE"
+\fBgetpwnam\fP() 和 \fBgetpwuid\fP() 函数返回指向 \fIpasswd\fP 结构体的指针，如果未找到匹配条目或发生错误，则返回
+NULL。 如果发生错误，则设置 \fIerrno\fP 以指示错误。 如果要在调用后检查 \fIerrno\fP，则应在调用前将其设置为零。
+.PP
+返回值可能指向一个静态区域，并可能被随后对 \fBgetpwent\fP(3)、\fBgetpwnam\fP() 或 \fBgetpwuid\fP() 的调用覆盖。
+(不要将返回的指针传递给 \fBfree\fP(3).)
+.PP
+成功时，\fBgetpwnam_r\fP() 和 \fBgetpwuid_r\fP() 返回零，并将 \fI*result\fP 设置为 \fIpwd\fP。
+如果没有找到匹配的密码记录，则这些函数返回 0 并将 NULL 存储在 \fI*result\fP 中。 如果出现错误，则返回错误编号，并将 NULL 存储在
+\fI*result\fP 中。
+.SH ERRORS
+.TP 
+\fB0\fP or \fBENOENT\fP or \fBESRCH\fP or \fBEBADF\fP or \fBEPERM\fP or ...
+找不到给定的 \fIname\fP 或 \fIuid\fP。
+.TP 
+\fBEINTR\fP
+一个信号被捕捉到; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEIO\fP
+I/O 错误。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOMEM\fP
+.\" not in POSIX
+.\" This structure is static, allocated 0 or 1 times. No memory leak. (libc45)
+内存不足，无法分配 \fIpasswd\fP 结构体。
+.TP 
+\fBERANGE\fP
+提供的缓冲区空间不足。
+.SH FILES
+.TP 
+\fI/etc/passwd\fP
+本地密码数据库文件
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetpwnam\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:pwnam locale
+T}
+T{
+\fBgetpwuid\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:pwuid locale
+T}
+T{
+\fBgetpwnam_r\fP(),
+\fBgetpwuid_r\fP()
+T}	Thread safety	T{
+MT\-Safe locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.  \fIpw_gecos\fP 字段未在 POSIX
+中指定，但存在于大多数实现中。
+.SH NOTES
+.\" more precisely:
+.\" AIX 5.1 - gives ESRCH
+.\" OSF1 4.0g - gives EWOULDBLOCK
+.\" libc, glibc up to glibc 2.6, Irix 6.5 - give ENOENT
+.\" since glibc 2.7 - give 0
+.\" FreeBSD 4.8, OpenBSD 3.2, NetBSD 1.6 - give EPERM
+.\" SunOS 5.8 - gives EBADF
+.\" Tru64 5.1b, HP-UX-11i, SunOS 5.7 - give 0
+上面在 "RETURN VALUE" 下给出的公式来自 POSIX.1\-2001。 它不会调用 "not found" 错误，因此不会指定
+\fIerrno\fP 在这种情况下可能具有的值。 但这使得无法识别错误。 有人可能会争辩说，根据 POSIX，如果找不到条目，\fIerrno\fP
+应该保持不变。 在各种类 UNIX 系统上进行的实验表明，在这种情况下会出现许多不同的值:
+0、ENOENT、EBADF、ESRCH、EWOULDBLOCK、EPERM，可能还有其他值。
+.PP
+\fIpw_dir\fP 字段包含用户初始工作目录的名称。 登录程序使用该字段的值为登录 shell 初始化 \fBHOME\fP 环境变量。
+想要确定其用户的主目录的应用程序应该检查 \fBHOME\fP 的值 (而不是 \fIgetpwuid(getuid())\->pw_dir\fP)
+的值，因为这允许用户在登录会话期间修改他们的 "the home directory" 的概念。 要确定另一个用户的 (initial)
+主目录，需要使用 \fIgetpwnam("username")\->pw_dir\fP 或类似的。
+.SH EXAMPLES
+下面的程序演示了如何使用 \fBgetpwnam_r\fP() 查找作为命令行参数提供的用户名的完整用户名和用户 ID。
+.PP
+.\" SRC BEGIN (getpwnam.c)
+.EX
+#include <errno.h>
+#include <pwd.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    struct passwd pwd;
+    struct passwd *result;
+    char *buf;
+    long bufsize;
+    int s;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s username\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize == \-1)          /* Value was indeterminate */
+        bufsize = 16384;         /* Should be more than enough */
+
+    buf = malloc(bufsize);
+    if (buf == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    s = getpwnam_r(argv[1], &pwd, buf, bufsize, &result);
+    if (result == NULL) {
+        if (s == 0)
+            printf("Not found\en");
+        else {
+            errno = s;
+            perror("getpwnam_r");
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Name: %s; UID: %jd\en", pwd.pw_gecos,
+           (intmax_t) pwd.pw_uid);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBendpwent\fP(3), \fBfgetpwent\fP(3), \fBgetgrnam\fP(3), \fBgetpw\fP(3),
+\fBgetpwent\fP(3), \fBgetspnam\fP(3), \fBputpwent\fP(3), \fBsetpwent\fP(3), \fBpasswd\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

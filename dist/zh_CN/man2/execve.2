@@ -1,0 +1,497 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\" and Copyright (c) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-21 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1994-08-21 by Michael Chastain <mec@shell.portal.com>:
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1999-11-12 by Urs Thuermann <urs@isnogud.escape.de>
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2006-09-04 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added list of process attributes that are not preserved on exec().
+.\" 2007-09-14 Ollie Wild <aaw@google.com>, mtk
+.\"     Add text describing limits on command-line arguments + environment
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH execve 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+execve \- 执行程序
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint execve(const char *\fP\fIpathname\fP\fB, char *const _Nullable \fP\fIargv\fP\fB[],\fP
+\fB           char *const _Nullable \fP\fIenvp\fP\fB[]);\fP
+.fi
+.SH DESCRIPTION
+\fBexecve\fP() 执行 \fIpathname\fP 引用的程序。 这会导致调用进程当前正在运行的程序被新程序替换，具有新初始化的栈、堆和
+(已初始化和未初始化的) 字段。
+.PP
+\fIpathname\fP 必须是二进制可执行文件或以以下形式的行开头的脚本:
+.PP
+.in +4n
+.EX
+\fB#!\fP\fIinterpreter \fP[optional\-arg]
+.EE
+.in
+.PP
+有关后一种情况的详细信息，请参见下面的 "Interpreter scripts"。
+.PP
+\fIargv\fP 是一个指针数组，指向作为命令行参数传递给新程序的字符串。 按照惯例，这些字符串中的第一个 (即 \fIargv[0]\fP)
+应该包含与正在执行的文件关联的文件名。 \fIargv\fP 数组必须由 NULL 指针终止。 (因此，在新程序中，\fIargv[argc]\fP 将为
+NULL。)
+.PP
+\fIenvp\fP 是指向字符串的指针数组，通常采用 \fBkey=value\fP 形式，作为新程序的环境传递。 \fIenvp\fP 数组必须由 NULL
+指针终止。
+.PP
+本手册页详细描述了 Linux 系统调用; 有关 libc 提供的这个函数的命名法和许多通常更可取的标准化变体的概述，包括搜索 \fBPATH\fP
+环境，变体，的变体，请参见 \fBexec\fP(3)。
+.PP
+参数 vector 和环境可以被新程序的 main 函数，访问，当它被定义为:
+.PP
+.in +4n
+.EX
+int main(int argc, char *argv[], char *envp[])
+.EE
+.in
+.PP
+但是请注意，在 POSIX.1 中没有指定对 main 函数，使用第三个参数; 根据 POSIX.1，应该通过外部变量 \fBenviron\fP(7)
+访问环境。
+.PP
+\fBexecve\fP() 成功不返回，调用进程的文本、初始化数据、未初始化数据 (bss)、栈按照新加载程序的内容覆盖。
+.PP
+如果当前程序正在跟踪，则在成功的 \fBexecve\fP() 之后向其发送 \fBSIGTRAP\fP 信号。
+.PP
+如果在 \fIpathname\fP 引用的程序文件上设置了 set\-user\-ID 位，则调用进程的有效用户 ID 将更改为程序文件所有者的用户 ID。
+类似地，如果在程序文件上设置了 set\-group\-ID 位，则调用进程的有效组 ID 将设置为程序文件所在的组。
+.PP
+如果以下任何条件为真，则上述有效 ID 的转换将执行 \fInot\fP (即忽略 set\-user\-ID 和 set\-group\-ID 位) :
+.IP \[bu] 3
+为调用线程设置 \fIno_new_privs\fP 属性 (参见 \fBprctl\fP(2));
+.IP \[bu]
+底层文件系统挂载为 \fInosuid\fP (\fBmount\fP(2)) 的 \fBMS_NOSUID\fP 标志; or
+.IP \[bu]
+正在跟踪调用进程。
+.PP
+程序文件的功能 (参见 \fBcapabilities\fP(7))，如果上述任何一项为真，也将被忽略。
+.PP
+将进程的有效用户 ID 复制到保存的 set\-user\-ID 中; 类似地，将有效组 ID 复制到保存的组组 ID。 此复制发生在由于
+set\-user\-ID 和 set\-group\-ID 模式位而发生的任何有效 ID 更改之后。
+.PP
+进程的真实 UID 和真实 GID，以及它的补充组 ID，通过调用 \fBexecve\fP() 不变。
+.PP
+如果可执行文件是包含共享库存根的 a.out 动态链接二进制可执行文件，则在执行开始时调用 Linux 动态链接器 \fBld.so\fP(8)
+以将所需的共享对象放入内存并将可执行文件与它们链接。
+.PP
+.\"
+如果可执行文件是动态链接的 ELF 可执行文件，则使用 PT_INTERP 段中命名的解释器来加载所需的共享对象。 对于与 glibc
+链接的二进制文件，此解释器通常是 \fI/lib/ld\-linux.so.2\fP (请参见 \fBld\-linux.so\fP(8)).
+.SS "Effect on process attributes"
+在 \fBexecve\fP() 期间保留所有进程属性，但以下情况除外:
+.IP \[bu] 3
+捕捉到的任何信号的配置都将重置为默认的 (\fBsignal\fP(7))。
+.IP \[bu]
+(\fBsigaltstack\fP(2)) 不保留任何备用信号栈。
+.IP \[bu]
+内存映射未保留 (\fBmmap\fP(2))。
+.IP \[bu]
+附加的 System\V 共享内存段是分离的 (\fBshmat\fP(2))。
+.IP \[bu]
+POSIX 共享内存区域是未映射的 (\fBshm_open\fP(3))。
+.IP \[bu]
+打开 POSIX 消息队列描述符关闭 (\fBmq_overview\fP(7))。
+.IP \[bu]
+任何打开的 POSIX 命名信号量都是关闭的 (\fBsem_overview\fP(7))。
+.IP \[bu]
+POSIX 定时器不保留 (\fBtimer_create\fP(2))。
+.IP \[bu]
+任何打开的目录流都关闭 (\fBopendir\fP(3))。
+.IP \[bu]
+(\fBmlock\fP(2)、\fBmlockall\fP(2)) 内存锁不保存。
+.IP \[bu]
+退出处理程序不保留 (\fBatexit\fP(3)、\fBon_exit\fP(3))。
+.IP \[bu]
+浮点环境重置为默认值 (请参见 \fBfenv\fP(3)).
+.PP
+前面列表中的进程属性都在 POSIX.1 中指定。 在 \fBexecve\fP(): 期间也不会保留以下特定于 Linux 的进程属性
+.IP \[bu] 3
+进程的 "dumpable" 属性设置为值 1，除非正在执行设置用户 ID 程序、设置组 ID
+程序或具有功能的程序，在这种情况下，可转储标志可能会被重置为值在 \fI/proc/sys/fs/suid_dumpable\fP 中，在
+\fBPR_SET_DUMPABLE\fP 中描述的情况下在 \fBprctl\fP(2) 中。 请注意，对 "dumpable" 属性的更改可能会导致进程的
+\fI/proc/\fPpid 目录中的文件所有权更改为 \fIroot:root\fP，如 \fBproc\fP(5) 中所述。
+.IP \[bu]
+\fBprctl\fP(2) \fBPR_SET_KEEPCAPS\fP 标志被清除。
+.IP \[bu]
+(从 Linux 2.4.36/2.6.23 开始) 如果正在执行设置用户 ID 或设置组 ID 程序，则清除由 \fBprctl\fP(2)
+\fBPR_SET_PDEATHSIG\fP 标志设置的父死亡信号。
+.IP \[bu]
+由 \fBprctl\fP(2) \fBPR_SET_NAME\fP 设置 (并由 \fIps\ \-o comm\fP) 显示) 的进程名称重置为新可执行文件的名称。
+.IP \[bu]
+\fBSECBIT_KEEP_CAPS\fP \fIsecurebits\fP 标志被清除。 请参见 \fBcapabilities\fP(7)。
+.IP \[bu]
+终止信号复位为 \fBSIGCHLD\fP (见 \fBclone\fP(2)).
+.IP \[bu]
+文件描述符表未共享，取消了 \fBclone\fP(2) 的 \fBCLONE_FILES\fP 标志的影响。
+.PP
+请注意以下几点:
+.IP \[bu] 3
+在 \fBexecve\fP() 期间，除调用线程之外的所有线程都被销毁。 不保留互斥量、条件变量和其他 pthreads 对象。
+.IP \[bu]
+\fIsetlocale(LC_ALL, "C")\fP 的等价物在程序启动时执行。
+.IP \[bu]
+POSIX.1 指定任何被忽略或设置为默认值的信号的配置保持不变。 POSIX.1 指定了一个例外: 如果 \fBSIGCHLD\fP
+被忽略，那么一个实现可能会保持配置不变或将其重置为默认值; Linux 做前者。
+.IP \[bu]
+任何未完成的异步 I/O 操作都被取消 (\fBaio_read\fP(3)、\fBaio_write\fP(3))。
+.IP \[bu]
+对于 \fBexecve\fP() 期间的功能处理，请参见 \fBcapabilities\fP(7)。
+.IP \[bu]
+.\" On Linux it appears that these file descriptors are
+.\" always open after an execve(), and it looks like
+.\" Solaris 8 and FreeBSD 6.1 are the same. -- mtk, 30 Apr 2007
+默认情况下，文件描述符在 \fBexecve\fP() 中保持打开状态。 标记为 close\-on\-exec 的文件描述符被关闭; 请参见
+\fBfcntl\fP(2) 中 \fBFD_CLOEXEC\fP 的说明。
+(如果文件描述符被关闭，这将导致释放此进程在底层文件上获得的所有记录锁。有关详细信息，请参见 \fBfcntl\fP(2)。) POSIX.1
+表示如果文件描述符 0、1 和 2 将在执行后关闭成功的 \fBexecve\fP()，并且进程将获得特权，因为在执行的文件上设置了 set\-user\-ID
+或 set\-group\-ID 模式位，然后系统可能会为这些文件描述符中的每一个打开一个未指定的文件。
+作为一般原则，任何可移植程序，无论是否有特权，都不能假设这三个文件描述符将在 \fBexecve\fP() 中保持关闭。
+.SS "Interpreter scripts"
+解释器脚本是一个启用了执行权限的文本文件，其第一行的格式为:
+.PP
+.in +4n
+.EX
+\fB#!\fP\fIinterpreter \fP[optional\-arg]
+.EE
+.in
+.PP
+\fIinterpreter\fP 必须是可执行文件的有效路径名。
+.PP
+如果 \fBexecve\fP() 的 \fIpathname\fP 参数指定了一个解释器脚本，那么 \fIinterpreter\fP 将使用以下参数被调用:
+.PP
+.in +4n
+.EX
+\fIinterpreter\fP [optional\-arg] \fIpathname\fP arg...
+.EE
+.in
+.PP
+.\" See the P - preserve-argv[0] option.
+.\" Documentation/admin-guide/binfmt-misc.rst
+.\" https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html
+其中 \fIpathname\fP 是指定为 \fBexecve\fP() 的第一个参数的文件的路径名，\fIarg...\fP 是 \fBexecve\fP() 的
+\fIargv\fP 参数所指向的一系列单词，从 \fIargv[1]\fP 开始。 请注意，无法获取传递给 \fBexecve\fP() 调用的 \fIargv[0]\fP。
+.PP
+对于便携式使用，\fIoptional\-arg\fP 应该不存在，或者指定为单个单词 (即，它不应包含空格) ; 请参见下面的注释。
+.PP
+.\" commit bf2a9a39639b8b51377905397a5005f444e9a892
+从 Linux 2.6.28 开始，内核允许脚本的解释器本身就是一个脚本。
+此权限是递归的，最多可以递归四次，因此解释器可以是一个脚本，该脚本由一个脚本解释，等等。
+.SS "Limits on size of arguments and environment"
+大多数 UNIX 实现对可能传递给新程序的命令行参数 (\fIargv\fP) 和环境 (\fIenvp\fP) 字符串的总大小施加了一些限制。 POSIX.1
+允许实现使用 \fBARG_MAX\fP 常量 (在 \fI<limits.h>\fP 中定义或在运行时使用调用
+\fIsysconf(_SC_ARG_MAX)\fP) 可用) 来宣传此限制。
+.PP
+在 Linux 2.6.23 之前，用于存储环境和参数字符串的内存限制为 32 页 (由内核定义常量 \fBMAX_ARG_PAGES\fP).
+在页面大小为 4 kB 的体系结构上，这会产生 128\kB 的最大大小。
+.PP
+.\" For some background on the changes to ARG_MAX in Linux 2.6.23 and
+.\" Linux 2.6.25, see:
+.\"     http://sourceware.org/bugzilla/show_bug.cgi?id=5786
+.\"     http://bugzilla.kernel.org/show_bug.cgi?id=10095
+.\"     http://thread.gmane.org/gmane.linux.kernel/646709/focus=648101,
+.\"     checked into Linux 2.6.25 as commit a64e715fc74b1a7dcc5944f848acc38b2c4d4ee2.
+.\" Ollie: That doesn't include the lists of pointers, though,
+.\" so the actual usage is a bit higher (1 pointer per argument).
+在 Linux 2.6.23 及更高版本上，大多数体系结构都支持从软 \fBRLIMIT_STACK\fP 资源限制派生的大小限制 (请参见在
+\fBexecve\fP() 调用时生效的 \fBgetrlimit\fP(2))。 (没有内存管理单元的架构除外: 它们保持 Linux 2.6.23
+之前有效的限制。) 此更改允许程序具有更大的参数或者环境列表。 对于这些架构，总大小限制为允许的栈大小的 1/4。 (强加 1/4\-limit
+可确保新程序始终具有一些栈空间。) 此外，总大小限制为内核常量 \fB_STK_LIM\fP (8 MiB) 的值的 3/4。 从 Linux 2.6.25
+开始，内核还在这个大小限制上设置了 32 页的下限，因此，即使 \fBRLIMIT_STACK\fP 设置得非常低，应用程序也能保证至少有与 Linux
+2.6.22 和更早版本提供的一样多的引用数和环境空间.  (Linux 2.6.23 和 2.6.24 没有提供此保证。) 另外，每个字符串的限制是
+32 页 (内核常量 \fBMAX_ARG_STRLEN\fP)，最大字符串数是 0x7FFFFFFF。
+.SH "RETURN VALUE"
+成功时，\fBexecve\fP() 不返回，错误时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBE2BIG\fP
+环境 (\fIenvp\fP) 和参数列表 (\fIargv\fP) 中的总字节数太大。
+.TP 
+\fBEACCES\fP
+对 \fIpathname\fP 的路径前缀或脚本解释器名称的组件的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEACCES\fP
+该文件或脚本解释器不是常规文件。
+.TP 
+\fBEACCES\fP
+文件或脚本或 ELF 解释器的执行权限被拒绝。
+.TP 
+\fBEACCES\fP
+文件系统挂载在 \fInoexec\fP。
+.TP 
+\fBEAGAIN\fP (since Linux 3.1)
+.\" commit 72fa59970f8698023045ab0713d66f3f4f96945c
+使用其中一个 \fBset*uid\fP() 调用更改了其真实 UID 后，调用方 \[em] 现在仍然 \[em] 高于其 \fBRLIMIT_NPROC\fP
+资源限制 (请参见 \fBsetrlimit\fP(2)).  有关此错误的更详细说明，请参见注释。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 或 vectors \fIargv\fP 或 \fIenvp\fP 中的指针之一指向您的可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+一个 ELF 可执行文件有多个 PT_INTERP 段 (即试图命名多个解释器)。
+.TP 
+\fBEIO\fP
+发生 I/O 错误。
+.TP 
+\fBEISDIR\fP
+ELF 解释器是一个目录。
+.TP 
+\fBELIBBAD\fP
+ELF 解释器不是可识别的格式。
+.TP 
+\fBELOOP\fP
+在解析 \fIpathname\fP 或脚本或 ELF 解释器的名称时遇到太多符号链接。
+.TP 
+\fBELOOP\fP
+.\" commit d740269867021faf4ce38a449353d2b986c34a67
+在递归脚本解释期间达到了最大递归限制 (请参见上面的 "Interpreter scripts")。 在 Linux 3.8
+之前，为这种情况产生的错误是 \fBENOEXEC\fP。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOENT\fP
+文件 \fIpathname\fP 或脚本或 ELF 解释器不存在。
+.TP 
+\fBENOEXEC\fP
+可执行文件不是可识别的格式，用于错误的体系结构，或者有一些其他格式错误，这意味着它无法执行。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOTDIR\fP
+\fIpathname\fP 或脚本或 ELF 解释器的路径前缀的组成部分不是目录。
+.TP 
+\fBEPERM\fP
+文件系统挂载为 \fInosuid\fP，用户不是超级用户，文件设置了 set\-user\-ID 或 set\-group\-ID 位。
+.TP 
+\fBEPERM\fP
+正在跟踪进程，用户不是超级用户并且文件设置了 set\-user\-ID 或 set\-group\-ID 位。
+.TP 
+\fBEPERM\fP
+"capability\-dumb" 应用程序不会获得可执行文件授予的全套许可功能。 请参见 \fBcapabilities\fP(7)。
+.TP 
+\fBETXTBSY\fP
+指定的可执行文件已打开以供一个或多个进程写入。
+.SH STANDARDS
+.\" SVr4 documents additional error
+.\" conditions EAGAIN, EINTR, ELIBACC, ENOLINK, EMULTIHOP; POSIX does not
+.\" document ETXTBSY, EPERM, EFAULT, ELOOP, EIO, ENFILE, EMFILE, EINVAL,
+.\" EISDIR or ELIBBAD error conditions.
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.  POSIX 没有文件 #! 行为，但它在其他 UNIX 系统上存在
+(有一些变化)。
+.SH NOTES
+有时会看到 \fBexecve\fP() (以及 \fBexec\fP(3)) 中描述的相关函数，描述为 "executing a \fInew\fP process"
+(或类似的)。 这是一个极具误导性的描述: 没有新的过程; 调用进程的许多属性保持不变 (特别是它的 PID)。 \fBexecve\fP()
+所做的只是安排现有进程 (调用进程) 执行新程序。
+.PP
+set\-user\-ID 和 set\-group\-ID 进程不能是 \fBptrace\fP(2)d。
+.PP
+安装文件系统 \fInosuid\fP 的结果因 Linux 内核版本而异: 有些会拒绝执行 set\-user\-ID 和 set\-group\-ID
+可执行文件，因为这会赋予用户他们还没有的权力 (并返回 \fBEPERM\fP)，有些只会成功忽略设置用户 ID 和设置组 ID 位和 \fBexec\fP()。
+.PP
+.\" e.g., EFAULT on Solaris 8 and FreeBSD 6.1; but
+.\" HP-UX 11 is like Linux -- mtk, Apr 2007
+.\" Bug filed 30 Apr 2007: http://bugzilla.kernel.org/show_bug.cgi?id=8408
+.\" Bug rejected (because fix would constitute an ABI change).
+.\"
+在 Linux 上，\fIargv\fP 和 \fIenvp\fP 可以指定为 NULL。
+在这两种情况下，这与将参数指定为指向包含单个空指针的列表的指针具有相同的效果。 \fBDo not take advantage of this nonstandard and nonportable misfeature!\fP 在许多其他 UNIX 系统上，将 \fIargv\fP 指定为 NULL
+将导致错误 (\fBEFAULT\fP)。 \fISome\fP 其他 UNIX 系统对 \fIenvp==NULL\fP 外壳的处理与 Linux 相同。
+.PP
+POSIX.1 表示 \fBsysconf\fP(3) 返回的值在进程的生命周期内应该是不变的。 但是，从 Linux 2.6.23 开始，如果
+\fBRLIMIT_STACK\fP 资源限制发生变化，那么 \fB_SC_ARG_MAX\fP
+报告的值也会发生变化，以反映命令行参数和环境变量的存储空间限制发生了变化。
+.PP
+.\" commit 19d860a140beac48a1377f179e693abe86a9dac9
+.\"
+在大多数 \fBexecve\fP() 失败的情况下，控制权返回到原始可执行映像，然后 \fBexecve\fP() 的调用者可以处理错误。 但是，在 (rare)
+情况下 (通常由资源耗尽引起)，失败可能会发生到无法挽回的地步: 原始可执行映像已被拆除，但新映像无法完全构建。 在这种情况下，内核会使用
+\fBSIGSEGV\fP (\fBSIGKILL\fP until Linux 3.17) 信号终止进程。
+.SS "Interpreter scripts"
+.\" commit 6eb3c3d0a52dca337e327ae8868ca1f44a712e02
+内核对脚本开头 "#!" 字符之后的文本施加了最大长度; 超出限制的字符将被忽略。 在 Linux 5.1 之前，限制为 127 个字符。 自
+Linux 5.1 起，限制为 255 个字符。
+.PP
+.\" e.g., Solaris 8
+.\" e.g., FreeBSD before 6.0, but not FreeBSD 6.0 onward
+解释器脚本的 \fIoptional\-arg\fP 参数的语义因实现而异。 在 Linux 上，\fIinterpreter\fP
+名称后面的整个字符串作为单个参数传递给解释器，并且该字符串可以包含空格。 但是，在某些其他系统上的行为会有所不同。 一些系统使用第一个空白来终止
+\fIoptional\-arg\fP。 在某些系统上，解释器脚本可以有多个参数，\fIoptional\-arg\fP 中的空格用于分隔参数。
+.PP
+.\"
+.\" .SH BUGS
+.\" Some Linux versions have failed to check permissions on ELF
+.\" interpreters.  This is a security hole, because it allows users to
+.\" open any file, such as a rewinding tape device, for reading.  Some
+.\" Linux versions have also had other security holes in
+.\" .BR execve ()
+.\" that could be exploited for denial of service by a suitably crafted
+.\" ELF binary. There are no known problems with Linux 2.0.34 or Linux 2.2.15.
+Linux (与大多数其他现代 UNIX 系统一样) 忽略脚本中的 set\-user\-ID 和 set\-group\-ID 位。
+.SS "execve() and EAGAIN"
+调用 \fBexecve\fP() 时可能出现的 \fBEAGAIN\fP 错误 (自 Linux 3.1 起) 更详细的解释如下。
+.PP
+.\" commit 909cc4ae86f3380152a18e2a3c44523893ee11c4
+当 \fIpreceding\fP 调用 \fBsetuid\fP(2)、\fBsetreuid\fP(2) 或 \fBsetresuid\fP(2) 导致进程的真实用户 ID
+更改，并且该更改导致进程超过其 \fBRLIMIT_NPROC\fP 资源限制 (即属于新进程的进程数) 时，可能会发生 \fBEAGAIN\fP 错误真实 UID
+超出资源限制)。 从 Linux 2.6.0 到 Linux 3.0，这导致 \fBset*uid\fP() 调用失败。 (在 Linux 2.6
+之前，不会对更改用户 ID 的进程施加资源限制。)
+.PP
+从 Linux 3.1 开始，刚刚描述的场景不再导致 \fBset*uid\fP() 调用失败，因为它经常导致安全漏洞，buggy
+应用程序不检查返回状态并假定 \[em] 如果调用者具有 root 权限 \[em] 调用总会成功。 相反，\fBset*uid\fP()
+调用现在成功地更改了真实的 UID，但是内核设置了一个名为 \fBPF_NPROC_EXCEEDED\fP 的内部标志，以表明已超出
+\fBRLIMIT_NPROC\fP 资源限制。 如果设置了 \fBPF_NPROC_EXCEEDED\fP 标志并且在后续 \fBexecve\fP()
+调用时仍然超出资源限制，则该调用失败并显示错误 \fBEAGAIN\fP。 此内核逻辑确保 \fBRLIMIT_NPROC\fP
+资源限制仍然对通用特权守护进程工作流实现，即 \fBfork\fP(2) + \fBset*uid\fP() + \fBexecve\fP()。
+.PP
+如果在 \fBexecve\fP() 调用时仍未超过资源限制 (因为属于此真实 UID 的其他进程在 \fBset*uid\fP() 调用和 \fBexecve\fP()
+调用之间终止)，则 \fBexecve\fP() 调用成功并且内核清除 \fBPF_NPROC_EXCEEDED\fP 进程标志。 如果此过程对
+\fBfork\fP(2) 的后续调用成功，则该标志也会被清除。
+.SS Historical
+.\"
+.\" .SH BUGS
+.\" Some Linux versions have failed to check permissions on ELF
+.\" interpreters.  This is a security hole, because it allows users to
+.\" open any file, such as a rewinding tape device, for reading.  Some
+.\" Linux versions have also had other security holes in
+.\" .BR execve ()
+.\" that could be exploited for denial of service by a suitably crafted
+.\" ELF binary.  There are no known problems with Linux 2.0.34 or Linux 2.2.15.
+对于 UNIX\V6，\fBexec\fP() 调用的参数列表以 0 结束，而 \fImain\fP 的参数列表以 \-1 结束。
+因此，此参数列表不能直接用于进一步的 \fBexec\fP() 调用。 由于 UNIX\V7，两者都是 NULL。
+.SH EXAMPLES
+以下程序旨在由下面的第二个程序执行。 它只是回应它的命令行参数，每行一个。
+.PP
+.in +4n
+.\" SRC BEGIN (myecho.c)
+.EX
+/* myecho.c */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    for (size_t j = 0;  j < argc; j++)
+        printf("argv[%zu]: %s\en", j, argv[j]);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.PP
+该程序可用于执行在其命令行参数中命名的程序:
+.PP
+.in +4n
+.\" SRC BEGIN (execve.c)
+.EX
+/* execve.c */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    static char *newargv[] = { NULL, "hello", "world", NULL };
+    static char *newenviron[] = { NULL };
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <file\-to\-exec>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    newargv[0] = argv[1];
+
+    execve(argv[1], newargv, newenviron);
+    perror("execve");   /* execve() returns only on error */
+    exit(EXIT_FAILURE);
+}
+.EE
+.\" SRC END
+.in
+.PP
+我们可以使用第二个程序来执行第一个程序，如下所示:
+.PP
+.in +4n
+.EX
+$\fB cc myecho.c \-o myecho\fP
+$\fB cc execve.c \-o execve\fP
+$\fB ./execve ./myecho\fP
+argv[0]: ./myecho
+argv[1]: hello
+argv[2]: world
+.EE
+.in
+.PP
+我们还可以使用这些程序来演示脚本解释器的使用。 为此，我们创建一个脚本，其 "interpreter" 是我们的 \fImyecho\fP 程序:
+.PP
+.in +4n
+.EX
+$\fB cat > script\fP
+$\fB cat > script\fP
+\fB\[ha]D\fP
+$\fB chmod +x script\fP
+.EE
+.in
+.PP
+然后我们可以使用我们的程序来执行脚本:
+.PP
+.in +4n
+.EX
+$\fB ./execve ./script\fP
+argv[0]: ./myecho
+argv[1]: script\-arg
+argv[2]: ./script
+argv[3]: hello
+argv[4]: world
+.EE
+.in
+.SH "SEE ALSO"
+\fBchmod\fP(2), \fBexecveat\fP(2), \fBfork\fP(2), \fBget_robust_list\fP(2),
+\fBptrace\fP(2), \fBexec\fP(3), \fBfexecve\fP(3), \fBgetauxval\fP(3), \fBgetopt\fP(3),
+\fBsystem\fP(3), \fBcapabilities\fP(7), \fBcredentials\fP(7), \fBenviron\fP(7),
+\fBpath_resolution\fP(7), \fBld.so\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

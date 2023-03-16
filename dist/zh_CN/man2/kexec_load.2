@@ -1,0 +1,176 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2010 Intel Corporation, Author: Andi Kleen
+.\" and Copyright 2014, Vivek Goyal <vgoyal@redhat.com>
+.\" and Copyright (c) 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH kexec_load 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+kexec_load, kexec_file_load \- 加载一个新的内核供以后执行
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/kexec.h>\fP      /* Definition of \fBKEXEC_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBlong syscall(SYS_kexec_load, unsigned long \fP\fIentry\fP\fB,\fP
+\fB             unsigned long \fP\fInr_segments\fP\fB, struct kexec_segment *\fP\fIsegments\fP\fB,\fP
+\fB             unsigned long \fP\fIflags\fP\fB);\fP
+\fBlong syscall(SYS_kexec_file_load, int \fP\fIkernel_fd\fP\fB, int \fP\fIinitrd_fd\fP\fB,\fP
+\fB             unsigned long \fP\fIcmdline_len\fP\fB, const char *\fP\fIcmdline\fP\fB,\fP
+\fB             unsigned long \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBkexec_load\fP() 系统调用加载一个新的内核，稍后可以由 \fBreboot\fP(2) 执行。
+.PP
+\fIflags\fP 参数是一个位掩码，控制调用的操作。 在 \fIflags\fP: 中可以指定以下值
+.TP 
+\fBKEXEC_ON_CRASH\fP (since Linux 2.6.13)
+在系统崩溃时自动执行新内核。 该 "crash kernel" 被加载到在启动时使用 \fIcrashkernel\fP 内核命令行参数确定的保留内存区域。
+这个保留内存的位置通过 \fI/proc/iomem\fP 文件导出到用户空间，在一个标记为 "Crash kernel" 的条目中。
+用户空间应用程序可以解析此文件并准备一个段列表 (见下文)，将此保留内存指定为目标。 如果指定了这个标志，内核会检查 \fIsegments\fP
+中指定的目标段是否落在保留区域内。
+.TP 
+\fBKEXEC_PRESERVE_CONTEXT\fP (since Linux 2.6.27)
+在执行新内核之前保存系统硬件和软件状态。 这可用于系统挂起。 该标志仅在内核配置了 \fBCONFIG_KEXEC_JUMP\fP 时可用，且仅在
+\fInr_segments\fP 大于 0.
+.PP
+\fIflags\fP 的高位 (对应掩码 0xffff0000) 包含了待执行内核的架构。 指定 (OR) 常量 \fBKEXEC_ARCH_DEFAULT\fP
+以使用当前架构，或以下架构常量之一
+\fBKEXEC_ARCH_386\fP、\fBKEXEC_ARCH_68K\fP、\fBKEXEC_ARCH_X86_64\fP、\fBKEXEC_ARCH_PPC\fP、\fBKEXEC_ARCH_PPC64\fP、\fBKEXEC_ARCH_IA_64\fP、\fBKEXEC_ARCH_ARM\fP、\fBKEXEC_ARCH_S390\fP、\fBKEXEC_ARCH_SH\fP、\fBKEXEC_ARCH_MIPS\fP
+和 \fBKEXEC_ARCH_MIPS_LE\fP。 该体系结构必须可在系统的 CPU 上执行。
+.PP
+\fIentry\fP 参数是内核映像中的物理入口地址。 \fInr_segments\fP 参数是 \fIsegments\fP 指针指向的段数; 内核对段数施加了
+16 个 (arbitrary) 限制。 \fIsegments\fP 参数是定义内核布局的 \fIkexec_segment\fP 结构数组:
+.PP
+.in +4n
+.EX
+struct kexec_segment {
+    void   *buf;        /* Buffer in user space */
+    size_t  bufsz;      /* Buffer length in user space */
+    void   *mem;        /* Physical address of kernel */
+    size_t  memsz;      /* Physical address length */
+};
+.EE
+.in
+.PP
+由 \fIsegments\fP 定义的内核映像从调用进程复制到内核中的常规内存或保留内存中 (如果设置了 \fBKEXEC_ON_CRASH\fP)。 内核首先对
+\fIsegments\fP 中传递的信息执行各种健全性检查。 如果这些检查通过，内核将段数据复制到内核内存。 \fIsegments\fP
+中指定的每个段被复制如下:
+.IP \[bu] 3
+\fIbuf\fP 和 \fIbufsz\fP 标识调用方虚拟地址空间中的内存区域，该内存区域是副本的源。 \fIbufsz\fP 中的值不得超过 \fImemsz\fP
+字段中的值。
+.IP \[bu]
+\fImem\fP 和 \fImemsz\fP 指定作为副本目标的物理地址范围。 在这两个字段中指定的值必须是系统页面大小的倍数。
+.IP \[bu]
+\fIbufsz\fP 字节从源缓冲区复制到目标内核缓冲区。 如果 \fIbufsz\fP 小于 \fImemsz\fP，则内核缓冲区中的多余字节将被清零。
+.PP
+在正常 kexec 的情况下 (即，未设置 \fBKEXEC_ON_CRASH\fP 标志)，段数据被加载到任何可用内存中，并在 kexec
+重新启动时移动到最终目的地 (例如，当 \fBkexec\fP(8) 命令与 \fI\-e\fP 选项一起执行时).
+.PP
+如果 kexec 出现 panic (即设置了 \fBKEXEC_ON_CRASH\fP 标志)，段数据在调用时加载到保留内存，并且在崩溃之后，kexec
+机制只是将控制权传递给该内核。
+.PP
+只有内核配置了 \fBCONFIG_KEXEC\fP 时，\fBkexec_load\fP() 系统调用才可用。
+.SS kexec_file_load()
+\fBkexec_file_load\fP() 系统调用与 \fBkexec_load\fP() 类似，但采用不同的一组参数。 它从文件描述符
+\fIkernel_fd\fP 引用的文件中读取要加载的内核，并从文件描述符 \fIinitrd_fd\fP 引用的文件中读取要加载的 initrd (初始 RAM
+磁盘)。 \fIcmdline\fP 参数是指向包含新内核命令行的缓冲区的指针。 \fIcmdline_len\fP 参数指定缓冲区的大小。
+缓冲区中的最后一个字节必须是空字节 (\[aq]\e0\[aq])。
+.PP
+\fIflags\fP 参数是一个位掩码，它修改调用的行为。 在 \fIflags\fP: 中可以指定以下值
+.TP 
+\fBKEXEC_FILE_UNLOAD\fP
+卸载当前加载的内核。
+.TP 
+\fBKEXEC_FILE_ON_CRASH\fP
+将新内核加载到为崩溃内核保留的内存区域 (对于 \fBKEXEC_ON_CRASH\fP).  如果当前运行的内核崩溃，则启动该内核。
+.TP 
+\fBKEXEC_FILE_NO_INITRAMFS\fP
+加载 initrd/initramfs 是可选的。 如果没有加载 initramfs，请指定此标志。 如果设置了此标志，则忽略传入
+\fIinitrd_fd\fP 的值。
+.PP
+.\" See also http://lwn.net/Articles/603116/
+添加了 \fBkexec_file_load\fP() 系统调用，以便为 "kexec" 加载应仅限于已签名内核的系统提供支持。 此系统调用仅在内核配置为
+\fBCONFIG_KEXEC_FILE\fP 时可用。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEADDRNOTAVAIL\fP
+.\" See kernel/kexec.::sanity_check_segment_list in the 3.19 kernel source
+指定了 \fBKEXEC_ON_CRASH\fP 标志，但 \fIsegments\fP 条目之一的 \fImem\fP 和 \fImemsz\fP
+字段指定的区域位于为崩溃内核保留的内存范围之外。
+.TP 
+\fBEADDRNOTAVAIL\fP
+\fIsegments\fP 条目之一的 \fImem\fP 或 \fImemsz\fP 字段中的值不是系统页面大小的倍数。
+.TP 
+\fBEBADF\fP
+\fIkernel_fd\fP 或 \fIinitrd_fd\fP 不是有效的文件描述符。
+.TP 
+\fBEBUSY\fP
+另一个崩溃内核已被加载或崩溃内核已在使用中。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 无效。
+.TP 
+\fBEINVAL\fP
+其中一个 \fIsegments\fP 条目中的 \fIbufsz\fP 字段的值超过了相应 \fImemsz\fP 字段中的值。
+.TP 
+\fBEINVAL\fP
+\fInr_segments\fP 超过 \fBKEXEC_SEGMENT_MAX\fP (16)。
+.TP 
+\fBEINVAL\fP
+两个或多个内核目标缓冲区重叠。
+.TP 
+\fBEINVAL\fP
+\fIcmdline[cmdline_len\-1]\fP 中的值不是 \[aq]\e0\[aq]。
+.TP 
+\fBEINVAL\fP
+\fIkernel_fd\fP 或 \fIinitrd_fd\fP 引用的文件为空 (长度为零)。
+.TP 
+\fBENOEXEC\fP
+\fIkernel_fd\fP 没有引用打开的文件，或者内核无法加载该文件。 目前，该文件必须是一个 bzImage 并且包含一个 x86
+内核，该内核可在内存中加载超过 4 GiB (请参见内核源文件 \fIDocumentation/x86/boot.txt\fP).
+.TP 
+\fBENOMEM\fP
+无法分配内存。
+.TP 
+\fBEPERM\fP
+调用方没有 \fBCAP_SYS_BOOT\fP 能力。
+.SH VERSIONS
+\fBkexec_load\fP() 系统调用最早出现在 Linux 2.6.13。 \fBkexec_file_load\fP() 系统调用最早出现在 Linux
+3.17。
+.SH STANDARDS
+这些系统调用是特定于 Linux 的。
+.SH "SEE ALSO"
+\fBreboot\fP(2), \fBsyscall\fP(2), \fBkexec\fP(8)
+.PP
+内核源文件 \fIDocumentation/kdump/kdump.txt\fP 和
+\fIDocumentation/admin\-guide/kernel\-parameters.txt\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

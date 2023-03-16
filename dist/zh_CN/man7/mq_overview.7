@@ -1,0 +1,203 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mq_overview 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mq_overview\-POSIX 消息队列概述
+.SH DESCRIPTION
+POSIX 消息队列允许进程以消息的形式交换数据。 此 API 不同于 System V 消息队列
+(\fBmsgget\fP(2)、\fBmsgsnd\fP(2)、\fBmsgrcv\fP(2) 等提供的 API，但提供类似的功能。
+.PP
+使用 \fBmq_open\fP(3) 创建和打开消息队列; 这个函数返回一个 \fImessage queue descriptor\fP
+(\fImqd_t\fP)，在后面的调用中用来引用打开的消息队列。 每个消息队列由 \fI/somename\fP 形式的名称标识; 也就是说，一个最多
+\fBNAME_MAX\fP (即 255) 个字符的以空字符结尾的字符串，由一个初始斜，字符串，组成，后跟一个或多个字符，其中没有一个是斜，字符串。
+两个进程可以通过将相同的名称传递给 \fBmq_open\fP(3) 来操作同一个队列。
+.PP
+使用 \fBmq_send\fP(3) 和 \fBmq_receive\fP(3) 将消息传入和传出队列。 当进程使用完队列后，它使用 \fBmq_close\fP(3)
+将其关闭，当不再需要队列时，可以使用 \fBmq_unlink\fP(3) 将其删除。 可以使用 \fBmq_getattr\fP(3) 和
+\fBmq_setattr\fP(3) 检索和 (在某些情况下) 修改队列属性。 进程可以使用 \fBmq_notify\fP(3)
+请求异步通知消息到达先前为空的队列。
+.PP
+消息队列描述符是对 \fIopen message queue description\fP 的引用 (参见 \fBopen\fP(2)).  在
+\fBfork\fP(2) 之后，子进程继承其父进程的消息队列描述符的副本，这些描述符与父进程中相应的消息队列描述符引用相同的打开消息队列描述。
+两个进程中相应的消息队列描述符共享与打开的消息队列描述相关联的标志 (\fImq_flags\fP)。
+.PP
+每条消息都有一个关联的 \fIpriority\fP，并且消息总是首先传递给优先级最高的接收进程。 消息优先级范围从 0 (low) 到
+\fIsysconf(_SC_MQ_PRIO_MAX)\ \-\ 1\fP (high)。 在 Linux
+上，\fIsysconf(_SC_MQ_PRIO_MAX)\fP 返回 32768，但 POSIX.1 只要求实现至少支持 0 到 31 范围内的优先级;
+一些实现只提供这个范围。
+.PP
+本节的其余部分描述了 POSIX 消息队列的 Linux 实现的一些具体细节。
+.SS "Library interfaces and system calls"
+在大多数情况下，上面列出的 \fBmq_*\fP() 库接口是在同名的底层系统调用之上实现的。 与该方案的偏差如下表所示:
+.RS
+.TS
+lB lB
+l l.
+Library interface	System call
+mq_close(3)	close(2)
+mq_getattr(3)	mq_getsetattr(2)
+mq_notify(3)	mq_notify(2)
+mq_open(3)	mq_open(2)
+mq_receive(3)	mq_timedreceive(2)
+mq_send(3)	mq_timedsend(2)
+mq_setattr(3)	mq_getsetattr(2)
+mq_timedreceive(3)	mq_timedreceive(2)
+mq_timedsend(3)	mq_timedsend(2)
+mq_unlink(3)	mq_unlink(2)
+.TE
+.RE
+.SS Versions
+从 Linux 2.6.6 开始支持 POSIX 消息队列。 自 glibc 2.3.4 以来就提供了 glibc 支持。
+.SS "Kernel configuration"
+可通过 \fBCONFIG_POSIX_MQUEUE\fP 内核配置选项配置对 POSIX 消息队列的支持。 默认情况下启用此选项。
+.SS Persistence
+POSIX 消息队列具有内核持久性: 如果不被 \fBmq_unlink\fP(3) 移除，消息队列将一直存在，直到系统关闭。
+.SS Linking
+使用 POSIX 消息队列 API 的程序必须使用 \fIcc \-lrt\fP 进行编译，以链接到实时库 \fIlibrt\fP。
+.SS "/proc interfaces"
+以下接口可用于限制 POSIX 消息队列消耗的内核内存量以及设置新消息队列的默认属性:
+.TP 
+\fI/proc/sys/fs/mqueue/msg_default\fP (since Linux 3.5)
+此文件定义了在使用对 \fBmq_open\fP(3) 的调用创建队列 (其中 \fIattr\fP 指定为 NULL) 时用于新队列 \fImq_maxmsg\fP
+设置的值。 此文件的默认值为 10。 最小值和最大值与 \fI/proc/sys/fs/mqueue/msg_max\fP 相同。 新队列的默认
+\fImq_maxmsg\fP 值将是 \fImsg_default\fP 和 \fImsg_max\fP 中的较小者。 Linux 2.6.28
+之前，\fImq_maxmsg\fP 默认为 10; 从 Linux 2.6.28 到 Linux 3.4，默认是为 \fImsg_max\fP 限制定义的值。
+.TP 
+\fI/proc/sys/fs/mqueue/msg_max\fP
+该文件可用于查看和更改队列中最大消息数的上限值。 该值作为给定 \fBmq_open\fP(3) 的 \fIattr\->mq_maxmsg\fP
+参数的上限。 \fImsg_max\fP 的默认值为 10。 最小值为 1 (Linux 2.6.28 之前为 10)。 上限为
+\fBHARD_MSGMAX\fP。 特权进程 (\fBCAP_SYS_RESOURCE\fP) 忽略 \fImsg_max\fP 限制，但 \fBHARD_MSGMAX\fP
+上限仍然存在。
+.IP
+\fBHARD_MSGMAX\fP 的定义在内核版本中发生了变化:
+.RS
+.IP \[bu] 3
+到 Linux 2.6.32: \fI131072\~/\~sizeof(void\~*)\fP
+.IP \[bu]
+Linux 2.6.33 至 Linux 3.4: \fI(32768\~*\~sizeof(void\~*) / 4)\fP
+.IP \[bu]
+.\" commit 5b5c4d1a1440e94994c73dddbad7be0676cd8b9a
+从 Linux 3.5 开始: 65,536
+.RE
+.TP 
+\fI/proc/sys/fs/mqueue/msgsize_default\fP (since Linux 3.5)
+此文件定义了在使用对 \fBmq_open\fP(3) 的调用创建队列 (其中 \fIattr\fP 指定为 NULL) 时用于新队列 \fImq_msgsize\fP
+设置的值。 此文件的默认值为 8192 (bytes)。 最小值和最大值与 \fI/proc/sys/fs/mqueue/msgsize_max\fP 相同。
+如果 \fImsgsize_default\fP 超过 \fImsgsize_max\fP，则新队列的默认 \fImq_msgsize\fP 值上限为
+\fImsgsize_max\fP 限制。 Linux 2.6.28 之前，默认 \fImq_msgsize\fP 为 8192; 从 Linux 2.6.28 到
+Linux 3.4，默认是为 \fImsgsize_max\fP 限制定义的值。
+.TP 
+\fI/proc/sys/fs/mqueue/msgsize_max\fP
+该文件可用于查看和更改最大消息大小的上限。 该值作为给定 \fBmq_open\fP(3) 的 \fIattr\->mq_msgsize\fP 参数的上限。
+\fImsgsize_max\fP 的默认值为 8192 字节。 最小值为 128 (Linux 2.6.28 之前为 8192)。
+\fImsgsize_max\fP 的上限因内核版本而异:
+.RS
+.IP \[bu] 3
+Linux 2.6.28 之前，上限为 \fBINT_MAX\fP。
+.IP \[bu]
+从 Linux 2.6.28 到 Linux 3.4，限制为 1,048,576。
+.IP \[bu]
+从 Linux 3.5 开始，限制为 16,777,216 (\fBHARD_MSGSIZEMAX\fP)。
+.RE
+.IP
+特权进程 (\fBCAP_SYS_RESOURCE\fP) 忽略 \fImsgsize_max\fP 限制，但是，自 Linux 3.5 起，特权进程强制执行
+\fBHARD_MSGSIZEMAX\fP 上限。
+.TP 
+\fI/proc/sys/fs/mqueue/queues_max\fP
+该文件可用于查看和更改系统范围内对可创建的消息队列数量的限制。 \fIqueues_max\fP 的默认值为 256。 \fIqueues_max\fP
+限额不设上限; 特权进程 (\fBCAP_SYS_RESOURCE\fP) 可以超过限制 (但请参见 BUGS)。
+.SS "Resource limit"
+\fBgetrlimit\fP(2) 中描述了 \fBRLIMIT_MSGQUEUE\fP 资源限制，它限制了属于进程的真实用户 ID
+的所有消息队列可以消耗的空间量。
+.SS "Mounting the message queue filesystem"
+在 Linux 上，消息队列是在虚拟文件系统中创建的。 (其他实现也可能提供这样的特性但细节可能有所不同。) 可以使用以下命令 (由超级用户)
+安装此文件系统:
+.PP
+.in +4n
+.EX
+#\fB mkdir /dev/mqueue\fP
+#\fB mount \-t mqueue none /dev/mqueue\fP
+.EE
+.in
+.PP
+粘性位在挂载目录上自动启用。
+.PP
+挂载文件系统后，可以使用通常用于文件的命令 (例如，\fBls\fP(1) 和 \fBrm\fP(1))) 查看和操作系统上的消息队列。
+.PP
+目录中每个文件的内容都包含一行，其中包含有关队列的信息:
+.PP
+.in +4n
+.EX
+$\fB cat /dev/mqueue/mymq\fP
+QSIZE:129     NOTIFY:2    SIGNO:0    NOTIFY_PID:8260
+.EE
+.in
+.PP
+这些字段如下:
+.TP 
+\fBQSIZE\fP
+队列中所有消息中的数据字节数 (但请参见 BUGS)。
+.TP 
+\fBNOTIFY_PID\fP
+如果这是非零的，则具有此 PID 的进程已使用 \fBmq_notify\fP(3) 注册异步消息通知，其余字段描述通知如何发生。
+.TP 
+\fBNOTIFY\fP
+通知方式: 0 为 \fBSIGEV_SIGNAL\fP; 1 是 \fBSIGEV_NONE\fP; 2 是 \fBSIGEV_THREAD\fP。
+.TP 
+\fBSIGNO\fP
+用于 \fBSIGEV_SIGNAL\fP 的信号编号。
+.SS "Linux implementation of message queue descriptors"
+在 Linux 上，一个消息队列描述符实际上是一个文件描述符。 (POSIX 不需要这样的实现。) 这意味着可以使用
+\fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7) 监视消息队列描述符。 这不是便携式的。
+.PP
+close\-on\-exec 标志 (参见 \fBopen\fP(2)) 自动设置在 \fBmq_open\fP(2) 返回的文件描述符上。
+.SS "IPC namespaces"
+有关 POSIX 消息队列对象和 IPC 命名空间交互的讨论，请参见 \fBipc_namespaces\fP(7)。
+.SH NOTES
+System V 消息队列 (\fBmsgget\fP(2)、\fBmsgsnd\fP(2)、\fBmsgrcv\fP(2) 等) 是用于在进程之间交换消息的旧 API。
+POSIX 消息队列提供了比 System V 消息队列更好的设计接口; 另一方面，POSIX 消息队列不如 System V 消息队列广泛使用
+(尤其是在旧系统上)。
+.PP
+Linux 目前 (Linux 2.6.26) 不支持将访问控制列表 (ACLs) 用于 POSIX 消息队列。
+.SH BUGS
+从 Linux 3.5 到 Linux 3.14，内核对 \fIqueues_max\fP 限制可以提高到的值施加了 1024
+(\fBHARD_QUEUESMAX\fP) 的上限，甚至对特权进程也强制执行上限。 这个上限值在 Linux 3.14 中被移除，稳定的 Linux
+3.5.x 到 Linux 3.13.x 的补丁也移除了上限。
+.PP
+.\" commit d6629859b36d
+.\" commit de54b9ac253787c366bbfb28d901a31954eb3511
+正如最初实现 (和记录) 一样，QSIZE 字段显示消息队列中所有消息的 (user\-supplied) 字节总数。 Linux 3.5
+中的某些更改无意中改变了行为，因此该字段还包括用于存储队列中消息的内核开销字节数。 这种行为回归在 Linux 4.2 (以及更早的稳定内核系列)
+中得到纠正，因此计数再次仅包括队列中消息中用户数据的字节数。
+.SH EXAMPLES
+\fBmq_notify\fP(3) 中显示了各种消息队列函数的使用示例。
+.SH "SEE ALSO"
+\fBgetrlimit\fP(2), \fBmq_getsetattr\fP(2), \fBpoll\fP(2), \fBselect\fP(2),
+\fBmq_close\fP(3), \fBmq_getattr\fP(3), \fBmq_notify\fP(3), \fBmq_open\fP(3),
+\fBmq_receive\fP(3), \fBmq_send\fP(3), \fBmq_unlink\fP(3), \fBepoll\fP(7),
+\fBnamespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

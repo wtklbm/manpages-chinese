@@ -1,0 +1,340 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH IPTABLES 8 "" "iptables 1.8.9" "iptables 1.8.9"
+.\"
+.\" Man page written by Herve Eychenne <rv@wallfire.org> (May 1999)
+.\" It is based on ipchains page.
+.\" TODO: add a word for protocol helpers (FTP, IRC, SNMP-ALG)
+.\"
+.\" ipchains page by Paul ``Rusty'' Russell March 1997
+.\" Based on the original ipfwadm man page by Jos Vos <jos@xos.nl>
+.\"
+.\"	This program is free software; you can redistribute it and/or modify
+.\"	it under the terms of the GNU General Public License as published by
+.\"	the Free Software Foundation; either version 2 of the License, or
+.\"	(at your option) any later version.
+.\"
+.\"	This program is distributed in the hope that it will be useful,
+.\"	but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\"	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\"	GNU General Public License for more details.
+.\"
+.\"	You should have received a copy of the GNU General Public License
+.\"	along with this program; if not, write to the Free Software
+.\"	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"
+.\"
+.SH NAME
+iptables/ip6tables\(em 用于 IPv4/IPv6 数据包过滤和 NAT 的管理工具
+.SH SYNOPSIS
+\fBiptables\fP [\fB\-t\fP \fItable\fP] {\fB\-A\fP|\fB\-C\fP|\fB\-D\fP|\fB\-V\fP} \fIchain\fP
+\fIrule\-specification\fP
+.P
+\fBip6tables\fP [\fB\-t\fP \fItable\fP] {\fB\-A\fP|\fB\-C\fP|\fB\-D\fP|\fB\-V\fP} \fIchain rule\-specification\fP
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-I\fP \fIchain\fP [\fIrulenum\fP]
+\fIrule\-specification\fP
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-R\fP \fIchain rulenum rule\-specification\fP
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-D\fP \fIchain rulenum\fP
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-S\fP [\fIchain\fP [\fIrulenum\fP]]
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] {\fB\-F\fP|\fB\-L\fP|\fB\-Z\fP} [\fIchain\fP [\fIrulenum\fP]]
+[\fIoptions...\fP]
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-N\fP \fIchain\fP
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-X\fP [\fIchain\fP]
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-P\fP \fIchain target\fP
+.PP
+\fBiptables\fP [\fB\-t\fP \fItable\fP] \fB\-E\fP \fIold\-chain\-name new\-chain\-name\fP
+.PP
+rule\-specification = [\fImatches...\fP] [\fItarget\fP]
+.PP
+match = \fB\-m\fP \fImatchname\fP [\fIper\-match\-options\fP]
+.PP
+target = \fB\-j\fP \fItargetname\fP [\fIper\-target\-options\fP]
+.SH DESCRIPTION
+\fBIptables\fP 和 \fBip6tables\fP 用于在 Linux 内核中建立、维护和检查 IPv4 和 IPv6 包过滤规则表。
+可以定义几个不同的表。 每个表都包含许多内置链，也可能包含用户定义的链。
+.PP
+每个链都是可以匹配一组数据包的规则列表。 每个规则指定如何处理匹配的数据包。 这称为 `目标`，它可能是跳转到同一表中的用户定义链。
+.SH TARGETS
+防火墙规则指定数据包和目标的标准。 如果数据包不匹配，则检查链中的下一条规则;
+如果匹配，则下一条规则由目标的值指定，该目标可以是用户定义链的名称、\fBiptables\-extensions\fP(8) 中描述的目标之一，或者特殊值
+\fBACCEPT\fP、\fBDROP\fP 或 \fBRETURN\fP 之一。
+.PP
+\fBACCEPT\fP 表示让数据包通过。 \fBDROP\fP 的意思是扔掉地板上的数据包。 \fBRETURN\fP 表示停止遍历此链并从前一个 (calling)
+链中的下一条规则继续。 如果到达内置链的末尾或匹配了目标 \fBRETURN\fP 的内置链中的规则，则链策略指定的目标将决定数据包的命运。
+.SH TABLES
+目前有五个独立的表 (哪些表随时存在取决于内核配置选项和存在哪些模块)。
+.TP 
+\fB\-t\fP, \fB\-\-table\fP \fItable\fP
+此选项指定命令应操作的数据包匹配表。 如果内核配置了自动模块加载，则将尝试为该表加载适当的模块 (如果该表不存在)。
+
+表格如下:
+.RS
+.TP  .4i
+\fBfilter\fP:
+这是默认表 (如果没有传递 \-t 选项)。它包含内置链 \fBINPUT\fP (用于发往本地套接字的数据包)、\fBFORWARD\fP (用于通过 box
+路由的数据包) 和 \fBOUTPUT\fP (用于本地生成的数据包)。
+.TP 
+\fBnat\fP:
+当遇到创建新连接的数据包时，将查询此表。 它由四个内置函数组成: \fBPREROUTING\fP (用于在数据包进入时立即更改)、\fBINPUT\fP
+(用于更改发往本地套接字的数据包)、\fBOUTPUT\fP (用于在路由之前更改本地生成的数据包) 和 \fBPOSTROUTING\fP
+(用于更改数据包因为他们要出去了)。 IPv6 NAT 支持自内核 3.7 起可用。
+.TP 
+\fBmangle\fP:
+该表用于专门的数据包更改。 在内核 2.4.17 之前，它有两个内置链: \fBPREROUTING\fP (用于在路由之前更改传入数据包) 和
+\fBOUTPUT\fP (用于在路由之前更改本地生成的数据包)。 自内核 2.4.18 以来，还支持其他三个内置链: \fBINPUT\fP (用于进入 box
+本身的数据包)、\fBFORWARD\fP (用于更改通过 box 路由的数据包) 和 \fBPOSTROUTING\fP (用于更改即将离开的数据包).
+.TP 
+\fBraw\fP:
+该表主要用于结合 NOTRACK 目标配置连接跟踪豁免。 它在具有更高优先级的 netfilter 钩子，上注册，因此在 ip_conntrack
+或任何其他 IP 表之前被调用。 它提供以下内置链: \fBPREROUTING\fP (用于通过任何网络接口到达的数据包) \fBOUTPUT\fP
+(用于本地进程生成的数据包)
+.TP 
+\fBsecurity\fP:
+此表用于强制访问控制 (MAC) 网络规则，例如由 \fBSECMARK\fP 和 \fBCONNSECMARK\fP 目标启用的规则。 强制访问控制由 Linux
+安全模块 (例如 SELinux) 实现。 安全表在过滤表之后调用，允许过滤表中的任意自主访问控制 (DAC) 规则在 MAC 规则之前生效。
+此表提供以下内置链: \fBINPUT\fP (用于进入 box 本身的数据包)、\fBOUTPUT\fP (用于在路由之前更改本地生成的数据包) 和
+\fBFORWARD\fP (用于更改通过 box 路由的数据包)。
+.RE
+.SH OPTIONS
+\fBiptables\fP 和 \fBip6tables\fP 识别的选项可以分为几个不同的组。
+.SS COMMANDS
+这些选项指定要执行的所需操作。除非下面另有说明，否则只能在命令行中指定其中之一。对于长版本的命令和选项名称，您只需使用足够的字母以确保
+\fBiptables\fP 可以将其与所有其他选项区分开来。
+.TP 
+\fB\-A\fP, \fB\-\-append\fP \fIchain rule\-specification\fP
+将一个或多个规则追加到所选链的末尾。 当源名称或者目标名称解析为多个地址时，将为每个可能的地址组合添加一条规则。
+.TP 
+\fB\-C\fP, \fB\-\-check\fP \fIchain rule\-specification\fP
+检查所选链中是否存在符合规范的规则。此命令使用与 \fB\-D\fP 相同的逻辑来查找匹配的条目，但不会更改现有的 iptables
+配置并使用其退出代码来指示成功或失败。
+.TP 
+\fB\-D\fP, \fB\-\-delete\fP \fIchain rule\-specification\fP
+.ns
+.TP 
+\fB\-D\fP, \fB\-\-delete\fP \fIchain rulenum\fP
+从所选链中删除一个或多个规则。 此命令有两个版本: 规则可以指定为链中的数字 (第一个规则从 1 开始) 或要匹配的规则。
+.TP 
+\fB\-I\fP, \fB\-\-insert\fP \fIchain\fP [\fIrulenum\fP] \fIrule\-specification\fP
+在选定的链中插入一个或多个规则作为给定的规则编号。 因此，如果规则编号为 1，则将规则或规则插入到链的头部。 如果未指定规则编号，这也是默认值。
+.TP 
+\fB\-R\fP, \fB\-\-replace\fP \fIchain rulenum rule\-specification\fP
+替换所选链中的规则。 如果源或者目标名称解析为多个地址，该命令将失败。 规则编号从 1.
+.TP 
+\fB\-L\fP, \fB\-\-list\fP [\fIchain\fP]
+列出所选链中的所有规则。 如果未选择任何链，则会列出所有链。像所有其他 iptables 命令一样，它适用于指定的表 (过滤器是默认值)，因此 NAT
+规则被列出
+.nf
+ iptables \-t nat \-n \-L
+.fi
+请注意，它通常与 \fB\-n\fP 选项一起使用，以避免长时间的反向 DNS 查找。 指定 \fB\-Z\fP (zero)
+选项也是合法的，在这种情况下，chain(s) 将自动列出并归零。 确切的输出受给定的其他参数的影响。在您使用之前，将抑制确切的规则
+.nf
+ iptables \-L \-v
+.fi
+或 \fBiptables\-save\fP(8)。
+.TP 
+\fB\-S\fP, \fB\-\-list\-rules\fP [\fIchain\fP]
+打印所选链中的所有规则。 如果没有选择任何链，所有链都会像 iptables\-save 一样被打印出来。与所有其他 iptables
+命令一样，它适用于指定的表 (过滤器是默认值)。
+.TP 
+\fB\-F\fP, \fB\-\-flush\fP [\fIchain\fP]
+刷新选定的链 (如果没有给出，则表中的所有链)。 这相当于把所有的规则都一条条删掉了。
+.TP 
+\fB\-Z\fP, \fB\-\-zero\fP [\fIchain\fP [\fIrulenum\fP]]
+将所有链中的数据包和字节计数器归零，或仅将给定的链或链中的给定规则归零。指定 \fB\-L\fP、\fB\-\-list\fP (list)
+选项也是合法的，以便在清除之前立即查看计数器。(往上看。)
+.TP 
+\fB\-N\fP, \fB\-\-new\-chain\fP \fIchain\fP
+按给定名称创建新的用户定义链。 必须已经没有该名称的目标。
+.TP 
+\fB\-X\fP, \fB\-\-delete\-chain\fP [\fIchain\fP]
+删除指定的链。 链条不能有引用。 如果有，您必须先删除或替换引用规则，然后才能删除链。 链必须是空的，即不包含任何规则。
+如果没有给出参数，它将删除表中的所有空链。只能使用 \fBiptables\-nft\fP 删除空的内置链。
+.TP 
+\fB\-P\fP, \fB\-\-policy\fP \fIchain target\fP
+将内置 (non\-user\-defined) 链的策略设置为给定目标。 策略目标必须是 \fBACCEPT\fP 或 \fBDROP\fP。
+.TP 
+\fB\-E\fP, \fB\-\-rename\-chain\fP \fIold\-chain new\-chain\fP
+将用户指定的链重命名为用户提供的名称。 这是装饰性的，对桌子的结构没有影响。
+.TP 
+\fB\-h\fP
+帮助。给出命令语法的 (目前非常简短的) 描述。
+.SS PARAMETERS
+以下参数构成规则规范 (用于添加、删除、插入、替换和追加命令)。
+.TP 
+\fB\-4\fP, \fB\-\-ipv4\fP
+此选项对 iptables 和 iptables\-restore 没有影响。 如果使用 \fB\-4\fP 选项的规则与 (且仅与)
+ip6tables\-restore 一起插入，它将被静默忽略。任何其他用途都会引发错误。此选项允许单个规则文件中的 IPv4 和 IPv6 规则与
+iptables\-restore 和 ip6tables\-restore 一起使用。
+.TP 
+\fB\-6\fP, \fB\-\-ipv6\fP
+如果使用 \fB\-6\fP 选项的规则与 (且仅与) iptables\-restore
+一起插入，它将被静默忽略。任何其他用途都会引发错误。此选项允许单个规则文件中的 IPv4 和 IPv6 规则与 iptables\-restore 和
+ip6tables\-restore 一起使用。 此选项对 ip6tables 和 ip6tables\-restore 没有影响。
+.TP 
+[\fB!\fP] \fB\-p\fP, \fB\-\-protocol\fP \fIprotocol\fP
+要检查的规则或数据包的协议。 指定的协议可以是
+\fBtcp\fP、\fBudp\fP、\fBudplite\fP、\fBicmp\fP、\fBicmpv6\fP,\fBesp\fP、\fBah\fP、\fBsctp\fP、\fBmh\fP 或特殊关键字
+"\fBall\fP" 之一，也可以是一个数值，代表这些协议之一或不同的协议。 来自 /etc/protocols 的协议名称也是允许的。 协议反转测试前的
+"!" 参数。 数字零相当于 \fBall\fP。"\fBall\fP" 将匹配所有协议，省略此选项时默认使用。 请注意，在 ip6tables 中，不允许使用
+\fBesp\fP 以外的 IPv6 扩展标头。 \fBesp\fP 和 \fBipv6\-nonext\fP 可以与内核版本 2.6.11 或更高版本一起使用。
+数字零相当于 \fBall\fP，这意味着您不能直接测试值 0 的协议字段。要匹配 HBH 标头，即使它是最后一个，也不能使用 \fB\-p 0\fP，但始终需要
+\fB\-m hbh\fP。
+.TP 
+[\fB!\fP] \fB\-s\fP, \fB\-\-source\fP \fIaddress\fP[\fB/\fP\fImask\fP][\fB,\fP\fI...\fP]
+来源规范。\fIAddress\fP 可以是网络名称、主机名、网络 IP 地址 (使用 \fB/\fP\fImask\fP) 或普通 IP
+地址。在将规则提交给内核之前，主机名只会被解析一次。 请注意，指定要通过远程查询 (如 DNS) 解析的任何名称是一个非常糟糕的主意。 \fImask\fP
+可以是 ipv4 网络掩码 (用于 iptables) 或普通数字，指定网络掩码左侧 1 的数量。 因此，\fI24\fP 的 iptables 掩码等同于
+\fI255.255.255.0\fP。 地址规范前的 "!" 参数会反转地址的含义。标志 \fB\-\-src\fP 是此选项的别名。 可以指定多个地址，但这将导致
+\fBexpand to multiple rules\fP (添加 \-A 时)，或将导致删除多个规则 (使用 \-D)。
+.TP 
+[\fB!\fP] \fB\-d\fP, \fB\-\-destination\fP \fIaddress\fP[\fB/\fP\fImask\fP][\fB,\fP\fI...\fP]
+目的地规范。 有关语法的详细说明，请参见 \fB\-s\fP (source) 标志的说明。 标志 \fB\-\-dst\fP 是此选项的别名。
+.TP 
+\fB\-m\fP, \fB\-\-match\fP \fImatch\fP
+指定要使用的匹配项，即测试特定属性的扩展模块。匹配集构成了调用目标的条件。按照命令行中指定的顺序从头到尾评估匹配项，并以短路方式工作，即如果一个扩展产生错误，评估将停止。
+.TP 
+\fB\-j\fP, \fB\-\-jump\fP \fItarget\fP
+这指定了规则的目标; 即，如果数据包匹配它该怎么办。 目标可以是用户定义的链
+(除了这条规则所在的链)，可以立即决定数据包命运的特殊内置目标之一，或者扩展 (参见下面的 \fBEXTENSIONS\fP)。 如果在规则中省略此选项
+(并且未使用 \fB\-g\fP)，则匹配规则将不会影响数据包的命运，但规则上的计数器会增加。
+.TP 
+\fB\-g\fP, \fB\-\-goto\fP \fIchain\fP
+这指定处理应在用户指定的链中继续。与 \-\-jump 选项不同，return 不会继续在此链中处理，而是在通过 \-\-jump 调用我们的链中继续处理。
+.TP 
+[\fB!\fP] \fB\-i\fP, \fB\-\-in\-interface\fP \fIname\fP
+接收数据包的接口名称 (仅适用于进入 \fBINPUT\fP、\fBFORWARD\fP 和 \fBPREROUTING\fP 链的数据包)。 当在接口名称前使用 "!"
+参数时，意义相反。 如果接口名称以 "+" 结尾，则以该名称开头的任何接口都将匹配。 如果省略此选项，将匹配任何接口名称。
+.TP 
+[\fB!\fP] \fB\-o\fP, \fB\-\-out\-interface\fP \fIname\fP
+将要发送数据包的接口名称 (对于进入 \fBFORWARD\fP、\fBOUTPUT\fP 和 \fBPOSTROUTING\fP 链的数据包)。 当在接口名称前使用
+"!" 参数时，意义相反。 如果接口名称以 "+" 结尾，则以该名称开头的任何接口都将匹配。 如果省略此选项，将匹配任何接口名称。
+.TP 
+[\fB!\fP] \fB\-f\fP, \fB\-\-fragment\fP
+这意味着该规则仅涉及分片数据包的第二个和更多 IPv4 片段。 由于无法分辨此类数据包 (或 ICMP 类型)
+的源端口或目标端口，因此此类数据包将不匹配指定它们的任何规则。 当 "!" 参数在 "\-f"
+标志之前时，规则将只匹配头部片段或未分段的数据包。此选项特定于 IPv4，在 ip6tables 中不可用。
+.TP 
+\fB\-c\fP, \fB\-\-set\-counters\fP \fIpackets bytes\fP
+这使管理员能够初始化规则的数据包和字节计数器 (在 \fBINSERT\fP、\fBAPPEND\fP、\fBREPLACE\fP 操作期间)。
+.SS "OTHER OPTIONS"
+可以指定以下附加选项:
+.TP 
+\fB\-v\fP, \fB\-\-verbose\fP
+详细输出。 此选项使列表命令显示接口名称、规则选项 (如果有) 和 TOS 掩码。 还列出了数据包和字节计数器，后缀 'K'、'M' 或 'G'
+分别表示 1000、1,000,000 和 1,000,000,000 乘数 (但请参见 \fB\-x\fP 标志以更改此值)。
+对于追加、插入、删除和替换，这会导致打印有关一条或多条规则的详细信息。\fB\-v\fP may be specified multiple times to
+possible emit more detailed debug 语句: 指定两次，\fBiptables\-legacy\fP 将转储 libiptc
+中的表信息和条目，\fBiptables\-nft\fP 转储 netlink (VM 代码) 演示中的规则。 指定三次，\fBiptables\-nft\fP
+还将转储发送到内核的任何网络链接消息。
+.TP 
+\fB\-V\fP, \fB\-\-version\fP
+显示程序版本和使用的内核 API。
+.TP 
+\fB\-w\fP, \fB\-\-wait\fP [\fIseconds\fP]
+等待 xtables 锁定。 为了防止程序的多个实例并发运行，将尝试在启动时获取排他锁。 默认情况下，如果无法获得锁，程序将退出。 此选项将使程序等待
+(无限期或可选的 \fIseconds\fP)，直到可以获得独占锁。
+.TP 
+\fB\-n\fP, \fB\-\-numeric\fP
+数字输出。 IP 地址和端口号将以数字格式打印。 默认情况下，程序会尝试将它们显示为主机名、网络名或服务 (只要适用)。
+.TP 
+\fB\-x\fP, \fB\-\-exact\fP
+展开数字。 显示数据包和字节计数器的准确值，而不是仅显示 K (1000 的倍数) M (1000K 的倍数) 或 G (1000M 的倍数)
+中的四舍五入数。 此选项仅与 \fB\-L\fP 命令相关。
+.TP 
+\fB\-\-line\-numbers\fP
+列出规则时，将行号添加到每个规则的开头，对应于该规则在链中的位置。
+.TP 
+\fB\-\-modprobe=\fP\fIcommand\fP
+在链中添加或插入规则时，使用 \fIcommand\fP 加载任何必要的模块 (目标、匹配扩展等)。
+
+.SH "LOCK FILE"
+iptables 使用 \fI/run/xtables.lock\fP 文件在启动时获取独占锁。
+
+\fBXTABLES_LOCKFILE\fP 环境变量可用于覆盖默认设置。
+
+.SH "MATCH AND TARGET EXTENSIONS"
+.PP
+iptables 可以使用扩展包匹配和目标模块。 \fBiptables\-extensions\fP(8) 联机帮助页中提供了这些列表。
+.SH DIAGNOSTICS
+各种错误消息被打印到标准错误。 退出代码为 0 表示功能正常。 似乎由无效或滥用命令行参数引起的错误会导致退出代码 2，而其他错误会导致退出代码 1.
+.SH BUGS
+虫子? 这是什么? ;\-) 那么，您可能想看看 http://bugzilla.netfilter.org/ 如果 \fBiptables\fP 发现它是作为
+setuid\-to\-root 程序调用的，它会立即退出并返回错误代码 111。 iptables 不能以这种方式安全使用，因为它信任在运行时加载的共享库
+(匹配项、目标)，可以使用环境变量设置搜索路径。
+.SH "COMPATIBILITY WITH IPCHAINS"
+这个 \fBiptables\fP 与 Rusty Russell 的 ipchains 非常相似。 主要区别在于 \fBINPUT\fP 和 \fBOUTPUT\fP
+链仅分别针对进入本地主机和源自本地主机的数据包进行遍历。 因此，每个数据包仅通过三个链中的一个 (回环流量除外，它同时涉及 INPUT 和 OUTPUT
+链) ; 以前转发的数据包会通过所有三个。
+.PP
+另一个主要区别是 \fB\-i\fP 指的是输入接口; \fB\-o\fP 指的是输出接口，对于进入 \fBFORWARD\fP 链的数据包都可以使用。
+.PP
+各种形式的 NAT 已经被分离出来; \fBiptables\fP 在使用默认的 `过滤器` 表时是一个纯数据包过滤器，带有可选的扩展模块。
+这应该可以简化之前对 IP 伪装和数据包过滤组合的混淆。 因此以下选项的处理方式不同:
+.nf
+ \-j 伪装
+ \-M \-S
+ \-M \-L
+.fi
+iptables 还有其他几个变化。
+.SH "SEE ALSO"
+\fBiptables\-apply\fP(8), \fBiptables\-save\fP(8), \fBiptables\-restore\fP(8),
+\fBiptables\-extensions\fP(8),
+.PP
+packet\-filtering\-HOWTO 详细介绍了 iptables 用于数据包过滤的用法，NAT\-HOWTO 详细介绍了
+NAT，netfilter\-extensions\-HOWTO 详细介绍了标准发行版中没有的扩展，netfilter\-hacking\-HOWTO
+详细介绍了 netfilter 的内部结构。
+.br
+请参见 \fBhttp://www.netfilter.org/\fP。
+.SH AUTHORS
+Rusty Russell 最初是在与 Michael Neuling 协商后编写 iptables 的。
+.PP
+Marc Boucher 通过游说 iptables 中的泛型数据包选择框架让 Rusty 放弃了 ipnatctl，然后编写了 mangle
+表、所有者匹配、标记的东西，到处跑来跑去做很酷的事情。
+.PP
+James Morris 编写了 TOS 目标，并与 tos 匹配。
+.PP
+Jozsef Kadlecsik 编写了 REJECT 目标。
+.PP
+Harald Welte 编写了 ULOG 和 NFQUEUE 目标、新的 libiptc，以及 TTL、DSCP、ECN 匹配和目标。
+.PP
+Netfilter 核心团队是: Jozsef Kadlecsik、Pablo Neira Ayuso、Eric Leblond、Florian
+Westphal 和 Arturo Borrero Gonzalez。 名誉核心团队成员有: Marc Boucher、Martin
+Josefsson、Yasuyuki Kozakai、James Morris、Harald Welte 和 Rusty Russell。
+.PP
+.\" .. and did I mention that we are incredibly cool people?
+.\" .. sexy, too ..
+.\" .. witty, charming, powerful ..
+.\" .. and most of all, modest ..
+最初由 Herve Eychenne <rv@wallfire.org> 编写的手册页。
+.SH VERSION
+.PP
+本手册页适用于 iptables/ip6tables 1.8.9。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

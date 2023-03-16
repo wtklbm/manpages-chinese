@@ -1,0 +1,2024 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.NETDEV 5 "" "systemd 253" systemd.network
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.netdev \- 虚拟网络设备配置
+.SH SYNOPSIS
+.PP
+\fInetdev\fP\&.netdev
+.SH DESCRIPTION
+.PP
+一个纯 ini 样式的文本文件，对虚拟网络设备的配置进行编码，由 \fBsystemd\-networkd\fP(8)\& 使用。有关语法 \&
+的一般说明，请参见 \fBsystemd.syntax\fP(7)。
+.PP
+主虚拟网络设备文件的扩展名必须是 \&.netdev; 其他扩展被忽略 \&。一旦 networkd 启动
+\&，就会创建虚拟网络设备。如果具有指定名称的 netdev 已经存在，networkd 将按原样使用它而不是创建它自己的 \&。请注意，预先存在的
+netdev 的设置不会被 networkd\& 更改。
+.PP
+\&.netdev 文件是从位于系统网络目录 /usr/lib/systemd/network 和
+/usr/local/lib/systemd/network、易失性运行时网络目录 /run/systemd/network 和本地管理网络目录
+/etc/network\& 中的文件中读取的。所有配置文件都按字母数字顺序集中排序和处理，无论它们位于哪个目录
+\&。但是，具有相同文件名的文件会相互替换 \&。建议每个文件名都以数字为前缀 (e\&.g\&. 10\-vlan\&.netdev)\&。否则，由
+\fBsystemd\-network\-generator.service\fP(8) 生成的 \&.netdev 文件可能优先于用户配置的文件
+\&。/etc/ 中的文件具有最高优先级，/run/ 中的文件优先于 /usr/lib/\&
+中的同名文件。如果需要，这可用于使用本地文件覆盖系统提供的配置文件 \&。作为一种特殊情况，空文件 (文件大小为 0) 或指向 /dev/null
+的同名符号链接会完全禁用配置文件 (它是 "masked") \&。
+.PP
+与 netdev 文件 foo\&.netdev 一起，"drop\-in" 目录 foo\&.netdev\&.d/ 可能存在 \&。该目录中所有后缀为
+"\&.conf" 的文件将按字母数字顺序合并，并在主文件本身被解析后进行解析 \&。这对于更改或添加配置设置很有用，而无需修改主配置文件
+\&。每个丢弃 \- in 文件必须有适当的节标题 \&。
+.PP
+除了 /etc/systemd/network，丢弃 \- in "\&.d" 目录可以放在 /usr/lib/systemd/network 或
+/run/systemd/network 目录下 \&。/etc/ 中的插入文件优先于 /run / 中的文件，而 /run / 中的文件又优先于
+/usr/lib/\& 中的文件。任何这些目录下的插入文件都优先于位于任何位置的主 netdev 文件。(当然，由于 /run / 是临时的，而
+/usr/lib/ 是供供应商使用的，因此不太可能在这些地方使用丢弃 \- ins\&。)
+.SH "SUPPORTED NETDEV KINDS"
+.PP
+\&.netdev 文件中可以配置以下几种虚拟网络设备:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Supported kinds of virtual network devices\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Kind
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+\fIbond\fP
+T}:T{
+A bond device is an aggregation of all its slave devices\&. See \m[blue]\fBLinux Ethernet Bonding Driver HOWTO\fP\m[]\&\s-2\u[1]\d\s+2 for details\&.
+T}
+T{
+\fIbridge\fP
+T}:T{
+A bridge device is a software switch, and each of its slave devices and the bridge itself are ports of the switch\&.
+T}
+T{
+\fIdummy\fP
+T}:T{
+A dummy device drops all packets sent to it\&.
+T}
+T{
+\fIgre\fP
+T}:T{
+A Level 3 GRE tunnel over IPv4\&. See \m[blue]\fBRFC 2784\fP\m[]\&\s-2\u[2]\d\s+2 for details\&. Name "gre0" should not be used, as the kernel creates a device with this name when the corresponding kernel module is loaded\&.
+T}
+T{
+\fIgretap\fP
+T}:T{
+A Level 2 GRE tunnel over IPv4\&. Name "gretap0" should not be used, as the kernel creates a device with this name when the corresponding kernel module is loaded\&.
+T}
+T{
+\fIerspan\fP
+T}:T{
+ERSPAN mirrors traffic on one or more source ports and delivers the mirrored traffic to one or more destination ports on another switch\&. The traffic is encapsulated in generic routing encapsulation (GRE) and is therefore routable across a layer 3 network between the source switch and the destination switch\&. Name "erspan0" should not be used, as the kernel creates a device with this name when the corresponding kernel module is loaded\&.
+T}
+T{
+\fIip6gre\fP
+T}:T{
+A Level 3 GRE tunnel over IPv6\&.
+T}
+T{
+\fIip6tnl\fP
+T}:T{
+An IPv4 or IPv6 tunnel over IPv6
+T}
+T{
+\fIip6gretap\fP
+T}:T{
+A Level 2 GRE tunnel over IPv6\&.
+T}
+T{
+\fIipip\fP
+T}:T{
+An IPv4 over IPv4 tunnel\&.
+T}
+T{
+\fIipvlan\fP
+T}:T{
+An IPVLAN device is a stacked device which receives packets from its underlying device based on IP address filtering\&.
+T}
+T{
+\fIipvtap\fP
+T}:T{
+An IPVTAP device is a stacked device which receives packets from its underlying device based on IP address filtering and can be accessed using the tap user space interface\&.
+T}
+T{
+\fImacvlan\fP
+T}:T{
+A macvlan device is a stacked device which receives packets from its underlying device based on MAC address filtering\&.
+T}
+T{
+\fImacvtap\fP
+T}:T{
+A macvtap device is a stacked device which receives packets from its underlying device based on MAC address filtering\&.
+T}
+T{
+\fIsit\fP
+T}:T{
+An IPv6 over IPv4 tunnel\&.
+T}
+T{
+\fItap\fP
+T}:T{
+A persistent Level 2 tunnel between a network device and a device node\&.
+T}
+T{
+\fItun\fP
+T}:T{
+A persistent Level 3 tunnel between a network device and a device node\&.
+T}
+T{
+\fIveth\fP
+T}:T{
+An Ethernet tunnel between a pair of network devices\&.
+T}
+T{
+\fIvlan\fP
+T}:T{
+A VLAN is a stacked device which receives packets from its underlying device based on VLAN tagging\&. See \m[blue]\fBIEEE 802\&.1Q\fP\m[]\&\s-2\u[3]\d\s+2 for details\&.
+T}
+T{
+\fIvti\fP
+T}:T{
+An IPv4 over IPSec tunnel\&.
+T}
+T{
+\fIvti6\fP
+T}:T{
+An IPv6 over IPSec tunnel\&.
+T}
+T{
+\fIvxlan\fP
+T}:T{
+A virtual extensible LAN (vxlan), for connecting Cloud computing deployments\&.
+T}
+T{
+\fIgeneve\fP
+T}:T{
+A GEneric NEtwork Virtualization Encapsulation (GENEVE) netdev driver\&.
+T}
+T{
+\fIl2tp\fP
+T}:T{
+A Layer 2 Tunneling Protocol (L2TP) is a tunneling protocol used to support virtual private networks (VPNs) or as part of the delivery of services by ISPs\&. It does not provide any encryption or confidentiality by itself
+T}
+T{
+\fImacsec\fP
+T}:T{
+Media Access Control Security (MACsec) is an 802\&.1AE IEEE industry\-standard security technology that provides secure communication for all traffic on Ethernet links\&. MACsec provides point\-to\-point security on Ethernet links between directly connected nodes and is capable of identifying and preventing most security threats\&.
+T}
+T{
+\fIvrf\fP
+T}:T{
+A Virtual Routing and Forwarding (\m[blue]\fBVRF\fP\m[]\&\s-2\u[4]\d\s+2) interface to create separate routing and forwarding domains\&.
+T}
+T{
+\fIvcan\fP
+T}:T{
+The virtual CAN driver (vcan)\&. Similar to the network loopback devices, vcan offers a virtual local CAN interface\&.
+T}
+T{
+\fIvxcan\fP
+T}:T{
+The virtual CAN tunnel driver (vxcan)\&. Similar to the virtual ethernet driver veth, vxcan implements a local CAN traffic tunnel between two virtual CAN network devices\&. When creating a vxcan, two vxcan devices are created as pair\&. When one end receives the packet it appears on its pair and vice versa\&. The vxcan can be used for cross namespace communication\&.
+T}
+T{
+\fIwireguard\fP
+T}:T{
+WireGuard Secure Network Tunnel\&.
+T}
+T{
+\fInlmon\fP
+T}:T{
+A Netlink monitor device\&. Use an nlmon device when you want to monitor system Netlink messages\&.
+T}
+T{
+\fIfou\fP
+T}:T{
+Foo\-over\-UDP tunneling\&.
+T}
+T{
+\fIxfrm\fP
+T}:T{
+A virtual tunnel interface like vti/vti6 but with several advantages\&.
+T}
+T{
+\fIifb\fP
+T}:T{
+The Intermediate Functional Block (ifb) pseudo network interface acts as a QoS concentrator for multiple different sources of traffic\&.
+T}
+T{
+\fIbareudp\fP
+T}:T{
+Bare UDP tunnels provide a generic L3 encapsulation support for tunnelling different L3 protocols like MPLS, IP etc\&. inside of an UDP tunnel\&.
+T}
+T{
+\fIbatadv\fP
+T}:T{
+\m[blue]\fBB\&.A\&.T\&.M\&.A\&.N\&. Advanced\fP\m[]\&\s-2\u[5]\d\s+2 is a routing protocol for multi\-hop mobile ad\-hoc networks which operates on layer 2\&.
+T}
+T{
+\fIipoib\fP
+T}:T{
+An IP over Infiniband subinterface\&.
+T}
+T{
+\fIwlan\fP
+T}:T{
+A virtual wireless network (WLAN) interface\&.
+T}
+.TE
+.sp 1
+.SH "[MATCH] SECTION OPTIONS"
+.PP
+仅当 [Match] 部分与当前环境匹配，或者该部分为空 \& 时，才会创建虚拟网络设备。接受以下密钥:
+.PP
+\fIHost=\fP
+.RS 4
+与主机的主机名或机器 ID 匹配。详见 \fBsystemd.unit\fP(5) 中的 \fIConditionHost=\fP\&。当以感叹号 ("!")
+为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIVirtualization=\fP
+.RS 4
+检查系统是否在虚拟化环境中执行，并可选择测试是否是特定实现 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionVirtualization=\fP\&。当以感叹号 ("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值
+\&。
+.RE
+.PP
+\fIKernelCommandLine=\fP
+.RS 4
+检查是否设置了特定的内核命令行选项 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionKernelCommandLine=\fP\&。当以感叹号 ("!") 为前缀时，结果取反
+\&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIKernelVersion=\fP
+.RS 4
+检查内核版本 (由 \fBuname \-r\fP) 报告) 是否与特定表达式匹配 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionKernelVersion=\fP\&。当以感叹号 ("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值
+\&。
+.RE
+.PP
+\fICredential=\fP
+.RS 4
+检查指定的凭据是否已传递给 systemd\-udevd\&.service 服务 \&。有关详细信息，请参见 \m[blue]\fBSystem and Service Credentials\fP\m[]\&\s-2\u[6]\d\s+2\&。当以感叹号 ("!") 为前缀时，结果取反
+\&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIArchitecture=\fP
+.RS 4
+检查系统是否在特定架构上运行 \&。详见 \fBsystemd.unit\fP(5) 中的 \fIConditionArchitecture=\fP\&。当以感叹号
+("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.PP
+\fIFirmware=\fP
+.RS 4
+检查系统是否在具有指定固件的机器上运行 \&。详见 \fBsystemd.unit\fP(5) 中的
+\fIConditionFirmware=\fP\&。当以感叹号 ("!") 为前缀时，结果取反 \&。如果分配了空字符串，则会清除先前分配的值 \&。
+.RE
+.SH "[NETDEV] SECTION OPTIONS"
+.PP
+[NetDev] 部分接受以下键:
+.PP
+\fIDescription=\fP
+.RS 4
+netdev\& 的自由格式描述。
+.RE
+.PP
+\fIName=\fP
+.RS 4
+创建 netdev\& 时使用的接口名称。此设置是强制性的 \&。
+.RE
+.PP
+\fIKind=\fP
+.RS 4
+netdev 种类 \&。此设置是强制性的 \&。请参见 "Supported netdev kinds" 部分以获取有效密钥 \&。
+.RE
+.PP
+\fIMTUBytes=\fP
+.RS 4
+为设备设置的最大传输元字节 \&。支持常用的后缀 K、M、G，并将其理解为 1024\& 的基数。对于 "tun" 或 "tap"
+设备，[NetDev] 部分当前不支持 \fIMTUBytes=\fP 设置 \&。请在对应的 \fBsystemd.network\fP(5) 文件 \& 的
+[Link] 段指定。
+.RE
+.PP
+\fIMACAddress=\fP
+.RS 4
+指定用于设备的 MAC 地址，或采用特殊值 `none`\&。当 "none"、\fBsystemd\-networkd\fP 不为设备请求 MAC
+地址时，内核会分配一个随机的 MAC 地址 \&。对于 "tun"、"tap" 或 "l2tp" 设备，[NetDev] 部分中的
+\fIMACAddress=\fP 设置不受支持，将被忽略 \&。请在对应的 \fBsystemd.network\fP(5) 文件 \& 的 [Link]
+段指定。如果不设置该选项，"vlan" 设备继承 master 接口的 MAC 地址 \&。对于其他类型的
+netdevs，如果未设置此选项，则根据接口名称和 \fBmachine\-id\fP(5)\& 生成 MAC 地址。
+.sp
+请注意，即使指定了 "none"，\fBsystemd\-udevd\fP 也会为设备分配永久 MAC 地址，因为 99\-default\&.link 有
+\fIMACAddressPolicy=persistent\fP\&。因此，如果不需要 MAC 地址分配，也有必要为设备创建自定义 \&.link 文件
+\&。
+.RE
+.SH "[BRIDGE] SECTION OPTIONS"
+.PP
+[Bridge] 部分仅适用于 "bridge" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIHelloTimeSec=\fP
+.RS 4
+HelloTimeSec 指定根网桥和指定网桥发出的两个 hello 数据包之间的秒数 \&。Hello
+数据包用于在整个桥接局域网中传递有关拓扑的信息。
+.RE
+.PP
+\fIMaxAgeSec=\fP
+.RS 4
+MaxAgeSec 指定最大消息年龄的秒数。如果最后看到的 (received) hello
+数据包超过这个秒数，有问题的网桥将开始接管程序，试图成为根网桥本身 \&。
+.RE
+.PP
+\fIForwardDelaySec=\fP
+.RS 4
+ForwardDelaySec 指定在进入 Forwarding 状态之前花费在每个 Listening 和 Learning 状态的秒数。
+.RE
+.PP
+\fIAgeingTimeSec=\fP
+.RS 4
+这指定了从该 MAC 地址收到数据包后 MAC 地址将保留在转发数据库中的秒数 \&。
+.RE
+.PP
+\fIPriority=\fP
+.RS 4
+网桥的优先级 \&。0 到 65535\& 之间的整数。较低的值意味着较高的优先级 \&。具有最低优先级的网桥将被选为根网桥 \&。
+.RE
+.PP
+\fIGroupForwardMask=\fP
+.RS 4
+一个表示为整数的 16 位位掩码，它允许转发具有 802\&.1D 保留地址 (01:80:C2:00:00:0X)\& 的链路本地帧。在指定的位掩码和
+2^X 的幂运算之间执行逻辑与，2^X 是 MAC 地址 \& 的最后一个八位字节的低半字节。例如，值为 8 将允许转发寻址到
+01:80:C2:00:00:03 (802\&.1X PAE)\& 的帧。
+.RE
+.PP
+\fIDefaultPVID=\fP
+.RS 4
+这指定了新连接的网桥端口的默认端口 VLAN ID。将其设置为 1\&...4094 或 "none" 范围内的整数以禁用 PVID\&。
+.RE
+.PP
+\fIMulticastQuerier=\fP
+.RS 4
+采用布尔值 \&。此设置控制内核中的 IFLA_BR_MCAST_QUERIER 选项。如果启用，内核将从零源地址发送一般 ICMP 查询
+\&。此特性应该允许在启动时更快地收敛，但它会导致一些多播感知交换机行为不当并中断多播数据包的转发。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIMulticastSnooping=\fP
+.RS 4
+采用布尔值 \&。此设置控制内核中的 IFLA_BR_MCAST_SNOOPING 选项。如果启用，IGMP 侦听会监视主机和多播路由器之间的
+Internet 组管理协议 (IGMP) 流量 \&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIVLANFiltering=\fP
+.RS 4
+采用布尔值 \&。此设置控制内核中的 IFLA_BR_VLAN_FILTERING 选项。如果启用，网桥将以 VLAN 过滤模式启动
+\&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIVLANProtocol=\fP
+.RS 4
+允许设置用于 VLAN 过滤的协议。采用 \fB802\&.1q\fP 或 \fB802\&.1ad\fP，并默认为未设置和内核 \* (使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fISTP=\fP
+.RS 4
+采用布尔值 \&。这将启用网桥 \*(Aqs 生成树协议 (STP)\&。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIMulticastIGMPVersion=\fP
+.RS 4
+允许更改网桥 \*(Aqs 多播 Internet 组管理协议 (IGMP) 版本 \&。取整数 2 或 3\&。取消设置时，内核 \* (将使用
+Aqs 默认值 \&。
+.RE
+.SH "[VLAN] SECTION OPTIONS"
+.PP
+[VLAN] 部分仅适用于 "vlan" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIId=\fP
+.RS 4
+要使用的 VLAN ID\&。0\&...4094\& 范围内的整数。此设置是强制性的 \&。
+.RE
+.PP
+\fIProtocol=\fP
+.RS 4
+允许设置用于 VLAN 接口的协议 \&。采用 "802\&.1q" 或 "802\&.1ad"，并默认为未设置和内核 \* (使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIGVRP=\fP
+.RS 4
+采用布尔值 \&。泛型 VLAN 注册协议 (GVRP) 是一种允许在网络上自动学习 VLAN 的协议。取消设置时，内核 \* (将使用 Aqs 默认值
+\&。
+.RE
+.PP
+\fIMVRP=\fP
+.RS 4
+采用布尔值 \&。Multiple VLAN Registration Protocol (MVRP) 以前称为 GARP VLAN
+Registration Protocol (GVRP) 是一种基于标准的第 2 层网络协议，用于在交换机上自动配置 VLAN 信息 \&。它在
+802\&.1Q\-2005\& 的 802\&.1ak 修正案中定义。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fILooseBinding=\fP
+.RS 4
+采用布尔值 \&。VLAN 松散绑定模式，其中只有操作状态从父级传递到关联的 VLAN，但 VLAN 设备状态不会改变 \&。取消设置时，内核 \*
+(将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIReorderHeader=\fP
+.RS 4
+采用布尔值 \&。启用后，将使用 VLAN 重新排序标头，并且 VLAN 接口的行为类似于物理接口 \&。取消设置时，内核 \* (将使用 Aqs
+默认值 \&。
+.RE
+.PP
+\fIEgressQOSMaps=\fP, \fIIngressQOSMaps=\fP
+.RS 4
+分别定义 Linux 内部数据包优先级 (\fBSO_PRIORITY\fP) 到传出帧和传入帧的 VLAN 报头 PCP 字段的映射
+\&。采用以空格分隔的整数对列表，其中每个整数必须在 1\&...4294967294 范围内，格式为
+`from`\-`to`，e\&.g\&.，`21\-7 45\-5`\&. 注意 "from" 必须大于或等于 "to"\&。取消设置时，内核 \*
+(将使用 Aqs 默认值 \&。
+.RE
+.SH "[MACVLAN] SECTION OPTIONS"
+.PP
+[MACVLAN] 部分仅适用于 "macvlan" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIMode=\fP
+.RS 4
+要使用的 MACVLAN 模式 \&。支持的选项是 "private"、"vepa"、"bridge"、"passthru" 和 `source`\&。
+.RE
+.PP
+\fISourceMACAddress=\fP
+.RS 4
+MACVLAN\& 上允许的以空格分隔的远程硬件地址列表。此选项仅在源代码模式下有效 \&。使用完整的冒号、连字符或点分隔的十六进制
+\&。此选项可能会出现多次，在这种情况下，列表会被合并 \&。如果将空字符串分配给此选项，则重置在此之前定义的硬件地址列表 \&。默认为取消设置 \&。
+.RE
+.PP
+\fIBroadcastMulticastQueueLength=\fP
+.RS 4
+指定 broadcast/multicast 数据包的接收队列长度 \&。0\&...4294967294\& 范围内的无符号整数。默认为取消设置
+\&。
+.RE
+.SH "[MACVTAP] SECTION OPTIONS"
+.PP
+[MACVTAP] 部分适用于 "macvtap" 类型的网络开发，并接受与 [MACVLAN]\& 相同的密钥。
+.SH "[IPVLAN] SECTION OPTIONS"
+.PP
+[IPVLAN] 部分仅适用于 "ipvlan" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIMode=\fP
+.RS 4
+要使用的 IPVLAN 模式 \&。支持的选项是 `L2`、`L3` 和 `L3S`\&。
+.RE
+.PP
+\fIFlags=\fP
+.RS 4
+要使用的 IPVLAN 标志 \&。支持的选项是 `bridge`、`private` 和 `vepa`\&。
+.RE
+.SH "[IPVTAP] SECTION OPTIONS"
+.PP
+[IPVTAP] 部分仅适用于 "ipvtap" 类型的网络开发，并接受与 [IPVLAN]\& 相同的密钥。
+.SH "[VXLAN] SECTION OPTIONS"
+.PP
+[VXLAN] 部分仅适用于 "vxlan" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIVNI=\fP
+.RS 4
+VXLAN 网络标识符 (或 VXLAN 网段 ID) \&。采用 1\&...16777215\& 范围内的数字。
+.RE
+.PP
+\fIRemote=\fP
+.RS 4
+配置目标 IP 地址 \&。
+.RE
+.PP
+\fILocal=\fP
+.RS 4
+配置本地 IP 地址 \&。必须是 VXLAN 接口底层接口上的地址，或者特殊值
+"ipv4_link_local"、"ipv6_link_local"、"dhcp4"、"dhcp6"、"slaac"\&
+之一。如果指定了其中一个特殊值，则将使用与底层接口上相应类型相匹配的地址 \&。默认为取消设置 \&。
+.RE
+.PP
+\fIGroup=\fP
+.RS 4
+配置 VXLAN 组播组 IP 地址 \&。VXLAN 的所有成员必须使用相同的多播组地址 \&。
+.RE
+.PP
+\fITOS=\fP
+.RS 4
+vxlan 接口的服务类型字节值 \&。
+.RE
+.PP
+\fITTL=\fP
+.RS 4
+虚拟可扩展局域网数据包上的固定生存时间 N。采用 "inherit" 或 0\&...255\& 范围内的数字。0 是一个特殊值，表示继承内部协议
+\*(Aqs TTL 值 \&。 "inherit" 表示会继承外层协议 \*(Aqs TTL 值 \&.
+.RE
+.PP
+\fIMacLearning=\fP
+.RS 4
+采用布尔值 \&。为真时，启用动态 MAC 学习以发现远程 MAC 地址 \&。
+.RE
+.PP
+\fIFDBAgeingSec=\fP
+.RS 4
+内核获知的 Forwarding Database 条目的生命周期，以秒为单位 \&。
+.RE
+.PP
+\fIMaximumFDBEntries=\fP
+.RS 4
+配置 FDB 条目的最大数量 \&。
+.RE
+.PP
+\fIReduceARPProxy=\fP
+.RS 4
+采用布尔值 \&。当为真时，网桥连接的 VXLAN 隧道端点代表远程分布式覆盖虚拟以太网
+\m[blue]\fB(DOVE)\fP\m[]\&\s-2\u[7]\d\s+2 客户端响应来自本地网桥的 ARP 请求。默认为 false\&。
+.RE
+.PP
+\fIL2MissNotification=\fP
+.RS 4
+采用布尔值 \&。当为真时，启用 netlink LLADDR 未命中通知 \&。
+.RE
+.PP
+\fIL3MissNotification=\fP
+.RS 4
+采用布尔值 \&。为真时，启用 netlink IP 地址丢失通知 \&。
+.RE
+.PP
+\fIRouteShortCircuit=\fP
+.RS 4
+采用布尔值 \&。当为真时，路由短路被打开 \&。
+.RE
+.PP
+\fIUDPChecksum=\fP
+.RS 4
+采用布尔值 \&。当为 true 时，在执行 VXLAN/IPv4 时传输 UDP 校验和被打开 \&。
+.RE
+.PP
+\fIUDP6ZeroChecksumTx=\fP
+.RS 4
+采用布尔值 \&。当为真时，在 VXLAN/IPv6 中发送零校验和被打开 \&。
+.RE
+.PP
+\fIUDP6ZeroChecksumRx=\fP
+.RS 4
+采用布尔值 \&。当为真时，在 VXLAN/IPv6 中接收零校验和被打开 \&。
+.RE
+.PP
+\fIRemoteChecksumTx=\fP
+.RS 4
+采用布尔值 \&。当为 true 时，VXLAN 的远程传输校验和卸载打开 \&。
+.RE
+.PP
+\fIRemoteChecksumRx=\fP
+.RS 4
+采用布尔值 \&。为真时，VXLAN 中的远程接收校验和卸载打开 \&。
+.RE
+.PP
+\fIGroupPolicyExtension=\fP
+.RS 4
+采用布尔值 \&。为真时，它会基于 VXLAN\& 跨网络对等点启用组策略 VXLAN 扩展安全标签机制。关于组策略 VXLAN 的详细信息，请参见
+\m[blue]\fBVXLAN Group Policy\fP\m[]\&\s-2\u[8]\d\s+2 文档 \&。默认为 false\&。
+.RE
+.PP
+\fIGenericProtocolExtension=\fP
+.RS 4
+采用布尔值 \&。当为真时，泛型协议扩展扩展现有的 VXLAN 协议以提供协议类型、OAM 和版本控制功能 \&。关于 VXLAN GPE Header
+的详细信息，请参见 \m[blue]\fBGeneric Protocol Extension for VXLAN\fP\m[]\&\s-2\u[9]\d\s+2 文档 \&。如果未指定目标端口并且设置了泛型协议扩展，则使用默认端口 4790\&。默认为
+false\&。
+.RE
+.PP
+\fIDestinationPort=\fP
+.RS 4
+配置默认目标 UDP 端口 \&。如果未指定目标端口，则将使用 Linux 内核默认值 \&。设置为 4789 以获得 IANA 分配值 \&。
+.RE
+.PP
+\fIPortRange=\fP
+.RS 4
+配置 VXLAN\& 的源端口范围。内核根据流量分配源 UDP 端口，帮助接收者做负载均衡。如果未设置此选项，则使用本地 UDP 端口的正常范围 \&。
+.RE
+.PP
+\fIFlowLabel=\fP
+.RS 4
+指定要在传出数据包中使用的流标签 \&。有效范围为 0\-1048575\&。
+.RE
+.PP
+\fIIPDoNotFragment=\fP
+.RS 4
+允许在传出数据包中设置 IPv4 Do not Fragment (DF) 位，或从 IPv4 内部标头继承其值 \&。采用布尔值，或
+`继承`\&。如果封装协议为 IPv6\&，则设置为 "inherit"。取消设置时，内核 \* (将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIIndependent=\fP
+.RS 4
+采用布尔值 \&。为真时，创建 vxlan 接口时没有任何底层网络接口 \&。默认为 false，这意味着要创建的 VXLAN 需要使用
+\fIVXLAN=\fP 请求此 VXLAN 接口的 \&.network 文件 \&。
+.RE
+.SH "[GENEVE] SECTION OPTIONS"
+.PP
+[GENEVE] 部分仅适用于 "geneve" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIId=\fP
+.RS 4
+指定要使用的虚拟网络标识符 (VNI)，一个介于 0 和 16777215\& 之间的数字。此字段是必填字段 \&。
+.RE
+.PP
+\fIRemote=\fP
+.RS 4
+指定要在传出数据包中使用的单播目标 IP 地址 \&。
+.RE
+.PP
+\fITOS=\fP
+.RS 4
+指定要在传出数据包中使用的 TOS 值 \&。取 1 到 255\& 之间的数字。
+.RE
+.PP
+\fITTL=\fP
+.RS 4
+接受与 [VXLAN] 部分相同的值，除了当未设置或设置为 0 时，内核 \* (将使用 Aqs 默认值，这意味着数据包 TTL 将从
+/proc/ip_default_ttl\&.
+.RE
+.PP
+\fIUDPChecksum=\fP
+.RS 4
+采用布尔值 \&。为真时，指定为通过 IPv4\& 传输的数据包计算 UDP 校验和。
+.RE
+.PP
+\fIUDP6ZeroChecksumTx=\fP
+.RS 4
+采用布尔值 \&。如果为真，则跳过通过 IPv6\& 传输的数据包的 UDP 校验和计算。
+.RE
+.PP
+\fIUDP6ZeroChecksumRx=\fP
+.RS 4
+采用布尔值 \&。如果为真，则允许通过 IPv6 传入的 UDP 数据包具有零校验和字段 \&。
+.RE
+.PP
+\fIDestinationPort=\fP
+.RS 4
+指定目标端口 \&。默认为 6081\&。如果未设置或分配空字符串，则使用默认端口 6081\&。
+.RE
+.PP
+\fIFlowLabel=\fP
+.RS 4
+指定要在传出数据包中使用的流标签 \&。
+.RE
+.PP
+\fIIPDoNotFragment=\fP
+.RS 4
+接受与 [VXLAN] 部分 \& 中相同的密钥。
+.RE
+.SH "[BAREUDP] SECTION OPTIONS"
+.PP
+[BareUDP] 部分仅适用于 "bareudp" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIDestinationPort=\fP
+.RS 4
+指定目标 UDP 端口 (在 1\&...65535 范围内) \&。这是强制性的 \&。
+.RE
+.PP
+\fIEtherType=\fP
+.RS 4
+指定 L3 协议 \&。采用 "ipv4"、"ipv6"、"mpls\-uc" 或 `mpls\-mc`\& 之一。这是强制性的 \&。
+.RE
+.SH "[L2TP] SECTION OPTIONS"
+.PP
+[L2TP] 部分仅适用于 "l2tp" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fITunnelId=\fP
+.RS 4
+指定隧道标识符 \&。采用 1\&...4294967295\& 范围内的数字。使用的值必须与在对等端使用的 "PeerTunnelId="
+值匹配。此设置是强制性的 \&。
+.RE
+.PP
+\fIPeerTunnelId=\fP
+.RS 4
+指定对端隧道 ID\&。采用 1\&...4294967295\& 范围内的数字。使用的值必须与在对等端使用的 "TunnelId="
+值匹配。此设置是强制性的 \&。
+.RE
+.PP
+\fIRemote=\fP
+.RS 4
+指定远程对等点的 IP 地址 \&。此设置是强制性的 \&。
+.RE
+.PP
+\fILocal=\fP
+.RS 4
+指定本地接口的 IP 地址 \&。采用 IP 地址或特殊值 "auto"、"static" 或 `动态`\&。可选地，可以在 "@"
+之后指定本地接口的名称，例如 \&.g\&。 "192\&.168\&.0\&.1@eth0" 或
+`auto@eth0`\&。指定地址后，本地或指定接口必须具有该地址，并且远程地址必须可通过本地地址 \& 访问。如果为
+"auto"，则将使用远程地址可访问的本地或指定接口上的地址之一 \&。同样，如果设置了 "static" 或
+"dynamic"，则将使用静态或动态地址之一 \&。默认为 `自动`\&。
+.RE
+.PP
+\fIEncapsulationType=\fP
+.RS 4
+指定隧道的封装类型。采用 "udp" 或 `ip`\& 之一。
+.RE
+.PP
+\fIUDPSourcePort=\fP
+.RS 4
+指定要用于隧道的 UDP 源端口。选择 UDP 封装时 \*(Aqs mandatory\&. 选择 IP 封装时忽略 \&。
+.RE
+.PP
+\fIUDPDestinationPort=\fP
+.RS 4
+指定目标端口 \&。选择 UDP 封装时 \*(Aqs mandatory\&. 选择 IP 封装时忽略 \&。
+.RE
+.PP
+\fIUDPChecksum=\fP
+.RS 4
+采用布尔值 \&。为真时，指定为通过 IPv4\& 传输的数据包计算 UDP 校验和。
+.RE
+.PP
+\fIUDP6ZeroChecksumTx=\fP
+.RS 4
+采用布尔值 \&。如果为真，则跳过通过 IPv6\& 传输的数据包的 UDP 校验和计算。
+.RE
+.PP
+\fIUDP6ZeroChecksumRx=\fP
+.RS 4
+采用布尔值 \&。如果为真，则允许通过 IPv6 传入的 UDP 数据包具有零校验和字段 \&。
+.RE
+.SH "[L2TPSESSION] SECTION OPTIONS"
+.PP
+[L2TPSession] 部分仅适用于 "l2tp" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIName=\fP
+.RS 4
+指定会话的名称 \&。此设置是强制性的 \&。
+.RE
+.PP
+\fISessionId=\fP
+.RS 4
+指定会话标识符 \&。采用 1\&...4294967295\& 范围内的数字。使用的值必须与在对等端使用的 "SessionId="
+值匹配。此设置是强制性的 \&。
+.RE
+.PP
+\fIPeerSessionId=\fP
+.RS 4
+指定对等会话标识符 \&。采用 1\&...4294967295\& 范围内的数字。使用的值必须与在对等端使用的 "PeerSessionId="
+值匹配。此设置是强制性的 \&。
+.RE
+.PP
+\fILayer2SpecificHeader=\fP
+.RS 4
+指定会话的第 2 层特定标头类型 \&。"none" 或 `默认`\& 之一。默认为 `默认`\&。
+.RE
+.SH "[MACSEC] SECTION OPTIONS"
+.PP
+[MACsec] 部分仅适用于 "macsec" 类型的网络设备，并接受以下密钥:
+.PP
+\fIPort=\fP
+.RS 4
+指定要用于 MACsec 传输通道 \& 的端口。该端口用于制作安全的通道标识符 (SCI)\&。取 1 到 65535\& 之间的值。默认为取消设置
+\&。
+.RE
+.PP
+\fIEncrypt=\fP
+.RS 4
+采用布尔值 \&。为真时，启用加密 \&。默认为取消设置 \&。
+.RE
+.SH "[MACSECRECEIVECHANNEL] SECTION OPTIONS"
+.PP
+[MACsecReceiveChannel] 部分仅适用于 "macsec" 类型的网络设备，并接受以下密钥:
+.PP
+\fIPort=\fP
+.RS 4
+指定要用于 MACsec 接收通道 \& 的端口。该端口用于制作安全的通道标识符 (SCI)\&。取 1 到 65535\&
+之间的值。该选项是强制性的，默认情况下不设置 \&。
+.RE
+.PP
+\fIMACAddress=\fP
+.RS 4
+指定要用于 MACsec 接收通道 \& 的 MAC 地址。用于制作安全通信标识符 (SCI)\& 的 MAC 地址。此设置是强制性的，默认情况下不设置
+\&。
+.RE
+.SH "[MACSECTRANSMITASSOCIATION] SECTION OPTIONS"
+.PP
+[MACsecTransmitAssociation] 部分仅适用于 "macsec" 类型的网络设备，并接受以下密钥:
+.PP
+\fIPacketNumber=\fP
+.RS 4
+指定用于重放保护和构造初始化 vector (连同安全通道标识符 [SCI]) \& 的数据包编号。取值介于 1\-4,294,967,295\&
+之间。默认为取消设置 \&。
+.RE
+.PP
+\fIKeyId=\fP
+.RS 4
+指定密钥 \& 的标识。取一个 0\-255\& 之间的数字。该选项是强制性的，默认情况下不设置 \&。
+.RE
+.PP
+\fIKey=\fP
+.RS 4
+指定传输中使用的加密密钥通道 \&。必须在对等端配置相同的密钥 \(cqs 匹配接收通道 \&。此设置是强制性的，默认情况下不设置
+\&。采用以十六进制字符串编码的 128 位密钥，例如 `dffafc8d7b9a43d5b9a3dfbbf6a30c16`\&。
+.RE
+.PP
+\fIKeyFile=\fP
+.RS 4
+获取包含以十六进制字符串编码的 128 位密钥的文件的绝对路径，该文件将用于传输通道 \&。指定此选项时，忽略
+\fIKey=\fP\&。请注意，该文件必须可由用户 "systemd\-network" 读取，因此它应该是，e\&.g\&.，由具有 "0640"
+文件模式的 "root:systemd\-network" 所有 \&。如果路径引用文件系统中的 \fBAF_UNIX\fP
+流套接字，则会建立一个连接并从中读取密钥 \&。
+.RE
+.PP
+\fIActivate=\fP
+.RS 4
+采用布尔值 \&。如果启用，则安全关联被激活 \&。默认为取消设置 \&。
+.RE
+.PP
+\fIUseForEncoding=\fP
+.RS 4
+采用布尔值 \&。如果启用，则安全关联用于编码 \&。只有一个 [MACsecTransmitAssociation] 段可以启用此选项
+\&。启用时，隐含 \fIActivate=yes\fP\&。默认为取消设置 \&。
+.RE
+.SH "[MACSECRECEIVEASSOCIATION] SECTION OPTIONS"
+.PP
+[MACsecReceiveAssociation] 部分仅适用于 "macsec" 类型的网络设备，并接受以下密钥:
+.PP
+\fIPort=\fP
+.RS 4
+接受与 [MACsecReceiveChannel] 部分 \& 中相同的密钥。
+.RE
+.PP
+\fIMACAddress=\fP
+.RS 4
+接受与 [MACsecReceiveChannel] 部分 \& 中相同的密钥。
+.RE
+.PP
+\fIPacketNumber=\fP
+.RS 4
+接受与 [MACsecTransmitAssociation] 部分 \& 中相同的密钥。
+.RE
+.PP
+\fIKeyId=\fP
+.RS 4
+接受与 [MACsecTransmitAssociation] 部分 \& 中相同的密钥。
+.RE
+.PP
+\fIKey=\fP
+.RS 4
+接受与 [MACsecTransmitAssociation] 部分 \& 中相同的密钥。
+.RE
+.PP
+\fIKeyFile=\fP
+.RS 4
+接受与 [MACsecTransmitAssociation] 部分 \& 中相同的密钥。
+.RE
+.PP
+\fIActivate=\fP
+.RS 4
+接受与 [MACsecTransmitAssociation] 部分 \& 中相同的密钥。
+.RE
+.SH "[TUNNEL] SECTION OPTIONS"
+.PP
+[Tunnel] 部分仅适用于
+"ipip"、"sit"、"gre"、"gretap"、"ip6gre"、"ip6gretap"、"vti"、"vti6"、"ip6tnl" 和
+"erspan" 类型的网络开发，并接受以下键:
+.PP
+\fIExternal=\fP
+.RS 4
+取一个布尔值 \&。如果为 true，则隧道是外部控制的，也称为收集元数据模式，并且忽略下面的大多数设置，如 \fILocal=\fP 或
+\fIRemote=\fP\&。这意味着 \fIIndependent=\fP\&。默认为 false\&。
+.RE
+.PP
+\fILocal=\fP
+.RS 4
+隧道数据包的静态本地地址 \&。它必须是此主机的另一个接口上的地址，或特殊值
+"any"、"ipv4_link_local"、"ipv6_link_local"、"dhcp4"、"dhcp6" 和 `slaac`\&
+之一。如果指定了除 "any" 之外的特殊值之一，将使用与底层接口上相应类型匹配的地址 \&。默认为 `任何`\&。
+.RE
+.PP
+\fIRemote=\fP
+.RS 4
+隧道的远程端点 \&。采用 IP 地址或特殊值 `any`\&。
+.RE
+.PP
+\fITOS=\fP
+.RS 4
+隧道接口的服务类型字节值 \&。有关 TOS 的详细信息，请参见 \m[blue]\fBType of Service in the Internet Protocol Suite\fP\m[]\&\s-2\u[10]\d\s+2 文档 \&。
+.RE
+.PP
+\fITTL=\fP
+.RS 4
+隧道数据包上的固定生存时间 N\&。N 是 1\&...255\& 范围内的数字。0 是一个特殊值，表示数据包继承 TTL 值 \&。IPv4
+隧道的默认值为 0 (继承) \&。IPv6 隧道的默认值为 64\&。
+.RE
+.PP
+\fIDiscoverPathMTU=\fP
+.RS 4
+采用布尔值 \&。如果为真，则在隧道上启用路径 MTU 发现 \&。
+.RE
+.PP
+\fIIPv6FlowLabel=\fP
+.RS 4
+配置 20 位流标签 (参见 IPv6 标头中的 \m[blue]\fBRFC 6437\fP\m[]\&\s-2\u[11]\d\s+2) 字段 (参见
+\m[blue]\fBRFC 2460\fP\m[]\&\s-2\u[12]\d\s+2)，节点使用它来标记流的数据包 \&。它仅用于 IPv6 隧道
+\&。流标签为零用于指示未标记的数据包。它可以配置为 0\&...0xFFFFF 范围内的值，或设置为 "inherit"，在这种情况下使用原始流标签
+\&。
+.RE
+.PP
+\fICopyDSCP=\fP
+.RS 4
+采用布尔值 \&。当为真时，差分服务代码点 (DSCP) 字段将在解封装 IPv6 隧道数据包期间从外部标头复制到内部标头 \&。DSCP 是 IP
+数据包中的一个字段，可以将不同级别的服务分配给网络流量。默认为 `否`\&。
+.RE
+.PP
+\fIEncapsulationLimit=\fP
+.RS 4
+Tunnel Encapsulation Limit
+选项指定允许在数据包前面添加多少额外的封装级别。例如，包含限制值零的隧道封装限制选项意味着携带该选项的数据包在退出当前隧道之前不能进入另一个隧道
+\&。(参见 \m[blue]\fBRFC 2473\fP\m[]\&\s-2\u[13]\d\s+2)\&。有效范围是 0\&...255 和
+`无`\&。默认为 4\&。
+.RE
+.PP
+\fIKey=\fP
+.RS 4
+\fIKey=\fP 参数指定在 (\fIInputKey=\fP 和 \fIOutputKey=\fP)\& 两个方向上使用相同的密钥。\fIKey=\fP 是数字或类似
+IPv4 地址的点分四边形 \&。它在 IP XFRM (用于实现 IPsec 协议的框架) \& 中用作标记配置的 SAD/SPD
+条目作为查找键的一部分 (在数据和控制路径中)。有关详细信息，请参见 \m[blue]\fBip\-xfrm \(em transform configuration\fP\m[]\&\s-2\u[14]\d\s+2\&。它仅用于 VTI/VTI6、GRE、GRETAP 和 ERSPAN 隧道
+\&。
+.RE
+.PP
+\fIInputKey=\fP
+.RS 4
+\fIInputKey=\fP 参数指定用于输入 \& 的键。格式同 \fIKey=\fP\&。它仅用于 VTI/VTI6、GRE、GRETAP 和 ERSPAN
+隧道 \&。
+.RE
+.PP
+\fIOutputKey=\fP
+.RS 4
+\fIOutputKey=\fP 参数指定用于输出 \& 的键。格式同 \fIKey=\fP\&。它仅用于 VTI/VTI6、GRE、GRETAP 和 ERSPAN
+隧道 \&。
+.RE
+.PP
+\fIMode=\fP
+.RS 4
+"ip6tnl" 隧道可以处于三种模式之一: "ip6ip6" 用于 IPv6 over IPv6，"ipip6" 用于 IPv4 over IPv6
+或 "any" 用于 \&。
+.RE
+.PP
+\fIIndependent=\fP
+.RS 4
+采用布尔值 \&。如果为 false (默认值)，则始终在某些网络设备上创建隧道，并且需要使用 \fITunnel=\fP 请求此隧道的 \&.network
+文件才能创建隧道 \&。当为真时，隧道将独立于任何网络创建为 `tunnel@NONE`\&。
+.RE
+.PP
+\fIAssignToLoopback=\fP
+.RS 4
+采用布尔值 \&。如果设置为 "yes"，回环接口 "lo" 作为隧道接口的底层设备 \&。默认为 `否`\&。
+.RE
+.PP
+\fIAllowLocalRemote=\fP
+.RS 4
+采用布尔值 \&。当为 true 时，允许 \fIip6tnl\fP 设备上的隧道流量，其中远程端点是本地主机地址 \&。取消设置时，内核 \* (将使用
+Aqs 默认值 \&。
+.RE
+.PP
+\fIFooOverUDP=\fP
+.RS 4
+采用布尔值 \&。指定是否配置 \fIFooOverUDP=\fP 隧道 \&。默认为 false\&。这仅对 IPIP、SIT、GRE 和 GRETAP
+隧道生效。有关详细信息，请参见 \m[blue]\fBFoo over UDP\fP\m[]\&\s-2\u[15]\d\s+2
+.RE
+.PP
+\fIFOUDestinationPort=\fP
+.RS 4
+此设置指定用于封装的 UDP 目标端口。\fIFooOverUDP=yes\fP 时该字段必填，默认不设置 \&。
+.RE
+.PP
+\fIFOUSourcePort=\fP
+.RS 4
+此设置指定用于封装的 UDP 源端口。默认为 \fB0\fP\(em 即，数据包的源端口留给网络栈来决定 \&。
+.RE
+.PP
+\fIEncapsulation=\fP
+.RS 4
+接受与 [FooOverUDP] 部分中相同的密钥 \&。
+.RE
+.PP
+\fIIPv6RapidDeploymentPrefix=\fP
+.RS 4
+重新配置 \m[blue]\fBIPv6 Rapid Deployment\fP\m[]\&\s-2\u[16]\d\s+2 的隧道，也称为
+6rd\&。该值是一个特定于 ISP 的 IPv6 前缀，具有非零长度 \&。仅适用于 SIT 隧道 \&。
+.RE
+.PP
+\fIISATAP=\fP
+.RS 4
+采用布尔值 \&。如果设置，则将隧道配置为站点内自动隧道寻址协议 (ISATAP) 隧道 \&。仅适用于 SIT 隧道 \&。取消设置时，内核 \*
+(将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fISerializeTunneledPackets=\fP
+.RS 4
+采用布尔值 \&。如果设置为 yes，则数据包被序列化 \&。仅适用于 GRE、GRETAP 和 ERSPAN 隧道 \&。取消设置时，内核 \*
+(将使用 Aqs 默认值 \&。
+.RE
+.PP
+\fIERSPANVersion=\fP
+.RS 4
+指定 ERSPAN 版本号 \&。对于版本 0 (a\&.k\&.a\&. I 型) 取 0，对于版本 1 (a\&.k\&.a\&. II 型) 取
+1，或者对于版本 2 (a\&.k\&.a\&. 类型 III)\&. 默认为 1\&。
+.RE
+.PP
+\fIERSPANIndex=\fP
+.RS 4
+指定接口的 ERSPAN v1 索引字段 \&。采用 0\&...1048575 范围内的整数，它与 ERSPAN 流量相关联 \*(Aqs
+源端口和方向 \&。仅在 \fIERSPANVersion=1\fP\& 时使用。默认为 0\&。
+.RE
+.PP
+\fIERSPANDirection=\fP
+.RS 4
+指定 ERSPAN v2 镜像流量 \*(Aqs 方向 \&。采用 "ingress" 或 `出口`\&。仅在 \fIERSPANVersion=2\fP\&
+时使用。默认为 `入口`\&。
+.RE
+.PP
+\fIERSPANHardwareId=\fP
+.RS 4
+指定 ERSPAN v2 引擎的唯一标识符 \&。采用 0\&...63\& 范围内的整数。仅在 \fIERSPANVersion=2\fP\&
+时使用。默认为 0\&。
+.RE
+.SH "[FOOOVERUDP] SECTION OPTIONS"
+.PP
+[FooOverUDP] 部分仅适用于 "fou" 类型的网络开发人员并接受以下键:
+.PP
+\fIEncapsulation=\fP
+.RS 4
+指定用于将各种协议的网络数据包存储在 UDP 数据包中的封装机制。支持以下值: "FooOverUDP" 提供了最简单的 UDP 封装
+no\-frills 模型，它只是将数据包直接封装在 UDP 载荷，中 \&。 "GenericUDPEncapsulation"
+是泛型和可扩展封装，它允许封装任何 IP 协议的数据包和可选数据作为封装的一部分 \&。有关更多详细信息，请参见 \m[blue]\fBGeneric UDP Encapsulation\fP\m[]\&\s-2\u[17]\d\s+2\&。默认为 `FooOverUDP`\&。
+.RE
+.PP
+\fIPort=\fP
+.RS 4
+指定封装的数据包将到达的端口号 \&。这些数据包将被删除并手动反馈到网络栈中，并删除封装以发送到真正的目的地 \&。此选项是必需的 \&。
+.RE
+.PP
+\fIPeerPort=\fP
+.RS 4
+指定对端端口号 \&。默认为取消设置 \&。请注意，当对端端口设置时，"Peer=" 地址是必需的 \&。
+.RE
+.PP
+\fIProtocol=\fP
+.RS 4
+\fIProtocol=\fP 指定到达 UDP 端口的数据包的协议号 \&。\fIEncapsulation=FooOverUDP\fP
+时，该字段必填，默认不设置 \&。采用 IP 协议名称，例如 "gre" 或 "ipip"，或 1\&...255\&
+范围内的整数。\fIEncapsulation=GenericUDPEncapsulation\fP 时，这个一定不能指定 \&。
+.RE
+.PP
+\fIPeer=\fP
+.RS 4
+配置对端 IP 地址 \&。请注意，当设置对等地址时，"PeerPort=" 是必需的 \&。
+.RE
+.PP
+\fILocal=\fP
+.RS 4
+配置本地 IP 地址 \&。
+.RE
+.SH "[PEER] SECTION OPTIONS"
+.PP
+[Peer] 部分仅适用于 "veth" 类型的网络开发人员并接受以下键:
+.PP
+\fIName=\fP
+.RS 4
+创建 netdev\& 时使用的接口名称。此设置是强制性的 \&。
+.RE
+.PP
+\fIMACAddress=\fP
+.RS 4
+对端 MACAddress，如果不设置，与主接口 MAC 地址一样生成 \&。
+.RE
+.SH "[VXCAN] SECTION OPTIONS"
+.PP
+[VXCAN] 部分仅适用于 "vxcan" 类型的网络开发人员并接受以下密钥:
+.PP
+\fIPeer=\fP
+.RS 4
+创建 netdev\& 时使用的对等接口名称。此设置是强制性的 \&。
+.RE
+.SH "[TUN] SECTION OPTIONS"
+.PP
+[Tun] 部分仅适用于 "tun" 类型的网络开发人员，并接受以下密钥:
+.PP
+\fIMultiQueue=\fP
+.RS 4
+采用布尔值 \&。配置是否使用多个文件描述符 (queues) 来并行发送和接收包 \&。默认为 `否`\&。
+.RE
+.PP
+\fIPacketInfo=\fP
+.RS 4
+采用布尔值 \&。配置数据包是否应该在前面加上四个额外的字节 (两个标志字节和两个协议字节) \&。如果禁用，则表示数据包将是纯 IP 数据包
+\&。默认为 `否`\&。
+.RE
+.PP
+\fIVNetHeader=\fP
+.RS 4
+采用布尔值 \&。为 tun 或 tap 设备配置 IFF_VNET_HDR 标志。它允许发送和接收更大的泛型分段卸载 (GSO) 数据包
+\&。这可能会显着增加吞吐量 \&。默认为 `否`\&。
+.RE
+.PP
+\fIUser=\fP
+.RS 4
+用户授予对 /dev/net/tun 设备的访问权 \&。
+.RE
+.PP
+\fIGroup=\fP
+.RS 4
+组以授予对 /dev/net/tun 设备的访问权 \&。
+.RE
+.PP
+\fIKeepCarrier=\fP
+.RS 4
+采用布尔值 \&。如果启用，为了使接口保持其载体状态，接口的文件描述符保持打开 \&。这可能有助于将接口保持在运行状态，例如，当支持进程暂时关闭时
+\&。默认为 `否`\&。
+.RE
+.SH "[TAP] SECTION OPTIONS"
+.PP
+[Tap] 部分仅适用于类型为 "tap" 的网络开发，并接受与 [Tun] 部分相同的密钥 \&。
+.SH "[WIREGUARD] SECTION OPTIONS"
+.PP
+[WireGuard] 部分接受以下键:
+.PP
+\fIPrivateKey=\fP
+.RS 4
+接口的 Base64 编码私钥 \&。它可以使用 \fBwg genkey\fP 命令生成 (参见 \fBwg\fP(8))\&。此选项或
+\fIPrivateKeyFile=\fP 是使用 WireGuard\& 所必需的。请注意，因为此信息是保密的，您可能希望将 \&.netdev
+文件的权限设置为 "root:systemd\-network" 和 "0640" 文件模式 \&。
+.RE
+.PP
+\fIPrivateKeyFile=\fP
+.RS 4
+采用包含接口的 Base64 编码私钥的文件的绝对路径 \&。当指定此选项时，\fIPrivateKey=\fP 将被忽略 \&。请注意，该文件必须可由用户
+"systemd\-network" 读取，因此它应该是，e\&.g\&.，由具有 "0640" 文件模式的 "root:systemd\-network"
+所有 \&。如果路径引用文件系统中的 \fBAF_UNIX\fP 流套接字，则会建立一个连接并从中读取密钥 \&。
+.RE
+.PP
+\fIListenPort=\fP
+.RS 4
+设置用于侦听 \& 的 UDP 端口。取 1 到 65535 之间的值或 `自动`\&。如果指定 "auto"，则根据接口名称自动生成端口 \&。默认为
+`自动`\&。
+.RE
+.PP
+\fIFirewallMark=\fP
+.RS 4
+为来自此接口的传出 WireGuard 数据包设置防火墙标记 \&。取 1 到 4294967295\& 之间的数字。
+.RE
+.PP
+\fIRouteTable=\fP
+.RS 4
+到 \fIAllowedIPs=\fP\& 中指定地址的路由表标识符。采用 negative 布尔值、预定义名称 "default"、"main" 和
+"local" 之一、\fBnetworkd.conf\fP(5) 中 \fIRouteTable=\fP 中定义的名称或 1\&...4294967295\&
+范围内的数字。当 "off" 时，到 \fIAllowedIPs=\fP 设置中指定地址的路由将不会被配置 \&。默认为 false\&。当在
+[WireGuardPeer] 部分 \& 中指定相同的设置时，将忽略此设置。
+.RE
+.PP
+\fIRouteMetric=\fP
+.RS 4
+\fIAllowedIPs=\fP\& 中指定地址的路由优先级。采用 0\&...4294967295\& 范围内的整数。IPv4 地址默认为 0，IPv6
+地址默认为 1024\&。当在 [WireGuardPeer] 部分 \& 中指定相同的设置时，将忽略此设置。
+.RE
+.SH "[WIREGUARDPEER] SECTION OPTIONS"
+.PP
+[WireGuardPeer] 部分接受以下键:
+.PP
+\fIPublicKey=\fP
+.RS 4
+设置由 \fBwg pubkey\fP 计算的 Base64 编码公钥 (从私钥中查看 \fBwg\fP(8))，通常带外传输给配置文件的作者
+\&. 此选项对于本节是必需的 \&。
+.RE
+.PP
+\fIPresharedKey=\fP
+.RS 4
+接口的可选预共享密钥 \&。可以通过 \fBwg genpsk\fP 命令 \&
+生成。此选项添加了一个额外的对称密钥加密层，以混合到现有的公钥加密中，以实现后量子抵抗。请注意，因为此信息是保密的，您可能希望将 \&.netdev
+文件的权限设置为 "root:systemd\-network" 和 "0640" 文件模式 \&。
+.RE
+.PP
+\fIPresharedKeyFile=\fP
+.RS 4
+获取一个文件的绝对路径，该文件包含对等方 \& 的 Base64 编码预共享密钥。当指定此选项时，\fIPresharedKey=\fP 将被忽略
+\&。请注意，该文件必须可由用户 "systemd\-network" 读取，因此它应该是，e\&.g\&.，由具有 "0640" 文件模式的
+"root:systemd\-network" 所有 \&。如果路径引用文件系统中的 \fBAF_UNIX\fP 流套接字，则会建立一个连接并从中读取密钥
+\&。
+.RE
+.PP
+\fIAllowedIPs=\fP
+.RS 4
+使用 CIDR 掩码设置一个逗号分隔的 IP (v4 或 v6) 地址列表，允许此对等方从中发送传入流量，并将此对等方的传出流量定向到 \&。
+.sp
+catch\-all 0\&.0\&.0\&.0/0 可以指定匹配所有 IPv4 地址，::/0 可以指定匹配所有 IPv6 地址 \&。
+.sp
+请注意，这只会影响 \fIrouting inside the network interface itself\fP，i\&.e\&。通过隧道本身的数据包
+\&。为了使数据包首先通过隧道发送，还需要添加适当的路由 \ (在与 wireguard 接口匹配的 "\&.network" 上的
+"[Routes]" 部分中，或从外部到 systemd\-networkd\&。
+.RE
+.PP
+\fIEndpoint=\fP
+.RS 4
+设置端点 IP 地址或主机名，后跟冒号，然后是端口号 \&。此端点将自动更新一次，以在配置时从对等方正确验证数据包的最新源 IP 地址和端口 \&。
+.RE
+.PP
+\fIPersistentKeepalive=\fP
+.RS 4
+设置一个秒间隔，介于 1 和 65535 之间，包括多久发送一个经过身份验证的空数据包到对等方以保持状态防火墙或 NAT 映射持久有效
+\&。例如，如果接口很少发送流量，但它可能随时从对等方接收流量，并且它位于 NAT 之后，则接口可能受益于 25 秒的持久保持活动间隔 \&。如果设置为
+0 或 "off"，则此选项被禁用 \&。默认情况下或未指定时，此选项关闭 \&。大多数用户不需要这个 \&。
+.RE
+.PP
+\fIRouteTable=\fP
+.RS 4
+到 \fIAllowedIPs=\fP\& 中指定地址的路由表标识符。采用 negative 布尔值、预定义名称 "default"、"main" 和
+"local" 之一、\fBnetworkd.conf\fP(5) 中 \fIRouteTable=\fP 中定义的名称或 1\&...4294967295\&
+范围内的数字。默认为未设置，将使用 [WireGuard] 部分中相同设置中指定的值 \&。
+.RE
+.PP
+\fIRouteMetric=\fP
+.RS 4
+\fIAllowedIPs=\fP\& 中指定地址的路由优先级。采用 0\&...4294967295\& 范围内的整数。默认为未设置，将使用
+[WireGuard] 部分中相同设置中指定的值 \&。
+.RE
+.SH "[BOND] SECTION OPTIONS"
+.PP
+[Bond] 部分接受以下密钥:
+.PP
+\fIMode=\fP
+.RS 4
+指定其中一个绑定策略 \&。默认为 "balance\-rr" (循环) \&。可能的值为
+"balance\-rr"、"active\-backup"、"balance\-xor"、"broadcast"、"802\&.3ad"、"balance\-tlb"
+和 `balance\-alb`\&。
+.RE
+.PP
+\fITransmitHashPolicy=\fP
+.RS 4
+选择传输散列策略以用于 balance\-xor、802\&.3ad 和 tlb 模式下的从属选择 \&。可能的值为
+"layer2"、"layer3+4"、"layer2+3"、"encap2+3" 和 `encap3+4`\&。
+.RE
+.PP
+\fILACPTransmitRate=\fP
+.RS 4
+指定链路伙伴在 802\&.3ad 模式下传输链路聚合控制协议数据元数据包的速率 \&。可能的值是 "slow"，它请求伙伴每 30 秒传输一次
+LACPDU，以及 "fast"，它请求伙伴每秒传输一次 LACPDU\&。默认值为 `慢`\&。
+.RE
+.PP
+\fIMIIMonitorSec=\fP
+.RS 4
+指定媒体独立接口链接监视发生的频率 \&。零值禁用 MII 链接监视 \&。该值向下舍入到最接近的毫秒 \&。默认值为 0\&。
+.RE
+.PP
+\fIUpDelaySec=\fP
+.RS 4
+指定在检测到链接状态后启用链接之前的延迟 \&。该值向下舍入为 \fIMIIMonitorSec=\fP\& 的倍数。默认值为 0\&。
+.RE
+.PP
+\fIDownDelaySec=\fP
+.RS 4
+指定在检测到链路断开状态后禁用链路之前的延迟 \&。该值向下舍入为 \fIMIIMonitorSec=\fP\& 的倍数。默认值为 0\&。
+.RE
+.PP
+\fILearnPacketIntervalSec=\fP
+.RS 4
+指定绑定驱动程序向每个从属对等交换机发送学习数据包的实例之间的秒数 \&。有效范围为 1\&...0x7fffffff; 默认值为 1\&。此选项仅对
+balance\-tlb 和 balance\-alb 模式有效。
+.RE
+.PP
+\fIAdSelect=\fP
+.RS 4
+指定要使用的 802\&.3ad 聚合选择逻辑 \&。可能的值为 "stable"、"bandwidth" 和 `count`\&。
+.RE
+.PP
+\fIAdActorSystemPriority=\fP
+.RS 4
+指定 802\&.3ad actor 系统优先级 \&。取 1\&...65535\& 范围内的数字。
+.RE
+.PP
+\fIAdUserPortKey=\fP
+.RS 4
+指定端口密钥的 802\&.3ad 用户定义部分 \&。采用 0\&...1023\& 范围内的数字。
+.RE
+.PP
+\fIAdActorSystem=\fP
+.RS 4
+指定 802\&.3ad 系统 MAC 地址 \&。这不能是空地址或多播地址 \&。
+.RE
+.PP
+\fIFailOverMACPolicy=\fP
+.RS 4
+指定主动备份模式是否应在奴役时将所有从站设置为相同的 MAC 地址，或者在启用时对绑定执行特殊处理 \*(Aqs MAC 地址根据所选策略
+\&。默认策略是无 \&。可能的值为 "none"、"active" 和 `follow`\&。
+.RE
+.PP
+\fIARPValidate=\fP
+.RS 4
+指定是否应在任何支持 ARP 监控的模式下验证 ARP 探测和回复，或者是否应过滤 (disregarded) 非 ARP 流量以用于链路监控目的
+\&。可能的值为 "none"、"active"、"backup" 和 `all`\&。
+.RE
+.PP
+\fIARPIntervalSec=\fP
+.RS 4
+指定 ARP 链路监听频率 \&。值为 0 将禁用 ARP 监视 \&。默认值为 0，默认元秒 \&。
+.RE
+.PP
+\fIARPIPTargets=\fP
+.RS 4
+指定当 \fIARPIntervalSec=\fP 大于 0\& 时用作 ARP 监视对等方的 IP 地址。这些是发送的 ARP
+请求的目标，以确定到目标的链接的健康状况 \&。以 IPv4 点分十进制格式 \& 指定这些值。ARP 监听至少要给一个 IP 地址给函数
+\&。可以指定的最大目标数为 16\&。默认值为无 IP 地址 \&。
+.RE
+.PP
+\fIARPAllTargets=\fP
+.RS 4
+指定必须可达的 \fIARPIPTargets=\fP 的数量，以便 ARP 监视器将从站视为正在运行 \&。此选项仅影响启用了 ARPValidate
+的从站的活动备份模式。可能的值为 "any" 和 `所有`\&。
+.RE
+.PP
+\fIPrimaryReselectPolicy=\fP
+.RS 4
+指定主从 \& 的重选策略。这会影响当活动从站发生故障或主从站恢复时如何选择主从站成为活动从站 \&。此选项旨在防止主从和其他从 \&
+之间的翻转。可能的值为 "always"、"better" 和 `失败`\&。
+.RE
+.PP
+\fIResendIGMP=\fP
+.RS 4
+指定在故障转移事件后要发布的 IGMP 成员报告的数量。故障转移后立即发出一份成员报告，随后的数据包每 200 毫秒发送一次。有效范围是
+0\&...255\&。默认为 1\&。值为 0 可防止发出 IGMP 成员报告以响应故障转移事件 \&。
+.RE
+.PP
+\fIPacketsPerSlave=\fP
+.RS 4
+指定在移动到下一个之前要通过从设备传输的数据包数 \&。设置为 0 时，将随机选择一个从机 \&。有效范围是 0\&...65535\&。默认为
+1\&。此选项仅在 balance\-rr 模式下有效 \&。
+.RE
+.PP
+\fIGratuitousARP=\fP
+.RS 4
+指定在故障转移事件后发出的对等通知 (免费 ARP 和未经请求的 IPv6 邻居通告) 的数量。一旦链路在新的从设备上建立起来，就会在绑定设备和每个
+VLAN 子设备上发送对等通知 \&。如果数字大于 1\&，则在每个链接监视间隔 (ARPIntervalSec 或
+MIIMonitorSec，以活动者为准) 重复此操作。有效范围是 0\&...255\&。默认值为 1\&。这些选项仅影响活动备份模式 \&。
+.RE
+.PP
+\fIAllSlavesActive=\fP
+.RS 4
+采用布尔值 \&。指定重复帧 (在非活动端口上接收) 在 false 时应丢弃，或在 true 时传送 \&。通常，bonding 会丢弃重复的帧
+(在非活动端口上接收)，这对大多数用户来说是可取的 \&。但有时允许传送重复的帧是件好事 \&。默认值为 false
+(抛弃在非活动端口上接收到的重复帧) \&。
+.RE
+.PP
+\fIDynamicTransmitLoadBalancing=\fP
+.RS 4
+采用布尔值 \&。指定是否启用流的动态改组 \&。仅适用于 balance\-tlb 模式 \&。默认为取消设置 \&。
+.RE
+.PP
+\fIMinLinks=\fP
+.RS 4
+指定在声明运营商 \& 之前必须处于活动状态的最小链接数。默认值为 0\&。
+.RE
+.PP
+有关详细信息，请参见 \m[blue]\fBLinux Ethernet Bonding Driver HOWTO\fP\m[]\&\s-2\u[1]\d\s+2
+.SH "[XFRM] SECTION OPTIONS"
+.PP
+[Xfrm] 部分接受以下键:
+.PP
+\fIInterfaceId=\fP
+.RS 4
+设置需要关联 SA/policy\& 的 xfrm 接口的 ID/key。可以是十进制或十六进制，有效范围是 1\-0xffffffff\&。这是强制性的
+\&。
+.RE
+.PP
+\fIIndependent=\fP
+.RS 4
+采用布尔值 \&。如果为 false (默认值)，则 xfrm 接口必须具有可用于硬件卸载 \& 的底层设备。
+.RE
+.PP
+有关详细信息，请参见 \m[blue]\fBVirtual XFRM Interfaces\fP\m[]\&\s-2\u[18]\d\s+2\&。
+.SH "[VRF] SECTION OPTIONS"
+.PP
+[VRF] 部分仅适用于 "vrf" 类型的网络开发人员并接受以下密钥:
+.PP
+\fITable=\fP
+.RS 4
+数字路由表标识符 \&。此设置是强制性的 \&。
+.RE
+.SH "[BATMANADVANCED] SECTION OPTIONS"
+.PP
+[BatmanAdvanced] 部分仅适用于 "batadv" 类型的网络开发人员并接受以下键:
+.PP
+\fIGatewayMode=\fP
+.RS 4
+采用 "off"、"server" 或 `client`\& 之一。batman\-adv 节点可以在服务器模式 (与网格共享其互联网连接) 或客户端模式
+(在网格中搜索最合适的互联网连接) 或完全关闭网关支持 (这是默认设置) 下运行)\&。
+.RE
+.PP
+\fIAggregation=\fP
+.RS 4
+取一个布尔值 \&。启用或禁用始发者消息的聚合 \&。默认为 true\&。
+.RE
+.PP
+\fIBridgeLoopAvoidance=\fP
+.RS 4
+取一个布尔值 \&。启用或禁用避免桥上的环路 \&。默认为 true\&。
+.RE
+.PP
+\fIDistributedArpTable=\fP
+.RS 4
+取一个布尔值 \&。启用或禁用分布式 ARP 表 \&。默认为 true\&。
+.RE
+.PP
+\fIFragmentation=\fP
+.RS 4
+取一个布尔值 \&。启用或禁用碎片 \&。默认为 true\&。
+.RE
+.PP
+\fIHopPenalty=\fP
+.RS 4
+跳数惩罚设置允许修改多跳路由 vs\& 的 \fBbatctl\fP(8) 首选项。短途路线 \&。此整数值应用于每个转发的 OGM (发起者消息) 的 TQ
+(传输质量)，从而传播额外跃点的成本 (必须接收和重新传输数据包，这会花费通话时间)
+\&。更高的跳跃惩罚将使其他节点更不可能选择该节点作为通往任何给定目的地的中间跳跃。默认的跳跃惩罚 \*(Aq15\*(Aq
+对于大多数设置来说是一个合理的值，可能不需要更改 \&。但是，移动节点可以选择 255 (最大值) 的值以避免被其他节点选为路由器 \&。最小值为
+0\&。
+.RE
+.PP
+\fIOriginatorIntervalSec=\fP
+.RS 4
+该值以秒为单位指定时间间隔，除非另一个时间单位被指定，其中 batman\-adv 使用其协议信息 \& 淹没网络。有关详细信息，请参见
+\fBsystemd.time\fP(7)\&。
+.RE
+.PP
+\fIGatewayBandwidthDown=\fP
+.RS 4
+如果该节点是服务器，则此参数用于通知网络中的其他节点有关此节点的信息 \*(Aqs internet 连接下载带宽，以比特 / 秒为单位
+\&。只需输入任何以 K、M、G 或 T (基数 1000) 为后缀的数字，batman\-adv 模块就会在网格中传播输入的值 \&。
+.RE
+.PP
+\fIGatewayBandwidthUp=\fP
+.RS 4
+如果节点是服务器，则此参数用于通知网络中的其他节点有关此节点的信息 \*(Aqs internet 连接上传带宽，单位为每秒比特数 \&。只需输入任何以
+K、M、G 或 T (基数 1000) 为后缀的数字，batman\-adv 模块就会在网格中传播输入的值 \&。
+.RE
+.PP
+\fIRoutingAlgorithm=\fP
+.RS 4
+这可以是 "batman\-v" 或 "batman\-iv"，并描述要使用 \fBbatctl\fP(8) 的哪个
+routing_algo\&。接口创建后不能更改算法 \&。默认为 `batman\-v`\&。
+.RE
+.SH "[IPOIB] SECTION OPTIONS"
+.PP
+[IPoIB] 部分仅适用于 "ipoib" 类型的网络开发人员并接受以下键:
+.PP
+\fIPartitionKey=\fP
+.RS 4
+取 1\&...0xffff 范围内的整数，0x8000\& 除外。默认为取消设置，内核 \*(Aqs 默认使用 \&。
+.RE
+.PP
+\fIMode=\fP
+.RS 4
+采用特殊值 "datagram" 或 `已连接`\& 之一。默认为取消设置，内核 \*(Aqs 默认使用 \&。
+.sp
+当 "datagram" 时，使用 Infiniband 不可靠数据报 (UD) 传输，因此接口 MTU 等于 IB L2 MTU 减去 IPoIB
+封装头 (4 字节) \&。例如，在具有 2K MTU 的典型 IB 结构中，IPoIB MTU 将为 2048\-4=2044 字节 \&。
+.sp
+"connected" 时，使用 Infiniband 可靠连接的 (RC) 传输 \&。连接模式利用 IB 传输的连接特性允许最大 IP 数据包大小为
+64K 的 MTU，这减少了处理大型 UDP 数据报、TCP 段等所需的 IP 数据包数量，并提高了大型应用程序的性能消息 \&。
+.RE
+.PP
+\fIIgnoreUserspaceMulticastGroup=\fP
+.RS 4
+取一个布尔值 \&。当为真时，内核忽略由用户空间 \& 处理的多播组。默认为取消设置，内核 \*(Aqs 默认使用 \&。
+.RE
+.SH "[WLAN] SECTION OPTIONS"
+.PP
+[WLAN] 部分仅适用于 WLAN 接口，并接受以下密钥:
+.PP
+\fIPhysicalDevice=\fP
+.RS 4
+指定物理 WLAN 设备的名称或索引 (例如 \&.g\&. "0" 或 "phy0") \&。主机上存在的物理 WLAN 设备列表可以通过 \fBiw phy\fP 命令 \& 获取。此选项是必需的 \&。
+.RE
+.PP
+\fIType=\fP
+.RS 4
+指定接口的类型 \&。采用
+"ad\-hoc"、"station"、"ap"、"ap\-vlan"、"wds"、"monitor"、"mesh\-point"、"p2p\-client"、"p2p\-go"、"p2p\-device"、"ocb"
+和 `nan`\& 之一。此选项是必需的 \&。
+.RE
+.PP
+\fIWDS=\fP
+.RS 4
+在接口上启用无线分布系统 (WDS) 模式 \&。该模式也称为 `4 地址模式`\&。取一个布尔值 \&。默认为取消设置，内核 \*(Aqs
+默认将被使用 \&。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&/etc/systemd/network/25\-bridge\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=bridge0
+Kind=bridge
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&/etc/systemd/network/25\-vlan1\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Match]
+Virtualization=no
+
+[NetDev]
+Name=vlan1
+Kind=vlan
+
+[VLAN]
+Id=1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&/etc/systemd/network/25\-ipip\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=ipip\-tun
+Kind=ipip
+MTUBytes=1480
+
+[Tunnel]
+Local=192\&.168\&.223\&.238
+Remote=192\&.169\&.224\&.239
+TTL=64
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&/etc/systemd/network/1\-fou\-tunnel\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=fou\-tun
+Kind=fou
+
+[FooOverUDP]
+Port=5555
+Protocol=4
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&5.\ \&/etc/systemd/network/25\-fou\-ipip\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=ipip\-tun
+Kind=ipip
+
+[Tunnel]
+Independent=yes
+Local=10\&.65\&.208\&.212
+Remote=10\&.65\&.208\&.211
+FooOverUDP=yes
+FOUDestinationPort=5555
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&6.\ \&/etc/systemd/network/25\-tap\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=tap\-test
+Kind=tap
+
+[Tap]
+MultiQueue=yes
+PacketInfo=yes
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&7.\ \&/etc/systemd/network/25\-sit\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=sit\-tun
+Kind=sit
+MTUBytes=1480
+
+[Tunnel]
+Local=10\&.65\&.223\&.238
+Remote=10\&.65\&.223\&.239
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&8.\ \&/etc/systemd/network/25\-6rd\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=6rd\-tun
+Kind=sit
+MTUBytes=1480
+
+[Tunnel]
+Local=10\&.65\&.223\&.238
+IPv6RapidDeploymentPrefix=2602::/24
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&9.\ \&/etc/systemd/network/25\-gre\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=gre\-tun
+Kind=gre
+MTUBytes=1480
+
+[Tunnel]
+Local=10\&.65\&.223\&.238
+Remote=10\&.65\&.223\&.239
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&10.\ \&/etc/systemd/network/25\-ip6gre\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=ip6gre\-tun
+Kind=ip6gre
+
+[Tunnel]
+Key=123
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&11.\ \&/etc/systemd/network/25\-vti\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=vti\-tun
+Kind=vti
+MTUBytes=1480
+
+[Tunnel]
+Local=10\&.65\&.223\&.238
+Remote=10\&.65\&.223\&.239
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&12.\ \&/etc/systemd/network/25\-veth\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=veth\-test
+Kind=veth
+
+[Peer]
+Name=veth\-peer
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&13.\ \&/etc/systemd/network/25\-bond\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=bond1
+Kind=bond
+
+[Bond]
+Mode=802\&.3ad
+TransmitHashPolicy=layer3+4
+MIIMonitorSec=1s
+LACPTransmitRate=fast
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&14.\ \&/etc/systemd/network/25\-dummy\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=dummy\-test
+Kind=dummy
+MACAddress=12:34:56:78:9a:bc
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&15.\ \&/etc/systemd/network/25\-vrf\&.netdev\fP
+.PP
+使用表 42\& 创建一个 VRF 接口。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=vrf\-test
+Kind=vrf
+
+[VRF]
+Table=42
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&16.\ \&/etc/systemd/network/25\-macvtap\&.netdev\fP
+.PP
+创建一个 MacVTap 设备 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=macvtap\-test
+Kind=macvtap
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&17.\ \&/etc/systemd/network/25\-wireguard\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=wg0
+Kind=wireguard
+
+[WireGuard]
+PrivateKey=EEGlnEPYJV//kbvvIqxKkQwOiS+UENyPncC4bF46ong=
+ListenPort=51820
+
+[WireGuardPeer]
+PublicKey=RDf+LSpeEre7YEIKaxg+wbpsNV7du+ktR99uBEtIiCA=
+AllowedIPs=fd31:bf08:57cb::/48,192\&.168\&.26\&.0/24
+Endpoint=wireguard\&.example\&.com:51820
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&18.\ \&/etc/systemd/network/27\-xfrm\&.netdev\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[NetDev]
+Name=xfrm0
+Kind=xfrm
+
+[Xfrm]
+Independent=yes
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-networkd\fP(8), \fBsystemd.link\fP(5),
+\fBsystemd.network\fP(5), \fBsystemd\-network\-generator.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+Linux 以太网绑定驱动程序 HOWTO
+.RS 4
+\%https://docs.kernel.org/networking/bonding.html
+.RE
+.IP " 2." 4
+RFC 2784
+.RS 4
+\%https://tools.ietf.org/html/rfc2784
+.RE
+.IP " 3." 4
+IEEE 802.1Q
+.RS 4
+\%http://www.ieee802.org/1/pages/802.1Q.html
+.RE
+.IP " 4." 4
+VRF
+.RS 4
+\%https://docs.kernel.org/networking/vrf.html
+.RE
+.IP " 5." 4
+蝙蝠侠进阶版
+.RS 4
+\%https://www.open\-mesh.org/projects/open\-mesh/wiki
+.RE
+.IP " 6." 4
+系统和服务凭证
+.RS 4
+\%https://systemd.io/CREDENTIALS
+.RE
+.IP " 7." 4
+(DOVE)
+.RS 4
+\%https://en.wikipedia.org/wiki/Distributed_Overlay_Virtual_Ethernet
+.RE
+.IP " 8." 4
+VXLAN 组策略
+.RS 4
+\%https://tools.ietf.org/html/draft\-smith\-vxlan\-group\-policy
+.RE
+.IP " 9." 4
+VXLAN 泛型协议扩展
+.RS 4
+\%https://tools.ietf.org/html/draft\-ietf\-nvo3\-vxlan\-gpe\-07
+.RE
+.IP 10. 4
+Internet 协议套件中的服务类型
+.RS 4
+\%http://tools.ietf.org/html/rfc1349
+.RE
+.IP 11. 4
+RFC 6437
+.RS 4
+\%https://tools.ietf.org/html/rfc6437
+.RE
+.IP 12. 4
+RFC 2460
+.RS 4
+\%https://tools.ietf.org/html/rfc2460
+.RE
+.IP 13. 4
+RFC 2473
+.RS 4
+\%https://tools.ietf.org/html/rfc2473#section\-4.1.1
+.RE
+.IP 14. 4
+ip\-xfrm\(em 转换配置
+.RS 4
+\%https://man7.org/linux/man\-pages/man8/ip\-xfrm.8.html
+.RE
+.IP 15. 4
+Foo 通过 UDP
+.RS 4
+\%https://lwn.net/Articles/614348
+.RE
+.IP 16. 4
+IPv6 快速部署
+.RS 4
+\%https://tools.ietf.org/html/rfc5569
+.RE
+.IP 17. 4
+泛型 UDP 封装
+.RS 4
+\%https://lwn.net/Articles/615044
+.RE
+.IP 18. 4
+虚拟 XFRM 接口
+.RS 4
+\%https://lwn.net/Articles/757391
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

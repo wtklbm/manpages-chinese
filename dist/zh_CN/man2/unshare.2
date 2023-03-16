@@ -1,0 +1,316 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006, Janak Desai <janak@us.ibm.com>
+.\" and Copyright (C) 2006, 2012 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Patch Justification:
+.\" unshare system call is needed to implement, using PAM,
+.\" per-security_context and/or per-user namespace to provide
+.\" polyinstantiated directories. Using unshare and bind mounts, a
+.\" PAM module can create private namespace with appropriate
+.\" directories(based on user's security context) bind mounted on
+.\" public directories such as /tmp, thus providing an instance of
+.\" /tmp that is based on user's security context. Without the
+.\" unshare system call, namespace separation can only be achieved
+.\" by clone, which would require porting and maintaining all commands
+.\" such as login, and su, that establish a user session.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH unshare 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+unshare \- 解除进程执行上下文的部分关联
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP
+\fB#include <sched.h>\fP
+.PP
+\fBint unshare(int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBunshare\fP() 允许进程 (或线程) 解除当前与其他进程 (或线程) 共享的部分执行上下文的关联。 当使用 \fBfork\fP(2) 或
+\fBvfork\fP(2) 创建新进程时，部分执行上下文 (例如挂载命名空间) 会隐式共享，而其他部分 (例如虚拟内存) 可能会在使用
+\fBclone\fP(2) 创建进程或线程时通过显式请求共享。
+.PP
+\fBunshare\fP() 的主要用途是允许一个进程在不创建新进程的情况下控制其共享的执行上下文。
+.PP
+\fIflags\fP 参数是一个位掩码，它指定执行上下文的哪些部分应该被取消共享。 这个参数是通过将零个或多个以下常量组合在一起指定的:
+.TP 
+\fBCLONE_FILES\fP
+反转 \fBclone\fP(2) \fBCLONE_FILES\fP 标志的效果。 取消共享文件描述符表，以便调用进程不再与任何其他进程共享其文件描述符。
+.TP 
+\fBCLONE_FS\fP
+反转 \fBclone\fP(2) \fBCLONE_FS\fP 标志的效果。 取消共享文件系统属性，以便调用进程不再与任何其他进程共享其根目录
+(\fBchroot\fP(2))、当前目录 (\fBchdir\fP(2)) 或 umask (\fBumask\fP(2)) 属性。
+.TP 
+\fBCLONE_NEWCGROUP\fP (since Linux 4.6)
+该标志与 \fBclone\fP(2) \fBCLONE_NEWCGROUP\fP 标志具有相同的效果。 取消共享 cgroup 命名空间。 使用
+\fBCLONE_NEWCGROUP\fP 需要 \fBCAP_SYS_ADMIN\fP 能力。
+.TP 
+\fBCLONE_NEWIPC\fP (since Linux 2.6.19)
+该标志与 \fBclone\fP(2) \fBCLONE_NEWIPC\fP 标志具有相同的效果。 取消共享 IPC
+命名空间，以便调用进程拥有不与任何其他进程共享的 IPC 命名空间的私有副本。 指定此标志也会自动暗示 \fBCLONE_SYSVSEM\fP。 使用
+\fBCLONE_NEWIPC\fP 需要 \fBCAP_SYS_ADMIN\fP 能力。
+.TP 
+\fBCLONE_NEWNET\fP (since Linux 2.6.24)
+该标志与 \fBclone\fP(2) \fBCLONE_NEWNET\fP 标志具有相同的效果。
+取消共享网络名称空间，以便将调用进程移动到一个新的网络名称空间中，该名称空间不与任何先前存在的进程共享。 使用 \fBCLONE_NEWNET\fP 需要
+\fBCAP_SYS_ADMIN\fP 能力。
+.TP 
+\fBCLONE_NEWNS\fP
+.\" These flag name are inconsistent:
+.\" CLONE_NEWNS does the same thing in clone(), but CLONE_VM,
+.\" CLONE_FS, and CLONE_FILES reverse the action of the clone()
+.\" flags of the same name.
+该标志与 \fBclone\fP(2) \fBCLONE_NEWNS\fP 标志具有相同的效果。
+取消共享挂载命名空间，以便调用进程拥有其命名空间的私有副本，该副本不与任何其他进程共享。 指定此标志也会自动暗示 \fBCLONE_FS\fP。 使用
+\fBCLONE_NEWNS\fP 需要 \fBCAP_SYS_ADMIN\fP 能力。 有关详细信息，请参见 \fBmount_namespaces\fP(7)。
+.TP 
+\fBCLONE_NEWPID\fP (since Linux 3.8)
+该标志与 \fBclone\fP(2) \fBCLONE_NEWPID\fP 标志具有相同的效果。 取消共享 PID 名称空间，以便调用进程为其子进程拥有一个新的
+PID 名称空间，该名称空间不与任何先前存在的进程共享。 调用进程是 \fInot\fP 移动到新的命名空间。 调用进程创建的第一个子进程将具有进程 ID
+1，并将在新命名空间中承担 \fBinit\fP(1) 的角色。 \fBCLONE_NEWPID\fP 也自动暗示 \fBCLONE_THREAD\fP。 使用
+\fBCLONE_NEWPID\fP 需要 \fBCAP_SYS_ADMIN\fP 能力。 有关详细信息，请参见 \fBpid_namespaces\fP(7)。
+.TP 
+\fBCLONE_NEWTIME\fP (since Linux 5.6)
+取消共享时间命名空间，以便调用进程为其子进程拥有一个新的时间命名空间，该名称空间不与任何先前存在的进程共享。 调用进程是 \fInot\fP
+移动到新的命名空间。 使用 \fBCLONE_NEWTIME\fP 需要 \fBCAP_SYS_ADMIN\fP 能力。 有关详细信息，请参见
+\fBtime_namespaces\fP(7)。
+.TP 
+\fBCLONE_NEWUSER\fP (since Linux 3.8)
+该标志与 \fBclone\fP(2) \fBCLONE_NEWUSER\fP 标志具有相同的效果。
+取消共享用户命名空间，以便将调用进程移动到一个新的用户命名空间，该用户命名空间不与任何先前存在的进程共享。 与 \fBclone\fP(2) 创建的带有
+\fBCLONE_NEWUSER\fP 标志的子进程一样，调用者在新的命名空间中获得了一整套能力。
+.IP
+.\" commit e66eded8309ebf679d3d3c1f5820d1f2ca332c71
+.\" https://lwn.net/Articles/543273/
+\fBCLONE_NEWUSER\fP 要求调用进程不是线程化的; 自动指定 \fBCLONE_NEWUSER\fP 意味着 \fBCLONE_THREAD\fP。 由于
+Linux 3.9，\fBCLONE_NEWUSER\fP 也自动暗示 \fBCLONE_FS\fP。 \fBCLONE_NEWUSER\fP 要求调用进程的用户 ID
+和组 ID 映射到调用时调用进程的用户命名空间中的用户 ID 和组 ID。
+.IP
+有关用户命名空间的更多信息，请参见 \fBuser_namespaces\fP(7)。
+.TP 
+\fBCLONE_NEWUTS\fP (since Linux 2.6.19)
+该标志与 \fBclone\fP(2) \fBCLONE_NEWUTS\fP 标志具有相同的效果。 取消共享 UTS IPC 命名空间，以便调用进程拥有 UTS
+命名空间的私有副本，该副本不与任何其他进程共享。 使用 \fBCLONE_NEWUTS\fP 需要 \fBCAP_SYS_ADMIN\fP 能力。
+.TP 
+\fBCLONE_SYSVSEM\fP (since Linux 2.6.26)
+.\" commit 9edff4ab1f8d82675277a04e359d0ed8bf14a7b7
+.\" CLONE_NEWNS If CLONE_SIGHAND is set and signals are also being shared
+.\" (i.e., current->signal->count > 1), force CLONE_THREAD.
+此标志反转 \fBclone\fP(2) \fBCLONE_SYSVSEM\fP 标志的效果。 取消共享 System\V 信号量调整 (\fIsemadj\fP)
+值，以便调用进程有一个新的空 \fIsemadj\fP 列表，不与任何其他进程共享。 如果这是对进程的当前 \fIsemadj\fP
+列表具有引用的最后一个进程，则该列表中的调整将应用于相应的信号量，如 \fBsemop\fP(2) 中所述。
+.PP
+.\" As at 3.9, the following forced implications also apply,
+.\" although the relevant flags are not yet implemented.
+.\" If CLONE_THREAD is set force CLONE_VM.
+.\" If CLONE_VM is set, force CLONE_SIGHAND.
+.\"
+.\" See kernel/fork.c::check_unshare_flags()
+此外，如果调用者是单线程的 (即它不与另一个进程或线程共享其地址空间)，则可以在 \fIflags\fP 中指定
+\fBCLONE_THREAD\fP、\fBCLONE_SIGHAND\fP 和 \fBCLONE_VM\fP。 在这种情况下，这些标志无效。 (另请注意，自动指定
+\fBCLONE_THREAD\fP 意味着 \fBCLONE_VM\fP，自动指定 \fBCLONE_VM\fP 意味着 \fBCLONE_SIGHAND\fP.)
+如果进程是多线程的，那么使用这些标志会导致错误。
+.PP
+如果 \fIflags\fP 指定为零，则 \fBunshare\fP() 为空操作; 没有对调用进程的执行上下文进行任何更改。
+.SH "RETURN VALUE"
+成功时，返回零。 失败时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了无效位。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了 \fBCLONE_THREAD\fP、\fBCLONE_SIGHAND\fP 或 \fBCLONE_VM\fP，并且调用方是多线程的。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了 \fBCLONE_NEWIPC\fP，但内核没有配置 \fBCONFIG_SYSVIPC\fP 和 \fBCONFIG_IPC_NS\fP
+选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了 \fBCLONE_NEWNET\fP，但内核没有配置 \fBCONFIG_NET_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了 \fBCLONE_NEWPID\fP，但内核没有配置 \fBCONFIG_PID_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了 \fBCLONE_NEWUSER\fP，但内核没有配置 \fBCONFIG_USER_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了 \fBCLONE_NEWUTS\fP，但内核没有配置 \fBCONFIG_UTS_NS\fP 选项。
+.TP 
+\fBEINVAL\fP
+\fBCLONE_NEWPID\fP 是在 \fIflags\fP 中指定的，但进程先前已使用 \fBCLONE_NEWPID\fP 标志调用 \fBunshare\fP()。
+.TP 
+\fBENOMEM\fP
+无法分配足够的内存来复制需要取消共享的调用方上下文部分。
+.TP 
+\fBENOSPC\fP (since Linux 3.7)
+.\" commit f2302505775fd13ba93f034206f1e2a587017929
+flags 中指定了 \fBCLONE_NEWPID\fP，但已经超过了 PID 命名空间的嵌套深度限制; 请参见 \fBpid_namespaces\fP(7)。
+.TP 
+\fBENOSPC\fP (since Linux 4.9; beforehand \fBEUSERS\fP)
+在 \fIflags\fP 中指定了 \fBCLONE_NEWUSER\fP，调用会导致超过嵌套用户命名空间的数量限制。 请参见
+\fBuser_namespaces\fP(7)。
+.IP
+从 Linux 3.11 到 Linux 4.8，本例诊断出的错误是 \fBEUSERS\fP。
+.TP 
+\fBENOSPC\fP (since Linux 4.9)
+\fIflags\fP 中的值之一指定创建新的用户命名空间，但这样做会导致超出 \fI/proc/sys/user\fP 中相应文件定义的限制。
+有关详细信息，请参见 \fBnamespaces\fP(7)。
+.TP 
+\fBEPERM\fP
+调用进程没有此操作所需的权限。
+.TP 
+\fBEPERM\fP
+\fIflags\fP 中指定了 \fBCLONE_NEWUSER\fP，但调用者的有效用户 ID 或有效组 ID 在父名称空间中没有映射 (请参见
+\fBuser_namespaces\fP(7)).
+.TP 
+\fBEPERM\fP (since Linux 3.9)
+.\" commit 3151527ee007b73a0ebd296010f1c0454a919c7d
+.\" FIXME What is the rationale for this restriction?
+在 \fIflags\fP 中指定了 \fBCLONE_NEWUSER\fP，并且调用者处于 chroot 环境中
+(即，调用者的根目录与其所在的挂载命名空间的根目录不匹配)。
+.TP 
+\fBEUSERS\fP (from Linux 3.11 to Linux 4.8)
+在 \fIflags\fP 中指定了 \fBCLONE_NEWUSER\fP，将超出嵌套用户命名空间的数量限制。 请参见上面对 \fBENOSPC\fP 错误的讨论。
+.SH VERSIONS
+\fBunshare\fP() 系统调用在 Linux 2.6.16 中加入。
+.SH STANDARDS
+\fBunshare\fP() 系统调用是 Linux 特有的。
+.SH NOTES
+.\" FIXME all of the following needs to be reviewed for the current kernel
+.\" However, we can do unshare(CLONE_SIGHAND) if CLONE_SIGHAND
+.\" was not specified when doing clone(); i.e., unsharing
+.\" signal handlers is permitted if we are not actually
+.\" sharing signal handlers.   mtk
+.\" However, we can do unshare(CLONE_VM) if CLONE_VM
+.\" was not specified when doing clone(); i.e., unsharing
+.\" virtual memory is permitted if we are not actually
+.\" sharing virtual memory.   mtk
+.\"
+.\"9) Future Work
+.\"--------------
+.\"The current implementation of unshare does not allow unsharing of
+.\"signals and signal handlers. Signals are complex to begin with and
+.\"to unshare signals and/or signal handlers of a currently running
+.\"process is even more complex. If in the future there is a specific
+.\"need to allow unsharing of signals and/or signal handlers, it can
+.\"be incrementally added to unshare without affecting legacy
+.\"applications using unshare.
+.\"
+使用 \fBclone\fP(2) 创建新流程时，并非所有可以共享的流程属性都可以使用 \fBunshare\fP() 取消共享。 特别是，与内核 3.8
+一样，\fBunshare\fP() 没有实现反转 \fBCLONE_SIGHAND\fP、\fBCLONE_THREAD\fP 或 \fBCLONE_VM\fP 效果的标志。
+如果需要，可以在 future 中添加此类功能。
+.PP
+创建除用户命名空间之外的所有类型的命名空间都需要 \fBCAP_SYS_ADMIN\fP 功能。 但是，由于创建用户命名空间会自动授予一整套功能，因此在同一个
+\fBunshare\fP() 调用中创建用户命名空间和任何其他类型的命名空间不需要原始命名空间中的 \fBCAP_SYS_ADMIN\fP 功能。
+.SH EXAMPLES
+下面的程序提供了 \fBunshare\fP(1) 命令的简单实现，它取消共享一个或多个命名空间并执行在其命令行参数中提供的命令。
+下面是使用该程序的示例，在新的挂载命名空间中运行 shell，并验证原始 shell 和新的 shell 是否位于不同的挂载命名空间中:
+.PP
+.in +4n
+.EX
+$ \fBreadlink /proc/$$/ns/mnt\fP
+mnt:[4026531840]
+$ \fBsudo ./unshare \-m /bin/bash\fP
+# \fBreadlink /proc/$$/ns/mnt\fP
+mnt:[4026532325]
+.EE
+.in
+.PP
+两个 \fBreadlink\fP(1) 命令的不同输出表明两个 shells 在不同的挂载命名空间中。
+.SS "Program source"
+.\" SRC BEGIN (unshare.c)
+\&
+.EX
+/* unshare.c
+
+   unshare(1) 命令的简单实现: unshare
+   命名空间并执行命令。
+*/
+#define _GNU_SOURCE
+#include <err.h>
+#include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+static void
+usage(char *pname)
+{
+    fprintf(stderr, "Usage: %s [options] program [arg...]\en", pname);
+    fprintf(stderr, "Options can be:\en");
+    fprintf(stderr, "    \-C   unshare cgroup namespace\en");
+    fprintf(stderr, "    \-i   unshare IPC namespace\en");
+    fprintf(stderr, "    \-m   unshare mount namespace\en");
+    fprintf(stderr, "    \-n   unshare network namespace\en");
+    fprintf(stderr, "    \-p   unshare PID namespace\en");
+    fprintf(stderr, "    \-t   unshare time namespace\en");
+    fprintf(stderr, "    \-u   unshare UTS namespace\en");
+    fprintf(stderr, "    \-U   unshare user namespace\en");
+    exit(EXIT_FAILURE);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int flags, opt;
+
+    flags = 0;
+
+    while ((opt = getopt(argc, argv, "CimnptuU")) != \-1) {
+        switch (opt) {
+        case \[aq]C\[aq]: flags |= CLONE_NEWCGROUP;      break;
+        case \[aq]i\[aq]: flags |= CLONE_NEWIPC;        break;
+        case \[aq]m\[aq]: flags |= CLONE_NEWNS;         break;
+        case \[aq]n\[aq]: flags |= CLONE_NEWNET;        break;
+        case \[aq]p\[aq]: flags |= CLONE_NEWPID;        break;
+        case \[aq]t\[aq]: flags |= CLONE_NEWTIME;        break;
+        case \[aq]u\[aq]: flags |= CLONE_NEWUTS;        break;
+        case \[aq]U\[aq]: flags |= CLONE_NEWUSER;       break;
+        default:  usage(argv[0]);
+        }
+    }
+
+    if (optind >= argc)
+        usage(argv[0]);
+
+    if (unshare(flags) == \-1)
+        err(EXIT_FAILURE, "unshare");
+
+    execvp(argv[optind], &argv[optind]);
+    err(EXIT_FAILURE, "execvp");
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBunshare\fP(1), \fBclone\fP(2), \fBfork\fP(2), \fBkcmp\fP(2), \fBsetns\fP(2),
+\fBvfork\fP(2), \fBnamespaces\fP(7)
+.PP
+.\" commit f504d47be5e8fa7ecf2bf660b18b42e6960c0eb2
+Linux 内核源代码树中的 \fIDocumentation/userspace\-api/unshare.rst\fP (或 Linux 4.12 之前的
+\fIDocumentation/unshare.txt\fP)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

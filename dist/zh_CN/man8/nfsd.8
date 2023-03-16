@@ -1,0 +1,141 @@
+.\" -*- coding: UTF-8 -*-
+.\"
+.\" nfsd(8)
+.\"
+.\" Copyright (C) 1999 Olaf Kirch <okir@monad.swb.de>
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rpc.nfsd 8 "20 Feb 2014"  
+.SH NAME
+rpc.nfsd\-NFS 服务器进程
+.SH SYNOPSIS
+\fB/usr/sbin/rpc.nfsd [\fP\fIoptions\fP\fB]\fP\fI \fP\fBnproc\fP
+.SH DESCRIPTION
+\fBrpc.nfsd\fP 程序实现了 NFS 服务的用户级部分。主要功能由 \fBnfsd\fP
+内核模块处理。用户空间程序仅仅指定内核服务应该监听什么样的套接字，它应该支持什么 NFS 版本，以及它应该使用多少内核线程。
+.P
+\fBrpc.mountd\fP 服务器提供满足 NFS 客户端挂载请求所需的辅助服务。
+.SH OPTIONS
+.TP 
+\fB\-d  or  \-\-debug\fP
+启用调试消息的日志记录
+.TP 
+\fB\-H  or  \-\-host hostname\fP
+指定将接受 NFS 请求的特定主机名 (或地址)。默认情况下，\fBrpc.nfsd\fP 将接受所有已知网络地址上的 NFS 请求。
+请注意，\fBlockd\fP (为 NFS 执行文件锁定服务) 可能仍会接受对所有已知网络地址的请求。 这可能会在 Linux 内核的 future
+版本中发生变化。此选项可以多次使用以监听多个接口。
+.TP 
+\fB\-p  or  \-\-port port\fP
+指定一个不同的端口来侦听 NFS 请求。默认情况下，\fBrpc.nfsd\fP 将侦听端口 2049。
+.TP 
+\fB\-r  or  \-\-rdma\fP
+指定应接受标准 RDMA 端口 (`nfsrdma`，端口 20049) 上的 NFS 请求。
+.TP 
+\fB\-\-rdma=\fP\fIport\fP
+在备用端口上侦听 RDMA 请求 \- 可能是 \fB/etc/services\fP 中列出的数字或名称。
+.TP 
+\fB\-N  or  \-\-no\-nfs\-version vers\fP
+该选项可用于请求 \fBrpc.nfsd\fP 不提供某些版本的 NFS。当前版本的 \fBrpc.nfsd\fP 可以支持主要的 NFS 版本 3,4 和次要版本
+4.0、4.1 和 4.2。
+.TP 
+\fB\-s  or  \-\-syslog\fP
+默认情况下，\fBrpc.nfsd\fP 将错误消息 (和调试消息，如果启用) 记录到标准错误。此选项使 \fBrpc.nfsd\fP
+将这些消息记录到系统日志中。请注意，无论此选项如何，选项处理期间遇到的错误仍将记录到标准错误。
+.TP 
+\fB\-t  or  \-\-tcp\fP
+指示内核 nfs 服务器打开并侦听 TCP 套接字。这是默认设置。
+.TP 
+\fB\-T  or  \-\-no\-tcp\fP
+指示内核 nfs 服务器不要打开和侦听 TCP 套接字。
+.TP 
+\fB\-u  or  \-\-udp\fP
+指示内核 nfs 服务器打开并侦听 UDP 套接字。
+.TP 
+\fB\-U  or  \-\-no\-udp\fP
+指示内核 nfs 服务器不要打开和侦听 UDP 套接字。这是默认设置。
+.TP 
+\fB\-V  or  \-\-nfs\-version vers\fP
+该选项可用于请求 \fBrpc.nfsd\fP 提供特定版本的 NFS。当前版本的 \fBrpc.nfsd\fP 可以支持主要的 NFS 版本 3,4 和次要版本
+4.0、4.1 和 4.2。
+.TP 
+\fB\-L  or  \-\-lease\-time seconds\fP
+设置用于 NFSv4 的租约时间。 这对应于客户端需要与服务器确认其状态的频率。有效范围为 10 到 3600 秒。
+.TP 
+\fB\-G  or  \-\-grace\-time seconds\fP
+设置用于 NFSv4 和 NLM (对于 NFSv2 和 NFSv3) 的宽限时间。 新的文件打开请求 (NFSv4) 和新的文件锁 (NLM)
+将不会被允许，直到这个时间已经过去，以允许客户端恢复状态。
+.TP 
+\fInproc\fP
+指定 NFS 服务器线程数。默认情况下，启动八个线程。但是，为了获得最佳性能，应该使用多个线程。实际数字取决于 NFS
+客户端的数量和创建的工作负载，但一个有用的起点是八个线程。可以使用 \fBnfsstat\fP(8) 程序检查修改该编号的效果。
+.P
+请注意，如果 NFS 服务器已经在运行，那么指定主机、端口和协议的选项将被忽略。 给定的进程数将是唯一考虑的选项，活动 \fBnfsd\fP
+进程数将增加或减少以匹配此数字。 特别是 \fBrpc.nfsd 0\fP 将停止所有线程，从而关闭所有打开的连接。
+
+.SH "CONFIGURATION FILE"
+许多可以在命令行上设置的选项也可以通过在 \fI/etc/nfs.conf\fP 配置文件的 \fB[nfsd]\fP 部分中设置的值来控制。 认可的值包括:
+.TP 
+\fBthreads\fP
+要启动的线程数。
+.TP 
+\fBhost\fP
+\fIrpc.nfsd\fP 将侦听的主机名或逗号分隔的主机名列表。 使用 \fB\-\-host\fP 选项替换此处列出的所有主机名。
+.TP 
+\fBgrace\-time\fP
+NFSv4 和 NLM 的宽限时间，以秒为单位。
+.TP 
+\fBlease\-time\fP
+NFSv4 的租用时间，以秒为单位。
+.TP 
+\fBport\fP
+设置 TCP/UDP 绑定的端口。
+.TP 
+\fBrdma\fP
+在标准端口 (`nfsrdma`，端口 20049) 上启用 RDMA 端口 (使用 "on" 或 "yes" 等)。
+.TP 
+\fBrdma\-port\fP
+设置备用 RDMA 端口。
+.TP 
+\fBUDP\fP
+启用 (使用 "on" 或 "yes" 等) 或禁用 (`关闭`，"no") UDP 支持。
+.TP 
+\fBTCP\fP
+启用或禁用 TCP 支持。
+.TP 
+\fBvers3\fP
+.TP 
+\fBvers4\fP
+启用或禁用主要 NFS 版本。 3 和 4 通常默认启用。
+.TP 
+\fBvers4.1\fP
+.TP 
+\fBvers4.2\fP
+将这些设置为 "off" 或类似的将禁用选定的次要版本。 设置为 "on" 将启用它们。 默认值由内核决定，通常次要版本在实现足够完整后默认启用。
+
+.SH NOTES
+如果程序是使用 TI\-RPC 支持构建的，它将启用在 \fBnetconfig\fP 数据库中标记为可见的任何协议和地址系列组合。
+
+.SH "SEE ALSO"
+\fBnfsd\fP(7), \fBrpc.mountd\fP(8), \fBexports\fP(5), \fBexportfs\fP(8), \fBnfs.conf\fP(5),
+\fBrpc.rquotad\fP(8), \fBnfsstat\fP(8), \fBnetconfig(5).\fP
+.SH AUTHOR
+奥拉夫・基尔奇、比尔・霍伊斯、H. J. Lu, G. 艾伦・莫里斯三世和许多其他人。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

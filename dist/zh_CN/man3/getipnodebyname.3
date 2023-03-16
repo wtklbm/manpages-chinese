@@ -1,0 +1,141 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2000 Sam Varshavchik <mrsam@courier-mta.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References: RFC 2553
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getipnodebyname 3 2022\-11\-10 "Linux man\-pages 6.03" 
+.SH NAME
+getipnodebyname、getipnodebyaddr、freehostent \- 获取网络主机名和地址
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <sys/socket.h>\fP
+\fB#include <netdb.h>\fP
+.PP
+\fB[[deprecated]] struct hostent *getipnodebyname(const char *\fP\fIname\fP\fB, 整数 \fP\fIaf\fP\fB,\fP
+\fB                                            int \fP\fIflags\fP\fB, int *\fP\fIerror_num\fP\fB);\fP
+\fB[[deprecated]] struct hostent *getipnodebyaddr(const void \fP\fIaddr\fP\fB[.\fP\fIlen\fP\fB],\fP
+\fB                                            size_t \fP\fIlen\fP\fB, int \fP\fIaf\fP\fB,\fP
+\fB                                            int *\fP\fIerror_num\fP\fB);\fP
+\fB[[deprecated]] void freehostent(struct hostent *\fP\fIip\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些函数已弃用 (并且在 glibc 中不可用)。 请改用 \fBgetaddrinfo\fP(3) 和 \fBgetnameinfo\fP(3)。
+.PP
+\fBgetipnodebyname\fP() 和 \fBgetipnodebyaddr\fP() 函数返回网络主机的名称和地址。
+这些函数返回指向以下结构体的指针:
+.PP
+.in +4n
+.EX
+struct hostent {
+    char  *h_name;
+    char **h_aliases;
+    int    h_addrtype;
+    int    h_length;
+    char **h_addr_list;
+};
+.EE
+.in
+.PP
+这些函数取代了 \fBgethostbyname\fP(3) 和 \fBgethostbyaddr\fP(3) 函数，后者只能访问 IPv4 网络地址族。
+\fBgetipnodebyname\fP() 和 \fBgetipnodebyaddr\fP() 函数可以访问多个网络地址族。
+.PP
+与 \fBgethostby\fP 函数不同，这些函数返回指向动态分配内存的指针。 \fBfreehostent\fP() 函数用于在调用者不再需要
+\fIhostent\fP 结构体后释放动态分配的内存。
+.SS "getipnodebyname() arguments"
+\fBgetipnodebyname\fP() 函数查找由 \fIname\fP 参数指定的主机的网络地址。 \fIaf\fP 参数指定以下值之一:
+.TP 
+\fBAF_INET\fP
+\fIname\fP 参数指向点分四组 IPv4 地址或 IPv4 网络主机的名称。
+.TP 
+\fBAF_INET6\fP
+\fIname\fP 参数指向一个十六进制的 IPv6 地址或 IPv6 网络主机的名称。
+.PP
+\fIflags\fP 参数指定附加选项。 可以通过将它们按位或运算在一起来指定多个选项。 如果不需要任何选项，\fIflags\fP 应设置为 0。
+.TP 
+\fBAI_V4MAPPED\fP
+该标志与 \fBAF_INET6\fP 一起使用以请求查询 IPv4 地址而不是 IPv6 地址; IPv4 地址将映射到 IPv6 地址。
+.TP 
+\fBAI_ALL\fP
+此标志与 \fBAI_V4MAPPED\fP 一起使用以请求查询 IPv4 和 IPv6 地址。 找到的任何 IPv4 地址都将映射到 IPv6 地址。
+.TP 
+\fBAI_ADDRCONFIG\fP
+该标志与 \fBAF_INET6\fP 一起使用，进一步请求除非系统至少有一个分配给网络接口的 IPv6 地址，否则不应查询 IPv6
+地址，除非系统至少有一个 IPv4 地址，否则不应查询 IPv4 地址分配给网络接口的 IPv4 地址。 该标志可以单独使用，也可以与
+\fBAI_V4MAPPED\fP 标志一起使用。
+.TP 
+\fBAI_DEFAULT\fP
+该标志等同于 \fB(AI_ADDRCONFIG | AI_V4MAPPED)\fP。
+.SS "getipnodebyaddr() arguments"
+\fBgetipnodebyaddr\fP() 函数查找其网络地址由 \fIaddr\fP 参数指定的主机的名称。 \fIaf\fP 参数指定以下值之一:
+.TP 
+\fBAF_INET\fP
+\fIaddr\fP 参数指向 \fIstruct in_addr\fP，\fIlen\fP 必须设置为 \fIsizeof(struct in_addr)\fP。
+.TP 
+\fBAF_INET6\fP
+\fIaddr\fP 参数指向 \fIstruct in6_addr\fP，\fIlen\fP 必须设置为 \fIsizeof(struct in6_addr)\fP。
+.SH "RETURN VALUE"
+如果发生错误，则返回 NULL，\fIerror_num\fP 将包含来自以下列表的错误代码:
+.TP 
+\fBHOST_NOT_FOUND\fP
+找不到主机名或网络地址。
+.TP 
+\fBNO_ADDRESS\fP
+域名服务器识别出网络地址或名称，但没有返回任何应答。 如果网络主机只有 IPv4 地址并且只请求 IPv6 信息，则可能会发生这种情况，反之亦然。
+.TP 
+\fBNO_RECOVERY\fP
+域名服务器返回永久失败响应。
+.TP 
+\fBTRY_AGAIN\fP
+域名服务器返回临时失败响应。 下次您可能会有更好的运气。
+.PP
+成功的查询会返回一个指向 \fIhostent\fP 结构体的指针，其中包含以下字段:
+.TP 
+\fIh_name\fP
+这是该网络主机的正式名称。
+.TP 
+\fIh_aliases\fP
+这是指向同一主机的非官方别名的指针数组。 该数组由一个空指针终止。
+.TP 
+\fIh_addrtype\fP
+这是 \fIaf\fP 参数到 \fBgetipnodebyname\fP() 或 \fBgetipnodebyaddr\fP() 的副本。 如果 \fIaf\fP 参数为
+\fBAF_INET\fP，则 \fIh_addrtype\fP 将始终为 \fBAF_INET\fP。 如果 \fIaf\fP 参数为 \fBAF_INET6\fP，则
+\fIh_addrtype\fP 将始终为 \fBAF_INET6\fP。
+.TP 
+\fIh_length\fP
+如果 \fIh_addrtype\fP 为 \fBAF_INET\fP，则此字段将设置为 \fIsizeof(struct in_addr)\fP，如果
+\fIh_addrtype\fP 为 \fBAF_INET6\fP，则此字段将设置为 \fIsizeof(struct in6_addr)\fP。
+.TP 
+\fIh_addr_list\fP
+这是一组指向网络主机的网络地址结构的一个或多个指针。 该数组由一个空指针终止。
+.SH STANDARDS
+.\" Not in POSIX.1-2001.
+RFC\ 2553.
+.SH NOTES
+这些函数出现在 glibc 2.1.91\-95 中，但又被删除了。 几个类 UNIX 系统支持它们，但所有调用它们都已弃用。
+.SH "SEE ALSO"
+\fBgetaddrinfo\fP(3), \fBgetnameinfo\fP(3), \fBinet_ntop\fP(3), \fBinet_pton\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

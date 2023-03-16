@@ -1,0 +1,105 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2006, 2008, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" (A few fragments remain from an earlier (1992) version written in
+.\" 1992 by Drew Eckhardt <drew@cs.colorado.edu>.)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified Sat Jul 24 12:51:53 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Tue Oct 22 22:39:04 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Thu May  1 06:05:54 UTC 1997 by Nicolás Lichtmaier
+.\"  <nick@debian.com> with Lars Wirzenius <liw@iki.fi> suggestion
+.\" 2006-05-13, mtk, substantial rewrite of description of 'mask'
+.\" 2008-01-09, mtk, a few rewrites and additions.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH umask 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+umask \- 设置文件模式创建掩码
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/stat.h>\fP
+.PP
+\fBmode_t umask(mode_t \fP\fImask\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBumask\fP() 将调用进程的文件模式创建掩码 (umask) 设置为 \fImask\fP&0777 (即，仅使用 \fImask\fP
+的文件权限位)，并返回掩码的先前值。
+.PP
+.\" e.g., mkfifo(), creat(), mknod(), sem_open(), mq_open(), shm_open()
+.\" but NOT the System V IPC *get() calls
+umask 由 \fBopen\fP(2)、\fBmkdir\fP(2) 和其他创建文件的系统调用使用，以修改新创建的文件或目录的权限。 具体来说，umask
+中的权限从 \fImode\fP 参数被关闭到 \fBopen\fP(2) 和 \fBmkdir\fP(2)。
+.PP
+或者，如果父目录具有默认 ACL (请参见 \fBacl\fP(5))，忽略 umask，继承默认 ACL，根据继承的 ACL 设置权限位，并关闭
+\fImode\fP 参数中不存在的权限位。 例如，以下默认 ACL 等效于 022 的 umask:
+.PP
+.in +4n
+.EX
+u::rwx,g::r\-x,o::r\-x
+.EE
+.in
+.PP
+将此默认 ACL 的效果与 0666 (rw\-rw\-rw\-) 的 \fImode\fP 参数相结合，生成的文件权限将为 0644 (rw\-r\-\-r\-\-)。
+.PP
+\fBinode\fP(7) 中描述了应用于指定 \fImask\fP 的常量。
+.PP
+进程 umask 的典型默认值是 \fBS_IWGRP\fP | \fBS_IWOTH\fP (八进制 022)。 在通常情况下，\fImode\fP 参数到
+\fBopen\fP(2) 被指定为:
+.PP
+.in +4n
+.EX
+\fBS_IRUSR\fP | \fBS_IWUSR\fP | \fBS_IRGRP\fP | \fBS_IWGRP\fP | \fBS_IROTH\fP | \fBS_IWOTH\fP
+.EE
+.in
+.PP
+(八进制 0666) 创建新文件时，生成文件的权限为:
+.PP
+.in +4n
+.EX
+\fBS_IRUSR\fP | \fBS_IWUSR\fP | \fBS_IRGRP\fP | \fBS_IROTH\fP
+.EE
+.in
+.PP
+(因为 0666&\[ti] 022=0644; 即 rw\-r\-\-r\-\-)。
+.SH "RETURN VALUE"
+这个系统调用总是成功的，并且返回掩码之前的值。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.SH NOTES
+通过 \fBfork\fP(2) 创建的子进程继承其父进程的 umask。 \fBexecve\fP(2) 保持 umask 不变。
+.PP
+不可能使用 \fBumask\fP() 获取进程的 umask 而不同时更改它。 然后需要对 \fBumask\fP() 进行第二次调用以恢复 umask。
+这两个步骤的非原子性为多线程程序中的竞争提供了可能性。
+.PP
+从 Linux 4.7 开始，任何进程的 umask 都可以通过 \fI/proc/\fPpid\fI/status\fP 的 \fIUmask\fP 字段查看。 检查
+\fI/proc/self/status\fP 中的此字段允许进程检索其 umask 而无需同时更改它。
+.PP
+umask 设置还会影响分配给进程创建的 POSIX IPC 对象
+(\fBmq_open\fP(3)、\fBsem_open\fP(3)、\fBshm_open\fP(3))、FIFO (\fBmkfifo\fP(3)) 和 UNIX
+域套接字 (\fBunix\fP(7)) 的权限。 umask 不影响分配给进程创建的 System\V IPC 对象的权限 (使用
+\fBmsgget\fP(2)、\fBsemget\fP(2)、\fBshmget\fP(2))。
+.SH "SEE ALSO"
+\fBchmod\fP(2), \fBmkdir\fP(2), \fBopen\fP(2), \fBstat\fP(2), \fBacl\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

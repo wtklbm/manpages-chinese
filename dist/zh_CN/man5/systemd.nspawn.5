@@ -1,0 +1,358 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.NSPAWN 5 "" "systemd 253" systemd.nspawn
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.nspawn \- 容器设置
+.SH SYNOPSIS
+.PP
+/etc/systemd/nspawn/\fImachine\fP\&.nspawn
+.PP
+/run/systemd/nspawn/\fImachine\fP\&.nspawn
+.PP
+/var/lib/machines/\fImachine\fP\&.nspawn
+.SH DESCRIPTION
+.PP
+nspawn 容器设置文件 (后缀 \&.nspawn) 包含本地容器的运行时配置，由 \fBsystemd\-nspawn\fP(1)\&
+使用。这种类型的文件以它们为 \& 定义设置的容器命名。它们是可选的，只有执行环境不同于默认值的容器才需要。这种类型的文件大多包含也可以在
+\fBsystemd\-nspawn\fP 命令行上设置的设置，并且可以更容易地将特定设置持久附加到特定容器 \&。这些文件的语法受到 \&.desktop
+文件的启发，类似于 systemd 项目支持的其他配置文件 \&。有关概述，请参见 \fBsystemd.syntax\fP(7)\&。
+.SH "\&.NSPAWN FILE DISCOVERY"
+.PP
+通过将 \&.nspawn 后缀追加到容器的机器名称来搜索文件，如 \fBsystemd\-nspawn\fP 的 \fB\-\-machine=\fP
+开关所指定，或从目录或图像文件名派生 \&。这个文件首先在 /etc/systemd/nspawn/ 和 /run/nspawn/\&
+中搜索。如果在那里找到，设置将被读取并全部生效 (但仍可能被相应的命令行参数覆盖) \&。否则，将在图像文件旁边或容器根目录的 immediate
+父目录中搜索该文件 \&。如果在此处找到该文件，则只有一部分设置会生效 \&。所有可能提升权限或授予对主机资源 (例如文件或目录)
+的额外访问权限的设置都将被忽略 \&。这适用于哪些选项记录在下面 \&。
+.PP
+由管理员创建和维护 (因此受信任) 的持久设置文件应放在 /etc/systemd/nspawn/ 中，而自动下载 (因此可能不受信任)
+的设置文件应放在 /var/lib/machines/ 中 (在容器映像旁边)，它们的安全影响有限 \&。为了将特权设置添加到从图像供应商处获取的
+\&.nspawn 文件中，建议将设置文件复制到 /etc/systemd/nspawn/ 中并在那里进行编辑，以便特权选项可用 \&。可以使用
+\fBsystemd\-nspawn\fP\*(Aqs \fB\-\-settings=\fP 开关配置有关如何搜索和解释文件的精确算法，有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.SH "[EXEC] SECTION OPTIONS"
+.PP
+设置文件可能包含一个 [Exec] 部分，其中包含各种执行参数:
+.PP
+\fIBoot=\fP
+.RS 4
+采用布尔值参数，默认为关闭 \&。如果启用，\fBsystemd\-nspawn\fP 将自动搜索 init 可执行文件并调用它 \&。在这种情况下，使用
+\fIParameters=\fP 的指定参数作为附加参数传递给 init 进程 \&。这个设置对应 \fBsystemd\-nspawn\fP 命令行中的
+\fB\-\-boot\fP 开关 \&。该选项不能与 \fIProcessTwo=yes\fP\& 结合使用。这个选项默认在
+systemd\-nspawn@\&.service 模板元 \& 中指定。
+.RE
+.PP
+\fIEphemeral=\fP
+.RS 4
+采用布尔参数，默认为关闭，如果启用，容器将运行其文件系统的临时快照，当容器终止时立即删除 \&。这相当于 \fB\-\-ephemeral\fP 命令行开关
+\&。有关支持的特定选项的详细信息，请参见 \fBsystemd\-nspawn\fP(1)。
+.RE
+.PP
+\fIProcessTwo=\fP
+.RS 4
+采用布尔值参数，默认为关闭 \&。如果启用，指定的程序将作为 PID 2\& 运行。存根初始化进程作为 PID 1\& 运行。这个设置对应
+\fBsystemd\-nspawn\fP 命令行中的 \fB\-\-as\-pid2\fP 开关 \&。该选项不能与 \fIBoot=yes\fP\& 结合使用。
+.RE
+.PP
+\fIParameters=\fP
+.RS 4
+采用以空格分隔的参数 \& 列表。单引号 ("\*(Aq") 和双引号 (""") 可以在带空格 \&
+的参数周围使用。这可以是命令行，以要执行的二进制名称开头，或者 \(en 如果启用了 \fIBoot=\fP\(en 传递给 init 进程的参数列表
+\&。此设置对应于 \fBsystemd\-nspawn\fP 命令行 \& 上传递的命令行参数。
+.sp
+Note: \fBBoot=no\fP、\fBParameters=a b "c c"\fP 与 \fBsystemd\-nspawn a b "c c"\fP
+相同，\fBBoot=yes\fP、\fBParameters=b \*(Aqc c\*(Aq\fP 与 \fBsystemd\-nspawn \-\-boot b \*(Aqc c\*(Aq\fP\& 相同。
+.RE
+.PP
+\fIEnvironment=\fP
+.RS 4
+采用由键和值组成的环境变量赋值，以 `=`\& 分隔。为容器中调用的主进程设置环境变量 \&。这个设置可以多次使用来设置多个环境变量 \&。对应
+\fB\-\-setenv=\fP 命令行开关 \&。
+.RE
+.PP
+\fIUser=\fP
+.RS 4
+采用 UNIX 用户名 \&。指定调用容器主进程的用户名 as\&。该用户必须在容器 \*(Aqs 用户数据库 \&. 这对应于 \fB\-\-user=\fP
+命令行开关 \&。
+.RE
+.PP
+\fIWorkingDirectory=\fP
+.RS 4
+为容器中调用的进程选择工作目录 \&。期望容器中的绝对路径 \*(Aqs 文件系统命名空间 \&. 这对应于 \fB\-\-chdir=\fP 命令行开关 \&。
+.RE
+.PP
+\fIPivotRoot=\fP
+.RS 4
+启动时选择一个目录 pivot 到容器里面 / 里面 \&。采用单个路径，或一对由冒号 \& 分隔的两条路径。两个路径都必须是绝对路径，在容器
+\*(Aqs 文件系统命名空间 \&. 这对应于 \fB\-\-pivot\-root=\fP 命令行开关 \&。
+.RE
+.PP
+\fICapability=\fP, \fIDropCapability=\fP
+.RS 4
+采用以空格分隔的 Linux 进程功能列表 (有关详细信息，请参见 \fBcapabilities\fP(7)) \&。\fICapability=\fP
+设置指定在默认功能集之上传递的附加功能 \&。\fIDropCapability=\fP 设置指定丢弃默认设置 \& 的功能。这些设置对应于
+\fB\-\-capability=\fP 和 \fB\-\-drop\-capability=\fP 命令行开关 \&。注意 \fICapability=\fP 是特权设置，只在
+/etc/systemd/nspawn/ 和 /run/system/nspawn/ (见上文) \& 中的 \&.nspawn
+文件中生效。另一方面，\fIDropCapability=\fP 在所有情况下都有效 \&。如果传递特殊值 "all"，则保留所有功能 (或丢弃) \&。
+.sp
+这些设置更改了功能的边界集，这也限制了 \fIAmbientCapability=\fP\& 给出的环境功能。
+.RE
+.PP
+\fIAmbientCapability=\fP
+.RS 4
+采用以空格分隔的 Linux 进程功能列表 (有关详细信息，请参见 \fBcapabilities\fP(7))
+\&。\fIAmbientCapability=\fP 设置指定将传递给可继承和环境功能集中启动的程序的功能 \&。这将授予此进程这些能力 \&。此设置对应
+\fB\-\-ambient\-capability=\fP 命令行开关 \&。
+.sp
+此设置不支持值 "all"\&。
+.sp
+\fIAmbientCapability=\fP 的设置必须包含在由 \fICapability=\fP 和 \fIDropCapability=\fP\&
+建立的边界集设置中。
+.sp
+请注意，\fIAmbientCapability=\fP 是特权设置 (见上文) \&。
+.RE
+.PP
+\fINoNewPrivileges=\fP
+.RS 4
+采用控制容器有效载荷 \& 的 \fBPR_SET_NO_NEW_PRIVS\fP 标志的布尔参数。这相当于 \fB\-\-no\-new\-privileges=\fP
+命令行开关 \&。有关详细信息，请参见 \fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fIKillSignal=\fP
+.RS 4
+指定发送给容器的进程信号 \*(当 nspawn 本身收到 SIGTERM 时，Aqs PID 1，以触发容器的有序关闭 \&。如果使用
+\fBBoot=\fP，则默认为 SIGRTMIN+3 (在与 systemd 兼容的初始化系统上，SIGRTMIN+3 触发有序关闭)
+\&。有关有效信号的列表，请参见 \fBsignal\fP(7)\&。
+.RE
+.PP
+\fIPersonality=\fP
+.RS 4
+配置容器的内核特性 \&。这相当于 \fB\-\-personality=\fP 开关 \&。
+.RE
+.PP
+\fIMachineID=\fP
+.RS 4
+配置 128 位机器 ID (UUID) 以传递给容器 \&。这相当于 \fB\-\-uuid=\fP 命令行开关 \&。这个选项是有特权的 (见上文) \&。
+.RE
+.PP
+\fIPrivateUsers=\fP
+.RS 4
+配置对 usernamespacing\& 的支持。这等效于 \fB\-\-private\-users=\fP 命令行开关，并采用相同的选项
+\&。这个选项是有特权的 (见上文) \&。如果使用 systemd\-nspawn@\&.service 模板元文件，这个选项是默认的 \&。
+.RE
+.PP
+\fINotifyReady=\fP
+.RS 4
+配置对来自容器 \*(Aqs init process\&. 这相当于 \fB\-\-notify\-ready=\fP 命令行开关，并采用相同的参数
+\&。有关支持的特定选项的详细信息，请参见 \fBsystemd\-nspawn\fP(1)。
+.RE
+.PP
+\fISystemCallFilter=\fP
+.RS 4
+配置应用于容器的系统调用过滤器。这相当于 \fB\-\-system\-call\-filter=\fP 命令行开关，并采用相同的列表参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fILimitCPU=\fP, \fILimitFSIZE=\fP, \fILimitDATA=\fP, \fILimitSTACK=\fP, \fILimitCORE=\fP,
+\fILimitRSS=\fP, \fILimitNOFILE=\fP, \fILimitAS=\fP, \fILimitNPROC=\fP,
+\fILimitMEMLOCK=\fP, \fILimitLOCKS=\fP, \fILimitSIGPENDING=\fP, \fILimitMSGQUEUE=\fP,
+\fILimitNICE=\fP, \fILimitRTPRIO=\fP, \fILimitRTTIME=\fP
+.RS 4
+配置应用于容器的各种类型的资源限制。这相当于 \fB\-\-rlimit=\fP 命令行开关，取相同的参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fIOOMScoreAdjust=\fP
+.RS 4
+配置 OOM 分数调整值 \&。这相当于 \fB\-\-oom\-score\-adjust=\fP 命令行开关，取相同的参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fICPUAffinity=\fP
+.RS 4
+配置 CPU affinity\&。这相当于 \fB\-\-cpu\-affinity=\fP 命令行开关，取相同的参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fIHostname=\fP
+.RS 4
+配置为容器设置的内核主机名 \&。这相当于 \fB\-\-hostname=\fP 命令行开关，取相同的参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fIResolvConf=\fP
+.RS 4
+配置如何处理容器中的 /etc/resolv\&.conf\&。这相当于 \fB\-\-resolv\-conf=\fP 命令行开关，取相同的参数
+\&。有关详细信息，请参见 \fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fITimezone=\fP
+.RS 4
+配置如何处理容器中的 /etc/localtime\&。这相当于 \fB\-\-timezone=\fP 命令行开关，取相同的参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fILinkJournal=\fP
+.RS 4
+配置如何链接主机和容器日志设置 \&。这相当于 \fB\-\-link\-journal=\fP 命令行开关，并采用相同的参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fISuppressSync=\fP
+.RS 4
+配置是否抑制容器，载荷，的磁盘同步 \&。这相当于 \fB\-\-suppress\-sync=\fP 命令行开关，并采用相同的参数 \&。有关详细信息，请参见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.SH "[FILES] SECTION OPTIONS"
+.PP
+设置文件可能包含一个 [Files] 部分，其中包含配置容器文件系统的各种参数:
+.PP
+\fIReadOnly=\fP
+.RS 4
+采用布尔值参数，默认为关闭 \&。如果指定，容器将使用只读文件系统运行 \&。此设置对应于 \fB\-\-read\-only\fP 命令行开关 \&。
+.RE
+.PP
+\fIVolatile=\fP
+.RS 4
+采用布尔参数，或特殊值 `state`\&。这配置是否运行具有易变状态或者配置的容器。该选项等同于 \fB\-\-volatile=\fP，具体支持的选项见
+\fBsystemd\-nspawn\fP(1)\&。
+.RE
+.PP
+\fIBind=\fP, \fIBindReadOnly=\fP
+.RS 4
+将主机中的绑定挂载添加到容器中 \&。采用单个路径、由冒号分隔的一对两条路径或两条路径的三元组加上一个由冒号 \&
+分隔的选项字符串。此选项可以多次使用以配置多个绑定安装 \&。该选项相当于命令行开关 \fB\-\-bind=\fP 和
+\fB\-\-bind\-ro=\fP，具体支持的选项见 \fBsystemd\-nspawn\fP(1)\&。此设置是有特权的 (见上文) \&。
+.RE
+.PP
+\fIBindUser=\fP
+.RS 4
+将主机中的用户绑定到容器中。该选项相当于命令行开关 \fB\-\-bind\-user=\fP，具体支持的选项见
+\fBsystemd\-nspawn\fP(1)\&。此设置是有特权的 (见上文) \&。
+.RE
+.PP
+\fITemporaryFileSystem=\fP
+.RS 4
+向容器添加 "tmpfs" 挂载 \&。采用一个路径或一对路径和选项字符串，由冒号 \& 分隔。该选项可以多次使用以配置多个 "tmpfs" 挂载
+\&。该选项相当于命令行开关 \fB\-\-tmpfs=\fP，具体支持的选项见 \fBsystemd\-nspawn\fP(1)\&。此设置是有特权的 (见上文)
+\&。
+.RE
+.PP
+\fIInaccessible=\fP
+.RS 4
+通过使用具有最严格访问模式的相同类型的空文件节点来覆盖容器中的指定文件或目录。将文件系统路径作为参数 \&。此选项可以多次使用以屏蔽多个文件或目录
+\&。该选项相当于命令行开关 \fB\-\-inaccessible=\fP，具体支持的选项见 \fBsystemd\-nspawn\fP(1)\&。此设置是有特权的
+(见上文) \&。
+.RE
+.PP
+\fIOverlay=\fP, \fIOverlayReadOnly=\fP
+.RS 4
+添加覆盖安装点 \&。采用冒号分隔的路径列表 \&。此选项可以多次使用以配置多个覆盖安装 \&。该选项相当于命令行开关 \fB\-\-overlay=\fP 和
+\fB\-\-overlay\-ro=\fP，具体支持的选项见 \fBsystemd\-nspawn\fP(1)\&。此设置是有特权的 (见上文) \&。
+.RE
+.PP
+\fIPrivateUsersOwnership=\fP
+.RS 4
+配置容器树中的文件和目录的所有权是否应调整为使用的 UID/GID 范围，如果需要并启用用户命名空间 \&。这相当于
+\fB\-\-private\-users\-ownership=\fP 命令行开关 \&。这个选项是有特权的 (见上文) \&。
+.RE
+.SH "[NETWORK] SECTION OPTIONS"
+.PP
+设置文件可能包含一个 [Network] 部分，其中包含配置容器网络连接的各种参数:
+.PP
+\fIPrivate=\fP
+.RS 4
+采用布尔值参数，默认为关闭 \&。如果启用，容器将在其自己的网络命名空间中运行，并且不与主机共享网络接口和配置。此设置对应于
+\fB\-\-private\-network\fP 命令行开关 \&。
+.RE
+.PP
+\fIVirtualEthernet=\fP
+.RS 4
+采用布尔型参数 \&。配置是否在宿主机和容器之间建立虚拟以太网连接 ("veth")\&。此设置意味着 \fIPrivate=yes\fP\&。这个设置对应
+\fB\-\-network\-veth\fP 命令行开关 \&。这个选项是有特权的 (见上文) \&。如果使用 systemd\-nspawn@\&.service
+模板元文件，这个选项是默认的 \&。
+.RE
+.PP
+\fIVirtualEthernetExtra=\fP
+.RS 4
+采用冒号分隔的一对接口名称 \&。在主机和容器之间配置额外的虚拟以太网连接
+("veth")\&。第一个指定的名称是主机上的接口名称，第二个是容器中的接口名称 \&。后者可以省略，在这种情况下它被设置为与主机端接口相同的名称
+\&。此设置意味着 \fIPrivate=yes\fP\&。这个设置对应 \fB\-\-network\-veth\-extra=\fP 命令行开关，可以多次使用
+\&。它独立于 \fIVirtualEthernet=\fP\&。请注意，此选项与下面的 \fIBridge=\fP
+设置无关，因此以这种方式创建的任何连接都不会自动添加到主机端的任何桥接设备 \&。这个选项是有特权的 (见上文) \&。
+.RE
+.PP
+\fIInterface=\fP
+.RS 4
+获取以空格分隔的接口列表以添加到容器 \&。该选项对应 \fB\-\-network\-interface=\fP 命令行开关，隐含
+\fIPrivate=yes\fP\&。这个选项是有特权的 (见上文) \&。
+.RE
+.PP
+\fIMACVLAN=\fP, \fIIPVLAN=\fP
+.RS 4
+采用以空格分隔的接口列表来添加 MACLVAN 或 IPVLAN 接口，然后将其添加到容器 \&。这些选项对应于
+\fB\-\-network\-macvlan=\fP 和 \fB\-\-network\-ipvlan=\fP 命令行开关，隐含
+\fIPrivate=yes\fP\&。这些选项是有特权的 (见上文) \&。
+.RE
+.PP
+\fIBridge=\fP
+.RS 4
+采用接口名称 \&。此设置表示 \fIVirtualEthernet=yes\fP 和
+\fIPrivate=yes\fP，其效果是创建的虚拟以太网链路的主机端连接到指定的桥接接口 \&。该选项对应 \fB\-\-network\-bridge=\fP
+命令行开关 \&。这个选项是有特权的 (见上文) \&。
+.RE
+.PP
+\fIZone=\fP
+.RS 4
+采用网络区域名称 \&。此设置表示 \fIVirtualEthernet=yes\fP 和
+\fIPrivate=yes\fP，其效果是创建的虚拟以太网链路的主机端连接到一个自动管理的桥接接口，该接口以传递的参数命名，前缀为
+`vz\-`\&。该选项对应 \fB\-\-network\-zone=\fP 命令行开关 \&。这个选项是有特权的 (见上文) \&。
+.RE
+.PP
+\fIPort=\fP
+.RS 4
+在主机上公开容器的 TCP 或 UDP 端口。该选项对应 \fB\-\-port=\fP 命令行开关，参看 \fBsystemd\-nspawn\fP(1)
+该选项带的参数 \& 的精确语法。这个选项是有特权的 (见上文) \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-nspawn\fP(1), \fBsystemd.directives\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

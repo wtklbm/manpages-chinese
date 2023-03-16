@@ -1,0 +1,114 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_attr_setstack 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_attr_setstack、pthread_attr_getstack \- 线程属性对象中的 set/get 栈属性
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_attr_setstack(pthread_attr_t *\fP\fIattr\fP\fB,\fP
+\fB                          void \fP\fIstackaddr\fP\fB[.\fP\fIstacksize\fP\fB],\fP
+\fB                          size_t \fP\fIstacksize\fP\fB);\fP
+\fBint pthread_attr_getstack(const pthread_attr_t *restrict \fP\fIattr\fP\fB,\fP
+\fB                          void **restrict \fP\fIstackaddr\fP\fB,\fP
+\fB                          size_t *restrict \fP\fIstacksize\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpthread_attr_getstack\fP(), \fBpthread_attr_setstack\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBpthread_attr_setstack\fP() 函数将 \fIattr\fP 引用的线程属性对象的栈地址和栈大小属性分别设置为 \fIstackaddr\fP
+和 \fIstacksize\fP 中指定的值。 这些属性指定应由使用线程属性对象 \fIattr\fP 创建的线程使用的栈的位置和大小。
+.PP
+\fIstackaddr\fP 应指向调用者分配的 \fIstacksize\fP 字节缓冲区的最低可寻址字节。 分配的缓冲区的页面应该是可读和可写的。
+.PP
+\fBpthread_attr_getstack\fP() 函数返回 \fIstackaddr\fP 和 \fIstacksize\fP 指向的缓冲区中 \fIattr\fP
+引用的线程属性对象的栈地址和栈大小属性。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0; 出错时，它们返回一个非零错误号。
+.SH ERRORS
+\fBpthread_attr_setstack\fP() 可能会因以下错误而失败:
+.TP 
+\fBEINVAL\fP
+\fIstacksize\fP 小于 \fBPTHREAD_STACK_MIN\fP (16384) 字节。 在某些系统上，如果 \fIstackaddr\fP 或
+\fIstackaddr\~+\~stacksize\fP 未适当对齐，也可能会发生此错误。
+.PP
+如果 \fIstackaddr\fP 和 \fIstacksize\fP 描述的栈区域不是调用者可读和可写的，则 POSIX.1 也会记录 \fBEACCES\fP
+错误。
+.SH VERSIONS
+这些函数是从 glibc 2.2 开始提供的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_attr_setstack\fP(),
+\fBpthread_attr_getstack\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+这些函数是为必须确保将线程的栈放置在特定位置的应用程序提供的。 对于大多数应用程序，这不是必需的，应避免使用这些函数。
+(如果应用程序只需要不同于默认值的栈大小，则使用 \fBpthread_attr_setstacksize\fP(3)。)
+.PP
+当应用程序使用 \fBpthread_attr_setstack\fP() 时，它会接管分配栈的责任。 使用
+\fBpthread_attr_setguardsize\fP(3) 设置的任何防护尺寸值都将被忽略。 如果认为有必要，应用程序有责任分配一个保护区
+(一个或多个防止读写的页面) 来处理栈溢出的可能性。
+.PP
+\fIstackaddr\fP 中指定的地址应该适当对齐: 为了完全的可移植性，将其对齐在页面边界 (\fIsysconf(_SC_PAGESIZE)\fP) 上。
+\fBposix_memalign\fP(3) 可能对分配有用。 可能，\fIstacksize\fP 也应该是系统页面大小的倍数。
+.PP
+如果 \fIattr\fP 用于创建多线程，那么调用者必须在对 \fBpthread_create\fP(3) 的调用之间更改栈地址属性;
+否则，线程将尝试为它们的栈使用相同的内存区域，从而导致混乱。
+.SH EXAMPLES
+请参见 \fBpthread_attr_init\fP(3)。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBmmap\fP(2), \fBmprotect\fP(2), \fBposix_memalign\fP(3), \fBpthread_attr_init\fP(3),
+\fBpthread_attr_setguardsize\fP(3), \fBpthread_attr_setstackaddr\fP(3),
+\fBpthread_attr_setstacksize\fP(3), \fBpthread_create\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

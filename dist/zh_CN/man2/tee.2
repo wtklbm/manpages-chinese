@@ -1,0 +1,162 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 2006 Jens Axboe
+.\" and Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tee 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+tee \- 复制管道内容
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP
+.PP
+\fBssize_t tee(int \fP\fIfd_in\fP\fB, int \fP\fIfd_out\fP\fB, size_t \fP\fIlen\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.\" Return type was long before glibc 2.7
+.SH DESCRIPTION
+.\" Example programs http://brick.kernel.dk/snaps
+.\"
+.\"
+.\" add a "tee(in, out1, out2)" system call that duplicates the pages
+.\" (again, incrementing their reference count, not copying the data) from
+.\" one pipe to two other pipes.
+\fBtee\fP() 将最多 \fIlen\fP 字节的数据从文件描述符 \fIfd_in\fP 引用的管道复制到文件描述符 \fIfd_out\fP 引用的管道。
+它不使用从 \fIfd_in\fP 复制的数据; 因此，该数据可以被后续的 \fBsplice\fP(2) 复制。
+.PP
+\fIflags\fP 是一个位掩码，由以下零个或多个值的 OR 运算组成:
+.TP  1.9i
+\fBSPLICE_F_MOVE\fP
+目前对 \fBtee\fP() 没有影响; 请参见 \fBsplice\fP(2)。
+.TP 
+\fBSPLICE_F_NONBLOCK\fP
+不要在 I/O 上阻塞; 有关详细信息，请参见 \fBsplice\fP(2)。
+.TP 
+\fBSPLICE_F_MORE\fP
+目前对 \fBtee\fP() 没有影响，但可能会在 future 中实现; 请参见 \fBsplice\fP(2)。
+.TP 
+\fBSPLICE_F_GIFT\fP
+未用于 \fBtee\fP(); 请参见 \fBvmsplice\fP(2)。
+.SH "RETURN VALUE"
+成功完成后，\fBtee\fP() 返回输入和输出之间重复的字节数。 返回值为 0 意味着没有数据要传输，阻塞没有意义，因为没有 writers 连接到
+\fIfd_in\fP 引用的管道的写入端。
+.PP
+出错时，\fBtee\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+在 \fIflags\fP 中指定了 \fBSPLICE_F_NONBLOCK\fP，或者其中一个文件描述符已标记为非阻塞
+(\fBO_NONBLOCK\fP)\fB,\fP，操作将阻塞。
+.TP 
+\fBEINVAL\fP
+\fIfd_in\fP 或 \fIfd_out\fP 不是指管道; 或者 \fIfd_in\fP 和 \fIfd_out\fP 指的是同一个管道。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.SH VERSIONS
+\fBtee\fP() 系统调用最早出现在 Linux 2.6.17; glibc 2.5 中添加了库支持。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+从概念上讲，\fBtee\fP() 在两个管道之间复制数据。 但实际上并没有发生真正的数据复制: 在幕后，\fBtee\fP()
+仅通过获取对输入的引用来将数据分配给输出。
+.SH EXAMPLES
+下面的示例使用 \fBtee\fP() 系统调用实现了一个基本的 \fBtee\fP(1) 程序。 下面是它的使用示例:
+.PP
+.in +4n
+.EX
+$ \fBdate | ./a.out out.log | cat\fP
+2014 年 10 月 28 日星期二 10:06:00 CET
+2014 年 10 月 28 日星期二 10:06:00 CET
+2014 年 10 月 28 日星期二 10:06:00 CET
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (tee.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int      fd;
+    ssize_t  len, slen;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <file>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == \-1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    for (;;) {
+        /*
+         * tee stdin 到 stdout。
+         */
+        len = tee(STDIN_FILENO, STDOUT_FILENO,
+                  INT_MAX, SPLICE_F_NONBLOCK);
+        if (len < 0) {
+            if (errno == EAGAIN)
+                continue;
+            perror("tee");
+            exit(EXIT_FAILURE);
+        }
+        if (len == 0)
+            break;
+
+        /*
+         * 通过将 stdin 拼接到文件来使用它。
+         */
+        while (len > 0) {
+            slen = splice(STDIN_FILENO, NULL, fd, NULL,
+                          len, SPLICE_F_MOVE);
+            if (slen < 0) {
+                perror("splice");
+                exit(EXIT_FAILURE);
+            }
+            len \-= slen;
+        }
+    }
+
+    close(fd);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBsplice\fP(2), \fBvmsplice\fP(2), \fBpipe\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,488 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Written by Mike Frysinger <vapier@gentoo.org>
+.\"
+.\" %%%LICENSE_START(PUBLIC_DOMAIN)
+.\" This page is in the public domain.
+.\" %%%LICENSE_END
+.\"
+.\" Useful background:
+.\"   http://articles.manugarg.com/systemcallinlinux2_6.html
+.\"   https://lwn.net/Articles/446528/
+.\"   http://www.linuxjournal.com/content/creating-vdso-colonels-other-chicken
+.\"   http://www.trilithium.com/johan/2005/08/linux-gate/
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH vDSO 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+vdso \- 虚拟 ELF 动态共享对象概述
+.SH SYNOPSIS
+.nf
+\fB#include <sys/auxv.h>\fP
+.PP
+\fBvoid *vdso = (uintptr_t) getauxval(AT_SYSINFO_EHDR);\fP
+.fi
+.SH DESCRIPTION
+"vDSO" (virtual dynamic shared object) 是一个小型共享库，内核自动将 maps
+映射到所有用户空间应用程序的地址空间中。 应用程序通常不需要关心这些细节，因为 vDSO 最常被 C 库调用。
+这样您就可以使用标准函数以正常方式进行编码，C 库将负责使用通过 vDSO 提供的任何功能。
+.PP
+为什么 vDSO 存在? 内核提供了一些系统调用，用户空间代码最终会频繁使用，以至于此类调用可以支配整体性能。
+这是由于调用的频率以及退出用户空间和进入内核所导致的上下文切换开销。
+.PP
+本文档的其余部分面向好奇或者 C 库 writers 而不是一般开发人员。 如果您试图在您自己的应用程序中调用 vDSO 而不是使用 C
+库，那么您很可能做错了。
+.SS "Example background"
+进行系统调用可能会很慢。 在 x86 32 位系统中，您可以触发一个软件中断 (\fIint $0x80\fP) 来告诉内核您想做一个系统调用。
+然而，这条指令是昂贵的: 它在处理器的微代码和内核中都经过了完整的中断处理路径。 较新的处理器具有更快 (但向后不兼容) 的指令来启动系统调用。 C
+库可以使用内核在 vDSO 中提供的函数，而不是要求 C 库确定此功能在运行时是否可用。
+.PP
+请注意，术语可能会造成混淆。 在 x86 系统上，用于确定制作系统调用的首选方法的 vDSO 函数被命名为 "__kernel_vsyscall"，但在
+x86\-64 上，术语 "vsyscall" 也指一种过时的方式来询问内核现在几点或调用者是什么 CPU 是。
+.PP
+一个经常使用的系统调用是 \fBgettimeofday\fP(2)。 这个系统调用既被用户空间应用程序直接调用，也被 C 库间接调用。
+想想时间戳或计时循环或轮询 \[em] 所有这些经常需要知道现在几点。 此信息也不是秘密 \[em] 任何特权模式 (root 或任何非特权用户)
+下的任何应用程序都会得到相同的答案。 因此，内核将回答这个问题所需的信息安排在进程可以访问的内存中。 现在对 \fBgettimeofday\fP(2)
+的调用从系统调用变为普通函数调用和一些内存访问。
+.SS "Finding the vDSO"
+vDSO 的基地址 (如果存在的话) 由内核传递给初始辅助 vector 中的每个程序 (参见 \fBgetauxval\fP(3))，通过
+\fBAT_SYSINFO_EHDR\fP 标记。
+.PP
+您不能假定 vDSO 映射到用户内存 map 中的任何特定位置。 每次创建新过程映像时 (在 \fBexecve\fP(2)
+时间)，基地址通常会在运行时随机化。 这样做是出于安全原因，以防止 "return\-to\-libc" 攻击。
+.PP
+对于某些体系结构，还有一个 \fBAT_SYSINFO\fP 标记。 这仅用于定位 vsyscall 入口点并且经常被省略或设置为 0 (意味着它不可用)。
+这个标签是对最初 vDSO 工作的回溯 (见下面的 \fIHistory\fP)，应该避免使用它。
+.SS "File format"
+由于 vDSO 是完全形成的 ELF 图像，您可以在其上进行符号查找。 这允许在更新的内核版本中添加新符号，并允许 C
+库在不同内核版本下运行时检测运行时的可用功能。 通常，C 库会使用第一个调用进行检测，然后缓存结果以供后续调用使用。
+.PP
+所有符号也有版本 (使用 GNU 版本格式)。 这允许内核在不破坏向后兼容性的情况下更新函数签名。 这意味着更改函数接受的参数以及返回值。 因此，在
+vDSO 中查找符号时，您必须始终包含与您期望的 ABI 匹配的版本。
+.PP
+通常，vDSO 遵循在所有符号前加上 "__vdso_" 或 "__kernel_" 前缀的命名约定，以便将它们与其他标准符号区分开来。
+例如，"gettimeofday" 函数被命名为 "__vdso_gettimeofday"。
+.PP
+在调用任何这些函数时，您使用标准的 C 调用约定。 无需担心奇怪的寄存器或栈行为。
+.SH NOTES
+.SS Source
+当您编译内核时，它会自动为您编译链接 vDSO 代码。 您会经常在特定于体系结构的目录下找到它:
+.PP
+.in +4n
+.EX
+找到 arch/\-name\[aq]*vdso*.so*\[aq] \-o \-name\[aq]*gate*.so*\[aq]
+.EE
+.in
+.\"
+.SS "vDSO names"
+vDSO 的名称因架构而异。 它通常会出现在 glibc 的 \fBldd\fP(1) 输出中。 确切的名称对任何代码都无关紧要，因此不要对其进行硬编码。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+user ABI	vDSO name
+_
+aarch64	linux\-vdso.so.1
+arm	linux\-vdso.so.1
+ia64	linux\-gate.so.1
+mips	linux\-vdso.so.1
+ppc/32	linux\-vdso32.so.1
+ppc/64	linux\-vdso64.so.1
+riscv	linux\-vdso.so.1
+s390	linux\-vdso32.so.1
+s390x	linux\-vdso64.so.1
+sh	linux\-gate.so.1
+i386	linux\-gate.so.1
+x86\-64	linux\-vdso.so.1
+x86/x32	linux\-vdso.so.1
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "strace(1), seccomp(2), and the vDSO"
+当使用 \fBstrace\fP(1) 跟踪系统调用时，vDSO 导出的符号 (系统调用) 将 \fInot\fP 出现在跟踪输出中。 这些系统调用同样对
+\fBseccomp\fP(2) 过滤器不可见。
+.SH "ARCHITECTURE\-SPECIFIC NOTES"
+以下小节提供了有关 vDSO 的特定于体系结构的说明。
+.PP
+请注意，使用的 vDSO 基于用户空间代码的 ABI，而不是内核的 ABI。 因此，例如，当您运行 i386 32 位 ELF 二进制文件时，无论您是在
+i386 32 位内核下还是在 x86\-64 64 位内核下运行，您都将获得相同的 vDSO。 因此，应该使用用户空间 ABI
+的名称来确定以下哪些部分是相关的。
+.SS "ARM functions"
+.\" See linux/arch/arm/vdso/vdso.lds.S
+.\" Commit: 8512287a8165592466cb9cb347ba94892e9c56a5
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__vdso_gettimeofday	LINUX_2.6 (exported since Linux 4.1)
+__vdso_clock_gettime	LINUX_2.6 (exported since Linux 4.1)
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.PP
+.\" See linux/arch/arm/kernel/entry-armv.S
+.\" See linux/Documentation/arm/kernel_user_helpers.rst
+此外，ARM 端口有一个代码页，里面全是实用函数函数。 因为它只是一个原始代码页，所以没有用于执行符号查找或版本控制的 ELF 信息。
+它确实提供了对不同版本的支持。
+.PP
+有关此代码页的信息，最好参考内核文档，因为它非常详细并且涵盖了您需要了解的所有内容:
+\fIDocumentation/arm/kernel_user_helpers.rst\fP。
+.SS "aarch64 functions"
+.\" See linux/arch/arm64/kernel/vdso/vdso.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_rt_sigreturn	LINUX_2.6.39
+__kernel_gettimeofday	LINUX_2.6.39
+__kernel_clock_gettime	LINUX_2.6.39
+__kernel_clock_getres	LINUX_2.6.39
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "bfin (Blackfin) functions (port removed in Linux 4.17)"
+.\" See linux/arch/blackfin/kernel/fixed_code.S
+.\" See http://docs.blackfin.uclinux.org/doku.php?id=linux-kernel:fixed-code
+由于该 CPU 缺少内存管理单元 (MMU)，所以没有设置正常意义上的 vDSO。 相反，它在启动时将 maps 几个原始函数放入内存中的固定位置。
+然后用户空间应用程序直接调用到那个区域。 除了嗅探原始操作码之外，没有提供向后兼容性，但由于这是一个嵌入式 CPU，它可以摆脱困境 \[em]
+它运行的一些对象格式甚至不是基于 ELF 的 (它们是 bFLT/FLAT)。
+.PP
+有关此代码页的信息，最好参考公共文档:
+.br
+http://docs.blackfin.uclinux.org/doku.php?id=linux\-kernel:fixed\-code
+.SS "mips functions"
+.\" See linux/arch/mips/vdso/vdso.ld.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_gettimeofday	LINUX_2.6 (exported since Linux 4.4)
+__kernel_clock_gettime	LINUX_2.6 (exported since Linux 4.4)
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "ia64 (Itanium) functions"
+.\" See linux/arch/ia64/kernel/gate.lds.S
+.\" Also linux/arch/ia64/kernel/fsys.S and linux/Documentation/ia64/fsys.rst
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_sigtramp	LINUX_2.5
+__kernel_syscall_via_break	LINUX_2.5
+__kernel_syscall_via_epc	LINUX_2.5
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.PP
+Itanium 端口有些棘手。 除了上面的 vDSO，它还有 "light\-weight system calls" (也称为 "fast
+syscalls" 或 "fsys")。 您可以通过 \fI__kernel_syscall_via_epc\fP vDSO 助手调用它们。
+此处列出的系统调用与您直接通过 \fBsyscall\fP(2) 调用它们具有相同的语义，因此请参见每个系统调用的相关文档。 下表列出了通过此机制可用的函数。
+.if  t \{\
+.ft CW
+\}
+.TS
+l.
+function
+_
+clock_gettime
+getcpu
+getpid
+getppid
+gettimeofday
+set_tid_address
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "parisc (hppa) functions"
+.\" See linux/arch/parisc/kernel/syscall.S
+.\" See linux/Documentation/parisc/registers.rst
+parisc 端口有一个代码页，其实用程序称为网关页。 它不是使用普通的 ELF 辅助 vector 方法，而是通过 SR2
+寄存器将页面地址传递给进程。 页面上的权限使得仅执行这些地址会自动以内核权限执行，而不是在用户空间中执行。 这样做是为了匹配 HP\-UX 的工作方式。
+.PP
+因为它只是一个原始代码页，所以没有用于执行符号查找或版本控制的 ELF 信息。 只需通过分支指令调入合适的偏移量即可，例如:
+.PP
+.in +4n
+.EX
+蓝色 <offset>(%sr2, %r0)
+.EE
+.in
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+offset	function
+_
+00b0	lws_entry (CAS operations)
+00e0	set_thread_pointer (used by glibc)
+0100	linux_gateway_entry (syscall)
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "ppc/32 functions"
+.\" See linux/arch/powerpc/kernel/vdso32/vdso32.lds.S
+下表列出了 vDSO 导出的符号。 标有 \fI*\fP 的函数只有在内核为 PowerPC64 (64\-bit) 内核时才可用。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_clock_getres	LINUX_2.6.15
+__kernel_clock_gettime	LINUX_2.6.15
+__kernel_clock_gettime64	LINUX_5.11
+__kernel_datapage_offset	LINUX_2.6.15
+__kernel_get_syscall_map	LINUX_2.6.15
+__kernel_get_tbfreq	LINUX_2.6.15
+__kernel_getcpu \fI*\fP	LINUX_2.6.15
+__kernel_gettimeofday	LINUX_2.6.15
+__kernel_sigtramp_rt32	LINUX_2.6.15
+__kernel_sigtramp32	LINUX_2.6.15
+__kernel_sync_dicache	LINUX_2.6.15
+__kernel_sync_dicache_p5	LINUX_2.6.15
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.PP
+.\" commit 654abc69ef2e69712e6d4e8a6cb9292b97a4aa39
+Linux 5.6 之前，\fBCLOCK_REALTIME_COARSE\fP 和 \fBCLOCK_MONOTONIC_COARSE\fP 时钟是
+\fI__kernel_clock_getres\fP 和 \fI__kernel_clock_gettime\fP 接口支持的 \fInot\fP;
+内核回退到真实系统调用。
+.SS "ppc/64 functions"
+.\" See linux/arch/powerpc/kernel/vdso64/vdso64.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_clock_getres	LINUX_2.6.15
+__kernel_clock_gettime	LINUX_2.6.15
+__kernel_datapage_offset	LINUX_2.6.15
+__kernel_get_syscall_map	LINUX_2.6.15
+__kernel_get_tbfreq	LINUX_2.6.15
+__kernel_getcpu	LINUX_2.6.15
+__kernel_gettimeofday	LINUX_2.6.15
+__kernel_sigtramp_rt64	LINUX_2.6.15
+__kernel_sync_dicache	LINUX_2.6.15
+__kernel_sync_dicache_p5	LINUX_2.6.15
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.PP
+.\" commit 5c929885f1bb4b77f85b1769c49405a0e0f154a1
+Linux 4.16 之前，\fBCLOCK_REALTIME_COARSE\fP 和 \fBCLOCK_MONOTONIC_COARSE\fP 时钟是
+\fI__kernel_clock_getres\fP 和 \fI__kernel_clock_gettime\fP 接口支持的 \fInot\fP;
+内核回退到真实系统调用。
+.SS "riscv functions"
+.\" See linux/arch/riscv/kernel/vdso/vdso.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__vdso_rt_sigreturn	LINUX_4.15
+__vdso_gettimeofday	LINUX_4.15
+__vdso_clock_gettime	LINUX_4.15
+__vdso_clock_getres	LINUX_4.15
+__vdso_getcpu	LINUX_4.15
+__vdso_flush_icache	LINUX_4.15
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "s390 functions"
+.\" See linux/arch/s390/kernel/vdso32/vdso32.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_clock_getres	LINUX_2.6.29
+__kernel_clock_gettime	LINUX_2.6.29
+__kernel_gettimeofday	LINUX_2.6.29
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "s390x functions"
+.\" See linux/arch/s390/kernel/vdso64/vdso64.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_clock_getres	LINUX_2.6.29
+__kernel_clock_gettime	LINUX_2.6.29
+__kernel_gettimeofday	LINUX_2.6.29
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "sh (SuperH) functions"
+.\" See linux/arch/sh/kernel/vsyscall/vsyscall.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_rt_sigreturn	LINUX_2.6
+__kernel_sigreturn	LINUX_2.6
+__kernel_vsyscall	LINUX_2.6
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "i386 functions"
+.\" See linux/arch/x86/vdso/vdso32/vdso32.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__kernel_sigreturn	LINUX_2.5
+__kernel_rt_sigreturn	LINUX_2.5
+__kernel_vsyscall	LINUX_2.5
+.\" Added in 7a59ed415f5b57469e22e41fc4188d5399e0b194 and updated
+.\" in 37c975545ec63320789962bf307f000f08fabd48.
+__vdso_clock_gettime	LINUX_2.6 (exported since Linux 3.15)
+__vdso_gettimeofday	LINUX_2.6 (exported since Linux 3.15)
+__vdso_time	LINUX_2.6 (exported since Linux 3.15)
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "x86\-64 functions"
+.\" See linux/arch/x86/vdso/vdso.lds.S
+下表列出了 vDSO 导出的符号。 所有这些符号也可以在没有 "__vdso_" 前缀的情况下使用，但您应该忽略这些并坚持使用下面的名称。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__vdso_clock_gettime	LINUX_2.6
+__vdso_getcpu	LINUX_2.6
+__vdso_gettimeofday	LINUX_2.6
+__vdso_time	LINUX_2.6
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS "x86/x32 functions"
+.\" See linux/arch/x86/vdso/vdso32.lds.S
+下表列出了 vDSO 导出的符号。
+.if  t \{\
+.ft CW
+\}
+.TS
+l l.
+symbol	version
+_
+__vdso_clock_gettime	LINUX_2.6
+__vdso_getcpu	LINUX_2.6
+__vdso_gettimeofday	LINUX_2.6
+__vdso_time	LINUX_2.6
+.TE
+.if  t \{\
+.in
+.ft P
+\}
+.SS History
+vDSO 最初只是一个单独的函数 \[em] vsyscall。 在较旧的内核中，您可能会在进程的内存 map 中看到该名称，而不是 "vdso"。
+随着时间的推移，人们意识到这种机制是将更多功能传递给用户空间的好方法，因此它被重新定义为当前格式的 vDSO。
+.SH "SEE ALSO"
+\fBsyscalls\fP(2), \fBgetauxval\fP(3), \fBproc\fP(5)
+.PP
+Linux 源码树中的文档、例子和源码:
+.PP
+.in +4n
+.EX
+Documentation/ABI/stable/vdso
+Documentation/ia64/fsys.rst
+Documentation/vDSO/* (包括使用 vDSO 的示例)
+
+找到 arch/\-iname\[aq]*vdso*\[aq] \-o \-iname\[aq]*gate*\[aq]
+.EE
+.in
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

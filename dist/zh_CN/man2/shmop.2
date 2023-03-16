@@ -1,0 +1,362 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\" and Copyright 2020 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sun Nov 28 17:06:19 1993, Rik Faith (faith@cs.unc.edu)
+.\"          with material from Luigi P. Bai (lpb@softint.com)
+.\" Portions Copyright 1993 Luigi P. Bai
+.\" Modified Tue Oct 22 22:04:23 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified, 5 Jan 2002, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified, 19 Sep 2002, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added SHM_REMAP flag description
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\" Modified, 11 Nov 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language and formatting clean-ups
+.\"	Changed wording and placement of sentence regarding attachment
+.\"		of segments marked for destruction
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SHMOP 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+shmat, shmdt\-System V 共享内存操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/shm.h>\fP
+.PP
+\fBvoid *shmat(int \fP\fIshmid\fP\fB, const void *_Nullable \fP\fIshmaddr\fP\fB, int \fP\fIshmflg\fP\fB);\fP
+\fBint shmdt(const void *\fP\fIshmaddr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.SS shmat()
+\fBshmat\fP() 将 \fIshmid\fP 标识的 System\V 共享内存段附加到调用进程的地址空间。 附加地址由具有以下条件之一的
+\fIshmaddr\fP 指定:
+.IP \[bu] 3
+如果 \fIshmaddr\fP 为 NULL，系统会选择一个合适的 (unused) 页对齐地址来附加该段。
+.IP \[bu]
+如果 \fIshmaddr\fP 不为 NULL 并且在 \fIshmflg\fP 中指定了 \fBSHM_RND\fP，则附加发生在等于 \fIshmaddr\fP
+向下舍入到最接近的 \fBSHMLBA\fP 倍数的地址处。
+.IP \[bu]
+否则，\fIshmaddr\fP 必须是发生附加的页对齐地址。
+.PP
+除了 \fBSHM_RND\fP 之外，还可以在 \fIshmflg\fP 位掩码参数中指定以下标志:
+.TP 
+\fBSHM_EXEC\fP (Linux\-specific; since Linux 2.6.9)
+允许执行段的内容。 调用者必须对该段具有执行权限。
+.TP 
+\fBSHM_RDONLY\fP
+附加段以进行只读访问。 该进程必须对该段具有读取权限。 如果未指定该标志，则附加该段以进行读写访问，并且该进程必须对该段具有读写权限。
+没有只写共享内存段的概念。
+.TP 
+\fBSHM_REMAP\fP (Linux\-specific)
+此标志指定段的映射应替换从 \fIshmaddr\fP 开始并持续到段大小的范围内的任何现有映射。 (通常，如果此地址范围内已存在映射，则会导致
+\fBEINVAL\fP 错误。) 在这种情况下，\fIshmaddr\fP 不能为 NULL。
+.PP
+调用进程的 \fBbrk\fP(2) 值不会被附加更改。 该段将在进程退出时自动分离。 在进程的地址空间中，同一段可以作为读取和读写段附加，并且不止一次。
+.PP
+一个成功的 \fBshmat\fP() 调用更新了 \fIshmid_ds\fP 结构体的成员 (见 \fBshmctl\fP(2)) 关联共享内存段如下:
+.IP \[bu] 3
+\fIshm_atime\fP 设置为当前时间。
+.IP \[bu]
+\fIshm_lpid\fP 设置为调用进程的进程 ID。
+.IP \[bu]
+.\"
+\fIshm_nattch\fP 加一。
+.SS shmdt()
+\fBshmdt\fP() 从调用进程的地址空间分离位于 \fIshmaddr\fP 指定地址的共享内存段。 要分离的段当前附加的 \fIshmaddr\fP
+必须等于附加 \fBshmat\fP() 调用返回的值。
+.PP
+在成功的 \fBshmdt\fP() 调用上，系统更新与共享内存段关联的 \fIshmid_ds\fP 结构体的成员，如下所示:
+.IP \[bu] 3
+\fIshm_dtime\fP 设置为当前时间。
+.IP \[bu]
+\fIshm_lpid\fP 设置为调用进程的进程 ID。
+.IP \[bu]
+\fIshm_nattch\fP 减一。 如果它变为 0 并且该段被标记为删除，则该段被删除。
+.SH "RETURN VALUE"
+成功时，\fBshmat\fP() 返回附加共享内存段的地址; 出错时，返回 \fI(void\ *)\ \-1\fP，并设置 \fIerrno\fP 以指示错误。
+.PP
+成功时，\fBshmdt\fP() 返回 0; 返回错误 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBshmat\fP() 可能因以下错误之一而失败:
+.TP 
+\fBEACCES\fP
+调用进程没有请求的附加类型所需的权限，并且在管理其 IPC 命名空间的用户命名空间中没有 \fBCAP_IPC_OWNER\fP 功能。
+.TP 
+\fBEIDRM\fP
+\fIshmid\fP 指向已删除的标识符。
+.TP 
+\fBEINVAL\fP
+无效的 \fIshmid\fP 值，未对齐 (即未页面对齐且未指定 \fBSHM_RND\fP) 或无效的 \fIshmaddr\fP 值，或无法在 \fIshmaddr\fP
+处附加段，或指定了 \fBSHM_REMAP\fP 且 \fIshmaddr\fP 为 NULL。
+.TP 
+\fBENOMEM\fP
+无法为描述符或页表分配内存。
+.PP
+\fBshmdt\fP() 可能因以下错误之一而失败:
+.TP 
+\fBEINVAL\fP
+.\" The following since Linux 2.6.17-rc1:
+\fIshmaddr\fP 处没有附加共享内存段; 或者，\fIshmaddr\fP 未在页面边界对齐。
+.SH STANDARDS
+.\" SVr4 documents an additional error condition EMFILE.
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.PP
+在 SVID 3 (或更早) 中，\fIshmaddr\fP 参数的类型从 \fIchar\ *\fP 更改为 \fIconst void\ *\fP，\fBshmat\fP() 的返回类型从 \fIchar\ *\fP 更改为 \fIvoid\ *\fP。
+.SH NOTES
+在 \fBfork\fP(2) 之后，子节点继承附加的共享内存段。
+.PP
+在 \fBexecve\fP(2) 之后，所有附加的共享内存段都从进程中分离。
+.PP
+在 \fB_exit\fP(2) 上，所有附加的共享内存段都与进程分离。
+.PP
+使用 \fBshmat\fP() 和 \fIshmaddr\fP 等于 NULL 是首选的、可移植的附加共享内存段的方法。
+请注意，以这种方式附加的共享内存段可能附加在不同进程的不同地址。 因此，共享内存中维护的任何指针都必须是相对的
+(通常是相对于段的起始地址)，而不是绝对的。
+.PP
+在 Linux 上，可以附加一个共享内存段，即使它已经被标记为要删除。 但是，POSIX.1 没有指定此行为，许多其他实现也不支持它。
+.PP
+以下系统参数影响 \fBshmat\fP():
+.TP 
+\fBSHMLBA\fP
+段低边界地址的倍数。 当在调用到 \fBshmat\fP() 中显式指定附加地址时，调用者应确保该地址是该值的倍数。 这在某些体系结构上是必需的，以确保良好的
+CPU 缓存性能或确保同一段的不同附加在 CPU 缓存中具有一致的视图。 \fBSHMLBA\fP 通常是系统页面大小的一些倍数。 (在许多 Linux
+架构上，\fBSHMLBA\fP 与系统页面大小相同。)
+.PP
+该实现没有对共享内存段 (\fBSHMSEG\fP) 的数量设置每个进程的内部数量限制。
+.SH EXAMPLES
+下面显示的两个程序使用共享内存段交换字符串。 有关这些计划的更多详细信息，请参见下文。 首先，我们展示了一个 shell 会话来演示它们的使用。
+.PP
+在一个最终窗口中，我们运行 "reader" 程序，它创建一个 System V 共享内存段和一个 System V 信号量集。
+该程序打印出创建的对象的 ID，然后等待信号量更改值。
+.PP
+.in +4n
+.EX
+$ \fB./svshm_string_read\fP
+shmid = 1114194; semid = 15
+.EE
+.in
+.PP
+在另一个终端窗口中，我们运行 "writer" 程序。 "writer" 程序采用三个命令行参数: "reader" 创建的共享内存段和信号量集的
+ID，以及一个字符串。 它附加现有的共享内存段，将字符串复制到共享内存，并修改信号量值。
+.PP
+.in +4n
+.EX
+$ \fB./svshm_string_write 1114194 15 \[aq]Hello, world\[aq]\fP
+.EE
+.in
+.PP
+回到 "reader" 运行的终端，我们看到程序已经停止等待信号量，打印了 writer 复制到共享内存段的字符串:
+.PP
+.in +4n
+.EX
+您好世界
+.EE
+.in
+.\"
+.SS "Program source: svshm_string.h"
+"reader" 和 "writer" 程序包含以下头文件:
+.PP
+.in +4n
+.\" SRC BEGIN (svshm_string.h)
+.EX
+/* svshm_string.h
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+union semun {                   /* Used in calls to semctl() */
+    int                 val;
+    struct semid_ds *   buf;
+    unsigned short *    array;
+#if defined(__linux__)
+    struct seminfo *    __buf;
+#endif
+};
+
+#define MEM_SIZE 4096
+.EE
+.\" SRC END
+.in
+.\"
+.SS "Program source: svshm_string_read.c"
+"reader" 程序创建一个共享内存段和一个包含一个信号量的信号量集。 然后它将共享内存对象附加到它的地址空间并将信号量值初始化为 1。
+最后，程序等待信号量值变为 0，然后打印已经被 "writer" 复制到共享内存段的字符串。
+.PP
+.in +4n
+.\" SRC BEGIN (svshm_string_read.c)
+.EX
+/* svshm_string_read.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
+
+#include "svshm_string.h"
+
+int
+main(void)
+{
+    int            semid, shmid;
+    char           *addr;
+    union semun    arg, dummy;
+    struct sembuf  sop;
+
+    /* Create shared memory and semaphore set containing one
+       semaphore. */
+
+    shmid = shmget(IPC_PRIVATE, MEM_SIZE, IPC_CREAT | 0600);
+    if (shmid == \-1)
+        errExit("shmget");
+
+    semid = semget(IPC_PRIVATE, 1, IPC_CREAT | 0600);
+    if (semid == \-1)
+        errExit("semget");
+
+    /* Attach shared memory into our address space. */
+
+    addr = shmat(shmid, NULL, SHM_RDONLY);
+    if (addr == (void *) \-1)
+        errExit("shmat");
+
+    /* Initialize semaphore 0 in set with value 1. */
+
+    arg.val = 1;
+    if (semctl(semid, 0, SETVAL, arg) == \-1)
+        errExit("semctl");
+
+    printf("shmid = %d; semid = %d\en", shmid, semid);
+
+    /* Wait for semaphore value to become 0. */
+
+    sop.sem_num = 0;
+    sop.sem_op = 0;
+    sop.sem_flg = 0;
+
+    if (semop(semid, &sop, 1) == \-1)
+        errExit("semop");
+
+    /* Print the string from shared memory. */
+
+    printf("%s\en", addr);
+
+    /* Remove shared memory and semaphore set. */
+
+    if (shmctl(shmid, IPC_RMID, NULL) == \-1)
+        errExit("shmctl");
+    if (semctl(semid, 0, IPC_RMID, dummy) == \-1)
+        errExit("semctl");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.\"
+.SS "Program source: svshm_string_write.c"
+writer 程序接受三个命令行参数: "reader" 已经创建的共享内存段和信号量集的 ID，以及一个字符串。
+它将共享内存段附加到其地址空间，然后将信号量值递减为 0，以通知 "reader" 它现在可以检查共享内存的内容。
+.PP
+.in +4n
+.\" SRC BEGIN (svshm_string_write.c)
+.EX
+/* svshm_string_write.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
+
+#include "svshm_string.h"
+
+int
+main(int argc, char *argv[])
+{
+    int            semid, shmid;
+    char           *addr;
+    size_t         len;
+    struct sembuf  sop;
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s shmid semid string\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    len = strlen(argv[3]) + 1;  /* +1 to include trailing \[aq]\e0\[aq] */
+    if (len > MEM_SIZE) {
+        fprintf(stderr, "String is too big!\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Get object IDs from command\-line. */
+
+    shmid = atoi(argv[1]);
+    semid = atoi(argv[2]);
+
+    /* Attach shared memory into our address space and copy string
+       (including trailing null byte) into memory. */
+
+    addr = shmat(shmid, NULL, 0);
+    if (addr == (void *) \-1)
+        errExit("shmat");
+
+    memcpy(addr, argv[3], len);
+
+    /* Decrement semaphore to 0. */
+
+    sop.sem_num = 0;
+    sop.sem_op = \-1;
+    sop.sem_flg = 0;
+
+    if (semop(semid, &sop, 1) == \-1)
+        errExit("semop");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.SH "SEE ALSO"
+\fBbrk\fP(2), \fBmmap\fP(2), \fBshmctl\fP(2), \fBshmget\fP(2), \fBcapabilities\fP(7),
+\fBshm_overview\fP(7), \fBsysvipc\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

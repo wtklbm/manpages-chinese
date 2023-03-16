@@ -1,0 +1,116 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2001 Bert Hubert <ahu@ds9a.nl>
+.\" and Copyright (C) 2007 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Created Sun Jun 3 17:23:32 2001 by bert hubert <ahu@ds9a.nl>
+.\" Slightly adapted, following comments by Hugh Dickins, aeb, 2001-06-04.
+.\" Modified, 20 May 2003, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified, 30 Apr 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2005-04-05 mtk, Fixed error descriptions
+.\" 	after message from <gordon.jin@intel.com>
+.\" 2007-01-08 mtk, rewrote various parts
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mincore 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mincore \- 判断页面是否驻留在内存中
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mman.h>\fP
+.PP
+\fBint mincore(void \fP\fIaddr\fP\fB[.\fP\fIlength\fP\fB], size_t \fP\fIlength\fP\fB, unsigned char *\fP\fIvec\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmincore\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBmincore\fP() 返回一个 vector，指示调用进程的虚拟内存的页面是否驻留在核心 (RAM) 中，因此如果被引用则不会导致磁盘访问
+(页面错误)。 内核返回有关从地址 \fIaddr\fP 开始到 \fIlength\fP 字节的页面的驻留信息。
+.PP
+\fIaddr\fP 参数必须是系统页面大小的倍数。 \fIlength\fP 参数不必是页面大小的倍数，但由于返回整个页面的驻留信息，因此 \fIlength\fP
+有效地四舍五入为页面大小的下一个倍数。 可以使用 \fIsysconf(_SC_PAGESIZE)\fP 获得页面大小 (\fBPAGE_SIZE\fP)。
+.PP
+\fIvec\fP 参数必须指向至少包含 \fI(length+PAGE_SIZE\-1) / PAGE_SIZE\fP 字节的数组。
+返回时，如果相应页面当前驻留在内存中，则每个字节的最低有效位将被设置，否则将被清除。 (每个字节中其他位的设置未定义; 这些位保留供以后使用。) 当然
+\fIvec\fP 中返回的信息只是一个快照: 未锁定在内存中的页面可以随时出现和消失，到此调用返回时，\fIvec\fP 的内容可能已经过时。
+.SH "RETURN VALUE"
+成功时，\fBmincore\fP() 返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBEAGAIN\fP 内核暂时资源不足。
+.TP 
+\fBEFAULT\fP
+\fIvec\fP 指向无效地址。
+.TP 
+\fBEINVAL\fP
+\fIaddr\fP 不是页面大小的倍数。
+.TP 
+\fBENOMEM\fP
+\fIlength\fP 大于 (\fITASK_SIZE\fP\-\fIaddr\fP)。 (如果为 \fIlength\fP 指定了 negative
+值，就会发生这种情况，因为该值将被解释为一个大的无符号整数。) 在 Linux 2.6.11 和更早版本中，针对这种情况返回了错误 \fBEINVAL\fP。
+.TP 
+\fBENOMEM\fP
+\fIaddr\fP 到 \fIaddr\fP + \fIlength\fP 包含未映射的内存。
+.SH VERSIONS
+自 Linux 2.3.99pre1 和 glibc 2.2 起可用。
+.SH STANDARDS
+.\" It is on at least NetBSD, FreeBSD, OpenBSD, Solaris 8,
+.\" AIX 5.1, SunOS 4.1
+.\" .SH HISTORY
+.\" The
+.\" .BR mincore ()
+.\" function first appeared in 4.4BSD.
+\fBmincore\fP() 未在 POSIX.1 中指定，并且并非在所有 UNIX 实现中都可用。
+.SH BUGS
+.\" Linux (up to now, 2.6.5),
+.\" .B mincore
+.\" does not return correct information for MAP_PRIVATE mappings:
+.\" for a MAP_PRIVATE file mapping,
+.\" .B mincore
+.\" returns the residency of the file pages, rather than any
+.\" modified process-private pages that have been copied on write;
+.\" for a MAP_PRIVATE mapping of
+.\" .IR /dev/zero ,
+.\" .B mincore
+.\" always reports pages as nonresident;
+.\" and for a MAP_PRIVATE, MAP_ANONYMOUS mapping,
+.\" .B mincore
+.\" always fails with the error
+.\" .BR ENOMEM .
+在 Linux 2.6.21 之前，\fBmincore\fP() 没有为 \fBMAP_PRIVATE\fP 映射返回正确的信息，或者对于非线性映射 (使用
+\fBremap_file_pages\fP(2)).
+.SH "SEE ALSO"
+\fBfincore\fP(1), \fBmadvise\fP(2), \fBmlock\fP(2), \fBmmap\fP(2), \fBposix_fadvise\fP(2),
+\fBposix_madvise\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

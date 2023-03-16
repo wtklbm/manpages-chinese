@@ -1,0 +1,470 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-CRYPTENROLL 1 "" "systemd 253" systemd\-cryptenroll
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-cryptenroll \- 将 PKCS#11、FIDO2、TPM2 token/devices 注册到 LUKS2 加密卷
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-cryptenroll\ \fR\fB[OPTIONS...]\fR\fB\ \fR\fB[DEVICE]\fR\ 'u
+\fBsystemd\-cryptenroll \fP\fB[OPTIONS...]\fP\fB \fP\fB[DEVICE]\fP
+.SH DESCRIPTION
+.PP
+\fBsystemd\-cryptenroll\fP 是一种用于将硬件安全 tokens 和设备注册到 LUKS2
+加密卷中的工具，然后可用于在引导期间解锁该卷。具体来说，它支持注册以下类型的 tokens 和凭据:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+PKCS#11 安全 tokens 和可能携带 RSA 密钥对的智能卡 (例如 \&.g\&. 各种 YubiKeys)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+实现 "hmac\-secret" 扩展的 FIDO2 安全 tokens (大多数 FIDO2 密钥，包括 YubiKeys)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+TPM2 安全装置
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+常规密码
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+恢复密钥
+\&。这些类似于常规密码短语，但是是在计算机上随机生成的，因此通常比用户选择的密码短语具有更高的熵。它们的字符集旨在确保它们易于输入，同时具有高熵
+\&。它们也可以使用 QR 码在屏幕外扫描 \&。恢复密钥可用于解锁 LUKS2 卷，只要密码短语被接受 \&。它们旨在与注册的硬件安全 token
+结合使用，作为 token 丢失时的恢复选项 \&。
+.RE
+.PP
+此外，该工具可用于枚举当前注册的安全 tokens 并擦除其中的一个子集 \&。后者可能与新的安全 token 的注册操作相结合，以更新或替换注册。
+.PP
+该工具仅支持 LUKS2 卷，因为它将 token 元信息存储在 LUKS2 JSON token 区域，这在其他加密格式中不可用 \&。
+.SH LIMITATIONS
+.PP
+请注意，目前在注册上面列出的五种受支持类型之一的新密钥时，需要先提供密码、恢复密钥或 FIDO2 token\&。它 \*(目前不支持使用
+TPM2/PKCS#11 密钥解锁设备以注册新的 TPM2/PKCS#11 密钥 \&。因此，如果在 future 中需要密钥翻转 \* (Aqs
+通常建议确保始终注册密码、恢复密钥或 FIDO2 token\&。
+.PP
+另请注意，目前对注册多个 FIDO2 tokens 的支持是有限的 \&。当注册了多个 FIDO2 tokens
+时，\fBsystemd\-cryptseup\fP 将执行飞行前请求以尝试识别当前插入了哪些已注册的 tokens\&。但是，对于具有用户验证
+(UV，通常通过生物识别) 的 FIDO2 tokens，这是不可能的，在这种情况下，它将回退到一个一个地尝试每个注册的
+token\&。这将导致多次提示 PIN 和用户验证 \&。此限制不适用于 PKCS#11 tokens\&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-password\fP
+.RS 4
+注册一个常规密码 / 密码 \&。此命令大部分等同于 \fBcryptsetup luksAddKey\fP，但可以与 \fB\-\-wipe\-slot=\fP
+组合在一个调用中，请参见下文 \&。
+.RE
+.PP
+\fB\-\-recovery\-key\fP
+.RS 4
+注册恢复密钥 \&。恢复密钥大部分与密码短语相同，但是由计算机生成的而不是由人选择的，因此具有有保证的高熵
+\&。该密钥使用易于输入的字符集，并且可以通过二维码在屏幕外扫描 \&。
+.RE
+.PP
+\fB\-\-unlock\-key\-file=\fP\fIPATH\fP
+.RS 4
+使用文件而不是从 stdin 读取的 password/passphrase 来解锁卷 \&。需要包含用于解锁卷的密钥的文件的路径 \&。目前没有像
+\fB\-\-key\-file\-offset=\fP 或 \fB\-\-key\-file\-size=\fP 这样的东西，所以这个文件必须只包含完整的密钥 \&。
+.RE
+.PP
+\fB\-\-unlock\-fido2\-device=\fP\fIPATH\fP
+.RS 4
+使用 FIDO2 设备而不是从 stdin 读取的 password/passphrase 来解锁卷 \&。需要一个 hidraw 设备引用 FIDO2
+设备 (e\&.g\&. /dev/hidraw1)\&。或者，可以指定特殊值 "auto"，以便自动确定当前插入的安全 token 的设备节点
+(其中必须恰好有一个) \&。如果还指定了 \fB\-\-fido2\-device=\fP 选项 \&，则不支持此自动发现。
+.RE
+.PP
+\fB\-\-pkcs11\-token\-uri=\fP\fIURI\fP
+.RS 4
+注册 PKCS#11 安全 token 或智能卡 (例如 \&.g\&. YubiKey) \&。需要引用 token\& 的 PKCS#11 智能卡
+URI。或者，可以指定特殊值 "auto"，以便自动确定当前插入的安全 token 的 URI (其中必须恰好有一个) \&。特殊值 "list"
+可用于枚举当前插入的所有合适的 PKCS#11 tokens\&。安全 token 必须包含一个 RSA 密钥对，用于加密随机生成的密钥，该密钥用于解锁
+LUKS2 卷 \&。然后将加密的密钥存储在 LUKS2 JSON token 头区域 \&。
+.sp
+为了使用注册的 PKCS#11 安全 token 解锁 LUKS2 卷，请在相应的 /etc/crypttab 行中指定 \fBpkcs11\-uri=\fP
+选项:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+myvolume /dev/sda1 \- pkcs11\-uri=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+有关 \fBsystemd\-cryptenroll\fP 调用及其匹配的 /etc/crypttab 行 \& 的更全面示例，请参见
+\fBcrypttab\fP(5)。
+.RE
+.PP
+\fB\-\-fido2\-credential\-algorithm=\fP\fISTRING\fP
+.RS 4
+指定凭证生成中使用的 COSE 算法 \&。默认值为 `es256`\&。支持的值为 "es256"、"rs256" 和 `eddsa`\&。
+.sp
+"es256" 表示 ECDSA over NIST P\-256 with SHA\-256\&。 "rs256" 表示带有 PKCS#1\&.5 填充和
+SHA\-256\& 的 2048 位 RSA。 "eddsa" 表示 Curve25519 上的 EDDSA 和 SHA\-512\&。
+.sp
+请注意，您的身份验证器可能不支持某些算法 \&。
+.RE
+.PP
+\fB\-\-fido2\-device=\fP\fIPATH\fP
+.RS 4
+注册一个实现 "hmac\-secret" 扩展的 FIDO2 安全 token (例如 \&.g\&. 一个 YubiKey) \&。需要一个
+hidraw 设备引用 FIDO2 设备 (e\&.g\&. /dev/hidraw1)\&。或者，可以指定特殊值
+"auto"，以便自动确定当前插入的安全 token 的设备节点 (其中必须恰好有一个) \&。如果还指定了
+\fB\-\-unlock\-fido2\-device=\fP 选项 \&，则不支持此自动发现。特殊值 "list" 可用于枚举当前插入的所有合适的 FIDO2
+tokens\&。请注意，许多实现 FIDO2 的硬件安全 tokens 也实现了旧的 PKCS#11 标准 \&。通常 FIDO2 更可取，因为它
+\*(Aqs 更易于使用且更现代 \&。
+.sp
+为了使用注册的 FIDO2 安全 token 解锁 LUKS2 卷，请在相应的 /etc/crypttab 行中指定 \fBfido2\-device=\fP
+选项:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+myvolume /dev/sda1 \- fido2\-device=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+有关 \fBsystemd\-cryptenroll\fP 调用及其匹配的 /etc/crypttab 行 \& 的更全面示例，请参见
+\fBcrypttab\fP(5)。
+.RE
+.PP
+\fB\-\-fido2\-with\-client\-pin=\fP\fIBOOL\fP
+.RS 4
+注册 FIDO2 安全 token 时，控制是否要求用户在解锁卷时输入 PIN (FIDO2 "clientPin" 特性) \&。默认为
+`是`\&。(注意: 如果安全 token 根本不支持 "clientPin" 特性或者不允许启用或禁用它 \&，则此设置无效。)
+.RE
+.PP
+\fB\-\-fido2\-with\-user\-presence=\fP\fIBOOL\fP
+.RS 4
+注册 FIDO2 安全 token 时，控制是否要求用户在解锁卷时验证存在 (点击 token，FIDO2 "up" 特性) \&。默认为
+`是`\&。(注意: 如果安全 token 根本不支持 "up" 特性或者不允许启用或禁用它 \&，则此设置无效。)
+.RE
+.PP
+\fB\-\-fido2\-with\-user\-verification=\fP\fIBOOL\fP
+.RS 4
+注册 FIDO2 安全 token 时，控制解锁卷时是否需要用户验证 (FIDO2 "uv" 特性) \&。默认为 `否`\&。(注意: 如果安全
+token 根本不支持 "uv" 特性或者不允许启用或禁用它 \&，则此设置无效。)
+.RE
+.PP
+\fB\-\-tpm2\-device=\fP\fIPATH\fP
+.RS 4
+注册一个 TPM2 安全芯片 \&。期望引用 TPM2 芯片的设备节点路径 (e\&.g\&. /dev/tpmrm0)\&。或者，可以指定特殊值
+"auto"，以便自动确定当前发现的 TPM2 设备 (其中必须恰好有一个) 的设备节点 \&。特殊值 "list" 可用于枚举当前发现的所有合适的
+TPM2 设备。
+.sp
+要使用已注册的 TPM2 安全芯片解锁 LUKS2 卷，请在相应的 /etc/crypttab 行中指定 \fBtpm2\-device=\fP 选项:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+myvolume /dev/sda1 \- tpm2\-device=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+有关 \fBsystemd\-cryptenroll\fP 调用及其匹配的 /etc/crypttab 行 \& 的更全面示例，请参见
+\fBcrypttab\fP(5)。
+.sp
+使用 \fB\-\-tpm2\-pcrs=\fP (见下文) 配置哪些 TPM2 PCR 索引将注册绑定到 \&。
+.RE
+.PP
+\fB\-\-tpm2\-pcrs=\fP [PCR...]
+.RS 4
+配置 TPM2 PCR (平台配置寄存器) 以将通过 \fB\-\-tpm2\-device=\fP 请求的注册绑定到 \&。采用 "+" 分隔的数字 PCR
+索引列表，范围为 0\&...23\&。如果不使用，默认为 PCR 7 only\&。如果指定空字符串，则将注册绑定到任何 PCRs\&。PCR
+允许将注册绑定到特定的软件版本和系统状态，以便只有在使用特定的受信任软件或者配置时才能访问注册的解锁密钥 (可能是 "unsealed") \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Well\-known PCR Definitions\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+PCR
+T}:T{
+Explanation
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+0
+T}:T{
+Core system firmware executable code; changes on firmware updates
+T}
+T{
+1
+T}:T{
+Core system firmware data/host platform configuration; typically contains serial and model numbers, changes on basic hardware/CPU/RAM replacements
+T}
+T{
+2
+T}:T{
+Extended or pluggable executable code; includes option ROMs on pluggable hardware
+T}
+T{
+3
+T}:T{
+Extended or pluggable firmware data; includes information about pluggable hardware
+T}
+T{
+4
+T}:T{
+Boot loader and additional drivers; changes on boot loader updates\&. The shim project will measure the PE binary it chain loads into this PCR\&. If the Linux kernel is invoked as UEFI PE binary, it is measured here, too\&. \fBsd\-stub\fP(7) measures system extension images read from the ESP here too (see \fBsystemd\-sysext\fP(8))\&.
+T}
+T{
+5
+T}:T{
+GPT/Partition table; changes when the partitions are added, modified or removed
+T}
+T{
+6
+T}:T{
+Power state events; changes on system suspend/sleep
+T}
+T{
+7
+T}:T{
+Secure Boot state; changes when UEFI SecureBoot mode is enabled/disabled, or firmware certificates (PK, KEK, db, dbx, \&...) changes\&. The shim project will measure most of its (non\-MOK) certificates and SBAT data into this PCR\&.
+T}
+T{
+9
+T}:T{
+The Linux kernel measures all initrds it receives into this PCR\&.
+T}
+T{
+10
+T}:T{
+The IMA project measures its runtime state into this PCR\&.
+T}
+T{
+11
+T}:T{
+\fBsystemd\-stub\fP(7) measures the ELF kernel image, embedded initrd and other payload of the PE image it is placed in into this PCR\&. Unlike PCR 4 (where the same data should be measured into), this PCR value should be easy to pre\-calculate, as this only contains static parts of the PE binary\&. Use this PCR to bind TPM policies to a specific kernel image, possibly with an embedded initrd\&. \fBsystemd\-pcrphase.service\fP(8) measures boot phase strings into this PCR at various milestones of the boot process\&.
+T}
+T{
+12
+T}:T{
+\fBsystemd\-boot\fP(7) measures the kernel command line into this PCR\&. \fBsystemd\-stub\fP(7) measures any manually specified kernel command line (i\&.e\&. a kernel command line that overrides the one embedded in the unified PE image) and loaded credentials into this PCR\&. (Note that if \fBsystemd\-boot\fP and \fBsystemd\-stub\fP are used in combination the command line might be measured twice!)
+T}
+T{
+13
+T}:T{
+\fBsystemd\-stub\fP(7) measures any \fBsystemd\-sysext\fP(8) images it loads and passed to the booted kernel into this PCR\&.
+T}
+T{
+14
+T}:T{
+The shim project measures its "MOK" certificates and hashes into this PCR\&.
+T}
+T{
+15
+T}:T{
+\fBsystemd\-cryptsetup\fP(7) optionally measures the volume key of activated LUKS volumes into this PCR\&.
+T}
+.TE
+.sp 1
+对于大多数应用程序，绑定 PCR 7 (和可能的 PCR 14，如果需要 shim/MOK) 应该足够了，因为这包括用于验证引导过程的所有组件的可信证书
+(和可能的散列) 的测量包括操作系统内核 \&。为了简化固件和操作系统版本更新，\*(Aqs 通常不建议在注册的绑定中包含诸如 0 和 2 的
+PCR，因为它们涵盖的程序代码应该已经通过 PCR 7 中测量的证书间接受到保护 \&。通过这些证书进行的验证通常优于通过直接测量进行的验证，因为它在
+OS/firmware 更新的上下文中不那么脆弱: 每次更新时测量都会发生变化，但代码签名可能会根据预先存在的证书进行验证 \&。
+.RE
+.PP
+\fB\-\-tpm2\-with\-pin=\fP\fIBOOL\fP
+.RS 4
+注册 TPM2 设备时，根据 TPM2 策略鉴权，控制是否要求用户在解锁卷时输入 PIN 码以及 PCR 绑定。默认为 `否`\&。尽管称为
+PIN，但可以使用任何字符，而不仅仅是数字 \&。
+.sp
+请注意，解锁时输入不正确的 PIN 会增加 TPM 字典攻击锁定机制，并且可能会长时间锁定用户，具体取决于其配置 \&。锁定机制是 TPM
+的全局属性，\fBsystemd\-cryptenroll\fP 不控制或配置锁定机制 \&。您可以使用 tpm2\-tss
+工具来检查或配置字典攻击锁定，分别使用 \fBtpm2_getcap\fP(1) 和 \fBtpm2_dictionarylockout\fP(1) 命令 \&。
+.RE
+.PP
+\fB\-\-tpm2\-public\-key=\fP [PATH], \fB\-\-tpm2\-public\-key\-pcrs=\fP [PCR...],
+\fB\-\-tpm2\-signature=\fP [PATH]
+.RS 4
+配置 TPM2 签名 PCR 策略以将加密绑定到 \&。\fB\-\-tpm2\-public\-key=\fP 选项接受 PEM 编码的 RSA
+公钥的路径，以将加密绑定到 \&。如果未明确指定，但目录 /etc/systemd/、/run/systemd/、/usr/lib/systemd/
+(按此顺序搜索) 之一存在文件 tpm2\-pcr\-public\-key\&.pem，则自动使用它
+\&。\fB\-\-tpm2\-public\-key\-pcrs=\fP 选项采用要绑定到的 TPM2 PCR 索引列表 (与上述 \fB\-\-tpm2\-pcrs=\fP
+语法相同) \&。如果未指定，则默认为 11 (i\&.e\&。这会将策略绑定到可以为其提供 PCR 签名的任何统一内核映像) \&。
+.sp
+请注意 \fB\-\-tpm2\-pcrs=\fP 和 \fB\-\-tpm2\-public\-key\-pcrs=\fP: 之间的区别，前者将解密绑定到当前的特定 PCR 值;
+后者将解密绑定到任何一组 PCR 值，可以为其提供指定公钥的签名 \&。因此，后者在可以进行软件更新 shell 而不会丢失对所有先前加密的 LUKS2
+卷 \& 的访问的情况下更有用。
+.sp
+\fB\-\-tpm2\-signature=\fP 选项采用 \fBsystemd\-measure\fP(1) 工具生成的 TPM2 PCR 签名文件的路径
+\&。如果未明确指定，则在 /etc/systemd/、/run/systemd/、/usr/lib/systemd/ (按此顺序)
+中搜索合适的签名文件 tpm2\-pcr\-signature\&.json 并使用
+\&。如果指定或找到签名文件，则在将新插槽写入磁盘之前，它用于验证在给定当前 PCR
+状态的情况下是否可以使用它解锁卷。这是为了作为安全网，以确保在注册了当前 PCR 状态没有有效签名的公钥时不会丢失对卷的访问
+\&。如果提供的签名没有解锁当前的 PCR 状态和公钥组合，则不会注册任何插槽，操作将失败 \&。如果未指定或未找到签名文件，则不会进行此类安全验证
+\&。
+.RE
+.PP
+\fB\-\-wipe\-slot=\fP [SLOT...]
+.RS 4
+擦拭一个或多个 LUKS2 键槽 \&。采用逗号分隔的数字槽索引列表，或特殊字符串 "all" (用于擦除所有密钥槽)、"empty"
+(用于擦除由空密码解锁的所有密钥槽)、"password" (用于擦除由传统密码)，"recovery"
+(用于擦除由恢复密钥解锁的所有密钥槽)，"pkcs11" (用于擦除由 PKCS#11 token 解锁的所有密钥槽)，"fido2"
+(用于擦除由恢复密钥解锁的所有密钥槽 a FIDO2 token)、"tpm2" (用于擦除由 TPM2 芯片解锁的所有密钥槽)
+或这些字符串或数字索引的任意组合，在这种情况下，所有匹配的槽都被擦除 \&。作为安全预防措施，将无一例外地擦除所有插槽的操作
+(这样就无法再解锁该卷，除非知道卷密钥) \&。
+.sp
+此开关可以单独使用，在这种情况下，只执行请求的擦除操作
+\&。它也可以与上面列出的任何注册选项结合使用，在这种情况下，首先完成注册，并且只有在成功执行擦除操作时 \(em 并且新添加的插槽始终被排除在擦除之外
+\&。因此，结合注册和槽擦除可用于更新现有注册:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemd\-cryptenroll /dev/sda1 \-\-wipe\-slot=tpm2 \-\-tpm2\-device=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+上面的命令会注册 TPM2 芯片，然后擦除之前在 LUKS2 卷上创建的所有 TPM2 注册，只留下新创建的
+\&。结合擦除和注册也可用于替换不同类型的注册，例如从 PKCS#11 注册更改为 FIDO2 注册:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemd\-cryptenroll /dev/sda1 \-\-wipe\-slot=pkcs11 \-\-fido2\-device=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+或者用 TPM2 替换注册的空密码:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemd\-cryptenroll /dev/sda1 \-\-wipe\-slot=empty \-\-tpm2\-device=auto
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-cryptsetup@.service\fP(8), \fBcrypttab\fP(5),
+\fBcryptsetup\fP(8), \fBsystemd\-measure\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

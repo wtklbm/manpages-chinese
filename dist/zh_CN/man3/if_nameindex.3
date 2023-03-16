@@ -1,0 +1,129 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2012 YOSHIFUJI Hideaki <yoshfuji@linux-ipv6.org>
+.\" and Copyright (c) 2012 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH if_nameindex 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+if_nameindex, if_freenameindex \- 获取网络接口名称和索引
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <net/if.h>\fP
+.PP
+\fBstruct if_nameindex *if_nameindex(\fP\fIvoid\fP\fB);\fP
+\fBvoid if_freenameindex(struct if_nameindex *\fP\fIptr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBif_nameindex\fP() 函数返回一个 \fIif_nameindex\fP 结构数组，每个结构都包含有关本地系统上一个网络接口的信息。
+\fIif_nameindex\fP 结构体至少包含以下条目:
+.PP
+.in +4n
+.EX
+unsigned int if_index;  /* Index of interface (1, 2, ...) */
+char        *if_name;   /* Null\-terminated name ("eth0", etc.) */
+.EE
+.in
+.PP
+\fIif_index\fP 字段包含接口索引。 \fIif_name\fP 字段指向以 null 结尾的接口名称。 数组的末尾由 \fIif_index\fP
+设置为零且 \fIif_name\fP 设置为 NULL 的条目指示。
+.PP
+\fBif_nameindex\fP() 返回的数据结构体是动态分配的，当不再需要时应该使用 \fBif_freenameindex\fP() 释放。
+.SH "RETURN VALUE"
+成功时，\fBif_nameindex\fP() 返回指向数组的指针; 出错时，返回 NULL，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+如果出现以下情况，\fBif_nameindex\fP() 可能会失败并设置 \fIerrno\fP:
+.TP 
+\fBENOBUFS\fP
+可用资源不足。
+.PP
+\fBif_nameindex\fP() 也可能因
+\fBsocket\fP(2)、\fBbind\fP(2)、\fBioctl\fP(2)、\fBgetsockname\fP(2)、\fBrecvmsg\fP(2)、\fBsendto\fP(2)
+或 \fBmalloc\fP(3) 指定的任何错误而失败。
+.SH VERSIONS
+\fBif_nameindex\fP() 函数最早出现在 glibc 2.1 中，但在 glibc 2.3.4 之前，该实现仅支持具有 IPv4 地址的接口。
+对没有 IPv4 地址的接口的支持仅在支持 netlink 的内核上可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBif_nameindex\fP(),
+\fBif_freenameindex\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, RFC\ 3493.
+.PP
+这个函数最早出现在 BSDi。
+.SH EXAMPLES
+下面的程序演示了本页描述的函数的用法。 该程序可能产生的输出示例如下:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP\fI  1: lo  2: wlan0 3: em1\fP
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (if_nameindex.c)
+.EX
+#include <net/if.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(void)
+{
+    struct if_nameindex *if_ni, *i;
+
+    if_ni = if_nameindex();
+    if (if_ni == NULL) {
+        perror("if_nameindex");
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = if_ni; !(i\->if_index == 0 && i\->if_name == NULL); i++)
+        printf("%u: %s\en", i\->if_index, i\->if_name);
+
+    if_freenameindex(if_ni);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetsockopt\fP(2), \fBsetsockopt\fP(2), \fBgetifaddrs\fP(3), \fBif_indextoname\fP(3),
+\fBif_nametoindex\fP(3), \fBifconfig\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

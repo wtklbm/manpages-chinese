@@ -1,0 +1,712 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Kees Cook <keescook@chromium.org>
+.\" and Copyright (C) 2012 Will Drewry <wad@chromium.org>
+.\" and Copyright (C) 2008, 2014,2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2017 Tyler Hicks <tyhicks@canonical.com>
+.\" and Copyright (C) 2020 Tycho Andersen <tycho@tycho.ws>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH seccomp 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+seccomp \- 对进程的安全计算状态进行操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+.\" Kees Cook noted: Anything that uses SECCOMP_RET_TRACE returns will
+.\"                  need <sys/ptrace.h>
+\fB#include <linux/seccomp.h>\fP  /* Definition of \fBSECCOMP_*\fP constants */
+\fB#include <linux/filter.h>\fP   /* Definition of \fBstruct sock_fprog\fP */
+\fB#include <linux/audit.h>\fP    /* Definition of \fBAUDIT_*\fP constants */
+\fB#include <linux/signal.h>\fP   /* Definition of \fBSIG*\fP constants */
+\fB#include <sys/ptrace.h>\fP     /* Definition of \fBPTRACE_*\fP constants */
+\fB#include <sys/syscall.h>\fP    /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_seccomp, unsigned int \fP\fIoperation\fP\fB, unsigned int \fP\fIflags\fP\fB,\fP
+\fB            void *\fP\fIargs\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBseccomp\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBseccomp\fP() 系统调用在调用进程的 Secure Computing (seccomp) 状态上运行。
+.PP
+目前，Linux 支持以下 \fIoperation\fP 值:
+.TP 
+\fBSECCOMP_SET_MODE_STRICT\fP
+允许调用线程进行的唯一系统调用是 \fBread\fP(2)、\fBwrite\fP(2)、\fB_exit\fP(2) (但不是 \fBexit_group\fP(2)) 和
+\fBsigreturn\fP(2)。 其他系统调用导致调用线程终止，或者当只有一个线程时，整个进程终止并发出 \fBSIGKILL\fP 信号。
+严格的安全计算模式对于可能需要执行不受信任的字节代码的数字运算应用程序很有用，这些字节代码可能是通过从管道或套接字读取而获得的。
+.IP
+注意虽然调用线程不能再调使用 \fBsigprocmask\fP(2)，但是可以使用 \fBsigreturn\fP(2) 来阻塞除 \fBSIGKILL\fP 和
+\fBSIGSTOP\fP 之外的所有信号。 这意味着 \fBalarm\fP(2) (例如) 不足以限制进程的执行时间。 相反，要可靠地终止进程，必须使用
+\fBSIGKILL\fP。 这可以通过使用 \fBtimer_create\fP(2) 并将 \fBSIGEV_SIGNAL\fP 和 \fIsigev_signo\fP
+设置为 \fBSIGKILL\fP 来完成，或者通过使用 \fBsetrlimit\fP(2) 来设置 \fBRLIMIT_CPU\fP 的硬限制。
+.IP
+此操作仅在内核配置为启用 \fBCONFIG_SECCOMP\fP 时可用。
+.IP
+\fIflags\fP 的值必须为 0，\fIargs\fP 必须为 NULL。
+.IP
+此操作在功能上与调用相同:
+.IP
+.in +4n
+.EX
+prctl(PR_SET_SECCOMP, SECCOMP_MODE_STRICT);
+.EE
+.in
+.TP 
+\fBSECCOMP_SET_MODE_FILTER\fP
+允许的系统调用由指向通过 \fIargs\fP 传递的 Berkeley 数据包过滤器 (BPF) 的指针定义。 这个参数是一个指向
+\fIstruct\~sock_fprog\fP 的指针; 它可以设计为过滤任意系统调用和系统调用参数。 如果过滤器无效，则 \fBseccomp\fP()
+失败，在 \fIerrno\fP 中返回 \fBEINVAL\fP。
+.IP
+如果过滤器允许 \fBfork\fP(2) 或 \fBclone\fP(2)，则任何子进程都将被限制为与父进程相同的系统调用过滤器。 如果允许
+\fBexecve\fP(2)，则现有过滤器将在调用到 \fBexecve\fP(2) 之间保留。
+.IP
+为了使用 \fBSECCOMP_SET_MODE_FILTER\fP 操作，调用线程必须在其用户命名空间中具有 \fBCAP_SYS_ADMIN\fP
+功能，或者线程必须已经设置了 \fIno_new_privs\fP 位。 如果该位尚未被该线程的祖先设置，则该线程必须进行以下调整:
+.IP
+.in +4n
+.EX
+prctl(PR_SET_NO_NEW_PRIVS, 1);
+.EE
+.in
+.IP
+否则，\fBSECCOMP_SET_MODE_FILTER\fP 操作失败并在 \fIerrno\fP 中返回 \fBEACCES\fP。
+此要求可确保非特权进程无法应用恶意过滤器，然后使用 \fBexecve\fP(2) 调用设置用户 ID 或其他特权程序，从而可能危及该程序。
+(例如，这样的恶意过滤器可能会导致尝试使用 \fBsetuid\fP(2) 将调用者的用户 ID 设置为非零值，而不是返回 0
+而不会实际使系统调用。因此，在以下情况下，程序可能会被诱骗保留超级用户权限有可能影响它做危险的事情，因为它实际上没有丢弃特权。)
+.IP
+如果附加过滤器允许 \fBprctl\fP(2) 或 \fBseccomp\fP()，则可以添加更多过滤器。
+这将增加评估时间，但允许在线程执行期间进一步减少攻击面。
+.IP
+仅当内核配置为启用 \fBCONFIG_SECCOMP_FILTER\fP 时，\fBSECCOMP_SET_MODE_FILTER\fP 操作才可用。
+.IP
+当 \fIflags\fP 为 0 时，此操作在功能上与调用相同:
+.IP
+.in +4n
+.EX
+prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, args);
+.EE
+.in
+.IP
+公认的 \fIflags\fP 是:
+.RS
+.TP 
+\fBSECCOMP_FILTER_FLAG_LOG\fP (since Linux 4.14)
+.\" commit e66a39977985b1e69e17c4042cb290768eca9b02
+应记录除 \fBSECCOMP_RET_ALLOW\fP 之外的所有过滤器返回操作。 管理员可以通过阻止通过
+\fI/proc/sys/kernel/seccomp/actions_logged\fP 文件记录特定操作来覆盖此过滤器标志。
+.TP 
+\fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP (since Linux 5.0)
+.\" commit 6a21cc50f0c7f87dae5259f6cfefe024412313f6
+成功安装过滤器程序后，返回一个新的用户空间通知文件描述符。 (为文件描述符设置了 close\-on\-exec 标志。) 当过滤器返回
+\fBSECCOMP_RET_USER_NOTIF\fP 时，将向该文件描述符发送一个通知。
+.IP
+最多可以为一个线程安装一个使用 \fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP 标志的 seccomp 过滤器。
+.IP
+有关详细信息，请参见 \fBseccomp_unotify\fP(2)。
+.TP 
+\fBSECCOMP_FILTER_FLAG_SPEC_ALLOW\fP (since Linux 4.17)
+.\" commit 00a02d0c502a06d15e07b857f8ff921e3e402675
+禁用推测存储绕过缓解措施。
+.TP 
+\fBSECCOMP_FILTER_FLAG_TSYNC\fP
+添加新过滤器时，将调用进程的所有其他线程同步到同一个 seccomp 过滤器树。 "filter tree" 是附加到线程的过滤器的有序列表。
+(从这个角度来看，在单独的 \fBseccomp\fP() 调用中附加相同的过滤器会导致不同的过滤器。)
+.IP
+如果任何线程无法同步到同一过滤器树，调用将不会附加新的 seccomp 过滤器，并且会失败，返回发现的第一个无法同步的线程 ID。
+如果同一进程中的另一个线程在 \fBSECCOMP_MODE_STRICT\fP 中，或者如果它已将新的 seccomp
+过滤器附加到自身，与调用线程的过滤器树不同，则同步将失败。
+.RE
+.TP 
+\fBSECCOMP_GET_ACTION_AVAIL\fP (since Linux 4.14)
+.\" commit d612b1fd8010d0d67b5287fe146b8b55bcbb8655
+测试内核是否支持某个操作。 此操作有助于确认内核知道最近添加的过滤器返回操作，因为内核将所有未知操作视为
+\fBSECCOMP_RET_KILL_PROCESS\fP。
+.IP
+\fIflags\fP 的值必须为 0，\fIargs\fP 必须是指向无符号 32 位过滤器返回操作的指针。
+.TP 
+\fBSECCOMP_GET_NOTIF_SIZES\fP (since Linux 5.0)
+.\" commit 6a21cc50f0c7f87dae5259f6cfefe024412313f6
+获取 seccomp 用户空间通知结构的大小。 由于这些结构可能会随着时间的推移而演变和增长，因此此命令可用于确定为发送和接收通知分配多少内存。
+.IP
+\fIflags\fP 的值必须为 0，\fIargs\fP 必须是指向 \fIstruct seccomp_notif_sizes\fP 的指针，其形式如下:
+.IP
+.EX
+struct seccomp_notif_sizes
+    __u16 seccomp_notif;      /* Size of notification structure */
+    __u16 seccomp_notif_resp; /* Size of response structure */
+    __u16 seccomp_data;       /* Size of \[aq]struct seccomp_data\[aq] */
+};
+.EE
+.IP
+.\"
+有关详细信息，请参见 \fBseccomp_unotify\fP(2)。
+.SS Filters
+通过 \fBSECCOMP_SET_MODE_FILTER\fP 添加过滤器时，\fIargs\fP 指向一个过滤器程序:
+.PP
+.in +4n
+.EX
+struct sock_fprog {
+    unsigned short      len;    /* Number of BPF instructions */ 
+    struct sock_filter *filter; /* Pointer to array of
+                                   BPF instructions */
+};
+.EE
+.in
+.PP
+每个程序必须包含一个或多个 BPF 指令:
+.PP
+.in +4n
+.EX
+struct sock_filter {            /* Filter block */
+    __u16 code;                 /* Actual filter code */
+    __u8  jt;                   /* Jump true */
+    __u8  jf;                   /* Jump false */
+    __u32 k;                    /* Generic multiuse field */
+};
+.EE
+.in
+.PP
+.\" Quoting Kees Cook:
+.\"     If BPF even allows changing the data, it's not copied back to
+.\"     the syscall when it runs. Anything wanting to do things like
+.\"     that would need to use ptrace to catch the call and directly
+.\"     modify the registers before continuing with the call.
+BPF 程序在执行指令时，对系统调用信息进行操作 (即使用 \fBBPF_ABS\fP 寻址方式) 作为 (read\-only) 缓冲区，形式如下:
+.PP
+.in +4n
+.EX
+struct seccomp_data {
+    int   nr;                   /* System call number */
+    __u32 arch;                 /* AUDIT_ARCH_* value
+                                   (见 <linux/audit.h>) */
+    __u64 instruction_pointer;  /* CPU instruction pointer */
+    __u64 args[6];              /* Up to 6 system call arguments */
+};
+.EE
+.in
+.PP
+因为系统调用的编号因架构而异，并且某些架构 (例如，x86\-64) 允许用户空间代码使用多种架构的调用约定 (并且所使用的约定可能会在使用
+\fBexecve\fP(2) 执行的进程的整个生命周期中发生变化使用不同约定的二进制文件)，通常需要验证 \fIarch\fP 字段的值。
+.PP
+强烈建议尽可能使用允许列表方法，因为这种方法更可靠、更简单。 每当添加潜在危险的系统调用 (或危险标志或选项，如果这些被列入拒绝列表)
+时，都必须更新拒绝列表，并且通常可以在不改变其含义的情况下更改值的表示形式，导致绕过拒绝列表。 另请参见下面的 \fICaveats\fP。
+.PP
+.\" As noted by Dave Drysdale in a note at the end of
+.\" https://lwn.net/Articles/604515/
+.\"     One additional detail to point out for the x32 ABI case:
+.\"     the syscall number gets a high bit set (__X32_SYSCALL_BIT),
+.\"     to mark it as an x32 call.
+.\"
+.\"     If x32 support is included in the kernel, then __SYSCALL_MASK
+.\"     will have a value that is not all-ones, and this will trigger
+.\"     an extra instruction in system_call to mask off the extra bit,
+.\"     so that the syscall table indexing still works.
+\fIarch\fP 字段并非对所有调用约定都是唯一的。 x86\-64 ABI 和 x32 ABI 都使用 \fBAUDIT_ARCH_X86_64\fP 作为
+\fIarch\fP，并且它们运行在相同的处理器上。 相反，掩码 \fB__X32_SYSCALL_BIT\fP 用于系统调用编号以区分两个 ABI。
+.PP
+这意味着策略必须要么拒绝所有带有 \fB__X32_SYSCALL_BIT\fP 的系统调用，要么必须识别设置和不设置
+\fB__X32_SYSCALL_BIT\fP 的系统调用。 基于 \fInr\fP 的拒绝系统调用列表，其中不包含设置了 \fB__X32_SYSCALL_BIT\fP
+的 \fInr\fP 值，可以被设置 \fB__X32_SYSCALL_BIT\fP 的恶意程序绕过。
+.PP
+.\" commit 6365b842aae4490ebfafadfc6bb27a6d3cc54757
+此外，Linux 5.4 之前的内核错误地允许 512\-547 范围内的 \fInr\fP 以及与 \fB__X32_SYSCALL_BIT\fP 进行 ORed
+的相应非 x32 系统调用。 例如，\fInr\fP == 521 和 \fInr\fP == (101 | \fB__X32_SYSCALL_BIT\fP)
+会导致在内核中调用 \fBptrace\fP(2) 时可能会混淆 x32\-vs\-x86_64 语义。 旨在在 Linux 5.4
+之前的内核上运行的策略必须确保它们拒绝或以其他方式正确处理这些系统调用。 在 Linux 5.4 和更新版本上，这样的系统调用将失败并返回错误
+\fBENOSYS\fP，而不会执行任何操作。
+.PP
+\fIinstruction_pointer\fP 字段提供执行系统调用的机器语言指令的地址。 这可能与使用 \fI/proc/\fPpid\fI/maps\fP
+结合使用以根据程序的哪个区域 (mapping) 使系统调用来执行检查很有用。 (可能，锁定 \fBmmap\fP(2) 和 \fBmprotect\fP(2)
+系统调用以防止程序破坏此类检查是明智的。)
+.PP
+检查 \fIargs\fP 的值时，请记住，参数通常在处理之前被静默截断，但在 seccomp 检查之后。 例如，如果在 x86\-64 内核上使用 i386
+ABI，就会发生这种情况: 虽然内核通常不会查看参数的最低 32 位，但完整的 64 位寄存器的值将出现在 seccomp 数据中.
+一个不那么令人惊讶的例子是，如果 x86\-64 ABI 用于执行采用 \fIint\fP 类型参数的系统调用，则参数寄存器的更重要的一半将被系统调用忽略，但在
+seccomp 数据中可见。
+.PP
+seccomp 过滤器返回由两部分组成的 32 位值: 最高有效 16 位 (对应于常量 \fBSECCOMP_RET_ACTION_FULL\fP)
+定义的掩码，包含下面列出的 "action" 值之一; 最低有效 16 位 (由常量 \fBSECCOMP_RET_DATA\fP) 定义为 "data"
+与此返回值相关联。
+.PP
+.\" From an Aug 2015 conversation with Kees Cook where I asked why *all*
+.\" filters are applied even if one of the early filters returns
+.\" SECCOMP_RET_KILL:
+.\"
+.\"     It's just because it would be an optimization that would only speed up
+.\"     the RET_KILL case, but it's the uncommon one and the one that doesn't
+.\"     benefit meaningfully from such a change (you need to kill the process
+.\"     really quickly?). We would speed up killing a program at the (albeit
+.\"     tiny) expense to all other filtered programs. Best to keep the filter
+.\"     execution logic clear, simple, and as fast as possible for all
+.\"     filters.
+如果存在多个过滤器，则执行 \fIall\fP，按照它们添加到过滤器树的相反顺序 \[em]，即首先执行最近安装的过滤器。 (请注意，即使较早的过滤器之一返回
+\fBSECCOMP_RET_KILL\fP，也会调用所有过滤器。这样做是为了简化内核代码，并通过避免检查这种不常见的情况来提供过滤器集执行的微小加速。)
+给定系统评估的返回值调用是所有过滤器执行返回的最高优先级的第一个动作值 (连同其伴随数据)。
+.PP
+按照优先级递减顺序，seccomp 过滤器可能返回的操作值是:
+.TP 
+\fBSECCOMP_RET_KILL_PROCESS\fP (since Linux 4.14)
+.\" commit 4d3b0b05aae9ee9ce0970dc4cc0fb3fad5e85945
+.\" commit 0466bdb99e8744bc9befa8d62a317f0fd7fd7421
+该值导致 immediate 进程终止，并出现核心转储。 不执行系统调用。 对比下面的
+\fBSECCOMP_RET_KILL_THREAD\fP，线程组中的所有线程都被终止了。 (关于线程组的讨论，参见 \fBclone\fP(2).) 中
+\fBCLONE_THREAD\fP 标志的说明
+.IP
+该进程终止 \fBSIGSYS\fP 信号杀死的 \fIas though\fP。 即使已经为 \fBSIGSYS\fP
+注册了一个信号处理程序，在这种情况下该处理程序也会被忽略，进程总是会终止。 对于等待此进程的父进程 (使用 \fBwaitpid\fP(2)
+或类似进程)，返回的 \fIwstatus\fP 将指示其子进程已被 \fBSIGSYS\fP 信号终止。
+.TP 
+\fBSECCOMP_RET_KILL_THREAD\fP (or \fBSECCOMP_RET_KILL\fP)
+该值导致 immediate 终止使系统调用的线程。 不执行系统调用。 同一个线程组中的其他线程会继续执行。
+.IP
+线程终止由 \fBSIGSYS\fP 信号杀死的 \fIas though\fP。 请参见上面的 \fBSECCOMP_RET_KILL_PROCESS\fP。
+.IP
+.\" See these commits:
+.\" seccomp: dump core when using SECCOMP_RET_KILL
+.\"    (b25e67161c295c98acda92123b2dd1e7d8642901)
+.\" seccomp: Only dump core when single-threaded
+.\"    (d7276e321ff8a53106a59c85ca46d03e34288893)
+在 Linux 4.11 之前，以这种方式终止的任何进程都不会触发核心转储 (即使 \fBSIGSYS\fP 在 \fBsignal\fP(7)
+中记录为具有使用核心转储终止的默认操作)。 从 Linux 4.11 开始，如果以这种方式终止，单线程进程将转储核心。
+.IP
+在 Linux 4.14 中加入 \fBSECCOMP_RET_KILL_PROCESS\fP 后，又加入了
+\fBSECCOMP_RET_KILL_THREAD\fP 作为 \fBSECCOMP_RET_KILL\fP 的同义词，以更清楚地区分两者的动作。
+.IP
+\fBNote\fP: 使用 \fBSECCOMP_RET_KILL_THREAD\fP 杀死多线程进程中的单个线程很可能使进程处于永久不一致且可能损坏的状态。
+.TP 
+\fBSECCOMP_RET_TRAP\fP
+该值导致内核向触发线程发送一个线程定向的 \fBSIGSYS\fP 信号。 (不执行系统调用。) \fIsiginfo_t\fP 结构体中会设置各种字段 (见
+\fBsigaction\fP(2)) 与信号关联:
+.RS
+.IP \[bu] 3
+\fIsi_signo\fP 将包含 \fBSIGSYS\fP。
+.IP \[bu]
+\fIsi_call_addr\fP 会显示系统调用指令的地址。
+.IP \[bu]
+\fIsi_syscall\fP 和 \fIsi_arch\fP 将指示尝试调用哪个系统。
+.IP \[bu]
+\fIsi_code\fP 将包含 \fBSYS_SECCOMP\fP。
+.IP \[bu]
+\fIsi_errno\fP 将包含过滤器返回值的 \fBSECCOMP_RET_DATA\fP 部分。
+.RE
+.IP
+程序计数器就好像系统调用发生了一样 (即程序计数器不会指向系统调用指令)。 返回值寄存器将包含一个依赖于体系结构的值;
+如果恢复执行，将其设置为适合系统调用的值。 (架构依赖是因为用 \fBENOSYS\fP 替换它可能会覆盖一些有用的信息。)
+.TP 
+\fBSECCOMP_RET_ERRNO\fP
+该值导致过滤器返回值的 \fBSECCOMP_RET_DATA\fP 部分作为 \fIerrno\fP 值传递给用户空间，而不执行系统调用。
+.TP 
+\fBSECCOMP_RET_USER_NOTIF\fP (since Linux 5.0)
+.\" commit 6a21cc50f0c7f87dae5259f6cfefe024412313f6
+将系统调用转发给附加的用户空间 supervisor 进程，以允许该进程决定如何处理系统调用。 如果没有附加的 supervisor
+(因为过滤器没有安装 \fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP 标志或者因为文件描述符被关闭)，过滤器返回
+\fBENOSYS\fP (类似于过滤器返回 \fBSECCOMP_RET_TRACE\fP 并且没有跟踪器时发生的情况)。 有关详细信息，请参见
+\fBseccomp_unotify\fP(2)。
+.IP
+请注意，如果另一个过滤器返回优先级大于 \fBSECCOMP_RET_USER_NOTIF\fP 的操作值，则不会通知 supervisor 进程。
+.TP 
+\fBSECCOMP_RET_TRACE\fP
+返回时，此值将导致内核在执行系统调用之前尝试通知 \fBptrace\fP(2)\-based 跟踪器。
+如果不存在示踪剂，则不执行系统调用并返回失败状态，\fIerrno\fP 设置为 \fBENOSYS\fP。
+.IP
+如果使用 \fIptrace(PTRACE_SETOPTIONS)\fP 请求 \fBPTRACE_O_TRACESECCOMP\fP，将通知跟踪器。 跟踪器将收到
+\fBPTRACE_EVENT_SECCOMP\fP 通知，过滤器返回值的 \fBSECCOMP_RET_DATA\fP 部分将通过
+\fBPTRACE_GETEVENTMSG\fP 提供给跟踪器。
+.IP
+跟踪器可以通过将系统调用号改为 \-1 来跳过系统调用。 或者，跟踪器可以通过将系统调用更改为有效的系统调用编号来更改请求的系统调用。 如果 tracer
+要求跳过系统调用，那么系统调用会出现返回 tracer 放入返回值寄存器的值。
+.IP
+.\" This was changed in ce6526e8afa4.
+.\" A related hole, using PTRACE_SYSCALL instead of SECCOMP_RET_TRACE, was
+.\" changed in arch-specific commits, e.g. 93e35efb8de4 for X86 and
+.\" 0f3912fd934c for ARM.
+Linux 4.8 之前，通知 tracer 后不会再运行 seccomp 检查。 (这意味着，在较旧的内核上，基于 seccomp 的沙箱
+\fBmust not\fP 允许使用其他沙箱进程的 \fBptrace\fP(2)\[em]even，而无需特别小心; ptracers 可以使用此机制逃离
+seccomp 沙箱。)
+.IP
+请注意，如果另一个过滤器返回优先级大于 \fBSECCOMP_RET_TRACE\fP 的操作值，则不会通知跟踪器进程。
+.TP 
+\fBSECCOMP_RET_LOG\fP (since Linux 4.14)
+.\" commit 59f5cf44a38284eb9e76270c786fb6cc62ef8ac4
+该值导致在记录过滤器返回操作后执行系统调用。 管理员可以通过 \fI/proc/sys/kernel/seccomp/actions_logged\fP
+文件覆盖此操作的日志记录。
+.TP 
+\fBSECCOMP_RET_ALLOW\fP
+该值导致系统调用被执行。
+.PP
+.\" commit 4d3b0b05aae9ee9ce0970dc4cc0fb3fad5e85945
+.\"
+如果指定的操作值不是上述之一，则过滤器操作将被视为 \fBSECCOMP_RET_KILL_PROCESS\fP (自 Linux 4.14 起) 或
+\fBSECCOMP_RET_KILL_THREAD\fP (在 Linux 4.13 及更早版本中)。
+.SS "/proc interfaces"
+目录 \fI/proc/sys/kernel/seccomp\fP 中的文件提供了额外的 seccomp 信息和配置:
+.TP 
+\fIactions_avail\fP (since Linux 4.14)
+.\" commit 8e5f1ad116df6b0de65eac458d5e7c318d1c05af
+字符串形式的 seccomp 过滤器返回操作的只读有序列表。 从左到右的顺序是按优先级递减顺序排列。 该列表表示内核支持的一组 seccomp
+过滤器返回操作。
+.TP 
+\fIactions_logged\fP (since Linux 4.14)
+.\" commit 0ddec0fc8900201c0897b87b762b7c420436662f
+允许记录的 seccomp 过滤器返回操作的读写有序列表。 写入文件不需要按顺序排列，但从文件中读取的顺序与 \fIactions_avail\fP
+文件相同。
+.IP
+重要的是要注意，当审计子系统配置为审计任务时，\fIactions_logged\fP 的值不会阻止记录某些过滤器返回操作。 如果在
+\fIactions_logged\fP 文件中没有找到该动作，是否审计该任务的动作的最终决定最终留给审计子系统来决定除
+\fBSECCOMP_RET_ALLOW\fP 之外的所有过滤器返回动作。
+.IP
+.\"
+\fIactions_logged\fP 文件不接受 "allow" 字符串，因为无法记录 \fBSECCOMP_RET_ALLOW\fP 操作。 尝试将
+"allow" 写入文件将失败，并显示错误 \fBEINVAL\fP。
+.SS "Audit logging of seccomp actions"
+.\" commit 59f5cf44a38284eb9e76270c786fb6cc62ef8ac4
+.\" or auditing could be enabled via the netlink API (AUDIT_SET)
+从 Linux 4.14 开始，内核提供了在审计日志中记录 seccomp 过滤器返回的操作的工具。 内核根据操作类型、操作是否存在于
+\fIactions_logged\fP 文件中以及是否启用内核审计 (例如，通过内核引导选项 \fIaudit=1\fP).  规则如下:
+.IP \[bu] 3
+如果操作是 \fBSECCOMP_RET_ALLOW\fP，则不记录操作。
+.IP \[bu]
+否则，如果操作是 \fBSECCOMP_RET_KILL_PROCESS\fP 或 \fBSECCOMP_RET_KILL_THREAD\fP，并且该操作出现在
+\fIactions_logged\fP 文件中，则记录该操作。
+.IP \[bu]
+否则，如果过滤器请求记录 (\fBSECCOMP_FILTER_FLAG_LOG\fP 标志) 并且操作出现在 \fIactions_logged\fP
+文件中，则记录该操作。
+.IP \[bu]
+否则，如果启用了内核审计并且正在审计 (\fBautrace\fP(8)) 进程，则会记录该操作。
+.IP \[bu]
+否则，不会记录该操作。
+.SH "RETURN VALUE"
+成功时，\fBseccomp\fP() 返回 0。 出错时，如果使用 \fBSECCOMP_FILTER_FLAG_TSYNC\fP，则返回值是导致同步失败的线程的
+ID。 (这个 ID 是 \fBclone\fP(2) 和 \fBgettid\fP(2).) 返回类型的内核线程 ID，其他错误返回 \-1，设置 \fIerrno\fP
+表示错误。
+.SH ERRORS
+\fBseccomp\fP() 可能因以下原因而失败:
+.TP 
+\fBEACCES\fP
+调用方在其用户命名空间中没有 \fBCAP_SYS_ADMIN\fP 功能，或者在使用 \fBSECCOMP_SET_MODE_FILTER\fP 之前没有设置
+\fIno_new_privs\fP。
+.TP 
+\fBEBUSY\fP
+安装新过滤器时，指定了 \fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP 标志，但以前的过滤器已经安装了该标志。
+.TP 
+\fBEFAULT\fP
+\fIargs\fP 不是有效地址。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 未知或不受此内核版本或配置支持。
+.TP 
+\fBEINVAL\fP
+指定的 \fIflags\fP 对于给定的 \fIoperation\fP 无效。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 包括 \fBBPF_ABS\fP，但指定的偏移量未与 32 位边界对齐或超出
+\fIsizeof(struct\~seccomp_data)\fP。
+.TP 
+\fBEINVAL\fP
+.\" See kernel/seccomp.c::seccomp_may_assign_mode() in Linux 3.18 sources
+已经设置了安全计算模式，\fIoperation\fP 与现有设置不同。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 指定了 \fBSECCOMP_SET_MODE_FILTER\fP，但 \fIargs\fP 指向的过滤程序无效或过滤程序长度为零或超过
+\fBBPF_MAXINSNS\fP (4096) 指令。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBENOMEM\fP
+.\" ENOMEM in kernel/seccomp.c::seccomp_attach_filter() in Linux 3.18 sources
+附加到调用线程的所有过滤器程序的总长度将超过 \fBMAX_INSNS_PER_PATH\fP (32768) 指令。
+请注意，为了计算此限制，每个已存在的过滤器程序都会导致 4 条指令的开销损失。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIoperation\fP 指定了 \fBSECCOMP_GET_ACTION_AVAIL\fP，但是内核不支持 \fIargs\fP 指定的过滤器返回动作。
+.TP 
+\fBESRCH\fP
+另一个线程在线程同步期间导致失败，但无法确定其 ID。
+.SH VERSIONS
+.\" FIXME . Add glibc version
+\fBseccomp\fP() 系统调用最早出现在 Linux 3.17。
+.SH STANDARDS
+\fBseccomp\fP() 系统调用是一个非标准的 Linux 扩展。
+.SH NOTES
+与其手动编码 seccomp 过滤器 (如下例所示)，您可能更愿意使用 \fIlibseccomp\fP 库，它提供了一个用于生成 seccomp
+过滤器的前端。
+.PP
+\fI/proc/\fPpid\fI/status\fP 文件的 \fISeccomp\fP 字段提供了查看进程 seccomp 模式的方法; 请参见
+\fBproc\fP(5)。
+.PP
+\fBseccomp\fP() 提供了 \fBprctl\fP(2) \fBPR_SET_SECCOMP\fP 操作 (不支持 \fIflags\fP).
+.PP
+.\"
+从 Linux 4.4 开始，\fBptrace\fP(2) \fBPTRACE_SECCOMP_GET_FILTER\fP 操作可用于转储进程的 seccomp
+过滤器。
+.SS "Architecture support for seccomp BPF"
+.\" Check by grepping for HAVE_ARCH_SECCOMP_FILTER in Kconfig files in
+.\" kernel source. Last checked in Linux 4.16-rc source.
+以下架构提供对 seccomp BPF 过滤的架构支持:
+.IP \[bu] 3
+x86\-64、i386、x32 (自 Linux 3.5 起)
+.PD 0
+.IP \[bu]
+ARM (自 Linux 3.8)
+.IP \[bu]
+s390 (自 Linux 3.8)
+.IP \[bu]
+MIPS (自 Linux 3.16)
+.IP \[bu]
+ARM\-64 (自 Linux 3.19)
+.IP \[bu]
+PowerPC (自 Linux 4.3)
+.IP \[bu]
+瓷砖 (自 Linux 4.3)
+.IP \[bu]
+.\" User mode Linux since Linux 4.6
+PA\-RISC (从 Linux 4.6 开始)
+.PD
+.\"
+.SS Caveats
+将 seccomp 过滤器应用于程序时需要考虑各种微妙之处，包括:
+.IP \[bu] 3
+一些传统的系统调用在许多架构的 \fBvdso\fP(7) 中都有用户空间实现。 著名的示例包括
+\fBclock_gettime\fP(2)、\fBgettimeofday\fP(2) 和 \fBtime\fP(2)。 在这样的体系结构上，对这些系统调用的
+seccomp 过滤将不起作用。 (但是，在某些情况下，\fBvdso\fP(7) 实现可能会回退到调用真正的系统调用，在这种情况下，seccomp
+过滤器会看到系统调用。)
+.IP \[bu]
+Seccomp 过滤基于系统调用数。 然而，应用程序通常不直接调用系统调用，而是调用 C 库中的包装器函数调用系统调用。 因此，必须注意以下事项:
+.RS
+.IP \[bu] 3
+一些传统系统调用的 glibc 包装器实际上可能在内核中使用不同名称的系统调用。 例如，\fBexit\fP(2) 包装器函数实际上使用了
+\fBexit_group\fP(2) 系统调用，而 \fBfork\fP(2) 包装器函数实际上调用了 \fBclone\fP(2)。
+.IP \[bu]
+根据在这些体系结构上提供的系统调用范围，包装器函数的行为可能因体系结构而异。 换句话说，同一个包装器函数可能会在不同的体系结构上调用不同的系统调用。
+.IP \[bu]
+最后，wrapper 函数的行为可以在不同的 glibc 版本中改变。 例如，在旧版本中，\fBopen\fP(2) 的 glibc
+包装器函数调用同名的系统调用，但从 glibc 2.26 开始，实现切换到在所有架构上调用 \fBopenat\fP(2)。
+.RE
+.PP
+上述几点的结果是可能需要过滤可能与预期不同的系统调用。 第 2 节中的各种手册页在标题为 \fIC library/kernel differences\fP
+的小节中提供了有关包装函数函数和底层系统调用之间差异的有用详细信息。
+.PP
+.\"
+此外，请注意，当过滤器导致应用程序可能需要执行的合法操作出现意外故障时，seccomp 过滤器的应用甚至会导致应用程序出现错误。
+如果错误出现在很少使用的应用程序代码路径中，则在测试 seccomp 过滤器时可能不容易发现此类错误。
+.SS "Seccomp\-specific BPF details"
+请注意以下特定于 seccomp 过滤器的 BPF 详细信息:
+.IP \[bu] 3
+不支持 \fBBPF_H\fP 和 \fBBPF_B\fP 大小修饰符: 所有操作都必须加载和存储 (4\-byte) 字词 (\fBBPF_W\fP)。
+.IP \[bu]
+要访问 \fIseccomp_data\fP 缓冲区的内容，请使用 \fBBPF_ABS\fP 寻址模式修饰符。
+.IP \[bu]
+\fBBPF_LEN\fP 寻址模式修饰符产生一个 immediate 模式操作数，其值是 \fIseccomp_data\fP 缓冲区的大小。
+.SH EXAMPLES
+下面的程序接受四个或更多参数。 前三个参数是系统调用号、数字架构标识符和错误号。 该程序使用这些值构建一个 BPF
+过滤器，该过滤器在运行时用于执行以下检查:
+.IP \[bu] 3
+如果程序没有在指定的体系结构上运行，BPF 过滤器会导致系统调用失败并返回错误 \fBENOSYS\fP。
+.IP \[bu]
+如果程序试图执行指定编号的系统调用，BPF 过滤器会导致系统调用失败，\fIerrno\fP 被设置为指定的错误编号。
+.PP
+其余命令行参数指定示例程序应尝试使用 \fBexecv\fP(3) (使用 \fBexecve\fP(2) 系统调用的库函数) 执行的程序的路径名和附加参数。
+该程序的一些示例运行如下所示。
+.PP
+首先，我们显示我们在 (x86\-64) 上运行的体系结构，然后创建一个 shell 函数，在该体系结构上查找系统调用数:
+.PP
+.in +4n
+.EX
+$ \fBuname \-m\fP
+x86_64
+$ \fBsyscall_nr() {      cat /usr/src/linux/arch/x86/syscalls/syscall_64.tbl | \e      awk \[aq]$2 != "x32" && $3 == "\[aq]$1\[aq]" { print $1 }\[aq]  }\fP
+.EE
+.in
+.PP
+当 BPF 过滤器拒绝系统调用时 (上面的案例 [2])，它会导致系统调用失败，并在命令行上指定错误号。 在此处显示的实验中，我们将使用错误编号 99:
+.PP
+.in +4n
+.EX
+$ \fBerrno 99\fP
+EADDRNOTAVAIL 99 无法分配请求的地址
+.EE
+.in
+.PP
+在下面的例子中，我们尝试运行命令 \fBwhoami\fP(1)，但是 BPF 过滤器拒绝了 \fBexecve\fP(2) 系统调用，所以命令甚至没有被执行:
+.PP
+.in +4n
+.EX
+$ \fBsyscall_nr execve\fP
+59
+$ \fB./a.out\fP
+用途: ./a.out <syscall_nr> <arch> <errno> <prog> [<args>]
+<arch>: AUDIT_ARCH_I386 的提示: 0x40000003
+                 AUDIT_ARCH_X86_64: 0xC000003E
+$ \fB./a.out 59 0xC000003E 99 /bin/whoami\fP
+execv: 无法分配请求的地址
+.EE
+.in
+.PP
+在下一个示例中，BPF 过滤器拒绝 \fBwrite\fP(2) 系统调用，因此，尽管它已成功启动，但 \fBwhoami\fP(1) 命令无法写入输出:
+.PP
+.in +4n
+.EX
+$ \fBsyscall_nr write\fP
+1
+$ \fB./a.out 1 0xC000003E 99 /bin/whoami\fP
+.EE
+.in
+.PP
+在最后一个示例中，BPF 过滤器拒绝了 \fBwhoami\fP(1) 命令未使用的系统调用，因此它能够成功执行并产生输出:
+.PP
+.in +4n
+.EX
+$ \fBsyscall_nr preadv\fP
+295
+$ \fB./a.out 295 0xC000003E 99 /bin/whoami\fP
+cecilia
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (seccomp.c)
+.EX
+#include <linux/audit.h>
+#include <linux/filter.h>
+#include <linux/seccomp.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/prctl.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+#define X32_SYSCALL_BIT 0x40000000
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+static int
+install_filter(int syscall_nr, unsigned int t_arch, int f_errno)
+{
+    unsigned int upper_nr_limit = 0xffffffff;
+
+    /* 假设 AUDIT_ARCH_X86_64 表示正常的 x86\-64 ABI
+       (在 x32 ABI 中，所有系统调用都在
+       \[aq] nr\[aq] 字段，表示数字为 >= X32_SYSCALL_BIT)。*/
+    if (t_arch == AUDIT_ARCH_X86_64)
+        upper_nr_limit = X32_SYSCALL_BIT \- 1;
+
+    struct sock_filter filter[] = {
+        /* [0] Load architecture from \[aq]seccomp_data\[aq] buffer into
+               accumulator.  */
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+                 (offsetof(struct seccomp_data, arch))),
+
+        /* [1] Jump forward 5 instructions if architecture does not
+               match \[aq]t_arch\[aq].  */
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, t_arch, 0, 5),
+
+        /* [2] Load system call number from \[aq]seccomp_data\[aq] buffer into
+               accumulator.  */
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+                 (offsetof(struct seccomp_data, nr))),
+
+        /* [3] Check ABI \- only needed for x86\-64 in deny\-list use
+               cases.   使用 BPF_JGT 而不是检查位
+               掩码以避免必须重新加载 syscall 号。*/
+        BPF_JUMP(BPF_JMP | BPF_JGT | BPF_K, upper_nr_limit, 3, 0),
+
+        /* [4] 如果系统调用数则向前跳转 1 条指令
+               不匹配 \[aq] syscall_nr\[aq]。*/
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, syscall_nr, 0, 1),
+
+        /* [5] 匹配架构和系统调用: don\[aq] t execute
+           系统调用，在 \[aq] errno\[aq] 中返回 \[aq] f_errno\[aq]。*/
+        BPF_STMT(BPF_RET | BPF_K,
+                 SECCOMP_RET_ERRNO | (f_errno & SECCOMP_RET_DATA)),
+
+        /* [6] Destination of system 调用号不匹配: 允许其他
+               系统调用。*/
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+
+        /* [7] 体系结构不匹配的目标: 终止进程。*/
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
+    };
+
+    struct sock_fprog prog = {
+        .len = ARRAY_SIZE(filter),
+        .filter = filter,
+    };
+
+    if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &prog)) {
+        perror("seccomp");
+        return 1;
+    }
+
+    return 0;
+}
+
+int
+main(int argc, char *argv[])
+{
+    if (argc < 5) {
+        fprintf(stderr, "Usage: "
+                "%s <syscall_nr> <arch> <errno> <prog> [<args>]\en"
+                "Hint for <arch>: AUDIT_ARCH_I386: 0x%X\en"
+                "                 AUDIT_ARCH_X86_64: 0x%X\en"
+                "\en", argv[0], AUDIT_ARCH_I386, AUDIT_ARCH_X86_64);
+        exit(EXIT_FAILURE);
+    }
+
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+        perror("prctl");
+        exit(EXIT_FAILURE);
+    }
+
+    if (install_filter(strtol(argv[1], NULL, 0),
+                       strtoul(argv[2], NULL, 0),
+                       strtol(argv[3], NULL, 0)))
+        exit(EXIT_FAILURE);
+
+    execv(argv[4], &argv[4]);
+    perror("execv");
+    exit(EXIT_FAILURE);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBbpfc\fP(1), \fBstrace\fP(1), \fBbpf\fP(2), \fBprctl\fP(2), \fBptrace\fP(2),
+\fBseccomp_unotify\fP(2), \fBsigaction\fP(2), \fBproc\fP(5), \fBsignal\fP(7),
+\fBsocket\fP(7)
+.PP
+\fIlibseccomp\fP 库中的各种页面，包括:
+\fBscmp_sys_resolver\fP(1)、\fBseccomp_export_bpf\fP(3)、\fBseccomp_init\fP(3)、\fBseccomp_load\fP(3)
+和 \fBseccomp_rule_add\fP(3)。
+.PP
+.\" commit c061f33f35be0ccc80f4b8e0aea5dfd2ed7e01a3
+内核源文件 \fIDocumentation/networking/filter.txt\fP 和
+\fIDocumentation/userspace\-api/seccomp_filter.rst\fP (或 Linux 4.13 之前的
+\fIDocumentation/prctl/seccomp_filter.txt\fP)。
+.PP
+McCanne, S.\& 和 Jacobson, V.\&(1992) \fIThe BSD Packet Filter: A New Architecture for User\-level Packet Capture\fP，USENIX 1993 年冬季会议论文集
+.UR http://www.tcpdump.org/papers/bpf\-usenix93.pdf
+.UE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,130 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"  Copyright 2002 walter harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"  based on glibc infopages
+.\" polished - aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setnetgrent 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+setnetgrent、endnetgrent、getnetgrent、getnetgrent_r、innetgr \- 处理网络组条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <netdb.h>\fP
+.PP
+\fBint setnetgrent(const char *\fP\fInetgroup\fP\fB);\fP
+\fBvoid endnetgrent(void);\fP
+.PP
+\fBint getnetgrent(char **restrict \fP\fIhost\fP\fB,\fP
+\fB            char **restrict \fP\fIuser\fP\fB, char **restrict \fP\fIdomain\fP\fB);\fP
+\fBint getnetgrent_r(char **restrict \fP\fIhost\fP\fB,\fP
+\fB            char **restrict \fP\fIuser\fP\fB, char **restrict \fP\fIdomain\fP\fB,\fP
+\fB            char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB);\fP
+.PP
+\fBint innetgr(const char *\fP\fInetgroup\fP\fB, const char *\fP\fIhost\fP\fB,\fP
+\fB            const char *\fP\fIuser\fP\fB, const char *\fP\fIdomain\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.ad l
+.PP
+.nh
+\fBsetnetgrent\fP(), \fBendnetgrent\fP(), \fBgetnetgrent\fP(), \fBgetnetgrent_r\fP(),
+\fBinnetgr\fP():
+.hy
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE || _SVID_SOURCE
+.fi
+.ad
+.SH DESCRIPTION
+\fInetgroup\fP 是 SunOS 的一项发明。 网络组数据库是字符串三元组
+(\fIhostname\fP、\fIusername\fP、\fIdomainname\fP) 或其他网络组名称的列表。
+三元组中的任何元素都可以为空，这意味着任何东西都匹配。 此处描述的号码允许访问网络组数据库。 文件 \fI/etc/nsswitch.conf\fP
+定义了要搜索的数据库。
+.PP
+\fBsetnetgrent\fP() 调用定义将由后续 \fBgetnetgrent\fP() 调用搜索的网络组。 \fBgetnetgrent\fP()
+函数检索下一个网络组条目，并返回 \fIhost\fP、\fIuser\fP、\fIdomain\fP 中的指针。 空指针意味着相应的条目匹配任何字符串。
+只有在没有调用到其他与网络组相关的函数时，指针才有效。 为避免此问题，您可以使用 GNU 函数 \fBgetnetgrent_r\fP()
+将字符串存储在提供的缓冲区中。 要释放所有分配的缓冲区，请使用 \fBendnetgrent\fP()。
+.PP
+在大多数情况下，您只想检查三元组 (\fIhostname\fP、\fIusername\fP、\fIdomainname\fP) 是否是网络组的成员。
+不用调用上面三个函数就可以使用函数 \fBinnetgr\fP()。 同样，空指针是一个通配符，可以匹配任何字符串。 函数是线程安全的。
+.SH "RETURN VALUE"
+这些函数在成功时返回 1，在失败时返回 0。
+.SH FILES
+\fI/etc/netgroup\fP
+.br
+\fI/etc/nsswitch.conf\fP
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBsetnetgrent\fP(),
+\fBgetnetgrent_r\fP(),
+\fBinnetgr\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:netgrent
+locale
+T}
+T{
+\fBendnetgrent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:netgrent
+T}
+T{
+\fBgetnetgrent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:netgrent
+race:netgrentbuf locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:netgrent\fP 中的 \fInetgrent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetnetgrent\fP()、\fBgetnetgrent_r\fP()、\fBinnetgr\fP()、\fBgetnetgrent\fP() 或
+\fBendnetgrent\fP() 中的任何一个，则可能发生数据竞争。
+.SH STANDARDS
+.\" getnetgrent_r() is on Solaris 8 and AIX 5.1, but not the BSDs.
+这些函数不在 POSIX.1 中，但 \fBsetnetgrent\fP()、\fBendnetgrent\fP()、\fBgetnetgrent\fP() 和
+\fBinnetgr\fP() 在大多数 UNIX 系统上可用。 \fBgetnetgrent_r\fP() 在其他系统上并未广泛使用。
+.SH NOTES
+在 BSD 实现中，\fBsetnetgrent\fP() 返回 void。
+.SH "SEE ALSO"
+\fBsethostent\fP(3), \fBsetprotoent\fP(3), \fBsetservent\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

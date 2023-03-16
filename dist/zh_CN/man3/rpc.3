@@ -1,0 +1,720 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This page was taken from the 4.4BSD-Lite CDROM (BSD license)
+.\"
+.\" %%%LICENSE_START(BSD_ONELINE_CDROM)
+.\" This page was taken from the 4.4BSD-Lite CDROM (BSD license)
+.\" %%%LICENSE_END
+.\"
+.\" @(#)rpc.3n	2.4 88/08/08 4.0 RPCSRC; from 1.19 88/06/24 SMI
+.\"
+.\" 2007-12-30, mtk, Convert function prototypes to modern C syntax
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rpc 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+rpc \- 远程过程调用的库例程
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH "SYNOPSIS AND DESCRIPTION"
+.\" .LP
+.\" We don't have an rpc_secure.3 page at the moment -- MTK, 19 Sep 05
+.\" Routines that are used for Secure RPC (DES authentication) are described in
+.\" .BR rpc_secure (3).
+.\" Secure RPC can be used only if DES encryption is available.
+这些例程允许 C 程序通过网络在其他机器上进行过程调用。 首先，客户端调用一个过程向服务器发送一个数据包。
+收到数据包后，服务器调用调度例程来执行请求的服务，然后发回回复。 最后调用程序返回给客户端。
+.PP
+要使用这些例程，请包含头文件 \fI<rpc/rpc.h>\fP。
+.PP
+下面的原型使用以下类型:
+.PP
+.RS 4
+.EX
+\fBtypedef int \fP\fIbool_t\fP\fB;\fP
+.PP
+\fBtypedef bool_t (*\fP\fIxdrproc_t\fP\fB)(XDR *, void *, ...);\fP
+.PP
+\fBtypedef bool_t (*\fP\fIresultproc_t\fP\fB)(caddr_t \fP\fIresp\fP\fB,\fP
+\fB                               struct sockaddr_in *\fP\fIraddr\fP\fB);\fP
+.EE
+.RE
+.PP
+有关 \fIAUTH\fP、\fICLIENT\fP、\fISVCXPRT\fP 和 \fIXDR\fP 类型的声明，请参见头文件。
+.PP
+.nf
+\fBvoid auth_destroy(AUTH *\fP\fIauth\fP\fB);\fP
+.fi
+.IP
+一个宏，销售与 \fIauth\fP 关联的身份验证信息。 销毁通常涉及私有数据结构的重新分配。 调用 \fBauth_destroy\fP() 后 \fIauth\fP
+的使用未定义。
+.PP
+.nf
+\fBAUTH *authnone_create(void);\fP
+.fi
+.IP
+创建并返回一个 RPC 身份验证句柄，该句柄将不可用的身份验证信息传递给每个远程过程调用。 这是 RPC 使用的默认身份验证。
+.PP
+.nf
+\fBAUTH *authunix_create(char *\fP\fIhost\fP\fB, uid_t \fP\fIuid\fP\fB, gid_t \fP\fIgid\fP\fB,\fP
+\fB                      int \fP\fIlen\fP\fB, gid_t \fP\fIaup_gids\fP\fB[.\fP\fIlen\fP\fB]);\fP
+.fi
+.IP
+创建并返回包含身份验证信息的 RPC 身份验证句柄。 参数 \fIhost\fP 是创建信息的机器的名称; \fIuid\fP 是用户的用户 ID; \fIgid\fP
+是用户当前的组 ID; \fIlen\fP 和 \fIaup_gids\fP 指的是用户所属组的计数数组。 冒充用户很容易。
+.PP
+.nf
+\fBAUTH *authunix_create_default(void);\fP
+.fi
+.IP
+使用适当的参数调用 \fBauthunix_create\fP()。
+.PP
+.nf
+\fBint callrpc(char *\fP\fIhost\fP\fB, unsigned long \fP\fIprognum\fP\fB,\fP
+\fB            unsigned long \fP\fIversnum\fP\fB, unsigned long \fP\fIprocnum\fP\fB,\fP
+\fB            xdrproc_t \fP\fIinproc\fP\fB, const char *\fP\fIin\fP\fB,\fP
+\fB            xdrproc_t \fP\fIoutproc\fP\fB, char *\fP\fIout\fP\fB);\fP
+.fi
+.IP
+调用与机器上的 \fIprognum\fP、\fIversnum\fP 和 \fIprocnum\fP 关联的远程过程，\fIhost\fP。 参数 \fIin\fP 是程序的
+argument(s) 的地址，\fIout\fP 是 result(s) 放置的地址; \fIinproc\fP 用于对过程的参数进行编码，\fIoutproc\fP
+用于对过程的结果进行解码。 如果成功，此例程返回零，如果失败，则将 \fBenum clnt_stat\fP 的值转换为整数。 例程
+\fBclnt_perrno\fP() 可以方便地将故障状态转换为消息。
+.IP
+警告: 使用此例程调用远程过程使用 UDP/IP 作为传输; 有关限制，请参见 \fBclntudp_create\fP()。
+您无法使用此例程控制超时或身份验证。
+.PP
+.nf
+\fBenum clnt_stat clnt_broadcast(unsigned long \fP\fIprognum\fP\fB,\fP
+\fB                     unsigned long \fP\fIversnum\fP\fB, unsigned long \fP\fIprocnum\fP\fB,\fP
+\fB                     xdrproc_t \fP\fIinproc\fP\fB, char *\fP\fIin\fP\fB,\fP
+\fB                     xdrproc_t \fP\fIoutproc\fP\fB, char *\fP\fIout\fP\fB,\fP
+\fB                     resultproc_t \fP\fIeachresult\fP\fB);\fP
+.fi
+.IP
+与 \fBcallrpc\fP() 一样，除了调用消息被广播到所有本地连接的广播网络。 每次收到响应时，此例程都会调用
+\fBeachresult\fP()，其形式为:
+.IP
+.in +4n
+.EX
+\fBeachresult(char *\fP\fIout\fP\fB, struct sockaddr_in *\fP\fIaddr\fP\fB);\fP
+.EE
+.in
+.IP
+其中 \fIout\fP 与传递给 \fBclnt_broadcast\fP() 的 \fIout\fP 相同，只是远程过程的输出在那里解码; \fIaddr\fP
+指向发送结果的机器地址。 如果 \fBeachresult\fP() 返回零，\fBclnt_broadcast\fP() 等待更多回复; 否则它以适当的状态返回。
+.IP
+警告: 广播套接字的大小限制为数据链路的最大传输元。 对于以太网，该值为 1500 字节。
+.PP
+.nf
+\fBenum clnt_stat clnt_call(CLIENT *\fP\fIclnt\fP\fB, unsigned long \fP\fIprocnum\fP\fB,\fP
+\fB                    xdrproc_t \fP\fIinproc\fP\fB, char *\fP\fIin\fP\fB,\fP
+\fB                    xdrproc_t \fP\fIoutproc\fP\fB, char *\fP\fIout\fP\fB,\fP
+\fB                    struct timeval \fP\fItout\fP\fB);\fP
+.fi
+.IP
+调用与客户端句柄 \fIclnt\fP 关联的远程过程 \fIprocnum\fP 的宏，它是通过 RPC 客户端创建例程 (例如
+\fBclnt_create\fP()) 获得的。 参数 \fIin\fP 是程序的 argument(s) 的地址，\fIout\fP 是 result(s)
+放置的地址; \fIinproc\fP 用于对程序的参数进行编码，\fIoutproc\fP 用于对程序的结果进行解码; \fItout\fP 是返回结果所允许的时间。
+.PP
+.nf
+\fBclnt_destroy(CLIENT *\fP\fIclnt\fP\fB);\fP
+.fi
+.IP
+销毁客户端 RPC 句柄的宏。 销毁通常涉及私有数据结构的释放，包括 \fIclnt\fP 本身。 调用 \fBclnt_destroy\fP() 后未定义
+\fIclnt\fP 的使用。 如果 RPC 库打开了关联的套接字，它也会关闭它。 否则，套接字保持打开状态。
+.PP
+.nf
+\fBCLIENT *clnt_create(const char *\fP\fIhost\fP\fB, unsigned long \fP\fIprog\fP\fB,\fP
+\fB                    unsigned long \fP\fIvers\fP\fB, const char *\fP\fIproto\fP\fB);\fP
+.fi
+.IP
+泛型客户端创建例程。 \fIhost\fP 标识服务器所在的远程主机的名称。 \fIproto\fP 指示使用哪种传输协议。 该字段当前支持的值为 \[lq]
+udp\[rq] 和 \[lq] tcp\[rq]。 已设置默认超时，但可以使用 \fBclnt_control\fP() 进行修改。
+.IP
+警告: 使用 UDP 有其缺点。 由于基于 UDP 的 RPC 消息最多只能容纳 8 KB
+的编码数据，因此这种传输不能用于采用大量参数或返回大量结果的过程。
+.PP
+.nf
+\fBbool_t clnt_control(CLIENT *\fP\fIcl\fP\fB, int \fP\fIreq\fP\fB, char *\fP\fIinfo\fP\fB);\fP
+.fi
+.IP
+用于更改或检索有关客户端对象的各种信息的宏。 \fIreq\fP 表示操作类型，\fIinfo\fP 是指向信息的指针。 对于 UDP 和 TCP，支持的
+\fIreq\fP 值和它们的参数类型以及它们的作用是:
+.IP
+.in +4n
+.EX
+\fBCLSET_TIMEOUT\fP \fIstruct timeval\fP// 设置总超时
+\fBCLGET_TIMEOUT\fP \fIstruct timeval\fP// 获取总超时时间
+.EE
+.in
+.IP
+Note: 如果您使用 \fBclnt_control\fP() 设置超时，则在所有 future 调用中将忽略传递给 \fBclnt_call\fP()
+的超时参数。
+.IP
+.in +4n
+.EX
+\fBCLGET_SERVER_ADDR\fP  \fIstruct sockaddr_in\fP
+                // 获取服务器 \[aq] 的地址
+.EE
+.in
+.IP
+以下操作只对 UDP 有效:
+.IP
+.in +4n
+.EX
+\fBCLSET_RETRY_TIMEOUT\fP \fIstruct timeval\fP// 设置重试超时时间
+\fBCLGET_RETRY_TIMEOUT\fP \fIstruct timeval\fP// 获取重试超时时间
+.EE
+.in
+.IP
+重试超时时间是 "UDP RPC" 在重发请求之前等待服务器回复的时间。
+.PP
+.nf
+\fBclnt_freeres(CLIENT * \fP\fIclnt\fP\fB, xdrproc_t \fP\fIoutproc\fP\fB, char *\fP\fIout\fP\fB);\fP
+.fi
+.IP
+一个宏，它在解码 RPC 调用的结果时释放 RPC/XDR 系统分配的任何数据。 参数 \fIout\fP 是结果的地址，\fIoutproc\fP 是描述结果的
+XDR 例程。 如果结果被成功释放，则此例程返回 1，否则返回 0。
+.PP
+.nf
+\fBvoid clnt_geterr(CLIENT *\fP\fIclnt\fP\fB, struct rpc_err *\fP\fIerrp\fP\fB);\fP
+.fi
+.IP
+将错误结构体从客户端句柄复制到地址 \fIerrp\fP 处的结构体的宏。
+.PP
+.nf
+\fBvoid clnt_pcreateerror(const char *\fP\fIs\fP\fB);\fP
+.fi
+.IP
+向标准错误打印一条消息，指示无法创建客户端 RPC 句柄的原因。 该消息以字符串 \fIs\fP 和一个冒号作为前缀。 当
+\fBclnt_create\fP()、\fBclntraw_create\fP()、\fBclnttcp_create\fP() 或
+\fBclntudp_create\fP() 调用失败时使用。
+.PP
+.nf
+\fBvoid clnt_perrno(enum clnt_stat \fP\fIstat\fP\fB);\fP
+.fi
+.IP
+将消息打印到与 \fIstat\fP 指示的条件对应的标准错误。 在 \fBcallrpc\fP() 之后使用。
+.PP
+.nf
+\fBclnt_perror(CLIENT *\fP\fIclnt\fP\fB, const char *\fP\fIs\fP\fB);\fP
+.fi
+.IP
+向标准错误打印一条消息，说明 RPC 调用失败的原因; \fIclnt\fP 是用来做调用的句柄。 该消息以字符串 \fIs\fP 和一个冒号作为前缀。 在
+\fBclnt_call\fP() 之后使用。
+.PP
+.nf
+\fBchar *clnt_spcreateerror(const char *\fP\fIs\fP\fB);\fP
+.fi
+.IP
+与 \fBclnt_pcreateerror\fP() 一样，除了它返回一个字符串而不是打印到标准错误。
+.IP
+错误: 返回指向在每个调用上被覆盖的静态数据的指针。
+.PP
+.nf
+\fBchar *clnt_sperrno(enum clnt_stat \fP\fIstat\fP\fB);\fP
+.fi
+.IP
+采用与 \fBclnt_perrno\fP() 相同的参数，但不是向标准错误发送消息以指示 RPC 调用失败的原因，而是返回指向包含该消息的字符串的指针。
+字符串以 NEWLINE 结尾。
+.IP
+如果程序没有标准错误 (作为服务器运行的程序很可能没有)，或者如果程序员不希望使用 \fBprintf\fP(3) 输出消息，或者如果消息格式不同于
+\fBclnt_perrno\fP() 所支持的将被使用。 注意: 与 \fBclnt_sperror\fP() 和 \fBclnt_spcreateerror\fP()
+不同，\fBclnt_sperrno\fP() 返回指向静态数据的指针，但结果不会在每次调用时被覆盖。
+.PP
+.nf
+\fBchar *clnt_sperror(CLIENT *\fP\fIrpch\fP\fB, const char *\fP\fIs\fP\fB);\fP
+.fi
+.IP
+像 \fBclnt_perror\fP()，除了 (像 \fBclnt_sperrno\fP()) 它返回一个字符串而不是打印到标准错误。
+.IP
+错误: 返回指向在每个调用上被覆盖的静态数据的指针。
+.PP
+.nf
+\fBCLIENT *clntraw_create(unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB);\fP
+.fi
+.IP
+此例程为远程程序 \fIprognum\fP、版本 \fIversnum\fP 创建了一个玩具 RPC 客户端。
+用于将消息传递给服务的传输实际上是进程地址空间内的缓冲区，因此相应的 RPC 服务器应该位于相同的地址空间中; 请参见
+\fBsvcraw_create\fP()。 这允许在没有任何内核干扰的情况下模拟 RPC 和获取 RPC 开销，例如往返时间。 如果失败，此例程返回
+NULL。
+.PP
+.nf
+\fBCLIENT *clnttcp_create(struct sockaddr_in *\fP\fIaddr\fP\fB,\fP
+\fB                unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB,\fP
+\fB                int *\fP\fIsockp\fP\fB, unsigned int \fP\fIsendsz\fP\fB, unsigned int \fP\fIrecvsz\fP\fB);\fP
+.fi
+.IP
+.\"The following inline font conversion is necessary for the hyphen indicator
+该例程为远程程序 \fIprognum\fP，版本 \fIversnum\fP 创建一个 RPC 客户端; 客户端使用 TCP/IP 作为传输。 远程程序位于
+Internet 地址 \fI*addr\fP。 如果 \fIaddr\->sin_port\fP 为零，则将其设置为远程程序正在侦听的实际端口 (查询远程
+\fBportmap\fP 服务以获取此信息)。 参数 \fIsockp\fP 为套接字; 如果是 \fBRPC_ANYSOCK\fP，则此例程打开一个新的并设置
+\fIsockp\fP。 由于基于 TCP 的 RPC 使用缓冲的 I/O，用户可以使用参数 \fIsendsz\fP 和 \fIrecvsz\fP
+指定发送和接收缓冲区的大小; 零值选择合适的默认值。 如果失败，此例程返回 NULL。
+.PP
+.nf
+\fBCLIENT *clntudp_create(struct sockaddr_in *\fP\fIaddr\fP\fB,\fP
+\fB                unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB,\fP
+\fB                struct timeval \fP\fIwait\fP\fB, int *\fP\fIsockp\fP\fB);\fP
+.fi
+.IP
+该例程为远程程序 \fIprognum\fP，版本 \fIversnum\fP 创建一个 RPC 客户端; 客户端使用 UDP/IP 作为传输方式。 远程程序位于
+Internet 地址 \fIaddr\fP。 如果 \fIaddr\->sin_port\fP 为零，则将其设置为远程程序正在侦听的实际端口 (查询远程
+\fBportmap\fP 服务以获取此信息)。 参数 \fIsockp\fP 为套接字; 如果是 \fBRPC_ANYSOCK\fP，则此例程打开一个新的并设置
+\fIsockp\fP。 UDP 传输以 \fIwait\fP 时间间隔重新发送调用消息，直到收到响应或直到调用超时。 调用超时的总时间由
+\fBclnt_call\fP() 指定。
+.IP
+警告: 由于基于 UDP 的 RPC 消息最多只能容纳 8 KB 的编码数据，因此此传输不能用于采用大量参数或返回大量结果的过程。
+.PP
+.nf
+\fBCLIENT *clntudp_bufcreate(struct sockaddr_in *\fP\fIaddr\fP\fB,\fP
+\fB            unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB,\fP
+\fB            struct timeval \fP\fIwait\fP\fB, int *\fP\fIsockp\fP\fB,\fP
+\fB            unsigned int \fP\fIsendsize\fP\fB, unsigned int \fP\fIrecosize\fP\fB);\fP
+.fi
+.IP
+该例程在 \fIversnum\fP 上为远程程序 \fIprognum\fP 创建一个 RPC 客户端; 客户端使用 UDP/IP 作为传输方式。 远程程序位于
+Internet 地址 \fIaddr\fP。 如果 \fIaddr\->sin_port\fP 为零，则将其设置为远程程序正在侦听的实际端口 (查询远程
+\fBportmap\fP 服务以获取此信息)。 参数 \fIsockp\fP 为套接字; 如果是 \fBRPC_ANYSOCK\fP，则此例程打开一个新的并设置
+\fIsockp\fP。 UDP 传输以 \fIwait\fP 时间间隔重新发送调用消息，直到收到响应或直到调用超时。 调用超时的总时间由
+\fBclnt_call\fP() 指定。
+.IP
+这允许用户指定发送和接收基于 UDP 的 RPC 消息的最大数据包大小。
+.PP
+.nf
+\fBvoid get_myaddress(struct sockaddr_in *\fP\fIaddr\fP\fB);\fP
+.fi
+.IP
+将机器的 IP 地址填入 \fI*addr\fP，而无需查阅处理 \fI/etc/hosts\fP 的库例程。 端口号始终设置为
+\fBhtons(PMAPPORT)\fP。
+.PP
+.nf
+\fBstruct pmaplist *pmap_getmaps(struct sockaddr_in *\fP\fIaddr\fP\fB);\fP
+.fi
+.IP
+\fBportmap\fP 服务的用户界面，它返回位于 IP 地址 \fI*addr\fP 的主机上当前 RPC 程序到端口映射的列表。 此例程可以返回 NULL。
+命令 \fIrpcinfo\~\-p\fP 使用此例程。
+.PP
+.nf
+\fBunsigned short pmap_getport(struct sockaddr_in *\fP\fIaddr\fP\fB,\fP
+\fB                    unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB,\fP
+\fB                    unsigned int \fP\fIprotocol\fP\fB);\fP
+.fi
+.IP
+\fBportmap\fP 服务的用户界面，它返回等待支持程序号 \fIprognum\fP、版本 \fIversnum\fP 的服务的端口号，并使用与
+\fIprotocol\fP 关联的传输协议。 \fIprotocol\fP 的值很可能是 \fBIPPROTO_UDP\fP 或 \fBIPPROTO_TCP\fP。
+返回值为零意味着映射不存在或 RPC 系统无法联系远程 \fBportmap\fP 服务。 在后一种情况下，全局变量 \fIrpc_createerr\fP 包含
+RPC 状态。
+.PP
+.nf
+\fBenum clnt_stat pmap_rmtcall(struct sockaddr_in *\fP\fIaddr\fP\fB,\fP
+\fB                    unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB,\fP
+\fB                    unsigned long \fP\fIprocnum\fP\fB,\fP
+\fB                    xdrproc_t \fP\fIinproc\fP\fB, char *\fP\fIin\fP\fB,\fP
+\fB                    xdrproc_t \fP\fIoutproc\fP\fB, char *\fP\fIout\fP\fB,\fP
+\fB                    struct timeval \fP\fItout\fP\fB, unsigned long *\fP\fIportp\fP\fB);\fP
+.fi
+.IP
+\fBportmap\fP 服务的用户界面，它指示 IP 地址为 \fI*addr\fP 的主机上的 \fBportmap\fP 代表您对该主机上的过程进行 RPC
+调用。 如果程序成功，参数 \fI*portp\fP 将被修改为程序的端口号。 其他参数的定义在 \fBcallrpc\fP() 和 \fBclnt_call\fP()
+中讨论。 此过程应该用于 \[lq] ping\[rq] 而不是其他。 另请详见 \fBclnt_broadcast\fP()。
+.PP
+.nf
+\fBbool_t pmap_set(unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB,\fP
+\fB                int \fP\fIprotocol\fP\fB, unsigned short \fP\fIport\fP\fB);\fP
+.fi
+.IP
+\fBportmap\fP 服务的用户界面，它在机器的 \fBportmap\fP 服务上的三重
+[\fIprognum\fP,\fIversnum\fP,\fIprotocol\fP] 和 \fIport\fP 之间建立映射。 \fIprotocol\fP 的值很可能是
+\fBIPPROTO_UDP\fP 或 \fBIPPROTO_TCP\fP。 如果成功，此例程返回 1，否则返回 0。 由 \fBsvc_register\fP()
+自动完成。
+.PP
+.nf
+\fBbool_t pmap_unset(unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB);\fP
+.fi
+.IP
+\fBportmap\fP 服务的用户界面，它销售机器的 \fBportmap\fP 服务上三重 [\fIprognum\fP,\fIversnum\fP,\fI*\fP] 和
+\fBports\fP 之间的所有映射。 如果成功，此例程返回 1，否则返回 0。
+.PP
+.nf
+\fBint registerrpc(unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB,\fP
+\fB                unsigned long \fP\fIprocnum\fP\fB, char *(*\fP\fIprocname\fP\fB)(char *),\fP
+\fB                xdrproc_t \fP\fIinproc\fP\fB, xdrproc_t \fP\fIoutproc\fP\fB);\fP
+.fi
+.IP
+使用 RPC 服务包注册过程 \fIprocname\fP。 如果对程序 \fIprognum\fP、版本 \fIversnum\fP 和过程 \fIprocnum\fP
+的请求到达，则使用指向其 parameter(s) 的指针调用 \fIprocname\fP; \fIprocname\fP 应该返回一个指向其静态
+result(s) 的指针; \fIinproc\fP 用于对参数进行解码，而 \fIoutproc\fP 用于对结果进行编码。
+如果注册成功，此例程返回零，否则返回 \-1。
+.IP
+警告: 使用 UDP/IP 传输访问以这种形式注册的远程过程; 有关限制，请参见 \fBsvcudp_create\fP()。
+.PP
+.nf
+\fBstruct rpc_createerr \fP\fIrpc_createerr\fP\fB;\fP
+.fi
+.IP
+一个全局变量，其值由任何不成功的 RPC 客户端创建例程设置。 使用例程 \fBclnt_pcreateerror\fP() 打印原因。
+.PP
+.nf
+\fBvoid svc_destroy(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+宏，即销毁 RPC 服务传输句柄，\fIxprt\fP。 销毁通常涉及私有数据结构的释放，包括 \fIxprt\fP 本身。 调用此例程后未定义 \fIxprt\fP
+的使用。
+.PP
+.nf
+\fBfd_set \fP\fIsvc_fdset\fP\fB;\fP
+.fi
+.IP
+反映 RPC 服务端读取文件描述符位掩码的全局变量; 适合作为 \fBselect\fP(2) 系统调用的参数。
+仅当服务实现者执行他们自己的异步事件处理而不是调用 \fBsvc_run\fP() 时，这才有意义。 此变量是只读的 (不要将其地址传递给
+\fBselect\fP(2)!)，但它可能会在调用 \fBsvc_getreqset\fP() 或任何创建例程后发生变化。
+.PP
+.nf
+\fBint \fP\fIsvc_fds\fP\fB;\fP
+.fi
+.IP
+类似于 \fBsvc_fdset\fP，但限制为 32 个文件描述符。 该接口已被 \fBsvc_fdset\fP 废弃。
+.PP
+.nf
+\fBsvc_freeargs(SVCXPRT *\fP\fIxprt\fP\fB, xdrproc_t \fP\fIinproc\fP\fB, char *\fP\fIin\fP\fB);\fP
+.fi
+.IP
+一个宏，当它使用 \fBsvc_getargs\fP() 将参数解码为服务过程时，释放 RPC/XDR 系统分配的任何数据。 如果结果被成功释放，该例程返回
+1，否则返回 0。
+.PP
+.nf
+\fBsvc_getargs(SVCXPRT *\fP\fIxprt\fP\fB, xdrproc_t \fP\fIinproc\fP\fB, char *\fP\fIin\fP\fB);\fP
+.fi
+.IP
+解码与 RPC 服务传输句柄 \fIxprt\fP 关联的 RPC 请求的参数的宏。 参数 \fIin\fP 是要放置参数的地址; \fIinproc\fP
+是用于解码参数的 XDR 例程。 如果解码成功，则此例程返回 1，否则返回 0。
+.PP
+.nf
+\fBstruct sockaddr_in *svc_getcaller(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+获得与 RPC 服务传输句柄 \fIxprt\fP 关联的过程调用者网络地址的批准方法。
+.PP
+.nf
+\fBvoid svc_getreqset(fd_set *\fP\fIrdfds\fP\fB);\fP
+.fi
+.IP
+仅当服务实现者不调用 \fBsvc_run\fP()，而是实现自定义异步事件处理时，此例程才有用。 当 \fBselect\fP(2) 系统调用确定 RPC
+请求已经到达某个 RPC socket(s) 时调用; \fIrdfds\fP 是结果读取文件描述符位掩码。 当与 \fIrdfds\fP
+的值关联的所有套接字都已得到服务时，该例程返回。
+.PP
+.nf
+\fBvoid svc_getreq(int \fP\fIrdfds\fP\fB);\fP
+.fi
+.IP
+类似于 \fBsvc_getreqset\fP()，但限制为 32 个文件描述符。 该接口已被 \fBsvc_getreqset\fP() 废弃。
+.PP
+.nf
+\fBbool_t svc_register(SVCXPRT *\fP\fIxprt\fP\fB, unsigned long \fP\fIprognum\fP\fB,\fP
+\fB                    unsigned long \fP\fIversnum\fP\fB,\fP
+\fB                    void (*\fP\fIdispatch\fP\fB)(struct svc_req *, SVCXPRT *),\fP
+\fB                    unsigned long \fP\fIprotocol\fP\fB);\fP
+.fi
+.IP
+将 \fIprognum\fP 和 \fIversnum\fP 与服务调度程序 \fIdispatch\fP 相关联。 如果 \fIprotocol\fP
+为零，则该服务未注册到 \fBportmap\fP 服务。 如果 \fIprotocol\fP 不为零，则使用本地 \fBportmap\fP 服务建立三元组
+[\fIprognum\fP,\fIversnum\fP,\fIprotocol\fP] 到 \fIxprt\->xp_port\fP 的映射 (通常
+\fIprotocol\fP 为零，\fBIPPROTO_UDP\fP 或 \fBIPPROTO_TCP\fP)。 过程 \fIdispatch\fP 具有以下形式:
+.IP
+.in +4n
+.EX
+dispatch(struct svc_req *request, SVCXPRT *xprt);
+.EE
+.in
+.IP
+\fBsvc_register\fP() 例程如果成功则返回 1，否则返回 0。
+.PP
+.nf
+\fBvoid svc_run(void);\fP
+.fi
+.IP
+此例程永远不会返回。 它等待 RPC 请求到达，并在请求到达时使用 \fBsvc_getreq\fP() 调用适当的服务过程。 这个程序通常是在等待一个
+\fBselect\fP(2) 系统调用返回。
+.PP
+.nf
+\fBbool_t svc_sendreply(SVCXPRT *\fP\fIxprt\fP\fB, xdrproc_t \fP\fIoutproc\fP\fB, char *\fP\fIout\fP\fB);\fP
+.fi
+.IP
+由 RPC 服务的调度例程调用以发送远程过程调用的结果。 参数 \fIxprt\fP 是请求关联的传输句柄; \fIoutproc\fP 是用于对结果进行编码的
+XDR 例程; \fIout\fP 是结果的地址。 如果成功，此例程返回 1，否则返回 0。
+.PP
+.nf
+\fBvoid svc_unregister(unsigned long \fP\fIprognum\fP\fB, unsigned long \fP\fIversnum\fP\fB);\fP
+.fi
+.IP
+删除双 [\fIprognum\fP,\fIversnum\fP] 到调度例程的所有映射，以及三重 [\fIprognum\fP,\fIversnum\fP,\fI*\fP]
+到端口号的所有映射。
+.PP
+.nf
+\fBvoid svcerr_auth(SVCXPRT *\fP\fIxprt\fP\fB, enum auth_stat \fP\fIwhy\fP\fB);\fP
+.fi
+.IP
+由服务调度例程调用，该例程由于身份验证错误而拒绝执行远程过程调用。
+.PP
+.nf
+\fBvoid svcerr_decode(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+由无法成功解码其参数的服务调度例程调用。 另请详见 \fBsvc_getargs\fP()。
+.PP
+.nf
+\fBvoid svcerr_noproc(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+由未实现调用者请求的过程编号的服务分派例程调用。
+.PP
+.nf
+\fBvoid svcerr_noprog(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+当所需程序未在 RPC 包中注册时调用。 服务实现者通常不需要这个例程。
+.PP
+.nf
+\fBvoid svcerr_progvers(SVCXPRT *\fP\fIxprt\fP\fB, unsigned long \fP\fIlow_vers\fP\fB,\fP
+\fB                     unsigned long \fP\fIhigh_vers\fP\fB);\fP
+.fi
+.IP
+当所需版本的程序未在 RPC 包中注册时调用。 服务实现者通常不需要这个例程。
+.PP
+.nf
+\fBvoid svcerr_systemerr(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+当检测到任何特定协议未涵盖的系统错误时，由服务调度例程调用。 例如，如果一个服务不能再分配存储空间，它可能会调用这个例程。
+.PP
+.nf
+\fBvoid svcerr_weakauth(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+由服务调度例程调用，该例程由于身份验证参数不足而拒绝执行远程过程调用。 该例程调用 \fBsvcerr_auth(xprt, AUTH_TOOWEAK)\fP。
+.PP
+.nf
+\fBSVCXPRT *svcfd_create(int \fP\fIfd\fP\fB, unsigned int \fP\fIsendsize\fP\fB,\fP
+\fB                      unsigned int \fP\fIrecvsize\fP\fB);\fP
+.fi
+.IP
+在任何打开的文件描述符之上创建服务。 通常，此文件描述符是用于流协议 (如 TCP) 的已连接套接字。 \fIsendsize\fP 和
+\fIrecvsize\fP 指示发送和接收缓冲区的大小。 如果它们为零，则选择合理的默认值。
+.PP
+.nf
+\fBSVCXPRT *svcraw_create(void);\fP
+.fi
+.IP
+这个例程创建一个玩具 RPC 服务传输，它返回一个指针。 传输实际上是进程地址空间中的缓冲区，因此相应的 RPC 客户端应该位于相同的地址空间中;
+请参见 \fBclntraw_create\fP()。 此例程允许模拟 RPC 和获取 RPC 开销 (例如往返时间)，而不会受到任何内核干扰。
+如果失败，此例程返回 NULL。
+.PP
+.nf
+\fBSVCXPRT *svctcp_create(int \fP\fIsock\fP\fB, unsigned int \fP\fIsend_buf_size\fP\fB,\fP
+\fB                       unsigned int \fP\fIrecv_buf_size\fP\fB);\fP
+.fi
+.IP
+此例程创建一个 TCP/IP\-based RPC 服务传输，并向其返回一个指针。 传输与套接字 \fIsock\fP (可能是 \fBRPC_ANYSOCK\fP)
+相关联，在这种情况下会创建一个新套接字。 如果套接字未绑定到本地 TCP 端口，则此例程将其绑定到任意端口。
+完成后，\fIxprt\->xp_sock\fP 是传输的套接字描述符，\fIxprt\->xp_port\fP 是传输的端口号。 如果失败，此例程返回
+NULL。 由于基于 TCP 的 RPC 使用缓冲 I/O，用户可以指定缓冲区的大小; 零值选择合适的默认值。
+.PP
+.nf
+\fBSVCXPRT *svcudp_bufcreate(int \fP\fIsock\fP\fB, unsigned int \fP\fIsendsize\fP\fB,\fP
+\fB                          unsigned int \fP\fIrecosize\fP\fB);\fP
+.fi
+.IP
+此例程创建一个 UDP/IP\-based RPC 服务传输，并向其返回一个指针。 传输与套接字 \fIsock\fP (可能是 \fBRPC_ANYSOCK\fP)
+相关联，在这种情况下会创建一个新套接字。 如果套接字未绑定到本地 UDP 端口，则此例程将其绑定到任意端口。
+完成后，\fIxprt\->xp_sock\fP 是传输的套接字描述符，\fIxprt\->xp_port\fP 是传输的端口号。 如果失败，此例程返回
+NULL。
+.IP
+这允许用户指定发送和接收基于 UDP 的 RPC 消息的最大数据包大小。
+.PP
+.nf
+\fBSVCXPRT *svcudp_create(int \fP\fIsock\fP\fB);\fP
+.fi
+.IP
+对于某些默认尺寸 \fISZ\fP，此调用相当于 \fIsvcudp_bufcreate(sock,SZ,SZ)\fP。
+.PP
+.nf
+\fBbool_t xdr_accepted_reply(XDR *\fP\fIxdrs\fP\fB, struct accepted_reply *\fP\fIar\fP\fB);\fP
+.fi
+.IP
+用于对 RPC 回复消息进行编码。 此例程对于希望在不使用 RPC 包的情况下生成 RPC 样式消息的用户很有用。
+.PP
+.nf
+\fBbool_t xdr_authunix_parms(XDR *\fP\fIxdrs\fP\fB, struct authunix_parms *\fP\fIaupp\fP\fB);\fP
+.fi
+.IP
+用于描述 UNIX 凭证。 此例程对于希望在不使用 RPC 身份验证包的情况下生成这些凭据的用户很有用。
+.PP
+.nf
+\fBvoid xdr_callhdr(XDR *\fP\fIxdrs\fP\fB, struct rpc_msg *\fP\fIchdr\fP\fB);\fP
+.fi
+.IP
+用于描述 RPC 调用头消息。 此例程对于希望在不使用 RPC 包的情况下生成 RPC 样式消息的用户很有用。
+.PP
+.nf
+\fBbool_t xdr_callmsg(XDR *\fP\fIxdrs\fP\fB, struct rpc_msg *\fP\fIcmsg\fP\fB);\fP
+.fi
+.IP
+用于描述 RPC 调用消息。 此例程对于希望在不使用 RPC 包的情况下生成 RPC 样式消息的用户很有用。
+.PP
+.nf
+\fBbool_t xdr_opaque_auth(XDR *\fP\fIxdrs\fP\fB, struct opaque_auth *\fP\fIap\fP\fB);\fP
+.fi
+.IP
+用于描述 RPC 认证信息消息。 此例程对于希望在不使用 RPC 包的情况下生成 RPC 样式消息的用户很有用。
+.PP
+.nf
+\fBbool_t xdr_pmap(XDR *\fP\fIxdrs\fP\fB, struct pmap *\fP\fIregs\fP\fB);\fP
+.fi
+.IP
+用于向外部描述各种 \fBportmap\fP 程序的参数。 此例程对于希望在不使用 \fBpmap\fP 接口的情况下生成这些参数的用户很有用。
+.PP
+.nf
+\fBbool_t xdr_pmaplist(XDR *\fP\fIxdrs\fP\fB, struct pmaplist **\fP\fIrp\fP\fB);\fP
+.fi
+.IP
+用于对外描述端口映射列表。 此例程对于希望在不使用 \fBpmap\fP 接口的情况下生成这些参数的用户很有用。
+.PP
+.nf
+\fBbool_t xdr_rejected_reply(XDR *\fP\fIxdrs\fP\fB, struct rejected_reply *\fP\fIrr\fP\fB);\fP
+.fi
+.IP
+用于描述 RPC 回复消息。 此例程对于希望在不使用 RPC 包的情况下生成 RPC 样式消息的用户很有用。
+.PP
+.nf
+\fBbool_t xdr_replymsg(XDR *\fP\fIxdrs\fP\fB, struct rpc_msg *\fP\fIrmsg\fP\fB);\fP
+.fi
+.IP
+用于描述 RPC 回复消息。 此例程对于希望在不使用 RPC 包的情况下生成 RPC 样式消息的用户很有用。
+.PP
+.nf
+\fBvoid xprt_register(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+创建 RPC 服务传输句柄后，它们应该向 RPC 服务包注册自己。 此例程修改全局变量 \fIsvc_fds\fP。 服务实现者通常不需要这个例程。
+.PP
+.nf
+\fBvoid xprt_unregister(SVCXPRT *\fP\fIxprt\fP\fB);\fP
+.fi
+.IP
+在 RPC 服务传输句柄被销毁之前，它应该在 RPC 服务包中注销自己。 此例程修改全局变量 \fIsvc_fds\fP。 服务实现者通常不需要这个例程。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBauth_destroy\fP(),
+\fBauthnone_create\fP(),
+\fBauthunix_create\fP(),
+\fBauthunix_create_default\fP(),
+\fBcallrpc\fP(),
+\fBclnt_broadcast\fP(),
+\fBclnt_call\fP(),
+\fBclnt_destroy\fP(),
+\fBclnt_create\fP(),
+\fBclnt_control\fP(),
+\fBclnt_freeres\fP(),
+\fBclnt_geterr\fP(),
+\fBclnt_pcreateerror\fP(),
+\fBclnt_perrno\fP(),
+\fBclnt_perror\fP(),
+\fBclnt_spcreateerror\fP(),
+\fBclnt_sperrno\fP(),
+\fBclnt_sperror\fP(),
+\fBclntraw_create\fP(),
+\fBclnttcp_create\fP(),
+\fBclntudp_create\fP(),
+\fBclntudp_bufcreate\fP(),
+\fBget_myaddress\fP(),
+\fBpmap_getmaps\fP(),
+\fBpmap_getport\fP(),
+\fBpmap_rmtcall\fP(),
+\fBpmap_set\fP(),
+\fBpmap_unset\fP(),
+\fBregisterrpc\fP(),
+\fBsvc_destroy\fP(),
+\fBsvc_freeargs\fP(),
+\fBsvc_getargs\fP(),
+\fBsvc_getcaller\fP(),
+\fBsvc_getreqset\fP(),
+\fBsvc_getreq\fP(),
+\fBsvc_register\fP(),
+\fBsvc_run\fP(),
+\fBsvc_sendreply\fP(),
+\fBsvc_unregister\fP(),
+\fBsvcerr_auth\fP(),
+\fBsvcerr_decode\fP(),
+\fBsvcerr_noproc\fP(),
+\fBsvcerr_noprog\fP(),
+\fBsvcerr_progvers\fP(),
+\fBsvcerr_systemerr\fP(),
+\fBsvcerr_weakauth\fP(),
+\fBsvcfd_create\fP(),
+\fBsvcraw_create\fP(),
+\fBsvctcp_create\fP(),
+\fBsvcudp_bufcreate\fP(),
+\fBsvcudp_create\fP(),
+\fBxdr_accepted_reply\fP(),
+\fBxdr_authunix_parms\fP(),
+\fBxdr_callhdr\fP(),
+\fBxdr_callmsg\fP(),
+\fBxdr_opaque_auth\fP(),
+\fBxdr_pmap\fP(),
+\fBxdr_pmaplist\fP(),
+\fBxdr_rejected_reply\fP(),
+\fBxdr_replymsg\fP(),
+\fBxprt_register\fP(),
+\fBxprt_unregister\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH "SEE ALSO"
+.\" We don't have an rpc_secure.3 page in the set at the moment -- MTK, 19 Sep 05
+.\" .BR rpc_secure (3),
+\fBxdr\fP(3)
+.PP
+以下手册:
+.RS
+远程过程调用: 协议规范
+.br
+远程过程调用编程指南
+.br
+rpcgen 编程指南
+.br
+.RE
+.PP
+\fIRPC: Remote Procedure Call Protocol Specification\fP, RFC\ 1050, Sun
+Microsystems, Inc., USC\-ISI.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

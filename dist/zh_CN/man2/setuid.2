@@ -1,0 +1,94 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C), 1994, Graeme W. Wilford (Wilf).
+.\" and Copyright (C) 2010, 2014, 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Fri Jul 29th 12:56:44 BST 1994  Wilf. <G.Wilford@ee.surrey.ac.uk>
+.\" Changes inspired by patch from Richard Kettlewell
+.\"   <richard@greenend.org.uk>, aeb 970616.
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setuid 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+setuid \- 设置用户身份
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint setuid(uid_t \fP\fIuid\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsetuid\fP() 设置调用进程的有效用户 ID。 如果调用进程具有特权 (更准确地说: 如果进程在其用户命名空间中具有 \fBCAP_SETUID\fP
+能力)，则还会设置真实的 UID 和保存的 set\-user\-ID。
+.PP
+在 Linux 下，\fBsetuid\fP() 的实现类似于具有 \fB_POSIX_SAVED_IDS\fP 特性的 POSIX 版本。 这允许设置用户 ID
+(root 除外) 程序放弃其所有用户权限，执行一些非特权工作，然后以安全的方式重新使用原始有效用户 ID。
+.PP
+如果用户是 root 或程序是 set\-user\-ID\-root，则必须特别注意: \fBsetuid\fP() 检查调用者的有效用户
+ID，如果是超级用户，则所有与进程相关的用户 ID 都设置为 \fIuid\fP。 发生这种情况后，程序将无法重新获得 root 权限。
+.PP
+因此，希望临时丢弃 root 权限的 set\-user\-ID\-root 程序，采用非特权用户的身份，然后重新获得 root 权限，不能使用
+\fBsetuid\fP()。 您可以使用 \fBseteuid\fP(2) 来完成此操作。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+\fINote\fP: 即使调用者是 UID 0，有时 \fBsetuid\fP() 也会失败; 忽略检查 \fBsetuid\fP() 的失败返回是一个严重的安全错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+调用会更改调用者的真实 UID (即，\fIuid\fP 与调用者的真实 UID 不匹配)，但分配必要的内核数据结构时出现临时故障。
+.TP 
+\fBEAGAIN\fP
+\fIuid\fP 与调用者的真实用户 ID 不匹配，此调用会使属于真实用户 ID \fIuid\fP 的进程数超过调用者的 \fBRLIMIT_NPROC\fP
+资源限制。 从 Linux 3.1 开始，这种错误情况不再发生 (但健壮的应用程序应该检查这种错误) ; 请参见 \fBexecve\fP(2) 中
+\fBEAGAIN\fP 的说明。
+.TP 
+\fBEINVAL\fP
+\fIuid\fP 中指定的用户 ID 在此用户命名空间中无效。
+.TP 
+\fBEPERM\fP
+用户没有特权 (Linux: 在其用户命名空间中没有 \fBCAP_SETUID\fP 功能) 并且 \fIuid\fP 与调用进程的真实 UID 或保存的
+set\-user\-ID 不匹配。
+.SH STANDARDS
+.\" SVr4 documents an additional EINVAL error condition.
+POSIX.1\-2001, POSIX.1\-2008, SVr4.  与 4.4BSD 调用不太兼容，它设置所有真实的、已保存的和有效的用户 ID。
+.SH NOTES
+Linux 有文件系统用户 ID 的概念，通常等于有效用户 ID。\fBsetuid\fP() 调用还设置调用进程的文件系统用户 ID。 请参见
+\fBsetfsuid\fP(2)。
+.PP
+如果 \fIuid\fP 与旧的有效 UID 不同，则该进程将被禁止留下核心转储。
+.PP
+.\"
+原来的 Linux \fBsetuid\fP() 系统调用只支持 16 位用户 ID。 随后 Linux 2.4 增加了 \fBsetuid32\fP() 支持
+32 位 ID。 glibc \fBsetuid\fP() 包装器函数透明地处理内核版本之间的差异。
+.SS "C library/kernel differences"
+在内核级别，用户 ID 和组 ID 是每个线程的属性。 但是，POSIX 要求进程中的所有线程共享相同的凭据。 NPTL 线程实现通过为更改进程 UID
+和 GID 的各种系统调用提供包装函数来处理 POSIX 要求。 这些包装器数 (包括用于 \fBsetuid\fP()) 的包装器)
+采用基于信号的技术来确保当一个线程更改凭据时，进程中的所有其他线程也会更改它们的凭据。 有关详细信息，请参见 \fBnptl\fP(7)。
+.SH "SEE ALSO"
+\fBgetuid\fP(2), \fBseteuid\fP(2), \fBsetfsuid\fP(2), \fBsetreuid\fP(2),
+\fBcapabilities\fP(7), \fBcredentials\fP(7), \fBuser_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

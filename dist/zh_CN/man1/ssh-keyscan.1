@@ -1,0 +1,179 @@
+.\" -*- coding: UTF-8 -*-
+.\"	$OpenBSD: ssh-keyscan.1,v 1.47 2022/10/28 02:29:34 djm Exp $
+.\"
+.\" Copyright 1995, 1996 by David Mazieres <dm@lcs.mit.edu>.
+.\"
+.\" Modification and redistribution in source and binary forms is
+.\" permitted provided that due credit is given to the author and the
+.\" OpenBSD project by leaving this copyright notice intact.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: October 28 2022 $
+.Dt SSH-KEYSCAN 1
+.Os
+.Sh NAME
+.Nm ssh-keyscan
+.Nd gather SSH public keys from servers
+.Sh SYNOPSIS
+.Nm ssh-keyscan
+.Op Fl 46cDHv
+.Op Fl f Ar file
+.Op Fl p Ar port
+.Op Fl T Ar timeout
+.Op Fl t Ar type
+.Op Ar host | addrlist namelist
+.Sh DESCRIPTION
+.Nm
+是一个用于收集多个主机的公共 SSH 主机密钥的实用程序。 它旨在帮助构建和验证
+.Pa ssh_known_hosts
+文件，其格式记录在
+.Xr sshd 8
+中。
+.Nm
+提供适合 shell 和 perl 脚本使用的最小接口。
+.Pp
+.Nm
+使用非阻塞套接字 I/O 在并行中联系尽可能多的主机，因此非常高效。 可以在几十秒内收集来自 1,000
+台主机的域的密钥，即使其中一些主机已关闭或未运行
+.Xr sshd 8
+。 对于扫描，不需要登录访问被扫描的机器，扫描过程也不涉及任何加密。
+.Pp
+要扫描的主机可以由主机名、地址或 CIDR 网络范围 (例如 192.168.16/28) 指定。 如果指定了网络范围，则将扫描该范围内的所有地址。
+.Pp
+选项如下:
+.Bl -tag -width Ds
+.It Fl 4
+强制
+.Nm
+仅使用 IPv4 地址。
+.It Fl 6
+强制
+.Nm
+仅使用 IPv6 地址。
+.It Fl c
+从目标主机请求证书而不是普通密钥。
+.It Fl D
+将发现的密钥打印为 SSHFP DNS 记录。 默认是以可用作
+.Xr ssh 1
+.Pa known_hosts
+文件的格式打印密钥。
+.It Fl f Ar file
+从
+.Ar file
+读取主机或
+.Dq addrlist namelist
+对，每行一个。 如果提供
+.Sq -
+而不是文件名，
+.Nm
+将从标准输入读取。 从文件中读取的名称必须以要扫描的地址、主机名或 CIDR 网络范围开头。
+地址和主机名后面可以选择以逗号分隔的名称或地址别名，这些名称或地址别名将被复制到输出中。 例如:
+.Bd -literal
+192.168.11.0/24
+10.20.1.1
+happy.example.org
+10.0.0.1,sad.example.org
+.Ed
+.It Fl H
+散列输出中的所有主机名和地址。
+.Xr ssh 1
+和
+.Xr sshd 8
+可以正常使用散列名称，但如果文件内容被泄露，它们不会泄露识别信息。
+.It Fl p Ar port
+连接到远程主机上的
+.Ar port
+。
+.It Fl T Ar timeout
+设置连接尝试的超时时间。 如果自从启动到主机的连接或自从上次从该主机读取任何内容以来已经过去了
+.Ar timeout
+秒，则连接将关闭并且所讨论的主机将被视为不可用。 默认值为 5 秒。
+.It Fl t Ar type
+指定要从扫描的主机中获取的密钥类型。 可能的值为
+.Dq dsa
+、
+.Dq ecdsa
+、
+.Dq ed25519
+、
+.Dq ecdsa-sk
+、
+.Dq ed25519-sk
+或
+.Dq rsa
+。 可以通过用逗号分隔它们来指定多个值。 默认是获取
+.Dq rsa
+、
+.Dq ecdsa
+、
+.Dq ed25519
+、
+.Dq ecdsa-sk
+和
+.Dq ed25519-sk
+键。
+.It Fl v
+详细模式: 打印有关进度的调试消息。
+.El
+.Pp
+如果在没有验证密钥的情况下使用
+.Nm
+构建 ssh_known_hosts 文件，用户将容易受到
+.Em man in the middle
+攻击。 另一方面，如果安全模型允许这种风险，
+.Nm
+可以帮助检测在创建 ssh_known_hosts
+文件后开始的被篡改的密钥文件或中间人攻击。
+.Sh FILES
+.Pa /etc/ssh/ssh_known_hosts
+.Sh EXAMPLES
+打印机器
+.Ar hostname :
+的 RSA 主机密钥
+.Pp
+.Dl $ ssh-keyscan -t rsa hostname
+.Pp
+搜索网络范围，打印所有支持的密钥类型:
+.Pp
+.Dl $ ssh-keyscan 192.168.0.64/25
+.Pp
+从文件
+.Pa ssh_hosts
+中查找所有主机，这些主机具有新的或与已排序文件
+.Pa ssh_known_hosts :
+中的密钥不同的密钥
+.Bd -literal -offset indent
+$ ssh-keyscan -t rsa,dsa,ecdsa,ed25519 -f ssh_hosts | \e
+	排序 -u-ssh_known_hosts | 差异 ssh_known_hosts -
+.Ed
+.Sh SEE ALSO
+.Xr ssh 1 ,
+.Xr sshd 8
+.Rs
+.%D 2006
+.%R RFC 4255
+.%T Using DNS to Securely Publish Secure Shell (SSH) Key Fingerprints
+.Re
+.Sh AUTHORS
+.An -nosplit
+.An David Mazieres Aq Mt dm@lcs.mit.edu
+写了初始版本，
+.An Wayne Davison Aq Mt wayned@users.sourceforge.net
+增加了对协议版本的支持 2.
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

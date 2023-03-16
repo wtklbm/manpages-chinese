@@ -1,0 +1,127 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu) and
+.\" and Copyright 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 21 Aug 1994 by Michael Chastain <mec@shell.portal.com>:
+.\"   Removed note about old libc (pre-4.5.26) translating to 'sync'.
+.\" Modified 15 Apr 1995 by Michael Chastain <mec@shell.portal.com>:
+.\"   Added `see also' section.
+.\" Modified 13 Apr 1996 by Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"   Added remarks about fdatasync.
+.\" Modified 31 Jan 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 18 Apr 2001 by Andi Kleen
+.\"   Fix description to describe what it really does; add a few caveats.
+.\" 2006-04-28, mtk, substantial rewrite of various parts.
+.\" 2012-02-27 Various changes by Christoph Hellwig <hch@lst.de>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fsync 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fsync, fdatasync \- 将文件的核心状态与存储设备同步
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint fsync(int \fP\fIfd\fP\fB);\fP
+.PP
+\fBint fdatasync(int \fP\fIfd\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+.nf
+\fBfsync\fP():
+    glibc 2.16 及更高版本:
+        无需定义特性测试宏
+    glibc 直到并包括 2.15:
+        _BSD_SOURCE || _XOPEN_SOURCE
+            || /* Since glibc 2.8: */ _POSIX_C_SOURCE >= 200112L
+.fi
+.PP
+\fBfdatasync\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L || _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+\fBfsync\fP() 将文件描述符 \fIfd\fP 引用的文件的所有修改过的核心数据 (即，修改过的缓冲区高速缓存页面) 传输到磁盘设备
+(或其他永久存储设备)，以便即使系统崩溃或重新启动。 这包括写入或刷新磁盘缓存 (如果存在)。 调用会阻塞，直到设备报告传输已完成。
+.PP
+除了刷新文件数据，\fBfsync\fP() 还刷新与文件关联的元数据信息 (请参见 \fBinode\fP(7)).
+.PP
+调用 \fBfsync\fP() 不一定确保包含该文件的目录中的条目也已到达磁盘。 为此，还需要目录的文件描述符上的显式 \fBfsync\fP()。
+.PP
+\fBfdatasync\fP() 类似于 \fBfsync\fP()，但不会刷新已修改的元数据，除非需要该元数据以便正确处理后续数据检索。 例如，对
+\fIst_atime\fP 或 \fIst_mtime\fP 的更改 (分别为上次访问时间和上次修改时间; 请参见 \fBinode\fP(7))
+不需要刷新，因为它们对于正确处理后续数据读取不是必需的。 另一方面，文件大小 (\fIst_size\fP 的更改 (例如 \fBftruncate\fP(2))
+所做的更改) 将需要刷新元数据。
+.PP
+\fBfdatasync\fP() 的目的是减少不需要所有元数据与磁盘同步的应用程序的磁盘活动。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的打开文件描述符。
+.TP 
+\fBEINTR\fP
+函数被信号打断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEIO\fP
+.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
+同步期间发生错误。 此错误可能与写入同一文件上某些其他文件描述符的数据有关。 自 Linux 4.13
+起，回写错误将报告给所有可能已写入触发错误的数据的文件描述符。 一些文件系统 (例如 NFS) 密切跟踪哪些数据来自哪个文件描述符，并提供更精确的报告。
+其他文件系统 (例如，大多数本地文件系统) 将向记录错误时在文件上打开的所有文件描述符报告错误。
+.TP 
+\fBENOSPC\fP
+同步时磁盘空间已用尽。
+.TP 
+\fBEROFS\fP, \fBEINVAL\fP
+\fIfd\fP 绑定到不支持同步的特殊文件 (例如，管道、FIFO 或套接字)。
+.TP 
+\fBENOSPC\fP, \fBEDQUOT\fP
+\fIfd\fP 在 \fBwrite\fP(2) 系统调用时绑定了 NFS 或其他文件系统上的文件，没有分配空间，之前的一些写入由于存储空间不足而失败。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, 4.3BSD.
+.PP
+.\" POSIX.1-2001: It shall be defined to -1 or 0 or 200112L.
+.\" -1: unavailable, 0: ask using sysconf().
+.\" glibc defines them to 1.
+在 \fBfdatasync\fP() 可用的 POSIX 系统上，\fB_POSIX_SYNCHRONIZED_IO\fP 在
+\fI<unistd.h>\fP 中定义为大于 0 的值。 (另见 \fBsysconf\fP(3).)
+.SH NOTES
+在某些 UNIX 系统 (但不是 Linux) 上，\fIfd\fP 必须是 \fIwritable\fP 文件描述符。
+.PP
+在 Linux 2.2 及更早版本中，\fBfdatasync\fP() 等同于 \fBfsync\fP()，因此没有性能优势。
+.PP
+较旧内核和较少使用的文件系统中的 \fBfsync\fP() 实现不知道如何刷新磁盘缓存。 在这些情况下，需要使用 \fBhdparm\fP(8) 或
+\fBsdparm\fP(8) 禁用磁盘缓存以保证安全操作。
+.SH "SEE ALSO"
+\fBsync\fP(1), \fBbdflush\fP(2), \fBopen\fP(2), \fBposix_fadvise\fP(2), \fBpwritev\fP(2),
+\fBsync\fP(2), \fBsync_file_range\fP(2), \fBfflush\fP(3), \fBfileno\fP(3), \fBhdparm\fP(8),
+\fBmount\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

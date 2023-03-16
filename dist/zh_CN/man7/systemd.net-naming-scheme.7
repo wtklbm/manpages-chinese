@@ -1,0 +1,556 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.NET\-NAMING\-SCHEME 7 "" "systemd 253" systemd.net\-naming\-scheme
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.net\-naming\-scheme \- 网络设备命名方案
+.SH DESCRIPTION
+.PP
+可以根据某些稳定的接口属性生成网络接口名称和 MAC 地址。当有足够的关于设备的信息来生成这些属性并且配置了此信息的使用 \&
+时，这是可能的。本页介绍接口命名，i\&.e\&。可能生成什么名称 \&。这些名称由 \fBsystemd\-udevd.service\fP(8) 内置
+\fBnet_id\fP 生成并导出为 udev 属性
+(\fIID_NET_NAME_ONBOARD=\fP、\fIID_NET_LABEL_ONBOARD=\fP、\fIID_NET_NAME_PATH=\fP、\fIID_NET_NAME_SLOT=\fP)\&。
+.PP
+名称和 MAC 地址源自各种稳定的设备元数据属性。较新版本的 udev 考虑了更多这些属性，改进 (并因此可能更改)
+用于相同设备的名称和地址。这些生成规则的不同版本称为 `命名方案`\&。默认命名方案是在编译时选择的
+\&。通常这将是最新实现的版本，但也可以设置旧版本之一以保持兼容性
+\&。这可能对发行版很有用，发行版可能会在不更改命名方案的情况下在稳定版本中引入新版本的 systemd。也可以使用
+\fInet\&.naming\-scheme=\fP 内核命令行开关覆盖命名方案，请参见
+\fBsystemd\-udevd.service\fP(8)\&。可用的命名方案描述如下 \&。
+.PP
+生成 udev 属性后，可以使用适当的 udev 规则根据这些属性实际重命名设备。请参见 \fBsystemd.link\fP(5)\& 中
+\fINamePolicy=\fP 和 \fIMACAddressPolicy=\fP 的说明。
+.PP
+请注意，虽然网络接口命名方案的概念主要与 systemd\-udevd\&.service 的上下文相关，但 \fBsystemd\-nspawn\fP(1)
+容器管理器在命名网络接口时也会考虑到它，请参见下文 \&。
+.SH NAMING
+.PP
+所有名称都以表示接口类型 \& 的两个字符前缀开头。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Two character prefixes based on the type of interface\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Prefix
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l
+l l
+l l.
+T{
+\fBen\fP
+T}:T{
+Ethernet
+T}
+T{
+\fBib\fP
+T}:T{
+InfiniBand
+T}
+T{
+\fBsl\fP
+T}:T{
+Serial line IP (slip)
+T}
+T{
+\fBwl\fP
+T}:T{
+Wireless local area network (WLAN)
+T}
+T{
+\fBww\fP
+T}:T{
+Wireless wide area network (WWAN)
+T}
+.TE
+.sp 1
+.PP
+udev \fBnet_id\fP 内置导出以下 udev 设备属性:
+.PP
+\fIID_NET_NAME_ONBOARD=\fP\fIprefix\fP\fBo\fP\fInumber\fP,
+\fIID_NET_NAME_ONBOARD=\fP\fIprefix\fP\fBd\fP\fInumber\fP
+.RS 4
+此名称是根据板载设备固件给出的数字订购信息设置的。根据固件类型使用不同的方案，如下表所述。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \&Onboard naming schemes\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Format
+T}:T{
+Description
+T}
+.T&
+l l
+l l.
+T{
+\fIprefix\fP\fBo\fP\fInumber\fP
+T}:T{
+PCI onboard index
+T}
+T{
+\fIprefix\fP\fBd\fP\fInumber\fP
+T}:T{
+Devicetree alias index
+T}
+.TE
+.sp 1
+.RE
+.PP
+\fIID_NET_LABEL_ONBOARD=\fP\fIprefix\fP\fI \fP\fIlabel\fP
+.RS 4
+此属性是根据板载设备固件给出的文本标签设置的。该名称由与标签 \& 连接的前缀组成。这仅适用于 PCI 设备 \&。
+.RE
+.PP
+\fIID_NET_NAME_MAC=\fP\fIprefix\fP\fBx\fP\fIAABBCCDDEEFF\fP
+.RS 4
+该名称由前缀、字母 \fBx\fP 和 MAC 地址 \& 的 12 位十六进制数字组成。如果设备有固定的 MAC 地址
+\&，则可用。因为这个名字是基于卡本身的一个属性，所以当设备移动时 (甚至在机器之间) 它仍然是 "stable"，但是当硬件被替换时它会改变 \&。
+.RE
+.PP
+\fIID_NET_NAME_SLOT=\fP\fIprefix\fP\fI[\fP\fBP\fP\fIdomain\fP\fI]\fP\fBs\fP\fIslot\fP\fI[\fP\fBf\fP\fIfunction\fP\fI][\fP\fBn\fP\fIport_name\fP\fI|\fP\fBd\fP\fIdev_port\fP\fI]\fP,
+\fIID_NET_NAME_SLOT=\fP\fIprefix\fP\fBv\fP\fIslot\fP,
+\fIID_NET_NAME_SLOT=\fP\fIprefix\fP\fBx\fP\fIslot\fP,
+\fIID_NET_NAME_SLOT=\fP\fIprefix\fP\fI[\fP\fBP\fP\fIdomain\fP\fI]\fP\fBs\fP\fIslot\fP\fI[\fP\fBf\fP\fIfunction\fP\fI][\fP\fBn\fP\fIport_name\fP\fI|\fP\fBd\fP\fIdev_port\fP\fI]\fP\fBb\fP\fInumber\fP,
+\fIID_NET_NAME_SLOT=\fP\fIprefix\fP\fI[\fP\fBP\fP\fIdomain\fP\fI]\fP\fBs\fP\fIslot\fP\fI[\fP\fBf\fP\fIfunction\fP\fI][\fP\fBn\fP\fIport_name\fP\fI|\fP\fBd\fP\fIdev_port\fP\fI]\fP\fBu\fP\fIport\fP\fI\&...[\fP\fBc\fP\fIconfig\fP\fI][\fP\fBi\fP\fIinterface\fP\fI]\fP,
+\fIID_NET_NAME_SLOT=\fP\fIprefix\fP\fI[\fP\fBP\fP\fIdomain\fP\fI]\fP\fBs\fP\fIslot\fP\fI[\fP\fBf\fP\fIfunction\fP\fI][\fP\fBn\fP\fIport_name\fP\fI|\fP\fBd\fP\fIdev_port\fP\fI]\fP\fBv\fP\fIslot\fP
+.RS 4
+此属性描述插槽位置 \&。根据总线类型使用不同的方案，如下表所述。对于 USB、BCMA 和 SR\-VIO 设备，全名由前缀、PCI 插槽标识符和
+USB 或 BCMA 或 SR\-VIO 插槽标识符 \& 组成。前两部分在下表中记为 "\&..."\&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&3.\ \&Slot naming schemes\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Format
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+\fIprefix\fP\ \&[\fBP\fP\fIdomain\fP]\ \&\fBs\fP\fIslot\fP\ \&[\fBf\fP\fIfunction\fP]\ \&[\fBn\fP\fIport_name\fP\ \&|\ \&\fBd\fP\fIdev_port\fP]
+T}:T{
+PCI slot number
+T}
+T{
+\fIprefix\fP\ \&\fBv\fP\fIslot\fP
+T}:T{
+VIO slot number (IBM PowerVM)
+T}
+T{
+\fIprefix\fP\ \&\fBX\fP\fInumber\fP
+T}:T{
+VIF interface number (Xen)
+T}
+T{
+\&...\ \&\fBb\fP\fInumber\fP
+T}:T{
+Broadcom bus (BCMA) core number
+T}
+T{
+\&...\ \&\fBu\fP\fIport\fP\&...\ \&[\fBc\fP\fIconfig\fP]\ \&[\fBi\fP\fIinterface\fP]
+T}:T{
+USB port number chain
+T}
+T{
+\&...\ \&\fBv\fP\fIslot\fP
+T}:T{
+SR\-VIO slot number
+T}
+.TE
+.sp 1
+PCI 域只有在它不是 0\& 时才会被添加到前面。所有的多函数 PCI 设备都会在设备名中带有 \fBf\fP\fIfunction\fP 编号，包括函数 0
+设备 \&。对于非多函数设备，如果为 0\&，则数字被抑制。使用端口名称 \fIport_name\fP，如果名称未知，则使用端口号
+\fBd\fP\fIdev_port\fP\&。
+.sp
+对于 BCMA 设备，核心数在 0\& 时被抑制。
+.sp
+对于 USB 设备，集线器的完整端口号链由 \& 组成。如果名称超过 15 个字符的最大长度，则不会导出名称 \&。通常的 USB 配置编号 1
+和接口编号 0 值被抑制 \&。
+.sp
+SR\-IOV 虚拟设备根据父接口的名称命名，后缀为 \fBv\fP 和虚拟设备编号，删除任何前导零 \&。总线编号被忽略 \&。
+.sp
+在某些配置中，给定网络控制器的父 PCI 桥可能与插槽相关联。在这种情况下，我们不会 \*(Aqt 生成此设备属性以避免可能的命名冲突 \&。
+.RE
+.PP
+\fIID_NET_NAME_PATH=\fP\fIprefix\fP\fBc\fP\fIbus_id\fP,
+\fIID_NET_NAME_PATH=\fP\fIprefix\fP\fBa\fP\fIvendor\fP\fImodel\fP\fBi\fP\fIinstance\fP,
+\fIID_NET_NAME_PATH=\fP\fIprefix\fP\fBi\fP\fIaddress\fP\fBn\fP\fIport_name\fP,
+\fIID_NET_NAME_PATH=\fP\fIprefix\fP\fBu\fP\fIport\fP\fI\&...\fP,
+\fIID_NET_NAME_PATH=\fP\fIprefix\fP\fI[\fP\fBP\fP\fIdomain\fP\fI]\fP\fBp\fP\fIbus\fP\fBs\fP\fIslot\fP\fI[\fP\fBf\fP\fIfunction\fP\fI][\fP\fBn\fP\fIphys_port_name\fP\fI|\fP\fBd\fP\fIdev_port\fP\fI]\fP,
+\fIID_NET_NAME_PATH=\fP\fIprefix\fP\fI[\fP\fBP\fP\fIdomain\fP\fI]\fP\fBp\fP\fIbus\fP\fBs\fP\fIslot\fP\fI[\fP\fBf\fP\fIfunction\fP\fI][\fP\fBn\fP\fIphys_port_name\fP\fI|\fP\fBd\fP\fIdev_port\fP\fI]\fP\fBb\fP\fInumber\fP,
+\fIID_NET_NAME_PATH=\fP\fIprefix\fP\fI[\fP\fBP\fP\fIdomain\fP\fI]\fP\fBp\fP\fIbus\fP\fBs\fP\fIslot\fP\fI[\fP\fBf\fP\fIfunction\fP\fI][\fP\fBn\fP\fIphys_port_name\fP\fI|\fP\fBd\fP\fIdev_port\fP\fI]\fP\fBu\fP\fIport\fP\fI\&...[\fP\fBc\fP\fIconfig\fP\fI][\fP\fBi\fP\fIinterface\fP\fI]\fP
+.RS 4
+此属性描述设备安装位置 \&。根据总线类型使用不同的方案，如下表所述。对于 BCMA 和 USB 设备，必须知道 PCI 路径信息，全名由前缀、PCI
+插槽标识符、USB 或 BCMA 位置 \& 组成。前两部分在下表中记为 "\&..."\&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&4.\ \&Path naming schemes\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Format
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+\fIprefix\fP\ \&\fBc\fP\fIbus_id\fP
+T}:T{
+CCW or grouped CCW device identifier
+T}
+T{
+\fIprefix\fP\ \&\fBa\fP\fIvendor\fP\ \&\fImodel\fP\ \&\fBi\fP\fIinstance\fP
+T}:T{
+ACPI path names for ARM64 platform devices
+T}
+T{
+\fIprefix\fP\ \&\fBi\fP\fIaddress\fP\ \&\fBn\fP\fIport_name\fP
+T}:T{
+Netdevsim (simulated networking device) device number and port name
+T}
+T{
+\fIprefix\fP\ \&[\fBP\fP\fIdomain\fP]\ \&\fBp\fP\fIbus\fP\ \&\fBs\fP\fIslot\fP\ \&[\fBf\fP\fIfunction\fP]\ \&[\fBn\fP\fIphys_port_name\fP\ \&|\ \&\fBd\fP\fIdev_port\fP]
+T}:T{
+PCI geographical location
+T}
+T{
+\&...\ \&\fBb\fP\fInumber\fP
+T}:T{
+Broadcom bus (BCMA) core number
+T}
+T{
+\&...\ \&\fBu\fP\fIport\fP\&...\ \&[\fBc\fP\fIconfig\fP]\ \&[\fBi\fP\fIinterface\fP]
+T}:T{
+USB port number chain
+T}
+.TE
+.sp 1
+CCW 和分组的 CCW 设备可以在 IBM System Z 大型机中找到。任何前导零和点都被抑制 \&。
+.sp
+对于 PCI、BCMA 和 USB 设备，使用与上述相同的插槽命名规则 \&。
+.RE
+.SH HISTORY
+.PP
+已定义以下 "naming schemes" (可在系统启动时通过 \fInet\&.naming\-scheme=\fP 内核命令行开关选择，见上文) :
+.PP
+\fBv238\fP
+.RS 4
+这是在 systemd 238\& 中实现的命名方案。
+.RE
+.PP
+\fBv239\fP
+.RS 4
+对于使用 SR\-IOV 和 NPAR 创建的虚拟网络接口以及 PCI 网络控制器设备没有关联插槽编号的设备，命名已更改。
+.sp
+SR\-IOV 虚拟设备根据父接口的名称命名，后缀为 "v\fIport\fP"，其中 \fIport\fP 为虚拟设备号 \&。以前这些虚拟设备被命名为好像完全独立
+\&。
+.sp
+第 9 个和后面的 NPAR 虚拟设备按照前 8 个 NPAR 分区使用的方案命名。以前这些设备没有重命名并且使用了内核默认
+("eth\fIN\fP")\&。
+.sp
+还为 PCI 设备生成名称，其中 PCI 网络控制器设备本身没有关联的插槽编号，但其父代之一有 \&。以前这些设备没有重命名，而是使用内核默认 \&。
+.RE
+.PP
+\fBv240\fP
+.RS 4
+引入了 infiniband 设备的 "ib" 前缀和稳定名称 \&。以前这些设备没有重命名 \&。
+.sp
+ACPI 索引字段 (在 \fIID_NET_NAME_ONBOARD=\fP) 中使用，现在在 0\& 时也使用。
+.sp
+引入了新的命名策略 \fINamePolicy=keep\fP\&。使用此策略，如果网络设备名称已由用户空间设置，则不会再次重命名该设备
+\&。以前，此命名策略是隐式应用的，现在必须显式请求 \&。实际上，这意味着网络设备将根据配置重命名，即使它们已经重命名，如果 \fBkeep\fP 未指定为
+\&.link 文件 \& 中的命名策略。有关 \fINamePolicy=\fP\& 的说明，请参见 \fBsystemd.link\fP(5)。
+.RE
+.PP
+\fBv241\fP
+.RS 4
+\fBMACAddressPolicy=persistent\fP 被扩展为根据设备名称设置 MAC 地址 \&。以前的地址仅基于
+\fIID_NET_NAME_*\fP 属性，这意味着永远不会为虚拟设备生成接口名称 \&。现在将为大多数设备生成一个持久地址，特别是网桥 \&。
+.sp
+Note: 当用户空间没有为网桥设备设置 MAC 地址时，内核将首先分配一个随机地址，然后在第一个设备从属到网桥时更改它
+\&。通过此命名策略更改，网桥将获得基于网桥名称的持久 MAC 地址，而不是第一个从属设备 \&。
+.RE
+.PP
+\fBv243\fP
+.RS 4
+添加了对重命名 netdevsim (模拟网络) 设备的支持 \&。以前这些设备没有重命名 \&。
+.sp
+以前两个字母的接口类型前缀被添加到 \fIID_NET_LABEL_ONBOARD=\fP\&。这不再做 \&。
+.RE
+.PP
+\fBv245\fP
+.RS 4
+当 \fBsystemd\-nspawn\fP(1) 从容器名称派生出使用 \fB\-\-network\-veth\fP
+创建的网络接口主机端的名称时，它先前只是将结果截断为 15 个字符 (如果更长) (因为 \* (Aqs 网络接口名称的最大长度)
+\&。从现在开始，对于任何超过 15 个字符的接口名称，最后 4 个字符将设置为完整接口名称的 24 位哈希值 \&。这样，多个名称相似的容器
+(仅容器名称后缀不同) 之间的网络接口名称冲突应该不太可能发生 (但仍有可能，因为 24 位哈希值非常小) \&。
+.RE
+.PP
+\fBv247\fP
+.RS 4
+当 PCI 插槽与具有多个子网络控制器的 PCI 桥相关联时，可能会为这些控制器派生相同的 \fIID_NET_NAME_SLOT\fP 属性值
+\&。如果选择该属性作为设备名称，这将导致命名冲突。现在，我们检测到这种情况并不要 \*(Aqt 生成 \fIID_NET_NAME_SLOT\fP 属性
+\&。
+.RE
+.PP
+\fBv249\fP
+.RS 4
+s390 PCI 驱动程序的 PCI 热插拔插槽名称是 function_id 设备属性 \& 的十六进制表示。此属性现在用于构建
+\fIID_NET_NAME_SLOT\fP\&。在此之前，所有插槽名称都被解析为十进制数字，这可能导致 \fIID_NET_NAME_SLOT\fP
+属性的值不正确或根本没有 \&。
+.sp
+一些固件和虚拟机管理程序实现报告板载索引 \& 的数字过高。为防止生成伪造的 onbard 接口名称，大于 16381 (2\(S1⁴\-1)
+的索引号被忽略 \&。对于 s390 PCI 设备索引值高达 65535 (2\(S1⁶\-1) 是有效的 \&。考虑到这一点，限制增加到
+65535\&。
+.sp
+udev 规则 \fINAME=\fP 将 ":"、"/" 和 "%" 替换为下划，字符串 ("_")，并拒绝仅包含数字 \& 的字符串。
+.RE
+.PP
+\fBv250\fP
+.RS 4
+基于从 Xen 配置 (或 AWS EC2 中的接口索引) \& 设置的来宾端 VIF 编号，为 Xen netfront "vif"
+接口添加了命名方案。
+.RE
+.PP
+\fBv251\fP
+.RS 4
+从版本 \fBv247\fP 开始，如果我们检测到与插槽关联的 PCI 设备是 PCI 桥接器，我们不再设置
+\fIID_NET_NAME_SLOT\fP，因为当该桥接器上有更多子设备时，这会产生命名冲突
+\&。现在，这放宽了，我们将使用插槽信息来生成基于它的名称，但前提是 PCI 设备有多个函数
+\&。这是安全的，因为不同的号码是多功能设备设备名称的一部分 \&。
+.RE
+.PP
+\fBv252\fP
+.RS 4
+为具有 devicetree 别名 \& 的平台设备添加了命名方案。
+.RE
+.PP
+\fBv253\fP
+.RS 4
+为未通过 PCI 总线连接的 USB 设备设置 \fIID_NET_NAME_PATH\fP\&。
+.RE
+.PP
+请注意，\fBlatest\fP 可用于表示已知的最新方案 (对于此特定版本的 systemd) \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Using udevadm test\-builtin to display device properties\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ udevadm 测试内置 net_id /sys/class/net/enp0s31f6
+\&.\&.\&.
+使用默认接口命名方案 \*(Aqv243\*(Aq\&.
+ID_NET_NAMING_SCHEME=v243
+ID_NET_NAME_MAC=enx54ee75cb1dc0
+ID_OUI_FROM_DATABASE=Wistron InfoComm(Kunshan)Co\&.,Ltd\&.
+ID_NET_NAME_PATH=enp0s31f6
+\&.\&.\&.
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&PCI Ethernet card with firmware index "1"\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+ID_NET_NAME_ONBOARD=eno1
+ID_NET_NAME_ONBOARD_LABEL=Ethernet Port 1
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&PCI Ethernet card in hotplug slot with firmware index number\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /sys/devices/pci0000:00/0000:00:1c\&.3/0000:05:00\&.0/net/ens1
+ID_NET_NAME_MAC=enx000000000466
+ID_NET_NAME_PATH=enp5s0
+ID_NET_NAME_SLOT=ens1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&PCI Ethernet multi\-function card with 2 ports\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /sys/devices/pci0000:00/0000:00:1c\&.0/0000:02:00\&.0/net/enp2s0f0
+ID_NET_NAME_MAC=enx78e7d1ea46da
+ID_NET_NAME_PATH=enp2s0f0
+
+# /sys/devices/pci0000:00/0000:00:1c\&.0/0000:02:00\&.1/net/enp2s0f1
+ID_NET_NAME_MAC=enx78e7d1ea46dc
+ID_NET_NAME_PATH=enp2s0f1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&5.\ \&PCI WLAN card\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /sys/devices/pci0000:00/0000:00:1c\&.1/0000:03:00\&.0/net/wlp3s0
+ID_NET_NAME_MAC=wlx0024d7e31130
+ID_NET_NAME_PATH=wlp3s0
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&6.\ \&PCI IB host adapter with 2 ports\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /sys/devices/pci0000:00/0000:00:03\&.0/0000:15:00\&.0/net/ibp21s0f0
+ID_NET_NAME_PATH=ibp21s0f0
+
+# /sys/devices/pci0000:00/0000:00:03\&.0/0000:15:00\&.1/net/ibp21s0f1
+ID_NET_NAME_PATH=ibp21s0f1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&7.\ \&USB built\-in 3G modem\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /sys/devices/pci0000:00/0000:00:1d\&.0/usb2/2\-1/2\-1\&.4/2\-1\&.4:1\&.6/net/wwp0s29u1u4i6
+ID_NET_NAME_MAC=wwx028037ec0200
+ID_NET_NAME_PATH=wwp0s29u1u4i6
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&8.\ \&USB Android phone\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /sys/devices/pci0000:00/0000:00:1d\&.0/usb2/2\-1/2\-1\&.2/2\-1\&.2:1\&.0/net/enp0s29u1u2
+ID_NET_NAME_MAC=enxd626b3450fb5
+ID_NET_NAME_PATH=enp0s29u1u2
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&9.\ \&s390 grouped CCW interface\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /sys/devices/css0/0\&.0\&.0007/0\&.0\&.f5f0/group_device/net/encf5f0
+ID_NET_NAME_MAC=enx026d3c00000a
+ID_NET_NAME_PATH=encf5f0
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBudev\fP(7), \fBudevadm\fP(8), \m[blue]\fBPredictable Network Interface Names\fP\m[]\&\s-2\u[1]\d\s+2, \fBsystemd\-nspawn\fP(1)
+.SH NOTES
+.IP " 1." 4
+可预测的网络接口名称
+.RS 4
+\%https://systemd.io/PREDICTABLE_INTERFACE_NAMES
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

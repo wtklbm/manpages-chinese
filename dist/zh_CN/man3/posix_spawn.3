@@ -1,0 +1,471 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2009 Bill O. Gallmeister (bgallmeister@gmail.com)
+.\" and Copyright 2010 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux glibc source code
+.\"     POSIX 1003.1-2004 documentation
+.\"     (http://www.opengroup.org/onlinepubs/009695399)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH posix_spawn 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+posix_spawn, posix_spawnp \- spawn a process
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <spawn.h>\fP
+.PP
+\fBint posix_spawn(pid_t *restrict \fP\fIpid\fP\fB, const char *restrict \fP\fIpath\fP\fB,\fP
+\fB                const posix_spawn_file_actions_t *restrict \fP\fIfile_actions\fP\fB,\fP
+\fB                const posix_spawnattr_t *restrict \fP\fIattrp\fP\fB,\fP
+\fB                char *const \fP\fIargv\fP\fB[restrict],\fP
+\fB                char *const \fP\fIenvp\fP\fB[restrict]);\fP
+\fBint posix_spawnp(pid_t *restrict \fP\fIpid\fP\fB, const char *restrict \fP\fIfile\fP\fB,\fP
+\fB                const posix_spawn_file_actions_t *restrict \fP\fIfile_actions\fP\fB,\fP
+\fB                const posix_spawnattr_t *restrict \fP\fIattrp\fP\fB,\fP
+\fB                char *const \fP\fIargv\fP\fB[restrict],\fP
+\fB                char *const \fP\fIenvp\fP\fB[restrict]);\fP
+.fi
+.SH DESCRIPTION
+\fBposix_spawn\fP() 和 \fBposix_spawnp\fP() 函数用于创建执行指定文件的新子进程。 这些函数由 POSIX
+指定，以提供在缺乏支持 \fBfork\fP(2) 系统调用能力的机器上创建新进程的标准化方法。 这些机器通常是缺少 MMU 支持的小型嵌入式系统。
+.PP
+\fBposix_spawn\fP() 和 \fBposix_spawnp\fP() 函数提供组合 \fBfork\fP(2) 和 \fBexec\fP(3) 的功能，在
+\fBexec\fP(3) 之前的子进程中有一些可选的内务处理步骤。 这些函数并不意味着取代 \fBfork\fP(2) 和 \fBexecve\fP(2) 系统调用。
+事实上，它们只提供了使用系统调用可以实现的功能的一个子集。
+.PP
+\fBposix_spawn\fP() 和 \fBposix_spawnp\fP() 之间的唯一区别是它们指定子进程要执行的文件的方式。 对于
+\fBposix_spawn\fP()，可执行文件被指定为路径名 (可以是绝对的或相对的)。 使用
+\fBposix_spawnp\fP()，可执行文件被指定为一个简单的文件名; 系统在 \fBPATH\fP 指定的目录列表中搜索此文件 (与
+\fBexecvp\fP(3)).  对于本页的其余部分，讨论是根据 \fBposix_spawn\fP() 来表述的，并理解 \fBposix_spawnp\fP()
+仅在刚刚描述的要点上有所不同。
+.PP
+这两个函数的剩余参数如下:
+.TP 
+\fIpid\fP
+指向一个缓冲区，该缓冲区用于返回新子进程的进程 ID。
+.TP 
+\fIfile_actions\fP
+指向 \fIspawn file actions object\fP，它指定要在 \fBfork\fP(2) 和 \fBexec\fP(3)
+步骤之间的子级中执行的与文件相关的操作。 该对象在 \fBposix_spawn\fP() 调用之前使用
+\fBposix_spawn_file_actions_init\fP(3) 和 \fBposix_spawn_file_actions_*\fP()
+函数进行初始化和填充。
+.TP 
+\fIattrp\fP
+指向一个 \fIattributes objects\fP，指定创建的子进程的各种属性。 该对象在 \fBposix_spawn\fP() 调用之前使用
+\fBposix_spawnattr_init\fP(3) 和 \fBposix_spawnattr_*\fP() 函数进行初始化和填充。
+.TP 
+\fIargv\fP
+.TQ
+\fIenvp\fP
+为子进程中执行的程序指定参数列表和环境，如 \fBexecve\fP(2)。
+.PP
+下面，函数按照三步过程进行描述: \fBfork\fP() 步骤、pre\-\fBexec\fP() 步骤 (在子进程中执行) 和 \fBexec\fP() 步骤
+(在子进程中执行)。
+.SS "fork() step"
+自 glibc 2.24 以来，\fBposix_spawn\fP() 函数通过使用 \fBCLONE_VM\fP 和 \fBCLONE_VFORK\fP 标志调用
+\fBclone\fP(2) 开始。 旧的实现使用 \fBfork\fP(2)，或者可能使用 \fBvfork\fP(2) (见下文)。
+.PP
+新子进程的 PID 放在 \fI*pid\fP 中。 然后 \fBposix_spawn\fP() 函数将控制权返回给父进程。
+.PP
+随后，父进程可以使用 \fBwait\fP(2) 中描述的系统调用之一来检查子进程的状态。
+如果子进程在下面描述的任何内务处理步骤中失败，或者未能执行所需的文件，它将以 127 状态退出。
+.PP
+在 glibc 2.24 之前，如果满足以下任一条件，则使用 \fBvfork\fP(2) 而不是 \fBfork\fP(2) 创建子进程:
+.IP \[bu] 3
+\fIattrp\fP 指向的属性对象的 \fIspawn\-flags\fP 元素包含 GNU 特定的标志 \fBPOSIX_SPAWN_USEVFORK\fP; or
+.IP \[bu]
+\fIfile_actions\fP 为 NULL，\fIattrp\fP 指向的属性对象的 \fIspawn\-flags\fP 元素是否包含
+\fBPOSIX_SPAWN_SETSIGMASK\fP、\fBPOSIX_SPAWN_SETSIGDEF\fP、\fBPOSIX_SPAWN_SETSCHEDPARAM\fP、\fBPOSIX_SPAWN_SETSCHEDULER\fP、\fBPOSIX_SPAWN_SETPGROUP\fP
+或 \fBPOSIX_SPAWN_RESETIDS\fP。
+.PP
+换句话说，如果调用者请求它，或者如果在 \fBexec\fP(3)s 请求的文件之前的子进程中没有预期的清理，则使用 \fBvfork\fP(2)。
+.SS "pre\-exec() step: housekeeping"
+在 \fBfork()\fP 和 \fBexec()\fP 步骤之间，子进程可能需要执行一组内务处理操作。 \fBposix_spawn\fP() 和
+\fBposix_spawnp\fP() 函数支持子进程在执行可执行文件之前可以完成的一组小型的、定义良好的系统任务。 这些操作由 \fIattrp\fP
+指向的属性对象和 \fIfile_actions\fP 指向的文件操作对象控制。 在子节点中，处理按以下顺序完成:
+.IP (1) 5
+进程属性操作: 信号掩码、信号默认处理程序、调度算法和参数、进程组以及有效用户和组 ID 将按照 \fIattrp\fP 指向的属性对象的指定进行更改。
+.IP (2)
+在 \fIfile_actions\fP 参数中指定的文件操作按照使用对 \fBposix_spawn_file_actions_add*\fP()
+函数指定的顺序执行。
+.IP (3)
+设置了 \fBFD_CLOEXEC\fP 标志的文件描述符被关闭。
+.PP
+子进程中的所有进程属性，除了受 \fIattrp\fP 指向的对象中指定的属性和 \fIfile_actions\fP
+指向的对象中的文件操作影响的那些属性之外，都将受到影响，就好像子进程是用 \fBfork\fP(2) 创建的并且它执行程序一样 \fBexecve\fP(2)。
+.PP
+流程属性操作由 \fIattrp\fP 指向的属性对象定义。 \fIspawn\-flags\fP 属性 (使用
+\fBposix_spawnattr_setflags\fP(3)) 设置) 控制发生的一般操作，对象中的其他属性指定在这些操作期间要使用的值。
+.PP
+\fIspawn\-flags\fP 中可能指定的标志的作用如下:
+.TP 
+\fBPOSIX_SPAWN_SETSIGMASK\fP
+.\" FIXME .
+.\" (see
+.\" .BR posix_spawnattr_setsigmask (3))
+将信号掩码设置为 \fIattrp\fP 指向的对象的 \fIspawn\-sigmask\fP 属性中指定的信号集。 如果未设置
+\fBPOSIX_SPAWN_SETSIGMASK\fP 标志，则子级将继承父级的信号掩码。
+.TP 
+\fBPOSIX_SPAWN_SETSIGDEF\fP
+.\" FIXME .
+.\" (see
+.\" .BR posix_spawnattr_setsigdefault (3))
+将 \fIattrp\fP 指向的对象的 \fIspawn\-sigdefault\fP 属性中指定的集合中的所有信号的配置重置为默认值。
+\fIspawn\-sigdefault\fP 属性中未指定信号的处理，或未指定 \fBPOSIX_SPAWN_SETSIGDEF\fP 时的处理，参见
+\fBexecve\fP(2)。
+.TP 
+\fBPOSIX_SPAWN_SETSCHEDPARAM\fP
+.\" (POSIX_PRIORITY_SCHEDULING only)
+.\" FIXME .
+.\" (see
+.\" .BR posix_spawnattr_setschedparam (3))
+如果设置了这个标志，而没有设置 \fBPOSIX_SPAWN_SETSCHEDULER\fP 标志，则将调度参数设置为 \fIattrp\fP 指向的对象的
+\fIspawn\-schedparam\fP 属性中指定的参数。
+.TP 
+\fBPOSIX_SPAWN_SETSCHEDULER\fP
+设置 child 的调度策略算法和参数，如下:
+.RS
+.IP \[bu] 3
+.\" FIXME .
+.\" (see
+.\" .BR posix_spawnattr_setpolicy (3))
+调度策略设置为 \fIattrp\fP 指向的对象的 \fIspawn\-schedpolicy\fP 属性中指定的值。
+.IP \[bu]
+.\" FIXME .
+.\" (see
+.\" .BR posix_spawnattr_setschedparam (3))
+调度参数设置为 \fIattrp\fP 指向的对象的 \fIspawn\-schedparam\fP 属性中指定的值 (但请参见 BUGS)。
+.PP
+如果未指定 \fBPOSIX_SPAWN_SETSCHEDPARAM\fP 和 \fBPOSIX_SPAWN_SETSCHEDPOLICY\fP
+标志，子进程将从父进程继承相应的调度属性。
+.RE
+.TP 
+\fBPOSIX_SPAWN_RESETIDS\fP
+如果设置了此标志，则将有效的 UID 和 GID 重置为父进程的真实 UID 和 GID。 如果未设置此标志，则子项保留父项的有效 UID 和 GID。
+在任何一种情况下，如果在可执行文件上启用了 set\-user\-ID 和 set\-group\-ID 权限位，它们的效果将覆盖有效 UID 和 GID
+的设置 (se \fBexecve\fP(2)).
+.TP 
+\fBPOSIX_SPAWN_SETPGROUP\fP
+.\" FIXME .
+.\" (see
+.\" .BR posix_spawnattr_setpgroup (3))
+将进程组设置为 \fIattrp\fP 指向的对象的 \fIspawn\-pgroup\fP 属性中指定的值。 如果 \fIspawn\-pgroup\fP 属性的值为
+0，则子进程组 ID 与其进程 ID 相同。如果未设置 \fBPOSIX_SPAWN_SETPGROUP\fP 标志，子进程将继承父进程的组 ID。
+.TP 
+\fBPOSIX_SPAWN_USEVFORK\fP
+自 glibc 2.24 起，此标志无效。 在较旧的实现中，设置此标志会强制 \fBfork()\fP 步骤使用 \fBvfork\fP(2) 而不是
+\fBfork\fP(2)。 必须定义 \fB_GNU_SOURCE\fP 特性测试宏才能得到这个常量的定义。
+.TP 
+\fBPOSIX_SPAWN_SETSID\fP (since glibc 2.26)
+.\" This flag has been accepted in POSIX, see:
+.\" http://austingroupbugs.net/view.php?id=1044
+.\" and has been implemented since glibc 2.26
+.\" commit daeb1fa2e1b33323e719015f5f546988bd4cc73b
+如果设置了这个标志，子进程将创建一个新会话并成为会话负责人。 子进程也应成为会话中新进程组的进程组组长 (参见 \fBsetsid\fP(2)).  必须定义
+\fB_GNU_SOURCE\fP 特性测试宏才能得到这个常量的定义。
+.PP
+.\" mtk: I think we probably don't want to say the following, since it
+.\"      could lead people to do the wrong thing
+.\" The POSIX standard tells you to call
+.\" this function to de-initialize the attributes object pointed to by
+.\" .I attrp
+.\" when you are done with it;
+.\" however, on Linux systems this operation is a no-op.
+如果 \fIattrp\fP 为 NULL，则适用上述每个标志的默认行为。
+.PP
+\fIfile_actions\fP 参数指定在上述一般处理之后、在执行 \fBexec\fP(3) 之前在子进程中执行的一系列文件操作。 如果
+\fIfile_actions\fP 为 NULL，则不采取任何特殊操作，并且标准 \fBexec\fP(3) 语义应用 \[em] 在 exec
+之前打开的文件描述符在新进程中保持打开状态，但已设置 \fBFD_CLOEXEC\fP 标志的文件描述符除外。 文件锁定保持不变。
+.PP
+.\" FIXME . I think the following is best placed in the
+.\" posix_spawn_file_actions_adddup2(3) page, and a similar statement is
+.\" also needed in posix_spawn_file_actions_addclose(3)
+.\" Note that you can specify file descriptors in
+.\" .I posix_spawn_file_actions_adddup2 (3)
+.\" which would not be usable if you called
+.\" .BR dup2 (2)
+.\" at that time--i.e., file descriptors that are opened or
+.\" closed by the earlier operations
+.\" added to
+.\" .I file_actions .
+如果 \fIfile_actions\fP 不为 NULL，则它包含对 \fBopen\fP(2)、\fBclose\fP(2) 和 \fBdup2\fP(2)
+文件的一组有序请求。 这些请求由
+\fBposix_spawn_file_actions_addopen\fP(3)、\fBposix_spawn_file_actions_addclose\fP(3)
+和 \fBposix_spawn_file_actions_adddup2\fP(3) 添加到 \fIfile_actions\fP。 请求的操作按照它们添加到
+\fIfile_actions\fP 的顺序执行。
+.PP
+如果任何管理操作失败 (由于传递了虚假值或信号处理、进程调度、进程组 ID 号码和文件描述符操作可能失败的其他原因)，子进程将退出，退出值为 127。
+.SS "exec() step"
+一旦子节点成功分叉并执行了所有请求的预执行步骤，子节点就会运行请求的可执行文件。
+.PP
+子进程从 \fIenvp\fP 参数获取它的环境，它被解释为好像它已传递给 \fBexecve\fP(2)。 创建进程的参数来自 \fIargv\fP 参数，按
+\fBexecve\fP(2) 处理。
+.SH "RETURN VALUE"
+成功完成后，\fBposix_spawn\fP() 和 \fBposix_spawnp\fP() 将子进程的 PID 放入 \fIpid\fP，并返回 0。 如果在
+\fBfork()\fP 步骤中出现错误，则不会创建子项，\fI*pid\fP 的内容未指定，并且这些函数返回一个错误编号，如下所述。
+.PP
+即使这些函数返回成功状态，子进程仍可能由于与其 pre\-\fBexec\fP() 初始化相关的多种原因而失败。 此外，\fBexec\fP(3) 可能会失败。
+在所有这些情况下，子进程将以 127 的退出值退出。
+.SH ERRORS
+\fBposix_spawn\fP() 和 \fBposix_spawnp\fP() 函数仅在底层 \fBfork\fP(2)、\fBvfork\fP(2) 或
+\fBclone\fP(2) 调用失败的情况下失败; 在这些情况下，这些函数返回一个错误编号，这将是为 \fBfork\fP(2)、\fBvfork\fP(2) 或
+\fBclone\fP(2) 描述的错误之一。
+.PP
+此外，如果出现以下情况，这些函数将失败:
+.TP 
+\fBENOSYS\fP
+此系统不支持函数。
+.SH VERSIONS
+\fBposix_spawn\fP() 和 \fBposix_spawnp\fP() 函数从 glibc 2.2 开始可用。
+.SH STANDARDS
+.\" FIXME . This piece belongs in spawnattr_setflags(3)
+.\" The
+.\" .B POSIX_SPAWN_USEVFORK
+.\" flag is a GNU extension; the
+.\" .B _GNU_SOURCE
+.\" feature test macro must be defined (before including any header files)
+.\" to obtain the definition of this constant.
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+child 中的内务处理活动由 \fIattrp\fP (对于非文件操作) 和 \fIfile_actions\fP 指向的对象控制。在 POSIX
+的说法中，\fIposix_spawnattr_t\fP 和 \fIposix_spawn_file_actions_t\fP
+数据类型被称为对象，它们的元素没有通过名称指定。 可移植程序应仅使用 POSIX 指定的函数来初始化这些对象。
+(换句话说，尽管这些对象可以作为包含字段的结构来实现，但可移植程序必须避免依赖于此类实现细节。)
+.PP
+.\" Tested on glibc 2.12
+根据 POSIX，未指定在调用 \fBposix_spawn\fP() 时是否调用与 \fBpthread_atfork\fP(3) 建立的 fork 处理程序。
+从 glibc 2.24 开始，fork 处理程序在任何情况下都不会执行。 在较旧的实现中，仅当使用 \fBfork\fP(2) 创建子对象时才会调用
+fork 处理程序。
+.PP
+没有 "posix_fspawn" 函数 (即 \fBposix_spawn\fP() 的函数就像 \fBfexecve\fP(3) 对 \fBexecve\fP(2))
+的函数。 但是，可以通过将 \fIpath\fP 参数指定为调用方 \fI/proc/self/fd\fP 目录中的文件之一来获得此功能。
+.SH BUGS
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=12052
+POSIX.1 表示当在 \fIspawn\-flags\fP 中指定 \fBPOSIX_SPAWN_SETSCHEDULER\fP 时，将忽略
+\fBPOSIX_SPAWN_SETSCHEDPARAM\fP (如果存在)。 但是，在 glibc 2.14 之前，如果指定了
+\fBPOSIX_SPAWN_SETSCHEDULER\fP 而未指定 \fBPOSIX_SPAWN_SETSCHEDPARAM\fP，则对
+\fBposix_spawn\fP() 的调用会失败并出现错误。
+.SH EXAMPLES
+下面的程序演示了 POSIX spawn API 中各种函数的使用。 该程序接受可用于创建文件操作和属性对象的命令行属性。
+剩下的命令行参数作为子程序中执行的程序的可执行文件名和命令行参数。
+.PP
+在第一次运行中，\fBdate\fP(1) 命令在子进程中执行，\fBposix_spawn\fP() 调用不使用任何文件操作或属性对象。
+.PP
+.in +4n
+.EX
+$ \fB./a.out date\fP
+子节点的 PID: 7634
+2011 年 2 月 1 日星期二 19:47:50 CEST
+子状态: 退出，status=0
+.EE
+.in
+.PP
+在下一次运行中，\fI\-c\fP 命令行选项用于创建一个文件操作对象，该对象关闭子项中的标准输出。 因此，\fBdate\fP(1)
+在尝试执行输出时失败并退出，状态为 1.
+.PP
+.in +4n
+.EX
+$ \fB./a.out \-c date\fP
+子节点的 PID: 7636
+日期: 写入错误: 错误的文件描述符
+子节点状态: 退出，status=1
+.EE
+.in
+.PP
+在下一次运行中，\fI\-s\fP 命令行选项用于创建一个属性对象，该对象指定应阻止子进程中的所有 (blockable) 信号。 因此，尝试使用
+\fBkill\fP(1) 发送的默认信号 (即 \fBSIGTERM\fP) 失败，因为该信号被阻止) 来杀死子节点。 所以杀子节点，\fBSIGKILL\fP
+是必须的 (\fBSIGKILL\fP 不能挡)。
+.PP
+.in +4n
+.EX
+$ \fB./a.out \-s sleep 60 &\fP
+[1] 7637
+$ 子节点的 PID: 7638
+
+$ \fBkill 7638\fP
+$ \fBkill \-KILL 7638\fP
+$ 子状态: 被信号 9 杀死
+[1]+ 完成 ./a.out \-s 睡眠 60
+.EE
+.in
+.PP
+当我们尝试在子进程中执行一个不存在的命令时，\fBexec\fP(3) 失败并且子进程以状态 127 退出。
+.PP
+.in +4n
+.EX
+$ \fB./a.out xxxxx 子节点的 PID: 10190 子状态: 退出，status=127\fP
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (posix_spawn.c)
+\&
+.EX
+#include <errno.h>
+#include <spawn.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <wait.h>
+
+#define errExit(msg)    do { perror(msg); \e
+                             exit(EXIT_FAILURE); } while (0)
+
+#define errExitEN(en, msg) \e
+                        do { errno = en; perror(msg); \e
+                             exit(EXIT_FAILURE); } while (0)
+
+char **environ;
+
+int
+main(int argc, char *argv[])
+{
+    pid_t child_pid;
+    int s, opt, status;
+    sigset_t mask;
+    posix_spawnattr_t attr;
+    posix_spawnattr_t *attrp;
+    posix_spawn_file_actions_t file_actions;
+    posix_spawn_file_actions_t *file_actionsp;
+
+    /* Parse command\-line options, which can be used to specify an
+       attributes object and file actions object for the child. */
+
+    attrp = NULL;
+    file_actionsp = NULL;
+
+    while ((opt = getopt(argc, argv, "sc")) != \-1) {
+        switch (opt) {
+        case \[aq]c\[aq]:       /* \-c: close standard output in child */
+
+            /* Create a file actions object and add a "close"
+               action to it. */
+
+            s = posix_spawn_file_actions_init(&file_actions);
+            if (s != 0)
+                errExitEN(s, "posix_spawn_file_actions_init");
+
+            s = posix_spawn_file_actions_addclose(&file_actions,
+                                                  STDOUT_FILENO);
+            if (s != 0)
+                errExitEN(s, "posix_spawn_file_actions_addclose");
+
+            file_actionsp = &file_actions;
+            break;
+
+        case \[aq]s\[aq]:       /* \-s: block all signals in child */
+
+            /* Create an attributes object and add a "set signal mask"
+               action to it. */
+
+            s = posix_spawnattr_init(&attr);
+            if (s != 0) 
+                errExitEN(s, "posix_spawnattr_init");
+            s = posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK);
+            if (s != 0)
+                errExitEN(s, "posix_spawnattr_setflags");
+
+            sigfillset(&mask);
+            s = posix_spawnattr_setsigmask(&attr, &mask);
+            if (s != 0)
+                errExitEN(s, "posix_spawnattr_setsigmask");
+
+            attrp = &attr;
+            break;
+        }
+    }
+
+    /* Spawn the child. The name of the program to execute and the
+       command\-line arguments are taken from the command\-line arguments
+       of this program. The environment of the program execed in the
+       child is made the same as the parent\[aq]s environment. */
+
+    s = posix_spawnp(&child_pid, argv[optind], file_actionsp, attrp,
+                     &argv[optind], environ);
+    if (s != 0)
+        errExitEN(s, "posix_spawn");
+
+    /* Destroy any objects that we created earlier. */
+
+    if (attrp != NULL) {
+        s = posix_spawnattr_destroy(attrp);
+        if (s != 0)
+            errExitEN(s, "posix_spawnattr_destroy");
+    }
+
+    if (file_actionsp != NULL) {
+        s = posix_spawn_file_actions_destroy(file_actionsp);
+        if (s != 0)
+            errExitEN(s, "posix_spawn_file_actions_destroy");
+    }
+
+    printf("PID of child: %jd\en", (intmax_t) child_pid);
+
+    /* Monitor status of the child until it terminates. */
+
+    做 {
+        s = waitpid(child_pid, &status, WUNTRACED | WCONTINUED);
+        if (s == \-1)
+            errExit("waitpid");
+
+        printf("Child status: ");
+        if (WIFEXITED(status)) {
+            printf("exited, status=%d\en", WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            printf("killed by signal %d\en", WTERMSIG(status));
+        } else if (WIFSTOPPED(status)) {
+            printf("stopped by signal %d\en", WSTOPSIG(status));
+        } else if (WIFCONTINUED(status)) {
+            printf("continued\en");
+        }
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.\" Disable hyphenation
+.nh
+.ad l
+\fBclose\fP(2), \fBdup2\fP(2), \fBexecl\fP(2), \fBexeclp\fP(2), \fBfork\fP(2), \fBopen\fP(2),
+\fBsched_setparam\fP(2), \fBsched_setscheduler\fP(2), \fBsetpgid\fP(2), \fBsetuid\fP(2),
+\fBsigaction\fP(2), \fBsigprocmask\fP(2), \fBposix_spawn_file_actions_addclose\fP(3),
+\fBposix_spawn_file_actions_adddup2\fP(3),
+\fBposix_spawn_file_actions_addopen\fP(3),
+\fBposix_spawn_file_actions_destroy\fP(3), \fBposix_spawn_file_actions_init\fP(3),
+\fBposix_spawnattr_destroy\fP(3), \fBposix_spawnattr_getflags\fP(3),
+\fBposix_spawnattr_getpgroup\fP(3), \fBposix_spawnattr_getschedparam\fP(3),
+\fBposix_spawnattr_getschedpolicy\fP(3), \fBposix_spawnattr_getsigdefault\fP(3),
+\fBposix_spawnattr_getsigmask\fP(3), \fBposix_spawnattr_init\fP(3),
+\fBposix_spawnattr_setflags\fP(3), \fBposix_spawnattr_setpgroup\fP(3),
+\fBposix_spawnattr_setschedparam\fP(3), \fBposix_spawnattr_setschedpolicy\fP(3),
+\fBposix_spawnattr_setsigdefault\fP(3), \fBposix_spawnattr_setsigmask\fP(3),
+\fBpthread_atfork\fP(3), \fI<spawn.h>\fP, Base Definitions volume of
+POSIX.1\-2001, \fIhttp://www.opengroup.org/unix/online.html\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

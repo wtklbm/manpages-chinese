@@ -1,0 +1,145 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-gt68xx 5 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-gt68xx
+.SH NAME
+sane\-gt68xx \- 基于 GT\-68XX 的 USB 平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-gt68xx\fP 库实现了一个 SANE (扫描仪访问现在简单) 后端，该后端提供对基于 Grandtech GT\-6801 和
+GT\-6816 芯片的 USB 平板扫描仪的访问。 可以在 gt68xx 后端主页上找到支持的扫描仪列表:
+\fIhttp://www.meier\-geinitz.de/sane/gt68xx\-backend/\fP。
+.PP
+这是测试版软件。特别是如果您测试新的或未经测试的扫描仪，请将您的手放在扫描仪的插头上，如果头部在扫描区域的末端碰撞，则将其拔下。
+.PP
+如果您拥有所有权的扫描仪不是 gt68xx 主页上列出的与此后端一起使用的扫描仪，请通过将扫描仪的确切型号名称以及 USB 供应商和设备 ID
+(例如来自 \fBsane\-find\-scanner\fP(1) 或系统日志) 发送给我来告诉我。即使扫描仪的名称与已列为支持的型号略有不同，也请告诉我。
+.PP
+如果您拥有 gt68xx 后端未检测到但具有 GT\-6801 或 GT\-6816 芯片组的扫描仪，您可以尝试将其添加到后端。看看下面的网页:
+\fIhttp://www.meier\-geinitz.de/sane/gt68xx\-backend/adding.html\fP
+.PP
+.SH "LIBUSB ISSUES"
+请使用 libusb\-0.1.8 或更高版本。如果没有 libusb 或较旧的 libusb
+版本，可能会出现各种问题。\fBsane\-find\-scanner\fP(1) 无需进一步操作即可找到扫描仪。有关设置权限和一般 USB 信息，请查看
+\fBsane\-usb\fP(5)。
+.PP
+
+.SH "FIRMWARE FILE"
+您需要扫描仪的固件文件。这是一个包含将上传到扫描仪内存的软件的小文件。通常命名为 *.usb，例如 \fIPS1fw.usb\fP。 它包含在制造商提供的安装
+CD 中，但它可能与安装程序一起打包在一个 .exe 文件中。对于 Mustek 扫描仪，可以从 gt68xx
+后端主页下载该文件。对于其他扫描仪，请查看 CD 中的 .usb 文件。如果您只找到 *.cab 文件，请尝试 \fBcabextract\fP(1)
+来解包。如果一切都失败了，您必须安装 Windows 驱动程序并从那里获取固件 (通常在 \fIwindows/system\fP 或 \fIsystem32\fP
+目录中)。将该固件文件放入 \fI/usr/share/sane/gt68xx/\fP。 确保每个人都可以阅读。
+
+.SH CONFIGURATION
+\fIgt68xx.conf\fP 文件的内容是一个 usb 行列表，其中包含与 USB 扫描仪相对应的供应商和产品 ID。该文件还可以包含选项行。
+空行和以哈希标记 (#) 开头的行将被忽略。 扫描仪由 \fBusb vendor_id product_id\fP
+语言自动检测，\fIgt68xx.conf\fP 已包含在内。 "vendor_id" 和 "product_id" 是识别扫描仪的十六进制数字。
+.PP
+\fBoverride\fP、\fBfirmware\fP、\fBvendor\fP、\fBmodel\fP 和 \fBafe\fP 选项必须放在它们引用的 \fBusb\fP 行之后。
+.PP
+选项 \fBoverride\fP 用于覆盖默认模型参数。对于一些使用相同 vendor/product id
+但不同的扫描仪来说，这是必需的。对于这些扫描器，配置文件中已经注释掉了覆盖行。 \fBoverride mustek\-scanexpress\-1200\-ub\-plus\fP 是 Mustek Scanexpress 1200 UB
+Plus、Medion/Lifetec/Tevion LT 9452 和 Trust Compact Scan USB 19200 所必需的。
+\fBoverride artec\-ultima\-2000\fP 用于 Artec Ultima 2000、Boeder SmartScan Slim
+Edition、Medion/Cytron MD/LT 9385、Medion/Tevion MD 9458 和 Trust Flat Scan USB
+19200。 \fBoverride mustek\-bearpaw\-2400\-cu\fP 是 Mustek BearPaw 2400 CU 和 Fujitsu
+1200CUS 所必需的。\fBoverride\fP 选项必须是 \fBusb\fP 行之后的第一个选项。
+.PP
+选项 \fBfirmware\fP 选择固件文件的名称和路径。仅当默认 (或覆盖) 不起作用时才有必要。默认固件目录为
+\fI/usr/share/sane/gt68xx/\fP。 您可能需要创建此目录。如果要将固件文件放在不同的路径，请使用 \fBfirmware\fP 行。
+.PP
+\fBvendor\fP 和 \fBmodel\fP 选项不是绝对必要的，只是为了方便。很多来自不同制造商的扫描仪共享相同的 vendor/product
+id，因此您可以在此处设置 "correct" 名称。
+.PP
+\fBafe\fP 选项允许为扫描器的模拟前端设置自定义偏移和增益值。如果自动粗略校准被禁用，此选项可用于选择 AFE
+值，或使自动粗略校准更快。对于后一种用法，启用调试级别 3 (见下文)，扫描图像并使用 "afe" 查找调试行字符串。将此行复制到
+\fIgt68xx.conf\fP。 该选项有六个参数: 红色偏移、红色增益、绿色偏移、绿色增益、蓝色偏移和蓝色增益。
+.PP
+示例配置文件如下所示:
+.PP
+.RS
+usb 0x05d8 0x4002
+.br
+覆盖 "mustek\-scanexpress\-1200\-ub\-plus"
+.br
+固件 "/opt/gt68xx/SBfw.usb"
+.br
+供应商 "Trust"
+.br
+型号 "Compact Scan USB 19200"
+.br
+安全 0x20 0x02 0x22 0x03 0x1f 0x04
+.RE
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/gt68xx.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-gt68xx.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-gt68xx.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_GT68XX\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 更高的调试级别会增加输出的冗长程度。如果调试级别设置为 1
+或更高，一些通常隐藏的调试选项将变得可用。小心处理它们。
+
+示例: export SANE_DEBUG_GT68XX=4
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-usb\fP(5), \fBsane\-artec_eplus48u\fP(5)  \fBsane\-plustek\fP(5),
+\fBsane\-ma1509\fP(5), \fBsane\-mustek_usb\fP(5), \fBsane\-mustek\fP(5),
+\fBsane\-mustek_pp\fP(5), \fBcabextract\fP(1)
+.br
+\fI/usr/share/doc/sane/gt68xx/gt68xx.CHANGES\fP
+.br
+\fIhttp://www.meier\-geinitz.de/sane/gt68xx\fP
+
+.SH AUTHOR
+亨宁迈尔 \- 盖尼茨 <\fIhenning@meier\-geinitz.de\fP>
+.br
+最初的 gt68xx 驱动程序是由 Sergey Vlasov、Andreas Nowack 和 David Stevenson
+编写的。感谢您向他们和所有其他贡献者发送补丁并回答问题。
+
+.SH BUGS
+图像的前几行对于 2400 TA Plus 来说是垃圾。
+.PP
+当 X 分辨率和 Y 分辨率不同时，应该使用插值而不是仅仅复制数据。
+.PP
+缺少对按钮的支持。
+.PP
+在 gt68xx 后端主页 \fIhttp://www.meier\-geinitz.de/sane/gt68xx\-backend/\fP
+上提供了更详细的错误信息。
+.br
+如果您发现错误或缺少特性请联系我们: <\fIsane\-devel@alioth\-lists.debian.net\fP>。
+.br
+如果未正确检测到您的扫描仪，请发送调试日志 (请参见上面的 \fBSANE_DEBUG_GT68XX\fP)。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

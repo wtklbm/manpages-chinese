@@ -1,0 +1,106 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) Bruno Haible <haible@clisp.cons.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" References consulted:
+.\"   GNU glibc-2 source code and manual
+.\"   Dinkumware C library reference http://www.dinkumware.com/
+.\"   OpenGroup's Single UNIX specification http://www.UNIX-systems.org/online.html
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH wcsnrtombs 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+wcsnrtombs \- 将宽字符字符串转换为多字节字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <wchar.h>\fP
+.PP
+\fBsize_t wcsnrtombs(char \fP\fIdest\fP\fB[restrict .\fP\fIlen\fP\fB], const wchar_t **restrict \fP\fIsrc\fP\fB,\fP
+\fB                  size_t \fP\fInwc\fP\fB, size_t \fP\fIlen\fP\fB, mbstate_t *restrict \fP\fIps\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBwcsnrtombs\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBwcsnrtombs\fP() 函数类似于 \fBwcsrtombs\fP(3) 函数，除了要转换的宽字符数，从 \fI*src\fP 开始，限制为 \fInwc\fP。
+.PP
+如果 \fIdest\fP 不为 NULL，则 \fBwcsnrtombs\fP() 函数最多将 \fInwc\fP 个宽字符从宽字符字符串 \fI*src\fP 转换为从
+\fIdest\fP 开始的多字节字符串。 至多 \fIlen\fP 字节写入 \fIdest\fP。 更新换档状态 \fI*ps\fP。 转换是通过重复调用
+\fIwcrtomb(dest, *src, ps)\fP 来有效执行的，只要调用成功，然后将 \fIdest\fP 递增写入的字节数，将 \fI*src\fP 递增
+1。 转换可能因三个原因而停止:
+.IP \[bu] 3
+遇到不能表示为多字节序列的宽字符 (根据当前语言环境)。 在这种情况下，\fI*src\fP 仍然指向无效的宽字符，返回 \fI(size_t)\ \-1\fP，并将
+\fIerrno\fP 设置为 \fBEILSEQ\fP。
+.IP \[bu]
+\fInwc\fP 宽字符已经转换，没有遇到空宽字符 (L\[aq]\e0\[aq])，或者长度限制强制停止。 在这种情况下，\fI*src\fP
+将指向下一个要转换的宽字符，并返回写入 \fIdest\fP 的字节数。
+.IP \[bu]
+宽字符字符串已完全转换，包括终止空宽字符 (具有将 \fI*ps\fP 带回初始状态的副作用)。 在这种情况下，\fI*src\fP 设置为 NULL，并返回写入
+\fIdest\fP 的字节数，不包括终止空字节 (\[aq]\e0\[aq])。
+.PP
+如果 \fIdest\fP 为 NULL，则 \fIlen\fP 被忽略，并且转换如上进行，只是转换后的字节不写出到内存，并且不存在目标长度限制。
+.PP
+在上述两种情况下，如果 \fIps\fP 为 NULL，则使用仅 \fBwcsnrtombs\fP() 函数已知的静态匿名状态。
+.PP
+程序员必须确保在 \fIdest\fP 处至少有 \fIlen\fP 字节的空间。
+.SH "RETURN VALUE"
+\fBwcsnrtombs\fP() 函数返回构成多字节序列转换部分的字节数，不包括终止空字节。 如果遇到无法转换的宽字符，则返回 \fI(size_t)\ \-1\fP，并将 \fIerrno\fP 设置为 \fBEILSEQ\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBwcsnrtombs\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:wcsnrtombs/!ps
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2008.
+.SH NOTES
+\fBwcsnrtombs\fP() 的行为取决于当前语言环境的 \fBLC_CTYPE\fP 类别。
+.PP
+将 NULL 作为 \fIps\fP 传递不是多线程安全的。
+.SH "SEE ALSO"
+\fBiconv\fP(3), \fBmbsinit\fP(3), \fBwcsrtombs\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

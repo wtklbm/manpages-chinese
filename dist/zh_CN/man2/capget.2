@@ -1,0 +1,163 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright: written by Andrew Morgan <morgan@kernel.org>
+.\" and Copyright 2006, 2008, Michael Kerrisk <tmk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Modified by David A. Wheeler <dwheeler@ida.org>
+.\" Modified 2004-05-27, mtk
+.\" Modified 2004-06-21, aeb
+.\" Modified 2008-04-28, morgan of kernel.org
+.\"     Update in line with addition of file capabilities and
+.\"     64-bit capability sets in Linux 2.6.2[45].
+.\" Modified 2009-01-26, andi kleen
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH capget 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+capget, capset\-thread(s) 的 set/get 功能
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/capability.h>\fP /* Definition of \fBCAP_*\fP and
+\fB                                 _LINUX_CAPABILITY_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_capget, cap_user_header_t \fP\fIhdrp\fP\fB,\fP
+\fB            cap_user_data_t \fP\fIdatap\fP\fB);\fP
+\fBint syscall(SYS_capset, cap_user_header_t \fP\fIhdrp\fP\fB,\fP
+\fB            const cap_user_data_t \fP\fIdatap\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+这两个系统调用是用于获取和设置线程功能的原始内核接口。 这些系统调用不仅特定于 Linux，而且内核 API 也可能会更改，并且这些系统调用 (特别是
+\fIcap_user_*_t\fP 类型的格式) 的使用会随着每个内核修订而扩展，但旧程序将继续工作。
+.PP
+.\"
+便携接口有 \fBcap_set_proc\fP(3) 和 \fBcap_get_proc\fP(3); 如果可能，您应该在应用程序中使用这些接口; 见注释。
+.SS "Current details"
+现在您已经收到警告，一些当前的内核细节。 结构定义如下。
+.PP
+.in +4n
+.EX
+#define _LINUX_CAPABILITY_VERSION_1  0x19980330
+#define _LINUX_CAPABILITY_U32S_1     1
+
+.\" commit e338d263a76af78fe8f38a72131188b58fceb591
+.\" Added 64 bit capability support
+        /* V2 added in Linux 2.6.25;  deprecated */
+#define _LINUX_CAPABILITY_VERSION_2  0x20071026
+#define _LINUX_CAPABILITY_U32S_2     2
+
+.\" commit ca05a99a54db1db5bca72eccb5866d2a86f8517f
+        /* V3 added in Linux 2.6.26 */
+#define _LINUX_CAPABILITY_VERSION_3  0x20080522
+#define _LINUX_CAPABILITY_U32S_3     2
+
+typedef struct __user_cap_header_struct {
+   __u32 version;
+   int pid;
+} *cap_user_header_t;
+
+typedef struct __user_cap_data_struct {
+   __u32 effective;
+   __u32 permitted;
+   __u32 inheritable;
+} *cap_user_data_t;
+.EE
+.in
+.PP
+\fIeffective\fP、\fIpermitted\fP 和 \fIinheritable\fP 字段是 \fBcapabilities\fP(7)
+中定义的功能的位掩码。 请注意，\fBCAP_*\fP 值是位索引，需要在 ORing 到位字段之前进行位移。 要定义传递给系统调用的结构，您必须使用
+\fIstruct __user_cap_header_struct\fP 和 \fIstruct __user_cap_data_struct\fP 名称，因为
+typedef 只是指针。
+.PP
+Linux 2.6.25 之前的内核更喜欢 \fB_LINUX_CAPABILITY_VERSION_1\fP 版本的 32 位功能。 Linux
+2.6.25 添加了 64 位功能集，版本为 \fB_LINUX_CAPABILITY_VERSION_2\fP。 然而，有一个 API 故障，Linux
+2.6.26 添加 \fB_LINUX_CAPABILITY_VERSION_3\fP 来解决这个问题。
+.PP
+请注意，64 位功能使用 \fIdatap[0]\fP 和 \fIdatap[1]\fP，而 32 位功能仅使用 \fIdatap[0]\fP。
+.PP
+在支持文件功能 (VFS 功能支持) 的内核上，这些系统调用的行为略有不同。 该支持在 Linux 2.6.24 中作为选项添加，在 Linux
+2.6.33 中固定为 (nonoptional)。
+.PP
+对于 \fBcapget\fP() 调用，可以通过使用 \fIhdrp\->pid\fP 字段值指定其进程 ID 来探测任何进程的功能。
+.PP
+.\"
+有关数据的详细信息，请参见 \fBcapabilities\fP(7)。
+.SS "With VFS capabilities support"
+.\"
+VFS 功能使用文件扩展属性 (请参见 \fBxattr\fP(7)) 以允许将功能附加到可执行文件。
+这种特权模型废弃了内核对一个进程异步设置另一个进程能力的支持。 也就是说，在具有 VFS 功能支持的内核上，当调用 \fBcapset\fP()
+时，\fIhdrp\->pid\fP 的唯一允许值是 0，或者等效地，\fBgettid\fP(2) 返回的值。
+.SS "Without VFS capabilities support"
+在不提供 VFS 功能支持的旧内核上，如果调用者具有 \fBCAP_SETPCAP\fP 功能，则可以使用 \fBcapset\fP()
+不仅更改调用者自己的功能，还可以更改其他线程的功能。 当 \fIhdrp\fP 的 \fIpid\fP 字段为非零时，调用对由 \fIpid\fP
+字段指定的线程的功能进行操作，或者如果 \fIpid\fP 为 0，则对调用线程的功能进行操作。 如果 \fIpid\fP 指的是单线程进程，那么 \fIpid\fP
+可以指定为传统的进程 ID; 在多线程进程的线程上操作需要 \fBgettid\fP(2) 返回类型的线程 ID。 对于 \fBcapset\fP()，\fIpid\fP
+也可以是: \-1，表示在除调用者和 \fBinit\fP(1) 之外的所有线程上执行更改; 或小于 \-1 的值，在这种情况下，更改将应用于 ID 为
+\-\fIpid\fP 的进程组的所有成员。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+调用失败并出现错误 \fBEINVAL\fP，并在指定了不受支持的 \fIversion\fP 值时将 \fIhdrp\fP 的 \fIversion\fP 字段设置为
+\fB_LINUX_CAPABILITY_VERSION_?\fP 的内核首选值。 通过这种方式，可以探查当前首选的能力版本是什么。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+错误的内存地址。 \fIhdrp\fP 不能为 NULL。 只有当用户试图确定内核支持的首选功能版本格式时，\fIdatap\fP 才可能为 NULL。
+.TP 
+\fBEINVAL\fP
+其中一个参数无效。
+.TP 
+\fBEPERM\fP
+试图将功能添加到允许集中，或在有效集中设置不在允许集中的功能。
+.TP 
+\fBEPERM\fP
+尝试向可继承集添加功能，并且:
+.RS
+.IP \[bu] 3
+该功能不在调用者的边界集中; or
+.IP \[bu]
+该功能不在调用者的允许集中，并且调用者在其有效集中缺少 \fBCAP_SETPCAP\fP 功能。
+.RE
+.TP 
+\fBEPERM\fP
+调用者试图使用 \fBcapset\fP() 修改除自身以外的线程的功能，但缺少足够的权限。 对于支持 VFS 功能的内核，这是绝对不允许的。 对于缺少
+VFS 支持的内核，需要 \fBCAP_SETPCAP\fP 功能。 (Linux 2.6.11 之前内核中的错误意味着如果没有此功能的线程试图通过将
+\fIpid\fP 字段指定为非零值 (即 \fBgetpid\fP(2)) 返回的值而不是 0) 来更改其自身的功能，也会发生此错误。)
+.TP 
+\fBESRCH\fP
+没有这样的线程。
+.SH STANDARDS
+这些系统调用是特定于 Linux 的。
+.SH NOTES
+\fIlibcap\fP 库提供了函数查询和设置函数的可移植接口，可在此处获取:
+.br
+.UR http://git.kernel.org/cgit\:/linux\:/kernel\:/git\:/morgan\:\:/libcap.git
+.UE
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBgettid\fP(2), \fBcapabilities\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

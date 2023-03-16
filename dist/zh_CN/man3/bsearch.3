@@ -1,0 +1,125 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Mon Mar 29 22:41:16 1993, David Metcalfe
+.\" Modified Sat Jul 24 21:35:16 1993, Rik Faith (faith@cs.unc.edu)
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH bsearch 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+bsearch \- 排序数组的二分搜索
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBvoid *bsearch(const void \fP\fIkey\fP\fB[.\fP\fIsize\fP\fB], const void \fP\fIbase\fP\fB[.\fP\fIsize\fP\fB * .\fP\fInmemb\fP\fB],\fP
+\fB              size_t \fP\fInmemb\fP\fB, size_t \fP\fIsize\fP\fB,\fP
+\fB              int (*\fP\fIcompar\fP\fB)(const void [.\fP\fIsize\fP\fB], const void [.\fP\fIsize\fP\fB]));\fP
+.fi
+.SH DESCRIPTION
+\fBbsearch\fP() 函数搜索 \fInmemb\fP 对象数组，其中初始成员由 \fIbase\fP 指向，以查找与 \fIkey\fP 指向的对象匹配的成员。
+数组每个成员的大小由 \fIsize\fP 指定。
+.PP
+数组内容按照 \fIcompar\fP 引用的比较函数升序排列。 \fIcompar\fP 例程应有两个参数，依次指向 \fIkey\fP 对象和数组成员，如果找到
+\fIkey\fP 对象，则应分别返回小于、等于或大于零的整数，以小于、匹配或大于数组成员。
+.SH "RETURN VALUE"
+\fBbsearch\fP() 函数返回指向数组匹配成员的指针，如果未找到匹配项，则返回 NULL。 如果有多个元素与键匹配，则返回的元素是未指定的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBbsearch\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.SH EXAMPLES
+下面的示例首先使用 \fBqsort\fP(3) 对结构数组进行排序，然后使用 \fBbsearch\fP() 检索所需的元素。
+.PP
+.\" SRC BEGIN (bsearch.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define ARRAY_SIZE(arr)  (sizeof((arr)) / sizeof((arr)[0]))
+
+struct mi {
+    int         nr;
+    const char  *name;
+};
+
+static struct mi  months[] = {
+    { 1, "jan" }, { 2, "feb" }, { 3, "mar" }, { 4, "apr" },
+    { 5, "may" }, { 6, "jun" }, { 7, "jul" }, { 8, "aug" },
+    { 9, "sep" }, {10, "oct" }, {11, "nov" }, {12, "dec" }
+};
+
+static int
+compmi(const void *m1, const void *m2)
+{
+    const struct mi *mi1 = m1;
+    const struct mi *mi2 = m2;
+
+    return strcmp(mi1\->name, mi2\->name);
+}
+
+int
+main(int argc, char *argv[])
+{
+    qsort(months, ARRAY_SIZE(months), sizeof(months[0]), compmi);
+    for (size_t i = 1;  i < argc;  i++) {
+        struct mi key;
+        struct mi *res;
+
+        key.name = argv[i];
+        res = bsearch(&key, months, ARRAY_SIZE(months),
+                      sizeof(months[0]), compmi);
+        if (res == NULL)
+            printf("\[aq]%s\[aq]: unknown month\en", argv[i]);
+        else
+            printf("%s: month #%d\en", res\->name, res\->nr);
+    }
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBhsearch\fP(3), \fBlsearch\fP(3), \fBqsort\fP(3), \fBtsearch\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

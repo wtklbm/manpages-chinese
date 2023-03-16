@@ -1,0 +1,105 @@
+.\" -*- coding: UTF-8 -*-
+.\"
+.\" Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
+.\" Written by David Howells (dhowells@redhat.com)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH kernel_lockdown 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+kernel_lockdown \- 内核映像访问预防，特性
+.SH DESCRIPTION
+内核锁定特性旨在防止直接和间接访问正在运行的内核映像，试图防止对内核映像进行未经授权的修改，并防止访问位于内核内存中的安全和加密数据，同时仍然允许驱动程序模块加载。
+.PP
+如果访问或使用了禁止或限制的特性内核将发出如下消息:
+.PP
+.in +4n
+.EX
+Lockdown: X: Y is restricted, 见 man kernel_lockdown.7
+.EE
+.in
+.PP
+其中 X 表示进程名称，Y 表示受限制的内容。
+.PP
+.\"
+在启用 EFI 的 x86 或 arm64 机器上，如果系统以 EFI 安全启动模式启动，锁定将自动启用。
+.SS Coverage
+当锁定生效时，许多特性将被禁用或限制使用。 这包括允许直接访问内核映像的特殊设备文件和内核服务:
+.PP
+.RS
+/dev/mem
+.br
+/dev/kmem
+.br
+/dev/kcore
+.br
+/dev/ioports
+.br
+BPF
+.br
+kprobes
+.RE
+.PP
+以及直接配置和控制设备的能力，以防止使用设备访问或修改内核映像:
+.IP \[bu] 3
+模块参数的使用，通过内核命令行或加载模块时直接向驱动程序指定硬件参数。
+.IP \[bu]
+使用直接 PCI BAR 访问。
+.IP \[bu]
+x86 上 ioperm 和 iopl 指令的使用。
+.IP \[bu]
+KD*IO 控制台 ioctl 的使用。
+.IP \[bu]
+使用 TIOCSSERIAL 串行 ioctl。
+.IP \[bu]
+x86 上 MSR 寄存器的改变。
+.IP \[bu]
+PCMCIA CIS 的替代品。
+.IP \[bu]
+覆盖 ACPI 表。
+.IP \[bu]
+使用 ACPI 错误注入。
+.IP \[bu]
+ACPI RDSP 地址的规范。
+.IP \[bu]
+使用 ACPI 自定义方法。
+.PP
+某些设施受到限制:
+.IP \[bu] 3
+只能加载有效签名的模块 (如果正在加载的模块文件由 IMA 评估担保，则免除)。
+.IP \[bu]
+只有经过有效签名的二进制文件才可以执行 (如果要执行的二进制映像文件由 IMA 评估担保，则可以免除)。
+.IP \[bu]
+不允许交换未加密的 hibernation/suspend，因为内核映像保存到可以访问的介质中。
+.IP \[bu]
+不允许使用 debugfs，因为这允许执行一系列操作，包括直接配置、访问和驱动硬件。
+.IP \[bu]
+IMA 要求将 "secure_boot" 规则添加到策略中，无论它们是否在命令行中指定，以用于安全启动锁定模式中的内置策略和自定义策略。
+.SH VERSIONS
+Linux 5.4 中添加了内核锁定，特性。
+.SH NOTES
+内核锁定特性由 CONFIG_SECURITY_LOCKDOWN_LSM 启用。 \fIlsm=lsm1,...,lsmN\fP 命令行参数控制 Linux
+安全模块的初始化顺序。 它必须包含字符串 \fIlockdown\fP 才能启用内核锁定，特性。 如果未指定命令行参数，则初始化回退到已弃用的
+\fIsecurity=\fP 命令行参数的值，并进一步返回到 CONFIG_LSM 的值。
+.\" commit 000d388ed3bbed745f366ce71b2bb7c2ee70f449
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

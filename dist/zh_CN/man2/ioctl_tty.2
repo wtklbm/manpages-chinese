@@ -1,0 +1,613 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2002 Walter Harms <walter.harms@informatik.uni-oldenburg.de>
+.\" and Andries Brouwer <aeb@cwi.nl>.
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_tty 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_tty \- ioctls for terminals and serial lines
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/ioctl.h>\fP
+\fB#include <asm/termbits.h>\fP   /* Definition of \fBstruct termios\fP,
+\fB                               struct termios2\fP, and
+\fB                               struct termios2\fP, and
+\fB                               TC*\fP{\fBFLUSH\fP,\fBON\fP,\fBOFF\fP} and other constants */
+.PP
+\fBint ioctl(int \fP\fIfd\fP\fB, int \fP\fIcmd\fP\fB, ...);\fP
+.fi
+.SH DESCRIPTION
+用于终端和串口的 \fBioctl\fP(2) 调用接受多种可能的命令参数。 大多数需要第三个参数，类型不同，这里称为 \fIargp\fP 或 \fIarg\fP。
+.PP
+使用 \fBioctl\fP() 会产生不可移植的程序。 尽可能使用 \fBtermios\fP(3) 中描述的 POSIX 接口。
+.PP
+请注意 \fI<asm/termbits.h>\fP 的 \fBstruct termios\fP 与 \fI<termios.h>\fP
+的 \fBstruct termios\fP 不同且不兼容。 这些 ioctl 调用需要来自 \fI<asm/termbits.h>\fP 的
+\fBstruct termios\fP。
+.SS "Get and set terminal attributes"
+.TP 
+\fBTCGETS\fP
+参数: \fBstruct termios\~*\fP\fIargp\fP
+.IP
+相当于 \fItcgetattr(fd, argp)\fP。
+.IP
+获取当前串口设置。
+.TP 
+\fBTCSETS\fP
+参数: \fBconst struct termios\~*\fP\fIargp\fP
+.IP
+相当于 \fItcsetattr(fd, TCSANOW, argp)\fP。
+.IP
+设置当前串口设置。
+.TP 
+\fBTCSETSW\fP
+参数: \fBconst struct termios\~*\fP\fIargp\fP
+.IP
+相当于 \fItcsetattr(fd, TCSADRAIN, argp)\fP。
+.IP
+允许输出缓冲区为 drain，并设置当前串口设置。
+.TP 
+\fBTCSETSF\fP
+参数: \fBconst struct termios\~*\fP\fIargp\fP
+.IP
+相当于 \fItcsetattr(fd, TCSAFLUSH, argp)\fP。
+.IP
+允许输出缓冲区为 drain，丢弃挂起的输入，并设置当前的串行端口设置。
+.PP
+.\" commit 64bb6c5e1ddcd47c951740485026ef08975ee2e6
+.\" commit 592ee3a5e5e2a981ef2829a0380093006d045661
+下面这 4 个 ioctl，在 Linux 2.6.20 中加入，和 \fBTCGETS\fP，\fBTCSETS\fP，\fBTCSETSW\fP，\fBTCSETSF\fP
+一样，只是取的是 \fIstruct termios2\~*\fP，而不是 \fIstruct termios\~*\fP。 如果结构体成员 \fBc_cflag\fP
+包含标志 \fBBOTHER\fP，则波特率作为整数值存储在结构体成员 \fBc_ispeed\fP 和 \fBc_ospeed\fP 中。 并非所有体系结构都支持这些
+ioctl。
+.RS
+.TS
+lb l.
+TCGETS2	\fBstruct termios2 *\fPargp
+TCSETS2	\fBconst struct termios2 *\fPargp
+TCSETSW2	\fBconst struct termios2 *\fPargp
+TCSETSF2	\fBconst struct termios2 *\fPargp
+.TE
+.RE
+.PP
+以下四个 ioctl 与 \fBTCGETS\fP、\fBTCSETS\fP、\fBTCSETSW\fP、\fBTCSETSF\fP 一样，只是它们采用 \fIstruct termio\~*\fP 而不是 \fIstruct termios\~*\fP。
+.RS
+.TS
+lb l.
+TCGETA	\fBstruct termio *\fPargp
+TCSETA	\fBconst struct termio *\fPargp
+TCSETAW	\fBconst struct termio *\fPargp
+TCSETAF	\fBconst struct termio *\fPargp
+.TE
+.RE
+.SS "Locking the termios structure"
+终端的 \fItermios\fP 结构体可以被锁定。 锁本身是一个 \fItermios\fP 结构体，具有指示锁定值的非零位或字段。
+.TP 
+\fBTIOCGLCKTRMIOS\fP
+参数: \fBstruct termios\~*\fP\fIargp\fP
+.IP
+获取终端的 \fItermios\fP 结构体的锁定状态。
+.TP 
+\fBTIOCSLCKTRMIOS\fP
+参数: \fBconst struct termios\~*\fP\fIargp\fP
+.IP
+设置终端 \fItermios\fP 结构体的锁定状态。 只有具有 \fBCAP_SYS_ADMIN\fP 能力的进程才能执行此操作。
+.SS "Get and set window size"
+窗口大小保存在内核中，但不被内核使用 (虚拟控制台除外，当虚拟控制台的大小发生变化时，例如通过加载新字体，内核将更新窗口大小)。
+.TP 
+\fBTIOCGWINSZ\fP
+参数: \fBstruct winsize\~*\fP\fIargp\fP
+.IP
+获取窗口大小。
+.TP 
+\fBTIOCSWINSZ\fP
+参数: \fBconst struct winsize\~*\fP\fIargp\fP
+.IP
+设置窗口大小。
+.PP
+这些 ioctl 使用的结构体定义为
+.PP
+.in +4n
+.EX
+struct winsize {
+    unsigned short ws_row;
+    unsigned short ws_col;
+    unsigned short ws_xpixel;   /* unused */
+    unsigned short ws_ypixel;   /* unused */
+};
+.EE
+.in
+.PP
+当窗口大小改变时，\fBSIGWINCH\fP 信号被发送到前台进程组。
+.SS "Sending a break"
+.TP 
+\fBTCSBRK\fP
+参数: \fBint \fP\fIarg\fP
+.IP
+相当于 \fItcsendbreak(fd, arg)\fP。
+.IP
+如果终端正在使用异步串行数据传输，并且 \fIarg\fP 为零，则在 0.25 和 0.5 秒之间发送中断 (零位流)。
+如果最终端没有使用异步串行数据传输，那么要么发送一个中断，要么函数不做任何事情就返回。 当 \fIarg\fP 不为零时，没有人知道会发生什么。
+.IP
+(SVr4、UnixWare、Solaris 和 Linux 将 \fItcsendbreak(fd,arg)\fP 与非零 \fIarg\fP 视为
+\fItcdrain(fd)\fP。SunOS 将 \fIarg\fP 视为乘数，并发送比特流 \fIarg\fP 次，只要完成零 \fIarg\fP 即可。DG/UX 和
+AIX 将 \fIarg\fP (非零时) 视为以毫秒为单位的时间间隔。HP\-UX 忽略 \fIarg\fP.)
+.TP 
+\fBTCSBRKP\fP
+参数: \fBint \fP\fIarg\fP
+.IP
+所谓 \fBTCSBRK\fP 的 "POSIX version"。 它将非零 \fIarg\fP
+视为以分秒为单位的时间间隔，并且在驱动程序不支持中断时不执行任何操作。
+.TP 
+\fBTIOCSBRK\fP
+参数: \fBvoid\fP
+.IP
+打开 break，即开始发送零位。
+.TP 
+\fBTIOCCBRK\fP
+参数: \fBvoid\fP
+.IP
+关闭中断，即停止发送零位。
+.SS "Software flow control"
+.TP 
+\fBTCXONC\fP
+参数: \fBint \fP\fIarg\fP
+.IP
+相当于 \fItcflow(fd, arg)\fP。
+.IP
+请参见 \fBtcflow\fP(3) 的参数值 \fBTCOOFF\fP、\fBTCOON\fP、\fBTCIOFF\fP、\fBTCION\fP。
+.SS "Buffer count and flushing"
+.TP 
+\fBFIONREAD\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+获取输入缓冲区中的字节数。
+.TP 
+\fBTIOCINQ\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+与 \fBFIONREAD\fP 相同。
+.TP 
+\fBTIOCOUTQ\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+获取输出缓冲区中的字节数。
+.TP 
+\fBTCFLSH\fP
+参数: \fBint \fP\fIarg\fP
+.IP
+相当于 \fItcflush(fd, arg)\fP。
+.IP
+请参见 \fBtcflush\fP(3) 以了解参数值 \fBTCIFLUSH\fP、\fBTCOFLUSH\fP、\fBTCIOFLUSH\fP。
+.TP 
+\fBTIOCSERGETLSR\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+获取线路状态寄存器。 当输出缓冲区为空并且硬件发送者物理上为空时，状态寄存器会设置 \fBTIOCSER_TEMT\fP 位。
+.IP
+不必由所有串行 tty 驱动程序支持。
+.IP
+当 \fBTIOCSER_TEMT\fP 位置位时，\fBtcdrain\fP(3) 不等待并立即返回。
+.SS "Faking input"
+.TP 
+\fBTIOCSTI\fP
+参数: \fBconst char\~*\fP\fIargp\fP
+.IP
+在输入队列中插入给定的字节。
+.SS "Redirecting console output"
+.TP 
+\fBTIOCCONS\fP
+参数: \fBvoid\fP
+.IP
+将本应转到 \fI/dev/console\fP 或 \fI/dev/tty0\fP 的输出重定向到给定的终点。 如果那是一个伪终端主机，将它发送给从机。 在
+Linux 2.6.10 之前，只要输出还没有被重定向，任何人都可以这样做; 从 Linux 2.6.10 开始，只有具有
+\fBCAP_SYS_ADMIN\fP 能力的进程才能执行此操作。 如果输出已被重定向，则返回 \fBEBUSY\fP，但可以通过将此 ioctl 与指向
+\fI/dev/console\fP 或 \fI/dev/tty0\fP 的 \fIfd\fP 一起使用来停止重定向。
+.SS "Controlling terminal"
+.TP 
+\fBTIOCSCTTY\fP
+参数: \fBint \fP\fIarg\fP
+.IP
+使给定的终端成为调用进程的控制终端。 调用进程必须是会话领导者并且还没有控制终端。 对于这种情况，\fIarg\fP 应指定为零。
+.IP
+如果这个终端已经是不同会话组的控制终端，那么 ioctl 将失败并返回 \fBEPERM\fP，除非调用者具有 \fBCAP_SYS_ADMIN\fP 能力并且
+\fIarg\fP 等于 1，在这种情况下终端被窃取，所有拥有它的进程都作为控制终端失去它。
+.TP 
+\fBTIOCNOTTY\fP
+参数: \fBvoid\fP
+.IP
+如果给定的终端是调用进程的控制终端，放弃这个控制终端。 如果该进程是会话领导者，则将 \fBSIGHUP\fP 和 \fBSIGCONT\fP
+发送到前台进程组，当前会话中的所有进程都将失去其控制终端。
+.SS "Process group and session ID"
+.TP 
+\fBTIOCGPGRP\fP
+参数: \fBpid_t\~*\fP\fIargp\fP
+.IP
+成功时，相当于 \fI*argp = tcgetpgrp(fd)\fP。
+.IP
+获取该终端上前台进程组的进程组 ID。
+.TP 
+\fBTIOCSPGRP\fP
+参数: \fBconst pid_t\~*\fP\fIargp\fP
+.IP
+相当于 \fItcsetpgrp(fd, *argp)\fP。
+.IP
+设置这个终端的前台进程组 ID。
+.TP 
+\fBTIOCGSID\fP
+参数: \fBpid_t\~*\fP\fIargp\fP
+.IP
+成功时，相当于 \fI*argp = tcgetsid(fd)\fP。
+.IP
+获取给定终端的会话 ID。 如果终端不是主伪终端而不是我们的控制终端，则此操作失败并显示错误 \fBENOTTY\fP。 Strange.
+.SS "Exclusive mode"
+.TP 
+\fBTIOCEXCL\fP
+参数: \fBvoid\fP
+.IP
+将终端置于独占模式。 不允许对终端进行进一步的 \fBopen\fP(2) 操作。 (它们以 \fBEBUSY\fP 失败，具有 \fBCAP_SYS_ADMIN\fP
+功能的进程除外。)
+.TP 
+\fBTIOCGEXCL\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+(自 Linux 3.8 起) 如果终端当前处于独占模式，则在 \fIargp\fP 指向的位置放置一个非零值; 否则，在 \fI*argp\fP 中置零。
+.TP 
+\fBTIOCNXCL\fP
+参数: \fBvoid\fP
+.IP
+禁用独占模式。
+.SS "Line discipline"
+.TP 
+\fBTIOCGETD\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+得到终端的线路纪律。
+.TP 
+\fBTIOCSETD\fP
+参数: \fBconst int\~*\fP\fIargp\fP
+.IP
+设置终端的线路纪律。
+.SS "Pseudoterminal ioctls"
+.TP 
+\fBTIOCPKT\fP
+参数: \fBconst int\~*\fP\fIargp\fP
+.IP
+启用 (当 *\fIargp\fP 非零时) 或禁用数据包模式。 只能应用于伪终端的主端 (否则将返回 \fBENOTTY\fP)。 在数据包模式下，每个后续的
+\fBread\fP(2) 将返回一个数据包，该数据包要么包含一个非零控制字节，要么具有一个包含零 (\[aq]\e0\[aq])
+的字节，后跟写入伪终端从属端的数据。 如果第一个字节不是 \fBTIOCPKT_DATA\fP (0)，则它是以下一个或多个位的或:
+.IP
+.ad l
+.TS
+lb l.
+TIOCPKT_FLUSHREAD	T{
+The read queue for the terminal is flushed.
+T}
+TIOCPKT_FLUSHWRITE	T{
+The write queue for the terminal is flushed.
+T}
+TIOCPKT_STOP	T{
+Output to the terminal is stopped.
+T}
+TIOCPKT_START	T{
+Output to the terminal is restarted.
+T}
+TIOCPKT_DOSTOP	T{
+The start and stop characters are \fB\[ha]S\fP/\fB\[ha]Q\fP.
+T}
+TIOCPKT_NOSTOP	T{
+The start and stop characters are not \fB\[ha]S\fP/\fB\[ha]Q\fP.
+T}
+.TE
+.ad
+.IP
+当使用数据包模式时，对于异常情况 \fBselect\fP(2) 或 \fBPOLLPRI\fP 事件 \fBpoll\fP(2)
+可能会检测到要从主端读取的控制状态信息的存在。
+.IP
+\fBrlogin\fP(1) 和 \fBrlogind\fP(8) 使用该模式实现远程回显，本地 \fB\[ha]S\fP/\fB\[ha]Q\fP 流控远程登录。
+.TP 
+\fBTIOCGPKT\fP
+参数: \fBconst int\~*\fP\fIargp\fP
+.IP
+(自 Linux 3.8 起) 返回 \fIargp\fP 指向的整数中的当前数据包模式设置。
+.TP 
+\fBTIOCSPTLCK\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+设置 (如果 \fI*argp\fP 为非零) 或移除 (如果 \fI*argp\fP 为零) 伪终端从设备上的锁。 (另见 \fBunlockpt\fP(3).)
+.TP 
+\fBTIOCGPTLCK\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+(since Linux 3.8) 将伪终端从设备的当前锁定状态放在 \fIargp\fP 指向的位置。
+.TP 
+\fBTIOCGPTPEER\fP
+参数: \fBint \fP\fIflags\fP
+.IP
+.\" commit 54ebbfb1603415d9953c150535850d30609ef077
+(自 Linux 4.13 起) 给定 \fIfd\fP 中引用伪终端主设备的文件描述符，打开 (使用给定的 \fBopen\fP(2)\-style
+\fIflags\fP) 并返回引用对等伪终端从设备的新文件描述符。 无论从属设备的路径名是否可通过调用进程的挂载命名空间访问，都可以执行此操作。
+.IP
+与名称空间交互的安全意识程序可能希望使用此操作，而不是使用 \fBopen\fP(2) 和 \fBptsname\fP(3) 返回的路径名，以及具有不安全 API
+的类似库函数。 (例如，在某些情况下使用带有路径名的 \fBptsname\fP(3) 时可能会发生混淆，其中 devpts
+文件系统已挂载在不同的挂载命名空间中。)
+.PP
+BSD ioctls \fBTIOCSTOP\fP、\fBTIOCSTART\fP、\fBTIOCUCNTL\fP 和 \fBTIOCREMOTE\fP 尚未在 Linux
+下实现。
+.SS "Modem control"
+.TP 
+\fBTIOCMGET\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+获取调制解调器位的状态。
+.TP 
+\fBTIOCMSET\fP
+参数: \fBconst int\~*\fP\fIargp\fP
+.IP
+设置调制解调器位的状态。
+.TP 
+\fBTIOCMBIC\fP
+参数: \fBconst int\~*\fP\fIargp\fP
+.IP
+清除指示的调制解调器位。
+.TP 
+\fBTIOCMBIS\fP
+参数: \fBconst int\~*\fP\fIargp\fP
+.IP
+设置指示的调制解调器位。
+.PP
+上述 ioctl 使用以下位:
+.PP
+.TS
+lb l.
+TIOCM_LE	DSR (data set ready/line enable)
+TIOCM_DTR	DTR (data terminal ready)
+TIOCM_RTS	RTS (request to send)
+TIOCM_ST	Secondary TXD (transmit)
+TIOCM_SR	Secondary RXD (receive)
+TIOCM_CTS	CTS (clear to send)
+TIOCM_CAR	DCD (data carrier detect)
+TIOCM_CD	see TIOCM_CAR
+TIOCM_RNG	RNG (ring)
+TIOCM_RI	see TIOCM_RNG
+TIOCM_DSR	DSR (data set ready)
+.TE
+.TP 
+\fBTIOCMIWAIT\fP
+参数: \fBint \fP\fIarg\fP
+.IP
+等待 4 个调制解调器位 (DCD、RI、DSR、CTS) 中的任何一个发生变化。 通过将任何位值
+\fBTIOCM_RNG\fP、\fBTIOCM_DSR\fP、\fBTIOCM_CD\fP 和 \fBTIOCM_CTS\fP 组合在一起，将感兴趣的位指定为 \fIarg\fP
+中的位掩码。 调用者应该使用 \fBTIOCGICOUNT\fP 来查看哪个位发生了变化。
+.TP 
+\fBTIOCGICOUNT\fP
+参数: \fBstruct serial_icounter_struct\~*\fP\fIargp\fP
+.IP
+获取输入串行线路中断 (DCD、RI、DSR、CTS) 的计数。 计数被写入 \fIargp\fP 指向的 \fIserial_icounter_struct\fP
+结构体。
+.IP
+Note: 1\->0 和 0\->1 转换都被计算在内，但 RI 除外，其中仅计算 0\->1 转换。
+.SS "Marking a line as local"
+.TP 
+\fBTIOCGSOFTCAR\fP
+参数: \fBint\~*\fP\fIargp\fP
+.IP
+("Get software carrier flag") 获取 \fItermios\fP 结构体的 c_cflag 字段中 CLOCAL 标志的状态。
+.TP 
+\fBTIOCSSOFTCAR\fP
+参数: \fBconst int\~*\fP\fIargp\fP
+.IP
+("Set software carrier flag") 当 *\fIargp\fP 为非零时，在 \fItermios\fP 结构体中设置 CLOCAL
+标志，否则清零。
+.PP
+如果一条线路的 \fBCLOCAL\fP 标志关闭，则硬件载波检测 (DCD) 信号有效，并且相应终端的 \fBopen\fP(2) 将阻塞直到断言
+DCD，除非给出 \fBO_NONBLOCK\fP 标志。 如果设置了 \fBCLOCAL\fP，则该线路的行为就像始终断言 DCD 一样。
+软件运营商标志通常在本地设备上打开，在带有调制解调器的线路上关闭。
+.SS Linux\-specific
+对于 \fBTIOCLINUX\fP ioctl，请参见 \fBioctl_console\fP(2)。
+.SS "Kernel debugging"
+\fB#include <linux/tty.h>\fP
+.TP 
+\fBTIOCTTYGSTRUCT\fP
+参数: \fBstruct tty_struct\~*\fP\fIargp\fP
+.IP
+.\"     commit b3506a09d15dc5aee6d4bb88d759b157016e1864
+.\"     Author: Andries E. Brouwer <andries.brouwer@cwi.nl>
+.\"     Date:   Tue Apr 1 04:42:46 2003 -0800
+.\"
+.\"     [PATCH] kill TIOCTTYGSTRUCT
+.\"
+.\"     Only used for (dubious) debugging purposes, and exposes
+.\"     internal kernel state.
+.\"
+.\" .SS Serial info
+.\" .BR "#include <linux/serial.h>"
+.\" .PP
+.\" .TP
+.\" .BI "TIOCGSERIAL	struct serial_struct *" argp
+.\" Get serial info.
+.\" .TP
+.\" .BI "TIOCSSERIAL	const struct serial_struct *" argp
+.\" Set serial info.
+得到 \fIfd\fP 对应的 \fItty_struct\fP。 此命令已在 Linux 2.5.67 中删除。
+.SH "RETURN VALUE"
+\fBioctl\fP(2) 系统调用成功返回 0。 出错时，它返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+命令参数无效。
+.TP 
+\fBENOIOCTLCMD\fP
+未知的命令。
+.TP 
+\fBENOTTY\fP
+不合适的 \fIfd\fP。
+.TP 
+\fBEPERM\fP
+权限不足。
+.SH EXAMPLES
+检查串行端口上 DTR 的情况。
+.PP
+.\" SRC BEGIN (tiocmget.c)
+.EX
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+int
+main(void)
+{
+    int fd, serial;
+
+    fd = open("/dev/ttyS0", O_RDONLY);
+    ioctl(fd, TIOCMGET, &serial);
+    if (serial & TIOCM_DTR)
+        puts("TIOCM_DTR is set");
+    else
+        puts("TIOCM_DTR is not set");
+    close(fd);
+}
+.EE
+.\" SRC END
+.PP
+Get or set arbitrary baudrate on the serial port.
+.PP
+.\" SRC BEGIN (tcgets.c)
+.EX
+/* SPDX\-License\-Identifier: GPL\-2.0\-or\-later */
+
+#include <asm/termbits.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+#if !defined BOTHER
+    fprintf(stderr, "BOTHER is unsupported\en");
+    /* Program may fallback to TCGETS/TCSETS with Bnnn constants */
+    exit(EXIT_FAILURE);
+#else
+    /* Declare tio structure, its type depends on supported ioctl */
+# if defined TCGETS2
+    struct termios2 tio;
+# else
+    struct termios tio;
+# endif
+    int fd, rc;
+
+    if (argc != 2 && argc != 3 && argc != 4) {
+        fprintf(stderr, "Usage: %s device [output [input] ]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_RDWR | O_NONBLOCK | O_NOCTTY);
+    if (fd < 0) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Get the current serial port settings via supported ioctl */
+# if defined TCGETS2
+    rc = ioctl(fd, TCGETS2, &tio);
+# else
+    rc = ioctl(fd, TCGETS, &tio);
+# endif
+    if (rc) {
+        perror("TCGETS");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Change baud rate when more arguments were provided */
+    if (argc == 3 || argc == 4) {
+        /* Clear the current output baud rate and fill a new value */
+        tio.c_cflag &= \[ti]CBAUD;
+        tio.c_cflag |= BOTHER;
+        tio.c_ospeed = atoi(argv[2]);
+
+        /* Clear the current input baud rate and fill a new value */
+        tio.c_cflag &= \[ti](CBAUD << IBSHIFT);
+        tio.c_cflag |= BOTHER << IBSHIFT;
+        /* When 4th argument is not provided reuse output baud rate */
+        tio.c_ispeed = (argc == 4) ? atoi(argv[3]) : atoi(argv[2]);
+
+        /* Set new serial port settings via supported ioctl */
+# if defined TCSETS2
+        rc = ioctl(fd, TCSETS2, &tio);
+# else
+        rc = ioctl(fd, TCSETS, &tio);
+# endif
+        if (rc) {
+            perror("TCSETS");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+
+        /* And get new values which were really configured */
+# if defined TCGETS2
+        rc = ioctl(fd, TCGETS2, &tio);
+# else
+        rc = ioctl(fd, TCGETS, &tio);
+# endif
+        if (rc) {
+            perror("TCGETS");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    close(fd);
+
+    printf("output baud rate: %u\en", tio.c_ospeed);
+    printf("input baud rate: %u\en", tio.c_ispeed);
+
+    exit(EXIT_SUCCESS);
+#endif
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBldattach\fP(8), \fBioctl\fP(2), \fBioctl_console\fP(2), \fBtermios\fP(3), \fBpty\fP(7)
+.\"
+.\" FIONBIO			const int *
+.\" FIONCLEX			void
+.\" FIOCLEX			void
+.\" FIOASYNC			const int *
+.\" from serial.c:
+.\" TIOCSERCONFIG		void
+.\" TIOCSERGWILD		int *
+.\" TIOCSERSWILD		const int *
+.\" TIOCSERGSTRUCT		struct async_struct *
+.\" TIOCSERGETMULTI		struct serial_multiport_struct *
+.\" TIOCSERSETMULTI		const struct serial_multiport_struct *
+.\" TIOCGSERIAL, TIOCSSERIAL (see above)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

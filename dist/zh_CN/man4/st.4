@@ -1,0 +1,508 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1995 Robert K. Nichols (Robert.K.Nichols@att.com)
+.\" Copyright 1999-2005 Kai Mäkisara (Kai.Makisara@kolumbus.fi)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH st 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+st\-SCSI 磁带设备
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mtio.h>\fP
+.PP
+\fBint ioctl(int \fP\fIfd\fP\fB, int \fP\fIrequest\fP\fB [, (void *)\fP\fIarg3\fP\fB]);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, MTIOCTOP, (struct mtop *)\fP\fImt_cmd\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, MTIOCGET, (struct mtget *)\fP\fImt_status\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, MTIOCPOS, (struct mtpos *)\fP\fImt_pos\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBst\fP 驱动程序提供了各种 SCSI 磁带设备的接口。 目前，驱动程序控制所有检测到的类型为 \[lq]
+sequential\-access\[rq] 的设备。 \fBst\fP 驱动程序使用主设备号 9.
+.PP
+每个设备使用八个次设备号。 次要编号中的最低五位按检测顺序依次分配。 在 2.6 内核中，最低 8 位以上的位与最低 5 位连接起来形成带号。
+次要编号可以分为两组，每组四个编号: 主要 (auto\-rewind) 次要设备编号 \fIn\fP 和 \[lq] no\-rewind\[rq] 设备编号
+(\fIn\fP + 128)。 使用主体设备号打开的设备在关闭时将发送 \fBREWIND\fP 命令。 使用 \[lq] no\-rewind\[rq]
+设备号打开的设备不会。 (请注意，使用自动倒带设备定位磁带，例如，mt 不会导致预期的结果: 磁带在 mt 命令后倒带，下一个命令从磁带的开头开始)。
+.PP
+在每个组中，四个次要编号可用于定义具有不同特性 (块大小、压缩、密度等) 的设备。系统启动时，只有第一个设备可用。 其他三个在定义默认特性时被激活
+(见下文)。 (通过改变编译时常量，可以改变磁带驱动器的最大数量和每个驱动器的次要数量之间的平衡。默认分配允许控制 32
+个磁带驱动器。例如，可以控制最多 64 个磁带驱动器，带有两个次要编号用于不同的选项。)
+.PP
+设备通常由以下人员创建:
+.PP
+.in +4n
+.EX
+mknod \-m 666 /dev/st0 c 9 0
+mknod \-m 666 /dev/st0l c 9 32
+mknod \-m 666 /dev/st0m c 9 64
+mknod \-m 666 /dev/st0a c 9 96
+mknod \-m 666 /dev/nst0 c 9 128
+mknod \-m 666 /dev/nst0l c 9 160
+mknod \-m 666 /dev/nst0m c 9 192
+mknod \-m 666 /dev/nst0a c 9 224
+.EE
+.in
+.PP
+没有对应的块设备。
+.PP
+驱动程序使用一个内部缓冲区，该缓冲区必须足够大以容纳至少一个磁带块。 在 Linux 2.1.121 之前，缓冲区被分配为一个连续的块。
+这将块大小限制为内核分配器可以提供的最大连续内存块。 目前，32 位架构的限制为 128\kB，64 位架构的限制为 256\kB。
+在较新的内核中，驱动程序在必要时将缓冲区分成几个部分。 默认情况下，最大部件数为 16。 这意味着最大块大小非常大 (如果成功分配 16 个
+128\kB 的块，则为 2\MB)。
+.PP
+驱动程序的内部缓冲区大小由编译时常量决定，可以用内核启动选项覆盖。 除此之外，如有必要，驱动程序会尝试在运行时分配更大的临时缓冲区。
+但是，大的连续内存块的运行时分配可能会失败，建议不要过分依赖 Linux 2.1.121 之前的动态缓冲区分配 (这也适用于使用 kerneld 或
+kmod 按需加载驱动程序)。
+.PP
+该驱动程序不专门支持任何磁带驱动器品牌或型号。 系统启动后，磁带设备选项由驱动器固件定义。
+例如，如果驱动器固件选择固定块模式，则磁带设备使用固定块模式。 这些选项可以通过明确的 \fBioctl\fP(2)
+调用进行更改，并在设备关闭和重新打开时保持有效。 设置选项会影响自动倒带和非倒带设备。
+.PP
+可以为四个子组中的不同设备指定不同的选项。 这些选项在设备打开时生效。
+例如，系统管理员可以定义一个设备以固定块模式写入并具有一定的块大小，另一个设备以可变块模式写入 (如果驱动器支持这两种模式)。
+.PP
+如果驱动器支持，则驱动程序支持 \fBtape partitions\fP。 (请注意，磁带分区与磁盘分区无关。分区磁带可以看作是一个介质中的多个逻辑磁带。)
+必须使用 \fBioctl\fP(2) 启用分区支持。 跨分区更改时，磁带位置保留在每个分区内。 使用 \fBioctl\fP(2) 选择用于后续磁带操作的分区。
+分区切换与下一个磁带操作一起执行，以避免不必要的磁带移动。 磁带上的最大分区数由编译时常量 (最初为四个) 定义。 该驱动程序包含一个
+\fBioctl\fP(2)，它可以格式化带有一个或两个分区的磁带。
+.PP
+设备 \fI/dev/tape\fP 通常创建为系统上默认磁带设备的硬链接或软链接。
+.PP
+从 Linux 2.6.2 开始，驱动程序在 sysfs 目录 \fI/sys/class/scsi_tape\fP 中导出附加设备和分配给设备的一些参数。
+.SS "Data transfer"
+驱动程序支持在固定块模式和可变块模式下运行 (如果驱动器支持)。 在固定块模式下，驱动器写入指定大小的块，块大小不依赖于写入系统调用的字节数。
+在可变块模式下，每次写入调用都会写入一个磁带块，字节数决定了相应磁带块的大小。 请注意，磁带上的块不包含有关写入模式的任何信息:
+读取时，唯一重要的是使用接受磁带上块大小的命令。
+.PP
+在可变块模式下，读取的字节数不必与磁带块大小完全匹配。 如果字节计数大于磁带上的下一个块，则驱动程序返回数据并且函数返回实际块大小。
+如果块大小大于字节数，则返回错误。
+.PP
+在固定块模式下，如果启用缓冲，则读取字节数可以是任意的，如果禁用缓冲，则读取字节数可以是磁带块大小的倍数。 如果启用缓冲，Linux 2.1.121
+之前允许写入任意字节数。 在所有其他情况下 (在禁用缓冲的 Linux 2.1.121 之前或较新的内核)，写入字节数必须是磁带块大小的倍数。
+.PP
+在 Linux 2.6 中，驱动程序尝试在用户缓冲区和设备之间使用直接传输。 如果这不可能，则使用驱动程序的内部缓冲区。
+不使用直接传输的原因包括用户缓冲区对齐不正确 (默认为 512 字节，但这可以通过 HBA 驱动程序更改)，SCSI
+适配器无法访问用户缓冲区的一页或多页，等等。
+.PP
+如果关闭前的最后一次磁带操作是写入，文件标记会自动写入磁带。
+.PP
+读取时遇到文件标记时，会发生以下情况。 如果找到文件标记时缓冲区中还有数据剩余，则返回缓冲区中的数据。 下一次读取返回零字节。
+以下读取从下一个文件返回数据。 通过为两个连续的读取调用返回零字节来指示记录数据的结束。 第三次读取返回错误。
+.SS Ioctls
+驱动程序支持三个 \fBioctl\fP(2) 请求。 \fBst\fP 驱动程序无法识别的请求将传递给 \fBSCSI\fP 驱动程序。 以下定义来自
+\fI/usr/include/linux/mtio.h\fP:
+.SS "MTIOCTOP \[em] perform a tape operation"
+此请求采用 \fI(struct mtop\ *)\fP 类型的参数。 并非所有驱动器都支持所有操作。 如果驱动器拒绝操作，则驱动程序返回 \fBEIO\fP
+错误。
+.PP
+.in +4n
+.EX
+/* Structure for MTIOCTOP \- mag tape op command: */
+struct mtop {
+    short   mt_op;       /* operations defined below */
+    int     mt_count;    /* how many of them */
+};
+.EE
+.in
+.PP
+正常磁带使用的磁带操作:
+.TP 
+\fBMTBSF\fP
+\fImt_count\fP 文件标记上的向后空间。
+.TP 
+\fBMTBSFM\fP
+\fImt_count\fP 文件标记上的向后空间。 将磁带重新定位到最后一个文件标记的 EOT 侧。
+.TP 
+\fBMTBSR\fP
+\fImt_count\fP 记录 (磁带块) 上的向后空间。
+.TP 
+\fBMTBSS\fP
+\fImt_count\fP 设置标记上的向后空间。
+.TP 
+\fBMTCOMPRESSION\fP
+如果 \fImt_count\fP 为非零，则启用驱动器内的磁带数据压缩; 如果 \fImt_count\fP 为零，则禁用压缩。 此命令使用大多数 DAT 支持的
+MODE 第 15 页。
+.TP 
+\fBMTEOM\fP
+转到录制媒体的末尾 (用于，追加，文件)。
+.TP 
+\fBMTERASE\fP
+擦除磁带。 对于 Linux 2.6，如果参数为零，则执行短擦除 (标记磁带为空)。 否则，长擦除 (全部擦除) 完成。
+.TP 
+\fBMTFSF\fP
+\fImt_count\fP 文件标记上的前向空间。
+.TP 
+\fBMTFSFM\fP
+\fImt_count\fP 文件标记上的前向空间。 将磁带重新定位到最后一个文件标记的 BOT 侧。
+.TP 
+\fBMTFSR\fP
+\fImt_count\fP 记录 (磁带块) 上的转发空间。
+.TP 
+\fBMTFSS\fP
+\fImt_count\fP 设置标记上的前向空间。
+.TP 
+\fBMTLOAD\fP
+执行 SCSI 加载命令。 某些 HP 自动装载机可以使用特殊外壳。 如果 \fImt_count\fP 是常量
+\fBMT_ST_HPLOADER_OFFSET\fP 加上一个数字，则该数字被发送到驱动器以控制磁带自动加载机。
+.TP 
+\fBMTLOCK\fP
+锁上磁带机门。
+.TP 
+\fBMTMKPART\fP
+.\" commit 8038e6456a3e6f5c4759e0d73c4f9165b90c93e7
+将磁带格式化为一个或两个分区。 如果 \fImt_count\fP 为正，则它给出分区 1 的大小，而分区 0 包含磁带的其余部分。 如果
+\fImt_count\fP 为零，则磁带被格式化为一个分区。 从 Linux 4.6 开始，negative \fImt_count\fP 指定分区 0
+的大小和磁带的剩余部分包含分区 1。 分区的物理顺序取决于驱动器。 除非为驱动器启用了分区支持 (请参见下面的
+\fBMT_ST_CAN_PARTITIONS\fP)，否则不允许对驱动器使用此命令。
+.TP 
+\fBMTNOP\fP
+没有 op\[em] 作为副作用刷新驱动程序的缓冲区。 应在使用 \fBMTIOCGET\fP 读取状态之前使用。
+.TP 
+\fBMTOFFL\fP
+倒带并使驱动器脱机。
+.TP 
+\fBMTRESET\fP
+重置驱动器。
+.TP 
+\fBMTRETEN\fP
+重新张紧胶带。
+.TP 
+\fBMTREW\fP
+Rewind.
+.TP 
+\fBMTSEEK\fP
+Seek 到 \fImt_count\fP 中指定的磁带块号。 此操作需要支持 \fBLOCATE\fP 命令 (设备特定地址) 的 SCSI\-2 驱动器或
+Tandberg 兼容的 SCSI\-1 驱动器 (Tandberg、Archive Viper、Wangtek 等)。
+如果使用特定于设备的地址，块号应该是之前由 \fBMTIOCPOS\fP 返回的一个。
+.TP 
+\fBMTSETBLK\fP
+将驱动器的块长度设置为 \fImt_count\fP 中指定的值。 块长度为零会将驱动器设置为可变块大小模式。
+.TP 
+\fBMTSETDENSITY\fP
+将磁带密度设置为 \fImt_count\fP 中的代码。 驱动器支持的密度代码可以从驱动器文档中找到。
+.TP 
+\fBMTSETPART\fP
+活动分区切换为 \fImt_count\fP。 分区从零开始编号。 除非为驱动器启用了分区支持 (请参见下面的
+\fBMT_ST_CAN_PARTITIONS\fP)，否则不允许对驱动器使用此命令。
+.TP 
+\fBMTUNLOAD\fP
+执行 SCSI 卸载命令 (不弹出磁带)。
+.TP 
+\fBMTUNLOCK\fP
+打开磁带机门。
+.TP 
+\fBMTWEOF\fP
+写入 \fImt_count\fP 文件标记。
+.TP 
+\fBMTWSM\fP
+写入 \fImt_count\fP 设置标记。
+.PP
+设置设备选项的磁带操作 (超级用户) :
+.TP 
+\fBMTSETDRVBUFFER\fP
+根据 \fImt_count\fP 中编码的位设置各种驱动器和驱动程序选项。
+这些包括驱动器的缓冲模式、一组布尔驱动程序选项、缓冲区写入阈值、块大小和密度的默认值以及超时 (仅自 Linux 2.1 起)。
+单个操作只能影响下面列表中的一项 (布尔算作一项。)
+.IP
+高 4 位为零的值将用于设置驱动器的缓冲模式。 缓冲模式是:
+.RS
+.TP 
+\fB0\fP
+在数据块实际写入介质之前，驱动器不会报告写入命令的 \fBGOOD\fP 状态。
+.TP 
+\fB1\fP
+一旦所有数据都传输到驱动器的内部缓冲区，驱动器可能会在写入命令时报告 \fBGOOD\fP 状态。
+.TP 
+\fB2\fP
+一旦 (a) 所有数据都已传输到驱动器的内部缓冲区，并且 (b) 来自不同启动器的所有缓冲数据已成功写入介质，驱动器可能会报告写命令的 \fBGOOD\fP
+状态。
+.RE
+.IP
+要控制写入阈值，\fImt_count\fP 中的值必须包括常量 \fBMT_ST_WRITE_THRESHOLD\fP 与低 28 位中的块计数的按位或运算。
+块计数指的是 1024 字节块，而不是磁带上的物理块大小。 阈值不能超过驱动程序的内部缓冲区大小 (请参见上面的说明)。
+.IP
+要设置和清除布尔选项，\fImt_count\fP 中的值必须包括常量
+\fBMT_ST_BOOLEANS\fP、\fBMT_ST_SETBOOLEANS\fP、\fBMT_ST_CLEARBOOLEANS\fP 或
+\fBMT_ST_DEFBOOLEANS\fP 之一，并与以下选项的任意组合进行按位或运算。 使用
+\fBMT_ST_BOOLEANS\fP，可以将选项设置为相应位中定义的值。 使用 \fBMT_ST_SETBOOLEANS\fP 可以有选择地设置选项，使用
+\fBMT_ST_DEFBOOLEANS\fP 可以有选择地清除选项。
+.IP
+磁带设备的默认选项是用 \fBMT_ST_DEFBOOLEANS\fP 设置的。 非活动磁带设备 (例如，带次要 32 或 160 的设备)
+在第一次定义默认选项时被激活。 激活的设备从启动时激活的设备继承未明确设置的选项。
+.IP
+布尔选项是:
+.RS
+.TP 
+\fBMT_ST_BUFFER_WRITES\fP (Default: true)
+以固定块模式缓冲所有写操作。 如果此选项为 false 且驱动器使用固定块大小，则所有写入操作都必须针对块大小的倍数。 此选项必须设置为 false
+才能写入可靠的多卷存档。
+.TP 
+\fBMT_ST_ASYNC_WRITES\fP (Default: true)
+当此选项为真时，如果数据适合驱动程序的缓冲区，写操作将立即返回，而无需等待数据传输到驱动器。 写入阈值决定了在发出新的 SCSI
+写入命令之前缓冲区必须满到什么程度。 驱动器报告的任何错误都将保留到下一次操作。 此选项必须设置为 false 才能写入可靠的多卷存档。
+.TP 
+\fBMT_ST_READ_AHEAD\fP (Default: true)
+此选项使驱动程序在固定块模式下提供读取缓冲和预读。 如果此选项为 false 且驱动器使用固定块大小，则所有读取操作必须针对块大小的倍数。
+.TP 
+\fBMT_ST_TWO_FM\fP (Default: false)
+此选项修改文件关闭时的驱动程序行为。 正常操作是写入单个文件标记。 如果该选项为真，驱动程序将在第二个文件标记上写入两个文件标记和退格键。
+.IP
+Note: 对于 QIC 磁带驱动器，不应将此选项设置为真，因为它们无法覆盖文件标记。
+这些驱动器通过测试空白磁带而不是两个连续的文件标记来检测记录数据的结尾。
+大多数其他当前驱动器也会检测记录数据的结尾，并且通常只有在与其他一些系统交换磁带时才需要使用两个文件标记。
+.TP 
+\fBMT_ST_DEBUGGING\fP (Default: false)
+此选项打开来自驱动程序的各种调试消息 (仅当驱动程序编译时 \fBDEBUG\fP 定义为非零时才有效)。
+.TP 
+\fBMT_ST_FAST_EOM\fP (Default: false)
+此选项会导致 \fBMTEOM\fP 操作直接发送到驱动器，可能会加快操作速度，但会导致驱动器无法跟踪通常由 \fBMTIOCGET\fP 请求返回的当前文件号。
+如果 \fBMT_ST_FAST_EOM\fP 为假，驱动程序将通过文件的前向间距来响应 \fBMTEOM\fP 请求。
+.TP 
+\fBMT_ST_AUTO_LOCK\fP (Default: false)
+当此选项为真时，驱动器门在打开设备文件时锁定，在关闭时解锁。
+.TP 
+\fBMT_ST_DEF_WRITES\fP (Default: false)
+当从链接到驱动器的一个设备更改为链接到同一驱动器的另一个设备时，磁带选项 (块大小、模式、压缩等) 可能会更改，具体取决于设备的定义方式。
+此选项定义何时由驱动程序使用 SCSI 命令强制执行更改以及何时依赖驱动器自动检测功能。 如果此选项为 false，驱动程序会在设备更改时立即发送
+SCSI 命令。 如果该选项为真，则在请求写入之前不会发送 SCSI 命令。 在这种情况下，允许驱动器固件在读取时检测磁带结构体，并且 SCSI
+命令仅用于确保根据正确的规范写入磁带。
+.TP 
+\fBMT_ST_CAN_BSR\fP (Default: false)
+使用预读时，磁带有时必须在设备关闭时向后间隔到正确位置，SCSI 命令向后间隔记录用于此目的。
+一些较旧的驱动器不能可靠地处理这个命令，这个选项可以用来指示驱动程序不要使用这个命令。
+最终结果是，使用预读和固定块模式，当设备关闭时磁带可能无法正确定位在文件中。 对于 Linux 2.6，支持 SCSI\-3 的驱动器默认为真。
+.TP 
+\fBMT_ST_NO_BLKLIMS\fP (Default: false)
+有些驱动器不接受 \fBREAD BLOCK LIMITS\fP SCSI 命令。 如果使用它，则驱动程序不使用该命令。
+缺点是驱动程序无法在发送命令之前检查所选块大小是否为驱动程序所接受。
+.TP 
+\fBMT_ST_CAN_PARTITIONS\fP (Default: false)
+此选项启用对磁带中多个分区的支持。 该选项适用于链接到驱动器的所有设备。
+.TP 
+\fBMT_ST_SCSI2LOGICAL\fP (Default: false)
+此选项指示驱动程序在执行 seek 和 tell 操作时使用 SCSI\-2 标准中定义的逻辑块地址 (使用 \fBMTSEEK\fP 和
+\fBMTIOCPOS\fP 命令以及更改磁带分区时)。 否则，使用设备特定地址。 如果驱动器支持逻辑地址，则强烈建议设置此选项，因为它们也计算文件标记。
+有一些驱动器只支持逻辑块地址。
+.TP 
+\fBMT_ST_SYSV\fP (Default: false)
+启用此选项后，磁带设备将使用 System V 语义。 否则，使用 BSD 语义。 语义之间最重要的区别是当用于读取的设备关闭时会发生什么: 在
+System V 语义中，如果在使用设备时没有发生这种情况，则磁带向前间隔超过下一个文件标记。 在 BSD 语义中，磁带位置没有改变。
+.TP 
+\fBMT_NO_WAIT\fP (Default: false)
+为某些命令 (例如倒带) 启用 immediate 模式 (即不等待命令完成)。
+.PP
+一个例子:
+.PP
+.in +4n
+.EX
+struct mtop mt_cmd;
+mt_cmd.mt_op = MTSETDRVBUFFER;
+mt_cmd.mt_count = MT_ST_BOOLEANS |
+        MT_ST_BUFFER_WRITES | MT_ST_ASYNC_WRITES;
+ioctl(fd, MTIOCTOP, mt_cmd);
+.EE
+.in
+.PP
+设备的默认块大小可以使用 \fBMT_ST_DEF_BLKSIZE\fP 设置，默认密度代码可以使用 \fBMT_ST_DEFDENSITY\fP 设置。
+参数值与操作码相或。
+.PP
+对于 Linux 2.1.x 及更高版本，超时值可以使用子命令 \fBMT_ST_SET_TIMEOUT\fP 与以秒为单位的超时进行或运算来设置。 可以使用
+\fBMT_ST_SET_LONG_TIMEOUT\fP 设置长超时 (用于倒带和其他可能需要很长时间的命令)。
+内核默认值非常长，以确保成功的命令不会因任何驱动器而超时。 因此，即使只是等待超时，驱动程序也可能看起来卡住了。
+这些命令可用于为特定驱动器设置更多实用值。 为一台设备设置的超时适用于链接到同一驱动器的所有设备。
+.PP
+从 Linux 2.4.19 和 Linux 2.5.43 开始，驱动程序支持指示驱动器是否请求清洁的状态位。 使用 \fBMT_ST_SEL_CLN\fP
+子命令设置驱动器返回清洁信息的方法。 如果该值为零，则清理位始终为零。 如果值为 1，则使用 SCSI\-3 标准中定义的 TapeAlert 数据
+(尚未实现)。 值 2\[en] 17 被保留。 如果最低八位是 >= 18，则使用扩展检测数据中的位。 位 9\[en] 16
+指定掩码以选择要查看的位，位 17\[en] 23 指定要查找的位模式。 如果位模式为零，则掩码下的一个或多个位指示清洁请求。
+如果模式不为零，则模式必须与屏蔽的感测数据字节相匹配。
+.RE
+.SS "MTIOCGET \[em] get status"
+此请求采用 \fI(struct mtget\ *)\fP 类型的参数。
+.PP
+.in +4n
+.EX
+/* structure for MTIOCGET \- mag tape get status command */
+struct mtget {
+    long     mt_type;
+    long     mt_resid;
+    /* the following registers are device dependent */
+    long     mt_dsreg;
+    long     mt_gstat;
+    long     mt_erreg;
+    /* The next two fields are not always used */
+    daddr_t  mt_fileno;
+    daddr_t  mt_blkno;
+};
+.EE
+.in
+.TP 
+\fImt_type\fP
+头文件为 \fImt_type\fP 定义了很多值，但当前驱动程序仅报告泛型 \fBMT_ISSCSI1\fP (泛型 SCSI\-1 磁带) 和
+\fBMT_ISSCSI2\fP (泛型 SCSI\-2 磁带)。
+.TP 
+\fImt_resid\fP
+包含当前磁带分区号。
+.TP 
+\fImt_dsreg\fP
+报告驱动器的块大小 (低 24 位) 和密度 (高 8 位) 的当前设置。 这些字段由
+\fBMT_ST_BLKSIZE_SHIFT\fP、\fBMT_ST_BLKSIZE_MASK\fP、\fBMT_ST_DENSITY_SHIFT\fP 和
+\fBMT_ST_DENSITY_MASK\fP 定义。
+.TP 
+\fImt_gstat\fP
+报告泛型 (设备独立) 状态信息。 头文件定义了测试这些状态位的宏:
+.RS
+.TP 
+\fBGMT_EOF\fP(\fIx\fP)
+磁带位于文件标记之后 (在 \fBMTSEEK\fP 操作后始终为 false)。
+.TP 
+\fBGMT_BOT\fP(\fIx\fP)
+磁带位于第一个文件的开头 (在 \fBMTSEEK\fP 操作后始终为 false)。
+.TP 
+\fBGMT_EOT\fP(\fIx\fP)
+磁带操作已到达物理磁带末尾。
+.TP 
+\fBGMT_SM\fP(\fIx\fP)
+磁带当前位于设置标记处 (在 \fBMTSEEK\fP 操作后始终为 false)。
+.TP 
+\fBGMT_EOD\fP(\fIx\fP)
+磁带位于记录数据的末尾。
+.TP 
+\fBGMT_WR_PROT\fP(\fIx\fP)
+驱动器被写保护。 对于某些驱动器，这也可能意味着该驱动器不支持在当前介质类型上写入。
+.TP 
+\fBGMT_ONLINE\fP(\fIx\fP)
+最后的 \fBopen\fP(2) 找到了带磁带的驱动器并准备好运行。
+.TP 
+\fBGMT_D_6250\fP(\fIx\fP)
+.TQ
+\fBGMT_D_1600\fP(\fIx\fP)
+.TQ
+\fBGMT_D_800\fP(\fIx\fP)
+此 \[lq] generic\[rq] 状态信息仅报告 9 磁道 \(12" 磁带机的当前密度设置。
+.TP 
+\fBGMT_DR_OPEN\fP(\fIx\fP)
+驱动器没有适当的磁带。
+.TP 
+\fBGMT_IM_REP_EN\fP(\fIx\fP)
+Immediate 报告模式。 如果不能保证在写入调用返回时数据已物理写入磁带，则设置此位。
+仅当驱动程序不缓冲数据且驱动器设置为不缓冲数据时，它才设置为零。
+.TP 
+\fBGMT_CLN\fP(\fIx\fP)
+驱动器已请求清洁。 从 Linux 2.4.19 和 Linux 2.5.43 开始实现。
+.RE
+.TP 
+\fImt_erreg\fP
+\fImt_erreg\fP 中定义的唯一字段是低 16 位中恢复的错误计数 (由 \fBMT_ST_SOFTERR_SHIFT\fP 和
+\fBMT_ST_SOFTERR_MASK\fP) 定义)。 由于驱动器报告恢复错误的方式不一致，因此通常不会维护此计数
+(大多数驱动器默认情况下不报告软错误，但这可以使用 SCSI MODE SELECT 命令更改)。
+.TP 
+\fImt_fileno\fP
+报告当前文件编号 (zero\-based)。 当文件编号未知时 (例如，在 \fBMTBSS\fP 或 \fBMTSEEK\fP).
+.TP 
+\fImt_blkno\fP
+报告当前文件中的块号 (zero\-based)。 当块编号未知时 (例如，在 \fBMTBSF\fP、\fBMTBSS\fP 或 \fBMTSEEK\fP)
+之后)，此值设置为 \-1。
+.SS "MTIOCPOS \[em] get tape position"
+此请求采用 \fI(struct mtpos\ *)\fP 类型的参数并报告驱动器对当前磁带块号的概念，这与 \fBMTIOCGET\fP 返回的
+\fImt_blkno\fP 不同。 此驱动器必须是支持 \fBREAD POSITION\fP 命令 (设备特定地址) 的 SCSI\-2 驱动器或
+Tandberg 兼容的 SCSI\-1 驱动器 (Tandberg、Archive Viper、Wangtek 等)。
+.PP
+.in +4n
+.EX
+/* structure for MTIOCPOS \- mag tape get position command */
+struct mtpos {
+    long mt_blkno;    /* current block number */
+};
+.EE
+.in
+.SH "RETURN VALUE"
+.TP 
+\fBEACCES\fP
+试图写入或擦除写保护磁带。 (在 \fBopen\fP(2).) 期间未检测到此错误
+.TP 
+\fBEBUSY\fP
+该设备已在使用中或驱动程序无法分配缓冲区。
+.TP 
+\fBEFAULT\fP
+命令参数指向不属于调用进程的内存。
+.TP 
+\fBEINVAL\fP
+\fBioctl\fP(2) 的参数无效，或者请求的块大小无效。
+.TP 
+\fBEIO\fP
+请求的操作无法完成。
+.TP 
+\fBENOMEM\fP
+.\" Precisely: Linux 2.6.0-test6
+\fBread\fP(2) 中的字节计数小于磁带上的下一个物理块。 (在 Linux 2.2.18 和 Linux 2.4.0 之前，多余的字节已被忽略。)
+.TP 
+\fBENOSPC\fP
+无法完成写入操作，因为磁带已到达介质末尾。
+.TP 
+\fBENOSYS\fP
+未知 \fBioctl\fP(2)。
+.TP 
+\fBENXIO\fP
+打开时，磁带设备不存在。
+.TP 
+\fBEOVERFLOW\fP
+试图读取或写入大于驱动程序内部缓冲区的可变长度块。
+.TP 
+\fBEROFS\fP
+当驱动器中的磁带被写保护时，尝试使用 \fBO_WRONLY\fP 或 \fBO_RDWR\fP 打开。
+.SH FILES
+.TP 
+\fI/dev/st*\fP
+自动倒带 SCSI 磁带设备
+.TP 
+\fI/dev/nst*\fP
+.\" .SH AUTHOR
+.\" The driver has been written by Kai M\(:akisara (Kai.Makisara@metla.fi)
+.\" starting from a driver written by Dwayne Forsyth.
+.\" Several other
+.\" people have also contributed to the driver.
+非倒带 SCSI 磁带设备
+.SH NOTES
+.IP \[bu] 3
+在系统之间交换数据时，两个系统必须就物理磁带块大小达成一致。 驱动器启动后的参数通常不是大多数操作系统用于这些设备的参数。
+如果驱动器支持该模式，则大多数系统都使用可变块模式的驱动器。 这适用于大多数现代驱动器，包括 DAT、8mm 螺旋扫描驱动器、DLT 等。建议在
+Linux 中也以可变块模式使用这些驱动器 (即，在系统启动时使用 \fBMTSETBLK\fP 或 \fBMTSETDEFBLK\fP
+来设置模式)，至少在与外部系统交换数据时。 这样做的缺点是必须使用相当大的磁带块大小才能在 SCSI 总线上获得可接受的数据传输速率。
+.IP \[bu]
+许多程序 (例如，\fBtar\fP(1))) 允许用户在命令行上指定阻塞因子。 请注意，这仅在可变块模式下确定磁带上的物理块大小。
+.IP \[bu]
+为了使用 SCSI 磁带驱动器，基本 SCSI 驱动程序、SCSI 适配器驱动程序和 SCSI 磁带驱动程序必须配置到内核中或作为模块加载。 如果
+SCSI 磁带驱动程序不存在，则可以识别驱动器，但本页中描述的磁带支持不可用。
+.IP \[bu]
+驱动程序将错误消息写入 console/log。 如果在内核配置中启用了详细的 SCSI 消息，则写入某些消息的 SENSE 代码会自动转换为文本。
+.IP \[bu]
+驱动程序的内部缓冲允许固定块模式下的良好吞吐量，也具有较小的 \fBread\fP(2) 和 \fBwrite\fP(2) 字节数。
+对于直接传输，这是不可能的，并且在移动到 2.6 内核时可能会导致意外。 解决方案是告诉软件使用更大的传输 (通常告诉它使用更大的块)。
+如果这不可能，可以禁用直接传输。
+.SH "SEE ALSO"
+\fBmt\fP(1)
+.PP
+Linux 内核源代码树中的文件 \fIdrivers/scsi/README.st\fP 或 \fIDocumentation/scsi/st.txt\fP
+(内核 >= 2.6) 包含有关驱动程序及其配置可能性的最新信息
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

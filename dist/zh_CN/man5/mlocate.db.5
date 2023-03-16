@@ -1,0 +1,101 @@
+.\" -*- coding: UTF-8 -*-
+.\" A man page for mlocate.db. -*- nroff -*-
+.\"
+.\" Copyright (C) 2005, 2007 Red Hat, Inc. All rights reserved.
+.\"
+.\" This copyrighted material is made available to anyone wishing to use,
+.\" modify, copy, or redistribute it subject to the terms and conditions of the
+.\" GNU General Public License v.2.
+.\"
+.\" This program is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
+.\" FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for 
+.\" more details.
+.\"
+.\" You should have received a copy of the GNU General Public License along
+.\" with this program; if not, write to the Free Software Foundation, Inc.,
+.\" 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+.\"
+.\" Author: Miloslav Trmac <mitr@redhat.com>
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mlocate.db 5 "Jan 2007" mlocate 
+
+.SH NAME
+mlocate.db \- 一个 mlocate 数据库
+
+.SH DESCRIPTION
+mlocate 数据库以文件头开头: 8 个字节用于幻数 (\fB"\e0mlocate"\fP，如 C 字面量)，4 个字节用于大端
+\fIconfiguration block\fP 大小，1 个字节用于文件格式版本 (\fB0\fP)，1 个字节用于 `需要可见性` ' 标记 (\fB0\fP 或
+\fB1\fP)，2 个字节填充，和一个 \f (SMNUL\fR\-terminated 数据库根目录的路径名。
+
+标题后跟一个 \fIconfiguration block\fP，包括在内以确保在某些配置更改可能影响其内容时不会重用数据库。 配置块的大小 (以字节为单位)
+存储在文件头中。 配置块是 \fIvariable assignments\fP 的序列，按变量名排序。 每个 \fIvariable assignment\fP
+都包含一个 \f (SMNUL\fR\-terminated 变量名和一个有序的 \f (SMNUL\fR\-terminated 值列表。
+值列表以另外一个
+.SM NUL
+字符结束。 使用的顺序由 \fBstrcmp ()\fP 函数定义。
+
+当前定义的变量是:
+.TP 
+\fBprune_bind_mounts\fP
+单个条目，值为 \fBPRUNE_BIND_MOUNTS\fP; 字符串 \fB0\fP 或 \fB1\fP 之一。
+
+.TP 
+\fBprunefs\fP
+\fBPRUNEFS\fP 的值，每个条目都转换为大写。
+
+.TP 
+\fBprunepaths\fP
+\fBPRUNEPATHS\fP 的值。
+
+.P
+.SM EOF
+之前文件的其余部分描述了目录及其内容。 每个目录都以一个标题开头: 大端 \fIdirectory time\fP (seconds)
+8 个字节，大端 \fIdirectory time\fP (nanoseconds) 4 个字节 (如果未知，则为 0，小于
+1,000,000,000)，4 个字节填充，以及一个 \f (目录的 SMNUL\fR\-terminated 路径名.  目录内容，后面是按名称排序的
+\fIfile entries\fP 序列。
+
+\fIDirectory time\fP 是目录的 \fBst_ctime\fP 和 \fBst_mtime\fP 中的最大值。 如果数据库中的 \fIdirectory time\fP 和文件系统中的 \fBupdatedb\fP(8) 完全匹配，则 \fBupdatedb\fP(8) 使用原始数据。 \fIDirectory time\fP
+等于 0 总是会导致重新扫描目录: 这是处理在构建数据库时正在更新的目录所必需的。
+
+每个 \fIfile entry\fP 都以一个字节开头，标记其类型:
+.TP 
+\fB0\fP
+非目录文件。 后跟一个 \f (SMNUL\fR\-terminated 文件 (不是路径) 名称。
+
+.TP 
+\fB1\fP
+一个子目录。 后跟一个 \f (SMNUL\fR\-terminated 文件 (不是路径) 名称。
+
+.TP 
+\fB2\fP
+标记当前目录的结尾。
+
+.P
+\fBlocate(1)\fP 仅报告文件条目，不报告目录名称，因为它们被报告为其父目录中的条目。 唯一的例外是数据库的根目录，它存储在文件头中。
+
+.SH AUTHOR
+米洛斯拉夫・特马克 <mitr@redhat.com>
+
+.SH "SEE ALSO"
+\fBlocate\fP(1), \fBupdatedb.conf\fP(5), \fBupdatedb\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

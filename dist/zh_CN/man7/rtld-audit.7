@@ -1,0 +1,371 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2009 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2009-01-12, mtk, Created
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RTLD\-AUDIT 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+rtld\-audit \- 动态链接器的审计 API
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <link.h>\fP
+.fi
+.SH DESCRIPTION
+GNU 动态链接器 (运行时链接器) 提供了一个审计 API，允许在发生各种动态链接事件时通知应用程序。 此 API 与 Solaris
+运行时链接器提供的审计接口非常相似。 必要的常量和原型通过包含 \fI<link.h>\fP 来定义。
+.PP
+为了使用这个接口，程序人员创建了一个共享库来实现一组标准的函数名称。 并非所有的函数都需要实现:
+在大多数情况下，如果程序人员对特定类别的审计事件不感兴趣，则不需要为相应的审计函数提供实现。
+.PP
+要使用审核接口，必须定义环境变量 \fBLD_AUDIT\fP 以包含以冒号分隔的共享库列表，每个共享库都可以实现 (部分) 审核 API。
+当一个可审计的事件发生时，相应的函数在每个库中被调用，按照库被列出的顺序。
+.SS la_version()
+\&
+.nf
+\fBunsigned int la_version(unsigned int \fP\fIversion\fP\fB);\fP
+.fi
+.PP
+这是审计库定义 \fImust\fP 的唯一函数: 它执行动态链接器和审计库之间的初始握手。 调用此函数时，动态链接器在 \fIversion\fP
+中传递链接器支持的审计接口的最高版本。
+.PP
+此函数的典型实现仅返回常量 \fBLAV_CURRENT\fP，它指示用于构建审计模块的 \fI<link.h>\fP 版本。
+如果动态链接器不支持这个版本的审计接口，它会拒绝激活这个审计模块。 如果函数返回零，动态链接器也不会激活这个审计模块。
+.PP
+为了向后兼容较旧的动态链接器，审计模块可以检查 \fIversion\fP 参数并返回比 \fBLAV_CURRENT\fP
+更早的版本，假设该模块可以调整其实现以匹配审计接口先前版本的要求。 \fBla_version\fP 函数不应该在没有进一步检查的情况下返回
+\fIversion\fP 的值，因为它可能对应于与用于构建审计模块的 \fI<link.h>\fP 定义不匹配的接口。
+.SS la_objsearch()
+\&
+.nf
+\fBchar *la_objsearch(const char *\fP\fIname\fP\fB, uintptr_t *\fP\fIcookie\fP\fB,\fP
+\fB                   unsigned int \fP\fIflag\fP\fB);\fP
+.fi
+.PP
+动态链接器调用这个函数来通知审计库它要搜索一个共享对象。 \fIname\fP 参数是要搜索的文件名或路径名。 \fIcookie\fP 标识启动搜索的共享对象。
+\fIflag\fP 设置为以下值之一:
+.TP  17
+\fBLA_SER_ORIG\fP
+这是正在搜索的原始名称。 通常，此名称来自 ELF \fBDT_NEEDED\fP 条目，或者是 \fIfilename\fP 参数赋予 \fBdlopen\fP(3)。
+.TP 
+\fBLA_SER_LIBPATH\fP
+\fIname\fP 是使用 \fBLD_LIBRARY_PATH\fP 中指定的目录创建的。
+.TP 
+\fBLA_SER_RUNPATH\fP
+\fIname\fP 是使用 ELF \fBDT_RPATH\fP 或 \fBDT_RUNPATH\fP 列表中指定的目录创建的。
+.TP 
+\fBLA_SER_CONFIG\fP
+\fIname\fP 是通过 \fBldconfig\fP(8) 缓存 (\fI/etc/ld.so.cache\fP) 找到的。
+.TP 
+\fBLA_SER_DEFAULT\fP
+\fIname\fP 是通过搜索其中一个默认目录找到的。
+.TP 
+\fBLA_SER_SECURE\fP
+\fIname\fP 特定于安全对象 (在 Linux 上未使用)。
+.PP
+作为它的函数结果，\fBla_objsearch\fP() 返回动态链接器应该用于进一步处理的路径名。 如果返回 NULL，则忽略此路径名以进行进一步处理。
+如果这个审计库只是想监视搜索路径，那么应该返回 \fIname\fP。
+.SS la_activity()
+\&
+.nf
+\fBvoid la_activity( uintptr_t *\fP\fIcookie\fP\fB, unsigned int \fP\fIflag\fP\fB);\fP
+.fi
+.PP
+动态链接器调用这个函数来通知审计库 link\-map 活动正在发生。 \fIcookie\fP 标识链接 map 头部的对象。
+当动态链接器调用此函数时，\fIflag\fP 被设置为以下值之一:
+.TP  19
+\fBLA_ACT_ADD\fP
+正在将新对象添加到链接 map。
+.TP 
+\fBLA_ACT_DELETE\fP
+正在从链接 map 中删除对象。
+.TP 
+\fBLA_ACT_CONSISTENT\fP
+Link\-map 活动已完成: map 再次一致。
+.SS la_objopen()
+\&
+.nf
+\fBunsigned int la_objopen(struct link_map *\fP\fImap\fP\fB, Lmid_t \fP\fIlmid\fP\fB,\fP
+\fB                        uintptr_t *\fP\fIcookie\fP\fB);\fP
+.fi
+.PP
+当加载新的共享对象时，动态链接器调用这个函数。 \fImap\fP 参数是指向描述对象的链接 \- map 结构体的指针。 \fIlmid\fP 字段具有以下值之一
+.TP  17
+\fBLM_ID_BASE\fP
+链接 map 是初始命名空间的一部分。
+.TP 
+\fBLM_ID_NEWLM\fP
+链接 map 是通过 \fBdlmopen\fP(3) 请求的新命名空间的一部分。
+.PP
+\fIcookie\fP 是指向此对象标识符的指针。 该标识符被提供给以后在审计库中调用函数以识别此对象。 这个标识符被初始化为指向对象的链接
+map，但是审计库可以将标识符更改为它可能更喜欢用来标识对象的其他一些值。
+.PP
+作为它的返回值，\fBla_objopen\fP() 返回一个位掩码，该位掩码通过对以下常量中的零个或多个进行或运算而创建，它允许审计库选择要由
+\fBla_symbind*\fP(): 监视的对象
+.TP  17
+\fBLA_FLG_BINDTO\fP
+审计符号绑定到这个对象。
+.TP 
+\fBLA_FLG_BINDFROM\fP
+审核来自该对象的符号绑定。
+.PP
+\fBla_objopen\fP() 的返回值 0 表示不应为此对象审计任何符号绑定。
+.SS la_objclose()
+\&
+.nf
+\fBunsigned int la_objclose(uintptr_t *\fP\fIcookie\fP\fB);\fP
+.fi
+.PP
+动态链接器在对象的任何终结代码执行之后、对象被卸载之前调用这个函数。 \fIcookie\fP 参数是从先前调用 \fBla_objopen\fP()
+获得的标识符。
+.PP
+在当前实现中，\fBla_objclose\fP() 返回的值被忽略。
+.SS la_preinit()
+\&
+.nf
+\fBvoid la_preinit(uintptr_t *\fP\fIcookie\fP\fB);\fP
+.fi
+.PP
+动态链接器在加载所有共享对象之后调用此函数，然后再将控制权传递给应用程序 (即调用 \fImain\fP()).  请注意，\fImain\fP()
+稍后可能仍会使用 \fBdlopen\fP(3) 动态加载对象。
+.SS la_symbind*()
+\&
+.nf
+\fBuintptr_t la_symbind32(Elf32_Sym *\fP\fIsym\fP\fB, unsigned int \fP\fIndx\fP\fB,\fP
+\fB                       uintptr_t *\fP\fIrefcook\fP\fB, uintptr_t *\fP\fIdefcook\fP\fB,\fP 
+\fB                       unsigned int *\fP\fIflags\fP\fB, const char *\fP\fIsymname\fP\fB);\fP 
+\fBuintptr_t la_symbind64(Elf64_Sym *\fP\fIsym\fP\fB, unsigned int \fP\fIndx\fP\fB,\fP
+\fB                       uintptr_t *\fP\fIrefcook\fP\fB, uintptr_t *\fP\fIdefcook\fP\fB,\fP
+\fB                       unsigned int *\fP\fIflags\fP\fB, const char *\fP\fIsymname\fP\fB);\fP
+.fi
+.PP
+当符号绑定发生在两个已被 \fBla_objopen\fP() 标记为审计通知的共享对象之间时，动态链接器调用其中一个函数。
+\fBla_symbind32\fP() 函数用于 32 位平台; \fBla_symbind64\fP() 函数在 64 位平台上使用。
+.PP
+\fIsym\fP 参数是指向结构体的指针，该结构体提供有关被绑定符号的信息。 结构体定义显示在 \fI<elf.h>\fP 中。
+在这个结构体的字段中，\fIst_value\fP 表示符号绑定的地址。
+.PP
+\fIndx\fP 参数给出了符号在绑定共享对象的符号表中的索引。
+.PP
+\fIrefcook\fP 参数标识创建符号引用的共享对象; 这与提供给返回 \fBLA_FLG_BINDFROM\fP 的 \fBla_objopen\fP()
+号码的标识符相同。 \fIdefcook\fP 参数标识定义引用符号的共享对象; 这与提供给返回 \fBLA_FLG_BINDTO\fP 的
+\fBla_objopen\fP() 号码的标识符相同。
+.PP
+\fIsymname\fP 参数指向一个包含交易品种名称的字符串。
+.PP
+.\" LA_SYMB_STRUCTCALL appears to be unused
+\fIflags\fP 参数是一个位掩码，它既提供有关符号的信息，又可用于修改对该 PLT (过程链接表) 条目的进一步审计。
+动态链接器可以在此参数中提供以下位值:
+.TP  22
+\fBLA_SYMB_DLSYM\fP
+绑定是由调用 \fBdlsym\fP(3) 引起的。
+.TP 
+\fBLA_SYMB_ALTVALUE\fP
+先前的 \fBla_symbind*\fP() 调用返回了该符号的替代值。
+.PP
+.\" pltenter/pltexit are called for non-dynamically loaded libraries,
+.\" but don't seem to be called for dynamically loaded libs?
+.\" Is this the same on Solaris?
+默认情况下，如果审计库实现 \fBla_pltenter\fP() 和 \fBla_pltexit\fP() 函数 (见下文)，则在 \fBla_symbind\fP()
+之后调用这些函数，对于 PLT 条目，每次引用符号时。 可以将以下标志与 \fI*flags\fP 进行或运算以更改此默认行为:
+.TP  22
+\fBLA_SYMB_NOPLTENTER\fP
+不要为这个符号调用 \fBla_pltenter\fP()。
+.TP  22
+\fBLA_SYMB_NOPLTEXIT\fP
+不要为这个符号调用 \fBla_pltexit\fP()。
+.PP
+\fBla_symbind32\fP() 和 \fBla_symbind64\fP() 的返回值是函数返回后控制应该传递到的地址。
+如果审计库只是监视符号绑定，那么它应该返回 \fIsym\->st_value\fP。 如果库希望将控制指向另一个位置，则可能会返回不同的值。
+.SS la_pltenter()
+此函数的准确名称和参数类型取决于硬件平台。 (适当的定义由 \fI<link.h>\fP.) 提供这里是 x86\-32 的定义:
+.PP
+.nf
+\fBElf32_Addr la_i86_gnu_pltenter(Elf32_Sym *\fP\fIsym\fP\fB, unsigned int \fP\fIndx\fP\fB,\fP
+\fB                 uintptr_t *\fP\fIrefcook\fP\fB, uintptr_t *\fP\fIdefcook\fP\fB,\fP
+\fB                 La_i86_regs *\fP\fIregs\fP\fB, unsigned int *\fP\fIflags\fP\fB,\fP
+\fB                 const char *\fP\fIsymname\fP\fB, long *\fP\fIframesizep\fP\fB);\fP
+.fi
+.PP
+这个函数在调用 PLT 条目之前调用，在两个已标记为绑定通知的共享对象之间调用。
+.PP
+\fIsym\fP、\fIndx\fP、\fIrefcook\fP、\fIdefcook\fP 和 \fIsymname\fP 与 \fBla_symbind*\fP() 相同。
+.PP
+\fIregs\fP 参数指向结构体 (在 \fI<link.h>\fP) 中定义，包含用于调用此 PLT 条目的寄存器的值。
+.PP
+\fIflags\fP 参数指向一个位掩码，该位掩码传送关于此 PLT 条目的信息，并可用于修改此 PLT 条目的后续审计，对于
+\fBla_symbind*\fP()。
+.PP
+.\" FIXME . Is the following correct?
+\fIframesizep\fP 参数指向一个 \fIlong\~int\fP 缓冲区，可用于显式设置帧大小用于调用此 PLT 条目。 如果此符号的不同
+\fBla_pltenter\fP() 调用返回不同的值，则使用最大返回值。 仅当此缓冲区明确设置为合适的值时才会调用 \fBla_pltexit\fP() 函数。
+.PP
+\fBla_pltenter\fP() 的返回值与 \fBla_symbind*\fP() 相同。
+.SS la_pltexit()
+此函数的准确名称和参数类型取决于硬件平台。 (适当的定义由 \fI<link.h>\fP.) 提供这里是 x86\-32 的定义:
+.PP
+.nf
+\fBunsigned int la_i86_gnu_pltexit(Elf32_Sym *\fP\fIsym\fP\fB, unsigned int \fP\fIndx\fP\fB,\fP
+\fB                 uintptr_t *\fP\fIrefcook\fP\fB, uintptr_t *\fP\fIdefcook\fP\fB,\fP
+\fB                 const La_i86_regs *\fP\fIinregs\fP\fB, La_i86_retval *\fP\fIoutregs\fP\fB,\fP
+\fB                 const char *\fP\fIsymname\fP\fB);\fP
+.fi
+.PP
+当 PLT 条目在两个已标记为绑定通知的共享对象之间生成时返回时调用此函数。 函数在控制返回到 PLT 条目的调用者之前被调用。
+.PP
+\fIsym\fP、\fIndx\fP、\fIrefcook\fP、\fIdefcook\fP 和 \fIsymname\fP 与 \fBla_symbind*\fP() 相同。
+.PP
+\fIinregs\fP 参数指向结构体 (在 \fI<link.h>\fP) 中定义，其中包含用于调用此 PLT 条目的寄存器的值。
+\fIoutregs\fP 参数指向结构体 (在 \fI<link.h>\fP) 中定义，其中包含调用此 PLT 条目的返回值。
+这些值可以由调用者修改，并且更改将对 PLT 条目的调用者可见。
+.PP
+.\" This differs from Solaris, where an audit library that monitors
+.\" symbol binding should return the value of the 'retval' argument
+.\" (not provided by GNU, but equivalent to returning outregs->lrv_eax
+.\" on (say) x86-32).
+在当前的 GNU 实现中，忽略 \fBla_pltexit\fP() 的返回值。
+.SH STANDARDS
+此 API 是非标准的，但与 \fIRuntime Linker Auditing Interface\fP 一章中 Solaris \fILinker and Libraries Guide\fP 中描述的 Solaris API 非常相似。
+.SH NOTES
+请注意与 Solaris 动态链接器审计 API 的以下区别:
+.IP \[bu] 3
+GNU 实现不支持 Solaris \fBla_objfilter\fP() 接口。
+.IP \[bu]
+Solaris \fBla_symbind32\fP() 和 \fBla_pltexit\fP() 函数不提供 \fIsymname\fP 参数。
+.IP \[bu]
+Solaris \fBla_pltexit\fP() 函数不提供 \fIinregs\fP 和 \fIoutregs\fP 参数 (但提供 \fIretval\fP
+参数和函数返回值)。
+.SH BUGS
+.\" FIXME . Specifying multiple audit libraries doesn't work on GNU.
+.\" My simple tests on Solaris work okay, but not on Linux -- mtk, Jan 2009
+.\" glibc bug filed: http://sourceware.org/bugzilla/show_bug.cgi?id=9733
+.\" Reportedly, this is fixed on 16 Mar 2009 (i.e., for glibc 2.10)
+在 x01X 及之前的 glibc 版本中，在 \fBLD_AUDIT\fP 中指定多个审计库会导致运行时崩溃。 据报道，这已在 glibc 2.10
+中修复。
+.SH EXAMPLES
+.EX
+#include <link.h>
+#include <stdio.h>
+
+unsigned int
+la_version(unsigned int version)
+{
+    printf("la_version(): version = %u;  LAV_CURRENT = %u\en",
+            version, LAV_CURRENT);
+
+    return LAV_CURRENT;
+}
+
+char *
+la_objsearch(const char *name, uintptr_t *cookie, unsigned int flag)
+{
+    printf("la_objsearch(): name = %s;  cookie = %p", name, cookie);
+    printf(";  flag = %s\en",
+            (flag == LA_SER_ORIG) ?    "LA_SER_ORIG" :
+            (flag == LA_SER_LIBPATH) ? "LA_SER_LIBPATH" :
+            (flag == LA_SER_RUNPATH) ? "LA_SER_RUNPATH" :
+            (flag == LA_SER_DEFAULT) ? "LA_SER_DEFAULT" :
+            (flag == LA_SER_CONFIG) ?  "LA_SER_CONFIG" :
+            (flag == LA_SER_SECURE) ?  "LA_SER_SECURE" :
+            "???");
+
+    return name;
+}
+
+void
+la_activity (uintptr_t *cookie, unsigned int flag)
+{
+    printf("la_activity(): cookie = %p; flag = %s\en", cookie,
+            (flag == LA_ACT_CONSISTENT) ? "LA_ACT_CONSISTENT" :
+            (flag == LA_ACT_ADD) ?        "LA_ACT_ADD" :
+            (flag == LA_ACT_DELETE) ?     "LA_ACT_DELETE" :
+            "???");
+}
+
+unsigned int
+la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie)
+{
+    printf("la_objopen(): loading \e"%s\e";  lmid = %s; cookie=%p\en",
+            map\->l_name,
+            (lmid == LM_ID_BASE) ?  "LM_ID_BASE" :
+            (lmid == LM_ID_NEWLM) ? "LM_ID_NEWLM" :
+            "???",
+            cookie);
+
+    return LA_FLG_BINDTO | LA_FLG_BINDFROM;
+}
+
+unsigned int
+la_objclose (uintptr_t *cookie)
+{
+    printf("la_objclose(): %p\en", cookie);
+
+    return 0;
+}
+
+void
+la_preinit(uintptr_t *cookie)
+{
+    printf("la_preinit(): %p\en", cookie);
+}
+
+uintptr_t
+la_symbind32(Elf32_Sym *sym, unsigned int ndx, uintptr_t *refcook,
+        uintptr_t *defcook, unsigned int *flags, const char *symname)
+{
+    printf("la_symbind32(): symname = %s;  sym\->st_value = %p\en",
+            symname, sym\->st_value);
+    printf("        ndx = %u; flags = %#x", ndx, *flags);
+    printf(";  refcook = %p; defcook = %p\en", refcook, defcook);
+
+    return sym\->st_value;
+}
+
+uintptr_t
+la_symbind64(Elf64_Sym *sym, unsigned int ndx, uintptr_t *refcook,
+        uintptr_t *defcook, unsigned int *flags, const char *symname)
+{
+    printf("la_symbind64(): symname = %s;  sym\->st_value = %p\en",
+            symname, sym\->st_value);
+    printf("        ndx = %u; flags = %#x", ndx, *flags);
+    printf(";  refcook = %p; defcook = %p\en", refcook, defcook);
+
+    return sym\->st_value;
+}
+
+Elf32_Addr
+la_i86_gnu_pltenter(Elf32_Sym *sym, unsigned int ndx,
+        uintptr_t *refcook, uintptr_t *defcook, La_i86_regs *regs,
+        unsigned int *flags, const char *symname, long *framesizep)
+{
+    printf("la_i86_gnu_pltenter(): %s (%p)\en", symname, sym\->st_value);
+
+    return sym\->st_value;
+}
+.EE
+.SH "SEE ALSO"
+\fBldd\fP(1), \fBdlopen\fP(3), \fBld.so\fP(8), \fBldconfig\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

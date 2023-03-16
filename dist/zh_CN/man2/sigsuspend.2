@@ -1,0 +1,86 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2005 Michael Kerrisk
+.\" based on earlier work by faith@cs.unc.edu and
+.\" Mike Battersby <mib@deakin.edu.au>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2005-09-15, mtk, Created new page by splitting off from sigaction.2
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigsuspend 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+sigsuspend, rt_sigsuspend \- 等待信号
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint sigsuspend(const sigset_t *\fP\fImask\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigsuspend\fP():
+.nf
+    _POSIX_C_SOURCE
+.fi
+.SH DESCRIPTION
+\fBsigsuspend\fP() 临时用 \fImask\fP
+给定的掩码替换调用线程的信号掩码，然后挂起线程直到传递一个信号，该信号的作用是调用信号处理程序或终止进程。
+.PP
+如果信号终止进程，则 \fBsigsuspend\fP() 不会返回。 如果捕获到信号，则在信号处理函数返回后 \fBsigsuspend\fP()
+返回，信号掩码恢复到调用 \fBsigsuspend\fP() 之前的状态。
+.PP
+无法阻止 \fBSIGKILL\fP 或 \fBSIGSTOP\fP; 在 \fImask\fP 中指定这些信号对线程的信号掩码没有影响。
+.SH "RETURN VALUE"
+\fBsigsuspend\fP() 始终返回 \-1，\fIerrno\fP 设置为指示错误 (通常为 \fBEINTR\fP).
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fImask\fP 指向的内存不是进程地址空间的有效部分。
+.TP 
+\fBEINTR\fP
+调用被信号打断; \fBsignal\fP(7).
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+通常，\fBsigsuspend\fP() 与 \fBsigprocmask\fP(2) 结合使用，以防止在执行关键代码段期间传递信号。 调用者首先用
+\fBsigprocmask\fP(2) 阻塞信号。 当关键代码完成时，调用者然后通过使用 \fBsigprocmask\fP(2) 返回的信号掩码 (在
+\fIoldset\fP 参数中) 调用 \fBsigsuspend\fP() 来等待信号。
+.PP
+.\"
+有关操作信号集的详细信息，请参见 \fBsigsetops\fP(3)。
+.SS "C library/kernel differences"
+.\"
+原来的 Linux 系统调用被命名为 \fBsigsuspend\fP()。 但是，随着 Linux 2.2 中实时信号的添加，该系统调用支持的固定大小的
+32 位 \fIsigset_t\fP 类型不再适用。 因此，增加了一个新的系统调用，\fBrt_sigsuspend\fP()，以支持扩大的
+\fIsigset_t\fP 类型。 新系统调用取第二个参数 \fIsize_t sigsetsize\fP，指定 \fImask\fP 中信号集的字节大小。
+此参数当前要求具有值 \fIsizeof(sigset_t)\fP (或错误 \fBEINVAL\fP 结果)。 glibc \fBsigsuspend\fP()
+包装器函数向我们隐藏了这些细节，在内核提供 \fBrt_sigsuspend\fP() 时透明地调用它。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBpause\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2), \fBsigprocmask\fP(2),
+\fBsigwaitinfo\fP(2), \fBsigsetops\fP(3), \fBsigwait\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

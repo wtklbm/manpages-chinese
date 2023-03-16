@@ -1,0 +1,434 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-RUN 1 "" "systemd 253" systemd\-run
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-run \- 在瞬态作用域单元、服务单元或路径、套接字或定时器触发的服务单元中运行程序
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-run\fR\ 'u
+\fBsystemd\-run\fP [OPTIONS...] \fICOMMAND\fP\ [ARGS...]
+.HP \w'\fBsystemd\-run\fR\ 'u
+\fBsystemd\-run\fP [OPTIONS...] [PATH\ OPTIONS...] {\fICOMMAND\fP} [ARGS...]
+.HP \w'\fBsystemd\-run\fR\ 'u
+\fBsystemd\-run\fP [OPTIONS...] [SOCKET\ OPTIONS...] {\fICOMMAND\fP} [ARGS...]
+.HP \w'\fBsystemd\-run\fR\ 'u
+\fBsystemd\-run\fP [OPTIONS...] [TIMER\ OPTIONS...] {\fICOMMAND\fP} [ARGS...]
+.SH DESCRIPTION
+.PP
+\fBsystemd\-run\fP 可用于创建和启动瞬态 \&.service 或 \&。使用域元并运行其中指定的
+\fICOMMAND\fP\&。它也可以用于创建和启动一个瞬态 \&.path、\&.socket 或 \&.timer 元，在经过 \& 时激活
+\&.service 元。
+.PP
+如果命令作为瞬态服务元运行，它将像任何其他服务一样由服务管理器启动和管理，因此像任何其他元 \& 一样显示在 \fBsystemctl list\-units\fP 的输出中。它将在干净且分离的执行环境中运行，服务管理器作为它的父进程 \&。在这种模式下，\fBsystemd\-run\fP
+将在后台异步启动服务，并在命令开始执行后返回 (除非指定 \fB\-\-no\-block\fP 或 \fB\-\-wait\fP，见下文) \&。
+.PP
+如果一个命令作为瞬态作用域单元运行，它将被 \fBsystemd\-run\fP 本身作为父进程执行，从而继承调用者的执行环境
+\&。但是，该命令的进程与普通服务类似，由服务管理器管理，并将显示在 \fBsystemctl list\-units\fP\&
+的输出中。这种情况下的执行是同步的，只有在命令完成时才会返回 \&。此模式通过 \fB\-\-scope\fP 开关启用 (见下文) \&。
+.PP
+如果使用路径、套接字或计时器选项 (例如 \fB\-\-on\-calendar=\fP (见下文) ) 运行命令，则会为指定命令 \&
+创建临时路径、套接字或计时器单元以及服务单元。只有瞬态路径、套接字或定时器元立即启动，瞬态服务元将由路径、套接字或定时器元 \& 触发。如果指定了
+\fB\-\-unit=\fP 选项，\fICOMMAND\fP 可以省略 \&。在这种情况下，\fBsystemd\-run\fP 只创建一个
+\&.path、\&.socket 或 \&.timer 元来触发指定的元 \&。
+.PP
+默认情况下，使用 \fBsystemd\-run\fP 创建的服务默认为 \fBsimple\fP 类型，有关详细信息，请参见
+\fBsystemd.service\fP(5) 中 \fIType=\fP 的描述 \&。请注意，当使用此类型时，服务管理器 (以及 \fBsystemd\-run\fP
+命令) 会在主服务进程的 \fBfork()\fP 成功后立即认为服务启动成功，i\&.e\&。在调用 \fBexecve()\fP
+之前，因此即使无法启动指定的命令 \&。考虑使用 \fBexec\fP 服务类型 (i\&.e\&.\fB\-\-property=Type=exec\fP)，确保
+\fBsystemd\-run\fP 只有在指定命令行启动成功后才返回成功 \&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-no\-ask\-password\fP
+.RS 4
+不要向用户查询特权操作的身份验证 \&。
+.RE
+.PP
+\fB\-\-scope\fP
+.RS 4
+创建一个瞬态 \&。使用域元代替默认的瞬态 \&.service 元 (见上文) \&。
+.RE
+.PP
+\fB\-\-unit=\fP, \fB\-u\fP
+.RS 4
+使用此元名称而不是自动生成的元名称 \&。
+.RE
+.PP
+\fB\-\-property=\fP, \fB\-p\fP
+.RS 4
+在创建的作用域或服务元上设置属性 \&。此选项采用与 \fBsystemctl\fP(1)\*(Aqs \fBset\-property\fP 命令 \&
+相同格式的赋值。
+.RE
+.PP
+\fB\-\-description=\fP
+.RS 4
+提供服务、作用域、路径、套接字或计时器的描述元 \&。如果未指定，命令本身将用作描述 \&。请参见 \fBsystemd.unit\fP(5)\& 中的
+\fIDescription=\fP。
+.RE
+.PP
+\fB\-\-slice=\fP
+.RS 4
+制作新的 \&.service 或 \&. 使用域元指定切片的一部分，而不是 system\&.slice (在 \fB\-\-system\fP 模式下运行时)
+或根切片 (在 \fB\-\-user\fP 模式下运行时) \&。
+.RE
+.PP
+\fB\-\-slice\-inherit\fP
+.RS 4
+制作新的 \&.service 或 \&. 作用域元部分的继承切片 \&。该选项可以与 \fB\-\-slice=\fP\& 结合使用。
+.sp
+继承的切片位于 \fBsystemd\-run\fP 切片 \& 中。例子: 如果 \fBsystemd\-run\fP 切片是
+foo\&.slice，\fB\-\-slice=\fP 参数是 bar，元会放在 foo\-bar\&.slice\& 下。
+.RE
+.PP
+\fB\-r\fP, \fB\-\-remain\-after\-exit\fP
+.RS 4
+服务进程终止后，保持服务直到它被显式停止 \&。这对于在服务完成运行后收集有关服务的运行时信息很有用 \&。另请详见
+\fBsystemd.service\fP(5)\& 中的 \fIRemainAfterExit=\fP。
+.RE
+.PP
+\fB\-\-send\-sighup\fP
+.RS 4
+当终止工作域或服务元时，在 SIGTERM\& 之后立即发送一个 SIGHUP。这有助于向 shells 和类似 shell 的进程表明连接已被切断
+\&。另请详见 \fBsystemd.kill\fP(5)\& 中的 \fISendSIGHUP=\fP。
+.RE
+.PP
+\fB\-\-service\-type=\fP
+.RS 4
+设置服务类型 \&。另请详见 \fBsystemd.service\fP(5)\& 中的 \fIType=\fP。此选项与 \fB\-\-scope\fP\&
+结合使用无效。默认为 \fBsimple\fP\&。
+.RE
+.PP
+\fB\-\-uid=\fP, \fB\-\-gid=\fP
+.RS 4
+在指定的 UNIX 用户和组 \& 下运行服务进程。另请详见 \fBsystemd.exec\fP(5)\& 中的 \fIUser=\fP 和 \fIGroup=\fP。
+.RE
+.PP
+\fB\-\-nice=\fP
+.RS 4
+以指定的 nice 级别运行服务进程 \&。另请详见 \fBsystemd.exec\fP(5)\& 中的 \fINice=\fP。
+.RE
+.PP
+\fB\-\-working\-directory=\fP
+.RS 4
+使用指定的工作目录运行服务进程 \&。另请详见 \fBsystemd.exec\fP(5)\& 中的 \fIWorkingDirectory=\fP。
+.RE
+.PP
+\fB\-\-same\-dir\fP, \fB\-d\fP
+.RS 4
+类似于 \fB\-\-working\-directory=\fP，但是使用服务调用者的当前工作目录来执行 \&。
+.RE
+.PP
+\fB\-E \fP\fINAME\fP\fB[=\fP\fIVALUE\fP\fB]\fP, \fB\-\-setenv=\fP\fINAME\fP\fB[=\fP\fIVALUE\fP\fB]\fP
+.RS 4
+使用指定的环境变量 set\& 运行服务进程。该参数可以多次使用，设置多个变量 \&。当省略 "=" 和 \fIVALUE\fP
+时，将使用程序环境中同名变量的值 \&。
+.sp
+另请详见 \fBsystemd.exec\fP(5)\& 中的 \fIEnvironment=\fP。
+.RE
+.PP
+\fB\-\-pty\fP, \fB\-t\fP
+.RS 4
+调用命令时，瞬态服务通过伪 TTY 设备将其标准输入、输出和错误连接到终端 \fBsystemd\-run\fP 被调用。这允许运行期望交互式用户
+input/output 作为服务的程序，例如交互式命令 shells\&。
+.sp
+请注意，\fBmachinectl\fP(1)\*(Aqs \fBshell\fP 命令通常是在本地主机或本地容器上请求新的交互式登录会话的更好选择 \&。
+.sp
+有关此开关如何与 \fB\-\-pipe\fP\& 结合使用的详细信息，请参见下文。
+.RE
+.PP
+\fB\-\-pipe\fP, \fB\-P\fP
+.RS 4
+如果指定，则瞬态服务的标准输入、输出和错误都继承自 \fBsystemd\-run\fP 命令本身 \&。这允许在 shell 管道中使用
+\fBsystemd\-run\fP\&。请注意，此模式不适合交互式命令 shells 和类似命令，因为服务进程在终端 \& 上调用时不会成为 TTY
+控制器。在这种情况下使用 \fB\-\-pty\fP 代替 \&。
+.sp
+当组合使用 \fB\-\-pipe\fP 和 \fB\-\-pty\fP 时，将自动确定并使用更合适的选项 \&。具体来说，当使用标准输入调用时，使用连接到 TTY
+\fB\-\-pty\fP 的输出和错误，否则使用 \fB\-\-pipe\fP\&。
+.sp
+使用此选项时，\fBsystemd\-run\fP 接收的原始文件描述符将按原样传递给服务进程 \&。如果该服务以不同于 \fBsystemd\-run\fP
+的权限运行，这意味着由于正常的文件描述符访问限制 \&，该服务可能无法重新打开传递的文件描述符。如果调用的进程是一个 shell 脚本，它使用
+\fBecho "hello" >/dev/stderr\fP 构造将消息写入标准错误，这可能会导致问题，因为这只有在标准错误可以重新打开 \&
+时才有效。为了缓解这种情况，请改用构造 \fBecho "hello" >&2\fP，这在很大程度上是等效的，并且避免了这个陷阱 \&。
+.RE
+.PP
+\fB\-\-shell\fP, \fB\-S\fP
+.RS 4
+"\-\-pty \-\-same\-dir \-\-wait \-\-collect \-\-service\-type=exec $SHELL"
+的快捷方式，i\&.e\&。在当前工作目录中请求交互式 shell，在服务上下文中运行，可通过单个开关访问 \&。
+.RE
+.PP
+\fB\-\-quiet\fP, \fB\-q\fP
+.RS 4
+在运行 \& 时抑制额外的信息输出。这在与 \fB\-\-pty\fP 结合使用时特别有用，因为它将抑制解释如何终止 TTY 连接 \& 的初始消息。
+.RE
+.PP
+\fB\-\-on\-active=\fP, \fB\-\-on\-boot=\fP, \fB\-\-on\-startup=\fP, \fB\-\-on\-unit\-active=\fP,
+\fB\-\-on\-unit\-inactive=\fP
+.RS 4
+定义一个相对于不同起点的单调定时器，用于启动指定命令 \&。详见 \fBsystemd.timer\fP(5) 中的
+\fIOnActiveSec=\fP、\fIOnBootSec=\fP、\fIOnStartupSec=\fP、\fIOnUnitActiveSec=\fP、\fIOnUnitInactiveSec=\fP\&。这些选项是具有相关属性的
+\fB\-\-timer\-property=\fP 的快捷方式 \&。这些选项不能与 \fB\-\-scope\fP 或 \fB\-\-pty\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-on\-calendar=\fP
+.RS 4
+定义用于启动指定命令的日历计时器 \&。请参见 \fBsystemd.timer\fP(5)\& 中的 \fIOnCalendar=\fP。该选项是
+\fB\-\-timer\-property=OnCalendar=\fP\& 的快捷方式。此选项不能与 \fB\-\-scope\fP 或 \fB\-\-pty\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-on\-clock\-change\fP, \fB\-\-on\-timezone\-change\fP
+.RS 4
+定义一个基于系统时钟跳转或时区变化的触发器来启动指定的命令 \&。请参见 \fBsystemd.timer\fP(5)\& 中的
+\fIOnClockChange=\fP 和 \fIOnTimezoneChange=\fP。这些选项是
+\fB\-\-timer\-property=OnClockChange=yes\fP 和
+\fB\-\-timer\-property=OnTimezoneChange=yes\fP\& 的快捷方式。这些选项不能与 \fB\-\-scope\fP 或
+\fB\-\-pty\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-path\-property=\fP, \fB\-\-socket\-property=\fP, \fB\-\-timer\-property=\fP
+.RS 4
+在创建的路径、套接字或计时器元上设置属性 \&。此选项类似于 \fB\-\-property=\fP，但适用于瞬态路径、套接字或计时器元，而不是瞬态服务元创建
+\&。此选项采用与 \fBsystemctl\fP(1)\*(Aqs \fBset\-property\fP 命令 \& 相同格式的赋值。这些选项不能与
+\fB\-\-scope\fP 或 \fB\-\-pty\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-no\-block\fP
+.RS 4
+不要同步等待元启动操作完成 \&。如果不指定该选项，瞬态元的启动请求将被验证，入队，\fBsystemd\-run\fP 将等待元 \*(Aqs 启动完成
+\&。通过传递这个参数，它只被验证和入队 \&。该选项不能与 \fB\-\-wait\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-wait\fP
+.RS 4
+同步等待瞬态服务终止 \&。如果指定了该选项，则对瞬态元的启动请求进行验证、入队、等待 \&。随后调用的元被监视，并等待它再次被停用
+(很可能是因为指定的命令已完成) \&。退出时，有关单元 \* (显示 Aqs 运行时，包括总运行时间 (以及 CPU 使用率，如果设置了
+\fB\-\-property=CPUAccounting=1\fP) 以及主进程的退出代码和状态 \&。可以使用 \fB\-\-quiet\fP\&
+抑制此输出。此选项不能与 \fB\-\-no\-block\fP、\fB\-\-scope\fP 或各种路径、套接字或计时器选项组合使用 \&。
+.RE
+.PP
+\fB\-G\fP, \fB\-\-collect\fP
+.RS 4
+完成后卸载瞬态元，即使它失败了 \&。通常，如果没有此选项，所有运行和失败的单元都将保留在内存中，直到用户使用 \fBsystemctl reset\-failed\fP 或等效命令 \& 明确重置它们的失败状态。另一方面，成功运行的单元会立即卸载 \&。如果打开此选项，则单元的
+"garbage collection" 会更激进，并且无论它们退出成功还是失败 \& 都会卸载单元。该选项是
+\fB\-\-property=CollectMode=inactive\-or\-failed\fP 的快捷方式，有关详细信息，请参见
+\fBsystemd.unit\fP(5) 中 \fICollectMode=\fP 的解释 \&。
+.RE
+.PP
+\fB\-\-user\fP
+.RS 4
+与调用用户的服务管理器对话，而不是系统的服务管理器 \&。
+.RE
+.PP
+\fB\-\-system\fP
+.RS 4
+与系统的服务经理交谈 \&。这是隐含的默认 \&。
+.RE
+.PP
+\fB\-H\fP, \fB\-\-host=\fP
+.RS 4
+远程执行操作 \&。指定主机名，或用 "@" 分隔的用户名和主机名，以连接到 \&。主机名可以选择以 ssh 正在侦听的端口为后缀，由 ":"
+分隔，然后是容器名称，由 "/" 分隔，它直接连接到指定主机上的特定容器 \&。这将使用 SSH 与远程机器管理器实例对话。容器名称可以用
+\fBmachinectl \-H \fP\fIHOST\fP\& 枚举。将 IPv6 地址放在括号 \& 中。
+.RE
+.PP
+\fB\-M\fP, \fB\-\-machine=\fP
+.RS 4
+在本地容器上执行操作 \&。指定要连接的容器名称，可以选择以要连接的用户名和分隔符 "@"\& 作为前缀。如果使用特殊字符串 "\&.host"
+代替容器名称，则会建立到本地系统的连接 (这对于连接到特定用户 \* (Aqs 用户总，字符串: "\-\-user
+\-\-machine=lennart@\&.host") \& 很有用。如果不使用 "@" 语法，则以 root 用户身份建立连接 \&。如果使用 "@"
+语法，则可以省略左侧或右侧 (但不能同时省略两者)，在这种情况下，隐含本地用户名和 "\&.host"\&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.PP
+第一个非选项参数之后的所有命令行参数都成为启动进程命令行的一部分 \&。
+.SH "EXIT STATUS"
+.PP
+成功时，返回 0\&。如果 \fBsystemd\-run\fP 启动服务失败，将返回一个非零的返回值 \&。如果 \fBsystemd\-run\fP
+等待服务终止，返回值将从服务传播 \&。0 将在成功时返回，包括 systemd 认为服务已干净退出的所有情况，请参见
+\fBsystemd.service\fP(5)\& 中对 \fISuccessExitStatus=\fP 的讨论。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Logging environment variables provided by systemd to services\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd 运行环境
+运行单位: run\-19945\&.service
+# journalctl \-u run\-19945\&.service
+9 月 8 日 07:37:21 bupkis systemd[1]: 启动 /usr/env\&.\&.\&。
+9 月 08 日 07:37:21 bupkis systemd[1]: 已启动 /usr/env\&。
+9 月 08 日 07:37:21 bupkis env [19948]: PATH=/usr/sbin:/usr/bin:/usr/sbin:/usr/bin
+9 月 8 日 07:37:21 bupkis env [19948]: LANG=en_US\&.UTF\-8
+9 月 08 日 07:37:21 bupkis env [19948]: BOOT_IMAGE=/vmlinuz\-3\&.11\&.0\-0\&.rc5\&.git6\&.2\&.fc20\&.x86_64
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Limiting resources available to a command\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-run \-p IOWeight=10 updatedb
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+此命令调用 \fBupdatedb\fP(8) 工具，但将其块 I/O 权重降低到 10\&。有关 \fIIOWeight=\fP 属性 \& 的更多信息，请参见
+\fBsystemd.resource\-control\fP(5)。
+.PP
+\fBExample\ \&3.\ \&Running commands at a specified time\fP
+.PP
+以下命令将在 30 秒后访问文件 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 日期;systemd\-run\-\-on\-active=30\-\-timer\-property=AccuracySec=100ms /bin/touch /tmp/foo
+2014 年 12 月 8 日星期一 20:44:24 KST
+运行单位: run\-71\&.timer
+将以元: run\-71\&.service 运行服务
+# journalctl \-b \-u run\-71\&.timer
+\-\- 期刊开始于 Fri 2014\-12\-05 19:09:21 KST，结束于 Mon 2014\-12\-08 20:44:54 KST\&。\-\-
+12 月 8 日 20:44:38 容器 systemd[1]: 启动 /bin/touch/foo\&。
+12 月 8 日 20:44:38 容器 systemd[1]: 已启动 /bin/touch/foo\&。
+# journalctl \-b \-u run\-71\&.service
+\-\- 期刊开始于 Fri 2014\-12\-05 19:09:21 KST，结束于 Mon 2014\-12\-08 20:44:54 KST\&。\-\-
+12 月 8 日 20:44:48 容器 systemd[1]: 启动 /bin/touch/foo\&.\&.\&。
+12 月 8 日 20:44:48 容器 systemd[1]: 已启动 /bin/touch/foo\&。
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&Allowing access to the tty\fP
+.PP
+以下命令调用 \fBbash\fP(1) 作为服务，将其标准输入、输出和错误传递给调用 TTY\&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-run \-t \-\-send\-sighup bash
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&5.\ \&Start screen as a user service\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-run\-\- 作用域 \-\-user screen
+运行作用域作为元 run\-r14b0047ab6df45bfb45e7786cc839e76\&.scope\&。
+
+$ 屏幕 \-ls
+屏幕上有:
+        492\&.\&.laptop     (Detached)
+/var/S\-fatima\& 中的 1 个套接字。
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这会将 \fBscreen\fP 进程作为 \fBsystemd \-\-user\fP 进程的子进程启动，该进程由 user@\&.service 在工作域单元 \&
+中启动。使用 \fBsystemd.scope\fP(5) 元而不是 \fBsystemd.service\fP(5) 元，因为 \fBscreen\fP
+与终端分离时将退出，并且服务元将终止 \&。以用户身份运行 \fBscreen\fP 的好处是它不是会话作用域 \& 的一部分。如果在
+\fBlogind.conf\fP(5) 中配置了 \fIKillUserProcesses=yes\fP，默认情况下，当用户注销该会话时，该会话作用域将被终止
+\&。
+.PP
+user@\&. 服务在用户第一次登录时自动启动，只要至少有一个登录会话打开 \& 就会一直存在。在用户退出上一个会话后，user@\&.service
+及其下的所有服务都被终止 \&。当未为该用户启用 "lingering" 时，此行为是默认行为 \&。启用延迟意味着 user@\&.service
+在引导期间自动启动，即使用户未登录，并且当用户注销 \& 时服务不会终止。
+.PP
+启用延迟允许用户在未登录的情况下运行进程，例如，允许 \fBscreen\fP 在用户注销后继续存在，即使会话作用域终止
+\&。在默认配置中，用户可以为自己启用延迟:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ loginctl 启用逗留
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&6.\ \&Return value\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-run \-\-user \-\-wait true
+$ systemd\-run \-\-user \-\-wait \-p SuccessExitStatus=11 bash \-c \*(Aqexit 11\*(Aq
+$ systemd\-run \-\-user \-\-wait \-p SuccessExitStatus=SIGUSR1 bash \-c \*(Aqkill \-SIGUSR1 $$$$\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这三个调用将成功，i\&.e\&。以退出代码 0\& 终止。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd.unit\fP(5), \fBsystemd.service\fP(5),
+\fBsystemd.scope\fP(5), \fBsystemd.slice\fP(5), \fBsystemd.exec\fP(5),
+\fBsystemd.resource\-control\fP(5), \fBsystemd.timer\fP(5), \fBsystemd\-mount\fP(1),
+\fBmachinectl\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

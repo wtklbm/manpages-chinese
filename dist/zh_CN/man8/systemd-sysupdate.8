@@ -1,0 +1,229 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-SYSUPDATE 8 "" "systemd 253" systemd\-sysupdate
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-sysupdate、systemd\-sysupdate.service、systemd\-sysupdate.timer、systemd\-sysupdate\-reboot.service、systemd\-sysupdate\-reboot.timer
+\- 自动更新操作系统或其他资源
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-sysupdate\fR\ 'u
+\fBsystemd\-sysupdate\fP [OPTIONS...]
+.PP
+systemd\-sysupdate\&.service
+.SH DESCRIPTION
+.PP
+\fBsystemd\-sysupdate\fP 基于 \fBsysupdate.d\fP(5)\&
+中描述的传输配置文件自动更新主机操作系统、容器镜像、可移植服务镜像或其他源。
+.PP
+该工具实现基于文件、目录或分区的更新方案，支持以 A/B (甚至: A/C、A/B/C/D/、\&...) 样式 \&
+的特定资源的多个并行安装版本。A/B 更新意味着当前正在使用资源的一个版本时，可以在完全独立的位置下载、解压缩和准备下一个版本，独立于第一个，并且
+\(em 一旦完成 \(em 被激活，交换角色，使其成为使用过的角色，之前使用过的角色成为被下一次更新取代的角色，依此类推
+\&。要更新的资源在传输文件中定义，每个要更新的资源一个。例如，可以使用此工具更新的资源可能是: 根文件系统分区、匹配的 Verity
+分区加上一个内核映像 \&。三者的组合将被视为完整的操作系统更新 \&。
+.PP
+该工具始终整体更新分区、文件或目录树，并且至少使用这些资源中的每一个的两个版本: \fIcurrent\fP 版本，加上 \fInext\fP 版本:
+正在更新到的版本，最初是不完整的，因为下载的数据写入其中; 加上可选的更多版本
+\&。一旦更新版本的下载完成，它就成为当前版本，释放以前被认为是当前版本的删除 / 替换 / 更新 \&。
+.PP
+安装新版本时，该工具会直接下载、解压、解包并将新版本写入目标
+\&。这是以稳健的方式完成的，以便在下一次调用时可以识别不完整的下载，并在启动新尝试之前将其清除 \&。
+.PP
+请注意，将更新写入分区时，该分区必须已经存在，因为 \fBsystemd\-sysupdate\fP 不会自动创建新分区 \&。使用
+\fBsystemd\-repart\fP(8) 等工具自动创建额外的分区，以便在启动时与 \fBsystemd\-sysupdate\fP 一起使用。
+.PP
+该工具既可以在正在运行的操作系统上使用，从内部更新处于 "online" 状态的操作系统，也可以在 "offline"
+磁盘映像上使用，根据磁盘映像中嵌入的传输文件从外部更新它们。对于后者，请参见下面的
+\fB\-\-image=\fP\&。后者对于更新容器镜像或可移植服务镜像特别有趣。
+.PP
+systemd\-sysupdate\&.service 系统服务将根据安装的传输文件自动更新主机操作系统。它通过
+systemd\-sysupdate\&.timer\& 定期触发。安装新版本后 systemd\-sysupdate\-reboot\&.service
+会自动重启系统 \&。它通过 systemd\-sysupdate\-reboot\&.timer\&
+触发。这两项服务彼此独立，因为通常建议在系统启动时定期下载更新，但延迟重启直到适当的时间 (我 \&.e\&。通常在晚上) \&。两组
+service/timer 单元可以分别启用 \&。
+.PP
+有关传输文件和示例的详细信息，请参见 \fBsysupdate.d\fP(5)\&。
+.SH COMMAND
+.PP
+理解以下命令:
+.PP
+\fBlist\fP [\fIVERSION\fP]
+.RS 4
+如果在没有参数的情况下调用，则枚举可下载和已安装的版本，并显示包含已发现版本及其属性的汇总表，包括是否有 \*(Aqs 更新的候选版本
+\&。如果指定了版本参数，则显示有关特定版本的详细信息，包括需要传输以获取该版本的单个文件 \&。
+.sp
+如果没有明确指定命令，则隐含此命令 \&。
+.RE
+.PP
+\fBcheck\-new\fP
+.RS 4
+检查是否有 \*(Aqs 可用的新版本 \&。这在内部枚举可下载和安装的版本并返回退出状态 0，如果有 \*(Aqs 一个要更新到的新版本，否则为非零
+\&。如果有要更新的新版本，其版本标识符将写入标准输出 \&。
+.RE
+.PP
+\fBupdate\fP [\fIVERSION\fP]
+.RS 4
+安装 (更新到) 指定版本，或者如果没有指定到最新可用版本 \&。如果该版本已安装或没有可用的更新版本，则不执行任何操作 \&。
+.sp
+如果找到 install/update 的新版本，则删除旧安装版本，直到至少可以安装一个新版本，如通过 \fBsysupdate.d\fP(5) 中的
+\fIInstanceMax=\fP 配置，或通过正确类型的可用分区槽 \&。这个隐式操作也可以通过下面描述的 \fBvacuum\fP 命令显式调用 \&。
+.RE
+.PP
+\fBvacuum\fP
+.RS 4
+删除旧安装版本，直到再次满足通过 \fBsysupdate.d\fP(5) 中的 \fIInstanceMax=\fP 配置的限制
+\&。通常，没有必要显式调用此命令，因为每当启动新更新 \& 时都会隐式调用它。
+.RE
+.PP
+\fBpending\fP
+.RS 4
+检查是否安装了比当前运行的版本更新的操作系统版本 \&。如果是则返回零，否则返回非零 \&。这会将最新安装的版本 \*(Aqs 标识符与
+/etc/os\-release\& 中的 \fIIMAGE_VERSION=\fP
+字段报告的操作系统映像版本进行比较。如果前者比后者更新，则更新显然已完成但未激活 (i\&.e\&. 重新启动到) yet\&.
+.RE
+.PP
+\fBreboot\fP
+.RS 4
+与 \fBpending\fP 命令类似，但如果安装了比当前运行的版本更新的操作系统版本，则会立即重新启动 \&。此操作可以与 \fBupdate\fP
+命令一起隐式完成，在通过 \fB\-\-reboot\fP 开关完成更新后，请参见下文 \&。如果没有安装更新，此命令将不执行任何操作
+(并返回成功)，因此系统不会重新启动 \&。
+.RE
+.PP
+\fBcomponents\fP
+.RS 4
+列出可以更新的组件 \&。这枚举了 /etc/sysupdate\&.*\&.d/、/run/sysupdate\&.*\&.d/ 和
+/usr/sysupdate\&.*\&.d/ 包含传输的目录文件 \&。此命令可用于列出 \fB\-\-component=\fP (见下文) \&
+的可能参数。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-component=\fP, \fB\-C\fP
+.RS 4
+选择要更新的组件 \&。将组件名称作为参数 \&。这会稍微改变传输文件的搜索逻辑 \&。如果不使用此开关，传输文件将从
+/etc/sysupdate\&.d/*\&.conf、/run/sysupdate\&.d/*\&.conf 和 /usr/sysupdate\ 加载
+&.d/*\&.conf\&. 如果使用此开关，则指定的组件名称用于将要查找的目录更改为
+/etc/sysupdate\&.\fIcomponent\fP\&.d/*\&.conf、/run/sysupdate\&.\fIcomponent\fP\&.d/*\&.conf
+和 /usr/lib/sysupdate\&.\fIcomponent\fP\&.d/*\&.conf，每次都将 \fIcomponent\fP
+字符串替换为指定的组件名称 \&。
+.sp
+使用 \fBcomponents\fP 命令列出要更新的可用组件 \&。这枚举匹配此命名规则 \& 的目录。
+.sp
+组件可用于为操作系统的不同组件定义一组单独的传输文件，这些文件应单独更新 \&。不要将此概念用于应始终以同步方式一起更新的资源 \&。只需在同一个
+sysupdate\&.d/ 目录中为这些案例定义多个传输文件 \&。
+.sp
+该选项不能与 \fB\-\-definitions=\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-definitions=\fP
+.RS 4
+目录的路径 \&。如果指定，传输 *\&.conf 文件将从该目录读取，而不是
+/usr/sysupdate\&.d/*\&.conf,/etc/sysupdate\&.d/*\&.conf, 和
+/run/sysupdate\&.d/*\&.conf\&。
+.sp
+该选项不能与 \fB\-\-component=\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-root=\fP
+.RS 4
+在搜索 sysupdate\&.d/*\&.conf files\& 时获取用作根文件系统的目录路径。
+.RE
+.PP
+\fB\-\-image=\fP
+.RS 4
+采用与 \fB\-\-root=\fP 类似的方式挂载和使用磁盘映像文件或设备的路径，请参见上文
+\&。如果使用它并且分区资源被更新，这是在指定的磁盘映像中完成的。
+.RE
+.PP
+\fB\-\-instances\-max=\fP, \fB\-m\fP
+.RS 4
+取大于或等于 2\& 的十进制整数。控制随时保留多少个版本 \&。此选项也可以在传输文件中配置，通过 \fIInstancesMax=\fP
+设置，有关详细信息，请参见 \fBsysupdate.d\fP(5)\&。
+.RE
+.PP
+\fB\-\-sync=\fP
+.RS 4
+采用布尔参数，默认为 yes\&。这可以用来指定新更新的资源版本是否应该在适当的时候同步到磁盘 (i\&.e\&. 下载完成后，完成之前，完成后再次)
+\&。这不应关闭，除非是为了提高测试环境中的运行时性能 \&。
+.RE
+.PP
+\fB\-\-verify=\fP
+.RS 4
+采用布尔参数，默认为 yes\&。控制是否以加密方式验证下载 \&。不要关闭它，测试环境 \& 除外。
+.RE
+.PP
+\fB\-\-reboot\fP
+.RS 4
+当与 \fBupdate\fP 命令结合使用并且安装了新版本时，之后会立即自动重新启动系统 \&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-\-no\-legend\fP
+.RS 4
+不要打印图例，i\&.e\&。带有提示的列标题和页脚 \&。
+.RE
+.PP
+\fB\-\-json=\fP\fIMODE\fP
+.RS 4
+显示格式为 JSON\& 的输出。期望 "short" (用于尽可能短的输出，没有任何冗余空格或换行符)、"pretty"
+(用于相同版本的漂亮版本，带有缩进和换行符) 或 "off" (关闭 JSON 输出，默认值) \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsysupdate.d\fP(5), \fBsystemd\-repart\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

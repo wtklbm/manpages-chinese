@@ -1,0 +1,251 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2019 Aleksa Sarai <cyphar@cyphar.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH openat2 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+openat2 \- 打开并可能创建一个文件 (extended)
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP          /* Definition of \fBO_*\fP and \fBS_*\fP constants */
+\fB#include <linux/openat2.h>\fP  /* Definition of \fBRESOLVE_*\fP constants */
+\fB#include <sys/syscall.h>\fP    /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBlong syscall(SYS_openat2, int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB,\fP
+\fB             struct open_how *\fP\fIhow\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBopenat2\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBopenat2\fP() 系统调用是 \fBopenat\fP(2) 的扩展，提供了其功能的超集。
+.PP
+\fBopenat2\fP() 系统调用打开 \fIpathname\fP 指定的文件。 如果指定的文件不存在，则可以选择性地创建 (如果
+\fIhow.flags\fP) 中指定了 \fBO_CREAT\fP。
+.PP
+与 \fBopenat\fP(2) 一样，如果 \fIpathname\fP 是相对路径名，则它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(或者调用进程的当前工作目录，如果 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP)。 如果 \fIpathname\fP 是绝对路径名，则忽略
+\fIdirfd\fP (除非 \fIhow.resolve\fP 包含 \fBRESOLVE_IN_ROOT\fP，在这种情况下 \fIpathname\fP 是相对于
+\fIdirfd\fP) 解析的。
+.PP
+.\"
+不是采用单个 \fIflags\fP 参数，而是传递可扩展的结构体 (\fIhow\fP) 以允许 future 扩展。 \fIsize\fP 参数必须指定为
+\fIsizeof(struct open_how)\fP。
+.SS "The open_how structure"
+\fIhow\fP 参数指定 \fIpathname\fP 应如何打开，并充当 \fIflags\fP 和 \fImode\fP 参数到 \fBopenat\fP(2) 的超集。
+此参数是指向 \fBopen_how\fP(2type) 中描述的 \fIopen_how\fP 结构体的指针。
+.PP
+\fBopenat2\fP() 的任何 future 扩展都将作为追加到 \fIopen_how\fP
+结构体的新字段来实现，新字段中的值为零导致内核表现得好像该扩展字段不存在一样。 因此，调用者 \fImust\fP 在初始化时用零填充这个结构体。
+(有关为什么需要这样做的更多详细信息，请参见 \fBNOTES\fP 的 "Extensibility" 部分。)
+.PP
+\fIopen_how\fP 结构体的字段如下:
+.TP 
+\fIflags\fP
+该字段指定打开文件时要使用的文件创建和文件状态标志。 为 \fBopenat\fP(2) 定义的所有 \fBO_*\fP 标志都是有效的 \fBopenat2\fP()
+标志值。
+.IP
+\fBopenat\fP(2) 忽略其 \fIflags\fP 参数中的未知位，而如果在 \fIhow.flags\fP
+中指定了未知或冲突的标志，\fBopenat2\fP() 将返回错误。
+.TP 
+\fImode\fP
+该字段指定新文件的模式，与 \fBopenat\fP(2) 的 \fImode\fP 参数具有相同的语义。
+.IP
+\fBopenat\fP(2) 忽略其 \fImode\fP 参数中 \fI07777\fP 范围内的其他位，而如果 \fIhow.mode\fP 包含 \fI07777\fP
+以外的位，则 \fBopenat2\fP() 返回错误。 同样，如果使用非零 \fIhow.mode\fP 调用 \fBopenat2\fP() 并且
+\fIhow.flags\fP 不包含 \fBO_CREAT\fP 或 \fBO_TMPFILE\fP，则会返回错误。
+.TP 
+\fIresolve\fP
+这是一个标志位掩码，用于修改解析 \fIpathname\fP 的 \fBall\fP 组件的方式。 (有关背景信息，请参见
+\fBpath_resolution\fP(7)。)
+.IP
+这些标志的主要用例是允许受信任的程序限制不受信任的路径 (或不受信任的目录内的路径) 的解析方式。 \fIresolve\fP 标志的完整列表如下:
+.RS
+.TP 
+\fBRESOLVE_BENEATH\fP
+.\" commit adb21d2b526f7f196b2f3fdca97d80ba05dd14a0
+如果解析的任何组件不是 \fIdirfd\fP 指示的目录的后代，则不允许路径解析成功。 这会导致绝对符号链接 (以及 \fIpathname\fP)
+的绝对值被拒绝。
+.IP
+目前，此标志还禁用魔术链接解析 (见下文)。 然而，这可能会在 future 中改变。 因此，为确保不解析魔术链接，调用者应明确指定
+\fBRESOLVE_NO_MAGICLINKS\fP。
+.TP 
+\fBRESOLVE_IN_ROOT\fP
+.\" commit 8db52c7e7ee1bd861b6096fcafc0fe7d0f24a994
+解析 \fIpathname\fP 时，将 \fIdirfd\fP 所指向的目录作为根目录。 绝对符号链接相对于 \fIdirfd\fP 进行解释。 如果
+\fIpathname\fP 的前缀组件等同于 \fIdirfd\fP，则紧随其后的 \fI..\&\fP 组件同样等同于 \fIdirfd\fP (正如传统上
+\fI/..\&\fP 等同于 \fI/\fP)。 如果 \fIpathname\fP 是绝对路径，它也被解释为相对于 \fIdirfd\fP。
+.IP
+这个标志的效果就好像调用进程已经使用 \fBchroot\fP(2) 到 (temporarily) 修改它的根目录 (到 \fIdirfd\fP) 引用的目录)。
+但是，与 \fBchroot\fP(2) (它为进程永久更改文件系统根目录) 不同，\fBRESOLVE_IN_ROOT\fP
+允许程序在每次打开的基础上有效地限制路径解析。
+.IP
+目前，此标志还禁用魔术链接解析。 然而，这可能会在 future 中改变。 因此，为确保不解析魔术链接，调用者应明确指定
+\fBRESOLVE_NO_MAGICLINKS\fP。
+.TP 
+\fBRESOLVE_NO_MAGICLINKS\fP
+.\" commit 278121417a72d87fb29dd8c48801f80821e8f75a
+在路径解析期间禁止所有魔术链接解析。
+.IP
+魔术链接是类似符号链接的对象，最常见于 \fBproc\fP(5); 示例包括 \fI/proc/\fPpid\fI/exe\fP 和
+\fI/proc/\fPpid\fI/fd/*\fP。 (有关详细信息，请参见 \fBsymlink\fP(7)。)
+.IP
+不知不觉地打开魔法链接对某些应用程序来说可能是有风险的。 此类风险的示例包括:
+.RS
+.IP \[bu] 3
+如果打开路径名的进程是当前没有控制终端的控制进程 (请参见 \fBcredentials\fP(7))，则在 \fI/proc/\fPpid\fI/fd\fP
+中打开一个恰好引用终端的魔术链接将导致进程获得控制终端。
+.IP \[bu]
+.\" From https://lwn.net/Articles/796868/:
+.\"     The presence of this flag will prevent a path lookup operation
+.\"     from traversing through one of these magic links, thus blocking
+.\"     (for example) attempts to escape from a container via a /proc
+.\"     entry for an open file descriptor.
+在容器化环境中，\fI/proc\fP 内部的魔术链接可能会引用容器外部的对象，因此可能提供一种逃离容器的方法。
+.RE
+.IP
+由于此类风险，应用程序可能更愿意使用 \fBRESOLVE_NO_MAGICLINKS\fP 标志禁用魔术链接解析。
+.IP
+如果 \fIpathname\fP 的末尾部分 (即基本名称) 是一个魔术链接，\fIhow.resolve\fP 包含
+\fBRESOLVE_NO_MAGICLINKS\fP，而 \fIhow.flags\fP 包含 \fBO_PATH\fP 和
+\fBO_NOFOLLOW\fP，则将返回引用魔术链接的 \fBO_PATH\fP 文件描述符。
+.TP 
+\fBRESOLVE_NO_SYMLINKS\fP
+.\" commit 278121417a72d87fb29dd8c48801f80821e8f75a
+不允许在路径解析期间解析符号链接。 该选项表示 \fBRESOLVE_NO_MAGICLINKS\fP。
+.IP
+如果 \fIpathname\fP 的结尾部分 (即基本名称) 是符号链接，\fIhow.resolve\fP 包含
+\fBRESOLVE_NO_SYMLINKS\fP，\fIhow.flags\fP 包含 \fBO_PATH\fP 和 \fBO_NOFOLLOW\fP，则将返回引用符号链接的
+\fBO_PATH\fP 文件描述符。
+.IP
+请注意，影响 \fIpathname\fP 所有组件中符号链接处理的 \fBRESOLVE_NO_SYMLINKS\fP 标志的效果不同于
+\fBO_NOFOLLOW\fP 文件创建标志的效果 (在 \fIhow.flags\fP) 中，它仅影响最终组件中的符号链接处理 \fIpathname\fP 的。
+.IP
+鼓励使用 \fBRESOLVE_NO_SYMLINKS\fP 标志的应用程序使其使用可配置 (除非它用于特定的安全目的)，因为符号链接被最终用户广泛使用。
+不加区别地设置此标志，即，出于与安全性无关的目的，对于 \fBopenat2\fP() 的所有使用，\[em] 可能会导致以前正常运行的系统出现虚假错误。
+例如，如果应用程序使用的系统路径名被修改 (例如，在新的分发版本中)，使得路径名组件 (now) 包含符号链接，则可能会发生这种情况。
+.TP 
+\fBRESOLVE_NO_XDEV\fP
+.\" commit 72ba29297e1439efaa54d9125b866ae9d15df339
+禁止在路径解析期间遍历挂载点 (包括所有绑定挂载)。 因此，\fIpathname\fP 必须与 \fIdirfd\fP 引用的目录位于同一挂载上，或者如果
+\fIdirfd\fP 指定为 \fBAT_FDCWD\fP，则必须与当前工作目录位于同一挂载上。
+.IP
+鼓励使用 \fBRESOLVE_NO_XDEV\fP 标志的应用程序使其使用可配置 (除非它用于特定的安全目的)，因为绑定安装被最终用户广泛使用。
+不加区别地设置此标志，即，出于与安全性无关的目的，对于 \fBopenat2\fP() 的所有使用，\[em] 可能会导致以前正常运行的系统出现虚假错误。
+例如，如果应用程序使用的系统路径名被修改 (例如，在新的分发版本中)，使得路径名组件 (now) 包含绑定安装，则可能会发生这种情况。
+.TP 
+\fBRESOLVE_CACHED\fP
+除非所有路径组件都已存在于内核的查找缓存中，否则使打开操作失败。 如果需要任何类型的重新验证或 I/O 来满足查找，则 \fBopenat2\fP()
+会失败并显示错误 \fBEAGAIN .\fP 这对于提供可以在不诉诸线程卸载或应用程序可能用于卸载的其他机制的情况下执行的快速路径打开很有用较慢的操作。
+.RE
+.IP
+如果在 \fIhow.resolve\fP 中设置了上述以外的任何位，则会返回错误。
+.SH "RETURN VALUE"
+成功时，返回一个新的文件描述符。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBopenat2\fP() 返回的错误集包括 \fBopenat\fP(2) 返回的所有错误，以及以下附加错误:
+.TP 
+\fBE2BIG\fP
+在 \fIhow\fP 中指定了此内核不支持的扩展。 (有关如何处理扩展的更多详细信息，请参见 \fBNOTES\fP 的 "Extensibility" 部分。)
+.TP 
+\fBEAGAIN\fP
+\fIhow.resolve\fP 包含 \fBRESOLVE_IN_ROOT\fP 或 \fBRESOLVE_BENEATH\fP，并且内核无法确保 ".."
+组件没有逃逸 (由于竞争条件或潜在攻击)。 调用者可以选择重试 \fBopenat2\fP() 调用。
+.TP 
+\fBEAGAIN\fP
+\fBRESOLVE_CACHED\fP 已设置，仅使用缓存信息无法执行打开操作。 调用者应在 \fIhow.resolve .\fP 中不设置
+\fBRESOLVE_CACHED\fP 的情况下重试
+.TP 
+\fBEINVAL\fP
+在 \fIhow\fP 中指定了未知标志或无效值。
+.TP 
+\fBEINVAL\fP
+\fImode\fP 不为零，但 \fIhow.flags\fP 不包含 \fBO_CREAT\fP 或 \fBO_TMPFILE\fP。
+.TP 
+\fBEINVAL\fP
+\fIsize\fP 比任何已知版本的 \fIstruct open_how\fP 都要小。
+.TP 
+\fBELOOP\fP
+\fIhow.resolve\fP 包含 \fBRESOLVE_NO_SYMLINKS\fP，路径组件之一是符号链接 (或魔术链接)。
+.TP 
+\fBELOOP\fP
+\fIhow.resolve\fP 包含 \fBRESOLVE_NO_MAGICLINKS\fP，路径组件之一是魔法链接。
+.TP 
+\fBEXDEV\fP
+\fIhow.resolve\fP 包含 \fBRESOLVE_IN_ROOT\fP 或 \fBRESOLVE_BENEATH\fP，并且在路径解析期间检测到从根转义。
+.TP 
+\fBEXDEV\fP
+\fIhow.resolve\fP 包含 \fBRESOLVE_NO_XDEV\fP，路径组件穿过安装点。
+.SH VERSIONS
+.\" commit fddb5d430ad9fa91b49b1d34d0202ffe2fa0e179
+\fBopenat2\fP() 最早出现在 Linux 5.6。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.PP
+\fBRESOLVE_BENEATH\fP 的语义仿照 FreeBSD 的 \fBO_BENEATH\fP。
+.SH NOTES
+.SS Extensibility
+为了允许 future 可扩展性，\fBopenat2\fP() 要求用户空间应用程序指定它传递的 \fIopen_how\fP 结构体的大小。
+通过提供此信息，\fBopenat2\fP() 可以提供向前和向后兼容性，\fIsize\fP 充当隐式版本号。
+(因为总是会，追加，新的扩展字段，结构体的大小总是会增加。) 这种可扩展性设计与其他系统调用非常相似，例如
+\fBsched_setattr\fP(2)、\fBperf_event_open\fP(2) 和 \fBclone3\fP(2)。
+.PP
+如果我们让 \fIusize\fP 为用户空间应用程序指定的结构体的大小，\fIksize\fP 为内核支持的结构体的大小，那么需要考虑三种情况:
+.IP \[bu] 3
+如果 \fIksize\fP 等于 \fIusize\fP，则没有版本不匹配，\fIhow\fP 可以逐字使用。
+.IP \[bu]
+如果 \fIksize\fP 大于 \fIusize\fP，则存在内核支持的一些用户空间应用程序不知道的扩展字段。
+因为任何添加的扩展字段中的零值都表示无操作，所以内核将用户空间应用程序未提供的所有扩展字段视为具有零值。 这提供了向后兼容性。
+.IP \[bu]
+如果 \fIksize\fP 小于 \fIusize\fP，则存在一些用户空间应用程序知道但内核不支持的扩展字段。
+因为任何扩展字段的零值都必须表示空操作，所以内核可以安全地忽略不支持的扩展字段 (如果它们全为零)。 如果任何不受支持的扩展字段不为零，则返回 \-1
+并将 \fIerrno\fP 设置为 \fBE2BIG\fP。 这提供了向前兼容性。
+.PP
+因为 \fIstruct open_how\fP 的定义在 future 中可能会改变 (随着系统头文件更新时添加新字段)，用户空间应用程序应该对
+\fIstruct open_how\fP 进行零填充以确保使用新头文件重新编译程序不会在运行时导致虚假错误。 最简单的方法是使用指定的初始化:
+.PP
+.in +4n
+.EX
+struct open_how how = { .flags = O_RDWR,
+                        .resolve = RESOLVE_IN_ROOT };
+.EE
+.in
+.PP
+或明确使用 \fBmemset\fP(3) 或类似的:
+.PP
+.in +4n
+.EX
+struct open_how how;
+memset(&how, 0, sizeof(how));
+how.flags = O_RDWR;
+how.resolve = RESOLVE_IN_ROOT;
+.EE
+.in
+.PP
+希望确定正在运行的内核支持哪些扩展的用户空间应用程序可以通过使用每个字节都非零的结构体对 \fIsize\fP 进行二进制搜索 (以找到不会产生
+\fBE2BIG\fP) 错误的最大值) 来实现。
+.SH "SEE ALSO"
+\fBopenat\fP(2), \fBopen_how\fP(2type), \fBpath_resolution\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

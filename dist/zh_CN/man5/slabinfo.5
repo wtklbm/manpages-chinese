@@ -1,0 +1,176 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2001 Andreas Dilger (adilger@turbolinux.com)
+.\" and Copyright (c) 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH slabinfo 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+slabinfo \- 内核 slab 分配器统计信息
+.SH SYNOPSIS
+.nf
+\fBcat /proc/slabinfo\fP
+.fi
+.SH DESCRIPTION
+Linux 内核中经常使用的对象 (buffer heads、inode、dentry 等) 都有自己的缓存。 文件 \fI/proc/slabinfo\fP
+给出了这些缓存的统计信息。 以下 (edited) 输出显示了此文件内容的示例:
+.PP
+.EX
+$ \fBsudo cat /proc/slabinfo\fP
+slabinfo \- version: 2.1
+# name    <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> ...
+sigqueue      100  100  160   25  1 : tunables  0  0  0 : slabdata   4   4  0
+sighand_cache 355   405 2112  15  8 : tunables  0  0  0 : slabdata  27  27  0
+kmalloc\-8192   96   96  8192   4  8 : tunables  0  0  0 : slabdata  24  24  0
+\&...
+.EE
+.PP
+输出的第一行包括一个版本号，它允许正在读取文件的应用程序处理文件格式的更改。 (请参见下面的 VERSIONS。) 下一行列出了其余行中的列的名称。
+.PP
+其余每一行都显示有关指定缓存的信息。 在缓存名称之后，每行中显示的输出显示每个缓存的三个组件:
+.IP \[bu] 3
+statistics
+.IP \[bu]
+tunables
+.IP \[bu]
+slabdata
+.PP
+统计如下:
+.TP 
+\fIactive_objs\fP
+当前处于活动状态 (即正在使用中) 的对象数。
+.TP 
+\fInum_objs\fP
+已分配对象 (即正在使用和未使用的对象) 的总数。
+.TP 
+\fIobjsize\fP
+此 slab 中对象的大小，以字节为单位。
+.TP 
+\fIobjperslab\fP
+每个 slab 中存储的对象数。
+.TP 
+\fIpagesperslab\fP
+为每个 slab 分配的页数。
+.PP
+每行中的 \fItunables\fP 条目显示相应缓存的可调参数。 使用默认 SLUB 分配器时，没有可调参数，\fI/proc/slabinfo\fP
+文件不可写，并且这些字段中显示值 0。 使用较旧的 SLAB 分配器时，可以通过将以下形式的行写入 \fI/proc/slabinfo\fP:
+来设置特定缓存的可调参数
+.PP
+.in +4n
+.EX
+# \fBecho \[aq]name limit batchcount sharedfactor\[aq] > /proc/slabinfo\fP
+.EE
+.in
+.PP
+此处，\fIname\fP 是缓存名称，\fIlimit\fP、\fIbatchcount\fP 和 \fIsharedfactor\fP 是为相应可调参数定义新值的整数。
+\fIlimit\fP 值应为正值，\fIbatchcount\fP 应为小于或等于 \fIlimit\fP 的正值，\fIsharedfactor\fP 应为非负值。
+如果任何指定值无效，缓存设置将保持不变。
+.PP
+每行中的 \fItunables\fP 条目包含以下字段:
+.TP 
+\fIlimit\fP
+.\" https://lwn.net/Articles/56360/
+.\"     This is the limit on the number of free objects that can be stored
+.\"     in the per-CPU free list for this slab cache.
+将被缓存的最大对象数。
+.TP 
+\fIbatchcount\fP
+.\" https://lwn.net/Articles/56360/
+.\"     On SMP systems, when we refill the available object list, instead
+.\"     of doing one object at a time, we do batch-count objects at a time.
+在 SMP 系统上，这指定了在重新填充可用对象列表时一次要传输的对象数。
+.TP 
+\fIsharedfactor\fP
+.\"
+[To be documented]
+.PP
+每行中的 \fIslabdata\fP 条目包含以下字段:
+.TP 
+\fIactive_slabs\fP
+活动板的数量。
+.TP 
+\fInums_slabs\fP
+板的总数。
+.TP 
+\fIsharedavail\fP
+[To be documented]
+.PP
+请注意，由于对象对齐和 slab 缓存开销，对象通常不会紧密地打包到页面中。 即使有一个正在使用的对象的页面也被认为正在使用并且不能被释放。
+.PP
+.\"
+.\" SMP systems will also have "(SMP)" in the first line of
+.\" output, and will have two additional columns for each slab,
+.\" reporting the slab allocation policy for the CPU-local
+.\" cache (to reduce the need for inter-CPU synchronization
+.\" when allocating objects from the cache).
+.\" The first column is the per-CPU limit: the maximum number of objects that
+.\" will be cached for each CPU.
+.\" The second column is the
+.\" batchcount: the maximum number of free objects in the
+.\" global cache that will be transferred to the per-CPU cache
+.\" if it is empty, or the number of objects to be returned
+.\" to the global cache if the per-CPU cache is full.
+.\"
+.\" If both slab cache statistics and SMP are defined, there
+.\" will be four additional columns, reporting the per-CPU
+.\" cache statistics.
+.\" The first two are the per-CPU cache
+.\" allocation hit and miss counts: the number of times an
+.\" object was or was not available in the per-CPU cache
+.\" for allocation.
+.\" The next two are the per-CPU cache free
+.\" hit and miss counts: the number of times a freed object
+.\" could or could not fit within the per-CPU cache limit,
+.\" before flushing objects to the global cache.
+配置了 \fBCONFIG_DEBUG_SLAB\fP 的内核在每一行中也会有额外的统计字段，文件的第一行将包含字符串 "(statistics)"。
+统计字段包括: 活跃对象的高水位线; 分配对象的次数; 缓存增长的次数 (添加到此缓存的新页面) ; 缓存被回收的次数 (未使用的页面从该缓存中移除)
+; 以及向该缓存分配新页面时出错的次数。
+.SH VERSIONS
+\fI/proc/slabinfo\fP 文件最早出现在 Linux 2.1.23。 该文件是版本化的，随着时间的推移，出现了许多具有不同布局的版本:
+.TP 
+1.0
+存在于整个 Linux 2.2.x 内核系列中。
+.TP 
+1.1
+.\" First appeared in Linux 2.4.0-test3
+存在于 Linux 2.4.x 内核系列中。
+.TP 
+1.2
+.\" from Linux 2.5.45 to Linux 2.5.70
+Linux 2.5 开发系列中曾短暂出现过的一种格式。
+.TP 
+2.0
+.\" First appeared in Linux 2.5.71
+出现在 Linux 2.6.x 内核中，包括 Linux 2.6.9。
+.TP 
+2.1
+目前的格式，最早出现在 Linux 2.6.10。
+.SH NOTES
+只有 root 可以读取和 (如果内核配置了 \fBCONFIG_SLAB\fP)，则写入 \fI/proc/slabinfo\fP 文件。
+.PP
+分配给 SLAB/SLUB 高速缓存的内存总量显示在 \fI/proc/meminfo\fP 的 \fISlab\fP 字段中。
+.SH "SEE ALSO"
+\fBslabtop\fP(1)
+.PP
+内核源文件 \fIDocumentation/vm/slub.txt\fP 和 \fItools/vm/slabinfo.c\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

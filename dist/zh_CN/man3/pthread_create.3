@@ -1,0 +1,313 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_create 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_create \- 创建一个新线程
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_create(pthread_t *restrict \fP\fIthread\fP\fB,\fP
+\fB                   const pthread_attr_t *restrict \fP\fIattr\fP\fB,\fP
+\fB                   void *(*\fP\fIstart_routine\fP\fB)(void *),\fP
+\fB                   void *restrict \fP\fIarg\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_create\fP() 函数在调用进程中启动一个新线程。 新线程通过调用 \fIstart_routine\fP() 开始执行; \fIarg\fP
+作为 \fIstart_routine\fP() 的唯一参数传递。
+.PP
+新线程以下列方式之一终止:
+.IP \[bu] 3
+它调用 \fBpthread_exit\fP(3)，指定一个退出状态值，该值可供同一进程中调用 \fBpthread_join\fP(3) 的另一个线程使用。
+.IP \[bu]
+它从 \fIstart_routine\fP() 返回。 这等效于使用 \fIreturn\fP 语句中提供的值调用 \fBpthread_exit\fP(3)。
+.IP \[bu]
+它被取消 (见 \fBpthread_cancel\fP(3)).
+.IP \[bu]
+进程中的任何线程调用 \fBexit\fP(3)，或者主线程从 \fImain\fP() 执行返回。 这会导致进程中的所有线程终止。
+.PP
+\fIattr\fP 参数指向一个 \fIpthread_attr_t\fP 结构体，其内容在线程创建时用于确定新线程的属性; 此结构体使用
+\fBpthread_attr_init\fP(3) 和相关函数进行初始化。 如果 \fIattr\fP 为 NULL，则使用默认属性创建线程。
+.PP
+返回前调用 \fBpthread_create\fP() 成功，将新线程的 ID 存储在 \fIthread\fP 指向的缓冲区中; 此标识符用于在后续调用其他
+pthread 函数时引用该线程。
+.PP
+新线程继承创建线程的信号掩码 (\fBpthread_sigmask\fP(3)) 的副本。 新线程的待处理信号集为空 (\fBsigpending\fP(2))。
+新线程不继承创建线程的备用信号栈 (\fBsigaltstack\fP(2))。
+.PP
+新线程继承调用线程的浮点环境 (\fBfenv\fP(3))。
+.PP
+.\" CLOCK_THREAD_CPUTIME_ID in clock_gettime(2)
+新线程的 CPU 时间时钟的初始值为 0 (参见 \fBpthread_getcpuclockid\fP(3)).
+.SS "Linux\-specific details"
+新线程继承调用线程功能集的副本 (参见 \fBcapabilities\fP(7)) 和 CPU 亲和掩码 (参见
+\fBsched_setaffinity\fP(2)).
+.SH "RETURN VALUE"
+成功时，\fBpthread_create\fP() 返回 0; 出错时，它返回一个错误号，\fI*thread\fP 的内容未定义。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+资源不足，无法创建另一个线程。
+.TP 
+\fBEAGAIN\fP
+.\" NOTE! The following should match the description in fork(2)
+遇到了系统强加的线程数限制。 有许多限制可能会触发此错误: 已达到 \fBRLIMIT_NPROC\fP 软资源限制 (通过 \fBsetrlimit\fP(2))
+设置，它限制了真实用户 ID 的进程和线程数; 已达到内核对进程和线程数量的系统范围限制 \fI/proc/sys/kernel/threads\-max\fP
+(请参见 \fBproc\fP(5)); 或已达到 PID 的最大数量 \fI/proc/sys/kernel/pid_max\fP (参见
+\fBproc\fP(5)).
+.TP 
+\fBEINVAL\fP
+\fIattr\fP 中的设置无效。
+.TP 
+.\" FIXME . Test the following
+\fBEPERM\fP
+无权设置 \fIattr\fP 中指定的调度策略和参数。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_create\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+有关 \fBpthread_create\fP() 在 \fI*thread\fP 中返回的线程 ID 的更多信息，请参见 \fBpthread_self\fP(3)。
+除非采用实时调度策略，否则调用 \fBpthread_create\fP() 后，调用者或新线程接下来将执行哪个线程是不确定的。
+.PP
+线程可以是 \fIjoinable\fP 或 \fIdetached\fP。 如果一个线程是可连接的，那么另一个线程可以调用 \fBpthread_join\fP(3)
+来等待线程终止并获取它的退出状态。 只有当一个终止的可连接线程被连接时，它的最后一个资源才会释放回系统。
+当一个分离的线程终止时，它的资源会自动释放回系统: 不可能加入线程以获得它的退出状态。
+使线程分离对于应用程序不需要关心其退出状态的某些类型的守护线程很有用。 默认情况下，新线程以可连接状态创建，除非 \fIattr\fP
+设置为以分离状态创建线程 (使用 \fBpthread_attr_setdetachstate\fP(3)).
+.PP
+在 NPTL 线程实现下，如果 \fBRLIMIT_STACK\fP 软资源限制 \fIat the time the program started\fP 具有
+"unlimited" 以外的任何值，则它确定新线程的默认栈大小。 使用
+\fBpthread_attr_setstacksize\fP(3)，可以在用于创建线程的 \fIattr\fP
+参数中显式设置栈大小属性，以获得不同于默认值的栈大小。 如果 \fBRLIMIT_STACK\fP 资源限制设置为
+"unlimited"，每个体系结构的值将用于栈大小。 以下是一些架构的值:
+.RS
+.TS
+allbox;
+lb lb
+l r.
+Architecture	Default stack size
+i386	2 MB
+IA\-64	32 MB
+PowerPC	4 MB
+S/390	2 MB
+Sparc\-32	2 MB
+Sparc\-64	4 MB
+x86_64	2 MB
+.TE
+.RE
+.SH BUGS
+在过时的 LinuxThreads 实现中，进程中的每个线程都有不同的进程 ID。这违反了 POSIX 线程规范，并且是许多其他不符合标准的来源;
+请参见 \fBpthreads\fP(7)。
+.SH EXAMPLES
+下面的程序演示了 \fBpthread_create\fP() 的使用，以及 pthreads API 中的许多其他函数。
+.PP
+在以下运行中，在提供 NPTL 线程实现的系统上，栈大小默认为 "stack size" 资源限制给定的值:
+.PP
+.in +4n
+.EX
+$\fB ulimit \-s\fP
+8192            # 栈大小限制为 8 MB (0x800000 字节)
+$\fB ./a.out hola salut servus\fP
+线程 1: 靠近 0xb7dd03b8 的栈顶部; argv_string=hola
+线程 2: 靠近 0xb75cf3b8 的栈顶; argv_string=salut
+线程 3: 靠近 0xb6dce3b8 的栈顶; argv_string=servus
+加入了线程 1; 返回值是 HOLA
+加入了线程 2; 返回值是 SALUT
+加入线程 3; 返回值为 SERVUS
+.EE
+.in
+.PP
+在下一次运行中，程序显式设置 1\MB 的栈大小 (对创建的线程使用 \fBpthread_attr_setstacksize\fP(3)):
+.PP
+.in +4n
+.EX
+$\fB ./a.out \-s 0x100000 hola salut servus\fP
+线程 1: 靠近 0xb7d723b8 的栈顶部; argv_string=hola
+线程 2: 靠近 0xb7c713b8 的栈顶; argv_string=salut
+线程 3: 靠近 0xb7b703b8 的栈顶; argv_string=servus
+加入了线程 1; 返回值是 HOLA
+加入了线程 2; 返回值是 SALUT
+加入线程 3; 返回值为 SERVUS
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_create.c)
+\&
+.EX
+#include <ctype.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#define handle_error_en(en, msg) \e
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+#define handle_error(msg) \e
+        do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+struct thread_info {    /* Used as argument to thread_start() */
+    pthread_t thread_id;        /* ID returned by pthread_create() */
+    int       thread_num;       /* Application\-defined thread # */
+    char     *argv_string;      /* From command\-line argument */
+};
+
+/* Thread start function: display address near top of our stack,
+   and return upper\-cased copy of argv_string. */
+
+static void *
+thread_start(void *arg)
+{
+    struct thread_info *tinfo = arg;
+    char *uargv;
+
+    printf("Thread %d: top of stack near %p; argv_string=%s\en",
+           tinfo\->thread_num, (void *) &tinfo, tinfo\->argv_string);
+
+    uargv = strdup(tinfo\->argv_string);
+    if (uargv == NULL)
+        handle_error("strdup");
+
+    for (char *p = uargv; *p != \[aq]\e0\[aq]; p++)
+        *p = toupper(*p);
+
+    return uargv;
+}
+
+int
+main(int argc, char *argv[])
+{
+    int                 s, opt;
+    void                *res;
+    size_t              num_threads;
+    ssize_t             stack_size;
+    pthread_attr_t      attr;
+    struct thread_info  *tinfo;
+
+    /* The "\-s" option specifies a stack size for our threads. */
+
+    stack_size = \-1;
+    while ((opt = getopt(argc, argv, "s:")) != \-1) {
+        switch (opt) {
+        case \[aq]s\[aq]:
+            stack_size = strtoul(optarg, NULL, 0);
+            break;
+
+        default:
+            fprintf(stderr, "Usage: %s [\-s stack\-size] arg...\en",
+                    argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    num_threads = argc \- optind;
+
+    /* Initialize thread creation attributes. */
+
+    s = pthread_attr_init(&attr);
+    if (s != 0)
+        handle_error_en(s, "pthread_attr_init");
+
+    if (stack_size > 0) {
+        s = pthread_attr_setstacksize(&attr, stack_size);
+        if (s != 0)
+            handle_error_en(s, "pthread_attr_setstacksize");
+    }
+
+    /* Allocate memory for pthread_create() arguments. */
+
+    tinfo = calloc(num_threads, sizeof(*tinfo));
+    if (tinfo == NULL)
+        handle_error("calloc");
+
+    /* Create one thread for each command\-line argument. */
+
+    for (size_t tnum = 0; tnum < num_threads; tnum++) {
+        tinfo[tnum].thread_num = tnum + 1;
+        tinfo[tnum].argv_string = argv[optind + tnum];
+
+        /* The pthread_create() call stores the thread ID into
+           corresponding element of tinfo[]. */
+
+        s = pthread_create(&tinfo[tnum].thread_id, &attr,
+                           &thread_start, &tinfo[tnum]);
+        if (s != 0)
+            handle_error_en(s, "pthread_create");
+    }
+
+    /* Destroy the thread attributes object, since it is no
+       longer needed. */
+
+    s = pthread_attr_destroy(&attr);
+    if (s != 0)
+        handle_error_en(s, "pthread_attr_destroy");
+
+    /* Now join with each thread, and display its returned value. */
+
+    for (size_t tnum = 0; tnum < num_threads; tnum++) {
+        s = pthread_join(tinfo[tnum].thread_id, &res);
+        if (s != 0)
+            handle_error_en(s, "pthread_join");
+
+        printf("Joined with thread %d; returned value was %s\en",
+               tinfo[tnum].thread_num, (char *) res);
+        free(res);      /* Free memory allocated by thread */
+    }
+
+    free(tinfo);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBgetrlimit\fP(2), \fBpthread_attr_init\fP(3), \fBpthread_cancel\fP(3),
+\fBpthread_detach\fP(3), \fBpthread_equal\fP(3), \fBpthread_exit\fP(3),
+\fBpthread_getattr_np\fP(3), \fBpthread_join\fP(3), \fBpthread_self\fP(3),
+\fBpthread_setattr_default_np\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

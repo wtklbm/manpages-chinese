@@ -1,0 +1,101 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH bzero 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+bzero, explicit_bzero \- 零字节字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <strings.h>\fP
+.PP
+\fBvoid bzero(void \fP\fIs\fP\fB[.\fP\fIn\fP\fB], size_t \fP\fIn\fP\fB);\fP
+.PP
+\fB#include <string.h>\fP
+.PP
+\fBvoid explicit_bzero(void \fP\fIs\fP\fB[.\fP\fIn\fP\fB], size_t \fP\fIn\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBbzero\fP() 函数通过将零 (包含 \[aq]\e0\[aq] 的字节) 写入该区域，擦除从 \fIs\fP 指向的位置开始的存储器的 \fIn\fP
+字节中的数据。
+.PP
+\fBexplicit_bzero\fP() 函数执行与 \fBbzero\fP() 相同的任务。 它与 \fBbzero\fP() 的不同之处在于，如果编译器推断操作是
+"unnecessary"，它保证编译器优化不会删除擦除操作。
+.SH "RETURN VALUE"
+None.
+.SH VERSIONS
+\fBexplicit_bzero\fP() 最早出现在 glibc 2.25 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBbzero\fP(),
+\fBexplicit_bzero\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBbzero\fP() 函数已弃用 (在 POSIX.1\-2001 中标记为 LEGACY) ; 在新程序中使用 \fBmemset\fP(3)。
+POSIX.1\-2008 删除了 \fBbzero\fP() 的规范。 \fBbzero\fP() 函数最早出现在 4.3BSD。
+.PP
+\fBexplicit_bzero\fP() 函数是一个非标准扩展，也出现在某些 BSD 上。 其他一些实现具有类似的函数，例如
+\fBmemset_explicit\fP() 或 \fBmemset_s\fP()。
+.SH NOTES
+\fBexplicit_bzero\fP() 函数解决了安全意识应用程序在使用 \fBbzero\fP():
+时可能遇到的问题，如果编译器可以推断出要清零的位置将永远不会再被 \fIcorrect\fP 程序触及，那么它可能会完全删除 \fBbzero\fP() 调用。
+如果 \fBbzero\fP() 调用的目的是擦除敏感数据 (例如密码) 以防止数据被不正确或受损的程序泄露的可能性，这就是一个问题。 编译器永远不会优化对
+\fBexplicit_bzero\fP() 的调用。
+.PP
+\fBexplicit_bzero\fP() 函数并不能解决与擦除敏感数据相关的所有问题:
+.IP \[bu] 3
+\fBexplicit_bzero\fP() 函数确实 \fInot\fP 保证敏感数据从内存中完全 erased。 (\fBbzero\fP().)
+也是一样，比如一个寄存器和 "scratch" 栈区可能有敏感数据的副本。 \fBexplicit_bzero\fP() 函数不知道这些副本，也无法删除它们。
+.IP \[bu]
+在某些情况下，\fBexplicit_bzero\fP() 可以 \fIdecrease\fP 安全。 如果编译器确定包含敏感数据的变量可以优化为存储在寄存器中
+(因为它足够小以适合寄存器，并且除了 \fBexplicit_bzero\fP() 调用之外没有其他操作需要获取变量的地址) , 然后
+\fBexplicit_bzero\fP() 调用将强制将数据从寄存器复制到 RAM 中的某个位置，然后立即 erased (而寄存器中的副本不受影响)。
+这里的问题是 RAM 中的数据比寄存器中的数据更容易被错误暴露，因此 \fBexplicit_bzero\fP()
+调用创建了一个短暂的时间窗口，在这个时间窗口中，敏感数据比没有尝试时更容易受到攻击已被删除的数据。
+.PP
+请注意，使用 \fBvolatile\fP 限定符声明敏感变量确实 \fInot\fP 消除了上述问题。
+事实上，这会让它们变得更糟，因为，例如，它可能会强制一个变量，否则它会被优化到一个寄存器中，而不是在它的整个生命周期间被保存在 (更容易受到攻击的)
+RAM 中。
+.PP
+尽管有上述细节，但对于注重安全性的应用程序，使用 \fBexplicit_bzero\fP() 通常比不使用它更可取。 \fBexplicit_bzero\fP()
+的开发人员预计 future 编译器将识别对 \fBexplicit_bzero\fP() 的调用，并采取措施确保敏感数据的所有副本都是
+erased，包括寄存器或 "scratch" 栈区域中的副本。
+.SH "SEE ALSO"
+\fBbstring\fP(3), \fBmemset\fP(3), \fBswab\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,414 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-bh 5 "10 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-bh
+.SH NAME
+sane\-bh\-Bell+Howell Copiscan II 系列文档扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-bh\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对 Bell+Howell Copiscan II
+系列文档扫描仪的访问。 Copiscan II 6338
+一直是开发和测试期间使用的主要扫描仪型号，但由于整个系列的编程接口是一致的，后端应该适用于以下扫描仪型号:
+.PP
+.RS
+COPISCAN II 6338 带 ACE 的双面扫描仪
+.br
+COPISCAN II 2135 单面扫描仪
+.br
+COPISCAN II 2137(A) 单面扫描仪 (带 ACE)
+.br
+COPISCAN II 2138A 带 ACE 的单面扫描仪
+.br
+COPISCAN II 3238 单面扫描仪
+.br
+COPISCAN II 3338(A) 单面扫描仪 (带 ACE)
+.br
+.RE
+.PP
+如果您有 Bell+Howell 扫描仪并且能够使用此后端对其进行测试，请联系
+\fIsane\-devel@alioth\-lists.debian.net\fP 并提供型号和测试结果。查看
+\fIhttp://www.sane\-project.org/mailing\-lists.html\fP 关于订阅 sane\-devel
+的信息。此外，作者很好奇在较新的 4000 和 8000 系列扫描仪上使用此后端的可能性。 如果您有这样的野兽，请告诉我。
+.PP
+Bell+Howell Copiscan II 系列文档扫描仪是大容量、高吞吐量的扫描仪，专为文档扫描应用而设计。 因此，它们是
+lineart/grayscale 扫描仪，支持固定数量的相当低的分辨率 (例如 200/240/300dpi)。
+但是，它们确实具有许多有趣且有用的特性可满足文档成像应用程序的需求。 此后端尝试支持尽可能多的这些，特性。
+.PP
+编写这个后端使用的主要技术引用是 \fBBell and Howell Copiscan II Remote SCSI Controller (RSC) OEM\fP \fBTechnical Manual Version 1.5.\fP Linux SCSI 编程 HOWTO、SANE API 文档和 SANE
+源代码也是非常宝贵的资源。
+
+.PP
+后端主页提供了最新的后端版本、附加信息和有用的提示:
+.br
+.RS
+\fIhttp://www.martoneconsulting.com/sane\-bh.html\fP
+.RE
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于 SCSI 扫描仪的特殊设备的路径名。对于 SCSI 扫描仪，特殊设备名称必须是泛型 SCSI
+设备或此类设备的符号链接。 在 Linux 下，这样的设备名称采用 \fI/dev/sga\fP 或 \fI/dev/sg0\fP 等格式。 有关详细信息，请参见
+\fBsane\-scsi\fP(5)。
+
+.SH OPTIONS
+.TP 
+\fBScan Mode Options:\fP
+.TP 
+\fB\-\-preview[=(yes|no)] [no]\fP
+请求预览质量扫描。 当预览设置为是时，图像压缩被禁用并且图像以 \fBSANE_FRAME_GRAY\fP 帧交付。
+.TP 
+\fB\-\-mode lineart|halftone [lineart]\fP
+选择扫描模式 (例如，线条、单色或彩色)。
+.TP 
+\fB\-\-resolution 200|240|300dpi [200]\fP
+设置扫描图像的分辨率。 每个扫描仪型号都支持一系列标准分辨率; 只能使用这些分辨率。
+.TP 
+\fB\-\-compression none|g31d|g32d|g42d [none]\fP
+设置扫描仪的压缩模式。 确定从扫描仪返回的数据类型。 值为:
+
+.RS
+.br
+\fBnone\fP \- 未压缩数据 \- 在 SANE_FRAME_GRAY 帧中传送
+.br
+\fBg31d\fP\-CCITT G3 1 维 (MH) \- 采用 SANE_FRAME_G31D 框架交付
+.br
+\fBg32d\fP\-CCITT G3 2 尺寸 (MR，K=4) \- 以 SANE_FRAME_G32D 框架交付
+.br
+\fBg42d\fP\-CCITT G4 (MMR) \- 采用 SANE_FRAME_G42D 框架交付
+.br
+
+\fBNOTE\fP: 使用 g31d、g32d 和 g42d 压缩值会导致后端生成可能不被所有 SANE 前端支持的可选帧格式。
+.RE
+
+.TP 
+\fBGeometry Options:\fP
+.TP 
+\fB\-\-autoborder[=(yes|no)] [yes]\fP
+Enable/Disable 自动图像边界检测。 启用后，RSC 单元会自动检测图像区域并设置窗口几何形状以匹配。
+.TP 
+\fB\-\-paper\-size Custom|Letter|Legal|A3|A4|A5|A6|B4|B5 [Custom]\fP
+通过指定要扫描的文档的纸张尺寸来指定扫描窗口的几何形状。
+.TP 
+\fB\-\-tl\-x 0..297.18mm [0]\fP
+扫描区域的左上角 x 位置。
+.TP 
+\fB\-\-tl\-y 0..431.8mm [0]\fP
+扫描区域的左上角 y 位置。
+.TP 
+\fB\-\-br\-x 0..297.18mm [297.18]\fP
+扫描区域的右下 x 位置。
+.TP 
+\fB\-\-br\-y 0..431.8mm [431.8]\fP
+扫描区域右下角的 y 位置。
+.TP 
+\fBFeeder Options:\fP
+.TP 
+\fB\-\-source Automatic Document Feeder|Manual Feed Tray [Automatic Document Feeder]\fP
+选择扫描源 (例如文档进纸器)。 提供此选项以允许使用 \fBxsane\fP(1);\fBit\fPhas\fBno\fPother\fBpurpose.\fP
+进行多图像扫描
+.TP 
+\fB\-\-batch[=(yes|no)] [no]\fP
+Enable/disable 批处理模式扫描。 批处理模式允许通过在 RSC 元内缓冲以最大吞吐量进行扫描。
+在进纸器清空之前执行多页扫描时，建议使用此选项。
+.TP 
+\fB\-\-duplex[=(yes|no)] [no]\fP
+启用双面 (dual\-sided) 扫描。 扫描仪在单次通过扫描仪期间拍摄文档每一面的图像。 送出首页后送出封底。 大多数选项 (例如压缩)
+都会影响首页和封底。
+.TP 
+\fB\-\-timeout\-adf 0..255 [0]\fP
+以秒为单位设置自动文档进纸器 (ADF) 的超时时间。 值 0 指定硬件默认值，该值因扫描仪型号而异。
+.TP 
+\fB\-\-timeout\-manual 0..255 [0]\fP
+以秒为单位设置半自动进纸器的超时时间。 值 0 指定硬件默认值，该值因扫描仪型号而异。
+.TP 
+\fB\-\-check\-adf[=(yes|no)] [no]\fP
+在使用 OBJECT POSITION 命令开始扫描之前检查 ADF 状态。 请注意，此特性需要 RSC 固件级别为 1.5 或更高级别，并且 DIP
+开关 4 必须处于打开位置。 注意: 此选项尚未经过广泛测试，可能会产生不良结果。
+.TP 
+\fBEnhancement:\fP
+.TP 
+\fB\-\-control\-panel[=(yes|no)] [yes]\fP
+启用扫描仪的控制面板以选择图像增强参数。 设置为无需以下选项来控制图像增强功能时。 有关 ACE 功能的完整信息，请参见 Bell+Howell
+扫描仪用户指南。
+.TP 
+\fB\-\-ace\-function \-4..4 [3]\fP
+指定自动对比度增强 (ACE) 函数。
+.TP 
+\fB\-\-ace\-sensitivity 0..9 [5]\fP
+指定自动对比度增强 (ACE) 灵敏度。
+.TP 
+\fB\-\-brightness 0..255 [0]\fP
+控制获取图像的亮度。 对于支持 ACE 的扫描仪忽略。
+.TP 
+\fB\-\-threshold 0..255 [0]\fP
+选择最小亮度以获得白点。 对于支持 ACE 的扫描仪忽略。
+.TP 
+\fB\-\-contrast 0..255 [inactive]\fP
+控制获取图像的对比度。 扫描仪当前未使用此选项 (也许永远不会)。
+.TP 
+\fB\-\-negative[=(yes|no)] [no]\fP
+交换黑色和白色，产生反向视频图像。
+.TP 
+\fBIcon:\fP
+.TP 
+\fB\-\-icon\-width 0..3600pel (in steps of 8) [0]\fP
+图标 (thumbnail) 图像的宽度 (以像素为单位)。
+.TP 
+\fB\-\-icon\-length 0..3600pel (in steps of 8) [0]\fP
+图标 (thumbnail) 图像的长度 (以像素为单位)。
+.TP 
+\fBBarcode Options:\fP
+.TP 
+\fB\-\-barcode\-search\-bar <see list> [none]\fP
+指定要搜索的条形码类型。 如果未指定此选项，或指定值为 none，则条形码解码特性将完全禁用。 有效的条形码类型是:
+
+.RS
+.br
+\fBnone\fP
+.br
+\fBean\-8\fP
+.br
+\fBean\-13\fP
+.br
+\fBreserved\-ean\-add\fP
+.br
+\fBcode39\fP
+.br
+\fBcode2\-5\-interleaved\fP
+.br
+\fBcode2\-5\-3lines\-matrix\fP
+.br
+\fBcode2\-5\-3lines\-datalogic\fP
+.br
+\fBcode2\-5\-5lines\-industrial\fP
+.br
+\fBpatchcode\fP
+.br
+\fBcodabar\fP
+.br
+\fBcodabar\-with\-start\-stop\fP
+.br
+\fBcode39ascii\fP
+.br
+\fBcode128\fP
+.br
+\fBcode2\-5\-5lines\-iata\fP
+.br
+.RE
+.TP 
+\fB\-\-barcode\-search\-count 1..7 [3]\fP
+RSC 执行解码算法的次数。 指定尽可能小的数字以提高性能。 如果您在识别条形码时遇到问题，建议您将此选项增加到其最大值 (7)。
+.TP 
+\fB\-\-barcode\-search\-mode <see list> [horiz\-vert]\fP
+选择要搜索的条形码的方向。 有效的方向是:
+
+.RS
+.br
+\fBhoriz\-vert\fP
+.br
+\fBhorizontal\fP
+.br
+\fBvertical\fP
+.br
+\fBvert\-horiz\fP
+.RE
+.TP 
+\fB\-\-barcode\-hmin 0..1660mm [5]\fP
+以毫米为单位设置条码最小高度 (值越大识别速度越快)。 当然，文档中的实际条形码必须足够大。
+.TP 
+\fB\-\-barcode\-search\-timeout 20..65535us [10000]\fP
+以毫秒为单位设置条形码搜索的超时时间。 当超时到期时，解码器将停止尝试解码条形码。
+.TP 
+\fB\-\-section <string> []\fP
+指定一系列图像部分。 一个部分可用于收集子图像或为条形码解码提供一个小区域。 每个部分按以下格式指定 (单位为毫米) :
+.PP
+\fB<width>x<height>+<top\-left\-x>+<top\-left\-y>[:functioncode...]\fP
+.PP
+可以通过用逗号分隔来指定多个部分。
+.PP
+例如，\fB76.2x25.4+50.8+0:frontbar\fP 标识一个 3 英寸宽和 1 英寸高的区域，页面顶部的左上角距页面左侧 edge 两英寸。
+此部分将仅用于首页上的条码解码。
+.PP
+例如，\fB50.8x25.4+25.4+0:frontbar:front:g42d\fP 标识一个 2 英寸宽和 1
+英寸高的区域，页面顶部的左上角距页面左侧 edge 一英寸。 此部分将用于首页上的条形码解码以及生成以 g42d 格式压缩的图像。
+.PP
+通常在整个图像中搜索条形码。 但是，当您指定部分时，所有条形码搜索都在标识的特定部分内完成。 这可以显着加快解码过程。
+
+可以使用以下函数代码:
+
+.RS
+.br
+\fBfront\fP \- 为首页部分生成图像
+.br
+\fBback\fP \- 为封底部分生成图像
+.br
+\fBfrontbar\fP \- 在首页部分执行条形码搜索
+.br
+\fBbackbar\fP \- 在后页部分执行条形码搜索
+.br
+\fBfrontpatch\fP \- 在首页部分执行补丁码搜索
+.br
+\fBbackpatch\fP \- 在后页部分执行补丁码搜索
+.br
+\fBnone\fP \- 不使用图像压缩
+.br
+\fBg31d\fP \- 使用 Group 3 1 维图像压缩
+.br
+\fBg32d\fP \- 使用 Group 3 二维图像压缩
+.br
+\fBg42d\fP \- 使用 Group 4 二维图像压缩
+.br
+.RE
+.PP
+如果省略压缩函数代码，则使用整页压缩设置。 如果指定多个压缩函数代码，则只使用最后一个。
+
+.TP 
+\fB\-\-barcode\-relmax 0..255 [0]\fP
+指定从最宽到最小条的最大关系。
+.TP 
+\fB\-\-barcode\-barmin 0..255 [0]\fP
+指定 Bar/Patch 代码中的最小条数。
+.TP 
+\fB\-\-barcode\-barmax 0..255 [0]\fP
+指定 Bar/Patch 代码中的最大条数。
+.TP 
+\fB\-\-barcode\-contrast 0..6 [3]\fP
+指定解码中使用的图像对比度。 当代码中有更多的白色像素时，使用更高的值。
+.TP 
+\fB\-\-barcode\-patchmode 0..1 [0]\fP
+控制补丁码检测。
+
+.SH CONFIGURATION
+\fIbh.conf\fP 文件的内容是与 Bell+Howell 扫描仪对应的设备名称列表。 有关构成有效设备名称的详细信息，请参见
+\fBsane\-scsi\fP(5)。 此外，可以指定选项; 这些行以单词 "option" 开头。 下面详细描述了每个选项。 空行和以哈希标记 (#)
+开头的行将被忽略。
+
+.SH OPTIONS
+可以在 \fIbh.conf\fP 文件中指定以下选项。
+.TP 
+\fBdisable\-optional\-frames\fP
+此选项可防止后端发送任何可选帧。 在处理不支持这些可选框架的前端时，此选项可能很有用。 当此选项生效时，数据在 \fBSANE_FRAME_GRAY\fP
+帧中发送。 此后端发送的可选帧是: \fBSANE_FRAME_G31D\fP、\fBSANE_FRAME_G32D\fP、\fBSANE_FRAME_G42D\fP 和
+\fBSANE_FRAME_TEXT\fP。 这些帧是根据压缩和条形码选项生成的。 这些帧永远不会在预览模式下发送。
+.TP 
+\fBfake\-inquiry\fP
+此选项用于调试目的，不鼓励使用。 本质上，它允许后端在没有扫描器的情况下进行初始化。 这对开发很有用，其他没什么用。 此选项必须在配置文件中指定为
+"faked" 之前的设备。
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/bh.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-bh.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-bh.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_BH\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 255 请求打印所有调试输出。 较小的级别减少冗长。
+
+.SH "SUPPORTED FEATURES"
+.TP 
+\fBADF support\fP
+对于文档扫描仪，自动文档进纸器 (ADF) 支持是一项关键，特性。 后台默认支持 ADF，检测到缺纸时返回
+\fBSANE_STATUS_NO_DOCS\fP。 SANE 前端 \fBscanadf\fP(1) 是一个支持多页扫描的命令行前端。 它已成功用于此后端。
+SANE 前端 \fBxsane\fP(1) 是 Oliver Rauch 改进的 GUI 前端。 xsane 0.35 及更高版本中包含对多页扫描的支持。
+
+.TP 
+\fBDuplex scanning\fP
+某些型号，例如 COPISCAN II 6338，支持双面扫描。 也就是说，他们在单次通过扫描仪 (扫描仪有两个摄像头) 的过程中扫描文档的两面。
+此后端支持双面扫描 (使用 \fB\-\-duplex\fP 选项)。 正面和背面图像被连续传送，就好像它们是单独扫描的页面一样。
+
+.TP 
+\fBHardware compression\fP
+扫描仪能够将数据压缩为多种行业标准格式 (CCITT G3、CCITT G3\-2D、CCITT G4)。 这会提高性能，因为通过 SCSI
+总线从扫描仪传递到主机的数据较少。 后端分别通过 \fB\-\-g31d, \-\-g32d, \-\-g42d\fP 选项支持这些压缩格式。 然而，许多 SANE
+前端无法处理这些格式。 SANE 前端 \fBscanadf\fP(1) 支持这些可选的帧格式。 压缩图像数据直接写入文件，然后可以使用
+\fB\-\-scan\-script\fP 选项由扫描脚本进行处理。 \fBscanadf\fP(1) 主页上给出了这方面的示例。
+
+.TP 
+\fBAutomatic Border Detection\fP
+扫描仪可以自动检测纸张尺寸并适当调整扫描窗口的几何形状。 后端通过 \fB\-\-autoborder\fP 选项支持这个有用的特性。 默认情况下启用。
+
+.TP 
+\fBBatch Mode Scanning\fP
+批量扫描模式允许最大吞吐量。 设置窗口参数必须在整个批次期间保持常量。
+
+.TP 
+\fBIcon Generation\fP
+图标函数生成整页图像的缩略图，可以像单独的页面一样传输。 这允许主机在扫描操作期间快速显示缩略图表示。
+也许这是实现预览扫描的好方法，但由于普通扫描速度如此之快，因此可能不值得这么麻烦。
+
+.TP 
+\fBMultiple Sections\fP
+可以为首页和封底定义多个部分 (扫描子窗口)。 每个部分可以具有不同的特性 (例如几何形状、压缩)。 这些部分被返回，就好像它们是单独扫描的图像一样。
+通过将搜索区域限制在页面的一小部分，可以使用其他部分来大大提高 barcode/patchcode 解码过程的准确性和效率。 大多数 Copiscan
+II 系列扫描仪最多支持 8 个用户定义的部分。
+
+.TP 
+\fBSupport Barcode/Patchcode Decoding\fP
+RSC 元可以识别扫描图像中嵌入的各种类型的条码和补丁码。 代码被解码，数据作为文本框返回到前端。 文本以 xml
+编码，包含有关解码数据的大量信息，例如找到它的位置、它的方向以及找到它所花费的时间。
+有关此文本框内容的更多信息以及一些条形码解码示例可以在后端主页上找到。
+
+.SH LIMITATIONS
+.TP 
+\fBDecoding a single barcode type per scan\fP
+RSC 元一次最多可以搜索六种不同的条码类型。 虽然代码通常也支持这一点，但 \fB\-\-barcode\-search\-bar\fP
+选项仅允许用户指定单一条码类型。 也许可以添加另一个允许逗号分隔的条形码类型代码列表的选项来解决这个问题。
+.TP 
+\fBScanning a fixed number of pages in batch mode\fP
+SANE 中前端和后端功能的分离在支持扫描仪中的 `取消批处理` 功能方面存在问题。 在批处理模式下，扫描仪总是比主机领先一页。
+提前知道哪一页将是最后一页的主机可以在启动最后一个扫描命令之前取消批处理模式。 目前，前端没有可用的机制将这些知识传递给后端。 如果启用了批处理模式并且
+\fB\-\-end\-count\fP 终止了 scanadf 会话，则会通过扫描仪拉出额外的页面，但既不会读取也不会传送到前端。 通过在扫描固定页数时指定
+\fB\-\-batch=no\fP 可以避免此问题。
+.TP 
+\fBRevision 1.2 Patch detector\fP
+RSC 中提供了一种增强的补丁码检测算法，修订版 1.2 或更高版本比标准 Bar/Patch 代码解码器更快、更可靠。 目前不支持此功能。
+
+.SH BUGS
+这是一个新的后端; 欢迎详细的错误报告 \-\- 并且期待 ;)
+.PP
+如果您发现了您认为是错误的东西，请尝试将 \fBSANE_DEBUG_BH\fP 环境变量设置为 255 来重新创建它，并向
+\fIsane\-devel@alioth\-lists.debian.net\fP 发送详细说明错误情况的报告。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBscanimage\fP(1), \fBscanadf\fP(1), \fBxsane\fP(1)
+
+.SH AUTHOR
+\fBsane\-bh backend\fP 由 Tom Martone 编写，基于 Feico W 的 \fBsane\-ricoh\fP(5)
+后端。tummy.com ltd 的 Sean Reifschneider 的 Dillema 和 bnhscan 程序。 Mark Temple
+添加了大约 8000 项增强功能。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

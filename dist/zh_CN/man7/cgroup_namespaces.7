@@ -1,0 +1,155 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH cgroup_namespaces 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+cgroup_namespaces\-Linux cgroup 命名空间概述
+.SH DESCRIPTION
+有关名称空间的概述，请参见 \fBnamespaces\fP(7)。
+.PP
+Cgroup 命名空间虚拟化进程的 cgroups 视图 (参见 \fBcgroups\fP(7))，如通过 \fI/proc/\fPpid\fI/cgroup\fP 和
+\fI/proc/\fPpid\fI/mountinfo\fP 所见。
+.PP
+每个 cgroup 命名空间都有自己的一组 cgroup 根目录。 这些根目录是 \fI/proc/\fPpid\fI/cgroup\fP
+文件中相应记录显示的相对位置的基点。 当进程使用带有 \fBCLONE_NEWCGROUP\fP 标志的 \fBclone\fP(2) 或
+\fBunshare\fP(2) 创建新的 cgroup 命名空间时，其当前的 cgroups 目录将成为新命名空间的 cgroup 根目录。 (这适用于
+cgroups 版本 1 层次结构和 cgroups 版本 2 统一层次结构。)
+.PP
+当从 \fI/proc/\fPpid\fI/cgroup\fP 读取 "target" 进程的 cgroup 成员时，每条记录的第三个字段中显示的路径名将相对于相应
+cgroup 层次结构的读取进程的根目录。 如果目标进程的 cgroup 目录位于读取进程的 cgroup 命名空间的根目录之外，则路径名将显示
+cgroup 层次结构中每个祖先级别的 \fI../\fP 条目。
+.PP
+以下 shell 会话演示了创建新的 cgroup 命名空间的效果。
+.PP
+首先，(作为超级用户) 在初始 cgroup 命名空间的 shell 中，我们在 \fIfreezer\fP 层次结构中创建一个子 cgroup，并在该
+cgroup 中放置一个进程，我们将在下面的演示中使用该进程:
+.PP
+.in +4n
+.EX
+# \fBmkdir \-p /sys/fs/cgroup/freezer/sub2\fP
+# \fBsleep 10000 &\fP     # 创建一个存活一段时间的进程
+[1] 20124
+# \fBecho 20124 > /sys/fs/cgroup/freezer/sub2/cgroup.procs\fP
+.EE
+.in
+.PP
+然后，我们在 \fIfreezer\fP 层次结构中创建另一个子 cgroup，并将 shell 放入该 cgroup:
+.PP
+.in +4n
+.EX
+# \fBmkdir \-p /sys/fs/cgroup/freezer/sub\fP
+# \fBecho $$\fP                      # 显示这个 shell 的 PID
+30655
+# \fBecho 30655 > /sys/fs/cgroup/freezer/sub/cgroup.procs\fP
+# \fBecho $$\fP                      # 显示这个 shell 的 PID
+7:freezer:/sub
+.EE
+.in
+.PP
+接下来，我们使用 \fBunshare\fP(1) 创建一个在新 cgroup 和挂载命名空间中运行新 shell 的进程:
+.PP
+.in +4n
+.EX
+# \fBPS1="sh2# " unshare \-Cm bash\fP
+.EE
+.in
+.PP
+从由 \fBunshare\fP(1) 启动的新 shell，然后我们分别检查新 shell 的 \fI/proc/\fPpid\fI/cgroup\fP
+文件，一个位于初始 cgroup 命名空间 (\fIinit\fP 中的进程，PID 为 1)，以及兄弟 cgroup (\fIsub2\fP): 中的进程
+.PP
+.in +4n
+.EX
+sh2# \fBcat /proc/self/cgroup | grep freezer\fP
+7:freezer:/
+sh2# \fBcat /proc/1/cgroup | grep freezer\fP
+7:freezer:/..
+sh2# \fBcat /proc/20124/cgroup | grep freezer\fP
+7:freezer:/../sub2
+.EE
+.in
+.PP
+从第一个命令的输出中，我们看到新 shell 的 freezer cgroup 成员资格 (与初始 shell 在同一 cgroup 中)
+显示为相对于新 cgroup 命名空间创建时建立的 freezer cgroup 根目录的定义创建。 (绝对而言，新的 shell 在 \fI/sub\fP
+freezer cgroup 中，新 cgroup 命名空间中 freezer cgroup 层次结构的根目录也是 \fI/sub\fP。因此，新 shell
+的 cgroup 成员显示为 \[aq]/\[水]。)
+.PP
+但是，当我们查看 \fI/proc/self/mountinfo\fP 时，我们会看到以下异常情况:
+.PP
+.in +4n
+.EX
+sh2# \fBcat /proc/self/mountinfo | grep freezer\fP
+155 145 0:32 /.. /sys/fs/cgroup/freezer ...
+.EE
+.in
+.PP
+该行 (\fI/..\fP) 的第四个字段应显示 cgroup 文件系统中构成此挂载根的目录。 由于根据 cgroup 名称空间的定义，进程的当前
+freezer cgroup 目录成为其根 freezer cgroup 目录，我们应该在该字段中看到 \[aq]/\[aq]。
+这里的问题是，我们看到了对应于初始 cgroup 命名空间的 cgroup 文件系统的挂载条目 (其 cgroup 文件系统确实根植于 \fIsub\fP)
+的父目录。 要解决此问题，我们必须从新的 shell 重新挂载 freezer cgroup 文件系统 (即，从新 cgroup
+命名空间中的进程执行挂载)，之后我们会看到预期的结果:
+.PP
+.in +4n
+.EX
+sh2# \fBmount \-\-make\-rslave /\fP     #Don\[aq] t 传播挂载事件
+                               # 到其他命名空间
+sh2# \fBumount /sys/fs/cgroup/freezer\fP
+sh2# \fBmount \-t cgroup \-o freezer freezer /sys/fs/cgroup/freezer\fP
+sh2# \fBcat /proc/self/mountinfo | grep freezer\fP
+155 145 0:32 / /sys/fs/cgroup/freezer rw,relatime ...
+.EE
+.in
+.\"
+.SH STANDARDS
+命名空间是 Linux 特有的，特性。
+.SH NOTES
+使用 cgroup 名称空间需要使用 \fBCONFIG_CGROUPS\fP 选项配置的内核。
+.PP
+cgroup 命名空间提供的虚拟化有多种用途:
+.IP \[bu] 3
+它可以防止信息泄漏，否则容器外的 cgroup 目录路径将对容器中的进程可见。 例如，此类泄漏可能会向容器化应用程序泄露有关容器框架的信息。
+.IP \[bu]
+它简化了容器迁移等任务。 cgroup 命名空间提供的虚拟化允许容器与祖先 cgroup 的路径名知识隔离。
+如果没有这种隔离，在迁移容器时，需要在目标系统上复制完整的 cgroup 路径名 (显示在 \fI/proc/self/cgroups\fP) 中;
+这些路径名也需要是唯一的，这样它们就不会与目标系统上的其他路径名冲突。
+.IP \[bu]
+它允许更好地限制容器化进程，因为可以挂载容器的 cgroup 文件系统，这样容器进程就无法访问祖先 cgroup 目录。 例如，考虑以下场景:
+.RS
+.IP \[bu] 3
+我们有一个 cgroup 目录，\fI/cg/1\fP，由用户 ID 9000 拥有。
+.IP \[bu]
+我们有一个进程 \fIX\fP，它也由用户 ID 9000 拥有，它在 cgroup \fI/cg/1/2\fP 下命名空间 (即，\fIX\fP 通过带有
+\fBCLONE_NEWCGROUP\fP 标志的 \fBclone\fP(2) 或 \fBunshare\fP(2) 放置在新的 cgroup 命名空间中)。
+.RE
+.IP
+在没有 cgroup 命名空间的情况下，因为 cgroup 目录 \fI/cg/1\fP 由 UID 9000 拥有 (并且可写) 并且进程 \fIX\fP
+也由用户 ID 9000 拥有，进程 \fIX\fP 将能够修改 cgroups 文件的内容 (即更改 cgroup 设置) 不仅在 \fI/cg/1/2\fP
+中，而且在祖先 cgroup 目录 \fI/cg/1\fP 中。 cgroup 目录 \fI/cg/1/2\fP 下的命名空间进程 \fIX\fP，结合 cgroup
+文件系统的适当挂载操作 (如上所示)，阻止它修改 \fI/cg/1\fP 中的文件，因为它甚至看不到该目录 (或进一步删除的 cgroup 祖先目录)
+的内容).  结合正确执行层次限制，这可以防止进程 \fIX\fP 逃脱祖先 cgroup 施加的限制。
+.SH "SEE ALSO"
+\fBunshare\fP(1), \fBclone\fP(2), \fBsetns\fP(2), \fBunshare\fP(2), \fBproc\fP(5),
+\fBcgroups\fP(7), \fBcredentials\fP(7), \fBnamespaces\fP(7), \fBuser_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

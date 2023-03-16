@@ -1,0 +1,233 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2012 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH malloc_info 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+malloc_info \- 将 malloc 状态导出到流
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <malloc.h>\fP
+.PP
+\fBint malloc_info(int \fP\fIoptions\fP\fB, FILE *\fP\fIstream\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmalloc_info\fP() 函数导出一个 XML 字符串，描述调用者内存分配实现的当前状态。 该字符串打印在文件流 \fIstream\fP 上。
+导出的字符串包括有关所有竞技场的信息 (请参见 \fBmalloc\fP(3)).
+.PP
+按照目前的实现，\fIoptions\fP 必须为零。
+.SH "RETURN VALUE"
+成功时，\fBmalloc_info\fP() 返回 0。 失败时，它返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIoptions\fP 是非零的。
+.SH VERSIONS
+在 glibc 2.10 中添加了 \fBmalloc_info\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmalloc_info\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这个函数是 GNU 的扩展名。
+.SH NOTES
+内存分配信息以 XML 字符串 (而不是 C 结构体) 的形式提供，因为该信息可能会随时间变化 (根据底层实现的变化)。 输出 XML
+字符串包含一个版本字段。
+.PP
+\fBopen_memstream\fP(3) 函数可用于将 \fBmalloc_info\fP() 的输出直接发送到内存中的缓冲区，而不是文件。
+.PP
+\fBmalloc_info\fP() 函数旨在解决 \fBmalloc_stats\fP(3) 和 \fBmallinfo\fP(3) 的不足。
+.SH EXAMPLES
+下面的程序最多需要四个命令行参数，其中前三个是必需的。 第一个参数指定程序应该创建的线程数。 所有线程，包括主线程，分配由第二个参数指定的内存块数。
+第三个参数控制要分配的块的大小。 主线程创建这个大小的块，程序创建的第二个线程分配这个大小的两倍的块，第三个线程分配这个大小的三倍的块，等等。
+.PP
+程序两次调用 \fBmalloc_info\fP() 以显示内存分配状态。 第一次调用发生在创建任何线程或分配内存之前。
+第二次调用是在所有线程分配完内存后执行的。
+.PP
+在下面的例子中，命令行参数指定创建一个附加线程，主线程和附加线程都分配 10000 块内存。 分配内存块后，\fBmalloc_info\fP()
+显示两个分配区域的状态。
+.PP
+.in +4n
+.EX
+$ \fBgetconf GNU_LIBC_VERSION\fP
+glibc 2.13
+$ \fB./a.out 1 10000 100\fP
+============ Before allocating blocks ============
+<malloc version="1">
+<heap nr="0">
+<sizes>
+</sizes>
+<total type="fast" count="0" size="0"/> 
+<total type="rest" count="0" size="0"/> 
+<system type="current" size="135168"/> 
+<system type="max" size="135168"/> 
+<aspace type="total" size="135168"/> 
+<aspace type="mprotect" size="135168"/> 
+</heap>
+<total type="fast" count="0" size="0"/>
+<total type="rest" count="0" size="0"/>
+<system type="current" size="135168"/>
+<system type="max" size="135168"/>
+<aspace type="total" size="135168"/>
+<aspace type="mprotect" size="135168"/>
+</malloc>
+
+============ After allocating blocks ============
+<malloc version="1">
+<heap nr="0">
+<sizes>
+</sizes>
+<total type="fast" count="0" size="0"/>  
+<total type="rest" count="0" size="0"/>  
+<system type="current" size="1081344"/>
+<system type="max" size="1081344"/>
+<aspace type="total" size="1081344"/>
+<aspace type="mprotect" size="1081344"/>
+</heap>
+<heap nr="1">
+<sizes>
+</sizes>
+<total type="fast" count="0" size="0"/>
+<total type="rest" count="0" size="0"/>
+<system type="current" size="1032192"/>
+<system type="max" size="1032192"/>
+<aspace type="total" size="1032192"/>
+<aspace type="mprotect" size="1032192"/>
+</heap>
+<total type="fast" count="0" size="0"/>
+<total type="rest" count="0" size="0"/>
+<system type="current" size="2113536"/>
+<system type="max" size="2113536"/>
+<aspace type="total" size="2113536"/>
+<aspace type="mprotect" size="2113536"/>
+</malloc>
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (malloc_info.c)
+.EX
+#include <err.h>
+#include <errno.h>
+#include <malloc.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+static size_t        blockSize;
+static size_t        numThreads;
+static unsigned int  numBlocks;
+
+static void *
+thread_func(void *arg)
+{
+    int tn = (int) arg;
+
+    /* The multiplier \[aq](2 + tn)\[aq] ensures that each thread (including
+       the main thread) allocates a different amount of memory. */
+
+    for (unsigned int j = 0; j < numBlocks; j++)
+        if (malloc(blockSize * (2 + tn)) == NULL)
+            err(EXIT_FAILURE, "malloc\-thread");
+
+    sleep(100);         /* Sleep until main thread terminates.  */
+    return NULL;
+}
+
+int
+main(int argc, char *argv[])
+{
+    int        sleepTime;
+    pthread_t  *thr;
+
+    if (argc < 4) {
+        fprintf(stderr,
+                "%s num\-threads num\-blocks block\-size [sleep\-time]\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    numThreads = atoi(argv[1]);
+    numBlocks = atoi(argv[2]);
+    blockSize = atoi(argv[3]);
+    sleepTime = (argc > 4) ? atoi(argv[4]) : 0;
+
+    thr = calloc(numThreads, sizeof(*thr));
+    if (thr == NULL)
+        err(EXIT_FAILURE, "calloc");
+
+    printf("============ Before allocating blocks ============\en");
+    malloc_info(0, stdout);
+
+    /* Create threads that allocate different amounts of memory. */
+
+    for (size_t tn = 0; tn < numThreads; tn++) {
+        errno = pthread_create(&thr[tn], NULL, thread_func,
+                               (void *) tn);
+        if (errno != 0)
+            err(EXIT_FAILURE, "pthread_create");
+
+        /* If we add a sleep interval after the start\-up of each
+           thread, the threads likely won\[aq]t contend for malloc
+           mutexes, and therefore additional arenas won\[aq]t be
+           allocated (see malloc(3)). */
+
+        if (sleepTime > 0)
+            sleep(sleepTime);
+    }
+
+    /* The main thread also allocates some memory. */
+
+    for (unsigned int j = 0; j < numBlocks; j++)
+        if (malloc(blockSize) == NULL)
+            err(EXIT_FAILURE, "malloc");
+
+    sleep(2);           /* 给所有线程一个机会
+                           完成分配。*/
+
+    printf("\en============ After allocating blocks ============\en");
+    malloc_info(0, stdout);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBmallinfo\fP(3), \fBmalloc\fP(3), \fBmalloc_stats\fP(3), \fBmallopt\fP(3),
+\fBopen_memstream\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

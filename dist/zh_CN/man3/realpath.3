@@ -1,0 +1,171 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 1999 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Rewritten old page, 990824, aeb@cwi.nl
+.\" 2004-12-14, mtk, added discussion of resolved_path == NULL
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH realpath 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+realpath \- 返回规范化的绝对路径名
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <limits.h>\fP
+\fB#include <stdlib.h>\fP
+.PP
+\fBchar *realpath(const char *restrict \fP\fIpath\fP\fB,\fP
+\fB               char *restrict \fP\fIresolved_path\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBrealpath\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBrealpath\fP() 扩展所有符号链接并将引用解析为 \fI/./\fP、\fI/../\fP 和额外的 \[aq]/\[aq]
+字符，以生成规范化的绝对路径名。 生成的路径名作为空终止字符串存储在 \fIresolved_path\fP 指向的缓冲区中，最多 \fBPATH_MAX\fP
+字节。 生成的路径将没有符号链接、\fI/./\fP 或 \fI/../\fP 组件。
+.PP
+.\" Even if we use resolved_path == NULL, then realpath() will still
+.\" return ENAMETOOLONG if the resolved pathname would exceed PATH_MAX
+.\" bytes -- MTK, Dec 04
+.\" .SH HISTORY
+.\" The
+.\" .BR realpath ()
+.\" function first appeared in 4.4BSD, contributed by Jan-Simon Pendry.
+如果 \fIresolved_path\fP 指定为 NULL，则 \fBrealpath\fP() 使用 \fBmalloc\fP(3) 分配最多
+\fBPATH_MAX\fP 字节的缓冲区来保存已解析的路径名，并返回指向该缓冲区的指针。 调用者应使用 \fBfree\fP(3) 释放此缓冲区。
+.SH "RETURN VALUE"
+如果没有错误，\fBrealpath\fP() 返回指向 \fIresolved_path\fP 的指针。
+.PP
+否则，它返回 NULL，数组 \fIresolved_path\fP 的内容未定义，\fIerrno\fP 被设置以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+路径前缀的组件的读取或搜索权限被拒绝。
+.TP 
+\fBEINVAL\fP
+.\" (In libc5 this would just cause a segfault.)
+\fIpath\fP 为空。 (在 glibc 2.3 之前，如果 \fIresolved_path\fP 为 NULL，也会返回此错误。)
+.TP 
+\fBEIO\fP
+从文件系统读取时发生 I/O 错误。
+.TP 
+\fBELOOP\fP
+翻译路径名时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+路径名的一个组成部分超过了 \fBNAME_MAX\fP 个字符，或者整个路径名超过了 \fBPATH_MAX\fP 个字符。
+.TP 
+\fBENOENT\fP
+指定的文件不存在。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBENOTDIR\fP
+路径前缀的组成部分不是目录。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBrealpath\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+4.4BSD, POSIX.1\-2001.
+.PP
+POSIX.1\-2001 表示 \fIresolved_path\fP 为 NULL 时的行为是实现定义的。 POSIX.1\-2008
+指定了本页中描述的行为。
+.SH NOTES
+在 4.4BSD 和 Solaris 中，路径名长度的限制是 \fBMAXPATHLEN\fP (在 \fI<sys/param.h>\fP).
+SUSv2 规定了 \fBPATH_MAX\fP 和 \fBNAME_MAX\fP，在 \fI<limits.h>\fP 中找到或由
+\fBpathconf\fP(3) 函数提供。 一个典型的源代码片段是
+.PP
+.in +4n
+.EX
+#ifdef PATH_MAX
+  path_max = PATH_MAX;
+#else
+  path_max = pathconf(path, _PC_PATH_MAX);
+  if (path_max <= 0)
+    path_max = 4096;
+#endif
+.EE
+.in
+.PP
+.\".PP
+.\"     2012-05-05, According to Casper Dik, the statement about
+.\"     Solaris was not true at least as far back as 1997, and
+.\"     may never have been true.
+.\"
+.\" The 4.4BSD, Linux and SUSv2 versions always return an absolute
+.\" pathname.
+.\" Solaris may return a relative pathname when the
+.\" .I path
+.\" argument is relative.
+.\" The prototype of
+.\" .BR realpath ()
+.\" is given in \fI<unistd.h>\fP in libc4 and libc5,
+.\" but in \fI<stdlib.h>\fP everywhere else.
+(但请参见 BUGS 部分。)
+.SS "GNU extensions"
+如果调用失败，\fBEACCES\fP 或 \fBENOENT\fP 且 \fIresolved_path\fP 不为 NULL，则在 \fIresolved_path\fP
+中返回不可读或不存在的 \fIpath\fP 前缀。
+.SH BUGS
+.\" .LP
+.\" The libc4 and libc5 implementation contained a buffer overflow
+.\" (fixed in libc-5.4.13).
+.\" Thus, set-user-ID programs like
+.\" .BR mount (8)
+.\" needed a private version.
+此函数的 POSIX.1\-2001 标准版本被设计破坏，因为无法确定输出缓冲区 \fIresolved_path\fP 的合适大小。 根据
+POSIX.1\-2001，大小为 \fBPATH_MAX\fP 的缓冲区就足够了，但 \fBPATH_MAX\fP 不必是定义的常量，可能必须使用
+\fBpathconf\fP(3) 获得。 并且询问 \fBpathconf\fP(3) 并没有真正帮助，因为一方面 POSIX 警告 \fBpathconf\fP(3)
+的结果可能很大并且不适合 mallocing 内存，另一方面 \fBpathconf\fP(3) 可能返回 \-1 以表示 \fBPATH_MAX\fP 不受限制。
+\fIresolved_path\ ==\ NULL\fP 特性未在 POSIX.1\-2001 中标准化，但在 POSIX.1\-2008
+中标准化，可以避免此设计问题。
+.SH "SEE ALSO"
+\fBrealpath\fP(1), \fBreadlink\fP(2), \fBcanonicalize_file_name\fP(3), \fBgetcwd\fP(3),
+\fBpathconf\fP(3), \fBsysconf\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

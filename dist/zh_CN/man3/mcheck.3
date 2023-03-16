@@ -1,0 +1,155 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2012 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mcheck 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+mcheck、mcheck_check_all、mcheck_pedantic、mprobe \- 堆一致性检查
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <mcheck.h>\fP
+.PP
+\fBint mcheck(void (*\fP\fIabortfunc\fP\fB)(enum mcheck_status \fP\fImstatus\fP\fB));\fP
+\fBint mcheck_pedantic(void (*\fP\fIabortfunc\fP\fB)(enum mcheck_status \fP\fImstatus\fP\fB));\fP
+\fBint mcheck_pedantic(void (*\fP\fIabortfunc\fP\fB)(enum mcheck_status \fP\fImstatus\fP\fB));\fP
+.PP
+\fBenum mcheck_status mprobe(void *\fP\fIptr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmcheck\fP() 函数为 \fBmalloc\fP(3) 系列内存分配函数安装了一组调试，钩子。 这些，钩子，导致对堆的状态执行某些一致性检查。
+这些检查可以检测应用程序错误，例如多次释放内存块或损坏紧接分配内存块之前的记录数据结构。
+.PP
+为了有效，\fBmcheck\fP() 函数必须在第一次调用 \fBmalloc\fP(3) 或相关函数之前调用。 在难以确保这一点的情况下，将程序与
+\fI\-lmcheck\fP 链接会在第一个调用到内存分配函数之前插入一个隐式调用到 \fBmcheck\fP() (带有 NULL 参数)。
+.PP
+\fBmcheck_pedantic\fP() 函数类似于 \fBmcheck\fP()，但只要调用其中一个内存分配函数，就会对所有分配的块执行检查。
+这可能非常慢!
+.PP
+\fBmcheck_check_all\fP() 函数导致对所有分配的块进行 immediate 检查。 这个调用只有在事先调用 \fBmcheck\fP()
+时才有效。
+.PP
+如果系统检测到堆中存在不一致，则调用方提供的 \fIabortfunc\fP 指向的函数将使用单个参数 \fImstatus\fP 调用，它指示检测到的不一致类型。
+如果 \fIabortfunc\fP 为 NULL，则默认函数在 \fIstderr\fP 上打印错误消息并调用 \fBabort\fP(3)。
+.PP
+\fBmprobe\fP() 函数对 \fIptr\fP 指向的已分配内存块执行一致性检查。 应事先调用 \fBmcheck\fP() 函数 (否则
+\fBmprobe\fP() 返回 \fBMCHECK_DISABLED\fP)。
+.PP
+以下列表描述了 \fBmprobe\fP() 返回的值或调用 \fIabortfunc\fP 时作为 \fImstatus\fP 参数传递的值:
+.TP 
+\fBMCHECK_DISABLED\fP (\fBmprobe\fP() only)
+在调用第一个内存分配函数之前，没有调用 \fBmcheck\fP()。 一致性检查是不可能的。
+.TP 
+\fBMCHECK_OK\fP (\fBmprobe\fP() only)
+未检测到不一致。
+.TP 
+\fBMCHECK_HEAD\fP
+分配块之前的内存被破坏。
+.TP 
+\fBMCHECK_TAIL\fP
+分配块后的内存被破坏。
+.TP 
+\fBMCHECK_FREE\fP
+一个内存块被释放了两次。
+.SH "RETURN VALUE"
+\fBmcheck\fP() 和 \fBmcheck_pedantic\fP() 成功时返回 0，错误时返回 \-1。
+.SH VERSIONS
+\fBmcheck_pedantic\fP() 和 \fBmcheck_check_all\fP() 函数从 glibc 2.2 开始可用。 \fBmcheck\fP()
+和 \fBmprobe\fP() 函数至少存在于 glibc 2.0
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmcheck\fP(),
+\fBmcheck_pedantic\fP(),
+\fBmcheck_check_all\fP(),
+\fBmprobe\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:mcheck
+const:malloc_hooks
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是 GNU 的扩展名。
+.SH NOTES
+.\" But is MALLOC_CHECK_ slower?
+将程序与 \fI\-lmcheck\fP 链接并使用 \fBMALLOC_CHECK_\fP 环境变量 (在 \fBmallopt\fP(3)) 中描述)
+会导致检测到相同类型的错误。 但是，使用 \fBMALLOC_CHECK_\fP 不需要重新链接应用程序。
+.SH EXAMPLES
+下面的程序使用 NULL 参数调用 \fBmcheck\fP()，然后两次释放同一块内存。 以下 shell 会话演示了运行该程序时发生的情况:
+.PP
+.in +4n
+.EX
+$\fB ./a.out\fP
+即将免费
+
+即将免费第二次
+块释放两次
+中止 (核心转储)
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (mcheck.c)
+\&
+.EX
+#include <mcheck.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    char *p;
+
+    if (mcheck(NULL) != 0) {
+        fprintf(stderr, "mcheck() failed\en");
+
+        exit(EXIT_FAILURE);
+    }
+
+    p = malloc(1000);
+
+    fprintf(stderr, "About to free\en");
+    free(p);
+    fprintf(stderr, "\enAbout to free a second time\en");
+    free(p);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBmalloc\fP(3), \fBmallopt\fP(3), \fBmtrace\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

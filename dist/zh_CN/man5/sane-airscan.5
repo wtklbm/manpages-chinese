@@ -1,0 +1,254 @@
+.\" -*- coding: UTF-8 -*-
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SANE\-AIRSCAN 5 "May 2021" "" "AirScan (eSCL) and WSD SANE backend"
+.
+.SH NAME
+\fBsane\-airscan\fP\-AirScan (eSCL) 和 WSD 扫描仪和 MFP 的 SANE 后端
+.
+.SH DESCRIPTION
+\fBsane\-airscan\fP 是 "driverless" 文档扫描的通用后端。目前它支持两种协议:
+.
+.IP "" 4
+.
+.nf
+
+1. eSCL，也称为 AirScan 或 AirPrint 扫描
+2. WSD，又名 WS\-Scan
+.
+.fi
+.
+.IP "" 0
+.
+.SH CONFIGURATION
+sane\-airscan 从以下位置加载其配置文件:
+.
+.IP "" 4
+.
+.nf
+
+1. /etc/sane.d/airscan.conf
+2. /etc/sane.d/airscan.d/*
+.
+.fi
+.
+.IP "" 0
+.
+.P
+配置文件语法与 .INI 文件语法非常相似。它由部分组成，每个部分包含一些变量。注释从 #或; 开始字符和 continies 直到行尾
+.
+.IP "" 4
+.
+.nf
+
+# 这是评论
+[section 1]
+变量 1 = 值 1 ; 和另一条评论
+变量 2 = 值 2
+.
+.fi
+.
+.IP "" 0
+.
+.P
+变量名称和值的前导和尾随空格是条纹的。如果您想保留它们，请将名称或值放在引号中 (`像这样`)。
+.
+.SH "CONFIGURATION OF DEVICES"
+如果扫描仪和计算机连接到同一个局域网段，则一切都希望从 box 出来是 "just work"，无需任何手动配置。
+.
+.P
+但是，在某些情况下，手动配置可能很有用。例如:
+.
+.IP "" 4
+.
+.nf
+
+1. 如果计算机和扫描仪通过 IP 路由器连接
+2. 企业网络中有很多设备，但是
+   只有少数是有趣的
+3. 自动发现工作不可靠
+.
+.fi
+.
+.IP "" 0
+.
+.P
+要手动配置设备，请将以下部分添加到配置文件中:
+.
+.IP "" 4
+.
+.nf
+
+[devices]
+"Kyocera eSCL" = http://192.168.1.102:9095/eSCL, eSCL
+"Kyocera WSD" = http://192.168.1.102:5358/WSDScanner, WSD
+"Device I do not want to see" = 禁用
+.
+.fi
+.
+.IP "" 0
+.
+.P
+\fB[devices]\fP 部分包含所有手动配置的设备，每个设备一行，每行在等式左侧包含一个设备名称，在右侧包含一个设备 URL，然后是协议 (eSCL
+或 WSD)。如果省略协议，则假定为 eSCL。您还可以使用 \fBdisable\fP 关键字而不是 URL 来禁用特定设备。
+.
+.P
+此外，您可以通过直接在设备名称中传递其 URL 来手动配置设备，而无需将其添加到配置文件中。这采用 \fBprotocol:Device Name:URL\fP 格式。上面的例子可以写成 \fBescl:Kyocera eSCL:http://192.168.1.102:9095/eSCL\fP 和
+\fBwsd:Kyocera WSD:http://192.168.1.102:5358/WSDScanner\fP。
+.
+.P
+要找出可用设备的 URL，最简单的方法是在与扫描仪连接到同一 LAN 网段的计算机上运行提供的 \fBairscan\-discover\fP
+工具。成功后，该程序将以适合包含在配置文件中的格式将已发现设备的列表转储到其标准输出。
+.
+.P
+如果无法在与扫描仪相同的 LAN 网段上运行 \fBairscan\-discover\fP，则您将不得不采取艰难的方式。您的管理员必须知道设备 IP
+地址，请查阅您的设备手册以了解 eSCL 端口，URL 路径组件很可能是 "/eSCL"，但在某些设备上可能有所不同。以这种方式发现 WSD URL
+更加困难，因为在 eSCL 的情况下，很难猜测 TCP 端口和 URL 路径。
+.
+.P
+对于 eSCL 设备，URL 也可以使用 unix:// 方案，例如 unix://scanner.sock/eSCL。URL 中的 "host"
+是将在 socket_dir 指定的目录中搜索的文件名 (见下文)。连接到扫描仪时，所有流量都将发送到指定的 UNIX 套接字，而不是 TCP 连接。
+.
+.SH "CONFIGURATION OPTIONS"
+杂项选项全部转到 \fB[options]\fP 部分。目前支持以下选项:
+.
+.IP "" 4
+.
+.nf
+
+[options]
+; 如果周围有很多扫描仪而您只是
+; 对其中的几个感兴趣，禁用自动发现和
+; 手动配置扫描仪
+discovery = enable | disable
+
+; 选择哪些 SANE 应用程序将显示在设备列表中:
+; 扫描仪网络名称 (默认) 或硬件型号名称
+model = network | hardware
+
+; 如果设备同时支持 eSCL 和 WSD 协议，sane\-airscan
+; 可以自动选择 "best" 协议，或者
+; 为用户公开所有变体，允许手动选择协议。
+; 默认为 "auto"
+protocol = auto | manual
+
+; WSD 设备的发现可能是 "fast" 或 "full"。The "fast"
+; 模式与 DNS\-SD 发现一样快，但在某些情况下
+; 可能不可靠。"full" 模式缓慢而可靠。
+; 这也可以禁用自动发现
+;WSD 设备。默认为 "fast"。
+ws\-discovery = fast | full | off
+
+; 在其 URL 中使用 unix:// 架构的扫描器只能指定一个
+; 套接字名称 (不是完整路径)。 该名称将在
+; 此处指定的目录。默认为 /var/run。
+socket_dir = /path/to/directory
+.
+.fi
+.
+.IP "" 0
+.
+.SH "BLACKLISTING DEVICES"
+如果您在一个非常大的网络上并且周围有很多设备，而您只对其中的几个感兴趣，则此特性可能很有用。
+.
+.IP "" 4
+.
+.nf
+
+[blacklist]
+型号 = "Xerox*" ; 按型号名称列入黑名单
+名称 = "HP*" ; 按网络名称列入黑名单
+ip    = 192.168.0.1    ; blacklist by address
+ip    = 192.168.0.0/24 ; blacklist the whole subnet
+.
+.fi
+.
+.IP "" 0
+.
+.P
+网络名称来自 DNS\-SD，WS\-Discovery 不提供此信息。要按网络名称过滤，必须启用 Avahi 并且设备必须可通过 DNS\-SD 发现
+(不一定作为扫描仪，如果 WSD 扫描仪可作为打印机通过 DNS\-SD 发现就足够了)。
+.
+.P
+黑名单只影响自动发现，不影响手动配置的设备
+.
+.SH DEBUGGING
+sane\-airscan 提供了非常好的故障排除工具，无需物理访问有问题的设备。
+.
+.P
+可以使用配置文件的 \fB[debug]\fP 部分控制调试工具:
+.
+.IP "" 4
+.
+.nf
+
+[debug]
+; 启用或禁用控制台日志记录
+enable = false | true
+
+; 启用协议跟踪并配置输出目录
+; 用于跟踪文件。就像在 shell 中一样，指定相对于的路径
+; 主目录，以 tilda 字符开头，然后是
+; 通过斜线，即 "~/airscan/trace"。该目录将
+; 自动创建。
+trace = path
+
+; 十六进制将所有流量转储到跟踪文件 (非常冗长! )
+hexdump = false | true
+.
+.fi
+.
+.IP "" 0
+.
+.SH FILES
+.
+.TP 
+\fB/etc/sane.d/airscan.conf\fP, \fB/etc/sane.d/airscan.d/*\fP
+后端配置文件
+.
+.TP 
+\fB/usr/LIBDIR/sane/libsane\-airscan.so\fP
+实现这个后端的共享库
+.
+.SH ENVIRONMENT
+.
+.TP 
+\fBSANE_DEBUG_AIRSCAN\fP
+如果此变量设置为 \fBtrue\fP 或非零数值，则启用打印到 stdout 的调试消息
+.
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此变量更改配置文件的搜索路径。这是一个以冒号分隔的目录列表。在搜索标准路径 (/etc/sane.d) 之前，先在这些目录中搜索
+airscan.conf 配置文件和 airscan.d 子目录。
+.
+.SH "BUGS AND SUPPORT"
+如果您发现错误，请在 GitHub 项目页面上提交 GitHub 问题:
+\fBhttps://github.com/alexpevzner/sane\-airscan\fP
+.
+.SH "SEE ALSO"
+sane(7)、scanimage(1)、xsane(1)、空气扫描发现 (1)
+.
+.SH AUTHOR
+亚历山大佩兹纳 <pzz@apevzner.com>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,129 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH TIMESYNCD\&.CONF 5 "" "systemd 253" timesyncd.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+timesyncd.conf, timesyncd.conf.d \- 网络时间同步配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/timesyncd\&.conf
+.PP
+/etc/systemd/timesyncd\&.conf\&.d/*\&.conf
+.PP
+/run/systemd/timesyncd\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/timesyncd\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+这些配置文件控制 NTP 网络时间同步 \&。有关语法 \& 的一般说明，请参见 \fBsystemd.syntax\fP(7)。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH OPTIONS
+.PP
+[Time] 部分配置了以下设置:
+.PP
+\fINTP=\fP
+.RS 4
+NTP 服务器主机名或 IP 地址的空格分隔列表 \&。在运行时，此列表与从 \fBsystemd\-networkd.service\fP(8)\&
+获取的任何每个接口的 NTP 服务器相结合。\fBsystemd\-timesyncd\fP 将依次联系所有已配置的系统或每个接口服务器，直到有一个响应
+\&。分配空字符串时，重置 NTP 服务器列表，所有先前的分配都将无效 \&。此设置默认为空列表 \&。
+.RE
+.PP
+\fIFallbackNTP=\fP
+.RS 4
+以空格分隔的 NTP 服务器主机名或 IP 地址列表，用作后备 NTP 服务器 \&。从 \fBsystemd\-networkd.service\fP(8)
+获得的任何每接口 NTP 服务器都优先于此设置，就像通过上面的 \fINTP=\fP 设置的任何服务器一样。因此，只有在没有其他 NTP
+服务器信息已知的情况下，此设置才相关。分配空字符串时，重置 NTP 服务器列表，所有先前的分配都将无效 \&。如果未给出此选项，则使用编译的 NTP
+服务器列表 \&。
+.RE
+.PP
+\fIRootDistanceMaxSec=\fP
+.RS 4
+最大可接受的根距离，i\&.e\&。数据包从带有引用时钟 \&
+的服务器传输到我们连接的服务器所需的最大估计时间。如果当前服务器不满足此限制，\fBsystemd\-timesyncd\fP 将切换到不同的服务器 \&。
+.sp
+取一个时间跨度值 \&。默认单位是秒，但可以指定其他单位，参见 \fBsystemd.time\fP(5)\&。默认为 5 秒 \&。
+.RE
+.PP
+\fIPollIntervalMinSec=\fP, \fIPollIntervalMaxSec=\fP
+.RS 4
+NTP 消息的最小和最大轮询间隔 \&。轮询以最小轮询间隔开始，并在指定限制内调整以响应接收到的数据包 \&。
+.sp
+每个设置都有一个时间跨度值 \&。默认单位是秒，但可以指定其他单位，参见
+\fBsystemd.time\fP(5)\&。\fIPollIntervalMinSec=\fP 默认为 32 秒，不得小于 16\\&seconds\&。
+\fIPollIntervalMaxSec=\fP 默认为 34\\&min\\&8\\&s (2048\\&seconds) 并且必须大于
+\fIPollIntervalMinSec=\fP\&。
+.RE
+.PP
+\fIConnectionRetrySec=\fP
+.RS 4
+指定在后续尝试联系新 NTP 服务器之前的最小延迟 \&。
+.sp
+取一个时间跨度值 \&。默认单位是秒，但可以指定其他单位，参见 \fBsystemd.time\fP(5)\&。默认为 30 秒，并且不得小于 1 秒 \&。
+.RE
+.PP
+\fISaveIntervalSec=\fP
+.RS 4
+在没有来自 NTP 服务器的任何最近同步的情况下，当前时间定期保存到磁盘的时间间隔。这对于没有本地 RTC
+的离线系统特别有用，因为它将保证系统时钟在重新启动后大致保持单调 \&。
+.sp
+取一个时间间隔值 \&。默认单位是秒，但可以指定其他单位，参见 \fBsystemd.time\fP(5)\&。默认为 60 秒 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-timesyncd.service\fP(8),
+\fBsystemd\-networkd.service\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

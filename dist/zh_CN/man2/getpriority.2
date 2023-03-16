@@ -1,0 +1,116 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1980, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)getpriority.2	6.9 (Berkeley) 3/10/91
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-07-01 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-11-06 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2001-10-21 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"    Corrected statement under EPERM to clarify privileges required
+.\" Modified 2002-06-21 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"    Clarified meaning of 0 value for 'who' argument
+.\" Modified 2004-05-27 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getpriority 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+getpriority, setpriority\-get/set 程序调度优先级
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/resource.h>\fP
+.PP
+\fBint getpriority(int \fP\fIwhich\fP\fB, id_t \fP\fIwho\fP\fB);\fP
+\fBint setpriority(int \fP\fIwhich\fP\fB, id_t \fP\fIwho\fP\fB, int \fP\fIprio\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+由 \fIwhich\fP 和 \fIwho\fP 指示的进程、进程组或用户的调度优先级是通过 \fBgetpriority\fP() 调用获取的，并通过
+\fBsetpriority\fP() 调用设置的。 这些系统调用处理的进程属性与 \fBnice\fP(2) 处理的属性 (也称为 "nice" 值) 相同。
+.PP
+值 \fIwhich\fP 是 \fBPRIO_PROCESS\fP、\fBPRIO_PGRP\fP 或 \fBPRIO_USER\fP 之一，\fIwho\fP 是相对于
+\fIwhich\fP (\fBPRIO_PROCESS\fP 的进程标识符，\fBPRIO_PGRP\fP 的进程组标识符，\fBPRIO_USER\fP) 的用户 ID)
+解释的。 \fIwho\fP 的零值表示 (respectively) 是调用进程、调用进程的进程组或调用进程的真实用户 ID。
+.PP
+\fIprio\fP 参数是 \-20 到 19 范围内的一个值 (但请参见下面的注释)，\-20 是最高优先级，19 是最低优先级。
+尝试设置此范围之外的优先级会被默默地限制在该范围内。 默认优先级为 0; 较低的值赋予进程较高的调度优先级。
+.PP
+\fBgetpriority\fP() 调用返回任何指定进程享有的最高优先级 (最低数值)。 \fBsetpriority\fP()
+调用将所有指定进程的优先级设置为指定值。
+.PP
+传统上，只有特权进程可以降低 nice 值 (即设置更高的优先级)。 但是，由于 Linux 2.6.12，非特权进程可以降低具有合适
+\fBRLIMIT_NICE\fP 软限制的目标进程的 nice 值; 详见 \fBgetrlimit\fP(2)。
+.SH "RETURN VALUE"
+成功时，\fBgetpriority\fP() 返回调用线程的 nice 值，它可能是一个 negative 数字。 出错时，它返回 \-1 并设置
+\fIerrno\fP 以指示错误。
+.PP
+由于对 \fBgetpriority\fP() 的成功调用可以合法地返回值 \-1，因此有必要在调用之前清除 \fIerrno\fP，然后在之后检查 \fIerrno\fP
+以确定 \-1 是错误还是合法值。
+.PP
+\fBsetpriority\fP() 成功返回 0。 失败时，它返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+调用者试图设置较低的 nice 值 (即较高的进程优先级)，但没有所需的权限 (在 Linux 上: 没有 \fBCAP_SYS_NICE\fP 能力)。
+.TP 
+\fBEINVAL\fP
+\fIwhich\fP 不是 \fBPRIO_PROCESS\fP、\fBPRIO_PGRP\fP 或 \fBPRIO_USER\fP 之一。
+.TP 
+\fBEPERM\fP
+找到了一个进程，但它的有效用户 ID 与调用者的有效用户 ID 或真实用户 ID 都不匹配，并且没有特权 (在 Linux 上: 没有
+\fBCAP_SYS_NICE\fP 功能)。 但请参见下面的注释。
+.TP 
+\fBESRCH\fP
+使用指定的 \fIwhich\fP 和 \fIwho\fP 值未找到任何进程。
+.SH STANDARDS
+POSIX.1\-2001、POSIX.1\-2008、SVr4、4.4BSD (这些接口最早出现在 4.2BSD)。
+.SH NOTES
+有关 nice 值的更多详细信息，请参见 \fBsched\fP(7)。
+.PP
+\fINote\fP: 在 Linux 2.6.38 中加入 "autogroup" 特性意味着 nice 值在很多情况下不再具有其传统的效果。
+有关详细信息，请参见 \fBsched\fP(7)。
+.PP
+由 \fBfork\fP(2) 创建的子级继承其父级的 nice 值。 nice 值在 \fBexecve\fP(2) 中保留。
+.PP
+.\"
+\fBEPERM\fP 条件的详细信息取决于系统。 上面的描述是 POSIX.1\-2001 所说的，并且似乎在所有 System\V\-like 系统上都遵循。
+Linux 2.6.12 之前的 Linux 内核需要调用者的真实或有效用户 ID 来匹配进程 \fIwho\fP 的真实用户 (而不是其有效用户 ID)。
+Linux 2.6.12 及更高版本要求调用者的有效用户 ID 与进程 \fIwho\fP 的真实或有效用户 ID 相匹配。 所有 BSD 类系统
+(SunOS 4.1.3、Ultrix 4.2、4.3BSD、FreeBSD 4.3、OpenBSD\-2.5，...) 的行为方式与 Linux
+2.6.12 及更高版本相同。
+.SS "C library/kernel differences"
+getpriority 系统调用返回转换为 40..1 范围的良好值，因为 negative 返回值将被解释为错误。 \fBgetpriority\fP()
+的 glibc 包装器函数根据公式 \fIunice\~=\~20\~\-\~knice\fP 转换回该值 (因此，内核返回的 40..1
+范围对应于用户空间看到的范围 \-20..19)。
+.SH BUGS
+根据 POSIX，nice 值是每个进程的设置。 然而，在 POSIX 线程的当前 Linux/NPTL 实现下，nice 值是一个线程属性:
+同一个进程中的不同线程可以有不同的 nice 值。 便携式应用程序应避免依赖 Linux 行为，这可能会在 future 中符合标准。
+.SH "SEE ALSO"
+\fBnice\fP(1), \fBrenice\fP(1), \fBfork\fP(2), \fBcapabilities\fP(7), \fBsched\fP(7)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/scheduler/sched\-nice\-design.txt\fP (自 Linux
+2.6.23 起)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

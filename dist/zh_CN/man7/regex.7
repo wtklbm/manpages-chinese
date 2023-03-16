@@ -1,0 +1,191 @@
+.\" -*- coding: UTF-8 -*-
+.ie  t .ds dg \(dg
+.el .ds dg (!)
+'\" t
+.\" From Henry Spencer's regex package (as found in the apache
+.\" distribution). The package carries the following copyright:
+.\"
+.\"  Copyright 1992, 1993, 1994 Henry Spencer.  All rights reserved.
+.\" %%%LICENSE_START(MISC)
+.\"  This software is not subject to any license of the American Telephone
+.\"  and Telegraph Company or of the Regents of the University of California.
+.\"
+.\"  Permission is granted to anyone to use this software for any purpose
+.\"  on any computer system, and to alter it and redistribute it, subject
+.\"  to the following restrictions:
+.\"
+.\"  1. The author is not responsible for the consequences of use of this
+.\"     software, no matter how awful, even if they arise from flaws in it.
+.\"
+.\"  2. The origin of this software must not be misrepresented, either by
+.\"     explicit claim or by omission.  Since few users ever read sources,
+.\"     credits must appear in the documentation.
+.\"
+.\"  3. Altered versions must be plainly marked as such, and must not be
+.\"     misrepresented as being the original software.  Since few users
+.\"     ever read sources, credits must appear in the documentation.
+.\"
+.\"  4. This notice may not be removed or altered.
+.\" %%%LICENSE_END
+.\"
+.\" In order to comply with `credits must appear in the documentation'
+.\" I added an AUTHOR paragraph below - aeb.
+.\"
+.\" In the default nroff environment there is no dagger \(dg.
+.\"
+.\" 2005-05-11 Removed discussion of `[[:<:]]' and `[[:>:]]', which
+.\" 	appear not to be in the glibc implementation of regcomp
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH regex 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+regex\-POSIX.2 正则表达式
+.SH DESCRIPTION
+POSIX.2 中定义的正则表达式 ("RE"s) 有两种形式: 现代 RE (大致为 \fIegrep\fP; POSIX.2 称为这些
+"extended" RE) 和过时的 RE (大致为 \fBed\fP(1); POSIX.2 "basic" RE)。 Obsolete RE
+的存在主要是为了在一些旧程序中向后兼容; 他们将在最后讨论。 POSIX.2 保留了 RE 语法和语义的某些方面; "\*(dg"
+标记了这些方面的决定，这些决定可能无法完全移植到其他 POSIX.2 实现。
+.PP
+(modern) RE 是一个 \*(dg 或多个非空 \*(dg \fIbranches\fP，由 \[aq]|\[aq] 分隔。
+它匹配与其中一个分支匹配的任何内容。
+.PP
+分支是一个 \*(dg 或多个 \fIpieces\fP，串联。 它匹配第一个匹配项，然后匹配第二个匹配项，依此类推。
+.PP
+一块是 \fIatom\fP，后面可能跟着一个 \*(dg\[aq]*\[aq]、\[aq]+\[aq]、\[aq]?\[aq] 或 \fIbound\fP。 后跟
+\[aq]*\[aq] 的原子匹配该原子的 0 个或多个匹配序列。 后跟 \[aq]+\[aq] 的原子匹配该原子的 1 个或多个匹配序列。 后跟
+\[aq]?\[aq] 的原子匹配该原子的 0 或 1 个匹配序列。
+.PP
+\fIbound\fP 是 \[aq]{\[aq] 后跟一个无符号十进制整数，可能后跟 \[aq]，\[aq] 可能后跟另一个无符号十进制整数，总是后跟
+\[aq]}\[aq]. 整数必须介于 0 和 \fBRE_DUP_MAX\fP (255\*(dg) 之间 (含)，如果有两个，第一个不能超过第二个。
+一个原子后跟一个包含一个整数 \fIi\fP 且没有逗号的边界匹配与该原子完全匹配的 \fIi\fP 序列。 一个原子后跟一个包含一个整数 \fIi\fP
+的边界和一个逗号匹配一系列 \fIi\fP 或该原子的更多匹配项。 一个原子后跟一个包含两个整数 \fIi\fP 和 \fIj\fP 的边界，匹配 \fIi\fP 到 \fIj\fP
+(inclusive) 原子的匹配序列。
+.PP
+一个原子是一个包含在 "\fI()\fP" 中的正则表达式 (匹配正则表达式的匹配项)，空集 "\fI()\fP" (匹配空字符串) \*(dg, a
+\fIbracket expression\fP (见下文)，\[aq].\[aq] (匹配任意单个字符)，\[aq]\[ha]\[aq]
+(匹配行首的空字符串)，\[aq]$\[aq] (匹配行尾的空字符串一行)，一个 \[aq]\e\[aq] 后跟一个字符
+"\fI\[ha].[$()|*+?{\e\fP" (匹配该字符作为普通字符)，一个 \[aq]\e\[aq] 后跟任何其他字符 \*(dg
+(匹配被视为普通字符的字符，就好像 \[aq]\e\[aq] 不存在一样 \*(dg)，或者没有其他意义的单个字符 (匹配该字符) .
+\[aq]{\[aq] 后跟数字以外的字符是普通字符，而不是 bound\*(dg.  以 \[aq]\e\[aq] 结束 RE 是非法的。
+.PP
+\fIbracket expression\fP 是包含在 "\fI[]\fP" 中的字符列表。 它通常匹配列表中的任何单个字符 (但见下文)。 如果列表以
+\[aq]\[ha]\[aq] 开头，它匹配列表其余部分的任何单个字符 (但见下文) \fInot\fP。 如果列表中的两个字符由 \[aq]\-\[aq]
+分隔，这是整理序列中这两个 (inclusive) 之间字符的完整 \fIrange\fP 的简写，例如，ASCII 中的 "\fI[0\-9]\fP"
+匹配任何十进制数字。 两个范围共享一个端点是非法的 \*(dg，例如，"\fIa\-c\-e\fP"。 范围非常依赖整理序列，可移植程序应避免依赖它们。
+.PP
+要在列表中包含一个字面量 \[aq]]\[aq]，请将其作为第一个字符 (跟在可能的 \[aq]\[ha]\[aq] 之后)。 要包含一个字面量
+\[aq]\-\[aq]，请使其成为范围的第一个或最后一个字符，或第二个端点。 要使用字面量 \[aq]\-\[aq] 作为范围的第一个端点，请将其包含在
+"\fI[.\fP" 和 "\fI.]\fP" 中以使其成为整理元素 (见下文)。 除了这些和一些使用 \[aq][\[aq] 的组合 (见下一段)
+外，所有其他特殊字符，包括 \[aq]\e\[aq]，在括号表达式中都失去了它们的特殊意义。
+.PP
+在方括号表达式中，包含在 "\fI[.\fP" 和 "\fI.]\fP" 中的整理元素 (一个字符，一个像单个字符一样整理的多字符序列，或两者的整理序列名称)
+代表该整理元素的字符序列。 该序列是括号表达式列表的单个元素。 因此，包含多字符整理元素的括号表达式可以匹配多个字符，例如，如果整理序列包含 "ch"
+整理元素，则 RE "\fI[[.ch.]]*c\fP" 匹配 "chchcc" 的前五个字符。
+.PP
+在括号表达式中，包含在 "\fI[=\fP" 和 "\fI=]\fP" 中的排序元素是一个等价类，代表与该元素等价的所有排序元素的字符序列，包括它本身。
+(如果没有其他等价整理元素，处理就好像封闭定界符是 "\fI[.\fP" 和 "\fI.]\fP".) 例如，如果 o 和 \(^o 是等价类的成员，则
+"\fI[[=o=]]\fP"、"\fI[[=\(^o=]]\fP" 和 "\fI[o\(^o]\fP" 都是同义词。 等价类不能 \*(dg 是范围的端点。
+.PP
+在括号表达式中，"\fI[:\fP" 和 "\fI:]\fP" 中包含的 \fIcharacter class\fP 的名称代表属于该类的所有字符的列表。
+标准字符类名称是:
+.PP
+.RS
+.TS
+l l l.
+alnum	digit	punct
+alpha	graph	space
+blank	lower	upper
+cntrl	print	xdigit
+.TE
+.RE
+.PP
+.\" As per http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=295666
+.\" The following does not seem to apply in the glibc implementation
+.\" .PP
+.\" There are two special cases\*(dg of bracket expressions:
+.\" the bracket expressions "\fI[[:<:]]\fP" and "\fI[[:>:]]\fP" match
+.\" the null string at the beginning and end of a word respectively.
+.\" A word is defined as a sequence of
+.\" word characters
+.\" which is neither preceded nor followed by
+.\" word characters.
+.\" A word character is an
+.\" .I alnum
+.\" character (as defined by
+.\" .BR wctype (3))
+.\" or an underscore.
+.\" This is an extension,
+.\" compatible with but not specified by POSIX.2,
+.\" and should be used with
+.\" caution in software intended to be portable to other systems.
+这些代表 \fBwctype\fP(3) 中定义的字符类。 语言环境可以提供其他语言环境。 字符类不能用作范围的端点。
+.PP
+如果 RE 可以匹配给定字符串的多个子字符串，则 RE 匹配字符串中最早开始的那个。 如果 RE 可以匹配从该点开始的多个子串，则它匹配最长的。
+子表达式也匹配最长的可能子串，受制于整个匹配尽可能长的约束，在 RE 中较早开始的子表达式优先于较晚开始的子表达式。
+请注意，较高级别的子表达式因此优先于它们的较低级别的组件子表达式。
+.PP
+匹配长度以字符为单位，而不是整理元素。 空字符串被认为比根本不匹配更长。 例如，"\fIbb*\fP" 匹配 "abbbc"
+的三个中间字符，"\fI(wee|week)(knights|nights)\fP" 匹配 "weeknights" 的所有十个字符，当
+"\fI(.*).*\fP" 与 "abc" 匹配时，带括号的子表达式匹配所有三个字符，当 "\fI(a*)*\fP" 与 "bc" 匹配时，整个 RE
+和带括号的子表达式都匹配空字符串。
+.PP
+如果指定了与大小写无关的匹配，那么效果就好像所有的大小写区别都从字母表中消失了一样。
+当存在于多种情况下的字母作为普通字符出现在括号表达式之外时，它实际上被转换为包含两种情况的括号表达式，例如，\[aq] x\[aq] 变为
+"\fI[xX]\fP"。 当它出现在括号表达式中时，它的所有大小写对应项都会添加到括号表达式中，例如，"\fI[x]\fP" 变为
+"\fI[xX]\fP"，"\fI[\[ha]x]\fP" 变为 "\fI[\[ha]xX]\fP"。
+.PP
+对 REs\*(dg.
+.PP
+过时的 ("basic") 正则表达式在几个方面有所不同。 \[aq]|\[aq]、\[aq]+\[aq] 和 \[aq]?\[aq]
+是普通字符，没有等效的功能。 边界的分隔符是 "\fI\e{\fP" 和 "\fI\e}\fP"，\[aq]{\[aq] 和 \[aq]}\[aq]
+本身就是普通字符。 嵌套子表达式的括号是 "\fI\e(\fP" 和 "\fI\e)\fP"，\[aq](\[aq] 和 \[aq])\[aq] 本身就是普通字符。
+\[aq]\[ha]\[aq] 是一个普通字符，除了在 RE 或 \*(dg 括号子表达式的开头，\[aq]$\[aq] 是一个普通字符，除了在 RE
+的结尾或 \*(dg 带括号的子表达式的结尾，而 \[aq]*\[aq] 是一个普通字符，如果它出现在 RE 的开头或带括号的子表达式的开头
+(在可能领先 \[aq]\[ha]\[aq])。
+.PP
+最后，有一种新的原子类型，\fIback reference\fP:\[aq]\e\[aq] 后跟一个非零十进制数字 \fId\fP 匹配与 \fId\fPth
+带括号的子表达式匹配的相同字符序列 (通过其开头的位置对子表达式进行编号括号，从左到右)，因此，例如，"\fI\e([bc]\e)\e1\fP" 匹配
+"bb" 或 "cc"，但不匹配 "bc"。
+.SH BUGS
+拥有两种 RE 是一个大问题。
+.PP
+当前的 POSIX.2 规范说 \[aq])\[aq] 在没有不匹配的 \[aq](\[aq] 的情况下是一个普通字符;
+这是措辞错误的无意结果，很可能会发生变化。 避免依赖它。
+.PP
+返回引用是一个可怕的错误，为高效实现带来了重大问题。 它们的定义也有些模糊 ("\fIa\e(\e(b\e)*\e2\e)*d\fP" 是否匹配
+`abbbd`? )。 避免使用它们。
+.PP
+.\" As per http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=295666
+.\" The following does not seem to apply in the glibc implementation
+.\" .PP
+.\" The syntax for word boundaries is incredibly ugly.
+POSIX.2 的大小写无关匹配规范含糊不清。 上面给出的 "one case implies all cases"
+定义是当前实现者之间关于正确解释的共识。
+.SH AUTHOR
+.\" Sigh... The page license means we must have the author's name
+.\" in the formatted output.
+此页面取自 Henry Spencer 的 regex 包。
+.SH "SEE ALSO"
+\fBgrep\fP(1), \fBregex\fP(3)
+.PP
+POSIX.2，2.8 部分 (正则表达式表示法)。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

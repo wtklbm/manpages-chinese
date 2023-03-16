@@ -1,0 +1,203 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"	<mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getprotoent_r 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getprotoent_r, getprotobyname_r, getprotobynumber_r \- 获取协议条目 (reentrant)
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <netdb.h>\fP
+.PP
+\fBint getprotoent_r(struct protoent *restrict \fP\fIresult_buf\fP\fB,\fP
+\fB                  char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP  
+\fB                  struct protoent **restrict \fP\fIresult\fP\fB);\fP
+\fBint getprotobyname_r(const char *restrict \fP\fIname\fP\fB,\fP
+\fB                  struct protoent *restrict \fP\fIresult_buf\fP\fB,\fP
+\fB                  char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB                  struct protoent **restrict \fP\fIresult\fP\fB);\fP
+\fBint getprotobynumber_r(int \fP\fIproto\fP\fB,\fP
+\fB                  struct protoent *restrict \fP\fIresult_buf\fP\fB,\fP
+\fB                  char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB                  struct protoent **restrict \fP\fIresult\fP\fB);\fP
+.PP
+.fi
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetprotoent_r\fP(), \fBgetprotobyname_r\fP(), \fBgetprotobynumber_r\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetprotoent_r\fP()、\fBgetprotobyname_r\fP() 和 \fBgetprotobynumber_r\fP() 函数分别是
+\fBgetprotoent\fP(3)、\fBgetprotobyname\fP(3) 和 \fBgetprotobynumber\fP(3) 的可重入等效项。
+它们的不同之处在于返回 \fIprotoent\fP 结构体的方式，以及调用签名和返回值的函数。 本手册页仅描述了与不可重入函数的区别。
+.PP
+这些函数不是返回指向静态分配的 \fIprotoent\fP 结构体的指针作为函数结果，而是将函数复制到 \fIresult_buf\fP 指向的位置。
+.PP
+.\" I can find no information on the required/recommended buffer size;
+.\" the nonreentrant functions use a 1024 byte buffer.
+.\" The 1024 byte value is also what the Solaris man page suggests. -- mtk
+\fIbuf\fP 数组用于存储返回的 \fIprotoent\fP 结构体指向的字符串字段。 (不可重入函数在静态存储中分配这些字符串。) 该数组的大小在
+\fIbuflen\fP 中指定。 如果 \fIbuf\fP 太小，调用将失败并返回错误 \fBERANGE\fP，调用者必须使用更大的缓冲区重试。
+(对于大多数应用程序，长度为 1024 字节的缓冲区应该足够了。)
+.PP
+如果函数调用成功获取到一条协议记录，则 \fI*result\fP 设置为指向 \fIresult_buf\fP; 否则，\fI*result\fP 被设置为 NULL。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0。 出错时，它们返回 ERRORS 中列出的正错误号之一。
+.PP
+出错时，未找到记录 (\fBgetprotobyname_r\fP()、\fBgetprotobynumber_r\fP()) 或输入结束
+(\fBgetprotoent_r\fP()) \fIresult\fP 设置为 NULL。
+.SH ERRORS
+.TP 
+\fBENOENT\fP
+(\fBgetprotoent_r\fP()) 数据库中没有更多记录。
+.TP 
+\fBERANGE\fP
+\fIbuf\fP 太小了。 使用更大的缓冲区 (并增加 \fIbuflen\fP).
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetprotoent_r\fP(),
+\fBgetprotobyname_r\fP(),
+\fBgetprotobynumber_r\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是 GNU 的扩展名。 具有相似名称的函数存在于其他一些系统中，但通常具有不同的调用签名。
+.SH EXAMPLES
+下面的程序使用 \fBgetprotobyname_r\fP() 检索在其第一个命令行参数中命名的协议的协议记录。 如果提供了第二个 (integer)
+命令行参数，它将用作 \fIbuflen\fP 的初始值; 如果 \fBgetprotobyname_r\fP() 因错误 \fBERANGE\fP
+而失败，程序将使用更大的缓冲区大小重试。 以下 shell 会话显示了几个示例运行:
+.PP
+.in +4n
+.EX
+$\fB ./a.out tcp 1\fP
+擦! 使用更大的缓冲区重试
+getprotobyname_r() 返回: 0 (success) (buflen=78)
+p_name=tcp; p_proto=6; aliases=TCP
+$\fB ./a.out xxx 1\fP
+擦! 使用更大的缓冲区重试
+getprotobyname_r() returned: 0 (success)  (buflen=100)
+Call failed/record not found
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (getprotoent_r.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <ctype.h>
+#include <errno.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_BUF 10000
+
+int
+main(int argc, char *argv[])
+{
+    int buflen, erange_cnt, s;
+    struct protoent result_buf;
+    struct protoent *result;
+    char buf[MAX_BUF];
+
+    if (argc < 2) {
+        printf("Usage: %s proto\-name [buflen]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    buflen = 1024;
+    if (argc > 2)
+        buflen = atoi(argv[2]);
+
+    if (buflen > MAX_BUF) {
+        printf("Exceeded buffer limit (%d)\en", MAX_BUF);
+        exit(EXIT_FAILURE);
+    }
+
+    erange_cnt = 0;
+    做 {
+        s = getprotobyname_r(argv[1], &result_buf,
+                             buf, buflen, &result);
+        if (s == ERANGE) {
+            if (erange_cnt == 0)
+                printf("ERANGE!  使用更大的 buffer\en" 重试) ;
+            erange_cnt++;
+
+            /* Increment a byte at a time so we can see exactly
+               what size buffer was required. */
+
+            buflen++;
+
+            if (buflen > MAX_BUF) {
+                printf("Exceeded buffer limit (%d)\en", MAX_BUF);
+                exit(EXIT_FAILURE);
+            }
+        }
+    } while (s == ERANGE);
+
+    printf("getprotobyname_r() returned: %s  (buflen=%d)\en",
+           (s == 0) ? "0 (success)" : (s == ENOENT) ? "ENOENT" :
+           strerror(s), buflen);
+
+    if (s != 0 || result == NULL) {
+        printf("Call failed/record not found\en");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("p_name=%s; p_proto=%d; aliases=",
+           result_buf.p_name, result_buf.p_proto);
+    for (char **p = result_buf.p_aliases; *p != NULL; p++)
+        printf("%s ", *p);
+    printf("\en");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetprotoent\fP(3), \fBprotocols\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

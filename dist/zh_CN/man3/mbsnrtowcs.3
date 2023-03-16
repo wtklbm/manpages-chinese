@@ -1,0 +1,111 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) Bruno Haible <haible@clisp.cons.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" References consulted:
+.\"   GNU glibc-2 source code and manual
+.\"   Dinkumware C library reference http://www.dinkumware.com/
+.\"   OpenGroup's Single UNIX specification http://www.UNIX-systems.org/online.html
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mbsnrtowcs 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mbsnrtowcs \- 将多字节字符串转换为宽字符字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <wchar.h>\fP
+.PP
+\fBsize_t mbsnrtowcs(wchar_t \fP\fIdest\fP\fB[restrict .\fP\fIlen\fP\fB], const char **restrict \fP\fIsrc\fP\fB,\fP
+\fB                  size_t \fP\fInms\fP\fB, size_t \fP\fIlen\fP\fB, mbstate_t *restrict \fP\fIps\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmbsnrtowcs\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBmbsnrtowcs\fP() 函数类似于 \fBmbsrtowcs\fP(3) 函数，除了要转换的字节数 (从 \fI*src\fP 开始) 最多限制为
+\fInms\fP 字节。
+.PP
+如果 \fIdest\fP 不为 NULL，则 \fBmbsnrtowcs\fP() 函数最多将 \fInms\fP 个字节从多字节字符串 \fI*src\fP 转换为从
+\fIdest\fP 开始的宽字符字符串。 \fIdest\fP 最多写入 \fIlen\fP 个宽字符。 更新换档状态 \fI*ps\fP。 通过重复调用
+\fImbrtowc(dest, *src, n, ps)\fP (其中 \fIn\fP 是某个正数) 有效地执行转换，只要此调用成功，然后将 \fIdest\fP 递增
+1，将 \fI*src\fP 递增消耗的字节数。 转换可能因三个原因而停止:
+.IP \[bu] 3
+遇到无效的多字节序列。 在这种情况下，\fI*src\fP 仍然指向无效的多字节序列，\fI(size_t)\ \-1\fP 被返回，\fIerrno\fP 被设置为
+\fBEILSEQ\fP。
+.IP \[bu]
+\fInms\fP 限制强制停止，或者 \fIlen\fP 非 L\[aq]\e0\[aq] 宽字符已经存储在 \fIdest\fP。 在这种情况下，\fI*src\fP
+将指向下一个要转换的多字节序列，并返回写入 \fIdest\fP 的宽字符数。
+.IP \[bu]
+多字节字符串已完全转换，包括终止空宽字符 (\[aq]\e0\[aq]) (具有将 \fI*ps\fP 带回初始状态的副作用)。 在这种情况下，\fI*src\fP
+设置为 NULL，并返回写入 \fIdest\fP 的宽字符数，不包括终止空宽字符。
+.PP
+根据 POSIX.1，如果输入缓冲区以不完整的字符结尾，则未指定转换是在前一个字符的末尾 (如果有的话) 停止，还是在输入缓冲区的末尾停止。 glibc
+实现采用了前一种行为。
+.PP
+如果 \fIdest\fP 为 NULL，则 \fIlen\fP 被忽略，并且转换如上进行，只是转换后的宽字符不写出到内存，并且不存在目标长度限制。
+.PP
+在上述两种情况下，如果 \fIps\fP 为 NULL，则使用仅 \fBmbsnrtowcs\fP() 函数已知的静态匿名状态。
+.PP
+程序员必须确保在 \fIdest\fP 处至少有 \fIlen\fP 宽字符的空间。
+.SH "RETURN VALUE"
+\fBmbsnrtowcs\fP() 函数返回构成宽字符字符串转换部分的宽字符数，不包括终止空宽字符。 如果遇到无效的多字节序列，则返回
+\fI(size_t)\ \-1\fP，并将 \fIerrno\fP 设置为 \fBEILSEQ\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBmbsnrtowcs\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:mbsnrtowcs/!ps
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2008.
+.SH NOTES
+\fBmbsnrtowcs\fP() 的行为取决于当前语言环境的 \fBLC_CTYPE\fP 类别。
+.PP
+将 NULL 作为 \fIps\fP 传递不是多线程安全的。
+.SH "SEE ALSO"
+\fBiconv\fP(3), \fBmbrtowc\fP(3), \fBmbsinit\fP(3), \fBmbsrtowcs\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

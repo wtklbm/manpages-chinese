@@ -1,0 +1,337 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003 Nick Clifford (zaf@nrc.co.nz), Jan 25, 2003
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl), Aug 24, 2003
+.\" Copyright (c) 2020 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2003-08-23 Martin Schulze <joey@infodrom.org> improvements
+.\" 2003-08-24 aeb, large parts rewritten
+.\" 2004-08-06 Christoph Lameter <clameter@sgi.com>, SMP note
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH clock_getres 2 2023\-02\-12 "Linux man\-pages 6.03" 
+.SH NAME
+clock_getres, clock_gettime, clock_settime \- 时钟和时间函数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)、自 glibc 2.17
+.PP
+在 glibc 2.17、实时库 (\fIlibrt\fP、\fI\-lrt\fP) 之前
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBint clock_getres(clockid_t \fP\fIclockid\fP\fB, struct timespec *_Nullable \fP\fIres\fP\fB);\fP
+.PP
+\fBint clock_gettime(clockid_t \fP\fIclockid\fP\fB, struct timespec *\fP\fItp\fP\fB);\fP
+\fBint clock_settime(clockid_t \fP\fIclockid\fP\fB, const struct timespec *\fP\fItp\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBclock_getres\fP(), \fBclock_gettime\fP(), \fBclock_settime\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+函数 \fBclock_getres\fP() 找到指定时钟 \fIclockid\fP 的分辨率 (precision)，如果 \fIres\fP 不为
+NULL，则存入 \fIres\fP 指向的 \fIstruct timespec\fP。 时钟的分辨率取决于实现，不能由特定进程配置。 如果
+\fBclock_settime\fP() 的参数 \fItp\fP 指向的时间值不是 \fIres\fP 的倍数，则截断为 \fIres\fP 的倍数。
+.PP
+函数 \fBclock_gettime\fP() 和 \fBclock_settime\fP() 检索并设置指定时钟 \fIclockid\fP 的时间。
+.PP
+\fIres\fP 和 \fItp\fP 参数是 \fBtimespec\fP(3) 结构。
+.PP
+\fIclockid\fP 参数是要执行的特定时钟的标识符。 时钟可能是系统范围的，因此对所有进程可见，或者如果它仅在单个进程内测量时间，则对每个进程可见。
+.PP
+所有实现都支持系统范围的实时时钟，由 \fBCLOCK_REALTIME\fP 标识。 它的时间表示自纪元以来的秒数和纳秒数。
+当它的时间改变时，相对间隔的定时器不受影响，但绝对时间点的定时器会受到影响。
+.PP
+可以实现更多时钟。 未指定相应时间值的解释和对计时器的影响。
+.PP
+最新版本的 glibc 和 Linux 内核支持以下时钟:
+.TP 
+\fBCLOCK_REALTIME\fP
+一个可设置的系统级时钟，用于测量实际 (即挂钟) 时间。 设置此时钟需要适当的权限。 该时钟受系统时间的不连续跳跃 (例如，如果系统管理员手动更改时钟)
+以及 \fBadjtime\fP(3) 和 NTP 执行的增量调整的影响。
+.TP 
+\fBCLOCK_REALTIME_ALARM\fP (since Linux 3.0; Linux\-specific)
+类似于 \fBCLOCK_REALTIME\fP，但不可设置。 有关详细信息，请参见 \fBtimer_create\fP(2)。
+.TP 
+\fBCLOCK_REALTIME_COARSE\fP (since Linux 2.6.32; Linux\-specific)
+.\" Added in commit da15cfdae03351c689736f8d142618592e3cebc3
+\fBCLOCK_REALTIME\fP 的一个更快但不太精确的版本。 这个时钟是不可设置的。 当您需要非常快但不是细粒度的时间戳时使用。
+需要每个体系结构的支持，并且可能还需要 \fBvdso\fP(7) 中此标志的体系结构支持。
+.TP 
+\fBCLOCK_TAI\fP (since Linux 3.10; Linux\-specific)
+.\" commit 1ff3c9677bff7e468e0c487d0ffefe4e901d33f4
+从挂钟时间派生但忽略闰秒的不可设置的系统范围时钟。 该时钟不会像 \fBCLOCK_REALTIME\fP 那样经历由 NTP
+插入闰秒引起的不连续和向后跳跃。
+.IP
+首字母缩略词 TAI 指的是国际原子时。
+.TP 
+\fBCLOCK_MONOTONIC\fP
+一个不可设置的系统范围内的时钟，表示自 POSIX 描述的 `过去某个未指定的点` 以来的单调时间。 在 Linux
+上，该点对应于系统自启动以来运行的秒数。
+.IP
+\fBCLOCK_MONOTONIC\fP 时钟不受系统时间不连续跳跃的影响 (例如，如果系统管理员手动更改时钟)，但会受到 \fBadjtime\fP(3) 和
+NTP 执行的增量调整的影响。 该时钟不计算系统挂起的时间。 所有 \fBCLOCK_MONOTONIC\fP
+变体都保证连续调用返回的时间不会倒退，但连续调用可能 \[em] 根据体系结构 \[em] 返回相同的 (not\-increased) 时间值。
+.TP 
+\fBCLOCK_MONOTONIC_COARSE\fP (since Linux 2.6.32; Linux\-specific)
+.\" Added in commit da15cfdae03351c689736f8d142618592e3cebc3
+\fBCLOCK_MONOTONIC\fP 的一个更快但不太精确的版本。 当您需要非常快但不是细粒度的时间戳时使用。 需要每个体系结构的支持，并且可能还需要
+\fBvdso\fP(7) 中此标志的体系结构支持。
+.TP 
+\fBCLOCK_MONOTONIC_RAW\fP (since Linux 2.6.28; Linux\-specific)
+.\" Added in commit 2d42244ae71d6c7b0884b5664cf2eda30fb2ae68, John Stultz
+与 \fBCLOCK_MONOTONIC\fP 类似，但提供对基于硬件的原始时间的访问，该时间不受 NTP 调整或 \fBadjtime\fP(3)
+执行的增量调整的影响。 该时钟不计算系统挂起的时间。
+.TP 
+\fBCLOCK_BOOTTIME\fP (since Linux 2.6.39; Linux\-specific)
+.\" commit 7fdd7f89006dd5a4c702fa0ce0c272345fa44ae0
+.\" commit 70a08cca1227dc31c784ec930099a4417a06e7d0
+与 \fBCLOCK_MONOTONIC\fP 相同的不可设置的系统范围时钟，除了它还包括系统挂起的任何时间。
+这允许应用程序获得一个挂起感知单调时钟，而不必处理 \fBCLOCK_REALTIME\fP 的复杂性，如果使用 \fBsettimeofday\fP(2)
+或类似工具更改时间，则可能会出现不连续性。
+.TP 
+\fBCLOCK_BOOTTIME_ALARM\fP (since Linux 3.0; Linux\-specific)
+像 \fBCLOCK_BOOTTIME\fP。 有关详细信息，请参见 \fBtimer_create\fP(2)。
+.TP 
+\fBCLOCK_PROCESS_CPUTIME_ID\fP (since Linux 2.6.12)
+这是一个时钟，用于测量此进程消耗的 CPU 时间 (即进程中所有线程消耗的 CPU 时间)。 在 Linux 上，此时钟不可设置。
+.TP 
+\fBCLOCK_THREAD_CPUTIME_ID\fP (since Linux 2.6.12)
+这是一个时钟，用于测量该线程消耗的 CPU 时间。 在 Linux 上，此时钟不可设置。
+.PP
+Linux 还实现了如下所述的动态时钟实例。
+.SS "Dynamic clocks"
+除了上述硬编码的 System\-V 样式时钟 ID 之外，Linux 还支持某些字符设备上的 POSIX 时钟操作。 此类设备称为 "dynamic"
+时钟，自 Linux 2.6.39 起受支持。
+.PP
+使用适当的宏，可以将打开的文件描述符转换为时钟 ID 并传递给 \fBclock_gettime\fP()、\fBclock_settime\fP() 和
+\fBclock_adjtime\fP(2)。 以下示例显示如何将文件描述符转换为动态时钟 ID。
+.PP
+.in +4n
+.EX
+#define CLOCKFD 3
+#define FD_TO_CLOCKID(fd)   ((\[ti](clockid_t) (fd) << 3) | CLOCKFD)
+#define CLOCKID_TO_FD(clk)  ((unsigned int) \[ti]((clk) >> 3))
+
+struct timespec ts;
+clockid_t clkid;
+int fd;
+
+fd = open("/dev/ptp0", O_RDWR);
+clkid = FD_TO_CLOCKID(fd);
+clock_gettime(clkid, &ts);
+.EE
+.in
+.SH "RETURN VALUE"
+\fBclock_gettime\fP()、\fBclock_settime\fP() 和 \fBclock_getres\fP() 返回 0 表示成功。 出错时，返回
+\-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fBclock_settime\fP() 对指示的动态 POSIX 时钟设备没有写权限。
+.TP 
+\fBEFAULT\fP
+\fItp\fP 指向可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+.\" Linux also gives this error on attempts to set CLOCK_PROCESS_CPUTIME_ID
+.\" and CLOCK_THREAD_CPUTIME_ID, when probably the proper error should be
+.\" EPERM.
+由于两个原因之一，指定的 \fIclockid\fP 无效。 System\-V 样式的硬编码正值越界，或者动态时钟 ID 未引用时钟对象的有效实例。
+.TP 
+\fBEINVAL\fP
+(\fBclock_settime\fP()): \fItp.tv_sec\fP 为 negative 或 \fItp.tv_nsec\fP 在 [0,
+999,999,999] 范围之外。
+.TP 
+\fBEINVAL\fP
+调用到 \fBclock_settime\fP() 中指定的 \fIclockid\fP 不是可设置的时钟。
+.TP 
+\fBEINVAL\fP (since Linux 4.3)
+.\" commit e1d7ba8735551ed79c7a0463a042353574b96da3
+对 \fBclock_settime\fP() 和 \fIclockid\fP 或 \fBCLOCK_REALTIME\fP 的调用试图将时间设置为小于
+\fBCLOCK_MONOTONIC\fP 时钟当前值的值。
+.TP 
+\fBENODEV\fP
+以动态 \fIclk_id\fP 表示的可热插拔设备 (例如 USB) 在其字符设备打开后消失了。
+.TP 
+\fBENOTSUP\fP
+指定的动态 POSIX 时钟设备不支持该操作。
+.TP 
+\fBEPERM\fP
+\fBclock_settime\fP() 无权设置指示的时钟。
+.SH VERSIONS
+这些系统调用首先出现在 Linux 2.6 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBclock_getres\fP(),
+\fBclock_gettime\fP(),
+\fBclock_settime\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SUSv2.
+.PP
+在这些函数可用的 POSIX 系统上，符号 \fB_POSIX_TIMERS\fP 在 \fI<unistd.h>\fP 中定义为大于 0 的值。
+符号 \fB_POSIX_MONOTONIC_CLOCK\fP、\fB_POSIX_CPUTIME\fP、\fB_POSIX_THREAD_CPUTIME\fP 表示
+\fBCLOCK_MONOTONIC\fP、\fBCLOCK_PROCESS_CPUTIME_ID\fP、\fBCLOCK_THREAD_CPUTIME_ID\fP
+可用。 (另见 \fBsysconf\fP(3).)
+.SH NOTES
+POSIX.1 指定以下内容:
+.RS
+.PP
+通过 \fBclock_settime\fP() 设置 \fBCLOCK_REALTIME\fP 时钟的值对阻塞等待基于此时钟的相对时间服务的线程没有影响，包括
+\fBnanosleep\fP() 函数; 也不基于此时钟的相关计时器到期。 因此，这些时间服务将在请求的相对间隔过去时终止，与时钟的新值或旧值无关。
+.RE
+.PP
+.\" See http://bugzilla.kernel.org/show_bug.cgi?id=11972
+.\"
+根据 POSIX.1\-2001，具有 "appropriate privileges" 的进程可以使用 \fBclock_settime\fP() 设置
+\fBCLOCK_PROCESS_CPUTIME_ID\fP 和 \fBCLOCK_THREAD_CPUTIME_ID\fP 时钟。 在 Linux
+上，这些时钟是不可设置的 (即没有进程有 "appropriate privileges")。
+.SS "C library/kernel differences"
+.\"
+在某些体系结构上，\fBvdso\fP(7) 中提供了 \fBclock_gettime\fP() 的实现。
+.SS "Historical note for SMP systems"
+在 Linux 添加对 \fBCLOCK_PROCESS_CPUTIME_ID\fP 和 \fBCLOCK_THREAD_CPUTIME_ID\fP
+的内核支持之前，glibc 使用来自 CPU 的定时器寄存器 (i386 上的 TSC，Itanium 上的 AR.ITC)
+在许多平台上实现了这些时钟。 这些寄存器在 CPU 之间可能不同，因此如果进程迁移到另一个 CPU，这些时钟可能会返回 \fBbogus results\fP。
+.PP
+如果 SMP 系统中的 CPU 具有不同的时钟源，则无法保持定时器寄存器之间的相关性，因为每个 CPU 的运行频率略有不同。 如果是这种情况，则
+\fIclock_getcpuclockid(0)\fP 将返回 \fBENOENT\fP 以表示这种情况。 只有当可以确保进程停留在某个 CPU
+上时，这两个时钟才会有用。
+.PP
+SMP 系统中的处理器不会完全同时启动，因此定时器寄存器通常以偏移量运行。 一些体系结构包括试图在启动时限制这些偏移量的代码。
+但是，代码不能保证准确调整偏移量。 glibc 不包含处理这些偏移量的规定 (与 Linux 内核不同)。
+通常这些偏移量很小，因此在大多数情况下影响可以忽略不计。
+.PP
+自 glibc 2.4 以来，本页中描述的系统调用的包装器函数通过在提供此类实现的系统 (即 Linux 2.6.12 及更高版本) 上采用
+\fBCLOCK_PROCESS_CPUTIME_ID\fP 和 \fBCLOCK_THREAD_CPUTIME_ID\fP 的内核实现来避免上述问题。
+.SH EXAMPLES
+下面的程序演示了 \fBclock_gettime\fP() 和 \fBclock_getres\fP() 与各种时钟的使用。
+这是我们在运行程序时可能会看到的示例:
+.PP
+.in +4n
+.EX
+$ \fB./clock_times x\fP
+CLOCK_REALTIME : 1585985459.446 (18356 days +  7h 30m 59s)
+     resolution:          0.000000001   
+CLOCK_TAI      : 1585985496.447 (18356 days +  7h 31m 36s)
+     resolution:          0.000000001
+CLOCK_MONOTONIC:      52395.722 (14h 33m 15s)
+     resolution:          0.000000001
+CLOCK_BOOTTIME :      72691.019 (20h 11m 31s)
+     resolution:          0.000000001
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (clock_getres.c)
+\&
+.EX
+/* clock_times.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#define _XOPEN_SOURCE 600
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define SECS_IN_DAY (24 * 60 * 60)
+
+static void
+displayClock(clockid_t clock, const char *name, bool showRes)
+{
+    long             days;
+    struct timespec  ts;
+
+    if (clock_gettime(clock, &ts) == \-1) {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("%\-15s: %10jd.%03ld (", name,
+           (intmax_t) ts.tv_sec, ts.tv_nsec / 1000000);
+
+    days = ts.tv_sec / SECS_IN_DAY;
+    if (days > 0)
+        printf("%ld days + ", days);
+
+    printf("%2dh %2dm %2ds",
+           (int) (ts.tv_sec % SECS_IN_DAY) / 3600,
+           (int) (ts.tv_sec % 3600) / 60,
+           (int) ts.tv_sec % 60);
+    printf(")\en");
+
+    if (clock_getres(clock, &ts) == \-1) {
+        perror("clock_getres");
+        exit(EXIT_FAILURE);
+    }
+
+    if (showRes)
+        printf("     resolution: %10jd.%09ld\en",
+               (intmax_t) ts.tv_sec, ts.tv_nsec);
+}
+
+int
+main(int argc, char *argv[])
+{
+    bool showRes = argc > 1;
+
+    displayClock(CLOCK_REALTIME, "CLOCK_REALTIME", showRes);
+#ifdef CLOCK_TAI
+    displayClock(CLOCK_TAI, "CLOCK_TAI", showRes);
+#endif
+    displayClock(CLOCK_MONOTONIC, "CLOCK_MONOTONIC", showRes);
+#ifdef CLOCK_BOOTTIME
+    displayClock(CLOCK_BOOTTIME, "CLOCK_BOOTTIME", showRes);
+#endif
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBdate\fP(1), \fBgettimeofday\fP(2), \fBsettimeofday\fP(2), \fBtime\fP(2),
+\fBadjtime\fP(3), \fBclock_getcpuclockid\fP(3), \fBctime\fP(3), \fBftime\fP(3),
+\fBpthread_getcpuclockid\fP(3), \fBsysconf\fP(3), \fBtimespec\fP(3), \fBtime\fP(7),
+\fBtime_namespaces\fP(7), \fBvdso\fP(7), \fBhwclock\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

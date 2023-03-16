@@ -1,0 +1,158 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2000 Andries Brouwer <aeb@cwi.nl>
+.\" and Copyright (c) 2007 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (c) 2008, Linux Foundation, written by Michael Kerrisk
+.\"      <mtk.manpages@gmail.com>
+.\" based on work by Rik Faith <faith@cs.unc.edu>
+.\" and Mike Battersby <mike@starbug.apana.org.au>.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 2004-11-19, mtk:
+.\" added pointer to sigaction.2 for details of ignoring SIGCHLD
+.\" 2007-06-03, mtk: strengthened portability warning, and rewrote
+.\"     various sections.
+.\" 2008-07-11, mtk: rewrote and expanded portability discussion.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH signal 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+signal\-ANSI C 信号处理
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBtypedef void (*sighandler_t)(int);\fP
+.PP
+\fBsighandler_t signal(int \fP\fIsignum\fP\fB, sighandler_t \fP\fIhandler\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBWARNING\fP: \fBsignal\fP() 的行为因 UNIX 版本而异，并且在历史上也因 Linux 的不同版本而异。 \fBAvoid its use\fP: 使用 \fBsigaction\fP(2) 代替。 请参见下面的 \fIPortability\fP。
+.PP
+\fBsignal\fP() 设置信号 \fIsignum\fP 到 \fIhandler\fP 的配置，\fIhandler\fP 可以是
+\fBSIG_IGN\fP，\fBSIG_DFL\fP，也可以是程序员定义的函数 ("signal handler") 的地址。
+.PP
+如果信号 \fIsignum\fP 被传递给进程，则会发生以下情况之一:
+.TP  3
+*
+如果配置设置为 \fBSIG_IGN\fP，则该信号将被忽略。
+.TP 
+*
+如果处置设置为 \fBSIG_DFL\fP，则与信号关联的默认操作 (参见 \fBsignal\fP(7))) 发生。
+.TP 
+*
+如果处置设置为一个函数，那么首先要么将处置重置为 \fBSIG_DFL\fP，要么信号被阻止 (参见下面的 \fIPortability\fP)，然后使用参数
+\fIsignum\fP 调用 \fIhandler\fP。 如果处理程序的调用导致信号被阻塞，则信号在从处理程序返回时解除阻塞。
+.PP
+信号 \fBSIGKILL\fP 和 \fBSIGSTOP\fP 不能被捕获或忽略。
+.SH "RETURN VALUE"
+\fBsignal\fP() 返回信号处理程序的先前值。 失败时，它返回 \fBSIG_ERR\fP，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIsignum\fP 无效。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99.
+.SH NOTES
+\fBsignal\fP() 在多线程进程中的作用未指定。
+.PP
+根据 POSIX，在忽略不是由 \fBkill\fP(2) 或 \fBraise\fP(3) 生成的 \fBSIGFPE\fP、\fBSIGILL\fP 或
+\fBSIGSEGV\fP 信号后，进程的行为是未定义的。 整数除以零有未定义的结果。 在某些架构上，它会生成 \fBSIGFPE\fP 信号。 (同时将最大
+negative 整数除以 \-1 可能会生成 \fBSIGFPE\fP.) 忽略此信号可能会导致死循环。
+.PP
+有关将处置 \fBSIGCHLD\fP 设置为 \fBSIG_IGN\fP 时发生的情况的详细信息，请参见 \fBsigaction\fP(2)。
+.PP
+有关可以从信号处理程序内部安全调用的异步信号安全函数的列表，请参见 \fBsignal\-safety\fP(7)。
+.PP
+.\" libc4 and libc5 define
+.\" .IR SignalHandler ;
+\fIsighandler_t\fP 的使用是 GNU 扩展，如果定义了 \fB_GNU_SOURCE\fP 则公开; 如果定义了 \fB_BSD_SOURCE\fP
+(glibc 2.19 及更早版本) 或 \fB_DEFAULT_SOURCE\fP (glibc 2.19 及更高版本)，glibc 还定义 (BSD
+派生的) \fIsig_t\fP。 如果不使用这样的类型，\fBsignal\fP() 的声明就比较难读:
+.PP
+.in +4n
+.EX
+\fBvoid ( *\fP\fIsignal\fP\fB(int \fP\fIsignum\fP\fB, void (*\fP\fIhandler\fP\fB)(int)) ) (int);\fP
+.EE
+.in
+.SS Portability
+\fBsignal\fP() 的唯一便携用途是将信号配置设置为 \fBSIG_DFL\fP 或 \fBSIG_IGN\fP。 使用 \fBsignal\fP()
+建立信号处理程序时的语义因系统而异 (并且 POSIX.1 明确允许这种变化) ; 使用 \fBsignal\fP() 建立信号处理程序时的语义因系统而异
+(并且 POSIX.1 明确允许这种变化) ;
+.PP
+POSIX.1 通过指定 \fBsigaction\fP(2) 解决了可移植性问题，它在调用信号处理程序时提供对语义的显式控制; 使用该接口而不是
+\fBsignal\fP()。
+.PP
+在最初的 UNIX 系统中，当通过信号传递调用使用 \fBsignal\fP() 建立的处理程序时，信号的处置将重置为
+\fBSIG_DFL\fP，并且系统不会阻止进一步传递信号实例。 这等效于使用以下标志调用 \fBsigaction\fP(2):
+.PP
+.in +4n
+.EX
+sa.sa_flags = SA_RESETHAND | SA_NODEFER;
+.EE
+.in
+.PP
+System\V 也为 \fBsignal\fP() 提供了这些语义。 这很糟糕，因为信号可能会在处理程序有机会重新建立自身之前再次传递。
+此外，同一信号的快速传递可能会导致处理程序的递归调用。
+.PP
+BSD 改进了这种情况，但不幸的是在这样做的同时也改变了现有 \fBsignal\fP() 接口的语义。 在 BSD
+上，当调用信号处理程序时，不会重置信号处置，并且在执行处理程序时阻止传递信号的其他实例。 此外，如果被信号处理程序中断，某些阻塞系统调用会自动重新启动
+(请参见 \fBsignal\fP(7)).  BSD 语义等效于使用以下标志调用 \fBsigaction\fP(2):
+.PP
+.in +4n
+.EX
+sa.sa_flags = SA_RESTART;
+.EE
+.in
+.PP
+Linux 上的情况如下:
+.IP \[bu] 3
+内核的 \fBsignal\fP() 系统调用提供了 System\V 语义。
+.IP \[bu]
+.\"
+.\" System V semantics are also provided if one uses the separate
+.\" .BR sysv_signal (3)
+.\" function.
+.\" .IP *
+.\" The
+.\" .BR signal ()
+.\" function in Linux libc4 and libc5 provide System\ V semantics.
+.\" If one on a libc5 system includes
+.\" .I <bsd/signal.h>
+.\" instead of
+.\" .IR <signal.h> ,
+.\" then
+.\" .BR signal ()
+.\" provides BSD semantics.
+默认情况下，在 glibc 2 及更高版本中，\fBsignal\fP() 包装器函数不会调用内核系统调用。 相反，它使用提供 BSD 语义的标志调用
+\fBsigaction\fP(2)。 只要定义了合适的特性测试宏，就会提供此默认行为: glibc 2.19 及更早版本中的 \fB_BSD_SOURCE\fP
+或 glibc 2.19 及更高版本中的 \fB_DEFAULT_SOURCE\fP。 (默认情况下，定义了这些宏; 有关详细信息，请参见
+\fBfeature_test_macros\fP(7)。) 如果未定义此类特性测试宏，则 \fBsignal\fP() 提供 System\V 语义。
+.SH "SEE ALSO"
+\fBkill\fP(1), \fBalarm\fP(2), \fBkill\fP(2), \fBpause\fP(2), \fBsigaction\fP(2),
+\fBsignalfd\fP(2), \fBsigpending\fP(2), \fBsigprocmask\fP(2), \fBsigsuspend\fP(2),
+\fBbsd_signal\fP(3), \fBkillpg\fP(3), \fBraise\fP(3), \fBsiginterrupt\fP(3),
+\fBsigqueue\fP(3), \fBsigsetops\fP(3), \fBsigvec\fP(3), \fBsysv_signal\fP(3),
+\fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

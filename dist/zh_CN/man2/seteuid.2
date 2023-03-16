@@ -1,0 +1,96 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2001 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" [should really be seteuid.3]
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH seteuid 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+seteuid, setegid \- 设置有效的用户或组 ID
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint seteuid(uid_t \fP\fIeuid\fP\fB);\fP
+\fBint setegid(gid_t \fP\fIegid\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBseteuid\fP(), \fBsetegid\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBseteuid\fP() 设置调用进程的有效用户 ID。 非特权进程只能将有效用户 ID 设置为真实用户 ID、有效用户 ID 或保存的
+set\-user\-ID。
+.PP
+.\" When
+.\" .I euid
+.\" equals \-1, nothing is changed.
+.\" (This is an artifact of the implementation in glibc of seteuid()
+.\" using setresuid(2).)
+\fBsetegid\fP() 与 "group" 而不是 "user" 的情况完全相同。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+\fINote\fP: 即使调用者是 UID 0，有时 \fBseteuid\fP() 也会失败; 忽略检查 \fBseteuid\fP()
+的失败返回是一个严重的安全错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+目标用户或组 ID 在此用户命名空间中无效。
+.TP 
+\fBEPERM\fP
+在 \fBseteuid\fP(): 的情况下，调用进程没有特权 (在其用户命名空间中没有 \fBCAP_SETUID\fP 功能) 并且 \fIeuid\fP
+与当前真实用户 ID、当前有效用户 ID 或当前保存的 set\-user\-ID 不匹配。
+.IP
+在 \fBsetegid\fP(): 的情况下，调用进程没有特权 (在其用户命名空间中没有 \fBCAP_SETGID\fP 功能) 并且 \fIegid\fP
+与当前实际组 ID、当前有效组 ID 或当前保存的组组 ID 不匹配。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, 4.3BSD.
+.SH NOTES
+从 Linux 1.1.37 (1.1.38) 开始，可以将有效用户 (group) ID 设置为保存的设置用户 ID (保存的设置组 ID)。
+在任意系统上，应该检查 \fB_POSIX_SAVED_IDS\fP。
+.PP
+在 glibc 2.0 下，\fBseteuid(\fP\fIeuid\fP\fB)\fP 等同于 \fBsetreuid(\-1,\fP\fI euid\fP\fB)\fP，因此可能会更改保存的 set\-user\-ID。 在 glibc 2.1 及更高版本下，它等同于 \fBsetresuid(\-1,\fP\fI euid\fP\fB, \-1)\fP，因此不会更改保存的 set\-user\-ID。 类似的评论适用于 \fBsetegid\fP()，区别在于从
+\fBsetregid(\-1,\fP\fI egid\fP\fB)\fP 到 \fBsetresgid(\-1,\fP\fI egid\fP\fB, \-1)\fP 的实现更改发生在
+glibc 2.2 或 2.3 (取决于硬件架构) 中。
+.PP
+根据 POSIX.1，\fBseteuid\fP() (\fBsetegid\fP()) 不需要允许 \fIeuid\fP (\fIegid\fP) 与当前有效用户
+(group) ID 具有相同的值，并且某些实现不允许这样做。
+.SS "C library/kernel differences"
+在 Linux 上，\fBseteuid\fP() 和 \fBsetegid\fP() 分别实现为调用的库函数，\fBsetreuid\fP(2) 和
+\fBsetregid\fP(2)。
+.SH "SEE ALSO"
+\fBgeteuid\fP(2), \fBsetresuid\fP(2), \fBsetreuid\fP(2), \fBsetuid\fP(2),
+\fBcapabilities\fP(7), \fBcredentials\fP(7), \fBuser_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

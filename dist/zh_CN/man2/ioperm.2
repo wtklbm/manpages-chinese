@@ -1,0 +1,84 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1993 Michael Haardt
+.\" (michael@moria.de)
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified Sat Jul 24 15:12:05 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Tue Aug  1 16:27    1995 by Jochen Karrer
+.\"                              <cip307@cip.physik.uni-wuerzburg.de>
+.\" Modified Tue Oct 22 08:11:14 EDT 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Mon Feb 15 17:28:41 CET 1999 by Andries E. Brouwer <aeb@cwi.nl>
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioperm 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ioperm \- 设置端口 input/output 权限
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/io.h>\fP
+.PP
+\fBint ioperm(unsigned long \fP\fIfrom\fP\fB, unsigned long \fP\fInum\fP\fB, int \fP\fIturn_on\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBioperm\fP() 为从端口地址 \fIfrom\fP 开始的 \fInum\fP 位的调用线程设置端口访问权限位。 如果 \fIturn_on\fP
+不为零，则启用指定位的权限; 否则它被禁用。 如果 \fIturn_on\fP 不为零，则调用线程必须具有特权 (\fBCAP_SYS_RAWIO\fP)。
+.PP
+在 Linux 2.6.8 之前，只能以这种方式指定第一个 0x3ff I/O 端口。 对于更多端口，必须使用 \fBiopl\fP(2) 系统调用
+(\fIlevel\fP 参数为 3)。 自 Linux 2.6.8 起，可指定 65,536 个 I/O 端口。
+.PP
+权限由 \fBfork\fP(2) 创建的子级继承 (但请参见注释)。 权限在 \fBexecve\fP(2) 中保留; 这对于为非特权程序授予端口访问权限很有用。
+.PP
+此调用主要针对 i386 架构。 在许多其他架构上，它不存在或将始终返回错误。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIfrom\fP 或 \fInum\fP 的值无效。
+.TP 
+\fBEIO\fP
+(在 PowerPC 上) 不支持此调用。
+.TP 
+\fBENOMEM\fP
+.\" Could not allocate I/O bitmap.
+内存不足。
+.TP 
+\fBEPERM\fP
+调用线程没有足够的权限。
+.SH STANDARDS
+\fBioperm\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+\fI/proc/ioports\fP 文件显示当前在系统上分配的 I/O 端口。
+.PP
+在 Linux 2.4 之前，\fBfork\fP(2) 创建的子级不会继承权限。
+.PP
+glibc 在 \fI<sys/io.h>\fP 和 \fI<sys/perm.h>\fP 中都有一个 \fBioperm\fP()
+原型。 避免后者，它仅在 i386 上可用。
+.SH "SEE ALSO"
+\fBiopl\fP(2), \fBoutb\fP(2), \fBcapabilities\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

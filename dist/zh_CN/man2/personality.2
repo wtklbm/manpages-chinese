@@ -1,0 +1,174 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1995, Thomas K. Dyas <tdyas@eden.rutgers.edu>
+.\" and Copyright (C) 2016, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Created   Sat Aug 21 1995     Thomas K. Dyas <tdyas@eden.rutgers.edu>
+.\"
+.\" typo corrected, aeb, 950825
+.\" added layout change from joey, 960722
+.\" changed prototype, documented 0xffffffff, aeb, 030101
+.\" Modified 2004-11-03 patch from Martin Schulze <joey@infodrom.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH personality 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+personality\-\- 设置流程执行域
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/personality.h>\fP
+.PP
+\fBint personality(unsigned long \fP\fIpersona\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+Linux 支持每个进程的不同执行域或个性。 除其他事项外，执行域告诉 Linux 如何将 map 信号数字转换为信号动作。 执行域系统允许 Linux
+为在其他类 UNIX 操作系统下编译的二进制文件提供有限支持。
+.PP
+如果 \fIpersona\fP 不是 0xffffffff，则 \fBpersonality\fP() 将调用者的执行域设置为 \fIpersona\fP 指定的值。
+将 \fIpersona\fP 指定为 0xffffffff 提供了一种无需更改即可检索当前角色的方法。
+.PP
+可以在 \fI<sys/personality.h>\fP 中找到可用执行域的列表。 执行域是一个 32
+位值，其中前三个字节留作标志，这些标志会导致内核修改某些系统调用的行为，以模拟历史或体系结构的怪癖。 最低有效字节是定义内核应采用的个性的值。
+标志值如下:
+.TP 
+\fBADDR_COMPAT_LAYOUT\fP (since Linux 2.6.9)
+设置此标志后，提供传统的虚拟地址空间布局。
+.TP 
+\fBADDR_NO_RANDOMIZE\fP (since Linux 2.6.12)
+设置此标志后，禁用地址空间布局随机化。
+.TP 
+\fBADDR_LIMIT_32BIT\fP (since Linux 2.2)
+将地址空间限制为 32 位。
+.TP 
+\fBADDR_LIMIT_3GB\fP (since Linux 2.4.0)
+设置此标志后，使用 0xc0000000 作为在 \fBmmap\fP(2) 上搜索虚拟内存块的偏移量; 否则使用 0xffffe000。
+.TP 
+\fBFDPIC_FUNCPTRS\fP (since Linux 2.6.11)
+用户空间指向信号处理程序的指针 (在某些体系结构上) 指向描述符。
+.TP 
+\fBMMAP_PAGE_ZERO\fP (since Linux 2.4.0)
+Map 第 0 页为只读 (以支持依赖于此 SVr4 行为的二进制文件)。
+.TP 
+\fBREAD_IMPLIES_EXEC\fP (since Linux 2.6.8)
+设置此标志后，\fBPROT_READ\fP 表示 \fBmmap\fP(2) 为 \fBPROT_EXEC\fP。
+.TP 
+\fBSHORT_INODE\fP (since Linux 2.4.0)
+没有 effects(?)。
+.TP 
+\fBSTICKY_TIMEOUTS\fP (since Linux 1.2.0)
+设置此标志后，\fBselect\fP(2)、\fBpselect\fP(2) 和 \fBppoll\fP(2) 在被信号处理程序中断时不会修改返回的超时参数。
+.TP 
+\fBUNAME26\fP (since Linux 3.1)
+让 \fBuname\fP(2) 报告 2.6.40 + 版本号而不是 3.x 版本号。 作为权宜之计添加，以支持无法处理从 Linux 2.6.x 到
+Linux 3.x 的内核版本编号切换的损坏应用程序。
+.TP 
+\fBWHOLE_SECONDS\fP (since Linux 1.2.0)
+没有效果。
+.PP
+可用的执行域是:
+.TP 
+\fBPER_BSD\fP (since Linux 1.2.0)
+BSD。(没有效果。)
+.TP 
+\fBPER_HPUX\fP (since Linux 2.4)
+支持 32 位 HP/UX。 这种支持从来没有完成过，并且被丢弃了，所以从 Linux 4.0 开始，这个值就没有效果了。
+.TP 
+\fBPER_IRIX32\fP (since Linux 2.2)
+IRIX 5 32 位。 从未完全发挥作用; Linux 2.6.27 支持丢弃。 表示 \fBSTICKY_TIMEOUTS\fP。
+.TP 
+\fBPER_IRIX64\fP (since Linux 2.2)
+IRIX 6 64 位。 表示 \fBSTICKY_TIMEOUTS\fP; 否则没有效果。
+.TP 
+\fBPER_IRIXN32\fP (since Linux 2.2)
+IRIX 6 新的 32 位。 表示 \fBSTICKY_TIMEOUTS\fP; 否则没有效果。
+.TP 
+\fBPER_ISCR4\fP (since Linux 1.2.0)
+表示 \fBSTICKY_TIMEOUTS\fP; 否则没有效果。
+.TP 
+\fBPER_LINUX\fP (since Linux 1.2.0)
+Linux.
+.TP 
+\fBPER_LINUX32\fP (since Linux 2.2)
+[To be documented.]
+.TP 
+\fBPER_LINUX32_3GB\fP (since Linux 2.4)
+表示 \fBADDR_LIMIT_3GB\fP。
+.TP 
+\fBPER_LINUX_32BIT\fP (since Linux 2.0)
+表示 \fBADDR_LIMIT_32BIT\fP。
+.TP 
+\fBPER_LINUX_FDPIC\fP (since Linux 2.6.11)
+表示 \fBFDPIC_FUNCPTRS\fP。
+.TP 
+\fBPER_OSF4\fP (since Linux 2.4)
+.\" Following is from a comment in arch/alpha/kernel/osf_sys.c
+OSF/1 v4.  在 alpha 上，清除用户缓冲区中 iov_len 的前 32 位，以与 iov_len 定义为的旧版本 OSF/1 兼容。
+\fIint\fP.
+.TP 
+\fBPER_OSR5\fP (since Linux 2.4)
+表示 \fBSTICKY_TIMEOUTS\fP 和 \fBWHOLE_SECONDS\fP; 否则没有效果。
+.TP 
+\fBPER_RISCOS\fP (since Linux 2.2)
+[To be documented.]
+.TP 
+\fBPER_SCOSVR3\fP (since Linux 1.2.0)
+表示 \fBSTICKY_TIMEOUTS\fP、\fBWHOLE_SECONDS\fP 和 \fBSHORT_INODE\fP; 否则没有效果。
+.TP 
+\fBPER_SOLARIS\fP (since Linux 2.4)
+表示 \fBSTICKY_TIMEOUTS\fP; 否则没有效果。
+.TP 
+\fBPER_SUNOS\fP (since Linux 2.4.0)
+表示 \fBSTICKY_TIMEOUTS\fP。 将库和动态链接器搜索转移到 \fI/usr/gnemul\fP。 Buggy，基本上没有维护，几乎完全没有使用;
+在 Linux 2.6.26 中删除了支持。
+.TP 
+\fBPER_SVR3\fP (since Linux 1.2.0)
+表示 \fBSTICKY_TIMEOUTS\fP 和 \fBSHORT_INODE\fP; 否则没有效果。
+.TP 
+\fBPER_SVR4\fP (since Linux 1.2.0)
+表示 \fBSTICKY_TIMEOUTS\fP 和 \fBMMAP_PAGE_ZERO\fP; 否则没有效果。
+.TP 
+\fBPER_UW7\fP (since Linux 2.4)
+表示 \fBSTICKY_TIMEOUTS\fP 和 \fBMMAP_PAGE_ZERO\fP; 否则没有效果。
+.TP 
+\fBPER_WYSEV386\fP (since Linux 1.2.0)
+表示 \fBSTICKY_TIMEOUTS\fP 和 \fBSHORT_INODE\fP; 否则没有效果。
+.TP 
+\fBPER_XENIX\fP (since Linux 1.2.0)
+表示 \fBSTICKY_TIMEOUTS\fP 和 \fBSHORT_INODE\fP; 否则没有效果。
+.SH "RETURN VALUE"
+成功时，返回之前的 \fIpersona\fP。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+内核无法更改个性。
+.SH VERSIONS
+.\" personality wrapper first appeared in glibc 1.90,
+.\" <sys/personality.h> was added later in glibc 2.2.91.
+该系统调用首次出现在 Linux 1.1.20 (因此首次出现在 Linux 1.2.0 的稳定内核版本中) ; glibc 2.3 中添加了库支持。
+.SH STANDARDS
+\fBpersonality\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH "SEE ALSO"
+\fBsetarch\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

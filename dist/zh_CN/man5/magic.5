@@ -1,0 +1,714 @@
+.\" -*- coding: UTF-8 -*-
+.\" $File: magic.man,v 1.101 2022/10/09 18:51:04 christos Exp $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd October 9, 2022
+.Dt MAGIC 5
+.Os
+.\" install as magic.4 on USG, magic.5 on V7, Berkeley and Linux systems.
+.Sh NAME
+.Nm magic
+.Nd file command's magic pattern file
+.Sh DESCRIPTION
+本手册页记录了
+.Xr file 1
+命令 5.44 版本使用的魔法文件格式。
+.Xr file 1
+命令识别文件的类型，除其他测试外，还使用文件是否包含特定
+.Dq "magic patterns"
+的测试。 这些
+.Dq "magic patterns"
+的数据库通常位于
+.Pa /usr/share/file/misc/magic.mgc
+中的一个二进制文件或
+.Pa /usr/share/file/misc/magic
+中的源文本魔术图案片段文件目录中。 数据库指定要测试的模式、如果找到特定模式要打印的消息或
+MIME 类型以及要从文件中提取的附加信息。
+.Pp
+用于构建此数据库的源片段文件的格式如下: 片段文件的每一行指定要执行的测试。 测试将文件中从特定偏移量开始的数据与字节值、字符串或数值进行比较。
+如果测试成功，将打印一条消息。 该行由以下字段组成:
+.Bl -tag -width ".Dv message"
+.It Dv offset
+一个数字，指定要测试的数据在文件中的偏移量 (以字节为单位)。 此偏移量可以是 negative 数字，如果它是:
+.Bl -bullet -compact
+.It 
+魔法条目的第一个直接偏移量 (在连续级别 0)，在这种情况下，它被解释为从文件的末尾向后移动的偏移量。
+这仅在文件的文件描述符可用并且它是常规文件时才有效。
+.It 
+相对于最后一个上层字段
+.Dv ( \*[Am] )
+末尾的连续偏移量。
+.El
+.It Dv type
+要测试的数据类型。 可能的值是:
+.Bl -tag -width ".Dv lestring16"
+.It Dv byte
+一个字节的值。
+.It Dv short
+原生原生字节顺序的两字节值。
+.It Dv long
+原生原生字节顺序的四字节值。
+.It Dv quad
+原生原生字节顺序的八字节值。
+.It Dv float
+原生原生字节顺序的 32 位单精度 IEEE 浮点数。
+.It Dv double
+原生原生字节顺序的 64 位双精度 IEEE 浮点数。
+.It Dv string
+一串字节。 字符串类型规范后面可以有选择地跟一个 /<width> 选项，也可以有选择地后跟一组标志
+/[bCcftTtWw]*。宽度限制了要复制的字符数。 零表示所有字符。 支持以下标志:
+.Bl -tag -width B -compact -offset XXXX
+.It b
+强制二进制文件测试。
+.It C
+使用不区分大小写的匹配: 魔术中的大写字符匹配目标中的大小写字符，而魔术中的小写字符仅匹配目标中的大写字符。
+.It c
+使用不区分大小写的匹配: 魔术中的小写字符匹配目标中的大小写字符，而魔术中的大写字符仅匹配目标中的大写字符。 要进行完全不区分大小写的匹配，请同时指定
+.Dq c
+和
+.Dq C
+。
+.It f
+要求匹配的字符串是一个完整的单词，而不是部分单词匹配。
+.It T
+修剪字符串，即前导和尾随空格
+.It t
+强制文本文件测试。
+.It W
+目标中的压缩空格，必须包含至少一个空格字符。 如果魔法有
+.Dv n
+个连续的空格，则目标至少需要
+.Dv n
+个连续的空格才能匹配。
+.It w
+将魔术中的每个空白都视为可选空白。 在打印字符串之前被删除。
+.El
+.It Dv pstring
+一个 Pascal 风格的字符串，其中第一个 byte/short/int 被解释为无符号长度。 长度默认为字节，可以指定为修饰符。 支持以下修饰符:
+.Bl -tag -width B -compact -offset XXXX
+.It B
+一个字节长度 (default)。
+.It H
+一个 2 字节的大端长度。
+.It h
+一个 2 字节的小字节序长度。
+.It L
+一个 4 字节的大端长度。
+.It l
+一个 4 字节的小字节序长度。
+.It J
+长度包括其自身在内。
+.El
+该字符串未以 NUL 结尾。 使用
+.Dq J
+而不是更有值的
+.Dq I
+，因为这种长度是 JPEG 格式的一个，特性。
+.It Dv date
+解释为 UNIX 日期的四字节值。
+.It Dv qdate
+解释为 UNIX 日期的八字节值。
+.It Dv ldate
+解释为 UNIX 样式日期的四字节值，但解释为本地时间而不是 UTC。
+.It Dv qldate
+一个八字节值，解释为 UNIX 样式日期，但解释为本地时间而不是 UTC。
+.It Dv qwdate
+解释为 Windows 样式日期的八字节值。
+.It Dv beid3
+大端字节顺序的 32 位 ID3 长度。
+.It Dv beshort
+大端字节顺序的两字节值。
+.It Dv belong
+大端字节顺序的四字节值。
+.It Dv bequad
+big-endian 字节顺序的八字节值。
+.It Dv befloat
+大端字节顺序的 32 位单精度 IEEE 浮点数。
+.It Dv bedouble
+大端字节顺序的 64 位双精度 IEEE 浮点数。
+.It Dv bedate
+大端字节顺序的四字节值，解释为 Unix 日期。
+.It Dv beqdate
+大端字节顺序的八字节值，解释为 Unix 日期。
+.It Dv beldate
+大端字节顺序的四字节值，解释为 UNIX 样式日期，但解释为本地时间而不是 UTC。
+.It Dv beqldate
+大端字节顺序的八字节值，解释为 UNIX 样式日期，但解释为本地时间而不是 UTC。
+.It Dv beqwdate
+大端字节顺序的八字节值，解释为 Windows 风格的日期。
+.It Dv bestring16
+大端字节顺序的两字节 unicode (UCS16) 字符串。
+.It Dv leid3
+小端字节顺序的 32 位 ID3 长度。
+.It Dv leshort
+小端字节顺序的两字节值。
+.It Dv lelong
+小端字节顺序的四字节值。
+.It Dv lequad
+小端字节顺序的八字节值。
+.It Dv lefloat
+小端字节顺序的 32 位单精度 IEEE 浮点数。
+.It Dv ledouble
+小端字节顺序的 64 位双精度 IEEE 浮点数。
+.It Dv ledate
+小端字节顺序的四字节值，解释为 UNIX 日期。
+.It Dv leqdate
+小端字节顺序的八字节值，解释为 UNIX 日期。
+.It Dv leldate
+小端字节顺序的四字节值，解释为 UNIX 样式日期，但解释为本地时间而不是 UTC。
+.It Dv leqldate
+小端字节顺序的八字节值，解释为 UNIX 样式日期，但解释为本地时间而不是 UTC。
+.It Dv leqwdate
+小端字节顺序的八字节值，解释为 Windows 样式的日期。
+.It Dv lestring16
+小端字节序的两字节 unicode (UCS16) 字符串。
+.It Dv melong
+中端 (PDP-11) 字节顺序的四字节值。
+.It Dv medate
+中端 (PDP-11) 字节顺序的四字节值，解释为 UNIX 日期。
+.It Dv meldate
+一个以中端 (PDP-11) 字节顺序排列的四字节值，被解释为 UNIX 风格的日期，但被解释为本地时间而不是 UTC。
+.It Dv indirect
+从给定的偏移量开始，再次查询魔法数据库。
+.Dv indirect
+魔术的偏移量在文件中默认是绝对的，但可以指定
+.Dv /r
+以指示偏移量是从条目开头开始的相对偏移量。
+.It Dv name
+定义一个
+.Dq named
+魔法实例，可以从另一个
+.Dv use
+魔法条目调用，如子程序调用。
+命名实例直接魔法偏移量是相对于前一个匹配条目的偏移量，但间接偏移量是相对于文件开头的。 命名的魔法条目总是匹配的。
+.It Dv use
+递归调用从当前偏移量开始的命名魔法。 如果引用的名称以
+.Dv ^
+开头，则魔术的字节序将被切换; 例如，如果魔法提到了
+.Dv leshort
+，它就会被视为
+.Dv beshort
+，反之亦然。 这有助于避免为不同的字节序重复规则。
+.It Dv regex
+扩展 POSIX 正则表达式语法 (如 egrep) 中的正则表达式匹配。
+正则表达式的处理时间可能呈指数增长，而且它们的性能很难预测，因此不鼓励使用它们。 在生产环境中使用时，应仔细检查它们的性能。
+要搜索的字符串的大小也应通过指定
+.Dv /<length>
+来限制，以避免扫描长文件时出现性能问题。 类型规范也可以选择跟在
+.Dv /[c][s][l]
+之后。
+.Dq c
+标志使匹配不区分大小写，而
+.Dq s
+标志将偏移量更新为匹配的开始偏移量，而不是结束偏移量。
+.Dq l
+修饰符，将长度限制更改为平均行数而不是字节数。 行由平台原生行定界符分隔。
+指定行数后，还会计算隐式字节数，假设每行的长度为 80 个字符。 如果既未指定字节数也未指定行数，则搜索将自动限制为 8KiB。
+.Dv ^
+和
+.Dv $
+分别匹配各个行的开头和结尾，而不是文件的开头和结尾。
+.It Dv search
+从给定偏移量开始的字面量字符串搜索。 相同的修饰符标志可用于字符串模式。 搜索表达式必须包含
+.Dv /number,
+形式的范围，即从起始偏移量开始尝试匹配的位置数。 这适用于搜索具有可变偏移量的较大二进制表达式，对特殊字符使用
+.Dv \e
+转义符。
+修饰符和数字的顺序无关紧要。
+.It Dv default
+这旨在与测试
+.Em x
+(始终为真) 一起使用，并且它没有类型。 当该延续级别的其他测试之前没有匹配时，它匹配。 可以使用
+.Dv clear
+测试清除延续级别的匹配测试。
+.It Dv clear
+此测试始终为真并清除该延续级别的匹配标志。 它旨在与
+.Dv default
+测试一起使用。
+.It Dv der
+将文件解析为 DER 证书文件。 test 字段作为需要匹配的 der 类型。 DER 类型为:
+.Dv eoc
+、
+.Dv bool
+、
+.Dv int
+、
+.Dv bit_str
+、
+.Dv octet_str
+、
+.Dv null
+、
+.Dv obj_id
+、
+.Dv obj_desc
+、
+.Dv ext
+、
+.Dv real
+、
+.Dv enum
+、
+.Dv embed
+、
+.Dv utf8_str
+、
+.Dv rel_oid
+、
+.Dv time
+、
+.Dv res2
+、
+.Dv seq
+、
+.Dv set
+、
+.Dv num_str
+、
+.Dv prt_str
+、
+.Dv t61_str
+、
+.Dv ia5_str ,
+.Dv utc_time ,
+.Dv gen_time ,
+.Dv gr_str ,
+.Dv vis_str ,
+.Dv gen_str ,
+.Dv univ_str ,
+.Dv char_str ,
+.Dv bmp_str ,
+.Dv date ,
+.Dv tod ,
+.Dv datetime ,
+.Dv duration ,
+.Dv oid-iri ,
+.Dv rel-oid-iri
+。 这些类型后面可以跟一个可选的数字大小，它指示以字节为单位的字段宽度。
+.It Dv guid
+全局唯一标识符，解析并打印为 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX。 它的格式是一个字符串。
+.It Dv offset
+这是一个 quad 值，指示文件的当前偏移量。 它可用于确定文件或魔术缓冲区的大小。 例如魔术条目:
+.Bd -literal -offset indent
+-0 offset x 这个文件是 %lld 字节
+-0	offset	<=100	must 大于 100\e
+    字节并且只有 %lld
+.Ed
+.It Dv octal
+表示八进制数的字符串。
+.El
+.El
+.Pp
+为了与单一
+.Ux
+标准兼容，类型说明符
+.Dv dC
+和
+.Dv d1
+等效于
+.Dv byte
+，类型说明符
+.Dv uC
+和
+.Dv u1
+等效于
+.Dv ubyte
+，类型说明符
+.Dv dS
+和
+.Dv d2
+等效于
+.Dv short
+，类型说明符
+.Dv uS
+和
+.Dv u2
+等效于
+.Dv ushort
+，类型说明符
+.Dv dI
+、
+.Dv dL
+和
+.Dv d4
+等效于
+.Dv long
+，类型说明符
+.Dv uI
+、
+.Dv uL
+和
+.Dv u4
+等效于
+.Dv ulong
+，类型说明符
+.Dv d8
+等效于
+.Dv quad
+，类型说明符
+.Dv u8
+等效于
+.Dv uquad
+，并且类型说明符
+.Dv s
+等同于
+.Dv string
+。 此外，类型说明符
+.Dv dQ
+等同于
+.Dv quad
+，类型说明符
+.Dv uQ
+等同于
+.Dv uquad
+。
+.Pp
+根据使用的类型，每个顶级魔术图案 (请参见下面的级别解释) 分为文本或二进制。 类型
+.Dq regex
+和
+.Dq search
+被归类为文本测试，除非模式中使用了不可打印的字符。 所有其他测试都归类为二元测试。 当一个顶级模式的所有模式都是文本模式时，它被认为是一个测试文本;
+否则，它被认为是二进制模式。 匹配文件时，首先尝试二进制模式; 如果未找到匹配项，并且文件看起来像文本，则确定其编码并尝试文本模式。
+.Pp
+数字类型可以选择性地后跟
+.Dv \*[Am]
+和一个数值，以指定在进行任何比较之前，该值将与数值进行 `与` 运算。 在类型前加上
+.Dv u
+表示有序比较应该是无符号的。
+.It Dv test
+要与文件中的值进行比较的值。 如果类型是数字，这个值以 C 形式指定; 如果它是一个字符串，它被指定为一个 C 字符串，允许通常的转义 (例如 \en
+表示换行)。
+.Pp
+数字值前面可以有一个字符，指示要执行的操作。 可以是
+.Dv =
+，指定来自文件的值必须等于指定值，
+.Dv \*[Lt]
+，指定来自文件的值必须小于指定值，
+.Dv \*[Gt]
+，指定来自文件的值必须大于小于指定值
+.Dv \*[Am]
+，以指定文件中的值必须设置指定值
+.Dv ^
+中设置的所有位，以指定文件中的值必须清除任何已设置的位在指定值或
+.Dv ~
+中，后面指定的值在测试前被取反。
+.Dv x
+，指定匹配任何值。 如果省略该字符，则假定为
+.Dv =
+。 运算符
+.Dv \*[Am]
+、
+.Dv ^
+和
+.Dv ~
+不适用于浮点数和双精度数。 运算符
+.Dv !\&
+指定如果
+.Em not
+测试成功则该行匹配。
+.Pp
+数值以 C 形式指定; 例如
+.Dv 13
+是十进制，
+.Dv 013
+是八进制，
+.Dv 0x13
+是十六进制。
+.Pp
+不对日期类型执行数值运算，而是将数值解释为偏移量。
+.Pp
+对于字符串值，文件中的字符串必须匹配指定的字符串。 运算符
+.Dv =
+、
+.Dv \*[Lt]
+和
+.Dv \*[Gt]
+(但不是
+.Dv \*[Am] ) )
+可以应用于字符串。 用于匹配的长度是 magic 文件中字符串参数的长度。 这意味着一行可以匹配任何非空字符串
+(通常用于随后打印字符串)，
+.Em \*[Gt]\e0
+(因为所有非空字符串都大于空字符串)。
+.Pp
+在各自的内部表示中，日期被视为数值。
+.Pp
+特殊测试
+.Em x
+的计算结果始终为真。
+.It Dv message
+比较成功时要打印的消息。 如果字符串包含
+.Xr printf 3
+格式规范，则使用消息作为格式字符串打印文件中的值 (执行任何指定的屏蔽)。
+如果字符串以
+.Dq \eb
+开头，则打印的消息是字符串的其余部分，前面没有添加空格: 多个匹配项通常由一个空格分隔。
+.El
+.Pp
+APPLE 4+4 字符 APPLE 创建者和类型可以指定为:
+.Bd -literal -offset indent
+!:apple	CREATYPE
+.Ed
+.Pp
+MIME 类型在单独的行中给出，它必须是标识文件类型的魔术行之后的下一个非空白行或注释行，并且具有以下格式:
+.Bd -literal -offset indent
+!:mime	MIMETYPE
+.Ed
+.Pp
+即，字面量字符串
+.Dq !:mime
+后跟 MIME 类型。
+.Pp
+可以在单独的行中提供可选的强度，该行引用使用以下格式的当前魔法描述:
+.Bd -literal -offset indent
+!: 强度操作值
+.Ed
+.Pp
+操作数
+.Dv OP
+可以是:
+.Dv +
+、
+.Dv -
+、
+.Dv *
+或
+.Dv /
+，
+.Dv VALUE
+是介于 0
+和 255 之间的常量。 使用指定的操作数将此常量应用于当前计算的默认魔法强度。
+.Pp
+某些文件格式包含附加信息，这些信息将与文件类型一起打印，或者需要进行附加测试以确定真实文件类型。 这些附加测试由偏移量前面的一个或多个
+.Em \*[Gt]
+字符引入。 线上
+.Em \*[Gt]
+的数字表示测试的级别; 开头没有
+.Em \*[Gt]
+的行被认为是级别 0。
+测试以树状层次结构排列: 如果
+.Em n
+级别的行上的测试成功，则执行所有
+.Em n+1
+级别的后续测试，如果测试成功则打印消息，直到出现
+.Em n
+(或更小) 级别的行.  对于更复杂的文件，可以使用空消息来获得 "if/then"
+效果，方法如下:
+.Bd -literal -offset indent
+0 串 MZ
+\*[Gt] 0x18 leshort\*[Lt] 0x40 MS-DOS 可执行文件
+\*[Gt] 0x18 leshort\*[Gt] 0x3f 扩展 PC 可执行文件 (例如，MS Windows)
+.Ed
+.Pp
+偏移量不需要常量，也可以从正在检查的文件中读取。 如果最后一个
+.Em \*[Gt]
+之后的第一个字符是
+.Em \&(
+，则括号后的字符串被解释为间接偏移量。 这意味着括号后的数字用作文件中的偏移量。 读取该偏移量处的值，并再次用作文件中的偏移量。
+间接偏移的形式为:
+.Em (( x [[.,][bBcCeEfFgGhHiIlmsSqQ]][+\-][ y ])
+。
+.Em x
+的值用作文件中的偏移量。 根据
+.Em [bBcCeEfFgGhHiIlmsSqQ]
+类型说明符，在该偏移处读取字节、id3 长度、短或长。
+如果指定
+.Dq
+，则该值被视为有符号; 如果
+.Dq
+，则该值被视为无符号。 被指定。
+大写类型将数字解释为大端值，而小写字母版本将数字解释为小端值;
+.Em m
+类型将数字解释为中间字节序的 (PDP-11) 值。 向该数字添加
+.Em y
+的值，并将结果用作文件中的偏移量。 如果未指定，则默认类型为 long。 识别以下类型:
+.Bl -column -offset indent Type Half/Short Little Size
+.It Sy "Type	Sy" "Mnemonic	Sy" "Endian	Sy" Size
+.It "bcBc	Byte/Char	N/A	1"
+.It "efg	Double	Little	8"
+.It "EFG	Double	Big	8"
+.It "hs	Half/Short	Little	2"
+.It "HS	Half/Short	Big	2"
+.It "i	ID3	Little	4"
+.It "I	ID3	Big	4"
+.It "m	Middle	Middle	4"
+.It "o	Octal	Textual	Variable"
+.It "q	Quad	Little	8"
+.It "Q	Quad	Big	8"
+.El
+.Pp
+这样可以检查可变长度结构:
+.Bd -literal -offset indent
+# MS Windows 可执行文件也是有效的 MS-DOS 可执行文件
+0 串 MZ
+\*[Gt] 0x18 leshort\*[Lt] 0x40 MZ 可执行文件 (MS-DOS)
+# 如果它不是扩展的可执行文件，则跳过下面的整个块
+\*[Gt] 0x18 短裤 \*[Gt] 0x3f
+\*[Gt]\*[Gt](0x3c.l) 字符串 PE\e0\e0 PE 可执行文件 (MS-Windows)
+\*[Gt]\*[Gt](0x3c.l) 字符串 LX\e0\e0 LX 可执行文件 (OS/2)
+.Ed
+.Pp
+这种检查策略有一个缺点: 您必须确保最终打印出一些东西，否则用户可能会得到空输出 (例如上例中既没有 PE\e0\e0 也没有 LE\e0\e0)。
+.Pp
+如果不能直接使用此间接偏移量，则可以进行简单计算: 在括号内，追加
+.Em [+-*/%\*[Am]|^]number
+允许在将其用作偏移量之前修改从文件中读取的值:
+.Bd -literal -offset indent
+# MS Windows 可执行文件也是有效的 MS-DOS 可执行文件
+0 串 MZ
+# 有时，0x18 的值小于 0x40，但仍有一个
+# 扩展可执行文件，简单地追加到文件
+\*[Gt] 0x18 短裤 \*[Lt] 0x40
+\*[Gt]\*[Gt](4.s*512) leshort 0x014c COFF 可执行文件 (MS-DOS、DJGPP)
+\*[Gt]\*[Gt](4.s*512) leshort !0x014c MZ 可执行文件 (MS-DOS)
+.Ed
+.Pp
+有时您不知道确切的偏移量，因为这取决于前面字段的长度或位置 (之前使用间接寻址时)。 您可以使用
+.Sq \*[Am]
+作为偏移量的前缀来指定相对于最后一个上层字段末尾的偏移量:
+.Bd -literal -offset indent
+0 串 MZ
+\*[Gt] 0x18 短裤 \*[Gt] 0x3f
+\*[Gt]\*[Gt](0x3c.l) 字符串 PE\e0\e0 PE 可执行文件 (MS-Windows)
+# 紧跟 PE 签名的是 CPU 类型
+\*[Gt]\*[Gt]\*[Gt]\*[Am] 0 用于英特尔 80386 的 leshort 0x14c
+\*[Gt]\*[Gt]\*[Gt]\*[Am]0       leshort 0x184     for DEC Alpha
+.Ed
+.Pp
+可以组合间接和相对偏移:
+.Bd -literal -offset indent
+0 串 MZ
+\*[Gt] 0x18 短裤 \*[Lt] 0x40
+\*[Gt]\*[Gt](4.s*512) leshort !0x014c MZ 可执行文件 (MS-DOS)
+# 如果不是 COFF，返回 512 字节并添加偏移量
+# 来自字节 2/3，这是另一种寻找开始的方法
+# 扩展的可执行文件
+\*[Gt]\*[Gt]\*[Gt]\*[Am](2.s-514) 字符串 LE LE 可执行文件 (MS Windows VxD 驱动程序)
+.Ed
+.Pp
+或者反过来:
+.Bd -literal -offset indent
+0 串 MZ
+\*[Gt] 0x18 短裤 \*[Gt] 0x3f
+\*[Gt]\*[Gt](0x3c.l) 字符串 LE\e0\e0 LE 可执行文件 (MS-Windows)
+# 在偏移量 0x80 (-4，因为相对偏移量从末尾开始
+# of the up-level match) inside the LE header, 我们找到绝对
+# 代码区域的偏移量，我们在这里寻找特定的签名
+\*[Gt]\*[Gt]\*[Gt](\*[Am] 0x7c.l+0x26) 字符串 UPX\eb, UPX 压缩
+.Ed
+.Pp
+或者两者兼而有之!
+.Bd -literal -offset indent
+0 串 MZ
+\*[Gt] 0x18 短裤 \*[Gt] 0x3f
+\*[Gt]\*[Gt](0x3c.l) 字符串 LE\e0\e0 LE 可执行文件 (MS-Windows)
+# 在 LE 标头内的偏移量 0x58 处，我们找到相对偏移量
+# 到我们寻找特定签名的数据区域
+\*[Gt]\*[Gt]\*[Gt]\*[Am](\*[Am] 0x54.l-3) string UNACE\eb, ACE 自解压文件
+.Ed
+.Pp
+如果您必须处理文件中的 offset/length 对，甚至可以使用另一组括号从文件本身获取 `选号表示式` 中的第二个值。
+请注意，此附加间接偏移始终相对于主要间接偏移的开始。
+.Bd -literal -offset indent
+0 串 MZ
+\*[Gt] 0x18 短裤 \*[Gt] 0x3f
+\*[Gt]\*[Gt](0x3c.l) 字符串 PE\e0\e0 PE 可执行文件 (MS-Windows)
+# 搜索名为 `.idata` 的 PE 部分...
+\*[Gt]\*[Gt]\*[Gt]\*[Am]0xf4          search/0x140 .idata
+# ... 并转到它的末尾，从开始 + 长度计算;
+# 这些位于节名之后的 14 和 10 个字节
+\*[Gt]\*[Gt]\*[Gt]\*[Gt](\*[Am] 0xe.l+(-4)) 字符串 PK\e3\e4\eb, ZIP 自解压文件
+.Ed
+.Pp
+如果您有一个特定延续级别的已知值列表，并且您想提供一个类似开关的默认情况:
+.Bd -literal -offset indent
+# 清除延续水平匹配
+\*[Gt]18	clear
+\*[Gt]18	lelong	1	one
+\*[Gt]18	lelong	2	two
+\*[Gt]18	default	x
+# 打印默认匹配
+\*[Gt]\*[Gt] 18 lelong x 不匹配 0x%x
+.Ed
+.Sh SEE ALSO
+.Xr file 1
+\- 读取此文件的命令。
+.Sh BUGS
+格式
+.Dv long
+、
+.Dv belong
+、
+.Dv lelong
+、
+.Dv melong
+、
+.Dv short
+、
+.Dv beshort
+和
+.Dv leshort
+不依赖于平台上 C 数据类型
+.Dv short
+和
+.Dv long
+的长度，即使
+Single
+.Ux
+规范暗示它们依赖。 然而，由于 OS X Mountain Lion 已经通过了单一
+.Ux
+规范验证套件，并提供了一个
+.Xr file 1
+版本，其中它们不依赖于 C 数据类型的大小，并且是为 64 位环境构建的，其中
+.Dv long
+是 8 字节而不是 4 字节，估计验证套件没有测试是否，例如
+.Dv long
+指的是与 C 数据类型
+.Dv long
+大小相同的项。 可能应该有
+.Dv type
+名称
+.Dv int8
+、
+.Dv uint8
+、
+.Dv int16
+、
+.Dv uint16
+、
+.Dv int32
+、
+.Dv uint32
+、
+.Dv int64
+和
+.Dv uint64
+，以及它们的指定字节顺序变体，以更清楚地表明这些类型具有指定的宽度。
+.\"
+.\" From: guy@sun.uucp (Guy Harris)
+.\" Newsgroups: net.bugs.usg
+.\" Subject: /etc/magic's format isn't well documented
+.\" Message-ID: <2752@sun.uucp>
+.\" Date: 3 Sep 85 08:19:07 GMT
+.\" Organization: Sun Microsystems, Inc.
+.\" Lines: 136
+.\"
+.\" Here's a manual page for the format accepted by the "file" made by adding
+.\" the changes I posted to the S5R2 version.
+.\"
+.\" Modified for Ian Darwin's version of the file command.
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

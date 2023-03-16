@@ -1,0 +1,232 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2019, Microchip Technology Inc. and its subsidiaries
+.\" Copyright (C) 2016-2018, Microsemi Corporation
+.\" Copyright (C) 2016, PMC-Sierra, Inc.
+.\" Written by Kevin Barnett <kevin.barnett@microsemi.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-only
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH smartpqi 4 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+smartpqi\-Microsemi 智能系列 SCSI 驱动程序
+.SH SYNOPSIS
+.SY "modprobe smartpqi"
+[\fBdisable_device_id_wildcards=\fP{\fB0\fP|\fB1\fP}]
+[\fBdisable_heartbeat=\fP{\fB0\fP|\fB1\fP}] [\fBdisable_ctrl_shutdown=\fP{\fB0\fP|\fB1\fP}]
+[\fBlockup_action=\fP{\fBnone\fP|\fBreboot\fP|\fBpanic\fP}]
+[\fBexpose_ld_first=\fP{\fB0\fP|\fB1\fP}] [\fBhide_vsep=\fP{\fB0\fP|\fB1\fP}]
+.YS
+.SH DESCRIPTION
+\fBsmartpqi\fP 是 Microsemi 智能系列控制器的 SCSI 驱动程序。
+.SS "Supported \f[BI]ioctl\fB\/() operations"
+为了与为 \fBcciss\fP(4) 和 \fBhpsa\fP(4) 驱动程序编写的应用程序兼容，\fBsmartpqi\fP 驱动程序也支持 \fBhpsa\fP
+驱动程序支持的许多但不是全部 \fBioctl\fP(2) 操作。 这些操作使用的数据结构在 Linux 内核源文件
+\fIinclude/linux/cciss_ioctl.h\fP.h 中有描述。
+.TP 
+\fBCCISS_DEREGDISK\fP, \fBCCISS_REGNEWDISK\fP, \fBCCISS_REGNEWD\fP
+这些操作都做完全相同的事情，就是让驱动程序重新扫描新设备。 这与写入 \fBsmartpqi\fP\-specific 主机 \fIrescan\fP 属性完全相同。
+.TP 
+\fBCCISS_GETPCIINFO\fP
+此操作返回 PCI 域、总线、设备以及函数和 "board ID" (PCI 子系统 ID)。
+.TP 
+\fBCCISS_GETDRIVVER\fP
+此操作以四个字节返回驱动程序版本，编码为:
+.IP
+.in +4n
+.EX
+(主要版本 << 28) | (次要版本 << 24) |
+        (发布 << 16) | 修订
+.EE
+.in
+.TP 
+\fBCCISS_PASSTHRU\fP
+允许将 BMIC 和 CISS 命令传递到控制器。
+.SS "Boot options"
+.TP 
+\fBdisable_device_id_wildcards=\fP{\fB0\fP|\fB1\fP}
+禁用对设备 ID 通配符的支持。 默认值为 0.
+.TP 
+\fBdisable_heartbeat=\fP{\fB0\fP|\fB1\fP}
+禁用对控制器心跳检查的支持。 此参数用于调试目的。 默认值为 0，使控制器的心跳检查保持活动状态。
+.TP 
+\fBdisable_ctrl_shutdown=\fP{\fB0\fP|\fB1\fP}
+在控制器锁定的情况下禁用对关闭控制器的支持。 默认值为 0.
+.TP 
+\fBlockup_action=\fP{\fBnone\fP|\fBreboot\fP|\fBpanic\fP}
+指定检测到控制器锁定时驱动程序采取的操作。 默认操作是 \fBnone\fP。
+.TS
+l l
+---
+l l.
+parameter	action
+\fBnone\fP	take controller offline only
+\fBreboot\fP	reboot the system
+\fBpanic\fP	panic the system
+.TE
+.TP 
+\fBexpose_ld_first=\fP{\fB0\fP|\fB1\fP}
+此选项支持在物理设备之前向操作系统公开逻辑设备。 默认值为 0.
+.TP 
+\fBhide_vsep=\fP{\fB0\fP|\fB1\fP}
+此选项启用禁止向主机公开虚拟 SEP。 这通常与直接连接的驱动器相关联。 默认值为 0.
+.SH FILES
+.SS "Device nodes"
+通过 SCSI 磁盘驱动程序 (\fIsd\fP) 访问逻辑驱动器，通过 SCSI 磁带驱动程序 (\fIst\fP) 访问磁带驱动器，通过 SCSI 泛型驱动程序
+(\fIsg\fP) 访问 RAID 控制器，设备节点分别命名为 \fI/dev/sd\fP*、\fI/dev/st\fP* 和 \fI/dev/sg\fP*。
+.SS "SmartPQI\-specific host attribute files in \f[BI]/sys\fB"
+.TP 
+\fI/sys/class/scsi_host/host\fP*\fI/rescan\fP
+主机 \fIrescan\fP 属性是只写属性。 写入此属性将导致驱动程序扫描新的、更改的或删除的设备 (例如，热插拔磁带驱动器，或新配置或删除的逻辑驱动器)
+并通知 SCSI 中间层检测到的任何更改。 通常此操作由配置更改自动触发，因此用户通常不必写入此文件。 当热插拔设备
+(如磁带驱动器或包含预配置逻辑驱动器的整个存储 boxes) 时，这样做可能很有用。
+.TP 
+\fI/sys/class/scsi_host/host\fP*\fI/version\fP
+主机 \fIversion\fP 属性是只读属性。 该属性包含驱动程序版本和控制器固件版本。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_host/host1/version\fP
+驱动程序: 1.1.2\-126
+固件: 1.29\-112
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_host/host\fP*\fI/lockup_action\fP
+主机 \fIlockup_action\fP 属性是 read/write 属性。
+在检测到控制器锁定的不太可能发生的情况下，此属性将导致驱动程序执行特定操作。 有关 \fIlockup_action\fP 值的说明，请参见上面的
+\fBOPTIONS\fP。
+.TP 
+\fI/sys/class/scsi_host/host*/driver_version\fP
+\fIdriver_version\fP 属性是只读的。 此属性包含 smartpqi 驱动程序版本。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_host/host1/driver_version\fP
+1.1.2\-126
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_host/host*/firmware_version\fP
+\fIfirmware_version\fP 属性是只读的。 该属性包含控制器固件版本。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_host/host1/firmware_version\fP
+1.29\-112
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_host/host*/model\fP
+\fImodel\fP 属性是只读的。 该属性包含控制器的产品标识字符串。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_host/host1/model\fP
+1100\-16i
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_host/host*/serial_number\fP
+\fIserial_number\fP 属性是只读的。 该属性包含控制器的唯一标识号。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_host/host1/serial_number\fP
+6A316373777
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_host/host*/vendor\fP
+\fIvendor\fP 属性是只读的。 该属性包含控制器的供应商标识字符串。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_host/host1/vendor\fP
+Adaptec
+.EE
+.in
+.SS "SmartPQI\-specific disk attribute files in \f[BI]/sys\fB"
+在下面的文件说明中，\fIc\fP 代表相应的 SCSI 控制器的编号，\fIb\fP 是总线编号，\fIt\fP 是目标编号，\fIl\fP 是逻辑元编号 (LUN)。
+.TP 
+\fI/sys/class/scsi_disk/\fPc\fI:\fPb\fI:\fPt\fI:\fPl\fI/device/raid_level\fP
+\fIraid_level\fP 属性是只读的。 该属性包含每个逻辑驱动器的 RAID 级别。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_disk/4:0:0:0/device/raid_level\fP
+RAID 0
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_disk/c\fP:\fIb\fP:\fIt\fP:\fIl/device/sas_address\fP
+\fIsas_address\fP 属性是只读的。 该属性包含磁盘的唯一标识符。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_disk/1:0:3:0/device/sas_address\fP
+0x5001173d028543a2
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_disk/c\fP:\fIb\fP:\fIt\fP:\fIl/device/ssd_smart_path_enabled\fP
+\fIssd_smart_path_enabled\fP 属性是只读的。 此属性适用于启用了 ioaccel 的卷。 (Ioaccel
+是另一种驱动程序提交路径，它允许驱动程序绕过控制器固件将 I/O 请求直接发送到后端 SCSI 设备。这会提高性能。此方法用于 HBA 磁盘和由 SSD
+组成的逻辑卷。) 如果为卷启用了 ioaccel，则包含 1，否则包含 0。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/class/scsi_disk/1:0:3:0/device/ssd_smart_path_enabled\fP
+0
+.EE
+.in
+.SH VERSIONS
+在 Linux 4.9 中添加了 \fBsmartpqi\fP 驱动程序。
+.SH NOTES
+.SS Configuration
+要配置 Microsemi 智能系列控制器，请参见控制器的用户指南，可通过在
+.UR https://storage.microsemi.com/
+.UE .
+搜索特定控制器找到该指南
+.SH "SEE ALSO"
+\fBcciss\fP(4), \fBhpsa\fP(4), \fBsd\fP(4), \fBst\fP(4)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/ABI/testing/sysfs\-bus\-pci\-devices\-cciss\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

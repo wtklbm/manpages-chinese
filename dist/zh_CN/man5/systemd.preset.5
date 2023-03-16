@@ -1,0 +1,196 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.PRESET 5 "" "systemd 253" systemd.preset
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.preset \- 服务启用预设
+.SH SYNOPSIS
+.PP
+/etc/systemd/system\-preset/*\&.preset
+.PP
+/run/systemd/system\-preset/*\&.preset
+.PP
+/usr/lib/systemd/system\-preset/*\&.preset
+.PP
+/etc/systemd/user\-preset/*\&.preset
+.PP
+/run/systemd/user\-preset/*\&.preset
+.PP
+/usr/lib/systemd/user\-preset/*\&.preset
+.SH DESCRIPTION
+.PP
+预设文件可用于编码策略，哪些单元应默认启用，哪些单元应禁用 \&。它们由 \fBsystemctl preset\fP 读取，\fBsystemctl preset\fP 使用此信息来启用或禁用元 \&。根据该策略，\fBsystemctl preset\fP 与 \fBsystemctl enable\fP 或
+\fBsystemctl disable\fP\& 相同。\fBsystemctl preset\fP 由 rpm 包 (或其他 OS 包格式)
+的安装后脚本使用，默认情况下在包安装时用于 enable/disable 特定单元，强制分发、自旋或管理员预设策略
+\&。这允许在安装实际包之前选择一组特定的单位为 enabled/disabled。有关详细信息，请参见 \fBsystemctl\fP(1)\&。
+.PP
+不建议在实现单元的各个软件包中传送预设文件，而是将它们集中在分发或旋转默认策略中，这可以由管理员策略修改，见下文 \&。
+.PP
+如果不存在预置文件，预置操作将启用所有默认安装的单元 \&。如果不希望这样做并且所有单元都应该被禁用，则有必要发送一个带有单个、包罗万象的
+"disable *" 行 \& 的预设文件。(参见下面的示例 1\&。)
+.PP
+机器第一次开机时，\fBsystemd\fP(1) 会根据预设策略 enable/disable 所有单元，类似 \fBsystemctl preset\-all\fP\&。另见 \fBmachine\-id\fP(5)\& 中的 "First Boot Semantics"。
+.SH "PRESET FILE FORMAT"
+.PP
+预设文件包含一个指令列表，由单词 "enable" 或 "disable" 后跟一个空格和一个元名称 (可能带有 shell 样式的通配符)
+组成，由换行符 \& 分隔。空行和第一个非空白字符为 "#" 或 ";" 的行将被忽略 \&。元模板的多个实例名称可以指定为行尾的空格分隔列表，而不是
+"@" 和元后缀 \& 之间的习惯位置。
+.PP
+预设必须引用 "real" 元文件，而不是任何别名 \&。有关元别名 \& 的说明，请参见 \fBsystemd.unit\fP(5)。
+.PP
+可以理解两个不同的指令: "enable" 可用于默认启用单元，"disable" 可用于默认禁用单元 \&。
+.PP
+如果多行应用于元名称，则第一个匹配的优先于所有其他 \&。
+.PP
+每个预置文件的命名格式为 <priority>\-<policy\-name>\&.preset\&。/etc/
+中的文件覆盖 /usr/lib/ 和 /run/\& 中的同名文件。/run/ 中的文件覆盖 /usr/lib/\& 中的同名文件。软件包应该在
+/usr/lib/\& 中安装它们的预设文件。/etc/ 中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的预设文件
+\&。所有预设文件都按字典顺序按文件名排序，无论它们位于哪个目录 \&。如果多个文件指定了相同的元名称，则应用字典中最早名称的文件中的条目
+\&。建议在所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+如果管理员想要禁用供应商提供的预设文件，推荐的方法是在 /etc/systemd/system\-preset/ 中放置一个指向 /dev/null
+的符号链接，具有相同的文件名 \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Default to off\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/systemd/system\-preset/99\-default\&.preset
+
+disable *
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将禁用所有单元 \&。由于文件名前缀 "99\-"，它将被最后读取，因此可以很容易地被旋转或管理员预设策略覆盖。
+.PP
+\fBExample\ \&2.\ \&Enable multiple template instances\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/systemd/system\-preset/80\-dirsrv\&.preset
+
+启用 dirsrv@\&.service foo bar baz
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将启用所有三个 dirsrv@foo\&.service、dirsrv@bar\&.service 和 dirsrv@baz\&.service\&。
+.PP
+\fBExample\ \&3.\ \&A GNOME spin\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/systemd/system\-preset/50\-gnome\&.preset
+
+启用 gdm\&.service
+启用 colord\&.service
+启用 accounts\-daemon\&.service
+启用 avahi\-daemon\&.*
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将启用上述三个单元，以及所有 avahi\-daemon，无论是哪种元类型 \&。像这样的文件对于包含在分发的 GNOME 旋转中很有用 \&。它将确保
+GNOME 所需的单元在安装时正确启用 \&。它保持所有其他单元不变，并受其他 (later) 预设文件的影响，例如上面第一个示例中的 \&。
+.PP
+\fBExample\ \&4.\ \&Administrator policy\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /etc/systemd/system\-preset/00\-lennart\&.preset
+
+启用 httpd\&.service
+启用 sshd\&.service
+启用 postfix\&.service
+disable  *
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将启用三个特定服务并禁用所有其他服务 \&。这对于管理员专门选择要启用的单元和禁用所有其他单元很有用 \&。由于文件名前缀为
+"00\-"，它将被提前读取并覆盖所有其他预设策略文件 \&。
+.SH "MOTIVATION FOR THE PRESET LOGIC"
+.PP
+不同的发行版有不同的策略，在安装它们所附带的包时默认启用哪些服务 \&。在 Fedora
+上，默认情况下所有服务都处于关闭状态，因此安装软件包不会导致启用服务 (有一些例外) \&。在 Debian
+上，默认情况下所有服务都是立即启用的，因此安装软件包将导致其服务立即启用 \&。
+.PP
+即使在单个发行版中，发行版的不同旋转 (口味、混音，任何您可能想要调整它们的东西) 在启用哪些服务以及停止哪些服务方面也有不同的策略
+\&。例如，Fedora Workstation 默认启用 \fBgdm\fP 作为显示管理器，而 Fedora KDE spin 将启用
+\fBsddm\fP\&。
+.PP
+不同的站点也可能有不同的政策，哪些默认打开，哪些关闭 \&。例如，一位管理员更愿意强制执行 "\fBsshd\fP 应始终打开的策略，但其他所有内容都关闭
+`，而另一位管理员可能会说 "\fBsnmpd\fP 始终打开，而对于其他所有内容，请使用分发策略默认值`\&。
+.PP
+传统上，关于应启用哪些服务的策略是在每个包中单独实现的。这使得每次旋转或每个站点实现不同的策略，或者创建在多个发行版上做正确事情的软件包变得很麻烦。启用机制也在编码启用策略
+\&。
+.PP
+预设机制允许完全分离启用机制 (在包 scriptlet 内，通过调用 \fBsystemctl preset\fP) 和启用策略
+(集中在预设文件中)，并将配置从单个包中提取出来 \&。可以为特定发行版、特定旋转或特定站点编写预设文件，以便根据需要执行不同的策略
+\&。建议应用包安装 scriptlets 中预设文件中编码的策略。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd\-delta\fP(1)
+.PP
+\fBdaemon\fP(7) 有关于打包 scriptlet\& 的讨论。
+.PP
+Fedora 页面介绍预设的使用: \m[blue]\fBFeatures/PackagePresets\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.SH NOTES
+.IP " 1." 4
+Features/PackagePresets
+.RS 4
+\%https://fedoraproject.org/wiki/Features/PackagePresets
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,290 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: rtcwake
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RTCWAKE 8 2022\-05\-11 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+rtcwake \- 进入系统睡眠状态直到指定的唤醒时间
+.SH SYNOPSIS
+.sp
+\fBrtcwake\fP [options] [\fB\-d\fP \fIdevice\fP] [\fB\-m\fP \fIstandby_mode\fP] {\fB\-s\fP
+\fIseconds\fP|\fB\-t\fP \fItime_t\fP}
+.SH DESCRIPTION
+.sp
+该程序用于进入系统睡眠状态并在指定时间自动唤醒。
+.sp
+使用跨平台 Linux 接口进入系统休眠状态，不迟于指定时间离开。它使用任何支持标准驱动程序模型唤醒标志的 RTC 框架驱动程序。
+.sp
+这通常像旧的 \fBapmsleep\fP 实用程序一样用于从 ACPI S1 (standby) 或 S3 (suspend\-to\-RAM)
+等挂起状态唤醒。大多数平台都可以实现那些没有 BIOS、APM 或 ACPI 类似物的平台。
+.sp
+在某些系统上，这也可以像 \fBnvram\-wakeup\fP 一样使用，从 ACPI S4 (挂起到磁盘)
+等状态唤醒。并非所有系统都具有适用于此类挂起模式的持久性媒体。
+.sp
+请注意，警报功能取决于硬件; 并非每个 RTC 都能在 future 中设置长达 24 小时的闹钟。
+.sp
+挂起设置可能会被活动的硬件中断; 例如无线 USB 输入设备在按下返回键后继续发送事件几分之一秒。\fBrtcwake\fP
+试图避免这个问题，它在进入系统睡眠之前等待终端稳定下来。
+.SH OPTIONS
+.sp
+\fB\-A\fP, \fB\-\-adjfile\fP \fIfile\fP
+.RS 4
+指定调整文件的替代路径。
+.RE
+.sp
+\fB\-a\fP, \fB\-\-auto\fP
+.RS 4
+从 \fIadjtime\fP 文件中读取时钟模式 (无论硬件时钟设置为 UTC 还是本地时间)，\fBhwclock\fP(8)
+文件在其中存储该信息。这是默认设置。
+.RE
+.sp
+\fB\-\-date\fP \fItimestamp\fP
+.RS 4
+将唤醒时间设置为时间戳的值。时间戳的格式可以是以下任何一种:
+.RE
+.TS
+allbox tab(:);
+lt lt.
+T{
+.sp
+YYYYMMDDhhmmss
+T}:T{
+.sp
+
+T}
+T{
+.sp
+YYYY\-MM\-DD hh:mm:ss
+T}:T{
+.sp
+
+T}
+T{
+.sp
+YYYY\-MM\-DD hh:mm
+T}:T{
+.sp
+(seconds will be set to 00)
+T}
+T{
+.sp
+YYYY\-MM\-DD
+T}:T{
+.sp
+(time will be set to 00:00:00)
+T}
+T{
+.sp
+hh:mm:ss
+T}:T{
+.sp
+(date will be set to today)
+T}
+T{
+.sp
+hh:mm
+T}:T{
+.sp
+(date will be set to today, seconds to 00)
+T}
+T{
+.sp
+tomorrow
+T}:T{
+.sp
+(time is set to 00:00:00)
+T}
+T{
+.sp
++5min
+T}:T{
+.sp
+
+T}
+.TE
+.sp
+.sp
+\fB\-d\fP, \fB\-\-device\fP \fIdevice\fP
+.RS 4
+使用指定的 \fIdevice\fP 而不是 \fBrtc0\fP 作为实时时钟。此选项仅在您的系统具有多个 RTC 时才相关。您可以指定
+\fBrtc1\fP、\fBrtc2\fP、... here.
+.RE
+.sp
+\fB\-l\fP, \fB\-\-local\fP
+.RS 4
+假设硬件时钟设置为本地时间，而不考虑 \fIadjtime\fP 文件的内容。
+.RE
+.sp
+\fB\-\-list\-modes\fP
+.RS 4
+列出可用的 \fB\-\-mode\fP 选项参数。
+.RE
+.sp
+\fB\-m\fP, \fB\-\-mode\fP \fImode\fP
+.RS 4
+进入给定的待机状态。\fImode\fP 的有效值为:
+.sp
+\fBstandby\fP
+.RS 4
+ACPI 状态 S1。这种状态提供了最小但真实的节能，同时提供了一个非常低的延迟转换回工作系统。这是默认模式。
+.RE
+.sp
+\fBfreeze\fP
+.RS 4
+进程被冻结，所有设备都被挂起，所有处理器都处于空闲状态。这种状态是一种通用状态，不需要任何特定于平台的支持，但它比 Suspend\-to\-RAM
+更省电，因为系统仍处于运行状态。(自 Linux 3.9 起可用。)
+.RE
+.sp
+\fBmem\fP
+.RS 4
+ACPI 状态 S3
+(Suspend\-to\-RAM)。此状态可显着节省电量，因为系统中的所有内容都处于低功耗状态，但内存除外，内存处于自刷新模式以保留其内容。
+.RE
+.sp
+\fBdisk\fP
+.RS 4
+ACPI 状态 S4
+(Suspend\-to\-disk)。这种状态提供了最大的节能效果，即使在没有底层平台支持电源管理的情况下也可以使用。此状态的操作类似于
+Suspend\-to\-RAM，但包括将内存内容写入磁盘的最后一步。
+.RE
+.sp
+\fBoff\fP
+.RS 4
+ACPI 状态 S5 (Poweroff)。这是通过调用 \(aq/shutdown\(aq. 不受 ACPI 官方支持，但它通常有效。
+.RE
+.sp
+\fBno\fP
+.RS 4
+Don\(cqt suspend，只设置 RTC 唤醒时间。
+.RE
+.sp
+\fBon\fP
+.RS 4
+不要 \(cqt 挂起，但读取 RTC 设备直到出现闹钟时间。此模式对调试很有用。
+.RE
+.sp
+\fBdisable\fP
+.RS 4
+禁用先前设置的警报。
+.RE
+.sp
+\fBshow\fP
+.RS 4
+以格式打印告警信息: "alarm: off|on <time>". 时间为 ctime() 输出格式，如 "alarm: on Tue
+Nov 16 04:48:45 2010"。
+.RE
+.RE
+.sp
+\fB\-n\fP, \fB\-\-dry\-run\fP
+.RS 4
+除了实际设置警报、暂停系统或等待警报之外，此选项会执行所有操作。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-seconds\fP \fIseconds\fP
+.RS 4
+从现在开始在 future 中将唤醒时间设置为 \fIseconds\fP。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-time\fP \fItime_t\fP
+.RS 4
+将唤醒时间设置为绝对时间 \fItime_t\fP。\fItime_t\fP 是自 1970\-01\-01 00:00 UTC 以来的秒数。使用 \fBdate\fP(1)
+工具在人类可读时间和 \fItime_t\fP 之间进行转换。
+.RE
+.sp
+\fB\-u\fP, \fB\-\-utc\fP
+.RS 4
+假设无论 \fIadjtime\fP 文件的内容如何，硬件时钟都设置为 UTC (协调世界时)。
+.RE
+.sp
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+冗长。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH NOTES
+.sp
+某些 PC 系统可以 \(cqt 当前仅使用此驱动程序访问的内核代码退出 \fBmem\fP 等睡眠状态。他们需要用户空间代码的帮助才能使帧缓冲区再次工作。
+.SH FILES
+.sp
+\fI/etc/adjtime\fP
+.SH HISTORY
+.sp
+该程序在 GIT 提交 87ac84f42a7a580d0dd72ae31d6a5eb4bfe04c6d 中出现在 Linux 2.6
+的内核提交消息中之前已多次发布在 LKML 和其他列表上。
+.SH AUTHORS
+.sp
+该程序由
+.MTO dbrownell\(atusers.sourceforge.net "David Brownell" ""
+并改进了
+.MTO bwalle\(atsuse.de "Bernhard Walle" .
+.SH COPYRIGHT
+.sp
+这是免费软件。您可以根据以下条款重新分发它的副本
+.URL http://www.gnu.org/licenses/gpl.html "GNU General Public License" .
+在法律允许的范围内，不提供任何保证。
+.SH "SEE ALSO"
+.sp
+\fBadjtime_config\fP(5), \fBhwclock\fP(8), \fBdate\fP(1)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBrtcwake\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

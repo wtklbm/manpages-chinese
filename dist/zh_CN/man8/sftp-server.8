@@ -1,0 +1,169 @@
+.\" -*- coding: UTF-8 -*-
+.\" $OpenBSD: sftp-server.8,v 1.31 2021/07/27 14:14:25 jmc Exp $
+.\"
+.\" Copyright (c) 2000 Markus Friedl.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: July 27 2021 $
+.Dt SFTP-SERVER 8
+.Os
+.Sh NAME
+.Nm sftp-server
+.Nd OpenSSH SFTP server subsystem
+.Sh SYNOPSIS
+.Nm sftp-server
+.Bk -words
+.Op Fl ehR
+.Op Fl d Ar start_directory
+.Op Fl f Ar log_facility
+.Op Fl l Ar log_level
+.Op Fl P Ar denied_requests
+.Op Fl p Ar allowed_requests
+.Op Fl u Ar umask
+.Ek
+.Nm
+.Fl Q Ar protocol_feature
+.Sh DESCRIPTION
+.Nm
+是一个程序，它向 stdout 发送 SFTP 协议的服务器端，并期望来自 stdin 的客户端请求。
+.Nm
+不打算直接调用，而是使用
+.Cm Subsystem
+选项从
+.Xr sshd 8
+调用。
+.Pp
+.Nm
+的命令行标志应在
+.Cm Subsystem
+声明中指定。 有关更多信息，请参见
+.Xr sshd_config 5
+。
+.Pp
+有效选项是:
+.Bl -tag -width Ds
+.It Fl d Ar start_directory
+为用户指定备用起始目录。 路径名可能包含以下在运行时展开的 tokens: %% 替换为字符 '%'，%d 替换为被验证用户的主目录，%u
+替换为该用户的用户名。 默认是使用用户的主目录。 此选项与
+.Xr sshd_config 5
+.Cm ChrootDirectory
+选项结合使用很有用。
+.It Fl e
+导致
+.Nm
+将日志记录信息打印到标准错误而不是系统日志以进行调试。
+.It Fl f Ar log_facility
+指定记录来自
+.Nm
+的消息时使用的设施代码。 可能的值为:
+DAEMON、USER、AUTH、LOCAL0、LOCAL1、LOCAL2、LOCAL3、LOCAL4、LOCAL5、LOCAL6、LOCAL7。
+默认为授权。
+.It Fl h
+显示
+.Nm
+使用信息。
+.It Fl l Ar log_level
+指定
+.Nm
+将记录哪些消息。 可能的值为: QUIET、FATAL、ERROR、INFO、VERBOSE、DEBUG、DEBUG1、DEBUG2
+和 DEBUG3。 INFO 和 VERBOSE 记录
+.Nm
+代表客户执行的事务。 DEBUG 和 DEBUG1 是等价的。 DEBUG2 和
+DEBUG3 各自指定更高级别的调试输出。 默认值为错误。
+.It Fl P Ar denied_requests
+指定服务器禁止的 SFTP 协议请求的逗号分隔列表。
+.Nm
+将以失败回复任何被拒绝的请求。
+.Fl Q
+标志可用于确定支持的请求类型。
+如果同时指定了拒绝列表和允许列表，则拒绝列表将在允许列表之前应用。
+.It Fl p Ar allowed_requests
+指定服务器允许的 SFTP 协议请求的逗号分隔列表。 不在允许列表中的所有请求类型都将被记录并用失败消息回复。
+.Pp
+使用此特性时必须小心，以确保允许 SFTP 客户端隐式发出的请求。
+.It Fl Q Ar protocol_feature
+查询
+.Nm
+支持的协议特性。 目前唯一可以查询的特性是
+.Dq requests
+，它可以用来拒绝或允许特定的请求 (分别标记
+.Fl P
+和
+.Fl p )
+。
+.It Fl R
+将此
+.Nm
+实例置于只读模式。 尝试打开文件进行写入以及其他更改文件系统状态的操作都将被拒绝。
+.It Fl u Ar umask
+设置显式
+.Xr umask 2
+以应用于新创建的文件和目录，而不是用户的默认掩码。
+.El
+.Pp
+在某些系统上，
+.Nm
+必须能够访问
+.Pa /dev/log
+才能进行日志记录，因此在 chroot 配置中使用
+.Nm
+需要
+.Xr syslogd 8
+在 chroot 目录内建立一个日志记录套接字。
+.Sh SEE ALSO
+.Xr sftp 1 ,
+.Xr ssh 1 ,
+.Xr sshd_config 5 ,
+.Xr sshd 8
+.Rs
+.%A T. Ylonen
+.%A S. Lehtinen
+.%T "SSH File Transfer Protocol"
+.%N draft-ietf-secsh-filexfer-02.txt
+.%D October 2001
+.%O work in progress material
+.Re
+.Sh HISTORY
+.Nm
+最早出现在
+.Ox 2.8
+。
+.Sh AUTHORS
+.An Markus Friedl Aq Mt markus@openbsd.org
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

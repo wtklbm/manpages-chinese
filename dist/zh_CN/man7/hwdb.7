@@ -1,0 +1,187 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH HWDB 7 "" "systemd 253" hwdb
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+hwdb \- 硬件数据库
+.SH DESCRIPTION
+.PP
+硬件数据库是一个键值存储，用于将类似 modalias 的键与类似 udev\-property 的值关联起来 \&。它主要由 udev
+用于为匹配的设备添加相关属性，但也可以直接查询 \&。
+.SH "HARDWARE DATABASE FILES"
+.PP
+hwdb 文件是从位于系统 hwdb 目录 /usr/lib/udev/hwdb\&.d 和本地管理目录 /etc/hwdb\&.d\&
+的文件中读取的。所有 hwdb 文件都按词法顺序统一排序和处理，而不管它们所在的目录 \&。但是，具有相同文件名的文件会相互替换 \&。/etc/
+中的文件具有最高优先级，并优先于 /usr/lib/\& 中的同名文件。如果需要，这可用于使用本地文件覆盖系统提供的 hwdb 文件; /etc/
+中的符号链接与 /usr/lib/ 中的 hwdb 文件同名，指向 /dev/null，完全禁用该 hwdb 文件 \&。hwdb 文件必须有扩展名
+\&.hwdb; 其他扩展被忽略 \&。
+.PP
+每个 hwdb 文件都包含由匹配项和关联的键值对组成的数据记录 \&。hwdb 中的每条记录都以一个或多个匹配字符串开头，指定一个 shell glob
+以将查找字符串与 \& 进行比较。在连续行 \& 中指定了多个匹配行。每条匹配线单独比较，并通过 OR\& 组合。每个匹配行必须从该行的第一个字符 \&
+开始。
+.PP
+匹配模式由字面量字符和 shell 风格的通配符组成:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Asterisk "*" 匹配任意数量的字符
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+问号 "?" 匹配单个字符
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+字符列表 "[\fIchars\fP]" 匹配 "[" 和 `]`\& 之间列出的字符 \fIchars\fP 之一。范围可以用短划线指定为
+"[\fIfirst\fP\-\fIlast\fP]"\&。匹配可以用插入符 `[^\&...]`\& 反转。
+.RE
+.PP
+匹配行后跟一个或多个键值对行，这些行由前导空格字符 \& 识别。键名和值之间用 `=`\& 分隔。空行表示记录结束 \&。以 "#" 开头的行将被忽略
+\&。
+.PP
+如果多个记录与给定的查找字符串匹配，则所有记录的键值对被组合 \&。如果多次指定一个键，则使用优先级最高的记录中的值 (每个键只能有一个值)
+\&。当记录在按字典顺序排序靠后的文件中时，优先级更高，并且在同一文件中的记录的情况下，靠后的记录具有更高的优先级 \&。
+.PP
+所有 hwdb 文件的内容由 \fBsystemd\-hwdb\fP(8) 读取并编译为位于 /etc/udev/hwdb\&.bin
+的二进制数据库，或者如果您希望将编译后的数据库以不可更改的映像 \& 发送，则可以选择
+/usr/lib/udev/hwdb\&.bin。在运行时，只使用二进制数据库 \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&General syntax of hwdb files\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/udev/hwdb\&.d/example\&.hwdb
+# 评论可以放在任何记录之前 \&。这是个好地方
+# 描述该文件的用途，什么样的属性
+# 它定义了排序约定 \&。
+
+# 三场比赛和一项财产的记录
+mouse:*:name:*Trackball*:*
+mouse:*:name:*trackball*:*
+mouse:*:name:*TrackBall*:*
+ ID_INPUT_TRACKBALL=1
+
+# 上面的规则也可以写成这样的形式
+# matches Tb, tb, TB, tB:
+mouse:*:name:*[tT]rack[bB]all*:*
+ ID_INPUT_TRACKBALL=1
+
+# 具有单个匹配项和五个属性的记录
+mouse:usb:v046dp4041:name:Logitech MX Master:*
+ MOUSE_DPI=1000@166
+ MOUSE_WHEEL_CLICK_ANGLE=15
+ MOUSE_WHEEL_CLICK_ANGLE_HORIZONTAL=26
+ MOUSE_WHEEL_CLICK_COUNT=24
+ MOUSE_WHEEL_CLICK_COUNT_HORIZONTAL=14
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Overriding of properties\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/udev/hwdb\&.d/60\-keyboard\&.hwdb
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer*:pn*:*
+ KEYBOARD_KEY_a1=help
+ KEYBOARD_KEY_a2=setup
+ KEYBOARD_KEY_a3=battery
+
+# 匹配供应商名称 "Acer" 和任何以 "X123" 开头的产品名称
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnAcer:pnX123*:*
+ KEYBOARD_KEY_a2=wlan
+
+# /etc/udev/hwdb\&.d/70\-keyboard\&.hwdb
+# 在所有键盘上禁用 wlan 键
+evdev:atkbd:*
+ KEYBOARD_KEY_a2=reserved
+ PROPERTY_WITH_SPACES=some string
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+如果 hwdb 由这两个文件组成，则具有查找字符串
+"evdev:atkbd:dmi:bvnAcer:bdXXXXX:bd08/05/2010:svnAcer:pnX123"
+的键盘将匹配所有三个记录，并以以下属性结束:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+KEYBOARD_KEY_a1=help
+KEYBOARD_KEY_a2=reserved
+KEYBOARD_KEY_a3=battery
+PROPERTY_WITH_SPACES=some string
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-hwdb\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

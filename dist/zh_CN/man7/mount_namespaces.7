@@ -1,0 +1,861 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2016, 2019, 2021 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mount_namespaces 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+mount_namespaces\-Linux 挂载命名空间概述
+.SH DESCRIPTION
+有关名称空间的概述，请参见 \fBnamespaces\fP(7)。
+.PP
+挂载命名空间提供了每个命名空间实例中的进程看到的挂载列表的隔离。 因此，每个挂载命名空间实例中的进程将看到不同的单目录层次结构。
+.PP
+\fI/proc/\fPpid\fI/mounts\fP、\fI/proc/\fPpid\fI/mountinfo\fP、\fI/proc/\fPpid\fI/mountstats\fP
+文件提供的视图 (\fBproc\fP(5)) 中描述的都对应 PID 为 \fIpid\fP 的进程所在的挂载命名空间。
+(驻留在同一挂载命名空间中的所有进程将在这些文件中看到相同的视图。)
+.PP
+使用带有 \fBCLONE_NEWNS\fP 标志的 \fBclone\fP(2) 或 \fBunshare\fP(2) 创建一个新的挂载命名空间。
+当一个新的挂载命名空间被创建时，它的挂载列表被初始化如下:
+.IP \[bu] 3
+如果命名空间是使用 \fBclone\fP(2) 创建的，则子进程的命名空间的挂载列表是父进程的挂载命名空间中的挂载列表的副本。
+.IP \[bu]
+如果命名空间是使用 \fBunshare\fP(2) 创建的，则新命名空间的挂载列表是调用者之前的挂载命名空间中的挂载列表的副本。
+.PP
+.\"
+在任一挂载命名空间中对挂载列表 (\fBmount\fP(2) 和 \fBumount\fP(2)) 的后续修改将不会 (默认情况下)
+影响在另一个命名空间中看到的挂载列表 (但请参见以下共享子树的讨论)。
+.SH "SHARED SUBTREES"
+mount namespaces 的实现完成后，经验表明它们提供的隔离在某些情况下太大了。
+例如，为了使新加载的光盘在所有挂载命名空间中可用，需要在每个命名空间中进行挂载操作。 对于此用例和其他用例，在 Linux 2.6.15
+中引入了共享子树，特性。 此特性允许 \fBmount\fP(2) 和 \fBumount\fP(2) \fIevents\fP 在命名空间之间自动、受控地传播
+(或者更准确地说，在作为 \fIpeer group\fP 的成员的挂载之间传播事件)。
+.PP
+每个安装都被标记 (通过 \fBmount\fP(2)) 具有以下 \fIpropagation types\fP: 之一
+.TP 
+\fBMS_SHARED\fP
+此安装与对等组的成员共享事件。 紧接此安装下的 \fBmount\fP(2) 和 \fBumount\fP(2) 事件将传播到作为对等组成员的其他安装。 这里的
+\fIPropagation\fP 意味着相同的 \fBmount\fP(2) 或 \fBumount\fP(2) 将自动出现在对等组中的所有其他挂载下。
+相反，在对等挂载下发生的 \fBmount\fP(2) 和 \fBumount\fP(2) 事件将传播到此挂载。
+.TP 
+\fBMS_PRIVATE\fP
+这个坐骑是 private; 它没有对等组。 \fBmount\fP(2) 和 \fBumount\fP(2) 事件不会传入或传出此安装。
+.TP 
+\fBMS_SLAVE\fP
+\fBmount\fP(2) 和 \fBumount\fP(2) 事件从 (master) 共享对等组传播到此装载中。 此装载下的 \fBmount\fP(2) 和
+\fBumount\fP(2) 事件不会传播到任何对等点。
+.IP
+请注意，挂载可以是另一个对等组的从属，同时与它所属的对等组共享 \fBmount\fP(2) 和 \fBumount\fP(2) 事件。
+(更准确地说，一个对等组可以是另一个对等组的从属。)
+.TP 
+\fBMS_UNBINDABLE\fP
+这就像一个私有挂载，此外这个挂载不能绑定挂载。 尝试使用 \fBMS_BIND\fP 标志绑定挂载此挂载 (\fBmount\fP(2)) 将会失败。
+.IP
+当在目录子树上执行递归绑定安装 (\fBmount\fP(2) (带有 \fBMS_BIND\fP 和 \fBMS_REC\fP 标志)
+时，在复制该子树以生成目标子树时，子树内的任何绑定安装都会自动修剪 (即不复制)。
+.PP
+有关分配给新安装的传播类型的讨论，请参见注释。
+.PP
+传播类型是每个挂载点设置; 一些挂载可能被标记为共享 (每个共享挂载都是不同对等组的成员)，而其他挂载是私有的 (或从属或不可绑定)。
+.PP
+请注意，挂载的传播类型决定是否传播挂载 \fIimmediately under\fP 的 \fBmount\fP(2) 和 \fBumount\fP(2)。
+因此，传播类型不会影响孙子和进一步移除的后代坐骑的事件传播。 如果挂载本身被卸载，会发生什么情况取决于对挂载的 \fIparent\fP 有效的传播类型。
+.PP
+当挂载标记为共享时，成员将添加到 \fIpeer group\fP，并且:
+.IP (a) 5
+在创建新的挂载命名空间期间复制挂载; or
+.IP (b)
+从挂载创建一个新的绑定挂载。
+.PP
+在这两种情况下，新挂载都会加入现有挂载所属的对等组。
+.PP
+当在标记为共享的现有挂载下创建子挂载时，也会创建一个新的对等组。
+在这种情况下，新的子挂载也被标记为共享，并且生成的对等组包含在父挂载的对等体下复制的所有挂载。
+.PP
+当挂载被显式卸载时，或者当挂载因为挂载命名空间被删除 (因为它没有更多成员进程) 而隐式卸载时，挂载不再是对等组的成员。
+.PP
+可以通过 \fI/proc/\fPpid\fI/mountinfo\fP 中公开的 "optional fields" 发现挂载命名空间中挂载的传播类型。
+(有关此文件的详细信息，请参见 \fBproc\fP(5)。) 以下标记可以出现在该文件中记录的可选字段中:
+.TP 
+\fIshared:X\fP
+此挂载在对等组 \fIX\fP 中共享。 每个对等组都有一个由内核自动生成的唯一 ID，同一对等组中的所有挂载都将显示相同的 ID。(这些 ID 从值 1
+开始分配，并且当对等组不再有任何成员时可能会被回收。)
+.TP 
+\fImaster:X\fP
+此安装是共享对等组 \fIX\fP 的从属。
+.TP 
+\fIpropagate_from:X\fP (since Linux 2.6.26)
+.\" commit 97e7e0f71d6d948c25f11f0a33878d9356d9579e
+这个挂载是一个从属并接收来自共享对等组 \fIX\fP 的传播。 此标签将始终与 \fImaster:X\fP 标签一起出现。 这里，\fIX\fP
+是进程根目录下最近的主导对等组。 如果 \fIX\fP 是挂载的 immediate master，或者如果同根下没有主导对等组，则只有
+\fImaster:X\fP 字段存在，而没有 \fIpropagate_from:X\fP 字段。 有关详细信息，请参见下文。
+.TP 
+\fIunbindable\fP
+这是一个不可绑定的坐骑。
+.PP
+如果以上标签都不存在，那么这是一个私有挂载。
+.SS "MS_SHARED and MS_PRIVATE example"
+假设在初始挂载命名空间中的一个终端上，我们将一个挂载标记为共享，另一个标记为私有，然后查看 \fI/proc/self/mountinfo\fP: 中的挂载
+.PP
+.in +4n
+.EX
+sh1# \fBmount \-\-make\-shared /mntS\fP
+sh1# \fBmount \-\-make\-private /mntP\fP
+sh1# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+77 61 8:17 / /mntS rw,relatime shared:1
+83 61 8:15 / /mntP rw,relatime
+.EE
+.in
+.PP
+从 \fI/proc/self/mountinfo\fP 输出中，我们看到 \fI/mntS\fP 是对等组 1 中的共享挂载，而 \fI/mntP\fP
+没有可选标签，表明它是私有挂载。 此文件中每条记录的前两个字段是此挂载的唯一 ID，以及父挂载的挂载 ID。
+我们可以进一步查看这个文件，\fI/mntS\fP 和 \fI/mntP\fP 的父挂载是根目录 \fI/\fP，挂载为 private:
+.PP
+.in +4n
+.EX
+sh1# \fBcat /proc/self/mountinfo | awk \[aq]$1 == 61\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+61 0 8:2//rw, 相关时间
+.EE
+.in
+.PP
+在第二个终端上，我们创建一个新的挂载命名空间，我们在其中运行第二个 shell 并检查挂载:
+.PP
+.in +4n
+.EX
+$ \fBPS1=\[aq]sh2# \[aq] sudo unshare \-m \-\-propagation unchanged sh\fP
+sh2# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+222 145 8:17//mntS rw，relatime 共享: 1
+225 145 8:15 / /mntP rw,relatime
+.EE
+.in
+.PP
+.\" Since util-linux 2.27
+新的挂载命名空间收到初始挂载命名空间的挂载副本。 这些新安装保持相同的传播类型，但具有唯一的安装 ID。
+(\fI\-\-propagation\~unchanged\fP 选项阻止 \fBunshare\fP(1)
+在创建新的挂载命名空间时将所有挂载标记为私有，默认情况下会这样做。)
+.PP
+在第二个终端中，我们然后在 \fI/mntS\fP 和 \fI/mntP\fP 中的每一个下创建 submounts 并检查设置:
+.PP
+.in +4n
+.EX
+sh2# \fBmkdir /mntS/a\fP
+sh2# \fBmount /dev/sdb6 /mntS/a\fP
+sh2# \fBmkdir /mntP/b\fP
+sh2# \fBmount /dev/sdb7 /mntP/b\fP
+sh2# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+222 145 8:17//mntS rw，relatime 共享: 1
+225 145 8:15 / /mntP rw,relatime
+178 222 8:22//mntS/a rw，relatime 共享: 2
+230 225 8:23 / /mntP/b rw,relatime
+.EE
+.in
+.PP
+从上面可以看出，\fI/mntS/a\fP 被创建为共享 (从其父挂载继承此设置)，\fI/mntP/b\fP 被创建为私有挂载。
+.PP
+返回第一个终端并检查设置，我们看到在共享挂载 \fI/mntS\fP 下创建的新挂载传播到其对等挂载 (在初始挂载命名空间中)，但在私有挂载 \fI/mntP\fP
+下创建的新挂载没有传播:
+.PP
+.in +4n
+.EX
+sh1# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+77 61 8:17 / /mntS rw,relatime shared:1
+83 61 8:15 / /mntP rw,relatime
+179 77 8:22//mntS/a rw，relatime 共享: 2
+.EE
+.in
+.\"
+.SS "MS_SLAVE example"
+将挂载设置为从属允许它从主共享对等组接收传播的 \fBmount\fP(2) 和 \fBumount\fP(2) 事件，同时防止它向该主传播事件。
+如果我们希望在主共享对等组 (在另一个挂载命名空间中) 挂载光盘时 (say) 接收挂载事件，但要防止从属挂载下的 \fBmount\fP(2) 和
+\fBumount\fP(2) 事件在其他命名空间中产生副作用，这将很有用.
+.PP
+我们可以通过首先在初始挂载命名空间中将两个挂载标记为共享来演示从属的效果:
+.PP
+.in +4n
+.EX
+sh1# \fBmount \-\-make\-shared /mntX\fP
+sh1# \fBmount \-\-make\-shared /mntY\fP
+sh1# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+132 83 8:23//mntX rw，relatime 共享: 1
+133 83 8:22//mntY rw，relatime 共享: 2
+.EE
+.in
+.PP
+在第二个终端上，我们创建一个新的挂载命名空间并检查挂载:
+.PP
+.in +4n
+.EX
+sh2# \fBunshare \-m \-\-propagation unchanged sh\fP
+sh2# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+168 167 8:23//mntX rw，relatime 共享: 1
+169 167 8:22//mntY rw，relatime 共享: 2
+.EE
+.in
+.PP
+在新的挂载命名空间中，我们将其中一个挂载标记为从属:
+.PP
+.in +4n
+.EX
+sh2# \fBmount \-\-make\-slave /mntY\fP
+sh2# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+168 167 8:23//mntX rw，relatime 共享: 1
+169 167 8:22 / /mntY rw,relatime master:2
+.EE
+.in
+.PP
+从上面的输出中，我们看到 \fI/mntY\fP 现在是一个从挂载，它正在从具有 ID 的共享对等组接收传播事件 2.
+.PP
+继续在新命名空间中，我们在 \fI/mntX\fP 和 \fI/mntY\fP: 中的每一个下创建 submounts
+.PP
+.in +4n
+.EX
+sh2# \fBmkdir /mntX/a\fP
+sh2# \fBmount /dev/sda3 /mntX/a\fP
+sh2# \fBmkdir /mntY/b\fP
+sh2# \fBmount /dev/sda5 /mntY/b\fP
+.EE
+.in
+.PP
+当我们检查新挂载命名空间中挂载的状态时，我们看到 \fI/mntX/a\fP 被创建为新的共享挂载 (从其父挂载继承 "shared"
+设置)，\fI/mntY/b\fP 被创建为私有挂载:
+.PP
+.in +4n
+.EX
+sh2# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+168 167 8:23//mntX rw，relatime 共享: 1
+169 167 8:22 / /mntY rw,relatime master:2
+173 168 8:3//mntX/a rw,relatime 共享: 3
+175 169 8:5 / /mntY/b rw,relatime
+.EE
+.in
+.PP
+返回到第一个终端 (在初始挂载命名空间中)，我们看到挂载 \fI/mntX/a\fP 传播到对等点 (共享 \fI/mntX\fP)，但挂载 \fI/mntY/b\fP
+未传播:
+.PP
+.in +4n
+.EX
+sh1# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+132 83 8:23//mntX rw，relatime 共享: 1
+133 83 8:22//mntY rw，relatime 共享: 2
+174 132 8:3//mntX/a rw,relatime 共享: 3
+.EE
+.in
+.PP
+现在我们在第一个 shell 的 \fI/mntY\fP 下新建一个挂载:
+.PP
+.in +4n
+.EX
+sh1# \fBmkdir /mntY/c\fP
+sh1# \fBmount /dev/sda1 /mntY/c\fP
+sh1# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+132 83 8:23//mntX rw，relatime 共享: 1
+133 83 8:22//mntY rw，relatime 共享: 2
+174 132 8:3//mntX/a rw,relatime 共享: 3
+178 133 8:1//mntY/c rw，relatime 共享: 4
+.EE
+.in
+.PP
+当我们检查第二个挂载命名空间中的挂载时，我们看到在这种情况下，新挂载已传播到从属挂载，并且新挂载本身就是从属挂载 (到对等组 4) :
+.PP
+.in +4n
+.EX
+sh2# \fBcat /proc/self/mountinfo | grep \[aq]/mnt\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+168 167 8:23//mntX rw，relatime 共享: 1
+169 167 8:22 / /mntY rw,relatime master:2
+173 168 8:3//mntX/a rw,relatime 共享: 3
+175 169 8:5 / /mntY/b rw,relatime
+179 169 8:1 / /mntY/c rw,relatime master:4
+.EE
+.in
+.\"
+.SS "MS_UNBINDABLE example"
+不可绑定挂载的主要目的之一是避免在较低级别挂载上重复执行较高级别子树的绑定挂载时出现 "mount explosion" 问题。 以下 shell
+会话说明了该问题。
+.PP
+假设我们有一个具有以下挂载的系统:
+.PP
+.in +4n
+.EX
+# \fBmount | awk \[aq]{print $1, $2, $3}\[aq]\fP
+/dev/sda1 开 /
+/mntX 上的 /dev/sdb6
+/dev/sdb7 在 /mntY
+.EE
+.in
+.PP
+进一步假设我们希望递归绑定挂载多个用户主目录下的根目录。 我们为第一个用户执行此操作，并检查安装:
+.PP
+.in +4n
+.EX
+# \fBmount \-\-rbind / /home/cecilia/\fP
+# \fBmount | awk \[aq]{print $1, $2, $3}\[aq]\fP
+/dev/sda1 开 /
+/mntX 上的 /dev/sdb6
+/dev/sdb7 在 /mntY
+/home/cecilia 上的 /dev/sda1
+/home/cecilia/mntX 上的 /dev/sdb6
+/home/cecilia/mntY 上的 /dev/sdb7
+.EE
+.in
+.PP
+当我们为第二个用户重复这个操作时，我们开始看到爆炸问题:
+.PP
+.in +4n
+.EX
+# \fBmount \-\-rbind / /home/henry\fP
+# \fBmount | awk \[aq]{print $1, $2, $3}\[aq]\fP
+/dev/sda1 开 /
+/mntX 上的 /dev/sdb6
+/dev/sdb7 在 /mntY
+/home/cecilia 上的 /dev/sda1
+/home/cecilia/mntX 上的 /dev/sdb6
+/home/cecilia/mntY 上的 /dev/sdb7
+/home/henry 上的 /dev/sda1
+/home/henry/mntX 上的 /dev/sdb6
+/home/henry/mntY 上的 /dev/sdb7
+/home/henry/home/cecilia 上的 /dev/sda1
+/home/henry/home/cecilia/mntX 上的 /dev/sdb6
+/home/henry/home/cecilia/mntY 上的 /dev/sdb7
+.EE
+.in
+.PP
+在 \fI/home/henry\fP 下，我们不仅递归添加了 \fI/mntX\fP 和 \fI/mntY\fP 挂载，还递归添加了上一步创建的
+\fI/home/cecilia\fP 下的那些目录。 在为第三个用户重复该步骤后，很明显爆炸本质上是指数级的:
+.PP
+.in +4n
+.EX
+# \fBmount \-\-rbind / /home/otto\fP
+# \fBmount | awk \[aq]{print $1, $2, $3}\[aq]\fP
+/dev/sda1 开 /
+/mntX 上的 /dev/sdb6
+/dev/sdb7 在 /mntY
+/home/cecilia 上的 /dev/sda1
+/home/cecilia/mntX 上的 /dev/sdb6
+/home/cecilia/mntY 上的 /dev/sdb7
+/home/henry 上的 /dev/sda1
+/home/henry/mntX 上的 /dev/sdb6
+/home/henry/mntY 上的 /dev/sdb7
+/home/henry/home/cecilia 上的 /dev/sda1
+/home/henry/home/cecilia/mntX 上的 /dev/sdb6
+/home/henry/home/cecilia/mntY 上的 /dev/sdb7
+/home/otto 上的 /dev/sda1
+/home/otto/mntX 上的 /dev/sdb6
+/home/otto/mntY 上的 /dev/sdb7
+/home/otto/home/cecilia 上的 /dev/sda1
+/home/otto/home/cecilia/mntX 上的 /dev/sdb6
+/home/otto/home/cecilia/mntY 上的 /dev/sdb7
+/home/otto/home/henry 上的 /dev/sda1
+/home/otto/home/henry/mntX 上的 /dev/sdb6
+/home/otto/home/henry/mntY 上的 /dev/sdb7
+/home/otto/home/henry/home/cecilia 上的 /dev/sda1
+/home/otto/home/henry/home/cecilia/mntX 上的 /dev/sdb6
+/home/otto/home/henry/home/cecilia/mntY 上的 /dev/sdb7
+.EE
+.in
+.PP
+可以通过使每个新坐骑不可绑定来避免上述场景中的坐骑爆炸问题。 这样做的效果是根目录的递归挂载不会复制不可绑定的挂载。 我们为第一个用户做这样一个挂载:
+.PP
+.in +4n
+.EX
+# \fBmount \-\-rbind \-\-make\-unbindable / /home/cecilia\fP
+.EE
+.in
+.PP
+在继续之前，我们证明不可绑定的挂载确实是不可绑定的:
+.PP
+.in +4n
+.EX
+# \fBmkdir /mntZ\fP
+# \fBmount \-\-bind /home/cecilia /mntZ\fP
+安装: 文件系统类型错误，选项错误，/home/cecilia 上的超级块错误，
+       缺少代码页或帮助程序，或其他错误
+
+       在某些情况下，可以在系统日志中找到有用的信息 \- 试试
+       消息 | 尾巴左右。
+.EE
+.in
+.PP
+现在我们为其他两个用户创建不可绑定的递归绑定挂载:
+.PP
+.in +4n
+.EX
+# \fBmount \-\-rbind \-\-make\-unbindable / /home/henry\fP
+# \fBmount \-\-rbind \-\-make\-unbindable / /home/otto\fP
+.EE
+.in
+.PP
+检查挂载列表后，我们发现没有出现挂载爆炸，因为未绑定的挂载不会复制到每个用户的目录下:
+.PP
+.in +4n
+.EX
+# \fBmount | awk \[aq]{print $1, $2, $3}\[aq]\fP
+/dev/sda1 开 /
+/mntX 上的 /dev/sdb6
+/dev/sdb7 在 /mntY
+/home/cecilia 上的 /dev/sda1
+/home/cecilia/mntX 上的 /dev/sdb6
+/home/cecilia/mntY 上的 /dev/sdb7
+/home/henry 上的 /dev/sda1
+/home/henry/mntX 上的 /dev/sdb6
+/home/henry/mntY 上的 /dev/sdb7
+/home/otto 上的 /dev/sda1
+/home/otto/mntX 上的 /dev/sdb6
+/home/otto/mntY 上的 /dev/sdb7
+.EE
+.in
+.\"
+.SS "Propagation type transitions"
+下表显示了应用新传播类型 (即 \fImount\~\-\-make\-xxxx\fP) 对安装的现有传播类型的影响。 行对应于现有的传播类型，列是新的传播设置。
+由于篇幅原因，"private" 简称为 "priv"，"unbindable" 简称为 "unbind"。
+.TS
+lb2 lb2 lb2 lb2 lb1
+lb | l l l l l.
+	make\-shared	make\-slave	make\-priv	make\-unbind
+_
+shared	shared	slave/priv [1]	priv	unbind
+slave	slave+shared	slave [2]	priv	unbind
+slave+shared	slave+shared	slave	priv	unbind
+private	shared	priv [2]	priv	unbind
+unbindable	shared	unbind [2]	priv	unbind
+.TE
+.sp 1
+请注意表中的以下详细信息:
+.IP [1] 4
+如果共享挂载是其对等组中的唯一挂载，则将其设置为从属会自动将其设为私有。
+.IP [2]
+.\"
+从属非共享装载对装载没有影响。
+.SS "Bind (MS_BIND) semantics"
+假设执行以下命令:
+.PP
+.in +4n
+.EX
+mount \-\-bind A/a B/b
+.EE
+.in
+.PP
+这里 \fIA\fP 是源挂载点，\fIB\fP 是目的挂载点，\fIa\fP 是挂载点 \fIA\fP 下的子目录路径，\fIb\fP 是挂载点 \fIB\fP 下的子目录路径。
+生成的安装 \fIB/b\fP 的传播类型取决于安装 \fIA\fP 和 \fIB\fP 的传播类型，并在下表中进行了总结。
+.PP
+.TS
+lb2 lb1 lb2 lb2 lb2 lb0
+lb2 lb1 lb2 lb2 lb2 lb0
+lb lb | l l l l l.
+			source(A)
+		shared	private	slave	unbind
+_
+dest(B)	shared	shared	shared	slave+shared	invalid
+	nonshared	shared	private	slave	invalid
+.TE
+.sp 1
+请注意，子树的递归绑定遵循与子树中每个挂载上的绑定操作相同的语义。 (不可绑定的挂载会在目标挂载点自动修剪。)
+.PP
+.\"
+有关详细信息，请参见内核源代码树中的 \fIDocumentation/filesystems/sharedsubtree.rst\fP。
+.SS "Move (MS_MOVE) semantics"
+假设执行以下命令:
+.PP
+.in +4n
+.EX
+mount \-\-move A B/b
+.EE
+.in
+.PP
+这里 \fIA\fP 是源挂载点，\fIB\fP 是目的挂载点，\fIb\fP 是挂载点 \fIB\fP 下的子目录路径。 生成的安装 \fIB/b\fP 的传播类型取决于安装
+\fIA\fP 和 \fIB\fP 的传播类型，并在下表中进行了总结。
+.PP
+.TS
+lb2 lb1 lb2 lb2 lb2 lb0
+lb2 lb1 lb2 lb2 lb2 lb0
+lb lb | l l l l l.
+			source(A)
+		shared	private	slave	unbind
+_
+dest(B)	shared	shared	shared	slave+shared	invalid
+	nonshared	shared	private	slave	unbindable
+.TE
+.sp 1
+Note: 移动位于共享挂载下的挂载是无效的。
+.PP
+.\"
+有关详细信息，请参见内核源代码树中的 \fIDocumentation/filesystems/sharedsubtree.rst\fP。
+.SS "Mount semantics"
+假设我们使用以下命令创建一个挂载:
+.PP
+.in +4n
+.EX
+mount device B/b
+.EE
+.in
+.PP
+.\"
+这里 \fIB\fP 是目标挂载点，\fIb\fP 是挂载点 \fIB\fP 下的子目录路径。 结果挂载的传播类型 \fIB/b\fP
+遵循与绑定挂载相同的规则，其中源挂载的传播类型始终被视为私有。
+.SS "Unmount semantics"
+假设我们使用下面的命令来拆除一个挂载:
+.PP
+.in +4n
+.EX
+umount A
+.EE
+.in
+.PP
+.\"
+这里，\fIA\fP 是 \fIB/b\fP 上的挂载，其中 \fIB\fP 是父挂载，\fIb\fP 是挂载点 \fIB\fP 下的子目录路径。 如果 \fBB\fP
+是共享的，那么所有最近安装在 \fIb\fP 的安装座上都将被卸载，这些安装座从安装座 \fIB\fP 接收传播并且其下没有子安装座。
+.SS "The /proc/ pid /mountinfo propagate_from tag"
+\fIpropagate_from:X\fP 标记显示在 \fI/proc/\fPpid\fI/mountinfo\fP 记录的可选字段中，以防进程看不到从属的
+immediate master (即，master 的路径名无法从文件系统根目录访问)，因此无法确定链它可以看到的坐骑之间的传播。
+.PP
+在下面的例子中，我们首先在挂载 \fI/mnt\fP、\fI/tmp/etc\fP 和 \fI/mnt/tmp/etc\fP 之间创建一条双链主从链。 然后使用
+\fBchroot\fP(1) 命令使 \fI/tmp/etc\fP 挂载点无法从根目录访问，造成 \fI/mnt/tmp/etc\fP 的 master 无法从进程的
+(new) 根目录访问的情况。
+.PP
+首先，我们将根目录绑定挂载到 \fI/mnt\fP，然后将 \fI/proc\fP 绑定挂载到 \fI/mnt/proc\fP，以便在后来的 \fBchroot\fP(1)
+之后，\fBproc\fP(5) 文件系统在 chroot 环境中的正确位置保持可见。
+.PP
+.in +4n
+.EX
+# \fBmkdir \-p /mnt/proc\fP
+# \fBmount \-\-bind / /mnt\fP
+# \fBmount \-\-bind /proc /mnt/proc\fP
+.EE
+.in
+.PP
+接下来，我们确保 \fI/mnt\fP 挂载是新对等组 (没有对等点) 中的共享挂载:
+.PP
+.in +4n
+.EX
+# \fBmount \-\-make\-private /mnt\fP# 与之前的对等组隔离
+\fBmount \-\-make\-private /mnt\fP# 与之前的对等组隔离
+\fBmount \-\-make\-private /mnt\fP# 与之前的对等组隔离
+239 61 8:2 / /mnt ... shared:102
+248 239 0:4 / /mnt/proc ... shared:5
+.EE
+.in
+.PP
+接下来，我们将挂载 \fI/mnt/etc\fP 绑定到 \fI/tmp/etc\fP: 上
+.PP
+.in +4n
+.EX
+# \fBmkdir \-p /tmp/etc\fP
+# \fBmount \-\-bind /mnt/etc /tmp/etc\fP
+# \fBcat /proc/self/mountinfo | egrep \[aq]/mnt|/tmp/\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+239 61 8:2 / /mnt ... shared:102 
+248 239 0:4 / /mnt/proc ... shared:5
+267 40 8:2 /etc /tmp/etc ... shared:102
+.EE
+.in
+.PP
+最初，这两个挂载在同一个对等组中，但我们随后将 \fI/tmp/etc\fP 设为 \fI/mnt/etc\fP 的从属，然后也将 \fI/tmp/etc\fP
+设为共享，以便它可以将事件传播到链中的下一个从属:
+.PP
+.in +4n
+.EX
+# \fBmount \-\-make\-slave /tmp/etc\fP
+# \fBmount \-\-make\-shared /tmp/etc\fP
+# \fBcat /proc/self/mountinfo | egrep \[aq]/mnt|/tmp/\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+239 61 8:2 / /mnt ... shared:102
+248 239 0:4 / /mnt/proc ... shared:5
+267 40 8:2 /etc /tmp/etc ... 共享: 105 主人: 102
+.EE
+.in
+.PP
+然后我们将挂载 \fI/tmp/etc\fP 绑定到 \fI/mnt/tmp/etc\fP 上。 同样，这两个挂载最初在同一个对等组中，但我们随后将
+\fI/mnt/tmp/etc\fP 设为 \fI/tmp/etc\fP: 的从属
+.PP
+.in +4n
+.EX
+# \fBmkdir \-p /mnt/tmp/etc\fP
+# \fBmount \-\-bind /tmp/etc /mnt/tmp/etc\fP
+# \fBmount \-\-make\-slave /mnt/tmp/etc\fP
+# \fBcat /proc/self/mountinfo | egrep \[aq]/mnt|/tmp/\[aq] | sed \[aq]s/ \- .*//\[aq]\fP
+239 61 8:2 / /mnt ... shared:102
+248 239 0:4 / /mnt/proc ... shared:5
+267 40 8:2 /etc /tmp/etc ... 共享: 105 主人: 102
+273 239 8:2 /etc /mnt/tmp/etc ... master:105
+.EE
+.in
+.PP
+由上可知，\fI/mnt\fP 是从机 \fI/tmp/etc\fP 的主机，从机 \fI/tmp/etc\fP 又是从机 \fI/mnt/tmp/etc\fP 的主机。
+.PP
+然后我们 \fBchroot\fP(1) 到 \fI/mnt\fP 目录，这使得 ID 为 267 的挂载无法从 (new) 根目录访问:
+.PP
+.in +4n
+.EX
+# \fBchroot /mnt\fP
+.EE
+.in
+.PP
+当我们检查 chroot 环境中的挂载状态时，我们会看到以下内容:
+.PP
+.in +4n
+.EX
+# \fBcat /proc/self/mountinfo | sed \[aq]s/ \- .*//\[aq]\fP
+239 61 8:2 / / ... shared:102
+248 239 0:4// 处理... shared:5
+273 239 8:2 /etc /tmp/etc ... 主人: 105 propagate_from: 102
+.EE
+.in
+.PP
+.\"
+上面，我们看到 ID 为 273 的 mount 是一个 slave，它的 master 是 peer group 105。 那个 master
+的挂载点是不可达的，所以显示一个 \fIpropagate_from\fP 标签，表示最近的主导对等组 (即从链中最近可达的挂载) 是 ID 为 102
+的对等组 (对应 \fI/mnt\fP 挂载 \fBchroot\fP(1) 执行之前的点)。
+.SH VERSIONS
+挂载命名空间最早出现在 Linux 2.4.19 中。
+.SH STANDARDS
+.\"
+命名空间是 Linux 特有的，特性。
+.SH NOTES
+分配给新安装的传播类型取决于父安装的传播类型。 如果挂载有一个父挂载点 (即，它是一个非根挂载点) 并且父挂载的传播类型是
+\fBMS_SHARED\fP，那么新挂载的传播类型也是 \fBMS_SHARED\fP。 否则，新安装的传播类型为 \fBMS_PRIVATE\fP。
+.PP
+尽管新安装的默认传播类型在许多情况下是 \fBMS_PRIVATE\fP，但 \fBMS_SHARED\fP 通常更有用。 因此，\fBsystemd\fP(1)
+在系统启动时自动将所有挂载重新挂载为 \fBMS_SHARED\fP。 因此，在大多数现代系统上，默认传播类型实际上是 \fBMS_SHARED\fP。
+.PP
+因为，当一个人使用
+\fBunshare\fP(1)  
+创建挂载命名空间，
+目标通常是提供对坐骑的完全隔离
+在新的命名空间中，
+\fBunshare\fP(1)
+(since
+\fIutil\-linux\fP
+ 2.27) 依次反转执行的步骤
+\fBsystemd\fP(1),
+通过在新命名空间中将所有挂载设为私有。
+那是，
+\fBunshare\fP(1)
+在新的挂载命名空间中执行以下等效操作:
+.PP
+.in +4n
+.EX
+mount \-\-make\-rprivate  /
+.EE
+.in
+.PP
+为防止这种情况，可以将 \fI\-\-propagation\~unchanged\fP 选项用于 \fBunshare\fP(1)。
+.PP
+直接使用 \fBclone\fP(2) 或 \fBunshare\fP(2) 创建新挂载命名空间的应用程序可能希望阻止挂载事件传播到其他挂载命名空间 (如
+\fBunshare\fP(1)) 所做的那样)。 这可以通过使用如下调用将新命名空间中挂载的传播类型更改为 \fBMS_SLAVE\fP 或
+\fBMS_PRIVATE\fP 来完成:
+.PP
+.in +4n
+.EX
+mount(NULL, "/", MS_SLAVE | MS_REC, NULL);
+.EE
+.in
+.PP
+.\"
+.\" ============================================================
+.\"
+有关移动安装 (\fBMS_MOVE\fP) 和创建绑定安装 (\fBMS_BIND\fP) 时传播类型的讨论，请参见
+\fIDocumentation/filesystems/sharedsubtree.rst\fP。
+.SS "Restrictions on mount namespaces"
+关于挂载命名空间，请注意以下几点:
+.IP [1] 4
+每个挂载命名空间都有一个所有者用户命名空间。 如上所述，当一个新的挂载命名空间被创建时，它的挂载列表被初始化为另一个挂载命名空间的挂载列表的副本。
+如果新的命名空间和从中复制挂载列表的命名空间属于不同的用户命名空间，则新的挂载命名空间被认为是 \fIless privileged\fP。
+.IP [2]
+创建特权较低的挂载命名空间时，共享挂载将减少为从属挂载。 这可确保在特权较低的挂载命名空间中执行的映射不会传播到特权较高的挂载命名空间。
+.IP [3]
+来自特权更高的挂载命名空间的作为单个元的挂载被锁定在一起，并且不能在特权较低的挂载命名空间中分开。 (\fBunshare\fP(2)
+\fBCLONE_NEWNS\fP 操作将原始挂载命名空间中的所有挂载作为单个元传送，并且在挂载命名空间之间传播的递归挂载作为单个元传播。)
+.IP
+在此上下文中，"may not be separated" 表示挂载已锁定，因此无法单独卸载它们。 考虑以下示例:
+.IP
+.in +4n
+.EX
+$ \fBsudo sh\fP
+# \fBmount \-\-bind /dev/null /etc/shadow\fP
+# \fBcat /etc/shadow\fP       # 不产生输出
+.EE
+.in
+.IP
+上述步骤在特权更高的挂载命名空间中执行，创建了一个绑定挂载，它隐藏了影子密码文件 \fI/etc/shadow\fP 的内容。
+出于安全原因，\fBumount\fP(2) 应该不可能挂载在特权较低的挂载命名空间中，因为那样会泄露 \fI/etc/shadow\fP 的内容。
+.IP
+假设我们现在创建一个由新用户命名空间拥有所有权的新挂载命名空间。 新的挂载命名空间将从之前的挂载命名空间继承所有挂载的副本。
+但是，这些挂载将被锁定，因为新的挂载命名空间的特权较低。 因此，尝试 \fBumount\fP(2) 挂载失败，如以下步骤所示:
+.IP
+.in +4n
+.EX
+# \fBunshare \-\-user \-\-map\-root\-user \-\-mount \e\fP
+               \fBstrace \-o /tmp/log \e\fP
+               \fBumount /mnt/dir\fP
+卸载: /etc/shadow: 未安装。
+卸载: /etc/shadow: 未安装。
+umount2("/etc/shadow", 0) = \-1 EINVAL (无效参数)
+.EE
+.in
+.IP
+来自 \fBmount\fP(8) 的错误消息有点混乱，但 \fBstrace\fP(1) 输出显示底层 \fBumount2\fP(2) 系统调用失败，错误为
+\fBEINVAL\fP，这是内核返回的错误，表示挂载已锁定。
+.IP
+但是请注意，可以在特权较低的挂载命名空间中将挂载堆叠 (和取消堆叠) 在继承的锁定挂载之一之上:
+.IP
+.in +4n
+.EX
+# \fBecho \[aq]aaaaa \[aq] > /tmp/a\fP    # 挂载到 /etc/shadow 上的文件
+\fBecho \[aq]aaaaa\[aq] > /tmp/a\fP    # 挂载到 /etc/shadow 上的文件
+    \fBecho \[aq]aaaaa\[aq] > /tmp/a\fP    # 挂载到 /etc/shadow 上的文件
+aaaaa
+aaaaa
+.EE
+.in
+.IP
+上面最后的 \fBumount\fP(8) 命令在初始挂载命名空间中执行，使原始 \fI/etc/shadow\fP 文件再次在该命名空间中可见。
+.IP [4]
+从点 [3] 开始，请注意，可以 \fBumount\fP(2) 将整个挂载子树作为元传播到特权较低的挂载命名空间中，如以下示例所示。
+.IP
+首先，我们使用 \fBunshare\fP(1) 创建新用户和挂载命名空间。 在新的挂载命名空间中，所有挂载的传播类型都设置为私有。 然后，我们在
+\fI/mnt\fP 处创建一个共享绑定挂载，并在该挂载下创建一个小的挂载层次结构。
+.IP
+.in +4n
+.EX
+$ \fBPS1=\[aq]ns1# \[aq] sudo unshare \-\-user \-\-map\-root\-user \e\fP
+                       $ \fBPS1=\[aq]ns1# \[aq] sudo unshare \-\-user \-\-map\-root\-user \e\fP
+ns1        #\fBecho $$\fP# 稍后我们需要这个 shell 的 PID
+778501
+ns1# \fBmount \-\-make\-shared \-\-bind /mnt /mnt\fP
+ns1# \fBmkdir /mnt/x\fP
+ns1# \fBmount \-\-make\-private \-t tmpfs none /mnt/x\fP
+ns1# \fBmkdir /mnt/x/y\fP
+ns1# \fBmount \-\-make\-private \-t tmpfs none /mnt/x/y\fP
+ns1# \fBgrep /mnt /proc/self/mountinfo | sed \[aq]s/ \- .*//\[aq]\fP
+986 83 8:5/mnt rw,relatime 共享: 344
+989 986 0:56 / /mnt/x rw,relatime
+990 989 0:57 / /mnt/x/y rw,relatime
+.EE
+.in
+.IP
+继续同一个 shell 会话，然后我们在一个新的用户命名空间和一个新的 (特权较低的) 挂载命名空间中创建第二个 shell，并检查以 \fI/mnt\fP
+为根的传播挂载的状态。
+.IP
+.in +4n
+.EX
+ns1# \fBPS1=\[aq]ns2# \[aq] unshare \-\-user \-\-map\-root\-user \e\fP
+                       \fB\-\-mount \-\-propagation unchanged bash\fP
+ns2# \fBgrep /mnt /proc/self/mountinfo | sed \[aq]s/ \- .*//\[aq]\fP
+1239 1204 8:5 /mnt /mnt rw,relatime master:344
+1240 1239 0:56 / /mnt/x rw,relatime
+1241 1240 0:57 / /mnt/x/y rw,relatime
+.EE
+.in
+.IP
+在上面的输出中值得注意的是，安装 \fI/mnt\fP 的传播类型已减少为从属，如点 [2] 中所述。 这意味着 submount 事件将从 "ns1"
+中的主 \fI/mnt\fP 传播，但传播不会发生在相反方向。
+.IP
+从一个单独的最终窗口，我们然后使用 \fBnsenter\fP(1) 输入对应于 "ns1" 的挂载和用户命名空间。 在那个最终窗口中，我们然后在位置
+\fI/mnt/ppp\fP 递归绑定挂载 \fI/mnt/x\fP。
+.IP
+.in +4n
+.EX
+$ \fBPS1=\[aq]ns3# \[aq] sudo nsenter \-t 778501 \-\-user \-\-mount\fP
+ns3# \fBmount \-\-rbind \-\-make\-private /mnt/x /mnt/ppp\fP
+ns3# \fBgrep /mnt /proc/self/mountinfo | sed \[aq]s/ \- .*//\[aq]\fP
+986 83 8:5/mnt rw,relatime 共享: 344
+989 986 0:56 / /mnt/x rw,relatime
+990 989 0:57 / /mnt/x/y rw,relatime
+1242 986 0:56 / /mnt/ppp rw,relatime
+1243 1242 0:57//mnt/y rw,relatime 共享: 518
+.EE
+.in
+.IP
+因为父挂载 \fI/mnt\fP 的传播类型是共享的，所以递归绑定挂载将从属挂载 \fI/mnt\fP 下的一个小挂载子树传播到 "ns2"，这可以通过在该
+shell 会话中执行以下命令来验证:
+.IP
+.in +4n
+.EX
+ns2# \fBgrep /mnt /proc/self/mountinfo | sed \[aq]s/ \- .*//\[aq]\fP
+1239 1204 8:5 /mnt /mnt rw,relatime master:344
+1240 1239 0:56 / /mnt/x rw,relatime
+1241 1240 0:57 / /mnt/x/y rw,relatime
+1244 1239 0:56 / /mnt/ppp rw,relatime
+1245 1244 0:57 / /mnt/ppp/y rw,relatime master:518
+.EE
+.in
+.IP
+虽然不可能 \fBumount\fP(2) "ns2" 中传播的子树 (\fI/mnt/ppp/y\fP) 的一部分，但可以 \fBumount\fP(2)
+整个子树，如以下命令所示:
+.IP
+.in +4n
+.EX
+ns2# \fBumount /mnt/ppp/y\fP
+卸载: /mnt/y: 未安装。
+ns2# \fBumount \-l /mnt/ppp | sed \[aq]s/ \- .*//\[aq]\fP      # 成功...
+ns2# \fBgrep /mnt /proc/self/mountinfo\fP
+1239 1204 8:5 /mnt /mnt rw,relatime master:344
+1240 1239 0:56 / /mnt/x rw,relatime
+1241 1240 0:57 / /mnt/x/y rw,relatime
+.EE
+.in
+.IP [5]
+.\" commit 9566d6742852c527bf5af38af5cbb878dad75705
+.\" Author: Eric W. Biederman <ebiederm@xmission.com>
+.\" Date:   Mon Jul 28 17:26:07 2014 -0700
+.\"
+.\"      mnt: Correct permission checks in do_remount
+.\"
+\fBmount\fP(2) 标志 \fBMS_RDONLY\fP、\fBMS_NOSUID\fP、\fBMS_NOEXEC\fP 和 "atime" 标志
+(\fBMS_NOATIME\fP、\fBMS_NODIRATIME\fP、\fBMS_RELATIME\fP)
+设置在从特权较高的挂载命名空间传播到特权较低的挂载命名空间时被锁定，并且在特权较低的挂载命名空间中可能无法更改。
+.IP
+下面的例子说明了这一点，在一个更有特权的挂载命名空间中，我们创建了一个标记为只读的绑定挂载。
+出于安全原因，应该不可能在特权较低的挂载命名空间中使挂载可写，实际上内核会阻止这种情况:
+.IP
+.in +4n
+.EX
+$ \fBsudo mkdir /mnt/dir\fP
+$ \fBsudo mount \-\-bind \-o ro /some/path /mnt/dir\fP
+$ \fBsudo unshare \-\-user \-\-map\-root\-user \-\-mount \e\fP
+               $ \fBsudo unshare \-\-user \-\-map\-root\-user \-\-mount \e\fP
+安装: /mnt/dir: 权限被拒绝。
+.EE
+.in
+.IP [6]
+.\" (As of 3.18-rc1 (in Al Viro's 2014-08-30 vfs.git#for-next tree))
+一个文件或目录是一个命名空间中的挂载点，但不是另一个命名空间中的挂载点，可以在它不是挂载点的挂载命名空间中重命名，取消链接或删除
+(\fBrmdir\fP(2)) (受通常的权限检查).  因此，挂载点在其作为挂载点的挂载命名空间中被删除。
+.IP
+.\" mtk: The change was in Linux 3.18, I think, with this commit:
+.\"     commit 8ed936b5671bfb33d89bc60bdcc7cf0470ba52fe
+.\"     Author: Eric W. Biederman <ebiederman@twitter.com>
+.\"     Date:   Tue Oct 1 18:33:48 2013 -0700
+.\"
+.\"         vfs: Lazily remove mounts on unlinked files and directories.
+以前 (在 Linux 3.18 之前)，尝试取消链接、重命名或删除作为另一个挂载命名空间中的挂载点的文件或目录将导致错误 \fBEBUSY\fP。
+该行为存在执行技术问题 (例如，对于 NFS)，并允许对更多特权用户进行拒绝服务攻击 (即，通过绑定安装在它们之上来防止单个文件被更新)。
+.SH EXAMPLES
+请参见 \fBpivot_root\fP(2)。
+.SH "SEE ALSO"
+\fBunshare\fP(1), \fBclone\fP(2), \fBmount\fP(2), \fBmount_setattr\fP(2),
+\fBpivot_root\fP(2), \fBsetns\fP(2), \fBumount\fP(2), \fBunshare\fP(2), \fBproc\fP(5),
+\fBnamespaces\fP(7), \fBuser_namespaces\fP(7), \fBfindmnt\fP(8), \fBmount\fP(8),
+\fBpam_namespace\fP(8), \fBpivot_root\fP(8), \fBumount\fP(8)
+.PP
+内核源代码树中的 \fIDocumentation/filesystems/sharedsubtree.rst\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

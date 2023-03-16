@@ -1,0 +1,306 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1990, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     $Id: recv.2,v 1.3 1999/05/13 11:33:38 freitag Exp $
+.\"
+.\" Modified Sat Jul 24 00:22:20 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Tue Oct 22 17:45:19 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998,1999 by Andi Kleen
+.\" 2001-06-19 corrected SO_EE_OFFENDER, bug report by James Hawtin
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH recv 2 2022\-12\-03 "Linux man\-pages 6.03" 
+.SH NAME
+recv, recvfrom, recvmsg \- 从套接字接收消息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fBssize_t recv(int \fP\fIsockfd\fP\fB, void \fP\fIbuf\fP\fB[.\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB,\fP
+\fB                 int \fP\fIflags\fP\fB);\fP
+\fBssize_t recvfrom(int \fP\fIsockfd\fP\fB, void \fP\fIbuf\fP\fB[restrict .\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB,\fP
+\fB                 int \fP\fIflags\fP\fB,\fP
+\fB                 struct sockaddr *_Nullable restrict \fP\fIsrc_addr\fP\fB,\fP
+\fB                 socklen_t *_Nullable restrict \fP\fIaddrlen\fP\fB);\fP
+\fBssize_t recvmsg(int \fP\fIsockfd\fP\fB, struct msghdr *\fP\fImsg\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBrecv\fP()、\fBrecvfrom\fP() 和 \fBrecvmsg\fP() 调用用于从套接字接收消息。
+它们可用于在无连接和面向连接的套接字上接收数据。 本页首先描述所有三个系统调用的共同特性然后描述调用之间的差异。
+.PP
+\fBrecv\fP() 和 \fBread\fP(2) 之间的唯一区别是存在 \fIflags\fP。 \fIflags\fP 参数为零时，\fBrecv\fP() 通常等同于
+\fBread\fP(2) (但请参见注释)。 还有，下面的调用
+.PP
+.in +4n
+.EX
+recv(sockfd, buf, len, flags);
+.EE
+.in
+.PP
+相当于
+.PP
+.in +4n
+.EX
+recvfrom(sockfd, buf, len, flags, NULL, NULL);
+.EE
+.in
+.PP
+所有三个调用都在成功完成时返回消息的长度。 如果消息太长而无法容纳在提供的缓冲区中，则可能会丢弃多余的字节，具体取决于从中接收消息的套接字类型。
+.PP
+如果套接字上没有可用消息，则接收调用会等待消息到达，除非套接字是非阻塞的 (请参见 \fBfcntl\fP(2))，在这种情况下，将返回值 \-1 并将
+\fIerrno\fP 设置为 \fBEAGAIN\fP 或 \fBEWOULDBLOCK\fP。
+接收调用通常返回任何可用数据，直到请求的数量，而不是等待接收请求的全部数量。
+.PP
+应用程序可以使用 \fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7) 来确定更多数据何时到达套接字。
+.SS "The flags argument"
+\fIflags\fP 参数由以下一个或多个值组成:
+.TP 
+\fBMSG_CMSG_CLOEXEC\fP (\fBrecvmsg\fP() only; since Linux 2.6.23)
+使用 \fBSCM_RIGHTS\fP 操作 (在 \fBunix\fP(7)).h 中描述) 为通过 UNIX 域文件描述符接收的文件描述符设置
+close\-on\-exec 标志。 出于与 \fBopen\fP(2) 的 \fBO_CLOEXEC\fP 标志相同的原因，此标志很有用。
+.TP 
+\fBMSG_DONTWAIT\fP (since Linux 2.2)
+启用非阻塞操作; 如果操作会阻塞，调用将失败并出现错误 \fBEAGAIN\fP 或 \fBEWOULDBLOCK\fP。 这提供了与设置
+\fBO_NONBLOCK\fP 标志 (通过 \fBfcntl\fP(2) \fBF_SETFL\fP 操作) 类似的行为，但不同之处在于
+\fBMSG_DONTWAIT\fP 是每个调用选项，而 \fBO_NONBLOCK\fP 是对打开文件描述的设置 (参见
+\fBopen\fP(2))，它将影响调用进程以及保存引用同一打开文件描述的文件描述符的其他进程。
+.TP 
+\fBMSG_ERRQUEUE\fP (since Linux 2.2)
+此标志指定应从套接字错误队列中接收排队的错误。 该错误在辅助消息中传递，其类型取决于协议 (对于 IPv4 \fBIP_RECVERR\fP).
+用户应提供足够大小的缓冲区。 有关详细信息，请参见 \fBcmsg\fP(3) 和 \fBip\fP(7)。 导致错误的原始数据包的有效，载荷，作为正常量据通过
+\fImsg_iovec\fP 传递。 导致错误的数据报的原始目标地址通过 \fImsg_name\fP 提供。
+.IP
+错误在 \fIsock_extended_err\fP 结构体中提供:
+.IP
+.in +4n
+.EX
+#define SO_EE_ORIGIN_NONE    0
+#define SO_EE_ORIGIN_LOCAL   1
+#define SO_EE_ORIGIN_ICMP    2
+#define SO_EE_ORIGIN_ICMP6   3
+
+struct sock_extended_err
+{
+    uint32_t ee_errno;   /* Error number */
+    uint8_t  ee_origin;  /* Where the error originated */
+    uint8_t  ee_type;    /* Type */
+    uint8_t  ee_code;    /* Code */
+    uint8_t  ee_pad;     /* Padding */
+    uint32_t ee_info;    /* Additional information */
+    uint32_t ee_data;    /* Other data */
+    /* More data may follow */
+};
+
+struct sockaddr *SO_EE_OFFENDER(struct sock_extended_err *);
+.EE
+.in
+.IP
+\fIee_errno\fP 包含排队错误的 \fIerrno\fP 编号。 \fIee_origin\fP 是错误来源的来源代码。 其他字段是特定于协议的。 宏
+\fBSO_EE_OFFENDER\fP 返回一个指针，指向网络对象的地址，在给定辅助消息的指针的情况下，错误源自该网络对象。 如果该地址未知，则
+\fIsockaddr\fP 的 \fIsa_family\fP 成员包含 \fBAF_UNSPEC\fP，\fIsockaddr\fP 的其他字段未定义。
+导致错误的数据包的有效，载荷，作为正常量据传递。
+.IP
+对于本地错误，不传递任何地址 (这可以通过 \fIcmsghdr\fP) 的 \fIcmsg_len\fP 成员进行检查。 对于错误接收，在 \fImsghdr\fP
+中设置 \fBMSG_ERRQUEUE\fP 标志。 传递错误后，将根据下一个排队的错误重新生成挂起的套接字错误，并将传递给下一个套接字操作。
+.TP 
+\fBMSG_OOB\fP
+该标志请求接收在正常量据流中不会接收到的带外数据。 某些协议将加急数据放在正常量据队列的头部，因此该标志不能用于此类协议。
+.TP 
+\fBMSG_PEEK\fP
+此标志导致接收操作从接收队列的开头返回数据，而不从队列中删除该数据。 因此，后续的接收调用将返回相同的数据。
+.TP 
+\fBMSG_TRUNC\fP (since Linux 2.2)
+.\" commit 9f6f9af7694ede6314bed281eec74d588ba9474f
+对于原始 (\fBAF_PACKET\fP)、Internet 数据报 (自 Linux 2.4.27/2.6.8)、netlink (自 Linux
+2.6.22) 和 UNIX 数据报 (自 Linux 3.4) 套接字: 返回数据包或数据报的实际长度，即使它比传递的缓冲区长。
+.IP
+有关与 Internet 流套接字一起使用的信息，请参见 \fBtcp\fP(7)。
+.TP 
+\fBMSG_WAITALL\fP (since Linux 2.2)
+.\"
+此标志请求操作阻塞，直到满足完整请求。
+但是，如果捕获到信号、发生错误或断开连接，或者下一个要接收的数据的类型与返回的类型不同，则调用可能仍会返回比请求更少的数据。
+该标志对数据报套接字没有影响。
+.SS recvfrom()
+\fBrecvfrom\fP() 将接收到的消息放入缓冲区 \fIbuf\fP。 调用者必须在 \fIlen\fP 中指定缓冲区的大小。
+.PP
+.\" (Note: for datagram sockets in both the UNIX and Internet domains,
+.\" .I src_addr
+.\" is filled in.
+.\" .I src_addr
+.\" is also filled in for stream sockets in the UNIX domain, but is not
+.\" filled in for stream sockets in the Internet domain.)
+.\" [The above notes on AF_UNIX and AF_INET sockets apply as at
+.\" Kernel 2.4.18. (MTK, 22 Jul 02)]
+如果 \fIsrc_addr\fP 不为 NULL，并且底层协议提供了消息的源地址，则该源地址将放置在 \fIsrc_addr\fP 指向的缓冲区中。
+在本例中，\fIaddrlen\fP 是一个值 \- 结果参数。 在调用之前，它应该被初始化为与 \fIsrc_addr\fP 关联的缓冲区的大小。
+返回时，\fIaddrlen\fP 被更新为包含源地址的实际大小。 如果提供的缓冲区太小，返回的地址将被截断; 在这种情况下，\fIaddrlen\fP
+将返回一个大于提供给调用的值。
+.PP
+.\"
+如果调用者对源地址不感兴趣，\fIsrc_addr\fP 和 \fIaddrlen\fP 应该指定为 NULL。
+.SS recv()
+\fBrecv\fP() 调用通常仅用于 \fIconnected\fP 套接字 (参见 \fBconnect\fP(2)).  它等同于调用:
+.PP
+.in +4n
+.EX
+recvfrom(fd, buf, len, flags, NULL, 0);
+.EE
+.in
+.\"
+.SS recvmsg()
+\fBrecvmsg\fP() 调用使用 \fImsghdr\fP 结构体来最小化直接提供的参数。 这个结构体在
+\fI<sys/socket.h>\fP: 中定义如下
+.PP
+.in +4n
+.EX
+struct msghdr {
+    void         *msg_name;       /* Optional address */
+    socklen_t     msg_namelen;    /* Size of address */
+    struct iovec *msg_iov;        /* Scatter/gather array */
+    size_t        msg_iovlen;     /* # elements in msg_iov */
+    void         *msg_control;    /* Ancillary data, see below */
+    size_t        msg_controllen; /* Ancillary data buffer len */
+    int           msg_flags;      /* Flags on received message */
+};
+.EE
+.in
+.PP
+\fImsg_name\fP 字段指向调用者分配的缓冲区，如果套接字未连接，该缓冲区用于返回源地址。 调用者应在调用之前将 \fImsg_namelen\fP
+设置为该缓冲区的大小; 从成功调用返回后，\fImsg_namelen\fP 将包含返回地址的长度。 如果应用程序不需要知道源地址，\fImsg_name\fP
+可以指定为 NULL。
+.PP
+如 \fBreadv\fP(2) 中所述，字段 \fImsg_iov\fP 和 \fImsg_iovlen\fP 描述分散 \- 聚集位置。
+.PP
+长度为 \fImsg_controllen\fP 的字段 \fImsg_control\fP 指向用于其他协议控制相关消息或杂项辅助数据的缓冲区。 当调用
+\fBrecvmsg\fP() 时，\fImsg_controllen\fP 应该包含 \fImsg_control\fP 中可用缓冲区的长度;
+从成功的调用返回时，它将包含控制消息序列的长度。
+.PP
+消息的形式是:
+.PP
+.in +4n
+.EX
+struct cmsghdr {
+    size_t cmsg_len;    /* Data byte count, including header
+                           (type is socklen_t in POSIX) */
+    int    cmsg_level;  /* Originating protocol */
+    int    cmsg_type;   /* Protocol\-specific type */
+/* followed by
+    unsigned char cmsg_data[]; */
+};
+.EE
+.in
+.PP
+辅助数据只能由 \fBcmsg\fP(3) 中定义的宏访问。
+.PP
+例如，Linux 使用此辅助数据机制通过 UNIX 域套接字传递扩展错误、IP 选项或文件描述符。 有关在各种套接字域中使用辅助数据的更多信息，请参见
+\fBunix\fP(7) 和 \fBip\fP(7)。
+.PP
+\fImsghdr\fP 中的 \fImsg_flags\fP 字段在返回 \fBrecvmsg\fP() 时设置。 它可以包含几个标志:
+.TP 
+\fBMSG_EOR\fP
+表示记录结束; 返回的数据完成了一条记录 (通常用于 \fBSOCK_SEQPACKET\fP) 类型的套接字。
+.TP 
+\fBMSG_TRUNC\fP
+表示数据报的结尾部分被丢弃，因为数据报比提供的缓冲区大。
+.TP 
+\fBMSG_CTRUNC\fP
+表示由于缓冲区中用于辅助数据的空间不足而丢弃了一些控制数据。
+.TP 
+\fBMSG_OOB\fP
+返回以指示已收到加急或带外数据。
+.TP 
+\fBMSG_ERRQUEUE\fP
+表示没有收到数据，而是收到来自套接字错误队列的扩展错误。
+.SH "RETURN VALUE"
+这些调用返回接收到的字节数，如果发生错误则返回 \-1。 如果出现错误，\fIerrno\fP 将被设置以指示错误。
+.PP
+当流套接字对等体执行有序关闭时，返回值将为 0 (传统的 "end\-of\-file" 返回)。
+.PP
+各种域 (例如，UNIX 和 Internet 域) 中的数据报套接字允许零长度数据报。 当收到这样的数据报时，返回值为 0.
+.PP
+如果请求的从流套接字接收的字节数是 0，也可能返回值 0.
+.SH ERRORS
+这些是套接字层产生的一些标准错误。 底层协议模块可能会生成并返回其他错误; 查看他们的手册页。
+.TP 
+\fBEAGAIN\fP or \fBEWOULDBLOCK\fP
+.\" Actually EAGAIN on Linux
+套接字被标记为非阻塞并且接收操作将阻塞，或者设置了接收超时并且在接收数据之前超时已过期。 POSIX.1
+允许在这种情况下返回任一错误，并且不要求这些常量具有相同的值，因此可移植应用程序应该检查这两种可能性。
+.TP 
+\fBEBADF\fP
+参数 \fIsockfd\fP 是一个无效的文件描述符。
+.TP 
+\fBECONNREFUSED\fP
+远程主机拒绝允许网络连接 (通常是因为它没有运行请求的服务)。
+.TP 
+\fBEFAULT\fP
+接收缓冲区 pointer(s) 指向进程地址空间之外。
+.TP 
+\fBEINTR\fP
+在任何数据可用之前，接收被信号传递中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+.\" e.g., msg_namelen < 0 for recvmsg() or addrlen < 0 for recvfrom()
+传递的参数无效。
+.TP 
+\fBENOMEM\fP
+无法为 \fBrecvmsg\fP() 分配内存。
+.TP 
+\fBENOTCONN\fP
+套接字与面向连接的协议相关联并且尚未连接 (请参见 \fBconnect\fP(2) 和 \fBaccept\fP(2)).
+.TP 
+\fBENOTSOCK\fP
+文件描述符 \fIsockfd\fP 不引用套接字。
+.SH STANDARDS
+POSIX.1\-2001、POSIX.1\-2008、4.4BSD (这些接口最早出现在 4.2BSD)。
+.PP
+POSIX.1 仅描述 \fBMSG_OOB\fP、\fBMSG_PEEK\fP 和 \fBMSG_WAITALL\fP 标志。
+.SH NOTES
+如果零长度数据报待处理，则 \fBread\fP(2) 和 \fBrecv\fP() 以及 \fIflags\fP 参数为零提供不同的行为。
+在这种情况下，\fBread\fP(2) 无效 (数据报保持挂起状态)，而 \fBrecv\fP() 消耗挂起的数据报。
+.PP
+\fIsocklen_t\fP 型是由 POSIX 发明的。 另请详见 \fBaccept\fP(2)。
+.PP
+.\" POSIX.1-2001, POSIX.1-2008
+.\" glibc bug for msg_controllen raised 12 Mar 2006
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=2448
+.\" The problem is an underlying kernel issue: the size of the
+.\" __kernel_size_t type used to type these fields varies
+.\" across architectures, but socklen_t is always 32 bits,
+.\" as (at least with GCC) is int.
+根据 POSIX.1，\fImsghdr\fP 结构体的 \fImsg_controllen\fP 字段应键入 \fIsocklen_t\fP，\fImsg_iovlen\fP
+字段应键入 \fIint\fP，但 glibc 目前都键入 \fIsize_t\fP。
+.PP
+有关 Linux 特定系统调用的信息，请参见 \fBrecvmmsg\fP(2)，该调用可用于在单个调用中接收多个数据报。
+.SH EXAMPLES
+\fBgetaddrinfo\fP(3) 中显示了 \fBrecvfrom\fP() 的使用示例。
+.SH "SEE ALSO"
+\fBfcntl\fP(2), \fBgetsockopt\fP(2), \fBread\fP(2), \fBrecvmmsg\fP(2), \fBselect\fP(2),
+\fBshutdown\fP(2), \fBsocket\fP(2), \fBcmsg\fP(3), \fBsockatmark\fP(3), \fBip\fP(7),
+\fBipv6\fP(7), \fBsocket\fP(7), \fBtcp\fP(7), \fBudp\fP(7), \fBunix\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

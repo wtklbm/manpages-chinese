@@ -1,0 +1,1171 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1998 Andries Brouwer (aeb@cwi.nl)
+.\" and Copyright (C) 2002, 2006, 2008, 2012, 2013, 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright Guillem Jover <guillem@hadrons.org>
+.\" and Copyright (C) 2010 Andi Kleen <andi@firstfloor.org>
+.\" and Copyright (C) 2012 Cyrill Gorcunov <gorcunov@openvz.org>
+.\" and Copyright (C) 2014 Dave Hansen / Intel
+.\" and Copyright (c) 2016 Eugene Syromyatnikov <evgsyr@gmail.com>
+.\" and Copyright (c) 2018 Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+.\" and Copyright (c) 2020 Dave Martin <Dave.Martin@arm.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Thu Nov 11 04:19:42 MET 1999, aeb: added PR_GET_PDEATHSIG
+.\" Modified 27 Jun 02, Michael Kerrisk
+.\" 	Added PR_SET_DUMPABLE, PR_GET_DUMPABLE,
+.\"	PR_SET_KEEPCAPS, PR_GET_KEEPCAPS
+.\" Modified 2006-08-30 Guillem Jover <guillem@hadrons.org>
+.\"	Updated Linux versions where the options where introduced.
+.\"	Added PR_SET_TIMING, PR_GET_TIMING, PR_SET_NAME, PR_GET_NAME,
+.\"	PR_SET_UNALIGN, PR_GET_UNALIGN, PR_SET_FPEMU, PR_GET_FPEMU,
+.\"	PR_SET_FPEXC, PR_GET_FPEXC
+.\" 2008-04-29 Serge Hallyn, Document PR_CAPBSET_READ and PR_CAPBSET_DROP
+.\" 2008-06-13 Erik Bosman, <ejbosman@cs.vu.nl>
+.\"     Document PR_GET_TSC and PR_SET_TSC.
+.\" 2008-06-15 mtk, Document PR_SET_SECCOMP, PR_GET_SECCOMP
+.\" 2009-10-03 Andi Kleen, document PR_MCE_KILL
+.\" 2012-04 Cyrill Gorcunov, Document PR_SET_MM
+.\" 2012-04-25 Michael Kerrisk, Document PR_TASK_PERF_EVENTS_DISABLE and
+.\"				PR_TASK_PERF_EVENTS_ENABLE
+.\" 2012-09-20 Kees Cook, update PR_SET_SECCOMP for mode 2
+.\" 2012-09-20 Kees Cook, document PR_SET_NO_NEW_PRIVS, PR_GET_NO_NEW_PRIVS
+.\" 2012-10-25 Michael Kerrisk, Document PR_SET_TIMERSLACK and
+.\"                             PR_GET_TIMERSLACK
+.\" 2013-01-10 Kees Cook, document PR_SET_PTRACER
+.\" 2012-02-04 Michael Kerrisk, document PR_{SET,GET}_CHILD_SUBREAPER
+.\" 2014-11-10 Dave Hansen, document PR_MPX_{EN,DIS}ABLE_MANAGEMENT
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH prctl 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+prctl \- 对进程或线程的操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/prctl.h>\fP
+.PP
+\fBint prctl(int \fP\fIoption\fP\fB, unsigned long \fP\fIarg2\fP\fB, unsigned long \fP\fIarg3\fP\fB,\fP
+\fB          unsigned long \fP\fIarg4\fP\fB, unsigned long \fP\fIarg5\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBprctl\fP() 操纵调用线程或进程的行为的各个方面。
+.PP
+请注意，不小心使用某些 \fBprctl\fP() 操作会混淆用户空间运行时环境，因此应谨慎使用这些操作。
+.PP
+.\"
+.\" prctl PR_CAP_AMBIENT
+\fBprctl\fP() 被称为第一个参数，描述要做什么 (具有在 \fI<linux/prctl.h>\fP)
+中定义的值，并且进一步的参数具有取决于第一个的重要性。 第一个参数可以是:
+.TP 
+\fBPR_CAP_AMBIENT\fP (since Linux 4.3)
+.\" commit 58319057b7847667f0c9585b9de0e8932b0fdb08
+根据 \fIarg2\fP 的值读取或更改调用线程的环境能力集，它必须是以下之一:
+.RS
+.\"
+.TP 
+\fBPR_CAP_AMBIENT_RAISE\fP
+\fIarg3\fP 中指定的功能被添加到环境集中。 指定的能力必须已经存在于进程的允许集和可继承集中。 如果设置了
+\fBSECBIT_NO_CAP_AMBIENT_RAISE\fP 安全位，则不允许执行此操作。
+.TP 
+\fBPR_CAP_AMBIENT_LOWER\fP
+\fIarg3\fP 中指定的功能已从环境集中删除。
+.TP 
+\fBPR_CAP_AMBIENT_IS_SET\fP
+如果 \fIarg3\fP 中的功能在环境集中，则 \fBprctl\fP() 调用返回 1，否则返回 0。
+.TP 
+\fBPR_CAP_AMBIENT_CLEAR_ALL\fP
+所有功能都将从环境集中删除。 此操作需要将 \fIarg3\fP 设置为零。
+.RE
+.IP
+在上述所有操作中，\fIarg4\fP 和 \fIarg5\fP 必须指定为 0.
+.IP
+.\" prctl PR_CAPBSET_READ
+\fBlibcap\fP(3) 库中以 \fBcap_get_ambient\fP(3)、\fBcap_set_ambient\fP(3) 和
+\fBcap_reset_ambient\fP(3) 的形式提供了位于上述操作之上的更高级别的接口。
+.TP 
+\fBPR_CAPBSET_READ\fP (since Linux 2.6.25)
+如果 \fIarg2\fP 中指定的能力在调用线程的能力边界集中，则返回 (作为函数结果) 1，否则返回 0。 (能力常量在
+\fI<linux/capability.h>\fP.) 中定义。能力边界集指示进程是否可以通过文件的允许能力集在后续调用
+\fBexecve\fP(2) 上接收能力。
+.IP
+如果 \fIarg2\fP 中指定的功能无效，则调用失败并显示错误 \fBEINVAL\fP。
+.IP
+.\" prctl PR_CAPBSET_DROP
+\fBlibcap\fP(3) 库中以 \fBcap_get_bound\fP(3) 的形式提供了一个位于此操作之上的更高级别的接口。
+.TP 
+\fBPR_CAPBSET_DROP\fP (since Linux 2.6.25)
+如果调用线程在其用户命名空间中具有 \fBCAP_SETPCAP\fP 能力，则丢弃 \fIarg2\fP 从调用线程的能力边界集中指定的能力。
+调用线程的任何子线程都将继承新缩减的边界集。
+.IP
+调用失败并出现错误: 如果调用线程没有 \fBCAP_SETPCAP\fP，则为 \fBEPERM\fP; 如果 \fIarg2\fP 不代表有效能力，则为
+\fBEINVAL\fP; 或 \fBEINVAL\fP，如果内核中未启用文件功能，在这种情况下不支持边界集。
+.IP
+.\" prctl PR_SET_CHILD_SUBREAPER
+\fBlibcap\fP(3) 库中以 \fBcap_drop_bound\fP(3) 的形式提供了一个位于此操作之上的更高级别的接口。
+.TP 
+\fBPR_SET_CHILD_SUBREAPER\fP (since Linux 3.4)
+.\" commit ebec18a6d3aa1e7d84aab16225e87fd25170ec2b
+如果 \fIarg2\fP 不为零，则设置调用进程的 "child subreaper" 属性; 如果 \fIarg2\fP 为零，则取消设置该属性。
+.IP
+subreaper 为其后代进程履行 \fBinit\fP(1) 的角色。 当一个进程成为孤儿时 (即，它的 immediate
+父进程终止)，那么该进程将重新成为最近的仍然存在的祖先子收割者的父进程。 随后，在孤儿进程中调用 \fBgetppid\fP(2) 现在将返回子收割者进程的
+PID，当孤儿终止时，子收割者进程将接收到 \fBSIGCHLD\fP 信号，并且能够通过进程上的 \fBwait\fP(2) 来发现其终止状态.
+.IP
+"child subreaper" 属性的设置不会被 \fBfork\fP(2) 和 \fBclone\fP(2) 创建的子项继承。 该设置在
+\fBexecve\fP(2) 中保留。
+.IP
+.\" prctl PR_GET_CHILD_SUBREAPER
+建立一个 subreaper 进程在会话管理框架中很有用，其中一组分层进程由一个 subreaper 进程管理，当其中一个进程 \[em]
+例如，一个双叉守护进程 \[em] 终止 (也许这样它就可以重新启动该过程)。 出于类似的原因，一些 \fBinit\fP(1) 框架
+(例如，\fBsystemd\fP(1)) 使用 subreaper 进程。
+.TP 
+\fBPR_GET_CHILD_SUBREAPER\fP (since Linux 3.4)
+.\" prctl PR_SET_DUMPABLE
+在 \fI(int\~*) arg2\fP 指向的位置返回调用者的 "child subreaper" 设置。
+.TP 
+\fBPR_SET_DUMPABLE\fP (since Linux 2.3.20)
+设置 "dumpable" 属性的状态，该属性确定是否在传递默认行为为生成核心转储的信号时为调用进程生成核心转储。
+.IP
+.\" commit abf75a5033d4da7b8a7e92321d74021d1fcfb502
+.\" See http://marc.theaimsgroup.com/?l=linux-kernel&m=115270289030630&w=2
+.\" Subject:    Fix prctl privilege escalation (CVE-2006-2451)
+.\" From:       Marcel Holtmann <marcel () holtmann ! org>
+.\" Date:       2006-07-12 11:12:00
+直到并包括 Linux 2.6.12，\fIarg2\fP 必须是 0 (\fBSUID_DUMP_DISABLE\fP，进程不可转储) 或 1
+(\fBSUID_DUMP_USER\fP，进程可转储)。 在 Linux 2.6.13 和 Linux 2.6.17 之间，值 2
+也被允许，这导致任何通常不会被转储的二进制文件被转储为只能由 root 读取; 出于安全原因，此特性已被删除。 (参见 \fBproc\fP(5).) 中
+\fI/proc/sys/fs/\:suid_dumpable\fP 的说明
+.IP
+.\" See kernel/cred.c::commit_creds() (Linux 3.18 sources)
+通常，"dumpable" 属性设置为 1。 但是，在以下情况下，它会重置为文件 \fI/proc/sys/fs/\:suid_dumpable\fP
+中包含的当前值 (默认值为 0) :
+.RS
+.IP \[bu] 3
+进程的有效用户或组 ID 已更改。
+.IP \[bu]
+进程的文件系统用户或组 ID 已更改 (请参见 \fBcredentials\fP(7)).
+.IP \[bu]
+该进程执行 (\fBexecve\fP(2)) set\-user\-ID 或 set\-group\-ID 程序，导致有效用户 ID 或有效组 ID 发生更改。
+.IP \[bu]
+.\" See kernel/cred.c::commit_creds()
+.\" Also certain namespace operations;
+该进程执行 (\fBexecve\fP(2)) 一个具有文件功能的程序 (请参见
+\fBcapabilities\fP(7))，但前提是获得的允许功能超过该进程已经允许的功能。
+.RE
+.IP
+不可转储的进程不能通过 \fBptrace\fP(2) \fBPTRACE_ATTACH\fP 附加; 有关详细信息，请参见 \fBptrace\fP(2)。
+.IP
+.\" prctl PR_GET_DUMPABLE
+如果进程不可转储，进程 \fI/proc/\fPpid 目录中文件的所有权将受到影响，如 \fBproc\fP(5) 中所述。
+.TP 
+\fBPR_GET_DUMPABLE\fP (since Linux 2.3.20)
+.\" Since Linux 2.6.13, the dumpable flag can have the value 2,
+.\" but in Linux 2.6.13 PR_GET_DUMPABLE simply returns 1 if the dumpable
+.\" flags has a nonzero value.  This was fixed in Linux 2.6.14.
+.\" prctl PR_SET_ENDIAN
+返回 (作为函数结果) 调用进程的可转储属性的当前状态。
+.TP 
+\fBPR_SET_ENDIAN\fP (since Linux 2.6.18, PowerPC only)
+.\" Respectively 0, 1, 2
+.\" prctl PR_GET_ENDIAN
+将调用进程的字节顺序设置为 \fIarg2\fP 中给定的值，该值应该是以下之一: \fBPR_ENDIAN_BIG\fP、\fBPR_ENDIAN_LITTLE\fP
+或 \fBPR_ENDIAN_PPC_LITTLE\fP (PowerPC 伪小字节序)。
+.TP 
+\fBPR_GET_ENDIAN\fP (since Linux 2.6.18, PowerPC only)
+.\" prctl PR_SET_FP_MODE
+在 \fI(int\~*) arg2\fP 指向的位置返回调用进程的字节顺序。
+.TP 
+\fBPR_SET_FP_MODE\fP (since Linux 4.0, only on MIPS)
+.\" commit 9791554b45a2acc28247f66a5fd5bbc212a6b8c8
+在 MIPS 架构上，可以使用 ABI 构建用户空间代码，该 ABI 允许链接具有更严格的浮点 (FP) 要求的代码。 例如，可以将用户空间代码构建为以
+O32 FPXX ABI 为目标，并与为更具限制性的 FP32 或 FP64 ABI 之一构建的代码链接。
+当链接更多限制性代码时，进程的总体要求是使用更严格的浮点模式。
+.IP
+因为内核无法预先知道进程应该在哪种模式下执行，并且因为这些限制可以在进程的生命周期内改变，所以提供了 \fBPR_SET_FP_MODE\fP
+操作以允许从用户空间控制浮点模式.
+.IP
+.\" https://dmz-portal.mips.com/wiki/MIPS_O32_ABI_-_FR0_and_FR1_Interlinking
+\fI(unsigned int) arg2\fP 参数是描述所用浮点模式的位掩码:
+.RS
+.TP 
+\fBPR_FP_MODE_FR\fP
+当该位为 \fIunset\fP (所谓 \fBFR=0\fP 或 \fBFR0\fP 模式) 时，32 个浮点寄存器为 32 位宽，64 位寄存器表示为一对寄存器
+(偶数和奇数，偶数为寄存器包含低 32 位，奇数寄存器包含高 32 位)。
+.IP
+当此位为 \fIset\fP (在支持的硬件上) 时，32 个浮点寄存器为 64 位宽 (所谓的 \fBFR=1\fP 或 \fBFR1\fP 模式)。 请注意，现代
+MIPS 实现 (MIPS R6 和更新版本) 仅支持 \fBFR=1\fP 模式。
+.IP
+使用 O32 FP32 ABI 的应用程序只有当该位为 \fIunset\fP (\fBFR=0\fP 时才能运行; 或者它们可以在启用 FRE
+的情况下使用，见下文)。 使用 O32 FP64 ABI (和 O32 FP64A ABI，它的存在是为了提供与现有 FP32 代码一起运行的能力;
+见下文) 的应用程序只能在该位为 \fIset\fP (\fBFR=1\fP) 时运行。 使用 O32 FPXX ABI 的应用程序可以使用 \fBFR=0\fP 或
+\fBFR=1 .\fP 运行
+.TP 
+\fBPR_FP_MODE_FRE\fP
+启用 32 位浮点模式仿真。 启用此模式后，它通过在每条使用 32 位格式的指令上引发保留指令异常来模拟 32 位浮点运算，然后内核在软件中处理指令。
+(问题在于处理奇数寄存器的差异，\fBFR=0\fP 模式下为偶数 64 位寄存器的高 32 位和 \fBFR=1\fP 模式下奇数 64 位寄存器的低 32
+位部分。) 当具有 O32 FP32 ABI 的代码应与兼容 O32 FPXX 或 O32 FP64A ABI (需要 \fBFR=1\fP FPU 模式)
+的代码一起运行时，或者当它在缺少 \fBFR=0\fP 模式支持的较新硬件 (MIPS R6 以上) 上执行时，必须启用此位当使用带有 FP32 ABI
+的二进制文件时。
+.IP
+请注意，此模式仅在 FPU 处于 64 位模式 (\fBFR=1\fP) 时才有意义。
+.IP
+请注意，使用仿真本质上会对性能产生重大影响，应尽可能避免使用。
+.RE
+.IP
+在 N32/N64 ABI 中，始终使用 64 位浮点模式，因此不需要 FPU 仿真，FPU 始终在 \fBFR=1\fP 模式下运行。
+.IP
+该选项主要供动态链接器 (\fBld.so\fP(8)) 使用。
+.IP
+.\" prctl PR_GET_FP_MODE
+参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.TP 
+\fBPR_GET_FP_MODE\fP (since Linux 4.0, only on MIPS)
+返回 (作为函数结果) 当前的浮点模式 (详见 \fBPR_SET_FP_MODE\fP 的说明)。
+.IP
+成功时，调用返回一个表示当前浮点模式的位掩码。
+.IP
+.\" prctl PR_SET_FPEMU
+参数 \fIarg2\fP、\fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 将被忽略。
+.TP 
+\fBPR_SET_FPEMU\fP (since Linux 2.4.18, 2.5.9, only on ia64)
+.\" prctl PR_GET_FPEMU
+将浮点仿真控制位设置为 \fIarg2\fP。 传递 \fBPR_FPEMU_NOPRINT\fP 以静默模拟浮点运算访问，或传递
+\fBPR_FPEMU_SIGFPE\fP 以不模拟浮点运算并发送 \fBSIGFPE\fP。
+.TP 
+\fBPR_GET_FPEMU\fP (since Linux 2.4.18, 2.5.9, only on ia64)
+.\" prctl PR_SET_FPEXC
+在 \fI(int\~*) arg2\fP 指向的位置返回浮点仿真控制位。
+.TP 
+\fBPR_SET_FPEXC\fP (since Linux 2.4.21, 2.5.32, only on PowerPC)
+.\" prctl PR_GET_FPEXC
+将浮点异常模式设置为 \fIarg2\fP。 通过 \fBPR_FP_EXC_SW_ENABLE\fP 使用 FPEXC 进行 FP
+异常使能，\fBPR_FP_EXC_DIV\fP 用于浮点除零，\fBPR_FP_EXC_OVF\fP 用于浮点溢出，\fBPR_FP_EXC_UND\fP
+用于浮点下溢，\fBPR_FP_EXC_RES\fP 用于浮点不精确结果，\fBPR_FP_EXC_INV\fP
+用于浮点无效操作，\fBPR_FP_EXC_DISABLED\fP 用于禁用 FP 异常，\fBPR_FP_EXC_NONRECOV\fP
+用于异步不可恢复异常模式，\fBPR_FP_EXC_ASYNC\fP 用于异步可恢复异常模式，\fBPR_FP_EXC_PRECISE\fP 用于精确异常模式。
+.TP 
+\fBPR_GET_FPEXC\fP (since Linux 2.4.21, 2.5.32, only on PowerPC)
+.\" prctl PR_SET_IO_FLUSHER
+返回浮点异常模式，在 \fI(int\~*) arg2\fP 指向的位置。
+.TP 
+\fBPR_SET_IO_FLUSHER\fP (since Linux 5.6)
+如果用户进程涉及块层或文件系统 I/O 路径，并且可以在处理 I/O 请求时分配内存，则必须将 \fIarg2\fP 设置为 1。 这会将进程置于
+IO_FLUSHER 状态，这允许它在分配内存时进行特殊处理以取得进展。 如果 \fIarg2\fP 为 0，进程将清除 IO_FLUSHER
+状态，并使用默认行为。
+.IP
+调用进程必须具有 \fBCAP_SYS_RESOURCE\fP 能力。
+.IP
+\fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 必须为零。
+.IP
+IO_FLUSHER 状态由通过 \fBfork\fP(2) 创建的子进程继承，并在 \fBexecve\fP(2) 中保留。
+.IP
+.\" prctl PR_GET_IO_FLUSHER
+IO_FLUSHER 应用程序的示例是 FUSE 守护程序、SCSI 设备仿真守护程序和执行错误处理的守护程序，如多路径路径恢复应用程序。
+.TP 
+\fBPR_GET_IO_FLUSHER (Since Linux 5.6)\fP
+返回 (作为函数结果) 调用者的 IO_FLUSHER 状态。 值为 1 表示调用者处于 IO_FLUSHER 状态; 0 表示调用者不在
+IO_FLUSHER 状态。
+.IP
+调用进程必须具有 \fBCAP_SYS_RESOURCE\fP 能力。
+.IP
+.\" prctl PR_SET_KEEPCAPS
+\fIarg2\fP、\fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 必须为零。
+.TP 
+\fBPR_SET_KEEPCAPS\fP (since Linux 2.2.18)
+.\" prctl PR_GET_KEEPCAPS
+设置调用线程的 "keep capabilities" 标志的状态。 \fBcapabilities\fP(7) 中描述了该标志的作用。 \fIarg2\fP
+必须为 0 (清除标志) 或 1 (设置标志)。 "keep capabilities" 值将在后续调用 \fBexecve\fP(2) 时重置为 0。
+.TP 
+\fBPR_GET_KEEPCAPS\fP (since Linux 2.2.18)
+.\" prctl PR_MCE_KILL
+返回 (作为函数结果) 调用线程的 "keep capabilities" 标志的当前状态。 有关此标志的说明，请参见
+\fBcapabilities\fP(7)。
+.TP 
+\fBPR_MCE_KILL\fP (since Linux 2.6.32)
+.\" prctl PR_MCE_KILL_GET
+为调用线程设置机器检查内存损坏终止策略。 如果 \fIarg2\fP 是
+\fBPR_MCE_KILL_CLEAR\fP，则清除线程内存损坏终止策略并使用系统范围的默认值。 (系统范围的默认值由
+\fI/proc/sys/vm/memory_failure_early_kill\fP 定义; 参见 \fBproc\fP(5).) 如果 \fIarg2\fP 是
+\fBPR_MCE_KILL_SET\fP，则使用线程特定的内存损坏终止策略。 在这种情况下，\fIarg3\fP 定义策略是 \fIearly kill\fP
+(\fBPR_MCE_KILL_EARLY\fP)、\fIlate kill\fP (\fBPR_MCE_KILL_LATE\fP) 还是系统范围的默认
+(\fBPR_MCE_KILL_DEFAULT\fP)。 Early kill 意味着一旦在其地址空间内检测到硬件内存损坏，线程就会收到 \fBSIGBUS\fP
+信号。 在后期终止模式下，进程仅在访问损坏的页面时被终止。 有关 \fBSIGBUS\fP 信号的更多信息，请参见 \fBsigaction\fP(2)。
+该政策由子女继承。 剩余未使用的 \fBprctl\fP() 参数必须为零以实现 future 兼容性。
+.TP 
+\fBPR_MCE_KILL_GET\fP (since Linux 2.6.32)
+.\" prctl PR_SET_MM
+返回 (作为函数结果) 当前的每进程机器检查终止策略。 所有未使用的 \fBprctl\fP() 参数必须为零。
+.TP 
+\fBPR_SET_MM\fP (since Linux 3.3)
+.\" commit 028ee4be34a09a6d48bdf30ab991ae933a7bc036
+修改调用进程的某些内核内存 map 描述符字段。 通常这些字段由内核和动态加载程序设置 (更多信息请参见
+\fBld.so\fP(8))，常规应用程序不应使用此，特性。 但是，在某些情况下，例如自修改程序，程序可能会发现更改自己的内存 map 很有用。
+.IP
+调用进程必须具有 \fBCAP_SYS_RESOURCE\fP 能力。 \fIarg2\fP 中的值是以下选项之一，而 \fIarg3\fP 为该选项提供了一个新值。
+如果未使用，\fIarg4\fP 和 \fIarg5\fP 参数必须为零。
+.IP
+.\" commit 52b3694157e3aa6df871e283115652ec6f2d31e0
+在 Linux 3.10 之前，只有在启用 \fBCONFIG_CHECKPOINT_RESTORE\fP 选项的情况下构建内核时，此特性才可用。
+.RS
+.TP 
+\fBPR_SET_MM_START_CODE\fP
+设置程序文本可以运行的地址。 相应的内存区域必须是可读和可执行的，但不可写或不可共享 (有关更多信息，请参见 \fBmprotect\fP(2) 和
+\fBmmap\fP(2))。
+.TP 
+\fBPR_SET_MM_END_CODE\fP
+设置程序文本可以运行的地址。 对应的内存区域必须是可读可执行的，但不可写不可共享。
+.TP 
+\fBPR_SET_MM_START_DATA\fP
+设置放置初始化和未初始化 (bss) 数据的地址。 对应的内存区必须是可读写的，但不可执行，不可共享。
+.TP 
+\fBPR_SET_MM_END_DATA\fP
+设置放置初始化和未初始化 (bss) 数据的地址。 对应的内存区必须是可读写的，但不可执行，不可共享。
+.TP 
+\fBPR_SET_MM_START_STACK\fP
+设置栈的起始地址。 对应的内存区必须是可读写的。
+.TP 
+\fBPR_SET_MM_START_BRK\fP
+设置程序堆可以用 \fBbrk\fP(2) 调用扩展的地址。 地址必须大于当前程序字段的结束地址。 此外，生成的堆的大小和字段的大小不能超过
+\fBRLIMIT_DATA\fP 资源限制 (请参见 \fBsetrlimit\fP(2)).
+.TP 
+\fBPR_SET_MM_BRK\fP
+设置当前 \fBbrk\fP(2) 值。 地址要求与 \fBPR_SET_MM_START_BRK\fP 选项相同。
+.PP
+.\" commit fe8c7f5cbf91124987106faa3bdf0c8b955c4cf7
+以下选项自 Linux 3.5 起可用。
+.TP 
+\fBPR_SET_MM_ARG_START\fP
+设置程序命令行所在的地址。
+.TP 
+\fBPR_SET_MM_ARG_END\fP
+设置程序命令行放置在其下方的地址。
+.TP 
+\fBPR_SET_MM_ENV_START\fP
+设置放置程序环境的地址。
+.TP 
+\fBPR_SET_MM_ENV_END\fP
+设置放置程序环境的地址。
+.IP
+\fBPR_SET_MM_ARG_START\fP、\fBPR_SET_MM_ARG_END\fP、\fBPR_SET_MM_ENV_START\fP、\fBPR_SET_MM_ENV_END\fP
+传递的地址应该属于一个进程栈区。 因此，相应的内存区域必须是可读、可写的，并且 (取决于内核配置) 具有 \fBMAP_GROWSDOWN\fP 属性集
+(参见 \fBmmap\fP(2)).
+.TP 
+\fBPR_SET_MM_AUXV\fP
+设置一个新的辅助 vector。 \fIarg3\fP 参数应该提供 vector 的地址。 \fIarg4\fP 是 vector 的大小。
+.TP 
+\fBPR_SET_MM_EXE_FILE\fP
+.\" commit b32dfe377102ce668775f8b6b1461f7ad428f8b6
+将 \fI/proc/\fPpid\fI/exe\fP 符号链接替换为指向由 \fIarg3\fP 参数中提供的文件描述符标识的新可执行文件的新符号链接。
+文件描述符应该通过常规的 \fBopen\fP(2) 调用获得。
+.IP
+要更改符号链接，需要取消映射所有现有的可执行内存区域，包括那些由内核自己创建的内存区域 (例如内核通常至少为 ELF \fI.text\fP
+部分创建一个可执行内存区域)。
+.IP
+.\" commit 3fb4afd9a504c2386b8435028d43283216bf588e
+在 Linux 4.9 及更早版本中，\fBPR_SET_MM_EXE_FILE\fP 操作只能在进程的生命周期内执行一次; 尝试第二次执行该操作会导致错误
+\fBEPERM\fP。 出于后来被认为似是而非的安全原因而强制执行此限制，并且在 Linux 4.10
+中删除了限制，因为某些用户空间应用程序需要多次执行此操作。
+.PP
+.\" commit f606b77f1a9e362451aca8f81d8f36a3a112139e
+以下选项自 Linux 3.18 起可用。
+.TP 
+\fBPR_SET_MM_MAP\fP
+通过传入 \fIstruct prctl_mm_map\fP (如 \fI<linux/prctl.h>\fP).  \fIarg4\fP
+参数应提供结构体的尺寸。
+.IP
+仅当在启用 \fBCONFIG_CHECKPOINT_RESTORE\fP 选项的情况下构建内核时，此特性才可用。
+.TP 
+\fBPR_SET_MM_MAP_SIZE\fP
+返回内核期望的 \fIstruct prctl_mm_map\fP 的大小。 这允许用户空间找到一个兼容的结构体。 \fIarg4\fP
+参数应该是指向无符号整数的指针。
+.IP
+仅当在启用 \fBCONFIG_CHECKPOINT_RESTORE\fP 选项的情况下构建内核时，此特性才可用。
+.RE
+.\" prctl PR_SET_VMA
+.TP 
+\fBPR_SET_VMA\fP (since Linux 5.17)
+.\" Commit 9a10064f5625d5572c3626c1516e0bebc6c9fe9b
+为从 \fIarg3\fP 中指定的地址开始并跨越 \fIarg4\fP 中指定的大小的虚拟内存区域设置 \fIarg2\fP 中指定的属性。 \fIarg5\fP
+指定要设置的属性值。
+.IP
+请注意，由于该属性值的不同，将属性分配给虚拟内存区域可能会阻止它与相邻的虚拟内存区域合并。
+.IP
+目前，\fIarg2\fP 必须是以下之一:
+.RS
+.TP 
+\fBPR_SET_VMA_ANON_NAME\fP
+为匿名虚拟内存区域设置名称。 \fIarg5\fP 应该是指向包含名称的以 null 结尾的字符串的指针。 包括空字节在内的名称长度不能超过 80 个字节。
+如果 \fIarg5\fP 为 NULL，则适当的匿名虚拟内存区域的名称将被重置。 名称只能包含可打印的 ascii 字符 (包括空格)，除了
+\[aq][\[aq]、\[aq]]\[aq]、\[aq]\e\[aq]、\[aq]$\[aq] 和 \[aq]\[ga]\[aq]。
+.RE
+.\" prctl PR_MPX_ENABLE_MANAGEMENT
+.TP 
+\fBPR_MPX_ENABLE_MANAGEMENT\fP, \fBPR_MPX_DISABLE_MANAGEMENT\fP (since Linux 3.19, removed in Linux 5.4; only on x86)
+.\" commit fe3d197f84319d3bce379a9c0dc17b1f48ad358c
+.\" See also http://lwn.net/Articles/582712/
+.\" See also https://gcc.gnu.org/wiki/Intel%20MPX%20support%20in%20the%20GCC%20compiler
+.\" commit e9d1b4f3c60997fe197bf0243cb4a41a44387a88
+启用或禁用 Memory Protection eXtensions (MPX) 边界表的内核管理。 \fIarg2\fP、\fIarg3\fP、\fIarg4\fP 和
+\fIarg5\fP 参数必须为零。
+.IP
+MPX 是一种硬件辅助机制，用于对指针执行边界检查。 它由一组存储边界信息的寄存器和一组特殊指令前缀组成，这些前缀告诉 CPU
+它应该在哪些指令上执行边界执行。 这些寄存器的数量有限，当指针多于寄存器时，它们的内容必须是 "spilled" 到一组表中。 这些表称为
+"bounds tables"，MPX \fBprctl\fP() 操作控制内核是否管理它们的分配和释放。
+.IP
+启用管理后，内核将接管边界表的分配和释放。 它通过捕获导致首次使用缺失边界表的 #BR
+异常来实现这一点，而不是将异常传递到用户空间，它分配表并使用新表的位置填充边界目录。 对于释放，内核检查是否存在未分配内存的边界表，如果存在则释放它们。
+.IP
+在使用 \fBPR_MPX_ENABLE_MANAGEMENT\fP 启用 MPX
+管理之前，应用程序必须首先为边界目录分配一个用户空间缓冲区，并将该目录的位置放置在 \fIbndcfgu\fP 寄存器中。
+.IP
+如果 CPU 或内核不支持 MPX，这些调用将失败。 通过 \fBCONFIG_X86_INTEL_MPX\fP 配置选项启用对 MPX 的内核支持。
+您可以通过查找 \fImpx\fP CPUID 位来检查 CPU 是否支持 MPX，例如使用以下命令:
+.IP
+.in +4n
+.EX
+cat /proc/cpuinfo | grep \[aq] mpx \[aq]
+.EE
+.in
+.IP
+启用 MPX 时，线程可能无法切换到长 (64\-bit) 模式或从长 (64\-bit) 模式切换出来。
+.IP
+进程中的所有线程都受这些调用的影响。
+.IP
+\fBfork\fP(2) 的子级继承 MPX 管理状态。 在 \fBexecve\fP(2) 期间，MPX 管理重置为一个状态，就好像
+\fBPR_MPX_DISABLE_MANAGEMENT\fP 已被调用一样。
+.IP
+有关 Intel MPX 的更多信息，请参见内核源文件 \fIDocumentation/x86/intel_mpx.txt\fP。
+.IP
+.\" commit f240652b6032b48ad7fa35c5e701cc4c8d697c0b
+.\" See also https://lkml.kernel.org/r/20190705175321.DB42F0AD@viggo.jf.intel.com
+.\" prctl PR_SET_NAME
+由于缺少工具链支持，\fBPR_MPX_ENABLE_MANAGEMENT\fP 和 \fBPR_MPX_DISABLE_MANAGEMENT\fP 在 Linux
+5.4 及更高版本中不受支持。
+.TP 
+\fBPR_SET_NAME\fP (since Linux 2.6.9)
+.\" TASK_COMM_LEN in include/linux/sched.h
+.\" prctl PR_GET_NAME
+使用 \fI(char\~*) arg2\fP 指向的位置中的值设置调用线程的名称。 名称最长可达 16 个字节，包括终止空字节。 (如果字符串的长度
+(包括终止空字节) 超过 16 个字节，字符串将被自动截断。) 这与可以通过 \fBpthread_setname_np\fP(3) 设置并使用
+\fBpthread_getname_np\fP(3) 检索的属性相同。 该属性同样可以通过 \fI/proc/self/task/\fPtid\fI/comm\fP
+访问 (参见 \fBproc\fP(5))，其中 \fItid\fP 是调用线程的线程 ID，由 \fBgettid\fP(2) 返回。
+.TP 
+\fBPR_GET_NAME\fP (since Linux 2.6.11)
+.\" prctl PR_SET_NO_NEW_PRIVS
+在 \fI(char\~*) arg2\fP 指向的缓冲区中返回调用线程的名称。 缓冲区应允许最多 16 个字节的空间; 返回的字符串将以 null 结尾。
+.TP 
+\fBPR_SET_NO_NEW_PRIVS\fP (since Linux 3.5)
+将调用线程的 \fIno_new_privs\fP 属性设置为 \fIarg2\fP 中的值。 当 \fIno_new_privs\fP 设置为 1
+时，\fBexecve\fP(2) promises 不授予特权来做任何没有 \fBexecve\fP(2) 调用就无法完成的事情 (例如，呈现设置用户 ID
+和设置组 ID 模式位，以及文件功能非 \- 功能)。 一旦设置，\fIno_new_privs\fP 属性就不能取消设置。 此属性的设置由
+\fBfork\fP(2) 和 \fBclone\fP(2) 创建的子级继承，并在 \fBexecve\fP(2) 中保留。
+.IP
+从 Linux 4.10 开始，线程的 \fIno_new_privs\fP 属性的值可以通过 \fI/proc/\fPpid\fI/status\fP 文件中的
+\fINoNewPrivs\fP 字段查看。
+.IP
+.\" commit 40fde647ccb0ae8c11d256d271e24d385eed595b
+.\" prctl PR_GET_NO_NEW_PRIVS
+有关详细信息，请参见内核源文件 \fIDocumentation/userspace\-api/no_new_privs.rst\fP (或 Linux
+4.13 之前的 \fIDocumentation/prctl/no_new_privs.txt\fP)。 另请详见 \fBseccomp\fP(2)。
+.TP 
+\fBPR_GET_NO_NEW_PRIVS\fP (since Linux 3.5)
+.\" prctl PR_PAC_RESET_KEYS
+.\" commit ba830885656414101b2f8ca88786524d4bb5e8c1
+返回 (作为函数结果) 调用线程的 \fIno_new_privs\fP 属性的值。 值 0 表示常规 \fBexecve\fP(2) 行为。 值为 1 表示
+\fBexecve\fP(2) 将在上述特权限制模式下运行。
+.TP 
+\fBPR_PAC_RESET_KEYS\fP (since Linux 5.0, only on arm64)
+安全地将线程的指针身份验证密钥重置为内核生成的新随机值。
+.IP
+要重置的键集由 \fIarg2\fP 指定，它必须是以下零个或多个的逻辑或:
+.RS
+.TP 
+\fBPR_PAC_APIAKEY\fP
+指令认证密钥 A
+.TP 
+\fBPR_PAC_APIBKEY\fP
+指令认证密钥 B
+.TP 
+\fBPR_PAC_APDAKEY\fP
+数据认证密钥 A
+.TP 
+\fBPR_PAC_APDBKEY\fP
+数据认证密钥 B
+.TP 
+\fBPR_PAC_APGAKEY\fP
+泛型认证 \[lq] A\[rq] 密钥。
+.IP
+(是的伙计们，确实没有泛型 B 键。)
+.RE
+.IP
+作为一种特殊情况，如果 \fIarg2\fP 为零，则重置所有键。 由于可以在 future
+中添加新密钥，因此在建立干净的执行上下文时，这是完全擦除现有密钥的推荐方法。 请注意，无需使用 \fBPR_PAC_RESET_KEYS\fP 来准备调用
+\fBexecve\fP(2)，因为 \fBexecve\fP(2) 会重置所有指针验证密钥。
+.IP
+其余参数 \fIarg3\fP、\fIarg4\fP、\fIarg5\fP 必须全部为零。
+.IP
+如果参数无效，特别是如果 \fIarg2\fP 包含无法识别的设置位或对应于此平台上不可用的密钥，则调用失败并出现错误 \fBEINVAL\fP。
+.IP
+\fBWarning:\fP 因为编译器或运行时环境可能正在使用部分或全部密钥，所以成功的 \fBPR_PAC_RESET_KEYS\fP 可能会使调用进程崩溃。
+安全使用它的条件很复杂并且取决于系统。 除非您知道自己在做什么，否则不要使用它。
+.IP
+.\"commit b693d0b372afb39432e1c49ad7b3454855bc6bed
+.\" prctl PR_SET_PDEATHSIG
+有关详细信息，请参见内核源文件 \fIDocumentation/arm64/pointer\-authentication.rst\fP (或 Linux
+5.3 之前的 \fIDocumentation/arm64/pointer\-authentication.txt\fP)。
+.TP 
+\fBPR_SET_PDEATHSIG\fP (since Linux 2.1.57)
+将调用进程的父死亡信号设置为 \fIarg2\fP (1..\fBNSIG\fP\-1\fB,\fP 范围内的信号值或 0 以清除)。
+这是调用进程在其父进程死亡时将获得的信号。
+.IP
+.\" https://bugzilla.kernel.org/show_bug.cgi?id=43300
+\fIWarning\fP: 在这种情况下的 "parent" 被认为是创建此进程的 \fIthread\fP。 换句话说，信号将在该线程终止时发送 (例如，通过
+\fBpthread_exit\fP(3))，而不是在父进程中的所有线程终止后。
+.IP
+parent\-death 信号是在父线程随后终止时发送的，也是在每个子收割器进程终止时发送的 (请参见上面对
+\fBPR_SET_CHILD_SUBREAPER\fP 的描述)，调用者随后被重新设置为父线程。 如果在执行 \fBPR_SET_PDEATHSIG\fP
+操作时父线程和所有祖先子收割者已经终止，则不会向调用者发送父死亡信号。
+.IP
+父死亡信号是进程导向的 (参见 \fBsignal\fP(7))，如果子进程使用 \fBsigaction\fP(2) \fBSA_SIGINFO\fP
+标志安装处理程序，则处理程序的 \fIsiginfo_t\fP 参数的 \fIsi_pid\fP 字段包含终止父进程的 PID。
+.IP
+.\" commit d2d56c5f51028cb9f3d800882eb6f4cbd3f9099f
+.\" FIXME capability changes can also trigger this; see
+.\" kernel/cred.c::commit_creds in the Linux 5.6 source.
+.\" prctl PR_GET_PDEATHSIG
+\fBfork\fP(2) 的子节点的父母死亡信号设置被清除。 当执行 set\-user\-ID 或 set\-group\-ID
+二进制文件或具有关联功能的二进制文件时，它也会 (自 Linux 2.4.36/2.6.23 起) 被清除 (参见
+\fBcapabilities\fP(7)); 否则，该值在 \fBexecve\fP(2) 中保留。 parent\-death
+信号设置也会在更改以下任何线程凭证时被清除: 有效用户 ID、有效组 ID、文件系统用户 ID 或文件系统组 ID。
+.TP 
+\fBPR_GET_PDEATHSIG\fP (since Linux 2.3.15)
+.\" prctl PR_SET_PTRACER
+在 \fI(int\~*) arg2\fP 指向的位置返回父进程死亡信号的当前值。
+.TP 
+\fBPR_SET_PTRACER\fP (since Linux 3.4)
+.\" commit 2d514487faf188938a4ee4fb3464eeecfbdcf8eb
+.\" commit bf06189e4d14641c0148bea16e9dd24943862215
+这仅在启用 Yama LSM 且处于模式 1 (`restricted ptrace`，通过
+\fI/proc/sys/kernel/yama/ptrace_scope\fP). 可见) 时才有意义。 当在 \fIarg2\fP 中传递 "ptracer
+process ID" 时，调用者声明 ptracer 进程可以 \fBptrace\fP(2) 调用进程，就好像它是直接进程祖先一样。 每个
+\fBPR_SET_PTRACER\fP 操作都会替换之前的 "ptracer process ID"。 使用 \fBPR_SET_PTRACER\fP 并将
+\fIarg2\fP 设置为 0 会清除调用者的 "ptracer process ID"。 如果 \fIarg2\fP 是
+\fBPR_SET_PTRACER_ANY\fP，则 Yama 引入的 ptrace 限制对调用进程有效禁用。
+.IP
+.\" commit 90bb766440f2147486a2acc3e793d7b8348b0c22
+.\" prctl PR_SET_SECCOMP
+有关详细信息，请参见内核源文件 \fIDocumentation/admin\-guide/LSM/Yama.rst\fP (或 Linux 4.13 之前的
+\fIDocumentation/security/Yama.txt\fP)。
+.TP 
+\fBPR_SET_SECCOMP\fP (since Linux 2.6.23)
+.\" See http://thread.gmane.org/gmane.linux.kernel/542632
+.\" [PATCH 0 of 2] seccomp updates
+.\" andrea@cpushare.com
+为调用线程设置安全计算 (seccomp) 模式，限制可用的系统调用。 更新的 \fBseccomp\fP(2) 系统调用提供了
+\fBPR_SET_SECCOMP\fP 功能的超集，是新应用程序的首选接口。
+.IP
+通过 \fIarg2\fP 选择 seccomp 模式。 (seccomp 常量在 \fI<linux/seccomp.h>\fP.)
+中定义，可以指定以下值:
+.RS
+.TP 
+\fBSECCOMP_MODE_STRICT\fP (since Linux 2.6.23)
+请参见 \fBseccomp\fP(2) 中 \fBSECCOMP_SET_MODE_STRICT\fP 的说明。
+.IP
+此操作仅在内核配置为启用 \fBCONFIG_SECCOMP\fP 时可用。
+.TP 
+\fBSECCOMP_MODE_FILTER\fP (since Linux 3.5)
+允许的系统调用由指向 \fIarg3\fP 中传递的 Berkeley 数据包过滤器的指针定义。 这个参数是指向 \fIstruct sock_fprog\fP
+的指针; 它可以设计为过滤任意系统调用和系统调用参数。 请参见 \fBseccomp\fP(2) 中 \fBSECCOMP_SET_MODE_FILTER\fP
+的说明。
+.IP
+此操作仅在内核配置为启用 \fBCONFIG_SECCOMP_FILTER\fP 时可用。
+.RE
+.IP
+.\" prctl PR_GET_SECCOMP
+有关 seccomp 过滤的更多详细信息，请参见 \fBseccomp\fP(2)。
+.TP 
+\fBPR_GET_SECCOMP\fP (since Linux 2.6.23)
+返回 (作为函数结果) 调用线程的安全计算模式。 如果调用者未处于安全计算模式，则此操作返回 0; 如果调用方处于严格安全计算模式，则
+\fBprctl\fP() 调用将导致向进程发送 \fBSIGKILL\fP 信号。 如果调用者处于过滤器模式，并且这个系统调用被 seccomp
+过滤器允许，它返回 2; 否则，进程将被 \fBSIGKILL\fP 信号杀死。
+.IP
+此操作仅在内核配置为启用 \fBCONFIG_SECCOMP\fP 时可用。
+.IP
+.\" prctl PR_SET_SECUREBITS
+从 Linux 3.8 开始，\fI/proc/\fPpid\fI/status\fP 文件的 \fISeccomp\fP
+字段提供了获取相同信息的方法，没有进程被杀的风险; 请参见 \fBproc\fP(5)。
+.TP 
+\fBPR_SET_SECUREBITS\fP (since Linux 2.6.26)
+.\" prctl PR_GET_SECUREBITS
+将调用线程的 "securebits" 标志设置为 \fIarg2\fP 中提供的值。 请参见 \fBcapabilities\fP(7)。
+.TP 
+\fBPR_GET_SECUREBITS\fP (since Linux 2.6.26)
+.\" prctl PR_GET_SPECULATION_CTRL
+返回 (作为函数结果) 调用线程的 "securebits" 标志。 请参见 \fBcapabilities\fP(7)。
+.TP 
+\fBPR_GET_SPECULATION_CTRL\fP (since Linux 4.17)
+返回 (作为函数结果) \fIarg2\fP 中指定的推测错误特性的状态。 目前，此参数的唯一允许值是 \fBPR_SPEC_STORE_BYPASS\fP
+(否则调用失败并出现错误 \fBENODEV\fP)。
+.IP
+返回值使用具有以下含义的位 0\-3:
+.RS
+.TP 
+\fBPR_SPEC_PRCTL\fP
+\fBPR_SET_SPECULATION_CTRL\fP 可以按线程控制缓解措施。
+.TP 
+\fBPR_SPEC_ENABLE\fP
+启用推测特性禁用缓解措施。
+.TP 
+\fBPR_SPEC_DISABLE\fP
+推测特性已禁用，缓解已启用。
+.TP 
+\fBPR_SPEC_FORCE_DISABLE\fP
+与 \fBPR_SPEC_DISABLE\fP 相同，但无法撤消。
+.TP 
+\fBPR_SPEC_DISABLE_NOEXEC\fP (since Linux 5.1)
+与 \fBPR_SPEC_DISABLE\fP 相同，但在 \fBexecve\fP(2) 上状态将被清除。
+.RE
+.IP
+如果所有位都为 0，则 CPU 不受推测错误的影响。
+.IP
+如果设置了 \fBPR_SPEC_PRCTL\fP，则缓解的每线程控制可用。 如果未设置，\fBprctl\fP() 的推测错误特性将失败。
+.IP
+.\" prctl PR_SET_SPECULATION_CTRL
+\fIarg3\fP、\fIarg4\fP、\fIarg5\fP 参数必须指定为 0; 否则调用失败并出现错误 \fBEINVAL\fP。
+.TP 
+\fBPR_SET_SPECULATION_CTRL\fP (since Linux 4.17)
+.\" commit b617cfc858161140d69cc0b5cc211996b557a1c7
+.\" commit 356e4bfff2c5489e016fdb925adbf12a1e3950ee
+设置 \fIarg2\fP 中指定的推测错误特性的状态。 推测错误设置是每个线程的属性。
+.IP
+目前，\fIarg2\fP 必须是以下之一:
+.RS
+.TP 
+\fBPR_SPEC_STORE_BYPASS\fP
+.\" commit 9137bb27e60e554dab694eafa4cca241fa3a694f
+设置推测性存储绕过错误特性的状态。
+.TP 
+\fBPR_SPEC_INDIRECT_BRANCH\fP (since Linux 4.20)
+设置间接分支推测错误特性的状态。
+.RE
+.IP
+如果 \fIarg2\fP 不具有上述值之一，则调用失败并显示错误 \fBENODEV\fP。
+.IP
+\fIarg3\fP 参数用于交控制值，为以下之一:
+.RS
+.TP 
+\fBPR_SPEC_ENABLE\fP
+启用推测特性禁用缓解措施。
+.TP 
+\fBPR_SPEC_DISABLE\fP
+推测特性已禁用，缓解已启用。
+.TP 
+\fBPR_SPEC_FORCE_DISABLE\fP
+.\" commit 71368af9027f18fe5d1c6f372cfdff7e4bde8b48
+与 \fBPR_SPEC_DISABLE\fP 相同，但无法撤消。 具有相同 \fIarg2\fP 值的后续
+\fBprctl\fP(\fIarg2\fP、\fBPR_SPEC_ENABLE\fP) 将失败并出现错误 \fBEPERM\fP。
+.TP 
+\fBPR_SPEC_DISABLE_NOEXEC\fP (since Linux 5.1)
+与 \fBPR_SPEC_DISABLE\fP 相同，但在 \fBexecve\fP(2) 上状态将被清除。 目前仅支持 \fIarg2\fP 等于
+\fBPR_SPEC_STORE_BYPASS.\fP
+.RE
+.IP
+\fIarg3\fP 中任何不受支持的值都将导致调用失败并出现错误 \fBERANGE\fP。
+.IP
+\fIarg4\fP 和 \fIarg5\fP 参数必须指定为 0; 否则调用失败并出现错误 \fBEINVAL\fP。
+.IP
+.\" prctl PR_SVE_SET_VL
+.\" commit 2d2123bc7c7f843aa9db87720de159a049839862
+.\" linux-5.6/Documentation/arm64/sve.rst
+推测特性也可以通过 \fBspec_store_bypass_disable\fP 启动参数来控制。 此参数可能会强制执行只读策略，这将导致
+\fBprctl\fP() 调用失败并出现错误 \fBENXIO\fP。 有关详细信息，请参见内核源文件
+\fIDocumentation/admin\-guide/kernel\-parameters.txt\fP。
+.TP 
+\fBPR_SVE_SET_VL\fP (since Linux 4.15, only on arm64)
+配置线程的 SVE vector 长度，由 \fI(int) arg2\fP 指定。 参数 \fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 被忽略。
+.IP
+\fIarg2\fP 对应于 \fBPR_SVE_VL_LEN_MASK\fP 的位必须设置为所需的 vector 字节长度。 这被解释为上限:
+内核将选择不超过指定值的最大可用 vector 长度。 特别是，指定 \fBSVE_VL_MAX\fP (在
+\fI<asm/sigcontext.h>)\fP 中为 \fBPR_SVE_VL_LEN_MASK\fP 位定义) 要求支持的最大 vector
+长度。
+.IP
+此外，\fIarg2\fP 的其他位必须设置为以下标志组合之一:
+.RS
+.TP 
+\fB0\fP
+立即执行更改。 在线程中的下一个 \fBexecve\fP(2)，vector 长度将重置为
+\fI/proc/sys/abi/sve_default_vector_length\fP 中配置的值。
+.TP 
+\fBPR_SVE_VL_INHERIT\fP
+立即执行更改。 随后的 \fBexecve\fP(2) 调用将保留新的 vector 长度。
+.TP 
+\fBPR_SVE_SET_VL_ONEXEC\fP
+推迟更改，以便在线程中的下一个 \fBexecve\fP(2) 执行。 进一步的 \fBexecve\fP(2) 调用会将 vector 长度重置为
+\fI/proc/sys/abi/sve_default_vector_length\fP 中配置的值。
+.TP 
+\fBPR_SVE_SET_VL_ONEXEC | PR_SVE_VL_INHERIT\fP
+推迟更改，以便在线程中的下一个 \fBexecve\fP(2) 执行。 进一步的 \fBexecve\fP(2) 调用将保留新的 vector 长度。
+.RE
+.IP
+在所有情况下，任何先前挂起的延迟更改都将被取消。
+.IP
+如果平台不支持 SVE，如果 \fIarg2\fP 无法识别或无效，或者 \fBPR_SVE_VL_LEN_MASK\fP 对应的 \fIarg2\fP 的位中的值超出
+\fBSVE_VL_MIN\fP..\fBSVE_VL_MAX\fP 的范围或不是 16 的倍数，则调用会失败并出现错误 \fBEINVAL\fP。
+.IP
+成功时，返回一个描述 \fIselected\fP 配置的非负值。 如果 \fBPR_SVE_SET_VL_ONEXEC\fP 包含在 \fIarg2\fP
+中，则返回值描述的配置将在下一个 \fBexecve\fP(2) 生效。 否则，当 \fBPR_SVE_SET_VL\fP 调用返回时配置已经生效。
+在任何一种情况下，值的编码方式都与 \fBPR_SVE_GET_VL\fP 的返回值相同。 请注意，\fBPR_SVE_SET_VL_ONEXEC\fP
+对应的返回值中没有明确的标志。
+.IP
+配置 (包括任何未决的延迟更改) 在 \fBfork\fP(2) 和 \fBclone\fP(2) 之间继承。
+.IP
+.\"commit b693d0b372afb39432e1c49ad7b3454855bc6bed
+有关详细信息，请参见内核源文件 \fIDocumentation/arm64/sve.rst\fP (或 Linux 5.3 之前的
+\fIDocumentation/arm64/sve.txt\fP)。
+.IP
+.\" prctl PR_SVE_GET_VL
+\fBWarning:\fP 因为编译器或运行时环境可能正在使用 SVE，所以在没有 \fBPR_SVE_SET_VL_ONEXEC\fP
+标志的情况下使用此调用可能会使调用进程崩溃。 安全使用它的条件很复杂并且取决于系统。 除非您真的知道您在做什么，否则不要使用它。
+.TP 
+\fBPR_SVE_GET_VL\fP (since Linux 4.15, only on arm64)
+获取线程的当前 SVE vector 长度配置。
+.IP
+参数 \fIarg2\fP、\fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 被忽略。
+.IP
+如果内核和平台支持 SVE，这个操作总是成功的，返回一个描述 \fIcurrent\fP 配置的非负值。 \fBPR_SVE_VL_LEN_MASK\fP
+对应的位包含当前配置的 vector 字节长度。 \fBPR_SVE_VL_INHERIT\fP 对应的位表示 vector 的长度是否会跨
+\fBexecve\fP(2) 继承。
+.IP
+请注意，无法确定是否存在尚未生效的未决 vector 长度更改。
+.IP
+.\"commit b693d0b372afb39432e1c49ad7b3454855bc6bed
+有关详细信息，请参见内核源文件 \fIDocumentation/arm64/sve.rst\fP (或 Linux 5.3 之前的
+\fIDocumentation/arm64/sve.txt\fP)。
+.TP 
+.\" prctl PR_SET_SYSCALL_USER_DISPATCH
+.\" commit 1446e1df9eb183fdf81c3f0715402f1d7595d4
+\fBPR_SET_SYSCALL_USER_DISPATCH\fP (since Linux 5.11, x86 only)
+为调用线程配置 Syscall User Dispatch 机制。 这种机制允许应用程序有选择地拦截系统调用，以便它们可以在应用程序本身内处理。
+拦截采用线程定向 \fBSIGSYS\fP 信号的形式，该信号在线程进行系统调用时传递给线程。 如果被拦截，则系统调用不会被内核执行。
+.IP
+要启用此机制，应将 \fIarg2\fP 设置为 \fBPR_SYS_DISPATCH_ON\fP。
+一旦启用，将有选择地拦截进一步的系统调用，具体取决于用户空间提供的控制变量。 在这种情况下，\fIarg3\fP 和 \fIarg4\fP
+分别标识进程地址空间中单个连续内存区域的 \fIoffset\fP 和 \fIlength\fP，从中始终允许执行系统调用，而不管控制变量如何。
+(通常，此区域将包括包含 C 库的内存区域。)
+.IP
+\fIarg5\fP 指向一个字符大小的变量，它可以快速切换到 allow/block 系统调用执行，而无需执行另一个系统调用来重新配置 Syscall
+用户调度的开销。 该控制变量可以设置为 \fBSYSCALL_DISPATCH_FILTER_BLOCK\fP 以阻止系统调用的执行，也可以设置为
+\fBSYSCALL_DISPATCH_FILTER_ALLOW\fP 以暂时允许它们执行。
+这个值由内核在每个系统调用条目上检查，任何意外的值都会在那时引发一个无法捕获的 \fBSIGSYS\fP，从而终止应用程序。
+.IP
+当系统调用被拦截时，内核向触发线程发送一个线程定向的 \fBSIGSYS\fP 信号。 \fIsiginfo_t\fP 结构体中会设置各种字段 (见与信号相关的
+\fBsigaction\fP(2)):
+.RS
+.IP \[bu] 3
+\fIsi_signo\fP 将包含 \fBSIGSYS\fP。
+.IP \[bu]
+\fIsi_call_addr\fP 会显示系统调用指令的地址。
+.IP \[bu]
+\fIsi_syscall\fP 和 \fIsi_arch\fP 将指示尝试调用哪个系统。
+.IP \[bu]
+\fIsi_code\fP 将包含 \fBSYS_USER_DISPATCH\fP。
+.IP \[bu]
+\fIsi_errno\fP 将被设置为 0.
+.RE
+.IP
+程序计数器就好像系统调用发生了一样 (即程序计数器不会指向系统调用指令)。
+.IP
+当信号处理程序返回到内核时，系统调用立即完成并返回到调用线程，而不实际执行。 如有必要
+(即，在用户空间模拟系统调用时)，信号处理程序应通过修改存储在信号处理程序的 \fIucontext\fP
+参数中的寄存器上下文，将系统调用返回值设置为正常值。 有关详细信息，请参见 \fBsigaction\fP(2)、\fBsigreturn\fP(2) 和
+\fBgetcontext\fP(3)。
+.IP
+如果 \fIarg2\fP 设置为 \fBPR_SYS_DISPATCH_OFF\fP，则该线程禁用 Syscall 用户调度。 剩余的参数必须设置为 0.
+.IP
+该设置不会跨 \fBfork\fP(2)、\fBclone\fP(2) 或 \fBexecve\fP(2) 保留。
+.IP
+.\" prctl PR_SET_TAGGED_ADDR_CTRL
+.\" commit 63f0c60379650d82250f22e4cf4137ef3dc4f43d
+有关详细信息，请参见内核源文件 \fIDocumentation/admin\-guide/syscall\-user\-dispatch.rst\fP
+.TP 
+\fBPR_SET_TAGGED_ADDR_CTRL\fP (since Linux 5.4, only on arm64)
+控制对将标记的用户空间地址传递给内核的支持 (即，位 56\[em] 63 不全为零的地址)。
+.IP
+支持级别由 \fIarg2\fP 选择，可以是以下之一:
+.RS
+.TP 
+\fB0\fP
+为了被内核解除引用而传递的地址必须是未标记的。
+.TP 
+\fBPR_TAGGED_ADDR_ENABLE\fP
+为了被内核解引用而传递的地址可能会被标记，但下面总结了例外情况。
+.RE
+.IP
+.\" Enforcement added in
+.\" commit 3e91ec89f527b9870fe42dcbdb74fd389d123a95
+其余参数 \fIarg3\fP、\fIarg4\fP、\fIarg5\fP 必须全部为零。
+.IP
+成功时，为调用线程设置 \fIarg2\fP 中指定的模式，返回值为 0。 如果参数无效，则无法识别 \fIarg2\fP
+中指定的模式，或者如果内核不支持此特性或通过 \fI/proc/sys/abi/tagged_addr_disabled\fP 禁用此特性则调用失败并显示错误
+\fBEINVAL\fP。
+.IP
+特别是，如果 \fBprctl\fP(\fBPR_SET_TAGGED_ADDR_CTRL\fP, 0, 0, 0, 0) 因 \fBEINVAL\fP
+而失败，则传递给内核的所有地址都必须未标记。
+.IP
+无论设置哪种模式，传递到某些接口的地址必须始终未标记:
+.RS
+.IP \[bu] 3
+\fBbrk\fP(2)、\fBmmap\fP(2)、\fBshmat\fP(2)、\fBshmdt\fP(2)、\fBmremap\fP(2) 的 \fInew_address\fP
+参数。
+.IP
+(在 Linux 5.6 这些接受标记的地址之前，但行为可能不是您所期望的。不要依赖它。)
+.IP \[bu]
+\[oq] 多态 \[cq] 接口接受指向转换为 \fIvoid *\fP 或其他泛型类型的任意类型的指针，特别是
+\fBprctl\fP()、\fBioctl\fP(2) 和通常的 \fBsetsockopt\fP(2) (只有某些特定的 \fBsetsockopt\fP(2)
+选项允许标记地址)。
+.RE
+.IP
+当从一个内核版本移动到更高版本的内核时，此排除列表可能会缩小。
+虽然内核可能会出于向后兼容性的原因做出一些保证，但出于新软件的目的，将标记地址传递给这些接口的效果是未指定的。
+.IP
+此调用设置的模式在 \fBfork\fP(2) 和 \fBclone\fP(2) 之间继承。 该模式由 \fBexecve\fP(2) 重置为 0
+(即，user/kernel ABI 中不允许的标记地址)。
+.IP
+有关详细信息，请参见内核源文件 \fIDocumentation/arm64/tagged\-address\-abi.rst\fP。
+.IP
+.\" prctl PR_GET_TAGGED_ADDR_CTRL
+.\" commit 63f0c60379650d82250f22e4cf4137ef3dc4f43d
+\fBWarning:\fP 此调用主要供运行时环境使用。 在其他地方成功调用 \fBPR_SET_TAGGED_ADDR_CTRL\fP 可能会使调用进程崩溃。
+安全使用它的条件很复杂并且取决于系统。 除非您知道自己在做什么，否则不要使用它。
+.TP 
+\fBPR_GET_TAGGED_ADDR_CTRL\fP (since Linux 5.4, only on arm64)
+返回调用线程的当前标记地址模式。
+.IP
+参数 \fIarg2\fP、\fIarg3\fP、\fIarg4\fP 和 \fIarg5\fP 必须全部为零。
+.IP
+如果参数无效或内核禁用或不支持此特性则调用失败并返回 \fBEINVAL\fP。 特别是，如果
+\fBprctl\fP(\fBPR_GET_TAGGED_ADDR_CTRL\fP, 0, 0, 0, 0) 对 \fBEINVAL\fP
+失败，则此特性肯定不受支持，或者通过 \fI/proc/sys/abi/tagged_addr_disabled\fP 禁用。
+在这种情况下，所有传递给内核的地址都必须是未标记的。
+.IP
+否则，调用返回一个描述当前标记地址模式的非负值，编码方式与 \fBPR_SET_TAGGED_ADDR_CTRL\fP 的 \fIarg2\fP 参数相同。
+.IP
+.\"
+.\" prctl PR_TASK_PERF_EVENTS_DISABLE
+有关详细信息，请参见内核源文件 \fIDocumentation/arm64/tagged\-address\-abi.rst\fP。
+.TP 
+\fBPR_TASK_PERF_EVENTS_DISABLE\fP (since Linux 2.6.31)
+禁用附加到调用进程的所有性能计数器，无论这些计数器是由该进程还是其他进程创建的。 调用进程为其他进程创建的性能计数器不受影响。
+有关性能计数器的详细信息，请参见 Linux 内核源文件 \fItools/perf/design.txt\fP。
+.IP
+.\" commit 1d1c7ddbfab358445a542715551301b7fc363e28
+.\"
+.\" prctl PR_TASK_PERF_EVENTS_ENABLE
+原名 \fBPR_TASK_PERF_COUNTERS_DISABLE\fP; 在 Linux 2.6.32 中重命名 (保留相同的数值)。
+.TP 
+\fBPR_TASK_PERF_EVENTS_ENABLE\fP (since Linux 2.6.31)
+\fBPR_TASK_PERF_EVENTS_DISABLE\fP 的反面; 启用附加到调用进程的性能计数器。
+.IP
+.\" commit 1d1c7ddbfab358445a542715551301b7fc363e28
+.\" commit cdd6c482c9ff9c55475ee7392ec8f672eddb7be6
+.\"
+.\" prctl PR_SET_THP_DISABLE
+原名 \fBPR_TASK_PERF_COUNTERS_ENABLE\fP; 改名为 Linux 2.6.32。
+.TP 
+\fBPR_SET_THP_DISABLE\fP (since Linux 3.15)
+.\" commit a0715cc22601e8830ace98366c0c2bd8da52af52
+.\" prctl PR_GET_THP_DISABLE
+为调用线程设置 "THP disable" 标志的状态。 如果 \fIarg2\fP 具有非零值，则设置标志，否则清除。
+设置此标志提供了一种方法，可以为无法修改代码的作业禁用透明大页面，并且不能使用带有 \fBmadvise\fP(2) 的 malloc 钩子
+(即，静态分配的数据)。 "THP disable" 标志的设置由通过 \fBfork\fP(2) 创建的子项继承，并在 \fBexecve\fP(2) 中保留。
+.TP 
+\fBPR_GET_THP_DISABLE\fP (since Linux 3.15)
+.\" prctl PR_GET_TID_ADDRESS
+返回 (作为任数结果) 调用线程的 "THP disable" 标志的当前设置: 如果设置了标志，则为 1; 如果未设置，则为 0。
+.TP 
+\fBPR_GET_TID_ADDRESS\fP (since Linux 3.5)
+.\" commit 300f786b2683f8bb1ec0afb6e1851183a479c86d
+.\" prctl PR_SET_TIMERSLACK
+在 \fI(int\~**)\~arg2\fP 指向的位置返回由 \fBset_tid_address\fP(2) 和 \fBclone\fP(2)
+\fBCLONE_CHILD_CLEARTID\fP 标志设置的 \fIclear_child_tid\fP 地址。 仅当在启用
+\fBCONFIG_CHECKPOINT_RESTORE\fP 选项的情况下构建内核时，此特性才可用。 请注意，由于 \fBprctl\fP() 系统调用没有
+AMD64 x32 和 MIPS n32 ABI 的兼容实现，并且内核使用内核的指针大小写出一个指针，因此此操作需要 8 个 (不是 4 个)
+字节的用户空间缓冲区在这些 ABI 上。
+.TP 
+\fBPR_SET_TIMERSLACK\fP (since Linux 2.6.28)
+.\" See https://lwn.net/Articles/369549/
+.\" commit 6976675d94042fbd446231d1bd8b7de71a980ada
+每个线程都有两个关联的计时器松弛值: "default" 值和 "current" 值。 此操作为调用线程设置 "current" 计时器松弛值。
+\fIarg2\fP 为无符号长整型值，则 "current" 的最大值为 ULONG_MAX，"current" 的最小值为 1。 如果 \fIarg2\fP
+中提供的纳秒值大于零，则 "current" 值设置为此值。 如果 \fIarg2\fP 等于零，则 "current" 计时器松弛值将重置为线程的
+"default" 计时器松弛值。
+.IP
+内核使用 "current" timer slack 来对彼此接近的调用线程的计时器到期进行分组; 因此，线程的计时器到期可能会延迟指定的纳秒数
+(但永远不会提前到期)。 将定时器到期分组可以通过最小化 CPU 唤醒来帮助降低系统功耗。
+.IP
+.\" List obtained by grepping for futex usage in glibc source
+受计时器松弛影响的计时器到期时间是由
+\fBselect\fP(2)、\fBpselect\fP(2)、\fBpoll\fP(2)、\fBppoll\fP(2)、\fBepoll_wait\fP(2)、\fBepoll_pwait\fP(2)、\fBclock_nanosleep\fP(2)、\fBnanosleep\fP(2)
+和 \fBfutex\fP(2) 设置的 (因此通过 futexes 实现的库函数，包括
+\fBpthread_cond_timedwait\fP(3)、\fBpthread_mutex_timedlock\fP(3)、\fBpthread_rwlock_timedrdlock\fP(3)、\fBpthread_rwlock_timedwrlock\fP(3)
+和 \fBsem_timedwait\fP(3)) .
+.IP
+定时器松弛不适用于在实时调度策略下调度的线程 (参见 \fBsched_setscheduler\fP(2)).
+.IP
+创建新线程时，两个定时器松弛值与创建线程的 "current" 值相同。 此后，线程可以通过 \fBPR_SET_TIMERSLACK\fP 调整其
+"current" 定时器松弛值。 "default" 值无法更改。 所有进程的祖先 \fIinit\fP (PID 1) 的计时器松弛值为 50,000
+纳秒 (50 微秒)。 计时器松弛值由通过 \fBfork\fP(2) 创建的子项继承，并在 \fBexecve\fP(2) 中保留。
+.IP
+.\" prctl PR_GET_TIMERSLACK
+从 Linux 4.6 开始，任何进程的 "current" 计时器松弛值都可以通过文件 \fI/proc/\fPpid\fI/timerslack_ns\fP.x
+进行检查和更改。 请参见 \fBproc\fP(5)。
+.TP 
+\fBPR_GET_TIMERSLACK\fP (since Linux 2.6.28)
+.\" prctl PR_SET_TIMING
+返回 (作为函数结果) 调用线程的 "current" 计时器松弛值。
+.TP 
+\fBPR_SET_TIMING\fP (since Linux 2.6.0)
+.\" Precisely: Linux 2.6.0-test4
+.\" 0
+.\" 1
+.\" PR_TIMING_TIMESTAMP doesn't do anything in Linux 2.6.26-rc8,
+.\" and looking at the patch history, it appears
+.\" that it never did anything.
+.\" prctl PR_GET_TIMING
+通过将 \fBPR_TIMING_STATISTICAL\fP 或 \fBPR_TIMING_TIMESTAMP\fP 传递给 \fIarg2\fP，设置是使用
+(正常、传统) 统计过程计时还是基于精确时间戳的过程计时。 当前未实现 \fBPR_TIMING_TIMESTAMP\fP (尝试设置此模式将产生错误
+\fBEINVAL\fP)。
+.TP 
+\fBPR_GET_TIMING\fP (since Linux 2.6.0)
+.\" Precisely: Linux 2.6.0-test4
+.\" prctl PR_SET_TSC
+返回 (作为函数结果) 当前正在使用的进程计时方法。
+.TP 
+\fBPR_SET_TSC\fP (since Linux 2.6.26, x86 only)
+.\" prctl PR_GET_TSC
+设置标志的状态以确定进程是否可以读取时间戳计数器。 将 \fBPR_TSC_ENABLE\fP 传递给 \fIarg2\fP 以允许读取它，或将
+\fBPR_TSC_SIGSEGV\fP 传递给 \fBPR_TSC_SIGSEGV\fP 以在进程尝试读取时间戳计数器时生成 \fBSIGSEGV\fP。
+.TP 
+\fBPR_GET_TSC\fP (since Linux 2.6.26, x86 only)
+.\" prctl PR_SET_UNALIGN
+在 \fI(int\~*) arg2\fP 指向的位置返回确定是否可以读取时间戳计数器的标志的状态。
+.TP 
+\fBPR_SET_UNALIGN\fP
+.\" sh: 94ea5e449ae834af058ef005d16a8ad44fcf13d6
+.\" tile: 2f9ac29eec71a696cb0dcc5fb82c0f8d4dac28c9
+.\" prctl PR_GET_UNALIGN
+(仅限于: ia64，自 Linux 2.3.48; parisc，自 Linux 2.6.15; PowerPC，自 Linux 2.6.18;
+Alpha，自 Linux 2.6.22; sh，自 Linux 2.6.34; tile，自 Linux 3.12) 将未对齐的访问控制位设置为
+\fIarg2\fP。 传递 \fBPR_UNALIGN_NOPRINT\fP 以静默修复未对齐的用户访问，或传递 \fBPR_UNALIGN_SIGBUS\fP
+以在未对齐的用户访问上生成 \fBSIGBUS\fP。 Alpha 还支持一个额外的标志，值为 4 且没有对应的常量，它指示内核不修复未对齐的访问
+(它类似于在 \fBsetsysinfo\fP() 系统调用 Tru64 的 \fBSSI_NVPAIRS\fP 操作中提供 \fBUAC_NOFIX\fP 标志)。
+.TP 
+\fBPR_GET_UNALIGN\fP
+(有关版本和体系结构的信息，请参见 \fBPR_SET_UNALIGN\fP。) 在 \fI(unsigned int\~*) arg2\fP
+指向的位置返回未对齐的访问控制位。
+.SH "RETURN VALUE"
+成功时，\fBPR_CAP_AMBIENT\fP+\fBPR_CAP_AMBIENT_IS_SET\fP、\fBPR_CAPBSET_READ\fP、\fBPR_GET_DUMPABLE\fP、\fBPR_GET_FP_MODE\fP、\fBPR_GET_IO_FLUSHER\fP、\fBPR_GET_KEEPCAPS\fP、\fBPR_MCE_KILL_GET\fP、\fBPR_GET_NO_NEW_PRIVS\fP、\fBPR_GET_SECUREBITS\fP、\fBPR_GET_SPECULATION_CTRL\fP、\fBPR_SVE_GET_VL\fP、\fBPR_SVE_SET_VL\fP、\fBPR_GET_TAGGED_ADDR_CTRL\fP、\fBPR_GET_THP_DISABLE\fP、\fBPR_GET_TIMING\fP、\fBPR_GET_TIMERSLACK\fP
+和 (如果返回) \fBPR_GET_SECCOMP\fP 返回上述非负值。 所有其他 \fIoption\fP 值在成功时返回 0。 出错时返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fIoption\fP 是 \fBPR_SET_SECCOMP\fP，\fIarg2\fP 是 \fBSECCOMP_MODE_FILTER\fP，但是进程没有
+\fBCAP_SYS_ADMIN\fP 能力或者没有设置 \fIno_new_privs\fP 属性 (见上面 \fBPR_SET_NO_NEW_PRIVS\fP
+的讨论)。
+.TP 
+\fBEACCES\fP
+\fIoption\fP 为 \fBPR_SET_MM\fP，\fIarg3\fP 为 \fBPR_SET_MM_EXE_FILE\fP，文件不可执行。
+.TP 
+\fBEBADF\fP
+\fIoption\fP 为 \fBPR_SET_MM\fP，\fIarg3\fP 为 \fBPR_SET_MM_EXE_FILE\fP，\fIarg4\fP 传入的文件描述符无效。
+.TP 
+\fBEBUSY\fP
+\fIoption\fP 是 \fBPR_SET_MM\fP，\fIarg3\fP 是 \fBPR_SET_MM_EXE_FILE\fP，这是第二次尝试更改
+\fI/proc/\fPpid\fI/exe\fP 符号链接，这是被禁止的。
+.TP 
+\fBEFAULT\fP
+\fIarg2\fP 是无效地址。
+.TP 
+\fBEFAULT\fP
+\fIoption\fP 是 \fBPR_SET_SECCOMP\fP，\fIarg2\fP 是 \fBSECCOMP_MODE_FILTER\fP，系统是用
+\fBCONFIG_SECCOMP_FILTER\fP 建的，\fIarg3\fP 是无效地址。
+.TP 
+\fBEFAULT\fP
+\fIoption\fP 是 \fBPR_SET_SYSCALL_USER_DISPATCH\fP，\fIarg5\fP 的地址无效。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 的值未被识别，或不受此系统支持。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_MCE_KILL\fP 或 \fBPR_MCE_KILL_GET\fP 或 \fBPR_SET_MM\fP，未使用的
+\fBprctl\fP() 参数未指定为零。
+.TP 
+\fBEINVAL\fP
+\fIarg2\fP 不是此 \fIoption\fP 的有效值。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_SECCOMP\fP 或 \fBPR_GET_SECCOMP\fP，内核没有配置 \fBCONFIG_SECCOMP\fP。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_SECCOMP\fP，\fIarg2\fP 是 \fBSECCOMP_MODE_FILTER\fP，内核没有配置
+\fBCONFIG_SECCOMP_FILTER\fP。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_SET_MM\fP，下列其中一项为真
+.RS
+.IP \[bu] 3
+\fIarg4\fP 或 \fIarg5\fP 非零;
+.IP \[bu]
+\fIarg3\fP 大于 \fBTASK_SIZE\fP (该架构对用户地址空间大小的限制) ;
+.IP \[bu]
+\fIarg2\fP 为
+\fBPR_SET_MM_START_CODE\fP、\fBPR_SET_MM_END_CODE\fP、\fBPR_SET_MM_START_DATA\fP、\fBPR_SET_MM_END_DATA\fP
+或 \fBPR_SET_MM_START_STACK\fP，对应内存区的权限不符合要求;
+.IP \[bu]
+\fIarg2\fP 是 \fBPR_SET_MM_START_BRK\fP 或 \fBPR_SET_MM_BRK\fP，\fIarg3\fP
+小于或等于字段的末尾或指定一个会导致超出 \fBRLIMIT_DATA\fP 资源限制的值。
+.RE
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_PTRACER\fP，\fIarg2\fP 不是 0、\fBPR_SET_PTRACER_ANY\fP 或现有进程的 PID。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_PDEATHSIG\fP，\fIarg2\fP 不是有效的信号编号。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_DUMPABLE\fP，\fIarg2\fP 既不是 \fBSUID_DUMP_DISABLE\fP 也不是
+\fBSUID_DUMP_USER\fP。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_TIMING\fP，\fIarg2\fP 不是 \fBPR_TIMING_STATISTICAL\fP。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_NO_NEW_PRIVS\fP，\fIarg2\fP 不等于 1，或者 \fIarg3\fP、\fIarg4\fP 或
+\fIarg5\fP 不为零。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_GET_NO_NEW_PRIVS\fP，\fIarg2\fP、\fIarg3\fP、\fIarg4\fP 或 \fIarg5\fP 为非零值。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_SET_THP_DISABLE\fP，\fIarg3\fP、\fIarg4\fP 或 \fIarg5\fP 为非零值。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_GET_THP_DISABLE\fP，\fIarg2\fP、\fIarg3\fP、\fIarg4\fP 或 \fIarg5\fP 为非零值。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_CAP_AMBIENT\fP 和一个未使用的参数 (\fIarg4\fP、\fIarg5\fP，或者在
+\fBPR_CAP_AMBIENT_CLEAR_ALL\fP 的情况下，\fIarg3\fP) 是非零的; 或 \fIarg2\fP 具有无效值; 或 \fIarg2\fP 是
+\fBPR_CAP_AMBIENT_LOWER\fP、\fBPR_CAP_AMBIENT_RAISE\fP 或 \fBPR_CAP_AMBIENT_IS_SET\fP，而
+\fIarg3\fP 未指定有效功能。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_GET_SPECULATION_CTRL\fP 或 \fBPR_SET_SPECULATION_CTRL\fP，未使用的参数至
+\fBprctl\fP() 不为 0。 \fBEINVAL\fP \fIoption\fP 是 \fBPR_PAC_RESET_KEYS\fP 并且参数无效或不受支持。
+详见上面 \fBPR_PAC_RESET_KEYS\fP 的说明。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SVE_SET_VL\fP 并且参数无效或不受支持，或者 SVE 在此平台上不可用。 详见上面
+\fBPR_SVE_SET_VL\fP 的说明。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SVE_GET_VL\fP，SVE 在此平台上不可用。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 是 \fBPR_SET_SYSCALL_USER_DISPATCH\fP 并且以下情况之一为真:
+.RS
+.IP \[bu] 3
+\fIarg2\fP 为 \fBPR_SYS_DISPATCH_OFF\fP 且其余参数不为 0;
+.IP \[bu]
+\fIarg2\fP 是 \fBPR_SYS_DISPATCH_ON\fP 并且指定的内存范围在进程的地址空间之外。
+.IP \[bu]
+\fIarg2\fP 无效。
+.RE
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_SET_TAGGED_ADDR_CTRL\fP，参数无效或不受支持。 详见上面
+\fBPR_SET_TAGGED_ADDR_CTRL\fP 的说明。
+.TP 
+\fBEINVAL\fP
+\fIoption\fP 为 \fBPR_GET_TAGGED_ADDR_CTRL\fP，参数无效或不受支持。 详见上面
+\fBPR_GET_TAGGED_ADDR_CTRL\fP 的说明。
+.TP 
+\fBENODEV\fP
+\fIoption\fP 是 \fBPR_SET_SPECULATION_CTRL\fP 内核或 CPU 不支持请求的推测错误，特性。
+.TP 
+\fBENXIO\fP
+\fIoption\fP 是 \fBPR_MPX_ENABLE_MANAGEMENT\fP 或 \fBPR_MPX_DISABLE_MANAGEMENT\fP，内核或
+CPU 不支持 MPX 管理。 检查内核和处理器是否支持 MPX。
+.TP 
+\fBENXIO\fP
+\fIoption\fP 是 \fBPR_SET_SPECULATION_CTRL\fP 意味着无法控制所选的推测错误，特性。 请参见
+\fBPR_GET_SPECULATION_CTRL\fP 的位字段以确定哪个选项可用。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIoption\fP 是 \fBPR_SET_FP_MODE\fP，\fIarg2\fP 的值无效或不受支持。
+.TP 
+\fBEPERM\fP
+\fIoption\fP 是 \fBPR_SET_SECUREBITS\fP，并且调用者没有 \fBCAP_SETPCAP\fP 能力，或者试图取消设置 "locked"
+标志，或者试图设置一个标志，其对应的锁定标志已设置 (参见 \fBcapabilities\fP(7)).
+.TP 
+\fBEPERM\fP
+\fIoption\fP 是 \fBPR_SET_SPECULATION_CTRL\fP，其中 \fBPR_SPEC_FORCE_DISABLE\fP
+禁用了推测，调用者尝试再次启用它。
+.TP 
+\fBEPERM\fP
+\fIoption\fP 为 \fBPR_SET_KEEPCAPS\fP，调用者的 \fBSECBIT_KEEP_CAPS_LOCKED\fP 标志被设置 (见
+\fBcapabilities\fP(7)).
+.TP 
+\fBEPERM\fP
+\fIoption\fP 为 \fBPR_CAPBSET_DROP\fP，调用方不具备 \fBCAP_SETPCAP\fP 能力。
+.TP 
+\fBEPERM\fP
+\fIoption\fP 为 \fBPR_SET_MM\fP，调用方不具备 \fBCAP_SYS_RESOURCE\fP 能力。
+.TP 
+\fBEPERM\fP
+\fIoption\fP 是 \fBPR_CAP_AMBIENT\fP，\fIarg2\fP 是 \fBPR_CAP_AMBIENT_RAISE\fP，但是在 \fIarg3\fP
+中指定的能力不存在于进程允许和可继承的能力集中，或者 \fBPR_CAP_AMBIENT_LOWER\fP securebit 已设置。
+.TP 
+\fBERANGE\fP
+\fIoption\fP 是 \fBPR_SET_SPECULATION_CTRL\fP，\fIarg3\fP 不是
+\fBPR_SPEC_ENABLE\fP、\fBPR_SPEC_DISABLE\fP、\fBPR_SPEC_FORCE_DISABLE\fP 或
+\fBPR_SPEC_DISABLE_NOEXEC\fP。
+.SH VERSIONS
+.\" The library interface was added in glibc 2.0.6
+\fBprctl\fP() 系统调用在 Linux 2.1.57 引入。
+.SH STANDARDS
+这个调用是特定于 Linux 的。 IRIX 有一个 \fBprctl\fP() 系统调用 (在 Linux 2.1.44 中也作为 irix_prctl 在
+MIPS 架构上引入)，带有原型
+.PP
+.in +4n
+.EX
+\fBptrdiff_t prctl(int \fP\fIoption\fP\fB, int \fP\fIarg2\fP\fB, int \fP\fIarg3\fP\fB);\fP
+.EE
+.in
+.PP
+以及获取每个用户的最大进程数、获取调用进程可以使用的最大处理器数、查明指定进程当前是否被阻塞、获取或设置最大栈大小等的选项。
+.SH "SEE ALSO"
+\fBsignal\fP(2), \fBcore\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

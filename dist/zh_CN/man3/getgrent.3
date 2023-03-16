@@ -1,0 +1,165 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 19:29:54 1993 by Rik Faith (faith@cs.unc.edu)
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getgrent 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getgrent、setgrent、endgrent \- 获取组文件条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <grp.h>\fP
+.PP
+\fBstruct group *getgrent(void);\fP
+.PP
+\fBvoid setgrent(void);\fP
+\fBvoid endgrent(void);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsetgrent\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.PP
+\fBgetgrent\fP(), \fBendgrent\fP():
+.nf
+.\"        || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+.\"        || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    由于 glibc 2.22:
+        _XOPEN_SOURCE >= 500 || _DEFAULT_SOURCE
+    glibc 2.21 及更早版本
+        _XOPEN_SOURCE >= 500
+            || /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+            || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetgrent\fP() 函数返回一个指向结构体的指针，该结构体包含组数据库 (例如，本地组文件 \fI/etc/group\fP、NIS 和 LDAP)
+中记录的断开字段。 第一次调用 \fBgetgrent\fP() 时，它返回第一个条目; 此后，它返回连续的条目。
+.PP
+\fBsetgrent\fP() 函数倒回到组数据库的开头，以允许重复扫描。
+.PP
+\fBendgrent\fP() 函数用于在执行完所有处理后关闭组数据库。
+.PP
+\fIgroup\fP 结构体在 \fI<grp.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct group {
+    char   *gr_name;        /* group name */
+    char   *gr_passwd;      /* group password */
+    gid_t   gr_gid;         /* group ID */
+    char  **gr_mem;         /* NULL\-terminated array of pointers
+                               组成员的名字 */
+};
+.EE
+.in
+.PP
+有关此结构体字段的更多信息，请参见 \fBgroup\fP(5)。
+.SH "RETURN VALUE"
+\fBgetgrent\fP() 函数返回指向 \fIgroup\fP 结构体的指针，如果没有更多条目或发生错误，则返回 NULL。
+.PP
+出错时，可能会设置 \fIerrno\fP。 如果要在调用后检查 \fIerrno\fP，则应在调用前将其设置为零。
+.PP
+返回值可能指向一个静态区域，并可能被随后对 \fBgetgrent\fP()、\fBgetgrgid\fP(3) 或 \fBgetgrnam\fP(3) 的调用覆盖。
+(不要将返回的指针传递给 \fBfree\fP(3).)
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+服务暂时不可用; 稍后再试。 对于 glibc 中的 NSS 后端，这表示与后端通信时出现临时错误。 错误可能会自行纠正，建议稍后重试。
+.TP 
+\fBEINTR\fP
+一个信号被捕捉到; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEIO\fP
+I/O 错误。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+.\" not in POSIX
+\fBENOENT\fP
+找不到必要的输入文件。 对于 glibc 中的 NSS 后端，这表示后端配置不正确。
+.TP 
+\fBENOMEM\fP
+.\" not in POSIX
+内存不足，无法分配 \fIgroup\fP 结构体。
+.TP 
+\fBERANGE\fP
+提供的缓冲区空间不足。
+.SH FILES
+.TP 
+\fI/etc/group\fP
+本地组数据库文件
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetgrent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:grent
+race:grentbuf locale
+T}
+T{
+\fBsetgrent\fP(),
+\fBendgrent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:grent locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+.PP
+在上表中，\fIrace:grent\fP 中的 \fIgrent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetgrent\fP()、\fBgetgrent\fP() 或 \fBendgrent\fP() 中的任何一个，则可能发生数据竞争。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.SH "SEE ALSO"
+\fBfgetgrent\fP(3), \fBgetgrent_r\fP(3), \fBgetgrgid\fP(3), \fBgetgrnam\fP(3),
+\fBgetgrouplist\fP(3), \fBputgrent\fP(3), \fBgroup\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

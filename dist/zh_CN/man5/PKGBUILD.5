@@ -1,0 +1,728 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: pkgbuild
+.\"    Author: [see the "Authors" section]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 2022-11-01
+.\"    Manual: Pacman Manual
+.\"    Source: Pacman 6.0.2
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH PKGBUILD 5 2022\-11\-01 "Pacman 6\&.0\&.2" "Pacman Manual"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+PKGBUILD\-Arch Linux 包构建描述文件
+.SH SYNOPSIS
+.sp
+PKGBUILD
+.SH DESCRIPTION
+.sp
+本手册页描述了关于 PKGBUILDs\& 的一般规则。一旦编写了 PKGBUILD，实际的包就会使用 makepkg 构建并使用 pacman\&
+安装。
+.if  n \{\
+.sp
+.\}
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+\fBNote\fP
+.ps -1
+.br
+.sp
+一个对引用有用的示例 PKGBUILD 与其他示例文件 (例如安装脚本 \&) 位于 \fI/usr/share/pacman\fP 中。您可以将提供的
+PKGBUILD\&.proto 文件复制到新的包构建目录并进行自定义以满足您的需要 \&。
+.sp .5v
+.RE
+.SH "OPTIONS AND DIRECTIVES"
+.sp
+以下是可用于 PKGBUILD\& 的标准选项和指令列表。这些都是 makepkg 理解和解释的，大部分会直接转入构建包 \&。最小功能
+PKGBUILD 的必填字段是 \fBpkgname\fP、\fBpkgver\fP、\fBpkgrel\fP 和 \fBarch\fP\&。
+.sp
+如果您需要创建任何自定义变量以用于构建过程，建议在其名称前加上 \fI_\fP (下划线) \&。这将防止与内部 makepkg 变量 \&
+发生任何可能的名称冲突。例如，要将基本内核版本存储在变量中，请使用类似于 $_basekernver\& 的内容。
+.PP
+\fBpkgname (array)\fP
+.RS 4
+包的名称或拆分包的名称数组 \&。此数组成员的有效字符是字母数字和以下任意字符: \(lq@\&. _ +
+\-\(rq\&. 此外，名称不允许以连字符或点 \& 开头。
+.RE
+.PP
+\fBpkgver\fP
+.RS 4
+作者发布的软件版本 (例如 \&.g\&.、\fI2\&.7\&.1\fP)\&。变量不允许包含冒号、正斜杠、连字符或空格 \&。
+.sp
+pkgver 变量可以通过在输出新包版本的 PKGBUILD 中提供 pkgver() 函数来自动更新 \&。这是在下载并提取源代码并运行
+prepare() 函数 (如果存在) 之后运行的，因此它可以使用这些文件来确定新的 pkgver\&。这在与来自版本控制系统的源一起使用时最有用
+(见下文) \&。
+.RE
+.PP
+\fBpkgrel\fP
+.RS 4
+这是特定于发行版的版本号 \&。这允许包维护者对包进行更新 \(cqs 配置标志，例如 \&。对于每个新的上游软件版本，这通常设置为 \fI1\fP，并为中间
+PKGBUILD 更新增加。该变量是一个正整数，通过添加另一个由句点分隔的正整数 (i\&.e\&. 形式为 x\&.y) \&
+来指定可选的子版本级别。
+.RE
+.PP
+\fBepoch\fP
+.RS 4
+用于强制将软件包视为比任何具有较低纪元的先前版本更新，即使版本号通常不会触发此类升级 \&。该值要求为正整数; 如果未指定，则默认值为
+\fI0\fP\&。这在包的版本编号方案发生变化 (或者是字母数字) 时很有用，破坏了正常的版本比较逻辑 \&。有关版本比较的更多信息，请参见
+\fBpacman\fP(8)。
+.RE
+.PP
+\fBpkgdesc\fP
+.RS 4
+这应该是包及其功能的简短描述 \&。尽量将描述保持在一行文本中，并且不要使用包 \(cqs name\&.
+.RE
+.PP
+\fBurl\fP
+.RS 4
+此字段包含与正在打包的软件相关联的 URL。这通常是项目 \(cqs 网站 \&。
+.RE
+.PP
+\fBlicense (array)\fP
+.RS 4
+该字段指定适用于包的 license(s)。常用的许可证可以在 \fI/usr/share/licenses/common\fP\&
+中找到。如果您在那里看到包 \(cqs 许可证，只需在许可证字段中引用它 (e\&.g\&.,
+license=(\*(AqGPL\*(Aq))\&。如果包提供的许可证在 \fI/usr/share/licenses/common\fP
+中不可用，那么您应该将其包含在包本身中并设置 license=(\*(Aqcustom\*(Aq) 或
+license=(\*(Aqcustom:LicenseName\*(Aq)\&. 构建包时许可证应放在
+\fI$pkgdir/usr/share/licenses/$pkgname/\fP\&。如果适用多个许可证，请列出所有许可证:
+license=(\*(AqGPL\*(Aq\*(AqFDL\*(Aq)\&.
+.RE
+.PP
+\fBinstall\fP
+.RS 4
+指定要包含在包中的特殊安装脚本 \&。该文件应与 PKGBUILD 位于同一目录中，并将由 makepkg\& 复制到包中。它不需要包含在源数组中
+(e\&.g\&., install=$pkgname\&.install)\&。
+.RE
+.PP
+\fBchangelog\fP
+.RS 4
+指定要包含在包中的更改日志文件 \&。变更日志文件应以单个换行符 \& 结尾。该文件应与 PKGBUILD 位于同一目录中，并将由 makepkg\&
+复制到包中。它不需要包含在源数组中 (e\&.g\&., changelog=$pkgname\&.changelog)\&。
+.RE
+.PP
+\fBsource (array)\fP
+.RS 4
+构建包所需的一组源文件 \&。源文件必须位于与 PKGBUILD 相同的目录中，或者是 makepkg 可以用来下载文件的完全限定 URL\&。为了简化
+PKGBUILD 的维护，在指定下载位置时使用 $pkgname 和 $pkgver 变量，如果可能的话 \&。压缩文件将被自动提取，除非在下面描述的
+noextract 数组中找到 \&。
+.sp
+可以通过，追加，下划线和架构名称 e\&.g\&., \fIsource_x86_64=()\fP\&
+来添加其他特定于架构的源。必须有一个相应的带有校验和的完整性数组，e\&.g\&。 \fIcksums_x86_64=()\fP\&.
+.sp
+也可以更改下载文件的名称，这有助于处理奇怪的 URL 以及处理具有相同名称的多个源文件 \&。语法是:
+source=(\*(Aqfilename::url\*(Aq)\&。
+.sp
+makepkg 还支持使用从版本控制系统 (VCS)\& 下载的源代码构建包的开发版本。有关详细信息，请参见下面的使用版本控制系统源 \&。
+.sp
+源数组中扩展名为 \&.sig、\&.sign 或 \&.asc 的文件被 makepkg 识别为 PGP 签名，并将自动用于验证相应源文件 \&
+的完整性。
+.RE
+.PP
+\fBvalidpgpkeys (array)\fP
+.RS 4
+PGP 指纹数组 \&。如果这个数组不为空，makepkg 将只接受来自此处列出的密钥的签名，并将忽略来自密钥环 \&
+的信任值。如果源文件是用子密钥签名的，makepkg 仍将使用主密钥进行比较。
+.sp
+只接受完整的指纹 \&。它们必须是大写字母并且不能包含空白字符 \&。
+.RE
+.PP
+\fBnoextract (array)\fP
+.RS 4
+与源数组中的文件名对应的文件名数组 \&。此处列出的文件将不会与其余源文件一起提取 \&。这对于直接使用压缩数据的包很有用 \&。
+.RE
+.PP
+\fBcksums (array)\fP
+.RS 4
+该数组包含源数组中指定的每个源文件的 CRC 校验和 (以相同的顺序) \&。makepkg 将在后续构建过程中使用它来验证源文件的完整性。如果将
+\fISKIP\fP 放在数组中代替普通散列，则将跳过对该源文件的完整性检查 \&。要轻松生成校验和，请运行 \(lqmakepkg \-g
+>> PKGBUILD\(rq\&. 如果需要，将 cksums 行移动到适当的位置 \&。请注意，"makepkg \-g"
+生成的校验和应使用软件开发人员提供的校验和值进行验证 \&。
+.RE
+.PP
+\fBmd5sums, sha1sums, sha224sums, sha256sums, sha384sums, sha512sums, b2sums (arrays)\fP
+.RS 4
+makepkg 支持的替代完整性检查; 这些都类似于上面描述的 cksums 选项 \&。要启用这些校验和的使用和生成，请务必在
+\fBmakepkg.conf\fP(5)\& 中设置 INTEGRITY_CHECK 选项。
+.RE
+.PP
+\fBgroups (array)\fP
+.RS 4
+表示包组的符号名称数组，允许您通过请求单个目标来安装多个包 \&。例如，可以通过安装 \fIkde\fP 组 \& 来安装所有 KDE 软件包。
+.RE
+.PP
+\fBarch (array)\fP
+.RS 4
+定义给定包在哪些架构上可用 (e\&.g\&.,
+arch=(\*(Aqi686\*(Aq\*(Aqx86_64\*(Aq))\&. 不包含体系结构特定文件的包应该使用
+arch=(\*(Aqany\*(Aq)\&。该数组成员的有效字符是字母数字和 \(lq_\(rq\&。
+.RE
+.PP
+\fBbackup (array)\fP
+.RS 4
+一组文件名，前面没有斜杠，如果删除或升级包 \&，应该备份这些文件名。这通常用于将配置文件放在 \fI/etc\fP\& 中的包。有关详细信息，请参见
+\fBpacman\fP(8) 中的 "Handling Config Files"\&。
+.RE
+.PP
+\fBdepends (array)\fP
+.RS 4
+此包依赖于运行的一组包。此列表中的条目应该用单引号括起来，并且至少包含包名称 \&。条目还可以包含 \fIname<>version\fP
+形式的版本要求，其中 <> 是五个比较之一: >= (大于或等于)、<= (小于或等于)、= (等于)、>
+(大于)、或 < (小于) \&。
+.sp
+如果依赖项名称看起来是一个库 (以 \&.so 结尾)，makepkg 将尝试在构建的包中查找依赖于该库的二进制文件，并，追加，二进制文件所需的版本
+\&。自己，追加，版本会禁用自动检测 \&。
+.sp
+可以通过，追加，下划线和架构名称 e\&.g\&., \fIdepends_x86_64=()\fP\& 来添加其他特定于架构的依赖项。
+.RE
+.PP
+\fBmakedepends (array)\fP
+.RS 4
+此包依赖于构建但在运行时不需要的一组包。此列表中的包遵循与 depends\& 相同的格式。
+.sp
+可以通过，追加，下划线和体系结构名称 e\&.g\&., \fImakedepends_x86_64=()\fP\& 来添加其他体系结构特定的
+makedepends。
+.RE
+.PP
+\fBcheckdepends (array)\fP
+.RS 4
+该包依赖于运行其测试套件但在运行时不需要的一组包。此列表中的包遵循与 depends\& 相同的格式。只有当 check() 函数存在并且由
+makepkg\& 运行时才会考虑这些依赖关系。
+.sp
+可以通过，追加，下划线和体系结构名称 e\&.g\&., \fIcheckdepends_x86_64=()\fP\& 来添加额外的体系结构特定的
+checkdepends。
+.RE
+.PP
+\fBoptdepends (array)\fP
+.RS 4
+一组包 (以及伴随的原因)，它们对于基本功能不是必需的，但可能是充分利用此包的内容所必需的 \&。optdepends 目前仅供参考，pacman
+在依赖解析期间不使用 \&。此列表中的包遵循与 depends 相同的格式，追加，可选的描述 \&。指定 optdepends 描述的格式是:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+optdepends=(\*(Aqpython: 用于库绑定 \*(Aq)
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+可以通过，追加，下划线和架构名称 e\&.g\&., \fIoptdepends_x86_64=()\fP\& 来添加其他架构特定的 optdepends。
+.RE
+.PP
+\fBconflicts (array)\fP
+.RS 4
+一组将与此包冲突的包 (i\&.e\&。它们不能同时安装) \&。该指令遵循与 depends\& 相同的格式。如 depends\&
+中所述，使用运算符支持版本冲突。
+.sp
+可以通过，追加，下划线和架构名称 e\&.g\&., \fIconflicts_x86_64=()\fP\& 来添加其他特定于架构的冲突。
+.RE
+.PP
+\fBprovides (array)\fP
+.RS 4
+一组 \(lqvirtual 规定 \(rq 这个包提供 \&。这允许一个包提供除它自己的包名之外的依赖项 \&。例如，dcron 包可以提供
+\fIcron\fP，它允许包依赖于 \fIcron\fP 而不是 \fIdcron OR fcron\fP\&。
+.sp
+版本化条款也是可能的，采用 \fIname=version\fP 格式 \&。比如 dcron 可以提供 \fIcron=2\&.0\fP 来满足其他包对
+\fIcron>=2\&.0\fP 的依赖 \&。涉及 > 和 < 运算符的规定无效，因为只能提供特定版本的包 \&。
+.sp
+如果提供名称看起来是一个库 (以 \&.so 结尾)，makepkg 将尝试在构建的包中找到该库并，追加，正确的版本
+\&。自己，追加，版本会禁用自动检测 \&。
+.sp
+可以通过，追加，下划线和架构名称 e\&.g\&., \fIprovides_x86_64=()\fP\& 来添加其他特定于架构的产品。
+.RE
+.PP
+\fBreplaces (array)\fP
+.RS 4
+此包应替换的一组包 \&。这可用于处理 renamed/combined 包 \&。例如，如果 \fIj2re\fP 包重命名为 \fIjre\fP，此指令允许
+future 升级按预期继续，即使包已移动 \&。如 depends\& 中所述，使用运算符支持版本化替换。
+.sp
+Sysupgrade 是目前唯一使用该字段的 pacman 操作。正常的同步或升级不会使用它的值 \&。
+.sp
+可以通过，追加，下划线和架构名称 e\&.g\&., \fIreplaces_x86_64=()\fP\& 来添加其他特定于架构的替换。
+.RE
+.PP
+\fBoptions (array)\fP
+.RS 4
+该数组允许您覆盖一些 makepkg\(cqs 在构建包时的默认行为 \&。要设置选项，只需在选项数组 \& 中包含选项名称。要反转默认行为，请将
+\(lq!\(rq 放在选项的前面 \&。仅指定您特别要覆盖的选项，其余的将从 \fBmakepkg.conf\fP(5)\& 中获取。\fBNOTE:\fP
+\fIforce\fP 是现在删除的选项，有利于顶级 \fIepoch\fP 变量 \&。
+.PP
+\fBstrip\fP
+.RS 4
+从二进制文件和库中剥离符号 \&。如果您经常在程序或库中使用调试器，禁用此选项 \& 可能会有所帮助。
+.RE
+.PP
+\fBdocs\fP
+.RS 4
+保存文档目录 \&。如果要删除 doc 目录，请在数组中指定 !docs\&。
+.RE
+.PP
+\fBlibtool\fP
+.RS 4
+将 libtool (\&.la) 文件保留在 packages\& 中。指定 !libtool 以删除它们 \&。
+.RE
+.PP
+\fBstaticlibs\fP
+.RS 4
+将静态库 (\&.a) 文件保留在 packages\& 中。指定 !staticlibs 以删除它们 (如果它们有共享的对应项) \&。
+.RE
+.PP
+\fBemptydirs\fP
+.RS 4
+在 packages\& 中保留空目录。
+.RE
+.PP
+\fBzipman\fP
+.RS 4
+使用 gzip\& 压缩手册页和信息页。
+.RE
+.PP
+\fBccache\fP
+.RS 4
+允许在 build ()\& 期间使用 ccache。在其 negative 形式 !ccache 中更有用，其中包含使用 ccache\&
+构建时出现问题的精选包。
+.RE
+.PP
+\fBdistcc\fP
+.RS 4
+允许在 build ()\& 期间使用 distcc。在其 negative 形式 !distcc 中更有用，其中包含使用 distcc\&
+构建时出现问题的精选包。
+.RE
+.PP
+\fBbuildflags\fP
+.RS 4
+允许在 \fBmakepkg.conf\fP(5)\& 中指定的 build() 期间使用用户特定的构建标志
+(CPPFLAGS、CFLAGS、CXXFLAGS、LDFLAGS)。在其 negative 形式 !buildflags 中更有用，其中包含使用自定义
+buildflags\& 构建时遇到问题的精选包。
+.RE
+.PP
+\fBmakeflags\fP
+.RS 4
+允许在 \fBmakepkg.conf\fP(5)\& 中指定的 build() 期间使用用户特定的 makeflags。在其 negative 形式
+!makeflags 中更有用，其中包含使用自定义 makeflags (例如 \-j2 (或更高) \&) 构建时遇到问题的精选包。
+.RE
+.PP
+\fBdebug\fP
+.RS 4
+将用户指定的调试标志 (DEBUG_CFLAGS、DEBUG_CXXFLAGS) 添加到它们在 \fBmakepkg.conf\fP(5)\&
+中指定的对应构建标志。当与 \(oqstrip\(cq 选项结合使用时，会创建一个包含调试符号的单独包 \&。
+.RE
+.PP
+\fBlto\fP
+.RS 4
+使用链接时间优化启用构建包。将 \fI\-flto\fP 添加到 CFLAGS 和 CXXFLAGS\&。
+.RE
+.RE
+.SH "PACKAGING FUNCTIONS"
+.sp
+除了上述指令外，PKGBUILD 还需要一组函数来提供构建和安装包的指令。作为最低限度，PKGBUILD 必须包含一个 package()
+函数，它将所有包 \(cqs 文件安装到打包目录中，可选的 prepare()、build() 和 check() 函数用于从源创建这些文件 \&。
+.sp
+这是直接由 makepkg 获取和执行的，所以 Bash 或系统可用的任何东西都可以在这里使用 \&。确保 makedepends 数组 \&
+涵盖了使用的任何特殊命令。
+.sp
+如果您在其中任何一个函数中创建自己的变量，建议使用 Bash local 关键字将变量作用于函数域 \& 中。
+.PP
+\fBpackage() Function\fP
+.RS 4
+package() 函数用于将文件安装到将成为构建包根目录的目录中，并在下面列出的所有可选函数 \& 之后运行。打包阶段使用 fakeroot
+运行，以确保生成的包中的文件权限正确 \&。所有其他函数将作为调用 makepkg\& 的用户运行。
+.RE
+.PP
+\fBprepare() Function\fP
+.RS 4
+可以指定可选的 prepare() 函数，其中执行准备构建源的操作，例如修补。此函数在源代码提取之后和 build() 函数 \&
+之前运行。prepare() 函数在跳过源提取时被跳过 \&。
+.RE
+.PP
+\fBbuild() Function\fP
+.RS 4
+可选的 build() 函数用于编译或者调整源文件以准备由 package () 函数 \& 安装。
+.RE
+.PP
+\fBcheck() Function\fP
+.RS 4
+可以指定可选的 check() 函数，其中可以运行包 \(cqs 测试套件 \&。这个函数运行在 build() 和 package() 函数 \&
+之间。确保使用的任何奇异命令都包含在 checkdepends 数组 \& 中。
+.RE
+.sp
+以上变量如 $pkgname、$pkgver 都可以用包装函数 \&。此外，makepkg 定义了以下变量:
+.PP
+\fBsrcdir\fP
+.RS 4
+这包含 makepkg 提取或复制所有源文件的目录 \&。
+.sp
+上面定义的所有包装函数都是从 $srcdir 内部开始运行的
+.RE
+.PP
+\fBpkgdir\fP
+.RS 4
+这包含 makepkg 捆绑安装包的目录。该目录将成为您构建的包的根目录 \&。这个变量应该只用在 package() 函数 \& 中。
+.RE
+.PP
+\fBstartdir\fP
+.RS 4
+这里包含了 PKGBUILD 所在目录的绝对路径，通常是 makepkg 启动时 $(pwd) 的输出 \&。此变量的使用已被弃用，强烈反对 \&。
+.RE
+.SH "PACKAGE SPLITTING"
+.sp
+makepkg 支持从单个 PKGBUILD\& 构建多个包。这是通过将包名称数组分配给 pkgname 指令 \& 来实现的。每个拆分包使用一个名称为
+package_foo() 的对应包装函数，其中 foo 是拆分包的名称 \&。
+.sp
+拆分包的所有选项和指令默认为 PKGBUILD\& 中给出的全局值。尽管如此，以下内容可以在每个拆分包中被覆盖 \(cqs 包装函数:
+pkgdesc、arch、url、许可证、组、依赖、optdepends、提供、冲突、替换、备份、选项、安装和更改日志 \&。
+.sp
+请注意，makepkg 在检查是否在构建包之前安装依赖项时以及使用 \-\-syncdeps\& 时不考虑拆分包依赖。所有需要制作包的包都需要在全局
+depends 和 makedepends 数组中指定 \&。
+.sp
+构建拆分包时可以使用可选的全局指令:
+.PP
+\fBpkgbase\fP
+.RS 4
+该名称用于指代 makepkg 输出中的包组和纯源码压缩包的命名 \&。如果未指定，则使用 pkgname 数组中的第一个元素
+\&。此变量的有效字符是字母数字和以下任意字符: \(lq@\&. _ + \-\(rq\&. 此外，变量不允许以连字符或点 \& 开头。
+.RE
+.SH "INSTALL/UPGRADE/REMOVE SCRIPTING"
+.sp
+Pacman 能够在安装、删除或升级包时存储和执行特定于包的脚本 \&。这允许包在安装后自行配置并在删除时执行相反的操作 \&。
+.sp
+脚本运行的确切时间因每个操作而异，应该是不言自明的 \&。请注意，在升级操作期间，不会调用任何安装或删除函数 \&。
+.sp
+脚本通过一个或两个 \(lqfull version strings\(rq，如果 epoch 不为零，则完整版本字符串为
+\fIpkgver\-pkgrel\fP 或 \fIepoch:pkgver\-pkgrel\fP\&。
+.PP
+\fBpre_install\fP
+.RS 4
+在提取文件之前运行 \&。传递一个参数: new package full version string\&。
+.RE
+.PP
+\fBpost_install\fP
+.RS 4
+提取文件后立即运行 \&。传递一个参数: new package full version string\&。
+.RE
+.PP
+\fBpre_upgrade\fP
+.RS 4
+在提取文件之前运行 \&。依次传递两个参数: 新包完整版本字符串，旧包完整版本字符串 \&。
+.RE
+.PP
+\fBpost_upgrade\fP
+.RS 4
+提取文件后运行 \&。依次传递两个参数: 新包完整版本字符串，旧包完整版本字符串 \&。
+.RE
+.PP
+\fBpre_remove\fP
+.RS 4
+在删除文件之前运行 \&。传递一个参数: old package full version string\&。
+.RE
+.PP
+\fBpost_remove\fP
+.RS 4
+删除文件后立即运行 \&。传递一个参数: old package full version string\&。
+.RE
+.sp
+要使用此特性请创建一个文件 (如 \fIpkgname\&.install\fP) 并将其放在与 PKGBUILD 脚本相同的目录中 \&。然后使用安装指令:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+install=pkgname\&.install
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+安装脚本不需要在源数组中指定 \&。模板安装文件在 \fI/usr/share/pacman\fP 和 \fIproto\&.install\fP
+中可用，用于引用，其中定义了所有可用的函数 \&。
+.SH "USING VCS SOURCES"
+.sp
+使用来自版本控制系统 (VCS) 的源构建包的开发版本是通过在以下形式中指定源来启用的:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+source=(\*(Aqdirectory::url#fragment?query\*(Aq)
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+目前 makepkg 支持 Bazaar、Git、Subversion、Fossil 和 Mercurial 版本控制系统
+\&。对于其他版本控制系统，必须在 prepare() 函数 \& 中手动克隆上游存储库。
+.sp
+源 URL 分为四个部分:
+.PP
+\fBdirectory\fP
+.RS 4
+(optional) 为 makepkg 指定一个备用目录名称，以将版本控制系统源下载到 \&。
+.RE
+.PP
+\fBurl\fP
+.RS 4
+版本控制系统存储库的 URL\&。这必须在 URL 协议中包含版本控制系统，以便 makepkg 将其识别为版本控制系统源
+\&。如果协议不包含版本控制系统名称，可以通过在 URL 前加上版本控制系统 +\& 来添加。例如，使用基于 HTTPS 的 Git
+仓库将具有以下形式的源 URL: git+https://\&.\&.\&.\&。
+.RE
+.PP
+\fBfragment\fP
+.RS 4
+(optional) 允许为 makepkg 指定修订号或分支以从版本控制系统 \& 检出。片段的形式为
+type=value，例如，要检出给定的修订版，源代码行将为
+source=(url#revision=123)\&。可用的类型取决于正在使用的版本控制系统:
+.PP
+\fBbzr\fP
+.RS 4
+修订版 (参见 \*(Aqbzr help revisionspec\*(Aq 了解详情)
+.RE
+.PP
+\fBfossil\fP
+.RS 4
+分支、提交、标记
+.RE
+.PP
+\fBgit\fP
+.RS 4
+分支、提交、标记
+.RE
+.PP
+\fBhg\fP
+.RS 4
+分支、修订、标记
+.RE
+.PP
+\fBsvn\fP
+.RS 4
+revision
+.RE
+.RE
+.PP
+\fBquery\fP
+.RS 4
+(optional) 允许指定版本控制系统检查是否应检查 PGP 签名的修订 \&。源代码行的格式应为
+source=(url#fragment?signed) 或 source=(url?signed#fragment)\&。目前仅 Git\& 支持。
+.RE
+.SH EXAMPLE
+.sp
+以下是 \fIpatch\fP 包的示例 PKGBUILD\&。有关更多示例，请查看您的发行版的构建文件 \(cqs packages\&。对于使用 Arch
+Linux 的用户，请查阅 Arch 构建系统 (ABS) 树 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# Maintainer: Joe User <joe\&.user@example\&.com>
+
+pkgname=patch
+pkgver=2\&.7\&.1
+pkgrel=1
+pkgdesc="A utility to apply patch files to original sources"
+arch=(\*(Aqi686\*(Aq \*(Aqx86_64\*(Aq)
+url="https://www\&.gnu\&.org/software/patch/patch\&.html"
+license=(\*(AqGPL\*(Aq)
+groups=(\*(Aqbase\-devel\*(Aq)
+depends=(\*(Aqglibc\*(Aq)
+makedepends=(\*(Aqed\*(Aq)
+optdepends=(\*(Aqed: for "patch \-e" functionality\*(Aq)
+source=("ftp://ftp\&.gnu\&.org/gnu/$pkgname/$pkgname\-$pkgver\&.tar\&.xz"{,\&.sig})
+md5sums=(\*(Aqe9ae5393426d3ad783a300a338c09b72\*(Aq
+         \*(AqSKIP\*(Aq)
+
+build() {
+        cd "$srcdir/$pkgname\-$pkgver"
+        \&./configure \-\-prefix=/usr
+        make
+}
+
+package() {
+        cd "$srcdir/$pkgname\-$pkgver"
+        make DESTDIR="$pkgdir/" install
+}
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.sp
+\fBmakepkg\fP(8), \fBpacman\fP(8), \fBmakepkg.conf\fP(5)
+.sp
+有关 pacman 及其相关工具的最新信息，请参见 pacman 网站 https://archlinux\&.org/pacman/。
+.SH BUGS
+.sp
+虫子? 您一定在开玩笑; 此软件中没有错误 \&。但如果我们碰巧错了，请在 Pacman 部分的 Arch Linux Bug Tracker
+提交尽可能详细的错误报告 \&。
+.SH AUTHORS
+.sp
+目前的维护者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Allan McRae <allan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Andrew Gregory <andrew\&.gregory\&.8@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Eli Schwartz <eschwartz@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Morgan Adamiec <morganamilo@archlinux\&.org>
+.RE
+.sp
+过去的主要贡献者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Judd Vinet <jvinet@zeroflux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aurelien Foret <aurelien@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aaron Griffin <aaron@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dan McGee <dan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Xavier Chantry <shiningxc@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Nagy Gabor <ngaba@bibl\&.u\-szeged\&.hu>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dave Reisner <dreisner@archlinux\&.org>
+.RE
+.sp
+对于其他贡献者，请在 pacman\&.git 库 \& 上使用 git shortlog \-s。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

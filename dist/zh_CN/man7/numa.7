@@ -1,0 +1,112 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\" and Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" numa_maps material Copyright (c) 2005 Silicon Graphics Incorporated.
+.\"     Christoph Lameter, <cl@linux-foundation.org>.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH numa 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+numa \- 非统一内存架构概述
+.SH DESCRIPTION
+Non\-Uniform Memory Access (NUMA) 指的是内存被划分为多个内存节点的多处理器系统。 内存节点的访问时间取决于访问 CPU
+和被访问节点的相对位置。 (这与对称多处理器系统形成对比，在对称多处理器系统中，所有 CPU 对所有内存的访问时间都是相同的。) 通常，NUMA
+系统上的每个 CPU 都有一个本地内存节点，其内容可以比访问内存更快另一个 CPU 的本地节点或所有 CPU 共享的总线上的内存。
+.SS "NUMA system calls"
+Linux 内核实现了以下与 NUMA 相关的系统调用:
+\fBget_mempolicy\fP(2)、\fBmbind\fP(2)、\fBmigrate_pages\fP(2)、\fBmove_pages\fP(2) 和
+\fBset_mempolicy\fP(2)。 但是，应用程序通常应该使用 \fIlibnuma\fP 提供的接口; 请参见下面的 "Library
+Support"。
+.SS "/proc/[number]/numa_maps (since Linux 2.6.14)"
+.\" See also Changelog-2.6.14
+此文件显示有关进程的 NUMA 内存策略和分配的信息。
+.PP
+每行包含有关进程使用的内存范围的信息，显示 \[em] 该内存范围的有效内存策略以及已在哪些节点上分配页面等信息。
+.PP
+\fInuma_maps\fP 是一个只读文件。 当读取 \fI/proc/<pid>/numa_maps\fP
+时，内核会扫描进程的虚拟地址空间，并报告内存的使用情况。 为进程的每个唯一内存范围显示一行。
+.PP
+每行的第一个字段显示内存范围的起始地址。 该字段允许与 \fI/proc/<pid>/maps\fP
+文件的内容相关联，其中包含范围的结束地址和其他信息，例如访问权限和共享。
+.PP
+第二个字段显示当前对内存范围有效的内存策略。 请注意，有效策略不一定是进程为该内存范围安装的策略。 具体来说，如果进程为该范围安装了 "default"
+策略，则该范围的有效策略将是进程策略，它可能是也可能不是 "default"。
+.PP
+该行的其余部分包含有关在内存范围内分配的页面的信息，如下所示:
+.TP 
+\fIN<node>=<nr_pages>\fP
+\fI<node>\fP 上分配的页数。 \fI<nr_pages>\fP 仅包括进程当前映射的页面。
+页面迁移和内存回收可能具有与此内存范围关联的暂时未映射的页面。 只有在进程尝试引用它们之后，这些页面才会再次出现。
+如果内存范围表示共享内存区域或文件映射，则其他进程当前可能有额外的页面映射到相应的内存范围。
+.TP 
+\fIfile=<filename>\fP
+支持内存范围的文件。 如果文件被映射为私有文件，写访问可能会在此内存范围内生成 COW (Copy\-On\-Write) 页面。 这些页面显示为匿名页面。
+.TP 
+\fIheap\fP
+内存范围用于堆。
+.TP 
+\fIstack\fP
+内存范围用于栈。
+.TP 
+\fIhuge\fP
+巨大的内存范围。 显示的页数是大页面而不是常规大小的页面。
+.TP 
+\fIanon=<pages>\fP
+范围内匿名页面的数量。
+.TP 
+\fIdirty=<pages>\fP
+脏页数。
+.TP 
+\fImapped=<pages>\fP
+映射页面总数 (如果不同于 \fIdirty\fP 和 \fIanon\fP 页面)。
+.TP 
+\fImapmax=<count>\fP
+扫描期间遇到的最大映射计数 (映射单个页面的进程数)。 这可以用作给定内存范围内发生的共享程度的指示符。
+.TP 
+\fIswapcache=<count>\fP
+在交换设备上具有关联条目的页数。
+.TP 
+\fIactive=<pages>\fP
+活动列表中的页数。 仅当与该范围内的页数不同时才显示该字段。 这意味着一些非活动页面存在于内存范围内，可能很快就会被交换器从内存中删除。
+.TP 
+\fIwriteback=<pages>\fP
+当前正在写出到磁盘的页数。
+.SH STANDARDS
+没有标准管理 NUMA 接口。
+.SH NOTES
+只有在使用 \fBCONFIG_NUMA\fP 选项配置和构建内核时，Linux NUMA 系统调用和 \fI/proc\fP 接口才可用。
+.SS "Library support"
+与 \fI\-lnuma\fP 链接以获取系统调用定义。 \fIlibnuma\fP 和所需的 \fI<numaif.h>\fP 接头在
+\fInumactl\fP 封装中提供。
+.PP
+但是，应用程序不应直接使用这些系统调用。 相反，建议使用 \fInumactl\fP 包中的 \fBnuma\fP(3) 函数提供的更高级别的接口。
+\fInumactl\fP 包在
+.UR ftp://oss.sgi.com\:/www\:/projects\:/libnuma\:/download/
+.UE .
+上可用该包还包含在一些 Linux 发行版中。 一些发行版在单独的 \fInumactl\-devel\fP 包中包含开发库和标头。
+.SH "SEE ALSO"
+\fBget_mempolicy\fP(2), \fBmbind\fP(2), \fBmove_pages\fP(2), \fBset_mempolicy\fP(2),
+\fBnuma\fP(3), \fBcpuset\fP(7), \fBnumactl\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

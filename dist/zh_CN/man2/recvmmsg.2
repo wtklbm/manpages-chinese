@@ -1,0 +1,196 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2011 by Andi Kleen <andi@firstfloor.org>
+.\" and Copyright (c) 2011 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Syscall added in following commit
+.\"	commit a2e2725541fad72416326798c2d7fa4dafb7d337
+.\"	Author: Arnaldo Carvalho de Melo <acme@redhat.com>
+.\"	Date:   Mon Oct 12 23:40:10 2009 -0700
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH recvmmsg 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+recvmmsg \- 在套接字上接收多条消息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <sys/socket.h>\fP
+.PP
+\fBint recvmmsg(int \fP\fIsockfd\fP\fB, struct mmsghdr *\fP\fImsgvec\fP\fB, unsigned int \fP\fIvlen\fP\fB,\fP
+\fB             int \fP\fIflags\fP\fB, struct timespec *\fP\fItimeout\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBrecvmmsg\fP() 系统调用是 \fBrecvmsg\fP(2) 的扩展，它允许调用者使用单个系统调用从套接字接收多条消息。
+(这对某些应用程序有性能优势。) \fBrecvmsg\fP(2) 的进一步扩展是支持接收操作超时。
+.PP
+\fIsockfd\fP 参数是从中接收数据的套接字的文件描述符。
+.PP
+\fImsgvec\fP 参数是指向 \fImmsghdr\fP 结构数组的指针。 该数组的大小在 \fIvlen\fP 中指定。
+.PP
+\fImmsghdr\fP 结构体在 \fI<sys/socket.h>\fP 中定义为:
+.PP
+.in +4n
+.EX
+struct mmsghdr {
+    struct msghdr msg_hdr;  /* Message header */
+    unsigned int  msg_len;  /* Number of received bytes for header */
+};
+.EE
+.in
+.PP
+\fImsg_hdr\fP 字段是 \fImsghdr\fP 结构体，如 \fBrecvmsg\fP(2) 中所述。 \fImsg_len\fP
+字段是为条目中的消息返回的字节数。 该字段与标头上单个 \fBrecvmsg\fP(2) 的返回值具有相同的值。
+.PP
+\fIflags\fP 参数包含用或运算组合在一起的标志。 这些标志与 \fBrecvmsg\fP(2) 的文档相同，但增加了以下内容:
+.TP 
+\fBMSG_WAITFORONE\fP (since Linux 2.6.34)
+收到第一条消息后打开 \fBMSG_DONTWAIT\fP。
+.PP
+\fItimeout\fP 参数指向一个 \fIstruct timespec\fP (参见 \fBclock_gettime\fP(2)) 为接收操作 (\fIbut see BUGS!\fP) 定义超时 (秒加纳秒)。 (这个间隔将向上取整到系统时钟粒度，内核调度延迟意味着阻塞间隔可能会稍微超出。) 如果
+\fItimeout\fP 为 NULL，则操作无限期地阻塞。
+.PP
+阻塞 \fBrecvmmsg\fP() 调用阻塞，直到收到 \fIvlen\fP 消息或直到超时到期。 非阻塞调用读取尽可能多的可用消息 (达到 \fIvlen\fP)
+指定的限制并立即返回。
+.PP
+从 \fBrecvmmsg\fP() 返回时，\fImsgvec\fP 的连续元素被更新以包含有关每个接收到的消息的信息: \fImsg_len\fP
+包含接收到的消息的大小; \fImsg_hdr\fP 的子字段按照 \fBrecvmsg\fP(2) 中的描述进行更新。 调用的返回值表示 \fImsgvec\fP
+中被更新的元素个数。
+.SH "RETURN VALUE"
+成功时，\fBrecvmmsg\fP() 返回 \fImsgvec\fP 中收到的消息数; 出错时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+错误与 \fBrecvmsg\fP(2) 相同。 此外，可能会出现以下错误:
+.TP 
+\fBEINVAL\fP
+\fItimeout\fP 无效。
+.PP
+另请详见错误。
+.SH VERSIONS
+\fBrecvmmsg\fP() 系统调用在 Linux 2.6.33 中加入。 在 glibc 2.12 中添加了对 glibc 的支持。
+.SH STANDARDS
+\fBrecvmmsg\fP() 是特定于 Linux 的。
+.SH BUGS
+.\" FIXME . https://bugzilla.kernel.org/show_bug.cgi?id=75371
+.\" http://thread.gmane.org/gmane.linux.man/5677
+\fItimeout\fP 参数未按预期工作。 仅在收到每个数据报后才检查超时，因此如果在超时到期之前收到最多 \fIvlen\-1\fP
+个数据报，但随后没有收到更多数据报，调用将永远阻塞。
+.PP
+如果在至少收到一条消息后发生错误，则调用成功，并返回收到的消息数。 错误代码预计会在随后调用 \fBrecvmmsg\fP() 时返回。
+然而，在当前的实现中，错误代码可以同时被套接字上不相关的网络事件覆盖，例如传入的 ICMP 数据包。
+.SH EXAMPLES
+以下程序使用 \fBrecvmmsg\fP() 在套接字上接收多条消息并将它们存储在多个缓冲区中。 如果所有缓冲区都已满或指定的超时已过期，则调用返回。
+.PP
+以下片段定期生成包含随机数的 UDP 数据报:
+.PP
+.in +4n
+.EX
+$\fB while true; do echo $RANDOM > /dev/udp/127.0.0.1/1234;\fP
+\fBsleep 0.25; done\fP
+.EE
+.in
+.PP
+这些数据报由示例应用程序读取，它可以提供以下输出:
+.PP
+.in +4n
+.EX
+$\fB ./a.out\fP
+收到 5 条消息
+1 11782
+2 11345
+3 304
+4 13514
+5 28421
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (recvmmsg.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <time.h>
+
+int
+main(void)
+{
+#define VLEN 10
+#define BUFSIZE 200
+#define TIMEOUT 1
+    int                 sockfd, retval;
+    char                bufs[VLEN][BUFSIZE+1];
+    struct iovec        iovecs[VLEN];
+    struct mmsghdr      msgs[VLEN];
+    struct timespec     timeout;
+    struct sockaddr_in  addr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == \-1) {
+        perror("socket()");
+        exit(EXIT_FAILURE);
+    }
+
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons(1234);
+    if (bind(sockfd, (struct sockaddr *) &addr, sizeof(addr)) == \-1) {
+        perror("bind()");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(msgs, 0, sizeof(msgs));
+    for (size_t i = 0; i < VLEN; i++) {
+        iovecs[i].iov_base         = bufs[i];
+        iovecs[i].iov_len          = BUFSIZE;
+        msgs[i].msg_hdr.msg_iov    = &iovecs[i];
+        msgs[i].msg_hdr.msg_iovlen = 1;
+    }
+
+    timeout.tv_sec = TIMEOUT;
+    timeout.tv_nsec = 0;
+
+    retval = recvmmsg(sockfd, msgs, VLEN, 0, &timeout);
+    if (retval == \-1) {
+        perror("recvmmsg()");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("%d messages received\en", retval);
+    for (size_t i = 0; i < retval; i++) {
+        bufs[i][msgs[i].msg_len] = 0;
+        printf("%zu %s", i+1, bufs[i]);
+    }
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclock_gettime\fP(2), \fBrecvmsg\fP(2), \fBsendmmsg\fP(2), \fBsendmsg\fP(2),
+\fBsocket\fP(2), \fBsocket\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

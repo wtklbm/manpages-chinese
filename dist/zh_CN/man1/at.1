@@ -1,0 +1,164 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH AT 1 2009\-11\-14  
+.SH NAME
+at、batch、atq、atrm \- 排队、检查或删除作业以供稍后执行
+.SH SYNOPSIS
+\fBat\fP [\fB\-V\fP] [\fB\-q\fP \fIqueue\fP] [\fB\-f\fP \fIfile\fP] [\fB\-u\fP \fIusername\fP]
+[\fB\-mMlv\fP] \fItimespec\fP ..."
+.br
+\fBat\fP [\fB\-V\fP] [\fB\-q\fP \fIqueue\fP] [\fB\-f\fP \fIfile\fP] [\fB\-u\fP \fIusername\fP]
+[\fB\-mMkv\fP] [\fB\-t\fP \fItime\fP]
+.br
+\fBat \-c\fP \fIjob\fP [...\&]
+.br
+\fBat\fP [\fB\-V\fP] \-l [\fB\-o\fP \fItimeformat\fP] \fI[job\fP \fI...\fP]
+.br
+\fBatq\fP [\fB\-V\fP] [\fB\-q\fP \fIqueue\fP] [\fB\-o\fP \fItimeformat\fP] \fI[job\fP \fI...\fP]
+.br
+\fBat\fP [\fB\-rd\fP] \fIjob\fP [...\&]
+.br
+\fBatrm\fP [\fB\-V\fP] \fIjob\fP [...\&]
+.br
+\fBbatch\fP
+.br
+\fBat \-b\fP
+.SH DESCRIPTION
+\fBat\fP 和 \fBbatch\fP 使用 \fB/bin/sh\fP 从标准输入或指定文件中读取稍后要执行的命令。
+.TP  8
+\fBat\fP
+在指定的时间执行命令。
+.TP  8
+\fBatq\fP
+列出用户的待处理作业，除非用户是超级用户; 在这种情况下，每个人的工作都会被列出。 输出行的格式 (每个作业一个) 是:
+作业编号、日期、小时、队列和用户名。
+.TP  8
+\fBatrm\fP
+删除由作业编号标识的作业。
+.TP  8
+\fBbatch\fP
+在系统负载水平允许时执行命令; 换句话说，当平均负载丢弃低于 0.8，或调用 \fBatd\fP 时指定的值。
+.PP
+\fBAt\fP 允许相当复杂的时间规范，扩展了 POSIX.2 标准。 它接受 \fBHH:MM\fP 形式的时间以在一天中的特定时间运行作业。
+(如果该时间已经过去，则假定为第二天。) 您还可以指定 \fBmidnight,\fP \fBnoon,\fP 或 \fBteatime\fP
+(4pm)，并且您可以为早上或晚上运行的时间加上 \fBAM\fP 或 \fBPM\fP 后缀。 您还可以通过以 \fBmonth\-name\fP \fBday\fP
+形式提供日期和可选的 \fByear,\fP 或以
+\fIMMDD\fP[\fICC\fP]\fIYY\fP、\fIMM\fP/\fIDD\fP/[\fICC\fP]\fIYY\fP、\fIDD\fP.\fIMM\fP.[\fICC\fP]\fIYY\fP 或
+[\fICC\fP]\fIYY\fP\-\fIMM\fP\-\fIDD\fP 形式提供日期来说明作业将在哪一天运行。 日期 \fImust\fP 的规范遵循一天中时间的规范。
+您还可以给出像 \fBnow\fP \fB+\fP \fIcount\fP \fItime\-units,\fP 这样的时间，其中时间单位可以是 \fBminutes,\fP
+\fBhours,\fP \fBdays,\fP 或 \fBweeks\fP，您可以告诉 \fBat\fP 通过在时间后缀 \fBtoday\fP 来运行今天的作业，并通过在时间后缀
+\fBtomorrow.\fP 来告诉 \fBat\fP 在明天运行作业
+.PP
+例如，要在三天后的下午 4 点运行一个作业，您将执行 \fBat 4pm + 3 days,\fP，以便在 7 月 31 日上午 10:00
+运行一个作业，您将执行 \fBat 10am Jul 31\fP，而要在明天凌晨 1 点运行一个作业，您将执行 \fBat 1am tomorrow.\fP
+.PP
+如果您指定一个作业绝对在过去的特定时间和日期运行，该作业将尽快运行。 例如，如果现在是晚上 8 点，您执行 \fBat 6pm today,\fP，它更有可能在晚上 8:05 运行。
+.PP
+时间规范的定义可以在 \fI/usr/share/doc/at/timespec\fP 中找到。
+.PP
+对于 \fBat\fP 和 \fBbatch\fP，命令从标准输入或 \fB\-f\fP 选项指定的文件中读取并执行。 工作目录、环境 (变量
+\fBBASH_VERSINFO\fP、\fBDISPLAY\fP、\fBEUID\fP、\fBGROUPS\fP、\fBSHELLOPTS\fP、\fBTERM\fP、\fBUID\fP 和
+\fB_\fP) 除外) 和 umask 从调用时保留。
+
+由于 \fBat\fP 当前作为 setuid 程序实现，其他环境变量 (例如，\fBLD_LIBRARY_PATH\fP 或 \fBLD_PRELOAD\fP)
+也不会导出。 这可能会在 future 中改变。 作为解决方法，请在您的工作中明确设置这些变量。
+
+从 \fBsu\fP(1) shell 调用的 \fBat \fP\- 或 \fBbatch \fP\- 命令将保留当前用户 ID。
+如果有的话，用户将收到来自其命令的标准错误和标准输出。 将使用命令 \fB/usr/bin/sendmail\fP 发送邮件。 如果从 \fBsu\fP(1)
+shell 执行 \fBat\fP，则登录 shell 的所有者将收到邮件。
+.PP
+超级用户可以在任何情况下使用这些命令。 对于其他用户，at 的使用权限由文件 \fI/etc/at.allow\fP 和 \fI/etc/at.deny\fP
+决定。 有关详细信息，请参见 \fBat.allow\fP(5)。
+.SH OPTIONS
+.TP  8
+\fB\-V\fP
+将版本号打印到标准错误并成功退出。
+.TP  8
+\fB\-q\fP\fI queue\fP
+使用指定的队列。 队列名称由一个字母组成; 有效的队列名称范围从 \fBa\fP 到 \fBz\fP 和 \fBA\fP 到 \fBZ\fP。 \fBa\fP 队列是 \fBat\fP
+的默认队列，\fBb\fP 队列是 \fBbatch\fP 的默认队列。 具有更高字母的队列以更高的友好度运行。 特殊队列 "=" 是为当前正在运行的作业保留的。
+.P
+如果将作业提交到用大写字母指定的队列，则该作业将被视为在作业时已提交到批处理。 一旦达到该时间，将应用关于平均负载的批处理规则。 如果为 \fBatq\fP
+指定了一个特定的队列，它将只显示该队列中待处理的作业。
+.TP  8
+\fB\-m\fP
+作业完成后向用户发送邮件，即使没有输出。
+.TP  8
+\fB\-M\fP
+永远不要向用户发送邮件。
+.TP  8
+\fB\-u\fP\fI username\fP
+将邮件发送到 \fIusername\fP 而不是当前用户。
+.TP  8
+\fB\-f\fP\fI file\fP
+从 \fIfile\fP 而不是标准输入读取作业。
+.TP  8
+\fB\-t\fP\fI time\fP
+在 \fItime\fP 运行作业，以 [[CC]YY]MMDDhhmm[.ss] 格式给出
+.TP  8
+\fB\-l\fP
+是 \fBatq.\fP 的别名
+.TP 
+\fB\-r\fP
+是 \fBatrm.\fP 的别名
+.TP 
+\fB\-d\fP
+是 \fBatrm.\fP 的别名
+.TP 
+\fB\-b\fP
+是 \fBbatch\fP 的别名。
+.TP 
+\fB\-v\fP
+显示在读取作业之前执行作业的时间。
+.P
+显示的时间将采用 "Thu Feb 20 14:50:00 1997" 格式。
+.TP 
+\fB\-c\fP
+将命令行上列出的作业转换为标准输出。
+.TP  8
+\fB\-o\fP\fI fmt\fP
+用于作业列表的类似于 strftime 的时间格式
+.SH FILES
+\fI/var/spool/atd\fP
+.br
+\fI/var/spool/atd\fP
+.br
+\fI/proc/loadavg\fP
+.br
+\fI/var/run/utmp\fP
+.br
+\fI/etc/at.allow\fP
+.br
+\fI/etc/at.deny\fP
+.SH "SEE ALSO"
+\fBat.allow\fP(5), \fBat.deny\fP(5), \fBatd\fP(8), \fBcron\fP(1), \fBnice\fP(1), \fBsh\fP(1),
+\fBumask\fP(2).
+.SH BUGS
+\fBbatch\fP 对 Linux 的正确操作取决于安装在 \fI/proc\fP 上的 \fIproc\fP\- 类型目录的存在。
+.PP
+如果文件 \fI/var/run/utmp\fP 不可用或已损坏，或者如果用户在调用 \fBat\fP 时未登录，则邮件将发送到在环境变量 \fBLOGNAME\fP
+中找到的用户标识。 如果未定义或为空，则假定为当前用户标识。
+.PP
+目前实现的 \fBAt\fP 和 \fBbatch\fP 不适合用户竞争资源的情况。 如果您的站点属于这种情况，您可能需要考虑另一个批处理系统，例如 \fBnqs\fP。
+.SH AUTHOR
+At 主要由 Thomas Koenig 编写。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

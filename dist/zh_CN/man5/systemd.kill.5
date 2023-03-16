@@ -1,0 +1,152 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.KILL 5 "" "systemd 253" systemd.kill
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.kill \- 进程终止程序配置
+.SH SYNOPSIS
+.PP
+\fIservice\fP\&.service, \fIsocket\fP\&.socket, \fImount\fP\&.mount, \fIswap\fP\&.swap,
+\fIscope\fP\&.scope
+.SH DESCRIPTION
+.PP
+服务、套接字、挂载点、交换设备和作用域的元配置文件共享配置选项的子集，这些配置选项定义了属于元 \& 的进程的终止过程。
+.PP
+此手册页列出了这五种元类型 \& 共享的配置选项。有关所有元配置文件共享的公共选项，请参见
+\fBsystemd.unit\fP(5)，有关每个元类型特定的配置文件选项的更多信息，请参见
+\fBsystemd.service\fP(5)、\fBsystemd.socket\fP(5)、\fBsystemd.swap\fP(5)、\fBsystemd.mount\fP(5)
+和 \fBsystemd.scope\fP(5)。
+.PP
+终止程序配置选项在 [Service]、[Socket]、[Mount] 或 [Swap] 部分配置，具体取决于元类型 \&。
+.SH OPTIONS
+.PP
+\fIKillMode=\fP
+.RS 4
+指定如何杀死这个单元的进程 \&。\fBcontrol\-group\fP、\fBmixed\fP、\fBprocess\fP、\fBnone\fP\& 之一。
+.sp
+如果设置为 \fBcontrol\-group\fP，则该单元控制组中的所有剩余进程将在单元停止时被杀死 (对于服务: 执行停止命令后，如配置
+\fIExecStop=\fP)\&。如果设置为 \fBmixed\fP，\fBSIGTERM\fP 信号 (见下文) 被发送到主进程，而随后的 \fBSIGKILL\fP
+信号 (见下文) 被发送到元 \*(Aqs control group\&. 如果设置为 \fBprocess\fP，则只有主进程本身被杀死 (不推荐! )
+\&。如果设置为 \fBnone\fP，则不会杀死任何进程 (强烈建议不要这样做! )
+\&。在这种情况下，只有停止命令会在单元停止时执行，否则不会杀死任何进程
+\&。停止后仍然存活的进程留在它们的控制组中，并且控制组在停止后继续存在，除非为空 \&。
+.sp
+注意，不建议将 \fIKillMode=\fP 设置为 \fBprocess\fP 甚至 \fBnone\fP，因为这样可以让进程逃脱服务管理器 \*(Aqs
+生命周期和资源管理，即使在他们的服务被认为停止并被假定不消费时仍保持运行任何资源 \&。
+.sp
+进程将首先通过 \fBSIGTERM\fP 终止 (除非要发送的信号通过 \fIKillSignal=\fP 或 \fIRestartKillSignal=\fP)\&
+更改。可选地，紧随其后的是 \fBSIGHUP\fP (如果启用 \fISendSIGHUP=\fP)\&。如果之后进程仍然存在:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+一个元的主进程已经退出 (适用于 \fIKillMode=\fP: \fBmixed\fP)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+通过 \fITimeoutStopSec=\fP 配置的延迟已经过去 (适用于 \fIKillMode=\fP:
+\fBcontrol\-group\fP、\fBmixed\fP、\fBprocess\fP)
+.RE
+.sp
+使用 \fBSIGKILL\fP 信号或通过 \fIFinalKillSignal=\fP 指定的信号重复终止请求 (除非通过 \fISendSIGKILL=\fP
+选项禁用) \&。有关更多信息，请参见 \fBkill\fP(2)\&。
+.sp
+默认为 \fBcontrol\-group\fP\&。
+.RE
+.PP
+\fIKillSignal=\fP
+.RS 4
+指定在停止服务时使用哪个信号 \&。这控制作为关闭元 (见上文) 的第一步发送的信号，通常后跟 \fBSIGKILL\fP (见上文和下文)
+\&。有关有效信号的列表，请参见 \fBsignal\fP(7)\&。默认为 \fBSIGTERM\fP\&。
+.sp
+请注意，在发送此设置中指定的信号后，systemd 将始终发送 \fBSIGCONT\fP，以确保即使挂起的任务也可以干净地终止 \&。
+.RE
+.PP
+\fIRestartKillSignal=\fP
+.RS 4
+指定重新启动服务时要使用的信号 \&。与上述 \fIKillSignal=\fP 相同，只是此设置用于重新启动作业 \&。默认不设置，使用
+\fIKillSignal=\fP 的值 \&。
+.RE
+.PP
+\fISendSIGHUP=\fP
+.RS 4
+指定在发送 \fIKillSignal=\fP\& 配置的信号后是否立即向剩余进程发送 \fBSIGHUP\fP。这有助于向 shells 和类似 shell
+的程序表明它们的连接已被切断 \&。取一个布尔值 \&。默认为 `否`\&。
+.RE
+.PP
+\fISendSIGKILL=\fP
+.RS 4
+指定是否在超时后向剩余进程发送 \fBSIGKILL\fP (或 \fIFinalKillSignal=\fP) 指定的信号)，如果正常关闭过程将服务的进程留在
+\&。禁用时，如果控制组中存在先前服务的进程，\fIKillMode=\fP 或 \fBcontrol\-group\fP 或 \fBmixed\fP 服务将不会重新启动
+\&。取一个布尔值 \&。默认为 `是`\&。
+.RE
+.PP
+\fIFinalKillSignal=\fP
+.RS 4
+指定在启用 \fISendSIGKILL=\fP 的情况下在超时后向剩余进程发送哪个信号 \&。此处配置的信号应该是通常不会被服务捕获和处理的信号
+(\fBSIGTERM\fP is not suitable)\&. 开发人员会发现使用它来生成核心转储来解决服务在接收到初始 \fBSIGTERM\fP
+信号后未终止的原因很有用 \&。这可以通过配置 \fILimitCORE=\fP 并将 \fIFinalKillSignal=\fP 设置为 \fBSIGQUIT\fP
+或 \fBSIGABRT\fP\& 来实现。默认为 \fBSIGKILL\fP\&。
+.RE
+.PP
+\fIWatchdogSignal=\fP
+.RS 4
+指定当看门狗超时到期时使用哪个信号终止服务 (通过 \fIWatchdogSec=\fP)\& 启用。默认为 \fBSIGABRT\fP\&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBjournalctl\fP(1), \fBsystemd.unit\fP(5),
+\fBsystemd.service\fP(5), \fBsystemd.socket\fP(5), \fBsystemd.swap\fP(5),
+\fBsystemd.mount\fP(5), \fBsystemd.exec\fP(5), \fBsystemd.directives\fP(7),
+\fBkill\fP(2), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

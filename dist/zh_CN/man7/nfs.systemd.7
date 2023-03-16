@@ -1,0 +1,113 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NFS.SYSTEMD 7   
+.SH NAME
+nfs.systemd \- 通过 systemd 管理 NFS 服务。
+.SH SYNOPSIS
+nfs\-utils.service
+.br
+nfs\-server.service
+.br
+nfs\-client.target
+.br
+\fIetc\fP
+.SH DESCRIPTION
+\fInfs\-utils\fP 包提供了一套 \fIsystemd\fP 元文件，允许启动和管理各种服务。
+这些元文件确保服务以正确的顺序启动，并且先决条件在相关服务启动之前处于活动状态。 由于元文件相当少，所以如何最好地达到某些结果并不是很明显。
+以下小节试图涵盖最有可能出现的问题。
+.SS Configuration
+标准的 systemd 元文件不提供任何简单的方法来将任何命令行参数传递给守护进程以配置它们的行为。 在许多情况下，可以通过更改
+\fI/etc/nfs.conf\fP 或其他配置文件来执行此类配置。 当这不方便时，发行版可能会提供 systemd "drop\-in"
+文件，这些文件会替换 \fBExecStart=\fP 设置以使用不同的参数启动程序。 例如丢弃 \- in 文件
+\fBsystemd/system/nfs\-mountd.service.d/local.conf\fP 包含
+.RS
+.nf
+[Service]
+EnvironmentFile=/etc/sysconfig/nfs
+ExecStart=
+执行开始 = /usr/sbin/rpc.mountd $RPCMOUNTDOPTS
+.fi
+.RE
+将导致 \fBnfs\-mountd.service\fP 元运行 \fIrpc.mountd\fP 程序，对于参数，\fI/etc/sysconfig/nfs\fP 中为
+\fBRPCMOUNTDOPTS\fP 给出的值。 这允许与现有配置工具无缝集成。
+.SS "Enabling unit files"
+共有三个元文件，设计为手动启用。 所有其他的都会根据需要自动运行。 这三个是:
+.TP 
+\fBnfs\-client.target\fP
+这应该在用作 NFS 客户端的任何主机上启用。 每当安装 NFS 客户端软件时透明地启用它几乎没有成本。
+.TP 
+\fBnfs\-server.service\fP
+必须启用它才能为客户端提供 NFS 服务。 它按要求的顺序启动和配置所需的守护进程。
+.TP 
+\fBnfs\-blkmap.service\fP
+\fBblkmapd\fP 守护进程仅在使用 pNFS (并行 NFS) 的 NFS 客户端上需要，特别是使用 \fBblocklayout\fP 布局协议。
+如果您可能对 NFS 使用此特定扩展，则应启用 \fBnfs\-blkmap.service\fP 元。
+.PP
+其他几个可能被认为是可选的单元，例如 \fIrpc\-gssd.service\fP，小心地只在所需的配置文件存在时才启动。 如果 \fIkrb5.keytab\fP
+文件不存在 (通常在 \fI/etc\fP).
+.SS "Restarting NFS services"
+大多数 NFS 守护进程可以随时重新启动。 他们将重新加载他们需要的任何状态，并继续为请求提供服务。 但这很少是必要的。
+.PP
+当进行配置更改时，可能很难确切知道需要重新启动哪些服务以确保配置生效。 最简单的方法 (通常也是最好的方法) 是重新启动所有内容。 为此，提供了
+\fBnfs\-utils.service\fP 元。 它声明与其他元文件的适当依赖关系，以便
+.RS
+\fBsystemctl restart nfs\-utils\fP
+.RE
+将重新启动所有正在运行的 NFS 守护进程。 对于 \fI/etc/fstab\fP 或 \fI/etc/nfsmount.conf\fP
+中挂载选项列表的更改，这将导致所有配置更改生效 \fIexcept\fP。 挂载选项只能通过卸载和重新挂载文件系统来更改。
+这可能是一个破坏性的操作，因此只有在值合理时才应该这样做。 命令
+.RS
+\fBumount \-a \-t nfs; mount \-a \-t nfs\fP
+.RE
+应该卸载并重新挂载所有 NFS 文件系统。
+.SS "Masking unwanted services"
+很少有人希望禁止某些服务运行，即使 NFS 系统通常是工作的一部分。
+这可能需要将系统负载减少到绝对最小值，或者通过不运行并非绝对需要的守护进程来减少攻击面。
+.PP
+这可以应用的三个特定服务是 \fIrpcbind\fP、\fIidmapd\fP 和 \fIrpc\-gssd\fP。 \fIrpcbind\fP 不是 \fInfs\-utils\fP
+包的一部分，但它被多个 NFS 服务使用。 但是当只使用 NFSv4 时需要 \fBnot\fP。 如果站点永远不会使用 NFSv3 (或 NFSv2)
+并且不希望 \fIrpcbind\fP 运行，则正确的方法是运行
+.RS
+\fBsystemctl mask rpcbind\fP
+.RE
+这将禁用 \fIrpcbind\fP，并且依赖它的各种 NFS 服务 (并且仅 NFSv3 需要) 将拒绝启动，而不会干扰 NFSv4 服务的运行。
+特别是，当 \fIrpcbind\fP 被屏蔽时，\fIrpc.statd\fP 将不会运行。
+.PP
+只有 NFSv4 才需要 \fIidmapd\fP，即使这样，当客户端和服务器同意使用用户 ID 而不是用户名来识别文件所有者时，也不需要
+\fIidmapd\fP。 如果不需要也不想要 \fIidmapd\fP，可以用
+.RS
+\fBsystemctl mask idmapd\fP
+.RE
+如果存在 \fIkrb5.keytab\fP 文件，则假定需要 \fIrpc\-gssd\fP。 如果一个网站需要这个文件存在但不希望 \fIrpc\-gssd\fP
+运行，它可以被屏蔽
+.RS
+\fBsystemctl mask rpc\-gssd\fP
+.RE
+.SH FILES
+/etc/nfs.conf
+.br
+/etc/nfsmount.conf
+.br
+/etc/idmapd.conf
+.SH "SEE ALSO"
+\fBsystemd.unit\fP(5), \fBnfs.conf\fP(5), \fBnfsmount.conf\fP(5).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

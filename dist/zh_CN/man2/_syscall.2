@@ -1,0 +1,144 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1993 Michael Haardt (michael@moria.de),
+.\"   Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Tue Jul  6 12:42:46 MDT 1993 <dminer@nyx.cs.du.edu>
+.\" Added "Calling Directly" and supporting paragraphs
+.\"
+.\" Modified Sat Jul 24 15:19:12 1993 by Rik Faith <faith@cs.unc.edu>
+.\"
+.\" Modified 21 Aug 1994 by Michael Chastain <mec@shell.portal.com>:
+.\"   Added explanation of arg stacking when 6 or more args.
+.\"
+.\" Modified 10 June 1995 by Andries Brouwer <aeb@cwi.nl>
+.\"
+.\" 2007-10-23 mtk: created as a new page, by taking the content
+.\" specific to the _syscall() macros from intro(2).
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH _syscall 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+_syscall \- 在没有库支持的情况下调用系统调用 (OBSOLETE)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/unistd.h>\fP
+.PP
+_syscall 宏
+.PP
+所需系统调用
+.fi
+.SH DESCRIPTION
+了解系统调用的重要事项是它的原型。 您需要知道有多少参数、它们的类型和函数返回类型。 有七个宏可以使实际调入系统更容易。 他们有以下形式:
+.PP
+.in +4n
+.EX
+_syscall\fIX\fP(\fItype\fP,\fIname\fP,\fItype1\fP,\fIarg1\fP,\fItype2\fP,\fIarg2\fP,...)
+.EE
+.in
+.PP
+where
+.IP
+\fIX\fP 为 0\[en] 6，为系统调用的参数
+.IP
+\fItype\fP 为系统调用的返回类型
+.IP
+\fIname\fP 为系统名称调用
+.IP
+\fItypeN\fP 是第 N 个参数的类型
+.IP
+\fIargN\fP 是第 N 个参数的名字
+.PP
+这些宏使用您指定的参数创建一个名为 \fIname\fP 的函数。 一旦将 _syscall() 包含在源文件中，就可以通过 \fIname\fP 调用系统调用。
+.SH FILES
+\fI/usr/include/linux/unistd.h\fP
+.SH STANDARDS
+这些宏的使用是特定于 Linux 的，并且已弃用。
+.SH NOTES
+从内核 2.6.18 开始，_syscall 宏已从提供给用户空间的头文件中删除。 请改用 \fBsyscall\fP(2)。 (某些架构，特别是
+ia64，从未提供 _syscall 宏; 在这些架构上，始终需要 \fBsyscall\fP(2)。)
+.PP
+_syscall() 宏 \fIdo not\fP 生成原型。 您可能必须创建一个，尤其是对于 C++ 用户。
+.PP
+系统调用不需要只返回正或 negative 错误代码。 您需要阅读源代码以确定它将如何返回错误。 通常为标准错误码的 negative，例如
+\-\fIEPERM\fP。 当 \fIr\fP 为非负时，_syscall() 宏将返回系统调用的结果 \fIr\fP，当 \fIr\fP 为 negative 时，将返回
+\-1 并将变量 \fIerrno\fP 设置为 \-\fIr\fP。 有关错误代码，请参见 \fBerrno\fP(3)。
+.PP
+.\" The preferred way to invoke system calls that glibc does not know
+.\" about yet is via
+.\" .BR syscall (2).
+.\" However, this mechanism can be used only if using a libc
+.\" (such as glibc) that supports
+.\" .BR syscall (2),
+.\" and if the
+.\" .I <sys/syscall.h>
+.\" header file contains the required SYS_foo definition.
+.\" Otherwise, the use of a _syscall macro is required.
+.\"
+在定义系统调用时，参数类型 \fImust\fP 将按值或按指针传递 (对于像结构体这样的聚合)。
+.SH EXAMPLES
+.\" [[deprecated]] SRC BEGIN (_syscall.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <linux/unistd.h>       /* for _syscallX macros/related stuff */
+#include <linux/kernel.h>       /* for struct sysinfo */
+
+_syscall1(int, sysinfo, struct sysinfo *, info);
+
+int
+main(void)
+{
+    struct sysinfo s_info;
+    int error;
+
+    error = sysinfo(&s_info);
+    printf("code error = %d\en", error);
+    printf("Uptime = %lds\enLoad: 1 min %lu / 5 min %lu / 15 min %lu\en"
+           "RAM: total %lu / free %lu / shared %lu\en"
+           "Memory in buffers = %lu\enSwap: total %lu / free %lu\en"
+           "Number of processes = %d\en",
+           s_info.uptime, s_info.loads[0],
+           s_info.loads[1], s_info.loads[2],
+           s_info.totalram, s_info.freeram,
+           s_info.sharedram, s_info.bufferram,
+           s_info.totalswap, s_info.freeswap,
+           s_info.procs);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SS "Sample output"
+.EX
+code error = 0
+uptime = 502034s
+Load: 1 min 13376 / 5 min 5504 / 15 min 1152
+RAM: total 15343616 / free 827392 / shared 8237056
+Memory in buffers = 5066752
+Swap: total 27881472 / free 24698880
+Number of processes = 40
+.EE
+.SH "SEE ALSO"
+\fBintro\fP(2), \fBsyscall\fP(2), \fBerrno\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

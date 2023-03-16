@@ -1,0 +1,87 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_exit 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_exit \- 终止调用线程
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fB[[noreturn]] void pthread_exit(void *\fP\fIretval\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_exit\fP() 函数终止调用线程并通过 \fIretval\fP 返回一个值，该值 (如果线程可连接) 可供调用
+\fBpthread_join\fP(3) 的同一进程中的另一个线程使用。
+.PP
+由 \fBpthread_cleanup_push\fP(3) 建立的任何尚未弹出的清理处理程序将被弹出 (以与它们被推送的顺序相反的顺序) 并执行。
+如果线程有任何线程特定的数据，那么在执行清理处理程序之后，将以未指定的顺序调用相应的析构函数函数。
+.PP
+当线程终止时，进程共享资源 (例如，互连锁、条件变量、信号量和文件描述符) 不会被释放，并且不会调用使用 \fBatexit\fP(3) 注册的函数。
+.PP
+在进程中的最后一个线程终止后，进程通过调用退出状态为零的 \fBexit\fP(3) 终止; 因此，释放进程共享资源并调用使用 \fBatexit\fP(3)
+注册的函数。
+.SH "RETURN VALUE"
+这个函数不会返回给调用者。
+.SH ERRORS
+这个函数总是成功的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_exit\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+从主线程以外的任何线程的开始函数执行返回会导致隐式调用 \fBpthread_exit\fP()，使用函数的返回值作为线程的退出状态。
+.PP
+为了让其他线程继续执行，主线程应该通过调用 \fBpthread_exit\fP() 而不是 \fBexit\fP(3) 来终止。
+.PP
+\fIretval\fP 指向的值不应位于调用线程的栈中，因为该栈的内容在线程终止后未定义。
+.SH BUGS
+.\" Linux 2.6.27
+.\" FIXME . review a later kernel to see if this gets fixed
+.\" http://thread.gmane.org/gmane.linux.kernel/611611
+.\" http://marc.info/?l=linux-kernel&m=122525468300823&w=2
+目前，\fBwait\fP(2)ing 的内核实现逻辑在具有死线程组领导的已停止线程组上存在限制。 如果将停止信号发送到其线程组领导者已经调用
+\fBpthread_exit\fP() 的前台进程，这可能会导致锁定终端等问题。
+.SH "SEE ALSO"
+\fBpthread_create\fP(3), \fBpthread_join\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

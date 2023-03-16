@@ -1,0 +1,129 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2000 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Created, 14 Dec 2000 by Michael Kerrisk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH basename 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+basename, dirname \- 解析路径名组件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <libgen.h>\fP
+.PP
+\fBchar *dirname(char *\fP\fIpath\fP\fB);\fP
+\fBchar *basename(char *\fP\fIpath\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+警告: 有两个不同的函数 \fBbasename\fP(); 见下文。
+.PP
+函数 \fBdirname\fP() 和 \fBbasename\fP() 将以 null 结尾的路径名字符串分解为目录和文件名组件。
+在通常情况下，\fBdirname\fP() 返回直到但不包括最后的 \[aq]/\[aq] 的字符串，\fBbasename\fP() 返回最后的
+\[aq]/\[aq] 之后的组件。 尾随的 \[aq]/\[aq] 字符不算作路径名的一部分。
+.PP
+如果 \fIpath\fP 不包含斜杠，则 \fBdirname\fP() 返回字符串 "."，而 \fBbasename\fP() 返回 \fIpath\fP 的副本。 如果
+\fIpath\fP 是字符串 "/"，则 \fBdirname\fP() 和 \fBbasename\fP() 都返回字符串 "/"。 如果 \fIpath\fP
+是空指针或指向空字符串，则 \fBdirname\fP() 和 \fBbasename\fP() 都返回字符串 "."。
+.PP
+连接 \fBdirname\fP() 返回的字符串、"/" 和 \fBbasename\fP() 返回的字符串会产生一个完整的路径名。
+.PP
+\fBdirname\fP() 和 \fBbasename\fP() 都可能修改 \fIpath\fP 的内容，因此在调用其中一个函数时可能需要传递一个副本。
+.PP
+这些函数可能会返回指向静态分配的内存的指针，这些内存可能会被后续调用覆盖。 或者，它们可能会返回一个指向 \fIpath\fP
+的某个部分的指针，这样在不再需要函数返回的指针之前，不应修改或释放 \fIpath\fP 引用的字符串。
+.PP
+以下示例列表 (取自 SUSv2) 显示了 \fBdirname\fP() 和 \fBbasename\fP() 为不同路径返回的字符串:
+.RS
+.TS
+lb lb lb
+l l l l.
+path    	dirname	basename
+/usr/lib	/usr	lib
+/usr/   	/	usr
+usr     	.	usr
+/       	/	/
+\&.       	.	.
+\&..      	.	..
+.TE
+.RE
+.SH "RETURN VALUE"
+\fBdirname\fP() 和 \fBbasename\fP() 都返回指向以 null 结尾的字符串的指针。 (不要将这些指针传递给 \fBfree\fP(3).)
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBbasename\fP(),
+\fBdirname\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+\fBbasename\fP() 有两个不同的版本 \- 上面描述的 POSIX 版本和 GNU 版本
+.PP
+.in +4n
+.EX
+\fB    #define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <string.h>\fP
+.EE
+.in
+.PP
+GNU 版本从不修改其参数，并在 \fIpath\fP 有尾部斜，字符串，时返回空字符串，尤其是当它是 "/" 时。 \fBdirname\fP() 没有 GNU
+版本。
+.PP
+使用 glibc，当包含 \fI<libgen.h>\fP 时获得 \fBbasename\fP() 的 POSIX 版本，否则获得 GNU 版本。
+.SH BUGS
+在 glibc 实现中，这些函数的 POSIX 版本修改了 \fIpath\fP 参数，并在使用静态字符串 (如 "/usr/") 调用时出现段错误。
+.PP
+在 glibc 2.2.1 之前，\fBdirname\fP() 的 glibc 版本不能正确处理带有尾随 \[aq]/\[aq] 字符的路径名，如果给定
+NULL 参数，则会生成段错误。
+.SH EXAMPLES
+下面的代码片段演示了 \fBbasename\fP() 和 \fBdirname\fP(): 的使用
+.in +4n
+.EX
+char *dirc, *basec, *bname, *dname;
+char *path = "/etc/passwd";
+
+dirc = strdup(path);
+basec = strdup(path);
+dname = dirname(dirc);
+bname = basename(basec);
+printf("dirname=%s, basename=%s\en", dname, bname);
+.EE
+.in
+.SH "SEE ALSO"
+\fBbasename\fP(1), \fBdirname\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

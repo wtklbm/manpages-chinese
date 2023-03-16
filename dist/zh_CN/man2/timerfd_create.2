@@ -1,0 +1,416 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH timerfd_create 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+timerfd_create、timerfd_settime、timerfd_gettime \- 通过文件描述符通知的定时器
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/timerfd.h>\fP
+.PP
+\fBint timerfd_create(int \fP\fIclockid\fP\fB, int \fP\fIflags\fP\fB);\fP
+.PP
+\fBint timerfd_settime(int \fP\fIfd\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB                    const struct itimerspec *\fP\fInew_value\fP\fB,\fP
+\fB                    struct itimerspec *_Nullable \fP\fIold_value\fP\fB);\fP
+\fBint timerfd_gettime(int \fP\fIfd\fP\fB, struct itimerspec *\fP\fIcurr_value\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些系统调用创建并操作一个计时器，该计时器通过文件描述符传递计时器到期通知。 它们提供了使用 \fBsetitimer\fP(2) 或
+\fBtimer_create\fP(2) 的替代方法，其优点是可以通过 \fBselect\fP(2)、\fBpoll\fP(2) 和 \fBepoll\fP(7)
+监视文件描述符。
+.PP
+.\"
+这三个系统调用的使用类似于 \fBtimer_create\fP(2)、\fBtimer_settime\fP(2) 和 \fBtimer_gettime\fP(2)
+的使用。 (没有 \fBtimer_getoverrun\fP(2) 的模拟，因为该功能由 \fBread\fP(2) 提供，如下所述。)
+.SS timerfd_create()
+\fBtimerfd_create\fP() 创建一个新的计时器对象，并返回一个引用该计时器的文件描述符。 \fIclockid\fP
+参数指定用于标记计时器进度的时钟，必须是以下之一:
+.TP 
+\fBCLOCK_REALTIME\fP
+一个可设置的系统级实时时钟。
+.TP 
+\fBCLOCK_MONOTONIC\fP
+一个不可设置的单调递增时钟，它从过去某个未指定的时间点开始测量时间，该时间点在系统启动后不会更改。
+.TP 
+\fBCLOCK_BOOTTIME\fP (Since Linux 3.15)
+.\"    commit 4a2378a943f09907fb1ae35c15de917f60289c14
+与 \fBCLOCK_MONOTONIC\fP 一样，这是一个单调递增的时钟。 然而，\fBCLOCK_MONOTONIC\fP 时钟不测量系统挂起时的时间，而
+\fBCLOCK_BOOTTIME\fP 时钟确实包括系统挂起期间的时间。 这对于需要暂停感知的应用程序很有用。 \fBCLOCK_REALTIME\fP
+不适合此类应用，因为该时钟会受到系统时钟不连续变化的影响。
+.TP 
+\fBCLOCK_REALTIME_ALARM\fP (since Linux 3.11)
+.\" commit 11ffa9d6065f344a9bd769a2452f26f2f671e5f8
+这个时钟就像 \fBCLOCK_REALTIME\fP，但是如果它挂起就会唤醒系统。 调用者必须具有 \fBCAP_WAKE_ALARM\fP
+能力才能针对此时钟设置计时器。
+.TP 
+\fBCLOCK_BOOTTIME_ALARM\fP (since Linux 3.11)
+.\" commit 11ffa9d6065f344a9bd769a2452f26f2f671e5f8
+这个时钟就像 \fBCLOCK_BOOTTIME\fP，但是如果它挂起就会唤醒系统。 调用者必须具有 \fBCAP_WAKE_ALARM\fP
+能力才能针对此时钟设置计时器。
+.PP
+有关上述时钟的更多详细信息，请参见 \fBclock_getres\fP(2)。
+.PP
+可以使用 \fBclock_gettime\fP(2) 检索这些时钟中每一个的当前值。
+.PP
+从 Linux 2.6.27 开始，以下值可能在 \fIflags\fP 中按位或运算以改变 \fBtimerfd_create\fP(): 的行为
+.TP  14
+\fBTFD_NONBLOCK\fP
+在打开的文件描述中设置 \fBO_NONBLOCK\fP 文件状态标志 (请参见新文件描述符引用的 \fBopen\fP(2))。 使用此标志可节省对
+\fBfcntl\fP(2) 的额外调用以实现相同的结果。
+.TP 
+\fBTFD_CLOEXEC\fP
+在新文件描述符上设置 close\-on\-exec (\fBFD_CLOEXEC\fP) 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的描述，了解这可能有用的原因。
+.PP
+在 2.6.26 及之前的 Linux 版本中，\fIflags\fP 必须指定为零。
+.SS timerfd_settime()
+\fBtimerfd_settime\fP() 分支 (starts) 或解除 (stops) 由文件描述符 \fIfd\fP 引用的计时器。
+.PP
+\fInew_value\fP 参数指定计时器的初始到期时间和间隔。 用于此参数的 \fIitimerspec\fP 结构体在
+\fBitimerspec\fP(3type) 中进行了描述。
+.PP
+\fInew_value.it_value\fP 指定计时器的初始到期时间，以秒和纳秒为单位。 将 \fInew_value.it_value\fP
+的任一字段设置为非零值以分支计时器。 将 \fInew_value.it_value\fP 的两个字段都设置为零可解除定时器。
+.PP
+将 \fInew_value.it_interval\fP 的一个或两个字段设置为非零值指定在初始到期后重复计时器到期的时间段 (以秒和纳秒为单位)。 如果
+\fInew_value.it_interval\fP 的两个字段都为零，则计时器仅在 \fInew_value.it_value\fP 指定的时间到期一次。
+.PP
+默认情况下，\fInew_value\fP 中指定的初始到期时间被解释为相对于调用时定时器时钟上的当前时间 (即，\fInew_value.it_value\fP
+指定相对于 \fIclockid\fP) 指定的时钟当前值的时间。 可以通过 \fIflags\fP 参数选择绝对超时。
+.PP
+\fIflags\fP 参数是一个位掩码，可以包括以下值:
+.TP 
+\fBTFD_TIMER_ABSTIME\fP
+将 \fInew_value.it_value\fP 解释为定时器时钟的绝对值。 当定时器的时钟值达到 \fInew_value.it_value\fP
+中指定的值时，定时器将超时。
+.TP 
+\fBTFD_TIMER_CANCEL_ON_SET\fP
+如果此标志与 \fBTFD_TIMER_ABSTIME\fP 一起指定并且此定时器的时钟是 \fBCLOCK_REALTIME\fP 或
+\fBCLOCK_REALTIME_ALARM\fP，则在实时时钟经历不连续变化
+(\fBsettimeofday\fP(2)、\fBclock_settime\fP(2) 或类似的情况下将此定时器标记为可取消。 当发生此类更改时，文件描述符中的
+current 或 future \fBread\fP(2) 将失败并出现错误 \fBECANCELED\fP。
+.PP
+.\"
+如果 \fIold_value\fP 参数不为 NULL，则使用它指向的 \fIitimerspec\fP 结构体返回调用时当前定时器的设置; 请参见下面对
+\fBtimerfd_gettime\fP() 的描述。
+.SS timerfd_gettime()
+\fBtimerfd_gettime\fP() 在 \fIcurr_value\fP 中返回一个 \fIitimerspec\fP 结构体，其中包含文件描述符 \fIfd\fP
+引用的计时器的当前设置。
+.PP
+\fIit_value\fP 字段返回定时器下一次到期之前的时间量。 如果这个结构体的两个字段都为零，那么定时器当前被解除。
+这个字段总是包含一个相对值，不管在设置定时器时是否指定了 \fBTFD_TIMER_ABSTIME\fP 标志。
+.PP
+\fIit_interval\fP 字段返回计时器的间隔。 如果这个结构体的两个字段都为零，则计时器设置为仅在 \fIcurr_value.it_value\fP
+指定的时间到期一次。
+.SS "Operating on a timer file descriptor"
+\fBtimerfd_create\fP() 返回的文件描述符支持以下附加操作:
+.TP 
+\fBread\fP(2)
+如果定时器自上次使用 \fBtimerfd_settime\fP() 修改其设置或自上次成功修改 \fBread\fP(2) 以来已经过期一次或多次，则提供给
+\fBread\fP(2) 的缓冲区将返回一个无符号 8 字节整数 (\fIuint64_t\fP)，其中包含已发生的过期次数。 (返回值采用主机字节顺序
+\[em]，即主机上整数的原生字节顺序。)
+.IP
+如果在 \fBread\fP(2) 时没有发生定时器过期，则调用要么阻塞直到下一次定时器过期，要么失败并返回错误 \fBEAGAIN\fP
+如果文件描述符已变为非阻塞 (通过使用 \fBfcntl\fP(2) \fBF_SETFL\fP 操作来设置 \fBO_NONBLOCK\fP 标志)。
+.IP
+如果提供的缓冲区大小小于 8 字节，则 \fBread\fP(2) 会失败并显示错误 \fBEINVAL\fP。
+.IP
+如果关联时钟是 \fBCLOCK_REALTIME\fP 或 \fBCLOCK_REALTIME_ALARM\fP，定时器是绝对
+(\fBTFD_TIMER_ABSTIME\fP)，并且在调用 \fBtimerfd_settime\fP() 时指定了标志
+\fBTFD_TIMER_CANCEL_ON_SET\fP，则如果实时时钟发生不连续变化，则 \fBread\fP(2) 将失败并显示错误
+\fBECANCELED\fP。 (这允许阅读应用程序发现时钟的这种不连续变化。)
+.IP
+如果关联时钟是 \fBCLOCK_REALTIME\fP 或 \fBCLOCK_REALTIME_ALARM\fP，定时器是绝对
+(\fBTFD_TIMER_ABSTIME\fP)，并且标志 \fBTFD_TIMER_CANCEL_ON_SET\fP 是在调用
+\fBtimerfd_settime\fP() 时指定的 \fInot\fP，则时钟的不连续 negative 变化
+(例如，\fBclock_settime\fP(2)) 可能导致 \fBread\fP(2) 解锁，但返回值 0
+(即没有字节读取)，如果时钟变化发生在时间到期之后，但在文件描述符上的 \fBread\fP(2) 之前。
+.TP 
+\fBpoll\fP(2), \fBselect\fP(2) (and similar)
+如果发生一个或多个计时器到期，则文件描述符是可读的 (\fBselect\fP(2) \fIreadfds\fP 参数; \fBpoll\fP(2) \fBPOLLIN\fP
+标志)。
+.IP
+文件描述符还支持其他文件描述符多路复用 API: \fBpselect\fP(2)、\fBppoll\fP(2) 和 \fBepoll\fP(7)。
+.TP 
+\fBioctl\fP(2)
+支持以下 timerfd 特定命令:
+.RS
+.TP 
+\fBTFD_IOC_SET_TICKS\fP (since Linux 3.17)
+.\" commit 5442e9fbd7c23172a1c9bc736629cd123a9923f0
+调整已发生的计时器到期次数。 参数是一个指针，指向一个包含新到期次数的非零 8 字节整数 (\fIuint64_t\fP*)。
+一旦设置了数字，定时器上的任何服务员都会被唤醒。 此命令的唯一目的是为了 checkpoint/restore 的目的恢复过期。 此操作仅在内核配置了
+\fBCONFIG_CHECKPOINT_RESTORE\fP 选项时可用。
+.RE
+.TP 
+\fBclose\fP(2)
+.\"
+当不再需要文件描述符时，应该将其关闭。 当与同一个计时器对象相关联的所有文件描述符都已关闭时，计时器将被解除武装，其资源将由内核释放。
+.SS "fork(2) semantics"
+.\"
+在 \fBfork\fP(2) 之后，子节点继承了 \fBtimerfd_create\fP() 创建的文件描述符的副本。
+文件描述符引用与父文件描述符相同的底层计时器对象，子文件中的 \fBread\fP(2)s 将返回有关计时器到期的信息。
+.SS "execve(2) semantics"
+由 \fBtimerfd_create\fP() 创建的文件描述符在 \fBexecve\fP(2) 中保留，并且如果计时器已启动，则继续生成计时器到期。
+.SH "RETURN VALUE"
+成功时，\fBtimerfd_create\fP() 返回一个新的文件描述符。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.PP
+\fBtimerfd_settime\fP() 和 \fBtimerfd_gettime\fP() 成功返回 0; 出错时返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+\fBtimerfd_create\fP() 可能会因以下错误而失败:
+.TP 
+\fBEINVAL\fP
+\fIclockid\fP 无效。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 无效; 或者，在 Linux 2.6.26 或更早版本中，\fIflags\fP 为非零值。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENODEV\fP
+无法安装 (internal) 匿名 inode 设备。
+.TP 
+\fBENOMEM\fP
+内核内存不足，无法创建计时器。
+.TP 
+\fBEPERM\fP
+\fIclockid\fP 是 \fBCLOCK_REALTIME_ALARM\fP 或 \fBCLOCK_BOOTTIME_ALARM\fP，但调用者没有
+\fBCAP_WAKE_ALARM\fP 功能。
+.PP
+\fBtimerfd_settime\fP() 和 \fBtimerfd_gettime\fP() 可能会失败并出现以下错误:
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fInew_value\fP、\fIold_value\fP 或 \fIcurr_value\fP 不是有效指针。
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 不是有效的 timerfd 文件描述符。
+.PP
+\fBtimerfd_settime\fP() 也可能因以下错误而失败:
+.TP 
+\fBECANCELED\fP
+见注释。
+.TP 
+\fBEINVAL\fP
+\fInew_value\fP 未正确初始化 (其中一个 \fItv_nsec\fP 越界 0 到 999,999,999)。
+.TP 
+\fBEINVAL\fP
+.\" This case only checked since Linux 2.6.29, and Linux 2.2.2[78].some-stable-version.
+.\" In older kernel versions, no check was made for invalid flags.
+\fIflags\fP 无效。
+.SH VERSIONS
+这些系统调用从 Linux 2.6.25 开始可用。 自 glibc 2.8 起提供库支持。
+.SH STANDARDS
+这些系统调用是特定于 Linux 的。
+.SH NOTES
+假设使用 \fBtimerfd_create\fP(): 创建的 \fBCLOCK_REALTIME\fP 或 \fBCLOCK_REALTIME_ALARM\fP
+计时器的以下场景
+.IP (1) 5
+定时器已启动 (\fBtimerfd_settime\fP())，带有 \fBTFD_TIMER_ABSTIME\fP 和
+\fBTFD_TIMER_CANCEL_ON_SET\fP 标志;
+.IP (2)
+不连续的变化 (例如，\fBsettimeofday\fP(2)) 随后对 \fBCLOCK_REALTIME\fP 时钟进行; and
+.IP (3)
+调用者再次调用 \fBtimerfd_settime\fP() 以重新启动计时器 (无需首先对文件描述符执行 \fBread\fP(2))。
+.PP
+在这种情况下，会发生以下情况:
+.IP \[bu] 3
+\fBtimerfd_settime\fP() 返回 \-1，\fIerrno\fP 设置为 \fBECANCELED\fP。
+(这使调用者能够知道前一个计时器受到时钟不连续更改的影响。)
+.IP \[bu]
+定时器 \fIis successfully rearmed\fP 的设置在第二个 \fBtimerfd_settime\fP() 调用中提供。
+(这可能是一个实现事故，但现在不会修复，以防有依赖于此行为的应用程序。)
+.SH BUGS
+.\" 2.6.29
+目前，\fBtimerfd_create\fP() 支持的时钟 ID 类型比 \fBtimer_create\fP(2) 少。
+.SH EXAMPLES
+以下程序创建一个计时器，然后监视其进度。 该程序最多接受三个命令行参数。 第一个参数指定计时器初始到期的秒数。
+第二个参数指定定时器的时间间隔，以秒为单位。 第三个参数指定程序在终止前允许定时器超时的次数。 第二个和第三个命令行参数是可选的。
+.PP
+下面的 shell 会话演示了该程序的使用:
+.PP
+.in +4n
+.EX
+$\fB a.out 3 1 100\fP
+0.000: timer started
+3.000: read: 1;  total=1
+4.000: read: 1;  total=2
+\fB\[ha]Z \fP                 # type control\-Z to suspend the program
+[1]+  Stopped                 ./timerfd3_demo 3 1 100
+$ \fBfg\fP                # Resume execution after a few seconds
+a.out 3 1 100
+9.660: read: 5;  total=7
+10.000: read: 1;  total=8
+11.000: read: 1;  total=9
+\fB\[ha]C \fP                 # type control\-C to suspend the program
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (timerfd_create.c)
+\&
+.EX
+.\" The commented out code here is what we currently need until
+.\" the required stuff is in glibc
+.\"
+.\"
+.\"/* Link with \-lrt */
+.\"#define _GNU_SOURCE
+.\"#include <sys/syscall.h>
+.\"#include <unistd.h>
+.\"#include <time.h>
+.\"#if defined(__i386__)
+.\"#define __NR_timerfd_create 322
+.\"#define __NR_timerfd_settime 325
+.\"#define __NR_timerfd_gettime 326
+.\"#endif
+.\"
+.\"static int
+.\"timerfd_create(int clockid, int flags)
+.\"{
+.\"    return syscall(__NR_timerfd_create, clockid, flags);
+.\"}
+.\"
+.\"static int
+.\"timerfd_settime(int fd, int flags, struct itimerspec *new_value,
+.\"        struct itimerspec *curr_value)
+.\"{
+.\"    return syscall(__NR_timerfd_settime, fd, flags, new_value,
+.\"                   curr_value);
+.\"}
+.\"
+.\"static int
+.\"timerfd_gettime(int fd, struct itimerspec *curr_value)
+.\"{
+.\"    return syscall(__NR_timerfd_gettime, fd, curr_value);
+.\"}
+.\"
+.\"#define TFD_TIMER_ABSTIME (1 << 0)
+.\"
+.\"////////////////////////////////////////////////////////////
+#include <err.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/timerfd.h>
+#include <time.h>
+#include <unistd.h>
+
+static void
+print_elapsed_time(void)
+{
+    int                     secs, nsecs;
+    static int              first_call = 1;
+    struct timespec         curr;
+    static struct timespec  start;
+
+    if (first_call) {
+        first_call = 0;
+        if (clock_gettime(CLOCK_MONOTONIC, &start) == \-1)
+            err(EXIT_FAILURE, "clock_gettime");
+    }
+
+    if (clock_gettime(CLOCK_MONOTONIC, &curr) == \-1)
+        err(EXIT_FAILURE, "clock_gettime");
+
+    secs = curr.tv_sec \- start.tv_sec;
+    nsecs = curr.tv_nsec \- start.tv_nsec;
+    if (nsecs < 0) {
+        secs\-\-;
+        nsecs += 1000000000;
+    }
+    printf("%d.%03d: ", secs, (nsecs + 500000) / 1000000);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int                fd;
+    ssize_t            s;
+    uint64_t           exp, tot_exp, max_exp;
+    struct timespec    now;
+    struct itimerspec  new_value;
+
+    if (argc != 2 && argc != 4) {
+        fprintf(stderr, "%s init\-secs [interval\-secs max\-exp]\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (clock_gettime(CLOCK_REALTIME, &now) == \-1)
+        err(EXIT_FAILURE, "clock_gettime");
+
+    /* Create a CLOCK_REALTIME absolute timer with initial
+       expiration and interval as specified in command line. */
+
+    new_value.it_value.tv_sec = now.tv_sec + atoi(argv[1]);
+    new_value.it_value.tv_nsec = now.tv_nsec;
+    if (argc == 2) {
+        new_value.it_interval.tv_sec = 0;
+        max_exp = 1;
+    } else {
+        new_value.it_interval.tv_sec = atoi(argv[2]);
+        max_exp = atoi(argv[3]);
+    }
+    new_value.it_interval.tv_nsec = 0;
+
+    fd = timerfd_create(CLOCK_REALTIME, 0);
+    if (fd == \-1)
+        err(EXIT_FAILURE, "timerfd_create");
+
+    if (timerfd_settime(fd, TFD_TIMER_ABSTIME, &new_value, NULL) == \-1)
+        err(EXIT_FAILURE, "timerfd_settime");
+
+    print_elapsed_time();
+    printf("timer started\en");
+
+    for (tot_exp = 0; tot_exp < max_exp;) {
+        s = read(fd, &exp, sizeof(uint64_t));
+        if (s != sizeof(uint64_t))
+            err(EXIT_FAILURE, "read");
+
+        tot_exp += exp;
+        print_elapsed_time();
+        printf("read: %" PRIu64 "; total=%" PRIu64 "\en", exp, tot_exp);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBeventfd\fP(2), \fBpoll\fP(2), \fBread\fP(2), \fBselect\fP(2), \fBsetitimer\fP(2),
+\fBsignalfd\fP(2), \fBtimer_create\fP(2), \fBtimer_gettime\fP(2),
+\fBtimer_settime\fP(2), \fBtimespec\fP(3), \fBepoll\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

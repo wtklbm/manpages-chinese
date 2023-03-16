@@ -1,0 +1,235 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man-page is Copyright (C) 1997 John S. Kallal
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" If the you wish to distribute versions of this work under other
+.\" conditions than the above, please contact the author(s) at the following
+.\" for permission:
+.\"
+.\"  John S. Kallal -
+.\"	email: <kallal@voicenet.com>
+.\"	mail: 518 Kerfoot Farm RD, Wilmington, DE 19803-2444, USA
+.\"	phone: (302)654-5478
+.\"
+.\" $Id: initrd.4,v 0.9 1997/11/07 05:05:32 kallal Exp kallal $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH initrd 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+initrd \- 引导加载程序初始化的 RAM 磁盘
+.SH CONFIGURATION
+\fI/dev/initrd\fP 是一个只读块设备，主设备号为 1，次设备号为 250。 通常 \fI/dev/initrd\fP 由 root:disk
+拥有，模式为 0400 (仅限 root 的读取访问)。 如果 Linux 系统还没有创建 \fI/dev/initrd\fP，可以使用以下命令创建:
+.PP
+.in +4n
+.EX
+mknod \-m 400 /dev/initrd b 1 250
+chown root:disk /dev/initrd
+.EE
+.in
+.PP
+.\"
+.\"
+.\"
+此外，还支持 "RAM disk" 和 "Initial RAM disk" (例如，\fBCONFIG_BLK_DEV_RAM=y\fP 和
+\fBCONFIG_BLK_DEV_INITRD=y\fP) 必须直接编译到 Linux 内核中才能使用 \fI/dev/initrd\fP。 使用
+\fI/dev/initrd\fP 时，RAM 磁盘驱动程序不能作为模块加载。
+.SH DESCRIPTION
+特殊文件 \fI/dev/initrd\fP 是只读块设备。 该设备是一个 RAM 磁盘，在内核启动之前由引导加载程序初始化 (例如加载)。 然后内核可以使用
+\fI/dev/initrd\fP's 内容进行两阶段系统启动。
+.PP
+.\"
+.\"
+.\"
+在第一个启动阶段，内核启动并从 \fI/dev/initrd\fP 的内容挂载一个初始根文件系统 (例如，由启动加载程序初始化的 RAM 磁盘)。
+在第二阶段，从初始根设备的内容加载额外的驱动程序或其他模块。 加载附加模块后，新的根文件系统 (即普通根文件系统) 从不同的设备安装。
+.SS "Boot\-up operation"
+使用 \fBinitrd\fP 启动时，系统启动如下:
+.IP (1) 5
+引导加载程序将内核程序和 \fI/dev/initrd\fP's 的内容加载到内存中。
+.IP (2)
+在内核启动时，内核将设备 \fI/dev/initrd\fP 的内容解压缩并复制到设备 \fI/dev/ram0\fP 上，然后释放 \fI/dev/initrd\fP
+使用的内存。
+.IP (3)
+然后内核以读写方式挂载设备 \fI/dev/ram0\fP 作为初始根文件系统。
+.IP (4)
+如果指定的普通根文件系统也是初始根文件系统 (例如，\fI/dev/ram0\fP))，那么内核会跳到通常引导顺序的最后一步。
+.IP (5)
+如果可执行文件 \fI/linuxrc\fP 存在于初始根文件系统中，则 \fI/linuxrc\fP 使用 UID 0 执行。 (文件 \fI/linuxrc\fP
+必须具有可执行权限。文件 \fI/linuxrc\fP 可以是任何有效的可执行文件，包括 shell 脚本。)
+.IP (6)
+如果 \fI/linuxrc\fP 没有被执行或者当 \fI/linuxrc\fP 终止时，普通的根文件系统被挂载。 (如果 \fI/linuxrc\fP
+退出并在初始根文件系统上挂载了任何文件系统，那么内核的行为就是 \fBUNSPECIFIED\fP。有关当前内核行为，请参见注释部分。)
+.IP (7)
+如果正常的根文件系统有一个目录 \fI/initrd\fP，设备 \fI/dev/ram0\fP 从 \fI/\fP 移动到 \fI/initrd\fP。 否则，如果目录
+\fI/initrd\fP 不存在，则卸载设备 \fI/dev/ram0\fP。 (当从 \fI/\fP 移动到 \fI/initrd\fP 时，\fI/dev/ram0\fP
+没有卸载，因此进程可以继续从 \fI/dev/ram0\fP 运行。如果正常根文件系统上不存在目录 \fI/initrd\fP，并且当 \fI/linuxrc\fP
+退出时任何进程仍然从 \fI/dev/ram0\fP 运行，内核的行为是 \fBUNSPECIFIED\fP. 有关当前内核行为，请参见注释部分。)
+.IP (8)
+.\"
+.\"
+.\"
+通常的启动顺序 (例如，调用 \fI/sbin/init\fP) 是在正常的根文件系统上执行的。
+.SS Options
+以下引导加载程序选项与 \fBinitrd\fP 一起使用时会影响内核的引导操作:
+.TP 
+\fBinitrd=\fP\fIfilename\fP
+指定要作为 \fI/dev/initrd\fP 的内容加载的文件。 对于 \fBLOADLIN\fP，这是一个命令行选项。 对于 \fBLILO\fP，您必须在
+\fBLILO\fP 配置文件 \fI/etc/lilo.config\fP 中使用此命令。 使用此选项指定的文件名通常是 gzip 文件系统映像。
+.TP 
+\fBnoinitrd\fP
+此启动选项禁用两阶段启动操作。 内核执行通常的启动顺序，就好像 \fI/dev/initrd\fP 没有被初始化一样。
+使用此选项，将保留由引导加载程序内容加载到内存中的 \fI/dev/initrd\fP 的任何内容。 此选项允许 \fI/dev/initrd\fP
+的内容是任何数据，而不必限于文件系统映像。 但是设备 \fI/dev/initrd\fP 是只读的，系统启动后只能读取一次。
+.TP 
+\fBroot=\fP\fIdevice\-name\fP
+.\"
+.\"
+.\"
+指定要用作普通根文件系统的设备。 对于 \fBLOADLIN\fP，这是一个命令行选项。 对于 \fBLILO\fP，这是一个引导时间选项，或者可以用作
+\fBLILO\fP 配置文件 \fI/etc/lilo.config\fP 中的选项行。 此选项指定的设备必须是具有合适根文件系统的可挂载设备。
+.SS "Changing the normal root filesystem"
+.\" commit dc7a08166f3a5f23e79e839a8a88849bd3397c32
+默认情况下，内核的设置 (例如，使用 \fBrdev\fP(8) 在内核文件中设置或编译到内核文件中) 或引导加载程序选项设置用于普通根文件系统。 对于
+NFS 安装的普通根文件系统，必须使用 \fBnfs_root_name\fP 和 \fBnfs_root_addrs\fP 引导选项来提供 NFS 设置。 有关
+NFS 挂载根目录的更多信息，请参见内核文档文件 \fIDocumentation/filesystems/nfs/nfsroot.txt\fP (或
+Linux 2.6.33 之前的 \fIDocumentation/filesystems/nfsroot.txt\fP)。
+有关设置根文件系统的更多信息，另请参见 \fBLILO\fP 和 \fBLOADLIN\fP 文档。
+.PP
+\fI/linuxrc\fP 可执行文件也可以更改普通根设备。 \fI/linuxrc\fP 要改变正常的根设备，必须挂载 \fI/proc\fP。 挂载
+\fI/proc\fP 后，\fI/linuxrc\fP 通过写入 proc 文件
+\fI/proc/sys/kernel/real\-root\-dev\fP、\fI/proc/sys/kernel/nfs\-root\-name\fP 和
+\fI/proc/sys/kernel/nfs\-root\-addrs\fP 来更改正常的根设备。 对于物理根设备，通过让 \fI/linuxrc\fP
+将新的根文件系统设备号写入 \fI/proc/sys/kernel/real\-root\-dev\fP 来更改根设备。 对于 NFS 根文件系统，通过让
+\fI/linuxrc\fP 将 NFS 设置写入文件 \fI/proc/sys/kernel/nfs\-root\-name\fP 和
+\fI/proc/sys/kernel/nfs\-root\-addrs\fP，然后将 0xff (例如伪 NFS 设备编号) 写入文件
+\fI/proc/sys/kernel/real\-root\-dev\fP 来更改根设备。 例如，以下 shell 命令行会将普通根设备更改为
+\fI/dev/hdb1\fP:
+.PP
+.in +4n
+.EX
+回声 0x365 >/proc/sys/kernel/real\-root\-dev
+.EE
+.in
+.PP
+对于 NFS 示例，对于 IP 号为 193.8.232.2 且名为 "idefix" 的系统，以下 shell 命令行会将普通根设备更改为 IP 号为
+193.8.232.7 的本地网络 NFS 服务器上的 NFS 目录 \fI/var/nfsroot\fP:
+.PP
+.in +4n
+.EX
+回声 /var/nfsroot >/proc/sys/kernel/nfs\-root\-name
+echo 193.8.232.2:193.8.232.7::255.255.255.0:idefix \e
+    >/proc/sys/kernel/nfs\-root\-addrs
+回声 255 >/proc/sys/kernel/real\-root\-dev
+.EE
+.in
+.PP
+.\" commit 9d85025b0418163fae079c9ba8f8445212de8568
+.\" FIXME . Should this manual page  describe the pivot_root mechanism?
+.\"
+.\"
+.\"
+\fBNote\fP: 使用 \fI/proc/sys/kernel/real\-root\-dev\fP 更改根文件系统已过时。
+有关更改根文件系统的现代方法的信息，请参见 Linux 内核源文件 \fIDocumentation/admin\-guide/initrd.rst\fP (或
+Linux 4.10 之前的 \fIDocumentation/initrd.txt\fP) 以及 \fBpivot_root\fP(2) 和
+\fBpivot_root\fP(8)。
+.SS Usage
+实现 \fBinitrd\fP 的主要动机是允许在系统安装时进行模块化内核配置。
+.PP
+一个可能的系统安装场景如下:
+.IP (1) 5
+加载程序从软盘或其他具有最小内核 (例如，支持 \fI/dev/ram\fP、\fI/dev/initrd\fP 和 ext2 文件系统)
+的介质启动，并使用初始文件系统的 gzip 版本加载 \fI/dev/initrd\fP。
+.IP (2)
+可执行文件 \fI/linuxrc\fP 确定 (1) 安装普通根文件系统 (即设备类型、设备驱动程序、文件系统) 和 (2) 安装分发介质 (例如
+CD\-ROM、网络、磁带等) 所需的内容。 这可以通过询问用户、自动探测或使用混合方法来完成。
+.IP (3)
+可执行文件 \fI/linuxrc\fP 从初始根文件系统加载必要的模块。
+.IP (4)
+可执行文件 \fI/linuxrc\fP 创建并填充根文件系统。 (在这个阶段，普通的根文件系统还不必是一个完整的系统。)
+.IP (5)
+可执行文件 \fI/linuxrc\fP 设置 \fI/proc/sys/kernel/real\-root\-dev\fP，卸载
+\fI/proc\fP，正常的根文件系统和它已经安装的任何其他文件系统，然后终止。
+.IP (6)
+然后内核挂载正常的根文件系统。
+.IP (7)
+现在文件系统可以访问且完好无损，可以安装引导加载程序。
+.IP (8)
+引导加载程序被配置为将一个文件系统加载到 \fI/dev/initrd\fP 中，其中包含用于启动系统的一组模块。 (例如，可以修改设备
+\fI/dev/ram0\fP，然后卸载，最后，将映像从 \fI/dev/ram0\fP 写入文件。)
+.IP (9)
+系统现在可以启动并且可以执行其他安装任务。
+.PP
+\fI/dev/initrd\fP 在上面的关键作用是在正常系统运行期间重用配置数据，而不需要初始内核选择、大泛型内核或重新编译内核。
+.PP
+第二种情况是 Linux 在单个管理网络中具有不同硬件配置的系统上运行的安装。 在这种情况下，可能希望只使用一小组内核
+(理想情况下只有一个)，并使配置信息的系统特定部分尽可能小。 在这种情况下，创建一个包含所有需要的模块的通用文件。 那么，只有 \fI/linuxrc\fP
+文件或 \fI/linuxrc\fP 执行的文件会有所不同。
+.PP
+第三种情况是更方便的恢复磁盘。 因为在启动时不需要像根文件系统分区的位置这样的信息，所以从 \fI/dev/initrd\fP
+加载的系统可以使用对话框或者自动检测，然后进行可能的健全性检查。
+.PP
+.\"
+.\"
+.\"
+最后但同样重要的是，CD\-ROM 上的 Linux 发行版可以使用 \fBinitrd\fP 以便从 CD\-ROM 轻松安装。 该发行版可以使用
+\fBLOADLIN\fP 直接从 CD\-ROM 加载 \fI/dev/initrd\fP 而无需任何软盘。 该发行版还可以使用 \fBLILO\fP 引导软盘，然后通过
+\fI/dev/initrd\fP 从 CD\-ROM 引导更大的 RAM 磁盘。
+.SH FILES
+\fI/dev/initrd\fP
+.br
+\fI/dev/ram0\fP
+.br
+\fI/linuxrc\fP
+.br
+.\"
+.\"
+.\"
+\fI/initrd\fP
+.SH NOTES
+.IP \[bu] 3
+使用当前内核，当 \fI/dev/ram0\fP 从 \fI/\fP 移动到 \fI/initrd\fP 时，任何保持挂载状态的文件系统都可以继续访问。 但是，不会更新
+\fI/proc/mounts\fP 条目。
+.IP \[bu]
+对于当前内核，如果目录 \fI/initrd\fP 不存在，那么如果 \fI/dev/ram0\fP 被任何进程使用或在其上安装了任何文件系统，则
+\fI/dev/ram0\fP 将完全卸载 \fBnot\fP。 如果 \fI/dev/ram0\fP 是 \fBnot\fP 完全卸载，那么 \fI/dev/ram0\fP
+将保留在内存中。
+.IP \[bu]
+.\"
+.\"
+.\"
+.\" .SH AUTHORS
+.\" The kernel code for device
+.\" .BR initrd
+.\" was written by Werner Almesberger <almesber@lrc.epfl.ch> and
+.\" Hans Lermen <lermen@elserv.ffm.fgan.de>.
+.\" The code for
+.\" .BR initrd
+.\" was added to the baseline Linux kernel in development version 1.3.73.
+\fI/dev/initrd\fP 的用户不应依赖于上述说明中给出的行为。 该行为可能会在 Linux 内核的 future 版本中发生变化。
+.SH "SEE ALSO"
+\fBchown\fP(1), \fBmknod\fP(1), \fBram\fP(4), \fBfreeramdisk\fP(8), \fBrdev\fP(8)
+.PP
+.\" commit 9d85025b0418163fae079c9ba8f8445212de8568
+Linux 内核源代码树中的 \fIDocumentation/admin\-guide/initrd.rst\fP (或 Linux 4.10 之前的
+\fIDocumentation/initrd.txt\fP)、LILO 文档、LOADLIN 文档、SYSLINUX 文档
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

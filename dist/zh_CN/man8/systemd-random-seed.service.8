@@ -1,0 +1,96 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-RANDOM\-SEED\&.SERVICE 8 "" "systemd 253" systemd\-random\-seed.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-random\-seed.service, systemd\-random\-seed \- 在启动和关机时加载和保存 OS 系统随机 seed
+.SH SYNOPSIS
+.PP
+systemd\-random\-seed\&.service
+.PP
+/usr/lib/systemd/random\-seed
+.SH DESCRIPTION
+.PP
+systemd\-random\-seed\&.service 是一项服务，它在启动期间将磁盘上的随机 seed
+加载到内核熵池中，并在关机时保存它。有关详细信息，请参见 \fBrandom\fP(4)\&。默认情况下，将随机 seed 写入内核熵池时不记入熵，但这可以用
+\fI$SYSTEMD_RANDOM_SEED_CREDIT\fP 更改，见下文 \&。在磁盘上，随机 seed 存储在 /var/random\-seed\&
+中。
+.PP
+请注意，此服务在早期启动阶段运行相对较晚，i\&.e\&。通常在 initrd 阶段完成并且 /var / 文件系统已挂载之后
+\&。许多系统服务比这更早地需要熵 \ (因此，该服务对复杂系统的使用有限 \&。建议使用可以将初始随机 seed
+传递给内核的引导加载程序，以确保熵从最早的引导开始可用，例如 \fBsystemd\-boot\fP(7)，其 \fBbootctl random\-seed\fP
+功能 \&。
+.PP
+当从磁盘加载随机 seed 时，该文件会立即使用从内核检索到的新 seed 进行更新，以确保没有两次启动使用相同的随机 seed\&。这个新的 seed
+是从内核同步检索的，这意味着服务将在随机池完全初始化之前不会完成启动 \&。在熵匮乏的系统上，这可能需要一段时间
+\&。此功能旨在用作订购服务的同步点，这些服务需要初始化的熵池才能安全地计算 (i\&.e\&. 无需任何进一步预防措施即可访问
+/dev/urandom 的服务) \&。
+.PP
+创建复制到多个系统的 OS 映像时应小心: 如果包含未修改的随机 seed 文件，则每个系统将使用相同的数据初始化其熵池，因此 \(em 否则
+entropy\-starved\(em 生成相同或至少可猜测的随机 seed 流
+\&。因此，作为安全预防措施，默认情况下禁用信用熵。建议从用于在多个系统上复制的操作系统映像中删除随机
+seed，在这种情况下启用熵信用是安全的，请参见下文 \&。另请详见 \m[blue]\fBSafely Building Images\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.PP
+有关详细信息，请参见 \m[blue]\fBRandom Seeds\fP\m[]\&\s-2\u[2]\d\s+2\&。
+.SH ENVIRONMENT
+.PP
+\fI$SYSTEMD_RANDOM_SEED_CREDIT\fP
+.RS 4
+默认情况下，systemd\-random\-seed\&.service 在加载随机 seed\& 时不计入任何熵。使用此选项可以更改此行为:
+它采用布尔参数或特殊字符串 `force`\&。默认为 false，在这种情况下，不会记入任何熵 \&。如果为 true，则如果随机 seed
+文件和系统状态通过各种表面一致性检查 \&，则会记入熵。如果设置为 "force"，则无论这些检查如何，只要随机 seed 文件存在 \&，就会记入熵。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBrandom\fP(4), \fBsystemd\-boot\fP(7), \fBsystemd\-stub\fP(7),
+\fBbootctl\fP(4), \fBsystemd\-boot\-random\-seed.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+安全构建图像
+.RS 4
+\%https://systemd.io/BUILDING_IMAGES
+.RE
+.IP " 2." 4
+随机种子
+.RS 4
+\%https://systemd.io/RANDOM_SEEDS
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,210 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2020 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH time_namespaces 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+time_namespaces\-Linux 时间命名空间概述
+.SH DESCRIPTION
+时间命名空间虚拟化了两个系统时钟的值:
+.IP \[bu] 3
+\fBCLOCK_MONOTONIC\fP (以及 \fBCLOCK_MONOTONIC_COARSE\fP 和
+\fBCLOCK_MONOTONIC_RAW\fP)，一个不可设置的时钟，代表单调时间，因为 POSIX\[em] 描述了 `过去某个未指定的点`。
+.IP \[bu]
+\fBCLOCK_BOOTTIME\fP (和 \fBCLOCK_BOOTTIME_ALARM\fP) 一样，一个不可设置的时钟，与
+\fBCLOCK_MONOTONIC\fP 相同，除了它还包括系统挂起的任何时间。
+.PP
+因此，时间命名空间中的进程共享这些时钟的每个命名空间值。 这会影响针对这些时钟进行测量的各种 API，包括:
+\fBclock_gettime\fP(2)、\fBclock_nanosleep\fP(2)、\fBnanosleep\fP(2)、\fBtimer_settime\fP(2)、\fBtimerfd_settime\fP(2)
+和 \fI/proc/uptime\fP。
+.PP
+.\"
+目前，创建时间命名空间的唯一方法是使用 \fBCLONE_NEWTIME\fP 标志调用 \fBunshare\fP(2)。 这个调用创建了一个新的时间命名空间，但
+\fInot\fP 确实将调用进程放在了新的命名空间中。 相反，调用进程随后创建的子进程被放置在新的命名空间中。
+这允许在将第一个进程放入命名空间之前设置新命名空间的时钟偏移 (见下文)。 \fI/proc/\fPpid\fI/ns/time_for_children\fP
+符号链接显示将在其中创建进程子进程的时间命名空间。 (进程可以使用在此符号链接上打开的文件描述符调用 \fBsetns\fP(2) 以移动到命名空间中。)
+.SS /proc/PID/timens_offsets
+与每个时间命名空间相关联的是相对于初始时间命名空间表示的偏移量，它定义了该命名空间中的单调时钟和启动时间时钟的值。 这些偏移量通过文件
+\fI/proc/PID/timens_offsets\fP 公开。 在此文件中，偏移量表示为由三个空格分隔的字段组成的行:
+.PP
+.in +4n
+.EX
+<clock\-id> <offset\-secs> <offset\-nanosecs>
+.EE
+.in
+.PP
+\fIclock\-id\fP 是一个字符串，用于标识显示其偏移量的时钟。 对于 \fBCLOCK_MONOTONIC\fP，此字段为 \fImonotonic\fP，对于
+\fBCLOCK_BOOTTIME\fP，则为 \fIboottime\fP。 其余字段表示此时间命名空间中时钟的偏移量 (秒加纳秒)。
+这些偏移量是相对于初始时间命名空间中的时钟值表示的。 \fIoffset\-secs\fP 值可以是 negative，受以下限制;
+\fIoffset\-nanosecs\fP 是一个无符号值。
+.PP
+在初始时间命名空间中，\fItimens_offsets\fP 文件内容如下:
+.PP
+.in +4n
+.EX
+$ \fBcat /proc/self/timens_offsets\fP
+单调的 0 0
+启动时间 0 0
+.EE
+.in
+.PP
+在没有成员进程的新时间命名空间中，可以通过将相同形式的换行终止记录写入 \fItimens_offsets\fP 文件来修改时钟偏移。
+该文件可以多次写入，但在第一个进程创建或进入命名空间后，此文件上的 \fBwrite\fP(2)s 失败并显示错误 \fBEACCES\fP。 为了写入
+\fItimens_offsets\fP 文件，进程必须在拥有时间命名空间的用户命名空间中具有 \fBCAP_SYS_TIME\fP 功能。
+.PP
+写入 \fItimens_offsets\fP 文件可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP
+\fIoffset\-nanosecs\fP 值大于 999,999,999。
+.TP 
+\fBEINVAL\fP
+\fIclock\-id\fP 值无效。
+.TP 
+\fBEPERM\fP
+调用方没有 \fBCAP_SYS_TIME\fP 能力。
+.TP 
+\fBERANGE\fP
+\fIoffset\-secs\fP 值越界。 尤其;
+.RS
+.IP \[bu] 3
+不能将 \fIoffset\-secs\fP 设置为会使命名空间内相应时钟上的当前时间成为 negative 值的值; and
+.IP \[bu]
+不能将 \fIoffset\-secs\fP 设置为一个值，使得命名空间内相应时钟上的时间超过内核常量 \fBKTIME_SEC_MAX\fP 值的一半
+(这将时钟值限制为最大约 146 年)。
+.RE
+.PP
+在 \fBunshare\fP(2) 创建的新时间命名空间中，\fItimens_offsets\fP 文件的内容继承自创建进程的时间命名空间。
+.SH NOTES
+使用时间命名空间需要使用 \fBCONFIG_TIME_NS\fP 选项配置的内核。
+.PP
+请注意，时间命名空间不会虚拟化 \fBCLOCK_REALTIME\fP 时钟。 由于内核中的复杂性和开销，避免了此时钟的虚拟化。
+.PP
+为了与初始实现兼容，在将 \fIclock\-id\fP 写入 \fI/proc/\fPpid\fI/timens_offsets\fP 文件时，可以写入 ID
+的数值，而不是上面显示的符号名称; 即，用 1 代替 \fImonotonic\fP，用 7 代替 \fIboottime\fP。
+为了便于阅读，最好使用符号名称而不是数字。
+.PP
+添加时间命名空间的动机是允许单调和启动时间时钟在容器迁移和 checkpoint/restore 期间保持一致的值。
+.SH EXAMPLES
+以下 shell 会话演示了时间命名空间的操作。 我们首先在初始时间命名空间中显示 shell 的时间命名空间的索引节点号:
+.PP
+.in +4n
+.EX
+$ \fBreadlink /proc/$$/ns/time\fP
+time:[4026531834]
+.EE
+.in
+.PP
+继续初始时间命名空间，我们使用 \fBuptime\fP(1) 显示系统正常运行时间，并使用 \fBclock_getres\fP(2) 中显示的
+\fIclock_times\fP 示例程序显示各种时钟的值:
+.PP
+.in +4n
+.EX
+$ \fBuptime \-\-pretty\fP
+最多 21 小时 17 分钟
+最多 21 小时 17 分钟
+CLOCK_REALTIME: 1585989401.971 (18356 天 + 8h 36m 41s)
+CLOCK_TAI: 1585989438.972 (18356 天 + 8h 37m 18s)
+CLOCK_MONOTONIC:      56338.247 (15h 38m 58s)
+CLOCK_BOOTTIME :      76633.544 (21h 17m 13s)
+.EE
+.in
+.PP
+然后我们使用 \fBunshare\fP(1) 创建时间命名空间并执行 \fBbash\fP(1) shell。 从新的 shell 开始，我们使用内置的
+\fBecho\fP 命令将记录写入 \fItimens_offsets\fP 文件，调整 \fBCLOCK_MONOTONIC\fP 时钟向前偏移 2 天和
+\fBCLOCK_BOOTTIME\fP 时钟向前偏移 7 天的偏移量:
+.PP
+.in +4n
+.EX
+$ \fBPS1="ns2# " sudo unshare \-T \-\- bash \-\-norc\fP
+ns2# \fBecho "monotonic $((2*24*60*60)) 0" > /proc/$$/timens_offsets\fP
+ns2# \fBecho "boottime  $((7*24*60*60)) 0" > /proc/$$/timens_offsets\fP
+.EE
+.in
+.PP
+上面，我们使用 \fB\-\-norc\fP 选项启动了 \fBbash\fP(1) shell，因此没有执行任何启动脚本。 这确保在我们有机会更新
+\fItimens_offsets\fP 文件之前，不会从 shell 创建子进程。
+.PP
+然后我们使用 \fBcat\fP(1) 来显示 \fItimens_offsets\fP 文件的内容。 \fBcat\fP(1)
+的执行在新的时间命名空间中创建了第一个进程，之后进一步尝试更新 \fItimens_offsets\fP 文件会产生错误。
+.PP
+.in +4n
+.EX
+ns2# \fBcat /proc/$$/timens_offsets\fP
+单调的 172800 0
+启动时间 604800 0
+ns2# \fBecho "boottime $((9*24*60*60)) 0" > /proc/$$/timens_offsets\fP
+bash: echo: 写入错误: 权限被拒绝
+.EE
+.in
+.PP
+继续在新的命名空间中，我们执行 \fBuptime\fP(1) 和 \fIclock_times\fP 示例程序:
+.PP
+.in +4n
+.EX
+ns2# \fBuptime \-\-pretty\fP
+最多 1 周 21 小时 18 分钟
+ns2# \fB./clock_times\fP
+CLOCK_REALTIME: 1585989457.056 (18356 天 + 8h 37m 37s)
+CLOCK_TAI: 1585989494.057 (18356 天 + 8h 38m 14s)
+CLOCK_MONOTONIC: 229193.332 (2 天 + 15 小时 39 米 53 秒)
+CLOCK_BOOTTIME :     681488.629 (7 days + 21h 18m  8s)
+.EE
+.in
+.PP
+从上面的输出中，我们可以看到单调时钟和启动时间时钟在新的时间命名空间中具有不同的值。
+.PP
+检查 \fI/proc/\fPpid\fI/ns/time\fP 和 \fI/proc/\fPpid\fI/ns/time_for_children\fP 符号链接，我们看到
+shell 是初始时间命名空间的成员，但它的子级是在新命名空间中创建的。
+.PP
+.in +4n
+.EX
+ns2# \fBreadlink /proc/$$/ns/time\fP
+time:[4026531834]
+ns2# \fBreadlink /proc/$$/ns/time_for_children\fP
+time:[4026532900] 
+ns2# \fBreadlink /proc/self/ns/time\fP   # 创建一个子进程
+time:[4026532900]
+.EE
+.in
+.PP
+返回到初始时间命名空间中的 shell，我们看到单调时钟和启动时间时钟不受在其他时间命名空间中进行的 \fItimens_offsets\fP 更改的影响:
+.PP
+.in +4n
+.EX
+$ \fBuptime \-\-pretty\fP
+最多 21 小时 19 分钟
+最多 21 小时 19 分钟
+CLOCK_REALTIME: 1585989401.971 (18356 天 + 8h 38m 51s)
+CLOCK_TAI     : 1585989438.972 (18356 天 + 8h 39m 28s)
+CLOCK_MONOTONIC:      56338.247 (15h 41m  8s)
+CLOCK_BOOTTIME :      76633.544 (21h 19m 23s)
+.EE
+.in
+.SH "SEE ALSO"
+.\" clone3() support for time namespaces is a work in progress
+.\" .BR clone3 (2),
+\fBnsenter\fP(1), \fBunshare\fP(1), \fBclock_settime\fP(2), \fBsetns\fP(2),
+\fBunshare\fP(2), \fBnamespaces\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

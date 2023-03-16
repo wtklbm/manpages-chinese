@@ -1,0 +1,354 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008, Linux Foundation, written by Michael Kerrisk
+.\"      <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fopencookie 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fopencookie \- 打开自定义流
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <stdio.h>\fP
+.PP
+\fBFILE *fopencookie(void *restrict \fP\fIcookie\fP\fB, const char *restrict \fP\fImode\fP\fB,\fP
+\fB                  cookie_io_functions_t \fP\fIio_funcs\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBfopencookie\fP() 函数允许程序人员为标准 I/O 流创建自定义实现。 此实现可以将流的数据存储在它自己选择的位置;
+例如，\fBfopencookie\fP() 用于实现 \fBfmemopen\fP(3)，它为存储在内存缓冲区中的数据提供流接口。
+.PP
+为了创建自定义流，程序人员必须:
+.IP \[bu] 3
+在流上执行 I/O 时，实现标准 I/O 库内部使用的四个 "hook" 函数。
+.IP \[bu]
+定义一个 "cookie" 数据类型，一个提供由上述钩子函数使用的记录信息 (例如，在哪里存储数据) 的结构体。 标准的 I/O 包对这个 cookie
+的内容一无所知 (因此它在传递给 \fBfopencookie\fP()) 时被键入为 \fIvoid\~*\fP，但在调用钩子函数时自动将 cookie
+作为第一个参数提供。
+.IP \[bu]
+调用 \fBfopencookie\fP() 打开一个新流并将 cookie 和钩数与该流相关联。
+.PP
+\fBfopencookie\fP() 函数的作用类似于 \fBfopen\fP(3):，它打开一个新流并返回一个指向用于对该流进行操作的 \fIFILE\fP
+对象的指针。
+.PP
+\fIcookie\fP 参数是指向调用者的 cookie 结构体的指针，它将与新流相关联。 当标准 I/O
+库调用下面描述的任何钩子函数时，该指针作为第一个参数提供。
+.PP
+\fImode\fP 参数与 \fBfopen\fP(3) 的用途相同。 支持以下模式: \fIr\fP、\fIw\fP、\fIa\fP、\fIr+\fP、\fIw+\fP 和 \fIa+\fP。
+有关详细信息，请参见 \fBfopen\fP(3)。
+.PP
+\fIio_funcs\fP 参数是一个结构体，它包含四个字段，指向用于实现此流的程序定义的钩子函数。 结构体定义如下
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    cookie_read_function_t  *read;
+    cookie_write_function_t *write;
+    cookie_seek_function_t  *seek;
+    cookie_close_function_t *close;
+} cookie_io_functions_t;
+.EE
+.in
+.PP
+四个字段如下:
+.TP 
+\fIcookie_read_function_t *read\fP
+这个函数实现了对流的读操作。 调用时，它会收到三个参数:
+.IP
+.in +4n
+.EX
+ssize_t read(void *cookie, char *buf, size_t size);
+.EE
+.in
+.IP
+\fIbuf\fP 和 \fIsize\fP 参数分别是可以放置输入数据的缓冲区和该缓冲区的大小。 作为它的函数结果，\fIread\fP 函数应返回复制到 \fIbuf\fP
+中的字节数，文件末尾为 0，错误时为 \-1。 \fIread\fP 函数应该适当地更新流偏移量。
+.IP
+如果 \fI*read\fP 是空指针，则从自定义流中读取总是返回文件末尾。
+.TP 
+\fIcookie_write_function_t *write\fP
+这个函数实现了对流的写操作。 调用时，它会收到三个参数:
+.IP
+.in +4n
+.EX
+ssize_t write(void *cookie, const char *buf, size_t size);
+.EE
+.in
+.IP
+\fIbuf\fP 和 \fIsize\fP 参数分别是要输出到流的数据缓冲区和该缓冲区的大小。 作为它的函数结果，\fIwrite\fP 函数应返回从 \fIbuf\fP
+复制的字节数，或错误时返回 0。 (函数不得返回 negative 值。) \fIwrite\fP 函数应适当更新流偏移量。
+.IP
+如果 \fI*write\fP 是空指针，则丢弃到流的输出。
+.TP 
+\fIcookie_seek_function_t *seek\fP
+这个函数实现了对流的 seek 操作。 调用时，它会收到三个参数:
+.IP
+.in +4n
+.EX
+int seek(void *cookie, off64_t *offset, int whence);
+.EE
+.in
+.IP
+\fI*offset\fP 参数根据 \fIwhence\fP: 中提供的以下三个值中的哪一个来指定新的文件偏移量
+.RS
+.TP 
+\fBSEEK_SET\fP
+流偏移量应从流的开头设置为 \fI*offset\fP 字节。
+.TP 
+\fBSEEK_CUR\fP
+\fI*offset\fP 应添加到当前流偏移量。
+.TP 
+\fBSEEK_END\fP
+流偏移量应设置为流的大小加上 \fI*offset\fP。
+.RE
+.IP
+在返回之前，\fIseek\fP 函数应该更新 \fI*offset\fP 以指示新的流偏移量。
+.IP
+作为它的任数结果，\fIseek\fP 任数应该在成功时返回 0，在错误时返回 \-1。
+.IP
+如果 \fI*seek\fP 是空指针，则无法对流执行 seek 操作。
+.TP 
+\fIcookie_close_function_t *close\fP
+此函数关闭流。 钩子函数可以做一些事情，比如释放为流分配的缓冲区。 调用时，它会收到一个参数:
+.IP
+.in +4n
+.EX
+int close(void *cookie);
+.EE
+.in
+.IP
+\fIcookie\fP 参数是程序员在调用 \fBfopencookie\fP() 时提供的 cookie。
+.IP
+作为它的任数结果，\fIclose\fP 任数应该在成功时返回 0，在错误时返回 \fBEOF\fP。
+.IP
+如果 \fI*close\fP 为 NULL，则关闭流时不会执行任何特殊操作。
+.SH "RETURN VALUE"
+.\" .SH ERRORS
+.\" It's not clear if errno ever gets set...
+成功时，\fBfopencookie\fP() 返回指向新流的指针。 出错时返回 NULL。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfopencookie\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这个函数是一个非标准的 GNU 扩展。
+.SH EXAMPLES
+下面的程序实现了一个自定义流，其功能与通过 \fBfmemopen\fP(3) 提供的功能相似 (但不相同)。 它实现了一个流，其数据存储在内存缓冲区中。
+该程序将其命令行参数写入流，然后通过流查找每五个字符中的两个字符并将它们写入标准输出。 下面的 shell 会话演示了该程序的使用:
+.PP
+.in +4n
+.EX
+$\fB ./a.out \[aq]hello world\[aq]\fP
+/he/
+/ 瓦特 /
+/d/
+到达文件末尾
+.EE
+.in
+.PP
+请注意，可以改进下面程序的更通用版本，以更稳健地处理各种错误情况 (例如，使用已经打开流的 cookie 打开流; 关闭已经关闭的流)。
+.SS "Program source"
+.\" SRC BEGIN (fopencookie.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#define INIT_BUF_SIZE 4
+
+struct memfile_cookie {
+    char   *buf;        /* Dynamically sized buffer for data */
+    size_t  allocated;  /* Size of buf */
+    size_t  endpos;     /* Number of characters in buf */
+    off_t   offset;     /* Current file offset in buf */
+};
+
+ssize_t
+memfile_write(void *c, const char *buf, size_t size)
+{
+    char *new_buff;
+    struct memfile_cookie *cookie = c;
+
+    /* Buffer too small? Keep doubling size until big enough. */
+
+    while (size + cookie\->offset > cookie\->allocated) {
+        new_buff = realloc(cookie\->buf, cookie\->allocated * 2);
+        if (new_buff == NULL)
+            return \-1;
+        cookie\->allocated *= 2;
+        cookie\->buf = new_buff;
+    }
+
+    memcpy(cookie\->buf + cookie\->offset, buf, size);
+
+    cookie\->offset += size;
+    if (cookie\->offset > cookie\->endpos)
+        cookie\->endpos = cookie\->offset;
+
+    return size;
+}
+
+ssize_t
+memfile_read(void *c, char *buf, size_t size)
+{
+    ssize_t xbytes;
+    struct memfile_cookie *cookie = c;
+
+    /* Fetch minimum of bytes requested and bytes available. */
+
+    xbytes = size;
+    if (cookie\->offset + size > cookie\->endpos)
+        xbytes = cookie\->endpos \- cookie\->offset;
+    if (xbytes < 0)     /* offset may be past endpos */
+        xbytes = 0;
+
+    memcpy(buf, cookie\->buf + cookie\->offset, xbytes);
+
+    cookie\->offset += xbytes;
+    return xbytes;
+}
+
+int
+memfile_seek(void *c, off64_t *offset, int whence)
+{
+    off64_t new_offset;
+    struct memfile_cookie *cookie = c;
+
+    if (whence == SEEK_SET)
+        new_offset = *offset;
+    else  if (whence == SEEK_END)
+        new_offset = cookie\->endpos + *offset;
+    else if (whence == SEEK_CUR)
+        new_offset = cookie\->offset + *offset;
+    else
+        return \-1;
+
+    if (new_offset < 0)
+        return \-1;
+
+    cookie\->offset = new_offset;
+    *offset = new_offset;
+    return 0;
+}
+
+int
+memfile_close(void *c)
+{
+    struct memfile_cookie *cookie = c;
+
+    free(cookie\->buf);
+    cookie\->allocated = 0;
+    cookie\->buf = NULL;
+
+    return 0;
+}
+
+int
+main(int argc, char *argv[])
+{
+    cookie_io_functions_t  memfile_func = {
+        .read  = memfile_read,
+        .write = memfile_write,
+        .seek  = memfile_seek,
+        .close = memfile_close
+    };
+    FILE *stream;
+    struct memfile_cookie mycookie;
+    size_t nread;
+    char buf[1000];
+
+    /* Set up the cookie before calling fopencookie(). */
+
+    mycookie.buf = malloc(INIT_BUF_SIZE);
+    if (mycookie.buf == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    mycookie.allocated = INIT_BUF_SIZE;
+    mycookie.offset = 0;
+    mycookie.endpos = 0;
+
+    stream = fopencookie(&mycookie, "w+", memfile_func);
+    if (stream == NULL) {
+        perror("fopencookie");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Write command\-line arguments to our file. */
+
+    for (size_t j = 1; j < argc; j++)
+        if (fputs(argv[j], stream) == EOF) {
+            perror("fputs");
+            exit(EXIT_FAILURE);
+        }
+
+    /* Read two bytes out of every five, until EOF. */
+
+    for (long p = 0; ; p += 5) {
+        if (fseek(stream, p, SEEK_SET) == \-1) {
+            perror("fseek");
+            exit(EXIT_FAILURE);
+        }
+        nread = fread(buf, 1, 2, stream);
+        if (nread == 0) {
+            if (ferror(stream) != 0) {
+                fprintf(stderr, "fread failed\en");
+                exit(EXIT_FAILURE);
+            }
+            printf("Reached end of file\en");
+            break;
+        }
+
+        printf("/%.*s/\en", (int) nread, buf);
+    }
+
+    free(mycookie.buf);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfclose\fP(3), \fBfmemopen\fP(3), \fBfopen\fP(3), \fBfseek\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

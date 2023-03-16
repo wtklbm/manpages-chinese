@@ -1,0 +1,129 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-07-22 by Michael Chastain <mec@duracef.shout.net>
+.\" Modified 1995-07-23 by aeb
+.\" Modified 1996-10-22 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998-09-08 by aeb
+.\" Modified 2004-06-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2004-10-10 by aeb
+.\" 2004-12-14 mtk, Anand Kumria: added new errors
+.\" 2007-06-22 Ivana Varekova <varekova@redhat.com>, mtk
+.\"     Update text describing limit on number of swap files.
+.\" 2021-01-17 Alex Baranowski <alex@euro-linux.com>
+.\"     Update information about available swap files decreased by
+.\"     CONFIG_DEVICE_PRIVATE option.
+.\"
+.\" FIXME Linux 3.11 added SWAP_FLAG_DISCARD_ONCE and SWAP_FLAG_DISCARD_PAGES
+.\"	commit dcf6b7ddd7df8965727746f89c59229b23180e5a
+.\"	Author: Rafael Aquini <aquini@redhat.com>
+.\"	Date:   Wed Jul 3 15:02:46 2013 -0700
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH swapon 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+swapon, swapoff\-start/stop 交换到 file/device
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/swap.h>\fP
+.PP
+\fBint swapon(const char *\fP\fIpath\fP\fB, int \fP\fIswapflags\fP\fB);\fP
+\fBint swapoff(const char *\fP\fIpath\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBswapon\fP() 将交换区设置为 \fIpath\fP 指定的文件或块设备。 \fBswapoff\fP() 停止交换到 \fIpath\fP 指定的文件或块设备。
+.PP
+如果在 \fBswapon\fP() \fIswapflags\fP 参数中指定了 \fBSWAP_FLAG_PREFER\fP
+标志，则新的交换区域将具有比默认值更高的优先级。 优先级在 \fIswapflags\fP 中编码为:
+.PP
+.in +4n
+.EX
+\fI(prio << SWAP_FLAG_PRIO_SHIFT) & SWAP_FLAG_PRIO_MASK\fP
+.EE
+.in
+.PP
+如果在 \fBswapon\fP() \fIswapflags\fP 参数中指定了 \fBSWAP_FLAG_DISCARD\fP
+标志，如果交换设备支持丢弃或修剪操作，则释放的交换页将在重新使用之前被丢弃。 (这可能会提高某些固态设备的性能，但通常不会。) 另请参见注释。
+.PP
+这些函数只能由特权进程 (具有 \fBCAP_SYS_ADMIN\fP 能力的进程) 使用。
+.SS Priority
+每个交换区都有一个优先级，或高或低。 默认优先级为低。 在低优先级区域中，较新区域的优先级甚至低于较旧区域。
+.PP
+所有用 \fIswapflags\fP 设置的优先级都是高优先级，高于默认值。 它们可以具有调用者选择的任何非负值。 更高的数字意味着更高的优先级。
+.PP
+交换页面按优先级顺序从区域分配，最高优先级在前。 对于具有不同优先级的区域，在使用较低优先级的区域之前用尽较高优先级的区域。
+如果两个或多个区域具有相同的优先级，并且它是可用的最高优先级，页面将在它们之间循环分配。
+.PP
+从 Linux 1.3.6 开始，内核通常遵循这些规则，但也有例外。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBUSY\fP
+(对于 \fBswapon\fP()) 指定的 \fIpath\fP 已经被用作交换区。
+.TP 
+\fBEINVAL\fP
+文件 \fIpath\fP 存在，但既不是普通文件也不是块设备;
+.TP 
+\fBEINVAL\fP
+(\fBswapon\fP()) 指示的路径不包含有效的交换签名或驻留在内存文件系统 (例如 \fBtmpfs\fP(5)) 上。
+.TP 
+\fBEINVAL\fP (since Linux 3.4)
+(\fBswapon\fP()) 在 \fIswapflags\fP 中指定了无效的标志值。
+.TP 
+\fBEINVAL\fP
+(\fBswapoff\fP()) \fIpath\fP 当前不是交换区。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOENT\fP
+文件 \fIpath\fP 不存在。
+.TP 
+\fBENOMEM\fP
+系统内存不足，无法启动交换。
+.TP 
+\fBEPERM\fP
+调用方没有 \fBCAP_SYS_ADMIN\fP 能力。 或者，最大数量的交换文件已被使用; 请参见下面的注释。
+.SH STANDARDS
+这些函数是特定于 Linux 的，不应在旨在可移植的程序中使用。 第二个 \fIswapflags\fP 参数在 Linux 1.3.2 中引入。
+.SH NOTES
+分区或路径必须用 \fBmkswap\fP(8) 准备。
+.PP
+可以使用的交换文件数量有上限，由内核常量 \fBMAX_SWAPFILES\fP 定义。 在 Linux 2.4.10 之前，\fBMAX_SWAPFILES\fP
+的值为 8; 从 Linux 2.4.10 开始，它的值为 32。 从 Linux 2.6.18 开始，如果使用 \fBCONFIG_MIGRATION\fP
+选项构建内核 (为 \fBmbind\fP(2) 和 \fBmigrate_pages\fP(2)) 的页面迁移特性保留两个交换表条目)，则限制减少 2 (因此:
+30)。 从 Linux 2.6.32 开始，如果内核是使用 \fBCONFIG_MEMORY_FAILURE\fP 选项构建的，则该限制会进一步减少 1。
+从 Linux 5.14 开始，如果内核是使用 \fBCONFIG_DEVICE_PRIVATE\fP 选项构建的，则限制进一步减少 4。
+.PP
+.\" To be precise: 2.6.35.5
+Linux 2.6.29 中引入了交换页丢弃，然后以 Linux 2.6.36 中的 \fBSWAP_FLAG_DISCARD\fP 标志为条件，在调用
+\fBswapon\fP() 时仍然丢弃整个交换区域，即使该标志位未设置。
+.SH "SEE ALSO"
+\fBmkswap\fP(8), \fBswapoff\fP(8), \fBswapon\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

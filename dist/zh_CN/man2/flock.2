@@ -1,0 +1,140 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu) and
+.\" and Copyright 2002 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Fri Jan 31 16:26:07 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Fri Dec 11 17:57:27 1998 by Jamie Lokier <jamie@imbolc.ucc.ie>
+.\" Modified 24 Apr 2002 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Substantial rewrites and additions
+.\" 2005-05-10 mtk, noted that lock conversions are not atomic.
+.\"
+.\" FIXME Maybe document LOCK_MAND, LOCK_RW, LOCK_READ, LOCK_WRITE
+.\" which only have effect for SAMBA.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH flock 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+flock \- 在打开的文件上应用或删除建议锁
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/file.h>\fP
+.PP
+\fBint flock(int \fP\fIfd\fP\fB, int \fP\fIoperation\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+对 \fIfd\fP 指定的打开文件应用或删除咨询锁。 参数 \fIoperation\fP 是以下之一:
+.RS 4
+.TP  9
+\fBLOCK_SH\fP
+放置共享锁。 在给定时间，多个进程可能持有给定文件的共享锁。
+.TP 
+\fBLOCK_EX\fP
+放置排他锁。 在给定时间，只有一个进程可以持有给定文件的独占锁。
+.TP 
+\fBLOCK_UN\fP
+删除此进程持有的现有锁。
+.RE
+.PP
+如果另一个进程持有不兼容的锁，则调用 \fBflock\fP() 可能会阻塞。 要发出非阻塞请求，请将 \fBLOCK_NB\fP (通过 ORing)
+包含在上述任何操作中。
+.PP
+单个文件可能不会同时拥有共享锁和独占锁。
+.PP
+由 \fBflock\fP() 创建的锁与打开的文件描述相关联 (请参见 \fBopen\fP(2)).  这意味着重复的文件描述符 (例如，由
+\fBfork\fP(2) 或 \fBdup\fP(2)) 创建) 引用同一个锁，并且可以使用这些文件描述符中的任何一个来修改或释放此锁。
+此外，通过对这些重复文件描述符中的任何一个进行显式 \fBLOCK_UN\fP 操作，或者在所有此类文件描述符都已关闭时，锁定将被释放。
+.PP
+如果进程使用 \fBopen\fP(2) (或类似的) 为同一文件获取多个文件描述符，则这些文件描述符将由 \fBflock\fP() 独立处理。
+使用这些文件描述符之一锁定文件的尝试可能会被调用进程已经通过另一个文件描述符放置的锁拒绝。
+.PP
+一个进程在一个文件上可能只持有一种类型的锁 (共享或独占)。 对已锁定文件的后续 \fBflock\fP() 调用会将现有锁定转换为新锁定模式。
+.PP
+\fBflock\fP() 创建的锁在 \fBexecve\fP(2) 中保留。
+.PP
+无论文件打开的模式如何，都可以在文件上放置共享锁或独占锁。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是打开的文件描述符。
+.TP 
+\fBEINTR\fP
+在等待获取锁时，调用被处理程序捕获的信号的传递中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fIoperation\fP 无效。
+.TP 
+\fBENOLCK\fP
+内核用完了用于分配锁记录的内存。
+.TP 
+\fBEWOULDBLOCK\fP
+文件被锁定并选择了 \fBLOCK_NB\fP 标志。
+.SH STANDARDS
+4.4BSD (\fBflock\fP() 调用最早出现在 4.2BSD)。 \fBflock\fP() 的一个版本，可能是根据 \fBfcntl\fP(2)
+实现的，出现在大多数 UNIX 系统上。
+.SH NOTES
+.\" E.g., according to the flock(2) man page, FreeBSD since at least 5.3
+从 Linux 2.0 开始，\fBflock\fP() 被实现为一个系统调用，而不是在 GNU C 库中模拟为 \fBfcntl\fP(2) 的调用。
+通过此实现，\fBflock\fP() 和 \fBfcntl\fP(2) 放置的锁类型之间没有交互，并且 \fBflock\fP() 不检测死锁。
+(但是请注意，在某些系统上，例如现代 BSD，\fBflock\fP() 和 \fBfcntl\fP(2) 锁 \fIdo\fP 相互交互。)
+.PP
+\fBflock\fP() 仅放置建议锁; 给定文件的适当权限，进程可以自由地忽略 \fBflock\fP() 的使用并在文件上执行 I/O。
+.PP
+\fBflock\fP() 和 \fBfcntl\fP(2) 锁对于分叉进程和 \fBdup\fP(2) 具有不同的语义。 在使用 \fBfcntl\fP(2) 实现
+\fBflock\fP() 的系统上，\fBflock\fP() 的语义将与本手册页中描述的语义不同。
+.PP
+.\" Kernel 2.5.21 changed things a little: during lock conversion
+.\" it is now the highest priority process that will get the lock -- mtk
+转换锁 (共享锁到独占锁，反之亦然) 不能保证是原子的: 先删除现有锁，然后建立新锁。
+在这两个步骤之间，另一个进程的挂起锁定请求可能会被授予，结果是转换要么阻塞，要么在指定 \fBLOCK_NB\fP 时失败。 (这是原始的 BSD
+行为，并且出现在许多其他实现中。)
+.SS "NFS details"
+在 Linux 2.6.11 之前，\fBflock\fP() 不会通过 NFS 锁定文件 (即，锁定的作用域仅限于本地系统)。 相反，可以使用
+\fBfcntl\fP(2) 字节范围锁定，它确实可以在 NFS 上工作，前提是 Linux 的最新版本和支持锁定的服务器。
+.PP
+从 Linux 2.6.12 开始，NFS 客户端通过将 \fBflock\fP() 锁模拟为整个文件的 \fBfcntl\fP(2) 字节范围锁来支持
+\fBflock\fP() 锁。 这意味着 \fBfcntl\fP(2) 和 \fBflock\fP() 锁 \fIdo\fP 通过 NFS 相互交互。
+这也意味着为了放置独占锁，必须打开文件进行写入。
+.PP
+.\" commit 5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
+从 Linux 2.6.37 开始，内核支持一种兼容模式，允许将 \fBflock\fP() 锁 (以及 \fBfcntl\fP(2) 字节区域锁) 视为本地锁;
+请参见 \fBnfs\fP(5) 中对 \fIlocal_lock\fP 选项的讨论。
+.SS "CIFS details"
+直到 Linux 5.4，\fBflock\fP() 不通过 SMB 传播。 具有此类锁的文件不会对远程客户端显示为已锁定。
+.PP
+从 Linux 5.5 开始，\fBflock\fP() 锁在整个文件上使用 SMB 字节范围锁进行模拟。 与 NFS 类似，这意味着 \fBfcntl\fP(2)
+和 \fBflock\fP() 锁相互交互。 另一个重要的副作用是锁不再是建议性的: 当从单独的文件描述符完成时，锁定文件上的任何 IO 总是会失败并返回
+\fBEACCES\fP。 这种差异源于 SMB 协议中锁的设计，它提供了强制锁定语义。
+.PP
+远程和强制锁定语义可能因 SMB 协议、安装选项和服务器类型而异。 有关更多信息，请参见 \fBmount.cifs\fP(8)。
+.SH "SEE ALSO"
+\fBflock\fP(1), \fBclose\fP(2), \fBdup\fP(2), \fBexecve\fP(2), \fBfcntl\fP(2), \fBfork\fP(2),
+\fBopen\fP(2), \fBlockf\fP(3), \fBlslocks\fP(8)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/filesystems/locks.txt\fP
+(\fIDocumentation/locks.txt\fP 旧内核中的 \fIDocumentation/filesystems/locks.txt\fP)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

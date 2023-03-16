@@ -1,0 +1,119 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-usb 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-usb
+.SH NAME
+sane\-usb\-SANE 的 USB 配置提示
+.SH DESCRIPTION
+本手册页包含有关如何使用 USB 接口访问扫描仪的信息。它着重于两个主要主题: 让操作系统内核检测到扫描仪并将其与 SANE 一起使用。
+.PP
+此页面适用于 USB 大多数后端和扫描仪，因为它们使用泛型 sanei_usb 接口。但是，有一个例外: \fBsane\-microtek2\fP(5)
+后端支持的 USB 扫描仪需要一个特殊的 USB 内核驱动程序。
+
+.SH "QUICK START"
+这是一个简短的类似 HOWTO 的部分。有关完整详细信息，请阅读以下部分。本节的目标是让 \fBsane\-find\-scanner\fP(1) 检测到扫描仪。
+.PP
+运行 \fBsane\-find\-scanner\fP(1)。 如果它使用正确的供应商和产品 ID
+列出了您的扫描仪，那么您就完成了。有关如何继续的详细信息，请参见 \fBSANE ISSUES\fP 部分。
+.PP
+\fBsane\-find\-scanner\fP(1) 没有列出您的扫描仪? 它以 root 身份工作吗? 如果是，则存在权限问题。 有关详细信息，请参见
+\fBLIBUSB\fP 部分。
+.PP
+即使是 root 也找不到任何东西? 检查您的内核是否支持 USB 以及是否安装了 libusb (请参见 \fBLIBUSB\fP).
+
+.SH "USB ACCESS METHODS"
+为了访问 USB 设备，使用了 USB 库 libusb。曾经存在另一种访问 USB 设备的方法:
+内核扫描仪驱动程序。内核扫描器驱动程序方法已弃用，不应再使用。它可以随时从 SANE 中删除。在 Linux 中，内核扫描器驱动程序已从 2.6.*
+内核系列中删除。本手册页中仅记录了 libusb 访问。
+
+.SH LIBUSB
+SANE 只能使用 libusb 0.1.6 或更新版本。它需要在构建时安装。现代 Linux 发行版和其他操作系统都带有 libusb。
+.PP
+Libusb 只能在内核扫描仪驱动程序未声明的情况下访问您的扫描仪。如果您想使用 libusb，卸载内核驱动程序 (例如 Linux 下的 rmmod
+scanner) 或者在编译新内核时禁用驱动程序。对于 Linux，您的内核需要支持 USB 文件系统 (usbfs)。对于早于 2.4.19
+的内核，将 "usbfs" 替换为 "usbdevfs"，因为名称已更改。这个文件系统必须被挂载。这是在启动时自动完成的，如果 /etc/fstab
+包含这样一行:
+.PP
+.RS
+无 /proc/bus/usb usbfs 默认值 0 0
+.RE
+.PP
+libusb 使用的设备文件的权限必须针对用户访问进行调整。否则只有 root 可以使用 SANE 设备。对于 \fILinux\fP，设备位于
+\fI/proc/bus/usb/\fP 或 \fI/dev/bus/usb\fP (如果您使用 udev)。有一些名为 "001" (总线名称) 的目录包含文件
+`001`、"002" 等 (设备文件)。以 root 身份运行 \fIscanimage \-L:\fP 可以找到正确的设备文件。但是，使用
+\fBchmod\fP(1) 设置权限并不是永久性的。它们将在重新启动或重新插入扫描仪后重置。
+.PP
+通常 \fBudev\fP(7) 或更早的发行版使用 hotplug 实用工具，它支持访问权限的动态设置。SANE 在目录 \fItools/udev\fP 和
+\fItools/hotplug\fP 中带有 udev 和 hotplug 脚本。 它们可用于设置权限，更多详细信息请参见 \fItools/hotplug\fP
+目录中的 \fI/usr/share/doc/sane/README.linux\fP、\fItools/README\fP 和 \fIREADME\fP。
+.PP
+对于 \fBBSDs\fP，libusb 使用的设备文件名为 \fI/dev/ugen*\fP。 使用 chmod 应用适当的权限。
+
+.SH "SANE ISSUES"
+.PP
+本节假设您的扫描仪被 \fBsane\-find\-scanner\fP(1) 检测到。 如果不是这样的话，继续下去就没有意义了。虽然
+\fBsane\-find\-scanner\fP(1) 能够检测到任何 USB 扫描仪，但只有在 SANE
+后端支持扫描仪时才能进行实际扫描。有关支持级别的信息可以在 SANE 网页 (\fIhttp://www.sane\-project.org/\fP)
+和各个后端联机帮助页上找到。
+.PP
+大多数后端可以使用 "usb" 配置文件行自动检测 USB 扫描仪。这种方法允许通过 USB 供应商和产品编号来识别扫描仪。
+以这种方式指定扫描仪的语法是:
+.PP
+.RS
+usb \fIVENDOR PRODUCT\fP
+.RE
+.PP
+其中 \fIVENDOR\fP 是 USB 供应商 ID，\fIPRODUCT\fP 是扫描仪的 USB 产品 ID。两个 id 都是十进制或十六进制格式的非
+negative 整数。这些字段的正确值可以通过运行 \fBsane\-find\-scanner\fP(1)、查看系统日志
+(例如，\fI/var/log/messages\fP) 或在 Linux 下通过发出命令 \fIcat /proc/bus/usb/devices\fP.
+这是配置文件行的示例:
+.PP
+.RS
+usb 0x055f 0x0006
+.RE
+.PP
+会产生系统中所有供应商 ID 为 0x55f 和产品 ID 为 0x0006 的 USB 设备都会被后端探测和识别的效果。
+.PP
+如果您的扫描仪未被自动检测到，则可能需要在首次使用 SANE 之前编辑适当的后端配置文件。 有关每个后端配置文件的详细说明，请参见相关后端手册页 (例如
+Mustek USB 扫描仪的 \fBsane\-mustek_usb\fP(5))。
+.PP
+\fBnot\fP 创建一个从 \fI/dev/scanner\fP 到 USB 设备的符号链接，因为这个链接被 SCSI 后端使用。如果扫描仪接收到 SCSI
+命令，它可能会感到困惑。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_DEBUG_SANEI_USB\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制 USB I/O 子系统的调试级别。 例如，值 128 请求打印所有调试输出。
+较小的级别减少冗长。大于 4 的值启用 libusb 调试 (如果可用)。示例: \fIexport SANE_DEBUG_SANEI_USB=4\fP。
+.PP
+.TP 
+\fBSANE_USB_WORKAROUND\fP
+如果您的扫描仪在插入 USB3 端口时不工作，请尝试将环境变量 \fBSANE_USB_WORKAROUND\fP 设置为
+1。这可能会解决特定内核版本发生的问题。示例: \fIexport SANE_USB_WORKAROUND=1.\fP
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-find\-scanner\fP(1), \fBsane\-"backendname"\fP(5),
+\fBsane\-scsi\fP(5)
+
+.SH AUTHOR
+亨宁迈尔 \- 盖尼茨 <\fIhenning@meier\-geinitz.de\fP>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

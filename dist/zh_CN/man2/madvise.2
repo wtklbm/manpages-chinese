@@ -1,0 +1,420 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2001 David Gómez <davidge@jazzfree.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Based on comments from mm/filemap.c. Last modified on 10-06-2001
+.\" Modified, 25 Feb 2002, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\"	Added notes on MADV_DONTNEED
+.\" 2010-06-19, mtk, Added documentation of MADV_MERGEABLE and
+.\"     MADV_UNMERGEABLE
+.\" 2010-06-15, Andi Kleen, Add documentation of MADV_HWPOISON.
+.\" 2010-06-19, Andi Kleen, Add documentation of MADV_SOFT_OFFLINE.
+.\" 2011-09-18, Doug Goldstein <cardoe@cardoe.com>
+.\"     Document MADV_HUGEPAGE and MADV_NOHUGEPAGE
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH madvise 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+madvise \- 提供有关内存使用的建议
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mman.h>\fP
+.PP
+\fBint madvise(void \fP\fIaddr\fP\fB[.\fP\fIlength\fP\fB], size_t \fP\fIlength\fP\fB, int \fP\fIadvice\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmadvise\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    直到并包括 glibc 2.19:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBmadvise\fP() 系统调用用于向内核提供有关从地址 \fIaddr\fP 开始且大小为 \fIlength\fP 的地址范围的建议或指示。
+\fBmadvise\fP() 仅在整个页面上运行，因此 \fIaddr\fP 必须是页面对齐的。 \fIlength\fP 的值向上舍入为页面大小的倍数。
+在大多数情况下，此类建议的目标是提高系统或应用程序的性能。
+.PP
+.\"
+.\" ======================================================================
+.\"
+最初，系统调用支持一组 "conventional" \fIadvice\fP 值，这些值在其他几个实现中也可用。 (但请注意，\fBmadvise\fP() 未在
+POSIX 中指定。) 随后，添加了许多特定于 Linux 的 \fIadvice\fP 值。
+.SS "Conventional advice values"
+下面列出的 \fIadvice\fP 值允许应用程序告诉内核它希望如何使用某些映射或共享内存区域，以便内核可以选择适当的预读和缓存技术。 这些
+\fIadvice\fP 值不会影响应用程序的语义 (\fBMADV_DONTNEED\fP) 除外，但可能会影响其性能。 此处列出的所有 \fIadvice\fP 值在
+POSIX 指定的 \fBposix_madvise\fP(3) 函数中都有类似物，并且这些值具有相同的含义，但 \fBMADV_DONTNEED\fP 除外。
+.PP
+该建议在 \fIadvice\fP 参数中指示，它是以下之一:
+.TP 
+\fBMADV_NORMAL\fP
+无特殊处理。 这是默认设置。
+.TP 
+\fBMADV_RANDOM\fP
+期望页面以随机顺序引用。 (因此，预读可能不如平时有用。)
+.TP 
+\fBMADV_SEQUENTIAL\fP
+期望页面按顺序引用。 (因此，给定范围内的页面可以被积极地提前读取，并可能在访问后很快被释放。)
+.TP 
+\fBMADV_WILLNEED\fP
+期待在附近的 future 访问。 (因此，提前阅读一些页面可能是个好主意。)
+.TP 
+\fBMADV_DONTNEED\fP
+不要指望在附近的 future 访问。 (目前，应用程序在给定范围内完成，因此内核可以释放与其关联的资源。)
+.IP
+\fBMADV_DONTNEED\fP 操作成功后，指定区域的内存访问语义发生变化:
+后续对该范围内页面的访问将成功，但会导致根据底层映射文件的最新内容重新填充内存内容 (用于共享文件映射、共享匿名映射和基于 shmem 的技术，例如
+System V 共享内存段) 或用于匿名私有映射的按需零填充页面。
+.IP
+请注意，当应用于共享映射时，\fBMADV_DONTNEED\fP 可能不会导致 immediate 释放范围内的页面。
+内核可以自由地延迟释放页面，直到适当的时刻。 然而，调用进程的常驻集大小 (RSS) 将立即减少。
+.IP
+.\" http://lwn.net/Articles/162860/
+\fBMADV_DONTNEED\fP 不能应用于锁定页面或 \fBVM_PFNMAP\fP 页面。 (标有内核内部 \fBVM_PFNMAP\fP
+标志的页面是不受虚拟内存子系统管理的特殊内存区域。此类页面通常由将页面 map 到用户空间的设备驱动程序创建。)
+.IP
+.\"
+.\" ======================================================================
+.\"
+Linux v5.18 中添加了对巨大 TLB 页面的支持。 由大 TLB 页面支持的映射中的地址必须与底层大 TLB
+页面大小对齐，并且范围长度向上舍入为底层大 TLB 页面大小的倍数。
+.SS "Linux\-specific advice values"
+以下特定于 Linux 的 \fIadvice\fP 值在 POSIX 指定的 \fBposix_madvise\fP(3) 中没有对应值，并且在其他实现的
+\fBmadvise\fP() 接口中可能有也可能没有对应值。 请注意，其中一些操作会更改内存访问的语义。
+.TP 
+\fBMADV_REMOVE\fP (since Linux 2.6.16)
+.\" commit f6b3ec238d12c8cc6cc71490c6e3127988460349
+.\" Databases want to use this feature to drop a section of their
+.\" bufferpool (shared memory segments) - without writing back to
+.\" disk/swap space.  This feature is also useful for supporting
+.\" hot-plug memory on UML.
+释放给定范围的页面及其关联的后备存储。 这相当于在 backing store 的对应范围内打了一个 hole (见
+\fBfallocate\fP(2)).  指定地址范围内的后续访问将看到值为零的数据。
+.IP
+指定的地址范围必须是映射共享和可写的。 此标志不能应用于锁定页面或 \fBVM_PFNMAP\fP 页面。
+.IP
+.\" commit 3f31d07571eeea18a7d34db9af21d2285b807a17
+在最初的实现中，只有 \fBtmpfs\fP(5) 支持 \fBMADV_REMOVE\fP; 但是从 Linux 3.5 开始，任何支持
+\fBfallocate\fP(2) \fBFALLOC_FL_PUNCH_HOLE\fP 模式的文件系统也支持 \fBMADV_REMOVE\fP。 不支持
+\fBMADV_REMOVE\fP 的文件系统失败并出现错误 \fBEOPNOTSUPP\fP。
+.IP
+Linux v4.3 中添加了对 Huge TLB 文件系统的支持。
+.TP 
+\fBMADV_DONTFORK\fP (since Linux 2.6.16)
+.\" commit f822566165dd46ff5de9bf895cfa6c51f53bb0c4
+.\" See http://lwn.net/Articles/171941/
+.\" [PATCH] madvise MADV_DONTFORK/MADV_DOFORK
+.\" Currently, copy-on-write may change the physical address of
+.\" a page even if the user requested that the page is pinned in
+.\" memory (either by mlock or by get_user_pages).  This happens
+.\" if the process forks meanwhile, and the parent writes to that
+.\" page.  As a result, the page is orphaned: in case of
+.\" get_user_pages, the application will never see any data hardware
+.\" DMA's into this page after the COW.  In case of mlock'd memory,
+.\" the parent is not getting the realtime/security benefits of mlock.
+.\"
+.\" In particular, this affects the Infiniband modules which do DMA from
+.\" and into user pages all the time.
+.\"
+.\" This patch adds madvise options to control whether memory range is
+.\" inherited across fork. Useful e.g. for when hardware is doing DMA
+.\" from/into these pages.  Could also be useful to an application
+.\" wanting to speed up its forks by cutting large areas out of
+.\" consideration.
+.\"
+.\" SEE ALSO: http://lwn.net/Articles/171941/
+.\" "Tweaks to madvise() and posix_fadvise()", 14 Feb 2006
+不要让 \fBfork\fP(2) 之后的子节点可以访问此范围内的页面。 如果父级在 \fBfork\fP(2)
+之后写入页面，这对于防止写时复制语义更改页面的物理位置很有用。 (此类页面重定位会导致 DMA 进入页面的硬件出现问题。)
+.TP 
+\fBMADV_DOFORK\fP (since Linux 2.6.16)
+撤消 \fBMADV_DONTFORK\fP 的影响，恢复默认行为，从而在 \fBfork\fP(2) 上继承映射。
+.TP 
+\fBMADV_HWPOISON\fP (since Linux 2.6.32)
+.\" commit 9893e49d64a4874ea67849ee2cfbf3f3d6817573
+中毒 \fIaddr\fP 和 \fIlength\fP 指定范围内的页面，并像硬件内存损坏一样处理对这些页面的后续引用。 此操作仅适用于特权
+(\fBCAP_SYS_ADMIN\fP) 进程。 此操作可能导致调用进程收到 \fBSIGBUS\fP 并且页面被取消映射。
+.IP
+此特性用于测试内存错误处理代码; 它仅在内核配置为 \fBCONFIG_MEMORY_FAILURE\fP 时可用。
+.TP 
+\fBMADV_MERGEABLE\fP (since Linux 2.6.32)
+.\" commit f8af4da3b4c14e7267c4ffb952079af3912c51c5
+为 \fIaddr\fP 和 \fIlength\fP 指定范围内的页面启用 Kernel Samepage Merging (KSM)。
+内核定期扫描那些标记为可合并的用户内存区域，寻找具有相同内容的页面。 这些被一个单独的写保护页面所取代
+(如果进程稍后想要更新页面的内容，它会自动复制)。 KSM 仅合并 private 匿名页面 (参见 \fBmmap\fP(2)).
+.IP
+KSM 特性旨在用于生成相同数据的许多实例的应用程序 (例如，虚拟化系统，如 KVM)。 它会消耗大量的处理能力; 小心使用。 有关详细信息，请参见
+Linux 内核源文件 \fIDocumentation/admin\-guide/mm/ksm.rst\fP。
+.IP
+只有在内核配置了 \fBCONFIG_KSM\fP 时，\fBMADV_MERGEABLE\fP 和 \fBMADV_UNMERGEABLE\fP 操作才可用。
+.TP 
+\fBMADV_UNMERGEABLE\fP (since Linux 2.6.32)
+撤消先前 \fBMADV_MERGEABLE\fP 操作对指定地址范围的影响; KSM 取消合并它在 \fIaddr\fP 和 \fIlength\fP
+指定的地址范围内合并的任何页面。
+.TP 
+\fBMADV_SOFT_OFFLINE\fP (since Linux 2.6.33)
+.\" commit afcf938ee0aac4ef95b1a23bac704c6fbeb26de6
+\fIaddr\fP 和 \fIlength\fP 指定范围内的页面软下线。 指定范围内的每个页面的内存被保留
+(即下次访问时，相同的内容将是可见的，但在一个新的物理页面框架中)，而原页面被离线 (即不再使用，并取出正常的内存管理)。
+\fBMADV_SOFT_OFFLINE\fP 操作的效果对调用进程是不可见的 (即，不改变其语义)。
+.IP
+此特性用于测试内存错误处理代码; 它仅在内核配置为 \fBCONFIG_MEMORY_FAILURE\fP 时可用。
+.TP 
+\fBMADV_HUGEPAGE\fP (since Linux 2.6.38)
+.\" commit 0af4e98b6b095c74588af04872f83d333c958c32
+.\" http://lwn.net/Articles/358904/
+.\" https://lwn.net/Articles/423584/
+为 \fIaddr\fP 和 \fIlength\fP 指定范围内的页面启用透明大页面 (THP)。 内核会定期扫描标记为大页面候选的区域，以用大页面替换它们。
+当区域自然对齐大页面大小时，内核也会直接分配大页面 (参见 \fBposix_memalign\fP(2)).
+.IP
+此特性主要针对使用大型数据映射并一次访问该内存的大型区域的应用程序 (例如，QEMU 等虚拟化系统)。 它很容易浪费内存 (例如，只访问 1 个字节的
+2\MB 映射将导致 2\MB 的连线内存，而不是一个 4\KB 的页面)。 有关详细信息，请参见 Linux 内核源文件
+\fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.IP
+大多数常见内核配置默认提供 \fBMADV_HUGEPAGE\fP\-style 行为，因此通常不需要 \fBMADV_HUGEPAGE\fP。
+它主要用于嵌入式系统，其中 \fBMADV_HUGEPAGE\fP\-style 行为可能在内核中默认不启用。 在此类系统上，可以使用此标志来选择性地启用
+THP。 每当使用 \fBMADV_HUGEPAGE\fP
+时，它应该始终位于具有访问模式的内存区域中，开发人员事先知道在启用透明大页面时不会冒增加应用程序内存占用的风险。
+.IP
+.\" commit 99cb0dbd47a15d395bf3faa78dc122bc5efe3fc0
+从 Linux 5.4 开始，自动扫描符合条件的区域并用大页面替换适用于私有匿名页面 (请参见 \fBmmap\fP(2))、shmem 页面和文件支持页面。
+对于所有内存类型，内存只能由大页面对齐边界上的大页面替换。 对于文件映射内存 \[em]，包括 tmpfs (请参见
+\fBtmpfs\fP(2))\[em]，映射也必须在文件内自然地与大页面对齐。 此外，对于文件支持的非 tmpfs
+内存，文件不得为写入而打开，并且映射必须是可执行的。
+.IP
+VMA 不得标记为
+\fBVM_NOHUGEPAGE\fP、\fBVM_HUGETLB\fP、\fBVM_IO\fP、\fBVM_DONTEXPAND\fP、\fBVM_MIXEDMAP\fP 或
+\fBVM_PFNMAP\fP，也不能是栈内存或由支持 DAX 的设备支持 (除非 DAX 设备作为系统 RAM 热插拔)。 该进程也不能设置
+\fBPR_SET_THP_DISABLE\fP (请参见 \fBprctl\fP(2)).
+.IP
+\fBMADV_HUGEPAGE\fP、\fBMADV_NOHUGEPAGE\fP 和 \fBMADV_COLLAPSE\fP 操作仅在内核配置为
+\fBCONFIG_TRANSPARENT_HUGEPAGE\fP 时可用，而 file/shmem 内存仅在内核配置为
+\fBCONFIG_READ_ONLY_THP_FOR_FS\fP 时才受支持。
+.TP 
+\fBMADV_NOHUGEPAGE\fP (since Linux 2.6.38)
+确保 \fIaddr\fP 和 \fIlength\fP 指定的地址范围内的内存不会被透明大页面支持。
+.TP 
+\fBMADV_COLLAPSE\fP (since Linux 6.1)
+.\" commit 7d8faaf155454f8798ec56404faca29a82689c77
+.\" commit 34488399fa08faaf664743fa54b271eb6f9e1321
+对内存范围映射的原生页面执行最大努力同步折叠到透明大页面 (THPs) 中。 \fBMADV_COLLAPSE\fP
+对调用进程的当前内存状态进行操作，并且不会对页面在 future 中的映射、构造或故障方式进行持久更改或保证。
+.IP
+\fBMADV_COLLAPSE\fP 支持私有匿名页面 (参见 \fBmmap\fP(2))、shmem 页面和文件支持页面。 有关 THP
+内存要求的一般信息，请参见 \fBMADV_HUGEPAGE\fP。 如果提供的范围跨越多个 VMA，则每个 VMA 上的折叠语义独立于其他 VMA。
+如果折叠给定的巨大 page\-aligned/sized 区域失败，则该操作可能会继续尝试折叠指定内存的其余部分。 \fBMADV_COLLAPSE\fP
+将自动将提供的范围限制为大页对齐。
+.IP
+该范围涵盖的所有非驻留页面将首先是 swapped/faulted\-in，然后再复制到新分配的大页面上。 如果原生页面组成相同的 PTE
+映射大页面，并适当对齐，则可能会省略新大页面的分配，并可能就地发生崩溃。 未映射的页面将在新的大页面中将其数据直接初始化为 0。
+但是，对于要折叠的每个符合条件的 hugepage\-aligned/sized 区域，当前必须至少有一个页面由物理内存支持。
+.IP
+\fBMADV_COLLAPSE\fP 独立于任何 sysfs (请参见 \fI/sys/kernel/mm/transparent_hugepage\fP 下的
+\fBsysfs\fP(5)) 设置，无论是在确定 THP 资格还是分配语义方面。 有关详细信息，请参见 Linux 内核源文件
+\fIDocumentation/admin\-guide/mm/transhuge.rst\fP。 在对 tmpfs
+文件进行操作时，\fBMADV_COLLAPSE\fP 也会忽略 \fBhuge=\fP tmpfs 挂载。 新大页面的分配可能会进入直接回收或者压缩，而不管
+VMA 标志 (尽管 \fBVM_NOHUGEPAGE\fP 仍然受到尊重)。
+.IP
+当系统有多个 NUMA 节点时，hugepage 会从提供 native pages 最多的节点开始分配。
+.IP
+如果所提供范围覆盖的所有 hugepage\-sized/aligned 区域都已成功折叠，或者已经是 PMD 映射的 THP，则此操作将被视为成功。
+请注意，这并不能保证任何其他可能的内存映射。 如果多个 hugepage\-aligned/sized 区域无法折叠，则只会在 \fIerrno\fP
+中设置最近 \[zh] 失败的代码。
+.TP 
+\fBMADV_DONTDUMP\fP (since Linux 3.4)
+.\" commit 909af768e88867016f427264ae39d27a57b6a8ed
+.\" commit accb61fe7bb0f5c2a4102239e4981650f9048519
+从核心转储中排除 \fIaddr\fP 和 \fIlength\fP 指定范围内的那些页面。 这对于具有已知在核心转储中无用的大内存区域的应用程序很有用。
+\fBMADV_DONTDUMP\fP 的效果优先于通过 \fI/proc/[pid]/coredump_filter\fP 文件设置的位掩码 (参见
+\fBcore\fP(5)).
+.TP 
+\fBMADV_DODUMP\fP (since Linux 3.4)
+撤消早期 \fBMADV_DONTDUMP\fP 的效果。
+.TP 
+\fBMADV_FREE\fP (since Linux 4.5)
+应用程序不再需要 \fIaddr\fP 和 \fIlen\fP 指定范围内的页面。 内核因此可以释放这些页面，但释放可能会延迟到发生内存压力时。
+对于每一个被标记为释放但还没有被释放的页面，如果调用者写入该页面，释放操作将被取消。 \fBMADV_FREE\fP 操作成功后，内核释放页面时，任何陈旧数据
+(即脏的、未写入的页面) 都将丢失。 但是，后续对该范围内页面的写入将成功，然后内核无法释放那些脏页，因此调用者始终可以看到刚刚写入的数据。
+如果没有后续写入，内核可以随时释放页面。 一旦范围内的页面被释放，调用者将在后续页面引用上看到按需填零的页面。
+.IP
+.\" commit 93e06c7a645343d222c9a838834a51042eebbbf7
+\fBMADV_FREE\fP 操作只能应用于私有匿名页面 (参见 \fBmmap\fP(2)).  在 Linux 4.12
+之前，在无交换系统上释放页面时，无论内存压力如何，都会立即释放给定范围内的页面。
+.TP 
+\fBMADV_WIPEONFORK\fP (since Linux 4.14)
+.\" commit d2cd9ede6e193dd7d88b6d27399e96229a551b19
+在 \fBfork\fP(2) 之后向子进程提供此范围内的零填充内存。 这在分叉服务器时很有用，以确保敏感的每个进程数据 (例如，PRNG 种子、加密秘密等)
+不会传递给子进程。
+.IP
+\fBMADV_WIPEONFORK\fP 操作只能应用于私有匿名页面 (参见 \fBmmap\fP(2)).
+.IP
+在由 \fBfork\fP(2) 创建的子项中，\fBMADV_WIPEONFORK\fP 设置保留在指定地址范围内。 该设置在 \fBexecve\fP(2)
+期间被清除。
+.TP 
+\fBMADV_KEEPONFORK\fP (since Linux 4.14)
+.\" commit d2cd9ede6e193dd7d88b6d27399e96229a551b19
+撤消早期 \fBMADV_WIPEONFORK\fP 的效果。
+.TP 
+\fBMADV_COLD\fP (since Linux 5.4)
+.\" commit 9c276cc65a58faf98be8e56962745ec99ab87636
+停用给定范围的页面。 如果存在内存压力，这将使页面更有可能成为回收目标。 这是一种非破坏性操作。 当该建议不适用时，该范围内的某些页面可能会被忽略。
+.TP 
+\fBMADV_PAGEOUT\fP (since Linux 5.4)
+.\" commit 1a4e58cce84ee88129d5d49c064bd2852b481357
+回收给定范围的页面。 这样做是为了释放这些页面占用的内存。 如果页面是匿名的，它将被换出。 如果一个页面是文件备份的并且是脏的，它将被写回后备存储。
+当该建议不适用时，该范围内的某些页面可能会被忽略。
+.TP 
+\fBMADV_POPULATE_READ\fP (since Linux 5.14)
+` 填充 (prefault) 页表可读，在该范围内的所有页中出错，就像从每个页手动读取一样; 但是，避免在处理故障后执行的实际内存访问。
+.IP
+与 \fBMAP_POPULATE\fP 相比，\fBMADV_POPULATE_READ\fP 不隐藏错误，可以应用于 (部分) 现有映射，并且始终填充可读的
+(prefault) 页表。 一个示例用例是预置文件映射，从磁盘读取所有文件内容; 但是，页面不会变脏，因此在从内存中逐出页面时不必将其写回磁盘。
+.IP
+根据底层映射，map 共享 zeropage，预分配内存或读取底层文件; 有漏洞的文件可能会也可能不会预分配块。 如果填充失败，则不会生成
+\fBSIGBUS\fP 信号; 相反，返回一个错误。
+.IP
+如果 \fBMADV_POPULATE_READ\fP 成功，则所有页表都已填充 (prefaulted) 一次可读。 如果
+\fBMADV_POPULATE_READ\fP 失败，则可能已填充某些页表。
+.IP
+\fBMADV_POPULATE_READ\fP 不能应用于没有读取权限的映射和特殊映射，例如，标有内核内部标志 (如 \fBVM_PFNMAP\fP 或
+\fBVM_IO\fP) 的映射，或使用 \fBmemfd_secret(2)\fP 创建的秘密内存区域。
+.IP
+请注意，使用 \fBMADV_POPULATE_READ\fP，当系统内存不足时，可以随时终止进程。
+.TP 
+\fBMADV_POPULATE_WRITE\fP (since Linux 5.14)
+填充 (prefault) 页表可写，在范围内的所有页面中出错，就像手动写入每个页面一样; 但是，避免在处理故障后执行的实际内存访问。
+.IP
+与 \fBMAP_POPULATE\fP 相比，MADV_POPULATE_WRITE 不隐藏错误，可以应用于 (部分) 现有映射，并且始终填充可写的
+(prefault) 页表。 一个示例用例是预分配内存，打破任何 CoW (写时复制)。
+.IP
+根据底层映射，预分配内存或读取底层文件; 有漏洞的文件将预分配块。 如果填充失败，则不会生成 \fBSIGBUS\fP 信号; 相反，返回一个错误。
+.IP
+如果 \fBMADV_POPULATE_WRITE\fP 成功，则所有页表都已填充 (prefaulted) 可写一次。 如果
+\fBMADV_POPULATE_WRITE\fP 失败，则可能已填充某些页表。
+.IP
+\fBMADV_POPULATE_WRITE\fP 不能应用于没有写权限的映射和特殊映射，例如，标有内核内部标志 (如 \fBVM_PFNMAP\fP 或
+\fBVM_IO\fP) 的映射，或使用 \fBmemfd_secret(2)\fP 创建的秘密内存区域。
+.IP
+请注意，使用 \fBMADV_POPULATE_WRITE\fP，当系统内存不足时，可以随时终止进程。
+.SH "RETURN VALUE"
+成功时，\fBmadvise\fP() 返回零。 出错时，它返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fIadvice\fP 是 \fBMADV_REMOVE\fP，但指定的地址范围不是共享的可写映射。
+.TP 
+\fBEAGAIN\fP
+内核资源暂时不可用。
+.TP 
+\fBEBADF\fP
+map 存在，但区域 maps 不是文件。
+.TP 
+\fBEBUSY\fP
+(对于 \fBMADV_COLLAPSE\fP) 无法向 cgroup 收取大页面: 超出 cgroup 限制。
+.TP 
+\fBEFAULT\fP
+\fIadvice\fP 是 \fBMADV_POPULATE_READ\fP 或 \fBMADV_POPULATE_WRITE\fP，并且填充
+(prefaulting) 页表失败，因为在实际内存访问时会生成 \fBSIGBUS\fP，原因不是 HW 中毒页面 (例如，可以使用
+\fBMADV_HWPOISON\fP 标志创建 HW 中毒页面这一页)。
+.TP 
+\fBEINVAL\fP
+.\" .I length
+.\" is zero,
+\fIaddr\fP 未页面对齐或 \fIlength\fP 为 negative。
+.TP 
+\fBEINVAL\fP
+\fIadvice\fP 无效。
+.TP 
+\fBEINVAL\fP
+\fIadvice\fP 是 \fBMADV_COLD\fP 或 \fBMADV_PAGEOUT\fP，指定的地址范围包括锁定的、Huge TLB 页面或
+\fBVM_PFNMAP\fP 页面。
+.TP 
+\fBEINVAL\fP
+\fIadvice\fP 是 \fBMADV_DONTNEED\fP 或 \fBMADV_REMOVE\fP，指定的地址范围包括锁定的、Huge TLB 页面或
+\fBVM_PFNMAP\fP 页面。
+.TP 
+\fBEINVAL\fP
+\fIadvice\fP 是 \fBMADV_MERGEABLE\fP 或 \fBMADV_UNMERGEABLE\fP，但内核没有配置 \fBCONFIG_KSM\fP。
+.TP 
+\fBEINVAL\fP
+\fIadvice\fP 是 \fBMADV_FREE\fP 或 \fBMADV_WIPEONFORK\fP，但指定的地址范围包括文件、Huge
+TLB、\fBMAP_SHARED\fP 或 \fBVM_PFNMAP\fP 范围。
+.TP 
+\fBEINVAL\fP
+\fIadvice\fP 是 \fBMADV_POPULATE_READ\fP 或
+\fBMADV_POPULATE_WRITE\fP，但指定的地址范围包括权限不足或特殊映射的范围，例如，用内核内部标志标记的映射，如 \fBVM_IO\fP 或
+\fBVM_PFNMAP\fP，或使用 \fBmemfd_secret(2)\fP 创建的秘密内存区域。
+.TP 
+\fBEIO\fP
+(对于此区域中的 \fBMADV_WILLNEED\fP) 分页将超过进程的最大驻留集大小。
+.TP 
+\fBENOMEM\fP
+(对于 \fBMADV_WILLNEED\fP) 内存不足: 调入失败。
+.TP 
+\fBENOMEM\fP
+(对于 \fBMADV_COLLAPSE\fP) 内存不足: 无法分配大页面。
+.TP 
+\fBENOMEM\fP
+指定范围内的地址当前未映射，或者在进程的地址空间之外。
+.TP 
+\fBENOMEM\fP
+\fIadvice\fP 是 \fBMADV_POPULATE_READ\fP 或 \fBMADV_POPULATE_WRITE\fP，填充 (prefaulting)
+页表失败，因为没有足够的内存。
+.TP 
+\fBEPERM\fP
+\fIadvice\fP 是 \fBMADV_HWPOISON\fP，但调用者没有 \fBCAP_SYS_ADMIN\fP 能力。
+.TP 
+\fBEHWPOISON\fP
+\fIadvice\fP 是 \fBMADV_POPULATE_READ\fP 或 \fBMADV_POPULATE_WRITE\fP，填充 (prefaulting)
+页表失败，因为遇到了 HW 中毒页面 (例如，HW 中毒页面可以使用本页其他地方描述的 \fBMADV_HWPOISON\fP 标志创建)。
+.SH VERSIONS
+.\" commit d3ac21cacc24790eb45d735769f35753f5b56ceb
+从 Linux 3.18 开始，对这个系统调用的支持是可选的，取决于 \fBCONFIG_ADVISE_SYSCALLS\fP 配置选项的设置。
+.SH STANDARDS
+\fBmadvise\fP() 没有被任何标准指定。 该系统调用的版本实现了多种 \fIadvice\fP 值，存在于许多其他实现中。 其他实现通常至少实现上面在
+\fIConventional advice flags\fP 下列出的标志，尽管在语义上有一些变化。
+.PP
+POSIX.1\-2001 用常量
+\fBPOSIX_MADV_NORMAL\fP、\fBPOSIX_MADV_RANDOM\fP、\fBPOSIX_MADV_SEQUENTIAL\fP、\fBPOSIX_MADV_WILLNEED\fP
+和 \fBPOSIX_MADV_DONTNEED\fP 等描述 \fBposix_madvise\fP(3)，其行为接近上面列出的类似命名的标志。
+.SH NOTES
+.SS "Linux notes"
+Linux 实现要求地址 \fIaddr\fP 是页对齐的，并允许 \fIlength\fP 为零。 如果指定地址范围的某些部分未映射，\fBmadvise\fP() 的
+Linux 版本将忽略它们并将调用应用于其余部分 (但从系统调用返回 \fBENOMEM\fP，因为它应该)。
+.PP
+.\" .SH HISTORY
+.\" The
+.\" .BR madvise ()
+.\" function first appeared in 4.4BSD.
+\fImadvise(0,\ 0,\ advice)\fP 将返回零当且仅当 \fIadvice\fP 受内核支持并且可以依靠它来探测支持。
+.SH "SEE ALSO"
+\fBgetrlimit\fP(2), \fBmemfd_secret\fP(2), \fBmincore\fP(2), \fBmmap\fP(2),
+\fBmprotect\fP(2), \fBmsync\fP(2), \fBmunmap\fP(2), \fBprctl\fP(2),
+\fBprocess_madvise\fP(2), \fBposix_madvise\fP(3), \fBcore\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

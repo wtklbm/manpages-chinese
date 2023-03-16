@@ -1,0 +1,117 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2002 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigwaitinfo 2 2022\-12\-03 "Linux man\-pages 6.03" 
+.SH NAME
+sigwaitinfo, sigtimedwait, rt_sigtimedwait \- 同步等待排队信号
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint sigwaitinfo(const sigset_t *restrict \fP\fIset\fP\fB,\fP
+\fB                siginfo_t *_Nullable restrict \fP\fIinfo\fP\fB);\fP
+\fBint sigtimedwait(const sigset_t *restrict \fP\fIset\fP\fB,\fP
+\fB                siginfo_t *_Nullable restrict \fP\fIinfo\fP\fB,\fP
+\fB                const struct timespec *restrict \fP\fItimeout\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigwaitinfo\fP(), \fBsigtimedwait\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+\fBsigwaitinfo\fP() 暂停调用线程的执行，直到 \fIset\fP 中的信号之一挂起 (如果 \fIset\fP
+中的信号之一已经为调用线程挂起，\fBsigwaitinfo\fP() 将立即返回。)
+.PP
+\fBsigwaitinfo\fP() 从待处理信号集中移除信号并返回信号编号作为它的函数结果。 如果 \fIinfo\fP 参数不为
+NULL，则它指向的缓冲区用于返回类型为 \fIsiginfo_t\fP 的结构体 (参见 \fBsigaction\fP(2))，其中包含有关信号的信息。
+.PP
+如果 \fIset\fP 中有多个信号等待调用者，则 \fBsigwaitinfo\fP() 检索的信号根据通常的排序规则确定; 有关详细信息，请参见
+\fBsignal\fP(7)。
+.PP
+\fBsigtimedwait\fP() 的操作方式与 \fBsigwaitinfo\fP() 完全相同，只是它多了一个参数
+\fItimeout\fP，它指定线程暂停等待信号的时间间隔。 (这个时间间隔会向上取整到系统时钟粒度，内核调度延迟意味着这个时间间隔可能会稍微超出。)
+这个参数是一个 \fBtimespec\fP(3) 结构体。
+.PP
+如果此结构体的两个字段都指定为 0，则执行轮询: \fBsigtimedwait\fP() 立即返回，或者返回有关调用者未决信号的信息，或者如果 \fIset\fP
+中没有未决信号则返回错误。
+.SH "RETURN VALUE"
+成功时，\fBsigwaitinfo\fP() 和 \fBsigtimedwait\fP() 都会返回一个信号编号 (即大于零的值)。 失败时，两个调用都返回
+\-1，\fIerrno\fP 设置为指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+在指定给 \fBsigtimedwait\fP() 的 \fItimeout\fP 周期内，\fIset\fP 中没有信号变为挂起。
+.TP 
+\fBEINTR\fP
+等待被信号处理程序中断; 请参见 \fBsignal\fP(7)。 (此处理程序用于 \fIset\fP.) 中的信号以外的信号
+.TP 
+\fBEINVAL\fP
+\fItimeout\fP 无效。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在正常使用中，调用程序通过对 \fBsigprocmask\fP(2) 的先前调用来阻止 \fIset\fP 中的信号 (因此，如果这些信号在对
+\fBsigwaitinfo\fP() 或 \fBsigtimedwait\fP())
+的连续调用之间变为未决状态，则不会发生对这些信号的默认处理，并且不会为这些信号建立处理程序。
+在多线程程序中，信号应该在所有线程中被阻塞，以防止信号在调用 \fBsigwaitinfo\fP() 或 \fBsigtimedwait\fP())
+的线程以外的线程中根据其默认配置进行处理。
+.PP
+给定线程挂起的信号集是专门为该线程挂起的信号集和整个进程挂起的信号集的 union (参见 \fBsignal\fP(7)).
+.PP
+等待 \fBSIGKILL\fP 和 \fBSIGSTOP\fP 的尝试被静默忽略。
+.PP
+如果一个进程的多个线程在等待 \fBsigwaitinfo\fP() 或 \fBsigtimedwait\fP() 中的同一个 signal(s)
+时被阻塞，那么只有一个线程将实际接收到信号，如果它对整个进程来说是挂起的; 哪个线程接收到信号是不确定的。
+.PP
+\fBsigwaitinfo\fP() 或 \fBsigtimedwait\fP() 不能用于接收同步生成的信号，例如访问无效内存地址产生的 \fBSIGSEGV\fP
+信号或算术错误产生的 \fBSIGFPE\fP 信号。 此类信号只能通过信号处理程序捕获。
+.PP
+.\"
+POSIX 未指定 \fBsigtimedwait\fP() 的 \fItimeout\fP 参数的 NULL 值的含义，允许这与对
+\fBsigwaitinfo\fP() 的调用具有相同含义的可能性，实际上这就是在 Linux 上所做的。
+.SS "C library/kernel differences"
+在 Linux 上，\fBsigwaitinfo\fP() 是在 \fBsigtimedwait\fP() 之上实现的库函数。
+.PP
+\fBsigwaitinfo\fP() 和 \fBsigtimedwait\fP() 的 glibc 包装器函数默默地忽略等待 NPTL
+线程实现内部使用的两个实时信号的尝试。 有关详细信息，请参见 \fBnptl\fP(7)。
+.PP
+.\"
+原来的 Linux 系统调用被命名为 \fBsigtimedwait\fP()。 但是，随着 Linux 2.2 中实时信号的添加，该系统调用支持的固定大小的
+32 位 \fIsigset_t\fP 类型不再适用。 因此，增加了一个新的系统调用，\fBrt_sigtimedwait\fP()，以支持扩大的
+\fIsigset_t\fP 类型。 新系统调用采用第四个参数 \fIsize_t sigsetsize\fP，它指定了 \fIset\fP 中设置的信号的字节大小。
+此参数当前要求具有值 \fIsizeof(sigset_t)\fP (或错误 \fBEINVAL\fP 结果)。 glibc \fBsigtimedwait\fP()
+包装器函数向我们隐藏了这些细节，在内核提供 \fBrt_sigtimedwait\fP() 时透明地调用它。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2), \fBsignalfd\fP(2), \fBsigpending\fP(2),
+\fBsigprocmask\fP(2), \fBsigqueue\fP(3), \fBsigsetops\fP(3), \fBsigwait\fP(3),
+\fBtimespec\fP(3), \fBsignal\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

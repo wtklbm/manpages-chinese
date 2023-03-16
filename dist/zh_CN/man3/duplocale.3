@@ -1,0 +1,143 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH duplocale 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+duplocale \- 复制一个语言环境对象
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <locale.h>\fP
+.PP
+\fBlocale_t duplocale(locale_t \fP\fIlocobj\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBduplocale\fP():
+.nf
+    由于 glibc 2.10:
+        _XOPEN_SOURCE >= 700
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBduplocale\fP() 函数创建 \fIlocobj\fP 引用的语言环境对象的副本。
+.PP
+如果 \fIlocobj\fP 是 \fBLC_GLOBAL_LOCALE\fP，则 \fBduplocale\fP() 创建一个区域设置对象，其中包含由
+\fBsetlocale\fP(3) 确定的全局区域设置的副本。
+.SH "RETURN VALUE"
+成功时，\fBduplocale\fP() 返回新语言环境对象的句柄。 出错时，它返回 \fI(locale_t)\ 0\fP，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建重复的语言环境对象。
+.SH VERSIONS
+在 glibc 2.3 中添加了 \fBduplocale\fP() 函数。
+.SH STANDARDS
+POSIX.1\-2008.
+.SH NOTES
+复制语言环境可用于以下目的:
+.IP \[bu] 3
+创建要修改其中多个类别之一的语言环境对象的副本 (使用 \fBnewlocale\fP(3)).
+.IP \[bu]
+获取当前语言环境的句柄，可以在其他使用语言环境句柄的函数中使用，例如 \fBtoupper_l\fP(3)。 这是通过将 \fBduplocale\fP()
+应用于以下调用返回的值来完成的:
+.IP
+.in +4n
+.EX
+loc = uselocale((locale_t) 0);
+.EE
+.in
+.IP
+这个技巧是必要的，因为上面的 \fBuselocale\fP(3) 调用可能会返回值 \fBLC_GLOBAL_LOCALE\fP，如果传递给
+\fBtoupper_l\fP(3) 这样的函数会导致未定义的行为。 调用 \fBduplocale\fP() 可用于确保将 \fBLC_GLOBAL_LOCALE\fP
+值转换为可用的语言环境对象。 请参见下面的示例。
+.PP
+\fBduplocale\fP() 创建的每个语言环境对象都应使用 \fBfreelocale\fP(3) 释放。
+.SH EXAMPLES
+下面的程序使用 \fBuselocale\fP(3) 和 \fBduplocale\fP() 获取当前语言环境的句柄，然后将其传递给
+\fBtoupper_l\fP(3)。 该程序采用一个命令行参数，一串字符转换为大写并显示在标准输出上。 其使用示例如下:
+.PP
+.in +4n
+.EX
+$ \fB./a.out abc\fP
+ABC
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (duplocale.c)
+\&
+.EX
+#define _XOPEN_SOURCE 700
+#include <ctype.h>
+#include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    locale_t loc, nloc;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s string\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* This sequence is necessary, because uselocale() might return
+       the value LC_GLOBAL_LOCALE, which can\[aq]t be passed as an
+       argument to toupper_l(). */
+
+    loc = uselocale((locale_t) 0);
+    if (loc == (locale_t) 0)
+        errExit("uselocale");
+
+    nloc = duplocale(loc);
+    if (nloc == (locale_t) 0)
+        errExit("duplocale");
+
+    for (char *p = argv[1]; *p; p++)
+        putchar(toupper_l(*p, nloc));
+
+    printf("\en");
+
+    freelocale(nloc);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfreelocale\fP(3), \fBnewlocale\fP(3), \fBsetlocale\fP(3), \fBuselocale\fP(3),
+\fBlocale\fP(5), \fBlocale\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

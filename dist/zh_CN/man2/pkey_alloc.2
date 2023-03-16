@@ -1,0 +1,83 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2016 Intel Corporation
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pkey_alloc 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+pkey_alloc、pkey_free \- 分配或释放保护密钥
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <sys/mman.h>\fP
+.PP
+\fBint pkey_alloc(unsigned int \fP\fIflags\fP\fB, unsigned int \fP\fIaccess_rights\fP\fB);\fP
+\fBint pkey_free(int \fP\fIpkey\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpkey_alloc\fP() 分配一个保护密钥 (pkey) 并允许它传递给 \fBpkey_mprotect\fP(2)。
+.PP
+\fBpkey_alloc\fP() \fIflags\fP 保留供 future 使用，目前必须始终指定为 0.
+.PP
+\fBpkey_alloc\fP() \fIaccess_rights\fP 参数可能包含零个或多个禁用操作:
+.TP 
+\fBPKEY_DISABLE_ACCESS\fP
+禁用对返回的保护密钥所涵盖的内存的所有数据访问。
+.TP 
+\fBPKEY_DISABLE_WRITE\fP
+禁用对返回的保护密钥所涵盖的内存的写访问。
+.PP
+\fBpkey_free\fP() 释放保护密钥并使其可用于以后的分配。 释放保护密钥后，它可能不再用于任何与保护密钥相关的操作。
+.PP
+应用程序不应在任何已由 \fBpkey_mprotect\fP(2) 分配到地址范围且仍在使用的保护密钥上调用 \fBpkey_free\fP()。
+这种情况下的行为是未定义的，可能会导致错误。
+.SH "RETURN VALUE"
+成功时，\fBpkey_alloc\fP() 返回一个正的保护密钥值。 成功时，\fBpkey_free\fP() 返回零。 出错时返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIpkey\fP、\fIflags\fP 或 \fIaccess_rights\fP 无效。
+.TP 
+\fBENOSPC\fP
+(\fBpkey_alloc\fP()) 当前进程可用的所有保护密钥都已分配。
+可用密钥的数量是特定于体系结构和特定于实现的，并且可以通过内核内部使用某些密钥来减少。 x86 上目前有 15 个键可供用户程序使用。
+.IP
+如果处理器或操作系统不支持保护密钥，也会返回此错误。 应用程序应始终准备好处理此错误，因为应用程序无法控制的因素会减少可用 pkey 的数量。
+.SH VERSIONS
+Linux 4.9 中增加了 \fBpkey_alloc\fP() 和 \fBpkey_free\fP(); glibc 2.27 中添加了库支持。
+.SH STANDARDS
+\fBpkey_alloc\fP() 和 \fBpkey_free\fP() 系统调用是特定于 Linux 的。
+.SH NOTES
+无论操作系统是否支持保护密钥，\fBpkey_alloc\fP() 始终可以安全调用。 它可以代替任何其他机制来检测 pkey 支持，如果操作系统不支持
+pkey，它将简单地失败并返回错误 \fBENOSPC\fP。
+.PP
+内核保证硬件权限寄存器 (PKRU) 的内容只会为分配的保护密钥保留。 任何时候一个键未分配 (无论是在第一次调用从 \fBpkey_alloc\fP()
+返回该键之前，还是在它通过 \fBpkey_free\fP()) 释放之后，内核都可能对权限寄存器的部分进行任意更改，从而影响对该键的访问。
+.SH EXAMPLES
+请参见 \fBpkeys\fP(7)。
+.SH "SEE ALSO"
+\fBpkey_mprotect\fP(2), \fBpkeys\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,1007 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD 1 "" "systemd 253" systemd
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd, init\-systemd 系统和服务管理器
+.SH SYNOPSIS
+.HP \w'\fB/usr/lib/systemd/systemd\fR\ 'u
+\fB/usr/lib/systemd/systemd\fP [OPTIONS...]
+.HP \w'\fBinit\fR\ 'u
+\fBinit\fP [OPTIONS...] {COMMAND}
+.SH DESCRIPTION
+.PP
+systemd 是 Linux 操作系统的系统和服务管理器 \&。当作为启动时的第一个进程运行时 (作为 PID 1)，它充当启动和维护用户空间服务
+\& 的初始化系统。为登录用户启动单独的实例以启动他们的服务 \&。
+.PP
+\fBsystemd\fP 通常不被用户直接调用，而是作为 /sbin/init 符号链接安装并在早期启动时启动 \&。用户管理器实例通过
+\fBuser@.service\fP(5) 服务自动启动 \&。
+.PP
+为了与 SysV 兼容，如果二进制文件被称为 \fBinit\fP 并且不是机器上的第一个进程 (PID 不是 1)，它将执行 \fBtelinit\fP
+并通过所有命令行参数未修改 \&。这意味着当从正常登录会话调用时，\fBinit\fP 和 \fBtelinit\fP 大部分是等价的 \&。有关详细信息，请参见
+\fBtelinit\fP(8)\&。
+.PP
+当作为系统实例运行时，systemd 解释配置文件 system\&.conf 和 system\&.conf\&.d 目录中的文件;
+当作为用户实例运行时，systemd 解释配置文件 user\&.conf 和 user\&.conf\&.d 目录中的文件 \&。有关详细信息，请参见
+\fBsystemd\-system.conf\fP(5)\&。
+.SH CONCEPTS
+.PP
+systemd 提供了一个称为 "units" 的 11 种不同类型的各种实体之间的依赖系统 \&。Units
+封装了与系统启动和维护相关的各种对象。大多数单元在元配置文件中配置，其语法和基本选项集在 \fBsystemd.unit\fP(5)
+中进行了描述，但是有些单元是从其他配置文件自动创建的，从系统状态动态创建或在运行时以编程方式创建 \&。单位可能是 "active"
+(表示启动、绑定、插入、\&...，取决于元类型，见下文) 或 "inactive"
+(表示停止、未绑定、拔出、\&...)，以及在激活或停用的过程，i\&.e\&。在两个状态之间 (这些状态称为
+"activating"、"deactivating") \&。一个特殊的 "failed" 状态也可用，它与 "inactive"
+非常相似，当服务以某种方式失败时进入 (进程在退出时返回错误代码，或崩溃，操作超时，或在太多重启之后) \&。如果进入此状态，将记录原因，以备后用
+\&。请注意，各种元类型可能有许多额外的子状态，这些子状态映射到此处描述的五种广义元状态 \&。
+.PP
+可以使用以下元类型:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+服务单元，启动和控制守护进程及其组成的进程。详见 \fBsystemd.service\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+套接字单元，封装了系统中的本地 IPC 或网络套接字，对基于套接字的激活很有用。套接字单元详见
+\fBsystemd.socket\fP(5)，基于套接字的激活和其他形式的激活详见 \fBdaemon\fP(7)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+目标单元可用于对单元进行分组，或在启动期间提供众所周知的同步点，请参见 \fBsystemd.target\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+设备单元在 systemd 中公开内核设备，可用于实现基于设备的激活 \&。详见 \fBsystemd.device\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+挂载单元控制文件系统中的挂载点，详情参见 \fBsystemd.mount\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+自动挂载单元提供自动挂载功能，用于按需挂载文件系统以及并行启动 \&。请参见 \fBsystemd.automount\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+计时器单元可用于根据计时器触发其他单元的激活。您可以在 \fBsystemd.timer\fP(5)\& 中找到详细信息。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 8.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  8." 4.2
+.\}
+交换单元与挂载单元非常相似，封装了操作系统的内存交换分区或文件。它们在 \fBsystemd.swap\fP(5)\& 中描述。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 9.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  9." 4.2
+.\}
+当文件系统对象发生变化或被修改时，路径单元可用于激活其他服务。请参见 \fBsystemd.path\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'10.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "10." 4.2
+.\}
+切片单元可用于将管理系统进程的单元 (例如服务和工作域单元) 分组到分层树中以用于资源管理目的 \&。请参见
+\fBsystemd.slice\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'11.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "11." 4.2
+.\}
+使用域单元类似于服务单元，但管理外部进程而不是启动它们 \&。请参见 \fBsystemd.scope\fP(5)\&。
+.RE
+.PP
+单元被命名为它们的配置文件 \&。有些单位有特殊的语义 \&。\fBsystemd.special\fP(7)\& 中提供了详细列表。
+.PP
+systemd 知道各种依赖关系，包括正和 negative 需求依赖关系 (i\&.e\&。\fIRequires=\fP 和 \fIConflicts=\fP)
+以及排序依赖关系 (\fIAfter=\fP 和 \fIBefore=\fP)\&。注意: 排序和需求依赖关系是正交的 \&。如果两个单元之间只存在需求依赖
+(e\&.g\&.foo\&.service 需要 bar\&.service)，但没有顺序依赖 (e\&.g\&.bar\&.service 之后的
+foo\&.service) 并且都要求启动，它们将是开始于并行 \&。需求和排序依赖性都放置在两个单元之间是一种常见的模式。另请注意，大多数依赖项是由
+systemd\& 隐式创建和维护的。在大多数情况下，应该没有必要手动声明额外的依赖项，但是这样做是可能的 \&。
+.PP
+应用程序和单元 (通过依赖项) 可以请求单元的状态更改。在 systemd 中，这些请求被封装为 \*(Aqjobs\*(Aq 并维护在作业队列中
+\&。作业可能成功也可能失败，它们的执行是根据它们被安排的单元的顺序依赖性来排序的。
+.PP
+在启动时，systemd 激活目标单元 default\&.target，其工作是通过依赖项 \&
+拉入启动服务和其他启动单元来激活它们。通常，元名称只是 graphical\&.target (用于 UI 的全特性引导) 或
+multi\-user\&.target (用于嵌入式或服务器环境或类似环境的有限控制台引导; graphical\&.target 的子集) 的别名
+(symlink)\&. 但是，管理员可以自行决定将其配置为任何其他目标元 \& 的别名。有关这些目标单位的详细信息，请参见
+\fBsystemd.special\fP(7)。
+.PP
+首次启动时，\fBsystemd\fP 将根据预设策略启用或禁用单元。请参见 \fBmachine\-id\fP(5)\& 中的
+\fBsystemd.preset\fP(5) 和 "First Boot Semantics"。
+.PP
+systemd 只保留最小的单元集加载到内存中 \&。具体来说，唯一保持加载到内存中的单元是那些至少满足以下条件之一的单元:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+它处于激活、激活、去激活或失败状态 (i\&.e\&. 除 "inactive" 外的任何元状态)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+它有一个等待它的工作
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+它是至少一个加载到内存中的其他单元的依赖
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+它仍然分配了某种形式的资源 (例如 \&.g\&。一个服务元是不活动的，但一个进程仍然挥之不去，忽略了要终止的请求)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+它已被 D\-Bus 调用以编程方式固定到内存中
+.RE
+.PP
+systemd 将自动隐式地从磁盘加载单元 \(em 如果它们还没有加载 \(em 只要请求它们的操作
+\&。因此，在很多方面，一个元是否被加载的事实对于客户是不可见的。使用 \fBsystemctl list\-units \-\-all\fP
+全面列出当前加载的所有单元 \&。任何不符合上述条件的单元立即卸载 \&。请注意，当元从内存中卸载时，它的记帐数据也会被清除
+\&。但是，此数据通常不会丢失，因为每当元关闭 \& 时都会生成日志记录，声明消耗的资源。
+.PP
+进程 systemd spawn 被放置在单独的 Linux 控制组中，这些控制组以它们在私有 systemd
+层次结构中所属的元命名。(有关控制组的更多信息，请参见 \m[blue]\fBControl Groups v2\fP\m[]\&\s-2\u[1]\d\s+2，或简称 "cgroups") \&。systemd 使用它来有效地跟踪进程
+\&。控制组信息在内核中维护，可通过文件系统层次结构 (在 /sys/fs/cgroup/ 下) 或在 \fBsystemd\-cgls\fP(1) 或
+\fBps\fP(1) 等工具中访问 (\fBps xawf \-eo pid,user,cgroup,args\fP 对于列出所有进程及其所属的 systemd
+单元特别有用 \&。) \&.
+.PP
+systemd 在很大程度上与 SysV init 系统兼容: 支持 SysV init 脚本，并将其作为替代 (尽管有限) 配置文件格式读取。提供
+SysV /dev/initctl 接口，兼容各种 SysV 客户端工具的实现 \&。除此之外，还支持各种已建立的 Unix 功能，例如
+/etc/fstab 或 utmp 数据库。
+.PP
+systemd 有一个最小的事务系统: 如果一个元被请求启动或关闭，它将把它和它的所有依赖项添加到一个临时事务 \&。然后，它会验证交易是否一致
+(i\&.e\&. 所有单元的排序是否无循环) \&。如果不是，systemd 将尝试修复它，并从可能会删除循环的事务中删除非必要的作业
+\&。此外，systemd 会尝试抑制事务中的非必要作业，这些作业会停止正在运行的服务
+\&。最后，检查事务的作业是否与已经排队的作业相矛盾，然后可选地中止事务
+\&。如果一切顺利并且事务是一致的并且影响最小，它将与所有已经完成的作业合并并添加到运行队列 \&。实际上，这意味着在执行请求的操作之前，systemd
+将验证它是否有意义，并在可能的情况下修复它，并且只有在它确实无法工作时才会失败 \&。
+.PP
+请注意，事务是独立于单元 \*(Aqs 在运行时状态生成的，因此，例如，如果在已经启动的单元上请求启动作业，它仍将生成事务并唤醒任何不活动的依赖项
+(并导致传播根据定义的关系的其他工作) \&。这是因为入队作业在执行时与目标元 \*(Aqs state and marked successful
+and complete 当两者都满足
+\&. 但是，由于已定义的关系，此作业还会引入其他依赖项，因此在我们的示例中，会导致任何那些不活动的单元也开始排队 \&。
+.PP
+systemd 包含需要作为引导过程的一部分执行的各种任务的原生实现。例如，它设置主机名或配置回环网络设备 \&。它还设置并安装各种 API
+文件系统，例如 /sys / 或 /proc/\&。
+.PP
+有关 systemd 背后的概念和思想的更多信息，请参见 \m[blue]\fBOriginal Design Document\fP\m[]\&\s-2\u[2]\d\s+2\&。
+.PP
+请注意，systemd 提供的一些但并非所有接口都包含在 \m[blue]\fBInterface Portability and Stability Promise\fP\m[]\&\s-2\u[3]\d\s+2\& 中。
+.PP
+单元可以在引导和系统管理器重新加载时动态生成，例如基于内核命令行上传递的其他配置文件或参数 \&。详见
+\fBsystemd.generator\fP(7)\&。
+.PP
+\fBsystemd\fP 的 D\-Bus API 在 \fBorg.freedesktop.systemd1\fP(5) 和
+\fBorg.freedesktop.LogControl1\fP(5)\& 中有描述。
+.PP
+在容器或 initrd 环境中调用 systemd 的系统应分别实现 \m[blue]\fBContainer Interface\fP\m[]\&\s-2\u[4]\d\s+2 或 \m[blue]\fBinitrd Interface\fP\m[]\&\s-2\u[5]\d\s+2 规范 \&。
+.SH DIRECTORIES
+.PP
+系统元目录
+.RS 4
+systemd 系统管理器从各个目录读取元配置 \&。需要安装元文件的包将它们放在 \fBpkg\-config systemd \-\-variable=systemdsystemunitdir\fP\& 返回的目录中。检查的其他目录是
+/usr/local/lib/systemd/system 和 /usr/system\&。用户配置始终优先 \&。 \fBpkg\-config systemd \-\-variable=systemdsystemconfdir\fP 返回系统配置目录的路径 \&。包应该仅使用
+\fBsystemctl\fP(1) 工具的 \fBenable\fP 和 \fBdisable\fP 命令更改这些目录的内容
+\&。\fBsystemd.unit\fP(5)\& 中提供了完整的目录列表。
+.RE
+.PP
+用户元目录
+.RS 4
+类似的规则适用于用户元目录 \&。但是，这里跟随 \m[blue]\fBXDG Base Directory specification\fP\m[]\&\s-2\u[6]\d\s+2 来查找单位 \&。应用程序应将其元文件放在 \fBpkg\-config systemd \-\-variable=systemduserunitdir\fP\& 返回的目录中。全局配置在 \fBpkg\-config systemd \-\-variable=systemduserconfdir\fP\& 上报的目录下完成。\fBsystemctl\fP(1) 工具的 \fBenable\fP 和
+\fBdisable\fP 命令可以同时处理全局 (i\&.e\&. 对于所有用户) 和私有 (对于一个用户) enabling/disabling of
+units\&。\fBsystemd.unit\fP(5)\& 中提供了完整的目录列表。
+.RE
+.PP
+SysV 初始化脚本目录
+.RS 4
+SysV 初始化脚本目录的位置因发行版而异。如果 systemd 找不到所请求服务的本地元文件，它将寻找同名的 SysV 初始化脚本 (删除
+\&.service 后缀) \&。
+.RE
+.PP
+SysV 运行级别链接场目录
+.RS 4
+SysV 运行级别链接场目录的位置因发行版而异。systemd 在确定是否应启用服务时会考虑链接场。请注意，无法通过在 SysV 运行级别链接场 \&
+中激活它来启动具有原生元配置文件的服务元。
+.RE
+.SH SIGNALS
+.PP
+\fBSIGTERM\fP
+.RS 4
+收到此信号后，systemd 系统管理器序列化其状态，重新执行自身并再次反序列化保存的状态 \&。这主要等同于 \fBsystemctl daemon\-reexec\fP\&。
+.sp
+systemd 用户管理器将在收到此信号时启动 exit\&.target 元 \&。这主要等同于 \fBsystemctl \-\-user start exit\&.target \-\-job\-mode=replace\-irreversibly\fP\&。
+.RE
+.PP
+\fBSIGINT\fP
+.RS 4
+收到此信号后，systemd 系统管理器将启动 ctrl\-alt\-del\&.target 元 \&。这主要等同于 \fBsystemctl start ctrl\-alt\-del\&.target \-\-job\-mode=replace\-irreversibly\fP\&。如果每 2s 收到此信号超过 7
+次，则触发 immediate 重启 \&。请注意，在控制台上按 Ctrl+Alt+Del 将触发此信号 \&。因此，如果重启挂起，在 2 秒内按
+Ctrl+Alt+Del 超过 7 次是触发 immediate 重启 \& 的相对安全的方法。
+.sp
+systemd 用户管理器将此信号视为与 \fBSIGTERM\fP\& 相同的方式。
+.RE
+.PP
+\fBSIGWINCH\fP
+.RS 4
+当收到此信号时，systemd 系统管理器将启动 kbrequest\&.target 元 \&。这主要等同于 \fBsystemctl start kbrequest\&.target\fP\&。
+.sp
+systemd 用户管理器忽略此信号 \&。
+.RE
+.PP
+\fBSIGPWR\fP
+.RS 4
+当收到这个信号时，systemd 管理器将启动 sigpwr\&.target 元 \&。这主要等同于 \fBsystemctl start sigpwr\&.target\fP\&。
+.RE
+.PP
+\fBSIGUSR1\fP
+.RS 4
+收到此信号后，systemd 管理器将尝试重新连接到 D\-Bus 总线 \&。
+.RE
+.PP
+\fBSIGUSR2\fP
+.RS 4
+收到此信号后，systemd 管理器将以人类可读的形式记录其完整状态 \&。记录的数据与 \fBsystemd\-analyze dump\fP\&
+打印的数据相同。
+.RE
+.PP
+\fBSIGHUP\fP
+.RS 4
+重新加载完整的守护程序配置 \&。这主要等同于 \fBsystemctl daemon\-reload\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+0\fP
+.RS 4
+进入默认模式，启动 default\&.target 元 \&。这主要等同于 \fBsystemctl isolate default\&.target\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+1\fP
+.RS 4
+进入救援模式，启动 rescue\&.target 元 \&。这主要等同于 \fBsystemctl isolate rescue\&.target\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+2\fP
+.RS 4
+进入紧急模式，启动 emergency\&.service 元 \&。这主要等同于 \fBsystemctl isolate emergency\&.service\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+3\fP
+.RS 4
+停机，启动 halt\&.target 元 \&。这主要等同于 \fBsystemctl start halt\&.target \-\-job\-mode=replace\-irreversibly\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+4\fP
+.RS 4
+关机，启动 poweroff\&.target 元 \&。这主要等同于 \fBsystemctl start poweroff\&.target \-\-job\-mode=replace\-irreversibly\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+5\fP
+.RS 4
+重启机器，启动 reboot\&.target 元 \&。这主要等同于 \fBsystemctl start reboot\&.target \-\-job\-mode=replace\-irreversibly\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+6\fP
+.RS 4
+通过 kexec 重启机器，启动 kexec\&.target 元 \&。这主要等同于 \fBsystemctl start kexec\&.target \-\-job\-mode=replace\-irreversibly\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+13\fP
+.RS 4
+立即停止机器 \&。
+.RE
+.PP
+\fBSIGRTMIN+14\fP
+.RS 4
+立即关闭机器 \&。
+.RE
+.PP
+\fBSIGRTMIN+15\fP
+.RS 4
+立即重启机器 \&。
+.RE
+.PP
+\fBSIGRTMIN+16\fP
+.RS 4
+立即用 kexec\& 重启机器。
+.RE
+.PP
+\fBSIGRTMIN+20\fP
+.RS 4
+启用在控制台上显示状态消息，通过内核命令行上的 \fIsystemd\&.show_status=1\fP 控制 \&。
+.RE
+.PP
+\fBSIGRTMIN+21\fP
+.RS 4
+通过内核命令行上的 \fIsystemd\&.show_status=0\fP 控制，禁用控制台上的状态消息显示 \&。
+.RE
+.PP
+\fBSIGRTMIN+22\fP
+.RS 4
+将服务管理器 \*(Aqs 日志级别设置为 "debug"，相当于内核命令行上的 \fIsystemd\&.log_level=debug\fP\&。
+.RE
+.PP
+\fBSIGRTMIN+23\fP
+.RS 4
+将日志级别恢复为其配置值 \&。配置值来源于 \(en 按优先级顺序 \(en 内核命令行用 \fIsystemd\&.log\-level=\fP
+指定的值，或者配置文件中用 \fBLogLevel=\fP 指定的值，或者内置默认的 `info`\&.
+.RE
+.PP
+\fBSIGRTMIN+24\fP
+.RS 4
+立即退出管理器 (仅适用于 \-\-user 实例) \&。
+.RE
+.PP
+\fBSIGRTMIN+25\fP
+.RS 4
+收到此信号后，systemd 管理器将重新执行自身 \&。这主要等同于 \fBsystemctl daemon\-reexec\fP，只是它将异步完成 \&。
+.sp
+systemd 系统管理器以与 \fBSIGTERM\fP\& 相同的方式处理此信号。
+.RE
+.PP
+\fBSIGRTMIN+26\fP
+.RS 4
+将日志目标恢复为其配置值 \&。配置的值来源于 \(en 按照优先级 \(en 在内核命令行用 \fIsystemd\&.log\-target=\fP
+指定的值，或者在配置文件中用 \fBLogTarget=\fP 指定的值，或者内置的 default\&。
+.RE
+.PP
+\fBSIGRTMIN+27\fP, \fBSIGRTMIN+28\fP
+.RS 4
+将日志目标设置为 \fBSIGRTMIN+27\fP 上的 "console" (或 \fBSIGRTMIN+28\fP) 上的 "kmsg"，以等同于
+\fIsystemd\&.log_target=console\fP 的方式 (或内核命令行上的 \fBSIGRTMIN+28\fP) 上的
+\fIsystemd\&.log_target=kmsg\fP\&。
+.RE
+.SH ENVIRONMENT
+.PP
+系统管理器的环境块最初由内核设置。(特别是，内核命令行上的 "key=value" 分配变成了 PID 1 的环境变量)
+\&。对于用户管理器，系统管理器设置环境，如 \fBsystemd.exec\fP(5)\& 的 "Environment Variables in
+Spawned Processes" 部分所述。系统管理器中的 \fIDefaultEnvironment=\fP 设置适用于包括
+user@\&.service\& 在内的所有服务。可以通过 user@\&.service 的 \fIEnvironment=\fP 和
+\fIEnvironmentFile=\fP 设置配置其他条目 (对于任何其他服务) (参见 \fBsystemd.exec\fP(5))\&。另外，可以通过
+\fBsystemd\-system.conf\fP(5) 和 \fBsystemd\-user.conf\fP(5)\& 中的
+\fIManagerEnvironment=\fP 设置来设置其他环境变量。
+.PP
+\fBsystemd\fP: 理解的一些变量
+.PP
+\fI$SYSTEMD_LOG_LEVEL\fP
+.RS 4
+发出消息的最大日志级别 (具有更高日志级别的消息，i\&.e\&。不太重要的消息将被抑制)
+\&。\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP 之一
+(按重要性递减顺序) 或 0\&...7\& 范围内的整数。有关详细信息，请参见 \fBsyslog\fP(3)\&。
+.sp
+这可以用 \fB\-\-log\-level=\fP\& 覆盖。
+.RE
+.PP
+\fI$SYSTEMD_LOG_COLOR\fP
+.RS 4
+一个布尔值 \&。如果为真，写入 tty 的消息将根据优先级着色。
+.sp
+这可以用 \fB\-\-log\-color=\fP\& 覆盖。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TIME\fP
+.RS 4
+一个布尔值 \&。如果为 true，控制台日志消息将以时间戳 \& 为前缀。
+.sp
+这可以用 \fB\-\-log\-time=\fP\& 覆盖。
+.RE
+.PP
+\fI$SYSTEMD_LOG_LOCATION\fP
+.RS 4
+一个布尔值 \&。如果为 true，消息将在源代码中以文件名和行号为前缀 \&。
+.sp
+这可以用 \fB\-\-log\-location=\fP\& 覆盖。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TID\fP
+.RS 4
+一个布尔值 \&。如果为真，消息将以当前数字线程 ID (TID)\& 为前缀。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TARGET\fP
+.RS 4
+日志消息的目的地 \&。\fBconsole\fP (记录到附加的 tty)、\fBconsole\-prefixed\fP (记录到附加的
+tty，但带有编码日志级别和 "facility" 的前缀，参见 \fBsyslog\fP(3)、\fBkmsg\fP
+(记录到内核循环日志缓冲区)、\fBjournal\fP (记录到日志) 之一，\fBjournal\-or\-kmsg\fP (如果可用则记录到日志，否则记录到
+kmsg)，\fBauto\fP (自动确定适当的日志目标，默认)，\fBnull\fP (禁用日志输出) \&。
+.sp
+这可以用 \fB\-\-log\-target=\fP\& 覆盖。
+.RE
+.PP
+\fI$XDG_CONFIG_HOME\fP, \fI$XDG_CONFIG_DIRS\fP, \fI$XDG_DATA_HOME\fP,
+\fI$XDG_DATA_DIRS\fP
+.RS 4
+systemd 用户管理器根据 \m[blue]\fBXDG Base Directory specification\fP\m[]\&\s-2\u[6]\d\s+2 使用这些变量来查找其配置。
+.RE
+.PP
+\fI$SYSTEMD_UNIT_PATH\fP, \fI$SYSTEMD_GENERATOR_PATH\fP,
+\fI$SYSTEMD_ENVIRONMENT_GENERATOR_PATH\fP
+.RS 4
+控制 systemd 在何处查找元文件和生成器 \&。
+.sp
+这些变量可能包含路径列表，以冒号 (`:`) \& 分隔。设置后，如果列表以空组件 ("\&.\&.\&.:") 结尾，则此列表将添加到通常的路径集
+\& 前面。否则，指定的列表将替换通常的路径集 \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGER\fP
+.RS 4
+未给出 \fB\-\-no\-pager\fP 时使用的寻呼机; 覆盖 \fI$PAGER\fP\&。如果 \fI$SYSTEMD_PAGER\fP 和 \fI$PAGER\fP
+都没有设置，则依次尝试一组众所周知的寻呼机实现，包括 \fBless\fP(1) 和 \fBmore\fP(1)，直到找到一个
+\&。如果没有发现寻呼机实现，则不调用寻呼机 \&。将此环境变量设置为空字符串或值 "cat" 等同于传递 \fB\-\-no\-pager\fP\&。
+.sp
+Note: 如果未设置 \fI$SYSTEMD_PAGERSECURE\fP，\fI$SYSTEMD_PAGER\fP (以及 \fI$PAGER\fP) 将被忽略
+\&。
+.RE
+.PP
+\fI$SYSTEMD_LESS\fP
+.RS 4
+覆盖传递给 \fBless\fP (默认 "FRSXMK") \& 的选项。
+.sp
+用户可能希望特别更改两个选项:
+.PP
+\fBK\fP
+.RS 4
+此选项指示寻呼机在按下 Ctrl+C 时立即退出 \&。要允许 \fBless\fP 自己处理 Ctrl+C 以切换回寻呼机命令提示符，请取消设置此选项
+\&。
+.sp
+如果 \fI$SYSTEMD_LESS\fP 的值不包括 "K"，调用的分页器是 \fBless\fP，Ctrl+C 会被可执行文件忽略，需要分页器处理 \&。
+.RE
+.PP
+\fBX\fP
+.RS 4
+此选项指示寻呼机不将 termcap 初始化和取消初始化字符串发送到终端 \&。它默认设置为允许命令输出在终端中保持可见，即使在寻呼机退出 \&
+之后也是如此。然而，这会阻止某些寻呼机功能工作，特别是无法使用鼠标滚动分页输出。
+.RE
+.sp
+有关更多讨论，请参见 \fBless\fP(1)\&。
+.RE
+.PP
+\fI$SYSTEMD_LESSCHARSET\fP
+.RS 4
+覆盖传递给 \fBless\fP 的字符集 (默认为 "utf\-8"，如果调用终端被确定为与 UTF\-8 兼容) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGERSECURE\fP
+.RS 4
+采用布尔型参数 \&。为真时，启用寻呼机的 "secure" 模式; 如果为假，则禁用 \&。如果根本未设置
+\fI$SYSTEMD_PAGERSECURE\fP，则在有效 UID 与登录会话的所有者不同时启用安全模式，请参见 \fBgeteuid\fP(2) 和
+\fBsd_pid_get_owner_uid\fP(3)\&。在安全模式下，调用寻呼机时将设置
+\fBLESSSECURE=1\fP，寻呼机应禁用打开或创建新文件或启动新子进程的命令 \&。当根本没有设置 \fI$SYSTEMD_PAGERSECURE\fP
+时，将不会使用未知实现安全模式的寻呼机 \&。(目前只有 \fBless\fP(1) 实现了安全模式 \&。)
+.sp
+Note: 当以提升的权限调用命令时，例如在 \fBsudo\fP(8) 或 \fBpkexec\fP(1) 下，必须小心确保未启用意外的交互，特性 \&。寻呼机的
+"Secure" 模式可以如上所述自动启用 \&。设置 \fISYSTEMD_PAGERSECURE=0\fP 或不将其从继承环境中删除允许用户调用任意命令
+\&。请注意，如果要兑现 \fI$SYSTEMD_PAGER\fP 或 \fI$PAGER\fP 变量，则必须同时设置
+\fI$SYSTEMD_PAGERSECURE\fP\&。改为使用 \fB\-\-no\-pager\fP\& 完全禁用寻呼机可能是合理的。
+.RE
+.PP
+\fI$SYSTEMD_COLORS\fP
+.RS 4
+采用布尔型参数 \&。当为真时，\fBsystemd\fP 和相关的实用工具将在其输出中使用颜色，否则输出将为单色 \&。此外，该变量可以采用以下特殊值之一:
+"16"、"256"，分别将颜色的使用限制为基本 16 或 256 ANSI 颜色 \&。这可以被指定以覆盖基于 \fI$TERM\fP
+和控制台连接到什么的自动决定 \&。
+.RE
+.PP
+\fI$SYSTEMD_URLIFY\fP
+.RS 4
+该值必须是布尔值 \&。控制是否应在支持此 \& 的终端模拟器的输出中生成可点击链接。这可以被指定来覆盖 \fBsystemd\fP 基于 \fI$TERM\fP
+和其他条件做出的决定 \&。
+.RE
+.PP
+\fI$LISTEN_PID\fP, \fI$LISTEN_FDS\fP, \fI$LISTEN_FDNAMES\fP
+.RS 4
+在基于套接字的激活期间由 systemd 为受监督的进程设置。有关详细信息，请参见 \fBsd_listen_fds\fP(3)\&。
+.RE
+.PP
+\fI$NOTIFY_SOCKET\fP
+.RS 4
+由 systemd 设置用于状态和启动完成通知的监督进程 \&。有关详细信息，请参见 \fBsd_notify\fP(3)\&。
+.RE
+.PP
+有关 systemd 及其各种组件理解的更多环境变量，请参见 \m[blue]\fBKnown Environment Variables\fP\m[]\&\s-2\u[7]\d\s+2\&。
+.SH "KERNEL COMMAND LINE"
+.PP
+当作为系统实例运行时，systemd 会解析下面列出的许多选项 \&。它们可以指定为内核命令行参数，根据执行 systemd 的环境从多个来源解析
+\&。如果在 Linux 容器内运行，这些选项将从传递给 systemd 本身的命令行参数中解析，在上面的选项部分中列出的任何命令行选项旁边
+\&。如果在 Linux 容器之外运行，这些参数将从 /proc/cmdline 和 "SystemdOptions" EFI 变量 (在 EFI
+系统上) 解析为 \&。来自 /proc/cmdline 的选项具有更高的优先级 \&。以下变量理解:
+.PP
+\fIsystemd\&.unit=\fP, \fIrd\&.systemd\&.unit=\fP
+.RS 4
+覆盖元以在启动时激活 \&。默认为 default\&.target\&。这可用于临时启动到不同的启动单元，例如 rescue\&.target 或
+emergency\&.service\&。有关这些单位的详细信息，请参见 \fBsystemd.special\fP(7)。以 "rd\&."
+为前缀的选项仅在 initrd 中有效，而没有前缀的选项仅在主系统中 \&。
+.RE
+.PP
+\fIsystemd\&.dump_core\fP
+.RS 4
+采用布尔参数或启用选项 (如果指定时未指定参数 \&)。如果启用，systemd 管理器 (PID 1) 会在崩溃时转储核心
+\&。否则，不会创建核心转储 \&。默认为启用 \&。
+.RE
+.PP
+\fIsystemd\&.crash_chvt\fP
+.RS 4
+采用正整数或布尔参数 \&。也可以在没有参数的情况下指定，与正布尔值 \& 具有相同的效果。如果指定一个正整数 (在 1\(en63)
+范围内)，系统管理器 (PID 1) 将在崩溃时激活指定的虚拟终点 \&。默认为禁用，这意味着不会尝试进行此类切换
+\&。如果设置为启用，则使用写入内核消息的虚拟终端 \&。
+.RE
+.PP
+\fIsystemd\&.crash_shell\fP
+.RS 4
+采用布尔参数或启用选项 (如果指定时未指定参数 \&)。如果启用，系统管理器 (PID 1) 在崩溃时会在 10 秒延迟 \& 后生成
+shell。否则，不会产生 shell\&。出于安全原因，默认为禁用，因为 shell 不受密码身份验证保护 \&。
+.RE
+.PP
+\fIsystemd\&.crash_reboot\fP
+.RS 4
+采用布尔参数或启用选项 (如果指定时未指定参数 \&)。如果启用，系统管理器 (PID 1) 将在机器崩溃时自动重启，延迟 10 秒后
+\&。否则，系统将无限期挂起 \&。默认为禁用，以避免重启循环 \&。如果与 \fIsystemd\&.crash_shell\fP 结合，shell 退出
+\& 后系统重启。
+.RE
+.PP
+\fIsystemd\&.confirm_spawn\fP
+.RS 4
+采用布尔参数或虚拟控制台的路径，确认消息应在其中发出 \&。也可以在没有参数的情况下指定，与正布尔值 \& 具有相同的效果。如果启用，系统管理器
+(PID 1) 在使用 \fB/dev/console\fP\& 生成进程时要求确认。如果提供了路径或控制台名称 (如
+"ttyS0")，则将使用此路径指向或给定名称描述的虚拟控制台 \&。默认为禁用 \&。
+.RE
+.PP
+\fIsystemd\&.service_watchdogs=\fP
+.RS 4
+采用布尔型参数 \&。如果禁用，系统管理器 (PID 1) 将忽略所有服务运行时看门狗 (\fBWatchdogSec=\fP) 和紧急操作 (例如
+\&.g\&. \fBOnFailure=\fP 或 \fBStartLimitAction=\fP)) ; 请参见
+\fBsystemd.service\fP(5)\&。默认启用，i\&.e\&。看门狗和故障操作正常处理 \&。硬件看门狗不受此选项影响 \&。
+.RE
+.PP
+\fIsystemd\&.show_status\fP
+.RS 4
+采用布尔参数或常量 \fBerror\fP 和 \fBauto\fP\&。也可以在没有参数的情况下指定，与正布尔值 \& 具有相同的效果。如果启用，systemd
+管理器 (PID 1) 会在启动期间在控制台上显示简洁的服务状态更新。对于 \fBerror\fP，仅显示有关故障的消息，但引导是安静的 \&。
+\fBauto\fP 的行为与 \fBfalse\fP 类似，直到启动出现明显的延迟 \&。默认为启用，除非 \fBquiet\fP
+作为内核命令行选项传递，在这种情况下它默认为 \fBerror\fP\&。如果指定覆盖系统管理器配置文件选项 \fBShowStatus=\fP，请参见
+\fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.status_unit_format=\fP
+.RS 4
+取 \fBname\fP、\fBdescription\fP 或 \fBcombined\fP 为值 \&。如果是 \fBname\fP，系统管理器将在状态信息中使用元名
+\&。如果是 \fBcombined\fP，系统管理器将在状态消息中使用元名称和描述 \&。指定后，覆盖系统管理器配置文件选项
+\fBStatusUnitFormat=\fP，请参见 \fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.log_color\fP, \fIsystemd\&.log_level=\fP, \fIsystemd\&.log_location\fP,
+\fIsystemd\&.log_target=\fP, \fIsystemd\&.log_time\fP, \fIsystemd\&.log_tid\fP
+.RS 4
+控制日志输出，效果同上述
+\fI$SYSTEMD_LOG_COLOR\fP、\fI$SYSTEMD_LOG_LEVEL\fP、\fI$SYSTEMD_LOG_LOCATION\fP、\fI$SYSTEMD_LOG_TARGET\fP、\fI$SYSTEMD_LOG_TIME\fP、\fI$SYSTEMD_LOG_TID\fP
+环境变量 \&。
+\fIsystemd\&.log_color\fP、\fIsystemd\&.log_location\fP、\fIsystemd\&.log_time\fP 和
+\fIsystemd\&.log_tid=\fP 可以在没有参数的情况下指定，其效果与正布尔值 \& 相同。
+.RE
+.PP
+\fIsystemd\&.default_standard_output=\fP, \fIsystemd\&.default_standard_error=\fP
+.RS 4
+控制服务和套接字的默认标准输出和错误输出 \&。也就是说，控制 \fBStandardOutput=\fP 和 \fBStandardError=\fP 的默认值
+(有关详细信息，请参见 \fBsystemd.exec\fP(5)) \&。采用
+\fBinherit\fP、\fBnull\fP、\fBtty\fP、\fBjournal\fP、\fBjournal+console\fP、\fBkmsg\fP、\fBkmsg+console\fP\&
+之一。如果省略参数，\fIsystemd\&.default\-standard\-output=\fP 默认为
+\fBjournal\fP，\fIsystemd\&.default\-standard\-error=\fP 默认为 \fBinherit\fP\&。
+.RE
+.PP
+\fIsystemd\&.setenv=\fP
+.RS 4
+采用 VARIABLE=VALUE\& 形式的字符串参数。可用于设置默认环境变量以添加到分叉的子进程 \&。可以多次使用来设置多个变量 \&。
+.RE
+.PP
+\fIsystemd\&.machine_id=\fP
+.RS 4
+采用 32 个字符的十六进制值用于设置机器 ID\&。主要用于网络引导，其中每次引导都需要相同的机器 ID。
+.RE
+.PP
+\fIsystemd\&.set_credential=\fP
+.RS 4
+设置系统凭据，然后可以使用 \fILoadCredential=\fP 设置将其传播到系统服务，有关详细信息，请参见
+\fBsystemd.exec\fP(5)\&。采用一对凭据名称和值，以冒号 \& 分隔。请注意，内核命令行通常可由 /proc/cmdline\&
+中的非特权程序访问。因此，这种机制不适合传输敏感数据 \&。仅将其用于不敏感的数据 (例如 \&.g\&. 公共
+keys/certificates，而不是私钥)，或在 testing/debugging 环境中 \&。
+.sp
+有关详细信息，请参见 \m[blue]\fBSystem and Service Credentials\fP\m[]\&\s-2\u[8]\d\s+2 文档
+\&。
+.RE
+.PP
+\fIsystemd\&.import_credentials=\fP
+.RS 4
+采用布尔型参数 \&。如果为 false，则禁用从内核命令行、DMI/SMBIOS OEM 字符串表、qemu_fw_cfg 子系统或 EFI 内核存根
+\& 导入凭据。
+.RE
+.PP
+\fIquiet\fP
+.RS 4
+在启动时关闭状态输出，就像 \fIsystemd\&.show_status=no\fP 一样 \&。请注意，此选项也由内核本身读取并禁用内核日志输出
+\&。因此，传递此选项会关闭系统管理器和内核 \& 的常规输出。
+.RE
+.PP
+\fIdebug\fP
+.RS 4
+打开调试输出 \&。这相当于 \fIsystemd\&.log_level=debug\fP\&。请注意，此选项也由内核本身读取并启用内核调试输出
+\&。因此，传递此选项会打开系统管理器和内核 \& 的调试输出。
+.RE
+.PP
+\fIemergency\fP, \fIrd\&.emergency\fP, \fI\-b\fP
+.RS 4
+启动进入紧急模式 \&。这分别等同于 \fIsystemd\&.unit=emergency\&.target\fP 或
+\fIrd\&.systemd\&.unit=emergency\&.target\fP，提供兼容性原因和更易于键入 \&。
+.RE
+.PP
+\fIrescue\fP, \fIrd\&.rescue\fP, \fIsingle\fP, \fIs\fP, \fIS\fP, \fI1\fP
+.RS 4
+开机进入救援模式 \&。这分别等同于 \fIsystemd\&.unit=rescue\&.target\fP 或
+\fIrd\&.systemd\&.unit=rescue\&.target\fP，提供兼容性原因和更易于键入 \&。
+.RE
+.PP
+\fI2\fP, \fI3\fP, \fI4\fP, \fI5\fP
+.RS 4
+启动到指定的旧版 SysV 运行级别 \&。这些分别等同于
+\fIsystemd\&.unit=runlevel2\&.target\fP、\fIsystemd\&.unit=runlevel3\&.target\fP、\fIsystemd\&.unit=runlevel4\&.target\fP
+和 \fIsystemd\&.unit=runlevel5\&.target\fP，提供它们是出于兼容性原因和更易于键入 \&。
+.RE
+.PP
+\fIlocale\&.LANG=\fP, \fIlocale\&.LANGUAGE=\fP, \fIlocale\&.LC_CTYPE=\fP,
+\fIlocale\&.LC_NUMERIC=\fP, \fIlocale\&.LC_TIME=\fP, \fIlocale\&.LC_COLLATE=\fP,
+\fIlocale\&.LC_MONETARY=\fP, \fIlocale\&.LC_MESSAGES=\fP, \fIlocale\&.LC_PAPER=\fP,
+\fIlocale\&.LC_NAME=\fP, \fIlocale\&.LC_ADDRESS=\fP, \fIlocale\&.LC_TELEPHONE=\fP,
+\fIlocale\&.LC_MEASUREMENT=\fP, \fIlocale\&.LC_IDENTIFICATION=\fP
+.RS 4
+将系统区域设置为使用 \&。这会覆盖 /etc/locale\&.conf\& 中的设置。有关详细信息，请参见 \fBlocale.conf\fP(5) 和
+\fBlocale\fP(7)\&。
+.RE
+.PP
+其他核心操作系统组件理解的内核命令行参数，请参考 \fBkernel\-command\-line\fP(7)\&。
+.SH OPTIONS
+.PP
+\fBsystemd\fP 很少被直接调用，因为它很早就启动并且在用户可能与之交互时已经运行 \&。通常，\fBsystemctl\fP(1)
+之类的工具用于向管理器下达命令 \&。由于通常不直接调用 \fBsystemd\fP，下面列出的选项主要用于调试和特殊用途 \&。
+.SS "Introspection and debugging options"
+.PP
+这些选项用于测试和自省，并且 \fBsystemd\fP 可以随时与它们一起调用:
+.PP
+\fB\-\-dump\-configuration\-items\fP
+.RS 4
+转储了解元配置项 \&。这会输出一个简洁但完整的配置项列表，在元定义文件中理解 \&。
+.RE
+.PP
+\fB\-\-dump\-bus\-properties\fP
+.RS 4
+转储公开的总线属性 \&。这会输出 D\-Bus\& 上公开的一个简洁但完整的属性列表。
+.RE
+.PP
+\fB\-\-test\fP
+.RS 4
+确定初始启动事务 (i\&.e\&。启动时排队的作业列表)，将其转储并退出 \(em 而无需实际执行任何已确定的作业 \&。此选项仅对调试有用
+\&。请注意，在常规服务管理器启动期间，可能会启动此操作未显示的其他单元，因为硬件、套接字、总线或其他类型的激活可能会在执行事务时添加其他作业
+\&。使用 \fB\-\-system\fP 来请求系统服务管理器的初始事务 (这也是隐含的默认值)，结合 \fB\-\-user\fP 来请求每个用户服务管理器的初始事务
+\&。
+.RE
+.PP
+\fB\-\-system\fP, \fB\-\-user\fP
+.RS 4
+与 \fB\-\-test\fP 一起使用时，选择是计算系统实例还是每个用户实例的初始事务 \&。这些选项在没有 \fB\-\-test\fP
+的情况下调用时无效，因为在常规 (i\&.e\&.non\-\fB\-\-test\fP) 调用期间，服务管理器将通过检查它是否运行的 PID
+自动检测它是否应在系统模式或每用户模式下运行是否为 1\&。请注意，不支持启动和维护服务管理器以 \fB\-\-system\fP 模式运行但 PID 不是
+1\& 的系统。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SS "Options that duplicate kernel command line settings"
+.PP
+这些选项直接对应于上面 `内核命令行`\&
+中列出的选项。这两种形式可以等效地用于系统管理器，但建议在此上下文中使用上面列出的形式，因为它们已正确命名空间
+\&。当在内核命令行和普通命令行参数上都指定了一个选项时，后者具有更高的优先级 \&。
+.PP
+当 \fBsystemd\fP 被用作用户管理器时，内核命令行被忽略，只有下面描述的选项被理解 \&。尽管如此，\fBsystemd\fP 通常是通过
+\fBuser@.service\fP(5) 服务以这种模式启动的，该服务在所有用户之间共享 \&。使用配置文件修改设置可能更方便 (参见
+\fBsystemd\-user.conf\fP(5))，或环境变量 \&. 有关如何设置环境块的讨论，请参见上面的 "Environment" 部分。
+.PP
+\fB\-\-unit=\fP
+.RS 4
+设置默认元在启动时激活 \&。如果未指定，则默认为 default\&.target\&。请参见上面的 \fIsystemd\&.unit=\fP\&。
+.RE
+.PP
+\fB\-\-dump\-core\fP
+.RS 4
+在崩溃时启用核心转储 \&。此开关在作为用户实例运行时无效 \&。与上面的 \fIsystemd\&.dump_core=\fP\& 相同。
+.RE
+.PP
+\fB\-\-crash\-vt=\fP\fIVT\fP
+.RS 4
+崩溃时切换到特定的虚拟控制台 (VT)。此开关在作为用户实例运行时无效 \&。与上面的 \fIsystemd\&.crash_chvt=\fP 相同
+(但不是不同的拼写! ) \&。
+.RE
+.PP
+\fB\-\-crash\-shell\fP
+.RS 4
+在崩溃时运行 shell\&。此开关在作为用户实例运行时无效 \&。请参见上面的 \fIsystemd\&.crash_shell=\fP\&。
+.RE
+.PP
+\fB\-\-crash\-reboot\fP
+.RS 4
+崩溃时自动重启系统 \&。此开关在作为用户实例运行时无效 \&。请参见上面的 \fIsystemd\&.crash_reboot\fP\&。
+.RE
+.PP
+\fB\-\-confirm\-spawn\fP
+.RS 4
+生成进程时要求确认 \&。当作为用户实例运行时，此开关无效 \&。请参见上面的 \fIsystemd\&.confirm_spawn\fP\&。
+.RE
+.PP
+\fB\-\-show\-status\fP
+.RS 4
+在启动和关闭期间在控制台上显示简洁的元状态信息 \&。请参见上面的 \fIsystemd\&.show_status\fP\&。
+.RE
+.PP
+\fB\-\-log\-color\fP
+.RS 4
+突出显示重要的日志消息 \&。请参见上面的 \fIsystemd\&.log_color\fP\&。
+.RE
+.PP
+\fB\-\-log\-level=\fP
+.RS 4
+设置日志级别 \&。请参见上面的 \fIsystemd\&.log_level\fP\&。
+.RE
+.PP
+\fB\-\-log\-location\fP
+.RS 4
+在日志消息中包含代码位置 \&。请参见上面的 \fIsystemd\&.log_location\fP\&。
+.RE
+.PP
+\fB\-\-log\-target=\fP
+.RS 4
+设置日志目标 \&。请参见上面的 \fIsystemd\&.log_target\fP\&。
+.RE
+.PP
+\fB\-\-log\-time=\fP
+.RS 4
+使用时间戳 \& 为控制台消息添加前缀。请参见上面的 \fIsystemd\&.log_time\fP\&。
+.RE
+.PP
+\fB\-\-machine\-id=\fP
+.RS 4
+覆盖硬盘驱动器上设置的机器 ID\&。请参见上面的 \fIsystemd\&.machine_id=\fP\&。
+.RE
+.PP
+\fB\-\-service\-watchdogs\fP
+.RS 4
+全局 enable/disable 所有服务看门狗超时和紧急操作 \&。请参见上面的 \fIsystemd\&.service_watchdogs\fP\&。
+.RE
+.PP
+\fB\-\-default\-standard\-output=\fP, \fB\-\-default\-standard\-error=\fP
+.RS 4
+分别为所有服务和套接字设置默认输出或错误输出 \&。请参见上面的 \fIsystemd\&.default_standard_output=\fP 和
+\fIsystemd\&.default_standard_error=\fP\&。
+.RE
+.SH "SOCKETS AND FIFOS"
+.PP
+/run/systemd/notify
+.RS 4
+守护进程状态通知套接字 \&。这是一个 \fBAF_UNIX\fP 数据报套接字，用于实现由 \fBsd_notify\fP(3)\& 实现的守护进程通知逻辑。
+.RE
+.PP
+/run/systemd/private
+.RS 4
+在内部用作 \fBsystemctl\fP(1) 和 systemd 进程 \& 之间的通信通道。这是一个 \fBAF_UNIX\fP 流套接字 \&。此接口是
+systemd 私有的，不应在外部项目中使用 \&。
+.RE
+.PP
+/dev/initctl
+.RS 4
+对 SysV 客户端接口的有限兼容性支持，由 systemd\-initctl\&.service 元 \& 实现。这是文件系统中的命名管道
+\&。此接口已过时，不应在新应用程序中使用 \&。
+.RE
+.SH HISTORY
+.PP
+系统 252
+.RS 4
+内核命令行参数 \fIsystemd\&.unified_cgroup_hierarchy\fP 和
+\fIsystemd\&.legacy_systemd_cgroup_controller\fP 已弃用 \&。请切换到统一的 cgroup 层次结构 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+The \m[blue]\fBsystemd Homepage\fP\m[]\&\s-2\u[9]\d\s+2,
+\fBsystemd\-system.conf\fP(5), \fBlocale.conf\fP(5), \fBsystemctl\fP(1),
+\fBjournalctl\fP(1), \fBsystemd\-notify\fP(1), \fBdaemon\fP(7), \fBsd\-daemon\fP(3),
+\fBorg.freedesktop.systemd1\fP(5), \fBsystemd.unit\fP(5), \fBsystemd.special\fP(7),
+\fBpkg\-config\fP(1), \fBkernel\-command\-line\fP(7), \fBbootup\fP(7),
+\fBsystemd.directives\fP(7)
+.SH NOTES
+.IP " 1." 4
+对照组 v2
+.RS 4
+\%https://docs.kernel.org/admin\-guide/cgroup\-v2.html
+.RE
+.IP " 2." 4
+原始设计文件
+.RS 4
+\%http://0pointer.de/blog/projects/systemd.html
+.RE
+.IP " 3." 4
+界面便携性和稳定性 Promise
+.RS 4
+\%https://systemd.io/PORTABILITY_AND_STABILITY/
+.RE
+.IP " 4." 4
+容器接口
+.RS 4
+\%https://systemd.io/CONTAINER_INTERFACE
+.RE
+.IP " 5." 4
+初始化接口
+.RS 4
+\%https://systemd.io/INITRD_INTERFACE/
+.RE
+.IP " 6." 4
+XDG 基本目录规范
+.RS 4
+\%https://standards.freedesktop.org/basedir\-spec/basedir\-spec\-latest.html
+.RE
+.IP " 7." 4
+已知环境变量
+.RS 4
+\%https://systemd.io/ENVIRONMENT
+.RE
+.IP " 8." 4
+系统和服务凭证
+.RS 4
+\%https://systemd.io/CREDENTIALS
+.RE
+.IP " 9." 4
+系统主页
+.RS 4
+\%https://systemd.io/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

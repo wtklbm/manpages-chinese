@@ -1,0 +1,214 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2003,2004 Andi Kleen, SuSE Labs.
+.\" and Copyright 2007 Lee Schermerhorn, Hewlett Packard
+.\"
+.\" %%%LICENSE_START(VERBATIM_PROF)
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\"
+.\" Since the Linux kernel and libraries are constantly changing, this
+.\" manual page may be incorrect or out-of-date.  The author(s) assume no
+.\" responsibility for errors or omissions, or for damages resulting from
+.\" the use of the information contained herein.
+.\"
+.\" Formatted or processed versions of this manual, if unaccompanied by
+.\" the source, must acknowledge the copyright and authors of this work.
+.\" %%%LICENSE_END
+.\"
+.\" 2006-02-03, mtk, substantial wording changes and other improvements
+.\" 2007-08-27, Lee Schermerhorn <Lee.Schermerhorn@hp.com>
+.\"	more precise specification of behavior.
+.\"
+.\" FIXME
+.\" Linux 3.8 added MPOL_MF_LAZY, which needs to be documented.
+.\" Does it also apply for move_pages()?
+.\"
+.\"                commit b24f53a0bea38b266d219ee651b22dba727c44ae
+.\"                Author: Lee Schermerhorn <lee.schermerhorn@hp.com>
+.\"                Date:   Thu Oct 25 14:16:32 2012 +0200
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mbind 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mbind \- 为内存范围设置内存策略
+.SH LIBRARY
+NUMA (非统一内存访问) 策略库 (\fIlibnuma\fP、\fI\-lnuma\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <numaif.h>\fP
+.PP
+\fBlong mbind(void \fP\fIaddr\fP\fB[.\fP\fIlen\fP\fB], unsigned long \fP\fIlen\fP\fB, int \fP\fImode\fP\fB,\fP
+\fB           const unsigned long \fP\fInodemask\fP\fB[(.\fP\fImaxnode\fP\fB + ULONG_WIDTH \- 1)\fP
+\fB/ ULONG_WIDTH],\fP
+\fB           unsigned long \fP\fImaxnode\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmbind\fP() 为从 \fIaddr\fP 开始并持续 \fIlen\fP 字节的内存范围设置 NUMA 内存策略，它由策略模式和零个或多个节点组成。
+内存策略定义从哪个节点分配内存。
+.PP
+如果 \fIaddr\fP 和 \fIlen\fP 参数指定的内存范围包括 "anonymous" 内存区域 \[em]，它是使用 \fBmmap\fP(2) 系统调用和
+\fBMAP_ANONYMOUS\fP\[em]or 内存映射文件创建的内存区域，使用 \fBmmap\fP(2) 系统调用映射 \fBMAP_PRIVATE\fP
+标志，当应用程序将 (stores) 写入页面时，页面将仅根据指定的策略分配。 对于匿名区域，初始读取访问将使用内核中包含全零的共享页面。 对于用
+\fBMAP_PRIVATE\fP 映射的文件，初始读取访问将根据导致分配页面的线程的内存策略分配页面。 这可能不是调用 \fBmbind\fP() 的线程。
+.PP
+对于指定内存范围内的任何 \fBMAP_SHARED\fP 映射，指定的策略将被忽略。 相反，页面将根据导致页面分配的线程的内存策略进行分配。
+同样，这可能不是调用 \fBmbind\fP() 的线程。
+.PP
+如果指定的内存范围包括使用 \fBshmget\fP(2) 系统调用创建并使用 \fBshmat\fP(2)
+系统调用附加的共享内存区域，则为匿名或共享内存区域分配的页面将根据指定的策略进行分配，而不管哪个进程附加到共享内存段导致分配。
+但是，如果共享内存区域是使用 \fBSHM_HUGETLB\fP 标志创建的，只有当页面分配是由为该区域调用 \fBmbind\fP()
+的进程引起时，才会根据指定的策略分配大页面。
+.PP
+默认情况下，\fBmbind\fP() 仅对新分配有效; 如果范围内的页面在设置策略之前已经被触及，则该策略无效。 此默认行为可能会被下面描述的
+\fBMPOL_MF_MOVE\fP 和 \fBMPOL_MF_MOVE_ALL\fP 标志覆盖。
+.PP
+\fImode\fP 参数必须指定
+\fBMPOL_DEFAULT\fP、\fBMPOL_BIND\fP、\fBMPOL_INTERLEAVE\fP、\fBMPOL_PREFERRED\fP 或
+\fBMPOL_LOCAL\fP 之一 (下面将详细描述)。 除 \fBMPOL_DEFAULT\fP 之外的所有策略模式都要求调用者通过 \fInodemask\fP
+参数指定模式适用的一个或多个节点。
+.PP
+\fImode\fP 参数还可能包括一个可选的 \fImode flag\fP。 支持的 \fImode flags\fP 是:
+.TP 
+\fBMPOL_F_STATIC_NODES\fP (since Linux\-2.6.26)
+非空 \fInodemask\fP 指定物理节点 ID。 当线程移动到不同的 cpuset 上下文时，或者当线程的当前 cpuset
+上下文允许的节点集发生变化时，Linux 不会重新映射 \fInodemask\fP。
+.TP 
+\fBMPOL_F_RELATIVE_NODES\fP (since Linux\-2.6.26)
+非空 \fInodemask\fP 指定与线程当前 cpuset 允许的节点 ID 集相关的节点 ID。
+.PP
+\fInodemask\fP 指向包含最多 \fImaxnode\fP 位的节点的位掩码。 位掩码大小四舍五入为 \fIsizeof(unsigned long)\fP
+的下一个倍数，但内核将只使用 \fImaxnode\fP 以内的位。 \fInodemask\fP 的 NULL 值或 \fImaxnode\fP 的零值指定空节点集。
+如果 \fImaxnode\fP 的值为零，则忽略 \fInodemask\fP 参数。 在需要 \fInodemask\fP
+的地方，它必须包含至少一个联机节点，线程的当前 cpuset 上下文允许 (除非指定了 \fBMPOL_F_STATIC_NODES\fP
+模式标志)，并且包含内存。
+.PP
+\fImode\fP 参数必须包含以下值之一:
+.TP 
+\fBMPOL_DEFAULT\fP
+此模式要求删除任何非默认策略，恢复默认行为。 当通过 \fBmbind\fP() 应用于内存范围时，这意味着使用线程内存策略，这可能已通过
+\fBset_mempolicy\fP(2) 设置。 如果线程内存策略的模式也是 \fBMPOL_DEFAULT\fP，则使用系统范围的默认策略。
+系统范围的默认策略在触发分配的 CPU 节点上分配页面。 对于 \fBMPOL_DEFAULT\fP，\fInodemask\fP 和 \fImaxnode\fP
+参数必须指定空节点集。
+.TP 
+\fBMPOL_BIND\fP
+.\" commit 19770b32609b6bf97a3dece2529089494cbfc549
+此模式指定严格的策略，将内存分配限制在 \fInodemask\fP 中指定的节点。 如果 \fInodemask\fP
+指定了多个节点，页面分配将从具有足够空闲内存且最接近分配发生的节点的节点进行。 不会从 IR 节点掩码中未指定的任何节点分配页面。(在 Linux
+2.6.26 之前，页面分配首先来自具有最低数字节点 ID 的节点，直到该节点不包含可用内存。然后分配来自具有 \fInodemask\fP
+中指定的下一个最高节点 ID 的节点，依此类推，直到没有指定的节点包含可用内存。)
+.TP 
+\fBMPOL_INTERLEAVE\fP
+此模式指定页面分配在 \fInodemask\fP 中指定的一组节点之间交错。 这通过跨多个节点分散页面和对这些页面的内存访问来优化带宽而不是延迟。
+为了有效，内存区域应该相当大，至少 1\MB 或更大，并且具有相当统一的访问模式。 对该区域单个页面的访问仍将受限于单个节点的内存带宽。
+.TP 
+\fBMPOL_PREFERRED\fP
+此模式设置分配的首选节点。 内核将首先尝试从该节点分配页面，如果首选节点的可用内存不足，则回退到其他节点。 如果 \fInodemask\fP 指定了多个节点
+ID，则掩码中的第一个节点将被选为首选节点。 如果 \fInodemask\fP 和 \fImaxnode\fP 参数指定空集，则在触发分配的 CPU
+的节点上分配内存。
+.TP 
+\fBMPOL_LOCAL\fP (since Linux 3.8)
+.\" commit 479e2802d09f1e18a97262c4c6f8f17ae5884bd8
+.\" commit f2a07f40dbc603c15f8b06e6ec7f768af67b424f
+该模式指定 "local allocation"; 内存分配在触发分配的 CPU 节点 ("local node") 上。 \fInodemask\fP 和
+\fImaxnode\fP 参数必须指定空集。 如果 "local node" 的可用内存不足，内核将尝试从其他节点分配内存。
+只要此节点的内存可用，内核就会从 "local node" 分配内存。 如果线程的当前 cpuset 上下文不允许 "local
+node"，内核将尝试从其他节点分配内存。 只要线程的当前 cpuset 上下文允许，内核就会从 "local node" 分配内存。
+相比之下，\fBMPOL_DEFAULT\fP 恢复到线程的内存策略 (可以通过 \fBset_mempolicy\fP(2)) 设置; 该策略可能不是
+"local allocation"。
+.PP
+.\" According to the kernel code, the following is not true
+.\" --Lee Schermerhorn
+.\" In Linux 2.6.16 or later the kernel will also try to move pages
+.\" to the requested node with this flag.
+如果在 \fIflags\fP 中传递 \fBMPOL_MF_STRICT\fP 而 \fImode\fP 不是
+\fBMPOL_DEFAULT\fP，则如果内存范围中的现有页面不遵循策略，则调用会失败并显示错误 \fBEIO\fP。
+.PP
+如果在 \fIflags\fP 中指定了 \fBMPOL_MF_MOVE\fP，那么内核将尝试移动内存范围内的所有现有页面，以便它们遵循该策略。
+与其他进程共享的页面不会被移动。 如果还指定了 \fBMPOL_MF_STRICT\fP，则如果无法移动某些页面，则调用会失败并显示错误 \fBEIO\fP。
+.PP
+.\" ---------------------------------------------------------------
+如果在 \fIflags\fP 中传递 \fBMPOL_MF_MOVE_ALL\fP，则内核将尝试移动内存范围内的所有现有页面，而不管其他进程是否使用这些页面。
+调用线程必须具有 (\fBCAP_SYS_NICE\fP) 特权才能使用此标志。 如果还指定了
+\fBMPOL_MF_STRICT\fP，则如果无法移动某些页面，则调用会失败并显示错误 \fBEIO\fP。
+.SH "RETURN VALUE"
+.\" ---------------------------------------------------------------
+成功时，\fBmbind\fP() 返回 0; 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.\"  I think I got all of the error returns.  --Lee Schermerhorn
+.TP 
+\fBEFAULT\fP
+\fInodemask\fP 和 \fImaxnode\fP 指定的部分或全部内存范围指向您可访问的地址空间之外。 或者，在 \fIaddr\fP 和 \fIlen\fP
+指定的指定内存范围内存在未映射的 hole。
+.TP 
+\fBEINVAL\fP
+.\" As at 2.6.23, this limit is "a page worth of bits", e.g.,
+.\" 8 * 4096 bits, assuming a 4kB page size.
+为 \fIflags\fP 或 \fImode\fP 指定了无效值; 或者 \fIaddr + len\fP 小于 \fIaddr\fP; 或者 \fIaddr\fP
+不是系统页面大小的倍数。 或者，\fImode\fP 是 \fBMPOL_DEFAULT\fP 和 \fInodemask\fP 指定的非空集; 或 \fImode\fP 为
+\fBMPOL_BIND\fP 或 \fBMPOL_INTERLEAVE\fP 而 \fInodemask\fP 为空。 或者，\fImaxnode\fP
+超出了内核强加的限制。 或者，\fInodemask\fP 指定一个或多个大于支持的最大节点 ID 的节点 ID。或者，\fInodemask\fP 指定的节点
+ID 均未联机且未被线程的当前 cpuset 上下文所允许，或者指定的节点均不包含内存。 或者，\fImode\fP 参数同时指定了
+\fBMPOL_F_STATIC_NODES\fP 和 \fBMPOL_F_RELATIVE_NODES\fP。
+.TP 
+\fBEIO\fP
+指定了 \fBMPOL_MF_STRICT\fP，并且现有页面已经在不遵循策略的节点上; 或者指定了 \fBMPOL_MF_MOVE\fP 或
+\fBMPOL_MF_MOVE_ALL\fP，内核无法移动该范围内的所有现有页面。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBEPERM\fP
+.\" ---------------------------------------------------------------
+\fIflags\fP 参数包含 \fBMPOL_MF_MOVE_ALL\fP 标志，调用者没有 \fBCAP_SYS_NICE\fP 权限。
+.SH VERSIONS
+\fBmbind\fP() 系统调用在 Linux 2.6.7 中加入。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+有关库支持的信息，请参见 \fBnuma\fP(7)。
+.PP
+使用 \fBMAP_SHARED\fP 标志映射的内存映射文件范围不支持 NUMA 策略。
+.PP
+\fBMPOL_DEFAULT\fP 模式对 \fBmbind\fP() 和 \fBset_mempolicy\fP(2) 有不同的影响。 当为
+\fBset_mempolicy\fP(2) 指定 \fBMPOL_DEFAULT\fP 时，线程的内存策略恢复为系统默认策略或本地分配。 当使用
+\fBmbind\fP() 为内存范围指定 \fBMPOL_DEFAULT\fP 时，随后为该范围分配的任何页面都将使用由 \fBset_mempolicy\fP(2)
+设置的线程内存策略。 这有效地将显式策略从指定范围 "falling back" 删除到可能非默认策略。 要为内存范围选择显式 "local
+allocation"，请指定 \fBMPOL_LOCAL\fP 或 \fBMPOL_PREFERRED\fP 的 \fImode\fP 以及一组空节点。 此方法也适用于
+\fBset_mempolicy\fP(2)。
+.PP
+Linux 2.6.16 添加了对大页面策略的支持。 为了使交错策略在大页面映射上有效，策略内存需要为数十兆字节或更大。
+.PP
+.\" commit dcf1763546d76c372f3136c8d6b2b6e77f140cf0
+Linux 5.7 之前。 \fBMPOL_MF_STRICT\fP 在大页面映射中被忽略。
+.PP
+\fBMPOL_MF_MOVE\fP 和 \fBMPOL_MF_MOVE_ALL\fP 仅适用于 Linux 2.6.16 及更高版本。
+.SH "SEE ALSO"
+\fBget_mempolicy\fP(2), \fBgetcpu\fP(2), \fBmmap\fP(2), \fBset_mempolicy\fP(2),
+\fBshmat\fP(2), \fBshmget\fP(2), \fBnuma\fP(3), \fBcpuset\fP(7), \fBnuma\fP(7),
+\fBnumactl\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,258 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\" and Copyright (C) 2020 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Tue Oct 22 17:54:56 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1 Jan 2002, Martin Schulze <joey@infodrom.org>
+.\" Modified 4 Jan 2002, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\" Modified, 11 Nov 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language and formatting clean-ups
+.\"	Added notes on /proc files
+.\"	Rewrote BUGS note about semget()'s failure to initialize
+.\"		semaphore values
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH semget 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+semget \- 获取 System V 信号量集标识符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/sem.h>\fP
+.fi
+.PP
+\fBint semget(key_t \fP\fIkey\fP\fB,\fP \fBint \fP\fInsems\fP\fB,\fP \fBint \fP\fIsemflg\fP\fB);\fP
+.SH DESCRIPTION
+\fBsemget\fP() 系统调用返回与参数 \fIkey\fP 关联的 System\V 信号量集标识符。 它可用于获取先前创建的信号量集的标识符 (当
+\fIsemflg\fP 为零且 \fIkey\fP 不具有值 \fBIPC_PRIVATE\fP) 时)，或用于创建新集。
+.PP
+如果 \fIkey\fP 的值为 \fBIPC_PRIVATE\fP，或者如果没有现有的信号量集与 \fIkey\fP 关联并且在 \fIsemflg\fP 中指定了
+\fBIPC_CREAT\fP，则创建一组新的 \fInsems\fP 信号量。
+.PP
+如果 \fIsemflg\fP 同时指定 \fBIPC_CREAT\fP 和 \fBIPC_EXCL\fP，并且 \fIkey\fP 的信号集已经存在，则
+\fBsemget\fP() 失败，\fIerrno\fP 设置为 \fBEEXIST\fP。 (这类似于组合 \fBO_CREAT | O_EXCL\fP 对
+\fBopen\fP(2).) 的影响
+.PP
+创建时，参数 \fIsemflg\fP 的最低 9 位定义信号量集的权限 (所有者、组和其他人)。 这些位具有与 \fBopen\fP(2) 的 \fImode\fP
+参数相同的格式和相同的含义 (尽管执行权限对信号量没有意义，写权限意味着更改信号量值的权限)。
+.PP
+当创建一个新的信号量集时，\fBsemget\fP() 初始化该集的关联数据结构体，\fIsemid_ds\fP (见 \fBsemctl\fP(2))，如下:
+.IP \[bu] 3
+\fIsem_perm.cuid\fP 和 \fIsem_perm.uid\fP 设置为调用进程的有效用户 ID。
+.IP \[bu]
+\fIsem_perm.cgid\fP 和 \fIsem_perm.gid\fP 设置为调用进程的有效组 ID。
+.IP \[bu]
+\fIsem_perm.mode\fP 的低 9 位设置为 \fIsemflg\fP 的低 9 位。
+.IP \[bu]
+\fIsem_nsems\fP 设置为 \fInsems\fP 的值。
+.IP \[bu]
+\fIsem_otime\fP 设置为 0.
+.IP \[bu]
+\fIsem_ctime\fP 设置为当前时间。
+.PP
+当未创建信号量集时，参数 \fInsems\fP 可以为 0 (无关)。 否则，\fInsems\fP 必须大于 0 且小于或等于每个信号量集
+(\fBSEMMSL\fP) 的最大信号量数。
+.PP
+.\" and a check is made to see if it is marked for destruction.
+如果信号量集已经存在，则验证权限。
+.SH "RETURN VALUE"
+成功时，\fBsemget\fP() 返回信号集标识符 (非负整数)。 失败时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+存在 \fIkey\fP 的信号量集，但调用进程无权访问该集，并且在管理其 IPC 命名空间的用户命名空间中不具有 \fBCAP_IPC_OWNER\fP 能力。
+.TP 
+\fBEEXIST\fP
+.\" .TP
+.\" .B EIDRM
+.\" The semaphore set is marked to be deleted.
+在 \fIsemflg\fP 中指定了 \fBIPC_CREAT\fP 和 \fBIPC_EXCL\fP，但 \fIkey\fP 的信号量集已经存在。
+.TP 
+\fBEINVAL\fP
+\fInsems\fP 小于 0 或大于每个信号量集 (\fBSEMMSL\fP) 的信号量限制。
+.TP 
+\fBEINVAL\fP
+对应于 \fIkey\fP 的信号量集已经存在，但 \fInsems\fP 大于该集中信号量的数量。
+.TP 
+\fBENOENT\fP
+\fIkey\fP 不存在信号集，\fIsemflg\fP 未指定 \fBIPC_CREAT\fP。
+.TP 
+\fBENOMEM\fP
+必须创建信号量集，但系统没有足够的内存用于新数据结构体。
+.TP 
+\fBENOSPC\fP
+必须创建信号量集，但会超过信号量集最大数量 (\fBSEMMNI\fP) 或系统范围内信号量最大数量 (\fBSEMMNS\fP) 的系统限制。
+.SH STANDARDS
+.\" SVr4 documents additional error conditions EFBIG, E2BIG, EAGAIN,
+.\" ERANGE, EFAULT.
+SVr4, POSIX.1\-2001.
+.SH NOTES
+.\"
+\fBIPC_PRIVATE\fP 不是标志字段，而是 \fIkey_t\fP 类型。 如果这个特殊值用于 \fIkey\fP，系统调用忽略除 \fIsemflg\fP
+的最低有效 9 位之外的所有位，并创建一个新的信号量集 (成功时)。
+.SS "Semaphore initialization"
+.\" In truth, every one of the many implementations that I've tested sets
+.\" the values to zero, but I suppose there is/was some obscure
+.\" implementation out there that does not.
+新创建的集合中信号量的值是不确定的。 (POSIX.1\-2001 和 POSIX.1\-2008 在这一点上是明确的，尽管 POSIX.1\-2008
+指出标准的 future 版本可能需要一个实现来将信号量初始化为 0。) 尽管 Linux 与许多其他实现，将信号量值初始化为
+0，可移植应用程序不能依赖于此: 它应该显式地将信号量初始化为所需的值。
+.PP
+.\"
+可以使用 \fBsemctl\fP(2) \fBSETVAL\fP 或 \fBSETALL\fP 操作完成初始化。 在多个对等点不知道谁将第一个初始化集合的情况下，检查由
+\fBsemctl\fP(2) \fBIPC_STAT\fP 操作检索到的关联数据结构体中的非零 \fIsem_otime\fP 可用于避免竞争。
+.SS "Semaphore limits"
+以下信号量集资源限制会影响 \fBsemget\fP() 调用:
+.TP 
+\fBSEMMNI\fP
+.\" commit e843e7d2c88b7db107a86bd2c7145dc715c058f4
+.\" This /proc file is not available in Linux 2.2 and earlier -- MTK
+信号量集数量的系统范围限制。 在 Linux 3.19 之前，此限制的默认值为 128。 从 Linux 3.19 开始，默认值为 32,000。 在
+Linux 上，可以通过 \fI/proc/sys/kernel/sem\fP 的第四个字段读取和修改此限制。
+.TP 
+\fBSEMMSL\fP
+.\" commit e843e7d2c88b7db107a86bd2c7145dc715c058f4
+每个信号量 ID 的最大信号量数。在 Linux 3.19 之前，此限制的默认值为 250。 从 Linux 3.19 开始，默认值为 32,000。
+在 Linux 上，可以通过 \fI/proc/sys/kernel/sem\fP 的第一个字段读取和修改此限制。
+.TP 
+\fBSEMMNS\fP
+信号量数量的系统范围限制: 取决于策略 (在 Linux 上，可以通过 \fI/proc/sys/kernel/sem\fP) 的第二个字段读取和修改此限制。
+请注意，系统范围内的信号量数量也受 \fBSEMMSL\fP 和 \fBSEMMNI\fP 的乘积限制。
+.SH BUGS
+名字选择 \fBIPC_PRIVATE\fP 可能是不幸的，\fBIPC_NEW\fP 会更清楚地显示它的函数。
+.SH EXAMPLES
+下面显示的程序使用 \fBsemget\fP() 创建新的信号量集或检索现有集的 ID。 它使用 \fBftok\fP(3) 为 \fBsemget\fP() 生成
+\fIkey\fP。 前两个命令行参数用作 \fIpathname\fP 和 \fIproj_id\fP 参数用于 \fBftok\fP(3)。
+第三个命令行参数是一个整数，指定 \fInsems\fP 参数为 \fBsemget\fP()。 命令行选项可用于指定调用于 \fBsemget\fP() 的
+\fBIPC_CREAT\fP (\fI\-c\fP) 和 \fBIPC_EXCL\fP (\fI\-x\fP) 标志。 下面演示该程序的用法。
+.PP
+我们首先使用 \fBftok\fP(3) 创建两个用于生成密钥的文件，使用这些文件创建两个信号量集，然后使用 \fBipcs\fP(1): 列出这些集
+.PP
+.in +4n
+.EX
+$ \fBtouch mykey mykey2\fP
+$ \fB./t_semget \-c mykey p 1\fP
+ID = 9
+$ \fB./t_semget \-c mykey2 p 2\fP
+ID = 10
+$ \fBipcs \-s\fP
+
+\-\-\-\-\-\- 信号量数组 \-\-\-\-\-\-\-\-
+key        semid      owner      perms      nsems
+0x7004136d 9          mtk        600        1
+0x70041368 10         mtk        600        2
+.EE
+.in
+.PP
+接下来，我们演示当 \fBsemctl\fP(2) 被赋予相同的 \fIkey\fP (由相同的参数生成到 \fBftok\fP(3)) 时，它返回已经存在的信号量集的
+ID:
+.PP
+.in +4n
+.EX
+$ \fB./t_semget \-c mykey p 1\fP
+ID = 9
+.EE
+.in
+.PP
+最后，我们演示了当 \fBftok\fP(3) 被赋予具有相同 inode 编号的不同 \fIpathname\fP 参数时可能发生的冲突类型:
+.PP
+.in +4n
+.EX
+$ \fBln mykey link\fP
+$ \fBls \-i1 link mykey\fP
+2233197 link
+2233197 mykey
+$ \fB./t_semget link p 1\fP       # Generates same key as \[aq]mykey\[aq]
+ID = 9
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (t_semget.c)
+\&
+.EX
+/* t_semget.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <unistd.h>
+
+static void
+usage(const char *pname)
+{
+    fprintf(stderr, "Usage: %s [\-cx] pathname proj\-id num\-sems\en",
+            pname);
+    fprintf(stderr, "    \-c           Use IPC_CREAT flag\en");
+    fprintf(stderr, "    \-x           Use IPC_EXCL flag\en");
+    exit(EXIT_FAILURE);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int    semid, nsems, flags, opt;
+    key_t  key;
+
+    flags = 0;
+    while ((opt = getopt(argc, argv, "cx")) != \-1) {
+        switch (opt) {
+        case \[aq]c\[aq]: flags |= IPC_CREAT;   break;
+        case \[aq]x\[aq]: flags |= IPC_EXCL;    break;
+        default:  usage(argv[0]);
+        }
+    }
+
+    if (argc != optind + 3)
+        usage(argv[0]);
+
+    key = ftok(argv[optind], argv[optind + 1][0]);
+    if (key == \-1) {
+        perror("ftok");
+        exit(EXIT_FAILURE);
+    }
+
+    nsems = atoi(argv[optind + 2]);
+
+    semid = semget(key, nsems, flags | 0600);
+    if (semid == \-1) {
+        perror("semget");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("ID = %d\en", semid);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBsemctl\fP(2), \fBsemop\fP(2), \fBftok\fP(3), \fBcapabilities\fP(7),
+\fBsem_overview\fP(7), \fBsysvipc\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

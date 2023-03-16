@@ -1,0 +1,341 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 2006 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under the terms of the GNU Public License.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mke2fs.conf 5 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+mke2fs.conf\-mke2fs 的配置文件
+.SH DESCRIPTION
+\fImke2fs.conf\fP 是 \fBmke2fs\fP(8) 的配置文件。 它控制 \fBmke2fs\fP(8) 在创建 ext2、ext3 或 ext4
+文件系统时使用的默认参数。
+.PP
+.\" Tags can be assigned multiple values
+\fImke2fs.conf\fP 文件使用 INI 风格的格式。 节或顶级部分由方括号分隔: [ ]。
+在每个部分中，每一行都定义了一个关系，它将标签分配给值，或者分配给一个包含更多关系或子部分的子部分。 此配置文件使用的 INI 样式格式示例如下:
+.P
+  [section1]
+.br
+  tag1 = value_a
+.br
+  tag1 = value_b
+.br
+  tag2 = value_c
+.P
+  [section 2]
+.br
+  tag3 = {
+.br
+  subtag1 = subtag_value_a
+.br
+  subtag1 = subtag_value_b
+.br
+  subtag2 = subtag_value_c
+.br
+  }
+.br
+  tag1 = value_d
+.br
+  tag2 = value_e
+.br
+  }
+.P
+注释在注释的开头由分号 (';') 或散列 ('#') 字符分隔，并由行尾字符终止。
+.P
+如果标签和值包含空格，则必须使用双引号引起来。 在带引号的字符串中，标准反斜杠解释适用: "\en" (换行符)、"\et" (制表符)、"\eb"
+(退格符) 和 "\e\e" (反斜杠字符)。
+.P
+一些关系需要一个布尔值。 解析器非常自由地将 `yes`、`y`、`true`、`t`、`1`、`on` 等识别为布尔真值和
+`no`、`n`、`false`、`nil`、`0`、`off` 作为布尔假值。
+.P
+\fImke2fs.conf\fP 文件中使用了以下节。 它们将在本文档的 future 部分中进行更详细的描述。
+.TP 
+\fI[options]\fP
+包含影响 mke2fs 行为方式的关系。
+.TP 
+\fI[defaults]\fP
+包含定义 \fBmke2fs\fP(8) 使用的默认参数的关系。 通常，这些默认值可能会被 \fBfs_types\fP 节中的定义或用户提供的命令行选项覆盖。
+.TP 
+\fI[fs_types]\fP
+包含定义应用于特定文件系统和使用类型的默认值的关系。 可以分别使用 \fB\-t\fPand\fB\-T\fP 选项到 \fBmke2fs\fP(8)
+显式指定文件系统类型和使用类型。
+.TP 
+\fI[devices]\fP
+包含为特定设备定义默认值的关系。
+.SH "THE [options] STANZA"
+\fI[options]\fP 节中定义了以下关系。
+.TP 
+\fIproceed_delay\fP
+如果这个关系被设置为一个正整数，那么 mke2fs 将在询问用户允许继续然后继续等待 \fIproceed_delay\fP 秒，即使用户没有回答问题。
+默认为 0，这意味着等待用户以某种方式回答问题。
+.TP 
+\fIsync_kludge\fP
+如果这个关系被设置为正整数，那么在写入 inode 表时，mke2fs 将请求操作系统刷新挂起的写入以在每个 \fIsync_kludge\fP 块组中初始化
+inode 表。 这是解决不能正确处理写回节流的 buggy 内核所必需的。
+.SH "THE [defaults] STANZA"
+\fI[defaults]\fP 节中定义了以下关系。
+.TP 
+\fIcreator_os\fP
+此关系指定文件系统的 "creator operating system"，除非它在命令行上被覆盖。 默认值是编译 \fBmke2fs\fP
+可执行文件所针对的操作系统。
+.TP 
+\fIfs_type\fP
+如果用户未通过 \fB\-t\fP 选项指定默认文件系统类型，或者如果 \fBmke2fs\fP 未使用 \fBmkfs.\fP\fIfs\-type\fP
+形式的程序名称启动，则此关系指定默认文件系统类型。 如果用户和 \fBmke2fs.conf\fP
+文件都没有指定默认文件系统类型，如果通过命令行选项请求日志，则 mke2fs 将使用默认文件系统类型 \fIext3\fP，否则使用 \fIext2\fP。
+.TP 
+\fIundo_dir\fP
+此关系指定应存储撤消文件的目录。 它可以通过 \fBE2FSPROGS_UNDO_DIR\fP 环境变量覆盖。 如果目录位置设置为值
+\fInone\fP，\fBmke2fs\fP 将不会创建撤消文件。
+.PP
+此外，可以在下面定义的每个文件系统标记子部分中指定的任何标记
+(例如，\fIblocksize\fP、\fIhash_alg\fP、\fIinode_ratio\fP、\fIinode_size\fP、\fIreserved_ratio\fP
+等) 也可以在 \fIdefaults\fP 节中指定以指定默认值如果用户没有在命令行上指定一个，并且配置文件的文件系统类型特定部分没有指定默认值，则使用。
+.SH "THE [fs_types] STANZA"
+\fI[fs_types]\fP 节中的每个标记命名一个文件系统类型或使用类型，可以分别通过 \fB\-t\fP 或 \fB\-T\fP 选项指定到
+\fBmke2fs\fP(8)。
+.P
+\fBmke2fs\fP 程序通过将文件系统类型 (即 ext2、ext3 等) 与使用类型列表连接起来，构建了一个 fs_types 列表。
+对于大多数配置选项，\fBmke2fs\fP 将在 \fI[fs_types]\fP
+节中查找与构造列表中的每个条目相对应的小节，后面的条目会覆盖较早的文件系统或使用类型。 例如，考虑以下 \fBmke2fs.conf\fP 片段:
+.P
+[defaults]
+.br
+  base_features = sparse_super,filetype,resize_inode,dir_index
+.br
+  blocksize = 4096
+.br
+  inode_size = 256
+.br
+  inode_ratio = 16384
+.br
+
+.br
+[fs_types]
+.br
+  ext3 = {
+.br
+  features = has_journal
+.br
+  }
+.br
+  ext4 = {
+.br
+  features = extents,flex_bg
+.br
+  inode_size = 256
+.br
+  }
+.br
+  small = {
+.br
+  blocksize = 1024
+.br
+  inode_ratio = 4096
+.br
+  }
+.br
+  floppy = {
+.br
+  features = ^resize_inode
+.br
+  blocksize = 1024
+.br
+  inode_size = 128
+.br
+  }
+.P
+如果 mke2fs 以 \fBmke2fs.ext4\fP 的程序名称启动，那么将使用 ext4 的文件系统类型。 如果文件系统小于 3
+兆字节，并且未指定使用类型，则 \fBmke2fs\fP 将使用默认使用类型 \fIfloppy\fP。 这导致 "ext4, floppy" 的 fs_types
+列表。 ext4 子部分和软盘子部分都定义了 \fIinode_size\fP 关系，但是由于 fs_types 列表中后面的条目取代了前面的条目，因此将使用
+fs_types.floppy.inode_size 的配置参数，因此文件系统的 inode 大小为 128 .
+.P
+此解决方案的例外是 \fIfeatures\fP 标记，它指定文件系统使用的特性的一组更改，并且是累积的。 因此在上面的示例中，首先配置关系
+defaults.base_features 将启用一个初始特性集，其中启用了 sparse_super、filetype、resize_inode 和
+dir_index 特性。 然后配置关系 fs_types.ext4.features 将启用 extents 和 flex_bg 特性最后配置关系
+fs_types.floppy.features 将删除 resize_inode 特性从而得到由
+sparse_super、filetype、dir_index、extents_ 和 flex_bg 组成的文件系统特性集，特性。
+.P
+对于每种文件系统类型，可以在该 fs_type 的子部分中使用以下标记。 这些标签也可以用在 \fIdefault\fP 部分:
+.TP 
+\fIbase_features\fP
+此关系指定最初为此文件系统类型启用的，特性。 只有一个 \fIbase_features\fP 将被使用，因此如果 fs_types
+列表中有多个条目的子部分定义 \fIbase_features\fP 关系，则只有最后一个将被 \fBmke2fs\fP(8) 使用。
+.TP 
+\fIenable_periodic_fsck\fP
+此布尔关系指定是否应在引导时强制执行定期文件系统检查。 如果设置为 true，将每 180 天或在随机数量的安装后强制检查。 稍后可以通过 \fB\-i\fP
+和 \fB\-c\fP 命令行选项将这些值更改为 \fBtune2fs\fP(8)。
+.TP 
+\fIerrors\fP
+检测到错误时更改内核代码的行为。 在所有情况下，文件系统错误都会导致 \fBe2fsck\fP(8) 在下次启动时检查文件系统。 \fIerrors\fP
+可以是以下之一:
+.RS 1.2i
+.TP  1.2i
+\fBcontinue\fP
+继续正常执行。
+.TP 
+\fBremount\-ro\fP
+以只读方式重新挂载文件系统。
+.TP 
+\fBpanic\fP
+导致内核 panic。
+.RE
+.TP 
+\fIfeatures\fP
+此关系指定一个以逗号分隔的特性编辑请求列表，这些请求修改新构建的文件系统使用的特性集。 语法与 \fBmke2fs\fP(8) 的 \fB\-O\fP
+命令行选项相同; 也就是说，一个特性可以用脱字符 ('^') 符号作为前缀来禁用一个命名的，特性。 fs_types 列表中指定的每个
+\fIfeature\fP 关系将按照在 fs_types 列表中找到的顺序应用。
+.TP 
+\fIforce_undo\fP
+这个布尔关系，如果设置为真值，强制 \fBmke2fs\fP 总是尝试创建一个撤消文件，即使撤消文件可能很大并且它可能会延长创建文件系统映像的时间，因为
+inode 表不是懒惰地初始化。
+.TP 
+\fIdefault_features\fP
+此关系指定在应用 \fIbase_features\fP 和 \fIfeatures\fP 关系中列出的特性后应启用或禁用的一组，特性。 它可能会被
+\fBmke2fs\fP(8) 的 \fB\-O\fP 命令行选项覆盖。
+.TP 
+\fIauto_64\-bit_support\fP
+此关系是一个布尔值，它指定如果文件系统的块数需要启用此特性\fBmke2fs\fP(8) 是否应自动添加 64 位，特性。 resize_inode
+特性也被自动禁用，因为它不支持 64 位块号。
+.TP 
+\fIdefault_mntopts\fP
+此关系指定默认情况下应启用的安装选项集。 这些可能会在以后使用 \fB\-o\fP 命令行选项更改为 \fBtune2fs\fP(8)。
+.TP 
+\fIblocksize\fP
+如果用户未在命令行上指定块大小，则此关系指定默认块大小。
+.TP 
+\fIlazy_itable_init\fP
+这个布尔关系指定 inode 表是否应该延迟初始化。 它仅在启用 uninit_bg 特性时才有意义。 如果 lazy_itable_init 为
+true 且启用了 uninit_bg 特性inode 表将不会被 \fBmke2fs\fP(8) 完全初始化。
+这显着加快了文件系统的初始化速度，但它需要内核在首次挂载文件系统时在后台完成文件系统的初始化。
+.TP 
+\fIlazy_journal_init\fP
+这个布尔关系指定日志 inode 是否应该延迟初始化。它只有在启用 has_journal 特性时才有意义。如果 lazy_journal_init
+为真，则日志 inode 不会被 \fBmke2fs\fP 完全清零。
+这显着加快了文件系统的初始化速度，但如果系统在日志被完全覆盖一次之前崩溃，则会带来一些小风险。
+.TP 
+\fIjournal_location\fP
+此关系指定日志的位置。
+.TP 
+\fInum_backup_sb\fP
+此关系指示是否应使用 0、1 或 2 个备份超级块创建启用了 \fBsparse_super2\fP 特性的文件系统。
+.TP 
+\fIpacked_meta_blocks\fP
+此布尔关系指定分配位图、inode 表和日志是否应位于文件系统的开头。
+.TP 
+\fIinode_ratio\fP
+如果用户未在命令行上指定，则此关系指定默认 inode 比率。
+.TP 
+\fIinode_size\fP
+如果用户未在命令行上指定，则此关系指定默认 inode 大小。
+.TP 
+\fIreserved_ratio\fP
+如果用户未在命令行上指定，则此关系指定为超级用户保留的文件系统块的默认百分比。
+.TP 
+\fIhash_alg\fP
+此关系指定用于具有散列 b 树目录的新文件系统的默认散列算法。 接受的有效算法是: \fIlegacy\fP、\fIhalf_md4\fP 和 \fItea\fP。
+.TP 
+\fIflex_bg_size\fP
+此关系指定将被打包在一起以在 ext4 文件系统上创建一个大型虚拟块组的块组的数量。 这提高了元数据局部性和元数据繁重工作负载的性能。 组数必须是 2
+的幂并且只能在启用 flex_bg 文件系统特性时指定。
+.TP 
+\fIoptions\fP
+此关系指定额外的扩展选项，\fBmke2fs\fP(8) 应将其视为附加在 \fB\-E\fP 选项的参数之前。 这可用于在每个文件系统类型的基础上配置
+\fBmke2fs\fP(8) 使用的默认扩展选项。
+.TP 
+\fIdiscard\fP
+此布尔关系指定 \fBmke2fs\fP(8) 是否应在文件系统创建之前尝试丢弃设备。
+.TP 
+\fIcluster_size\fP
+如果启用了 bigalloc 文件系统特性则此关系指定默认簇大小。 它可以通过 \fB\-C\fP 命令行选项覆盖到 \fBmke2fs\fP(8)
+.TP 
+\fImake_hugefiles\fP
+此布尔关系允许创建预分配文件作为格式化文件系统的一部分。
+这些预分配文件的范围树块将放置在文件系统的开头附近，因此如果所有其他元数据块也配置为放置在文件系统的开头附近 (通过禁用备份超级块，使用
+packed_meta_blocks 选项等)，预分配文件的数据块将是连续的。
+.TP 
+\fIhugefiles_dir\fP
+此关系指定创建大文件的目录，相对于文件系统根目录。
+.TP 
+\fIhugefiles_uid\fP
+此关系控制由 \fImake_hugefiles\fP 特性创建的所有文件和目录的用户所有权。
+.TP 
+\fIhugefiles_gid\fP
+此关系控制由 \fImake_hugefiles\fP 特性创建的所有文件和目录的组所有权。
+.TP 
+\fIhugefiles_umask\fP
+此关系指定在通过 \fImake_hugefiles\fP 特性创建文件和目录时使用的 umask。
+.TP 
+\fInum_hugefiles\fP
+此关系指定要创建的大文件的数量。 如果此关系未指定或设置为零，并且 \fIhugefiles_size\fP 关系非零，则 \fImake_hugefiles\fP
+将创建尽可能多的大文件以填满整个文件系统。
+.TP 
+\fIhugefiles_slack\fP
+此关系指定应为其他文件保留多少空间。
+.TP 
+\fIhugefiles_size\fP
+此关系指定大文件的大小。 如果未指定此关系，则默认为填充整个文件系统。
+.TP 
+\fIhugefiles_align\fP
+此关系指定大文件起始块的对齐方式。 它还强制大文件的大小是请求对齐的倍数。 如果不指定此关系，则不会对大文件强加对齐要求。
+.TP 
+\fIhugefiles_align_disk\fP
+此关系指定对齐是否应相对于硬盘驱动器的开头 (假设分区的起始偏移量可用于 mke2fs)。 默认值为 false，这将导致 hugefile
+对齐相对于文件系统的开头。
+.TP 
+\fIhugefiles_name\fP
+此关系指定大文件的基本文件名。
+.TP 
+\fIhugefiles_digits\fP
+该关系指定了大文件号字段的 (zero\-padded) 宽度。
+.TP 
+\fIwarn_y2038_dates\fP
+此布尔关系指定 mke2fs 在创建具有 128 字节 inode 的文件系统时是否会发出警告 (因此将不支持 2038 年 1 月 19
+日之后的日期)。 默认值为 true，但为 GNU Hurd 创建的文件系统除外，因为它仅支持 128 字节 inode。
+.TP 
+\fIzero_hugefiles\fP
+此布尔关系指定在 \fBmke2fs\fP(8) 创建大文件时是否将零块写入大文件。
+默认情况下，零块将写入大文件以避免陈旧数据可用于潜在不受信任的用户程序，除非设备支持 discard/trim 操作，该操作将负责将设备块清零。 通过将
+\fIzero_hugefiles\fP 设置为 false，此步骤将始终被跳过，如果已知磁盘先前已被
+erased，或者如果可以访问大文件的用户程序被信任不会泄露陈旧数据，这将很有用。
+.TP 
+\fIencoding\fP
+如果启用 casefold 特性此关系定义要使用的文件名编码。 目前唯一有效的编码是 utf8\-12.1 或 utf8，它要求最新的 Unicode
+版本; 由于 12.1 是唯一可用的 Unicode 版本，因此 utf8 和 utf8\-12.1 具有相同的结果。 \fIencoding_flags\fP
+该关系定义了特定于编码的标志。 对于 utf8 编码，唯一可用的标志是 strict，它将导致创建包含无效 Unicode
+字符的文件名的尝试被内核拒绝。 默认情况下不启用严格模式。
+.SH "THE [devices] STANZA"
+\fI[devices]\fP 节中的每个标记都命名为设备名称，以便可以指定每个设备的默认值。
+.TP 
+\fIfs_type\fP
+如果未在命令行中指定此选项，则此关系指定 \fB\-t\fP 选项的默认参数。
+.TP 
+\fIusage_types\fP
+如果未在命令行中指定此选项，则此关系指定 \fB\-T\fP 选项的默认参数。
+.SH FILES
+.TP 
+\fI/etc/mke2fs.conf\fP
+\fBmke2fs\fP(8) 的配置文件。
+.SH "SEE ALSO"
+\fBmke2fs\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

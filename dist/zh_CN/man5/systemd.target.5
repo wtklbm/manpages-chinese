@@ -1,0 +1,129 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.TARGET 5 "" "systemd 253" systemd.target
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.target \- 目标元配置
+.SH SYNOPSIS
+.PP
+\fItarget\fP\&.target
+.SH DESCRIPTION
+.PP
+一个以 "\&.target" 结尾的元配置文件编码了 systemd 目标元的信息，用于分组单元和启动时众所周知的同步点。
+.PP
+这个元类型没有特定的选项 \&。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit] 和
+[Install] 部分 \&。不存在单独的 [Target] 部分，因为不能配置特定于目标的选项 \&。
+.PP
+目标单元不提供除单元 \& 提供的泛型功能之外的任何附加功能。它们的存在只是为了通过依赖关系 (用作引导目标)
+对单元进行分组，并为单元之间的依赖关系中使用的同步点建立标准化名称。除其他事项外，目标单元是经典 SysV 初始化系统中 SysV
+运行级别的更灵活的替代品 \&。(出于兼容性原因，存在特殊目标单元，例如 runlevel3\&.target，它们被 systemd\& 中的
+SysV 运行级别兼容性代码使用。有关详细信息，请参见 \fBsystemd.special\fP(7)) \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+目标单元 \& 没有隐式依赖关系。
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+目标单元将自动用 \fIAfter=\fP 类型的依赖项补充所有已配置的 \fIWants=\fP 或 \fIRequires=\fP
+类型的依赖项，除非在指定的单元中设置 \fIDefaultDependencies=no\fP\&。请注意，\fIWants=\fP 或 \fIRequires=\fP
+必须在目标元本身中定义 \(em 如果您例如在 some\&.service 中定义 \fIWants=\fPsome\&.target，则不会添加自动排序
+\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+目标单元自动获得 \fIConflicts=\fP 和 \fIBefore=\fP 对 shutdown\&.target\& 的依赖。
+.RE
+.SH OPTIONS
+.PP
+目标元文件可能包含 [Unit] 和 [Install] 部分，这些部分在 \fBsystemd.unit\fP(5)\&
+中进行了描述。不支持特定于此文件类型的选项 \&。
+.SH EXAMPLE
+.PP
+\fBExample\ \&1.\ \&Simple standalone target\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# emergency\-net\&.target
+
+[Unit]
+Description=Emergency Mode with Networking
+Requires=emergency\&.target systemd\-networkd\&.service
+After=emergency\&.target systemd\-networkd\&.service
+AllowIsolate=yes
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+将依赖项添加到其他单元时，\*(Aqs 重要的是检查它们是否设置了 \fIDefaultDependencies=\fP\&。服务单元，除非它们设置
+\fIDefaultDependencies=no\fP，否则自动获得对 sysinit\&.target\& 的依赖。本例中
+emergency\&.target 和 systemd\-networkd\&.service 都有
+\fIDefaultDependencies=no\fP，适合在这个 target 中使用，不要拉入 sysinit\&.target\&。
+.PP
+您现在可以通过运行 \fIsystemctl isolate emergency\-net\&.target\fP 或通过在内核命令行 \& 上传递选项
+\fIsystemd\&.unit=emergency\-net\&.target\fP 来切换到此紧急模式。
+.PP
+其他单元可以在 \fI[Install]\fP 部分有 \fIWantedBy=emergency\-net\&.target\fP\&。使用 \fBsystemctl enable\fP 启用它们后，它们将在 \fIemergency\-net\&.target\fP 启动 \& 之前启动。也可以添加任意单元作为
+emergency\&.target 的依赖项，而无需使用 \fBsystemctl add\-wants\fP\& 修改它们。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd.unit\fP(5), \fBsystemd.special\fP(7),
+\fBsystemd.directives\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

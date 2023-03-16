@@ -1,0 +1,237 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Petr Baudis <pasky@suse.cz>
+.\" and copyright (c) 2009, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 2008-12-08 Petr Baudis <pasky@suse.cz>
+.\"    Rewrite the BSD manpage in the Linux man pages style and account
+.\"    for glibc specificities, provide an example.
+.\" 2009-01-14 mtk, many edits and changes, rewrote example program.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getifaddrs 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getifaddrs, freeifaddrs \- 获取接口地址
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <ifaddrs.h>\fP
+.PP
+\fBint getifaddrs(struct ifaddrs **\fP\fIifap\fP\fB);\fP
+\fBvoid freeifaddrs(struct ifaddrs *\fP\fIifa\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBgetifaddrs\fP() 函数创建一个描述本地系统网络接口的结构链表，并将链表第一项的地址存储在 \fI*ifap\fP 中。 该列表由
+\fIifaddrs\fP 结构组成，定义如下:
+.PP
+.in +4n
+.EX
+struct ifaddrs {
+    struct ifaddrs  *ifa_next;    /* Next item in list */
+    char            *ifa_name;    /* Name of interface */
+    unsigned int     ifa_flags;   /* Flags from SIOCGIFFLAGS */
+    struct sockaddr *ifa_addr;    /* Address of interface */
+    struct sockaddr *ifa_netmask; /* Netmask of interface */
+    union {
+        struct sockaddr *ifu_broadaddr;
+                         /* Broadcast address of interface */
+        struct sockaddr *ifu_dstaddr;
+                         /* Point\-to\-point destination address */
+    } ifa_ifu;
+#define              ifa_broadaddr ifa_ifu.ifu_broadaddr
+#define              ifa_dstaddr   ifa_ifu.ifu_dstaddr
+    void            *ifa_data;    /* Address\-specific data */
+};
+.EE
+.in
+.PP
+\fIifa_next\fP 字段包含指向列表中下一个结构体的指针，如果这是列表的最后一项，则为 NULL。
+.PP
+.\" The constant
+.\" .B IF NAMESIZE
+.\" indicates the maximum length of this field.
+\fIifa_name\fP 指向以 null 结尾的接口名称。
+.PP
+\fIifa_flags\fP 字段包含接口标志，由 \fBSIOCGIFFLAGS\fP \fBioctl\fP(2) 操作返回 (有关这些标志的列表，请参见
+\fBnetdevice\fP(7))。
+.PP
+\fIifa_addr\fP 字段指向包含接口地址的结构体。 (应参考 \fIsa_family\fP 子字段以确定地址结构体的格式。) 该字段可能包含空指针。
+.PP
+\fIifa_netmask\fP 字段指向包含与 \fIifa_addr\fP 关联的网络掩码的结构体 (如果适用于地址族)。 该字段可能包含一个空指针。
+.PP
+根据位 \fBIFF_BROADCAST\fP 或 \fBIFF_POINTOPOINT\fP 是否在 \fIifa_flags\fP 中设置
+(一次只能设置一个)，\fIifa_broadaddr\fP 将包含与 \fIifa_addr\fP 关联的广播地址 (如果适用于地址族) 或
+\fIifa_dstaddr\fP 将包含目标地址点对点接口。
+.PP
+\fIifa_data\fP 字段指向包含地址族特定数据的缓冲区; 如果此接口没有此类数据，则此字段可能为 NULL。
+.PP
+\fBgetifaddrs\fP() 返回的数据是动态分配的，不再需要时应使用 \fBfreeifaddrs\fP() 释放。
+.SH "RETURN VALUE"
+成功时，\fBgetifaddrs\fP() 返回零; 出错时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBgetifaddrs\fP() 可能会失败并为
+\fBsocket\fP(2)、\fBbind\fP(2)、\fBgetsockname\fP(2)、\fBrecvmsg\fP(2)、\fBsendto\fP(2)、\fBmalloc\fP(3)
+或 \fBrealloc\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.SH VERSIONS
+\fBgetifaddrs\fP() 函数最早出现在 glibc 2.3 中，但在 glibc 2.3.3 之前，实现只支持 IPv4 地址; 在 glibc
+2.3.3 中添加了 IPv6 支持。 对 IPv4 以外的地址系列的支持仅在支持 netlink 的内核上可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetifaddrs\fP(),
+\fBfreeifaddrs\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.\" , but the BSD-derived documentation generally
+.\" appears to be confused and obsolete on this point.
+.\" i.e., commonly it still says one of them will be NULL, even if
+.\" the ifa_ifu union is already present
+不在 POSIX.1 中。 此函数首次出现在 BSDi 中，并出现在 BSD 系统上，但记录的语义略有不同 \[em]
+每个接口返回一个条目，而不是每个地址。 这意味着如果接口没有地址，\fIifa_addr\fP 和其他字段实际上可以为 NULL，如果接口分配有 IP
+地址，则不会返回链路级地址。 此外，选择 \fIifa_broadaddr\fP 或 \fIifa_dstaddr\fP 的方式在不同的系统上也不同。
+.SH NOTES
+Linux 上返回的地址通常是分配给接口的 IPv4 和 IPv6 地址，但每个接口都有一个 \fBAF_PACKET\fP
+地址，其中包含有关接口及其物理层的较低级别的详细信息。 在这种情况下，\fIifa_data\fP 字段可能包含指向 \fIstruct rtnl_link_stats\fP 的指针，在 \fI<linux/if_link.h>\fP 中定义 (在 Linux、2.4
+和更早版本中，\fIstruct net_device_stats\fP，在 \fI<linux/netdevice.h>\fP)
+中定义，其中包含各种接口属性和统计信息。
+.SH EXAMPLES
+下面的程序演示了 \fBgetifaddrs\fP()、\fBfreeifaddrs\fP() 和 \fBgetnameinfo\fP(3) 的使用。
+这是我们在一个系统上运行这个程序时看到的:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+lo       AF_PACKET (17)
+                tx_packets =        524; rx_packets =        524
+                tx_bytes   =      38788; rx_bytes   =      38788
+wlp3s0   AF_PACKET (17)
+                tx_packets =     108391; rx_packets =     130245
+                tx_bytes   =   30420659; rx_bytes   =   94230014
+em1      AF_PACKET (17)
+                tx_packets =          0; rx_packets =          0
+                tx_bytes   =          0; rx_bytes   =          0
+lo       AF_INET (2)
+                address: <127.0.0.1>
+wlp3s0   AF_INET (2)
+                address: <192.168.235.137>
+lo       AF_INET6 (10)
+                address: <::1>
+wlp3s0   AF_INET6 (10)
+                address: <fe80::7ee9:d3ff:fef5:1a91%wlp3s0>
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+#define _GNU_SOURCE     /* To get defns of NI_MAXSERV and NI_MAXHOST */
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <ifaddrs.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <linux/if_link.h>
+
+int main(int argc, char *argv[])
+{
+    struct ifaddrs *ifaddr;
+    int family, s;
+    char host[NI_MAXHOST];
+
+    if (getifaddrs(&ifaddr) == \-1) {
+        perror("getifaddrs");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Walk through linked list, maintaining head pointer so we
+       can free list later. */
+
+    for (struct ifaddrs *ifa = ifaddr; ifa != NULL;
+             ifa = ifa\->ifa_next) {
+        if (ifa\->ifa_addr == NULL)
+            continue;
+
+        family = ifa\->ifa_addr\->sa_family;
+
+        /* Display interface name and family (including symbolic
+           form of the latter for the common families). */
+
+        printf("%\-8s %s (%d)\en",
+               ifa\->ifa_name,
+               (family == AF_PACKET) ? "AF_PACKET" :
+               (family == AF_INET) ? "AF_INET" :
+               (family == AF_INET6) ? "AF_INET6" : "???",
+               family);
+
+        /* 对于 AF_INET* 接口地址，显示地址。*/
+
+        if (family == AF_INET || family == AF_INET6) {
+            s = getnameinfo(ifa\->ifa_addr,
+                    (family == AF_INET) ? sizeof(struct sockaddr_in) :
+                                          sizeof(struct sockaddr_in6),
+                    host, NI_MAXHOST,
+                    NULL, 0, NI_NUMERICHOST);
+            if (s != 0) {
+                printf("getnameinfo() failed: %s\en", gai_strerror(s));
+                exit(EXIT_FAILURE);
+            }
+
+            printf("\et\etaddress: <%s>\en", host);
+
+        } else if (family == AF_PACKET && ifa\->ifa_data != NULL) {
+            struct rtnl_link_stats *stats = ifa\->ifa_data;
+
+            printf("\et\ettx_packets = %10u; rx_packets = %10u\en"
+                   "\et\ettx_bytes   = %10u; rx_bytes   = %10u\en",
+                   stats\->tx_packets, stats\->rx_packets,
+                   stats\->tx_bytes, stats\->rx_bytes);
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBbind\fP(2), \fBgetsockname\fP(2), \fBsocket\fP(2), \fBpacket\fP(7), \fBifconfig\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

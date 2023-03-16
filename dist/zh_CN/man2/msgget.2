@@ -1,0 +1,114 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Giorgio Ciucci <giorgio@crcc.it>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Added correction due to Nick Duffek <nsd@bbc.com>, aeb, 960426
+.\" Modified Wed Nov  6 04:00:31 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified, 8 Jan 2003, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\"	Removed EIDRM from errors - that can't happen...
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\" Modified, 11 Nov 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language and formatting clean-ups
+.\"	Added notes on /proc files
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH msgget 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+msgget \- 获取 System V 消息队列标识符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/msg.h>\fP
+.PP
+\fBint msgget(key_t \fP\fIkey\fP\fB, int \fP\fImsgflg\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmsgget\fP() 系统调用返回与 \fIkey\fP 参数值关联的 System\V 消息队列标识符。 它可用于获取先前创建的消息队列的标识符 (当
+\fImsgflg\fP 为零且 \fIkey\fP 不具有值 \fBIPC_PRIVATE\fP) 时)，或用于创建新集合。
+.PP
+如果 \fIkey\fP 的值为 \fBIPC_PRIVATE\fP 或 \fIkey\fP 不是 \fBIPC_PRIVATE\fP，则创建一个新消息队列，不存在具有给定键
+\fIkey\fP 的消息队列，并且在 \fImsgflg\fP 中指定了 \fBIPC_CREAT\fP。
+.PP
+如果 \fImsgflg\fP 同时指定 \fBIPC_CREAT\fP 和 \fBIPC_EXCL\fP，并且 \fIkey\fP 的消息队列已经存在，则
+\fBmsgget\fP() 失败，\fIerrno\fP 设置为 \fBEEXIST\fP。 (这类似于组合 \fBO_CREAT | O_EXCL\fP 对
+\fBopen\fP(2).) 的影响
+.PP
+创建时，参数 \fImsgflg\fP 的最低有效位定义了消息队列的权限。 这些权限位与为 \fBopen\fP(2) 的 \fImode\fP
+参数指定的权限具有相同的格式和语义。 (不使用执行权限。)
+.PP
+如果创建了一个新的消息队列，那么它的关联数据结构体 \fImsqid_ds\fP (见 \fBmsgctl\fP(2)) 初始化如下:
+.IP \[bu] 3
+\fImsg_perm.cuid\fP 和 \fImsg_perm.uid\fP 设置为调用进程的有效用户 ID。
+.IP \[bu]
+\fImsg_perm.cgid\fP 和 \fImsg_perm.gid\fP 设置为调用进程的有效组 ID。
+.IP \[bu]
+\fImsg_perm.mode\fP 的低 9 位设置为 \fImsgflg\fP 的低 9 位。
+.IP \[bu]
+\fImsg_qnum\fP、\fImsg_lspid\fP、\fImsg_lrpid\fP、\fImsg_stime\fP 和 \fImsg_rtime\fP 设置为 0.
+.IP \[bu]
+\fImsg_ctime\fP 设置为当前时间。
+.IP \[bu]
+\fImsg_qbytes\fP 被设置为系统限制 \fBMSGMNB\fP。
+.PP
+如果消息队列已经存在，则验证权限，并检查它是否被标记为销毁。
+.SH "RETURN VALUE"
+成功时，\fBmsgget\fP() 返回消息队列标识符 (非负整数)。 失败时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+存在 \fIkey\fP 的消息队列，但调用进程没有访问该队列的权限，并且在管理其 IPC 命名空间的用户命名空间中不具有 \fBCAP_IPC_OWNER\fP
+能力。
+.TP 
+\fBEEXIST\fP
+在 \fImsgflg\fP 中指定了 \fBIPC_CREAT\fP 和 \fBIPC_EXCL\fP，但 \fIkey\fP 的消息队列已经存在。
+.TP 
+\fBENOENT\fP
+\fIkey\fP 不存在消息队列，\fImsgflg\fP 未指定 \fBIPC_CREAT\fP。
+.TP 
+\fBENOMEM\fP
+必须创建消息队列，但系统没有足够的内存用于新数据结构体。
+.TP 
+\fBENOSPC\fP
+必须创建消息队列，但会超过系统对最大消息队列数 (\fBMSGMNI\fP) 的限制。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.SH NOTES
+\fBIPC_PRIVATE\fP 不是标志字段，而是 \fIkey_t\fP 类型。 如果这个特殊值用于 \fIkey\fP，系统调用忽略除 \fImsgflg\fP
+的最低有效 9 位以外的所有内容，并创建一个新的消息队列 (成功时)。
+.PP
+以下是影响 \fBmsgget\fP() 调用的消息队列资源的系统限制:
+.TP 
+\fBMSGMNI\fP
+.\" commit 0050ee059f7fc86b1df2527aaa14ed5dc72f9973
+消息队列数量的系统范围限制。 在 Linux 3.19 之前，此限制的默认值是使用基于可用系统内存的公式计算得出的。 从 Linux 3.19
+开始，默认值为 32,000。 在 Linux 上，可以通过 \fI/proc/sys/kernel/msgmni\fP 读取和修改此限制。
+.SS "Linux notes"
+在 Linux 2.3.20 之前，Linux 将在计划删除的消息队列上为 \fBmsgget\fP() 返回 \fBEIDRM\fP。
+.SH BUGS
+名字选择 \fBIPC_PRIVATE\fP 可能是不幸的，\fBIPC_NEW\fP 会更清楚地显示它的函数。
+.SH "SEE ALSO"
+\fBmsgctl\fP(2), \fBmsgrcv\fP(2), \fBmsgsnd\fP(2), \fBftok\fP(3), \fBcapabilities\fP(7),
+\fBmq_overview\fP(7), \fBsysvipc\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

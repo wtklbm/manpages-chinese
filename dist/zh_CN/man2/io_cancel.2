@@ -1,0 +1,82 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2003 Free Software Foundation, Inc.
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH io_cancel 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+io_cancel \- 取消未完成的异步 I/O 操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.PP
+或者，异步 I/O 库 (\fIlibaio\fP、\fI\-laio\fP); 见注释。
+.SH SYNOPSIS
+.nf
+\fB#include <linux/aio_abi.h>\fP    /* Definition of needed types */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_io_cancel, aio_context_t \fP\fIctx_id\fP\fB, struct iocb *\fP\fIiocb\fP\fB,\fP
+\fB            struct io_event *\fP\fIresult\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fINote\fP: 此页面描述了原始的 Linux 系统调用界面。 \fIlibaio\fP 提供的包装器函数对 \fIctx_id\fP 参数使用不同的类型。
+见注释。
+.PP
+\fBio_cancel\fP() 系统调用尝试取消先前使用 \fBio_submit\fP(2) 提交的异步 I/O 操作。 \fIiocb\fP
+参数描述要取消的操作，\fIctx_id\fP 参数是操作提交到的 AIO 上下文。 如果成功取消操作，则事件将被复制到 \fIresult\fP
+指向的内存中，而不会被放入完成队列。
+.SH "RETURN VALUE"
+成功时，\fBio_cancel\fP() 返回 0。 失败返回见 NOTES。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+未取消指定的 \fIiocb\fP。
+.TP 
+\fBEFAULT\fP
+其中一个数据结构指向无效数据。
+.TP 
+\fBEINVAL\fP
+\fIctx_id\fP 指定的 AIO 上下文无效。
+.TP 
+\fBENOSYS\fP
+\fBio_cancel\fP() 未在此体系结构上实现。
+.SH VERSIONS
+异步 I/O 系统调用最早出现在 Linux 2.5 中。
+.SH STANDARDS
+\fBio_cancel\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+.\" http://git.fedorahosted.org/git/?p=libaio.git
+您可能想使用 \fIlibaio\fP 提供的 \fBio_cancel\fP() 包装器函数。
+.PP
+.\" But glibc is confused, since <libaio.h> uses 'io_context_t' to declare
+.\" the system call.
+请注意，\fIlibaio\fP 包装器函数使用不同类型的 (\fIio_context_t\fP) 作为 \fIctx_id\fP 参数。 另请注意，\fIlibaio\fP
+包装器不遵循通常的 C 库约定来指示错误: 出错时它返回一个否定的错误号 (ERRORS 中列出的值之一的 negative)。 如果通过
+\fBsyscall\fP(2) 调用系统调用，则返回值遵循指示错误的通常约定: \-1，\fIerrno\fP 设置为指示错误的 (positive) 值。
+.SH "SEE ALSO"
+\fBio_destroy\fP(2), \fBio_getevents\fP(2), \fBio_setup\fP(2), \fBio_submit\fP(2),
+\fBaio\fP(7)
+.\" .SH AUTHOR
+.\" Kent Yoder.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

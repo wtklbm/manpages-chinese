@@ -1,0 +1,113 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2006 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH adjtime 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+adjtime \- 更正时间以同步系统时钟
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/time.h>\fP
+.PP
+\fBint adjtime(const struct timeval *\fP\fIdelta\fP\fB, struct timeval *\fP\fIolddelta\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBadjtime\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBadjtime\fP() 函数逐渐调整系统时钟 (由 \fBgettimeofday\fP(2)).  时钟调整的时间量在 \fIdelta\fP
+指向的结构体中指定。 此结构体具有以下形式:
+.PP
+.in +4n
+.EX
+struct timeval {
+    time_t      tv_sec;     /* seconds */
+    suseconds_t tv_usec;    /* microseconds */
+};
+.EE
+.in
+.PP
+如果 \fIdelta\fP 中的调整为正值，则系统时钟会加速一些小百分比 (即，通过每秒向时钟值添加少量时间) 直到调整完成。 如果 \fIdelta\fP
+中的调整为 negative，则时钟以类似的方式减慢。
+.PP
+如果较早的 \fBadjtime\fP() 调用的时钟调整在较晚的 \fBadjtime\fP() 调用时已经在进行中，并且 \fIdelta\fP 对于较晚的调用不为
+NULL，则较早的调整将停止，但该调整的任何已经完成的部分都不会撤消.
+.PP
+如果 \fIolddelta\fP 不为 NULL，则它指向的缓冲区用于返回尚未完成的任何先前调整的剩余时间量。
+.SH "RETURN VALUE"
+成功时，\fBadjtime\fP() 返回 0。 失败时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIdelta\fP 的调整超出允许范围。
+.TP 
+\fBEPERM\fP
+调用者没有足够的权限来调整时间。 在 Linux 下，需要 \fBCAP_SYS_TIME\fP 功能。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBadjtime\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+4.3BSD, 系统 V。
+.SH NOTES
+\fBadjtime\fP() 对时钟的调整是以时钟始终单调递增的方式进行的。 使用 \fBadjtime\fP() 调整时间可以防止某些应用程序可能导致的问题
+(例如，\fBmake\fP(1)) 由系统时间中的突然正跳变或 negative 跳变。
+.PP
+\fBadjtime\fP() 旨在用于对系统时间进行小幅调整。 大多数系统对可以在 \fIdelta\fP 中指定的调整施加限制。 在 glibc
+实现中，\fIdelta\fP 必须小于或等于 (INT_MAX/1000000\-2) 且大于或等于 (INT_MIN/1000000 + 2) (在
+i386 上分别为 2145 和 \-2145 秒)。
+.SH BUGS
+.\" http://sourceware.org/bugzilla/show_bug?id=2449
+.\" http://bugzilla.kernel.org/show_bug.cgi?id=6761
+.\" Thanks to the new adjtimex() ADJ_OFFSET_SS_READ flag
+一个长期存在的错误意味着如果 \fIdelta\fP 被指定为 NULL，则 \fIolddelta\fP 中不会返回有关未完成的时钟调整的有效信息。
+(在这种情况下，\fBadjtime\fP() 应该返回未更改的时钟调整，而不更改它。) 此错误已在具有 glibc 2.8 或更高版本和 Linux 内核
+2.6.26 或更高版本的系统上修复。
+.SH "SEE ALSO"
+\fBadjtimex\fP(2), \fBgettimeofday\fP(2), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

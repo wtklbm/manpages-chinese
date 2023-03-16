@@ -1,0 +1,3778 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.EXEC 5 "" "systemd 253" systemd.exec
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.exec \- 执行环境配置
+.SH SYNOPSIS
+.PP
+\fIservice\fP\&.service, \fIsocket\fP\&.socket, \fImount\fP\&.mount, \fIswap\fP\&.swap
+.SH DESCRIPTION
+.PP
+服务、套接字、挂载点和交换设备的元配置文件共享配置选项的子集，这些配置选项定义了派生进程的执行环境 \&。
+.PP
+此手册页列出了这四种元类型 \& 共享的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)，具体元配置文件见
+\fBsystemd.service\fP(5)、\fBsystemd.socket\fP(5)、\fBsystemd.swap\fP(5)、\fBsystemd.mount\fP(5)\&。执行特定的配置选项在
+[Service]、[Socket]、[Mount] 或 [Swap] 部分中配置，具体取决于元类型 \&。
+.PP
+另外，\fBsystemd.resource\-control\fP(5)\& 中列出了通过 Linux Control Groups (cgroups)
+控制资源的选项。这些选项补充了此处列出的选项 \&。
+.SH "IMPLICIT DEPENDENCIES"
+.PP
+一些执行参数会导致添加额外的自动依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+设置了
+\fIWorkingDirectory=\fP、\fIRootDirectory=\fP、\fIRootImage=\fP、\fIRuntimeDirectory=\fP、\fIStateDirectory=\fP、\fICacheDirectory=\fP、\fILogsDirectory=\fP
+或 \fIConfigurationDirectory=\fP 的单元会自动获得 \fIRequires=\fP 和 \fIAfter=\fP
+类型对访问指定路径所需的所有挂载单元的依赖性 \&。这相当于在 \fIRequiresMountsFor=\fP\& 中明确列出它们。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+类似地，启用了 \fIPrivateTmp=\fP 的单元会自动获取访问 /tmp / 和 /var/tmp/\&
+所需的所有安装的安装单元依赖项。它们还将获得对 \fBsystemd\-tmpfiles\-setup.service\fP(8)\& 的自动 \fIAfter=\fP
+依赖性。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+标准输出或错误输出连接到 \fBjournal\fP 或 \fBkmsg\fP (或其与控制台输出的组合，见下文) 的单元自动获取
+systemd\-journald\&.socket\& 上类型 \fIAfter=\fP 的依赖项。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+使用 \fILogNamespace=\fP 的单元将自动获得对与 systemd\-journald@\&.service instances\&
+关联的两个套接字单元的排序和需求依赖性。
+.RE
+.SH PATHS
+.PP
+以下设置可用于更改服务 \* (文件系统的 Aqs 视图 \&。请注意，路径必须是绝对路径，并且不得包含 "\&.\&." 路径组件 \&。
+.PP
+\fIExecSearchPath=\fP
+.RS 4
+采用冒号分隔的绝对路径列表，可以找到 \fIExec*=\fP (e\&.g\&.\fIExecStart=\fP、\fIExecStop=\fP 等 \&.)
+属性使用的可执行文件的相对路径 \&。 如果用户未通过 \fIEnvironment=\fP、\fIEnvironmentFile=\fP 或
+\fIPassEnvironment=\fP\& 提供 \fI$PATH\fP，则 \fIExecSearchPath=\fP 会覆盖
+\fI$PATH\fP。分配一个空字符串会删除以前的分配，多次将 \fIExecSearchPath=\fP 设置为一个值将追加到以前的设置 \&。
+.RE
+.PP
+\fIWorkingDirectory=\fP
+.RS 4
+取一个相对于服务的目录路径 \*(\fIRootDirectory=\fP 指定的 Aqs 根目录，或者特殊值 `~`\&。设置已执行进程的工作目录
+\&。如果设置为 "~"，则使用 \fIUser=\fP 中指定的用户的主目录 \&。如果未设置，则当 systemd
+作为系统实例运行时默认为根目录，而相应的用户 \*(如果作为用户运行则为 Aqs 主目录 \&。如果设置以 "\-"
+字符为前缀，则丢失的工作目录不会被视为致命的 \&。如果没有设置 \fIRootDirectory=\fP/\fIRootImage=\fP，那么
+\fIWorkingDirectory=\fP 是相对于运行服务管理器的系统的根 \&。请注意，设置此参数可能会导致将其他依赖项添加到元 (见上文) \&。
+.RE
+.PP
+\fIRootDirectory=\fP
+.RS 4
+取一个相对于主机 \*(Aqs 根目录 (i\&.e\&. 运行服务管理器的系统的根) \&。设置执行进程的根目录，\fBchroot\fP(2) 系统调用
+\&。如果使用它，必须确保进程二进制文件及其所有辅助文件在 \fBchroot()\fP jail\&
+中可用。请注意，设置此参数可能会导致将其他依赖项添加到元 (见上文) \&。
+.sp
+\fIMountAPIVFS=\fP 和 \fIPrivateUsers=\fP 设置在与 \fIRootDirectory=\fP\& 结合使用时特别有用。详情见下文
+\&。
+.sp
+如果 \fIRootDirectory=\fP/\fIRootImage=\fP 与 \fINotifyAccess=\fP
+一起使用，通知套接字会自动从主机挂载到根环境中，以确保通知接口能够正常工作 \&。
+.sp
+请注意，使用 \fIRootDirectory=\fP/\fIRootImage=\fP
+的服务将无法通过系统日志或日志协议记录到主机日志基础结构，除非从主机安装了相关套接字，特别是:
+.PP
+\fBExample\ \&1.\ \&Mounting logging sockets into root environment\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+BindReadOnlyPaths=/dev/log /run/systemd/journal/socket /run/systemd/journal/stdout
+.fi
+.if  n \{\
+.RE
+.\}
+
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIRootImage=\fP
+.RS 4
+将块设备节点或常规文件的路径作为参数 \&。此调用类似于 \fIRootDirectory=\fP，但是从块设备节点或回环文件而不是目录 \&
+挂载文件系统层次结构。设备节点或文件系统映像文件需要包含一个没有分区表的文件系统，或者 MBR/MS\-DOS 或 GPT 分区表中只有一个 Linux
+兼容分区的文件系统，或者 GPT 分区表中的一组文件系统在 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2\& 之后。
+.sp
+当 \fIDevicePolicy=\fP 设置为 "closed" 或 "strict"，或设置为 "auto" 且设置了 \fIDeviceAllow=\fP
+时，则此设置将 /dev/loop\-control 与 \fBrw\fP 模式，"block\-loop" 和 "block\-blkext" 与 \fBrwm\fP
+模式添加到 \fIDeviceAllow=\fP\&。关于 \fIDevicePolicy=\fP 或 \fIDeviceAllow=\fP\& 的详细信息，请参见
+\fBsystemd.resource\-control\fP(5)。另外，请参见下面的 \fIPrivateDevices=\fP，因为它可能会更改
+\fIDevicePolicy=\fP\& 的设置。
+.sp
+使用 \fIRootImage=\fP 的单元自动获得对 systemd\-udevd\&.service\& 的 \fIAfter=\fP 依赖。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIRootImageOptions=\fP
+.RS 4
+采用逗号分隔的挂载选项列表，这些选项将用于 \fIRootImage=\fP\&
+指定的磁盘映像。如果图像有多个分区，则分区名称可以有前缀，后跟冒号，否则分区名称 "root" 是隐含的 \&。多个分区的选项可以在一行中用空格分隔符
+\& 指定。分配一个空字符串会删除以前的分配 \&。重复的选项被忽略 \&。有关有效挂载选项的列表，请参见 \fBmount\fP(8)\&。
+.sp
+有效的分区名称遵循 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2:
+\fBroot\fP、\fBusr\fP、\fBhome\fP、\fBsrv\fP、\fBesp\fP、\fBxbootldr\fP、\fBtmp\fP、\fBvar\fP\&。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIRootHash=\fP
+.RS 4
+采用以十六进制指定的数据完整性 (dm\-verity) 根哈希，或包含 ASCII 十六进制格式的根哈希的文件路径
+\&。如果使用的图像包含适当的完整性数据 (见上文) 或使用 \fIRootVerity=\fP\&，则此选项启用使用 dm\-verity
+的数据完整性检查。指定的散列必须与完整性数据的根散列相匹配，并且通常至少有 256 位 (因此有 64 个格式化的十六进制字符) 长 (例如在
+SHA256 的情况下) \&。如果未指定此选项，但图像文件带有 "user\&.verity\&.roothash" 扩展文件属性 (请参见
+\fBxattr\fP(7))，则从中读取根哈希，也是格式化的十六进制字符 \&。如果未找到扩展文件属性
+(或底层文件系统不支持)，但在图像文件旁边发现了一个带有 \&.roothash 后缀的文件，否则具有相同的名称 (除非图像具有 \&.raw
+后缀，在这种情况下，根哈希文件的名称中不能包含它)，从中读取根哈希并自动使用，也作为格式化的十六进制字符 \&。
+.sp
+如果磁盘映像包含一个单独的 /usr / 分区，它也可能受到 Verity 保护，在这种情况下，可以通过扩展属性
+"user\&.verity\&.usrhash" 或与磁盘映像相邻的 \&.usrhash 文件配置根哈希。\*(Aqs
+目前没有选项可以直接通过元文件为 /usr / 文件系统配置根哈希 \&。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIRootHashSignature=\fP
+.RS 4
+将 \fIRootHash=\fP 选项的 PKCS7 签名作为 DER 编码签名文件的路径，或作为前缀为 `base64:`\& 的 DER 编码签名的
+ASCII base64 字符串编码。仅当根哈希的签名有效且由内核密钥环中存在的公钥签名时，才会打开 dm\-verity
+卷。如果未指定此选项，但在图像文件旁边发现具有 \&.roothash\&.p7s 后缀的文件，否则具有相同的名称 (除非图像具有 \&.raw
+后缀，在这种情况下签名文件的名称中不能包含它)，签名将从中读取并自动使用 \&。
+.sp
+如果磁盘映像包含单独的 /usr / 分区，它也可能受到 Verity 保护，在这种情况下，根哈希的签名可以通过与磁盘映像相邻的
+\&.usrhash\&.p7s 文件进行配置。\*(Aqs 目前没有选项可以直接通过元文件为 /usr / 配置根哈希签名 \&。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIRootVerity=\fP
+.RS 4
+采用数据完整性 (dm\-verity) 文件的路径 \&。此选项启用使用 dm\-verity 的数据完整性检查，如果使用 \fIRootImage=\fP
+并传递根哈希，并且如果使用的图像本身不包含完整性数据 \&。完整性数据必须与根哈希匹配。如果未指定此选项，但在图像文件旁边发现具有 \&.verity
+后缀的文件，否则具有相同的名称 (除非图像具有 \&.raw 后缀，在这种情况下为 verity 数据文件它的名称中不能包含它)，将从中读取
+verity 数据并自动使用 \&。
+.sp
+仅包含单个文件系统的磁盘映像支持此选项，没有封闭的分区表 \&。包含 GPT 分区表的镜像应该在同一镜像中包含根文件系统和匹配的 Verity
+数据，实现 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIMountAPIVFS=\fP
+.RS 4
+采用布尔型参数 \&。如果打开，将为单元 \* (创建 Aqs 进程并在其中安装 API 文件系统 /proc/、/sys/、/dev/ 和 /run/
+(作为空 "tmpfs") 的私有挂载命名空间，除非它们已经安装 \&。请注意，除非与 \fIRootDirectory=\fP/\fIRootImage=\fP
+一起使用，否则此选项无效，因为这四个挂载通常无论如何都挂载在主机中，除非更改根目录，否则私有挂载命名空间将是主机的 1:1 副本
+\*(Aqs，并包括这四个坐骑 \&。请注意，如果在没有 \fIPrivateDevices=\fP\& 的情况下使用此选项，则主机的 /dev /
+文件系统将被绑定安装。要使用私有的最小版本的 /dev / 运行该服务，请将此选项与 \fIPrivateDevices=\fP\& 结合使用。
+.sp
+为了允许在运行时以安全的方式传播挂载，主机上的 /run/systemd/propagate 将用于设置新的挂载，私有命名空间中的
+/run/host/incoming/ 将用作在移动到最终挂载点之前存储它们的中间步骤 \&。
+.RE
+.PP
+\fIProtectProc=\fP
+.RS 4
+采用 "noaccess"、"invisible"、"ptraceable" 或 "default" (默认为) \& 之一。设置时，这控制
+"procfs" 实例的 "hidepid=" 挂载选项，用于控制哪些目录具有进程元信息 (/proc/\fIPID\fP) 是可见和可访问的: 当设置为
+"noaccess" 时，访问大多数其他用户的能力 \* (/proc 中的 Aq 进程元数据 / 被服务的进程拿走 \&。当设置为
+"invisible" 时，其他用户拥有所有权的进程在 /proc/\& 中隐藏。如果 "ptraceable" 所有不能被一个进程
+\fBptrace()\fP\*(Aqed 的进程都隐藏到它 \&。如果 "default" 则不限制 /proc / 访问或可见性
+\&。有关详细信息，请参见 \m[blue]\fBThe /proc Filesystem\fP\m[]\&\s-2\u[2]\d\s+2\&。通常建议在运行大多数系统服务时将此选项设置为
+`不可见`\&。此选项是通过文件系统命名空间实现的，因此不能与能够在主机文件系统层次结构中安装挂载点的服务一起使用 \&。请注意，root
+用户不受此选项的影响，因此它必须与 \fIUser=\fP 或 \fIDynamicUser=yes\fP 一起使用才能生效，并且还没有
+"CAP_SYS_PTRACE" 特性这也允许进程绕过此，特性 \&。它不能用于需要访问有关其他用户的元信息的服务 \*(Aq
+processes\&. 该选项表示 \fIMountAPIVFS=\fP\&。
+.sp
+如果内核不支持 \*(Aqt 支持每个挂载点 \fBhidepid=\fP 挂载选项，此设置将保持无效，并且元 \*(Aqs
+进程将能够访问和查看其他进程，就好像未使用该选项一样 \&。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIProcSubset=\fP
+.RS 4
+采用 "all" (默认值) 和 `pid`\& 之一。如果是 "pid"，所有与进程管理和内省不直接相关的文件和目录在为元 \*(Aqs
+processes\&. 这控制了 "procfs" 实例的 "subset=" 挂载选项为元 \&。有关详细信息，请参见 \m[blue]\fBThe /proc Filesystem\fP\m[]\&\s-2\u[2]\d\s+2\&。请注意，Linux 通过 /proc / 公开各种内核 API，这些
+API 在此设置下不可用 \&。由于这些 API 被频繁使用，此选项仅在少数特定情况下有用，不适用于大多数重要程序 \&。
+.sp
+与上面的 \fIProtectProc=\fP 非常相似，这是通过文件系统挂载命名空间实现的，因此适用相同的限制:
+它仅可用于系统服务，它禁用对主机挂载表的挂载传播，并且它暗示 \fIMountAPIVFS=\fP\&。此外，与 \fIProtectProc=\fP
+一样，如果使用的内核不支持 `procfs`\& 的 "subset=" 挂载选项，则可以正常禁用此设置。
+.RE
+.PP
+\fIBindPaths=\fP, \fIBindReadOnlyPaths=\fP
+.RS 4
+配置单元特定的绑定挂载 \&。绑定挂载使特定文件或目录在元 \*(Aqs 文件系统视图
+\&. 使用此选项创建的任何绑定安装都是特定于元的，并且在主机中不可见 \*(Aqs mount
+table\&. 此选项需要一个以空格分隔的绑定安装定义列表 \&。每个定义都包含一个以冒号分隔的源路径、目标路径和选项字符串三元组，其中后两者是可选的
+\&。如果仅指定源路径，则源和目标被认为是相同的 \&。选项字符串可以是 "rbind" 或 "norbind"，用于配置递归或非递归绑定挂载
+\&。如果省略目标路径，则选项字符串也必须省略 \&。每个绑定安装定义都可以以 "\-" 为前缀，在这种情况下，当其源路径不存在时它将被忽略 \&。
+.sp
+\fIBindPaths=\fP 创建常规的可写绑定挂载 (除非源文件系统挂载已标记为只读)，而 \fIBindReadOnlyPaths=\fP 创建只读绑定挂载
+\&。这些设置可能会被多次使用，每次使用都会追加到元 \*(Aqs list of bind
+mounts\&. 如果将空字符串分配给这两个选项中的任何一个，则重置在此之前定义的整个绑定安装列表
+\&。请注意，在这种情况下，只读和常规绑定安装都将被重置，无论使用这两个设置中的哪一个 \&。
+.sp
+当使用 \fIRootDirectory=\fP/\fIRootImage=\fP\& 时，此选项特别有用。此时源路径是指宿主机文件系统上的路径，而目标路径是指元
+\& 根目录下的路径。
+.sp
+请注意，目标目录必须存在或 systemd 必须能够创建它 \&。因此，无法将这些选项用于嵌套在 \fIInaccessiblePaths=\fP
+中指定的路径下或 /home / 和其他受保护目录下 (如果指定了 \fIProtectHome=yes\fP\&) 的安装点。 应使用
+\fITemporaryFileSystem=\fP 和 ":ro" 或 \fIProtectHome=tmpfs\fP 代替 \&。
+.RE
+.PP
+\fIMountImages=\fP
+.RS 4
+此设置类似于 \fIRootImage=\fP，它从块设备节点或回环文件挂载文件系统层次结构，但可以指定目标目录以及挂载选项
+\&。此选项需要一个以空格分隔的挂载定义列表 \&。每个定义都包含一个以冒号分隔的源路径和目标定义元组，后面可以选择跟另一个冒号和挂载选项列表 \&。
+.sp
+挂载选项可以定义为单个以逗号分隔的选项列表，在这种情况下，它们将隐式应用于映像上的根分区，或者一系列以冒号分隔的分区名称和挂载选项元组
+\&。有效分区名称和挂载选项与上述 \fIRootImageOptions=\fP 设置相同 \&。
+.sp
+每个安装定义都可以以 "\-" 为前缀，在这种情况下，当其源路径不存在时它将被忽略 \&。源参数是块设备节点或常规文件的路径 \&。如果源或目标包含
+":"，则需要将其转义为 `\e:`\&。设备节点或文件系统映像文件需要遵循为 \fIRootImage=\fP\&
+指定的相同规则。使用此选项创建的任何挂载都是特定于元的，并且在主机中不可见 \*(Aqs 挂载表 \&。
+.sp
+这些设置可能会被多次使用，每次使用都会追加到元 \*(Aqs list of mount
+paths\&. 如果分配了空字符串，则会重置在此之前定义的整个安装路径列表 \&。
+.sp
+请注意，目标目录必须存在或 systemd 必须能够创建它 \&。因此，无法将这些选项用于嵌套在 \fIInaccessiblePaths=\fP
+中指定的路径下或 /home / 和其他受保护目录下 (如果指定了 \fIProtectHome=yes\fP\&) 的安装点。
+.sp
+当 \fIDevicePolicy=\fP 设置为 "closed" 或 "strict"，或设置为 "auto" 且设置了 \fIDeviceAllow=\fP
+时，则此设置将 /dev/loop\-control 与 \fBrw\fP 模式，"block\-loop" 和 "block\-blkext" 与 \fBrwm\fP
+模式添加到 \fIDeviceAllow=\fP\&。关于 \fIDevicePolicy=\fP 或 \fIDeviceAllow=\fP\& 的详细信息，请参见
+\fBsystemd.resource\-control\fP(5)。另外，请参见下面的 \fIPrivateDevices=\fP，因为它可能会更改
+\fIDevicePolicy=\fP\& 的设置。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIExtensionImages=\fP
+.RS 4
+此设置与 \fIMountImages=\fP 类似，它从块设备节点或回环文件挂载文件系统层次结构，但不提供目标路径，而是设置覆盖层
+\&。此选项需要一个以空格分隔的挂载定义列表 \&。每个定义都包含一个源路径，可以选择后跟一个冒号和一个挂载选项列表 \&。
+.sp
+将在 /usr / 和 /opt/hierarchies\& 之上设置一个只读的 OverlayFS。列出图像的顺序将决定叠加层的放置顺序:
+从前到后指定的图像将导致 overlayfs 层从下到上 \&。
+.sp
+挂载选项可以定义为单个以逗号分隔的选项列表，在这种情况下，它们将隐式应用于映像上的根分区，或者一系列以冒号分隔的分区名称和挂载选项元组
+\&。有效分区名称和挂载选项与上述 \fIRootImageOptions=\fP 设置相同 \&。
+.sp
+每个安装定义都可以以 "\-" 为前缀，在这种情况下，当其源路径不存在时它将被忽略 \&。源参数是块设备节点或常规文件的路径 \&。如果源路径中包含
+":"，需要转义为 `\e:`\&。设备节点或文件系统映像文件需要遵循为 \fIRootImage=\fP\&
+指定的相同规则。使用此选项创建的任何挂载都是特定于元的，并且在主机中不可见 \*(Aqs 挂载表 \&。
+.sp
+这些设置可能会被多次使用，每次使用都会追加到元 \*(Aqs list of image
+paths\&. 如果分配了空字符串，则会重置在此之前定义的整个安装路径列表 \&。
+.sp
+每个图像都必须携带一个 /usr/lib/extension\-release\&.d/extension\-release\&.IMAGE 文件，以及与
+\fIRootImage=\fP/\fIRootDirectory=\fP 或主机 \& 匹配的适当元数据。请参见:
+\fBos\-release\fP(5)\&。要禁用扩展发布文件名与图像文件名匹配的安全检查，可以，追加
+\fIx\-systemd\&.relax\-extension\-release\-check\fP 挂载选项 \&。
+.sp
+当 \fIDevicePolicy=\fP 设置为 "closed" 或 "strict"，或设置为 "auto" 且设置了 \fIDeviceAllow=\fP
+时，则此设置将 /dev/loop\-control 与 \fBrw\fP 模式，"block\-loop" 和 "block\-blkext" 与 \fBrwm\fP
+模式添加到 \fIDeviceAllow=\fP\&。关于 \fIDevicePolicy=\fP 或 \fIDeviceAllow=\fP\& 的详细信息，请参见
+\fBsystemd.resource\-control\fP(5)。另外，请参见下面的 \fIPrivateDevices=\fP，因为它可能会更改
+\fIDevicePolicy=\fP\& 的设置。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIExtensionDirectories=\fP
+.RS 4
+此设置类似于 \fIBindReadOnlyPaths=\fP，因为它从目录挂载文件系统层次结构，但不提供目标路径，而是设置覆盖
+\&。此选项需要一个以空格分隔的源目录列表 \&。
+.sp
+将在 /usr / 和 /opt/hierarchies\& 之上设置一个只读的 OverlayFS。列出目录的顺序将决定叠加层的放置顺序:
+从前到后指定的目录将导致 overlayfs 层从下到上 \&。
+.sp
+\fIExtensionDirectories=\fP 中列出的每个目录都可能带有 "\-" 前缀，在这种情况下，当其源路径不存在时将被忽略
+\&。使用此选项创建的任何挂载都是特定于元的，并且在主机中不可见 \*(Aqs 挂载表 \&。
+.sp
+这些设置可能会被多次使用，每次使用都会追加到元 \*(Aqs list of directories
+paths\&. 如果分配了空字符串，则会重置在此之前定义的整个安装路径列表 \&。
+.sp
+每个目录必须包含一个 /usr/lib/extension\-release\&.d/extension\-release\&.IMAGE 文件，以及与
+\fIRootImage=\fP/\fIRootDirectory=\fP 或主机 \& 匹配的适当元数据。请参见: \fBos\-release\fP(5)\&。
+.sp
+请注意，来自用户单元的使用需要非特权用户命名空间中的 overlayfs 支持，这是在内核 v5\&.11\& 中首次引入的。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.SH "USER/GROUP IDENTITY"
+.PP
+这些选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.PP
+\fIUser=\fP, \fIGroup=\fP
+.RS 4
+分别设置执行进程的 UNIX 用户或组 \&。采用单个用户名或组名，或数字 ID 作为参数 \&。对于系统服务
+(由系统服务管理器运行的服务，i\&.e\&. 由 PID 1 管理) 和对于 root 用户的用户服务 (由 root 管理的服务 *
+(\fBsystemd \-\-user\fP) 的 Aqs 实例，默认为 "root", 但 \fIUser=\fP 可用于指定不同的用户
+\&。对于任何其他用户的用户服务，不允许切换用户身份，因此唯一有效的设置是同一用户用户 \*(Aqs 服务管理器运行为
+\&。如果没有设置组，则使用用户的默认组 \&。此设置不影响命令行前缀为 `+`\& 的命令。
+.sp
+请注意，这仅对 user/group 名称语法施加了较弱的限制，但在 user/group 名称不遵守以下规则的许多情况下会生成警告:
+指定的名称应仅包含字符 a\-z、A\-Z、0\-9、"_" 和 "\-"，除了第一个字符必须是 a\-z、A\-Z 和 "_" 之一 (i\&.e\&。数字和
+"\-" 不允许作为第一个字符) \&。user/group 名称必须至少有一个字符，最多 31\&。做出这些限制是为了避免歧义并确保
+user/group 名称和元文件在 Linux 系统之间保持可移植性 \&。有关接受的名称和警告的名称的更多详细信息，请参见
+\m[blue]\fBUser/Group Name Syntax\fP\m[]\&\s-2\u[3]\d\s+2\&。
+.sp
+当与 \fIDynamicUser=\fP 一起使用时，指定的 user/group 名称在服务启动时动态分配，并在服务停止时释放 \(em
+除非它已经静态分配 (见下文) \&。如果 \fIDynamicUser=\fP 不是使用指定的用户和组必须不晚于服务启动时在用户数据库中静态创建，例如使用
+\fBsysusers.d\fP(5) 工具，它在启动或包安装时应用 \&。如果此时用户不存在，程序调用将失败 \&。
+.sp
+如果使用 \fIUser=\fP 设置，则从指定的用户初始化补充组列表 \*(Aqs 默认组列表，如系统中定义的 \*(Aqs 用户和组数据库 \&。可以通过
+\fISupplementaryGroups=\fP 设置 (见下文) \& 配置其他组。
+.RE
+.PP
+\fIDynamicUser=\fP
+.RS 4
+采用布尔参数 \&。如果设置，则在元启动时动态分配一个 UNIX 用户和组对，并在它停止时立即释放 \&。用户和组不会添加到 /etc/passwd 或
+/etc/group，而是在运行时临时管理 \&。\fBnss\-systemd\fP(8) glibc NSS 模块提供了将这些动态 users/groups
+集成到系统 \*(Aqs 用户和组数据库 \&。要使用的用户名和组名可以通过 \fIUser=\fP 和 \fIGroup=\fP (见上文) \&
+配置。如果不使用这些选项并且为元启用动态 user/group 分配，则动态 user/group 的名称隐式派生自元名称
+\&。如果没有类型后缀的元名称符合有效用户名的条件，则直接使用它，否则使用包含它的散列的名称
+\&。如果配置名称的静态分配用户或组已经存在，则使用它并且不分配动态 user/group\&。注意，如果指定
+\fIUser=\fP，且该名称的静态组存在，则要求该名称的静态用户已经存在 \&。同理，如果指定
+\fIGroup=\fP，且该名称的静态用户存在，则要求该名称的静态组已存在 \&。动态 users/groups 从 UID/GID 范围
+61184\&...65519\& 分配。建议常规系统或登录用户避开此范围 \&。在任何时间点，此范围内的每个 UID/GID
+仅分配给零个或一个正在使用的动态分配的 users/groups\&。但是 UID/GIDs 在一个元终止 \& 后被回收。应该注意的是，作为启用动态
+users/groups 的元的一部分运行的任何进程都不会留下这些 users/groups 拥有所有权的文件或目录，因为不同的元可能会在稍后分配相同的
+UID/GID，从而获得对这些 users/groups 的访问权限文件或目录 \&。如果启用 \fIDynamicUser=\fP，则隐含
+\fIRemoveIPC=\fP 和 \fIPrivateTmp=\fP (并且无法关闭) \&。这确保了 IPC
+对象和执行进程创建的临时文件的生命周被绑定到服务的运行时，因此动态用户 / 组的生命周被绑定。由于 /tmp / 和 /var/tmp/
+通常是系统上唯一的世界可写目录，这确保了使用动态 user/group 分配的元不能在元终止后留下文件。此外，\fINoNewPrivileges=\fP 和
+\fIRestrictSUIDSGID=\fP 被隐式启用 (并且不能被禁用)，以确保调用的进程不能利用或创建 SUID/SGID 文件或目录 \&。此外
+\fIProtectSystem=strict\fP 和 \fIProtectHome=read\-only\fP 是隐含的，因此禁止服务写入任意文件系统位置
+\&。为了允许服务写入某些目录，必须使用 \fIReadWritePaths=\fP 将它们列入允许列表，但必须注意 UID/GID 回收不会 \*(Aqt
+会产生涉及服务创建的文件的安全问题 \&。使用 \fIRuntimeDirectory=\fP (见下文) 为服务分配一个可写的运行时目录，该目录由动态
+user/group 拥有，并在元终止时自动删除 \&。使用 \fIStateDirectory=\fP、\fICacheDirectory=\fP 和
+\fILogsDirectory=\fP 以便为服务分配一组用于特定目的的可写目录，以保护它们免受因 UID 重用而导致的漏洞 (见下文)
+\&。如果启用此选项，应注意单元 \*(Aqs 进程无法访问这些明确配置和管理的目录之外的目录 \&。具体来说，不要使用 \fIBindPaths=\fP
+并小心将 \fBAF_UNIX\fP 文件描述符传递给目录文件描述符，因为这将允许进程创建动态 user/group
+所拥有所有权的文件或目录，这些文件或目录不受服务的生命周期和访问保证的约束。请注意，此选项当前与 D\-Bus
+策略不兼容，因此使用此选项的服务当前可能不会分配 D\-Bus 服务名称 (请注意，这不会影响调用其他 D\-Bus 服务) \&。默认关闭 \&。
+.RE
+.PP
+\fISupplementaryGroups=\fP
+.RS 4
+设置进程执行的补充 Unix 组为 \&。这需要一个以空格分隔的组名或 ID\& 列表。可以多次指定此选项，在这种情况下，所有列出的组都设置为补充组
+\&。当分配空字符串时，补充组列表被重置，并且在此之前的所有分配都将无效
+\&。无论如何，此选项不会覆盖，而是会扩展在系统组数据库中为用户配置的补充组列表。这不会影响以 `+`\& 为前缀的命令。
+.RE
+.PP
+\fIPAMName=\fP
+.RS 4
+设置 PAM 服务名称以将会话设置为 \&。如果设置，执行的进程将被注册为指定服务名称下的 PAM 会话 \&。这仅与 \fIUser=\fP
+设置一起使用，否则将被忽略 \&。如果未设置，则不会为已执行的进程打开 PAM 会话 \&。有关详细信息，请参见 \fBpam\fP(8)\&。
+.sp
+请注意，对于使用此选项的每个元，一个 PAM 会话处理程序进程将作为元的一部分进行维护，并且只要元处于活动状态就会保持不变，以确保在元和 PAM
+会话时可以采取适当的操作终止 \&。此进程名为 "(sd\-pam)"，是元 \*(Aqs 主进程 \&.
+.sp
+请注意，当此选项用于元时，很可能 (取决于 PAM 配置) 主元进程将在激活时迁移到其自己的会话工作域元。因此，此进程将与两个单元相关联:
+它最初从中启动的单元 (并为其配置了 \fIPAMName=\fP)，以及会话使用域单元 \&。但是，该进程的任何子进程都将仅与会话关联。这在与
+\fINotifyAccess=\fP\fBall\fP 结合使用时会产生影响，因为这些子进程将无法通过通知消息 \&
+影响原始单元中的更改。这些消息将被视为属于会话使用域元而不是原始元 \&。因此不建议将 \fIPAMName=\fP 与
+\fINotifyAccess=\fP\fBall\fP\& 结合使用。
+.RE
+.SH CAPABILITIES
+.PP
+这些选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.PP
+\fICapabilityBoundingSet=\fP
+.RS 4
+控制将哪些功能包含在已执行流程的功能范围集中。有关详细信息，请参见
+\fBcapabilities\fP(7)\&。采用以空格分隔的功能名称列表，e\&.g\&。
+\fBCAP_SYS_ADMIN\fP、\fBCAP_DAC_OVERRIDE\fP、\fBCAP_SYS_PTRACE\fP\&。列出的功能将包含在边界集中，所有其他功能都将被删除
+\&。如果功能列表以 "~" 为前缀，则将包括除列出的功能之外的所有功能，分配的效果反转
+\&。请注意，此选项还会影响有效的、允许的和可继承的能力集中的相应能力
+\&。如果不使用此选项，则不会在流程执行时修改能力边界集，因此不会强制执行对流程能力的限制 \&。此选项可能会出现多次，在这种情况下，边界集由
+\fBOR\fP 合并，或者如果行以 "~" 为前缀 (见下文) \&，则由 \fBAND\fP
+合并。如果将空字符串分配给此选项，则边界集将重置为空功能集，并且之前的所有设置均无效 \&。如果设置为 "~"
+(没有任何进一步的参数)，边界集将重置为完整的可用功能集，同时撤消任何先前的设置 \&。这不会影响以 `+`\& 为前缀的命令。
+.sp
+使用 \fBsystemd\-analyze\fP(1)\*(Aqs \fBcapability\fP 命令检索本地系统上定义的功能列表 \&。
+.sp
+示例: 如果一个元有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+CapabilityBoundingSet=CAP_A CAP_B
+CapabilityBoundingSet=CAP_B CAP_C
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+然后设置 \fBCAP_A\fP、\fBCAP_B\fP 和 \fBCAP_C\fP\&。如果第二行以 "~" 为前缀，e\&.g\&.,
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+CapabilityBoundingSet=CAP_A CAP_B
+CapabilityBoundingSet=~CAP_B CAP_C
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+然后，只设置 \fBCAP_A\fP\&。
+.RE
+.PP
+\fIAmbientCapabilities=\fP
+.RS 4
+控制将哪些功能包含在已执行进程的环境功能集中。采用以空格分隔的功能名称列表，e\&.g\&。
+\fBCAP_SYS_ADMIN\fP、\fBCAP_DAC_OVERRIDE\fP、\fBCAP_SYS_PTRACE\fP\&。此选项可能会出现多次，在这种情况下，环境功能集将被合并
+(请参见上面 \fICapabilityBoundingSet=\fP)\& 中的示例。如果功能列表以 "~"
+为前缀，则将包括除列出的功能之外的所有功能，效果赋值反转 \&。如果将空字符串分配给此选项，则环境功能集将重置为空功能集，并且所有先前的设置均无效
+\&。如果设置为 "~" (没有任何进一步的参数)，环境功能集将重置为完整的可用功能集，同时撤消任何先前的设置
+\&。请注意，将功能添加到环境功能集会将它们添加到进程 \*(Aqs 继承的功能集 \&。
+.sp
+如果您想以非特权用户身份执行进程但仍想为其提供一些功能 \&，则环境功能集非常有用。请注意，在这种情况下，选项 \fBkeep\-caps\fP 会自动添加到
+\fISecureBits=\fP 以保留用户更改的功能 \&。 \fIAmbientCapabilities=\fP 不影响以 `+`\& 为前缀的命令。
+.RE
+.SH SECURITY
+.PP
+\fINoNewPrivileges=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则确保服务进程及其所有子进程永远无法通过 \fBexecve()\fP 获得新特权 (例如 \&.g\&。通过 setuid
+或 setgid 位，或文件系统功能) \&。这是确保进程及其子进程永远不会再次提升权限的最简单和最有效的方法 \&。默认为
+false，但某些设置会覆盖它并忽略此设置的值 \&。这是指定
+\fIDynamicUser=\fP、\fILockPersonality=\fP、\fIMemoryDenyWriteExecute=\fP、\fIPrivateDevices=\fP、\fIProtectClock=\fP、\fIProtectHostname=\fP、\fIProtectKernelLogs=\fP、\fIProtectKernelModules=\fP、\fIProtectKernelTunables=\fP、\fIRestrictAddressFamilies=\fP、\fIRestrictNamespaces=\fP、\fIRestrictRealtime=\fP、\fIRestrictSUIDSGID=\fP、\fISystemCallArchitectures=\fP、\fISystemCallFilter=\fP
+或 \fISystemCallLog=\fP 时的情况 \&。请注意，即使此设置被它们覆盖，\fBsystemctl show\fP 仍显示此设置的原始值
+\&。如果服务无论如何都将在新的挂载命名空间中运行并且 SELinux 被禁用，则所有文件系统都使用 \fBMS_NOSUID\fP 标志挂载 \&。另请详见
+\m[blue]\fBNo New Privileges Flag\fP\m[]\&\s-2\u[4]\d\s+2\&。
+.sp
+请注意，此设置仅对元 \* (Aqs 进程本身 (或任何直接或间接从它们派生的进程) \& 有影响。它对通过
+\fBat\fP(1)、\fBcrontab\fP(1)、\fBsystemd\-run\fP(1) 或任意 IPC 服务 \& 等工具根据请求可能调用的进程没有影响。
+.RE
+.PP
+\fISecureBits=\fP
+.RS 4
+控制为执行的进程设置的安全位 \&。从以下列表中获取以空格分隔的选项组合:
+\fBkeep\-caps\fP、\fBkeep\-caps\-locked\fP、\fBno\-setuid\-fixup\fP、\fBno\-setuid\-fixup\-locked\fP、\fBnoroot\fP
+和 \fBnoroot\-locked\fP\&。此选项可能会出现多次，在这种情况下，安全位是 ORed\&。如果将空字符串分配给此选项，则这些位将重置为
+0\&。这不会影响以 `+`\& 为前缀的命令。有关详细信息，请参见 \fBcapabilities\fP(7)\&。
+.RE
+.SH "MANDATORY ACCESS CONTROL"
+.PP
+这些选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.PP
+\fISELinuxContext=\fP
+.RS 4
+设置执行进程的 SELinux 安全上下文 \&。如果设置，这将覆盖自动域转换 \&。但是策略还是需要授权 transition\&。如果
+SELinux 被禁用 \&，该指令将被忽略。如果以 "\-" 为前缀，则设置 SELinux 安全上下文失败将被忽略，但是它 \*(Aqs 如果策略不
+\*(Aqt 允许转换为非覆盖上下文 \&，后续 \fBexecve()\fP 仍然可能失败。这不会影响以 `+`\& 为前缀的命令。有关详细信息，请参见
+\fBsetexeccon\fP(3)\&。
+.RE
+.PP
+\fIAppArmorProfile=\fP
+.RS 4
+将配置文件名称作为参数 \&。元执行的进程在启动时会切换到这个 profile\&。配置文件必须已经加载到内核中，否则单元将失败 \&。如果以 "\-"
+为前缀，所有错误都将被忽略 \&。如果未启用 AppArmor\&，则此设置无效。此设置不影响以 `+`\& 为前缀的命令。
+.RE
+.PP
+\fISmackProcessLabel=\fP
+.RS 4
+将 \fBSMACK64\fP 安全标签作为参数 \&。元执行的进程会在这个标签下启动，SMACK 会根据它来决定进程是否允许运行
+\&。进程将继续在此处指定的标签下运行，除非可执行文件有自己的 \fBSMACK64EXEC\fP 标签，在这种情况下，进程将转换为在该标签下运行
+\&。如果未指定，则使用运行 systemd 的标签 \&。如果禁用 SMACK\&，则忽略此指令。
+.sp
+该值可能以 "\-" 为前缀，在这种情况下，所有错误都将被忽略 \&。可以指定一个空值来取消以前的赋值 \&。这不会影响以 `+`\& 为前缀的命令。
+.RE
+.SH "PROCESS PROPERTIES"
+.PP
+\fILimitCPU=\fP, \fILimitFSIZE=\fP, \fILimitDATA=\fP, \fILimitSTACK=\fP, \fILimitCORE=\fP,
+\fILimitRSS=\fP, \fILimitNOFILE=\fP, \fILimitAS=\fP, \fILimitNPROC=\fP,
+\fILimitMEMLOCK=\fP, \fILimitLOCKS=\fP, \fILimitSIGPENDING=\fP, \fILimitMSGQUEUE=\fP,
+\fILimitNICE=\fP, \fILimitRTPRIO=\fP, \fILimitRTTIME=\fP
+.RS 4
+为执行的进程设置各种资源的软硬限制。有关进程资源限制概念的详细信息，请参见 \fBsetrlimit\fP(2)。进程资源限制可以用两种格式指定:
+作为单个值将特定的软限制和硬限制设置为相同的值，或者作为冒号分隔的对 \fBsoft:hard\fP 单独设置两个限制
+(e\&.g\&."LimitAS=4G:16G") \&。使用字符串 \fBinfinity\fP 配置对特定资源无限制 \&。乘法后缀 K、M、G、T、P
+和 E (以 1024 为基数) 可用于以字节为单位测量的资源限制
+(e\&.g\&. "LimitAS=16G")\&。对于涉及时间值的限值，可以使用通常的时间单位 ms、s、min、h 等 (详见
+\fBsystemd.time\fP(7)) \&。请注意，如果没有为 \fILimitCPU=\fP 指定时间单位，则默认单位为秒，而对于
+\fILimitRTTIME=\fP，则默认单位为微秒 \&。另请注意，限制的有效粒度可能会影响其执行 \&。例如，为 \fILimitCPU=\fP
+指定的时间限制将隐式向上舍入为 1s\& 的倍数。对于 \fILimitNICE=\fP，该值可以用两种语法指定: 如果以 "+" 或 "\-"
+为前缀，则该值被理解为 \- 20\&...19\& 范围内的常规 Linux nice 值。如果没有这样的前缀，该值将被理解为 0\&...40
+范围内的原始资源限制参数 (0 等同于 1) \&。
+.sp
+请注意，使用这些选项配置的大多数进程资源限制是针对每个进程的，并且进程可能会 fork 以获得一组独立于原始进程的新资源，因此可能会逃脱限制集
+\&。另请注意，\fILimitRSS=\fP 未在 Linux 上实现，设置它无效 \&。通常建议优先使用
+\fBsystemd.resource\-control\fP(5)
+中列出的资源控制而不是这些每个进程的限制，因为它们适用于整个服务，可能会在运行时动态更改，并且通常更具表现力 \&。例如，\fIMemoryMax=\fP 是
+\fILimitRSS=\fP\& 的更强大 (和工作) 替代品。
+.sp
+请注意，\fILimitNPROC=\fP 将限制来自一个 (real) UID 的进程数，而不是服务启动 (forked) 的进程数 \&。因此，对于在同一
+UID\& 下运行的所有进程，该限制是累积的。另请注意，如果服务以 root 身份运行 (而不是丢弃权限) \&，则不会强制执行
+\fILimitNPROC=\fP。由于这些限制，\fITasksMax=\fP (请参见 \fBsystemd.resource\-control\fP(5)) 通常是比
+\fILimitNPROC=\fP\& 更好的选择。
+.sp
+未明确为元配置的资源限制默认为在各种 \fIDefaultLimitCPU=\fP、\fIDefaultLimitFSIZE=\fP、\&... 中配置的值
+\fBsystemd\-system.conf\fP(5) 中可用的选项，以及 \(en 如果未在此处配置 \(en 内核或每个用户的默认值，由操作系统定义
+(后者仅用于用户服务，见下文) \&。
+.sp
+对于系统单元，这些资源限制可以自由选择 \&。当这些设置在用户服务中配置时 (i\&.e\&。由服务管理器的每个用户实例运行的服务)
+它们不能用于将限制提高到超过为用户管理器本身设置的限制首先被调用，因为用户 \*(Aqs 服务管理器通常没有这样做的权限
+\&。因此，在用户上下文中，这些配置选项仅对降低传入的限制或将软限制提高到为用户配置的硬限制的最大值有用。为了进一步提高用户 \*(Aqs
+限制，可用的配置机制因操作系统而异，但通常需要特权 \&。在大多数情况下，可以通过 PAM 或通过对封装用户的系统服务设置限制来配置更高的每用户资源限制
+\* (Aqs 服务管理器，i\&.e\&。用户 \* (用户 @\&.service\& 的 Aqs 实例。进行此类更改后，请确保重新启动用户
+\*(Aqs 服务管理器 \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Resource limit directives, their equivalent ulimit shell commands and the unit used\fP
+.TS
+allbox tab(:);
+lB lB lB lB.
+T{
+Directive
+T}:T{
+\fBulimit\fP equivalent
+T}:T{
+Unit
+T}:T{
+Notes
+T}
+.T&
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l.
+T{
+LimitCPU=
+T}:T{
+ulimit \-t
+T}:T{
+Seconds
+T}:T{
+\-
+T}
+T{
+LimitFSIZE=
+T}:T{
+ulimit \-f
+T}:T{
+Bytes
+T}:T{
+\-
+T}
+T{
+LimitDATA=
+T}:T{
+ulimit \-d
+T}:T{
+Bytes
+T}:T{
+Don\*(Aqt use\&. This limits the allowed address range, not memory use! Defaults to unlimited and should not be lowered\&. To limit memory use, see \fIMemoryMax=\fP in \fBsystemd.resource\-control\fP(5)\&.
+T}
+T{
+LimitSTACK=
+T}:T{
+ulimit \-s
+T}:T{
+Bytes
+T}:T{
+\-
+T}
+T{
+LimitCORE=
+T}:T{
+ulimit \-c
+T}:T{
+Bytes
+T}:T{
+\-
+T}
+T{
+LimitRSS=
+T}:T{
+ulimit \-m
+T}:T{
+Bytes
+T}:T{
+Don\*(Aqt use\&. No effect on Linux\&.
+T}
+T{
+LimitNOFILE=
+T}:T{
+ulimit \-n
+T}:T{
+Number of File Descriptors
+T}:T{
+Don\*(Aqt use\&. Be careful when raising the soft limit above 1024, since \fBselect\fP(2) cannot function with file descriptors above 1023 on Linux\&. Nowadays, the hard limit defaults to 524288, a very high value compared to historical defaults\&. Typically applications should increase their soft limit to the hard limit on their own, if they are OK with working with file descriptors above 1023, i\&.e\&. do not use \fBselect\fP(2)\&. Note that file descriptors are nowadays accounted like any other form of memory, thus there should not be any need to lower the hard limit\&. Use \fIMemoryMax=\fP to control overall service memory use, including file descriptor memory\&.
+T}
+T{
+LimitAS=
+T}:T{
+ulimit \-v
+T}:T{
+Bytes
+T}:T{
+Don\*(Aqt use\&. This limits the allowed address range, not memory use! Defaults to unlimited and should not be lowered\&. To limit memory use, see \fIMemoryMax=\fP in \fBsystemd.resource\-control\fP(5)\&.
+T}
+T{
+LimitNPROC=
+T}:T{
+ulimit \-u
+T}:T{
+Number of Processes
+T}:T{
+This limit is enforced based on the number of processes belonging to the user\&. Typically it\*(Aqs better to track processes per service, i\&.e\&. use \fITasksMax=\fP, see \fBsystemd.resource\-control\fP(5)\&.
+T}
+T{
+LimitMEMLOCK=
+T}:T{
+ulimit \-l
+T}:T{
+Bytes
+T}:T{
+\-
+T}
+T{
+LimitLOCKS=
+T}:T{
+ulimit \-x
+T}:T{
+Number of Locks
+T}:T{
+\-
+T}
+T{
+LimitSIGPENDING=
+T}:T{
+ulimit \-i
+T}:T{
+Number of Queued Signals
+T}:T{
+\-
+T}
+T{
+LimitMSGQUEUE=
+T}:T{
+ulimit \-q
+T}:T{
+Bytes
+T}:T{
+\-
+T}
+T{
+LimitNICE=
+T}:T{
+ulimit \-e
+T}:T{
+Nice Level
+T}:T{
+\-
+T}
+T{
+LimitRTPRIO=
+T}:T{
+ulimit \-r
+T}:T{
+Realtime Priority
+T}:T{
+\-
+T}
+T{
+LimitRTTIME=
+T}:T{
+ulimit \-R
+T}:T{
+Microseconds
+T}:T{
+\-
+T}
+.TE
+.sp 1
+.RE
+.PP
+\fIUMask=\fP
+.RS 4
+控制文件模式创建掩码 \&。采用八进制表示法 \& 的访问模式。有关详细信息，请参见 \fBumask\fP(2)\&。系统单位默认为
+0022\&。对于用户单位，默认值继承自每个用户服务管理器 (其默认值又继承自系统服务管理器，因此通常也是 0022\ (除非被 PAM 模块覆盖)
+\&。为了更改所有用户服务的每个用户掩码，请考虑设置用户的 \fIUMask=\fP 设置 \*(Aqs user@\&.service 系统服务实例
+\&。每个用户的 umask 也可以通过用户的 \fIumask\fP 字段设置 \*(Aqs \m[blue]\fBJSON User Record\fP\m[]\&\s-2\u[5]\d\s+2 (对于由 \fBsystemd\-homed.service\fP(8) 管理的用户，该字段可以通过
+\fBhomectl \-\-umask=\fP)\& 控制。它也可以通过 PAM 模块设置，例如 \fBpam_umask\fP(8)\&。
+.RE
+.PP
+\fICoredumpFilter=\fP
+.RS 4
+控制在进程转储核心 (使用 /proc/\fIpid\fP/coredump_filter 文件) \&
+时将保存哪些类型的内存映射。采用以空格分隔的映射类型名称或数字组合 (默认以 16 为基数) \&。映射类型名称为
+\fBprivate\-anonymous\fP、\fBshared\-anonymous\fP、\fBprivate\-file\-backed\fP、\fBshared\-file\-backed\fP、\fBelf\-headers\fP、\fBprivate\-huge\fP、\fBshared\-huge\fP、\fBprivate\-dax\fP、\fBshared\-dax\fP，以及特殊值
+\fBall\fP (所有类型) 和 \fBdefault\fP (内核默认为 "\fBprivate\-anonymous\fP \fBshared\-anonymous\fP
+\fBelf\-headers\fP \fBprivate\-huge\fP")\&，含义见 \fBcore\fP(5) 映射类型 \&。当多次指定时，所有指定的掩码都是
+ORed\&。未设置时，或分配空值时，不更改继承值 \&。
+.PP
+\fBExample\ \&2.\ \&Add DAX pages to the dump filter\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+CoredumpFilter=default private\-dax shared\-dax
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+\fIKeyringMode=\fP
+.RS 4
+控制如何为服务设置内核会话密钥环 (有关会话密钥环的详细信息，请参见 \fBsession\-keyring\fP(7)) \&。采用
+\fBinherit\fP、\fBprivate\fP、\fBshared\fP\& 之一。如果设置为 \fBinherit\fP，则不会进行特殊的密钥环设置，并且内核 \*
+(应用 Aqs 默认行为 \&。如果使用 \fBprivate\fP，则在调用服务进程时会分配一个新的会话密钥环，并且它不会与任何用户密钥环 \&
+链接。这是系统服务的推荐设置，因为这可确保在同一系统用户 ID (特别是根用户) 下运行的多个服务不会彼此共享其密钥材料 \&。如果使用
+\fBshared\fP，则会为 \fBprivate\fP 分配一个新的会话密钥环，但是配置了 \fIUser=\fP
+的用户的用户密钥环会链接到其中，因此分配给用户的密钥可能会被单元 \*(Aqs processes\&. 在这种模式下，在同一用户 ID
+下运行进程的多个单元可以共享密钥材料 \&。除非选择 \fBinherit\fP，否则单元的唯一调用 ID (见下文) 将作为受保护的密钥通过名称
+"invocation_id" 添加到新创建的会话密钥环 \&。系统服务管理器的服务默认为 \fBprivate\fP，非服务单元和用户服务管理器的服务默认为
+\fBinherit\fP\&。
+.RE
+.PP
+\fIOOMScoreAdjust=\fP
+.RS 4
+设置 Linux 内核的调整值 \*(Aqs Out\-Of\-Memory (OOM) killer score for executed
+processes\&。取一个介于 \-1000 (禁用 OOM 杀掉这个元进程) 和 1000 (让这个元进程在内存压力下很可能被杀掉) \&
+之间的整数。有关详细信息，请参见 \m[blue]\fBThe /proc Filesystem\fP\m[]\&\s-2\u[6]\d\s+2\&。如果不指定，默认为服务管理器自身的 OOM 评分调整级别，一般为 0\&。
+.sp
+使用服务单元的 \fIOOMPolicy=\fP 设置来配置服务管理器将如何响应内核 OOM 杀手或 \fBsystemd\-oomd\fP 终止服务进程
+\&。有关详细信息，请参见 \fBsystemd.service\fP(5)\&。
+.RE
+.PP
+\fITimerSlackNSec=\fP
+.RS 4
+为已执行的进程设置以纳秒为单位的计时器松弛。定时器 slack 控制定时器触发唤醒的准确性。有关详细信息，请参见
+\fBprctl\fP(2)\&。请注意，与大多数其他时间跨度定义相比，如果未指定单位 \&，则此参数采用以纳秒为单位的整数值。也可以理解通常的时间单位
+\&。
+.RE
+.PP
+\fIPersonality=\fP
+.RS 4
+控制当被元进程调用时 \fBuname\fP(2) 应该报告哪个内核架构 \&。采用架构标识符
+\fBarm64\fP、\fBarm64\-be\fP、\fBarm\fP、\fBarm\-be\fP、\fBx86\fP、\fBx86\-64\fP、\fBppc\fP、\fBppc\-le\fP、\fBppc64\fP、\fBppc64\-le\fP、\fBs390\fP
+或 \fBs390x\fP\& 之一。支持哪些个性架构取决于内核 \*(Aqs native architecture\&. 通常，各种系统架构的 64
+位版本支持其对应的 immediate 32 位个性架构，但不支持其他 \&。例如，\fBx86\-64\fP 系统支持 \fBx86\-64\fP 和 \fBx86\fP
+个性但不支持其他 \&。在 64 位主机系统上运行 32 位服务时，个性特性很有用 \&。如果未指定，个性将保持不变，从而反映主机系统 \*(Aqs
+内核 \&. 此选项在只有一种原生字宽可用的体系结构上没有用，例如 \fBm68k\fP (仅 32 位) 或 \fBalpha\fP (仅 64 位) \&。
+.RE
+.PP
+\fIIgnoreSIGPIPE=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则导致 \fBSIGPIPE\fP 在执行的进程中被忽略 \&。默认为 true，因为 \fBSIGPIPE\fP 通常仅在
+shell 管道中有用 \&。
+.RE
+.SH SCHEDULING
+.PP
+\fINice=\fP
+.RS 4
+为执行的进程设置默认的 nice 级别 (调度优先级) \&。采用 \-20 (最高优先级) 和 19 (最低优先级) \&
+之间的整数。在资源争用的情况下，较小的值意味着更多的资源将提供给单元 \*(Aqs 进程，较大的值意味着将提供更少的资源 \&。有关详细信息，请参见
+\fBsetpriority\fP(2)\&。
+.RE
+.PP
+\fICPUSchedulingPolicy=\fP
+.RS 4
+为执行的进程设置 CPU 调度策略 \&。采用 \fBother\fP、\fBbatch\fP、\fBidle\fP、\fBfifo\fP 或 \fBrr\fP\&
+之一。有关详细信息，请参见 \fBsched_setscheduler\fP(2)\&。
+.RE
+.PP
+\fICPUSchedulingPriority=\fP
+.RS 4
+设置已执行进程的 CPU 调度优先级 \&。可用的优先级范围取决于所选的 CPU 调度策略 (见上文) \&。对于实时调度策略，可以使用 1
+(最低优先级) 和 99 (最高优先级) 之间的整数 \&。在 CPU 资源争用的情况下，较小的值意味着可供服务使用的 CPU
+时间较少，较大的值意味着更多 \&。有关详细信息，请参见 \fBsched_setscheduler\fP(2)\&。
+.RE
+.PP
+\fICPUSchedulingResetOnFork=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，当执行的进程调用 \fBfork\fP(2) 时，提升的 CPU 调度优先级和策略将被重置，因此不会泄漏到子进程
+\&。有关详细信息，请参见 \fBsched_setscheduler\fP(2)\&。默认为 false\&。
+.RE
+.PP
+\fICPUAffinity=\fP
+.RS 4
+控制已执行进程的 CPU 亲和力 \&。获取由空格或逗号 \& 分隔的 CPU 索引或范围列表。或者，采用特殊的 "numa"
+值，在这种情况下，systemd 会根据 \fINUMAMask=\fP 选项 \& 的值自动导出允许的 CPU 范围。CPU 范围由由破折号 \&
+分隔的下限和上限 CPU 索引指定。可以多次指定此选项，在这种情况下，指定的 CPU 关联掩码将合并
+\&。如果分配了空字符串，则重置掩码，在此之前的所有分配都将无效 \&。有关详细信息，请参见 \fBsched_setaffinity\fP(2)\&。
+.RE
+.PP
+\fINUMAPolicy=\fP
+.RS 4
+控制已执行进程的 NUMA 内存策略。采用策略类型，其中之一:
+\fBdefault\fP、\fBpreferred\fP、\fBbind\fP、\fBinterleave\fP 和 \fBlocal\fP\&。必须在
+\fINUMAMask=\fP\& 中指定应与策略关联的 NUMA 节点列表。有关每项政策的更多详细信息，请参见
+\fBset_mempolicy\fP(2)\&。有关 Linux 中 NUMA 支持的总体概述，请参见 \fBnuma\fP(7)\&。
+.RE
+.PP
+\fINUMAMask=\fP
+.RS 4
+控制将与选定的 NUMA 策略一起应用的 NUMA 节点列表。获取 NUMA 节点列表并具有与 \fICPUAffinity=\fP 选项或特殊 "all"
+值的 CPU 列表相同的语法，它将在掩码 \& 中包含所有可用的 NUMA 节点。请注意，\fBdefault\fP 和 \fBlocal\fP 策略不需要
+NUMA 节点列表，对于 \fBpreferred\fP 策略，我们期望单个 NUMA 节点 \&。
+.RE
+.PP
+\fIIOSchedulingClass=\fP
+.RS 4
+为执行的进程设置 I/O 调度类 \&。采用字符串 \fBrealtime\fP、\fBbest\-effort\fP 或 \fBidle\fP\& 之一。内核
+\*(Aqs 默认调度类是 \fBbest\-effort\fP，优先级为 4\&。如果将空字符串分配给此选项，则之前对
+\fIIOSchedulingClass=\fP 和 \fIIOSchedulingPriority=\fP 的所有分配均无效 \&。有关详细信息，请参见
+\fBioprio_set\fP(2)\&。
+.RE
+.PP
+\fIIOSchedulingPriority=\fP
+.RS 4
+为执行的进程设置 I/O 调度优先级 \&。采用 0 (最高优先级) 和 7 (最低优先级) 之间的整数 \&。在 I/O
+争用的情况下，较小的值意味着更多的 I/O 带宽可用于单元 \*(Aqs 进程，较大的值意味着较少的带宽 \&。可用的优先级取决于所选的 I/O 调度类
+(见上文) \&。如果将空字符串分配给此选项，则之前对 \fIIOSchedulingClass=\fP 和 \fIIOSchedulingPriority=\fP
+的所有分配均无效 \&。对于内核 \*(Aqs 默认调度类 (\fBbest\-effort\fP) 这个默认为 4\&。有关详细信息，请参见
+\fBioprio_set\fP(2)\&。
+.RE
+.SH SANDBOXING
+.PP
+以下沙盒选项是限制系统对元 \*(Aqs processes\&. 建议在不对过程产生负面影响的情况下为每个单元打开尽可能多的这些选项 \*(Aq
+ability to operate\&. 请注意，在底层安全机制不可用 \&
+的系统上，许多这些沙盒特性都已正常关闭。例如，如果内核是在没有文件系统命名空间的情况下构建的，或者如果服务管理器在使文件系统命名空间对其有效，载荷，不可用的容器管理器中运行，则
+\fIProtectSystem=\fP 无效。类似地，\fIRestrictRealtime=\fP 对缺乏对 SECCOMP
+系统调用过滤的支持的系统没有影响，或者在对它的支持被关闭的容器中 \&。
+.PP
+另请注意，某些沙盒功能通常在用户服务中不可用 (i\&.e\&. 由每个用户服务管理器运行的服务) \&。具体来说，需要文件系统命名空间支持的各种设置
+(例如 \fIProtectSystem=\fP) 不可用，因为底层内核功能只能由特权进程访问 \&。但是，大多数命名空间设置在用户服务中不能单独使用，但在与
+\fIPrivateUsers=\fP\fBtrue\fP\& 结合使用时可以使用。
+.PP
+\fIProtectSystem=\fP
+.RS 4
+采用布尔参数或特殊值 "full" 或 `严格`\&。如果为 true，则将 /usr / 和引导加载程序目录 (/boot 和 /efi)
+挂载为只读，以供此元 \& 调用的进程使用。如果设置为 "full"，/etc/ 目录也以只读方式挂载 \&。如果设置为
+"strict"，则整个文件系统层次结构以只读方式安装，API 文件系统子树 /dev/、/proc/ 和 /sys / 除外 (使用
+\fIPrivateDevices=\fP、\fIProtectKernelTunables=\fP、\fIProtectControlGroups=\fP)\&
+保护这些目录。此设置确保对于服务 \&，禁止对供应商提供的操作系统 (以及可选的配置和本地安装)
+进行任何修改。建议为所有长时间运行的服务启用此设置，除非它们涉及系统更新或需要以其他方式修改操作系统
+\&。如果使用此选项，\fIReadWritePaths=\fP 可用于将特定目录排除在只读 \& 之外。如果设置了
+\fIDynamicUser=\fP\&，则暗含此设置。此设置不能确保在所有情况下都受到保护 \&。通常它具有与 \fIReadOnlyPaths=\fP
+相同的限制，请参见下文 \&。默认关闭 \&。
+.RE
+.PP
+\fIProtectHome=\fP
+.RS 4
+采用布尔参数或特殊值 "read\-only" 或 `tmpfs`\&。如果为 true，则目录 /home/、/root 和 /run/user
+对于此元 \& 调用的进程不可访问且为空。如果设置为 "read\-only"，则三个目录变为只读 \&。如果设置为
+"tmpfs"，临时文件系统以只读方式挂载到三个目录 \&。值 "tmpfs" 可用于隐藏与元调用的进程无关的主目录，同时仍然允许必要的目录在
+\fIBindPaths=\fP 或 \fIBindReadOnlyPaths=\fP\& 中列出时可见。
+.sp
+把这个设置成 "yes"，大部分相当于把三个目录都设置在 \fIInaccessiblePaths=\fP\& 中。同样，"read\-only" 大部分等同于
+\fIReadOnlyPaths=\fP，而 "tmpfs" 大部分等同于带 `:ro`\& 的 \fITemporaryFileSystem=\fP。
+.sp
+建议为所有长期运行的服务 (尤其是面向网络的服务) 启用此设置，以确保它们无法访问 private 用户数据，除非服务实际上需要访问用户 \* (Aqs
+private 数据 \&. 如果设置了 \fIDynamicUser=\fP\&，则暗含此设置。此设置不能确保在所有情况下都受到保护 \&。通常它具有与
+\fIReadOnlyPaths=\fP 相同的限制，请参见下文 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIRuntimeDirectory=\fP, \fIStateDirectory=\fP, \fICacheDirectory=\fP,
+\fILogsDirectory=\fP, \fIConfigurationDirectory=\fP
+.RS 4
+这些选项采用以空格分隔的目录名称列表 \&。指定的目录名称必须是相对的，并且不能包括
+`\&.\&.`\&。如果设置，当单元启动时，将在下表定义的位置下创建一个或多个指定名称的目录 (包括它们的父目录)
+\&。此外，相应的环境变量将定义为目录的完整路径 \&。如果设置了多个目录，则在环境变量中，路径用冒号 (":")\& 连接。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \&Automatic directory creation and environment variables\fP
+.TS
+allbox tab(:);
+lB lB lB lB.
+T{
+Directory
+T}:T{
+Below path for system units
+T}:T{
+Below path for user units
+T}:T{
+Environment variable set
+T}
+.T&
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l.
+T{
+\fIRuntimeDirectory=\fP
+T}:T{
+/run/
+T}:T{
+\fI$XDG_RUNTIME_DIR\fP
+T}:T{
+\fI$RUNTIME_DIRECTORY\fP
+T}
+T{
+\fIStateDirectory=\fP
+T}:T{
+/var/lib/
+T}:T{
+\fI$XDG_CONFIG_HOME\fP
+T}:T{
+\fI$STATE_DIRECTORY\fP
+T}
+T{
+\fICacheDirectory=\fP
+T}:T{
+/var/cache/
+T}:T{
+\fI$XDG_CACHE_HOME\fP
+T}:T{
+\fI$CACHE_DIRECTORY\fP
+T}
+T{
+\fILogsDirectory=\fP
+T}:T{
+/var/log/
+T}:T{
+\fI$XDG_CONFIG_HOME\fP/log/
+T}:T{
+\fI$LOGS_DIRECTORY\fP
+T}
+T{
+\fIConfigurationDirectory=\fP
+T}:T{
+/etc/
+T}:T{
+\fI$XDG_CONFIG_HOME\fP
+T}:T{
+\fI$CONFIGURATION_DIRECTORY\fP
+T}
+.TE
+.sp 1
+在 \fIRuntimeDirectory=\fP 的情况下，当单元停止 \& 时，最里面的子目录被删除。如果
+\fIRuntimeDirectoryPreserve=\fP 配置为 \fBrestart\fP 或 \fByes\fP (见下文)
+\&，则在这种情况下可以保留指定的目录。\fIStateDirectory=\fP、\fICacheDirectory=\fP、\fILogsDirectory=\fP、\fIConfigurationDirectory=\fP
+指定的目录在单元停止时不删除 \&。
+.sp
+除了 \fIConfigurationDirectory=\fP 的情况，最里面的指定目录将由 \fIUser=\fP 和 \fIGroup=\fP\&
+中指定的用户和组拥有。如果指定的目录已经存在并且它们拥有所有权的用户或组与配置的不匹配，则指定目录下的所有文件和目录以及目录本身将递归更改其文件所有权以匹配配置的
+\&。作为一种优化，如果指定的目录已经由正确的用户和组拥有，则它们下面的文件和目录将保持原样，即使它们与请求的内容不匹配
+\&。最里面的指定目录将其访问模式调整为
+\fIRuntimeDirectoryMode=\fP、\fIStateDirectoryMode=\fP、\fICacheDirectoryMode=\fP、\fILogsDirectoryMode=\fP
+和 \fIConfigurationDirectoryMode=\fP\& 中指定的内容。
+.sp
+这些选项对指定路径暗示 \fIBindPaths=\fP\&。当与 \fIRootDirectory=\fP 或 \fIRootImage=\fP
+结合时，这些路径总是驻留在主机上，并从那里挂载到元 \*(Aqs 文件系统命名空间 \&。
+.sp
+如果使用 \fIDynamicUser=\fP，则 \fICacheDirectory=\fP、\fILogsDirectory=\fP 和
+\fIStateDirectory=\fP 的逻辑略有改变: 分别在 /var/cache/private、/var/log/private 和
+/var/lib/private 下创建目录，这些目录是非特权用户无法访问的主机目录，这确保无法获得对这些目录的访问权限通过动态用户 ID 回收
+\&。创建符号链接是为了隐藏这种行为差异。无论是从主机的角度还是从元内部来看，相关目录总是出现在 /var/cache、/var/log 和
+/var/lib\& 的正下方。
+.sp
+使用 \fIRuntimeDirectory=\fP 为元管理一个或多个 runtime 目录，并将它们的生命周期绑定到 daemon
+runtime\&。这对于由于缺乏权限而无法在 /run / 中创建运行时目录的非特权守护程序特别有用，并确保在使用后自动清理运行时目录
+\&。对于需要更复杂或不同配置或生命周期保证的运行时目录，请考虑使用 \fBtmpfiles.d\fP(5)\&。
+.sp
+\fIRuntimeDirectory=\fP、\fIStateDirectory=\fP、\fICacheDirectory=\fP 和
+\fILogsDirectory=\fP 可选地支持第二个参数，以 `:`\& 分隔。第二个参数将被解释为目标路径，该路径将被创建为指向目录 \&
+的符号链接。符号链接将在设置任何 \fIBindPaths=\fP 或 \fITemporaryFileSystem=\fP 选项后创建，以使临时符号链接成为可能
+\&。通过使用相同的第一个参数，但使用不同的第二个参数，同一源可以有多个符号链接。
+.PP
+这些选项定义的目录总是在 systemd 使用的标准路径下创建 (/var/、/run/、/etc/、\&...)
+\&。如果服务需要不同位置的目录，则必须使用不同的机制来创建它们 \&。
+.PP
+\fBtmpfiles.d\fP(5)
+提供与这些选项重叠的功能。推荐使用这些选项，因为目录的生命周期直接绑定到单元的生命周期，并且没有必要确保在单元启动之前执行 tmpfiles\&.d
+配置 \&。
+.PP
+要删除由这些设置创建的任何目录，请在相关单元上使用 \fBsystemctl clean \&...\fP 命令，有关详细信息，请参见
+\fBsystemctl\fP(1)\&。
+.PP
+示例: 如果系统服务元具有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RuntimeDirectory=foo/bar baz
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+服务管理器创建 /run/foo (如果它不存在)、/run/foo/bar 和 /run/baz\&。/run/foo/bar 和 /run/baz
+除 /run/foo 外的目录归 \fIUser=\fP 和 \fIGroup=\fP 中指定的用户和组所有，并在服务停止时删除 \&。
+.PP
+示例: 如果系统服务元具有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RuntimeDirectory=foo/bar
+StateDirectory=aaa/bbb ccc
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+然后环境变量 "RUNTIME_DIRECTORY" 设置为 "/run/foo/bar"，"STATE_DIRECTORY" 设置为
+"/var/bbb:/var/ccc"\&。
+.PP
+示例: 如果系统服务元具有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RuntimeDirectory=foo:bar foo:baz
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+服务管理器创建 /run/foo (如果它不存在) 和 /run/bar 加上 /run/baz 作为到 /run/foo\& 的符号链接。
+.RE
+.PP
+\fIRuntimeDirectoryMode=\fP, \fIStateDirectoryMode=\fP, \fICacheDirectoryMode=\fP,
+\fILogsDirectoryMode=\fP, \fIConfigurationDirectoryMode=\fP
+.RS 4
+分别指定
+\fIRuntimeDirectory=\fP、\fIStateDirectory=\fP、\fICacheDirectory=\fP、\fILogsDirectory=\fP
+或 \fIConfigurationDirectory=\fP 中指定目录的访问方式，为八进制数 \&。默认为 \fB0755\fP\&。请参见
+\fBpath_resolution\fP(7) 中的 "Permissions" 以了解权限位 \& 含义的讨论。
+.RE
+.PP
+\fIRuntimeDirectoryPreserve=\fP
+.RS 4
+采用布尔参数或 \fBrestart\fP\&。如果设置为 \fBno\fP (默认值)，\fIRuntimeDirectory=\fP
+中指定的目录总是在服务停止时被删除 \&。如果设置为 \fBrestart\fP，则在服务自动和手动重新启动时保留目录 \&。这里自动重启是指
+\fIRestart=\fP 指定的操作，手动重启是指 \fBsystemctl restart foo\&.service\fP\& 触发的操作。如果设置为
+\fByes\fP，则在服务停止时不会删除目录 \&。请注意，由于运行时目录 /run / 是 "tmpfs"
+的挂载点，因此对于系统服务，\fIRuntimeDirectory=\fP 中指定的目录会在系统重启时被删除 \&。
+.RE
+.PP
+\fITimeoutCleanSec=\fP
+.RS 4
+为通过 \fBsystemctl clean \&...\fP 请求的清理操作配置超时，有关详细信息，请参见
+\fBsystemctl\fP(1)\&。采用通常的时间值并默认为 \fBinfinity\fP，i\&.e\&。默认情况下不应用超时
+\&。如果配置了超时，则在达到超时时清理操作将被强制中止，可能会将资源留在磁盘上。
+.RE
+.PP
+\fIReadWritePaths=\fP, \fIReadOnlyPaths=\fP, \fIInaccessiblePaths=\fP, \fIExecPaths=\fP,
+\fINoExecPaths=\fP
+.RS 4
+为执行的进程设置一个新的文件系统命名空间 \&。这些选项可用于限制进程对文件系统的访问。每个设置都采用一个空格分隔的路径列表，该列表相对于主机
+\*(Aqs 根目录 (i\&.e\&. 运行服务管理器的系统) \&。请注意，如果路径包含符号链接，它们将相对于用
+\fIRootDirectory=\fP/\fIRootImage=\fP\& 设置的根目录进行解析。
+.sp
+\fIReadWritePaths=\fP 中列出的路径可以从命名空间内部访问，访问模式与从命名空间外部相同 \&。\fIReadOnlyPaths=\fP
+中列出的路径只能以读取方式访问，写入将被拒绝，即使通常的文件访问控制允许这样做 \&。将 \fIReadWritePaths=\fP 嵌套在
+\fIReadOnlyPaths=\fP 中，以便在只读目录中提供可写的子目录 \&。如果使用 \fIProtectSystem=strict\fP\&，请使用
+\fIReadWritePaths=\fP 以便允许列出特定路径以进行写访问。
+.sp
+\fIInaccessiblePaths=\fP 中列出的路径将无法访问命名空间内的进程以及文件系统层次结构中它们下面的所有内容
+\&。这可能比预期的更严格，因为不可能在其中嵌套 \fIReadWritePaths=\fP、\fIReadOnlyPaths=\fP、\fIBindPaths=\fP
+或 \fIBindReadOnlyPaths=\fP\&。有关更灵活的选项，请参见 \fITemporaryFileSystem=\fP\&。
+.sp
+\fINoExecPaths=\fP 中列出的路径中的内容不可执行，即使通常的文件访问控制允许这样做 \&。将 \fIExecPaths=\fP 嵌套在
+\fINoExecPaths=\fP 中，以便在非可执行目录中提供可执行内容 \&。
+.sp
+也可以指定非目录路径 \&。可以多次指定这些选项，在这种情况下，列出的所有路径都只能从命名空间 \&
+中进行有限访问。如果将空字符串分配给此选项，则特定列表将被重置，并且所有先前的分配都无效 \&。
+.sp
+\fIReadWritePaths=\fP、\fIReadOnlyPaths=\fP、\fIInaccessiblePaths=\fP、\fIExecPaths=\fP 和
+\fINoExecPaths=\fP 中的路径可能带有 "\-" 前缀，在这种情况下，当它们不存在时将被忽略 \&。如果以 "+" 为前缀，则路径是相对于配置为
+\fIRootDirectory=\fP/\fIRootImage=\fP 的单元的根目录，而不是相对于主机的根目录 (见上文) \&。在同一路径上组合 "\-" 和
+"+" 时，确保首先指定 "\-"，然后指定 "+"\&。
+.sp
+请注意，这些设置将断开从元 \*(Aqs 进程到主机 \& 的挂载传播。这意味着此设置不能用于应能够在主挂载命名空间 \& 中安装挂载点的服务。对于
+\fIReadWritePaths=\fP 和
+\fIReadOnlyPaths=\fP，另一个方向的传播不受影响，i\&.e\&。在主机上创建的挂载一般出现在元进程 \*(Aq
+命名空间，在主机上删除的挂载也在那里消失 \&。特别要注意的是，从主机到元的挂载传播将导致在元 \*(Aqs
+命名空间，i\&.e\&. 出现在主机上的可写挂载在元 \*(Aqs 命名空间中也是可写的，即使在标有 \fIReadOnlyPaths=\fP
+的路径下传播! 因此，使用这些选项限制访问不会扩展到稍后创建的目录的子安装 \&。这意味着该设置提供的锁定不完整，并且不提供全面保护 \&。
+.sp
+请注意，这些设置的效果可能会被特权进程撤销 \&。因此，为了为单元设置有效的沙盒环境，建议将这些设置与
+\fICapabilityBoundingSet=~CAP_SYS_ADMIN\fP 或 \fISystemCallFilter=~@mount\fP\&
+结合使用。
+.sp
+使用这些指令的简单允许列表示例:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Service]
+ReadOnlyPaths=/
+读写路径 =/var/run
+InaccessiblePaths=\-/lost+found
+NoExecPaths=/
+ExecPaths=/usr/sbin/my_daemon /usr/lib /usr/lib64
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+这些选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fITemporaryFileSystem=\fP
+.RS 4
+获取临时文件系统 (tmpfs)\&
+的以空格分隔的挂载点列表。如果设置，则为执行的进程设置一个新的文件系统命名空间，并在每个挂载点上挂载一个临时文件系统
+\&。可以多次指定此选项，在这种情况下，临时文件系统会挂载到所有列出的挂载点 \&。如果将空字符串分配给此选项，则会重置列表，并且所有先前的分配都无效
+\&。每个挂载点都可以选择以冒号 (":") 和挂载选项 (例如 "size=10%" 或 `ro`\&) 为后缀。默认情况下，每个临时文件系统都使用
+`nodev,strictatime,mode=0755`\& 挂载。这些可以通过显式指定相应的安装选项来禁用，例如 \&.g\&.、"dev" 或
+`nostrictatime`\&。
+.sp
+这对于隐藏与元调用的进程无关的文件或目录很有用，同时通过结合 \fIBindPaths=\fP 或 \fIBindReadOnlyPaths=\fP:
+仍然可以访问必要的文件或目录
+.sp
+示例: 如果一个元有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+TemporaryFileSystem=/var:ro
+BindReadOnlyPaths=/var/lib/systemd
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+那么单元调用的进程就看不到 /var / 下除了 /var/lib/systemd 或其内容 \& 之外的任何文件或目录。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIPrivateTmp=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，则为已执行的进程设置一个新的文件系统命名空间，并在其中安装私有 /tmp / 和 /var/tmp/
+目录，这些目录不被命名空间之外的进程共享。这对于保护对进程的临时文件的访问很有用，但使得进程之间无法通过 /tmp / 或 /var/tmp/ 共享
+\&。如果为 true，服务停止后将删除这些目录中服务创建的所有临时文件 \&。默认为 false\&。通过使用
+\fIJoinsNamespaceOf=\fP 指令，可以在同一私有 /tmp / 和 /var/tmp/ 命名空间中运行两个或多个单元，有关详细信息，请参见
+\fBsystemd.unit\fP(5)\&。如果设置了 \fIDynamicUser=\fP\&，则暗含此设置。对于此设置，关于挂载传播和权限的相同限制适用于
+\fIReadOnlyPaths=\fP 和相关调用，请参见上文 \&。启用此设置会产生副作用，即在访问 /tmp / 和 /var/tmp/\&
+所需的所有挂载单元上添加 \fIRequires=\fP 和 \fIAfter=\fP 依赖项。此外，还添加了
+\fBsystemd\-tmpfiles\-setup.service\fP(8) 上的隐式 \fIAfter=\fP 排序 \&。
+.sp
+请注意，此设置的实现可能是不可能的 (例如，如果挂载名称空间不可用)，并且应该以不完全依赖此设置的方式来编写单元以确保安全性 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIPrivateDevices=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，则为执行的进程设置一个新的 /dev / 挂载，并且只向其中添加 API 伪设备，如
+/dev/null、/dev/zero 或 /dev/random (以及伪 TTY 子系统)，但不添加 /dev/sda、系统内存等物理设备
+/dev/mem，系统端口 /dev/port 等 \&。这对于关闭已执行进程对物理设备的访问很有用 \&。默认为 false\&。
+.sp
+启用此选项将安装系统调用过滤器以阻止分组在 \fI@raw\-io\fP 集合中的底层 I/O 系统调用，从单元的功能边界集中删除 \fBCAP_MKNOD\fP 和
+\fBCAP_SYS_RAWIO\fP，并设置 \fIDevicePolicy=closed\fP (有关详细信息，请参见
+\fBsystemd.resource\-control\fP(5)) \&。请注意，使用此设置将断开从服务到主机的挂载传播 (相反方向的传播继续工作)
+\&。这意味着此设置不能用于应能够在主挂载命名空间 \& 中安装挂载点的服务。新的 /dev /
+将以只读方式挂载，\*(Aqnoexec\*(Aq\&。后者可能会破坏旧程序，这些程序试图通过使用 /dev/zero 的 \fBmmap\fP(2)
+而不是使用 \fBMAP_ANON\fP\& 来设置可执行内存。对于此设置，关于挂载传播和权限的相同限制适用于 \fIReadOnlyPaths=\fP
+和相关调用，请参见上文 \&。如果打开并在用户模式或系统模式下运行，但没有 \fBCAP_SYS_ADMIN\fP 功能 (例如 \&.g\&。设置
+\fIUser=\fP)，\fINoNewPrivileges=yes\fP 隐含 \&。
+.sp
+请注意，此设置的实现可能是不可能的 (例如，如果挂载名称空间不可用)，并且应该以不完全依赖此设置的方式来编写单元以确保安全性 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.sp
+当必须可以访问某些但不是所有设备时，可以使用 \fIDeviceAllow=\fP 设置 \&。请参见
+\fBsystemd.resource\-control\fP(5)\&。
+.RE
+.PP
+\fIPrivateNetwork=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则为执行的进程设置一个新的网络命名空间，并只配置其中的回环网络设备 "lo"\&。没有其他网络设备可用于已执行的进程
+\&。这对于关闭已执行进程的网络访问很有用 \&。默认为 false\&。通过使用 \fIJoinsNamespaceOf=\fP
+指令，可以在同一个专用网络名称空间中运行两个或多个单元，有关详细信息，请参见
+\fBsystemd.unit\fP(5)\&。请注意，此选项将断开所有套接字系列与主机的连接，包括 \fBAF_NETLINK\fP 和
+\fBAF_UNIX\fP\&。实际上，对于 \fBAF_NETLINK\fP，这意味着从 \fBsystemd\-udevd.service\fP(8)
+接收到的设备配置事件不会传递到元 \*(Aqs processes\&. 对于 \fBAF_UNIX\fP，这会导致主机的抽象套接字命名空间中的
+\fBAF_UNIX\fP 套接字对单元 \* (Aqs 进程 (但是，位于文件系统中的进程将继续可访问) \& 变得不可用。
+.sp
+请注意，此设置的实现可能是不可能的 (例如，如果网络命名空间不可用)，并且应该以不完全依赖此设置的方式来编写单元以确保安全性 \&。
+.sp
+当此选项用于套接字单元时，任何代表此单元绑定的套接字都将绑定在专用网络名称空间 \& 中。这可以与 \fIJoinsNamespaceOf=\fP
+结合以侦听其他服务的网络名称空间内的套接字 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fINetworkNamespacePath=\fP
+.RS 4
+采用指向 Linux 网络命名空间伪文件的绝对文件系统路径 (i\&.e\&. 类似 /proc/net 的文件或绑定挂载或符号链接)
+\&。设置时，调用的进程将添加到该路径引用的网络名称空间 \&。在进程被分叉时，路径必须指向一个有效的命名空间文件 \&。如果使用此选项
+\fIPrivateNetwork=\fP 无效 \&。如果此选项与 \fIJoinsNamespaceOf=\fP 一起使用，则仅当此单元在配置了
+\fIPrivateNetwork=\fP 或 \fINetworkNamespacePath=\fP
+的任何列出的单元之前启动时才有效，否则这些单元的网络命名空间将被重用 \&。
+.sp
+当此选项用于套接字元时，任何代表此元绑定的套接字都将绑定在指定的网络名称空间 \& 中。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIPrivateIPC=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则为执行的进程设置一个新的 IPC 命名空间 \&。每个 IPC 名称空间都有自己的一组 System V IPC
+标识符和自己的 POSIX 消息队列文件系统 \&。这有助于避免 IPC 标识符 \& 的名称冲突。默认为 false\&。通过使用
+\fIJoinsNamespaceOf=\fP 指令，可以在同一个私有 IPC 命名空间中运行两个或多个单元，有关详细信息，请参见
+\fBsystemd.unit\fP(5)\&。
+.sp
+请注意，IPC 命名空间对 \fBAF_UNIX\fP 套接字没有影响，这是 Linux\& 上使用的最常见的 IPC 形式。相反，文件系统中的
+\fBAF_UNIX\fP 套接字受挂载命名空间的约束，而抽象命名空间中的套接字受网络命名空间 \& 的约束。IPC 命名空间仅对 SysV IPC
+(主要是遗留的) 以及 POSIX 消息队列 (\fBAF_UNIX\fP/\fBSOCK_SEQPACKET\fP 套接字通常是更好的替代品) \&
+有影响。IPC 命名空间也对 POSIX 共享内存 (受挂载命名空间影响) 没有影响 \&。有关详细信息，请参见
+\fBipc_namespaces\fP(7)\&。
+.sp
+请注意，此设置的实现可能是不可能的 (例如，如果 IPC 名称空间不可用)，并且应该以不完全依赖此设置的方式来编写单元以确保安全性 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIIPCNamespacePath=\fP
+.RS 4
+采用指向 Linux IPC 命名空间伪文件的绝对文件系统路径 (i\&.e\&. 类似 /proc/ipc 的文件或绑定挂载或符号链接)
+\&。设置时，调用的进程将添加到该路径引用的网络名称空间 \&。在进程被分叉时，路径必须指向一个有效的命名空间文件 \&。如果使用此选项
+\fIPrivateIPC=\fP 无效 \&。如果此选项与 \fIJoinsNamespaceOf=\fP 一起使用，则仅当此单元在配置了
+\fIPrivateIPC=\fP 或 \fIIPCNamespacePath=\fP 的任何列出的单元之前启动时才有效，否则这些单元的网络命名空间将被重用 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIPrivateUsers=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，为执行的进程设置一个新的用户命名空间，并配置一个最小的用户和组映射，即 maps "root" 用户和组以及元
+\*(Aqs 自己的用户和组到他们自己，其他所有到 "nobody" 用户和组
+\&。这对于安全地将单元使用的用户和组数据库与系统的其余部分分离是很有用的，从而创建一个有效的沙箱环境 \&。users/groups
+拥有所有权的所有文件、目录、进程、IPC 对象和其他资源不等于 "root" 或元 \*(Aqs 自己将在元内保持可见，但显示为 "nobody"
+用户和组拥有 \&。如果启用此模式，则所有元进程都在主机用户命名空间中无权限运行 (无论元 \* (Aqs own user/group is
+"root" or not) \&。具体来说，这意味着该进程在主机 \*(Aqs 用户命名空间，但在服务 \*(Aqs 用户命名空间
+\&。\fICapabilityBoundingSet=\fP 之类的设置只会影响后者，并且 \*(Aqs 无法在主机中获取额外的功能 \*(Aqs
+用户命名空间 \&。默认关闭 \&。
+.sp
+当此设置由服务管理器的每个用户实例设置时，将省略 "root" 用户和组到自身的映射 (除非用户管理器是 root)
+\&。此外，在每个用户实例管理器的情况下，用户命名空间将在大多数其他命名空间之前设置 \&。这意味着将 \fIPrivateUsers=\fP\fBtrue\fP
+与其他名称空间组合将启用服务管理器的每用户实例通常不支持的，特性 \&。
+.sp
+此设置与 \fIRootDirectory=\fP/\fIRootImage=\fP
+一起使用时特别有用，因为同步根目录和主机上的用户和组数据库的需求减少了，因为唯一需要匹配的用户和组是 "root"、"nobody" 和元 \*(Aqs
+自己的用户和组 \&。
+.sp
+请注意，此设置的实现可能是不可能的 (例如，如果用户名称空间不可用)，并且应该以不完全依赖此设置的方式来编写单元以确保安全性 \&。
+.RE
+.PP
+\fIProtectHostname=\fP
+.RS 4
+采用布尔型参数 \&。设置后，为执行的进程设置一个新的 UTS 命名空间 \&。此外，更改主机名或域名被阻止 \&。默认关闭 \&。
+.sp
+请注意，此设置的实现可能是不可能的 (例如，如果 UTS 名称空间不可用)，并且应该以不完全依赖此设置的方式来编写单元以确保安全性 \&。
+.sp
+请注意，当为服务启用此选项时，主机名更改不再从系统传播到服务中，因此它不适用于需要动态注意系统主机名更改的服务 \&。
+.sp
+如果此设置打开，但元没有 \*(Aqt 具有 \fBCAP_SYS_ADMIN\fP 功能 (e\&.g\&. 为其设置 \fIUser=\fP 的服务)，隐含
+\fINoNewPrivileges=yes\fP\&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIProtectClock=\fP
+.RS 4
+采用布尔型参数 \&。如果设置，写入硬件时钟或系统时钟将被拒绝 \&。对于大部分不需要修改时钟的服务，建议开启此项。默认关闭
+\&。启用此选项会从该单元的功能边界集中删除 \fBCAP_SYS_TIME\fP 和
+\fBCAP_WAKE_ALARM\fP，安装系统调用过滤器以阻止可以设置时钟的调用，并且隐含 \fIDeviceAllow=char\-rtc r\fP\&。这确保了 /dev/rtc0、/dev/rtc1 等 \&。对服务只读 \&。\fIDeviceAllow=\fP\& 的详细信息参见
+\fBsystemd.resource\-control\fP(5)。如果此设置打开，但元没有 \*(Aqt 具有 \fBCAP_SYS_ADMIN\fP 功能
+(e\&.g\&. 为其设置 \fIUser=\fP 的服务)，隐含 \fINoNewPrivileges=yes\fP\&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIProtectKernelTunables=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，通过
+/proc/sys/、/sys/、/proc/sysrq\-trigger、/proc/latency_stats、/proc/acpi、/proc/timer_stats、/proc/fs
+和 /proc/irq 访问的内核变量将被设置为对元 \& 的所有进程只读。通常，可调内核变量应该只在启动时初始化，例如使用
+\fBsysctl.d\fP(5) 机制 \&。很少有服务需要在运行时写入这些; 因此建议为大多数服务打开此功能
+\&。对于此设置，关于挂载传播和权限的相同限制适用于 \fIReadOnlyPaths=\fP 和相关调用，请参见上文 \&。默认关闭
+\&。如果此设置打开，但元没有 \*(Aqt 具有 \fBCAP_SYS_ADMIN\fP 功能 (e\&.g\&. 为其设置 \fIUser=\fP
+的服务)，隐含 \fINoNewPrivileges=yes\fP\&。请注意，此选项不会阻止对其他进程的 IPC
+调用影响的内核可调参数的间接更改。但是，\fIInaccessiblePaths=\fP 可用于使相关 IPC 文件系统对象不可访问 \&。如果设置
+\fIProtectKernelTunables=\fP，则隐含 \fIMountAPIVFS=yes\fP\&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIProtectKernelModules=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，显式模块加载将被拒绝
+\&。这允许在模块化内核上关闭模块加载和卸载操作。对于大多数不需要特殊文件系统或额外内核模块即可工作的服务，建议将其打开 \&。默认关闭
+\&。启用此选项将从单元的能力边界集中删除 \fBCAP_SYS_MODULE\fP，并安装系统调用过滤器以阻止模块系统调用，同时
+/usr/lib/modules 也不可访问 \&。对于此设置，关于挂载传播和权限的相同限制适用于 \fIReadOnlyPaths=\fP
+和相关调用，请参见上文 \&。请注意，由于用户配置或内核映射表而导致的有限自动模块加载可能仍然会作为请求的用户操作的副作用发生，包括特权和非特权
+\&。要禁用模块自动加载特性请参见 \fBsysctl.d\fP(5) \fBkernel\&.modules_disabled\fP 机制和
+/proc/sys/kernel/modules_disabled 文档 \&。如果此设置打开，但元没有 \*(Aqt 具有
+\fBCAP_SYS_ADMIN\fP 功能 (e\&.g\&. 为其设置 \fIUser=\fP 的服务)，隐含
+\fINoNewPrivileges=yes\fP\&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIProtectKernelLogs=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，将拒绝访问内核日志环形缓冲区
+\&。建议为大多数不需要读取或写入内核日志环形缓冲区的服务打开此功能。启用此选项将从该单元的能力边界集中删除
+\fBCAP_SYSLOG\fP，并安装系统调用过滤器以阻止 \fBsyslog\fP(2) 系统调用 (不要与用于用户空间日志记录的 libc API
+\fBsyslog\fP(3) 混淆) \&。内核通过 /dev/kmsg 和 /proc/kmsg\&
+向用户空间公开其日志缓冲区。如果启用，这些将无法访问元 \& 中的所有进程。如果此设置打开，但元没有 \*(Aqt 具有
+\fBCAP_SYS_ADMIN\fP 功能 (e\&.g\&. 为其设置 \fIUser=\fP 的服务)，隐含
+\fINoNewPrivileges=yes\fP\&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIProtectControlGroups=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则通过 /sys/fs/cgroup/ 访问的 Linux 控制组 (\fBcgroups\fP(7)) 层次结构将对元 \&
+的所有进程变为只读。除容器管理器外，任何服务都不应要求对控制组层次结构进行写访问; 因此建议为大多数服务打开此功能
+\&。对于此设置，关于挂载传播和权限的相同限制适用于 \fIReadOnlyPaths=\fP 和相关调用，请参见上文 \&。默认关闭 \&。如果设置
+\fIProtectControlGroups=\fP，则隐含 \fIMountAPIVFS=yes\fP\&。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIRestrictAddressFamilies=\fP
+.RS 4
+限制这个元 \& 的进程可以访问的套接字地址族集。将 "none" 或以空格分隔的地址族名称列表加入允许列表，例如
+\fBAF_UNIX\fP、\fBAF_INET\fP 或 \fBAF_INET6\fP\&。当指定 "none" 时，所有地址族都将被拒绝 \&。当以 "~"
+为前缀时，列出的地址系列将作为拒绝列表应用，否则作为允许列表 \&。请注意，这限制了对 \fBsocket\fP(2)
+系统调用的访问。通过其他方式传递到进程中的套接字 (例如，通过套接字单元使用套接字激活，请参见 \fBsystemd.socket\fP(5)) 不受影响
+\&。此外，使用 \fBsocketpair()\fP 创建的套接字 (仅创建连接的 AF_UNIX 套接字) 不受影响 \&。请注意，此选项对 32 位
+x86、s390、s390x、mips、mips\-le、ppc、ppc\-le、ppc64、ppc64\-le 没有影响并被忽略 (但在其他 ABI
+上正常工作，包括 x86\-64) \&。注意在支持多 ABI 的系统上 (比如 x86/x86\-64) 建议关闭服务的替代
+ABI，这样它们就不能用来规避这个选项的限制了。具体来说，建议将此选项与 \fISystemCallArchitectures=native\fP 或类似的
+\& 结合使用。如果在用户模式或系统模式下运行，但没有 \fBCAP_SYS_ADMIN\fP 功能 (例如 \&.g\&。设置
+\fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的 \&。默认情况下，没有任何限制，进程可以访问所有地址族
+\&。如果指定了空字符串，则任何先前的地址族限制更改都将被撤消 \&。此设置不影响以 `+`\& 为前缀的命令。
+.sp
+使用此选项可以限制进程对远程访问的暴露，尤其是通过 \fBAF_PACKET\fP\& 等异国情调和敏感的网络协议。请注意，在大多数情况下，本地
+\fBAF_UNIX\fP 地址系列应包含在配置的允许列表中，因为它经常用于本地通信，包括 \fBsyslog\fP(2) 日志记录 \&。
+.RE
+.PP
+\fIRestrictFileSystems=\fP
+.RS 4
+限制这个元组的文件系统进程可以打开 \& 上的文件。采用以空格分隔的文件系统名称列表 \&。任何列出的文件系统都可以访问单元 \* (Aqs
+进程，禁止访问未列出的文件系统类型 (允许列表) \&。如果列表的第一个字符是 "~"，则效果相反: 禁止访问列出的文件系统 (拒绝列出)
+\&。如果分配了空字符串，则对文件系统的访问不受限制 \&。
+.sp
+如果您指定此选项的两种类型 (i\&.e\&. 允许列表和拒绝列表)，第一个遇到的将优先并指示默认操作 (允许访问文件系统或拒绝它)
+\&. 然后，此选项的下一次出现将从受限文件系统集中添加或删除列出的文件系统，具体取决于其类型和默认操作 \&。
+.sp
+示例: 如果一个元有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RestrictFileSystems=ext4 tmpfs
+RestrictFileSystems=ext2 ext4
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+然后允许访问 \fBext4\fP、\fBtmpfs\fP 和 \fBext2\fP，并拒绝访问其他文件系统 \&。
+.sp
+示例: 如果一个元有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RestrictFileSystems=ext4 tmpfs
+RestrictFileSystems=~ext4
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+那么只允许访问 \fBtmpfs\fP\&。
+.sp
+示例: 如果一个元有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RestrictFileSystems=~ext4 tmpfs
+RestrictFileSystems=ext4
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+那么只有对 \fBtmpfs\fP 的访问被拒绝 \&。
+.sp
+由于可能的文件系统数量很大，因此提供了预定义的文件系统集 \&。集合以 "@" 字符开头，后跟集合名称 \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&3.\ \&Currently predefined filesystem sets\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Set
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+@basic\-api
+T}:T{
+Basic filesystem API\&.
+T}
+T{
+@auxiliary\-api
+T}:T{
+Auxiliary filesystem API\&.
+T}
+T{
+@common\-block
+T}:T{
+Common block device filesystems\&.
+T}
+T{
+@historical\-block
+T}:T{
+Historical block device filesystems\&.
+T}
+T{
+@network
+T}:T{
+Well\-known network filesystems\&.
+T}
+T{
+@privileged\-api
+T}:T{
+Privileged filesystem API\&.
+T}
+T{
+@temporary
+T}:T{
+Temporary filesystems: tmpfs, ramfs\&.
+T}
+T{
+@known
+T}:T{
+All known filesystems defined by the kernel\&. This list is defined statically in systemd based on a kernel version that was available when this systemd version was released\&. It will become progressively more out\-of\-date as the kernel is updated\&.
+T}
+.TE
+.sp 1
+使用 \fBsystemd\-analyze\fP(1)\*(Aqs \fBfilesystems\fP 命令检索在本地系统上定义的文件系统列表 \&。
+.sp
+请注意，某些系统可能不支持此设置 (例如，如果底层内核中未启用 LSM eBPF 钩子，或者未使用统一控制组层次结构) \&。在那种情况下，此设置无效
+\&。
+.sp
+无法通过在服务元中将 "+" 作为可执行路径的前缀来绕过此选项，因为它适用于整个控制组 \&。
+.RE
+.PP
+\fIRestrictNamespaces=\fP
+.RS 4
+限制此元 \& 进程对 Linux 命名空间功能的访问。有关 Linux 命名空间的详细信息，请参见
+\fBnamespaces\fP(7)\&。要么采用布尔值参数，要么采用空格分隔的命名空间类型标识符列表 \&。如果为 false
+(默认值)，则不限制名称空间的创建和切换 \&。如果为真，则禁止访问任何类型的命名空间
+\&。否则，必须指定以空格分隔的命名空间类型标识符列表，由以下任意组合组成:
+\fBcgroup\fP、\fBipc\fP、\fBnet\fP、\fBmnt\fP、\fBpid\fP、\fBuser\fP 和 \fButs\fP\&。任何列出的命名空间类型都可以访问单元
+\*(Aqs 进程，禁止访问未列出的命名空间类型 (允许列表) \&。通过在列表前加上一个波浪号字符 ("~")，效果可能会相反:
+只有列出的命名空间类型将不可访问，所有未列出的类型都是允许的 (拒绝列出) \&。如果分配空字符串，则应用默认命名空间限制，这等同于
+false\&。此选项可能出现多次，在这种情况下，命名空间类型由 \fBOR\fP 合并，或者如果行以 "~" 为前缀 (请参见下面的示例) \&，则由
+\fBAND\fP 合并。在内部，此设置限制对 \fBunshare\fP(2)、\fBclone\fP(2) 和 \fBsetns\fP(2)
+系统调用的访问，同时考虑指定的标志参数 \&。注意 \(em 如果使用此选项 \(em 除了限制创建和切换指定类型的命名空间
+(或所有命名空间，如果为真) 禁止使用零标志参数访问 \fBsetns()\fP 系统调用 \&. 此设置仅在
+x86、x86\-64、mips、mips\-le、mips64、mips64\-le、mips64\-n32、mips64\-le\-n32、ppc64、ppc64\-le、s390
+和 s390x 上受支持，并且对其他没有强制限制架构 \&。如果在用户模式或系统模式下运行，但没有 \fBCAP_SYS_ADMIN\fP 功能 (例如
+\&.g\&。设置 \fIUser=\fP)，\fINoNewPrivileges=yes\fP 隐含 \&。
+.sp
+示例: 如果一个元有以下内容，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RestrictNamespaces=cgroup ipc
+RestrictNamespaces=cgroup net
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+then \fBcgroup\fP, \fBipc\fP, and \fBnet\fP are set\&.  如果第二行以 "~" 为前缀，e\&.g\&.,
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RestrictNamespaces=cgroup ipc
+RestrictNamespaces=~cgroup net
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+then, only \fBipc\fP is set\&.
+.RE
+.PP
+\fILockPersonality=\fP
+.RS 4
+采用布尔型参数 \&。如果设置，则锁定 \fBpersonality\fP(2) 系统调用，以便内核执行域不能从默认值或使用 \fIPersonality=\fP
+指令选择的个性更改 \&。这可能有助于提高安全性，因为奇怪的个性模拟可能未经过充分测试，并且可能成为漏洞的来源。如果在用户模式或系统模式下运行，但没有
+\fBCAP_SYS_ADMIN\fP 功能 (例如 \&.g\&。设置 \fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的 \&。
+.RE
+.PP
+\fIMemoryDenyWriteExecute=\fP
+.RS 4
+采用布尔型参数 \&。如果设置，则禁止尝试创建同时可写和可执行的内存映射，或将现有内存映射更改为可执行，或将共享内存段映射为可执行
+\&。具体来说，添加了一个系统调用过滤器，拒绝同时设置了 \fBPROT_EXEC\fP 和 \fBPROT_WRITE\fP 的 \fBmmap\fP(2)
+系统调用、设置了 \fBPROT_EXEC\fP 的 \fBmprotect\fP(2) 或 \fBpkey_mprotect\fP(2) 系统调用以及设置了
+\fBSHM_EXEC\fP\& 的 \fBshmat\fP(2) 系统调用。请注意，此选项与在运行时动态生成程序代码的程序和库不兼容，包括 JIT
+执行引擎、可执行栈和各种 C 编译器的代码 "trampoline" 特性 \&。此选项提高了服务安全性，因为它使软件漏洞更难动态更改正在运行的代码
+\&。但是，如果服务可以写入未挂载 \fBnoexec\fP (例如 /dev/shm) 的文件系统，或者可以使用
+\fBmemfd_create()\fP\&，则可以绕过保护。这可以通过使服务无法访问此类文件系统来防止 (例如
+\&.g\&.\fIInaccessiblePaths=/dev/shm\fP) 并安装更多系统调用过滤器
+(\fISystemCallFilter=~memfd_create\fP)\&。请注意，此特性在 x86\-64 上完全可用，在 x86\ 上部分可用
+&. 具体来说，\fBshmat()\fP 保护在 x86\& 上不可用。请注意，在支持多个 ABI 的系统上 (例如
+x86/x86\-64)，建议关闭服务的替代 ABI，这样它们就不能用来规避此选项的限制。具体来说，建议将此选项与
+\fISystemCallArchitectures=native\fP 或类似的 \& 结合使用。如果在用户模式或系统模式下运行，但没有
+\fBCAP_SYS_ADMIN\fP 功能 (例如 \&.g\&。设置 \fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的 \&。
+.RE
+.PP
+\fIRestrictRealtime=\fP
+.RS 4
+采用布尔型参数 \&。如果设置，则拒绝在元进程中启用实时调度的任何尝试 \&。这限制了对实时任务调度策略的访问，例如
+\fBSCHED_FIFO\fP、\fBSCHED_RR\fP 或 \fBSCHED_DEADLINE\fP\&。有关这些调度策略的详细信息，请参见
+\fBsched\fP(7)。如果在用户模式或系统模式下运行，但没有 \fBCAP_SYS_ADMIN\fP 功能 (例如 \&.g\&。设置
+\fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的 \&。实时调度策略可用于长时间独占 CPU
+时间，因此可用于锁定或以其他方式触发系统上的拒绝服务情况。因此，建议将对实时调度的访问限制在实际需要它们的少数程序中。默认关闭 \&。
+.RE
+.PP
+\fIRestrictSUIDSGID=\fP
+.RS 4
+采用布尔型参数 \&。如果设置，将拒绝任何在文件或目录上设置 set\-user\-ID (SUID) 或 set\-group\-ID (SGID) 位的尝试
+(有关这些位的详细信息，请参见 \fBinode\fP(7))\&。如果在用户模式或系统模式下运行，但没有 \fBCAP_SYS_ADMIN\fP 功能 (例如
+\&.g\&。设置 \fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的 \&。由于 SUID/SGID
+位是提升特权并允许用户获取其他用户身份的机制，因此建议将 SUID/SGID 文件的创建限制为实际需要它们的少数程序
+\&。请注意，这会限制使用这些位标记任何类型的文件系统对象，包括常规文件和目录 (其中 SGID 与文件的含义不同，请参见文档) \&。如果启用
+\fIDynamicUser=\fP\&，则隐含此选项。默认关闭 \&。
+.RE
+.PP
+\fIRemoveIPC=\fP
+.RS 4
+采用布尔参数 \&。如果设置，则用户拥有所有权的所有 System V 和 POSIX IPC 对象以及该单元的进程组将运行，因为单元停止时将被删除
+\&。此设置仅在至少使用 \fIUser=\fP、\fIGroup=\fP 和 \fIDynamicUser=\fP 之一时有效 \&。它对根用户拥有所有权的 IPC
+对象没有影响 \&。具体来说，这会删除 System V 信号量，以及 System V 和 POSIX 共享内存段和消息队列
+\&。如果多个单元使用相同的用户或组，则在这些单元中的最后一个停止时删除 IPC 对象 \&。如果设置了
+\fIDynamicUser=\fP\&，则暗含此设置。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fIPrivateMounts=\fP
+.RS 4
+采用布尔参数 \&。如果设置，这个单元的进程将在它们自己的私有文件系统 (mount) 命名空间中运行，所有挂载传播从进程到主机 \*(Aqs
+主文件系统命名空间关闭 \&。这意味着任何由单元 \*(Aqs 进程建立或删除的文件系统挂载点都是它们私有的，并且对主机不可见
+\&。但是，在主机上建立或删除的文件系统挂载点将传播到元 \*(Aqs processes\&. 有关文件系统名称空间 \& 的详细信息，请参见
+\fBmount_namespaces\fP(7)。默认关闭 \&。
+.sp
+当打开时，这会为每个调用的进程执行三个操作: 创建一个新的 \fBCLONE_NEWNS\fP 命名空间，然后将所有现有的挂载重新挂载到
+\fBMS_SLAVE\fP 以禁用从单元 \*(Aqs 进程到主机的传播 (但在相反的方向保留传播方向有效) \&。最后，重新挂载到
+\fIMountFlags=\fP 配置的传播模式，见下文 \&。
+.sp
+文件系统名称空间是为服务管理器派生的每个进程单独设置的。因此，在 \fIExecStartPre=\fP
+创建的进程的命名空间中建立的挂载将在该进程退出后立即自动清除，并且将不可用于为 \fIExecStart=\fP 分叉的后续进程
+(并且类似地适用于为单元配置的各种其他命令) \&. 同样，\fIJoinsNamespaceOf=\fP 不允许在单元之间共享内核挂载命名空间，它只允许共享
+/tmp / 和 /var/tmp/ 目录 \&。
+.sp
+其他文件系统命名空间元设置 \(em \fIPrivateMounts=\fP, \fIPrivateTmp=\fP, \fIPrivateDevices=\fP,
+\fIProtectSystem=\fP, \fIProtectHome=\fP, \fIReadOnlyPaths=\fP,
+\fIInaccessiblePaths=\fP, \fIReadWritePaths=\fP,\&... \(em 还以等效于此选项的方式启用文件系统命名空间
+\&。因此，如果没有使用任何其他设置，明确请求此行为是非常有用的 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.PP
+\fIMountFlags=\fP
+.RS 4
+采用挂载传播设置: \fBshared\fP、\fBslave\fP 或 \fBprivate\fP，它控制文件系统挂载点是否位于为此单元设置的文件系统命名空间中 \*
+(Aqs 进程将从其他文件系统命名空间接收或传播挂载和卸载 \&。有关挂载传播的详细信息，请参见 \fBmount\fP(2)，尤其是三个传播标志 \&。
+.sp
+此设置仅控制 \fIfinal\fP 传播设置，该设置对为该元 \& 的每个进程创建的文件系统命名空间的所有挂载点生效。其他文件系统命名空间元设置 (参见上面
+\fIPrivateMounts=\fP 中的讨论) 将隐式禁用从元 \*(Aqs 通过更改元 \*(Aqs
+文件系统中所有挂载点的传播设置向主机进程的挂载和卸载传播 namespace 到 \fBslave\fP first\&. 在这种情况下，将此选项设置为
+\fBshared\fP 不会重新建立传播 \&。
+.sp
+如果未设置 \(en 但文件系统命名空间通过另一个文件系统命名空间元设置启用 \(en 使用 \fBshared\fP 挂载传播，但 \(em 如前所述
+\(em 作为 \fBslave\fP 首先应用，从元传播 \*(到主机的 AQS 进程仍处于关闭状态 \&。
+.sp
+不建议对单元使用 \fBprivate\fP 挂载传播，因为这意味着主机的临时挂载 (例如可移动媒体)
+将保持挂载状态，因此会无限期地忙于分叉进程，因为卸载传播事件不会 \* (Aqt 被接收元 \& 的文件系统命名空间。
+.sp
+通常，最好不要修改此设置，而是使用更高级别的文件系统命名空间选项，特别是 \fIPrivateMounts=\fP，请参见上文 \&。
+.sp
+此选项仅适用于系统服务，或在启用 \fIPrivateUsers=\fP 时在服务管理器的每个用户实例中运行的服务 \&。
+.RE
+.SH "SYSTEM CALL FILTERING"
+.PP
+\fISystemCallFilter=\fP
+.RS 4
+采用以空格分隔的系统调用名称 \& 列表。如果使用此设置，除列出的那些以外的元进程执行的所有系统调用将导致 immediate 进程终止，并发出
+\fBSIGSYS\fP 信号 (允许列表) \&。(请参见下面的 \fISystemCallErrorNumber=\fP 以更改默认操作)
+\&。如果列表的第一个字符是 "~"，则效果相反: 只有列出的系统调用会导致 immediate 进程终止 (拒绝列表)
+\&。拒绝列出的系统调用和系统调用组可以选择以冒号 (":") 和 "errno" 错误编号 (介于 0 和 4095 之间) 或 errno
+名称作为后缀，例如 \fBEPERM\fP、\fBEACCES\fP 或 \fBEUCLEAN\fP (完整列表请参见 \fBerrno\fP(3))
+\&。当拒绝列出的系统调用被触发时，将返回此值，而不是立即终止进程 \&。特殊设置 "kill" 可用于显式指定 killing\&。该值优先于
+\fISystemCallErrorNumber=\fP 中给出的值，请参见下文 \&。如果在用户模式或系统模式下运行，但没有
+\fBCAP_SYS_ADMIN\fP 功能 (例如 \&.g\&。设置 \fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的
+\&。此特性使用内核的安全计算模式 2 接口 (\*(Aqseccomp 过滤 \*(Aq) 并且对于实现最小沙盒环境 \&
+很有用。请注意，\fBexecve()\fP、\fBexit()\fP、\fBexit_group()\fP、\fBgetrlimit()\fP、\fBrt_sigreturn()\fP、\fBsigreturn()\fP
+系统调用以及查询时间和睡眠的系统调用是隐式允许列表，不需要显式列出 \&。可以多次指定此选项，在这种情况下，过滤器掩码被合并
+\&。如果分配了空字符串，过滤器将被重置，所有先前的分配都将无效 \&。这不会影响以 `+`\& 为前缀的命令。
+.sp
+请注意，在支持多个 ABI 的系统上 (例如 x86/x86\-64)，建议关闭服务的替代
+ABI，这样它们就不能用来规避此选项的限制。具体来说，建议将此选项与 \fISystemCallArchitectures=native\fP 或类似的 \&
+结合使用。
+.sp
+请注意，严格的系统调用过滤器可能会影响服务调用的执行和错误处理代码路径。具体来说，执行服务二进制文件需要访问 \fBexecve()\fP 系统调用 \(em
+如果它被阻止，服务调用必然会失败 \&。此外，如果服务二进制文件的执行由于某种原因失败 (例如:
+缺少服务可执行文件)，错误处理逻辑可能需要访问一组额外的系统调用才能正确处理和记录此失败 \&。可能需要暂时禁用系统调用过滤器以简化此类故障的调试
+\&。
+.sp
+如果您指定此选项的两种类型 (i\&.e\&. 允许列表和拒绝列表)，第一个遇到的将优先并指示默认操作 (终止或批准系统调用)
+\&。然后，此选项的下一次出现将根据其类型和默认操作 \& 从过滤的系统调用集中添加或删除列出的系统调用。(例如，如果您开始使用 \fBread()\fP 和
+\fBwrite()\fP 的允许列表规则，并在它添加 \fBwrite()\fP 的拒绝列表规则之后立即从集合中删除 \fBwrite()\fP\&。)
+.sp
+由于可能的系统调用数量很大，因此提供了预定义的系统调用集 \&。集合以 "@" 字符开头，后跟集合名称 \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&4.\ \&Currently predefined system call sets\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Set
+T}:T{
+Description
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+@aio
+T}:T{
+Asynchronous I/O (\fBio_setup\fP(2), \fBio_submit\fP(2), and related calls)
+T}
+T{
+@basic\-io
+T}:T{
+System calls for basic I/O: reading, writing, seeking, file descriptor duplication and closing (\fBread\fP(2), \fBwrite\fP(2), and related calls)
+T}
+T{
+@chown
+T}:T{
+Changing file ownership (\fBchown\fP(2), \fBfchownat\fP(2), and related calls)
+T}
+T{
+@clock
+T}:T{
+System calls for changing the system clock (\fBadjtimex\fP(2), \fBsettimeofday\fP(2), and related calls)
+T}
+T{
+@cpu\-emulation
+T}:T{
+System calls for CPU emulation functionality (\fBvm86\fP(2) and related calls)
+T}
+T{
+@debug
+T}:T{
+Debugging, performance monitoring and tracing functionality (\fBptrace\fP(2), \fBperf_event_open\fP(2) and related calls)
+T}
+T{
+@file\-system
+T}:T{
+File system operations: opening, creating files and directories for read and write, renaming and removing them, reading file properties, or creating hard and symbolic links
+T}
+T{
+@io\-event
+T}:T{
+Event loop system calls (\fBpoll\fP(2), \fBselect\fP(2), \fBepoll\fP(7), \fBeventfd\fP(2) and related calls)
+T}
+T{
+@ipc
+T}:T{
+Pipes, SysV IPC, POSIX Message Queues and other IPC (\fBmq_overview\fP(7), \fBsvipc\fP(7))
+T}
+T{
+@keyring
+T}:T{
+Kernel keyring access (\fBkeyctl\fP(2) and related calls)
+T}
+T{
+@memlock
+T}:T{
+Locking of memory in RAM (\fBmlock\fP(2), \fBmlockall\fP(2) and related calls)
+T}
+T{
+@module
+T}:T{
+Loading and unloading of kernel modules (\fBinit_module\fP(2), \fBdelete_module\fP(2) and related calls)
+T}
+T{
+@mount
+T}:T{
+Mounting and unmounting of file systems (\fBmount\fP(2), \fBchroot\fP(2), and related calls)
+T}
+T{
+@network\-io
+T}:T{
+Socket I/O (including local AF_UNIX): \fBsocket\fP(7), \fBunix\fP(7)
+T}
+T{
+@obsolete
+T}:T{
+Unusual, obsolete or unimplemented (\fBcreate_module\fP(2), \fBgtty\fP(2), \&...)
+T}
+T{
+@privileged
+T}:T{
+All system calls which need super\-user capabilities (\fBcapabilities\fP(7))
+T}
+T{
+@process
+T}:T{
+Process control, execution, namespacing operations (\fBclone\fP(2), \fBkill\fP(2), \fBnamespaces\fP(7), \&...)
+T}
+T{
+@raw\-io
+T}:T{
+Raw I/O port access (\fBioperm\fP(2), \fBiopl\fP(2), \fBpciconfig_read()\fP, \&...)
+T}
+T{
+@reboot
+T}:T{
+System calls for rebooting and reboot preparation (\fBreboot\fP(2), \fBkexec()\fP, \&...)
+T}
+T{
+@resources
+T}:T{
+System calls for changing resource limits, memory and scheduling parameters (\fBsetrlimit\fP(2), \fBsetpriority\fP(2), \&...)
+T}
+T{
+@setuid
+T}:T{
+System calls for changing user ID and group ID credentials, (\fBsetuid\fP(2), \fBsetgid\fP(2), \fBsetresuid\fP(2), \&...)
+T}
+T{
+@signal
+T}:T{
+System calls for manipulating and handling process signals (\fBsignal\fP(2), \fBsigprocmask\fP(2), \&...)
+T}
+T{
+@swap
+T}:T{
+System calls for enabling/disabling swap devices (\fBswapon\fP(2), \fBswapoff\fP(2))
+T}
+T{
+@sync
+T}:T{
+Synchronizing files and memory to disk (\fBfsync\fP(2), \fBmsync\fP(2), and related calls)
+T}
+T{
+@system\-service
+T}:T{
+A reasonable set of system calls used by common system services, excluding any special purpose calls\&. This is the recommended starting point for allow\-listing system calls for system services, as it contains what is typically needed by system services, but excludes overly specific interfaces\&. For example, the following APIs are excluded: "@clock", "@mount", "@swap", "@reboot"\&.
+T}
+T{
+@timer
+T}:T{
+System calls for scheduling operations by time (\fBalarm\fP(2), \fBtimer_create\fP(2), \&...)
+T}
+T{
+@known
+T}:T{
+All system calls defined by the kernel\&. This list is defined statically in systemd based on a kernel version that was available when this systemd version was released\&. It will become progressively more out\-of\-date as the kernel is updated\&.
+T}
+.TE
+.sp 1
+请注意，随着新的系统调用被添加到内核中，其他系统调用可能会被添加到上面的组中 \&。集合的内容也可能在 systemd 版本之间发生变化
+\&。此外，系统调用列表取决于编译 systemd 的内核版本和体系结构 \&。使用 \fBsystemd\-analyze\ \&syscall\-filter\fP 列出每个过滤器中的实际系统调用列表 \&。
+.sp
+通常，允许列出系统调用 (而不是拒绝列出) 是更安全的操作模式。建议为所有长期运行的系统服务强制执行系统调用允许列表
+\&。具体来说，以下几行是大多数系统服务相对安全的基本选择:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Service]
+SystemCallFilter=@system\-service
+SystemCallErrorNumber=EPERM
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+请注意，各种内核系统调用是冗余定义的: 有多个系统调用用于执行相同的操作 \&。例如，\fBpidfd_send_signal()\fP
+系统调用可用于执行与旧版 \fBkill()\fP 系统调用类似的操作，因此在没有前者的情况下阻止后者只能提供弱保护
+\&。由于随着开发的进行，新的系统调用会定期添加到内核中，因此保持系统调用拒绝列表的全面性需要大量的工作
+\&。因此建议改用允许列表，它提供的好处是默认情况下新系统调用会被隐式阻止，直到更新允许列表 \&。
+.sp
+另请注意，为了使动态链接器工作 \&，需要访问许多系统调用。动态链接器是运行大多数常规程序所必需的 (特别是: 所有动态 ELF
+二进制文件，这是大多数发行版构建打包程序的方式) \&。这意味着阻止这些系统调用 (包括 \fBopen()\fP、\fBopenat()\fP 或
+\fBmmap()\fP) 将使大多数通常随泛型发行版一起提供的程序无法使用 \&。
+.sp
+建议将文件系统命名空间相关选项与 \fISystemCallFilter=~@mount\fP 组合，以禁止单元 \*(Aqs 进程撤销映射
+\&。具体来说，这些是选项
+\fIPrivateTmp=\fP、\fIPrivateDevices=\fP、\fIProtectSystem=\fP、\fIProtectHome=\fP、\fIProtectKernelTunables=\fP、\fIProtectControlGroups=\fP、\fIProtectKernelLogs=\fP、\fIProtectClock=\fP、\fIReadOnlyPaths=\fP、\fIInaccessiblePaths=\fP
+和 \fIReadWritePaths=\fP\&。
+.RE
+.PP
+\fISystemCallErrorNumber=\fP
+.RS 4
+取一个 "errno" 错误号 (1 到 4095 之间) 或 errno 名称，如 \fBEPERM\fP、\fBEACCES\fP 或
+\fBEUCLEAN\fP，当配置了 \fISystemCallFilter=\fP 的系统调用过滤器被触发时返回，而不是立即终止进程
+\&。有关错误代码的完整列表，请参见 \fBerrno\fP(3)\&。当不使用此设置时，或空字符串或特殊设置 "kill"
+赋值时，触发过滤器时进程将立即终止 \&。
+.RE
+.PP
+\fISystemCallArchitectures=\fP
+.RS 4
+采用以空格分隔的体系结构标识符列表，以包含在系统调用过滤器 \& 中。已知的体系结构标识符与 \fBsystemd.unit\fP(5) 中描述的
+\fIConditionArchitecture=\fP 以及 \fBx32\fP、\fBmips64\-n32\fP、\fBmips64\-le\-n32\fP 和特殊标识符
+\fBnative\fP\& 相同。特殊标识符 \fBnative\fP 隐式地将 maps 映射到系统的原生体系结构 (或更准确地说:
+映射到系统管理器为其编译的体系结构) \&。如果在用户模式或系统模式下运行，但没有 \fBCAP_SYS_ADMIN\fP 功能 (例如 \&.g\&。设置
+\fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的 \&。默认情况下，此选项设置为空列表 i\&.e\&。不应用过滤 \&。
+.sp
+如果使用这个设置，这个单元的进程将只被允许调用本地系统调用，以及指定架构的系统调用 \&。出于此选项的目的，x32 体系结构被视为包括 x86\-64
+系统调用 \&。但是，如下所述，此设置在 x32\& 上仍能实现其目的。
+.sp
+系统调用过滤并不是在所有架构上都同样有效 \&。例如，在 x86 上无法过滤与网络套接字相关的调用，因为 ABI 限制 \ (但是 x86\-64
+没有的限制 \&。在同时支持多个 ABI 的系统上 \(em 如 x86/x86\-64\(em 因此建议限制允许的系统调用架构集，以便辅助 ABI
+不能用于规避应用于原生 ABI 的限制系统 \&。特别是，设置 \fISystemCallArchitectures=native\fP 是禁用非原生
+ABIs 的不错选择。
+.sp
+系统调用架构也可以通过全局配置中的 \fISystemCallArchitectures=\fP 选项在系统范围内受到限制 \&。有关详细信息，请参见
+\fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fISystemCallLog=\fP
+.RS 4
+采用以空格分隔的系统调用名称 \& 列表。如果使用此设置，将记录由元进程为列出的进程执行的所有系统调用 \&。如果列表的第一个字符是
+"~"，则效果相反: 将记录除列出的系统调用之外的所有系统调用 \&。如果在用户模式或系统模式下运行，但没有 \fBCAP_SYS_ADMIN\fP 功能
+(例如 \&.g\&。设置 \fIUser=\fP)，\fINoNewPrivileges=yes\fP 是隐含的 \&。此特性使用内核的安全计算模式 2 接口
+(\*(Aqseccomp 过滤 \*(Aq) 并且对于审计或设置最小沙盒环境 \& 很有用。可以多次指定此选项，在这种情况下，过滤器掩码被合并
+\&。如果分配了空字符串，过滤器将被重置，所有先前的分配都将无效 \&。这不会影响以 `+`\& 为前缀的命令。
+.RE
+.SH ENVIRONMENT
+.PP
+\fIEnvironment=\fP
+.RS 4
+为执行的进程设置环境变量 \&。使用 \fBsystemd.syntax\fP(7) 的 "Quoting"
+部分中描述的规则将每一行解引用，并成为变量赋值列表 \&。如果您需要将包含空格或等号的值分配给变量，请在整个赋值过程中加上引号
+\&。字符串内部不进行变量扩展，"$" 字符没有特殊含义 \&。执行说明符扩展，请参见 \fBsystemd.unit\fP(5)\& 中的
+"Specifiers" 部分。
+.sp
+可以多次指定此选项，在这种情况下，将设置所有列出的变量 \&。如果同一个变量被列出两次，后面的设置将覆盖前面的设置
+\&。如果将空字符串分配给此选项，环境变量列表将被重置，所有先前的分配都无效 \&。
+.sp
+变量的名称可以包含 ASCII 字母、数字和下划线字符 \&。变量名不能为空或以数字 \&
+开头。在变量值中，大多数字符是允许的，但不可打印的字符目前被拒绝 \&。
+.sp
+Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+Environment="VAR1=word1 word2" VAR2=word3 "VAR3=$word 5 6"
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+给出三个变量 "VAR1"、"VAR2"、"VAR3"，其值为 "word1 word2"、"word3"、"$word 5 6"\&。
+.sp
+有关环境变量 \& 的详细信息，请参见 \fBenviron\fP(7)。
+.sp
+请注意，环境变量不适合将秘密 (例如密码、密钥材料、\&...) 传递给服务进程 \&。为元设置的环境变量通过 D\-Bus IPC
+暴露给非特权客户端，一般不理解为需要保护的数据。此外，环境变量沿着进程树向下传播，包括跨越安全边界 (例如 setuid/setgid
+可执行文件)，因此可能会泄漏到不应访问秘密数据的进程。使用 \fILoadCredential=\fP、\fILoadCredentialEncrypted=\fP
+或 \fISetCredentialEncrypted=\fP (见下文) 将数据安全地传递给元进程 \&。
+.RE
+.PP
+\fIEnvironmentFile=\fP
+.RS 4
+类似于 \fIEnvironment=\fP，但从文本文件中读取环境变量 \&。文本文件应包含以换行符分隔的变量赋值 \&。空行、没有 "=" 分隔符的行或以
+";" 或 "#" 开头的行将被忽略，可用于注释 \&。该文件必须是 UTF\-8 编码 \&。有效字符为除
+\m[blue]\fBnoncharacters\fP\m[]\&\s-2\u[8]\d\s+2、U+0000 NUL 和 U+FEFF
+\m[blue]\fBbyte order mark\fP\m[]\&\s-2\u[9]\d\s+2\& 之外的 \m[blue]\fBunicode scalar values\fP\m[]\&\s-2\u[7]\d\s+2。允许 NUL 以外的控制代码 \&。
+.sp
+在该文件中，使用与 POSIX shell 中的 \m[blue]\fBunquoted text\fP\m[]\&\s-2\u[10]\d\s+2
+相同的反斜杠转义规则解析 "=" 之后未加引号的值，但与 shell 不同的是，保留内部空白并保留第一个非空白字符后的引号 \&。前导和尾随空白
+(空格、制表符、回车) 被丢弃，但行内的内部空白被逐字保留 \&。以反斜杠结尾的行将继续到下一行，换行符本身被丢弃 \&。反斜杠 "\e"
+后跟换行符以外的任何字符将保留后面的字符，因此 "\e\e" 将变为值 `\e`\&。
+.sp
+在该文件中，"=" 之后的 `\*(Aq` 引号值可以跨越多行并包含单引号以外的任何字符，如 POSIX shell\& 中的
+\m[blue]\fBsingle\-quoted text\fP\m[]\&\s-2\u[11]\d\s+2。没有反斜杠转义序列被识别
+\&。单引号外的前导和尾随空格被丢弃 \&。
+.sp
+在该文件中，"=" 之后的 \*(lq` 引号可以跨越多行，并且相同的转义序列被识别为 POSIX shell\& 的
+\m[blue]\fBdouble\-quoted text\fP\m[]\&\s-2\u[12]\d\s+2 中的转义序列。反斜杠 ("\e") 后跟任何
+""\e`$" 将保留该字符 \&。反斜杠后跟换行符是续行，换行符本身被丢弃 \&。后跟任何其他字符的反斜杠将被忽略; 反斜杠和后面的字符都被逐字保留
+\&。双引号外的前导和尾随空格被丢弃 \&。
+.sp
+传递的参数应该是绝对文件名或通配符表达式，可选地加上 "\-" 前缀，这表示如果文件不存在，则不会读取它并且不会记录任何错误或警告消息
+\&。可以多次指定此选项，在这种情况下，所有指定的文件都被读取 \&。如果将空字符串分配给此选项，将重置要读取的文件列表，所有先前的分配都无效 \&。
+.sp
+使用此指令列出的文件将在进程执行前不久被读取 (更具体地说，在前一个元状态的所有进程终止之后
+\&。这意味着您可以在一个元状态下生成这些文件，并使用此选项在下一个 \&。文件从服务管理器的文件系统中读取，在任何文件系统更改 (如绑定安装)
+发生之前) \&。
+.sp
+这些文件中的设置会覆盖使用 \fIEnvironment=\fP\&
+所做的设置。如果从这些文件中设置了两次相同的变量，文件将按照指定的顺序读取，后面的设置将覆盖前面的设置 \&。
+.RE
+.PP
+\fIPassEnvironment=\fP
+.RS 4
+将系统服务管理器设置的环境变量传递给执行的进程 \&。采用以空格分隔的变量名列表 \&。可以多次指定此选项，在这种情况下，所有列出的变量都将被传递
+\&。如果将空字符串分配给此选项，将重置要传递的环境变量列表，所有先前的分配都无效 \&。未为系统管理器设置的指定变量将不会被传递，并将被静默忽略
+\&。请注意，此选项仅与系统服务管理器相关，因为默认情况下系统服务不会自动继承为服务管理器本身设置的任何环境变量
+\&。但是，在用户服务管理器的情况下，所有环境变量无论如何都会传递给执行的进程，因此此选项对用户服务管理器无效 \&。
+.sp
+由于此设置而为调用的进程设置的变量可能会被配置为 \fIEnvironment=\fP 或 \fIEnvironmentFile=\fP\& 的进程覆盖。
+.sp
+Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+PassEnvironment=VAR1 VAR2 VAR3
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+传递三个变量 "VAR1"、"VAR2"、"VAR3"，并在 PID1\& 中为这些变量设置值。
+.sp
+有关环境变量 \& 的详细信息，请参见 \fBenviron\fP(7)。
+.RE
+.PP
+\fIUnsetEnvironment=\fP
+.RS 4
+显式取消设置通常从服务管理器传递给此元 \& 的调用进程的环境变量分配。采用以空格分隔的变量名列表或变量赋值
+\&。可以多次指定此选项，在这种情况下，所有列出的 variables/assignments 都将被取消设置
+\&。如果将空字符串分配给此选项，则重置要取消设置的环境 variables/assignments 列表 \&。如果指定了变量赋值 (即:
+变量名，后跟 "="，然后是它的值)，则删除匹配此精确赋值的任何环境变量 \&。如果指定了变量名 (即没有任何后续 "="
+或值的变量名)，则任何匹配变量名的赋值，无论其值如何，都将被删除 \&。请注意，当传递给已执行进程的环境列表被编译 \&
+时，\fIUnsetEnvironment=\fP 的效果将作为最后一步应用。这意味着它可以撤消来自任何配置源的分配，包括通过 \fIEnvironment=\fP
+或 \fIEnvironmentFile=\fP 进行的分配，从系统管理器继承 \*(Aqs 全局设置环境变量，通过 \fIPassEnvironment=\fP
+继承，由服务管理器本身设置 (例如 \fI$NOTIFY_SOCKET\fP 等)，或由 PAM 模块设置 (如果使用 \fIPAMName=\fP) \&。
+.sp
+请参见下面的 "Environment Variables in Spawned Processes"，了解这些设置如何组合形成继承环境
+\&。有关环境变量 \& 的一般信息，请参见 \fBenviron\fP(7)。
+.RE
+.SH "LOGGING AND STANDARD INPUT/OUTPUT"
+.PP
+\fIStandardInput=\fP
+.RS 4
+控制已执行进程的文件描述符 0 (STDIN) 连接到 \& 的位置。Takes one of \fBnull\fP, \fBtty\fP,
+\fBtty\-force\fP, \fBtty\-fail\fP, \fBdata\fP, \fBfile:\fP\fIpath\fP, \fBsocket\fP or
+\fBfd:\fP\fIname\fP\&.
+.sp
+如果选择 \fBnull\fP，标准输入将连接到 /dev/null，i\&.e\&。该进程的所有读取尝试都将导致 immediate EOF\&。
+.sp
+如果选择 \fBtty\fP，标准输入连接到 TTY (由 \fITTYPath=\fP 配置，见下文)，执行的进程成为终端 \&
+的控制进程。如果终端已经被另一个进程控制，则执行的进程等待，直到当前控制进程释放终端 \&。
+.sp
+\fBtty\-force\fP 与 \fBtty\fP 类似，但是执行的进程被强行立马成为了最终端的控制进程，潜在地从最终端 \& 中移除了之前的控制进程。
+.sp
+\fBtty\-fail\fP 和 \fBtty\fP 类似，但是如果终端已经有一个控制进程启动执行进程失败 \&。
+.sp
+\fBdata\fP 选项可用于配置任意文本或二进制数据以通过标准输入传递给执行的进程 \&。要传递的数据通过
+\fIStandardInputText=\fP/\fIStandardInputData=\fP (见下文) \& 配置。请注意，传递的实际文件描述符类型
+(内存文件、常规文件、UNIX 管道、\&...) 可能取决于内核和可用权限 \&。在任何情况下，文件描述符都是只读的，读取时返回指定的数据，后跟
+EOF\&。
+.sp
+\fBfile:\fP\fIpath\fP 选项可用于将特定文件系统对象连接到标准输入 \&。期望 ":" 字符后的绝对路径，它可以引用常规文件、FIFO
+或特殊文件 \&。如果指定文件系统中的 \fBAF_UNIX\fP 套接字，则流式套接字连接到它 \&。后者对于将进程的标准输入连接到任意系统服务很有用
+\&。
+.sp
+\fBsocket\fP 选项只在 socket 激活的服务中有效，需要相关的 socket 元文件 (详见 \fBsystemd.socket\fP(5)) 设置
+\fIAccept=yes\fP，或者只指定单个 socket\&。如果设置了此选项，标准输入将连接到激活服务的套接字，这主要用于与设计用于传统
+\fBinetd\fP(8) 套接字激活守护进程 \& 的守护进程兼容。
+.sp
+\fBfd:\fP\fIname\fP 选项将标准输入连接到由套接字元 \& 提供的特定命名文件描述符。该名称可以作为此选项的一部分指定，位于 ":" 字符
+(e\&.g\&. "fd:foobar")\& 之后。如果未指定名称，则隐含名称 "stdin" (i\&.e\&。"fd" 等同于
+"fd:stdin") \&。必须通过 \fISockets=\fP 选项提供至少一个定义指定名称的套接字元，文件描述符名称可能与包含它的套接字元 \&
+的名称不同。如果找到多个匹配项，将使用第一个 \&。有关命名文件描述符及其顺序的更多详细信息，请参见 \fBsystemd.socket\fP(5) 中的
+\fIFileDescriptorName=\fP。
+.sp
+此设置默认为 \fBnull\fP，除非设置了 \fIStandardInputText=\fP/\fIStandardInputData=\fP，在这种情况下它默认为
+\fBdata\fP\&。
+.RE
+.PP
+\fIStandardOutput=\fP
+.RS 4
+控制已执行进程的文件描述符 1 (stdout) 连接到 \& 的位置。Takes one of \fBinherit\fP, \fBnull\fP,
+\fBtty\fP, \fBjournal\fP, \fBkmsg\fP, \fBjournal+console\fP, \fBkmsg+console\fP,
+\fBfile:\fP\fIpath\fP, \fBappend:\fP\fIpath\fP, \fBtruncate:\fP\fIpath\fP, \fBsocket\fP or
+\fBfd:\fP\fIname\fP\&.
+.sp
+\fBinherit\fP 为标准输出复制标准输入的文件描述符 \&。
+.sp
+\fBnull\fP 将标准输出连接到 /dev/null，i\&.e\&。写入其中的所有内容都将丢失 \&。
+.sp
+\fBtty\fP 将标准输出连接到 tty (通过 \fITTYPath=\fP 配置，见下文) \&。如果 TTY
+仅用于输出，则执行的进程不会成为终端的控制进程，不会失败或等待其他进程释放终端 \&。
+.sp
+\fBjournal\fP 将标准输出与日志连接，可通过 \fBjournalctl\fP(1)\& 访问。请注意，写入 kmsg (见下文)
+的所有内容也隐式存储在日志中，因此下面列出的特定选项是该选项的超集
+\&。(另请注意，任何外部的、附加的系统日志守护进程也从日志接收它们的日志数据，因此这是在使用此类守护进程处理日志记录时使用的选项。)
+.sp
+\fBkmsg\fP 将标准输出与可通过 \fBdmesg\fP(1) 访问的内核日志缓冲区连接起来，此外还有日志 \&。journal
+守护进程可能被配置为将所有日志发送到 kmsg，在这种情况下，此选项与 \fBjournal\fP\& 没有什么不同。
+.sp
+\fBjournal+console\fP 和 \fBkmsg+console\fP 的工作方式与上述两个选项类似，但也将输出复制到系统控制台 \&。
+.sp
+\fBfile:\fP\fIpath\fP 选项可用于将特定文件系统对象连接到标准输出 \&。语义类似于 \fIStandardInput=\fP 的相同选项，见上文
+\&。如果 \fIpath\fP 引用文件系统上的常规文件，则打开它 (如果它不存在则创建 \* (Aqt 还存在) 用于在文件开头写入，但不会截断它
+\&。如果标准输入和输出指向相同的文件路径，它只打开一次 \(em 用于读取和写入 \(em 和重复的 \&。当指定路径引用文件系统中的
+\fBAF_UNIX\fP 套接字时，这特别有用，因为在这种情况下，只会为输入和输出创建单个流连接 \&。
+.sp
+\fBappend:\fP\fIpath\fP 与上面的 \fBfile:\fP\fIpath\fP 类似，但它以追加方式打开文件 \&。
+.sp
+\fBtruncate:\fP\fIpath\fP 和上面的 \fBfile:\fP\fIpath\fP 类似，只是打开文件时截断
+\&。对于具有多个命令行的单元，e\&.g\&。 具有多个 \fIExecStart=\fP 的 \fIType=oneshot\fP 服务，或具有
+\fIExecCondition=\fP、\fIExecStartPre=\fP 或 \fIExecStartPost=\fP
+的服务，输出文件会重新打开，因此会针对每个命令行重新截断 \&。如果输出文件被截断而另一个进程仍打开该文件，则
+e\&.g\&。\fIExecReload=\fP 与 \fIExecStart=\fP
+同时运行，而另一个进程继续写入文件而不调整其偏移量，则两个进程的文件指针之间的空间可能会被 \fBNUL\fP 字节填充，从而产生一个稀疏文件
+\&。因此，\fBtruncate:\fP\fIpath\fP 通常仅适用于一次仅运行一个进程的单元，例如具有单个 \fIExecStart=\fP 且没有
+\fIExecStartPost=\fP、\fIExecReload=\fP、\fIExecStop=\fP 或类似 \& 的服务。
+.sp
+\fBsocket\fP 将标准输出连接到通过套接字激活 \& 获取的套接字。语义类似于 \fIStandardInput=\fP 的相同选项，见上文 \&。
+.sp
+\fBfd:\fP\fIname\fP 选项将标准输出连接到由套接字元 \& 提供的特定命名文件描述符。名称可以指定为该选项的一部分，在 ":" 字符之后
+(e\&.g\&."fd:\fIfoobar\fP")\&。如果未指定名称，则隐含名称 "stdout" (i\&.e\&。"fd" 是 equivalent
+to "fd:stdout")\&. 必须通过 \fISockets=\fP 选项提供至少一个定义指定名称的 socket 元，文件描述符名称可能与其包含的
+socket 元 \& 的名称不同。如果找到多个匹配项，将使用第一个 \&。有关命名描述符及其排序的更多详细信息，请参见
+\fBsystemd.socket\fP(5) 中的 \fIFileDescriptorName=\fP。
+.sp
+如果单元的标准输出 (或错误输出，见下文) 连接到日志或内核日志缓冲区，单元将隐式获得 \fIAfter=\fP 对
+systemd\-journald\&.socket 类型的依赖 (另请参见上面的 "Implicit Dependencies" 部分)
+\&。另请注意，在这种情况下，stdout (或标准错误，见下文) 将是 \fBAF_UNIX\fP 流套接字，而不是可以重新打开的管道或
+FIFO\&。这意味着当执行 shell 脚本时，用于将文本写入标准错误的构造 \fBecho "hello" > /dev/stderr\fP
+将不起作用 \&。为了缓解这种情况，请改用构造 \fBecho "hello" >&2\fP，这在很大程度上是等效的，并且避免了这个陷阱 \&。
+.sp
+如果 \fIStandardInput=\fP 设置为 \fBtty\fP、\fBtty\-force\fP、\fBtty\-fail\fP、\fBsocket\fP 或
+\fBfd:\fP\fIname\fP 之一，则此设置默认为 \fBinherit\fP\&。
+.sp
+在其他情况下，此设置默认为 \fBsystemd\-system.conf\fP(5) 中的 \fIDefaultStandardOutput=\fP
+设置的值，默认为 \fBjournal\fP\&。请注意，设置此参数可能会导致将其他依赖项添加到元 (见上文) \&。
+.RE
+.PP
+\fIStandardError=\fP
+.RS 4
+控制已执行进程的文件描述符 2 (stderr) 连接到 \& 的位置。可用选项与 \fIStandardOutput=\fP 的选项相同，但有一些例外:
+如果设置为 \fBinherit\fP，用于标准输出的文件描述符将复制用于标准错误，而 \fBfd:\fP\fIname\fP 将使用默认文件描述符名称
+`stderr`\&。
+.sp
+该设置默认为 \fBsystemd\-system.conf\fP(5) 中 \fIDefaultStandardError=\fP 设置的值，默认为
+\fBinherit\fP\&。请注意，设置此参数可能会导致将其他依赖项添加到元 (见上文) \&。
+.RE
+.PP
+\fIStandardInputText=\fP, \fIStandardInputData=\fP
+.RS 4
+配置任意文本或二进制数据以通过文件描述符 0 (STDIN) 传递给执行的进程 \&。除非将 \fIStandardInput=\fP 设置为 \fBdata\fP
+(如果 \fIStandardInput=\fP 未设置为默认设置，但 \fIStandardInputText=\fP/\fIStandardInputData=\fP
+设置为默认设置) \&，则这些设置无效。使用此选项将过程输入数据直接嵌入元文件 \&。
+.sp
+\fIStandardInputText=\fP 接受任意文本数据 \&。特殊字符的 C 风格转义以及常见的 `%` 说明符被解决
+\&。每次使用此设置时，都会将指定的文本追加到每个元数据缓冲区，后跟换行符 (因此每次使用都会将新行追加到缓冲区的末尾)
+\&。请注意，使用此选项配置的行的前导和尾随空格被删除 \&。如果指定了空行，则清除缓冲区 (因此，为了插入空行，请在行尾或行首添加额外的 "\en")
+\&。
+.sp
+\fIStandardInputData=\fP 接受以 \m[blue]\fBBase64\fP\m[]\&\s-2\u[13]\d\s+2\&
+编码的任意二进制数据。没有解析转义序列或说明符 \&。编码版本中的任何空格在解码期间都将被忽略 \&。
+.sp
+请注意，\fIStandardInputText=\fP 和 \fIStandardInputData=\fP
+在同一数据缓冲区上运行，并且可以混合使用以便为同一输入流配置二进制和文本数据 \&。文本或二进制数据严格按照设置在元文件中出现的顺序连接
+\&。将空字符串分配给其中任何一个都将重置数据缓冲区 \&。
+.sp
+请记住，为了保持可读性，长元文件设置可以拆分为多行，方法是在每行 (最后一行除外) 后缀 "\e" 字符 (有关详细信息，请参见
+\fBsystemd.unit\fP(5)) \&。这对于配置了这两个选项的大数据特别有用。Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\&...
+StandardInput=data
+StandardInputData=V2XigLJyZSBubyBzdHJhbmdlcnMgdG8gbG92ZQpZb3Uga25vdyB0aGUgcnVsZXMgYW5kIHNvIGRv \e
+                  IEkKQSBmdWxsIGNvbW1pdG1lbnQncyB3aGF0IEnigLJtIHRoaW5raW5nIG9mCllvdSB3b3VsZG4n \e
+                  dCBnZXQgdGhpcyBmcm9tIGFueSBvdGhlciBndXkKSSBqdXN0IHdhbm5hIHRlbGwgeW91IGhvdyBJ \e
+                  J20gZmVlbGluZwpHb3R0YSBtYWtlIHlvdSB1bmRlcnN0YW5kCgpOZXZlciBnb25uYSBnaXZlIHlv \e
+                  dSB1cApOZXZlciBnb25uYSBsZXQgeW91IGRvd24KTmV2ZXIgZ29ubmEgcnVuIGFyb3VuZCBhbmQg \e
+                  ZGVzZXJ0IHlvdQpOZXZlciBnb25uYSBtYWtlIHlvdSBjcnkKTmV2ZXIgZ29ubmEgc2F5IGdvb2Ri \e
+                  eWUKTmV2ZXIgZ29ubmEgdGVsbCBhIGxpZSBhbmQgaHVydCB5b3UK
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+\fILogLevelMax=\fP
+.RS 4
+配置由该元 \& 生成的日志消息的日志级别过滤。采用 \fBsyslog\fP 日志级别，\fBemerg\fP
+(最低日志级别，仅最高优先级消息)、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP
+(最高日志级别，也是最低优先级消息) 之一 \&。有关详细信息，请参见 \fBsyslog\fP(3)\&。默认情况下不应用过滤
+(i\&.e\&。默认最大日志级别为 \fBdebug\fP)\&。使用此选项将日志系统配置为丢弃指定级别以上的特定服务的日志消息 \&。例如，设置
+\fILogLevelMax=\fP\fBinfo\fP 以关闭特别冗长的元 \&
+的调试日志记录。请注意，配置的级别适用于属于此元的任何进程写入的任何日志消息，以及系统管理器进程 (PID 1)
+在引用此元中写入的任何日志消息，通过任何支持的日志记录协议发送 \&。过滤在日志记录管道的早期应用，在任何类型的进一步处理完成之前
+\&。此外，成功通过此过滤器的消息可能仍会被日志子系统稍后阶段应用的过滤器丢弃。例如，在 \fBjournald.conf\fP(5) 中配置的
+\fIMaxLevelStore=\fP 可能会禁止更高日志级别的消息存储在磁盘上，即使每元 \fILogLevelMax=\fP 允许它被处理 \&。
+.RE
+.PP
+\fILogExtraFields=\fP
+.RS 4
+配置额外的日志元数据字段以包含在与此元 \& 关联的进程生成的所有日志记录中。此设置接受一个或多个日志字段分配，格式为
+"FIELD=VALUE"，由空格 \& 分隔。有关日志字段概念 \& 的详细信息，请参见
+\fBsystemd.journal\-fields\fP(7)。即使底层日志实现允许二进制字段值，此设置也只接受有效的 UTF\-8 值
+\&。要在日志字段值中包含空格字符，请将赋值用双引号 (")\& 括起来。常用的说明符在所有赋值中都会展开 (见下文)
+\&。请注意，此设置不仅可用于将其他元数据附加到一个元的日志记录，但考虑到所有字段和值都被索引，也可以用来实现跨元日志记录匹配
+\&。分配一个空字符串以重置列表 \&。
+.RE
+.PP
+\fILogRateLimitIntervalSec=\fP, \fILogRateLimitBurst=\fP
+.RS 4
+配置应用于此元 \& 生成的日志消息的速率限制。如果在 \fILogRateLimitIntervalSec=\fP 定义的时间间隔内，服务记录的消息多于
+\fILogRateLimitBurst=\fP 中指定的消息，则该间隔内的所有其他消息都将丢弃，直到间隔结束 \&。生成关于抛弃消息数量的消息
+\&。\fILogRateLimitIntervalSec=\fP 的时间规范可以用以下单位指定: "s"、"min"、"h"、"ms"、"us" (详见
+\fBsystemd.time\fP(7)) \&。默认设置由 \fBjournald.conf\fP(5)\& 中配置的
+\fIRateLimitIntervalSec=\fP 和 \fIRateLimitBurst=\fP 设置。请注意，这仅适用于由日志子系统 i\&.e\&
+处理的日志消息。通过 systemd\-journald\&.service\&。这意味着，如果您通过
+\fIStandardOutput=file:\&...\fP 或类似设置将服务 \*(Aqs
+标准错误直接连接到文件，则速率限制将不会应用于以这种方式编写的消息 (但它们将对通过 \fBsyslog()\fP 或类似设置生成的消息强制执行) \&。
+.RE
+.PP
+\fILogFilterPatterns=\fP
+.RS 4
+定义扩展正则表达式，根据结构化消息的 \fIMESSAGE=\fP 字段过滤日志消息 \&。如果模式的第一个字符是 "~"，匹配模式的日志条目应该被丢弃
+\&。此选项采用单个模式作为参数，但可以多次使用以创建允许和拒绝模式列表 \&。如果赋值为空字符串，过滤器将被重置，所有先前的赋值都将无效 \&。
+.sp
+由于 "~" 字符用于定义拒绝模式，因此必须将其替换为 "\ex7e" 以允许以 `~`\& 开头的消息。例如，"~foobar" 会将匹配
+"foobar" 的模式添加到拒绝列表，而 "\ex7efoobar" 会将匹配 "~foobar" 的模式添加到允许列表 \&。
+.sp
+日志消息先针对拒绝模式 (如果有) 进行测试，然后针对允许模式 (如果有) 进行测试
+\&。如果日志消息匹配任何被拒绝的模式，它将被丢弃，无论允许的模式是什么 \&。然后，根据允许的模式测试剩余的日志消息
+\&。与任何允许的模式都不匹配的消息将被丢弃 \&。如果未定义允许的模式，则所有消息在通过拒绝过滤器后直接处理 \&。
+.sp
+过滤基于为其定义了 \fILogFilterPatterns=\fP 的元，这意味着来自 \fBsystemd\fP(1) 的关于元的日志消息不被考虑
+\&。过滤后的日志消息不会 \*(Aqt 被转发到传统的 syslog 守护程序、内核日志缓冲区 (kmsg)、systemd
+控制台，或作为墙消息发送到所有登录用户 \&。
+.RE
+.PP
+\fILogNamespace=\fP
+.RS 4
+运行元 \*(指定日志命名空间中的 Aqs 进程 \&。需要一个简短的用户定义字符串来标识命名空间 \&。如果不使用，服务进程将在默认日志命名空间
+i\&.e\& 中运行。他们的日志流由 systemd\-journald\&.service\&
+收集和处理。如果使用此选项，则由此单元的进程生成的任何日志数据 (无论是否通过 \fBsyslog()\fP、日志原生日志记录或 stdout/stderr
+日志记录) 都由 systemd\-journald@\&.service 模板单元的实例收集和处理，该模板管理指定的命名空间
+\&。日志数据存储在独立于默认日志命名空间 \*(Aqs data store\&. 有关日志名称空间 \& 的详细信息，请参见
+\fBsystemd\-journald.service\fP(8)。
+.sp
+在内部，日志命名空间是通过 Linux 挂载命名空间和过度挂载包含用于登录元 \*(Aqs 挂载命名空间
+\&. 由于使用了挂载命名空间，此设置断开了挂载从单元 \*(Aqs 进程到主机的传播，类似于 \fIReadOnlyPaths=\fP
+和类似设置描述的上述工作方式 \&。因此，日志命名空间可能不会用于需要在主机上建立挂载点的服务。
+.sp
+使用此选项时，元将自动获得与 systemd\-journald@\&.service 实例关联的两个套接字单元的排序和要求依赖性，以便在元启动 \&
+之前自动建立它们。请注意，当使用此选项时，此服务的日志输出不会出现在常规 \fBjournalctl\fP(1) 输出中，除非使用
+\fB\-\-namespace=\fP 选项 \&。
+.sp
+此选项仅适用于系统服务，不支持在服务管理器的每用户实例中运行的服务 \&。
+.RE
+.PP
+\fISyslogIdentifier=\fP
+.RS 4
+设置进程名称 ("\fBsyslog\fP 标记 ") 以在发送到日志系统或内核日志缓冲区的日志行前加上 \&。如果未设置，则默认为已执行进程的进程名称
+\&。此选项仅在 \fIStandardOutput=\fP 或 \fIStandardError=\fP 设置为 \fBjournal\fP 或 \fBkmsg\fP (或与
+\fB+console\fP) 组合设置为相同设置且仅适用于写入 stdout 或标准错误 \& 的日志消息时才有用。
+.RE
+.PP
+\fISyslogFacility=\fP
+.RS 4
+设置 \fBsyslog\fP 设施标识符以在记录 \&
+时使用。\fBkern\fP、\fBuser\fP、\fBmail\fP、\fBdaemon\fP、\fBauth\fP、\fBsyslog\fP、\fBlpr\fP、\fBnews\fP、\fBuucp\fP、\fBcron\fP、\fBauthpriv\fP、\fBftp\fP、\fBlocal0\fP、\fBlocal1\fP、\fBlocal2\fP、\fBlocal3\fP、\fBlocal4\fP、\fBlocal5\fP、\fBlocal6\fP
+或 \fBlocal7\fP\& 之一。有关详细信息，请参见 \fBsyslog\fP(3)\&。此选项仅在 \fIStandardOutput=\fP 或
+\fIStandardError=\fP 设置为 \fBjournal\fP 或 \fBkmsg\fP (或与 \fB+console\fP)
+组合设置为相同设置，并且仅适用于写入 stdout 或标准错误 \& 的日志消息时才有用。默认为 \fBdaemon\fP\&。
+.RE
+.PP
+\fISyslogLevel=\fP
+.RS 4
+记录到日志系统或内核日志缓冲区时使用的默认 \fBsyslog\fP 日志级别
+\&。\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP\&
+之一。有关详细信息，请参见 \fBsyslog\fP(3)\&。此选项仅在 \fIStandardOutput=\fP 或 \fIStandardError=\fP
+设置为 \fBjournal\fP 或 \fBkmsg\fP (或与 \fB+console\fP) 组合设置为相同设置，并且仅适用于写入 stdout 或标准错误 \&
+的日志消息时才有用。请注意，已执行进程输出的各个行可能带有不同的日志级别前缀，可用于覆盖此处指定的默认日志级别 \&。这些前缀的解释可能会被
+\fISyslogLevelPrefix=\fP 禁用，见下文 \&。详见 \fBsd\-daemon\fP(3)\&。默认为 \fBinfo\fP\&。
+.RE
+.PP
+\fISyslogLevelPrefix=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true 并且 \fIStandardOutput=\fP 或 \fIStandardError=\fP 设置为 \fBjournal\fP
+或 \fBkmsg\fP (或与 \fB+console\fP)
+组合设置为相同设置，则以日志级别为前缀的已执行进程写入的日志行将使用此日志级别集进行处理，但前缀已删除 \&. 如果设置为
+false，这些前缀的解释将被禁用，记录的行按原样传递 \&。这仅适用于写入 stdout 或标准错误 \& 的日志消息。有关此前缀的详细信息，请参见
+\fBsd\-daemon\fP(3)\&。默认为 true\&。
+.RE
+.PP
+\fITTYPath=\fP
+.RS 4
+如果标准输入、输出或错误连接到 TTY (见上文) \&，则设置要使用的终端设备节点。默认为 /dev/console\&。
+.RE
+.PP
+\fITTYReset=\fP
+.RS 4
+执行前后将 \fITTYPath=\fP 指定的终端设备复位。默认为 `否`\&。
+.RE
+.PP
+\fITTYVHangup=\fP
+.RS 4
+执行 \& 前后断开所有打开过 \fITTYPath=\fP 指定终端设备的客户端。默认为 `否`\&。
+.RE
+.PP
+\fITTYRows=\fP, \fITTYColumns=\fP
+.RS 4
+配置用 \fITTYPath=\fP\& 指定的 TTY 的大小。如果未设置或设置为空字符串，则使用内核默认 \&。
+.RE
+.PP
+\fITTYVTDisallocate=\fP
+.RS 4
+如果用 \fITTYPath=\fP 指定的终端设备是虚拟控制台终端，则尝试在执行前后释放 TTY\&。这确保屏幕和回滚缓冲区被清除 \&。默认为
+`否`\&。
+.RE
+.SH CREDENTIALS
+.PP
+\fILoadCredential=\fP\fIID\fP[:\fIPATH\fP],
+\fILoadCredentialEncrypted=\fP\fIID\fP[:\fIPATH\fP]
+.RS 4
+将凭据传递给元 \&。凭据是可以传递给元进程的有限大小的二进制或文本对象。它们主要用于将加密密钥 (公钥和私钥)
+或证书、用户帐户信息或身份信息从主机传递给服务 \&。数据可从元 \*(Aqs 通过文件系统处理，在一个只读位置 (如果可能和允许) 由不可交换内存支持
+\&。只有与元相关联的用户才能通过 \fIUser=\fP/\fIDynamicUser=\fP 设置 (以及超级用户) \& 访问数据。如果可用，凭证的位置将作为
+\fI$CREDENTIALS_DIRECTORY\fP 环境变量导出到元 \*(Aqs processes\&.
+.sp
+\fILoadCredential=\fP 设置采用文本 ID 用作凭据的名称加上文件系统路径，以冒号 \& 分隔。ID 必须是一个短的 ASCII
+字符串，适合作为文件系统中的文件名，并且可以由用户自由选择 \&。如果指定的路径是绝对路径，它将作为常规文件打开，并从中读取凭证数据
+\&。如果绝对路径指的是文件系统中的 \fBAF_UNIX\fP 流套接字，则会对其建立连接 (仅在元启动时一次) 并从连接中读取凭证数据，从而提供一个简单的
+IPC 集成点，用于从其他动态传输凭证服务 \&。
+.sp
+如果指定的路径不是绝对路径并且本身符合有效凭证标识符的条件，则它会尝试查找服务管理器本身以指定名称 \(em 接收的凭证，该名称可用于从调用环境传播凭证
+(e\&. g\&. 调用服务管理器的容器管理器) 转换为服务 \&。如果未找到匹配的系统凭证，则在目录
+/etc/credstore/、/run/credstore/ 和 /usr/lib/credstore/ 中搜索凭证 \*(Aqs 名称
+\(em，因此它们是磁盘上凭证数据的推荐位置 \&。如果使用 \fILoadCredentialEncrypted=\fP，则还会搜索
+/run/credstore\&.encrypted/、/etc/credstore\&.encrypted/ 和
+/usr/lib/credstore\&.encrypted/\&。
+.sp
+如果省略文件系统路径，则选择与凭证名称 i\&.e\&
+相同的路径。这是一种声明凭证以从服务管理器继承到服务的简洁方法。这个选项可以多次使用，每次定义一个额外的凭证传递给元 \&。
+.sp
+如果指定了引用目录的绝对路径，则该目录 (recursively) 中的每个文件都将作为单独的凭证加载。每个凭据的 ID 将是提供的 ID 后缀为
+"_$FILENAME" (例如 \&.g\&.，"Key_file1") \&。从目录加载时，符号链接将被忽略 \&。
+.sp
+file/socket 的内容可以是任意二进制或文本数据，包括换行符和 \fBNUL\fP 字节 \&。
+.sp
+\fILoadCredentialEncrypted=\fP 设置与 \fILoadCredential=\fP
+相同，不同之处在于凭证数据在传递给执行的进程之前进行解密和身份验证 \&。具体来说，引用的路径应引用具有加密凭据的文件或套接字，如
+\fBsystemd\-creds\fP(1)\& 所实现的那样。此凭据被加载、解密、验证，然后以明文形式传递给应用程序，其方式与通过
+\fILoadCredential=\fP 指定的常规凭据相同。以这种方式配置的凭据可能是对称的
+encrypted/authenticated，具有从系统派生的密钥 \*(Aqs TPM2 安全芯片，或具有存储在
+/var/lib/systemd/credentials\&.secret 中的密钥，或两者都有
+\&。使用加密和经过身份验证的凭据可以提高安全性，因为凭据不会以明文形式存储，并且只会在需要它们的服务启动时进行身份验证和解密为明文
+\&。此外，凭据可能会绑定到本地硬件和安装，因此无法轻松地对其进行离线分析或在外部生成 \&。当 \fIDevicePolicy=\fP 设置为
+"closed" 或 "strict"，或设置为 "auto" 且设置了 \fIDeviceAllow=\fP，或设置了 \fIPrivateDevices=\fP
+时，则此设置将 /dev/tpmrm0 与 \fBrw\fP 模式添加到 \fIDeviceAllow=\fP\&。有关 \fIDevicePolicy=\fP 或
+\fIDeviceAllow=\fP\& 的详细信息，请参见 \fBsystemd.resource\-control\fP(5)。
+.sp
+服务管理器必须可以访问凭据 files/IPC 套接字，但不要 \*(Aqt 必须可以直接访问单元 \*(Aqs 进程:
+凭据数据被读取并复制到单独的只读副本中具有适当特权的进程可以访问 \&。这在与 \fIDynamicUser=\fP
+结合使用时特别有用，因为通过这种方式，特权数据可用于在动态 UID (i\&.e\&. 不是以前已知的)，而不必向所有用户开放访问权限 \&。
+.sp
+为了引用可以从 \fIExecStart=\fP 命令行中读取凭证的路径，请使用 "${CREDENTIALS_DIRECTORY}/mycred"，例如
+\&.g\&。 `ExecStart=cat ${CREDENTIALS_DIRECTORY}/mycred`\&。为了引用可以从
+\fIEnvironment=\fP 行中读取凭证的路径，请使用 "%d/mycred"，例如 \&.g\&。
+"Environment=MYCREDPATH=%d/mycred"\&.
+.sp
+当前，强制执行每元 1 MB 的累积凭据大小限制 \&。
+.sp
+服务管理器本身可以接收系统凭证，这些凭证可以从托管容器管理器或 VM 管理程序传播到服务。有关前者 \& 的详细信息，请参见
+\m[blue]\fBContainer Interface\fP\m[]\&\s-2\u[14]\d\s+2 文档。对于后者，传递带有
+"io\&.systemd\&.credential:" 或 `io\&.systemd\&.credential\&.binary:`\& 前缀的
+\m[blue]\fBDMI/SMBIOS\fP\m[]\&\s-2\u[15]\d\s+2 OEM 字符串表条目 (字段类型 11)。在这两种情况下，都需要
+"=" 分隔的 key/value 对，在后一种情况下，右侧在解析时解码为 Base64 (因此允许传入二进制数据)
+\&。\m[blue]\fBqemu\fP\m[]\&\s-2\u[16]\d\s+2 开关示例: "\-smbios
+type=11,value=io\&.systemd\&.credential:xx=yy"，或 `\-smbios
+type=11,value=io\&.systemd\&.credential\&.binary:rick=TmV2ZXIgR29ubmEgR2l2ZSBZb3UgVXA="\&.
+或者，使用 \fBqemu\fP "fw_cfg" 节点 `opt/io\&.systemd\&.credentials/`\&。\fBqemu\fP 开关示例:
+`\-fw_cfg
+name=opt/io\&.systemd\&.credentials/mycred,string=supersecret`\&。它们也可以使用
+"systemd\&.set_credential=" 开关在内核命令行上指定 (请参见 \fBsystemd\fP(1)) 和通过
+\fBsystemd\-stub\fP(7)\& 从 UEFI 固件环境。
+.sp
+如果引用要连接的 \fBAF_UNIX\fP 流套接字，则连接将源自抽象名称空间套接字，其套接字名称中包含有关元和凭证 ID 的信息 \&。使用
+\fBgetpeername\fP(2) 查询此信息 \&。返回的套接字名称格式为 \fBNUL\fP \fIRANDOM\fP "/unit/" \fIUNIT\fP "/"
+\fIID\fP, i\&.e\&。一个 \fBNUL\fP 字节 (抽象命名空间套接字名称所需要的)，后跟一个随机字符串
+(由字母十进制字符组成)，然后是字符值字符串 "/unit/"，然后是请求的元名称，然后是字符值字符 "/"，然后是请求的文本凭证 ID\&。示例:
+"\e0adf9d86b6eda275e/unit/foobar\&.service/credx"，以防为元 `foobar\&.service`\&
+请求凭据 "credx"。此功能对于使用单个侦听套接字向多个消费者提供凭据很有用 \&。
+.sp
+有关详细信息，请参见 \m[blue]\fBSystem and Service Credentials\fP\m[]\&\s-2\u[17]\d\s+2
+文档 \&。
+.RE
+.PP
+\fISetCredential=\fP\fIID\fP:\fIVALUE\fP, \fISetCredentialEncrypted=\fP\fIID\fP:\fIVALUE\fP
+.RS 4
+\fISetCredential=\fP 设置与 \fILoadCredential=\fP 类似，但接受字面量用作凭证数据，而不是文件系统路径以从 \&
+读取数据。不要将此选项用于应该保密的数据，因为非特权进程可以通过 IPC\& 访问它。它 \*(Aqs 只有安全地将它用于用户
+ID、公钥材料和类似的非敏感数据 \&。对于其他所有内容，请使用 \fILoadCredential=\fP\&。为了将二进制数据嵌入到凭证数据中，使用 C
+风格转义 (i\&.e\&.  "\en" 嵌入换行符，或 "\ex00" 嵌入 \fBNUL\fP 字节) \&。
+.sp
+\fISetCredentialEncrypted=\fP 设置与 \fISetCredential=\fP 相同，但需要字面量形式的加密凭据作为值
+\&。这允许将机密凭证直接安全地嵌入到元文件中。使用 \fBsystemd\-creds\fP(1)\*(Aq \fB\-p\fP 开关直接从明文凭据生成合适的
+\fISetCredentialEncrypted=\fP 行 \&。有关详细信息，请参见上面的 \fILoadCredentialEncrypted=\fP\&。
+.sp
+如果 \fILoadCredential=\fP 和 \fISetCredential=\fP 中都列出了相同 ID 的凭据，如果无法检索前者，则后者将作为默认
+\&。在这种情况下，无法从 \fILoadCredential=\fP 中指定的路径检索凭据不被视为致命 \&。
+.RE
+.SH "SYSTEM V COMPATIBILITY"
+.PP
+\fIUtmpIdentifier=\fP
+.RS 4
+为该服务的 \fButmp\fP(5) 和 wtmp 条目取一个四字符标识符字符串 \&。这应该只为 \fBgetty\fP 实现之类的服务设置 (例如
+\fBagetty\fP(8))，其中必须在执行之前和之后创建和清除 utmp/wtmp 条目，或者对于应该像由 \fBgetty\fP 进程运行一样执行的服务
+(见下文) \&. 如果配置的字符串超过四个字符，则将其截断并使用最后四个字符 \&。此设置解释 %I 样式字符串替换
+\&。默认情况下未设置此设置，i\&.e\&。没有为此服务创建或清除任何 utmp/wtmp 条目 \&。
+.RE
+.PP
+\fIUtmpMode=\fP
+.RS 4
+采用 "init"、"login" 或 `用户`\& 之一。如果设置了 \fIUtmpIdentifier=\fP，则控制为该服务生成哪种类型的
+\fButmp\fP(5)/wtmp 条目 \&。除非也设置了 \fIUtmpIdentifier=\fP\&，否则此设置无效。如果设置了
+"init"，则只生成一个 \fBINIT_PROCESS\fP 条目，并且调用的进程必须实现 \fBgetty\fP\-compatible utmp/wtmp
+逻辑 \&。如果设置了 "login"，首先会生成一个 \fBINIT_PROCESS\fP 条目，然后生成一个 \fBLOGIN_PROCESS\fP 条目
+\&。在这种情况下，被调用的进程必须实现 \fBlogin\fP(1)\-compatible utmp/wtmp 逻辑 \&。如果设置了
+"user"，则首先生成 \fBINIT_PROCESS\fP 条目，然后生成 \fBLOGIN_PROCESS\fP 条目，最后生成
+\fBUSER_PROCESS\fP 条目 \&。在这种情况下，被调用的进程可以是任何适合作为会话领导者运行的进程。默认为 `初始化`\&。
+.RE
+.SH "ENVIRONMENT VARIABLES IN SPAWNED PROCESSES"
+.PP
+由服务管理器启动的进程是使用从多个来源组装的环境变量块执行的。由系统服务管理器启动的进程一般不继承为服务管理器本身设置的环境变量 (但这可以通过
+\fIPassEnvironment=\fP) 改变，但由用户服务管理器实例启动的进程通常继承所有为服务管理器本身设置的环境变量 \&.
+.PP
+对于每个调用的进程，环境变量集的列表是从以下来源编译的:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+变量为服务管理器全局配置，使用 \fBsystemd\-system.conf\fP(5) 中的 \fIDefaultEnvironment=\fP
+设置，\fBsystemd\fP(1) 理解的内核命令行选项 \fIsystemd\&.setenv=\fP，或通过 \fBsystemctl\fP(1)
+\fBset\-environment\fP 动词 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+变量由服务管理器自己定义 (见下面的列表) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+服务管理器中设置的变量 \*(Aqs 自带的环境变量块 (系统服务管理器以 \fIPassEnvironment=\fP 为准)\&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+变量通过元文件中的 \fIEnvironment=\fP 设置 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+变量读取元文件中 \fIEnvironmentFile=\fP 指定的文件 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在 \fIPAMName=\fP 有效的情况下，由任何 PAM 模块设置的变量，cf\&.\ \&\fBpam_env\fP(8)\&。
+.RE
+.PP
+如果同一个环境变量由多个这些源设置，后面的源 \(em 根据上面列表的顺序 \(em
+win\&。请注意，作为最后一步，\fIUnsetEnvironment=\fP 中列出的所有变量都从编译的环境变量列表中删除，紧接着它被传递给执行的进程
+\&。
+.PP
+一般的理念是将一小部分精选的环境变量暴露给进程 \&。系统管理器 (PID 1) 启动的服务将启动，无需额外的服务特定配置，只需几个环境变量
+\&。用户管理器像任何其他系统服务一样继承环境变量，但另外可能从 PAM
+接收额外的环境变量，并且通常在用户启动图形会话时额外导入变量。建议在系统和用户管理器中保持环境块精简 \&。强烈建议不要导入由图形会话或用户
+shells 之一继承的所有变量 \&。
+.PP
+提示: \fBsystemd\-run \-P env\fP 和 \fBsystemd\-run \-\-user \-P env\fP 打印有效的系统和用户服务环境块 \&。
+.SS "Environment Variables Set or Propagated by the Service Manager"
+.PP
+以下环境变量由服务管理器传播或在内部为每个调用的进程生成:
+.PP
+\fI$PATH\fP
+.RS 4
+启动可执行文件时使用的以冒号分隔的目录列表 \&。 \fBsystemd\fP 在系统管理器中使用固定值
+"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"\&。当为带有 "unmerged /usr/"
+的系统编译时 (/bin 不是 /usr/bin 的符号链接)，":/sbin:/bin" 被，追加 \&。在用户管理器的情况下，不同的路径可能由分发
+\& 配置。建议不要依赖条目的顺序，并且在 \fI$PATH\fP\& 中只有一个具有给定名称的程序。
+.RE
+.PP
+\fI$LANG\fP
+.RS 4
+语言环境 \&。可以在 \fBlocale.conf\fP(5) 或内核命令行上设置 (参见 \fBsystemd\fP(1) 和
+\fBkernel\-command\-line\fP(7))\&.
+.RE
+.PP
+\fI$USER\fP, \fI$LOGNAME\fP, \fI$HOME\fP, \fI$SHELL\fP
+.RS 4
+用户名 (twice)、主目录和登录名 shell\&。变量是为设置了 \fIUser=\fP 的单元设置的，其中包括用户 \fBsystemd\fP 实例
+\&。请参见 \fBpasswd\fP(5)\&。
+.RE
+.PP
+\fI$INVOCATION_ID\fP
+.RS 4
+包含一个随机的、唯一的 128 位 ID，用于标识元的每个运行时周期，格式为 32 个字符的十六进制字符串
+\&。每次元从非活动状态变为激活或活动状态时，都会分配一个新 ID，并且可以用于标识此特定运行时周期，特别是在脱机存储的数据中，例如日志 \&。相同的
+ID 被传递给作为元 \& 的一部分运行的所有进程。
+.RE
+.PP
+\fI$XDG_RUNTIME_DIR\fP
+.RS 4
+用于运行时对象 (例如 IPC 对象) 和易失状态 \& 的目录。为用户 \fBsystemd\fP 实例运行的所有服务以及使用 \fIPAMName=\fP
+和包含 \fBpam_systemd\fP\& 的 PAM 栈的任何系统服务设置。有关更多信息，请参见下文和 \fBpam_systemd\fP(8)\&。
+.RE
+.PP
+\fI$RUNTIME_DIRECTORY\fP, \fI$STATE_DIRECTORY\fP, \fI$CACHE_DIRECTORY\fP,
+\fI$LOGS_DIRECTORY\fP, \fI$CONFIGURATION_DIRECTORY\fP
+.RS 4
+使用
+\fIRuntimeDirectory=\fP、\fIStateDirectory=\fP、\fICacheDirectory=\fP、\fILogsDirectory=\fP
+和 \fIConfigurationDirectory=\fP 定义的目录的绝对路径 \&。
+.RE
+.PP
+\fI$CREDENTIALS_DIRECTORY\fP
+.RS 4
+通过 \fILoadCredential=\fP/\fISetCredential=\fP\&
+配置凭据的每个元目录的绝对路径。该目录被标记为只读并放置在不可交换的内存中 (如果支持和允许)，并且只能通过 \fIUser=\fP 或
+\fIDynamicUser=\fP (和超级用户) \& 与单元关联的 UID 访问。
+.RE
+.PP
+\fI$MAINPID\fP
+.RS 4
+元的 PID\*(Aqs main process if it known\&. 这仅为由 \fIExecReload=\fP 和类似 \&
+调用的控制进程设置。
+.RE
+.PP
+\fI$MANAGERPID\fP
+.RS 4
+用户 \fBsystemd\fP 实例的 PID，为它产生的进程设置 \&。
+.RE
+.PP
+\fI$LISTEN_FDS\fP, \fI$LISTEN_PID\fP, \fI$LISTEN_FDNAMES\fP
+.RS 4
+有关传递给套接字激活服务的文件描述符的信息。请参见 \fBsd_listen_fds\fP(3)\&。
+.RE
+.PP
+\fI$NOTIFY_SOCKET\fP
+.RS 4
+套接字 \fBsd_notify()\fP 与 \& 对话。请参见 \fBsd_notify\fP(3)\&。
+.RE
+.PP
+\fI$WATCHDOG_PID\fP, \fI$WATCHDOG_USEC\fP
+.RS 4
+有关看门狗保活通知的信息 \&。请参见 \fBsd_watchdog_enabled\fP(3)\&。
+.RE
+.PP
+\fI$SYSTEMD_EXEC_PID\fP
+.RS 4
+元进程的 PID (e\&.g\&. \fIExecStart=\fP)\&
+调用的进程。子进程可以使用此信息来确定该进程是直接被服务管理器调用还是间接作为另一个进程的子进程被调用将此值与当前 PID 进行比较 (类似于
+\fBsd_listen_fds\fP(3) 与 \fI$LISTEN_PID\fP 和 \fI$LISTEN_FDS\fP)\& 中使用的方案。
+.RE
+.PP
+\fI$TERM\fP
+.RS 4
+终端类型，仅针对连接到终端 (\fIStandardInput=tty\fP、\fIStandardOutput=tty\fP 或
+\fIStandardError=tty\fP)\& 的单元设置。参见 \fBtermcap\fP(5)\&。
+.RE
+.PP
+\fI$LOG_NAMESPACE\fP
+.RS 4
+包含使用 \fILogNamespace=\fP 服务设置时所选日志命名空间的名称 \&。
+.RE
+.PP
+\fI$JOURNAL_STREAM\fP
+.RS 4
+如果执行进程的标准输出或标准错误输出连接到日志 (例如，通过设置 \fIStandardError=journal\fP)
+\fI$JOURNAL_STREAM\fP 包含连接文件描述符的设备号和 inode 号，格式为十进制，以冒号 (`:`) 分隔
+\&. 这允许被调用的进程安全地检测它们的标准输出或标准错误输出是否连接到日志 \&。文件描述符的设备号和 inode
+号应该与环境变量中设置的值进行比较，以确定进程输出是否仍然连接到日志 \&。请注意，仅检查是否设置了 \fI$JOURNAL_STREAM\fP
+通常是不够的，因为服务可能会调用外部进程替换其标准输出或标准错误输出，而无需取消设置环境变量 \&。
+.sp
+如果已执行进程的标准输出和标准错误都通过流套接字连接到日志，则此环境变量将包含有关标准错误流的信息，因为 \*(Aqs 通常是日志数据的首选目的地
+\&。(请注意，通常相同的流用于标准输出和标准错误，因此环境变量很可能包含与两个流文件描述符匹配的设备和 inode 信息。)
+.sp
+如果服务的标准输出或标准错误输出无论如何都连接到日志，则此环境变量主要用于允许服务选择性地将其使用的日志协议升级到原生日志协议 (使用
+\fBsd_journal_print\fP(3) 和其他函数)，从而实现结构化元数据的传递带有记录的消息 \&。
+.RE
+.PP
+\fI$SERVICE_RESULT\fP
+.RS 4
+仅用于服务元类型 \&。该环境变量传递给所有 \fIExecStop=\fP 和 \fIExecStopPost=\fP 进程，并对服务 `result`\&
+进行编码。当前，定义了以下值:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&5.\ \&Defined \fP\fI$SERVICE_RESULT\fP 值
+.TS
+allbox tab(:);
+lB lB.
+T{
+Value
+T}:T{
+Meaning
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+"success"
+T}:T{
+The service ran successfully and exited cleanly\&.
+T}
+T{
+"protocol"
+T}:T{
+A protocol violation occurred: the service did not take the steps required by its unit configuration (specifically what is configured in its \fIType=\fP setting)\&.
+T}
+T{
+"timeout"
+T}:T{
+One of the steps timed out\&.
+T}
+T{
+"exit\-code"
+T}:T{
+Service process exited with a non\-zero exit code; see \fI$EXIT_CODE\fP below for the actual exit code returned\&.
+T}
+T{
+"signal"
+T}:T{
+A service process was terminated abnormally by a signal, without dumping core\&. See \fI$EXIT_CODE\fP below for the actual signal causing the termination\&.
+T}
+T{
+"core\-dump"
+T}:T{
+A service process terminated abnormally with a signal and dumped core\&. See \fI$EXIT_CODE\fP below for the signal causing the termination\&.
+T}
+T{
+"watchdog"
+T}:T{
+Watchdog keep\-alive ping was enabled for the service, but the deadline was missed\&.
+T}
+T{
+"start\-limit\-hit"
+T}:T{
+A start limit was defined for the unit and it was hit, causing the unit to fail to start\&. See \fBsystemd.unit\fP(5)\*(Aqs \fIStartLimitIntervalSec=\fP and \fIStartLimitBurst=\fP for details\&.
+T}
+T{
+"resources"
+T}:T{
+A catch\-all condition in case a system operation failed\&.
+T}
+.TE
+.sp 1
+此环境变量可用于监视服务的失败或成功终止 \&。尽管这个变量在 \fIExecStop=\fP 和 \fIExecStopPost=\fP
+中都可用，但通常将监控工具放在后者中是更好的选择，因为前者仅针对设法正确启动的服务调用，而后者涵盖了期间失败的两个服务他们的启动和那些在运行时失败的
+\&。
+.RE
+.PP
+\fI$EXIT_CODE\fP, \fI$EXIT_STATUS\fP
+.RS 4
+只为服务元类型定义 \&。这些环境变量传递给所有的 \fIExecStop=\fP、\fIExecStopPost=\fP 进程并包含服务主进程的退出
+status/code 信息 \&。退出码和状态的准确定义见 \fBwait\fP(2)\&。\fI$EXIT_CODE\fP 是
+"exited"、"killed" 之一，`转储`\&。如果 \fI$EXIT_CODE\fP 为 "exited"，则 \fI$EXIT_STATUS\fP
+包含格式为字符串的数字退出代码，在所有其他情况下为信号名称 \&。请注意，这些环境变量仅在服务管理器成功启动并识别服务的主要进程时设置。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&6.\ \&Summary of possible service result variable values\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+\fI$SERVICE_RESULT\fP
+T}:T{
+\fI$EXIT_CODE\fP
+T}:T{
+\fI$EXIT_STATUS\fP
+T}
+.T&
+lt lt l
+^ lt l
+lt lt l
+^ l l
+lt lt l
+^ lt l
+lt lt l
+lt lt l
+lt lt l
+lt l l
+^ l l
+^ l l
+lt l l
+lt lt l
+l l l
+l l l
+l s s.
+T{
+"success"
+T}:T{
+"killed"
+T}:T{
+"HUP", "INT", "TERM", "PIPE"
+T}
+:T{
+"exited"
+T}:T{
+"0"
+T}
+T{
+"protocol"
+T}:T{
+not set
+T}:T{
+not set
+T}
+:T{
+"exited"
+T}:T{
+"0"
+T}
+T{
+"timeout"
+T}:T{
+"killed"
+T}:T{
+"TERM", "KILL"
+T}
+:T{
+"exited"
+T}:T{
+"0", "1", "2", "3", \&..., "255"
+T}
+T{
+"exit\-code"
+T}:T{
+"exited"
+T}:T{
+"1", "2", "3", \&..., "255"
+T}
+T{
+"signal"
+T}:T{
+"killed"
+T}:T{
+"HUP", "INT", "KILL", \&...
+T}
+T{
+"core\-dump"
+T}:T{
+"dumped"
+T}:T{
+"ABRT", "SEGV", "QUIT", \&...
+T}
+T{
+"watchdog"
+T}:T{
+"dumped"
+T}:T{
+"ABRT"
+T}
+:T{
+"killed"
+T}:T{
+"TERM", "KILL"
+T}
+:T{
+"exited"
+T}:T{
+"0", "1", "2", "3", \&..., "255"
+T}
+T{
+"exec\-condition"
+T}:T{
+"exited"
+T}:T{
+"1", "2", "3", "4", \&..., "254"
+T}
+T{
+"oom\-kill"
+T}:T{
+"killed"
+T}:T{
+"TERM", "KILL"
+T}
+T{
+"start\-limit\-hit"
+T}:T{
+not set
+T}:T{
+not set
+T}
+T{
+"resources"
+T}:T{
+any of the above
+T}:T{
+any of the above
+T}
+T{
+Note: the process may be also terminated by a signal not sent by systemd\&. In particular the process may send an arbitrary signal to itself in a handler for any of the non\-maskable signals\&. Nevertheless, in the "timeout" and "watchdog" rows above only the signals that systemd sends have been included\&. Moreover, using \fISuccessExitStatus=\fP additional exit statuses may be declared to indicate clean termination, which is not reflected by this table\&.
+T}
+.TE
+.sp 1
+.RE
+.PP
+\fI$MONITOR_SERVICE_RESULT\fP, \fI$MONITOR_EXIT_CODE\fP, \fI$MONITOR_EXIT_STATUS\fP,
+\fI$MONITOR_INVOCATION_ID\fP, \fI$MONITOR_UNIT\fP
+.RS 4
+只为服务元类型定义 \&。这些环境变量被传递给在由 \fIOnFailure=\fP 或 \fIOnSuccess=\fP 依赖项触发的服务中运行的所有
+\fIExecStart=\fP 和 \fIExecStartPre=\fP 进程。
+.sp
+变量 \fI$MONITOR_SERVICE_RESULT\fP、\fI$MONITOR_EXIT_CODE\fP 和
+\fI$MONITOR_EXIT_STATUS\fP 采用与 \fIExecStop=\fP 和 \fIExecStopPost=\fP 进程相同的值 \&。变量
+\fI$MONITOR_INVOCATION_ID\fP 和 \fI$MONITOR_UNIT\fP 设置为触发依赖的服务的调用 id 和元名 \&。
+.sp
+请注意，当多个服务触发相同的元时，这些变量将被传递 \fInot\fP\&。考虑为这种情况使用模板处理程序元:
+"OnFailure=\fIhandler\fP@%n\&.service" 用于非模板单元，或
+"OnFailure=\fIhandler\fP@%p\-%i\&.service" 用于模板单元 \&。
+.RE
+.PP
+\fI$PIDFILE\fP
+.RS 4
+配置的 PID 文件的路径，以防代表使用 \fIPIDFile=\fP 设置的服务分叉进程，有关详细信息，请参见
+\fBsystemd.service\fP(5)\&。服务代码可能会使用这个环境变量在元文件中配置的位置自动生成一个 PID 文件
+\&。该字段设置为文件系统中的绝对路径 \&。
+.RE
+.PP
+\fI$TRIGGER_UNIT\fP, \fI$TRIGGER_PATH\fP, \fI$TRIGGER_TIMER_REALTIME_USEC\fP,
+\fI$TRIGGER_TIMER_MONOTONIC_USEC\fP
+.RS 4
+如果元被动态激活 (例如 \&.g\&.: 相应的路径元或定时器元)，触发它的元和其他依赖于类型的信息将通过这些变量 \&
+传递。请注意，此信息以尽力而为的方式提供 \&。例如，一个接一个发生的多个触发器将被合并，并且只会报告一个，但不能保证它是哪一个
+\&。因此，在大多数情况下，此变量主要是信息性的，i\&.e\&。用于调试目的，是有损的，不应依赖于传播激活的综合原因 \&。
+.RE
+.PP
+对于系统服务，当启用 \fIPAMName=\fP 并且 \fBpam_systemd\fP 是所选 PAM 栈的一部分时，可以为服务 \& 设置 systemd
+定义的附加环境变量。具体来说就是 \fI$XDG_SEAT\fP，\fI$XDG_VTNR\fP，有关详细信息，请参见 \fBpam_systemd\fP(8)\&。
+.SH "PROCESS EXIT CODES"
+.PP
+调用元进程时，服务管理器可能无法应用使用上述设置配置的执行参数 \&。在那种情况下，已经创建的服务进程将在执行配置的命令行之前以非零退出代码退出
+\&。(或者换句话说，子进程可能在由 \fBfork\fP(2) 系统调用创建之后，但在匹配的 \fBexecve\fP(2) 系统调用被调用 \&
+之前以这些错误代码退出。) 具体来说，由 C 库定义的退出代码，由 LSB 规范和 systemd 服务管理器本身使用 \&。
+.PP
+以下基本服务退出代码由 C 库定义 \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&7.\ \&Basic C library exit codes\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Exit Code
+T}:T{
+Symbolic Name
+T}:T{
+Description
+T}
+.T&
+l l l
+l l l.
+T{
+0
+T}:T{
+\fBEXIT_SUCCESS\fP
+T}:T{
+Generic success code\&.
+T}
+T{
+1
+T}:T{
+\fBEXIT_FAILURE\fP
+T}:T{
+Generic failure or unspecified error\&.
+T}
+.TE
+.sp 1
+.PP
+以下服务退出代码由 \m[blue]\fBLSB specification\fP\m[]\&\s-2\u[18]\d\s+2\& 定义。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&8.\ \&LSB service exit codes\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Exit Code
+T}:T{
+Symbolic Name
+T}:T{
+Description
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+2
+T}:T{
+\fBEXIT_INVALIDARGUMENT\fP
+T}:T{
+Invalid or excess arguments\&.
+T}
+T{
+3
+T}:T{
+\fBEXIT_NOTIMPLEMENTED\fP
+T}:T{
+Unimplemented feature\&.
+T}
+T{
+4
+T}:T{
+\fBEXIT_NOPERMISSION\fP
+T}:T{
+The user has insufficient privileges\&.
+T}
+T{
+5
+T}:T{
+\fBEXIT_NOTINSTALLED\fP
+T}:T{
+The program is not installed\&.
+T}
+T{
+6
+T}:T{
+\fBEXIT_NOTCONFIGURED\fP
+T}:T{
+The program is not configured\&.
+T}
+T{
+7
+T}:T{
+\fBEXIT_NOTRUNNING\fP
+T}:T{
+The program is not running\&.
+T}
+.TE
+.sp 1
+.PP
+LSB 规范建议错误代码 200 及以上保留用于实现 \&。其中一些被服务管理器用来指示进程调用期间的问题:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&9.\ \&systemd\-specific exit codes\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Exit Code
+T}:T{
+Symbolic Name
+T}:T{
+Description
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+200
+T}:T{
+\fBEXIT_CHDIR\fP
+T}:T{
+Changing to the requested working directory failed\&. See \fIWorkingDirectory=\fP above\&.
+T}
+T{
+201
+T}:T{
+\fBEXIT_NICE\fP
+T}:T{
+Failed to set up process scheduling priority (nice level)\&. See \fINice=\fP above\&.
+T}
+T{
+202
+T}:T{
+\fBEXIT_FDS\fP
+T}:T{
+Failed to close unwanted file descriptors, or to adjust passed file descriptors\&.
+T}
+T{
+203
+T}:T{
+\fBEXIT_EXEC\fP
+T}:T{
+The actual process execution failed (specifically, the \fBexecve\fP(2) system call)\&. Most likely this is caused by a missing or non\-accessible executable file\&.
+T}
+T{
+204
+T}:T{
+\fBEXIT_MEMORY\fP
+T}:T{
+Failed to perform an action due to memory shortage\&.
+T}
+T{
+205
+T}:T{
+\fBEXIT_LIMITS\fP
+T}:T{
+Failed to adjust resource limits\&. See \fILimitCPU=\fP and related settings above\&.
+T}
+T{
+206
+T}:T{
+\fBEXIT_OOM_ADJUST\fP
+T}:T{
+Failed to adjust the OOM setting\&. See \fIOOMScoreAdjust=\fP above\&.
+T}
+T{
+207
+T}:T{
+\fBEXIT_SIGNAL_MASK\fP
+T}:T{
+Failed to set process signal mask\&.
+T}
+T{
+208
+T}:T{
+\fBEXIT_STDIN\fP
+T}:T{
+Failed to set up standard input\&. See \fIStandardInput=\fP above\&.
+T}
+T{
+209
+T}:T{
+\fBEXIT_STDOUT\fP
+T}:T{
+Failed to set up standard output\&. See \fIStandardOutput=\fP above\&.
+T}
+T{
+210
+T}:T{
+\fBEXIT_CHROOT\fP
+T}:T{
+Failed to change root directory (\fBchroot\fP(2))\&. See \fIRootDirectory=\fP/\fIRootImage=\fP above\&.
+T}
+T{
+211
+T}:T{
+\fBEXIT_IOPRIO\fP
+T}:T{
+Failed to set up IO scheduling priority\&. See \fIIOSchedulingClass=\fP/\fIIOSchedulingPriority=\fP above\&.
+T}
+T{
+212
+T}:T{
+\fBEXIT_TIMERSLACK\fP
+T}:T{
+Failed to set up timer slack\&. See \fITimerSlackNSec=\fP above\&.
+T}
+T{
+213
+T}:T{
+\fBEXIT_SECUREBITS\fP
+T}:T{
+Failed to set process secure bits\&. See \fISecureBits=\fP above\&.
+T}
+T{
+214
+T}:T{
+\fBEXIT_SETSCHEDULER\fP
+T}:T{
+Failed to set up CPU scheduling\&. See \fICPUSchedulingPolicy=\fP/\fICPUSchedulingPriority=\fP above\&.
+T}
+T{
+215
+T}:T{
+\fBEXIT_CPUAFFINITY\fP
+T}:T{
+Failed to set up CPU affinity\&. See \fICPUAffinity=\fP above\&.
+T}
+T{
+216
+T}:T{
+\fBEXIT_GROUP\fP
+T}:T{
+Failed to determine or change group credentials\&. See \fIGroup=\fP/\fISupplementaryGroups=\fP above\&.
+T}
+T{
+217
+T}:T{
+\fBEXIT_USER\fP
+T}:T{
+Failed to determine or change user credentials, or to set up user namespacing\&. See \fIUser=\fP/\fIPrivateUsers=\fP above\&.
+T}
+T{
+218
+T}:T{
+\fBEXIT_CAPABILITIES\fP
+T}:T{
+Failed to drop capabilities, or apply ambient capabilities\&. See \fICapabilityBoundingSet=\fP/\fIAmbientCapabilities=\fP above\&.
+T}
+T{
+219
+T}:T{
+\fBEXIT_CGROUP\fP
+T}:T{
+Setting up the service control group failed\&.
+T}
+T{
+220
+T}:T{
+\fBEXIT_SETSID\fP
+T}:T{
+Failed to create new process session\&.
+T}
+T{
+221
+T}:T{
+\fBEXIT_CONFIRM\fP
+T}:T{
+Execution has been cancelled by the user\&. See the \fIsystemd\&.confirm_spawn=\fP kernel command line setting on \fBkernel\-command\-line\fP(7) for details\&.
+T}
+T{
+222
+T}:T{
+\fBEXIT_STDERR\fP
+T}:T{
+Failed to set up standard error output\&. See \fIStandardError=\fP above\&.
+T}
+T{
+224
+T}:T{
+\fBEXIT_PAM\fP
+T}:T{
+Failed to set up PAM session\&. See \fIPAMName=\fP above\&.
+T}
+T{
+225
+T}:T{
+\fBEXIT_NETWORK\fP
+T}:T{
+Failed to set up network namespacing\&. See \fIPrivateNetwork=\fP above\&.
+T}
+T{
+226
+T}:T{
+\fBEXIT_NAMESPACE\fP
+T}:T{
+Failed to set up mount, UTS, or IPC namespacing\&. See \fIReadOnlyPaths=\fP, \fIProtectHostname=\fP, \fIPrivateIPC=\fP, and related settings above\&.
+T}
+T{
+227
+T}:T{
+\fBEXIT_NO_NEW_PRIVILEGES\fP
+T}:T{
+Failed to disable new privileges\&. See \fINoNewPrivileges=yes\fP above\&.
+T}
+T{
+228
+T}:T{
+\fBEXIT_SECCOMP\fP
+T}:T{
+Failed to apply system call filters\&. See \fISystemCallFilter=\fP and related settings above\&.
+T}
+T{
+229
+T}:T{
+\fBEXIT_SELINUX_CONTEXT\fP
+T}:T{
+Determining or changing SELinux context failed\&. See \fISELinuxContext=\fP above\&.
+T}
+T{
+230
+T}:T{
+\fBEXIT_PERSONALITY\fP
+T}:T{
+Failed to set up an execution domain (personality)\&. See \fIPersonality=\fP above\&.
+T}
+T{
+231
+T}:T{
+\fBEXIT_APPARMOR_PROFILE\fP
+T}:T{
+Failed to prepare changing AppArmor profile\&. See \fIAppArmorProfile=\fP above\&.
+T}
+T{
+232
+T}:T{
+\fBEXIT_ADDRESS_FAMILIES\fP
+T}:T{
+Failed to restrict address families\&. See \fIRestrictAddressFamilies=\fP above\&.
+T}
+T{
+233
+T}:T{
+\fBEXIT_RUNTIME_DIRECTORY\fP
+T}:T{
+Setting up runtime directory failed\&. See \fIRuntimeDirectory=\fP and related settings above\&.
+T}
+T{
+235
+T}:T{
+\fBEXIT_CHOWN\fP
+T}:T{
+Failed to adjust socket ownership\&. Used for socket units only\&.
+T}
+T{
+236
+T}:T{
+\fBEXIT_SMACK_PROCESS_LABEL\fP
+T}:T{
+Failed to set SMACK label\&. See \fISmackProcessLabel=\fP above\&.
+T}
+T{
+237
+T}:T{
+\fBEXIT_KEYRING\fP
+T}:T{
+Failed to set up kernel keyring\&.
+T}
+T{
+238
+T}:T{
+\fBEXIT_STATE_DIRECTORY\fP
+T}:T{
+Failed to set up unit\*(Aqs state directory\&. See \fIStateDirectory=\fP above\&.
+T}
+T{
+239
+T}:T{
+\fBEXIT_CACHE_DIRECTORY\fP
+T}:T{
+Failed to set up unit\*(Aqs cache directory\&. See \fICacheDirectory=\fP above\&.
+T}
+T{
+240
+T}:T{
+\fBEXIT_LOGS_DIRECTORY\fP
+T}:T{
+Failed to set up unit\*(Aqs logging directory\&. See \fILogsDirectory=\fP above\&.
+T}
+T{
+241
+T}:T{
+\fBEXIT_CONFIGURATION_DIRECTORY\fP
+T}:T{
+Failed to set up unit\*(Aqs configuration directory\&. See \fIConfigurationDirectory=\fP above\&.
+T}
+T{
+242
+T}:T{
+\fBEXIT_NUMA_POLICY\fP
+T}:T{
+Failed to set up unit\*(Aqs NUMA memory policy\&. See \fINUMAPolicy=\fP and \fINUMAMask=\fP above\&.
+T}
+T{
+243
+T}:T{
+\fBEXIT_CREDENTIALS\fP
+T}:T{
+Failed to set up unit\*(Aqs credentials\&. See \fILoadCredential=\fP and \fISetCredential=\fP above\&.
+T}
+T{
+245
+T}:T{
+\fBEXIT_BPF\fP
+T}:T{
+Failed to apply BPF restrictions\&. See \fIRestrictFileSystems=\fP above\&.
+T}
+.TE
+.sp 1
+.PP
+最后，BSD 操作系统定义了一组退出代码，通常也在 Linux 系统上定义:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&10.\ \&BSD exit codes\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Exit Code
+T}:T{
+Symbolic Name
+T}:T{
+Description
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+64
+T}:T{
+\fBEX_USAGE\fP
+T}:T{
+Command line usage error
+T}
+T{
+65
+T}:T{
+\fBEX_DATAERR\fP
+T}:T{
+Data format error
+T}
+T{
+66
+T}:T{
+\fBEX_NOINPUT\fP
+T}:T{
+Cannot open input
+T}
+T{
+67
+T}:T{
+\fBEX_NOUSER\fP
+T}:T{
+Addressee unknown
+T}
+T{
+68
+T}:T{
+\fBEX_NOHOST\fP
+T}:T{
+Host name unknown
+T}
+T{
+69
+T}:T{
+\fBEX_UNAVAILABLE\fP
+T}:T{
+Service unavailable
+T}
+T{
+70
+T}:T{
+\fBEX_SOFTWARE\fP
+T}:T{
+internal software error
+T}
+T{
+71
+T}:T{
+\fBEX_OSERR\fP
+T}:T{
+System error (e\&.g\&., can\*(Aqt fork)
+T}
+T{
+72
+T}:T{
+\fBEX_OSFILE\fP
+T}:T{
+Critical OS file missing
+T}
+T{
+73
+T}:T{
+\fBEX_CANTCREAT\fP
+T}:T{
+Can\*(Aqt create (user) output file
+T}
+T{
+74
+T}:T{
+\fBEX_IOERR\fP
+T}:T{
+Input/output error
+T}
+T{
+75
+T}:T{
+\fBEX_TEMPFAIL\fP
+T}:T{
+Temporary failure; user is invited to retry
+T}
+T{
+76
+T}:T{
+\fBEX_PROTOCOL\fP
+T}:T{
+Remote error in protocol
+T}
+T{
+77
+T}:T{
+\fBEX_NOPERM\fP
+T}:T{
+Permission denied
+T}
+T{
+78
+T}:T{
+\fBEX_CONFIG\fP
+T}:T{
+Configuration error
+T}
+.TE
+.sp 1
+.SH EXAMPLES
+.PP
+\fBExample\ \&3.\ \&\fP\fI$MONITOR_\fP\fI*\fP 用法
+.PP
+可以触发 \fIOnFailure=\fP 依赖性的服务 myfailer\&.service\&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=Service which can trigger an OnFailure= dependency
+OnFailure=myhandler\&.service
+
+[Service]
+ExecStart=/bin/myprogram
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+可以触发 \fIOnSuccess=\fP 依赖性的服务 mysuccess\&.service\&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=Service which can trigger an OnSuccess= dependency
+OnSuccess=myhandler\&.service
+
+[Service]
+ExecStart=/bin/mysecondprogram
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+可以由上述任何服务触发的服务 myhandler\&.service\&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=Acts on service failing or succeeding
+
+[Service]
+ExecStart=/bin/bash \-c "echo $MONITOR_SERVICE_RESULT $MONITOR_EXIT_CODE $MONITOR_EXIT_STATUS $MONITOR_INVOCATION_ID $MONITOR_UNIT"
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+如果 myfailer\&.service 运行失败退出，则触发 myhandler\&.service，监听变量设置如下:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+MONITOR_SERVICE_RESULT=exit\-code
+MONITOR_EXIT_CODE=exited
+MONITOR_EXIT_STATUS=1
+MONITOR_INVOCATION_ID=cc8fdc149b2b4ca698d4f259f4054236
+MONITOR_UNIT=myfailer\&.service
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+如果 mysuccess\&.service 运行成功退出，则触发 myhandler\&.service，监听变量设置如下:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+MONITOR_SERVICE_RESULT=success
+MONITOR_EXIT_CODE=exited
+MONITOR_EXIT_STATUS=0
+MONITOR_INVOCATION_ID=6ab9af147b8c4a3ebe36e7a5f8611697
+MONITOR_UNIT=mysuccess\&.service
+        
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd\-analyze\fP(1), \fBjournalctl\fP(1),
+\fBsystemd\-system.conf\fP(5), \fBsystemd.unit\fP(5), \fBsystemd.service\fP(5),
+\fBsystemd.socket\fP(5), \fBsystemd.swap\fP(5), \fBsystemd.mount\fP(5),
+\fBsystemd.kill\fP(5), \fBsystemd.resource\-control\fP(5), \fBsystemd.time\fP(7),
+\fBsystemd.directives\fP(7), \fBtmpfiles.d\fP(5), \fBexec\fP(3), \fBfork\fP(2)
+.SH NOTES
+.IP " 1." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.IP " 2." 4
+/proc 文件系统
+.RS 4
+\%https://docs.kernel.org/filesystems/proc.html#mount\-options
+.RE
+.IP " 3." 4
+User/Group 名称语法
+.RS 4
+\%https://systemd.io/USER_NAMES
+.RE
+.IP " 4." 4
+无新权限标志
+.RS 4
+\%https://docs.kernel.org/userspace\-api/no_new_privs.html
+.RE
+.IP " 5." 4
+JSON 用户记录
+.RS 4
+\%https://systemd.io/USER_RECORD
+.RE
+.IP " 6." 4
+/proc 文件系统
+.RS 4
+\%https://docs.kernel.org/filesystems/proc.html
+.RE
+.IP " 7." 4
+unicode 标量值
+.RS 4
+\%https://www.unicode.org/glossary/#unicode_scalar_value
+.RE
+.IP " 8." 4
+noncharacters
+.RS 4
+\%https://www.unicode.org/glossary/#noncharacter
+.RE
+.IP " 9." 4
+字节顺序标记
+.RS 4
+\%https://www.unicode.org/glossary/#byte_order_mark
+.RE
+.IP 10. 4
+未加引号的文字
+.RS 4
+\%https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_02_01
+.RE
+.IP 11. 4
+单引号文本
+.RS 4
+\%https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_02_02
+.RE
+.IP 12. 4
+双引号文本
+.RS 4
+\%https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_02_03
+.RE
+.IP 13. 4
+Base64
+.RS 4
+\%https://tools.ietf.org/html/rfc2045#section\-6.8
+.RE
+.IP 14. 4
+容器接口
+.RS 4
+\%https://systemd.io/CONTAINER_INTERFACE
+.RE
+.IP 15. 4
+DMI/SMBIOS
+.RS 4
+\%https://www.dmtf.org/standards/smbios
+.RE
+.IP 16. 4
+qemu
+.RS 4
+\%https://www.qemu.org/docs/master/system/index.html
+.RE
+.IP 17. 4
+系统和服务凭证
+.RS 4
+\%https://systemd.io/CREDENTIALS
+.RE
+.IP 18. 4
+最低有效位规格
+.RS 4
+\%https://refspecs.linuxbase.org/LSB_5.0.0/LSB\-Core\-generic/LSB\-Core\-generic/iniscrptact.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

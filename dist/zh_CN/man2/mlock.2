@@ -1,0 +1,226 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) Michael Kerrisk, 2004
+.\"	using some material drawn from earlier man pages
+.\"	written by Thomas Kuhn, Copyright 1996
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mlock 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mlock, mlock2, munlock, mlockall, munlockall \- 锁定和解锁内存
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mman.h>\fP
+.PP
+\fBint mlock(const void \fP\fIaddr\fP\fB[.\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB);\fP
+\fBint mlock2(const void \fP\fIaddr\fP\fB[.\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+\fBint munlock(const void \fP\fIaddr\fP\fB[.\fP\fIlen\fP\fB], size_t \fP\fIlen\fP\fB);\fP
+.PP
+\fBint mlockall(int \fP\fIflags\fP\fB);\fP
+\fBint munlockall(void);\fP
+.fi
+.SH DESCRIPTION
+\fBmlock\fP()、\fBmlock2\fP() 和 \fBmlockall\fP() 将调用进程的部分或全部虚拟地址空间锁定到 RAM
+中，防止该内存被分页到交换区域。
+.PP
+\fBmunlock\fP() 和 \fBmunlockall\fP()
+执行相反的操作，解锁部分或全部调用进程的虚拟地址空间，以便在内核内存管理器需要时再次换出指定虚拟地址范围内的页面。
+.PP
+内存加锁和解锁以整页为单位进行。
+.SS "mlock(), mlock2(), and munlock()"
+\fBmlock\fP() 锁定从 \fIaddr\fP 开始到 \fIlen\fP 字节的地址范围内的页面。
+当调用成功返回时，所有包含指定地址范围一部分的页面都保证驻留在 RAM 中; 这些页面保证保留在 RAM 中，直到以后解锁。
+.PP
+.\" commit a8ca5d0ecbdde5cc3d7accacbd69968b0c98764e
+.\" commit de60f5f10c58d4f34b68622442c0e04180367f3f
+.\" commit b0f205c2a3082dd9081f9a94e50658c5fa906ff1
+\fBmlock2\fP() 还锁定从 \fIaddr\fP 开始到 \fIlen\fP 字节的指定范围内的页面。 但是，调用成功返回后该范围内的页面状态将取决于
+\fIflags\fP 参数中的值。
+.PP
+\fIflags\fP 参数可以是 0 或以下常量:
+.TP 
+\fBMLOCK_ONFAULT\fP
+锁定当前驻留的页面并标记整个范围，以便剩余的非驻留页面在页面错误填充时被锁定。
+.PP
+如果 \fIflags\fP 为 0，则 \fBmlock2\fP() 的行为与 \fBmlock\fP() 完全相同。
+.PP
+\fBmunlock\fP() 解锁从 \fIaddr\fP 开始到 \fIlen\fP 字节的地址范围内的页面。
+在这个调用之后，所有包含指定内存范围一部分的页面都可以被内核再次移动到外部交换空间。
+.SS "mlockall() and munlockall()"
+\fBmlockall\fP() 锁定映射到调用进程地址空间的所有页面。 这包括代码、数据和栈段的页面，以及共享库、用户空间内核数据、共享内存和内存映射文件。
+当调用成功返回时，保证所有映射的页面都驻留在 RAM 中; 这些页面保证保留在 RAM 中，直到以后解锁。
+.PP
+\fIflags\fP 参数构造为以下一个或多个常量的按位或:
+.TP 
+\fBMCL_CURRENT\fP
+锁定当前映射到进程地址空间的所有页面。
+.TP 
+\fBMCL_FUTURE\fP
+锁定所有将映射到 future 中进程地址空间的页面。 例如，这些可能是不断增长的堆和栈所需的新页面，以及新的内存映射文件或共享内存区域。
+.TP 
+\fBMCL_ONFAULT\fP (since Linux 4.4)
+与 \fBMCL_CURRENT\fP、\fBMCL_FUTURE\fP 或两者一起使用。 标记所有当前 (使用 \fBMCL_CURRENT\fP) 或 future
+(使用 \fBMCL_FUTURE\fP) 映射以在页面出现故障时锁定页面。 当与 \fBMCL_CURRENT\fP 一起使用时，所有存在的页面都被锁定，但
+\fBmlockall\fP() 不会在不存在的页面中出错。 与 \fBMCL_FUTURE\fP 一起使用时，所有 future
+映射在出现故障时将被标记为锁定页面，但在创建映射时不会被锁填充。 \fBMCL_ONFAULT\fP 必须与 \fBMCL_CURRENT\fP 或
+\fBMCL_FUTURE\fP 或两者一起使用。
+.PP
+如果已指定 \fBMCL_FUTURE\fP，则以后的系统调用 (例如，\fBmmap\fP(2)、\fBsbrk\fP(2)、\fBmalloc\fP(3)))
+可能会失败，如果它会导致锁定字节数超过允许的最大值 (见下文)。 在同样的情况下，栈增长同样可能失败: 内核将拒绝栈扩展并向进程发送
+\fBSIGSEGV\fP 信号。
+.PP
+\fBmunlockall\fP() 解锁映射到调用进程地址空间的所有页面。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回 0。 出错时，返回 \-1，设置 \fIerrno\fP 以指示错误，并且不对进程地址空间中的任何锁进行任何更改。
+.SH ERRORS
+.\"SVr4 documents an additional EAGAIN error code.
+.TP 
+\fBEAGAIN\fP
+(\fBmlock\fP()、\fBmlock2\fP() 和 \fBmunlock\fP()) 无法锁定部分或全部指定地址范围。
+.TP 
+\fBEINVAL\fP
+(\fBmlock\fP()、\fBmlock2\fP() 和 \fBmunlock\fP()) 添加 \fIaddr\fP+\fIlen\fP 的结果小于 \fIaddr\fP
+(例如，添加可能导致溢出)。
+.TP 
+\fBEINVAL\fP
+(\fBmlock2\fP()) 未知 \fIflags\fP 已指定。
+.TP 
+\fBEINVAL\fP
+(\fBmlockall\fP()) 未知 \fIflags\fP 被指定或 \fBMCL_ONFAULT\fP 被指定没有 \fBMCL_FUTURE\fP 或
+\fBMCL_CURRENT\fP。
+.TP 
+\fBEINVAL\fP
+(不在 Linux 上) \fIaddr\fP 不是页面大小的倍数。
+.TP 
+\fBENOMEM\fP
+(\fBmlock\fP()、\fBmlock2\fP() 和 \fBmunlock\fP()) 某些指定的地址范围与进程地址空间中的映射页面不对应。
+.TP 
+\fBENOMEM\fP
+.\" I.e., the number of VMAs would exceed the 64kB maximum
+(\fBmlock\fP()、\fBmlock2\fP() 和 \fBmunlock\fP()) 锁定或解锁区域将导致具有不同属性 (例如，锁定与解锁)
+的映射总数超过允许的最大值。 (例如，解锁当前锁定映射中间的范围将导致三个映射: 两端各有两个锁定映射，中间有一个未锁定映射。)
+.TP 
+\fBENOMEM\fP
+(Linux 2.6.9 和更高版本) 调用者有一个非零的 \fBRLIMIT_MEMLOCK\fP 软资源限制，但试图锁定超过允许限制的内存。 如果进程具有
+(\fBCAP_IPC_LOCK\fP) 特权，则不会强制执行此限制。
+.TP 
+\fBENOMEM\fP
+.\" In the case of mlock(), this check is somewhat buggy: it doesn't
+.\" take into account whether the to-be-locked range overlaps with
+.\" already locked pages.  Thus, suppose we allocate
+.\" (num_physpages / 4 + 1) of memory, and lock those pages once using
+.\" mlock(), and then lock the *same* page range a second time.
+.\" In the case, the second mlock() call will fail, since the check
+.\" calculates that the process is trying to lock (num_physpages / 2 + 2)
+.\" pages, which of course is not true.  (MTK, Nov 04, kernel 2.4.28)
+(Linux 2.4 及更早版本) 调用进程试图锁定超过一半的 RAM。
+.TP 
+\fBEPERM\fP
+调用者没有特权，但需要特权 (\fBCAP_IPC_LOCK\fP) 才能执行请求的操作。
+.TP 
+\fBEPERM\fP
+(\fBmunlockall\fP()) (Linux 2.6.8 及更早版本) 调用者没有 (\fBCAP_IPC_LOCK\fP) 特权。
+.SH VERSIONS
+\fBmlock2\fP() 自 Linux 4.4 起可用; 在 glibc 2.27 中添加了 glibc 支持。
+.SH STANDARDS
+\fBmlock\fP()、\fBmunlock\fP()、\fBmlockall\fP() 和 \fBmunlockall\fP():
+POSIX.1\-2001、POSIX.1\-2008、SVr4。
+.PP
+\fBmlock2\fP() 是 Linux 特定的。
+.PP
+在 \fBmlock\fP() 和 \fBmunlock\fP() 可用的 POSIX 系统上，\fB_POSIX_MEMLOCK_RANGE\fP 在
+\fI<unistd.h>\fP 中定义，页面中的字节数可以从 \fI<limits.h>\fP 中的常量 \fBPAGESIZE\fP
+(如果定义) 或通过调用 \fIsysconf(_SC_PAGESIZE)\fP 来确定。
+.PP
+.\" POSIX.1-2001: It shall be defined to -1 or 0 or 200112L.
+.\" -1: unavailable, 0: ask using sysconf().
+.\" glibc defines it to 1.
+在 \fBmlockall\fP() 和 \fBmunlockall\fP() 可用的 POSIX 系统上，\fB_POSIX_MEMLOCK\fP 在
+\fI<unistd.h>\fP 中定义为大于 0 的值。 (另见 \fBsysconf\fP(3).)
+.SH NOTES
+内存锁定有两个主要应用: 实时算法和高安全性数据处理。 实时应用程序需要确定性计时，并且与调度一样，分页是意外程序执行延迟的主要原因之一。
+实时应用程序通常也会切换到带有 \fBsched_setscheduler\fP(2) 的实时调度程序。
+加密安全软件通常将密码或密钥等关键字节作为数据结构处理。 由于分页，这些秘密可以转移到持久交换存储介质上，在安全软件已 erased RAM
+中的秘密并终止后很长一段时间内，敌人可能可以访问它们。 (但请注意，无论内存锁如何，笔记本电脑和某些台式电脑的挂起模式都会将系统 RAM
+的副本保存到磁盘。)
+.PP
+使用 \fBmlockall\fP() 来防止页面错误延迟的实时进程应该在进入时间关键部分之前保留足够的锁定栈页面，这样就不会因调用函数而导致页面错误。
+这可以通过调用分配足够大的自动变量 (数组) 并写入该数组占用的内存以触及这些栈页面的函数来实现。 这样，足够的页面将被映射到栈并可以锁定到 RAM
+中。 虚拟写入确保临界区中甚至不会发生写时复制页面错误。
+.PP
+内存锁不会由通过 \fBfork\fP(2) 创建的子进程继承，并且会在 \fBexecve\fP(2) 期间或进程终止时自动删除 (unlocked)。
+\fBmlockall\fP() \fBMCL_FUTURE\fP 和 \fBMCL_FUTURE | MCL_ONFAULT\fP 设置不会被通过 \fBfork\fP(2)
+创建的子项继承，并在 \fBexecve\fP(2) 期间被清除。
+.PP
+请注意，\fBfork\fP(2) 将为写时复制操作准备地址空间。 结果是随后的任何写访问都会导致页面错误，进而可能导致实时进程的高延迟。 因此，在
+\fBmlockall\fP() 或 \fBmlock\fP() 操作之后不要调用 \fBfork\fP(2)
+是至关重要的，即使是在一个进程中以低优先级运行的线程也不要调用 \fBfork\fP(2)，该进程也有一个以高优先级运行的线程。
+.PP
+如果通过 \fBmunmap\fP(2) 取消映射地址范围，地址范围上的内存锁将自动解除。
+.PP
+内存锁不堆叠，即通过调用 \fBmlock\fP()、\fBmlock2\fP() 或 \fBmlockall\fP() 多次锁定的页面将通过对相应范围的
+\fBmunlock\fP() 或 \fBmunlockall\fP() 的单个调用来解锁。
+映射到多个位置或被多个进程映射的页面只要至少在一个位置或被至少一个进程锁定，就会保持锁定在 RAM 中。
+.PP
+如果对使用 \fBMCL_FUTURE\fP 标志的 \fBmlockall\fP() 的调用后跟另一个未指定此标志的调用，则 \fBMCL_FUTURE\fP
+调用所做的更改将丢失。
+.PP
+\fBmlock2\fP() \fBMLOCK_ONFAULT\fP 标志和 \fBmlockall\fP() \fBMCL_ONFAULT\fP
+标志允许对处理大型映射的应用程序进行有效的内存锁定，其中只涉及映射中页面的 (small) 部分。
+在这种情况下，锁定映射中的所有页面将导致内存锁定的严重损失。
+.SS "Linux notes"
+在 Linux、\fBmlock\fP()、\fBmlock2\fP() 和 \fBmunlock\fP() 下自动将 \fIaddr\fP 向下舍入到最近的页面边界。
+但是，\fBmlock\fP() 和 \fBmunlock\fP() 的 POSIX.1 规范允许实现要求 \fIaddr\fP
+是页面对齐的，因此可移植应用程序应确保这一点。
+.PP
+特定于 Linux 的 \fI/proc/[pid]/status\fP 文件的 \fIVmLck\fP 字段显示 ID 为 \fIPID\fP 的进程使用
+\fBmlock\fP()、\fBmlock2\fP()、\fBmlockall\fP() 和 \fBmmap\fP(2) \fBMAP_LOCKED\fP 锁定了多少千字节的内存。
+.SS "Limits and permissions"
+在 Linux 2.6.8 及更早版本中，进程必须具有 (\fBCAP_IPC_LOCK\fP) 特权才能锁定内存，而 \fBRLIMIT_MEMLOCK\fP
+软资源限制定义了进程可以锁定多少内存的限制。
+.PP
+从 Linux 2.6.9 开始，特权进程可以锁定的内存量没有限制，\fBRLIMIT_MEMLOCK\fP
+软资源限制反而定义了非特权进程可以锁定的内存量的限制。
+.SH BUGS
+.\" commit 0cf2f6f6dc605e587d2c1120f295934c77e810e8
+在 Linux 4.8 及更早版本中，内核为非特权进程计算锁定内存时存在错误 (即，没有 \fBCAP_IPC_LOCK\fP) 意味着如果 \fIaddr\fP
+和 \fIlen\fP 指定的区域与现有锁重叠，则重叠区域中已锁定的字节被计算两次检查限制时。 这种双重核算可能会错误地计算出超过
+\fBRLIMIT_MEMLOCK\fP 限制的进程的 "total locked memory" 值，结果 \fBmlock\fP() 和 \fBmlock2\fP()
+将在本应成功的请求上失败。 此错误已在 Linux 4.9 中修复。
+.PP
+在 Linux 2.4 系列的内核中，直到并包括 Linux 2.4.17，一个错误导致 \fBmlockall\fP() \fBMCL_FUTURE\fP 标志在
+\fBfork\fP(2) 中被继承。 这已在 Linux 2.4.18 中得到纠正。
+.PP
+.\" See the following LKML thread:
+.\" http://marc.theaimsgroup.com/?l=linux-kernel&m=113801392825023&w=2
+.\" "Rationale for RLIMIT_MEMLOCK"
+.\" 23 Jan 2006
+从 Linux 2.6.9 开始，如果特权进程调用 \fImlockall(MCL_FUTURE)\fP 和更高版本的丢弃特权 (失去
+\fBCAP_IPC_LOCK\fP 能力，例如，将其有效 UID 设置为非零值)，则后续内存分配 (例如，\fBmmap\fP(2)、\fBbrk\fP(2))
+将失败，如果 \fBRLIMIT_MEMLOCK\fP 资源遇到极限。
+.SH "SEE ALSO"
+\fBmincore\fP(2), \fBmmap\fP(2), \fBsetrlimit\fP(2), \fBshmctl\fP(2), \fBsysconf\fP(3),
+\fBproc\fP(5), \fBcapabilities\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

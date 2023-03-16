@@ -1,0 +1,321 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-MEASURE 1 "" "systemd 253" systemd\-measure
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-measure \- 为启动的统一内核映像预先计算并签署预期的 TPM2 PCR 值
+.SH SYNOPSIS
+.HP \w'\fB/usr/lib/systemd/systemd\-measure\ \fR\fB[OPTIONS...]\fR\ 'u
+\fB/usr/lib/systemd/systemd\-measure \fP\fB[OPTIONS...]\fP
+.SH DESCRIPTION
+.PP
+Note: 此命令目前是实验性的 \&。虽然它很可能成为 systemd 的常规组件，但它的行为和界面可能仍会发生变化 \&。
+.PP
+\fBsystemd\-measure\fP 是一个工具，可用于预先计算和签署预期的 TPM2 PCR 11 值，这些值在启动基于
+\fBsystemd\-stub\fP(7) 的统一 Linux 内核映像时应该看到 \&。它接受构成统一内核镜像的 ELF 内核镜像文件、initrd
+镜像文件、devicetree 文件、内核命令行文件、\fBos\-release\fP(5) 文件、引导启动文件和 TPM2 PCR PEM
+公钥文件的路径，并确定预期的 PCR 值启动映像后到位 \&。计算从零初始化的 PCR 11 开始，并以与 systemd\-stub
+在启动时所做的兼容的方式执行。结果可以选择加密签名，以允许 TPM2 策略只能在启动特定内核集时解锁，为此可以提供这样的 PCR 签名 \&。
+.SH COMMANDS
+.PP
+理解以下命令:
+.PP
+\fBstatus\fP
+.RS 4
+如果没有指定，这是默认命令 \&。这将查询本地系统 \*(Aqs TPM2 PCR 11+12+13 值并显示它们 \&。数据以与下面的
+\fBcalculate\fP 命令类似的格式写入，可用于快速比较期望与现实 \&。
+.RE
+.PP
+\fBcalculate\fP
+.RS 4
+在统一内核映像启动后，预先计算 PCR 寄存器 11 中看到的预期值，该映像由
+\fB\-\-linux=\fP、\fB\-\-osrel=\fP、\fB\-\-cmdline=\fP、\fB\-\-initrd=\fP、\fB\-\-splash=\fP、\fB\-\-dtb=\fP、\fB\-\-pcrpkey=\fP
+指定的组件组成，见下文 \&。只有 \fB\-\-linux=\fP 是必需的 \&。(或者，指定 \fB\-\-current\fP 以使用 PCR 寄存器 11
+的当前值 \&。)
+.RE
+.PP
+\fBsign\fP
+.RS 4
+与 \fBcalculate\fP 命令一样，预先计算统一内核映像启动后在 TPM2 PCR 寄存器 11 中看到的预期值 \&。然后，使用通过
+\fB\-\-private\-key=\fP 和 \fB\-\-public\-key=\fP\& 配置的 private/public 密钥对 (RSA)
+对结果值进行加密签名。这会将一个 JSON 对象写入标准输出，其中包含所有指定 PCR 银行的签名 (请参见下面的 \fB\-\-pcr\-bank=\fP
+选项)，可用于解锁加密凭证 (请参见 \fBsystemd\-creds\fP(1)) 或 LUKS 卷 (请参见
+\fBsystemd\-cryptsetup@.service\fP(8))\&。这允许将秘密绑定到可以为其提供此类 PCR 11 签名的一组内核 \&。
+.sp
+请注意，TPM2 设备必须可用才能进行此签名，即使结果未绑定到任何 TPM2 设备或其状态 \&。
+.RE
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-linux=\fP\fIPATH\fP, \fB\-\-osrel=\fP\fIPATH\fP, \fB\-\-cmdline=\fP\fIPATH\fP,
+\fB\-\-initrd=\fP\fIPATH\fP, \fB\-\-splash=\fP\fIPATH\fP, \fB\-\-dtb=\fP\fIPATH\fP,
+\fB\-\-pcrpkey=\fP\fIPATH\fP
+.RS 4
+当与 \fBcalculate\fP 或 \fBsign\fP 动词一起使用时，将文件配置为从 \& 读取统一内核映像组件。每个选项都与统一内核 PE
+文件中同名的部分相对应。\fB\-\-linux=\fP 开关需要统一 PE 内核将包装的 ELF 内核文件的路径 \&。除 \fB\-\-linux=\fP
+之外的所有开关都是可选的 \&。每个选项最多可以使用一次 \&。
+.RE
+.PP
+\fB\-\-current\fP
+.RS 4
+当与 \fBcalculate\fP 或 \fBsign\fP 动词一起使用时，采用当前对系统有效的 PCR 11 值 (通常应反映当前启动内核的哈希值)
+\&。这可以用来代替 \fB\-\-linux=\fP 和上面列出的其他开关 \&。
+.RE
+.PP
+\fB\-\-bank=\fP\fIDIGEST\fP
+.RS 4
+控制 PCR 银行预先计算 \(en 的 PCR 值，以防调用 \fBcalculate\fP 或 \fBsign\fP\(en，或要在 \fBstatus\fP
+输出中显示的银行 \&。可以多次使用以指定多个银行 \&。如果不指定，默认为 "sha1"、"sha256"、"sha384"、"sha512"\&
+这四个 bank。
+.RE
+.PP
+\fB\-\-private\-key=\fP\fIPATH\fP, \fB\-\-public\-key=\fP\fIPATH\fP
+.RS 4
+这些开关采用一对 PEM 编码的 RSA 密钥文件的路径，用于 \fBsign\fP 命令 \&。
+.sp
+请注意 \fB\-\-pcrpkey=\fP 和 \fB\-\-public\-key=\fP 开关 \& 之间的区别。前者选择要包含在统一内核映像的
+"\&.pcrpkey" PE 部分中的数据，后者选择用于签署生成的 PCR 11 值 \&
+的密钥对的公钥。前者是启动系统可能用来锁定磁盘和凭证加密的密钥，后者是用于再次解锁此类资源的密钥 \&。因此，通常应在两种情况下提供相同的 PEM 密钥
+\&。
+.sp
+如果未指定 \fB\-\-public\-key=\fP 但指定了 \fB\-\-private\-key=\fP，则公钥自动从私钥派生 \&。
+.RE
+.PP
+\fB\-\-tpm2\-device=\fP\fIPATH\fP
+.RS 4
+控制使用哪个 TPM2 设备 \&。期望引用 TPM2 芯片的设备节点路径 (e\&.g\&. /dev/tpmrm0)\&。或者，可以指定特殊值
+"auto"，以便自动确定合适的 TPM2 设备 (其中必须恰好有一个) 的设备节点 \&。特殊值 "list" 可用于枚举当前发现的所有合适的
+TPM2 设备。
+.RE
+.PP
+\fB\-\-phase=\fP\fIPHASE\fP
+.RS 4
+控制哪些启动阶段来计算 \& 的预期 PCR 11 值。这需要一系列以冒号分隔的字符串，这些字符串对引导 "paths"
+进行编码以进入引导过程的特定阶段 \&。在启动过程的不同里程碑期间，systemd\-pcrphase\-initrd\&.service 和
+\fBsystemd\-pcrphase.service\fP(8) 将每个指定的字符串测量到 PCR 11。可以多次指定此开关以一次计算多个启动阶段的 PCR
+值 \&。如果不使用，默认为
+"enter\-initrd"、"enter\-initrd:leave\-initrd"、"enter\-initrd:leave\-initrd:sysinit"、"enter\-initrd:leave\-initrd:sysinit:ready"、i\&.e\&。计算
+initrd 引导阶段、早期引导期间、稍后引导期间和系统运行期间的预期 PCR 值，但不包括 initrd 之前的阶段或关闭时
+\&。\fBcalculate\fP 和 \fBsign\fP\& 都遵守此设置。当与后者一起使用时，它 \*(Aqs
+对于生成只能用于在引导过程的特定部分解锁资源的 PCR 签名特别有用 \&。
+.sp
+有关 PCR 引导阶段的更多详细信息，请参见 \fBsystemd\-pcrphase.service\fP(8)\&。
+.RE
+.PP
+\fB\-\-append=\fP\fIPATH\fP
+.RS 4
+在生成 PCR JSON 签名时 (通过 \fBsign\fP 命令)，将其与之前生成的 PCR JSON 签名组合，并输出为一个
+\&。指定的路径必须引用包含有效 JSON PCR 签名对象的常规文件 \&。指定的文件没有被修改
+\&。它将首先被读取，然后新生成的签名追加到它，结果对象被写入标准输出 \&。使用它来生成单个 JSON 对象，该对象由使用多个签名密钥制作的签名组成
+(例如，每个启动阶段都有一个密钥) \&。该命令将抑制重复: 如果特定签名已包含在 JSON 签名对象中，则不会第二次添加 \&。
+.RE
+.PP
+\fB\-\-json=\fP\fIMODE\fP
+.RS 4
+显示格式为 JSON\& 的输出。期望 "short" (用于尽可能短的输出，没有任何冗余空格或换行符)、"pretty"
+(用于相同版本的漂亮版本，带有缩进和换行符) 或 "off" (关闭 JSON 输出，默认值) \&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Generate a unified kernel image, and calculate the expected TPM PCR 11 value\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# ukify \-\-output foo\&.efi \e
+     \-\-os\-release @os\-release\&.txt \e
+     \-\-cmdline @cmdline\&.txt \e
+     \-\-splash splash\&.bmp \e
+     \-\-devicetree devicetree\&.dtb \e
+     \-\- 测量 \e
+     虚拟机 initrd\&.cpio
+11:sha1=d775a7b4482450ac77e03ee19bda90bd792d6ec7
+11:sha256=bc6170f9ce28eb051ab465cd62be8cf63985276766cf9faf527ffefb66f45651
+11:sha384=1cf67dff4757e61e5a73d2a21a6694d668629bbc3761747d493f7f49ad720be02fd07263e1f93061243aec599d1ee4b4
+11:sha512=8e79acd3ddbbc8282e98091849c3530f996303c8ac8e87a3b2378b71c8b3a6e86d5c4f41ecea9e1517090c3e8ec0c714821032038f525f744960bcd082d937da
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&Generate a private/public key pair, and a unified kernel image, and a TPM PCR 11 signature for it, and embed the signature and the public key in the image\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# openssl genpkey \-algorithm RSA \-pkeyopt rsa_keygen_bits:2048 \-out tpm2\-pcr\-private\&.pem
+# openssl rsa \-pubout \-in tpm2\-pcr\-private\&.pem \-out tpm2\-pcr\-public\&.pem
+# systemd\-measure 符号 \e
+     \-\-linux=vmlinux \e
+     \-\-osrel=os\-release\&.txt \e
+     \-\-cmdline=cmdline\&.txt \e
+     \-\-initrd=initrd\&.cpio \e
+     \-\-splash=splash\&.bmp \e
+     \-\-dtb=devicetree\&.dtb \e
+     \-\-pcrpkey=tpm2\-pcr\-public\&.pem \e
+     \-\-bank=sha1 \e
+     \-\-bank=sha256 \e
+     \-\-private\-key=tpm2\-pcr\-private\&.pem \e
+     \-\-public\-key=tpm2\-pcr\-public\&.pem >tpm2\-pcr\-signature\&.json
+# ukify \-\-output foo\&.efi \e
+     \-\-os\-release @os\-release\&.txt \e
+     \-\-cmdline @cmdline\&.txt \e
+     \-\-splash splash\&.bmp \e
+     \-\-devicetree devicetree\&.dtb \e
+     \-\-pcr\-private\-key tpm2\-pcr\-private\&.pem \e
+     \-\-pcr \- 公钥 tpm2\-pcr\-public\&.pem\e
+     \-\-pcr\-banks sha1,sha256 \e
+     虚拟机 initrd\&.cpio
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+稍后，在 LUKS 卷上注册已签名的 PCR 策略:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-cryptenroll \-\-tpm2\-device=auto \-\-tpm2\-public\-key=tpm2\-pcr\-public\&.pem \-\-tpm2\-signature=tpm2\-pcr\-signature\&.json /dev/sda5
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+然后使用签名解锁设备:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/systemd/systemd\-cryptsetup 附加 myvolume /dev/sda5\-tpm2\-device=auto,tpm2\-signature=/path/tpm2\-pcr\-signature\&.json
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，当启动生成的统一内核映像 foo\&.efi 时，签名和公钥文件将放置在 \fBsystemd\-cryptenroll\fP 和
+\fBsystemd\-cryptsetup\fP 无论如何都会查找的位置，因此实际上不需要指定这些路径 \&。
+.PP
+\fBExample\ \&3.\ \&Introduce a second public key, signing the same kernel PCR measurements, but only for the initrd boot phase\fP
+.PP
+这个例子扩展了前一个例子，但我们现在引入了第二个签名密钥，它只用于签署限制在 initrd 启动阶段的 PCR 策略
+\&。这可用于锁定根卷，使其只能在转换到主机系统之前解锁。因此我们有两类秘密或凭据: 一类可以在整个运行时解锁，另一类只能在 initrd\& 中使用。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# openssl genpkey \-algorithm RSA \-pkeyopt rsa_keygen_bits:2048 \-out tpm2\-pcr\-private\&.pem
+# openssl rsa \-pubout \-in tpm2\-pcr\-private\&.pem \-out tpm2\-pcr\-public\&.pem
+# systemd\-measure 符号 \e
+     \-\-linux=vmlinux \e
+     \-\-osrel=os\-release\&.txt \e
+     \-\-cmdline=cmdline\&.txt \e
+     \-\-initrd=initrd\&.cpio \e
+     \-\-splash=splash\&.bmp \e
+     \-\-dtb=devicetree\&.dtb \e
+     \-\-pcrpkey=tpm2\-pcr\-public\&.pem \e
+     \-\-bank=sha1 \e
+     \-\-bank=sha256 \e
+     \-\-private\-key=tpm2\-pcr\-private\&.pem \e
+     \-\-public\-key=tpm2\-pcr\-public\&.pem >tpm2\-pcr\-signature\&.json\&.tmp
+# openssl genpkey \-algorithm RSA \-pkeyopt rsa_keygen_bits:2048 \-out tpm2\-pcr\-initrd\-private\&.pem
+# openssl rsa \-pubout \-in tpm2\-pcr\-initrd\-private\&.pem \-out tpm2\-pcr\-initrd\-public\&.pem
+# systemd\-measure 符号 \e
+     \-\-linux=vmlinux \e
+     \-\-osrel=os\-release\&.txt \e
+     \-\-cmdline=cmdline\&.txt \e
+     \-\-initrd=initrd\&.cpio \e
+     \-\-splash=splash\&.bmp \e
+     \-\-dtb=devicetree\&.dtb \e
+     \-\-pcrpkey=tpm2\-pcr\-public\&.pem \e
+     \-\-bank=sha1 \e
+     \-\-bank=sha256 \e
+     \-\-private\-key=tpm2\-pcr\-initrd\-private\&.pem \e
+     \-\-public\-key=tpm2\-pcr\-initrd\-public\&.pem \e
+     \-\-phase=enter\-initrd \e
+     \-\-append=tpm2\-pcr\-signature\&.json\&.tmp >tpm2\-pcr\-signature\&.json
+# ukify \-\-output foo\&.efi \e
+     \-\-os\-release @os\-release\&.txt \e
+     \-\-cmdline @cmdline\&.txt \e
+     \-\-splash splash\&.bmp \e
+     \-\-devicetree devicetree\&.dtb \e
+     \-\-pcr\-private\-key tpm2\-pcr\-initrd\-private\&.pem \e
+     \-\-pcr \- 公钥 tpm2\-pcr\-initrd\-public\&.pem\e
+     \-\-section \&.pcrsig=@tpm2\-pcr\-signature\&.json \e
+     \-\-section \&.pcrpkey=@tpm2\-pcr\-public\&.pem \e
+     虚拟机 initrd\&.cpio
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，在此示例中，"\&.pcrpkey" PE 部分包含涵盖所有引导阶段的密钥 \&。"\&.pcrpkey" 用于
+\fBsystemd\-cryptenroll\fP 和 \fBsystemd\-creds\fP\& 的默认策略。要使用更严格的
+tpm\-pcr\-initrd\-public\&.pem\-bound 策略，请在这些工具的命令行上指定 \fB\-\-tpm2\-public\-key=\fP\&。
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-stub\fP(7), \fBukify\fP(1), \fBsystemd\-creds\fP(1),
+\fBsystemd\-cryptsetup@.service\fP(8), \fBsystemd\-pcrphase.service\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

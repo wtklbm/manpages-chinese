@@ -1,0 +1,130 @@
+.\" -*- coding: UTF-8 -*-
+.\" Written by Oron Peled <oron@actcom.co.il>.
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" I tried to be as much generic in the description as possible:
+.\" - General boot sequence is applicable to almost any
+.\" OS/Machine (DOS/PC, Linux/PC, Solaris/SPARC, CMS/S390)
+.\" - kernel and init(1) is applicable to almost any UNIX/Linux
+.\" - boot scripts are applicable to SYSV-R4 based UNIX/Linux
+.\"
+.\" Modified 2004-11-03 patch from Martin Schulze <joey@infodrom.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH boot 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+boot \- 基于 UNIX System V Release 4 的系统启动过程
+.SH DESCRIPTION
+\fBbootup process\fP (或 "\fBboot sequence\fP")) 在不同系统中的细节有所不同，但大致可分为由以下组件控制的阶段:
+.IP (1) 5
+hardware
+.IP (2)
+操作系统 (OS) 加载程序
+.IP (3)
+kernel
+.IP (4)
+根用户空间进程 (\fIinit\fP 和 \fIinittab\fP)
+.IP (5)
+引导脚本
+.PP
+下面将更详细地描述其中的每一个。
+.SS Hardware
+上电或硬复位后，控制权交给存储在只读存储器 (通常为 PROM) 中的程序; 由于涉及个人计算机的历史原因，该程序通常称为 \fBBIOS\fP".
+.PP
+该程序通常执行机器的基本自检并访问非易失性存储器以读取更多参数。 PC 中的这种内存是电池供电的 CMOS 内存，因此大多数人将其称为
+\fBCMOS\fP"; 在 PC 世界之外，它通常被称为 \fBNVRAM\fP" (非易失性 RAM) `。
+.PP
+存储在 NVRAM 中的参数因系统而异，但至少，它们应该指定哪个设备可以提供操作系统加载程序，或者至少可以指定哪些设备可以被探测到; 这样的设备被称为
+\fBboot device\fP"。 硬件引导阶段从引导设备上的固定位置加载操作系统加载程序，然后将控制权转移给它。
+.TP 
+Note:
+从中读取 OS 加载程序的设备可以通过网络连接，在这种情况下，引导的详细信息由 DHCP、TFTP、PXE、Etherboot 等协议进一步指定。
+.SS "OS loader"
+操作系统加载器的主要工作是在某个设备上定位内核，加载并运行它。 大多数 OS 加载程序都允许交互式使用，以便启用替代内核的规范
+(可能是备份，以防最后编译的内核无法运行) 并将可选参数传递给内核。
+.PP
+在传统 PC 中，操作系统加载程序位于引导设备的初始 512 字节块中; 这个块被称为 \fBMBR\fP" (主引导记录) `。
+.PP
+在大多数系统中，由于各种限制，操作系统加载器非常有限。 即使在非 PC 系统上，此加载程序的大小和复杂性也有一些限制，但 PC MBR 的大小限制
+(512 字节，包括分区表) 使得几乎不可能将很多功能塞入其中。
+.PP
+因此，大多数系统在主操作系统加载器和辅助操作系统加载器之间划分了加载操作系统的角色; 这个辅助操作系统加载器可能位于持久存储的较大部分内，例如磁盘分区。
+.PP
+在 Linux 中，操作系统加载器通常是 \fBlilo\fP(8) 或 \fBgrub\fP(8)。
+.SS Kernel
+加载内核时，它会初始化计算机和操作系统的各个组件; 负责此类任务的软件的每个部分通常被认为是 ` 适用组件的 \fBdriver\fP"。
+内核启动虚拟内存交换器 (它是一个内核进程，在现代 Linux 内核中称为 "kswapd")，并在根路径 \fI/\fP 上挂载一些文件系统。
+.PP
+一些可能传递给内核的参数与这些活动有关 (例如，可以覆盖默认的根文件系统) ; 有关 Linux 内核参数的更多信息，请阅读
+\fBbootparam\fP(7)。
+.PP
+只有这样，内核才会创建初始用户态进程，该进程的 \fBPID\fP (进程 ID) 编号为 1。 传统上，该进程执行程序
+\fI/sbin/init\fP，将内核尚未处理的参数传递给该程序。
+.SS "Root user\-space process"
+.TP 
+Note:
+以下描述适用于基于 UNIX System V Release 4 的操作系统。 然而，许多广泛使用的系统采用了一种相关但根本不同的方法，称为
+\fBsystemd\fP(1)，其启动过程在其相关的 \fBbootup\fP(7) 中有详细说明。
+.PP
+当 \fI/sbin/init\fP 启动时，它会读取 \fI/etc/inittab\fP 以获取进一步的指令。 这个文件定义了当 \fI/sbin/init\fP
+程序被指示进入一个特定的 \fIrun\-level\fP 时应该运行什么，给管理员一个简单的方法来建立一些使用的环境; 每个运行级别都与一组服务相关联
+(例如，运行级别 \fBS\fP 是 \fIsingle\-user\fP 模式，运行级别 \fB2\fP 需要运行大多数网络服务)。
+.PP
+管理员可以通过 \fBinit\fP(1) 改变当前运行级别，通过 \fBrunlevel\fP(8) 查询当前运行级别。
+.PP
+但是，由于不方便通过编辑该文件来管理单个服务，因此 \fI/etc/inittab\fP 仅引导一组实际 start/stop 单个服务的脚本。
+.SS "Boot scripts"
+.TP 
+Note:
+以下描述适用于基于 UNIX System V Release 4 的操作系统。 然而，许多广泛使用的系统 (Slackware
+Linux、FreeBSD、OpenBSD) 的引导脚本方案略有不同。
+.PP
+对于每个托管服务 (邮件、nfs 服务器、cron 等)，在大多数 Linux 版本中的特定目录 (\fI/etc/init.d\fP 中都有一个启动脚本。
+这些脚本中的每一个都接受单词 "start" (使其启动服务) 或单词 \&"stop" (使其停止服务) 作为单个参数。 该脚本可以选择性地接受其他
+"convenience" 参数 (例如，"restart" 停止然后启动，"status" 显示服务状态等)。 不带参数运行脚本会显示可能的参数。
+.SS "Sequencing directories"
+要在特定运行级别和特定顺序生成特定脚本 start/stop，可以使用 \fIsequencing directories\fP，通常采用
+\fI/etc/rc[0\-6S].d\fP 形式。 在每个目录中，都有指向 \fI/etc/init.d\fP 目录中脚本的链接 (通常是符号链接)。
+.PP
+一个初级脚本 (通常 \fI/etc/rc\fP) 是从 \fBinittab\fP(5) 调用的; 此主要脚本通过相关排序目录中的链接调用每个服务的脚本。 名称以
+\[aq] S\[aq] 开头的每个链接都使用参数 "start" 调用 (从而启动服务)。 名称以 \[aq] K\[aq] 开头的每个链接都使用参数
+"stop" 调用 (从而停止服务)。
+.PP
+要在同一运行级别内定义开始或停止顺序，链接的名称包含 \fBorder\-number\fP。 此外，为了清楚起见，链接的名称通常以它所引用的服务的名称结尾。
+例如，链接 \fI/etc/rc2.d/S80sendmail\fP 在运行级别 2 上启动 sendmail 服务。 这发生在
+\fI/etc/rc2.d/S12syslog\fP 运行之后但 \fI/etc/rc2.d/S90xfs\fP 运行之前。
+.PP
+管理这些链接就是管理引导顺序和运行级别; 在许多系统下，有一些工具可以帮助完成这项任务 (例如，\fBchkconfig\fP(8)).
+.SS "Boot configuration"
+提供服务的程序通常称为 "\fBdaemon\fP"。 通常，守护进程可能会接收各种命令行选项和参数。
+为了允许系统管理员在不编辑整个引导脚本的情况下更改这些输入，使用了一些单独的配置文件，并且位于特定目录中，关联的引导脚本可能会在较旧的 Red Hat
+系统上找到它 (\fI/etc/sysconfig\fP)。
+.PP
+在较旧的 UNIX 系统中，此类文件包含守护进程的实际命令行选项，但在现代 Linux 系统 (以及 HP\-UX 中) 中，它仅包含 shell 变量。
+\fI/etc/init.d\fP 中的引导脚本读取并包含其配置文件 (即 "\fBsources\fP" 的配置文件)，然后使用变量值。
+.SH FILES
+\fI/etc/init.d/\fP, \fI/etc/rc[S0\-6].d/\fP, \fI/etc/sysconfig/\fP
+.SH "SEE ALSO"
+\fBinit\fP(1), \fBsystemd\fP(1), \fBinittab\fP(5), \fBbootparam\fP(7), \fBbootup\fP(7),
+\fBrunlevel\fP(8), \fBshutdown\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

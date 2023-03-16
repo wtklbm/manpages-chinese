@@ -1,0 +1,973 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2007 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" with some input from Stepan Kasal <kasal@ucw.cz>
+.\"
+.\" Some content retained from an earlier version of this page:
+.\" Copyright (C) 1998 Andries Brouwer (aeb@cwi.nl)
+.\" Modifications for 2.2 and 2.4 Copyright (C) 2002 Ian Redfern
+.\" <redferni@logica.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH syscalls 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+系统调用 \- Linux 系统调用
+.SH SYNOPSIS
+.nf
+Linux 系统调用。
+.fi
+.SH DESCRIPTION
+系统调用是应用程序和 Linux 内核之间的基本接口。
+.SS "System calls and library wrapper functions"
+系统调用通常不会直接调用，而是通过 glibc (或其他一些库) 中的包装函数调用。 直接调用系统调用详见 \fBintro\fP(2)。
+通常，但并非总是如此，包装器函数的名称与其调用的系统调用的名称相同。 例如，glibc 包含一个函数 \fBchdir\fP()，它调用底层的 "chdir"
+系统调用。
+.PP
+通常 glibc 包装器函数很薄，除了在调用系统函数之前将参数复制到正确的寄存器，然后在系统函数返回后适当地设置 \fIerrno\fP
+之外几乎没有做任何工作。 (这些是 \fBsyscall\fP(2) 执行的相同步骤，它可用于调用没有提供包装器函数的系统调用。) 注意:
+系统调用通过向架构上的调用者返回 negative 错误号来指示失败，而没有单独的错误 register/flag，如 \fBsyscall\fP(2)
+中所述; 发生这种情况时，包装器函数否定返回的错误号 (使其为正数)，将其复制到 \fIerrno\fP，并将 \-1 返回给包装器的调用者。
+.PP
+然而，有时包装函数函数在调用系统调用之前会做一些额外的工作。 例如，现在 (出于下面描述的原因) 有两个相关的系统调用，\fBtruncate\fP(2) 和
+\fBtruncate64\fP(2)，glibc \fBtruncate\fP() 包装器函数检查内核提供了哪些系统调用并确定应该使用哪个。
+.SS "System call list"
+下面是 Linux 系统调用的列表。 在列表中，\fIKernel\fP 列表示 Linux 2.2 中新增的或自该内核版本以来出现的那些系统调用的内核版本。
+请注意以下几点:
+.IP \[bu] 3
+没有注明内核版本的地方，系统调用出现在 Linux 1.0 或更早版本。
+.IP \[bu]
+如果系统调用被标记为 "1.2"，这意味着系统调用可能出现在 Linux 1.1.x 内核版本中，并且首先出现在带有 1.2 的稳定内核中。 (1.2
+内核的开发是通过 1.1.x 不稳定内核系列从内核 1.0.6 的一个分支开始的。)
+.IP \[bu]
+.\" Was Linux 2.0 started from a branch of Linux 1.2.10?
+.\" At least from the timestamps of the tarballs of
+.\" of Linux 1.2.10 and Linux 1.3.0, that's how it looks, but in
+.\" fact the diff doesn't seem very clear, the
+.\" Linux 1.3.0 .tar.bz is much bigger (2.0 MB) than the
+.\" Linux 1.2.10 .tar.bz2 (1.8 MB), and AEB points out the
+.\" timestamps of some files in Linux 1.3.0 seem to be older
+.\" than those in Linux 1.2.10.  All of this suggests
+.\" that there might not have been a clean branch point.
+系统调用标记为 "2.0" 的地方，这意味着系统调用可能出现在 Linux 1.3.x 内核版本中，并且首先出现在 Linux 2.0 的稳定内核中。
+(Linux 2.0 内核的开发是从 Linux 1.2.x 的一个分支开始的，大约在 Linux 1.2.10 附近，通过 Linux 1.3.x
+不稳定内核系列。)
+.IP \[bu]
+系统调用标记为 "2.2" 的地方，这意味着系统调用可能出现在 Linux 2.1.x 内核版本中，并且首先出现在 Linux 2.2.0
+的稳定内核中。 (Linux 2.2 内核的开发是通过 Linux 2.1.x 不稳定内核系列从内核 Linux 2.0.21 的一个分支开始的。)
+.IP \[bu]
+如果系统调用被标记为 "2.4"，这意味着系统调用可能出现在 Linux 2.3.x 内核版本中，并且首先出现在 Linux 2.4.0 的稳定内核中。
+(Linux 2.4 内核的开发是通过 Linux 2.3.x 不稳定内核系列从 Linux 2.2.8 的一个分支开始的。)
+.IP \[bu]
+系统调用标记为 "2.6" 的地方，这意味着系统调用可能出现在 Linux 2.5.x 内核版本中，并且首先出现在 Linux 2.6.0
+的稳定内核中。 (Linux 2.6 的开发是通过 Linux 2.5.x 不稳定内核系列从 Linux 2.4.15 的一个分支开始的。)
+.IP \[bu]
+从 Linux 2.6.0 开始，开发模式发生了变化，新的系统调用可能出现在每个 Linux 2.6.x 版本中。
+在这种情况下，显示系统调用出现的确切版本号。 Linux 3.x 内核系列延续了这一约定，紧随其后的是 Linux 2.6.39; 以及 Linux
+4.x 内核系列，紧随其后的是 Linux 3.19; 以及 Linux 5.x 内核系列，紧随其后的是 Linux 4.20。
+.IP \[bu]
+在某些情况下，系统调用在从之前的稳定内核系列分支出来后被添加到稳定内核系列，然后反向移植到更早的稳定内核系列。 例如，Linux 2.6.x
+中出现的一些系统调用也被反向移植到 Linux 2.4.15 之后的 Linux 2.4.x 版本中。
+出现这种情况时，会列出两个主要内核系列中出现系统调用的版本。
+.PP
+.\"
+.\" Looking at scripts/checksyscalls.sh in the kernel source is
+.\" instructive about x86 specifics.
+.\"
+Linux 5.14 (或在少数情况下仅在较旧的内核上) 可用的系统调用列表如下:
+.nh
+.ad l
+.TS
+l2 le l
+---
+l l l.
+\fBSystem call\fP	\fBKernel\fP	\fBNotes\fP
+
+\fB_llseek\fP(2)	1.2
+\fB_newselect\fP(2)	2.0
+\fB_sysctl\fP(2)	2.0	Removed in 5.5
+\fBaccept\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBaccept4\fP(2)	2.6.28
+\fBaccess\fP(2)	1.0
+\fBacct\fP(2)	1.0
+\fBadd_key\fP(2)	2.6.10
+\fBadjtimex\fP(2)	1.0
+\fBalarm\fP(2)	1.0
+\fBalloc_hugepages\fP(2)	2.5.36	Removed in 2.5.44
+.\" 4adeefe161a74369e44cc8e663f240ece0470dc3
+\fBarc_gettls\fP(2)	3.9	ARC only
+\fBarc_settls\fP(2)	3.9	ARC only
+.\" 91e040a79df73d371f70792f30380d4e44805250
+\fBarc_usr_cmpxchg\fP(2)	4.9	ARC only
+.\" x86: 79170fda313ed5be2394f87aa2a00d597f8ed4a1
+\fBarch_prctl\fP(2)	2.6	T{
+x86_64, x86 since 4.12
+T}
+.\" 9674cdc74d63f346870943ef966a034f8c71ee57
+\fBatomic_barrier\fP(2)	2.6.34	m68k only
+\fBatomic_cmpxchg_32\fP(2)	2.6.34	m68k only
+\fBbdflush\fP(2)	1.2	T{
+Deprecated (does nothing)
+since 2.6
+T}
+\fBbind\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBbpf\fP(2)	3.18
+\fBbrk\fP(2)	1.0
+\fBbreakpoint\fP(2)	2.2	T{
+ARM OABI only, defined with
+\fB__ARM_NR\fP prefix
+T}
+\fBcacheflush\fP(2)	1.2	Not on x86
+\fBcapget\fP(2)	2.2
+\fBcapset\fP(2)	2.2
+\fBchdir\fP(2)	1.0
+\fBchmod\fP(2)	1.0
+\fBchown\fP(2)	2.2	T{
+See \fBchown\fP(2) for
+version details
+T}
+\fBchown32\fP(2)	2.4
+\fBchroot\fP(2)	1.0
+\fBclock_adjtime\fP(2)	2.6.39
+\fBclock_getres\fP(2)	2.6
+\fBclock_gettime\fP(2)	2.6
+\fBclock_nanosleep\fP(2)	2.6
+\fBclock_settime\fP(2)	2.6
+\fBclone2\fP(2)	2.4	IA\-64 only
+\fBclone\fP(2)	1.0
+\fBclone3\fP(2)	5.3
+\fBclose\fP(2)	1.0
+\fBclose_range\fP(2)	5.9
+.\" .\" dcef1f634657dabe7905af3ccda12cf7f0b6fcc1
+.\" .\" cc20d42986d5807cbe4f5c7c8e3dab2e59ea0db3
+.\" .\" db695c0509d6ec9046ee5e4c520a19fa17d9fce2
+.\" \fBcmpxchg\fP(2)	2.6.12	T{
+.\" ARM, syscall constant never was
+.\" exposed to user space, in-kernel
+.\" definition had \fB__ARM_NR\fP prefix,
+.\" removed in 4.4
+.\" T}
+.\" 867e359b97c970a60626d5d76bbe2a8fadbf38fb
+.\" bb9d812643d8a121df7d614a2b9c60193a92deb0
+\fBconnect\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBcopy_file_range\fP(2)	4.5
+\fBcreat\fP(2)	1.0
+\fBcreate_module\fP(2)	1.0	Removed in 2.6
+\fBdelete_module\fP(2)	1.0
+.\" 1394f03221790a988afc3e4b3cb79f2e477246a9
+.\" 4ba66a9760722ccbb691b8f7116cad2f791cca7b
+\fBdup\fP(2)	1.0
+\fBdup2\fP(2)	1.0
+\fBdup3\fP(2)	2.6.27
+\fBepoll_create\fP(2)	2.6
+\fBepoll_create1\fP(2)	2.6.27
+\fBepoll_ctl\fP(2)	2.6
+\fBepoll_pwait\fP(2)	2.6.19
+\fBepoll_pwait2\fP(2)	5.11
+\fBepoll_wait\fP(2)	2.6
+\fBeventfd\fP(2)	2.6.22
+\fBeventfd2\fP(2)	2.6.27
+\fBexecv\fP(2)	2.0	T{
+SPARC/SPARC64 only, for
+compatibility with SunOS
+T}
+\fBexecve\fP(2)	1.0
+\fBexecveat\fP(2)	3.19
+\fBexit\fP(2)	1.0
+\fBexit_group\fP(2)	2.6
+\fBfaccessat\fP(2)	2.6.16
+\fBfaccessat2\fP(2)	5.8
+\fBfadvise64\fP(2)	2.6
+.\" Implements \fBposix_fadvise\fP(2)
+\fBfadvise64_64\fP(2)	2.6
+\fBfallocate\fP(2)	2.6.23
+\fBfanotify_init\fP(2)	2.6.37
+\fBfanotify_mark\fP(2)	2.6.37
+.\" The fanotify calls were added in Linux 2.6.36,
+.\" but disabled while the API was finalized.
+\fBfchdir\fP(2)	1.0
+\fBfchmod\fP(2)	1.0
+\fBfchmodat\fP(2)	2.6.16
+\fBfchown\fP(2)	1.0
+\fBfchown32\fP(2)	2.4
+\fBfchownat\fP(2)	2.6.16
+\fBfcntl\fP(2)	1.0
+\fBfcntl64\fP(2)	2.4
+\fBfdatasync\fP(2)	2.0
+\fBfgetxattr\fP(2)	2.6; 2.4.18
+\fBfinit_module\fP(2)	3.8
+\fBflistxattr\fP(2)	2.6; 2.4.18
+\fBflock\fP(2)	2.0
+\fBfork\fP(2)	1.0
+\fBfree_hugepages\fP(2)	2.5.36	Removed in 2.5.44
+\fBfremovexattr\fP(2)	2.6; 2.4.18
+\fBfsconfig\fP(2)	5.2
+\fBfsetxattr\fP(2)	2.6; 2.4.18
+\fBfsmount\fP(2)	5.2
+\fBfsopen\fP(2)	5.2
+\fBfspick\fP(2)	5.2
+\fBfstat\fP(2)	1.0
+\fBfstat64\fP(2)	2.4
+\fBfstatat64\fP(2)	2.6.16
+\fBfstatfs\fP(2)	1.0
+\fBfstatfs64\fP(2)	2.6
+\fBfsync\fP(2)	1.0
+\fBftruncate\fP(2)	1.0
+\fBftruncate64\fP(2)	2.4
+\fBfutex\fP(2)	2.6
+\fBfutimesat\fP(2)	2.6.16
+\fBget_kernel_syms\fP(2)	1.0	Removed in 2.6
+\fBget_mempolicy\fP(2)	2.6.6
+\fBget_robust_list\fP(2)	2.6.17
+\fBget_thread_area\fP(2)	2.6
+.\" 8fcd6c45f5a65621ec809b7866a3623e9a01d4ed
+\fBget_tls\fP(2)	4.15	T{
+ARM OABI only, has
+\fB__ARM_NR\fP prefix
+T}
+\fBgetcpu\fP(2)	2.6.19
+\fBgetcwd\fP(2)	2.2
+\fBgetdents\fP(2)	2.0
+\fBgetdents64\fP(2)	2.4
+.\" parisc: 863722e856e64dae0e252b6bb546737c6c5626ce
+\fBgetdomainname\fP(2)	2.2	T{
+SPARC, SPARC64; available
+as \fBosf_getdomainname\fP(2)
+on Alpha since Linux 2.0
+T}
+.\" ec98c6b9b47df6df1c1fa6cf3d427414f8c2cf16
+\fBgetdtablesize\fP(2)	2.0	T{
+SPARC (removed in 2.6.26),
+available on Alpha as
+\fBosf_getdtablesize\fP(2)
+T}
+\fBgetegid\fP(2)	1.0
+\fBgetegid32\fP(2)	2.4
+\fBgeteuid\fP(2)	1.0
+\fBgeteuid32\fP(2)	2.4
+\fBgetgid\fP(2)	1.0
+\fBgetgid32\fP(2)	2.4
+\fBgetgroups\fP(2)	1.0
+\fBgetgroups32\fP(2)	2.4
+.\" SPARC removal: ec98c6b9b47df6df1c1fa6cf3d427414f8c2cf16
+\fBgethostname\fP(2)	2.0	T{
+Alpha, was available on
+SPARC up to Linux 2.6.26
+T}
+\fBgetitimer\fP(2)	1.0
+\fBgetpeername\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBgetpagesize\fP(2)	2.0	Not on x86
+\fBgetpgid\fP(2)	1.0
+\fBgetpgrp\fP(2)	1.0
+\fBgetpid\fP(2)	1.0
+\fBgetppid\fP(2)	1.0
+\fBgetpriority\fP(2)	1.0
+\fBgetrandom\fP(2)	3.17
+\fBgetresgid\fP(2)	2.2
+\fBgetresgid32\fP(2)	2.4
+\fBgetresuid\fP(2)	2.2
+\fBgetresuid32\fP(2)	2.4
+\fBgetrlimit\fP(2)	1.0
+\fBgetrusage\fP(2)	1.0
+\fBgetsid\fP(2)	2.0
+\fBgetsockname\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBgetsockopt\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBgettid\fP(2)	2.4.11
+\fBgettimeofday\fP(2)	1.0
+\fBgetuid\fP(2)	1.0
+\fBgetuid32\fP(2)	2.4
+\fBgetunwind\fP(2)	2.4.8	T{
+IA\-64 only; deprecated
+T}
+\fBgetxattr\fP(2)	2.6; 2.4.18
+\fBgetxgid\fP(2)	2.0	T{
+Alpha only; see NOTES
+T}
+\fBgetxpid\fP(2)	2.0	T{
+Alpha only; see NOTES
+T}
+\fBgetxuid\fP(2)	2.0	T{
+Alpha only; see NOTES
+T}
+\fBinit_module\fP(2)	1.0
+\fBinotify_add_watch\fP(2)	2.6.13
+\fBinotify_init\fP(2)	2.6.13
+\fBinotify_init1\fP(2)	2.6.27
+\fBinotify_rm_watch\fP(2)	2.6.13
+\fBio_cancel\fP(2)	2.6
+\fBio_destroy\fP(2)	2.6
+\fBio_getevents\fP(2)	2.6
+\fBio_pgetevents\fP(2)	4.18
+\fBio_setup\fP(2)	2.6
+\fBio_submit\fP(2)	2.6
+\fBio_uring_enter\fP(2)	5.1
+\fBio_uring_register\fP(2)	5.1
+\fBio_uring_setup\fP(2)	5.1
+\fBioctl\fP(2)	1.0
+\fBioperm\fP(2)	1.0
+\fBiopl\fP(2)	1.0
+\fBioprio_get\fP(2)	2.6.13
+\fBioprio_set\fP(2)	2.6.13
+\fBipc\fP(2)	1.0
+.\" Implements System V IPC calls
+\fBkcmp\fP(2)	3.5
+\fBkern_features\fP(2)	3.7	SPARC64 only
+.\" FIXME . document kern_features():
+.\" commit 517ffce4e1a03aea979fe3a18a3dd1761a24fafb
+\fBkexec_file_load\fP(2)	3.17
+\fBkexec_load\fP(2)	2.6.13
+.\" The entry in the syscall table was reserved starting in 2.6.7
+.\" Was named sys_kexec_load() from 2.6.7 to 2.6.16
+\fBkeyctl\fP(2)	2.6.10
+\fBkill\fP(2)	1.0
+\fBlandlock_add_rule\fP(2)	5.13
+\fBlandlock_create_ruleset\fP(2)	5.13
+\fBlandlock_restrict_self\fP(2)	5.13
+\fBlchown\fP(2)	1.0	T{
+See \fBchown\fP(2) for
+version details
+T}
+\fBlchown32\fP(2)	2.4
+\fBlgetxattr\fP(2)	2.6; 2.4.18
+\fBlink\fP(2)	1.0
+\fBlinkat\fP(2)	2.6.16
+\fBlisten\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBlistxattr\fP(2)	2.6; 2.4.18
+\fBllistxattr\fP(2)	2.6; 2.4.18
+\fBlookup_dcookie\fP(2)	2.6
+\fBlremovexattr\fP(2)	2.6; 2.4.18
+\fBlseek\fP(2)	1.0
+\fBlsetxattr\fP(2)	2.6; 2.4.18
+\fBlstat\fP(2)	1.0
+\fBlstat64\fP(2)	2.4
+\fBmadvise\fP(2)	2.4
+\fBmbind\fP(2)	2.6.6
+\fBmemory_ordering\fP(2)	2.2	SPARC64 only
+.\" 26025bbfbba33a9425be1b89eccb4664ea4c17b6
+.\" bb6fb6dfcc17cddac11ac295861f7608194447a7
+\fBmembarrier\fP(2)	3.17
+\fBmemfd_create\fP(2)	3.17
+\fBmemfd_secret\fP(2)	5.14
+\fBmigrate_pages\fP(2)	2.6.16
+\fBmincore\fP(2)	2.4
+\fBmkdir\fP(2)	1.0
+\fBmkdirat\fP(2)	2.6.16
+\fBmknod\fP(2)	1.0
+\fBmknodat\fP(2)	2.6.16
+\fBmlock\fP(2)	2.0
+\fBmlock2\fP(2)	4.4
+\fBmlockall\fP(2)	2.0
+\fBmmap\fP(2)	1.0
+\fBmmap2\fP(2)	2.4
+\fBmodify_ldt\fP(2)	1.0
+\fBmount\fP(2)	1.0
+\fBmove_mount\fP(2)	5.2
+\fBmove_pages\fP(2)	2.6.18
+\fBmprotect\fP(2)	1.0
+\fBmq_getsetattr\fP(2)	2.6.6
+.\" Implements \fBmq_getattr\fP(3) and \fBmq_setattr\fP(3)
+\fBmq_notify\fP(2)	2.6.6
+\fBmq_open\fP(2)	2.6.6
+\fBmq_timedreceive\fP(2)	2.6.6
+\fBmq_timedsend\fP(2)	2.6.6
+\fBmq_unlink\fP(2)	2.6.6
+\fBmremap\fP(2)	2.0
+\fBmsgctl\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBmsgget\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBmsgrcv\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBmsgsnd\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBmsync\fP(2)	2.0
+.\" \fBmultiplexer\fP(2)	??	__NR_multiplexer reserved on
+.\"		PowerPC, but unimplemented?
+\fBmunlock\fP(2)	2.0
+\fBmunlockall\fP(2)	2.0
+\fBmunmap\fP(2)	1.0
+\fBname_to_handle_at\fP(2)	2.6.39
+\fBnanosleep\fP(2)	2.0
+.\" 5590ff0d5528b60153c0b4e7b771472b5a95e297
+\fBnewfstatat\fP(2)	2.6.16	See \fBstat\fP(2)
+\fBnfsservctl\fP(2)	2.2	Removed in 3.1
+\fBnice\fP(2)	1.0
+\fBold_adjtimex\fP(2)	2.0	T{
+Alpha only; see NOTES
+T}
+\fBold_getrlimit\fP(2)	2.4	T{
+Old variant of \fBgetrlimit\fP(2)
+that used a different value
+for \fBRLIM_INFINITY\fP
+T}
+\fBoldfstat\fP(2)	1.0
+\fBoldlstat\fP(2)	1.0
+\fBoldolduname\fP(2)	1.0
+\fBoldstat\fP(2)	1.0
+\fBoldumount\fP(2)	2.4.116	T{
+Name of the old \fBumount\fP(2)
+syscall on Alpha
+T}
+\fBolduname\fP(2)	1.0
+\fBopen\fP(2)	1.0
+\fBopen_by_handle_at\fP(2)	2.6.39
+\fBopen_tree\fP(2)	5.2
+\fBopenat\fP(2)	2.6.16
+\fBopenat2\fP(2)	5.6
+.\" 9d02a4283e9ce4e9ca11ff00615bdacdb0515a1a
+\fBor1k_atomic\fP(2)	3.1	T{
+OpenRISC 1000 only
+T}
+\fBpause\fP(2)	1.0
+\fBpciconfig_iobase\fP(2)	2.2.15; 2.4	Not on x86
+.\" Alpha, PowerPC, ARM; not x86
+\fBpciconfig_read\fP(2)	2.0.26; 2.2	Not on x86
+.\" , PowerPC, ARM; not x86
+\fBpciconfig_write\fP(2)	2.0.26; 2.2	Not on x86
+.\" , PowerPC, ARM; not x86
+\fBperf_event_open\fP(2)	2.6.31	T{
+Was perf_counter_open() in
+2.6.31; renamed in 2.6.32
+T}
+\fBpersonality\fP(2)	1.2
+\fBperfctr\fP(2)	2.2	T{
+SPARC only; removed in 2.6.34
+T}
+.\"	commit c7d5a0050773e98d1094eaa9f2a1a793fafac300 removed perfctr()
+\fBperfmonctl\fP(2)	2.4	IA\-64 only; removed in 5.10
+\fBpidfd_getfd\fP(2)	5.6
+\fBpidfd_send_signal\fP(2)	5.1
+\fBpidfd_open\fP(2)	5.3
+\fBpipe\fP(2)	1.0
+\fBpipe2\fP(2)	2.6.27
+\fBpivot_root\fP(2)	2.4
+\fBpkey_alloc\fP(2)	4.8
+\fBpkey_free\fP(2)	4.8
+\fBpkey_mprotect\fP(2)	4.8
+\fBpoll\fP(2)	2.0.36; 2.2
+\fBppoll\fP(2)	2.6.16
+\fBprctl\fP(2)	2.2
+\fBpread64\fP(2)		T{
+Added as "pread" in 2.2;
+renamed "pread64" in 2.6
+T}
+\fBpreadv\fP(2)	2.6.30
+\fBpreadv2\fP(2)	4.6
+\fBprlimit64\fP(2)	2.6.36
+\fBprocess_madvise\fP(2)	5.10
+\fBprocess_vm_readv\fP(2)	3.2
+\fBprocess_vm_writev\fP(2)	3.2
+\fBpselect6\fP(2)	2.6.16
+.\" Implements \fBpselect\fP(2)
+\fBptrace\fP(2)	1.0
+\fBpwrite64\fP(2)		T{
+Added as "pwrite" in 2.2;
+renamed "pwrite64" in 2.6
+T}
+\fBpwritev\fP(2)	2.6.30
+\fBpwritev2\fP(2)	4.6
+\fBquery_module\fP(2)	2.2	Removed in 2.6
+\fBquotactl\fP(2)	1.0
+\fBquotactl_fd\fP(2)	5.14
+\fBread\fP(2)	1.0
+\fBreadahead\fP(2)	2.4.13
+\fBreaddir\fP(2)	1.0
+.\" Supersedes \fBgetdents\fP(2)
+\fBreadlink\fP(2)	1.0
+\fBreadlinkat\fP(2)	2.6.16
+\fBreadv\fP(2)	2.0
+\fBreboot\fP(2)	1.0
+\fBrecv\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBrecvfrom\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBrecvmsg\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBrecvmmsg\fP(2)	2.6.33
+\fBremap_file_pages\fP(2)	2.6	T{
+Deprecated since 3.16
+T}
+\fBremovexattr\fP(2)	2.6; 2.4.18
+\fBrename\fP(2)	1.0
+\fBrenameat\fP(2)	2.6.16
+\fBrenameat2\fP(2)	3.15
+\fBrequest_key\fP(2)	2.6.10
+\fBrestart_syscall\fP(2)	2.6
+.\" 921ebd8f2c081b3cf6c3b29ef4103eef3ff26054
+\fBriscv_flush_icache\fP(2)	4.15	RISC\-V only
+\fBrmdir\fP(2)	1.0
+\fBrseq\fP(2)	4.18
+\fBrt_sigaction\fP(2)	2.2
+\fBrt_sigpending\fP(2)	2.2
+\fBrt_sigprocmask\fP(2)	2.2
+\fBrt_sigqueueinfo\fP(2)	2.2
+\fBrt_sigreturn\fP(2)	2.2
+\fBrt_sigsuspend\fP(2)	2.2
+\fBrt_sigtimedwait\fP(2)	2.2
+\fBrt_tgsigqueueinfo\fP(2)	2.6.31
+\fBrtas\fP(2)	2.6.2	T{
+PowerPC/PowerPC64 only
+T}
+\fBs390_runtime_instr\fP(2)	3.7	s390 only
+\fBs390_pci_mmio_read\fP(2)	3.19	s390 only
+\fBs390_pci_mmio_write\fP(2)	3.19	s390 only
+\fBs390_sthyi\fP(2)	4.15	s390 only
+\fBs390_guarded_storage\fP(2)	4.12	s390 only
+\fBsched_get_affinity\fP(2)	2.6	T{
+Name of \fBsched_getaffinity\fP(2)
+on SPARC and SPARC64
+T}
+\fBsched_get_priority_max\fP(2)	2.0
+\fBsched_get_priority_min\fP(2)	2.0
+\fBsched_getaffinity\fP(2)	2.6
+\fBsched_getattr\fP(2)	3.14
+\fBsched_getparam\fP(2)	2.0
+\fBsched_getscheduler\fP(2)	2.0
+\fBsched_rr_get_interval\fP(2)	2.0
+\fBsched_set_affinity\fP(2)	2.6	T{
+Name of \fBsched_setaffinity\fP(2)
+on SPARC and SPARC64
+T}
+\fBsched_setaffinity\fP(2)	2.6
+\fBsched_setattr\fP(2)	3.14
+\fBsched_setparam\fP(2)	2.0
+\fBsched_setscheduler\fP(2)	2.0
+\fBsched_yield\fP(2)	2.0
+\fBseccomp\fP(2)	3.17
+\fBselect\fP(2)	1.0
+\fBsemctl\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBsemget\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBsemop\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBsemtimedop\fP(2)	2.6; 2.4.22
+\fBsend\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBsendfile\fP(2)	2.2
+\fBsendfile64\fP(2)	2.6; 2.4.19
+\fBsendmmsg\fP(2)	3.0
+\fBsendmsg\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBsendto\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBset_mempolicy\fP(2)	2.6.6
+\fBset_robust_list\fP(2)	2.6.17
+\fBset_thread_area\fP(2)	2.6
+\fBset_tid_address\fP(2)	2.6
+\fBset_tls\fP(2)	2.6.11	T{
+ARM OABI/EABI only (constant
+has \fB__ARM_NR\fP prefix)
+T}
+.\" \fBsetaltroot\fP(2)	2.6.10	T{
+.\" Removed in 2.6.11, exposed one
+.\" of implementation details of
+.\" \fBpersonality\fP(2) (creating an
+.\" alternative root, precursor of
+.\" mount namespaces) to user space.
+.\" T}
+.\" See http://lkml.org/lkml/2005/8/1/83
+.\" "[PATCH] remove sys_set_zone_reclaim()"
+\fBsetdomainname\fP(2)	1.0
+\fBsetfsgid\fP(2)	1.2
+\fBsetfsgid32\fP(2)	2.4
+\fBsetfsuid\fP(2)	1.2
+\fBsetfsuid32\fP(2)	2.4
+\fBsetgid\fP(2)	1.0
+\fBsetgid32\fP(2)	2.4
+\fBsetgroups\fP(2)	1.0
+\fBsetgroups32\fP(2)	2.4
+.\" arch/alpha/include/asm/core_lca.h
+\fBsethae\fP(2)	2.0	T{
+Alpha only; see NOTES
+T}
+\fBsethostname\fP(2)	1.0
+\fBsetitimer\fP(2)	1.0
+\fBsetns\fP(2)	3.0
+\fBsetpgid\fP(2)	1.0
+\fBsetpgrp\fP(2)	2.0	T{
+Alternative name for
+\fBsetpgid\fP(2) on Alpha
+T}
+\fBsetpriority\fP(2)	1.0
+\fBsetregid\fP(2)	1.0
+\fBsetregid32\fP(2)	2.4
+\fBsetresgid\fP(2)	2.2
+\fBsetresgid32\fP(2)	2.4
+\fBsetresuid\fP(2)	2.2
+\fBsetresuid32\fP(2)	2.4
+\fBsetreuid\fP(2)	1.0
+\fBsetreuid32\fP(2)	2.4
+\fBsetrlimit\fP(2)	1.0
+\fBsetsid\fP(2)	1.0
+\fBsetsockopt\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBsettimeofday\fP(2)	1.0
+\fBsetuid\fP(2)	1.0
+\fBsetuid32\fP(2)	2.4
+\fBsetup\fP(2)	1.0	Removed in 2.2
+\fBsetxattr\fP(2)	2.6; 2.4.18
+\fBsgetmask\fP(2)	1.0
+\fBshmat\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBshmctl\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBshmdt\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBshmget\fP(2)	2.0	T{
+See notes on \fBipc\fP(2)
+T}
+\fBshutdown\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBsigaction\fP(2)	1.0
+\fBsigaltstack\fP(2)	2.2
+\fBsignal\fP(2)	1.0
+\fBsignalfd\fP(2)	2.6.22
+\fBsignalfd4\fP(2)	2.6.27
+\fBsigpending\fP(2)	1.0
+\fBsigprocmask\fP(2)	1.0
+\fBsigreturn\fP(2)	1.0
+\fBsigsuspend\fP(2)	1.0
+\fBsocket\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+\fBsocketcall\fP(2)	1.0
+.\" Implements BSD socket calls
+\fBsocketpair\fP(2)	2.0	T{
+See notes on \fBsocketcall\fP(2)
+T}
+.\" 5a0015d62668e64c8b6e02e360fbbea121bfd5e6
+\fBspill\fP(2)	2.6.13	Xtensa only
+\fBsplice\fP(2)	2.6.17
+\fBspu_create\fP(2)	2.6.16	T{
+PowerPC/PowerPC64 only
+T}
+\fBspu_run\fP(2)	2.6.16	T{
+PowerPC/PowerPC64 only
+T}
+\fBssetmask\fP(2)	1.0
+\fBstat\fP(2)	1.0
+\fBstat64\fP(2)	2.4
+\fBstatfs\fP(2)	1.0
+\fBstatfs64\fP(2)	2.6
+\fBstatx\fP(2)	4.11
+\fBstime\fP(2)	1.0
+\fBsubpage_prot\fP(2)	2.6.25	T{
+PowerPC/PowerPC64 only
+T}
+\fBswapcontext\fP(2)	2.6.3	T{
+PowerPC/PowerPC64 only
+T}
+.\" 529d235a0e190ded1d21ccc80a73e625ebcad09b
+\fBswitch_endian\fP(2)	4.1	PowerPC64 only
+\fBswapoff\fP(2)	1.0
+\fBswapon\fP(2)	1.0
+\fBsymlink\fP(2)	1.0
+\fBsymlinkat\fP(2)	2.6.16
+\fBsync\fP(2)	1.0
+\fBsync_file_range\fP(2)	2.6.17
+\fBsync_file_range2\fP(2)	2.6.22
+.\" PowerPC, ARM, tile
+.\" First appeared on ARM, as arm_sync_file_range(), but later renamed
+.\" \fBsys_debug_setcontext\fP(2)	???	PowerPC if CONFIG_PPC32
+\fBsyncfs\fP(2)	2.6.39
+\fBsys_debug_setcontext\fP(2)	2.6.11	PowerPC only
+\fBsyscall\fP(2)	1.0	T{
+Still available on ARM OABI
+and MIPS O32 ABI
+T}
+\fBsysfs\fP(2)	1.2
+\fBsysinfo\fP(2)	1.0
+\fBsyslog\fP(2)	1.0
+.\" glibc interface is \fBklogctl\fP(3)
+\fBsysmips\fP(2)	2.6.0	MIPS only
+\fBtee\fP(2)	2.6.17
+\fBtgkill\fP(2)	2.6
+\fBtime\fP(2)	1.0
+\fBtimer_create\fP(2)	2.6
+\fBtimer_delete\fP(2)	2.6
+\fBtimer_getoverrun\fP(2)	2.6
+\fBtimer_gettime\fP(2)	2.6
+\fBtimer_settime\fP(2)	2.6
+.\" .\" b215e283992899650c4271e7385c79e26fb9a88e
+.\" .\" 4d672e7ac79b5ec5cdc90e450823441e20464691
+.\" \fBtimerfd\fP(2)	2.6.22	T{
+.\" Old timerfd interface,
+.\" removed in 2.6.25
+.\" T}
+\fBtimerfd_create\fP(2)	2.6.25
+\fBtimerfd_gettime\fP(2)	2.6.25
+\fBtimerfd_settime\fP(2)	2.6.25
+\fBtimes\fP(2)	1.0
+\fBtkill\fP(2)	2.6; 2.4.22
+\fBtruncate\fP(2)	1.0
+\fBtruncate64\fP(2)	2.4
+\fBugetrlimit\fP(2)	2.4
+\fBumask\fP(2)	1.0
+\fBumount\fP(2)	1.0
+.\" sys_oldumount() -- __NR_umount
+\fBumount2\fP(2)	2.2
+.\" sys_umount() -- __NR_umount2
+\fBuname\fP(2)	1.0
+\fBunlink\fP(2)	1.0
+\fBunlinkat\fP(2)	2.6.16
+\fBunshare\fP(2)	2.6.16
+\fBuselib\fP(2)	1.0
+\fBustat\fP(2)	1.0
+\fBuserfaultfd\fP(2)	4.3
+\fBusr26\fP(2)	2.4.8.1	ARM OABI only
+\fBusr32\fP(2)	2.4.8.1	ARM OABI only
+\fButime\fP(2)	1.0
+\fButimensat\fP(2)	2.6.22
+\fButimes\fP(2)	2.2
+\fButrap_install\fP(2)	2.2	SPARC64 only
+.\" FIXME . document utrap_install()
+.\" There's a man page for Solaris 5.11
+\fBvfork\fP(2)	2.2
+\fBvhangup\fP(2)	1.0
+\fBvm86old\fP(2)	1.0	T{
+Was "vm86"; renamed in
+2.0.28/2.2
+T}
+\fBvm86\fP(2)	2.0.28; 2.2
+\fBvmsplice\fP(2)	2.6.17
+\fBwait4\fP(2)	1.0
+\fBwaitid\fP(2)	2.6.10
+\fBwaitpid\fP(2)	1.0
+\fBwrite\fP(2)	1.0
+\fBwritev\fP(2)	2.0
+.\" 5a0015d62668e64c8b6e02e360fbbea121bfd5e6
+\fBxtensa\fP(2)	2.6.13	Xtensa only
+.TE
+.ad
+.hy
+.PP
+在包括 x86\-32 在内的许多平台上，套接字调用都通过 \fBsocketcall\fP(2) 进行多路复用 (通过 glibc
+包装器函数)，类似地，System\V IPC 调用通过 \fBipc\fP(2) 进行多路复用。
+.PP
+.\" __NR_afs_syscall is 53 on Linux 2.6.22/i386
+.\" __NR_break is 17 on Linux 2.6.22/i386
+.\" __NR_ftime is 35 on Linux 2.6.22/i386
+.\" __NR_getpmsg is 188 on Linux 2.6.22/i386
+.\" __NR_gtty is 32 on Linux 2.6.22/i386
+.\" __NR_idle is 112 on Linux 2.6.22/i386
+.\" __NR_lock is 53 on Linux 2.6.22/i386
+.\" __NR_madvise1 is 219 on Linux 2.6.22/i386
+.\" __NR_mpx is 66 on Linux 2.6.22/i386
+.\" Slot has been reused
+.\" __NR_prof is 44 on Linux 2.6.22/i386
+.\" __NR_profil is 98 on Linux 2.6.22/i386
+.\" __NR_putpmsg is 189 on Linux 2.6.22/i386
+.\" __NR_security is 223 on Linux 2.4/i386
+.\" __NR_security is 223 on Linux 2.4/i386; absent on 2.6/i386, present
+.\" on a couple of 2.6 architectures
+.\" __NR_stty is 31 on Linux 2.6.22/i386
+.\" The security call is for future use.
+.\" __NR_tuxcall is 184 on x86_64, also on PPC and alpha
+.\" __NR_ulimit is 58 on Linux 2.6.22/i386
+.\" __NR_vserver is 273 on Linux 2.6.22/i386
+虽然在系统调用表中为它们预留了槽位，但标准内核中并没有实现以下系统调用:
+\fBsecurity\fP(2)、\fBstty\fP(2)、\fBtuxcall\fP(2)、\fBulimit\fP(2) 和 \fBvserver\fP(2) (另请参见
+\fBunimplemented\fP(2))。 但是，\fBftime\fP(3)、\fBprofil\fP(3) 和 \fBulimit\fP(3) 作为库例程存在。
+\fBphys\fP(2) 的插槽从 Linux 2.1.116 开始用于 \fBumount\fP(2); \fBphys\fP(2) 永远不会被实现。
+\fBgetpmsg\fP(2) 和 \fBputpmsg\fP(2) 调用用于为支持 STREAMS 打补丁的内核，并且可能永远不会出现在标准内核中。
+.PP
+.\"
+有短暂的 \fBset_zone_reclaim\fP(2)，在 Linux 2.6.13 中加入，在 Linux 2.6.16 中移除;
+该系统调用从未对用户空间可用。
+.SS "System calls on removed ports"
+一些系统调用仅存在于 Linux 体系结构上，这些体系结构已从内核中删除:
+.TP 
+AVR32 (port removed in Linux 4.12)
+.RS
+.PD 0
+.IP \[bu] 3
+\fBpread\fP(2)
+.IP \[bu]
+\fBpwrite\fP(2)
+.PD
+.RE
+.TP 
+Blackfin (port removed in Linux 4.17)
+.RS
+.PD 0
+.IP \[bu] 3
+\fBbfin_spinlock\fP(2) (在 Linux 2.6.22 中加入)
+.IP \[bu]
+\fBdma_memcpy\fP(2) (在 Linux 2.6.22 中加入)
+.IP \[bu]
+\fBpread\fP(2) (在 Linux 2.6.22 中加入)
+.IP \[bu]
+\fBpwrite\fP(2) (在 Linux 2.6.22 中加入)
+.IP \[bu]
+\fBsram_alloc\fP(2) (在 Linux 2.6.22 中加入)
+.IP \[bu]
+\fBsram_free\fP(2) (在 Linux 2.6.22 中加入)
+.PD
+.RE
+.TP 
+Metag (port removed in Linux 4.17)
+.RS
+.PD 0
+.IP \[bu] 3
+\fBmetag_get_tls\fP(2) (加入 Linux 3.9)
+.IP \[bu]
+\fBmetag_set_fpu_flags\fP(2) (加入 Linux 3.9)
+.IP \[bu]
+\fBmetag_set_tls\fP(2) (加入 Linux 3.9)
+.IP \[bu]
+\fBmetag_setglobalbit\fP(2) (加入 Linux 3.9)
+.PD
+.RE
+.TP 
+Tile (port removed in Linux 4.17)
+.RS
+.PD 0
+.IP \[bu] 3
+\fBcmpxchg_badaddr\fP(2) (在 Linux 2.6.36 中加入)
+.PD
+.RE
+.SH NOTES
+大致来说，\fI/usr/include/asm/unistd.h\fP 中定义的编号为 __NR_xxx 的属于系统调用的代码可以在
+\fIsys_xxx\fP() 例程中的 Linux 内核源码中找到。
+然而，也有许多例外，主要是因为较旧的系统调用被较新的系统调用所取代，而这在某种程度上是不系统的。 在具有专有操作系统仿真的平台上，例如
+sparc、sparc64 和 alpha，有许多额外的系统调用; mips64 还包含全套 32 位系统调用。
+.PP
+随着时间的推移，必须对某些系统调用的接口进行更改。 进行此类更改的原因之一是需要增加传递给系统调用的结构或标量值的大小。 由于这些变化，某些体系结构
+(特别是长期存在的 32 位体系结构，例如 i386) 现在具有各种相关系统调用组 (例如，执行类似任务的 \fBtruncate\fP(2) 和
+\fBtruncate64\fP(2))，但在细节上有所不同，例如它们的参数大小) .  (如前所述，应用程序通常不知道这一点: glibc
+包装器函数做一些工作以确保调用正确的系统调用，并为旧二进制文件保留 ABI 兼容性。) 存在于多个版本中的系统调用示例是下列:
+.IP \[bu] 3
+.\" e.g., on 2.6.22/i386: __NR_oldstat 18, __NR_stat 106, __NR_stat64 195
+.\" The stat system calls deal with three different data structures,
+.\" defined in include/asm-i386/stat.h: __old_kernel_stat, stat, stat64
+到目前为止，共有三个不同版本的 \fBstat\fP(2): \fIsys_stat\fP() (插槽
+\fI__NR_oldstat\fP)、\fIsys_newstat\fP() (插槽 \fI__NR_stat\fP)) 和 \fIsys_stat64\fP() (插槽
+\fI__NR_stat64\fP)，最后一个是最新的。 类似的情况适用于 \fBlstat\fP(2) 和 \fBfstat\fP(2)。
+.IP \[bu]
+同样，定义 \fI__NR_oldolduname\fP、\fI__NR_olduname\fP 和 \fI__NR_uname\fP 引用例程
+\fIsys_olduname\fP()、\fIsys_uname\fP() 和 \fIsys_newuname\fP()。
+.IP \[bu]
+在 Linux 2.0 中，出现了新版本的 \fBvm86\fP(2)，新旧内核例程分别命名为 \fIsys_vm86old\fP() 和
+\fIsys_vm86\fP()。
+.IP \[bu]
+在 Linux 2.4 中，出现了新版本的 \fBgetrlimit\fP(2)，新旧内核例程分别命名为 \fIsys_old_getrlimit\fP()
+(slot \fI__NR_getrlimit\fP) 和 \fIsys_getrlimit\fP() (slot \fI__NR_ugetrlimit\fP).
+.IP \[bu]
+.\" 64-bit off_t changes: ftruncate64, *stat64,
+.\" fcntl64 (because of the flock structure), getdents64, *statfs64
+Linux 2.4 将用户和组 ID 的大小从 16 位增加到 32 位。 为了支持这一变化，添加了一系列系统调用
+(例如，\fBchown32\fP(2)、\fBgetuid32\fP(2)、\fBgetgroups32\fP(2)、\fBsetresuid32\fP(2))，取代了没有
+"32" 后缀的早期同名调用。
+.IP \[bu]
+Linux 2.4 添加了对 32 位架构上的应用程序访问大文件 (即，大小和文件偏移量不能用 32 位表示的文件)
+的支持。为支持此更改，需要替换处理以下内容的系统调用文件偏移量和大小。 因此添加了以下系统调用:
+\fBfcntl64\fP(2)、\fBgetdents64\fP(2)、\fBstat64\fP(2)、\fBstatfs64\fP(2)、\fBtruncate64\fP(2)，以及它们与文件描述符或符号链接一起工作的类似物。
+这些系统调用取代了较旧的系统调用，除了 "stat" 调用之外，旧系统调用具有相同的名称但没有 "64" 后缀。
+.IP
+在只有 64 位文件访问和 32 位 UIDs/GIDs (例如，alpha、ia64、s390x、x86\-64) 的较新平台上，只有一个版本的
+UID/GID 和文件访问系统调用。 在存在 *64 和 *32 调用的平台 (通常是 32 位平台) 上，其他版本已过时。
+.IP \[bu]
+\fIrt_sig*\fP 调用在 Linux 2.2 中加入，支持实时信号的加入 (见 \fBsignal\fP(7)).  这些系统调用取代了没有 "rt_"
+前缀的同名旧系统调用。
+.IP \[bu]
+.\" (used by libc 6)
+.\" .PP
+.\" Two system call numbers,
+.\" .IR __NR__llseek
+.\" and
+.\" .IR __NR__sysctl
+.\" have an additional underscore absent in
+.\" .IR sys_llseek ()
+.\" and
+.\" .IR sys_sysctl ().
+.\"
+.\" In Linux 2.1.81,
+.\" .BR lchown (2)
+.\" and
+.\" .BR chown (2)
+.\" were swapped; that is,
+.\" .BR lchown (2)
+.\" was added with the semantics that were then current for
+.\" .BR chown (2),
+.\" and the semantics of the latter call were changed to what
+.\" they are today.
+.\"
+.\"
+\fBselect\fP(2) 和 \fBmmap\fP(2) 系统调用使用了五个或更多的参数，这导致过去设置的 i386 上的参数传递方式出现问题。
+因此，虽然其他体系结构的 \fIsys_select\fP() 和 \fIsys_mmap\fP() 对应于 \fI__NR_select\fP 和
+\fI__NR_mmap\fP，但在 i386 上却找到了 \fIold_select\fP() 和 \fIold_mmap\fP() (使用指向参数块的指针的例程)。
+这些天传递五个参数不再是问题，并且有一个 \fI__NR__newselect\fP 直接对应于 \fIsys_select\fP() 和类似的
+\fI__NR_mmap2\fP。 s390x 是唯一具有 \fIold_mmap\fP() 的 64 位架构。
+.SS "Architecture\-specific details: Alpha"
+.TP 
+\fBgetxgid\fP(2)
+通过寄存器 \fBr0\fP 和 \fBr20\fP 返回一对 GID 和有效 GID; 它代替 \fBgetgid\fP(2) 和 \fBgetegid\fP(2) 提供。
+.TP 
+\fBgetxpid\fP(2)
+通过寄存器 \fBr0\fP 和 \fBr20\fP 返回一对 PID 和父 PID; 它代替 \fBgetpid\fP(2) 和 \fBgetppid\fP(2) 提供。
+.TP 
+\fBold_adjtimex\fP(2)
+是 \fBadjtimex\fP(2) 的变体，它使用 \fIstruct timeval32\fP，以与 OSF/1 兼容。
+.TP 
+\fBgetxuid\fP(2)
+通过寄存器 \fBr0\fP 和 \fBr20\fP 返回一对 GID 和有效 GID; 它代替 \fBgetuid\fP(2) 和 \fBgeteuid\fP(2) 提供。
+.TP 
+\fBsethae\fP(2)
+用于在低成本 Alpha 上配置主机地址扩展寄存器，以便访问超过前 27 位的地址空间。
+.SH "SEE ALSO"
+\fBausyscall\fP(1), \fBintro\fP(2), \fBsyscall\fP(2), \fBunimplemented\fP(2),
+\fBerrno\fP(3), \fBlibc\fP(7), \fBvdso\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

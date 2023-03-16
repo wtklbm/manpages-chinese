@@ -1,0 +1,380 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" manual page [] for chat 1.8
+.\" $Id: chat.8,v 1.11 2004/11/13 12:22:49 paulus Exp $
+.\" SH section heading
+.\" SS subsection heading
+.\" LP paragraph
+.\" IP indented paragraph
+.\" TP hanging label
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH CHAT 8 "22 May 1999" "Chat Version 1.22" 
+.SH NAME
+chat \- 带有调制解调器的自动会话脚本
+.SH SYNOPSIS
+\fBchat\fP [ \fIoptions\fP ] \fIscript\fP
+.SH DESCRIPTION
+.LP
+\fIchat\fP 程序定义了计算机和调制解调器之间的会话交换。它的主要目的是在点对点协议守护进程 (\fIpppd\fP) 和远程进程 \fIpppd\fP
+之间建立连接。
+.SH OPTIONS
+.TP 
+\fB\-f \fP\fI<chat file>\fP
+从聊天 \fIfile\fP
+中读取聊天脚本。此选项的使用与聊天脚本参数互斥。用户必须具有文件的读取权限。文件中允许多行。应该使用空格或水平制表符来分隔字符串。
+.TP 
+\fB\-t \fP\fI<timeout>\fP
+设置接收预期字符串的超时时间。如果在时限内没有收到字符串，则不会发送回复字符串。如果没有备用回复字符串，则可能会发送备用回复，否则脚本将失败。失败的脚本将导致
+\fIchat\fP 程序以非零错误代码终止。
+.TP 
+\fB\-r \fP\fI<report file>\fP
+设置报告字符串的输出文件。如果使用关键字 \fIREPORT\fP，生成的字符串将写入此文件。如果不使用此选项并且您仍然使用 \fIREPORT\fP 关键字，则
+\fIstderr\fP 文件用于报告字符串。
+.TP 
+\fB\-e\fP
+从打开 echo 选项开始。也可以使用 \fIECHO\fP 关键字在聊天脚本的特定点打开或关闭回显。启用回显时，调制解调器的所有输出都会回显到
+\fIstderr\fP。
+.TP 
+\fB\-E\fP
+使用标准 \fI$xxx\fP 语法在聊天脚本中启用环境变量替换。
+.TP 
+\fB\-v\fP
+请求以详细模式执行 \fIchat\fP 脚本。然后 \fIchat\fP
+程序将记录聊天脚本的执行状态以及从调制解调器接收到的所有文本和发送到调制解调器的输出字符串。 默认是通过 SYSLOG 记录; 可以使用 \-S 和 \-s
+标志更改日志记录方法。
+.TP 
+\fB\-V\fP
+请求以标准错误详细模式执行 \fIchat\fP 脚本。然后 \fIchat\fP
+程序将从调制解调器收到的所有文本和发送到调制解调器的输出字符串记录到标准错误设备。该设备通常是运行聊天或 pppd 程序的站点的本地控制台。
+.TP 
+\fB\-s\fP
+使用标准错误。 来自 '\-v' 的所有日志消息和所有错误消息都将发送到标准错误。
+.TP 
+\fB\-S\fP
+不要使用 SYSLOG。 默认情况下，错误消息会发送到 SYSLOG。 使用 \-S 将阻止来自 '\-v' 的日志消息和错误消息被发送到 SYSLOG。
+.TP 
+\fB\-T \fP\fI<phone number>\fP
+传入一个任意字符串，通常是电话号码，它将替换发送字符串中的 \eT 替换元字符。
+.TP 
+\fB\-U \fP\fI<phone number 2>\fP
+传入第二个字符串，通常是电话号码，它将替换发送字符串中的 \eU 替换元字符。 这在拨打需要两个号码的 ISDN 终端适配器时很有用。
+.TP 
+\fBscript\fP
+如果脚本未在具有 \fI\-f\fP 选项的文件中指定，则该脚本将作为参数包含在 \fIchat\fP 程序中。
+.SH "CHAT SCRIPT"
+.LP
+\fIchat\fP 脚本定义通信。
+.LP
+脚本由一对或多对 "expect\-send" 字符串组成，以空格分隔，以及可选的 "subexpect\-subsend"
+字符串对，以破折号分隔，如下例所示:
+.IP
+登录: \-BREAK \- 登录: ppp ssword: hello2u2
+.LP
+此行表明 \fIchat\fP 程序应该期望字符串 "ogin:"。如果在分配的时间间隔内未能收到登录提示，则向远程发送中断序列，然后等待字符串
+"ogin:"。如果接收到第一个 "ogin:"，则不会生成中断序列。
+.LP
+一旦收到登录提示，\fIchat\fP 程序将发送字符串 ppp，然后等待提示 "ssword:"。当它收到密码提示时，它会发送密码 hello2u2。
+.LP
+回车通常在回复字符串之后发送。它不应该出现在 "expect" 字符串中，除非使用 \er 字符序列特别请求。
+.LP
+expect
+序列应该只包含识别字符串所需的内容。由于它通常存储在磁盘文件中，因此不应包含变量信息。将时间字符串、网络标识字符串或其他可变数据片段作为期望字符串进行查找通常是不可接受的。
+.LP
+为了帮助更正初始序列中可能损坏的字符，请查找字符串 "ogin:" 而不是 "login:"。有可能接收到错误的前导 "l"
+字符，即使它是由系统发送的，您也可能永远找不到该字符串。出于这个原因，脚本寻找 "ogin:" 而不是 "login:" 和 "ssword:" 而不是
+"password:"。
+.LP
+一个非常简单的脚本可能如下所示:
+.IP
+登录: ppp ssword: hello2u2
+.LP
+换句话说，期待....ogin:，发送 ppp，期待...ssword:，发送 hello2u2。
+.LP
+在实际操作中，很少有简单的脚本。至少，如果未收到原始字符串，您应该包含子预期序列。例如，考虑以下脚本:
+.IP
+登录: \-\- 登录: ppp ssword: hello2u2
+.LP
+这将是一个比之前使用的简单脚本更好的脚本。这将查找相同的登录:
+提示，但是，如果未收到提示，则会发送一个返回序列，然后它将再次查找登录:。如果线路噪音掩盖了第一个登录提示，那么发送空行通常会再次生成登录提示。
+.SH COMMENTS
+评论可以嵌入到聊天脚本中。注释是以第 1 列中的 \fB#\fP (hash) 字符开头的行。这样的注释行会被聊天程序忽略。如果期望 '#'
+字符作为期望序列的第一个字符，则应引用期望字符串。 如果要等待以 #(hash) 字符开头的提示，则必须这样写:
+.IP
+# 现在等待提示并发送注销字符串
+.br
+\&'# ' 登出
+.LP
+
+.SH "SENDING DATA FROM A FILE"
+如果要发送的字符串以符号 (@) 开头，则字符串的其余部分将作为要读取的文件的名称以获取要发送的字符串。
+如果读取的数据的最后一个字符是换行符，则将其删除。 该文件可以是命名管道 (或 fifo) 而不是常规文件。 这为 \fBchat\fP
+提供了一种与另一个程序通信的方式，例如，提示用户并接收输入的密码的程序。
+.LP
+
+.SH "ABORT STRINGS"
+许多调制解调器会将调用的状态报告为字符串。这些字符串可能是 \fBCONNECTED\fP 或 \fBNO CARRIER\fP 或
+\fBBUSY\fP。如果调制解调器无法连接到远程，通常需要终止脚本。困难在于脚本无法确切地知道它可能接收到哪个调制解调器字符串。在一次尝试中，它可能会收到
+\fBBUSY\fP，而下一次它可能会收到 \fBNO CARRIER\fP。
+.LP
+这些 "abort" 字符串可以使用 \fIABORT\fP 序列在脚本中指定。它写在脚本中，如下例所示:
+.IP
+最终停止 BUSY 最终停止 'NO CARRIER' \*(rq ATZ OK ATDT5551212 CONNECT
+.LP
+这个序列不会有任何期望; 然后发送字符串 ATZ。对此的预期响应是字符串 \fIOK\fP。当它收到 \fIOK\fP 时，字符串 ATDT5551212
+将拨打电话。预期的字符串是 \fICONNECT\fP。如果接收到字符串
+\fICONNECT\fP，则执行脚本的其余部分。然而，如果调制解调器发现电话占，字符串，它会发送字符串
+\fIBUSY\fP。这将导致字符串匹配终止字符序列。然后脚本将失败，因为它找到了与终止字符串的匹配项。如果它收到字符串 \fINO CARRIER\fP，它将出于同样的原因终止。可以接收任一字符串。任一字符串都将终止 \fIchat\fP 脚本。
+.SH "CLR_ABORT STRINGS"
+此序列允许清除先前设置的 \fBABORT\fP 字符串。 \fBABORT\fP 字符串保存在一个预先确定大小的数组中 (在编译时) ; \fBCLR_ABORT\fP
+将回收已清除条目的空间，以便新字符串可以使用该空间。
+.SH "SAY STRINGS"
+\fBSAY\fP 指令允许脚本通过标准错误向最终端的用户发送字符串。 如果 \fBchat\fP 由 pppd 运行，并且 pppd 作为守护进程运行
+(脱离它的控制终端)，标准错误通常会被重定向到文件 /etc/ppp/connect\-errors。
+.LP
+\fBSAY\fP 字符串必须用单引号或双引号括起来。如果要输出的字符串中需要回车和换行，则必须将它们显式添加到您的字符串中。
+.LP
+SAY 字符串可用于在您希望 `ECHO OFF` 但仍让用户知道发生了什么的脚本部分中提供进度消息。 一个例子是:
+.IP
+结束 BUSY
+.br
+回声关闭
+.br
+说 "Dialling your ISP...\en"
+.br
+\&\*(rq ATDT5551212
+.br
+超时 120
+.br
+说 "Waiting up to 2 minutes for connection ... "
+.br
+连接 \*(rq
+.br
+说 "Connected, now logging in ...\en"
+.br
+来源: 帐户
+.br
+剑: 通过
+.br
+$ \ec
+.br
+说 "Logged in OK ...\en" \fIetc ...\fP
+.LP
+此序列将只向用户显示 SAY 字符串，脚本的所有细节将保持隐藏状态。例如，如果上述脚本有效，用户将看到:
+.IP
+拨打您的 ISP...
+.br
+最多等待 2 分钟连接... 已连接，正在登录 ...
+.br
+登录成功 ...
+.LP
+
+.SH "REPORT STRINGS"
+\fBreport\fP 字符串类似于终止字符串。不同之处在于字符串和下一个控制字符 (如回车) 的所有字符都写入报告文件。
+.LP
+报告字符串可用于隔离调制解调器连接字符串的传输速率并将值返回给聊天用户。报告字符串逻辑的分析与其他字符串处理 (例如查找预期字符串)
+一起发生。对报告和终止序列使用相同的字符串可能不是很有用，但是，这是可能的。
+.LP
+报告字符串不会更改程序的完成代码。
+.LP
+这些 "report" 字符串可以使用 \fIREPORT\fP 序列在脚本中指定。它写在脚本中，如下例所示:
+.IP
+REPORT CONNECT 终止 BUSY \*(rq ATDT5551212 CONNECT \*(rq 登录: 帐户
+.LP
+这个序列不会有任何期望; 然后发送字符串 ATDT5551212 来拨打电话。预期的字符串是 \fICONNECT\fP。如果接收到字符串
+\fICONNECT\fP，则执行脚本的其余部分。此外，该程序会将字符串 "CONNECT" 及其后面的任何字符 (例如连接速率) 写入期望文件。
+.SH "CLR_REPORT STRINGS"
+此序列允许清除先前设置的 \fBREPORT\fP 字符串。 \fBREPORT\fP 字符串保存在一个预先确定大小的数组中 (在编译时) ;
+\fBCLR_REPORT\fP 将回收已清除条目的空间，以便新字符串可以使用该空间。
+.SH ECHO
+回显选项控制调制解调器的输出是否回显到 \fIstderr\fP。该选项可以用 \fI\-e\fP 选项设置，但也可以由 \fIECHO\fP
+关键字控制。"expect\-send" 对 \fIECHO\fP \fION\fP 启用回显，\fIECHO\fP \fIOFF\fP
+禁用回显。使用此关键字，您可以选择对话的哪些部分应该是可见的。例如，使用以下脚本:
+.IP
+终止 'BUSY'
+.br
+终止 'NO CARRIER'
+.br
+\&\*(rq 阿兹
+.br
+OK\er\en ATD1234567
+.br
+\er\en \ec
+.br
+回声
+.br
+连接 \ec
+.br
+来源: 帐户
+.LP
+所有由调制解调器配置和拨号产生的输出都是不可见的，但是从 \fICONNECT\fP (或 \fIBUSY\fP) 消息) 开始，一切都会被回显。
+.SH HANGUP
+HANGUP 选项控制调制解调器挂断是否应被视为错误。 此选项在用于拨号系统的脚本中很有用，它将挂断并调回您的系统。 HANGUP 选项可以是
+\fBON\fP 或 \fBOFF\fP。
+.br
+当 HANGUP 设置为 OFF 且调制解调器挂断时 (例如，在登录回调系统的第一阶段之后)，\fBchat\fP 将继续运行脚本
+(例如，等待传入的调用和第二阶段登录提示)。一旦传入的调用被连接，您应该使用 \fBHANGUP ON\fP 指令重新安装正常的挂断信号行为。 这是一个
+(simple) 示例脚本:
+.IP
+终止 'BUSY'
+.br
+\&\*(rq 阿兹
+.br
+OK\er\en ATD1234567
+.br
+\er\en \ec
+.br
+连接 \ec
+.br
+\&' 回调登录: 'call_back_ID
+.br
+挂断电话
+.br
+终止 "Bad Login"
+.br
+\&' 回调密码: 'call_back_password
+.br
+超时 120
+.br
+连接 \ec
+.br
+挂断
+.br
+终止 "NO CARRIER"
+.br
+登录: \-\-BREAK\-\- 登录: real_account
+.br
+\fIetc ...\fP
+.LP
+.SH TIMEOUT
+初始超时值为 45 秒。这可以使用 \fB\-t\fP 参数更改。
+.LP
+要更改下一个期望字符串的超时值，可以使用以下示例:
+.IP
+ATZ OK ATDT5551212 CONNECT TIMEOUT 10 ogin:\-\-ogin: TIMEOUT 5 密码: hello2u2
+.LP
+当它期望登录时，这会将超时更改为 10 秒: 提示。当它查找密码提示时，超时将更改为 5 秒。
+.LP
+超时一旦更改，将一直有效，直到再次更改为止。
+.SH "SENDING EOT"
+\fIEOT\fP 的特殊回复字符串表示聊天程序应该向远程发送一个 EOT 字符。这通常是文件结束字符序列。EOT 之后不发送返回字符。 EOT
+序列可以使用序列 \fI^D\fP 嵌入到发送字符串中。
+.SH "GENERATING BREAK"
+\fIBREAK\fP 的特殊回复字符串将导致发送中断条件。break 是发送者的一个特殊信号。接收者上的正常处理是改变传输速率。
+它可用于在遥控器上循环可用的传输速率，直到您能够收到有效的登录提示。 可以使用 \fI\eK\fP 序列将中断序列嵌入到发送字符串中。
+.SH "ESCAPE SEQUENCES"
+expect 和 reply 字符串可能包含转义序列。回复字符串中的所有序列都是合法的。很多都是合法的。 那些在预期序列中无效的被如此指示。
+.TP 
+\&\fB\*(rq\fP
+期望或发送空字符串。如果您发送一个空字符串，那么它仍然会发送返回字符。该序列可以是一对撇号或引号字符。
+.TP 
+\fB\eb\fP
+代表一个退格字符。
+.TP 
+\fB\ec\fP
+取消回复字符串末尾的换行符。这是发送没有尾随返回字符的字符串的唯一方法。它必须在发送字符串的末尾。例如，序列 hello\ec 将简单地发送字符
+h、e、l、l、o。 例如，序列 hello\ec 将简单地发送字符 h、e、l、l、o。
+.TP 
+\fB\ed\fP
+延迟一秒钟。该程序使用 sleep(1)，最多延迟一秒。 该程序使用 sleep(1)，最多延迟一秒。
+.TP 
+\fB\eK\fP
+插入一个 BREAK \fI(not valid in expect.)\fP
+.TP 
+\fB\en\fP
+发送换行符或换行符。
+.TP 
+\fB\eN\fP
+发送空字符。相同的序列可以用 \e0 表示。 相同的序列可以用 \e0 表示。
+.TP 
+\fB\ep\fP
+停顿几分之一秒。延迟是 1/10th 秒。 延迟是 1/10th 秒。
+.TP 
+\fB\eq\fP
+禁止将字符串写入 SYSLOG 文件。字符串?????? 被写入日志中。 被写入日志中。
+.TP 
+\fB\er\fP
+发送或期待回车。
+.TP 
+\fB\es\fP
+表示字符串中的空格字符。当不想引用包含空格的字符串时，可以使用它。序列 `HI TIM` 和 HI\esTIM 是相同的。
+.TP 
+\fB\et\fP
+发送或期待制表符。
+.TP 
+\fB\eT\fP
+发送 \fI\-T\fP 选项 \fI(not valid in expect.)\fP 指定的电话号码字符串
+.TP 
+\fB\eU\fP
+发送 \fI\-U\fP 选项 \fI(not valid in expect.)\fP 指定的电话号码 2 字符串
+.TP 
+\fB\e\e\fP
+发送或期待一个反斜杠字符。
+.TP 
+\fB\eddd\fP
+将八进制数字 (ddd) 折叠成单个 ASCII 字符并发送该字符。 将八进制数字 (ddd) 折叠成单个 ASCII 字符并发送该字符。
+.TP 
+\fB\^^C\fP
+用表示 by C 的控制字符替换序列。例如，字符 DC1 (17) 显示为 \^^Q。 用表示 by C 的控制字符替换序列。例如，字符 DC1
+(17) 显示为 \^^Q。
+.SH "ENVIRONMENT VARIABLES"
+如果在命令行中指定了 \fI\-E\fP 选项，环境变量在聊天脚本中可用。元字符 \fI$\fP
+用于引入要替换的环境变量的名称。如果替换失败，因为没有设置请求的环境变量，\fInothing\fP 被替换为变量。
+.SH "TERMINATION CODES"
+\fIchat\fP 程序将以下列完成代码终止。
+.TP 
+\fB0\fP
+程序正常终止。这表明脚本已无错误地执行到正常结论。
+.TP 
+\fB1\fP
+一个或多个参数无效或预期字符串对于内部缓冲区来说太大。这表明程序没有正确执行。
+.TP 
+\fB2\fP
+程序执行期间发生错误。这可能是由于某种原因导致读取或写入操作失败，或者聊天接收到 SIGINT 等信号。
+.TP 
+\fB3\fP
+当有 \fIexpect\fP 字符串而没有 "\-subsend"
+字符串时发生超时事件。这可能意味着您没有针对条件正确编写脚本，或者发生了一些意外事件并且找不到预期的字符串。
+.TP 
+\fB4\fP
+出现第一个标记为 \fIABORT\fP 条件的字符串。
+.TP 
+\fB5\fP
+出现标记为 \fIABORT\fP 条件的第二个字符串。
+.TP 
+\fB6\fP
+出现标记为 \fIABORT\fP 条件的第三个字符串。
+.TP 
+\fB7\fP
+出现标记为 \fIABORT\fP 条件的第四个字符串。
+.TP 
+\&\fB...\fP
+其他终止代码也是标记为 \fIABORT\fP 条件的字符串。
+.LP
+使用终止代码，可以确定哪个事件终止了脚本。可以确定字符串 "BUSY" 是否是从调制解调器收到的，而不是 "NO DIAL
+TONE"。虽然可以重试第一个事件，但第二个事件在重试期间成功的可能性很小。
+.SH "SEE ALSO"
+有关 \fIchat\fP 脚本的其他信息可以在 UUCP 文档中找到。\fIchat\fP 脚本取自 \fIuucico\fP 程序使用的脚本提出的想法。
+.LP
+uucico(1), uucp(1)
+.SH COPYRIGHT
+\fIchat\fP 程序属于公共领域。这不是 GNU 公共许可证。如果它坏了，那么您可以保留两件。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

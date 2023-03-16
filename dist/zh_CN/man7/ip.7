@@ -1,0 +1,735 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: ip.7,v 1.19 2000/12/20 18:10:31 ak Exp $
+.\"
+.\" FIXME The following socket options are yet to be documented
+.\"
+.\" 	IP_XFRM_POLICY (2.5.48)
+.\"	    Needs CAP_NET_ADMIN
+.\"
+.\" 	IP_IPSEC_POLICY (2.5.47)
+.\"	    Needs CAP_NET_ADMIN
+.\"
+.\"	IP_MINTTL (2.6.34)
+.\"	    commit d218d11133d888f9745802146a50255a4781d37a
+.\"	    Author: Stephen Hemminger <shemminger@vyatta.com>
+.\"
+.\"	MCAST_JOIN_GROUP (2.4.22 / 2.6)
+.\"
+.\"	MCAST_BLOCK_SOURCE (2.4.22 / 2.6)
+.\"
+.\"	MCAST_UNBLOCK_SOURCE (2.4.22 / 2.6)
+.\"
+.\"	MCAST_LEAVE_GROUP (2.4.22 / 2.6)
+.\"
+.\"	MCAST_JOIN_SOURCE_GROUP (2.4.22 / 2.6)
+.\"
+.\"	MCAST_LEAVE_SOURCE_GROUP (2.4.22 / 2.6)
+.\"
+.\"	MCAST_MSFILTER (2.4.22 / 2.6)
+.\"
+.\"	IP_UNICAST_IF (3.4)
+.\"	    commit 76e21053b5bf33a07c76f99d27a74238310e3c71
+.\"	    Author: Erich E. Hoover <ehoover@mines.edu>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ip 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ip\-Linux IPv4 协议实现
+.SH SYNOPSIS
+.nf
+.\" .B #include <net/netinet.h> -- does not exist anymore
+.\" .B #include <linux/errqueue.h> -- never include <linux/foo.h>
+\fB#include <sys/socket.h>\fP
+\fB#include <netinet/in.h>\fP
+\fB#include <netinet/ip.h> \fP/* superset of previous */
+.PP
+\fItcp_socket\fP\fB = socket(AF_INET, SOCK_STREAM, 0);\fP
+\fIudp_socket\fP\fB = socket(AF_INET, SOCK_DGRAM, 0);\fP
+\fIraw_socket\fP\fB = socket(AF_INET, SOCK_RAW, \fP\fIprotocol\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+Linux 实现了 RFC\791 和 RFC\1122 中描述的 Internet 协议版本 4。 \fBip\fP 包含符合 RFC\1112 的 2
+级多播实现。 它还包含一个 IP 路由器，包括一个数据包过滤器。
+.PP
+编程接口与 BSD 套接字兼容。 有关套接字的更多信息，请参见 \fBsocket\fP(7)。
+.PP
+使用 \fBsocket\fP(2): 创建 IP 套接字
+.PP
+.in +4n
+.EX
+socket(AF_INET, socket_type, protocol);
+.EE
+.in
+.PP
+有效的套接字类型包括用于打开流套接字的 \fBSOCK_STREAM\fP、用于打开数据报套接字的 \fBSOCK_DGRAM\fP 和用于打开 \fBraw\fP(7)
+套接字以直接访问 IP 协议的 \fBSOCK_RAW\fP。
+.PP
+\fIprotocol\fP 是要接收或发送的 IP 头中的 IP 协议。 \fIprotocol\fP 的有效值包括:
+.IP \[bu] 3
+0 和 \fBIPPROTO_TCP\fP 用于 \fBtcp\fP(7) 流套接字;
+.IP \[bu]
+0 和 \fBIPPROTO_UDP\fP 用于 \fBudp\fP(7) 数据报套接字;
+.IP \[bu]
+\fBIPPROTO_SCTP\fP 用于 \fBsctp\fP(7) 流套接字; and
+.IP \[bu]
+\fBIPPROTO_UDPLITE\fP 用于 \fBudplite\fP(7) 数据报套接字。
+.PP
+对于 \fBSOCK_RAW\fP，您可以指定一个在 RFC\1700 分配编号中定义的有效 IANA IP 协议。
+.PP
+当进程想要接收新的传入数据包或连接时，它应该使用 \fBbind\fP(2) 将套接字绑定到本地接口地址。 在这种情况下，只有一个 IP
+套接字可以绑定到任何给定的本地 (地址、端口) 对。 当在绑定调用中指定 \fBINADDR_ANY\fP 时，套接字将绑定到 \fIall\fP 本地接口。
+当在未绑定的套接字上调用 \fBlisten\fP(2) 时，套接字会自动绑定到本地地址设置为 \fBINADDR_ANY\fP 的随机空闲端口。
+当在未绑定套接字上调用 \fBconnect\fP(2) 时，套接字会自动绑定到一个随机空闲端口或本地地址设置为 \fBINADDR_ANY\fP 的可用共享端口。
+.PP
+已绑定的 TCP 本地套接字地址在关闭后的一段时间内不可用，除非已设置 \fBSO_REUSEADDR\fP 标志。 使用此标志时应小心，因为它会降低 TCP
+的可靠性。
+.SS "Address format"
+IP 套接字地址定义为 IP 接口地址和 16 位端口号的组合。 基本 IP 协议不提供端口号，它们由 \fBudp\fP(7) 和 \fBtcp\fP(7)
+等更高级别的协议实现。 在原始套接字上，\fIsin_port\fP 设置为 IP 协议。
+.PP
+.in +4n
+.EX
+struct sockaddr_in {
+    sa_family_t    sin_family; /* address family: AF_INET */
+    in_port_t      sin_port;   /* port in network byte order */
+    struct in_addr sin_addr;   /* internet address */
+};
+
+/* Internet address */
+struct in_addr {
+    uint32_t       s_addr;     /* address in network byte order */
+};
+.EE
+.in
+.PP
+\fIsin_family\fP 始终设置为 \fBAF_INET\fP。 这是必需的; 在 Linux 2.2 中，大多数网络函数在缺少此设置时返回
+\fBEINVAL\fP。 \fIsin_port\fP 包含网络字节顺序的端口。 1024 以下的端口号称为 \fIprivileged ports\fP (或有时:
+\fIreserved ports\fP)。 只有特权进程 (在 Linux 上: 在管理其网络命名空间的用户命名空间中具有
+\fBCAP_NET_BIND_SERVICE\fP 能力的进程) 可以 \fBbind\fP(2) 到这些套接字。 请注意，原始 IPv4
+协议本身没有端口的概念，它们仅由 \fBtcp\fP(7) 和 \fBudp\fP(7) 等更高层协议实现。
+.PP
+\fIsin_addr\fP 是 IP 主机地址。 \fIstruct in_addr\fP 的 \fIs_addr\fP 成员包含网络字节顺序的主机接口地址。
+\fIin_addr\fP 应分配 \fBINADDR_*\fP 值之一 (例如，\fBINADDR_LOOPBACK\fP) 使用 \fBhtonl\fP(3) 或使用
+\fBinet_aton\fP(3)、\fBinet_addr\fP(3)、\fBinet_makeaddr\fP(3) 库函数设置或直接使用名称解析器 (参见
+\fBgethostbyname\fP(3)).
+.PP
+.\" Leave a loophole for XTP @)
+IPv4 地址分为单播地址、广播地址和组播地址。 单播地址指定主机的单个接口，广播地址指定网络上的所有主机，多播地址寻址多播组中的所有主机。 只有设置了
+\fBSO_BROADCAST\fP 套接字标志后，才能发送或接收到广播地址的数据报。 在当前的实现中，面向连接的套接字只允许使用单播地址。
+.PP
+请注意，地址和端口始终以网络字节顺序存储。 特别是，这意味着您需要在分配给端口的号码上调用 \fBhtons\fP(3)。 标准库中的所有
+address/port 操作函数都以网络字节顺序工作。
+.PP
+有几个特殊地址: \fBINADDR_LOOPBACK\fP (127.0.0.1) 总是通过回环设备指向本地主机; \fBINADDR_ANY\fP
+(0.0.0.0) 表示绑定任意地址; \fBINADDR_BROADCAST\fP (255.255.255.255)
+表示任何主机，并且由于历史原因对绑定的影响与 \fBINADDR_ANY\fP 相同。
+.SS "Socket options"
+.\" or SOL_IP on Linux
+IP 支持一些特定于协议的套接字选项，这些选项可以用 \fBsetsockopt\fP(2) 设置并用 \fBgetsockopt\fP(2) 读取。 IP
+的套接字选项级别是 \fBIPPROTO_IP\fP。 布尔整数标志为假时为零，否则为真。
+.PP
+当指定了无效的套接字选项时，\fBgetsockopt\fP(2) 和 \fBsetsockopt\fP(2) 会失败并出现错误 \fBENOPROTOOPT\fP。
+.TP 
+\fBIP_ADD_MEMBERSHIP\fP (since Linux 1.2)
+加入多播组。 参数是一个 \fIip_mreqn\fP 结构体。
+.PP
+.in +4n
+.EX
+struct ip_mreqn {
+    struct in_addr imr_multiaddr; /* IP multicast group
+                                     address */
+    struct in_addr imr_address;   /* IP address of local
+                                     interface */
+    int            imr_ifindex;   /* interface index */
+};
+.EE
+.in
+.PP
+.\" (i.e., within the 224.0.0.0-239.255.255.255 range)
+\fIimr_multiaddr\fP 包含应用程序要加入或离开的多播组的地址。 它必须是一个有效的多播地址 (或者 \fBsetsockopt\fP(2)
+失败并出现错误 \fBEINVAL\fP)。 \fIimr_address\fP 是系统加入多播组的本地接口地址; 如果等于
+\fBINADDR_ANY\fP，则系统选择合适的接口。 \fIimr_ifindex\fP 是 join/leave \fIimr_multiaddr\fP
+组应该接口的接口索引，或者 0 表示任何接口。
+.IP
+\fIip_mreqn\fP 结构体仅从 Linux 2.2 开始可用。 为了兼容性，仍然支持旧的 \fIip_mreq\fP 结构体 (从 Linux 1.2
+开始存在) ; 它与 \fIip_mreqn\fP 的区别仅在于不包括 \fIimr_ifindex\fP 字段。 (内核根据 \fIoptlen\fP.)
+传入的大小来判断传入的是哪个结构体
+.IP
+.\"
+\fBIP_ADD_MEMBERSHIP\fP 仅对 \fBsetsockopt\fP(2) 有效。
+.TP 
+\fBIP_ADD_SOURCE_MEMBERSHIP\fP (since Linux 2.4.22 / Linux 2.5.68)
+加入多播组并允许仅从指定源接收数据。 参数是一个 \fIip_mreq_source\fP 结构体。
+.PP
+.in +4n
+.EX
+struct ip_mreq_source {
+    struct in_addr imr_multiaddr;  /* IP multicast group
+                                      address */
+    struct in_addr imr_interface;  /* IP address of local
+                                      interface */
+    struct in_addr imr_sourceaddr; /* IP address of
+                                      multicast source */
+};
+.EE
+.in
+.PP
+\fIip_mreq_source\fP 结构体类似于 \fBIP_ADD_MEMBERSHIP\fP 下描述的 \fIip_mreqn\fP。
+\fIimr_multiaddr\fP 字段包含应用程序要加入或离开的多播组的地址。 \fIimr_interface\fP
+字段是系统应该加入多播组的本地接口的地址。 最后，\fIimr_sourceaddr\fP 字段包含应用程序要从中接收数据的源地址。
+.IP
+此选项可以多次使用，以允许从多个来源接收数据。
+.TP 
+\fBIP_BIND_ADDRESS_NO_PORT\fP (since Linux 4.2)
+.\" commit 90c337da1524863838658078ec34241f45d8394d
+通知内核在使用端口号为 0 的 \fBbind\fP(2) 时不要保留临时端口。 该端口稍后将在 \fBconnect\fP(2) 时间自动选择，只要 4
+元组是唯一的，就允许共享源端口。
+.TP 
+\fBIP_BLOCK_SOURCE\fP (since Linux 2.4.22 / 2.5.68)
+停止从给定组中的特定源接收多播数据。 这仅在应用程序使用 \fBIP_ADD_MEMBERSHIP\fP 或
+\fBIP_ADD_SOURCE_MEMBERSHIP\fP 订阅组播组后才有效。
+.IP
+参数是 \fBIP_ADD_SOURCE_MEMBERSHIP\fP 下描述的 \fIip_mreq_source\fP 结构体。
+.TP 
+\fBIP_DROP_MEMBERSHIP\fP (since Linux 1.2)
+离开多播组。 参数是 \fIip_mreqn\fP 或 \fIip_mreq\fP 结构体，类似于 \fBIP_ADD_MEMBERSHIP\fP。
+.TP 
+\fBIP_DROP_SOURCE_MEMBERSHIP\fP (since Linux 2.4.22 / 2.5.68)
+离开特定源组，即停止接收来自给定源的给定多播组的数据。 如果应用程序已订阅同一组中的多个源，则仍会传送来自其余源的数据。
+要立即停止从所有来源接收数据，请使用 \fBIP_DROP_MEMBERSHIP\fP。
+.IP
+参数是 \fBIP_ADD_SOURCE_MEMBERSHIP\fP 下描述的 \fIip_mreq_source\fP 结构体。
+.TP 
+\fBIP_FREEBIND\fP (since Linux 2.4)
+.\" Precisely: since Linux 2.4.0-test10
+如果启用，此布尔选项允许绑定到非本地或不存在 (yet) 的 IP 地址。 这允许监听一个套接字，而不需要底层网络接口或指定的动态 IP
+地址在应用程序试图绑定到它时启动。 此选项是下面描述的 \fIip_nonlocal_bind\fP \fI/proc\fP 接口的每个套接字等效项。
+.TP 
+\fBIP_HDRINCL\fP (since Linux 2.0)
+如果启用，用户会在用户数据前面提供一个 IP 标头。 仅对 \fBSOCK_RAW\fP 套接字有效; 有关更多信息，请参见 \fBraw\fP(7)。
+启用此标志时，忽略 \fBIP_OPTIONS\fP、\fBIP_TTL\fP 和 \fBIP_TOS\fP 设置的值。
+.TP 
+\fBIP_MSFILTER\fP (since Linux 2.4.22 / 2.5.68)
+此选项提供对高级全状态过滤 API 的访问。 参数是一个 \fIip_msfilter\fP 结构体。
+.PP
+.in +4n
+.EX
+struct ip_msfilter {
+    struct in_addr imsf_multiaddr;  /* IP multicast group
+                                      address */
+    struct in_addr imsf_interface;  /* IP address of local
+                                      interface */
+    uint32_t       imsf_fmode;     /* Filter\-mode */
+
+    uint32_t       imsf_numsrc;    /* Number of sources in
+                                      the following array */
+    struct in_addr imsf_slist[1];   /* Array of source
+                                      addresses */
+};
+.EE
+.in
+.PP
+有两个宏，\fBMCAST_INCLUDE\fP 和 \fBMCAST_EXCLUDE\fP，可以用来指定过滤模式。
+此外，\fBIP_MSFILTER_SIZE\fP(n) 宏的存在是为了确定在源列表中存储 \fIip_msfilter\fP 结构体和 \fIn\fP 源需要多少内存。
+.IP
+有关组播源过滤的完整说明，请参见 RFC 3376。
+.TP 
+\fBIP_MTU\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.124
+检索当前套接字的当前已知路径 MTU。 返回一个整数。
+.IP
+\fBIP_MTU\fP 只对 \fBgetsockopt\fP(2) 有效，只有连接好 socket 才能使用。
+.TP 
+\fBIP_MTU_DISCOVER\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.124
+设置或接收套接字的路径 MTU 发现设置。 启用后，Linux 将在 \fBSOCK_STREAM\fP 套接字上执行 RFC\1191 中定义的路径 MTU
+发现。 对于 non\-\fBSOCK_STREAM\fP 套接字，\fBIP_PMTUDISC_DO\fP 强制在所有传出数据包上设置 don't\-fragment
+标志。 用户有责任将数据打包成 MTU 大小的块，并在必要时进行重传。 内核将拒绝 (使用大于已知路径 MTU 的 \fBEMSGSIZE\fP) 数据报。
+如果需要，\fBIP_PMTUDISC_WANT\fP 将根据路径 MTU 对数据报进行分段，否则将设置不分段标志。
+.IP
+通过写入 (分别为零值和非零值) \fI/proc/sys/net/ipv4/ip_no_pmtu_disc\fP 文件，可以在
+\fBIP_PMTUDISC_WANT\fP 和 \fBIP_PMTUDISC_DONT\fP 之间切换系统范围的默认值。
+.TS
+tab(:);
+c l
+l l.
+Path MTU discovery value:Meaning
+IP_PMTUDISC_WANT:Use per\-route settings.
+IP_PMTUDISC_DONT:Never do Path MTU Discovery.
+IP_PMTUDISC_DO:Always do Path MTU Discovery.
+IP_PMTUDISC_PROBE:Set DF but ignore Path MTU.
+.TE
+.sp 1
+启用 PMTU 发现后，内核会自动跟踪每个目标主机的路径 MTU。 当它连接到具有 \fBconnect\fP(2) 的特定对等点时，可以使用
+\fBIP_MTU\fP 套接字选项方便地检索当前已知的路径 MTU (例如，在发生 \fBEMSGSIZE\fP 错误之后)。 路径 MTU 可能会随时间变化。
+对于具有许多目的地的无连接套接字，也可以使用错误队列访问给定目的地的新 MTU (请参见 \fBIP_RECVERR\fP).  每个传入的 MTU
+更新都会有一个新错误排队。
+.IP
+当 MTU 发现正在进行时，来自数据报套接字的初始数据包可能会丢掉。 使用 UDP 的应用程序应该意识到这一点，而不是将其考虑到它们的数据包重传策略中。
+.IP
+要在未连接的套接字上引导路径 MTU 发现过程，可以从大数据报大小 (标头长达 64 KB) 开始，并通过路径 MTU 的更新让它缩小。
+.IP
+要获得路径 MTU 的初始估计，请使用 \fBconnect\fP(2) 将数据报套接字连接到目标地址，并通过使用 \fBIP_MTU\fP 选项调用
+\fBgetsockopt\fP(2) 来检索 MTU。
+.IP
+通过设置 \fBIP_PMTUDISC_PROBE\fP 的值 (自 Linux 2.6.22 起可用)，可以使用 \fBSOCK_DGRAM\fP 或
+\fBSOCK_RAW\fP 套接字实现 RFC 4821 MTU 探测。 这对于 \fBtracepath\fP(8) 等希望故意发送大于观察到的路径 MTU
+的探测数据包的诊断工具也特别有用。
+.TP 
+\fBIP_MULTICAST_ALL\fP (since Linux 2.6.31)
+此选项可用于修改多播消息到绑定到通配符 \fBINADDR_ANY\fP 地址的套接字的传递策略。 参数是一个布尔整数 (默认为 1)。 如果设置为
+1，则套接字将接收来自整个系统上已全局加入的所有组的消息。 否则，它将仅从已显式加入 (例如通过 \fBIP_ADD_MEMBERSHIP\fP 选项)
+在此特定套接字上的组传递消息。
+.TP 
+\fBIP_MULTICAST_IF\fP (since Linux 1.2)
+.\" net: IP_MULTICAST_IF setsockopt now recognizes struct mreq
+.\" Commit: 3a084ddb4bf299a6e898a9a07c89f3917f0713f7
+为多播套接字设置本地设备。 \fBsetsockopt\fP(2) 的参数是 \fIip_mreqn\fP 或 (自 Linux 3.5 起) \fIip_mreq\fP
+结构体，类似于 \fBIP_ADD_MEMBERSHIP\fP，或 \fIin_addr\fP 结构体。 (内核根据在 \fIoptlen\fP.)
+中传递的大小来确定正在传递哪个结构体对于 \fBgetsockopt\fP(2)，参数是 \fIin_addr\fP 结构体。
+.TP 
+\fBIP_MULTICAST_LOOP\fP (since Linux 1.2)
+设置或读取一个布尔整数参数，确定发送的多播数据包是否应该环回本地套接字。
+.TP 
+\fBIP_MULTICAST_TTL\fP (since Linux 1.2)
+设置或读取此套接字的传出多播数据包的生存时间值。 为多播数据包设置尽可能小的 TTL 非常重要。 默认值为
+1，这意味着除非用户程序明确请求，否则多播数据包不会离开本地网络。 参数是一个整数。
+.TP 
+\fBIP_NODEFRAG\fP (since Linux 2.6.36)
+如果启用 (参数非零)，则在 netfilter 层中禁用传出数据包的重组。 参数是一个整数。
+.IP
+此选项仅对 \fBSOCK_RAW\fP 套接字有效。
+.TP 
+\fBIP_OPTIONS\fP (since Linux 2.0)
+.\" Precisely: since Linux 1.3.30
+设置或获取要从该套接字发送的每个数据包的 IP 选项。 参数是指向包含选项和选项长度的内存缓冲区的指针。 \fBsetsockopt\fP(2)
+调用设置与套接字关联的 IP 选项。 IPv4 的最大选项大小为 40 字节。 有关允许的选项，请参见 RFC\791。 当
+\fBSOCK_STREAM\fP 套接字的初始连接请求包中包含 IP 选项时，IP 选项将自动设置为初始包中的选项，并将路由标头反转。
+连接建立后，传入的数据包不允许更改选项。 默认情况下禁用所有传入源路由选项的处理，可以使用 \fIaccept_source_route\fP
+\fI/proc\fP 接口启用。 其他选项如时间戳仍然被处理。 对于数据报套接字，IP 选项只能由本地用户设置。 使用 \fBIP_OPTIONS\fP 调用
+\fBgetsockopt\fP(2) 会将用于发送的当前 IP 选项放入提供的缓冲区中。
+.TP 
+\fBIP_PASSSEC\fP (since Linux 2.6.17)
+.\" commit 2c7946a7bf45ae86736ab3b43d0085e43947945c
+如果在发送和接收主机上配置了标记为 IPSEC 或 NetLabel 的选项，则此选项允许在使用 \fBrecvmsg\fP(2) 检索的
+\fBSCM_SECURITY\fP 类型的辅助消息中接收对等套接字的安全上下文。 此选项仅支持 UDP 套接字; 对于 TCP 或 SCTP
+套接字，请参见下面 \fBSO_PEERSEC\fP 选项的说明。
+.IP
+作为 \fBsetsockopt\fP(2) 的参数给出并作为 \fBgetsockopt\fP(2) 的结果返回的值是一个整数布尔标志。
+.IP
+\fBSCM_SECURITY\fP 辅助消息中返回的安全上下文与下面 \fBSO_PEERSEC\fP 选项下描述的格式相同。
+.IP
+Note: 为 \fBIP_PASSSEC\fP 套接字选项重用 \fBSCM_SECURITY\fP 消息类型可能是一个错误，因为其他 IP 控制消息在 IP
+名称空间中使用它们自己的编号方案，并且经常使用套接字选项值作为消息类型。 目前没有冲突，因为与 \fBSCM_SECURITY\fP 具有相同值的 IP
+选项是 \fBIP_HDRINCL\fP，并且它从未用于控制消息类型。
+.TP 
+\fBIP_PKTINFO\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.68
+传递包含 \fIpktinfo\fP 结构体的 \fBIP_PKTINFO\fP 辅助消息，该消息提供有关传入数据包的一些信息。 这仅适用于面向数据报的套接字。
+参数是一个标志，它告诉套接字是否应该传递 \fBIP_PKTINFO\fP 消息。 消息本身只能是 sent/retrieved，作为控制消息，带有使用
+\fBrecvmsg\fP(2) 或 \fBsendmsg\fP(2) 的数据包。
+.IP
+.in +4n
+.EX
+struct in_pktinfo {
+    unsigned int   ipi_ifindex;  /* Interface index */
+    struct in_addr ipi_spec_dst; /* Local address */ 
+    struct in_addr ipi_addr;     /* Header Destination
+                                    address */
+};
+.EE
+.in
+.IP
+.\" This field is grossly misnamed
+\fIipi_ifindex\fP 是接收数据包的接口的唯一索引。 \fIipi_spec_dst\fP 是包的本地地址，\fIipi_addr\fP
+是包头中的目的地址。 如果 \fBIP_PKTINFO\fP 传递给 \fBsendmsg\fP(2) 而 \fIipi_spec_dst\fP
+不为零，则它用作路由表查找和设置 IP 源路由选项的本地源地址。 当 \fIipi_ifindex\fP 不为零时，索引指定的接口的主本地地址将覆盖
+\fIipi_spec_dst\fP 以进行路由表查找。
+.TP 
+\fBIP_RECVERR\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.15
+.\" or SOL_IP on Linux
+启用扩展的可靠错误消息传递。 在数据报套接字上启用时，所有生成的错误都将在每个套接字错误队列中排队。 当用户从套接字操作中收到错误时，可以通过调用设置了
+\fBMSG_ERRQUEUE\fP 标志的 \fBrecvmsg\fP(2) 来接收错误。 描述错误的 \fIsock_extended_err\fP 结构体将在类型
+\fBIP_RECVERR\fP 和级别 \fBIPPROTO_IP\fP 的辅助消息中传递。 这对于未连接的套接字上的可靠错误处理很有用。
+错误队列的接收数据部分包含错误数据包。
+.IP
+\fBIP_RECVERR\fP 控制消息包含一个 \fIsock_extended_err\fP 结构体:
+.IP
+.in +4n
+.EX
+#define SO_EE_ORIGIN_NONE    0
+#define SO_EE_ORIGIN_LOCAL   1
+#define SO_EE_ORIGIN_ICMP    2
+#define SO_EE_ORIGIN_ICMP6   3
+
+struct sock_extended_err {
+    uint32_t ee_errno;   /* error number */
+    uint8_t  ee_origin;  /* where the error originated */
+    uint8_t  ee_type;    /* type */
+    uint8_t  ee_code;    /* code */
+    uint8_t  ee_pad;
+    uint32_t ee_info;    /* additional information */
+    uint32_t ee_data;    /* other data */
+    /* More data may follow */
+};
+
+struct sockaddr *SO_EE_OFFENDER(struct sock_extended_err *);
+.EE
+.in
+.IP
+\fIee_errno\fP 包含排队错误的 \fIerrno\fP 编号。 \fIee_origin\fP 是错误来源的来源代码。 其他字段是特定于协议的。 宏
+\fBSO_EE_OFFENDER\fP 返回一个指针，指向网络对象的地址，在给定辅助消息的指针的情况下，错误源自该网络对象。 如果该地址未知，则
+\fIsockaddr\fP 的 \fIsa_family\fP 成员包含 \fBAF_UNSPEC\fP，\fIsockaddr\fP 的其他字段未定义。
+.IP
+.\" FIXME . Is it a good idea to document that? It is a dubious feature.
+.\" On
+.\" .B SOCK_STREAM
+.\" sockets,
+.\" .B IP_RECVERR
+.\" has slightly different semantics. Instead of
+.\" saving the errors for the next timeout, it passes all incoming
+.\" errors immediately to the user.
+.\" This might be useful for very short-lived TCP connections which
+.\" need fast error handling. Use this option with care:
+.\" it makes TCP unreliable
+.\" by not allowing it to recover properly from routing
+.\" shifts and other normal
+.\" conditions and breaks the protocol specification.
+IP 使用 \fIsock_extended_err\fP 结构体如下: 对于作为 ICMP 数据包接收到的错误，\fIee_origin\fP 设置为
+\fBSO_EE_ORIGIN_ICMP\fP，对于本地生成的错误，设置为 \fBSO_EE_ORIGIN_LOCAL\fP。 应忽略未知值。 \fIee_type\fP
+和 \fIee_code\fP 是根据 ICMP 标头的类型和代码字段设置的。 \fIee_info\fP 包含为 \fBEMSGSIZE\fP 错误发现的 MTU。
+该消息还包含导致错误的 \fIsockaddr_in of the node\fP，可以使用 \fBSO_EE_OFFENDER\fP 宏访问。
+\fBSO_EE_OFFENDER\fP 地址的 \fIsin_family\fP 字段在未知来源时为 \fBAF_UNSPEC\fP。
+当错误源自网络时，在套接字上启用并包含在错误数据包中的所有 IP 选项 (\fBIP_OPTIONS\fP、\fBIP_TTL\fP 等都作为控制消息传递。
+导致错误的数据包的有效，载荷，作为正常有效，载荷，返回。 请注意，TCP 没有错误队列; \fBSOCK_STREAM\fP 套接字上不允许使用
+\fBMSG_ERRQUEUE\fP。 \fBIP_RECVERR\fP 对 TCP 有效，但所有的错误都是由 socket 函数返回或 \fBSO_ERROR\fP
+只返回。
+.IP
+对于原始套接字，\fBIP_RECVERR\fP 允许将所有收到的 ICMP 错误传递给应用程序，否则仅在连接的套接字上报告错误
+.IP
+它设置或检索一个整数布尔标志。 \fBIP_RECVERR\fP 默认关闭。
+.TP 
+\fBIP_RECVOPTS\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.15
+在 \fBIP_OPTIONS\fP 控制消息中将所有传入 IP 选项传递给用户。 路由标头和其他选项已经为本地主机填写。 不支持
+\fBSOCK_STREAM\fP 套接字。
+.TP 
+\fBIP_RECVORIGDSTADDR\fP (since Linux 2.6.29)
+.\" commit e8b2dfe9b4501ed0047459b2756ba26e5a940a69
+此布尔选项启用 \fBrecvmsg\fP(2) 中的 \fBIP_ORIGDSTADDR\fP 辅助消息，其中内核返回正在接收的数据报的原始目标地址。
+辅助消息包含 \fIstruct sockaddr_in\fP。
+.TP 
+\fBIP_RECVTOS\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.68
+如果启用，\fBIP_TOS\fP 辅助消息将与传入数据包一起传递。 它包含一个字节，指定包头的 Service/Precedence 字段类型。
+需要一个布尔整数标志。
+.TP 
+\fBIP_RECVTTL\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.68
+设置此标志后，传递 \fBIP_TTL\fP 控制消息，其中接收到的数据包的生存时间字段为 32 位整数。 不支持 \fBSOCK_STREAM\fP 套接字。
+.TP 
+\fBIP_RETOPTS\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.15
+与 \fBIP_RECVOPTS\fP 相同，但返回未处理的原始选项，其中未为此跃点填写时间戳和路由记录选项。
+.TP 
+\fBIP_ROUTER_ALERT\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.68
+传递所有将 IP 路由器警报选项设置为此套接字的待转发数据包。 仅对原始套接字有效。 例如，这对于用户空间 RSVP 守护进程很有用。
+被窃取的数据包不被内核转发; 再次寄出是用户的责任。 忽略套接字绑定，此类数据包仅按协议过滤。 需要一个整数标志。
+.TP 
+\fBIP_TOS\fP (since Linux 1.0)
+.\" FIXME elaborate on this
+.\" The priority can also be set in a protocol-independent way by the
+.\" .RB ( SOL_SOCKET ", " SO_PRIORITY )
+.\" socket option (see
+.\" .BR socket (7)).
+设置或接收与源自此套接字的每个 IP 数据包一起发送的服务类型 (TOS) 字段。 它用于确定网络上数据包的优先级。 TOS 是一个字节。
+定义了一些标准的 TOS 标志: \fBIPTOS_LOWDELAY\fP 用于最小化交互式流量的延迟，\fBIPTOS_THROUGHPUT\fP
+用于优化吞吐量，\fBIPTOS_RELIABILITY\fP 用于优化可靠性，\fBIPTOS_MINCOST\fP 应该用于 "filler
+data"，其中慢速传输无关紧要。 最多可以指定这些 TOS 值之一。 其他位无效，应清零。 默认情况下，Linux 首先发送
+\fBIPTOS_LOWDELAY\fP 数据报，但具体行为取决于配置的排队规则。 一些高优先级可能需要超级用户权限 (\fBCAP_NET_ADMIN\fP
+能力)。
+.TP 
+\fBIP_TRANSPARENT\fP (since Linux 2.6.24)
+.\" commit f5715aea4564f233767ea1d944b2637a5fd7cd2e
+.\"     This patch introduces the IP_TRANSPARENT socket option: enabling that
+.\"     will make the IPv4 routing omit the non-local source address check on
+.\"     output. Setting IP_TRANSPARENT requires NET_ADMIN capability.
+.\" http://lwn.net/Articles/252545/
+设置此布尔选项可在此套接字上启用透明代理。 此套接字选项允许调用应用程序绑定到非本地 IP 地址，并作为客户端和服务器运行，外部地址作为本地端点。
+注意: 这要求路由设置为通过 TProxy box 路由到外部地址的数据包 (即托管应用程序的系统使用 \fBIP_TRANSPARENT\fP
+套接字选项)。 启用此套接字选项需要超级用户权限 (\fBCAP_NET_ADMIN\fP 能力)。
+.IP
+使用 iptables TPROXY 目标的 TProxy 重定向也需要在重定向套接字上设置此选项。
+.TP 
+\fBIP_TTL\fP (since Linux 1.0)
+设置或检索从该套接字发送的每个数据包中使用的当前生存时间字段。
+.TP 
+\fBIP_UNBLOCK_SOURCE\fP (since Linux 2.4.22 / 2.5.68)
+取消阻止先前阻止的多播源。 当给定源未被阻止时返回 \fBEADDRNOTAVAIL\fP。
+.IP
+参数是 \fBIP_ADD_SOURCE_MEMBERSHIP\fP 下描述的 \fIip_mreq_source\fP 结构体。
+.TP 
+\fBSO_PEERSEC\fP (since Linux 2.6.17)
+如果在发送主机和接收主机上都配置了标有 IPSEC 或 NetLabel 标签，则此只读套接字选项返回连接到此套接字的对等套接字的安全上下文。
+默认情况下，这将与创建对等套接字的进程的安全上下文相同，除非被策略或具有所需权限的进程覆盖。
+.IP
+\fBgetsockopt\fP(2) 的参数是指向指定长度 (以字节为单位) 的缓冲区的指针，安全上下文字符串将被复制到该缓冲区中。
+如果缓冲区长度小于安全上下文字符串的长度，则 \fBgetsockopt\fP(2) 返回 \-1，将 \fIerrno\fP 设置为 \fBERANGE\fP，并通过
+\fIoptlen\fP 返回所需的长度。 调用者最初应至少为缓冲区分配 \fBNAME_MAX\fP 字节，但不能保证足够。
+将缓冲区大小调整为返回的长度并可能需要重试。
+.IP
+安全上下文字符串可能在返回的长度中包含终止空字符，但不保证这样做: 安全上下文 "foo" 可能表示为长度为 3 的 {'f','o','o'}
+或长度为 4 的 {'f','o','o','\e0'}，它们被认为是可互换的。 该字符串是可打印的，不包含非终止空字符，并且采用未指定的编码
+(特别是，不保证是 ASCII 或 UTF\-8)。
+.IP
+.\" commit 2c7946a7bf45ae86736ab3b43d0085e43947945c
+.\" commit d452930fd3b9031e59abfeddb2fa383f1403d61a
+自 Linux 2.6.17 用于 TCP 套接字，Linux 4.17 用于 SCTP 套接字以来，支持将此选项用于 \fBAF_INET\fP
+地址系列中的套接字。
+.IP
+.\"
+对于 SELinux，NetLabel 仅通过线路传输对等点安全上下文的 MLS 部分，将其余安全上下文默认为 netmsg 初始安全标识符 (SID)
+策略中定义的值。 但是，可以将 NetLabel 配置为通过回环传递完整的安全上下文。 带标签的 IPSEC 始终传递完整的安全上下文作为建立安全关联
+(SA) 的一部分，并根据每个数据包的关联查找它们。
+.SS "/proc interfaces"
+.\" FIXME As at 2.6.12, 14 Jun 2005, the following are undocumented:
+.\"  ip_queue_maxlen
+.\"  ip_conntrack_max
+.\"
+IP 协议支持一组 \fI/proc\fP 接口来配置一些全局参数。 可以通过读取或写入目录 \fI/proc/sys/net/ipv4/\fP
+中的文件来访问这些参数。 描述为 \fIBoolean\fP 的接口采用整数值，非零值 ("true") 表示启用相应的选项，零值 ("false")
+表示禁用该选项。
+.TP 
+\fIip_always_defrag\fP (Boolean; since Linux 2.2.13)
+[New with Linux 2.2.13; in earlier kernel versions this feature was
+controlled at compile time by the \fBCONFIG_IP_ALWAYS_DEFRAG\fP option; this
+option is not present in Linux 2.4.x and later]
+.IP
+当启用此布尔标志 (不等于 0) 时，传入片段 (当源和目标之间的某个主机认为数据包太大并将其切成碎片时出现的 IP 数据包部分) 将在处理之前重新组装
+(defragmented)，即使如果它们即将被转发。
+.IP
+仅当运行作为您网络的唯一链接的防火墙或透明代理时才启用; 永远不要将它用于普通路由器或主机。
+否则，如果碎片通过不同的链接传输，碎片化的通信可能会受到干扰。 碎片整理也有很大的内存和 CPU 时间成本。
+.IP
+.\"
+当配置伪装或透明代理时，这会自动打开。
+.TP 
+\fIip_autoconfig\fP (since Linux 2.2 to Linux 2.6.17)
+.\" Precisely: since Linux 2.1.68
+.\" FIXME document ip_autoconfig
+.\"
+没有记录。
+.TP 
+\fIip_default_ttl\fP (integer; default: 64; since Linux 2.2)
+.\" Precisely: since Linux 2.1.15
+.\"
+设置传出数据包的默认生存时间值。 可以使用 \fBIP_TTL\fP 选项对每个套接字进行更改。
+.TP 
+\fIip_dynaddr\fP (Boolean; default: disabled; since Linux 2.0.31)
+.\"
+在接口地址更改时启用动态套接字地址和伪装条目重写。 这对于更改 IP 地址的拨号界面很有用。 0 表示不重写，1 表示打开它，2 表示启用详细模式。
+.TP 
+\fIip_forward\fP (Boolean; default: disabled; since Linux 1.2)
+.\"
+使用布尔标志启用 IP 转发。 IP 转发也可以在每个接口的基础上设置。
+.TP 
+\fIip_local_port_range\fP (since Linux 2.2)
+.\" Precisely: since Linux 2.1.68
+此文件包含两个整数，它们定义分配给未明确绑定到端口号的套接字的默认本地端口范围，即用于 \fIephemeral ports\fP 的范围。
+在以下情况下，将临时端口分配给套接字:
+.RS
+.IP \[bu] 3
+调用 \fBbind\fP(2) 时，socket 地址中的端口号指定为 0;
+.IP \[bu]
+\fBlisten\fP(2) 在之前未绑定的流套接字上调用;
+.IP \[bu]
+在先前未绑定的套接字上调用了 \fBconnect\fP(2);
+.IP \[bu]
+在先前未绑定的数据报套接字上调用 \fBsendto\fP(2)。
+.RE
+.IP
+临时端口的分配从 \fIip_local_port_range\fP 中的第一个数字开始，以第二个数字结束。 如果 ephemeral ports
+的范围用完了，那么相关的系统调用会返回一个错误 (但见 BUGS)。
+.IP
+.\"
+请注意，\fIip_local_port_range\fP 中的端口范围不应与伪装使用的端口冲突 (尽管已处理大小写)。
+此外，任意选择可能会导致某些防火墙数据包过滤器出现问题，这些过滤器会对正在使用的本地端口做出假设。 第一个数字应至少大于 1024，或更好，大于
+4096，以避免与众所周知的端口发生冲突并最大限度地减少防火墙问题。
+.TP 
+\fIip_no_pmtu_disc\fP (Boolean; default: disabled; since Linux 2.2)
+.\" Precisely: 2.1.15
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+如果启用，默认情况下不要为 TCP 套接字执行路径 MTU 发现。 如果错误配置的防火墙 (丢弃所有 ICMP 数据包) 或错误配置的接口
+(例如，两端不同意 MTU 的点对点链路) 在路径上，路径 MTU 发现可能会失败。 最好修复路径上损坏的路由器，而不是全局关闭路径 MTU
+发现，因为不这样做会给网络带来高成本。
+.TP 
+\fIip_nonlocal_bind\fP (Boolean; default: disabled; since Linux 2.4)
+.\" Precisely: patch-2.4.0-test10
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+如果设置，则允许进程 \fBbind\fP(2) 到非本地 IP 地址，这可能非常有用，但可能会破坏某些应用程序。
+.TP 
+\fIip6frag_time\fP (integer; default: 30)
+.\"
+.\" The following is from Linux 2.6.12: Documentation/networking/ip-sysctl.txt
+在内存中保留 IPv6 片段的时间 (以秒为单位)。
+.TP 
+\fIip6frag_secret_interval\fP (integer; default: 600)
+IPv6 片段的哈希秘密 (或哈希秘密的生命周期) 的再生间隔 (以秒为单位)。
+.TP 
+\fIipfrag_high_thresh\fP (integer), \fIipfrag_low_thresh\fP (integer)
+如果排队的 IP 分片数量达到 \fIipfrag_high_thresh\fP，则将队列修剪为 \fIipfrag_low_thresh\fP。
+包含一个带字节数的整数。
+.TP 
+\fIneigh/*\fP
+.\" FIXME Document the conf/*/* interfaces
+.\"
+.\" FIXME Document the route/* interfaces
+请参见 \fBarp\fP(7)。
+.SS Ioctls
+\fBsocket\fP(7) 中描述的所有 ioctl 都适用于 \fBip\fP。
+.PP
+.\" FIXME Add a discussion of multicasting
+\fBnetdevice\fP(7) 中描述了用于配置泛型设备参数的 ioctls。
+.SH ERRORS
+.\" FIXME document all errors.
+.\"     We should really fix the kernels to give more uniform
+.\"     error returns (ENOMEM vs ENOBUFS, EPERM vs EACCES etc.)
+.TP 
+\fBEACCES\fP
+用户试图在没有必要权限的情况下执行操作。 这些包括: 在没有设置 \fBSO_BROADCAST\fP 标志的情况下将数据包发送到广播地址; 通过
+\fIprohibit\fP 路由发送数据包; 在没有超级用户权限的情况下修改防火墙设置 (\fBCAP_NET_ADMIN\fP 能力) ;
+绑定到没有超级用户权限的特权端口 (\fBCAP_NET_BIND_SERVICE\fP 功能)。
+.TP 
+\fBEADDRINUSE\fP
+试图绑定到一个已在使用的地址。
+.TP 
+\fBEADDRNOTAVAIL\fP
+请求了不存在的接口或请求的源地址不是本地的。
+.TP 
+\fBEAGAIN\fP
+对非阻塞套接字的操作会阻塞。
+.TP 
+\fBEALREADY\fP
+非阻塞套接字上的连接操作已在进行中。
+.TP 
+\fBECONNABORTED\fP
+连接在 \fBaccept\fP(2) 期间关闭。
+.TP 
+\fBEHOSTUNREACH\fP
+没有有效的路由表条目匹配目标地址。 此错误可能是由来自远程路由器或本地路由表的 ICMP 消息引起的。
+.TP 
+\fBEINVAL\fP
+传递的参数无效。 对于发送操作，这可能是由发送到 \fIblackhole\fP 路由引起的。
+.TP 
+\fBEISCONN\fP
+在已连接的套接字上调用了 \fBconnect\fP(2)。
+.TP 
+\fBEMSGSIZE\fP
+数据报大于路径上的 MTU，无法分段。
+.TP 
+\fBENOBUFS\fP, \fBENOMEM\fP
+可用内存不足。 这通常意味着内存分配受限于套接字缓冲区限制，而不是受系统内存限制，但这并不是 100% 一致的。
+.TP 
+\fBENOENT\fP
+在没有数据包到达的套接字上调用了 \fBSIOCGSTAMP\fP。
+.TP 
+\fBENOPKG\fP
+未配置内核子系统。
+.TP 
+\fBENOPROTOOPT\fP and \fBEOPNOTSUPP\fP
+传递了无效的套接字选项。
+.TP 
+\fBENOTCONN\fP
+该操作仅在连接的套接字上定义，但套接字未连接。
+.TP 
+\fBEPERM\fP
+用户无权设置高优先级、更改配置或向请求的进程或组发送信号。
+.TP 
+\fBEPIPE\fP
+连接被另一端意外关闭或关闭。
+.TP 
+\fBESOCKTNOSUPPORT\fP
+未配置套接字或请求了未知的套接字类型。
+.PP
+覆盖协议可能会产生其他错误; 请参见 \fBtcp\fP(7)、\fBraw\fP(7)、\fBudp\fP(7) 和 \fBsocket\fP(7)。
+.SH NOTES
+.\" IP_XFRM_POLICY is Linux-specific
+.\" IP_IPSEC_POLICY is a nonstandard extension, also present on some BSDs
+\fBIP_FREEBIND\fP、\fBIP_MSFILTER\fP、\fBIP_MTU\fP、\fBIP_MTU_DISCOVER\fP、\fBIP_RECVORIGDSTADDR\fP、\fBIP_PASSSEC\fP、\fBIP_PKTINFO\fP、\fBIP_RECVERR\fP、\fBIP_ROUTER_ALERT\fP
+和 \fBIP_TRANSPARENT\fP 是特定于 Linux 的。
+.PP
+使用 \fBSO_BROADCAST\fP 选项时要非常小心 \-\- 它在 Linux 中没有特权。 粗心的广播很容易使网络，重载。
+对于新的应用协议，最好使用多播组而不是广播。 不鼓励广播。
+.PP
+其他一些 BSD 套接字实现提供 \fBIP_RCVDSTADDR\fP 和 \fBIP_RECVIF\fP 套接字选项来获取目标地址和接收数据报的接口。
+Linux 具有用于相同任务的更通用的 \fBIP_PKTINFO\fP。
+.PP
+一些 BSD 套接字实现也提供 \fBIP_RECVTTL\fP 选项，但是类型为 \fBIP_RECVTTL\fP 的辅助消息会随传入数据包一起传递。 这与
+Linux 中使用的 \fBIP_TTL\fP 选项不同。
+.PP
+使用 \fBSOL_IP\fP 套接字选项级别不可移植; 基于 BSD 的栈使用 \fBIPPROTO_IP\fP 级别。
+.PP
+\fBINADDR_ANY\fP (0.0.0.0) 和 \fBINADDR_BROADCAST\fP (255.255.255.255) 是字节顺序中立的。
+这意味着 \fBhtonl\fP(3) 对它们没有影响。
+.SS Compatibility
+为了与 Linux 2.0 兼容，过时的 \fBsocket(AF_INET, SOCK_PACKET, \fP\fIprotocol\fP\fB)\fP
+语法仍然支持打开 \fBpacket\fP(7) 套接字。 这已被弃用，应由 \fBsocket(AF_PACKET, SOCK_RAW, \fP\fIprotocol\fP\fB)\fP 代替。 主要区别是用于泛型链路层信息的新 \fIsockaddr_ll\fP 地址结构体取代了旧的
+\fBsockaddr_pkt\fP。
+.SH BUGS
+有太多不一致的错误值。
+.PP
+用于诊断临时端口范围耗尽的错误在可以分配临时端口的各种系统调用
+(\fBconnect\fP(2)、\fBbind\fP(2)、\fBlisten\fP(2)、\fBsendto\fP(2)) 中有所不同。
+.PP
+.\" .PP
+.\" Some versions of glibc forget to declare
+.\" .IR in_pktinfo .
+.\" Workaround currently is to copy it into your program from this man page.
+没有描述用于配置 IP 特定接口选项和 ARP 表的 ioctls。
+.PP
+.\" .SH AUTHORS
+.\" This man page was written by Andi Kleen.
+\fBrecvmsg\fP(2) 在 \fImsg_name\fP 中用 \fBMSG_ERRQUEUE\fP 接收原始目标地址在某些 Linux 2.2
+内核中不起作用。
+.SH "SEE ALSO"
+\fBrecvmsg\fP(2), \fBsendmsg\fP(2), \fBbyteorder\fP(3), \fBcapabilities\fP(7),
+\fBicmp\fP(7), \fBipv6\fP(7), \fBnetdevice\fP(7), \fBnetlink\fP(7), \fBraw\fP(7),
+\fBsocket\fP(7), \fBtcp\fP(7), \fBudp\fP(7), \fBip\fP(8)
+.PP
+内核源文件 \fIDocumentation/networking/ip\-sysctl.txt\fP.
+.PP
+RFC\791 用于原始 IP 规范。 RFC\1122 用于 IPv4 主机要求。 RFC\1812 用于 IPv4 路由器要求。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

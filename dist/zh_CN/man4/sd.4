@@ -1,0 +1,92 @@
+.\" -*- coding: UTF-8 -*-
+.\" sd.4
+.\" Copyright 1992 Rickard E. Faith (faith@cs.unc.edu)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sd 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+sd\-SCSI 磁盘驱动器的驱动程序
+.SH SYNOPSIS
+.nf
+\fB#include <linux/hdreg.h>        \fP/* for HDIO_GETGEO */
+\fB#include <linux/fs.h>           \fP/* for BLKGETSIZE and BLKRRPART */
+.fi
+.SH CONFIGURATION
+块设备名称具有以下形式: \fBsd\fP\fIlp,\fP，其中 \fIl\fP 是表示物理驱动器的字母，\fIp\fP 是表示该物理驱动器上的分区的数字。
+通常，当设备对应于整个驱动器时，分区号 \fIp\fP 将被省略。
+.PP
+SCSI 磁盘的主设备号为 8，次设备号的形式为 (16 * \fIdrive_number\fP) + \fIpartition_number\fP，其中
+\fIdrive_number\fP 是物理驱动器按检测顺序排列的编号，\fIpartition_number\fP 如下:
+.IP \[bu] 3
+分区 0 是整个驱动器
+.IP \[bu]
+分区 1\[en] 4 是 DOS "primary" 分区
+.IP \[bu]
+分区 5\[en] 8 是 DOS "extended" (或 "logical") 分区
+.PP
+例如，\fI/dev/sda\fP 将有 major 8，minor 0，并且将引用系统中所有第一个 SCSI 驱动器; \fI/dev/sdb3\fP 的主分区为
+8，次分区为 19，表示系统中第二个 SCSI 驱动器上的第三个 DOS "primary" 分区。
+.PP
+目前只提供块设备。 原始设备尚未实现。
+.SH DESCRIPTION
+提供以下 \fIioctl\fPs:
+.TP 
+\fBHDIO_GETGEO\fP
+返回以下结构体中的 BIOS 磁盘参数:
+.PP
+.in +4n
+.EX
+struct hd_geometry {
+    unsigned char  heads;
+    unsigned char  sectors;
+    unsigned short cylinders;
+    unsigned long  start;
+};
+.EE
+.in
+.IP
+指向此结构体的指针作为 \fBioctl\fP(2) 参数传递。
+.IP
+参数中返回的信息是驱动器 \fIas understood by DOS!\fP 的磁盘几何结构，此几何结构是 \fInot\fP 驱动器的物理几何结构。
+但是，在构建驱动器的分区表时会用到它，并且需要它来方便地操作 \fBfdisk\fP(1)、\fBefdisk\fP(1) 和 \fBlilo\fP(1)。
+如果几何信息不可用，则所有参数都将返回零。
+.TP 
+\fBBLKGETSIZE\fP
+返回扇区中的设备大小。 \fBioctl\fP(2) 参数应该是指向 \fIlong\fP 的指针。
+.TP 
+\fBBLKRRPART\fP
+强制重新读取 SCSI 磁盘分区表。 不需要参数。
+.IP
+还支持 SCSI \fBioctl\fP(2) 操作。 如果需要 \fBioctl\fP(2) 参数，并且它为 NULL，则 \fBioctl\fP(2)
+将失败并显示错误 \fBEINVAL\fP。
+.SH FILES
+.TP 
+\fI/dev/sd[a\-h]\fP
+整个装置
+.TP 
+\fI/dev/sd[a\-h][0\-8]\fP
+单独的块分区
+.\".SH SEE ALSO
+.\".BR scsi (4)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

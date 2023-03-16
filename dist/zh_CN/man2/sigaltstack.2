@@ -1,0 +1,231 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2001, 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" aeb, various minor fixes
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigaltstack 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+sigaltstack \- 设置或者获取信号栈上下文
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint sigaltstack(const stack_t *_Nullable restrict \fP\fIss\fP\fB,\fP
+\fB                stack_t *_Nullable restrict \fP\fIold_ss\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigaltstack\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBsigaltstack\fP() 允许线程定义新的备用信号栈或者检索现有备用信号栈的状态。 如果信号处理程序的建立 (请参见
+\fBsigaction\fP(2)) 请求它)，则在信号处理程序的执行期间使用备用信号栈。
+.PP
+使用备用信号栈的正常事件顺序如下:
+.TP  3
+1.
+分配一个内存区域用于备用信号栈。
+.TP 
+2.
+使用 \fBsigaltstack\fP() 通知系统备用信号栈的存在和位置。
+.TP 
+3.
+当使用 \fBsigaction\fP(2) 建立信号处理程序时，通过指定 \fBSA_ONSTACK\fP 标志通知系统应该在备用信号栈上执行信号处理程序。
+.PP
+\fIss\fP 参数用于指定新的备用信号栈，而 \fIold_ss\fP 参数用于检索有关当前建立的信号栈的信息。
+如果我们只想执行这些任务中的一个，那么可以将另一个参数指定为 NULL。
+.PP
+用来打这个函数的参数的 \fIstack_t\fP 类型定义如下:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    void  *ss_sp;     /* Base address of stack */
+    int    ss_flags;  /* Flags */
+    size_t ss_size;   /* Number of bytes in stack */
+} stack_t;
+.EE
+.in
+.PP
+建立一个新的交替信号栈，这个结构体的字段设置如下:
+.TP 
+\fIss.ss_flags\fP
+该字段包含 0 或以下标志:
+.RS
+.TP 
+\fBSS_AUTODISARM\fP (since Linux 4.7)
+.\" commit 2a74213838104a41588d86fd5e8d344972891ace
+.\" See tools/testing/selftests/sigaltstack/sas.c in kernel sources
+在进入信号处理程序时清除备用信号栈设置。 当信号处理程序返回时，将恢复先前的备用信号栈设置。
+.IP
+添加此标志是为了安全地从带有 \fBswapcontext\fP(3) 的信号处理程序切换出去。 没有这个标志，随后处理的信号将破坏切换信号处理程序的状态。
+在不支持此标志的内核上，提供此标志时 \fBsigaltstack\fP() 会失败并显示错误 \fBEINVAL\fP。
+.RE
+.TP 
+\fIss.ss_sp\fP
+该字段指定栈的起始地址。 当在备用栈上调用信号处理程序时，内核会自动将 \fIss.ss_sp\fP 中给出的地址与底层硬件体系结构的合适地址边界对齐。
+.TP 
+\fIss.ss_size\fP
+该字段指定栈的大小。 常量 \fBSIGSTKSZ\fP 被定义为足以满足备用信号栈的通常大小要求，而常量 \fBMINSIGSTKSZ\fP
+定义了执行信号处理程序所需的最小大小。
+.PP
+要禁用现有栈，请将 \fIss.ss_flags\fP 指定为 \fBSS_DISABLE\fP。 在这种情况下，内核会忽略 \fIss.ss_flags\fP
+中的任何其他标志和 \fIss\fP 中的其余字段。
+.PP
+如果 \fIold_ss\fP 不为 NULL，则它用于返回有关在调用到 \fBsigaltstack\fP() 之前有效的备用信号栈的信息。
+\fIold_ss.ss_sp\fP 和 \fIold_ss.ss_size\fP 字段返回该栈的起始地址和大小。 \fIold_ss.ss_flags\fP
+可能会返回以下任一值:
+.TP 
+\fBSS_ONSTACK\fP
+该线程当前正在备用信号栈上执行。 (请注意，如果线程当前正在其上执行，则无法更改备用信号栈。)
+.TP 
+\fBSS_DISABLE\fP
+备用信号栈当前已禁用。
+.IP
+.\" FIXME Was it intended that one can set up a different alternative
+.\" signal stack in this scenario? (In passing, if one does this, the
+.\" sigaltstack(NULL, &old_ss) now returns old_ss.ss_flags==SS_AUTODISARM
+.\" rather than old_ss.ss_flags==SS_DISABLE. The API design here seems
+.\" confusing...
+或者，如果线程当前正在使用 \fBSS_AUTODISARM\fP 标志建立的备用信号栈上执行，则返回此值。 在这种情况下，使用
+\fBswapcontext\fP(3) 离开信号处理程序是安全的。 还可以使用对 \fBsigaltstack\fP() 的进一步调用来设置不同的替代信号栈。
+.TP 
+\fBSS_AUTODISARM\fP
+如上所述，备用信号栈已标记为自动解除。
+.PP
+通过将 \fIss\fP 指定为 NULL，并将 \fIold_ss\fP 指定为非 NULL 值，可以在不更改它们的情况下获取备用信号栈的当前设置。
+.SH "RETURN VALUE"
+成功时 \fBsigaltstack\fP() 返回 0，失败时返回 \-1，\fIerrno\fP 设置为指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIss\fP 或 \fIold_ss\fP 不是 NULL，而是指向进程地址空间之外的区域。
+.TP 
+\fBEINVAL\fP
+\fIss\fP 不为 NULL，并且 \fIss_flags\fP 字段包含无效标志。
+.TP 
+\fBENOMEM\fP
+新交替信号栈 \fIss.ss_size\fP 的指定大小小于 \fBMINSIGSTKSZ\fP。
+.TP 
+\fBEPERM\fP
+尝试在备用信号栈处于活动状态时更改它 (即线程已经在当前备用信号栈上执行)。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsigaltstack\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SUSv2, SVr4.
+.PP
+\fBSS_AUTODISARM\fP 标志是 Linux 扩展。
+.SH NOTES
+备用信号栈最常见的用法是处理在标准栈的可用空间耗尽时生成的 \fBSIGSEGV\fP 信号: 在这种情况下，无法在标准栈上调用 \fBSIGSEGV\fP
+的信号处理程序; 如果我们想处理它，我们必须使用备用信号栈。
+.PP
+如果线程预计它可能会耗尽其标准栈，则建立备用信号栈很有用。 这可能会发生，例如，因为栈增长得如此之大以至于它遇到了向上增长的堆，或者它达到了调用
+\fBsetrlimit(RLIMIT_STACK, &rlim)\fP 所建立的限制。 如果标准栈已用完，内核会向线程发送一个 \fBSIGSEGV\fP 信号。
+在这些情况下，捕获此信号的唯一方法是在备用信号栈上。
+.PP
+在 Linux 支持的大多数硬件架构上，栈向下增长。 \fBsigaltstack\fP() 自动考虑栈增长的方向。
+.PP
+从在备用信号栈上执行的信号处理程序调用的函数也将使用备用信号栈。 (这也适用于当线程在备用信号栈上执行时为其他信号调用的任何处理程序。)
+与标准栈不同，系统不会自动扩展备用信号栈。 超过备用信号栈的分配大小将导致不可预知的结果。
+.PP
+对 \fBexecve\fP(2) 的成功调用会删除任何现有的备用信号栈。 通过 \fBfork\fP(2) 创建的子进程继承其父进程的备用信号栈设置的副本。
+对于使用 \fBclone\fP(2) 创建的子进程也是如此，除非克隆标志包括 \fBCLONE_VM\fP 并且不包括
+\fBCLONE_VFORK\fP，在这种情况下，在父进程中建立的任何备用信号栈在子进程中都被禁用。
+.PP
+\fBsigaltstack\fP() 取代旧的 \fBsigstack\fP() 调用。 为了向后兼容，glibc 还提供了 \fBsigstack\fP()。
+所有新应用程序都应使用 \fBsigaltstack\fP() 编写。
+.SS History
+4.2BSD 有一个 \fBsigstack\fP() 系统调用。 它使用了一个稍微不同的结构体，并且有一个主要的缺点，即调用者必须知道栈增长的方向。
+.SH BUGS
+.\" Linux 2.3.40
+.\" After quite a bit of web and mail archive searching,
+.\" I could not find the patch on any mailing list, and I
+.\" could find no place where the rationale for this change
+.\" explained -- mtk
+.\" See the source code of Illumos and FreeBSD, for example.
+在 Linux 2.2 和更早版本中，唯一可以在 \fIss.sa_flags\fP 中指定的标志是 \fBSS_DISABLE\fP。 在 Linux 2.4
+内核发布之前，进行了更改以允许 \fBsigaltstack\fP() 允许 \fIss.ss_flags==SS_ONSTACK\fP 具有与
+\fIss.ss_flags==0\fP 相同的含义 (即，将 \fBSS_ONSTACK\fP 包含在 \fIss.ss_flags\fP 中是一个空操作)。
+在其他实现中，根据 POSIX.1，\fBSS_ONSTACK\fP 仅作为 \fIold_ss.ss_flags\fP 中的报告标志出现。 在 Linux
+上，没有必要在 \fIss.ss_flags\fP 中指定 \fBSS_ONSTACK\fP，实际上，出于可移植性的考虑，应该避免这样做: 如果在
+\fIss.ss_flags\fP 中指定 \fBSS_ONSTACK\fP，则其他各种系统都会报错。
+.SH EXAMPLES
+以下代码段演示了使用 \fBsigaltstack\fP() (和 \fBsigaction\fP(2)) 来安装由处理程序用于 \fBSIGSEGV\fP
+信号的备用信号栈:
+.PP
+.in +4n
+.EX
+stack_t ss;
+
+ss.ss_sp = malloc(SIGSTKSZ);
+if (ss.ss_sp == NULL) {
+    perror("malloc");
+    exit(EXIT_FAILURE);
+}
+
+ss.ss_size = SIGSTKSZ;
+ss.ss_flags = 0;
+if (sigaltstack(&ss, NULL) == \-1) {
+    perror("sigaltstack");
+    exit(EXIT_FAILURE);
+}
+
+sa.sa_flags = SA_ONSTACK;
+sa.sa_handler = handler();      /* Address of a signal handler */
+sigemptyset(&sa.sa_mask);
+if (sigaction(SIGSEGV, &sa, NULL) == \-1) {
+    perror("sigaction");
+    exit(EXIT_FAILURE);
+}
+.EE
+.in
+.SH "SEE ALSO"
+\fBexecve\fP(2), \fBsetrlimit\fP(2), \fBsigaction\fP(2), \fBsiglongjmp\fP(3),
+\fBsigsetjmp\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

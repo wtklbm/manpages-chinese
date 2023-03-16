@@ -1,0 +1,192 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2011, Hewlett-Packard Development Company, L.P.
+.\" Written by Stephen M. Cameron <scameron@beardog.cce.hp.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-only
+.\"
+.\" shorthand for double quote that works everywhere.
+.ds q \N'34'
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH hpsa 4 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+hpsa \- 惠普智能阵列 SCSI 驱动程序
+.SH SYNOPSIS
+.nf
+调制探头 hpsa [ hpsa_allow_any=1 ]
+.fi
+.SH DESCRIPTION
+\fBhpsa\fP 是 HP Smart Array RAID 控制器的 SCSI 驱动程序。
+.SS Options
+\fIhpsa_allow_any=1\fP: 此选项允许驱动程序尝试在任何 HP Smart Array 硬件 RAID
+控制器上运行，即使驱动程序并未明确知道它。 这允许较新的硬件与较旧的驱动程序一起工作。 通常这用于允许从早于 RAID
+控制器的媒体安装操作系统，尽管它也可以用于启用 \fBhpsa\fP 以驱动通常由 \fBcciss\fP(4) 驱动程序处理的旧控制器。
+这些较旧的板未经测试，不支持 \fBhpsa\fP，\fBcciss\fP(4) 仍应用于这些。
+.SS "Supported hardware"
+\fBhpsa\fP 驱动程序支持以下 Smart Array 板:
+.PP
+.nf
+    智能阵列 P700M
+    智能阵列 P212
+    智能阵列 P410
+    智能阵列 P410i
+    智能阵列 P411
+    智能阵列 P812
+    智能阵列 P712m
+    智能阵列 P711m
+    StorageWorks P1210m
+.fi
+.PP
+.\" commit 135ae6edeb51979d0998daf1357f149a7d6ebb08
+从 Linux 4.14 开始，还支持以下 Smart Array 板:
+.PP
+.nf
+    智能阵列 5300
+    智能阵列 5312
+    智能阵列 532
+    智能阵列 5i
+    智能阵列 6400
+    智能阵列 6400 EM
+    智能阵列 641
+    智能阵列 642
+    智能阵列 6i
+    智能阵列 E200
+    智能阵列 E200i
+    智能阵列 E200i
+    智能阵列 E200i
+    智能阵列 E200i
+    智能阵列 E500
+    智能阵列 P400
+    智能阵列 P400i
+    智能阵列 P600
+    智能阵列 P700m
+    智能阵列 P800
+.fi
+.SS "Configuration details"
+要配置 HP Smart Array 控制器，请使用 HP Array Configuration Utility (\fBhpacuxe\fP(8) 或
+\fBhpacucli\fP(8)) 或在启动时从 Smart Array 的选项 ROM 运行的基于 ROM 的离线配置实用程序 (ORCA)。
+.SH FILES
+.SS "Device nodes"
+通过 SCSI 磁盘驱动程序 (\fBsd\fP(4)) 访问逻辑驱动器，通过 SCSI 磁带驱动程序 (\fBst\fP(4)) 访问磁带驱动器，通过 SCSI
+泛型驱动程序 (\fBsg\fP(4)) 访问 RAID 控制器，设备节点分别命名为 \fI/dev/sd*\fP、\fI/dev/st*\fP 和
+\fI/dev/sg*\fP。
+.SS "HPSA\-specific host attribute files in /sys"
+.TP 
+\fI/sys/class/scsi_host/host*/rescan\fP
+这是一个只写属性。 写入此属性将导致驱动程序扫描新的、更改的或删除的设备 (例如，热插拔磁带驱动器，或新配置或删除的逻辑驱动器等) 并通知 SCSI
+中间层检测到的任何更改。 通常，重新扫描由 HP 的阵列配置实用程序 (GUI 或命令行品种) 自动触发;
+因此，对于逻辑驱动器更改，用户通常不必使用此属性。 当热插拔设备 (如磁带驱动器) 或包含预配置逻辑驱动器的整个存储 boxes 时，此属性可能很有用。
+.TP 
+\fI/sys/class/scsi_host/host*/firmware_revision\fP
+此属性包含 Smart Array 的固件版本。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+# \fBcd /sys/class/scsi_host/host4\fP
+# \fBcat firmware_revision\fP
+7.14
+.EE
+.in
+.\"
+.SS "HPSA\-specific disk attribute files in /sys"
+.TP 
+\fI/sys/class/scsi_disk/c:b:t:l/device/unique_id\fP
+该属性包含每个逻辑驱动器的 32 位十六进制数字唯一 ID。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+# \fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+# \fBcat unique_id\fP
+600508B1001044395355323037570F77
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_disk/c:b:t:l/device/raid_level\fP
+该属性包含每个逻辑驱动器的 RAID 级别。
+.IP
+例如:
+.IP
+.in +4n
+.EX
+# \fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+\fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+RAID 0
+.EE
+.in
+.TP 
+\fI/sys/class/scsi_disk/c:b:t:l/device/lunid\fP
+此属性包含 16 位十六进制数字 (8 字节) 的 LUN ID，逻辑驱动器或物理设备可通过其寻址。 \fIc\fP:\fIb\fP:\fIt\fP:\fIl\fP
+是设备的控制器、总线、目标和 lun。
+.PP
+例如:
+.IP
+.in +4n
+.EX
+# \fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+\fBcd /sys/class/scsi_disk/4:0:0:0/device\fP
+0x0000004000000000
+.EE
+.in
+.\"
+.SS "Supported ioctl() operations"
+为了与为 \fBcciss\fP(4) 驱动程序编写的应用程序兼容，\fBhpsa\fP 驱动程序也支持 \fBcciss\fP(4) 驱动程序支持的许多但不是全部的
+ioctl。 这些 ioctl 使用的数据结构在 Linux 内核源文件 \fIinclude/linux/cciss_ioctl.h\fP.h 中有描述。
+.TP 
+\fBCCISS_DEREGDISK\fP, \fBCCISS_REGNEWDISK\fP, \fBCCISS_REGNEWD\fP
+这三个 ioctl 都做完全相同的事情，即使驱动程序重新扫描新设备。 这与写入 hpsa 特定的主机 "rescan" 属性完全相同。
+.TP 
+\fBCCISS_GETPCIINFO\fP
+返回 PCI 域、总线、设备以及函数和 "board ID" (PCI 子系统 ID)。
+.TP 
+\fBCCISS_GETDRIVVER\fP
+以三个字节返回驱动程序版本，编码为:
+.IP
+.in +4n
+.EX
+(主要版本 << 16) | (次要版本 << 8) |
+    (subminor_version)
+.EE
+.in
+.TP 
+\fBCCISS_PASSTHRU\fP, \fBCCISS_BIG_PASSTHRU\fP
+允许将 "BMIC" 和 "CISS" 命令传递到 Smart Array。 这些被 HP 阵列配置实用程序、SNMP 存储代理等广泛使用。
+有关一些示例，请参见 \fIcciss_vol_status\fP at
+.UR http://cciss.sf.net
+.UE
+。
+.SH "SEE ALSO"
+\fBcciss\fP(4), \fBsd\fP(4), \fBst\fP(4), \fBcciss_vol_status\fP(8), \fBhpacucli\fP(8),
+\fBhpacuxe\fP(8)
+.PP
+Linux 内核源码树中的
+.UR http://cciss.sf.net
+.UE ,
+和
+\fIDocumentation/scsi/hpsa.txt\fP 以及
+\fIDocumentation/ABI/testing/sysfs\-bus\-pci\-devices\-cciss\fP
+.\" .SH AUTHORS
+.\" Don Brace, Steve Cameron, Tom Lawler, Mike Miller, Scott Teel
+.\" and probably some other people.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

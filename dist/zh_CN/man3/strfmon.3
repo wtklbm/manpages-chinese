@@ -1,0 +1,141 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2000 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strfmon 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strfmon, strfmon_l \- 将货币值转换为字符串
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <monetary.h>\fP
+.PP
+\fBssize_t strfmon(char \fP\fIs\fP\fB[restrict .\fP\fImax\fP\fB], size_t \fP\fImax\fP\fB,\fP
+\fB                const char *restrict \fP\fIformat\fP\fB, ...);\fP
+\fBssize_t strfmon_l(char \fP\fIs\fP\fB[restrict .\fP\fImax\fP\fB], size_t \fP\fImax\fP\fB, locale_t \fP\fIlocale\fP\fB,\fP
+\fB                const char *restrict \fP\fIformat\fP\fB, ...);\fP
+.fi
+.SH DESCRIPTION
+\fBstrfmon\fP() 函数根据当前区域设置和格式规范 \fIformat\fP 格式化指定的货币金额，并将结果放入大小为 \fImax\fP 的字符数组
+\fIs\fP 中。
+.PP
+\fBstrfmon_l\fP() 函数执行相同的任务，但使用 \fIlocale\fP 指定的语言环境。 如果 \fIlocale\fP 是特殊语言环境对象
+\fBLC_GLOBAL_LOCALE\fP (请参见 \fBduplocale\fP(3)) 或不是有效的语言环境对象句柄)，则 \fBstrfmon_l\fP()
+的行为未定义。
+.PP
+\fIformat\fP 中的普通字符不经转换就复制到 \fIs\fP 中。 转换说明符由 \[aq]%\[aq] 字符引入。 紧随其后的可以是零个或多个以下标志:
+.TP 
+\fB=\fP\fIf\fP
+单字节字符 \fIf\fP 用作数字填充字符 (以左精度使用，见下文)。 如果未指定，则使用空格字符。
+.TP 
+\fB\[ha]\fP
+不要使用可能为当前语言环境定义的任何分组字符。 默认情况下，分组是启用的。
+.TP 
+\fB(\fP or \fB+\fP
+(标志表示 negative 金额应括在括号中。 + 标志表示应以默认方式处理符号，即金额前面有区域设置的符号指示，例如，nothing
+表示正数，"\-" 表示 negative。
+.TP 
+\fB!\fP
+省略货币符号。
+.TP 
+\fB\-\fP
+左对齐所有字段。 默认为右对齐。
+.PP
+接下来，可能有一个字段宽度: 一个十进制数字字符串，指定以字节为单位的最小字段宽度。 默认值为 0。 小于此宽度的结果用空格填充
+(在左侧，除非给出了左对齐标志)。
+.PP
+接下来，可能有 "#" 形式的左精度，后跟十进制数字字符串。 如果基数字符左边的位数小于此数，则用数字填充字符在左侧填充表示。
+分组字符不计入此字段宽度。
+.PP
+接下来，可能有 "." 形式的右精度，后跟十进制数字串。 正在格式化的金额在格式化之前四舍五入到指定的位数。 默认值在当前语言环境的
+\fIfrac_digits\fP 和 \fIint_frac_digits\fP 项中指定。 如果右精度为 0，则不打印基数字符。 (这里的小数点由
+\fBLC_MONETARY\fP 决定，可能与 \fBLC_NUMERIC\fP.) 指定的不同
+.PP
+最后，转换规范必须以转换字符结尾。 三个转换字符是
+.TP 
+\fB%\fP
+(在这种情况下，整个规范必须正好是 `%%`。) 在结果字符串中放置一个 \[aq]%\[aq] 字符。
+.TP 
+\fBi\fP
+使用区域设置的国际货币格式转换一个类型为 \fIdouble\fP 的参数。
+.TP 
+\fBn\fP
+使用区域设置的国家货币格式转换一个类型为 \fIdouble\fP 的参数。
+.SH "RETURN VALUE"
+\fBstrfmon\fP() 函数返回放置在数组 \fIs\fP 中的字符数，不包括终止空字节，前提是字符串 (包括终止空字节) 适合。 否则，它将
+\fIerrno\fP 设置为 \fBE2BIG\fP，返回 \-1，并且数组的内容未定义。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrfmon\fP()
+T}	Thread safety	MT\-Safe locale
+T{
+\fBstrfmon_l\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH EXAMPLES
+调用
+.PP
+.in +4n
+.EX
+strfmon(buf, sizeof(buf), "[%\[ha]=*#6n] [%=*#6i]",
+        1234.567, 1234.567);
+.EE
+.in
+.PP
+outputs
+.PP
+.in +4n
+.EX
+[€ **1234,57] [EUR **1 234,57]
+.EE
+.in
+.PP
+在 \fInl_NL\fP 语言环境中。 \fIde_DE\fP、\fIde_CH\fP、\fIen_AU\fP 和 \fIen_GB\fP 语言环境产生
+.PP
+.in +4n
+.EX
+[ **1234,57 €] [ **1.234,57 EUR]
+[ Fr. **1234.57] [瑞士法郎 **1\[aq] 234.57]
+[ $**1234.57] [ AUD**1,234.57]
+[ £**1234.57] [ GBP**1,234.57]
+.EE
+.in
+.SH "SEE ALSO"
+\fBduplocale\fP(3), \fBsetlocale\fP(3), \fBsprintf\fP(3), \fBlocale\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

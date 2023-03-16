@@ -1,0 +1,201 @@
+.\" -*- coding: UTF-8 -*-
+.\"This manpage is Copyright (C) 2015 Anna Schumaker <Anna.Schumaker@Netapp.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH copy_file_range 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+copy_file_range \- 将一系列数据从一个文件复制到另一个文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP
+\fB#include <unistd.h>\fP
+.PP
+\fBssize_t copy_file_range(int \fP\fIfd_in\fP\fB, off64_t *_Nullable \fP\fIoff_in\fP\fB,\fP
+\fB                        int \fP\fIfd_out\fP\fB, off64_t *_Nullable \fP\fIoff_out\fP\fB,\fP
+\fB                        size_t \fP\fIlen\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBcopy_file_range\fP() 系统调用在两个文件描述符之间执行内核内复制，无需将数据从内核传输到用户空间然后再返回内核的额外成本。 它将最多
+\fIlen\fP 字节的数据从源文件描述符 \fIfd_in\fP 复制到目标文件描述符 \fIfd_out\fP，覆盖目标文件请求范围内存在的任何数据。
+.PP
+以下语义适用于 \fIoff_in\fP，类似语句适用于 \fIoff_out\fP:
+.IP \[bu] 3
+如果 \fIoff_in\fP 为 NULL，则从 \fIfd_in\fP 开始从文件偏移量开始读取字节，文件偏移量根据复制的字节数进行调整。
+.IP \[bu]
+如果 \fIoff_in\fP 不为 NULL，则 \fIoff_in\fP 必须指向一个缓冲区，该缓冲区指定将从 \fIfd_in\fP 读取字节的起始偏移量。
+\fIfd_in\fP 的文件偏移没有改变，只是 \fIoff_in\fP 做了适当的调整。
+.PP
+\fIfd_in\fP 和 \fIfd_out\fP 可以引用同一个文件。 如果它们引用同一个文件，则源范围和目标范围不允许重叠。
+.PP
+提供 \fIflags\fP 参数以允许 future 扩展，目前必须设置为 0.
+.SH "RETURN VALUE"
+成功完成后，\fBcopy_file_range\fP() 将返回文件之间复制的字节数。 这可能小于最初请求的长度。 如果 \fIfd_in\fP
+的文件偏移量处于或超过文件末尾，则不复制任何字节，并且 \fBcopy_file_range\fP() 返回零。
+.PP
+出错时，\fBcopy_file_range\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+一个或多个文件描述符无效。
+.TP 
+\fBEBADF\fP
+\fIfd_in\fP 不开放读取; 或 \fIfd_out\fP 未打开以供写入。
+.TP 
+\fBEBADF\fP
+\fBO_APPEND\fP 标志是为打开的文件描述设置的 (见文件描述符 \fIfd_out\fP 引用的 \fBopen\fP(2))。
+.TP 
+\fBEFBIG\fP
+试图在超过内核支持的最大文件偏移量的位置写入。
+.TP 
+\fBEFBIG\fP
+试图写入超出允许的最大文件大小的范围。 最大文件大小因文件系统实现而异，并且可能与允许的最大文件偏移量不同。
+.TP 
+\fBEFBIG\fP
+试图写入超出进程的文件大小资源限制。 这也可能导致进程接收到 \fBSIGXFSZ\fP 信号。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 参数不是 0.
+.TP 
+\fBEINVAL\fP
+\fIfd_in\fP 和 \fIfd_out\fP 引用同一个文件，源和目标范围重叠。
+.TP 
+\fBEINVAL\fP
+\fIfd_in\fP 或 \fIfd_out\fP 不是常规文件。
+.TP 
+\fBEIO\fP
+复制时发生底层 I/O 错误。
+.TP 
+\fBEISDIR\fP
+\fIfd_in\fP 或 \fIfd_out\fP 指的是一个目录。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBENOSPC\fP
+目标文件系统上没有足够的空间来完成复制。
+.TP 
+\fBEOPNOTSUPP\fP (since Linux 5.19)
+.\" commit 868f9f2f8e004bfe0d3935b1976f625b2924893b
+文件系统不支持此操作。
+.TP 
+\fBEOVERFLOW\fP
+请求的源或目标范围太大，无法在指定的数据类型中表示。
+.TP 
+\fBEPERM\fP
+\fIfd_out\fP 指的是一个不可改变的文件。
+.TP 
+\fBETXTBSY\fP
+\fIfd_in\fP 或 \fIfd_out\fP 引用活动的交换文件。
+.TP 
+\fBEXDEV\fP (before Linux 5.3)
+.\" commit 5dae222a5ff0c269730393018a5539cc970a4726
+\fIfd_in\fP 和 \fIfd_out\fP 引用的文件不在同一个文件系统上。
+.TP 
+\fBEXDEV\fP (since Linux 5.19)
+.\" commit 868f9f2f8e004bfe0d3935b1976f625b2924893b
+\fIfd_in\fP 和 \fIfd_out\fP 引用的文件不在同一个文件系统上，源文件系统和目标文件系统不是同一类型，或者不支持跨文件系统复制。
+.SH VERSIONS
+.\" https://sourceware.org/git/?p=glibc.git;a=commit;f=posix/unistd.h;h=bad7a0c81f501fbbcc79af9eaa4b8254441c4a1f
+\fBcopy_file_range\fP() 系统调用最早出现在 Linux 4.5 中，但 glibc 2.27 提供了用户空间仿真不可用的时候。
+.PP
+Linux 5.3 中对内核实现进行了重大修改。 澄清了未明确定义的 API 区域，并且比早期内核更严格地检查 API 范围。
+.PP
+从 Linux 5.19 开始，当两个文件系统的类型相同并且该文件系统实现了对它的支持时，就可以实现跨文件系统复制。 在 Linux 5.19
+之前的行为见 BUGS。
+.PP
+应用程序应以 Linux 5.19 的行为和要求为目标，这也已向后移植到早期的稳定内核。
+.SH STANDARDS
+\fBcopy_file_range\fP() 系统调用是非标准的 Linux 和 GNU 扩展。
+.SH NOTES
+如果 \fIfd_in\fP 是一个稀疏文件，那么 \fBcopy_file_range\fP() 可能会扩展请求范围内存在的任何空洞。
+用户可能会受益于在循环中调用 \fBcopy_file_range\fP()，并使用 \fBlseek\fP(2) \fBSEEK_DATA\fP 和
+\fBSEEK_HOLE\fP 操作来查找字段的位置。
+.PP
+\fBcopy_file_range\fP() 为文件系统提供了实现 "copy acceleration" 技术的机会，例如使用 reflinks
+(即，两个或更多 inode 共享指向相同的写时复制磁盘块的指针) 或服务器端复制 (在 NFS 的情况下) .
+.SH BUGS
+在 Linux 5.3 到 Linux 5.18 中，如果单个文件系统不支持该操作，则由内核实现跨文件系统复制。
+但是，在某些虚拟文件系统上，调用复制失败，但仍报告成功。
+.SH EXAMPLES
+.\" SRC BEGIN (copy_file_range.c)
+.EX
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int          fd_in, fd_out;
+    off64_t      len, ret;
+    struct stat  stat;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <source> <destination>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd_in = open(argv[1], O_RDONLY);
+    if (fd_in == \-1) {
+        perror("open (argv[1])");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fstat(fd_in, &stat) == \-1) {
+        perror("fstat");
+        exit(EXIT_FAILURE);
+    }
+
+    len = stat.st_size;
+
+    fd_out = open(argv[2], O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (fd_out == \-1) {
+        perror("open (argv[2])");
+        exit(EXIT_FAILURE);
+    }
+
+    做 {
+        ret = copy_file_range(fd_in, NULL, fd_out, NULL, len, 0);
+        if (ret == \-1) {
+            perror("copy_file_range");
+            exit(EXIT_FAILURE);
+        }
+
+        len \-= ret;
+    } while (len > 0 && ret > 0);
+
+    close(fd_in);
+    close(fd_out);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBlseek\fP(2), \fBsendfile\fP(2), \fBsplice\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

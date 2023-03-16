@@ -1,0 +1,162 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2016 Intel Corporation
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pkeys 7 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+pkeys \- 内存保护密钥概述
+.SH DESCRIPTION
+内存保护密钥 (pkeys) 是对现有基于页面的内存权限的扩展。 使用页表的普通页权限在更改权限时需要昂贵的系统调用和 TLB 失效。
+内存保护键提供了一种更改保护的机制，而无需在每次权限更改时修改页表。
+.PP
+要使用 pkey，软件必须首先使用 pkey "tag" 页表中的一个页面。
+放置此标记后，应用程序只需更改寄存器的内容即可删除写访问权限或对标记页面的所有访问权限。
+.PP
+保护密钥与传递给系统调用 (如 \fBmprotect\fP(2) 和 \fBmmap\fP(2)) 的现有 \fBPROT_READ\fP、\fBPROT_WRITE\fP
+和 \fBPROT_EXEC\fP 权限一起工作，但始终起到进一步限制这些传统权限机制的作用。
+.PP
+如果进程执行违反 pkey 限制的访问，它会收到 \fBSIGSEGV\fP 信号。 有关该信号可用信息的详细信息，请参见 \fBsigaction\fP(2)。
+.PP
+要使用 pkeys 特性处理器必须支持它，并且内核必须包含对给定处理器上的特性的支持。 截至 2016 年初，仅支持 future Intel x86
+处理器，该硬件在每个进程中支持 16 个保护密钥。 但是，pkey 0 用作默认密钥，因此最多有 15 个可供实际应用程序使用。
+默认密钥分配给任何未通过 \fBpkey_mprotect\fP(2) 显式分配 pkey 的内存区域。
+.PP
+保护密钥有可能为应用程序增加一层安全性和可靠性。 但它们主要不是作为安全特性设计的。 例如，WRPKRU 是一个完全非特权的指令，因此在攻击者控制
+PKRU 寄存器或可以执行任意指令的任何情况下，pkeys 都是无用的。
+.PP
+应用程序应该非常小心以确保它们没有 "leak" 保护密钥。 例如，在调用 \fBpkey_free\fP(2) 之前，应用程序应该确保没有内存分配了该
+pkey。 如果应用程序保留已分配的已释放 pkey，则该 pkey 的 future
+用户可能会无意中更改不相关数据结构体的权限，这可能会影响安全性或稳定性。 内核目前允许使用中的 pkeys 对它们调用
+\fBpkey_free\fP(2)，因为它会影响处理器或内存性能来执行禁止它所需的额外检查。 必要检查的实现由应用程序决定。 应用程序可以通过在
+\fI/proc/\fPpid\fI/smaps\fP 文件中搜索分配了 pkey 的内存区域来实现这些检查。 可以在 \fBproc\fP(5) 中找到更多详细信息。
+.PP
+任何想要使用保护密钥的应用程序都需要能够在没有保护密钥的情况下运行。
+它们可能不可用，因为应用程序运行的硬件不支持它们，内核代码不包含支持，内核支持已被禁用，或者因为密钥已全部分配，可能由应用程序正在使用的库分配。
+建议想要使用保护密钥的应用程序应该简单地调用 \fBpkey_alloc\fP(2) 并测试调用是否成功，而不是尝试以任何其他方式检测对该特性的支持。
+.PP
+尽管不必要，但可以使用 \fIcpuid\fP 指令枚举对保护密钥的硬件支持。 有关如何执行此操作的详细信息，请参见英特尔软件开发人员手册。
+内核执行此枚举并在 "flags" 字段下公开 \fI/proc/cpuinfo\fP 中的信息。 该字段中的字符串 "pku" 表示硬件支持保护密钥，字符串
+"ospke" 表示内核包含并启用了保护密钥支持。
+.PP
+.\"
+使用线程和保护密钥的应用程序应特别小心。 线程继承 \fBclone\fP(2) 时父进程的保护密钥权限，系统调用。 应用程序要么在调用
+\fBclone\fP(2) 时确保自己的权限适合子线程，要么确保每个子线程都可以执行自己的保护密钥权限初始化。
+.SS "Signal Handler Behavior"
+每次调用信号处理程序 (包括嵌套信号) 时，都会临时为线程提供一组新的默认保护密钥权限，这些权限会覆盖中断上下文中的权限。
+这意味着如果所需权限与默认权限不同，则应用程序必须在进入信号处理程序时重新建立所需的保护密钥权限。 当信号处理程序返回时，任何中断上下文的权限都将恢复。
+.PP
+.\"
+这种信号行为是不寻常的，是由于 x86 PKRU 寄存器 (存储保护密钥访问权限) 使用与管理浮点寄存器相同的硬件机制 (XSAVE) 进行管理。
+信号行为与浮点寄存器的行为相同。
+.SS "Protection Keys system calls"
+Linux 内核实现了以下与 pkey 相关的系统调用: \fBpkey_mprotect\fP(2)、\fBpkey_alloc\fP(2) 和
+\fBpkey_free\fP(2)。
+.PP
+只有在使用 \fBCONFIG_X86_INTEL_MEMORY_PROTECTION_KEYS\fP 选项配置和构建内核时，Linux pkey
+系统调用才可用。
+.SH EXAMPLES
+下面的程序分配了一页具有读写权限的内存。 然后它将一些数据写入内存并成功读回。 之后，它尝试分配一个保护密钥，并使用 WRPKRU 指令禁止访问该页面。
+然后它会尝试访问该页面，我们现在预计该页面会向应用程序发出致命信号。
+.PP
+.in +4n
+.EX
+$\fB ./a.out\fP
+缓冲区包含: 73
+即将再次读取缓冲区...
+段错误 (核心转储)
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+
+int
+main(void)
+{
+    int status;
+    int pkey;
+    int *buffer;
+
+    /*
+     * Allocate one page of memory.
+     */
+    buffer = mmap(NULL, getpagesize(), PROT_READ | PROT_WRITE,
+                  MAP_ANONYMOUS | MAP_PRIVATE, \-1, 0);
+    if (buffer == MAP_FAILED)
+        err(EXIT_FAILURE, "mmap");
+
+    /*
+     * 将一些随机数据放入页面 (仍然可以触摸)。
+     */
+    *buffer = __LINE__;
+    printf("buffer contains: %d\en", *buffer);
+
+    /*
+     * 分配一个保护密钥:
+     */
+    pkey = pkey_alloc(0, 0);
+    if (pkey == \-1)
+        err(EXIT_FAILURE, "pkey_alloc");
+
+    /*
+     * 禁止访问任何设置了 "pkey" 的内存，
+     * 即使现在没有。
+     */
+    status = pkey_set(pkey, PKEY_DISABLE_ACCESS);
+    if (status)
+        err(EXIT_FAILURE, "pkey_set");
+
+    /*
+     * 在 "buffer" 上设置保护密钥。
+     * 请注意，就 mprotect() 而言，它仍然是 read/write
+     * 关注并且之前的 pkey_set() 覆盖它。
+     */
+    status = pkey_mprotect(buffer, getpagesize(),
+                           PROT_READ | PROT_WRITE, pkey);
+    if (status == \-1)
+        err(EXIT_FAILURE, "pkey_mprotect");
+
+    printf("about to read buffer again...\en");
+
+    /*
+     * 这会崩溃，因为我们不允许访问。
+     */
+    printf("buffer contains: %d\en", *buffer);
+
+    status = pkey_free(pkey);
+    if (status == \-1)
+        err(EXIT_FAILURE, "pkey_free");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBpkey_alloc\fP(2), \fBpkey_free\fP(2), \fBpkey_mprotect\fP(2), \fBsigaction\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

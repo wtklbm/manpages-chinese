@@ -1,0 +1,126 @@
+.\" -*- coding: UTF-8 -*-
+.\" @(#)loadkeys.1
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH LOADKEYS 1 "6 Feb 1994" kbd 
+.SH NAME
+loadkeys \- 加载键盘翻译表
+.SH SYNOPSIS
+\fBloadkeys\fP [\fI\,OPTION\/\fP]... \fI\,FILENAME\/\fP ...
+.br
+\fBloadkeys\fP \fI\-\-default\fP
+.br
+\fBloadkeys\fP \fI\-\-mktable\fP
+.br
+\fBloadkeys\fP \fI\-\-bkeymap\fP
+.br
+\fBloadkeys\fP \fI\-\-parse\fP
+.LP
+.SH DESCRIPTION
+.IX "loadkeys command" "" "\fLloadkeys\fR command"
+.LP
+程序 \fBloadkeys\fP 读取 \fIFILENAME...\fP 指定的一个或多个文件。 它的主要目的是为控制台加载内核键盘映射。 您可以通过
+\fI\-C\fP (或 \fI\-\-console\fP) 选项指定控制台设备。
+.SH "RESET TO DEFAULT"
+如果给出了 \fI\-d\fP (或 \fI\-\-default\fP) 选项，\fBloadkeys\fP 加载一个默认的键盘映射，可能是
+\fI/usr/share/kbd/keymaps\fP 或 \fI/usr/src/linux/drivers/char\fP 中的文件
+\fIdefkeymap.map\fP。 (可能前者是用户定义的，而后者是用于 PC 的 qwerty 键盘 map \- 可能不是我们想要的。)
+有时，加载一个奇怪的键盘映射 (在一些模糊的未知修饰符组合上加上减号) 更容易键入 `loadkeys defkeymap'。
+.SH "LOAD KERNEL KEYMAP"
+\fBloadkeys\fP 的主函数是加载或修改键盘驱动的翻译表。 指定文件名时，标准输入可以用破折号 (\-) 表示。如果未指定文件，则从标准输入读取数据。
+.LP
+对于许多国家和键盘类型，适当的键盘映射已经可用，像 `loadkeys uk'
+这样的命令可能会做您想做的。另一方面，构建自己的键映射很容易。用户必须告诉每个键属于什么符号。她可以使用 \fBshowkey\fP(1)
+找到键的键码，而键映射格式在 \fBkeymaps\fP(5) 中给出，也可以从 \fBdumpkeys\fP(1) 的输出中看到。
+.SH "LOAD KERNEL ACCENT TABLE"
+如果输入文件不包含任何组合键定义，则内核重音表保持不变，除非给出 \fI\-c\fP (或 \fI\-\-clearcompose\fP)
+选项，在这种情况下内核重音表被清空。 如果输入文件确实包含组合键定义，则所有旧定义都将被删除，并由指定的新条目替换。 内核重音表是一系列 (默认情况下为
+68 个) 条目，描述死变音符号和组合键的行为方式。 例如，一行
+.LP
+.RS
+编写 ',' 'c' 到 ccedilla
+.RE
+.LP
+意味着 <ComposeKey><,><c> 必须组合到 <ccedilla>。
+可以使用 `dumpkeys\-\-compose\-only` 查看此表的当前内容。
+.SH "LOAD KERNEL STRING TABLE"
+选项 \fI\-s\fP (或 \fI\-\-clearstrings\fP) 清除内核字符串表。如果没有给出这个选项，\fBloadkeys\fP
+只会添加或替换字符串，不会删除它们。 (因此，需要选项 \-s 才能达到明确定义的状态。) 内核字符串表是一系列名称类似于 F31 的字符串。可以让函数键
+F5 (在普通 PC 键盘上) 产生文本 `您好! `，然后 Shift+F5`再见! ` 使用线条
+.LP
+.RS
+键码 63= F70 F71
+.br
+字符串 F70 = "Hello!"
+.br
+字符串 F71 = "Goodbye!"
+.RE
+.LP
+在键盘映射中。 函数键的默认绑定是某些转义序列，主要受 VT100 终端的启发。
+.SH "CREATE KERNEL SOURCE TABLE"
+如果给出了 \fI\-m\fP (或 \fI\-\-mktable\fP) 选项，则 \fBloadkeys\fP 会向标准输出打印一个文件，该文件可用作
+\fI/usr/src/linux\%/drivers\%/char\%/defkeymap.c,\fP，指定内核的默认键绑定 (并且不修改当前键映射)。
+.SH "CREATE BINARY KEYMAP"
+如果给出了 \fI\-b\fP (或 \fI\-\-bkeymap\fP) 选项，则 \fBloadkeys\fP 会向标准输出打印一个文件，该文件可用作 Busybox
+\fBloadkmap\fP 命令所预期的二进制键盘映射 (并且不会修改当前的键盘映射)。
+.SH "UNICODE MODE"
+\fBloadkeys\fP 自动检测控制台是 Unicode 还是 ASCII (XLATE) 模式。 加载键盘映射时，字符值 keysyms (例如
+\fBsection\fP) 会相应地解析; 数字 keysyms 被转换以适应当前的控制台模式，无论它们的指定方式如何 (十进制、八进制、十六进制或
+Unicode)。
+.LP
+\fI\-u\fP (或 \fI\-\-unicode\fP) 开关强制 \fBloadkeys\fP 将所有键盘映射转换为 Unicode。 如果键盘处于非 Unicode
+模式，例如 XLATE，\fBloadkeys\fP 将在执行时将其更改为 Unicode。 在这种情况下将打印一条警告消息。
+.LP
+建议在 \fBloadkeys\fP 之前运行 \fBkbd_mode\fP(1) 而不是使用 \fI\-u\fP 选项。
+.SH "OTHER OPTIONS"
+.TP 
+\fB\-a \-\-ascii\fP
+强制转换为 ASCII。
+.TP 
+\fB\-h \-\-help\fP
+\fBloadkeys\fP 将其版本号和一条简短的使用消息打印到程序标准错误输出并退出。
+.TP 
+\fB\-p \-\-parse\fP
+\fBloadkeys\fP 不执行任何操作搜索和解析键盘映射。
+.TP 
+\fB\-q \-\-quiet\fP
+\fBloadkeys\fP 抑制所有正常输出。
+.TP 
+\fB\-V \-\-version\fP
+\fBloadkeys\fP 打印版本号并退出。
+.SH WARNING
+请注意，任何对 \fB/dev/console\fP 具有读取权限的人都可以运行
+\fBloadkeys\fP，从而更改键盘布局，可能使其无法使用。请注意，键盘转换表对于所有虚拟控制台都是通用的，因此对键盘绑定的任何更改都会同时影响所有虚拟控制台。
+.LP
+请注意，由于更改会影响所有虚拟控制台，因此它们的生命周期也会超过您的会话。这意味着即使在登录提示时，键绑定也可能不是用户所期望的。
+.SH FILES
+.TP 
+\fI/usr/share/kbd/keymaps\fP
+键映射的默认目录。
+.LP
+.TP 
+\fI/usr/src/linux/drivers/char/defkeymap.map\fP
+默认内核键盘映射。
+.LP
+.SH "SEE ALSO"
+\fBdumpkeys\fP(1), \fBkeymaps\fP(5)
+
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

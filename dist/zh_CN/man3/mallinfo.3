@@ -1,0 +1,274 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2012 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mallinfo 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mallinfo, mallinfo2\-\- 获取内存分配信息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <malloc.h>\fP
+.PP
+\fBstruct mallinfo mallinfo(void);\fP
+\fBstruct mallinfo2 mallinfo2(void);\fP
+.fi
+.SH DESCRIPTION
+这些函数返回结构体的副本，其中包含有关由 \fBmalloc\fP(3) 和相关函数执行的内存分配的信息。 每个函数返回的结构体包含相同的字段。
+然而，较旧的函数 \fBmallinfo\fP() 已被弃用，因为用于字段的类型太小 (请参见 BUGS)。
+.PP
+请注意，并非所有分配都对这些任数可见; 查看 BUGS 并考虑改用 \fBmalloc_info\fP(3)。
+.PP
+\fBmallinfo2\fP() 返回的 \fImallinfo2\fP 结构体定义如下:
+.PP
+.in +4n
+.EX
+struct mallinfo2 {
+    size_t arena;     /* Non\-mmapped space allocated (bytes) */
+    size_t ordblks;   /* Number of free chunks */
+    size_t smblks;    /* Number of free fastbin blocks */
+    size_t hblks;     /* Number of mmapped regions */
+    size_t hblkhd;    /* Space allocated in mmapped regions
+                         (bytes) */
+    size_t usmblks;   /* See below */
+    size_t fsmblks;   /* Space in freed fastbin blocks (bytes) */
+    size_t uordblks;  /* Total allocated space (bytes) */
+    size_t fordblks;  /* Total free space (bytes) */
+    size_t keepcost;  /* Top\-most, releasable space (bytes) */
+};
+.EE
+.in
+.PP
+已弃用的 \fBmallinfo\fP() 函数返回的 \fImallinfo\fP 结构体完全相同，只是字段类型为 \fIint\fP。
+.PP
+结构体字段包含以下信息:
+.TP  10
+\fIarena\fP
+通过 \fBmmap\fP(2) 以外的方式分配的内存总量 (即在堆上分配的内存)。 该数字包括正在使用的块和空闲列表中的块。
+.TP 
+\fIordblks\fP
+普通 (即非 fastbin) 空闲块的数量。
+.TP 
+\fIsmblks\fP
+.\" the glibc info page wrongly says this field is unused
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=26746
+fastbin 空闲块的数量 (参见 \fBmallopt\fP(3)).
+.TP 
+\fIhblks\fP
+当前使用 \fBmmap\fP(2) 分配的块数。 (见 \fBmallopt\fP(3).) 中 \fBM_MMAP_THRESHOLD\fP 的讨论
+.TP 
+\fIhblkhd\fP
+当前使用 \fBmmap\fP(2) 分配的块中的字节数。
+.TP 
+\fIusmblks\fP
+.\" It seems to have been zero since at least as far back as glibc 2.15
+该字段未使用，始终为 0。 从历史上看，它是分配空间的 "highwater mark"\[em]，即曾经分配的最大空间量 (以字节为单位) ;
+该字段仅在非线程环境中维护。
+.TP 
+\fIfsmblks\fP
+.\" the glibc info page wrongly says this field is unused
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=26746
+fastbin 空闲块中的总字节数。
+.TP 
+\fIuordblks\fP
+正在使用的分配使用的字节总数。
+.TP 
+\fIfordblks\fP
+空闲块中的总字节数。
+.TP 
+\fIkeepcost\fP
+堆顶部可释放的可用空间总量。 这是 \fBmalloc_trim\fP(3) 理想情况下 (即忽略页面对齐限制等) 可以释放的最大字节数。
+.SH VERSIONS
+.\" mallinfo(): Available already in glibc 2.0, possibly earlier
+.\" commit e3960d1c57e57f33e0e846d615788f4ede73b945
+在 glibc 2.33 中添加了 \fBmallinfo2\fP() 函数。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBmallinfo\fP(),
+\fBmallinfo2\fP()
+T}	Thread safety	T{
+MT\-Unsafe init const:mallopt
+T}
+.TE
+.hy
+.ad
+.sp 1
+\fBmallinfo\fP()/ \fBmallinfo2\fP()  would access some global internal objects.
+如果用非原子方式修改它们，可能会得到不一致的结果。 \fIconst:mallopt\fP 中的标识符 \fImallopt\fP 意味着 \fBmallopt\fP()
+将以原子方式修改全局内部对象，确保 \fBmallinfo\fP()/ \fBmallinfo2\fP() 足够安全，其他非原子方式修改可能不会。
+.SH STANDARDS
+POSIX 或 C 标准未指定这些函数。 \fBmallinfo\fP() 函数存在于许多 System V 衍生产品中，并在 SVID 中指定。
+.SH BUGS
+.\" FIXME . http://sourceware.org/bugzilla/show_bug.cgi?id=208
+.\" See the 24 Aug 2011 mail by Paul Pluzhnikov:
+.\"     "[patch] Fix mallinfo() to accumulate results for all arenas"
+.\" on libc-alpha@sourceware.org
+\fBInformation is returned for only the main memory allocation area.\fP
+其他领域的分配被排除在外。 请参见 \fBmalloc_stats\fP(3) 和 \fBmalloc_info\fP(3)
+以了解包含有关其他竞技场信息的备选方案。
+.PP
+由旧的 \fBmallinfo\fP() 函数返回的 \fImallinfo\fP 结构体的字段被键入为 \fIint\fP。 但是，由于某些内部记录值可能是
+\fIlong\fP 类型，因此报告的值可能环绕零，因此不准确。
+.SH EXAMPLES
+下面的程序使用 \fBmallinfo2\fP() 在分配和释放一些内存块之前和之后检索内存分配统计信息。 统计信息显示在标准输出上。
+.PP
+前两个命令行参数指定要用 \fBmalloc\fP(3) 分配的块的数量和大小。
+.PP
+其余三个参数指定应使用 \fBfree\fP(3) 释放哪些分配的块。 这三个参数是可选的，并指定 (按顺序) : 释放块的循环中要使用的步长 (默认为
+1，表示释放范围内的所有块) ; 要释放的第一个块的序号位置 (默认为 0，表示第一个分配的块) ; 和比要释放的最后一个块的序号位置大一的数字
+(默认值比最大块号大一)。 如果省略这三个参数，则默认值会导致释放所有分配的块。
+.PP
+在下面的程序运行示例中，执行了 1000 次 100 字节的分配，然后每隔一个分配的块被释放:
+.PP
+.in +4n
+.EX
+$ \fB./a.out 1000 100 2\fP
+============== Before allocating blocks ==============
+Total non\-mmapped bytes (arena):       0
+# of free chunks (ordblks):            1
+# of free fastbin blocks (smblks):     0
+# of mapped regions (hblks):           0
+Bytes in mapped regions (hblkhd):      0
+Max. total allocated space (usmblks):  0
+Free bytes held in fastbins (fsmblks): 0
+Total allocated space (uordblks):      0
+Total free space (fordblks):           0
+Topmost releasable block (keepcost):   0
+
+============== After allocating blocks ==============
+Total non\-mmapped bytes (arena):       135168
+# of free chunks (ordblks):            1
+# of free fastbin blocks (smblks):     0
+# of mapped regions (hblks):           0
+Bytes in mapped regions (hblkhd):      0
+Max. total allocated space (usmblks):  0
+Free bytes held in fastbins (fsmblks): 0
+Total allocated space (uordblks):      104000
+Total free space (fordblks):           31168
+Topmost releasable block (keepcost):   31168
+
+============== After freeing blocks ==============
+Total non\-mmapped bytes (arena):       135168
+# of free chunks (ordblks):            501
+# of free fastbin blocks (smblks):     0
+# of mapped regions (hblks):           0
+Bytes in mapped regions (hblkhd):      0
+Max. total allocated space (usmblks):  0
+Free bytes held in fastbins (fsmblks): 0
+Total allocated space (uordblks):      52000
+Total free space (fordblks):           83168
+Topmost releasable block (keepcost):   31168
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (mallinfo.c)
+\&
+.EX
+#include <malloc.h>
+#include <stdlib.h>
+#include <string.h>
+
+static void
+display_mallinfo2(void)
+{
+    struct mallinfo2 mi;
+
+    mi = mallinfo2();
+
+    printf("Total non\-mmapped bytes (arena):       %zu\en", mi.arena);
+    printf("# of free chunks (ordblks):            %zu\en", mi.ordblks);
+    printf("# of free fastbin blocks (smblks):     %zu\en", mi.smblks);
+    printf("# of mapped regions (hblks):           %zu\en", mi.hblks);
+    printf("Bytes in mapped regions (hblkhd):      %zu\en", mi.hblkhd);
+    printf("Max. total allocated space (usmblks):  %zu\en", mi.usmblks);
+    printf("Free bytes held in fastbins (fsmblks): %zu\en", mi.fsmblks);
+    printf("Total allocated space (uordblks):      %zu\en", mi.uordblks);
+    printf("Total free space (fordblks):           %zu\en", mi.fordblks);
+    printf("Topmost releasable block (keepcost):   %zu\en", mi.keepcost);
+}
+
+int
+main(int argc, char *argv[])
+{
+#define MAX_ALLOCS 2000000
+    char *alloc[MAX_ALLOCS];
+    size_t blockSize, numBlocks, freeBegin, freeEnd, freeStep;
+
+    if (argc < 3 || strcmp(argv[1], "\-\-help") == 0) {
+        fprintf(stderr, "%s num\-blocks block\-size [free\-step "
+                "[start\-free [end\-free]]]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    numBlocks = atoi(argv[1]);
+    blockSize = atoi(argv[2]);
+    freeStep = (argc > 3) ? atoi(argv[3]) : 1;
+    freeBegin = (argc > 4) ? atoi(argv[4]) : 0;
+    freeEnd = (argc > 5) ? atoi(argv[5]) : numBlocks;
+
+    printf("============== Before allocating blocks ==============\en");
+    display_mallinfo2();
+
+    for (size_t j = 0; j < numBlocks; j++) {
+        if (numBlocks >= MAX_ALLOCS) {
+            fprintf(stderr, "Too many allocations\en");
+            exit(EXIT_FAILURE);
+        }
+
+        alloc[j] = malloc(blockSize);
+        if (alloc[j] == NULL) {
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    printf("\en============== After allocating blocks ==============\en");
+    display_mallinfo2();
+
+    for (size_t j = freeBegin; j < freeEnd; j += freeStep)
+        free(alloc[j]);
+
+    printf("\en============== After freeing blocks ==============\en");
+    display_mallinfo2();
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBmmap\fP(2), \fBmalloc\fP(3), \fBmalloc_info\fP(3), \fBmalloc_stats\fP(3),
+\fBmalloc_trim\fP(3), \fBmallopt\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

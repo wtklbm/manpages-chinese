@@ -1,0 +1,278 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-mustek 5 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-mustek
+.SH NAME
+sane\-mustek\-Mustek SCSI 平板扫描仪 (和一些其他设备) 的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-mustek\fP 库实现了一个 SANE (现在可以轻松访问扫描仪) 后端，该后端提供对 Mustek (以及一些重新标记的 Trust 和
+Primax) SCSI 和 parport 平板扫描仪的访问。 目前，已知以下扫描器或多或少地与此后端一起工作:
+.PP
+.RS
+Paragon MFS\-6000CX
+.br
+Paragon MFS\-12000CX
+.br
+Paragon MFC\-600S, 600 II CD, ScanMagic 600 II SP
+.br
+Paragon MFC\-800S, 800 II SP
+.br
+Paragon MFS\-6000SP
+.br
+Paragon MFS\-8000SP
+.br
+Paragon MFS\-1200SP, MFS\-12000SP
+.br
+ScanExpress 6000SP
+.br
+ScanExpress 12000SP, 12000SP Plus, Paragon 1200 III SP, ScanMagic 9636S,
+9636S Plus
+.br
+Paragon 1200 LS
+.br
+ScanExpress A3 SP
+.br
+Paragon 1200 SP Pro
+.br
+Paragon 1200 A3 Pro
+.br
+Paragon 600 II EP
+.br
+Paragon 600 II N
+.br
+Trust Imagery 1200
+.br
+Trust Imagery 1200 SP
+.br
+Trust Imagery 4800 SP
+.br
+Trust SCSI Connect 19200
+.br
+Primax Compact 4800 SCSI
+.br
+.RE
+.PP
+可以在 Mustek SCSI 后端主页 \fIhttp://www.meier\-geinitz.de/sane/mustek\-backend/\fP
+上找到更多详细信息。
+.PP
+不要混淆 MFS (Paragon)、Pro 和 ScanExpress 型号! 他们是完全不同的。检查确切的型号名称!
+.PP
+请注意，上述大多数扫描仪都带有 SCSI 接口。 目前唯一支持的非 SCSI 扫描仪是 600 II N 和 600 II EP
+扫描仪。前者带有自己的并行端口适配器 (即，它确实将 \fInot\fP 连接到打印机端口)。这两款扫描仪也在内部使用 SCSI
+协议。有关如何使用这些并行端口扫描器的更多信息，请参见下面的 \fBPARALLEL PORT SCANNERS\fP 部分。
+此后端不支持其他并行端口扫描器，但您可能会成功使用 Mustek 并行端口后端 mustek_pp，请参见 \fBsane\-mustek_pp\fP(5)。
+此后端也不支持 USB 扫描仪，但 ma1509、mustek_usb、gt68xx 和 plustek 后端包括对其中一些扫描仪的支持，请参见
+\fBsane\-ma1509\fP(5)、\fBsane\-mustek_usb\fP(5)、\fBsane\-gt68xx\fP(5) 和
+\fBsane\-plustek\fP(5)。
+.PP
+Mustek 扫描仪无法防止超出物理扫描区域高度。
+也就是说，如果尝试以超过扫描表面高度的高度进行扫描，则扫描仪会开始发出很大的噪音，并且扫描机构可能会损坏。
+因此，如果您听到此类噪音，请立即关闭扫描仪。如果您的扫描仪在已知扫描仪列表中，则不应发生这种情况。\fI/usr/share/doc/sane/PROBLEMS\fP
+文件中有更多信息。
+.PP
+如果您拥有所有权的 Mustek (或 Trust) 扫描仪不是上面列出的可与此后端配合使用的扫描仪，请通过发送扫描仪的确切型号名称
+(查看扫描仪的正面和背面) 和调试输出到 \fIsane\-devel@alioth\-lists.debian.net\fP 来告知我们.
+您可以通过将环境变量 \fBSANE_DEBUG_MUSTEK\fP 设置为 5 并使用 \fIscanimage \-L\fP 显示可用扫描仪列表来获取调试输出。
+请将其全部发送到邮件列表。在向列表发送邮件之前，您必须订阅 sane\-devel。有关详细信息，请参见
+\fIhttp://www.sane\-project.org/mailing\-lists.html\fP。
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于 SCSI 扫描仪的特殊设备的路径名，或者是可以找到并行端口扫描仪的端口号 (请参见下面的 \fBPARALLEL PORT SCANNERS\fP 部分)。 对于 SCSI 扫描仪，特殊设备名称必须是泛型 SCSI 设备或此类设备的符号链接。
+\fBsane\-find\-scanner\fP(1) 程序有助于找出正确的设备。例如，在 Linux 下，这样的设备名称可以是 \fI/dev/sg0\fP 或
+\fI/dev/sg3\fP。 有关详细信息，请参见 \fBsane\-scsi\fP(5)。
+.SH CONFIGURATION
+\fImustek.conf\fP 文件的内容是与 Mustek 扫描仪对应的选项和设备名称列表。 空行和以哈希标记 (#) 开头的行将被忽略。
+有关构成有效设备名称的详细信息，请参见 \fBsane\-scsi\fP(5)。
+.PP
+支持的选项有
+\fBlinedistance\-fix\fP、\fBlineart\-fix\fP、\fBlegal\-size\fP、\fBbuffersize\fP、\fBblocksize\fP、\fBstrip\-height\fP、\fBdisable\-double\-buffering\fP、\fBdisable\-backtracking\fP
+和 \fBforce\-wait\fP。
+.PP
+选项有两种类型: 全局选项和位置选项。 全局选项适用于后端管理的所有设备，而位置选项仅适用于最近提到的设备。 请注意，这意味着选项出现的顺序很重要!
+.PP
+选项 \fBlinedistance\-fix\fP 是位置性的，可以解决某些 SCSI 控制器 (特别是 Linux 下的 ncr810 控制器)
+出现的问题。 如果彩色扫描有水平条纹或者颜色不正确，则很可能是您的控制器遇到了这个问题。 打开此选项通常可以解决问题。
+.PP
+选项 \fBlineart\-fix\fP 是定位的，可以解决某些 MFS\-12000SP 扫描仪似乎存在的时序问题。 以线稿模式扫描时，问题表现为抛弃线。
+打开此选项应该可以解决问题，但可能会稍微减慢扫描速度。
+.PP
+选项 \fBlegal\-size\fP 是定位的，将扫描区域的大小设置为 Legal 格式。如果您拥有 Paragon 12000
+LS，请设置此选项。它无法通过来自 ScanExpress 12000 SP (ISO A4 格式) 的软件进行区分。
+.PP
+选项 \fBbuffersize\fP 是一个位置选项，它覆盖为 SCSI 缓冲区大小设置的默认值。缓冲区大小以千字节为单位指定。默认值为
+128。由于双缓冲，实际发送到扫描器的缓冲区大小是该值的一半。尝试增加此值以获得更高的扫描速度。请注意，某些 ScanExpress 扫描仪不喜欢超过
+64 kb 的缓冲区大小 (缓冲区大小 = 128)。如果您的 sg 驱动程序无法在运行时设置 SCSI
+缓冲区大小，您可能也必须更改该值。有关详细信息，请参见 sane\-scsi (5)。
+.PP
+选项 \fBblocksize\fP 是一个位置选项，它覆盖为一个块中扫描的最大数据量设置的默认值。缓冲区大小以千字节为单位指定。如果此值大于
+2048，某些扫描仪会冻结。大多数扫描仪的默认值为 1 GB (实际上没有限制)。如果您不确切知道自己在做什么，请不要更改此值。
+.PP
+选项 \fBstrip\-height\fP 是一个全局选项，它限制使用单个 SCSI 读取命令扫描的条带的最大高度。
+高度以英寸为单位指定，并且可以包含小数部分 (例如，1.5)。 将 strip\-height 设置为较小的值 (例如一英寸) 可降低遇到 SCSI
+驱动程序超时或者同一 SCSI 总线上的其他设备超时问题的可能性。 不幸的是，它也会增加扫描时间。对于当前的 SCSI
+适配器和驱动程序，不再需要此选项。
+.PP
+选项 \fBdisable\-double\-buffering\fP
+是一个全局选项。如果设置，后端将一次只向扫描器发送一个缓冲区。如果您在扫描时遇到问题，请尝试此选项，例如 SCSI
+错误、冻结或前几厘米在您的图像中反复出现。
+.PP
+选项 \fBdisable\-backtracking\fP 是一个位置选项。如果设置，扫描器将不会在每个 SCSI 缓冲区填满
+(`backtracking') 后移回其滑块。设置此选项会加快扫描速度，但也可能会产生水平条纹。此选项不适用于所有扫描仪 (只有一些 paragon
+型号可以修改回溯)。
+.PP
+最后，\fBforce\-wait\fP 是一个全局选项。如果设置，后端将等到设备准备就绪后再发送查询命令。此外，后端将强制扫描滑块返回到其起始位置
+(并非对所有扫描仪都实现)。对于 600 II N 或多次使用 \fBscanimage\fP(1) 时 (例如在脚本中)，此选项可能是必需的。默认为关闭
+(未设置)。
+.PP
+示例配置文件如下所示:
+.PP
+.RS
+# 将所有扫描仪的条带高度限制为 1.5 英寸:
+.br
+选项条带高度 1.5
+.br
+.br
+/dev/scanner # first Mustek scanner
+.br
+# /dev/scanner 的 1 MB 缓冲区:
+.br
+选项缓冲区大小 1024
+.br
+/dev/sge # second Mustek scanner
+.br
+# 打开 /dev/sge 的修复程序:
+.br
+option lineart\-fix
+.br
+option linedistance\-fix
+.RE
+
+.SH "SCSI ADAPTER TIPS"
+.PP
+您需要一个用于 SCSI 扫描仪的 SCSI 适配器。即使连接器与并行端口扫描仪的连接器相同，将其连接到计算机并行端口也不起作用。
+.PP
+Mustek SCSI 扫描仪通常随 ISA SCSI 适配器一起提供。 不幸的是，该适配器并不值钱，因为它不是中断驱动的。 (sometimes)
+可以让提供的卡工作，但是如果没有中断线，扫描会非常慢并且会给系统带来很大的负载，以至于它几乎无法用于其他任务。
+.PP
+如果您的系统中已经有一个工作的 SCSI 控制器，您应该考虑 Mustek 扫描仪不支持 SCSI\-2 disconnect/reconnect
+协议，因此在扫描过程中会占用 SCSI 总线。 这意味着在扫描过程中不能访问同一总线上的其他 SCSI 设备。
+.PP
+由于 Mustek 提供的适配器值不高，而且 Mustek 扫描仪不支持 SCSI\-2 disconnect/reconnect 协议，因此建议为
+Mustek 扫描仪安装单独的 (cheap) SCSI 控制器。 例如，众所周知，基于 ncr810 的卡可以很好地工作并且成本低至 50 美元。
+.PP
+对于 Mustek 扫描仪，通常需要配置底层 SCSI 驱动程序以禁用同步传输 (同步协商)、标记命令队列和目标断开连接。
+有关特定于驱动程序和平台的信息，请参见 \fBsane\-scsi\fP(5)。
+.PP
+ScanExpress 型号有时会遇到高分辨率彩色模式的问题。如果您遇到零星损坏的图像 (部分重复或水平移动)，请在扫描前杀死所有其他应用程序，并
+(如果有足够的内存可用) 禁用交换。
+.PP
+有关如何让 Mustek SCSI 适配器和其他卡运行的详细信息，请访问
+\fIhttp://www.meier\-geinitz.de/sane/mustek\-backend/#SCSI\fP。
+
+.SH "PARALLEL PORT SCANNERS"
+此后端支持 Paragon 600 II EP 和 Paragon 600 II N 并行端口扫描器。 请注意，后一种扫描仪带有自己的 ISA
+卡，该卡实现了一个时髦的并行端口 (换句话说，扫描仪没有连接到打印机的并行端口)。
+.PP
+可以通过在 mustek.conf 文件中列出适配器的端口号或并行端口来配置这些扫描器。 600 II N 的有效端口号为
+\fI0x26b\fP、\fI0x2ab\fP、\fI0x2eb\fP、\fI0x22b\fP、\fI0x32b\fP、\fI0x36b\fP、\fI0x3ab\fP、\fI0x3eb\fP。 对于
+600 II EP，使用其中之一:
+\fIparport0\fP、\fIparport1\fP、\fIparport2\fP、\fI0x378\fP、\fI0x278\fP、\fI0x3bc\fP。
+选择一个不与您计算机中的其他硬件冲突的硬件。在一行中只输入一个数字。Example:
+.PP
+.RS
+\fI0x3eb\fP
+.RE
+.PP
+请注意，对于这些扫描器，通常需要 root 权限才能访问 I/O 端口。 因此，要么使 \fBscanimage\fP(1) 和
+\fBxscanimage\fP(1) 之类的前端成为 setuid root (出于安全原因通常不推荐)，要么通过网络守护程序 \fBsaned\fP(8)
+访问该后端。
+.PP
+如果 Mustek 后端在向扫描器发送查询命令时阻塞，请将选项 \fBforce\-wait\fP 添加到 \fImustek.conf\fP。
+.PP
+另请注意，在一段时间没有活动后，一些扫描仪本身 (不是 SANE 后端) 会关闭其 CCFL
+灯。这种关闭并不总是完美的，结果是灯有时会在一端继续发出微弱的光。这似乎并不危险，因为一旦您再次使用扫描仪，灯就会恢复正常的高亮度。但是，在这种关闭之后扫描的第一张图像可能有条纹并且看起来曝光过度。
+发生这种情况时，只需再扫描一次，图像就可以了。
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/mustek.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-mustek.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-mustek.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_MUSTEK\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 更高的调试级别会增加输出的冗长程度。
+
+.nf
+\f (CR 值说明
+0     无输出
+1     打印致命错误
+2     打印重要信息
+3     打印非致命错误和不太重要的消息
+4     打印除调试信息以外的所有信息
+5     打印 everything\fR
+.fi
+
+示例: export SANE_DEBUG_MUSTEK=4
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-find\-scanner\fP(1), \fBsane\-scsi\fP(5), \fBsane\-mustek_usb\fP(5),
+\fBsane\-gt68xx\fP(5), \fBsane\-plustek\fP(5), \fBsane\-mustek_pp\fP(5),
+\fBsane\-ma1509\fP(5), \fBscanimage\fP(1), \fBxscanimage\fP(1)
+
+.br
+\fI/usr/share/doc/sane/mustek/mustek.CHANGES\fP
+.br
+\fIhttp://www.meier\-geinitz.de/sane/mustek\-backend/\fP
+
+.SH AUTHOR
+David Mosberger、Andreas Czechanowski、Andreas Bolsch (SE 扩展)、Henning
+Meier\-Geinitz、James Perry (600 II EP)。
+
+.SH BUGS
+使用 Mustek 提供的 SCSI 适配器进行扫描在高分辨率和宽扫描区域时非常慢。
+.PP
+某些扫描仪 (例如 Paragon 1200 A3 + Pro、SE A3) 需要更多测试。
+.PP
+伽玛表仅支持 256 种颜色，即使某些扫描仪可以做更多。
+.PP
+Mustek 后端主页上提供了更详细的错误信息:
+\fIhttp://www.meier\-geinitz.de/sane/mustek\-backend/\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

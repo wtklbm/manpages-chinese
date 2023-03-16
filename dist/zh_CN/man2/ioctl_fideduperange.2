@@ -1,0 +1,128 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016, Oracle.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_fideduperange 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_fideduperange \- 与另一个文件共享一个文件的一些数据
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/fs.h>\fP      /* Definition of \fBFIDEDUPERANGE\fP and
+\fB                              FILE_DEDUPE_* \fPconstants\fB*/\fP
+\fB#include <sys/ioctl.h>\fP
+.PP
+\fBint ioctl(int \fP\fIsrc_fd\fP\fB, FIDEDUPERANGE, struct file_dedupe_range *\fP\fIarg\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+如果文件系统支持文件在多个文件之间共享物理存储，如果文件数据相同 ("deduplication")，则可以使用此 \fBioctl\fP(2) 操作使
+\fBsrc_fd\fP 文件中的某些数据通过共享底层存储出现在 \fBdest_fd\fP 文件中。 这两个文件必须位于同一文件系统中。
+这通过允许文件系统存储数据的一个共享副本来减少存储消耗。 如果对共享区域进行文件写入，文件系统必须确保更改对正在写入的文件保持私有。 此行为通常称为
+"copy on write"。
+.PP
+此 ioctl 对来自文件描述符 \fIsrc_fd\fP 偏移量 \fIsrc_offset\fP 的最多 \fIsrc_length\fP 字节执行 "compare
+and share if identical" 操作。 此信息以以下形式的结构体传达:
+.PP
+.in +4n
+.EX
+struct file_dedupe_range {
+    __u64 src_offset;
+    __u64 src_length;
+    __u16 dest_count;
+    __u16 reserved1;
+    __u32 reserved2;
+    struct file_dedupe_range_info info[0];
+};
+.EE
+.in
+.PP
+重复数据删除对于并发写入是原子的，因此无需锁定即可获得一致的重复数据删除副本。
+.PP
+\fIreserved1\fP 和 \fIreserved2\fP 字段必须为零。
+.PP
+重复数据删除操作的目标在结构体末尾的数组中传送。 \fIdest_count\fP 给出了目的地的数量，目的地信息以如下形式传递:
+.PP
+.in +4n
+.EX
+struct file_dedupe_range_info {
+    __s64 dest_fd;
+    __u64 dest_offset;
+    __u64 bytes_deduped;
+    __s32 status;
+    __u32 reserved;
+};
+.EE
+.in
+.PP
+每个重复数据删除操作都以文件描述符 \fIdest_fd\fP 中偏移量 \fIdest_offset\fP 处的 \fIsrc_length\fP 字节为目标。
+\fIreserved\fP 字段必须为零。 在调用期间，\fIsrc_fd\fP 必须打开用于读取，\fIdest_fd\fP 必须打开用于写入。 结构体
+\fIfile_dedupe_range\fP 和结构体 \fIfile_dedupe_range_info\fP 数组的组合大小不得超过系统页面大小。
+\fIsrc_length\fP 的最大大小取决于文件系统，通常为 16\~MiB。 此限制将由文件系统静默执行。 按照惯例，\fIsrc_fd\fP
+使用的存储被映射到 \fIdest_fd\fP，\fIdest_fd\fP 之前的内容被释放。
+.PP
+成功完成此 ioctl 后，在 \fIbytes_deduped\fP 中返回成功删除重复数据的字节数，并在 \fIstatus\fP
+中返回重复数据删除操作的状态代码。 如果范围内甚至有一个字节不匹配，重复数据删除请求将被忽略并将 \fIstatus\fP 设置为
+\fBFILE_DEDUPE_RANGE_DIFFERS\fP。 \fIstatus\fP 代码设置为 \fBFILE_DEDUPE_RANGE_SAME\fP
+表示成功，错误情况下设置为 negative 错误代码，如果数据不匹配则设置为 \fBFILE_DEDUPE_RANGE_DIFFERS\fP。
+.SH "RETURN VALUE"
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+可能的错误包括 (但不限于) 以下内容:
+.TP 
+\fBEBADF\fP
+\fIsrc_fd\fP 不开放读取; \fIdest_fd\fP 未对写入打开或对仅追加写入打开; 或者 \fIsrc_fd\fP 所在的文件系统不支持重复数据删除。
+.TP 
+\fBEINVAL\fP
+文件系统不支持对给定文件的范围进行重复数据删除。 如果文件描述符表示设备、FIFO 或套接字，也会出现此错误。
+磁盘文件系统通常要求偏移量和长度参数与基本块大小对齐。 Btrfs 和 XFS 都不支持在同一文件中重叠重复数据删除范围。
+.TP 
+\fBEISDIR\fP
+其中一个文件是目录，文件系统不支持目录中的共享区域。
+.TP 
+\fBENOMEM\fP
+内核无法分配足够的内存来执行操作，或者 \fIdest_count\fP 太大以至于输入的参数描述跨越了不止一页内存。
+.TP 
+\fBEOPNOTSUPP\fP
+如果文件系统不支持对任何一个文件描述符进行重复数据删除，或者如果任何一个文件描述符引用特殊的索引节点，就会出现这种情况。
+.TP 
+\fBEPERM\fP
+\fIdest_fd\fP 是不可改变的。
+.TP 
+\fBETXTBSY\fP
+其中一个文件是交换文件。 交换文件不能共享存储。
+.TP 
+\fBEXDEV\fP
+\fIdest_fd\fP 和 \fIsrc_fd\fP 不在同一个挂载文件系统上。
+.SH VERSIONS
+这个 ioctl 操作最早出现在 Linux 4.5 中。 它以前被称为 \fBBTRFS_IOC_FILE_EXTENT_SAME\fP，是 Btrfs
+私有的。
+.SH STANDARDS
+这个 API 是特定于 Linux 的。
+.SH NOTES
+因为写时复制操作需要分配新的存储，\fBfallocate\fP(2) 操作可能会取消共享共享块，以保证后续写入不会因为磁盘空间不足而失败。
+.PP
+某些文件系统可能会限制在单个调用中可以删除重复数据的数据量。
+.SH "SEE ALSO"
+\fBioctl\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

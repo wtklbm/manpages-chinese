@@ -1,0 +1,131 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2006 Andrew Morton <akpm@osdl.org>
+.\" and Copyright 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2006-07-05 Initial creation, Michael Kerrisk based on
+.\"     Andrew Morton's comments in fs/sync.c
+.\" 2010-10-09, mtk, Document sync_file_range2()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sync_file_range 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+sync_file_range \- 将文件段与磁盘同步
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP
+.PP
+\fBint sync_file_range(int \fP\fIfd\fP\fB, off64_t \fP\fIoffset\fP\fB, off64_t \fP\fInbytes\fP\fB,\fP
+\fB                    unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsync_file_range\fP() 允许在将文件描述符 \fIfd\fP 引用的打开文件与磁盘同步时进行精细控制。
+.PP
+\fIoffset\fP 是要同步的文件范围的起始字节。 \fInbytes\fP 指定要同步的范围的长度，以字节为单位; 如果 \fInbytes\fP 为零，则同步从
+\fIoffset\fP 到文件末尾的所有字节。 同步以系统页面大小为单位: \fIoffset\fP 向下舍入到页面边界;
+\fI(offset+nbytes\-1)\fP 向上舍入到页面边界。
+.PP
+\fIflags\fP 位掩码参数可以包括以下任何值:
+.TP 
+\fBSYNC_FILE_RANGE_WAIT_BEFORE\fP
+等待写出指定范围内所有已经提交给设备驱动程序进行写出的页面，然后再执行任何写操作。
+.TP 
+\fBSYNC_FILE_RANGE_WRITE\fP
+对指定范围内所有当前未提交写出的脏页发起写出。 请注意，如果您尝试写入超过请求队列大小，即使这样也可能会阻塞。
+.TP 
+\fBSYNC_FILE_RANGE_WAIT_AFTER\fP
+执行任何写入后，等待写出该范围内的所有页面。
+.PP
+作为空操作，允许将 \fIflags\fP 指定为 0。
+.SS Warning
+该系统调用极其危险，不应在可移植程序中使用。 这些操作都不会写出文件的元数据。
+因此，除非应用程序严格执行已实例化磁盘块的覆盖，否则无法保证数据在崩溃后可用。 没有用户界面可以知道写入是否纯粹是覆盖。 在使用写时复制语义的文件系统
+(例如，\fIbtrfs\fP)) 上，不可能覆盖现有的已分配块。 在写入预分配空间时，许多文件系统还需要调用块分配器，而该系统调用不会同步到磁盘。
+此系统调用不会刷新磁盘写入缓存，因此不会在具有易失性磁盘写入缓存的系统上提供任何数据完整性。
+.SS "Some details"
+\fBSYNC_FILE_RANGE_WAIT_BEFORE\fP 和 \fBSYNC_FILE_RANGE_WAIT_AFTER\fP 将检测任何 I/O 错误或
+\fBENOSPC\fP 条件并将这些返回给调用者。
+.PP
+\fIflags\fP 位的有用组合是:
+.TP 
+\fBSYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE\fP
+确保指定范围内所有在调用 \fBsync_file_range\fP() 时变脏的页面都处于写出状态。 这是一个开始写入数据完整性的操作。
+.TP 
+\fBSYNC_FILE_RANGE_WRITE\fP
+开始写出指定范围内当前未在写出的所有脏页。 这是一个异步刷新到磁盘操作。 这不适用于数据完整性操作。
+.TP 
+\fBSYNC_FILE_RANGE_WAIT_BEFORE\fP (or \fBSYNC_FILE_RANGE_WAIT_AFTER\fP)
+等待指定范围内的所有页面写出完成。 这可以在较早的 \fBSYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE\fP 操作之后使用，以等待该操作完成并获取其结果。
+.TP 
+\fBSYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER\fP
+这是一个为数据完整性而写的操作，它将确保在调用 \fBsync_file_range\fP() 时指定范围内的所有脏页都提交到磁盘。
+.SH "RETURN VALUE"
+成功时，\fBsync_file_range\fP() 返回 0; 失败时返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 指定无效位; 或 \fIoffset\fP 或 \fInbytes\fP 无效。
+.TP 
+\fBEIO\fP
+I/O 错误。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBENOSPC\fP
+磁盘空间不足。
+.TP 
+\fBESPIPE\fP
+\fIfd\fP 指的是除常规文件、块设备或目录之外的其他内容。
+.SH VERSIONS
+\fBsync_file_range\fP() 出现在 Linux 2.6.17 中。
+.SH STANDARDS
+该系统调用是 Linux 特有的，应避免在可移植程序中使用。
+.SH NOTES
+.SS sync_file_range2()
+.\" See kernel commit edd5cd4a9424f22b0fa08bef5e299d41befd5622
+某些体系结构 (例如，PowerPC、ARM) 需要 64 位参数在合适的寄存器对中对齐。 在这样的体系结构上，概要中显示的
+\fBsync_file_range\fP() 的调用签名将强制将寄存器浪费为 \fIfd\fP 和 \fIoffset\fP 参数之间的填充。 (详见
+\fBsyscall\fP(2)。) 因此，这些架构定义了一个不同的系统调用来适当地排序参数:
+.PP
+.in +4n
+.EX
+\fBint sync_file_range2(int \fP\fIfd\fP\fB, unsigned int \fP\fIflags\fP\fB,\fP
+\fB                     off64_t \fP\fIoffset\fP\fB, off64_t \fP\fInbytes\fP\fB);\fP
+.EE
+.in
+.PP
+该系统调用的行为在其他方面与 \fBsync_file_range\fP() 完全相同。
+.PP
+一个带有这个签名的系统调用在 Linux 2.6.20 的 ARM 架构上首次出现，名称为 \fBarm_sync_file_range\fP()。 当为
+PowerPC 添加类似系统调用时，它在 Linux 2.6.22 中重命名。 在提供 glibc 支持的体系结构上，glibc 透明地将
+\fBsync_file_range2\fP() 包装在名称 \fBsync_file_range\fP() 下。
+.SH "SEE ALSO"
+\fBfdatasync\fP(2), \fBfsync\fP(2), \fBmsync\fP(2), \fBsync\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

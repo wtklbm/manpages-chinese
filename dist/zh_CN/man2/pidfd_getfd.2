@@ -1,0 +1,98 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2020 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pidfd_getfd 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pidfd_getfd \- 获取另一个进程的文件描述符的副本
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_pidfd_getfd, int \fP\fIpidfd\fP\fB, int \fP\fItargetfd\fP\fB,\fP
+\fB            unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBpidfd_getfd\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBpidfd_getfd\fP() 系统调用在调用进程中分配一个新的文件描述符。 这个新文件描述符是 PID 文件描述符 \fIpidfd\fP
+引用的进程中现有文件描述符 \fItargetfd\fP 的副本。
+.PP
+重复的文件描述符指的是相同的打开文件描述 (见 \fBopen\fP(2)) 为 \fIpidfd\fP 所指进程中的原始文件描述符。
+这两个文件描述符因此共享文件状态标志和文件偏移量。 此外，对底层文件对象的操作 (例如，使用 \fBbind\fP(2)) 为套接字对象分配地址)
+同样可以通过复制文件描述符执行。
+.PP
+close\-on\-exec 标志 (\fBFD_CLOEXEC\fP; 请参见 \fBfcntl\fP(2)) 设置在 \fBpidfd_getfd\fP()
+返回的文件描述符上。
+.PP
+\fIflags\fP 参数保留给 future 使用。 目前，它必须指定为 0.
+.PP
+复制另一个进程的文件描述符的权限由 ptrace 访问模式 \fBPTRACE_MODE_ATTACH_REALCREDS\fP 检查控制 (参见
+\fBptrace\fP(2)).
+.SH "RETURN VALUE"
+成功时，\fBpidfd_getfd\fP() 返回一个文件描述符 (一个非负整数)。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIpidfd\fP 不是有效的 PID 文件描述符。
+.TP 
+\fBEBADF\fP
+\fItargetfd\fP 不是 \fIpidfd\fP 引用的进程中的打开文件描述符。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 不是 0.
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制 (请参见 \fBgetrlimit\fP(2)).x 中 \fBRLIMIT_NOFILE\fP 的描述)。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBEPERM\fP
+调用进程没有 \fBPTRACE_MODE_ATTACH_REALCREDS\fP 权限 (在 \fIpidfd\fP 引用的进程上参见
+\fBptrace\fP(2))。
+.TP 
+\fBESRCH\fP
+\fIpidfd\fP 引用的进程不存在 (即，它已终止并正在等待)。
+.SH VERSIONS
+.\" commit 8649c322f75c96e7ced2fec201e123b2b073bf09
+\fBpidfd_getfd\fP() 最早出现在 Linux 5.6。
+.SH STANDARDS
+\fBpidfd_getfd\fP() 是 Linux 特定的。
+.SH NOTES
+有关 PID 文件描述符的说明，请参见 \fBpidfd_open\fP(2)。
+.PP
+\fBpidfd_getfd\fP() 的效果类似于 \fBunix\fP(7) 中描述的 \fBSCM_RIGHTS\fP 消息的使用，但在以下方面有所不同:
+.IP \[bu] 3
+为了使用 \fBSCM_RIGHTS\fP 消息传递文件描述符，两个进程必须首先建立 UNIX 域套接字连接。
+.IP \[bu]
+\fBSCM_RIGHTS\fP 的使用需要正在复制其文件描述符的进程的一部分进行协作。 相比之下，使用 \fBpidfd_getfd\fP() 时不需要这种合作。
+.IP \[bu]
+使用 \fBpidfd_getfd\fP() 的能力受到 \fBPTRACE_MODE_ATTACH_REALCREDS\fP ptrace 访问模式检查的限制。
+.SH "SEE ALSO"
+\fBclone3\fP(2), \fBdup\fP(2), \fBkcmp\fP(2), \fBpidfd_open\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

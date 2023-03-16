@@ -1,0 +1,129 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014, Theodore Ts'o <tytso@mit.edu>
+.\" Copyright (C) 2014,2015 Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\" Copyright (C) 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getrandom 2 2023\-02\-08 "Linux man\-pages 6.03" 
+.SH NAME
+getrandom \- 获取一系列随机字节
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/random.h>\fP
+.PP
+\fBssize_t getrandom(void \fP\fIbuf\fP\fB[.\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBgetrandom\fP() 系统调用最多 \fIbuflen\fP 个随机字节填充 \fIbuf\fP 指向的缓冲区。 这些字节可用于 seed
+用户空间随机数生成器或用于加密目的。
+.PP
+默认情况下，\fBgetrandom\fP() 从 \fIurandom\fP 源 (即与 \fI/dev/urandom\fP 设备相同的源) 获取熵。 可以通过
+\fIflags\fP 参数更改此行为。
+.PP
+如果 \fIurandom\fP 源已初始化，最多 256 字节的读取将始终返回请求的字节数，并且不会被信号中断。 此类保证不适用于较大的缓冲区大小。
+例如，如果调用被信号处理程序中断，它可能会返回一个部分填充的缓冲区，或者失败并返回错误 \fBEINTR\fP。
+.PP
+如果 \fIurandom\fP 源尚未初始化，则 \fBgetrandom\fP() 将阻塞，除非在 \fIflags\fP 中指定了
+\fBGRND_NONBLOCK\fP。
+.PP
+\fIflags\fP 参数是一个位掩码，可以包含零个或多个以下值的或运算:
+.TP 
+\fBGRND_RANDOM\fP
+如果设置了该位，则从 \fIrandom\fP 源 (即与 \fI/dev/random\fP 设备相同的源) 而不是 \fIurandom\fP 源提取随机字节。
+\fIrandom\fP 源基于可从环境噪声中获得的熵而受到限制。 如果 \fIrandom\fP 源中的可用字节数少于 \fIbuflen\fP
+中请求的字节数，则调用仅返回可用的随机字节数。 如果没有可用的随机字节，则行为取决于 \fIflags\fP 参数中是否存在
+\fBGRND_NONBLOCK\fP。
+.TP 
+\fBGRND_NONBLOCK\fP
+默认情况下，当从 \fIrandom\fP 源读取时，如果没有可用的随机字节，\fBgetrandom\fP() 将阻塞，而当从 \fIurandom\fP
+源读取时，如果熵池尚未初始化，则它会阻塞。 如果设置了 \fBGRND_NONBLOCK\fP 标志，则 \fBgetrandom\fP()
+在这些情况下不会阻塞，而是立即返回 \-1，并将 \fIerrno\fP 设置为 \fBEAGAIN\fP。
+.SH "RETURN VALUE"
+成功时，\fBgetrandom\fP() 返回复制到缓冲区 \fIbuf\fP 的字节数。 如果在 \fIflags\fP 中指定了 \fBGRND_RANDOM\fP 并且
+\fIrandom\fP 源中存在的熵不足，或者系统调用被信号中断，则这可能小于通过 \fIbuflen\fP 请求的字节数。
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+请求的熵不可用，如果未设置 \fBGRND_NONBLOCK\fP 标志，\fBgetrandom\fP() 将被阻止。
+.TP 
+\fBEFAULT\fP
+\fIbuf\fP 引用的地址在可访问的地址空间之外。
+.TP 
+\fBEINTR\fP
+调用被信号处理程序中断; 请参见 \fBsignal\fP(7) 手册页中有关如何使用和不使用 \fBSA_RESTART\fP 标志处理 "slow"
+设备上中断的 \fBread\fP(2) 调用的说明。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了无效标志。
+.TP 
+\fBENOSYS\fP
+\fBgetrandom\fP() 的 glibc 封装函数确定底层内核没有实现这个系统调用。
+.SH VERSIONS
+\fBgetrandom\fP() 是在 Linux 3.17 中引入的。 在 glibc 2.25 中添加了支持。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+有关可用于获取随机性的各种接口的概述和比较，请参见 \fBrandom\fP(7)。
+.PP
+.\"
+与 \fI/dev/random\fP 和 \fI/dev/urandom\fP 不同，\fBgetrandom\fP() 不涉及使用路径名或文件描述符。
+因此，\fBgetrandom\fP() 在 \fBchroot\fP(2) 使 \fI/dev\fP 路径名不可见的情况下以及应用程序 (例如，启动期间的守护程序)
+关闭由库打开的这些文件之一的文件描述符的情况下很有用。
+.SS "Maximum number of bytes returned"
+自 Linux 3.19 起，以下限制适用:
+.IP \[bu] 3
+从 \fIurandom\fP 源读取时，在 \fIint\fP 的大小为 32 位的系统上，单个调用最多可将 32Mi\-1 字节返回给
+\fBgetrandom\fP()。
+.IP \[bu]
+从 \fIrandom\fP 源读取时，最多返回 512 个字节。
+.SS "Interruption by a signal handler"
+当从 \fIurandom\fP 源读取 (\fBGRND_RANDOM\fP 未设置时)，\fBgetrandom\fP() 将阻塞直到熵池被初始化 (除非指定了
+\fBGRND_NONBLOCK\fP 标志)。 如果请求读取大量字节 (超过 256 个)，\fBgetrandom\fP()
+将阻塞，直到这些字节生成并从内核内存传输到 \fIbuf\fP。 当从 \fIrandom\fP 源读取 (\fBGRND_RANDOM\fP
+设置时)，\fBgetrandom\fP() 将阻塞直到一些随机字节可用 (除非指定了 \fBGRND_NONBLOCK\fP 标志)。
+.PP
+当从 \fIurandom\fP 源读取时阻塞的调用 \fBgetrandom\fP() 被信号处理程序中断时的行为取决于熵缓冲区的初始化状态和请求大小
+\fIbuflen\fP。 如果熵尚未初始化，则调用失败并出现 \fBEINTR\fP 错误。 如果熵池已初始化且请求大小较大 (\fIbuflen\fP\ >\ 256)，调用要么成功，返回部分填充的缓冲区，要么失败并返回错误 \fBEINTR\fP。 如果熵池已经初始化并且请求大小是小 (\fIbuflen\fP\ <=\ 256)，那么 \fBgetrandom\fP() 将不会与 \fBEINTR\fP 一起失败。 相反，它将返回已请求的所有字节。
+.PP
+从 \fIrandom\fP 源读取时，任何大小的阻塞请求都可能被信号处理程序中断 (调用失败，错误为 \fBEINTR\fP)。
+.PP
+使用 \fBgetrandom\fP() 从 \fIurandom\fP 源读取小缓冲区 (<=\ 256 字节) 是首选的使用模式。
+.PP
+\fIbuflen\fP 的小值的特殊处理是为了与 OpenBSD 的 \fBgetentropy\fP(3) 兼容而设计的，现在 glibc 支持它。
+.PP
+\fBgetrandom\fP() \fImust\fP 的用户总是检查返回值，以确定是否发生错误或返回的字节数少于请求的字节数。 在未指定
+\fBGRND_RANDOM\fP 且 \fIbuflen\fP 小于或等于 256
+的情况下，返回的字节数少于请求的字节数永远不会发生，但细心的程序员无论如何都会检查这一点!
+.SH BUGS
+.\" FIXME patch proposed https://lkml.org/lkml/2014/11/29/16
+从 Linux 3.19 开始，存在以下错误:
+.IP \[bu] 3
+根据 CPU 负载，\fBgetrandom\fP() 在读取所有请求的字节之前不会对中断作出反应。
+.SH "SEE ALSO"
+\fBgetentropy\fP(3), \fBrandom\fP(4), \fBurandom\fP(4), \fBrandom\fP(7), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

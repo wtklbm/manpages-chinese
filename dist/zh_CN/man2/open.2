@@ -1,0 +1,827 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\" and Copyright (C) 1993 Michael Haardt, Ian Jackson.
+.\" and Copyright (C) 2008 Greg Banks
+.\" and Copyright (C) 2006, 2008, 2013, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1993-07-21 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1994-08-21 by Michael Haardt
+.\" Modified 1996-04-13 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-05-13 by Thomas Koenig
+.\" Modified 1996-12-20 by Michael Haardt
+.\" Modified 1999-02-19 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1998-11-28 by Joseph S. Myers <jsm28@hermes.cam.ac.uk>
+.\" Modified 1999-06-03 by Michael Haardt
+.\" Modified 2002-05-07 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2004-12-08, mtk, reordered flags list alphabetically
+.\" 2004-12-08, Martin Pool <mbp@sourcefrog.net> (& mtk), added O_NOATIME
+.\" 2007-09-18, mtk, Added description of O_CLOEXEC + other minor edits
+.\" 2008-01-03, mtk, with input from Trond Myklebust
+.\"     <trond.myklebust@fys.uio.no> and Timo Sirainen <tss@iki.fi>
+.\"     Rewrite description of O_EXCL.
+.\" 2008-01-11, Greg Banks <gnb@melbourne.sgi.com>: add more detail
+.\"     on O_DIRECT.
+.\" 2008-02-26, Michael Haardt: Reorganized text for O_CREAT and mode
+.\"
+.\" FIXME . Apr 08: The next POSIX revision has O_EXEC, O_SEARCH, and
+.\" O_TTYINIT.  Eventually these may need to be documented.  --mtk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH open 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+open, openat, creat \- 打开并可能创建一个文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP
+.PP
+\fBint open(const char *\fP\fIpathname\fP\fB, int \fP\fIflags\fP\fB);\fP
+\fBint open(const char *\fP\fIpathname\fP\fB, int \fP\fIflags\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.PP
+\fBint creat(const char *\fP\fIpathname\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.PP
+\fBint openat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, int \fP\fIflags\fP\fB);\fP
+\fBint openat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB, int \fP\fIflags\fP\fB, mode_t \fP\fImode\fP\fB);\fP
+.PP
+/* Documented separately, in \fBopenat2\fP(2): */
+\fBint openat2(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB,\fP
+\fB            const struct open_how *\fP\fIhow\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBopenat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBopen\fP() 系统调用打开 \fIpathname\fP 指定的文件。 如果指定的文件不存在，则可以选择 (如果 \fIflags\fP) 中指定了
+\fBO_CREAT\fP，则由 \fBopen\fP() 创建。
+.PP
+\fBopen\fP() 的返回值是一个文件描述符，一个小的非负整数，它是进程的打开文件描述符表中条目的索引。 文件描述符用于后续系统调用
+(\fBread\fP(2)、\fBwrite\fP(2)、\fBlseek\fP(2)、\fBfcntl\fP(2) 等) 来引用打开的文件。
+成功调用返回的文件描述符将是当前未为进程打开的最小编号的文件描述符。
+.PP
+默认情况下，新文件描述符设置为在 \fBexecve\fP(2) 中保持打开状态 (即，\fBfcntl\fP(2) 中描述的 \fBFD_CLOEXEC\fP
+文件描述符标志最初被禁用) ; \fBO_CLOEXEC\fP 标志，如下所述，可用于更改此默认值。 文件偏移量设置为文件的开头 (请参见
+\fBlseek\fP(2)).
+.PP
+调用 \fBopen\fP() 会创建一个新的 \fIopen file description\fP，这是系统范围内打开文件表中的一个条目。
+打开的文件描述记录了文件偏移量和文件状态标志 (见下文)。 文件描述符是对打开文件描述的引用; 如果随后删除或修改 \fIpathname\fP
+以引用不同的文件，则此引用不受影响。 有关打开文件描述的更多详细信息，请参见注释。
+.PP
+参数 \fIflags\fP 必须包括以下 \fIaccess modes\fP: \fBO_RDONLY\fP、\fBO_WRONLY\fP 或 \fBO_RDWR\fP 之一。
+这些请求分别以只读、只写或 read/write 方式打开文件。
+.PP
+.\" SUSv4 divides the flags into:
+.\" * Access mode
+.\" * File creation
+.\" * File status
+.\" * Other (O_CLOEXEC, O_DIRECTORY, O_NOFOLLOW)
+.\" though it's not clear what the difference between "other" and
+.\" "File creation" flags is.  I raised an Aardvark to see if this
+.\" can be clarified in SUSv4; 10 Oct 2008.
+.\" http://thread.gmane.org/gmane.comp.standards.posix.austin.general/64/focus=67
+.\" TC1 (balloted in 2013), resolved this, so that those three constants
+.\" are also categorized" as file status flags.
+.\"
+此外，零个或多个文件创建标志和文件状态标志可以是 bitwise\-\fIor\fP'd in \fIflags\fP。 \fIfile creation flags\fP
+为
+\fBO_CLOEXEC\fP、\fBO_CREAT\fP、\fBO_DIRECTORY\fP、\fBO_EXCL\fP、\fBO_NOCTTY\fP、\fBO_NOFOLLOW\fP、\fBO_TMPFILE\fP、\fBO_TRUNC\fP。
+\fIfile status flags\fP 是下面列出的所有剩余标志。 这两组标志的区别在于，文件创建标志影响打开操作本身的语义，而文件状态标志影响后续
+I/O 操作的语义。 可以检索和 (在某些情况下) 修改文件状态标志; 详见 \fBfcntl\fP(2)。
+.PP
+文件创建标志和文件状态标志的完整列表如下:
+.TP 
+\fBO_APPEND\fP
+该文件以追加模式打开。 在每个 \fBwrite\fP(2) 之前，文件偏移量位于文件末尾，就像 \fBlseek\fP(2) 一样。
+文件偏移量的修改和写入操作作为单个原子步骤执行。
+.IP
+.\" For more background, see
+.\" http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=453946
+.\" http://nfs.sourceforge.net/
+如果多个进程同时将数据追加到一个文件，\fBO_APPEND\fP 可能会导致 NFS 文件系统上的文件损坏。 这是因为 NFS
+不支持追加到文件，所以客户端内核必须模拟它，没有竞争条件就无法完成。
+.TP 
+\fBO_ASYNC\fP
+启用信号驱动 I/O: 默认情况下生成信号 (\fBSIGIO\fP，但是当在此文件描述符上可以输入或输出时，可以通过 \fBfcntl\fP(2)) 更改此设置。
+此特性仅适用于终端、伪终端、套接字和 (自 Linux 2.6 起) 管道和 FIFO。 有关详细信息，请参见 \fBfcntl\fP(2)。
+另请参见下面的错误。
+.TP 
+\fBO_CLOEXEC\fP (since Linux 2.6.23)
+.\" NOTE! several other man pages refer to this text
+.\" FIXME . for later review when Issue 8 is one day released...
+.\" POSIX proposes to fix many APIs that provide hidden FDs
+.\" http://austingroupbugs.net/tag_view_page.php?tag_id=8
+.\" http://austingroupbugs.net/view.php?id=368
+为新文件描述符启用 close\-on\-exec 标志。 指定此标志允许程序避免额外的 \fBfcntl\fP(2) \fBF_SETFD\fP 操作来设置
+\fBFD_CLOEXEC\fP 标志。
+.IP
+.\" This flag fixes only one form of the race condition;
+.\" The race can also occur with, for example, file descriptors
+.\" returned by accept(), pipe(), etc.
+请注意，在某些多线程程序中使用此标志是必不可少的，因为使用单独的 \fBfcntl\fP(2) \fBF_SETFD\fP 操作来设置 \fBFD_CLOEXEC\fP
+标志不足以避免竞争状态，其中一个线程打开文件描述符并尝试设置其 close\-on\-exec 标记使用 \fBfcntl\fP(2)，同时另一个线程执行
+\fBfork\fP(2) 加 \fBexecve\fP(2)。 根据执行顺序，竞争可能导致 \fBopen\fP() 返回的文件描述符无意中泄露给 \fBfork\fP(2)
+创建的子进程执行的程序。 (这种竞争在原则上对于任何创建文件描述符的系统调用都是可能的，其 close\-on\-exec 标志应该被设置，并且各种其他
+Linux 系统调用提供了一个等效的 \fBO_CLOEXEC\fP 标志来处理这个问题。)
+.TP 
+\fBO_CREAT\fP
+如果 \fIpathname\fP 不存在，则将其创建为常规文件。
+.IP
+新文件的所有者 (用户 ID) 设置为进程的有效用户 ID。
+.IP
+.\" As at Linux 2.6.25, bsdgroups is supported by ext2, ext3, ext4, and
+.\" XFS (since Linux 2.6.14).
+新文件的组所有权 (组 ID) 设置为进程的有效组 ID (System V 语义) 或父目录的组 ID (BSD 语义)。 在 Linux
+上，行为取决于是否在父目录上设置了 set\-group\-ID 模式位: 如果设置了该位，则适用 BSD 语义; 否则 否则，System V 语义适用。
+对于某些文件系统，行为还取决于 \fBmount\fP(8) 中描述的 \fIbsdgroups\fP 和 \fIsysvgroups\fP 挂载选项。
+.IP
+\fImode\fP 参数指定创建新文件时要应用的文件模式位。 如果在 \fIflags\fP 中既未指定 \fBO_CREAT\fP 也未指定
+\fBO_TMPFILE\fP，则 \fImode\fP 将被忽略 (因此可以指定为 0，或简单地省略)。 如果在 \fIflags\fP 中指定 \fBO_CREAT\fP
+或 \fBO_TMPFILE\fP，则提供 \fImode\fP 参数 \fBmust\fP; 如果未提供，则栈中的一些任意字节将用作文件模式。
+.IP
+有效模式由进程的 \fIumask\fP 按通常方式修改: 在没有默认 ACL 的情况下，创建文件的模式为 \fI(mode\ &\ \[ti]umask)\fP。
+.IP
+请注意，\fImode\fP 仅适用于新创建文件的 future 访问; 创建只读文件的 \fBopen\fP() 调用可能会返回 read/write
+文件描述符。
+.IP
+为 \fImode\fP: 提供以下符号常量
+.RS
+.TP  9
+\fBS_IRWXU\fP
+00700 用户 (文件拥有者) 有读、写、执行权限
+.TP 
+\fBS_IRUSR\fP
+00400 用户有读权限
+.TP 
+\fBS_IWUSR\fP
+00200 用户有写权限
+.TP 
+\fBS_IXUSR\fP
+00100 用户有执行权限
+.TP 
+\fBS_IRWXG\fP
+00070 组有读、写、执行权限
+.TP 
+\fBS_IRGRP\fP
+00040 组有读权限
+.TP 
+\fBS_IWGRP\fP
+00020 组有写权限
+.TP 
+\fBS_IXGRP\fP
+00010 组有执行权限
+.TP 
+\fBS_IRWXO\fP
+00007 其他人有读、写、执行权限
+.TP 
+\fBS_IROTH\fP
+00004 其他人有读权限
+.TP 
+\fBS_IWOTH\fP
+00002 其他人有写权限
+.TP 
+\fBS_IXOTH\fP
+00001 其他人有执行权限
+.RE
+.IP
+根据 POSIX，\fImode\fP 中设置其他位时的效果未指定。 在 Linux 上，以下位也适用于 \fImode\fP:
+.RS
+.TP  9
+\fBS_ISUID\fP
+0004000 设置用户 ID 位
+.TP 
+\fBS_ISGID\fP
+0002000 设置组 ID 位 (参见 \fBinode\fP(7)).
+.TP 
+\fBS_ISVTX\fP
+0001000 粘滞位 (见 \fBinode\fP(7)).
+.RE
+.TP 
+\fBO_DIRECT\fP (since Linux 2.4.10)
+尝试将 I/O 与此文件之间的缓存效应降至最低。 通常这会降低性能，但在特殊情况下很有用，例如当应用程序进行自己的缓存时。 文件 I/O 是直接完成
+to/from 用户空间缓冲区。 \fBO_DIRECT\fP 标志本身努力同步传输数据，但不保证 \fBO_SYNC\fP 标志传输数据和必要的元数据。 为保证
+I/O 同步，除了 \fBO_DIRECT\fP 外，还必须使用 \fBO_SYNC\fP。 请参见下面的注释以进行进一步讨论。
+.IP
+\fBraw\fP(8) 中描述了一个语义相似 (但已弃用) 的块设备接口。
+.TP 
+\fBO_DIRECTORY\fP
+.\" But see the following and its replies:
+.\" http://marc.theaimsgroup.com/?t=112748702800001&r=1&w=2
+.\" [PATCH] open: O_DIRECTORY and O_CREAT together should fail
+.\" O_DIRECTORY | O_CREAT causes O_DIRECTORY to be ignored.
+如果 \fIpathname\fP 不是目录，则导致打开失败。 此标志已添加到 Linux 2.1.126 中，以避免在 FIFO 或磁带设备上调用
+\fBopendir\fP(3) 时出现拒绝服务问题。
+.TP 
+\fBO_DSYNC\fP
+对文件的写操作将根据同步 I/O \fIdata\fP 完整性完成的要求完成。
+.IP
+当 \fBwrite\fP(2) (和类似的) 返回时，输出数据已经被传输到底层硬件，连同检索该数据所需的任何文件元数据 (即，就好像每个
+\fBwrite\fP(2) 后面跟着一个调用到 \fBfdatasync\fP(2))。 当 \fBwrite\fP(2) (和类似的)
+返回时，输出数据已经被传输到底层硬件，连同检索该数据所需的任何文件元数据 (即，就好像每个 \fBwrite\fP(2) 后面跟着一个调用到
+\fBfdatasync\fP(2))。
+.TP 
+\fBO_EXCL\fP
+确保此调用创建文件: 如果此标志与 \fBO_CREAT\fP 一起指定，并且 \fIpathname\fP 已经存在，则 \fBopen\fP() 失败并显示错误
+\fBEEXIST\fP。
+.IP
+.\" POSIX.1-2001 explicitly requires this behavior.
+指定这两个标志时，不遵循符号链接: 如果 \fIpathname\fP 是符号链接，则无论符号链接指向何处，\fBopen\fP() 都会失败。
+.IP
+通常，如果在没有 \fBO_CREAT\fP 的情况下使用，则 \fBO_EXCL\fP 的行为是未定义的。 有一个例外: 在 Linux 2.6
+及更高版本上，如果 \fIpathname\fP 指的是块设备，则可以在没有 \fBO_CREAT\fP 的情况下使用 \fBO_EXCL\fP。
+如果块设备正在被系统使用 (例如，挂载)，\fBopen\fP() 将失败并显示错误 \fBEBUSY\fP。
+.IP
+在 NFS 上，仅当在内核 2.6 或更高版本上使用 NFSv3 或更高版本时才支持 \fBO_EXCL\fP。 在不提供 \fBO_EXCL\fP 支持的 NFS
+环境中，依赖它执行锁定任务的程序将包含竞争条件。 想要使用锁文件执行原子文件锁定并且需要避免依赖 NFS 对 \fBO_EXCL\fP
+的支持的可移植程序可以在同一文件系统上创建一个唯一的文件 (例如，合并主机名和 PID)，并使用 \fBlink\fP(2) 建立链接到锁定文件。 如果
+\fBlink\fP(2) 返回 0，则锁定成功。 否则，在唯一文件上使用 \fBstat\fP(2) 检查其链接计数是否已增加到 2，在这种情况下锁定也成功。
+.TP 
+\fBO_LARGEFILE\fP
+(LFS) 允许其大小无法在 \fIoff_t\fP 中表示 (但可以在 \fIoff64_t\fP) 中表示) 的文件打开。 必须定义
+\fB_LARGEFILE64_SOURCE\fP 宏 (在包含 \fIany\fP 头文件之前) 以获得此定义。 将 \fB_FILE_OFFSET_BITS\fP
+特性测试宏设置为 64 (而不是使用 \fBO_LARGEFILE\fP) 是在 32 位系统上访问大文件的首选方法 (请参见
+\fBfeature_test_macros\fP(7)).
+.TP 
+\fBO_NOATIME\fP (since Linux 2.6.8)
+当文件为 \fBread\fP(2) 时，不更新 inode 中的文件最后访问时间 (\fIst_atime\fP)。
+.IP
+仅当以下条件之一为真时，才能使用此标志:
+.RS
+.IP \[bu] 3
+.\" Strictly speaking: the filesystem UID
+进程的有效 UID 与文件的所有者 UID 匹配。
+.IP \[bu]
+调用进程在其用户命名空间中具有 \fBCAP_FOWNER\fP 功能，并且文件的所有者 UID 在命名空间中具有映射。
+.RE
+.IP
+.\" The O_NOATIME flag also affects the treatment of st_atime
+.\" by mmap() and readdir(2), MTK, Dec 04.
+此标志旨在供索引或备份程序使用，在这些程序中使用它可以显着减少磁盘活动量。 此标志可能并非对所有文件系统都有效。 一个例子是
+NFS，其中服务器维护访问时间。
+.TP 
+\fBO_NOCTTY\fP
+如果 \fIpathname\fP 指的是一个终端设备 \[em] 请参见 \fBtty\fP(4)\[em]it
+将不会成为进程的控制终端，即使该进程没有终端设备。
+.TP 
+\fBO_NOFOLLOW\fP
+如果 \fIpathname\fP 的尾部组件 (即基本名称) 是符号链接，则打开失败，错误为 \fBELOOP\fP。 仍将遵循路径名早期组件中的符号链接。
+(请注意，在这种情况下可能发生的 \fBELOOP\fP 错误与打开失败的情况无法区分，因为在解析路径名前缀部分的组件时发现了太多符号链接。)
+.IP
+这个标志是 FreeBSD 的扩展，在 Linux 2.1.126 中加入，随后在 POSIX.1\-2008 中被标准化。
+.IP
+.\" The headers from glibc 2.0.100 and later include a
+.\" definition of this flag; \fIkernels before Linux 2.1.126 will ignore it if
+.\" used\fP.
+另请参见下面的 \fBO_PATH\fP。
+.TP 
+\fBO_NONBLOCK\fP or \fBO_NDELAY\fP
+如果可能，文件以非阻塞模式打开。 对返回的文件描述符的 \fBopen\fP() 和任何后续 I/O 操作都不会导致调用进程等待。
+.IP
+请注意，此标志的设置对 \fBpoll\fP(2)、\fBselect\fP(2)、\fBepoll\fP(7)
+和类似的操作没有影响，因为这些接口仅通知调用者文件描述符是否为 "ready"，这意味着对文件描述符执行的 I/O 操作具有 \fBO_NONBLOCK\fP
+标志 \fIclear\fP 不会阻塞。
+.IP
+请注意，此标志对常规文件和块设备没有影响; 也就是说，无论是否设置了 \fBO_NONBLOCK\fP，当需要设备活动时，I/O 操作将阻塞
+(briefly)。 由于最终可能会实现 \fBO_NONBLOCK\fP 语义，因此在为常规文件和块设备指定此标志时，应用程序不应依赖于阻塞行为。
+.IP
+对于 FIFO (命名管道) 的处理，另请参见 \fBfifo\fP(7)。 有关 \fBO_NONBLOCK\fP 与强制文件锁定和文件租用的影响的讨论，请参见
+\fBfcntl\fP(2)。
+.TP 
+\fBO_PATH\fP (since Linux 2.6.39)
+.\" commit 1abf0c718f15a56a0a435588d1b104c7a37dc9bd
+.\" commit 326be7b484843988afe57566b627fb7a70beac56
+.\" commit 65cfc6722361570bfe255698d9cd4dccaf47570d
+.\"
+.\" http://thread.gmane.org/gmane.linux.man/2790/focus=3496
+.\"	Subject: Re: [PATCH] open(2): document O_PATH
+.\"	Newsgroups: gmane.linux.man, gmane.linux.kernel
+.\"
+获取可用于两个目的的文件描述符: 指示文件系统树中的位置和执行纯粹在文件描述符级别起作用的操作。 文件本身未打开，其他文件操作
+(例如，\fBread\fP(2)、\fBwrite\fP(2)、\fBfchmod\fP(2)、\fBfchown\fP(2)、\fBfgetxattr\fP(2)、\fBioctl\fP(2)、\fBmmap\fP(2))
+失败，错误为 \fBEBADF\fP。
+.IP
+对生成的文件描述符执行以下操作 \fIcan\fP:
+.RS
+.IP \[bu] 3
+\fBclose\fP(2).
+.IP \[bu]
+.\" commit 332a2e1244bd08b9e3ecd378028513396a004a24
+\fBfchdir\fP(2)，如果文件描述符指的是目录 (自 Linux 3.5 起)。
+.IP \[bu]
+\fBfstat\fP(2) (自 Linux 3.6)。
+.IP \[bu]
+.\" fstat(): commit 55815f70147dcfa3ead5738fd56d3574e2e3c1c2
+.\" fstatfs(): commit 9d05746e7b16d8565dddbe3200faa1e669d23bbf
+\fBfstatfs\fP(2) (自 Linux 3.12)。
+.IP \[bu]
+复制文件描述符 (\fBdup\fP(2)、\fBfcntl\fP(2) \fBF_DUPFD\fP 等)。
+.IP \[bu]
+获取和设置文件描述符标志 (\fBfcntl\fP(2) \fBF_GETFD\fP 和 \fBF_SETFD\fP)。
+.IP \[bu]
+使用 \fBfcntl\fP(2) \fBF_GETFL\fP 操作检索打开文件状态标志: 返回的标志将包括位 \fBO_PATH\fP。
+.IP \[bu]
+将文件描述符作为 \fBopenat\fP() 和其他 "*at()" 系统调用的 \fIdirfd\fP 参数传递。 这包括 \fBlinkat\fP(2) 和
+\fBAT_EMPTY_PATH\fP (或者通过 procfs 使用 \fBAT_SYMLINK_FOLLOW\fP)，即使文件不是目录。
+.IP \[bu]
+通过 UNIX 域套接字将文件描述符传递给另一个进程 (参见 \fBunix\fP(7)).\fBSCM_RIGHTS\fP 中的 \fBSCM_RIGHTS\fP)。
+.RE
+.IP
+当在 \fIflags\fP 中指定 \fBO_PATH\fP 时，\fBO_CLOEXEC\fP、\fBO_DIRECTORY\fP 和 \fBO_NOFOLLOW\fP
+以外的标志位将被忽略。
+.IP
+打开带有 \fBO_PATH\fP 标志的文件或目录不需要对对象本身的权限 (但需要对路径前缀中的目录具有执行权限)。
+根据后续操作，可能会执行对适当文件权限的检查 (例如，\fBfchdir\fP(2) 需要对其文件描述符引用的目录具有执行权限参数)。 相比之下，通过使用
+\fBO_RDONLY\fP 标志打开文件系统对象来获得对文件系统对象的引用需要调用者对该对象具有读取权限，即使后续操作
+(例如，\fBfchdir\fP(2)，\fBfstat\fP(2)) 不需要对该对象的读取权限。
+.IP
+如果 \fIpathname\fP 是符号链接并且还指定了 \fBO_NOFOLLOW\fP 标志，则调用返回引用符号链接的文件描述符。 此文件描述符可用作
+\fIdirfd\fP 参数调用具有空路径名的 \fBfchownat\fP(2)、\fBfstatat\fP(2)、\fBlinkat\fP(2) 和
+\fBreadlinkat\fP(2)，以使调用对符号链接进行操作。
+.IP
+如果 \fIpathname\fP 指的是尚未触发的自动挂载点，因此没有其他文件系统挂载在其上，则调用返回引用自动挂载目录的文件描述符而不触发挂载。
+然后可以使用 \fBfstatfs\fP(2) 来确定它是否实际上是未触发的自动挂载点 (\fB.f_type == AUTOFS_SUPER_MAGIC\fP)。
+.IP
+\fBO_PATH\fP 用于常规文件的一种用途是提供与 POSIX.1 的 \fBO_EXEC\fP 功能等效的功能。
+这允许我们打开一个我们有执行权限但没有读取权限的文件，然后执行该文件，步骤如下:
+.IP
+.in +4n
+.EX
+char buf[PATH_MAX];
+fd = open("some_prog", O_PATH);
+snprintf(buf, PATH_MAX, "/proc/self/fd/%d", fd);
+execl(buf, "some_prog", (char *) NULL);
+.EE
+.in
+.IP
+\fBO_PATH\fP 文件描述符也可以作为 \fBfexecve\fP(3) 的参数传递。
+.TP 
+\fBO_SYNC\fP
+对文件的写操作将按照同步 I/O \fIfile\fP 完整性完成的要求完成 (对比 \fBO_DSYNC\fP.) 提供的同步 I/O \fIdata\fP 完整性完成
+.IP
+当 \fBwrite\fP(2) (或类似的) 返回时，输出数据和关联的文件元数据已经传输到底层硬件 (即，好像每个 \fBwrite\fP(2) 后面都跟有一个到
+\fBfsync\fP(2)) 的调用。 当 \fBwrite\fP(2) (或类似的) 返回时，输出数据和关联的文件元数据已经传输到底层硬件 (即，好像每个
+\fBwrite\fP(2) 后面都跟有一个到 \fBfsync\fP(2)) 的调用。
+.TP 
+\fBO_TMPFILE\fP (since Linux 3.11)
+.\" commit 60545d0d4610b02e55f65d141c95b18ccf855b6e
+.\" commit f4e0c30c191f87851c4a53454abb55ee276f4a7e
+.\" commit bb458c644a59dbba3a1fe59b27106c5e68e1c4bd
+创建一个未命名的临时常规文件。 \fIpathname\fP 参数指定一个目录; 将在该目录的文件系统中创建一个未命名的 inode。
+当最后一个文件描述符关闭时，写入结果文件的任何内容都将丢失，除非文件被赋予名称。
+.IP
+\fBO_TMPFILE\fP 必须与 \fBO_RDWR\fP 或 \fBO_WRONLY\fP 之一以及可选的 \fBO_EXCL\fP 一起指定。 如果未指定
+\fBO_EXCL\fP，则可以使用 \fBlinkat\fP(2) 将临时文件链接到文件系统，使其成为永久文件，使用如下代码:
+.IP
+.in +4n
+.EX
+char path[PATH_MAX];
+fd = open("/path/to/dir", O_TMPFILE | O_RDWR,
+                        S_IRUSR | S_IWUSR);
+
+/* File I/O on \[aq]fd\[aq]... */
+
+linkat(fd, "", AT_FDCWD, "/path/for/file", AT_EMPTY_PATH);
+
+/* If the caller doesn\[aq]t have the CAP_DAC_READ_SEARCH
+   capability (needed to use AT_EMPTY_PATH with linkat(2)),
+   and there is a proc(5) filesystem mounted, then the
+   linkat(2) call above can be replaced with:
+
+snprintf(path, PATH_MAX,  "/proc/self/fd/%d", fd);
+linkat(AT_FDCWD, path, AT_FDCWD, "/path/for/file",
+                        AT_SYMLINK_FOLLOW);
+*/
+.EE
+.in
+.IP
+在这种情况下，\fBopen\fP() \fImode\fP 参数确定文件权限模式，与 \fBO_CREAT\fP 一样。
+.IP
+将 \fBO_EXCL\fP 与 \fBO_TMPFILE\fP 一起指定可防止临时文件以上述方式链接到文件系统。 (注意 \fBO_EXCL\fP 在这种情况下的含义与
+\fBO_EXCL\fP 在其他情况下的含义不同。)
+.IP
+.\" Inspired by http://lwn.net/Articles/559147/
+\fBO_TMPFILE\fP: 有两个主要用例
+.RS
+.IP \[bu] 3
+改进的 \fBtmpfile\fP(3) 功能: 无竞争地创建 (1) 关闭时自动删除的临时文件; 永远无法通过任何路径名到达 (2); (3)
+不受符号链接攻击; 和 (4) 不需要调用者设计唯一的名称。
+.IP \[bu]
+创建一个最初不可见的文件，然后用数据填充并调整为具有适当的文件系统属性
+(\fBfchown\fP(2)、\fBfchmod\fP(2)、\fBfsetxattr\fP(2) 等)，然后以完全形成的状态 (使用如上所述的
+\fBlinkat\fP(2)) 原子链接到文件系统。
+.RE
+.IP
+.\" To check for support, grep for "tmpfile" in kernel sources
+.\" commit 99b6436bc29e4f10e4388c27a3e4810191cc4788
+.\" commit ab29743117f9f4c22ac44c13c1647fb24fb2bafe
+.\" commit ef3b9af50bfa6a1f02cd7b3f5124b712b1ba3e3c
+.\" commit 50732df02eefb39ab414ef655979c2c9b64ad21c
+\fBO_TMPFILE\fP 需要底层文件系统的支持; 只有 Linux 文件系统的一个子集提供这种支持。
+在最初的实现中，ext2、ext3、ext4、UDF、Minix 和 tmpfs 文件系统提供了支持。 随后添加了对其他文件系统的支持，如下所示:
+XFS (Linux 3.15); Btrfs (Linux 3.16); F2FS (Linux 3.16); 和 ubifs (Linux 4.9)
+.TP 
+\fBO_TRUNC\fP
+如果文件已经存在并且是一个常规文件并且访问模式允许写入 (即是 \fBO_RDWR\fP 或 \fBO_WRONLY\fP)，它将被截断为长度 0。 如果文件是
+FIFO 或终端设备文件，则忽略 \fBO_TRUNC\fP 标志。 否则，\fBO_TRUNC\fP 的作用是不确定的。
+.SS creat()
+调用 \fBcreat\fP() 相当于调用 \fBopen\fP()，\fIflags\fP 等于 \fBO_CREAT|O_WRONLY|O_TRUNC\fP。
+.SS openat()
+\fBopenat\fP() 系统调用的操作方式与 \fBopen\fP() 完全相同，除了此处描述的差异。
+.PP
+\fIdirfd\fP 参数与 \fIpathname\fP 参数配合使用如下:
+.IP \[bu] 3
+如果 \fIpathname\fP 中给出的路径名是绝对路径，则忽略 \fIdirfd\fP。
+.IP \[bu]
+如果 \fIpathname\fP 中给出的路径名是相对的并且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBopen\fP()).
+.IP \[bu]
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBopen\fP() 对相对路径名所做的那样)。 在这种情况下，\fIdirfd\fP 必须是为读取
+(\fBO_RDONLY\fP) 或使用 \fBO_PATH\fP 标志而打开的目录。
+.PP
+.\"
+如果 \fIpathname\fP 中给出的路径名是相对的，并且 \fIdirfd\fP 不是有效的文件描述符，则会产生错误 (\fBEBADF\fP)。 (在
+\fIdirfd\fP 中指定一个无效的文件描述符编号可以用作确保 \fIpathname\fP 是绝对的一种手段。)
+.SS openat2(2)
+\fBopenat2\fP(2) 系统调用是 \fBopenat\fP() 的扩展，提供了 \fBopenat\fP() 特性的超集。 它单独记录在
+\fBopenat2\fP(2) 中。
+.SH "RETURN VALUE"
+成功时，\fBopen\fP()、\fBopenat\fP() 和 \fBcreat\fP() 返回新的文件描述符 (一个非负整数)。 出错时，返回 \-1 并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBopen\fP()、\fBopenat\fP() 和 \fBcreat\fP() 可能会失败并出现以下错误:
+.TP 
+\fBEACCES\fP
+不允许对文件的请求访问，或者 \fIpathname\fP 路径前缀中的目录之一的搜索权限被拒绝，或者文件尚不存在并且不允许对父目录的写访问。 (另见
+\fBpath_resolution\fP(7).)
+.TP 
+\fBEACCES\fP
+.\" commit 30aba6656f61ed44cba445a3c0d38b296fa9e8f5
+指定 \fBO_CREAT\fP 的地方，启用了 \fIprotected_fifos\fP 或 \fIprotected_regular\fP
+sysctl，文件已经存在并且是 FIFO 或常规文件，文件的所有者既不是当前用户也不是包含目录的所有者，并且包含目录是世界 \- 或组可写和粘性。 详见
+\fBproc\fP(5) 中 \fI/proc/sys/fs/protected_fifos\fP 和
+\fI/proc/sys/fs/protected_regular\fP 的说明。
+.TP 
+\fBEBADF\fP
+(\fBopenat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEBUSY\fP
+\fBO_EXCL\fP 在 \fIflags\fP 中指定，\fIpathname\fP 指的是系统正在使用的块设备 (例如，已挂载)。
+.TP 
+\fBEDQUOT\fP
+指定 \fBO_CREAT\fP 的地方，文件不存在，用户在文件系统上的磁盘块或 inode 配额已用完。
+.TP 
+\fBEEXIST\fP
+\fIpathname\fP 已经存在并且使用了 \fBO_CREAT\fP 和 \fBO_EXCL\fP。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEFBIG\fP
+请参见 \fBEOVERFLOW\fP。
+.TP 
+\fBEINTR\fP
+在等待完成慢速设备 (例如 FIFO; 参见 \fBfifo\fP(7))) 的打开时，调用被信号处理程序中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+文件系统不支持 \fBO_DIRECT\fP 标志。 有关更多信息，请参见 \fBNOTES\fP。
+.TP 
+\fBEINVAL\fP
+.\" In particular, __O_TMPFILE instead of O_TMPFILE
+\fIflags\fP 中的值无效。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 中指定了 \fBO_TMPFILE\fP，但 \fBO_WRONLY\fP 和 \fBO_RDWR\fP 均未指定。
+.TP 
+\fBEINVAL\fP
+\fBO_CREAT\fP 是在 \fIflags\fP 中指定的，新文件的 \fIpathname\fP 的最后一个组件 ("basename") 无效
+(例如，它包含底层文件系统不允许的字符)。
+.TP 
+\fBEINVAL\fP
+\fIpathname\fP 的最终组件 ("basename") 无效 (例如，它包含底层文件系统不允许的字符)。
+.TP 
+\fBEISDIR\fP
+\fIpathname\fP 指的是一个目录，请求的访问涉及写入 (即设置了 \fBO_WRONLY\fP 或 \fBO_RDWR\fP)。
+.TP 
+\fBEISDIR\fP
+\fIpathname\fP 指的是一个已经存在的目录，\fIflags\fP 中指定了 \fBO_TMPFILE\fP 和 \fBO_WRONLY\fP 或
+\fBO_RDWR\fP 之一，但是这个内核版本不提供 \fBO_TMPFILE\fP 的功能。
+.TP 
+\fBELOOP\fP
+解析 \fIpathname\fP 时遇到太多符号链接。
+.TP 
+\fBELOOP\fP
+\fIpathname\fP 是一个符号链接，\fIflags\fP 指定了 \fBO_NOFOLLOW\fP 而不是 \fBO_PATH\fP。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制 (请参见 \fBgetrlimit\fP(2)).x 中 \fBRLIMIT_NOFILE\fP 的描述)。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长了。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENODEV\fP
+\fIpathname\fP 指的是设备专用文件，对应的设备不存在。 (这是一个 Linux 内核错误; 在这种情况下必须返回 \fBENXIO\fP。)
+.TP 
+\fBENOENT\fP
+\fBO_CREAT\fP 未设置且命名文件不存在。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 中的目录组件不存在或者是悬垂符号链接。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 指的是一个不存在的目录，在 \fIflags\fP 中指定了 \fBO_TMPFILE\fP 和 \fBO_WRONLY\fP 或
+\fBO_RDWR\fP 之一，但是这个内核版本不提供 \fBO_TMPFILE\fP 的功能。
+.TP 
+\fBENOMEM\fP
+命名文件是一个 FIFO，但无法为 FIFO 缓冲区分配内存，因为已达到每个用户对管道内存分配的硬限制，并且调用者没有特权; 请参见
+\fBpipe\fP(7)。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOSPC\fP
+要创建 \fIpathname\fP，但包含 \fIpathname\fP 的设备没有空间容纳新文件。
+.TP 
+\fBENOTDIR\fP
+在 \fIpathname\fP 中用作目录的组件实际上不是目录，或者指定了 \fBO_DIRECTORY\fP 而 \fIpathname\fP 不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBopenat\fP()) \fIpathname\fP 是相对路径名，\fIdirfd\fP 是指文件而非目录的文件描述符。
+.TP 
+\fBENXIO\fP
+\fBO_NONBLOCK\fP | \fBO_WRONLY\fP 已设置，命名文件是一个 FIFO，并且没有进程打开 FIFO 进行读取。
+.TP 
+\fBENXIO\fP
+该文件是设备专用文件，不存在对应的设备。
+.TP 
+\fBENXIO\fP
+该文件是一个 UNIX 域套接字。
+.TP 
+\fBEOPNOTSUPP\fP
+包含 \fIpathname\fP 的文件系统不支持 \fBO_TMPFILE\fP。
+.TP 
+\fBEOVERFLOW\fP
+.\" See http://bugzilla.kernel.org/show_bug.cgi?id=7253
+.\" "Open of a large file on 32-bit fails with EFBIG, should be EOVERFLOW"
+.\" Reported 2006-10-03
+\fIpathname\fP 指的是一个太大而无法打开的常规文件。 这里通常的情况是，在没有 \fI\-D_FILE_OFFSET_BITS=64\fP 的 32
+位平台上编译的应用程序试图打开一个大小超过 \fI(1<<31)\-1\fP 字节的文件; 另请详见上面的 \fBO_LARGEFILE\fP。 这是
+POSIX.1 指定的错误; 在 Linux 2.6.24 之前，Linux 给出了这种情况下的错误 \fBEFBIG\fP。
+.TP 
+\fBEPERM\fP
+.\" Strictly speaking, it's the filesystem UID... (MTK)
+指定了 \fBO_NOATIME\fP 标志，但调用者的有效用户 ID 与文件所有者不匹配，调用者没有特权。
+.TP 
+\fBEPERM\fP
+文件密封阻止了该操作; 请参见 \fBfcntl\fP(2)。
+.TP 
+\fBEROFS\fP
+\fIpathname\fP 指的是只读文件系统上的文件，并且请求了写访问权限。
+.TP 
+\fBETXTBSY\fP
+\fIpathname\fP 指的是当前正在执行并请求写访问的可执行映像。
+.TP 
+\fBETXTBSY\fP
+\fIpathname\fP 指的是当前用作交换文件的文件，并指定了 \fBO_TRUNC\fP 标志。
+.TP 
+\fBETXTBSY\fP
+\fIpathname\fP 指的是内核当前正在读取的文件 (例如，用于 module/firmware 加载)，并且请求了写访问权限。
+.TP 
+\fBEWOULDBLOCK\fP
+指定了 \fBO_NONBLOCK\fP 标志，并且文件上持有不兼容的租约 (请参见 \fBfcntl\fP(2)).
+.SH VERSIONS
+\fBopenat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+\fBopen\fP(), \fBcreat\fP()  SVr4, 4.3BSD, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBopenat\fP(): POSIX.1\-2008.
+.PP
+\fBopenat2\fP(2) 是特定于 Linux 的。
+.PP
+\fBO_DIRECT\fP、\fBO_NOATIME\fP、\fBO_PATH\fP 和 \fBO_TMPFILE\fP 标志是特定于 Linux 的。 必须定义
+\fB_GNU_SOURCE\fP 才能获得它们的定义。
+.PP
+\fBO_CLOEXEC\fP、\fBO_DIRECTORY\fP 和 \fBO_NOFOLLOW\fP 标志未在 POSIX.1\-2001 中指定，但在
+POSIX.1\-2008 中指定。 从 glibc 2.12 开始，可以通过定义值大于或等于 200809L 的 \fB_POSIX_C_SOURCE\fP
+或值大于或等于 700 的 \fB_XOPEN_SOURCE\fP 来获得它们的定义。 在 glibc 2.11 及更早版本中，通过定义
+\fB_GNU_SOURCE\fP 获得定义。
+.PP
+如 \fBfeature_test_macros\fP(7) 中所述，必须在包含 \fIany\fP 头文件之前定义特性测试宏，例如
+\fB_POSIX_C_SOURCE\fP、\fB_XOPEN_SOURCE\fP 和 \fB_GNU_SOURCE\fP。
+.SH NOTES
+Linux 下，\fBO_NONBLOCK\fP 标志有时用于想打开但不一定有读写意图的情况。 例如，这可用于打开设备以获取用于 \fBioctl\fP(2)
+的文件描述符。
+.PP
+.\" Linux 2.0, 2.5: truncate
+.\" Solaris 5.7, 5.8: truncate
+.\" Irix 6.5: truncate
+.\" Tru64 5.1B: truncate
+.\" HP-UX 11.22: truncate
+.\" FreeBSD 4.7: truncate
+\fBO_RDONLY | O_TRUNC\fP 的 (undefined) 效果因实现而异。 在许多系统上，文件实际上被截断了。
+.PP
+注意 \fBopen\fP() 可以打开设备特殊文件，但 \fBcreat\fP() 不能创建它们; 请改用 \fBmknod\fP(2)。
+.PP
+如果文件是新建的，其 \fIst_atime\fP、\fIst_ctime\fP、\fIst_mtime\fP 字段
+(分别为上次访问时间、上次状态改变时间、上次修改时间; 见 \fBstat\fP(2)) 设置为当前时间，\fIst_ctime\fP、\fIst_mtime\fP
+也设置为当前时间父目录的字段。 否则，如果文件因 \fBO_TRUNC\fP 标志而被修改，则其 \fIst_ctime\fP 和 \fIst_mtime\fP
+字段将设置为当前时间。
+.PP
+\fI/proc/[pid]/fd\fP 目录中的文件显示具有 PID \fIpid\fP 的进程的打开文件描述符。 \fI/proc/[pid]/fdinfo\fP
+目录中的文件显示了有关这些文件描述符的更多信息。 有关这两个目录的更多详细信息，请参见 \fBproc\fP(5)。
+.PP
+.\"
+.\"
+Linux 头文件 \fB<asm/fcntl.h>\fP 没有定义 \fBO_ASYNC\fP; 而是定义了 (BSD\-derived)
+\fBFASYNC\fP 同义词。
+.SS "Open file descriptions"
+术语打开文件描述是 POSIX 用来指代系统范围的打开文件表中的条目的术语。 在其他上下文中，此对象也被称为 "open file
+object"、"file handle"、"open file table entry"，或者用内核开发人员的说法 \[em] \fIstruct file\fP。
+.PP
+当文件描述符被复制时 (使用 \fBdup\fP(2)
+或类似的)，副本引用与原始文件描述符相同的打开文件描述，因此这两个文件描述符共享文件偏移量和文件状态标志。 这种共享也可以在进程之间发生: 通过
+\fBfork\fP(2) 创建的子进程继承其父进程的文件描述符的副本，这些副本引用相同的打开文件描述。
+.PP
+一个文件的每一个 \fBopen\fP() 都会创建一个新的打开文件描述; 因此，可能有多个打开的文件描述对应于一个文件 inode。
+.PP
+.\"
+.\"
+在 Linux 上，可以使用 \fBkcmp\fP(2) \fBKCMP_FILE\fP 操作来测试两个文件描述符 (在同一进程或两个不同进程中)
+是否引用相同的打开文件描述。
+.SS "Synchronized I/O"
+POSIX.1\-2008 "synchronized I/O" 选项指定同步 I/O 的不同变体，并指定 \fBopen\fP() 标志
+\fBO_SYNC\fP、\fBO_DSYNC\fP 和 \fBO_RSYNC\fP 以控制行为。 无论实现是否支持此选项，它必须至少支持对常规文件使用
+\fBO_SYNC\fP。
+.PP
+Linux 实现 \fBO_SYNC\fP 和 \fBO_DSYNC\fP，但不实现 \fBO_RSYNC\fP。 有点不正确，glibc 将 \fBO_RSYNC\fP
+定义为与 \fBO_SYNC\fP 具有相同的值。 (\fBO_RSYNC\fP 在 HP PA\-RISC 上的 Linux 头文件
+\fI<asm/fcntl.h>\fP 中定义，但未被使用。)
+.PP
+\fBO_SYNC\fP 提供同步的 I/O \fIfile\fP 完整性完成，这意味着写入操作会将数据和所有关联的元数据刷新到底层硬件。 \fBO_DSYNC\fP
+提供同步的 I/O \fIdata\fP 完整性完成，这意味着写入操作会将数据刷新到底层硬件，但只会刷新允许后续读取操作成功完成所需的元数据更新。
+数据完整性完成可以减少不需要文件完整性完成保证的应用程序所需的磁盘操作数。
+.PP
+要了解两种完成类型之间的区别，请考虑两个文件元数据: 文件上次修改时间戳 (\fIst_mtime\fP) 和文件长度。
+所有的写操作都会更新最后一个文件修改时间戳，但只有将数据添加到文件末尾的写操作才会改变文件长度。
+不需要上次修改时间戳来确保读取成功完成，但需要文件长度。 因此，\fBO_DSYNC\fP 将只保证刷新对文件长度元数据的更新 (而 \fBO_SYNC\fP
+也将始终刷新最后修改时间戳元数据)。
+.PP
+在 Linux 2.6.33 之前，Linux 只为 \fBopen\fP() 实现了 \fBO_SYNC\fP 标志。
+然而，当指定该标志时，大多数文件系统实际上提供了同步 I/O \fIdata\fP 完整性完成的等价物 (即，\fBO_SYNC\fP 实际上被实现为
+\fBO_DSYNC\fP) 的等价物。
+.PP
+.\"
+从 Linux 2.6.33 开始，提供了适当的 \fBO_SYNC\fP 支持。 但是，为了确保向后二进制兼容性，\fBO_DSYNC\fP 被定义为与历史
+\fBO_SYNC\fP 相同的值，\fBO_SYNC\fP 被定义为包含 \fBO_DSYNC\fP 标志值的新 (two\-bit) 标志值。
+这确保针对新标头编译的应用程序在 Linux 2.6.33 之前至少获得 \fBO_DSYNC\fP 语义。
+.SS "C library/kernel differences"
+.\"
+从 glibc 2.26 开始，\fBopen\fP() 的 glibc 包装器函数使用 \fBopenat\fP() 系统调用，而不是内核的 \fBopen\fP()
+系统调用。 对于某些架构，在 glibc 2.26 之前也是如此。
+.SS NFS
+NFS 的底层协议中存在许多缺陷，其中影响 \fBO_SYNC\fP 和 \fBO_NDELAY\fP。
+.PP
+.\"
+.\"
+在启用了 UID 映射的 NFS 文件系统上，\fBopen\fP() 可能返回一个文件描述符，但是，例如，\fBread\fP(2) 请求被 \fBEACCES\fP
+拒绝。 这是因为客户端通过检查权限执行 \fBopen\fP()，而 UID 映射是由服务器在读写请求时进行的。
+.SS FIFOs
+.\"
+.\"
+打开 FIFO 的读取或写入端会阻塞，直到另一端也打开 (由另一个进程或线程)。 有关详细信息，请参见 \fBfifo\fP(7)。
+.SS "File access mode"
+与可以在 \fIflags\fP 中指定的其他值不同，\fIaccess mode\fP 值 \fBO_RDONLY\fP、\fBO_WRONLY\fP 和 \fBO_RDWR\fP
+不指定单个位。 而是定义了 \fIflags\fP 的低两位，分别定义为 0、1、2。 也就是说，\fBO_RDONLY | O_WRONLY\fP
+这个组合是逻辑错误，肯定和 \fBO_RDWR\fP 不是同一个意思。
+.PP
+.\" See for example util-linux's disk-utils/setfdprm.c
+.\" For some background on access mode 3, see
+.\" http://thread.gmane.org/gmane.linux.kernel/653123
+.\" "[RFC] correct flags to f_mode conversion in __dentry_open"
+.\" LKML, 12 Mar 2008
+.\"
+.\"
+Linux 在 \fIflags\fP 中保留了特殊的、非标准的访问模式 3 (二进制 11)，意思是:
+检查文件的读写权限，返回一个不能用于读写的文件描述符。 这种非标准访问模式被一些 Linux
+驱动程序用来返回一个文件描述符，该文件描述符仅用于设备特定的 \fBioctl\fP(2) 操作。
+.SS "Rationale for openat() and other directory file descriptor APIs"
+\fBopenat\fP() 和其他采用目录文件描述符参数的系统调用和库函数 (即
+\fBexecveat\fP(2)、\fBfaccessat\fP(2)、\fBfanotify_mark\fP(2)、\fBfchmodat\fP(2)、\fBfchownat\fP(2)、\fBfspick\fP(2)、\fBfstatat\fP(2)、\fBfutimesat\fP(2)、\fBlinkat\fP(2)、\fBmkdirat\fP(2)、\fBmknodat\fP(2)、\fBmount_setattr\fP(2)、\fBmove_mount\fP(2)、\fBname_to_handle_at\fP(2)、\fBopen_tree\fP(2)、\fBopenat2\fP(2)、\fBreadlinkat\fP(2)、\fBrenameat\fP(2)、\fBrenameat2\fP(2)、\fBstatx\fP(2)、\fBsymlinkat\fP(2)、\fBunlinkat\fP(2)、\fButimensat\fP(2)、\fBmkfifoat\fP(3)
+和 \fBscandirat\fP(3)) 解决了之前旧界面的两个问题。 在这里，解释是根据 \fBopenat\fP() 调用，但基本原理与其他接口类似。
+.PP
+首先，\fBopenat\fP() 允许应用程序避免使用 \fBopen\fP() 打开当前工作目录以外的目录中的文件时可能发生的竞争状态。 这些竞争状态是由于赋予
+\fBopen\fP() 的目录前缀的某些组件可以在与调用于 \fBopen\fP() 的并行中更改。 例如，假设如果文件 \fIdir1/dir2/xxx\fP
+存在，我们希望创建文件 \fIdir1/dir2/xxx.dep\fP。 问题在于，在存在性检查和文件创建步骤之间，\fIdir1\fP 或 \fIdir2\fP
+(可能是符号链接) 可能会被修改为指向不同的位置。 通过打开目标目录的文件描述符，然后将该文件描述符指定为 (say) \fBfstatat\fP(2) 和
+\fBopenat\fP() 的 \fIdirfd\fP 参数，可以避免此类竞争。 使用 \fIdirfd\fP 文件描述符还有其他好处:
+.IP \[bu] 3
+文件描述符是对目录的稳定引用，即使目录已重命名; and
+.IP \[bu]
+打开的文件描述符防止底层文件系统被卸载，就像当进程在文件系统上有一个当前工作目录时一样。
+.PP
+其次，\fBopenat\fP() 允许通过应用程序维护的文件 descriptor(s) 实现每线程 "current working
+directory"。 (此功能也可以通过基于 \fI/proc/self/fd/\fPdirfd 的使用的技巧获得，但效率较低。)
+.PP
+这些 API 的 \fIdirfd\fP 参数可以通过使用 \fBopen\fP() 或 \fBopenat\fP() 打开目录 (使用 \fBO_RDONLY\fP 或
+\fBO_PATH\fP 标志) 获得。 或者，可以通过将 \fBdirfd\fP(3) 应用于使用 \fBopendir\fP(3)
+创建的目录流来获得这样的文件描述符。
+.PP
+.\"
+.\"
+当这些 API 被赋予 \fBAT_FDCWD\fP 的 \fIdirfd\fP 参数或指定的路径名是绝对路径时，它们将以与相应的常规 API
+相同的方式处理它们的路径名参数。 然而，在这种情况下，一些 API 有一个 \fIflags\fP 参数，它提供对相应传统 API 不可用的功能的访问。
+.SS O_DIRECT
+\fBO_DIRECT\fP 标志可能会对用户空间缓冲区的长度和地址以及 I/Os 的文件偏移施加对齐限制。 在 Linux
+中，对齐限制因文件系统和内核版本而异，并且可能完全不存在。 对错位的 \fBO_DIRECT\fP I/Os 的处理也各不相同; 它们要么因
+\fBEINVAL\fP 而失败，要么回退到缓冲的 I/O。
+.PP
+从 Linux 6.1 开始，\fBO_DIRECT\fP 支持和对文件的对齐限制可以使用 \fBstatx\fP(2) 查询，使用
+\fBSTATX_DIOALIGN\fP 标志。 对 \fBSTATX_DIOALIGN\fP 的支持因文件系统而异; 请参见 \fBstatx\fP(2)。
+.PP
+一些文件系统提供了自己的接口来查询 \fBO_DIRECT\fP 对齐限制，例如 \fBxfsctl\fP(3) 中的 \fBXFS_IOC_DIOINFO\fP 操作。
+如果 \fBSTATX_DIOALIGN\fP 可用，则应改用它。
+.PP
+如果以上都不可用，则只能根据文件系统、单个文件、底层存储 device(s) 和内核版本的已知特征来假设直接 I/O 支持和对齐限制。 在 Linux
+2.4 中，大多数基于块设备的文件系统要求所有 I/O 段的文件偏移量和长度和内存地址是文件系统块大小 (通常为 4096 字节) 的倍数。 在
+Linux 2.6.0 中，这被放宽到块设备的逻辑块大小 (通常为 512 字节)。 可以使用 \fBioctl\fP(2) \fBBLKSSZGET\fP
+操作或使用以下命令从 shell 确定块设备的逻辑块大小:
+.PP
+.in +4n
+.EX
+blockdev \-\-getss
+.EE
+.in
+.PP
+如果内存缓冲区是私有映射 (即，使用 \fBmmap\fP(2) \fBMAP_PRIVATE\fP 标志创建的任何映射;
+这包括在堆上分配的内存和静态分配的缓冲区)，则 \fBO_DIRECT\fP I/Os 不应与 \fBfork\fP(2) 系统调用同时运行。 任何此类
+I/Os，无论是通过异步 I/O 接口还是从进程中的另一个线程提交，都应在调用 \fBfork\fP(2) 之前完成。
+如果不这样做，可能会导致父进程和子进程中的数据损坏和未定义的行为。 当 \fBO_DIRECT\fP I/Os 的内存缓冲区是使用带有
+\fBMAP_SHARED\fP 标志的 \fBshmat\fP(2) 或 \fBmmap\fP(2) 创建时，此限制不适用。 当内存缓冲区被建议为
+\fBMADV_DONTFORK\fP 和 \fBmadvise\fP(2) 时，此限制也不适用，确保它在 \fBfork\fP(2) 之后对子进程不可用。
+.PP
+\fBO_DIRECT\fP 标志是在 SGI IRIX 中引入的，它具有类似于 Linux 2.4 的对齐限制。 IRIX 还有一个 \fBfcntl\fP(2)
+调用来查询适当的对齐方式和大小。 FreeBSD 4.x 引入了同名标志，但没有对齐限制。
+.PP
+在 Linux 2.4.10 中添加了 \fBO_DIRECT\fP 支持。 较旧的 Linux 内核会忽略此标志。
+某些文件系统可能未实现该标志，在这种情况下，如果使用 \fBopen\fP()，则会失败并显示错误 \fBEINVAL\fP。
+.PP
+应用程序应避免将 \fBO_DIRECT\fP 和普通 I/O 混合到同一个文件中，尤其是在同一个文件中的重叠字节区域。
+即使文件系统在这种情况下正确处理了一致性问题，总体 I/O 吞吐量也可能比单独使用任何一种模式都慢。 同样，应用程序应避免将文件的 \fBmmap\fP(2)
+与直接 I/O 混合到同一文件中。
+.PP
+\fBO_DIRECT\fP 与 NFS 的行为将不同于本地文件系统。 较旧的内核或以特定方式配置的内核可能不支持这种组合。 NFS
+协议不支持向服务器传递标志，因此 \fBO_DIRECT\fP I/O 只会在客户端绕过页面缓存; 服务器可能仍会缓存 I/O。 客户端要求服务器使 I/O
+同步以保留 \fBO_DIRECT\fP 的同步语义。 某些服务器在这些情况下会表现不佳，尤其是在 I/O 较小的情况下。
+某些服务器也可能被配置为向客户端谎报 I/O 已达到稳定存储; 这将避免在服务器电源出现故障时对数据完整性造成一定风险的性能损失。 Linux NFS
+客户端对 \fBO_DIRECT\fP I/O 没有对齐限制。
+.PP
+在总结中，\fBO_DIRECT\fP 是一个潜在的强大工具，应谨慎使用。 建议应用程序将 \fBO_DIRECT\fP 的使用视为默认禁用的性能选项。
+.SH BUGS
+.\" FIXME . Check bugzilla report on open(O_ASYNC)
+.\" See http://bugzilla.kernel.org/show_bug.cgi?id=5993
+目前无法通过在调用 \fBopen\fP() 时指定 \fBO_ASYNC\fP 来启用信号驱动的 I/O; 使用 \fBfcntl\fP(2) 启用此标志。
+.PP
+在尝试确定内核是否支持 \fBO_TMPFILE\fP 功能时，必须检查两种不同的错误代码 \fBEISDIR\fP 和 \fBENOENT\fP。
+.PP
+当 \fIflags\fP 中同时指定了 \fBO_CREAT\fP 和 \fBO_DIRECTORY\fP 且 \fIpathname\fP
+指定的文件不存在时，\fBopen\fP() 将创建一个常规文件 (即忽略 \fBO_DIRECTORY\fP)。
+.SH "SEE ALSO"
+\fBchmod\fP(2), \fBchown\fP(2), \fBclose\fP(2), \fBdup\fP(2), \fBfcntl\fP(2), \fBlink\fP(2),
+\fBlseek\fP(2), \fBmknod\fP(2), \fBmmap\fP(2), \fBmount\fP(2), \fBopen_by_handle_at\fP(2),
+\fBopenat2\fP(2), \fBread\fP(2), \fBsocket\fP(2), \fBstat\fP(2), \fBumask\fP(2),
+\fBunlink\fP(2), \fBwrite\fP(2), \fBfopen\fP(3), \fBacl\fP(5), \fBfifo\fP(7), \fBinode\fP(7),
+\fBpath_resolution\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

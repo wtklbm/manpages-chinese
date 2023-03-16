@@ -1,0 +1,150 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) Bruno Haible <haible@clisp.cons.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" References consulted:
+.\"   GNU glibc-2 source code and manual
+.\"   Dinkumware C library reference http://www.dinkumware.com/
+.\"   OpenGroup's Single UNIX specification http://www.UNIX-systems.org/online.html
+.\"   ISO/IEC 9899:1999
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH wprintf 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+wprintf, fwprintf, swprintf, vwprintf, vfwprintf, vswprintf \- 格式化宽字符输出转换
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+\fB#include <wchar.h>\fP
+.PP
+\fBint wprintf(const wchar_t *restrict \fP\fIformat\fP\fB, ...);\fP
+\fBint fwprintf(FILE *restrict \fP\fIstream\fP\fB,\fP
+\fB             const wchar_t *restrict \fP\fIformat\fP\fB, ...);\fP
+\fBint swprintf(wchar_t \fP\fIwcs\fP\fB[restrict .\fP\fImaxlen\fP\fB], size_t \fP\fImaxlen\fP\fB,\fP
+\fB             const wchar_t *restrict \fP\fIformat\fP\fB, ...);\fP
+.PP
+\fBint vwprintf(const wchar_t *restrict \fP\fIformat\fP\fB, va_list \fP\fIargs\fP\fB);\fP
+\fBint vfwprintf(FILE *restrict \fP\fIstream\fP\fB,\fP
+\fB             const wchar_t *restrict \fP\fIformat\fP\fB, va_list \fP\fIargs\fP\fB);\fP 
+\fBint vswprintf(wchar_t \fP\fIwcs\fP\fB[restrict .\fP\fImaxlen\fP\fB], size_t \fP\fImaxlen\fP\fB,\fP
+\fB             const wchar_t *restrict \fP\fIformat\fP\fB, va_list \fP\fIargs\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+.\" .BR wprintf (),
+.\" .BR fwprintf (),
+.\" .BR swprintf (),
+.\" .BR vwprintf (),
+.\" .BR vfwprintf (),
+.\" .BR vswprintf ():
+以上所有函数:
+.nf
+    _XOPEN_SOURCE >= 500 ||_ISOC99_ 来源
+        || _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+函数的 \fBwprintf\fP() 系列是函数的 \fBprintf\fP(3) 系列的宽字符等价物。 它执行宽字符的格式化输出。
+.PP
+\fBwprintf\fP() 和 \fBvwprintf\fP() 函数执行宽字符输出到 \fIstdout\fP。 \fIstdout\fP 不能是面向字节的;
+有关更多信息，请参见 \fBfwide\fP(3)。
+.PP
+\fBfwprintf\fP() 和 \fBvfwprintf\fP() 函数执行宽字符输出到 \fIstream\fP。 \fIstream\fP 不能是面向字节的;
+有关更多信息，请参见 \fBfwide\fP(3)。
+.PP
+\fBswprintf\fP() 和 \fBvswprintf\fP() 函数执行宽字符输出到宽字符数组。 程序员必须确保在 \fIwcs\fP 处至少有
+\fImaxlen\fP 宽字符的空间。
+.PP
+这些函数类似于
+\fBprintf\fP(3)、\fBvprintf\fP(3)、\fBfprintf\fP(3)、\fBvfprintf\fP(3)、\fBsprintf\fP(3)、\fBvsprintf\fP(3)
+函数，除了以下差异:
+.TP 
+\fB\[bu]\fP
+\fIformat\fP 字符串是一个宽字符字符串。
+.TP 
+\fB\[bu]\fP
+输出由宽字符组成，而不是字节。
+.TP 
+\fB\[bu]\fP
+\fBswprintf\fP() 和 \fBvswprintf\fP() 带一个 \fImaxlen\fP 参数，\fBsprintf\fP(3) 和
+\fBvsprintf\fP(3) 不带。 (\fBsnprintf\fP(3) 和 \fBvsnprintf\fP(3) 采用 \fImaxlen\fP 参数，但这些函数在
+Linux 上缓冲区溢出时不会返回 \-1。)
+.PP
+转换字符 \fBc\fP 和 \fBs\fP 的处理不同:
+.TP 
+\fBc\fP
+如果不存在 \fBl\fP 修饰符，则 \fIint\fP 参数通过对 \fBbtowc\fP(3) 函数的调用转换为宽字符，并写入生成的宽字符。 如果存在 \fBl\fP
+修饰符，则写入 \fIwint_t\fP (宽字符) 参数。
+.TP 
+\fBs\fP
+如果不存在 \fBl\fP 修饰符: \fIconst\ char\ *\fP 参数应为指向字符数组 (指向字符串的指针)
+的指针，其中包含从初始移位状态开始的多字节字符序列。 数组中的字符被转换为宽字符 (每个调用到 \fBmbrtowc\fP(3)
+函数，转换状态从第一个字节之前的初始状态开始)。 生成的宽字符被写入 (但不包括) 终止空宽字符 (L\[aq]\e0\[aq])。
+如果指定了精度，则不会写入比指定数目更多的宽字符。 请注意，精度决定写入的 \fIwide characters\fP 的数量，而不是 \fIbytes\fP 或
+\fIscreen positions\fP 的数量。 数组必须包含一个终止空字节
+(\[aq]\e0\[aq])，除非给出了精度并且它太小以至于转换的宽字符数在到达数组末尾之前就达到了它。 如果存在 \fBl\fP 修饰符:
+\fIconst\ wchar_t\ *\fP 参数应为指向宽字符数组的指针。 数组中的宽字符被写入 (但不包括) 终止空宽字符。
+如果指定了精度，则不会写入指定的数字。 该数组必须包含终止空宽字符，除非给出了精度并且它小于或等于数组中的宽字符数。
+.SH "RETURN VALUE"
+函数返回写入的宽字符数，在函数 \fBswprintf\fP() 和 \fBvswprintf\fP() 的情况下不包括终止空宽字符。 当发生错误时，它们返回
+\-1。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBwprintf\fP(),
+\fBfwprintf\fP(),
+\fBswprintf\fP(),
+\fBvwprintf\fP(),
+\fBvfwprintf\fP(),
+\fBvswprintf\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99.
+.SH NOTES
+\fBwprintf\fP() 等人的行为。取决于当前语言环境的 \fBLC_CTYPE\fP 类别。
+.PP
+如果 \fIformat\fP 字符串包含非 ASCII 宽字符，只有当运行时当前语言环境的 \fBLC_CTYPE\fP 类别与编译时当前语言环境的
+\fBLC_CTYPE\fP 类别相同时，程序才能正常工作。 这是因为 \fIwchar_t\fP 表示是平台和语言环境相关的。 (glibc 使用它们的
+Unicode (ISO\-10646) 代码点表示宽字符，但其他平台不这样做。此外，使用 \eunnnn 形式的 C99
+通用字符名称也不能解决这个问题。) 因此，在国际化程序中，\fIformat\fP 字符串应该只包含 ASCII 宽字符，或者应该在运行时以国际化的方式构造
+(例如，使用 \fBgettext\fP(3) 或 \fBiconv\fP(3)，后跟 \fBmbstowcs\fP(3))。
+.SH "SEE ALSO"
+\fBfprintf\fP(3), \fBfputwc\fP(3), \fBfwide\fP(3), \fBprintf\fP(3), \fBsnprintf\fP(3)
+.\" .BR wscanf (3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

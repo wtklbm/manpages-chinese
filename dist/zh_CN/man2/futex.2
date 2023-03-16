@@ -1,0 +1,1147 @@
+.\" -*- coding: UTF-8 -*-
+.\" Page by b.hubert
+.\" and Copyright (C) 2015, Thomas Gleixner <tglx@linutronix.de>
+.\" and Copyright (C) 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" %%%LICENSE_START(FREELY_REDISTRIBUTABLE)
+.\" may be freely modified and distributed
+.\" %%%LICENSE_END
+.\"
+.\" Niki A. Rahimi (LTC Security Development, narahimi@us.ibm.com)
+.\" added ERRORS section.
+.\"
+.\" Modified 2004-06-17 mtk
+.\" Modified 2004-10-07 aeb, added FUTEX_REQUEUE, FUTEX_CMP_REQUEUE
+.\"
+.\" FIXME Still to integrate are some points from Torvald Riegel's mail of
+.\" 2015-01-23:
+.\"       http://thread.gmane.org/gmane.linux.kernel/1703405/focus=7977
+.\"
+.\" FIXME Do we need to add some text regarding Torvald Riegel's 2015-01-24 mail
+.\"       http://thread.gmane.org/gmane.linux.kernel/1703405/focus=1873242
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH futex 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+futex \- 快速用户空间锁定
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+.PP
+\fB#include <linux/futex.h>\fP      /* Definition of \fBFUTEX_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBlong syscall(SYS_futex, uint32_t *\fP\fIuaddr\fP\fB, int \fP\fIfutex_op\fP\fB, uint32_t \fP\fIval\fP\fB,\fP
+\fB             const struct timespec *\fP\fItimeout\fP\fB,\fP\fI \fP  /* or: \fBuint32_t \fP\fIval2\fP\fB */\fP
+\fB             uint32_t *\fP\fIuaddr2\fP\fB, uint32_t \fP\fIval3\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBfutex\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBfutex\fP() 系统调用提供了等待某个条件变为真的方法。 它通常用作共享内存同步上下文中的阻塞结构。 使用 futexes
+时，大部分同步操作都在用户空间中执行。 用户空间程序仅在程序可能必须阻塞更长时间直到条件变为真时才使用 \fBfutex\fP() 系统调用。 其他
+\fBfutex\fP() 操作可用于唤醒等待特定条件的任何进程或线程。
+.PP
+futex 是一个 32 位值 \[em]，在下面称为 \fIfutex word\fP\[em]whose 地址，提供给 \fBfutex\fP() 系统调用。
+(在所有平台上，Futex 的大小都是 32 位，包括 64 位系统。) 所有的 futex 操作都受此值控制。 为了在进程之间共享
+futex，futex 被放置在共享内存区域中，使用 (例如) \fBmmap\fP(2) 或 \fBshmat\fP(2) 创建。 (因此，futex
+字在不同的进程中可能有不同的虚拟地址，但这些地址都指向物理内存中的同一个位置。) 在多线程程序中，将 futex
+字放在一个所有线程共享的全局变量中就足够了.
+.PP
+.\" Notes from Darren Hart (Dec 2015):
+.\"     Totally ordered with respect futex operations refers to semantics
+.\"     of the ACQUIRE/RELEASE operations and how they impact ordering of
+.\"     memory reads and writes. The kernel futex operations are protected
+.\"     by spinlocks, which ensure that all operations are serialized
+.\"     with respect to one another.
+.\"
+.\"     This is a lot to attempt to define in this document. Perhaps a
+.\"     reference to linux/Documentation/memory-barriers.txt as a footnote
+.\"     would be sufficient? Or perhaps for this manual, "serialized" would
+.\"     be sufficient, with a footnote regarding "totally ordered" and a
+.\"     pointer to the memory-barrier documentation?
+.\" FIXME(Torvald Riegel):
+.\" Eventually we want to have some text in NOTES to satisfy
+.\" the reference in the following sentence
+.\"     See NOTES for a detailed specification of
+.\"     the synchronization semantics.
+当执行请求阻塞线程的 futex 操作时，只有当 futex 字具有调用线程提供的值 (作为 \fBfutex\fP() 调用的参数之一) 作为 futex
+字的预期值时，内核才会阻塞。 futex 字值的加载、该值与预期值的比较以及实际阻塞将以原子方式发生，并且相对于其他线程在同一 futex
+字上执行的并发操作将完全有序。 因此，futex 词用于将用户空间中的同步与内核阻塞的实现联系起来。 类似于可能更改共享内存的原子比较和交换操作，通过
+futex 进行阻塞是一种原子比较和阻塞操作。
+.PP
+futexes 的一种用途是实现锁。 锁的状态 (即获取或未获取) 可以表示为共享内存中的原子访问标志。
+在无竞争的情况下，线程可以使用原子指令访问或修改锁定状态，例如使用原子比较和交换指令将其从未获取原子更改为已获取。
+(此类指令完全在用户模式下执行，内核不维护有关锁状态的信息。) 另一方面，一个线程可能无法获取锁，因为它已被另一个线程获取。 然后它可以将锁的标志作为
+futex 字传递，并将表示已获取状态的值作为期望值传递给 \fBfutex\fP() 等待操作。 当且仅当仍然获得锁 (即 futex 字中的值仍然与
+"acquired state" 匹配) 时，此 \fBfutex\fP() 操作才会阻塞。 释放锁时，线程必须首先将锁状态重置为未获取，然后执行 futex
+操作，唤醒阻塞在用作 futex 字的锁标志上的线程 (这可以进一步优化以避免不必要的唤醒)。 有关如何使用 futexes 的更多详细信息，请参见
+\fBfutex\fP(7)。
+.PP
+除了基本的等待和唤醒 futex 功能外，还有进一步的 futex 操作旨在支持更复杂的用例。
+.PP
+.\"
+请注意，使用 futexes 不需要显式初始化或销毁; 内核仅在对特定 futex 字执行诸如 \fBFUTEX_WAIT\fP 之类的操作时才维护
+futex (即内核内部实现工件)。
+.SS Arguments
+\fIuaddr\fP 参数指向 futex 字。 在所有平台上，futex 都是四字节整数，必须在四字节边界上对齐。 对 futex 执行的操作在
+\fIfutex_op\fP 参数中指定; \fIval\fP 是一个值，其含义和用途取决于 \fIfutex_op\fP。
+.PP
+其余参数 (\fItimeout\fP、\fIuaddr2\fP 和 \fIval3\fP) 仅在下面描述的某些 futex 操作中需要。
+其中一个参数不是必需的，将被忽略。
+.PP
+对于多个阻塞操作，\fItimeout\fP 参数是指向 \fItimespec\fP 结构体的指针，它指定操作的超时时间。
+然而，尽管有上面显示的原型，对于某些操作，这个参数的最低有效四个字节被用作一个整数，其含义由操作决定。 对于这些操作，内核首先将 \fItimeout\fP
+值转换为 \fIunsigned long\fP，然后转换为 \fIuint32_t\fP，并且在本页的其余部分，当以这种方式解释时，此参数被称为 \fIval2\fP。
+.PP
+在需要的地方，\fIuaddr2\fP 参数是指向操作使用的第二个 futex 字的指针。
+.PP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+最终整数参数 \fIval3\fP 的解释取决于操作。
+.SS "Futex operations"
+\fIfutex_op\fP 参数由两部分组成: 指定要执行的操作的命令，与修改操作行为的零个或多个选项按位或运算。 \fIfutex_op\fP
+中可能包含的选项如下:
+.TP 
+\fBFUTEX_PRIVATE_FLAG\fP (since Linux 2.6.22)
+.\" commit 34f01cc1f512fa783302982776895c73714ebbc2
+.\" I.e., It allows the kernel choose the fast path for validating
+.\" the user-space address and avoids expensive VMA lookups,
+.\" taking reference counts on file backing store, and so on.
+此选项位可用于所有 futex 操作。 它告诉内核 futex 是进程私有的，不与另一个进程共享 (即，它仅用于同一进程的线程之间的同步)。
+这允许内核进行一些额外的性能优化。
+.IP
+.\" except the obsolete FUTEX_FD, for which the "private" flag was
+.\" meaningless
+为方便起见，\fI<linux/futex.h>\fP 定义了一组后缀为 \fB_PRIVATE\fP 的常量，它们等效于下面列出的所有操作，但
+\fBFUTEX_PRIVATE_FLAG\fP 与常量值进行或运算。 因此，有
+\fBFUTEX_WAIT_PRIVATE\fP、\fBFUTEX_WAKE_PRIVATE\fP 等。
+.TP 
+\fBFUTEX_CLOCK_REALTIME\fP (since Linux 2.6.28)
+.\" commit 1acdac104668a0834cfa267de9946fac7764d486
+.\" commit 337f13046ff03717a9e99675284a817527440a49
+.\" commit bf22a6976897977b0a3f1aeba6823c959fc4fdae
+此选项位只能用于 \fBFUTEX_WAIT_BITSET\fP、\fBFUTEX_WAIT_REQUEUE_PI\fP、(自 Linux 4.5 起)
+\fBFUTEX_WAIT\fP 和 (自 Linux 5.14 起) \fBFUTEX_LOCK_PI2\fP 操作。
+.IP
+如果设置此选项，内核将根据 \fBCLOCK_REALTIME\fP 时钟测量 \fItimeout\fP。
+.IP
+如果未设置此选项，内核将根据 \fBCLOCK_MONOTONIC\fP 时钟测量 \fItimeout\fP。
+.PP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIfutex_op\fP 中指定的操作是以下之一:
+.TP 
+\fBFUTEX_WAIT\fP (since Linux 2.6.0)
+.\" Strictly speaking, since some time in Linux 2.5.x
+.\" FIXME: Torvald, I think we may need to add some explanation of
+.\" "totally ordered" here.
+此操作测试地址 \fIuaddr\fP 指向的 futex 字处的值是否仍然包含预期值 \fIval\fP，如果是，则休眠等待对 futex 字的
+\fBFUTEX_WAKE\fP 操作。 futex 字的值的加载是原子内存访问 (即，使用相应体系结构的原子机器指令)。
+此加载、与预期值的比较以及开始睡眠是原子地执行的，并且相对于同一 futex 字上的其他 futex 操作是完全有序的。
+如果线程开始休眠，它就被认为是这个 futex 字的等待者。 如果 futex 值与 \fIval\fP 不匹配，则调用会立即失败并返回错误
+\fBEAGAIN\fP。
+.IP
+与预期值比较的目的是防止丢失唤醒。 如果另一个线程在调用线程决定基于先前值阻塞之后更改了 futex 字的值，并且如果另一个线程在值更改之后和此
+\fBFUTEX_WAIT\fP 操作之前执行了 \fBFUTEX_WAKE\fP 操作 (或类似的唤醒)，则调用线程会观察值的变化，不会开始休眠。
+.IP
+如果 \fItimeout\fP 不为 NULL，则它指向的结构体指定等待超时。 (此间隔将向上舍入到系统时钟粒度，并保证不会提前到期。) 超时默认根据
+\fBCLOCK_MONOTONIC\fP 时钟测量，但是，由于 Linux 4.5，可以通过在中指定 \fBFUTEX_CLOCK_REALTIME\fP 来选择
+\fBCLOCK_REALTIME\fP 时钟 \fIfutex_op\fP。 如果 \fItimeout\fP 为 NULL，调用将无限期地阻塞。
+.IP
+\fINote\fP: 为 \fBFUTEX_WAIT\fP，\fItimeout\fP 被解释为 \fIrelative\fP 值。 这不同于其他 futex 操作，其中
+\fItimeout\fP 被解释为绝对值。 要获得具有绝对超时的 \fBFUTEX_WAIT\fP 的等效项，请使用 \fBFUTEX_WAIT_BITSET\fP
+并将 \fIval3\fP 指定为 \fBFUTEX_BITSET_MATCH_ANY\fP。
+.IP
+.\" FIXME . (Torvald) I think we should remove this.  Or maybe adapt to a
+.\" different example.
+.\"
+.\"     For
+.\"     .BR futex (7),
+.\"     this call is executed if decrementing the count gave a negative value
+.\"     (indicating contention),
+.\"     and will sleep until another process or thread releases
+.\"     the futex and executes the
+.\"     .B FUTEX_WAKE
+.\"     operation.
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+参数 \fIuaddr2\fP 和 \fIval3\fP 被忽略。
+.TP 
+\fBFUTEX_WAKE\fP (since Linux 2.6.0)
+.\" Strictly speaking, since Linux 2.5.x
+该操作最多唤醒 \fIval\fP 个正在等待的等待者 (例如，在地址 \fIuaddr\fP 处的 futex 字上的 \fBFUTEX_WAIT\fP) 内部。
+最常见的是，\fIval\fP 指定为 1 (唤醒单个服务员) 或 \fBINT_MAX\fP (唤醒所有服务员)。 不提供关于哪些服务员被唤醒的保证
+(例如，具有较高调度优先级的服务员不能保证优先于具有较低优先级的服务员被唤醒)。
+.IP
+.\" FIXME . (Torvald) I think we should remove this.  Or maybe adapt to
+.\" a different example.
+.\"
+.\"     For
+.\"     .BR futex (7),
+.\"     this is executed if incrementing the count showed that
+.\"     there were waiters,
+.\"     once the futex value has been set to 1
+.\"     (indicating that it is available).
+.\"
+.\" How does "incrementing the count show that there were waiters"?
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+参数 \fItimeout\fP、\fIuaddr2\fP 和 \fIval3\fP 将被忽略。
+.TP 
+\fBFUTEX_FD\fP (from Linux 2.6.0 up to and including Linux 2.6.25)
+.\" Strictly speaking, from Linux 2.5.x to Linux 2.6.25
+此操作创建一个与 \fIuaddr\fP 处的 futex 关联的文件描述符。 调用者必须在使用后关闭返回的文件描述符。 当另一个进程或线程对 futex
+字执行 \fBFUTEX_WAKE\fP 时，文件描述符指示 \fBselect\fP(2)、\fBpoll\fP(2) 和 \fBepoll\fP(7) 可读
+.IP
+文件描述符可用于获取异步通知: 如果 \fIval\fP 不为零，则当另一个进程或线程执行 \fBFUTEX_WAKE\fP 时，调用者将收到在 \fIval\fP
+中传递的信号编号。
+.IP
+参数 \fItimeout\fP、\fIuaddr2\fP 和 \fIval3\fP 将被忽略。
+.IP
+.\" commit 82af7aca56c67061420d618cc5a30f0fd4106b80
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+因为它本质上是活泼的，\fBFUTEX_FD\fP 已经从 Linux 2.6.26 中删除。
+.TP 
+\fBFUTEX_REQUEUE\fP (since Linux 2.6.0)
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+此操作执行与 \fBFUTEX_CMP_REQUEUE\fP (见下文) 相同的任务，只是不使用 \fIval3\fP 中的值进行检查。 (参数 \fIval3\fP
+被忽略。)
+.TP 
+\fBFUTEX_CMP_REQUEUE\fP (since Linux 2.6.7)
+此操作首先检查位置 \fIuaddr\fP 是否仍包含值 \fIval3\fP。 否则，操作将失败并出现错误 \fBEAGAIN\fP。 否则，该操作最多会唤醒在
+\fIuaddr\fP 处等待 futex 的 \fIval\fP 等待者。 如果有超过 \fIval\fP 个等待者，则将剩余的等待者从 \fIuaddr\fP 处的源
+futex 的等待队列中移除，并添加到 \fIuaddr2\fP 处的目标 futex 的等待队列中。 \fIval2\fP 参数指定了在 \fIuaddr2\fP
+处重新排队到 futex 的等待者数量的上限。
+.IP
+.\" FIXME(Torvald) Is the following correct?  Or is just the decision
+.\" which threads to wake or requeue part of the atomic operation?
+.\" Notes from a f2f conversation with Thomas Gleixner (Aug 2015): ###
+.\"	The operation is serialized with respect to operations on both
+.\"	source and target futex. No other waiter can enqueue itself
+.\"	for waiting and no other waiter can dequeue itself because of
+.\"	a timeout or signal.
+来自 \fIuaddr\fP 的加载是原子内存访问 (即，使用相应体系结构的原子机器指令)。 此加载、与 \fIval3\fP
+的比较以及任何等待者的重新排队都是原子执行的，并且相对于同一 futex 字上的其他操作完全有序。
+.IP
+为 \fIval\fP 指定的典型值为 0 或 1。 (指定 \fBINT_MAX\fP 没有用，因为它会使 \fBFUTEX_CMP_REQUEUE\fP 操作等同于
+\fBFUTEX_WAKE\fP.)。通过 \fIval2\fP 指定的限制值通常是 1 或 \fBINT_MAX\fP。 (将参数指定为 0 没有用，因为它会使
+\fBFUTEX_CMP_REQUEUE\fP 操作等同于 \fBFUTEX_WAIT\fP.)
+.IP
+.\" But, as Rich Felker points out, there remain valid use cases for
+.\" FUTEX_REQUEUE, for example, when the calling thread is requeuing
+.\" the target(s) to a lock that the calling thread owns
+.\"     From: Rich Felker <dalias@libc.org>
+.\"     Date: Wed, 29 Oct 2014 22:43:17 -0400
+.\"     To: Darren Hart <dvhart@infradead.org>
+.\"     CC: libc-alpha@sourceware.org, ...
+.\"     Subject: Re: Add futex wrapper to glibc?
+添加 \fBFUTEX_CMP_REQUEUE\fP 操作是为了替代早期的 \fBFUTEX_REQUEUE\fP。 不同之处在于，可以使用对 \fIuaddr\fP
+处的值的检查来确保重新排队仅在特定条件下发生，这允许在某些用例中避免竞争状态。
+.IP
+\fBFUTEX_REQUEUE\fP 和 \fBFUTEX_CMP_REQUEUE\fP 都可以用来避免在使用 \fBFUTEX_WAKE\fP 时可能发生的
+"thundering herd" 唤醒，因为在所有被唤醒的服务员都需要获取另一个 futex 的情况下。 考虑以下场景，其中多个等待线程正在等待
+B，这是一个使用 futex 实现的等待队列:
+.IP
+.in +4n
+.EX
+lock(A)
+while (!check_value(V)) {
+    unlock(A);
+    block_on(B);
+    lock(A);
+};
+unlock(A);
+.EE
+.in
+.IP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+如果一个 waker 线程使用了 \fBFUTEX_WAKE\fP，那么所有等待 B 的 waiters 都会被唤醒，他们都会尝试去获取锁 A。
+然而，以这种方式唤醒所有线程是没有意义的，因为除了一个线程之外的所有线程都会立即再次阻塞在锁 A 上。
+相比之下，重新排队操作只唤醒一个服务员并将其他服务员移动到锁定 A，当唤醒的服务员解锁 A 时，下一个服务员可以继续。
+.TP 
+\fBFUTEX_WAKE_OP\fP (since Linux 2.6.14)
+.\" commit 4732efbeb997189d9f9b04708dc26bf8613ed721
+.\"	Author: Jakub Jelinek <jakub@redhat.com>
+.\"	Date:   Tue Sep 6 15:16:25 2005 -0700
+.\" FIXME. (Torvald) The glibc condvar implementation is currently being
+.\"     revised (e.g., to not use an internal lock anymore).
+.\"     It is probably more future-proof to remove this paragraph.
+.\" [Torvald, do you have an update here?]
+添加此操作是为了支持一些必须同时处理多个 futex 的用户空间用例。 最著名的例子是 \fBpthread_cond_signal\fP(3)
+的实现，它需要对两个 futex 进行操作，一个用于实现交互锁，一个用于实现与条件变量关联的等待队列。 \fBFUTEX_WAKE_OP\fP
+允许在不导致高争用率和上下文切换的情况下实现此类情况。
+.IP
+\fBFUTEX_WAKE_OP\fP 操作等同于在两个提供的 futex 字中的任何一个上相对于其他 futex 操作原子地和完全有序地执行以下代码:
+.IP
+.in +4n
+.EX
+uint32_t oldval = *(uint32_t *) uaddr2;
+*(uint32_t *) uaddr2 = oldval \fIop\fP \fIoparg\fP;
+futex(uaddr, FUTEX_WAKE, val, 0, 0, 0);
+if (oldval \fIcmp\fP \fIcmparg\fP)
+    futex(uaddr2, FUTEX_WAKE, val2, 0, 0, 0);
+.EE
+.in
+.IP
+换句话说，\fBFUTEX_WAKE_OP\fP 执行以下操作:
+.RS
+.IP \[bu] 3
+保存 \fIuaddr2\fP 处 futex 字的原始值，并执行修改 \fIuaddr2\fP 处 futex 值的操作; 这是一个原子读 \- 修改 \-
+写内存访问 (即，使用相应架构的原子机器指令)
+.IP \[bu]
+为 \fIuaddr\fP 处的 futex word 唤醒最多 \fIval\fP 个等待者; and
+.IP \[bu]
+根据对 \fIuaddr2\fP 处 futex 字的原始值的测试结果，为 \fIuaddr2\fP 处的 futex 字唤醒最多 \fIval2\fP 个等待者。
+.RE
+.IP
+要执行的操作和比较被编码在参数 \fIval3\fP 的位中。 如图所示，编码是:
+.IP
+.in +4n
+.EX
++\-\-\-+\-\-\-+\-\-\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-\-\-+
+|op |cmp|   oparg   |  cmparg   |
++\-\-\-+\-\-\-+\-\-\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-\-\-+
+  4   4       12          12    <== # of bits
+.EE
+.in
+.IP
+用代码表示，编码为:
+.IP
+.in +4n
+.EX
+#define FUTEX_OP(op, oparg, cmp, cmparg) \e
+                (((op & 0xf) << 28) | \e
+                ((cmp & 0xf) << 24) | \e
+                ((oparg & 0xfff) << 12) | \e
+                (cmparg & 0xfff))
+.EE
+.in
+.IP
+上图中，\fIop\fP 和 \fIcmp\fP 分别是下面列出的代码之一。 \fIoparg\fP 和 \fIcmparg\fP 分量是字面量，除非下面另有说明。
+.IP
+\fIop\fP 组件具有以下值之一:
+.IP
+.in +4n
+.EX
+FUTEX_OP_SET        0  /* uaddr2 = oparg; */    
+FUTEX_OP_ADD        1  /* uaddr2 += oparg; */
+FUTEX_OP_OR         2  /* uaddr2 |= oparg; */
+FUTEX_OP_ANDN       3  /* uaddr2 &= \[ti]oparg; */
+FUTEX_OP_XOR        4  /* uaddr2 \[ha]= oparg; */
+.EE
+.in
+.IP
+此外，将以下值按位或运算到 \fIop\fP 会导致将 \fI(1\~<<\~oparg)\fP 用作操作数:
+.IP
+.in +4n
+.EX
+FUTEX_OP_ARG_SHIFT  8  /* Use (1 << oparg) as operand */
+.EE
+.in
+.IP
+\fIcmp\fP 字段是以下之一:
+.IP
+.in +4n
+.EX
+FUTEX_OP_CMP_EQ     0  /* if (oldval == cmparg) wake */
+FUTEX_OP_CMP_NE     1  /* if (oldval != cmparg) wake */
+FUTEX_OP_CMP_LT     2  /* if (oldval < cmparg) wake */
+FUTEX_OP_CMP_LE     3  /* if (oldval <= cmparg) wake */
+FUTEX_OP_CMP_GT     4  /* if (oldval > cmparg) wake */
+FUTEX_OP_CMP_GE     5  /* if (oldval >= cmparg) wake */
+.EE
+.in
+.IP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fBFUTEX_WAKE_OP\fP 的返回值是在 futex \fIuaddr\fP 上唤醒的等待者数量加上在 futex \fIuaddr2\fP
+上唤醒的等待者数量之和。
+.TP 
+\fBFUTEX_WAIT_BITSET\fP (since Linux 2.6.25)
+.\" commit cd689985cf49f6ff5c8eddc48d98b9d581d9475d
+此操作类似于 \fBFUTEX_WAIT\fP，只是 \fIval3\fP 用于向内核提供 32 位位掩码。 这个位掩码 (其中至少有一位必须设置)
+存储在等待程序的内核内部状态中。 有关详细信息，请参见 \fBFUTEX_WAKE_BITSET\fP 的说明。
+.IP
+如果 \fItimeout\fP 不为 NULL，则它指向的结构体指定等待操作的绝对超时。 如果 \fItimeout\fP 为 NULL，则操作可以无限期地阻塞。
+.IP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIuaddr2\fP 参数被忽略。
+.TP 
+\fBFUTEX_WAKE_BITSET\fP (since Linux 2.6.25)
+.\" commit cd689985cf49f6ff5c8eddc48d98b9d581d9475d
+此操作与 \fBFUTEX_WAKE\fP 相同，只是 \fIval3\fP 参数用于向内核提供 32 位位掩码。
+该位掩码必须至少设置一位，用于选择应唤醒哪些服务员。 选择是通过 "wake" 位掩码 (即 \fIval3\fP)
+中的值和存储在等待程序内核内部状态中的位掩码 (使用 \fBFUTEX_WAIT_BITSET\fP) 设置的 "wait" 位掩码) 的按位与来完成的。
+AND 的结果不为零的所有服务员都被唤醒; 剩下的服务员还在睡觉。
+.IP
+.\" According to http://locklessinc.com/articles/futex_cheat_sheet/:
+.\"
+.\"    "The original reason for the addition of these extensions
+.\"     was to improve the performance of pthread read-write locks
+.\"     in glibc. However, the pthreads library no longer uses the
+.\"     same locking algorithm, and these extensions are not used
+.\"     without the bitset parameter being all ones.
+.\"
+.\" The page goes on to note that the FUTEX_WAIT_BITSET operation
+.\" is nevertheless used (with a bit mask of all ones) in order to
+.\" obtain the absolute timeout functionality that is useful
+.\" for efficiently implementing Pthreads APIs (which use absolute
+.\" timeouts); FUTEX_WAIT provides only relative timeouts.
+\fBFUTEX_WAIT_BITSET\fP 和 \fBFUTEX_WAKE_BITSET\fP 的作用是允许在同一个 futex
+上阻塞的多个等待者之间进行选择性唤醒。 但是，请注意，根据用例，在 futex 上使用此位掩码多路复用特性可能比简单地使用多个 futex
+效率低，因为使用位掩码多路复用需要内核检查 futex 上的所有等待程序，包括那些对被唤醒不感兴趣 (即，他们没有在其 "wait"
+位掩码中设置相关位)。
+.IP
+常量 \fBFUTEX_BITSET_MATCH_ANY\fP，对应位掩码中设置的所有 32 位，可作为 \fIval3\fP 参数用于
+\fBFUTEX_WAIT_BITSET\fP 和 \fBFUTEX_WAKE_BITSET\fP。 除了 \fItimeout\fP
+参数的处理不同外，\fBFUTEX_WAIT\fP 操作等同于 \fBFUTEX_WAIT_BITSET\fP，\fIval3\fP 指定为
+\fBFUTEX_BITSET_MATCH_ANY\fP; 也就是说，允许任何唤醒者唤醒。 \fBFUTEX_WAKE\fP 运算相当于
+\fBFUTEX_WAKE_BITSET\fP，\fIval3\fP 指定为 \fBFUTEX_BITSET_MATCH_ANY\fP; 即唤醒任何 waiter(s)。
+.IP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIuaddr2\fP 和 \fItimeout\fP 参数被忽略。
+.SS "Priority\-inheritance futexes"
+Linux 支持优先级继承 (PI) futex 以处理普通 futex 锁可能遇到的优先级反转问题。
+优先级倒置是指高优先级任务阻塞等待获取低优先级任务持有的锁，而中等优先级任务不断从 CPU 抢占低优先级任务时发生的问题。
+因此，低优先级任务在释放锁方面没有任何进展，高优先级任务仍然处于阻塞状态。
+.PP
+优先级继承是一种处理优先级反转问题的机制。
+通过这种机制，当一个高优先级任务被一个低优先级任务持有的锁阻塞时，低优先级任务的优先级会暂时提升到高优先级任务的优先级，这样它就不会被抢占任何中间级别的任务，因此可以在释放锁方面取得进展。
+为了有效，优先级继承必须是可传递的，这意味着如果一个高优先级任务阻塞在一个低优先级任务持有的锁上，而这个低优先级任务本身被另一个中等优先级任务持有的锁阻塞
+(等等，对于链任意长度)，那么这两个任务 (或者更一般地说，锁链中的所有任务) 的优先级都提高到与高优先级任务相同。
+.PP
+.\"
+.\" Quoting Darren Hart:
+.\"     These opcodes paired with the PI futex value policy (described below)
+.\"     defines a "futex" as PI aware. These were created very specifically
+.\"     in support of PI pthread_mutexes, so it makes a lot more sense to
+.\"     talk about a PI aware pthread_mutex, than a PI aware futex, since
+.\"     there is a lot of policy and scaffolding that has to be built up
+.\"     around it to use it properly (this is what a PI pthread_mutex is).
+从用户空间的角度来看，使 futex PI 感知的是用户空间和内核之间关于 futex 字的值的策略协议 (如下所述)，以及使用如下所述的
+PI\-futex 操作。 (与上面描述的其他 futex 操作不同，PI\-futex 操作是为实现非常具体的 IPC 机制而设计的。)
+.PP
+.\"       mtk: The following text is drawn from the Hart/Guniguntala paper
+.\"       (listed in SEE ALSO), but I have reworded some pieces
+.\"       significantly.
+.\"
+下面描述的 PI\-futex 操作与其他 futex 操作的不同之处在于它们对 futex 字的值的使用施加了策略:
+.IP \[bu] 3
+如果没有获得锁，futex word 的值应该是 0.
+.IP \[bu]
+如果获得锁，futex 字的值应为线程 ID (TID; 参见拥有线程的 \fBgettid\fP(2))。
+.IP \[bu]
+如果锁被拥有并且有线程争用锁，那么 \fBFUTEX_WAITERS\fP 位应该设置在 futex 字的值中; 换句话说，这个值是:
+.IP
+.in +4n
+.EX
+FUTEX_WAITERS | TID
+.EE
+.in
+.IP
+(请注意，没有所有者和 \fBFUTEX_WAITERS\fP 设置的 PI futex 字是无效的。)
+.PP
+有了这个策略，用户空间应用程序可以使用在用户模式下执行的原子指令获取未获取的锁或释放锁 (例如，比较和交换操作，例如 x86 架构上的
+\fIcmpxchg\fP)。 如果 futex 字的前一个值为 0，获取锁的简单操作就是使用比较和交换将 futex 字的值自动设置为调用者的 TID。
+如果先前的值是预期的 TID，释放锁需要使用比较和交换将 futex 字的值设置为 0。
+.PP
+如果一个 futex 已经被获取 (即，具有非零值)，等待者必须使用 \fBFUTEX_LOCK_PI\fP 或 \fBFUTEX_LOCK_PI2\fP
+操作来获取锁。 如果其他线程正在等待锁，则在 futex 值中设置 \fBFUTEX_WAITERS\fP 位; 在这种情况下，锁拥有者必须使用
+\fBFUTEX_UNLOCK_PI\fP 操作来释放锁。
+.PP
+在调用者被迫进入内核的情况下 (即，需要执行 \fBfutex\fP() 调用)，他们然后直接处理所谓的
+RT\-mutex，一种实现所需优先级继承语义的内核锁定机制。 在获取到 RT \- 交互锁之后，在调用线程返回到用户空间之前，相应地更新 futex 值。
+.PP
+.\" tglx (July 2015):
+.\"     If there are multiple waiters on a pi futex then a wake pi operation
+.\"     will wake the first waiter and hand over the lock to this waiter. This
+.\"     includes handing over the rtmutex which represents the futex in the
+.\"     kernel. The strict requirement is that the futex owner and the rtmutex
+.\"     owner must be the same, except for the update period which is
+.\"     serialized by the futex internal locking. That means the kernel must
+.\"     update the user-space value prior to returning to user space
+重要的是要注意内核将在返回用户空间之前更新 futex 字的值。 (这可以防止 futex 字的值以无效状态结束的可能性，例如拥有所有者但值为
+0，或者有服务员但没有设置 \fBFUTEX_WAITERS\fP 位。)
+.PP
+.\" tglx (July 2015):
+.\"     The FUTEX_OWNER_DIED bit can also be set on uncontended futexes, where
+.\"     the kernel has no state associated. This happens via the robust futex
+.\"     mechanism. In that case the futex value will be set to
+.\"     FUTEX_OWNER_DIED. The robust futex mechanism is also available for non
+.\"     PI futexes.
+如果一个 futex 在内核中有一个关联的 RT \- 互连锁 (即有阻塞的 waiters) 并且 futex/RT\-mutex
+的所有者意外死亡，那么内核会清理这个 RT \- 互连锁并交给下一个 waiter .  这反过来又要求相应地更新用户空间值。 为了表明这是必需的，内核将
+futex 字中的 \fBFUTEX_OWNER_DIED\fP 位与新所有者的线程 ID 一起设置。 用户空间可以通过
+\fBFUTEX_OWNER_DIED\fP 位的存在检测到这种情况，然后负责清理死所有者留下的陈旧状态。
+.PP
+通过在 \fIfutex_op\fP 中指定下面列出的值之一来操作 PI futex。 请注意，PI futex
+操作必须作为配对操作使用，并且需要满足一些额外的要求:
+.IP \[bu] 3
+\fBFUTEX_LOCK_PI\fP、\fBFUTEX_LOCK_PI2\fP 和 \fBFUTEX_TRYLOCK_PI\fP 与
+\fBFUTEX_UNLOCK_PI\fP 配对。 \fBFUTEX_UNLOCK_PI\fP 必须仅在调用线程拥有所有权的 futex
+上调用，如值策略所定义，否则将导致错误 \fBEPERM\fP。
+.IP \[bu]
+\fBFUTEX_WAIT_REQUEUE_PI\fP 与 \fBFUTEX_CMP_REQUEUE_PI\fP 配对。 这必须从非 PI futex 到不同的
+PI futex (或错误 \fBEINVAL\fP 结果) 执行。 此外，\fIval\fP (要唤醒的服务员数量) 必须为 1 (或错误 \fBEINVAL\fP
+结果)。
+.PP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+PI futex 操作如下:
+.TP 
+\fBFUTEX_LOCK_PI\fP (since Linux 2.6.18)
+.\" commit c87e2837be82df479a6bae9f155c43516d2feebc
+在尝试通过原子用户模式指令获取锁失败后使用此操作，因为 futex 字具有非零值，特别是因为它包含锁所有者的
+(PID\-namespace\-specific) TID。
+.IP
+.\" tglx (July 2015):
+.\"     The operation here is similar to the FUTEX_WAIT logic. When the user
+.\"     space atomic acquire does not succeed because the futex value was non
+.\"     zero, then the waiter goes into the kernel, takes the kernel internal
+.\"     lock and retries the acquisition under the lock. If the acquisition
+.\"     does not succeed either, then it sets the FUTEX_WAITERS bit, to signal
+.\"     the lock owner that it needs to go into the kernel. Here is the pseudo
+.\"     code:
+.\"
+.\"     	lock(kernel_lock);
+.\"     retry:
+.\"
+.\"     	/*
+.\"     	 * Owner might have unlocked in user space before we
+.\"     	 * were able to set the waiter bit.
+.\"              */
+.\"             if (atomic_acquire(futex) == SUCCESS) {
+.\"     	   unlock(kernel_lock());
+.\"     	   return 0;
+.\"     	}
+.\"
+.\"     	/*
+.\"     	 * Owner might have unlocked after the above atomic_acquire()
+.\"     	 * attempt.
+.\"     	 */
+.\"     	if (atomic_set_waiters_bit(futex) != SUCCESS)
+.\"     	   goto retry;
+.\"
+.\"     	queue_waiter();
+.\"     	unlock(kernel_lock);
+.\"     	block();
+.\"
+该操作检查地址 \fIuaddr\fP 处的 futex 字的值。 如果该值为 0，则内核会尝试自动将 futex 值设置为调用者的 TID。 如果
+futex 字的值不为零，内核会原子地设置 \fBFUTEX_WAITERS\fP 位，这会向 futex 所有者发出信号，表明它无法通过将 futex
+值设置为 0 来原子地解锁用户空间中的 futex。 之后，内核:
+.RS
+.IP (1) 5
+尝试查找与所有者 TID 关联的线程。
+.IP (2)
+代表所有者创建或重用内核状态。 (如果这是第一个服务员，这个 futex 没有内核状态，所以内核状态是通过锁定 RT \- 互斥锁创建的，并且 futex
+所有者成为 RT\-mutex 的所有者。如果有现有的服务员，然后现有状态被重用。)
+.IP (3)
+将服务员附加到 futex (即，服务员在 RT \- 交互锁服务员列表中排队)。
+.RE
+.IP
+.\" August 2015:
+.\"     mtk: If the realm is restricted purely to SCHED_OTHER (SCHED_NORMAL)
+.\"          processes, does the nice value come into play also?
+.\"
+.\"     tglx: No. SCHED_OTHER/NORMAL tasks are handled in FIFO order
+.\" (i.e., task 1 blocks on lock A, held by task 2,
+.\" while task 2 blocks on lock B, held by task 3)
+如果存在多个服务员，则按优先级从高到低的顺序入队。 (有关优先级排序的信息，请参见 \fBsched\fP(7).) 中对
+\fBSCHED_DEADLINE\fP、\fBSCHED_FIFO\fP 和 \fBSCHED_RR\fP 调度策略的讨论。所有者继承等待者的 CPU 带宽 (如果根据
+\fBSCHED_DEADLINE\fP 策略调度等待者) 或等待者的优先级 (如果等待者是根据 \fBSCHED_RR\fP 或 \fBSCHED_FIFO\fP
+政策安排)。 这种继承在嵌套锁定的情况下遵循锁链并执行死锁检测。
+.IP
+.\" 2016-07-07 response from Thomas Gleixner on LKML:
+.\" From: Thomas Gleixner <tglx@linutronix.de>
+.\" Date: 6 July 2016 at 20:57
+.\" Subject: Re: futex: Allow FUTEX_CLOCK_REALTIME with FUTEX_WAIT op
+.\"
+.\" On Thu, 23 Jun 2016, Michael Kerrisk (man-pages) wrote:
+.\" > On 06/23/2016 08:28 PM, Darren Hart wrote:
+.\" > > And as a follow-on, what is the reason for FUTEX_LOCK_PI only using
+.\" > > CLOCK_REALTIME? It seems reasonable to me that a user may want to wait a
+.\" > > specific amount of time, regardless of wall time.
+.\" >
+.\" > Yes, that's another weird inconsistency.
+.\"
+.\" The reason is that phtread_mutex_timedlock() uses absolute timeouts based on
+.\" CLOCK_REALTIME. glibc folks asked to make that the default behaviour back
+.\" then when we added LOCK_PI.
+\fItimeout\fP 参数为锁定尝试提供超时。 如果 \fItimeout\fP 不为 NULL，则它指向的结构体指定绝对超时，根据
+\fBCLOCK_REALTIME\fP 时钟测量。 如果 \fItimeout\fP 为 NULL，操作将无限期阻塞。
+.IP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIuaddr2\fP、\fIval\fP 和 \fIval3\fP 参数被忽略。
+.TP 
+\fBFUTEX_LOCK_PI2\fP (since Linux 5.14)
+.\" commit bf22a6976897977b0a3f1aeba6823c959fc4fdae
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+此操作与 \fBFUTEX_LOCK_PI\fP 相同，只是可以选择测量 \fItimeout\fP 所依据的时钟。 默认情况下，\fItimeout\fP 中指定的
+(absolute) 超时是根据 \fBCLOCK_MONOTONIC\fP 时钟测量的，但如果 \fIfutex_op\fP 中指定了
+\fBFUTEX_CLOCK_REALTIME\fP 标志，则超时是根据 \fBCLOCK_REALTIME\fP 时钟测量的。
+.TP 
+\fBFUTEX_TRYLOCK_PI\fP (since Linux 2.6.18)
+.\" commit c87e2837be82df479a6bae9f155c43516d2feebc
+此操作尝试获取 \fIuaddr\fP 处的锁。 当用户空间原子获取没有成功时调用它，因为 futex 字不是 0.
+.IP
+.\" Paraphrasing a f2f conversation with Thomas Gleixner about the
+.\" above point (Aug 2015): ###
+.\"	There is a rare possibility of a race condition involving an
+.\"	uncontended futex with no owner, but with waiters.  The
+.\"	kernel-user-space contract is that if a futex is nonzero, you must
+.\"	go into kernel.  The futex was owned by a task, and that task dies
+.\"	but there are no waiters, so the futex value is non zero.
+.\"	Therefore, the next locker has to go into the kernel,
+.\"	so that the kernel has a chance to clean up. (CMXCH on zero
+.\"	in user space would fail, so kernel has to clean up.)
+.\" Darren Hart (Oct 2015):
+.\"     The trylock in the kernel has more state, so it can independently
+.\"     verify the flags that user space must trust implicitly.
+因为内核可以访问比用户空间更多的状态信息，如果在 futex 字 (即，使用空间可访问的状态信息) 包含陈旧状态 (\fBFUTEX_WAITERS\fP
+或者 \fBFUTEX_OWNER_DIED\fP) 的情况下由内核执行，则获取锁可能会成功.  当 futex 的所有者去世时，就会发生这种情况。
+用户空间无法以无竞争的方式处理这种情况，但内核可以解决这个问题并获取 futex。
+.IP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIuaddr2\fP、\fIval\fP、\fItimeout\fP 和 \fIval3\fP 参数被忽略。
+.TP 
+\fBFUTEX_UNLOCK_PI\fP (since Linux 2.6.18)
+.\" commit c87e2837be82df479a6bae9f155c43516d2feebc
+此操作唤醒在 \fBFUTEX_LOCK_PI\fP 或 \fBFUTEX_LOCK_PI2\fP 中等待 \fIuaddr\fP 参数提供的 futex
+地址的最高优先级等待者。
+.IP
+当 \fIuaddr\fP 的用户空间值不能从 (所有者的) TID 原子地更改为 0.
+.IP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIuaddr2\fP、\fIval\fP、\fItimeout\fP 和 \fIval3\fP 参数被忽略。
+.TP 
+\fBFUTEX_CMP_REQUEUE_PI\fP (since Linux 2.6.31)
+.\" commit 52400ba946759af28442dee6265c5c0180ac7122
+此操作是 \fBFUTEX_CMP_REQUEUE\fP 的 PI 感知变体。 它将通过 \fIuaddr\fP 上的
+\fBFUTEX_WAIT_REQUEUE_PI\fP 阻塞的等待者从非 PI 源 futex (\fIuaddr\fP) 重新排队到 PI 目标 futex
+(\fIuaddr2\fP)。
+.IP
+与 \fBFUTEX_CMP_REQUEUE\fP 一样，此操作最多唤醒在 \fIuaddr\fP 的 futex 上等待的 \fIval\fP 服务员。 但是对于
+\fBFUTEX_CMP_REQUEUE_PI\fP，要求 \fIval\fP 为 1 (主要是为了避免雷群)。 剩余的等待者从 \fIuaddr\fP 处的源
+futex 的等待队列中移除，并添加到 \fIuaddr2\fP 处的目标 futex 的等待队列中。
+.IP
+.\" val2 is the cap on the number of requeued waiters.
+.\" In the glibc pthread_cond_broadcast() implementation, this argument
+.\" is specified as INT_MAX, and for pthread_cond_signal() it is 0.
+.\"
+.\"       The page at http://locklessinc.com/articles/futex_cheat_sheet/
+.\"       notes that "priority-inheritance Futex to priority-inheritance
+.\"       Futex requeues are currently unsupported". However, probably
+.\"       the page does not need to say nothing about this, since
+.\"       Thomas Gleixner commented (July 2015): "they never will be
+.\"       supported because they make no sense at all"
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIval2\fP 和 \fIval3\fP 参数与 \fBFUTEX_CMP_REQUEUE\fP 的用途相同。
+.TP 
+\fBFUTEX_WAIT_REQUEUE_PI\fP (since Linux 2.6.31)
+.\" commit 52400ba946759af28442dee6265c5c0180ac7122
+.\"
+在 \fIuaddr\fP 处等待非 PI futex，并可能被重新排队 (通过另一个任务中的 \fBFUTEX_CMP_REQUEUE_PI\fP 操作) 到
+\fIuaddr2\fP 处的 PI futex。 \fIuaddr\fP 的等待操作与 \fBFUTEX_WAIT\fP 相同。
+.IP
+等待者可以从 \fIuaddr\fP 上的等待中移除，而无需通过另一个任务中的 \fBFUTEX_WAKE\fP 操作在 \fIuaddr2\fP 上重新排队。
+在这种情况下，\fBFUTEX_WAIT_REQUEUE_PI\fP 操作失败并出现错误 \fBEAGAIN\fP。
+.IP
+如果 \fItimeout\fP 不为 NULL，则它指向的结构体指定等待操作的绝对超时。 如果 \fItimeout\fP 为 NULL，则操作可以无限期地阻塞。
+.IP
+\fIval3\fP 参数被忽略。
+.IP
+.\"
+.\" Darren Hart notes that a patch to allow glibc to fully support
+.\" PI-aware pthreads condition variables has not yet been accepted into
+.\" glibc. The story is complex, and can be found at
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=11588
+.\" Darren notes that in the meantime, the patch is shipped with various
+.\" PREEMPT_RT-enabled Linux systems.
+.\"
+.\" Related to the preceding, Darren proposed that somewhere, man-pages
+.\" should document the following point:
+.\"
+.\"     While the Linux kernel, since Linux 2.6.31, supports requeueing of
+.\"     priority-inheritance (PI) aware mutexes via the
+.\"     FUTEX_WAIT_REQUEUE_PI and FUTEX_CMP_REQUEUE_PI futex operations,
+.\"     the glibc implementation does not yet take full advantage of this.
+.\"     Specifically, the condvar internal data lock remains a non-PI aware
+.\"     mutex, regardless of the type of the pthread_mutex associated with
+.\"     the condvar. This can lead to an unbounded priority inversion on
+.\"     the internal data lock even when associating a PI aware
+.\"     pthread_mutex with a condvar during a pthread_cond*_wait
+.\"     operation. For this reason, it is not recommended to rely on
+.\"     priority inheritance when using pthread condition variables.
+.\"
+.\" The problem is that the obvious location for this text is
+.\" the pthread_cond*wait(3) man page. However, such a man page
+.\" does not currently exist.
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+添加 \fBFUTEX_WAIT_REQUEUE_PI\fP 和 \fBFUTEX_CMP_REQUEUE_PI\fP 是为了支持一个相当具体的用例:
+支持优先级继承感知 POSIX 线程条件变量。 这个想法是这些操作应该总是配对，以确保用户空间和内核保持同步。 因此，在
+\fBFUTEX_WAIT_REQUEUE_PI\fP 操作中，用户空间应用程序预先指定在 \fBFUTEX_CMP_REQUEUE_PI\fP
+操作中发生的重新排队的目标。
+.SH "RETURN VALUE"
+如果发生错误 (假设 \fBfutex\fP() 是通过 \fBsyscall\fP(2)) 调用的，所有操作都会返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.PP
+成功的返回值取决于操作，如下表所述:
+.TP 
+\fBFUTEX_WAIT\fP
+如果，调用者，被唤醒，则返回 0。 请注意，唤醒也可能是由不相关代码中的常见 futex 使用模式引起的，这些代码碰巧以前使用过 futex
+字的内存位置 (例如，典型的基于 futex 的 Pthreads 交互锁实现在某些情况下可能会导致这种情况)。 因此，调用者应该始终保守地假设返回值为
+0 可能意味着虚假唤醒，并使用 futex 字的值 (即用户空间同步方案) 来决定是否继续阻塞。
+.TP 
+\fBFUTEX_WAKE\fP
+返回被唤醒的服务员数量。
+.TP 
+\fBFUTEX_FD\fP
+返回与 futex 关联的新文件描述符。
+.TP 
+\fBFUTEX_REQUEUE\fP
+返回被唤醒的服务员数量。
+.TP 
+\fBFUTEX_CMP_REQUEUE\fP
+返回在 \fIuaddr2\fP 处被唤醒或重新排队到 futex 的等待者总数。 如果此值大于 \fIval\fP，则差值是为 \fIuaddr2\fP 处的
+futex 字重新排队到 futex 的等待者数量。
+.TP 
+\fBFUTEX_WAKE_OP\fP
+返回被唤醒的服务员总数。 这是在 \fIuaddr\fP 和 \fIuaddr2\fP 的 futex 字的两个 futex 上被唤醒的等待者的总和。
+.TP 
+\fBFUTEX_WAIT_BITSET\fP
+如果，调用者，被唤醒，则返回 0。 有关如何在实践中正确解释这一点，请参见 \fBFUTEX_WAIT\fP。
+.TP 
+\fBFUTEX_WAKE_BITSET\fP
+返回被唤醒的服务员数量。
+.TP 
+\fBFUTEX_LOCK_PI\fP
+如果 futex 被成功锁定，则返回 0。
+.TP 
+\fBFUTEX_LOCK_PI2\fP
+如果 futex 被成功锁定，则返回 0。
+.TP 
+\fBFUTEX_TRYLOCK_PI\fP
+如果 futex 被成功锁定，则返回 0。
+.TP 
+\fBFUTEX_UNLOCK_PI\fP
+如果 futex 已成功解锁，则返回 0。
+.TP 
+\fBFUTEX_CMP_REQUEUE_PI\fP
+返回在 \fIuaddr2\fP 处被唤醒或重新排队到 futex 的等待者总数。 如果此值大于 \fIval\fP，则差值是为 \fIuaddr2\fP 处的
+futex 字重新排队到 futex 的等待者数量。
+.TP 
+\fBFUTEX_WAIT_REQUEUE_PI\fP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+如果调用者成功地重新排队到 \fIuaddr2\fP 处的 futex 字的 futex，则返回 0。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+不能读取 futex 字的内存。
+.TP 
+\fBEAGAIN\fP
+(\fBFUTEX_WAIT\fP, \fBFUTEX_WAIT_BITSET\fP, \fBFUTEX_WAIT_REQUEUE_PI\fP) \fIuaddr\fP
+指向的值不等于调用时 \fIval\fP 的期望值。
+.IP
+\fBNote\fP: on Linux，符号名 \fBEAGAIN\fP 和 \fBEWOULDBLOCK\fP (均出现在内核 futex 代码的不同部分)
+具有相同的值。
+.TP 
+\fBEAGAIN\fP
+(\fBFUTEX_CMP_REQUEUE\fP, \fBFUTEX_CMP_REQUEUE_PI\fP) \fIuaddr\fP 指向的值不等于 \fIval3\fP
+的期望值。
+.TP 
+\fBEAGAIN\fP
+(\fBFUTEX_LOCK_PI\fP, \fBFUTEX_LOCK_PI2\fP, \fBFUTEX_TRYLOCK_PI\fP,
+\fBFUTEX_CMP_REQUEUE_PI\fP) \fIuaddr\fP 的 futex 所有者线程 ID (对于
+\fBFUTEX_CMP_REQUEUE_PI\fP: \fIuaddr2\fP) 即将退出，但尚未处理内部状态清理。 再试一次。
+.TP 
+\fBEDEADLK\fP
+(\fBFUTEX_LOCK_PI\fP, \fBFUTEX_LOCK_PI2\fP, \fBFUTEX_TRYLOCK_PI\fP,
+\fBFUTEX_CMP_REQUEUE_PI\fP) \fIuaddr\fP 处的 futex 字已经被调用者锁定。
+.TP 
+\fBEDEADLK\fP
+.\" FIXME . I see that kernel/locking/rtmutex.c uses EDEADLK in some
+.\"       places, and EDEADLOCK in others. On almost all architectures
+.\"       these constants are synonymous. Is there a reason that both
+.\"       names are used?
+.\"
+.\"       tglx (July 2015): "No. We should probably fix that."
+.\"
+(\fBFUTEX_CMP_REQUEUE_PI\fP) 在为 \fIuaddr2\fP 处的 futex 字重新排队等待 PI futex 时，内核检测到死锁。
+.TP 
+\fBEFAULT\fP
+所需的指针参数 (即 \fIuaddr\fP、\fIuaddr2\fP 或 \fItimeout\fP) 未指向有效的用户空间地址。
+.TP 
+\fBEINTR\fP
+\fBFUTEX_WAIT\fP 或 \fBFUTEX_WAIT_BITSET\fP 操作被信号中断 (参见 \fBsignal\fP(7)).  在 Linux
+2.6.22 之前，此错误也可能会因虚假唤醒而返回; 从 Linux 2.6.22 开始，这不再发生。
+.TP 
+\fBEINVAL\fP
+\fIfutex_op\fP 中的操作是使用超时的操作之一，但提供的 \fItimeout\fP 参数无效 (\fItv_sec\fP 小于零，或 \fItv_nsec\fP
+不小于 1,000,000,000)。
+.TP 
+\fBEINVAL\fP
+\fIfutex_op\fP 中指定的操作使用指针 \fIuaddr\fP 和 \fIuaddr2\fP 中的一个或两个，但其中之一不指向有效对象
+\[em]，即地址不是四字节对齐的。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_WAIT_BITSET\fP, \fBFUTEX_WAKE_BITSET\fP) \fIval3\fP 中提供的位掩码为零。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_CMP_REQUEUE_PI\fP) \fIuaddr\fP 等于 \fIuaddr2\fP (即，尝试重新排队到同一个 futex)。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_FD\fP) \fIval\fP 中提供的信号编号无效。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_WAKE\fP、\fBFUTEX_WAKE_OP\fP、\fBFUTEX_WAKE_BITSET\fP、\fBFUTEX_REQUEUE\fP、\fBFUTEX_CMP_REQUEUE\fP)
+内核检测到 \fIuaddr\fP 的用户空间状态与内核状态之间存在不一致 \[em]，也就是说，它检测到在 \fIuaddr\fP 上的
+\fBFUTEX_LOCK_PI\fP 或 \fBFUTEX_LOCK_PI2\fP 中等待的服务员。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_LOCK_PI\fP、\fBFUTEX_LOCK_PI2\fP、\fBFUTEX_TRYLOCK_PI\fP、\fBFUTEX_UNLOCK_PI\fP)
+内核检测到 \fIuaddr\fP 处的用户空间状态与内核状态之间存在不一致。 这表明状态损坏或内核在 \fIuaddr\fP 上找到了一个正在通过
+\fBFUTEX_WAIT\fP 或 \fBFUTEX_WAIT_BITSET\fP 等待的等待者。
+.TP 
+\fBEINVAL\fP
+.\" From a conversation with Thomas Gleixner (Aug 2015): ###
+.\"	The kernel sees: I have non PI state for a futex you tried to
+.\"     tell me was PI
+(\fBFUTEX_CMP_REQUEUE_PI\fP) 内核检测到 \fIuaddr2\fP 处的用户空间状态与内核状态不一致; 也就是说，内核检测到一个通过
+\fBFUTEX_WAIT\fP 或 \fBFUTEX_WAIT_BITSET\fP 在 \fIuaddr2\fP 上等待的服务员。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_CMP_REQUEUE_PI\fP) 内核检测到 \fIuaddr\fP 处的用户空间状态与内核状态不一致; 也就是说，内核检测到一个通过
+\fBFUTEX_WAIT\fP 或 \fBFUTEX_WAIT_BITSET\fP 在 \fIuaddr\fP 上等待的服务员。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_CMP_REQUEUE_PI\fP) 内核检测到 \fIuaddr\fP 处的用户空间状态与内核状态不一致; 也就是说，内核检测到一个通过
+\fBFUTEX_LOCK_PI\fP 或 \fBFUTEX_LOCK_PI2\fP (而不是 \fBFUTEX_WAIT_REQUEUE_PI\fP)) 在
+\fIuaddr\fP 上等待的服务员。
+.TP 
+\fBEINVAL\fP
+.\" This deals with the case:
+.\"     wait_requeue_pi(A, B);
+.\"     requeue_pi(A, C);
+(\fBFUTEX_CMP_REQUEUE_PI\fP) 尝试将服务员重新排队到 futex，而不是该服务员的匹配
+\fBFUTEX_WAIT_REQUEUE_PI\fP 调用指定的 futex。
+.TP 
+\fBEINVAL\fP
+(\fBFUTEX_CMP_REQUEUE_PI\fP) \fIval\fP 参数不是 1.
+.TP 
+\fBEINVAL\fP
+参数无效。
+.TP 
+\fBENFILE\fP
+(\fBFUTEX_FD\fP) 已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOMEM\fP
+(\fBFUTEX_LOCK_PI\fP、\fBFUTEX_LOCK_PI2\fP、\fBFUTEX_TRYLOCK_PI\fP、\fBFUTEX_CMP_REQUEUE_PI\fP)
+内核无法分配内存来保存状态信息。
+.TP 
+\fBENOSYS\fP
+\fIfutex_op\fP 中指定的操作无效。
+.TP 
+\fBENOSYS\fP
+在 \fIfutex_op\fP 中指定了 \fBFUTEX_CLOCK_REALTIME\fP 选项，但伴随的操作既不是
+\fBFUTEX_WAIT\fP、\fBFUTEX_WAIT_BITSET\fP、\fBFUTEX_WAIT_REQUEUE_PI\fP 也不是
+\fBFUTEX_LOCK_PI2\fP。
+.TP 
+\fBENOSYS\fP
+(\fBFUTEX_LOCK_PI\fP、\fBFUTEX_LOCK_PI2\fP、\fBFUTEX_TRYLOCK_PI\fP、\fBFUTEX_UNLOCK_PI\fP、\fBFUTEX_CMP_REQUEUE_PI\fP、\fBFUTEX_WAIT_REQUEUE_PI\fP)
+运行时检查确定该操作不可用。 PI\-futex 操作并未在所有架构上实现，并且在某些 CPU 变体上不受支持。
+.TP 
+\fBEPERM\fP
+(\fBFUTEX_LOCK_PI\fP, \fBFUTEX_LOCK_PI2\fP, \fBFUTEX_TRYLOCK_PI\fP,
+\fBFUTEX_CMP_REQUEUE_PI\fP) 不允许调用者将自己附加到 \fIuaddr\fP 的 futex (对于
+\fBFUTEX_CMP_REQUEUE_PI\fP:，\fIuaddr2\fP) 的 futex。 (这可能是由用户空间中的状态损坏引起的。)
+.TP 
+\fBEPERM\fP
+(\fBFUTEX_UNLOCK_PI\fP) 调用者不拥有 futex 字表示的锁。
+.TP 
+\fBESRCH\fP
+(\fBFUTEX_LOCK_PI\fP, \fBFUTEX_LOCK_PI2\fP, \fBFUTEX_TRYLOCK_PI\fP,
+\fBFUTEX_CMP_REQUEUE_PI\fP) \fIuaddr\fP 处的 futex 字中的线程 ID 不存在。
+.TP 
+\fBESRCH\fP
+(\fBFUTEX_CMP_REQUEUE_PI\fP) \fIuaddr2\fP 处的 futex 字中的线程 ID 不存在。
+.TP 
+\fBETIMEDOUT\fP
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+\fIfutex_op\fP 中的操作使用了 \fItimeout\fP 中指定的超时，并且超时在操作完成之前到期。
+.SH VERSIONS
+Futexes 首先在 Linux 2.6.0 的稳定内核版本中可用。
+.PP
+最初的 futex 支持已合并到 Linux 2.5.7 中，但语义与上述内容不同。 在 Linux 2.5.40
+中引入了具有本页描述的语义的四参数系统调用。 Linux 2.5.70 增加了第五个参数，Linux 2.6.7 增加了第六个参数。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+.\" TODO FIXME(Torvald) Above, we cite this section and claim it contains
+.\" details on the synchronization semantics; add the C11 equivalents
+.\" here (or whatever we find consensus for).
+.\"
+.\""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.\"
+几个更高级别的编程抽象是通过 futexes 实现的，包括 POSIX 信号量和各种 POSIX 线程同步机制 (互斥锁、条件变量、读写锁和屏障)。
+.SH EXAMPLES
+下面的程序演示了在一个程序中使用 futexes，其中父进程和子进程使用一对位于共享匿名映射内的 futexes 来同步对共享资源的访问: 终端。
+这两个进程各自将 \fInloops\fP (如果省略则默认为 5 的命令行参数) 消息写入终端并使用同步协议确保它们交替写入消息。
+运行该程序后，我们会看到如下输出:
+.PP
+.in +4n
+.EX
+$ \fB./futex_demo\fP
+父级 (18534) 0
+子节点 (18535) 0
+父级 (18534) 1
+子节点 (18535) 1
+父 (18534) 2
+子节点 (18535) 2
+父级 (18534) 3
+子节点 (18535) 3
+父级 (18534) 4
+子节点 (18535) 4
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (futex.c)
+\&
+.EX
+/* futex_demo.c
+
+   用法: futex_demo [nloops]
+                    (Default:  5)
+
+   在一个程序中演示 futexes 的使用
+   使用位于共享匿名映射中的一对 futexes 来
+   同步访问共享资源: 终端。他们俩
+   处理每个写入 \[aq] num\-loops\[aq] 消息到终端并使用
+   确保它们交替出现的同步协议
+   写信息。
+*/
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <linux/futex.h>
+#include <stdatomic.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+static uint32_t *futex1, *futex2, *iaddr;
+
+static int
+futex(uint32_t *uaddr, int futex_op, uint32_t val,
+      const struct timespec *timeout, uint32_t *uaddr2, uint32_t val3)
+{
+    return syscall(SYS_futex, uaddr, futex_op, val,
+                   timeout, uaddr2, val3);
+}
+
+/* Acquire the futex pointed to by \[aq]futexp\[aq]: wait for its value to
+   become 1, and then set the value to 0. */
+
+static void
+fwait(uint32_t *futexp)
+{
+    long            s;
+    const uint32_t  one = 1;
+
+    /* atomic_compare_exchange_strong(ptr, oldval, newval)
+       atomically performs the equivalent of:
+
+           if (*ptr == *oldval)
+               *ptr = newval;
+
+       It returns true if the test yielded true and *ptr was updated.  */
+
+    while (1) {
+
+        /* Is the futex available?  */
+        if (atomic_compare_exchange_strong(futexp, &one, 0))
+            break;       /* Yes */
+
+        /* Futex is not available; wait. */
+
+        s = futex(futexp, FUTEX_WAIT, 0, NULL, NULL, 0);
+        if (s == \-1 && errno != EAGAIN)
+            err(EXIT_FAILURE, "futex\-FUTEX_WAIT");
+    }
+}
+
+/* Release the futex pointed to by \[aq]futexp\[aq]: if the futex currently
+   has the value 0, set its value to 1 and then wake any futex waiters,
+   so that if the peer is blocked in fwait(), it can proceed. */
+
+static void
+fpost(uint32_t *futexp)
+{
+    long            s;
+    const uint32_t  zero = 0;
+
+    /* atomic_compare_exchange_strong() was described
+       in comments above. */
+
+    if (atomic_compare_exchange_strong(futexp, &zero, 1)) {
+        s = futex(futexp, FUTEX_WAKE, 1, NULL, NULL, 0);
+        if (s  == \-1)
+            err(EXIT_FAILURE, "futex\-FUTEX_WAKE");
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    pid_t         childPid;
+    unsigned int  nloops;
+
+    setbuf(stdout, NULL);
+
+    nloops = (argc > 1) ? atoi(argv[1]) : 5;
+
+    /* Create a shared anonymous mapping that will hold the futexes.
+       Since the futexes are being shared between processes, we
+       subsequently use the "shared" futex operations (i.e., not the
+       ones suffixed "_PRIVATE"). */
+
+    iaddr = mmap(NULL, sizeof(*iaddr) * 2, PROT_READ | PROT_WRITE,
+                 MAP_ANONYMOUS | MAP_SHARED, \-1, 0);
+    if (iaddr == MAP_FAILED)
+        err(EXIT_FAILURE, "mmap");
+
+    futex1 = &iaddr[0];
+    futex2 = &iaddr[1];
+
+    *futex1 = 0;        /* State: unavailable */
+    *futex2 = 1;        /* State: available */
+
+    /* Create a child process that inherits the shared anonymous
+       mapping. */
+
+    childPid = fork();
+    if (childPid == \-1)
+        err(EXIT_FAILURE, "fork");
+
+    if (childPid == 0) {        /* Child */
+        for (unsigned int j = 0;  j < nloops;  j++) {
+            fwait(futex1);
+            printf("Child  (%jd) %u\en", (intmax_t) getpid(), j);
+            fpost(futex2);
+        }
+
+        exit(EXIT_SUCCESS);
+    }
+
+    /* Parent falls through to here. */
+
+    for (unsigned int j = 0; j < nloops; j++) {
+        fwait(futex2);
+        printf("Parent (%jd) %u\en", (intmax_t) getpid(), j);
+        fpost(futex1);
+    }
+
+    wait(NULL);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+\fBget_robust_list\fP(2), \fBrestart_syscall\fP(2),
+\fBpthread_mutexattr_getprotocol\fP(3), \fBfutex\fP(7), \fBsched\fP(7)
+.PP
+The following kernel source files:
+.IP \[bu] 3
+\fIDocumentation/pi\-futex.txt\fP
+.IP \[bu]
+\fIDocumentation/futex\-requeue\-pi.txt\fP
+.IP \[bu]
+\fIDocumentation/locking/rt\-mutex.txt\fP
+.IP \[bu]
+\fIDocumentation/locking/rt\-mutex\-design.txt\fP
+.IP \[bu]
+\fIDocumentation/robust\-futex\-ABI.txt\fP
+.PP
+Franke, H., Russell, R., and Kirwood, M., 2002.   \fIFuss, Futexes and Furwocks: Fast Userlevel Locking in Linux\fP (from proceedings of the Ottawa
+Linux Symposium 2002),
+.br
+.UR http://kernel.org\:/doc\:/ols\:/2002\:/ols2002\-pages\-479\-495.pdf
+.UE
+.PP
+Hart, D., 2009.  Hart, D., 2009.
+.PP
+Hart, D.\& and Guniguntala, D., 2009.   \fIRequeue\-PI: Making glibc Condvars PI\-Aware\fP (from proceedings of the 2009 Real\-Time Linux Workshop),
+.UR http://lwn.net/images/conf/rtlws11/papers/proc/p10.pdf
+.UE
+.PP
+Drepper, U., 2011.  Drepper, U., 2011.
+.PP
+Futex example library, futex\-*.tar.bz2 at
+.br
+.UR https://mirrors.kernel.org\:/pub\:/linux\:/kernel\:/people\:/rusty/
+.UE
+.\"
+.\" FIXME(Torvald) We should probably refer to the glibc code here, in
+.\" particular the glibc-internal futex wrapper functions that are
+.\" WIP, and the generic pthread_mutex_t and perhaps condvar
+.\" implementations.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

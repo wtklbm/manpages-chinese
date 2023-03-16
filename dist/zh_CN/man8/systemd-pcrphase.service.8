@@ -1,0 +1,220 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-PCRPHASE\&.SERVICE 8 "" "systemd 253" systemd\-pcrphase.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-pcrphase.service, systemd\-pcrphase\-sysinit.service,
+systemd\-pcrphase\-initrd.service, systemd\-pcrmachine.service,
+systemd\-pcrfs\-root.service, systemd\-pcrfs@.service, systemd\-pcrphase \-
+测量启动阶段进入 TPM2 PCR 11，机器 ID 和文件系统标识进入 PCR 15
+.SH SYNOPSIS
+.PP
+systemd\-pcrphase\&.service
+.PP
+systemd\-pcrphase\-sysinit\&.service
+.PP
+systemd\-pcrphase\-initrd\&.service
+.PP
+systemd\-pcrmachine\&.service
+.PP
+systemd\-pcrfs\-root\&.service
+.PP
+systemd\-pcrfs@\&.service
+.PP
+/usr/lib/systemd/systemd\-pcrphase [\fISTRING\fP]
+.SH DESCRIPTION
+.PP
+systemd\-pcrphase\&.service、systemd\-pcrphase\-sysinit\&.service 和
+systemd\-pcrphase\-initrd\&.service 是系统服务，它们在引导过程的各个里程碑处将特定字符串测量到 TPM2 PCR 11
+中 \&。
+.PP
+systemd\-pcrmachine\&.service 是一个测量机器 ID 的系统服务 (见 \fBmachine\-id\fP(5)) into PCR
+15\&.
+.PP
+systemd\-pcrfs\-root\&.service 和 systemd\-pcrfs@\&.service 是将文件系统身份信息
+(i\&.e\&. 挂载点、文件系统类型、标签和 UUID、分区标签和 UUID) 测量到 PCR 15\& 中的服务。
+systemd\-pcrfs\-root\&.service 对根文件系统这样做，systemd\-pcrfs@\&.service
+是一个模板单元，它测量由其实例标识符指示的文件系统，而不是 \&。
+.PP
+这些服务要求 \fBsystemd\-stub\fP(7) 在统一内核映像 (UKI)\&
+中使用。当存根未用于调用内核时，它们不执行任何操作。在将控制权交给它之前，存根会将调用的内核和相关的供应商资源测量到 PCR 11 中;
+一旦用户空间被调用，这些服务将扩展 TPM2 PCR 11 与某些字符串值指示启动过程的阶段 \&。在常规引导过程中，PCR 11
+使用以下字符串进行扩展:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+"enter\-initrd" \(em early when the initrd initializes, before activating
+system extension images for the initrd\&. 它充当内核初始化时间和 initrd 开始运行并启用系统扩展映像
+i\&.e\& 之间的屏障。在 UKI\& 之外发送的代码。(此扩展发生在 systemd\-pcrphase\-initrd\&.service 启动
+\& 时。)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+"leave\-initrd"\(em 当 initrd 即将转换到主机文件系统时 \&。它充当 initrd
+代码和主机操作系统代码之间的屏障。(此扩展发生在 systemd\-pcrphase\-initrd\&.service 停止 \& 时。)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+"sysinit"\(em 当基本系统初始化完成时 (包括已安装的本地文件系统)，系统开始启动常规系统服务 \&。(此扩展发生在
+systemd\-pcrphase\-sysinit\&.service 启动 \& 时。)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+"ready"\(em 在稍后启动期间，在远程文件系统被激活之后 (i\&.e\&. 在 remote\-fs\&.target
+之后)，但在允许用户登录之前 (i\&.e\&. 在 systemd\-user\-sessions\&.service 之前)
+\&. 它在仍然禁止非特权普通用户登录和允许他们登录的时间之间充当屏障 \&。(此扩展发生在 systemd\-pcrphase\&.service 启动
+\& 时。)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+"shutdown"\(em 当系统关闭开始时 \&。它充当系统完全启动和运行时间与即将关闭 \& 之间的屏障。(此扩展发生在
+systemd\-pcrphase\&.service 停止 \& 时。)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+"final"\(em 在系统关闭结束时 \&。它在服务管理器仍然运行的时间和它过渡到服务管理不再可用的最终关闭阶段之间充当屏障。(此扩展发生在
+systemd\-pcrphase\-sysinit\&.service 停止 \& 时。)
+.RE
+.PP
+在常规系统生命周期中，PCR 11 会使用字符串
+"enter\-initrd"、"leave\-initrd"、"sysinit"、"ready"、"shutdown" 和 `final`\& 进行扩展。
+.PP
+引导过程的特定阶段可以通过测量的一系列字符串来引用，这些字符串由冒号 ("phase path")\& 分隔。例如，常规系统运行时的阶段路径是
+"enter\-initrd:leave\-initrd:sysinit:ready"，而 initrd 的阶段路径只是
+`enter\-initrd`\&。initrd 之前的引导阶段的阶段路径为空字符串; 因为 \*(Aqs 很难通过单个冒号 (":") 代替
+\&。请注意，上述六个字符串只是默认字符串，各个系统可能会在其他时间测量其他字符串，从而实现不同的和更细粒度的引导阶段以将策略绑定到 \&。
+.PP
+通过将 TPM2 对象的策略绑定到特定的阶段路径，可以将对它们的访问限制在引导过程的特定阶段，例如，在系统从 initrd 进入主机根文件系统 \&。
+.PP
+使用 \fBsystemd\-measure\fP(1) 预先计算特定引导阶段的预期 PCR 11 值 (通过 \fB\-\-phase=\fP 开关) \&。
+.PP
+systemd\-pcrfs\-root\&.service 和 systemd\-pcrfs@\&.service 被
+\fBsystemd\-gpt\-auto\-generator\fP(8) 自动拉入根和 /var / 文件系统 \& 的初始事务中。
+\fBsystemd\-fstab\-generator\fP(8) 将为所有使用 /etc/fstab\& 中的 \fBx\-systemd\&.pcrfs\fP
+挂载选项的挂载执行此操作。
+.SH OPTIONS
+.PP
+/usr/lib/systemd/system\-pcrphase 可执行文件也可以从命令行调用，它希望单词扩展到 PCR 11，以及以下开关:
+.PP
+\fB\-\-bank=\fP
+.RS 4
+取 PCR 库将指定的词扩展成 \&。如果未指定，该工具会自动确定所有已启用的 PCR 库并将单词测量到所有库中 \&。
+.RE
+.PP
+\fB\-\-tpm2\-device=\fP\fIPATH\fP
+.RS 4
+控制使用哪个 TPM2 设备 \&。期望引用 TPM2 芯片的设备节点路径 (e\&.g\&. /dev/tpmrm0)\&。或者，可以指定特殊值
+"auto"，以便自动确定合适的 TPM2 设备 (其中必须恰好有一个) 的设备节点 \&。特殊值 "list" 可用于枚举当前发现的所有合适的
+TPM2 设备。
+.RE
+.PP
+\fB\-\-graceful\fP
+.RS 4
+如果没有找到 TPM2 固件、内核子系统、内核驱动程序或设备支持，则以退出状态 0 退出 (i\&.e\&. 表示成功) \&。如果未指定，则在没有
+TPM2 设备的情况下进行任何测量都将导致调用失败 \&。
+.RE
+.PP
+\fB\-\-machine\-id\fP
+.RS 4
+不是将命令行上指定的单词测量到 PCR 11 中，而是将主机 \*(Aqs 机器 ID 测量到 PCR 15\&。
+.RE
+.PP
+\fB\-\-file\-system=\fP
+.RS 4
+不是将命令行上指定的单词测量到 PCR 11，而是将指定文件系统的标识信息测量到 PCR 15\&。该参数必须是建立的文件系统挂载点的路径才能测量
+\&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-stub\fP(7), \fBsystemd\-measure\fP(1),
+\fBsystemd\-gpt\-auto\-generator\fP(8), \fBsystemd\-fstab\-generator\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,379 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006, 2019 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Additions from Richard Gooch <rgooch@atnf.CSIRO.AU> and aeb, 971207
+.\" 2006-03-13, mtk, Added ppoll() + various other rewordings
+.\" 2006-07-01, mtk, Added POLLRDHUP + various other wording and
+.\"	formatting changes.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH poll 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+poll, ppoll \- 等待文件描述符上的某个事件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <poll.h>\fP
+.PP
+\fBint poll(struct pollfd *\fP\fIfds\fP\fB, nfds_t \fP\fInfds\fP\fB, int \fP\fItimeout\fP\fB);\fP
+.PP
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <poll.h>\fP
+.PP
+\fBint ppoll(struct pollfd *\fP\fIfds\fP\fB, nfds_t \fP\fInfds\fP\fB,\fP
+\fB          const struct timespec *_Nullable \fP\fItmo_p\fP\fB,\fP
+\fB          const sigset_t *_Nullable \fP\fIsigmask\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpoll\fP() 执行与 \fBselect\fP(2): 类似的任务，它等待一组文件描述符中的一个准备好执行 I/O。 特定于 Linux 的
+\fBepoll\fP(7) API 执行类似的任务，但提供的特性超出了 \fBpoll\fP() 中的，特性。
+.PP
+要监视的文件描述符集在 \fIfds\fP 参数中指定，它是以下形式的结构数组:
+.PP
+.in +4n
+.EX
+struct pollfd {
+    int   fd;         /* file descriptor */
+    short events;     /* requested events */
+    short revents;    /* returned events */
+};
+.EE
+.in
+.PP
+调用者应在 \fInfds\fP 中指定 \fIfds\fP 数组中的项数。
+.PP
+\fIfd\fP 字段包含打开文件的文件描述符。 如果此字段为 negative，则忽略相应的 \fIevents\fP 字段并且 \fIrevents\fP
+字段返回零。 (这提供了一种忽略单个 \fBpoll\fP() 调用的文件描述符的简单方法: 只需将 \fIfd\fP 字段设置为其按位补码。)
+.PP
+字段 \fIevents\fP 是一个输入参数，一个位掩码，指定应用程序对文件描述符 \fIfd\fP 感兴趣的事件。 该字段可以指定为零，在这种情况下，可以在
+\fIrevents\fP 中返回的唯一事件是 \fBPOLLHUP\fP、\fBPOLLERR\fP 和 \fBPOLLNVAL\fP (见下文)。
+.PP
+\fIrevents\fP 字段是一个输出参数，由内核填充实际发生的事件。 \fIrevents\fP 中返回的位可以包括 \fIevents\fP
+中指定的任何位，或者值 \fBPOLLERR\fP、\fBPOLLHUP\fP 或 \fBPOLLNVAL\fP 之一。 (这三位在 \fIevents\fP
+字段中没有意义，只要相应的条件为真，就会在 \fIrevents\fP 字段中设置。)
+.PP
+如果任何文件描述符都没有发生请求的事件 (并且没有错误)，则 \fBpoll\fP() 会阻塞，直到发生其中一个事件。
+.PP
+\fItimeout\fP 参数指定 \fBpoll\fP() 应该阻塞等待文件描述符准备就绪的毫秒数。 调用将阻塞，直到:
+.IP \[bu] 3
+文件描述符准备就绪;
+.IP \[bu]
+调用被信号处理程序中断; or
+.IP \[bu]
+超时到期。
+.PP
+请注意，\fItimeout\fP 间隔将向上舍入到系统时钟粒度，内核调度延迟意味着阻塞间隔可能会稍微超出。 在 \fItimeout\fP 中指定
+negative 值意味着无限超时。 将 \fItimeout\fP 指定为零会导致 \fBpoll\fP() 立即返回，即使没有文件描述符就绪。
+.PP
+\fIevents\fP 和 \fIrevents\fP 中可能是 set/returned 的位定义在 \fI<poll.h>\fP: 中
+.TP 
+\fBPOLLIN\fP
+有数据可读。
+.TP 
+\fBPOLLPRI\fP
+文件描述符存在一些异常情况。 可能性包括:
+.RS
+.IP \[bu] 3
+TCP 套接字上存在带外数据 (请参见 \fBtcp\fP(7)).
+.IP \[bu]
+数据包模式下的伪终端主机已经看到从机上的状态更改 (请参见 \fBioctl_tty\fP(2)).
+.IP \[bu]
+\fIcgroup.events\fP 文件已被修改 (请参见 \fBcgroups\fP(7)).
+.RE
+.TP 
+\fBPOLLOUT\fP
+现在可以写入，但大于套接字或管道中可用空间的写入仍会阻塞 (除非设置了 \fBO_NONBLOCK\fP)。
+.TP 
+\fBPOLLRDHUP\fP (since Linux 2.6.17)
+Stream socket peer 关闭连接，或关闭写入一半的连接。 必须定义 \fB_GNU_SOURCE\fP 特性测试宏 (在包含 \fIany\fP
+头文件之前) 以获得此定义。
+.TP 
+\fBPOLLERR\fP
+错误条件 (仅在 \fIrevents\fP 中返回; 在 \fIevents\fP) 中忽略。 当读端关闭时，该位也为引用管道写端的文件描述符设置。
+.TP 
+\fBPOLLHUP\fP
+挂断 (仅在 \fIrevents\fP 返回; 在 \fIevents\fP) 忽略。
+请注意，当从诸如管道或流套接字之类的通道读取时，此事件仅表示对等点关闭了通道的末端。 只有在通道中所有未完成的数据都被消耗后，从通道的后续读取才会返回
+0 (文件结尾)。
+.TP 
+\fBPOLLNVAL\fP
+无效请求: \fIfd\fP 未打开 (仅在 \fIrevents\fP 中返回; 在 \fIevents\fP) 中被忽略。
+.PP
+当使用定义的 \fB_XOPEN_SOURCE\fP 进行编译时，还有以下内容，除了上面列出的位之外，它们不传达更多信息:
+.TP 
+\fBPOLLRDNORM\fP
+相当于 \fBPOLLIN\fP。
+.TP 
+\fBPOLLRDBAND\fP
+.\" POLLRDBAND is used in the DECnet protocol.
+可以读取优先波段数据 (在 Linux 上通常未使用)。
+.TP 
+\fBPOLLWRNORM\fP
+相当于 \fBPOLLOUT\fP。
+.TP 
+\fBPOLLWRBAND\fP
+可以写入优先级数据。
+.PP
+Linux 也知道，但不使用 \fBPOLLMSG\fP。
+.SS ppoll()
+\fBpoll\fP() 和 \fBppoll\fP() 之间的关系类似于 \fBselect\fP(2) 和 \fBpselect\fP(2): 之间的关系，例如
+\fBpselect\fP(2)，\fBppoll\fP() 允许应用程序安全地等待，直到文件描述符准备好或捕获到信号。
+.PP
+除了 \fItimeout\fP 参数精度不同外，\fBppoll\fP() 调用如下:
+.PP
+.in +4n
+.EX
+ready = ppoll(&fds, nfds, tmo_p, &sigmask);
+.EE
+.in
+.PP
+几乎等同于 \fIatomically\fP 执行以下调用:
+.PP
+.in +4n
+.EX
+sigset_t origmask;
+int timeout;
+
+timeout = (tmo_p == NULL) ? \-1 :
+          (tmo_p\->tv_sec * 1000 + tmo_p\->tv_nsec / 1000000);
+pthread_sigmask(SIG_SETMASK, &sigmask, &origmask);
+ready = poll(&fds, nfds, timeout);
+pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+.EE
+.in
+.PP
+上面的代码段被描述为 \fInearly\fP 等效项，因为 \fBpoll\fP() 的 negative \fItimeout\fP 值被解释为无限超时，而
+\fI*tmo_p\fP 中表示的 negative 值导致 \fBppoll\fP() 的错误。
+.PP
+请参见 \fBpselect\fP(2) 的说明以了解为什么需要 \fBppoll\fP()。
+.PP
+如果 \fIsigmask\fP 参数指定为 NULL，则不执行信号掩码操作 (因此 \fBppoll\fP() 与 \fBpoll\fP() 的区别仅在于
+\fItimeout\fP 参数的精度)。
+.PP
+\fItmo_p\fP 参数指定 \fBppoll\fP() 将阻塞的时间量的上限。 这个参数是一个指向 \fBtimespec\fP(3) 结构体的指针。
+.PP
+如果 \fItmo_p\fP 指定为 NULL，则 \fBppoll\fP() 可以无限期阻塞。
+.SH "RETURN VALUE"
+成功时，\fBpoll\fP() 返回一个非负值，即 \fIpollfds\fP 中 \fIrevents\fP 字段已设置为非零值 (表示事件或错误) 的元素数。
+返回值为零表示系统调用在任何文件描述符就绪之前超时。
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIfds\fP 指向进程可访问的地址空间之外。 作为参数给出的数组不包含在调用程序的地址空间中。
+.TP 
+\fBEINTR\fP
+在任何请求的事件之前发生信号; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fInfds\fP 值超过 \fBRLIMIT_NOFILE\fP 值。
+.TP 
+\fBEINVAL\fP
+(\fBppoll\fP()) \fI*tmo_p\fP 表示的超时值无效 (negative)。
+.TP 
+\fBENOMEM\fP
+无法为内核数据结构分配内存。
+.SH VERSIONS
+\fBpoll\fP() 系统调用在 Linux 2.1.23 引入。 在缺少此系统调用的旧内核上，glibc \fBpoll\fP() 包装器函数提供使用
+\fBselect\fP(2) 的仿真。
+.PP
+\fBppoll\fP() 系统调用在 Linux 2.6.16 中加入。 在 glibc 2.4 中添加了 \fBppoll\fP() 库调用。
+.SH STANDARDS
+.\" FIXME .
+.\" ppoll() is proposed for inclusion in POSIX:
+.\" https://www.austingroupbugs.net/view.php?id=1263
+.\" NetBSD 3.0 has a pollts() which is like Linux ppoll().
+\fBpoll\fP() 符合 POSIX.1\-2001 和 POSIX.1\-2008。 \fBppoll\fP() 是特定于 Linux 的。
+.SH NOTES
+\fBpoll\fP() 和 \fBppoll\fP() 的操作不受 \fBO_NONBLOCK\fP 标志的影响。
+.PP
+.\" Darwin, according to a report by Jeremy Sequoia, relayed by Josh Triplett
+在其他一些 UNIX 系统上，如果系统无法分配内核内部资源，则 \fBpoll\fP() 可能会失败并显示错误 \fBEAGAIN\fP，而不是像 Linux
+那样的 \fBENOMEM\fP。 POSIX 允许这种行为。 可移植程序可能希望检查 \fBEAGAIN\fP 并循环，就像 \fBEINTR\fP 一样。
+.PP
+一些实现定义了非标准的常量 \fBINFTIM\fP，其值为 \-1，用作 \fBpoll\fP() 的 \fItimeout\fP。 glibc 中没有提供这个常量。
+.PP
+有关如果 \fBpoll\fP() 监视的文件描述符在另一个线程中关闭时可能发生的情况的讨论，请参见 \fBselect\fP(2)。
+.SS "C library/kernel differences"
+Linux \fBppoll\fP() 系统调用修改其 \fItmo_p\fP 参数。 但是，glibc
+包装器函数通过使用传递给系统调用的超时参数的局部变量来隐藏此行为。 因此，glibc \fBppoll\fP() 函数不会修改其 \fItmo_p\fP 参数。
+.PP
+原始 \fBppoll\fP() 系统调用有第五个参数 \fIsize_t sigsetsize\fP，它指定 \fIsigmask\fP 参数的字节大小。 glibc
+\fBppoll\fP() 包装器函数将此参数指定为固定值 (等于 \fIsizeof(kernel_sigset_t)\fP).  有关内核和 sigset 的
+libc 概念之间差异的讨论，请参见 \fBsigprocmask\fP(2)。
+.SH BUGS
+请参见 \fBselect\fP(2) 的 BUGS 部分下关于虚假就绪通知的讨论。
+.SH EXAMPLES
+下面的程序打开在其命令行参数中命名的每个文件，并监视生成的文件描述符以准备读取 (\fBPOLLIN\fP)。 程序循环，重复使用 \fBpoll\fP()
+来监视文件描述符，在返回时打印就绪文件描述符的数量。 对于每个就绪的文件描述符，程序:
+.IP \[bu] 3
+以人类可读的形式显示返回的 \fIrevents\fP 字段;
+.IP \[bu]
+如果文件描述符是可读的，则从中读取一些数据，并将该数据显示在标准输出上; and
+.IP \[bu]
+如果文件描述符不可读，但发生了一些其他事件 (大概是 \fBPOLLHUP\fP)，关闭文件描述符。
+.PP
+假设我们在一个终端运行程序，要求它打开一个 FIFO:
+.PP
+.in +4n
+.EX
+$ \fBmkfifo myfifo\fP
+$ \fB./poll_input myfifo\fP
+.EE
+.in
+.PP
+在第二个最终窗口中，我们打开 FIFO 进行写入，向其中写入一些数据，然后关闭 FIFO:
+.PP
+.in +4n
+.EX
+$ \fBecho aaaaabbbbbccccc > myfifo\fP
+.EE
+.in
+.PP
+在我们运行程序的最终端，我们会看到:
+.PP
+.in +4n
+.EX
+在 fd 3 上打开 "myfifo"
+即将到 poll()
+准备就绪: 1
+  fd=3; 事件: POLLIN POLLHUP
+    读取 10 个字节: aaaaabbbbb
+即将到 poll()
+准备就绪: 1
+  fd=3; 事件: POLLIN POLLHUP
+    读取 6 个字节: ccccc
+
+即将到 poll()
+准备就绪: 1
+  fd=3; 事件: POLLHUP
+    关闭 fd 3
+所有文件描述符关闭; bye
+.EE
+.in
+.PP
+在上面的输出中，我们看到 \fBpoll\fP() 返回了 3 次:
+.IP \[bu] 3
+第一次返回时，\fIrevents\fP 字段返回的位是 \fBPOLLIN\fP，表示文件描述符可读，\fBPOLLHUP\fP，表示 FIFO 的另一端已经关闭。
+然后程序消耗了一些可用的输入。
+.IP \[bu]
+\fBpoll\fP() 的第二次返回也表示 \fBPOLLIN\fP 和 \fBPOLLHUP\fP; 然后程序消耗了最后一个可用输入。
+.IP \[bu]
+.\"
+在最终返回时，\fBpoll\fP() 只指示 FIFO 上的 \fBPOLLHUP\fP，此时文件描述符被关闭，程序终止。
+.SS "Program source"
+.\" SRC BEGIN (poll_input.c)
+\&
+.EX
+/* poll_input.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <fcntl.h>
+#include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    int            ready;
+    char           buf[10];
+    nfds_t         num_open_fds, nfds;
+    ssize_t        s;
+    struct pollfd  *pfds;
+
+    if (argc < 2) {
+       fprintf(stderr, "Usage: %s file...\en", argv[0]);
+       exit(EXIT_FAILURE);
+    }
+
+    num_open_fds = nfds = argc \- 1;
+    pfds = calloc(nfds, sizeof(struct pollfd));
+    if (pfds == NULL)
+        errExit("malloc");
+
+    /* Open each file on command line, and add it to \[aq]pfds\[aq] array. */
+
+    for (nfds_t j = 0; j < nfds; j++) {
+        pfds[j].fd = open(argv[j + 1], O_RDONLY);
+        if (pfds[j].fd == \-1)
+            errExit("open");
+
+        printf("Opened \e"%s\e" on fd %d\en", argv[j + 1], pfds[j].fd);
+
+        pfds[j].events = POLLIN;
+    }
+
+    /* Keep calling poll() as long as at least one file descriptor is
+       open. */
+
+    while (num_open_fds > 0) {
+        printf("About to poll()\en");
+        ready = poll(pfds, nfds, \-1);
+        if (ready == \-1)
+            errExit("poll");
+
+        printf("Ready: %d\en", ready);
+
+        /* Deal with array returned by poll(). */
+
+        for (nfds_t j = 0; j < nfds; j++) {
+            if (pfds[j].revents != 0) {
+                printf("  fd=%d; events: %s%s%s\en", pfds[j].fd,
+                       (pfds[j].revents & POLLIN)  ? "POLLIN "  : "",
+                       (pfds[j].revents & POLLHUP) ? "POLLHUP " : "",
+                       (pfds[j].revents & POLLERR) ? "POLLERR " : "");
+
+                if (pfds[j].revents & POLLIN) {
+                    s = read(pfds[j].fd, buf, sizeof(buf));
+                    if (s == \-1)
+                        errExit("read");
+                    printf("    read %zd bytes: %.*s\en",
+                           s, (int) s, buf);
+                } else {                /* POLLERR | POLLHUP */
+                    printf("    closing fd %d\en", pfds[j].fd);
+                    if (close(pfds[j].fd) == \-1)
+                        errExit("close");
+                    num_open_fds\-\-;
+                }
+            }
+        }
+    }
+
+    printf("All file descriptors closed; bye\en");
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBrestart_syscall\fP(2), \fBselect\fP(2), \fBselect_tut\fP(2), \fBtimespec\fP(3),
+\fBepoll\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

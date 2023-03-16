@@ -1,0 +1,188 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-canon_dr 5 "13 Feb 2021" "" "SANE Scanner Access Now Easy"
+.IX sane\-canon_dr
+
+.SH NAME
+sane\-canon_dr \- 佳能 DR 系列扫描仪的 SANE 后端
+
+.SH DESCRIPTION
+\fBsane\-canon_dr\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，它提供对一些佳能 DR 系列扫描仪的访问。
+
+本文档描述了 SANE 1.0.32 附带的后端版本 60。
+
+.SH "SUPPORTED HARDWARE"
+此版本仅在少数扫描仪型号上进行过测试。请参见
+\fIhttp://www.sane\-project.org/sane\-supported\-devices.html\fP 以获取最新列表。
+
+此后端可能支持其他佳能扫描仪。确定支持级别的最佳方法是直接测试扫描仪，或收集正在运行的 windows 驱动程序的踪迹。 请联系作者寻求帮助或测试结果。
+
+一般来说，经过测试的大型机器 (DR\-4000 及以上)
+使用相当完整的协议，硬件支持多种模式、分辨率和，特性。较小的机器有很多限制，比如缺少水平分辨率，缺少二进制模式，总是扫描全角等。后端有代码可以解决这些问题，但似乎无法检测是否需要它们，所以它们必须是硬编码的。
+
+.SH OPTIONS
+已努力公开大多数硬件选项，包括:
+.TP 
+\fB\-\-source Flatbed|ADF Front|ADF Back|ADF Duplex\fP
+选择扫描源。
+
+.TP 
+\fB\-\-mode Lineart|Halftone|Gray|Color\fP
+选择扫描模式。
+
+.TP 
+\fB\-\-resolution\fP
+控制扫描分辨率。
+
+.TP 
+\fB\-\-tl\-x, \-\-tl\-y, \-\-br\-x, \-\-br\-y\fP
+设置扫描区域的左上角和右下角坐标。一些前端将它们重命名为 \fB\-t\fP、\fB\-l\fP、\fB\-x\fP、\fB\-y\fP。
+
+.TP 
+\fB\-\-page\-width, \-\-page\-height\fP
+设置纸张尺寸。扫描仪使用它来确定使用 ADF (自动文档进纸器) 时扫描坐标的居中并检测双张进纸错误。
+
+.PP
+其他选项将根据扫描仪的功能提供: 增强、压缩、按钮和传感器等。
+.PP
+此外，后端公开了几个 'software'
+选项。这些是大型扫描仪原生提供的特性的重新实现，但在主机上运行。这使得较小的机器具有类似的功能。请注意，这些特性有些简单，可能不如原生实现。另请注意，这些特性都需要驱动程序将整个图像缓存在内存中。这几乎肯定会导致扫描速度降低。
+
+.TP 
+\fB\-\-swcrop\fP
+要求驱动程序检测较大图像中纸张的末端，并裁剪空的 edges。
+
+.TP 
+\fB\-\-swdeskew\fP
+请求驱动程序检测较大图像内纸张的旋转，并反旋转。
+
+.TP 
+\fB\-\-swdespeck X\fP
+要求驱动程序从图像中找到并删除 X 直径或更小的点，并用周围的平均颜色填充空间。
+
+使用 `scanimage\-\-help` 获取列表，但请注意，某些选项可能只有在设置了另一个选项时才可设置，并且高级选项可能会被某些前端程序隐藏。
+
+.SH "CONFIGURATION FILE"
+配置文件 \fIcanon_dr.conf\fP
+用于告诉后端如何寻找扫描器，并提供控制后端操作的选项。每次前端向后端询问扫描仪列表时都会读取此文件，通常仅在前端启动时读取。如果缺少配置文件，后端将无法运行。
+.PP
+可以通过 4 种方式在配置文件中指定扫描器:
+.PP
+"SCSI 佳能 DR"
+.RS
+请求后端在系统中的所有 scsi 总线中搜索一个设备，该设备报告自己是 'CANON' 制造的扫描仪，型号名称以 'DR' 开头。
+.RE
+.PP
+"scsi /dev/sg0" (或其他 scsi 设备文件)
+.RS
+请求后端打开指定的 scsi 设备。仅当您有多个兼容的扫描仪连接到您的系统并且需要指定一个时才有用。可能不应该与上面的其他 "scsi" 行一起使用。
+.RE
+.PP
+"usb 0x04a9 0x1603" (或其他 vendor/product id)
+.RS
+请求后端在系统中的所有 USB 总线中搜索使用该供应商和产品 ID 的设备。然后将查询该设备以确定它是否是佳能扫描仪。
+.RE
+.PP
+"usb /dev/usb/scanner0" (或其他设备文件)
+.RS
+某些系统使用内核驱动程序来访问 USB 扫描仪。此方法未经测试。
+.RE
+.PP
+除了 'scsi' 和 'usb' 行外，配置文件还支持以下 'option' 行:
+.PP
+"选项缓冲区大小 [number of bytes]"
+.RS
+将数据缓冲区中的字节数设置为不同于编译时默认值 4MB 的值。大值可能会导致超时或挂起，小值可能会导致扫描速度变慢。
+.PP
+Note: 后端没有对此值设置上限，因为一些用户要求它非常大。不建议使用高于默认值的值，这可能会使您的操作系统崩溃或锁定您的 scsi
+卡驱动程序。您被警告了。
+.RE
+.PP
+"选项供应商名称 [string of text]"
+.br
+"选项型号名称 [string of text]"
+.br
+"选项版本名称 [string of text]"
+.RS
+这些选项可以共同用于覆盖扫描器提供的值，或者在扫描器无法提供时提供值。
+.RE
+.PP
+"选项填充读取 [0|1]"
+.RS
+一些扫描器在所有传输到主机的数据前加上 12 个字节。如果扫描仪无法响应命令，请启用此选项。
+.RE
+.PP
+"选项双面偏移 [integer]"
+.RS
+某些扫描仪会填充双面扫描一侧的上部 edge。填充量有一些变化。如果您的元仅在一侧显示不需要的图像数据带，请修改此选项。
+.RE
+.PP
+\fBNOTE\fP: "option" 行可能在配置文件中出现多次。 它们仅适用于下一个 'scsi/usb' 行发现的扫描仪。
+.PP
+
+.SH ENVIRONMENT
+后端使用单个环境变量 \fBSANE_DEBUG_CANON_DR\fP，它允许调试输出到标准错误。有效值为:
+.PP
+.RS
+5 个错误
+.br
+10 䇽数迹
+.br
+15 䇽数详细
+.br
+20 选项命令
+.br
+25 SCSI/USB 迹线
+.br
+30 SCSI/USB 细节
+.br
+35 无用的噪音
+.RE
+
+.SH "KNOWN ISSUES"
+这个后端完全是从专有驱动程序的 usb 跟踪中逆向工程的。机器的各种高级特性可能无法启用。许多机器没有经过测试。他们的协议未知。
+
+.SH CREDITS
+
+\fBsane\-fujitsu\fP(5) 后端的各个作者提供了有用的代码。
+.br
+亚巴拉纳公司  \fIwww.yabarana.com\fP 提供了大量资金。
+.br
+EvriChart 公司  \fIwww.evrichart.com\fP 提供资金和借用设备。
+.br
+美国佳能。 \fIwww.usa.canon.com\fP 借来的设备。
+.br
+HPrint \fIhprint.com.br\fP 为 DR\-2510 支持提供资金和测试。
+.br
+Stone\-IT \fIwww.stone\-it.com\fP 为 DR\-2010 和 DR\-2050 支持提供资金。
+.br
+Gerhard Pfeffer 提供了 P\-208 和 P\-215 的访问和测试。
+.br
+特别感谢: Alejandro Imass、Andre Shimakawa、Martijn van Brummelen、Thanos Diacakis
+和 Junren Shi 的测试和反馈。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBsane\-usb(5)\fP
+
+.SH AUTHOR
+m. allan noah: \fI<kitno455 a t gmail d o t com>\fP.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

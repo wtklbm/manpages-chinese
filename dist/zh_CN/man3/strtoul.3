@@ -1,0 +1,134 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sun Jul 25 10:54:03 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Fixed typo, aeb, 950823
+.\" 2002-02-22, joey, mihtjel: Added strtoull()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strtoul 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strtoul, strtoull, strtouq \- 将字符串转换为无符号长整数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBunsigned long strtoul(const char *restrict \fP\fInptr\fP\fB,\fP
+\fB                      char **restrict \fP\fIendptr\fP\fB, int \fP\fIbase\fP\fB);\fP 
+\fBunsigned long long strtoull(const char *restrict \fP\fInptr\fP\fB,\fP
+\fB                      char **restrict \fP\fIendptr\fP\fB, int \fP\fIbase\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBstrtoull\fP():
+.nf
+    _ISOC99_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE || _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBstrtoul\fP() 函数根据给定的 \fIbase\fP 将 \fInptr\fP 中的字符串的初始部分转换为 \fIunsigned long\fP
+值，该值必须介于 2 和 36 之间 (含 2 和 36)，或者是特殊值 0.
+.PP
+该字符串可以以任意数量的空格开头 (由 \fBisspace\fP(3)) 确定，后跟一个可选的 \[aq]+\[aq] 或 \[aq]\-\[aq] 符号。
+如果 \fIbase\fP 为零或 16，则该字符串可能包含 "0x" 前缀，并且该数字将以 16 为基数读取; 否则，零 \fIbase\fP 被视为 10
+(decimal)，除非下一个字符是 \[aq] 0\[aq]，在这种情况下，它被视为 8 (octal)。
+.PP
+字符串的其余部分以明显的方式转换为 \fIunsigned long\fP 值，在给定基数中不是有效数字的第一个字符处停止。 (在 10
+以上的基数中，大写或小写字母 \[aq] A\[aq] 表示 10，\[aq] B\[aq] 表示 11，依此类推，\[aq] Z\[aq] 代表
+35。)
+.PP
+如果 \fIendptr\fP 不为 NULL，则 \fBstrtoul\fP() 将第一个无效字符的地址存储在 \fI*endptr\fP 中。 如果根本没有数字，则
+\fBstrtoul\fP() 将 \fInptr\fP 的原始值存储在 \fI*endptr\fP 中 (并返回 0)。 特别是，如果返回时 \fI*nptr\fP 不是
+\[aq]\e0\[aq] 但 \fI**endptr\fP 是 \[aq]\e0\[aq]，则整个字符串是有效的。
+.PP
+\fBstrtoull\fP() 函数的工作方式与 \fBstrtoul\fP() 函数相同，但返回的是 \fIunsigned long long\fP 值。
+.SH "RETURN VALUE"
+\fBstrtoul\fP() 函数要么返回转换结果，要么返回转换结果的负数 (如果有前导减号)，表示为无符号值，除非原始 (nonnegated)
+值会溢出; 在后一种情况下，\fBstrtoul\fP() 返回 \fBULONG_MAX\fP 并将 \fIerrno\fP 设置为 \fBERANGE\fP。
+\fBstrtoull\fP() 的情况完全相同 (使用 \fBULLONG_MAX\fP 而不是 \fBULONG_MAX\fP)。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+(不在 C99 中) 给定的 \fIbase\fP 包含不受支持的值。
+.TP 
+\fBERANGE\fP
+结果值越界。
+.PP
+如果没有执行转换 (没有看到数字，返回 0)，该实现也可以将 \fIerrno\fP 设置为 \fBEINVAL\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrtoul\fP(),
+\fBstrtoull\fP(),
+\fBstrtouq\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBstrtoul\fP(): POSIX.1\-2001, POSIX.1\-2008, C99, SVr4.
+.PP
+\fBstrtoull\fP(): POSIX.1\-2001, POSIX.1\-2008, C99.
+.SH NOTES
+由于 \fBstrtoul\fP() 可以在成功和失败时合法地为 \fBstrtoull\fP()) 返回 0 或 \fBULONG_MAX\fP
+(\fBULLONG_MAX\fP，因此调用程序应在调用之前将 \fIerrno\fP 设置为 0，然后通过检查 \fIerrno\fP
+在调用之后是否具有非零值来确定是否发生错误。
+.PP
+在 "C" 语言环境以外的语言环境中，可以接受其他字符串。 (例如，可能支持当前语言环境的千位分隔符。)
+.PP
+BSD 还有
+.PP
+.in +4n
+.EX
+\fBu_quad_t strtouq(const char *\fP\fInptr\fP\fB, char **\fP\fIendptr\fP\fB, int \fP\fIbase\fP\fB);\fP
+.EE
+.in
+.PP
+具有完全类似的定义。 根据当前体系结构的字长，这可能等同于 \fBstrtoull\fP() 或 \fBstrtoul\fP()。
+.PP
+Negative 值被认为是有效输入，并被静默转换为等效的 \fIunsigned long\fP 值。
+.SH EXAMPLES
+请参见 \fBstrtol\fP(3) 手册页上的示例; 本手册页中描述的函数的使用是类似的。
+.SH "SEE ALSO"
+\fBa64l\fP(3), \fBatof\fP(3), \fBatoi\fP(3), \fBatol\fP(3), \fBstrtod\fP(3), \fBstrtol\fP(3),
+\fBstrtoumax\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,357 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH KERNEL\-COMMAND\-LINE 7 "" "systemd 253" kernel\-command\-line
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+kernel\-command\-line \- 内核命令行参数
+.SH SYNOPSIS
+.PP
+/proc/cmdline
+.SH DESCRIPTION
+.PP
+内核、在 initrd 和主机系统中运行的程序可以在引导时通过内核命令行参数 \& 进行配置。此外，各种 systemd 工具查看 EFI 变量
+"SystemdOptions" (如果可用) \&。两个源合并，但内核命令行具有更高的优先级 \&。请注意 \fIthe EFI variable is only used by systemd tools, and is ignored by the kernel and other user space tools\fP，因此它不能替代内核命令行 \&。
+.PP
+内核理解的命令行参数，请参见 \m[blue]\fBkernel\-parameters\&.html\fP\m[]\&\s-2\u[1]\d\s+2 和
+\fBbootparam\fP(7)\&。
+.PP
+对于 initrd 理解的命令行参数，请参见 \fBdracut.cmdline\fP(7)，或安装的特定 initrd 实现的文档 \&。
+.SH "CORE OS COMMAND LINE ARGUMENTS"
+.PP
+\fIsystemd\&.unit=\fP, \fIrd\&.systemd\&.unit=\fP, \fIsystemd\&.dump_core\fP,
+\fIsystemd\&.early_core_pattern=\fP, \fIsystemd\&.crash_chvt\fP,
+\fIsystemd\&.crash_shell\fP, \fIsystemd\&.crash_reboot\fP,
+\fIsystemd\&.confirm_spawn\fP, \fIsystemd\&.service_watchdogs\fP,
+\fIsystemd\&.show_status\fP, \fIsystemd\&.status_unit_format=\fP,
+\fIsystemd\&.log_target=\fP, \fIsystemd\&.log_level=\fP,
+\fIsystemd\&.log_location=\fP, \fIsystemd\&.log_color\fP,
+\fIsystemd\&.default_standard_output=\fP, \fIsystemd\&.default_standard_error=\fP,
+\fIsystemd\&.setenv=\fP, \fIsystemd\&.machine_id=\fP,
+\fIsystemd\&.set_credential=\fP, \fIsystemd\&.import_credentials=\fP,
+\fIsystemd\&.reload_limit_interval_sec=\fP, \fIsystemd\&.reload_limit_burst=\fP
+.RS 4
+系统和服务管理器理解的参数，用于控制系统行为 \&。详见 \fBsystemd\fP(1)\&。
+.RE
+.PP
+\fIsystemd\&.mask=\fP, \fIsystemd\&.wants=\fP, \fIsystemd\&.debug_shell\fP
+.RS 4
+\fBsystemd\-debug\-generator\fP(8) 理解的附加参数，用于在引导时屏蔽或启动特定单元，或在 tty9\& 上调用调试 shell。
+.RE
+.PP
+\fIsystemd\&.run=\fP, \fIsystemd\&.run_success_action=\fP,
+\fIsystemd\&.run_failure_action=\fP
+.RS 4
+\fBsystemd\-run\-generator\fP(8) 理解的附加参数，用于在启动后运行内核命令行上指定的命令行作为系统服务 \&。
+.RE
+.PP
+\fIsystemd\&.early_core_pattern=\fP
+.RS 4
+在早期引导期间，核心转储文件的生成被禁用，直到核心转储处理程序 (如果有) 接管 \&。此参数允许指定在安装处理程序之前应存储核心转储文件的绝对路径
+\&。该路径应该是绝对路径，并且可以包含说明符，有关详细信息，请参见 \fBcore\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.restore_state=\fP
+.RS 4
+这个参数被几个系统工具理解，以控制它们是否应该从以前的引导中恢复系统状态。详见 \fBsystemd\-backlight@.service\fP(8) 和
+\fBsystemd\-rfkill.service\fP(8)\&。
+.RE
+.PP
+\fIsystemd\&.volatile=\fP
+.RS 4
+该参数控制系统是否以可变模式启动 \&。采用布尔参数，或特殊值 `state`\&。如果为 false (默认值)，则选择正常启动模式，根目录和
+/var / 按照内核命令行或 /etc/fstab 上指定的方式挂载，或者以其他方式配置 \&。如果为真，则选择完全无状态启动模式
+\&。在这种情况下，根目录被挂载为易失性内存文件系统 ("tmpfs")，并且只有 /usr / 从配置为根设备的文件系统以只读模式挂载
+\&。如果供应商提供的操作系统按出厂时使用，这将启用完全无状态的引导，只有默认配置并且没有有效的存储状态，如 /etc / 和 /var/
+(以及根文件系统中提供的所有其他资源) ) 在启动时重置并在关机时丢失 \&。如果此设置设置为 "state"，根文件系统将以只读方式挂载，但是
+/var / 将作为易失性内存文件系统挂载
+("tmpfs")，以便系统在应用正常配置的情况下启动，但所有状态在启动时重置，并且关机时丢失。如果此设置设置为
+"overlay"，则根文件系统将设置为 "overlayfs" mount，将只读根目录与可写 "tmpfs"
+相结合，这样就不会对磁盘进行任何修改，但文件系统仍然可以修改，所有更改都在重启时丢失 \&。详见
+\fBsystemd\-volatile\-root.service\fP(8) 和 \fBsystemd\-fstab\-generator\fP(8)\&。
+.RE
+.PP
+\fIquiet\fP
+.RS 4
+内核和系统以及服务管理器都可以理解的参数，用于控制控制台日志的详细程度 \&。详见 \fBsystemd\fP(1)\&。
+.RE
+.PP
+\fIdebug\fP
+.RS 4
+内核和系统以及服务管理器都可以理解的参数，用于控制控制台日志的详细程度 \&。详见 \fBsystemd\fP(1)\&。
+.RE
+.PP
+\fI\-b\fP, \fIrd\&.emergency\fP, \fIemergency\fP, \fIrd\&.rescue\fP, \fIrescue\fP,
+\fIsingle\fP, \fIs\fP, \fIS\fP, \fI1\fP, \fI2\fP, \fI3\fP, \fI4\fP, \fI5\fP
+.RS 4
+系统和服务管理器理解的参数，作为兼容性和便利选项 \&。详见 \fBsystemd\fP(1)\&。
+.RE
+.PP
+\fIlocale\&.LANG=\fP, \fIlocale\&.LANGUAGE=\fP, \fIlocale\&.LC_CTYPE=\fP,
+\fIlocale\&.LC_NUMERIC=\fP, \fIlocale\&.LC_TIME=\fP, \fIlocale\&.LC_COLLATE=\fP,
+\fIlocale\&.LC_MONETARY=\fP, \fIlocale\&.LC_MESSAGES=\fP, \fIlocale\&.LC_PAPER=\fP,
+\fIlocale\&.LC_NAME=\fP, \fIlocale\&.LC_ADDRESS=\fP, \fIlocale\&.LC_TELEPHONE=\fP,
+\fIlocale\&.LC_MEASUREMENT=\fP, \fIlocale\&.LC_IDENTIFICATION=\fP
+.RS 4
+系统和服务管理器理解的参数，用于控制区域设置和语言设置 \&。详见 \fBsystemd\fP(1)\&。
+.RE
+.PP
+\fIfsck\&.mode=\fP, \fIfsck\&.repair=\fP
+.RS 4
+文件系统检查器服务理解的参数 \&。详见 \fBsystemd\-fsck@.service\fP(8)\&。
+.RE
+.PP
+\fIquotacheck\&.mode=\fP
+.RS 4
+文件配额检查器服务理解的参数 \&。详见 \fBsystemd\-quotacheck.service\fP(8)\&。
+.RE
+.PP
+\fIsystemd\&.journald\&.forward_to_syslog=\fP,
+\fIsystemd\&.journald\&.forward_to_kmsg=\fP,
+\fIsystemd\&.journald\&.forward_to_console=\fP,
+\fIsystemd\&.journald\&.forward_to_wall=\fP
+.RS 4
+日志服务理解的参数 \&。详见 \fBsystemd\-journald.service\fP(8)\&。
+.RE
+.PP
+\fIvconsole\&.keymap=\fP, \fIvconsole\&.keymap_toggle=\fP, \fIvconsole\&.font=\fP,
+\fIvconsole\&.font_map=\fP, \fIvconsole\&.font_unimap=\fP
+.RS 4
+虚拟控制台设置逻辑理解的参数 \&。详见 \fBvconsole.conf\fP(5)\&。
+.RE
+.PP
+\fIudev\&.log_level=\fP, \fIrd\&.udev\&.log_level=\fP, \fIudev\&.children_max=\fP,
+\fIrd\&.udev\&.children_max=\fP, \fIudev\&.exec_delay=\fP,
+\fIrd\&.udev\&.exec_delay=\fP, \fIudev\&.event_timeout=\fP,
+\fIrd\&.udev\&.event_timeout=\fP, \fIudev\&.timeout_signal=\fP,
+\fIrd\&.udev\&.timeout_signal=\fP, \fIudev\&.blockdev_read_only\fP,
+\fIrd\&.udev\&.blockdev_read_only\fP, \fInet\&.ifnames=\fP,
+\fInet\&.naming\-scheme=\fP
+.RS 4
+设备事件管理守护程序理解的参数 \&。详见 \fBsystemd\-udevd.service\fP(8)\&。
+.RE
+.PP
+\fIplymouth\&.enable=\fP
+.RS 4
+可用于禁用 Plymouth 启动启动 \&。详见 \fBplymouth\fP(8)\&。
+.RE
+.PP
+\fIluks=\fP, \fIrd\&.luks=\fP, \fIluks\&.crypttab=\fP, \fIrd\&.luks\&.crypttab=\fP,
+\fIluks\&.name=\fP, \fIrd\&.luks\&.name=\fP, \fIluks\&.uuid=\fP,
+\fIrd\&.luks\&.uuid=\fP, \fIluks\&.options=\fP, \fIrd\&.luks\&.options=\fP,
+\fIluks\&.key=\fP, \fIrd\&.luks\&.key=\fP
+.RS 4
+在启动时配置 LUKS 全盘加密逻辑。详见 \fBsystemd\-cryptsetup\-generator\fP(8)\&。
+.RE
+.PP
+\fIfstab=\fP, \fIrd\&.fstab=\fP
+.RS 4
+在启动时配置 /etc/fstab 逻辑 \&。详见 \fBsystemd\-fstab\-generator\fP(8)\&。
+.RE
+.PP
+\fIroot=\fP, \fIrootfstype=\fP, \fIrootflags=\fP, \fIro\fP, \fIrw\fP
+.RS 4
+配置根文件系统及其文件系统类型和挂载选项，以及是否应以只读方式挂载或最初以读写方式挂载 \&。详见
+\fBsystemd\-fstab\-generator\fP(8)\&。
+.sp
+如果未设置 \fIroot=\fP (或设置为 "gpt\-auto")，\fBsystemd\-gpt\-auto\-generator\fP(8)
+实现的自动根分区发现将生效 \&。在这种情况下，\fIrootfstype=\fP、\fIrootflags=\fP、\fIro\fP、\fIrw\fP 将由
+\fBsystemd\-gpt\-auto\-generator\fP\& 解释。
+.RE
+.PP
+\fImount\&.usr=\fP, \fImount\&.usrfstype=\fP, \fImount\&.usrflags=\fP
+.RS 4
+配置 /usr 文件系统 (如果需要) 及其文件系统类型和挂载选项 \&。详见 \fBsystemd\-fstab\-generator\fP(8)\&。
+.RE
+.PP
+\fIveritytab=\fP, \fIrd\&.veritytab=\fP, \fIroothash=\fP, \fIsystemd\&.verity=\fP,
+\fIrd\&.systemd\&.verity=\fP, \fIsystemd\&.verity_root_data=\fP,
+\fIsystemd\&.verity_root_hash=\fP, \fIsystemd\&.verity\&.root_options=\fP,
+\fIusrhash=\fP, \fIsystemd\&.verity_usr_data=\fP, \fIsystemd\&.verity_usr_hash=\fP,
+\fIsystemd\&.verity_usr_options=\fP
+.RS 4
+配置根和 /usr 文件系统的完整性保护根哈希，以及其他相关参数 \&。详见
+\fBsystemd\-veritysetup\-generator\fP(8)\&。
+.RE
+.PP
+\fIsystemd\&.getty_auto=\fP
+.RS 4
+配置 serial\-getty@\&.service 是否运行 \&。详见 \fBsystemd\-getty\-generator\fP(8)\&。
+.RE
+.PP
+\fIsystemd\&.gpt_auto=\fP, \fIrd\&.systemd\&.gpt_auto=\fP
+.RS 4
+配置是否应尝试基于 GPT 的分区自动发现 \&。详见 \fBsystemd\-gpt\-auto\-generator\fP(8)\&。
+.RE
+.PP
+\fIsystemd\&.default_timeout_start_sec=\fP
+.RS 4
+覆盖默认的启动作业超时 \fIDefaultTimeoutStartSec=\fP at boot\&。详见
+\fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.watchdog_device=\fP
+.RS 4
+覆盖看门狗设备路径 \fIWatchdogDevice=\fP\&。有关详细信息，请参见 \fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.watchdog_sec=\fP
+.RS 4
+覆盖另外使用 \fIRuntimeWatchdog=\fP、\fIRebootWatchdog=\fP 和 \fIKExecWatchdogSec=\fP\&
+配置的看门狗超时设置。采用时间值 (如果未指定元，则秒是隐式假定的时间元) 或特殊字符串 "off" 或 `默认`\&。有关详细信息，请参见
+\fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.watchdog_pre_sec=\fP
+.RS 4
+覆盖看门狗超时前设置，否则使用 \fIRuntimeWatchdogPreSec=\fP\& 配置。采用时间值 (如果未指定元，则秒是隐式假定的时间元)
+或特殊字符串 "off" 或 `默认`\&。有关详细信息，请参见 \fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.watchdog_pretimeout_governor=\fP
+.RS 4
+覆盖看门狗超时前设置，否则使用 \fIRuntimeWatchdogPreGovernor=\fP\& 配置。接受一个字符串值 \&。详见
+\fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.cpu_affinity=\fP
+.RS 4
+覆盖服务管理器的 CPU 关联掩码和它派生的所有子进程的默认值 \&。这优先于 \fICPUAffinity=\fP，有关详细信息，请参见
+\fBsystemd\-system.conf\fP(5)\&。
+.RE
+.PP
+\fImodules_load=\fP, \fIrd\&.modules_load=\fP
+.RS 4
+在启动时尽早加载特定的内核模块。详见 \fBsystemd\-modules\-load.service\fP(8)\&。
+.RE
+.PP
+\fInameserver=\fP, \fIdomain=\fP
+.RS 4
+配置 DNS 服务器信息和搜索域，有关详细信息，请参见 \fBsystemd\-resolved.service\fP(8)\&。
+.RE
+.PP
+\fIresume=\fP, \fIresumeflags=\fP
+.RS 4
+使用指定的设备和安装选项启用从休眠状态恢复 \&。支持所有 \fBfstab\fP(5)\-like 路径 \&。详见
+\fBsystemd\-hibernate\-resume\-generator\fP(8)\&。
+.RE
+.PP
+\fIsystemd\&.firstboot=\fP
+.RS 4
+采用布尔参数，默认为 on\&。如果关闭，\fBsystemd\-firstboot.service\fP(8)
+将不会向用户询问基本系统设置，即使系统是第一次启动并且相关设置还没有初始化 \&。不要与
+\fIsystemd\&.condition\-first\-boot=\fP (见下文) 混淆，它会覆盖 \fIConditionFirstBoot=\fP
+元文件条件的结果，因此控制的不仅仅是 systemd\-firstboot\&.service 行为 \&。
+.RE
+.PP
+\fIsystemd\&.condition\-needs\-update=\fP
+.RS 4
+采用布尔型参数 \&。如果指定，则覆盖 \fIConditionNeedsUpdate=\fP 元条件检查的结果 \&。有关详细信息，请参见
+\fBsystemd.unit\fP(5)\&。
+.RE
+.PP
+\fIsystemd\&.condition\-first\-boot=\fP
+.RS 4
+采用布尔型参数 \&。如果指定，则覆盖 \fIConditionFirstBoot=\fP 元条件检查的结果 \&。有关详细信息，请参见
+\fBsystemd.unit\fP(5)\&。不要与 \fIsystemd\&.firstboot=\fP 混淆，后者仅控制
+systemd\-firstboot\&.service 系统服务的行为但对条件检查 (见上文) 没有影响 \&。
+.RE
+.PP
+\fIsystemd\&.clock\-usec=\fP
+.RS 4
+自 1970 年 1 月 1 日凌晨 00:00 以来采用 \(mcs 中的十进制数字时间戳，将系统时钟设置为
+\&。系统时间在引导期间早期设置为指定的时间戳。它不会传播到硬件时钟 (RTC)\&。
+.RE
+.PP
+\fIsystemd\&.random\-seed=\fP
+.RS 4
+采用 base64 编码的随机 seed 值以将全部熵记入内核 \* (早期服务管理器初始化期间的 Aqs 随机池
+\&。此选项在测试环境中很有用，在这种环境中，应避免因熵匮乏的虚拟机中的随机池初始化而导致的延迟 \&。
+.sp
+请注意，如果使用此选项，非特权程序可从 /proc/cmdline\& 访问 seed。因此，此选项在测试系统之外使用时存在安全风险，因为
+(possibly) 只有 seed 用于内核初始化 \* (Aqs 熵池可能很容易被非特权程序获取 \&。
+.sp
+建议传递 512 字节的随机数据 (因为它与 Linux 内核池大小相匹配)，可以使用如下命令生成:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+dd if=/dev/urandom bs=512 计数 = 1 状态 = 无 | base64 \-w 0
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+再次提醒: 不要在测试环境之外使用此选项，它 \*(在其他地方存在安全风险，因为从熵池中派生的秘密密钥材料可能会被非特权程序重建 \&。
+.RE
+.PP
+\fIsystemd\&.hostname=\fP
+.RS 4
+接受在早期引导期间设置的主机名 \&。如果指定，则优先于 /etc/hostname\&
+中设置的内容。请注意，这并不禁止稍后运行时更改主机名，它只是控制在早期启动期间设置的初始主机名 \&。
+.RE
+.SH HISTORY
+.PP
+系统 252
+.RS 4
+内核命令行参数 \fIsystemd\&.unified_cgroup_hierarchy\fP 和
+\fIsystemd\&.legacy_systemd_cgroup_controller\fP 已弃用 \&。请切换到统一的 cgroup 层次结构 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-system.conf\fP(5), \fBbootparam\fP(7),
+\fBdracut.cmdline\fP(7), \fBsystemd\-debug\-generator\fP(8),
+\fBsystemd\-fsck@.service\fP(8), \fBsystemd\-quotacheck.service\fP(8),
+\fBsystemd\-journald.service\fP(8), \fBsystemd\-vconsole\-setup.service\fP(8),
+\fBsystemd\-udevd.service\fP(8), \fBplymouth\fP(8),
+\fBsystemd\-cryptsetup\-generator\fP(8), \fBsystemd\-veritysetup\-generator\fP(8),
+\fBsystemd\-fstab\-generator\fP(8), \fBsystemd\-getty\-generator\fP(8),
+\fBsystemd\-gpt\-auto\-generator\fP(8), \fBsystemd\-volatile\-root.service\fP(8),
+\fBsystemd\-modules\-load.service\fP(8), \fBsystemd\-backlight@.service\fP(8),
+\fBsystemd\-rfkill.service\fP(8), \fBsystemd\-hibernate\-resume\-generator\fP(8),
+\fBsystemd\-firstboot.service\fP(8), \fBbootctl\fP(1)
+.SH NOTES
+.IP " 1." 4
+kernel\-parameters.html
+.RS 4
+\%https://docs.kernel.org/admin\-guide/kernel\-parameters.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

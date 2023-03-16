@@ -1,0 +1,158 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\" and Copyright (C) 2008, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 18:48:48 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 980310, aeb
+.\" Modified 990328, aeb
+.\" 2008-06-19, mtk, Added mkostemp(); various other changes
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mkstemp 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mkstemp, mkostemp, mkstemps, mkostemps \- 创建一个唯一的临时文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint mkstemp(char *\fP\fItemplate\fP\fB);\fP
+\fBint mkostemp(char *\fP\fItemplate\fP\fB, int \fP\fIflags\fP\fB);\fP
+\fBint mkstemps(char *\fP\fItemplate\fP\fB, int \fP\fIsuffixlen\fP\fB);\fP
+\fBint mkostemps(char *\fP\fItemplate\fP\fB, int \fP\fIsuffixlen\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBmkstemp\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* glibc >= 2.12: */ _POSIX_C_SOURCE >= 200809L
+        || /* glibc <= 2.19: */ _SVID_SOURCE || _BSD_SOURCE
+.fi
+.PP
+\fBmkostemp\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.PP
+\fBmkstemps\fP():
+.nf
+    /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _SVID_SOURCE || _BSD_SOURCE
+.fi
+.PP
+\fBmkostemps\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBmkstemp\fP() 函数从 \fItemplate\fP 生成一个唯一的临时文件名，创建并打开文件，并返回文件的打开文件描述符。
+.PP
+\fItemplate\fP 的最后六个字符必须是 "XXXXXX"，这些字符将替换为使文件名唯一的字符串。 由于会被修改，所以 \fItemplate\fP
+一定不能是字符串常量，而应该声明为字符数组。
+.PP
+该文件是使用权限 0600 创建的，即仅所有者可以读取和写入。 返回的文件描述符提供对文件的读写访问。 使用 \fBopen\fP(2) \fBO_EXCL\fP
+标志打开文件，保证调用者是创建文件的进程。
+.PP
+.\" Reportedly, FreeBSD
+\fBmkostemp\fP() 函数与 \fBmkstemp\fP() 类似，不同之处在于 \fIflags\fP: \fBO_APPEND\fP、\fBO_CLOEXEC\fP
+和 \fBO_SYNC\fP 中指定了与 \fBopen\fP(2)\[em]may 相同含义的以下位。 注意，创建文件时，\fBmkostemp\fP() 在给
+\fBopen\fP(2) 的 \fIflags\fP 参数中包含了 \fBO_RDWR\fP、\fBO_CREAT\fP、\fBO_EXCL\fP 的值; 在提供给
+\fBmkostemp\fP() 的 \fIflags\fP 参数中包含这些值是不必要的，并且会在某些系统上产生错误。
+.PP
+\fBmkstemps\fP() 函数类似于 \fBmkstemp\fP()，只是 \fItemplate\fP 中的字符串包含 \fIsuffixlen\fP 字符的后缀。
+因此，\fItemplate\fP 的形式为 \fIprefixXXXXXXsuffix\fP，字符串 XXXXXX 被修改为 \fBmkstemp\fP()。
+.PP
+\fBmkostemps\fP() 函数是 \fBmkstemps\fP()，\fBmkostemp\fP() 是 \fBmkstemp\fP()。
+.SH "RETURN VALUE"
+成功时，这些函数返回临时文件的文件描述符。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEEXIST\fP
+无法创建唯一的临时文件名。 现在 \fItemplate\fP 的内容未定义。
+.TP 
+\fBEINVAL\fP
+对于 \fBmkstemp\fP() 和 \fBmkostemp\fP(): \fItemplate\fP 的最后六个字符不是 XXXXXX; 现在
+\fItemplate\fP 没有变化。
+.IP
+对于 \fBmkstemps\fP() 和 \fBmkostemps\fP():，\fItemplate\fP 的长度小于 \fI(6 + suffixlen)\fP
+个字符，或者 \fItemplate\fP 中后缀前的最后 6 个字符不是 XXXXXX。
+.PP
+这些函数也可能因 \fBopen\fP(2) 描述的任何错误而失败。
+.SH VERSIONS
+\fBmkostemp\fP() 自 glibc 2.7 起可用。 \fBmkstemps\fP() 和 \fBmkostemps\fP() 从 glibc 2.11
+开始可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmkstemp\fP(),
+\fBmkostemp\fP(),
+\fBmkstemps\fP(),
+\fBmkostemps\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBmkstemp\fP(): 4.3BSD, POSIX.1\-2001.
+.PP
+.\" mkstemps() appears to be at least on the BSDs, Mac OS X, Solaris,
+.\" and Tru64.
+\fBmkstemps\fP(): 未标准化，但出现在其他几个系统上。
+.PP
+\fBmkostemp\fP() 和 \fBmkostemps\fP(): 是 glibc 扩展。
+.SH NOTES
+在 glibc 版本 2.06 及更早版本中，创建该文件的权限为 0666，即对所有用户具有读写权限。 这种旧行为可能存在安全风险，尤其是因为其他
+UNIX 风格使用 0600，并且有人在移植程序时可能会忽略此细节。 POSIX.1\-2008 添加了使用模式 0600 创建文件的要求。
+.PP
+.\"
+.\" The prototype for
+.\" .BR mkstemp ()
+.\" is in
+.\" .I <unistd.h>
+.\" for libc4, libc5, glibc1; glibc2 follows POSIX.1 and has the prototype in
+.\" .IR <stdlib.h> .
+更一般地说，\fBmkstemp\fP() 的 POSIX 规范没有说明任何关于文件模式的信息，因此应用程序应确保其文件模式创建掩码 (请参见在调用
+\fBmkstemp\fP() (和 \fBmkostemp\fP()).
+.SH "SEE ALSO"
+\fBmkdtemp\fP(3), \fBmktemp\fP(3), \fBtempnam\fP(3), \fBtmpfile\fP(3), \fBtmpnam\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

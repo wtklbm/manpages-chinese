@@ -1,0 +1,86 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sem_overview 7 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+sem_overview\-POSIX 信号量概述
+.SH DESCRIPTION
+POSIX 信号量允许进程和线程同步它们的操作。
+.PP
+信号量是一个整数，其值永远不允许低于零。 可以对信号量执行两种操作: 将信号量值增加一个 (\fBsem_post\fP(3)); 并将信号量值减 1
+(\fBsem_wait\fP(3))。 如果信号量的值当前为零，则 \fBsem_wait\fP(3) 操作将阻塞，直到该值变得大于零。
+.PP
+POSIX 信号量有两种形式: 命名信号量和未命名信号量。
+.TP 
+\fBNamed semaphores\fP
+.\" glibc allows the initial slash to be omitted, and makes
+.\" multiple initial slashes equivalent to a single slash.
+.\" This differs from the implementation of POSIX message queues.
+.\" glibc allows subdirectory components in the name, in which
+.\" case the subdirectory tree must exist under /dev/shm, and
+.\" the fist subdirectory component must exist as the name
+.\" sem.name, and all of the subdirectory components must allow the
+.\" required permissions if a user wants to create a semaphore
+.\" object in a subdirectory.
+命名信号量由 \fI/somename\fP 形式的名称标识; 也就是说，最多包含 \fBNAME_MAX\fP\fI\-4\fP (即 251)
+个字符的以空字符结尾的字符串，由一个初始斜，字符串，组成，后跟一个或多个字符，其中没有一个是斜，字符串。 两个进程可以通过将相同的名称传递给
+\fBsem_open\fP(3) 来操作相同的命名信号量。
+.IP
+\fBsem_open\fP(3) 函数创建一个新的命名信号量或打开一个现有的命名信号量。 信号量打开后，可以使用 \fBsem_post\fP(3) 和
+\fBsem_wait\fP(3) 对其进行操作。 当进程结束使用信号量时，它可以使用 \fBsem_close\fP(3) 关闭信号量。
+当所有进程都使用完信号量后，可以使用 \fBsem_unlink\fP(3) 将其从系统中删除。
+.TP 
+\fBUnnamed semaphores (memory\-based semaphores)\fP
+未命名的信号量没有名称。 相反，信号量被放置在多个线程 (\fIthread\-shared semaphore\fP) 或进程
+(\fIprocess\-shared semaphore\fP).  线程共享信号量放置在进程线程之间共享的内存区域中，例如全局变量。
+进程共享信号量必须放置在共享内存区域中 (例如，使用 \fBshmget\fP(2) 创建的 System V 共享内存段，或使用
+\fBshm_open\fP(3)) 创建的 POSIX 共享内存对象。
+.IP
+在使用之前，必须使用 \fBsem_init\fP(3) 初始化未命名的信号量。 然后可以使用 \fBsem_post\fP(3) 和 \fBsem_wait\fP(3)
+对其进行操作。 当不再需要该信号量时，并且在它所在的内存被释放之前，应该使用 \fBsem_destroy\fP(3) 将该信号量销毁。
+.PP
+本节的其余部分描述了 POSIX 信号量的 Linux 实现的一些具体细节。
+.SS Versions
+在 Linux 2.6 之前，Linux 只支持未命名的线程共享信号量。 在具有 Linux 2.6 和提供 NPTL 线程实现的 glibc
+的系统上，提供了 POSIX 信号量的完整实现。
+.SS Persistence
+POSIX 命名信号量具有内核持久性: 如果没有被 \fBsem_unlink\fP(3) 删除，信号量将一直存在，直到系统关闭。
+.SS Linking
+使用 POSIX 信号量 API 的程序必须使用 \fIcc \-pthread\fP 进行编译才能链接到实时库 \fIlibrt\fP。
+.SS "Accessing named semaphores via the filesystem"
+在 Linux 上，命名信号量在虚拟文件系统中创建，通常安装在 \fI/dev/shm\fP 下，名称形式为 \fBsem.\fP\fIsomename\fP。
+(这就是信号量名称被限制为 \fBNAME_MAX\fP\fI\-4\fP 而不是 \fBNAME_MAX\fP 字符的原因。)
+.PP
+从 Linux 2.6.19 开始，ACL 可以放在该目录下的文件上，以控制每个用户和每个组的对象权限。
+.SH NOTES
+System V 信号量 (\fBsemget\fP(2)、\fBsemop\fP(2) 等) 是较旧的信号量 API。 POSIX 信号量提供了比 System
+V 信号量更简单、设计更好的接口; 另一方面，POSIX 信号量不如 System V 信号量广泛使用 (尤其是在旧系统上)。
+.SH EXAMPLES
+\fBsem_wait\fP(3) 中显示了各种 POSIX 信号量函数的使用示例。
+.SH "SEE ALSO"
+\fBsem_close\fP(3), \fBsem_destroy\fP(3), \fBsem_getvalue\fP(3), \fBsem_init\fP(3),
+\fBsem_open\fP(3), \fBsem_post\fP(3), \fBsem_unlink\fP(3), \fBsem_wait\fP(3),
+\fBpthreads\fP(7), \fBshm_overview\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

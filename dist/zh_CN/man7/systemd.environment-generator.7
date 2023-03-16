@@ -1,0 +1,203 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.ENVIRONMENT\-GENERATOR 7 "" "systemd 253" systemd.environment\-generator
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.environment\-generator\-systemd 环境文件生成器
+.SH SYNOPSIS
+.HP \w'\fB/usr/lib/systemd/system\-environment\-generators/some\-generator\fR\ 'u
+\fB/usr/lib/systemd/system\-environment\-generators/some\-generator\fP
+.HP \w'\fB/usr/lib/systemd/user\-environment\-generators/some\-generator\fR\ 'u
+\fB/usr/lib/systemd/user\-environment\-generators/some\-generator\fP
+.PP
+.nf
+/run/systemd/system\-environment\-generators/*
+/etc/systemd/system\-environment\-generators/*
+/usr/local/lib/systemd/system\-environment\-generators/*
+/usr/lib/systemd/system\-environment\-generators/*
+.fi
+.PP
+.nf
+/run/systemd/user\-environment\-generators/*
+/etc/systemd/user\-environment\-generators/*
+/usr/local/lib/systemd/user\-environment\-generators/*
+/usr/lib/systemd/user\-environment\-generators/*
+.fi
+.sp
+.SH DESCRIPTION
+.PP
+生成器是位于 /usr/lib/systemd/system\-environment\-generators/ 和上面列出的其他目录中的小型可执行文件
+\&。 \fBsystemd\fP(1) 将在每个管理器启动时和配置重新加载时很早地执行这些二进制文件，在运行 \fBsystemd.generator\fP(7)
+中描述的生成器之前和启动任何单元之前 \&。环境生成器可以覆盖管理器导出到服务和其他进程的环境 \&。
+.PP
+生成器从编译期间确定的一组路径加载，如上所示 \&。系统和用户环境生成器从名称分别以 system\-environment\-generators / 和
+user\-environment\-generators / 结尾的目录加载
+\&。在前面列出的目录中找到的生成器会覆盖列表中较低目录中具有相同名称的生成器。/dev/null 的符号链接或空文件可用于屏蔽生成器，从而防止它运行
+\&。请注意，对于元加载路径，优先级最高的两个目录的顺序是相反的，/run/ 中的生成器会覆盖 /etc/\& 中的生成器。
+.PP
+安装新的生成器或更新配置后，可能会执行 \fBsystemctl daemon\-reload\fP\&。这将重新运行所有生成器，更新环境配置
+\&。它将用于随后启动的任何服务 \&。
+.PP
+环境文件生成器的执行类似于 \fBsystemd.generator\fP(7) 中描述的元文件生成器，但有以下区别:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+生成器按照其名称的最后部分的字母数字顺序依次执行 \&。每个生成器输出的输出都会立即被解析并用于为之后运行的生成器更新环境
+\&。因此，后面的生成器可以使用或者修改前面生成器的输出 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+生成器由每个管理器实例运行，每个用户的输出可能不同 \&。
+.RE
+.PP
+建议对生成器名称使用数字前缀以简化排序 \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&A simple generator that extends an environment variable if a directory exists in the file system\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 50\-xdg\-data\-dirs\&.sh
+
+#!/bin/sh
+# SPDX\-License\-Identifier: MIT\-0
+
+# 设置默认值
+XDG_DATA_DIRS="${XDG_DATA_DIRS:\-/usr/local/share/:/usr/share}"
+
+# 添加目录 (如果存在)
+如果 [ \-d /opt/foo/share ]; then
+    XDG_DATA_DIRS="/opt/foo/share:${XDG_DATA_DIRS}"
+fi
+
+# 写出我们的输出
+回声 "XDG_DATA_DIRS=${XDG_DATA_DIRS}"
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&A more complicated generator which reads existing configuration and mutates one variable\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 90\-rearrange\-path\&.py
+
+#!/usr/bin/env python3
+# SPDX\-License\-Identifier: MIT\-0
+
+"""
+
+确保 bin 目录的概念验证 systemd 环境生成器
+总是在匹配路径中的 sbin 目录之后 \&。
+(将 /sbin:/bin:/foo/bar 更改为 /bin:/sbin:/foo/bar\&。)
+
+这个生成器展示了如何覆盖可能由创建的配置
+早期的生成器 \&。用 bash 写会更容易，但是让 \*(Aqs 有它
+在 Python 中只是为了证明我们可以，并作为更多的模板
+interesting generators\&.
+
+"""
+
+import os
+import pathlib
+
+def rearrange_bin_sbin(path):
+    """Make sure any pair of \&.../bin, \&.../sbin directories is in this order
+
+    >>> rearrange_bin_sbin(\*(Aq/bin:/sbin:/usr/sbin:/usr/bin\*(Aq)
+    \*(Aq/bin:/sbin:/usr/bin:/usr/sbin\*(Aq
+    """
+    items = [pathlib\&.Path(p) for p in path\&.split(\*(Aq:\*(Aq)]
+    for i in range(len(items)):
+        if \*(Aqsbin\*(Aq in items[i]\&.parts:
+            ind = items[i]\&.parts\&.index(\*(Aqsbin\*(Aq)
+            bin = pathlib\&.Path(*items[i]\&.parts[:ind], \*(Aqbin\*(Aq, *items[i]\&.parts[ind+1:])
+            if bin in items[i+1:]:
+                j = i + 1 + items[i+1:]\&.index(bin)
+                items[i], items[j] = items[j], items[i]
+    return \*(Aq:\*(Aq\&.join(p\&.as_posix() for p in items)
+
+if __name__ == \*(Aq__main__\*(Aq:
+    path = os\&.environ[\*(AqPATH\*(Aq] # This should be always set\&.
+                              # If it\*(Aqs not, we\*(Aqll just crash, which is OK too\&.
+    new = rearrange_bin_sbin(path)
+    if new != path:
+        print(\*(AqPATH={}\*(Aq\&.format(new))
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&Debugging a generator\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+SYSTEMD_LOG_LEVEL=debug VAR_A=something VAR_B="something else" \e
+/usr/lib/systemd/system\-environment\-generators/path\-to\-generator
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-environment\-d\-generator\fP(8), \fBsystemd.generator\fP(7),
+\fBsystemd\fP(1), \fBsystemctl\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

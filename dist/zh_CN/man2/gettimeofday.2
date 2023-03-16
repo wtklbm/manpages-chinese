@@ -1,0 +1,179 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt (michael@moria.de)
+.\" Modified 1993-07-23 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 1994-08-21 by Michael Chastain (mec@shell.portal.com):
+.\"   Fixed necessary '#include' lines.
+.\" Modified 1995-04-15 by Michael Chastain (mec@shell.portal.com):
+.\"   Added reference to adjtimex.
+.\" Removed some nonsense lines pointed out by Urs Thuermann,
+.\"   (urs@isnogud.escape.de), aeb, 950722.
+.\" Modified 1997-01-14 by Austin Donnelly (and1000@debian.org):
+.\"   Added return values section, and bit on EFAULT
+.\" Added clarification on timezone, aeb, 971210.
+.\" Removed "#include <unistd.h>", aeb, 010316.
+.\" Modified, 2004-05-27 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"   Added notes on capability requirement.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH gettimeofday 2 2023\-02\-12 "Linux man\-pages 6.03" 
+.SH NAME
+gettimeofday, settimeofday \- 获取 / 设置时间
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/time.h>\fP
+.PP
+\fBint gettimeofday(struct timeval *restrict \fP\fItv\fP\fB,\fP
+\fB                 struct timezone *_Nullable restrict \fP\fItz\fP\fB);\fP
+\fBint settimeofday(const struct timeval *\fP\fItv\fP\fB,\fP
+\fB                 const struct timezone *_Nullable \fP\fItz\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsettimeofday\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+函数 \fBgettimeofday\fP() 和 \fBsettimeofday\fP() 可以获取和设置时间以及时区。
+.PP
+\fItv\fP 参数是 \fIstruct timeval\fP (如 \fI<sys/time.h>\fP): 中指定
+.PP
+.in +4n
+.EX
+struct timeval {
+    time_t      tv_sec;     /* seconds */
+    suseconds_t tv_usec;    /* microseconds */
+};
+.EE
+.in
+.PP
+并给出自纪元以来的秒数和微秒数 (参见 \fBtime\fP(2)).
+.PP
+\fItz\fP 参数是 \fIstruct timezone\fP:
+.PP
+.in +4n
+.EX
+struct timezone {
+    int tz_minuteswest;     /* minutes west of Greenwich */
+    int tz_dsttime;         /* type of DST correction */
+};
+.EE
+.in
+.PP
+.\" FIXME . The compilation warning looks to be going away in glibc 2.17
+.\" see glibc commit 4b7634a5e03b0da6f8875de9d3f74c1cf6f2a6e8
+.\" The following is covered under EPERM below:
+.\" .PP
+.\" Only the superuser may use
+.\" .BR settimeofday ().
+如果 \fItv\fP 或 \fItz\fP 为 NULL，则不设置或返回相应的结构体。 (但是，如果 \fItv\fP 为 NULL，则会产生编译警告。)
+.PP
+\fItimezone\fP 结构体的使用已过时; \fItz\fP 参数通常应指定为 NULL。 (见下面的注释。)
+.PP
+在 Linux 下，如果在具有非 NULL \fItz\fP 参数的第一个调用 (启动后) 上，\fItv\fP 参数为 NULL 且
+\fItz_minuteswest\fP 字段为非零，则有一些与 \fBsettimeofday\fP() 系统调用相关的特殊 "warp clock" 语义。
+(对于这种情况，\fItz_dsttime\fP 字段应为零。) 在这种情况下，假定 CMOS 时钟使用本地时间，并且必须按此数量递增才能获得 UTC
+系统时间。 毫无疑问，使用此特性是个坏主意。
+.SH "RETURN VALUE"
+\fBgettimeofday\fP() 和 \fBsettimeofday\fP() 返回 0 表示成功。 出错时，返回 \-1 并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fItv\fP 或 \fItz\fP 之一指向可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+(\fBsettimeofday\fP()): \fItimezone\fP 无效。
+.TP 
+\fBEINVAL\fP
+(\fBsettimeofday\fP()): \fItv.tv_sec\fP 为 negative 或 \fItv.tv_usec\fP 在 [0, 999,999]
+范围之外。
+.TP 
+\fBEINVAL\fP (since Linux 4.3)
+.\" commit e1d7ba8735551ed79c7a0463a042353574b96da3
+(\fBsettimeofday\fP()): 试图将时间设置为小于 \fBCLOCK_MONOTONIC\fP 时钟当前值的值 (参见
+\fBclock_gettime\fP(2)).
+.TP 
+\fBEPERM\fP
+调用进程对调用 \fBsettimeofday\fP() 的权限不足; 在 Linux 下，需要 \fBCAP_SYS_TIME\fP 功能。
+.SH STANDARDS
+SVr4, 4.3BSD.  POSIX.1\-2001 描述了 \fBgettimeofday\fP() 但没有描述 \fBsettimeofday\fP()。
+POSIX.1\-2008 将 \fBgettimeofday\fP() 标记为已过时，建议改用 \fBclock_gettime\fP(2)。
+.SH NOTES
+\fBgettimeofday\fP() \fIis\fP 返回的时间受系统时间不连续跳跃的影响 (例如，如果系统管理员手动更改系统时间)。
+如果您需要单调递增的时钟，请参见 \fBclock_gettime\fP(2)。
+.PP
+\fBtimeradd\fP(3) 中描述了用于操作 \fItimeval\fP 结构的宏。
+.PP
+.\"
+传统上，\fIstruct timeval\fP 的字段属于 \fIlong\fP 类型。
+.SS "C library/kernel differences"
+.\"
+在某些体系结构上，\fBvdso\fP(7) 中提供了 \fBgettimeofday\fP() 的实现。
+.SS "The tz_dsttime field"
+.\" it has not
+.\" been and will not be supported by libc or glibc.
+.\" Each and every occurrence of this field in the kernel source
+.\" (other than the declaration) is a bug.
+在非 Linux 内核上，使用 glibc，如果当前时区曾经或将要应用夏令时规则，\fIstruct timezone\fP 的 \fItz_dsttime\fP
+字段将被 \fBgettimeofday\fP() 设置为非零值。 从这个意义上说，它恰好反映了当前区域 \fBdaylight\fP(3) 的含义。 在
+Linux 上，使用 glibc，\fIstruct timezone\fP 的 \fItz_dsttime\fP 字段的设置从未被
+\fBsettimeofday\fP() 或 \fBgettimeofday\fP() 使用过。 因此，以下内容纯粹是出于历史兴趣。
+.PP
+在旧系统上，字段 \fItz_dsttime\fP 包含一个符号常量 (值在下面给出)，指示夏令时在一年中的哪个部分生效。 (注意: 这个值全年都是常量:
+不代表夏令时生效，只是选择一种算法。) 定义的夏令时算法如下:
+.PP
+.in +4n
+.EX
+\fBDST_NONE\fP     /* not on DST */
+\fBDST_USA\fP      /* USA style DST */
+\fBDST_AUST\fP     /* Australian style DST */
+\fBDST_WET\fP      /* Western European DST */
+\fBDST_MET\fP      /* Middle European DST */
+\fBDST_EET\fP      /* Eastern European DST */
+\fBDST_CAN\fP      /* Canada */
+\fBDST_GB\fP       /* Great Britain and Eire */
+\fBDST_RUM\fP      /* Romania */
+\fBDST_TUR\fP      /* Turkey */
+\fBDST_AUSTALT\fP  /* Australian style with shift in 1986 */
+.EE
+.in
+.PP
+当然，事实证明，夏令时生效的时间不能通过一个简单的算法给出，每个国家一个; 事实上，这一时期是由不可预测的政治决定决定的。
+所以这种表示时区的方法已经被放弃了。
+.SH "SEE ALSO"
+\fBdate\fP(1), \fBadjtimex\fP(2), \fBclock_gettime\fP(2), \fBtime\fP(2), \fBctime\fP(3),
+\fBftime\fP(3), \fBtimeradd\fP(3), \fBcapabilities\fP(7), \fBtime\fP(7), \fBvdso\fP(7),
+\fBhwclock\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

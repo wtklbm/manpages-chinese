@@ -1,0 +1,100 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"	@(#)daemon.3	8.1 (Berkeley) 6/9/93
+.\" Added mentioning of glibc weirdness wrt unistd.h. 5/11/98, Al Viro
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH daemon 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+守护进程 \- 在后台运行
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint daemon(int \fP\fInochdir\fP\fB, int \fP\fInoclose\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBdaemon\fP():
+.nf
+.\"             commit 266865c0e7b79d4196e2cc393693463f03c90bd8
+    由于 glibc 2.21:
+        _DEFAULT_SOURCE
+    在 glibc 2.19 和 2.20 中:
+        _DEFAULT_SOURCE || (_XOPEN_SOURCE && _XOPEN_SOURCE < 500)
+    直到并包括 glibc 2.19:
+        _BSD_SOURCE || (_XOPEN_SOURCE && _XOPEN_SOURCE < 500)
+.fi
+.SH DESCRIPTION
+\fBdaemon\fP() 函数适用于希望脱离控制终端并作为系统守护进程在后台运行的程序。
+.PP
+如果 \fInochdir\fP 为零，则 \fBdaemon\fP() 将进程的当前工作目录更改为根目录 ("/"); 否则，当前工作目录保持不变。
+.PP
+如果 \fInoclose\fP 为零，则 \fBdaemon\fP() 将标准输入、标准输出和标准错误重定向到 \fI/dev/null\fP;
+否则，不会对这些文件描述符进行任何更改。
+.SH "RETURN VALUE"
+.\" not .IR in order not to underline _
+(这个函数分叉，如果 \fBfork\fP(2) 成功，父调用 \fB_exit\fP(2)，这样更多的错误只会被子看到。) 成功时 \fBdaemon\fP()
+返回零。 如果发生错误，\fBdaemon\fP() 返回 \-1 并将 \fIerrno\fP 设置为为 \fBfork\fP(2) 和 \fBsetsid\fP(2)
+指定的任何错误。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBdaemon\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+不在 POSIX.1 中。 BSD 上出现了一个类似的函数。 \fBdaemon\fP() 函数最早出现在 4.4BSD。
+.SH NOTES
+当 \fI/dev/null\fP 存在但不是具有预期的主要和次要编号的字符设备时，glibc 实现也可以返回 \-1。 在这种情况下，不需要设置
+\fIerrno\fP。
+.SH BUGS
+.\" FIXME . https://sourceware.org/bugzilla/show_bug.cgi?id=19144
+.\" Tested using a program that uses daemon() and then opens an
+.\" otherwise unused console device (/dev/ttyN) that does not
+.\" have an associated getty process.
+此函数的 GNU C 库实现取自 BSD，并没有采用双 fork 技术 (即
+\fBfork\fP(2)、\fBsetsid\fP(2)、\fBfork\fP(2))，这是确保生成的守护进程不是会话领导者所必需的。 相反，生成的守护程序 \fIis\fP
+是会话领导者。 在遵循 System V 语义的系统上
+(例如，Linux)，这意味着如果守护进程打开一个终端，而该终端还不是另一个会话的控制终端，那么该终端将无意中成为守护进程的控制终端。
+.SH "SEE ALSO"
+\fBfork\fP(2), \fBsetsid\fP(2), \fBdaemon\fP(7), \fBlogrotate\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

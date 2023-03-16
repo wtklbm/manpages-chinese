@@ -1,0 +1,234 @@
+.\" -*- coding: UTF-8 -*-
+.\"@(#)rpc.statd.8"
+.\"
+.\" Copyright (C) 1999 Olaf Kirch <okir@monad.swb.de>
+.\" Modified by Jeffrey A. Uphoff, 1999, 2002, 2005.
+.\" Modified by Lon Hohberger, 2000.
+.\" Modified by Paul Clements, 2004.
+.\"
+.\" Rewritten by Chuck Lever <chuck.lever@oracle.com>, 2009.
+.\" Copyright 2009 Oracle.  All rights reserved.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RPC.STATD 8 "1 November 2009"  
+.SH NAME
+rpc.statd\-NSM 服务守护进程
+.SH SYNOPSIS
+\fBrpc.statd [\-dh?FLNvV] [\-H \fP\fIprog\fP\fB] [\-n \fP\fImy\-name\fP\fB] [\-o \fP\fIoutgoing\-port\fP\fB]\fP
+.ti +10
+\fB[\-p \fP\fIlistener\-port\fP\fB] [\-P \fP\fIpath\fP\fB]\fP
+.ti +10
+\fB[\-\-nlm\-port \fP\fIport\fP\fB] [\-\-nlm\-udp\-port \fP\fIport\fP\fB]\fP
+.SH DESCRIPTION
+文件锁不是持久文件系统状态的一部分。 因此，当主机重新启动时，锁定状态会丢失。
+.PP
+网络文件系统还必须检测何时由于远程主机重新启动而丢失锁定状态。 NFS 客户端重新启动后，NFS
+服务器必须释放该客户端上运行的应用程序持有的所有文件锁。 服务器重新启动后，客户端必须提醒服务器该客户端上运行的应用程序持有的文件锁。
+.PP
+对于 NFS 版本 2 [RFC1094] 和 NFS 版本 3 [RFC1813]，\fINetwork Status Monitor\fP 协议 (或简称
+NSM) 用于通知 NFS 对等方重新启动。 在 Linux 上，两个独立的用户空间组件构成了 NSM 服务:
+.TP 
+\fBrpc.statd\fP
+监听来自其他主机的重启通知，并管理本地系统重启时要通知的主机列表的守护进程
+.TP 
+\fBsm\-notify\fP
+在本地系统重新启动后通知 NFS 对等点的帮助程序
+.PP
+本地 NFS 锁管理器向其本地 \fBrpc.statd\fP 发出应监视的每个远程对等点的警报。 当本地系统重新启动时，\fBsm\-notify\fP
+命令将重新启动通知受监视对等点上的 NSM 服务。 当远程重新启动时，该对等点通知本地 \fBrpc.statd\fP，后者又将重新启动通知传递回本地 NFS
+锁管理器。
+.SH "NSM OPERATION IN DETAIL"
+NFS 客户端和服务器之间的第一个文件锁定交互导致两个对等点上的 NFS 锁管理器联系它们的本地 NSM 服务以存储关于对方对等点的信息。 在
+Linux 上，本地锁管理器联系 \fBrpc.statd\fP。
+.PP
+\fBrpc.statd\fP 记录有关持久存储上每个受监视 NFS 对等点的信息。
+此信息描述了在本地系统重新启动的情况下如何联系远程对等点，如何识别哪个受监视的对等点报告重新启动，以及当受监视的对等点指示它已重新启动时如何通知本地锁管理器。
+.PP
+NFS 客户端在每个文件锁定请求中发送一个主机名，称为客户端的 \fIcaller_name\fP。 NFS 服务器可以使用此主机名向客户端发送异步
+GRANT 调用，或通知客户端它已重新启动。
+.PP
+Linux NFS 服务器可以向 \fBrpc.statd\fP 提供客户端的 \fIcaller_name\fP 或客户端的网络地址。 出于 NSM
+协议的目的，此名称或地址称为受监视对等方的 \fImon_name\fP。 此外，本地锁管理器告诉 \fBrpc.statd\fP 它认为自己的主机名是什么。 出于
+NSM 协议的目的，此主机名称为 \fImy_name\fP。
+.PP
+NFS 服务器和客户端之间没有等效的交互来通知客户端服务器的 \fIcaller_name\fP。 因此，NFS 客户端实际上并不知道 NFS 服务器可能在
+SM_NOTIFY 请求中使用什么 \fImon_name\fP。 Linux NFS 客户端使用来自 mount 命令的服务器主机名来识别重新启动的 NFS
+服务器。
+.SS "Reboot notification"
+当本地系统重新启动时，\fBsm\-notify\fP 命令从持久存储中读取受监视的对等点列表，并向每个列出的远程对等点上的 NSM 服务发送
+SM_NOTIFY 请求。 它使用 \fImon_name\fP 字符串作为目标。 为了识别哪台主机已重新启动，\fBsm\-notify\fP
+命令发送了在监视该远程主机时记录的 \fImy_name\fP 字符串。 远程 \fBrpc.statd\fP 使用此字符串或调用者的网络地址将传入的
+SM_NOTIFY 请求匹配到它自己的监视器列表中的一个或多个对等点。
+.PP
+如果 \fBrpc.statd\fP 在其监视器列表中未找到与传入 SM_NOTIFY 请求匹配的对等点，则不会将通知转发给本地锁管理器。
+此外，每个对等点都有自己的 \fINSM state number\fP，这是一个 32 位整数，在每次通过 \fBsm\-notify\fP
+命令重新启动后都会发生变化。 \fBrpc.statd\fP 使用此数字来区分实际重新启动和重播通知。
+.PP
+NFS 锁恢复的一部分是重新发现哪些对等点需要再次监视。 \fBsm\-notify\fP 命令会在每次重启后清除持久存储上的监控列表。
+.SH OPTIONS
+.TP 
+\fB\-d\fP,\fB \-\-no\-syslog\fP
+如果还指定了 \fB\-F\fP 选项，则导致 \fBrpc.statd\fP 将日志消息写入 \fIstderr\fP 而不是系统日志。
+.TP 
+\fB\-F\fP,\fB \-\-foreground\fP
+保持 \fBrpc.statd\fP 连接到它的控制终端，以便可以直接监视 NSM 操作或在调试器下运行。 如果未指定此选项，\fBrpc.statd\fP
+将在启动后立即进入后台。
+.TP 
+\fB\-h\fP,\fB \-?\fP,\fB \-\-help\fP
+使 \fBrpc.statd\fP 显示 \fIstderr\fP 上的使用信息，然后退出。
+.TP 
+\fB\-H,\fP\fB \-\-ha\-callout \fP\fIprog\fP
+指定高可用性标注程序。 如果未指定此选项，则不会执行标注。 有关详细信息，请参见下面的 \fBHigh\-availability callouts\fP
+部分。
+.TP 
+\fB\-L\fP,\fB \-\-no\-notify\fP
+防止 \fBrpc.statd\fP 在启动时运行 \fBsm\-notify\fP 命令，保留现有的 NSM 状态编号和监控列表。
+.IP
+Note: \fBsm\-notify\fP 命令包含一个检查以确保它在每次系统重新启动后只运行一次。 如果 \fBrpc.statd\fP 在没有 \fB\-L\fP
+选项的情况下重新启动，这可以防止虚假的重新启动通知。
+.TP 
+\fB\-n, \fP\fB\-\-name \fP\fIipaddr\fP\fB | \fP\fIhostname\fP
+该字符串仅由 \fBsm\-notify\fP 命令用作发送重新启动通知请求的源地址。
+.IP
+\fIipaddr\fP 形式可以表示为 IPv4 或 IPv6 表示地址。 如果未指定此选项，则 \fBrpc.statd\fP 使用通配符地址作为传输绑定地址。
+有关详细信息，请参见 \fBsm\-notify\fP(8)。
+.TP 
+\fB\-N\fP
+使 \fBrpc.statd\fP 运行 \fBsm\-notify\fP 命令，然后退出。 由于 \fBsm\-notify\fP
+命令也可以直接运行，因此不推荐使用此选项。
+.TP 
+\fB\-o,\fP\fB \-\-outgoing\-port \fP\fIport\fP
+指定 \fBsm\-notify\fP 命令在发送重新启动通知时应使用的源端口号。 有关详细信息，请参见 \fBsm\-notify\fP(8)。
+.TP 
+\fB\-p,\fP\fB \-\-port \fP\fIport\fP
+指定用于 RPC 侦听器套接字的端口号。 如果未指定此选项，\fBrpc.statd\fP 将尝试查询
+\fI/etc/services\fP，如果获取端口成功，则为所有侦听器套接字设置相同的端口，否则为每个侦听器套接字选择一个随机的临时端口。
+.IP
+当 SM_NOTIFY 请求必须穿过客户端和服务器之间的防火墙时，此选项可用于修复其侦听器的端口值。
+.TP 
+\fB\-T,\fP\fB \-\-nlm\-port \fP\fIport\fP
+指定 \fIlockd\fP 应侦听 \fBNLM\fP 请求的端口号。 这会同时设置 TCP 和 UDP 端口，除非单独设置 UDP 端口。
+.TP 
+\fB\-U,\fP\fB \-\-nlm\-udp\-port \fP\fIport\fP
+指定 \fIlockd\fP 应侦听 \fBNLM\fP 请求的 UDP 端口号。
+.TP 
+\fB\-P, \fP\fB\-\-state\-directory\-path\fP\fI pathname\fP
+指定 NSM 状态信息所在的父目录的路径名。 如果不指定该选项，\fBrpc.statd\fP 默认使用 \fI/var/lib/nfs\fP。
+.IP
+启动后，\fBrpc.statd\fP 尝试将其有效的 UID 和 GID 设置为该目录的子目录 \fBsm\fP 的属主和属组。 更改有效 ids
+后，\fBrpc.statd\fP 只需要访问 state\-directory\-path 中 \fBsm\fP 和 \fBsm.bak\fP 的文件即可。
+.TP 
+\fB\-v\fP, \fB\-V\fP, \fB\-\-version\fP
+使 \fBrpc.statd\fP 在 \fIstderr\fP 上显示版本信息，然后退出。
+.SH "CONFIGURATION FILE"
+许多可以在命令行上设置的选项也可以通过在 \fB[statd]\fP 中设置的值来控制，或者在某些情况下，通过 \fI/etc/nfs.conf\fP 配置文件的
+\fB[lockd]\fP 部分设置。 \fB[statd]\fP 部分识别的值包括
+\fBport\fP、\fBoutgoing\-port\fP、\fBname\fP、\fBstate\-directory\-path\fP 和
+\fBha\-callout\fP，它们与同名选项具有相同的效果。
+
+\fB[lockd]\fP 部分中识别的值包括 \fBport\fP 和 \fBudp\-port\fP，它们分别与 \fB\-\-nlm\-port\fP 和
+\fB\-\-nlm\-udp\-port\fP 选项具有相同的效果。
+
+.SH SECURITY
+\fBrpc.statd\fP 守护程序必须以 root 身份启动，以获取创建具有特权源端口的套接字所需的特权，并访问状态信息数据库。 然而，由于
+\fBrpc.statd\fP 维持长期运行的网络服务，因此它会在启动后立即放弃 root 特权，以降低特权升级攻击的风险。
+.PP
+在正常操作期间，它选择的有效用户 ID 是状态目录的所有者。 这允许它在拥有丢弃 root 权限后继续访问该目录中的文件。 要控制
+\fBrpc.statd\fP 选择哪个用户 ID，只需使用 \fBchown\fP(1) 设置状态目录的所有者。
+.PP
+您还可以使用 \fBtcp_wrapper\fP 库或 \fBiptables\fP(8) 保护您的 \fBrpc.statd\fP 侦听器。 要使用
+\fBtcp_wrapper\fP 库，请添加应允许访问 \fI/etc/hosts.allow\fP 的对等点的主机名。 使用守护程序名称 \fBstatd\fP，即使
+\fBrpc.statd\fP 二进制文件具有不同的文件名。
+.P
+有关详细信息，请参见 \fBtcpd\fP(8) 和 \fBhosts_access\fP(5) 手册页。
+.SH "ADDITIONAL NOTES"
+重启后的锁恢复对于维护数据完整性和防止不必要的应用程序挂起至关重要。 为了帮助 \fBrpc.statd\fP 将 SM_NOTIFY 请求与 NLM
+请求相匹配，应该遵守一些最佳实践，包括:
+.IP
+您系统的 UTS 节点名应该与 NFS 对等方用来联系它们的 DNS 名称相匹配
+.IP
+您系统的 UTS 节点名应始终是完全限定的域名
+.IP
+UTS 节点名的正向和反向 DNS 映射应该一致
+.IP
+客户端用于挂载服务器的主机名应与服务器发送的 SM_NOTIFY 请求中的 \fImon_name\fP 相匹配
+.PP
+卸载 NFS 文件系统不一定会阻止 NFS 客户端或服务器相互监视。 两者可能会继续相互监视一段时间，以防两者之间的后续 NFS
+流量导致新挂载和额外的文件锁定。
+.PP
+在 Linux 上，如果在正常操作期间卸载 \fBlockd\fP 内核模块，则所有远程 NFS 对等点都将不受监视。 这可能发生在 NFS
+客户端上，例如，如果自动挂载程序由于不活动而删除所有 NFS 挂载点。
+.SS "High\-availability callouts"
+\fBrpc.statd\fP 可以在处理成功的 SM_MON、SM_UNMON 和 SM_UNMON_ALL 请求期间或当它收到 SM_NOTIFY
+时执行一个特殊的调用程序。 此类程序可用于高可用性 NFS (HA\-NFS) 环境，以跟踪系统重启后可能需要迁移的锁定状态。
+.PP
+标注程序的名称用 \fB\-H\fP 选项指定。 该程序以 3 个参数运行: 第一个是 \fBadd\-client\fP \fBdel\-client\fP 或
+\fBsm\-notify\fP，具体取决于标注的原因。 第二个是受监视对等方的 \fImon_name\fP。 第三个为 \fBadd\-client\fP 或
+\fBdel\-client\fP 的请求锁管理器的 \fIcaller_name\fP，否则为发送 SM_NOTIFY 的调用者的 \fIIP_address\fP。
+第四个是 SM_NOTIFY 请求中的 \fIstate_value\fP。
+
+.SS "IPv6 and TI\-RPC support"
+TI\-RPC 是在 IPv6 上支持 NFS 的先决条件。 如果 TI\-RPC 支持内置到 \fBrpc.statd\fP 中，它会尝试在
+\fI/etc/netconfig\fP 中标记为 'visible' 的网络传输上启动侦听器。 只要至少一个网络传输侦听器成功启动，\fBrpc.statd\fP
+就会运行。
+.SH ENVIRONMENT
+.TP 
+\fBRPC_STATD_NO_NOTIFY=\fP
+如果设置为正整数，则与 \fI\-\-no\-notify\fP 具有相同的效果。
+.SH FILES
+.TP  2.5i
+\fI/var/lib/nfs/sm\fP
+包含监视器列表的目录
+.TP  2.5i
+\fI/var/lib/nfs/sm.bak\fP
+包含通知列表的目录
+.TP  2.5i
+\fI/var/lib/nfs/state\fP
+此主机的 NSM 状态编号
+.TP  2.5i
+\fI/run/run.statd.pid\fP
+pid 文件
+.TP  2.5i
+\fI/etc/netconfig\fP
+网络传输能力数据库
+.SH "SEE ALSO"
+\fBsm\-notify\fP(8), \fBnfs\fP(5), \fBrpc.nfsd\fP(8), \fBrpcbind\fP(8), \fBtcpd\fP(8),
+\fBhosts_access\fP(5), \fBiptables\fP(8), \fBnetconfig\fP(5)
+.sp
+RFC 1094 \- "NFS: Network File System Protocol Specification"
+.br
+RFC 1813 \- "NFS Version 3 Protocol Specification"
+.br
+用于互通的 OpenGroup 协议: XNFS，版本 3W \- 第 11 章
+.SH AUTHORS
+Jeff Uphoff <juphoff@users.sourceforge.net>
+.br
+奥拉夫基尔希 <okir@monad.swb.de>
+.br
+H.J. Lu <hjl@gnu.org>
+.br
+Lon Hohberger <hohberger@missioncriticallinux.com>
+.br
+Paul Clements <paul.clements@steeleye.com>
+.br
+卡盘杆 <chuck.lever@oracle.com>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,183 @@
+.\" -*- coding: UTF-8 -*-
+.\" rtc.4
+.\" Copyright 2002 Urs Thuermann (urs@isnogud.escape.de)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" $Id: rtc.4,v 1.4 2005/12/05 17:19:49 urs Exp $
+.\"
+.\" 2006-02-08 Various additions by mtk
+.\" 2006-11-26 cleanup, cover the generic rtc framework; David Brownell
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rtc 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+rtc\-\- 实时时钟
+.SH SYNOPSIS
+.nf
+#include <linux/rtc.h>
+.PP
+\fBint ioctl(\fP\fIfd\fP\fB, RTC_\fP\fIrequest\fP\fB, \fP\fIparam\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这是实时时钟 (RTCs) 驱动程序的接口。
+.PP
+大多数计算机都有一个或多个记录当前 "wall clock" 时间的硬件时钟。 这些被称为 "Real Time Clocks" (RTCs)。
+其中之一通常具有电池备用电源，因此即使在计算机关闭时它也能跟踪时间。 RTC 通常提供警报和其他中断。
+.PP
+所有 i386 PC 和基于 ACPI 的系统都有一个与原始 PC/AT 上的摩托罗拉 MC146818 芯片兼容的 RTC。 今天，这样的 RTC
+通常集成到主板的芯片组 (南桥) 中，并使用可更换的硬币大小的备用电池。
+.PP
+非 PC 系统，例如围绕片上系统处理器构建的嵌入式系统，使用其他实现。 它们通常不会提供与 PC/AT 的 RTC 相同的功能。
+.SS "RTC vs system clock"
+RTCs 不要与系统时钟混淆，系统时钟是内核维护的软件时钟，用于实现 \fBgettimeofday\fP(2) 和
+\fBtime\fP(2)，以及在文件上设置时间戳等。 系统时钟报告自起点以来的秒数和微秒数，定义为 POSIX 纪元: 1970\-01\-01
+00:00:00 +0000 (UTC)。 (一个常见的实现计算定时器中断，每个 "jiffy" 一次，频率为 100、250 或 1000 Hz。)
+也就是说，它应该报告挂钟时间，RTC 也这样做。
+.PP
+RTC 和系统时钟之间的一个关键区别在于，RTC 即使在系统处于低功耗状态 (包括 "off") 时也会运行，而系统时钟则不能。
+在初始化之前，系统时钟只能报告自系统启动以来的时间... 自 POSIX 纪元以来就没有了。
+因此，在启动时以及从系统低功耗状态恢复后，系统时钟通常会使用 RTC 设置为当前挂钟时间。 没有 RTC
+的系统需要使用另一个时钟设置系统时钟，可能通过网络或通过手动输入该数据。
+.SS "RTC functionality"
+可以使用 \fBhwclock\fP(8) 或直接使用下面列出的 \fBioctl\fP(2) 请求读取和写入 RTC。
+.PP
+除了跟踪日期和时间，许多 RTC 还可以产生中断
+.IP \[bu] 3
+在每次时钟更新时 (即每秒一次) ;
+.IP \[bu]
+以周期性间隔，频率可以设置为 2 Hz 至 8192 Hz 范围内的任意 2 次方倍数;
+.IP \[bu]
+在达到先前指定的警报时间。
+.PP
+这些中断源中的每一个都可以单独启用或禁用。 在许多系统上，警报中断可以配置为系统唤醒事件，可以将系统从低功耗状态恢复，例如 Suspend\-to\-RAM
+(STR，在 ACPI 系统中称为 S3)、休眠 (在 ACPI 系统中称为 S4) )，甚至 "off" (在 ACPI 系统中称为 S5)。
+在某些系统上，电池供电的 RTC 不能发出中断，但另一个可以。
+.PP
+\fI/dev/rtc\fP (或 \fI/dev/rtc0\fP、\fI/dev/rtc1\fP 等) 设备只能打开一次 (直到关闭) 并且是只读的。 在
+\fBread\fP(2) 和 \fBselect\fP(2) 上，调用进程被阻塞，直到收到来自该 RTC 的下一个中断。
+在中断之后，进程可以读取一个长整数，其中最低有效字节包含一个位掩码，对发生的中断类型进行编码，而其余 3 个字节包含自最后一个 \fBread\fP(2)
+以来的中断次数。
+.SS "ioctl(2) interface"
+以下 \fBioctl\fP(2) 请求在连接到 RTC 设备的文件描述符上定义:
+.TP 
+\fBRTC_RD_TIME\fP
+在以下结构体中返回此 RTC 的时间:
+.IP
+.in +4n
+.EX
+struct rtc_time {
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;     /* unused */
+    int tm_yday;     /* unused */
+    int tm_isdst;    /* unused */
+};
+.EE
+.in
+.IP
+此结构体中的字段与 \fBgmtime\fP(3) 中描述的 \fItm\fP 结构体具有相同的含义和范围。 指向此结构体的指针应作为第三个 \fBioctl\fP(2)
+参数传递。
+.TP 
+\fBRTC_SET_TIME\fP
+将此 RTC 的时间设置为由第三个 \fBioctl\fP(2) 参数指向的 \fIrtc_time\fP 结构体指定的时间。 要设置 RTC
+的时间，进程必须具有特权 (即具有 \fBCAP_SYS_TIME\fP 能力)。
+.TP 
+\fBRTC_ALM_READ\fP, \fBRTC_ALM_SET\fP
+读取和设置闹钟时间，适用于支持闹钟的 RTC。 必须使用 \fBRTC_AIE_ON\fP、\fBRTC_AIE_OFF\fP 请求单独启用或禁用警报中断。 第三个
+\fBioctl\fP(2) 参数是指向 \fIrtc_time\fP 结构体的指针。 仅使用此结构体的 \fItm_sec\fP、\fItm_min\fP 和
+\fItm_hour\fP 字段。
+.TP 
+\fBRTC_IRQP_READ\fP, \fBRTC_IRQP_SET\fP
+读取和设置周期性中断的频率，适用于支持周期性中断的 RTC。 必须使用 \fBRTC_PIE_ON\fP、\fBRTC_PIE_OFF\fP
+请求单独启用或禁用周期性中断。 第三个 \fBioctl\fP(2) 参数分别是 \fIunsigned long\ *\fP 或 \fIunsigned long\fP。 该值是每秒中断的频率。 允许的频率集是 2 到 8192 范围内两个的倍数。 只有特权进程 (即具有
+\fBCAP_SYS_RESOURCE\fP 能力的进程) 才能将频率设置为高于 \fI/proc/sys/dev/rtc/max\-user\-freq\fP
+中指定的值。 (默认情况下，此文件包含值 64。)
+.TP 
+\fBRTC_AIE_ON\fP, \fBRTC_AIE_OFF\fP
+对于支持闹钟的 RTC，启用或禁用闹钟中断。 第三个 \fBioctl\fP(2) 参数被忽略。
+.TP 
+\fBRTC_UIE_ON\fP, \fBRTC_UIE_OFF\fP
+对于支持每秒一次中断的 RTC，在每次时钟更新时启用或禁用中断。 第三个 \fBioctl\fP(2) 参数被忽略。
+.TP 
+\fBRTC_PIE_ON\fP, \fBRTC_PIE_OFF\fP
+对于支持这些周期性中断的 RTC，启用或禁用周期性中断。 第三个 \fBioctl\fP(2) 参数被忽略。 如果当前设置的频率高于
+\fI/proc/sys/dev/rtc/max\-user\-freq\fP 中指定的值，则只有特权进程 (即具有 \fBCAP_SYS_RESOURCE\fP
+功能的进程) 才能启用周期性中断。
+.TP 
+\fBRTC_EPOCH_READ\fP, \fBRTC_EPOCH_SET\fP
+许多 RTC 在 8 位寄存器中对年份进行编码，该寄存器要么被解释为 8 位二进制数，要么被解释为 BCD 码。 在这两种情况下，数字都是相对于此
+RTC 的纪元来解释的。 RTC 的纪元在大多数系统上被初始化为 1900，但在 Alpha 和 MIPS 上它也可能被初始化为 1952、1980 或
+2000，具体取决于年份的 RTC 寄存器的值。 对于某些 RTC，这些操作可用于分别读取或设置 RTC 的纪元。 第三个 \fBioctl\fP(2)
+参数分别是一个 \fIunsigned long\ *\fP 或一个 \fIunsigned long\fP，返回 (或分配) 的值是 Epoch。 要设置 RTC
+的纪元，进程必须具有特权 (即具有 \fBCAP_SYS_TIME\fP 能力)。
+.TP 
+\fBRTC_WKALM_RD\fP, \fBRTC_WKALM_SET\fP
+一些 RTC 支持更强大的闹钟接口，使用这些 ioctl 读取或写入 RTC 的闹钟时间 (respectively)，结构体如下:
+.PP
+.RS
+.in +4n
+.EX
+struct rtc_wkalrm {
+    unsigned char enabled;
+    unsigned char pending;
+    struct rtc_time time;
+};
+.EE
+.in
+.RE
+.IP
+\fIenabled\fP 标志用于允许或禁止闹钟中断，或读取其当前状态; 使用这些调用时，不使用 \fBRTC_AIE_ON\fP 和
+\fBRTC_AIE_OFF\fP。 \fBRTC_WKALM_RD\fP 使用 \fIpending\fP 标志来报告挂起的中断 (因此它在 Linux
+上几乎没用，除非与 EFI 固件管理的 RTC 通信)。 \fItime\fP 字段与 \fBRTC_ALM_READ\fP 和 \fBRTC_ALM_SET\fP
+一起使用，但 \fItm_mday\fP、\fItm_mon\fP 和 \fItm_year\fP 字段也有效。 指向此结构体的指针应作为第三个 \fBioctl\fP(2)
+参数传递。
+.SH FILES
+.TP 
+\fI/dev/rtc\fP, \fI/dev/rtc0\fP, \fI/dev/rtc1\fP, etc.
+RTC 特殊字符设备文件。
+.TP 
+\fI/proc/driver/rtc\fP
+(first) RTC 的状态。
+.SH NOTES
+当内核的系统时间与使用 \fBadjtimex\fP(2) 的外部引用同步时，它将每 11 分钟定期更新指定的 RTC。 为此，内核必须暂时关闭周期性中断;
+这可能会影响使用该 RTC 的程序。
+.PP
+RTC 的纪元与仅用于系统时钟的 POSIX 纪元无关。
+.PP
+如果根据 RTC 的纪元和年份寄存器的年份小于 1970，则假定为 100 年后，即 2000 到 2069 之间。
+.PP
+一些 RTC 支持警报字段中的 "wildcard" 值，以支持像每小时十五分钟后或每个月的第一天定期警报这样的场景。 这种用法是不可移植的;
+可移植的用户空间代码只需要一个警报中断，并且在收到警报后将禁用或重新初始化警报。
+.PP
+一些 RTC 支持周期性中断，周期是秒的倍数而不是几分之一秒; 多个警报; 可编程输出时钟信号; 非易失性存储器; 以及此 API
+当前未公开的其他硬件功能。
+.SH "SEE ALSO"
+\fBdate\fP(1), \fBadjtimex\fP(2), \fBgettimeofday\fP(2), \fBsettimeofday\fP(2),
+\fBstime\fP(2), \fBtime\fP(2), \fBgmtime\fP(3), \fBtime\fP(7), \fBhwclock\fP(8)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/rtc.txt\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

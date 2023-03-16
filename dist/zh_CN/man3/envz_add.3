@@ -1,0 +1,134 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2002 walter harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" based on the description in glibc source and infopages
+.\"
+.\" Corrections and additions, aeb
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH envz_add 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+envz_add、envz_entry、envz_get、envz_merge、envz_remove、envz_strip \- 环境字符串支持
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <envz.h>\fP
+.PP
+\fBerror_t envz_add(char **restrict \fP\fIenvz\fP\fB, size_t *restrict \fP\fIenvz_len\fP\fB,\fP
+\fB               const char *restrict \fP\fIname\fP\fB, const char *restrict \fP\fIvalue\fP\fB);\fP
+.PP
+\fBchar *envz_entry(const char *restrict \fP\fIenvz\fP\fB, size_t \fP\fIenvz_len\fP\fB,\fP
+\fB               const char *restrict \fP\fIname\fP\fB);\fP
+.PP
+\fBchar *envz_get(const char *restrict \fP\fIenvz\fP\fB, size_t \fP\fIenvz_len\fP\fB,\fP
+\fB               const char *restrict \fP\fIname\fP\fB);\fP
+.PP
+\fBerror_t envz_merge(char **restrict \fP\fIenvz\fP\fB, size_t *restrict \fP\fIenvz_len\fP\fB,\fP
+\fB               const char *restrict \fP\fIenvz2\fP\fB, size_t \fP\fIenvz2_len\fP\fB,\fP
+\fB               int \fP\fIoverride\fP\fB);\fP
+.PP
+\fBvoid envz_remove(char **restrict \fP\fIenvz\fP\fB, size_t *restrict \fP\fIenvz_len\fP\fB,\fP
+\fB               const char *restrict \fP\fIname\fP\fB);\fP
+.PP
+\fBvoid envz_strip(char **restrict \fP\fIenvz\fP\fB, size_t *restrict \fP\fIenvz_len\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些函数是特定于 glibc 的。
+.PP
+argz vector 是指向字符缓冲区的指针以及长度，请参见 \fBargz_add\fP(3)。 envz vector 是一个特殊的 argz
+vector，即字符串的形式为 "name=value"。 第一个 \[aq]=\[aq] 之后的所有内容都被认为是值。 如果不存在
+\[aq]=\[aq]，则取值为 NULL。 (虽然尾随 \[aq]=\[aq] 的值是空字符串 \*(lq。)
+.PP
+这些函数用于处理 envz vectors。
+.PP
+\fBenvz_add\fP() 将字符串 "\fIname\fP=\fIvalue\fP" (如果 \fIvalue\fP 为非 NULL) 或 "\fIname\fP" (如果
+\fIvalue\fP 为 NULL) 添加到 envz vector (\fI*envz\fP,\ \fI*envz_len\fP) 并更新 \fI*envz\fP 和
+\fI*envz_len\fP。 如果存在具有相同 \fIname\fP 的条目，则将其删除。
+.PP
+\fBenvz_entry\fP() 在 envz vector (\fIenvz\fP,\ \fIenvz_len\fP) 中寻找
+\fIname\fP，如果找到则返回条目，否则返回 NULL。
+.PP
+\fBenvz_get\fP() 在 envz vector (\fIenvz\fP,\ \fIenvz_len\fP) 中寻找
+\fIname\fP，如果找到则返回值，否则返回 NULL。 (请注意，该值也可以为 NULL，即当 \fIname\fP 的条目没有 \[aq]=\[aq]
+符号时。)
+.PP
+\fBenvz_merge\fP() 将 \fIenvz2\fP 中的每个条目添加到 \fI*envz\fP，就像 \fBenvz_add\fP() 一样。 如果
+\fIoverride\fP 为真，则 \fIenvz2\fP 中的值将取代 \fI*envz\fP 中具有相同名称的值，否则不会。
+.PP
+\fBenvz_remove\fP() 从 (\fI*envz\fP,\ \fI*envz_len\fP) 中删除 \fIname\fP 条目 (如果有的话)。
+.PP
+\fBenvz_strip\fP() 删除所有值为 NULL 的条目。
+.SH "RETURN VALUE"
+所有进行内存分配的 envz 函数返回类型都是 \fIerror_t\fP (整型)，成功返回 0，分配错误返回 \fBENOMEM\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBenvz_add\fP(),
+\fBenvz_entry\fP(),
+\fBenvz_get\fP(),
+\fBenvz_merge\fP(),
+\fBenvz_remove\fP(),
+\fBenvz_strip\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是 GNU 的扩展。
+.SH EXAMPLES
+.\" SRC BEGIN (envz_add.c)
+.EX
+#include <envz.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[], char *envp[])
+{
+    char    *str;
+    size_t  e_len = 0;
+
+    for (size_t i = 0; envp[i] != NULL; i++)
+        e_len += strlen(envp[i]) + 1;
+
+    str = envz_entry(*envp, e_len, "HOME");
+    printf("%s\en", str);
+    str = envz_get(*envp, e_len, "HOME");
+    printf("%s\en", str);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBargz_add\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

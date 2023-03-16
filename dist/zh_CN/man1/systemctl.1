@@ -1,0 +1,1910 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMCTL 1 "" "systemd 253" systemctl
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemctl \- 控制 systemd 系统和服务管理器
+.SH SYNOPSIS
+.HP \w'\fBsystemctl\fR\ 'u
+\fBsystemctl\fP [OPTIONS...] 命令 [UNIT...]
+.SH DESCRIPTION
+.PP
+\fBsystemctl\fP 可用于自省和控制 "systemd" 系统和服务管理器的状态 \&。请参见 \fBsystemd\fP(1)
+以了解此工具管理的基本概念和功能。
+.SH COMMANDS
+.PP
+理解以下命令:
+.SS "Unit Commands (Introspection and Modification)"
+.PP
+\fBlist\-units\fP [\fIPATTERN\fP\&...]
+.RS 4
+列出 \fBsystemd\fP 当前在内存中的单元 \&。这包括直接引用或通过依赖项引用的单元、应用程序以编程方式固定的单元或过去处于活动状态但失败的单元
+\&。默认情况下，仅显示处于活动状态、有待处理作业或失败的单元; 这可以用选项 \fB\-\-all\fP\& 来改变。如果指定了一个或多个
+\fIPATTERN\fPs，则仅显示与其中之一匹配的单元 \&。如果指定了这些选项，则显示的单位将由 \fB\-\-type=\fP 和 \fB\-\-state=\fP
+额外过滤 \&。
+.sp
+请注意，此命令不显示元模板，而仅显示元模板 \& 的实例。\*(Aqt 实例化的单元模板不可运行，因此永远不会显示在此命令的输出中
+\&。具体来说，这意味着 foo@\&.service 永远不会显示在此列表中 \(em 除非实例化，e\&.g\&。作为
+foo@bar\&.service\&。使用 \fBlist\-unit\-files\fP (见下文) 列出已安装的元模板文件 \&。
+.sp
+产生类似的输出
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+  元 LOAD ACTIVE SUB DESCRIPTION
+  sys\-module\-fuse\&.device 装主动塞 /sys/module/fuse
+  \-\&.mount 加载主动安装 Root Mount
+  boot\-efi\&.mount 加载主动安装 /boot/efi
+  systemd\-journald\&.service 加载主动运行日志服务
+  systemd\-logind\&.service 加载主动运行登录服务
+● user@1000\&.service 加载失败 UID 1000 的用户管理器失败
+  \&...
+  systemd\-tmpfiles\-clean\&.timer loaded active waiting 每日清理临时目录
+
+LOAD = 反映元定义是否被正确加载 \&。
+ACTIVE = 高级元激活状态，i\&.e\&。SUB\& 的泛化。
+SUB = 底层元激活状态，值取决于元类型 \&。
+
+列出 123 个加载单元 \&。传递 \-\-all 以查看已加载但未激活的单元 \&。
+要显示所有已安装的元文件，请使用 \*(Aqsystemctl list\-unit\-files\*(Aq\&.
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+如果终端支持 \&，则给定类型的标题和最后一个元带有下划线。被屏蔽、未找到或以其他方式失败的服务旁边会显示一个彩色点 \&。
+.sp
+LOAD 栏显示加载状态，\fBloaded\fP、\fBnot\-found\fP、\fBbad\-setting\fP、\fBerror\fP、\fBmasked\fP\&
+之一。ACTIVE
+列显示一般元状态，\fBactive\fP、\fBreloading\fP、\fBinactive\fP、\fBfailed\fP、\fBactivating\fP、\fBdeactivating\fP\&
+之一。SUB 列显示了元的元类型特定的详细状态，可能的值因元类型而异 \&。可能的 LOAD、ACTIVE 和 SUB 状态列表不是常量，新的
+systemd 版本可能会添加和删除值 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemctl\-\-state = 帮助
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+命令可能用于显示当前的一组可能值 \&。
+.sp
+这是默认命令 \&。
+.RE
+.PP
+\fBlist\-automounts\fP [\fIPATTERN\fP\&...]
+.RS 4
+列出当前内存中的自动挂载单元，按挂载路径 \& 排序。如果指定了一个或多个 \fIPATTERN\fPs，则仅显示与其中之一匹配的自动挂载单元
+\&。产生类似的输出
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+WHAT WHERE MOUNTED IDLE TIMEOUT 元
+/dev/sdb1 /mnt/test 无 120s mnt\-test\&.automount
+binfmt_misc /proc/sys/fs/binfmt_misc 是 0 proc\-sys\-fs\-binfmt_misc\&.automount
+
+列出了 2 个自动挂载 \&。
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+另请参见 \fB\-\-show\-types\fP、\fB\-\-all\fP 和 \fB\-\-state=\fP\&。
+.RE
+.PP
+\fBlist\-sockets\fP [\fIPATTERN\fP\&...]
+.RS 4
+列出当前内存中的套接字单元，按监听地址排序 \&。如果指定了一个或多个 \fIPATTERN\fPs，则只显示与其中一个匹配的套接字单元 \&。产生类似的输出
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+LISTEN 元 ACTIVATES
+/dev/initctl     systemd\-initctl\&.socket      systemd\-initctl\&.service
+\&...
+[::]:22          sshd\&.socket                 sshd\&.service
+kobject\-uevent 1 systemd\-udevd\-kernel\&.socket systemd\-udevd\&.service
+
+列出了 5 个套接字 \&。
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+Note: 因为地址可能包含空格，所以此输出不适合编程消费 \&。
+.sp
+另请参见 \fB\-\-show\-types\fP、\fB\-\-all\fP 和 \fB\-\-state=\fP\&。
+.RE
+.PP
+\fBlist\-timers\fP [\fIPATTERN\fP\&...]
+.RS 4
+列出当前在内存中的计时器单元，按它们接下来经过的时间排序 \&。如果指定了一个或多个 \fIPATTERN\fPs，则仅显示与其中之一匹配的单元
+\&。产生类似的输出
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+NEXT LEFT LAST PASSED 元 ACTIVATES
+\-\-Thu 2017\-02\-23 13:40:29 EST 3 天前 ureadahead\-stop\&.timer ureadahead\-stop\&.service
+Sun 2017\-02\-26 18:55:42 EST 1min 14s left Thu 2017\-02\-23 13:54:44 EST 3 天前 systemd\-tmpfiles\-clean\&.timer systemd\-tmpfiles\-clean\&.service
+Sun 2017\-02\-26 20:37:16 EST 1h 42min left Sun 2017\-02\-26 11:56:36 EST 6 小时前 apt\-daily\&.timer apt\-daily\&.service
+Sun 2017\-02\-26 20:57:49 EST 2h 3min left Sun 2017\-02\-26 11:56:36 EST 6 小时前 snapd\&.refresh\&.timer snapd\&.refresh\&.service
+            
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+\fINEXT\fP 显示下一次计时器将运行 \&。
+.sp
+\fILEFT\fP 显示距离下一次计时器运行还有多长时间 \&。
+.sp
+\fILAST\fP 显示计时器最后一次运行 \&。
+.sp
+\fIPASSED\fP 显示自计时器上次运行以来已经过了多长时间 \&。
+.sp
+\fIUNIT\fP 显示定时器名称
+.sp
+\fIACTIVATES\fP 显示定时器运行时激活的服务名称 \&。
+.sp
+另请详见 \fB\-\-all\fP 和 \fB\-\-state=\fP\&。
+.RE
+.PP
+\fBis\-active \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+检查是否有任何指定的单元处于活动状态 (i\&.e\&. 正在运行) \&。如果至少有一个处于活动状态，则返回退出代码 \fB0\fP，否则返回非零
+\&。除非指定 \fB\-\-quiet\fP，否则这也会将当前元状态打印到标准输出 \&。
+.RE
+.PP
+\fBis\-failed \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+检查是否有任何指定单元处于 "failed" 状态 \&。如果至少有一个失败，则返回退出代码 \fB0\fP，否则返回非零 \&。除非指定
+\fB\-\-quiet\fP，否则这也会将当前元状态打印到标准输出 \&。
+.RE
+.PP
+\fBstatus\fP [\fIPATTERN\fP\&...|\fIPID\fP\&...]]
+.RS 4
+显示有关整个系统或有关一个或多个单元的运行时状态信息，后跟日志中的最新日志数据 \&。如果没有指定位置参数，并且没有用
+\fB\-\-type=\fP、\fB\-\-state=\fP 或 \fB\-\-failed\fP 给出元过滤器，则显示整个系统的状态 \&。如果与 \fB\-\-all\fP
+组合，则跟随所有单元的状态 \&。如果指定了位置参数，则每个位置参数被视为要显示的元名称，或显示名称与该模式匹配的单元的 glob 模式，或 PID
+以显示包含该 PID\& 的元。当使用 \fB\-\-type=\fP、\fB\-\-state=\fP 或 \fB\-\-failed\fP 时，单元会额外按 TYPE 和
+ACTIVE 状态过滤。
+.sp
+此函数旨在生成人类可读的输出 \&。如果您正在寻找计算机可解析的输出，请改用 \fBshow\fP\&。默认情况下，此函数仅显示 10
+行输出和省略号以适合最终窗口 \&。这可以用 \fB\-\-lines\fP 和 \fB\-\-full\fP 改变，见上文 \&。此外，\fBjournalctl \-\-unit=\fP\fINAME\fP 或 \fBjournalctl \-\-user\-unit=\fP\fINAME\fP 对消息使用类似的过滤器，可能更方便 \&。
+.sp
+注意这个操作只显示 \fIruntime\fP 状态，i\&.e\&。有关单元的当前调用 (如果它正在运行) 或最近一次调用
+(如果它不再运行，并且尚未从内存中释放) 的信息 \&。可以通过 \fBjournalctl \-\-unit=\fP\&
+检索有关先前调用、来自先前系统启动的调用或已经从内存中释放的先前调用的信息。
+.sp
+systemd 会根据需要隐式加载单元，因此只要运行 \fBstatus\fP 就会尝试加载文件 \&。因此，该命令对于确定是否已经加载某些内容没有用
+\&。如果有 \*(Aqs no reason to keep it in memory 此后 \&.
+.PP
+\fBExample\ \&1.\ \&Example output from systemctl status\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemctl 状态蓝牙
+● bluetooth\&.service \- 蓝牙服务
+   已加载: 已加载 (/usr/bluetooth\&.service; 已启用; 预设: 已启用)
+   活跃: 自美国东部时间周三 2017\-01\-04 13:54:04 以来活跃的 (running); 1 周 0 天前
+     文档: man:bluetoothd (8)
+ 主 PID: 930 (bluetoothd)
+   状态: "Running"
+    任务: 1
+   内存: 648\&.0K
+      中央处理器: 435 毫秒
+   C 组: /system\&.slice/bluetooth\&.service
+           └─930 /usr/lib/bluetooth/bluetoothd
+
+1 月 12 日 10:46:45 example\&.com bluetoothd [8900]: 没有足够的空闲句柄来注册服务
+1 月 12 日 10:46:45 example\&.com 蓝牙 [8900]: 无法注册当前时间服务
+1 月 12 日 10:46:45 example\&.com 蓝牙 [8900]: gatt\-time\-server: Input/output 错误 (5)
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+点 ("●") 在支持的终端上使用颜色来概括元状态一目了然 \&。随着它的颜色，它的形状根据它的状态而变化: "inactive" 或
+"maintenance" 是一个白色的圆圈 ("○")，"active" 是一个绿点 ("●")，"deactivating"
+是一个白点，"failed" 或 "error" 是一个红十字 ("\(mu")，"reloading" 是一个顺时针的绿色圆点圆形箭头 (`↻`)
+\&。
+.sp
+如果元已加载到内存中，则输出中的 "Loaded:" 行将显示 "loaded"\&。"Loaded:" 的其他可能值包括: 如果加载它时出现问题，则为
+"error"; 如果未找到此元的元文件，则为 "not\-found"; 如果无法解析必要的元文件设置，则为 "bad\-setting";
+如果元文件已被屏蔽，则为 "masked"\&。除了显示元文件的路径外，该行还将显示启用状态
+\&。启用的单元包含在单元之间的依赖网络中，因此在引导时启动或通过某种其他形式的激活 \&。请参见可能启用状态的完整表格 \(em，包括
+"masked" 的定义 \(em 在 \fBis\-enabled\fP 命令的文档中 \&。
+.sp
+"Active:" 行显示活动状态 \&。该值通常是 "active" 或 `inactive`\&。根据元类型
+\&，活动可能意味着启动、绑定、插入等。元也可能正在改变状态，报告 "activating" 状态或
+`停用`\&。当服务以某种方式失败时，例如崩溃、以错误代码退出或超时 \&，将进入特殊的 "failed"
+状态。如果进入失败状态，原因将被记录下来以备后用 \&。
+.RE
+.PP
+\fBshow\fP [\fIPATTERN\fP\&...|\fIJOB\fP\&...]
+.RS 4
+显示一个或多个单位、职位或经理本身的属性 \&。如果没有指定参数，将显示管理器的属性 \&。如果指定了元名，则显示元名的属性，如果指定了作业
+ID，则显示作业的属性 \&。默认情况下，空属性被抑制 \&。也使用 \fB\-\-all\fP 来显示这些 \&。要选择要显示的特定属性，请使用
+\fB\-\-property=\fP\&。只要需要计算机可解析的输出 \&，就会使用此命令。如果您正在寻找格式化的人类可读输出 \&，请使用
+\fBstatus\fP。
+.sp
+\fBsystemctl show\fP map 显示的许多属性直接到系统和服务管理器的配置设置及其元文件
+\&。请注意，该命令显示的属性通常是更多底层、原始配置设置的规范化版本，并且除了配置 \& 外还公开运行时状态。例如，为服务单元显示的属性包括
+service\*(Aqs 当前主进程标识符为 "MainPID" (运行时状态)，并且时间设置始终显示为以 "\&...USec"
+后缀结尾的属性，即使匹配的配置选项以 "\&...Sec" 结尾也是如此，因为微秒是系统和服务管理器内部使用的规范化时间元 \&。
+.sp
+有关其中许多属性的详细信息，请参见支持这些属性的 D\-Bus 接口文档，请参见 \fBorg.freedesktop.systemd1\fP(5)\&。
+.RE
+.PP
+\fBcat \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+显示一个或多个单元的支持文件 \&。打印单位的 "fragment" 和 "drop\-ins" (源文件)
+\&。每个文件前面都有一个注释，其中包含文件名 \&。请注意，这显示了磁盘上备份文件的内容，这可能与系统管理器不匹配 \*(Aqs
+理解这些单位如果任何元文件在磁盘上更新并且 \fBdaemon\-reload\fP 命令不是 \*(Aqt 发布以来 \&。
+.RE
+.PP
+\fBhelp \fP\fIPATTERN\fP\fB\&...|\fP\fIPID\fP\fB\&...\fP
+.RS 4
+显示一个或多个单元的手册页 (如果可用) \&。如果给定了 PID，则显示进程所属元的手册页 \&。
+.RE
+.PP
+\fBlist\-dependencies\fP [\fIUNIT\fP\&.\&.\&.]
+.RS 4
+显示指定单位所需和想要的单位 \&。这会递归地列出
+\fIRequires=\fP、\fIRequisite=\fP、\fIConsistsOf=\fP、\fIWants=\fP、\fIBindsTo=\fP 依赖项 \&
+之后的单元。如果未指定单位，则隐含 default\&.target\&。
+.sp
+如果指定了这些选项，则显示的单位将由 \fB\-\-type=\fP 和 \fB\-\-state=\fP 额外过滤 \&。请注意，我们赢了 \*(在这种情况下，Aqt
+能够使用树结构体，因此隐含 \fB\-\-plain\fP\&。
+.sp
+默认情况下，只有目标单元被递归展开 \&。当传递 \fB\-\-all\fP 时，所有其他单元也被递归扩展 \&。
+.sp
+选项 \fB\-\-reverse\fP、\fB\-\-after\fP、\fB\-\-before\fP 可用于更改显示的依赖类型 \&。
+.sp
+请注意，此命令仅列出当前由服务管理器加载到内存中的单元 \&。特别是，此命令不适合获取特定单元的所有反向依赖项的综合列表，因为它不会 \*(Aqt
+列出当前未加载的单元声明的依赖项 \&。
+.RE
+.PP
+\fBstart \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+启动 (activate) 一个或多个在命令行上指定的单元 \&。
+.sp
+请注意，元 glob 模式扩展为当前内存中的单元名称 \&。未激活且未处于故障状态的单元通常不在内存中，并且不会被任何模式匹配
+\&。此外，在实例化单元的情况下，systemd 通常在实例启动之前不知道实例名称 \&。因此，对 \fBstart\fP 使用 glob 模式的用处有限
+\&。此外，不考虑单位的次要别名 \&。
+.sp
+选项 \fB\-\-all\fP 也可用于对其他加载单元引用的非活动单元进行操作 \&。请注意，这与在 "all"
+可能单元上操作不同，因为如前一段所述，这样的列表是不明确的 \&。然而，如果所有应该与模式匹配的单元都被某个已知已加载的目标拉入 \&，则
+\fBsystemctl start \-\-all \fP\fIGLOB\fP 可能会有用。
+.RE
+.PP
+\fBstop \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+停止 (deactivate) 命令行中指定的一个或多个单元 \&。
+.sp
+如果元不存在或元停止被禁止 (参见 \fBsystemd.unit\fP(5))\& 中的 \fIRefuseManualStop=\fP。如果任何配置为停止元
+(\fIExecStop=\fP 等 \& 的命令失败，则 \fInot\fP 将失败，因为管理员还是会强行终止元 \&。
+.RE
+.PP
+\fBreload \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+要求命令行上列出的所有单元重新加载它们的配置 \&。请注意，这将重新加载特定于服务的配置，而不是 systemd\& 的元配置文件。如果您想让
+systemd 重新加载一个元的配置文件，使用 \fBdaemon\-reload\fP 命令 \&。换句话说: 对于 Apache 的示例情况，这将重新加载
+Apache\*(Web 服务器中的 Aqs httpd\&.conf，而不是 apache\&.service systemd 元文件 \&。
+.sp
+此命令不应与 \fBdaemon\-reload\fP 命令 \& 混淆。
+.RE
+.PP
+\fBrestart \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+停止然后启动命令行中指定的一个或多个单元 \&。如果单元尚未运行，它们将启动 \&。
+.sp
+请注意，使用此命令重新启动单元并不一定会清除所有单元 \*(Aqs resources before it is started
+again\&。例如，每个服务的文件描述符存储设施 (请参见 \fBsystemd.service\fP(5)) 中的
+\fIFileDescriptorStoreMax=\fP，只要元有待处理的作业，它就会保持不变，并且只有在元完全停止且不再有作业待处理时才会被清除
+\&。如果打算在重新启动操作期间也刷新文件描述符存储，则应发出显式 \fBsystemctl stop\fP 命令，后跟 \fBsystemctl start\fP\&。
+.RE
+.PP
+\fBtry\-restart \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+如果单元正在运行 \&，则停止然后启动命令行上指定的一个或多个单元。如果单元没有运行 \&，这什么都不做。
+.RE
+.PP
+\fBreload\-or\-restart \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+重新加载一个或多个支持它的单位 \&。如果不是，请停止然后再启动它们 \&。如果单元尚未运行，它们将启动 \&。
+.RE
+.PP
+\fBtry\-reload\-or\-restart \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+重新加载一个或多个支持它的单位 \&。如果不是，请停止然后再启动它们 \&。如果单元没有运行 \&，这什么都不做。
+.RE
+.PP
+\fBisolate \fP\fIUNIT\fP
+.RS 4
+启动命令行上指定的元及其依赖项并停止所有其他元，除非它们具有 \fBIgnoreOnIsolate=yes\fP (请参见
+\fBsystemd.unit\fP(5))\&。如果给出没有扩展名的元名，将假定扩展名为 "\&.target"\&。
+.sp
+此命令很危险，因为它会立即停止新目标中未启用的进程，可能包括图形环境或您当前正在使用的终端 \&。
+.sp
+请注意，此操作仅适用于启用 \fBAllowIsolate=\fP\& 的单元。有关详细信息，请参见 \fBsystemd.unit\fP(5)\&。
+.RE
+.PP
+\fBkill \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+向元 \& 的一个或多个进程发送信号。使用 \fB\-\-kill\-whom=\fP 选择杀死哪个进程 \&。使用 \fB\-\-signal=\fP 选择要发送的信号
+\&。
+.RE
+.PP
+\fBclean \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+删除指定单元的配置、状态、缓存、日志或运行时数据 \&。使用 \fB\-\-what=\fP 选择要删除的资源类型。对于服务单元，这可能用于删除配置有
+\fIConfigurationDirectory=\fP、\fIStateDirectory=\fP、\fICacheDirectory=\fP、\fILogsDirectory=\fP
+和 \fIRuntimeDirectory=\fP 的目录，有关详细信息，请参见 \fBsystemd.exec\fP(5)\&。对于计时器单元，如果使用
+\fIPersistent=\fP 并选择了 \fB\-\-what=state\fP，则这可用于清除持久时间戳数据，请参见
+\fBsystemd.timer\fP(5)\&。此命令仅适用于使用这些设置之一的单元。如果未指定 \fB\-\-what=\fP，则缓存和运行时数据都会被删除
+(因为这两种类型的数据通常是冗余的，并且在下次调用元时可以重现) \&。
+.RE
+.PP
+\fBfreeze \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+使用 cgroup freezer 冻结命令行中指定的一个或多个单元
+.sp
+冻结元会导致该元对应的 cgroup 中包含的所有进程被挂起 \&。被挂起意味着元 \*(Aqs 进程赢了 \*(Aqt 被安排在 CPU
+上运行直到解冻 \&。请注意，此命令仅在使用统一 cgroup 层次结构 \&
+的系统上受支持。就在我们对元执行作业之前，元会自动解冻，e\&.g\&。在元停止之前 \&。
+.RE
+.PP
+\fBthaw \fP\fIPATTERN\fP\fB\&...\fP
+.RS 4
+解冻 (unfreeze) 一个或多个在命令行上指定的单位 \&。
+.sp
+这是 \fBfreeze\fP 命令的逆操作，恢复元 \*(Aqs cgroup\&.
+.RE
+.PP
+\fBset\-property \fP\fIUNIT\fP\fB \fP\fIPROPERTY\fP\fB=\fP\fIVALUE\fP\fB\&...\fP
+.RS 4
+在支持此功能的运行时设置指定的元属性 \&。这允许在运行时更改配置参数属性，例如资源控制设置。并非所有属性都可以在运行时更改，但许多资源控制设置
+(主要是 \fBsystemd.resource\-control\fP(5)) 中的那些设置) 可能会 \&. 更改会立即应用，并存储在磁盘上以供
+future 启动，除非 \fB\-\-runtime\fP 已通过，在这种情况下，设置仅适用于下一次重新启动 \&。属性赋值的语法紧跟元文件 \&
+中的赋值语法。
+.sp
+示例: \fBsystemctl set\-property foobar\&.service CPUWeight=200\fP
+.sp
+如果指定的元似乎处于非活动状态，则更改将仅存储在磁盘上，如前所述，因此它们将在元启动时生效 \&。
+.sp
+请注意，此命令允许同时更改多个属性，这比单独设置它们更可取 \&。
+.sp
+示例: \fBsystemctl set\-property foobar\&.service CPUWeight=200 MemoryMax=2G IPAccounting=yes\fP
+.sp
+与元文件配置设置一样，分配空设置通常会将属性重置为其默认值 \&。
+.sp
+示例: \fBsystemctl set\-property avahi\-daemon\&.service IPAddressDeny=\fP
+.RE
+.PP
+\fBbind\fP \fIUNIT\fP \fIPATH\fP [\fIPATH\fP]
+.RS 4
+将主机中的文件或目录绑定挂载到指定的元 \*(Aqs mount namespace\&. 第一个路径参数是主机上的源文件或目录，第二个路径参数是元
+\*(Aqs mount namespace\&. 省略后者时，元 \*(Aqs 挂载命名空间中的目标路径与主机上的源路径相同 \&。当与
+\fB\-\-read\-only\fP 开关结合使用时，将创建一个只读绑定安装 \&。与 \fB\-\-mkdir\fP 开关结合使用时，首先会在应用挂载之前创建目标路径
+\&。
+.sp
+请注意，此选项目前仅支持在挂载命名空间内运行的单元 (例如 \&.g\&.: \fBRootImage=\fP、\fBPrivateMounts=\fP 等
+\&.) \&。此命令支持绑定安装目录、常规文件、设备节点、\fBAF_UNIX\fP 套接字节点以及 FIFOs\&。绑定挂载是临时的，只要当前元进程存在
+\&，它就会被撤销。注意，这里说的命名空间，就是要添加 bind mount 的命名空间，就是主服务进程运行的命名空间。其他进程 (由
+\fBExecReload=\fP、\fBExecStartPre=\fP 等执行的进程) 在不同的命名空间中运行。
+.RE
+.PP
+\fBmount\-image\fP \fIUNIT\fP \fIIMAGE\fP [\fIPATH\fP
+[\fIPARTITION_NAME\fP:\fIMOUNT_OPTIONS\fP]]
+.RS 4
+从主机挂载一个镜像到指定的元 \*(Aqs mount namespace\&. 第一个路径参数是主机上的源镜像，第二个路径参数是元 \*(Aqs
+挂载命名空间 (i\&.e\&. 在 \fBRootImage=\fP/\fBRootDirectory=\fP)\& 里面。以下参数 (如果有)
+被解释为分区名称的冒号分隔元组和该分区的挂载选项的逗号分隔列表 \&。格式与服务 \fBMountImages=\fP setting\& 相同。与
+\fB\-\-read\-only\fP 开关结合使用时，会创建一个只读挂载 \&。与 \fB\-\-mkdir\fP 开关结合使用时，首先会在应用挂载之前创建目标路径
+\&。
+.sp
+请注意，此选项目前仅支持在挂载命名空间内运行的单元 (i\&.e\&. 与 \fBRootImage=\fP、\fBPrivateMounts=\fP 等 \&.)
+\&。请注意，这里提到的将添加图像挂载的名称空间是主要服务进程运行的名称空间。注意，这里说的命名空间，就是要添加 bind mount
+的命名空间，就是主服务进程运行的命名空间。其他进程 (由 \fBExecReload=\fP、\fBExecStartPre=\fP 等执行的进程)
+在不同的命名空间中运行。
+.sp
+Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemctl mount\-image foo\&.service /tmp/img\&.raw /var/lib/image root:ro,nosuid
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemctl 挂载映像 \-\-mkdir bar\&.service /tmp/img\&.raw /var/lib/baz/img
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.RE
+.PP
+\fBservice\-log\-level\fP \fISERVICE\fP [\fILEVEL\fP]
+.RS 4
+如果未给出 \fILEVEL\fP 参数，则打印服务 \fISERVICE\fP\& 报告的当前日志级别。
+.sp
+如果提供了可选的参数 \fILEVEL\fP，则将服务当前的日志级别修改为 \fILEVEL\fP\&。日志级别应该是典型的 syslog
+日志级别，i\&.e\&。0\&...7 范围内的值或字符串
+\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP 之一;
+详见 \fBsyslog\fP(3)\&。
+.sp
+该服务必须具有适当的 \fIBusName=\fP\fIdestination\fP 属性并且还实现泛型
+\fBorg.freedesktop.LogControl1\fP(5) 接口 \&。(systemctl 会使用泛型 D\-Bus 协议访问
+org\&.freedesktop\&.LogControl1\&.LogLevel 接口，对于 D\-Bus 名称为
+\fIdestination\fP\&.)
+.RE
+.PP
+\fBservice\-log\-target\fP \fISERVICE\fP [\fITARGET\fP]
+.RS 4
+如果未给出 \fITARGET\fP 参数，则打印服务 \fISERVICE\fP\& 报告的当前日志目标。
+.sp
+如果提供了可选的参数 \fITARGET\fP，则将服务的当前日志目标更改为 \fITARGET\fP\&。日志目标应该是字符串 \fBconsole\fP
+(用于日志输出到服务 \* (Aqs 标准错误流)、\fBkmsg\fP (用于日志输出到内核日志缓冲区)、\fBjournal\fP
+(用于使用原生日志协议将日志输出到 \fBsystemd\-journald.service\fP(8)) 之一)、\fBsyslog\fP
+(用于将日志输出到经典系统日志套接字 /dev/log)、\fBnull\fP (用于不输出任何日志) 或 \fBauto\fP
+(用于自动确定的选择，如果以交互方式调用服务，则通常等同于 \fBconsole\fP，否则为 \fBjournal\fP 或 \fBsyslog\fP) \&.
+.sp
+对于大多数服务，只有一小部分日志目标有意义 \&。特别是，大多数 "normal" 服务应该只实现 \fBconsole\fP、\fBjournal\fP 和
+\fBnull\fP\&。其他任何内容仅适用于在建立正确日志记录之前在非常早的引导中处于活动状态的底层服务 \&。
+.sp
+该服务必须具有适当的 \fIBusName=\fP\fIdestination\fP 属性并且还实现泛型
+\fBorg.freedesktop.LogControl1\fP(5) 接口 \&。(systemctl 会使用泛型 D\-Bus 协议访问
+org\&.freedesktop\&.LogControl1\&.LogLevel 接口，对于 D\-Bus 名称为
+\fIdestination\fP\&.)
+.RE
+.PP
+\fBreset\-failed [\fP\fIPATTERN\fP\fB\&...]\fP
+.RS 4
+重置指定单元的 "failed" 状态，或者如果没有传递元名，则重置所有单元的状态 \&。当一个元因某种原因失败时
+(i\&.e\&. 进程以非零错误代码退出、异常终止或超时)，它会自动进入 "failed" 状态，并记录其退出代码和状态以供自省管理员，直到服务为
+stopped/re\-started 或使用此命令重置 \&。
+.sp
+除了重置元的 "failed" 状态外，它还重置各种其他元属性: 所有元类型的启动速率限制计数器都重置为零，服务单元的重启计数器也是如此
+\&。因此，如果单元 \*(Aqs 启动限制 (与 \fIStartLimitIntervalSec=\fP/\fIStartLimitBurst=\fP)
+配置的一样) 被击中并且单元拒绝再次启动，请使用此命令使其再次启动 \&。
+.RE
+.SS "Unit File Commands"
+.PP
+\fBlist\-unit\-files\fP [\fIPATTERN\&...\fP]
+.RS 4
+列出系统上安装的元文件，结合它们的启用状态 (由 \fBis\-enabled\fP)\& 报告。如果指定一个或多个
+\fIPATTERN\fPs，则仅显示名称与其中之一匹配的元文件 (不显示与元文件系统路径匹配的模式支持的) \&。
+.sp
+与 \fBlist\-units\fP 不同，此命令除了显式实例化的单元之外还会列出模板单元 \&。
+.RE
+.PP
+\fBenable \fP\fIUNIT\fP\fB\&...\fP, \fBenable \fP\fIPATH\fP\fB\&...\fP
+.RS 4
+启用一个或多个单元或元实例 \&。这将创建一组符号链接，如指定元文件 \& 的 [Install]
+部分中编码的那样。创建符号链接后，重新加载系统管理器配置 (以等同于 \fBdaemon\-reload\fP) 的方式，以确保立即考虑更改
+\&。请注意，这确实 \fInot\fP 具有启动任何正在启用的单元的效果。如果需要，请将此命令与 \fB\-\-now\fP 开关结合使用，或稍后使用适当的参数调用
+\fBstart\fP\&。请注意，在启用元实例的情况下 (i\&.e\&. 启用 foo@bar\&.service
+形式的单元)，在元配置目录中创建与实例同名的符号链接，但是它们指向它们实例化的单个模板元文件 \&。
+.sp
+此命令需要有效的元名称 (在这种情况下，各种元文件目录会自动搜索具有适当名称的元文件)，或者元文件的绝对路径 (在这种情况下，这些文件会被直接读取)
+\&。如果指定的元文件位于通常的元文件目录之外，则会创建一个额外的符号链接，将其链接到元配置路径，从而确保在 \fBstart\fP\&
+等命令请求时找到它。启动 systemd 时，链接的元文件所在的文件系统必须可以访问 (例如 \&.g\&。不允许在 /home / 或 /var /
+下的任何内容，除非这些目录位于根文件系统上) \&。
+.sp
+此命令将打印执行的文件系统操作 \&。可以通过传递 \fB\-\-quiet\fP\& 来抑制此输出。
+.sp
+请注意，此操作仅创建元文件 \& 的 [Install]
+部分中建议的符号链接。虽然此命令是操作元配置目录的推荐方法，但管理员可以通过放置或删除此目录下的符号链接来自由地手动进行其他更改
+\&。这对于创建偏离建议的默认安装 \& 的配置特别有用。在这种情况下，管理员必须确保在必要时手动调用
+\fBdaemon\-reload\fP，以确保更改被考虑 \&。
+.sp
+在没有安装信息的单元上使用此操作时，会显示有关它的警告 \&。 \fB\-\-no\-warn\fP 可用于抑制警告 \&。
+.sp
+启用单元不应与启动 (activating) 单元混淆，如 \fBstart\fP 命令 \& 所做的那样。启用和启动单元是正交的:
+单元可以在未启动的情况下启用，也可以在未启用的情况下启动 \&。启用只是将元，钩子，到各种建议的位置
+(例如，以便元在启动时自动启动或在插入特定类型的硬件时自动启动) \&。启动实际上产生守护进程 (在服务单元的情况下)，或绑定套接字
+(在套接字单元的情况下)，等等 \&。
+.sp
+根据是否指定了 \fB\-\-system\fP、\fB\-\-user\fP、\fB\-\-runtime\fP 或
+\fB\-\-global\fP，这会为系统、仅调用用户、仅本次系统启动或所有用户的所有 future 登录启用元 \&。请注意，在最后一种情况下，不会重新加载
+systemd 守护程序配置 \&。
+.sp
+不支持在屏蔽单元上使用 \fBenable\fP 并导致错误 \&。
+.RE
+.PP
+\fBdisable \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+禁用一个或多个单元 \&。这将从元配置目录中删除支持指定单元的元文件的所有符号链接，从而撤消 \fBenable\fP 或 \fBlink\fP\&
+所做的任何更改。请注意，这会删除匹配元文件的 \fIall\fP 符号链接，包括手动创建的符号链接，而不仅仅是 \fBenable\fP 或 \fBlink\fP\&
+实际创建的符号链接。请注意，虽然 \fBdisable\fP 取消了 \fBenable\fP 的效果，但这两个命令在其他方面是不对称的，因为 \fBdisable\fP
+可能会比之前的 \fBenable\fP 调用相同的元创建 \& 删除更多的符号链接。
+.sp
+此命令只需要有效的元名称，它不接受元文件的路径 \&。
+.sp
+除了指定为参数的单位外，所有正在操作的元文件的 [Install] 部分中包含的 \fIAlso=\fP 设置中列出的所有单位都被禁用 \&。
+.sp
+此命令在完成操作后隐式地重新加载系统管理器配置 \&。请注意，此命令不会隐式停止正在禁用的单元。如果需要，请将此命令与 \fB\-\-now\fP
+开关结合使用，或者使用适当的参数调用 \fBstop\fP 命令 later\&。
+.sp
+此命令将打印有关执行的文件系统操作 (符号链接删除) 的信息 \&。可以通过传递 \fB\-\-quiet\fP\& 来抑制此输出。
+.sp
+此命令以与 \fBenable\fP\& 类似的方式支持 \fB\-\-system\fP、\fB\-\-user\fP、\fB\-\-runtime\fP、\fB\-\-global\fP 和
+\fB\-\-no\-warn\fP。
+.RE
+.PP
+\fBreenable \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+重新启用一个或多个单元，如命令行中指定的那样 \&。这是 \fBdisable\fP 和 \fBenable\fP 的组合，可用于将元文件启用的符号链接重置为其
+[Install] 部分中配置的默认值 \&。此命令只需要一个元名称，它不接受元文件的路径 \&。
+.RE
+.PP
+\fBpreset \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+将命令行上指定的 enable/disable 状态一个或多个元文件重置为预设策略文件中配置的默认值 \&。这与 \fBdisable\fP 或
+\fBenable\fP 具有相同的效果，具体取决于元在预设文件中的列出方式 \&。
+.sp
+使用 \fB\-\-preset\-mode=\fP 控制单元是否启用和禁用，或仅启用，或仅禁用 \&。
+.sp
+如果元没有携带安装信息，它会被这个命令忽略掉 \&。 \fIUNIT\fP 必须是真实的元名，任何别名都会被忽略 \&。
+.sp
+有关预设策略格式的详细信息，请参见 \fBsystemd.preset\fP(5)\&。
+.RE
+.PP
+\fBpreset\-all\fP
+.RS 4
+将所有已安装的元文件重置为预设策略文件中配置的默认值 (见上文) \&。
+.sp
+使用 \fB\-\-preset\-mode=\fP 控制单元是否启用和禁用，或仅启用，或仅禁用 \&。
+.RE
+.PP
+\fBis\-enabled \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+检查是否启用了任何指定的元文件 (与 \fBenable\fP)\& 一样。如果至少启用了一个，则返回退出代码 0，否则返回非零 \&。打印当前启用状态
+(见表) \&。要抑制此输出，请使用 \fB\-\-quiet\fP\&。要显示安装目标，请使用 \fB\-\-full\fP\&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \& is\-enabled output\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Name
+T}:T{
+Description
+T}:T{
+Exit Code
+T}
+.T&
+l l l
+l ^ ^
+l l l
+l ^ ^
+l l l
+l l l
+l ^ ^
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"enabled"
+T}:T{
+Enabled via \&.wants/, \&.requires/ or \fIAlias=\fP symlinks (permanently in /etc/systemd/system/, or transiently in /run/systemd/system/)\&.
+T}:T{
+0
+T}
+T{
+"enabled\-runtime"
+T}::
+T{
+"linked"
+T}:T{
+Made available through one or more symlinks to the unit file (permanently in /etc/systemd/system/ or transiently in /run/systemd/system/), even though the unit file might reside outside of the unit file search path\&.
+T}:T{
+> 0
+T}
+T{
+"linked\-runtime"
+T}::
+T{
+"alias"
+T}:T{
+The name is an alias (symlink to another unit file)\&.
+T}:T{
+0
+T}
+T{
+"masked"
+T}:T{
+Completely disabled, so that any start operation on it fails (permanently in /etc/systemd/system/ or transiently in /run/systemd/systemd/)\&.
+T}:T{
+> 0
+T}
+T{
+"masked\-runtime"
+T}::
+T{
+"static"
+T}:T{
+The unit file is not enabled, and has no provisions for enabling in the [Install] unit file section\&.
+T}:T{
+0
+T}
+T{
+"indirect"
+T}:T{
+The unit file itself is not enabled, but it has a non\-empty \fIAlso=\fP setting in the [Install] unit file section, listing other unit files that might be enabled, or it has an alias under a different name through a symlink that is not specified in \fIAlso=\fP\&. For template unit files, an instance different than the one specified in \fIDefaultInstance=\fP is enabled\&.
+T}:T{
+0
+T}
+T{
+"disabled"
+T}:T{
+The unit file is not enabled, but contains an [Install] section with installation instructions\&.
+T}:T{
+> 0
+T}
+T{
+"generated"
+T}:T{
+The unit file was generated dynamically via a generator tool\&. See \fBsystemd.generator\fP(7)\&. Generated unit files may not be enabled, they are enabled implicitly by their generator\&.
+T}:T{
+0
+T}
+T{
+"transient"
+T}:T{
+The unit file has been created dynamically with the runtime API\&. Transient units may not be enabled\&.
+T}:T{
+0
+T}
+T{
+"bad"
+T}:T{
+The unit file is invalid or another error occurred\&. Note that \fBis\-enabled\fP will not actually return this state, but print an error message instead\&. However the unit file listing printed by \fBlist\-unit\-files\fP might show it\&.
+T}:T{
+> 0
+T}
+T{
+"not\-found"
+T}:T{
+The unit file doesn\*(Aqt exist\&.
+T}:T{
+4
+T}
+.TE
+.sp 1
+.RE
+.PP
+\fBmask \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+屏蔽一个或多个单元，如命令行中指定的那样 \&。这会将这些元文件链接到 /dev/null，使其无法启动 \&。这是 \fBdisable\fP
+的加强版，因为它禁止了元的各种激活，包括启用和手动激活 \&。小心使用此选项 \&。这使 \fB\-\-runtime\fP 选项仅暂时屏蔽，直到系统下次重新启动
+\&。\fB\-\-now\fP 选项可用于确保单元也停止 \&。此命令只需要有效的元名称，它不接受元文件路径 \&。
+.RE
+.PP
+\fBunmask \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+取消屏蔽一个或多个元文件，如命令行中指定的那样 \&。这将取消 \fBmask\fP\& 的效果。此命令只需要有效的元名称，它不接受元文件路径 \&。
+.RE
+.PP
+\fBlink \fP\fIPATH\fP\fB\&...\fP
+.RS 4
+将不在元文件搜索路径中的元文件链接到元文件搜索路径 \&。此命令需要一个元文件的绝对路径 \&。这个效果可以用 \fBdisable\fP\&
+取消。该命令的作用是使一个元文件可用于诸如 \fBstart\fP 之类的命令，即使它没有直接安装在元搜索路径 \& 中。启动 systemd
+时，链接的元文件所在的文件系统必须可以访问 (例如 \&.g\&。不允许在 /home / 或 /var /
+下的任何内容，除非这些目录位于根文件系统上) \&。
+.RE
+.PP
+\fBrevert \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+将一个或多个元文件还原为其供应商版本 \&。此命令删除修改指定单位的丢弃 \- in 配置文件，以及覆盖匹配的供应商提供的元文件的任何用户配置的元文件
+\&。具体来说，对于元 "foo\&.service"，匹配目录 "foo\&.service\&.d/"
+及其所有包含的文件都被删除，都在持久和运行时配置目录下 (i\&.e\&. 在 /etc/systemd/system 和
+/run/systemd/system 下) ; 如果元文件具有供应商提供的版本 (i\&.e\&. 位于 /usr /
+下的元文件)，则覆盖它的任何匹配的持久性或运行时元文件也将被删除 \&。请注意，如果元文件没有供应商提供的版本 (i\&.e\&. 仅在
+/etc/systemd/system 或 /run/systemd/system 下定义，但不在存储在 /usr / 下的元文件中)，则它不会被删除
+\&。另外，如果一个元被屏蔽，它就会被取消屏蔽 \&。
+.sp
+实际上，此命令可用于撤消对 \fBsystemctl edit\fP、\fBsystemctl set\-property\fP 和 \fBsystemctl mask\fP 所做的所有更改，并使原始元文件及其设置恢复生效 \&。
+.RE
+.PP
+\fBadd\-wants \fP\fITARGET\fP\fB \fP\fIUNIT\fP\fB\&...\fP, \fBadd\-requires \fP\fITARGET\fP\fB \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+将 "Wants=" 或 "Requires=" 依赖项分别添加到一个或多个单元的指定 \fITARGET\fP\&。
+.sp
+此命令以类似于 \fBenable\fP\& 的方式支持 \fB\-\-system\fP、\fB\-\-user\fP、\fB\-\-runtime\fP 和 \fB\-\-global\fP。
+.RE
+.PP
+\fBedit \fP\fIUNIT\fP\fB\&...\fP
+.RS 4
+如果指定了 \fB\-\-full\fP，则编辑丢弃 \- in 片段或整个替换文件，以扩展或覆盖指定的元 \&。
+.sp
+根据是否指定了 \fB\-\-system\fP (默认值)、\fB\-\-user\fP 或 \fB\-\-global\fP，此命令为系统、调用用户或所有用户的所有
+futures 登录创建一个丢弃 \- in 文件。然后，编辑器 (请参见下面的 "Environment" 部分)
+在临时文件上调用，如果编辑器成功退出，这些临时文件将被写入实际位置 \&。
+.sp
+如果指定了 \fB\-\-drop\-in=\fP，则将使用给定的丢弃 \- in 文件名而不是默认的 override\&.conf\&。
+.sp
+如果指定了 \fB\-\-full\fP，这将复制原始单位而不是创建抛弃 \- in files\&。
+.sp
+如果指定 \fB\-\-force\fP 并且任何单位尚不存在，将打开新的元文件进行编辑 \&。
+.sp
+如果指定了 \fB\-\-runtime\fP，更改将临时在 /run / 中进行，并且在下次重新启动 \& 时它们将丢失。
+.sp
+如果退出时临时文件为空，则取消相关元的修改 \&。
+.sp
+编辑单位后，系统配置重新加载 (以等同于 \fBdaemon\-reload\fP)\& 的方式)。
+.sp
+请注意，此命令不能用于远程编辑单元，并且您不能临时编辑 /etc / 中的单元，因为它们优先于 /run/\&。
+.RE
+.PP
+\fBget\-default\fP
+.RS 4
+返回默认目标以启动到 \&。这将返回目标元名称 default\&.target is aliased (symlinked) to\&。
+.RE
+.PP
+\fBset\-default \fP\fITARGET\fP
+.RS 4
+将默认目标设置为引导至 \&。这将 (symlinks) 和 default\&.target 别名设置为给定目标元 \&。
+.RE
+.SS "Machine Commands"
+.PP
+\fBlist\-machines\fP [\fIPATTERN\fP\&...]
+.RS 4
+列出主机和所有正在运行的本地容器及其状态。如果指定了一个或多个 \fIPATTERN\fPs，则只显示与其中之一匹配的容器 \&。
+.RE
+.SS "Job Commands"
+.PP
+\fBlist\-jobs \fP\fB[\fP\fIPATTERN\&...\fP]
+.RS 4
+列出正在进行的作业 \&。如果指定了一个或多个 \fIPATTERN\fPs，则仅显示与其中一个匹配的单元的作业 \&。
+.sp
+当与 \fB\-\-after\fP 或 \fB\-\-before\fP
+结合使用时，列表会增加有关每个作业正在等待哪个其他作业以及哪些其他作业正在等待它的信息，请参见上文 \&。
+.RE
+.PP
+\fBcancel \fP\fIJOB\fP\fB\&...\fP
+.RS 4
+取消一个或多个在命令行上由其数字作业 ID 指定的作业 \&。如果未指定作业 ID，则取消所有挂起的作业 \&。
+.RE
+.SS "Environment Commands"
+.PP
+\fBsystemd\fP 支持传递给管理器生成的进程的环境块。变量的名称可以包含 ASCII 字母、数字和下划线字符 \&。变量名不能为空或以数字 \&
+开头。在变量值中，大多数字符是允许的，但整个序列必须是有效的 UTF\-8\&。(请注意控制字符，如换行符 (\fBNL\fP)、制表符
+(\fBTAB\fP)，或转义字符 (\fBESC\fP)、\fIare\fP 有效 ASCII，因此有效 UTF\-8) \&。环境块的总长度限制为
+\fBsysconf\fP(3)\& 定义的 \fB_SC_ARG_MAX\fP 值。
+.PP
+\fBshow\-environment\fP
+.RS 4
+转储 systemd 管理器环境块 \&。这是传递给管理器生成的所有进程的环境块。环境块将以适合采购到大多数 shells\&
+的直接形式转储。如果变量值中没有特殊字符或空格，则不执行转义，赋值的形式为 `VARIABLE=value`\&。如果存在对 shell
+具有特殊含义的空格或字符，则使用美元单引号转义，并且赋值的形式为 `VARIABLE=$\*(Aqvalue\*(Aq"\&。已知此语法是
+\fBbash\fP(1)、\fBzsh\fP(1)、\fBksh\fP(1) 和 \fBbusybox\fP(1)\*(Aqs \fBash\fP(1) 支持，但
+\fBdash\fP(1) 或 \fBfish\fP(1)\& 不支持。
+.RE
+.PP
+\fBset\-environment \fP\fIVARIABLE=VALUE\fP\fB\&...\fP
+.RS 4
+设置一个或多个 systemd manager environment 变量，如命令行中指定的那样
+\&。如果变量名称和值不符合上面列出的规则，此命令将失败 \&。
+.RE
+.PP
+\fBunset\-environment \fP\fIVARIABLE\fP\fB\&...\fP
+.RS 4
+取消设置一个或多个 systemd 管理器环境变量 \&。如果只指定了一个变量名，不管它的值是什么，它都会被删除
+\&。如果指定了变量和值，则只有在变量具有指定值时才会删除该变量 \&。
+.RE
+.PP
+\fBimport\-environment\fP \fIVARIABLE\&...\fP
+.RS 4
+将客户端设置的所有、一个或多个环境变量导入 systemd manager 环境块 \&。如果传递了环境变量名称列表，则客户端值将导入管理器
+\*(Aqs 环境块 \&。根据上述规则，如果任何名称不是有效的环境变量名称或具有无效值，则会引发错误 \&。如果不传参数，则导入
+\fBsystemctl\fP 进程继承的整个环境块 \&。在这种模式下，任何继承的无效环境变量都被悄悄忽略 \&。
+.sp
+完全继承的环境块的导入 (调用此命令时不带任何参数) 已弃用 \&。shell 将设置数十个变量，这些变量仅在本地有意义并且仅适用于 shell\&
+的后代进程。全局环境块中的此类变量会混淆其他进程 \&。
+.RE
+.SS "Manager State Commands"
+.PP
+\fBdaemon\-reload\fP
+.RS 4
+重新加载 systemd 管理器配置 \&。这将重新运行所有生成器 (参见
+\fBsystemd.generator\fP(7))，重新加载所有元文件，并重新创建整个依赖树 \&。在重新加载守护程序时，systemd
+代表用户配置侦听的所有套接字都将保持可访问 \&。
+.sp
+此命令不应与 \fBreload\fP 命令 \& 混淆。
+.RE
+.PP
+\fBdaemon\-reexec\fP
+.RS 4
+重新执行 systemd 管理器 \&。这将序列化管理器状态，重新执行进程并再次反序列化状态
+\&。这个命令除了调试和包升级外没什么用。有时，作为一个重量级的 \fBdaemon\-reload\fP\&
+可能会有帮助。当守护进程被重新执行时，所有代表用户配置监听的套接字将保持可访问 \&。
+.RE
+.PP
+\fBlog\-level\fP [\fILEVEL\fP]
+.RS 4
+如果没有给出参数，则打印管理器当前的日志级别 \&。如果提供了可选的参数 \fILEVEL\fP，则该命令会将管理器的当前日志级别更改为 \fILEVEL\fP
+(接受与 \fBsystemd\fP(1))\& 中描述的 \fB\-\-log\-level=\fP 相同的值。
+.RE
+.PP
+\fBlog\-target\fP [\fITARGET\fP]
+.RS 4
+如果没有给出参数，则打印管理器的当前日志目标 \&。如果提供了可选的参数 \fITARGET\fP，则该命令会将管理器的当前日志目标更改为 \fITARGET\fP
+(接受与 \fB\-\-log\-target=\fP 相同的值，如 \fBsystemd\fP(1))\& 中所述。
+.RE
+.PP
+\fBservice\-watchdogs\fP [yes|no]
+.RS 4
+如果没有给出参数，则打印管理器的服务运行时看门狗的当前状态 \&。如果提供了可选的布尔参数，则全局启用或禁用服务运行时看门狗
+(\fBWatchdogSec=\fP) 和紧急操作 (例如 \&.g\&. \fBOnFailure=\fP 或 \fBStartLimitAction=\fP);
+请参见 \fBsystemd.service\fP(5)\&。硬件看门狗不受此设置影响 \&。
+.RE
+.SS "System Commands"
+.PP
+\fBis\-system\-running\fP
+.RS 4
+检查系统是否运行 \&。当系统完全启动并运行时返回成功 (退出代码 0)，特别是不处于启动、关闭或维护模式，并且没有失败的服务 \&。否则返回失败
+(退出代码非零) \&。此外，当前状态以短字符串形式打印到标准输出，请参见下表 \&。使用 \fB\-\-quiet\fP 抑制此输出 \&。
+.sp
+使用 \fB\-\-wait\fP 等待引导过程完成，然后打印当前状态并返回适当的错误状态 \&。如果正在使用 \fB\-\-wait\fP，则不会报告
+\fIinitializing\fP 或 \fIstarting\fP 状态，相反，该命令将阻塞直到稍后的状态 (例如达到 \fIrunning\fP 或
+\fIdegraded\fP)\&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \&is\-system\-running output\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Name
+T}:T{
+Description
+T}:T{
+Exit Code
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+\fIinitializing\fP
+T}:T{
+Early bootup, before
+basic\&.target
+is reached or the
+\fImaintenance\fP
+state entered\&.
+T}:T{
+> 0
+T}
+T{
+\fIstarting\fP
+T}:T{
+Late bootup, before the job queue becomes idle for the first time, or one of the rescue targets are reached\&.
+T}:T{
+> 0
+T}
+T{
+\fIrunning\fP
+T}:T{
+The system is fully operational\&.
+T}:T{
+0
+T}
+T{
+\fIdegraded\fP
+T}:T{
+The system is operational but one or more units failed\&.
+T}:T{
+> 0
+T}
+T{
+\fImaintenance\fP
+T}:T{
+The rescue or emergency target is active\&.
+T}:T{
+> 0
+T}
+T{
+\fIstopping\fP
+T}:T{
+The manager is shutting down\&.
+T}:T{
+> 0
+T}
+T{
+\fIoffline\fP
+T}:T{
+The manager is not running\&. Specifically, this is the operational state if an incompatible program is running as system manager (PID 1)\&.
+T}:T{
+> 0
+T}
+T{
+\fIunknown\fP
+T}:T{
+The operational state could not be determined, due to lack of resources or another error cause\&.
+T}:T{
+> 0
+T}
+.TE
+.sp 1
+.RE
+.PP
+\fBdefault\fP
+.RS 4
+进入默认模式 \&。这相当于 \fBsystemctl isolate default\&.target\fP\&。这个操作默认是阻塞的，使用
+\fB\-\-no\-block\fP 请求异步行为 \&。
+.RE
+.PP
+\fBrescue\fP
+.RS 4
+进入救援模式 \&。这相当于 \fBsystemctl isolate rescue\&.target\fP\&。这个操作默认是阻塞的，使用
+\fB\-\-no\-block\fP 请求异步行为 \&。
+.RE
+.PP
+\fBemergency\fP
+.RS 4
+进入紧急模式 \&。这相当于 \fBsystemctl isolate emergency\&.target\fP\&。这个操作默认是阻塞的，使用
+\fB\-\-no\-block\fP 请求异步行为 \&。
+.RE
+.PP
+\fBhalt\fP
+.RS 4
+关闭并暂停系统 \&。这主要等同于 \fBsystemctl start halt\&.target \-\-job\-mode=replace\-irreversibly \-\-no\-block\fP，但也向所有用户打印一条墙消息 \&。这个命令是异步的;
+它会在暂停操作入队后返回，而不等待它完成 \&。请注意，此操作将在关闭后简单地停止操作系统内核，使硬件保持开机状态 \&。使用 \fBsystemctl poweroff\fP 关闭系统电源 (见下文) \&。
+.sp
+如果与 \fB\-\-force\fP 结合使用，将跳过所有正在运行的服务的关闭，但是所有进程都将被终止，所有文件系统将被卸载或以只读方式挂载，紧接着系统停止
+\&。如果 \fB\-\-force\fP 被指定两次，则立即执行该操作，而不会终止任何进程或卸载任何文件系统 \&。这可能会导致数据丢失 \&。请注意，当
+\fB\-\-force\fP 被指定两次时，暂停操作由 \fBsystemctl\fP 本身执行，并且不会联系系统管理器 \&。这意味着即使系统管理器崩溃
+\&，该命令也应该成功。
+.RE
+.PP
+\fBpoweroff\fP
+.RS 4
+关闭并关闭系统电源 \&。这主要等同于 \fBsystemctl start poweroff\&.target \-\-job\-mode=replace\-irreversibly \-\-no\-block\fP，但也向所有用户打印一条墙消息 \&。这个命令是异步的;
+它会在关机操作入队后返回，而不等待它完成 \&。
+.sp
+如果与 \fB\-\-force\fP 结合使用，将跳过所有正在运行的服务的关闭，但是所有进程都将被终止，所有文件系统将被卸载或以只读方式安装，紧接着关闭电源
+\&。如果 \fB\-\-force\fP 被指定两次，则立即执行该操作，而不会终止任何进程或卸载任何文件系统 \&。这可能会导致数据丢失 \&。注意当
+\fB\-\-force\fP 被指定两次时，断电操作由 \fBsystemctl\fP 自己执行，不联系系统管理器 \&。这意味着即使系统管理器崩溃
+\&，该命令也应该成功。
+.RE
+.PP
+\fBreboot\fP
+.RS 4
+关闭并重新启动系统 \&。
+.sp
+此命令主要等同于 \fBsystemctl start reboot\&.target \-\-job\-mode=replace\-irreversibly \-\-no\-block\fP，但也会向所有用户打印一条墙消息 \&。这个命令是异步的; 它将在重新启动操作排队后返回，而无需等待它完成 \&。
+.sp
+如果与 \fB\-\-force\fP 结合使用，将跳过所有正在运行的服务的关闭，但是所有进程都将被终止，所有文件系统将被卸载或以只读方式挂载，然后立即重启
+\&。如果 \fB\-\-force\fP 被指定两次，则立即执行该操作，而不会终止任何进程或卸载任何文件系统 \&。这可能会导致数据丢失 \&。请注意，当
+\fB\-\-force\fP 被指定两次时，重启操作由 \fBsystemctl\fP 自己执行，并且不会联系系统管理器 \&。这意味着即使系统管理器崩溃
+\&，该命令也应该成功。
+.sp
+如果给定开关 \fB\-\-reboot\-argument=\fP，它将作为可选参数传递给 \fBreboot\fP(2) 系统调用 \&。
+.sp
+选项 \fB\-\-boot\-loader\-entry=\fP、\fB\-\-boot\-loader\-menu=\fP 和 \fB\-\-firmware\-setup\fP
+可用于选择要执行的操作 \fIafter\fP 重启 \&。有关详细信息，请参见这些选项的描述 \&。
+.RE
+.PP
+\fBkexec\fP
+.RS 4
+通过 \fBkexec\fP\& 关闭并重启系统。这相当于 \fBsystemctl start kexec\&.target \-\-job\-mode=replace\-irreversibly \-\-no\-block\fP\&。这个命令是异步的;
+它将在重新启动操作排队后返回，而无需等待它完成 \&。
+.sp
+如果与 \fB\-\-force\fP 结合使用，将跳过所有正在运行的服务的关闭，但是所有进程都将被终止，所有文件系统将被卸载或以只读方式挂载，然后立即重启
+\&。
+.RE
+.PP
+\fBexit\fP [\fIEXIT_CODE\fP]
+.RS 4
+请服务经理退出 \&。这仅支持用户服务管理器 (i\&.e\&. 与 \fB\-\-user\fP 选项结合使用) 或在容器中，否则等同于
+\fBpoweroff\fP\&。这个命令是异步的; 它会在退出操作入队后返回，而无需等待它完成 \&。
+.sp
+如果传递 \fIEXIT_CODE\fP\&，服务管理器将以指定的退出代码退出。
+.RE
+.PP
+\fBswitch\-root\fP \fIROOT\fP [\fIINIT\fP]
+.RS 4
+切换到不同的根目录并在其下执行新的系统管理器进程 \&。这旨在用于 initrd，并将从 initrd\*(Aqs 系统管理器进程
+(a\&.k\&.a\&. "init" 进程) 到从实际主机根文件系统加载的主系统管理器进程 \&。这个调用有两个参数:
+要成为新根目录的目录，以及它下面要作为 PID 1\& 执行的新系统管理器二进制文件的路径。如果省略后者或为空字符串，将自动搜索 systemd
+二进制文件并将其用作 init\&。如果省略系统管理器路径，等于空字符串或与 systemd 二进制文件的路径相同，则 initrd\*(Aqs
+系统管理器进程的状态将传递给主系统管理器，这允许稍后自省状态 initrd 引导阶段涉及的服务 \&。
+.RE
+.PP
+\fBsuspend\fP
+.RS 4
+挂起系统 \&。这将触发激活特殊目标元 suspend\&.target\&。这个命令是异步的，挂起操作成功入队后会返回 \&。它不会等待
+suspend/resume 循环完成 \&。
+.RE
+.PP
+\fBhibernate\fP
+.RS 4
+休眠系统 \&。这将触发激活特殊目标元 hibernate\&.target\&。该命令是异步的，休眠操作成功入队后返回 \&。它不会等待
+hibernate/thaw 循环完成 \&。
+.RE
+.PP
+\fBhybrid\-sleep\fP
+.RS 4
+休眠并挂起系统 \&。这将触发激活特殊目标元 hybrid\-sleep\&.target\&。该命令是异步的，混合睡眠操作成功入队后返回
+\&。它不会等待 sleep/wake\-up 循环完成 \&。
+.RE
+.PP
+\fBsuspend\-then\-hibernate\fP
+.RS 4
+挂起系统并在 systemd\-sleep\&.conf\& 中指定的延迟后休眠。这将触发激活特殊目标元
+suspend\-then\-hibernate\&.target\&。该命令是异步的，混合睡眠操作成功入队后返回 \&。它不会等待
+sleep/wake\-up 或 hibernate/thaw 循环完成 \&。
+.RE
+.SS "Parameter Syntax"
+.PP
+上面列出的元命令要么采用单个元名称 (指定为 \fIUNIT\fP)，要么采用多个元规范 (指定为
+\fIPATTERN\fP\&...)\&。在第一种情况下，必须给出带或不带后缀的元名称 \&。如果未指定后缀 (元名称为
+"abbreviated")，systemctl 将，追加，一个合适的后缀，默认为
+"\&.service"，并在仅对特定元类型运行的命令的情况下，追加，一个特定类型的后缀 \&。例如，
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl 启动 sshd
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+and
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl 启动 sshd\&.service
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+是等价的
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl 隔离默认值
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+and
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl 隔离 default\&.target
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+注意，设备节点的 (absolute) 路径自动转为设备元名，其他 (absolute) 路径挂载元名 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 系统状态 /dev/sda
+# systemctl 状态 /home
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+相当于:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 系统状态 dev\-sda\&.device
+# systemctl 状态 home\&.mount
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+在第二种情况下，shell 风格的 glob 将与当前内存中所有单位的主要名称相匹配; 字面量元名称，带或不带后缀，将被视为第一种情况
+\&。这意味着字面量元名称总是指一个元，但 globs 可能匹配零个单位，这不被认为是错误 \&。
+.PP
+通配模式使用 \fBfnmatch\fP(3)，因此使用正常的 shell 风格的通配规则，并且可以使用 "*"、"?"、"[]"\&。有关详细信息，请参见
+\fBglob\fP(7)\&。模式与当前内存中单元的主要名称匹配，不匹配任何内容的模式将被静默跳过 \&。例如:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl 停止 sshd@*\&.service
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+将停止所有 sshd@\&.service 实例 \&。请注意，单元的别名和内存中的单元 \*(Aqt 不考虑进行 glob 扩展 \&。
+.PP
+对于元文件命令，指定的 \fIUNIT\fP 应该是元文件的名称 (可能是缩写，见上文)，或者元文件的绝对路径:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl 启用 foo\&.service
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+or
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl 链接 /path/to/foo\&.service
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-t\fP, \fB\-\-type=\fP
+.RS 4
+参数是以逗号分隔的元类型列表，例如 \fBservice\fP 和 \fBsocket\fP\&。当单元以
+\fBlist\-units\fP、\fBlist\-dependencies\fP、\fBshow\fP 或 \fBstatus\fP 列出时，将仅显示指定类型的单元
+\&。默认情况下，显示所有类型的单位 \&。
+.sp
+作为一种特殊情况，如果其中一个参数是 \fBhelp\fP，将打印允许值列表，程序将退出 \&。
+.RE
+.PP
+\fB\-\-state=\fP
+.RS 4
+参数是以逗号分隔的元 LOAD、SUB 或 ACTIVE 状态 \& 列表。列出带有
+\fBlist\-units\fP、\fBlist\-dependencies\fP、\fBshow\fP 或 \fBstatus\fP 的单元时，仅显示指定状态的单元 \&。使用
+\fB\-\-state=failed\fP 或 \fB\-\-failed\fP 仅显示失败的单元 \&。
+.sp
+作为一种特殊情况，如果其中一个参数是 \fBhelp\fP，将打印允许值列表，程序将退出 \&。
+.RE
+.PP
+\fB\-p\fP, \fB\-\-property=\fP
+.RS 4
+使用 \fBshow\fP 命令显示 unit/job/manager 属性时，将显示限制为在参数 \&
+中指定的属性。参数应该是以逗号分隔的属性名称列表，例如 `MainPID`\&。除非另有说明，否则将显示所有已知属性
+\&。如果多次指定，则显示具有指定名称的所有属性 \&。Shell 完成是为属性名称 \& 实现的。
+.sp
+对于管理器本身，\fBsystemctl\ \&show\fP 将显示所有可用的属性，其中大部分是派生的或与
+\fBsystemd\-system.conf\fP(5)\& 中描述的选项非常匹配。
+.sp
+单位的属性因单位类型而异，因此显示任何单位 (即使是不存在的单位) 也是一种列出属于此类型的属性的方法
+\&。同样，显示任何职位都会列出与所有职位相关的属性 \&。单位的属性记录在 \fBsystemd.unit\fP(5) 中，单个元类型的页面
+\fBsystemd.service\fP(5)、\fBsystemd.socket\fP(5) 等 \&。
+.RE
+.PP
+\fB\-P\fP
+.RS 4
+相当于 \fB\-\-value\fP \fB\-\-property=\fP，i\&.e\&。显示不带属性名称或 `=`\& 的属性值。请注意，使用 \fB\-P\fP
+一次也会影响使用 \fB\-p\fP/\fB\-\-property=\fP\& 列出的所有属性。
+.RE
+.PP
+\fB\-a\fP, \fB\-\-all\fP
+.RS 4
+使用 \fBlist\-units\fP 列出单位时，还显示非活动单位和跟随其他单位 \& 的单位。显示 unit/job/manager
+属性时，显示所有属性，无论是否设置 \&。
+.sp
+要列出文件系统中安装的所有单元，请改用 \fBlist\-unit\-files\fP 命令 \&。
+.sp
+使用 \fBlist\-dependencies\fP 列出单元时，递归显示所有依赖单元的依赖关系 (默认情况下仅显示目标单元的依赖关系) \&。
+.sp
+与 \fBstatus\fP 一起使用时，完整显示日志消息，即使它们包含不可打印的字符或很长 \&。默认情况下，具有不可打印字符的字段缩写为 `blob
+数据`\&。(请注意，寻呼机可能会再次转义不可打印的字符 \&。)
+.RE
+.PP
+\fB\-r\fP, \fB\-\-recursive\fP
+.RS 4
+列出单位时，还显示本地容器的单位 \&。本地容器的单元将以容器名称为前缀，由单个冒号字符 (":")\& 分隔。
+.RE
+.PP
+\fB\-\-reverse\fP
+.RS 4
+使用 \fBlist\-dependencies\fP、i\&.e\& 显示单元之间的反向依赖关系。遵循
+\fIWantedBy=\fP、\fIRequiredBy=\fP、\fIPartOf=\fP、\fIBoundBy=\fP 类型的依赖项，而不是 \fIWants=\fP 和类似的
+\&。
+.RE
+.PP
+\fB\-\-after\fP
+.RS 4
+使用 \fBlist\-dependencies\fP，显示在指定的元 \& 之前排序的单位。换句话说，递归列出遵循 \fIAfter=\fP 依赖项 \& 的单元。
+.sp
+请注意，任何 \fIAfter=\fP 依赖项都会自动镜像以创建 \fIBefore=\fP 依赖项 \&。时间依赖性可以显式指定，但也可以为
+\fIWantedBy=\fP 目标单元隐式创建 (请参见 \fBsystemd.target\fP(5))，并作为其他指令的结果 (例如
+\fIRequiresMountsFor=\fP)\&。显式和隐式引入的依赖性都显示为 \fBlist\-dependencies\fP\&。
+.sp
+当传递给 \fBlist\-jobs\fP 命令时，对于每个打印的作业，显示哪些其他作业正在等待它 \&。可以与 \fB\-\-before\fP
+结合使用以显示等待每个作业的作业以及每个作业正在等待的所有作业 \&。
+.RE
+.PP
+\fB\-\-before\fP
+.RS 4
+使用 \fBlist\-dependencies\fP，显示在指定的元 \& 之后排序的单位。换句话说，递归列出遵循 \fIBefore=\fP 依赖项 \&
+的单元。
+.sp
+当传递给 \fBlist\-jobs\fP 命令时，对于每个打印的作业，显示它正在等待哪些其他作业 \&。可以与 \fB\-\-after\fP
+结合使用以显示等待每个作业的作业以及每个作业正在等待的所有作业 \&。
+.RE
+.PP
+\fB\-\-with\-dependencies\fP
+.RS 4
+当与 \fBstatus\fP、\fBcat\fP、\fBlist\-units\fP 和 \fBlist\-unit\-files\fP
+一起使用时，这些命令打印所有指定的单元和这些单元的依赖性 \&。
+.sp
+选项 \fB\-\-reverse\fP、\fB\-\-after\fP、\fB\-\-before\fP 可用于更改显示的依赖类型 \&。
+.RE
+.PP
+\fB\-l\fP, \fB\-\-full\fP
+.RS 4
+不要在 \fBstatus\fP、\fBlist\-units\fP、\fBlist\-jobs\fP 和 \fBlist\-timers\fP\&
+的输出中省略元名称、进程树条目、日志输出或截断元描述。
+.sp
+此外，在 \fBis\-enabled\fP\& 的输出中显示安装目标。
+.RE
+.PP
+\fB\-\-value\fP
+.RS 4
+用 \fBshow\fP 打印属性时，只打印值，跳过属性名和 `=`\&。另见上面的选项 \fB\-P\fP\&。
+.RE
+.PP
+\fB\-\-show\-types\fP
+.RS 4
+显示套接字时，显示套接字的类型 \&。
+.RE
+.PP
+\fB\-\-job\-mode=\fP
+.RS 4
+排队新作业时，此选项控制如何处理已排队的作业 \&。它采用
+"fail"、"replace"、"replace\-irreversibly"、"isolate"、"ignore\-dependencies"、"ignore\-requirements"、"flush"
+或 `触发`\& 之一。默认为 "replace"，除非使用 \fBisolate\fP 命令，这意味着 "isolate" 作业模式 \&。
+.sp
+如果指定了 "fail" 并且请求的操作与挂起的作业冲突 (更具体地说: 导致已经挂起的启动作业反转为停止作业，反之亦然)，导致操作失败 \&。
+.sp
+如果指定了 "replace" (默认值)，则将根据需要替换任何有冲突的挂起作业 \&。
+.sp
+如果指定了 "replace\-irreversibly"，则像 "replace" 一样操作，但也将新作业标记为不可逆 \&。这可以防止 future
+冲突事务替换这些作业 (甚至在不可逆作业仍在等待时被排队) \&。仍然可以使用 \fBcancel\fP 命令 \&
+取消不可撤销的作业。此作业模式应该用于任何引入 shutdown\&.target\& 的事务。
+.sp
+"isolate" 只对启动操作有效，当指定元启动时，其他所有单元停止 \&。当使用 \fBisolate\fP 命令 \& 时，始终使用此模式。
+.sp
+当新作业入队时，"flush" 将导致所有排队的作业被取消 \&。
+.sp
+如果指定了 "ignore\-dependencies"，那么这个新作业将忽略所有元相关性，并立即执行操作
+\&。如果通过，则不会引入所需的元单位，并且不会接受任何排序依赖项 \&。这主要是管理员的调试和救援工具，不应由应用程序使用 \&。
+.sp
+"ignore\-requirements" 与 "ignore\-dependencies" 类似，但只会导致需求依赖项被忽略，顺序依赖项仍将得到尊重
+\&。
+.PP
+"triggering" 只能与 \fBsystemctl stop\fP\& 一起使用。在此模式下，指定的元和触发它的任何活动单位都将停止
+\&。有关触发单元 \& 的更多信息，请参见 \fBsystemd.unit\fP(5) 中 \fITriggers=\fP 的讨论。
+.RE
+.PP
+\fB\-T\fP, \fB\-\-show\-transaction\fP
+.RS 4
+当排队一个元作业时 (例如作为 \fBsystemctl start\fP
+调用或类似的效果)，显示关于所有排队作业的简要信息，包括请求的作业和由于元依赖性而添加的任何作业
+\&。请注意，输出将仅包括立即属于所请求事务的一部分的作业 \&。服务启动程序代码作为排队作业的效果运行可能会请求将更多作业拉入
+\&。这意味着完成列出的工作可能最终需要比列出的工作更多的工作 \&。
+.RE
+.PP
+\fB\-\-fail\fP
+.RS 4
+\fB\-\-job\-mode=\fPfail\& 的简写。
+.sp
+当与 \fBkill\fP 命令一起使用时，如果没有单位被杀死，该操作将导致错误 \&。
+.RE
+.PP
+\fB\-\-check\-inhibitors=\fP
+.RS 4
+当请求系统关闭或睡眠状态时，此选项控制抑制器锁的检查。它采用 "auto"、"yes" 或 `no`\& 之一。默认为 "auto"，对于交互式调用
+(i\&.e\&. 来自 TTY)，它的行为类似于 "yes"，对于非交互式调用，它的行为类似于 "no"\&。 "yes" 让请求遵守抑制器锁 \&。
+"no" 让请求忽略抑制剂锁 \&。
+.sp
+应用程序可以建立抑制锁，以防止某些重要操作 (如 CD 刻录) 被系统关闭或休眠中断。任何用户都可以使用这些锁，特权用户可以覆盖这些锁
+\&。如果采取任何锁定，关机和睡眠状态请求通常会失败 (除非有特权) \&。但是，如果在非交互式请求上指定了 "no" 或指定了
+"auto"，则将尝试操作 \&。如果存在锁，操作可能需要额外的权限 \&。
+.sp
+选项 \fB\-\-force\fP 提供了另一种覆盖抑制剂 \& 的方法。
+.RE
+.PP
+\fB\-i\fP
+.RS 4
+\fB\-\-check\-inhibitors=no\fP\& 的快捷方式。
+.RE
+.PP
+\fB\-\-dry\-run\fP
+.RS 4
+只需打印将要完成的操作 \&。目前受动词
+\fBhalt\fP、\fBpoweroff\fP、\fBreboot\fP、\fBkexec\fP、\fBsuspend\fP、\fBhibernate\fP、\fBhybrid\-sleep\fP、\fBsuspend\-then\-hibernate\fP、\fBdefault\fP、\fBrescue\fP、\fBemergency\fP
+和 \fBexit\fP\& 支持。
+.RE
+.PP
+\fB\-q\fP, \fB\-\-quiet\fP
+.RS 4
+禁止打印各种命令的结果以及有关截断日志行的提示 \&。这不会抑制打印输出是唯一结果的命令的输出 (如 \fBshow\fP)\&。错误总是打印 \&。
+.RE
+.PP
+\fB\-\-no\-warn\fP
+.RS 4
+Don\*(Aqt 在以下情况下默认生成警告:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+当在 /proc / 上没有安装 procfs 的情况下调用 \fBsystemctl\fP 时，
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在没有安装信息的单元上使用 \fBenable\fP 或 \fBdisable\fP 时 (i\&.e\&.don\*(Aqt have or have an
+empty [Install] section)\&.
+.RE
+.sp
+.RE
+.PP
+\fB\-\-no\-block\fP
+.RS 4
+不要同步等待请求的操作完成 \&。如果未指定，作业将被验证、入队并且 \fBsystemctl\fP 将等待直到元 \*(Aqs 启动完成
+\&。通过传递这个参数，它只被验证和入队 \&。该选项不能与 \fB\-\-wait\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-wait\fP
+.RS 4
+同步等待启动的单元再次终止 \&。该选项不能与 \fB\-\-no\-block\fP\& 结合使用。请注意，如果任何给定的元永远不会终止
+(自行或明确停止)，这将永远等待; 特别是使用 `RemainAfterExit=yes`\& 的服务。
+.sp
+与 \fBis\-system\-running\fP 一起使用时，等待引导过程完成后再返回 \&。
+.RE
+.PP
+\fB\-\-user\fP
+.RS 4
+与调用用户的服务管理器对话，而不是系统的服务管理器 \&。
+.RE
+.PP
+\fB\-\-system\fP
+.RS 4
+与系统的服务经理交谈 \&。这是隐含的默认 \&。
+.RE
+.PP
+\fB\-\-failed\fP
+.RS 4
+列出处于失败状态的单元 \&。这相当于 \fB\-\-state=failed\fP\&。
+.RE
+.PP
+\fB\-\-no\-wall\fP
+.RS 4
+halt、掉电、重启前不要发送 wall message。
+.RE
+.PP
+\fB\-\-global\fP
+.RS 4
+与 \fBenable\fP 和 \fBdisable\fP 一起使用时，对全局用户配置目录进行操作，从而为所有用户的所有 future
+登录全局启用或禁用一个元文件 \&。
+.RE
+.PP
+\fB\-\-no\-reload\fP
+.RS 4
+与 \fBenable\fP 和 \fBdisable\fP 一起使用时，不要在执行更改后隐式重新加载守护程序配置 \&。
+.RE
+.PP
+\fB\-\-no\-ask\-password\fP
+.RS 4
+当与 \fBstart\fP 和相关命令一起使用时，禁用询问密码 \&。后台服务可能需要输入密码或密码字符串，例如解锁系统硬盘或加密证书
+\&。除非指定此选项并从终端调用命令，否则 \fBsystemctl\fP 将向终端上的用户查询必要的机密 \&。使用此选项关闭此行为
+\&。在这种情况下，必须通过其他方式 (例如图形密码代理) 提供密码，否则服务可能会失败 \&。这也禁用查询用户以进行特权操作的身份验证 \&。
+.RE
+.PP
+\fB\-\-kill\-whom=\fP
+.RS 4
+与 \fBkill\fP 一起使用时，选择要向哪些进程发送信号 \&。必须是 \fBmain\fP、\fBcontrol\fP 或 \fBall\fP
+其中之一来选择是只杀死主进程、控制进程还是单元 \& 的所有进程。元的主要过程是定义它的生命周期的过程
+\&。元的控制过程是由管理器调用以引起元元状态变化的过程。例如，所有因服务单元的 \fIExecStartPre=\fP、\fIExecStop=\fP 或
+\fIExecReload=\fP 设置而启动的进程都是控制进程 \&。请注意，每次每元只有一个控制过程，因为一次只执行一个状态更改 \&。对于
+\fIType=forking\fP 类型的服务，\fIExecStart=\fP 的 manager 启动的初始进程是一个控制进程，而最终被它 fork
+掉的进程则被认为是元 (如果可以确定) \& 的主进程。这对于其他类型的服务单元是不同的，其中由管理器为 \fIExecStart=\fP
+分叉的进程始终是主进程本身 \&。一个服务元由零个或一个主进程、零个或一个控制进程以及任意数量的附加进程组成。然而，并非所有元类型都管理这些类型的进程
+\&。例如挂载单元定义了控制进程 (即 /usr/bin/mount 和 /usr/bin/umount 的调用)，但没有定义主进程
+\&。如果省略，则默认为 \fBall\fP\&。
+.RE
+.PP
+\fB\-s\fP, \fB\-\-signal=\fP
+.RS 4
+与 \fBkill\fP 一起使用时，选择要发送给选定进程的信号 \&。必须是众所周知的信号说明符之一，例如 \fBSIGTERM\fP、\fBSIGINT\fP 或
+\fBSIGSTOP\fP\&。如果省略，则默认为 \fBSIGTERM\fP\&。
+.sp
+特殊值 "help" 将列出已知值，程序将立即退出，特殊值 "list" 将列出已知值和数字信号编号，程序将立即退出 \&。
+.RE
+.PP
+\fB\-\-what=\fP
+.RS 4
+选择调用 \fBclean\fP 命令时要删除的单元资源类型，请参见下文 \&。取
+\fBconfiguration\fP、\fBstate\fP、\fBcache\fP、\fBlogs\fP、\fBruntime\fP 其中之一来选择资源类型
+\&。可以多次指定此选项，在这种情况下，所有指定的资源类型都将被删除 \&。还接受特殊值 \fBall\fP 作为指定所有五种资源类型的快捷方式
+\&。如果未指定此选项，则默认为 \fBcache\fP 和 \fBruntime\fP 的组合，i\&.e\&。这两种资源通常被认为是冗余的，可以在下次调用时重建
+\&。
+.RE
+.PP
+\fB\-f\fP, \fB\-\-force\fP
+.RS 4
+与 \fBenable\fP 一起使用时，覆盖任何现有的冲突符号链接 \&。
+.sp
+与 \fBedit\fP 一起使用时，创建所有尚不存在的指定单元 \&。
+.sp
+当与 \fBhalt\fP、\fBpoweroff\fP、\fBreboot\fP 或 \fBkexec\fP 一起使用时，执行选定的操作而不关闭所有单元
+\&。但是，所有进程将被强制终止，所有文件系统将被卸载或重新挂载为只读 \&。因此，这是请求 immediate
+重启的一个极端但相对安全的选择。如果为这些操作指定了两次 \fB\-\-force\fP (\fBkexec\fP)
+除外，它们将立即执行，不会终止任何进程或卸载任何文件系统 \&。警告: 对这些操作中的任何一个指定两次 \fB\-\-force\fP 可能会导致数据丢失
+\&。请注意，当 \fB\-\-force\fP 被指定两次时，所选操作由 \fBsystemctl\fP 本身执行，并且不会联系系统管理器
+\&。这意味着即使系统管理器崩溃 \&，该命令也应该成功。
+.RE
+.PP
+\fB\-\-message=\fP
+.RS 4
+与 \fBhalt\fP、\fBpoweroff\fP 或 \fBreboot\fP 一起使用时，设置一条说明操作原因的短消息 \&。该消息将与默认关闭消息 \&
+一起记录。
+.RE
+.PP
+\fB\-\-now\fP
+.RS 4
+与 \fBenable\fP 一起使用时，单元也将启动 \&。当与 \fBdisable\fP 或 \fBmask\fP 一起使用时，单位也将停止
+\&。启动或停止操作仅在相应的启用或禁用操作成功时执行 \&。
+.RE
+.PP
+\fB\-\-root=\fP
+.RS 4
+与 \fBenable\fP/\fBdisable\fP/\fBis\-enabled\fP (及相关命令) 一起使用时，在查找元文件时使用指定的根路径
+\&。如果存在此选项，\fBsystemctl\fP 将直接在文件系统上操作，而不是与 \fBsystemd\fP 守护程序通信以执行更改 \&。
+.RE
+.PP
+\fB\-\-image=\fP\fIimage\fP
+.RS 4
+采用磁盘映像文件或块设备节点的路径 \&。如果指定，所有操作都将应用于指定磁盘映像中的文件系统 \&。该选项与 \fB\-\-root=\fP
+类似，但对存储在磁盘映像或块设备 \& 中的文件系统进行操作。磁盘映像应该在 GPT 分区表中仅包含一个文件系统或一组文件系统，紧跟在
+\m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2\&
+之后。有关支持的磁盘映像的更多信息，请参见同名的 \fBsystemd\-nspawn\fP(1)\*(Aqs 开关 \&。
+.RE
+.PP
+\fB\-\-runtime\fP
+.RS 4
+当与 \fBenable\fP、\fBdisable\fP、\fBedit\fP (和相关命令) 一起使用时，仅临时进行更改，以便在下次重新启动时丢失
+\&。这将导致更改不是在 /etc / 的子目录中进行，而是在 /run / 中进行，具有相同的 immediate
+效果，但是，由于后者在重新启动时丢失，因此更改也会丢失 \&。
+.sp
+类似地，当与 \fBset\-property\fP 一起使用时，只是暂时进行更改，以便在下次重新启动时它们会丢失 \&。
+.RE
+.PP
+\fB\-\-preset\-mode=\fP
+.RS 4
+采用 "full" (默认)、"enable\-only"、`仅禁用`\& 之一。与 \fBpreset\fP 或 \fBpreset\-all\fP
+命令一起使用时，控制单元是根据预设规则禁用和启用，还是仅启用，或仅禁用 \&。
+.RE
+.PP
+\fB\-n\fP, \fB\-\-lines=\fP
+.RS 4
+与 \fBstatus\fP 一起使用时，控制要显示的日志行数，从最近的行开始计算 \&。采用正整数参数，或 0 以禁用日志输出 \&。默认为 10\&。
+.RE
+.PP
+\fB\-o\fP, \fB\-\-output=\fP
+.RS 4
+与 \fBstatus\fP 一起使用时，控制显示的日记帐条目的格式 \&。有关可用选项，请参见 \fBjournalctl\fP(1)\&。默认为 `短`\&。
+.RE
+.PP
+\fB\-\-firmware\-setup\fP
+.RS 4
+与 \fBreboot\fP 命令一起使用时，指示系统 \*(Aqs 固件重启进入固件设置界面 \&。请注意，此功能并非在所有系统上都可用 \&。
+.RE
+.PP
+\fB\-\-boot\-loader\-menu=\fP\fItimeout\fP
+.RS 4
+当与 \fBreboot\fP 命令一起使用时，向系统指示 \*(Aqs 引导加载程序以在随后的引导中显示引导加载程序菜单 \&。取一个时间值作为参数
+\(em 表示菜单超时 \&。传递零以禁用菜单超时 \&。请注意，并非所有引导加载程序都支持此功能 \&。
+.RE
+.PP
+\fB\-\-boot\-loader\-entry=\fP\fIID\fP
+.RS 4
+当与 \fBreboot\fP 命令一起使用时，指示系统 \*(Aqs 引导加载程序在随后的引导中引导到特定的引导加载程序条目
+\&。将引导加载程序条目标识符作为参数或 "help" 以列出可用条目 \&。请注意，并非所有引导加载程序都支持此功能 \&。
+.RE
+.PP
+\fB\-\-reboot\-argument=\fP
+.RS 4
+该开关与 \fBreboot\fP\& 一起使用。该值是特定于体系结构和固件的 \&。例如，"recovery" 可能用于触发系统恢复，而 "fota"
+可能用于触发 \(lqfirmware over the air\(rq update\&。
+.RE
+.PP
+\fB\-\-plain\fP
+.RS 4
+当与 \fBlist\-dependencies\fP、\fBlist\-units\fP 或 \fBlist\-machines\fP
+一起使用时，输出打印为列表而不是树，并且省略圆圈 \&。
+.RE
+.PP
+\fB\-\-timestamp=\fP
+.RS 4
+更改打印时间戳的格式 \&。可以使用以下值:
+.PP
+\fBpretty\fP (这是默认值)
+.RS 4
+"日 YYYY\-MM\-DD HH:MM:SS TZ"
+.RE
+.PP
+\fBunix\fP
+.RS 4
+"@seconds\-since\-the\-epoch"
+.RE
+.PP
+\fBus\fP, \fB\(mcs\fP
+.RS 4
+"日 YYYY\-MM\-DD HH:MM:SS\&.UUUUUU TZ"
+.RE
+.PP
+\fButc\fP
+.RS 4
+"日 YYYY\-MM\-DD HH:MM:SS UTC"
+.RE
+.PP
+\fBus+utc\fP, \fB\(mcs+utc\fP
+.RS 4
+"日期 YYYY\-MM\-DD HH:MM:SS\&.UUUUUU UTC"
+.RE
+.RE
+.PP
+\fB\-\-mkdir\fP
+.RS 4
+与 \fBbind\fP 一起使用时，在应用绑定挂载 \&
+之前创建目标文件或目录。请注意，尽管此选项的名称表明它仅适用于目录，但如果要挂载的对象不是目录，而是常规文件、设备节点、套接字或
+FIFO，则此选项还会创建要挂载的目标文件节点 \&。
+.RE
+.PP
+\fB\-\-marked\fP
+.RS 4
+只允许与 \fBreload\-or\-restart\fP\& 一起使用。为所有带有 "needs\-restart" 标记的单元重新启动作业，并为带有
+"needs\-reload" 标记 \& 的单元重新加载作业。当标记为重载的元不支持重载时，重启将排队 \&。可以使用 \fBset\-property Markers=\&...\fP\& 设置这些属性。
+.sp
+除非使用 \fB\-\-no\-block\fP，否则 \fBsystemctl\fP 将等待排队的作业完成 \&。
+.RE
+.PP
+\fB\-\-read\-only\fP
+.RS 4
+与 \fBbind\fP 一起使用时，创建只读绑定挂载 \&。
+.RE
+.PP
+\fB\-\-drop\-in=\fP
+.RS 4
+当与 \fBedit\fP 一起使用时，使用给定的丢弃 \- in 文件名而不是 override\&.conf\&。
+.RE
+.PP
+\fB\-H\fP, \fB\-\-host=\fP
+.RS 4
+远程执行操作 \&。指定主机名，或用 "@" 分隔的用户名和主机名，以连接到 \&。主机名可以选择以 ssh 正在侦听的端口为后缀，由 ":"
+分隔，然后是容器名称，由 "/" 分隔，它直接连接到指定主机上的特定容器 \&。这将使用 SSH 与远程机器管理器实例对话。容器名称可以用
+\fBmachinectl \-H \fP\fIHOST\fP\& 枚举。将 IPv6 地址放在括号 \& 中。
+.RE
+.PP
+\fB\-M\fP, \fB\-\-machine=\fP
+.RS 4
+在本地容器上执行操作 \&。指定要连接的容器名称，可以选择以要连接的用户名和分隔符 "@"\& 作为前缀。如果使用特殊字符串 "\&.host"
+代替容器名称，则会建立到本地系统的连接 (这对于连接到特定用户 \* (Aqs 用户总，字符串: "\-\-user
+\-\-machine=lennart@\&.host") \& 很有用。如果不使用 "@" 语法，则以 root 用户身份建立连接 \&。如果使用 "@"
+语法，则可以省略左侧或右侧 (但不能同时省略两者)，在这种情况下，隐含本地用户名和 "\&.host"\&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-\-legend=\fP\fIBOOL\fP
+.RS 4
+启用或禁用图例 i\&.e\& 的打印。带有提示的列标题和页脚 \&。默认打印图例，除非使用 \fB\-\-quiet\fP 或类似的 \& 禁用。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.PP
+\fBsystemctl\fP 使用由 LSB 定义的返回代码，如 \m[blue]\fBLSB 3\&.0\&.0\fP\m[]\&\s-2\u[2]\d\s+2\& 中所定义。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&3.\ \&LSB return codes\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Value
+T}:T{
+Description in LSB
+T}:T{
+Use in systemd
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+\fB0\fP
+T}:T{
+"program is running or service is OK"
+T}:T{
+unit is active
+T}
+T{
+\fB1\fP
+T}:T{
+"program is dead and /var/run pid file exists"
+T}:T{
+unit \fInot\fP failed (used by \fBis\-failed\fP)
+T}
+T{
+\fB2\fP
+T}:T{
+"program is dead and /var/lock lock file exists"
+T}:T{
+unused
+T}
+T{
+\fB3\fP
+T}:T{
+"program is not running"
+T}:T{
+unit is not active
+T}
+T{
+\fB4\fP
+T}:T{
+"program or service status is unknown"
+T}:T{
+no such unit
+T}
+.TE
+.sp 1
+.PP
+LSB 服务状态到 systemd 元状态的映射是不完善的，因此最好不要依赖那些返回值，而是寻找特定的元状态和子状态 \&。
+.SH ENVIRONMENT
+.PP
+\fI$SYSTEMD_EDITOR\fP
+.RS 4
+编辑单元时使用的编辑器; 覆盖 \fI$EDITOR\fP 和 \fI$VISUAL\fP\&。如果 \fI$SYSTEMD_EDITOR\fP、\fI$EDITOR\fP 和
+\fI$VISUAL\fP 都不存在，或者它被设置为空字符串，或者它们执行失败，systemctl 将尝试按以下顺序执行众所周知的编辑器:
+\fBeditor\fP(1)、\fBnano\fP(1)、\fBvim\fP(1)、\fBvi\fP(1)\&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_LEVEL\fP
+.RS 4
+发出消息的最大日志级别 (具有更高日志级别的消息，i\&.e\&。不太重要的消息将被抑制)
+\&。\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP 之一
+(按重要性递减顺序) 或 0\&...7\& 范围内的整数。有关详细信息，请参见 \fBsyslog\fP(3)\&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_COLOR\fP
+.RS 4
+一个布尔值 \&。如果为真，写入 tty 的消息将根据优先级着色。
+.sp
+这个设置只在消息直接写入终端时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会自行根据日志级别给消息着色 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TIME\fP
+.RS 4
+一个布尔值 \&。如果为 true，控制台日志消息将以时间戳 \& 为前缀。
+.sp
+这个设置只在消息直接写入终端或文件时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会根据条目元数据自行附加时间戳 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_LOCATION\fP
+.RS 4
+一个布尔值 \&。如果为 true，消息将在源代码中以文件名和行号为前缀 \&。
+.sp
+请注意，日志位置通常作为元数据附加到日志条目中。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TARGET\fP
+.RS 4
+日志消息的目的地 \&。\fBconsole\fP (记录到附加的 tty)、\fBconsole\-prefixed\fP (记录到附加的
+tty，但带有编码日志级别和 "facility" 的前缀，参见 \fBsyslog\fP(3)、\fBkmsg\fP
+(记录到内核循环日志缓冲区)、\fBjournal\fP (记录到日志) 之一，\fBjournal\-or\-kmsg\fP (如果可用则记录到日志，否则记录到
+kmsg)，\fBauto\fP (自动确定适当的日志目标，默认)，\fBnull\fP (禁用日志输出) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGER\fP
+.RS 4
+未给出 \fB\-\-no\-pager\fP 时使用的寻呼机; 覆盖 \fI$PAGER\fP\&。如果 \fI$SYSTEMD_PAGER\fP 和 \fI$PAGER\fP
+都没有设置，则依次尝试一组众所周知的寻呼机实现，包括 \fBless\fP(1) 和 \fBmore\fP(1)，直到找到一个
+\&。如果没有发现寻呼机实现，则不调用寻呼机 \&。将此环境变量设置为空字符串或值 "cat" 等同于传递 \fB\-\-no\-pager\fP\&。
+.sp
+Note: 如果未设置 \fI$SYSTEMD_PAGERSECURE\fP，\fI$SYSTEMD_PAGER\fP (以及 \fI$PAGER\fP) 将被忽略
+\&。
+.RE
+.PP
+\fI$SYSTEMD_LESS\fP
+.RS 4
+覆盖传递给 \fBless\fP (默认 "FRSXMK") \& 的选项。
+.sp
+用户可能希望特别更改两个选项:
+.PP
+\fBK\fP
+.RS 4
+此选项指示寻呼机在按下 Ctrl+C 时立即退出 \&。要允许 \fBless\fP 自己处理 Ctrl+C 以切换回寻呼机命令提示符，请取消设置此选项
+\&。
+.sp
+如果 \fI$SYSTEMD_LESS\fP 的值不包括 "K"，调用的分页器是 \fBless\fP，Ctrl+C 会被可执行文件忽略，需要分页器处理 \&。
+.RE
+.PP
+\fBX\fP
+.RS 4
+此选项指示寻呼机不将 termcap 初始化和取消初始化字符串发送到终端 \&。它默认设置为允许命令输出在终端中保持可见，即使在寻呼机退出 \&
+之后也是如此。然而，这会阻止某些寻呼机功能工作，特别是无法使用鼠标滚动分页输出。
+.RE
+.sp
+有关更多讨论，请参见 \fBless\fP(1)\&。
+.RE
+.PP
+\fI$SYSTEMD_LESSCHARSET\fP
+.RS 4
+覆盖传递给 \fBless\fP 的字符集 (默认为 "utf\-8"，如果调用终端被确定为与 UTF\-8 兼容) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGERSECURE\fP
+.RS 4
+采用布尔型参数 \&。为真时，启用寻呼机的 "secure" 模式; 如果为假，则禁用 \&。如果根本未设置
+\fI$SYSTEMD_PAGERSECURE\fP，则在有效 UID 与登录会话的所有者不同时启用安全模式，请参见 \fBgeteuid\fP(2) 和
+\fBsd_pid_get_owner_uid\fP(3)\&。在安全模式下，调用寻呼机时将设置
+\fBLESSSECURE=1\fP，寻呼机应禁用打开或创建新文件或启动新子进程的命令 \&。当根本没有设置 \fI$SYSTEMD_PAGERSECURE\fP
+时，将不会使用未知实现安全模式的寻呼机 \&。(目前只有 \fBless\fP(1) 实现了安全模式 \&。)
+.sp
+Note: 当以提升的权限调用命令时，例如在 \fBsudo\fP(8) 或 \fBpkexec\fP(1) 下，必须小心确保未启用意外的交互，特性 \&。寻呼机的
+"Secure" 模式可以如上所述自动启用 \&。设置 \fISYSTEMD_PAGERSECURE=0\fP 或不将其从继承环境中删除允许用户调用任意命令
+\&。请注意，如果要兑现 \fI$SYSTEMD_PAGER\fP 或 \fI$PAGER\fP 变量，则必须同时设置
+\fI$SYSTEMD_PAGERSECURE\fP\&。改为使用 \fB\-\-no\-pager\fP\& 完全禁用寻呼机可能是合理的。
+.RE
+.PP
+\fI$SYSTEMD_COLORS\fP
+.RS 4
+采用布尔型参数 \&。当为真时，\fBsystemd\fP 和相关的实用工具将在其输出中使用颜色，否则输出将为单色 \&。此外，该变量可以采用以下特殊值之一:
+"16"、"256"，分别将颜色的使用限制为基本 16 或 256 ANSI 颜色 \&。这可以被指定以覆盖基于 \fI$TERM\fP
+和控制台连接到什么的自动决定 \&。
+.RE
+.PP
+\fI$SYSTEMD_URLIFY\fP
+.RS 4
+该值必须是布尔值 \&。控制是否应在支持此 \& 的终端模拟器的输出中生成可点击链接。这可以被指定来覆盖 \fBsystemd\fP 基于 \fI$TERM\fP
+和其他条件做出的决定 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBjournalctl\fP(1), \fBloginctl\fP(1), \fBmachinectl\fP(1),
+\fBsystemd.unit\fP(5), \fBsystemd.resource\-control\fP(5), \fBsystemd.special\fP(7),
+\fBwall\fP(1), \fBsystemd.preset\fP(5), \fBsystemd.generator\fP(7), \fBglob\fP(7)
+.SH NOTES
+.IP " 1." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.IP " 2." 4
+最低位 3.0.0
+.RS 4
+\%http://refspecs.linuxbase.org/LSB_3.0.0/LSB\-PDA/LSB\-PDA/iniscrptact.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

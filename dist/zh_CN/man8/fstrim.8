@@ -1,0 +1,182 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: fstrim
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH FSTRIM 8 2022\-05\-11 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+fstrim \- 丢弃已挂载文件系统上未使用的块
+.SH SYNOPSIS
+.sp
+\fBfstrim\fP [\fB\-Aa\fP] [\fB\-o\fP \fIoffset\fP] [\fB\-l\fP \fIlength\fP] [\fB\-m\fP
+\fIminimum\-size\fP] [\fB\-v\fP \fImountpoint\fP]
+.SH DESCRIPTION
+.sp
+\fBfstrim\fP 在挂载的文件系统上用于丢弃 (或 "trim") 文件系统未使用的块。这对于固态驱动器 (SSDs) 和精简配置存储非常有用。
+.sp
+默认情况下，\fBfstrim\fP 将丢弃文件系统中所有未使用的块。选项可用于根据范围或大小修改此行为，如下所述。
+.sp
+\fImountpoint\fP 参数是安装文件系统的目录的路径名。
+.sp
+频繁运行 \fBfstrim\fP，甚至使用 \fBmount \-o discard\fP，可能会对劣质 SSD
+设备的生命周期产生负面影响。对于大多数桌面和服务器系统，足够的修剪频率是每周一次。请注意，并非所有设备都支持排队修剪，因此每个修剪命令都会对当时可能尝试使用磁盘的任何其他设备造成性能损失。
+.SH OPTIONS
+.sp
+\fIoffset\fP、\fIlength\fP 和 \fIminimum\-size\fP 参数后面可以跟乘法后缀 KiB (=1024)、MiB
+(=1024*1024) 等，用于 GiB、TiB、PiB、EiB、ZiB 和 YiB ("iB" 是可选的，例如，"K" 的含义与 "KiB") 或
+GB、TB、PB、EB、ZB 和 YB 的后缀 KB (=1000)、MB (=1000*1000) 等。
+.sp
+\fB\-A, \-\-fstab\fP
+.RS 4
+在支持丢弃操作的设备上修剪 \fI/etc/fstab\fP 中提到的所有已安装文件系统。如果文件中缺少根文件系统，则从内核命令行确定。其他提供的选项，如
+\fB\-\-offset\fP、\fB\-\-length\fP 和 \fB\-\-minimum\fP，适用于所有这些设备。来自不支持丢弃操作的文件系统、只读设备、autofs
+和只读文件系统的错误将被静默忽略。跳过带有 "X\-fstrim.notrim" 挂载选项的文件系统。
+.RE
+.sp
+\fB\-a, \-\-all\fP
+.RS 4
+修剪支持丢弃操作的设备上所有已安装的文件系统。其他提供的选项，如 \fB\-\-offset\fP、\fB\-\-length\fP 和
+\fB\-\-minimum\fP，适用于所有这些设备。来自不支持丢弃操作的文件系统、只读设备和只读文件系统的错误将被静默忽略。
+.RE
+.sp
+\fB\-n, \-\-dry\-run\fP
+.RS 4
+除了实际调用 \fBFITRIM\fP ioctl 之外，此选项会执行所有操作。
+.RE
+.sp
+\fB\-o, \-\-offset\fP \fIoffset\fP
+.RS 4
+文件系统中的字节偏移量，从中开始搜索要丢弃的空闲块。默认值为零，从文件系统的开头开始。
+.RE
+.sp
+\fB\-l, \-\-length\fP \fIlength\fP
+.RS 4
+搜索要丢弃的空闲块的字节数 (在起点之后)。如果指定的值超出文件系统的末尾，\fBfstrim\fP 将在文件系统大小边界处停止。默认值扩展到文件系统的末尾。
+.RE
+.sp
+\fB\-I, \-\-listed\-in\fP \fIlist\fP
+.RS 4
+以 fstab 或内核 mountinfo 格式指定以冒号分隔的文件列表。所有缺失或空文件都将被忽略。\fIlist\fP
+的评估在第一个非空文件后停止。例如:
+.sp
+\fB\-\-listed\-in /etc/fstab:/proc/self/mountinfo\fP.
+.sp
+跳过 fstab 中带有 "X\-fstrim.notrim" 挂载选项的文件系统。
+.RE
+.sp
+\fB\-m, \-\-minimum\fP \fIminimum\-size\fP
+.RS 4
+要丢弃的最小连续自由范围，以字节为单位。(此值在内部向上舍入为文件系统块大小的倍数。) 小于此值的自由范围将被忽略，并且 \fBfstrim\fP
+将调整最小值，如果它 \(cqs 小于设备 \(cqs 最小值，并报告 (fstrim_range.minlen)
+返回到用户空间。通过增加此值，\fBfstrim\fP 操作对于自由空间碎片严重的文件系统将更快地完成，尽管并非所有块都将被丢弃。默认值为零，丢弃每个空闲块。
+.RE
+.sp
+\fB\-v, \-\-verbose\fP
+.RS 4
+详细执行。使用此选项，\fBfstrim\fP 将输出从文件系统向下传递到块栈的字节数到设备以供潜在丢弃。这个数字是存储设备的最大丢弃量 \(cqs
+角度，因为重复调用的 \fIFITRIM\fP ioctl 将不断发送相同的扇区以进行丢弃。
+.sp
+\fBfstrim\fP 每次都会报告相同的潜在丢弃字节，但实际上只有在丢弃之间写入的扇区才会被存储设备丢弃。此外，内核块层保留调整丢弃范围以适应 raid
+条带几何形状、LVM 设置中不支持 trim 的设备等的权利。这些减少不会反映在 fstrim_range.len (\fB\-\-length\fP 选项)
+中。
+.RE
+.sp
+\fB\-\-quiet\-unsupported\fP
+.RS 4
+如果不支持修剪操作 (ioctl)，则抑制错误消息。此选项旨在用于 \fBsystemd\fP 服务文件或 \fBcron\fP(8)
+脚本以隐藏已知问题导致的警告，例如当设备以只读方式安装时 NTFS 驱动程序报告 \fIBad file descriptor\fP，或缺少对 ioctl
+\fIFITRIM\fP 调用的文件系统支持。当在 \fBfstrim\fP 命令行上指定不支持的文件系统时，此选项还会清除退出状态。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH "EXIT STATUS"
+.sp
+0
+.RS 4
+success
+.RE
+.sp
+1
+.RS 4
+failure
+.RE
+.sp
+32
+.RS 4
+都失败了
+.RE
+.sp
+64
+.RS 4
+一些文件系统丢弃成功，一些失败
+.RE
+.sp
+命令 \fBfstrim \-\-all\fP 返回 0 (全部成功)、32 (全部失败) 或 64 (部分失败，部分成功)。
+.SH AUTHORS
+.sp
+.MTO lczerner\(atredhat.com "Lukas Czerner" ,
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBblkdiscard\fP(8), \fBmount\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBfstrim\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

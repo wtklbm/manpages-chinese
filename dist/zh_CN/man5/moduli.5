@@ -1,0 +1,135 @@
+.\" -*- coding: UTF-8 -*-
+.\"	$OpenBSD: moduli.5,v 1.19 2022/04/16 04:30:10 dtucker Exp $
+.\"
+.\" Copyright (c) 2008 Damien Miller <djm@mindrot.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: April 16 2022 $
+.Dt MODULI 5
+.Os
+.Sh NAME
+.Nm moduli
+.Nd Diffie-Hellman moduli
+.Sh DESCRIPTION
+.Pa /etc/ssh/moduli
+文件包含素数和生成器，供
+.Xr sshd 8
+在 Diffie-Hellman Group
+Exchange 密钥交换方法中使用。
+.Pp
+.Xr ssh-keygen 1
+可以使用两步过程生成新模数。 使用
+.Ic ssh-keygen -M generate
+的初始
+.Em candidate generation
+通过计算可能有用的数字。 使用
+.Ic ssh-keygen -M screen
+的第二个
+.Em primality testing
+传递高度保证数字是质数，并且
+.Xr sshd 8
+可以安全地用于 Diffie-Hellman
+操作。 此
+.Nm
+格式用作每次传递的输出。
+.Pp
+该文件由换行符分隔的记录组成，每个模数一个，包含七个空格分隔的字段。 这些字段如下:
+.Bl -tag -width Description -offset indent
+.It timestamp
+上次处理模数的时间为 YYYYMMDDHHMMSS。
+.It type
+指定素数模数的内部结构体的十进制数。 支持的类型有:
+.Pp
+.Bl -tag -width 0x00 -compact
+.It 0
+未知，未测试。
+.It 2
+"Safe" 素数; (p-1)/2 也是素数。
+.It 4
+苏菲杰曼; 2p+1 也是质数。
+.El
+.Pp
+最初由
+.Xr ssh-keygen 1
+产生的模数候选是 Sophie Germain 素数 (类型 4)。
+.Xr ssh-keygen 1
+的进一步素数测试产生安全的素数模数 (类型 2)，可以在
+.Xr sshd 8
+中使用。 OpenSSH 不使用其他类型。
+.It tests
+十进制数，表示该数字已经过的素数测试类型，表示为以下值的位掩码:
+.Pp
+.Bl -tag -width 0x00 -compact
+.It 0x00
+未经测试。
+.It 0x01
+合数 \(en 不是质数。
+.It 0x02
+埃拉托色尼筛法。
+.It 0x04
+概率 Miller-Rabin 素性测试。
+.El
+.Pp
+.Xr ssh-keygen 1
+模数候选生成使用埃拉托色尼筛法 (标志 0x02)。 随后的
+.Xr ssh-keygen 1
+素数测试是
+Miller-Rabin 测试 (标记 0x04)。
+.It trials
+表示已对模数执行的素数试验次数的十进制数。
+.It size
+指示素数大小的十进制数 (以位为单位)。
+.It generator
+推荐用于此模数 (hexadecimal) 的生成器。
+.It modulus
+模数本身是十六进制的。
+.El
+.Pp
+在执行 Diffie-Hellman Group Exchange 时，
+.Xr sshd 8
+首先估计产生足够的 Diffie-Hellman
+输出以充分加密所选对称密码所需的模数的大小。 然后
+.Xr sshd 8
+从
+.Fa /etc/ssh/moduli
+中随机选择一个最符合尺寸要求的模数。
+.Sh SEE ALSO
+.Xr ssh-keygen 1 ,
+.Xr sshd 8
+.Sh STANDARDS
+.Rs
+.%A M. Friedl
+.%A N. Provos
+.%A W. Simpson
+.%D March 2006
+.%R RFC 4419
+.%T Diffie-Hellman Group Exchange for the Secure Shell (SSH) Transport Layer Protocol
+.Re
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

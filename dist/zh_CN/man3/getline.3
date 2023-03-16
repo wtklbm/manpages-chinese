@@ -1,0 +1,141 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2001 John Levon <moz@compsoc.man.ac.uk>
+.\" Based in part on GNU libc documentation
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getline 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getline, getdelim \- 带分隔符的字符串输入
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBssize_t getline(char **restrict \fP\fIlineptr\fP\fB, size_t *restrict \fP\fIn\fP\fB,\fP
+\fB                FILE *restrict \fP\fIstream\fP\fB);\fP
+\fBssize_t getdelim(char **restrict \fP\fIlineptr\fP\fB, size_t *restrict \fP\fIn\fP\fB,\fP
+\fB                int \fP\fIdelim\fP\fB, FILE *restrict \fP\fIstream\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetline\fP(), \fBgetdelim\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetline\fP() 从 \fIstream\fP 读取整行，将包含文本的缓冲区地址存储到 \fI*lineptr\fP。 缓冲区以 null 结尾并包含换行符
+(如果找到的话)。
+.PP
+如果 \fI*lineptr\fP 在调用前设置为 NULL，则 \fBgetline\fP() 将分配一个缓冲区用于存储该行。 即使 \fBgetline\fP()
+失败，该缓冲区也应由用户程序释放。
+.PP
+或者，在调用 \fBgetline\fP() 之前，\fI*lineptr\fP 可以包含一个指向 \fBmalloc\fP(3)\-allocated 缓冲区 \fI*n\fP
+字节大小的指针。 如果缓冲区不够大，无法容纳该行，则 \fBgetline\fP() 会用 \fBrealloc\fP(3) 调整它的大小，并根据需要更新
+\fI*lineptr\fP 和 \fI*n\fP。
+.PP
+在任何一种情况下，在成功调用时，\fI*lineptr\fP 和 \fI*n\fP 将被更新以分别反映缓冲区地址和分配的大小。
+.PP
+\fBgetdelim\fP() 的工作方式与 \fBgetline\fP() 类似，除了换行符以外的行定界符可以指定为 \fIdelimiter\fP 参数。 与
+\fBgetline\fP() 一样，如果在到达文件末尾之前输入中不存在定界符，则不会添加定界符。
+.SH "RETURN VALUE"
+成功时，\fBgetline\fP() 和 \fBgetdelim\fP() 返回读取的字符数，包括分隔符，但不包括终止空字节 (\[aq]\e0\[aq])。
+该值可用于处理读取的行中嵌入的空字节。
+.PP
+两个函数都在读取一行失败时返回 \-1 (包括文件结束条件)。 如果发生故障，\fIerrno\fP 将设置为指示错误。
+.PP
+如果 \fI*lineptr\fP 在调用之前设置为 NULL，那么即使在失败时用户程序也应该释放缓冲区。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+错误参数 (\fIn\fP 或 \fIlineptr\fP 为 NULL，或 \fIstream\fP 无效)。
+.TP 
+\fBENOMEM\fP
+行缓冲区的分配或重新分配失败。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetline\fP(),
+\fBgetdelim\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBgetline\fP() 和 \fBgetdelim\fP() 最初都是 GNU 的扩展。 它们在 POSIX.1\-2008 中被标准化。
+.SH EXAMPLES
+.\" SRC BEGIN (getline.c)
+.EX
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    FILE *stream;
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <file>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    stream = fopen(argv[1], "r");
+    if (stream == NULL) {
+        perror("fopen");
+        exit(EXIT_FAILURE);
+    }
+
+    while ((nread = getline(&line, &len, stream)) != \-1) {
+        printf("Retrieved line of length %zd:\en", nread);
+        fwrite(line, nread, 1, stdout);
+    }
+
+    free(line);
+    fclose(stream);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBread\fP(2), \fBfgets\fP(3), \fBfopen\fP(3), \fBfread\fP(3), \fBscanf\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

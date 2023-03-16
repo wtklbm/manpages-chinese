@@ -1,0 +1,192 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (C) 1999 Matthew Wilcox <willy@bofh.ai>.
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" Modified June 1999 Andi Kleen
+.\" $Id: arp.7,v 1.10 2000/04/27 19:31:38 ak Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH arp 7 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+arp\-Linux ARP 内核模块。
+.SH DESCRIPTION
+该内核协议模块实现了 RFC\826 中定义的地址解析协议。 它用于在直接连接的网络上在 Layer2 硬件地址和 IPv4 协议地址之间进行转换。
+用户通常不直接与该模块交互，除非对其进行配置; 相反，它为内核中的其他协议提供服务。
+.PP
+用户进程可以使用 \fBpacket\fP(7) 套接字接收 ARP 数据包。 还有一种机制可以通过使用 \fBnetlink\fP(7) 套接字来管理用户空间中的
+ARP 缓存。 ARP 表也可以通过任何 \fBAF_INET\fP 套接字上的 \fBioctl\fP(2) 进行控制。
+.PP
+ARP 模块维护硬件地址和协议地址之间映射的缓存。 缓存的大小有限，因此旧的和不常用的条目将被垃圾收集。 标记为永久的条目永远不会被垃圾收集器删除。
+缓存可以通过使用 ioctls 直接操作，其行为可以通过下面描述的 \fI/proc\fP 接口进行调整。
+.PP
+当一段时间后没有对现有映射的正面反馈 (请参见下面的 \fI/proc\fP 接口) 时，邻居缓存条目被认为是陈旧的。 可以从更高层得到积极的反馈;
+例如来自成功的 TCP ACK。 其他协议可以使用 \fBMSG_CONFIRM\fP 标志向 \fBsendmsg\fP(2) 发出转发进度信号。
+当没有前进的进展时，ARP 尝试重新探测。 它首先尝试向本地 arp 守护程序 \fBapp_solicit\fP 次请求更新的 MAC 地址。
+如果失败并且已知旧的 MAC 地址，则会发送 \fBucast_solicit\fP 次单播探测。 如果同样失败，它将向网络广播一个新的 ARP 请求。
+仅当有数据排队等待发送时才发送请求。
+.PP
+当 Linux 收到对它转发到的地址的请求并且在接收接口上启用了代理 arp 时，它会自动添加一个非永久代理 arp 条目。
+当目标有拒绝路由时，不添加代理 arp 条目。
+.SS Ioctls
+所有 \fBAF_INET\fP 套接字都提供三个 ioctl。 他们将指向 \fIstruct arpreq\fP 的指针作为他们的参数。
+.PP
+.in +4n
+.EX
+struct arpreq {
+    struct sockaddr arp_pa;      /* protocol address */
+    struct sockaddr arp_ha;      /* hardware address */
+    int             arp_flags;   /* flags */
+    struct sockaddr arp_netmask; /* netmask of protocol address */
+    char            arp_dev[16];
+};
+.EE
+.in
+.PP
+\fBSIOCSARP\fP、\fBSIOCDARP\fP、\fBSIOCGARP\fP 分别设置、删除、获取 ARP 映射。 设置和删除 ARP maps
+是特权操作，只能由具有 \fBCAP_NET_ADMIN\fP 能力或有效 UID 的进程执行 0.
+.PP
+\fIarp_pa\fP 必须是 \fBAF_INET\fP 地址，\fIarp_ha\fP 必须与 \fIarp_dev\fP 中指定的设备具有相同的类型。
+\fIarp_dev\fP 是一个以零结尾的字符串，用于命名设备。
+.RS
+.TS
+tab(:) allbox;
+c s
+l l.
+\fIarp_flags\fP
+flag:meaning
+ATF_COM:Lookup complete
+ATF_PERM:Permanent entry
+ATF_PUBL:Publish entry
+ATF_USETRAILERS:Trailers requested
+ATF_NETMASK:Use a netmask
+ATF_DONTPUB:Don't answer
+.TE
+.RE
+.PP
+如果设置了 \fBATF_NETMASK\fP 标志，则 \fIarp_netmask\fP 应该有效。 Linux 2.2 不支持代理网络 ARP
+条目，因此应将其设置为 0xffffffff，或 0 以删除现有的代理 arp 条目。 \fBATF_USETRAILERS\fP 已过时，不应使用。
+.SS "/proc interfaces"
+ARP 支持一系列 \fI/proc\fP 接口，以在全局或每个接口的基础上配置参数。 可以通过读取或写入
+\fI/proc/sys/net/ipv4/neigh/*/*\fP 文件来访问这些接口。 系统中的每个接口在
+\fI/proc/sys/net/ipv4/neigh/\fP 中都有自己的目录。 "default" 目录中的设置用于所有新创建的设备。
+除非另有说明，否则与时间相关的接口以秒为单位指定。
+.TP 
+\fIanycast_delay\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+在回复 IPv6 邻居请求消息之前延迟的最大 jiffies 数。 Anycast 支持尚未实现。 默认为 1 秒。
+.TP 
+\fIapp_solicit\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+在丢弃回多播探测之前通过 netlink 发送到用户空间 ARP 守护进程的最大探测数 (参见 \fImcast_solicit\fP).  默认为 0.
+.TP 
+\fIbase_reachable_time\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+一旦找到邻居，条目就被认为至少对 \fIbase_reachable_time\fP/2 和 3*\fIbase_reachable_time\fP/2
+之间的随机值有效。如果条目收到来自更高级别协议的积极反馈，则条目的有效性将得到延长。 默认为 30 秒。 该文件现在已过时，取而代之的是
+\fIbase_reachable_time_ms\fP。
+.TP 
+\fIbase_reachable_time_ms\fP (since Linux 2.6.12)
+至于 \fIbase_reachable_time\fP，但以毫秒为单位测量时间。 默认为 30000 毫秒。
+.TP 
+\fIdelay_first_probe_time\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+在确定邻居陈旧之后，在第一次探测之前延迟。 默认为 5 秒。
+.TP 
+\fIgc_interval\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+邻居条目的垃圾回收应该尝试运行的频率。 默认为 30 秒。
+.TP 
+\fIgc_stale_time\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+确定检查陈旧邻居条目的频率。 当邻居条目被认为是陈旧的时，它会在向它发送数据之前再次解析。 默认为 60 秒。
+.TP 
+\fIgc_thresh1\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+ARP 缓存中保留的最小条目数。 如果缓存中的条目数少于此数量，垃圾回收将不会运行。 默认为 128。
+.TP 
+\fIgc_thresh2\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+要保留在 ARP 缓存中的最大软条目数。 垃圾回收将允许条目数超过此值 5 秒，然后才会执行集合。 默认为 512。
+.TP 
+\fIgc_thresh3\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+要保留在 ARP 缓存中的最大硬条目数。 如果缓存中的条目数超过此数量，垃圾回收将始终运行。 默认为 1024。
+.TP 
+\fIlocktime\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+在高速缓存中保留 ARP 条目的最小 jiffies 数。 如果存在多个潜在映射 (通常是由于网络配置错误)，这可以防止 ARP 缓存抖动。 默认为 1
+秒。
+.TP 
+\fImcast_solicit\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+在将条目标记为不可访问之前尝试通过 multicast/broadcast 解析地址的最大次数。 默认为 3.
+.TP 
+\fIproxy_delay\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+当收到对已知代理 ARP 地址的 ARP 请求时，在回复之前延迟最多 \fIproxy_delay\fP jiffies。 在某些情况下，这用于防止网络泛滥。
+默认为 0.8 秒。
+.TP 
+\fIproxy_qlen\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+可以排队到代理 ARP 地址的最大数据包数。 默认为 64。
+.TP 
+\fIretrans_time\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+在重新传输请求之前要延迟的 jiffies 数。 默认为 1 秒。 该文件现在已过时，取而代之的是 \fIretrans_time_ms\fP。
+.TP 
+\fIretrans_time_ms\fP (since Linux 2.6.12)
+重新传输请求前延迟的毫秒数。 默认为 1000 毫秒。
+.TP 
+\fIucast_solicit\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+在询问 ARP 守护程序之前尝试发送单播探测的最大次数 (请参见 \fIapp_solicit\fP).  默认为 3.
+.TP 
+\fIunres_qlen\fP (since Linux 2.2)
+.\" Precisely: 2.1.79
+其他网络层可能为每个未解析地址排队的最大数据包数。 默认为 3.
+.SH VERSIONS
+\fIstruct arpreq\fP 在 Linux 2.0 中更改为包含 \fIarp_dev\fP 成员，同时更改了 ioctl 编号。 在 Linux
+2.2 中丢弃了对旧 ioctl 的支持。
+.PP
+支持网络代理 arp 条目 (网络掩码不等于 0xffffffff) 在 Linux 2.2 中丢弃。 它被内核为其他接口上的所有可访问主机自动设置代理
+arp 所取代 (当为接口启用转发和代理 arp 时)。
+.PP
+\fIneigh/*\fP 接口在 Linux 2.2 之前是不存在的。
+.SH BUGS
+一些计时器设置在 jiffies 中指定，它与体系结构和内核版本相关; 请参见 \fBtime\fP(7)。
+.PP
+无法从用户空间发出积极反馈信号。 这意味着在用户空间中实现的面向连接的协议会产生过多的 ARP 流量，因为 ndisc 会定期重新探测 MAC 地址。
+同样的问题适用于某些内核协议 (例如，NFS over UDP)。
+.PP
+该手册页将特定于 IPv4 的功能与 IPv4 和 IPv6 之间共享的功能混在一起。
+.SH "SEE ALSO"
+\fBcapabilities\fP(7), \fBip\fP(7), \fBarpd\fP(8)
+.PP
+RFC\826 对 ARP 的描述。 RFC\2461 描述了 IPv6 邻居发现和使用的基本算法。 Linux 2.2+ IPv4 ARP
+在适用时使用 IPv6 算法。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

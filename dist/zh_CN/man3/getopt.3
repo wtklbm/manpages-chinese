@@ -1,0 +1,365 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\" and Copyright 2006-2008, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 19:27:50 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Mon Aug 30 22:02:34 1995 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\"  longindex is a pointer, has_arg can take 3 values, using consistent
+.\"  names for optstring and longindex, "\n" in formats fixed.  Documenting
+.\"  opterr and getopt_long_only.  Clarified explanations (borrowing heavily
+.\"  from the source code).
+.\" Modified 8 May 1998 by Joseph S. Myers (jsm28@cam.ac.uk)
+.\" Modified 990715, aeb: changed `EOF' into `-1' since that is what POSIX
+.\"  says; moreover, EOF is not defined in <unistd.h>.
+.\" Modified 2002-02-16, joey: added information about nonexistent
+.\"  option character and colon as first option character
+.\" Modified 2004-07-28, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added text to explain how to order both '[-+]' and ':' at
+.\"		the start of optstring
+.\" Modified 2006-12-15, mtk, Added getopt() example program.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getopt 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getopt, getopt_long, getopt_long_only, optarg, optind, opterr, optopt \-
+Parse command\-line options
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint getopt(int \fP\fIargc\fP\fB, char *const \fP\fIargv\fP\fB[],\fP
+\fB           const char *\fP\fIoptstring\fP\fB);\fP
+.PP
+\fBextern char *\fP\fIoptarg\fP\fB;\fP
+\fBextern int \fP\fIoptind\fP\fB, \fP\fIopterr\fP\fB, \fP\fIoptopt\fP\fB;\fP
+.PP
+\fB#include <getopt.h>\fP
+.PP
+\fBint getopt_long(int \fP\fIargc\fP\fB, char *const \fP\fIargv\fP\fB[],\fP
+\fB           const char *\fP\fIoptstring\fP\fB,\fP
+\fB           const struct option *\fP\fIlongopts\fP\fB, int *\fP\fIlongindex\fP\fB);\fP 
+\fBint getopt_long_only(int \fP\fIargc\fP\fB, char *const \fP\fIargv\fP\fB[],\fP
+\fB           const char *\fP\fIoptstring\fP\fB,\fP
+\fB           const struct option *\fP\fIlongopts\fP\fB, int *\fP\fIlongindex\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetopt\fP():
+.nf
+    _POSIX_C_SOURCE >= 2 || _XOPEN_SOURCE
+.fi
+.PP
+\fBgetopt_long\fP(), \fBgetopt_long_only\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetopt\fP() 函数解析命令行参数。 它的参数 \fIargc\fP 和 \fIargv\fP 是在程序调用时传递给 \fImain\fP()
+函数的参数计数和数组。 \fIargv\fP 中以 \[aq]\-\[aq] (不完全是 "\-" 或 "\-\-") 开头的元素是一个选项元素。 该元素的字符
+(除了开头的 \[aq]\-\[aq]) 是选项字符。 如果重复调用 \fBgetopt\fP()，它会连续返回每个选项元素中的每个选项字符。
+.PP
+变量 \fIoptind\fP 是 \fIargv\fP 中下一个要处理的元素的索引。 系统将此值初始化为 1。 调用者可以将其重置为 1 以重新开始扫描相同的
+\fIargv\fP，或者在扫描新的参数 vector 时。
+.PP
+如果 \fBgetopt\fP() 找到另一个选项字符，它返回该字符，更新外部变量 \fIoptind\fP 和静态变量 \fInextchar\fP，以便下一个调用
+\fBgetopt\fP() 可以使用后面的选项字符或 \fIargv\fP\-element 恢复扫描。
+.PP
+如果没有更多的选项字符，\fBgetopt\fP() 返回 \-1。 那么 \fIoptind\fP 就是第一个不是选项的 \fIargv\fP\-element 在
+\fIargv\fP 中的索引。
+.PP
+\fIoptstring\fP 是包含合法选项字符的字符串。 合法的选项字符是任何可见的单字节 \fBascii\fP(7) 字符 (\fBisgraph\fP(3)
+将返回非零值)，它不是 \[aq]\-\[aq]、\[aq]:\[aq] 或 \[aq];\[水]。 如果这样的字符后跟冒号，则该选项需要一个参数，因此
+\fBgetopt\fP() 将指针指向同一 \fIargv\fP\-element 中的后续文本，或 \fIoptarg\fP 中的后续 \fIargv\fP\-element
+的文本。 两个冒号表示一个选项接受一个可选的 arg; 如果当前 \fIargv\fP\-element 中有文本 (即与选项名称本身在同一个词中，例如
+"\-oarg")，则在 \fIoptarg\fP 中返回，否则将 \fIoptarg\fP 设置为零。 这是一个 GNU 扩展。 如果 \fIoptstring\fP
+包含后跟分号的 \fBW\fP，则 \fB\-W foo\fP 被视为长选项 \fB\-\-foo\fP。 (\fB\-W\fP 选项由 POSIX.2 保留用于实现扩展。) 此行为是
+GNU 扩展，在 glibc 之前的库中不可用 2.
+.PP
+默认情况下，\fBgetopt\fP() 在扫描时置换 \fIargv\fP 的内容，因此最终所有非选项都在末尾。 还实现了另外两种扫描模式。 如果
+\fIoptstring\fP 的第一个字符是 \[aq]+\[aq] 或设置了环境变量
+\fBPOSIXLY_CORRECT\fP，那么一旦遇到非选项参数，选项处理就会停止。 如果 \[aq]+\[aq] 不是 \fIoptstring\fP
+的第一个字符，则将其视为普通选项。 如果在这种情况下需要 \fBPOSIXLY_CORRECT\fP 行为，\fIoptstring\fP 将包含两个
+\[aq]+\[aq] 符号。 如果 \fIoptstring\fP 的第一个字符是 \[aq]\-\[aq]，那么每个非选项 \fIargv\fP\-element
+都被当作字符代码为 1 的选项的参数来处理。 (这被编写为以任何顺序期望选项和其他 \fIargv\fP\-elements 并且关心两者的顺序的程序使用。)
+特殊的参数 "\-\-" 强制结束选项扫描，而不管扫描模式如何。
+.PP
+在处理选项列表时，\fBgetopt\fP() 可以检测到两种错误: (1) 是 \fIoptstring\fP 中未指定的选项字符，(2) 是缺少选项参数
+(即命令行末尾的选项没有预期的参数)。 此类错误的处理和报告如下:
+.IP \[bu] 3
+默认情况下，\fBgetopt\fP() 在标准错误上打印一条错误消息，将错误的选项字符放在 \fIoptopt\fP 中，并返回 \[aq]?\[aq]
+作为函数结果。
+.IP \[bu]
+如果调用者已将全局变量 \fIopterr\fP 设置为零，则 \fBgetopt\fP() 不会打印错误消息。 调用者可以通过测试函数返回值是否为
+\[aq]?\[aq] 来判断是否出错。 (默认情况下，\fIopterr\fP 具有非零值。)
+.IP \[bu]
+.\"
+如果 \fIoptstring\fP 的第一个字符 (在上述任何可选的 \[aq]+\[aq] 或 \[aq]\-\[aq] 之后) 是冒号
+(\[aq]:\[aq])，则 \fBgetopt\fP() 同样不会打印错误消息。 此外，它返回 \[aq]:\[aq] 而不是 \[aq]?\[aq]
+以指示缺少选项参数。 这允许调用者区分两种不同类型的错误。
+.SS "getopt_long() and getopt_long_only()"
+\fBgetopt_long\fP() 函数的工作方式与 \fBgetopt\fP() 类似，只是它还接受以两个破折号开头的长选项。 (如果程序只接受长选项，则
+\fIoptstring\fP 应指定为空字符串 ("")，而不是 NULL。) 如果缩写是唯一的或与某些已定义选项完全匹配，则长选项名称可以缩写。
+长选项可以采用 \fB\-\-arg=param\fP 或 \fB\-\-arg param\fP 形式的参数。
+.PP
+\fIlongopts\fP 是指向 \fI<getopt.h>\fP 中声明的 \fIstruct option\fP 数组的第一个元素的指针
+.PP
+.in +4n
+.EX
+struct option {
+    const char *name;
+    int         has_arg;
+    int        *flag;
+    int         val;
+};
+.EE
+.in
+.PP
+各个字段的含义是:
+.TP 
+\fIname\fP
+是长选项的名称。
+.TP 
+\fIhas_arg\fP
+是: \fBno_argument\fP (或 0) 如果选项不带参数; \fBrequired_argument\fP (或 1) 如果选项需要参数; 或
+\fBoptional_argument\fP (或 2)，如果该选项采用可选的参数。
+.TP 
+\fIflag\fP
+指定如何为长选项返回结果。 如果 \fIflag\fP 为 NULL，则 \fBgetopt_long\fP() 返回 \fIval\fP。 (例如，调用程序可以将
+\fIval\fP 设置为等效的短选项字符。) 否则，\fBgetopt_long\fP() 返回 0，并且 \fIflag\fP 指向一个变量，如果找到该选项则设置为
+\fIval\fP，但如果找不到该选项则保持不变.
+.TP 
+\fIval\fP
+是要返回的值，或加载到 \fIflag\fP 指向的变量中的值。
+.PP
+数组的最后一个元素必须用零填充。
+.PP
+如果 \fIlongindex\fP 不为 NULL，则它指向一个变量，该变量设置为长选项相对于 \fIlongopts\fP 的索引。
+.PP
+\fBgetopt_long_only\fP() 类似于 \fBgetopt_long\fP()，但 \[aq]\-\[aq] 以及 "\-\-" 都可以表示长选项。
+如果以 \[aq]\-\[aq] (不是 "\-\-") 开头的选项不匹配长选项，但匹配短选项，则会将其解析为短选项。
+.SH "RETURN VALUE"
+如果成功找到选项，则 \fBgetopt\fP() 返回选项字符。 如果已解析所有命令行选项，则 \fBgetopt\fP() 返回 \-1。 如果
+\fBgetopt\fP() 遇到 \fIoptstring\fP 中没有的选项字符，则返回 \[aq]?\[aq]。 如果 \fBgetopt\fP()
+遇到缺少参数的选项，则返回值取决于 \fIoptstring\fP: 中的第一个字符，如果是 \[aq]:\[aq]，则返回 \[aq]:\[aq];
+否则返回 \[aq]?\[aq]。
+.PP
+当短选项被识别时，\fBgetopt_long\fP() 和 \fBgetopt_long_only\fP() 也返回选项字符。 对于长选项，如果 \fIflag\fP
+为 NULL，则返回 \fIval\fP，否则返回 0。 错误和 \-1 返回与 \fBgetopt\fP() 相同，加上 \[aq]?\[aq]
+表示不明确匹配或无关参数。
+.SH ENVIRONMENT
+.TP 
+\fBPOSIXLY_CORRECT\fP
+如果设置了此项，那么一旦遇到非选项参数，选项处理就会停止。
+.TP 
+\fB_<PID>_GNU_nonoption_argv_flags_\fP
+\fBbash\fP(1) 2.0 使用此变量与 glibc 通信，其中参数是通配符扩展的结果，因此不应将其视为选项。 此行为已在 \fBbash\fP(1)
+2.01 中删除，但 glibc 中仍提供支持。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetopt\fP(),
+\fBgetopt_long\fP(),
+\fBgetopt_long_only\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:getopt env
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.TP 
+\fBgetopt\fP():
+POSIX.1\-2001、POSIX.1\-2008 和 POSIX.2，前提是设置了环境变量 \fBPOSIXLY_CORRECT\fP。
+否则，\fIargv\fP 的元素并不是真正的 \fIconst\fP，因为这些函数排列了它们。 尽管如此，\fIconst\fP 被用于原型中以与其他系统兼容。
+.IP
+在 \fIoptstring\fP 中使用 \[aq]+\[aq] 和 \[aq]\-\[aq] 是 GNU 扩展。
+.IP
+在一些较旧的实现中，\fBgetopt\fP() 在 \fI<stdio.h>\fP 中声明。 SUSv1 允许声明出现在
+\fI<unistd.h>\fP 或 \fI<stdio.h>\fP 中。 POSIX.1\-1996 将为此目的使用
+\fI<stdio.h>\fP 标记为 LEGACY。 POSIX.1\-2001 不要求声明出现在 \fI<stdio.h>\fP
+中。
+.TP 
+\fBgetopt_long\fP() and \fBgetopt_long_only\fP():
+这些函数是 GNU 的扩展名。
+.SH NOTES
+扫描多个参数 vectors，或多次重新扫描同一个 vector，并希望在开头使用 GNU 扩展，如 \[aq]+\[aq] 和 \[aq]\-\[aq]
+的程序 \fIoptstring\fP，或在扫描之间更改 \fBPOSIXLY_CORRECT\fP 的值，必须通过将 \fIoptind\fP 重置为 0 而不是传统值
+1 来重新初始化 \fBgetopt\fP()。 (重置为 0 会强制调用内部初始化例程，该例程会重新检查 \fBPOSIXLY_CORRECT\fP 并检查
+\fIoptstring\fP.) 中的 GNU 扩展
+.PP
+命令行参数按照严格的顺序进行解析，这意味着需要参数的选项将使用下一个参数，而不管该参数是正确指定的选项参数还是只是下一个选项
+(在用户错误指定命令行的情况下) ).  例如 \fIoptstring\fP 指定为 "1n:"，而用户将命令行参数错误指定为 \fIprog\ \-n\ \-1\fP，则 \fI\-n\fP 选项将被赋予 \fBoptarg\fP 值 "\-1"，\fI\-1\fP 选项将被认为没有指定。
+.SH EXAMPLES
+.SS getopt()
+下面的简单示例程序使用 \fBgetopt\fP() 来处理两个程序选项: \fI\-n\fP，没有关联值; 和 \fI\-t val\fP，它需要一个关联值。
+.PP
+.\" SRC BEGIN (getopt.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int flags, opt;
+    int nsecs, tfnd;
+
+    nsecs = 0;
+    tfnd = 0;
+    flags = 0;
+    while ((opt = getopt(argc, argv, "nt:")) != \-1) {
+        switch (opt) {
+        case \[aq]n\[aq]:
+            flags = 1;
+            break; 
+        case \[aq]t\[aq]:
+            nsecs = atoi(optarg);
+            tfnd = 1;
+            break;
+        default: /* \[aq]?\[aq] */
+            fprintf(stderr, "Usage: %s [\-t nsecs] [\-n] name\en",
+                    argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    printf("flags=%d; tfnd=%d; nsecs=%d; optind=%d\en",
+           flags, tfnd, nsecs, optind);
+
+    if (optind >= argc) {
+        fprintf(stderr, "Expected argument after options\en");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("name argument = %s\en", argv[optind]);
+
+    /* Other code omitted */
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SS getopt_long()
+下面的示例程序说明了 \fBgetopt_long\fP() 的使用及其大部分，特性。
+.PP
+.\" SRC BEGIN (getopt_long.c)
+.EX
+#include <getopt.h>
+#include <stdio.h>     /* for printf */
+#include <stdlib.h>    /* for exit */
+
+int
+main(int argc, char *argv[])
+{
+    int c;
+    int digit_optind = 0;
+
+    while (1) {
+        int this_option_optind = optind ? optind : 1;
+        int option_index = 0;
+        static struct option long_options[] = {
+            {"add",     required_argument, 0,  0 },
+            {"append",  no_argument,       0,  0 },
+            {"delete",  required_argument, 0,  0 },
+            {"verbose", no_argument,       0,  0 },
+            {"create",  required_argument, 0, \[aq]c\[aq]},
+            {"file",    required_argument, 0,  0 },
+            {0,         0,                 0,  0 }
+        };
+
+        c = getopt_long(argc, argv, "abc:d:012",
+                        长选项，&option_index) ;
+        if (c == \-1)
+            break;
+
+        switch (c) {
+        case 0:
+            printf("option %s", long_options[option_index].name);
+            if (optarg)
+                printf(" with arg %s", optarg);
+            printf("\en");
+            break;
+
+        case \[aq]0\[aq]:
+        case \[aq]1\[aq]:
+        case \[aq]2\[aq]:
+            if (digit_optind != 0 && digit_optind != this_option_optind)
+              printf("digits occur in two different argv\-elements.\en");
+            digit_optind = this_option_optind;
+            printf("option %c\en", c);
+            break;
+
+        case \[aq]a\[aq]:
+            printf("option a\en");
+            break;
+
+        case \[aq]b\[aq]:
+            printf("option b\en");
+            break;
+
+        case \[aq]c\[aq]:
+            printf("option c with value \[aq]%s\[aq]\en", optarg);
+            break;
+
+        case \[aq]d\[aq]:
+            printf("option d with value \[aq]%s\[aq]\en", optarg);
+            break;
+
+        case \[aq]?\[aq]:
+            break;
+
+        default:
+            printf("?? getopt returned character code 0%o ??\en", c);
+        }
+    }
+
+    if (optind < argc) {
+        printf("non\-option ARGV\-elements: ");
+        while (optind < argc)
+            printf("%s ", argv[optind++]);
+        printf("\en");
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetopt\fP(1), \fBgetsubopt\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

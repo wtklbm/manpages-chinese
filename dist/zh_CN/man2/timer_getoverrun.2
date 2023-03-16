@@ -1,0 +1,91 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2009 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH timer_getoverrun 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+timer_getoverrun \- 获取 POSIX 每进程计时器的超时计数
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBint timer_getoverrun(timer_t \fP\fItimerid\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBtimer_getoverrun\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+\fBtimer_getoverrun\fP() 为 \fItimerid\fP 引用的定时器返回 "overrun count"。
+应用程序可以使用超时计数来准确计算在给定时间间隔内可能发生的计时器到期次数。 当通过信号 (\fBSIGEV_SIGNAL\fP) 和线程
+(\fBSIGEV_THREAD\fP) 接收过期通知时，都可能发生定时器超时。
+.PP
+当通过信号传递过期通知时，会发生如下溢出。 无论实时信号是否用于计时器通知，系统每个计时器最多排队一个信号。 (这是 POSIX.1
+指定的行为。另一种方法是为每个计时器到期排队一个信号，这很容易导致系统上排队信号的允许限制溢出。)
+由于系统调度延迟，或者因为信号可能被暂时阻塞，在生成通知信号的时间与传递 (例如，被信号处理程序捕获) 或接受 (例如，使用
+\fBsigwaitinfo\fP(2)).  在此间隔中，可能会发生进一步的计时器到期。
+定时器超时计数是在信号生成和信号被传送或接受之间发生的额外定时器超时次数。
+.PP
+当通过调用线程传递到期通知时，也可能发生计时器超时，因为在计时器到期和通知线程调用之间可能存在任意延迟，并且在该延迟间隔内，可能会发生额外的计时器到期。
+.SH "RETURN VALUE"
+成功时，\fBtimer_getoverrun\fP() 返回指定定时器的超时计数; 如果没有发生溢出，这个计数可能为 0。 失败时，返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fItimerid\fP 不是有效的计时器 ID。
+.SH VERSIONS
+本系统调用自 Linux 2.6 起可用。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+当定时器通知通过信号 (\fBSIGEV_SIGNAL\fP) 传递时，在 Linux 上也可以通过 \fIsiginfo_t\fP 结构体的
+\fIsi_overrun\fP 字段获取溢出计数 (参见 \fBsigaction\fP(2)).  这允许应用程序避免使系统调用于获取溢出计数的开销，但它是
+POSIX.1 的不可移植扩展。
+.PP
+.\" FIXME . Austin bug filed, 11 Feb 09
+.\" https://www.austingroupbugs.net/view.php?id=95
+POSIX.1 仅在使用信号的定时器通知上下文中讨论定时器超时。
+.SH BUGS
+.\" http://bugzilla.kernel.org/show_bug.cgi?id=12665
+.\" commit 78c9c4dfbf8c04883941445a195276bb4bb92c76
+POSIX.1 指定如果计时器溢出计数等于或大于实现定义的最大值 \fBDELAYTIMER_MAX\fP，则 \fBtimer_getoverrun\fP()
+应返回 \fBDELAYTIMER_MAX\fP。 然而，在 Linux 4.19 之前，如果定时器溢出值超过最大可表示整数，计数器将循环，再次从低值开始。
+由于 Linux 4.19，\fBtimer_getoverrun\fP() 返回 \fBDELAYTIMER_MAX\fP (在本例中定义为
+\fI<limits.h>\fP) 中的 \fBINT_MAX\fP (并且溢出值重置为 0)。
+.SH EXAMPLES
+请参见 \fBtimer_create\fP(2)。
+.SH "SEE ALSO"
+\fBclock_gettime\fP(2), \fBsigaction\fP(2), \fBsignalfd\fP(2), \fBsigwaitinfo\fP(2),
+\fBtimer_create\fP(2), \fBtimer_delete\fP(2), \fBtimer_settime\fP(2), \fBsignal\fP(7),
+\fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

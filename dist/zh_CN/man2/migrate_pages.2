@@ -1,0 +1,108 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2009 Intel Corporation
+.\"                Author: Andi Kleen
+.\" Based on the move_pages manpage which was
+.\" This manpage is Copyright (C) 2006 Silicon Graphics, Inc.
+.\"                               Christoph Lameter
+.\"
+.\" %%%LICENSE_START(VERBATIM_TWO_PARA)
+.\" Permission is granted to make and distribute verbatim copies of this
+.\" manual provided the copyright notice and this permission notice are
+.\" preserved on all copies.
+.\"
+.\" Permission is granted to copy and distribute modified versions of this
+.\" manual under the conditions for verbatim copying, provided that the
+.\" entire resulting derived work is distributed under the terms of a
+.\" permission notice identical to this one.
+.\" %%%LICENSE_END
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH migrate_pages 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+migrate_pages \- 将进程中的所有页面移动到另一组节点
+.SH LIBRARY
+NUMA (非统一内存访问) 策略库 (\fIlibnuma\fP、\fI\-lnuma\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <numaif.h>\fP
+.PP
+\fBlong migrate_pages(int \fP\fIpid\fP\fB, unsigned long \fP\fImaxnode,\fP
+\fB                   const unsigned long *\fP\fIold_nodes,\fP
+\fB                   const unsigned long *\fP\fInew_nodes\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmigrate_pages\fP() 尝试将内存节点 \fIold_nodes\fP 中的进程 \fIpid\fP 的所有页面移动到 \fInew_nodes\fP
+中的内存节点。 不在 \fIold_nodes\fP 中任何节点的页面将不会被迁移。 内核在迁移到 \fInew_nodes\fP 的过程中，尽量保持
+\fIold_nodes\fP 内部的相对拓扑关系。
+.PP
+\fIold_nodes\fP 和 \fInew_nodes\fP 参数是指向节点号位掩码的指针，每个掩码中最多有 \fImaxnode\fP 位。 这些掩码作为无符号
+\fIlong\fP 整数数组进行维护 (在最后一个 \fIlong\fP 整数中，超出 \fImaxnode\fP 指定的位将被忽略)。 \fImaxnode\fP
+参数是位掩码中的最大节点数加一 (这与 \fBmbind\fP(2) 相同，但与 \fBselect\fP(2)) 不同。
+.PP
+\fIpid\fP 参数是要移动页面的进程的 ID。 要在另一个进程中移动页面，调用者必须具有 (\fBCAP_SYS_NICE\fP)
+特权，或者调用进程的真实或有效用户 ID 必须与目标进程的真实或保存集用户 ID 匹配。 如果 \fIpid\fP 为 0，则
+\fBmigrate_pages\fP() 移动调用进程的页面。
+.PP
+仅当启动进程具有 \fBCAP_SYS_NICE\fP 权限时，才会移动与另一个进程共享的页面。
+.SH "RETURN VALUE"
+成功时，\fBmigrate_pages\fP() 返回无法移动的页面数 (即，返回零意味着所有页面都已成功移动)。 出错时，它返回 \-1，并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIold_nodes\fP/\fInew_nodes\fP 和 \fImaxnode\fP 指定的部分或全部内存范围指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+.\" As at 3.5, this limit is "a page worth of bits", e.g.,
+.\" 8 * 4096 bits, assuming a 4kB page size.
+\fImaxnode\fP 指定的值超出了内核强加的限制。 或者，\fIold_nodes\fP 或 \fInew_nodes\fP 指定一个或多个大于支持的最大节点
+ID 的节点 ID。或者，由 \fInew_nodes\fP 指定的节点 ID 均未联机且未被进程的当前 cpuset
+上下文所允许，或者指定的节点均不包含内存。
+.TP 
+\fBEPERM\fP
+(\fBCAP_SYS_NICE\fP) 的权限不足，无法移动 \fIpid\fP 指定的进程的页面，或者 (\fBCAP_SYS_NICE\fP)
+的权限不足，无法访问指定的目标节点。
+.TP 
+\fBESRCH\fP
+.\" FIXME Document the other errors that can occur for migrate_pages()
+找不到与 \fIpid\fP 匹配的进程。
+.SH VERSIONS
+\fBmigrate_pages\fP() 系统调用最早出现在 Linux 2.6.16。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+有关库支持的信息，请参见 \fBnuma\fP(7)。
+.PP
+使用带有 \fBMPOL_F_MEMS_ALLOWED\fP 标志的 \fBget_mempolicy\fP(2) 来获取调用进程的 cpuset 允许的节点集。
+请注意，此信息随时可能因 cpuset 的手动或自动重新配置而更改。
+.PP
+使用 \fBmigrate_pages\fP() 可能会导致其位置 (node) 违反为指定地址建立的内存策略的页面 (请参见 \fBmbind\fP(2))
+或者指定进程 (请参见 \fBset_mempolicy\fP(2)).  也就是说，内存策略不限制 \fBmigrate_pages\fP() 使用的目标节点。
+.PP
+\fI<numaif.h>\fP 标头不包含在 glibc 中，但需要安装 \fIlibnuma\-devel\fP 或类似的包。
+.SH "SEE ALSO"
+\fBget_mempolicy\fP(2), \fBmbind\fP(2), \fBset_mempolicy\fP(2), \fBnuma\fP(3),
+\fBnuma_maps\fP(5), \fBcpuset\fP(7), \fBnuma\fP(7), \fBmigratepages\fP(8),
+\fBnumastat\fP(8)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/vm/page_migration.rst\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

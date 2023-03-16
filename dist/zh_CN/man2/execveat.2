@@ -1,0 +1,119 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2014 Google, Inc., written by David Drysdale
+.\" and Copyright (c) 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH execveat 2 2023\-01\-02 "Linux man\-pages 6.03" 
+.SH NAME
+execveat \- 相对于目录文件描述符执行程序
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/fcntl.h>\fP      /* Definition of \fBAT_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint execveat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB,\fP
+\fB             char *const _Nullable \fP\fIargv\fP\fB[],\fP
+\fB             char *const _Nullable \fP\fIenvp\fP\fB[],\fP
+\fB             int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" commit 51f39a1f0cea1cacf8c787f652f26dfee9611874
+\fBexecveat\fP() 系统调用执行 \fIdirfd\fP 和 \fIpathname\fP 组合所指的程序。 它的操作方式与 \fBexecve\fP(2)
+完全相同，除了本手册页中描述的差异之外。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBexecve\fP(2) 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBexecve\fP(2)).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+如果 \fIpathname\fP 是一个空字符串并且指定了 \fBAT_EMPTY_PATH\fP 标志，那么文件描述符 \fIdirfd\fP 指定要执行的文件 (即
+\fIdirfd\fP 指的是一个可执行文件，而不是一个目录)。
+.PP
+\fIflags\fP 参数是一个位掩码，可以包含零个或多个以下标志:
+.TP 
+\fBAT_EMPTY_PATH\fP
+如果 \fIpathname\fP 为空字符串，则对 \fIdirfd\fP 引用的文件进行操作 (可能已经使用 \fBopen\fP(2) \fBO_PATH\fP
+标志获取)。
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+如果由 \fIdirfd\fP 和非 NULL \fIpathname\fP 标识的文件是符号链接，则调用失败并显示错误 \fBELOOP\fP。
+.SH "RETURN VALUE"
+成功时，\fBexecveat\fP() 不会返回。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBexecve\fP(2) 发生的相同错误也可能发生在 \fBexecveat\fP() 上。 \fBexecveat\fP(): 可能会出现以下其他错误
+.TP 
+\fIpathname\fP
+是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 中指定的标志无效。
+.TP 
+\fBELOOP\fP
+\fIflags\fP 包括 \fBAT_SYMLINK_NOFOLLOW\fP 和 \fIdirfd\fP 标识的文件，非 NULL \fIpathname\fP
+是符号链接。
+.TP 
+\fBENOENT\fP
+\fIdirfd\fP 和 \fIpathname\fP 标识的程序需要使用解释器程序 (比如以 "#!" 开头的脚本)，但是文件描述符 \fIdirfd\fP 是用
+\fBO_CLOEXEC\fP 标志打开的，导致启动的解释器无法访问该程序文件。 查看错误。
+.TP 
+\fBENOTDIR\fP
+\fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.SH VERSIONS
+在 Linux 3.19 中添加了 \fBexecveat\fP()。 glibc 2.34 中添加了库支持。
+.SH STANDARDS
+\fBexecveat\fP() 系统调用是 Linux 特有的。
+.SH NOTES
+除了 \fBopenat\fP(2) 中解释的原因外，还需要 \fBexecveat\fP() 系统调用，以允许 \fBfexecve\fP(3) 在没有安装
+\fI/proc\fP 文件系统的系统上实现。
+.PP
+当要求执行脚本文件时，传递给脚本解释器的 \fIargv[0]\fP 是 \fI/dev/fd/N\fP 或 \fI/dev/fd/N/P\fP 形式的字符串，其中
+\fIN\fP 是通过 \fIdirfd\fP 参数传递的文件描述符的编号。 使用 \fBAT_EMPTY_PATH\fP 时出现第一种形式的字符串。 当通过
+\fIdirfd\fP 和 \fIpathname\fP 指定脚本时出现第二种形式的字符串; 在这种情况下，\fIP\fP 是 \fIpathname\fP 中给定的值。
+.PP
+出于与 \fBfexecve\fP(3) 中描述的相同原因，使用 \fBexecveat\fP() 时的自然习惯是在 \fIdirfd\fP 上设置
+close\-on\-exec 标志。 (但请参见错误。)
+.SH BUGS
+上面描述的 \fBENOENT\fP 错误意味着不可能在给定形式的调用的文件描述符上设置 close\-on\-exec 标志:
+.PP
+.in +4n
+.EX
+execveat(fd, "", argv, envp, AT_EMPTY_PATH);
+.EE
+.in
+.PP
+.\" For an example, see Michael Kerrisk's 2015-01-10 reply in this LKML
+.\" thread (http://thread.gmane.org/gmane.linux.kernel/1836105/focus=20229):
+.\"
+.\"     Subject: [PATCHv10 man-pages 5/5] execveat.2: initial man page.\"                        for execveat(2
+.\"     Date: Mon, 24 Nov 2014 11:53:59 +0000
+但是，无法设置 close\-on\-exec 标志意味着引用脚本的文件描述符会泄漏到脚本本身。 除了浪费文件描述符外，在脚本递归使用
+\fBexecveat\fP() 的情况下，这种泄漏还可能导致文件描述符耗尽。
+.SH "SEE ALSO"
+\fBexecve\fP(2), \fBopenat\fP(2), \fBfexecve\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

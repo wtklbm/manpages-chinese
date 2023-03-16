@@ -1,0 +1,205 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 1995 Andries Brouwer (aeb@cwi.nl)
+.\" and Copyright (C) 2012, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Written 11 June 1995 by Andries Brouwer <aeb@cwi.nl>
+.\" 2008-02-15, Jeremy Kerr <jk@ozlabs.org>
+.\"     Add info on command type 10; add details on types 6, 7, 8, & 9.
+.\" 2008-02-15, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Update LOG_BUF_LEN details; update RETURN VALUE section.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH syslog 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+syslog、klogctl \- 读取或者清除内核消息环形缓冲区; 设置 console_loglevel
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/klog.h>\fP        /* Definition of \fBSYSLOG_*\fP constants */
+\fB#include <sys/syscall.h>\fP     /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_syslog, int \fP\fItype\fP\fB, char *\fP\fIbufp\fP\fB, int \fP\fIlen\fP\fB);\fP
+.PP
+/* The glibc interface */
+\fB#include <sys/klog.h>\fP
+.PP
+\fBint klogctl(int \fP\fItype\fP\fB, char *\fP\fIbufp\fP\fB, int \fP\fIlen\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fINote\fP: 可能您正在寻找与 \fBsyslogd\fP(8) 对话的 C 库函数 \fBsyslog\fP(); 详见 \fBsyslog\fP(3)。
+.PP
+本页介绍内核 \fBsyslog\fP() 系统调用，用于控制内核 \fIprintk\fP() 缓冲区; 系统调用的 glibc 包装器函数称为
+\fBklogctl\fP()。
+.SS "The kernel log buffer"
+.\" Under "General setup" ==> "Kernel log buffer size"
+.\" For Linux 2.6, precisely the option seems to have appeared in Linux 2.5.55.
+内核有一个长度为 \fBLOG_BUF_LEN\fP 的循环缓冲区，其中存储了作为参数给内核函数 \fBprintk\fP() 的消息 (无论它们的日志级别如何)。
+在早期内核中，\fBLOG_BUF_LEN\fP 的值为 4096; 从 Linux 到 1.3.54，是 8192; 从 Linux 到 2.1.113，是
+16384; 从 Linux 2.4.23/2.6 开始，该值是内核配置选项 (\fBCONFIG_LOG_BUF_SHIFT\fP，默认值取决于体系结构)。
+从 Linux 2.6.6 开始，可以使用命令类型 10 查询大小 (见下文)。
+.SS Commands
+\fItype\fP 参数决定了这个函数所采取的行动。 下面的列表指定了 \fItype\fP 的值。 符号名称在内核源代码中定义，但不会导出到用户空间;
+您要么需要使用数字，要么自己定义名称。
+.TP 
+\fBSYSLOG_ACTION_CLOSE\fP (0)
+关闭日志。 目前是 NOP。
+.TP 
+\fBSYSLOG_ACTION_OPEN\fP (1)
+打开日志。 目前是 NOP。
+.TP 
+\fBSYSLOG_ACTION_READ\fP (2)
+从日志中读取。 调用等到内核日志缓冲区非空，然后最多将 \fIlen\fP 字节读入 \fIbufp\fP 指向的缓冲区。 调用返回读取的字节数。
+从日志中读取的字节从日志缓冲区中消失: 信息只能读取一次。 这是用户程序读取 \fI/proc/kmsg\fP 时内核执行的函数。
+.TP 
+\fBSYSLOG_ACTION_READ_ALL\fP (3)
+读取环形缓冲区中剩余的所有消息，将它们放入 \fIbufp\fP 指向的缓冲区中。 调用从日志缓冲区 (nondestructively) 中读取最后的
+\fIlen\fP 字节，但读取的内容不会超过自上次 "clear ring buffer" 命令以来写入缓冲区的内容 (请参见下面的命令 5)
+)。调用返回读取的字节数。
+.TP 
+\fBSYSLOG_ACTION_READ_CLEAR\fP (4)
+读取并清除保留在环形缓冲区中的所有消息。 调用与 \fItype\fP 的 3 完全相同，但也执行 "clear ring buffer" 命令。
+.TP 
+\fBSYSLOG_ACTION_CLEAR\fP (5)
+调用只执行 "clear ring buffer" 命令。 \fIbufp\fP 和 \fIlen\fP 参数被忽略。
+.IP
+该命令并没有真正清除环形缓冲区。 相反，它设置了一个内核变量，用于确定命令 3 (\fBSYSLOG_ACTION_READ_ALL\fP) 和 4
+(\fBSYSLOG_ACTION_READ_CLEAR\fP) 返回的结果。 该命令对命令 2 (\fBSYSLOG_ACTION_READ\fP) 和 9
+(\fBSYSLOG_ACTION_SIZE_UNREAD\fP) 没有影响。
+.TP 
+\fBSYSLOG_ACTION_CONSOLE_OFF\fP (6)
+.\" commit 1aaad49e856ce41adc07d8ae0c8ef35fc4483245
+该命令保存 \fIconsole_loglevel\fP 的当前值，然后将 \fIconsole_loglevel\fP 设置为
+\fIminimum_console_loglevel\fP，这样控制台就不会打印任何消息。 在 Linux 2.6.32 之前，该命令只是将
+\fIconsole_loglevel\fP 设置为 \fIminimum_console_loglevel\fP。 请参见下面对
+\fI/proc/sys/kernel/printk\fP 的讨论。
+.IP
+\fIbufp\fP 和 \fIlen\fP 参数被忽略。
+.TP 
+\fBSYSLOG_ACTION_CONSOLE_ON\fP (7)
+.\" commit 1aaad49e856ce41adc07d8ae0c8ef35fc4483245
+如果执行了先前的 \fBSYSLOG_ACTION_CONSOLE_OFF\fP 命令，此命令会将 \fIconsole_loglevel\fP
+恢复为该命令保存的值。 在 Linux 2.6.32 之前，此命令只是将 \fIconsole_loglevel\fP 设置为
+\fIdefault_console_loglevel\fP。 请参见下面对 \fI/proc/sys/kernel/printk\fP 的讨论。
+.IP
+\fIbufp\fP 和 \fIlen\fP 参数被忽略。
+.TP 
+\fBSYSLOG_ACTION_CONSOLE_LEVEL\fP (8)
+调用将 \fIconsole_loglevel\fP 设置为 \fIlen\fP 中给定的值，该值必须是 1 到 8 (inclusive) 之间的整数。
+内核默默地为 \fIlen\fP 强制执行 \fIminimum_console_loglevel\fP 的最小值。 有关详细信息，请参见 \fIlog level\fP
+部分。 \fIbufp\fP 参数被忽略。
+.TP 
+\fBSYSLOG_ACTION_SIZE_UNREAD\fP (9) (since Linux 2.4.10)
+调用返回当前可通过命令 2 (\fBSYSLOG_ACTION_READ\fP) 从内核日志缓冲区读取的字节数。 \fIbufp\fP 和 \fIlen\fP
+参数被忽略。
+.TP 
+\fBSYSLOG_ACTION_SIZE_BUFFER\fP (10) (since Linux 2.6.6)
+此命令返回内核日志缓冲区的总大小。 \fIbufp\fP 和 \fIlen\fP 参数被忽略。
+.PP
+.\"
+.\"
+除 3 和 10 之外的所有命令都需要特权。 在 Linux 2.6.37 之前的 Linux 内核中，非特权进程允许使用命令类型 3 和 10; 从
+Linux 2.6.37 开始，只有当 \fI/proc/sys/kernel/dmesg_restrict\fP 的值为 0
+时，这些命令才允许非特权进程使用。 Linux 2.6.37 之前，"privileged" 表示调用者有 \fBCAP_SYS_ADMIN\fP 能力。
+由于 Linux 2.6.37，"privileged" 意味着调用者具有 \fBCAP_SYS_ADMIN\fP 能力 (现在已为此目的弃用) 或
+(new) \fBCAP_SYSLOG\fP 能力。
+.SS /proc/sys/kernel/printk
+\fI/proc/sys/kernel/printk\fP 是一个包含四个整数值的可写文件，这些整数值会在打印或记录错误消息时影响内核 \fIprintk()\fP
+的行为。 这四个值是:
+.TP 
+\fIconsole_loglevel\fP
+.\" since Linux 2.4
+只有日志级别低于此值的消息才会打印到控制台。 该字段的默认值为 \fBDEFAULT_CONSOLE_LOGLEVEL\fP (7)，但如果内核命令行包含单词
+"quiet"，则设置为 4，如果内核命令行包含单词 "debug"，则设置为 10，如果出现内核错误 (10 和 15 只是愚蠢的，相当于 8)。
+\fIconsole_loglevel\fP 的值可以由 \fBsyslog\fP() 调用和 \fItype\fP 设置 (到 1\[en] 8 范围内的值) 8.
+.TP 
+\fIdefault_message_loglevel\fP
+.\" commit 5af5bcb8d37f99ba415a1adc6da71051b84f93a5
+该值将用作没有明确级别的 \fIprintk()\fP 消息的日志级别。 在 Linux 2.6.38 之前 (包括 Linux
+2.6.38)，该字段的硬编码默认值为 4 (\fBKERN_WARNING\fP); 从 Linux 2.6.39 开始，默认值由内核配置选项
+\fBCONFIG_DEFAULT_MESSAGE_LOGLEVEL\fP 定义，默认为 4.
+.TP 
+\fIminimum_console_loglevel\fP
+该字段中的值是 \fIconsole_loglevel\fP 可以设置的最小值。
+.TP 
+\fIdefault_console_loglevel\fP
+.\"
+.\"
+这是 \fIconsole_loglevel\fP 的默认值。
+.SS "The log level"
+每条 \fIprintk\fP() 消息都有自己的日志级别。 如果日志级别未明确指定为消息的一部分，则默认为
+\fIdefault_message_loglevel\fP。 日志级别的约定含义如下:
+.TS
+lB lB lB
+lB c l.
+Kernel constant	Level value	Meaning
+KERN_EMERG	0	System is unusable
+KERN_ALERT	1	T{
+Action must be taken immediately
+T}
+KERN_CRIT	2	Critical conditions
+KERN_ERR	3	Error conditions
+KERN_WARNING	4	Warning conditions
+KERN_NOTICE	5	T{
+Normal but significant condition
+T}
+KERN_INFO	6	Informational
+KERN_DEBUG	7	Debug\-level messages
+.TE
+.sp 1
+只有当日志级别低于 \fIconsole_loglevel\fP 的值时，内核 \fIprintk()\fP 例程才会在控制台上打印一条消息。
+.SH "RETURN VALUE"
+对于等于 2、3 或 4 的 \fItype\fP，对 \fBsyslog\fP() 的成功调用将返回读取的字节数。 对于 \fItype\fP
+9，\fBsyslog\fP() 返回内核日志缓冲区中当前可读取的字节数。 对于 \fItype\fP 10，\fBsyslog\fP() 返回内核日志缓冲区的总大小。
+对于 \fItype\fP 的其他值，成功返回 0。
+.PP
+如果出现错误，则返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+错误参数 (例如，错误的 \fItype\fP; 或对于 \fItype\fP 2、3 或 4，\fIbuf\fP 为 NULL，或 \fIlen\fP 小于零; 或对于
+\fItype\fP 8，\fIlevel\fP 越界 1 至 8)。
+.TP 
+\fBENOSYS\fP
+此 \fBsyslog\fP() 系统调用不可用，因为内核是在禁用 \fBCONFIG_PRINTK\fP 内核配置选项的情况下编译的。
+.TP 
+\fBEPERM\fP
+没有足够权限 (更准确地说: 没有 \fBCAP_SYS_ADMIN\fP 或 \fBCAP_SYSLOG\fP 能力) 的进程试图更改
+\fIconsole_loglevel\fP 或清除内核消息环形缓冲区。
+.TP 
+\fBERESTARTSYS\fP
+系统调用被信号中断; 什么都没读。 (这只能在跟踪期间看到。)
+.SH STANDARDS
+此系统调用是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+.\" In libc4 and libc5 the number of this call was defined by
+.\" .BR SYS_klog .
+.\" In glibc 2.0 the syscall is baptized
+.\" .BR klogctl ().
+从一开始，人们就注意到系统调用和同名的库例程是完全不同的动物是很不幸的。
+.SH "SEE ALSO"
+\fBdmesg\fP(1), \fBsyslog\fP(3), \fBcapabilities\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

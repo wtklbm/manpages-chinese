@@ -1,0 +1,205 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1992 Drew Eckhardt, March 28, 1992
+.\" and Copyright (c) 2002 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2004-11-16 -- mtk: the getrlimit.2 page, which formerly included
+.\" coverage of getrusage(2), has been split, so that the latter is
+.\" now covered in its own getrusage.2.  For older details of change
+.\" history, etc., see getrlimit.2
+.\"
+.\" Modified 2004-11-16, mtk, Noted that the nonconformance
+.\"	when SIGCHLD is being ignored is fixed in Linux 2.6.9.
+.\" 2008-02-22, Sripathi Kodi <sripathik@in.ibm.com>: Document RUSAGE_THREAD
+.\" 2008-05-25, mtk, clarify RUSAGE_CHILDREN + other clean-ups.
+.\" 2010-05-24, Mark Hills <mark@pogo.org.uk>: Description of fields,
+.\"     document ru_maxrss
+.\" 2010-05-24, mtk, enhanced description of various fields
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getrusage 2 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+getrusage \- 获取资源使用情况
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/resource.h>\fP
+.PP
+\fBint getrusage(int \fP\fIwho\fP\fB, struct rusage *\fP\fIusage\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBgetrusage\fP() 返回 \fIwho\fP 的资源使用度量，它可以是以下之一:
+.TP 
+\fBRUSAGE_SELF\fP
+返回调用进程的资源使用统计信息，它是进程中所有线程使用的资源的总和。
+.TP 
+\fBRUSAGE_CHILDREN\fP
+返回已终止和等待的调用进程的所有子进程的资源使用统计信息。
+这些统计数据将包括孙子使用的资源，以及进一步移除的后代，如果所有介入的后代都在等待他们终止的子节点。
+.TP 
+\fBRUSAGE_THREAD\fP (since Linux 2.6.26)
+返回调用线程的资源使用统计信息。 为了从 \fI<sys/resource.h>\fP 中获取这个常量的定义，必须定义
+\fB_GNU_SOURCE\fP 特性测试宏 (在包含 \fIany\fP 头文件之前)。
+.PP
+资源使用情况在 \fIusage\fP 指向的结构体中返回，其形式如下:
+.PP
+.in +4n
+.EX
+struct rusage {
+    struct timeval ru_utime; /* user CPU time used */
+    struct timeval ru_stime; /* system CPU time used */
+    long   ru_maxrss;        /* maximum resident set size */
+    long   ru_ixrss;         /* integral shared memory size */
+    long   ru_idrss;         /* integral unshared data size */
+    long   ru_isrss;         /* integral unshared stack size */
+    long   ru_minflt;        /* page reclaims (soft page faults) */
+    long   ru_majflt;        /* page faults (hard page faults) */
+    long   ru_nswap;         /* swaps */
+    long   ru_inblock;       /* block input operations */
+    long   ru_oublock;       /* block output operations */
+    long   ru_msgsnd;        /* IPC messages sent */
+    long   ru_msgrcv;        /* IPC messages received */
+    long   ru_nsignals;      /* signals received */
+    long   ru_nvcsw;         /* voluntary context switches */
+    long   ru_nivcsw;        /* involuntary context switches */
+};
+.EE
+.in
+.PP
+并非所有字段都已完成; 内核将未维护的字段设置为零。 (提供未维护的字段是为了与其他系统兼容，并且因为它们可能有一天会在 Linux 上得到支持。)
+这些字段的解释如下:
+.TP 
+\fIru_utime\fP
+这是在用户模式下执行所花费的总时间，以 \fItimeval\fP 结构体 (秒加微秒) 表示。
+.TP 
+\fIru_stime\fP
+这是在内核模式下执行所花费的总时间，以 \fItimeval\fP 结构体 (秒加微秒) 表示。
+.TP 
+\fIru_maxrss\fP (since Linux 2.6.32)
+这是使用的最大驻留集大小 (以千字节为单位)。 对于 \fBRUSAGE_CHILDREN\fP，这是最大子进程的驻留集大小，而不是进程树的最大驻留集大小。
+.TP 
+\fIru_ixrss\fP (unmaintained)
+.\" On some systems,
+.\" this is the integral of the text segment memory consumption,
+.\" expressed in kilobyte-seconds.
+该字段当前在 Linux 上未使用。
+.TP 
+\fIru_idrss\fP (unmaintained)
+.\" On some systems, this is the integral of the data segment memory consumption,
+.\" expressed in kilobyte-seconds.
+该字段当前在 Linux 上未使用。
+.TP 
+\fIru_isrss\fP (unmaintained)
+.\" On some systems, this is the integral of the stack memory consumption,
+.\" expressed in kilobyte-seconds.
+该字段当前在 Linux 上未使用。
+.TP 
+\fIru_minflt\fP
+没有任何 I/O 活动的页面错误数; 这里通过从等待重新分配的页面列表中 `回收` 页面框架来避免 I/O 活动。
+.TP 
+\fIru_majflt\fP
+需要 I/O 活动的页面错误数。
+.TP 
+\fIru_nswap\fP (unmaintained)
+.\" On some systems, this is the number of swaps out of physical memory.
+该字段当前在 Linux 上未使用。
+.TP 
+\fIru_inblock\fP (since Linux 2.6.22)
+文件系统必须执行输入的次数。
+.TP 
+\fIru_oublock\fP (since Linux 2.6.22)
+文件系统必须执行输出的次数。
+.TP 
+\fIru_msgsnd\fP (unmaintained)
+.\" On FreeBSD 6.2, this appears to measure messages sent over sockets
+.\" On some systems,
+.\" this field records the number of messages sent over sockets.
+该字段当前在 Linux 上未使用。
+.TP 
+\fIru_msgrcv\fP (unmaintained)
+.\" On FreeBSD 6.2, this appears to measure messages received over sockets
+.\" On some systems,
+.\" this field records the number of messages received over sockets.
+该字段当前在 Linux 上未使用。
+.TP 
+\fIru_nsignals\fP (unmaintained)
+.\" On some systems, this field records the number of signals received.
+该字段当前在 Linux 上未使用。
+.TP 
+\fIru_nvcsw\fP (since Linux 2.6)
+由于进程在其时间片完成之前自愿放弃处理器而导致上下文切换的次数 (通常是为了等待资源的可用性)。
+.TP 
+\fIru_nivcsw\fP (since Linux 2.6)
+由于更高优先级进程变为可运行或当前进程超出其时间片而导致上下文切换的次数。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIusage\fP 指向可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIwho\fP 无效。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetrusage\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.  POSIX.1 指定 \fBgetrusage\fP()，但仅指定字段
+\fIru_utime\fP 和 \fIru_stime\fP。
+.PP
+\fBRUSAGE_THREAD\fP 是特定于 Linux 的。
+.SH NOTES
+资源使用指标在 \fBexecve\fP(2) 中保留。
+.PP
+.\" See the description of getrusage() in XSH.
+.\" A similar statement was also in SUSv2.
+在 Linux 2.6.9 之前，如果 \fBSIGCHLD\fP 的处置设置为 \fBSIG_IGN\fP，则子进程的资源使用情况会自动包含在
+\fBRUSAGE_CHILDREN\fP 返回的值中，尽管 POSIX.1\-2001 明确禁止这样做。 此不符合项在 Linux 2.6.9
+及更高版本中得到纠正。
+.PP
+本页开头显示的结构体定义取自 4.3BSD Reno。
+.PP
+古代系统提供了一个 \fBvtimes\fP() 函数，其目的与 \fBgetrusage\fP() 相似。 为了向后兼容，glibc (直到 Linux
+2.32) 也提供了 \fBvtimes\fP()。 所有新应用程序都应使用 \fBgetrusage\fP() 编写。 (从 Linux 2.33
+开始，glibc 不再提供 \fBvtimes\fP() 实现。)
+.PP
+另请详见 \fBproc\fP(5) 中 \fI/proc/\fPpid\fI/stat\fP 的说明。
+.SH "SEE ALSO"
+\fBclock_gettime\fP(2), \fBgetrlimit\fP(2), \fBtimes\fP(2), \fBwait\fP(2), \fBwait4\fP(2),
+\fBclock\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

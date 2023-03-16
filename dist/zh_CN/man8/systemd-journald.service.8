@@ -1,0 +1,306 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-JOURNALD\&.SERVICE 8 "" "systemd 253" systemd\-journald.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-journald.service, systemd\-journald.socket,
+systemd\-journald\-dev\-log.socket, systemd\-journald\-audit.socket,
+systemd\-journald@.service, systemd\-journald@.socket,
+systemd\-journald\-varlink@.socket, systemd\-journald \- 日志服务
+.SH SYNOPSIS
+.PP
+systemd\-journald\&.service
+.PP
+systemd\-journald\&.socket
+.PP
+systemd\-journald\-dev\-log\&.socket
+.PP
+systemd\-journald\-audit\&.socket
+.PP
+systemd\-journald@\&.service
+.PP
+systemd\-journald@\&.socket
+.PP
+systemd\-journald\-varlink@\&.socket
+.PP
+/usr/lib/systemd/systemd\-journald
+.SH DESCRIPTION
+.PP
+systemd\-journald 是一种收集和存储日志数据的系统服务。它根据从各种来源接收的日志信息创建和维护结构化的索引日志:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+内核日志消息，通过 kmsg
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+简单的系统日志消息，通过 libc \fBsyslog\fP(3) 调用
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+通过原生 Journal API 的结构化系统日志消息，请参见 \fBsd_journal_print\fP(3) 和 \m[blue]\fBNative Journal Protocol\fP\m[]\&\s-2\u[1]\d\s+2
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+服务单元的标准输出和标准错误 \&. 有关更多详细信息，请参见下文 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+审计记录，源自内核审计子系统
+.RE
+.PP
+守护进程将以安全且不可伪造的方式为每条日志消息隐式收集大量元数据字段 \&。有关收集的元数据 \& 的更多信息，请参见
+\fBsystemd.journal\-fields\fP(7)。
+.PP
+日志收集的日志数据主要是基于文本的，但必要时也可以包括二进制数据。构成存储在日志中的日志记录的各个字段的大小可能高达 2⁶⁴\-1 字节 \&。
+.PP
+日志服务将日志数据永久存储在 /var/log/journal 以下或以易变的方式存储在 /run/log/journal/ 以下
+(在后一种情况下，它会在重新启动时丢失) \&。默认情况下，如果 /var/log/journal/
+在启动期间存在，则日志数据会持久存储，否则会隐式回退到易失性存储 \&。使用 \fBjournald.conf\fP(5) 中的 \fIStorage=\fP
+配置日志数据的放置位置，独立于 /var/journal/\& 是否存在。
+.PP
+请注意，journald 最初将使用易失性存储，直到调用 \fBjournalctl \-\-flush\fP (或将 \fBSIGUSR1\fP 发送到
+journald) 将导致它切换到持久日志记录 (在上述条件下) \&。这是通过 `systemd\-journal\-flush\&.service`\&
+在启动时自动完成的。
+.PP
+在 /var/log/journal/ 尚不存在但需要持久日志记录 (并且使用默认 journald\&.conf)
+的系统上，创建目录并确保它具有正确的访问模式和所有权就足够了:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+mkdir \-p /var/log/journal
+systemd\-tmpfiles \-\-create \-\-prefix /var/log/journal
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+有关此服务的配置信息，请参见 \fBjournald.conf\fP(5)。
+.SH "STREAM LOGGING"
+.PP
+systemd 服务管理器调用所有服务进程，标准输出和标准错误默认连接到日志 \&。可以通过
+\fIStandardOutput=\fP/\fIStandardError=\fP 元文件设置更改此行为，有关详细信息，请参见
+\fBsystemd.exec\fP(5)\&。日志将以这种方式接收到的日志字节流转换为单独的日志记录，在换行符处拆分流 (`\en`，ASCII
+\fB10\fP) 和 \fBNUL\fP 字节 \&。
+.PP
+如果 systemd\-journald\&.service 停止，与所有服务关联的流连接将终止 \&。服务进一步写入这些流将导致 \fBEPIPE\fP 错误
+\&。为了在这种情况下优雅地 react，建议记录到标准 output/error 的程序忽略此类错误 \&。如果 \fBSIGPIPE\fP UNIX
+信号处理程序未被阻止或关闭，此类写入尝试也会导致生成此类过程信号，请参见 \fBsignal\fP(7)\&。为了缓解这个问题，systemd
+服务管理器在默认情况下显式关闭所有调用进程的 \fBSIGPIPE\fP 信号 (这可以通过 \fIIgnoreSIGPIPE=\fP
+选项针对每个元单独更改，详情请参见 \fBsystemd.exec\fP(5)) \&。在标准 output/standard
+错误流终止后，它们可能无法恢复，直到与它们关联的服务重新启动 \&。请注意，在正常操作期间，systemd\-journald\&.service
+将这些流的文件描述符副本存储在服务管理器中 \&。如果使用 \fBsystemctl restart\fP 或等效操作而不是一对单独的 \fBsystemctl stop\fP 和 \fBsystemctl start\fP 命令 (或等效操作) 重新启动
+systemd\-journald\&.service，则这些流连接不会终止并且在重新启动后继续存在。因此重新启动
+systemd\-journald\&.service 是安全的，但不建议停止它 \&。
+.PP
+请注意，通过此类标准 output/error 流传输的记录的日志记录元数据反映了流最初为 \& 创建的对等体的元数据。如果流连接被传递给其他进程
+(例如从主服务进程派生出更多的子进程)，日志记录将不会反映它们的元数据，而是继续描述原始进程
+\&。这与上面列出的其他日志记录传输不同，后者本质上是基于记录的，并且元数据始终与单个记录相关联。
+.PP
+除了服务的隐式标准 output/error 日志记录之外，还可以通过 \fBsystemd\-cat\fP(1) 命令行工具 \& 获得流日志记录。
+.PP
+目前，systemd\-journald 接受的并行日志流的数量限制为 4096\&。当达到此限制时，可能会建立更多的日志流，但将从头开始接收
+\fBEPIPE\fP\&。
+.SH "JOURNAL NAMESPACES"
+.PP
+Journal\*(Aqnamespaces\*(Aq 既是一种将由一个或多个服务组成的项目的日志流与系统其余部分逻辑隔离的机制，也是一种提高性能的机制
+\&。多个日志命名空间可能同时存在，每个命名空间都定义了自己的、独立的日志流，由它自己的 \fBsystemd\-journald\fP\&
+实例管理。命名空间相互独立，无论是在数据存储中还是在 IPC 接口中 \&。默认情况下只有一个 \*(Aqdefault\*(Aq 命名空间存在，由
+systemd\-journald\&.service (及其关联的套接字单元) 管理 \&。通过启动
+systemd\-journald@\&.service 服务模板 \&
+的实例来创建额外的命名空间。实例名称是命名空间标识符，它是一个短字符串，用于引用日志命名空间 \&。可以通过 \fILogNamespace=\fP
+元文件设置将服务单元分配给特定的日志命名空间，有关详细信息，请参见 \fBsystemd.exec\fP(5)\&。\fBjournalctl\fP(1) 的
+\fB\-\-namespace=\fP 开关可用于查看特定命名空间 \&
+的日志流。如果未使用开关，则显示默认命名空间的日志流，i\&.e\&。来自其他名称空间的日志数据不可见 \&。
+.PP
+与特定日志命名空间关联的服务可以通过日志的原生日志记录协议 syslog 和 stdout/stderr 进行记录;
+来自所有三个传输的日志记录都与命名空间 \& 相关联。
+.PP
+默认情况下，只有默认命名空间会收集内核和审计日志消息 \&。
+.PP
+默认命名空间的 \fBsystemd\-journald\fP 实例通过 /etc/systemd/journald\&.conf 配置
+(见下文)，而其他实例通过 /etc/systemd/journald@\fINAMESPACE\fP\&.conf\& 配置。默认命名空间的日志数据位于
+/var/log/journal/\fIMACHINE_ID\fP (见下文)，而其他命名空间的数据位于
+/var/log/journal/\fIMACHINE_ID\fP\&.\fINAMESPACE\fP\&。
+.SH SIGNALS
+.PP
+SIGUSR1
+.RS 4
+请求将 /run / 中的日志数据刷新到 /var / 以使其持久化 (如果已启用) \&。这必须在安装 /var / 之后使用，否则无论配置如何，来自
+/run / 的日志数据都不会刷新到 /var/。使用 \fBjournalctl \-\-flush\fP 命令请求刷新日志文件，并等待操作完成
+\&。有关详细信息，请参见 \fBjournalctl\fP(1)\&。
+.RE
+.PP
+SIGUSR2
+.RS 4
+请求日志文件的 immediate 旋转 \&。使用 \fBjournalctl \-\-rotate\fP 命令请求日志文件轮转，并等待操作完成 \&。
+.RE
+.PP
+SIGRTMIN+1
+.RS 4
+请求将所有未写入的日志数据写入磁盘 \&。使用 \fBjournalctl \-\-sync\fP 命令触发日志同步，等待操作完成 \&。
+.RE
+.SH "KERNEL COMMAND LINE"
+.PP
+journald\&.conf 的一些配置参数可能会在内核命令行上被覆盖:
+.PP
+\fIsystemd\&.journald\&.forward_to_syslog=\fP,
+\fIsystemd\&.journald\&.forward_to_kmsg=\fP,
+\fIsystemd\&.journald\&.forward_to_console=\fP,
+\fIsystemd\&.journald\&.forward_to_wall=\fP
+.RS 4
+Enables/disables 将收集到的日志消息转发到 syslog、内核日志缓冲区、系统控制台或 wall\&。
+.sp
+有关这些设置的信息，请参见 \fBjournald.conf\fP(5)。
+.RE
+.PP
+请注意，这些内核命令行选项仅适用于默认名称空间，请参见上文 \&。
+.SH "ACCESS CONTROL"
+.PP
+默认情况下，日志文件由 "systemd\-journal" 系统组拥有和读取，但不可写 \&。因此，将用户添加到该组使他们能够读取日志文件 \&。
+.PP
+默认情况下，每个具有系统用户、动态服务用户和 nobody 用户范围之外的 UID 的用户都将在 /var/journal/\&
+中获得自己的一组日志文件。有关 UID 范围 \& 的更多详细信息，请参见 \m[blue]\fBUsers, Groups, UIDs and GIDs on systemd systems\fP\m[]\&\s-2\u[2]\d\s+2。但是，这些日志文件不属于用户所有，以避免用户可以直接写入它们
+\&。相反，文件系统 ACL 用于确保用户只获得读取权限 \&。
+.PP
+可以通过文件系统访问控制列表 (ACL)\& 授予其他用户和组访问日志文件的权限。发行版和管理员可以选择使用如下命令向 "wheel" 和 "adm"
+系统组的所有成员授予读取权限:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# setfacl \-Rnm g:wheel:rx,d:g:wheel:rx,g:adm:rx,d:g:adm:rx /var/log/journal/
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，此命令将为现有日志文件和在 /var/log/journal/ 目录 \& 中创建的 future 日志文件更新 ACL。
+.SH FILES
+.PP
+/etc/systemd/journald\&.conf
+.RS 4
+配置 \fBsystemd\-journald\fP 行为 \&。请参见 \fBjournald.conf\fP(5)\&。
+.RE
+.PP
+/run/log/journal/\fImachine\-id\fP/*\&.journal,
+/run/log/journal/\fImachine\-id\fP/*\&.journal~,
+/var/log/journal/\fImachine\-id\fP/*\&.journal,
+/var/log/journal/\fImachine\-id\fP/*\&.journal~
+.RS 4
+\fBsystemd\-journald\fP 将条目写入 /run/log/journal/\fImachine\-id\fP/ 或
+/var/log/journal/\fImachine\-id\fP/ 中带有 "\&.journal" 后缀 \&
+的文件。如果守护进程被不干净地停止，或者如果发现文件已损坏，它们将使用 "\&.journal~" 后缀重命名，并且
+\fBsystemd\-journald\fP 开始写入新文件 \&。 /run/ 在 /var/log/journal 不可用时使用，或者在
+\fBjournald.conf\fP(5) 配置文件中设置 \fBStorage=volatile\fP 时使用 \&。
+.sp
+当 systemd\-journald 停止写入日志文件时，它将被重命名为 "\fIoriginal\-name\fP@\fIsuffix\&.journal\fP"
+(或 "\fIoriginal\-name\fP@\fIsuffix\&.journal~\fP")\&。此类文件为 "archived"，将不再写入 \&。
+.sp
+通常，读取或复制任何日志文件 (活动的或存档的) \& 是安全的。\fBjournalctl\fP(1) 和 \fBsd\-journal\fP(3)
+库中的函数应该可以读取所有已经完全写入 \& 的条目。
+.sp
+systemd\-journald 将自动删除最旧的存档日志文件以限制磁盘使用 \&。请参见 \fISystemMaxUse=\fP 和
+\fBjournald.conf\fP(5)\& 中的相关设置。
+.RE
+.PP
+/dev/kmsg, /dev/log, /run/systemd/journal/dev\-log,
+/run/systemd/journal/socket, /run/systemd/journal/stdout
+.RS 4
+\fBsystemd\-journald\fP 将监听并在文件系统中可见的套接字和其他文件节点路径 \&。除了这些，\fBsystemd\-journald\fP
+还可以使用 \fBnetlink\fP(7) 监听审计事件，这取决于 "systemd\-journald\-audit\&.socket" 是否启用 \&。
+.RE
+.PP
+如果使用日志命名空间，这些路径会稍微改变以包含命名空间标识符，请参见上文 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBjournalctl\fP(1), \fBjournald.conf\fP(5),
+\fBsystemd.journal\-fields\fP(7), \fBsd\-journal\fP(3), \fBsystemd\-coredump\fP(8),
+\fBsetfacl\fP(1), \fBsd_journal_print\fP(3), \fBpydoc systemd\&.journal\fP
+.SH NOTES
+.IP " 1." 4
+原生日志协议
+.RS 4
+\%https://systemd.io/JOURNAL_NATIVE_PROTOCOL
+.RE
+.IP " 2." 4
+systemd 系统上的用户、组、UID 和 GID
+.RS 4
+\%https://systemd.io/UIDS\-GIDS
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,208 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH MACHINE\-ID 5 "" "systemd 253" machine\-id
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+machine\-id \- 本地机器 ID 配置文件
+.SH SYNOPSIS
+.PP
+/etc/machine\-id
+.SH DESCRIPTION
+.PP
+/etc/machine\-id 文件包含在安装或引导期间设置的本地系统的唯一机器 ID。机器 ID 是单个以换行符结尾的十六进制 32 字符小写
+ID\&。从十六进制解码时，这对应于 16\-byte/128\-bit 值 \&。此 ID 可能不全为零 \&。
+.PP
+机器 ID 通常在系统安装或首次启动期间从随机源生成，并在所有后续启动中保持常量 \&。可选地，对于无状态系统，如有必要，它会在早期启动期间的运行时生成
+\&。
+.PP
+可以设置机器 ID，例如在网络引导时，使用 \fIsystemd\&.machine_id=\fP 内核命令行参数或通过将选项
+\fB\-\-machine\-id=\fP 传递给 systemd\&。以这种方式指定的 ID 具有更高的优先级，将代替存储在 /etc/machine\-id\&
+中的 ID 使用。
+.PP
+机器 ID 不会根据本地或网络配置或更换硬件时更改 \&。由于这个和它更大的长度，它是 POSIX 指定的 \fBgethostid\fP(3) 调用 \&
+更有用的替代品。
+.PP
+此机器 ID 遵循与 D\-Bus 机器 ID\& 相同的格式和逻辑。
+.PP
+此 ID 唯一标识主机 \&。它应该被视为 "confidential"，并且不得暴露在不受信任的环境中，特别是在网络上
+\&。如果某些应用程序需要绑定到机器的稳定唯一标识符，则不得直接使用机器 ID 或其任何部分 \&。取而代之的是，机器 ID
+应该使用加密的、键控的散列函数散列，使用固定的、特定于应用程序的密钥 \&。这样，ID 将是唯一的，并以大量方式从机器 ID
+派生，但无法从特定于应用程序的机器 ID 中检索原始机器 ID\&。\fBsd_id128_get_machine_app_specific\fP(3)
+API 提供了这种算法的实现。
+.SH INITIALIZATION
+.PP
+每台机器在正常运行时都应该有一个非空的 ID\&。每台机器的 ID 应该是唯一的 \&。为了实现这些目标，/etc/machine\-id
+可以用几种不同的方式进行初始化 \&。
+.PP
+对于为特定机器创建自定义映像的正常操作系统安装，/etc/machine\-id 应在安装期间填充 \&。
+.PP
+安装程序工具可能使用 \fBsystemd\-machine\-id\-setup\fP(1) 在安装时初始化机器 ID，但 /etc/machine\-id
+也可以使用任何其他方式写入 \&。
+.PP
+对于一次创建并在多台机器上使用的操作系统映像，例如容器或云中的操作系统映像，泛型文件系统映像中的 /etc/machine\-id 应该丢失或为空文件
+(这两个选项之间的区别在 "First Boot Semantics" 下进行了描述以下) \&。如果可能，将在引导期间生成一个 ID 并保存到此文件
+\&。放置一个空文件很有用，因为它允许将临时文件绑定安装在实际文件上，以防图像以只读方式使用 \&。另请详见 \m[blue]\fBSafely Building Images\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.PP
+\fBsystemd\-firstboot\fP(1) 可用于在已安装 (但未启动) 的系统映像上初始化 /etc/machine\-id\&。
+.PP
+当使用 \fBsystemd\fP(1) 引导机器时，机器的 ID 将被建立 \&。如果指定 \fIsystemd\&.machine_id=\fP 或
+\fB\-\-machine\-id=\fP 选项 (参见第一部分)，将使用此值 \&。否则，将使用 /etc/machine\-id 中的值
+\&。如果此文件为空或丢失，systemd 将尝试使用来自 /var/lib/dbus/machine\-id 的 D\-Bus 机器 ID、内核命令行选项
+\fIcontainer_uuid\fP 的值、KVM DMI product_uuid 或设备树 vm,uuid (在 KVM 系统上)，最后一个随机生成的
+UUID\&。
+.PP
+建立机器 ID 后，\fBsystemd\fP(1) 将尝试将其保存到 /etc/machine\-id\&。如果失败，它将尝试通过
+/etc/machine\-id\& 绑定挂载一个临时文件。如果文件系统是只读的并且不包含 (可能是空的) /etc/machine\-id 文件
+\&，则会出错。
+.PP
+如果 /etc/machine\-id 或 /etc / 在早期引导期间是只读的但稍后变为可写 \&，则
+\fBsystemd\-machine\-id\-commit.service\fP(8) 将尝试将机器 ID 写入文件系统。
+.SH "FIRST BOOT SEMANTICS"
+.PP
+/etc/machine\-id is used to decide whether a boot is the first one\&. The
+rules are as follows:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+内核命令参数 \fIsystemd\&.condition\-first\-boot=\fP 可用于覆盖自动检测逻辑，请参见
+\fBkernel\-command\-line\fP(7)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+否则，如果 /etc/machine\-id 不存在，这是第一次启动 \&。在早期启动期间，\fBsystemd\fP 会将
+"uninitialized\en" 写入此文件并覆盖一个包含实际机器 ID\& 的临时文件。稍后 (到达
+first\-boot\-complete\&.target 后)，将真实机器 ID 写入磁盘 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+如果 /etc/machine\-id 包含字符串 "uninitialized"，则引导也被认为是第一次引导 \&。与上述相同的机制适用 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+如果 /etc/machine\-id 存在且为空，则引导 \fInot\fP 被认为是第一个引导 \&。 \fBsystemd\fP
+仍然会在其上绑定一个包含实际机器 ID 的文件，然后尝试将其提交到磁盘 (如果 /etc / 可写) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+如果 /etc/machine\-id 已经包含一个有效的机器 ID，这不是第一次引导 \&。
+.RE
+.PP
+如果根据上述规则检测到首次启动，将运行带有 \fIConditionFirstBoot=yes\fP 的单元并且 \fBsystemd\fP
+将执行额外的初始化步骤，特别是预设单元 \&。
+.SH "RELATION TO OSF UUIDS"
+.PP
+请注意，机器 ID 既不是 \m[blue]\fBRFC 4122\fP\m[]\&\s-2\u[2]\d\s+2 定义的 OSF UUID，也不是
+Microsoft GUID; 但是，从 systemd v30 开始，根据 RFC 4122\&，新生成的机器 ID 确实符合变体 1 版本 4
+UUID 的条件。
+.PP
+为了保持与现有安装的兼容性，需要严格符合 RFC 4122 的 UUID 的应用程序应该解码机器 ID，然后 (non\-reversibly)
+应用以下操作将其转换为有效的 RFC 4122 Variant 1 Version 4 UUID\&。"id" 是无符号字符数组:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+/* Set UUID version to 4 \-\-\- truly random generation */
+id[6] = (id[6] & 0x0F) | 0x40;
+/* Set the UUID variant to DCE */
+id[8] = (id[8] & 0x3F) | 0x80;
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+(此代码的灵感来自 Linux 内核源代码中的 drivers/char/random\&.c 的
+"generate_random_uuid()"\&。)
+.SH HISTORY
+.PP
+/etc/machine\-id 的简单配置文件格式起源于 D\-Bus\& 引入的 /var/lib/dbus/machine\-id
+文件。事实上，后一个文件可能是 /etc/machine\-id\& 的符号链接。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-machine\-id\-setup\fP(1), \fBgethostid\fP(3),
+\fBhostname\fP(5), \fBmachine\-info\fP(5), \fBos\-release\fP(5), \fBsd\-id128\fP(3),
+\fBsd_id128_get_machine\fP(3), \fBsystemd\-firstboot\fP(1)
+.SH NOTES
+.IP " 1." 4
+安全构建图像
+.RS 4
+\%https://systemd.io/BUILDING_IMAGES
+.RE
+.IP " 2." 4
+RFC 4122
+.RS 4
+\%https://tools.ietf.org/html/rfc4122
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

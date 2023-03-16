@@ -1,0 +1,112 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2001 Andries Brouwer <aeb@cwi.nl>.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" FIXME . There are a lot of other process termination actions that
+.\" could be listed on this page. See, for example, the list in the
+.\" POSIX exit(3p) page.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH exit 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+exit \- 导致正常进程终止
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fB[[noreturn]] void exit(int \fP\fIstatus\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBexit\fP() 函数导致正常进程终止和 \fIstatus\fP 的最低有效字节 (即 \fIstatus & 0xFF\fP) 返回给父进程 (参见
+\fBwait\fP(2)).
+.PP
+以 \fBatexit\fP(3) 和 \fBon_exit\fP(3) 注册的所有函数被调用，按照注册的相反顺序。 (这些函数之一可以使用
+\fBatexit\fP(3) 或 \fBon_exit\fP(3) 注册一个额外的函数，以便在退出处理期间执行; 新的注册将添加到剩余待调用函数列表的前面。)
+如果其中一个函数不返回 (例如，它调用 \fB_exit\fP(2)，或用信号杀死自己)，然后不再调用剩余的函数，并放弃进一步的退出处理 (特别是
+\fBstdio\fP(3) 流的刷新)。 如果一个号码已经使用 \fBatexit\fP(3) 或 \fBon_exit\fP(3)
+注册了多次，那么它被调用的次数与它被注册的次数一样多。
+.PP
+所有打开的 \fBstdio\fP(3) 流都被刷新并关闭。 由 \fBtmpfile\fP(3) 创建的文件被删除。
+.PP
+C 标准指定了两个常量 \fBEXIT_SUCCESS\fP 和 \fBEXIT_FAILURE\fP，它们可以传递给 \fBexit\fP()
+以分别指示成功或不成功终止。
+.SH "RETURN VALUE"
+\fBexit\fP() 函数不返回。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBexit\fP()
+T}	Thread safety	MT\-Unsafe race:exit
+.TE
+.hy
+.ad
+.sp 1
+.PP
+\fBexit\fP() 函数使用了一个不受保护的全局变量，因此它不是线程安全的。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.SH NOTES
+如果使用 \fBatexit\fP(3) 和 \fBon_exit\fP(3) 注册的函数之一调用 \fBexit\fP() 或
+\fBlongjmp\fP(3)，则行为未定义。 请注意，调用 \fBexecve\fP(2) 会删除使用 \fBatexit\fP(3) 和 \fBon_exit\fP(3)
+创建的注册。
+.PP
+使用 \fBEXIT_SUCCESS\fP 和 \fBEXIT_FAILURE\fP 比使用 0 和一些非零值 (如 1 或 \-1) 稍微更便携 (对于非 UNIX
+环境)。 特别是，VMS 使用不同的约定。
+.PP
+BSD 尝试标准化退出代码 (一些 C 库如 GNU C 库也采用了这种代码) ; 请参见文件 \fI<sysexits.h>\fP。
+.PP
+\fBexit\fP() 之后，必须将退出状态传递给父进程。 有以下三种情况:
+.IP \[bu] 3
+如果父级已设置 \fBSA_NOCLDWAIT\fP，或已将 \fBSIGCHLD\fP 处理程序设置为 \fBSIG_IGN\fP，则状态被丢弃，子级立即死亡。
+.IP \[bu]
+如果父母正在等待子节点，它会收到退出状态通知，子节点会立即死亡。
+.IP \[bu]
+否则，子进程成为 "zombie" 进程: 大部分进程资源被回收，但在进程表中保留包含有关子进程的最少信息 (终止状态、资源使用统计信息) 的槽。
+这允许父母随后使用 \fBwaitpid\fP(2) (或类似的) 来了解子节点的终止状态; 那时僵尸进程槽被释放。
+.PP
+.\"
+如果实现支持 \fBSIGCHLD\fP 信号，则将此信号发送给父级。 如果父端设置了 \fBSA_NOCLDWAIT\fP，则是否发送 \fBSIGCHLD\fP
+信号是不确定的。
+.SS "Signals sent to other processes"
+如果退出进程是会话领导者，并且它的控制终端是会话的控制终端，那么这个控制终端的前台进程组中的每个进程都被发送一个 \fBSIGHUP\fP
+信号，终端与这个会话解除关联，允许它通过新的控制过程获得。
+.PP
+如果进程的退出导致一个进程组成为孤立进程，并且如果新孤立进程组的任何成员被停止，那么一个 \fBSIGHUP\fP 信号和一个 \fBSIGCONT\fP
+信号将被发送到这个进程组中的每个进程。 有关孤立进程组的说明，请参见 \fBsetpgid\fP(2)。
+.PP
+除非在上述情况下，发出信号的进程可能是终止进程的子进程，否则 \fInot\fP 进程的终止通常会导致向该进程的子进程发送信号。 但是，一个进程可以使用
+\fBprctl\fP(2) \fBPR_SET_PDEATHSIG\fP 操作来安排它在其父进程终止时接收信号。
+.SH "SEE ALSO"
+\fB_exit\fP(2), \fBget_robust_list\fP(2), \fBsetpgid\fP(2), \fBwait\fP(2), \fBatexit\fP(3),
+\fBon_exit\fP(3), \fBtmpfile\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

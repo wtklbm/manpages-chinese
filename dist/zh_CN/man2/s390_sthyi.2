@@ -1,0 +1,102 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright IBM Corp. 2017
+.\" Author: QingFeng Hao <haoqf@linux.vnet.ibm.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH s390_sthyi 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+s390_sthyi \- 模拟 STHYI 指令
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <asm/sthyi.h>\fP        /* Definition of \fBSTHYI_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_s390_sthyi, unsigned long \fP\fIfunction_code\fP\fB,\fP
+\fB            void *\fP\fIresp_buffer\fP\fB, uint64_t *\fP\fIreturn_code\fP\fB,\fP
+\fB            unsigned long \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBs390_sthyi\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBs390_sthyi\fP() 系统调用模拟了 STHYI (Store Hypervisor Information) 指令。
+它提供机器的硬件资源信息及其虚拟化级别。 这包括 CPU 类型和容量，以及机器型号和其他指标。
+.PP
+\fIfunction_code\fP 参数表示执行哪个函数。 支持以下 code(s):
+.TP 
+\fBSTHYI_FC_CP_IFL_CAP\fP
+返回 CP (中央处理器) 和 IFL (Linux 的集成设施) 容量信息。
+.PP
+\fIresp_buffer\fP 参数指定响应缓冲区的地址。 当 \fIfunction_code\fP 为 \fBSTHYI_FC_CP_IFL_CAP\fP
+时，缓冲区的大小必须为一页 (4K)。 如果系统调用返回 0，则响应缓冲区将填充 CPU 容量信息。 否则，响应缓冲区的内容不变。
+.PP
+\fIreturn_code\fP 参数存储 STHYI 指令的返回码，使用以下值之一:
+.TP 
+0
+Success.
+.TP 
+4
+不支持的函数代码。
+.PP
+有关 \fIreturn_code\fP、\fIfunction_code\fP 和 \fIresp_buffer\fP 的更多详细信息，请参见 NOTES
+中给出的引用。
+.PP
+提供 \fIflags\fP 参数以允许 future 扩展，目前必须设置为 0.
+.SH "RETURN VALUE"
+成功时 (即: 仿真成功)，\fBs390_sthyi\fP() 的返回值与 STHYI 指令的条件代码匹配，该值在 [0..3] 范围内。 返回值为 0
+表示 CPU 容量信息存储在 \fI*resp_buffer\fP 中。 返回值 3 表示 "unsupported function
+code"，\fI*resp_buffer\fP 的内容不变。 返回值 1 和 2 是保留的。
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIresp_buffer\fP 或 \fIreturn_code\fP 中指定的值不是有效地址。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 中指定的值非零。
+.TP 
+\fBENOMEM\fP
+为处理 CPU 容量信息分配内存失败。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIfunction_code\fP 中指定的值无效。
+.SH VERSIONS
+本系统调用自 Linux 4.15 起可用。
+.SH STANDARDS
+此 Linux 特定系统调用仅适用于 s390 架构。
+.SH NOTES
+有关 STHYI 指令的详细信息，请参见
+.UR https://www.ibm.com\:/support\:/knowledgecenter\:/SSB27U_6.3.0\:/com.ibm.zvm.v630.hcpb4\:/hcpb4sth.htm
+文档页
+.UE .
+.PP
+当使用系统调用接口时，响应缓冲区不必满足 STHYI 指令定义中描述的对齐要求。
+.PP
+内核缓存响应 (最多一秒，从 Linux 4.16 开始)。 随后的系统调用可能会返回缓存的响应。
+.SH "SEE ALSO"
+\fBsyscall\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

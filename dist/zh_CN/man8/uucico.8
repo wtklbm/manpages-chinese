@@ -1,0 +1,128 @@
+.\" -*- coding: UTF-8 -*-
+''' $Id: uucico.8,v 1.20 2002/03/05 22:20:48 ian Rel $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH uucico 8 "Taylor UUCP 1.07"  
+.SH NAME
+uucico\-UUCP 文件传输守护进程
+.SH SYNOPSIS
+\fBuucico\fP [ options ]
+.SH DESCRIPTION
+\fIuucico\fP 守护程序处理由 \fIuucp\fP (1) 和 \fIuux\fP (1) 排队的文件传输请求。 它在 \fIuucp\fP 或 \fIuux\fP
+运行时启动 (除非它们被赋予 \fB\-r\fP 选项)。 它通常也使用 \fIcrontab\fP table(s) 中的条目定期启动。
+
+当使用 \fB\-r1,\fP \fB\-\-master,\fP \fB\-s,\fP \fB\-\-system,\fP 或 \fB\-S,\fP
+调用时，守护进程将调用远程系统，以主模式运行。 否则守护进程将以从属模式启动，接受来自远程系统的调用。 通常会为 UUCP
+设置一个特殊的登录名，当调用时自动调用 \fIuucico\fP。
+
+当 \fIuucico\fP 终止时，它调用 \fIuuxqt\fP (8) 守护程序，除非给出 \fB\-q\fP 或 \fB\-\-nouuxqt\fP 选项; \fIuuxqt\fP
+(8) 执行由 \fIuux\fP (1) 在远程系统上创建的任何工作指令，以及在本地创建的已接收到它们正在等待的远程文件的任何工作指令。
+
+如果调用失败，\fIuucico\fP 通常会拒绝重试调用，直到经过一定的 (configurable) 时间量。 这可能会被 \fB\-f,\fP
+\fB\-\-force,\fP 或 \fB\-S\fP 选项覆盖。
+
+\fB\-l,\fP \fB\-\-prompt,\fP \fB\-e,\fP 或 \fB\-\-loop\fP 选项可用于强制 \fIuucico\fP 生成其自己的 "login: " 和
+"Password:" 提示。 当另一个守护进程调用时，它会看到这些提示并照常登录。 登录名和密码通常会根据专门为 \fIuucico\fP 而不是
+\fI/etc/passwd\fP 文件保留的单独列表进行检查; 在某些系统上可以指示 \fIuucico\fP 使用 \fI/etc/passwd\fP 文件。
+\fB\-l\fP 或 \fB\-\-prompt\fP 选项会提示一次然后退出; 在这种模式下，UUCP 管理员或超级用户可以使用 \fB\-u\fP 或 \fB\-\-login\fP
+选项来强制输入登录名，在这种情况下，\fIuucico\fP 不会提示输入登录名。 \fB\-e\fP 或 \fB\-\-loop\fP 选项会在第一次会话结束后再次提示;
+在这种模式下，\fIuucico\fP 将永久控制一个端口。
+
+如果 \fIuucico\fP 接收到 SIGQUIT、SIGTERM 或 SIGPIPE 信号，它将完全停止与远程系统的任何当前对话并退出。 如果它收到
+SIGHUP 信号，它将停止任何当前对话，但将继续调用 (如果使用 \fB\-r1\fP 或 \fB\-\-master)\fP 调用并接受来自 (如果使用 \fB\-e\fP
+或 \fB\-\-loop)\fP 其他系统调用。 如果它收到 SIGINT 信号，它将结束当前对话，但不会发出或接受任何更多调用。
+.SH OPTIONS
+可以为 \fIuucico.\fP 提供以下选项
+.TP  5
+\fB\-r1, \-\-master\fP
+以主控模式启动 (调出系统) ; 由 \fB\-s,\fP \fB\-\-system,\fP 或 \fB\-S.\fP 暗示如果未指定系统，则调用任何等待完成工作的系统。
+.TP  5
+\fB\-r0, \-\-slave\fP
+以从属模式启动。 这是默认设置。
+.TP  5
+\fB\-s system, \-\-system system\fP
+调用命名系统。
+.TP  5
+\fB\-S system\fP
+调用命名系统，忽略任何所需的等待。 这相当于 \fB\-s system \-f.\fP
+.TP  5
+\fB\-f, \-\-force\fP
+忽略任何需要等待的任何系统被调用。
+.TP  5
+\fB\-l, \-\-prompt\fP
+使用 "login: " 和 "Password:" 提示输入登录名和密码。 这使得 \fIuucico\fP 可以很容易地从 \fIinetd\fP (8)
+运行。 登录名和密码根据 UUCP 密码文件进行检查，该文件可能与文件 \fI/etc/passwd.\fP 没有关系 \fB\-\-login\fP
+选项可用于强制登录名，其中 \fIuucico\fP 将仅提示输入密码。
+.TP  5
+\fB\-p port, \-\-port port\fP
+指定调出或收听的端口。
+.TP  5
+\fB\-e, \-\-loop\fP
+进入 login/password 提示和从模式守护程序执行的无限循环。 程序不会自行停止; 您必须使用 \fIkill\fP (1) 来关闭它。
+.TP  5
+\fB\-w, \-\-wait\fP
+调用后 (指定 \fB\-s,\fP \fB\-\-system,\fP 或 \fB\-S\fP 时调用特定系统，或指定 \fB\-r1\fP 或 \fB\-\-master\fP
+时调用所有工作的系统)，开始无限循环，如 \fB\-\-loop.\fP
+.TP  5
+\fB\-q, \-\-nouuxqt\fP
+完成后不要启动 \fIuuxqt\fP (8) 守护进程。
+.TP  5
+\fB\-c, \-\-quiet\fP
+如果此时不允许调用，则不要调用，但也不要在日志文件中放入错误消息，也不要更新系统状态 (如 \fIuustat\fP (1)) 报告的那样)。
+这对于自动轮询脚本来说很方便，它可能只想简单地尝试调用每个系统，而不是担心此时可能调用哪些特定系统。 此选项还会抑制指示没有工作要做的日志消息。
+.TP  5
+\fB\-C, \-\-ifwork\fP
+仅调用由 \fB\-s,\fP \fB\-\-system\fP 或 \fB\-S\fP 命名的系统 (如果该系统有工作)。
+.TP  5
+\fB\-D, \-\-nodetach\fP
+不要脱离控制终端。 通常 \fIuucico\fP 在每次调出到另一个系统之前和调用 \fIuuxqt.\fP 之前从终端分离。此选项可防止这种情况发生。
+.TP  5
+\fB\-u name, \-\-login name\fP
+设置要使用的登录名而不是调用用户的登录名。 此选项只能由 UUCP 管理员或超级用户使用。 如果与 \fB\-\-prompt,\fP 一起使用，这将导致
+\fIuucico\fP 仅提示输入密码，而不提示登录名。
+.TP  5
+\fB\-z, \-\-try\-next\fP
+如果在到达远程系统后调用失败，请尝试下一个替代而不是简单地退出。
+.TP  5
+\fB\-i type, \-\-stdin type\fP
+设置使用标准输入时要使用的端口类型。 唯一支持的端口类型是 TLI，这仅在支持 TLI 网络接口的机器上可用。 指定 \fB\-iTLI\fP 会导致
+\fIuucico\fP 使用 TLI 调用来执行 I/O。
+.TP  5
+\fB\-x type, \-X type, \-\-debug type\fP
+打开特定的调试类型。 可以识别以下类型: 异常、聊天、握手、uucp\-proto、proto、端口、配置、spooldir、执行、传入、传出。
+
+可以给出多种类型，用逗号分隔，\fB\-\-debug\fP 选项可以出现多次。 也可以给出一个数字，它将打开上述列表中的许多类型; 例如，\fB\-\-debug 2\fP 等同于 \fB\-\-debug abnormal,chat.\fP
+
+调试输出发送到调试文件，可以使用 \fIuulog \-D.\fP 打印
+.TP  5
+\fB\-I file, \-\-config file\fP
+设置要使用的配置文件。 此选项可能不可用，具体取决于 \fIuucico\fP 的编译方式。
+.TP  5
+\fB\-v, \-\-version\fP
+上报版本信息并退出。
+.TP  5
+\fB\-\-help\fP
+打印帮助信息并退出。
+.SH "SEE ALSO"
+kill(1), uucp(1), uux(1), uustat(1), uuxqt(8)
+.SH AUTHOR
+伊恩・兰斯・泰勒 <ian@airs.com>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

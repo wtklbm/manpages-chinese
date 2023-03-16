@@ -1,0 +1,180 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-FSTAB\-GENERATOR 8 "" "systemd 253" systemd\-fstab\-generator
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-fstab\-generator\-/etc/fstab 的元生成器
+.SH SYNOPSIS
+.PP
+/usr/lib/systemd/system\-generators/systemd\-fstab\-generator
+.SH DESCRIPTION
+.PP
+systemd\-fstab\-generator 是一个生成器，它在引导早期和重新加载系统管理器的配置时将 /etc/fstab (有关详细信息，请参见
+\fBfstab\fP(5)) 转换为原生 systemd 单元。这将根据需要实例化挂载和交换单元 \&。
+.PP
+\fIpassno\fP 字段被视为一个简单的布尔值，排序信息被丢弃 \&。但是，如果检查根文件系统，则会先检查所有其他文件系统 \&。
+.PP
+有关此生成器理解 \& 的特殊 /etc/fstab 安装选项的更多信息，请参见 \fBsystemd.mount\fP(5) 和
+\fBsystemd.swap\fP(5)。
+.PP
+一个专题是符号链接的处理 \&。历史 init 实现支持 /etc/fstab\&
+中的符号链接。因为挂载单元会拒绝目标为符号链接的挂载，所以此生成器在处理 /etc/fstab 时会尽可能解析任何符号链接，以增强向后兼容性
+\&。如果此生成器运行时符号链接目标不存在，则假定符号链接目标是挂载的最终目标。
+.PP
+systemd\-fstab\-generator 实现 \fBsystemd.generator\fP(7)\&。
+.SH "KERNEL COMMAND LINE"
+.PP
+systemd\-fstab\-generator 理解以下内核命令行参数:
+.PP
+\fIfstab=\fP, \fIrd\&.fstab=\fP
+.RS 4
+采用布尔型参数 \&。默认为 `是`\&。如果为 "no"，则导致生成器忽略 /etc/fstab\& 中配置的任何挂载或交换设备。
+\fIrd\&.fstab=\fP 只在 initrd 中被接受，而 \fIfstab=\fP 被主系统和 initrd\& 都接受。
+.RE
+.PP
+\fIroot=\fP
+.RS 4
+配置操作系统 \*(Aqs 根文件系统以在 initrd 中运行时挂载 \&。这接受设备节点路径 (通常是 /dev/by\-uuid/\&...  或
+/dev/by\-label/\&...  或类似)，或特殊值 "gpt\-auto" 和 `tmpfs`\&。
+.sp
+使用 "gpt\-auto" 通过 \fBsystemd\-gpt\-auto\-generator\fP(8)\& 显式请求自动发现根文件系统。
+.sp
+使用 "tmpfs" 以挂载 \fBtmpfs\fP(5) 文件系统作为 OS\& 的根文件系统。这与 \fImount\&.usr=\fP (见下文)
+结合使用很有用，可以将易变的根文件系统与单独的不可更改的 /usr / 文件系统 \& 结合起来。另请详见下面的
+\fIsystemd\&.volatile=\fP\&。
+.RE
+.PP
+\fIrootfstype=\fP
+.RS 4
+采用将传递给挂载命令 \& 的根文件系统类型。 \fIrootfstype=\fP 被 initrd\& 所尊重。
+.RE
+.PP
+\fIrootflags=\fP
+.RS 4
+获取根文件系统挂载选项以使用 \&。 \fIrootflags=\fP 被 initrd\& 所尊重。
+.sp
+请注意，与大多数内核命令行选项不同，此设置不会覆盖配置文件中的设置 (特别是: /etc/fstab 中的安装选项字符串) \&。请参见
+\fBsystemd\-remount\-fs.service\fP(8)\&。
+.RE
+.PP
+\fImount\&.usr=\fP
+.RS 4
+获取由 initrd\& 挂载的 /usr / 文件系统。如果设置了 \fImount\&.usrfstype=\fP 或
+\fImount\&.usrflags=\fP，则 \fImount\&.usr=\fP 将默认为 \fIroot=\fP\& 中设置的值。
+.sp
+否则，此参数默认为在根文件系统 \& 上的 /etc/fstab 中找到的 /usr / 条目。
+.sp
+\fImount\&.usr=\fP 被 initrd\& 所尊重。
+.RE
+.PP
+\fImount\&.usrfstype=\fP
+.RS 4
+采用将传递给挂载命令 \& 的 /usr / 文件系统类型。如果设置了 \fImount\&.usr=\fP 或 \fImount\&.usrflags=\fP，则
+\fImount\&.usrfstype=\fP 将默认为 \fIrootfstype=\fP\& 中设置的值。
+.sp
+否则，将从根文件系统 \& 上 /etc/fstab 中的 /usr / 条目读取该值。
+.sp
+\fImount\&.usrfstype=\fP 被 initrd\& 所尊重。
+.RE
+.PP
+\fImount\&.usrflags=\fP
+.RS 4
+采用 /usr / 文件系统挂载选项以使用 \&。如果设置了 \fImount\&.usr=\fP 或 \fImount\&.usrfstype=\fP，则
+\fImount\&.usrflags=\fP 将默认为 \fIrootflags=\fP\& 中设置的值。
+.sp
+否则，将从根文件系统 \& 上 /etc/fstab 中的 /usr / 条目读取该值。
+.sp
+\fImount\&.usrflags=\fP 被 initrd\& 所尊重。
+.RE
+.PP
+\fIroothash=\fP, \fIusrhash=\fP
+.RS 4
+这些选项主要由 \fBsystemd\-veritysetup\-generator\fP(8)\& 读取。设置后，这表示根文件系统 (或 /usr/)
+应从具有指定哈希值的 Verity 卷安装。如果设置了这些内核命令行选项，则根 (或 /usr/) 文件系统将从设备映射器卷
+/dev/mapper/root (或 /dev/mapper/usr) \& 安装。
+.RE
+.PP
+\fIsystemd\&.volatile=\fP
+.RS 4
+控制系统是否应以可变模式启动 \&。采用布尔参数或特殊值 \fBstate\fP\&。
+.sp
+如果为 false (默认值)，则此生成器不更改挂载树，系统以正常模式启动 \&。
+.sp
+如果为真，生成器确保 \fBsystemd\-volatile\-root.service\fP(8) 在 initrd\&
+中运行。该服务在转换到主机系统之前更改挂载表，因此易失性内存文件系统 ("tmpfs") 用作根目录，只有 /usr /
+从配置的根文件系统以只读模式挂载到其中。这样，系统在完全无状态模式下运行，所有配置和状态在启动时重置并在关闭时丢失，因为 /etc / 和 /var /
+将从 (最初未填充的) 易失性内存文件系统提供服务 \&。
+.sp
+如果设置为 \fBstate\fP，生成器将保持根目录挂载点不变，但会将 "tmpfs" 文件系统挂载到 /var/\&。在这种模式下，正常的系统配置
+(i\&.e\&. "/etc/" 的内容) 是有效的 (并且可能在系统运行时被修改)，但是系统状态 (i\&.e\&. "/etc/" 的内容)
+"/var/") 在启动时重置并在关机时丢失 \&。
+.sp
+如果此设置设置为 "overlay"，则根文件系统将设置为 "overlayfs" mount，将只读根目录与可写 "tmpfs"
+相结合，这样就不会对磁盘进行任何修改，但文件系统仍然可以修改，所有更改都在重启时丢失 \&。
+.sp
+请注意，在这些模式中，根目录、/etc/、/var/ 或存储在根文件系统中的任何其他资源都不会被物理删除 \&。它
+\*(因此可以安全地将通常在非易失性模式下运行的系统暂时引导到易失性模式，而不会丢失数据 \&。
+.sp
+请注意，除了 "overlay" 模式外，启用此设置只能在只能使用 /usr / 安装启动并且能够自动填充 /etc / 和 /var /
+的操作系统上正常工作，如果是 `systemd`\&.volatile=yes"\&.
+.sp
+另请参见上面的 \fIroot=tmpfs\fP，了解将 "tmpfs" 文件系统与常规 /usr / 文件系统 (通过 \fImount\&.usr=\fP)\&
+配置) 组合的方法。\fIsystemd\&.volatile=yes\fP 和 \fIroot=tmpfs\fP 与 \fImount\&.usr=\fP
+组合的主要区别在于前者在常规根文件系统并暂时阻塞其 /usr / 子目录之上的文件和目录，而后者不隐藏任何文件，而只是将未填充的 tmpfs
+挂载为根文件系统并将其与用户选择的 /usr / 文件系统结合起来 \&.
+.RE
+.PP
+\fIsystemd\&.swap\fP
+.RS 4
+采用布尔参数或启用选项 (如果指定时未指定参数 \&)。如果禁用，会导致生成器忽略 /etc/fstab\& 中配置的任何交换设备。默认为启用 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBfstab\fP(5), \fBsystemd.mount\fP(5), \fBsystemd.swap\fP(5),
+\fBsystemd\-cryptsetup\-generator\fP(8), \fBsystemd\-gpt\-auto\-generator\fP(8),
+\fBkernel\-command\-line\fP(7), \m[blue]\fBKnown Environment Variables\fP\m[]\&\s-2\u[1]\d\s+2
+.SH NOTES
+.IP " 1." 4
+已知环境变量
+.RS 4
+\%https://systemd.io/ENVIRONMENT/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

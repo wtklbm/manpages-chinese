@@ -1,0 +1,191 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2013, Peter Schiffer <pschiffe@redhat.com>
+.\" and Copyright (C) 2014, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH memusage 1 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+memusage \- 配置程序的内存使用情况
+.SH SYNOPSIS
+.nf
+\fBmemusage\fP [\fIoption\fP]... \fIprogram\fP [\fIprogramoption\fP] ...
+.fi
+.SH DESCRIPTION
+\fBmemusage\fP 是一个 bash 脚本，用于分析程序 \fIprogram\fP 的内存使用情况。 它将 \fBlibmemusage.so\fP
+库预加载到调用者的环境中 (通过 \fBLD_PRELOAD\fP 环境变量; 请参见 \fBld.so\fP(8)).  \fBlibmemusage.so\fP
+库通过拦截对 \fBmalloc\fP(3)、\fBcalloc\fP(3)、\fBfree\fP(3) 和 \fBrealloc\fP(3) 的调用来跟踪内存分配;
+可选地，也可以拦截对 \fBmmap\fP(2)、\fBmremap\fP(2) 和 \fBmunmap\fP(2) 的调用。
+.PP
+\fBmemusage\fP 可以以文本形式输出收集的数据，或者它可以使用 \fBmemusagestat\fP(1) (请参见下面的 \fB\-p\fP 选项)
+创建包含收集数据的图形表示的 PNG 文件。
+.SS "Memory usage summary"
+\fBmemusage\fP 输出的 "Memory usage summary" 行包含三个字段:
+.RS 4
+.TP 
+\fBheap total\fP
+所有 \fBmalloc\fP(3) 调用的 \fIsize\fP 参数之和，所有 \fBcalloc\fP(3) 调用的参数 (\fInmemb\fP*\fIsize\fP)
+的乘积，以及所有 \fBmmap\fP(2) 调用的 \fIlength\fP 参数之和。 在 \fBrealloc\fP(3) 和 \fBmremap\fP(2)
+的情况下，如果分配的新大小大于以前的大小，则添加所有此类差异的总和 (新大小减去旧大小)。
+.TP 
+\fBheap peak\fP
+\fBmalloc\fP(3) 的所有 \fIsize\fP 参数，\fBcalloc\fP(3) 的 \fInmemb\fP*\fIsize\fP
+的所有参数，\fBrealloc\fP(3) 的所有 \fIsize\fP 参数，\fBmmap\fP(2) 的 \fIlength\fP 参数，\fBmremap\fP(2) 的
+\fInew_size\fP 参数的最大值。
+.TP 
+\fBstack peak\fP
+在第一次调用任何被监控的函数之前，栈指针地址 (base stack pointer) 被保存。
+在每次函数调用之后，实际的栈指针地址被读取并计算出与基本栈指针的差异。 这些差异的最大值就是堆叠峰值。
+.RE
+.PP
+紧跟在总结行之后，一个表格显示调用次数、分配或释放的内存总量，以及每个截获的函数的失败调用次数。 对于 \fBrealloc\fP(3) 和
+\fBmremap\fP(2)，附加字段 "nomove" 显示更改块地址的重新分配，附加 "dec" 字段显示减少块大小的重新分配。 对于
+\fBrealloc\fP(3)，附加字段 "free" 显示导致释放块的重新分配 (即，重新分配的大小为 0)。
+.PP
+\fBmemusage\fP 输出的表的 "realloc/total memory" 不反映 \fBrealloc\fP(3)
+用于重新分配内存块以使其具有比以前更小的大小的情况。 这会导致所有 "total memory" 单元格 (不包括 "free") 的总和大于
+"free/total memory" cell。
+.SS "Histogram for block sizes"
+"Histogram for block sizes" 将内存分配细分为各种桶大小。
+.SH OPTIONS
+.TP 
+\fB\-n\ \fP\fIname\fP,\ \fB\-\-progname=\fP\fIname\fP
+要分析的程序文件的名称。
+.TP 
+\fB\-p\ \fP\fIfile\fP,\ \fB\-\-png=\fP\fIfile\fP
+生成 PNG 图形并存储在 \fIfile\fP 中。
+.TP 
+\fB\-d\ \fP\fIfile\fP,\ \fB\-\-data=\fP\fIfile\fP
+生成二进制数据文件，存放在 \fIfile\fP 中。
+.TP 
+\fB\-u\fP,\ \fB\-\-unbuffered\fP
+不要缓冲输出。
+.TP 
+\fB\-b\ \fP\fIsize\fP,\ \fB\-\-buffer=\fP\fIsize\fP
+在写出之前收集 \fIsize\fP 条目。
+.TP 
+\fB\-\-no\-timer\fP
+禁用栈指针值的基于计时器的 (\fBSIGPROF\fP) 采样。
+.TP 
+\fB\-m\fP,\ \fB\-\-mmap\fP
+还要跟踪 \fBmmap\fP(2)、\fBmremap\fP(2) 和 \fBmunmap\fP(2)。
+.TP 
+\fB\-?\fP,\ \fB\-\-help\fP
+打印帮助并退出。
+.TP 
+\fB\-\-usage\fP
+打印一条简短的使用信息并退出。
+.TP 
+\fB\-V\fP,\ \fB\-\-version\fP
+打印版本信息并退出。
+.TP 
+The following options apply only when generating graphical output:
+.TP 
+\fB\-t\fP,\ \fB\-\-time\-based\fP
+使用时间 (而不是调用次数) 作为 X 轴的刻度。
+.TP 
+\fB\-T\fP,\ \fB\-\-total\fP
+还要绘制总内存使用情况的图表。
+.TP 
+\fB\-\-title=\fP\fIname\fP
+使用 \fIname\fP 作为图表的标题。
+.TP 
+\fB\-x\ \fP\fIsize\fP,\ \fB\-\-x\-size=\fP\fIsize\fP
+使图形 \fIsize\fP 像素宽。
+.TP 
+\fB\-y\ \fP\fIsize\fP,\ \fB\-\-y\-size=\fP\fIsize\fP
+使图形 \fIsize\fP 像素高。
+.SH "EXIT STATUS"
+\fBmemusage\fP 的退出状态等于分析程序的退出状态。
+.SH BUGS
+要报告错误，请参见
+.UR http://www.gnu.org/software/libc/bugs.html
+.UE
+.SH EXAMPLES
+下面是一个简单的程序，它以上升到峰值的周期重新分配内存块，然后循环地重新分配返回零的较小块的内存。 编译程序并运行以下命令后，可以在文件
+\fImemusage.png\fP: 中找到程序的内存使用情况图
+.PP
+.in +4n
+.EX
+$ \fBmemusage \-\-data=memusage.dat ./a.out\fP
+\&...
+内存使用总结: 堆总数: 45200，堆峰值: 6440，栈峰值: 224
+        总调用总内存失败调用
+ malloc|         1           400             0
+realloc|        40         44800             0  (nomove:40, dec:19, free:0)
+ calloc|         0             0             0
+   free|         1           440
+Histogram for block sizes:
+  192\-207             1   2% ================
+\&...
+ 2192\-2207            1   2% ================
+ 2240\-2255            2   4% =================================
+ 2832\-2847            2   4% =================================
+ 3440\-3455            2   4% =================================
+ 4032\-4047            2   4% =================================
+ 4640\-4655            2   4% =================================
+ 5232\-5247            2   4% =================================
+ 5840\-5855            2   4% =================================
+ 6432\-6447            1   2% ================
+Histogram for block sizes:
+.EE
+.in
+.SS "Program source"
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+
+#define CYCLES 20
+
+int
+main(int argc, char *argv[])
+{
+    int i, j;
+    size_t size;
+    int *p;
+
+    size = sizeof(*p) * 100;
+    printf("malloc: %zu\en", size);
+    p = malloc(size);
+
+    for (i = 0; i < CYCLES; i++) {
+        if (i < CYCLES / 2)
+            j = i;
+        else
+            j\-\-;
+
+        size = sizeof(*p) * (j * 50 + 110);
+        printf("realloc: %zu\en", size);
+        p = realloc(p, size);
+
+        size = sizeof(*p) * ((j + 1) * 150 + 110);
+        printf("realloc: %zu\en", size);
+        p = realloc(p, size);
+    }
+
+    free(p);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBmemusagestat\fP(1), \fBmtrace\fP(1), \fBld.so\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

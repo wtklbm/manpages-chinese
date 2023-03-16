@@ -1,0 +1,161 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2003 Walter Harms (walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" Polished a bit, added a little, aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setaliasent 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+setaliasent, endaliasent, getaliasent, getaliasent_r, getaliasbyname,
+getaliasbyname_r \- 读取别名条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <aliases.h>\fP
+.PP
+\fBvoid setaliasent(void);\fP
+\fBvoid endaliasent(void);\fP
+.PP
+\fBstruct aliasent *getaliasent(void);\fP
+\fBint getaliasent_r(struct aliasent *restrict \fP\fIresult\fP\fB,\fP
+\fB                     char \fP\fIbuffer\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB                     struct aliasent **restrict \fP\fIres\fP\fB);\fP
+.PP
+\fBstruct aliasent *getaliasbyname(const char *\fP\fIname\fP\fB);\fP
+\fBint getaliasbyname_r(const char *restrict \fP\fIname\fP\fB,\fP
+\fB                     struct aliasent *restrict \fP\fIresult\fP\fB,\fP
+\fB                     char \fP\fIbuffer\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB                     struct aliasent **restrict \fP\fIres\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+名称服务交换机 (NSS) 可用的数据库之一是别名数据库，其中包含邮件别名。 (要了解支持哪些数据库，请尝试 \fIgetent \-\-help\fP.)
+提供了六个函数来访问别名数据库。
+.PP
+\fBgetaliasent\fP() 函数返回一个指向结构体的指针，该结构体包含来自别名数据库的组信息。 第一次调用它时返回第一个条目;
+此后，它返回连续的条目。
+.PP
+\fBsetaliasent\fP() 函数将文件指针倒回到别名数据库的开头。
+.PP
+\fBendaliasent\fP() 函数关闭别名数据库。
+.PP
+\fBgetaliasent_r\fP() 是之前任数的可重入版本。 请求的结构体是通过第一个参数存储的，但是程序员还需要填写其他参数。
+没有提供足够的空间会导致函数失败。
+.PP
+函数 \fBgetaliasbyname\fP() 取名参数并搜索别名数据库。 该条目作为指向 \fIstruct aliasent\fP 的指针返回。
+.PP
+\fBgetaliasbyname_r\fP() 是之前任数的可重入版本。 请求的结构体是通过第二个参数存储的，但是程序员还需要填写另一个参数。
+没有提供足够的空间会导致函数失败。
+.PP
+\fIstruct aliasent\fP 在 \fI<aliases.h>\fP: 中定义
+.PP
+.in +4n
+.EX
+struct aliasent {
+    char    *alias_name;             /* alias name */
+    size_t   alias_members_len;
+    char   **alias_members;          /* alias name list */
+    int      alias_local;
+};
+.EE
+.in
+.SH "RETURN VALUE"
+函数 \fBgetaliasent_r\fP() 和 \fBgetaliasbyname_r\fP() 在出错时返回非零值。
+.SH FILES
+默认别名数据库是文件 \fI/etc/aliases\fP。 这可以在 \fI/etc/nsswitch.conf\fP 文件中更改。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsetaliasent\fP(),
+\fBendaliasent\fP(),
+\fBgetaliasent_r\fP(),
+\fBgetaliasbyname_r\fP()
+T}	Thread safety	MT\-Safe locale
+T{
+\fBgetaliasent\fP(),
+\fBgetaliasbyname\fP()
+T}	Thread safety	MT\-Unsafe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些例程是特定于 glibc 的。 NeXT 系统也有类似的套路:
+.PP
+.in +4n
+.EX
+#include <aliasdb.h>
+
+void alias_setent(void);
+void alias_endent(void);
+alias_ent *alias_getent(void);
+alias_ent *alias_getbyname(char *name);
+.EE
+.in
+.SH EXAMPLES
+以下示例使用 \fIgcc example.c \-o example\fP 进行编译。 它将转储别名数据库中的所有名称。
+.PP
+.\" SRC BEGIN (setaliasent.c)
+.EX
+#include <aliases.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    struct aliasent *al;
+
+    setaliasent();
+    for (;;) {
+        al = getaliasent();
+        if (al == NULL)
+            break;
+        printf("Name: %s\en", al\->alias_name);
+    }
+    if (errno) {
+        perror("reading alias");
+        exit(EXIT_FAILURE);
+    }
+    endaliasent();
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetgrent\fP(3), \fBgetpwent\fP(3), \fBgetspent\fP(3), \fBaliases\fP(5)
+.\"
+.\" /etc/sendmail/aliases
+.\" Yellow Pages
+.\" newaliases, postalias
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

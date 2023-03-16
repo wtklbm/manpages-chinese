@@ -1,0 +1,123 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1991 The Regents of the University of California.
+.\" and Copyright (C) 2009, 2010, 2014, 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)setregid.2	6.4 (Berkeley) 3/10/91
+.\"
+.\" Modified Sat Jul 24 09:08:49 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Portions extracted from linux/kernel/sys.c:
+.\"             Copyright (C) 1991, 1992  Linus Torvalds
+.\"             May be distributed under the GNU General Public License
+.\" Changes: 1994-07-29 by Wilf <G.Wilford@ee.surrey.ac.uk>
+.\"          1994-08-02 by Wilf due to change in kernel.
+.\"          2004-07-04 by aeb
+.\"          2004-05-27 by Michael Kerrisk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setreuid 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+setreuid, setregid \- 设置真实或者有效的用户或组 ID
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint setreuid(uid_t \fP\fIruid\fP\fB, uid_t \fP\fIeuid\fP\fB);\fP
+\fBint setregid(gid_t \fP\fIrgid\fP\fB, gid_t \fP\fIegid\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsetreuid\fP(), \fBsetregid\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBsetreuid\fP() 设置调用进程的真实有效用户 ID。
+.PP
+为真实或有效用户 ID 提供值 \-1 会强制系统保持该 ID 不变。
+.PP
+非特权进程只能将有效用户 ID 设置为真实用户 ID、有效用户 ID 或保存的 set\-user\-ID。
+.PP
+非特权用户只能将真实用户 ID 设置为真实用户 ID 或有效用户 ID。
+.PP
+如果设置了真实用户 ID (即 \fIruid\fP 不是 \-1) 或者有效用户 ID 设置的值不等于之前的真实用户 ID，保存的 set\-user\-ID
+将被设置为新的有效用户 ID .
+.PP
+完全类似，\fBsetregid\fP() 设置调用进程的真实有效组 ID，以上所有内容都适用于 "group" 而不是 "user"。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+\fINote\fP: 即使调用者是 UID 0，有时 \fBsetreuid\fP() 也会失败; 忽略检查 \fBsetreuid\fP()
+的失败返回是一个严重的安全错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+调用会更改调用者的真实 UID (即，\fIruid\fP 与调用者的真实 UID 不匹配)，但分配必要的内核数据结构时出现临时故障。
+.TP 
+\fBEAGAIN\fP
+\fIruid\fP 与调用者的真实 UID 不匹配，此调用会使属于真实用户 ID \fIruid\fP 的进程数超过调用者的 \fBRLIMIT_NPROC\fP
+资源限制。 从 Linux 3.1 开始，这种错误情况不再发生 (但健壮的应用程序应该检查这种错误) ; 请参见 \fBexecve\fP(2) 中
+\fBEAGAIN\fP 的说明。
+.TP 
+\fBEINVAL\fP
+一个或多个目标用户或组 ID 在此用户命名空间中无效。
+.TP 
+\fBEPERM\fP
+调用进程没有特权 (在 Linux 上，在其用户命名空间中没有必要的能力: \fBCAP_SETUID\fP 在 \fBsetreuid\fP() 的情况下，或
+\fBCAP_SETGID\fP 在 \fBsetregid\fP()) 的情况下以及 (i) 以外的更改将有效用户 (group) ID 与真实用户交换指定用户
+(group) ID，或 (ii) 将其中一个设置为另一个的值，或 (iii) 将有效用户 (group) ID 设置为已保存的组用户 ID
+(已保存的组组 ID) 的值。
+.SH STANDARDS
+POSIX.1\-2001、POSIX.1\-2008、4.3BSD (\fBsetreuid\fP() 和 \fBsetregid\fP() 首次出现在
+4.2BSD)。
+.SH NOTES
+从 Linux 1.1.37 (1.1.38) 开始，可以将有效用户 (group) ID 设置为保存的设置用户 ID (保存的设置组 ID)。
+.PP
+POSIX.1 没有指定 Linux 允许非特权进程进行的所有 UID 更改。 对于 \fBsetreuid\fP()，可以使有效用户 ID 与真实用户 ID
+相同，也可以与保存的 set\-user\-ID 相同，未指定非特权进程是否可以将真实用户 ID 设置为真实用户 ID，有效用户 ID，或保存的设置用户
+ID。 对于 \fBsetregid\fP()，可以将实际组 ID 改为保存的 set\-group\-ID 的值，有效组 ID 可以改为实际组 ID 或保存的
+set\-group\-ID 的值。 允许哪些 ID 更改的具体细节因实现而异。
+.PP
+POSIX.1 没有说明这些调用对保存的 set\-user\-ID 和保存的 set\-group\-ID 的影响。
+.PP
+.\"
+原始的 Linux \fBsetreuid\fP() 和 \fBsetregid\fP() 系统调用仅支持 16 位用户和组 ID。 随后，Linux 2.4
+增加了 \fBsetreuid32\fP() 和 \fBsetregid32\fP()，支持 32 位 ID。 glibc \fBsetreuid\fP() 和
+\fBsetregid\fP() 包装器函数透明地处理内核版本之间的变化。
+.SS "C library/kernel differences"
+在内核级别，用户 ID 和组 ID 是每个线程的属性。 但是，POSIX 要求进程中的所有线程共享相同的凭据。 NPTL 线程实现通过为更改进程 UID
+和 GID 的各种系统调用提供包装函数来处理 POSIX 要求。 这些封装器数 (包括 \fBsetreuid\fP() 和 \fBsetregid\fP())
+的封装器) 采用基于信号的技术来确保当一个线程更改凭据时，进程中的所有其他线程也会更改它们的凭据。 有关详细信息，请参见 \fBnptl\fP(7)。
+.SH "SEE ALSO"
+\fBgetgid\fP(2), \fBgetuid\fP(2), \fBseteuid\fP(2), \fBsetgid\fP(2), \fBsetresuid\fP(2),
+\fBsetuid\fP(2), \fBcapabilities\fP(7), \fBcredentials\fP(7), \fBuser_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

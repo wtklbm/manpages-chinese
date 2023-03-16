@@ -1,0 +1,78 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Red Hat, Inc. All Rights Reserved.
+.\" Written by David Howells (dhowells@redhat.com)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH persistent\-keyring 7 2023\-02\-08 "Linux man\-pages 6.03" 
+.SH NAME
+persistent\-keyring \- 每个用户的持久密钥环
+.SH DESCRIPTION
+持久密钥环是用于代表用户锚定密钥的密钥环。 内核处理的每个 UID 都有自己的持久密钥环，该密钥环在该 UID 拥有所有权的所有线程之间共享。
+永久密钥环的名称为 \fI_persistent.<UID>\fP 形式的 (description)，其中 \fI<UID>\fP
+是相应用户的用户 ID。
+.PP
+.\" FIXME The meaning of the preceding sentence isn't clear. What is meant?
+持久密钥环可能无法直接访问，即使是具有适当 UID 的进程也是如此。
+相反，它必须首先链接到进程的密钥环之一，然后该密钥环才能凭借其拥有者许可访问持久密钥环。 此链接是通过
+\fBkeyctl_get_persistent\fP(3) 函数完成的。
+.PP
+如果通过 \fBkeyctl_get_persistent\fP(3) 操作访问持久密钥环时不存在，则会自动创建它。
+.PP
+每次执行 \fBkeyctl_get_persistent\fP(3) 操作时，持久密钥环的到期计时器都会重置为以下值:
+.PP
+.in +4n
+.EX
+/proc/sys/kernel/keys/persistent_keyring_expiry
+.EE
+.in
+.PP
+如果达到超时，持久密钥环将被删除，然后它固定的所有内容都可以被垃圾收集。 然后将在随后调用 \fBkeyctl_get_persistent\fP(3)
+时重新创建密钥环。
+.PP
+\fBrequest_key\fP(2) 不直接搜索持久密钥环; 只有当它链接到 \fBrequest_key\fP(2) 搜索的密钥环之一时才会搜索它。
+.PP
+永久密钥环独立于 \fBclone\fP(2)、\fBfork\fP(2)、\fBvfork\fP(2)、\fBexecve\fP(2) 和 \fB_exit\fP(2)。
+它一直持续到它的过期计时器触发，此时它被垃圾收集。 这允许持久密钥环携带密钥超过相应 UID 的内核记录的生命周期 (其破坏导致
+\fBuser\-keyring\fP(7) 和 \fBuser\-session\-keyring\fP(7)) 的破坏。
+因此，持久密钥环可用于为无需用户交互即可运行的进程 (例如由 \fBcron\fP(8) 启动的程序) 保存身份验证 tokens。
+.PP
+.\"
+持久密钥环用于存储特定于 UID 的对象，这些对象本身具有有限的生命周期 (例如，kerberos tokens)。 如果那些 tokens 停止使用
+(即，不访问持久密钥环)，那么持久密钥环的超时确保相应的对象被自动丢弃。
+.SS "Special operations"
+\fIkeyutils\fP 库提供 \fBkeyctl_get_persistent\fP(3) 函数用于操作持久密钥环。 (此函数是 \fBkeyctl\fP(2)
+\fBKEYCTL_GET_PERSISTENT\fP 操作的接口。) 此操作允许调用线程获取对应于其自身 UID 的持久密钥环，或者，如果线程具有
+\fBCAP_SETUID\fP 能力，则获取与同一线程中其他 UID 对应的持久密钥环用户命名空间。
+.SH NOTES
+每个用户命名空间都拥有一个名为 \fI.persistent_register\fP 的密钥环，其中包含指向该命名空间中所有持久密钥的链接。
+(当读取命名空间中 UID 0 的 \fI/proc/keys\fP 文件的内容时，可以看到 \fI.persistent_register\fP 密钥环。)
+\fBkeyctl_get_persistent\fP(3) 操作在该密钥环中查找名称为 \fI_persistent.\fPUID
+形式的密钥，如果不存在则创建该密钥，并将其链接到密钥环中。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBkeyctl\fP(1), \fBkeyctl\fP(3), \fBkeyctl_get_persistent\fP(3), \fBkeyrings\fP(7),
+\fBprocess\-keyring\fP(7), \fBsession\-keyring\fP(7), \fBthread\-keyring\fP(7),
+\fBuser\-keyring\fP(7), \fBuser\-session\-keyring\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

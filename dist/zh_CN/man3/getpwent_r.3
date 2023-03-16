@@ -1,0 +1,188 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getpwent_r 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getpwent_r, fgetpwent_r \- 重入获取 passwd 文件条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pwd.h>\fP
+.PP
+\fBint getpwent_r(struct passwd *restrict \fP\fIpwbuf\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP 
+\fB               struct passwd **restrict \fP\fIpwbufp\fP\fB);\fP
+\fBint fgetpwent_r(FILE *restrict \fP\fIstream\fP\fB, struct passwd *restrict \fP\fIpwbuf\fP\fB,\fP
+\fB               char \fP\fIbuf\fP\fB[restrict .\fP\fIbuflen\fP\fB], size_t \fP\fIbuflen\fP\fB,\fP
+\fB               struct passwd **restrict \fP\fIpwbufp\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetpwent_r\fP(),
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE || _SVID_SOURCE
+.fi
+.PP
+\fBfgetpwent_r\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+函数 \fBgetpwent_r\fP() 和 \fBfgetpwent_r\fP() 是 \fBgetpwent\fP(3) 和 \fBfgetpwent\fP(3)
+的可重入版本。 前者从 \fBsetpwent\fP(3) 初始化的流中读取下一个 passwd 条目。 后者从 \fIstream\fP 读取下一个 passwd
+条目。
+.PP
+\fIpasswd\fP 结构体在 \fI<pwd.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct passwd {
+    char    *pw_name;      /* username */
+    char    *pw_passwd;    /* user password */
+    uid_t    pw_uid;       /* user ID */
+    gid_t    pw_gid;       /* group ID */
+    char    *pw_gecos;     /* user information */
+    char    *pw_dir;       /* home directory */
+    char    *pw_shell;     /* shell program */
+};
+.EE
+.in
+.PP
+有关此结构体字段的更多信息，请参见 \fBpasswd\fP(5)。
+.PP
+不可重入函数返回一个指向静态存储的指针，这个静态存储包含指向用户名、密码、gecos 字段、主目录和 shell 的进一步指针。
+此处描述的可重入函数返回调用者提供的缓冲区中的所有数据。 首先是可以容纳 \fIstruct passwd\fP 的缓冲区 \fIpwbuf\fP。
+接下来是可以容纳额外字符串的大小为 \fIbuflen\fP 的缓冲区 \fIbuf\fP。 这些函数的结果，即从流中读取的 \fIstruct passwd\fP，存储在提供的缓冲区 \fI*pwbuf\fP 中，并在 \fI*pwbufp\fP 中返回指向此 \fIstruct passwd\fP 的指针。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0 并且 \fI*pwbufp\fP 是指向 \fIstruct passwd\fP 的指针。 出错时，这些函数返回一个错误值并且
+\fI*pwbufp\fP 为 NULL。
+.SH ERRORS
+.TP 
+\fBENOENT\fP
+没有更多条目。
+.TP 
+\fBERANGE\fP
+提供的缓冲区空间不足。 使用更大的缓冲区重试。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetpwent_r\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:pwent locale
+T}
+T{
+\fBfgetpwent_r\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:pwent\fP 中的 \fIpwent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetpwent\fP()、\fBgetpwent\fP()、\fBendpwent\fP() 或 \fBgetpwent_r\fP()
+中的任何一个，则可能发生数据竞争。
+.SH STANDARDS
+这些函数是 GNU 的扩展，其风格类似于函数的 \fBgetpwnam_r\fP(3) 的 POSIX 版本。 其他系统使用原型
+.PP
+.in +4n
+.EX
+struct passwd *
+getpwent_r(struct passwd *pwd, char *buf, int buflen);
+.EE
+.in
+.PP
+or, better,
+.PP
+.in +4n
+.EX
+int
+getpwent_r(struct passwd *pwd, char *buf, int buflen,
+           FILE **pw_fp);
+.EE
+.in
+.SH NOTES
+函数 \fBgetpwent_r\fP() 并不是真正可重入的，因为它与所有其他线程共享流中的读取位置。
+.SH EXAMPLES
+.\" SRC BEGIN (getpwent_r.c)
+.EX
+#define _GNU_SOURCE
+#include <pwd.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BUFLEN 4096
+
+int
+main(void)
+{
+    struct passwd pw;
+    struct passwd *pwp;
+    char buf[BUFLEN];
+    int i;
+
+    setpwent();
+    while (1) {
+        i = getpwent_r(&pw, buf, sizeof(buf), &pwp);
+        if (i)
+            break;
+        printf("%s (%jd)\etHOME %s\etSHELL %s\en", pwp\->pw_name,
+               (intmax_t) pwp\->pw_uid, pwp\->pw_dir, pwp\->pw_shell);
+    }
+    endpwent();
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" perhaps add error checking - should use strerror_r
+.\" #include <errno.h>
+.\" #include <stdlib.h>
+.\"         if (i) {
+.\"               if (i == ENOENT)
+.\"                     break;
+.\"               printf("getpwent_r: %s", strerror(i));
+.\"               exit(EXIT_SUCCESS);
+.\"         }
+.\" SRC END
+.SH "SEE ALSO"
+\fBfgetpwent\fP(3), \fBgetpw\fP(3), \fBgetpwent\fP(3), \fBgetpwnam\fP(3),
+\fBgetpwuid\fP(3), \fBputpwent\fP(3), \fBpasswd\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

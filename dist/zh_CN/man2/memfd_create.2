@@ -1,0 +1,340 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2014 David Herrmann <dh.herrmann@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH memfd_create 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+memfd_create \- 创建一个匿名文件
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <sys/mman.h>\fP
+.PP
+\fBint memfd_create(const char *\fP\fIname\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" David Herrmann:
+.\"     memfd uses VM_NORESERVE so each page is accounted on first access.
+.\"     This means, the overcommit-limits (see __vm_enough_memory()) and the
+.\"     memory-cgroup limits (mem_cgroup_try_charge()) are applied. Note that
+.\"     those are accounted on "current" and "current->mm", that is, the
+.\"     process doing the first page access.
+\fBmemfd_create\fP() 创建一个匿名文件并返回引用它的文件描述符。 该文件的行为类似于普通文件，因此可以进行修改、截断、内存映射等操作。
+但是，与常规文件不同的是，它存在于 RAM 中并且具有易失性后备存储。 一旦对文件的所有引用都丢掉，它就会自动释放。 匿名内存用于文件的所有后备页面。
+因此，由 \fBmemfd_create\fP() 创建的文件与其他匿名内存分配具有相同的语义，例如使用带有 \fBMAP_ANONYMOUS\fP 标志的
+\fBmmap\fP(2) 分配的文件。
+.PP
+文件的初始大小设置为 0。 在调整之后，文件大小应该使用 \fBftruncate\fP(2) 来设置。 (或者，可以通过调用 \fBwrite\fP(2)
+或类似方法来填充文件。)
+.PP
+\fIname\fP 中提供的名称用作文件名，并将显示为目录 \fI/proc/self/fd/\fP 中相应符号链接的目标。 显示的名称始终以 \fImemfd:\fP
+为前缀，并且仅用于调试目的。 名称不影响文件描述符的行为，因此多个文件可以具有相同的名称而没有任何副作用。
+.PP
+以下值可能在 \fIflags\fP 中按位或运算以改变 \fBmemfd_create\fP(): 的行为
+.TP 
+\fBMFD_CLOEXEC\fP
+在新文件描述符上设置 close\-on\-exec (\fBFD_CLOEXEC\fP) 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的描述，了解这可能有用的原因。
+.TP 
+\fBMFD_ALLOW_SEALING\fP
+.\" FIXME Why is the MFD_ALLOW_SEALING behavior not simply the default?
+.\" Is it worth adding some text explaining this?
+允许对此文件进行密封操作。 请参见 \fBfcntl\fP(2) 中对 \fBF_ADD_SEALS\fP 和 \fBF_GET_SEALS\fP
+操作的讨论，以及下面的注释。 最初的印章是空的。 如果未设置此标志，则初始印章集将为 \fBF_SEAL_SEAL\fP，这意味着不能在文件上设置其他印章。
+.TP 
+\fBMFD_HUGETLB\fP (since Linux 4.14)
+.\" commit 749df87bd7bee5a79cef073f5d032ddb2b211de8
+.\" commit 47b9012ecdc747f6936395265e677d41e11a31ff
+匿名文件将使用大页面在 hugetlbfs 文件系统中创建。 有关 hugetlbfs 的更多信息，请参见 Linux 内核源文件
+\fIDocumentation/admin\-guide/mm/hugetlbpage.rst\fP。 自 Linux 4.16 起支持在 \fIflags\fP
+中指定 \fBMFD_HUGETLB\fP 和 \fBMFD_ALLOW_SEALING\fP。
+.TP 
+\fBMFD_HUGE_2MB\fP, \fBMFD_HUGE_1GB\fP, \fB...\fP
+在支持多个 hugetlb 页面大小的系统上，与 \fBMFD_HUGETLB\fP 结合使用以选择替代的 hugetlb 页面大小 (分别为
+2\MB、1\GB、...)。 已知大页面大小的定义包含在头文件 \fI<linux/memfd.h>.\fP 中
+.IP
+有关对未包含在头文件中的大页面大小进行编码的详细信息，请参见 \fBmmap\fP(2) 中对类似名称常量的讨论。
+.PP
+\fIflags\fP 中未使用的位必须 0.
+.PP
+作为它的返回值，\fBmemfd_create\fP() 返回一个可用于引用文件的新文件描述符。 这个文件描述符是为读取和写入 (\fBO_RDWR\fP)
+而打开的，\fBO_LARGEFILE\fP 是为文件描述符设置的。
+.PP
+对于 \fBfork\fP(2) 和 \fBexecve\fP(2)，通常的语义适用于 \fBmemfd_create\fP() 创建的文件描述符。 文件描述符的副本由
+\fBfork\fP(2) 生成的子项继承，并引用同一文件。 除非已设置 close\-on\-exec 标志，否则文件描述符将在 \fBexecve\fP(2)
+中保留。
+.SH "RETURN VALUE"
+成功时，\fBmemfd_create\fP() 返回一个新的文件描述符。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIname\fP 中的地址指向无效内存。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 包含未知位。
+.TP 
+\fBEINVAL\fP
+.\" NAME_MAX - strlen("memfd:")
+\fIname\fP 太长了。 (限制为 249 字节，不包括终止空字节。)
+.TP 
+\fBEINVAL\fP
+\fBMFD_HUGETLB\fP 和 \fBMFD_ALLOW_SEALING\fP 都在 \fIflags\fP 中指定。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOMEM\fP
+内存不足，无法创建新的匿名文件。
+.SH VERSIONS
+\fBmemfd_create\fP() 系统调用最早出现在 Linux 3.17; 在 glibc 2.27 中添加了 glibc 支持。
+.TP 
+\fBEPERM\fP
+指定了 \fBMFD_HUGETLB\fP 标志，但调用者没有特权 (没有 \fBCAP_IPC_LOCK\fP 能力) 并且不是
+\fIsysctl_hugetlb_shm_group\fP 组的成员; 请参见 \fBproc\fP(5) 中
+\fI/proc/sys/vm/sysctl_hugetlb_shm_group\fP 的说明。
+.SH STANDARDS
+\fBmemfd_create\fP() 系统调用是 Linux 特有的。
+.SH NOTES
+.\" See also http://lwn.net/Articles/593918/
+.\" and http://lwn.net/Articles/594919/ and http://lwn.net/Articles/591108/
+\fBmemfd_create\fP() 系统调用提供了一种简单的替代方法来手动安装 \fBtmpfs\fP(5) 文件系统并在该文件系统中创建和打开文件。
+\fBmemfd_create\fP() 的主要目的是创建与 \fBfcntl\fP(2) 提供的文件密封 API 一起使用的文件和关联的文件描述符。
+.PP
+\fBmemfd_create\fP() 系统调用也可以在没有文件密封的情况下使用 (这就是文件密封被禁用的原因，除非使用
+\fBMFD_ALLOW_SEALING\fP 标志明确请求)。 特别是，它可以用作在 \fItmp\fP
+中创建文件的替代方法，或者在无意将生成的文件实际链接到文件系统的情况下用作使用 \fBopen\fP(2) \fBO_TMPFILE\fP 的替代方法。
+.SS "File sealing"
+在没有文件密封的情况下，通过共享内存进行通信的进程必须相互信任，或者采取措施来处理不受信任的对等方可能以有问题的方式操纵共享内存区域的可能性。
+例如，不受信任的对等方可能随时修改共享内存的内容，或缩小共享内存区域。 前一种可能性使本地进程容易受到检查时间到使用时间竞争状态的影响
+(通常通过在检查和使用数据之前从共享内存区域复制数据来处理)。 当尝试访问共享内存区域中现在不存在的位置时，后一种可能性会使本地进程容易受到
+\fBSIGBUS\fP 信号的攻击。 (处理这种可能性需要使用 \fBSIGBUS\fP 信号的处理程序。)
+.PP
+处理不受信任的对等点会给使用共享内存的代码带来额外的复杂性。
+内存密封可以消除额外的复杂性，因为它允许进程在知道其对等方不能以不希望的方式修改共享内存的情况下安全地运行。
+.PP
+密封机构的使用示例如下:
+.IP (1) 5
+第一个进程使用 \fBmemfd_create\fP() 创建一个 \fBtmpfs\fP(5) 文件。 调用产生一个在后续步骤中使用的文件描述符。
+.IP (2)
+第一个进程使用 \fBftruncate\fP(2) 调整在上一步中创建的文件的大小，使用 \fBmmap\fP(2) 对其进行
+maps，并使用所需数据填充共享内存。
+.IP (3)
+第一个过程使用 \fBfcntl\fP(2) \fBF_ADD_SEALS\fP 操作在文件上放置一个或多个密封，以限制对文件的进一步修改。 (如果放置密封
+\fBF_SEAL_WRITE\fP，则需要先取消映射上一步创建的共享可写映射。否则，使用 \fBF_SEAL_FUTURE_WRITE\fP 可以实现类似于
+\fBF_SEAL_WRITE\fP 的行为，这将阻止 future 通过 \fBmmap\fP(2) 和 \fBwrite\fP(2)
+写入成功，同时保留现有的共享可写映射)。
+.IP (4)
+第二个进程获取 \fBtmpfs\fP(5) 文件的文件描述符并将其 maps。 发生这种情况的可能方式如下:
+.RS
+.IP \[bu] 3
+调用 \fBmemfd_create\fP() 的进程可以通过 UNIX 域套接字将生成的文件描述符传输到第二个进程 (参见 \fBunix\fP(7) 和
+\fBcmsg\fP(3)).  第二个进程然后 maps 使用 \fBmmap\fP(2) 的文件。
+.IP \[bu]
+第二个进程是通过 \fBfork\fP(2) 创建的，因此自动继承了文件描述符和映射。
+(请注意，在这种情况下和下一种情况下，两个进程之间存在自然信任关系，因为它们在相同的用户 ID 下运行。因此，通常不需要文件密封。)
+.IP \[bu]
+第二个进程打开文件 \fI/proc/<pid>/fd/<fd>\fP，其中 \fI<pid>\fP 是第一个进程
+(调用 \fBmemfd_create\fP()) 的进程) 的 PID，\fI<fd>\fP 是该进程调用返回给
+\fBmemfd_create\fP() 的文件描述符的编号。 第二个进程然后 maps 使用 \fBmmap\fP(2) 的文件。
+.RE
+.IP (5)
+第二个进程使用 \fBfcntl\fP(2) \fBF_GET_SEALS\fP 操作来检索已应用于文件的印章的位掩码。
+可以检查此位掩码以确定对文件修改施加了何种限制。 如果需要，第二个过程可以应用进一步的密封以施加额外的限制 (只要尚未应用 \fBF_SEAL_SEAL\fP
+密封)。
+.SH EXAMPLES
+下面显示了两个示例程序，演示了 \fBmemfd_create\fP() 和文件密封 API 的使用。
+.PP
+第一个程序 \fIt_memfd_create.c\fP 使用 \fBmemfd_create\fP() 创建一个 \fBtmpfs\fP(5)
+文件，设置文件的大小，maps 将其放入内存，并可选择在文件上放置一些印章。 该程序最多接受三个命令行参数，其中前两个是必需的。
+第一个参数是与文件关联的名称，第二个参数是要为文件设置的大小，可选的第三个参数是指定要在文件上设置的印章的字符串。
+.PP
+第二个程序 \fIt_get_seals.c\fP 可用于打开通过 \fBmemfd_create\fP() 创建的现有文件，并检查已应用于该文件的印章集。
+.PP
+下面的 shell 会话演示了这些程序的使用。 首先，我们创建一个 \fBtmpfs\fP(5) 文件并在其上设置一些印章:
+.PP
+.in +4n
+.EX
+$ \fB./t_memfd_create my_memfd_file 4096 sw &\fP
+[1] 11775
+PID: 11775; fd: 3; /proc/11775/fd/3
+.EE
+.in
+.PP
+此时，\fIt_memfd_create\fP 程序继续在后台运行。 从另一个程序中，我们可以通过打开与 \fBmemfd_create\fP()
+打开的文件描述符对应的 \fI/proc/\fPpid\fI/fd\fP 文件来获取 \fBmemfd_create\fP() 创建的文件的文件描述符。
+使用该路径名，我们检查 \fI/proc/\fPpid\fI/fd\fP 符号链接的内容，并使用我们的 \fIt_get_seals\fP 程序查看已放置在文件上的印章:
+.PP
+.in +4n
+.EX
+$ \fBreadlink /proc/11775/fd/3\fP
+/memfd:my_memfd_file (deleted)
+$ \fB./t_get_seals /proc/11775/fd/3\fP
+现有密封件: WRITE SHRINK
+.EE
+.in
+.SS "Program source: t_memfd_create.c"
+.\" SRC BEGIN (t_memfd_create.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int           fd;
+    char          *name, *seals_arg;
+    ssize_t       len;
+    unsigned int  seals;
+
+    if (argc < 3) {
+        fprintf(stderr, "%s name size [seals]\en", argv[0]);
+        fprintf(stderr, "\et\[aq]seals\[aq] can contain any of the "
+                "following characters:\en");
+        fprintf(stderr, "\et\etg \- F_SEAL_GROW\en");
+        fprintf(stderr, "\et\ets \- F_SEAL_SHRINK\en");
+        fprintf(stderr, "\et\etw \- F_SEAL_WRITE\en");
+        fprintf(stderr, "\et\etW \- F_SEAL_FUTURE_WRITE\en");
+        fprintf(stderr, "\et\etS \- F_SEAL_SEAL\en");
+        exit(EXIT_FAILURE);
+    }
+
+    name = argv[1];
+    len = atoi(argv[2]);
+    seals_arg = argv[3];
+
+    /* Create an anonymous file in tmpfs; allow seals to be
+       placed on the file. */
+
+    fd = memfd_create(name, MFD_ALLOW_SEALING);
+    if (fd == \-1)
+        err(EXIT_FAILURE, "memfd_create");
+
+    /* Size the file as specified on the command line. */
+
+    if (ftruncate(fd, len) == \-1)
+        err(EXIT_FAILURE, "truncate");
+
+    printf("PID: %jd; fd: %d; /proc/%jd/fd/%d\en",
+           (intmax_t) getpid(), fd, (intmax_t) getpid(), fd);
+
+    /* Code to map the file and populate the mapping with data
+       omitted. */
+
+    /* If a \[aq]seals\[aq] command\-line argument was supplied, set some
+       seals on the file. */
+
+    if (seals_arg != NULL) {
+        seals = 0;
+
+        if (strchr(seals_arg, \[aq]g\[aq]) != NULL)
+            seals |= F_SEAL_GROW;
+        if (strchr(seals_arg, \[aq]s\[aq]) != NULL)
+            seals |= F_SEAL_SHRINK;
+        if (strchr(seals_arg, \[aq]w\[aq]) != NULL)
+            seals |= F_SEAL_WRITE;
+        if (strchr(seals_arg, \[aq]W\[aq]) != NULL)
+            seals |= F_SEAL_FUTURE_WRITE;
+        if (strchr(seals_arg, \[aq]S\[aq]) != NULL)
+            seals |= F_SEAL_SEAL;
+
+        if (fcntl(fd, F_ADD_SEALS, seals) == \-1)
+            err(EXIT_FAILURE, "fcntl");
+    }
+
+    /* Keep running, so that the file created by memfd_create()
+       continues to exist. */
+
+    pause();
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SS "Program source: t_get_seals.c"
+.\" SRC BEGIN (t_get_seals.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char *argv[])
+{
+    int           fd;
+    unsigned int  seals;
+
+    if (argc != 2) {
+        fprintf(stderr, "%s /proc/PID/fd/FD\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_RDWR);
+    if (fd == \-1)
+        err(EXIT_FAILURE, "open");
+
+    seals = fcntl(fd, F_GET_SEALS);
+    if (seals == \-1)
+        err(EXIT_FAILURE, "fcntl");
+
+    printf("Existing seals:");
+    if (seals & F_SEAL_SEAL)
+        printf(" SEAL");
+    if (seals & F_SEAL_GROW)
+        printf(" GROW");
+    if (seals & F_SEAL_WRITE)
+        printf(" WRITE");
+    if (seals & F_SEAL_FUTURE_WRITE)
+        printf(" FUTURE_WRITE");
+    if (seals & F_SEAL_SHRINK)
+        printf(" SHRINK");
+    printf("\en");
+
+    /* Code to map the file and access the contents of the
+       resulting mapping omitted. */
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfcntl\fP(2), \fBftruncate\fP(2), \fBmemfd_secret\fP(2), \fBmmap\fP(2), \fBshmget\fP(2),
+\fBshm_open\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

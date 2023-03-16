@@ -1,0 +1,203 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-hp 5 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-hp
+.SH NAME
+sane\-hp\-HP ScanJet 扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-hp\fP 库实现了一个 SANE (现在轻松访问扫描仪) 后端，该后端提供对支持 SCL (HP 扫描仪控制语言) 的 HP ScanJet
+扫描仪的访问。 已知以下扫描器可以与此后端一起使用:
+.PP
+.RS
+.nf
+\f (CRModel: 产品编号: 接口:
+\-\-\-\-\-\-\-\-\-\-     \-\-\-\-\-\-\-\-\-\-\-     \-\-\-\-\-\-\-\-\-\-
+ScanJet Plus C9195A HP 并行接口卡
+ScanJet IIc    C1750A 3226     SCSI
+ScanJet IIcx   C2500A 3332     SCSI
+ScanJet IIp    C1790A          SCSI
+扫描喷墨 3C C2520A 3503 SCSI
+扫描喷墨 3P C2570A 3406 SCSI
+扫描喷墨 4C C2520A SCSI
+扫描喷墨 4P C1130A 3540 SCSI
+ScanJet 4100C  C6290A          USB
+扫描喷墨 5P C5110A SCSI
+ScanJet 5100C C5190A 并行端口
+ScanJet 5200C C7190A 3846 并行 port/USB
+扫描喷射 6100C C2520A 3644 SCSI
+扫射 6200C C6270A 3828 SCSI/USB
+扫射 6250C C6270A 3828 SCSI/USB
+ScanJet 6300C  C7670A          SCSI/USB
+ScanJet 6350C  C7670A          SCSI/USB
+ScanJet 6390C  C7670A          SCSI/USB
+PhotoSmart     C5100A R029,R030,R032    SCSI\fR
+.fi
+.RE
+.PP
+支持连接到并行端口的型号 5100C/5200C 需要 \fIhttp://cyberelk.net/tim/parport/ppscsi.html\fP 和
+\fIhttp://penguin\-breeder.org/kernel/download/\fP 上可用的 ppSCSI 驱动程序。
+
+.PP
+支持连接到 USB 的型号 5200C/62X0C/63X0C 需要内核扫描仪驱动程序或 libusb。有关详细信息，请参见
+\fBsane\-usb\fP(5)。
+.PP
+\fBsane\-hp\fP 后端不再支持 OfficeJet 多函数外围设备。 对于这些设备，使用 0.90 版本和 "HP OfficeJet Linux
+driver" 更高版本中的外部 "hpoj" 后端，可在
+.br
+\fIhttp://hpoj.sourceforge.net\fP
+.
+.PP
+因为 Hewlett\-Packard 不再生产支持 SCL 的扫描仪 (除 OfficeJets 外)，所以上面支持的扫描仪列表是完整的。
+\fBsane\-hp\fP 后端不支持其他 HP 扫描仪，但其他扫描仪可能支持。请参见 \fIhttp://www.sane\-project.org/\fP。
+您还可以在 \fIhttp://www.sane\-project.org/mailing\-lists.html\fP 上查看 sane\-devel 邮件列表。
+.PP
+有关 hp 后端的更多详细信息可以在其主页 \fIhttp://www.kirchgessner.net/sane.html\fP 上找到。
+.PP
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于扫描仪的特殊设备的 UNIX 路径名。 对于 SCSI 扫描仪，特殊设备名称必须是泛型 SCSI
+设备或此类设备的符号链接。 例如，在 Linux 下，这样的设备名称可以是 \fI/dev/sga\fP 或 \fI/dev/sg2\fP。如果特殊设备名称包含
+"usb"、"uscanner" 或 "ugen"，则假定扫描仪是通过 USB 连接的。 对于 HP ScanJet
+Plus，特殊设备名称必须是与扫描仪随附的并行接口卡相对应的设备。即 \fI/dev/hpscan\fP。 此卡需要特殊的驱动程序。 有关详细信息，请参见
+\fIftp://rvs.ctrl\-c.liu.se/pub/wingel/hpscan\fP。如果链接不起作用，请尝试
+\fIftp://sunsite.unc.edu/pub/Linux/kernel/patches/scanners\fP。
+.SH CONFIGURATION
+\fIhp.conf\fP 文件的内容是与 HP ScanJet 扫描仪对应的选项和设备名称列表。 空行和以哈希标记 (#)
+开头的行将被忽略。有关构成有效设备名称的详细信息，请参见 \fBsane\-scsi\fP(5) 和 \fBsane\-usb\fP(5)。
+.PP
+在包含设备名称的第一行前面指定的选项是所有设备的默认选项。在包含设备名称的行下方指定的选项仅适用于最近提及的设备。
+.PP
+支持的选项有 \fBconnect\-scsi\fP、\fBconnect\-device\fP、\fBenable\-image\-buffering\fP 和
+\fBdumb\-read\fP。
+
+选项 \fBconnect\-scsi\fP 指定扫描仪通过 SCSI 连接到系统。 Input/output 是使用 SCSI 命令执行的。这是默认设置。
+但如果您的 SCSI 设备名称包含 "usb"、"uscanner" 或 "ugen"，则必须指定选项 connect\-scsi。否则假定扫描仪是通过
+USB 连接的。
+
+选项 \fBconnect\-device\fP 指定扫描仪通过特殊设备连接到系统。Input/output 由
+\fBread\fP()/\fBwrite\fP()\-operations 在设备上执行。此选项必须用于 HP ScanJet Plus 或连接到 USB
+的扫描仪，这些扫描仪可通过命名设备 (例如 \fI/dev/usb/scanner0\fP).  对于包含 "usb"、"uscanner" 或 "ugen"
+的设备名称，无需指定选项 connect\-device。
+
+选项 \fBenable\-image\-buffering\fP 在将扫描图像传递到前端之前将其存储在内存中。可用于 forward/backward
+移动扫描灯。
+
+选项 \fBdumb\-read\fP 可用于解决 "Error during device I/O" 的问题。某些 SCSI 到 USB 转换器或
+Buslogic SCSI 卡可能会出现这些问题。 该选项不应用于正常工作的 SCSI 设备。 否则前端的启动和更改参数可能会更慢。
+.PP
+示例配置文件如下所示:
+.PP
+.RS
+.nf
+\f(CR/dev/scanner
+# 这是评论
+/dev/hpscan
+选项 connect\-device\fR
+.fi
+.RE
+.PP
+\fI/dev/scanner\fP 通常是指向实际 SCSI 扫描仪设备的符号链接。
+.RE
+.SH FILES
+.TP 
+\fI/etc/sane.d/hp.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-hp.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-hp.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.TP 
+\fI$HOME/.sane/calib\-hp:<device>.dat\fP
+校准后从扫描仪检索的 HP PhotoSmart PhotoScanner 的校准数据。如果扫描仪处于媒体模式 `打印媒体` 或媒体模式更改为
+`打印媒体`，则数据将在后端启动时上传到扫描仪。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (\fI.\fP)，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_HP\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 128 请求打印所有调试输出。 较小的级别减少冗长。
+.TP 
+\fBSANE_HOME_HP\fP
+仅用于 OS/2 并与 HP PhotoSmart PhotoScanner 一起使用。 必须设置为目录 .sane 所在的目录。
+用于保存和读取校准文件。
+.TP 
+\fBSANE_HP_KEEPOPEN_SCSI\fP
+.TP 
+\fBSANE_HP_KEEPOPEN_USB\fP
+.TP 
+\fBSANE_HP_KEEPOPEN_DEVICE\fP
+对于每种连接类型 (connect\-scsi、connect\-usb、connect\-device)，可以指定与设备的连接是否应保持打开 ("1") 或
+("0")。 通常在执行操作后关闭连接。 当扫描仪一段时间未使用时，保持与 SCSI 设备的连接打开会导致设备 IO 期间出现错误。默认情况下，USB
+连接保持打开状态。其他连接关闭。
+.TP 
+\fBSANE_HP_RDREDO\fP
+指定在返回 EOF 错误之前重试读取操作的次数。 仅支持非 SCSI 设备。默认值: 1 次重试。重试之间的时间是 0.1 秒。
+
+.SH BUGS
+.TP 
+\fBHP PhotoSmart PhotoScanner\fP
+在媒体模式 'slide' 和 'negative' 中，扫描分辨率四舍五入为 300 dpi
+的倍数。扫描仪无法在其他分辨率下正确缩放数据。一些较新的型号 (固件代码 R030 及更高版本) 不支持调整 contrast/intensity
+级别和色调 map。 后端将通过软件对此进行模拟，但仅限于灰色和 24 位颜色。
+.TP 
+\fBAutomatic Document Feeder (ADF)\fP
+要将 ADF 与 \fBxscanimage\fP(1) 一起使用，首先将纸张放入 ADF，然后将选项扫描源更改为 'ADF'。按 `更改文档`
+加载一张纸。然后按 'scan' 开始扫描。 也许在没有 `更改文档` 的情况下按 'scan' 就足以进行重复扫描。使用 ADF
+时不建议使用预览窗口。 \fBxscanimage\fP(1) 不支持设置窗口以从 ADF 扫描。 试试 \fBxsane\fP(1)。
+.TP 
+\fBImmediate actions\fP
+\fBxscanimage\fP(1) 中的某些操作 (即卸载、选择介质、校准) 对扫描仪有 immediate 效果，但不会开始扫描。 这些选项不能与
+\fBscanimage\fP(1) 一起使用。
+
+.SH TODO
+.TP 
+\fBHP PhotoSmart PhotoScanner\fP
+固件版本为 R030 及更高版本的照片扫描仪不支持 contrast/brightness/gamma 表的固件。在当前的后端，这是由软件在 24
+位数据上模拟的。 30 位的模拟应该会给出更好的结果。
+.TP 
+\fBData widths greater than 8 bits\fP
+自定义伽玛表不起作用。
+.TP 
+\fBParallel scanner support\fP
+除了自带并行接口卡的 ScanJet Plus 外，目前仅支持 HP ScanJet 5100C/5200C。 这些扫描仪使用内部并行 \-
+to\-SCSI 转换器，它由 ppSCSI 驱动程序 (见上文) 支持。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBsane\-usb\fP(5)  \fBscanimage\fP(1),
+\fBxscanimage\fP(1), \fBscanimage\fP(1)
+
+.SH AUTHOR
+sane\-hp 后端由 Geoffrey T. 编写。Dairiki.
+.br
+Peter Kirchgessner 提供 HP PhotoSmart PhotoScanner 支持。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,166 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-SYSCTL\&.SERVICE 8 "" "systemd 253" systemd\-sysctl.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-sysctl.service, systemd\-sysctl \- 在启动时配置内核参数
+.SH SYNOPSIS
+.HP \w'\fB/usr/lib/systemd/systemd\-sysctl\fR\ 'u
+\fB/usr/lib/systemd/systemd\-sysctl\fP [OPTIONS...] [\fICONFIGFILE\fP...]
+.PP
+systemd\-sysctl\&.service
+.SH DESCRIPTION
+.PP
+systemd\-sysctl\&.service 是一种早期启动服务，通过调用 \fB/usr/lib/systemd/systemd\-sysctl\fP\&
+配置 \fBsysctl\fP(8) 内核参数。
+.PP
+当没有参数调用时，\fB/usr/lib/systemd/systemd\-sysctl\fP 应用 \fBsysctl.d\fP(5)\&
+中列出的配置文件中的所有指令。如果在命令行上传递一个或多个文件名，则仅应用这些文件中的指令 \&。
+.PP
+此外，\fB\-\-prefix=\fP 选项可用于限制应用哪些 sysctl 设置 \&。
+.PP
+有关 sysctl settings\& 的配置信息，请参见 \fBsysctl.d\fP(5)。在磁盘上更改 sysctl 配置后，必须写入
+/proc/sys/ 中的文件才能生效 \&。可以更新特定设置，或简单地重新加载所有配置，请参见下面的示例 \&。
+.SH OPTIONS
+.PP
+\fB\-\-prefix=\fP
+.RS 4
+仅应用具有指定前缀 \& 的规则。
+.RE
+.PP
+\fB\-\-strict=\fP
+.RS 4
+失败时始终返回非零退出代码 (包括无效的 sysctl 变量名和权限不足)，除非 sysctl 变量名以 "\-" 字符 \& 为前缀。
+.RE
+.PP
+\fB\-\-cat\-config\fP
+.RS 4
+将配置文件的内容复制到标准输出 \&。在每个文件之前，文件名打印为注释 \&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH CREDENTIALS
+.PP
+\fBsystemd\-sysctl\fP 支持由 \fILoadCredential=\fP/\fISetCredential=\fP 实现的服务凭证逻辑
+(有关详细信息，请参见 \fBsystemd.exec\fP(1)) \&。传入时使用以下凭据:
+.PP
+"sysctl\&.extra"
+.RS 4
+此凭据的内容可能包含用于操作的附加行 \&。凭据内容应遵循与配置文件中任何其他 sysctl\&.d/ 丢弃相同的格式
+\&。如果此凭据通过，则在从文件系统读取所有丢弃 \- in 文件后对其进行处理。因此，凭据中配置的设置优先于文件系统中的设置 \&。
+.RE
+.PP
+请注意，默认情况下 systemd\-sysctl\&.service 元文件设置为从服务管理器继承 "sysctl\&.extra" 凭证 \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Reset all sysctl settings\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemctl 重启 systemd\-sysctl
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&View coredump handler configuration\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 系统控制 kernel\&.core_pattern
+kernel\&.core_pattern = |/usr/libexec/abrt\-hook\-ccpp %s %c %p %u %g %t %P %I
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&Update coredump handler configuration\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/systemd/systemd\-sysctl\-\- 前缀 kernel\&.core_pattern
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将在 \fBsysctl.d\fP(5) 中列出的所有目录中搜索配置文件并写入 /proc/core_pattern\&。
+.PP
+\fBExample\ \&4.\ \&Update coredump handler configuration according to a specific file\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/systemd/systemd\-sysctl 50\-coredump\&.conf
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将应用在 50\-coredump\&.conf\& 中找到的所有设置。将使用
+/etc/sysctl\&.d/50\-coredump\&.conf、/run/sysctl\&.d/50\-coredump\&.conf 或
+/usr/lib/sysctl\&.d/50\-coredump\&.conf，按优先顺序 \&。
+.PP
+有关直接应用 sysctl 设置 \& 的各种方法，请参见 \fBsysctl\fP(8)。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsysctl.d\fP(5), \fBsysctl\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

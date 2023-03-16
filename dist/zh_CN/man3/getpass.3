@@ -1,0 +1,127 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2000 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getpass 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getpass \- 获取密码
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fB[[deprecated]] char *getpass(const char *\fP\fIprompt\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetpass\fP():
+.nf
+    由于 glibc 2.2.2:
+        _XOPEN_SOURCE && ! (_POSIX_C_SOURCE >= 200112L)
+            || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+            || /* glibc <= 2.19: */ _BSD_SOURCE
+    在 glibc 2.2.2 之前:
+        none
+.fi
+.SH DESCRIPTION
+这个函数已经过时了。 不要使用它。 见注释。 如果您想在不启用终端回显的情况下读取输入，请参见 \fBtermios\fP(3) 中 \fIECHO\fP
+标志的说明。
+.PP
+\fBgetpass\fP() 函数打开 \fI/dev/tty\fP (进程的控制终端)，输出字符串 \fIprompt\fP，关闭回显，读取一行
+("password")，恢复终端状态，再次关闭 \fI/dev/tty\fP。
+.SH "RETURN VALUE"
+函数 \fBgetpass\fP() 返回一个指向静态缓冲区的指针，该缓冲区包含 (的第一个 \fBPASS_MAX\fP 字节) 没有尾随换行符的密码，以空字节
+(\[aq]\e0\[aq]) 终止。 此缓冲区可能会被以下调用覆盖。 出错时，最终状态恢复，\fIerrno\fP 设置为指示错误，并返回 NULL。
+.SH ERRORS
+.TP 
+\fBENXIO\fP
+该过程没有控制终点。
+.SH FILES
+.\" .SH HISTORY
+.\" A
+.\" .BR getpass ()
+.\" function appeared in Version 7 AT&T UNIX.
+\fI/dev/tty\fP
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetpass\fP()
+T}	Thread safety	MT\-Unsafe term
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+出现在 SUSv2 中，但标记为 LEGACY。 在 POSIX.1\-2001 中删除。
+.SH NOTES
+.\" For libc4 and libc5, the prompt is not written to
+.\" .I /dev/tty
+.\" but to
+.\" .IR stderr .
+.\" Moreover, if
+.\" .I /dev/tty
+.\" cannot be opened, the password is read from
+.\" .IR stdin .
+.\" The static buffer has length 128 so that only the first 127
+.\" bytes of the password are returned.
+.\" While reading the password, signal generation
+.\" .RB ( SIGINT ,
+.\" .BR SIGQUIT ,
+.\" .BR SIGSTOP ,
+.\" .BR SIGTSTP )
+.\" is disabled and the corresponding characters
+.\" (usually control-C, control-\e, control-Z and control-Y)
+.\" are transmitted as part of the password.
+.\" Since libc 5.4.19 also line editing is disabled, so that also
+.\" backspace and the like will be seen as part of the password.
+您应该改用 \fIlibbsd\fP 提供的 \fBreadpassphrase\fP(3bsd)。
+.PP
+在 GNU 的 C 库实现中，如果 \fI/dev/tty\fP 打不开，则将提示写入 \fIstderr\fP，从 \fIstdin\fP 读取密码。
+密码长度没有限制。 行编辑未被禁用。
+.PP
+.\" Libc4 and libc5 have never supported
+.\" .B PASS_MAX
+.\" or
+.\" .BR _SC_PASS_MAX .
+根据 SUSv2，\fBPASS_MAX\fP 的值必须在 \fI<limits.h>\fP 中定义，以防它小于 8，并且在任何情况下都可以使用
+\fIsysconf(_SC_PASS_MAX)\fP 获得。 但是，POSIX.2 撤回常量 \fBPASS_MAX\fP 和
+\fB_SC_PASS_MAX\fP，以及函数 \fBgetpass\fP()。 glibc 版本接受 \fB_SC_PASS_MAX\fP 并返回 \fBBUFSIZ\fP
+(例如 8192)。
+.SH BUGS
+调用进程应尽快将密码归零，以避免在进程的地址空间中留下可见的明文密码。
+.SH "SEE ALSO"
+\fBcrypt\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

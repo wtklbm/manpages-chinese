@@ -1,0 +1,388 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1995,1997 Paul Gortmaker and Andries Brouwer
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" This man page written 950814 by aeb, based on Paul Gortmaker's HOWTO
+.\" (dated v1.0.1, 15/08/95).
+.\" Major update, aeb, 970114.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH bootparam 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+bootparam\-\-Linux 内核启动时参数介绍
+.SH DESCRIPTION
+Linux 内核在启动时接受某些 `命令行选项` 或 `引导时间参数`。 通常，这用于向内核提供有关内核无法自行确定的硬件参数的信息，或者向
+avoid/override 提供内核否则会检测到的值。
+.PP
+当内核直接由 BIOS 引导时，您没有机会指定任何参数。 因此，为了利用这种可能性，您必须使用能够传递参数的引导加载程序，例如 GRUB。
+.SS "The argument list"
+内核命令行被解析为以空格分隔的字符串列表 (引导参数)。 大部分的 boot 参数有以下形式:
+.PP
+.in +4n
+.EX
+name[=value_1][,value_2]...[,value_10]
+.EE
+.in
+.PP
+其中 'name' 是一个唯一关键字，用于标识要将关联值 (如果有) 赋予内核的哪个部分。 请注意，10 个的限制是真实的，因为当前代码每个关键字仅处理
+10 个逗号分隔的参数。 (但是，在异常复杂的情况下，您可以重复使用最多 10 个额外参数的相同关键字，前提是设置函数支持它。)
+.PP
+大多数排序都在内核源文件 \fIinit/main.c\fP 中进行了编码。 首先，内核检查参数是否是特殊参数
+\&'root='、\&'nfsroot='、'nfsaddrs='、'ro'、'rw'、'debug' 或 'init' 中的任何一个。
+下面介绍这些特殊参数的含义。
+.PP
+然后它遍历设置函数列表以查看指定的参数字符串 (例如 'foo') 是否已与特定设备或内核部分的设置函数 ('foo_setup ()') 相关联。
+如果您向内核传递 foo=3,4,5,6 行，那么内核将搜索 bootsetups 数组以查看 'foo' 是否已注册。 如果是，那么它会调用与
+\&'foo' (foo_setup()) 关联的设置函数，并将内核命令行上给出的参数 3、4、5 和 6 传递给它。
+.PP
+任何形式的 'foo=bar' 不被接受为如上所述的设置函数然后被解释为要设置的环境变量。 (useless?) 示例将使用 'TERM=vt100'
+作为引导参数。
+.PP
+任何未被内核拾取且未被解释为环境变量的剩余参数然后被传递到 PID 1，通常是 \fBinit\fP(1) 程序。 传递给 \fIinit\fP
+进程的最常见参数是单词 'single'，它指示它以单用户模式启动计算机，而不启动所有常用的守护进程。 检查系统上安装的 \fBinit\fP(1)
+版本的手册页，看看它接受什么参数。
+.SS "General non\-device\-specific boot arguments"
+.TP 
+\&\fB'init=...'\fP
+这设置了内核要执行的初始命令。 如果未设置或找不到，内核将尝试 \fI/sbin/init\fP，然后是 \fI/etc/init\fP，然后是
+\fI/bin/init\fP，然后是 \fI/bin/sh\fP，如果所有这些都失败了，则会出现 panic。
+.TP 
+\&\fB'nfsaddrs=...'\fP
+这会将 NFS 引导地址设置为给定的字符串。 该引导地址用于网络引导。
+.TP 
+\&\fB'nfsroot=...'\fP
+这会将 NFS 根名称设置为给定的字符串。 如果此字符串不是以 '/' 或 ',' 或数字开头，则它以 \&'/tftpboot/' 为前缀。
+在网络引导的情况下使用此根名称。
+.TP 
+\&\fB'root=...'\fP
+这个参数告诉内核在引导时哪个设备被用作根文件系统。 此设置的默认值是在编译时确定的，通常是构建内核的系统的根设备的值。
+要覆盖此值，并选择第二个软盘驱动器作为根设备，可以使用 'root=/dev/fd1'。
+.IP
+可以用符号或数字方式指定根设备。 符号规范的形式为 \fI/dev/XXYN\fP，其中 XX 表示设备类型 (例如，'hd' 表示 ST\-506
+兼容硬盘，Y 在 \&'a'\[en]'d' 中; 'sd' 表示 SCSI 兼容磁盘，Y 在 'a'\[en]'e') 中，Y 是驱动器字母或编号，N
+是此设备上分区的编号 (十进制)。
+.IP
+请注意，这与文件系统上这些设备的指定无关。 '/dev/' 部分是纯常规的。
+.IP
+major/minor 格式的上述可能的根设备的更笨拙和更不便携的数字规范也被接受。 (例如，\fI/dev/sda3\fP 是大调 8，小调
+3，因此您可以使用 'root=0x803' 作为替代。)
+.TP 
+\&\fB'rootdelay='\fP
+此参数设置在尝试挂载根文件系统之前暂停的延迟 (以秒为单位)。
+.TP 
+\&\fB'rootflags=...'\fP
+此参数设置根文件系统的安装选项字符串 (另请参见 \fBfstab\fP(5)).
+.TP 
+\&\fB'rootfstype=...'\fP
+\&'rootfstype' 选项告诉内核将根文件系统挂载到指定类型的位置。 这可能很有用 (例如) 将 ext3 文件系统挂载为
+ext2，然后删除根文件系统中的日志，实际上将其格式从 ext3 恢复为 ext2，而无需从备用媒体启动 box。
+.TP 
+\&\fB'ro'\fP and \fB'rw'\fP
+\&'ro' 选项告诉内核将根文件系统挂载为 'read\-only'，以便文件系统一致性检查程序 (fsck) 可以在静态文件系统上执行它们的工作。 在
+\&'remounted' 和 read/write 兼容之前，没有进程可以写入相关文件系统上的文件，例如，通过 `mount \-w \-n \-o
+remount/`。 (另见 \fBmount\fP(8).)
+.IP
+\&'rw' 选项告诉内核挂载根文件系统 read/write。 这是默认设置。
+.TP 
+\&\fB'resume=...'\fP
+这告诉内核您希望机器在休眠后恢复的磁盘挂起数据的位置。 通常，它与您的交换分区或文件相同。 Example:
+.IP
+.in +4n
+.EX
+resume=/dev/hda2
+.EE
+.in
+.TP 
+\&\fB'reserve=...'\fP
+这用于保护 I/O 端口区域免受探测。 命令的形式是:
+.IP
+.in +4n
+.EX
+\fBreserve=\fP\fIiobase,extent[,iobase,extent]...\fP
+.EE
+.in
+.IP
+在某些机器中，可能需要阻止设备驱动程序检查特定区域中的设备 (auto\-probing)。
+这可能是因为硬件对探测反应不佳，或者硬件被错误识别，或者仅仅是您不希望内核初始化的硬件。
+.IP
+保留启动时间参数指定不应探测的 I/O 端口区域。 设备驱动程序不会探测保留区域，除非另一个引导参数明确指定它这样做。
+.IP
+例如，引导行
+.IP
+.in +4n
+.EX
+reserve=0x300,32  blah=0x300
+.EE
+.in
+.IP
+防止除 'blah' 驱动程序之外的所有设备驱动程序探测 0x300\-0x31f。
+.TP 
+\&\fB'panic=N'\fP
+默认情况下，内核在 panic 后不会重新启动，但此选项将导致内核在 N 秒后重新启动 (如果 N 大于零)。 这个 panic
+超时也可以通过以下方式设置
+.IP
+.in +4n
+.EX
+回声 N > /proc/sys/kernel/panic
+.EE
+.in
+.TP 
+\&\fB'reboot=[warm|cold][,[bios|hard]]'\fP
+自 Linux 2.0.22 起，重启默认为冷重启。 一个要求使用 'reboot=warm' 的旧默认值。
+(可能需要冷重启来重置某些硬件，但可能销毁尚未在磁盘缓存中写入数据。热重启可能更快。)
+默认情况下，重启很困难，要求键盘控制器对重置线发出脉冲低，但至少有一种类型的主板不起作用。 选项 'reboot=bios' 将改为跳过 BIOS。
+.TP 
+\&\fB'nosmp'\fP and \fB'maxcpus=N'\fP
+(仅当定义了 SMP 时。) 'nosmp' 或 'maxcpus=0' 的命令行选项将完全禁用 SMP 激活; 选项 'maxcpus=N' 将在
+SMP 模式下激活的最大 CPU 数量限制为 N。
+.SS "Boot arguments for use by kernel developers"
+.TP 
+\&\fB'debug'\fP
+内核消息被传递给守护进程 (例如，\fBklogd\fP(8) 或类似的)，以便它们可以记录到磁盘。 优先级高于 \fIconsole_loglevel\fP
+的消息也会打印在控制台上。 (有关日志级别的讨论，请参见 \fBsyslog\fP(2).) 默认情况下，\fIconsole_loglevel\fP 设置为在高于
+\fBKERN_DEBUG\fP 的级别记录消息。 此引导参数将导致内核也打印在级别 \fBKERN_DEBUG\fP 上记录的消息。 控制台日志级别也可以通过
+\fI/proc/sys/kernel/printk\fP 文件 (在
+\fBsyslog\fP(2))、\fBsyslog\fP(2)、\fBSYSLOG_ACTION_CONSOLE_LEVEL\fP 操作或 \fBdmesg\fP(8).
+.TP 
+\&\fB'profile=N'\fP
+如果希望找出内核将其 CPU 周期花费在何处，则可以启用内核分析函数。 通过将变量 \fIprof_shift\fP 设置为非零值来启用分析。
+这可以通过在编译时指定 \fBCONFIG_PROFILE\fP 或提供 'profile=' 选项来完成。 现在，\fIprof_shift\fP 获得的值将是
+N (如果给定) 或 \fBCONFIG_PROFILE_SHIFT\fP (如果给定) 或 2 (默认值)。 这个变量的重要性在于它给出了分析的粒度:
+每个时钟滴答，如果系统正在执行内核代码，计数器就会增加:
+.IP
+.in +4n
+.EX
+配置文件 [地址 >> prof_shift]++;
+.EE
+.in
+.IP
+可以从 \fI/proc/profile\fP 读取原始分析信息。 您可能希望使用 readprofile.c 之类的工具来消化它。 写入
+\fI/proc/profile\fP 将清除计数器。
+.SS "Boot arguments for ramdisk use"
+(只有内核是用 \fBCONFIG_BLK_DEV_RAM\fP.) 编译的。一般来说，在 Linux\[em] 下使用 ramdisk
+是个坏主意，系统本身会更有效地使用可用内存。 但是在启动时，将软盘内容加载到 ramdisk 中通常很有用。
+一个人可能还有一个系统，在访问主磁盘之前，必须先加载一些模块 (用于文件系统或硬件)。
+.IP
+在 Linux 1.3.48 中，虚拟磁盘处理发生了巨大变化。 早些时候，内存是静态分配的，有一个 'ramdisk=N' 参数来告诉它的大小。
+(这也可以在编译时在内核映像中设置。) 现在 ram 磁盘使用缓冲区缓存，并且动态增长。 有关当前 ramdisk
+设置的大量信息，请参见旧内核中的内核源文件 \fIDocumentation/blockdev/ramdisk.txt\fP
+(\fIDocumentation/ramdisk.txt\fP)。
+.IP
+有四个参数，两个布尔值和两个整数。
+.TP 
+\&\fB'load_ramdisk=N'\fP
+如果 N=1，请加载 ramdisk。 如果 N=0，则不加载 ramdisk。 (这是默认设置。)
+.TP 
+\&\fB'prompt_ramdisk=N'\fP
+如果 N=1，提示插入软盘。 (这是默认值。) 如果 N=0，则不提示。 (因此，永远不需要此参数。)
+.TP 
+\&\fB'ramdisk_size=N'\fP or (obsolete) \fB'ramdisk=N'\fP
+将 ramdisk(s) 的最大大小设置为 N kB。 默认值为 4096 (4\MB)。
+.TP 
+\&\fB'ramdisk_start=N'\fP
+将起始块号 (虚拟磁盘开始的软盘偏移量) 设置为 N。 如果 ramdisk 遵循内核映像，则需要这样做。
+.TP 
+\&\fB'noinitrd'\fP
+(只有当内核使用 \fBCONFIG_BLK_DEV_RAM\fP 和 \fBCONFIG_BLK_DEV_INITRD\fP.)
+编译时，这些天才有可能编译内核以使用 initrd。 启用此特性后，引导过程将加载内核和初始 ramdisk; 然后内核将 initrd 转换为
+"normal" ramdisk，以读写方式挂载为 root 设备; 然后执行 \fI/linuxrc\fP; 然后挂载 "real" 根文件系统，并将
+initrd 文件系统移至 \fI/initrd\fP; 最后是通常的启动顺序 (例如，执行 \fI/sbin/init\fP) 的调用。
+.IP
+.\" commit 9d85025b0418163fae079c9ba8f8445212de8568
+有关 initrd 特性的详细说明，请参见内核源文件 \fIDocumentation/admin\-guide/initrd.rst\fP (或 Linux
+4.10 之前的 \fIDocumentation/initrd.txt\fP)。
+.IP
+\&'noinitrd' 选项告诉内核，虽然编译它是为了与 initrd 一起运行，但不应该经过上面的步骤，而是将 initrd 数据留在
+\fI/dev/initrd\fP 下。 (此设备只能使用一次: 数据在最后一个使用它的进程关闭后立即释放 \fI/dev/initrd\fP.)
+.SS "Boot arguments for SCSI devices"
+本节的一般符号:
+.PP
+\fIiobase\fP\-\-SCSI 主机占用的第一个 I/O 端口。 这些以十六进制表示法指定，通常位于从 0x200 到 0x3ff 的范围内。
+.PP
+\fIirq\fP\-\- 卡配置使用的硬件中断。 有效值将取决于所讨论的卡，但通常为 5、7、9、10、11、12 和 15。
+其他值通常用于常见的外围设备，如硬盘、软盘、串行端口等。
+.PP
+\fIscsi\-id\fP\-\- 主机适配器用来在 SCSI 总线上标识自己的 ID。 只有一些主机适配器允许您更改此值，因为大多数适配器已在内部永久指定。
+通常默认值为 7，但 Seagate 和 Future Domain TMC\-950 板使用 6.
+.PP
+\fIparity\fP\-\-SCSI 主机适配器是否希望连接的设备为所有信息交换提供奇偶校验值。 指定 1 表示启用奇偶校验，指定 0 表示禁用奇偶校验。
+同样，并非所有适配器都支持选择奇偶校验行为作为引导参数。
+.TP 
+\&\fB'max_scsi_luns=...'\fP
+一个 SCSI 设备本身可以包含多个 'subdevices'。 最常见的例子是一次处理多个磁盘的新 SCSI CD\-ROM 之一。 每张 CD
+都被指定为该特定设备的 \&' 逻辑元号 (LUN)。 但大多数设备，如硬盘、磁带机等都只是一个设备，会被分配到 LUN 0。
+.IP
+某些设计不良的 SCSI 设备无法处理被探测到的 LUN 不等于零的情况。 因此，如果未设置编译时标志
+\fBCONFIG_SCSI_MULTI_LUN\fP，较新的内核将默认仅探测 LUN 零。
+.IP
+要指定启动时探测的 LUN 数量，请输入 \&'max_scsi_luns=n' 作为启动参数，其中 n 是 1 到 8 之间的数字。
+为避免上述问题，可以使用 n=1 来避免扰乱此类损坏的设备。
+.TP 
+\fBSCSI tape configuration\fP
+SCSI 磁带驱动程序的某些引导时间配置可以通过使用以下内容来实现:
+.IP
+.in +4n
+.EX
+\fBst=\fP\fIbuf_size[,write_threshold[,max_bufs]]\fP
+.EE
+.in
+.IP
+前两个数字以 kB 为单位指定。 默认的 \fIbuf_size\fP 是 32k\B，可以指定的最大大小是荒谬的 16384\kB。
+\fIwrite_threshold\fP 是缓冲区提交到磁带的值，默认值为 30\kB。 缓冲区的最大数量随检测到的驱动器数量而变化，默认值为两个。
+一个示例用法是:
+.IP
+.in +4n
+.EX
+st=32,30,2
+.EE
+.in
+.IP
+完整的详细信息可以在 Linux 内核源代码中的文件 \fIDocumentation/scsi/st.txt\fP (或旧内核的
+\fIdrivers/scsi/README.st\fP) 中找到。
+.SS "Hard disks"
+.TP 
+\fBIDE Disk/CD\-ROM Driver Parameters\fP
+集成开发环境驱动程序接受许多参数，范围从磁盘几何规格到支持损坏的控制器芯片。 通过使用 'hdX=' 和 'a'\[en]'h' 中的 X
+来指定特定于驱动器的选项。
+.IP
+非驱动器特定选项使用前缀 'hd=' 指定。 请注意，为非特定于驱动器的选项使用特定于驱动器的前缀仍然有效，并且该选项将按预期应用。
+.IP
+.\" Linux 2.0, 2.2, 2.4
+另请注意，'hd=' 可用于引用 (a, ..., h) 序列中的下一个未指定的驱动器。 对于以下讨论，为简洁起见将引用 'hd=' 选项。
+有关更多详细信息，请参见 Linux 内核源代码中的文件 \fIDocumentation/ide/ide.txt\fP (或旧内核中的
+\fIDocumentation/ide.txt\fP，或旧内核中的 \fIdrivers/block/README.ide\fP)。
+.TP 
+\fBThe 'hd=cyls,heads,sects[,wpcom[,irq]]' options\fP
+这些选项用于指定磁盘的物理几何形状。 只需要前三个值。 cylinder/head/sectors 值将是 fdisk 使用的值。
+集成开发环境磁盘忽略写入预补偿值。 指定的 IRQ 值将是用于驱动器所在接口的 IRQ，并不是真正的特定于驱动器的参数。
+.TP 
+\fBThe 'hd=serialize' option\fP
+双集成开发环境接口 CMD\-640 芯片已按设计损坏，因此当辅助接口上的驱动器与主接口上的驱动器同时使用时，它会损坏您的数据。
+使用此选项告诉驱动程序确保两个接口永远不会同时使用。
+.TP 
+\fBThe 'hd=noprobe' option\fP
+不要探测这个驱动器。 例如，
+.IP
+.in +4n
+.EX
+hdb=noprobe hdb=1166,7,17
+.EE
+.in
+.IP
+将禁用探测器，但仍指定驱动器几何形状，以便将其注册为有效的块设备，因此可用。
+.TP 
+\fBThe 'hd=nowerr' option\fP
+有些驱动器显然永久固定了 \fBWRERR_STAT\fP 位。 这为这些损坏的设备提供了解决方法。
+.TP 
+\fBThe 'hd=cdrom' option\fP
+这告诉集成开发环境驱动程序有一个 ATAPI 兼容的 CD\-ROM 附加在正常的集成开发环境硬盘的位置。 在大多数情况下，CD\-ROM
+会被自动识别，但如果不是，那么这可能会有所帮助。
+.TP 
+\fBStandard ST\-506 Disk Driver Options ('hd=')\fP
+标准磁盘驱动程序可以接受磁盘的几何参数，类似于集合开发环境驱动程序。 但是请注意，它只需要三个值 (C/H/S); 或多或少，它都会默默地无视您。
+此外，它只接受 'hd=' 作为参数，也就是说，'hda=' 等在这里无效。 格式如下:
+.IP
+.in +4n
+.EX
+hd=cyls,heads,sects
+.EE
+.in
+.IP
+如果安装了两个磁盘，则使用第二个磁盘的几何参数重复上述操作。
+.SS "Ethernet devices"
+不同的驱动程序使用不同的参数，但它们至少都共享一个 IRQ、一个 I/O 端口基值和一个名称。 在其最泛型的形式中，它看起来像这样:
+.PP
+.in +4n
+.EX
+ether=irq,iobase[,param_1[,...param_8]],name
+.EE
+.in
+.PP
+第一个非数字参数作为名称。 param_n 值 (如果适用) 通常对每个不同的 card/driver 具有不同的含义。 典型的 param_n
+值用于指定共享内存地址、接口选择、DMA 通信等。
+.PP
+此参数最常见的用途是强制探测第二个以太网卡，默认情况下仅探测一个。 这可以通过一个简单的方式完成:
+.PP
+.in +4n
+.EX
+ether=0,0,eth1
+.EE
+.in
+.PP
+请注意，上例中 IRQ 和 I/O 基数的零值告诉 driver(s) 自动探测。
+.PP
+Ethernet\-HowTo 有大量关于使用多张卡和关于使用的 param_n 值的 card/driver\-specific 实现的文档。 感兴趣的
+readers 应该参考该文档中关于他们特定卡的部分。
+.SS "The floppy disk driver"
+有许多软盘驱动程序选项，它们都列在 Linux 内核源代码中的 \fIDocumentation/blockdev/floppy.txt\fP (或旧内核中的
+\fIDocumentation/floppy.txt\fP，或古老内核中的 \fIdrivers/block/README.fd\fP) 中。
+有关详细信息，请参见该文件。
+.SS "The sound driver"
+声音驱动程序也可以接受引导参数来覆盖编译的值。 不建议这样做，因为它相当复杂。 它在旧内核版本的 Linux 内核源文件
+\fIDocumentation/sound/oss/README.OSS\fP (\fIdrivers/sound/Readme.linux\fP 中有描述)。
+它接受以下形式的引导参数:
+.PP
+.in +4n
+.EX
+sound=device1[,device2[,device3...[,device10]]]
+.EE
+.in
+.PP
+其中每个 deviceN 值采用以下格式 0xTaaaId 并且字节使用如下:
+.PP
+T \- 设备类型: 1=FM, 2=SB, 3=PAS, 4=GUS, 5=MPU401, 6=SB16, 7=SB16\-MPU401
+.PP
+aaa \- 十六进制的 I/O 地址。
+.PP
+I \- 十六进制中断线 (即 10=a，11=b，...)
+.PP
+d\-DMA 通道。
+.PP
+如您所见，它变得非常混乱，您最好按照建议编译您自己的个人值观。 使用 \&'sound=0' 的引导参数将完全禁用声音驱动程序。
+.SS "The line printer driver"
+.TP 
+\&\fB'lp='\fP
+.br
+Syntax:
+.IP
+.in +4n
+.EX
+lp=0
+lp=auto
+lp=reset
+lp=port[,port...]
+.EE
+.in
+.IP
+您可以告诉打印机驱动程序使用哪些端口以及不使用哪些端口。 如果您不希望打印机驱动程序占用所有可用的并行端口，后者会派上用场，以便其他驱动程序
+(例如，PLIP、PPA) 可以使用它们。
+.IP
+.\" .SH AUTHORS
+.\" Linus Torvalds (and many others)
+参数的格式是多个端口名。 例如，lp=none,parport0 会将第一个并行端口用于 lp1，并禁用 lp0。 要完全禁用打印机驱动程序，可以使用
+lp=0。
+.SH "SEE ALSO"
+\fBklogd\fP(8), \fBmount\fP(8)
+.PP
+有关最新信息，请参见内核源文件 \fIDocumentation/admin\-guide/kernel\-parameters.txt\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

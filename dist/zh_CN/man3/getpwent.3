@@ -1,0 +1,150 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\"
+.\" Modified Sat Jul 24 19:22:14 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Mon May 27 21:37:47 1996 by Martin Schulze (joey@linux.de)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getpwent 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getpwent、setpwent、endpwent \- 获取密码文件条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <pwd.h>\fP
+.PP
+\fBstruct passwd *getpwent(void);\fP
+\fBvoid setpwent(void);\fP
+\fBvoid endpwent(void);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetpwent\fP(), \fBsetpwent\fP(), \fBendpwent\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetpwent\fP() 函数返回一个指向结构体的指针，该结构体包含来自密码数据库 (例如，本地密码文件 \fI/etc/passwd\fP、NIS 和
+LDAP) 的记录的断开字段。 第一次调用 \fBgetpwent\fP() 时，它返回第一个条目; 此后，它返回连续的条目。
+.PP
+\fBsetpwent\fP() 函数倒回到密码数据库的开头。
+.PP
+\fBendpwent\fP() 函数用于在执行完所有处理后关闭密码数据库。
+.PP
+\fIpasswd\fP 结构体在 \fI<pwd.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct passwd {
+    char   *pw_name;       /* username */
+    char   *pw_passwd;     /* user password */
+    uid_t   pw_uid;        /* user ID */
+    gid_t   pw_gid;        /* group ID */
+    char   *pw_gecos;      /* user information */
+    char   *pw_dir;        /* home directory */
+    char   *pw_shell;      /* shell program */
+};
+.EE
+.in
+.PP
+有关此结构体字段的更多信息，请参见 \fBpasswd\fP(5)。
+.SH "RETURN VALUE"
+\fBgetpwent\fP() 函数返回指向 \fIpasswd\fP 结构体的指针，如果没有更多条目或发生错误，则返回 NULL。 如果发生错误，则设置
+\fIerrno\fP 以指示错误。 如果要在调用后检查 \fIerrno\fP，则应在调用前将其设置为零。
+.PP
+返回值可能指向一个静态区域，并可能被随后对 \fBgetpwent\fP()、\fBgetpwnam\fP(3) 或 \fBgetpwuid\fP(3) 的调用覆盖。
+(不要将返回的指针传递给 \fBfree\fP(3).)
+.SH ERRORS
+.TP 
+\fBEINTR\fP
+一个信号被捕捉到; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEIO\fP
+I/O 错误。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOMEM\fP
+.\" not in POSIX
+.\" to allocate the passwd structure, or to allocate buffers
+内存不足，无法分配 \fIpasswd\fP 结构体。
+.TP 
+\fBERANGE\fP
+提供的缓冲区空间不足。
+.SH FILES
+.TP 
+\fI/etc/passwd\fP
+本地密码数据库文件
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetpwent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:pwent
+race:pwentbuf locale
+T}
+T{
+\fBsetpwent\fP(),
+\fBendpwent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:pwent locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:pwent\fP 中的 \fIpwent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetpwent\fP()、\fBgetpwent\fP() 或 \fBendpwent\fP() 中的任何一个，则可能发生数据竞争。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.  \fIpw_gecos\fP 字段未在 POSIX
+中指定，但存在于大多数实现中。
+.SH "SEE ALSO"
+\fBfgetpwent\fP(3), \fBgetpw\fP(3), \fBgetpwent_r\fP(3), \fBgetpwnam\fP(3),
+\fBgetpwuid\fP(3), \fBputpwent\fP(3), \fBpasswd\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

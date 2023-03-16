@@ -1,0 +1,223 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-scsi 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-scsi
+.SH NAME
+sane\-scsi \- 用于扫描仪的 SCSI 适配器提示
+.SH DESCRIPTION
+该手册页包含各种特定于操作系统的提示和技巧，以帮助您使用 SCSI 接口运行扫描仪。
+.SH "GENERAL INFO"
+对于带有 SCSI 接口的扫描仪，在第一次使用 SANE 之前可能需要编辑适当的后端配置文件。 对于大多数系统，配置文件应该列出扫描器所连接的泛型
+SCSI 设备的名称 (例如，在 Linux 下，\fI/dev/sg4\fP 或 \fI/dev/sge\fP 就是这样的泛型 SCSI 设备)。 通常创建从
+\fI/dev/scanner\fP 到扫描仪所连接的泛型 SCSI 设备的符号链接。 在这种情况下，配置文件只列出 \fI/dev/scanner\fP 行。
+关于每个后端的配置文件的详细描述，请参考相关的后端手册页 (例如，\fBsane\-epson\fP(5) 用于爱普生扫描仪，\fBsane\-hp\fP(5)
+用于惠普扫描仪等)。
+.PP
+对于某些操作系统 (例如 Linux 和 OS/2)，有一种指定扫描仪设备的替代方法。 这种替代方法允许通过 SCSI 供应商和型号字符串或者 SCSI
+设备地址 (由总，字符串，号、通道号、id 和逻辑元号组成) 来识别扫描仪。 以这种方式指定扫描仪的语法是:
+.PP
+.RS
+scsi \fIVENDOR MODEL TYPE BUS CHANNEL ID LUN\fP
+.RE
+.PP
+其中 \fIVENDOR\fP 是 SCSI 供应商字符串，\fIMODEL\fP 是 SCSI 型号字符串，\fITYPE\fP 是类型 SCSI
+设备类型字符串，\fIBUS\fP 是 SCSI 总，字符串，号 (\fI/proc/scsi/scsi\fP) 中命名为 "host"，\fICHANNEL\fP 是
+SCSI 通道号，\fIID\fP 是 SCSI id，\fILUN\fP 是 scanner 设备的逻辑元号。
+前两个字段是字符串，如果它们包含任何空格，则必须用双引号括起来。 其余四个字段是非 negative 整数。
+这些字段的正确值可以通过使用特定于操作系统的工具找到，例如对于 Linux，通过查看命令 \fIcat /proc/scsi/scsi\fP 的输出。
+为了简化配置，可以用星号 (\*(lq*\*(rq) 替换字段的值。 星号的作用是该特定字段允许任何值。 这可能会产生单个 scsi 线路匹配多个设备的效果。
+当这种情况发生时，每个匹配的设备将被后端一个一个地探测，如果后端认为它是兼容设备则注册。 例如，这一行
+.PP
+.RS
+scsi MUSTEK MFS\-06000CX Scanner 0 00 03 00
+.RE
+.PP
+将使用以下 /proc/scsi/scsi 条目附加 Mustek SCSI 扫描仪:
+.PP
+.RS 2
+.nf
+\f(CRHost: scsi0 Channel: 00 Id: 03 Lun: 00
+  Vendor: MUSTEK   Model: MFS\-06000CX Rev: 4.04
+  Type:   Scanner  ANSI SCSI revision: 0\fR
+.fi
+.RE
+.PP
+通常仅使用供应商和型号字符串甚至仅使用供应商字符串就足够了。下面的例子
+.PP
+.RS
+scsi MUSTEK * * * * * *
+.RE
+.PP
+会产生这样的效果: 系统中所有供应商字符串为 MUSTEK 的 SCSI 设备都将被后端探测和识别。
+.PP
+如果 scsi\-string 的其余部分仅由星号组成，则可以省略星号。 例如，以下行等同于前面指定的行:
+.PP
+.RS
+scsi MUSTEK
+.RE
+.PP
+在某些平台 (例如 OpenStep) 上，SANE 设备名称采用特殊形式。 这在下面相关的特定于平台的部分中进行了解释。
+.PP
+使用 SCSI 扫描仪时，请确保正确设置泛型 SCSI 设备的访问权限。 我们建议添加一个组 "scanner" 到
+\fI/etc/group\fP，其中包含应该有权访问扫描仪的所有用户。 然后应将设备的权限设置为允许组读写访问。 例如，如果扫描器位于泛型 SCSI 设备
+\fI/dev/sg0\fP，则以下两个命令将正确设置权限:
+.PP
+.RS
+$ chgrp scanner /dev/sg0
+.br
+$ chmod 660 /dev/sg0
+.br
+.RE
+.PP
+当您的系统使用设备文件系统 (devfs) 时，您必须编辑 \fI/etc/devfs/perms.\fP 在那里您应该搜索行
+.PP
+.RS
+REGISTER ^sg[^/]* PERMISSIONS root.root 0600
+.RE
+.PP
+并添加一个新行 (例如，用于更改 sg4 的权限) :
+.PP
+.RS
+注册 ^sg4 权限 root.scanner 0660
+.RE
+.PP
+.SH "FREEBSD INFO"
+仅当运行前端的用户对 \fI/dev/xpt0\fP 具有 read/write 访问权限时，使用配置文件中的 "scsi *" 行进行的自动配置才有效。
+相反，您还可以将链接 \fI/dev/scanner\fP 设置为适当的 \fI/dev/uk\fP 设备。
+.RS
+.TP 
+Adaptec AHA1542CF
+据报告在 FreeBSD 2.2.2R 下使用 \fBaha\fP 驱动程序工作正常。
+.TP 
+Adaptec 2940
+据报告在 FreeBSD 2.2.2 下工作正常。
+.TP 
+Adaptec 1522
+扫描仪探测正常，但任何访问它的尝试 \fIhangs\fP 整个系统。看起来有些东西正在禁用中断然后不重新启用它们，所以它看起来像是 FreeBSD
+\fBaic\fP 驱动程序中的错误。
+.TP 
+Adaptec 1505
+使用 \fBaic\fP 驱动程序在 FreeBSD 2.2.5R 和 3.0 上工作，前提是卡上的即插即用支持被禁用。 如果没有 \fIuk\fP 设备，就在
+\fI/dev\fP 目录下做一个 \fIsh MAKEDEV uk0\fP。如果在启动期间探测到扫描仪，那么它应该可以作为 \fI/dev/uk0\fP 访问。
+.TP 
+Tekram DC390
+据报告在 FreeBSD 2.2.2R 下使用 \fBamd\fP 驱动程序工作正常。
+.RE
+
+.SH "LINUX INFO"
+首先，确保您的内核启用了 SCSI 泛型支持。 在 \fImake xconfig\fP 中，这显示在 `SCSI support\->SCSI
+泛型支持` 下。
+.PP
+
+要将扫描时间保持在最低限度，强烈建议为泛型 SCSI 驱动程序使用较大的缓冲区大小。从 SG 驱动程序版本 2.0
+开始，最大缓冲区大小可以在程序运行时更改，并且没有大小限制。此驱动程序版本是 2.2.7 版本以上的 Linux 内核的一部分。如果新的 SG
+驱动程序可用，一些后端 (例如 \fBsane\-umax\fP(5)、\fBsane\-mustek\fP(5)\fB,\fP \fBsane\-sharp\fP(5))
+会自动请求更大的 SCSI 缓冲区。如果后端不自动请求更大的 SCSI 缓冲区，请将环境变量 \fBSANE_SG_BUFFERSIZE\fP
+设置为所需的缓冲区大小 (以字节为单位)。不建议使用超过 1 MB，因为对于较大的值，SG 驱动程序无法分配必要的 buffer(s)
+的可能性会增加。对于 ISA 卡，即使 1 MB 也可能是一个太大的值。有关 SG 驱动程序内存问题的详细讨论，请参见
+\fIhttp://www.torque.net/sg.\fP
+.PP
+对于 2.2.7 版本之前的 Linux 内核，缓冲区的大小仅为 32KB。 这行得通，但对于许多更便宜的扫描仪来说，这会导致扫描速度比使用 127KB
+大小时慢四倍。 Linux 在头文件 \fI/usr/include/scsi/sg.h\fP 中通过宏 \fBSG_BIG_BUFF\fP
+定义了这个缓冲区的大小。 除非系统内存严重不足，否则建议将此值增加到最大合法值 128*1024\-512=130560 字节。
+更改此值后，需要重新编译内核 (或 SCSI 泛型模块) 和 SCSI 后端。请记住，只有较旧的 Linux 内核才需要这样做。
+
+.PP
+SCSI 扫描仪的一个常见问题是在扫描仪关闭时启动系统时要做什么。 在这种情况下，内核无法识别扫描器，SANE 也无法访问它。 幸运的是，Linux
+提供了一种简单的机制来按需探测 SCSI 设备。 假设您有一台连接到 SCSI 总线 2 的扫描仪，并且该扫描仪的 SCSI id 为 5。
+当系统启动并运行并且扫描仪打开时，您可以发出命令:
+.PP
+.RS
+echo "scsi add\-single\-device 2 0 5 0" > /proc/scsi/scsi
+.RE
+.PP
+并且内核将探测并识别您的扫描仪 (这需要以 root 身份完成)。 也可以使用 `remove\-single\-device` 命令动态删除 SCSI
+设备。 详情请参考 SCSI\-2.4\-HOWTO。
+.PP
+已知扫描仪可与 Linux 下的以下 SCSI 适配器一起使用。此列表并不完整，通常 Linux 支持的任何 SCSI 适配器都应该可以工作。
+.PP
+.RS
+.TP 
+Acard/Advance SCSI adapters
+一些老版本的内核驱动 (\fIatp870u.c\fP) 把查询信息删掉了。 因此无法正确检测到扫描仪。使用当前内核。
+.TP 
+Adaptec AHA\-1505/AHA\-1542/AHA\-2940
+据报道自 v2.0 起可与 Linux 一起正常工作。如果您遇到内核冻结或其他意外行为，请获取最新的 Linux 内核 (2.2.17 似乎可以工作)
+或将 SCSI 缓冲区大小减小到 32 kB。
+.TP 
+ASUS SC200
+据报道可以与 Linux v2.0 一起正常工作。
+.TP 
+BusLogic BT958
+要配置 BusLogic 卡，您可能需要遵循这些说明 (由 Jeremy <jeremy@xxedgexx.com>): 提供)
+在引导期间，当您的 BusLogic 适配器正在初始化时，按 Ctrl\-B 进入您的 BusLogic 适配器设置。 选择包含扫描器的 BusLogic
+所在的地址。选择 `SCSI 设备配置`。 选择 `扫描 SCSI 总线`。 选择包含您的扫描仪的任何 SCSI id，然后选择 `查看 / 修改
+SCSI 配置`。 将 `协商` 更改为 `异步` 并将 `断开连接` 更改为 `关闭`。按 Esc、保存，然后再次按 Esc，直到系统要求您重新启动。
+.TP 
+NCR/Symbios 53c400/53c400a or Domex DTC3181E/L/LE (DTCT436/436P) ISA SCSI card
+此卡由 Mustek (和其他供应商) 提供。它从 Linux 2.2 开始支持。 SCSI 卡由模块 g_NCR5380 支持。 有必要告诉内核 io
+端口和卡的类型。 53c400a 的示例: \fImodprobe g_NCR5380 ncr_addr=0x280 ncr_53c400a=1 .\fP
+一旦内核检测到卡，它应该可以正常工作。 然而，虽然它应该工作，但不要指望这张卡有好的性能 \-\-
+它没有中断线，因此当扫描正在进行时，系统几乎无法使用。您可以更改 \fIdrivers/scsi/g_NCR5380.c\fP 中 USLEEP 宏的值。
+一些文档在这个文件和 \fINCR5380.c\fP 中。
+.TP 
+NCR/Symbios 810
+对于某些扫描仪，可能需要禁用 disconnect/reconnect。为此，请使用选项
+ncr53c8xx="disc:n"。有些人报告说他们的扫描仪只能使用 53c7,8xx 驱动程序，不能使用
+ncr53c8xx。如果遇到问题，请尝试两者。
+.br
+对于 2.0.33 之前的 Linux 内核，可能需要增加 SCSI 超时。2.0.33 之前的 Linux 内核的默认超时为 10
+秒，这在扫描大区域时太低了。 如果您在 \fI/var/log/messages\fP 文件或系统控制台上收到格式为 `restart (ncr dead
+?)` 的消息，则表明超时时间太短。 在这种情况下，在文件 \fIncr53c8xx.\fP 中找到行 \*(lqif
+(np\->latetime>10)\*(rq (通常在目录 \fI/usr/src/linux/drivers/scsi\fP) 中并将常量 10
+更改为 60 (一分钟)。 然后重建 kernel/module 并重试。
+.TP 
+Tekram DC315
+可以从 \fIhttp://www.garloff.de/kurt/linux/dc395/\fP 下载驱动程序。 对于某些较旧的扫描仪，可能需要使用
+\fImodprobe dc395x_trm dc395x_trm=7,5,1,32\fP 等禁用所有更高级的，特性。
+.TP 
+Tekram DC390
+Tekram 驱动程序的 1.11 版本似乎大部分工作正常，除了扫描没有正确终止 (它在 10 分钟后导致 SCSI 超时)。 泛型 AM53C974
+似乎也能正常工作，不会出现超时问题。
+
+.SH "SOLARIS, OPENSTEP AND NEXTSTEP INFO"
+在 Solaris、OpenStep 和 NeXTStep 下，泛型 SCSI 设备名称是指 SCSI 总线，而不是单个设备。
+例如，\fI/dev/sg0\fP 指的是第一条 SCSI 总线。 要告诉 SANE 使用哪个设备，请将字符 'a'+target\-id 追加到特殊设备名称。
+例如，连接到第一个 SCSI 控制器且 target\-id 为 0 的 SCSI 设备将称为 \fI/dev/sg0a\fP，而同一总线上具有
+target\-id 1 的设备将称为 \fI/dev/sg0b,\fP，依此类推。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_DEBUG_SANEI_SCSI\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制泛型 SCSI I/O 子系统的调试级别。 例如，值 128 请求后端打印所有调试输出。值 255
+还会打印来自 SCSI 子系统 (如果可用) 的内核消息。 较小的级别减少冗长。
+.TP 
+\fBSANE_SCSICMD_TIMEOUT\fP
+以秒为单位设置 SCSI 命令的超时值。覆盖默认值 120 秒应该只对非常慢的扫描器是必要的。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-find\-scanner\fP(1), \fBsane\-"backendname"\fP(5),
+\fBsane\-usb\fP(5)
+
+.SH AUTHOR
+大卫莫斯伯格
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

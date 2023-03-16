@@ -1,0 +1,354 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: makepkg-template
+.\"    Author: [see the "Authors" section]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 2022-11-01
+.\"    Manual: Pacman Manual
+.\"    Source: Pacman 6.0.2
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH MAKEPKG\-TEMPLATE 1 2022\-11\-01 "Pacman 6\&.0\&.2" "Pacman Manual"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+makepkg\-template \- 包构建模板实用程序
+.SH SYNOPSIS
+.sp
+\fImakepkg\-template\fP [options]
+.SH DESCRIPTION
+.sp
+\fImakepkg\-template\fP 是一个脚本，用于简化维护多个类似 PKGBUILDs\& 的工作。它允许您将大部分代码从 PKGBUILD
+移动到模板文件中，并使用标记允许在模板已更改的情况下就地更新现有 PKGBUILD\&。
+.sp
+模板文件可以包含 PKGBUILD\& 中允许的任何代码。您可以将它们视为包含在 "\&." 或 "source" 中的外部文件，但它们将被
+\fImakepkg\-template\fP 内联到 PKGBUILD 中，因此您在构建包时不依赖于模板文件 \&。
+.sp
+标记是以下形式的 bash 注释:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 模板开始; key=value; key2=value2;  \&.\&.\&.
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+and
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 模板结束;
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+当前使用的键是: 名称 (mandatory) 和版本 \&。模板名称仅限于字母数字、"@"、"+"、"\&."、"\-" 和
+`_`\&。版本仅限于数字和 `\&.`\&。
+.sp
+对于初始创建，有一条不需要结束标记的单行快捷方式:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 模板输入; key=value;
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+使用此快捷方式将导致 \fImakepkg\-template\fP 在第一次运行时将其替换为开始和结束标记以及模板代码 \&。
+.sp
+模板文件应存储在一个目录中，文件名应为 "$template_name\-$version\&.template"，符号链接
+"$template_name\&.template" 指向最新的模板 \&。如果标记中没有设置版本，\fImakepkg\-template\fP 将自动使用
+"$template_name\&.template" 的目标，否则将使用指定的版本 \&。如果模板是可信的 \&，这允许更容易地验证不受信任的
+PKGBUILD。您验证非模板代码，然后使用类似于此的命令:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+差异 \-u <(makepkg\-template \-o\-) PKGBUILD
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+模板文件也可能包含导致 PKGBUILD\& 中嵌套模板的标记。如果您在模板中使用标记，请在 start/input 标记中设置您使用
+used/tested 的版本，以便其他人可以正确地从模板重新创建 \&。
+.SH OPTIONS
+.PP
+\fB\-p, \-\-input\fP <build script>
+.RS 4
+读取包脚本构建脚本而不是默认的 \&。
+.RE
+.PP
+\fB\-o, \-\-output\fP <build script>
+.RS 4
+将更新的文件写入构建脚本而不是覆盖输入文件 \&。
+.RE
+.PP
+\fB\-n, \-\-newest\fP
+.RS 4
+始终使用最新的可用模板文件 \&。
+.RE
+.PP
+\fB\-\-template\-dir\fP <dir>
+.RS 4
+更改我们查找模板文件的目录 \&。此选项可以多次给出，在这种情况下，在最后给出的目录中找到的文件将优先 \&。
+.RE
+.SH "EXAMPLE PKGBUILD"
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+pkgname=perl\-config\-simple
+pkgver=4\&.58
+pkgrel=1
+pkgdesc="simple configuration file class"
+arch=(\*(Aqany\*(Aq)
+license=(\*(AqPerlArtistic\*(Aq \*(AqGPL\*(Aq)
+depends=(\*(Aqperl\*(Aq)
+source=("http://search\&.cpan\&.org/CPAN/authors/id/S/SH/SHERZODR/Config\-Simple\-${pkgver}\&.tar\&.gz")
+md5sums=(\*(Aqf014aec54f0a1e2e880d317180fce502\*(Aq)
+_distname="Config\-Simple"
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 模板开始; name=perl\-module; version=1\&.0;
+_distdir="${_distname}\-${pkgver}"
+url="https://metacpan\&.org/release/${_distname}"
+options+=(\*(Aq!emptydirs\*(Aq)
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+build() {
+        cd "$srcdir/$_distdir"
+        perl Makefile\&.PL INSTALLDIRS=vendor
+        make
+}
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+check() {
+        cd "$srcdir/$_distdir"
+        make test
+}
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+package() {
+        cd "$srcdir/$_distdir"
+        make DESTDIR="$pkgdir" install
+}
+# template end;
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.sp
+\fBmakepkg\fP(8), \fBPKGBUILD\fP(5)
+.sp
+有关 pacman 及其相关工具的最新信息，请参见 pacman 网站 https://archlinux\&.org/pacman/。
+.SH BUGS
+.sp
+虫子? 您一定在开玩笑; 此软件中没有错误 \&。但如果我们碰巧错了，请在 Pacman 部分的 Arch Linux Bug Tracker
+提交尽可能详细的错误报告 \&。
+.SH AUTHORS
+.sp
+目前的维护者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Allan McRae <allan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Andrew Gregory <andrew\&.gregory\&.8@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Eli Schwartz <eschwartz@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Morgan Adamiec <morganamilo@archlinux\&.org>
+.RE
+.sp
+过去的主要贡献者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Judd Vinet <jvinet@zeroflux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aurelien Foret <aurelien@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aaron Griffin <aaron@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dan McGee <dan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Xavier Chantry <shiningxc@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Nagy Gabor <ngaba@bibl\&.u\-szeged\&.hu>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dave Reisner <dreisner@archlinux\&.org>
+.RE
+.sp
+对于其他贡献者，请在 pacman\&.git 库 \& 上使用 git shortlog \-s。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

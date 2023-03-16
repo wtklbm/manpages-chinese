@@ -1,0 +1,135 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu)
+.\" and Copyright (C) 2008, 2010, 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Thu Oct 31 12:04:29 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\" 2008-05-03, mtk, expanded and rewrote parts of DESCRIPTION and RETURN
+.\"     VALUE, made style of page more consistent with man-pages style.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getgroups 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getgroups、setgroups \- 补充组 ID 的 get/set 列表
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint getgroups(int \fP\fIsize\fP\fB, gid_t \fP\fIlist\fP\fB[]);\fP
+.PP
+\fB#include <grp.h>\fP
+.PP
+\fBint setgroups(size_t \fP\fIsize\fP\fB, const gid_t *_Nullable \fP\fIlist\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsetgroups\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+\fBgetgroups\fP() 返回 \fIlist\fP 中调用进程的补充组 ID。 参数 \fIsize\fP 应设置为 \fIlist\fP
+指向的缓冲区中可以存储的最大项数。 如果调用进程是多个 \fIsize\fP 补充组的成员，则会产生错误。
+.PP
+未指定调用进程的有效组 ID 是否包含在返回列表中。 (因此，应用程序还应该调用 \fBgetegid\fP(2) 并添加或删除结果值。)
+.PP
+如果 \fIsize\fP 为零，则不修改 \fIlist\fP，但返回进程的补充组 ID 总数。 这允许调用者确定动态分配的 \fIlist\fP
+的大小，以便在进一步调用 \fBgetgroups\fP() 时使用。
+.PP
+\fBsetgroups\fP() 为调用进程设置补充组 ID。 需要适当的权限 (请参见下面对 \fBEPERM\fP 错误的描述)。 \fIsize\fP 参数指定
+\fIlist\fP 指向的缓冲区中补充组 ID 的数量。 一个进程可以丢掉它的所有补充组与调整:
+.PP
+.in +4n
+.EX
+setgroups(0, NULL);
+.EE
+.in
+.SH "RETURN VALUE"
+成功时，\fBgetgroups\fP() 返回补充组 ID 的数量。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+成功时，\fBsetgroups\fP() 返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIlist\fP 的地址无效。
+.PP
+\fBgetgroups\fP() 还可能因以下错误而失败:
+.TP 
+\fBEINVAL\fP
+\fIsize\fP 小于补充组 ID 的数量，但不为零。
+.PP
+\fBsetgroups\fP() 还可能因以下错误而失败:
+.TP 
+\fBEINVAL\fP
+\fIsize\fP 大于 \fBNGROUPS_MAX\fP (Linux 2.6.4 之前为 32; Linux 2.6.4 之后为 65536)。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBEPERM\fP
+调用进程没有足够的权限 (调用者在其所在的用户命名空间中不具有 \fBCAP_SETGID\fP 能力)。
+.TP 
+\fBEPERM\fP (since Linux 3.19)
+在此用户命名空间中拒绝使用 \fBsetgroups\fP()。 请参见 \fBuser_namespaces\fP(7) 中
+\fI/proc/\fPpid\fI/setgroups\fP 的说明。
+.SH STANDARDS
+\fBgetgroups\fP(): SVr4, 4.3BSD, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBsetgroups\fP(): SVr4, 4.3BSD.   由于 \fBsetgroups\fP() 需要特权，因此不在 POSIX.1 范围内。
+.SH NOTES
+除了有效组 ID 之外，一个进程最多可以有 \fBNGROUPS_MAX\fP 个补充组 ID。常量 \fBNGROUPS_MAX\fP 在
+\fI<limits.h>\fP 中定义。 补充组 ID 的集合是从父进程继承的，并在 \fBexecve\fP(2) 中保存。
+.PP
+可以在运行时使用 \fBsysconf\fP(3): 找到补充组 ID 的最大数量
+.PP
+.in +4n
+.EX
+long ngroups_max;
+ngroups_max = sysconf(_SC_NGROUPS_MAX);
+.EE
+.in
+.PP
+\fBgetgroups\fP() 的最大返回值不能比这个值大一。 从 Linux 2.6.4 开始，补充组 ID 的最大数量也通过 Linux
+特定的只读文件 \fI/proc/sys/kernel/ngroups_max\fP 公开。
+.PP
+.\"
+原来的 Linux \fBgetgroups\fP() 系统调用只支持 16 位组 ID。 随后 Linux 2.4 增加了
+\fBgetgroups32\fP()，支持 32 位 ID。 glibc \fBgetgroups\fP() 包装器函数透明地处理内核版本之间的差异。
+.SS "C library/kernel differences"
+在内核级别，用户 ID 和组 ID 是每个线程的属性。 但是，POSIX 要求进程中的所有线程共享相同的凭据。 NPTL 线程实现通过为更改进程 UID
+和 GID 的各种系统调用提供包装函数来处理 POSIX 要求。 这些包装器数 (包括用于 \fBsetgroups\fP()) 的包装器)
+采用基于信号的技术来确保当一个线程更改凭据时，进程中的所有其他线程也会更改它们的凭据。 有关详细信息，请参见 \fBnptl\fP(7)。
+.SH "SEE ALSO"
+\fBgetgid\fP(2), \fBsetgid\fP(2), \fBgetgrouplist\fP(3), \fBgroup_member\fP(3),
+\fBinitgroups\fP(3), \fBcapabilities\fP(7), \fBcredentials\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

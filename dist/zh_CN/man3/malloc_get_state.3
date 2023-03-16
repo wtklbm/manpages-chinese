@@ -1,0 +1,89 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2012 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH malloc_get_state 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+malloc_get_state, malloc_set_state \- 记录和恢复 malloc 实现的状态
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <malloc.h>\fP
+.PP
+\fBvoid *malloc_get_state(void);\fP
+\fBint malloc_set_state(void *\fP\fIstate\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fINote\fP: 这些函数在 glibc 2.25 中被移除。
+.PP
+\fBmalloc_get_state\fP() 函数记录所有 \fBmalloc\fP(3) 内部寄存器变量的当前状态 (但不是堆的实际内容或
+\fBmalloc_hook\fP(3) 函数指针的状态)。 状态记录在通过 \fBmalloc\fP(3)
+动态分配的系统相关的不透明数据结构体中，指向该数据结构体的指针作为函数结果返回。 (\fBfree\fP(3) 这个内存是调用者的责任。)
+.PP
+\fBmalloc_set_state\fP() 函数将所有 \fBmalloc\fP(3) 内部记录变量的状态恢复为 \fIstate\fP
+指向的不透明数据结构体中记录的值。
+.SH "RETURN VALUE"
+成功时，\fBmalloc_get_state\fP() 返回指向新分配的不透明数据结构体的指针。 出错时
+(例如，无法为数据结构体分配内存)，\fBmalloc_get_state\fP() 返回 NULL。
+.PP
+.\" if(ms->magic != MALLOC_STATE_MAGIC) return -1;
+.\" /* Must fail if the major version is too high. */
+.\" if((ms->version & ~0xffl) > (MALLOC_STATE_VERSION & ~0xffl)) return -2;
+成功时，\fBmalloc_set_state\fP() 返回 0。 如果实现检测到 \fIstate\fP 未指向格式正确的数据结构体，则
+\fBmalloc_set_state\fP() 返回 \-1。 如果该实现检测到 \fIstate\fP 引用的数据结构体的版本比该实现知道的版本更新，则
+\fBmalloc_set_state\fP() 返回 \-2。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmalloc_get_state\fP(),
+\fBmalloc_set_state\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是 GNU 的扩展名。
+.SH NOTES
+这些函数在将此 \fBmalloc\fP(3) 实现用作共享库的一部分时很有用，并且堆内容通过其他方法是 saved/restored。 GNU Emacs
+使用此技术来实现其 "dumping" 函数。
+.PP
+.\" i.e., calls __malloc_check_init()
+.\" i.e., malloc checking is not already in use
+.\" and the caller requested malloc checking
+这些钩数永远不会保存或恢复，钩子，钩数指针，但有两个例外: 如果 malloc 检查 (请参见调用 \fBmalloc_get_state\fP()
+时正在使用 \fBmallopt\fP(3))，则如果可能，\fBmalloc_set_state\fP() 会重置 malloc 检查钩子;
+如果在记录状态下未使用 malloc 检查，但调用者已请求 malloc 检查，则，钩子，将重置为 0.
+.SH "SEE ALSO"
+\fBmalloc\fP(3), \fBmallopt\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,117 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-dmc 5 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-dmc
+.SH NAME
+sane\-dmc \- 宝丽来数码显微镜相机的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-dmc\fP 库实现了一个 SANE (现在可以轻松访问扫描仪) 后端，该后端提供对宝丽来数码显微镜相机的访问。
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于扫描仪的特殊设备的 UNIX 路径名。 特殊设备名称必须是泛型 SCSI 设备或指向此类设备的符号链接。 例如，在
+Linux 下，这样的设备名称可以是 \fI/dev/sga\fP 或 \fI/dev/sge\fP。
+.SH "IMAGING MODES"
+Polaroid DMC 支持多种成像模式。 此驱动程序支持五种成像模式:
+.PP
+.TP 
+\fBFull Frame\fP
+此模式对应于 801 x 600 像素的全彩色全帧图像。
+.TP 
+\fBViewfinder\fP
+此模式对应于 270 x 201 像素灰度取景器图像。 该图像获取速度非常快。
+.TP 
+\fBRaw\fP
+此模式对应于来自 CCD 的 1599 x 600 像素 "raw" 图像。 它是灰度的，像素在红色、绿色和蓝色条纹之间水平交替。
+像素的高度是宽度的两倍，因此图像失真。
+.TP 
+\fBThumbnail\fP
+此模式对应于 80 x 60 像素的全彩色缩略图。
+.TP 
+\fBSuper Resolution\fP
+此图像是通过过滤和插值 "raw" 图像构建的 1599 x 1200 像素全彩色图像。 过滤和插值是在软件中完成的，所以这种模式非常慢。
+此外，此模式限制了图像的读取方式，这意味着 xscanimage 的 "preview" 模式在超分辨率模式下不起作用。 但是，(\fBxcam\fP(1)
+以及 \fBscanimage\fP(1) 和 \fBxscanimage\fP(1) 的非预览模式工作正常。)
+.PP
+.SH "OTHER SETTINGS"
+.TP 
+\fBASA Setting\fP
+此设置调整相机的灵敏度。 您可以选择 25、50 或 100 "equivalent" ASA 之一。
+.TP 
+\fBShutter Speed\fP
+您可以选择 8 到 1000 毫秒之间的快门速度。 快门速度以 32 微秒为单位量化。
+.TP 
+\fBWhite Balance\fP
+您可以选择 "Daylight"、"Incandescent" 或 "Fluorescent" 白平衡之一。 此设置或多或少对应于宝丽来 Windows
+和 Mac 软件上的 "Color Temperature" 设置。
+.SH CONFIGURATION
+\fIdmc.conf\fP 文件的内容是与 DMC 扫描仪对应的设备名称列表。 空行和以哈希标记 (#) 开头的行将被忽略。 示例配置文件如下所示:
+.PP
+.RS
+/dev/scanner
+.br
+# 这是一条评论
+.br
+/dev/sge
+.RE
+.SH FILES
+.TP 
+\fI/etc/sane.d/dmc.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-dmc.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-dmc.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_DMC\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 128 请求打印所有调试输出。 较小的级别减少冗长。
+.SH BUGS
+在 "Full Frame" 和 "Raw" 模式下，必须以整行为单位读取图像。 驱动程序在这些模式下不执行缓冲; 如果您要求 sane_read
+阅读非整数行，它可能会读到比您要求的少。 如果您要求 sane_read 读取的内容少于一行，它会返回 SANE_STATUS_INVAL。
+.PP
+在 "Super Resolution" 模式下，必须以 \fItwo\fP 行 (3198 像素或 9594 字节) 为单位读取图像。
+如果您尝试读取少于两行，您将得到 SANE_STATUS_INVAL。 超分辨率模式非常慢。
+.PP
+在 "Viewfinder" 和 "Thumbnail" 模式下，必须在一次 SCSI 传输中读取整个图像。
+在这种情况下，驱动程序执行缓冲，您可以根据需要以尽可能小的增量读取图像。
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5)
+
+.SH AUTHOR
+David F. Skoll
+.PP
+后端源自 David Mosberger 的 \fBsane\-hp\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

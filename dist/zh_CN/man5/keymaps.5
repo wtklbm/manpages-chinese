@@ -1,0 +1,342 @@
+.\" -*- coding: UTF-8 -*-
+.\" keymaps.5 - Copyright (C) Andries Brouwer 1998
+.\" May be freely distributed.
+.\" @(#)keymaps.5 1.10 940130 aeb
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH KEYMAPS 5 "24 April 1998" kbd 
+.SH NAME
+keymaps\-loadkeys 和 dumpkeys 的键盘表描述
+.SH DESCRIPTION
+.IX keymaps "" "\fLkeymaps\fR \(em keyboard table descriptions for loadkeys and dumpkeys" ""
+.IX loadkeys "keyboard table descriptions" \fLloadkeys\fR "keyboard table descriptions"
+.IX dumpkeys "keyboard table descriptions" \fLdumpkeys\fR "keyboard table descriptions"
+.IX keyboard "table descriptions for loadkeys and dumpkeys" keyboard "table descriptions for \fLloadkeys\fR and \fLdumpkeys\fR"
+.IX "translation tables"
+.LP
+\fBloadkeys\fP(1) 使用这些文件来修改内核键盘驱动程序使用的转换表，并由 \fBdumpkeys\fP(1) 从这些转换表生成。
+.LP
+这些文件的格式与 \fBxmodmap\fP(1) 接受的格式有些相似。 该文件由散布着注释的字符集或键或字符串定义行组成。
+.LP
+注释以 \fB!\fP 或 \fB#\fP 字符引入，并继续到行尾。该行中这些字符之一之后的任何内容都将被忽略。请注意，注释不必像 \fBxmodmap\fP(1)
+那样从第一列开始。
+.LP
+键盘映射文件的语法是面向行的; 一个完整的定义必须放在一个逻辑行中。但是，通过以反斜杠字符 (\e) 结束每个子行，可以将逻辑行拆分为多个物理行。
+.SH "INCLUDE FILES"
+键盘映射可以使用语法包含其他键盘映射
+.LP
+.RS
+包括 "pathname"
+.RE
+.LP
+.SH "CHARSET DEFINITIONS"
+字符集定义行的形式为:
+.LP
+.RS
+.EX
+字符集 "iso\-8859\-x"
+.EE
+.RE
+.LP
+它定义了如何解释以下键符。 例如，在 iso\-8859\-1 中，符号 mu (或 micro) 的代码为 0265，而在 iso\-8859\-7 中，字母
+mu 的代码为 0354。
+.SH "COMPLETE KEYCODE DEFINITIONS"
+每个完整的键定义行都是以下形式:
+.LP
+.RS
+.nf
+\fBkeycode\fP\fI keynumber \fP\fB=\fP\fI keysym keysym keysym\fP ...
+.fi
+.RE
+.LP
+\fIkeynumber\fP 是钥匙的内部识别号，大致相当于钥匙的扫描码。 \fIkeynumber\fP 可以用十进制、八进制或十六进制表示法给出。
+八进制由前导零表示，十六进制由前缀 \fB0x.\fP 表示
+.LP
+每个 \fIkeysyms\fP 代表键盘动作，其中最多 256
+个可以绑定到一个键。可用的操作包括输出字符代码或字符序列、切换控制台或键盘映射、启动机器等。(完整列表可以通过说 \fBdumpkeys \-l\fP\& 从
+\fBdumpkeys\fP(1) 获得。)
+.LP
+每个 \fIkeysym\fP 可能以 '+' (加号) 为前缀，在这种情况下，此键符被视为 "letter"，因此受 "CapsLock" 的影响与受
+"Shift" 的影响相同 (准确地说，CapsLock 反转 Shift 状态)。 默认情况下，ASCII 字母 ('a'\-'z' 和
+\&'A'\-'Z') 可以使用 CapsLock。 如果 Shift+CapsLock 不应产生小写符号，请将行放在
+.LP
+.RS
+.nf
+\fBkeycode 30 = +a  A\fP
+.fi
+.RE
+.LP
+在 map 文件中。
+.LP
+按下给定键时执行绑定到给定键的哪些操作取决于当时生效的修饰符。 键盘驱动程序支持 9 个修饰符。这些修饰符被 (完全任意地) 标记为
+Shift、AltGr、Control、Alt、ShiftL、ShiftR、CtrlL、CtrlR 和 CapsShift。
+根据下表，这些修饰符中的每一个都具有 2 的相关权重:
+
+.ev table
+.LP
+.RS
+.TP  20
+\fImodifier\fP
+\fIweight\fP
+.P
+.ta T 24R
+Shift	1
+.br
+AltGr	2
+.br
+Control	4
+.br
+Alt	8
+.br
+ShiftL	16
+.br
+ShiftR	32
+.br
+CtrlL	64
+.br
+CtrlR	128
+.br
+CapsShift	256
+.RE
+.LP
+.ev
+通过将所有有效修饰符的权重相加来找出键的有效作用。默认情况下，没有修饰符生效，因此在按下或释放键时执行编号为零的操作，即键定义行第一列中的操作。例如，当
+Shift 和 Alt 修饰符生效时，第 9 个操作 (从第 10 列开始) 是有效的。
+.LP
+可以通过将适当的键操作绑定到所需的键来更改有效修饰符的状态。例如，将符号 Shift 绑定到一个键会设置 Shift
+修饰符在按下该键时生效，并在释放该键时取消该修饰符的效果。将 AltGr_Lock 绑定到某个键会在按下该键时设置
+AltGr，并在再次按下该键时取消效果。 (默认情况下，Shift、AltGr、Control 和 Alt 绑定到具有相似标签的键; AltGr
+可能表示正确的 Alt 键。)
+.LP
+请注意，绑定修改键时应非常小心，否则最终可能会出现无法使用的键盘映射。例如，如果您将一个键定义为在其第一列中包含 Control，而将其余列保留为
+VoidSymbols，那么您就有麻烦了。这是因为按下该键会使控制修饰符生效，并且从第五列开始查找以下操作
+(请参见上表)。因此，当您释放按键时，将执行第五列中的操作。它里面有
+VoidSymbol，所以什么也没有发生。这意味着尽管您已释放按键，但控制修饰符仍然有效。
+重新按下并释放该键无效。为避免这种情况，您应该始终将所有列定义为具有相同的修饰符符号。有一个方便的速记符号，见下文。
+.LP
+\fIkeysyms\fP 可以用十进制、八进制、十六进制、Unicode 或符号表示法给出。 数字符号使用与 \fIkeynumber\fP 相同的格式。
+Unicode 表示法是 "U+" 后跟四个十六进制数字。 符号表示法类似于 \fBxmodmap\fP(1) 使用的符号表示法。
+显着差异是数字符号。\fBxmodmap\fP(1) 的数字符号 '0',...,'9' 被相应的文字 'zero','one',... 代替 'nine'
+以避免与数字符号混淆。
+.LP
+应该注意的是，对 \fIkeysyms\fP
+使用数字符号是非常不可移植的，因为关键操作编号可能因内核版本而异，因此强烈建议不要使用数字符号。仅当您知道内核中支持键盘操作且当前版本的
+\fBloadkeys\fP(1) 没有符号名称时才使用它们。
+.LP
+有许多速记符号可以增加可读性并减少打字工作和打字错误的可能性。
+.LP
+首先，您可以给出一个 map 规格线，形式为
+.LP
+.RS
+.EX
+keymaps 0\-2,4\-5,8,12
+.EE
+.RE
+.LP
+表示键映射的行不会指定所有 256 列，而只会指定指定的列。(在示例中: 只有
+plain、Shift、AltGr、Control、Control+Shift、Alt 和 Control+Alt maps，即 7 列而不是
+256。) 当没有给出这样的行时，将定义键映射 0\-M，其中 M+1 是在任何定义行中找到的最大条目数。
+.LP
+接下来，您可以从键定义行中删除任何尾随的 VoidSymbol 条目。VoidSymbol 表示不产生输出并且也没有其他效果的键盘动作。例如，定义键号
+30 输出 'a' unshifted，当按下 Shift 时输出 'A'，当按下 AltGr 或其他修饰符时不做任何事情，您可以写
+.LP
+.RS
+.nf
+keycode  30 = a	A
+.fi
+.RE
+.LP
+instead of the more verbose
+.LP
+.RS
+.nf
+keycode  30 = a	A	VoidSymbol	VoidSymbol \e
+		VoidSymbol VoidSymbol 无效符号 ...
+.fi
+.RE
+.LP
+为了更加方便，您通常可以使用更简洁的定义。如果在等号后输入只有一个动作代码的键定义行，则具有特殊含义。如果代码 (数字或符号) 不是 ASCII
+字母，则意味着代码通过所有定义的列隐式复制。 另一方面，如果操作代码是 ASCII 整理序列中 'a', ..., 'z' 或 'A', ...,
+\&'Z' 范围内的 ASCII 字符，则针对不同的修饰符组合进行以下定义，前提是这些实际上正在被定义。 (该表列出了两种可能的情况:
+单一操作代码是小写字母，用 'x' 表示，或者是大写字母，用 `Y` 表示。)
+.LP
+.RS 4
+.TP  24
+\fImodifier\fP
+\fIsymbol\fP
+.TP  24
+none
+x			Y
+.PD 0
+.TP  24
+Shift
+X			y
+.TP  24
+AltGr
+x			Y
+.TP  24
+Shift+AltGr
+X			y
+.TP  24
+Control
+Control_x		Control_y
+.TP  24
+Shift+Control
+Control_x		Control_y
+.TP  24
+AltGr+Control
+Control_x		Control_y
+.TP  24
+Shift+AltGr+Control
+Control_x		Control_y
+.TP  24
+Alt
+Meta_x		Meta_Y
+.TP  24
+Shift+Alt
+Meta_X		Meta_y
+.TP  24
+AltGr+Alt
+Meta_x		Meta_Y
+.TP  24
+Shift+AltGr+Alt
+Meta_X		Meta_y
+.TP  24
+Control+Alt
+Meta_Control_x	Meta_Control_y
+.TP  24
+Shift+Control+Alt
+Meta_Control_x	Meta_Control_y
+.TP  24
+AltGr+Control+Alt
+Meta_Control_x	Meta_Control_y
+.TP  24
+Shift+AltGr+Control+Alt
+Meta_Control_x	Meta_Control_y
+.PD
+.RE
+.LP
+.SH "SINGLE MODIFIER DEFINITIONS"
+所有以前形式的键定义行总是定义所有 M+1 个可能的修饰符组合被定义，无论该行是否实际包含那么多操作代码。
+但是，定义语法有一个变体，用于仅定义对键的特定修饰符组合的单个操作。如果您加载的键盘映射仅在某些修饰符组合中不符合您的需求，例如 AltGr +
+号码键，这将特别有用。然后您可以制作一个小的本地文件，仅重新定义那些修饰符组合并在主文件之后加载它。 这种形式的语法是:
+.LP
+{\fB plain \fP| <modifier sequence> } \fBkeycode\fP \fIkeynumber\fP \fB=\fP
+\fIkeysym\fP
+.LP
+，例如，
+.RS
+.EX
+.nf
+plain keycode 14 = BackSpace
+control alt keycode 83 = Boot
+alt keycode 105 = Decr_Console
+alt keycode 106 = Incr_Console
+.fi
+.EE
+.RE
+使用 "plain" 将仅定义键的基本条目 (即没有有效修饰符的条目)，而不会影响该键的其他修饰符组合的绑定。
+.SH "STRING DEFINITIONS"
+除了注释和键定义行之外，键映射还可以包含字符串定义。这些用于定义每个函数键操作代码发送的内容。字符串定义的语法是:
+.LP
+.RS
+\fBstring\fP \fIkeysym\fP \fB=\fP \fB"\fP\fItext\fP\fB"\fP
+.RE
+.LP
+\fItext\fP 可以包含字面量字符、反斜杠后跟最多三个八进制数字格式的八进制字符代码，以及三个转义序列 \fB\en\fP、\fB\e\e\fP 和
+\fB\e"\fP，分别用于换行符、反斜杠和引号。
+.SH "COMPOSE DEFINITIONS"
+然后可能还有 compose 定义。他们有语法
+.LP
+.RS
+\fBcompose '\fP\fIchar\fP\fB' '\fP\fIchar\fP\fB' to '\fP\fIchar\fP\fB'\fP
+.RE
+并描述如何将两个字节组合成第三个字节 (当使用重音符号或组合键时)。 这用于在标准键盘上获取拼音字母等。
+.SH ABBREVIATIONS
+kbd\-0.96 及更高版本可以使用各种缩写。
+.TP 
+\fBstrings as usual\fP
+定义字符串的常用值 (但不是它们绑定的键)。
+.TP 
+\fBcompose as usual for "iso\-8859\-1"\fP
+定义通常的组合。
+.LP
+要找出可在键盘映射中使用的 \fIkeysyms\fP，请使用以下命令
+.LP
+.RS
+.nf
+\fBdumpkeys \-\-long\-info\fP
+.fi
+.RE
+.LP
+不幸的是，目前没有描述每个符号的作用。它必须从名称中猜测或从内核源代码中找出。
+.LP
+.SH EXAMPLES
+(小心使用键盘映射行，例如 `dumpkeys` 或 "keymaps 0\-15" 左右的第一行。)
+.LP
+以下条目交换了键盘上的左 Control 键和 Caps Lock 键:
+.LP
+.RS
+.nf
+keycode  58 = Control
+keycode  29 = Caps_Lock
+.fi
+.RE
+.LP
+58 号键通常是 Caps Lock 键，29 号键通常是 Control 键。
+.LP
+以下条目将 Shift 和 Caps Lock 键设置为表现得更好，就像在旧式打字机中一样。也就是说，按一次或多次 Caps Lock 键会将键盘设置为
+CapsLock 状态，然后按任一 Shift 键将其释放。
+.LP
+.RS
+.nf
+keycode  42 = Uncaps_Shift
+keycode  54 = Uncaps_Shift
+keycode  58 = Caps_On
+.fi
+.RE
+.LP
+以下条目将增强键盘中的编辑板布局设置为更类似于 VT200 系列终端中的布局:
+.LP
+.RS
+.nf
+keycode 102 = Insert
+keycode 104 = Remove
+keycode 107 = Prior
+shift keycode 107 = Scroll_Backward
+keycode 110 = Find
+keycode 111 = Select
+control alt   keycode 111 = Boot
+control altgr keycode 111 = Boot
+.fi
+.RE
+.LP
+下面是将字符串 "du\endf\en" 绑定到键 AltGr\-D 的示例。我们使用通常不绑定任何键的 "spare" 操作代码 F100。
+.LP
+.RS
+.nf
+altgr keycode 32 = F100
+string F100 = "du\endf\en"
+.RE
+.LP
+.SH "SEE ALSO"
+\fBloadkeys\fP(1), \fBdumpkeys\fP(1), \fBshowkey\fP(1), \fBxmodmap\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

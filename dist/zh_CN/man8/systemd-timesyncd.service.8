@@ -1,0 +1,91 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-TIMESYNCD\&.SERVICE 8 "" "systemd 253" systemd\-timesyncd.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-timesyncd.service, systemd\-timesyncd \- 网络时间同步
+.SH SYNOPSIS
+.PP
+systemd\-timesyncd\&.service
+.PP
+/usr/lib/systemd/systemd\-timesyncd
+.SH DESCRIPTION
+.PP
+systemd\-timesyncd 是一种系统服务，可用于将本地系统时钟与远程网络时间协议 (NTP)
+服务器同步。它还会在每次同步时钟时将本地时间保存到磁盘，并使用它可能在随后的重新启动时提前系统实时时钟，以确保它 (roughly)
+单调前进，即使系统缺少电池缓冲 RTC 芯片 \&。
+.PP
+systemd\-timesyncd 服务仅实现 SNTP\&。这种简约的服务将逐步调整系统时钟以获得较大的偏移量或缓慢调整它以获得较小的增量
+\&。systemd\-timesyncd\& 不涵盖需要完整 NTP 支持 (以及 SNTP 不够用) 的复杂用例。
+.PP
+联系的 NTP 服务器由 \fBtimesyncd.conf\fP(5) 中的全局设置、\&.network 文件中的每个链接静态设置以及通过 DHCP\&
+接收的每个链接动态设置确定。有关详细信息，请参见 \fBsystemd.network\fP(5)\&。
+.PP
+\fBtimedatectl\fP(1)\*(Aqs \fBset\-ntp\fP command may be used to enable and start,
+or disable and stop this service\&.
+.PP
+\fBtimedatectl\fP(1)\*(Aqs \fBtimesync\-status\fP or \fBshow\-timesync\fP command can
+be used to show the current status of this service\&.
+.PP
+systemd\-timesyncd 初始化延迟在 time\-set\&.target 之后排序的单元的开始 (有关详细信息，请参见
+\fBsystemd.special\fP(7))，直到本地时间从 /var/lib/systemd/timesync/clock (参见下文)
+更新，以使其大致单调 \&。在与准确的引用时间源同步之前，它不会延迟其他单元 \&。使用
+\fBsystemd\-time\-wait\-sync.service\fP(8) 来实现这一点，这将延迟 time\-sync\&.target
+之后订购的单元的启动，直到与准确的引用时钟同步 \&。
+.SH FILES
+.PP
+/var/lib/systemd/timesync/clock
+.RS 4
+此文件的修改时间 ("mtime") 在每次成功的 NTP 同步时或在每个 \fISaveIntervalSec=\fP 时间间隔后更新，如
+\fBtimesyncd.conf\fP(5)\& 中指定的那样。至少，它将设置为 systemd 构建日期
+\&。它用于确保系统时钟在重新启动后保持大致单调，以防没有本地 RTC 可用 \&。
+.RE
+.PP
+/run/systemd/timesync/synchronized
+.RS 4
+每次成功同步时都会触及的文件，以帮助 systemd\-time\-wait\-sync 和其他应用程序检测与准确引用时钟 \& 的同步。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBtimesyncd.conf\fP(5), \fBsystemd.network\fP(5),
+\fBsystemd\-networkd.service\fP(8), \fBsystemd\-time\-wait\-sync.service\fP(8),
+\fBsystemd.special\fP(7), \fBtimedatectl\fP(1), \fBlocaltime\fP(5), \fBhwclock\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

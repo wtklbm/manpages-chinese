@@ -1,0 +1,85 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2013 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" http://thread.gmane.org/gmane.linux.kernel/76552/focus=76803
+.\" From: Linus Torvalds <torvalds <at> transmeta.com>
+.\" Subject: Re: [PATCH] compatibility syscall layer (lets try again)
+.\" Newsgroups: gmane.linux.kernel
+.\" Date: 2002-12-05 02:51:12 GMT
+.\"
+.\" See also Section 11.3.3 of Understanding the Linux Kernel, 3rd edition
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH restart_syscall 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+restart_syscall \- 在被停止信号中断后重启系统调用
+.SH SYNOPSIS
+.nf
+\fBlong restart_syscall(void);\fP
+.fi
+.PP
+\fINote\fP: 此系统没有 glibc 包装器调用; 见注释。
+.SH DESCRIPTION
+\fBrestart_syscall\fP() 系统调用用于在进程被信号停止后重新启动某些系统调用 (例如，\fBSIGSTOP\fP 或 \fBSIGTSTP\fP)
+在收到 \fBSIGCONT\fP 信号后稍后恢复。 本系统调试仅供内核内部使用。
+.PP
+.\" These system calls correspond to the special internal errno value
+.\" ERESTART_RESTARTBLOCK. Each of the system calls has a "restart"
+.\" helper function that is invoked by restart_syscall().
+.\" Notable (as at Linux 3.17) is that poll() has such a "restart"
+.\" function, but ppoll(), select(), and pselect() do not.
+.\" This means that the latter system calls do not take account of the
+.\" time spent in the stopped state when restarting.
+\fBrestart_syscall\fP() 仅用于重新启动那些在重新启动时应调整其时间相关参数的系统调用，即 \fBpoll\fP(2) (自 Linux
+2.6.24)、\fBnanosleep\fP(2) (自 Linux 2.6)、\fBclock_nanosleep\fP(2) (自 Linux 2.6) 和
+\fBfutex\fP(2)，当与 \fBFUTEX_WAIT\fP (自 Linux 2.6.22) 和 \fBFUTEX_WAIT_BITSET\fP (自
+Linux 2.6.31) 操作一起使用时。 \fBrestart_syscall\fP()
+重新启动中断的系统调用，并使用经过适当调整的时间参数来计算已经过去的时间 (包括进程被信号停止的时间)。 如果没有
+\fBrestart_syscall\fP() 机制，重启这些系统调用将无法在进程继续执行时正确扣除已经过去的时间。
+.SH "RETURN VALUE"
+\fBrestart_syscall\fP() 的返回值是任何系统调用正在重启的返回值。
+.SH ERRORS
+\fIerrno\fP 是根据 \fBrestart_syscall\fP() 重新启动的任何系统调用的错误设置的。
+.SH VERSIONS
+\fBrestart_syscall\fP() 系统调用从 Linux 2.6 开始存在。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+此系统调用没有 glibc 包装器，因为它仅供内核使用，不应由应用程序调用。
+.PP
+内核使用 \fBrestart_syscall\fP() 来确保当系统调用在进程被信号停止然后由 \fBSIGCONT\fP
+恢复后重新启动时，进程处于停止状态的时间将计入原始系统中指定的超时间隔调用。 对于超时参数并在停止信号加上 \fBSIGCONT\fP 后自动重启但没有内置
+\fBrestart_syscall\fP() 机制的系统调用，则在进程恢复执行后，进程处于停止状态的时间 \fInot\fP 是根据超时值计算的。
+遇到此问题的系统调用的著名示例是 \fBppoll\fP(2)、\fBselect\fP(2) 和 \fBpselect\fP(2)。
+.PP
+从用户空间来看，\fBrestart_syscall\fP() 的操作在很大程度上是不可见的:
+对于使系统调用重新启动的进程，看起来好像该系统调用以通常的方式执行和返回。
+.SH "SEE ALSO"
+\fBsigaction\fP(2), \fBsigreturn\fP(2), \fBsignal\fP(7)
+.\" FIXME . ppoll(2), select(2), and pselect(2)
+.\"     should probably get the restart_syscall() treatment:
+.\"     If a select() call is suspended by stop-sig+SIGCONT, the time
+.\"     spent suspended is *not* deducted when the select() is restarted.
+.\" FIXME . check whether recvmmsg() handles stop-sig+SIGCONT properly.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

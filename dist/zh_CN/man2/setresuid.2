@@ -1,0 +1,97 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1997 Andries Brouwer (aeb@cwi.nl)
+.\" and Copyright (C) 2005, 2010, 2014, 2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified, 2003-05-26, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setresuid 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+setresuid, setresgid \- 设置真实的、有效的和保存的用户或组 ID
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <unistd.h>\fP
+.PP
+\fBint setresuid(uid_t \fP\fIruid\fP\fB, uid_t \fP\fIeuid\fP\fB, uid_t \fP\fIsuid\fP\fB);\fP
+\fBint setresgid(gid_t \fP\fIrgid\fP\fB, gid_t \fP\fIegid\fP\fB, gid_t \fP\fIsgid\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsetresuid\fP() 设置调用进程的真实用户 ID、有效用户 ID 和保存的 set\-user\-ID。
+.PP
+非特权进程可以更改其真实 UID、有效 UID 和保存的用户组 ID，每一个更改为以下之一: 当前真实 UID、当前有效 UID 或当前保存的用户组
+ID。
+.PP
+特权进程 (在 Linux 上，具有 \fBCAP_SETUID\fP 能力的进程) 可以将其真实 UID、有效 UID 和保存的 set\-user\-ID
+设置为任意值。
+.PP
+如果其中一个参数等于 \-1，则对应的值不变。
+.PP
+无论对真实 UID、有效 UID 和保存的用户 ID 进行什么更改，文件系统 UID 始终设置为与 (可能是新的) 有效 UID 相同的值。
+.PP
+完全类似，\fBsetresgid\fP() 设置调用进程的真实 GID、有效 GID 和保存的 set\-group\-ID (并始终修改文件系统 GID
+使其与有效 GID 相同)，对非特权进程具有相同的限制。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+\fINote\fP: 即使调用者是 UID 0，有时 \fBsetresuid\fP() 也会失败; 忽略检查 \fBsetresuid\fP()
+的失败返回是一个严重的安全错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+调用会更改调用者的真实 UID (即，\fIruid\fP 与调用者的真实 UID 不匹配)，但分配必要的内核数据结构时出现临时故障。
+.TP 
+\fBEAGAIN\fP
+\fIruid\fP 与调用者的真实 UID 不匹配，此调用会使属于真实用户 ID \fIruid\fP 的进程数超过调用者的 \fBRLIMIT_NPROC\fP
+资源限制。 从 Linux 3.1 开始，这种错误情况不再发生 (但健壮的应用程序应该检查这种错误) ; 请参见 \fBexecve\fP(2) 中
+\fBEAGAIN\fP 的说明。
+.TP 
+\fBEINVAL\fP
+一个或多个目标用户或组 ID 在此用户命名空间中无效。
+.TP 
+\fBEPERM\fP
+调用进程没有特权 (在其用户命名空间中没有必要的能力) 并试图将 ID 更改为不允许的值。 对于 \fBsetresuid\fP()，必要的能力是
+\fBCAP_SETUID\fP; 对于 \fBsetresgid\fP()，它是 \fBCAP_SETGID\fP。
+.SH VERSIONS
+自 Linux 2.1.44 起，这些调用在 Linux 下可用。
+.SH STANDARDS
+这些调用是非标准的; 它们也出现在 HP\-UX 和一些 BSD 上。
+.SH NOTES
+在 HP\-UX 和 FreeBSD 下，原型在 \fI<unistd.h>\fP 中。 Linux 下，自 glibc 2.3.2
+起提供原型。
+.PP
+.\"
+原始的 Linux \fBsetresuid\fP() 和 \fBsetresgid\fP() 系统调用仅支持 16 位用户和组 ID。 随后，Linux 2.4
+增加了 \fBsetresuid32\fP() 和 \fBsetresgid32\fP()，支持 32 位 ID。 glibc \fBsetresuid\fP() 和
+\fBsetresgid\fP() 包装器函数透明地处理内核版本之间的变化。
+.SS "C library/kernel differences"
+在内核级别，用户 ID 和组 ID 是每个线程的属性。 但是，POSIX 要求进程中的所有线程共享相同的凭据。 NPTL 线程实现通过为更改进程 UID
+和 GID 的各种系统调用提供包装函数来处理 POSIX 要求。 这些封装器数 (包括 \fBsetresuid\fP() 和 \fBsetresgid\fP())
+的封装器) 采用基于信号的技术来确保当一个线程更改凭据时，进程中的所有其他线程也会更改它们的凭据。 有关详细信息，请参见 \fBnptl\fP(7)。
+.SH "SEE ALSO"
+\fBgetresuid\fP(2), \fBgetuid\fP(2), \fBsetfsgid\fP(2), \fBsetfsuid\fP(2),
+\fBsetreuid\fP(2), \fBsetuid\fP(2), \fBcapabilities\fP(7), \fBcredentials\fP(7),
+\fBuser_namespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

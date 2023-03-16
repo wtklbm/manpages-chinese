@@ -1,0 +1,977 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2002 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 6 Aug 2002 - Initial Creation
+.\" Modified 2003-05-23, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\" Modified 2004-05-27, Michael Kerrisk, <mtk.manpages@gmail.com>
+.\" 2004-12-08, mtk Added O_NOATIME for CAP_FOWNER
+.\" 2005-08-16, mtk, Added CAP_AUDIT_CONTROL and CAP_AUDIT_WRITE
+.\" 2008-07-15, Serge Hallyn <serue@us.bbm.com>
+.\"     Document file capabilities, per-process capability
+.\"     bounding set, changed semantics for CAP_SETPCAP,
+.\"     and other changes in Linux 2.6.2[45].
+.\"     Add CAP_MAC_ADMIN, CAP_MAC_OVERRIDE, CAP_SETFCAP.
+.\" 2008-07-15, mtk
+.\"     Add text describing circumstances in which CAP_SETPCAP
+.\"     (theoretically) permits a thread to change the
+.\"     capability sets of another thread.
+.\"     Add section describing rules for programmatically
+.\"     adjusting thread capability sets.
+.\"     Describe rationale for capability bounding set.
+.\"     Document "securebits" flags.
+.\"     Add text noting that if we set the effective flag for one file
+.\"     capability, then we must also set the effective flag for all
+.\"     other capabilities where the permitted or inheritable bit is set.
+.\" 2011-09-07, mtk/Serge hallyn: Add CAP_SYSLOG
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH Capabilities 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+能力 \- Linux 能力概述
+.SH DESCRIPTION
+为了进行权限检查，传统的 UNIX 实现区分两类进程: \fIprivileged\fP 进程 (有效用户 ID 为 0，称为超级用户或 root) 和
+\fIunprivileged\fP 进程 (有效 UID 为非零)。 特权进程绕过所有内核权限检查，而非特权进程则根据进程的凭据 (通常: 有效
+UID、有效 GID 和补充组列表) 进行完全权限检查。
+.PP
+.\"
+从 Linux 2.2 开始，Linux 将传统上与超级用户关联的特权划分为不同的单元，称为 \fIcapabilities\fP，可以独立启用和禁用。
+能力是每个线程的属性。
+.SS "Capabilities list"
+以下列表显示了在 Linux 上实现的功能，以及每个功能允许的操作或行为:
+.TP 
+\fBCAP_AUDIT_CONTROL\fP (since Linux 2.6.11)
+启用和禁用内核审计; 更改审核过滤规则; 检索审核状态和过滤规则。
+.TP 
+\fBCAP_AUDIT_READ\fP (since Linux 3.16)
+.\" commit a29b694aa1739f9d76538e34ae25524f9c549d59
+.\" commit 3a101b8de0d39403b2c7e5c23fd0b005668acf48
+允许通过多播网络链接套接字读取审计日志。
+.TP 
+\fBCAP_AUDIT_WRITE\fP (since Linux 2.6.11)
+.\" FIXME Add FAN_ENABLE_AUDIT
+将记录写入内核审计日志。
+.TP 
+\fBCAP_BLOCK_SUSPEND\fP (since Linux 3.5)
+使用可以阻止系统暂停的，特性 (\fBepoll\fP(7) \fBEPOLLWAKEUP\fP、\fI/proc/sys/wake_lock\fP)。
+.TP 
+\fBCAP_BPF\fP (since Linux 5.8)
+使用特权 BPF 操作; 请参见 \fBbpf\fP(2) 和 \fBbpf\-helpers\fP(7)。
+.IP
+在 Linux 5.8 中添加了此功能，以将 BPF 功能与重载的 \fBCAP_SYS_ADMIN\fP 功能分开。
+.TP 
+\fBCAP_CHECKPOINT_RESTORE\fP (since Linux 5.9)
+.\" commit 124ea650d3072b005457faed69909221c2905a1f
+.PD 0
+.RS
+.IP \[bu] 3
+更新 \fI/proc/sys/kernel/ns_last_pid\fP (见 \fBpid_namespaces\fP(7));
+.IP \[bu]
+.\" FIXME There is also some use case relating to
+.\" prctl_set_mm_exe_file(); in the 5.9 sources, see
+.\" prctl_set_mm_map().
+使用 \fBclone3\fP(2) 的 \fIset_tid\fP 特性;
+.IP \[bu]
+为其他进程读取 \fI/proc/\fPpid\fI/map_files\fP 中符号链接的内容。
+.RE
+.PD
+.IP
+在 Linux 5.9 中添加了此功能，以将 checkpoint/restore 功能与重载的 \fBCAP_SYS_ADMIN\fP 功能分开。
+.TP 
+\fBCAP_CHOWN\fP
+对文件 UID 和 GID 进行任意更改 (请参见 \fBchown\fP(2)).
+.TP 
+\fBCAP_DAC_OVERRIDE\fP
+绕过文件读取、写入和执行权限检查。 (DAC 是 `自由访问控制` 的缩写。)
+.TP 
+\fBCAP_DAC_READ_SEARCH\fP
+.PD 0
+.RS
+.IP \[bu] 3
+绕过文件读取权限检查和目录读取和执行权限检查;
+.IP \[bu]
+调用 \fBopen_by_handle_at\fP(2);
+.IP \[bu]
+使用 \fBlinkat\fP(2) \fBAT_EMPTY_PATH\fP 标志创建指向文件描述符引用的文件的链接。
+.RE
+.PD
+.TP 
+\fBCAP_FOWNER\fP
+.PD 0
+.RS
+.IP \[bu] 3
+绕过通常需要进程的文件系统 UID 与文件的 UID 匹配的操作的权限检查 (例如，\fBchmod\fP(2)、\fButime\fP(2))，不包括
+\fBCAP_DAC_OVERRIDE\fP 和 \fBCAP_DAC_READ_SEARCH\fP 涵盖的那些操作;
+.IP \[bu]
+设置 inode 标志 (参见任意文件上的 \fBioctl_iflags\fP(2));
+.IP \[bu]
+在任意文件上设置访问控制列表 (ACLs);
+.IP \[bu]
+忽略文件删除时的目录粘滞位;
+.IP \[bu]
+修改任何用户拥有所有权的粘性目录的 \fIuser\fP 扩展属性;
+.IP \[bu]
+为 \fBopen\fP(2) 和 \fBfcntl\fP(2) 中的任意文件指定 \fBO_NOATIME\fP。
+.RE
+.PD
+.TP 
+\fBCAP_FSETID\fP
+.PD 0
+.RS
+.IP \[bu] 3
+修改文件时不要清除 set\-user\-ID 和 set\-group\-ID 模式位;
+.IP \[bu]
+为其 GID 与文件系统或调用进程的任何补充 GID 不匹配的文件设置 set\-group\-ID 位。
+.RE
+.PD
+.TP 
+\fBCAP_IPC_LOCK\fP
+.\" FIXME . As at Linux 3.2, there are some strange uses of this capability
+.\" in other places; they probably should be replaced with something else.
+.PD 0
+.RS
+.IP \[bu] 3
+锁存器 (\fBmlock\fP(2)、\fBmlockall\fP(2)、\fBmmap\fP(2)、\fBshmctl\fP(2));
+.IP \[bu]
+使用大页面 (\fBmemfd_create\fP(2)、\fBmmap\fP(2)、\fBshmctl\fP(2)) 分配内存。
+.RE
+.PD
+.TP 
+\fBCAP_IPC_OWNER\fP
+绕过对 System V IPC 对象的操作的权限检查。
+.TP 
+\fBCAP_KILL\fP
+.\" FIXME . CAP_KILL also has an effect for threads + setting child
+.\"       termination signal to other than SIGCHLD: without this
+.\"       capability, the termination signal reverts to SIGCHLD
+.\"       if the child does an exec().  What is the rationale
+.\"       for this?
+绕过发送信号的权限检查 (参见 \fBkill\fP(2)).  这包括使用 \fBioctl\fP(2) \fBKDSIGACCEPT\fP 操作。
+.TP 
+\fBCAP_LEASE\fP (since Linux 2.4)
+在任意文件上建立租约 (参见 \fBfcntl\fP(2)).
+.TP 
+\fBCAP_LINUX_IMMUTABLE\fP
+设置 \fBFS_APPEND_FL\fP 和 \fBFS_IMMUTABLE_FL\fP inode 标志 (参见 \fBioctl_iflags\fP(2)).
+.TP 
+\fBCAP_MAC_ADMIN\fP (since Linux 2.6.25)
+允许 MAC 配置或状态更改。 为 Smack Linux 安全模块 (LSM) 实现。
+.TP 
+\fBCAP_MAC_OVERRIDE\fP (since Linux 2.6.25)
+覆盖强制访问控制 (MAC)。 为 Smack LSM 实现。
+.TP 
+\fBCAP_MKNOD\fP (since Linux 2.4)
+使用 \fBmknod\fP(2) 创建特殊文件。
+.TP 
+\fBCAP_NET_ADMIN\fP
+执行各种与网络相关的操作:
+.PD 0
+.RS
+.IP \[bu] 3
+接口配置;
+.IP \[bu]
+IP 防火墙、伪装和计费的管理;
+.IP \[bu]
+修改路由表;
+.IP \[bu]
+绑定到任何地址以进行透明代理;
+.IP \[bu]
+设置服务类型 (TOS);
+.IP \[bu]
+清除驱动程序统计信息;
+.IP \[bu]
+设置混杂模式;
+.IP \[bu]
+启用多播;
+.IP \[bu]
+使用 \fBsetsockopt\fP(2) 设置以下套接字选项: \fBSO_DEBUG\fP、\fBSO_MARK\fP、\fBSO_PRIORITY\fP (用于 0 到
+6 范围之外的优先级)、\fBSO_RCVBUFFORCE\fP 和 \fBSO_SNDBUFFORCE\fP。
+.RE
+.PD
+.TP 
+\fBCAP_NET_BIND_SERVICE\fP
+将套接字绑定到 Internet 域特权端口 (端口号小于 1024)。
+.TP 
+\fBCAP_NET_BROADCAST\fP
+.\" FIXME Since Linux 4.2, there are use cases for netlink sockets
+.\"    commit 59324cf35aba5336b611074028777838a963d03b
+(Unused) 进行套接字广播，并收听多播。
+.TP 
+\fBCAP_NET_RAW\fP
+.PD 0
+.RS
+.IP \[bu] 3
+使用 RAW 和 PACKET 套接字;
+.IP \[bu]
+绑定到任何地址以进行透明代理。
+.RE
+.PD
+.\" Also various IP options and setsockopt(SO_BINDTODEVICE)
+.TP 
+\fBCAP_PERFMON\fP (since Linux 5.8)
+采用各种性能监控机制，包括:
+.RS
+.IP \[bu] 3
+.PD 0
+调用 \fBperf_event_open\fP(2);
+.IP \[bu]
+使用具有性能影响的各种 BPF 操作。
+.RE
+.PD
+.IP
+Linux 5.8 中添加了此功能，以将性能监控功能与，重载，的 \fBCAP_SYS_ADMIN\fP 功能分开。 另请详见内核源文件
+\fIDocumentation/admin\-guide/perf\-security.rst\fP。
+.TP 
+\fBCAP_SETGID\fP
+.RS
+.PD 0
+.IP \[bu] 3
+对进程 GID 和补充 GID 列表进行任意操作;
+.IP \[bu]
+通过 UNIX 域套接字传递套接字凭据时伪造 GID;
+.IP \[bu]
+在用户命名空间中写入组 ID 映射 (请参见 \fBuser_namespaces\fP(7)).
+.PD
+.RE
+.TP 
+\fBCAP_SETFCAP\fP (since Linux 2.6.24)
+在文件上设置任意功能。
+.IP
+.\" commit db2e718a47984b9d71ed890eb2ea36ecf150de18
+从 Linux 5.12 开始，新用户命名空间中的 map 用户 ID 0 也需要此功能; 详见 \fBuser_namespaces\fP(7)。
+.TP 
+\fBCAP_SETPCAP\fP
+如果支持文件功能 (即，自 Linux 2.6.24 起) : 将调用线程的边界集中的任何功能添加到其可继承集中; 从边界集中丢弃功能 (通过
+\fBprctl\fP(2) \fBPR_CAPBSET_DROP\fP); 更改 \fIsecurebits\fP 标志。
+.IP
+如果不支持文件功能 (即，在 Linux 2.6.24 之前) : 将调用者允许的功能集中的任何功能授予任何其他进程或从任何其他进程删除任何功能。
+(当内核配置为支持文件功能时，\fBCAP_SETPCAP\fP 的这个属性不可用，因为 \fBCAP_SETPCAP\fP 对此类内核具有完全不同的语义。)
+.TP 
+\fBCAP_SETUID\fP
+.RS
+.PD 0
+.IP \[bu] 3
+对进程 UID (\fBsetuid\fP(2)、\fBsetreuid\fP(2)、\fBsetresuid\fP(2)、\fBsetfsuid\fP(2)) 进行任意操作;
+.IP \[bu]
+通过 UNIX 域套接字传递套接字凭据时伪造 UID;
+.IP \[bu]
+在用户命名空间中写入用户 ID 映射 (请参见 \fBuser_namespaces\fP(7)).
+.PD
+.RE
+.\" FIXME CAP_SETUID also an effect in exec(); document this.
+.TP 
+\fBCAP_SYS_ADMIN\fP
+\fINote\fP: 此功能，重载; 请参见下面的 \fINotes to kernel developers\fP。
+.IP
+.PD 0
+.RS
+.IP \[bu] 3
+执行一系列系统管理操作，包括:
+\fBquotactl\fP(2)、\fBmount\fP(2)、\fBumount\fP(2)、\fBpivot_root\fP(2)、\fBswapon\fP(2)、\fBswapoff\fP(2)、\fBsethostname\fP(2)
+和 \fBsetdomainname\fP(2);
+.IP \[bu]
+执行特权 \fBsyslog\fP(2) 操作 (因为 Linux 2.6.37，应该使用 \fBCAP_SYSLOG\fP 来允许此类操作) ;
+.IP \[bu]
+执行 \fBVM86_REQUEST_IRQ\fP \fBvm86\fP(2) 命令;
+.IP \[bu]
+访问由 \fBCAP_CHECKPOINT_RESTORE\fP 管理的相同 checkpoint/restore 功能
+(但后者，较弱的功能更适合访问该功能)。
+.IP \[bu]
+执行与 \fBCAP_BPF\fP 相同的 BPF 操作 (但后者，较弱的能力更适合访问该功能)。
+.IP \[bu]
+采用与 \fBCAP_PERFMON\fP 相同的性能监控机制 (但后者，较弱的能力更适合访问该功能)。
+.IP \[bu]
+对任意 System V IPC 对象执行 \fBIPC_SET\fP 和 \fBIPC_RMID\fP 操作;
+.IP \[bu]
+覆盖 \fBRLIMIT_NPROC\fP 资源限制;
+.IP \[bu]
+对 \fItrusted\fP 和 \fIsecurity\fP 扩展属性执行操作 (参见 \fBxattr\fP(7));
+.IP \[bu]
+使用 \fBlookup_dcookie\fP(2);
+.IP \[bu]
+使用 \fBioprio_set\fP(2) 分配 \fBIOPRIO_CLASS_RT\fP 和 (Linux 2.6.25 之前)
+\fBIOPRIO_CLASS_IDLE\fP I/O 调度类;
+.IP \[bu]
+通过 UNIX 域套接字传递套接字凭据时伪造 PID;
+.IP \[bu]
+在打开文件的系统调用 (例如，\fBaccept\fP(2)、\fBexecve\fP(2)、\fBopen\fP(2)、\fBpipe\fP(2));
+.IP \[bu]
+使用 \fBCLONE_*\fP 标志创建具有 \fBclone\fP(2) 和 \fBunshare\fP(2) 的新名称空间 (但是，自 Linux 3.8
+以来，创建用户名称空间不需要任何功能) ;
+.IP \[bu]
+访问特权 \fIperf\fP 事件信息;
+.IP \[bu]
+调用 \fBsetns\fP(2) (需要 \fItarget\fP 命名空间中的 \fBCAP_SYS_ADMIN\fP) ;
+.IP \[bu]
+调用 \fBfanotify_init\fP(2);
+.IP \[bu]
+执行特权 \fBKEYCTL_CHOWN\fP 和 \fBKEYCTL_SETPERM\fP \fBkeyctl\fP(2) 操作;
+.IP \[bu]
+执行 \fBmadvise\fP(2) \fBMADV_HWPOISON\fP 操作;
+.IP \[bu]
+使用 \fBTIOCSTI\fP \fBioctl\fP(2) 将字符插入到调用者控制终端以外的终端的输入队列中;
+.IP \[bu]
+采用过时的 \fBnfsservctl\fP(2) 系统调用;
+.IP \[bu]
+采用过时的 \fBbdflush\fP(2) 系统调用;
+.IP \[bu]
+执行各种特权块设备 \fBioctl\fP(2) 操作;
+.IP \[bu]
+执行各种特权文件系统 \fBioctl\fP(2) 操作;
+.IP \[bu]
+在 \fI/dev/random\fP 设备上执行特权 \fBioctl\fP(2) 操作 (参见 \fBrandom\fP(4));
+.IP \[bu]
+安装 \fBseccomp\fP(2) 过滤器，无需先设置 \fIno_new_privs\fP 线程属性;
+.IP \[bu]
+修改设备控制组的 allow/deny 规则;
+.IP \[bu]
+使用 \fBptrace\fP(2) \fBPTRACE_SECCOMP_GET_FILTER\fP 操作转储 tracee 的 seccomp 过滤器;
+.IP \[bu]
+使用 \fBptrace\fP(2) \fBPTRACE_SETOPTIONS\fP 操作暂停被跟踪者的 seccomp 保护 (即
+\fBPTRACE_O_SUSPEND_SECCOMP\fP 标志) ;
+.IP \[bu]
+对许多设备驱动程序执行管理操作;
+.IP \[bu]
+通过写入 \fI/proc/\fPpid\fI/autogroup\fP 修改自动分组 nice 值 (参见 \fBsched\fP(7)).
+.RE
+.PD
+.TP 
+\fBCAP_SYS_BOOT\fP
+使用 \fBreboot\fP(2) 和 \fBkexec_load\fP(2)。
+.TP 
+\fBCAP_SYS_CHROOT\fP
+.RS
+.PD 0
+.IP \[bu] 3
+使用 \fBchroot\fP(2);
+.IP \[bu]
+使用 \fBsetns\fP(2) 更改挂载命名空间。
+.PD
+.RE
+.TP 
+\fBCAP_SYS_MODULE\fP
+.RS
+.PD 0
+.IP \[bu] 3
+加载和卸载内核模块 (参见 \fBinit_module\fP(2) 和 \fBdelete_module\fP(2));
+.IP \[bu]
+Linux 2.6.25 之前: 丢弃来自系统范围能力边界集的能力。
+.PD
+.RE
+.TP 
+\fBCAP_SYS_NICE\fP
+.PD 0
+.RS
+.IP \[bu] 3
+降低进程 nice 值 (\fBnice\fP(2)、\fBsetpriority\fP(2)) 并更改任意进程的 nice 值;
+.IP \[bu]
+为调用进程设置实时调度策略，为任意进程
+(\fBsched_setscheduler\fP(2)、\fBsched_setparam\fP(2)、\fBsched_setattr\fP(2))
+设置调度策略和优先级;
+.IP \[bu]
+为任意进程 (\fBsched_setaffinity\fP(2)) 设置 CPU 亲和力;
+.IP \[bu]
+为任意进程 (\fBioprio_set\fP(2)) 设置 I/O 调度类和优先级;
+.IP \[bu]
+.\" FIXME CAP_SYS_NICE also has the following effect for
+.\" migrate_pages(2):
+.\"     do_migrate_pages(mm, &old, &new,
+.\"         capable(CAP_SYS_NICE) ? MPOL_MF_MOVE_ALL : MPOL_MF_MOVE);
+.\"
+.\" Document this.
+将 \fBmigrate_pages\fP(2) 应用于任意进程，并允许进程迁移到任意节点;
+.IP \[bu]
+将 \fBmove_pages\fP(2) 应用于任意进程;
+.IP \[bu]
+将 \fBMPOL_MF_MOVE_ALL\fP 标志与 \fBmbind\fP(2) 和 \fBmove_pages\fP(2) 一起使用。
+.RE
+.PD
+.TP 
+\fBCAP_SYS_PACCT\fP
+使用 \fBacct\fP(2)。
+.TP 
+\fBCAP_SYS_PTRACE\fP
+.PD 0
+.RS
+.IP \[bu] 3
+使用 \fBptrace\fP(2) 跟踪任意进程;
+.IP \[bu]
+将 \fBget_robust_list\fP(2) 应用于任意进程;
+.IP \[bu]
+使用 \fBprocess_vm_readv\fP(2) 和 \fBprocess_vm_writev\fP(2) 将数据传入或传出任意进程的内存;
+.IP \[bu]
+使用 \fBkcmp\fP(2) 检查进程。
+.RE
+.PD
+.TP 
+\fBCAP_SYS_RAWIO\fP
+.PD 0
+.RS
+.IP \[bu] 3
+执行 I/O 端口操作 (\fBiopl\fP(2) 和 \fBioperm\fP(2));
+.IP \[bu]
+访问 \fI/proc/kcore\fP;
+.IP \[bu]
+使用 \fBFIBMAP\fP \fBioctl\fP(2) 操作;
+.IP \[bu]
+打开设备以访问 x86 模型特定寄存器 (MSR，参见 \fBmsr\fP(4));
+.IP \[bu]
+更新 \fI/proc/sys/vm/mmap_min_addr\fP;
+.IP \[bu]
+在低于 \fI/proc/sys/vm/mmap_min_addr\fP 指定值的地址处创建内存映射;
+.IP \[bu]
+\fI/proc/bus/pci\fP 中的 map 文件;
+.IP \[bu]
+打开 \fI/dev/mem\fP 和 \fI/dev/kmem\fP;
+.IP \[bu]
+执行各种 SCSI 设备命令;
+.IP \[bu]
+在 \fBhpsa\fP(4) 和 \fBcciss\fP(4) 设备上执行某些操作;
+.IP \[bu]
+在其他设备上执行一系列特定于设备的操作。
+.RE
+.PD
+.TP 
+\fBCAP_SYS_RESOURCE\fP
+.PD 0
+.RS
+.IP \[bu] 3
+使用 ext2 文件系统上的保留空间;
+.IP \[bu]
+进行 \fBioctl\fP(2) 调用控制 ext3 日志记录;
+.IP \[bu]
+覆盖磁盘配额限制;
+.IP \[bu]
+增加资源限制 (参见 \fBsetrlimit\fP(2));
+.IP \[bu]
+覆盖 \fBRLIMIT_NPROC\fP 资源限制;
+.IP \[bu]
+覆盖控制台分配的最大控制台数;
+.IP \[bu]
+覆盖最大数量的键映射;
+.IP \[bu]
+允许来自实时时钟的超过 64hz 的中断;
+.IP \[bu]
+将 System V 消息队列的 \fImsg_qbytes\fP 限制提高到 \fI/proc/sys/kernel/msgmnb\fP 中的限制之上 (参见
+\fBmsgop\fP(2) 和 \fBmsgctl\fP(2));
+.IP \[bu]
+当通过 UNIX 域套接字将文件描述符传递给另一个进程时，允许绕过 \fBRLIMIT_NOFILE\fP 文件描述符数量的 \fBRLIMIT_NOFILE\fP
+资源限制 (参见 \fBunix\fP(7));
+.IP \[bu]
+使用 \fBF_SETPIPE_SZ\fP \fBfcntl\fP(2) 命令设置管道容量时覆盖 \fI/proc/sys/fs/pipe\-size\-max\fP 限制;
+.IP \[bu]
+使用 \fBF_SETPIPE_SZ\fP 将管道的容量增加到 \fI/proc/sys/fs/pipe\-max\-size\fP 指定的限制之上;
+.IP \[bu]
+创建 POSIX 消息队列时覆盖
+\fI/proc/sys/fs/mqueue/queues_max\fP、\fI/proc/sys/fs/mqueue/msg_max\fP 和
+\fI/proc/sys/fs/mqueue/msgsize_max\fP 限制 (参见 \fBmq_overview\fP(7));
+.IP \[bu]
+使用 \fBprctl\fP(2) \fBPR_SET_MM\fP 操作;
+.IP \[bu]
+将 \fI/proc/\fPpid\fI/oom_score_adj\fP 设置为低于进程上次使用 \fBCAP_SYS_RESOURCE\fP 设置的值。
+.RE
+.PD
+.TP 
+\fBCAP_SYS_TIME\fP
+设置系统时钟 (\fBsettimeofday\fP(2)、\fBstime\fP(2)、\fBadjtimex\fP(2)); 设置实时 (hardware) 时钟。
+.TP 
+\fBCAP_SYS_TTY_CONFIG\fP
+使用 \fBvhangup\fP(2); 在虚拟终端上使用各种特权 \fBioctl\fP(2) 操作。
+.TP 
+\fBCAP_SYSLOG\fP (since Linux 2.6.37)
+.RS
+.PD 0
+.IP \[bu] 3
+执行特权 \fBsyslog\fP(2) 操作。 有关哪些操作需要特权的信息，请参见 \fBsyslog\fP(2)。
+.IP \[bu]
+查看 \fI/proc/sys/kernel/kptr_restrict\fP 为 1 时通过 \fI/proc\fP 等接口暴露的内核地址。 (参见
+\fBproc\fP(5).) 中 \fIkptr_restrict\fP 的讨论
+.PD
+.RE
+.TP 
+\fBCAP_WAKE_ALARM\fP (since Linux 3.0)
+.\"
+触发唤醒系统的东西 (设置 \fBCLOCK_REALTIME_ALARM\fP 和 \fBCLOCK_BOOTTIME_ALARM\fP 定时器)。
+.SS "Past and current implementation"
+功能的完整实现需要:
+.IP \[bu] 3
+对于所有特权操作，内核必须检查线程是否在其有效集中具有所需的能力。
+.IP \[bu]
+内核必须提供允许更改和检索线程功能集的系统调用。
+.IP \[bu]
+文件系统必须支持将功能附加到可执行文件，以便进程在执行文件时获得这些功能。
+.PP
+.\"
+Linux 2.6.24 之前，只满足前两个要求; 从 Linux 2.6.24 开始，所有三个要求都得到满足。
+.SS "Notes to kernel developers"
+添加应由特性管理的新内核特性时，请考虑以下几点。
+.IP \[bu] 3
+能力的目标是将超级用户的权力分成几部分，这样如果一个具有一个或多个能力的程序被破坏，它对系统造成破坏的能力将小于以 root 权限运行的相同程序。
+.IP \[bu]
+您可以选择为新特性创建新特性或将特性与现有特性之一相关联。 为了将功能集保持在可管理的规模，后一种选择是更可取的，除非有令人信服的理由选择前一种选择。
+(还有一个技术限制: 能力集的大小目前限制为 64 位。)
+.IP \[bu]
+要确定哪些现有特性可能最适合您的新特性请查看上面的特性列表以找到最适合您的新特性的 "silo"。
+一种方法是确定是否有其他特性需要始终与新特性一起使用的，特性。 如果没有这些其他特性新特性就毫无用处，那么您应该使用与其他特性相同的，特性。
+.IP \[bu]
+\fIDon't\fP 能避免就选 \fBCAP_SYS_ADMIN\fP! 现有能力检查的很大一部分都与此能力相关 (请参见上面的部分列表)。 它可以被称为
+"the new root"，因为一方面它赋予了广泛的权力，另一方面它广泛的作用域意味着这是许多特权程序所需要的能力。 不要让问题变得更糟。 唯一应该与
+\fBCAP_SYS_ADMIN\fP 关联的新特性是 \fIclosely\fP 与该筒仓中的现有用途相匹配的，特性。
+.IP \[bu]
+.\"
+如果您确定确实有必要为您的特性创建新特性请不要将其创建或命名为 "single\-use" 特性。 因此，例如，添加高度特定的
+\fBCAP_SYS_PACCT\fP 可能是一个错误。 相反，尝试将您的新功能识别并命名为更广泛的筒仓，其他相关的 future 用例可能适合。
+.SS "Thread capability sets"
+每个线程都有以下能力集，其中包含零个或多个上述能力:
+.TP 
+\fIPermitted\fP
+这是线程可能承担的有效能力的限制超集。 它也是功能的限制超集，可由在其有效集中不具有 \fBCAP_SETPCAP\fP 功能的线程添加到可继承集中。
+.IP
+如果一个线程从它的许可集中丢弃了一个能力，它永远不能重新获得那个能力 (除非它 \fBexecve\fP(2)s 一个 set\-user\-ID\-root
+程序，或者一个其相关文件能力授予那个能力的程序)。
+.TP 
+\fIInheritable\fP
+这是 \fBexecve\fP(2) 中保留的一组功能。
+可继承能力在执行任何程序时保持可继承性，并且在执行在文件可继承集中设置了相应位的程序时可继承能力被添加到允许集。
+.IP
+由于以非 root 用户身份运行时，可继承的功能通常不会跨 \fBexecve\fP(2)
+保留，因此希望运行具有提升功能的帮助程序的应用程序应考虑使用环境功能，如下所述。
+.TP 
+\fIEffective\fP
+这是内核用来对线程执行权限检查的一组功能。
+.TP 
+\fIBounding\fP (per\-thread since Linux 2.6.25)
+能力边界集是一种机制，可用于限制在 \fBexecve\fP(2) 期间获得的能力。
+.IP
+从 Linux 2.6.25 开始，这是一个每线程功能集。 在旧内核中，能力边界集是系统范围内的属性，由系统上的所有线程共享。
+.IP
+有关详细信息，请参见下面的 \fICapability bounding set\fP。
+.TP 
+\fIAmbient\fP (since Linux 4.3)
+.\" commit 58319057b7847667f0c9585b9de0e8932b0fdb08
+这是一组在非特权程序的 \fBexecve\fP(2) 中保留的功能。 环境能力集遵循，不变量，即如果不允许且不可继承，则任何能力都不可能是环境能力。
+.IP
+可以使用 \fBprctl\fP(2) 直接修改环境能力集。 如果降低相应的允许或可继承的能力，则环境能力会自动降低。
+.IP
+执行由于设置用户 ID 或设置组 ID 位而更改 UID 或 GID 的程序或执行具有任何文件功能设置的程序将清除环境集。 当调用
+\fBexecve\fP(2) 时，环境能力被添加到允许集并分配给有效集。 如果环境能力导致进程的允许和有效能力在 \fBexecve\fP(2)
+期间增加，这不会触发 \fBld.so\fP(8) 中描述的安全执行模式。
+.PP
+通过 \fBfork\fP(2) 创建的子级继承其父级功能集的副本。 有关 \fBexecve\fP(2) 如何影响功能的详细信息，请参见下面的
+\fITransformation of capabilities during execve()\fP。
+.PP
+使用 \fBcapset\fP(2)，一个线程可以操纵它自己的能力集; 请参见下面的 \fIProgrammatically adjusting capability sets\fP。
+.PP
+.\" commit 73efc0394e148d0e15583e13712637831f926720
+.\"
+从 Linux 3.2 开始，文件 \fI/proc/sys/kernel/cap_last_cap\fP 公开了运行内核支持的最高能力的数值;
+这可用于确定可在功能集中设置的最高位。
+.SS "File capabilities"
+从 Linux 2.6.24 开始，内核支持使用 \fBsetcap\fP(8) 将功能集与可执行文件相关联。 文件功能集存储在一个扩展属性中 (请参见名为
+\fIsecurity.capability\fP 的 \fBsetxattr\fP(2) 和 \fBxattr\fP(7))。 写入此扩展属性需要
+\fBCAP_SETFCAP\fP 功能。 文件功能集与线程的功能集一起确定 \fBexecve\fP(2) 之后线程的功能。
+.PP
+三个文件功能集是:
+.TP 
+\fIPermitted\fP (formerly known as \fIforced\fP):
+无论线程的可继承能力如何，线程都会自动获得这些能力。
+.TP 
+\fIInheritable\fP (formerly known as \fIallowed\fP):
+该集合与线程的可继承集合进行 `与` 运算，以确定 \fBexecve\fP(2) 之后线程的允许集合中启用了哪些可继承能力。
+.TP 
+\fIEffective\fP:
+这不是一个集合，而只是一个位。 如果设置了该位，则在 \fBexecve\fP(2) 期间，该线程的所有新允许功能也会在有效集中出现。 如果未设置此位，则在
+\fBexecve\fP(2) 之后，新的有效集合中没有任何新的允许功能。
+.IP
+.\"
+启用文件有效能力位意味着任何文件允许或可继承的能力导致线程在 \fBexecve\fP(2) 期间获得相应的允许能力 (参见下面的
+\fITransformation of capabilities during execve()\fP) 也将在其有效集中获得该能力。 因此，在为文件
+(\fBsetcap\fP(8)、\fBcap_set_file\fP(3)、\fBcap_set_fd\fP(3))
+分配功能时，如果我们将有效标志指定为对任何功能启用，则还必须将有效标志指定为对相应允许或可继承标志为的所有其他功能启用。启用。
+.SS "File capability extended attribute versioning"
+为了允许可扩展性，内核支持一种在用于实现文件功能的 \fIsecurity.capability\fP 扩展属性中对版本号进行编码的方案。
+这些版本号在实现内部，对用户空间应用程序不直接可见。 迄今为止，支持以下版本:
+.TP 
+\fBVFS_CAP_REVISION_1\fP
+这是最初的文件功能实现，它支持文件功能的 32 位掩码。
+.TP 
+\fBVFS_CAP_REVISION_2\fP (since Linux 2.6.25)
+.\" commit e338d263a76af78fe8f38a72131188b58fceb591
+此版本允许使用 64 位大小的文件功能掩码，并且随着支持的功能数量超过 32 位而变得很有必要。 内核透明地继续支持具有 32 位版本 1
+能力掩码的文件的执行，但是当向以前没有能力的文件添加能力，或修改现有文件的能力时，它会自动使用版本 2 方案 (或可能是版本 3 方案，如下所述)。
+.TP 
+\fBVFS_CAP_REVISION_3\fP (since Linux 4.14)
+.\" commit 8db6c34f1dbc8e06aa016a9b829b06902c3e1340
+提供版本 3 文件功能以支持命名空间文件功能 (如下所述)。
+.IP
+与版本 2 文件功能一样，版本 3 功能掩码的大小为 64 位。 但除此之外，命名空间的 root 用户 ID 编码在
+\fIsecurity.capability\fP 扩展属性中。 (命名空间的根用户 ID 是该命名空间 maps 中的用户 ID 0
+到初始用户命名空间中的值。)
+.IP
+版本 3 文件功能旨在与版本 2 功能共存; 也就是说，在现代 Linux 系统上，可能有一些文件具有版本 2 功能，而其他文件具有版本 3 功能。
+.PP
+在 Linux 4.14 之前，唯一一种可以附加到文件的文件能力扩展属性是 \fBVFS_CAP_REVISION_2\fP 属性。 自 Linux 4.14
+起，附加到文件的 \fIsecurity.capability\fP 扩展属性的版本取决于创建该属性的环境。
+.PP
+从 Linux 4.14 开始，如果满足以下两个条件，则 \fIsecurity.capability\fP 扩展属性将自动创建为 (或转换为) 版本 3
+(\fBVFS_CAP_REVISION_3\fP) 属性:
+.IP \[bu] 3
+写入属性的线程驻留在非初始用户命名空间中。 (更准确地说: 线程驻留在用户命名空间中，而不是挂载底层文件系统的用户命名空间中。)
+.IP \[bu]
+该线程在文件 inode 上具有 \fBCAP_SETFCAP\fP 能力，这意味着 (a) 该线程在其自己的用户命名空间中具有 \fBCAP_SETFCAP\fP
+能力; 和 (b) 文件 inode 的 UID 和 GID 在 writer 的用户命名空间中有映射。
+.PP
+创建 \fBVFS_CAP_REVISION_3\fP \fIsecurity.capability\fP 扩展属性时，创建线程的用户命名空间的根用户 ID
+保存在扩展属性中。
+.PP
+相比之下，从驻留在安装底层文件系统的命名空间 (这通常意味着初始用户命名空间) 中的特权 (\fBCAP_SETFCAP\fP) 线程创建或修改
+\fIsecurity.capability\fP 扩展属性会自动导致创建版本 2 (\fBVFS_CAP_REVISION_2\fP) 属性。
+.PP
+请注意，版本 3 \fIsecurity.capability\fP 扩展属性的创建是自动的。 也就是说，当用户空间应用程序以版本 2 格式写入
+(\fBsetxattr\fP(2)) \fIsecurity.capability\fP 属性时，如果在上述情况下创建了该属性，内核将自动创建一个版本 3 属性。
+相应地，当驻留在由根用户 ID (或该用户命名空间的后代) 创建的用户命名空间内的进程检索 (\fBgetxattr\fP(2)) 版本 3
+\fIsecurity.capability\fP 属性时，返回的属性 (automatically) 被简化为显示为版本 2 属性 (即，返回值是版本 2
+属性的大小，不包括根用户 ID)。 这些自动翻译意味着不需要更改用户空间工具 (例如，\fBsetcap\fP(1) 和
+\fBgetcap\fP(1))，以便这些工具用于创建和检索版本 3 \fIsecurity.capability\fP 属性。
+.PP
+.\"
+请注意，文件可以具有与之关联的版本 2 或版本 3 \fIsecurity.capability\fP 扩展属性，但不能同时具有两者:
+\fIsecurity.capability\fP 扩展属性的创建或修改将根据创建扩展属性的情况自动修改版本，或者修改的。
+.SS "Transformation of capabilities during execve()"
+在 \fBexecve\fP(2) 期间，内核使用以下算法计算进程的新功能:
+.PP
+.in +4n
+.EX
+P' (环境) = (文件有特权) ? 0: P(ambient)
+
+P' (允许) = (P(inheritable)&F(inheritable)) |
+                  (F(permitted)&P(bounding)) |P' (环境)
+
+P' (有效) = F(effective) ?P' (允许) : P' (环境)
+
+P' (可继承) = P(inheritable) [i.e., unchanged]
+
+P' (边界) = P(bounding) [i.e., unchanged]
+.EE
+.in
+.PP
+where:
+.RS 4
+.TP 
+P()
+表示在 \fBexecve\fP(2) 之前设置的线程能力的值
+.TP 
+P'()
+表示在 \fBexecve\fP(2) 之后设置的线程能力的值
+.TP 
+F()
+表示一个文件能力集
+.RE
+.PP
+请注意与上述能力转换规则相关的以下细节:
+.IP \[bu] 3
+环境功能集仅从 Linux 4.3 开始存在。 在 \fBexecve\fP(2) 期间确定环境集的转换时，特权文件是具有功能或设置了 set\-user\-ID
+或 set\-group\-ID 位的文件。
+.IP \[bu]
+在 Linux 2.6.25 之前，边界集是所有线程共享的系统范围属性。 该系统范围的值用于计算 \fBexecve\fP(2)
+期间的新允许集，其方式与上面针对 \fIP(bounding)\fP 所示的相同。
+.PP
+\fINote\fP: 在上述能力转换期间，文件能力可能会被忽略 (视为空)，原因与 set\-user\-ID 和 set\-group\-ID
+位被忽略的原因相同; 请参见 \fBexecve\fP(2)。 如果内核是使用 \fIno_file_caps\fP 选项引导的，文件功能同样会被忽略。
+.PP
+.\"
+\fINote\fP: 根据上述规则，如果具有非零用户 ID 的进程执行 \fBexecve\fP(2)，则将清除其允许和有效集中存在的任何功能。 对于用户 ID
+为零的进程执行 \fBexecve\fP(2) 时的功能处理，请参见下面的 \fICapabilities and execution of programs by root\fP。
+.SS "Safety checking for capability\-dumb binaries"
+capability\-dumb 二进制文件是已标记为具有文件功能的应用程序，但尚未转换为使用 \fBlibcap\fP(3) API 来操作其功能。
+(换句话说，这是一个传统的 set\-user\-ID\-root 程序，已切换为使用文件功能，但其代码未被修改以理解功能。)
+对于此类应用程序，有效功能位设置在文件，以便在执行文件时在进程有效集中自动启用文件允许的功能。 出于此处描述的检查目的，内核将有效功能位设置为
+capability\-dumb 的文件识别出来。
+.PP
+.\"
+执行能力哑二进制文件时，内核会在执行上述能力转换后检查进程是否获得了文件允许集中指定的所有允许能力。 (这可能发生 \fInot\fP
+的典型原因是能力边界集屏蔽了文件允许集中的一些能力。) 如果进程没有获得完整的文件允许能力集，则 \fBexecve\fP(2) 失败并显示错误
+\fBEPERM\fP。 这可以防止在以低于其需要的特权执行功能哑应用程序时可能出现的安全风险。 请注意，根据定义，应用程序本身无法识别此问题，因为它不使用
+\fBlibcap\fP(3) API。
+.SS "Capabilities and execution of programs by root"
+.\" See cap_bprm_set_creds(), bprm_caps_from_vfs_cap() and
+.\" handle_privileged_root() in security/commoncap.c (Linux 5.0 source)
+为了反映传统的 UNIX 语义，内核在 UID 为 0 (root) 的进程执行程序和执行 set\-user\-ID\-root
+程序时对文件功能进行特殊处理。
+.PP
+在对二进制文件的设置用户 ID 模式位触发的进程有效 ID 执行任何更改后，例如，将有效用户 ID 切换为 0 (root)，因为设置用户 ID
+根程序是执行 \[em] 内核计算文件功能集如下:
+.IP (1) 5
+如果进程的真实或有效用户 ID 为 0 (root)，则忽略文件可继承集和允许集; 相反，它们在概念上被认为是全部 (即启用所有功能)。
+(此行为有一个例外，在下面的 \fISet\-user\-ID\-root programs that have file capabilities\fP
+中有描述。)
+.IP (2)
+如果进程的有效用户 ID 为 0 (root) 或者文件有效位实际上已启用，则文件有效位名义上定义为一个 (enabled)。
+.PP
+这些文件功能集的名义值然后如上所述用于计算 \fBexecve\fP(2) 期间过程功能的转换。
+.PP
+因此，当具有非零 UID 的进程 \fBexecve\fP(2)s 是一个没有附加功能的 set\-user\-ID\-root 程序，或者当一个进程的真实和有效
+UID 为零 \fBexecve\fP(2)s 是一个程序时，进程新允许的功能的计算简化为:
+.PP
+.in +4n
+.EX
+P'(permitted)   = P(inheritable) | P(bounding)
+
+P'(effective)   = P'(permitted)
+.EE
+.in
+.PP
+因此，流程获得其允许的和有效的能力集中的所有能力，除了那些被能力边界集屏蔽掉的能力。 (在计算 P'(permitted) 时，可以简化
+P'(ambient) 项，因为根据定义它是 P(inheritable).) 的真子集
+.PP
+.\"
+.\"
+可以使用下面描述的安全位机制禁用本小节中描述的用户 ID 0 (root) 的特殊处理。
+.SS "Set\-user\-ID\-root programs that have file capabilities"
+上面 \fICapabilities and execution of programs by root\fP 中描述的行为有一个例外。
+如果正在执行的二进制文件 (a) 具有附加的功能，而 (b) 进程的真实用户 ID 是 \fInot\fP 0 (root)，而 (c) 是进程的有效用户
+ID \fIis\fP 0 (root)，则文件功能位被接受 (即，它们不是概念上被认为是所有的)。 出现这种情况的通常方式是在执行也具有文件功能的
+set\-UID\-root 程序时。 执行此类程序时，进程仅获得程序授予的能力 (即，并非所有能力，如执行不具有任何关联文件能力的
+set\-user\-ID\-root 程序时会发生的那样)。
+.PP
+.\"
+请注意，可以将空功能集分配给程序文件，因此可以创建一个 set\-user\-ID\-root 程序，将执行该程序的进程的有效和保存的 set\-user\-ID
+更改为 0，但不赋予该进程任何能力。
+.SS "Capability bounding set"
+能力边界集是一种安全机制，可用于限制在 \fBexecve\fP(2) 期间可以获得的能力。 边界集以下列方式使用:
+.IP \[bu] 3
+在 \fBexecve\fP(2) 期间，能力边界集与文件允许的能力集进行 `与` 运算，并将此操作的结果分配给线程的允许能力集。
+因此，能力边界集对可执行文件可能授予的许可能力设置了限制。
+.IP \[bu]
+(自 Linux 2.6.25 起) 能力边界集充当线程可以使用 \fBcapset\fP(2) 添加到其可继承集的能力的限制超集。
+这意味着如果一个能力不在边界集中，那么一个线程不能将这个能力添加到它的可继承集中，即使它在它的允许的能力中，因此当它 \fBexecve\fP(2)s
+时不能在它的允许集中保留这个能力在其可继承集中具有功能的文件。
+.PP
+请注意，边界集会屏蔽文件允许的功能，但不会屏蔽可继承的功能。
+如果线程在其可继承集中维护不在其边界集中的能力，则它仍然可以通过执行在其可继承集中具有该能力的文件来在其允许集中获得该能力。
+.PP
+根据内核版本，能力边界集可以是系统范围的属性，也可以是每个进程的属性。
+.PP
+\fBCapability bounding set from Linux 2.6.25 onward\fP
+.PP
+从 Linux 2.6.25 开始，\fIcapability bounding set\fP 是每线程属性。 (下面描述的系统范围的能力边界集不再存在。)
+.PP
+边界集在 \fBfork\fP(2) 处从线程的父级继承，并跨 \fBexecve\fP(2) 保留。
+.PP
+线程可以使用 \fBprctl\fP(2) \fBPR_CAPBSET_DROP\fP 操作从其能力边界集中删除能力，前提是它具有 \fBCAP_SETPCAP\fP
+能力。 一旦能力从边界集中丢弃，它就不能恢复到那个集合。 线程可以使用 \fBprctl\fP(2) \fBPR_CAPBSET_READ\fP
+操作确定功能是否在其边界集中。
+.PP
+.\" commit b3a222e52e4d4be77cc4520a57af1a4a0d8222d1
+仅当文件功能被编译到内核中时，才支持从边界集中删除功能。 在 Linux 2.6.33 之前，文件特性是可通过
+\fBCONFIG_SECURITY_FILE_CAPABILITIES\fP 选项配置的可选，特性。 从 Linux 2.6.33
+开始，配置选项已被删除，文件功能始终是内核的一部分。 当文件功能被编译到内核中时，\fBinit\fP 进程 (所有进程的祖先) 从一个完整的边界集开始。
+如果文件能力没有被编译到内核中，那么 \fBinit\fP 以一个完整的边界集减去 \fBCAP_SETPCAP\fP
+开始，因为当没有文件能力时，这个能力有不同的含义。
+.PP
+从边界集中删除功能不会将其从线程的可继承集中删除。 然而，它确实阻止了将功能添加回 future 中线程的可继承集。
+.PP
+\fBCapability bounding set prior to Linux 2.6.25\fP
+.PP
+在 Linux 2.6.25 之前，capability bounding set 是一个系统范围的属性，影响系统上的所有线程。 边界集可通过文件
+\fI/proc/sys/kernel/cap\-bound\fP 访问。 (令人困惑的是，此位掩码参数在
+\fI/proc/sys/kernel/cap\-bound\fP.) 中表示为带符号的十进制数
+.PP
+只有 \fBinit\fP 进程可以在能力边界集中设置能力; 除此之外，超级用户 (更准确地说: 具有 \fBCAP_SYS_MODULE\fP 能力的进程)
+只能从这个集合中清除能力。
+.PP
+在标准系统上，能力边界集总是屏蔽 \fBCAP_SETPCAP\fP 能力。 要解除 (dangerous!) 的这个限制，修改
+\fIinclude/linux/capability.h\fP 中 \fBCAP_INIT_EFF_SET\fP 的定义，重新编译内核。
+.PP
+.\"
+.\"
+.\"
+系统范围的能力边界集特性已添加到 Linux 2.2.11。
+.SS "Effect of user ID changes on capabilities"
+为了保留 0 和非零用户 ID 之间转换的传统语义，内核对线程的真实、有效、保存集和文件系统用户 ID 的更改 (使用
+\fBsetuid\fP(2)、\fBsetresuid\fP(2) 或类似) 的线程的功能集进行了以下更改:
+.IP \[bu] 3
+如果一个或多个真实的、有效的或已保存的集合用户 ID 以前为 0，并且由于 UID 更改，所有这些 ID
+都具有非零值，则从允许的、有效的和环境的能力中清除所有能力套。
+.IP \[bu]
+如果有效用户 ID 从 0 更改为非零，则所有功能都将从有效集中清除。
+.IP \[bu]
+如果有效用户 ID 从非零更改为 0，则将允许集复制到有效集。
+.IP \[bu]
+如果文件系统用户 ID 从 0 更改为非零 (请参见 \fBsetfsuid\fP(2))，则从有效集中清除以下功能:
+\fBCAP_CHOWN\fP、\fBCAP_DAC_OVERRIDE\fP、\fBCAP_DAC_READ_SEARCH\fP、\fBCAP_FOWNER\fP、\fBCAP_FSETID\fP、\fBCAP_LINUX_IMMUTABLE\fP
+(自 Linux 2.6.30)、\fBCAP_MAC_OVERRIDE\fP 和 \fBCAP_MKNOD\fP (自 Linux 2.6.30)。 如果文件系统
+UID 从非零更改为 0，则在允许集中启用的任何这些功能都会在有效集中启用。
+.PP
+.\"
+如果一个线程的一个或多个用户 ID 的值为 0，并且希望在将其所有用户 ID 重置为非零值时阻止其允许的功能集被清除，它可以使用下面描述的
+\fBSECBIT_KEEP_CAPS\fP securebits 标志来实现。
+.SS "Programmatically adjusting capability sets"
+线程可以使用 \fBcapget\fP(2) 和 \fBcapset\fP(2) 系统调用来检索和更改其允许的、有效的和可继承的功能集。 但是，最好使用
+\fBcap_get_proc\fP(3) 和 \fBcap_set_proc\fP(3)，它们都包含在 \fIlibcap\fP 包中。
+以下规则管理对线程功能集的更改:
+.IP \[bu] 3
+如果调用者不具有 \fBCAP_SETPCAP\fP 能力，则新的可继承集必须是现有可继承集和允许集的组合的子集。
+.IP \[bu]
+(自 Linux 2.6.25 起) 新的可继承集必须是现有可继承集和能力边界集组合的子集。
+.IP \[bu]
+新的许可集必须是现有许可集的子集 (即，不可能获得线程当前不具备的许可能力)。
+.IP \[bu]
+新的有效集必须是新的允许集的子集。
+.SS "The securebits flags: establishing a capabilities\-only environment"
+.\" For some background:
+.\"       see http://lwn.net/Articles/280279/ and
+.\"       http://article.gmane.org/gmane.linux.kernel.lsm/5476/
+从 Linux 2.6.26 开始，以及启用了文件功能的内核，Linux 实现了一组每线程 \fIsecurebits\fP 标志，可用于禁用对 UID 0
+(\fIroot\fP) 功能的特殊处理。 这些标志如下:
+.TP 
+\fBSECBIT_KEEP_CAPS\fP
+设置此标志允许具有一个或多个 0 UID 的线程在将其所有 UID 切换为非零值时保留其允许集中的功能。 如果未设置此标志，则此类 UID
+切换会导致线程失去所有允许的功能。 该标志始终在 \fBexecve\fP(2) 上清除。
+.IP
+请注意，即使设置了 \fBSECBIT_KEEP_CAPS\fP 标志，当线程将其有效 UID 切换为非零值时，线程的有效功能也会被清除。
+但是，如果线程设置了这个标志并且它的有效 UID 已经非零，并且线程随后将所有其他 UID 切换为非零值，那么有效功能将不会被清除。
+.IP
+如果设置了 \fBSECBIT_NO_SETUID_FIXUP\fP 标志，则忽略 \fBSECBIT_KEEP_CAPS\fP 标志的设置。
+(后一个标志提供了前一个标志效果的超集。)
+.IP
+此标志提供与旧的 \fBprctl\fP(2) \fBPR_SET_KEEPCAPS\fP 操作相同的功能。
+.TP 
+\fBSECBIT_NO_SETUID_FIXUP\fP
+当线程的有效和文件系统 UID 在零值和非零值之间切换时，设置此标志会阻止内核调整进程的允许、有效和环境功能集。 请参见上面的 \fIEffect of user ID changes on capabilities\fP。
+.TP 
+\fBSECBIT_NOROOT\fP
+如果设置了该位，那么当执行 set\-user\-ID\-root 程序时，或者当有效或真实 UID 为 0 的进程调用 \fBexecve\fP(2)
+时，内核不会授予功能。 (参见上面的 \fICapabilities and execution of programs by root\fP。)
+.TP 
+\fBSECBIT_NO_CAP_AMBIENT_RAISE\fP
+设置此标志不允许通过 \fBprctl\fP(2) \fBPR_CAP_AMBIENT_RAISE\fP 操作提高环境能力。
+.PP
+上面的每个 "base" 标志都有一个伴随的 "locked" 标志。 设置任何 "locked" 标志都是不可逆的，并且具有防止进一步更改相应
+"base" 标志的效果。 锁定的标志是:
+\fBSECBIT_KEEP_CAPS_LOCKED\fP、\fBSECBIT_NO_SETUID_FIXUP_LOCKED\fP、\fBSECBIT_NOROOT_LOCKED\fP
+和 \fBSECBIT_NO_CAP_AMBIENT_RAISE_LOCKED\fP。
+.PP
+可以使用 \fBprctl\fP(2) \fBPR_SET_SECUREBITS\fP 和 \fBPR_GET_SECUREBITS\fP 操作修改和检索
+\fIsecurebits\fP 标志。 修改标志需要 \fBCAP_SETPCAP\fP 功能。 请注意，\fBSECBIT_*\fP 常量仅在包含
+\fI<linux/securebits.h>\fP 头文件后才可用。
+.PP
+\fIsecurebits\fP 标志由子进程继承。 在 \fBexecve\fP(2) 期间，所有标志都被保留，但始终被清除的
+\fBSECBIT_KEEP_CAPS\fP 除外。
+.PP
+应用程序可以使用以下调用将自身及其所有后代锁定到一个环境中，在该环境中，获得功能的唯一方法是执行具有关联文件功能的程序:
+.PP
+.in +4n
+.EX
+prctl(PR_SET_SECUREBITS,
+        /* SECBIT_KEEP_CAPS off */
+        SECBIT_KEEP_CAPS_LOCKED |
+        SECBIT_NO_SETUID_FIXUP |
+        SECBIT_NO_SETUID_FIXUP_LOCKED |
+        SECBIT_NOROOT |
+        SECBIT_NOROOT_LOCKED);
+        /* Setting/locking SECBIT_NO_CAP_AMBIENT_RAISE
+           不需要 */
+.EE
+.in
+.\"
+.\"
+.SS "Per\-user\-namespace \(dqset\-user\-ID\-root\(dq programs"
+UID 与创建用户命名空间的 UID 相匹配的设置用户 ID
+程序将在该命名空间或任何后代用户命名空间内的任何进程执行时授予该进程的允许和有效集合中的功能。
+.PP
+.\"
+.\"
+\fBexecve\fP(2) 期间进程能力转换的规则与上面 \fITransformation of capabilities during execve()\fP 和 \fICapabilities and execution of programs by root\fP
+中描述的完全相同，不同的是，在后一小节中，"root" 是用户命名空间创建者的 UID。
+.SS "Namespaced file capabilities"
+.\" commit 8db6c34f1dbc8e06aa016a9b829b06902c3e1340
+传统 (即版本 2) 文件功能仅将一组功能掩码与二进制可执行文件相关联。 当进程执行具有此类功能的二进制文件时，它会根据上面
+\fITransformation of capabilities during execve()\fP 中描述的规则获得关联的功能 (在其用户命名空间内)。
+.PP
+由于版本 2 文件功能将功能授予执行进程，而不管它驻留在哪个用户名称空间中，因此只允许特权进程将功能与文件相关联。 在这里，"privileged"
+表示在挂载文件系统的用户命名空间 (通常是初始用户命名空间) 中具有 \fBCAP_SETFCAP\fP 能力的进程。 此限制使文件功能对某些用例无用。
+例如，在用户命名空间的容器中，可能希望能够创建一个二进制文件，该二进制文件仅将功能授予在该容器内执行的进程，而不授予在容器外执行的进程。
+.PP
+Linux 4.14 添加了所谓的命名空间文件功能来支持此类用例。 命名空间文件功能记录为版本 3 (即 \fBVFS_CAP_REVISION_3\fP)
+\fIsecurity.capability\fP 扩展属性。 在上面 \fIFile capability extended attribute versioning\fP 中描述的情况下会自动创建这样的属性。 创建版本 3 \fIsecurity.capability\fP
+扩展属性时，内核不仅会记录扩展属性中的功能掩码，还会记录名称空间根用户 ID。
+.PP
+.\"
+.\"
+与具有 \fBVFS_CAP_REVISION_2\fP 文件功能的二进制文件一样，具有 \fBVFS_CAP_REVISION_3\fP 文件功能的二进制文件在
+\fBexecve\fP() 期间将功能授予进程。 但是，仅当二进制文件由位于 UID 0 maps 到保存在扩展属性中的根用户 ID
+的用户命名空间中的进程执行时，或者当由驻留在此类后代中的进程执行时，才会授予功能一个命名空间。
+.SS "Interaction with user namespaces"
+有关功能和用户名称空间交互的更多信息，请参见 \fBuser_namespaces\fP(7)。
+.SH STANDARDS
+能力没有标准，但是 Linux 能力的实现是基于已经撤回的 POSIX.1e 草案标准; 请参见
+.UR https://archive.org\:/details\:/posix_1003.1e\-990310
+.UE .
+.SH NOTES
+当尝试 \fBstrace\fP(1) 具有功能的二进制文件 (或 set\-user\-ID\-root 二进制文件) 时，您可能会发现 \fI\-u <username>\fP 选项很有用。 就像是:
+.PP
+.in +4n
+.EX
+$ \fBsudo strace \-o trace.log \-u ceci ./myprivprog\fP
+.EE
+.in
+.PP
+.\" commit 5915eb53861c5776cfec33ca4fcc1fd20d66dd27 removed
+.\" CONFIG_SECURITY_CAPABILITIES
+从 Linux 2.5.27 到 Linux 2.6.26，功能是一个可选的内核组件，并且可以通过
+\fBCONFIG_SECURITY_CAPABILITIES\fP 内核配置选项成为 enabled/disabled。
+.PP
+.\" 7b9a7ec565505699f503b4fcf61500dceb36e744
+\fI/proc/\fPpid\fI/task/TID/status\fP 文件可用于查看线程的功能集。 \fI/proc/\fPpid\fI/status\fP
+文件显示进程主线程的功能集。 在 Linux 3.8 之前，不存在的功能在这些集合中显示为已启用 (1)。 自 Linux 3.8 起，所有不存在的能力
+(\fBCAP_LAST_CAP\fP) 以上显示为禁用 (0)。
+.PP
+\fIlibcap\fP 包提供了一套用于设置和获取功能的例程，与 \fBcapset\fP(2) 和 \fBcapget\fP(2)
+提供的界面相比，这些功能更舒适且不太可能更改。 该软件包还提供了 \fBsetcap\fP(8) 和 \fBgetcap\fP(8) 程序。 它可以在
+.br
+.UR https://git.kernel.org\:/pub\:/scm\:/libs\:/libcap\:/libcap.git\:/refs/
+.UE .
+.PP
+在 Linux 2.6.24 之前，从 Linux 2.6.24 到 Linux 2.6.32 如果不开启文件能力，拥有 \fBCAP_SETPCAP\fP
+能力的线程可以操作除自身以外的线程的能力。 然而，这仅在理论上是可能的，因为在这两种情况下都没有线程拥有 \fBCAP_SETPCAP\fP:
+.IP \[bu] 3
+在 pre\-2.6.25 实现中，系统范围的能力边界集 \fI/proc/sys/kernel/cap\-bound\fP 始终屏蔽
+\fBCAP_SETPCAP\fP 能力，并且如果不修改内核源代码和重建内核就无法更改。
+.IP \[bu]
+如果禁用文件功能 (即禁用内核 \fBCONFIG_SECURITY_FILE_CAPABILITIES\fP 选项)，则 \fBinit\fP 开始时
+\fBCAP_SETPCAP\fP 功能从其每个进程的边界集中删除，并且该边界集由系统上创建的所有其他进程继承。
+.SH "SEE ALSO"
+.\" from libcap-ng
+.\" from libcap-ng
+.\" from libcap-ng
+.\" from libcap-ng
+\fBcapsh\fP(1), \fBsetpriv\fP(1), \fBprctl\fP(2), \fBsetfsuid\fP(2), \fBcap_clear\fP(3),
+\fBcap_copy_ext\fP(3), \fBcap_from_text\fP(3), \fBcap_get_file\fP(3),
+\fBcap_get_proc\fP(3), \fBcap_init\fP(3), \fBcapgetp\fP(3), \fBcapsetp\fP(3),
+\fBlibcap\fP(3), \fBproc\fP(5), \fBcredentials\fP(7), \fBpthreads\fP(7),
+\fBuser_namespaces\fP(7), \fBcaptest\fP(8), \fBfilecap\fP(8), \fBgetcap\fP(8),
+\fBgetpcaps\fP(8), \fBnetcap\fP(8), \fBpscap\fP(8), \fBsetcap\fP(8)
+.PP
+Linux 内核源代码树中的 \fIinclude/linux/capability.h\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

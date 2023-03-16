@@ -1,0 +1,395 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014, Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_fat 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_fat \- 操作 FAT 文件系统
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/msdos_fs.h>\fP     /* Definition of [\fBV\fP]\fBFAT_*\fP and
+\fB                                   ATTR_* \fPconstants\fB*/"\fP
+\fB#include <sys/ioctl.h>\fP
+.PP
+\fBint ioctl(int \fP\fIfd\fP\fB, FAT_IOCTL_GET_ATTRIBUTES, uint32_t *\fP\fIattr\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, FAT_IOCTL_SET_ATTRIBUTES, uint32_t *\fP\fIattr\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, FAT_IOCTL_GET_VOLUME_ID, uint32_t *\fP\fIid\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, VFAT_IOCTL_READDIR_BOTH,\fP
+\fB          struct __fat_dirent \fP\fIentry\fP\fB[2]);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, VFAT_IOCTL_READDIR_SHORT,\fP
+\fB          struct __fat_dirent \fP\fIentry\fP\fB[2]);\fP
+.fi
+.SH DESCRIPTION
+\fBioctl\fP(2) 系统调用可用于读取和写入使用其他系统调用无法访问的 FAT 文件系统的元数据。
+.SS "Reading and setting file attributes"
+FAT 文件系统中的文件和目录具有一个属性位掩码，可以用 \fBFAT_IOCTL_GET_ATTRIBUTES\fP 读取并用
+\fBFAT_IOCTL_SET_ATTRIBUTES\fP 写入。
+.PP
+\fIfd\fP 参数包含文件或目录的文件描述符。 通过使用 \fBO_RDONLY\fP 标志调用 \fBopen\fP(2) 来创建文件描述符就足够了。
+.PP
+\fIattr\fP 参数包含指向位掩码的指针。 位掩码的位是:
+.TP 
+\fBATTR_RO\fP
+该位指定文件或目录是只读的。
+.TP 
+\fBATTR_HIDDEN\fP
+该位指定文件或目录是隐藏的。
+.TP 
+\fBATTR_SYS\fP
+该位指定该文件是系统文件。
+.TP 
+\fBATTR_VOLUME\fP
+该位指定该文件是一个卷标。 该属性是只读的。
+.TP 
+\fBATTR_DIR\fP
+该位指定这是一个目录。 该属性是只读的。
+.TP 
+\fBATTR_ARCH\fP
+该位指示应归档该文件或目录。 它在创建或修改文件时设置。 它由归档系统重置。
+.PP
+零值 \fBATTR_NONE\fP 可用于指示未设置属性位。
+.SS "Reading the volume ID"
+FAT 文件系统由卷 ID 标识。可以使用 \fBFAT_IOCTL_GET_VOLUME_ID\fP 读取卷 ID。
+.PP
+\fIfd\fP 参数可以是文件系统的任何文件或目录的文件描述符。 通过使用 \fBO_RDONLY\fP 标志调用 \fBopen\fP(2)
+来创建文件描述符就足够了。
+.PP
+\fIid\fP 参数是指向将用卷 ID 填充的字段的指针。通常，卷 ID 作为一组两个 16 位字段显示给用户:
+.PP
+.in +4n
+.EX
+printf("Volume ID %04x\-%04x\en", id >> 16, id & 0xFFFF);
+.EE
+.in
+.SS "Reading short filenames of a directory"
+FAT 文件系统上的文件或目录总是有一个短文件名，该文件名最多包含 8 个大写字母，可以选择后跟句点和最多 3 个大写字母作为文件扩展名。
+如果实际文件名不适合此方案，则将其存储为最多 255 UTF\-16 字符的长文件名。
+.PP
+目录中的短文件名可以用 \fBVFAT_IOCTL_READDIR_SHORT\fP 读取。 \fBVFAT_IOCTL_READDIR_BOTH\fP
+读取短文件名和长文件名。
+.PP
+\fIfd\fP 参数必须是目录的文件描述符。 通过使用 \fBO_RDONLY\fP 标志调用 \fBopen\fP(2) 来创建文件描述符就足够了。
+文件描述符只能用于通过重复调用 \fBioctl\fP(2) 来遍历目录条目一次。
+.PP
+\fIentry\fP 参数是一个包含以下结构的二元素数组:
+.PP
+.in +4n
+.EX
+struct __fat_dirent {
+    long            d_ino;
+    __kernel_off_t  d_off;
+    uint32_t short  d_reclen;
+    char            d_name[256];
+};
+.EE
+.in
+.PP
+数组中的第一个条目是短文件名。 第二个条目用于长文件名。
+.PP
+\fId_ino\fP 和 \fId_off\fP 字段仅针对长文件名填写。 \fId_ino\fP 字段保存目录的索引节点号。 \fId_off\fP
+字段保存文件条目在目录中的偏移量。 由于这些值不适用于短文件名，因此用户代码应该简单地忽略它们。
+.PP
+\fId_reclen\fP 字段包含 \fId_name\fP 字段中文件名的长度。 为了保持向后兼容性，短文件名的长度为 0 表示已到达目录末尾。
+但是，检测目录末尾的首选方法是测试 \fBioctl\fP(2) 返回值。 如果不存在长文件名，字段 \fId_reclen\fP 设置为 0，\fId_name\fP
+为长文件名的长度为 0 的字符串。
+.SH "RETURN VALUE"
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+对于 \fBVFAT_IOCTL_READDIR_BOTH\fP 和 \fBVFAT_IOCTL_READDIR_SHORT\fP，返回值 1
+表示已读取新目录条目，返回值 0 表示已到达目录末尾。
+.SH ERRORS
+.TP 
+\fBENOENT\fP
+如果文件描述符 \fIfd\fP 引用已删除但仍打开的目录，则 \fBVFAT_IOCTL_READDIR_BOTH\fP 和
+\fBVFAT_IOCTL_READDIR_SHORT\fP 会返回此错误。
+.TP 
+\fBENOTDIR\fP
+如果文件描述符 \fIfd\fP 未引用目录，则 \fBVFAT_IOCTL_READDIR_BOTH\fP 和
+\fBVFAT_IOCTL_READDIR_SHORT\fP 将返回此错误。
+.TP 
+\fBENOTTY\fP
+文件描述符 \fIfd\fP 不引用 FAT 文件系统中的对象。
+.PP
+有关更多错误值，请参见 \fBioctl\fP(2)。
+.SH VERSIONS
+\fBVFAT_IOCTL_READDIR_BOTH\fP 和 \fBVFAT_IOCTL_READDIR_SHORT\fP 最早出现在 Linux 2.0。
+.PP
+.\" just before we got Git history
+\fBFAT_IOCTL_GET_ATTRIBUTES\fP 和 \fBFAT_IOCTL_SET_ATTRIBUTES\fP 最早出现在 Linux
+2.6.12。
+.PP
+.\" commit 6e5b93ee55d401f1619092fb675b57c28c9ed7ec
+\fBFAT_IOCTL_GET_VOLUME_ID\fP 是在 Linux 内核的 3.11 版本中引入的。
+.SH STANDARDS
+这个 API 是特定于 Linux 的。
+.SH EXAMPLES
+.SS "Toggling the archive flag"
+下面的程序演示了 \fBioctl\fP(2) 操作文件属性的用法。 该程序读取并显示文件的存档属性。 反转属性值后，程序再次读取并显示属性。
+.PP
+对 \fI/mnt/user/foo\fP: 文件应用程序时记录如下
+.PP
+.in +4n
+.EX
+# ./toggle_fat_archive_flag /mnt/user/foo
+存档标志已设置
+切换归档标志
+未设置存档标志
+.EE
+.in
+.SS "Program source (toggle_fat_archive_flag.c)"
+.\" SRC BEGIN (toggle_fat_archive_flag.c)
+\&
+.EX
+#include <fcntl.h>
+#include <linux/msdos_fs.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+/*
+ * Read file attributes of a file on a FAT filesystem.
+ * Output the state of the archive flag.
+ */
+static uint32_t
+readattr(int fd)
+{
+    int       ret;
+    uint32_t  attr;
+
+    ret = ioctl(fd, FAT_IOCTL_GET_ATTRIBUTES, &attr);
+    if (ret == \-1) {
+        perror("ioctl");
+        exit(EXIT_FAILURE);
+    }
+
+    if (attr & ATTR_ARCH)
+        printf("Archive flag is set\en");
+    else
+        printf("Archive flag is not set\en");
+
+    return attr;
+}
+
+int
+main(int argc, char *argv[])
+{
+    int       fd;
+    int       ret;
+    uint32_t  attr;
+
+    if (argc != 2) {
+        printf("Usage: %s FILENAME\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_RDONLY);
+    if (fd == \-1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 读取并显示 FAT 文件属性。
+     */
+    attr = readattr(fd);
+
+    /*
+     * Invert archive attribute.
+     */
+    printf("Toggling archive flag\en");
+    attr \[ha]= ATTR_ARCH;
+
+    /*
+     * 写入改变的 FAT 文件属性。
+     */
+    ret = ioctl(fd, FAT_IOCTL_SET_ATTRIBUTES, &attr);
+    if (ret == \-1) {
+        perror("ioctl");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 读取并显示 FAT 文件属性。
+     */
+    readattr(fd);
+
+    close(fd);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SS "Reading the volume ID"
+下面的程序演示了如何使用 \fBioctl\fP(2) 来显示 FAT 文件系统的卷 ID。
+.PP
+为目录 \fI/mnt/user\fP: 应用程序时记录了以下输出
+.PP
+.in +4n
+.EX
+$ ./display_fat_volume_id /mnt/user
+卷 ID 6443\-6241
+.EE
+.in
+.SS "Program source (display_fat_volume_id.c)"
+.\" SRC BEGIN (display_fat_volume_id.c)
+\&
+.EX
+#include <fcntl.h>
+#include <linux/msdos_fs.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int       fd;
+    int       ret;
+    uint32_t  id;
+
+    if (argc != 2) {
+        printf("Usage: %s FILENAME\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_RDONLY);
+    if (fd == \-1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 读取卷 ID。
+     */
+    ret = ioctl(fd, FAT_IOCTL_GET_VOLUME_ID, &id);
+    if (ret == \-1) {
+        perror("ioctl");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 将输出格式化为两组，每组 16 位。
+     */
+    printf("Volume ID %04x\-%04x\en", id >> 16, id & 0xFFFF);
+
+    close(fd);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SS "Listing a directory"
+以下程序演示了使用 \fBioctl\fP(2) 列出目录。
+.PP
+将程序应用到目录 \fI/mnt/user\fP: 时记录如下
+.PP
+.in +4n
+.EX
+$ \fB./fat_dir /mnt/user\fP
+\&. \-> \[aq]\[aq]
+\&.. \-> \[aq]\[aq]
+ALONGF\[ti]1.TXT \-> \[aq]a long filename.txt\[aq]
+UPPER.TXT \-> \[aq]\[aq]
+LOWER.TXT \-> \[aq]lower.txt\[aq]
+.EE
+.in
+.\"
+.SS "Program source"
+.in +4n
+.\" SRC BEGIN (ioctl_fat.c)
+.EX
+#include <fcntl.h>
+#include <linux/msdos_fs.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int                  fd;
+    int                  ret;
+    struct __fat_dirent  entry[2];
+
+    if (argc != 2) {
+        printf("Usage: %s DIRECTORY\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 打开目录的文件描述符。
+     */
+    fd = open(argv[1], O_RDONLY | O_DIRECTORY);
+    if (fd == \-1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    for (;;) {
+
+        /*
+         * 阅读下一个目录条目。
+         */
+        ret = ioctl(fd, VFAT_IOCTL_READDIR_BOTH, entry);
+
+        /*
+         * 如果发生错误，返回值为 \-1。
+         * 如果已经到达目录列表的末尾，
+         * 返回值为 0。
+         * 为了向后兼容目录的末尾
+         * 列表也由 d_reclen == 0 发出信号。
+         */
+        if (ret < 1)
+            break;
+
+        /*
+         * 写下短名称和长名称。
+         */
+        printf("%s \-> \[aq]%s\[aq]\en", entry[0].d_name, entry[1].d_name);
+    }
+
+    if (ret == \-1) {
+        perror("VFAT_IOCTL_READDIR_BOTH");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 关闭文件描述符。
+     */
+    close(fd);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.SH "SEE ALSO"
+\fBioctl\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

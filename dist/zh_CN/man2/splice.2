@@ -1,0 +1,162 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 2006 Jens Axboe
+.\" and Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH splice 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+splice \- 拼接数据 to/from 管道
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP
+.PP
+.\" Return type was long before glibc 2.7
+\fBssize_t splice(int \fP\fIfd_in\fP\fB, off64_t *_Nullable \fP\fIoff_in\fP\fB,\fP
+\fB               int \fP\fIfd_out\fP\fB, off64_t *_Nullable \fP\fIoff_out\fP\fB,\fP
+\fB               size_t \fP\fIlen\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsplice\fP() 在两个文件描述符之间移动数据，而不在内核地址空间和用户地址空间之间复制。 它将最多 \fIlen\fP 字节的数据从文件描述符
+\fIfd_in\fP 传输到文件描述符 \fIfd_out\fP，其中一个文件描述符必须引用管道。
+.PP
+以下语义适用于 \fIfd_in\fP 和 \fIoff_in\fP:
+.IP \[bu] 3
+如果 \fIfd_in\fP 引用管道，则 \fIoff_in\fP 必须为 NULL。
+.IP \[bu]
+如果 \fIfd_in\fP 不引用管道且 \fIoff_in\fP 为 NULL，则从 \fIfd_in\fP 开始从文件偏移量开始读取字节，并适当调整文件偏移量。
+.IP \[bu]
+如果 \fIfd_in\fP 不引用管道且 \fIoff_in\fP 不为 NULL，则 \fIoff_in\fP 必须指向一个缓冲区，该缓冲区指定从 \fIfd_in\fP
+读取字节的起始偏移量; 在这种情况下，\fIfd_in\fP 的文件偏移量没有改变。
+.PP
+类比语句适用于 \fIfd_out\fP 和 \fIoff_out\fP。
+.PP
+\fIflags\fP 参数是一个位掩码，由以下零个或多个值的或运算组合而成:
+.TP 
+\fBSPLICE_F_MOVE\fP
+尝试移动页面而不是复制。 这只是对内核的一个提示: 如果内核不能从管道中移动页面，或者如果管道缓冲区没有引用完整的页面，页面仍然可以被复制。
+此标志的初始实现是 buggy: 因此从 Linux 2.6.21 开始它是一个空操作 (但在 \fBsplice\fP() 调用中仍然允许) ; 在
+future 中，可能会恢复正确的实现。
+.TP 
+\fBSPLICE_F_NONBLOCK\fP
+不要在 I/O 上阻塞。 这使得拼接管道操作不阻塞，但 \fBsplice\fP() 可能仍然阻塞，因为拼接 to/from 的文件描述符可能会阻塞
+(除非它们设置了 \fBO_NONBLOCK\fP 标志)。
+.TP 
+\fBSPLICE_F_MORE\fP
+更多数据将在随后的拼接中出现。 当 \fIfd_out\fP 指的是套接字时，这是一个有用的提示 (另请参见 \fBsend\fP(2) 中对
+\fBMSG_MORE\fP 的描述，以及 \fBtcp\fP(7)) 中对 \fBTCP_CORK\fP 的描述。
+.TP 
+\fBSPLICE_F_GIFT\fP
+未用于 \fBsplice\fP(); 请参见 \fBvmsplice\fP(2)。
+.SH "RETURN VALUE"
+成功完成后，\fBsplice\fP() 返回拼接到管道或从管道拼接的字节数。
+.PP
+返回值 0 表示输入结束。 如果 \fIfd_in\fP 指的是一个管道，那么这意味着没有数据要传输，阻塞是没有意义的，因为没有 writers
+连接到管道的写入端。
+.PP
+出错时，\fBsplice\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+在 \fIflags\fP 中指定了 \fBSPLICE_F_NONBLOCK\fP，或者其中一个文件描述符已标记为非阻塞
+(\fBO_NONBLOCK\fP)\fB,\fP，操作将阻塞。
+.TP 
+\fBEBADF\fP
+一个或两个文件描述符无效，或者没有正确的读写模式。
+.TP 
+\fBEINVAL\fP
+目标文件系统不支持拼接。
+.TP 
+\fBEINVAL\fP
+.\" The append-mode error is given since Linux 2.6.27; in earlier kernels,
+.\" splice() in append mode was broken
+目标文件以，追加，模式打开。
+.TP 
+\fBEINVAL\fP
+两个文件描述符均未引用管道。
+.TP 
+\fBEINVAL\fP
+为不可搜索的设备 (例如，管道) 提供了偏移量。
+.TP 
+\fBEINVAL\fP
+\fIfd_in\fP 和 \fIfd_out\fP 指的是同一个管道。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.TP 
+\fBESPIPE\fP
+\fIoff_in\fP 或 \fIoff_out\fP 不是 NULL，但相应的文件描述符引用了一个管道。
+.SH VERSIONS
+\fBsplice\fP() 系统调用最早出现在 Linux 2.6.17; glibc 2.5 中添加了库支持。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+三个系统调用 \fBsplice\fP()、\fBvmsplice\fP(2) 和 \fBtee\fP(2)
+为用户空间程序提供了对任意内核缓冲区的完全控制，在内核中使用与管道相同类型的缓冲区实现。 总的来说，这些系统调用执行以下任务:
+.TP 
+\fBsplice\fP()
+将数据从缓冲区移动到任意文件描述符，反之亦然，或者从一个缓冲区移动到另一个缓冲区。
+.TP 
+\fBtee\fP(2)
+"copies" 将数据从一个缓冲区传送到另一个缓冲区。
+.TP 
+\fBvmsplice\fP(2)
+"copies" 数据从用户空间进入缓冲区。
+.PP
+.\"
+.\" Linus: Now, imagine using the above in a media server, for example.
+.\" Let's say that a year or two has passed, so that the video drivers
+.\" have been updated to be able to do the splice thing, and what can
+.\" you do? You can:
+.\"
+.\" - splice from the (mpeg or whatever - let's just assume that the video
+.\"   input is either digital or does the encoding on its own - like they
+.\"   pretty much all do) video input into a pipe (remember: no copies - the
+.\"   video input will just DMA directly into memory, and splice will just
+.\"   set up the pages in the pipe buffer)
+.\" - tee that pipe to split it up
+.\" - splice one end to a file (ie "save the compressed stream to disk")
+.\" - splice the other end to a real-time video decoder window for your
+.\"   real-time viewing pleasure.
+.\"
+.\" Linus: Now, the advantage of splice()/tee() is that you can
+.\" do zero-copy movement of data, and unlike sendfile() you can
+.\" do it on _arbitrary_ data (and, as shown by "tee()", it's more
+.\" than just sending the data to somebody else: you can duplicate
+.\" the data and choose to forward it to two or more different
+.\" users - for things like logging etc.).
+.\"
+尽管我们谈论复制，但通常会避免实际复制。 内核通过将管道缓冲区实现为一组指向内核内存页的引用计数指针来实现这一点。 内核通过创建引用页面的新指针
+(用于输出缓冲区) 并增加页面的引用计数来在缓冲区中创建 "copies" 页: 仅复制指针，而不复制缓冲区的页面。
+.PP
+.\" commit 7c77f0b3f9208c339a4b40737bb2cb0f0319bb8d
+在 Linux 2.6.30 及更早版本中，\fIfd_in\fP 和 \fIfd_out\fP 中的一个必须是管道。 从 Linux 2.6.31
+开始，两个参数都可能指代管道。
+.SH EXAMPLES
+请参见 \fBtee\fP(2)。
+.SH "SEE ALSO"
+\fBcopy_file_range\fP(2), \fBsendfile\fP(2), \fBtee\fP(2), \fBvmsplice\fP(2), \fBpipe\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

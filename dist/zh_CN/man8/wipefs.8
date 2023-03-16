@@ -1,0 +1,201 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: wipefs
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH WIPEFS 8 2022\-05\-11 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+wipefs \- 从设备上擦除签名
+.SH SYNOPSIS
+.sp
+\fBwipefs\fP [options] \fIdevice\fP ...
+.sp
+\fBwipefs\fP [\fB\-\-backup\fP] \fB\-o\fP \fIoffset device\fP ...
+.sp
+\fBwipefs\fP [\fB\-\-backup\fP] \fB\-a\fP \fIdevice\fP ...
+.SH DESCRIPTION
+.sp
+\fBwipefs\fP 可以从指定的 \fIdevice\fP 中删除文件系统、RAID 或分区表签名 (魔术字符串)，以使签名对 libblkid
+不可见。\fBwipefs\fP 不会擦除文件系统本身或设备中的任何其他数据。
+.sp
+在没有任何选项的情况下使用时，\fBwipefs\fP
+列出所有可见文件系统及其基本签名的偏移量。默认输出可能会更改。因此，您应该尽可能避免在脚本中使用默认输出。在需要稳定输出的环境中，始终使用
+\fB\-\-output\fP \fIcolumns\-list\fP 显式定义预期列。
+.sp
+\fBwipefs\fP 在 erased 分区表签名时调用 \fBBLKRRPART\fP ioctl 以通知内核有关更改。ioctl
+被称为最后一步，当来自所有指定设备的所有指定签名都已经 erased 时。此特性可用于擦除分区设备上的内容以及磁盘设备上的分区表，例如 \fBwipefs \-a /dev/sdc1 /dev/sdc2 /dev/sdc\fP。
+.sp
+请注意，一些文件系统和一些分区表在设备上存储了更多的魔法字符串 (例如，FAT、ZFS、GPT)。\fBwipefs\fP 命令 (自 v2.31 起)
+列出了检测到魔术字符串的所有偏移量。
+.sp
+当使用选项 \fB\-a\fP 时，\fBlibblkid\fP(3) 可见的所有魔术字符串都是 erased。在这种情况下，\fBwipefs\fP 在每次修改
+(erase) 后再次扫描设备，直到找不到魔术字符串。
+.sp
+请注意，默认情况下 \fBwipefs\fP 不会擦除非整个磁盘设备上的嵌套分区表。为此，需要选项 \fB\-\-force\fP。
+.SH OPTIONS
+.sp
+\fB\-a\fP, \fB\-\-all\fP
+.RS 4
+擦除所有可用的签名。erased 签名集可以使用 \fB\-t\fP 选项进行限制。
+.RE
+.sp
+\fB\-b\fP, \fB\-\-backup\fP
+.RS 4
+创建文件 \fI$HOME/wipefs\-<devname>\-<offset>.bak\fP 的签名备份。有关详细信息，请参见
+\fBEXAMPLE\fP 部分。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-force\fP
+.RS 4
+强制擦除，即使文件系统已挂载。这是擦除块设备上的分区表签名所必需的。
+.RE
+.sp
+\fB\-J\fP, \fB\-\-json\fP
+.RS 4
+使用 JSON 输出格式。
+.RE
+.sp
+\fB\-\-lock\fP[=\fImode\fP]
+.RS 4
+对其操作的设备或文件使用独占 BSD 锁。可选参数 \fImode\fP 可以是 \fByes\fP、\fBno\fP (或 1 和 0) 或
+\fBnonblock\fP。如果省略 \fImode\fP 参数，则默认为 \fB"yes"\fP。此选项会覆盖环境变量
+\fB$LOCK_BLOCK_DEVICE\fP。默认情况下根本不使用任何锁，但建议使用它 \(cqs 以避免与 udevd 或其他工具发生冲突。
+.RE
+.sp
+\fB\-i\fP, \fB\-\-noheadings\fP
+.RS 4
+不要打印标题行。
+.RE
+.sp
+\fB\-O\fP, \fB\-\-output\fP \fIlist\fP
+.RS 4
+指定要打印的输出列。使用 \fB\-\-help\fP 获取所有受支持列的列表。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-no\-act\fP
+.RS 4
+导致除 \fBwrite\fP(2) 调用之外的所有操作。
+.RE
+.sp
+\fB\-o\fP, \fB\-\-offset\fP \fIoffset\fP
+.RS 4
+指定签名的位置 (以字节为单位)，它应该是设备中的 erased。\fIoffset\fP 编号可能包含 "0x" 前缀;
+那么该数字将被解释为十六进制值。可以指定多个 \fB\-o\fP 选项。
+.sp
+\fIoffset\fP 参数后面可以跟乘法后缀 KiB (=1024)、MiB (=1024*1024) 等，用于 GiB、TiB、PiB、EiB、ZiB
+和 YiB ("iB" 是可选的，例如，"K" 与 "KiB" 具有相同的含义)，或者 GB、TB、PB、EB、ZB 和 YB 的后缀为 KB
+(=1000)、MB (=1000*1000) 等。
+.RE
+.sp
+\fB\-p\fP, \fB\-\-parsable\fP
+.RS 4
+以可解析而不是可打印的格式打印出来。将字符串的所有潜在不安全字符编码为前缀为 \(aq\(rsx\(aq.
+.RE
+.sp
+\fB\-q\fP, \fB\-\-quiet\fP
+.RS 4
+成功擦除签名后禁止显示任何消息。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-types\fP \fIlist\fP
+.RS 4
+限制印刷或 erased 签名集。可以在逗号分隔的列表中指定不止一种类型。列表或单个类型可以以 \(aqno\(aq
+为前缀，以指定不应对其采取任何操作的类型。有关详细信息，请参见 \fBmount\fP(8)。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH ENVIRONMENT
+.sp
+LIBBLKID_DEBUG=all
+.RS 4
+启用 \fBlibblkid\fP(3) 调试输出。
+.RE
+.sp
+LOCK_BLOCK_DEVICE=<mode>
+.RS 4
+使用独占 BSD 锁。模式为 "1" 或 "0"。有关详细信息，请参见 \fB\-\-lock\fP。
+.RE
+.SH EXAMPLES
+.sp
+\fBwipefs /dev/sda\fP*
+.RS 4
+打印有关 sda 和 sda 上所有分区的信息。
+.RE
+.sp
+\fBwipefs \-\-all \-\-backup /dev/sdb\fP
+.RS 4
+从设备 \fI/dev/sdb\fP 中擦除所有签名并为每个签名创建一个签名备份文件
+\fI~/wipefs\-sdb\-<offset>.bak\fP。
+.RE
+.sp
+\fBdd if=~/wipefs\-sdb\-0x00000438.bak of=/dev/sdb seek=$((0x00000438)) bs=1 conv=notrunc\fP
+.RS 4
+从备份文件 \fI~/wipefs\-sdb\-0x00000438.bak\fP 恢复 ext2 签名。
+.RE
+.SH AUTHORS
+.sp
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBblkid\fP(8), \fBfindfs\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBwipefs\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

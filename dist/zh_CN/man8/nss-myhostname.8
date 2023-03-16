@@ -1,0 +1,164 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NSS\-MYHOSTNAME 8 "" "systemd 253" nss\-myhostname
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+nss\-myhostname, libnss_myhostname.so.2 \- 本地配置的系统主机名的主机名解析
+.SH SYNOPSIS
+.PP
+libnss_myhostname\&.so\&.2
+.SH DESCRIPTION
+.PP
+\fBnss\-myhostname\fP 是 GNU C 库 (\fBglibc\fP) 的 GNU 名称服务开关 (NSS) 功能的插件模块，主要为
+\fBgethostname\fP(2)\& 返回的本地配置的系统主机名提供主机名解析。此模块解析的精确主机名是:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+本地配置的主机名解析为所有本地配置的 IP 地址，按其作用域排序，或者 \(em 如果没有配置 \(em IPv4 地址 127\&.0\&.0\&.2
+(在本地回环上) 和 IPv6 地址 ::1 (在本地主机) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "localhost" 和 "localhost\&.localdomain" (以及任何以 "\&.localhost" 或
+"\&.localhost\&.localdomain" 结尾的主机名) 解析为 IP 地址 127\&.0\&.0\&.1 和::1\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "_gateway" 被解析为所有当前默认路由网关地址，按其度量 \&
+排序。这会为当前网关分配一个稳定的主机名，有助于独立于当前网络配置状态引用它 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "_outbound" 被解析为最有可能用于与其他主机通信的本地 IPv4 和 IPv6 地址
+\&。这是通过从内核向配置的默认网关请求路由决策，然后使用该决策选择的本地 IP 地址来确定的。此主机名仅在至少配置了一个本地默认网关时可用
+\&。这会为本地出站 IP 地址分配一个稳定的主机名，这对于独立于当前网络配置状态 \& 引用它们很有用。
+.RE
+.PP
+各种软件依赖于始终可解析的本地主机名 \&。当使用动态主机名时，传统上这是通过在更改主机名的同时修补 /etc/hosts
+来实现的。这是有问题的，因为它需要一个可写的 /etc / 文件系统并且很脆弱，因为该文件可能同时被管理员编辑 \&。启用
+\fBnss\-myhostname\fP 后，无需更改 /etc/hosts，并且在许多系统上，该文件完全是可选的 \&。
+.PP
+要激活 NSS 模块，请将 "myhostname" 添加到 /etc/nsswitch\&.conf\& 中以 "hosts:" 开头的行。
+.PP
+建议将 "myhostname" 放在 "file" 之后和 `dns`\& 之前。这会在本地解析 "localhost" 等知名主机名和机器主机名
+\&。它与 \fBnss\-resolve\fP 的行为一致，并且仍然允许通过 /etc/hosts\& 覆盖。
+.PP
+请记住，\fBnss\-myhostname\fP (和 \fBnss\-resolve\fP) 也在另一个方向解析 \ (从本地附加的 IP 地址到主机名
+\&。如果您依赖 DNS 提供的查找，您可能希望以不同的方式排序 \&。
+.SH EXAMPLE
+.PP
+以下是正确启用 \fBnss\-myhostname\fP 的示例 /etc/nsswitch\&.conf 文件:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+密码: compat systemd
+组: compat [SUCCESS=merge] systemd
+影子: compat systemd
+gshadow: 文件系统
+
+
+hosts: mymachines 解析 [!UNAVAIL=return] 文件 \fBmyhostname\fP dns
+网络: 文件
+
+协议: 数据库文件
+服务: 数据库文件
+醚: 数据库文件
+rpc: 数据库文件
+
+网络组: nis
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+要进行测试，请使用 \fBglibc\fP\*(Aqs \fBgetent\fP(1) 工具:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ getent ahosts `hostname`
+::1 STREAM 欧米茄
+::1       DGRAM
+::1 原始
+127\&.0\&.0\&.2 流
+127\&.0\&.0\&.2       DGRAM
+127\&.0\&.0\&.2 原始
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+在这种情况下，本地主机名是 \fIomega\fP\&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBnss\-systemd\fP(8), \fBnss\-resolve\fP(8), \fBnss\-mymachines\fP(8),
+\fBnsswitch.conf\fP(5), \fBgetent\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

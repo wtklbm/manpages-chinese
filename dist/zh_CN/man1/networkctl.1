@@ -1,0 +1,368 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NETWORKCTL 1 "" "systemd 253" networkctl
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+networkctl \- 查询网络链接状态
+.SH SYNOPSIS
+.HP \w'\fBnetworkctl\fR\ 'u
+\fBnetworkctl\fP [OPTIONS...] 命令 [LINK...]
+.SH DESCRIPTION
+.PP
+\fBnetworkctl\fP 可用于检查 \fBsystemd\-networkd\fP\& 看到的网络链接状态。关于基本概念、功能和配置语法 \& 的介绍请参考
+\fBsystemd\-networkd.service\fP(8)。
+.SH COMMANDS
+.PP
+理解以下命令:
+.PP
+\fBlist\fP [\fIPATTERN\&...\fP]
+.RS 4
+显示现有链表及其状态 \&。如果指定了一个或多个 \fIPATTERN\fPs，则只显示与其中之一匹配的链接
+\&。如果没有指定更多的参数显示所有链接，否则只显示指定的链接 \&。产生类似于以下的输出:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+IDX 链路类型操作设置
+  1 lo 回环 carrier unmanaged
+  2 eth0 以太网可路由配置
+  3 virbr0 以太无运营商非托管
+  4 virbr0\-nic 以太关闭非托管
+
+列出 4 个链接 \&。
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+运行状态为以下之一:
+.PP
+missing
+.RS 4
+设备丢失
+.RE
+.PP
+off
+.RS 4
+设备断电
+.RE
+.PP
+no\-carrier
+.RS 4
+设备已通电，但还没有载体
+.RE
+.PP
+dormant
+.RS 4
+该设备有一个运营商，但还没有准备好正常流量
+.RE
+.PP
+degraded\-carrier
+.RS 4
+对于 bond 或 bridge master，其中一个绑定或 bridge slave 网络接口处于关闭、无载波或休眠状态
+.RE
+.PP
+carrier
+.RS 4
+链路有载体，或者对于绑定或网桥主控，所有绑定或网桥从属网络接口都受控于主控
+.RE
+.PP
+degraded
+.RS 4
+该链路具有在配置的本地链路上有效的运营商和地址
+.RE
+.PP
+enslaved
+.RS 4
+该链路具有载波并受制于绑定或桥接主网络接口
+.RE
+.PP
+routable
+.RS 4
+该链接已配置运营商和可路由地址
+.RE
+.sp
+设置状态为以下之一:
+.PP
+pending
+.RS 4
+udev 仍在处理链接，我们不 \*(Aqt 还知道我们是否会管理它
+.RE
+.PP
+initialized
+.RS 4
+udev 已经处理了链接，但是我们不 \*(Aqt 还知道我们是否会管理它
+.RE
+.PP
+configuring
+.RS 4
+在检索配置或配置链接的过程中
+.RE
+.PP
+configured
+.RS 4
+链接配置成功
+.RE
+.PP
+unmanaged
+.RS 4
+networkd 不处理链接
+.RE
+.PP
+failed
+.RS 4
+networkd 无法管理链接
+.RE
+.PP
+linger
+.RS 4
+链接不见了，但还没有被 networkd 丢弃
+.RE
+.sp
+.RE
+.PP
+\fBstatus\fP [\fIPATTERN\&...\fP]
+.RS 4
+显示有关指定链接的信息: 类型、状态、内核模块驱动程序、硬件和 IP 地址、配置的 DNS 服务器等 \&。如果指定了一个或多个
+\fIPATTERN\fPs，则只显示与其中之一匹配的链接 \&。
+.sp
+如果未指定任何链接，则显示总体网络状态 \&。另请参见选项 \fB\-\-all\fP\&。
+.sp
+产生类似于以下的输出:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+● 状态: 可路由
+  在线状态: 在线
+       地址: eth0 上的 10\&.193\&.76\&.5
+                virbr0 上的 192\&.168\&.122\&.1
+                eth0 上的 169\&.254\&.190\&.105
+                eth0 上的 fe80::5054:aa:bbbb:cccc
+       网关: eth0 上的 10\&.193\&.11\&.1 (CISCO SYSTEMS, INC\&.)
+           域名解析: 8\&.8\&.8\&.8
+                8\&.8\&.4\&.4
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+在整体网络状态中，在线状态取决于所有需要链接的个别在线状态 \&。默认情况下在线需要托管链接 \&。在这种情况下，在线状态是以下之一:
+.PP
+unknown
+.RS 4
+所有链接的在线状态未知 (i\&.e\&。没有必需的链接)
+.RE
+.PP
+offline
+.RS 4
+所有必需的链接都处于离线状态
+.RE
+.PP
+partial
+.RS 4
+一些 (但不是全部) 所需的链接在线
+.RE
+.PP
+online
+.RS 4
+所有必需的链接都在线
+.RE
+.sp
+.RE
+.PP
+\fBlldp\fP [\fIPATTERN\&...\fP]
+.RS 4
+显示发现的 LLDP (链路层发现协议) 邻居 \&。如果指定了一个或多个 \fIPATTERN\fPs，则仅显示这些接口上的邻居
+\&。否则显示在所有接口上发现的邻居 \&。请注意，要使此特性起作用，必须为特定接口打开 \fILLDP=\fP，有关详细信息，请参见
+\fBsystemd.network\fP(5)\&。
+.sp
+产生类似于以下的输出:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+链路机箱 ID 系统名称大写端口 ID 端口描述
+enp0s25          00:e0:4c:00:00:00 GS1900           \&.\&.b\&.\&.\&.\&.\&.\&.\&.\&. 2 端口 #2
+
+能力标志:
+o \- 其他; p \- 中继器;  b\-\- 桥梁; w\-WLAN 接入点; r \- 路由器;
+t\-\- 电话; d\-\-DOCSIS 有线设备; 电台; c \- 客户 VLAN;
+s \- 服务 VLAN，m \- 双端口 MAC 中继 (TPMR)
+
+列出 1 个邻居 \&。
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+\fBlabel\fP
+.RS 4
+显示可用于地址选择的数字地址标签 \&。这与 \fBip\-addrlabel\fP(8) 显示 \& 的信息相同。有关地址标签 \& 的讨论，请参见
+\m[blue]\fBRFC 3484\fP\m[]\&\s-2\u[1]\d\s+2。
+.sp
+产生类似于以下的输出:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+Prefix/Prefixlen 标签
+        ::/0                                  1
+    fc00::/7                                  5
+    fec0::/10                                11
+    2002::/16                                 2
+    3ffe::/16                                12
+ 2001:10::/28                                 7
+    2001::/32                                 6
+::ffff:0\&.0\&.0\&.0/96                             4
+        ::/96                                 3
+       ::1/128                                0
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+\fBdelete\fP \fIDEVICE\&...\fP
+.RS 4
+删除虚拟 netdevs\&。采用接口名称或索引号 \&。
+.RE
+.PP
+\fBup\fP \fIDEVICE\&...\fP
+.RS 4
+启动设备 \&。采用接口名称或索引号 \&。
+.RE
+.PP
+\fBdown\fP \fIDEVICE\&...\fP
+.RS 4
+关闭设备 \&。采用接口名称或索引号 \&。
+.RE
+.PP
+\fBrenew\fP \fIDEVICE\&...\fP
+.RS 4
+更新动态配置 e\&.g\&。从 DHCP 服务器接收到的地址 \&。采用接口名称或索引号 \&。
+.RE
+.PP
+\fBforcerenew\fP \fIDEVICE\&...\fP
+.RS 4
+向所有连接的客户端发送 FORCERENEW 消息，触发 DHCP 重新配置 \&。采用接口名称或索引号 \&。
+.RE
+.PP
+\fBreconfigure\fP \fIDEVICE\&...\fP
+.RS 4
+重新配置网络接口 \&。采用接口名称或索引号 \&。请注意，这不会重新加载与指定接口对应的 \&.netdev 或
+\&.network\&。所以，如果您编辑配置文件，有必要先调用 \fBnetworkctl reload\fP 来应用新的设置 \&。
+.RE
+.PP
+\fBreload\fP
+.RS 4
+重新加载 \&.netdev 和 \&.network 文件 \&。如果找到新的 \&.netdev 文件，则创建相应的
+netdev\&。请注意，即使修改或删除了现有的 \&.netdev，\fBsystemd\-networkd\fP 也不会更新或删除
+netdev\&。如果发现一个新的、修改过的或删除的 \&.network 文件，那么匹配该文件的所有接口都会被重新配置 \&。
+.RE
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-a\fP \fB\-\-all\fP
+.RS 4
+使用 \fBstatus\fP\& 显示所有链接。
+.RE
+.PP
+\fB\-s\fP \fB\-\-stats\fP
+.RS 4
+使用 \fBstatus\fP\& 显示链接统计信息。
+.RE
+.PP
+\fB\-l\fP, \fB\-\-full\fP
+.RS 4
+不要省略输出 \&。
+.RE
+.PP
+\fB\-n\fP, \fB\-\-lines=\fP
+.RS 4
+与 \fBstatus\fP 一起使用时，控制要显示的日志行数，从最近的行开始计算 \&。取一个正整数参数 \&。默认为 10\&。
+.RE
+.PP
+\fB\-\-json=\fP\fIMODE\fP
+.RS 4
+显示格式为 JSON\& 的输出。期望 "short" (用于尽可能短的输出，没有任何冗余空格或换行符)、"pretty"
+(用于相同版本的漂亮版本，带有缩进和换行符) 或 "off" (关闭 JSON 输出，默认值) \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.PP
+\fB\-\-no\-legend\fP
+.RS 4
+不要打印图例，i\&.e\&。带有提示的列标题和页脚 \&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-networkd.service\fP(8), \fBsystemd.network\fP(5), \fBsystemd.netdev\fP(5),
+\fBip\fP(8)
+.SH NOTES
+.IP " 1." 4
+RFC 3484
+.RS 4
+\%https://tools.ietf.org/html/rfc3484
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

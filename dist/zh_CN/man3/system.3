@@ -1,0 +1,156 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\" and Copyright (c) 2014 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 17:51:15 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 11 May 1998 by Joseph S. Myers (jsm28@cam.ac.uk)
+.\" Modified 14 May 2001, 23 Sep 2001 by aeb
+.\" 2004-12-20, mtk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH system 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+system \- 执行 shell 命令
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint system(const char *\fP\fIcommand\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsystem\fP() 库函数的行为就好像它使用 \fBfork\fP(2) 创建一个子进程，该子进程使用 \fBexecl\fP(3) 执行 \fIcommand\fP
+中指定的 shell 命令，如下所示:
+.PP
+.in +4n
+.EX
+execl("/bin/sh", "sh", "\-c", command, (char *) 空) ;
+.EE
+.in
+.PP
+命令完成后 \fBsystem\fP() 返回。
+.PP
+命令执行过程中，\fBSIGCHLD\fP 会被阻塞，\fBSIGINT\fP 和 \fBSIGQUIT\fP 会被忽略，在调用 \fBsystem\fP() 的过程中。
+(这些信号将根据执行 \fIcommand\fP.) 的子进程中的默认值进行处理
+.PP
+如果 \fIcommand\fP 为 NULL，则 \fBsystem\fP() 返回一个状态，指示 shell 在系统上是否可用。
+.SH "RETURN VALUE"
+\fBsystem\fP() 的返回值为以下之一:
+.IP \[bu] 3
+如果 \fIcommand\fP 为 NULL，则如果 shell 可用则为非零值，如果 shell 不可用则为 0。
+.IP \[bu]
+如果无法创建子进程，或者无法检索其状态，则返回值为 \-1 并设置 \fIerrno\fP 以指示错误。
+.IP \[bu]
+如果 shell 无法在子进程中执行，则返回值就好像子进程 shell 通过调用状态为 127 的 \fB_exit\fP(2) 终止一样。
+.IP \[bu]
+如果所有系统调用都成功，则返回值是用于执行 \fIcommand\fP 的子 shell 的终止状态。 (shell
+的终止状态是它执行的最后一个命令的终止状态。)
+.PP
+在最后两种情况下，返回值是 "wait status"，可以使用 \fBwaitpid\fP(2) 中描述的宏进行检查。 (即
+\fBWIFEXITED\fP()、\fBWEXITSTATUS\fP() 等)。
+.PP
+\fBsystem\fP() 不影响任何其他子节点的等待状态。
+.SH ERRORS
+\fBsystem\fP() 可能会因与 \fBfork\fP(2) 相同的任何错误而失败。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsystem\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99.
+.SH NOTES
+\fBsystem\fP() 提供简单和方便: 它处理调用 \fBfork\fP(2)、\fBexecl\fP(3) 和 \fBwaitpid\fP(2)
+的所有细节，以及必要的信号操作; 此外，shell 对 \fIcommand\fP 执行通常的替换和 I/O 重定向。 \fBsystem\fP()
+的主要代价是效率低下: 需要额外的系统调用来创建运行 shell 的进程并执行 shell。
+.PP
+如果定义了 \fB_XOPEN_SOURCE\fP 特性测试宏 (在包含 \fIany\fP 头文件之前)，则在包含 \fI<stdlib.h>\fP
+时可以使用 \fBwaitpid\fP(2) (\fBWEXITSTATUS\fP() 等中描述的宏。
+.PP
+如前所述，\fBsystem\fP() 忽略 \fBSIGINT\fP 和 \fBSIGQUIT\fP。
+这可能会使从循环中调用它的程序不间断，除非他们自己注意检查子节点的退出状态。 例如:
+.PP
+.in +4n
+.EX
+while (something) {
+    int ret = system("foo");
+
+    if (WIFSIGNALED(ret) &&
+        (WTERMSIG(ret) == SIGINT || WTERMSIG(ret) == SIGQUIT))
+            break;
+}
+.EE
+.in
+.PP
+根据 POSIX.1，未指定在 \fBsystem\fP() 执行期间是否调用使用 \fBpthread_atfork\fP(3) 注册的处理程序。 在 glibc
+实现中，不会调用此类处理程序。
+.PP
+在 glibc 2.1.3 之前，如果 \fIcommand\fP 为 NULL，则不会实际执行 \fI/bin/sh\fP 的可用性检查;
+相反，它始终被假定为可用，并且在这种情况下 \fBsystem\fP() 始终返回 1。 自 glibc 2.1.3 以来，执行此检查是因为，即使
+POSIX.1\-2001 需要符合要求的实现来提供 shell，如果调用程序先前调用了 \fBchroot\fP(2) (POSIX 未指定)，则 shell
+可能不可用或可执行。1\-2001)。
+.PP
+.\"
+shell 命令有可能以状态 127 终止，这会产生 \fBsystem\fP() 返回值，这与无法在子进程中执行 shell 的情况没有区别。
+.SS Caveats
+不要从特权程序 (设置用户 ID 或设置组 ID 程序，或具有功能的程序) 中使用
+\fBsystem\fP()，因为某些环境变量的奇怪值可能会被用来破坏系统完整性。 例如，可以操纵 \fBPATH\fP，以便以特权执行任意程序。 请改用函数的
+\fBexec\fP(3) 系列，但不要使用 \fBexeclp\fP(3) 或 \fBexecvp\fP(3) (它们也使用 \fBPATH\fP
+环境变量来搜索可执行文件)。
+.PP
+实际上，在 \fI/bin/sh\fP 是 bash 版本 2 的系统上，\fBsystem\fP() 无法在具有 set\-user\-ID 或
+set\-group\-ID 权限的程序中正常工作: 作为一项安全措施，bash 2 在启动时丢弃权限。 (Debian 使用不同的
+shell，\fBdash\fP(1)，当作为 \fBsh\fP.) 调用时不会这样做
+.PP
+作为 \fIcommand\fP 的一部分使用的任何用户输入都应该经过 \fIcarefully\fP 净化，以确保不会执行意外的 shell 命令或命令选项。
+当从特权程序中使用 \fBsystem\fP() 时，此类风险尤其严重。
+.SH BUGS
+.\" [BUG 211029](https://bugzilla.kernel.org/show_bug.cgi?id=211029)
+.\" [glibc bug](https://sourceware.org/bugzilla/show_bug.cgi?id=27143)
+.\" [POSIX bug](https://www.austingroupbugs.net/view.php?id=1440)
+如果命令名称以连字符开头，\fBsh\fP(1) 会将命令名称解释为选项，并且行为未定义。 (请参见 \fBsh\fP(1).) 的 \fB\-c\fP
+选项要解决此问题，请在命令前加上一个空格，如下调:
+.PP
+.in +4n
+.EX
+    system(" \-unfortunate\-command\-name");
+.EE
+.in
+.SH "SEE ALSO"
+\fBsh\fP(1), \fBexecve\fP(2), \fBfork\fP(2), \fBsigaction\fP(2), \fBsigprocmask\fP(2),
+\fBwait\fP(2), \fBexec\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

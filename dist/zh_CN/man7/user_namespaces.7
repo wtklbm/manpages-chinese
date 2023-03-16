@@ -1,0 +1,855 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2013, 2014 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (c) 2012, 2014 by Eric W. Biederman <ebiederm@xmission.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH user_namespaces 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+user_namespaces\-Linux 用户命名空间概述
+.SH DESCRIPTION
+有关名称空间的概述，请参见 \fBnamespaces\fP(7)。
+.PP
+.\" FIXME: This page says very little about the interaction
+.\" of user namespaces and keys. Add something on this topic.
+.\"
+.\" ============================================================
+.\"
+用户命名空间隔离与安全相关的标识符和属性，特别是用户 ID 和组 ID (参见 \fBcredentials\fP(7))、根目录、密钥 (参见
+\fBkeyrings\fP(7))) 和功能 (参见 \fBcapabilities\fP(7)).  进程的用户 ID 和组 ID 在用户命名空间内外可以不同。
+特别是，一个进程可以在用户命名空间之外拥有普通的非特权用户 ID，同时在命名空间内拥有 0 用户 ID;
+换句话说，该进程对用户命名空间内的操作具有完全特权，但对命名空间外的操作没有特权。
+.SS "Nested namespaces, namespace membership"
+用户命名空间可以嵌套; 也就是说，除初始 ("root") 命名空间外，每个用户命名空间 \[em]
+都有一个父用户命名空间，并且可以有零个或多个子用户命名空间。 父用户命名空间是通过调用带有 \fBCLONE_NEWUSER\fP 标志的
+\fBunshare\fP(2) 或 \fBclone\fP(2) 创建用户命名空间的进程的用户命名空间。
+.PP
+.\" commit 8742f229b635bf1c1c84a3dfe5e47c814c20b5c8
+.\" FIXME Explain the rationale for this limit. (What is the rationale?)
+内核强加 (自 Linux 3.11 起) 用户命名空间的 32 层嵌套限制。 调用 \fBunshare\fP(2) 或 \fBclone\fP(2)
+会导致超出此限制失败，并显示错误 \fBEUSERS\fP。
+.PP
+每个进程都是一个用户命名空间的成员。 通过没有 \fBCLONE_NEWUSER\fP 标志的 \fBfork\fP(2) 或 \fBclone\fP(2)
+创建的进程是与其父进程相同的用户命名空间的成员。 如果单线程进程在该命名空间中有 \fBCAP_SYS_ADMIN\fP，则它可以加入另一个具有
+\fBsetns\fP(2) 的用户命名空间; 这样做之后，它就获得了该命名空间中的一整套功能。
+.PP
+调用带有 \fBCLONE_NEWUSER\fP 标志的 \fBclone\fP(2) 或 \fBunshare\fP(2) 使新的子进程 (对于
+\fBclone\fP(2)) 或调用者 (对于 \fBunshare\fP(2)) 是调用创建的新用户命名空间的成员。
+.PP
+.\"
+.\" ============================================================
+.\"
+\fBNS_GET_PARENT\fP \fBioctl\fP(2) 操作可用于发现用户命名空间之间的父关系; 请参见 \fBioctl_ns\fP(2)。
+.SS Capabilities
+由带有 \fBCLONE_NEWUSER\fP 标志的 \fBclone\fP(2) 创建的子进程以新用户命名空间中的一整套功能开始。 同样，使用
+\fBunshare\fP(2) 创建新用户命名空间或使用 \fBsetns\fP(2) 加入现有用户命名空间的进程会在该命名空间中获得全套功能。
+另一方面，该进程在父进程中没有能力 (对于 \fBclone\fP(2)) 或之前的情况 (对于 \fBunshare\fP(2) 和 \fBsetns\fP(2))
+用户命名空间，即使新命名空间是由 root 用户创建或加入的 (即进程根命名空间中的用户 ID 为 0)。
+.PP
+请注意，调用 \fBexecve\fP(2) 将导致进程的功能以通常的方式重新计算 (请参见 \fBcapabilities\fP(7)).
+因此，除非进程在命名空间中的用户 ID 为 0，或者可执行文件具有非空的可继承功能掩码，否则该进程将失去所有功能。 请参见下面对用户和组 ID
+映射的讨论。
+.PP
+使用 \fBCLONE_NEWUSER\fP 标志对 \fBclone\fP(2) 或 \fBunshare\fP(2) 的调用或对 \fBsetns\fP(2)
+的调用将调用者移动到另一个用户命名空间，在子项 (对于 \fBclone\fP(2)) 或调用者 (对于 \fBunshare\fP(2) 或
+\fBsetns\fP(2))。 请注意，由于调用方在调用 \fBsetns\fP(2) 后不再具有其原始用户命名空间中的功能，因此进程无法通过使用一对
+\fBsetns\fP(2) 调用移动到另一个用户来重置其 "securebits"
+标志，同时保留其用户命名空间成员资格命名空间，然后返回其原始用户命名空间。
+.PP
+确定进程是否具有特定用户命名空间中的能力的规则如下:
+.IP \[bu] 3
+.\" In the 3.8 sources, see security/commoncap.c::cap_capable():
+如果进程是该名称空间的成员并且在其有效能力集中具有能力，则该进程在用户名称空间内具有能力。 流程可以通过多种方式在其有效能力集中获得能力。
+例如，它可以执行设置用户 ID 程序或具有关联文件功能的可执行文件。 此外，如前所述，进程可以通过 \fBclone\fP(2)、\fBunshare\fP(2)
+或 \fBsetns\fP(2) 的影响获得能力。
+.IP \[bu]
+如果进程在用户命名空间中具有功能，那么它在所有子 (以及进一步删除的后代) 命名空间中也具有该功能。
+.IP \[bu]
+.\" * The owner of the user namespace in the parent of the
+.\" * user namespace has all caps.
+.\" (and likewise associates the effective group ID of the creating process
+.\" with the namespace).
+.\" See kernel commit 520d9eabce18edfef76a60b7b839d54facafe1f9 for a fix
+.\" on this point
+.\"     This includes the case where the process executes a set-user-ID
+.\"     program that confers the effective UID of the creator of the namespace.
+.\"
+.\" ============================================================
+.\"
+创建用户命名空间时，内核记录创建进程的有效用户 ID，作为命名空间的 "owner"。 驻留在用户名称空间的父级中且其有效用户 ID
+与名称空间所有者相匹配的进程具有名称空间中的所有功能。 根据前面的规则，这意味着该进程也具有所有进一步删除的后代用户名称空间中的所有功能。
+\fBNS_GET_OWNER_UID\fP \fBioctl\fP(2) 操作可用于发现命名空间所有者的用户 ID; 请参见 \fBioctl_ns\fP(2)。
+.SS "Effect of capabilities within a user namespace"
+在用户命名空间内拥有功能允许进程仅在该命名空间管理的资源上执行操作 (需要特权)。 换句话说，拥有用户命名空间中的功能允许进程对由用户命名空间拥有
+(关联) 的 (nonuser) 命名空间管理的资源执行特权操作 (请参见下一小节)。
+.PP
+另一方面，有许多影响与任何命名空间类型无关的资源的特权操作，例如，更改系统 (即日历) 时间 (由 \fBCAP_SYS_TIME\fP) 控制，加载内核模块
+(由 \fBCAP_SYS_MODULE\fP) 控制，以及创建一个设备 (由 \fBCAP_MKNOD\fP).  只有在 \fIinitial\fP
+用户命名空间中具有特权的进程才能执行此类操作。
+.PP
+.\" fs_flags = FS_USERNS_MOUNT in kernel sources
+在拥有进程挂载命名空间的用户命名空间中持有 \fBCAP_SYS_ADMIN\fP 允许该进程创建绑定挂载并挂载以下类型的文件系统:
+.PP
+.RS 4
+.PD 0
+.IP \[bu] 3
+\fI/proc\fP (自 Linux 3.8)
+.IP \[bu]
+\fI/sys\fP (自 Linux 3.8)
+.IP \[bu]
+\fIdevpts\fP (自 Linux 3.9)
+.IP \[bu]
+\fBtmpfs\fP(5) (自 Linux 3.9)
+.IP \[bu]
+\fIramfs\fP (自 Linux 3.9)
+.IP \[bu]
+\fImqueue\fP (自 Linux 3.9)
+.IP \[bu]
+.\" commit b2197755b2633e164a439682fb05a9b5ea48f706
+\fIbpf\fP (自 Linux 4.4)
+.IP \[bu]
+.\" commit 92dbc9dedccb9759c7f9f2f0ae6242396376988f
+.\" commit 4cb2c00c43b3fe88b32f29df4f76da1b92c33224
+\fIoverlayfs\fP (自 Linux 5.11)
+.PD
+.RE
+.PP
+在拥有进程的 cgroup 命名空间的用户命名空间中保留 \fBCAP_SYS_ADMIN\fP 允许 (自 Linux 4.6 起) 该进程挂载
+cgroup 版本 2 文件系统和 cgroup 版本 1 命名层次结构 (即，使用 \fI"none,name="\fP 选项安装的 cgroup
+文件系统)。
+.PP
+在拥有进程的 PID 命名空间的用户命名空间中保留 \fBCAP_SYS_ADMIN\fP 允许 (自 Linux 3.8 起) 该进程挂载 \fI/proc\fP
+文件系统。
+.PP
+.\"
+.\" ============================================================
+.\"
+但是请注意，安装基于块的文件系统只能由在初始用户命名空间中保存 \fBCAP_SYS_ADMIN\fP 的进程完成。
+.SS "Interaction of user namespaces and other types of namespaces"
+从 Linux 3.8 开始，非特权进程可以创建用户命名空间，其他类型的命名空间只需调用者用户命名空间中的 \fBCAP_SYS_ADMIN\fP
+能力即可创建。
+.PP
+创建非用户命名空间时，它由创建进程在创建命名空间时所属的用户命名空间所有。
+对非用户命名空间管理的资源的特权操作要求进程在拥有非用户命名空间的用户命名空间中具有必要的能力。
+.PP
+如果 \fBCLONE_NEWUSER\fP 与其他 \fBCLONE_NEW*\fP 标志一起指定在单个 \fBclone\fP(2) 或 \fBunshare\fP(2)
+调用中，则保证首先创建用户命名空间，从而为子 (\fBclone\fP(2)) 或调用者 (\fBunshare\fP(2)) 提供对调用创建的其余命名空间的特权。
+因此，非特权调用者可以指定此标志组合。
+.PP
+当通过 \fBclone\fP(2) 或 \fBunshare\fP(2) 创建新的命名空间 (而不是用户命名空间)
+时，内核将创建进程的用户命名空间记录为新命名空间的所有者。 (此关联不可更改。)
+当新命名空间中的进程随后对命名空间隔离的全局资源进行特权操作时，将根据内核关联的用户命名空间中进程的能力进行权限检查新的命名空间。
+例如，假设一个进程试图更改主机名 (\fBsethostname\fP(2))，这是一个由 UTS 名称空间管理的资源。
+在这种情况下，内核将确定哪个用户命名空间拥有进程的 UTS 命名空间，并检查进程是否在该用户命名空间中具有所需的能力
+(\fBCAP_SYS_ADMIN\fP)。
+.PP
+.\"
+.\" ============================================================
+.\"
+\fBNS_GET_USERNS\fP \fBioctl\fP(2) 操作可用于发现拥有非用户命名空间的用户命名空间; 请参见 \fBioctl_ns\fP(2)。
+.SS "User and group ID mappings: uid_map and gid_map"
+.\" commit 22d917d80e842829d0ca0a561967d728eb1d6303
+创建用户命名空间时，它开始时没有将用户 ID (组 ID) 映射到父用户命名空间。 \fI/proc/\fPpid\fI/uid_map\fP 和
+\fI/proc/\fPpid\fI/gid_map\fP 文件 (自 Linux 3.5 起可用) 在进程 \fIpid\fP 的用户命名空间内公开用户和组 ID
+的映射。 可以读取这些文件以查看用户命名空间中的映射，并写入 (once) 以定义映射。
+.PP
+以下段落中的描述解释了 \fIuid_map\fP 的详细信息; \fIgid_map\fP 完全相同，但 "user ID" 的每个实例都被 "group ID"
+替换。
+.PP
+\fIuid_map\fP 文件公开了用户 ID 从进程 \fIpid\fP 的用户命名空间到打开 \fIuid_map\fP 的进程的用户命名空间的映射
+(但请参见下面对这一点的限定)。 换句话说，不同用户命名空间中的进程在读取特定 \fIuid_map\fP
+文件时可能会看到不同的值，具体取决于读取进程的用户命名空间的用户 ID 映射。
+.PP
+\fIuid_map\fP 文件中的每一行都指定了两个用户命名空间之间一系列连续用户 ID 的一对一映射。 (首次创建用户名称空间时，此文件为空。)
+每行中的规范采用三个数字的形式，以空格分隔。 前两个数字指定两个用户名称空间中的每一个中的起始用户 ID。 第三个数字指定映射范围的长度。
+详细地，字段解释如下:
+.IP (1) 5
+进程 \fIpid\fP 的用户命名空间中用户 ID 范围的开始。
+.IP (2)
+用户 ID 范围的开始，用户 ID 由字段一 map 指定。 字段二如何解释取决于打开 \fIuid_map\fP 的进程和 \fIpid\fP
+的进程是否在同一个用户命名空间，如下:
+.RS
+.IP (a) 5
+如果两个进程在不同的用户命名空间中: 字段二是打开 \fIuid_map\fP 的进程的用户命名空间中一系列用户 ID 的开始。
+.IP (b)
+如果两个进程在同一个用户命名空间中: 字段二是进程 \fIpid\fP 的父用户命名空间中用户 ID 范围的开始。 这种情况下启用 \fIuid_map\fP
+的开启者 (这里的常见情况是打开 \fI/proc/self/uid_map\fP) 以查看用户 ID 到创建此用户命名空间的进程的用户命名空间的映射。
+.RE
+.IP (3)
+在两个用户名称空间之间映射的用户 ID 范围的长度。
+.PP
+返回用户 ID (组 ID) 的系统调用，例如 \fBgetuid\fP(2)、\fBgetgid\fP(2)，以及 \fBstat\fP(2)\[em]return
+返回的结构体中的凭证字段，用户 ID (组 ID) 映射到调用者的用户命名空间。
+.PP
+当一个进程访问一个文件时，它的用户和组 ID 被映射到初始用户命名空间，用于创建文件时的权限检查和分配 ID。 当进程通过 \fBstat\fP(2)
+检索文件用户和组 ID 时，ID 映射到相反方向，以生成与进程用户和组 ID 映射相关的值。
+.PP
+初始用户命名空间没有父命名空间，但为了保持一致性，内核为该命名空间提供虚拟用户和组 ID 映射文件。 从初始命名空间中的 shell 查看
+\fIuid_map\fP 文件 (\fIgid_map\fP 是相同的) 显示:
+.PP
+.in +4n
+.EX
+$ \fBcat /proc/$$/uid_map\fP
+         0          0 4294967295
+.EE
+.in
+.PP
+.\"
+.\" ============================================================
+.\"
+这个映射告诉我们，这个命名空间 maps 中从用户 ID 0 开始的范围到 (nonexistent) 父命名空间中从 0
+开始的范围，并且该范围的长度是最大的 32 位无符号整数。 这使 4294967295 (32 位有符号 \-1 值) 未映射。 这是故意的:
+\fI(uid_t)\~\-1\fP 在多个接口中使用 (例如，\fBsetreuid\fP(2)) 作为指定 "no user ID" 的一种方式。 保留
+\fI(uid_t)\~\-1\fP 未映射和不可用可保证在使用这些接口时不会出现混淆。
+.SS "Defining user and group ID mappings: writing to uid_map and gid_map"
+创建新的用户命名空间后，可以将命名空间内进程的 \fIone\fP 的 \fIuid_map\fP 文件写入 \fIonce\fP，定义用户 ID
+在新用户命名空间的映射。 尝试多次写入用户命名空间中的 \fIuid_map\fP 文件失败，并显示错误 \fBEPERM\fP。 类似的规则适用于
+\fIgid_map\fP 文件。
+.PP
+写入 \fIuid_map\fP (\fIgid_map\fP) 的行必须符合以下有效性规则:
+.IP \[bu] 3
+三个字段必须是有效数字，最后一个字段必须大于 0.
+.IP \[bu]
+行以换行符终止。
+.IP \[bu]
+.\" 5*12-byte records could fit in a 64B cache line
+.\" commit 6397fac4915ab3002dc15aae751455da1a852f25
+文件中的行数有限制。 在 Linux 4.14 和更早版本中，此限制是 (arbitrarily) 设置为 5 行。 从 Linux 4.15
+开始，限制为 340 行。 此外，写入文件的字节数必须小于系统页面大小，并且写入必须在文件的开头执行 (即，\fBlseek\fP(2) 和
+\fBpwrite\fP(2) 不能用于写入文件中的非零偏移量) 文件)。
+.IP \[bu]
+.\" commit 0bd14b4fd72afd5df41e9fd59f356740f22fceba
+每行中指定的用户 ID (组 ID) 范围不能与任何其他行中的范围重叠。 在最初的实现 (Linux 3.8)
+中，这个要求通过一个简单的实现来满足，该实现强加了进一步的要求，即连续行的字段 1 和字段 2 中的值必须按数字升序排列，这阻止了一些原本有效的
+maps 创建。 Linux 3.9 和更高版本修复了此限制，允许任何有效的非重叠 maps 集。
+.IP \[bu]
+必须至少将一行写入文件。
+.PP
+违反上述规则的写入失败，并显示错误 \fBEINVAL\fP。
+.PP
+为了让进程写入 \fI/proc/\fPpid\fI/uid_map\fP (\fI/proc/\fPpid\fI/gid_map\fP) 文件，必须满足以下所有权限要求:
+.IP \[bu] 3
+写入进程必须在进程 \fIpid\fP 的用户命名空间中具有 \fBCAP_SETUID\fP (\fBCAP_SETGID\fP) 能力。
+.IP \[bu]
+写入进程必须在进程 \fIpid\fP 的用户命名空间中，或者在进程 \fIpid\fP 的父用户命名空间中。
+.IP \[bu]
+映射的用户 ID (组 ID) 必须依次在父用户命名空间中有一个映射。
+.IP \[bu]
+如果更新 \fI/proc/\fPpid\fI/uid_map\fP 以在父名称空间中创建 maps UID 0 的映射，则必须满足以下条件之一:
+.RS
+.IP (a) 5
+如果写进程在父用户命名空间中，那么它必须在该用户命名空间中具有 \fBCAP_SETFCAP\fP 能力; or
+.IP (b)
+如果写入进程在子用户命名空间中，那么创建用户命名空间的进程在创建命名空间时必须具有 \fBCAP_SETFCAP\fP 能力。
+.RE
+.IP
+.\" commit db2e718a47984b9d71ed890eb2ea36ecf150de18
+此规则自 Linux 5.12 以来一直存在。 它消除了一个早期的安全漏洞，即缺少 \fBCAP_SETFCAP\fP 功能的 UID 0
+进程，这是创建具有命名空间文件功能的二进制文件所必需的 (如 \fBcapabilities\fP(7)) 中所述，仍然可以通过以下步骤创建这样的二进制文件:
+.RS
+.IP (1) 5
+使用标识映射 (即，新用户名称空间 maps 中的 UID 0 到父名称空间中的 UID 0) 创建一个新的用户名称空间，以便两个名称空间中的 UID
+0 等同于相同的根用户 ID。
+.IP (2)
+由于子进程具有 \fBCAP_SETFCAP\fP 功能，它可以创建一个具有命名空间文件功能的二进制文件，然后在父用户命名空间中生效 (因为根用户 ID
+在两个命名空间中相同)。
+.RE
+.IP \[bu]
+以下两种情况之一适用:
+.RS
+.IP (a) 5
+\fIEither\fP 写入进程在 \fIparent\fP 用户命名空间中具有 \fBCAP_SETUID\fP (\fBCAP_SETGID\fP) 能力。
+.RS
+.IP \[bu] 3
+没有进一步的限制: 进程可以映射到父用户命名空间中的任意用户 ID (组 ID)。
+.RE
+.IP (b)
+\fIOr\fP 否则适用以下所有限制:
+.RS
+.IP \[bu] 3
+写入 \fIuid_map\fP (\fIgid_map\fP) 的数据必须包含一行，maps 将父用户命名空间中的写入进程的有效用户 ID (组 ID)
+映射到用户命名空间中的用户 ID (组 ID)。
+.IP \[bu]
+写入进程必须与创建用户命名空间的进程具有相同的有效用户 ID。
+.IP \[bu]
+在 \fIgid_map\fP 的情况下，在写入 \fIgid_map\fP 之前，必须首先通过将 \[dq]\fIdeny\fP\[dq] 写入
+\fI/proc/\fPpid\fI/setgroups\fP 文件 (见下文) 来拒绝使用 \fBsetgroups\fP(2) 系统调用。
+.RE
+.RE
+.PP
+.\"
+.\" ============================================================
+.\"
+违反上述规则的写入失败，并显示错误 \fBEPERM\fP。
+.SS "Project ID mappings: projid_map"
+与用户和组 ID 映射类似，可以为用户命名空间创建项目 ID 映射。 (项目 ID 用于磁盘配额; 请参见 \fBsetquota\fP(8) 和
+\fBquotactl\fP(2).)
+.PP
+.\" commit f76d207a66c3a53defea67e7d36c3eb1b7d6d61d
+项目 ID 映射是通过写入 \fI/proc/\fPpid\fI/projid_map\fP 文件 (自 Linux 3.7 以来存在) 来定义的。
+.PP
+写入 \fI/proc/\fPpid\fI/projid_map\fP 文件的有效性规则与写入 \fIuid_map\fP 文件相同; 违反这些规则会导致
+\fBwrite\fP(2) 失败并显示错误 \fBEINVAL\fP。
+.PP
+写入 \fI/proc/\fPpid\fI/projid_map\fP 文件的权限规则如下:
+.IP \[bu] 3
+写入进程必须在进程 \fIpid\fP 的用户命名空间中，或者在进程 \fIpid\fP 的父用户命名空间中。
+.IP \[bu]
+映射的项目 ID 必须依次在父用户命名空间中具有映射。
+.PP
+.\"
+.\" ============================================================
+.\"
+违反这些规则会导致 \fBwrite\fP(2) 失败并显示错误 \fBEPERM\fP。
+.SS "Interaction with system calls that change process UIDs or GIDs"
+在未写入 \fIuid_map\fP 文件的用户命名空间中，更改用户 ID 的系统调用将失败。 同样，如果没有写入 \fIgid_map\fP 文件，更改组 ID
+的系统调用也会失败。 写入 \fIuid_map\fP 和 \fIgid_map\fP 文件后，只有映射值可以用于更改用户和组 ID 的系统调用。
+.PP
+对于用户 ID，相关的系统调用包括
+\fBsetuid\fP(2)、\fBsetfsuid\fP(2)、\fBsetreuid\fP(2)、\fBsetresuid\fP(2)。 对于组 ID，相关的系统调用包括
+\fBsetgid\fP(2)、\fBsetfsgid\fP(2)、\fBsetregid\fP(2)、\fBsetresgid\fP(2) 和
+\fBsetgroups\fP(2)。
+.PP
+.\" Things changed in Linux 3.19
+.\" commit 9cc46516ddf497ea16e8d7cb986ae03a0f6b92f8
+.\" commit 66d2f338ee4c449396b6f99f5e75cd18eb6df272
+.\" http://lwn.net/Articles/626665/
+.\"
+.\" ============================================================
+.\"
+在写入 \fI/proc/\fPpid\fI/gid_map\fP 之前将 \[dq]\fIdeny\fP\[dq] 写入
+\fI/proc/\fPpid\fI/setgroups\fP 文件将永久禁用用户命名空间中的 \fBsetgroups\fP(2) 并允许写入
+\fI/proc/\fPpid\fI/gid_map\fP 而父用户命名空间中没有 \fBCAP_SETGID\fP 功能。
+.SS "The /proc/\fIpid\fP/setgroups file"
+.\"
+.\" commit 9cc46516ddf497ea16e8d7cb986ae03a0f6b92f8
+.\" commit 66d2f338ee4c449396b6f99f5e75cd18eb6df272
+.\" http://lwn.net/Articles/626665/
+.\" http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-8989
+.\"
+如果允许包含进程 \fIpid\fP 的用户命名空间中的进程使用 \fBsetgroups\fP(2) 系统调用，则
+\fI/proc/\fPpid\fI/setgroups\fP 文件显示字符串 \[dq]\fIallow\fP\[dq]; 如果在该用户命名空间中不允许
+\fBsetgroups\fP(2)，它会显示 \[dq]\fIdeny\fP\[dq]。 请注意，无论 \fI/proc/\fPpid\fI/setgroups\fP
+文件中的值如何 (也无论进程的功能如何)，如果尚未设置 \fI/proc/\fPpid\fI/gid_map\fP，也不允许调用 \fBsetgroups\fP(2)。
+.PP
+特权进程 (在命名空间中具有 \fBCAP_SYS_ADMIN\fP 功能的进程) 可以将字符串 \[dq]\fIallow\fP\[dq] 或
+\[dq]\fIdeny\fP\[dq] 之一写入此文件 \fIbefore\fP，并将此用户命名空间的组 ID 映射写入文件
+\fI/proc/\fPpid\fI/gid_map\fP。 写入字符串 \[dq]\fIdeny\fP\[dq] 会阻止用户命名空间中的任何进程使用
+\fBsetgroups\fP(2)。
+.PP
+前段所述的限制的实质是只允许写入 \fI/proc/\fPpid\fI/setgroups\fP，因为 \fI/proc/\fPpid\fI/gid_map\fP
+没有设置，所以不允许调用 \fBsetgroups\fP(2)。 这确保进程无法从允许 \fBsetgroups\fP(2) 的状态转换到拒绝
+\fBsetgroups\fP(2) 的状态; 进程只能从不允许的 \fBsetgroups\fP(2) 过渡到允许的 \fBsetgroups\fP(2)。
+.PP
+该文件在初始用户命名空间中的默认值为 \[dq]\fIallow\fP\[dq]。
+.PP
+一旦写入 \fI/proc/\fPpid\fI/gid_map\fP (具有在用户命名空间中启用 \fBsetgroups\fP(2) 的效果)，就无法再通过将
+\[dq]\fIdeny\fP\[dq] 写入 \fI/proc/\fPpid\fI/setgroups\fP 来禁止 \fBsetgroups\fP(2)
+(写入失败并显示错误 \fBEPERM\fP)。
+.PP
+子用户命名空间从其父命名空间继承 \fI/proc/\fPpid\fI/setgroups\fP 设置。
+.PP
+如果 \fIsetgroups\fP 文件的值为 \[dq]\fIdeny\fP\[dq]，则随后无法在此用户命名空间中重新启用 \fBsetgroups\fP(2)
+系统调用 (通过将 \[dq]\fIallow\fP\[dq] 写入文件)。 (尝试这样做失败并出现错误 \fBEPERM\fP.)
+此限制还会向下传播到此用户命名空间的所有子用户命名空间。
+.PP
+.\"
+.\" /proc/PID/setgroups
+.\"	[allow == setgroups() is allowed, "deny" == setgroups() is disallowed]
+.\"	* Can write if have CAP_SYS_ADMIN in NS
+.\"	* Must write BEFORE writing to /proc/PID/gid_map
+.\"
+.\" setgroups()
+.\"	* Must already have written to gid_map
+.\"	* /proc/PID/setgroups must be "allow"
+.\"
+.\" /proc/PID/gid_map -- writing
+.\"	* Must already have written "deny" to /proc/PID/setgroups
+.\"
+.\" ============================================================
+.\"
+\fI/proc/\fPpid\fI/setgroups\fP 文件被添加到 Linux 3.19
+中，但被反向移植到许多早期的稳定内核系列，因为它解决了一个安全问题。 该问题涉及具有 "rwx\-\-\-rwx" 等权限的文件。 此类文件对 "group"
+的权限少于对 "other" 的权限。 这意味着使用 \fBsetgroups\fP(2) 的丢弃组可能允许它以前没有的进程文件访问权限。
+在用户名称空间存在之前，这不是一个问题，因为只有特权进程 (具有 \fBCAP_SETGID\fP 功能的进程) 才能调用 \fBsetgroups\fP(2)。
+但是，随着用户命名空间的引入，非特权进程可以创建一个用户拥有所有特权的新命名空间。
+然后，这允许以前没有特权的用户丢弃组，从而获得他们以前没有的文件访问权限。 添加 \fI/proc/\fPpid\fI/setgroups\fP
+文件是为了解决此安全问题，它拒绝任何非特权进程通过 \fBsetgroups\fP(2) 丢弃组的路径。
+.SS "Unmapped user and group IDs"
+.\" from_kuid_munged(), from_kgid_munged()
+在很多地方，未映射的用户 ID (组 ID) 可能会暴露给用户空间。 例如，在为命名空间定义用户 ID 映射之前，新用户命名空间中的第一个进程可能调用
+\fBgetuid\fP(2)。 在大多数此类情况下，未映射的用户 ID 会转换为溢出用户 ID (组 ID) ; 溢出用户 ID (组 ID) 的默认值为
+65534。 请参见 \fBproc\fP(5) 中 \fI/proc/sys/kernel/overflowuid\fP 和
+\fI/proc/sys/kernel/overflowgid\fP 的说明。
+.PP
+.\" also SO_PEERCRED
+以这种方式映射未映射 ID 的情况包括返回用户 ID (\fBgetuid\fP(2)、\fBgetgid\fP(2) 等的系统调用)、通过 UNIX
+域套接字传递的凭据、由 \fBstat\fP(2)、\fBwaitid\fP(2) 和 System V IPC "ctl" \fBIPC_STAT\fP
+操作返回的凭据、凭据由 \fI/proc/\fPpid\fI/status\fP 和 \fI/proc/sysvipc/*\fP 中的文件公开，通过
+\fIsiginfo_t\fP 中的 \fIsi_uid\fP 字段返回的凭据与信号一起接收 (请参见 \fBsigaction\fP(2))，写入进程记帐文件的凭据
+(请参见 \fBacct\fP(5)))，以及随 POSIX 消息队列通知返回的凭据 (请参见 \fBmq_notify\fP(3)).
+.PP
+.\" from_kuid(), from_kgid()
+.\" Also F_GETOWNER_UIDS is an exception
+.\"
+.\" ============================================================
+.\"
+有一种值得注意的情况，未映射的用户和组 ID 被 \fInot\fP 转换为相应的溢出 ID 值。 查看第二个字段没有映射的 \fIuid_map\fP 或
+\fIgid_map\fP 文件时，该字段显示为 4294967295 (\-1 为无符号整数)。
+.SS "Accessing files"
+.\"
+.\" ============================================================
+.\"
+为了在非特权进程访问文件时确定权限，进程凭证 (UID、GID)
+和文件凭证实际上被映射回它们在初始用户命名空间中的内容，然后进行比较以确定进程的权限有文件。 其他使用凭据加权限掩码可访问性模型的对象也是如此，例如
+System V IPC 对象。
+.SS "Operation of file\-related capabilities"
+某些功能允许进程在对其他用户或组拥有所有权的文件执行操作时绕过各种内核强制限制。 这些功能是:
+\fBCAP_CHOWN\fP、\fBCAP_DAC_OVERRIDE\fP、\fBCAP_DAC_READ_SEARCH\fP、\fBCAP_FOWNER\fP 和
+\fBCAP_FSETID\fP。
+.PP
+在用户命名空间内，如果进程对文件具有相关能力，这些能力允许进程绕过规则，这意味着:
+.IP \[bu] 3
+该进程在其用户命名空间中具有相关的有效能力; and
+.IP \[bu]
+文件的用户 ID 和组 ID 在用户命名空间中都有有效的映射。
+.PP
+.\" These are the checks performed by the kernel function
+.\" inode_owner_or_capable(). There is one exception to the exception:
+.\" overriding the directory sticky permission bit requires that
+.\" the file has a valid mapping for both its UID and GID.
+.\"
+.\" ============================================================
+.\"
+\fBCAP_FOWNER\fP 功能的处理有些特殊: 它允许进程绕过相应的规则，只要文件的用户 ID 至少在用户名称空间中具有映射 (即，文件的组 ID
+不需要具有有效映射)。
+.SS "Set\-user\-ID and set\-group\-ID programs"
+.\"
+.\" ============================================================
+.\"
+当用户命名空间内的进程执行 set\-user\-ID (set\-group\-ID) 程序时，该进程在命名空间内的有效用户 (group) ID
+将更改为为文件的用户 (group) ID 映射的任何值。 但是，如果用户 \fIor\fP 文件的组 ID 在命名空间内没有映射，则 set\-user\-ID
+(set\-group\-ID) 位将被静默忽略: 执行新程序，但进程的有效用户 (group) ID 保持不变。 (这反映了执行驻留在使用
+\fBMS_NOSUID\fP 标志挂载的文件系统上的 set\-user\-ID 或 set\-group\-ID 程序的语义，如 \fBmount\fP(2).)
+中所述
+.SS Miscellaneous
+.\"
+当进程的用户和组 ID 通过 UNIX 域套接字传递到不同用户命名空间中的进程时 (请参见 \fBunix\fP(7)) 中
+\fBSCM_CREDENTIALS\fP 的描述)，它们将根据接收进程的用户和组 ID 映射转换为相应的值。
+.SH STANDARDS
+.\"
+命名空间是 Linux 特有的，特性。
+.SH NOTES
+.\"
+.\" ============================================================
+.\"
+多年来，Linux 内核中添加了许多特性这些特性仅供特权用户使用，因为它们可能会混淆 set\-user\-ID\-root 应用程序。
+通常，允许用户命名空间中的 root 用户使用这些特性是安全的，因为在用户命名空间中，不可能获得比用户命名空间的 root 用户更多的权限。
+.SS "Global root"
+.\"
+.\" ============================================================
+.\"
+术语 "global root" 有时用作初始用户命名空间中用户 ID 0 的简写。
+.SS Availability
+使用用户名称空间需要使用 \fBCONFIG_USER_NS\fP 选项配置的内核。 用户命名空间需要内核中一系列子系统的支持。
+当一个不受支持的子系统配置到内核中时，就不可能配置用户名称空间支持。
+.PP
+.\" commit d6970d4b726cea6d7a9bc4120814f95c09571fc3
+.\"
+与 Linux 3.8 一样，大多数相关子系统都支持用户命名空间，但是许多文件系统没有在用户命名空间之间 map 用户和组 ID 所需的基础设施。
+Linux 3.9 为许多剩余的不受支持的文件系统 (Plan 9 (9P)、Andrew File System
+(AFS)、Ceph、CIFS、CODA、NFS 和 OCFS2) 添加了所需的基础设施支持。 Linux 3.12
+添加了对最后一个不受支持的主要文件系统 XFS 的支持。
+.SH EXAMPLES
+下面的程序旨在允许试验用户命名空间以及其他类型的命名空间。 它创建由命令行选项指定的命名空间，然后在这些命名空间内执行命令。 程序里面的注释和
+\fIusage\fP() 函数提供了程序的完整解释。 下面的 shell 会话演示了它的用法。
+.PP
+首先，我们看一下运行时环境:
+.PP
+.in +4n
+.EX
+$ \fBuname \-rs\fP     # 需要 Linux 3.8 或更高版本
+Linux 3.8.0
+$ \fBid \-u\fP         # 以非特权用户身份运行
+1000
+$ \fBid \-u\fP         # 以非特权用户身份运行
+1000
+.EE
+.in
+.PP
+现在在新用户 (\fI\-U\fP)、挂载 (\fI\-m\fP) 和 PID (\fI\-p\fP) 命名空间中启动一个新的 shell，用户 ID (\fI\-M\fP) 和组
+ID (\fI\-G\fP) 1000 映射到用户命名空间内的 0:
+.PP
+.in +4n
+.EX
+$ \fB./userns_child_exec \-p \-m \-U \-M \[aq]0 1000 1\[aq] \-G \[aq]0 1000 1\[aq] bash\fP
+.EE
+.in
+.PP
+shell 的 PID 为 1，因为它是新 PID 命名空间中的第一个进程:
+.PP
+.in +4n
+.EX
+庆典 $ \fBecho $$\fP
+1
+.EE
+.in
+.PP
+挂载新的 \fI/proc\fP 文件系统并列出新 PID 命名空间中可见的所有进程表明 shell 看不到 PID 命名空间之外的任何进程:
+.PP
+.in +4n
+.EX
+庆典 $ \fBmount \-t proc proc /proc\fP
+庆典 $ \fBps ax\fP
+  PID TTY 状态时间命令
+    1 pts/3 S 0:00 狂欢
+   22 pts/3 R+ 0:00 皮秒轴
+.EE
+.in
+.PP
+在用户命名空间内，shell 具有用户和组 ID 0，以及一整套允许和有效的功能:
+.PP
+.in +4n
+.EX
+庆典 $ \fBcat /proc/$$/status | egrep \[aq]\[ha][UG]id\[aq]\fP
+Uid:	0	0	0	0
+Gid:	0	0	0	0
+庆典 $ \fBcat /proc/$$/status | egrep \[aq]\[ha]Cap(Prm|Inh|Eff)\[aq]\fP
+CapInh:	0000000000000000
+CapPrm:	0000001fffffffff
+CapEff:	0000001fffffffff
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+/* userns_child_exec.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可
+
+   在 new 中创建一个执行 shell 命令的子进程
+   namespace(s); 允许在以下情况下指定 UID 和 GID 映射
+   创建用户命名空间。
+*/
+#define _GNU_SOURCE
+#include <err.h>
+#include <sched.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <limits.h>
+#include <errno.h>
+
+struct child_args {
+    char **argv;        /* Command to be executed by child, with args */
+    int    pipe_fd[2];  /* Pipe used to synchronize parent and child */
+};
+
+static int verbose;
+
+static void
+usage(char *pname)
+{
+    fprintf(stderr, "Usage: %s [options] cmd [arg...]\en\en", pname);
+    fprintf(stderr, "Create a child process that executes a shell "
+            "command in a new user namespace,\en"
+            ` 可能还有其他新的 namespace(s).\en\en");
+    fprintf(stderr, "Options can be:\en\en");
+#define fpe(str) fprintf(stderr, "    %s", str);
+    fpe("\-i          New IPC namespace\en");
+    fpe("\-m          New mount namespace\en");
+    fpe("\-n          New network namespace\en");
+    fpe("\-p          New PID namespace\en");
+    fpe("\-u          New UTS namespace\en");
+    fpe("\-U          New user namespace\en");
+    fpe("\-M uid_map  Specify UID map for user namespace\en");
+    fpe("\-G gid_map  Specify GID map for user namespace\en");
+    fpe("\-z          Map user\[aq]s UID and GID to 0 in user namespace\en");
+    fpe ("(相当于: \-M\[aq] 0 <uid> 1\[aq] \-G\[aq] 0 <gid> 1\[aq])\en");
+    fpe("\-v          Display verbose messages\en");
+    fpe("\en");
+    fpe("If \-z, \-M, or \-G is specified, \-U is required.\en");
+    fpe("It is not permitted to specify both \-z and either \-M or \-G.\en");
+    fpe("\en");
+    fpe("Map strings for \-M and \-G consist of records of the form:\en");
+    fpe("\en");
+    fpe("    ID\-inside\-ns   ID\-outside\-ns   len\en");
+    fpe("\en");
+    fpe ("一个 map 字符串可以包含多条记录，分开"
+        "用逗号;\en");
+    fpe ("逗号在写入之前被换行符替换"
+        "到 map 文件。\en");
+
+    exit(EXIT_FAILURE);
+}
+
+/* Update the mapping file \[aq]map_file\[aq], with the value provided in
+   \[aq]mapping\[aq], a string that defines a UID or GID mapping. A UID or
+   GID mapping consists of one or more newline\-delimited records
+   of the form:
+
+       ID_inside\-ns ID\-outside\-ns 长度
+
+   要求用户提供包含换行符的字符串是
+   当然命令行使用不方便。因此，我们允许
+   使用逗号分隔此字符串中的记录，并替换它们
+   在将字符串写入文件之前使用换行符。*/
+
+static void
+update_map(char *mapping, char *map_file)
+{
+    int fd;
+    size_t map_len;     /* Length of \[aq]mapping\[aq] */
+
+    /* Replace commas in mapping string with newlines. */
+
+    map_len = strlen(mapping);
+    for (size_t j = 0; j < map_len; j++)
+        if (mapping[j] == \[aq],\[aq])
+            mapping[j] = \[aq]\en\[aq];
+
+    fd = open(map_file, O_RDWR);
+    if (fd == \-1) {
+        fprintf(stderr, "ERROR: open %s: %s\en", map_file,
+                strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (write(fd, mapping, map_len) != map_len) {
+        fprintf(stderr, "ERROR: write %s: %s\en", map_file,
+                strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    close(fd);
+}
+
+/* Linux 3.19 made a change in the handling of setgroups(2) and the
+   \[aq]gid_map\[aq] file to address a security issue.  The issue allowed
+   *unprivileged* users to employ user namespaces in order to drop groups.
+   The upshot of the 3.19 changes is that in order to update the
+   \[aq]gid_maps\[aq] file, use of the setgroups() system call in this
+   user namespace must first be disabled by writing "deny" to one of
+   the /proc/PID/setgroups files for this namespace.  That is the
+   purpose of the following function. */
+
+static void
+proc_setgroups_write(pid_t child_pid, char *str)
+{
+    char setgroups_path[PATH_MAX];
+    int fd;
+
+    snprintf(setgroups_path, PATH_MAX, "/proc/%jd/setgroups",
+            (intmax_t) child_pid);
+
+    fd = open(setgroups_path, O_RDWR);
+    if (fd == \-1) {
+
+        /* 我们可能在一个不支持 \[aq] 的系统上
+           /proc/PID/setgroups. 在那种情况下，文件将不存在，
+           并且系统不会 \[aq] 施加限制 Linux 3.19
+           added.  那 \[aq] 很好: 我们不需要 \[aq] 做任何事
+           允许更新 \[aq] gid_map\[aq]。
+
+           但是，如果来自 open() 的错误不是
+           该情况下预期的 ENOENT 错误，让
+           用户知道。*/
+
+        if (errno != ENOENT)
+            fprintf(stderr, "ERROR: open %s: %s\en", setgroups_path,
+                strerror(errno));
+        return;
+    }
+
+    if (write(fd, str, strlen(str)) == \-1)
+        fprintf(stderr, "ERROR: write %s: %s\en", setgroups_path,
+            strerror(errno));
+
+    close(fd);
+}
+
+static int              /* Start function for cloned child */
+childFunc(void *arg)
+{
+    struct child_args *args = arg;
+    char ch;
+
+    /* Wait until the parent has updated the UID and GID mappings.
+       See the comment in main(). We wait for end of file on a
+       pipe that will be closed by the parent process once it has
+       updated the mappings. */
+
+    close(args\->pipe_fd[1]);    /* 关闭我们的写描述符
+                                   管道的末端，以便我们看到 EOF
+                                   当父母关闭其描述符时。*/
+    if (read(args\->pipe_fd[0], &ch, 1) != 0) {
+        fprintf(stderr,
+                ` 子节点失败: 从返回的管道中读取! = 0\en") ;
+        exit(EXIT_FAILURE);
+    }
+
+    close(args\->pipe_fd[0]);
+
+    /* Execute a shell command. */
+
+    printf("About to exec %s\en", args\->argv[0]);
+    execvp(args\->argv[0], args\->argv);
+    err(EXIT_FAILURE, "execvp");
+}
+
+#define STACK_SIZE (1024 * 1024)
+
+static char child_stack[STACK_SIZE];     /* Space for child\[aq]s stack */
+
+int
+main(int argc, char *argv[])
+{
+    int flags, opt, map_zero;
+    pid_t child_pid;
+    struct child_args args;
+    char *uid_map, *gid_map;
+    const int MAP_BUF_SIZE = 100;
+    char map_buf[MAP_BUF_SIZE];
+    char map_path[PATH_MAX];
+
+    /* Parse command\-line options. The initial \[aq]+\[aq] character in
+       the final getopt() argument prevents GNU\-style permutation
+       of command\-line options. That\[aq]s useful, since sometimes
+       the \[aq]command\[aq] to be executed by this program itself
+       has command\-line options. We don\[aq]t want getopt() to treat
+       those as options to this program. */
+
+    flags = 0;
+    verbose = 0;
+    gid_map = NULL;
+    uid_map = NULL;
+    map_zero = 0;
+    while ((opt = getopt(argc, argv, "+imnpuUM:G:zv")) != \-1) {
+        switch (opt) {
+        case \[aq]i\[aq]: flags |= CLONE_NEWIPC;        break;
+        case \[aq]m\[aq]: flags |= CLONE_NEWNS;         break;
+        case \[aq]n\[aq]: flags |= CLONE_NEWNET;        break;
+        case \[aq]p\[aq]: flags |= CLONE_NEWPID;        break;
+        case \[aq]u\[aq]: flags |= CLONE_NEWUTS;        break;
+        case \[aq]v\[aq]: verbose = 1;                  break;
+        case \[aq]z\[aq]: map_zero = 1;                 break;
+        case \[aq]M\[aq]: uid_map = optarg;             break;
+        case \[aq]G\[aq]: gid_map = optarg;             break;
+        case \[aq]U\[aq]: flags |= CLONE_NEWUSER;       break;
+        default:  usage(argv[0]);
+        }
+    }
+
+    /* \-M or \-G without \-U is nonsensical */
+
+    if (((uid_map != NULL || gid_map != NULL || map_zero) &&
+                !(flags & CLONE_NEWUSER)) ||
+            (map_zero && (uid_map != NULL || gid_map != NULL)))
+        usage(argv[0]);
+
+    args.argv = &argv[optind];
+
+    /* We use a pipe to synchronize the parent and child, in order to
+       ensure that the parent sets the UID and GID maps before the child
+       calls execve(). This ensures that the child maintains its
+       capabilities during the execve() in the common case where we
+       want to map the child\[aq]s effective user ID to 0 in the new user
+       namespace. Without this synchronization, the child would lose
+       its capabilities if it performed an execve() with nonzero
+       user IDs (see the capabilities(7) man page for details of the
+       transformation of a process\[aq]s capabilities during execve()). */
+
+    if (pipe(args.pipe_fd) == \-1)
+        err(EXIT_FAILURE, "pipe");
+
+    /* Create the child in new namespace(s). */
+
+    child_pid = clone(childFunc, child_stack + STACK_SIZE,
+                      flags | SIGCHLD, &args);
+    if (child_pid == \-1)
+        err(EXIT_FAILURE, "clone");
+
+    /* Parent falls through to here. */
+
+    if (verbose)
+        printf("%s: PID of child created by clone() is %jd\en",
+                argv[0], (intmax_t) child_pid);
+
+    /* Update the UID and GID maps in the child. */
+
+    if (uid_map != NULL || map_zero) {
+        snprintf(map_path, PATH_MAX, "/proc/%jd/uid_map",
+                (intmax_t) child_pid);
+        if (map_zero) {
+            snprintf(map_buf, MAP_BUF_SIZE, "0 %jd 1",
+                    (intmax_t) getuid());
+            uid_map = map_buf;
+        }
+        update_map(uid_map, map_path);
+    }
+
+    if (gid_map != NULL || map_zero) {
+        proc_setgroups_write(child_pid, "deny");
+
+        snprintf(map_path, PATH_MAX, "/proc/%jd/gid_map",
+                (intmax_t) child_pid);
+        if (map_zero) {
+            snprintf(map_buf, MAP_BUF_SIZE, "0 %ld 1",
+                    (intmax_t) getgid());
+            gid_map = map_buf;
+        }
+        update_map(gid_map, map_path);
+    }
+
+    /* Close the write end of the pipe, to signal to the child that we
+       have updated the UID and GID maps. */
+
+    close(args.pipe_fd[1]);
+
+    if (waitpid(child_pid, NULL, 0) == \-1)      /* Wait for child */
+        err(EXIT_FAILURE, "waitpid");
+
+    if (verbose)
+        printf("%s: terminating\en", argv[0]);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+.\" From the shadow package
+.\" From the shadow package
+.\" From the shadow package
+.\" From the shadow package
+\fBnewgidmap\fP(1), \fBnewuidmap\fP(1), \fBclone\fP(2), \fBptrace\fP(2), \fBsetns\fP(2),
+\fBunshare\fP(2), \fBproc\fP(5), \fBsubgid\fP(5), \fBsubuid\fP(5), \fBcapabilities\fP(7),
+\fBcgroup_namespaces\fP(7), \fBcredentials\fP(7), \fBnamespaces\fP(7),
+\fBpid_namespaces\fP(7)
+.PP
+内核源文件 \fIDocumentation/admin\-guide/namespaces/resource\-control.rst\fP.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

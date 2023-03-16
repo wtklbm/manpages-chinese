@@ -1,0 +1,839 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH REPART\&.D 5 "" "systemd 253" repart.d
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+repart.d \- 用于自动引导时重新分区的分区定义文件
+.SH SYNOPSIS
+.PP
+.nf
+/etc/repart\&.d/*\&.conf
+/run/repart\&.d/*\&.conf
+/usr/lib/repart\&.d/*\&.conf
+    
+.fi
+.SH DESCRIPTION
+.PP
+repart\&.d/*\&.conf 文件描述了本地系统块设备分区的基本属性
+\&。它们可用于声明应存在的分区的类型、名称和大小。\fBsystemd\-repart\fP(8)
+服务读取这些文件并尝试根据这些定义添加当前缺失的新分区并扩大现有分区
+\&。操作一般是增量式的，i\&.e\&。应用时，已经存在的内容将保持不变，并且分区永远不会缩小、移动或删除 \&。
+.PP
+这些定义文件对于实现操作系统映像非常有用，这些操作系统映像是用最小尺寸的映像 (例如缺少任何状态或交换分区)
+准备和交付的，并且在第一次启动时会按照一些基本规则自动占用任何剩余的磁盘空间 \&.
+.PP
+目前，分区定义文件的支持仅针对 GPT 分区表实现。
+.PP
+分区文件通常以一种简单的算法与磁盘上已存在的任何分区进行匹配: 分区文件按文件名排序 (忽略目录前缀)，然后按顺序与匹配相同分区类型 UUID\&
+的现有分区进行比较。具体来说，第一个存在的特定分区类型 UUID 的分区分配第一个相同分区类型 UUID 的定义文件，第二个存在特定类型 UUID
+的分区分配第二个相同类型 UUID 的分区文件，以此类推 \&. 假定没有匹配的现有分区的任何剩余分区文件定义应创建的新分区
+\&。这样的分区被追加到分区表的末尾，按照它们的名称定义的顺序使用第一个分区槽大于当前使用的最高槽号 \&。任何没有匹配分区文件的现有分区将保留原样
+\&。
+.PP
+请注意，这些定义只能用于创建和初始化新分区或扩展现有分区 \&。然而，在后一种情况下，它不会增加包含的文件系统; 可以使用单独的机制，例如
+\fBsystemd\-growfs\fP(8) 来增加这些分区内的文件系统。分区也可以通过 \fIGrowFileSystem=\fP
+设置标记为自动增长，在这种情况下，文件系统在首次安装时由尊重此标志的工具增长 \&。详情见下文 \&。
+.SH "[PARTITION] SECTION OPTIONS"
+.PP
+\fIType=\fP
+.RS 4
+要匹配的 GPT 分区类型 UUID\&。这可能是一个 GPT 分区类型的 UUID，例如
+\fB4f68bce3\-e8cd\-4db1\-96e7\-fbcaf984b709\fP，或者一个标识符 \&。特定于架构的分区类型可以使用以下架构标识符之一:
+\fBalpha\fP、\fBarc\fP、\fBarm\fP、(32bit)、\fBarm64\fP (64 位，又名
+aarch64)、\fBia64\fP、\fBloongarch64\fP、\fBmips\-le\fP、\fBmips64\-le\fP、\fBparisc\fP、\fBppc\fP、\fBppc64\fP、\fBppc64\-le\fP、\fBriscv32\fP、\fBriscv64\fP、\fBs390\fP、\fBs390x\fP,
+\fBtilegx\fP, \fBx86\fP (32bit, aka i386) and \fBx86\-64\fP (64bit, aka
+amd64)\&. 支持的标识符是:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&GPT partition type identifiers\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Identifier
+T}:T{
+Explanation
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+\fBesp\fP
+T}:T{
+EFI System Partition
+T}
+T{
+\fBxbootldr\fP
+T}:T{
+Extended Boot Loader Partition
+T}
+T{
+\fBswap\fP
+T}:T{
+Swap partition
+T}
+T{
+\fBhome\fP
+T}:T{
+Home (/home/) partition
+T}
+T{
+\fBsrv\fP
+T}:T{
+Server data (/srv/) partition
+T}
+T{
+\fBvar\fP
+T}:T{
+Variable data (/var/) partition
+T}
+T{
+\fBtmp\fP
+T}:T{
+Temporary data (/var/tmp/) partition
+T}
+T{
+\fBlinux\-generic\fP
+T}:T{
+Generic Linux file system partition
+T}
+T{
+\fBroot\fP
+T}:T{
+Root file system partition type appropriate for the local architecture (an alias for an architecture root file system partition type listed below, e\&.g\&. \fBroot\-x86\-64\fP)
+T}
+T{
+\fBroot\-verity\fP
+T}:T{
+Verity data for the root file system partition for the local architecture
+T}
+T{
+\fBroot\-verity\-sig\fP
+T}:T{
+Verity signature data for the root file system partition for the local architecture
+T}
+T{
+\fBroot\-secondary\fP
+T}:T{
+Root file system partition of the secondary architecture of the local architecture (usually the matching 32bit architecture for the local 64bit architecture)
+T}
+T{
+\fBroot\-secondary\-verity\fP
+T}:T{
+Verity data for the root file system partition of the secondary architecture
+T}
+T{
+\fBroot\-secondary\-verity\-sig\fP
+T}:T{
+Verity signature data for the root file system partition of the secondary architecture
+T}
+T{
+\fBroot\-{arch}\fP
+T}:T{
+Root file system partition of the given architecture (such as \fBroot\-x86\-64\fP or \fBroot\-riscv64\fP)
+T}
+T{
+\fBroot\-{arch}\-verity\fP
+T}:T{
+Verity data for the root file system partition of the given architecture
+T}
+T{
+\fBroot\-{arch}\-verity\-sig\fP
+T}:T{
+Verity signature data for the root file system partition of the given architecture
+T}
+T{
+\fBusr\fP
+T}:T{
+/usr/ file system partition type appropriate for the local architecture (an alias for an architecture /usr/ file system partition type listed below, e\&.g\&. \fBusr\-x86\-64\fP)
+T}
+T{
+\fBusr\-verity\fP
+T}:T{
+Verity data for the /usr/ file system partition for the local architecture
+T}
+T{
+\fBusr\-verity\-sig\fP
+T}:T{
+Verity signature data for the /usr/ file system partition for the local architecture
+T}
+T{
+\fBusr\-secondary\fP
+T}:T{
+/usr/ file system partition of the secondary architecture of the local architecture (usually the matching 32bit architecture for the local 64bit architecture)
+T}
+T{
+\fBusr\-secondary\-verity\fP
+T}:T{
+Verity data for the /usr/ file system partition of the secondary architecture
+T}
+T{
+\fBusr\-secondary\-verity\-sig\fP
+T}:T{
+Verity signature data for the /usr/ file system partition of the secondary architecture
+T}
+T{
+\fBusr\-{arch}\fP
+T}:T{
+/usr/ file system partition of the given architecture
+T}
+T{
+\fBusr\-{arch}\-verity\fP
+T}:T{
+Verity data for the /usr/ file system partition of the given architecture
+T}
+T{
+\fBusr\-{arch}\-verity\-sig\fP
+T}:T{
+Verity signature data for the /usr/ file system partition of the given architecture
+T}
+.TE
+.sp 1
+此设置默认为 \fBlinux\-generic\fP\&。
+.sp
+上面列出的大多数分区类型 UUID 都在 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2\& 中定义。
+.RE
+.PP
+\fILabel=\fP
+.RS 4
+如果尚未分配，则分配给分区的文本标签 \&。请注意，此设置不用于匹配
+\&。当已经为现有分区设置标签时也不会使用它。因此，它仅在新创建分区或现有分区没有标签集 (即: 空标签) \&
+时使用。如果未指定，将自动使用派生自分区类型的标签 \&。支持简单说明符扩展，见下文 \&。
+.RE
+.PP
+\fIUUID=\fP
+.RS 4
+如果尚未分配，则分配给分区的 UUID\&。请注意，此设置不用于匹配 \&。当已为现有分区设置 UUID
+时也不会使用它。因此，它仅在新创建分区或现有分区的 UUID 设置为全零时使用 \&。如果设置为 "null"，UUID 将设置为全零
+\&。如果未指定，将自动使用从分区类型派生的 UUID\&。
+.RE
+.PP
+\fIPriority=\fP
+.RS 4
+分配给此分区的数字优先级，在 \-2147483648\&...2147483647 范围内，值越小表示优先级越高，值越高表示优先级越小
+\&。如果已定义分区的配置大小限制不允许将所有分区都放入可用磁盘空间，则使用此优先级。如果分区不适合，则确定所有已定义分区的最高数字分区优先级，并将具有此优先级的所有已定义分区从要创建的新分区列表中删除
+(如果相同优先级用于多个分区，则可能是多个分区) 分区) \&。然后再次尝试拟合算法
+\&。如果分区仍然不适合，则确定现在最高数字分区优先级，并删除匹配的分区，依此类推 \&。永远不会删除优先级为 0 或更低的分区。如果优先级高于 0
+的所有分区都被删除并且分区仍然不适合设备，则操作失败 \&。请注意，此优先级对分区排序没有影响，因为使用分区定义文件的文件名的字母顺序 \&。默认为
+0\&。
+.RE
+.PP
+\fIWeight=\fP
+.RS 4
+在 0\&...1000000\& 范围内分配给此分区的数字权重。可用磁盘空间根据它们的相对权重分配给定义的分区 (受
+\fISizeMinBytes=\fP、\fISizeMaxBytes=\fP) 配置的大小限制，因此权重为 2000 的分区获得的空间是权重 1000
+的两倍，权重为 333 的分区为三分之一那 \&。默认为 1000\&。
+.sp
+\fIWeight=\fP 设置用于根据磁盘大小和现有分区以 "elastic" 方式分配可用磁盘空间。如果分区应具有固定大小，则使用具有相同值的
+\fISizeMinBytes=\fP 和 \fISizeMaxBytes=\fP，以便将大小固定为一个值，在这种情况下，权重没有影响 \&。
+.RE
+.PP
+\fIPaddingWeight=\fP
+.RS 4
+与 \fIWeight=\fP 类似，但对分区后的空闲空间 ("padding") \&
+设置了权重。在分配可用空间时，所有分区和所有定义的填充的权重相加，然后每个分区和填充得到由其权重定义的分数 \&。默认为
+0，i\&.e\&。默认情况下不应用填充 \&。
+.sp
+如果要为以后的添加留出空白空间，或者在设备末尾或分区之间留出安全余量，则填充很有用。
+.RE
+.PP
+\fISizeMinBytes=\fP, \fISizeMaxBytes=\fP
+.RS 4
+以字节为单位指定最小和最大大小限制 \&。采用通常的 K、M、G、T、\&... 后缀 (到 1024 的基数) \&。如果指定了
+\fISizeMinBytes=\fP，则分区创建或增长到至少指定的大小 \&。如果指定了 \fISizeMaxBytes=\fP，分区将创建或增长到最多指定的大小
+\&。精确尺寸是通过 \fIWeight=\fP 配置的权重值来确定的，见上 \&。当 \fISizeMinBytes=\fP 设置为等于
+\fISizeMaxBytes=\fP 时，配置的权重无效，因为分区的大小明确为指定的固定值 \&。请注意，创建的分区永远不会小于 4096
+字节，并且由于分区永远不会缩小，因此分区的先前大小 (如果分区已经存在) 也被强制作为新大小的下限 \&。这些值应指定为 4096
+字节的倍数，并向上舍入 (在 \fISizeMinBytes=\fP) 的情况下或向下舍入 (在 \fISizeMaxBytes=\fP) 的情况下否则
+\&。如果支持设备没有提供足够的空间来满足放置分区的约束将失败 \&。对于应创建的分区，根据 \fIPriority=\fP 的设置 (见上文)
+分区可能丢弃并且重新启动放置算法 \&。默认情况下，最小大小限制为 10M，没有设置最大大小限制 \&。
+.RE
+.PP
+\fIPaddingMinBytes=\fP, \fIPaddingMaxBytes=\fP
+.RS 4
+指定分区 ("padding")\& 后可用空间的最小和最大大小限制 (以字节为单位)。语义类似于 \fISizeMinBytes=\fP 和
+\fISizeMaxBytes=\fP，除了与分区大小不同，可用空间可以缩小并且可以小到零 \&。默认情况下，没有设置填充大小限制，因此只有
+\fIPaddingWeight=\fP 决定应用的填充大小 \&。
+.RE
+.PP
+\fICopyBlocks=\fP
+.RS 4
+采用常规文件、块设备节点或目录的路径，或特殊值 `auto`\&。如果指定并且分区是新创建的，则指定路径中的数据将在块级别写入新创建的分区
+\&。如果指定目录，则确定该目录所在的文件系统的后备块设备，并直接从中读取数据 \&。此选项可用于将现有文件系统有效地复制到块级别的新分区 \ (例如，用于构建简单的操作系统安装程序或操作系统映像构建器 \&。
+.sp
+如果指定了特殊值 "auto"，将自动从正在运行的系统 (或用 \fB\-\-image=\fP\(em if used)\& 指定的图像)
+中选择要从中复制的源。与配置的分区类型 (如上文所述的 \fIType=\fP 声明) 和适合该分区类型的当前挂载目录匹配的分区被确定
+\&。例如，如果分区类型设置为 "root"，则支持根目录 (/) 的分区用作从 \(em 如果其分区类型也设置为 "root"\&。如果声明的类型是
+"usr"，则支持 /usr / 的分区用作从 \(em 如果其分区类型也设置为 "usr"\& 复制块的源。该逻辑能够自动跟踪加密卷和支持
+Verity 的卷的后备分区。 "CopyBlocks=auto" 对于实现 "self\-replicating"
+系统很有用，i\&.e\&。系统是自己的安装程序 \&。
+.sp
+此处指定的文件大小必须是基本块大小 512 的倍数并且不能为空 \&。如果使用此选项，则大小分配算法会略有改变:
+创建的分区大小至少要满足数据的要求，i\&.e\&。数据大小是分配算法考虑的额外最小大小值，与上面配置的 \fISizeMin=\fP 值类似且除此之外
+\&。
+.sp
+如果为其声明的分区已经存在，则此选项无效，i\&.e\&。现有数据永远不会被覆盖 \&。注意数据是在分区表更新之前 copy
+进来的，i\&.e\&。在实际持久创建分区之前 \&。这提供了稳健性: 保证分区不 \*(Aqt 存在或存在完全填充;
+分区不可能存在但未填充或仅部分填充 \&。
+.sp
+该选项不能与 \fIFormat=\fP 或 \fICopyFiles=\fP\& 结合使用。
+.RE
+.PP
+\fIFormat=\fP
+.RS 4
+采用文件系统名称，例如 "ext4"、"btrfs"、"xfs"、"vfat"、"erofs"、"squashfs" 或特殊值
+`swap`\&。如果指定并且分区是新创建的，它将使用指定的文件系统 (或作为交换设备) 格式化 \&。文件系统 UUID 和标签自动从分区 UUID
+和标签 \& 派生而来。如果使用此选项，大小分配算法会略有改变: 创建的分区至少与指定类型的最小文件系统所需的一样大 (如果最小大小未知，则为
+4KiB) \&。
+.sp
+如果分区已经存在 \&，则此选项无效。
+.sp
+与 \fICopyBlocks=\fP 的行为类似，文件系统在创建分区之前被格式化，确保分区只存在于完全初始化的文件系统 \&。
+.sp
+该选项不能与 \fICopyBlocks=\fP\& 结合使用。
+.RE
+.PP
+\fICopyFiles=\fP
+.RS 4
+采用一对冒号分隔的绝对文件系统路径 \&。第一个路径是指宿主机上的一个源文件或目录，第二个路径是指新建分区和格式化文件系统 \&
+的文件系统中的一个目标。此设置可用于将文件或目录从主机复制到因 \fIFormat=\fP 选项 \& 而创建的文件系统中。如果在没有明确指定
+\fIFormat=\fP 的情况下使用 \fICopyFiles=\fP，则暗示具有合适默认值的 "Format=" (当前为 "ext4"，但这可能会在
+future 中更改) \&。可以多次使用此选项将多个文件或目录从主机复制到新格式化的文件系统
+\&。冒号和第二个路径可以省略，在这种情况下，源路径也用作目标路径 (相对于新创建的文件系统的根目录) \&。如果源路径引用一个目录，它被递归复制
+\&。
+.sp
+如果分区已经存在，则此选项无效: 它不能用于将其他文件复制到现有分区中，它只能用于填充重新创建的文件系统 \&。
+.sp
+复制操作在文件系统在分区表中注册之前执行，从而确保以这种方式填充的文件系统仅存在完全初始化 \&。
+.sp
+请注意，\fICopyFiles=\fP 将跳过复制 \* (目标文件系统支持的 Aqt (e\&.g 符号链接、fifos、套接字和 vfat 上的设备)
+\&。当遇到不支持的文件类型时，repart 将跳过复制此文件并写入有关它的日志消息 \&。
+.sp
+请注意，\fBsystemd\-repart\fP 不会更改任何复制的文件和目录的 UIDs/GIDs\&。当以非特权用户身份运行
+\fBsystemd\-repart\fP 以构建同一用户拥有所有权的文件和目录的映像时，您可以在用户命名空间中运行
+\fBsystemd\-repart\fP，并将当前用户映射到 root 用户，以确保映像中的文件和目录是拥有所有权的由根用户 \&。
+.sp
+请注意，当使用 \fBsystemd\-repart\fP 和循环设备不可用填充 XFS 文件系统时，由于 mkfs\&.xfs\*(Aqs protofile
+format\&.
+.sp
+该选项不能与 \fICopyBlocks=\fP\& 结合使用。
+.sp
+当使用 \fB\-\-image=\fP 或 \fB\-\-root=\fP 命令行开关调用 \fBsystemd\-repart\fP(8)
+时，指定的源路径相对于指定的根目录或磁盘映像 root\&。
+.RE
+.PP
+\fIMakeDirectories=\fP
+.RS 4
+采用一个或多个绝对路径，以空格分隔，每个路径声明一个要在新文件系统中创建的目录 \&。行为类似于
+\fICopyFiles=\fP，但不是复制一组文件，而是创建指定目录，默认模式为 0755，由 root 用户和组拥有，加上它们的所有父目录
+(具有相同的所有权和访问模式) \&. 要配置具有不同所有权或访问模式的目录，请使用 \fICopyFiles=\fP 并指定要复制的源树，其中包含适当的
+owned/configured 目录 \&。可以多次使用此选项来创建多个目录 \&。当 \fICopyFiles=\fP 和
+\fIMakeDirectories=\fP 一起使用时，前者先应用 \&。如果列出的目录已经存在，则不执行任何操作 (特别是，目录的
+ownership/access 模式保持原样) \&。
+.sp
+此选项的主要用例是创建一组最小的目录，这些目录可能会被同一磁盘映像中包含的其他分区挂载
+\&。例如，根文件系统在首次启动时被格式化的磁盘映像可能希望以这种方式在其中自动预创建 /usr/，以便 "usr" 分区可能会覆盖它 \&。
+.sp
+考虑使用 \fBsystemd\-tmpfiles\fP(8) 及其 \fB\-\-image=\fP 选项来预先创建其他更复杂的目录层次结构
+(以及其他索引节点)，并对所有权、访问模式和其他文件属性进行细粒度控制 \&。
+.RE
+.PP
+\fIEncrypt=\fP
+.RS 4
+采用 "off"、"key\-file"、"tpm2" 和 "key\-file+tpm2" 之一 (或者，也接受一个布尔值，当为 false 时映射到
+"off"，当为 true 时映射到 "key\-file") \&。默认为 `关闭`\&。如果不是 "off"，分区将被格式化为 LUKS2
+超级块，然后复制配置为 \fICopyBlocks=\fP 的块或创建配置为 \fIFormat=\fP 的文件系统 \&。
+.sp
+LUKS2 UUID 以稳定的方式自动从分区 UUID 派生 \&。如果使用 "key\-file" 或
+"key\-file+tpm2"，则将一个密钥添加到 LUKS2 超级块，可使用 \fB\-\-key\-file=\fP 选项配置为
+\fBsystemd\-repart\fP\&。如果使用 "tpm2" 或 "key\-file+tpm2"，则将密钥添加到注册到本地 TPM2 芯片的
+LUKS2 超级块，如 \fBsystemd\-repart\fP\& 的 \fB\-\-tpm2\-device=\fP 和 \fB\-\-tpm2\-pcrs=\fP 选项配置。
+.sp
+使用时，这会稍微改变大小分配逻辑，因为 \fIFormat=\fP 和 \fICopyBlocks=\fP 的隐式最小大小限制会增加 LUKS2 超级块所需的空间
+(见上文) \&。
+.sp
+如果分区已经存在 \&，则此选项无效。
+.RE
+.PP
+\fIVerity=\fP
+.RS 4
+采用 "off"、"data"、"hash" 或 `签名`\& 之一。默认为 `关闭`\&。如果设置为 "off" 或 "data"，分区将填充
+\fICopyBlocks=\fP 或 \fICopyFiles=\fP\& 指定的内容。如果设置为 "hash"，分区将填充来自匹配的 verity 数据分区
+\& 的 verity 散列。如果设置为 "signature"，分区将填充一个 JSON 对象，其中包含匹配的 verity 哈希分区的 verity
+根哈希的签名 \&。
+.sp
+匹配的 verity 分区是具有相同 verity 匹配键的分区 (如配置 \fIVerityMatchKey=\fP)\&.
+.sp
+如果未明确配置，数据分区 \*(Aqs UUID 将设置为 verity 根哈希的前 128 位 \&。同样，如果未配置，哈希分区 \*(Aqs
+UUID 将设置为 verity 根哈希的最后 128 位 \&。verity 根哈希本身将包含在 \fBsystemd\-repart\fP\& 的输出中。
+.sp
+如果分区已经存在 \&，则此选项无效。
+.sp
+不支持将此选项与 \fIEncrypt=\fP 结合使用 \&。
+.sp
+对于每个唯一的 \fIVerityMatchKey=\fP 值，必须定义单个 verity 数据分区 ("Verity=data") 和单个 verity
+哈希分区 ("Verity=hash")\&。
+.RE
+.PP
+\fIVerityMatchKey=\fP
+.RS 4
+采用用户选择的简短标识符字符串 \&。此设置用于查找当前 verity 分区的同级 verity 分区。请参见 \fIVerity=\fP\& 的说明。
+.RE
+.PP
+\fIFactoryReset=\fP
+.RS 4
+采用布尔型参数 \&。如果指定，分区将被标记为在恢复出厂设置操作期间删除 \&。此功能对于实现可以通过删除分区并重新创建它们 \&
+将图像重置为原始状态的方案很有用。默认关闭 \&。
+.RE
+.PP
+\fIFlags=\fP
+.RS 4
+配置 64 位 GPT 分区标志字段以在创建分区时为分区设置 \&。如果分区已经存在 \&，则此选项无效。如果未指定，则标志值设置为全零，但也可以通过
+\fINoAuto=\fP、\fIReadOnly=\fP 和 \fIGrowFileSystem=\fP 配置的三个位除外;
+有关这三个标志的默认值的详细信息，请参见下文 \&。以十六进制 (通过前缀 "0x")、二进制 (前缀 "0b") 或十进制 (无前缀) \&
+指定标志值。
+.RE
+.PP
+\fINoAuto=\fP, \fIReadOnly=\fP, \fIGrowFileSystem=\fP
+.RS 4
+根据 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2\&
+的定义，配置分区表条目的 No\-Auto、Read\-Only 和 Grow\-File\-System 分区标志 (位 63、60 和
+59)。仅适用于规范支持的分区类型 \&。此选项是设置分区标志值的第 63、60 和 59 位而不设置任何其他位的友好方式，也可以通过
+\fIFlags=\fP 设置，请参见上文 \&。
+.sp
+如果 \fIFlags=\fP 与一个或多个 \fINoAuto=\fP/\fIReadOnly=\fP/\fIGrowFileSystem=\fP
+一起使用，则后者控制相关标志 i\&.e\& 的值。高层设置 \fINoAuto=\fP/\fIReadOnly=\fP/\fIGrowFileSystem=\fP
+覆盖底层设置 \fIFlags=\fP\& 的相关位。
+.sp
+请注意，这三个标志仅影响自动分区挂载，由 \fBsystemd\-gpt\-auto\-generator\fP(8) 或各种命令的 \fB\-\-image=\fP
+选项实现 (例如 \fBsystemd\-nspawn\fP(1))\&。它对显式挂载没有影响，例如通过 \fBmount\fP(8) 或 \fBfstab\fP(5)\&
+完成的挂载。
+.sp
+如果为分区设置了位 50 和 59 (i\&.e\&。分区被标记为只读和标记为文件系统增长) 后者通常无效:
+只读标志优先于大多数工具读取这些标志，并且由于文件系统的增长涉及写入分区，因此它被忽略 \&。
+.sp
+\fINoAuto=\fP 默认关闭 \&。 对于 Verity 分区类型，\fIReadOnly=\fP 默认为打开，对于所有其他分区类型为关闭 \&。
+对于支持它的所有分区类型，\fIGrowFileSystem=\fP 默认为打开，除非该分区被标记为只读 (因此实际上，对于 Verity 分区默认为关闭)
+\&。
+.RE
+.PP
+\fISplitName=\fP
+.RS 4
+配置后缀以在使用 \fBsystemd\-repart\fP 的 \fB\-\-split\fP 选项时追加到拆分工件 \&。支持简单说明符扩展，见下文 \&。默认为
+`%t`\&。要禁用分区的拆分工件生成，请将 \fISplitName=\fP 设置为 `\-`\&。
+.RE
+.PP
+\fIMinimize=\fP
+.RS 4
+采用 "off"、"best" 和 "guess" 之一 (或者，也接受一个布尔值，当 false 时映射到 "off"，当 true 时映射到
+"best") \&。默认为 `关闭`\&。如果设置为 "best"，分区将具有存储配置为 \fICopyFiles=\fP\&
+的源所需的最小大小。"best" 当前仅支持只读文件系统 \&。如果设置为 "guess"，则创建的分区至少与存储使用 \fICopyFiles=\fP\&
+配置的源所需的大小一样大。请注意，除非文件系统是只读文件系统，否则 \fBsystemd\-repart\fP
+将不得不填充文件系统两次以猜测所需的最小大小，因此启用此选项可能会在填充大分区时减慢 repart\&。
+.RE
+.SH SPECIFIERS
+.PP
+\fILabel=\fP、\fICopyBlocks=\fP、\fICopyFiles=\fP、\fIMakeDirectories=\fP、\fISplitName=\fP
+设置中可以使用说明符 \&。理解以下扩展:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \&Specifiers available\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"%a"
+T}:T{
+Architecture
+T}:T{
+A short string identifying the architecture of the local system\&. A string such as \fBx86\fP, \fBx86\-64\fP or \fBarm64\fP\&. See the architectures defined for \fIConditionArchitecture=\fP in \fBsystemd.unit\fP(5) for a full list\&.
+T}
+T{
+"%A"
+T}:T{
+Operating system image version
+T}:T{
+The operating system image version identifier of the running system, as read from the \fIIMAGE_VERSION=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%b"
+T}:T{
+Boot ID
+T}:T{
+The boot ID of the running system, formatted as string\&. See \fBrandom\fP(4) for more information\&.
+T}
+T{
+"%B"
+T}:T{
+Operating system build ID
+T}:T{
+The operating system build identifier of the running system, as read from the \fIBUILD_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%H"
+T}:T{
+Host name
+T}:T{
+The hostname of the running system\&.
+T}
+T{
+"%l"
+T}:T{
+Short host name
+T}:T{
+The hostname of the running system, truncated at the first dot to remove any domain component\&.
+T}
+T{
+"%m"
+T}:T{
+Machine ID
+T}:T{
+The machine ID of the running system, formatted as string\&. See \fBmachine\-id\fP(5) for more information\&.
+T}
+T{
+"%M"
+T}:T{
+Operating system image identifier
+T}:T{
+The operating system image identifier of the running system, as read from the \fIIMAGE_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%o"
+T}:T{
+Operating system ID
+T}:T{
+The operating system identifier of the running system, as read from the \fIID=\fP field of /etc/os\-release\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%v"
+T}:T{
+Kernel release
+T}:T{
+Identical to \fBuname \-r\fP output\&.
+T}
+T{
+"%w"
+T}:T{
+Operating system version ID
+T}:T{
+The operating system version identifier of the running system, as read from the \fIVERSION_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%W"
+T}:T{
+Operating system variant ID
+T}:T{
+The operating system variant identifier of the running system, as read from the \fIVARIANT_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%T"
+T}:T{
+Directory for temporary files
+T}:T{
+This is either /tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%V"
+T}:T{
+Directory for larger and persistent temporary files
+T}:T{
+This is either /var/tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%%"
+T}:T{
+Single percent sign
+T}:T{
+Use "%%" in place of "%" to specify a single percent sign\&.
+T}
+.TE
+.sp 1
+.PP
+此外，对于 \fISplitName=\fP 设置，还可以理解以下说明符:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&3.\ \&Specifiers available\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l.
+T{
+"%T"
+T}:T{
+Partition Type UUID
+T}:T{
+The partition type UUID, as configured with \fIType=\fP
+T}
+T{
+"%t"
+T}:T{
+Partition Type Identifier
+T}:T{
+The partition type identifier corresponding to the partition type UUID
+T}
+T{
+"%U"
+T}:T{
+Partition UUID
+T}:T{
+The partition UUID, as configured with \fIUUID=\fP
+T}
+T{
+"%n"
+T}:T{
+Partition Number
+T}:T{
+The partition number assigned to the partition
+T}
+.TE
+.sp 1
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Grow the root partition to the full disk size at first boot\fP
+.PP
+使用以下文件，如果可能的话，根分区会在引导期间自动增长到整个磁盘 \&。
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/repart\&.d/50\-root\&.conf
+[Partition]
+Type=root
+.fi
+.if  n \{\
+.RE
+.\}
+
+.PP
+\fBExample\ \&2.\ \&Create a swap and home partition automatically on boot, if missing\fP
+.PP
+主分区获得所有可用磁盘空间，而交换分区最多获得 1G，至少 64M\&。我们在交换分区上设置优先级 > 0
+以确保在没有足够空间可用时不使用交换分区 \&。对于分配给主分区的每三个字节，交换分区就会分配一个 \&。
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/repart\&.d/60\-home\&.conf
+[Partition]
+Type=home
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/repart\&.d/70\-swap\&.conf
+[Partition]
+Type=swap
+SizeMinBytes=64M
+SizeMaxBytes=1G
+Priority=1
+Weight=333
+.fi
+.if  n \{\
+.RE
+.\}
+
+.PP
+\fBExample\ \&3.\ \&Create B partitions in an A/B Verity setup, if missing\fP
+.PP
+让 \*(假设供应商打算在 A/B 设置中更新操作系统映像，i\&.e\&。具有两个根分区 (和两个匹配的 Verity 分区)，在升级过程中交替使用
+\&。为了最小化映像大小，原始映像仅包含一个根分区和一个 Verity 分区 ("A" 集)，第二个根分区和 Verity 分区 ("B" 集)
+应在首次启动时在介质上的可用空间上创建 \&.
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/repart\&.d/50\-root\&.conf
+[Partition]
+Type=root
+SizeMinBytes=512M
+SizeMaxBytes=512M
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/repart\&.d/60\-root\-verity\&.conf
+[Partition]
+Type=root\-verity
+SizeMinBytes=64M
+SizeMaxBytes=64M
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+上面的定义涵盖了根分区的 "A" 集合 (固定 512M 大小) 和根分区的 Verity 分区 (固定 64M 大小) \&。让 \*(Aqs
+使用符号链接创建 "B" 分区集，因为毕竟它们应具有与 "A" 集相同的属性和大小 \&。
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# ln \-s 50\-root\&.conf /usr/lib/repart\&.d/70\-root\-b\&.conf
+# ln \-s 60\-root\-verity\&.conf /usr/lib/repart\&.d/80\-root\-verity\-b\&.conf
+.fi
+.if  n \{\
+.RE
+.\}
+
+.PP
+\fBExample\ \&4.\ \&Create a data and verity partition from a OS tree\fP
+.PP
+假设我们在 /var/tmp/os\-tree 处有一个操作系统树，我们希望将其与匹配的 verity 分区一起打包到根分区中，我们可以按如下方式进行:
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 50\-root\&.conf
+[Partition]
+Type=root
+CopyFiles=/var/tmp/os\-tree
+Verity=data
+VerityMatchKey=root
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 60\-root\-verity\&.conf
+[Partition]
+Type=root\-verity
+Verity=hash
+VerityMatchKey=root
+.fi
+.if  n \{\
+.RE
+.\}
+
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-repart\fP(8), \fBsfdisk\fP(8), \fBsystemd\-cryptenroll\fP(1)
+.SH NOTES
+.IP " 1." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

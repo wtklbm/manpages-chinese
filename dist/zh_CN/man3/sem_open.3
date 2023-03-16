@@ -1,0 +1,111 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sem_open 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+sem_open \- 初始化并打开一个命名的信号量
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP           /* For O_* constants */
+\fB#include <sys/stat.h>\fP        /* For mode constants */
+\fB#include <semaphore.h>\fP
+.PP
+\fBsem_t *sem_open(const char *\fP\fIname\fP\fB, int \fP\fIoflag\fP\fB);\fP
+\fBsem_t *sem_open(const char *\fP\fIname\fP\fB, int \fP\fIoflag\fP\fB,\fP
+\fB                mode_t \fP\fImode\fP\fB, unsigned int \fP\fIvalue\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsem_open\fP() 创建一个新的 POSIX 信号量或打开一个现有的信号量。 信号量由 \fIname\fP 标识。 \fIname\fP 的构造详见
+\fBsem_overview\fP(7)。
+.PP
+.\" In reality the filesystem IDs are used on Linux.
+\fIoflag\fP 参数指定控制调用操作的标志。 (标志值的定义可以通过包含 \fI<fcntl.h>\fP.) 来获得，如果 \fIoflag\fP
+中指定了 \fBO_CREAT\fP，那么如果信号量不存在则创建它。 信号量的所有者 (用户 ID) 设置为调用进程的有效用户 ID。 组所有权 (组 ID)
+设置为调用进程的有效组 ID。 如果在 \fIoflag\fP 中同时指定了 \fBO_CREAT\fP 和 \fBO_EXCL\fP，则如果具有给定 \fIname\fP
+的信号量已经存在，则返回错误。
+.PP
+如果在 \fIoflag\fP 中指定了 \fBO_CREAT\fP，则必须提供两个额外的参数。 \fImode\fP 参数指定要放置在新信号量上的权限，对于
+\fBopen\fP(2)。 (权限位的符号定义可以通过包含 \fI<sys/stat.h>\fP.) 获得。权限设置针对进程 umask
+进行屏蔽。 应该向将访问信号量的每一类用户授予读取和写入权限。 \fIvalue\fP 参数指定新信号量的初始值。 如果指定了
+\fBO_CREAT\fP，并且具有给定 \fIname\fP 的信号量已经存在，则忽略 \fImode\fP 和 \fIvalue\fP。
+.SH "RETURN VALUE"
+成功时，\fBsem_open\fP() 返回新信号量的地址; 这个地址在调用其他信号量相关的函数时使用。 出错时，\fBsem_open\fP() 返回
+\fBSEM_FAILED\fP，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+信号量存在，但调用者没有打开它的权限。
+.TP 
+\fBEEXIST\fP
+\fBO_CREAT\fP 和 \fBO_EXCL\fP 都在 \fIoflag\fP 中指定，但具有此 \fIname\fP 的信号量已经存在。
+.TP 
+\fBEINVAL\fP
+\fIvalue\fP 大于 \fBSEM_VALUE_MAX\fP。
+.TP 
+\fBEINVAL\fP
+\fIname\fP 仅由 "/" 组成，后面没有其他字符。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENAMETOOLONG\fP
+\fIname\fP 太长了。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOENT\fP
+.\" this error can occur if we have a name of the (nonportable) form
+.\" /dir/name, and the directory /dev/shm/dir does not exist.
+\fIoflag\fP 中未指定 \fBO_CREAT\fP 标志，并且不存在具有此 \fIname\fP 的信号量; 或者，指定了 \fBO_CREAT\fP，但
+\fIname\fP 的格式不正确。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsem_open\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH "SEE ALSO"
+\fBsem_close\fP(3), \fBsem_getvalue\fP(3), \fBsem_post\fP(3), \fBsem_unlink\fP(3),
+\fBsem_wait\fP(3), \fBsem_overview\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

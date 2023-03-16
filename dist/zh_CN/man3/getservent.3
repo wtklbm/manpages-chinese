@@ -1,0 +1,145 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 19:19:11 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Wed Oct 18 20:23:54 1995 by Martin Schulze <joey@infodrom.north.de>
+.\" Modified Mon Apr 22 01:50:54 1996 by Martin Schulze <joey@infodrom.north.de>
+.\" 2001-07-25 added a clause about NULL proto (Martin Michlmayr or David N. Welton)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getservent 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+getservent, getservbyname, getservbyport, setservent, endservent \- 获取服务入口
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <netdb.h>\fP
+.PP
+\fBstruct servent *getservent(void);\fP
+.PP
+\fBstruct servent *getservbyname(const char *\fP\fIname\fP\fB，常量字符 *\fP\fIproto\fP\fB);\fP
+\fBstruct servent *getservbyport(int \fP\fIport\fP\fB，常量字符 *\fP\fIproto\fP\fB);\fP
+.PP
+\fBvoid setservent(int \fP\fIstayopen\fP\fB);\fP
+\fBvoid endservent(void);\fP
+.fi
+.SH DESCRIPTION
+\fBgetservent\fP() 函数从服务数据库中读取下一个条目 (参见 \fBservices\fP(5)) 并返回一个 \fIservent\fP
+结构体，其中包含条目中断开的字段。 如有必要，将打开与数据库的连接。
+.PP
+\fBgetservbyname\fP() 函数从数据库中返回一个 \fIservent\fP 结构体，该条目与使用协议 \fIproto\fP 的服务 \fIname\fP
+相匹配。 如果 \fIproto\fP 为 NULL，则匹配任何协议。 如有必要，将打开与数据库的连接。
+.PP
+\fBgetservbyport\fP() 函数返回一个 \fIservent\fP 结构体，用于使用协议 \fIproto\fP 匹配端口 \fIport\fP
+(以网络字节顺序给出) 的数据库条目。 如果 \fIproto\fP 为 NULL，则匹配任何协议。 如有必要，将打开与数据库的连接。
+.PP
+\fBsetservent\fP() 函数打开到数据库的连接，并将下一个条目设置为第一个条目。 如果 \fIstayopen\fP 不为零，则在调用
+\fBgetserv*\fP() 函数之一之间不会关闭与数据库的连接。
+.PP
+\fBendservent\fP() 函数关闭与数据库的连接。
+.PP
+\fIservent\fP 结构体在 \fI<netdb.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct servent {
+    char  *s_name;       /* official service name */
+    char **s_aliases;    /* alias list */
+    int    s_port;       /* port number */
+    char  *s_proto;      /* protocol to use */
+}
+.EE
+.in
+.PP
+\fIservent\fP 结构体的成员是:
+.TP 
+\fIs_name\fP
+服务的正式名称。
+.TP 
+\fIs_aliases\fP
+服务的备选名称的 NULL 终止列表。
+.TP 
+\fIs_port\fP
+以网络字节顺序给出的服务端口号。
+.TP 
+\fIs_proto\fP
+与此服务一起使用的协议的名称。
+.SH "RETURN VALUE"
+\fBgetservent\fP()、\fBgetservbyname\fP() 和 \fBgetservbyport\fP() 函数返回指向静态分配的
+\fIservent\fP 结构体的指针，如果发生错误或到达文件末尾，则返回 NULL。
+.SH FILES
+.TP 
+\fI/etc/services\fP
+服务数据库文件
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetservent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:servent
+race:serventbuf locale
+T}
+T{
+\fBgetservbyname\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:servbyname
+locale
+T}
+T{
+\fBgetservbyport\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:servbyport
+locale
+T}
+T{
+\fBsetservent\fP(),
+\fBendservent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:servent
+locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:servent\fP 中的 \fIservent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetservent\fP()、\fBgetservent\fP() 或 \fBendservent\fP() 中的任何一个，则可能发生数据竞争。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, 4.3BSD.
+.SH "SEE ALSO"
+\fBgetnetent\fP(3), \fBgetprotoent\fP(3), \fBgetservent_r\fP(3), \fBservices\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

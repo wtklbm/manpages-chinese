@@ -1,0 +1,1113 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSUPDATE\&.D 5 "" "systemd 253" sysupdate.d
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+sysupdate.d \- 传输定义文件以进行自动更新
+.SH SYNOPSIS
+.PP
+.nf
+/etc/sysupdate\&.d/*\&.conf
+/run/sysupdate\&.d/*\&.conf
+/usr/lib/sysupdate\&.d/*\&.conf
+    
+.fi
+.SH DESCRIPTION
+.PP
+sysupdate\&.d/*\&.conf 文件描述了如何从远程源更新本地系统上的特定资源 \&。每个这样的文件都定义了一个这样的传输:
+通常是一个远程 HTTP/HTTPS 资源作为源; 和本地文件、目录或分区作为目标
+\&。这可用作操作系统本身、容器、可移植服务或系统扩展映像的简单、自动、原子更新机制 \(em 但实际上可用于从远程源更新任何类型的文件 \&。
+.PP
+\fBsystemd\-sysupdate\fP(8) 命令读取这些文件并使用它们来确定应更新哪些本地资源，然后执行更新 \&。
+.PP
+远程 HTTP/HTTPS 源和本地目标通常存在多个并发版本，以实现灵活的更新方案，例如 \&.g\&。A/B 更新
+(或其超集，e\&.g\&. A/C, A/D,\&...) \&。
+.PP
+每个 *\&.conf 文件定义一个传输，i\&.e\&。描述一个要更新的资源。通常，这些文件中的多个 (i\&.e\&. 多个此类传输)
+被定义在一起，并通过公共版本标识符绑定在一起，以便在每次更新操作时同时更新多个资源，例如更新一个内核、一个根文件系统和一个 Verity
+分区在一个单一的、组合的、同步的操作中，因此只有所有三者的组合更新一起构成一个完整的更新 \&。
+.PP
+每个 *\&.conf 文件包含三个部分: [Transfer]、[Source] 和 [Target]\&。
+.SH "BASIC MODE OF OPERATION"
+.PP
+基于磁盘映像的操作系统更新通常包含需要一起更新的多个不同资源，例如，安全操作系统更新可能包含要丢弃到分区中的根文件系统映像、匹配的 Verity
+完整性数据分区映像和内核图像准备启动到两个分区的组合 \&。前两个资源是下载后放在磁盘分区的文件，后者是下载后放在引导文件系统中的常规文件中的文件
+(e\&.g\&.EFI 系统分区) \&. 因此，在将假设的操作系统 "foobarOS" 更新到假设的版本 47 期间，应该进行以下操作:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+根据 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2\&，文件
+"https://download\&.example\&.com/foobarOS_47\&.root\&.xz"
+应下载、解压缩并写入以前未使用的分区，GPT 分区类型为 UUID 4f68bce3\-e8cd\-4db1\-96e7\-fbcaf984b709 for
+x86\-64。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+类似地，文件 "https://download\&.example\&.com/foobarOS_47\&.verity\&.xz"
+应该被下载、解压缩并写入先前空的分区，GPT 分区类型 UUID 为 2c7357ed\-ebd2\-46d9\-aec1\-23d437ec2bf5
+(i\&.e\&。x86 的 Verity 完整性信息的分区类型 \- 64 根文件系统)\&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+最后，应下载、解压并写入 ESP 文件系统 i\&.e\& 中的文件
+"https://download\&.example\&.com/foobarOS_47\&.efi\&.xz" (统一内核，根据
+\m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2 类型 #2)。到 ESP\& 中的
+EFI/Linux/foobarOS_47\&.efi。
+.RE
+.PP
+与版本无关的概括是 (使用特殊标记 "@v" 作为版本标识符的通配符) :
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+文件 "https://download\&.example\&.com/foobarOS_@v\&.root\&.xz" 的传输 → 类型为
+4f68bce3\-e8cd\-4db1\-96e7\-fbcaf984b709 的本地先前为空的 GPT 分区，标签设置为 `foobarOS_@v`\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+文件 "https://download\&.example\&.com/foobarOS_@v\&.verity\&.xz" 的传输 → 类型为
+2c7357ed\-ebd2\-46d9\-aec1\-23d437ec2bf5 的本地先前为空的 GPT 分区，标签设置为
+`foobarOS_@v_verity`\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+文件 "https://download\&.example\&.com/foobarOS_@v\&.efi\&.xz" 的传输 → 本地文件
+/efi/foobarOS_@v\&.efi\&。
+.RE
+.PP
+仅当相关 URL 提供相同版本的资源时，更新才能完成，i\&.e\&。对于 `@v`\& 的相同值。
+.PP
+以上可能翻译成 sysupdate\&.d/ 中的三个 *\&.conf 文件，每个资源一个要传输 \&。* \&.conf
+文件配置下载的类型，以及将下载写入的位置 (i\&.e\&。无论是分区还是文件系统中的文件) \&。最重要的是，这些文件包含上面显示的
+URL、分区名称和文件名模式，它们描述了如何在源上调用这些资源以及如何在目标上调用这些资源 \&。
+.PP
+为了枚举可用版本并找出要更新的候选版本，需要一种机制来列出合适的文件:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+对于分区: 周围的 GPT 分区表包含已定义分区的列表，包括分区类型 UUID 和分区标签 (在此方案中，分区标签对分区的作用类似于常规文件的文件名)
+\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+对于常规文件: 文件所在目录的目录列表以直接的方式提供了现有文件的列表 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+对于 HTTP/HTTPS 源，使用一个简单的方案: 清单文件 SHA256SUMS，遵循 \fBsha256sum\fP(1) 定义的格式，列出文件名及其
+SHA256 哈希值 \&。
+.RE
+.PP
+传输按照它们在 \& 中定义的 \&.conf 文件名的字母顺序完成。首先，将资源数据直接下载到一个目标文件 / 目录 /
+分区中。一旦为所有已定义的传输完成此操作，在第二步中，files/directories/partitions 将重命名为目标
+\fIMatchPattern=\fP 定义的最终名称，再次按照 \&.conf 传输文件名称指示的顺序
+\&。此步骤不是原子的，但是保证在合适的磁盘同步就位的情况下严格按顺序执行 \&。通常，在更新操作系统时，其中一个传输定义了引导时的入口点
+\&。因此，通常最好通过传输配置文件名对资源进行排序，以便最后写入入口点，确保任何异常终止都不会留下尚未建立支持的入口点
+\&。因此，在上面的示例中，最后创建 EFI 内核映像并因此为其传输配置文件提供按字母顺序排列的姓氏 \& 是有意义的。
+.PP
+请参见下文，了解基于上述 \& 的扩展的、更具体的示例。
+.SH "RESOURCE TYPES"
+.PP
+每个传输文件定义一个源资源以传输到一个目标资源 \&。支持以下资源类型:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+"url\-file" 类型的资源封装了 Web 服务器上的文件，通过 HTTP 或 HTTPS URL\&
+引用。当发生更新时，文件被下载并解压缩，然后写入目标文件或分区 \&。此资源类型仅适用于源，不适用于目标 \&。此类资源的可用版本列表在
+SHA256SUMS 清单文件中编码，并附有 SHA256SUMS\&.gpg 分离签名 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+"url\-tar" 资源类型类似，但文件必须是 \&.tar 存档 \&。发生更新时，文件将被解压缩并解压缩到目录或 btrfs
+子卷中。此资源类型仅适用于源，不适用于目标 \&。与 "url\-file" 一样，"url\-tar" 版本枚举使用 SHA256SUMS 文件，通过
+SHA256SUMS\&.gpg\& 进行身份验证。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+"regular\-file" 资源类型封装了磁盘上的本地常规文件 \&。在更新期间，文件被解压缩并写入目标文件或分区 \&。此资源类型可用作源和目标
+\&。更新时，不会对该类型的资源进行完整性或身份验证验证 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+"partition" 资源类型类似于 "regular\-file"，在磁盘 \& 上封装了一个 GPT 分区。更新时，分区必须已经存在，并且具有正确的
+GPT 分区类型 \&。GPT 分区标签设置为 "_empty" 的分区被认为是空的，并且可以将新下载的资源放置在 \& 中。GPT
+分区标签用于存储版本信息，一旦某个分区被更新 \&。此资源类型仅适用于目标资源 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+"tar" 资源类型封装本地 \&.tar 归档文件 \&。发生更新时，文件将解压缩并解压缩到目标目录或 btrfs 子卷 \&。"tar" 和
+"url\-tar" 的行为大体相似，但后者从远程源下载，并进行完整性和身份验证检查，而前者不 \&。"tar" 资源类型仅适用于源资源 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+"directory" 资源类型封装了本地目录树 \&。此类型可用于源资源和目标资源 \&。如果更新发生在这种类型的源资源上，目录的递归副本完成 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+"subvolume" 资源类型与 "directory" 相同，但用作目标时除外，在这种情况下，如果后备文件系统支持它 (i\&.e\&. 是
+btrfs)\&。
+.RE
+.PP
+如前所述，仅支持源和目标资源类型组合的子集:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Resource Types\fP
+.TS
+allbox tab(:);
+lB lB lB lB lB lB lB lB.
+T{
+Identifier
+T}:T{
+Description
+T}:T{
+Usable as Source
+T}:T{
+When Used as Source: Compatible Targets
+T}:T{
+When Used as Source: Integrity + Authentication
+T}:T{
+When Used as Source: Decompression
+T}:T{
+Usable as Target
+T}:T{
+When Used as Target: Compatible Sources
+T}
+.T&
+l l l l l l l l
+l l l l l l l l
+l l l l l l l l
+l l l l l l l l
+l l l l l l l l
+l l l l l l l l
+l l l l l l l l.
+T{
+\fBurl\-file\fP
+T}:T{
+HTTP/HTTPS files
+T}:T{
+yes
+T}:T{
+\fBregular\-file\fP, \fBpartition\fP
+T}:T{
+yes
+T}:T{
+yes
+T}:T{
+no
+T}:T{
+\-
+T}
+T{
+\fBurl\-tar\fP
+T}:T{
+HTTP/HTTPS \&.tar archives
+T}:T{
+yes
+T}:T{
+\fBdirectory\fP, \fBsubvolume\fP
+T}:T{
+yes
+T}:T{
+yes
+T}:T{
+no
+T}:T{
+\-
+T}
+T{
+\fBregular\-file\fP
+T}:T{
+Local files
+T}:T{
+yes
+T}:T{
+\fBregular\-file\fP, \fBpartition\fP
+T}:T{
+no
+T}:T{
+yes
+T}:T{
+yes
+T}:T{
+\fBurl\-file\fP, \fBregular\-file\fP
+T}
+T{
+\fBpartition\fP
+T}:T{
+Local GPT partitions
+T}:T{
+no
+T}:T{
+\-
+T}:T{
+\-
+T}:T{
+\-
+T}:T{
+yes
+T}:T{
+\fBurl\-file\fP, \fBregular\-file\fP
+T}
+T{
+\fBtar\fP
+T}:T{
+Local \&.tar archives
+T}:T{
+yes
+T}:T{
+\fBdirectory\fP, \fBsubvolume\fP
+T}:T{
+no
+T}:T{
+yes
+T}:T{
+no
+T}:T{
+\-
+T}
+T{
+\fBdirectory\fP
+T}:T{
+Local directories
+T}:T{
+yes
+T}:T{
+\fBdirectory\fP, \fBsubvolume\fP
+T}:T{
+no
+T}:T{
+no
+T}:T{
+yes
+T}:T{
+\fBurl\-tar\fP, \fBtar\fP, \fBdirectory\fP, \fBsubvolume\fP
+T}
+T{
+\fBsubvolume\fP
+T}:T{
+Local btrfs subvolumes
+T}:T{
+yes
+T}:T{
+\fBdirectory\fP, \fBsubvolume\fP
+T}:T{
+no
+T}:T{
+no
+T}:T{
+yes
+T}:T{
+\fBurl\-tar\fP, \fBtar\fP, \fBdirectory\fP, \fBsubvolume\fP
+T}
+.TE
+.sp 1
+.SH "MATCH PATTERNS"
+.PP
+源资源和目标资源通常同时存在于多个版本中。只要最新的源版本比最新的目标版本更新
+\&，就会执行更新操作。为了确定资源的最新版本，使用目录列表、分区列表或清单列表，从中选择符合条件的条目的子集，以及从这些所选条目的文件名或分区标签中提取的版本标识符。版本标识符
+(加上可能的其他元数据) 的子集选择和提取是通过匹配模式完成的，在 \fIMatchPattern=\fP 的 [Source] 和 [Target] 部分
+\& 中配置。这些模式是描述文件或分区如何命名的字符串，带有用于特定字段 (如版本标识符 \&) 的命名通配符。定义了以下通配符:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \&Match Pattern Wildcards\fP
+.TS
+allbox tab(:);
+lB lB lB lB.
+T{
+Wildcard
+T}:T{
+Description
+T}:T{
+Format
+T}:T{
+Notes
+T}
+.T&
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l.
+T{
+"@v"
+T}:T{
+Version identifier
+T}:T{
+Valid version string
+T}:T{
+Mandatory
+T}
+T{
+"@u"
+T}:T{
+GPT partition UUID
+T}:T{
+Valid 128\-Bit UUID string
+T}:T{
+Only relevant if target resource type chosen as \fBpartition\fP
+T}
+T{
+"@f"
+T}:T{
+GPT partition flags
+T}:T{
+Formatted hexadecimal integer
+T}:T{
+Only relevant if target resource type chosen as \fBpartition\fP
+T}
+T{
+"@a"
+T}:T{
+GPT partition flag NoAuto
+T}:T{
+Either "0" or "1"
+T}:T{
+Controls NoAuto bit of the GPT partition flags, as per \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2; only relevant if target resource type chosen as \fBpartition\fP
+T}
+T{
+"@g"
+T}:T{
+GPT partition flag GrowFileSystem
+T}:T{
+Either "0" or "1"
+T}:T{
+Controls GrowFileSystem bit of the GPT partition flags, as per \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2; only relevant if target resource type chosen as \fBpartition\fP
+T}
+T{
+"@r"
+T}:T{
+Read\-only flag
+T}:T{
+Either "0" or "1"
+T}:T{
+Controls ReadOnly bit of the GPT partition flags, as per \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2 and other output read\-only flags, see \fIReadOnly=\fP below
+T}
+T{
+"@t"
+T}:T{
+File modification time
+T}:T{
+Formatted decimal integer, \(mcs since UNIX epoch Jan 1st 1970
+T}:T{
+Only relevant if target resource type chosen as \fBregular\-file\fP
+T}
+T{
+"@m"
+T}:T{
+File access mode
+T}:T{
+Formatted octal integer, in UNIX fashion
+T}:T{
+Only relevant if target resource type chosen as \fBregular\-file\fP
+T}
+T{
+"@s"
+T}:T{
+File size after decompression
+T}:T{
+Formatted decimal integer
+T}:T{
+Useful for measuring progress and to improve partition allocation logic
+T}
+T{
+"@d"
+T}:T{
+Tries done
+T}:T{
+Formatted decimal integer
+T}:T{
+Useful when operating with kernel image files, as per \m[blue]\fBAutomatic Boot Assessment\fP\m[]\&\s-2\u[3]\d\s+2
+T}
+T{
+"@l"
+T}:T{
+Tries left
+T}:T{
+Formatted decimal integer
+T}:T{
+Useful when operating with kernel image files, as per \m[blue]\fBAutomatic Boot Assessment\fP\m[]\&\s-2\u[3]\d\s+2
+T}
+T{
+"@h"
+T}:T{
+SHA256 hash of compressed file
+T}:T{
+64 hexadecimal characters
+T}:T{
+The SHA256 hash of the compressed file; not useful for \fBurl\-file\fP or \fBurl\-tar\fP where the SHA256 hash is already included in the manifest file anyway
+T}
+.TE
+.sp 1
+.PP
+在这些通配符中，只有 "@v" 必须出现在有效模式中，所有其他通配符都是可选的 \&。每个通配符最多可以在每个模式中使用一次
+\&。匹配文件系统源映像的典型通配符可以是 "MatchPattern=foobar_@v\&.raw\&.xz", i\&.e\&。名称以
+"foobar_" 开头，后跟版本 ID 并以 `\&.raw\&.xz`\& 为后缀的任何文件。
+.PP
+不要将 "@" 模式匹配通配符前缀与 "%" 说明符扩展前缀 \& 混淆。前者封装了匹配模式字符串的可变部分，后者是在解析丢弃 \- in
+文件时扩展的简单快捷方式 \&。有关说明符的详细信息，请参见下文 \&。
+.SH "[TRANSFER] SECTION OPTIONS"
+.PP
+此部分定义此传输的一般属性。
+.PP
+\fIMinVersion=\fP
+.RS 4
+指定进行此传输所需的最低版本 \&。如果此传输定义中的源或目标模式匹配早于此版本的文件，它们将被视为已过时，并且永远不会考虑进行更新操作 \&。
+.RE
+.PP
+\fIProtectVersion=\fP
+.RS 4
+将一个或多个版本字符串标记为 `受保护`\&。受保护的版本永远不会被删除，同时为新的、更新的版本腾出空间 \&。这有助于确保当前启动的操作系统版本
+(或与其关联的辅助资源) 在更新期间不是 replaced/overwritten，以避免运行时文件系统损坏 \&。
+.sp
+与这些配置文件中的许多设置一样，此设置支持说明符扩展 \&。\*(Aqs 特别有用，可以将此设置设置为 "%A"、"%B" 或 "%w"
+说明符之一，以自动引用正在运行的系统的当前操作系统版本 \&。有关支持的说明符 \& 的详细信息，请参见下文。
+.RE
+.PP
+\fIVerify=\fP
+.RS 4
+采用布尔值，默认为 yes\&。控制是否加密验证下载的资源 (特别是: 通过其分离的签名文件 SHA256SUMS\&.gpg 结合系统密钥环
+/usr/lib/systemd/import\-pubring\&.gpg 或 /etc/systemd/import\-pubring\&.gpg
+验证下载的 SHA256SUMS 清单文件的 GPG 签名) \&。
+.sp
+此选项对于为下载的资源提供完整性保证至关重要，因此应在测试环境之外保持启用状态 \&。
+.sp
+请注意，已根据清单中列出的 SHA256 哈希无条件检查下载的有效，载荷，文件 \&。该选项只控制这些清单的签名是否经过验证 \&。
+.sp
+此选项仅在源资源类型选择为 \fBurl\-file\fP 或 \fBurl\-tar\fP 时有效，因为完整性和身份验证检查仅适用于来自远程源的传输 \&。
+.RE
+.SH "[SOURCE] SECTION OPTIONS"
+.PP
+此部分定义传输源的属性 \&。
+.PP
+\fIType=\fP
+.RS 4
+指定传输源的资源类型。采用 \fBurl\-file\fP、\fBurl\-tar\fP、\fBtar\fP、\fBregular\-file\fP、\fBdirectory\fP 或
+\fBsubvolume\fP\& 之一。有关资源类型的详细信息，请参见上文 \&。此选项是必需的 \&。
+.sp
+请注意，仅支持源和目标资源类型的某些组合，请参见上文 \&。
+.RE
+.PP
+\fIPath=\fP
+.RS 4
+指定在哪里可以找到此资源的源版本 \&。
+.sp
+如果源类型选择为 \fBurl\-file\fP 或 \fBurl\-tar\fP，则这必须是 HTTP/HTTPS URL\&。该 URL 以 /SHA256SUMS
+为后缀获取清单文件，以 /SHA256SUMS\&.gpg 为后缀为其获取分离的签名文件，以清单文件中列出的文件名，以备执行更新和下载资源 \&。
+.sp
+对于所有其他源资源类型，这必须是文件系统中的本地路径，引用本地目录以在 \& 中查找此资源的版本。
+.RE
+.PP
+\fIMatchPattern=\fP
+.RS 4
+指定一个或多个文件名匹配模式，这些模式选择作为更新候选的文件子集作为此传输的源 \&。有关匹配模式 \& 的详细信息，请参见上文。
+.sp
+此选项是必需的 \&。列出的任何模式必须至少包含 "@v" 通配符，以便可以从文件名 \& 中提取版本标识符。所有其他通配符都是可选的 \&。
+.RE
+.SH "[TARGET] SECTION OPTIONS"
+.PP
+此部分定义传输目标的属性 \&。
+.PP
+\fIType=\fP
+.RS 4
+指定传输目标的资源类型。采用 \fBpartition\fP、\fBregular\-file\fP、\fBdirectory\fP 或 \fBsubvolume\fP\&
+之一。有关资源类型的详细信息，请参见上文 \&。此选项是必需的 \&。
+.sp
+请注意，仅支持某些源和目标资源类型的组合，请参见上文 \&。
+.RE
+.PP
+\fIPath=\fP
+.RS 4
+指定一个文件系统路径，在其中查找已安装的版本或放置此已配置资源的新下载版本 \&。如果 \fIType=\fP 设置为 \fBpartition\fP，需要
+(whole) 块设备节点的路径，或特殊字符串 "auto"，在这种情况下，包含当前引导系统的根文件系统的块设备将被自动确定并使用 \&。如果
+\fIType=\fP 设置为 \fBregular\-file\fP、\fBdirectory\fP 或
+\fBsubvolume\fP，则必须引用本地文件系统中引用该目录的路径才能找到或将版本文件或目录放在 \& 下。
+.sp
+请注意，如果 \fIType=\fP 设置为 \fBpartition\fP\&，则此机制不能用于创建或删除分区。分区必须已经存在，一个特殊的分区标签
+"_empty" 用来表示空分区 \&。要在首次启动时自动生成合适的分区，请使用 \fBsystemd\-repart\fP(8)\& 等工具。
+.RE
+.PP
+\fIMatchPattern=\fP
+.RS 4
+指定一个或多个文件名或分区标签匹配模式，这些模式选择作为更新候选的文件或分区的子集作为此传输的目标。有关匹配模式 \& 的详细信息，请参见上文。
+.sp
+此选项是必需的 \&。列出的任何模式必须至少包含 "@v" 通配符，以便可以从文件名 \& 中提取版本标识符。所有其他通配符都是可选的 \&。
+.sp
+此模式既用于匹配现有的已安装版本，也用于确定要安装的新版本的名称 \&。如果指定了多个模式，第一个指定的用于命名新安装的版本 \&。
+.RE
+.PP
+\fIMatchPartitionType=\fP
+.RS 4
+当目标 \fIType=\fP 选择为 \fBpartition\fP 时，指定要查找的 GPT 分区类型 \&。只考虑这种类型的分区，忽略所有其他分区
+\&。如果未指定，则使用 GPT 分区类型 \fBlinux\-generic\fP\&。接受字面量类型 UUID 或符号类型标识符
+\&。有关受支持类型标识符的列表，请参见 \fBrepart.d\fP(5)\& 中的 \fIType=\fP 设置。
+.RE
+.PP
+\fIPartitionUUID=\fP, \fIPartitionFlags=\fP, \fIPartitionNoAuto=\fP,
+\fIPartitionGrowFileSystem=\fP
+.RS 4
+当目标 \fIType=\fP 被选为 \fBpartition\fP 时，选择 GPT 分区 UUID 和分区标志以用于更新的分区 \&。需要一个有效的 UUID
+字符串、一个十六进制整数或布尔值，分别为 \&。如果未设置，但源匹配模式包含这些字段的通配符 (i\&.e\&. "@u"、"@f"、"@a" 或
+"@g")，则使用模式中的值 \&。如果既未配置通配符也未配置这些显式设置，则值保持不变 \&。如果同时使用总体 \fIPartitionFlags=\fP
+标志设置和单独的标志设置 \fIPartitionNoAuto=\fP 和 \fIPartitionGrowFileSystem=\fP
+(或它们的通配符)，则后者会覆盖前者 i\&.e\&。单个标志位覆盖整体标志值 \&。有关这些标志 \& 的详细信息，请参见
+\m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2。
+.sp
+请注意，这些设置不用于匹配，它们仅在传输发生时对新写入的分区有效 \&。
+.RE
+.PP
+\fIReadOnly=\fP
+.RS 4
+控制是否将生成的文件、子卷或分区标记为只读 \&。如果目标类型是 \fBpartition\fP，这将控制 ReadOnly 分区标志，根据
+\m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2，类似于上面描述的 \fIPartitionNoAuto=\fP 和
+\fIPartitionGrowFileSystem=\fP 标志 \&。如果目标类型是 \fBregular\-file\fP，则可写位从访问模式中删除
+\&。如果目标类型是 \fBsubvolume\fP，子卷将被标记为整体只读 \&。最后，如果选择目标 \fIType=\fP 为 \fBdirectory\fP，则设置
+"immutable" 文件属性，有关详细信息，请参见 \fBchattr\fP(1)\&。
+.RE
+.PP
+\fIMode=\fP
+.RS 4
+在目标资源类型被选为 \fBregular\-file\fP\& 的情况下用于新创建文件的 UNIX 文件访问模式。需要一个八进制整数，以典型的 UNIX 方式
+\&。如果未设置，但源匹配模式包含此字段的通配符 (i\&.e\&."@t")，则使用模式中的值 \&。
+.sp
+请注意，此设置不用于匹配，它仅在传输发生时对新写入的文件有影响 \&。
+.RE
+.PP
+\fITriesDone=\fP, \fITriesLeft=\fP
+.RS 4
+这些选项采用正十进制整数，并控制此文件完成和剩余的尝试次数 \&。这些设置对于管理内核映像很有用，遵循 \m[blue]\fBAutomatic Boot Assessment\fP\m[]\&\s-2\u[3]\d\s+2 中定义的方案，并且仅当目标模式包含 "@d" 或 "@l" 通配符 \& 时才有效。
+.RE
+.PP
+\fIInstancesMax=\fP
+.RS 4
+取一个等于或大于 2\& 的十进制整数。这配置了多少个并发版本的资源来保留
+\&。每当启动新更新时，都要确保目标中存在的版本数不超过此处指定的版本数减去一个。任何多余的版本被删除 (如果使用
+\fBregular\-file\fP，\fBdirectory\fP，\fBsubvolume\fP 的目标 \fIType=\fP) 或清空 (如果使用
+\fBpartition\fP 的目标 \fIType=\fP; 在这种情况下清空只是将分区标签设置为特殊字符串 "_empty";
+请注意，实际上没有删除任何分区) \&。更新完成后，目标资源的并发版本数等于或低于此处指定的数量 \&。
+.sp
+请注意，此设置可能因每次传输而不同。但是，通常建议对所有传输保持此设置相同，否则文件或分区的不完整组合将被安装 \&。
+.sp
+如果选择目标 \fIType=\fP 为 \fBpartition\fP，则要保留的并发版本数额外受分区表中正确类型的分区槽数限制
+\&。IE\&。如果所选分区类型只有 2 个分区槽，则将此值设置为大于 2 无效，因为无论如何不能在映像中存储超过 2 个并发版本 \&。
+.RE
+.PP
+\fIRemoveTemporary=\fP
+.RS 4
+采用布尔型参数 \&。如果在启动更新之前启用此选项 (这是默认设置)，则先前尝试的所有遗留的、不完整的更新都将从目标目录中删除 \&。这仅在目标资源
+\fIType=\fP 选择为 \fBregular\-file\fP、\fBdirectory\fP 或 \fBsubvolume\fP\& 时有效。
+.RE
+.PP
+\fICurrentSymlink=\fP
+.RS 4
+采用符号链接名称作为参数 \&。如果使用此选项，作为更新的最后一步，指定名称下的符号链接是 created/updated 指向已完成的更新
+\&。这有助于提供一个始终指向资源最新版本的稳定名称。仅当目标资源 \fIType=\fP 选择为 \fBregular\-file\fP、\fBdirectory\fP
+或 \fBsubvolume\fP\& 时才支持此功能。
+.RE
+.SH SPECIFIERS
+.PP
+可以在 \fIMinVersion=\fP、\fIProtectVersion=\fP、\fIPath=\fP、\fIMatchPattern=\fP 和
+\fICurrentSymlink=\fP 设置中使用说明符 \&。理解以下扩展:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&3.\ \&Specifiers available\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"%a"
+T}:T{
+Architecture
+T}:T{
+A short string identifying the architecture of the local system\&. A string such as \fBx86\fP, \fBx86\-64\fP or \fBarm64\fP\&. See the architectures defined for \fIConditionArchitecture=\fP in \fBsystemd.unit\fP(5) for a full list\&.
+T}
+T{
+"%A"
+T}:T{
+Operating system image version
+T}:T{
+The operating system image version identifier of the running system, as read from the \fIIMAGE_VERSION=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%b"
+T}:T{
+Boot ID
+T}:T{
+The boot ID of the running system, formatted as string\&. See \fBrandom\fP(4) for more information\&.
+T}
+T{
+"%B"
+T}:T{
+Operating system build ID
+T}:T{
+The operating system build identifier of the running system, as read from the \fIBUILD_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%H"
+T}:T{
+Host name
+T}:T{
+The hostname of the running system\&.
+T}
+T{
+"%l"
+T}:T{
+Short host name
+T}:T{
+The hostname of the running system, truncated at the first dot to remove any domain component\&.
+T}
+T{
+"%m"
+T}:T{
+Machine ID
+T}:T{
+The machine ID of the running system, formatted as string\&. See \fBmachine\-id\fP(5) for more information\&.
+T}
+T{
+"%M"
+T}:T{
+Operating system image identifier
+T}:T{
+The operating system image identifier of the running system, as read from the \fIIMAGE_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%o"
+T}:T{
+Operating system ID
+T}:T{
+The operating system identifier of the running system, as read from the \fIID=\fP field of /etc/os\-release\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%v"
+T}:T{
+Kernel release
+T}:T{
+Identical to \fBuname \-r\fP output\&.
+T}
+T{
+"%w"
+T}:T{
+Operating system version ID
+T}:T{
+The operating system version identifier of the running system, as read from the \fIVERSION_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%W"
+T}:T{
+Operating system variant ID
+T}:T{
+The operating system variant identifier of the running system, as read from the \fIVARIANT_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%T"
+T}:T{
+Directory for temporary files
+T}:T{
+This is either /tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%V"
+T}:T{
+Directory for larger and persistent temporary files
+T}:T{
+This is either /var/tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%%"
+T}:T{
+Single percent sign
+T}:T{
+Use "%%" in place of "%" to specify a single percent sign\&.
+T}
+.TE
+.sp 1
+.PP
+不要将 "%" 说明符扩展前缀与 "@" 模式匹配通配符前缀 \& 混淆。前者是在解析丢弃 \- in 文件时扩展的简单快捷方式，后者封装了匹配模式字符串
+\& 的可变部分。有关模式匹配通配符的详细信息，请参见上文 \&。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Updates for a Verity Enabled Secure OS\fP
+.PP
+通过以下三个文件，我们定义了一个根文件系统分区、一个匹配的 Verity 分区和一个统一的内核映像以作为一个更新
+\&。此示例是本手册页前面讨论的示例的扩展 \&。
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/sysupdate\&.d/50\-verity\&.conf
+[Transfer]
+ProtectVersion=%A
+
+[Source]
+Type=url\-file
+Path=https://download\&.example\&.com/
+MatchPattern=foobarOS_@v_@u\&.verity\&.xz
+
+[Target]
+Type=partition
+Path=auto
+MatchPattern=foobarOS_@v_verity
+MatchPartitionType=root\-verity
+PartitionFlags=0
+PartitionReadOnly=1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+上面定义了根文件系统 \& 的 Verity 分区的更新机制。Verity 分区映像从
+"https://download\&.example\&.com/foobarOS_@v_@u\&.verity\&.xz"
+下载并写入合适的本地分区，该分区被标记为只读 \&。假设此更新是从映像本身运行的，当前映像版本 (i\&.e\&。"%A" 说明符)
+被标记为受保护，以确保它在启动时不会损坏 \&。请注意，目标分区的分区 UUID 在源文件名 \& 中编码。固定分区 UUID 有助于确保内核命令行上的
+"roothash=" 足以查明 Verity 和根文件系统分区，并对 Verity 根级别哈希进行编码 (假设文件名中的 UUID 与其顶部匹配 \-
+级散列，\fBsystemd\-gpt\-auto\-generator\fP(8) 建议的方式) \&。
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/sysupdate\&.d/60\-root\&.conf
+[Transfer]
+ProtectVersion=%A
+
+[Source]
+Type=url\-file
+Path=https://download\&.example\&.com/
+MatchPattern=foobarOS_@v_@u\&.root\&.xz
+
+[Target]
+Type=partition
+Path=auto
+MatchPattern=foobarOS_@v
+MatchPartitionType=root
+PartitionFlags=0
+PartitionReadOnly=1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+上面为根文件系统定义了一个匹配的传输定义 \&。
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/sysupdate\&.d/70\-kernel\&.conf
+[Transfer]
+ProtectVersion=%A
+
+[Source]
+Type=url\-file
+Path=https://download\&.example\&.com/
+MatchPattern=foobarOS_@v\&.efi\&.xz
+
+[Target]
+Type=regular\-file
+Path=/efi/EFI/Linux
+MatchPattern=foobarOS_@v+@l\-@d\&.efi \e
+             foobarOS_@v+@l\&.efi \e
+             foobarOS_@v\&.efi
+Mode=0444
+TriesLeft=3
+TriesDone=0
+InstancesMax=2
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+根据 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2
+Type#2\&，上面的代码将统一的内核映像安装到 ESP (安装到 /efi/) 中。根据 \m[blue]\fBAutomatic Boot Assessment\fP\m[]\&\s-2\u[3]\d\s+2，这为内核映像的名称定义了三种可能的模式，并确保在安装新内核时，它们设置为剩余 3
+次尝试 \&。保留不超过两个并行内核 \&。
+.PP
+使用此设置，Web 服务器将为假设的操作系统版本 7 提供以下文件:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+SHA256SUMS\(en 清单文件，包含可用文件及其 SHA256 哈希值
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+SHA256SUMS\&.gpg\(en 清单文件的分离加密签名
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+foobarOS_7_8b8186b1\-2b4e\-4eb6\-ad39\-8d4d18d2a8fb\&.verity\&.xz \(en The
+Verity image for version 7
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+foobarOS_7_f4d1234f\-3ebf\-47c4\-b31d\-4052982f9a2f\&.root\&.xz\(en 版本 7
+的根文件系统映像
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+foobarOS_7_efi\&.xz\(en 版本 7 的统一内核镜像
+.RE
+.PP
+对于每个新的操作系统版本，将添加一组新的后三个文件，每次都有更新的版本 \&。然后应相应地更新 SHA256SUMS
+清单，列出应提供下载的所有版本的所有文件。
+.PP
+\fBExample\ \&2.\ \&Updates for Plain Directory Container Image\fP
+.PP
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Source]
+Type=url\-tar
+Path=https://download\&.example\&.com/
+MatchPattern=myContainer_@v\&.tar\&.gz
+
+[Target]
+Type=subvolume
+Path=/var/lib/machines
+MatchPattern=myContainer_@v
+CurrentSymlink=myContainer
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+在更新时，它会将 "https://download\&.example\&.com/myContainer_@v\&.tar\&.gz" 和
+decompresses/unpacks 下载到 /var/myContainer_@v\&。每次更新后，符号链接
+/var/lib/machines/myContainer 是 created/updated，始终指向最新更新 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-sysupdate\fP(8), \fBsystemd\-repart\fP(8)
+.SH NOTES
+.IP " 1." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.IP " 2." 4
+引导装载程序规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/boot_loader_specification
+.RE
+.IP " 3." 4
+自动启动评估
+.RS 4
+\%https://systemd.io/AUTOMATIC_BOOT_ASSESSMENT
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

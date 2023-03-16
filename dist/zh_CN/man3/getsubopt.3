@@ -1,0 +1,215 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2007 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2007 Justin Pryzby <pryzbyj@justinpryzby.com>
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\" Permission is hereby granted, free of charge, to any person obtaining
+.\" a copy of this software and associated documentation files (the
+.\" "Software"), to deal in the Software without restriction, including
+.\" without limitation the rights to use, copy, modify, merge, publish,
+.\" distribute, sublicense, and/or sell copies of the Software, and to
+.\" permit persons to whom the Software is furnished to do so, subject to
+.\" the following conditions:
+.\"
+.\" The above copyright notice and this permission notice shall be
+.\" included in all copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+.\" EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+.\" IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+.\" CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+.\" TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+.\" SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.\" %%%LICENSE_END
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getsubopt 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getsubopt \- 从字符串中解析子选项参数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint getsubopt(char **restrict \fP\fIoptionp\fP\fB, char *const *restrict \fP\fItokens\fP\fB,\fP
+\fB              char **restrict \fP\fIvaluep\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetsubopt\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+.fi
+.SH DESCRIPTION
+\fBgetsubopt\fP() 解析 \fIoptionp\fP 中提供的以逗号分隔的子选项列表。 (这样的子选项列表通常在 \fBgetopt\fP(3)
+用于解析命令行时产生; 例如，参见 \fBmount\fP(8).) 的 \fI\-o\fP 选项每个子选项可能包含一个关联值，该值与子选项名称用等号分隔。
+以下是可能在 \fIoptionp\fP: 中传递的字符串类型的示例
+.PP
+.in +4n
+.EX
+\fBro,name=xyz\fP
+.EE
+.in
+.PP
+\fItokens\fP 参数是一个指向以 NULL 结尾的指针数组的指针，指向 \fBgetsubopt\fP() 将在 \fIoptionp\fP 中查找的
+tokens。 tokens 应该是不同的、以 null 结尾的字符串，至少包含一个字符，没有嵌入等号或逗号。
+.PP
+对 \fBgetsubopt\fP() 的每个调用都会返回有关 \fIoptionp\fP 中下一个未处理子选项的信息。 子选项中的第一个等号 (如果有的话)
+被解释为该子选项的名称和值之间的分隔符。 该值扩展到下一个逗号，或 (对于最后一个子选项) 到字符串的末尾。 如果子选项的名称与 \fItokens\fP
+中的已知名称相匹配，并且找到了值字符串，则 \fBgetsubopt\fP() 将 \fI*valuep\fP 设置为该字符串的地址。 \fIoptionp\fP
+中的第一个逗号被空字节覆盖，因此 \fI*valuep\fP 恰好是该子选项的 "value string"。
+.PP
+如果识别出子选项，但未找到值字符串，则 \fI*valuep\fP 设置为 NULL。
+.PP
+当 \fBgetsubopt\fP() 返回时，\fIoptionp\fP 指向下一个子选项，或者如果最后一个子选项刚刚被处理，则指向字符串末尾的空字节
+(\[aq]\e0\[aq])。
+.SH "RETURN VALUE"
+如果识别出 \fIoptionp\fP 中的第一个子选项，则 \fBgetsubopt\fP() 返回 \fItokens\fP 中匹配的子选项元素的索引。 否则，返回
+\-1，\fI*valuep\fP 是整个 \fIname\fP\fB[=\fP\fIvalue\fP\fB]\fP 字符串。
+.PP
+由于改变了 \fI*optionp\fP，调用到 \fBgetsubopt\fP() 之前的第一个子选项不是 (necessarily)，与
+\fBgetsubopt\fP() 之后的第一个子选项一样。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetsubopt\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+由于 \fBgetsubopt\fP() 覆盖了它在字符串 \fI*optionp\fP 中找到的任何逗号，因此该字符串必须是可写的; 它不能是字符串常量。
+.SH EXAMPLES
+以下程序需要 "\-o" 选项后的子选项。
+.PP
+.\" SRC BEGIN (getsubopt.c)
+.EX
+#define _XOPEN_SOURCE 500
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <assert.h>
+
+int
+main(int argc, char *argv[])
+{
+    枚举 {
+        RO_OPT = 0,
+        RW_OPT,
+        NAME_OPT
+    };
+    char *const token[] = {
+        [RO_OPT]   = "ro",
+        [RW_OPT]   = "rw",
+        [NAME_OPT] = "name",
+        NULL
+    };
+    char *subopts;
+    char *value;
+    int opt;
+
+    int readonly = 0;
+    int readwrite = 0;
+    char *name = NULL;
+    int errfnd = 0;
+
+    while ((opt = getopt(argc, argv, "o:")) != \-1) {
+        switch (opt) {
+        case \[aq]o\[aq]:
+            subopts = optarg;
+            while (*subopts != \[aq]\e0\[aq] && !errfnd) {
+
+                switch (getsubopt(&subopts, token, &value)) {
+                case RO_OPT:
+                    readonly = 1;
+                    break;
+
+                case RW_OPT:
+                    readwrite = 1;
+                    break;
+
+                case NAME_OPT:
+                    if (value == NULL) {
+                        fprintf(stderr,
+                                "Missing value for suboption \[aq]%s\[aq]\en",
+                                token[NAME_OPT]);
+                        errfnd = 1;
+                        continue;
+                    }
+
+                    name = value;
+                    break;
+
+                default:
+                    fprintf(stderr,
+                            "No match found for token: /%s/\en", value);
+                    errfnd = 1;
+                    break; 
+                }
+            }
+            if (readwrite && readonly) {
+                fprintf(stderr,
+                        "Only one of \[aq]%s\[aq] and \[aq]%s\[aq] can be specified\en",
+                        token[RO_OPT], token[RW_OPT]);
+                errfnd = 1;
+            }
+            break;
+
+        default:
+            errfnd = 1;
+        }
+    }
+
+    if (errfnd || argc == 1) {
+        fprintf(stderr, "\enUsage: %s \-o <suboptstring>\en", argv[0]);
+        fprintf(stderr,
+                ` 子选项是 \[aq] ro\[aq]、\[aq] rw\[aq] 和 \[aq]name=<value>\[aq]\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Remainder of program... */
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetopt\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

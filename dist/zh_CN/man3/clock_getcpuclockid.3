@@ -1,0 +1,141 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008, Linux Foundation, written by Michael Kerrisk
+.\" <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH clock_getcpuclockid 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+clock_getcpuclockid \- 获取进程 CPU 时间时钟的 ID
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)、自 glibc 2.17
+.PP
+在 glibc 2.17、实时库 (\fIlibrt\fP、\fI\-lrt\fP) 之前
+.SH SYNOPSIS
+\fB#include <time.h>\fP
+.nf
+.PP
+\fBint clock_getcpuclockid(pid_t \fP\fIpid\fP\fB, clockid_t *\fP\fIclockid\fP\fB);\fP
+.fi
+.PP
+.ad l
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBclock_getcpuclockid\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBclock_getcpuclockid\fP() 函数获取 ID 为 \fIpid\fP 的进程的 CPU 时间时钟 ID，返回到 \fIclockid\fP
+指向的位置。 如果 \fIpid\fP 为零，则返回调用进程的 CPU 时间时钟的时钟 ID。
+.SH "RETURN VALUE"
+成功时，\fBclock_getcpuclockid\fP() 返回 0; 出错时，它返回 ERRORS 中列出的正错误号之一。
+.SH ERRORS
+.TP 
+\fBENOSYS\fP
+内核不支持获取另一个进程的 per\-process CPU\-time clock，\fIpid\fP 不指定调用进程。
+.TP 
+\fBEPERM\fP
+调用者无权访问 \fIpid\fP 指定的进程的 CPU 时间时钟。 (在 POSIX.1\-2001 中指定; 不会在 Linux
+上发生，除非内核不支持获取另一个进程的每进程 CPU 时间时钟。)
+.TP 
+\fBESRCH\fP
+没有 ID 为 \fIpid\fP 的进程。
+.SH VERSIONS
+\fBclock_getcpuclockid\fP() 函数自 glibc 2.2 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBclock_getcpuclockid\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+用调用得到的时钟 ID 调用 \fBclock_gettime\fP(2) 到 \fIpid\fP 为 0 的
+\fBclock_getcpuclockid\fP()，与使用时钟 ID \fBCLOCK_PROCESS_CPUTIME_ID\fP 是一样的。
+.SH EXAMPLES
+下面的示例程序获取其 ID 在命令行中给出的进程的 CPU 时间时钟 ID，然后使用 \fBclock_gettime\fP(2) 获取该时钟上的时间。
+运行示例如下:
+.PP
+.in +4n
+.EX
+$\fB ./a.out 1\fP                 # 显示 init 进程的 CPU 时钟
+PID 1 的 CPU 时钟是 2.213466748 秒
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (clock_getcpuclockid.c)
+\&
+.EX
+#define _XOPEN_SOURCE 600
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    clockid_t clockid;
+    struct timespec ts;
+
+    if (argc != 2) {
+        fprintf(stderr, "%s <process\-ID>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (clock_getcpuclockid(atoi(argv[1]), &clockid) != 0) {
+        perror("clock_getcpuclockid");
+        exit(EXIT_FAILURE);
+    }
+
+    if (clock_gettime(clockid, &ts) == \-1) {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("CPU\-time clock for PID %s is %jd.%09ld seconds\en",
+           argv[1], (intmax_t) ts.tv_sec, ts.tv_nsec);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclock_getres\fP(2), \fBtimer_create\fP(2), \fBpthread_getcpuclockid\fP(3),
+\fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

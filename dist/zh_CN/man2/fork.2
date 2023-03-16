@@ -1,0 +1,198 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" A few fragments remain from an earlier (1992) page by
+.\" Drew Eckhardt (drew@cs.colorado.edu),
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt (michael@moria.de)
+.\" Modified Sat Jul 24 13:22:07 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 21 Aug 1994 by Michael Chastain (mec@shell.portal.com):
+.\"   Referenced 'clone(2)'.
+.\" Modified 1995-06-10, 1996-04-18, 1999-11-01, 2000-12-24
+.\"   by Andries Brouwer (aeb@cwi.nl)
+.\" Modified, 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on capability requirements
+.\" 2006-09-04, Michael Kerrisk
+.\"     Greatly expanded, to describe all attributes that differ
+.\"	parent and child.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fork 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fork \- 创建一个子进程
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBpid_t fork(void);\fP
+.fi
+.SH DESCRIPTION
+\fBfork\fP() 通过复制调用进程创建一个新进程。 新进程称为 \fIchild\fP 进程。 调用进程称为 \fIparent\fP 进程。
+.PP
+子进程和父进程运行在不同的内存空间。 在 \fBfork\fP() 时，两个内存空间具有相同的内容。 其中一个进程执行的内存写入、文件映射
+(\fBmmap\fP(2)) 和取消映射 (\fBmunmap\fP(2)) 不会影响另一个进程。
+.PP
+除了以下几点外，子进程与父进程完全相同:
+.IP \[bu] 3
+子进程有自己唯一的进程 ID，这个 PID 不匹配任何现有进程组 (\fBsetpgid\fP(2)) 或会话的 ID。
+.IP \[bu]
+子进程的父进程 ID 与父进程 ID 相同。
+.IP \[bu]
+子进程不继承其父进程的内存锁 (\fBmlock\fP(2)、\fBmlockall\fP(2))。
+.IP \[bu]
+进程资源利用率 (\fBgetrusage\fP(2)) 和 CPU 时间计数器 (\fBtimes\fP(2)) 在子进程中重置为零。
+.IP \[bu]
+子节点的待处理信号集最初是空的 (\fBsigpending\fP(2))。
+.IP \[bu]
+子项不会从其父项 (\fBsemop\fP(2)) 继承信号量调整。
+.IP \[bu]
+子进程不会从其父进程 (\fBfcntl\fP(2)) 继承进程关联的记录锁。 (另一方面，它确实从其父级继承了 \fBfcntl\fP(2) 打开文件描述锁和
+\fBflock\fP(2) 锁。)
+.IP \[bu]
+子项不从其父项 (\fBsetitimer\fP(2)、\fBalarm\fP(2)、\fBtimer_create\fP(2)) 继承计时器。
+.IP \[bu]
+子项不会从其父项 (\fBaio_read\fP(3)、\fBaio_write\fP(3)) 继承未完成的异步 I/O 操作，也不会从其父项继承任何异步 I/O
+上下文 (请参见 \fBio_setup\fP(2)).
+.PP
+前面列表中的进程属性都在 POSIX.1 中指定。 父进程和子进程在以下特定于 Linux 的进程属性方面也有所不同:
+.IP \[bu] 3
+子节点不从其父继承目录更改通知 (dnotify) (请参见 \fBfcntl\fP(2)) 中 \fBF_NOTIFY\fP 的说明。
+.IP \[bu]
+\fBprctl\fP(2) \fBPR_SET_PDEATHSIG\fP 设置被重置，以便子进程在其父进程终止时不会收到信号。
+.IP \[bu]
+默认计时器松弛值设置为父项的当前计时器松弛值。 请参见 \fBprctl\fP(2) 中 \fBPR_SET_TIMERSLACK\fP 的说明。
+.IP \[bu]
+标有 \fBmadvise\fP(2) \fBMADV_DONTFORK\fP 标志的内存映射不会跨 \fBfork\fP() 继承。
+.IP \[bu]
+已标记有 \fBmadvise\fP(2) \fBMADV_WIPEONFORK\fP 标志的地址范围中的内存在 \fBfork\fP() 之后的子项中被归零。
+(\fBMADV_WIPEONFORK\fP 设置保留在子地址范围内。)
+.IP \[bu]
+子节点的终止信号总是 \fBSIGCHLD\fP (见 \fBclone\fP(2)).
+.IP \[bu]
+\fBioperm\fP(2) 设置的端口访问权限位不被 child 继承; 子节点必须使用 \fBioperm\fP(2) 打开它需要的任何位。
+.PP
+请注意以下几点:
+.IP \[bu] 3
+子进程是用一个名为 \fBfork\fP() 的线程创建的。 parent 的整个虚拟地址空间被复制到 child 中，包括交互锁的状态、条件变量和其他
+pthreads 对象; 使用 \fBpthread_atfork\fP(3) 可能有助于处理这可能导致的问题。
+.IP \[bu]
+在多线程程序中的 \fBfork\fP() 之后，子节点可以安全地调用仅异步信号安全的函数 (参见 \fBsignal\-safety\fP(7))，直到它调用
+\fBexecve\fP(2)。
+.IP \[bu]
+子进程继承父进程的打开文件描述符集的副本。 子文件中的每个文件描述符都引用相同的打开文件描述 (参见 \fBopen\fP(2))
+作为父文件中相应的文件描述符。 这意味着这两个文件描述符共享打开文件状态标志、文件偏移量和信号驱动的 I/O 属性 (参见 \fBfcntl\fP(2)).h
+中 \fBF_SETOWN\fP 和 \fBF_SETSIG\fP 的描述)。
+.IP \[bu]
+子级继承父级打开的消息队列描述符集的副本 (参见 \fBmq_overview\fP(7)).
+子进程中的每个文件描述符都引用与父进程中相应文件描述符相同的打开消息队列描述。 这意味着两个文件描述符共享相同的标志 (\fImq_flags\fP)。
+.IP \[bu]
+子级继承父级打开目录流的副本 (参见 \fBopendir\fP(3)).  POSIX.1 表示父子 \fImay\fP 中对应的目录流共享目录流定位; 在
+Linux/glibc 上他们没有。
+.SH "RETURN VALUE"
+成功时，父进程返回子进程的 PID，子进程返回 0。 失败时，在父进程中返回 \-1，不创建子进程，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+.\" NOTE! The following should match the description in pthread_create(3)
+遇到了系统强加的线程数限制。 有许多限制可能会触发此错误:
+.RS
+.IP \[bu] 3
+已达到 \fBRLIMIT_NPROC\fP 软资源限制 (通过 \fBsetrlimit\fP(2)) 设置，它限制了真实用户 ID 的进程和线程数;
+.IP \[bu]
+已达到内核对进程和线程数量的系统范围限制 \fI/proc/sys/kernel/threads\-max\fP (请参见 \fBproc\fP(5));
+.IP \[bu]
+已达到 PID 的最大数量 \fI/proc/sys/kernel/pid_max\fP (参见 \fBproc\fP(5)); or
+.IP \[bu]
+达到了 cgroup "process number" (PIDs) 控制器施加的 PID 限制 (\fIpids.max\fP)。
+.RE
+.TP 
+\fBEAGAIN\fP
+调用者在 \fBSCHED_DEADLINE\fP 调度策略下运行，并且没有设置 reset\-on\-fork 标志。 请参见 \fBsched\fP(7)。
+.TP 
+\fBENOMEM\fP
+\fBfork\fP() 未能分配必要的内核结构，因为内存紧张。
+.TP 
+\fBENOMEM\fP
+试图在其 "init" 进程已终止的 PID 名称空间中创建子进程。 请参见 \fBpid_namespaces\fP(7)。
+.TP 
+\fBENOSYS\fP
+.\" e.g., arm (optionally), blackfin, c6x, frv, h8300, microblaze, xtensa
+该平台不支持 \fBfork\fP() (例如，没有内存管理单元的硬件)。
+.TP 
+\fBERESTARTNOINTR\fP (since Linux 2.6.17)
+.\" commit 4a2c7a7837da1b91468e50426066d988050e4d56
+系统调用被信号中断，将重新启动。 (这只能在跟踪期间看到。)
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.SH NOTES
+在 Linux 下，\fBfork\fP() 是使用写时复制页实现的，因此它带来的唯一损失是复制父页表以及为子页创建独特任务结构体所需的时间和内存。
+.SS "C library/kernel differences"
+.\" nptl/sysdeps/unix/sysv/linux/fork.c
+.\" and does some magic to ensure that getpid(2) returns the right value.
+由于 glibc 2.3.3，而不是调用内核的 \fBfork\fP() 系统调用，作为 NPTL 线程实现的一部分提供的 glibc \fBfork\fP()
+包装器调用 \fBclone\fP(2)，其标志提供与传统系统调用相同的效果。 (对 \fBfork\fP() 的调用等同于将 \fIflags\fP 指定为
+\fBSIGCHLD\fP.) 对 \fBclone\fP(2) 的调用 glibc 包装器调用任何已使用 \fBpthread_atfork\fP(3) 建立的
+fork 处理程序。
+.SH EXAMPLES
+有关更多示例，请参见 \fBpipe\fP(2) 和 \fBwait\fP(2)。
+.PP
+.\" SRC BEGIN (fork.c)
+.EX
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(void)
+{
+    pid_t pid;
+
+    if (signal(SIGCHLD, SIG_IGN) == SIG_ERR) {
+        perror("signal");
+        exit(EXIT_FAILURE);
+    }
+    pid = fork();
+    switch (pid) {
+    case \-1:
+        perror("fork");
+        exit(EXIT_FAILURE);
+    case 0:
+        puts("Child exiting.");
+        exit(EXIT_SUCCESS);
+    default:
+        printf("Child is PID %jd\en", (intmax_t) pid);
+        puts("Parent exiting.");
+        exit(EXIT_SUCCESS);
+    }
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBexecve\fP(2), \fBexit\fP(2), \fBsetrlimit\fP(2), \fBunshare\fP(2),
+\fBvfork\fP(2), \fBwait\fP(2), \fBdaemon\fP(3), \fBpthread_atfork\fP(3),
+\fBcapabilities\fP(7), \fBcredentials\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

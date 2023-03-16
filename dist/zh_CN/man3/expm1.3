@@ -1,0 +1,135 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1995 Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" and Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 2002-07-27 Walter Harms
+.\" 	(walter.harms@informatik.uni-oldenburg.de)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH expm1 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+expm1, expm1f, expm1l \- 指数负 1
+.SH LIBRARY
+数学库 (\fIlibm\fP、\fI\-lm\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <math.h>\fP
+.PP
+\fBdouble expm1(double \fP\fIx\fP\fB);\fP
+\fBfloat expm1f(float \fP\fIx\fP\fB);\fP
+\fBlong double expm1l(long double \fP\fIx\fP\fB);\fP
+.PP
+.fi
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBexpm1\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _ISOC99_ 源 ||_POSIX_C_SOURCE >= 200112L
+        || _XOPEN_SOURCE >= 500
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.PP
+\fBexpm1f\fP(), \fBexpm1l\fP():
+.nf
+    _ISOC99_ 源 ||_POSIX_C_SOURCE >= 200112L
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数返回的值相当于
+.PP
+.nf
+    exp(x) \- 1
+.fi
+.PP
+结果以一种准确的方式计算，即使 \fIx\fP 的值接近零 \[em] 在这种情况下，由于减去两个几乎相等的数字，\fIexp(x) \- 1\fP 将不准确。
+.SH "RETURN VALUE"
+成功时，这些函数返回 \fIexp(x)\ \-\ 1\fP。
+.PP
+如果 \fIx\fP 是 NaN，则返回 NaN。
+.PP
+如果 \fIx\fP 为 + 0 (\-0)，则返回 + 0 (\-0)。
+.PP
+如果 \fIx\fP 为正无穷大，则返回正无穷大。
+.PP
+如果 \fIx\fP 为 negative 无穷大，则返回 \-1。
+.PP
+如果结果溢出，则发生范围错误，函数分别返回 \-\fBHUGE_VAL\fP、\-\fBHUGE_VALF\fP 或 \-\fBHUGE_VALL\fP。
+.SH ERRORS
+有关如何确定调用这些函数时是否发生错误的信息，请参见 \fBmath_error\fP(7)。
+.PP
+可能会出现以下错误:
+.TP 
+Range error, overflow
+.\"
+.\" POSIX.1 specifies an optional range error (underflow) if
+.\" x is subnormal.  glibc does not implement this.
+\fIerrno\fP 设置为 \fBERANGE\fP (但请参见 BUGS)。 引发溢出浮点异常 (\fBFE_OVERFLOW\fP)。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBexpm1\fP(),
+\fBexpm1f\fP(),
+\fBexpm1l\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.\" BSD.
+C99, POSIX.1\-2001, POSIX.1\-2008.
+.SH BUGS
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=6778
+在 glibc 2.17 之前，在某些体系结构 (例如，x86，但不是 x86_64) 上，\fBexpm1\fP() 为某些较大的 negative
+\fIx\fP 值 (其中函数结果接近 \-1) 引发了伪造的下溢浮点异常。
+.PP
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=6814
+.\" e.g., expm1(1e5) through expm1(1.00199970127e5),
+.\" but not expm1(1.00199970128e5) and beyond.
+在大约 glibc 2.11 之前，除了预期的溢出异常之外，\fBexpm1\fP() 还引发了一个伪造的无效浮点异常，并且对于一些较大的正 \fIx\fP
+值返回了 NaN 而不是正无穷大。
+.PP
+.\" It looks like the fix was in glibc 2.11, or possibly glibc 2.12.
+.\" I have no test system for glibc 2.11, but glibc 2.12 passes.
+.\" From the source (sysdeps/i386/fpu/s_expm1.S) it looks
+.\" like the changes were in glibc 2.11.
+.\" http://sources.redhat.com/bugzilla/show_bug.cgi?id=6788
+在 glibc 2.11 之前，当发生范围错误时，glibc 实现不会将 \fIerrno\fP 设置为 \fBERANGE\fP。
+.SH "SEE ALSO"
+\fBexp\fP(3), \fBlog\fP(3), \fBlog1p\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

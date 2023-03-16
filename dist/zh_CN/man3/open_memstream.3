@@ -1,0 +1,105 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2005, 2012, 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\" 2008-12-04, Petr Baudis <pasky@suse.cz>: Document open_wmemstream()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH open_memstream 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+open_memstream, open_wmemstream \- 打开一个动态内存缓冲流
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBFILE *open_memstream(char **\fP\fIptr\fP\fB, size_t *\fP\fIsizeloc\fP\fB);\fP
+.PP
+\fB#include <wchar.h>\fP
+.PP
+\fBFILE *open_wmemstream(wchar_t **\fP\fIptr\fP\fB, size_t *\fP\fIsizeloc\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBopen_memstream\fP(), \fBopen_wmemstream\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBopen_memstream\fP() 函数打开一个流以写入内存缓冲区。 函数动态分配缓冲区，缓冲区根据需要自动增长。 最初，缓冲区的大小为零。
+关闭流后，调用者应该 \fBfree\fP(3) 这个缓冲区。
+.PP
+\fIptr\fP 和 \fIsizeloc\fP 指向的位置分别用于报告当前位置和缓冲区的大小。 每次流被刷新 (\fBfflush\fP(3)) 和流关闭
+(\fBfclose\fP(3)) 时，这些指针所指的位置都会更新。 仅当调用者不对流执行进一步输出时，这些值才保持有效。
+如果执行进一步的输出，则在尝试访问这些值之前必须再次刷新流。
+.PP
+缓冲区末尾保留一个空字节。 该字节是 \fInot\fP，包含在存储在 \fIsizeloc\fP 的大小值中。
+.PP
+流维护当前位置的概念，该位置最初为零 (缓冲区的开始)。 每个写操作都会隐式调整缓冲区位置。 可以使用 \fBfseek\fP(3) 或
+\fBfseeko\fP(3) 显式更改流的缓冲区位置。 将缓冲区位置移到已写入数据的末尾之后，用空字符填充中间空间。
+.PP
+\fBopen_wmemstream\fP() 类似于 \fBopen_memstream\fP()，但对宽字符而不是字节进行操作。
+.SH "RETURN VALUE"
+成功完成后，\fBopen_memstream\fP() 和 \fBopen_wmemstream\fP() 返回 \fIFILE\fP 指针。 否则，返回 NULL
+并设置 \fIerrno\fP 以指示错误。
+.SH VERSIONS
+\fBopen_memstream\fP() 在 glibc 1.0.x 中已经可用。 \fBopen_wmemstream\fP() 自 glibc 2.4
+起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBopen_memstream\fP(),
+\fBopen_wmemstream\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2008。这些函数未在 POSIX.1\-2001 中指定，并且未在其他系统上广泛使用。
+.SH NOTES
+没有与这些函数返回的文件流关联的文件描述符 (即，如果在返回的流上调用 \fBfileno\fP(3) 将返回错误)。
+.SH BUGS
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=1996
+在 glibc 2.7 之前，寻找 \fBopen_memstream\fP() 创建的流的末尾不会扩大缓冲区; 相反 \fBfseek\fP(3) 调用失败，返回
+\-1。
+.SH EXAMPLES
+请参见 \fBfmemopen\fP(3)。
+.SH "SEE ALSO"
+\fBfmemopen\fP(3), \fBfopen\fP(3), \fBsetbuf\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

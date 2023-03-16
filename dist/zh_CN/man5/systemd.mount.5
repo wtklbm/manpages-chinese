@@ -1,0 +1,404 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.MOUNT 5 "" "systemd 253" systemd.mount
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.mount \- 挂载元配置
+.SH SYNOPSIS
+.PP
+\fImount\fP\&.mount
+.SH DESCRIPTION
+.PP
+名称以 "\&.mount" 结尾的元配置文件编码有关由 systemd\& 控制和监督的文件系统挂载点的信息。
+.PP
+此手册页列出了特定于此元类型 \& 的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit]
+和 [Install] 部分 \&。挂载特定的配置选项在 [Mount] 部分 \& 中配置。
+.PP
+\fBsystemd.exec\fP(5) 中列出了其他选项，它定义了 \fBmount\fP(8) 程序在其中执行的执行环境，\fBsystemd.kill\fP(5)
+中定义了进程终止的方式，\fBsystemd.resource\-control\fP(5) 中为服务进程配置资源控制设置。
+.PP
+请注意，选项 \fIUser=\fP 和 \fIGroup=\fP 对挂载单元 \& 没有用。systemd 将两个参数传递给 \fBmount\fP(8);
+\fIWhat=\fP 和 \fIWhere=\fP\& 的值。以这种方式调用时，\fBmount\fP(8) 不会从 /etc/fstab 读取任何选项，并且必须作为
+UID 0\& 运行。
+.PP
+挂载单元必须以它们控制的挂载点目录命名 \&。例: 必须在一个元文件 home\-lennart\&.mount\& 中配置挂载点
+/home/lennart。文件系统路径转元名的转义逻辑详见
+\fBsystemd.unit\fP(5)\&。请注意，挂载单元不能被模板化，也不能通过创建指向其元文件的符号链接将多个名称添加到挂载元。
+.PP
+可选地，挂载单元可以伴随自动挂载单元，以允许按需或并行挂载 \&。请参见 \fBsystemd.automount\fP(5)\&。
+.PP
+在运行时创建的挂载点 (独立于元文件或 /etc/fstab) 将由 systemd 监控，并像 systemd\& 中的任何其他挂载元一样出现。请参见
+\fBproc\fP(5)\& 中的 /proc/self/mountinfo 说明。
+.PP
+一些文件系统具有特殊的语义，作为内核到用户空间和用户空间到用户空间接口的 API 文件系统 \&。其中一些可能无法通过挂载单元更改，也无法禁用
+\&。有关更长的讨论，请参见 \m[blue]\fBAPI File Systems\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.PP
+\fBsystemd\-mount\fP(1) 命令允许从命令行动态地瞬时创建 \&.mount 和 \&.automount 单元 \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+隐式添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果在文件系统层次结构中一个挂载元在另一个挂载元之下，则两个单元之间的需求依赖性和顺序依赖性都会自动创建 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+块设备支持的文件系统自动获得对封装块设备的设备元的 \fIBindsTo=\fP 和 \fIAfter=\fP 类型依赖 (见下文) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果为挂载元启用了传统文件系统配额，则添加自动 \fIWants=\fP 和 \fIBefore=\fP 对
+systemd\-quotacheck\&.service 和 quotaon\&.service 的依赖 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如 \fBsystemd.exec\fP(5) 和 \fBsystemd.resource\-control\fP(5)\&
+中所述，可能会添加额外的隐式依赖项作为执行和资源控制参数的结果。
+.RE
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+所有挂载单元在 umount\&.target 上获取自动 \fIBefore=\fP 和 \fIConflicts=\fP，以便在关机期间停止 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+引用本地文件系统的挂载单元会自动获得对 local\-fs\-pre\&.target 的 \fIAfter=\fP 依赖性以及对
+local\-fs\&.target 的 \fIBefore=\fP 依赖性，除非设置了 \fBnofail\fP 挂载选项 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+网络挂载单元自动获取 \fIAfter=\fP 对 remote\-fs\-pre\&.target、network\&.target 和
+network\-online\&.target 的依赖性，并获得 \fIBefore=\fP 对 remote\-fs\&.target 的依赖性，除非设置了
+\fBnofail\fP 挂载选项 \&。对于后者，还添加了一个 \fIWants=\fP 元 \&。
+.RE
+.PP
+引用本地和网络文件系统的挂载单元通过它们的文件系统类型规范 \& 来区分。在某些情况下这还不够 (例如基于网络块设备的挂载，例如
+iSCSI)，在这种情况下，\fB_netdev\fP 可能会添加到单元的挂载选项字符串中，这会强制 systemd 将挂载单元视为网络挂载 \&.
+.SH FSTAB
+.PP
+挂载单元可以通过元文件或 /etc/fstab (详见 \fBfstab\fP(5)) \& 配置。/etc/fstab
+中列出的挂载将在启动时和系统管理器的配置重新加载时动态转换为原生单位 \&。通常，通过 /etc/fstab
+配置挂载点是管理挂载的首选方法。对于工具，编写挂载单元应该优先于编辑 /etc/fstab\&。有关从 /etc/fstab 到安装单位 \&
+的转换的详细信息，请参见 \fBsystemd\-fstab\-generator\fP(8)。
+.PP
+\fBnfs\fP(5) 中记录的用于 NFS 后台挂载的 NFS 挂载选项 \fBbg\fP 被 \fBsystemd\-fstab\-generator\fP
+检测到，并且选项被转换，以便 systemd 实现该选项的作业控制含义。具体来说，\fBsystemd\-fstab\-generator\fP 的作用就好像
+"x\-systemd\&.mount\-timeout=infinity,retry=10000" 被添加到选项列表中，"fg,nofail" 被添加
+\&。根据具体要求，明确提供其中一些选项或使用下面描述的 "x\-systemd\&.automount" 选项而不是使用 `bg`\& 可能是合适的。
+.PP
+在读取 /etc/fstab 时，systemd 会理解一些特殊的挂载选项，这会影响如何为挂载点创建依赖项 \&。systemd 将从
+local\-fs\&.target 或 remote\-fs\&.target 创建 \fIWants=\fP 或 \fBRequires=\fP 类型的依赖项
+(请参见下面的选项 \fBnofail\fP)，具体取决于文件系统是本地的还是远程的 \&。
+.PP
+\fBx\-systemd\&.requires=\fP
+.RS 4
+在创建的挂载单元和另一个 systemd 单元之间配置 \fIRequires=\fP 和 \fIAfter=\fP 依赖关系，例如设备或挂载单元
+\&。参数应该是元名，或者设备节点或挂载点的绝对路径 \&。可以多次指定此选项 \&。此选项对于需要附加设备的挂载点声明特别有用
+(例如日志文件系统的外部日志设备) 或要到位的附加挂载 (例如合并多个挂载点的覆盖文件系统) \&。有关详细信息，请参见
+\fBsystemd.unit\fP(5) 中的 \fIAfter=\fP 和 \fIRequires=\fP\&。
+.sp
+请注意，无论是否指定了 \fBx\-systemd\&.automount\fP\&，此选项始终仅适用于创建的挂载单元。
+.RE
+.PP
+\fBx\-systemd\&.before=\fP, \fBx\-systemd\&.after=\fP
+.RS 4
+在创建的挂载单元中，配置 \fIBefore=\fP 或 \fIAfter=\fP 对另一个 systemd 单元的依赖，比如挂载单元
+\&。参数应该是一个元名或者挂载点的绝对路径 \&。可以多次指定此选项 \&。此选项对于使用 \fBnofail\fP
+选项的挂载点声明特别有用，这些挂载点是异步挂载但需要在某个元开始之前或之后挂载，例如，在 local\-fs\&.target 元 \& 之前。详见
+\fBsystemd.unit\fP(5) 中的 \fIBefore=\fP 和 \fIAfter=\fP\&。
+.sp
+请注意，无论是否已指定 \fBx\-systemd\&.automount\fP\&，这些选项始终仅适用于创建的挂载单元。
+.RE
+.PP
+\fBx\-systemd\&.wanted\-by=\fP, \fBx\-systemd\&.required\-by=\fP
+.RS 4
+在创建的挂载元中，配置 \fIWantedBy=\fP 或 \fIRequiredBy=\fP 对另一个元 \& 的依赖。可以多次指定此选项
+\&。如果指定这个，则创建的挂载单元的正常自动依赖，e\&.g\&., local\-fs\&.target，不会自动创建 \&。详见
+\fBsystemd.unit\fP(5) 中的 \fIWantedBy=\fP 和 \fIRequiredBy=\fP\&。
+.RE
+.PP
+\fBx\-systemd\&.requires\-mounts\-for=\fP
+.RS 4
+配置创建的挂载单元与其他挂载单元之间的 \fIRequiresMountsFor=\fP 依赖 \&。参数必须是绝对路径 \&。可以多次指定此选项 \&。详见
+\fBsystemd.unit\fP(5) 中的 \fIRequiresMountsFor=\fP\&。
+.RE
+.PP
+\fBx\-systemd\&.device\-bound\fP
+.RS 4
+块设备支持的文件系统将升级为 \fIBindsTo=\fP 依赖 \&。此选项仅在使用 \fBmount\fP(8)
+手动安装文件系统时有用，因为在这种情况下默认依赖项是 \fIRequires=\fP\&。/etc/fstab 中的条目或挂载单元 \& 已经隐含了此选项。
+.RE
+.PP
+\fBx\-systemd\&.automount\fP
+.RS 4
+将为文件系统创建一个自动挂载单元 \&。有关详细信息，请参见 \fBsystemd.automount\fP(5)\&。
+.RE
+.PP
+\fBx\-systemd\&.idle\-timeout=\fP
+.RS 4
+配置 automount 元 \& 的空闲超时时间。详见 \fBsystemd.automount\fP(5) 中的
+\fITimeoutIdleSec=\fP\&。
+.RE
+.PP
+\fBx\-systemd\&.device\-timeout=\fP
+.RS 4
+配置 systemd 在放弃来自 /etc/fstab\& 的条目之前应该等待设备出现的时间。以秒为单位指定时间或明确，追加，一个元，例如
+"s"、"min"、"h"、`ms`\&。
+.sp
+注意该选项只能在 /etc/fstab 中使用，当在元文件 \& 中设置部分 \fIOptions=\fP 时会被忽略。
+.RE
+.PP
+\fBx\-systemd\&.mount\-timeout=\fP
+.RS 4
+配置 systemd 在放弃来自 /etc/fstab\& 的条目之前应等待 mount 命令完成的时间。以秒为单位指定时间或明确，追加，一个元，例如
+"s"、"min"、"h"、`ms`\&。
+.sp
+注意该选项只能在 /etc/fstab 中使用，当在元文件 \& 中设置部分 \fIOptions=\fP 时会被忽略。
+.sp
+有关详细信息，请参见下面的 \fITimeoutSec=\fP\&。
+.RE
+.PP
+\fBx\-systemd\&.makefs\fP
+.RS 4
+文件系统将在设备上初始化 \&。如果设备不是 "empty"，则 i\&.e\&。它包含任何签名，该操作将被跳过 \&。因此，即使在设备已初始化 \&
+后，预计此选项仍会保持设置状态。
+.sp
+注意该选项只能在 /etc/fstab 中使用，当在元文件 \& 中设置部分 \fIOptions=\fP 时会被忽略。
+.sp
+请参见 \fBsystemd\-makefs@.service\fP(8)\&。
+.sp
+\fBwipefs\fP(8) 可用于从块设备中删除任何签名，以强制 \fBx\-systemd\&.makefs\fP 重新初始化设备 \&。
+.RE
+.PP
+\fBx\-systemd\&.growfs\fP
+.RS 4
+文件系统将增长以占据整个块设备 \&。如果文件系统已经达到最大大小，则不会执行任何操作 \&。因此，预计即使在文件系统增长之后，此选项仍会保持设置
+\&。仅支持某些文件系统类型，有关详细信息，请参见 \fBsystemd\-makefs@.service\fP(8)\&。
+.sp
+注意该选项只能在 /etc/fstab 中使用，当在元文件 \& 中设置部分 \fIOptions=\fP 时会被忽略。
+.RE
+.PP
+\fBx\-systemd\&.pcrfs\fP
+.RS 4
+挂载文件系统后，将文件系统身份信息 (挂载点、类型、标签、UUID、分区标签、分区 UUID) 测量到 PCR 15 中。这确保了
+\fBsystemd\-pcrfs@.service\fP(8) 或 systemd\-pcrfs\-root\&.service 服务被挂载元 \& 拉入。
+.sp
+注意该选项只能在 /etc/fstab 中使用，当在元文件 \& 中设置部分 \fIOptions=\fP
+时会被忽略。\fBsystemd\-gpt\-auto\-generator\fP(8)\& 发现的 root 和 /usr / 分区也隐含了它。
+.RE
+.PP
+\fBx\-systemd\&.rw\-only\fP
+.RS 4
+如果挂载操作未能以读写方式挂载文件系统，它通常会尝试以只读方式挂载文件系统 \&。此选项禁用该行为，并导致挂载立即失败 \&。这个选项被翻译成一个元文件
+\& 中的 \fIReadWriteOnly=\fP 设置。
+.RE
+.PP
+\fB_netdev\fP
+.RS 4
+通常文件系统类型用于确定挂载是否为 "network mount"，i\&.e\&。如果它只应在网络可用后启动
+\&。使用此选项会覆盖此检测并指定挂载需要网络 \&。
+.sp
+网络安装单元在 remote\-fs\-pre\&.target 和 remote\-fs\&.target 之间排序，而不是
+local\-fs\-pre\&.target 和 local\-fs\&.target\&。他们还拉入 network\-online\&.target
+并在它和 network\&.target\& 之后排序。
+.RE
+.PP
+\fBnoauto\fP, \fBauto\fP
+.RS 4
+对于 \fBnoauto\fP，挂载单元将不会添加为 local\-fs\&.target 或 remote\-fs\&.target\&
+的依赖项。这意味着它不会在引导期间自动挂载，除非它被其他一些元 \& 拉入。\fBauto\fP 选项含义相反，默认为 \&。
+.sp
+请注意，如果使用 \fBx\-systemd\&.automount\fP (见上文)，则 \fBauto\fP 和 \fBnoauto\fP 都没有任何效果 \&。匹配的
+automount 元将作为依赖项添加到适当的目标 \&。
+.RE
+.PP
+\fBnofail\fP
+.RS 4
+对于 \fBnofail\fP，local\-fs\&.target 或 remote\-fs\&.target\& 只需要而不需要此挂载。此外，在这些目标单位
+\& 之前没有订购挂载单元。意思是不等待挂载元，也不管挂载点是否挂载成功 \&，都会继续开机。
+.RE
+.PP
+\fBx\-initrd\&.mount\fP
+.RS 4
+在 initrd\& 中挂载一个额外的文件系统。请参见 \fBsystemd.special\fP(7)\& 中的 initrd\-fs\&.target
+说明。
+.RE
+.PP
+如果 /etc/fstab 和 /usr / 下的元文件都配置了挂载点，则前者优先 \&。如果元文件存放在 /etc / 下，则优先 \&。这意味着:
+原生元文件优先于传统配置文件，但这被 /etc / 中的配置始终优先于 /usr/\& 中的配置的规则所取代。
+.SH OPTIONS
+.PP
+挂载元文件可能包括 [Unit] 和 [Install] 部分，在 \fBsystemd.unit\fP(5)\& 中描述。
+.PP
+挂载元文件必须包含一个 [Mount] 部分，其中包含有关它所监管的文件系统挂载点的信息 \&。本节中可能使用的许多选项与其他元类型共享
+\&。这些选项记录在 \fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5)\& 中。特定于安装单元 [Mount]
+部分的选项如下:
+.PP
+\fIWhat=\fP
+.RS 4
+采用设备节点、文件或其他资源的绝对路径来挂载 \&。有关详细信息，请参见 \fBmount\fP(8)\&。如果这是指设备节点，则自动创建对相应设备单元的依赖
+\&。(有关更多信息，请参见 \fBsystemd.device\fP(5)\&。) 此选项是必需的
+\&。请注意，通常的说明符扩展应用于此设置，因此字符值百分比字符应写为 `%%`\&。如果此安装是绑定安装并且指定的路径不存在，则将其创建为目录 \&。
+.RE
+.PP
+\fIWhere=\fP
+.RS 4
+采用文件或目录的绝对路径作为挂载点; 特别是，目标不能是符号链接 \&。如果挂载点在挂载时不存在，则创建为目录或文件 \&。前者是常见的情况;
+后者仅在该挂载为绑定挂载且源 (\fIWhat=\fP) 不是目录 \& 时才执行。该字符串必须反映在元文件名 \& 中。(见上文 \&。) 此选项是必需的
+\&。
+.RE
+.PP
+\fIType=\fP
+.RS 4
+采用文件系统类型 \& 的字符串。有关详细信息，请参见 \fBmount\fP(8)\&。此设置是可选的 \&。
+.RE
+.PP
+\fIOptions=\fP
+.RS 4
+挂载时使用的挂载选项。这需要一个逗号分隔的选项列表 \&。此设置是可选的 \&。请注意，通常的说明符扩展应用于此设置，因此字符值百分比字符应写为
+`%%`\&。
+.RE
+.PP
+\fISloppyOptions=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，则放宽对 \fIOptions=\fP 中指定选项的解析，并容忍未知的挂载选项 \&。这对应于
+\fBmount\fP(8)\*(Aqs \fI\-s\fP switch\&。默认关闭 \&。
+.RE
+.PP
+\fILazyUnmount=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则在卸载操作时将文件系统从文件系统层次结构中分离出来，并在它们不再忙时立即清除所有对文件系统的引用 \&。这对应于
+\fBumount\fP(8)\*(Aqs \fI\-l\fP switch\&。默认关闭 \&。
+.RE
+.PP
+\fIReadWriteOnly=\fP
+.RS 4
+采用布尔型参数 \&。如果为 false，则应以读写方式挂载但无法挂载的挂载点将重试以只读方式挂载 \&。如果为真，操作将在读写挂载尝试不成功后立即失败
+\&。这对应于 \fBmount\fP(8)\*(Aqs \fI\-w\fP switch\&。默认关闭 \&。
+.RE
+.PP
+\fIForceUnmount=\fP
+.RS 4
+采用布尔型参数 \&。如果为真，则强制卸载 (在无法访问 NFS 系统的情况下) \&。这对应于 \fBumount\fP(8)\*(Aqs \fI\-f\fP
+switch\&。默认关闭 \&。
+.RE
+.PP
+\fIDirectoryMode=\fP
+.RS 4
+如果需要，挂载点目录 (以及任何父目录) 会自动创建 \&。此选项指定创建这些目录时使用的文件系统访问模式 \&。采用八进制表示法 \&
+的访问模式。默认为 0755\&。
+.RE
+.PP
+\fITimeoutSec=\fP
+.RS 4
+配置等待挂载命令完成的时间 \&。如果命令在配置的时间内没有退出，则认为挂载失败并再次关闭 \&。所有仍在运行的命令将通过 \fBSIGTERM\fP
+强制终止，并在再次延迟此时间后使用 \fBSIGKILL\fP\&。(见 \fBsystemd.kill\fP(5)\&.) 中的 \fBKillMode=\fP
+以秒为单位取一个元 \- less 值，或者一个时间跨度值，例如 `5min 20s`\&。传递 0 以禁用超时逻辑 \&。默认值由
+\fBsystemd\-system.conf\fP(5)\& 中的 \fIDefaultTimeoutStartSec=\fP 选项设置。
+.RE
+.PP
+检查 \fBsystemd.unit\fP(5)、\fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5) 以获得更多设置 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd\-system.conf\fP(5),
+\fBsystemd.unit\fP(5), \fBsystemd.exec\fP(5), \fBsystemd.kill\fP(5),
+\fBsystemd.resource\-control\fP(5), \fBsystemd.service\fP(5), \fBsystemd.device\fP(5),
+\fBproc\fP(5), \fBmount\fP(8), \fBsystemd\-fstab\-generator\fP(8),
+\fBsystemd.directives\fP(7), \fBsystemd\-mount\fP(1)
+.SH NOTES
+.IP " 1." 4
+API 文件系统
+.RS 4
+\%https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

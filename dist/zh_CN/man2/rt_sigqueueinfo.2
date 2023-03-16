@@ -1,0 +1,113 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2002, 2011 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rt_sigqueueinfo 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+rt_sigqueueinfo, rt_tgsigqueueinfo \- 排队信号和数据
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/signal.h>\fP     /* Definition of \fBSI_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_rt_sigqueueinfo, pid_t \fP\fItgid\fP\fB,\fP
+\fB            int \fP\fIsig\fP\fB, siginfo_t *\fP\fIinfo\fP\fB);\fP 
+\fBint syscall(SYS_rt_tgsigqueueinfo, pid_t \fP\fItgid\fP\fB, pid_t \fP\fItid\fP\fB,\fP
+\fB            int \fP\fIsig\fP\fB, siginfo_t *\fP\fIinfo\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: 这些系统调用没有 glibc 包装器; 见注释。
+.SH DESCRIPTION
+\fBrt_sigqueueinfo\fP() 和 \fBrt_tgsigqueueinfo\fP() 系统调用是用于向进程或线程发送信号和数据的底层接口。
+信号的接收者可以通过建立一个带有 \fBsigaction\fP(2) \fBSA_SIGINFO\fP 标志的信号处理程序来获取伴随数据。
+.PP
+这些系统调用不适合直接应用程序使用; 提供它们是为了允许执行 \fBsigqueue\fP(3) 和 \fBpthread_sigqueue\fP(3)。
+.PP
+\fBrt_sigqueueinfo\fP() 系统调用发送信号 \fIsig\fP 给 ID 为 \fItgid\fP 的线程组。 (术语 "thread group"
+与 "process" 同义，\fItid\fP 对应于传统的 UNIX 进程 ID。) 信号将被传送到线程组的任意成员 (即，当前未阻塞信号的线程之一)。
+.PP
+\fIinfo\fP 参数指定伴随信号的数据。 此参数是指向 \fIsiginfo_t\fP 类型结构体的指针，在 \fBsigaction\fP(2) 中描述
+(并通过包含 \fI<sigaction.h>\fP).  调用者应在此结构体中设置以下字段:
+.TP 
+\fIsi_code\fP
+这应该是 Linux 内核源文件 \fIinclude/asm\-generic/siginfo.h\fP 中的 \fBSI_*\fP 代码之一。
+如果信号被发送到调用者本身以外的任何进程，则适用以下限制:
+.RS
+.IP \[bu] 3
+代码不能是大于或等于零的值。 特别是不能是 \fBSI_USER\fP，内核用来表示 \fBkill\fP(2) 发出的信号，也不能是
+\fBSI_KERNEL\fP，用来表示内核产生的信号。
+.IP \[bu]
+.\" tkill(2) or
+代码不能 (因为 Linux 2.6.39) 是 \fBSI_TKILL\fP，内核使用它来指示使用 \fBtgkill\fP(2) 发送的信号。
+.RE
+.TP 
+\fIsi_pid\fP
+这应该设置为进程 ID，通常是发送方的进程 ID。
+.TP 
+\fIsi_uid\fP
+这应该设置为用户 ID，通常是发送者的真实用户 ID。
+.TP 
+\fIsi_value\fP
+该字段包含伴随信号的用户数据。 更多信息参见 \fBsigqueue\fP(3) 的最后一个 (\fIunion sigval\fP) 参数的说明。
+.PP
+在内部，内核将 \fIsi_signo\fP 字段设置为 \fIsig\fP 中指定的值，以便信号的接收者也可以通过该字段获取信号编号。
+.PP
+\fBrt_tgsigqueueinfo\fP() 系统调用类似于 \fBrt_sigqueueinfo\fP()，但将信号和数据发送到由线程组 ID
+\fItgid\fP 和该线程组中的线程 \fItid\fP 的组合指定的单个线程。
+.SH "RETURN VALUE"
+成功时，这些系统调用返回 0。 出错时，它们返回 \-1 并且设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+已达到可以排队的信号限制。 (有关详细信息，请参见 \fBsignal\fP(7)。)
+.TP 
+\fBEINVAL\fP
+\fIsig\fP、\fItgid\fP 或 \fItid\fP 无效。
+.TP 
+\fBEPERM\fP
+调用者没有向目标发送信号的权限。 有关所需的权限，请参见 \fBkill\fP(2)。
+.TP 
+\fBEPERM\fP
+\fItgid\fP 指定调用者以外的进程，\fIinfo\->si_code\fP 无效。
+.TP 
+\fBESRCH\fP
+\fBrt_sigqueueinfo\fP(): 找不到与 \fItgid\fP 匹配的线程组。
+.PP
+\fBrt_tgsigqueinfo\fP(): 找不到匹配 \fItgid\fP 和 \fItid\fP 的线程。
+.SH VERSIONS
+\fBrt_sigqueueinfo\fP() 系统调用在 Linux 2.2 中加入。 \fBrt_tgsigqueueinfo\fP() 系统调用在 Linux
+2.6.31 中加入。
+.SH STANDARDS
+这些系统调用是特定于 Linux 的。
+.SH NOTES
+由于这些系统调用不是为应用程序使用而设计的，因此没有 glibc 包装器函数; 在您想直接调用它们的不太可能的情况下使用 \fBsyscall\fP(2)。
+.PP
+与 \fBkill\fP(2) 一样，空信号 (0) 可用于检查指定的进程或线程是否存在。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBpidfd_send_signal\fP(2), \fBsigaction\fP(2), \fBsigprocmask\fP(2),
+\fBtgkill\fP(2), \fBpthread_sigqueue\fP(3), \fBsigqueue\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

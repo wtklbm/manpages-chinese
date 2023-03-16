@@ -1,0 +1,73 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright Michael Haardt (michael@cantor.informatik.rwth-aachen.de)
+.\"     Sat Aug 27 20:43:50 MET DST 1994
+.\" and Copyright (C) 2014, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified Sun Sep 11 19:19:05 1994 <faith@cs.unc.edu>
+.\" Modified Mon Mar 25 10:19:00 1996 <aeb@cwi.nl> (merged a few
+.\"	tiny changes from a man page by Charles Livingston).
+.\" Modified Sun Jul 21 14:45:46 1996 <aeb@cwi.nl>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setsid 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+setsid \- 创建一个会话并设置进程组 ID
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBpid_t setsid(void);\fP
+.fi
+.SH DESCRIPTION
+如果调用进程不是进程组组长，则 \fBsetsid\fP() 创建一个新会话。 调用进程是新会话的领导者 (即，其会话 ID 与其进程 ID 相同)。
+调用进程也成为会话中新进程组的进程组组长 (即，其进程组 ID 与其进程 ID 相同)。
+.PP
+调用进程将是新进程组和新会话中的唯一进程。
+.PP
+最初，新会话没有控制终端。 有关会话如何获取控制终端的详细信息，请参见 \fBcredentials\fP(7)。
+.SH "RETURN VALUE"
+成功时，返回调用进程的 (new) 会话 ID。 出错时返回 \fI(pid_t)\ \-1\fP，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEPERM\fP
+任何进程的进程组 ID 都等于调用进程的 PID。 因此，特别是，如果调用进程已经是进程组组长，则 \fBsetsid\fP() 会失败。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.SH NOTES
+通过 \fBfork\fP(2) 创建的子进程继承其父进程的会话 ID。会话 ID 在 \fBexecve\fP(2) 中保留。
+.PP
+进程组组长是进程组 ID 等于其 PID 的进程。 不允许进程组组长调用 \fBsetsid\fP()
+可以防止进程组组长将自己置于新会话中而进程组中的其他进程仍保留在原始会话中的可能性; 这种情况会打破严格的会话和进程组的两级层次结构。 为了确保
+\fBsetsid\fP() 成功，调用 \fBfork\fP(2) 并拥有父级 \fB_exit\fP(2)，而子级 (根据定义不能成为进程组组长) 调用
+\fBsetsid\fP()。
+.PP
+如果一个会话有一个控制终端，并且没有设置该终端的 \fBCLOCAL\fP 标志，并且发生终端挂断，那么会话领导者会收到一个 \fBSIGHUP\fP 信号。
+.PP
+如果作为会话领导者的进程终止，则将 \fBSIGHUP\fP 信号发送到控制终端的前台进程组中的每个进程。
+.SH "SEE ALSO"
+\fBsetsid\fP(1), \fBgetsid\fP(2), \fBsetpgid\fP(2), \fBsetpgrp\fP(2), \fBtcgetsid\fP(3),
+\fBcredentials\fP(7), \fBsched\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

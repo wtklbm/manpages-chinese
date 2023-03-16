@@ -1,0 +1,271 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2011, Eric Biederman <ebiederm@xmission.com>
+.\" and Copyright (C) 2011, 2012, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-only
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setns 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+setns \- 将线程与命名空间重新关联
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <sched.h>\fP
+.PP
+\fBint setns(int \fP\fIfd\fP\fB, int \fP\fInstype\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsetns\fP() 系统调用允许调用线程移动到不同的命名空间。 \fIfd\fP 参数是以下之一:
+.IP \[bu] 3
+引用 \fI/proc/\fPpid\fI/ns/\fP 目录中的魔术链接之一的文件描述符 (或绑定到此类链接的挂载) ;
+.IP \[bu]
+PID 文件描述符 (参见 \fBpidfd_open\fP(2)).
+.PP
+.\"
+\fInstype\fP 参数在每种情况下都有不同的解释。
+.SS "fd refers to a /proc/[pid]/ns/ link"
+如果 \fIfd\fP 引用 \fI/proc/\fPpid\fI/ns/\fP 链接，则 \fBsetns\fP() 将调用线程与与该链接关联的名称空间重新关联，受
+\fInstype\fP 参数强加的任何约束。 在此用法中，对 \fBsetns\fP() 的每个调用仅更改调用者的名称空间成员之一。
+.PP
+\fInstype\fP 参数指定调用线程可以与哪种类型的名称空间重新关联。 这个参数可以有以下值的 \fIone\fP:
+.TP 
+\fB0\fP
+允许加入任何类型的名称空间。
+.TP 
+\fBCLONE_NEWCGROUP\fP (since Linux 4.6)
+\fIfd\fP 必须引用 cgroup 名称空间。
+.TP 
+\fBCLONE_NEWIPC\fP (since Linux 3.0)
+\fIfd\fP 必须引用 IPC 命名空间。
+.TP 
+\fBCLONE_NEWNET\fP (since Linux 3.0)
+\fIfd\fP 必须引用网络命名空间。
+.TP 
+\fBCLONE_NEWNS\fP (since Linux 3.8)
+\fIfd\fP 必须引用挂载命名空间。
+.TP 
+\fBCLONE_NEWPID\fP (since Linux 3.8)
+\fIfd\fP 必须引用后代 PID 命名空间。
+.TP 
+\fBCLONE_NEWTIME\fP (since Linux 5.8)
+.\" commit 76c12881a38aaa83e1eb4ce2fada36c3a732bad4
+\fIfd\fP 必须引用时间命名空间。
+.TP 
+\fBCLONE_NEWUSER\fP (since Linux 3.8)
+\fIfd\fP 必须引用用户命名空间。
+.TP 
+\fBCLONE_NEWUTS\fP (since Linux 3.0)
+\fIfd\fP 必须引用 UTS 命名空间。
+.PP
+.\"
+如果调用者知道 (或不关心) \fIfd\fP 引用的名称空间类型，则将 \fInstype\fP 指定为 0 就足够了。 如果调用者不知道 \fIfd\fP
+引用的命名空间类型并且想要确保命名空间属于特定类型，则为 \fInstype\fP 指定一个非零值很有用。 (如果文件描述符被另一个进程打开，调用者可能不知道
+\fIfd\fP 引用的命名空间的类型，例如，通过 UNIX 域套接字传递给调用者。)
+.SS "fd is a PID file descriptor"
+由于 Linux 5.8，\fIfd\fP 可能引用从 \fBpidfd_open\fP(2) 或 \fBclone\fP(2) 获得的 PID 文件描述符。
+在此用法中，\fBsetns\fP() 以原子方式将调用线程移动到与 \fIfd\fP 引用的线程相同的一个或多个名称空间中。
+.PP
+\fInstype\fP 参数是通过将上面列出的 \fBCLONE_NEW*\fP 命名空间常量的 \fIone or more\fP 组合在一起指定的位掩码。
+调用者被移动到 \fInstype\fP 中指定的每个目标线程的命名空间中; 调用者在其余名称空间中的成员资格保持不变。
+.PP
+例如，以下代码会将调用者移动到与 PID 1234 相同的用户、网络和 UTS 命名空间，但会保持调用者的其他命名空间成员身份不变:
+.PP
+.in +4n
+.EX
+int fd = pidfd_open(1234, 0);
+setns(fd, CLONE_NEWUSER | CLONE_NEWNET | CLONE_NEWUTS);
+.EE
+.in
+.\"
+.SS "Details for specific namespace types"
+与特定命名空间类型重新关联时，请注意以下细节和限制:
+.TP 
+User namespaces
+.\" See kernel/user_namespace.c:userns_install() [3.8 source]
+将自身与用户名称空间重新关联的进程必须在目标用户名称空间中具有 \fBCAP_SYS_ADMIN\fP 功能。 (这必然意味着只能加入后代用户命名空间。)
+成功加入用户命名空间后，进程将被授予该命名空间中的所有功能，而不管其用户和组 ID。
+.IP
+多线程进程可能不会更改具有 \fBsetns\fP() 的用户命名空间。
+.IP
+不允许使用 \fBsetns\fP() 重新进入调用者的当前用户命名空间。 这可以防止具有丢弃功能的调用者通过调用 \fBsetns\fP() 重新获得这些功能。
+.IP
+.\" commit e66eded8309ebf679d3d3c1f5820d1f2ca332c71
+.\" https://lwn.net/Articles/543273/
+出于安全原因，如果一个进程正在与另一个进程共享与文件系统相关的属性 (其共享由 \fBclone\fP(2) \fBCLONE_FS\fP
+标志控制的属性)，则该进程不能加入新的用户命名空间。
+.IP
+有关用户命名空间的更多详细信息，请参见 \fBuser_namespaces\fP(7)。
+.TP 
+Mount namespaces
+更改挂载命名空间要求调用者在其自己的用户命名空间中同时拥有 \fBCAP_SYS_CHROOT\fP 和 \fBCAP_SYS_ADMIN\fP
+功能，并在拥有目标挂载命名空间的用户命名空间中拥有 \fBCAP_SYS_ADMIN\fP 功能。
+.IP
+.\" Above check is in fs/namespace.c:mntns_install() [3.8 source]
+如果一个进程正在与另一个进程共享与文件系统相关的属性 (其共享由 \fBclone\fP(2) \fBCLONE_FS\fP
+标志控制的属性)，则该进程不能加入新的挂载命名空间。
+.IP
+有关用户命名空间和挂载命名空间交互的详细信息，请参见 \fBuser_namespaces\fP(7)。
+.TP 
+PID namespaces
+为了将自身与新的 PID 命名空间重新关联，调用者必须在其自己的用户命名空间和拥有目标 PID 命名空间的用户命名空间中都具有
+\fBCAP_SYS_ADMIN\fP 功能。
+.IP
+重新关联 PID 命名空间与其他命名空间类型有些不同。 将调用线程与 PID 命名空间重新关联，只会更改随后创建的调用者子进程所在的 PID 命名空间;
+它不会更改调用者本身的 PID 命名空间。
+.IP
+仅当目标 PID 命名空间是调用方当前 PID 命名空间的后代 (子、孙等) 或相同时，才允许与 PID 命名空间重新关联。
+.IP
+有关 PID 名称空间的更多详细信息，请参见 \fBpid_namespaces\fP(7)。
+.TP 
+Cgroup namespaces
+为了将自己与新的 cgroup 命名空间重新关联，调用者必须在其自己的用户命名空间和拥有目标 cgroup 命名空间的用户命名空间中都具有
+\fBCAP_SYS_ADMIN\fP 能力。
+.IP
+使用 \fBsetns\fP() 更改调用者的 cgroup 命名空间不会更改调用者的 cgroup 成员资格。
+.TP 
+Network, IPC, time, and UTS namespaces
+为了将自己与新的网络、IPC、时间或 UTS 命名空间重新关联，调用者必须在其自己的用户命名空间和拥有目标命名空间的用户命名空间中都具有
+\fBCAP_SYS_ADMIN\fP 能力。
+.SH "RETURN VALUE"
+成功时，\fBsetns\fP() 返回 0。 失败时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 引用了一个名称空间，其类型与 \fInstype\fP 中指定的类型不匹配。
+.TP 
+\fBEINVAL\fP
+将线程与指定的命名空间重新关联时出现问题。
+.TP 
+.\" See kernel/pid_namespace.c::pidns_install() [kernel 3.18 sources]
+\fBEINVAL\fP
+调用者试图加入祖先 (父、祖父母等) PID 命名空间。
+.TP 
+\fBEINVAL\fP
+调用者试图加入它已经是成员的用户命名空间。
+.TP 
+\fBEINVAL\fP
+.\" commit e66eded8309ebf679d3d3c1f5820d1f2ca332c71
+调用者与其他进程共享文件系统 (\fBCLONE_FS\fP) 状态 (特别是根目录) 并尝试加入新的用户命名空间。
+.TP 
+\fBEINVAL\fP
+.\" See kernel/user_namespace.c::userns_install() [kernel 3.15 sources]
+调用者是多线程的，并试图加入一个新的用户命名空间。
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 是一个 PID 文件描述符，而 \fInstype\fP 是无效的 (例如，它是 0)。
+.TP 
+\fBENOMEM\fP
+无法分配足够的内存来更改指定的命名空间。
+.TP 
+\fBEPERM\fP
+调用线程没有此操作所需的能力。
+.TP 
+\fBESRCH\fP
+\fIfd\fP 是一个 PID 文件描述符，但它所引用的进程已不存在 (即，它已终止并正在等待)。
+.SH VERSIONS
+\fBsetns\fP() 系统调用最早出现在 Linux 3.0; glibc 2.14 中添加了库支持。
+.SH STANDARDS
+\fBsetns\fP() 系统调用是 Linux 特有的。
+.SH NOTES
+有关 \fI/proc/\fPpid\fI/ns/\fP 魔术链接的更多信息，请参见 \fBnamespaces\fP(7)。
+.PP
+使用 \fBclone\fP(2) 创建新线程时，并非所有可以共享的属性都可以使用 \fBsetns\fP() 进行更改。
+.SH EXAMPLES
+下面的程序需要两个或更多参数。 第一个参数指定现有 \fI/proc/\fPpid\fI/ns/\fP 目录中命名空间文件的路径名。
+剩余的参数指定一个命令和它的参数。 该程序打开命名空间文件，使用 \fBsetns\fP() 加入该命名空间，并在该命名空间内执行指定的命令。
+.PP
+以下 shell 会话演示了此程序的使用 (编译为名为 \fIns_exec\fP) 的二进制文件，并结合 \fBclone\fP(2) 手册页中的
+\fBCLONE_NEWUTS\fP 示例程序 (编译为名为 \fInewuts\fP).
+.PP
+我们首先在后台执行 \fBclone\fP(2) 中的示例程序。 该程序在单独的 UTS 名称空间中创建一个子项。
+子进程更改其命名空间中的主机名，然后两个进程都显示其 UTS 命名空间中的主机名，以便我们可以看到它们是不同的。
+.PP
+.in +4n
+.EX
+$ \fBsu\fP                   # 命名空间操作需要权限
+Password:
+# \fB./newuts bizarro &\fP
+[1] 3549
+clone() 返回 3550
+uts.nodename 子代: bizarro
+父级 uts.nodename: antero
+# \fBuname \-n\fP             # 验证 shell 中的主机名
+antero
+.EE
+.in
+.PP
+然后我们运行如下所示的程序，用它来执行 shell。 在 shell 内部，我们验证主机名是由第一个程序创建的子进程设置的主机名:
+.PP
+.in +4n
+.EX
+# \fB./ns_exec /proc/3550/ns/uts /bin/bash\fP
+# \fBuname \-n\fP             # 在 ns_exec 启动的 shell 中执行
+bizarro
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (setns.c)
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <fcntl.h>
+#include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int fd;
+
+    if (argc < 3) {
+        fprintf(stderr, "%s /proc/PID/ns/FILE cmd args...\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Get file descriptor for namespace; the file descriptor is opened
+       with O_CLOEXEC so as to ensure that it is not inherited by the
+       program that is later executed. */
+
+    fd = open(argv[1], O_RDONLY | O_CLOEXEC);
+    if (fd == \-1)
+        err(EXIT_FAILURE, "open");
+
+    if (setns(fd, 0) == \-1)       /* Join that namespace */
+        err(EXIT_FAILURE, "setns");
+
+    execvp(argv[2], &argv[2]);    /* Execute a command in namespace */
+    err(EXIT_FAILURE, "execvp");
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBnsenter\fP(1), \fBclone\fP(2), \fBfork\fP(2), \fBunshare\fP(2), \fBvfork\fP(2),
+\fBnamespaces\fP(7), \fBunix\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

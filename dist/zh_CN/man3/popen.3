@@ -1,0 +1,131 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)popen.3	6.4 (Berkeley) 4/30/91
+.\"
+.\" Converted for Linux, Mon Nov 29 14:45:38 1993, faith@cs.unc.edu
+.\" Modified Sat May 18 20:37:44 1996 by Martin Schulze (joey@linux.de)
+.\" Modified 7 May 1998 by Joseph S. Myers (jsm28@cam.ac.uk)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH popen 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+popen, pclose \- 进出进程的管道流
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBFILE *popen(const char *\fP\fIcommand\fP\fB, const char *\fP\fItype\fP\fB);\fP
+\fBint pclose(FILE *\fP\fIstream\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpopen\fP(), \fBpclose\fP():
+.nf
+    _POSIX_C_SOURCE >= 2
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBpopen\fP() 函数通过创建管道、分叉和调用 shell 来打开一个进程。 由于管道根据定义是单向的，因此 \fItype\fP
+参数可能仅指定读取或写入，而不是两者; 结果流相应地是只读的或只写的。
+.PP
+\fIcommand\fP 参数是指向包含 shell 命令行的空终止字符串的指针。 该命令使用 \fB\-c\fP 标志传递给 \fI/bin/sh\fP; 解释
+(如果有) 由 shell 执行。
+.PP
+\fItype\fP 参数是指向以空字符结尾的字符串的指针，该字符串必须包含用于读取的字母 \[aq] r\[aq] 或用于写入的字母 \[aq]
+w\[aq]。 从 glibc 2.9 开始，这个参数可以额外包含字母 \[aq] e\[aq]，这会导致在底层文件描述符上设置
+close\-on\-exec 标志 (\fBFD_CLOEXEC\fP); 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的描述，了解这可能有用的原因。
+.PP
+\fBpopen\fP() 的返回值在所有方面都是正常的标准 I/O 流，但它必须用 \fBpclose\fP() 而不是 \fBfclose\fP(3) 关闭。
+写入这样的流就是写入命令的标准输入; 该命令的标准输出与调用 \fBpopen\fP() 的进程的标准输出相同，除非它被命令本身更改。
+相反，从流中读取读取命令的标准输出，命令的标准输入与调用 \fBpopen\fP() 的进程的标准输入相同。
+.PP
+请注意，默认情况下，输出 \fBpopen\fP() 流是块缓冲的。
+.PP
+\fBpclose\fP() 函数等待关联的进程终止并返回 \fBwait4\fP(2) 返回的命令的退出状态。
+.SH "RETURN VALUE"
+\fBpopen\fP(): 成功时，返回指向可用于读取或写入管道的打开流的指针; 如果 \fBfork\fP(2) 或 \fBpipe\fP(2)
+调用失败，或者函数无法分配内存，则返回 NULL。
+.PP
+.\" These conditions actually give undefined results, so I commented
+.\" them out.
+.\" .I stream
+.\" is not associated with a "popen()ed" command, if
+.\".I stream
+.\" already "pclose()d", or if
+\fBpclose\fP(): 成功时，返回命令的退出状态; 如果 \fBwait4\fP(2) 返回错误，或检测到其他错误，则返回 \-1。
+.PP
+失败时，两个函数都设置 \fIerrno\fP 来指示错误。
+.SH ERRORS
+如果内存分配失败，\fBpopen\fP() 函数不会设置 \fIerrno\fP。 如果底层 \fBfork\fP(2) 或 \fBpipe\fP(2) 失败，则设置
+\fIerrno\fP 以指示错误。 如果 \fItype\fP 参数无效，并且检测到这种情况，则 \fIerrno\fP 设置为 \fBEINVAL\fP。
+.PP
+如果 \fBpclose\fP() 无法获得子状态，则将 \fIerrno\fP 设置为 \fBECHILD\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpopen\fP(),
+\fBpclose\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fItype\fP 的 \[aq] e\[aq] 值是 Linux 扩展名。
+.SH NOTES
+\fBNote\fP: 仔细阅读 \fBsystem\fP(3) 中的注意事项。
+.SH BUGS
+由于为读取而打开的命令的标准输入与调用 \fBpopen\fP() 的进程共享其 seek
+偏移量，因此如果原始进程已完成缓冲读取，则命令的输入位置可能与预期不同。 同样，为写入而打开的命令的输出可能会与原始进程的输出混合在一起。
+后者可以通过在 \fBpopen\fP() 之前调用 \fBfflush\fP(3) 来避免。
+.PP
+.\" .SH HISTORY
+.\" A
+.\" .BR popen ()
+.\" and a
+.\" .BR pclose ()
+.\" function appeared in Version 7 AT&T UNIX.
+执行 shell 失败与 shell 执行命令失败或命令 immediate 退出无法区分。 唯一的提示是退出状态 127。
+.SH "SEE ALSO"
+\fBsh\fP(1), \fBfork\fP(2), \fBpipe\fP(2), \fBwait4\fP(2), \fBfclose\fP(3), \fBfflush\fP(3),
+\fBfopen\fP(3), \fBstdio\fP(3), \fBsystem\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

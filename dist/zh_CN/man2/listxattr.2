@@ -1,0 +1,244 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) Andreas Gruenbacher, February 2001
+.\" Copyright (C) Silicon Graphics Inc, September 2001
+.\" Copyright (C) 2015 Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH listxattr 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+listxattr、llistxattr、flistxattr \- 列出扩展属性名称
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/xattr.h>\fP
+.PP
+\fBssize_t listxattr(const char *\fP\fIpath\fP\fB, char *_Nullable \fP\fIlist\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+\fBssize_t llistxattr(const char *\fP\fIpath\fP\fB, char *_Nullable \fP\fIlist\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+\fBssize_t flistxattr(int \fP\fIfd\fP\fB, char *_Nullable \fP\fIlist\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+扩展属性是与索引节点 (文件、目录、符号链接等) 关联的 \fIname\fP:\fIvalue\fP 对。 它们是与系统中所有 inode 关联的普通属性的扩展
+(即 \fBstat\fP(2) 数据)。 可以在 \fBxattr\fP(7) 中找到扩展属性概念的完整概述。
+.PP
+\fBlistxattr\fP() 检索与文件系统中给定 \fIpath\fP 关联的扩展属性名称列表。 检索到的列表放在 \fIlist\fP
+中，这是一个调用者分配的缓冲区，其大小 (以字节为单位) 在参数 \fIsize\fP 中指定。 该列表是一组 (null\-terminated)
+名称，一个接一个。 调用进程无权访问的扩展属性的名称可以从列表中省略。 返回属性名称 \fIlist\fP 的长度。
+.PP
+\fBllistxattr\fP() 与 \fBlistxattr\fP()
+相同，除了在符号链接的情况下，其中检索与链接本身关联的扩展属性的名称列表，而不是它引用的文件。
+.PP
+\fBflistxattr\fP() 与 \fBlistxattr\fP() 相同，只有 \fIfd\fP 引用的打开文件 (由 \fBopen\fP(2)) 返回) 代替
+\fIpath\fP 被询问。
+.PP
+单个扩展属性 \fIname\fP 是一个以 null 结尾的字符串。 该名称包括名称空间前缀; 可能有几个与单个 inode 相关联的不相交的命名空间。
+.PP
+如果 \fIsize\fP 指定为零，则这些调用返回扩展属性名称列表的当前大小 (并保持 \fIlist\fP 不变)。
+这可用于确定应在后续调用中提供的缓冲区的大小。 (但是，请记住，扩展属性集可能会在两次调用之间发生变化，因此仍然有必要检查第二次调用的返回状态。)
+.SS Example
+名称的 \fIlist\fP 作为空终止字符串的无序数组返回 (属性名称由空字节 (\[aq]\e0\[aq])) 分隔，如下所示:
+.PP
+.in +4n
+.EX
+user.name1\e0system.name1\e0user.name2\e0
+.EE
+.in
+.PP
+使用扩展属性实现 POSIX ACL 的文件系统可能返回如下 \fIlist\fP:
+.PP
+.in +4n
+.EX
+system.posix_acl_access\e0system.posix_acl_default\e0
+.EE
+.in
+.SH "RETURN VALUE"
+成功时，将返回一个非负数，指示扩展属性名称列表的大小。 失败时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBE2BIG\fP
+扩展属性名称列表的大小大于允许的最大大小; 无法检索列表。 这可能发生在支持每个文件无限数量的扩展属性的文件系统上，例如 XFS。 查看错误。
+.TP 
+\fBENOTSUP\fP
+文件系统不支持或禁用扩展属性。
+.TP 
+\fBERANGE\fP
+\fIlist\fP 缓冲区的 \fIsize\fP 太小，无法容纳结果。
+.PP
+此外，\fBstat\fP(2) 中记录的错误也可能发生。
+.SH VERSIONS
+这些系统调用从 Linux 2.4 开始可用; 自 glibc 2.3 起提供 glibc 支持。
+.SH STANDARDS
+.\" .SH AUTHORS
+.\" Andreas Gruenbacher,
+.\" .RI < a.gruenbacher@computer.org >
+.\" and the SGI XFS development team,
+.\" .RI < linux-xfs@oss.sgi.com >.
+.\" Please send any bug reports or comments to these addresses.
+这些系统调用是特定于 Linux 的。
+.SH BUGS
+.\" The xattr(7) page refers to this text:
+如 \fBxattr\fP(7) 中所述，VFS 对 \fBlistxattr\fP() 返回的扩展属性名称列表的大小施加了 64kB 的限制。
+如果附加到文件的属性名称的总大小超过此限制，则不再可能检索属性名称列表。
+.SH EXAMPLES
+下面的程序演示了 \fBlistxattr\fP() 和 \fBgetxattr\fP(2) 的用法。
+对于路径名作为命令行参数提供的文件，它列出了所有扩展文件属性及其值。
+.PP
+为了保持代码简单，程序假定属性键和值在程序执行期间是常量。 生产程序应该在程序执行期间预期并处理更改。 例如，属性键所需的字节数可能会在两次调用
+\fBlistxattr\fP() 之间增加。 应用程序可以使用一个循环来处理这种可能性，该循环在每次失败并显示错误 \fBERANGE\fP
+时使用更大的缓冲区重试调用 (可能达到预定的最大尝试次数)。 可以类似地处理对 \fBgetxattr\fP(2) 的调用。
+.PP
+下面的输出是通过首先创建一个文件，设置一些扩展文件属性，然后用示例程序列出属性来记录的。
+.SS "Example output"
+.in +4n
+.EX
+$ \fBtouch /tmp/foo\fP
+$ \fBsetfattr \-n user.fred \-v chocolate /tmp/foo\fP
+$ \fBsetfattr \-n user.frieda \-v bar /tmp/foo\fP
+$ \fBsetfattr \-n user.empty /tmp/foo\fP
+$ \fB./listxattr /tmp/foo\fP
+user.fred: chocolate
+user.frieda: bar
+user.empty: <no value>
+.EE
+.in
+.SS "Program source (listxattr.c)"
+.\" SRC BEGIN (listxattr.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/xattr.h>
+
+int
+main(int argc, char *argv[])
+{
+    char     *buf, *key, *val;
+    ssize_t  buflen, keylen, vallen;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s path\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 确定所需缓冲区的长度。
+     */
+    buflen = listxattr(argv[1], NULL, 0);
+    if (buflen == \-1) {
+        perror("listxattr");
+        exit(EXIT_FAILURE);
+    }
+    if (buflen == 0) {
+        printf("%s has no attributes.\en", argv[1]);
+        exit(EXIT_SUCCESS);
+    }
+
+    /*
+     * 分配缓冲区。
+     */
+    buf = malloc(buflen);
+    if (buf == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 将属性键列表复制到缓冲区。
+     */
+    buflen = listxattr(argv[1], buf, buflen);
+    if (buflen == \-1) {
+        perror("listxattr");
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+     * 遍历零终止字符串列表
+     * 属性键。使用剩余缓冲区长度来确定
+     * 列表的结尾。
+     */
+    key = buf;
+    while (buflen > 0) {
+
+        /*
+         * 输出属性键。
+         */
+        printf("%s: ", key);
+
+        /*
+         * 确定值的长度。
+         */
+        vallen = getxattr(argv[1], key, NULL, 0);
+        if (vallen == \-1)
+            perror("getxattr");
+
+        if (vallen > 0) {
+
+            /*
+             * 分配值缓冲区。
+             * 需要一个额外的字节来追加 0x00。
+             */
+            val = malloc(vallen + 1);
+            if (val == NULL) {
+                perror("malloc");
+                exit(EXIT_FAILURE);
+            }
+
+            /*
+             * 将值复制到缓冲区。
+             */ 
+            vallen = getxattr(argv[1], key, val, vallen);
+            if (vallen == \-1) {
+                perror("getxattr");
+            } else {
+                /*
+                 * 输出属性值。
+                 */
+                val[vallen] = 0;
+                printf("%s", val);
+            }
+
+            free(val);
+        } else if (vallen == 0) {
+            printf("<no value>");
+        }
+
+        printf("\en");
+
+        /*
+         * 转发到下一个属性键。
+         */
+        keylen = strlen(key) + 1;
+        buflen \-= keylen;
+        key += keylen;
+    }
+
+    free(buf);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBgetfattr\fP(1), \fBsetfattr\fP(1), \fBgetxattr\fP(2), \fBopen\fP(2),
+\fBremovexattr\fP(2), \fBsetxattr\fP(2), \fBstat\fP(2), \fBsymlink\fP(7), \fBxattr\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,94 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) Tom Bjorkholm & Markus Kuhn, 1996
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 1996-04-01 Tom Bjorkholm <tomb@mydata.se>
+.\"            First version written
+.\" 1996-04-10 Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"            revision
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sched_rr_get_interval 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+sched_rr_get_interval \- 获取指定进程的 SCHED_RR 间隔
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sched.h>\fP
+.PP
+\fBint sched_rr_get_interval(pid_t \fP\fIpid\fP\fB, struct timespec *\fP\fItp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsched_rr_get_interval\fP() 将 \fIpid\fP 标识的进程的循环时间片写入 \fItp\fP 指向的 \fBtimespec\fP(3)
+结构体。 指定的进程应该在 \fBSCHED_RR\fP 调度策略下运行。
+.PP
+.\" FIXME . On Linux, sched_rr_get_interval()
+.\" returns the timeslice for SCHED_OTHER processes -- this timeslice
+.\" is influenced by the nice value.
+.\" For SCHED_FIFO processes, this always returns 0.
+.\"
+.\" The round-robin time quantum value is not alterable under Linux
+.\" 1.3.81.
+.\"
+如果 \fIpid\fP 为零，则将调用进程的时间片写入 \fI*tp\fP。
+.SH "RETURN VALUE"
+成功时，\fBsched_rr_get_interval\fP() 返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+将信息复制到用户空间时出现问题。
+.TP 
+\fBEINVAL\fP
+pid 无效。
+.TP 
+\fBENOSYS\fP
+系统调用尚未实现 (仅在相当旧的内核上)。
+.TP 
+\fBESRCH\fP
+无法找到 ID 为 \fIpid\fP 的进程。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+\fBsched_rr_get_interval\fP() 可用的 POSIX 系统在 \fI<unistd.h>\fP 中定义
+\fB_POSIX_PRIORITY_SCHEDULING\fP。
+.SS "Linux notes"
+.\" commit a4ec24b48ddef1e93f7578be53270f0b95ad666c
+POSIX 没有指定任何机制来控制循环时间片的大小。 较旧的 Linux 内核提供了一种 (nonportable) 方法来执行此操作。
+可以通过调整进程的 nice 值来控制量程 (参见 \fBsetpriority\fP(2)).  分配一个 negative (即高) nice
+值会导致更长的量程; 分配一个正的 (即低的) nice 值会导致更短的量程。 默认量程为 0.1 秒; 更改 nice
+值对量程的影响程度在不同内核版本中有所不同。 这种调整量程的方法从 Linux 2.6.24 开始被移除。
+.PP
+.\" commit ce0dbbbb30aee6a835511d5be446462388ba9eee
+.\" .SH BUGS
+.\" As of Linux 1.3.81
+.\" .BR sched_rr_get_interval ()
+.\" returns with error
+.\" ENOSYS, because SCHED_RR has not yet been fully implemented and tested
+.\" properly.
+Linux 3.9 添加了一种用于调整 (和查看) \fBSCHED_RR\fP 量程的新机制:
+\fI/proc/sys/kernel/sched_rr_timeslice_ms\fP 文件将量程公开为毫秒值，其默认值为 100。 将 0
+写入此文件会将量程重置为默认值。
+.SH "SEE ALSO"
+\fBtimespec\fP(3), \fBsched\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

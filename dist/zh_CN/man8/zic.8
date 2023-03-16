@@ -1,0 +1,531 @@
+.\" -*- coding: UTF-8 -*-
+.\" This file is in the public domain, so clarified as of
+.\" 2009-05-17 by Arthur David Olson.
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH zic 8   
+.SH NAME
+zic \- 时区编译器
+.SH SYNOPSIS
+\fBzic\fP [ \fIoption\fP \&... ] [ \fIfilename\fP \&... ]
+.SH DESCRIPTION
+.ie  '\(lq'' .ds lq \&"\"
+.el .ds lq \(lq\"
+.ie  '\(rq'' .ds rq \&"\"
+.el .ds rq \(rq\"
+.de  q
+\\$3\*(lq\\$1\*(rq\\$2
+..
+.ie  '\(la'' .ds < <
+.el .ds < \(la
+.ie  '\(ra'' .ds > >
+.el .ds > \(ra
+.ie  \n(.g \{\
+.  ds : \:
+.  ds - \f(CR-\fP
+.\}
+.el \{\
+.  ds :
+.  ds - \-
+.\}
+.ds d  degrees
+.ds m  minutes
+.ds s  seconds
+.ds _  \&
+.if  t \{\
+. if \n(.g .if c \(de .if c \(fm .if c \(sd \{\
+.  ds d \(de
+.  ds m \(fm
+.  ds s \(sd
+.  ds _ \|
+. \}
+.\}
+\fBzic\fP 程序从命令行中指定的 file(s) 中读取文本，并创建此输入中指定的时区信息格式 (TZif) 文件。 如果 \fIfilename\fP 是
+.q \*- ,
+读取标准输入。
+.SH OPTIONS
+.TP 
+\fB\*\-\*\-version\fP
+输出版本信息并退出。
+.TP 
+\fB\*\-\*\-help\fP
+输出简短的使用信息并退出。
+.TP 
+\fB\*\-b \fP\fIbloat\fP
+输出由 \fIbloat\fP 指定的向后兼容数据。 如果 \fIbloat\fP 是
+\fBfat\fP，则生成额外的数据条目来解决旧软件中的潜在错误或不兼容问题，例如错误处理 64 位生成数据的软件。 如果 \fIbloat\fP 是
+\fBslim\fP，保持输出文件小; 这可以帮助检查错误和不兼容性。 默认值为 \fBslim\fP，因为错误处理 64 位数据的软件通常会错误处理 2038
+年之后的时间戳。 另请参见 \fB\*\-r\fP 选项以了解另一种改变输出大小的方法。
+.TP 
+\fB\*\-d \fP\fIdirectory\fP
+在命名目录中创建时间转换信息文件，而不是在下面命名的标准目录中。
+.TP 
+\fB\*\-l \fP\fItimezone\fP
+使用 \fItimezone\fP 作为本地时间。 \fBzic\fP 将作为输入包含表单的链接行
+.sp
+.ti +.5i
+.ta \w'Link\0\0'u  +\w'\fItimezone\fP\0\0'u
+Link	\fItimezone\fP		localtime
+.sp
+如果 \fItimezone\fP 是 \fB\*\-\fP，则删除任何已存在的链接。
+.TP 
+\fB\*\-L \fP\fIleapsecondfilename\fP
+从具有给定名称的文件中读取闰秒信息。 如果不使用此选项，则输出文件中不会出现闰秒信息。
+.TP 
+\fB\*\-p \fP\fItimezone\fP
+在处理缺少转换规则的非标准 TZ 字符串 (如 "EET\*\-2EEST") 时使用 \fItimezone\fP's 规则。 \fBzic\fP
+将作为输入包含表单的链接行
+.sp
+.ti +.5i
+Link	\fItimezone\fP		posixrules
+.sp
+此特性已过时且支持不佳。 除其他事项外，它不应用于 2037 年之后的时间戳，如果 \fItimezone\fP's 转换为标准时间或世界时间 (UT)
+而不是本地时间，则它不应与 \fB\*\-b slim\fP 结合使用。
+.sp
+如果 \fItimezone\fP 是 \fB\*\-\fP，则删除任何已存在的链接。
+.TP 
+\fB\*\-r \fP[\fB@\fP\fIlo\fP][\fB/@\fP\fIhi\fP]
+将输出文件的适用性限制在从 \fIlo\fP (inclusive) 到 \fIhi\fP (exclusive) 范围内的时间戳，其中 \fIlo\fP 和 \fIhi\fP
+可能是自纪元 (1970\-01\-01 00:00:00 UTC) 以来的带符号十进制秒数。 省略计数默认为极值。 输出文件使用 UT 偏移量 0 和缩写
+.q \*-00
+代替省略的时间戳数据。 例如，
+.q "zic \*-r @0"
+省略用于 negative 时间戳 (即，在纪元之前) 的数据，并且
+.q "zic \*-r @0/@2147483648"
+输出仅用于适合 31 位有符号整数的非负时间戳的数据。 在带有 GNU \fBdate\fP 的平台上，
+.q "zic \*-r @$(date +%s)"
+省略用于过去时间戳的数据。 虽然此选项通常会减小输出文件的大小，但由于需要表示时间戳范围边界，大小可能会增加，特别是如果 \fIhi\fP 导致 TZif
+文件包含 pre\-\fIhi\fP 转换的显式条目而不是使用扩展的 POSIX TZ 字符串简明地表示它们.  另请参见 \fB\*\-b slim\fP
+选项以了解另一种缩小输出大小的方法。
+.TP 
+\fB\*\-R @\fP\fIhi\fP
+为自纪元以来发生少于 \fIhi\fP 秒的时间戳生成冗余尾随显式转换，即使可以通过扩展的 POSIX TZ 字符串更简洁地表示转换。
+此选项不影响表示的时间戳。 虽然它适应忽略扩展 POSIX TZ 字符串的非标准 TZif readers，但它增加了更改后的输出文件的大小。
+.TP 
+\fB\*\-t \fP\fIfile\fP
+创建本地时间信息时，将配置链接放在命名文件中，而不是标准位置。
+.TP 
+\fB\*\-v\fP
+说的比较啰嗦，抱怨以下几种情况:
+.RS
+.PP
+输入指定一个链接到一个链接，一些旧的解析器不支持，包括 \fBzic\fP 本身到 2022e 版本。
+.PP
+数据文件中出现的年份超出了可表示年份的范围。
+.PP
+输入中出现 24:00 或更长时间。 \fBzic\fP 1998 之前的版本禁止 24:00，2007 之前的版本禁止大于 24:00 的时间。
+.PP
+规则在月初或月末结束。 2004 之前的 \fBzic\fP 版本禁止这样做。
+.PP
+时区缩写使用 \fB%z\fP 格式。 2015 之前的 \fBzic\fP 版本不支持此功能。
+.PP
+时间戳包含小数秒。 \fBzic\fP 的 2018 之前版本不支持此功能。
+.PP
+由于长期存在的编码错误，输入包含的缩写词在 2018 年之前的 \fBzic\fP 版本中处理不当。 这些缩写包括
+.q L
+for
+.q Link ,
+.q mi
+for
+.q min ,
+.q Sa
+for
+.q Sat ,
+and
+.q Su
+for
+.q Sun .
+.PP
+输出文件不包含一个时区的长期 future 的所有信息，因为 future 不能概括为扩展的 POSIX TZ 字符串。 例如，截至 2019 年，预测
+future 的伊朗夏令时规则会出现此问题，因为这些规则基于无法表示的伊朗历法。
+.PP
+输出包含为旧 \fBzic\fP 输出格式设计的客户端代码可能无法正确处理的数据。 这些兼容性问题仅影响 1970 年之前或 2038 年开始之后的时间戳。
+.PP
+输出包含截断的闰秒表，这可能会导致某些较旧的 TZif readers 出现异常。 如果使用了 \fB\*\-L\fP 选项，并且存在 Expires
+行或还使用了 \fB\*\-r\fP 选项，就会发生这种情况。
+.PP
+输出文件包含超过 1200 个转换，可能会被某些客户端处理不当。 当前引用客户端最多支持 2000 次转换; 2014 年之前版本的引用客户端最多支持
+1200 个转换。
+.PP
+时区缩写少于 3 个或多于 6 个字符。 POSIX 至少需要 3 个，并且需要实现至少支持 6.
+.PP
+输出文件名包含一个不是 ASCII 字母的字节，
+.q \*- ,
+.q / ,
+or
+.q _ ;
+或者它包含一个文件名组件，该组件包含超过 14 个字节或以
+.q \*- .
+.RE
+.SH FILES
+输入文件使用本节中描述的格式; 输出文件使用 \fBtzfile\fP(5) 格式。
+.PP
+输入文件应该是文本文件，也就是说，它们应该是一系列零行或多行，每行以换行字节结尾，最多包含 2048 个字节 (包括换行符在内)，并且没有任何 NUL
+字节。 输入文本的编码通常是 UTF\-8 或 ASCII; 它应该有 POSIX 便携式字符集 (PPCS)
+\*<https://pubs\*:.opengroup\*:.org/\*:onlinepubs/\*:9699919799/\*:basedefs/\*:V1_chap06\*:.html\*>
+的单字节表示，并且编码的非单字节字符应该完全由非 PPCS 字节组成。 非 PPCS 字符通常只出现在注释中:
+虽然输出文件名和时区缩写可以包含几乎任何字符，但如果这些字符仅限于 \fB\*\-v\fP 选项下描述的受限语法，其他软件会工作得更好。
+.PP
+输入行由字段组成。 字段之间由一个或多个空白字符分隔。 空白字符有空格、换页符、回车符、换行符、制表符和垂直制表符。 输入行上的前导和尾随空白被忽略。
+输入中未加引号的尖锐字符 (#) 引入了一条注释，该注释延伸到出现尖锐字符的行的末尾。
+如果要将空白字符和尖锐字符用作字段的一部分，则可以将它们括在双引号 (") 中。 任何空白行 (注释剥离后) 都将被忽略。
+非空行应属于以下三种类型之一: 规则行、区域行和链接行。
+.PP
+名称必须为英文且不区分大小写。 它们出现在多个上下文中，包括月份和工作日名称以及关键字，例如 \fBmaximum\fP、\fBonly\fP、\fBRolling\fP
+和 \fBZone\fP。 可以通过省略除首字母前缀之外的所有名称来缩写名称; 任何缩写在上下文中都必须是明确的。
+.PP
+规则行具有以下形式
+.nf
+.ti +.5i
+.ta \w'Rule\0\0'u +\w'NAME\0\0'u +\w'FROM\0\0'u +\w'1973\0\0'u +\w'\*\-\0\0'u +\w'Apr\0\0'u +\w'lastSun\0\0'u +\w'2:00w\0\0'u +\w'1:00d\0\0'u
+.sp
+Rule	NAME	FROM	TO	\*\-	IN	ON	AT	SAVE	LETTER/S
+.sp
+例如:
+.ti +.5i
+.sp
+Rule	US	1967	1973	\*\-	Apr	lastSun	2:00w	1:00d	D
+.sp
+.fi
+构成规则行的字段是:
+.TP  "\w'LETTER/S'u"
+\fBNAME\fP
+给出包含此行的规则集的名称。 名称必须以既不是 ASCII 数字也不是
+.q \*-
+nor
+.q + .
+为了允许 future 扩展，未加引号的名称不应包含集合中的字符
+.ie  \n(.g .q \f(CR!$%&\(aq()*,/:;<=>?@[\e]\(ha\(ga{|}\(ti\fP .
+.el .ie t .q \f(CW!$%&'()*,/:;<=>?@[\e]^\(ga{|}~\fP .
+.el ".q !$%&'()*,/:;<=>?@[\e]^`{|}~ ."
+.TP 
+\fBFROM\fP
+给出规则适用的第一年。 可以提供任何带符号的整数年份; 假设使用公历，第 0 年在第 1 年之前。 \fBminimum\fP (或缩写)
+这个词的意思是不确定的过去。 \fBmaximum\fP (或缩写) 一词表示不确定的 future。
+规则可以将不可表示的时间描述为时间值，忽略不可表示的时间; 这使得规则可以在具有不同时间值类型的主机之间移植。
+.TP 
+\fBTO\fP
+给出规则适用的最后一年。 除了 \fBminimum\fP 和 \fBmaximum\fP (如上) 之外，单词 \fBonly\fP (或缩写) 可用于重复
+\fBFROM\fP 字段的值。
+.TP 
+\fB\*\-\fP
+是保留字段，应始终包含
+.q \*-
+为了与旧版本的 \fBzic\fP 兼容。 它以前称为 \fBTYPE\fP 字段，它可以包含允许单独的脚本进一步限制其中的值
+.q types
+该规则适用的年限。
+.TP 
+\fBIN\fP
+命名规则生效的月份。 月份名称可以缩写。
+.TP 
+\fBON\fP
+给出规则生效的日期。 公认的形式包括:
+.nf
+.in +.5i
+.sp
+.ta \w'Sun<=25\0\0'u
+5 五号
+lastSun 该月的最后一个星期日
+lastMon 该月的最后一个星期一
+Sun>=8	first 第八个星期天或之后
+Sun<=25	last 25 日或之前的星期日
+.fi
+.in -.5i
+.sp
+工作日名称 (例如，\fBSunday\fP) 或以
+.q last
+(例如，\fBlastSunday\fP) 可以缩写或完整拼写。 \fBON\fP 字段中不得有空白字符。 The
+.q <=
+and
+.q >=
+构造可以导致相邻月份的一天; 例如，IN\-ON 组合
+.q "Oct Sun>=31"
+代表 10 月 31 日或之后的第一个星期日，即使该星期日发生在 11 月。
+.TP 
+\fBAT\fP
+给出规则生效的时间，相对于 00:00，日历日的开始。 公认的形式包括:
+.nf
+.in +.5i
+.sp
+.ta \w'00:19:32.13\0\0'u
+2 小时
+2:00 时间以小时和分钟表示
+01:28:14 以小时、分钟和秒为单位的时间
+00:19:32.13 带小数秒的时间
+中午 12:00，00:00 后 12 小时
+15:00 下午 3 点，00:00 后 15 小时
+24:00 一天结束，00:00 后 24 小时
+260:00 00:00 后 260 小时
+\*\-2:30 00:00 前 2.5 小时
+\*\- 相当于 0
+.fi
+.in -.5i
+.sp
+虽然 \fBzic\fP 将时间四舍五入到最接近的整数秒 (打破与偶数整数的关系)，但分数可能对其他需要更高精度的应用程序有用。 源格式未指定任何最大精度。
+如果给定时间是本地时间，则这些表格中的任何一个后面都可以跟字母 \fBw\fP 或
+.q "wall clock"
+时间，如果给定时间是没有任何夏令时调整的标准时间，则为 \fBs\fP; 如果给定时间是世界时，则为 \fBu\fP (或 \fBg\fP 或 \fBz\fP);
+在没有指示器的情况下，假定为本地 (挂钟) 时间。 这些形式忽略闰秒; 例如，如果闰秒出现在当地时间 00:59:60，
+.q 1:00
+代表当地午夜后的 3601 秒，而不是通常的 3600 秒。 目的是规则行描述了当 clock/calendar 设置为 \fBAT\fP
+字段中指定的时间类型时将显示指定的日期和时间的瞬间。
+.TP 
+\fBSAVE\fP
+给出规则生效时要添加到本地标准时间的时间量，以及结果时间是标准时间还是夏令时。 该字段与 \fBAT\fP 字段具有相同的格式，只是具有一组不同的后缀字母:
+\fBs\fP 用于标准时间，\fBd\fP 用于夏令时。 后缀字母通常被省略，如果偏移量为零则默认为 \fBs\fP，否则默认为 \fBd\fP。 允许 Negative
+偏移; 例如，在爱尔兰，冬季采用夏令时，相对于爱尔兰标准时间有 negative 偏移。 偏移量仅添加到标准时间; 例如，\fBzic\fP 不区分
+10:30 标准时间加 0:30 \fBSAVE\fP 和 10:00 标准时间加 1:00 \fBSAVE\fP。
+.TP 
+\fBLETTER/S\fP
+给出了
+.q "variable part"
+(例如，
+.q S
+or
+.q D
+in
+.q EST
+or
+.q EDT )
+此规则生效时使用的时区缩写。 如果这个字段是
+.q \*- ,
+变量部分为空。
+.PP
+区域线具有以下形式
+.sp
+.nf
+.ti +.5i
+.ta \w'Zone\0\0'u +\w'Asia/Amman\0\0'u +\w'STDOFF\0\0'u +\w'Jordan\0\0'u +\w'FORMAT\0\0'u
+Zone	NAME	STDOFF	RULES	FORMAT	[UNTIL]
+.sp
+例如:
+.sp
+.ti +.5i
+Zone Asia/Amman 2:00 约旦 EE%sT 2017 Oct 27 01:00
+.sp
+.fi
+构成区域线的字段是:
+.TP  "\w'STDOFF'u"
+\fBNAME\fP
+时区的名称。 这是为时区创建时间转换信息文件时使用的名称。 它不应包含文件名部分
+.q .\(dq
+or
+.q .. ;
+文件名组件是不包含的最大子串
+.q / .
+.TP 
+\fBSTDOFF\fP
+添加到 UT 以获得标准时间的时间量，不对夏令时进行任何调整。 该字段与规则行的 \fBAT\fP 和 \fBSAVE\fP 字段格式相同，只是没有后缀字母;
+如果必须从 UT 中减去时间，则该字段以负号开头。
+.TP 
+\fBRULES\fP
+适用于时区的规则的名称，或者与规则行 SAVE 列格式相同的字段，给出要添加到本地标准时间的时间量以及结果时间是标准时间还是夏令时.  如果此字段为
+\fB\*\-\fP，则始终适用标准时间。 当给定时间量时，只有标准时间和这个量的总和才是重要的。
+.TP 
+\fBFORMAT\fP
+时区缩写的格式。 这对字符 \fB%s\fP 用于显示
+.q "variable part"
+时区缩写。 或者，一种格式可以使用字符对 \fB%z\fP 以 \(+-\fIhh\fP、\(+-\fIhhmm\fP 或 \(+-\fIhhmmss\fP 的形式表示 UT
+偏移量，使用不丢失信息的最短形式，其中 \fIhh\fP、\fImm\fP 和 \fIss\fP 是小时、分钟、UT 东 (+) 或西 (\-) 秒。 或者，斜线 (/)
+分隔标准和日光缩写。 为符合 POSIX，时区缩写应仅包含字母数字 ASCII 字符，
+.q +
+and
+.q \*- .
+按照惯例，时区缩写
+.q \*-00
+是一个占位符，表示本地时间未指定。
+.TP 
+\fBUNTIL\fP
+某个位置的 UT 偏移量或 rule(s) 发生变化的时间。 它采用一到四个字段的形式 YEAR [MONTH [DAY [TIME]]]。
+如果指定，则时区信息从给定的 UT 偏移量和规则更改生成，直到指定的时间，使用转换前有效的规则解释。 月、日和一天中的时间与规则的 IN、ON 和 AT
+字段具有相同的格式; 可以省略尾随字段，并默认为缺失字段的最早可能值。
+.IP
+下一行必须是
+.q continuation
+字符串; 这与区域，字符串，具有相同的形式，除了字符串
+.q Zone
+和名称被省略，因为续行将放置从指定时间开始的信息
+.q until
+上一行使用的文件中上一行的信息。 续行可能包含
+.q until
+信息，就像区域线一样，表明下一行是进一步的延续。
+.PP
+如果一个区域在同一时刻发生变化，而规则将在更早的区域或延续行中生效，则该规则将被忽略。 默认情况下，具有命名规则集的区域或延续行 \fIL\fP
+以标准时间开始: 也就是说，\fIL\fP's 最早规则之前的任何 \fIL\fP's 时间戳都使用在 \fIL\fP's 首次转换为标准时间后生效的规则。
+在单个区域中，如果两个规则同时生效，或者两个区域更改同时生效，则为错误。
+.PP
+如果连续线在转换之后从 UT 偏移量中减去 \fIN\fP 秒，如果使用连续线的 UT 偏移量和规则，则转换将被解释为稍后，则
+.q until
+前一个区域或延续线的时间根据延续线的 UT 偏移量和规则进行解释，并且假定在接下来的 \fIN\fP 秒内生效的任何规则同时生效。 例如:
+.br
+.ne 7
+.nf
+.in +2m
+.ta \w'# Rule\0\0'u +\w'NAME\0\0'u +\w'FROM\0\0'u +\w'2006\0\0'u +\w'\*\-\0\0'u +\w'Oct\0\0'u +\w'lastSun\0\0'u +\w'2:00\0\0'u +\w'SAVE\0\0'u
+.sp
+# Rule	NAME	FROM	TO	\*\-	IN	ON	AT	SAVE	LETTER/S
+Rule	US	1967	2006	\-	Oct	lastSun	2:00	0	S
+Rule	US	1967	1973	\-	Apr	lastSun	2:00	1:00	D
+.ta \w'Zone\0\0America/Menominee\0\0'u +\w'STDOFF\0\0'u +\w'RULES\0\0'u +\w'FORMAT\0\0'u
+# Zone\0\0NAME	STDOFF	RULES	FORMAT	[UNTIL]
+Zone/Menominee\*\-5:00\*\-EST 1973 年 4 月 29 日 2:00
+	\*\-6:00	US	C%sT
+.sp
+.in
+.fi
+在这里，不正确的读数是 1973\-04\-29 有两次时钟变化，第一次是从 02:00 EST (\*\-05) 到 01:00 CST
+(\*\-06)，第二次是一个小时后从 02:00 CST (\*\-06) 到 03:00 CDT (\*\-05)。 然而，\fBzic\fP
+将此更明智地解释为从 02:00 CST (\*\-05) 到 02:00 CDT (\*\-05) 的单一转换。
+.PP
+链接线具有以下形式
+.sp
+.nf
+.ti +.5i
+.ta \w'Link\0\0'u +\w'Europe/Istanbul\0\0'u
+Link	TARGET	LINK\-NAME
+.sp
+例如:
+.sp
+.ti +.5i
+Link	Europe/Istanbul	Asia/Istanbul
+.sp
+.fi
+\fBTARGET\fP 字段在某些区域行中应显示为 \fBNAME\fP 字段，或在某些链接行中显示为 \fBLINK\-NAME\fP 字段。 \fBLINK\-NAME\fP
+字段用作该区域的替代名称; 它与区域线的 \fBNAME\fP 字段具有相同的语法。
+链接可以链接在一起，但如果一个或多个链接的链不以区域名称终止，则行为未指定。 链接行可以出现在定义链接目标的行之前。 例如:
+.sp
+.ne 3
+.nf
+.in +2m
+.ta \w'Zone\0\0'u +\w'Greenwich\0\0'u
+Link	Greenwich	G_M_T
+Link	Etc/GMT	Greenwich
+Zone	Etc/GMT\0\00\0\0\*\-\0\0GMT
+.sp
+.in
+.fi
+这两个链接链接在一起，G_M_T、格林威治和 Etc/GMT 都命名为同一个区域。
+.PP
+除了续行，行可以以任何顺序出现在输入中。 但是，如果多个区域或链接线定义相同的名称，则行为未指定。
+.PP
+描述闰秒的文件可以有闰行和过期行。 跳跃线具有以下形式:
+.nf
+.ti +.5i
+.ta \w'Leap\0\0'u +\w'YEAR\0\0'u +\w'MONTH\0\0'u +\w'DAY\0\0'u +\w'HH:MM:SS\0\0'u +\w'CORR\0\0'u
+.sp
+Leap	YEAR	MONTH	DAY	HH:MM:SS	CORR	R/S
+.sp
+例如:
+.ti +.5i
+.sp
+Leap	2016	Dec	31	23:59:60	+	S
+.sp
+.fi
+\fBYEAR\fP、\fBMONTH\fP、\fBDAY\fP 和 \fBHH:MM:SS\fP 字段表示闰秒发生的时间。 \fBCORR\fP 字段应该是
+.q +
+如果添加了第二个或
+.q \*-
+如果跳过一秒钟。 \fBR/S\fP 字段应该是 (的缩写)
+.q Stationary
+如果其他字段给出的闰秒时间应解释为 UTC 或 (的缩写)
+.q Rolling
+如果其他字段给出的闰秒时间应解释为本地 (挂钟) 时间。
+.PP
+当不清楚通常的做法是滚动还是静止时，滚动闰秒被实现回来，担心人们会看到时代广场的球扔弃
+.q "3... 2... 1... leap... Happy New Year"
+倒计时，将闰秒置于纽约时间午夜而不是 UTC 午夜。 然而，这种倒计时方式似乎并没有流行起来，这意味着在实践中并没有使用滚动闰秒; 此外，如果使用
+\fB\*\-r\fP 选项，则不支持它们。
+.PP
+到期行 (如果存在) 具有以下形式:
+.nf
+.ti +.5i
+.ta \w'Expires\0\0'u +\w'YEAR\0\0'u +\w'MONTH\0\0'u +\w'DAY\0\0'u
+.sp
+Expires	YEAR	MONTH	DAY	HH:MM:SS
+.sp
+例如:
+.ti +.5i
+.sp
+Expires	2020	Dec	28	00:00:00
+.sp
+.fi
+\fBYEAR\fP、\fBMONTH\fP、\fBDAY\fP 和 \fBHH:MM:SS\fP 字段给出闰秒表的 UTC 到期时间戳。
+.br
+.ne 22
+.SH "EXTENDED EXAMPLE"
+这是 \fBzic\fP 输入的扩展示例，旨在说明其许多，特性。
+.nf
+.in +2m
+.ta \w'# Rule\0\0'u +\w'NAME\0\0'u +\w'FROM\0\0'u +\w'1973\0\0'u +\w'\*\-\0\0'u +\w'Apr\0\0'u +\w'lastSun\0\0'u +\w'2:00\0\0'u +\w'SAVE\0\0'u
+.sp
+# Rule	NAME	FROM	TO	\*\-	IN	ON	AT	SAVE	LETTER/S
+Rule	Swiss	1941	1942	\*\-	May	Mon>=1	1:00	1:00	S
+Rule	Swiss	1941	1942	\*\-	Oct	Mon>=1	2:00	0	\*\-
+.sp .5
+Rule	EU	1977	1980	\*\-	Apr	Sun>=1	1:00u	1:00	S
+Rule	EU	1977	only	\*\-	Sep	lastSun	1:00u	0	\*\-
+仅适用于 EU 1978\*\-Oct 1 1:00u 0\*\-
+Rule	EU	1979	1995	\*\-	Sep	lastSun	1:00u	0	\*\-
+Rule	EU	1981	max	\*\-	Mar	lastSun	1:00u	1:00	S
+Rule	EU	1996	max	\*\-	Oct	lastSun	1:00u	0	\*\-
+.sp
+.ta \w'# Zone\0\0'u +\w'Europe/Zurich\0\0'u +\w'0:29:45.50\0\0'u +\w'RULES\0\0'u +\w'FORMAT\0\0'u
+# Zone	NAME	STDOFF	RULES	FORMAT	[UNTIL]
+欧洲区 / 苏黎世区 0:34:08\*\-LMT 1853 7 月 16 日
+		0:29:45.50\*\-BMT 1894 年 6 月
+		1:00	Swiss	CE%sT	1981
+		1:00	EU	CE%sT
+.sp
+Link	Europe/Zurich	Europe/Vaduz
+.sp
+.in
+.fi
+在此示例中，欧盟规则适用于欧洲 Union 及其前身组织欧洲共同体。 时区名为 Europe/Zurich，别名为 Europe/Vaduz。
+此示例表示苏黎世在 UT 以东 34 分 8 秒，直到 1853\-07\-16 00:00，此时合法偏移量更改为
+7\*d\*_26\*m\*_22.50\*s，计算结果为 0:29:45.50; \fBzic\fP 通过将其四舍五入为 0:29:46 来处理它。 在
+1894\-06\-01 之后的 00:00，UT 偏移量变为一小时，瑞士夏令时规则 (定义以开头的行
+.q "Rule Swiss" )
+申请。从 1981 年到现在，适用欧盟夏令时规则，UTC 时差一直保持在一小时。
+.PP
+在 1941 年和 1942 年，夏令时从 5 月的第一个星期一的 01:00 应用到 10 月的第一个星期一的 02:00。 1981
+年之前的欧盟夏令时规则在这里无效，但为了完整性而包含在内。 自 1981 年以来，夏令时从 3 月的最后一个星期日 01:00 UTC 开始。 直到
+1995 年，它才结束于 9 月的最后一个星期日 01:00 UTC，但从 1996 年开始改为 10 月的最后一个星期日。
+.PP
+为了展示的目的，
+.q LMT
+and
+.q BMT
+最初分别使用。 由于采用了瑞士规则和后来的欧盟规则，时区缩写为 CET (标准时间) 和 CEST (夏令时)。
+.SH FILES
+.TP 
+\fI/etc/localtime\fP
+默认本地时区文件。
+.TP 
+\fI/usr/share/zoneinfo\fP
+默认时区信息目录。
+.SH NOTES
+对于超过两种当地时间的地区，可能需要在最早过渡时间规则的 \fBAT\fP 字段中使用当地标准时间，以确保编译文件中记录的最早过渡时间是正确的。
+.PP
+如果对于特定时区，夏令时开始导致的时钟提前与 UT 偏移量变化导致的时钟后退一致，\fBzic\fP 会在新的 UT
+偏移量处产生一次向夏令时的转换，而不会发生任何变化在本地 (挂钟) 时间。 要获得单独的转换，请使用多个区域连续线使用通用时间指定转换瞬间。
+.SH "SEE ALSO"
+\fBtzfile\fP(5), \fBzdump\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

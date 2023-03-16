@@ -1,0 +1,232 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-SOCKET\-PROXYD 8 "" "systemd 253" systemd\-socket\-proxyd
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-socket\-proxyd \- 将本地套接字双向代理到另一个 (可能是远程的) 套接字
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-socket\-proxyd\fR\ 'u
+\fBsystemd\-socket\-proxyd\fP [\fIOPTIONS\fP...] \fIHOST\fP:\fIPORT\fP
+.HP \w'\fBsystemd\-socket\-proxyd\fR\ 'u
+\fBsystemd\-socket\-proxyd\fP [\fIOPTIONS\fP...] \fIUNIX\-DOMAIN\-SOCKET\-PATH\fP
+.SH DESCRIPTION
+.PP
+\fBsystemd\-socket\-proxyd\fP 是用于 IPv4、IPv6 和 UNIX 流套接字 \&
+的泛型套接字激活网络套接字转发器代理守护进程。它可用于将流量从本地侦听套接字双向转发到本地或远程目标套接字 \&。
+.PP
+该工具的一种用途是为本身不支持套接字激活的服务提供套接字激活支持。代表要激活的服务，代理从 systemd
+继承套接字，接受每个客户端连接，为每个客户端打开一个到配置服务器的连接，然后在两者之间双向转发数据 \&。
+.PP
+此实用程序 \*(Aqs 行为类似于 \fBsocat\fP(1)\&。\fBsystemd\-socket\-proxyd\fP 的主要区别是支持使用
+"Accept=no" 进行套接字激活和事件驱动的设计，该设计可以更好地随连接数 \& 扩展。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.PP
+\fB\-\-connections\-max=\fP, \fB\-c\fP
+.RS 4
+设置最大同时连接数，默认为 256\&。如果达到并发连接的限制，将拒绝进一步的连接 \&。
+.RE
+.PP
+\fB\-\-exit\-idle\-time=\fP
+.RS 4
+设置没有连接时退出前的时间，默认 \fBinfinity\fP\&。取一个以秒为单位的小于元的值，或者一个时间跨度值，例如 `5min 20s`\&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH EXAMPLES
+.SS "Simple Example"
+.PP
+使用两个具有依赖关系且没有名称空间隔离的服务 \&。
+.PP
+\fBExample\ \&1.\ \&proxy\-to\-nginx\&.socket\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Socket]
+ListenStream=80
+
+[Install]
+WantedBy=sockets\&.target
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&proxy\-to\-nginx\&.service\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Requires=nginx\&.service
+After=nginx\&.service
+Requires=proxy\-to\-nginx\&.socket
+After=proxy\-to\-nginx\&.socket
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd\-socket\-proxyd /run/nginx/socket
+PrivateTmp=yes
+PrivateNetwork=yes
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&nginx\&.conf\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[\&...]
+server {
+    listen       unix:/run/nginx/socket;
+    [\&...]
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&Enabling the proxy\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl enable \-\-now proxy\-to\-nginx\&.socket
+$ curl http://localhost:80/
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+如果 nginx\&.service 设置了 \fIStopWhenUnneeded=\fP，则将 \fB\-\-exit\-idle\-time=\fP 传递给
+\fBsystemd\-socket\-proxyd\fP 允许两个服务在空闲期间停止 \&。
+.SS "Namespace Example"
+.PP
+与上面类似，但在同一个私有名称空间中运行套接字代理和主服务，假设 nginx\&.service 也设置了 \fIPrivateTmp=\fP 和
+\fIPrivateNetwork=\fP\&。
+.PP
+\fBExample\ \&5.\ \&proxy\-to\-nginx\&.socket\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Socket]
+ListenStream=80
+
+[Install]
+WantedBy=sockets\&.target
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&6.\ \&proxy\-to\-nginx\&.service\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Requires=nginx\&.service
+After=nginx\&.service
+Requires=proxy\-to\-nginx\&.socket
+After=proxy\-to\-nginx\&.socket
+JoinsNamespaceOf=nginx\&.service
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd\-socket\-proxyd 127\&.0\&.0\&.1:8080
+PrivateTmp=yes
+PrivateNetwork=yes
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&7.\ \&nginx\&.conf\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[\&...]
+server {
+    听 8080;
+    [\&...]
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&8.\ \&Enabling the proxy\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemctl enable \-\-now proxy\-to\-nginx\&.socket
+$ curl http://localhost:80/
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.socket\fP(5), \fBsystemd.service\fP(5), \fBsystemctl\fP(1),
+\fBsocat\fP(1), \fBnginx\fP(1), \fBcurl\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

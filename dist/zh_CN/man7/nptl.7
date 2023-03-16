@@ -1,0 +1,77 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2015 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH nptl 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+nptl \- 原生 POSIX 线程库
+.SH DESCRIPTION
+.\"
+NPTL (原生 POSIX 线程库) 是用于现代 Linux 系统的 GNU C 库 POSIX 线程实现。
+.SS "NPTL and signals"
+NPTL 在内部使用前两个实时信号 (信号编号 32 和 33)。 这些信号之一用于支持线程取消和 POSIX 计时器 (参见
+\fBtimer_create\fP(2)); 另一个用作确保进程中的所有线程始终具有相同 UID 和 GID 的机制的一部分，如 POSIX 所要求的那样。
+这些信号不能在应用程序中使用。
+.PP
+为了防止在应用程序中意外使用这些信号，这可能会干扰 NPTL 实现的操作，各种 glibc
+库函数和系统调用包装器函数试图对应用程序隐藏这些信号，如下所示:
+.IP \[bu] 3
+\fBSIGRTMIN\fP 定义为值 34 (而不是 32)。
+.IP \[bu]
+\fBsigwaitinfo\fP(2)、\fBsigtimedwait\fP(2) 和 \fBsigwait\fP(3)
+接口静默忽略等待这两个信号的请求，如果它们在这些调用的信号集参数中指定。
+.IP \[bu]
+\fBsigprocmask\fP(2) 和 \fBpthread_sigmask\fP(3) 接口静静地忽略阻止这两个信号的尝试。
+.IP \[bu]
+如果指定了 \fBsigaction\fP(2)、\fBpthread_kill\fP(3) 和 \fBpthread_sigqueue\fP(3) 接口，则会出现错误
+\fBEINVAL\fP (指示无效信号编号)。
+.IP \[bu]
+.\"
+\fBsigfillset\fP(3) 在创建完整信号集时不包括这两个信号。
+.SS "NPTL and process credential changes"
+在 Linux 内核级别，凭据 (用户和组 ID) 是每个线程的属性。 但是，POSIX 要求进程中的所有 POSIX 线程都具有相同的凭据。
+为满足这一要求，NPTL 实现将所有更改进程凭据的系统调用包装为函数，除了调用底层系统调用外，还安排进程中的所有其他线程也更改其凭据。
+.PP
+这些系统调用中的每一个的实现都涉及使用发送的实时信号 (使用 \fBtgkill\fP(2)) 到必须更改其凭据的每个其他线程。
+在发送这些信号之前，正在更改凭据的线程会保存新的 credential(s) 并将正在使用的系统调用记录在全局缓冲区中。 接收 thread(s)
+中的信号处理程序获取此信息，然后使用相同的系统调用来更改其凭据。
+.PP
+.\" FIXME .
+.\" Maybe say something about vfork() not being serialized wrt set*id() APIs?
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=14749
+为
+\fBsetgid\fP(2)、\fBsetuid\fP(2)、\fBsetegid\fP(2)、\fBseteuid\fP(2)、\fBsetregid\fP(2)、\fBsetreuid\fP(2)、\fBsetresgid\fP(2)、\fBsetresuid\fP(2)
+和 \fBsetgroups\fP(2) 提供了采用此技术的 Wrapper 数。
+.SH STANDARDS
+有关 NPTL 与 POSIX 标准的一致性的详细信息，请参见 \fBpthreads\fP(7)。
+.SH NOTES
+.\" See POSIX.1-2008 specification of pthread_mutexattr_init()
+.\" See sysdeps/x86/bits/pthreadtypes.h
+POSIX 表示任何进程中的任何线程都可以访问包含进程共享的 (\fBPTHREAD_PROCESS_SHARED\fP)
+互连锁的内存，并且可以对该互连锁进行操作。 但是，在 64 位 x86 系统上，x86\-64 的互连锁定义与 i386 的互连锁定义不兼容，这意味着
+32 位和 64 位二进制文件无法在 x86\-64 上共享互连锁系统。
+.SH "SEE ALSO"
+\fBcredentials\fP(7), \fBpthreads\fP(7), \fBsignal\fP(7), \fBstandards\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

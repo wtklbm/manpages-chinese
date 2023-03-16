@@ -1,0 +1,604 @@
+.\" -*- coding: UTF-8 -*-
+.\" $File: file.man,v 1.147 2022/10/31 13:22:26 christos Exp $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd October 26, 2022
+.Dt FILE 1
+.Os
+.Sh NAME
+.Nm file
+.Nd determine file type
+.Sh SYNOPSIS
+.Nm
+.Bk -words
+.Op Fl bcdEhiklLNnprsSvzZ0
+.Op Fl Fl apple
+.Op Fl Fl exclude-quiet
+.Op Fl Fl extension
+.Op Fl Fl mime-encoding
+.Op Fl Fl mime-type
+.Op Fl e Ar testname
+.Op Fl F Ar separator
+.Op Fl f Ar namefile
+.Op Fl m Ar magicfiles
+.Op Fl P Ar name=value
+.Ar
+.Ek
+.Nm
+.Fl C
+.Op Fl m Ar magicfiles
+.Nm
+.Op Fl Fl help
+.Sh DESCRIPTION
+本手册页记录了
+.Nm
+命令的 5.44 版本。
+.Pp
+.Nm
+测试每个参数以尝试对其进行分类。 共有三组测试，按以下顺序执行: 文件系统测试、魔术测试和语言测试。 成功的
+.Em first
+测试导致打印文件类型。
+.Pp
+打印的类型通常包含
+.Em text
+(该文件仅包含打印字符和一些常用控制字符，在
+.Dv ASCII
+终端上阅读可能是安全的)、
+.Em executable
+(该文件包含以某种形式编译程序的结果) 某些
+.Tn UNIX
+内核或其他内核可以理解) 或
+.Em data
+表示任何其他含义 (数据通常是
+.Dq binary
+或不可打印)。 已知包含二进制数据的众所周知的文件格式 (核心文件、tar 存档) 除外。
+修改魔术文件或程序本身时，请确保
+.Em preserve these keywords
+。 用户依赖于知道目录中的所有可读文件都印有
+.Dq text
+字样。 不要像 Berkeley 那样把
+.Dq shell commands text
+改成
+.Dq shell script
+。
+.Pp
+文件系统测试基于检查
+.Xr stat 2
+系统调用的返回。 该程序检查文件是否为空，或者它是否是某种特殊文件。
+如果在系统头文件中定义了适用于您正在运行的系统的任何已知文件类型 (套接字、符号链接或实现它们的系统上的命名管道 (FIFOs))，那么它们都是直觉的
+.In sys/stat.h .
+.Pp
+魔术测试用于检查包含特定固定格式数据的文件。 典型的例子是二进制可执行文件 (编译程序)
+.Dv a.out
+文件，其格式定义在
+.In elf.h ,
+.In a.out.h
+并且可能
+.In exec.h
+在标准包含目录中。 这些文件有一个
+.Dq magic number
+存储在文件开头附近的特定位置，它告诉
+.Tn UNIX
+操作系统该文件是二进制可执行文件，以及其中的几种类型。
+.Dq magic number
+的概念已通过扩展应用于数据文件。
+通常可以用这种方式描述文件中具有固定小偏移量的一些不变标识符的任何文件。 标识这些文件的信息是从编译后的魔术文件
+.Pa /usr/share/file/misc/magic.mgc
+中读取的，如果编译后的文件不存在，则从目录
+.Pa /usr/share/file/misc/magic
+中的文件中读取。 此外，如果
+.Pa $HOME/.magic.mgc
+或
+.Pa $HOME/.magic
+存在，将优先使用系统魔法文件。
+.Pp
+如果文件与魔法文件中的任何条目都不匹配，则会检查它是否是文本文件。 ASCII、ISO-8859-x、非 ISO 8 位扩展 ASCII 字符集
+(例如在 Macintosh 和 IBM PC 系统上使用的字符集)、UTF-8 编码的 Unicode、UTF-16 编码的 Unicode 和
+EBCDIC 字符集可以通过构成每组中可打印文本的不同范围和字节序列来区分。 如果一个文件通过了这些测试中的任何一个，它的字符集就会被报告。
+ASCII、ISO-8859-x、UTF-8 和扩展 ASCII 文件被标识为
+.Dq text
+，因为它们几乎在任何终端上都是可读的;
+UTF-16 和 EBCDIC 只是
+.Dq character data
+，因为虽然它们包含文本，但它是需要翻译才能阅读的文本。
+此外，
+.Nm
+将尝试确定文本类型文件的其他特征。 如果文件的行以 CR、CRLF 或 NEL 而不是 Unix 标准的 LF
+终止，则会报告这种情况。 包含嵌入式转义序列或重写的文件也将被识别。
+.Pp
+一旦
+.Nm
+确定了文本类型文件中使用的字符集，它将尝试确定文件是用什么语言编写的。 语言测试寻找特定的字符串 (cf.
+.In names.h )
+可以出现在文件前几个块中的任何位置。 例如，关键字
+.Em .br
+表示该文件很可能是
+.Xr troff 1
+输入文件，正如关键字
+.Em struct
+表示 C 程序一样。 这些测试不如前两组可靠，因此最后进行。 语言测试例程还测试一些杂项 (例如
+.Xr tar 1
+档案、JSON 文件)。
+.Pp
+任何不能被识别为以上面列出的任何字符集写入的文件都被简单地称为
+.Dq data
+。
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl Fl apple
+导致
+.Nm
+命令输出旧 MacOS 版本使用的文件类型和创建者代码。 该代码由八个字母组成，第一个字母描述文件类型，后者描述创建者。
+此选项仅适用于定义了 apple-style 输出的文件格式。
+.It Fl b , Fl Fl brief
+不要在输出行前加上文件名 (简短模式)。
+.It Fl C , Fl Fl compile
+编写一个
+.Pa magic.mgc
+输出文件，其中包含魔术文件或目录的预解析版本。
+.It Fl c , Fl Fl checking-printout
+导致魔术文件的解析形式的检查打印输出。 这通常与
+.Fl m
+选项一起使用，以在安装之前调试新的魔术文件。
+.It Fl d
+将内部调试信息打印到标准错误。
+.It Fl E
+在文件系统错误 (文件未找到等) 上，不是像 POSIX 要求的那样将错误作为常规输出处理并继续，而是发出错误消息并退出。
+.It Fl e , Fl Fl exclude Ar testname
+从确定文件类型的测试列表中排除
+.Ar testname
+中命名的测试。 有效的测试名称是:
+.Bl -tag -width compress
+.It apptype
+.Dv EMX
+应用程序类型 (仅在 EMX 上)。
+.It ascii
+各种类型的文本文件 (此测试将尝试猜测文本编码，而不考虑
+.Sq encoding
+选项的设置)。
+.It encoding
+用于软魔法测试的不同文本编码。
+.It tokens
+忽略向后兼容性。
+.It cdf
+打印复合文档文件的详细信息。
+.It compress
+检查并查看压缩文件的内部。
+.It csv
+检查逗号分隔值文件。
+.It elf
+打印 ELF 文件详细信息，前提是启用了软魔法测试并且找到了 elf 魔法。
+.It json
+通过解析 JSON (RFC-7159) 文件的合规性来检查它们。
+.It soft
+咨询魔术文件。
+.It tar
+通过验证 512 字节 tar 标头的校验和来检查 tar 文件。 排除此测试可以使用软魔术方法提供更详细的内容描述。
+.It text
+.Sq ascii
+的同义词。
+.El
+.It Fl Fl exclude-quiet
+与
+.Fl Fl exclude
+类似，但忽略
+.Nm
+不知道的测试。 这是为了与旧版本的
+.Nm
+兼容。
+.It Fl Fl extension
+打印找到的文件类型的有效扩展名的斜线分隔列表。
+.It Fl F , Fl Fl separator Ar separator
+使用指定的字符串作为文件名和返回的文件结果之间的分隔符。 默认为
+.Sq \&:
+。
+.It Fl f , Fl Fl files-from Ar namefile
+从参数列表前的
+.Ar namefile
+(每行一个) 读取要检查的文件名。 必须存在
+.Ar namefile
+或至少一个文件名参数;
+要测试标准输入，请使用
+.Sq -
+作为文件名参数。 请注意，当遇到此选项时，在进行任何进一步的选项处理之前，
+.Ar namefile
+将被解包并处理封闭的文件名。 这允许在同一个
+.Nm
+调用中使用不同的命令行参数处理多个文件列表。
+因此，如果要设置分隔符，则需要在指定文件列表之前进行设置，例如:
+.Dq Fl F Ar @ Fl f Ar namefile
+，而不是:
+.Dq Fl f Ar namefile Fl F Ar @
+。
+.It Fl h , Fl Fl no-dereference
+此选项导致不遵循符号链接 (在支持符号链接的系统上)。 如果未定义环境变量
+.Dv POSIXLY_CORRECT
+，则这是默认值。
+.It Fl i , Fl Fl mime
+导致
+.Nm
+命令输出 mime 类型字符串而不是更传统的人类可读字符串。 因此它可能会说
+.Sq text/plain; charset=us-ascii
+而不是
+.Dq ASCII text
+。
+.It Fl Fl mime-type , Fl Fl mime-encoding
+与
+.Fl i
+类似，但只打印指定的 element(s)。
+.It Fl k , Fl Fl keep-going
+不要停留在第一场比赛，继续前进。 随后的匹配将在前面加上字符串
+.Sq "\[rs]012\- "
+。 (如果您想要一个换行符，请参见
+.Fl r
+选项。) 具有最高强度的魔法模式 (请参见
+.Fl l
+选项) 排在第一位。
+.It Fl l , Fl Fl list
+显示模式列表及其强度按用于匹配的
+.Xr magic 5
+强度降序排列 (另请参见
+.Fl k
+选项)。
+.It Fl L , Fl Fl dereference
+此选项导致符号链接被遵循，作为
+.Xr ls 1
+中的类似名称的选项 (在支持符号链接的系统上)。 如果定义了环境变量
+.Ev POSIXLY_CORRECT
+，则这是默认值。
+.It Fl m , Fl Fl magic-file Ar magicfiles
+指定包含魔法的文件和目录的备用列表。 这可以是单个项或冒号分隔的列表。 如果在文件或目录旁边找到编译的魔法文件，它将被使用。
+.It Fl N , Fl Fl no-pad
+不要填充文件名，以便它们在输出中对齐。
+.It Fl n , Fl Fl no-buffer
+检查每个文件后强制刷新 stdout。 这仅在检查文件列表时有用。 它旨在供需要从管道输出文件类型的程序使用。
+.It Fl p , Fl Fl preserve-date
+在支持
+.Xr utime 3
+或
+.Xr utimes 2
+的系统上，尝试保留分析文件的访问时间，假装
+.Nm
+从未读取过它们。
+.It Fl P , Fl Fl parameter Ar name=value
+设置各种参数限制。
+.Bl -column elf_phnum Default XXXXXXXXXXXXXXXXXXXXXXXXXXX -offset indent
+.It Sy Name Ta Sy Default Ta Sy Explanation
+.It Li bytes Ta 1048576 Ta max number of bytes to read from file
+.It Li elf_notes Ta 256 Ta max ELF notes processed
+.It Li elf_phnum Ta 2048 Ta max ELF program sections processed
+.It Li elf_shnum Ta 32768 Ta max ELF sections processed
+.It Li encoding Ta 65536 Ta max number of bytes to scan for encoding evaluation
+.It Li indir Ta 50 Ta recursion limit for indirect magic
+.It Li name Ta 50 Ta use count limit for name/use magic
+.It Li regex Ta 8192 Ta length limit for regex searches
+.El
+.It Fl r , Fl Fl raw
+不要将不可打印的字符翻译成 \eooo。 通常
+.Nm
+将不可打印的字符转换为其八进制表示形式。
+.It Fl s , Fl Fl special-files
+通常情况下，
+.Nm
+只尝试读取并确定参数文件的类型，而
+.Xr stat 2
+报告的是普通文件。
+这可以防止出现问题，因为读取特殊文件可能会产生特殊的后果。 指定
+.Fl s
+选项会导致
+.Nm
+也读取作为块或字符特殊文件的参数文件。
+这对于确定原始磁盘分区中数据的文件系统类型很有用，这些数据是块特殊文件。 此选项还会导致
+.Nm
+忽略
+.Xr stat 2
+报告的文件大小，因为在某些系统上它报告原始磁盘分区的零大小。
+.It Fl S , Fl Fl no-sandbox
+在 libseccomp
+.Pa ( https://github.com/seccomp/libseccomp )
+可用的系统上，
+.Fl S
+选项禁用默认启用的沙盒。
+.Nm
+执行外部解压缩程序时需要此选项，即当指定
+.Fl z
+选项且内置解压缩程序不可用时。
+在沙盒不可用的系统上，此选项无效。
+.It Fl v , Fl Fl version
+打印程序的版本并退出。
+.It Fl z , Fl Fl uncompress
+尝试查看压缩文件的内部。
+.It Fl Z , Fl Fl uncompress-noreport
+尝试查看压缩文件内部，但只报告有关内容的信息，而不是压缩文件。
+.It Fl 0 , Fl Fl print0
+在文件名结束后输出一个空字符
+.Sq \e0
+。 很高兴
+.Xr cut 1
+输出。 这不会影响仍然打印的分隔符。
+.Pp
+如果此选项重复多次，则
+.Nm
+仅打印文件名，后跟 NUL，然后是描述 (或错误: 文本)，然后是每个条目的第二个 NUL。
+.It Fl -help
+打印帮助信息并退出。
+.El
+.Sh ENVIRONMENT
+环境变量
+.Ev MAGIC
+可用于设置默认的魔法文件名。 如果设置了该变量，则
+.Nm
+将不会尝试打开
+.Pa $HOME/.magic
+。
+.Nm
+适当地将
+.Dq Pa .mgc
+添加到该变量的值中。 环境变量
+.Ev POSIXLY_CORRECT
+控制 (在支持符号链接的系统上)
+.Nm
+是否会尝试遵循符号链接。 如果设置，则
+.Nm
+遵循符号链接，否则不遵循。 这也由
+.Fl L
+和
+.Fl h
+选项控制。
+.Sh FILES
+.Bl -tag -width /usr/share/file/misc/magic.mgc -compact
+.It Pa /usr/share/file/misc/magic.mgc
+默认编译魔法列表。
+.It Pa /usr/share/file/misc/magic
+包含默认魔法文件的目录。
+.El
+.Sh EXIT STATUS
+如果操作成功，
+.Nm
+将以
+.Dv 0
+退出，如果遇到错误，则以
+.Dv >0
+退出。
+以下错误会导致诊断消息，但不会影响程序退出代码 (如 POSIX 所要求的)，除非指定了
+.Fl E :
+.Bl -bullet -compact -offset indent
+.It 
+找不到文件
+.It 
+没有读取文件的权限
+.It 
+无法确定文件类型
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+$ 文件 file.c 文件 /dev/{wd0a,hda}
+file.c: C 程序文本
+文件: ELF 32 位 LSB 可执行文件，Intel 80386，版本 1 (SYSV)，
+	  动态链接 (使用共享库)，剥离
+/dev/wd0a: 块特殊 (0/0)
+/dev/hda: 块特殊 (3/0)
+
+$ 文件 -s/wd0 {b,d}
+/dev/wd0b: 数据
+/dev/wd0d: x86 引导扇区
+
+$ 文件 -s/hda {,1,2,3,4,5,6,7,8,9,10}
+/dev/hda: x86 引导扇区
+/dev/hda1: Linux/i386 ext2 文件系统
+/dev/hda2: x86 引导扇区
+/dev/hda3: x86 引导扇区，扩展分区表
+/dev/hda4: Linux/i386 ext2 文件系统
+/dev/hda5: Linux/i386 交换文件
+/dev/hda6: Linux/i386 交换文件
+/dev/hda7: Linux/i386 交换文件
+/dev/hda8: Linux/i386 交换文件
+/dev/hda9: 空
+/dev/hda10: 空
+
+$ 文件 -i file.c 文件 /dev/{wd0a,hda}
+文件.c: text/x-c
+文件: application/x-executable
+/dev/hda:    application/x-not-regular-file
+/dev/wd0a:   application/x-not-regular-file
+
+.Ed
+.Sh SEE ALSO
+.Xr hexdump 1 ,
+.Xr od 1 ,
+.Xr strings 1 ,
+.Xr magic 5
+.Sh STANDARDS CONFORMANCE
+.\" URL: http://www.opengroup.org/onlinepubs/009695399/utilities/file.html
+该程序被认为超出了 FILE(CMD) 的 System V 接口定义，正如人们可以从其中包含的模糊语言中确定的那样。 它的行为大部分与同名的
+System V 程序兼容。 然而，这个版本知道更多的魔法，所以在许多情况下它会产生不同的 (尽管更准确) 输出。
+.Pp
+此版本与 System V 之间的一个显着区别是此版本将任何空格视为定界符，因此必须对模式字符串中的空格进行转义。 例如，
+.Bd -literal -offset indent
+\*[Gt] 10 字符串语言 impress\ (imPRESS 数据)
+.Ed
+.Pp
+在现有的魔术文件中必须更改为
+.Bd -literal -offset indent
+\*[Gt] 10 字符串语言 \e impress (imPRESS 数据)
+.Ed
+.Pp
+此外，在此版本中，如果模式字符串包含反斜杠，则必须对其进行转义。 例如
+.Bd -literal -offset indent
+0 string\ebegindata 安德鲁工具包文档
+.Ed
+.Pp
+在现有的魔术文件中必须更改为
+.Bd -literal -offset indent
+0 string\ebegindata 安德鲁工具包文档
+.Ed
+.Pp
+SunOS 发布 3.2，后来 Sun Microsystems 包括一个从 System V 派生的
+.Nm
+命令，但有一些扩展。 这个版本与
+Sun 的版本只有细微的差别。 它包括
+.Sq \*[Am]
+运算符的扩展，例如用作
+.Bd -literal -offset indent
+\*[Gt] 16 长 \*[Am] 0x7fffffff\*[Gt] 0 未剥离
+.Ed
+.Sh SECURITY
+在 libseccomp
+.Pa ( https://github.com/seccomp/libseccomp )
+可用的系统上，
+.Nm
+强制将系统调用限制为仅对程序运行所必需的系统调用。 当要求
+.Nm
+解压缩运行带有
+.Fl z
+选项的外部程序的输入文件时，此实现不会提供任何安全优势。 要启用外部解压缩器的执行，需要使用
+.Fl S
+选项禁用沙盒。
+.Sh MAGIC DIRECTORY
+魔术文件条目是从各种来源收集的，主要是 USENET，并由不同的作者提供。 Christos Zoulas (地址如下)
+将收集额外的或更正的魔法文件条目。 魔术文件条目的合并将定期分发。
+.Pp
+魔法文件中条目的顺序很重要。 根据您使用的系统，它们放在一起的顺序可能不正确。 如果您的旧
+.Nm
+命令使用魔术文件，请保留旧魔术文件以供比较
+(将其重命名为
+.Pa /usr/share/file/misc/magic.orig ) .
+.Sh HISTORY
+每个
+.Dv UNIX since at least Research Version 4
+中都有一个
+.Nm
+命令 (手册页日期为
+1973 年 11 月)。 System V 版本引入了一个重要的重大变化: 魔法类型的外部列表。 这稍微减慢了程序的速度，但使其更加灵活。
+.Pp
+这个程序，基于 System V 版本，是 Ian Darwin
+.Aq ian@darwinsys.com
+写的，没有看任何人的源代码。
+.Pp
+John Gilmore 对代码进行了大量修改，使其比第一个版本更好。 Geoff Collyer 发现了一些不足之处并提供了一些神奇的文件条目。
+Rob McMahon 的
+.Sq \*[Am]
+运算符的贡献，
+.Aq cudcv@warwick.ac.uk
+，1989。
+.Pp
+Guy Harris，
+.Aq guy@netapp.com
+，从 1993 年到现在做了很多改变。
+.Pp
+1990 年至今由 Christos Zoulas
+.Aq christos@astron.com
+进行主要开发和维护。
+.Pp
+由 Chris Lowth
+.Aq chris@lowth.com
+更改，2000 年: 使用替代魔术文件和内部逻辑处理
+.Fl i
+选项以输出 mime 类型字符串。
+.Pp
+由 Eric Fischer
+.Aq enf@pobox.com
+于 2000 年 7 月更改，以识别字符代码并尝试识别非 ASCII
+文件的语言。
+.Pp
+由 Reuben Thomas
+.Aq rrt@sc3d.org
+、2007-2011 更改，以改进 MIME 支持，合并 MIME 和非 MIME
+魔法，支持目录和魔法文件，应用许多错误修复，更新和修复许多魔法，改进构建系统，改进文档，并在纯 Python 中重写 Python 绑定。
+.Pp
+.Sq magic
+目录 (魔法文件) 的贡献者列表太长，无法包含在此处。 您知道您是谁; 谢谢。 源文件中列出了许多贡献者。
+.Sh LEGAL NOTICE
+Copyright (c) Ian F.  Darwin, Toronto, Canada, 1986-1999.   受标准 Berkeley
+Software Distribution 版权保护; 请参见源分发中的文件 COPYING。
+.Pp
+文件
+.Pa tar.h
+和
+.Pa is_tar.c
+由 John Gilmore 从他的公共域
+.Xr tar 1
+程序中编写，不在上述许可范围内。
+.Sh BUGS
+请报告错误并将补丁发送到
+.Pa https://bugs.astron.com/
+的错误跟踪器或
+.Aq file@astron.com
+的邮件列表 (首先访问
+.Pa https://mailman.astron.com/mailman/listinfo/file
+进行订阅)。
+.Sh TODO
+修复输出，这样就不需要到处测试 MIME 和 APPLE 标志，实际输出只在一个地方完成。 这需要一个设计。 建议:
+将可能的输出推送到列表中，然后在末尾选择最后推送的 (最具体的，一个希望) 值，或者如果列表为空则使用默认值。 这不应减慢评估速度。
+.Pp
+在条目之间处理
+.Dv MAGIC_CONTINUE
+和打印 \e012 - 是笨拙和复杂的; 重构和集中化。
+.Pp
+一些编码逻辑在 encoding.c 中是硬编码的，如果我们有 !:charset 注解，可以将其移动到魔法文件中。
+.Pp
+继续压制所有的魔法虫子。 请参见 Debian BTS 以获得良好的资源。
+.Pp
+存储任意长的字符串，例如 %s 模式，以便可以打印出来。 修复了 Debian 错误 #271672。
+这可以通过在字符串池中分配字符串，将字符串池存储在魔术文件的末尾并将所有字符串指针转换为字符串池的相对偏移量来完成。
+.Pp
+在当前级别之后添加相对偏移量的语法 (Debian bug #466037)。
+.Pp
+使文件 -ki 工作，即提供多种 MIME 类型。
+.Pp
+添加一个 zip 库，以便我们可以在 Office2007 文档中使用 peek 打印有关其内容的更多详细信息。
+.Pp
+添加一个选项以打印文件描述源的 URL。
+.Pp
+结合脚本搜索并添加一种将 map 可执行文件名称转换为 MIME 类型的方法 (例如，为 !:mime
+设置一个神奇的值，这会导致在表中查找结果字符串)。 这将避免为每个新的 hash-bang 解释器重复添加相同的魔法。
+.Pp
+当文件描述符可用时，我们可以跳过和调整缓冲区，而不是我们现在做的 hacky 缓冲区管理。
+.Pp
+修复
+.Dq name
+和
+.Dq use
+以在编译时检查一致性 (重复的
+.Dq name
+、
+.Dq use
+指向未定义的
+.Dq name )
+。 通过保留已排序的名称列表，使
+.Dq name
+/
+.Dq use
+更高效。 特殊情况 ^
+在解析器中翻转字节序，这样它就不必转义，并记录下来。
+.Pp
+如果文件内部指定的偏移量超过缓冲区大小 (file.h 中的
+.Dv HOWMANY
+变量)，那么我们不会 seek 到该偏移量，但我们会放弃。
+如果在文件描述符可用时完成缓冲区管理会更好，这样我们就可以围绕文件进行 seek。
+但必须小心，因为这具有性能和安全方面的考虑，因为人们可以通过反复搜索来减慢速度。
+.Pp
+现在支持保留单独的缓冲区并从文件末尾开始偏移，但内部缓冲区管理仍需要彻底改革。
+.Sh AVAILABILITY
+您可以在
+.Pa ftp.astron.com
+目录
+.Pa /pub/file/file-X.YZ.tar.gz
+上通过匿名 FTP
+获取原作者的最新版本。
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

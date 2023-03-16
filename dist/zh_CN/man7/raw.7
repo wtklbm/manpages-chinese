@@ -1,0 +1,163 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: raw.7,v 1.6 1999/06/05 10:32:08 freitag Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH raw 7 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+raw\-Linux IPv4 原始套接字
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <netinet/in.h>\fP
+\fBraw_socket = socket(AF_INET, SOCK_RAW, int \fP\fIprotocol\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+原始套接字允许在用户空间中实现新的 IPv4 协议。 原始套接字接收或发送不包括链路级标头的原始数据报。
+.PP
+除非在套接字上启用 \fBIP_HDRINCL\fP 套接字选项，否则 IPv4 层在发送数据包时会生成 IP 标头。 启用时，数据包必须包含 IP 标头。
+对于接收，IP 报头始终包含在数据包中。
+.PP
+为了创建原始套接字，进程必须在管理其网络命名空间的用户命名空间中具有 \fBCAP_NET_RAW\fP 功能。
+.PP
+匹配为原始套接字指定的 \fIprotocol\fP 编号的所有数据包或错误都将传递到此套接字。 有关允许的协议列表，请参见 IANA 在
+.UR http://www.iana.org/assignments/protocol\-numbers/
+.UE
+和
+\fBgetprotobyname\fP(3) 处分配的协议编号列表。
+.PP
+\fBIPPROTO_RAW\fP 协议意味着启用 \fBIP_HDRINCL\fP 并且能够发送在传递的标头中指定的任何 IP 协议。 使用原始套接字无法通过
+\fBIPPROTO_RAW\fP 接收所有 IP 协议。
+.RS
+.TS
+tab(:) allbox;
+c s
+l l.
+IP Header fields modified on sending by \fBIP_HDRINCL\fP
+IP Checksum:Always filled in
+Source Address:Filled in when zero
+Packet ID:Filled in when zero
+Total Length:Always filled in
+.TE
+.RE
+.PP
+如果指定了 \fBIP_HDRINCL\fP 并且 IP 标头具有非零目标地址，则使用套接字的目标地址来路由数据包。 当指定 \fBMSG_DONTROUTE\fP
+时，目标地址应引用本地接口，否则无论如何都会进行路由表查找，但网关路由将被忽略。
+.PP
+如果未设置 \fBIP_HDRINCL\fP，则可以使用 \fBsetsockopt\fP(2) 在原始套接字上设置 IP 标头选项; 有关更多信息，请参见
+\fBip\fP(7)。
+.PP
+从 Linux 2.2 开始，所有 IP 报头字段和选项都可以使用 IP 套接字选项进行设置。 这意味着原始套接字通常仅用于新协议或没有用户界面的协议
+(如 ICMP)。
+.PP
+当接收到一个数据包时，它会在传递给其他协议处理程序 (例如，内核协议模块) 之前传递给任何已绑定到其协议的原始套接字。
+.SS "Address format"
+.\" commit f59fc7f30b710d45aadf715460b3e60dbe9d3418
+对于发送和接收数据报 (\fBsendto\fP(2)、\fBrecvfrom\fP(2) 等)，原始套接字使用 \fBip\fP(7) 中定义的标准
+\fIsockaddr_in\fP 地址结构体。 \fIsin_port\fP 字段可用于指定 IP 协议号，但在 Linux 2.2
+及以后的发送中将被忽略，应始终设置为 0 (参见 BUGS)。 对于传入数据包，\fIsin_port\fP 设置为零。
+.SS "Socket options"
+.\" Or SOL_RAW on Linux
+可以使用 \fBsetsockopt\fP(2) 设置原始套接字选项，并通过传递 \fBIPPROTO_RAW\fP 系列标志使用 \fBgetsockopt\fP(2)
+读取。
+.TP 
+\fBICMP_FILTER\fP
+为绑定到 \fBIPPROTO_ICMP\fP 协议的原始套接字启用特殊过滤器。 该值为每个应过滤掉的 ICMP 消息类型设置了一个位。 默认是不过滤任何
+ICMP 消息。
+.PP
+此外，支持对数据报套接字有效的所有 \fBip\fP(7) \fBIPPROTO_IP\fP 套接字选项。
+.SS "Error handling"
+仅当连接套接字或启用 \fBIP_RECVERR\fP 标志时，源自网络的错误才会传递给用户。 对于已连接的套接字，为了兼容性，仅传递 \fBEMSGSIZE\fP
+和 \fBEPROTO\fP。 使用 \fBIP_RECVERR\fP，所有网络错误都保存在错误队列中。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+用户试图在套接字上未设置广播标志的情况下发送到广播地址。
+.TP 
+\fBEFAULT\fP
+提供了无效的内存地址。
+.TP 
+\fBEINVAL\fP
+参数无效。
+.TP 
+\fBEMSGSIZE\fP
+数据包太大。 路径 MTU 发现已启用 (\fBIP_MTU_DISCOVER\fP 套接字标志) 或数据包大小超过允许的最大 IPv4 数据包大小
+64\kB。
+.TP 
+\fBEOPNOTSUPP\fP
+无效标志已传递给套接字调用 (如 \fBMSG_OOB\fP).
+.TP 
+\fBEPERM\fP
+用户无权打开原始套接字。 只有有效用户 ID 为 0 或 \fBCAP_NET_RAW\fP 属性的进程才可以这样做。
+.TP 
+\fBEPROTO\fP
+ICMP 错误已到达，报告参数问题。
+.SH VERSIONS
+\fBIP_RECVERR\fP 和 \fBICMP_FILTER\fP 是 Linux 2.2 中新增的。 它们是 Linux 扩展，不应在可移植程序中使用。
+.PP
+当设置了 \fBSO_BSDCOMPAT\fP 套接字选项时，Linux 2.0 在原始套接字代码中启用了与 BSD 的一些错误到错误的兼容性; 自
+Linux 2.2 起，此选项不再具有该效果。
+.SH NOTES
+默认情况下，原始套接字进行路径 MTU (最大传输元) 发现。 这意味着内核将跟踪特定目标 IP 地址的 MTU，并在原始数据包写入超过它时返回
+\fBEMSGSIZE\fP。 发生这种情况时，应用程序应减小数据包大小。 也可以使用 \fBIP_MTU_DISCOVER\fP 套接字选项或
+\fI/proc/sys/net/ipv4/ip_no_pmtu_disc\fP 文件关闭路径 MTU 发现，有关详细信息，请参见 \fBip\fP(7)。
+关闭时，原始套接字将对超过接口 MTU 的传出数据包进行分段。 但是，出于性能和可靠性原因，不建议禁用它。
+.PP
+可以使用 \fBbind\fP(2) 调用将原始套接字绑定到特定的本地地址。 如果未绑定，则接收具有指定 IP 协议的所有数据包。 此外，可以使用
+\fBSO_BINDTODEVICE\fP 将原始套接字绑定到特定的网络设备; 请参见 \fBsocket\fP(7)。
+.PP
+\fBIPPROTO_RAW\fP 套接字仅用于发送。 如果您真的想接收所有 IP 数据包，请使用 \fBETH_P_IP\fP 协议的 \fBpacket\fP(7)
+套接字。 请注意，与原始套接字不同，数据包套接字不会重组 IP 片段。
+.PP
+如果您想接收数据报套接字的所有 ICMP 数据包，通常最好在该特定套接字上使用 \fBIP_RECVERR\fP; 请参见 \fBip\fP(7)。
+.PP
+原始套接字可以利用 Linux 中的所有 IP 协议，甚至是像 ICMP 或 TCP 这样在内核中具有协议模块的协议。
+在这种情况下，数据包会同时传递给内核模块和原始 socket(s)。 这在可移植程序中不应该依赖，许多其他 BSD 套接字实现在这里有限制。
+.PP
+Linux 从不更改从用户传递的标头 (除了按照 \fBIP_HDRINCL\fP) 所述填写一些归零字段。 这与原始套接字的许多其他实现不同。
+.PP
+原始套接字通常是不可移植的，应避免在旨在可移植的程序中使用。
+.PP
+在原始套接字上发送应该采用 \fIsin_port\fP 的 IP 协议; Linux 2.2 失去了这种能力。 解决方法是使用 \fBIP_HDRINCL\fP。
+.SH BUGS
+不描述透明代理扩展。
+.PP
+当设置了 \fBIP_HDRINCL\fP 选项时，数据报将不会被分片并且被限制在接口 MTU 范围内。
+.PP
+.\" .SH AUTHORS
+.\" This man page was written by Andi Kleen.
+在 \fIsin_port\fP 中设置用于发送的 IP 协议在 Linux 2.2 中丢失。 始终使用套接字绑定的协议或在初始 \fBsocket\fP(2)
+调用中指定的协议。
+.SH "SEE ALSO"
+\fBrecvmsg\fP(2), \fBsendmsg\fP(2), \fBcapabilities\fP(7), \fBip\fP(7), \fBsocket\fP(7)
+.PP
+\fBRFC\ 1191\fP 用于路径 MTU 发现。 IP 协议的 \fBRFC\ 791\fP 和 \fI<linux/ip.h>\fP 头文件。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,76 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2004 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH set_tid_address 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+set_tid_address \- 设置指向线程 ID 的指针
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBpid_t syscall(SYS_set_tid_address, int *\fP\fItidptr\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBset_tid_address\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+对于每个线程，内核维护两个属性 (addresses)，称为 \fIset_child_tid\fP 和 \fIclear_child_tid\fP。
+默认情况下，这两个属性包含值 NULL。
+.TP 
+\fIset_child_tid\fP
+如果使用带有 \fBCLONE_CHILD_SETTID\fP 标志的 \fBclone\fP(2) 启动线程，则 \fIset_child_tid\fP
+将设置为在该系统调用的 \fIctid\fP 参数中传递的值。
+.IP
+当 \fIset_child_tid\fP 被设置时，新线程做的第一件事就是在这个地址写入它的线程 ID。
+.TP 
+\fIclear_child_tid\fP
+如果使用带有 \fBCLONE_CHILD_CLEARTID\fP 标志的 \fBclone\fP(2) 启动线程，则 \fIclear_child_tid\fP
+将设置为在该系统调用的 \fIctid\fP 参数中传递的值。
+.PP
+系统调用 \fBset_tid_address\fP() 将调用线程的 \fIclear_child_tid\fP 值设置为 \fItidptr\fP。
+.PP
+当一个 \fIclear_child_tid\fP 不为 NULL 的线程终止时，如果该线程正在与其他线程共享内存，则将 0 写入
+\fIclear_child_tid\fP 中指定的地址，内核执行以下操作:
+.PP
+.in +4n
+.EX
+futex(clear_child_tid, FUTEX_WAKE, 1, NULL, NULL, 0);
+.EE
+.in
+.PP
+此操作的效果是唤醒正在内存位置执行 futex 等待的单个线程。 来自 futex 唤醒操作的错误将被忽略。
+.SH "RETURN VALUE"
+\fBset_tid_address\fP() 总是返回调用者的线程 ID。
+.SH ERRORS
+\fBset_tid_address\fP() 总是成功。
+.SH VERSIONS
+此调用从 Linux 2.5.48 开始存在。 此处给出的详细信息自 Linux 2.5.49 起有效。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBfutex\fP(2), \fBgettid\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,440 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" Based on the original comments from Alexey Kuznetsov, written with
+.\" help from Matthew Wilcox.
+.\" $Id: rtnetlink.7,v 1.8 2000/01/22 01:55:04 freitag Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rtnetlink 7 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+rtnetlink\-Linux 路由套接字
+.SH SYNOPSIS
+.nf
+\fB#include <asm/types.h>\fP
+\fB#include <linux/netlink.h>\fP
+\fB#include <linux/rtnetlink.h>\fP
+\fB#include <sys/socket.h>\fP
+.PP
+\fBrtnetlink_socket = socket(AF_NETLINK, int \fP\fIsocket_type\fP\fB, NETLINK_ROUTE);\fP
+.fi
+.SH DESCRIPTION
+.\" FIXME . ? all these macros could be moved to rtnetlink(3)
+Rtnetlink 允许读取和更改内核的路由表。 它在内核中用于各种子系统之间的通信，尽管这里没有记录这种用法，以及与用户空间程序的通信。
+网络路由、IP 地址、链路参数、邻居设置、排队规则、流量类别和数据包分类器都可以通过 \fBNETLINK_ROUTE\fP 套接字进行控制。 它基于
+netlink 消息; 有关更多信息，请参见 \fBnetlink\fP(7)。
+.SS "Routing attributes"
+某些 rtnetlink 消息在初始标头后具有可选属性:
+.PP
+.in +4n
+.EX
+struct rtattr {
+    unsigned short rta_len;    /* Length of option */
+    unsigned short rta_type;   /* Type of option */
+    /* Data follows */
+};
+.EE
+.in
+.PP
+这些属性应仅使用 RTA_* 宏或 libnetlink 进行操作，请参见 \fBrtnetlink\fP(3)。
+.SS Messages
+Rtnetlink 由这些消息类型组成 (除了标准的 netlink 消息) :
+.TP 
+\fBRTM_NEWLINK\fP, \fBRTM_DELLINK\fP, \fBRTM_GETLINK\fP
+创建、删除或获取有关特定网络接口的信息。 这些消息包含一个 \fIifinfomsg\fP 结构体，后跟一系列 \fIrtattr\fP 结构。
+.IP
+.EX
+struct ifinfomsg {
+    unsigned char  ifi_family; /* AF_UNSPEC */
+    unsigned short ifi_type;   /* Device type */
+    int            ifi_index;  /* Interface index */
+    unsigned int   ifi_flags;  /* Device flags  */
+    unsigned int   ifi_change; /* change mask */
+};
+.EE
+.IP
+.\" FIXME Document ifinfomsg.ifi_type
+\fIifi_flags\fP 包含设备标志，参见 \fBnetdevice\fP(7); \fIifi_index\fP 是唯一的接口索引 (从 Linux 3.7
+开始，可以使用 \fBRTM_NEWLINK\fP 消息提供非零值，从而创建与给定 \fIifindex\fP) 的链接; \fIifi_change\fP 保留供
+future 使用，应始终设置为 0xFFFFFFFF。
+.TS
+tab(:);
+c s s
+lb l l.
+Routing attributes
+rta_type:Value type:Description
+_
+IFLA_UNSPEC:\-:unspecified
+IFLA_ADDRESS:hardware address:interface L2 address
+IFLA_BROADCAST:hardware address:L2 broadcast address
+IFLA_IFNAME:asciiz string:Device name
+IFLA_MTU:unsigned int:MTU of the device
+IFLA_LINK:int:Link type
+IFLA_QDISC:asciiz string:Queueing discipline
+IFLA_STATS:T{
+see below
+T}:Interface Statistics
+.TE
+.IP
+\fBIFLA_STATS\fP 的值类型在 Linux 2.4 及更早版本中为 \fIstruct rtnl_link_stats\fP (\fIstruct net_device_stats\fP)。
+.TP 
+\fBRTM_NEWADDR\fP, \fBRTM_DELADDR\fP, \fBRTM_GETADDR\fP
+添加、删除或接收有关与接口关联的 IP 地址的信息。 在 Linux 2.2 中，一个接口可以携带多个 IP 地址，这取代了 Linux 2.0
+中的别名设备概念。 在 Linux 2.2 中，这些消息支持 IPv4 和 IPv6 地址。 它们包含一个 \fIifaddrmsg\fP 结构体，可选地后跟
+\fIrtattr\fP 路由属性。
+.IP
+.EX
+struct ifaddrmsg {
+    unsigned char ifa_family;    /* Address type */
+    unsigned char ifa_prefixlen; /* Prefixlength of address */
+    unsigned char ifa_flags;     /* Address flags */
+    unsigned char ifa_scope;     /* Address scope */
+    unsigned int  ifa_index;     /* Interface index */
+};
+.EE
+.IP
+\fIifa_family\fP 是地址族类型 (当前为 \fBAF_INET\fP 或 \fBAF_INET6\fP)，\fIifa_prefixlen\fP
+是地址的地址掩码长度，如果为该族定义 (如 IPv4)，\fIifa_scope\fP 是地址作用域，\fIifa_index\fP 是接口的接口索引地址关联。
+\fIifa_flags\fP 是 \fBIFA_F_SECONDARY\fP 的标志字，用于辅助地址 (旧别名接口)，\fBIFA_F_PERMANENT\fP
+用于用户设置的永久地址和其他未记录的标志。
+.TS
+tab(:);
+c s s
+lb l l.
+Attributes
+rta_type:Value type:Description
+_
+IFA_UNSPEC:\-:unspecified
+IFA_ADDRESS:raw protocol address:interface address
+IFA_LOCAL:raw protocol address:local address
+IFA_LABEL:asciiz string:name of the interface
+IFA_BROADCAST:raw protocol address:broadcast address
+IFA_ANYCAST:raw protocol address:anycast address
+IFA_CACHEINFO:struct ifa_cacheinfo:Address information
+.TE
+.\" FIXME Document struct ifa_cacheinfo
+.TP 
+\fBRTM_NEWROUTE\fP, \fBRTM_DELROUTE\fP, \fBRTM_GETROUTE\fP
+创建、删除或接收有关网络路由的信息。 这些消息包含一个 \fIrtmsg\fP 结构体，后面是一个可选的 \fIrtattr\fP 结构序列。 对于
+\fBRTM_GETROUTE\fP，将 \fIrtm_dst_len\fP 和 \fIrtm_src_len\fP 设置为 0 意味着您获得指定路由表的所有条目。
+对于除 \fIrtm_table\fP 和 \fIrtm_protocol\fP 之外的其他字段，0 是通配符。
+.IP
+.EX
+struct rtmsg {
+    unsigned char rtm_family;    /* Address family of route */
+    unsigned char rtm_dst_len;   /* Length of destination */
+    unsigned char rtm_src_len;   /* Length of source */
+    unsigned char rtm_tos;       /* TOS filter */
+    unsigned char rtm_table;     /* Routing table ID;
+                                   see RTA_TABLE below */
+    unsigned char rtm_protocol;  /* Routing protocol;  see below */
+    unsigned char rtm_scope;     /* See below */
+    unsigned char rtm_type;      /* See below */
+
+    unsigned int  rtm_flags;
+};
+.EE
+.TS
+tab(:);
+lb l.
+rtm_type:Route type
+_
+RTN_UNSPEC:unknown route
+RTN_UNICAST:a gateway or direct route
+RTN_LOCAL:a local interface route
+RTN_BROADCAST:T{
+a local broadcast route (sent as a broadcast)
+T}
+RTN_ANYCAST:T{
+a local broadcast route (sent as a unicast)
+T}
+RTN_MULTICAST:a multicast route
+RTN_BLACKHOLE:a packet dropping route
+RTN_UNREACHABLE:an unreachable destination
+RTN_PROHIBIT:a packet rejection route
+RTN_THROW:continue routing lookup in another table
+RTN_NAT:a network address translation rule
+RTN_XRESOLVE:T{
+refer to an external resolver (not implemented)
+T}
+.TE
+.TS
+tab(:);
+lb l.
+rtm_protocol:Route origin
+_
+RTPROT_UNSPEC:unknown
+RTPROT_REDIRECT:T{
+by an ICMP redirect (currently unused)
+T}
+RTPROT_KERNEL:by the kernel
+RTPROT_BOOT:during boot
+RTPROT_STATIC:by the administrator
+.TE
+.sp 1
+大于 \fBRTPROT_STATIC\fP 的值不会被内核解释，它们仅供用户参考。 它们可用于标记路由信息的来源或区分多个路由守护进程。
+有关已分配的路由守护程序标识符，请参见 \fI<linux/rtnetlink.h>\fP。
+.IP
+\fIrtm_scope\fP 是到目的地的距离:
+.TS
+tab(:);
+lb l.
+RT_SCOPE_UNIVERSE:global route
+RT_SCOPE_SITE:T{
+interior route in the local autonomous system
+T}
+RT_SCOPE_LINK:route on this link
+RT_SCOPE_HOST:route on the local host
+RT_SCOPE_NOWHERE:destination doesn't exist
+.TE
+.sp 1
+\fBRT_SCOPE_UNIVERSE\fP 和 \fBRT_SCOPE_SITE\fP 之间的值可供用户使用。
+.IP
+\fIrtm_flags\fP 的含义如下:
+.TS
+tab(:);
+lb l.
+RTM_F_NOTIFY:T{
+if the route changes, notify the user via rtnetlink
+T}
+RTM_F_CLONED:route is cloned from another route
+RTM_F_EQUALIZE:a multipath equalizer (not yet implemented)
+.TE
+.sp 1
+\fIrtm_table\fP 指定路由表
+.TS
+tab(:);
+lb l.
+RT_TABLE_UNSPEC:an unspecified routing table
+RT_TABLE_DEFAULT:the default table
+RT_TABLE_MAIN:the main table
+RT_TABLE_LOCAL:the local table
+.TE
+.sp 1
+.\" Keep table on same page
+用户可以在 \fBRT_TABLE_UNSPEC\fP 和 \fBRT_TABLE_DEFAULT\fP 之间分配任意值。
+.bp +1
+.TS
+tab(:);
+c s s
+lb2 l2 l.
+Attributes
+rta_type:Value type:Description
+_
+RTA_UNSPEC:\-:ignored
+RTA_DST:protocol address:Route destination address
+RTA_SRC:protocol address:Route source address
+RTA_IIF:int:Input interface index
+RTA_OIF:int:Output interface index
+RTA_GATEWAY:protocol address:The gateway of the route
+RTA_PRIORITY:int:Priority of route
+RTA_PREFSRC:protocol address:Preferred source address
+RTA_METRICS:int:Route metric
+RTA_MULTIPATH::T{
+Multipath nexthop data
+br
+(see below).
+T}
+RTA_PROTOINFO::No longer used
+RTA_FLOW:int:Route realm
+RTA_CACHEINFO:struct rta_cacheinfo:(see linux/rtnetlink.h)
+RTA_SESSION::No longer used
+RTA_MP_ALGO::No longer used
+RTA_TABLE:int:T{
+Routing table ID; if set,
+.br
+rtm_table is ignored
+T}
+RTA_MARK:int:
+RTA_MFC_STATS:struct rta_mfc_stats:(see linux/rtnetlink.h)
+RTA_VIA:struct rtvia:T{
+Gateway in different AF
+(see below)
+T}
+RTA_NEWDST:protocol address:T{
+Change packet
+destination address
+T}
+RTA_PREF:char:T{
+RFC4191 IPv6 router
+preference (see below)
+T}
+RTA_ENCAP_TYPE:short:T{
+Encapsulation type for
+.br
+lwtunnels (see below)
+T}
+RTA_ENCAP::Defined by RTA_ENCAP_TYPE
+RTA_EXPIRES:int:T{
+Expire time for IPv6
+routes (in seconds)
+T}
+.TE
+.IP
+\fBRTA_MULTIPATH\fP 包含多个 \fIstruct rtnexthop\fP 的实例以及嵌套的 RTA (\fBRTA_GATEWAY\fP):
+.IP
+.in +4n
+.EX
+struct rtnexthop {
+    unsigned short rtnh_len;     /* Length of struct + length
+                                    of RTAs */
+    unsigned char  rtnh_flags;   /* Flags (see
+                                    linux/rtnetlink.h) */
+    unsigned char  rtnh_hops;    /* Nexthop priority */
+    int            rtnh_ifindex; /* Interface index for this
+                                    nexthop */
+}
+.EE
+.in
+.IP
+There exist a bunch of \fBRTNH_*\fP macros similar to \fBRTA_*\fP and \fBNLHDR_*\fP
+macros useful to handle these structures.
+.IP
+.in +4n
+.EX
+struct rtvia {
+    unsigned short rtvia_family;
+    unsigned char  rtvia_addr[0];
+};
+.EE
+.in
+.IP
+\fIrtvia_addr\fP 是地址，\fIrtvia_family\fP 是它的家族类型。
+.IP
+\fBRTA_PREF\fP 可能包含定义在 \fI<linux/icmpv6.h>\fP 中的值
+\fBICMPV6_ROUTER_PREF_LOW\fP、\fBICMPV6_ROUTER_PREF_MEDIUM\fP 和
+\fBICMPV6_ROUTER_PREF_HIGH\fP。
+.IP
+\fBRTA_ENCAP_TYPE\fP 可能包含 \fI<linux/lwtunnel.h>\fP 中定义的值
+\fBLWTUNNEL_ENCAP_MPLS\fP、\fBLWTUNNEL_ENCAP_IP\fP、\fBLWTUNNEL_ENCAP_ILA\fP 或
+\fBLWTUNNEL_ENCAP_IP6\fP。
+.IP
+\fBFill these values in!\fP
+.TP 
+\fBRTM_NEWNEIGH\fP, \fBRTM_DELNEIGH\fP, \fBRTM_GETNEIGH\fP
+添加、删除或接收有关邻居表条目 (例如，ARP 条目) 的信息。 该消息包含一个 \fIndmsg\fP 结构体。
+.IP
+.EX
+struct ndmsg {
+    unsigned char ndm_family;
+    int           ndm_ifindex;  /* Interface index */
+    __u16         ndm_state;    /* State */
+    __u8          ndm_flags;    /* Flags */
+    __u8          ndm_type;
+};
+
+struct nda_cacheinfo {
+    __u32         ndm_confirmed;
+    __u32         ndm_used;
+    __u32         ndm_updated;
+    __u32         ndm_refcnt;
+};
+.EE
+.IP
+\fIndm_state\fP 是以下状态的位掩码:
+.TS
+tab(:);
+lb l.
+NUD_INCOMPLETE:a currently resolving cache entry
+NUD_REACHABLE:a confirmed working cache entry
+NUD_STALE:an expired cache entry
+NUD_DELAY:an entry waiting for a timer
+NUD_PROBE:a cache entry that is currently reprobed
+NUD_FAILED:an invalid cache entry
+NUD_NOARP:a device with no destination cache
+NUD_PERMANENT:a static entry
+.TE
+.sp 1
+有效的 \fIndm_flags\fP 是:
+.TS
+tab(:);
+lb l.
+NTF_PROXY:a proxy arp entry
+NTF_ROUTER:an IPv6 router
+.TE
+.sp 1
+.\" FIXME .
+.\" document the members of the struct better
+\fIrtattr\fP 结构体对于 \fIrta_type\fP 字段的含义如下:
+.TS
+tab(:);
+lb l.
+NDA_UNSPEC:unknown type
+NDA_DST:a neighbor cache n/w layer destination address
+NDA_LLADDR:a neighbor cache link layer address
+NDA_CACHEINFO:cache statistics
+.TE
+.sp 1
+如果 \fIrta_type\fP 字段是 \fBNDA_CACHEINFO\fP，则后面是 \fIstruct nda_cacheinfo\fP 标头。
+.TP 
+\fBRTM_NEWRULE\fP, \fBRTM_DELRULE\fP, \fBRTM_GETRULE\fP
+添加、删除或检索路由规则。 携带 \fIstruct rtmsg\fP
+.TP 
+\fBRTM_NEWQDISC\fP, \fBRTM_DELQDISC\fP, \fBRTM_GETQDISC\fP
+添加、删除或获取排队规则。 该消息包含一个 \fIstruct tcmsg\fP，后面可能跟有一系列属性。
+.IP
+.EX
+struct tcmsg {
+    unsigned char    tcm_family;
+    int              tcm_ifindex;   /* interface index */
+    __u32            tcm_handle;    /* Qdisc handle */
+    __u32            tcm_parent;    /* Parent qdisc */
+    __u32            tcm_info;
+};
+.EE
+.TS
+tab(:);
+c s s
+lb2 l2 l.
+Attributes
+rta_type:Value type:Description
+_
+TCA_UNSPEC:\-:unspecified
+TCA_KIND:asciiz string:Name of queueing discipline
+TCA_OPTIONS:byte sequence:Qdisc\-specific options follow
+TCA_STATS:struct tc_stats:Qdisc statistics
+TCA_XSTATS:qdisc\-specific:Module\-specific statistics
+TCA_RATE:struct tc_estimator:Rate limit
+.TE
+.sp 1
+此外，还允许使用其他各种特定于 qdisc 模块的属性。 有关详细信息，请参见相应的包含文件。
+.TP 
+\fBRTM_NEWTCLASS\fP, \fBRTM_DELTCLASS\fP, \fBRTM_GETTCLASS\fP
+添加、删除或获取流量类别。 这些消息包含如上所述的 \fIstruct tcmsg\fP。
+.TP 
+\fBRTM_NEWTFILTER\fP, \fBRTM_DELTFILTER\fP, \fBRTM_GETTFILTER\fP
+添加、删除或接收有关流量过滤器的信息。 这些消息包含如上所述的 \fIstruct tcmsg\fP。
+.SH VERSIONS
+\fBrtnetlink\fP 是 Linux 2.2 的新特性。
+.SH BUGS
+该手册页不完整。
+.SH "SEE ALSO"
+\fBcmsg\fP(3), \fBrtnetlink\fP(3), \fBip\fP(7), \fBnetlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

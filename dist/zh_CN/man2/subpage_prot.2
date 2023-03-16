@@ -1,0 +1,90 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2010 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" based on a proposal from Stephan Mueller <smueller@atsec.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Various pieces of text taken from the kernel source and the commentary
+.\" in Linux commit fa28237cfcc5827553044cbd6ee52e33692b0faa
+.\" both written by Paul Mackerras <paulus@samba.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH subpage_prot 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+subpage_prot \- 为地址范围定义子页面保护
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_subpage_prot, unsigned long \fP\fIaddr\fP\fB, unsigned long \fP\fIlen\fP\fB,\fP
+\fB            uint32_t *\fP\fImap\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBsubpage_prot\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+PowerPC 特定的 \fBsubpage_prot\fP() 系统调用提供了在页面大小配置为 64\kB 的系统上控制单个 4\kB
+子页面的访问权限的工具。
+.PP
+保护 map 应用于区域中从 \fIaddr\fP 开始并持续 \fIlen\fP 字节的内存页。 这两个参数都必须与 64\-kB 边界对齐。
+.PP
+保护 map 在 \fImap\fP 指向的缓冲区中指定。 map 每 4\kB 子页有 2 位; 因此每个 32 位字指定 64\kB 页面内的 16 个
+4\kB 子页面的保护 (因此，\fImap\fP 指向的 32 位字的数量应等于 \fIlen\fP) 指定的 64\-kB 页面的数量。 保护 map 中的每个
+2 位字段为 0 以允许任何访问，1 以防止写入，或 2 或 3 以防止所有访问。
+.SH "RETURN VALUE"
+成功时，\fBsubpage_prot\fP() 返回 0。 否则，返回下面指定的错误代码之一。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fImap\fP 引用的缓冲区不可访问。
+.TP 
+\fBEINVAL\fP
+\fIaddr\fP 或 \fIlen\fP 参数不正确。 这两个参数都必须与系统页面大小的倍数对齐，并且它们不能引用进程地址空间之外的区域或由大页面组成的区域。
+.TP 
+\fBENOMEM\fP
+内存不足。
+.SH VERSIONS
+本系统调用自 Linux 2.6.25 起在 PowerPC 架构上提供。 只有内核配置 \fBCONFIG_PPC_64K_PAGES\fP
+时才会提供系统调用。 不提供，库 支持。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+普通页面保护 (在 64\-kB 页面级别) 也适用; 子页面保护机制是一个额外的约束，因此将 0 放入 2 位字段将不允许写入否则写保护的页面。
+.SS Rationale
+.\" In the initial implementation, it was the case that:
+.\"     In fact the whole process is switched to use 4 kB hardware pages when the
+.\"     subpage_prot system call is used, but this could be improved in future
+.\"     to switch only the affected segments.
+.\" But Paul Mackerass says (Oct 2010): I'm pretty sure we now only switch
+.\" the affected segment, not the whole process.
+提供此系统调试是为了帮助编写在 PowerPC 系统上使用 64\-kB 页面运行的仿真器。 在模拟 x86
+等使用较小页面大小的系统时，模拟器无法再使用内存管理单元 (MMU) 和正常系统调用来控制页面保护。
+(仿真器可以通过检查并可能重新映射软件中每个内存访问的地址来仿真 MMU，但这很慢。) 这个想法是仿真器提供一组保护掩码以应用于指定范围的虚拟地址。
+这些掩码应用于硬件页表条目 (PTEs) 插入到基于 Linux PTE 的硬件页表的级别，因此 Linux PTE 不受影响。
+这意味着受保护的地址空间区域被切换为使用 4\-kB 硬件页面而不是 64\-kB 硬件页面 (在支持 64\-kB 硬件页面的机器上)。
+.SH "SEE ALSO"
+\fBmprotect\fP(2), \fBsyscall\fP(2)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/admin\-guide/mm/hugetlbpage.rst\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

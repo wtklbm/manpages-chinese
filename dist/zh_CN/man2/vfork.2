@@ -1,0 +1,154 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1999 Andries Brouwer (aeb@cwi.nl), 1 Nov 1999
+.\" and Copyright 2006, 2012, 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 1999-11-10: Merged text taken from the page contributed by
+.\" Reed H. Petty (rhp@draper.net)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH vfork 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+vfork \- 创建子进程并阻止父进程
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBpid_t vfork(void);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBvfork\fP():
+.nf
+.\"     || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    由于 glibc 2.12:
+        (_XOPEN_SOURCE >= 500) && ! (_POSIX_C_SOURCE >= 200809L)
+            || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+            || /* glibc <= 2.19: */ _BSD_SOURCE
+    在 glibc 2.12 之前:
+        _BSD_SOURCE || _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+.SS "Standard description"
+(来自 POSIX.1) \fBvfork\fP() 函数与 \fBfork\fP(2) 具有相同的效果，除了如果 \fBvfork\fP() 创建的进程修改除用于存储
+\fBvfork\fP() 的返回值的 \fIpid_t\fP 类型变量以外的任何数据，或者从在其中调用 \fBvfork\fP() 的函数，或在成功调用
+\fB_exit\fP(2) 或函数的 \fBexec\fP(3) 系列之一之前调用任何其他函数。
+.SS "Linux description"
+\fBvfork\fP() 与 \fBfork\fP(2) 一样，创建调用进程的子进程。 有关详细信息以及返回值和错误，请参见 \fBfork\fP(2)。
+.PP
+\fBvfork\fP() 是 \fBclone\fP(2) 的特例。 它用于在不复制父进程的页表的情况下创建新进程。
+它可能在性能敏感的应用程序中很有用，在这些应用程序中，创建一个子进程然后立即发出 \fBexecve\fP(2)。
+.PP
+\fBvfork\fP() 与 \fBfork\fP(2) 的不同之处在于调用线程被挂起，直到子线程终止 (正常情况下，通过调用
+\fB_exit\fP(2)，或异常情况下，在传递致命信号后)，或者调用 \fBexecve\fP(2)。 在那之前，子进程与其父进程共享所有内存，包括栈。
+子进程不得从当前函数或调用 \fBexit\fP(3) 返回 (这会调用父进程建立的退出处理程序并刷新父进程的 \fBstdio\fP(3) 缓冲区)，但可以调用
+\fB_exit\fP(2)。
+.PP
+与 \fBfork\fP(2) 一样，\fBvfork\fP() 创建的子进程继承了调用者的各种进程属性 (例如，文件描述符、信号处理和当前工作目录) 的副本;
+如上所述，\fBvfork\fP() 调用仅在虚拟地址空间的处理上有所不同。
+.PP
+发送给父进程的信号在子进程释放父进程的内存后到达 (即，在子进程终止或调用 \fBexecve\fP(2)).
+.SS "Historic description"
+在 Linux 下，\fBfork\fP(2) 是使用写时复制页面实现的，因此 \fBfork\fP(2)
+招致的唯一损失是复制父页表所需的时间和内存，以及为子页创建一个独特的任务结构体。 然而，在糟糕的过去，\fBfork\fP(2)
+需要制作调用者数据空间的完整副本，这通常是不必要的，因为 \fBexec\fP(3) 通常紧随其后。 于是，为了更高的效率，BSD 引入了
+\fBvfork\fP() 系统调用，并没有完全复制父进程的地址空间，而是借用父进程的内存和控制线程，直到调用 \fBexecve\fP(2) 或发生退出。
+父进程在子进程使用其资源时挂起。 \fBvfork\fP() 的使用很棘手: 例如，不修改父进程中的数据取决于知道哪些变量保存在寄存器中。
+.SH STANDARDS
+4.3BSD; POSIX.1\-2001 (但标记为 OBSOLETE)。 POSIX.1\-2008 删除了 \fBvfork\fP() 的规范。
+.PP
+.\" In AIXv3.1 vfork is equivalent to fork.
+标准对 \fBvfork\fP() 的要求弱于对 \fBfork\fP(2) 的要求，因此两者同义的实现是合规的。 特别是，程序员不能依赖父进程在子进程终止或调用
+\fBexecve\fP(2) 之前一直处于阻塞状态，并且不能依赖与共享内存相关的任何特定行为。
+.SH NOTES
+一些人认为 \fBvfork\fP() 的语义是一个架构缺陷，4.2BSD 手册页指出: ` 当实现适当的系统共享机制时，这个系统调用将被消除。用户不应该依赖
+\fBvfork\fP() 的内存共享语义，因为它会，在那样的话，就成为 \fBfork\fP(2)." 的同义词了但是，尽管现代内存管理硬件已经缩小了
+\fBfork\fP(2) 和 \fBvfork\fP() 之间的性能差异，但 Linux 和其他系统仍然保留 \fBvfork\fP(): 的原因是多方面的
+.IP \[bu] 3
+一些性能关键型应用程序需要 \fBvfork\fP() 赋予的小性能优势。
+.IP \[bu]
+.\" http://stackoverflow.com/questions/4259629/what-is-the-difference-between-fork-and-vfork
+.\" http://developers.sun.com/solaris/articles/subprocess/subprocess.html
+.\" http://mailman.uclinux.org/pipermail/uclinux-dev/2009-April/000684.html
+.\"
+\fBvfork\fP() 可以在缺少内存管理单元 (MMU) 的系统上实现，但 \fBfork\fP(2) 不能在此类系统上实现。 (POSIX.1\-2008
+从标准中删除了 \fBvfork\fP(); \fBposix_spawn\fP(3) 函数的 POSIX 基本原理指出，函数提供与
+\fBfork\fP(2)+\fBexec\fP(3) 等效的功能，旨在可在缺少 MMU 的系统上实现。)
+.IP \[bu]
+.\"
+在内存受限的系统上，\fBvfork\fP() 避免了临时提交内存的需要 (请参见 \fBproc\fP(5)) 中对
+\fI/proc/sys/vm/overcommit_memory\fP 的描述以执行新程序。 (这在大型父进程希望在子进程中执行小型帮助程序时尤其有用。)
+相比之下，在这种情况下使用 \fBfork\fP(2) 需要提交等于父进程大小的内存量 (如果严格 overcommitting is in force)
+或过度使用内存，有进程被内存不足的 (OOM) killer 终止的风险。
+.SS Caveats
+子进程应该注意不要以意外的方式修改内存，因为一旦子进程终止或执行另一个程序，父进程就会看到这些更改。 在这方面，信号处理程序可能特别有问题: 如果在
+\fBvfork\fP() 的子进程中调用的信号处理程序更改了内存，那么从父进程的角度来看，这些更改可能会导致进程状态不一致 (例如，内存更改将是可见的)
+在父级中，但打开文件描述符状态的更改将不可见)。
+.PP
+.\"
+当在多线程进程中调用 \fBvfork\fP() 时，只有调用线程被挂起，直到子进程终止或执行新程序。 这意味着子进程与其他正在运行的代码共享一个地址空间。
+如果父进程中的另一个线程更改凭据 (使用 \fBsetuid\fP(2) 或类似的)，这可能很危险，因为现在有两个具有不同特权级别的进程在同一地址空间中运行。
+作为危险的一个例子，假设一个以 root 身份运行的多线程程序使用 \fBvfork\fP() 创建一个子程序。 在 \fBvfork\fP()
+之后，父进程中的一个线程将该进程丢给非特权用户，以便运行一些不受信任的代码 (例如，可能通过使用 \fBdlopen\fP(3)) 打开的插件)。
+在这种情况下，如果父进程在将由特权子进程执行的代码中使用 \fBmmap\fP(2) 到 map，则攻击是可能的。
+.SS "Linux notes"
+当使用 NPTL 线程库的多线程程序调用 \fBvfork\fP() 时，不会调用使用 \fBpthread_atfork\fP(3) 建立的 Fork 处理程序。
+在这种情况下，在使用 LinuxThreads 线程库的程序中调用 Fork 处理程序。 (有关 Linux 线程库的说明，请参见
+\fBpthreads\fP(7)。)
+.PP
+调用 \fBvfork\fP() 等同于调用 \fBclone\fP(2) 并指定 \fIflags\fP 为:
+.PP
+.in +4n
+.EX
+ CLONE_VM | CLONE_VFORK | SIGCHLD
+.EE
+.in
+.SS History
+.\" In the release notes for 4.2BSD Sam Leffler wrote: `vfork: Is still
+.\" present, but definitely on its way out'.
+\fBvfork\fP() 系统调用出现在 3.0BSD。 在 4.4BSD 中，它与 \fBfork\fP(2) 同义，但 NetBSD 再次引入它; 请参见
+.UR http://www.netbsd.org\:/Documentation\:/kernel\:/vfork.html
+.UE .
+在 Linux 中，一直等同于 \fBfork\fP(2) 直到 Linux 2.2.0\-pre6 左右。 从 Linux 2.2.0\-pre9 (在
+i386 上，稍后在其他架构上) 开始，它是一个独立的系统调用。 在 glibc 2.0.112 中添加了支持。
+.SH BUGS
+.\"
+.\" As far as I can tell, the following is not true in Linux 2.6.19:
+.\" Currently (Linux 2.3.25),
+.\" .BR strace (1)
+.\" cannot follow
+.\" .BR vfork ()
+.\" and requires a kernel patch.
+信号处理的细节是模糊的，并且在系统之间有所不同。 BSD 手册页指出: "To avoid a possible deadlock situation,
+processes that are children in the middle of a \fBvfork\fP() are never sent
+\fBSIGTTOU\fP or \fBSIGTTIN\fP signals; rather, output or \fIioctl\fPs are allowed
+and input attempts result in an end\-of\-file indication."
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBexecve\fP(2), \fB_exit\fP(2), \fBfork\fP(2), \fBunshare\fP(2),
+\fBwait\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

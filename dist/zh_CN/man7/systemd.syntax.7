@@ -1,0 +1,279 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.SYNTAX 7 "" "systemd 253" systemd.syntax
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.syntax\-systemd 配置文件的一般语法
+.SH INTRODUCTION
+.PP
+本页描述了 \fBsystemd\fP(1) 和相关程序使用的配置文件的基本原理:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+systemd 元文件，参见 \fBsystemd.unit\fP(5), \fBsystemd.service\fP(5),
+\fBsystemd.socket\fP(5), \fBsystemd.device\fP(5), \fBsystemd.mount\fP(5),
+\fBsystemd.automount\fP(5), \fBsystemd.swap\fP(5), \fBsystemd.target\fP(5),
+\fBsystemd.path\fP(5), \fBsystemd.timer\fP(5), \fBsystemd.slice\fP(5),
+\fBsystemd.scope\fP(5)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+链接文件，见 \fBsystemd.link\fP(5)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+netdev 和网络文件，请参见 \fBsystemd.netdev\fP(5)、\fBsystemd.network\fP(5)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+守护程序配置文件，请参见
+\fBsystemd\-system.conf\fP(5)、\fBsystemd\-user.conf\fP(5)、\fBlogind.conf\fP(5)、\fBjournald.conf\fP(5)、\fBjournal\-remote.conf\fP(5)、\fBjournal\-upload.conf\fP(5)、\fBsystemd\-sleep.conf\fP(5)、\fBtimesyncd.conf\fP(5)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+nspawn 文件，参见 \fBsystemd.nspawn\fP(5)
+.RE
+.PP
+该语法受到 \m[blue]\fBXDG Desktop Entry Specification\fP\m[]\&\s-2\u[1]\d\s+2\&.desktop 文件的启发，而这些文件又受到 Microsoft
+Windows\&.ini 文件 \& 的启发。
+.PP
+每个文件都是一个纯文本文件，分为几个部分，配置条目的样式为 \fIkey\fP=\fIvalue\fP\&。"=" 之前或之后的空格将被忽略 \&。空行和以 "#"
+或 ";" 开头的行将被忽略，可用于注释 \&。
+.PP
+以反斜杠结尾的行在阅读时与下一行连接，反斜杠被空格字符 \& 替换。这可用于换行长行 \&。行长度的限制非常大 (目前为 1
+MB)，但建议避免这样长的行，并使用多指令、变量替换或其他适合给定文件类型的机制
+\&。当一个或多个注释行跟在以反斜杠结尾的行之后时，注释块将被忽略，因此续行将与注释块 \& 后面的任何内容连接起来。
+.PP
+\fBExample\ \&1.\ \&\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Section A]
+KeyOne=value 1
+KeyTwo=value 2
+
+# 一条评论
+
+[Section B]
+设置 =`某事` "some thing" "\&..."
+KeyTwo=value 2 \e
+       值 2 继续
+
+[Section C]
+KeyThree=value 3\e
+# 这一行被忽略
+; 这一行也被忽略了
+       值 3 续
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+配置文件中使用的布尔参数可以写成各种格式 \&。对于正设置，字符串 \fB1\fP、\fByes\fP、\fBtrue\fP 和 \fBon\fP 是等效的 \&。对于
+negative 设置，字符串 \fB0\fP、\fBno\fP、\fBfalse\fP 和 \fBoff\fP 是等效的 \&。
+.PP
+配置文件中编码的时间跨度值可以写成各种格式 \&。一个独立的数字指定一个以秒为单位的时间 \&。如果以时间元作为后缀，则元元被接受
+\&。支持多个值与单位的串联，在这种情况下，这些值将相加 \&。例: "50" 表示 50 秒; "2min\ \&200ms" 指的是 2 分 200
+毫秒，i\&.e\&。120200\\& 毫秒 \&。可以理解以下时间单位:
+"s"、"min"、"h"、"d"、"w"、"ms"、`us`\&。有关详细信息，请参见 \fBsystemd.time\fP(7)\&。
+.PP
+允许多次指定各种设置，在这种情况下，解释取决于设置 \&。通常，多个设置组成一个列表，并设置为空值 "resets"，这意味着忽略之前的赋值
+\&。当允许这样做时，设置的描述中会提到它 \&。请注意，对同一值使用多个赋值会使文件与 XDG\&.desktop 文件格式 \& 的解析器不兼容。
+.SH QUOTING
+.PP
+对于允许引号的设置，适用以下一般规则: 双引号 ("\&...") 和单引号 (\*(Aq\&...\*(Aq) 可用于包裹整个项
+(左引号可能仅出现在未被引号的空格的开头或之后，而右引号必须后跟空格或行尾)，在这种情况下，下一个匹配引号之前的所有内容都成为同一项目 \&
+的一部分。引号本身被删除 \&。支持 C 风格的转义 \&。下表包含已知转义模式列表 \&。只允许匹配表中语法的转义模式; 其他模式可能会添加到
+future 中，未知模式将导致警告 \&。特别是，任何反斜杠都应该加倍 \&。最后，尾部反斜杠 ("\e") 可用于合并行，如上所述 \&。UTF\-8
+被接受，因此典型的 unicode 字符不需要转义 \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Supported escapes\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Literal
+T}:T{
+Actual value
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+"\ea"
+T}:T{
+bell
+T}
+T{
+"\eb"
+T}:T{
+backspace
+T}
+T{
+"\ef"
+T}:T{
+换页
+T}
+T{
+"\en"
+T}:T{
+newline
+T}
+T{
+"\er"
+T}:T{
+回车
+T}
+T{
+"\et"
+T}:T{
+tab
+T}
+T{
+"\ev"
+T}:T{
+垂直制表符
+T}
+T{
+"\e\e"
+T}:T{
+backslash
+T}
+T{
+"\e""
+T}:T{
+double quotation mark
+T}
+T{
+"\e\*(Aq"
+T}:T{
+single quotation mark
+T}
+T{
+"\es"
+T}:T{
+space
+T}
+T{
+"\ex\fIxx\fP"
+T}:T{
+character number \fIxx\fP in hexadecimal encoding
+T}
+T{
+"\e\fInnn\fP"
+T}:T{
+character number \fInnn\fP in octal encoding
+T}
+T{
+"\eu\fInnnn\fP"
+T}:T{
+unicode code point \fInnnn\fP in hexadecimal encoding
+T}
+T{
+"\eU\fInnnnnnnn\fP"
+T}:T{
+unicode code point \fInnnnnnnn\fP in hexadecimal encoding
+T}
+.TE
+.sp 1
+.SH "SEE ALSO"
+.PP
+\fBsystemd.time\fP(7)
+.SH NOTES
+.IP " 1." 4
+XDG 桌面入门规格
+.RS 4
+\%https://standards.freedesktop.org/desktop\-entry\-spec/latest/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

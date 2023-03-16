@@ -1,0 +1,206 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2007 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" drawing on material by Justin Pryzby <pryzbyj@justinpryzby.com>
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\" Permission is hereby granted, free of charge, to any person obtaining
+.\" a copy of this software and associated documentation files (the
+.\" "Software"), to deal in the Software without restriction, including
+.\" without limitation the rights to use, copy, modify, merge, publish,
+.\" distribute, sublicense, and/or sell copies of the Software, and to
+.\" permit persons to whom the Software is furnished to do so, subject to
+.\" the following conditions:
+.\"
+.\" The above copyright notice and this permission notice shall be
+.\" included in all copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+.\" EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+.\" IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+.\" CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+.\" TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+.\" SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.\" %%%LICENSE_END
+.\"
+.\" References:
+.\"   glibc manual and source
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH backtrace 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+backtrace、backtrace_symbols、backtrace_symbols_fd \- 支持应用程序自调试
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <execinfo.h>\fP
+.PP
+\fBint backtrace(void *\fP\fIbuffer\fP\fB[.\fP\fIsize\fP\fB], int \fP\fIsize\fP\fB);\fP
+.PP
+\fBchar **backtrace_symbols(void *const \fP\fIbuffer\fP\fB[.\fP\fIsize\fP\fB], int \fP\fIsize\fP\fB);\fP
+\fBvoid backtrace_symbols_fd(void *const \fP\fIbuffer\fP\fB[.\fP\fIsize\fP\fB], int \fP\fIsize\fP\fB, int \fP\fIfd\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBbacktrace\fP() 在 \fIbuffer\fP 指向的数组中返回调用程序的回溯。 回溯是程序的一系列当前活跃的函数调用。 \fIbuffer\fP
+指向的数组中的每一项都是 \fIvoid\ *\fP 类型，是对应栈帧的返回地址。 \fIsize\fP 参数指定了 \fIbuffer\fP 中可以存储的最大地址数。
+如果 backtrace 大于 \fIsize\fP，则返回 \fIsize\fP 最近一次调用函数对应的地址; 要获得完整的回溯，请确保 \fIbuffer\fP 和
+\fIsize\fP 足够大。
+.PP
+给定 \fBbacktrace\fP() 在 \fIbuffer\fP 中返回的地址集，\fBbacktrace_symbols\fP()
+将地址转换为字符串数组，以符号方式描述地址。 \fIsize\fP 参数指定 \fIbuffer\fP 中的地址数。 每个地址的符号表示包括函数名称
+(如果可以确定的话)、函数的十六进制偏移量和实际返回地址 (十六进制)。 字符串指针数组的地址作为 \fBbacktrace_symbols\fP()
+的函数结果返回。 该数组由 \fBbacktrace_symbols\fP() 变为 \fBmalloc\fP(3)ed，必须由调用者释放。
+(指针数组指向的字符串不需要也不应该被释放。)
+.PP
+\fBbacktrace_symbols_fd\fP() 采用与 \fBbacktrace_symbols\fP() 相同的 \fIbuffer\fP 和 \fIsize\fP
+参数，但它不是将字符串数组返回给调用者，而是将字符串 (每行一个) 写入文件描述符 \fIfd\fP。 \fBbacktrace_symbols_fd\fP()
+不调用 \fBmalloc\fP(3)，因此可以在后者函数可能失败的情况下使用，但请参见注释。
+.SH "RETURN VALUE"
+\fBbacktrace\fP() 返回 \fIbuffer\fP 中返回的地址个数，不大于 \fIsize\fP。 如果返回值小于 \fIsize\fP，则存储了完整的回溯;
+如果它等于 \fIsize\fP，则它可能已被截断，在这种情况下，不会返回最旧栈帧的地址。
+.PP
+成功时，\fBbacktrace_symbols\fP() 通过调用返回一个指向数组 \fBmalloc\fP(3)ed 的指针; 出错时返回 NULL。
+.SH VERSIONS
+自 glibc 2.1 起提供了 \fBbacktrace\fP()、\fBbacktrace_symbols\fP() 和
+\fBbacktrace_symbols_fd\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBbacktrace\fP(),
+\fBbacktrace_symbols\fP(),
+\fBbacktrace_symbols_fd\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是 GNU 的扩展名。
+.SH NOTES
+这些函数对一个函数的返回地址如何存储在栈上做出了一些假设。 请注意以下事项:
+.IP \[bu] 3
+省略帧指针 (如任何 \fBgcc\fP(1)'s 非零优化级别所暗示的那样) 可能会导致违反这些假设。
+.IP \[bu]
+内联函数没有栈帧。
+.IP \[bu]
+尾调优化导致一个栈帧替换另一个。
+.IP \[bu]
+\fBbacktrace\fP() 和 \fBbacktrace_symbols_fd\fP() 不会显式调用 \fBmalloc\fP()，但它们是 \fIlibgcc\fP
+的一部分，在首次使用时会动态加载。 动态加载通常会触发对 \fBmalloc\fP(3) 的调用。 如果您需要对这两个函数进行某些调用而不分配内存
+(例如，在信号处理程序中)，您需要确保事先加载 \fIlibgcc\fP。
+.PP
+如果不使用特殊的链接器选项，符号名称可能不可用。 对于使用 GNU 链接器的系统，必须使用 \fI\-rdynamic\fP 链接器选项。
+请注意，"static" 函数的名称未公开，并且在回溯中不可用。
+.SH EXAMPLES
+下面的程序演示了 \fBbacktrace\fP() 和 \fBbacktrace_symbols\fP() 的使用。 以下 shell
+会话显示了我们在运行该程序时可能会看到的内容:
+.PP
+.in +4n
+.EX
+$\fB cc \-rdynamic prog.c \-o prog\fP
+$\fB ./prog 3\fP
+backtrace() 返回了 8 个地址
+\&./prog(myfunc3+0x5c) [0x80487f0]
+\&./prog [0x8048871]
+\&./prog(myfunc+0x21) [0x8048894]
+\&./prog(myfunc+0x1a) [0x804888d]
+\&./prog(myfunc+0x1a) [0x804888d]
+\&./prog(main+0x65) [0x80488fb]
+\&/lib/libc.so.6(__libc_start_main+0xdc) [0xb7e38f9c]
+\&./prog [0x8048711]
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (backtrace.c)
+\&
+.EX
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define BT_BUF_SIZE 100
+
+void
+myfunc3(void)
+{
+    int nptrs;
+    void *buffer[BT_BUF_SIZE];
+    char **strings;
+
+    nptrs = backtrace(buffer, BT_BUF_SIZE);
+    printf("backtrace() returned %d addresses\en", nptrs);
+
+    /* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
+       would produce similar output to the following: */
+
+    strings = backtrace_symbols(buffer, nptrs);
+    if (strings == NULL) {
+        perror("backtrace_symbols");
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t j = 0; j < nptrs; j++)
+        printf("%s\en", strings[j]);
+
+    free(strings);
+}
+
+static void   /* "static" means don\[aq]t export the symbol...  */
+myfunc2(void)
+{
+    myfunc3();
+}
+
+void
+myfunc(int ncalls)
+{
+    if (ncalls > 1)
+        myfunc(ncalls \- 1);
+    else
+        myfunc2();
+}
+
+int
+main(int argc, char *argv[])
+{
+    if (argc != 2) {
+        fprintf(stderr, "%s num\-calls\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    myfunc(atoi(argv[1]));
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBaddr2line\fP(1), \fBgcc\fP(1), \fBgdb\fP(1), \fBld\fP(1), \fBdlopen\fP(3), \fBmalloc\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,747 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2005 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthreads 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthreads\-POSIX 线程
+.SH DESCRIPTION
+POSIX.1 为通常称为 POSIX 线程或 Pthread 的线程编程指定了一组接口 (函数、头文件)。
+一个进程可以包含多个线程，所有线程都在执行同一个程序。 这些线程共享相同的全局内存 (数据和堆段)，但每个线程都有自己的栈 (自动变量)。
+.PP
+POSIX.1 还要求线程共享一系列其他属性 (即，这些属性是进程范围的而不是每个线程) :
+.IP \[bu] 3
+进程号
+.IP \[bu]
+父进程号
+.IP \[bu]
+进程组 ID 和会话 ID
+.IP \[bu]
+controlling 终端
+.IP \[bu]
+用户和组 ID
+.IP \[bu]
+打开文件描述符
+.IP \[bu]
+记录锁 (见 \fBfcntl\fP(2))
+.IP \[bu]
+信号配置
+.IP \[bu]
+文件模式创建掩码 (\fBumask\fP(2))
+.IP \[bu]
+当前目录 (\fBchdir\fP(2)) 和根目录 (\fBchroot\fP(2))
+.IP \[bu]
+间隔定时器 (\fBsetitimer\fP(2)) 和 POSIX 定时器 (\fBtimer_create\fP(2))
+.IP \[bu]
+不错的值 (\fBsetpriority\fP(2))
+.IP \[bu]
+资源限制 (\fBsetrlimit\fP(2))
+.IP \[bu]
+CPU 时间 (\fBtimes\fP(2)) 和资源 (\fBgetrusage\fP(2)) 消耗的测量
+.PP
+除了栈，POSIX.1 还指定每个线程的各种其他属性是不同的，包括:
+.IP \[bu] 3
+线程 ID (\fIpthread_t\fP 数据类型)
+.IP \[bu]
+信号屏蔽 (\fBpthread_sigmask\fP(3))
+.IP \[bu]
+\fIerrno\fP 变量
+.IP \[bu]
+备用信号栈 (\fBsigaltstack\fP(2))
+.IP \[bu]
+实时调度策略和优先级 (\fBsched\fP(7))
+.PP
+以下特定于 Linux 的特性也是每线程的:
+.IP \[bu] 3
+能力 (见 \fBcapabilities\fP(7))
+.IP \[bu]
+CPU 亲和力 (\fBsched_setaffinity\fP(2))
+.SS "Pthreads function return values"
+大多数 pthread 函数在成功时返回 0，在失败时返回错误号。 可返回的错误号与常规系统调用和 C 库函数在 \fIerrno\fP
+中返回的错误号含义相同。 请注意，pthreads 函数不要设置 \fIerrno\fP。 对于每个可以返回错误的 pthread
+函数，POSIX.1\-2001 指定函数永远不会因错误 \fBEINTR\fP 而失败。
+.SS "Thread IDs"
+进程中的每个线程都有一个唯一的线程标识符 (存储在类型 \fIpthread_t\fP).  这个标识符返回给 \fBpthread_create\fP(3)
+的调用者，线程可以使用 \fBpthread_self\fP(3) 获得自己的线程标识符。
+.PP
+线程 ID 保证仅在进程内是唯一的。 (在所有接受线程 ID 作为参数的 pthreads 中，根据定义，该 ID 指的是与调用者在同一进程中的线程。)
+.PP
+在加入终止的线程或分离的线程终止后，系统可能会重用线程 ID。 POSIX 说: "If an application attempts to use
+a thread ID whose lifetime has ended, the behavior is undefined."
+.SS "Thread\-safe functions"
+线程安全的数是可以同时从多个线程安全地调用 (即，无论是否它都会提供相同的结果) 的数。
+.PP
+POSIX.1\-2001 和 POSIX.1\-2008 要求标准中规定的所有函数都必须是线程安全的，以下函数除外:
+.PP
+.in +4n
+.EX
+asctime()
+basename()
+catgets()
+crypt()
+ctermid() 如果传递了一个非 NULL 参数
+ctime()
+dbm_clearerr()
+dbm_close()
+dbm_delete()
+dbm_error()
+dbm_fetch()
+dbm_firstkey()
+dbm_nextkey()
+dbm_open()
+dbm_store()
+dirname()
+dlerror()
+drand48()
+ecvt() [POSIX.1\-2001 only (function removed in POSIX.1\-2008)]
+encrypt()
+endgrent()
+endpwent()
+endutxent()
+fcvt() [POSIX.1\-2001 only (function removed in POSIX.1\-2008)]
+ftw()
+gcvt() [POSIX.1\-2001 only (function removed in POSIX.1\-2008)]
+getc_unlocked()
+getchar_unlocked()
+getdate()
+getenv()
+getgrent()
+getgrgid()
+getgrnam()
+gethostbyaddr() [POSIX.1\-2001 only (函数在
+                 POSIX.1\-2008)]
+gethostbyname() [POSIX.1\-2001 only (函数在
+                 POSIX.1\-2008)]
+gethostent()
+getlogin()
+getnetbyaddr()
+getnetbyname()
+getnetent()
+getopt()
+getprotobyname()
+getprotobynumber()
+getprotoent()
+getpwent()
+getpwnam()
+getpwuid()
+getservbyname()
+getservbyport()
+getservent()
+getutxent()
+getutxid()
+getutxline()
+gmtime()
+hcreate()
+hdestroy()
+hsearch()
+inet_ntoa()
+l64a()
+lgamma()
+lgammaf()
+lgammal()
+localeconv()
+localtime()
+lrand48()
+mrand48()
+nftw()
+nl_langinfo()
+ptsname()
+putc_unlocked()
+putchar_unlocked()
+putenv()
+pututxline()
+rand()
+readdir()
+setenv()
+setgrent()
+setkey()
+setpwent()
+setutxent()
+strerror()
+strsignal() [Added in POSIX.1\-2008]
+strtok()
+system() [Added in POSIX.1\-2008]
+tmpnam() 如果传递了一个非 NULL 参数
+ttyname()
+unsetenv()
+wcrtomb() 如果其最终参数为 NULL
+wcsrtombs() 如果其最终参数为 NULL
+wcstombs()
+wctomb()
+.EE
+.in
+.SS "Async\-cancel\-safe functions"
+一个 async\-cancel\-safe 函数是可以在启用了异步取消的应用程序中安全调用的函数 (参见
+\fBpthread_setcancelstate\fP(3)).
+.PP
+POSIX.1\-2001 和 POSIX.1\-2008 只要求以下函数是异步取消安全的:
+.PP
+.in +4n
+.EX
+pthread_cancel()
+pthread_setcancelstate()
+pthread_setcanceltype()
+.EE
+.in
+.SS "Cancellation points"
+POSIX.1 指定某些函数必须和某些其他函数可能是取消点。
+如果一个线程是可取消的，它的可取消类型是延迟的，并且该线程的取消请求是挂起的，那么当它调用作为取消点的函数时，该线程将被取消。
+.PP
+POSIX.1\-2001 或者 POSIX.1\-2008 要求以下函数为取消点:
+.PP
+.\" FIXME
+.\" Document the list of all functions that are cancelation points in glibc
+.in +4n
+.EX
+accept()
+aio_suspend()
+clock_nanosleep()
+close()
+connect()
+creat()
+fcntl() F_SETLKW
+fdatasync()
+fsync()
+getmsg()
+getpmsg()
+lockf() F_LOCK
+mq_receive()
+mq_send()
+mq_timedreceive()
+mq_timedsend()
+msgrcv()
+msgsnd()
+msync()
+nanosleep()
+open()
+openat() [Added in POSIX.1\-2008]
+pause()
+poll()
+pread()
+pselect()
+pthread_cond_timedwait()
+pthread_cond_wait()
+pthread_join()
+pthread_testcancel()
+putmsg()
+putpmsg()
+pwrite()
+read()
+readv()
+recv()
+recvfrom()
+recvmsg()
+select()
+sem_timedwait()
+sem_wait()
+send()
+sendmsg()
+sendto()
+sigpause() [POSIX.1\-2001 only (moves to "may" list in POSIX.1\-2008)]
+sigsuspend()
+sigtimedwait()
+sigwait()
+sigwaitinfo()
+sleep()
+system()
+tcdrain()
+usleep() [POSIX.1\-2001 only (function removed in POSIX.1\-2008)]
+wait()
+waitid()
+waitpid()
+write()
+writev()
+.EE
+.in
+.PP
+根据 POSIX.1\-2001 或者 POSIX.1\-2008，以下函数可能是取消点:
+.PP
+.in +4n
+.EX
+access()
+asctime()
+asctime_r()
+catclose()
+catgets()
+catopen()
+chmod() [Added in POSIX.1\-2008]
+chown() [Added in POSIX.1\-2008]
+closedir()
+closelog()
+ctermid()
+ctime()
+ctime_r()
+dbm_close()
+dbm_delete()
+dbm_fetch()
+dbm_nextkey()
+dbm_open()
+dbm_store()
+dlclose()
+dlopen()
+dprintf() [Added in POSIX.1\-2008]
+endgrent()
+endhostent()
+endnetent()
+endprotoent()
+endpwent()
+endservent()
+endutxent()
+faccessat() [Added in POSIX.1\-2008]
+fchmod() [Added in POSIX.1\-2008]
+fchmodat() [Added in POSIX.1\-2008]
+fchown() [Added in POSIX.1\-2008]
+fchownat() [Added in POSIX.1\-2008]
+fclose()
+fcntl() (对于 cmd 参数的任何值)
+fflush()
+fgetc()
+fgetpos()
+fgets()
+fgetwc()
+fgetws()
+fmtmsg()
+fopen()
+fpathconf()
+fprintf()
+fputc()
+fputs()
+fputwc()
+fputws()
+fread()
+freopen()
+fscanf()
+fseek()
+fseeko()
+fsetpos()
+fstat()
+fstatat() [Added in POSIX.1\-2008]
+ftell()
+ftello()
+ftw()
+futimens() [Added in POSIX.1\-2008]
+fwprintf()
+fwrite()
+fwscanf()
+getaddrinfo()
+getc()
+getc_unlocked()
+getchar()
+getchar_unlocked()
+getcwd()
+getdate()
+getdelim() [Added in POSIX.1\-2008]
+getgrent()
+getgrgid()
+getgrgid_r()
+getgrnam()
+getgrnam_r()
+gethostbyaddr() [POSIX.1\-2001 only (函数在
+                 POSIX.1\-2008)]
+gethostbyname() [POSIX.1\-2001 only (函数在
+                 POSIX.1\-2008)]
+gethostent()
+gethostid()
+gethostname()
+getline() [Added in POSIX.1\-2008]
+getlogin()
+getlogin_r()
+getnameinfo()
+getnetbyaddr()
+getnetbyname()
+getnetent()
+getopt() (如果 opterr 非零)
+getprotobyname()
+getprotobynumber()
+getprotoent()
+getpwent()
+getpwnam()
+getpwnam_r()
+getpwuid()
+getpwuid_r()
+gets()
+getservbyname()
+getservbyport()
+getservent()
+getutxent()
+getutxid()
+getutxline()
+getwc()
+getwchar()
+getwd() [POSIX.1\-2001 only (function removed in POSIX.1\-2008)]
+glob()
+iconv_close()
+iconv_open()
+ioctl()
+link()
+linkat() [Added in POSIX.1\-2008]
+lio_listio() [Added in POSIX.1\-2008]
+localtime()
+localtime_r()
+lockf() [Added in POSIX.1\-2008]
+lseek()
+lstat()
+mkdir() [Added in POSIX.1\-2008]
+mkdirat() [Added in POSIX.1\-2008]
+mkdtemp() [Added in POSIX.1\-2008]
+mkfifo() [Added in POSIX.1\-2008]
+mkfifoat() [Added in POSIX.1\-2008]
+mknod() [Added in POSIX.1\-2008]
+mknodat() [Added in POSIX.1\-2008]
+mkstemp()
+mktime()
+nftw()
+opendir()
+openlog()
+pathconf()
+pclose()
+perror()
+popen()
+posix_fadvise()
+posix_fallocate()
+posix_madvise()
+posix_openpt()
+posix_spawn()
+posix_spawnp()
+posix_trace_clear()
+posix_trace_close()
+posix_trace_create()
+posix_trace_create_withlog()
+posix_trace_eventtypelist_getnext_id()
+posix_trace_eventtypelist_rewind()
+posix_trace_flush()
+posix_trace_get_attr()
+posix_trace_get_filter()
+posix_trace_get_status()
+posix_trace_getnext_event()
+posix_trace_open()
+posix_trace_rewind()
+posix_trace_set_filter()
+posix_trace_shutdown()
+posix_trace_timedgetnext_event()
+posix_typed_mem_open()
+printf()
+psiginfo() [Added in POSIX.1\-2008]
+psignal() [Added in POSIX.1\-2008]
+pthread_rwlock_rdlock()
+pthread_rwlock_timedrdlock()
+pthread_rwlock_timedwrlock()
+pthread_rwlock_wrlock()
+putc()
+putc_unlocked()
+putchar()
+putchar_unlocked()
+puts()
+pututxline()
+putwc()
+putwchar()
+readdir()
+readdir_r()
+readlink() [Added in POSIX.1\-2008]
+readlinkat() [Added in POSIX.1\-2008]
+remove()
+rename()
+renameat() [Added in POSIX.1\-2008]
+rewind()
+rewinddir()
+scandir() [Added in POSIX.1\-2008]
+scanf()
+seekdir()
+semop()
+setgrent()
+sethostent()
+setnetent()
+setprotoent()
+setpwent()
+setservent()
+setutxent()
+sigpause() [Added in POSIX.1\-2008]
+stat()
+strerror()
+strerror_r()
+strftime()
+symlink()
+symlinkat() [Added in POSIX.1\-2008]
+sync()
+syslog()
+tmpfile()
+tmpnam()
+ttyname()
+ttyname_r()
+tzset()
+ungetc()
+ungetwc()
+unlink()
+unlinkat() [Added in POSIX.1\-2008]
+utime() [Added in POSIX.1\-2008]
+utimensat() [Added in POSIX.1\-2008]
+utimes() [Added in POSIX.1\-2008]
+vdprintf() [Added in POSIX.1\-2008]
+vfprintf()
+vfwprintf()
+vprintf()
+vwprintf()
+wcsftime()
+wordexp()
+wprintf()
+wscanf()
+.EE
+.in
+.PP
+实现也可以将标准中未指定的其他函数标记为取消点。 特别是，一个实现很可能将任何可能阻塞的非标准函数标记为取消点。 (这包括大多数可以触摸文件的函数。)
+.PP
+.\" So, scanning "cancelation point" comments in the glibc 2.8 header
+.\" files, it looks as though at least the following nonstandard
+.\" functions are cancelation points:
+.\" endnetgrent
+.\" endspent
+.\" epoll_pwait
+.\" epoll_wait
+.\" fcloseall
+.\" fdopendir
+.\" fflush_unlocked
+.\" fgetc_unlocked
+.\" fgetgrent
+.\" fgetgrent_r
+.\" fgetpwent
+.\" fgetpwent_r
+.\" fgets_unlocked
+.\" fgetspent
+.\" fgetspent_r
+.\" fgetwc_unlocked
+.\" fgetws_unlocked
+.\" fputc_unlocked
+.\" fputs_unlocked
+.\" fputwc_unlocked
+.\" fputws_unlocked
+.\" fread_unlocked
+.\" fwrite_unlocked
+.\" gai_suspend
+.\" getaddrinfo_a
+.\" getdate_r
+.\" getgrent_r
+.\" getgrouplist
+.\" gethostbyaddr_r
+.\" gethostbyname2
+.\" gethostbyname2_r
+.\" gethostbyname_r
+.\" gethostent_r
+.\" getnetbyaddr_r
+.\" getnetbyname_r
+.\" getnetent_r
+.\" getnetgrent
+.\" getnetgrent_r
+.\" getprotobyname_r
+.\" getprotobynumber_r
+.\" getprotoent_r
+.\" getpw
+.\" getpwent_r
+.\" getservbyname_r
+.\" getservbyport_r
+.\" getservent_r
+.\" getspent
+.\" getspent_r
+.\" getspnam
+.\" getspnam_r
+.\" getutmp
+.\" getutmpx
+.\" getw
+.\" getwc_unlocked
+.\" getwchar_unlocked
+.\" initgroups
+.\" innetgr
+.\" mkostemp
+.\" mkostemp64
+.\" mkstemp64
+.\" ppoll
+.\" pthread_timedjoin_np
+.\" putgrent
+.\" putpwent
+.\" putspent
+.\" putw
+.\" putwc_unlocked
+.\" putwchar_unlocked
+.\" rcmd
+.\" rcmd_af
+.\" rexec
+.\" rexec_af
+.\" rresvport
+.\" rresvport_af
+.\" ruserok
+.\" ruserok_af
+.\" setnetgrent
+.\" setspent
+.\" sgetspent
+.\" sgetspent_r
+.\" updwtmpx
+.\" utmpxname
+.\" vfscanf
+.\" vfwscanf
+.\" vscanf
+.\" vsyslog
+.\" vwscanf
+应该注意的是，即使应用程序没有使用异步取消，从异步信号处理程序调用上面列表中的函数也可能导致异步取消的等价物。
+底层用户代码可能不期望异步取消，并且用户数据的状态可能变得不一致。 因此，在进入延迟取消区域时应谨慎使用信号。
+.SS "Compiling on Linux"
+在 Linux 上，使用 Pthreads API 的程序应该使用 \fIcc \-pthread\fP 编译。
+.SS "Linux implementations of POSIX threads"
+随着时间的推移，Linux 上的 GNU C 库提供了两个线程实现:
+.TP 
+\fBLinuxThreads\fP
+这是原始的 Pthreads 实现。 从 glibc 2.4 开始，不再支持此实现。
+.TP 
+\fBNPTL\fP (Native POSIX Threads Library)
+这是现代 Pthreads 实现。 与 LinuxThreads 相比，NPTL 更符合 POSIX.1 规范的要求，在创建大量线程时具有更好的性能。
+NPTL 从 glibc 2.3.2 开始可用，并且需要 Linux 2.6 内核中存在的，特性。
+.PP
+这两者都是所谓的 1:1 实现，意味着每个线程 Z0 映射到一个内核调度实体。 两种线程实现都采用 Linux \fBclone\fP(2) 系统调用。 在
+NPTL 中，线程同步原语 (互斥锁、线程连接等) 是使用 Linux \fBfutex\fP(2) 系统调用实现的。
+.SS LinuxThreads
+此实现的显着特性如下:
+.IP \[bu] 3
+除了主 (initial) 线程和程序使用 \fBpthread_create\fP(3) 创建的线程外，该实现还创建了一个 "manager" 线程。
+该线程处理线程的创建和终止。 (如果此线程被无意中杀死，可能会出现问题。)
+.IP \[bu]
+信号由实现在内部使用。 在 Linux 2.2 及更高版本上，使用前三个实时信号 (另请参见 \fBsignal\fP(7)).  在较旧的 Linux
+内核上，使用 \fBSIGUSR1\fP 和 \fBSIGUSR2\fP。 应用程序必须避免使用实现所采用的任何一组信号。
+.IP \[bu]
+线程不共享进程 ID。 (实际上，LinuxThreads 线程被实现为比平常共享更多信息的进程，但不共享公共进程 ID。) LinuxThreads
+线程 (包括管理器线程) 作为使用 \fBps\fP(1) 的单独进程可见。
+.PP
+LinuxThreads 实现在很多方面都偏离了 POSIX.1 规范，包括:
+.IP \[bu] 3
+对 \fBgetpid\fP(2) 的调用在每个线程中返回不同的值。
+.IP \[bu]
+在主线程以外的线程中调用 \fBgetppid\fP(2) 返回管理器线程的进程 ID; 相反，这些线程中的 \fBgetppid\fP(2) 应该返回与主线程中的
+\fBgetppid\fP(2) 相同的值。
+.IP \[bu]
+当一个线程使用 \fBfork\fP(2) 创建一个新的子进程时，任何线程都应该能够在子进程上使用 \fBwait\fP(2)。
+但是，该实现只允许创建子线程的线程在其上执行 \fBwait\fP(2)。
+.IP \[bu]
+当一个线程调用 \fBexecve\fP(2) 时，所有其他线程都将终止 (根据 POSIX.1 的要求)。 但是，生成的进程与调用
+\fBexecve\fP(2): 的线程具有相同的 PID，它应该与主线程具有相同的 PID。
+.IP \[bu]
+线程不共享用户和组 ID。 如果应用程序使用 \fBseteuid\fP(2) 或类似方式更改其凭据，这可能会导致设置用户 ID 程序复杂化，并可能导致
+Pthreads 函数失败。
+.IP \[bu]
+线程不共享公共会话 ID 和进程组 ID。
+.IP \[bu]
+线程不共享使用 \fBfcntl\fP(2) 创建的记录锁。
+.IP \[bu]
+\fBtimes\fP(2) 和 \fBgetrusage\fP(2) 返回的信息是每个线程的，而不是进程范围的。
+.IP \[bu]
+线程不共享信号量撤消值 (参见 \fBsemop\fP(2)).
+.IP \[bu]
+线程不共享间隔计时器。
+.IP \[bu]
+线程不共享公共 nice 值。
+.IP \[bu]
+POSIX.1 区分了指向整个进程的信号和指向单个线程的信号的概念。 根据 POSIX.1，进程导向的信号 (例如，使用 \fBkill\fP(2) 发送)
+应该由进程中任意选择的单个线程处理。 LinuxThreads 不支持进程导向信号的概念: 信号可能只被发送到特定的线程。
+.IP \[bu]
+线程具有不同的备用信号栈设置。 但是，新线程的替代信号栈设置是从创建它的线程复制的，因此线程最初共享一个替代信号栈。
+(一个新线程应该在没有定义备用信号栈的情况下启动。如果两个线程同时处理它们共享的备用信号栈上的信号，则可能会发生不可预测的程序故障。)
+.SS NPTL
+使用 NPTL，进程中的所有线程都放在同一个线程组中; 线程组的所有成员共享相同的 PID。 NPTL 不使用管理器线程。
+.PP
+NPTL 内部使用前两个实时信号; 这些信号不能在应用程序中使用。 有关详细信息，请参见 \fBnptl\fP(7)。
+.PP
+NPTL 仍然至少有一项不符合 POSIX.1:
+.IP \[bu] 3
+.\" FIXME . bug report filed for NPTL nice nonconformance
+.\" http://bugzilla.kernel.org/show_bug.cgi?id=6258
+.\" Sep 08: there is a patch by Denys Vlasenko to address this
+.\" "make setpriority POSIX compliant; introduce PRIO_THREAD extension"
+.\" Monitor this to see if it makes it into mainline.
+线程不共享公共 nice 值。
+.PP
+某些 NPTL 不一致仅发生在较旧的内核中:
+.IP \[bu] 3
+\fBtimes\fP(2) 和 \fBgetrusage\fP(2) 返回的信息是每个线程的，而不是进程范围的 (固定在 Linux 2.6.9 中)。
+.IP \[bu]
+线程不共享资源限制 (固定在 Linux 2.6.10 中)。
+.IP \[bu]
+线程不共享间隔计时器 (固定在 Linux 2.6.12 中)。
+.IP \[bu]
+只允许主线程使用 \fBsetsid\fP(2) (固定在 Linux 2.6.16 中) 启动新会话。
+.IP \[bu]
+只允许主线程使用 \fBsetpgid\fP(2) (固定在 Linux 2.6.16) 使进程成为进程组领导。
+.IP \[bu]
+线程具有不同的备用信号栈设置。 但是，新线程的备用信号栈设置是从创建它的线程复制的，因此线程最初共享备用信号栈 (固定在 Linux 2.6.16
+中)。
+.PP
+请注意以下有关 NPTL 实现的更多要点:
+.IP \[bu] 3
+如果栈大小软资源限制 (参见 \fBsetrlimit\fP(2)) 中 \fBRLIMIT_STACK\fP 的描述) 设置为 \fIunlimited\fP
+以外的值，那么这个值定义了新线程的默认栈大小。 为了有效，必须在程序执行之前设置此限制，可能使用 C shell 中的 \fIulimit \-s\fP
+shell 内置命令 (\fIlimit stacksize\fP)。
+.SS "Determining the threading implementation"
+从 glibc 2.3.2 开始，\fBgetconf\fP(1) 命令可以用来判断系统的线程实现，例如:
+.PP
+.in +4n
+.EX
+庆典 $ getconf GNU_LIBPTHREAD_VERSION
+NPTL 2.3.4
+.EE
+.in
+.PP
+对于较旧的 glibc 版本，像下面这样的命令应该足以确定默认的线程实现:
+.PP
+.in +4n
+.EX
+庆典 $ $( ldd /bin/ls | grep libc.so | awk \[aq]{print $3}\[aq] ) |\e
+                egrep \-i\[aq] 线程 | nptl\[aq]
+        Ulrich Drepper 等人的原生 POSIX 线程库
+.EE
+.in
+.SS "Selecting the threading implementation: LD_ASSUME_KERNEL"
+在具有同时支持 LinuxThreads 和 NPTL 的 glibc 的系统上 (即 glibc
+2.3.\fIx\fP)，\fBLD_ASSUME_KERNEL\fP 环境变量可用于覆盖动态链接器对线程实现的默认选择。
+这个变量告诉动态链接器假设它运行在一个特定的内核版本之上。 通过指定不提供 NPTL 所需支持的内核版本，我们可以强制使用 LinuxThreads。
+(这样做的最可能原因是运行一个依赖于 LinuxThreads 中某些不一致行为的 (broken) 应用程序。) 例如:
+.PP
+.in +4n
+.EX
+bash$ $( LD_ASSUME_KERNEL=2.2.5 ldd /bin/ls | grep libc.so | \e
+                awk \[aq]{print $3}\[aq] ) | egrep \-i \[aq]threads|nptl\[aq]
+        Xavier Leroy 的 linuxthreads\-0.10
+.EE
+.in
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBclone\fP(2), \fBfork\fP(2), \fBfutex\fP(2), \fBgettid\fP(2), \fBproc\fP(5),
+\fBattributes\fP(7), \fBfutex\fP(7), \fBnptl\fP(7), \fBsigevent\fP(7), \fBsignal\fP(7)
+.PP
+各种 Pthreads 手册页，例如: \fBpthread_atfork\fP(3), \fBpthread_attr_init\fP(3),
+\fBpthread_cancel\fP(3), \fBpthread_cleanup_push\fP(3), \fBpthread_cond_signal\fP(3),
+\fBpthread_cond_wait\fP(3), \fBpthread_create\fP(3), \fBpthread_detach\fP(3),
+\fBpthread_equal\fP(3), \fBpthread_exit\fP(3), \fBpthread_key_create\fP(3),
+\fBpthread_kill\fP(3), \fBpthread_mutex_lock\fP(3), \fBpthread_mutex_unlock\fP(3),
+\fBpthread_mutexattr_destroy\fP(3), \fBpthread_mutexattr_init\fP(3),
+\fBpthread_once\fP(3), \fBpthread_spin_init\fP(3), \fBpthread_spin_lock\fP(3),
+\fBpthread_rwlockattr_setkind_np\fP(3), \fBpthread_setcancelstate\fP(3),
+\fBpthread_setcanceltype\fP(3)、\fBpthread_setspecific\fP(3)、\fBpthread_sigmask\fP(3)、\fBpthread_sigqueue\fP(3)
+和 \fBpthread_testcancel\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

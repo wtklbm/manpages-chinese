@@ -1,0 +1,135 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1995-2000 David Engel (david@ods.com)
+.\" Copyright 1995 Rickard E. Faith (faith@cs.unc.edu)
+.\" Copyright 2000 Ben Collins (bcollins@debian.org)
+.\"    Redone for glibc 2.2
+.\" Copyright 2000 Jakub Jelinek (jakub@redhat.com)
+.\"    Corrected.
+.\" and Copyright (C) 2012, 2016, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ldd 1 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ldd \- 打印共享对象依赖关系
+.SH SYNOPSIS
+.nf
+\fBldd\fP [\fIoption\fP]... \fIfile\fP ...
+.fi
+.SH DESCRIPTION
+\fBldd\fP 打印每个程序或命令行指定的共享对象所需的共享对象 (共享库)。 其使用和输出的示例如下:
+.PP
+.in +4n
+.EX
+$ \fBldd /bin/ls\fP
+    linux\-vdso.so.1 (0x00007ffcc3563000)
+    libselinux.so.1 => /lib64/libselinux.so.1 (0x00007f87e5459000)
+    libcap.so.2 => /lib64/libcap.so.2 (0x00007f87e5254000)
+    libc.so.6 => /lib64/libc.so.6 (0x00007f87e4e92000)
+    libpcre.so.1 => /lib64/libpcre.so.1 (0x00007f87e4c22000)
+    libdl.so.2 => /lib64/libdl.so.2 (0x00007f87e4a1e000)
+    /lib64/ld\-linux\-x86\-64.so.2 (0x00005574bf12e000)
+    libattr.so.1 => /lib64/libattr.so.1 (0x00007f87e4817000)
+    libpthread.so.0 => /lib64/libpthread.so.0 (0x00007f87e45fa000)
+.EE
+.in
+.PP
+.\"
+在通常情况下，\fBldd\fP 调用标准动态链接器 (请参见 \fBld.so\fP(8)) 并将 \fBLD_TRACE_LOADED_OBJECTS\fP
+环境变量设置为 1。 这会导致动态链接器检查程序的动态依赖关系，并找到 (根据 \fBld.so\fP(8)) 中描述的规则并加载满足这些依赖关系的对象。
+对于每个依赖项，\fBldd\fP 显示匹配对象的位置和加载它的 (hexadecimal) 地址。 (\fIlinux\-vdso\fP 和 \fIld\-linux\fP
+共享依赖关系很特殊; 请参见 \fBvdso\fP(7) 和 \fBld.so\fP(8).)
+.SS Security
+.\" The circumstances are where the program has an interpreter
+.\" other than ld-linux.so. In this case, ldd tries to execute the
+.\" program directly with LD_TRACE_LOADED_OBJECTS=1, with the
+.\" result that the program interpreter gets control, and can do
+.\" what it likes, or pass control to the program itself.
+.\" Much more detail at
+.\" http://www.catonmat.net/blog/ldd-arbitrary-code-execution/
+.\" Mainline glibc's ldd allows this possibility (the line
+.\"      try_trace "$file"
+.\" in glibc 2.15, for example), but many distro versions of
+.\" ldd seem to remove that code path from the script.
+.\" glibc commit eedca9772e99c72ab4c3c34e43cc764250aa3e3c
+请注意，在某些情况下 (例如，程序指定 \fIld\-linux.so\fP) 以外的 ELF 解释器时，\fBldd\fP
+的某些版本可能会通过尝试直接执行程序来尝试获取依赖信息，这可能会导致执行定义的任何代码在程序的 ELF 解释器中，也许还有程序本身的执行。 (例如，在
+glibc 2.27 之前，上游 \fBldd\fP 实现就是这样做的，尽管大多数发行版都提供了没有提供的修改版本。)
+.PP
+因此，您应该 \fInever\fP 在不受信任的可执行文件上使用 \fBldd\fP，因为这可能会导致执行任意代码。
+处理不受信任的可执行文件时，更安全的替代方法是:
+.PP
+.in +4n
+.EX
+$ \fBobjdump \-p /path/to/program | grep NEEDED\fP
+.EE
+.in
+.PP
+但是请注意，此替代方法仅显示可执行文件的直接依赖关系，而 \fBldd\fP 显示可执行文件的整个依赖关系树。
+.SH OPTIONS
+.TP 
+\fB\-\-version\fP
+打印 \fBldd\fP 的版本号。
+.TP 
+\fB\-v\fP, \fB\-\-verbose\fP
+打印所有信息，例如，包括符号版本控制信息。
+.TP 
+\fB\-u\fP, \fB\-\-unused\fP
+打印未使用的直接依赖项。 (自 glibc 2.3.4 起。)
+.TP 
+\fB\-d\fP, \fB\-\-data\-relocs\fP
+执行重定位并报告任何丢失的对象 (仅限 ELF)。
+.TP 
+\fB\-r\fP, \fB\-\-function\-relocs\fP
+对数据对象和函数执行重定位，并报告任何丢失的对象或函数 (仅限 ELF)。
+.TP 
+\fB\-\-help\fP
+.\" .SH NOTES
+.\" The standard version of
+.\" .B ldd
+.\" comes with glibc2.
+.\" Libc5 came with an older version, still present
+.\" on some systems.
+.\" The long options are not supported by the libc5 version.
+.\" On the other hand, the glibc2 version does not support
+.\" .B \-V
+.\" and only has the equivalent
+.\" .BR \-\-version .
+.\" .LP
+.\" The libc5 version of this program will use the name of a library given
+.\" on the command line as-is when it contains a \[aq]/\[aq]; otherwise it
+.\" searches for the library in the standard locations.
+.\" To run it
+.\" on a shared library in the current directory, prefix the name with "./".
+使用信息。
+.SH BUGS
+\fBldd\fP 不适用于 a.out 共享库。
+.PP
+.\" .SH AUTHOR
+.\" David Engel.
+.\" Roland McGrath and Ulrich Drepper.
+\fBldd\fP 不适用于一些非常旧的 a.out 程序，这些程序是在 \fBldd\fP 支持添加到编译器版本之前构建的。 如果您在这些程序之一上使用
+\fBldd\fP，该程序将尝试在 \fIargc\fP =0 的情况下运行，结果将不可预测。
+.SH "SEE ALSO"
+\fBpldd\fP(1), \fBsprof\fP(1), \fBld.so\fP(8), \fBldconfig\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

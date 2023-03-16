@@ -1,0 +1,105 @@
+.\" -*- coding: UTF-8 -*-
+.\"Copyright (c) 2010 Novell Inc., written by Robert Schweikert
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_rwlockattr_setkind_np 3 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_rwlockattr_setkind_np, pthread_rwlockattr_getkind_np\-set/get
+线程读写锁属性对象的读写锁种类
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_rwlockattr_setkind_np(pthread_rwlockattr_t *\fP\fIattr\fP\fB,\fP
+\fB                       int \fP\fIpref\fP\fB);\fP
+\fBint pthread_rwlockattr_getkind_np(\fP
+\fB                       const pthread_rwlockattr_t *restrict \fP\fIattr\fP\fB,\fP
+\fB                       int *restrict \fP\fIpref\fP\fB);\fP
+.PP
+.fi
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpthread_rwlockattr_setkind_np\fP(), \fBpthread_rwlockattr_getkind_np\fP():
+.nf
+    _XOPEN_SOURCE >= 500 || _POSIX_C_SOURCE >= 200809L
+.fi
+.SH DESCRIPTION
+\fBpthread_rwlockattr_setkind_np\fP() 函数将 \fIattr\fP 引用的读写锁属性对象的 "lock kind" 属性设置为
+\fIpref\fP 中指定的值。 参数 \fIpref\fP 可以设置为以下之一:
+.TP 
+\fBPTHREAD_RWLOCK_PREFER_READER_NP\fP
+这是默认设置。 一个线程可能持有多个读锁; 也就是说，读锁是递归的。 根据 The Single Unix Specification，当 reader
+尝试放置锁并且没有写入锁但 writers 正在等待时，行为未指定。 优先考虑 reader，如
+\fBPTHREAD_RWLOCK_PREFER_READER_NP\fP 所设置的，意味着 reader 将接收请求的锁，即使 writer 正在等待。
+只要还有 readers，writer 就会饿死。
+.TP 
+\fBPTHREAD_RWLOCK_PREFER_WRITER_NP\fP
+.\" ---
+.\" Here is the relevant wording:
+.\"
+.\"     A thread may hold multiple concurrent read locks on rwlock (that is,
+.\"     successfully call the pthread_rwlock_rdlock() function n times). If
+.\"     so, the thread must perform matching unlocks (that is, it must call
+.\"     the pthread_rwlock_unlock() function n times).
+.\"
+.\" By making write-priority work correctly, I broke the above requirement,
+.\" because I had no clue that recursive read locks are permissible.
+.\"
+.\" If a thread which holds a read lock tries to acquire another read lock,
+.\" and now one or more writers is waiting for a write lock, then the algorithm
+.\" will lead to an obvious deadlock. The reader will be suspended, waiting for
+.\" the writers to acquire and release the lock, and the writers will be
+.\" suspended waiting for every existing read lock to be released.
+.\" ---
+.\" https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_rwlock_rdlock.html
+.\" https://sourceware.org/legacy-ml/libc-alpha/2000-01/msg00055.html
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=7057
+这旨在作为 \fBPTHREAD_RWLOCK_PREFER_READER_NP\fP 的写锁定模拟。 glibc 忽略了这一点，因为支持递归读锁的
+POSIX 要求会导致该选项创建微不足道的死锁; 而是使用
+\fBPTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP\fP，它确保应用程序开发人员不会采用递归读取锁定，从而避免死锁。
+.TP 
+\fBPTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP\fP
+只要不以递归方式完成任何读取锁定，将锁定类型设置为此可以避免 writer 饥饿。
+.PP
+\fBpthread_rwlockattr_getkind_np\fP() 函数返回指针 \fIpref\fP 中 \fIattr\fP
+所引用的读写锁属性对象的锁种类属性值。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0。 给定有效指针参数，\fBpthread_rwlockattr_getkind_np\fP() 总是成功。
+出错时，\fBpthread_rwlockattr_setkind_np\fP() 返回一个非零错误号。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIpref\fP 指定了一个不受支持的值。
+.SH VERSIONS
+\fBpthread_rwlockattr_getkind_np\fP() 和 \fBpthread_rwlockattr_setkind_np\fP()
+函数首次出现在 glibc 2.1 中。
+.SH STANDARDS
+这些函数是非标准的 GNU 扩展; 因此名称中有后缀 "_np" (nonportable)。
+.SH "SEE ALSO"
+\fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

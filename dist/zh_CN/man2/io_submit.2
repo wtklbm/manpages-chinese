@@ -1,0 +1,193 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2003 Free Software Foundation, Inc.
+.\" and Copyright (C) 2017 Goldwyn Rodrigues <rgoldwyn@suse.de>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH io_submit 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+io_submit \- 提交异步 I/O 块进行处理
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.PP
+或者，异步 I/O 库 (\fIlibaio\fP、\fI\-laio\fP); 见注释。
+.SH SYNOPSIS
+.nf
+\fB#include <linux/aio_abi.h>\fP          /* Defines needed types */
+.PP
+\fBint io_submit(aio_context_t \fP\fIctx_id\fP\fB, long \fP\fInr\fP\fB, struct iocb **\fP\fIiocbpp\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: 此系统没有 glibc 包装器调用; 见注释。
+.SH DESCRIPTION
+\fINote\fP: 此页面描述了原始的 Linux 系统调用界面。 \fIlibaio\fP 提供的包装器函数对 \fIctx_id\fP 参数使用不同的类型。
+见注释。
+.PP
+\fBio_submit\fP() 系统调用将 \fInr\fP I/O 请求块排队，以便在 AIO 上下文 \fIctx_id\fP 中进行处理。 \fIiocbpp\fP
+参数应该是一个 \fInr\fP AIO 控制块数组，将被提交到上下文 \fIctx_id\fP。
+.PP
+\fIlinux/aio_abi.h\fP 中定义的 \fIiocb\fP (I/O 控制块) 结构体定义了控制 I/O 运行的参数。
+.PP
+.in +4n
+.EX
+#include <linux/aio_abi.h>
+
+struct iocb {
+    __u64   aio_data;
+    __u32   PADDED(aio_key, aio_rw_flags);
+    __u16   aio_lio_opcode;
+    __s16   aio_reqprio;
+    __u32   aio_fildes;
+    __u64   aio_buf;
+    __u64   aio_nbytes;
+    __s64   aio_offset;
+    __u64   aio_reserved2;
+    __u32   aio_flags;
+    __u32   aio_resfd;
+};
+.EE
+.in
+.PP
+这个结构体的字段如下:
+.TP 
+\fIaio_data\fP
+I/O 完成后，此数据将复制到 \fIio_event\fP 结构体的 \fIdata\fP 字段中 (请参见 \fBio_getevents\fP(2)).
+.TP 
+\fIaio_key\fP
+这是内核使用的内部字段。 不要在 \fBio_submit\fP() 调用后修改此字段。
+.TP 
+\fIaio_rw_flags\fP
+这定义了通过结构体传递的 R/W 标志。 有效值为:
+.RS
+.TP 
+\fBRWF_APPEND\fP (since Linux 4.16)
+.\" commit e1fc742e14e01d84d9693c4aca4ab23da65811fb
+将数据追加到文件末尾。 请参见 \fBpwritev2\fP(2) 中同名标志的描述以及 \fBopen\fP(2) 中 \fBO_APPEND\fP 的描述。
+\fIaio_offset\fP 字段被忽略。 文件偏移量没有改变。
+.TP 
+\fBRWF_DSYNC\fP (since Linux 4.13)
+根据同步 I/O 数据完整性的要求完成写操作。 请参见 \fBpwritev2\fP(2) 中同名标志的描述以及 \fBopen\fP(2) 中
+\fBO_DSYNC\fP 的描述。
+.TP 
+\fBRWF_HIPRI\fP (since Linux 4.13)
+高优先级请求，如果可能的话轮询
+.TP 
+\fBRWF_NOWAIT\fP (since Linux 4.14)
+如果 I/O 会阻塞文件块分配、脏页刷新、互锁锁或内核中的阻塞块设备等操作，请不要等待。 如果满足这些条件中的任何一个，控制块将立即返回，并在
+\fIio_event\fP 结构体的 \fIres\fP 字段中返回值 \fB\-EAGAIN\fP (请参见 \fBio_getevents\fP(2)).
+.TP 
+\fBRWF_SYNC\fP (since Linux 4.13)
+根据同步 I/O 文件完整性的要求完成写操作。 请参见 \fBpwritev2\fP(2) 中同名标志的描述以及 \fBopen\fP(2) 中 \fBO_SYNC\fP
+的描述。
+.RE
+.TP 
+\fIaio_lio_opcode\fP
+这定义了 \fIiocb\fP 结构体要执行的 I/O 的类型。 有效值由 \fIlinux/aio_abi.h\fP: 中定义的枚举定义
+.IP
+.in +4n
+.EX
+枚举 {
+    IOCB_CMD_PREAD = 0,
+    IOCB_CMD_PWRITE = 1,
+    IOCB_CMD_FSYNC = 2,
+    IOCB_CMD_FDSYNC = 3,
+    IOCB_CMD_POLL = 5,
+    IOCB_CMD_NOOP = 6,
+    IOCB_CMD_PREADV = 7,
+    IOCB_CMD_PWRITEV = 8,
+};
+.EE
+.in
+.TP 
+\fIaio_reqprio\fP
+这定义了请求的优先级。
+.TP 
+\fIaio_fildes\fP
+要对其执行 I/O 操作的文件描述符。
+.TP 
+\fIaio_buf\fP
+这是用于为读取或写入操作传输数据的缓冲区。
+.TP 
+\fIaio_nbytes\fP
+这是 \fIaio_buf\fP 指向的缓冲区的大小。
+.TP 
+\fIaio_offset\fP
+这是要执行 I/O 操作的文件偏移量。
+.TP 
+\fIaio_flags\fP
+这是与 \fIiocb\fP 结构体相关联的标志集。 有效值为:
+.RS
+.TP 
+\fBIOCB_FLAG_RESFD\fP
+异步 I/O 控制必须在完成时向 \fIaio_resfd\fP 中提到的文件描述符发出信号。
+.TP 
+\fBIOCB_FLAG_IOPRIO\fP (since Linux 4.18)
+.\" commit d9a08a9e616beeccdbd0e7262b7225ffdfa49e92
+将 \fIaio_reqprio\fP 字段解释为 \fIlinux/ioprio.h\fP 定义的 \fBIOPRIO_VALUE\fP。
+.RE
+.TP 
+\fIaio_resfd\fP
+在异步 I/O 完成时发出信号的文件描述符。
+.SH "RETURN VALUE"
+成功时，\fBio_submit\fP() 返回提交的 \fIiocb\fPs 的数量 (可能小于 \fInr\fP，或者如果 \fInr\fP 为零则为 0)。 失败返回见
+NOTES。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+没有足够的资源可用于对任何 \fIiocb\fPs 进行排队。
+.TP 
+\fBEBADF\fP
+第一个 \fIiocb\fP 中指定的文件描述符无效。
+.TP 
+\fBEFAULT\fP
+其中一个数据结构指向无效数据。
+.TP 
+\fBEINVAL\fP
+\fIctx_id\fP 指定的 AIO 上下文无效。 \fInr\fP 小于 0。 \fI*iocbpp[0]\fP 处的 \fIiocb\fP 未正确初始化，指定的操作对
+\fIiocb\fP 中的文件描述符无效，或者 \fIaio_reqprio\fP 字段中的值无效。
+.TP 
+\fBENOSYS\fP
+\fBio_submit\fP() 未在此体系结构上实现。
+.TP 
+\fBEPERM\fP
+\fIaio_reqprio\fP 字段设置为 \fBIOPRIO_CLASS_RT\fP 类，但提交上下文没有 \fBCAP_SYS_ADMIN\fP 能力。
+.SH VERSIONS
+异步 I/O 系统调用最早出现在 Linux 2.5 中。
+.SH STANDARDS
+\fBio_submit\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+.\" http://git.fedorahosted.org/git/?p=libaio.git
+glibc 不提供此系统调用的包装器。 您可以使用 \fBsyscall\fP(2) 调用它。 但是，您可能想使用 \fIlibaio\fP 提供的
+\fBio_submit\fP() 包装器函数。
+.PP
+.\" But glibc is confused, since <libaio.h> uses 'io_context_t' to declare
+.\" the system call.
+请注意，\fIlibaio\fP 包装器函数使用不同类型的 (\fIio_context_t\fP) 作为 \fIctx_id\fP 参数。 另请注意，\fIlibaio\fP
+包装器不遵循通常的 C 库约定来指示错误: 出错时它返回一个否定的错误号 (ERRORS 中列出的值之一的 negative)。 如果通过
+\fBsyscall\fP(2) 调用系统调用，则返回值遵循指示错误的通常约定: \-1，\fIerrno\fP 设置为指示错误的 (positive) 值。
+.SH "SEE ALSO"
+\fBio_cancel\fP(2), \fBio_destroy\fP(2), \fBio_getevents\fP(2), \fBio_setup\fP(2),
+\fBaio\fP(7)
+.\" .SH AUTHOR
+.\" Kent Yoder.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

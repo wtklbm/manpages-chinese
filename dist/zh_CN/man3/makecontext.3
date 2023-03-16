@@ -1,0 +1,184 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2001 Andries Brouwer (aeb@cwi.nl)
+.\" and Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2006-08-02, mtk, Added example program
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH makecontext 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+makecontext, swapcontext \- 操作用户上下文
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <ucontext.h>\fP
+.PP
+\fBvoid makecontext(ucontext_t *\fP\fIucp\fP\fB, void (*\fP\fIfunc\fP\fB)(), int \fP\fIargc\fP\fB, ...);\fP
+\fBint swapcontext(ucontext_t *restrict \fP\fIoucp\fP\fB,\fP
+\fB                const ucontext_t *restrict \fP\fIucp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+在类似 System V 的环境中，一个具有 \fIucontext_t\fP 类型 (在 \fI<ucontext.h>\fP 中定义并在
+\fBgetcontext\fP(3)) 中描述，以及四个函数
+\fBgetcontext\fP(3)、\fBsetcontext\fP(3)、\fBmakecontext\fP() 和
+\fBswapcontext\fP()，它们允许在进程内的多个控制线程之间进行用户级上下文切换。
+.PP
+\fBmakecontext\fP() 函数修改了 \fIucp\fP 指向的上下文 (从调用中获取到 \fBgetcontext\fP(3))。 在调用
+\fBmakecontext\fP() 之前，调用者必须为这个上下文分配一个新的栈并将其地址分配给
+\fIucp\->uc_stack\fP，并定义一个后继上下文并将其地址分配给 \fIucp\->uc_link\fP。
+.PP
+当稍后激活此上下文时 (使用 \fBsetcontext\fP(3) 或 \fBswapcontext\fP()) 调用函数 \fIfunc\fP，并传递 \fIargc\fP
+后面的整数系列 (\fIint\fP) 参数; 调用者必须在 \fIargc\fP 中指定这些参数的个数。 当这个函数返回时，后继上下文被激活。
+如果后继上下文指针为 NULL，则线程退出。
+.PP
+\fBswapcontext\fP() 函数将当前上下文保存在 \fIoucp\fP 指向的结构体中，然后激活 \fIucp\fP 指向的上下文。
+.SH "RETURN VALUE"
+成功时，\fBswapcontext\fP() 不返回。 (但我们可能会稍后返回，如果 \fIoucp\fP 被激活，在这种情况下看起来
+\fBswapcontext\fP() 返回 0。) 出错时，\fBswapcontext\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBENOMEM\fP
+剩余栈空间不足。
+.SH VERSIONS
+自 glibc 2.1 起提供了 \fBmakecontext\fP() 和 \fBswapcontext\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBmakecontext\fP()
+T}	Thread safety	T{
+MT\-Safe race:ucp
+T}
+T{
+\fBswapcontext\fP()
+T}	Thread safety	T{
+MT\-Safe race:oucp race:ucp
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+SUSv2, POSIX.1\-2001.  POSIX.1\-2008 删除了 \fBmakecontext\fP() 和 \fBswapcontext\fP()
+的规范，引用了可移植性问题，并建议重写应用程序以改为使用 POSIX 线程。
+.SH NOTES
+\fIucp\->uc_stack\fP 的解释和 \fBsigaltstack\fP(2)
+一样，即这个结构体包含了一块内存区域的起始和长度，作为栈使用，与栈的增长方向无关。 因此，用户程序不必担心这个方向。
+.PP
+在 \fIint\fP 和指针类型大小相同的体系结构上 (例如，x86\-32，其中两种类型都是 32 位)，您可以在 \fIargc\fP 之后将指针作为参数传递给
+\fBmakecontext\fP()。 但是，这样做不能保证可移植，根据标准未定义，并且不适用于指针大于 \fIint\fPs 的体系结构。尽管如此，从
+glibc 2.8 开始，glibc 对 \fBmakecontext\fP() 进行了一些更改，以允许在某些 64 位架构 (例如，x86\-64)
+上进行此操作。
+.SH EXAMPLES
+下面的示例程序演示了 \fBgetcontext\fP(3)、\fBmakecontext\fP() 和 \fBswapcontext\fP() 的使用。
+运行该程序会产生以下输出:
+.PP
+.in +4n
+.EX
+$\fB ./a.out\fP
+main: swapcontext(&uctx_main, &uctx_func2)
+func2: started
+func2: swapcontext(&uctx_func2, &uctx_func1)
+func1: started
+func1: swapcontext(&uctx_func1, &uctx_func2)
+func2: returning
+func1: returning
+main: exiting
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (makecontext.c)
+\&
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <ucontext.h>
+
+static ucontext_t uctx_main, uctx_func1, uctx_func2;
+
+#define handle_error(msg) \e
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void
+func1(void)
+{
+    printf("%s: started\en", __func__);
+    printf("%s: swapcontext(&uctx_func1, &uctx_func2)\en", __func__);
+    if (swapcontext(&uctx_func1, &uctx_func2) == \-1)
+        handle_error("swapcontext");
+    printf("%s: returning\en", __func__);
+}
+
+static void
+func2(void)
+{
+    printf("%s: started\en", __func__);
+    printf("%s: swapcontext(&uctx_func2, &uctx_func1)\en", __func__);
+    if (swapcontext(&uctx_func2, &uctx_func1) == \-1)
+        handle_error("swapcontext");
+    printf("%s: returning\en", __func__);
+}
+
+int
+main(int argc, char *argv[])
+{
+    char func1_stack[16384];
+    char func2_stack[16384];
+
+    if (getcontext(&uctx_func1) == \-1)
+        handle_error("getcontext");
+    uctx_func1.uc_stack.ss_sp = func1_stack;
+    uctx_func1.uc_stack.ss_size = sizeof(func1_stack);
+    uctx_func1.uc_link = &uctx_main;
+    makecontext(&uctx_func1, func1, 0);
+
+    if (getcontext(&uctx_func2) == \-1)
+        handle_error("getcontext");
+    uctx_func2.uc_stack.ss_sp = func2_stack;
+    uctx_func2.uc_stack.ss_size = sizeof(func2_stack);
+    /* Successor context is f1(), unless argc > 1 */
+    uctx_func2.uc_link = (argc > 1) ? NULL : &uctx_func1;
+    makecontext(&uctx_func2, func2, 0);
+
+    printf("%s: swapcontext(&uctx_main, &uctx_func2)\en", __func__);
+    if (swapcontext(&uctx_main, &uctx_func2) == \-1)
+        handle_error("swapcontext");
+
+    printf("%s: exiting\en", __func__);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBsigaction\fP(2), \fBsigaltstack\fP(2), \fBsigprocmask\fP(2), \fBgetcontext\fP(3),
+\fBsigsetjmp\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

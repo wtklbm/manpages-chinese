@@ -1,0 +1,158 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1980, 1991 Regents of the University of California.
+.\" and Copyright (c) 2011, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)lseek.2	6.5 (Berkeley) 3/10/91
+.\"
+.\" Modified 1993-07-23 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-06-10 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-10-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998-01-17 by Michael Haardt
+.\"   <michael@cantor.informatik.rwth-aachen.de>
+.\" Modified 2001-09-24 by Michael Haardt <michael@moria.de>
+.\" Modified 2003-08-21 by Andries Brouwer <aeb@cwi.nl>
+.\" 2011-09-18, mtk, Added SEEK_DATA + SEEK_HOLE
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH lseek 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+lseek \- 重新定位 read/write 文件偏移量
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBoff_t lseek(int \fP\fIfd\fP\fB, off_t \fP\fIoffset\fP\fB, int \fP\fIwhence\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBlseek\fP() 根据指令 \fIwhence\fP 将与文件描述符 \fIfd\fP 关联的打开文件描述的文件偏移重新定位到参数 \fIoffset\fP，如下:
+.TP 
+\fBSEEK_SET\fP
+文件偏移量设置为 \fIoffset\fP 字节。
+.TP 
+\fBSEEK_CUR\fP
+文件偏移量设置为其当前位置加上 \fIoffset\fP 字节。
+.TP 
+\fBSEEK_END\fP
+文件偏移量设置为文件大小加上 \fIoffset\fP 字节。
+.PP
+\fBlseek\fP() 允许将文件偏移设置为超出文件末尾 (但这不会改变文件的大小)。 如果稍后在此点写入数据，则后续读取间隙 (a "hole")
+中的数据将返回空字节 (\[aq]\e0\[aq])，直到数据实际写入间隙。
+.SS "Seeking file data and holes"
+自 Linux 3.1 起，Linux 支持 \fIwhence\fP: 以下附加值
+.TP 
+\fBSEEK_DATA\fP
+将文件偏移量调整到文件中大于或等于包含数据的 \fIoffset\fP 的下一个位置。 如果 \fIoffset\fP 指向数据，则文件偏移量设置为
+\fIoffset\fP。
+.TP 
+\fBSEEK_HOLE\fP
+调整文件中下一个 hole 的文件偏移量大于等于 \fIoffset\fP。 如果 \fIoffset\fP 指向 hole 的中间，则文件偏移设置为
+\fIoffset\fP。 如果 \fIoffset\fP 之后没有 hole，则将文件偏移量调整到文件末尾 (即，在任何文件末尾都有隐式 hole)。
+.PP
+在上述两种情况下，如果 \fIoffset\fP 指向文件末尾，则 \fBlseek\fP() 失败。
+.PP
+这些操作允许应用程序在稀疏分配的文件中找到 map 漏洞。
+这对于文件备份工具等应用程序很有用，如果它们具有发现漏洞的机制，则可以在创建备份时节省空间并保留漏洞。
+.PP
+.\" https://lkml.org/lkml/2011/4/22/79
+.\" http://lwn.net/Articles/440255/
+.\" http://blogs.oracle.com/bonwick/entry/seek_hole_and_seek_data
+出于这些操作的目的，hole 是 (normally) 尚未在底层文件存储中分配的零序列。
+但是，文件系统没有义务报告漏洞，因此这些操作不是映射实际分配给文件的存储空间的保证机制。 (此外，实际写入底层存储的一系列零可能不会报告为 hole。)
+在最简单的实现中，文件系统可以通过使 \fBSEEK_HOLE\fP 始终返回文件末尾的偏移量来支持操作，并使 \fBSEEK_DATA\fP 始终返回
+\fIoffset\fP (即，即使 \fIoffset\fP 所指的位置是 hole，也可以认为它由零序列数据组成)。
+.PP
+必须定义 \fB_GNU_SOURCE\fP 特性测试宏才能从 \fI<unistd.h>\fP 获得 \fBSEEK_DATA\fP 和
+\fBSEEK_HOLE\fP 的定义。
+.PP
+以下文件系统支持 \fBSEEK_HOLE\fP 和 \fBSEEK_DATA\fP 操作:
+.IP \[bu] 3
+Btrfs (从 Linux 3.1 开始)
+.IP \[bu]
+.\" commit 93862d5e1ab875664c6cc95254fc365028a48bb1
+OCFS (自 Linux 3.2 起)
+.IP \[bu]
+XFS (从 Linux 3.5 开始)
+.IP \[bu]
+ext4 (自 Linux 3.8)
+.IP \[bu]
+\fBtmpfs\fP(5) (自 Linux 3.8)
+.IP \[bu]
+.\" commit 1c6dcbe5ceff81c2cf8d929646af675cd59fe7c0
+.\" commit 24bab491220faa446d945624086d838af41d616c
+NFS (从 Linux 3.18 开始)
+.IP \[bu]
+.\" commit 0b5da8db145bfd44266ac964a2636a0cf8d7c286
+FUSE (自 Linux 4.5)
+.IP \[bu]
+.\" commit 3a27411cb4bc3ce31db228e3569ad01b462a4310
+GFS2 (自 Linux 4.15)
+.SH "RETURN VALUE"
+成功完成后，\fBlseek\fP() 返回从文件开头以字节为单位测量的结果偏移位置。 出错时，返回值 \fI(off_t)\ \-1\fP 并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是打开的文件描述符。
+.TP 
+\fBEINVAL\fP
+.\" Some systems may allow negative offsets for character devices
+.\" and/or for remote filesystems.
+\fIwhence\fP 无效。 或者: 生成的文件偏移量将是 negative，或者超出可搜索设备的末尾。
+.TP 
+\fBENXIO\fP
+\fIwhence\fP 是 \fBSEEK_DATA\fP 或 \fBSEEK_HOLE\fP，\fIoffset\fP 超出文件末尾，或者 \fIwhence\fP 是
+\fBSEEK_DATA\fP，\fIoffset\fP 在文件末尾的 hole 内。
+.TP 
+\fBEOVERFLOW\fP
+.\" HP-UX 11 says EINVAL for this case (but POSIX.1 says EOVERFLOW)
+生成的文件偏移量无法在 \fIoff_t\fP 中表示。
+.TP 
+\fBESPIPE\fP
+\fIfd\fP 与管道、套接字或 FIFO 相关联。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.PP
+.\" FIXME . Review http://austingroupbugs.net/view.php?id=415 in the future
+\fBSEEK_DATA\fP 和 \fBSEEK_HOLE\fP 是非标准扩展，也存在于 Solaris、FreeBSD 和 DragonFly BSD 中;
+它们被提议包含在下一个 POSIX 修订版 (第 8 期) 中。
+.SH NOTES
+有关文件描述符、打开文件描述和文件之间关系的讨论，请参见 \fBopen\fP(2)。
+.PP
+如果在打开的文件描述中设置了 \fBO_APPEND\fP 文件状态标志，则 \fBwrite\fP(2) \fIalways\fP 会将文件偏移量移动到文件末尾，而不管
+\fBlseek\fP() 的使用如何。
+.PP
+\fIoff_t\fP 数据类型是由 POSIX.1 指定的有符号整数数据类型。
+.PP
+有些设备无法寻道，POSIX 没有指定哪些设备必须支持 \fBlseek\fP()。
+.PP
+.\" Other systems return the number of written characters,
+.\" using SEEK_SET to set the counter. (Of written characters.)
+在 Linux 上，在终端设备上使用 \fBlseek\fP() 失败并出现错误 \fBESPIPE\fP。
+.SH "SEE ALSO"
+\fBdup\fP(2), \fBfallocate\fP(2), \fBfork\fP(2), \fBopen\fP(2), \fBfseek\fP(3),
+\fBlseek64\fP(3), \fBposix_fallocate\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

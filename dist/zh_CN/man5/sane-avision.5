@@ -1,0 +1,139 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-avision 5 "11 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-avision
+
+.SH NAME
+sane\-avision\-Avision 品牌和 Avision OEM (HP、Minolta、Mitsubishi、UMAX 等)
+平板和胶片扫描仪的 SANE 后端.
+
+.SH DESCRIPTION
+\fBsane\-avision\fP 库实现了一个 SANE (现在可以轻松访问扫描仪) 后端，可以访问各种 Avision 扫描仪和标有
+HP、Minolta、Mitsubishi 或 Fujitsu 的 Avision OEM 扫描仪。
+
+它是完全大端感知的，在 PowerPC 和 SPARC 系统上日常使用。
+
+\fBI suggest you hold one hand on the power\-button of the scanner while\fP
+\fByou try the first scans \- especially with film\-scanners!\fP
+
+.SH CONFIGURATION
+
+该后端的配置文件位于 \fI/etc/sane.d/avision.conf\fP.
+
+其内容是与 Avision 和 Avision 兼容的扫描仪和后端选项相对应的设备名称列表。空行和以哈希标记 (#)
+开头的行将被忽略。示例配置文件如下所示:
+
+.nf
+ # 这是一条评论
+ 选项 force\-a4
+ 选项 force\-a3
+ 选项 skip\-adf
+ 选项禁用伽玛表
+ 选项禁用校准
+ #scsi Vendor Model Type Bus 通道 ID LUN
+ scsi AVISION 软件
+ 惠普
+ scsi /dev/scanner
+ usb 0x03f0 0x0701
+.fi
+
+.TP 
+force\-a4:
+强制后端覆盖扫描仪返回到 ISO A4
+的可扫描区域。已知会返回虚假数据的扫描程序在后端被标记，因此如果您需要此选项，请将此报告给后端维护人员。小心使用!
+.TP 
+force\-a3:
+强制后端覆盖扫描仪返回到 ISO A3
+的可扫描区域。已知会返回虚假数据的扫描程序在后端被标记，因此如果您需要此选项，请将此报告给后端维护人员。小心使用!
+.TP 
+skip\-adf:
+强制后端忽略扫描仪返回的不一致的 ADF 状态 (ADF 不存在，但 ADF 型号非零)。 如果没有此选项，后端将多次尝试重置 ADF
+并在这种情况下重试查询，如果 ADF 仍未响应，则会失败并返回 "not supported" 错误。
+.TP 
+disable\-gamma\-table:
+禁用扫描仪的伽玛表的使用。如果您的扫描挂起或只产生随机垃圾，您可以试试这个。
+.TP 
+disable\-calibration:
+禁用扫描仪的颜色校准。如果您的扫描挂起或只产生随机垃圾，您可以试试这个。
+.TP 
+Note:
+上面的任何选项都会修改扫描仪的默认代码流。仅当您遇到后端默认行为的问题时才应使用这些选项。请向后端作者报告选项的需求，以便尽快修复后端。
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIscsi scsi\-spec\fP
+
+\fIusb usb\-spec\fP
+.RE
+.PP
+其中 \fIscsi\-spec\fP 是特殊设备的路径名或对应于 SCSI 扫描仪的设备的设备 ID。特殊设备名称必须是泛型 SCSI
+设备或此类设备的符号链接，例如 Linux \fI/dev/sga\fP 或 \fI/dev/sg0\fP。 设备 ID 是扫描器返回的 ID，例如 "HP" 或
+"AVISION"。有关详细信息，请参见 \fBsane\-scsi\fP(5)。
+.TP 
+Note:
+由于后端现在包括原生 USB 访问，因此不再需要 \- 甚至被认为已过时 \- 通过 SCSI 仿真 (在 Linux 上名为 hpusbscsi) 访问
+USB 扫描仪，用于 Avision USB 设备，如 HP 53xx、HP 74xx 或 Minolta 胶片扫描仪.
+.PP
+\fIusb\-spec\fP 是 USB 设备名，vendor/product ID 对或者是 USB 扫描器对应的 libusb 使用的名字。例如
+"0x03f0 0x0701" 或 "libusb:002:003"。有关详细信息，请参见 \fBsane\-usb\fP(5)。
+
+\fBsane\-find\-scanner\fP(1) 程序有助于找出正确的 scsi 或 usb 设备名称。
+
+支持设备的列表内置于 avision 后端，因此通常不需要指定 ID。
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/avision.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-avision.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-avision.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_AVISION\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 更高的调试级别会增加输出的冗长程度。调试级别 7 是作者调试后端问题的首选值。
+
+示例: export SANE_DEBUG_AVISION=7
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBsane\-usb\fP(5)
+.br
+\fIhttp://exactcode.com/site/open_source/saneavision\fP
+
+.SH MAINTAINER
+Ren\['e] 雷贝
+
+.SH AUTHOR
+Ren\['e] Rebe 和 Meino Christian Cramer
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

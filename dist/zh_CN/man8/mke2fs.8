@@ -1,0 +1,385 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+.\" This file may be copied under the terms of the GNU Public License.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH MKE2FS 8 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+mke2fs \- 创建一个 ext2/ext3/ext4 文件系统
+.SH SYNOPSIS
+\fBmke2fs\fP [ \fB\-c\fP | \fB\-l\fP \fIfilename\fP ] [ \fB\-b\fP \fIblock\-size\fP ] [ \fB\-C\fP
+\fIcluster\-size\fP ] [ \fB\-d\fP \fIroot\-directory\fP ] [ \fB\-D\fP ] [ \fB\-g\fP
+\fIblocks\-per\-group\fP ] [ \fB\-G\fP \fInumber\-of\-groups\fP ] [ \fB\-i\fP
+\fIbytes\-per\-inode\fP ] [ \fB\-I\fP \fIinode\-size\fP ] [ \fB\-j\fP ] [ \fB\-J\fP
+\fIjournal\-options\fP ] [ \fB\-N\fP \fInumber\-of\-inodes\fP ] [ \fB\-n\fP ] [ \fB\-m\fP
+\fIreserved\-blocks\-percentage\fP ] [ \fB\-o\fP \fIcreator\-os\fP ] [ \fB\-O\fP
+[^]\fIfeature\fP[,...] ] [ \fB\-q\fP ] [ \fB\-r\fP \fIfs\-revision\-level\fP ] [ \fB\-E\fP
+\fIextended\-options\fP ] [ \fB\-v\fP ] [ \fB\-F\fP ] [ \fB\-L\fP \fIvolume\-label\fP ] [ \fB\-M\fP
+\fIlast\-mounted\-directory\fP ] [ \fB\-S\fP ] [ \fB\-t\fP \fIfs\-type\fP ] [ \fB\-T\fP
+\fIusage\-type\fP ] [ \fB\-U\fP \fIUUID\fP ] [ \fB\-V\fP ] [ \fB\-e\fP \fIerrors\-behavior\fP ] [
+\fB\-z\fP \fIundo_file\fP ] \fIdevice\fP [ \fIfs\-size\fP ]
+.sp
+.\" No external-journal specific journal options yet (size is ignored)
+.\" [
+.\" .B \-J
+.\" .I journal-options
+.\" ]
+\fBmke2fs \-O journal_dev\fP [ \fB\-b\fP \fIblock\-size\fP ] [ \fB\-L\fP \fIvolume\-label\fP ] [
+\fB\-n\fP ] [ \fB\-q\fP ] [ \fB\-v\fP ] \fIexternal\-journal\fP [ \fIfs\-size\fP ]
+.SH DESCRIPTION
+\fBmke2fs\fP 用于创建 ext2、ext3 或 ext4 文件系统，通常在以 \fIdevice\fP 命名的磁盘分区 (或文件) 中。
+.PP
+文件系统大小由 \fIfs\-size\fP 指定。 如果 \fIfs\-size\fP 没有后缀，它将被解释为 2 千字节的幂，除非指定了 \fB\-b\fP
+\fIblocksize\fP 选项，在这种情况下，\fIfs\-size\fP 被解释为 \fIblocksize\fP 块的数量。 如果 fs\-size 后缀为
+\&'k'、'm'、'g'、't' (大写或小写)，则以 2 的幂为单位解释为千字节、兆字节、千兆字节、兆字节等。如果省略 \fIfs\-size\fP,
+\fBmke2fs\fP 会根据设备大小创建文件系统。
+.PP
+如果 \fBmke2fs\fP 作为 \fBmkfs.XXX\fP (即 \fBmkfs.ext2\fP、\fBmkfs.ext3\fP 或 \fBmkfs.ext4\fP))
+运行，则隐含选项 \fB\-t\fP \fIXXX\fP; 所以 \fBmkfs.ext3\fP 将创建一个用于 ext3 的文件系统，\fBmkfs.ext4\fP
+将创建一个用于 ext4 的文件系统，依此类推。
+.PP
+如果未被下面列出的选项覆盖，则新创建的文件系统的参数默认值由 \fB/etc/mke2fs.conf\fP 配置文件控制。 有关详细信息，请参见
+\fBmke2fs.conf\fP(5) 手册页。
+.SH OPTIONS
+.TP 
+\fB\-b\fP\fI block\-size\fP
+以字节为单位指定块的大小。 有效的块大小值是从 1024 到 65536 的 2 的幂 (但是请注意，内核只能挂载块大小小于或等于系统页面大小的文件系统
+\- 在 x86 系统上为 4k，在 ppc64 上最大为 64k 或 aarch64，具体取决于内核配置)。
+如果省略，块大小由文件系统大小和文件系统的预期使用情况试探性地确定 (请参见 \fB\-T\fP 选项)。 在大多数常见情况下，默认块大小为 4k。如果
+\fIblock\-size\fP 前面有 negative 符号 ('\-')，则 \fBmke2fs\fP 将使用试探法来确定适当的块大小，但块大小至少为
+\fIblock\-size\fP 字节的约束。 这对于某些要求块大小是 2k 的倍数的硬件设备很有用。
+.TP 
+\fB\-c\fP
+在创建文件系统之前检查设备是否有坏块。 如果此选项被指定两次，则使用较慢的读写测试而不是快速的只读测试。
+.TP 
+\fB\-C  cluster\-size\fP
+使用 bigalloc 特性为文件系统指定簇大小 (以字节为单位)。 有效的簇大小值是每个簇 2048 到 256M 字节。 这只能在启用
+bigalloc 特性时指定。 (有关 bigalloc 的更多详细信息，请参见 \fBext4 (5)\fP 手册页。) 如果启用
+bigalloc，则默认的簇大小是块大小的 16 倍。
+.TP 
+\fB\-d\fP\fI root\-directory\fP
+将给定目录的内容复制到文件系统的根目录中。
+.TP 
+\fB\-D\fP
+写入磁盘时直接使用 I/O。 这避免了 mke2fs 弄脏大量缓冲区缓存内存，这可能会影响在繁忙的服务器上运行的其他应用程序。 但是，此选项将导致
+mke2fs 运行得更慢，因此需要权衡使用直接 I/O。
+.TP 
+\fB\-e\fP\fI error\-behavior\fP
+检测到错误时更改内核代码的行为。 在所有情况下，文件系统错误都会导致 \fBe2fsck\fP(8) 在下次启动时检查文件系统。
+\fIerror\-behavior\fP 可以是以下之一:
+.RS 1.2i
+.TP  1.2i
+\fBcontinue\fP
+继续正常执行。
+.TP 
+\fBremount\-ro\fP
+以只读方式重新挂载文件系统。
+.TP 
+\fBpanic\fP
+导致内核 panic。
+.RE
+.TP 
+\fB\-E\fP\fI extended\-options\fP
+为文件系统设置扩展选项。 扩展选项以逗号分隔，并且可以使用等号 ('=') 来获取参数。 在 \fBmke2fs\fP 的早期版本中，\fB\-E\fP 选项曾经是
+\fB\-R\fP。 \fB\-R\fP 选项仍然被接受以实现向后兼容性，但已被弃用。 支持以下扩展选项:
+.RS 1.2i
+.TP 
+\fBencoding=\fP\fIencoding\-name\fP
+在超级块中启用 \fIcasefold\fP 特性并将 \fIencoding\-name\fP 设置为要使用的编码。 如果未指定
+\fIencoding\-name\fP，则使用 \fBmke2fs.conf\fP(5) 中定义的编码。
+.TP 
+\fBencoding_flags=\fP\fIencoding\-flags\fP
+定义文件名字符编码操作的参数。 如果未使用此参数更改标志，则使用其默认值。 \fIencoding\-flags\fP 应该是要启用的以逗号分隔的标志列表。
+要禁用标志，请将其添加到带有前缀 "no" 的列表中。
+
+现在唯一可以设置的标志是 \fIstrict\fP，这意味着文件系统应该拒绝无效的字符串。 在默认配置中，\fIstrict\fP 标志被禁用。
+.TP 
+\fBmmp_update_interval=\fP\fIinterval\fP
+将初始 MMP 更新间隔调整为 \fIinterval\fP 秒。 将 \fIinterval\fP 指定为 0 意味着使用默认间隔。 指定的时间间隔必须小于
+300 秒。 需要启用 \fBmmp\fP 特性。
+.TP 
+\fBstride=\fP\fIstride\-size\fP
+使用 \fIstride\-size\fP 文件系统块为 RAID 阵列配置文件系统。这是在移动到下一个磁盘之前读取或写入磁盘的块数，有时称为 \fIchunk size.\fP 这主要影响 \fBmke2fs\fP 时间文件系统元数据 (如位图) 的放置以避免将它们放置在单个磁盘上，这可以伤害表现。
+它也可以被块分配器使用。
+.TP 
+\fBstripe_width=\fP\fIstripe\-width\fP
+为每个条带使用 \fIstripe\-width\fP 文件系统块的 RAID 阵列配置文件系统。这通常是 stride\-size * N，其中 N 是
+RAID 中数据承载磁盘的数量 (例如，对于 RAID 5，有一个奇偶校验磁盘，因此 N 将是阵列中的磁盘数量减 1)。
+这允许块分配器在写入数据时尽可能防止读取 \- 修改 \- 写入 RAID 条带中的奇偶校验。
+.TP 
+\fBoffset=\fP\fIoffset\fP
+在距设备或文件开头的偏移处创建文件系统。 这在为虚拟机创建磁盘映像时非常有用。
+.TP 
+\fBresize=\fP\fImax\-online\-resize\fP
+保留足够的空间，以便块组描述符表可以增长以支持具有 \fImax\-online\-resize\fP 块的文件系统。
+.TP 
+\fBlazy_itable_init\fP[\fB= \fP\fI<0 to disable, 1 to enable>\fP]
+如果启用并且启用了 uninit_bg 特性inode 表将不会被 \fBmke2fs\fP 完全初始化。
+这显着加快了文件系统的初始化速度，但它需要内核在首次挂载文件系统时在后台完成文件系统的初始化。 如果省略选项值，则默认为 1 以启用惰性 inode
+表清零。
+.TP 
+\fBlazy_journal_init\fP[\fB= \fP\fI<0 to disable, 1 to enable>\fP]
+如果启用，日志 inode 将不会被 \fBmke2fs\fP 完全清零。
+这显着加快了文件系统的初始化速度，但如果系统在日志被完全覆盖一次之前崩溃，则会带来一些小风险。 如果省略选项值，则默认为 1 以启用惰性日志 inode
+清零。
+.TP 
+\fBassume_storage_prezeroed\fP[\fB= \fP\fI<0 to disable, 1 to enable>\fP]
+如果启用，\fBmke2fs\fP 假定存储设备已被预置零，跳过对日志和 inode 表的置零，并注释块组标志以表示 inode 表已被置零。
+.TP 
+\fBno_copy_xattrs\fP
+通常 \fBmke2fs\fP 将复制通过 (optional) \fB\-d\fP 选项指定的目录层次结构中文件的扩展属性。
+这将禁用复制并在新创建的文件系统中留下没有任何扩展属性的文件。
+.TP 
+\fBnum_backup_sb=\fP\fI<0|1|2>\fP
+如果启用 \fBsparse_super2\fP 文件系统特性则此选项控制是否在文件系统中创建 0、1 或 2 个备份超级块。
+.TP 
+\fBpacked_meta_blocks\fP[\fB= \fP\fI<0 to disable, 1 to enable>\fP]
+将分配位图和 inode 表放在磁盘的开头。 此选项需要启用 flex_bg 文件系统特性才能生效，并且还将在文件系统的开头创建日志。
+此选项对于在磁盘开头使用 SLC 闪存的闪存设备很有用。 它还最大化了连续数据块的范围，这对于某些特殊用例很有用，例如受支持的叠瓦驱动器。
+.TP 
+\fBroot_owner\fP\fI[=uid:gid]\fP
+指定根目录的数字用户和组 ID。 如果未指定 UID:GID，则使用运行 \fBmke2fs\fP 的用户的用户和组 ID。 在 \fBmke2fs\fP 1.42
+及更早版本中，根目录的 UID 和 GID 默认设置为运行 mke2fs 命令的用户的 UID 和 GID。 \fBroot_owner=\fP
+选项允许显式指定这些值，并避免对不希望文件系统内容根据运行 \fBmke2fs\fP 的用户发生更改的用户产生副作用。
+.TP 
+\fBtest_fs\fP
+在文件系统超级块中设置一个标志，表明它可以使用实验性内核代码挂载，例如 ext4dev 文件系统。
+.TP 
+\fBorphan_file_size=\fP\fIsize\fP
+设置文件大小以跟踪未链接但仍打开的 inode 和正在截断的 inode。较大的文件允许更好的可扩展性，每个 cpu 保留几个块是理想的。
+.TP 
+\fBdiscard\fP
+尝试在 mkfs 时间丢弃块 (丢弃块最初对固态设备和稀疏 / 精简配置存储很有用)。当设备通告丢弃也将数据置零时
+(丢弃之后和写入之前的任何后续读取返回零)，然后将所有尚未置零的 inode 表标记为置零。这显着加快了文件系统初始化的速度。这是默认设置。
+.TP 
+\fBnodiscard\fP
+不要试图在 mkfs 时间丢弃块。
+.TP 
+\fBquotatype\fP
+指定应在创建的文件系统中启用的配额类型 (usrquota、grpquota、prjquota)。 这个扩展选项的参数应该是一个冒号分隔的列表。
+仅当设置了 \fBquota\fP 特性时，此选项才有效。 如果未指定此选项，则要初始化的默认配额类型是用户配额和组配额。
+如果启用了项目特性那么项目配额也将被初始化。
+.RE
+.TP 
+\fB\-F\fP
+强制 \fBmke2fs\fP 创建文件系统，即使指定的设备不是块特殊设备上的分区，或者如果其他参数没有意义。 为了强制 \fBmke2fs\fP
+创建文件系统，即使文件系统看起来正在使用或已挂载 (这是一件真正危险的事情)，必须指定此选项两次。
+.TP 
+\fB\-g\fP\fI blocks\-per\-group\fP
+指定块组中的块数。 用户通常没有理由设置此参数，因为默认值是文件系统的最佳设置。 (对于在 RAID 阵列上创建文件系统的管理员，最好将
+\fIstride\fP RAID 参数用作 \fB\-E\fP 选项的一部分，而不是操纵每组的块数。) 此选项通常由开发测试用例的开发人员使用.
+.IP
+如果启用了 bigalloc 特性\fB\-g\fP 选项将指定块组中的簇数。
+.TP 
+\fB\-G\fP\fI number\-of\-groups\fP
+指定将被打包在一起的块组的数量，以在 ext4 文件系统中创建更大的虚拟块组 (或 "flex_bg group")。
+这提高了元数据局部性和元数据繁重工作负载的性能。 组数必须是 2 的幂并且只能在启用 \fBflex_bg\fP 文件系统特性时指定。
+.TP 
+\fB\-i\fP\fI bytes\-per\-inode\fP
+指定 bytes/inode 比率。 \fBmke2fs\fP 为磁盘上每 \fIbytes\-per\-inode\fP 字节的空间创建一个索引节点。
+\fIbytes\-per\-inode\fP 比率越大，创建的 inode 就越少。 该值通常不应小于文件系统的块大小，因为在这种情况下，创建的 inode
+会比使用的更多。 请注意，文件系统创建后无法更改此比率，因此请谨慎决定此参数的正确值。 请注意，调整文件系统的大小会更改 inode
+的数量以保持此比率。
+.TP 
+\fB\-I\fP\fI inode\-size\fP
+以字节为单位指定每个 inode 的大小。 \fIinode\-size\fP 值必须是大于或等于 128 的 2 的幂。 \fIinode\-size\fP
+越大，inode 表占用的空间就越多，这会减少文件系统中的可用空间，也会对性能产生负面影响。 创建文件系统后无法更改此值。
+.IP
+inode 大小为 128 字节的文件系统不支持 2038 年 1 月 19 日之后的时间戳。 256 字节或更大的索引节点将支持扩展时间戳、项目
+ID，以及在索引节点表中存储一些扩展属性以提高性能的能力。
+.IP
+默认 inode 大小由 \fBmke2fs.conf\fP(5) 文件控制。 在 e2fsprogs 附带的 \fBmke2fs.conf\fP
+文件中，大多数文件系统的默认 inode 大小为 256 字节，但 inode 大小为 128 字节的小型文件系统除外。
+.TP 
+\fB\-j\fP
+使用 ext3 日志创建文件系统。 如果未指定 \fB\-J\fP 选项，则默认日志参数将用于创建存储在文件系统中的适当大小的日志 (给定文件系统的大小)。
+请注意，您必须使用具有 ext3 支持的内核才能实际使用该日志。
+.TP 
+\fB\-J\fP\fI journal\-options\fP
+使用命令行上指定的选项创建 ext3 日志。 日志选项以逗号分隔，并且可以使用等号 ('=') 来获取参数。 支持以下日志选项:
+.RS 1.2i
+.TP 
+\fBsize=\fP\fIjournal\-size\fP
+创建一个大小为 \fIjournal\-size\fP 兆字节的内部日志 (即存储在文件系统中)。 日志的大小必须至少为 1024 个文件系统块 (即，如果使用
+1k 块，则为 1MB，如果使用 4k 块，则为 4MB，等等) 并且可能不超过 10,240,000 个文件系统块或文件系统总大小的一半
+(以哪个为准) 较小)
+.TP 
+\fBfast_commit_size=\fP\fIfast\-commit\-size\fP
+创建一个额外的 \fIfast\-commit\-size\fP 千字节大小的快速提交日志区域。 此选项仅在文件系统上启用 \fBfast_commit\fP
+特性时有效。如果未指定此选项并且启用了 \fBfast_commit\fP 特性则快速提交区域大小默认为 \fIjournal\-size\fP/64 兆字节。具有
+\fBfast_commit\fP 特性集的日志的总大小为 \fIjournal\-size\fP + (\fIfast\-commit\-size\fP * 1024)
+兆字节。日志总大小不得超过 10,240,000 个文件系统块或文件系统总大小的一半 (以较小者为准)。
+.TP 
+\fBlocation\fP\fI=journal\-location\fP
+指定日志的位置。 参数 \fIjournal\-location\fP 可以指定为块号，或者如果该数字具有单位后缀 (例如，'M'、'G'
+等)，则将其解释为距文件系统开头的偏移量。
+.TP 
+\fBdevice=\fP\fIexternal\-journal\fP
+将文件系统附加到位于 \fIexternal\-journal\fP 上的日志块设备。 必须已经使用命令创建了外部日志
+.IP
+\fBmke2fs \-O journal_dev\fP \fIexternal\-journal\fP
+.IP
+请注意，创建 \fIexternal\-journal\fP 时必须使用与新文件系统相同的块大小。 此外，虽然支持将多个文件系统附加到单个外部日志，但
+Linux 内核和 \fBe2fsck\fP(8) 目前尚不支持共享外部日志。
+.IP
+除了直接指定设备名称，\fIexternal\-journal\fP 也可以由 \fBLABEL=\fP\fIlabel\fP 或 \fBUUID=\fP\fIUUID\fP
+指定，以通过卷标或存储在日志开头的 ext2 超级块中的 UUID 来定位外部日志。 使用 \fBdumpe2fs\fP(8) 显示日志设备的卷标和
+UUID。 另请详见 \fBtune2fs\fP(8) 的 \fB\-L\fP 选项。
+.RE
+.IP
+只能为文件系统提供 \fBsize\fP 或 \fBdevice\fP 选项之一。
+.TP 
+\fB\-l\fP\fI filename\fP
+从 \fIfilename\fP 读取坏块列表。 请注意，坏块列表中的块编号必须使用与 \fBmke2fs\fP 使用的块大小相同的块大小生成。
+因此，\fBmke2fs\fP 的 \fB\-c\fP 选项是一种在格式化磁盘之前检查磁盘是否有坏块的更简单且更不容易出错的方法，因为 \fBmke2fs\fP
+会自动将正确的参数传递给 \fBbadblocks\fP 程序。
+.TP 
+\fB\-L\fP\fI new\-volume\-label\fP
+将文件系统的卷标设置为 \fInew\-volume\-label\fP。 卷标的最大长度为 16 个字节。
+.TP 
+\fB\-m\fP\fI reserved\-blocks\-percentage\fP
+指定为超级用户保留的文件系统块的百分比。 这避免了碎片化，并允许 root 拥有所有权的守护进程，如
+\fBsyslogd\fP(8)，在非特权进程被阻止写入文件系统后继续正确地计算。 默认百分比为 5%。
+.TP 
+\fB\-M\fP\fI last\-mounted\-directory\fP
+设置文件系统的最后挂载目录。 这可能有助于实用工具关闭最后安装的目录以确定应该安装文件系统的位置。
+.TP 
+\fB\-n\fP
+导致 \fBmke2fs\fP 不实际创建文件系统，而是显示如果创建文件系统它会做什么。
+这可用于确定特定文件系统的备份超级块的位置，只要再次使用最初创建文件系统时传递的 \fBmke2fs\fP 参数即可。 (当然，添加了 \fB\-n\fP 选项! )
+.TP 
+\fB\-N\fP\fI number\-of\-inodes\fP
+覆盖应为文件系统保留的索引节点数的默认计算 (基于块数和 \fIbytes\-per\-inode\fP 比率)。 这允许用户直接指定所需 inode 的数量。
+.TP 
+\fB\-o\fP\fI creator\-os\fP
+覆盖文件系统 "creator operating system" 字段的默认值。 creator 字段默认设置为编译 \fBmke2fs\fP
+可执行文件的操作系统的名称。
+.TP 
+\fB\-O \fP[^]\fIfeature\fP[,...]
+创建具有给定，特性 (文件系统选项) 的文件系统，覆盖默认文件系统选项。 默认启用的特性由 \fIbase_features\fP 关系指定，在
+\fB/etc/mke2fs.conf\fP 配置文件的 \fI[defaults]\fP 部分中，或在 \fB\-T\fP 选项指定的使用类型的
+\fI[fs_types]\fP 子部分中，进一步由 \fIfeatures\fP 关系修改文件系统和使用类型的 \fI[fs_types]\fP 小节。
+有关详细信息，请参见 \fBmke2fs.conf\fP(5) 手册页。 \fI[fs_types]\fP 部分中文件系统类型特定的配置设置将覆盖
+\fI[defaults]\fP 中的全局默认值。
+.sp
+文件系统特性集将使用此选项指定的特性集进行进一步编辑，或者如果未给出此选项，则通过正在创建的文件系统类型的 \fIdefault_features\fP
+关系或在配置文件的 \fI[defaults]\fP 部分中进行编辑。
+.sp
+文件系统特性集由要启用的特性列表组成，以逗号分隔。 要禁用某个特性只需在特性名称前加上脱字符 ('^') 字符即可。 具有依赖性的特性将不会被成功删除。
+伪文件系统特性 "none" 将清除所有文件系统特性。
+.TP 
+For more information about the features which can be set, please see
+手册页 \fBext4\fP(5)。
+.TP 
+\fB\-q\fP
+安静的执行。 如果 \fBmke2fs\fP 在脚本中运行，则很有用。
+.TP 
+\fB\-r\fP\fI revision\fP
+为新文件系统设置文件系统修订版。 请注意，1.2 内核仅支持修订版 0 文件系统。 默认是创建修订版 1 文件系统。
+.TP 
+\fB\-S\fP
+.\" .TP
+.\" .BI \-t " test"
+.\" Check the device for bad blocks before creating the file system
+.\" using the specified test.
+只写超级块和组描述符。 这是一个极端的措施，只有在所有超级块和备份超级块都损坏的极不可能的情况下才会采取，并且有经验的用户需要最后的恢复方法。 它导致
+\fBmke2fs\fP 重新初始化超级块和组描述符，同时不触及 inode 表以及块和 inode 位图。 使用此选项后应立即运行 \fBe2fsck\fP
+程序，并且不保证任何数据都可以挽救。 由于影响磁盘布局的 \fBmke2fs\fP 的可能选项多种多样，因此在使用此选项时指定完全相同的格式选项
+(例如块大小、fs\-type、特性标志和其他可调参数) 非常重要，或者文件系统将进一步损坏。
+在某些情况下，例如已调整大小的文件系统，或在格式化时间后启用了特性不可能正确覆盖所有超级块，并且至少会发生一些文件系统损坏。
+最好在文件系统的完整副本上运行它，这样如果这不起作用，可以尝试其他选项。
+.TP 
+\fB\-t\fP\fI fs\-type\fP
+指定要创建的文件系统类型 (即 ext2、ext3、ext4 等)。 如果未指定此选项，\fBmke2fs\fP 将通过命令的运行方式 (例如，使用
+mkfs.ext2、mkfs.ext3 等形式的名称) 或通过 \fB/etc/mke2fs.conf\fP 文件定义的默认值来选择默认值。 该选项根据
+\fB/etc/mke2fs.conf\fP 中的 \fBfstypes\fP 配置节控制默认使用哪些文件系统选项。
+.sp
+如果 \fB\-O\fP 选项用于显式添加或删除应在新创建的文件系统中设置的文件系统选项，则所请求的 \fIfs\-type\fP 可能不支持生成的文件系统。
+(例如，"\fBmke2fs \-t ext3 \-O extent /dev/sdXX\fP" 将创建一个 Linux 内核中的 ext3
+实现不支持的文件系统; 而 "\fBmke2fs \-t ext3 \-O ^has_journal /dev/hdXX\fP"
+将创建一个没有日志的文件系统，因此不会被 ext3 文件系统代码支持 Linux 内核。)
+.TP 
+\fB\-T\fP\fI usage\-type[,...]\fP
+指定文件系统将如何使用，以便 \fBmke2fs\fP 可以为该用途选择最佳文件系统参数。 支持的使用类型在配置文件 \fB/etc/mke2fs.conf\fP
+中定义。 用户可以使用逗号分隔列表指定一种或多种使用类型。
+.sp
+如果未指定此选项，\fBmke2fs\fP 将根据要创建的文件系统的大小选择一个默认使用类型。 如果文件系统大小小于 3 兆字节，\fBmke2fs\fP
+将使用文件系统类型 \fIfloppy\fP。 如果文件系统大小大于或等于 3 但小于 512 兆字节，则 \fBmke2fs\fP(8) 将使用文件系统类型
+\fIsmall\fP。 如果文件系统大小大于或等于 4 TB 但小于 16 TB，\fBmke2fs\fP(8) 将使用文件系统类型 \fIbig\fP。
+如果文件系统大小大于或等于 16 TB，\fBmke2fs\fP(8) 将使用文件系统类型 \fIhuge\fP。 否则，\fBmke2fs\fP(8)
+将使用默认文件系统类型 \fIdefault\fP。
+.TP 
+\fB\-U\fP\fI UUID\fP
+将文件系统的全球唯一标识 (UUID) 设置为 \fIUUID\fP。 UUID 的格式是由连字符分隔的一系列十六进制数字，例如:
+"c1b9d5a2\-f162\-11cf\-9ece\-0020afc76f16"。 \fIUUID\fP 参数也可以是以下之一:
+.RS 1.2i
+.TP 
+\fIclear\fP
+清除文件系统 UUID
+.TP 
+\fIrandom\fP
+生成一个新的随机生成的 UUID
+.TP 
+\fItime\fP
+生成一个新的基于时间的 UUID
+.RE
+.TP 
+\fB\-v\fP
+详细执行。
+.TP 
+\fB\-V\fP
+打印 \fBmke2fs\fP 的版本号并退出。
+.TP 
+\fB\-z\fP\fI undo_file\fP
+在覆盖文件系统块之前，将块的旧内容写入撤消文件。 如果出现问题，此撤消文件可与 e2undo(8) 一起使用以恢复文件系统的旧内容。 如果将空字符串作为
+undo_file 参数传递，则撤消文件将写入通过 \fIE2FSPROGS_UNDO_DIR\fP 环境变量或配置文件中的 \fIundo_dir\fP
+指令指定的目录中名为 mke2fs\-\fIdevice\fP.e2undo 的文件。
+
+WARNING: 撤消文件不能用于从电源或系统崩溃中恢复。
+.SH ENVIRONMENT
+.TP 
+\fBMKE2FS_SYNC\fP
+如果设置为非零整数值，则其值用于确定在 inode 表初始化期间调用 \fBsync\fP(2) 的频率。
+.TP 
+\fBMKE2FS_CONFIG\fP
+确定配置文件的位置 (参见 \fBmke2fs.conf\fP(5)).
+.TP 
+\fBMKE2FS_FIRST_META_BG\fP
+如果设置为非零整数值，则其值用于确定第一个元块组。这主要用于调试目的。
+.TP 
+\fBMKE2FS_DEVICE_SECTSIZE\fP
+如果设置为非零整数值，则其值用于确定 \fIdevice\fP 的逻辑扇区大小。
+.TP 
+\fBMKE2FS_DEVICE_PHYS_SECTSIZE\fP
+如果设置为非零整数值，则其值用于确定 \fIdevice\fP 的物理扇区大小。
+.TP 
+\fBMKE2FS_SKIP_CHECK_MSG\fP
+如果设置，则不显示由挂载计数或检查间隔引起的文件系统自动检查的消息。
+.SH AUTHOR
+此版本的 \fBmke2fs\fP 由 Theodore Ts'o <tytso@mit.edu> 编写。
+.SH AVAILABILITY
+\fBmke2fs\fP 是 e2fsprogs 包的一部分，可从 http://e2fsprogs.sourceforge.net 获得。
+.SH "SEE ALSO"
+\fBmke2fs.conf\fP(5), \fBbadblocks\fP(8), \fBdumpe2fs\fP(8), \fBe2fsck\fP(8),
+\fBtune2fs\fP(8), \fBext4\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

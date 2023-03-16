@@ -1,0 +1,172 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Michael Haardt, Ian Jackson.
+.\" and Copyright (C) 2007 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 13:35:59 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Sun Nov 28 17:19:01 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Sat Jan 13 12:58:08 1996 by Michael Haardt
+.\"   <michael@cantor.informatik.rwth-aachen.de>
+.\" Modified Sun Jul 21 18:59:33 1996 by Andries Brouwer <aeb@cwi.nl>
+.\" 2001-12-13 added remark by Zack Weinberg
+.\" 2007-06-18 mtk:
+.\"    	Added details about seekable files and file offset.
+.\"	Noted that write() may write less than 'count' bytes, and
+.\"	gave some examples of why this might occur.
+.\"	Noted what happens if write() is interrupted by a signal.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH write 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+write \- 写入文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBssize_t write(int \fP\fIfd\fP\fB, const void \fP\fIbuf\fP\fB[.\fP\fIcount\fP\fB], size_t \fP\fIcount\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBwrite\fP() 从 \fIbuf\fP 开始的缓冲区向文件描述符 \fIfd\fP 引用的文件写入最多 \fIcount\fP 个字节。
+.PP
+例如，如果底层物理介质上没有足够的空间，或者遇到 \fBRLIMIT_FSIZE\fP 资源限制，则写入的字节数可能小于 \fIcount\fP (请参见
+\fBsetrlimit\fP(2))，或者调用在写入少于后被信号处理程序中断) \fIcount\fP 字节。 (另见 \fBpipe\fP(7).)
+.PP
+对于可查找文件 (即，可以应用 \fBlseek\fP(2) 的文件，例如常规文件)，写入发生在文件偏移量处，文件偏移量按实际写入的字节数递增。 如果文件是
+\fBopen\fP(2)ed 和 \fBO_APPEND\fP，则在写入之前首先将文件偏移量设置为文件末尾。 文件偏移量的调整和写入操作作为一个原子步骤执行。
+.PP
+POSIX 要求在 \fBwrite\fP() 返回后可以证明发生的 \fBread\fP(2) 将返回新数据。 请注意，并非所有文件系统都符合 POSIX。
+.PP
+根据 POSIX.1，如果 \fIcount\fP 大于 \fBSSIZE_MAX\fP，结果是实现定义的; 关于 Linux 的上限，请参见注释。
+.SH "RETURN VALUE"
+成功时，返回写入的字节数。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+请注意，成功的 \fBwrite\fP() 可能传输少于 \fIcount\fP 字节。 出于各种原因，可能会发生这种部分写入;
+例如，因为磁盘设备上没有足够的空间来写入所有请求的字节，或者因为一个阻塞的 \fBwrite\fP()
+到套接字、管道或类似的东西在它传输了一些之后但在传输之前被信号处理程序中断了所有请求的字节。 在部分写入的情况下，调用者可以进行另一个
+\fBwrite\fP() 调用来传输剩余的字节。 随后的调用将传输更多字节或可能导致错误 (例如，如果磁盘现在已满)。
+.PP
+如果 \fIcount\fP 为零且 \fIfd\fP 引用常规文件，则如果检测到以下错误之一，\fBwrite\fP() 可能会返回失败状态。
+如果未检测到错误，或未执行错误检测，则返回 0 而不会产生任何其他影响。 如果 \fIcount\fP 为零且 \fIfd\fP
+指的是常规文件以外的文件，则不指定结果。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+文件描述符 \fIfd\fP 引用一个文件而不是套接字，并已被标记为非阻塞 (\fBO_NONBLOCK\fP)，写入将阻塞。 有关 \fBO_NONBLOCK\fP
+标志的更多详细信息，请参见 \fBopen\fP(2)。
+.TP 
+\fBEAGAIN\fP or \fBEWOULDBLOCK\fP
+.\" Actually EAGAIN on Linux
+文件描述符 \fIfd\fP 引用一个套接字并已标记为非阻塞 (\fBO_NONBLOCK\fP)，写入将阻塞。 POSIX.1\-2001
+允许在这种情况下返回任一错误，并且不要求这些常量具有相同的值，因此可移植应用程序应该检查这两种可能性。
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符或未打开以供写入。
+.TP 
+\fBEDESTADDRREQ\fP
+\fIfd\fP 是指尚未使用 \fBconnect\fP(2) 为其设置对等地址的数据报套接字。
+.TP 
+\fBEDQUOT\fP
+包含 \fIfd\fP 引用的文件的文件系统上的用户磁盘块配额已用完。
+.TP 
+\fBEFAULT\fP
+\fIbuf\fP 在您可访问的地址空间之外。
+.TP 
+\fBEFBIG\fP
+试图写入超过实现定义的最大文件大小或进程的文件大小限制的文件，或者写入超过最大允许偏移量的位置。
+.TP 
+\fBEINTR\fP
+在写入任何数据之前调用被信号中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 附加到不适合写入的对象; 或者文件是用 \fBO_DIRECT\fP 标志打开的，\fIbuf\fP 中指定的地址、\fIcount\fP
+中指定的值或文件偏移量未适当对齐。
+.TP 
+\fBEIO\fP
+.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
+修改 inode 时发生底层 I/O 错误。 此错误可能与早期 \fBwrite\fP()
+写入的数据的回写有关，这些数据可能已发布到同一文件上的不同文件描述符。 从 Linux 4.13 开始，来自回写的错误带有一个 promise，它们
+\fImay\fP 由后续报告。 \fBwrite\fP() 请求，\fIwill\fP 由后续的 \fBfsync\fP(2) 报告 (无论它们是否也被
+\fBwrite\fP()) 报告。 网络文件系统上 \fBEIO\fP 的另一个原因是当文件描述符上的咨询锁被取消并且该锁丢失时。 有关详细信息，请参见
+\fBfcntl\fP(2) 的 \fILost locks\fP 部分。
+.TP 
+\fBENOSPC\fP
+包含 \fIfd\fP 引用的文件的设备没有数据空间。
+.TP 
+\fBEPERM\fP
+文件密封阻止了该操作; 请参见 \fBfcntl\fP(2)。
+.TP 
+\fBEPIPE\fP
+\fIfd\fP 连接到读取端关闭的管道或套接字。 当这种情况发生时，写进程也会收到一个 \fBSIGPIPE\fP 信号。
+(因此，仅当程序捕获、阻止或忽略此信号时，才会看到写入返回值。)
+.PP
+根据连接到 \fIfd\fP 的对象，可能会出现其他错误。
+.SH STANDARDS
+.\" SVr4 documents additional error
+.\" conditions EDEADLK, ENOLCK, ENOLNK, ENOSR, ENXIO, or ERANGE.
+SVr4, 4.3BSD, POSIX.1\-2001.
+.PP
+在 SVr4 下，写入可能会在任何时候中断并返回 \fBEINTR\fP，而不仅仅是在写入任何数据之前。
+.SH NOTES
+类型 \fIsize_t\fP 和 \fIssize_t\fP 分别是由 POSIX.1 指定的无符号和有符号整数类型。
+.PP
+从 \fBwrite\fP() 成功返回并不能保证数据已提交到磁盘。 在某些文件系统 (包括 NFS) 上，它甚至不能保证已成功为数据预留空间。
+在这种情况下，某些错误可能会延迟到 future \fBwrite\fP()、\fBfsync\fP(2) 甚至 \fBclose\fP(2)。
+唯一可以确定的方法是在写完所有数据后调用 \fBfsync\fP(2)。
+.PP
+如果在写入任何字节之前 \fBwrite\fP() 被信号处理程序中断，则调用会失败并显示错误 \fBEINTR\fP;
+如果在至少写入一个字节后中断，调用成功，并返回写入的字节数。
+.PP
+.\" commit e28cc71572da38a5a12c1cfe4d7032017adccf69
+在 Linux 上，\fBwrite\fP() (和类似的系统调用) 将最多传输 0x7ffff000 (2,147,479,552)
+字节，返回实际传输的字节数。 (在 32 位和 64 位系统上都是如此。)
+.PP
+使用直接 I/O 执行 \fBwrite\fP() 时的错误返回值并不意味着整个写入失败。 可能会写入部分数据，并且尝试 \fBwrite\fP()
+的文件偏移量处的数据应被视为不一致。
+.SH BUGS
+根据 POSIX.1\-2008/SUSv4 部分 XSI 2.9.7 (`与常规文件操作的线程交互`) :
+.PP
+.RS 4
+在 POSIX.1\-2008 中指定的效果中，当它们对常规文件或符号链接进行操作时，以下所有函数相互之间应是原子的: ...
+.RE
+.PP
+.\" http://thread.gmane.org/gmane.linux.kernel/1649458
+.\"    From: Michael Kerrisk (man-pages <mtk.manpages <at> gmail.com>
+.\"    Subject: Update of file offset on write() etc. is non-atomic with I/O
+.\"    Date: 2014-02-17 15:41:37 GMT
+.\"    Newsgroups: gmane.linux.kernel, gmane.linux.file-systems
+.\" commit 9c225f2655e36a470c4f58dbbc99244c5fc7f2d4
+.\"    Author: Linus Torvalds <torvalds@linux-foundation.org>
+.\"    Date:   Mon Mar 3 09:36:58 2014 -0800
+.\"
+.\"        vfs: atomic f_pos accesses as per POSIX
+随后列出的 API 包括 \fBwrite\fP() 和 \fBwritev\fP(2)。 在线程 (和进程) 之间应该是原子的影响之一是文件偏移量的更新。
+然而，在 Linux 3.14 之前，情况并非如此: 如果两个共享打开文件描述的进程 (参见 \fBopen\fP(2)) 同时执行 \fBwrite\fP()
+(或 \fBwritev\fP(2))，则 I/O 操作在更新文件偏移量方面不是原子的，结果，两个进程输出的数据块可能 (incorrectly) 重叠。
+此问题已在 Linux 3.14 中修复。
+.SH "SEE ALSO"
+\fBclose\fP(2), \fBfcntl\fP(2), \fBfsync\fP(2), \fBioctl\fP(2), \fBlseek\fP(2), \fBopen\fP(2),
+\fBpwrite\fP(2), \fBread\fP(2), \fBselect\fP(2), \fBwritev\fP(2), \fBfwrite\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

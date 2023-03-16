@@ -1,0 +1,115 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1995 Michael Chastain (mec@duracef.shout.net), 22 July 1995.
+.\" Copyright (c) 2015 Andrew Lutomirski
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH modify_ldt 2 2022\-11\-10 "Linux man\-pages 6.03" 
+.SH NAME
+modify_ldt \- 获取或设置每个进程的 LDT 条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <asm/ldt.h>\fP         /* Definition of \fBstruct user_desc\fP */
+\fB#include <sys/syscall.h>\fP     /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_modify_ldt, int \fP\fIfunc\fP\fB, void \fP\fIptr\fP\fB[.\fP\fIbytecount\fP\fB],\fP
+\fB            unsigned long \fP\fIbytecount\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBmodify_ldt\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBmodify_ldt\fP() 读取或写入进程的本地描述符表 (LDT)。 LDT 是一个段描述符数组，可以被用户代码引用。 Linux
+允许进程配置每个进程 (实际上是每个毫米) 的 LDT。 有关 LDT 的更多信息，请参见英特尔软件开发人员手册或 AMD 架构编程手册。
+.PP
+当 \fIfunc\fP 为 0 时，\fBmodify_ldt\fP() 将 LDT 读入 \fIptr\fP 指向的内存中。 读取的字节数是 \fIbytecount\fP
+和 LDT 的实际大小中较小的一个，尽管内核可能会认为 LDT 是用额外的尾随零字节填充的。 成功时，\fBmodify_ldt\fP()
+将返回读取的字节数。
+.PP
+当 \fIfunc\fP 为 1 或 0x11 时，\fBmodify_ldt\fP() 修改 \fIptr\->entry_number\fP 所指示的 LDT
+表项。 \fIptr\fP 指向一个 \fIuser_desc\fP 结构体，\fIbytecount\fP 必须等于这个结构体的大小。
+.PP
+\fIuser_desc\fP 结构体在 \fI<asm/ldt.h>\fP 中定义为:
+.PP
+.in +4n
+.EX
+struct user_desc {
+    unsigned int  entry_number;
+    unsigned int  base_addr;
+    unsigned int  limit;
+    unsigned int  seg_32bit:1;
+    unsigned int  contents:2;
+    unsigned int  read_exec_only:1;
+    unsigned int  limit_in_pages:1;
+    unsigned int  seg_not_present:1;
+    unsigned int  useable:1;
+};
+.EE
+.in
+.PP
+在 Linux 2.4 及更早版本中，此结构体被命名为 \fImodify_ldt_ldt_s\fP。
+.PP
+\fIcontents\fP 字段是段类型 (数据、扩展数据、不合格代码或合格代码)。 其他字段与 CPU 手册中的描述相符，尽管
+\fBmodify_ldt\fP() 无法设置 CPU 手册中描述的硬件定义的 "accessed" 位。
+.PP
+如果 \fIread_exec_only\fP 和 \fIseg_not_present\fP 设置为 1 并且所有其他字段都为 0，则 \fIuser_desc\fP
+被视为 "empty"。 可以通过将 LDT 条目设置为 "empty" \fIuser_desc\fP 来清除 LDT 条目，或者如果 \fIfunc\fP 为
+1，则通过将 \fIbase\fP 和 \fIlimit\fP 都设置为 0.
+.PP
+符合要求的代码段 (即，如果 \fIfunc\fP 为 1 或 \fIseg_not_present\fP 为 1，则带有 \fIcontents==3\fP)
+的代码段将被拒绝 0.
+.PP
+当 \fIfunc\fP 为 2 时，\fBmodify_ldt\fP() 将读取零。 这似乎是 Linux 2.4 的剩余物。
+.SH "RETURN VALUE"
+成功时，\fBmodify_ldt\fP() 返回读取的实际字节数 (对于读取) 或 0 (对于写入)。 失败时，\fBmodify_ldt\fP() 返回 \-1
+并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIptr\fP 指向地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIptr\fP 为 0，或 \fIfunc\fP 为 1 且 \fIbytecount\fP 不等于结构体 \fIuser_desc\fP 的大小，或 \fIfunc\fP 为
+1 或 0x11 且新 LDT 条目具有无效值。
+.TP 
+\fBENOSYS\fP
+\fIfunc\fP 既不是 0、1、2 也不是 0x11。
+.SH STANDARDS
+此调用是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+\fBmodify_ldt\fP() 不应该用于线程本地存储，因为它会减慢上下文切换速度并且只支持有限数量的线程。 线程库应改用
+\fBset_thread_area\fP(2) 或 \fBarch_prctl\fP(2)，除非在不支持这些系统调用的极旧内核上。
+.PP
+\fBmodify_ldt\fP() 的正常用途是运行遗留的 16 位或分段的 32 位代码。 但是，并非所有内核都允许安装 16 位段。
+.PP
+即使在 64 位内核上，\fBmodify_ldt\fP() 也不能用于创建长模式 (即 64 位) 代码段。 \fIuser_desc\fP 中未记录的字段
+"lm" 没有用，尽管它的名称如此，但不会产生长模式段。
+.SH BUGS
+.\" commit e30ab185c490e9a9381385529e0fd32f0a399495
+在 Linux 3.19 之前的 64 位内核上，在 \fIuser_desc\fP 中设置 "lm" 位可防止描述符被视为空。 请记住，"lm" 位不存在于
+32 位标头中，但即使在 32 位进程中设置，这些 buggy 内核仍会注意到该位。
+.SH "SEE ALSO"
+\fBarch_prctl\fP(2), \fBset_thread_area\fP(2), \fBvm86\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

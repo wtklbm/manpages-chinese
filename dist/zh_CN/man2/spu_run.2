@@ -1,0 +1,194 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) International Business Machines Corp., 2006
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" HISTORY:
+.\" 2005-09-28, created by Arnd Bergmann <arndb@de.ibm.com>
+.\" 2006-06-16, revised by Eduardo M. Fleury <efleury@br.ibm.com>
+.\" 2007-07-10, some polishing by mtk
+.\" 2007-09-28, updates for newer kernels, added example
+.\"             by Jeremy Kerr <jk@ozlabs.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH spu_run 2 2023\-02\-08 "Linux man\-pages 6.03" 
+.SH NAME
+spu_run \- 执行 SPU 上下文
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/spu.h>\fP          /* Definition of \fBSPU_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_spu_run, int \fP\fIfd\fP\fB, uint32_t *\fP\fInpc\fP\fB, uint32_t *\fP\fIevent\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBspu_run\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBspu_run\fP() 系统调用用于实现 Cell 宽带引擎架构的 PowerPC 机器，以访问协同处理器单元 (SPUs)。 \fIfd\fP 参数是
+\fBspu_create\fP(2) 返回的文件描述符，它引用特定的 SPU 上下文。 当上下文被调度到物理 SPU 时，它会在 \fInpc\fP
+中传递的指令指针处开始执行。
+.PP
+SPU 代码的执行是同步发生的，这意味着 \fBspu_run\fP() 在 SPU 仍在运行时阻塞。 如果需要在主 CPU 或其他 SPU
+上与其他代码一起执行并行中的 SPU 代码，则必须首先创建一个新的执行线程 (例如，使用 \fBpthread_create\fP(3)).
+.PP
+当 \fBspu_run\fP() 返回时，SPU 程序计数器的当前值被写入 \fInpc\fP，因此对 \fBspu_run\fP() 的连续调用可以使用相同的
+\fInpc\fP 指针。
+.PP
+\fIevent\fP 参数为扩展状态代码提供缓冲区。 如果 SPU 上下文是用 \fBSPU_CREATE_EVENTS_ENABLED\fP 标志创建的，那么在
+\fBspu_run\fP() 返回之前，这个缓冲区由 Linux 内核填充。
+.PP
+状态代码可以是以下常量中的一个 (或多个) :
+.TP 
+\fBSPE_EVENT_DMA_ALIGNMENT\fP
+发生 DMA 对齐错误。
+.TP 
+\fBSPE_EVENT_INVALID_DMA\fP
+.\" SPE_EVENT_SPE_DATA_SEGMENT is defined, but does not seem to be generated
+.\" at any point (in Linux 5.9 sources).
+尝试了无效的 MFC DMA 命令。
+.TP 
+\fBSPE_EVENT_SPE_DATA_STORAGE\fP
+发生 DMA 存储错误。
+.TP 
+\fBSPE_EVENT_SPE_ERROR\fP
+执行了非法指令。
+.PP
+NULL 是 \fIevent\fP 参数的有效值。 在这种情况下，事件将不会报告给调用进程。
+.SH "RETURN VALUE"
+成功时，\fBspu_run\fP() 返回 \fIspu_status\fP 寄存器的值。 失败时，它返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.PP
+\fIspu_status\fP 寄存器值是状态代码的位掩码和可选的从 SPU 上的 \fBstop\-and\-signal\fP 指令返回的 14 位代码。
+状态代码的位掩码是:
+.TP 
+\fB0x02\fP
+SPU 被 \fBstop\-and\-signal\fP 指令停止。
+.TP 
+\fB0x04\fP
+SPU 被 \fBhalt\fP 指令停止。
+.TP 
+\fB0x08\fP
+SPU 正在等待通道。
+.TP 
+\fB0x10\fP
+SPU 处于单步模式。
+.TP 
+\fB0x20\fP
+SPU 已尝试执行无效指令。
+.TP 
+\fB0x40\fP
+SPU 已尝试访问无效的通道。
+.TP 
+\fB0x3fff0000\fP
+用此值屏蔽的位包含从 \fBstop\-and\-signal\fP 指令返回的代码。 这些位仅在 0x02 位置位时有效。
+.PP
+如果 \fBspu_run\fP() 没有返回错误，低八位中的一位或多位总是被设置。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fInpc\fP 不是有效指针，或者 \fIevent\fP 是非 NULL 且无效的指针。
+.TP 
+\fBEINTR\fP
+\fBspu_run\fP() 进行时出现信号; 请参见 \fBsignal\fP(7)。 如有必要，\fInpc\fP 值已更新为新的程序计数器值。
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 不是从 \fBspu_create\fP(2) 返回的有效文件描述符。
+.TP 
+\fBENOMEM\fP
+没有足够的可用内存来处理由内存流控制器 (MFC) 直接内存访问导致的页面错误。
+.TP 
+\fBENOSYS\fP
+当前系统不提供该功能，因为要么硬件不提供 SPU，要么没有加载 spufs 模块。
+.SH VERSIONS
+\fBspu_run\fP() 系统调用在 Linux 2.6.16 中加入。
+.SH STANDARDS
+这个调用是 Linux 特有的，只能由 PowerPC 架构实现。 使用此系统调用的程序不可移植。
+.SH NOTES
+\fBspu_run\fP() 旨在从实现更抽象的 SPU 接口的库中使用，而不是从常规应用程序中使用。 有关推荐的库，请参见
+.UR http://www.bsc.es\:/projects\:/deepcomputing\:/linuxoncell/
+.UE
+。
+.SH EXAMPLES
+以下是使用 \fBspu_run\fP() 系统调用运行一个简单的单指令 SPU 程序的示例。
+.PP
+.\" SRC BEGIN (spu_run.c)
+.EX
+#include <err.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+int main(void)
+{
+    int       context, fd, spu_status;
+    uint32_t  instruction, npc;
+
+    context = syscall(SYS_spu_create, "/spu/example\-context", 0, 0755);
+    if (context == \-1)
+        err(EXIT_FAILURE, "spu_create");
+
+    /*
+     * 写一个 \[aq] stop 0x1234\[aq] 指令到 SPU\[aq] s
+     * 本地存储内存。
+     */
+    instruction = 0x00001234;
+
+    fd = open("/spu/example\-context/mem", O_RDWR);
+    if (fd == \-1)
+        err(EXIT_FAILURE, "open");
+    write(fd, &instruction, sizeof(instruction));
+
+    /*
+     * 设置 npc 为指令的起始地址
+     * SPU 程序。由于我们在
+     * 内存文件的开头，入口点将为 0x0。
+     */
+    npc = 0;
+
+    spu_status = syscall(SYS_spu_run, context, &npc, NULL);
+    if (spu_status == \-1)
+        err(EXIT_FAILURE, "open");
+
+    /*
+     * 我们应该看到 0x12340002 的状态代码:
+     * 0x00000002 (spu 由于停止信号而停止)
+     * | 0x12340000 (停车信号代码)
+     */
+    printf("SPU Status: %#08x\en", spu_status);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.\" .SH AUTHORS
+.\" Arnd Bergmann <arndb@de.ibm.com>, Jeremy Kerr <jk@ozlabs.org>
+.SH "SEE ALSO"
+\fBclose\fP(2), \fBspu_create\fP(2), \fBcapabilities\fP(7), \fBspufs\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

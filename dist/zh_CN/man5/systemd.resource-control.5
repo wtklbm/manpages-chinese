@@ -1,0 +1,940 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.RESOURCE\-CONTROL 5 "" "systemd 253" systemd.resource\-control
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.resource\-control \- 资源控制元设置
+.SH SYNOPSIS
+.PP
+\fIslice\fP\&.slice, \fIscope\fP\&.scope, \fIservice\fP\&.service,
+\fIsocket\fP\&.socket, \fImount\fP\&.mount, \fIswap\fP\&.swap
+.SH DESCRIPTION
+.PP
+服务、切片、使用域、套接字、挂载点和交换设备的元配置文件共享衍生进程资源控制的配置选项子集。在内部，这依赖于 Linux Control Groups
+(cgroups) 内核概念，用于在命名组的层次结构树中组织进程，以实现资源管理 \&。
+.PP
+该手册页列出了这六种元类型 \& 共享的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)，具体元配置文件见
+\fBsystemd.slice\fP(5)、\fBsystemd.scope\fP(5)、\fBsystemd.service\fP(5)、\fBsystemd.socket\fP(5)、\fBsystemd.mount\fP(5)、\fBsystemd.swap\fP(5)\&。资源控制配置选项在
+[Slice]、[Scope]、[Service]、[Socket]、[Mount] 或 [Swap] 部分中配置，具体取决于元类型 \&。
+.PP
+此外，\fBsystemd.exec\fP(5)\& 中列出了 systemd 控制程序 \fIexecuted\fP 可用资源的选项。这些选项补充了此处列出的选项
+\&。
+.PP
+有关如何从程序中使用资源控制 API 的介绍，请参见 \m[blue]\fBNew Control Group Interfaces\fP\m[]\&\s-2\u[1]\d\s+2。
+.SS "Setting resource controls for a group of related units"
+.PP
+如 \fBsystemd.unit\fP(5) 中所述，此处列出的设置可以通过 *\&.d/ 目录 \& 中的元和丢弃的主文件进行设置。搜索丢弃 \- ins
+的目录列表包括通过在所有破折号 \& 之后重复截断元名称形成的名称。这对于为一组具有相似名称的单元设置资源限制特别方便。
+.PP
+例如，每个用户都有自己的切片 user\-\fInnn\fP\&.slice\&。丢弃 \- ins 与本地配置影响用户 1000 可能放在
+/etc/systemd/system/user\-1000\&.slice，/etc/user\-1000\&.slice\&.d/*\&.conf，还有
+/etc/system/ 用户 \-\&.slice\&.d/*\&.conf\&。最后一个目录适用于所有用户切片 \&。
+.SH "IMPLICIT DEPENDENCIES"
+.PP
+隐式添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+设置了 \fISlice=\fP 设置的单元自动获取指定切片元 \& 上的 \fIRequires=\fP 和 \fIAfter=\fP 依赖关系。
+.RE
+.SH OPTIONS
+.PP
+上面列出的类型的单元可以具有资源控制配置的设置:
+.PP
+\fICPUAccounting=\fP
+.RS 4
+开启 CPU 使用率核算这个元 \&。采用布尔型参数 \&。请注意，打开占用 1 元的 CPU
+也会隐式地为同一切片中包含的所有单元及其所有父切片和其中包含的单元打开它 \&。此设置的系统默认值可能由
+\fBsystemd\-system.conf\fP(5)\& 中的 \fIDefaultCPUAccounting=\fP 控制。
+.RE
+.PP
+\fICPUWeight=\fP\fIweight\fP, \fIStartupCPUWeight=\fP\fIweight\fP
+.RS 4
+这些选项接受整数值或特殊字符串 "idle":
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果设置为整数值，则为执行的进程分配指定的 CPU 时间权重，如果系统上使用统一的控制组层次结构 \&。这些选项控制 "cpu\&.weight"
+控制组属性 \&。允许的范围是 1 到 10000\&。默认为 100\&。有关此控制组属性的详细信息，请参见 \m[blue]\fBControl Groups v2\fP\m[]\&\s-2\u[2]\d\s+2 和 \m[blue]\fBCFS Scheduler\fP\m[]\&\s-2\u[3]\d\s+2\&。可用 CPU 时间根据其 CPU
+时间权重在一个切片内的所有单元之间分配。较高的权重意味着更多的 CPU 时间，较低的权重意味着更少 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果设置为特殊字符串 "idle"，则将 cgroup 标记为 "idle scheduling"，表示只有在该 cgroup 或其
+siblings\& 中没有未以这种方式标记的进程执行时，才会获取 CPU 资源。此设置对应于 "cpu\&.idle" cgroup 属性 \&。
+.sp
+请注意，此值仅对 cgroup\-v2 有影响，对于 cgroup\-v1，它相当于最小权重 \&。
+.RE
+.sp
+\fIStartupCPUWeight=\fP 适用于系统的启动和关闭阶段，\fICPUWeight=\fP
+适用于系统正常运行时，如果不设置前者也适用于启动和关闭阶段 \&。使用 \fIStartupCPUWeight=\fP
+允许在启动和关闭时对特定服务进行优先级排序，这与正常运行时不同。
+.RE
+.PP
+\fICPUQuota=\fP
+.RS 4
+将指定的 CPU 时间配额分配给执行的进程 \&。采用百分比值，后缀为 `%`\&。该百分比指定相对于一个 CPU\& 上可用的总 CPU
+时间，元最多应获得多少 CPU 时间。使用值 > 100% 在多个 CPU\& 上分配 CPU 时间。这控制统一控制组层次结构上的
+"cpu\&.max" 属性和 legacy\& 上的 "cpu\&.cfs_quota_us"。有关这些控制组属性的详细信息，请参见
+\m[blue]\fBControl Groups v2\fP\m[]\&\s-2\u[2]\d\s+2 和 \m[blue]\fBCFS Bandwidth Control\fP\m[]\&\s-2\u[4]\d\s+2\&。将 \fICPUQuota=\fP 设置为空值会取消设置配额 \&。
+.sp
+示例: \fICPUQuota=20%\fP 确保执行的进程永远不会在一个 CPU\& 上获得超过 20% 的 CPU 时间。
+.RE
+.PP
+\fICPUQuotaPeriodSec=\fP
+.RS 4
+分配测量 \fICPUQuota=\fP 指定的 CPU 时间配额的持续时间 \&。采用以秒为单位的持续时间值，带有可选后缀，例如 "ms" 表示毫秒 (或
+"s" 表示秒 \&。) 默认设置为 100ms\&。该周期被限制在内核支持的范围内，即 [1ms,
+1000ms]\&。此外，调整周期以使配额间隔也至少为 1ms\&。将 \fICPUQuotaPeriodSec=\fP 设置为空值会将其重置为默认值 \&。
+.sp
+这控制了统一控制组层次结构上 "cpu\&.max" 属性的第二个字段和 legacy\& 上的
+"cpu\&.cfs_period_us"。有关这些控制组属性的详细信息，请参见 \m[blue]\fBControl Groups v2\fP\m[]\&\s-2\u[2]\d\s+2 和 \m[blue]\fBCFS Scheduler\fP\m[]\&\s-2\u[3]\d\s+2\&。
+.sp
+示例: \fICPUQuotaPeriodSec=10ms\fP 请求以 10ms\& 为周期测量 CPU 配额。
+.RE
+.PP
+\fIAllowedCPUs=\fP, \fIStartupAllowedCPUs=\fP
+.RS 4
+限制在特定 CPU 上执行的进程 \&。获取由空格或逗号 \& 分隔的 CPU 索引或范围列表。CPU 范围由由破折号 \& 分隔的下限和上限 CPU
+索引指定。
+.sp
+设置 \fIAllowedCPUs=\fP 或 \fIStartupAllowedCPUs=\fP 不会 \*(Aqt 保证所有 CPU
+都将被进程使用，因为它可能受到父单元的限制 \&。有效配置报告为 \fIEffectiveCPUs=\fP\&。
+.sp
+\fIStartupAllowedCPUs=\fP 适用于系统的启动和关闭阶段，\fIAllowedCPUs=\fP
+适用于系统正常运行时，如果不设置前者也适用于启动和关闭阶段 \&。使用 \fIStartupAllowedCPUs=\fP
+允许在启动和关闭时对特定服务进行优先级排序，这与正常运行时不同。
+.sp
+此设置仅受统一控制组层次结构 \& 支持。
+.RE
+.PP
+\fIAllowedMemoryNodes=\fP, \fIStartupAllowedMemoryNodes=\fP
+.RS 4
+限制在特定内存 NUMA 节点上执行的进程 \&。获取由空格或逗号 \& 分隔的内存 NUMA 节点索引或范围列表。内存 NUMA 节点范围由下部和上部
+NUMA 节点索引指定，由短划线 \& 分隔。
+.sp
+设置 \fIAllowedMemoryNodes=\fP 或 \fIStartupAllowedMemoryNodes=\fP 不会 \*(Aqt 保证所有内存
+NUMA 节点都将被进程使用，因为它可能受到父单元的限制 \&。有效配置报告为 \fIEffectiveMemoryNodes=\fP\&。
+.sp
+\fIStartupAllowedMemoryNodes=\fP 适用于系统的启动和关闭阶段，\fIAllowedMemoryNodes=\fP
+适用于系统正常运行时，如果不设置前者也适用于启动和关闭阶段 \&。使用 \fIStartupAllowedMemoryNodes=\fP
+允许在启动和关闭时对特定服务进行优先级排序，这与正常运行时不同。
+.sp
+此设置仅受统一控制组层次结构 \& 支持。
+.RE
+.PP
+\fIMemoryAccounting=\fP
+.RS 4
+打开占这个元 \& 的进程和内核内存。采用布尔型参数
+\&。请注意，打开占用一个元的内存也会隐式地为同一切片中包含的所有单元及其所有父切片和其中包含的单元打开它 \&。此设置的系统默认值可能由
+\fBsystemd\-system.conf\fP(5)\& 中的 \fIDefaultMemoryAccounting=\fP 控制。
+.RE
+.PP
+\fIMemoryMin=\fP\fIbytes\fP, \fIMemoryLow=\fP\fIbytes\fP
+.RS 4
+在这个元 \& 中指定执行进程的内存使用保护。回收内存时，元被视为使用较少的内存，导致优先从未受保护的单元回收内存 \&。使用
+\fIMemoryLow=\fP 会导致较弱的保护，其中可能仍会回收内存以避免在没有其他可回收内存的情况下调用 OOM 杀手 \&。
+.sp
+一个保护要有效，一般需要在所有的祖先上设置相应的分配，然后分配给子节点 (除了根切片) \&。任何未明确分配给特定子节点的 \fIMemoryMin=\fP
+或 \fIMemoryLow=\fP 分配都用于为所有子节点创建共享保护 \&。由于这是一种共享保护，子节点们将自由竞争记忆 \&。
+.sp
+采用以字节为单位的内存大小 \&。如果该值以 K、M、G 或 T 为后缀，则将指定的内存大小分别解析为千字节、兆字节、千兆字节或太字节 (以 1024
+为底) \&。或者，可以指定一个百分比值，该百分比值是相对于系统上安装的物理内存的。如果指定特殊值
+"infinity"，所有可用内存都将受到保护，这对于始终继承祖先 \& 提供的所有保护可能很有用。这控制 "memory\&.min" 或
+"memory\&.low" 控制组属性 \&。有关此控制组属性的详细信息，请参见 \m[blue]\fBMemory Interface Files\fP\m[]\&\s-2\u[5]\d\s+2\&。
+.sp
+单元可以通过指定 \fIDefaultMemoryMin=\fP 或 \fIDefaultMemoryLow=\fP 让它们的子节点使用默认的
+"memory\&.min" 或 "memory\&.low" 值，这与 \fIMemoryMin=\fP 和 \fIMemoryLow=\fP\&
+具有相同的语义。此设置不影响元本身 \& 中的 "memory\&.min" 或 "memory\&.low"。使用它来设置默认子分配仅对早于
+5\&.7 的内核有用，这些内核不支持 "memory_recursiveprot" cgroup2 安装选项 \&。
+.RE
+.PP
+\fIMemoryHigh=\fP\fIbytes\fP
+.RS 4
+在此元 \& 中指定对已执行进程的内存使用的节流限制。如果不可避免，内存使用量可能会超过限制，但在这种情况下，进程会严重减慢并且内存会被积极占用
+\&。这是控制元 \& 内存使用的主要机制。
+.sp
+采用以字节为单位的内存大小 \&。如果该值以 K、M、G 或 T 为后缀，则将指定的内存大小分别解析为千字节、兆字节、千兆字节或太字节 (以 1024
+为底) \&。或者，可以指定一个百分比值，该百分比值是相对于系统上安装的物理内存的。如果指定特殊值 "infinity"，则不应用内存限制
+\&。这控制了 "memory\&.high" 控制组属性 \&。有关此控制组属性的详细信息，请参见 \m[blue]\fBMemory Interface Files\fP\m[]\&\s-2\u[5]\d\s+2\&。
+.RE
+.PP
+\fIMemoryMax=\fP\fIbytes\fP
+.RS 4
+在此元 \& 中指定对已执行进程的内存使用的绝对限制。如果内存使用不能包含在限制之下，则在元 \& 中调用内存不足杀手。推荐使用
+\fIMemoryHigh=\fP 作为主要控制机制，使用 \fIMemoryMax=\fP 作为最后一道防线 \&。
+.sp
+采用以字节为单位的内存大小 \&。如果该值以 K、M、G 或 T 为后缀，则将指定的内存大小分别解析为千字节、兆字节、千兆字节或太字节 (以 1024
+为底) \&。或者，可以指定一个百分比值，该百分比值是相对于系统上安装的物理内存的。如果分配特殊值 "infinity"，则不应用内存限制
+\&。这控制了 "memory\&.max" 控制组属性 \&。有关此控制组属性的详细信息，请参见 \m[blue]\fBMemory Interface Files\fP\m[]\&\s-2\u[5]\d\s+2\&。
+.RE
+.PP
+\fIMemorySwapMax=\fP\fIbytes\fP
+.RS 4
+在此元 \& 中指定已执行进程的 swap 使用绝对限制。
+.sp
+采用以字节为单位的交换大小 \&。如果该值以 K、M、G 或 T 为后缀，则指定的交换大小将分别解析为千字节、兆字节、千兆字节或太字节 (以 1024
+为底) \&。如果指定特殊值 "infinity"，则不应用交换限制 \&。这些设置控制 "memory\&.swap\&.max" 控制组属性
+\&。有关此控制组属性的详细信息，请参见 \m[blue]\fBMemory Interface Files\fP\m[]\&\s-2\u[5]\d\s+2\&。
+.RE
+.PP
+\fIMemoryZSwapMax=\fP\fIbytes\fP
+.RS 4
+在此元 \& 中指定进程对 zswap 使用的绝对限制。Zswap
+是一个用于交换页面的轻量级压缩缓存。它获取正在换出的页面，并尝试将它们压缩到一个动态分配的基于 RAM
+的内存池中。如果达到指定的限制，则该单元中的任何条目都不会存储在池中，直到现有条目出现故障或写出到磁盘 \&。请参见内核 \* (Aqs
+\m[blue]\fBZswap\fP\m[]\&\s-2\u[6]\d\s+2 文档以获得更多详细信息 \&。
+.sp
+采用以字节为单位的大小 \&。如果值以 K、M、G 或 T 为后缀，则指定的大小将分别解析为千字节、兆字节、千兆字节或太字节 (以 1024 为底)
+\&。如果指定特殊值 "infinity"，则不应用任何限制 \&。这些设置控制 "memory\&.zswap\&.max" 控制组属性
+\&。有关此控制组属性的详细信息，请参见 \m[blue]\fBMemory Interface Files\fP\m[]\&\s-2\u[5]\d\s+2\&。
+.RE
+.PP
+\fITasksAccounting=\fP
+.RS 4
+打开这个元 \& 的任务统计。采用布尔型参数 \&。如果启用，系统管理器将跟踪元 \&
+中的任务数。以这种方式计算的任务数量包括内核线程和用户空间进程，每个线程单独计算
+\&。请注意，打开占一元的任务也会隐式地为同一切片中包含的所有单元及其所有父切片和其中包含的单元打开它 \&。此设置的系统默认值可能由
+\fBsystemd\-system.conf\fP(5)\& 中的 \fIDefaultTasksAccounting=\fP 控制。
+.RE
+.PP
+\fITasksMax=\fP\fIN\fP
+.RS 4
+在元 \& 中指定可以创建的最大任务数。这可确保占元 (见上文) 的任务数保持在特定限制以下
+\&。这要么采用绝对任务数，要么采用相对于系统上配置的最大任务数的百分比值 \&。如果指定特殊值 "infinity"，则不应用任何任务限制
+\&。这控制了 "pids\&.max" 控制组属性 \&。有关此控制组属性的详细信息，请参见 \m[blue]\fBpids controller\fP\m[]\&\s-2\u[7]\d\s+2\&。
+.sp
+此设置的系统默认值可能由 \fBsystemd\-system.conf\fP(5)\& 中的 \fIDefaultTasksMax=\fP 控制。
+.RE
+.PP
+\fIIOAccounting=\fP
+.RS 4
+开启 Block I/O 占这个元，如果系统上使用统一的控制组层级 \&。采用布尔型参数 \&。请注意，打开占一元的块 I/O
+也会隐式地为同一切片中包含的所有单元及其父切片及其中包含的单元 \& 打开它。此设置的系统默认值可能由
+\fBsystemd\-system.conf\fP(5)\& 中的 \fIDefaultIOAccounting=\fP 控制。
+.RE
+.PP
+\fIIOWeight=\fP\fIweight\fP, \fIStartupIOWeight=\fP\fIweight\fP
+.RS 4
+如果在系统上使用统一的控制组层次结构，则为执行的进程设置默认的整体块 I/O 权重 \&。采用单个权重值 (1 到 10000 之间) 来设置默认块
+I/O 权重 \&。这控制 "io\&.weight" 控制组属性，默认为 100\&。有关此控制组属性的详细信息，请参见 \m[blue]\fBIO Interface Files\fP\m[]\&\s-2\u[8]\d\s+2\&。可用的 I/O 带宽在一个切片内的所有单元之间分配，相对于它们的块
+I/O 权重 \&。较高的权重意味着更多的 I/O 带宽，较低的权重意味着更少 \&。
+.sp
+\fIStartupIOWeight=\fP 适用于系统的启动和关闭阶段，\fIIOWeight=\fP 适用于系统后期运行，如果前者不设置也适用于启动和关闭阶段
+\&。这允许在启动和关闭时对特定服务进行优先级排序，这与在运行时不同。
+.RE
+.PP
+\fIIODeviceWeight=\fP\fIdevice\fP\fI \fP\fIweight\fP
+.RS 4
+如果在系统上使用统一的控制组层次结构 \&，则为执行的进程设置每个设备的整体块 I/O
+权重。采用一对以空格分隔的文件路径和权重值来指定设备特定的权重值，介于 1 和 10000\& 之间。(示例: "/dev/sda 1000")
+\&。文件路径可以指定为块设备节点的路径或任何其他文件，在这种情况下，确定文件的文件系统的支持块设备 \&。这控制 "io\&.weight"
+控制组属性，默认为 100\&。多次使用此选项可以为多个设备设置权重 \&。有关此控制组属性的详细信息，请参见 \m[blue]\fBIO Interface Files\fP\m[]\&\s-2\u[8]\d\s+2\&。
+.sp
+指定的设备节点应该引用一个关联了 I/O 调度程序的块设备，i\&.e\&。不应指分区或回环块设备，而应指原始物理设备
+\&。当指定常规文件或目录的路径时，它会尝试发现支持指定路径的文件系统的正确原始设备。这仅适用于更简单的情况，其中文件系统直接放置在分区或物理块设备上，或者使用使用
+dm\-crypt/LUKS 的简单 1:1 加密 \&。此发现不包括复杂存储，尤其是 RAID 和卷管理存储设备。
+.RE
+.PP
+\fIIOReadBandwidthMax=\fP\fIdevice\fP\fI \fP\fIbytes\fP,
+\fIIOWriteBandwidthMax=\fP\fIdevice\fP\fI \fP\fIbytes\fP
+.RS 4
+如果在系统上使用统一的控制组层次结构，则为执行的进程设置每个设备的整体块 I/O 带宽最大限制
+\&。这个限制不是工作守恒的，即使设备有空闲容量，执行的进程也不允许使用更多。采用一对以空格分隔的文件路径和带宽值 (以字节 / 秒为单位)
+来指定设备特定带宽 \&。文件路径可以是到块设备节点的路径，或者作为任何其他文件，在这种情况下使用文件的文件系统的支持块设备 \&。如果带宽后缀为
+K、M、G 或 T，则指定的带宽将分别解析为千字节、兆字节、千兆字节或太字节，以 1000\& 为底。(例如:
+"/dev/disk/by\-path/pci\-0000:00:1f\&.2\-scsi\-0:0:0:0 5M") \&。这控制 "io\&.max"
+控制组属性 \&。多次使用此选项可以为多个设备设置带宽限制 \&。有关此控制组属性的详细信息，请参见 \m[blue]\fBIO Interface Files\fP\m[]\&\s-2\u[8]\d\s+2\&。
+.sp
+与 \fIIODeviceWeight=\fP 类似的块设备发现限制适用，请参见上文 \&。
+.RE
+.PP
+\fIIOReadIOPSMax=\fP\fIdevice\fP\fI \fP\fIIOPS\fP, \fIIOWriteIOPSMax=\fP\fIdevice\fP\fI \fP\fIIOPS\fP
+.RS 4
+如果在系统上使用统一的控制组层次结构，则为执行的进程设置每设备整体块 I/O IOs\-Per\-Second 最大限制
+\&。这个限制不是工作守恒的，即使设备有空闲容量，执行的进程也不允许使用更多。采用一对以空格分隔的文件路径和 IOPS 值来指定设备特定的
+IOPS\&。文件路径可以是到块设备节点的路径，或者作为任何其他文件，在这种情况下使用文件的文件系统的支持块设备 \&。如果 IOPS 后缀为
+K、M、G 或 T，则指定的 IOPS 分别解析为 KiloIOPS、MegaIOPS、GigaIOPS 或 TeraIOPS，以 1000\&
+为底。(例如: "/dev/disk/by\-path/pci\-0000:00:1f\&.2\-scsi\-0:0:0:0 1K") \&。这控制
+"io\&.max" 控制组属性 \&。多次使用此选项可为多个设备设置 IOPS 限制 \&。有关此控制组属性的详细信息，请参见
+\m[blue]\fBIO Interface Files\fP\m[]\&\s-2\u[8]\d\s+2\&。
+.sp
+与 \fIIODeviceWeight=\fP 类似的块设备发现限制适用，请参见上文 \&。
+.RE
+.PP
+\fIIODeviceLatencyTargetSec=\fP\fIdevice\fP\fI \fP\fItarget\fP
+.RS 4
+如果在系统上使用统一的控制组层次结构 \&，则为执行的进程设置每台设备的平均目标 I/O
+延迟。采用由空格分隔的文件路径和时间跨度来指定设备特定的延迟目标 \&。(示例: "/dev/sda 25ms")
+\&。文件路径可以指定为块设备节点的路径或任何其他文件，在这种情况下，确定文件的文件系统的支持块设备 \&。这控制了 "io\&.latency"
+控制组属性 \&。多次使用此选项为多个设备设置延迟目标 \&。有关此控制组属性的详细信息，请参见 \m[blue]\fBIO Interface Files\fP\m[]\&\s-2\u[8]\d\s+2\&。
+.sp
+暗示 `IOAccounting=yes`\&。
+.sp
+仅当使用统一控制组层次结构时才支持这些设置 \&。
+.sp
+与 \fIIODeviceWeight=\fP 类似的块设备发现限制适用，请参见上文 \&。
+.RE
+.PP
+\fIIPAccounting=\fP
+.RS 4
+采用布尔型参数 \&。如果为 true，则打开 IPv4 和 IPv6 网络流量计费单元 \&
+发送或接收的数据包。当这个选项打开时，所有由该单元的任何进程创建的 IPv4 和 IPv6 套接字都被占 \&。
+.sp
+当此选项用于套接字单元时，它适用于与其关联的所有 IPv4 和 IPv6 套接字 (包括适用的侦听和连接套接字) \&。注意，对于 socket
+激活的服务，这个配置设置和服务元和 socket 元的计费数据是分开保存的，分别显示 \&。没有传播设置和收集的统计信息，在任一方向
+\&。此外，在任何套接字元 \*(Aqs 套接字上发送或接收的任何流量都计入套接字元 \(em 而永远不会计入它可能已激活的服务单位，即使套接字被它使用
+\&。
+.sp
+此设置的系统默认值可能由 \fBsystemd\-system.conf\fP(5)\& 中的 \fIDefaultIPAccounting=\fP 控制。
+.RE
+.PP
+\fIIPAddressAllow=\fP\fIADDRESS[/PREFIXLENGTH]\&...\fP,
+\fIIPAddressDeny=\fP\fIADDRESS[/PREFIXLENGTH]\&...\fP
+.RS 4
+为通过 \fBAF_INET\fP 和 \fBAF_INET6\fP 套接字发送和接收的 IP 数据包打开网络流量过滤 \&。这两个指令都采用以空格分隔的 IPv4
+或 IPv6 地址列表，每个地址可选地在 "/" 字符 \& 后附加一个地址前缀长度
+(以位为单位)。如果省略后缀，则地址被认为是主机地址，i\&.e\&。过滤器覆盖整个地址 (IPv4 为 32 位，IPv6 为 128 位) \&。
+.sp
+使用此选项配置的访问列表适用于此元 (或在套接字单元的情况下，与其关联) \&
+的进程创建的所有套接字。这些列表与为任何父切片单元配置的任何列表隐式组合，此单元可能是 \& 的成员。默认情况下，两个访问列表都是空的
+\&。入口和出口流量都由这些设置过滤 \&。在入口流量的情况下，根据这些访问列表检查源 IP 地址，在出口流量的情况下，检查目标 IP 地址
+\&。依次应用以下规则:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+当检查的 IP 地址与 \fIIPAddressAllow=\fP 列表中的条目匹配时，授予访问权限 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+否则，当检查的 IP 地址与 \fIIPAddressDeny=\fP 列表中的条目匹配时，访问将被拒绝 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+否则，访问被授予 \&。
+.RE
+.sp
+为了实现允许列表 IP 防火墙，建议在上层切片元上使用 \fIIPAddressDeny=\fP\fBany\fP 设置 (例如根切片 \-\&.slice
+或包含所有系统服务的切片 system\&.slice\ (en see \fBsystemd.special\fP(7) for details on
+these 切片单元)，加上允许网络访问相关服务的单独的每服务 \fIIPAddressAllow=\fP 行，并且只有它们 \&。
+.sp
+请注意，对于套接字激活的服务，在套接字元上配置的 IP 访问列表适用于与其直接关联的所有套接字，但不适用于最终为它激活的服务创建的任何套接字
+\&。相反，为服务配置的 IP 访问列表不适用于通过套接字激活 \& 传递到服务中的任何套接字。因此，在套接字和服务元 \& 上复制 IP
+访问列表通常是个好主意。尽管如此，保持一个列表更开放而另一个列表更受限制可能是有意义的，这取决于用例 \&。
+.sp
+如果这些设置在同一个元中多次使用，指定的列表将合并 \&。如果为这些设置分配了一个空字符串，则特定的访问列表将被重置，并且所有以前的设置都将被撤消
+\&。
+.sp
+可以使用一小组符号名称来代替明确的 IPv4 或 IPv6 地址和前缀长度规范 \&。定义了以下名称:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Special address/network names\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Symbolic Name
+T}:T{
+Definition
+T}:T{
+Meaning
+T}
+.T&
+l l l
+l l l
+l l l
+l l l.
+T{
+\fBany\fP
+T}:T{
+0\&.0\&.0\&.0/0 ::/0
+T}:T{
+Any host
+T}
+T{
+\fBlocalhost\fP
+T}:T{
+127\&.0\&.0\&.0/8 ::1/128
+T}:T{
+All addresses on the local loopback
+T}
+T{
+\fBlink\-local\fP
+T}:T{
+169\&.254\&.0\&.0/16 fe80::/64
+T}:T{
+All link\-local IP addresses
+T}
+T{
+\fBmulticast\fP
+T}:T{
+224\&.0\&.0\&.0/4 ff00::/8
+T}:T{
+All IP multicasting addresses
+T}
+.TE
+.sp 1
+请注意，某些系统可能不支持这些设置 (例如，如果底层内核或容器管理器中未启用 eBPF 控制组支持) \&。在这种情况下，这些设置将无效
+\&。如果需要与此类系统兼容，因此建议不要完全依赖它们来实现 IP 安全 \&。
+.sp
+无法通过在服务元中将 "+" 作为可执行路径的前缀来绕过此选项，因为它适用于整个控制组 \&。
+.RE
+.PP
+\fIIPIngressFilterPath=\fP\fIBPF_FS_PROGRAM_PATH\fP,
+\fIIPEgressFilterPath=\fP\fIBPF_FS_PROGRAM_PATH\fP
+.RS 4
+添加作为 BPF 程序实现的自定义网络流量过滤器，适用于通过 \fBAF_INET\fP 和 \fBAF_INET6\fP 套接字发送和接收的所有 IP 数据包
+\&。采用 BPF 虚拟文件系统 (/sys/bpf/)\& 中固定 BPF 程序的绝对路径。
+.sp
+使用此选项配置的过滤器适用于由此单元 (或在套接字单元的情况下，与之相关联) \&
+的进程创建的所有套接字。除了过滤此单元可能属于的任何父切片单元以及任何这些单元中的任何 \fIIPAddressAllow=\fP 和
+\fIIPAddressDeny=\fP 过滤器外，还会加载过滤器 \&。默认情况下没有指定过滤器 \&。
+.sp
+如果这些设置在同一个单元中多次使用，则所有指定的程序都会被附加 \&。如果为这些设置分配了一个空字符串，程序列表将被重置，所有先前指定的程序将被忽略
+\&。
+.sp
+如果 \fIIPIngressFilterPath=\fP 分配中的路径 \fIBPF_FS_PROGRAM_PATH\fP 已经被 \fIBPFProgram=\fP
+入口，钩子，处理，则 e\&.g\&。
+\fIBPFProgram=\fP\fBingress\fP:\fIBPF_FS_PROGRAM_PATH\fP，分配仍将被视为有效，程序将附加到
+cgroup\&。\fIIPEgressFilterPath=\fP 路径和 \fBegress\fP 钩子 \& 相同。
+.sp
+注意，对于 socket 激活的服务，在 socket 元上配置的 IP 过滤程序适用于所有与其直接关联的
+socket，而不适用于最终为它激活的服务创建的任何 socket\&。相反，为服务配置的 IP 过滤程序不会应用于通过套接字激活 \&
+传递到服务中的任何套接字。因此，在套接字和服务元上复制 IP 过滤器程序通常是个好主意，但是根据用例
+\&，保持一个配置更开放而另一个配置更受限制通常是有意义的。
+.sp
+请注意，某些系统可能不支持这些设置 (例如，如果底层内核或容器管理器中未启用 eBPF 控制组支持) \&。在这种情况下，这些设置将使服务失败
+\&。如果需要与此类系统兼容，因此建议手动附加过滤器 (需要 \fIDelegate=\fP\fByes\fP) 而不是使用此设置 \&。
+.RE
+.PP
+\fIBPFProgram=\fP\fItype\fP\fB:\fP\fIprogram\-path\fP
+.RS 4
+添加自定义 cgroup BPF 程序 \&。
+.sp
+\fIBPFProgram=\fP 允许将 BPF 钩子，附加到 systemd 元 \& 的 cgroup。(这概括了通过用于出口的
+\fIIPEgressFilterPath=\fP 和用于入口的 \fIIPIngressFilterPath=\fP 公开的功能 \&。) 加载到 BPF
+文件系统的 BPF 程序形式的 Cgroup\-bpf 钩子，附加了由元 \& 确定的 cgroup\-bpf
+附加标志。有关附件类型和标志的详细信息，请参见
+\m[blue]\fB\%https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/include/uapi/linux/bpf.h\fP\m[]\&。有关一般
+BPF 文档，请参见 \m[blue]\fB\%https://docs.kernel.org/bpf/index.html\fP\m[]\&。
+.sp
+BPF 程序的规范由一个 \fItype\fP 和一个 \fIprogram\-path\fP 组成，":" 作为分隔符:
+\fItype\fP\fB:\fP\fIprogram\-path\fP\&。
+.sp
+\fItype\fP 是 BPF 附加类型的字符串名称，也用于 \fBbpftool\fP\&。\fItype\fP 可以是
+\fBegress\fP、\fBingress\fP、\fBsock_create\fP、\fBsock_ops\fP、\fBdevice\fP、\fBbind4\fP、\fBbind6\fP、\fBconnect4\fP、\fBconnect6\fP、\fBpost_bind4\fP、\fBpost_bind6\fP、\fBsendmsg4\fP、\fBsendmsg6\fP、\fBsysctl\fP、\fBrecvmsg4\fP、\fBrecvmsg6\fP、\fBgetsockopt\fP、\fBsetsockopt\fP\&
+之一。
+.sp
+将 \fIBPFProgram=\fP 设置为空值会使之前的分配无效 \&。
+.sp
+相同 \fItype\fP:\fIprogram\-path\fP 值的多次赋值与单个赋值具有相同的效果: 具有路径 \fIprogram\-path\fP
+的程序将仅一次附加到 cgroup 钩子 \fItype\fP\&。
+.sp
+如果固定到 \fIprogram\-path\fP 路径的 BPF \fBegress\fP 已经由 \fIIPEgressFilterPath=\fP 处理，则
+\fIBPFProgram=\fP 分配将被视为有效并且 \fIBPFProgram=\fP 将附加到 cgroup\&。\fBingress\fP hook 和
+\fIIPIngressFilterPath=\fP assignment\& 类似。
+.sp
+使用 \fIBPFProgram=\fP 传递的 BPF 程序附加到带有 BPF 附加标志 \fBmulti\fP 的单元的 cgroup，这允许在单元
+cgroup\& 顶部的 cgroup 层次结构中进一步附加相同的 \fItype\fP。
+.sp
+Examples:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+BPFProgram=egress:/sys/fs/bpf/egress\-hook
+BPFProgram=bind6:/sys/fs/bpf/sock\-addr\-hook
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+\fISocketBindAllow=\fP\fIbind\-rule\fP, \fISocketBindDeny=\fP\fIbind\-rule\fP
+.RS 4
+通过将套接字地址与 \fIbind\-rule\fP 匹配并在匹配 \& 时应用相应的操作来允许或拒绝将套接字地址绑定到套接字。
+.sp
+\fIbind\-rule\fP 描述了 \fIaddress\-family\fP、\fItransport\-protocol\fP 和 \fIip\-ports\fP\&
+等套接字属性。
+.sp
+\fIbind\-rule\fP := {
+[\fIaddress\-family\fP\fB:\fP][\fItransport\-protocol\fP\fB:\fP][\fIip\-ports\fP] | \fBany\fP }
+.sp
+\fIaddress\-family\fP := { \fBipv4\fP | \fBipv6\fP }
+.sp
+\fItransport\-protocol\fP := { \fBtcp\fP | \fBudp\fP }
+.sp
+\fIip\-ports\fP := { \fIip\-port\fP | \fIip\-port\-range\fP }
+.sp
+可选的 \fIaddress\-family\fP 需要 \fBipv4\fP 或 \fBipv6\fP 值 \&。如果未指定，规则将匹配 IPv4 和 IPv6
+地址，并根据其他套接字字段 e\&.g\& 应用。 \fItransport\-protocol\fP, \fIip\-port\fP\&.
+.sp
+可选的 \fItransport\-protocol\fP 需要 \fBtcp\fP 或 \fBudp\fP 传输协议名称 \&。如果未指定，规则将匹配任何传输协议 \&。
+.sp
+可选的 \fIip\-port\fP 值必须包含在 1\&...65535 区间内，i\&.e\&。不允许动态端口 \fB0\fP\&。顺序端口的范围由
+\fIip\-port\-range\fP := \fIip\-port\-low\fP\fB\-\fP\fIip\-port\-high\fP 描述，其中 \fIip\-port\-low\fP
+小于或等于 \fIip\-port\-high\fP，并且两者都在 1\&...65535 内，包括 \&。
+.sp
+特殊值 \fBany\fP 可用于将规则应用于任何地址族、传输协议和具有正值 \& 的任何端口。
+.sp
+允许多个规则多次分配 \fISocketBindAllow=\fP 或 \fISocketBindDeny=\fP\&。要清除现有分配，请传递一个空的
+\fISocketBindAllow=\fP 或 \fISocketBindDeny=\fP 分配 \&。
+.sp
+对于 \fISocketBindAllow=\fP 和 \fISocketBindDeny=\fP 中的每一个，允许的最大赋值数是 \fB128\fP\&。
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+当套接字地址与 \fISocketBindAllow=\fP 列表中的条目匹配时，允许绑定到套接字 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+否则，当套接字地址与 \fISocketBindDeny=\fP 列表中的条目匹配时拒绝绑定。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+否则，允许绑定 \&。
+.RE
+.sp
+该特性是通过 \fBcgroup/bind4\fP 和 \fBcgroup/bind6\fP cgroup\-bpf hooks\& 实现的。
+.sp
+Examples:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\&...
+# 允许将 IPv6 套接字地址与大于或等于 10000\& 的端口绑定。
+[Service]
+SocketBindAllow=ipv6:10000\-65535
+SocketBindDeny=any     
+\&...
+# 允许将 IPv4 和 IPv6 套接字地址与 1234 和 4321 端口绑定 \&。
+[Service]
+SocketBindAllow=1234
+SocketBindAllow=4321
+SocketBindDeny=any
+\&...
+# 拒绝绑定 IPv6 套接字地址 \&。
+[Service]
+SocketBindDeny=ipv6
+\&...
+# 拒绝绑定 IPv4 和 IPv6 套接字地址 \&.
+[Service]
+SocketBindDeny=any
+\&...
+# 只允许通过 TCP 绑定
+[Service]
+SocketBindAllow=tcp
+SocketBindDeny=any
+\&...
+# 只允许在 IPv6/TCP 上绑定
+[Service]
+SocketBindAllow=ipv6:tcp
+SocketBindDeny=any
+\&...
+# 允许通过 IPv4/UDP\& 在 10000\-65535 范围内绑定端口。
+[Service]
+SocketBindAllow=ipv4:udp:10000\-65535
+SocketBindDeny=any
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+无法通过在服务元中将 "+" 作为可执行路径的前缀来绕过此选项，因为它适用于整个控制组 \&。
+.RE
+.PP
+\fIRestrictNetworkInterfaces=\fP
+.RS 4
+获取以空格分隔的网络接口名称列表 \&。该选项限制了该元进程可以使用的网络接口 \&。默认情况下，进程只能使用列出的网络接口 (允许列表)
+\&。如果规则的第一个字符是 "~"，则效果相反: 进程只能使用未列出的网络接口 (拒绝列表) \&。
+.sp
+该选项可以出现多次，在这种情况下网络接口名称被合并 \&。如果分配了空字符串，则重置集合，所有先前的分配都将无效 \&。
+.sp
+如果您指定此选项的两种类型 (i\&.e\&. 允许列表和拒绝列表)，第一个遇到的将优先并指示默认操作 (允许与拒绝)
+\&。然后此选项的下一次出现将根据其类型和默认操作 \& 从集合中添加或删除列出的网络接口名称。
+.sp
+回环接口 ("lo") 没有任何特殊处理，您必须在元文件 \& 中显式配置它。
+.sp
+示例 1: 允许列表
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RestrictNetworkInterfaces=eth1
+RestrictNetworkInterfaces=eth2
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+单元中的程序将只能使用 eth1 和 eth2 网络接口 \&。
+.sp
+示例 2: 拒绝列表
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+限制网络接口 =~eth1 eth2
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+单元中的程序将能够使用除 eth1 和 eth2\& 之外的任何网络接口。
+.sp
+示例 3: 混合
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+RestrictNetworkInterfaces=eth1 eth2
+RestrictNetworkInterfaces=~eth1
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+单元中的程序将只能使用 eth2 网络接口 \&。
+.sp
+无法通过在服务元中将 "+" 作为可执行路径的前缀来绕过此选项，因为它适用于整个控制组 \&。
+.RE
+.PP
+\fIDeviceAllow=\fP
+.RS 4
+控制执行进程对特定设备节点的访问 \&。取两个空格分隔的字符串: 一个设备节点说明符后跟 \fBr\fP、\fBw\fP、\fBm\fP 的组合来控制
+\fIr\fPeading、\fIw\fPriting，或者由元 (\fIm\fPknod) 分别创建特定的设备节点 \&。此功能是使用 eBPF 过滤实现的。
+.sp
+当不允许访问 \fIall\fP 物理设备时，可以改用 \fIPrivateDevices=\fP\&。请参见 \fBsystemd.exec\fP(5)\&。
+.sp
+设备节点说明符是文件系统中设备节点的路径，以 /dev / 开头，或者是以 "char\-" 或 "block\-" 开头后跟设备组名称的字符串，如
+/proc/devices\& 中所列。后者对于一次允许列出属于特定设备组的所有当前和 future 设备很有用
+\&。设备组根据文件名匹配规则进行匹配，因此您可以使用 "*" 和 "?" 通配符 \&。(请注意，此类通配符不适用于设备节点路径规范! )
+为了通过数字 major/minor 匹配设备节点，请使用 /dev/char/ 和 /dev/block/ 目录中的设备节点路径
+\&。但是，通常不推荐使用 major/minor 匹配设备，因为分配在系统或不同内核版本之间既不稳定又无法移植。
+.sp
+示例: /dev/sda5 是设备节点的路径，指的是 ATA 或 SCSI 块设备 \&。 "char\-pts" 和 "char\-alsa"
+分别是所有伪 TTY 和所有 ALSA 声音设备的说明符 \&。 "char\-cpu/*" 是匹配所有 CPU 相关设备组的说明符 \&。
+.sp
+请注意，以这种方式定义的允许列表应该只引用在单元启动时可解析的设备组 \&。任何不可解析的设备组都不会添加到设备允许列表
+\&。为了绕过这个限制，考虑使用一对 \fBAfter=modprobe@xyz\&.service\fP 和
+\fBWants=modprobe@xyz\&.service\fP 行来扩展服务单元，如果缺少 \&，它们加载实现设备组的必要内核模块。Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\&...
+[Unit]
+Wants=modprobe@loop\&.service
+After=modprobe@loop\&.service
+
+[Service]
+DeviceAllow=block\-loop
+DeviceAllow=/dev/loop\-control
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+无法通过在服务元中将 "+" 作为可执行路径的前缀来绕过此选项，因为它适用于整个控制组 \&。
+.RE
+.PP
+\fIDevicePolicy=auto|closed|strict\fP
+.RS 4
+控制允许设备访问的策略:
+.PP
+\fBstrict\fP
+.RS 4
+意味着只允许明确指定的访问类型 \&。
+.RE
+.PP
+\fBclosed\fP
+.RS 4
+此外，允许访问标准伪设备，包括 /dev/null、/dev/zero、/dev/full、/dev/random 和 /dev/urandom\&。
+.RE
+.PP
+\fBauto\fP
+.RS 4
+此外，如果不存在明确的 \fIDeviceAllow=\fP，则允许访问所有设备 \&。这是默认的 \&。
+.RE
+.sp
+无法通过在服务元中将 "+" 作为可执行路径的前缀来绕过此选项，因为它适用于整个控制组 \&。
+.RE
+.PP
+\fISlice=\fP
+.RS 4
+将元放在 \& 中的切片元的名称。所有元类型的所有非实例化单元默认为 system\&.slice (切片单元本身除外，见下文)
+\&。实例单元默认放置在 system\&.slice 的子切片中，该子切片以模板名称命名 \&。
+.sp
+此选项可用于将 systemd 单元排列在切片的层次结构中，每个切片都可能应用了资源设置 \&。
+.sp
+对于切片类型的单元，此设置唯一可接受的值是父切片 \&。由于切片的名称元表示父切片，因此直接为切片单元设置此参数是多余的 \&。
+.sp
+在设置了 \fIDefaultDependencies=no\fP 的模板化服务单元中依赖默认切片分配时应特别小心，有关详细信息，请参见
+\fBsystemd.service\fP(5)，"Default Dependencies" 部分 \&。
+.RE
+.PP
+\fIDelegate=\fP
+.RS 4
+打开将进一步的资源控制分区委托给元 \& 的进程。启用此功能的单位可以创建和管理其自己的控制组私有子层次结构，低于元本身的控制组 \&。对于非特权服务
+(i\&.e\&。那些使用 \fIUser=\fP 设置的服务) 单元 \*(相关用户可以访问 Aqs 控制组
+\&。启用后，服务管理器将避免操纵控制组或移动低于元 \*(Aqs 控制组的进程，以便建立清晰的所有权概念: 控制组树位于单元 \*(Aqs 控制组
+(i\&.e\&. towards the root control group) 由主机的服务管理器拥有和管理，而单元下面的控制组树 \*(Aqs
+控制组由单元本身拥有和管理 \&。采用布尔参数或控制组控制器名称列表 \&。如果为 true，则启用委派，并为元启用所有支持的控制器，使它们可用于元
+\*(Aqs processes for management\&。如果为 false，委托将完全关闭 (并且不会启用其他控制器)
+\&。如果设置为控制器列表，则启用委派，并为元 \&
+启用指定的控制器。请注意，除了指定的控制器之外，其他控制器也可能可用，具体取决于包含切片元或其中包含的其他单元的配置
+\&。请注意，分配空字符串将启用委派，但会重置控制器列表，在此之前的所有分配都将无效 \&。默认为 false\&。
+.sp
+请注意，控制器委派给权限较低的代码仅在统一控制组层次结构上是安全的
+\&。因此，对指定控制器的访问将不会被授予遗留层次结构上的非特权服务，即使在请求时也是如此。
+.sp
+可以指定以下控制器名称:
+\fBcpu\fP、\fBcpuacct\fP、\fBcpuset\fP、\fBio\fP、\fBblkio\fP、\fBmemory\fP、\fBdevices\fP、\fBpids\fP、\fBbpf\-firewall\fP
+和 \fBbpf\-devices\fP\&。
+.sp
+然而，并非所有这些控制器都适用于所有内核，有些控制器特定于统一层次结构，而另一些则特定于遗留层次结构 \&。另请注意，内核可能支持更多控制器，这些控制器
+\*(Aqt 已在此处介绍，因为它们根本不支持委托或未明确定义 \&。
+.sp
+有关委托模型的更多详细信息，请参见 \m[blue]\fBControl Group APIs and Delegation\fP\m[]\&\s-2\u[9]\d\s+2\&。
+.RE
+.PP
+\fIDisableControllers=\fP
+.RS 4
+禁止为设备 \*(Aqs children 启用控制器 \&. 如果列出的控制器已在其子树中使用，则该控制器将从子树中删除
+\&。这可用于避免子单元能够隐式或显式启用控制器 \&。默认不禁用任何控制器 \&。
+.sp
+如果单元或单元的任何子单元将控制器委托给其子单元，则可能无法成功禁用控制器，因为 cgroup 层次结构的任何委托子树都不受 systemd\& 管理。
+.sp
+可以指定多个控制器，以空格 \& 分隔。您也可以多次传递
+\fIDisableControllers=\fP，在这种情况下，每个新实例都会添加另一个控制器来禁用 \&。在没有控制器名称的情况下单独传递
+\fIDisableControllers=\fP 会重置禁用的控制器列表 \&。
+.sp
+可以指定以下控制器名称:
+\fBcpu\fP、\fBcpuacct\fP、\fBcpuset\fP、\fBio\fP、\fBblkio\fP、\fBmemory\fP、\fBdevices\fP、\fBpids\fP、\fBbpf\-firewall\fP
+和 \fBbpf\-devices\fP\&。
+.RE
+.PP
+\fIManagedOOMSwap=auto|kill\fP, \fIManagedOOMMemoryPressure=auto|kill\fP
+.RS 4
+指定 \fBsystemd\-oomd.service\fP(8) 将如何作用于这个元 \*(Aqs cgroups\&. 默认为 \fBauto\fP\&。
+.sp
+当设置为 \fBkill\fP 时，元成为 \fBsystemd\-oomd\fP\& 监视的候选对象。如果 cgroup 通过 \fBoomd.conf\fP(5)
+或元配置设置的限制，\fBsystemd\-oomd\fP 将选择一个后代 cgroup 并将 \fBSIGKILL\fP 发送给它下面的所有进程 \&。您可以在
+\fBsystemd\-oomd.service\fP(8) 和 \fBoomd.conf\fP(5)\& 中找到有关候选和终止行为的更多详细信息。
+.sp
+将这些属性中的任何一个设置为 \fBkill\fP 也会导致 \fIAfter=\fP 和 \fIWants=\fP 依赖于
+systemd\-oomd\&.service，除非 \fIDefaultDependencies=no\fP\&。
+.sp
+当设置为 \fBauto\fP 时，\fBsystemd\-oomd\fP 不会主动使用这个 cgroup\*(Aqs data for monitoring and
+detection\&。但是，如果祖先 cgroup 将这些属性之一设置为 \fBkill\fP，则带有 \fBauto\fP 的元仍然可以作为
+\fBsystemd\-oomd\fP 终止 \& 的候选者。
+.RE
+.PP
+\fIManagedOOMMemoryPressureLimit=\fP
+.RS 4
+覆盖 \fBoomd.conf\fP(5) 为这个元 (cgroup)\& 设置的默认内存压力限制。采用介于 0% 和 100% 之间的百分比值，包括
+\&。除非 \fIManagedOOMMemoryPressure=\fP\fBkill\fP\&，否则将忽略此属性。默认为 0%，表示使用
+\fBoomd.conf\fP(5)\& 设置的默认值。
+.RE
+.PP
+\fIManagedOOMPreference=none|avoid|omit\fP
+.RS 4
+允许取消优先级或省略此元 \*(Aqs cgroup as a candidate when \fBsystemd\-oomd\fP needs to
+act\&. 需要支持扩展属性 (请参见 \fBxattr\fP(7)) 以使用 \fBavoid\fP 或 \fBomit\fP\&。
+.sp
+在计算候选者以减轻交换使用时，\fBsystemd\-oomd\fP 将仅在元 \*(Aqs cgroup 由 root\& 拥有时才考虑这些扩展属性。
+.sp
+在计算候选以减轻内存压力时，\fBsystemd\-oomd\fP 只会尊重这些扩展属性，如果元 \*(Aqs cgroup 为 root 所有，或者如果元
+\*(Aqs cgroup 所有者和被监视的祖先 cgroup 的所有者相同 \&。例如，如果 \fBsystemd\-oomd\fP 正在计算
+\-\&.slice 的候选对象，那么在 /user\&.slice/user\-1000\&.slice/user@1000\&.service/
+的后代上设置的扩展属性将被忽略，因为后代属于 UID 1000，而 \-\&.slice 属于 UID 0\&。但是，如果计算
+/user\&.slice/user\-1000\&.slice/user@1000\&.service/ 的候选者，则后代上设置的扩展属性将被尊重
+\&。
+.sp
+如果此属性设置为 \fBavoid\fP，服务管理器会将其传达给 \fBsystemd\-oomd\fP，如果没有其他可行的候选者，它只会选择此 cgroup\&。
+.sp
+如果此属性设置为 \fBomit\fP，服务管理器会将其传达给 \fBsystemd\-oomd\fP，\fBsystemd\-oomd\fP 将忽略此 cgroup
+作为候选对象，并且不会对其执行任何操作 \&。
+.sp
+建议谨慎使用 \fBavoid\fP 和 \fBomit\fP，因为它会对 \fBsystemd\-oomd\fP\*(Aqs 终止行为产生不利影响
+\&。另请注意，这些扩展属性不会递归应用于此元 \*(Aqs cgroup\&.
+.sp
+默认为 \fBnone\fP，这意味着 \fBsystemd\-oomd\fP 将对这个元 \*(\fBsystemd\-oomd.service\fP(8) 和
+\fBoomd.conf\fP(5)\& 中定义的 Aqs cgroup 进行排序。
+.RE
+.SH HISTORY
+.PP
+系统 252
+.RS 4
+用于控制 Legacy Control Group Hierarchy (\m[blue]\fBControl Groups version 1\fP\m[]\&\s-2\u[10]\d\s+2) 的选项现已完全弃用:
+\fICPUShares=\fP\fIweight\fP、\fIStartupCPUShares=\fP\fIweight\fP、\fIMemoryLimit=\fP\fIbytes\fP、\fIBlockIOAccounting=\fP、\fIBlockIOWeight=\fP\fIweight\fP、\fIStartupBlockIOWeight=\fP\fIweight\fP、\fIBlockIODeviceWeight=\fP\fIdevice\fP\fI \fP\fIweight\fP、\fIBlockIOReadBandwidth=\fP\fIdevice\fP\fI \fP\fIbytes\fP、\fIBlockIOWriteBandwidth=\fP\fIdevice\fP\fI \fP\fIbytes\fP\&。请切换到统一的 cgroup
+层次结构 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-system.conf\fP(5), \fBsystemd.unit\fP(5),
+\fBsystemd.service\fP(5), \fBsystemd.slice\fP(5), \fBsystemd.scope\fP(5),
+\fBsystemd.socket\fP(5), \fBsystemd.mount\fP(5), \fBsystemd.swap\fP(5),
+\fBsystemd.exec\fP(5), \fBsystemd.directives\fP(7), \fBsystemd.special\fP(7),
+\fBsystemd\-oomd.service\fP(8), Linux 内核中控制组和特定控制器的文档: \m[blue]\fBControl Groups v2\fP\m[]\&\s-2\u[2]\d\s+2\&。
+.SH NOTES
+.IP " 1." 4
+新的控制组界面
+.RS 4
+\%https://www.freedesktop.org/wiki/Software/systemd/ControlGroupInterface
+.RE
+.IP " 2." 4
+对照组 v2
+.RS 4
+\%https://docs.kernel.org/admin\-guide/cgroup\-v2.html
+.RE
+.IP " 3." 4
+CFS 调度器
+.RS 4
+\%https://docs.kernel.org/scheduler/sched\-design\-CFS.html
+.RE
+.IP " 4." 4
+CFS 带宽控制
+.RS 4
+\%https://docs.kernel.org/scheduler/sched\-bwc.html
+.RE
+.IP " 5." 4
+内存接口文件
+.RS 4
+\%https://docs.kernel.org/admin\-guide/cgroup\-v2.html#memory\-interface\-files
+.RE
+.IP " 6." 4
+Zswap
+.RS 4
+\%https://www.kernel.org/doc/html/latest/admin\-guide/mm/zswap.html
+.RE
+.IP " 7." 4
+pids 控制器
+.RS 4
+\%https://www.kernel.org/doc/html/latest/admin\-guide/cgroup\-v2.html#pid
+.RE
+.IP " 8." 4
+IO 接口文件
+.RS 4
+\%https://docs.kernel.org/admin\-guide/cgroup\-v2.html#io\-interface\-files
+.RE
+.IP " 9." 4
+控制组 API 和委派
+.RS 4
+\%https://systemd.io/CGROUP_DELEGATION
+.RE
+.IP 10. 4
+控制组版本 1
+.RS 4
+\%https://docs.kernel.org/admin\-guide/cgroup\-v1/index.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

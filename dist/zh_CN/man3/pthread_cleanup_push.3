@@ -1,0 +1,239 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_cleanup_push 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_cleanup_push、pthread_cleanup_pop \- 推送和弹出线程取消清理处理程序
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBvoid pthread_cleanup_push(void (*\fP\fIroutine\fP\fB)(void *), void *\fP\fIarg\fP\fB);\fP
+\fBvoid pthread_cleanup_pop(int \fP\fIexecute\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些函数操作调用线程的线程取消清理处理程序栈。 清理处理程序是一个线程被取消时自动执行的函数 (或在下面描述的各种其他情况下) ;
+例如，它可能会解锁一个交互锁，以便进程中的其他线程可以使用它。
+.PP
+\fBpthread_cleanup_push\fP() 号码将 \fIroutine\fP 推到清理处理程序的栈顶上。 当稍后调用 \fIroutine\fP
+时，它将被赋予 \fIarg\fP 作为它的参数。
+.PP
+\fBpthread_cleanup_pop\fP() 函数删除清理处理程序栈顶的例程，如果 \fIexecute\fP 非零，则可选择执行它。
+.PP
+取消清理处理程序从栈中弹出并在以下情况下执行:
+.IP \[bu] 3
+当一个线程被取消时，所有堆叠的清理处理程序都会弹出并按照它们被压入栈的顺序相反的顺序执行。
+.IP \[bu]
+当线程通过调用 \fBpthread_exit\fP(3) 终止时，所有清理处理程序都将按照前一点所述执行。 (如果线程通过从线程开始执行 \fIreturn\fP
+终止，则调用 \fInot\fP 清理处理程序。)
+.IP \[bu]
+当线程使用非零 \fIexecute\fP 参数调用 \fBpthread_cleanup_pop\fP() 时，弹出并执行最顶层的清理处理程序。
+.PP
+POSIX.1 允许将 \fBpthread_cleanup_push\fP() 和 \fBpthread_cleanup_pop\fP() 实现为分别扩展为包含
+\[aq]\fB{\fP\[aq] 和 \[aq]\fB}\fP\[aq] 的文本的宏。
+出于这个原因，调用者必须确保对这些函数的调用在同一个函数中配对，并且在相同的词法嵌套级别。 (换句话说，清理处理程序仅在执行指定代码段期间建立。)
+.PP
+如果对 \fBpthread_cleanup_push\fP() 或 \fBpthread_cleanup_pop\fP()
+进行了任何调用而没有对的匹配调用，则调用 \fBlongjmp\fP(3) (\fBsiglongjmp\fP(3)) 会产生未定义的结果，因为跳转缓冲区已被
+\fBsetjmp\fP(3) (\fBsigsetjmp\fP(3)) 填充。 同样，从清理处理程序内部调用 \fBlongjmp\fP(3)
+(\fBsiglongjmp\fP(3)) 会产生未定义的结果，除非跳转缓冲区也由处理程序内部的 \fBsetjmp\fP(3) (\fBsigsetjmp\fP(3))
+填充。
+.SH "RETURN VALUE"
+这些函数不返回值。
+.SH ERRORS
+.\" SH VERSIONS
+.\" Available since glibc 2.0
+没有错误。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_cleanup_push\fP(),
+\fBpthread_cleanup_pop\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在 Linux 上，\fBpthread_cleanup_push\fP() 和 \fBpthread_cleanup_pop\fP() 函数 \fIare\fP
+实现为分别扩展为包含 \[aq]\fB{\fP\[aq] 和 \[aq]\fB}\fP\[aq] 的文本的宏。
+这意味着在对这些函数的成对调用的作用域内声明的变量将仅在该作用域内可见。
+.PP
+.\" The text was actually added in the 2004 TC2
+POSIX.1 表示使用 \fIreturn\fP、\fIbreak\fP、\fIcontinue\fP 或 \fIgoto\fP 过早地离开方括号
+\fBpthread_cleanup_push\fP() 和 \fBpthread_cleanup_pop\fP() 的块的效果是未定义的。
+便携式应用程序应避免这样做。
+.SH EXAMPLES
+下面的程序提供了一个使用本页中描述的函数的简单示例。 该程序创建一个线程，该线程执行由 \fBpthread_cleanup_push\fP() 和
+\fBpthread_cleanup_pop\fP() 括起来的循环。 此循环每秒递增一个全局变量 \fIcnt\fP 一次。
+根据提供的命令行参数，主线程向另一个线程发送取消请求，或设置一个全局变量，使另一个线程退出其循环并正常终止 (通过执行 \fIreturn\fP).
+.PP
+在下面的 shell 会话中，主线程向另一个线程发送取消请求:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+新话题开始了
+cnt = 0 
+cnt = 1
+取消线程
+调用清理处理程序
+线程被取消; cnt = 0
+.EE
+.in
+.PP
+从上面，我们看到线程被取消了，并且调用了取消清理处理程序并将全局变量 \fIcnt\fP 的值重置为 0.
+.PP
+在接下来的运行中，主程序设置一个全局变量，使其他线程正常终止:
+.PP
+.in +4n
+.EX
+$ \fB./a.out x\fP
+新话题开始了
+cnt = 0
+cnt = 1
+线程正常终止; cnt = 2
+.EE
+.in
+.PP
+从上面我们可以看出，清理处理程序没有被执行 (因为 \fIcleanup_pop_arg\fP 为 0)，因此 \fIcnt\fP 的值没有被重置。
+.PP
+在下一次运行中，主程序设置一个使另一个线程正常终止的全局变量，并为 \fIcleanup_pop_arg\fP: 提供一个非零值
+.PP
+.in +4n
+.EX
+$ \fB./a.out x 1\fP
+新话题开始了
+cnt = 0 
+cnt = 1
+调用清理处理程序
+线程正常终止; cnt = 0
+.EE
+.in
+.PP
+在上面，我们看到虽然线程没有被取消，但是清理处理程序被执行了，因为给 \fBpthread_cleanup_pop\fP() 的参数是非零的。
+.SS "Program source"
+.\" SRC BEGIN (pthread_cleanup_push.c)
+\&
+.EX
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#define handle_error_en(en, msg) \e
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static int done = 0;
+static int cleanup_pop_arg = 0;
+static int cnt = 0;
+
+static void
+cleanup_handler(void *arg)
+{
+    printf("Called clean\-up handler\en");
+    cnt = 0;
+}
+
+static void *
+thread_start(void *arg)
+{
+    当前时间;
+
+    printf("New thread started\en");
+
+    pthread_cleanup_push(cleanup_handler, NULL);
+
+    curr = time(NULL);
+
+    while (!done) {
+        pthread_testcancel();           /* A cancelation point */
+        if (curr < time(NULL)) {
+            curr = time(NULL);
+            printf("cnt = %d\en", cnt);  /* A cancelation point */
+            cnt++;
+        }
+    }
+
+    pthread_cleanup_pop(cleanup_pop_arg);
+    return NULL;
+}
+
+int
+main(int argc, char *argv[])
+{
+    pthread_t thr;
+    int s;
+    void *res;
+
+    s = pthread_create(&thr, NULL, thread_start, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_create");
+
+    sleep(2);           /* Allow new thread to run a while */
+
+    if (argc > 1) {
+        if (argc > 2)
+            cleanup_pop_arg = atoi(argv[2]);
+        done = 1;
+
+    } else {
+        printf("Canceling thread\en");
+        s = pthread_cancel(thr);
+        if (s != 0)
+            handle_error_en(s, "pthread_cancel");
+    }
+
+    s = pthread_join(thr, &res);
+    if (s != 0)
+        handle_error_en(s, "pthread_join");
+
+    if (res == PTHREAD_CANCELED)
+        printf("Thread was canceled; cnt = %d\en", cnt);
+    else
+        printf("Thread terminated normally; cnt = %d\en", cnt);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBpthread_cancel\fP(3), \fBpthread_cleanup_push_defer_np\fP(3),
+\fBpthread_setcancelstate\fP(3), \fBpthread_testcancel\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

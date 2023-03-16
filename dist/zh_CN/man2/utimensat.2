@@ -1,0 +1,355 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2008, Linux Foundation, written by Michael Kerrisk
+.\" <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH utimensat 2 2023\-02\-12 "Linux man\-pages 6.03" 
+.SH NAME
+utimensat, futimens \- 以纳秒精度更改文件时间戳
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP            /* Definition of \fBAT_*\fP constants */
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint utimensat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB,\fP
+\fB              const struct timespec \fP\fItimes\fP\fB[_Nullable 2], int \fP\fIflags\fP\fB);\fP
+\fBint futimens(int \fP\fIfd\fP\fB, const struct timespec \fP\fItimes\fP\fB[_Nullable 2]);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fButimensat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.PP
+\fBfutimens\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fButimensat\fP() 和 \fBfutimens\fP() 以纳秒精度更新文件的时间戳。 这与历史上的 \fButime\fP(2) 和
+\fButimes\fP(2) 形成对比，后者在设置文件时间戳时分别只允许秒级和微秒级精度。
+.PP
+对于 \fButimensat\fP()，文件是通过 \fIpathname\fP 中给出的路径名指定的。 对于
+\fBfutimens\fP()，要更新时间戳的文件是通过打开的文件描述符 \fIfd\fP 指定的。
+.PP
+对于这两个调用，新的文件时间戳在数组中指定 \fItimes\fP: \fItimes[0]\fP 指定新的 "last access time"
+(\fIatime\fP); \fItimes[1]\fP 指定新的 "last modification time" (\fImtime\fP)。 \fItimes\fP
+的每个元素都将时间指定为自纪元 1970\-01\-01 00:00:00 +0000 (UTC) 以来的秒数和纳秒数。 此信息在
+\fBtimespec\fP(3) 结构体中传达。
+.PP
+更新的文件时间戳设置为文件系统支持的不大于指定时间的最大值。
+.PP
+.\" 2.6.22 was broken: it is not ignored
+如果 \fItimespec\fP 结构之一的 \fItv_nsec\fP 字段具有特殊值 \fBUTIME_NOW\fP，则相应的文件时间戳设置为当前时间。 如果
+\fItimespec\fP 结构之一的 \fItv_nsec\fP 字段具有特殊值 \fBUTIME_OMIT\fP，则相应的文件时间戳保持不变。 在这两种情况下，相应
+\fItv_sec\fP 字段的值都将被忽略。
+.PP
+.\"
+如果 \fItimes\fP 为 NULL，则两个时间戳都设置为当前时间。
+.PP
+状态更改时间 (ctime) 将设置为当前时间，即使其他时间戳实际上没有更改。
+.SS "Permissions requirements"
+要将两个文件时间戳都设置为当前时间 (即，\fItimes\fP 为 NULL，或者两个 \fItv_nsec\fP 字段都指定 \fBUTIME_NOW\fP)，可以:
+.IP \[bu] 3
+.\" 2.6.22 was broken here -- for futimens() the check is
+.\" based on whether or not the file descriptor is writable,
+.\" not on whether the caller's effective UID has write
+.\" permission for the file referred to by the descriptor.
+调用者必须对文件有写权限;
+.IP \[bu]
+调用者的有效用户 ID 必须与文件的所有者相匹配; or
+.IP \[bu]
+调用者必须有适当的权限。
+.PP
+.\" 2.6.22 was broken here:
+.\" both must be something other than *either* UTIME_OMIT *or* UTIME_NOW.
+除了将两个时间戳设置为当前时间 (即，\fItimes\fP 不为 NULL，\fItv_nsec\fP 字段都不是 \fBUTIME_NOW\fP，\fItv_nsec\fP
+字段都不是 \fBUTIME_OMIT\fP)) 之外，要进行任何更改，必须应用上述条件 2 或 3。
+.PP
+.\"
+.\"
+如果两个 \fItv_nsec\fP 字段都指定为
+\fBUTIME_OMIT\fP，则不执行文件所有权或权限检查，并且不修改文件时间戳，但仍可能检测到其他错误情况。
+.SS "utimensat() specifics"
+如果 \fIpathname\fP 是相对的，则默认情况下它被解释为相对于打开的文件描述符 \fIdirfd\fP 所引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fButimes\fP(2) 对相对路径名所做的那样)。 请参见 \fBopenat\fP(2) 以了解为什么这很有用。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fButimes\fP(2)).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+\fIflags\fP 字段是一个位掩码，可以为 0，或包括以下常量，在 \fI<fcntl.h>\fP: 中定义
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+如果 \fIpathname\fP 指定一个符号链接，则更新链接的时间戳，而不是它所引用的文件。
+.SH "RETURN VALUE"
+成功时，\fButimensat\fP() 和 \fBfutimens\fP() 返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+.\" But Linux 2.6.22 was broken here.
+.\" Traditionally, utime()/utimes() gives the error EACCES for the case
+.\" where the timestamp pointer argument is NULL (i.e., set both timestamps
+.\" to the current time), and the file is owned by a user other than the
+.\" effective UID of the caller, and the file is not writable by the
+.\" effective UID of the program.  utimensat() also gives this error in the
+.\" same case.  However, in the same circumstances, when utimensat() is
+.\" given a 'times' array in which both tv_nsec fields are UTIME_NOW, which
+.\" provides equivalent functionality to specifying 'times' as NULL, the
+.\" call succeeds.  It should fail with the error EACCES in this case.
+.\"
+.\" POSIX.1-2008 has the following:
+.\" .TP
+.\" .B EACCES
+.\" .RB ( utimensat ())
+.\" .I fd
+.\" was not opened with
+.\" .B O_SEARCH
+.\" and the permissions of the directory to which
+.\" .I fd
+.\" refers do not allow searches.
+.\" EXT2_IMMUTABLE_FL and similar flags for other filesystems.
+\fItimes\fP 为 NULL，或者 \fItv_nsec\fP 值均为 \fBUTIME_NOW\fP，并且调用者的有效用户 ID
+与文件所有者不匹配，调用者没有文件的写权限，调用者没有特权 (Linux: 不具有 \fBCAP_FOWNER\fP 或
+\fBCAP_DAC_OVERRIDE\fP 功能)。
+.TP 
+\fBEBADF\fP
+(\fBfutimens\fP()) \fIfd\fP 不是有效的文件描述符。
+.TP 
+\fBEBADF\fP
+(\fButimensat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fItimes\fP 指向无效地址; 或者，\fIdirfd\fP 是 \fBAT_FDCWD\fP，而 \fIpathname\fP 是 NULL 或无效地址。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 中的值无效。
+.TP 
+\fBEINVAL\fP
+\fItv_nsec\fP 字段之一中的值无效 (值越界 [0, 999,999,999]，而不是 \fBUTIME_NOW\fP 或
+\fBUTIME_OMIT\fP); 或 \fItv_sec\fP 字段之一中的无效值。
+.TP 
+\fBEINVAL\fP
+.\" SUSv4 does not specify this error.
+\fIpathname\fP 为 NULL，\fIdirfd\fP 不是 \fBAT_FDCWD\fP，\fIflags\fP 包含
+\fBAT_SYMLINK_NOFOLLOW\fP。
+.TP 
+\fBELOOP\fP
+(\fButimensat\fP()) 解析 \fIpathname\fP 时遇到了太多的符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+(\fButimensat\fP()) \fIpathname\fP 太长。
+.TP 
+\fBENOENT\fP
+(\fButimensat\fP()) \fIpathname\fP 的一个组件不引用现有的目录或文件，或者 \fIpathname\fP 是一个空字符串。
+.TP 
+\fBENOTDIR\fP
+(\fButimensat\fP()) \fIpathname\fP 是相对路径名，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP
+也不是指向目录的文件描述符; 或者，\fIpathname\fP 的前缀组件之一不是目录。
+.TP 
+\fBEPERM\fP
+调用者试图将一个或两个时间戳更改为当前时间以外的值，或者将其中一个时间戳更改为当前时间而保持另一个时间戳不变，(即，\fItimes\fP 不为
+NULL，\fItv_nsec\fP 字段都不是 \fBUTIME_NOW\fP，并且 \fItv_nsec\fP 字段都不是 \fBUTIME_OMIT\fP) 并且:
+.RS
+.IP \[bu] 3
+调用者的有效用户 ID 与文件所有者不匹配，调用者没有特权 (Linux: 没有 \fBCAP_FOWNER\fP 能力) ; or,
+.IP \[bu]
+.\" Linux 2.6.22 was broken here:
+.\" it was not consistent with the old utimes() implementation,
+.\" since the case when both tv_nsec fields are UTIME_NOW, was not
+.\" treated like the (times == NULL) case.
+.\" EXT2_IMMUTABLE_FL EXT_APPEND_FL and similar flags for
+.\" other filesystems.
+.\"
+.\" Why the inconsistency (which is described under NOTES) between
+.\" EACCES and EPERM, where only EPERM tests for append-only.
+.\" (This was also so for the older utimes() implementation.)
+该文件被标记为仅，追加，或不可改变 (参见 \fBchattr\fP(1)).
+.RE
+.TP 
+\fBEROFS\fP
+该文件位于只读文件系统上。
+.TP 
+\fBESRCH\fP
+(\fButimensat\fP()) 对 \fIpathname\fP 的前缀组件之一的搜索权限被拒绝。
+.SH VERSIONS
+\fButimensat\fP() 在 Linux 2.6.22 中加入; glibc 2.6 添加了 glibc 支持。
+.PP
+对 \fBfutimens\fP() 的支持首先出现在 glibc 2.6 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fButimensat\fP(),
+\fBfutimens\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBfutimens\fP() 和 \fButimensat\fP() 在 POSIX.1\-2008 中指定。
+.SH NOTES
+\fButimensat\fP() 淘汰了 \fBfutimesat\fP(2)。
+.PP
+在 Linux 上，不能更改标记为不可更改的文件的时间戳，标记为仅，追加，的文件唯一允许的更改是将时间戳设置为当前时间。 (这与 Linux 上
+\fButime\fP(2) 和 \fButimes\fP(2) 的历史行为一致。)
+.PP
+如果两个 \fItv_nsec\fP 字段都指定为 \fBUTIME_OMIT\fP，那么即使 \fIdirfd\fP 和 \fIpathname\fP
+引用的文件不存在，\fButimensat\fP() 的 Linux 实现也会成功。
+.SS "C library/kernel ABI differences"
+在 Linux 上，\fBfutimens\fP() 是在 \fButimensat\fP() 系统调用之上实现的一个库函数。 为了支持这一点，Linux
+\fButimensat\fP() 系统调用实现了一个非标准特性: 如果 \fIpathname\fP 为 NULL，则调用修改文件描述符 \fIdirfd\fP
+引用的文件的时间戳 (它可以引用任何类型的文件)。 使用此特性调用 \fIfutimens(fd,\ times)\fP 实现为:
+.PP
+.in +4n
+.EX
+utimensat(fd, NULL, times, 0);
+.EE
+.in
+.PP
+但是请注意，\fButimensat\fP() 的 glibc 包装器不允许将 NULL 作为 \fIpathname\fP:
+的值传递，包装器函数在这种情况下返回错误 \fBEINVAL\fP。
+.SH BUGS
+在 Linux 2.6.26 之前，有几个错误影响 \fButimensat\fP() 和 \fBfutimens\fP()。 这些错误要么不符合 POSIX.1
+草案规范，要么与历史 Linux 行为不一致。
+.IP \[bu] 3
+POSIX.1 指定如果 \fItv_nsec\fP 字段之一具有值 \fBUTIME_NOW\fP 或 \fBUTIME_OMIT\fP，则应忽略相应
+\fItv_sec\fP 字段的值。 相反，\fItv_sec\fP 字段的值需要为 0 (或错误 \fBEINVAL\fP 结果)。
+.IP \[bu]
+.\" Below, the long description of the errors from the previous bullet
+.\" point (abridged because it's too much detail for a man page).
+.\" .IP *
+.\" If one of the
+.\" .I tv_nsec
+.\" fields is
+.\" .BR UTIME_OMIT
+.\" and the other is
+.\" .BR UTIME_NOW ,
+.\" then the error
+.\" .B EPERM
+.\" should occur if the process's effective user ID does not match
+.\" the file owner and the process is not privileged.
+.\" Instead, the call successfully changes one of the timestamps.
+.\" .IP *
+.\" If file is not writable by the effective user ID of the process and
+.\" the process's effective user ID does not match the file owner and
+.\" the process is not privileged,
+.\" and
+.\" .I times
+.\" is NULL, then the error
+.\" .B EACCES
+.\" results.
+.\" This error should also occur if
+.\" .I times
+.\" points to an array of structures in which both
+.\" .I tv_nsec
+.\" fields are
+.\" .BR UTIME_NOW .
+.\" Instead the call succeeds.
+.\" .IP *
+.\" If a file is marked as append-only (see
+.\" .BR chattr (1)),
+.\" then Linux traditionally
+.\" (i.e.,
+.\" .BR utime (2),
+.\" .BR utimes (2)),
+.\" permits a NULL
+.\" .I times
+.\" argument to be used in order to update both timestamps to the current time.
+.\" For consistency,
+.\" .BR utimensat ()
+.\" and
+.\" .BR futimens ()
+.\" should also produce the same result when given a
+.\" .I times
+.\" argument that points to an array of structures in which both
+.\" .I tv_nsec
+.\" fields are
+.\" .BR UTIME_NOW .
+.\" Instead, the call fails with the error
+.\" .BR EPERM .
+.\" .IP *
+.\" If a file is marked as immutable (see
+.\" .BR chattr (1)),
+.\" then Linux traditionally
+.\" (i.e.,
+.\" .BR utime (2),
+.\" .BR utimes (2)),
+.\" gives an
+.\" .B EACCES
+.\" error if
+.\" .I times
+.\" is NULL.
+.\" For consistency,
+.\" .BR utimensat ()
+.\" and
+.\" .BR futimens ()
+.\" should also produce the same result when given a
+.\" .I times
+.\" that points to an array of structures in which both
+.\" .I tv_nsec
+.\" fields are
+.\" .BR UTIME_NOW .
+.\" Instead, the call fails with the error
+.\" .BR EPERM .
+各种错误意味着出于权限检查的目的，两个 \fItv_nsec\fP 字段都设置为 \fBUTIME_NOW\fP 的情况并不总是与将 \fItimes\fP 指定为
+NULL 相同，并且 \fItv_nsec\fP 值是 \fBUTIME_NOW\fP 另一个是 \fBUTIME_OMIT\fP 的情况不是 ' t 的处理方式与将
+\fItimes\fP 指定为指向包含任意时间值的结构数组的指针相同。 因此，在某些情况下: a) 文件时间戳可以由不应具有执行更新权限的进程更新; b)
+文件时间戳不能被应该有权执行更新的进程更新; c) 出错时返回错误的 \fIerrno\fP 值。
+.IP \[bu]
+.\" This means that a process with a file descriptor that allows
+.\" writing could change the timestamps of a file for which it
+.\" does not have write permission;
+.\" conversely, a process with a read-only file descriptor won't
+.\" be able to update the timestamps of a file,
+.\" even if it has write permission on the file.
+POSIX.1 表示具有 \fIwrite access to the file\fP 的进程可以使用 \fItimes\fP 为 NULL，或者 \fItimes\fP
+指向一个结构数组，其中两个 \fItv_nsec\fP 字段都是 \fBUTIME_NOW\fP，以便将两个时间戳更新为当前时间。 但是，\fBfutimens\fP()
+反而会检查 \fIaccess mode of the file descriptor allows writing\fP.
+.SH "SEE ALSO"
+\fBchattr\fP(1), \fBtouch\fP(1), \fBfutimesat\fP(2), \fBopenat\fP(2), \fBstat\fP(2),
+\fButimes\fP(2), \fBfutimes\fP(3), \fBtimespec\fP(3), \fBinode\fP(7),
+\fBpath_resolution\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

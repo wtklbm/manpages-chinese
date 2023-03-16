@@ -1,0 +1,263 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-JOURNAL\-GATEWAYD\&.SERVICE 8 "" "systemd 253" systemd\-journal\-gatewayd.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-journal\-gatewayd.service, systemd\-journal\-gatewayd.socket,
+systemd\-journal\-gatewayd \- 日志事件的 HTTP 服务器
+.SH SYNOPSIS
+.PP
+systemd\-journal\-gatewayd\&.service
+.PP
+systemd\-journal\-gatewayd\&.socket
+.HP \w'\fB/usr/lib/systemd/systemd\-journal\-gatewayd\fR\ 'u
+\fB/usr/lib/systemd/systemd\-journal\-gatewayd\fP [OPTIONS...]
+.SH DESCRIPTION
+.PP
+\fBsystemd\-journal\-gatewayd\fP 通过网络提供日志事件 \&。客户端必须使用 HTTP\& 进行连接。服务器默认监听 19531
+端口 \&。如果指定了 \fB\-\-cert=\fP，则服务器需要 HTTPS 连接 \&。
+.PP
+该程序由 \fBsystemd\fP(1) 启动并期望接收单个套接字 \&。使用 \fBsystemctl start systemd\-journal\-gatewayd\&.socket\fP 启动服务，使用 \fBsystemctl enable systemd\-journal\-gatewayd\&.socket\fP 让它在启动时启动 \&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-cert=\fP
+.RS 4
+指定文件或 \fBAF_UNIX\fP 流套接字的路径以从 \& 读取服务器证书。证书必须是 PEM 格式 \&。该选项将
+\fBsystemd\-journal\-gatewayd\fP 切换为 HTTPS 模式，必须与 \fB\-\-key=\fP\& 一起使用。
+.RE
+.PP
+\fB\-\-key=\fP
+.RS 4
+指定文件或 \fBAF_UNIX\fP 流套接字的路径以从 \& 读取与 \fB\-\-cert=\fP 指定的证书对应的秘密服务器密钥。密钥必须采用 PEM 格式
+\&。
+.RE
+.PP
+\fB\-\-trust=\fP
+.RS 4
+指定文件或 \fBAF_UNIX\fP 流套接字的路径以从 \& 读取 CA 证书。证书必须是 PEM 格式 \&。
+.RE
+.PP
+\fB\-\-system\fP, \fB\-\-user\fP
+.RS 4
+将提供的条目限制为来自系统服务和内核的条目，或来自当前用户服务的条目。这与 \fBjournalctl\fP(1)\& 的 \fB\-\-system\fP 和
+\fB\-\-user\fP 选项具有相同的含义。如果两者均未指定，则提供所有可访问的条目 \&。
+.RE
+.PP
+\fB\-m\fP, \fB\-\-merge\fP
+.RS 4
+提供从所有可用日志中交错的条目，包括其他机器 \&。这与 \fBjournalctl\fP(1)\& 的 \fB\-\-merge\fP 选项具有相同的含义。
+.RE
+.PP
+\fB\-D \fP\fIDIR\fP, \fB\-\-directory=\fP\fIDIR\fP
+.RS 4
+取目录路径为参数 \&。如果指定，\fBsystemd\-journal\-gatewayd\fP 将服务于指定的日志目录 \fIDIR\fP
+而不是默认的运行时和系统日志路径 \&。
+.RE
+.PP
+\fB\-\-file=\fP\fIGLOB\fP
+.RS 4
+将文件 glob 作为参数 \&。服务来自匹配 \fIGLOB\fP 的指定日志文件的条目，而不是默认的运行时和系统日志路径
+\&。可以指定多次，在这种情况下文件将适当地交错 \&。这与 \fBjournalctl\fP(1)\& 的 \fB\-\-file=\fP 选项具有相同的含义。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "SUPPORTED URLS"
+.PP
+识别以下 URL:
+.PP
+/browse
+.RS 4
+交互式浏览 \&。
+.RE
+.PP
+/entries[?option1&option2=value\&...]
+.RS 4
+检索各种格式的事件 \&。
+.sp
+HTTP 标头的 \fBAccept:\fP 部分决定格式 \&。支持的值如下所述 \&。
+.sp
+HTTP 标头的 \fBRange:\fP 部分确定返回的事件范围 \&。支持的值如下所述 \&。
+.sp
+GET 参数可以用来修改返回什么事件 \&。支持的参数描述如下 \&。
+.RE
+.PP
+/machine
+.RS 4
+返回描述机器的 JSON 结构体。
+.sp
+Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+{ "machine_id" : "8cf7ed9d451ea194b77a9f118f3dc446",
+  "boot_id" : "3d3c9efaf556496a9b04259ee35df7f7",
+  "hostname" : "fedora",
+  "os_pretty_name" : "Fedora 19 (Rawhide)",
+  "virtualization" : "kvm",
+  \&...}
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.RE
+.PP
+/fields/\fIFIELD_NAME\fP
+.RS 4
+返回日志中存在的该字段的值列表 \&。
+.RE
+.SH "ACCEPT HEADER"
+.PP
+\fBAccept: \fP\fIformat\fP
+.PP
+认可的格式:
+.PP
+\fBtext/plain\fP
+.RS 4
+默认 \&。类似系统日志的纯文本输出，每个日志条目一行 (如 \fBjournalctl \-\-output short\fP)\&.
+.RE
+.PP
+\fBapplication/json\fP
+.RS 4
+条目被格式化为 JSON 数据结构，每行一个 (如 \fBjournalctl \-\-output json\fP)\&。有关更多信息，请参见
+\m[blue]\fBJournal JSON Format\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.RE
+.PP
+\fBtext/event\-stream\fP
+.RS 4
+条目被格式化为 JSON 数据结构，以适合 \m[blue]\fBServer\-Sent Events\fP\m[]\&\s-2\u[2]\d\s+2
+的格式包装 (如 \fBjournalctl \-\-output json\-sse\fP)\&.
+.RE
+.PP
+\fBapplication/vnd\&.fdo\&.journal\fP
+.RS 4
+条目被序列化为适合备份和网络传输的二进制 (但主要是基于文本的) 流 (如 \fBjournalctl \-\-output export\fP)\&。有关更多信息，请参见 \m[blue]\fBJournal Export Format\fP\m[]\&\s-2\u[3]\d\s+2\&。
+.RE
+.SH "RANGE HEADER"
+.PP
+\fBRange: entries=\fP\fIcursor\fP\fB[[:\fP\fInum_skip\fP\fB]:\fP\fInum_entries\fP\fB]\fP
+.PP
+其中 \fIcursor\fP 是一个游标字符串，\fInum_skip\fP 是一个整数，\fInum_entries\fP 是一个无符号整数 \&。
+.PP
+范围默认为所有可用事件 \&。
+.SH "URL GET PARAMETERS"
+.PP
+以下参数可用作 URL 的一部分:
+.PP
+follow
+.RS 4
+等待新的事件 (类似 \fBjournalctl \-\-follow\fP，只是返回的事件数量没有限制) \&。
+.RE
+.PP
+discrete
+.RS 4
+测试指定的游标是否引用日志中的条目 \&。仅返回此条目 \&。
+.RE
+.PP
+boot
+.RS 4
+将事件限制为系统的当前启动 (如 \fBjournalctl \-b\fP)\&.
+.RE
+.PP
+\fIKEY\fP=\fImatch\fP
+.RS 4
+匹配期刊字段 \&。请参见 \fBsystemd.journal\-fields\fP(7)\&。
+.RE
+.SH EXAMPLES
+.PP
+从 \m[blue]\fBJournal Export Format\fP\m[]\&\s-2\u[3]\d\s+2: 中的本地日志中检索此引导的事件
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+curl \-\-silent \-H\*(AqAccept: application/vnd\&.fdo\&.journal\*(Aq \e
+       \*(Aqhttp://localhost:19531/entries?boot\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+监听核心转储:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+curl \*(Aqhttp://localhost:19531/entries?follow&MESSAGE_ID=fc2e22bc6ee647b6b90729ab34a250b1\*(Aq
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBjournalctl\fP(1), \fBsystemd.journal\-fields\fP(7),
+\fBsystemd\-journald.service\fP(8), \fBsystemd\-journal\-remote.service\fP(8),
+\fBsystemd\-journal\-upload.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+日志 JSON 格式
+.RS 4
+\%https://systemd.io/JOURNAL_EXPORT_FORMATS#journal\-json\-format
+.RE
+.IP " 2." 4
+服务器发送的事件
+.RS 4
+\%https://developer.mozilla.org/en\-US/docs/Server\-sent_events/Using_server\-sent_events
+.RE
+.IP " 3." 4
+期刊导出格式
+.RS 4
+\%https://systemd.io/JOURNAL_EXPORT_FORMATS#journal\-export\-format
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

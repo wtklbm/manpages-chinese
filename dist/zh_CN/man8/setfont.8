@@ -1,0 +1,159 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SETFONT 8 "11 Feb 2001" kbd 
+.SH NAME
+setfont \- 加载 EGA/VGA 控制台屏幕字体
+.SH SYNOPSIS
+\fBsetfont\fP [\fB\-O\fP \fIfont+umap.orig\fP] [\fB\-o\fP \fIfont.orig\fP] [\fB\-om\fP
+\fIcmap.orig\fP] [\fB\-ou\fP \fIumap.orig\fP] [\fB\-\fP\fIN\fP] [\fIfont.new ..." ]\fP [\fB\-m\fP
+\fIcmap\fP] [\fB\-u\fP \fIumap\fP] [\fB\-C\fP \fIconsole\fP] [\fB\-h\fP\fIH\fP] [\fB\-f\fP] [\fB\-v\fP]
+[\fB\-V\fP]
+.IX "setfont command" "" "\fLsetfont\fR command"
+.SH DESCRIPTION
+\fBsetfont\fP 命令从文件 \fIfont.new\fP 中读取一种字体并将其加载到 EGA/VGA 字符生成器中，并可选择输出以前的字体。
+它还可以加载各种映射表并输出以前的版本。
+.LP
+如果没有给出参数 (或者只有 \-\fIN\fP 选项用于某些数字 \fIN\fP)，则加载默认的 (8x\fIN\fP) 字体 (见下文)。
+一个人可能会给出几个小字体，都包含一个 Unicode 表，\fBsetfont\fP 会将它们组合起来并加载 union。 典型用途:
+.TP 
+\fBsetfont\fP
+加载默认字体。
+.TP 
+\fBsetfont drdos8x16\fP
+加载给定的字体 (这里是 448 字形的 drdos 字体)。
+.TP 
+\fBsetfont cybercafe \-u cybercafe\fP
+加载没有 Unicode map 的给定字体并明确提供一个。
+.TP 
+\fBsetfont LatArCyrHeb\-19 \-m 8859\-2\fP
+加载一个给定的字体 (这里是一个 512 字形的字体，结合了几个字符集) 并指出一个人的本地字符集是 ISO 8859\-2。
+.LP
+Note: 如果字体有超过 256 个字形，则只能同时使用 16 种颜色中的 8 种。它会使控制台的感知变得更糟 (强度损失甚至一些颜色)。
+
+.SH "FONT FORMATS"
+标准的 Linux 字体格式是 PSF 字体。 它有一个描述字体属性 (如字符大小) 的标题，后面是字形位图，可选地后跟一个 Unicode
+映射表，为每个字形提供 Unicode 值。 可以识别其他几种 (obsolete) 字体格式。 如果输入文件具有代码页格式 (可能带有后缀
+\&.cp)，包含三种字体，大小为 8x8、8x14 和 8x16，则必须使用 \-8 或 \-14 或 \-16 选项之一来选择一个。 原始字体文件是大小为
+256*\fIN\fP 字节的二进制文件，包含 256 个字符中每个字符的位图，每个扫描行一个字节，每个字符 \fIN\fP 字节 (0 < \fIN\fP
+<= 32)。 大多数字体的宽度为 8 位，但对于帧缓冲设备 (fb)，可以使用其他宽度。
+
+.SH "FONT HEIGHT"
+程序 \fBsetfont\fP 没有内置的 VGA 视频模式知识，只是要求内核加载带有特定位图的视频卡的字符 ROM。但是，由于 Linux 1.3.1
+内核对 EGA/VGA 视频模式的了解足够多，因此可以选择不同的线距。默认字符高度将为从字体推断或由选项指定的数字 \fIN\fP。但是，用户可以使用
+\fI\-h\fP 选项指定不同的字符高度 \fIH\fP。
+
+.SH "CONSOLE MAPS"
+从用户程序输出到控制台显示的路径中涉及多个映射。如果控制台处于 utf8 模式 (请参见
+\fBunicode_start\fP(1))，则内核期望用户程序输出编码为 UTF\-8 (请参见 \fButf\-8\fP(7))，并将其转换为 Unicode
+(ucs2)。 否则，使用从 8 位程序输出到 16 位 Unicode 值的转换表。这样的转换表称为 \fIUnicode console map\fP。
+其中有四个: 三个内置于内核中，第四个可使用 \fBsetfont\fP 的 \fI\-m\fP 选项设置。 转义序列在这四个表之间进行选择; 加载 \fIcmap\fP
+后，\fBsetfont\fP 将输出转义序列 Esc (K 使其成为活动翻译。
+.LP
+适用于 \fI\-m\fP 选项的参数有 \fI8859\-1\fP、\fI8859\-2\fP、...、\fI8859\-15\fP、\fIcp437\fP、...、\fIcp1250\fP。
+.LP
+给定要显示的符号的 Unicode 值，内核使用字体的 Unicode 映射信息在字体中找到正确的字形并显示它。
+.LP
+旧字体没有 Unicode 映射信息，为了处理它们，有直接到字体的 maps (也使用 \fI\-m\fP) 加载，它给出了用户字节和字体位置之间的对应关系。
+最常见的对应关系是文件 \fItrivial\fP 中给出的对应关系 (其中用户字节值直接用作字体位置)。 有时其他对应关系更可取，因为 PC
+视频硬件需要某些字体位置的线条图字符。
+.LP
+给出 \fI\-m none\fP 参数会禁止加载和激活映射表。 可以使用 \fI\-om file\fP 选项将以前的控制台 map 保存到文件中。 setfont
+的这些选项使 \fBmapscrn\fP(8) 过时。(但是，阅读该手册页可能会有用。)
+
+.SH "UNICODE FONT MAPS"
+字体中的字形与 Unicode 值之间的对应关系由 Unicode 映射表描述。 许多字体在字体文件中包含一个 Unicode 映射表，可以使用
+\fI\-u\fP 选项指示一个明确的表。程序 \fBsetfont\fP 将加载这样一个 Unicode 映射表，除非给出 \fI\-u none\fP 参数。当使用 \-O
+选项时，先前的 Unicode 映射表将作为保存字体文件的一部分保存。可以使用 \fI\-ou file\fP 选项将其保存到单独的文件中。 setfont
+的这些选项使 \fBloadunimap\fP(8) 过时。
+.LP
+Unicode 映射表应该将一些字形分配给 `缺失字符` 值 U+fffd，否则缺失字符不会被翻译，通常会给出非常混乱的结果。
+
+通常不需要映射表，字体中已经包含一个 Unicode 映射表 (有时这由 .psfu 扩展名表示)，因此大多数用户不必担心这些映射表的确切含义和功能。
+
+可以使用 \fBpsfaddtable\fP(1) 将 Unicode 映射表添加到 psf 字体。
+
+.SH OPTIONS
+.TP 
+\fB\-h \fP\fIH\fP
+覆盖字体高度。
+.TP 
+\fB\-d\fP
+通过垂直和水平复制所有像素，使字体大小加倍。 这适用于标准字体太小不易辨认的高像素密度 (例如 "4k") 显示器。 由于内核限制，这仅适用于
+16x16 或更小的字体。
+.TP 
+\fB\-m \fP\fIfile\fP
+从 \fIfile\fP 加载控制台 map 或 Unicode 控制台 map。
+.TP 
+\fB\-o \fP\fIfile\fP
+将以前的字体保存在 \fIfile\fP 中。
+.TP 
+\fB\-O \fP\fIfile\fP
+在 \fIfile\fP 中保存以前的字体和 Unicode map。
+.TP 
+\fB\-om \fP\fIfile\fP
+将控制台 map 存储在 \fIfile\fP 中。
+.TP 
+\fB\-ou \fP\fIfile\fP
+在 \fIfile\fP 中保存以前的 Unicode map。
+.TP 
+\fB\-u \fP\fIfile\fP
+从 \fIfile\fP 加载描述字体的 Unicode 表。
+.TP 
+\fB\-C \fP\fIconsole\fP
+为指示的控制台设置字体。(可能需要 root 权限。)
+.TP 
+\fB\-f\fP
+强制加载 unicode map: Setfont 发出系统调用以加载 unicode map，即使指定的 map 为空。 这在特殊情况下可能很有用。
+.TP 
+\fB\-v\fP
+冗长。
+.TP 
+\fB\-V\fP
+打印版本并退出。
+
+.SH NOTE
+PC 视频硬件允许使用 "intensity" 位来指示亮度，或寻址字体中的 512 (而不是 256) 字形。因此，如果字体有超过 256
+个字形，控制台将减少到 8 种 (而不是 16 种) 颜色。
+
+.SH FILES
+.TP 
+\fI/usr/share/kbd/consolefonts\fP
+默认字体目录。
+.LP
+.TP 
+\fI/usr/share/kbd/unimaps\fP
+Unicode maps 的默认目录。
+.LP
+.TP 
+\fI/usr/share/kbd/consoletrans\fP
+屏幕映射的默认目录。
+.LP
+默认字体是文件 \fIdefault\fP (如果为某个数字 N 指定了 \-N 选项，则为 \fIdefault8x\fPN) 可能具有合适的扩展名 (如
+\&.psf)。
+.SH "SEE ALSO"
+\fBpsfaddtable\fP(1), \fBunicode_start\fP(1), \fBloadunimap\fP(8), \fButf\-8\fP(7),
+\fBmapscrn\fP(8)
+.\" .SH "AUTHORS"
+.\" Eugene G. Crosser (crosser@pccross.msk.su)
+.\" .br
+.\" Andries E. Brouwer (aeb@cwi.nl)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

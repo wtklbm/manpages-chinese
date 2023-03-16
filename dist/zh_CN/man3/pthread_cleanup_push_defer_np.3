@@ -1,0 +1,94 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_cleanup_push_defer_np 3 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_cleanup_push_defer_np、pthread_cleanup_pop_restore_np \-
+推送和弹出线程取消清理处理程序，同时保存可取消性类型
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBvoid pthread_cleanup_push_defer_np(void (*\fP\fIroutine\fP\fB)(void *), void *\fP\fIarg\fP\fB);\fP
+\fBvoid pthread_cleanup_pop_restore_np(int \fP\fIexecute\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpthread_cleanup_push_defer_np\fP(), \fBpthread_cleanup_pop_defer_np\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数与 \fBpthread_cleanup_push\fP(3) 和 \fBpthread_cleanup_pop\fP(3) 相同，除了本页上注明的差异。
+.PP
+与 \fBpthread_cleanup_push\fP(3) 一样，\fBpthread_cleanup_push_defer_np\fP() 将
+\fIroutine\fP 压入线程的取消清理处理程序栈。 此外，它还保存了线程当前的可取消类型，并将可取消类型设置为 "deferred" (见
+\fBpthread_setcanceltype\fP(3)); 这确保即使线程的可取消类型在调用之前是 "asynchronous"，也会发生取消清理。
+.PP
+与 \fBpthread_cleanup_pop\fP(3) 一样，\fBpthread_cleanup_pop_restore_np\fP()
+从线程的取消清理处理程序栈中弹出最顶层的清理处理程序。 此外，它将线程的可取消性类型恢复为其在匹配
+\fBpthread_cleanup_push_defer_np\fP() 时的值。
+.PP
+调用者必须确保对这些函数的调用在同一个函数中配对，并且在相同的词汇嵌套级别。 其他限制适用，如 \fBpthread_cleanup_push\fP(3)
+中所述。
+.PP
+这个调用序列:
+.PP
+.in +4n
+.EX
+pthread_cleanup_push_defer_np(routine, arg);
+pthread_cleanup_pop_restore_np(execute);
+.EE
+.in
+.PP
+等同于 (但更短且更有效) :
+.PP
+.\" As far as I can see, LinuxThreads reverses the two substeps
+.\" in the push and pop below.
+.in +4n
+.EX
+int oldtype;
+
+pthread_cleanup_push(routine, arg);
+pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &oldtype);
+\&...
+pthread_setcanceltype(oldtype, NULL);
+pthread_cleanup_pop(execute);
+.EE
+.in
+.\" SH VERSIONS
+.\" Available since glibc 2.0
+.SH STANDARDS
+这些函数是非标准的 GNU 扩展; 因此名称中有后缀 "_np" (nonportable)。
+.SH "SEE ALSO"
+\fBpthread_cancel\fP(3), \fBpthread_cleanup_push\fP(3),
+\fBpthread_setcancelstate\fP(3), \fBpthread_testcancel\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

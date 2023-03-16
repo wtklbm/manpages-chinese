@@ -1,0 +1,245 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH inet_net_pton 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+inet_net_pton, inet_net_ntop\-Internet 网络号转换
+.SH LIBRARY
+解析器库 (\fIlibresolv\fP、\fI\-lresolv\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <arpa/inet.h>\fP
+.PP
+\fBint inet_net_pton(int \fP\fIaf\fP\fB, const char *\fP\fIpres\fP\fB,\fP
+\fB                  void \fP\fInetp\fP\fB[.\fP\fInsize\fP\fB], size_t \fP\fInsize\fP\fB);\fP
+\fBchar *inet_net_ntop(int \fP\fIaf\fP\fB,\fP
+\fB                  const void \fP\fInetp\fP\fB[(.\fP\fIbits\fP\fB \- CHAR_BIT + 1) / CHAR_BIT],\fP
+\fB                  int \fP\fIbits\fP\fB,\fP
+\fB                  char \fP\fIpres\fP\fB[.\fP\fIpsize\fP\fB], size_t \fP\fIpsize\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBinet_net_pton\fP(), \fBinet_net_ntop\fP():
+.nf
+    由于 glibc 2.20:
+        _DEFAULT_SOURCE
+    在 glibc 2.20 之前:
+        _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数在表示 (即可打印) 格式和网络 (即二进制) 格式之间转换网络号。
+.PP
+对于任数，\fIaf\fP 指定转换的地址族; 唯一支持的值是 \fBAF_INET\fP。
+.SS inet_net_pton()
+\fBinet_net_pton\fP() 函数将 \fIpres\fP 转换为网络格式，\fIpres\fP 是一个包含表示格式的 Internet
+网络号的空终止字符串。 转换结果以网络字节顺序排列，放在 \fInetp\fP 指向的缓冲区中。 (\fInetp\fP 参数通常指向 \fIin_addr\fP
+结构体。) \fInsize\fP 参数指定 \fInetp\fP 中可用的字节数。
+.PP
+成功时，\fBinet_net_pton\fP() 返回放置在 \fInetp\fP 中的结果的网络号字段中的位数。 有关输入表示格式和返回值的讨论，请参见注释。
+.PP
+\fINote\fP: \fInetp\fP 指向的缓冲区应该在调用 \fBinet_net_pton\fP() 之前清零，因为调用只写入网络号所需的字节数 (或者
+\fIpres\fP) 明确指定的字节数，可能少于完整的网络地址。
+.SS inet_net_ntop()
+\fBinet_net_ntop\fP() 函数将 \fInetp\fP 指向的缓冲区中的网络号转换为表示格式; \fI*netp\fP 被解释为网络字节顺序的值。
+\fIbits\fP 参数指定 \fI*netp\fP 中网络号的位数。
+.PP
+以 null 结尾的表示格式字符串放置在 \fIpres\fP 指向的缓冲区中。 \fIpsize\fP 参数指定 \fIpres\fP 中可用的字节数。 表示字符串采用
+CIDR 格式: 表示网络地址的点分十进制数，后跟斜杠和网络号的大小 (以位为单位)。
+.SH "RETURN VALUE"
+成功时，\fBinet_net_pton\fP() 返回网络号中的位数。 出错时，它返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+成功时，\fBinet_net_ntop\fP() 返回 \fIpres\fP。 出错时，它返回 NULL，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAFNOSUPPORT\fP
+\fIaf\fP 指定了 \fBAF_INET\fP 以外的值。
+.TP 
+\fBEMSGSIZE\fP
+输出缓冲区的大小不足。
+.TP 
+\fBENOENT\fP
+(\fBinet_net_pton\fP()) \fIpres\fP 的表示格式不正确。
+.SH STANDARDS
+\fBinet_net_pton\fP() 和 \fBinet_net_ntop\fP() 函数是非标准的，但可以广泛使用。
+.SH NOTES
+.SS "Input presentation format for inet_net_pton()"
+网络号可以指定为十六进制值或点分十进制表示法。
+.PP
+.\" If the hexadecimal string is short, the remaining nibbles are zeroed.
+十六进制值由初始 "0x" 或 "0X" 表示。 十六进制数字按网络字节顺序从左到右填充网络号的半字节 (半个八位字节)。
+.PP
+在点分十进制表示法中，最多指定四个八位字节，作为由点分隔的十进制数。 因此，接受以下任何一种形式:
+.PP
+.in +4n
+.EX
+a.b.c.d
+a.b.c
+a.b
+a
+.EE
+.in
+.PP
+.\" Reading other man pages, some other implementations treat
+.\" 	'c' in a.b.c as a 16-bit number that populates right-most two bytes
+.\"     'b' in a.b as a 24-bit number that populates right-most three bytes
+每个部分都是 0 到 255 范围内的一个数字，它填充结果网络号的一个字节，从左到右，以网络字节 (大端) 顺序排列。
+如果省略一部分，则网络号中的结果字节为零。
+.PP
+对于十六进制或点分十进制格式，网络号后面可以有选择地跟一个斜杠和一个 0 到 32 范围内的数字，它指定网络号的大小 (以位为单位)。
+.SS "Return value of inet_net_pton()"
+\fBinet_net_pton\fP() 的返回值是网络号字段中的位数。 如果输入表示字符串以斜杠和显式大小值结尾，则该大小将成为
+\fBinet_net_pton\fP() 的返回值。 否则，返回值 \fIbits\fP 推断如下:
+.IP \[bu] 3
+如果网络号的最高有效字节大于或等于 240，则 \fIbits\fP 为 32。
+.IP \[bu]
+否则，如果网络号的最高有效字节大于或等于 224，则 \fIbits\fP 为 4.
+.IP \[bu]
+否则，如果网络号的最高有效字节大于或等于 192，则 \fIbits\fP 为 24。
+.IP \[bu]
+否则，如果网络号的最高有效字节大于或等于 128，则 \fIbits\fP 为 16。
+.IP \[bu]
+否则，\fIbits\fP 是 8.
+.PP
+如果上述步骤得到的 \fIbits\fP 值大于或等于 8，但网络号中指定的八位字节数超过 \fIbits/8\fP，则 \fIbits\fP
+设置为实际指定的八位字节数的 8 倍。
+.SH EXAMPLES
+下面的程序演示了 \fBinet_net_pton\fP() 和 \fBinet_net_ntop\fP() 的使用。 它使用 \fBinet_net_pton\fP()
+将其第一个命令行参数中提供的表示格式网络地址转换为二进制形式，显示 \fBinet_net_pton\fP() 的返回值。 然后它使用
+\fBinet_net_ntop\fP() 将二进制形式转换回表示格式，并显示结果字符串。
+.PP
+为了证明 \fBinet_net_pton\fP() 可能不会写入其 \fInetp\fP 参数的所有字节，该程序允许使用可选的第二个命令行参数，该数字用于在调用
+\fBinet_net_pton\fP() 之前初始化缓冲区。 作为它的最后一行输出，该程序显示 \fBinet_net_pton\fP()
+返回的缓冲区的所有字节，允许用户查看哪些字节未被 \fBinet_net_pton\fP() 触及。
+.PP
+运行示例，显示 \fBinet_net_pton\fP() 推断网络号中的位数:
+.PP
+.in +4n
+.EX
+$ \fB./a.out 193.168\fP
+inet_net_pton() 返回: 24
+inet_net_ntop() 产出: 193.168.0/24
+原始地址: c1a80000
+.EE
+.in
+.PP
+证明 \fBinet_net_pton\fP() 不会将其结果缓冲区中未使用的字节清零:
+.PP
+.in +4n
+.EX
+$ \fB./a.out 193.168 0xffffffff\fP
+inet_net_pton() 返回: 24
+inet_net_ntop() 产出: 193.168.0/24
+原始地址: c1a800ff
+.EE
+.in
+.PP
+证明如果表示字符串中提供的字节数超过推断值，\fBinet_net_pton\fP() 将扩大网络号的推断大小:
+.PP
+.in +4n
+.EX
+$ \fB./a.out 193.168.1.128\fP
+inet_net_pton() 返回: 32
+inet_net_ntop() 产出: 193.168.1.128/32
+原始地址: c1a80180
+.EE
+.in
+.PP
+显式指定网络号的大小会覆盖对其大小的任何推断 (但 \fBinet_net_pton\fP(): 仍会使用任何显式指定的额外字节来填充结果缓冲区) :
+.PP
+.in +4n
+.EX
+$ \fB./a.out 193.168.1.128/24\fP
+inet_net_pton() 返回: 24
+inet_net_ntop() yielded:  193.168.1/24
+原始地址: c1a80180
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (inet_net_pton.c)
+.EX
+/* Link with "\-lresolv" */
+
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    char buf[100];
+    struct in_addr addr;
+    int bits;
+
+    if (argc < 2) {
+        fprintf(stderr,
+                "Usage: %s presentation\-form [addr\-init\-value]\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* If argv[2] is supplied (a numeric value), use it to initialize
+       the output buffer given to inet_net_pton(), so that we can see
+       that inet_net_pton() initializes only those bytes needed for
+       the network number. If argv[2] is not supplied, then initialize
+       the buffer to zero (as is recommended practice). */
+
+    addr.s_addr = (argc > 2) ? strtod(argv[2], NULL) : 0;
+
+    /* Convert presentation network number in argv[1] to binary. */
+
+    bits = inet_net_pton(AF_INET, argv[1], &addr, sizeof(addr));
+    if (bits == \-1)
+        errExit("inet_net_ntop");
+
+    printf("inet_net_pton() returned: %d\en", bits);
+
+    /* Convert binary format back to presentation, using \[aq]bits\[aq]
+       returned by inet_net_pton(). */
+
+    if (inet_net_ntop(AF_INET, &addr, bits, buf, sizeof(buf)) == NULL)
+        errExit("inet_net_ntop");
+
+    printf("inet_net_ntop() yielded:  %s\en", buf);
+
+    /* Display \[aq]addr\[aq] in raw form (in network byte order), so we can
+       see bytes not displayed by inet_net_ntop(); some of those bytes
+       may not have been touched by inet_net_ntop(), and so will still
+       have any initial value that was specified in argv[2]. */
+
+    printf("Raw address:              %x\en", htonl(addr.s_addr));
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBinet\fP(3), \fBnetworks\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

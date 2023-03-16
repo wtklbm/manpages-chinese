@@ -1,0 +1,439 @@
+.\" -*- coding: UTF-8 -*-
+.\" (C) Copyright 1999-2000 David A. Wheeler (dwheeler@dwheeler.com)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Fragments of this document are directly derived from IETF standards.
+.\" For those fragments which are directly derived from such standards,
+.\" the following notice applies, which is the standard copyright and
+.\" rights announcement of The Internet Society:
+.\"
+.\" Copyright (C) The Internet Society (1998).  All Rights Reserved.
+.\" This document and translations of it may be copied and furnished to
+.\" others, and derivative works that comment on or otherwise explain it
+.\" or assist in its implementation may be prepared, copied, published
+.\" and distributed, in whole or in part, without restriction of any
+.\" kind, provided that the above copyright notice and this paragraph are
+.\" included on all such copies and derivative works.  However, this
+.\" document itself may not be modified in any way, such as by removing
+.\" the copyright notice or references to the Internet Society or other
+.\" Internet organizations, except as needed for the purpose of
+.\" developing Internet standards in which case the procedures for
+.\" copyrights defined in the Internet Standards process must be
+.\" followed, or as required to translate it into languages other than English.
+.\"
+.\" Modified Fri Jul 25 23:00:00 1999 by David A. Wheeler (dwheeler@dwheeler.com)
+.\" Modified Fri Aug 21 23:00:00 1999 by David A. Wheeler (dwheeler@dwheeler.com)
+.\" Modified Tue Mar 14 2000 by David A. Wheeler (dwheeler@dwheeler.com)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH uri 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+uri, url, urn \- 统一资源标识符 (URI)，包括 URL 或 URN
+.SH SYNOPSIS
+.nf
+.HP 0.2i
+URI = [ absoluteURI | relativeURI ] [ "#" fragment ]
+.HP
+absoluteURI = scheme ":" ( hierarchical_part | opaque_part )
+.HP
+relativeURI = ( net_path | absolute_path | relative_path ) [ "?" query ]
+.HP
+scheme = "http" | "ftp" | "gopher" | "mailto" | "news" | "telnet" |
+         "file" | "man" | "info" | "whatis" | "ldap" | "wais" | \&...
+.HP
+hierarchical_part = ( net_path | absolute_path ) [ "?" query ]
+.HP
+net_path = "//" authority [ absolute_path ]
+.HP
+absolute_path = "/"  path_segments
+.HP
+relative_path = relative_segment [ absolute_path ]
+.fi
+.SH DESCRIPTION
+统一资源标识符 (URI) 是识别抽象或物理资源 (例如网页) 的短字符串。 统一资源定位符 (URL) 是一个 URI，它通过其主要访问机制
+(例如，其网络 "location") 而不是通过该资源的名称或其他属性来标识资源。 统一资源名称 (URN) 是一个
+URI，即使资源不复存在或变得不可用，它也必须保持全局唯一和持久。
+.PP
+URI 是为 Web 浏览器等工具命名超文本链接目标的标准方式。 字符串 "http://www.kernel.org" 是一个 URL
+(因此它也是一个 URI)。 许多人松散地使用术语 URL 作为 URI 的同义词 (尽管从技术上讲 URL 是 URI 的子集)。
+.PP
+URI 可以是绝对的或相对的。 绝对标识符是指独立于上下文的资源，而相对标识符是通过描述与当前上下文的差异来指代资源。 在相对路径引用中，完整路径段
+"." 和 ".." 具有特殊含义: 分别为 "the current hierarchy level" 和 "the level above this
+hierarchy level"，就像它们在类 UNIX 系统中一样。 包含冒号字符的路径段不能用作相对 URI 路径 (例如 "this:that")
+的第一段，因为它会被误认为是方案名称; 在这些段之前加上 ./ (例如，"./this:that")。 请注意，MS\-DOS 的后代
+(例如，Microsoft Windows) 在 URI 中用竖线 ("|") 替换设备名称冒号，因此 "C:" 变为 "C|"。
+.PP
+片段标识符 (如果包含) 指的是资源的特定命名部分 (fragment); \[aq]#\[aq] 之后的文本标识片段。 以 \[aq]#\[aq]
+开头的 URI 指的是当前资源中的那个片段。
+.SS Usage
+有许多不同的 URI 方案，每个方案都有特定的附加规则和含义，但它们被有意地设计得尽可能相似。 例如，许多 URL 方案允许权限为以下格式，此处称为
+\fIip_server\fP (方括号表示可选内容) :
+.HP
+\fIip_server = \fP[\fIuser\fP [ : \fIpassword\fP ] @ ] \fIhost\fP [ : \fIport\fP]
+.PP
+此格式允许您有选择地插入用户名、用户加密码或者端口号。 \fIhost\fP 是主机的名称，可以是 DNS 确定的名称，也可以是 IP 地址
+(数字以句点分隔)。 因此，URI <http://fred:fredpassword@example.com:8080/> 使用端口
+8080 作为 fred (使用 fredpassword) 登录到主机 example.com 上的 Web 服务器。 尽可能避免在 URI
+中包含密码，因为写下密码会带来许多安全风险。 如果 URL 提供用户名但没有密码，而远程服务器请求密码，则解释 URL 的程序应该向用户请求密码。
+.PP
+以下是类 UNIX 系统上使用的一些最常见的方案，许多工具都可以理解这些方案。 请注意，许多使用 URI 的工具也有内部方案或专用方案;
+有关这些方案的信息，请参见这些工具的文档。
+.PP
+\fBhttp \- Web (HTTP) server\fP
+.PP
+http://\fIip_server\fP/\fIpath\fP
+.br
+http://\fIip_server\fP/\fIpath\fP?\fIquery\fP
+.PP
+这是访问 Web (HTTP) 服务器的 URL。 默认端口为 80。 如果路径指向一个目录，Web 服务器将选择返回什么; 通常，如果有名为
+"index.html" 或 "index.htm" 的文件，则返回其内容，否则，将生成并返回当前目录中的文件列表 (带有适当的链接)。 一个例子是
+<http://lwn.net>。
+.PP
+查询可以以古老的 "isindex" 格式给出，由单词或短语组成，不包括等号 (=)。 查询也可以采用较长的 "GET" 格式，其中包含一个或多个
+\fIkey\fP=\fIvalue\fP 形式的查询条目，由与字符 (&) 分隔。 请注意，\fIkey\fP 可以重复多次，尽管这取决于 Web
+服务器及其应用程序来确定它是否有任何意义。 与 HTML/XML/SGML 和 GET 查询格式有一个不幸的交互; 当此类具有多个密钥的 URI 嵌入到
+SGML/XML 文档 (包括 HTML) 中时，& 符号 (&) 必须重写为 &。 请注意，并非所有查询都使用这种格式;
+较大的表单可能太长而无法存储为 URI，因此它们使用不同的交互机制 (称为 POST)，该机制不包含 URI 中的数据。 有关详细信息，请参见
+.UR http://www.w3.org\:/CGI
+.UE
+处的通用网关接口规范。
+.PP
+\fBftp \- File Transfer Protocol (FTP)\fP
+.PP
+ftp://\fIip_server\fP/\fIpath\fP
+.PP
+这是一个通过文件传输协议 (FTP) 访问文件的 URL。 默认端口 (用于控制) 为 21。 如果没有包含用户名，则提供用户名
+"anonymous"，在这种情况下，许多客户端提供请求者的 Internet 电子邮件地址作为密码。 一个例子是
+<ftp://ftp.is.co.za/rfc/rfc1808.txt>。
+.PP
+\fBgopher \- Gopher server\fP
+.PP
+gopher://\fIip_server\fP/\fIgophertype selector\fP
+.br
+gopher://\fIip_server\fP/\fIgophertype selector\fP%09\fIsearch\fP
+.br
+gopher://\fIip_server\fP/\fIgophertype selector\fP%09\fIsearch\fP%09\fIgopher+_string\fP
+.br
+.PP
+默认的 gopher 端口是 70。 \fIgophertype\fP 是一个单字符字段，表示 URL 所指资源的 Gopher 类型。
+整个路径也可能为空，在这种情况下，分隔符 "/" 也是可选的，gophertype 默认为 "1"。
+.PP
+\fIselector\fP 是 Gopher 选择器字符串。 在 Gopher 协议中，Gopher 选择器字符串是八位字节序列，可以包含除 09 十六进制
+(US\-ASCII HT 或制表符)、0A 十六进制 (US\-ASCII 字符 LF) 和 0D (US\-ASCII 字符 CR) 之外的任何八位字节。
+.PP
+\fBmailto \- Email address\fP
+.PP
+mailto:\fIemail\-address\fP
+.PP
+这是一个电子邮件地址，通常采用 \fIname\fP@\fIhostname\fP 格式。 有关电子邮件地址正确格式的更多信息，请参见
+\fBmailaddr\fP(7)。 请注意，任何 % 字符都必须重写为 %25。 一个例子是
+<mailto:dwheeler@dwheeler.com>。
+.PP
+\fBnews \- Newsgroup or News message\fP
+.PP
+news:\fInewsgroup\-name\fP
+.br
+news:\fImessage\-id\fP
+.PP
+\fInewsgroup\-name\fP 是一个以句点分隔的分层名称，例如 "comp.infosystems.www.misc"。 如果
+<newsgroup\-name> 为 "*" (如 <news:*>)，则用来指代 "all available
+news groups"。 一个例子是 <news:comp.lang.ada>。
+.PP
+\fImessage\-id\fP 对应于
+.UR http://www.ietf.org\:/rfc\:/rfc1036.txt
+IETF
+RFC\1036 的 Message\-ID，
+.UE
+没有封闭的 "<" 和 ">"; 它采用
+\fIunique\fP@\fIfull_domain_name\fP 的形式。 消息标识符可以通过 "@" 字符的存在与新闻组名称区分开来。
+.PP
+\fBtelnet \- Telnet login\fP
+.PP
+telnet://\fIip_server\fP/
+.PP
+Telnet URL 方案用于指定可以通过 Telnet 协议访问的交互式文本服务。 最后的 "/" 字符可以省略。 默认端口为 23。 一个例子是
+<telnet://melvyl.ucop.edu/>。
+.PP
+\fBfile \- Normal file\fP
+.PP
+file://\fIip_server\fP/\fIpath_segments\fP
+.br
+file:\fIpath_segments\fP
+.PP
+这表示本地可访问的文件或目录。 作为一种特殊情况，\fIip_server\fP 可以是字符串 "localhost" 或空字符串; 这被解释为 "the
+machine from which the URL is being interpreted"。
+如果路径指向一个目录，查看器应该显示目录的内容以及指向每个容器的链接; 目前并非所有观众都这样做。 KDE 支持通过 URL
+<file:/cgi\-bin> 生成的文件。 如果给定的文件没有找到，浏览器 writers 可能想尝试通过文件名通配扩展文件名 (参见
+\fBglob\fP(7) 和 \fBglob\fP(3)).
+.PP
+第二种格式 (例如，<file:/etc/passwd>) 是引用本地文件的正确格式。
+然而，旧的标准不允许这种格式，并且一些程序不将其识别为 URI。 更可移植的语法是使用空字符串作为服务器名称，例如
+<file:///etc/passwd>; 这种形式做同样的事情，并且很容易被模式匹配器和旧程序识别为 URI。 请注意，如果您真的想说
+"start from the current location"，则根本不要指定方案; 使用像 <../test.txt>
+这样的相对地址，它具有独立于方案的副作用。 这种方案的一个例子是 <file:///etc/passwd>。
+.PP
+\fBman \- Man page documentation\fP
+.PP
+man:\fIcommand\-name\fP
+.br
+man:\fIcommand\-name\fP(\fIsection\fP)
+.PP
+这是指本地在线手册 (man) 引用页。 命令名称后面可以有选择地跟一个括号和节号; 有关章节编号含义的更多信息，请参见 \fBman\fP(7)。 这个
+URI scheme 是类 UNIX 系统 (比如 Linux) 特有的，目前还没有被 IETF 注册。 一个例子是
+<man:ls(1)>。
+.PP
+\fBinfo \- Info page documentation\fP
+.PP
+info:\fIvirtual\-filename\fP
+.br
+info:\fIvirtual\-filename\fP#\fInodename\fP
+.br
+info:(\fIvirtual\-filename\fP)
+.br
+info:(\fIvirtual\-filename\fP)\fInodename\fP
+.PP
+该方案引用在线信息引用页面 (从 texinfo 文件生成)，这是 GNU 工具等程序使用的一种文档格式。 这个 URI scheme 是类 UNIX
+系统 (比如 Linux) 特有的，目前还没有被 IETF 注册。 在撰写本文时，GNOME 和 KDE 的 URI 语法不同，并且不接受对方的语法。
+前两种格式是 GNOME 格式; 在节点名中，所有空格都写为下划线。 后两种格式是 KDE 格式; 节点名中的空格必须写成空格，即使 URI
+标准禁止这样做。 希望 future 中的大多数工具能够理解所有这些格式，并且始终接受节点名中空格的下划线。 在 GNOME 和 KDE
+中，如果使用不带节点名的形式，则假定节点名是 "Top"。 GNOME 格式的示例是 <info:gcc> 和
+<info:gcc#G++_and_GCC>。 KDE 格式的示例是
+<info:(gcc)>、<info:(gcc)G++ 和 GCC>。
+.PP
+\fBwhatis \- Documentation search\fP
+.PP
+whatis:\fIstring\fP
+.PP
+该方案搜索命令的简短 (one\-line) 描述的数据库，并返回包含该字符串的描述列表。 只返回完整的单词匹配。 请参见 \fBwhatis\fP(1)。
+这个 URI scheme 是类 UNIX 系统 (比如 Linux) 特有的，目前还没有被 IETF 注册。
+.PP
+\fBghelp \- GNOME help documentation\fP
+.PP
+ghelp:\fIname\-of\-application\fP
+.PP
+这会加载给定应用程序的 GNOME 帮助。 请注意，目前这种格式的文档不多。
+.PP
+\fBldap \- Lightweight Directory Access Protocol\fP
+.PP
+ldap://\fIhostport\fP
+.br
+ldap://\fIhostport\fP/
+.br
+ldap://\fIhostport\fP/\fIdn\fP
+.br
+ldap://\fIhostport\fP/\fIdn\fP?\fIattributes\fP
+.br
+ldap://\fIhostport\fP/\fIdn\fP?\fIattributes\fP?\fIscope\fP
+.br
+ldap://\fIhostport\fP/\fIdn\fP?\fIattributes\fP?\fIscope\fP?\fIfilter\fP
+.br
+ldap://\fIhostport\fP/\fIdn\fP?\fIattributes\fP?\fIscope\fP?\fIfilter\fP?\fIextensions\fP
+.PP
+该方案支持对轻量级目录访问协议 (LDAP) 的查询，该协议用于查询一组服务器以获取分层组织的信息 (例如人员和计算资源)。 有关 LDAP URL
+方案的更多信息，请参见
+.UR http://www.ietf.org\:/rfc\:/rfc2255.txt
+RFC\2255
+.UE
+。
+该 URL 的组成部分是:
+.TP 
+hostport
+要查询的 LDAP 服务器，写为主机名，可选地后跟冒号和端口号。 默认的 LDAP 端口是 TCP 端口 389。 如果为空，则客户端确定要使用哪个
+LDAP 服务器。
+.TP 
+dn
+LDAP 可分辨名称，它标识 LDAP 搜索的基本对象 (请参见
+.UR http://www.ietf.org\:/rfc\:/rfc2253.txt
+RFC\2253
+.UE
+第 3 节)。
+.TP 
+attributes
+要返回的以逗号分隔的属性列表; 请参见 RFC\2251 部分 4.1.5。 如果省略，则应返回所有属性。
+.TP 
+scope
+指定搜索的作用域，可以是 "base" (用于基础对象搜索)、"one" (用于单级搜索) 或 "sub" (用于子树搜索) 之一。
+如果省略作用域，则假定为 "base"。
+.TP 
+filter
+指定搜索过滤器 (要返回的条目子集)。 如果省略，则应返回所有条目。 请参见
+.UR http://www.ietf.org\:/rfc\:/rfc2254.txt
+RFC\2254
+.UE
+部分 4.
+.TP 
+extensions
+逗号分隔的 type=value 对列表，对于不需要它的选项，可以省略 = value 部分。 以 \[aq]!\[aq] 为前缀的扩展名是关键的
+(必须支持才有效)，否则它是非关键的 (optional)。
+.PP
+LDAP 查询最容易通过示例进行解释。 这是一个向 ldap.itd.umich.edu 询问美国密歇根大学信息的查询:
+.PP
+.nf
+ldap://ldap.itd.umich.edu/o=University%20of%20Michigan,c=US
+.fi
+.PP
+要获取其邮政地址属性，请请求:
+.PP
+.nf
+ldap://ldap.itd.umich.edu/o=University%20of%20Michigan,c=US?postalAddress
+.fi
+.PP
+要在端口 6666 向 host.com 询问有关密歇根大学普通姓名为 (cn) "Babs Jensen" 的人的信息，请请求:
+.PP
+.nf
+ldap://host.com:6666/o=University%20of%20Michigan,c=US??sub?(cn=Babs%20Jensen)
+.fi
+.PP
+\fBwais \- Wide Area Information Servers\fP
+.PP
+wais://\fIhostport\fP/\fIdatabase\fP
+.br
+wais://\fIhostport\fP/\fIdatabase\fP?\fIsearch\fP
+.br
+wais://\fIhostport\fP/\fIdatabase\fP/\fIwtype\fP/\fIwpath\fP
+.PP
+此方案指定 WAIS 数据库、搜索或文档 (有关 WAIS 的更多信息，请参见
+.UR http://www.ietf.org\:/rfc\:/rfc1625.txt
+IETF RFC\1625
+.UE
+)。 Hostport
+是主机名，可以选择后跟冒号和端口号 (默认端口号是 210)。
+.PP
+第一种形式指定用于搜索的 WAIS 数据库。 第二种形式指定对 WAIS 数据库 \fIdatabase\fP 的特定搜索。 第三种形式指定要检索的 WAIS
+数据库中的特定文档。 \fIwtype\fP 是对象类型的 WAIS 标识，\fIwpath\fP 是 WAIS 文档 ID。
+.PP
+\fBother schemes\fP
+.PP
+还有许多其他 URI 方案。 大多数接受 URI 的工具都支持一组内部 URI (例如，Mozilla 有 about: 用于内部信息的方案，而
+GNOME 帮助浏览器有 toc: 用于各种起始位置的方案)。 有许多已经定义但目前没有广泛使用的方案 (例如，prospero)。 nntp:
+方案已弃用，取而代之的是 news: 方案。 URN 将由 urn: 方案支持，具有分层名称空间 (例如，urn:ietf:... 将标识 IETF
+文档) ; 目前 URN 还没有广泛实现。 并非所有工具都支持所有方案。
+.SS "Character encoding"
+URI 使用有限数量的字符，以便可以在各种情况下输入和使用它们。
+.PP
+以下字符是保留的，即它们可能出现在 URI 中，但它们的使用仅限于它们的保留目的 (在形成 URI 之前必须转义冲突数据) :
+.IP
+.in +4n
+.EX
+; / ? : @ & = + $ ,
+.EE
+.in
+.PP
+URI 中可以包含非保留字符。 非保留字符包括大写和小写拉丁字母、十进制数字以及以下有限的标点符号和符号集:
+.IP
+.in +4n
+.EX
+\- _ . ! \[ti] * ' ( )
+.EE
+.in
+.PP
+必须转义所有其他字符。 转义八位位组被编码为字符三元组，由百分比字符 "%" 和后跟表示八位位组代码的两个十六进制数字组成
+(十六进制数字可以使用大写或小写字母)。 例如，空格必须转义为 "%20"，制表符必须转义为 "%09"，"&" 必须转义为 "%26"。 由于百分号
+"%" 字符始终具有作为转义指示符的保留用途，因此必须将其转义为 "%25"。 通常的做法是在查询文本中将空格字符转义为加号 (+); 这种做法在相关的
+RFC 中没有统一定义 (建议使用 %20)，但是应该为它们准备任何接受带有查询文本的 URI 的工具。 URI 始终以其 "escaped"
+形式显示。
+.PP
+可以在不改变 URI 语义的情况下转义未保留的字符，但除非 URI 在不允许出现未转义字符的上下文中使用，否则不应这样做。 例如，有时在 HTTP
+URL 路径中使用 "%7e" 代替 "\[ti]"，但两者对于 HTTP URL 是等价的。
+.PP
+对于必须处理美国 ASCII 字符集之外的字符的 URI，HTML 4.01 规范 (B.2 部分) 和 IETF RFC\~3986 (2.5
+部分的最后一段) 推荐以下方法:
+.IP (1) 5
+将字符序列翻译成 UTF\-8 (IETF RFC\~3629)\[em] 然后看 \fButf\-8\fP(7)\[em]and
+.IP (2)
+使用 URI 转义机制，即对不安全的八位字节使用 %HH 编码。
+.SS "Writing a URI"
+编写时，URI 应放在双引号内 (例如，"http://www.kernel.org")，括在尖括号中
+(例如，<http://lwn.net>))，或单独放在一行中。 对使用双引号的人的警告: \fBnever\fP 在 URI
+内移动无关的标点符号 (例如句末句号或列表中的逗号)，因为这会更改 URI 的值。 相反，请改用尖括号，或切换到从不在引号内包含无关字符的引用系统。
+后一种系统被 "Hart's Rules" 和 "Oxford Dictionary for Writers and Editors" 称为 'new'
+或 'logical' 引用系统，是英国和各种欧洲语言的首选做法。 较早的文档建议在 URI 之前插入前缀 "URL:"，但这种形式从未流行过。
+.PP
+URI 语法被设计为明确的。 然而，随着 URI 变得司空见惯，传统媒体 (电视、广播、报纸、广告牌等)
+越来越多地使用仅由已识别资源的权限和路径部分组成的缩写 URI 引用 (例如，<www.w3.org/Addressing>).
+这种引用主要用于人类解释而不是机器，假设基于上下文的启发式方法足以完成 URI (例如，以 "www" 开头的主机名可能具有 "http://" 的
+URI 前缀，而以 "ftp" 开头的主机名可能具有 "ftp://" 的前缀)。 许多客户端实现启发式地解析这些引用。
+这种启发式可能会随着时间而改变，尤其是在引入新方案时。 由于缩写 URI 与相对 URL 路径具有相同的语法，所以缩写 URI 引用不能用于允许相对
+URI 的地方，并且只能在没有定义的基础时使用 (例如在对话框 boxes 中)。 不要使用缩写的 URI 作为文档中的超文本链接;
+使用此处描述的标准格式。
+.SH STANDARDS
+.UR http://www.ietf.org\:/rfc\:/rfc2396.txt
+(IETF RFC\ 2396)
+.UE ,
+.UR http://www.w3.org\:/TR\:/REC\-html40
+(HTML 4.0)
+.UE .
+.SH NOTES
+Linux 系统上任何接受 URI 的工具 (例如，Web 浏览器) 应该能够 (直接或间接) 处理这里描述的所有方案，包括 man: 和 info:
+方案。 通过调用一些其他程序来处理它们是很好的，实际上是值得鼓励的。
+.PP
+从技术上讲，片段不是 URI 的一部分。
+.PP
+有关如何以数据格式嵌入 URI (包括 URL) 的信息，请参见有关该格式的文档。 HTML 使用格式 <A
+HREF="\fIuri\fP"> \fItext\fP </A>。 Texinfo 文件使用 @uref{\fIuri\fP} 格式。 Man
+和 mdoc 有最近添加的 UR 宏，或者只是在文本中包含 URI (查看者应该能够检测到 :// 作为 URI 的一部分)。
+.PP
+GNOME 和 KDE 桌面环境目前在它们接受的 URI 方面有所不同，特别是在它们各自的帮助浏览器中。 要列出手册页，GNOME 使用
+<toc:man> 而 KDE 使用 <man:(index)>，要列出信息页，GNOME 使用
+<toc:info> 而 KDE 使用 <info:(dir)> (此手册页的作者在这里更喜欢 KDE
+方法，尽管更规则的格式会更好)。 通常，KDE 使用 <file:/cgi\-bin/> 作为一组生成文件的前缀。 KDE 更喜欢通过
+<file:/cgi\-bin/helpindex> 访问的 HTML 文档。 GNOME 更喜欢 ghelp 方案来存储和查找文档。
+在撰写本文时，两个浏览器都无法处理 file: 对目录的引用，因此很难用可浏览的 URI 引用整个目录。 如上所述，这些环境在处理 info:
+scheme 的方式上有所不同，这可能是最重要的变化。 预计 GNOME 和 KDE 将融合为通用 URI 格式，本手册页的 future
+版本将描述融合结果。 鼓励努力促进这种趋同。
+.SS Security
+URI 本身不会构成安全威胁。 没有普遍保证曾经定位给定资源的 URL 将继续定位。 也不能保证 URL 不会在以后的某个时间点定位到不同的资源;
+这样的保证只能从控制该名称空间和相关资源的 person(s) 获得。
+.PP
+有时可能会创建一个 URL，使得尝试执行看似无害的操作 (例如检索与资源关联的实体) 实际上会导致发生可能具有破坏性的远程操作。 不安全的 URL
+通常是通过指定端口号而不是为相关网络协议保留的端口号来构造的。 客户端无意中联系了一个实际上运行不同协议的站点。 URL
+的内容包含指令，当根据此其他协议解释时，会导致意外操作。 一个例子是使用 gopher URL 导致通过 SMTP 服务器发送意外或冒充消息。
+.PP
+使用任何指定协议默认端口号以外的端口号的 URL 时应谨慎，尤其是当它是保留空间内的数字时。
+.PP
+当 URI 包含给定协议的转义分隔符 (例如，telnet 协议的 CR 和 LF 字符) 时，应注意这些在传输前不会被转义。
+这可能会违反协议，但可以避免使用此类字符来模拟该协议中的额外操作或参数的可能性，这可能会导致执行意外且可能有害的远程操作。
+.PP
+使用包含旨在保密的密码的 URI 显然是不明智的。 特别是，强烈建议不要在 URI 的 "userinfo" 组件中使用密码，除非在
+"password" 参数旨在公开的极少数情况下。
+.SH BUGS
+文档可能放置在不同的位置，因此目前没有一个好的 URI 方案可以用于任意格式的通用在线文档。 <file:///usr/doc/ZZZ>
+形式的引用不起作用，因为不同的发行版和本地安装要求可能会将文件放在不同的目录中 (它可能在
+/usr/doc、/usr/local/doc、/usr/share 或其他地方)。 此外，目录 ZZZ 通常会在版本更改时更改
+(尽管文件名通配可以部分克服这一点)。 最后，使用 file: 方案不容易支持从 Internet 动态加载文档 (而不是将文件加载到本地文件系统)
+的人。 可以添加 future URI 方案 (例如，"userdoc:") 以允许程序包括交叉引用更详细的文档，而无需知道该文档的确切位置。
+或者，文件系统规范的 future 版本可以充分指定文件位置，以便文件: 方案能够找到文档。
+.PP
+许多程序和文件格式不包含使用 URI 合并或实现链接的方法。
+.PP
+.\" .SH AUTHOR
+.\" David A. Wheeler (dwheeler@dwheeler.com) wrote this man page.
+许多程序无法处理所有这些不同的 URI 格式; 应该有一个标准的机制来加载任意 URI，自动检测用户的环境
+(例如，文本或图形、桌面环境、本地用户首选项和当前正在执行的工具) 并为任何 URI 调用正确的工具。
+.SH "SEE ALSO"
+\fBlynx\fP(1), \fBman2html\fP(1), \fBmailaddr\fP(7), \fButf\-8\fP(7)
+.PP
+.UR http://www.ietf.org\:/rfc\:/rfc2255.txt
+IETF RFC\ 2255
+.UE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

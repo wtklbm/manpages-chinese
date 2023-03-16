@@ -1,0 +1,171 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2012 Chandan Apsangi <chandan.jc@gmail.com>
+.\" and Copyright (C) 2013 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_setname_np 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_setname_np, pthread_getname_np\-set/get 线程名称
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_setname_np(pthread_t \fP\fIthread\fP\fB, const char *\fP\fIname\fP\fB);\fP
+\fBint pthread_getname_np(pthread_t \fP\fIthread\fP\fB, char \fP\fIname\fP\fB[.\fP\fIsize\fP\fB], size_t \fP\fIsize\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+默认情况下，所有使用 \fBpthread_create\fP() 创建的线程都继承程序名。 \fBpthread_setname_np\fP()
+函数可用于为线程设置唯一名称，这对于调试多线程应用程序很有用。 线程名称是一个有意义的 C 语言字符串，长度限制为 16 个字符，包括终止空字节
+(\[aq]\e0\[aq])。 \fIthread\fP 参数指定要更改名称的线程; \fIname\fP 指定新名称。
+.PP
+\fBpthread_getname_np\fP() 函数可用于检索线程的名称。 \fIthread\fP 参数指定要检索其名称的线程。 缓冲区 \fIname\fP
+用于返回线程名称; \fIsize\fP 指定 \fIname\fP 中可用的字节数。 \fIname\fP 指定的缓冲区长度至少应为 16 个字符。
+输出缓冲区中返回的线程名称将以 null 终止。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0; 出错时，它们返回一个非零错误号。
+.SH ERRORS
+\fBpthread_setname_np\fP() 函数可能会失败并出现以下错误:
+.TP 
+\fBERANGE\fP
+\fIname\fP 所指向的字符串的长度超过了允许的限制。
+.PP
+\fBpthread_getname_np\fP() 函数可能会失败并出现以下错误:
+.TP 
+\fBERANGE\fP
+\fIname\fP 和 \fIsize\fP 指定的缓冲区太小，无法容纳线程名称。
+.PP
+如果其中一个函数无法打开 \fI/proc/self/task/[tid]/comm\fP，则调用可能会失败并出现 \fBopen\fP(2) 中描述的错误之一。
+.SH VERSIONS
+这些函数是在 glibc 2.12 中添加的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_setname_np\fP(),
+\fBpthread_getname_np\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是非标准的 GNU 扩展; 因此名称中有后缀 "_np" (nonportable)。
+.SH NOTES
+\fBpthread_setname_np\fP() 在内部写入 \fI/proc\fP 文件系统下的线程特定 \fIcomm\fP 文件:
+\fI/proc/self/task/[tid]/comm\fP。 \fBpthread_getname_np\fP() 从同一位置检索它。
+.SH EXAMPLES
+下面的程序演示了 \fBpthread_setname_np\fP() 和 \fBpthread_getname_np\fP() 的使用。
+.PP
+以下 shell 会话显示了该程序的示例运行:
+.PP
+.in +4n
+.EX
+$\fB ./a.out\fP
+创建了一个线程。默认名称为: a.out
+设置后的线程名称为 THREADFOO 。
+\fB\[ha]Z\fP                           # Suspend the program
+[1]+  Stopped           ./a.out
+[1]+  Stopped           ./a.out
+  PID   TID CMD                         COMMAND
+ 5990  5990 ./a.out                     a.out
+ 5990  5991 ./a.out                     THREADFOO
+5990  5991 ./a.out                     THREADFOO
+a.out
+$ \fBcat /proc/5990/task/5991/comm\fP
+THREADFOO
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_setname_np.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#define NAMELEN 16
+
+static void *
+threadfunc(void *parm)
+{
+    sleep(5);// 允许主程序设置线程名称
+    return NULL;
+}
+
+int
+main(int argc, char *argv[])
+{
+    pthread_t thread;
+    int rc;
+    char thread_name[NAMELEN];
+
+    rc = pthread_create(&thread, NULL, threadfunc, NULL);
+    if (rc != 0)
+        errc(EXIT_FAILURE, rc, "pthread_create");
+
+    rc = pthread_getname_np(thread, thread_name, NAMELEN);
+    if (rc != 0)
+        errc(EXIT_FAILURE, rc, "pthread_getname_np");
+
+    printf("Created a thread. Default name is: %s\en", thread_name);
+    rc = pthread_setname_np(thread, (argc > 1) ? argv[1] : "THREADFOO");
+    if (rc != 0)
+        errc(EXIT_FAILURE, rc, "pthread_setname_np");
+
+    sleep(2);
+
+    rc = pthread_getname_np(thread, thread_name, NAMELEN);
+    if (rc != 0)
+        errc(EXIT_FAILURE, rc, "pthread_getname_np");
+    printf("The thread name after setting it is %s.\en", thread_name);
+
+    rc = pthread_join(thread, NULL);
+    if (rc != 0)
+        errc(EXIT_FAILURE, rc, "pthread_join");
+
+    printf("Done\en");
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBprctl\fP(2), \fBpthread_create\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

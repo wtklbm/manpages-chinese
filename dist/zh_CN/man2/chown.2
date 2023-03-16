@@ -1,0 +1,269 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\" and Copyright (c) 1998 Andries Brouwer (aeb@cwi.nl)
+.\" and Copyright (c) 2006, 2007, 2008, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-21 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-07-09 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 1996-11-06 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1997-05-18 by Michael Haardt <michael@cantor.informatik.rwth-aachen.de>
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2007-07-08, mtk, added an example program; updated SYNOPSIS
+.\" 2008-05-08, mtk, Describe rules governing ownership of new files
+.\"     (bsdgroups versus sysvgroups, and the effect of the parent
+.\"     directory's set-group-ID mode bit).
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH chown 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+chown、fchown、lchown、fchownat \- 更改文件的所有权
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint chown(const char *\fP\fIpathname\fP\fB, uid_t \fP\fIowner\fP\fB, gid_t \fP\fIgroup\fP\fB);\fP
+\fBint fchown(int \fP\fIfd\fP\fB, uid_t \fP\fIowner\fP\fB, gid_t \fP\fIgroup\fP\fB);\fP
+\fBint lchown(const char *\fP\fIpathname\fP\fB, uid_t \fP\fIowner\fP\fB, gid_t \fP\fIgroup\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of AT_* constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint fchownat(int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB,\fP
+\fB             uid_t \fP\fIowner\fP\fB, gid_t \fP\fIgroup\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBfchown\fP(), \fBlchown\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+        || _XOPEN_SOURCE >= 500
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.PP
+\fBfchownat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+这些系统调用更改文件的所有者和组。 \fBchown\fP()、\fBfchown\fP() 和 \fBlchown\fP() 系统调用的不同之处仅在于指定文件的方式:
+.IP \[bu] 3
+\fBchown\fP() 更改 \fIpathname\fP 指定的文件的所有权，如果它是符号链接，则解引用。
+.IP \[bu]
+\fBfchown\fP() 更改打开的文件描述符 \fIfd\fP 引用的文件的所有权。
+.IP \[bu]
+\fBlchown\fP() 与 \fBchown\fP() 类似，但不解引使用符号链接。
+.PP
+只有特权进程 (Linux: 具有 \fBCAP_CHOWN\fP 功能的进程) 可以更改文件的所有者。
+文件的所有者可以将文件的组更改为该所有者所属的任何组。 特权进程 (Linux: 使用 \fBCAP_CHOWN\fP) 可以任意更改组。
+.PP
+如果 \fIowner\fP 或 \fIgroup\fP 指定为 \-1，则该 ID 不会更改。
+.PP
+.\" In Linux 2.0 kernels, superuser was like everyone else
+.\" In Linux 2.2, up to Linux 2.2.12, these bits were not cleared for superuser.
+.\" Since Linux 2.2.13, superuser is once more like everyone else.
+当非特权用户更改可执行文件的所有者或组时，\fBS_ISUID\fP 和 \fBS_ISGID\fP 模式位将被清除。 POSIX 没有指定当 root 执行
+\fBchown\fP() 时这是否也应该发生; Linux 行为取决于内核版本，从 Linux 2.2.13 开始，root 被视为其他用户。
+对于非组可执行文件 (即未设置 \fBS_IXGRP\fP 位的文件)，\fBS_ISGID\fP 位指示强制锁定，并且不会被 \fBchown\fP() 清除。
+.PP
+.\"
+当可执行文件的所有者或组 (由任何用户) 更改时，该文件的所有功能集都将被清除。
+.SS fchownat()
+\fBfchownat\fP() 系统调用的操作方式与 \fBchown\fP() 完全相同，除了此处描述的差异。
+.PP
+如果 \fIpathname\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBchown\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIpathname\fP 是相对的且 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIpathname\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBchown\fP()).
+.PP
+如果 \fIpathname\fP 是绝对的，则忽略 \fIdirfd\fP。
+.PP
+\fIflags\fP 参数是通过将 0 个或多个以下值组合在一起而创建的位掩码;
+.TP 
+\fBAT_EMPTY_PATH\fP (since Linux 2.6.39)
+.\" commit 65cfc6722361570bfe255698d9cd4dccaf47570d
+.\" Before glibc 2.16, defining _ATFILE_SOURCE sufficed
+如果 \fIpathname\fP 为空字符串，则对 \fIdirfd\fP 引用的文件进行操作 (可能已经使用 \fBopen\fP(2) \fBO_PATH\fP
+标志获取)。 在这种情况下，\fIdirfd\fP 可以指任何类型的文件，而不仅仅是一个目录。 如果 \fIdirfd\fP 是
+\fBAT_FDCWD\fP，则调用在当前工作目录上运行。 这个标志是 Linux 特有的; 定义 \fB_GNU_SOURCE\fP 以获得其定义。
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+如果 \fIpathname\fP 是符号链接，请不要解引它: 而是对链接本身进行操作，如 \fBlchown\fP()。 (默认情况下，\fBfchownat\fP()
+解引用符号链接，如 \fBchown\fP().)
+.PP
+有关对 \fBfchownat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+根据文件系统的不同，可能会返回下面列出的错误以外的错误。
+.PP
+下面列出了 \fBchown\fP() 的更一般的错误。
+.TP 
+\fBEACCES\fP
+路径前缀的某个组件的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+(\fBfchown\fP()) \fIfd\fP 不是有效的打开文件描述符。
+.TP 
+\fBEBADF\fP
+(\fBfchownat\fP()) \fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEINVAL\fP
+(\fBfchownat\fP()) \fIflags\fP 中指定的标志无效。
+.TP 
+\fBEIO\fP
+(\fBfchown\fP()) 修改 inode 时发生底层 I/O 错误。
+.TP 
+\fBELOOP\fP
+解析 \fIpathname\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长。
+.TP 
+\fBENOENT\fP
+该文件不存在。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOTDIR\fP
+路径前缀的组成部分不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBfchownat\fP()) \fIpathname\fP 是相对的，\fIdirfd\fP 是指文件而不是目录的文件描述符。
+.TP 
+\fBEPERM\fP
+调用进程没有更改所有者或者组所需的权限 (见上文)。
+.TP 
+\fBEPERM\fP
+该文件被标记为不可更改或仅，追加。 (见 \fBioctl_iflags\fP(2).)
+.TP 
+\fBEROFS\fP
+命名文件驻留在只读文件系统上。
+.SH VERSIONS
+\fBfchownat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+\fBchown\fP(), \fBfchown\fP(), \fBlchown\fP(): 4.4BSD, SVr4, POSIX.1\-2001,
+POSIX.1\-2008.
+.PP
+.\" chown():
+.\" SVr4 documents EINVAL, EINTR, ENOLINK and EMULTIHOP returns, but no
+.\" ENOMEM.  POSIX.1 does not document ENOMEM or ELOOP error conditions.
+.\" fchown():
+.\" SVr4 documents additional EINVAL, EIO, EINTR, and ENOLINK
+.\" error conditions.
+4.4BSD 版本只能由超级用户使用 (即普通用户不能赠送文件)。
+.PP
+\fBfchownat\fP(): POSIX.1\-2008.
+.SH NOTES
+.SS "Ownership of new files"
+当创建一个新文件时 (例如，通过 \fBopen\fP(2) 或 \fBmkdir\fP(2))，它的所有者与创建进程的文件系统用户 ID 相同。
+文件的组取决于一系列因素，包括文件系统的类型、用于挂载文件系统的选项以及父目录上是否启用了 set\-group\-ID 模式位。 如果文件系统支持
+\fB\-o\ grpid\fP (或同义 \fB\-o\ bsdgroups\fP) 和 \fB\-o\ nogrpid\fP (或同义 \fB\-o\ sysvgroups\fP)
+\fBmount\fP(8) 选项)，则规则如下:
+.IP \[bu] 3
+如果文件系统挂载为 \fB\-o\ grpid\fP，则新文件的组与父目录的组相同。
+.IP \[bu]
+如果文件系统使用 \fB\-o\ nogrpid\fP 挂载并且父目录上的 set\-group\-ID 位被禁用，那么新文件的组将与进程的文件系统 GID 相同。
+.IP \[bu]
+如果文件系统使用 \fB\-o\ nogrpid\fP 挂载并且在父目录上启用了 set\-group\-ID 位，那么新文件的组将与父目录的组相同。
+.PP
+与 Linux 4.12 一样，ext2、ext3、ext4 和 XFS 支持 \fB\-o\ grpid\fP 和 \fB\-o\ nogrpid\fP 安装选项。
+不支持这些挂载选项的文件系统遵循 \fB\-o\ nogrpid\fP 规则。
+.SS "glibc notes"
+在 \fBfchownat\fP() 不可用的旧内核上，glibc 包装器函数退回到使用 \fBchown\fP() 和 \fBlchown\fP()。 当
+\fIpathname\fP 是相对路径名时，glibc 根据 \fI/proc/self/fd\fP 中对应于 \fIdirfd\fP 参数的符号链接构造路径名。
+.SS NFS
+在启用了 UID 映射的 NFS 文件系统上故意违反了 \fBchown\fP() 语义。 此外，违反了访问文件内容的所有系统调用的语义，因为
+\fBchown\fP() 可能导致 immediate 对已打开文件的访问撤销。
+客户端缓存可能会导致更改所有权以允许用户访问的时间与其他客户端上的用户实际可以访问文件的时间之间的延迟。
+.SS "Historical details"
+原始的 Linux \fBchown\fP()、\fBfchown\fP() 和 \fBlchown\fP() 系统调用仅支持 16 位用户和组 ID。 随后，Linux
+2.4 增加了 \fBchown32\fP()、\fBfchown32\fP()、\fBlchown32\fP()，支持 32 位 ID。 glibc
+\fBchown\fP()、\fBfchown\fP() 和 \fBlchown\fP() 包装器函数透明地处理内核版本之间的变化。
+.PP
+在 Linux 2.1.81 之前 (2.1.46 除外)，\fBchown\fP() 不跟随符号链接。 自从 Linux 2.1.81，\fBchown\fP()
+确实遵循符号链接，又出现了不遵循符号链接的新系统调用 \fBlchown\fP()。 从 Linux 2.1.86 开始，这个新的调用 (与旧
+\fBchown\fP()) 具有相同的语义具有相同的 syscall 编号，而 \fBchown\fP() 获得了新引入的编号。
+.SH EXAMPLES
+以下程序将在其第二个命令行参数中命名的文件的所有权更改为在其第一个命令行参数中指定的值。 新所有者可以指定为数字用户 ID 或用户名 (通过使用
+\fBgetpwnam\fP(3) 在系统密码文件中执行查找将其转换为用户 ID)。
+.SS "Program source"
+.\" SRC BEGIN (chown.c)
+.EX
+#include <pwd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    char           *endptr;
+    uid_t          uid;
+    struct passwd  *pwd;
+
+    if (argc != 3 || argv[1][0] == \[aq]\e0\[aq]) {
+        fprintf(stderr, "%s <owner> <file>\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    uid = strtol(argv[1], &endptr, 10);  /* Allow a numeric string */
+
+    if (*endptr != \[aq]\e0\[aq]) {         /* Was not pure numeric string */
+        pwd = getpwnam(argv[1]);    /* Try getting UID for username */
+        if (pwd == NULL) {
+            perror("getpwnam");
+            exit(EXIT_FAILURE);
+        }
+
+        uid = pwd\->pw_uid;
+    }
+
+    if (chown(argv[2], uid, \-1) == \-1) {
+        perror("chown");
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBchgrp\fP(1), \fBchown\fP(1), \fBchmod\fP(2), \fBflock\fP(2), \fBpath_resolution\fP(7),
+\fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

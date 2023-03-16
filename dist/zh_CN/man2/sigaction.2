@@ -1,0 +1,663 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1994,1995 Mike Battersby <mib@deakin.edu.au>
+.\" and Copyright 2004, 2005 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" based on work by faith@cs.unc.edu
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified, aeb, 960424
+.\" Modified Fri Jan 31 17:31:20 1997 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Thu Nov 26 02:12:45 1998 by aeb - add SIGCHLD stuff.
+.\" Modified Sat May  8 17:40:19 1999 by Matthew Wilcox
+.\"	add POSIX.1b signals
+.\" Modified Sat Dec 29 01:44:52 2001 by Evan Jones <ejones@uwaterloo.ca>
+.\"	SA_ONSTACK
+.\" Modified 2004-11-11 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added mention of SIGCONT under SA_NOCLDSTOP
+.\"	Added SA_NOCLDWAIT
+.\" Modified 2004-11-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Updated discussion for POSIX.1-2001 and SIGCHLD and sa_flags.
+.\"	Formatting fixes
+.\" 2004-12-09, mtk, added SI_TKILL + other minor changes
+.\" 2005-09-15, mtk, split sigpending(), sigprocmask(), sigsuspend()
+.\"	out of this page into separate pages.
+.\" 2010-06-11 Andi Kleen, add hwpoison signal extensions
+.\" 2010-06-11 mtk, improvements to discussion of various siginfo_t fields.
+.\" 2015-01-17, Kees Cook <keescook@chromium.org>
+.\"	Added notes on ptrace SIGTRAP and SYS_SECCOMP.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigaction 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+sigaction, rt_sigaction \- 检查并更改信号操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint sigaction(int \fP\fIsignum\fP\fB,\fP
+\fB              const struct sigaction *_Nullable restrict \fP\fIact\fP\fB,\fP
+\fB              struct sigaction *_Nullable restrict \fP\fIoldact\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigaction\fP():
+.nf
+    _POSIX_C_SOURCE
+.fi
+.PP
+\fIsiginfo_t\fP:
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+\fBsigaction\fP() 系统调用用于改变进程在接收到特定信号时采取的动作。 (有关信号的概述，请参见 \fBsignal\fP(7)。)
+.PP
+\fIsignum\fP 指定信号，可以是除 \fBSIGKILL\fP 和 \fBSIGSTOP\fP 之外的任何有效信号。
+.PP
+如果 \fIact\fP 为非 NULL，则信号 \fIsignum\fP 的新动作将从 \fIact\fP 安装。 如果 \fIoldact\fP 为非
+NULL，则之前的操作保存在 \fIoldact\fP 中。
+.PP
+\fIsigaction\fP 结构体定义如下:
+.PP
+.in +4n
+.EX
+struct sigaction {
+    void     (*sa_handler)(int);
+    void     (*sa_sigaction)(int, siginfo_t *, void *);
+    sigset_t   sa_mask;
+    int        sa_flags;
+    void     (*sa_restorer)(void);
+};
+.EE
+.in
+.PP
+在某些体系结构中涉及 union: 不要同时分配给 \fIsa_handler\fP 和 \fIsa_sigaction\fP。
+.PP
+\fIsa_restorer\fP 字段不适用于应用程序。 (POSIX 不指定 \fIsa_restorer\fP 字段。) 可以在
+\fBsigreturn\fP(2) 中找到有关此字段用途的更多详细信息。
+.PP
+\fIsa_handler\fP 指定要与 \fIsignum\fP 关联的操作，可以是以下之一:
+.IP \[bu] 3
+\fBSIG_DFL\fP 为默认操作。
+.IP \[bu]
+\fBSIG_IGN\fP 忽略此信号。
+.IP \[bu]
+指向信号处理函数的指针。 这个函数接收信号数作为它唯一的参数。
+.PP
+如果在 \fIsa_flags\fP 中指定 \fBSA_SIGINFO\fP，则 \fIsa_sigaction\fP (而不是 \fIsa_handler\fP) 指定
+\fIsignum\fP 的信号处理函数。 这个函数接收三个参数，如下所述。
+.PP
+\fIsa_mask\fP 指定一个信号掩码，在信号处理程序执行期间应将其阻塞 (即，添加到调用信号处理程序的线程的信号掩码中)。
+此外，触发处理程序的信号将被阻塞，除非使用 \fBSA_NODEFER\fP 标志。
+.PP
+\fIsa_flags\fP 指定一组修改信号行为的标志。 它由以下零个或多个的按位或组成:
+.TP 
+\fBSA_NOCLDSTOP\fP
+如果 \fIsignum\fP 是 \fBSIGCHLD\fP，当子进程停止时 (即，当它们收到 \fBSIGSTOP\fP、\fBSIGTSTP\fP、\fBSIGTTIN\fP
+或 \fBSIGTTOU\fP) 之一或恢复时 (即，它们收到 \fBSIGCONT\fP) (参见 \fBwait\fP(2)).  此标志仅在为 \fBSIGCHLD\fP
+建立处理程序时才有意义。
+.TP 
+\fBSA_NOCLDWAIT\fP (since Linux 2.6)
+.\" To be precise: Linux 2.5.60 -- MTK
+如果 \fIsignum\fP 是 \fBSIGCHLD\fP，当子节点终止时，不要将子节点变成僵尸。 另请详见 \fBwaitpid\fP(2)。 只有在为
+\fBSIGCHLD\fP 建立处理程序或将该信号的处置设置为 \fBSIG_DFL\fP 时，此标志才有意义。
+.IP
+如果在为 \fBSIGCHLD\fP 建立处理程序时设置了 \fBSA_NOCLDWAIT\fP 标志，则 POSIX.1 未指定子进程终止时是否生成
+\fBSIGCHLD\fP 信号。 在 Linux 上，此时会产生一个 \fBSIGCHLD\fP 信号; 在其他一些实现上，它不是。
+.TP 
+\fBSA_NODEFER\fP
+不要在处理程序执行时将信号添加到线程的信号掩码中，除非在 \fIact.sa_mask\fP 中指定了信号。
+因此，信号的另一个实例可能会在线程执行处理程序时传递给线程。 此标志仅在建立信号处理程序时才有意义。
+.IP
+\fBSA_NOMASK\fP 是这个标志的一个过时的、非标准的同义词。
+.TP 
+\fBSA_ONSTACK\fP
+调用 \fBsigaltstack\fP(2) 提供的备用信号栈上的信号处理程序。 如果备用栈不可用，将使用默认栈。 此标志仅在建立信号处理程序时才有意义。
+.TP 
+\fBSA_RESETHAND\fP
+进入信号处理程序后将信号操作恢复为默认值。 此标志仅在建立信号处理程序时才有意义。
+.IP
+\fBSA_ONESHOT\fP 是这个标志的一个过时的、非标准的同义词。
+.TP 
+\fBSA_RESTART\fP
+通过使某些系统调用可跨信号重新启动，提供与 BSD 信号语义兼容的行为。 此标志仅在建立信号处理程序时才有意义。 有关系统调整重新启动的讨论，请参见
+\fBsignal\fP(7)。
+.TP 
+\fBSA_RESTORER\fP
+\fINot intended for application use\fP.   C 库使用此标志来指示 \fIsa_restorer\fP 字段包含
+"signal trampoline" 的地址。 有关详细信息，请参见 \fBsigreturn\fP(2)。
+.TP 
+\fBSA_SIGINFO\fP (since Linux 2.2)
+.\" (The
+.\" .I sa_sigaction
+.\" field was added in Linux 2.1.86.)
+.\"
+信号处理程序采用三个参数，而不是一个。 在这种情况下，应设置 \fIsa_sigaction\fP 而不是 \fIsa_handler\fP。
+此标志仅在建立信号处理程序时才有意义。
+.TP 
+\fBSA_UNSUPPORTED\fP (since Linux 5.11)
+用于动态探测标志位支持。
+.IP
+如果在 \fIact\->sa_flags\fP 中设置此标志以及内核可能不支持的其他标志，并且紧随其后的 \fBsigaction\fP()
+调用指定相同的信号编号并使用非 NULL \fIoldact\fP 参数在 \fIoldact\->sa_flags\fP 中产生
+\fBSA_UNSUPPORTED\fP \fIclear\fP，则尝试注册处理程序成功，那么 \fIoldact\->sa_flags\fP
+可以用作位掩码，描述实际上支持哪些可能不受支持的标志。 有关详细信息，请参见下面的 "Dynamically probing for flag bit
+support" 部分。
+.TP 
+\fBSA_EXPOSE_TAGBITS\fP (since Linux 5.11)
+通常，在传递信号时，会从 \fIsiginfo_t\fP 的 \fIsi_addr\fP 字段中清除一组特定于体系结构的标记位。 如果设置了此标志，则将在
+\fIsi_addr\fP 中保留特定于体系结构的标记位子集。
+.IP
+需要兼容 Linux 版本早于 5.11 的程序必须使用 \fBSA_UNSUPPORTED\fP 来探测支持。
+.SS "The siginfo_t argument to a SA_SIGINFO handler"
+当在 \fIact.sa_flags\fP 中指定 \fBSA_SIGINFO\fP 标志时，信号处理程序地址通过 \fIact.sa_sigaction\fP
+字段传递。 此处理程序采用三个参数，如下所示:
+.PP
+.in +4n
+.EX
+void
+handler(int sig, siginfo_t *info, void *ucontext)
+{
+    ...
+}
+.EE
+.in
+.PP
+这三个参数如下
+.TP 
+\fIsig\fP
+导致处理程序调用的信号编号。
+.TP 
+\fIinfo\fP
+指向 \fIsiginfo_t\fP 的指针，它是包含有关信号的更多信息的结构体，如下所述。
+.TP 
+\fIucontext\fP
+这是指向 \fIucontext_t\fP 结构体的指针，转换为 \fIvoid\ *\fP。 该字段指向的结构体包含内核保存在用户空间栈中的信号上下文信息;
+有关详细信息，请参见 \fBsigreturn\fP(2)。 有关 \fIucontext_t\fP 结构体的更多信息，请参见 \fBgetcontext\fP(3) 和
+\fBsignal\fP(7)。 通常，处理程序函数不使用第三个参数。
+.PP
+\fIsiginfo_t\fP 数据类型是一个具有以下字段的结构体:
+.PP
+.in +4n
+.EX
+.\" FIXME
+.\" The siginfo_t 'si_trapno' field seems to be used
+.\" only on SPARC and Alpha; this page could use
+.\" a little more detail on its purpose there.
+.\" In the kernel: si_tid
+siginfo_t {
+    int      si_signo;     /* Signal number */
+    int      si_errno;     /* An errno value */
+    int      si_code;      /* Signal code */
+    int      si_trapno;    /* Trap number that caused
+                              硬件生成的信号
+                              (在大多数架构上未使用) */
+    pid_t    si_pid;       /* Sending process ID */
+    uid_t    si_uid;       /* Real user ID of sending process */
+    int      si_status;    /* Exit value or signal */
+    clock_t  si_utime;     /* User time consumed */
+    clock_t  si_stime;     /* System time consumed */
+    union sigval si_value; /* Signal value */
+    int      si_int;       /* POSIX.1b signal */
+    void    *si_ptr;       /* POSIX.1b signal */
+    int      si_overrun;   /* Timer overrun count;
+                              POSIX.1b timers */
+    int      si_timerid;   /* Timer ID; POSIX.1b timers */
+    void    *si_addr;      /* Memory location which caused fault */
+    long     si_band;      /* Band event (was \fIint\fP in
+                              glibc 2.3.2 and earlier) */
+    int      si_fd;        /* File descriptor */
+    short    si_addr_lsb;  /* Least significant bit of address
+                              (自 Linux 2.6.32 起) */
+    void    *si_lower;     /* Lower bound when address violation
+                              发生 (从 Linux 3.19 开始) */
+    void    *si_upper;     /* Upper bound when address violation
+                              发生 (从 Linux 3.19 开始) */
+    int      si_pkey;      /* Protection key on PTE that caused
+                              故障 (从 Linux 4.6 开始) */
+    void    *si_call_addr; /* Address of system call instruction
+                              (自 Linux 3.5 起) */
+    int      si_syscall;   /* Number of attempted system call
+                              (自 Linux 3.5 起) */
+    unsigned int si_arch;  /* Architecture of attempted system call
+                              (自 Linux 3.5 起) */
+}
+.EE
+.in
+.PP
+\fIsi_signo\fP、\fIsi_errno\fP 和 \fIsi_code\fP 是为所有信号定义的。 (\fIsi_errno\fP 在 Linux
+上通常不使用。) 结构体的其余部分可能是 union，因此应该只读取对给定信号有意义的字段:
+.IP \[bu] 3
+用 \fBkill\fP(2) 和 \fBsigqueue\fP(3) 发送的信号填入 \fIsi_pid\fP 和 \fIsi_uid\fP。 另外，用
+\fBsigqueue\fP(3) 发送的信号，在 \fIsi_int\fP 和 \fIsi_ptr\fP 中填写信号发送者指定的值; 有关详细信息，请参见
+\fBsigqueue\fP(3)。
+.IP \[bu]
+POSIX.1b 定时器发送的信号 (自 Linux 2.6) 填入 \fIsi_overrun\fP 和 \fIsi_timerid\fP。
+\fIsi_timerid\fP 字段是内核用来标识定时器的内部 ID; 它与 \fBtimer_create\fP(2) 返回的定时器 ID 不同。
+\fIsi_overrun\fP 字段是定时器溢出计数; 这与调用 \fBtimer_getoverrun\fP(2) 获得的信息相同。 这些字段是非标准的
+Linux 扩展。
+.IP \[bu]
+消息队列通知发送的信号 (见 \fBmq_notify\fP(3)) 中 \fBSIGEV_SIGNAL\fP 的说明填写
+\fIsi_int\fP/\fIsi_ptr\fP，\fIsigev_value\fP 提供给 \fBmq_notify\fP(3); \fIsi_pid\fP，带有消息发送者的进程
+ID; 和 \fIsi_uid\fP，带有消息发送者的真实用户 ID。
+.IP \[bu]
+.\" FIXME .
+.\" When si_utime and si_stime where originally implemented, the
+.\" measurement unit was HZ, which was the same as clock ticks
+.\" (sysconf(_SC_CLK_TCK)).  In Linux 2.6, HZ became configurable, and
+.\" was *still* used as the unit to return the info these fields,
+.\" with the result that the field values depended on the
+.\" configured HZ.  Of course, the should have been measured in
+.\" USER_HZ instead, so that sysconf(_SC_CLK_TCK) could be used to
+.\" convert to seconds.  I have a queued patch to fix this:
+.\" http://thread.gmane.org/gmane.linux.kernel/698061/ .
+.\" This patch made it into Linux 2.6.27.
+.\" But note that these fields still don't return the times of
+.\" waited-for children (as is done by getrusage() and times()
+.\" and wait4()).  Solaris 8 does include child times.
+\fBSIGCHLD\fP 填写
+\fIsi_pid\fP、\fIsi_uid\fP、\fIsi_status\fP、\fIsi_utime\fP、\fIsi_stime\fP，提供子节点的信息。 \fIsi_pid\fP
+字段是子进程 ID; \fIsi_uid\fP 是子节点的真实用户 ID。\fIsi_status\fP 字段包含子进程的退出状态 (如果 \fIsi_code\fP 是
+\fBCLD_EXITED\fP)，或导致进程改变状态的信号编号。 \fIsi_utime\fP 和 \fIsi_stime\fP 包含子进程使用的用户和系统 CPU
+时间; 这些字段不包括等待子节点使用的时间 (与 \fBgetrusage\fP(2) 和 \fBtimes\fP(2)) 不同。 直到 Linux 2.6，从
+Linux 2.6.27 开始，这些字段以 \fIsysconf(_SC_CLK_TCK)\fP 为单位报告 CPU 时间。 在 Linux 2.6.27
+之前的 Linux 2.6 内核中，一个错误意味着这些字段以 (configurable) 系统 jiffy 为单位报告时间 (参见
+\fBtime\fP(7)).
+.IP \[bu]
+\fBSIGILL\fP、\fBSIGFPE\fP、\fBSIGSEGV\fP、\fBSIGBUS\fP、\fBSIGTRAP\fP，\fIsi_addr\fP 填写故障地址。
+在某些体系结构上，这些信号还填充 \fIsi_trapno\fP 字段。
+.IP
+\fBSIGBUS\fP 的一些子错误，特别是 \fBBUS_MCEERR_AO\fP 和 \fBBUS_MCEERR_AR\fP，也填入 \fIsi_addr_lsb\fP。
+该字段表示报告地址的最低有效位，因此表示损坏的程度。 例如，如果整页已损坏，则 \fIsi_addr_lsb\fP 包含
+\fIlog2(sysconf(_SC_PAGESIZE))\fP。 当响应 \fBptrace\fP(2) 事件 (PTRACE_EVENT_foo) 传送
+\fBSIGTRAP\fP 时，\fIsi_addr\fP 未填充，但 \fIsi_pid\fP 和 \fIsi_uid\fP 填充了负责传送陷阱的相应进程 ID 和用户
+ID。 在 \fBseccomp\fP(2) 的情况下，tracee 将显示为传递事件。 \fBBUS_MCEERR_*\fP 和 \fIsi_addr_lsb\fP
+是特定于 Linux 的扩展。
+.IP
+\fBSIGSEGV\fP 的 \fBSEGV_BNDERR\fP 子错误填充 \fIsi_lower\fP 和 \fIsi_upper\fP。
+.IP
+\fBSIGSEGV\fP 的 \fBSEGV_PKUERR\fP 子错误填充 \fIsi_pkey\fP。
+.IP \[bu]
+\fBSIGIO\fP/\fBSIGPOLL\fP (这两个名字在 Linux 上是同义词) 填写 \fIsi_band\fP 和 \fIsi_fd\fP。
+\fIsi_band\fP 事件是一个位掩码，包含与 \fBpoll\fP(2) 填充到 \fIrevents\fP 字段中的值相同的值。 \fIsi_fd\fP 字段表示发生
+I/O 事件的文件描述符; 更多详细信息，请参见 \fBfcntl\fP(2) 中 \fBF_SETSIG\fP 的说明。
+.IP \[bu]
+.\" commit a0727e8ce513fe6890416da960181ceb10fbfae6
+.\"
+\fBSIGSYS\fP，当 seccomp 过滤器返回 \fBSECCOMP_RET_TRAP\fP 时生成 (自 Linux 3.5 起)，填写
+\fIsi_call_addr\fP、\fIsi_syscall\fP、\fIsi_arch\fP、\fIsi_errno\fP 和 \fBseccomp\fP(2)
+中描述的其他字段。
+.SS "The si_code field"
+传递给 \fBSA_SIGINFO\fP 信号处理程序的 \fIsiginfo_t\fP 参数中的 \fIsi_code\fP 字段是一个值
+(不是位掩码)，指示发送此信号的原因。 对于 \fBptrace\fP(2) 事件，\fIsi_code\fP 将包含 \fBSIGTRAP\fP 并在高字节中包含
+ptrace 事件:
+.PP
+.in +4n
+.EX
+(SIGTRAP | PTRACE_EVENT_foo << 8).
+.EE
+.in
+.PP
+对于 non\-\fBptrace\fP(2) 事件，\fIsi_code\fP 中可能出现的值将在本节的其余部分进行描述。 从 glibc 2.20
+开始，这些符号的定义大部分是通过定义特性测试宏 (在包含 \fIany\fP 头文件之前) 从 \fI<signal.h>\fP 获得的，如下所示:
+.IP \[bu] 3
+\fB_XOPEN_SOURCE\fP with the value 500 or greater;
+.IP \[bu]
+\fB_XOPEN_SOURCE\fP and \fB_XOPEN_SOURCE_EXTENDED\fP;  or
+.IP \[bu]
+\fB_POSIX_C_SOURCE\fP with the value 200809L or greater.
+.PP
+对于 \fBTRAP_*\fP 常量，仅在前两种情况下提供符号定义。 在 glibc 2.20 之前，不需要特性测试宏来获取这些符号。
+.PP
+对于常规信号，下表显示了可以为任何信号放置在 \fIsi_code\fP 中的值，以及生成信号的原因。
+.RS 4
+.TP 
+\fBSI_USER\fP
+\fBkill\fP(2).
+.TP 
+\fBSI_KERNEL\fP
+由内核发送。
+.TP 
+\fBSI_QUEUE\fP
+\fBsigqueue\fP(3).
+.TP 
+\fBSI_TIMER\fP
+POSIX 定时器超时。
+.TP 
+\fBSI_MESGQ\fP (since Linux 2.6.6)
+POSIX 消息队列状态改变; 请参见 \fBmq_notify\fP(3)。
+.TP 
+\fBSI_ASYNCIO\fP
+一体机完成。
+.TP 
+\fBSI_SIGIO\fP
+Queued \fBSIGIO\fP (只到 Linux 2.2; 从 Linux 2.4 往后 \fBSIGIO\fP/\fBSIGPOLL\fP 填写
+\fIsi_code\fP 如下所述)。
+.TP 
+\fBSI_TKILL\fP (since Linux 2.4.19)
+.\" SI_DETHREAD is defined in Linux 2.6.9 sources, but isn't implemented
+.\" It appears to have been an idea that was tried during 2.5.6
+.\" through to Linux 2.5.24 and then was backed out.
+\fBtkill\fP(2) 或 \fBtgkill\fP(2)。
+.RE
+.PP
+对于 \fBSIGILL\fP 信号，可以将以下值置于 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBILL_ILLOPC\fP
+非法操作码。
+.TP 
+\fBILL_ILLOPN\fP
+非法操作数。
+.TP 
+\fBILL_ILLADR\fP
+非法寻址方式。
+.TP 
+\fBILL_ILLTRP\fP
+非法陷阱。
+.TP 
+\fBILL_PRVOPC\fP
+特权操作码。
+.TP 
+\fBILL_PRVREG\fP
+特权注册。
+.TP 
+\fBILL_COPROC\fP
+协处理器错误。
+.TP 
+\fBILL_BADSTK\fP
+内部栈错误。
+.RE
+.PP
+对于 \fBSIGFPE\fP 信号，可以将以下值置于 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBFPE_INTDIV\fP
+整数除以零。
+.TP 
+\fBFPE_INTOVF\fP
+整数溢出。
+.TP 
+\fBFPE_FLTDIV\fP
+浮点除以零。
+.TP 
+\fBFPE_FLTOVF\fP
+浮点溢出。
+.TP 
+\fBFPE_FLTUND\fP
+浮点下溢。
+.TP 
+\fBFPE_FLTRES\fP
+浮点不精确结果。
+.TP 
+\fBFPE_FLTINV\fP
+浮点无效运算。
+.TP 
+\fBFPE_FLTSUB\fP
+下标越界。
+.RE
+.PP
+对于 \fBSIGSEGV\fP 信号，可以将以下值置于 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBSEGV_MAPERR\fP
+地址未映射到对象。
+.TP 
+\fBSEGV_ACCERR\fP
+映射对象的权限无效。
+.TP 
+\fBSEGV_BNDERR\fP (since Linux 3.19)
+.\" commit ee1b58d36aa1b5a79eaba11f5c3633c88231da83
+地址绑定检查失败。
+.TP 
+\fBSEGV_PKUERR\fP (since Linux 4.6)
+.\" commit cd0ea35ff5511cde299a61c21a95889b4a71464e
+内存保护密钥拒绝访问。 请参见 \fBpkeys\fP(7)。 应用于此访问的保护密钥可通过 \fIsi_pkey\fP 获得。
+.RE
+.PP
+对于 \fBSIGBUS\fP 信号，可以将以下值置于 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBBUS_ADRALN\fP
+地址对齐无效。
+.TP 
+\fBBUS_ADRERR\fP
+不存在的物理地址。
+.TP 
+\fBBUS_OBJERR\fP
+对象特定的硬件错误。
+.TP 
+\fBBUS_MCEERR_AR\fP (since Linux 2.6.32)
+机器检查消耗的硬件内存错误; 需要采取的行动。
+.TP 
+\fBBUS_MCEERR_AO\fP (since Linux 2.6.32)
+进程中检测到硬件内存错误但未消耗; 动作可选。
+.RE
+.PP
+对于 \fBSIGTRAP\fP 信号，可以将以下值置于 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBTRAP_BRKPT\fP
+进程断点。
+.TP 
+\fBTRAP_TRACE\fP
+进程跟踪陷阱。
+.TP 
+\fBTRAP_BRANCH\fP (since Linux 2.4, IA64 only)
+进程采取了分支陷阱。
+.TP 
+\fBTRAP_HWBKPT\fP (since Linux 2.4, IA64 only)
+硬件 breakpoint/watchpoint。
+.RE
+.PP
+对于 \fBSIGCHLD\fP 信号，可以将以下值置于 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBCLD_EXITED\fP
+子节点已经退出。
+.TP 
+\fBCLD_KILLED\fP
+子节点被杀了。
+.TP 
+\fBCLD_DUMPED\fP
+子节点异常终止。
+.TP 
+\fBCLD_TRAPPED\fP
+被追踪的子节点被困。
+.TP 
+\fBCLD_STOPPED\fP
+子节点停了下来。
+.TP 
+\fBCLD_CONTINUED\fP (since Linux 2.6.9)
+停止的子节点继续。
+.RE
+.PP
+对于 \fBSIGIO\fP/\fBSIGPOLL\fP 信号，可以将以下值置于 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBPOLL_IN\fP
+数据输入可用。
+.TP 
+\fBPOLL_OUT\fP
+可用的输出缓冲区。
+.TP 
+\fBPOLL_MSG\fP
+输入消息可用。
+.TP 
+\fBPOLL_ERR\fP
+I/O 错误。
+.TP 
+\fBPOLL_PRI\fP
+高优先级输入可用。
+.TP 
+\fBPOLL_HUP\fP
+设备断开连接。
+.RE
+.PP
+对于 \fBSIGSYS\fP 信号，可以将以下值放在 \fIsi_code\fP 中:
+.RS 4
+.TP 
+\fBSYS_SECCOMP\fP (since Linux 3.5)
+由 \fBseccomp\fP(2) 过滤规则触发。
+.RE
+.SS "Dynamically probing for flag bit support"
+Linux 上的 \fBsigaction\fP() 调用无误地接受 \fIact\->sa_flags\fP 中设置的未知位。 以 Linux 5.11
+开头的内核的行为是第二个 \fBsigaction\fP() 将从 \fIoldact\->sa_flags\fP 清除未知位。 然而，从历史上看，第二个
+\fBsigaction\fP() 调用通常会将这些位保留在 \fIoldact\->sa_flags\fP 中。
+.PP
+这意味着不能简单地通过测试 \fIsa_flags\fP 中的标志来检测对新标志的支持，并且程序必须在依赖 \fIsa_flags\fP 的内容之前测试
+\fBSA_UNSUPPORTED\fP 是否已被清除。
+.PP
+由于除非检查通过，否则无法保证信号处理程序的行为，因此明智的做法是在注册处理程序并在这种情况下执行检查时阻止受影响的信号，或者在不可能的情况下阻止受影响的信号，例如，如果信号是同步的，在信号处理程序本身中发出第二个
+\fBsigaction\fP()。
+.PP
+在不支持特定标志的内核中，内核的行为就像未设置标志一样，即使在 \fIact\->sa_flags\fP 中设置了标志。
+.PP
+标志
+\fBSA_NOCLDSTOP\fP、\fBSA_NOCLDWAIT\fP、\fBSA_SIGINFO\fP、\fBSA_ONSTACK\fP、\fBSA_RESTART\fP、\fBSA_NODEFER\fP、\fBSA_RESETHAND\fP，如果由体系结构定义，\fBSA_RESTORER\fP
+可能无法可靠地探测使用此机制，因为它们是在 Linux 5.11 之前引入的。 然而，一般来说，程序可能会假设这些标志是受支持的，因为自从 2003
+年发布的 Linux 2.6 以来，它们都得到了支持。
+.PP
+有关 \fBSA_UNSUPPORTED\fP 用法的演示，请参见下面的示例。
+.SH "RETURN VALUE"
+\fBsigaction\fP() 成功返回 0; 出错时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIact\fP 或 \fIoldact\fP 指向的内存不是进程地址空间的有效部分。
+.TP 
+\fBEINVAL\fP
+指定了无效信号。 如果尝试更改无法捕获或忽略的 \fBSIGKILL\fP 或 \fBSIGSTOP\fP 的操作，也会生成此消息。
+.SH STANDARDS
+.\" SVr4 does not document the EINTR condition.
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.SH NOTES
+通过 \fBfork\fP(2) 创建的子级继承其父级信号配置的副本。 在 \fBexecve\fP(2) 期间，处理信号的配置被重置为默认值;
+忽略信号的配置保持不变。
+.PP
+根据 POSIX，在忽略不是由 \fBkill\fP(2) 或 \fBraise\fP(3) 生成的 \fBSIGFPE\fP、\fBSIGILL\fP 或
+\fBSIGSEGV\fP 信号后，进程的行为是未定义的。 整数除以零有未定义的结果。 在某些架构上，它会生成 \fBSIGFPE\fP 信号。 (同时将最大
+negative 整数除以 \-1 可能会生成 \fBSIGFPE\fP.) 忽略此信号可能会导致死循环。
+.PP
+POSIX.1\-1990 不允许将 \fBSIGCHLD\fP 的操作设置为 \fBSIG_IGN\fP。 POSIX.1\-2001
+及更高版本允许这种可能性，因此忽略 \fBSIGCHLD\fP 可用于防止创建僵尸 (参见 \fBwait\fP(2)).  尽管如此，历史上的 BSD 和
+System\V 忽略 \fBSIGCHLD\fP 的行为不同，因此确保终止的子节点不会变成僵尸的唯一完全可移植的方法是捕获 \fBSIGCHLD\fP 信号并执行
+\fBwait\fP(2) 或类似的。
+.PP
+POSIX.1\-1990 仅指定 \fBSA_NOCLDSTOP\fP。 POSIX.1\-2001 添加了
+\fBSA_NOCLDSTOP\fP、\fBSA_NOCLDWAIT\fP、\fBSA_NODEFER\fP、\fBSA_ONSTACK\fP、\fBSA_RESETHAND\fP、\fBSA_RESTART\fP
+和 \fBSA_SIGINFO\fP。 在用于旧 UNIX 实现的应用程序中，在 \fIsa_flags\fP 中使用后面这些值可能不太便携。
+.PP
+\fBSA_RESETHAND\fP 标志与同名的 SVr4 标志兼容。
+.PP
+\fBSA_NODEFER\fP 标志与内核 1.3.9 及更高版本下同名的 SVr4 标志兼容。 在较旧的内核上，Linux
+实现允许接收任何信号，而不仅仅是我们正在安装的信号 (有效地覆盖任何 \fIsa_mask\fP 设置)。
+.PP
+可以用一个 NULL 秒参数调用 \fBsigaction\fP() 来查询当前的信号处理程序。 它还可用于检查给定信号是否对当前机器有效，方法是使用
+NULL second 和 third 参数调用它。
+.PP
+无法阻止 \fBSIGKILL\fP 或 \fBSIGSTOP\fP (通过在 \fIsa_mask\fP).h 中指定它们)。 这样做的尝试会被默默地忽略。
+.PP
+有关操作信号集的详细信息，请参见 \fBsigsetops\fP(3)。
+.PP
+.\"
+有关可以从信号处理程序内部安全调用的异步信号安全函数的列表，请参见 \fBsignal\-safety\fP(7)。
+.SS "C library/kernel differences"
+\fBsigaction\fP() 的 glibc 包装器函数在尝试更改 NPTL 线程实现内部使用的两个实时信号的配置时给出错误 (\fBEINVAL\fP)。
+有关详细信息，请参见 \fBnptl\fP(7)。
+.PP
+在信号蹦床驻留在 C 库中的体系结构上，\fBsigaction\fP() 的 glibc 包装器函数将蹦床代码的地址放在
+\fIact.sa_restorer\fP 字段中，并在 \fIact.sa_flags\fP 字段中设置 \fBSA_RESTORER\fP 标志。 请参见
+\fBsigreturn\fP(2)。
+.PP
+.\"
+原来的 Linux 系统调用被命名为 \fBsigaction\fP()。 但是，随着 Linux 2.2 中实时信号的添加，该系统调用支持的固定大小的 32
+位 \fIsigset_t\fP 类型不再适用。 因此，增加了一个新的系统调用，\fBrt_sigaction\fP()，以支持扩大的 \fIsigset_t\fP
+类型。 新系统调用采用第四个参数 \fIsize_t sigsetsize\fP，它指定 \fIact.sa_mask\fP 和 \fIoldact.sa_mask\fP
+中信号集的字节大小。 此参数当前要求具有值 \fIsizeof(sigset_t)\fP (或错误 \fBEINVAL\fP 结果)。 glibc
+\fBsigaction\fP() 包装器函数向我们隐藏了这些细节，在内核提供 \fBrt_sigaction\fP() 时透明地调用它。
+.SS Undocumented
+在引入 \fBSA_SIGINFO\fP 之前，还可以获得有关信号的一些额外信息。 这是通过为 \fIsa_handler\fP 信号处理程序提供第二个类型为
+\fIstruct sigcontext\fP 的参数来完成的，它与在第三个参数中 (通过指针) 传递的 \fIucontext\fP 结构体的
+\fIuc_mcontext\fP 字段中传递的结构体相同 \fIsa_sigaction\fP 处理程序。 有关详细信息，请参见相关的 Linux 内核源代码。
+这种用法现在已经过时了。
+.SH BUGS
+当使用 \fBSA_SIGINFO\fP 处理程序传递信号时，内核并不总是为与该信号相关的 \fIsiginfo_t\fP 的所有字段提供有意义的值。
+.PP
+.\" commit 69be8f189653cd81aae5a74e26615b12871bb72e
+在 Linux 2.6.13 及之前，在 \fIsa_flags\fP 中指定 \fBSA_NODEFER\fP
+不仅可以防止传递的信号在处理程序执行期间被屏蔽，而且可以防止 \fIsa_mask\fP 中指定的信号。 此错误已在 Linux 2.6.14 中修复。
+.SH EXAMPLES
+请参见 \fBmprotect\fP(2)。
+.SS "Probing for flag support"
+如果确定支持 \fBSA_EXPOSE_TAGBITS\fP，则以下示例程序以状态 \fBEXIT_SUCCESS\fP 退出，否则为
+\fBEXIT_FAILURE\fP。
+.PP
+.\" SRC BEGIN (sigaction.c)
+.EX
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+void
+handler(int signo, siginfo_t *info, void *context)
+{
+    struct sigaction oldact;
+
+    if (sigaction(SIGSEGV, NULL, &oldact) == \-1
+        || (oldact.sa_flags & SA_UNSUPPORTED)
+        || !(oldact.sa_flags & SA_EXPOSE_TAGBITS))
+    {
+        _exit(EXIT_FAILURE);
+    }
+    _exit(EXIT_SUCCESS);
+}
+
+int
+main(void)
+{
+    struct sigaction act = { 0 };
+
+    act.sa_flags = SA_SIGINFO | SA_UNSUPPORTED | SA_EXPOSE_TAGBITS;
+    act.sa_sigaction = &handler;
+    if (sigaction(SIGSEGV, &act, NULL) == \-1) {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
+    raise(SIGSEGV);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBkill\fP(1), \fBkill\fP(2), \fBpause\fP(2), \fBpidfd_send_signal\fP(2),
+\fBrestart_syscall\fP(2), \fBseccomp\fP(2), \fBsigaltstack\fP(2), \fBsignal\fP(2),
+\fBsignalfd\fP(2), \fBsigpending\fP(2), \fBsigprocmask\fP(2), \fBsigreturn\fP(2),
+\fBsigsuspend\fP(2), \fBwait\fP(2), \fBkillpg\fP(3), \fBraise\fP(3), \fBsiginterrupt\fP(3),
+\fBsigqueue\fP(3), \fBsigsetops\fP(3), \fBsigvec\fP(3), \fBcore\fP(5), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

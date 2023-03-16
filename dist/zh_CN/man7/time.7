@@ -1,0 +1,108 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2006 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2008-06-24, mtk: added some details about where jiffies come into
+.\"     play; added section on high-resolution timers.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH time 7 2023\-01\-22 "Linux man\-pages 6.03" 
+.SH NAME
+时间 \- 时间和计时器概述
+.SH DESCRIPTION
+.SS "Real time and process time"
+\fIReal time\fP 被定义为从某个固定点开始测量的时间，或者从过去的标准点开始 (参见下面的纪元和日历时间的描述)，或者从进程
+(\fIelapsed time\fP) 生命周期中的某个点 (例如，开始) 开始。
+.PP
+\fIProcess time\fP 定义为进程使用的 CPU 时间量。 这有时分为 \fIuser\fP 和 \fIsystem\fP 组件。 用户 CPU
+时间是在用户模式下执行代码所花费的时间。 系统 CPU 时间是内核代表进程在系统模式下执行 (例如，执行系统调用) 所花费的时间。 \fBtime\fP(1)
+命令可用于确定程序执行期间消耗的 CPU 时间量。 程序可以使用 \fBtimes\fP(2)、\fBgetrusage\fP(2) 或 \fBclock\fP(3)
+确定它消耗的 CPU 时间量。
+.SS "The hardware clock"
+大多数计算机都有一个 (battery\-powered) 硬件时钟，内核在启动时读取它以初始化软件时钟。 有关详细信息，请参见 \fBrtc\fP(4) 和
+\fBhwclock\fP(8)。
+.SS "The software clock, HZ, and jiffies"
+.\" semtimedop(), mq_timedwait(), io_getevents(), poll() are the same
+.\" futexes and thus sem_timedwait() seem to use high-res timers.
+设置超时的各种系统调用的准确性 (例如，\fBselect\fP(2)、\fBsigtimedwait\fP(2)) 和测量 CPU 时间
+(例如，\fBgetrusage\fP(2))) 受 \fIsoftware clock\fP 分辨率的限制，\fIsoftware clock\fP
+是内核维护的时钟，用于测量 \fIjiffies\fP 中的时间。 一个 jiffy 的大小由内核常量 \fIHZ\fP 的值决定。
+.PP
+\fIHZ\fP 的值因内核版本和硬件平台而异。 在 i386 上，情况如下: 在 Linux 2.4.x 及之前的内核上，HZ 为 100，给出 0.01
+秒的瞬时值; 从 Linux 2.6.0 开始，HZ 提高到 1000，使 0.001 秒变快。 从 Linux 2.6.13 开始，HZ
+值是内核配置参数，可以是 100、250 (默认值) 或 1000，分别产生 0.01、0.004 或 0.001 秒的 jiffies 值。 从
+Linux 2.6.20 开始，可以使用更多频率: 300，一个平均划分为常见视频帧速率 (PAL，25 Hz; NTSC，30 Hz) 的数字。
+.PP
+.\" glibc gets this info with a little help from the ELF loader;
+.\" see glibc elf/dl-support.c and kernel fs/binfmt_elf.c.
+.\"
+\fBtimes\fP(2) 系统调用是特例。 它以内核常量 \fIUSER_HZ\fP 定义的粒度报告时间。 用户空间应用程序可以使用
+\fIsysconf(_SC_CLK_TCK)\fP 确定此常量的值。
+.SS "System and process clocks; time namespaces"
+.\"
+内核支持一系列时钟，用于测量各种流逝的和虚拟的 (即消耗的 CPU) 时间。 \fBclock_gettime\fP(2) 中描述了这些时钟。
+一些时钟可以使用 \fBclock_settime\fP(2) 设置。 某些时钟的值由时间命名空间虚拟化; 请参见
+\fBtime_namespaces\fP(7)。
+.SS "High\-resolution timers"
+在 Linux 2.6.21 之前，计时器和睡眠系统调用 (见下文) 的准确性也受到 jiffy 大小的限制。
+.PP
+从 Linux 2.6.21 开始，Linux 支持高分辨率定时器 (HRTs)，可选择通过 \fBCONFIG_HIGH_RES_TIMERS\fP 配置。
+在支持 HRT 的系统上，睡眠和定时器系统调用的精度不再受制于瞬间，而是可以达到硬件允许的精度 (微秒级精度是现代硬件的典型特征)。
+您可以通过检查调用返回到 \fBclock_getres\fP(2) 的分辨率或查看 \fI/proc/timer_list\fP 中的 "resolution"
+条目来确定是否支持高分辨率计时器。
+.PP
+并非所有硬件架构都支持 HRT。 (在 x86、ARM 和 PowerPC 等平台上提供支持。)
+.SS "The Epoch"
+UNIX 系统表示自 \fIEpoch\fP 以来的时间 (以秒为单位)，1970\-01\-01 00:00:00 +0000 (UTC)。
+.PP
+.\"
+程序可以通过 \fBclock_gettime\fP(2) \fBCLOCK_REALTIME\fP 时钟确定 \fIcalendar time\fP，它返回自纪元以来经过的时间 (以秒和纳秒为单位) ; \fBtime\fP(2) 提供类似的信息，但只精确到最接近的秒。 可以使用
+\fBclock_settime\fP(2) 更改系统时间。
+.SS "Broken\-down time"
+某些库函数使用类型为 \fItm\fP 的结构体来表示 \fIbroken\-down time\fP，它存储时间值，并将其分离为不同的组件
+(年、月、日、小时、分钟、秒等)。 这个结构体在 \fBtm\fP(3type) 中描述，它也描述了在日历时间和分解时间之间转换的函数。
+\fBctime\fP(3)、\fBstrftime\fP(3) 和 \fBstrptime\fP(3)
+中描述了用于在分解时间和时间的可打印字符串表示之间进行转换的函数。
+.SS "Sleeping and setting timers"
+各种系统调用和函数允许程序休眠 (暂停执行) 一段指定的时间; 请参见 \fBnanosleep\fP(2)、\fBclock_nanosleep\fP(2) 和
+\fBsleep\fP(3)。
+.PP
+各种系统调用允许进程设置一个计时器，该计时器在 future 中的某个时间点到期，并且可以选择重复间隔; 请参见
+\fBalarm\fP(2)、\fBgetitimer\fP(2)、\fBtimerfd_create\fP(2) 和 \fBtimer_create\fP(2)。
+.SS "Timer slack"
+由于 Linux 2.6.28，可以控制线程的 "timer slack" 值。 timer slack
+是内核可以延迟唤醒某些因超时而阻塞的系统调用的时间长度。 允许这种延迟允许内核合并唤醒事件，从而可能减少系统唤醒的次数并节省电量。 更多详细信息，请参见
+\fBprctl\fP(2) 中 \fBPR_SET_TIMERSLACK\fP 的说明。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBdate\fP(1), \fBtime\fP(1), \fBtimeout\fP(1), \fBadjtimex\fP(2), \fBalarm\fP(2),
+\fBclock_gettime\fP(2), \fBclock_nanosleep\fP(2), \fBgetitimer\fP(2),
+\fBgetrlimit\fP(2), \fBgetrusage\fP(2), \fBgettimeofday\fP(2), \fBnanosleep\fP(2),
+\fBstat\fP(2), \fBtime\fP(2), \fBtimer_create\fP(2), \fBtimerfd_create\fP(2),
+\fBtimes\fP(2), \fButime\fP(2), \fBadjtime\fP(3), \fBclock\fP(3),
+\fBclock_getcpuclockid\fP(3), \fBctime\fP(3), \fBntp_adjtime\fP(3),
+\fBntp_gettime\fP(3), \fBpthread_getcpuclockid\fP(3), \fBsleep\fP(3), \fBstrftime\fP(3),
+\fBstrptime\fP(3), \fBtimeradd\fP(3), \fBusleep\fP(3), \fBrtc\fP(4),
+\fBtime_namespaces\fP(7), \fBhwclock\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,135 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: pivot_root
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH PIVOT_ROOT 8 2022\-05\-11 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+pivot_root \- 更改根文件系统
+.SH SYNOPSIS
+.sp
+\fBpivot_root\fP \fInew_root\fP \fIput_old\fP
+.SH DESCRIPTION
+.sp
+\fBpivot_root\fP 将当前进程的根文件系统移动到目录 \fIput_old\fP 并使 \fInew_root\fP 成为新的根文件系统。由于
+\fBpivot_root\fP(8) 只是简单地调用了 \fBpivot_root\fP(2)，我们可以参考后者的手册页以获取更多详细信息。
+.sp
+请注意，根据 \fBpivot_root\fP 的实现，调用者的根目录和当前工作目录可能会改变，也可能不会改变。以下是调用 \fBpivot_root\fP
+的序列，在任何一种情况下都有效，假设 \fBpivot_root\fP 和 \fBchroot\fP 在当前 \fBPATH\fP: 中
+.sp
+.if  n .RS 4
+.nf
+.fam C
+cd new_root
+pivot_root . put_old
+exec chroot . command
+.fam
+.fi
+.if  n .RE
+.sp
+请注意，\fBchroot\fP 必须在旧根目录和新根目录下可用，因为 \fBpivot_root\fP 可能会也可能不会隐式更改 shell 的根目录。
+.sp
+请注意，\fBexec chroot\fP
+会更改正在运行的可执行文件，如果之后要卸载旧的根目录，则这是必需的。另请注意，标准输入、输出和错误可能仍指向旧根文件系统上的设备，使其处于忙碌状态。调用
+\fBchroot\fP 时可以轻松更改它们 (见下文; 请注意，无论 \fBpivot_root\fP 是否更改了 shell\(cqs root
+或不)，都没有前导斜线来使其工作。
+.SH OPTIONS
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH EXAMPLE
+.sp
+从交互式 shell 将根文件系统更改为 \fI/dev/hda1\fP:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+mount /dev/hda1 /new\-root
+cd /new\-root
+pivot_root . old\-root
+exec chroot . sh <dev/console >dev/console 2>&1
+umount /old\-root
+.fam
+.fi
+.if  n .RE
+.sp
+从 10.0.0.1:/my_root 通过 NFS 安装新的根文件系统并运行 \fBinit\fP:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+ifconfig lo 127.0.0.1 up   # 用于端口映射
+# 配置以太网等
+portmap   # for lockd (由挂载隐式启动)
+mount \-o ro 10.0.0.1:/my_root /mnt
+killall portmap   # portmap 保持旧的 root 忙碌
+cd /mnt
+pivot_root . old_root
+exec chroot . sh \-c \(aqumount /old_root;  exec /sbin/init\(aq \(rs
+  <dev/console >dev/console 2>&1
+.fam
+.fi
+.if  n .RE
+.SH "SEE ALSO"
+.sp
+\fBchroot\fP(1), \fBpivot_root\fP(2), \fBmount\fP(8), \fBswitch_root\fP(8), \fBumount\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBpivot_root\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

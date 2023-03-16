@@ -1,0 +1,137 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NSS\-MYMACHINES 8 "" "systemd 253" nss\-mymachines
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+nss\-mymachines, libnss_mymachines.so.2 \- 本地容器实例的主机名解析
+.SH SYNOPSIS
+.PP
+libnss_mymachines\&.so\&.2
+.SH DESCRIPTION
+.PP
+\fBnss\-mymachines\fP 是 GNU C 库 (\fBglibc\fP) 的 GNU Name Service Switch (NSS)
+功能的插件模块，为在本地运行并注册到 \fBsystemd\-machined.service\fP(8)\&
+的容器的名称提供主机名解析。容器名称解析为特定容器的 IP 地址，按其作用域 \& 排序。此功能仅适用于使用网络命名空间的容器 (参见
+\fBsystemd\-nspawn\fP(1))\& 中 \fB\-\-private\-network\fP 的描述。注意解析的名称是注册到
+\fBsystemd\-machined\fP 的名称，可能与容器内部配置的主机名不同 \&。
+.PP
+请注意，此 NSS 模块仅提供在当前系统上下文下运行的容器的可用名称
+\&。它不为与调用系统上下文并排运行的容器提供主机名解析，也不为容器层次结构中更高或更低的容器提供主机名解析。或者换句话说，在主机系统上，它为紧接在主机环境下运行的容器提供主机名解析
+\&。但是，当在容器环境中使用时，它将无法为在主机上运行的容器提供名称解析
+(因为它们是同级容器，而不是当前容器环境的子容器)，而只能为在其自身容器下运行的嵌套容器提供名称解析环境 \&。
+.PP
+要激活 NSS 模块，请将 "mymachines" 添加到 /etc/nsswitch\&.conf\& 中以 "hosts:" 开头的行。
+.PP
+建议将 "mymachines" 放在 /etc/nsswitch\&.conf 的 "hosts:" 行的 "resolve" 或 "dns"
+条目之前，以确保其映射优先于其他解析器 (例如 DNS\&)。
+.SH "CONFIGURATION IN /ETC/NSSWITCH\&.CONF"
+.PP
+以下是正确启用 \fBnss\-mymachines\fP 的示例 /etc/nsswitch\&.conf 文件:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+密码: compat systemd
+组: compat [SUCCESS=merge] systemd
+影子: compat systemd
+gshadow: 文件系统
+
+hosts: \fBmymachines\fP 解析 [!UNAVAIL=return] 文件 myhostname dns
+网络: 文件
+
+协议: 数据库文件
+服务: 数据库文件
+醚: 数据库文件
+rpc: 数据库文件
+
+网络组: nis
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "EXAMPLE: MAPPINGS PROVIDED BY NSS\-MYMACHINES"
+.PP
+使用 \fBsystemd\-nspawn\fP(1): 生成容器 "rawhide"
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-nspawn \-M rawhide \-\-boot \-\-network\-veth \-\-private\-users=pick
+/var/rawhide\& 上的产卵容器生皮。
+选定的用户命名空间基数 20119552 和范围 65536\&。
+\&.\&.\&.
+
+$ machinectl \-\-max\-addresses=3
+机器类服务操作系统版本地址
+生皮容器 systemd\-nspawn fedora 30 169\&.254\&.40\&.164 fe80::94aa:3aff:fe7b:d4b9
+
+$ ping \-c1 生皮
+PING rawhide(fe80::94aa:3aff:fe7b:d4b9%ve\-rawhide (fe80::94aa:3aff:fe7b:d4b9%ve\-rawhide)) 56 个数据字节
+来自 fe80::94aa:3aff:fe7b:d4b9% ve\-rawhide (fe80::94aa:3aff:fe7b:d4b9%ve\-rawhide) 的 64 个字节: icmp_seq=1 ttl=64 time=0\&.045 ms
+\&.\&.\&.
+$ ping \-c1 \-4 生皮
+PING rawhide (169\&.254\&.40\&.164) 56(84) 数据字节 \&。
+来自 169\&.254\&.40\&.164 (169\&.254\&.40\&.164) 的 64 个字节: icmp_seq=1 ttl=64 time=0\&.064 ms
+\&.\&.\&.
+
+# machinectl shell 生皮 /sbin/ip a
+连接到机器生皮 \&。1s 内按三次 ^] 退出 session\&。
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    \&.\&.\&.
+2: host0@if21: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP 组默认 qlen 1000
+    link/ether 96:aa:3a:7b:d4:b9 brd ff:ff:ff:ff:ff:ff link\-netnsid 0
+    inet 169\&.254\&.40\&.164/16 brd 169\&.254\&.255\&.255 作用域 link host0
+       valid_lft 永远 preferred_lft 永远
+    inet6 fe80::94aa:3aff:fe7b:d4b9/64 作用域 link
+       valid_lft 永远 preferred_lft 永远
+与机器生皮的连接终止 \&。
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-machined.service\fP(8), \fBmachinectl\fP(1),
+\fBnss\-systemd\fP(8), \fBnss\-resolve\fP(8), \fBnss\-myhostname\fP(8),
+\fBnsswitch.conf\fP(5), \fBgetent\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

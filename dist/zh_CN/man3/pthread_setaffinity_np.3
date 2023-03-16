@@ -1,0 +1,161 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_setaffinity_np 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_setaffinity_np、pthread_getaffinity_np \- 线程的 set/get CPU 亲和力
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_setaffinity_np(pthread_t \fP\fIthread\fP\fB, size_t \fP\fIcpusetsize\fP\fB,\fP
+\fB                           const cpu_set_t *\fP\fIcpuset\fP\fB);\fP
+\fBint pthread_getaffinity_np(pthread_t \fP\fIthread\fP\fB, size_t \fP\fIcpusetsize\fP\fB,\fP
+\fB                           cpu_set_t *\fP\fIcpuset\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_setaffinity_np\fP() 函数将线程 \fIthread\fP 的 CPU affinity mask 设置为
+\fIcpuset\fP 指向的 CPU 集。 如果调用成功，并且线程当前未在 \fIcpuset\fP 中的其中一个 CPU 上运行，则它会迁移到这些 CPU
+之一。
+.PP
+\fBpthread_getaffinity_np\fP() 函数返回 \fIcpuset\fP 指向的缓冲区中线程 \fIthread\fP 的 CPU 关联掩码。
+.PP
+有关 CPU 关联掩码的更多详细信息，请参见 \fBsched_setaffinity\fP(2)。 有关可用于操作和检查 CPU 集的一组宏的描述，请参见
+\fBCPU_SET\fP(3)。
+.PP
+参数 \fIcpusetsize\fP 是 \fIcpuset\fP 指向的缓冲区的长度 (以字节为单位)。 通常，此参数将指定为
+\fIsizeof(cpu_set_t)\fP。 (如果使用 \fBCPU_SET\fP(3) 中描述的宏来动态分配 CPU 集，它可能是其他值。)
+.SH "RETURN VALUE"
+成功时，这些函数返回 0; 出错时，它们返回一个非零错误号。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+提供的内存地址无效。
+.TP 
+\fBEINVAL\fP
+(\fBpthread_setaffinity_np\fP()) 关联位掩码 \fImask\fP 不包含当前物理上位于系统上并根据 \fBcpuset\fP(7)
+中描述的 "cpuset" 机制可能施加的任何限制允许线程使用的处理器。
+.TP 
+\fBEINVAL\fP
+.\" cpumask_t
+.\" The raw sched_getaffinity() system call returns the size (in bytes)
+.\" of the cpumask_t type.
+(\fBpthread_setaffinity_np\fP()) \fIcpuset\fP 指定的 CPU 不在内核支持的范围内。 (内核配置选项
+\fBCONFIG_NR_CPUS\fP 定义了内核支持的集合的范围数据类型用来表示 CPU 集合。)
+.TP 
+\fBEINVAL\fP
+(\fBpthread_getaffinity_np\fP()) \fIcpusetsize\fP 小于内核使用的关联掩码的大小。
+.TP 
+\fBESRCH\fP
+找不到 ID 为 \fIthread\fP 的线程。
+.SH VERSIONS
+这些函数是从 glibc 2.3.4 开始提供的。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_setaffinity_np\fP(),
+\fBpthread_getaffinity_np\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是非标准的 GNU 扩展; 因此名称中有后缀 "_np" (nonportable)。
+.SH NOTES
+在调用 \fBpthread_setaffinity_np\fP() 之后，线程将实际运行的 CPU 集合是 \fIcpuset\fP
+参数中指定的集合与系统中实际存在的 CPU 集合的交集。 如果正在使用 \fBcpuset\fP(7) 中描述的 "cpuset"
+机制，系统可能会进一步限制线程运行的 CPU 集。 这些对线程将在其上运行的实际 CPU 集的限制是由内核悄悄施加的。
+.PP
+这些函数是在 \fBsched_setaffinity\fP(2) 和 \fBsched_getaffinity\fP(2) 系统调用之上实现的。
+.PP
+仅在 glibc 2.3.3 中，提供的这些函数版本没有 \fIcpusetsize\fP 参数。 相反，为底层系统调用提供的 CPU 集大小始终为
+\fIsizeof(cpu_set_t)\fP。
+.PP
+\fBpthread_create\fP(3) 创建的新线程继承了其创建者的 CPU 关联掩码的副本。
+.SH EXAMPLES
+在下面的程序中，主线程使用 \fBpthread_setaffinity_np\fP() 将其 CPU affinity mask 设置为包括 CPU 0 到
+7 (系统上可能并非全部可用)，然后调用 \fBpthread_getaffinity_np\fP() 来检查线程的 CPU affinity mask。
+.PP
+.\" SRC BEGIN (pthread_setaffinity_np.c)
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    int s;
+    cpu_set_t cpuset;
+    pthread_t thread;
+
+    thread = pthread_self();
+
+    /* Set affinity mask to include CPUs 0 to 7. */
+
+    CPU_ZERO(&cpuset);
+    for (size_t j = 0; j < 8; j++)
+        CPU_SET(j, &cpuset);
+
+    s = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_setaffinity_np");
+
+    /* Check the actual affinity mask assigned to the thread. */
+
+    s = pthread_getaffinity_np(thread, sizeof(cpuset), &cpuset);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_getaffinity_np");
+
+    printf("Set returned by pthread_getaffinity_np() contained:\en");
+    for (size_t j = 0; j < CPU_SETSIZE; j++)
+        if (CPU_ISSET(j, &cpuset))
+            printf("    CPU %zu\en", j);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBsched_setaffinity\fP(2), \fBCPU_SET\fP(3), \fBpthread_attr_setaffinity_np\fP(3),
+\fBpthread_self\fP(3), \fBsched_getcpu\fP(3), \fBcpuset\fP(7), \fBpthreads\fP(7),
+\fBsched\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

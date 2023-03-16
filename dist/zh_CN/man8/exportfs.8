@@ -1,0 +1,186 @@
+.\" -*- coding: UTF-8 -*-
+.\"@(#)exportfs.8"
+.\"
+.\" Copyright (C) 1995 Olaf Kirch <okir@monad.swb.de>
+.\" Modifications 1999-2003 Neil Brown <neilb@cse.unsw.edu.au>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH exportfs 8 "30 September 2013"  
+.SH NAME
+exportfs \- 维护导出的 NFS 文件系统表
+.SH SYNOPSIS
+\fB/usr/sbin/exportfs [\-avi] [\-o \fP\fIoptions,..\fP\fB] [\fP\fIclient:/path\fP\fB ..]\fP
+.br
+\fB/usr/sbin/exportfs \-r [\-v]\fP
+.br
+\fB/usr/sbin/exportfs [\-av] \-u [\fP\fIclient:/path\fP\fB ..]\fP
+.br
+\fB/usr/sbin/exportfs [\-v]\fP
+.br
+\fB/usr/sbin/exportfs \-f\fP
+.br
+\fB/usr/sbin/exportfs \-s\fP
+.br
+.SH DESCRIPTION
+NFS 服务器维护一张 NFS 客户端可访问的本地物理文件系统表。 此表中的每个文件系统简称为 \fIexported file system\fP 或
+\fIexport\fP。
+.PP
+\fBexportfs\fP 命令维护 NFS 服务器的当前导出表。 主导出表保存在名为 \fI/var/lib/nfs/etab\fP 的文件中。 当客户端发送
+NFS MOUNT 请求时，此文件由 \fBrpc.mountd\fP 读取。
+.PP
+通常，主导出表通过调用 \fBexportfs \-a\fP 使用 \fI/etc/exports\fP 的内容和 \fI/etc/exports.d\fP
+下的文件进行初始化。 但是，系统管理员可以使用 \fBexportfs\fP 命令选择在不修改 \fI/etc/exports\fP 或
+\fI/etc/exports.d\fP 下的文件的情况下添加或删除导出。
+.PP
+\fBexportfs\fP 及其伙伴程序 \fBrpc.mountd\fP 以两种模式之一工作: 适用于 2.4 和早期版本的 Linux
+内核的旧模式，以及适用于 2.6 和更高版本的新模式，前提是 \fBnfsd\fP 虚拟文件系统已安装在 \fI/proc/fs/nfsd\fP 或
+\fI/proc/fs/nfs\fP。 在 2.6 内核上，如果未挂载此文件系统，则使用传统模式。
+.PP
+在新模式下，\fBexportfs\fP 不给内核任何信息，只是通过 \fI/var/lib/nfs/etab\fP 文件提供给 \fBrpc.mountd\fP。
+\fBrpc.mountd\fP 然后根据需要管理内核对导出信息的请求。
+.PP
+在传统模式下，标识特定主机而非子网或网络组的导出直接进入内核的导出表，并写入 \fI/var/lib/nfs/etab\fP。
+此外，\fI/var/lib/nfs/rmtab\fP 中列出的与非特定于主机的导出请求相匹配的导出将导致 \fIrmtab\fP
+中给定的主机的适当导出条目被添加到内核的导出表中。
+.SH OPTIONS
+.TP 
+\fB\-d kind  or  \-\-debug kind\fP
+开启调试。有效类型为: all、auth、调用、general 和 parse。 也可以通过在 \fI/etc/nfs.conf\fP 的
+\fB[exportfs]\fP 部分设置 \fBdebug=\fP 来打开调试。
+
+.TP 
+\fB\-a\fP
+导出或取消导出所有目录。
+.TP 
+\fB\-o \fP\fIoptions,...\fP
+以与 \fBexports\fP(5) 中相同的方式指定导出选项列表。
+.TP 
+\fB\-i\fP
+忽略 \fI/etc/exports\fP 文件和 \fI/etc/exports.d\fP 目录下的文件。 仅使用默认选项和命令行中给出的选项。
+.TP 
+\fB\-r\fP
+重新导出所有目录，将 \fI/var/lib/nfs/etab\fP 与 \fI/etc/exports\fP 和 \fI/etc/exports.d\fP
+下的文件同步。 此选项删除 \fI/var/lib/nfs/etab\fP 中已从 \fI/etc/exports\fP 或 \fI/etc/exports.d\fP
+下的文件中删除的条目，并从内核导出表中删除任何不再有效的条目。
+.TP 
+\fB\-u\fP
+取消导出一个或多个目录。
+.TP 
+\fB\-f\fP
+如果安装了 \fI/proc/fs/nfsd\fP 或 \fI/proc/fs/nfs\fP，请清除内核导出表中的所有内容。 当活动客户端发出下一个 NFS
+安装请求时，\fBrpc.mountd\fP 会将活动客户端的新条目添加到内核的导出表中。
+.TP 
+\fB\-v\fP
+冗长。导出或取消导出时，显示发生了什么。显示当前导出列表时，还会显示导出选项列表。
+.TP 
+\fB\-s\fP
+显示当前适用于 /etc/exports 的导出列表。
+
+.SH "CONFIGURATION FILE"
+\fI/etc/nfs.conf\fP 配置文件的 \fB[exportfs]\fP 部分可以包含一个 \fBdebug\fP 值，它可以是列表
+\fBgeneral\fP、\fBcall\fP、\fBauth\fP、\fBparse\fP、\fBall\fP 中的一个或多个。 当给出列表时，成员应该以逗号分隔。
+
+\fBexportfs\fP 还将从 \fB[mountd]\fP 部分和 \fB[exportd]\fP 部分识别 \fBstate\-directory\-path\fP 值
+
+.SH DISCUSSION
+.SS "Exporting Directories"
+第一个概要显示了在将新条目添加到导出表时如何调用 \fBexportfs\fP。 使用 \fBexportfs \-a\fP 时，\fI/etc/exports\fP
+中列出的所有导出和 \fI/etc/exports.d\fP 下的文件都添加到 \fI/var/lib/nfs/etab\fP。 内核的导出表也会根据需要更新。
+.PP
+\fIhost:/path\fP 参数指定要导出的本地目录，以及允许访问它的一个或多个客户端。 有关支持的选项和访问列表格式的说明，请参见
+\fBexports(5)\fP。
+.PP
+IPv6 表示地址包含冒号，已用于分隔 "host" 和 "path" 命令行参数。 使用原始 IPv6 地址指定客户端时，请将地址括在方括号中。 对于
+IPv6 网络地址，将前缀放在右括号之后。
+.PP
+要将目录导出到世界，只需指定 \fI:/path\fP。
+.PP
+特定 host/directory 对的导出选项来自多个来源。 默认导出选项是 \fBsync,ro,root_squash,wdelay\fP。 这些可以被
+\fI/etc/exports\fP 中的条目或 \fI/etc/exports.d\fP 下的文件覆盖。
+.PP
+系统管理员可以使用 \fBexportfs\fP 上的 \fB\-o\fP 命令行选项覆盖这些来源的选项。 该选项采用以逗号分隔的选项列表，其方式与在
+\fI/etc/exports\fP 中指定它们的方式相同。 这样，\fBexportfs\fP 可用于修改已导出目录的导出选项。
+.SS "Unexporting Directories"
+第三个概要显示了如何取消导出当前导出的目录。 使用 \fBexportfs \-ua\fP 时，\fI/var/lib/nfs/etab\fP
+中列出的所有条目都从内核导出表中删除，并且文件被清除。这有效地关闭了所有 NFS 活动。
+.PP
+要删除导出，请指定 \fIhost:/path\fP 对。这将从 \fI/var/lib/nfs/etab\fP 中删除指定的条目并删除相应的内核条目 (如果有)。
+.PP
+.SS "Dumping the Export Table"
+不带选项调用 \fBexportfs\fP 会显示当前导出的文件系统列表。 添加 \fB\-v\fP 选项会导致 \fBexportfs\fP 显示每次导出的导出选项。
+.SH EXAMPLES
+下面将 \fI/etc/exports\fP 中列出的所有目录和 \fI/etc/exports.d\fP 下的文件添加到
+\fI/var/lib/nfs/etab\fP，并将生成的导出条目推送到内核中:
+.PP
+.nf
+\fB# exportfs \-a\fP
+.fi
+.PP
+要将 \fI/usr/tmp\fP 目录导出到主机 \fBdjango\fP，允许来自客户端的不安全文件锁定请求:
+.PP
+.nf
+\fB# exportfs \-o insecure_locks django:/usr/tmp\fP
+.fi
+.PP
+要取消导出 \fI/usr/tmp\fP 目录:
+.PP
+.nf
+\fB# exportfs \-u django:/usr/tmp\fP
+.fi
+.PP
+取消导出 \fI/etc/exports\fP 中列出的所有导出和 \fI/etc/exports.d\fP: 下的文件
+.PP
+.nf
+\fB# exportfs \-au\fP
+.fi
+.PP
+要将 \fI/usr/tmp\fP 目录导出到 IPv6 链接本地客户端:
+.PP
+.nf
+\fB# exportfs [fe80::]/64:/usr/tmp\fP
+.fi
+.SH "USAGE NOTES"
+导出到 IP 网络或 DNS 和 NIS 域不会使来自这些组的客户端立即访问 NFS。 相反，这些类型的导出是对 \fBrpc.mountd\fP(8)
+的提示，以授予来自这些客户端的任何挂载请求。 这通常不是问题，因为任何现有的挂载在重新启动后都会保留在 \fIrmtab\fP 中。
+.PP
+取消导出网络或域条目时，将根据剩余的有效导出检查对该组成员的任何当前导出，如果它们本身不再有效，它们将被删除。
+.SH FILES
+.TP  2.5i
+\fI/etc/exports\fP
+输入文件列出导出、导出选项和访问控制列表
+.TP  2.5i
+\fI/etc/exports.d\fP
+存储额外输入文件的目录。 \fBNote:\fP 仅使用以 \fI.exports\fP 结尾的文件。
+.TP  2.5i
+\fI/var/lib/nfs/etab\fP
+出口总表
+.TP  2.5i
+\fI/var/lib/nfs/rmtab\fP
+访问服务器导出的客户端表
+.SH "SEE ALSO"
+\fBexports\fP(5), \fBnfs.conf\fP(5), \fBrpc.mountd\fP(8), \fBexportd\fP(8),
+\fBnetgroup\fP(5)
+.SH AUTHORS
+奥拉夫基尔希 <okir@monad.swb.de>
+.br
+尼尔・布朗 <neilb@cse.unsw.edu.au>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

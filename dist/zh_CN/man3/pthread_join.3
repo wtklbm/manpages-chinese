@@ -1,0 +1,103 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_join 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_join \- 加入已终止的线程
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_join(pthread_t \fP\fIthread\fP\fB, void **\fP\fIretval\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_join\fP() 函数等待 \fIthread\fP 指定的线程终止。 如果该线程已经终止，则 \fBpthread_join\fP()
+立即返回。 \fIthread\fP 指定的线程必须是可连接的。
+.PP
+如果 \fIretval\fP 不为 NULL，则 \fBpthread_join\fP() 复制目标线程的退出状态 (即目标线程提供给
+\fBpthread_exit\fP(3)) 的值到 \fIretval\fP 指向的位置。 如果目标线程被取消，则 \fBPTHREAD_CANCELED\fP
+被放置在 \fIretval\fP 指向的位置。
+.PP
+如果多个线程同时尝试加入同一个线程，则结果是不确定的。 如果调用 \fBpthread_join\fP() 的线程被取消，那么目标线程将保持可连接状态
+(即，它不会被分离)。
+.SH "RETURN VALUE"
+成功时，\fBpthread_join\fP() 返回 0; 出错时，它返回一个错误号。
+.SH ERRORS
+.TP 
+\fBEDEADLK\fP
+.\" The following verified by testing on glibc 2.8/NPTL:
+.\" The following verified by testing on glibc 2.8/NPTL:
+检测到死锁 (例如，两个线程试图相互连接) ; 或 \fIthread\fP 指定调用线程。
+.TP 
+\fBEINVAL\fP
+\fIthread\fP 不是可连接的线程。
+.TP 
+\fBEINVAL\fP
+.\" POSIX.1-2001 does not specify this error case.
+另一个线程已经在等待加入这个线程。
+.TP 
+\fBESRCH\fP
+找不到 ID 为 \fIthread\fP 的线程。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_join\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在成功调用 \fBpthread_join\fP() 后，调用者可以保证目标线程已终止。 然后，调用者可以选择在线程终止后执行任何所需的清理
+(例如，释放分配给目标线程的内存或其他资源)。
+.PP
+加入一个之前已经加入的线程会导致未定义的行为。
+.PP
+无法与可连接的线程 (即未分离的线程) 连接，会产生 "zombie thread"。
+避免这样做，因为每个僵尸线程都会消耗一些系统资源，当积累了足够多的僵尸线程时，将无法再创建新的线程 (或进程)。
+.PP
+没有 \fIwaitpid(\-1,\ &status,\ 0)\fP 的 pthreads 模拟，即 "join with any terminated
+thread"。 如果您认为您需要此功能，您可能需要重新考虑您的应用程序设计。
+.PP
+进程中的所有线程都是对等的: 任何线程都可以与进程中的任何其他线程连接。
+.SH EXAMPLES
+请参见 \fBpthread_create\fP(3)。
+.SH "SEE ALSO"
+\fBpthread_cancel\fP(3), \fBpthread_create\fP(3), \fBpthread_detach\fP(3),
+\fBpthread_exit\fP(3), \fBpthread_tryjoin_np\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

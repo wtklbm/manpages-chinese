@@ -1,0 +1,248 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Written  Feb 1994 by Steve Greenland (stevegr@neosoft.com)
+.\" and Copyright 2001, 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Updated 1999.12.19 by Karl M. Hegbloom <karlheg@debian.org>
+.\"
+.\" Updated 13 Oct 2001, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added description of vsyslog
+.\"	Added descriptions of LOG_ODELAY and LOG_NOWAIT
+.\"	Added brief description of facility and option arguments
+.\"	Added CONFORMING TO section
+.\" 2001-10-13, aeb, minor changes
+.\" Modified 13 Dec 2001, Martin Schulze <joey@infodrom.org>
+.\" Modified 3 Jan 2002, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH syslog 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+closelog、openlog、syslog、vsyslog \- 向系统记录器发送消息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <syslog.h>\fP
+.PP
+\fBvoid openlog(const char *\fP\fIident\fP\fB, int \fP\fIoption\fP\fB, int \fP\fIfacility\fP\fB);\fP
+\fBvoid syslog(int \fP\fIpriority\fP\fB, const char *\fP\fIformat\fP\fB, ...);\fP
+\fBvoid syslog(int \fP\fIpriority\fP\fB, const char *\fP\fIformat\fP\fB, ...);\fP
+.PP
+\fBvoid vsyslog(int \fP\fIpriority\fP\fB, const char *\fP\fIformat\fP\fB, va_list \fP\fIap\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBvsyslog\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+.SS openlog()
+\fBopenlog\fP() 为程序打开到系统记录器的连接。
+.PP
+\fIident\fP 指向的字符串被添加到每条消息的前面，并且通常设置为程序名称。 如果 \fIident\fP 为 NULL，则使用程序名。
+(POSIX.1\-2008 没有指定 \fIident\fP 为 NULL 时的行为。)
+.PP
+\fIoption\fP 参数指定控制 \fBopenlog\fP() 的操作和对 \fBsyslog\fP() 的后续调用的标志。 如果在对 \fBsyslog\fP()
+的后续调用中未指定任何内容，则 \fIfacility\fP 参数会建立一个默认值。 可以为 \fIoption\fP 和 \fIfacility\fP
+指定的值如下所述。
+.PP
+.\"
+\fBopenlog\fP() 的使用是可选的; 如果需要，它会被 \fBsyslog\fP() 自动调用，在这种情况下，\fIident\fP 将默认为 NULL。
+.SS "syslog() and vsyslog()"
+\fBsyslog\fP() 生成一条日志消息，将由 \fBsyslogd\fP(8) 分发。
+.PP
+\fIpriority\fP 参数是通过将 \fIfacility\fP 值和 \fIlevel\fP 值 (如下所述) 进行或运算而形成的。 如果没有
+\fIfacility\fP 值与 \fIpriority\fP 进行或运算，则使用 \fBopenlog\fP() 设置的默认值，或者，如果没有前面的
+\fBopenlog\fP() 调用，则使用默认值 \fBLOG_USER\fP。
+.PP
+其余参数是 \fIformat\fP，如 \fBprintf\fP(3) 和 \fIformat\fP 所需的任何参数，但两个字符序列 \fB%m\fP 将被错误消息字符串
+\fIstrerror\fP(\fIerrno\fP) 替换。 格式字符串不需要包含终止换行符。
+.PP
+.\"
+函数 \fBvsyslog\fP() 执行与 \fBsyslog\fP() 相同的任务，不同之处在于它采用一组参数，这些参数是使用 \fBstdarg\fP(3)
+变量参数列表宏获得的。
+.SS closelog()
+.\"
+\fBcloselog\fP() 关闭用于写入系统记录器的文件描述符。 \fBcloselog\fP() 的使用是可选的。
+.SS "Values for \fIoption\fP"
+\fIoption\fP 到 \fBopenlog\fP() 的参数是一个位掩码，通过对以下任何值进行 OR 运算而构造:
+.TP  15
+\fBLOG_CONS\fP
+如果发送到系统记录器时出现错误，请直接写入系统控制台。
+.TP 
+\fBLOG_NDELAY\fP
+立即打开连接 (通常，在记录第一条消息时打开连接)。 这可能很有用，例如，如果后续的 \fBchroot\fP(2) 会使日志工具内部使用的路径名无法访问。
+.TP 
+\fBLOG_NOWAIT\fP
+不要等待在记录消息时可能已创建的子进程。 (GNU C 库不创建子进程，所以这个选项对 Linux 没有影响。)
+.TP 
+\fBLOG_ODELAY\fP
+\fBLOG_NDELAY\fP 的反面; 直到调用 \fBsyslog\fP() 后才打开连接。 (这是默认值，无需指定。)
+.TP 
+\fBLOG_PERROR\fP
+(不在 POSIX.1\-2001 或 POSIX.1\-2008 中。) 还将消息记录到 \fIstderr\fP。
+.TP 
+\fBLOG_PID\fP
+.\"
+在每条消息中包含，调用者，的 PID。
+.SS "Values for \fIfacility\fP"
+\fIfacility\fP 参数用于指定记录消息的程序类型。 这让配置文件指定来自不同设施的消息将被不同地处理。
+.TP  15
+\fBLOG_AUTH\fP
+security/authorization 消息
+.TP 
+\fBLOG_AUTHPRIV\fP
+security/authorization 消息 (private)
+.TP 
+\fBLOG_CRON\fP
+时钟守护进程 (\fBcron\fP 和 \fBat\fP)
+.TP 
+\fBLOG_DAEMON\fP
+没有单独设施值的系统守护进程
+.TP 
+\fBLOG_FTP\fP
+FTP 守护进程
+.TP 
+\fBLOG_KERN\fP
+.\" LOG_KERN has the value 0; if used as a facility, zero translates to:
+.\" "use the default facility".
+内核消息 (这些不能从用户进程生成)
+.TP 
+\fBLOG_LOCAL0\fP through \fBLOG_LOCAL7\fP
+保留供本地使用
+.TP 
+\fBLOG_LPR\fP
+行式打印机子系统
+.TP 
+\fBLOG_MAIL\fP
+邮件子系统
+.TP 
+\fBLOG_NEWS\fP
+USENET 新闻子系统
+.TP 
+\fBLOG_SYSLOG\fP
+\fBsyslogd\fP(8) 内部生成的消息
+.TP 
+\fBLOG_USER\fP (default)
+泛型用户级消息
+.TP 
+\fBLOG_UUCP\fP
+.\"
+UUCP 子系统
+.SS "Values for \fIlevel\fP"
+这决定了消息的重要性。 这些级别按重要性递减顺序排列:
+.TP  15
+\fBLOG_EMERG\fP
+系统无法使用
+.TP 
+\fBLOG_ALERT\fP
+必须立即采取行动
+.TP 
+\fBLOG_CRIT\fP
+临界条件
+.TP 
+\fBLOG_ERR\fP
+错误条件
+.TP 
+\fBLOG_WARNING\fP
+警告条件
+.TP 
+\fBLOG_NOTICE\fP
+正常但重要的情况
+.TP 
+\fBLOG_INFO\fP
+信息性消息
+.TP 
+\fBLOG_DEBUG\fP
+调试级消息
+.PP
+函数 \fBsetlogmask\fP(3) 可用于将日志记录限制为仅指定级别。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBopenlog\fP(),
+\fBcloselog\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBsyslog\fP(),
+\fBvsyslog\fP()
+T}	Thread safety	MT\-Safe env locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBopenlog\fP()、\fBcloselog\fP() 和 \fBsyslog\fP() (但不是 \fBvsyslog\fP())) 在
+SUSv2、POSIX.1\-2001 和 POSIX.1\-2008 中指定。
+.PP
+POSIX.1\-2001 仅指定 \fIfacility\fP 的 \fBLOG_USER\fP 和 \fBLOG_LOCAL*\fP 值。 但是，除了
+\fBLOG_AUTHPRIV\fP 和 \fBLOG_FTP\fP 之外，其他 \fIfacility\fP 值出现在大多数 UNIX 系统上。
+.PP
+.\" .SH HISTORY
+.\" A
+.\" .BR syslog ()
+.\" function call appeared in 4.2BSD.
+.\" 4.3BSD documents
+.\" .BR openlog (),
+.\" .BR syslog (),
+.\" .BR closelog (),
+.\" and
+.\" .BR setlogmask ().
+.\" 4.3BSD-Reno also documents
+.\" .BR vsyslog ().
+.\" Of course early v* functions used the
+.\" .I <varargs.h>
+.\" mechanism, which is not compatible with
+.\" .IR <stdarg.h> .
+\fIoption\fP 的 \fBLOG_PERROR\fP 值未由 POSIX.1\-2001 或 POSIX.1\-2008 指定，但在大多数 UNIX
+版本中可用。
+.SH NOTES
+\fBopenlog\fP() 调用中的参数 \fIident\fP 应该是原样存储的。 因此，如果它指向的字符串发生变化，\fBsyslog\fP()
+可能会开始在更改后的字符串之前添加内容，如果它指向的字符串不复存在，则结果是未定义的。 最便携的是使用字符串常量。
+.PP
+永远不要将带有用户提供的数据的字符串作为格式传递，而是使用以下内容:
+.PP
+.in +4n
+.EX
+syslog(priority, "%s", string);
+.EE
+.in
+.SH "SEE ALSO"
+\fBjournalctl\fP(1), \fBlogger\fP(1), \fBsetlogmask\fP(3), \fBsyslog.conf\fP(5),
+\fBsyslogd\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

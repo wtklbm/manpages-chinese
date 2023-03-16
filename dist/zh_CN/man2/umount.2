@@ -1,0 +1,132 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1993 Rickard E. Faith <faith@cs.unc.edu>
+.\" and Copyright (C) 1994 Andries E. Brouwer <aeb@cwi.nl>
+.\" and Copyright (C) 2002, 2005 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2008-10-06, mtk: Created this as a new page by splitting
+.\"     umount/umount2 material out of mount.2
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH umount 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+umount, umount2 \- 卸载文件系统
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mount.h>\fP
+.PP
+\fBint umount(const char *\fP\fItarget\fP\fB);\fP
+\fBint umount2(const char *\fP\fItarget\fP\fB, int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" Note: the kernel naming differs from the glibc naming
+.\" umount2 is the glibc name for what the kernel now calls umount
+.\" and umount is the glibc name for oldumount
+\fBumount\fP() 和 \fBumount2\fP() 删除挂载在 \fItarget\fP 上的 (topmost) 文件系统的附件。
+.PP
+卸载文件系统需要适当的权限 (Linux: \fBCAP_SYS_ADMIN\fP 能力)。
+.PP
+Linux 2.1.116 添加了 \fBumount2\fP() 系统调用，它与 \fBumount\fP() 一样卸载目标，但允许额外的 \fIflags\fP
+控制操作的行为:
+.TP 
+\fBMNT_FORCE\fP (since Linux 2.1.116)
+在尝试卸载之前要求文件系统终止挂起的请求。 这可能允许卸载完成而无需等待无法访问的服务器，但可能会导致数据丢失。
+如果在终止请求之后，某些进程仍然对文件系统具有活动的引用，则卸载仍然会失败。 从 Linux 4.12 开始，\fBMNT_FORCE\fP
+仅在以下文件系统上受支持: 9p (自 Linux 2.6.16 起)、ceph (自 Linux 2.6.34 起)、cifs (自 Linux
+2.6.12 起)、fuse (自 Linux 2.6.16 起)、lustre (自 Linux 3.11 起) 和 NFS (从 Linux
+2.1.116 开始)。
+.TP 
+\fBMNT_DETACH\fP (since Linux 2.4.11)
+执行惰性卸载: 使挂载对新访问不可用，立即断开文件系统和挂载在其下的所有文件系统彼此之间的连接以及与挂载表的连接，并在挂载不再繁忙时实际执行卸载。
+.TP 
+\fBMNT_EXPIRE\fP (since Linux 2.6.8)
+将挂载标记为已过期。 如果挂载当前未在使用中，则使用此标志对 \fBumount2\fP() 的初始调用会失败并显示错误
+\fBEAGAIN\fP，但会将挂载标记为已过期。 只要没有被任何进程访问，挂载就会保持过期状态。 指定 \fBMNT_EXPIRE\fP 的第二个
+\fBumount2\fP() 调用卸载过期的挂载。 不能用 \fBMNT_FORCE\fP 或 \fBMNT_DETACH\fP 指定此标志。
+.TP 
+\fBUMOUNT_NOFOLLOW\fP (since Linux 2.6.34)
+.\" Later added to Linux 2.6.33-stable
+如果它是符号链接，请不要解引使用 \fItarget\fP。 该标志允许在允许非特权用户卸载文件系统的 set\-user\-ID\-\fIroot\fP
+程序中避免安全问题。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+下面给出的错误值是由与文件系统类型无关的错误引起的。 每种文件系统类型都可能有自己的特殊错误和特殊行为。 有关详细信息，请参见 Linux 内核源代码。
+.TP 
+\fBEAGAIN\fP
+对 \fBumount2\fP() 的调用指定 \fBMNT_EXPIRE\fP 成功地将不忙的文件系统标记为已过期。
+.TP 
+\fBEBUSY\fP
+无法卸载 \fItarget\fP，因为它很忙。
+.TP 
+\fBEFAULT\fP
+\fItarget\fP 指向用户地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fItarget\fP 不是挂载点。
+.TP 
+\fBEINVAL\fP
+\fItarget\fP 被锁定; 请参见 \fBmount_namespaces\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fBumount2\fP() 与 \fBMNT_EXPIRE\fP 以及 \fBMNT_DETACH\fP 或 \fBMNT_FORCE\fP 一起调用。
+.TP 
+\fBEINVAL\fP (since Linux 2.6.34)
+在 \fIflags\fP 中使用无效标志值调用了 \fBumount2\fP()。
+.TP 
+\fBENAMETOOLONG\fP
+路径名比 \fBMAXPATHLEN\fP 长。
+.TP 
+\fBENOENT\fP
+路径名为空或具有不存在的组件。
+.TP 
+\fBENOMEM\fP
+内核无法分配空闲页面来将文件名或数据复制到其中。
+.TP 
+\fBEPERM\fP
+调用者没有所需的权限。
+.SH VERSIONS
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=10092
+\fBMNT_DETACH\fP 和 \fBMNT_EXPIRE\fP 从 glibc 2.11 开始可用。
+.SH STANDARDS
+这些函数是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+.SS "umount() and shared mounts"
+共享挂载会导致挂载上的任何挂载活动 (包括 \fBumount\fP() 操作) 转发到对等组中的每个共享挂载以及该对等组的每个从属挂载。
+这意味着一组共享安装中任何对等点的 \fBumount\fP() 将导致其所有对等点被卸载，并且它们的所有从属也被卸载。
+.PP
+在默认情况下共享每个挂载的系统上，这种卸载活动的传播可能特别令人惊讶。 在这样的系统上，递归地将文件系统的根目录挂载到一个子目录上，然后使用
+\fBMNT_DETACH\fP 卸载该子目录将导致挂载命名空间中的每个挂载都被延迟卸载。
+.PP
+为确保 \fBumount\fP() 不会以这种方式传播，可以使用 \fBmount\fP(2) 调用和 \fImount_flags\fP 参数 (包括
+\fBMS_REC\fP 和 \fBMS_PRIVATE\fP) 在调用 \fBumount\fP() 之前重新安装安装。
+.SS "Historical details"
+最初的 \fBumount\fP() 函数被称为 \fIumount(device)\fP，当用块设备以外的东西调用时会返回 \fBENOTBLK\fP。 在 Linux
+0.98p4 中，增加了一个调用 \fIumount(dir)\fP，以支持匿名设备。 在 Linux 2.3.99\-pre7 中，调用
+\fIumount(device)\fP 被移除，只留下 \fIumount(dir)\fP (因为现在设备可以安装在多个地方，所以指定设备是不够的)。
+.SH "SEE ALSO"
+\fBmount\fP(2), \fBmount_namespaces\fP(7), \fBpath_resolution\fP(7), \fBmount\fP(8),
+\fBumount\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

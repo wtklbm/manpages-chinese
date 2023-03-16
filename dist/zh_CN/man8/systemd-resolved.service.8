@@ -1,0 +1,596 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-RESOLVED\&.SERVICE 8 "" "systemd 253" systemd\-resolved.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-resolved.service, systemd\-resolved \- 网络名称解析管理器
+.SH SYNOPSIS
+.PP
+systemd\-resolved\&.service
+.PP
+/usr/lib/systemd/systemd\-resolved
+.SH DESCRIPTION
+.PP
+\fBsystemd\-resolved\fP 是为本地应用程序提供网络名称解析的系统服务 \&。它实现了一个缓存和验证 DNS/DNSSEC
+存根解析器，以及一个 LLMNR 和 MulticastDNS 解析器和响应器。本地应用程序可以通过三个接口提交网络名称解析请求:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+原生的、特性齐全的 API \fBsystemd\-resolved\fP 在总线上公开，有关详细信息，请参见
+\fBorg.freedesktop.resolve1\fP(5) 和
+\fBorg.freedesktop.LogControl1\fP(5)\&。通常建议客户端使用此 API，因为它是异步的且特性齐全 (例如，正确返回
+DNSSEC 验证状态和接口作用域以支持本地链接网络所需的地址) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+由 \m[blue]\fBRFC3493\fP\m[]\&\s-2\u[1]\d\s+2 及其相关解析器函数定义的 glibc
+\fBgetaddrinfo\fP(3) API，包括 \fBgethostbyname\fP(3)\&。此 API 得到广泛支持，包括超越 Linux 平台
+\&。然而，在其当前形式中，它不会公开 DNSSEC 验证状态信息，并且只是同步的 \&。此 API 由 glibc 名称服务开关
+(\fBnss\fP(5))\& 支持。为了允许 glibc\*(Aqs NSS 解析器函数通过 \fBsystemd\-resolved\fP\&
+解析主机名，需要使用 glibc NSS 模块 \fBnss\-resolve\fP(8)。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+此外，\fBsystemd\-resolved\fP 在本地回环接口 \& 上的 IP 地址 127\&.0\&.0\&.53 和
+127\&.0\&.0\&.54 上提供本地 DNS 存根侦听器。直接发出 DNS 请求、绕过任何本地 API
+的程序可能会定向到此存根，以便将它们连接到 \fBsystemd\-resolved\fP\&。但是请注意，强烈建议本地程序改用 glibc NSS 或总线
+API (如上所述)，因为各种网络解析概念 (例如链路本地寻址或 LLMNR Unicode 域) 无法映射到单播 DNS 协议 \&。
+.sp
+127\&.0\&.0\&.53 上的 DNS 存根解析器提供了本地解析器的完整特性集，其中包括提供 LLMNR/MulticastDNS 解析
+\&。127\&.0\&.0\&.54 上的 DNS 存根解析器提供了一个更有限的解析器，它仅在 "proxy"
+模式下运行，i\&.e\&。它将相对未修改的大多数 DNS 消息传递给当前上游 DNS 服务器并返回，但不会尝试在本地处理消息，因此不会验证
+DNSSEC，或提供 LLMNR/MulticastDNS\&。(但是，如果需要，它将转换为 DNS\-over\-TLS 通信 \&。)
+.RE
+.PP
+联系的 DNS 服务器由 /etc/systemd/resolved\&.conf 中的全局设置、/etc/network/*\&.network
+文件中的每个链接静态设置 (如果使用 \fBsystemd\-networkd.service\fP(8))、通过 DHCP 接收的每个链接动态设置确定，通过
+\fBresolvectl\fP(1) 提供的信息，以及其他系统服务提供的任何 DNS 服务器信息 \&。有关 systemd\*(Aqs 自己的 DNS
+服务器配置文件 \&. 为了提高兼容性，读取 /etc/resolv\&.conf 以发现已配置的系统 DNS 服务器，但前提是它不是
+/run/systemd/resolve/stub\-resolv\&.conf、/usr/lib/systemd/resolv\&.conf 或
+/run/systemd/resolve/resolv\&.conf (见下文) \& 的符号链接。
+.SH "SYNTHETIC RECORDS"
+.PP
+\fBsystemd\-resolved\fP 为以下情况合成 DNS 资源记录 (RRs):
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+本地配置的主机名解析为所有本地配置的 IP 地址，这些 IP 地址按其作用域排序，或者 \(em 如果没有配置 \(em IPv4 地址
+127\&.0\&.0\&.2 (在本地回环接口上) 和 IPv6 地址 ::1 (这是本地主机) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "localhost" 和 "localhost\&.localdomain" 以及任何以 "\&.localhost" 或
+"\&.localhost\&.localdomain" 结尾的主机名都解析为 IP 地址 127\&.0\&.0\&.1 和::1\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "_gateway" 被解析为所有当前默认路由网关地址，按其度量 \&
+排序。这会为当前网关分配一个稳定的主机名，有助于独立于当前网络配置状态引用它 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "_outbound" 被解析为最有可能用于与其他主机通信的本地 IPv4 和 IPv6 地址
+\&。这是通过从内核向配置的默认网关请求路由决策，然后使用该决策选择的本地 IP 地址来确定的。此主机名仅在至少配置了一个本地默认网关时可用
+\&。这会为本地出站 IP 地址分配一个稳定的主机名，这对于独立于当前网络配置状态 \& 引用它们很有用。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "_localdnsstub" 解析为 IP 地址 127\&.0\&.0\&.53，i\&.e\&。本地 DNS 存根 (见上文)
+正在侦听的地址 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+主机名 "_localdnsproxy" 解析为 IP 地址 127\&.0\&.0\&.54，i\&.e\&。本地 DNS 代理 (见上文)
+正在侦听的地址 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+/etc/hosts 中定义的映射解析为它们配置的地址并返回，但它们不会影响非地址类型 (如 MX) \& 的查找。\fIReadEtcHosts=no\fP
+可能会禁用对 /etc/hosts 的支持，请参见 \fBresolved.conf\fP(5)\&。
+.RE
+.SH "PROTOCOLS AND ROUTING"
+.PP
+systemd\-resolved\&.service 收到的查找请求根据以下规则路由到可用的 DNS 服务器、LLMNR 和 MulticastDNS
+接口:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+为其生成综合记录的名称 (本地主机名、"localhost" 和 "localdomain"、本地网关，如上一节中所列) 和在 /etc/hosts
+中配置的地址永远不会路由到网络，并且会立即发送回复 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在启用 LLMNR 的所有本地接口上使用 LLMNR 解析单标签名称 \&。IPv4 地址的查找仅通过 IPv4 上的 LLMNR 发送，IPv6
+地址的查找仅通过 IPv6\& 上的 LLMNR 发送。请注意，对单标签合成名称的查找不会路由到 LLMNR、MulticastDNS 或单播
+DNS\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+对单标签非合成名称的地址记录 (A 和 AAAA) 的查询通过使用搜索域的单播 DNS
+解析。对于定义搜索域的任何接口，此类查找将路由到为该接口定义的服务器，并以每个搜索域 \& 为后缀。定义全局搜索域时，此类查找将路由到全局服务器
+\&。对于每个搜索域，通过依次在每个搜索域的名称后缀 \& 来执行查询。此外，可以使用 \fIResolveUnicastSingleLabel=yes\fP
+设置 \& 启用通过单播 DNS 查找单标签名称。下面描述了查询哪些服务器以及如何选择最终回复的详细信息
+\&。请注意，这意味着单标签名称的地址查询在默认情况下永远不会发送到远程 DNS 服务器，并且只有在定义了搜索域 \& 时才有可能进行解析。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在启用了 MulticastDNS 的所有本地接口上使用 MulticastDNS 解析具有域后缀 "\&.local" 的多标签名称 \&。与
+LLMNR 一样，IPv4 地址查找通过 IPv4 发送，IPv6 地址查找通过 IPv6\& 发送。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+对多标签名称的查询通过配置了 DNS 服务器的本地接口上的单播 DNS 进行路由，加上全局配置的 DNS 服务器
+(如果有)。使用哪些接口由基于搜索和仅路由域的路由逻辑决定，如下所述。请注意，默认情况下，对具有 "\&.local" 后缀的域的查找不会路由到 DNS
+服务器，除非该域明确指定为 DNS 服务器和接口的路由或搜索域 \&。这意味着在特定站点 DNS 服务器中定义 "\&.local"
+域的网络上，需要配置显式搜索或路由域以使查找在此 DNS 域内工作 \&。请注意，最近，它 \*(Aqs 通常建议避免在 DNS 服务器中定义
+"\&.local"，因为 \m[blue]\fBRFC6762\fP\m[]\&\s-2\u[2]\d\s+2 保留此域以供独占 MulticastDNS
+使用 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+地址查找 (反向查找) 的路由类似于多标签名称，不同之处在于来自链接本地地址范围的地址永远不会路由到单播 DNS，并且仅使用 LLMNR 和
+MulticastDNS (启用时) \& 进行解析。
+.RE
+.PP
+如果查找被路由到多个接口，则返回第一个成功的响应 (从而有效地合并所有匹配接口上的查找区域) \&。如果在所有接口上查找失败，则返回最后一个失败的响应
+\&。
+.PP
+查找路由由每个接口的路由域 (搜索和仅路由) 和全局搜索域 \& 确定。有关如何动态设置这些设置的说明，请参见
+\fBsystemd.network\fP(5) 和 \fBresolvectl\fP(1); 有关全局配置的 DNS 设置的说明，请参见
+\fBresolved.conf\fP(5) 中 \fIDomains=\fP 的讨论。
+.PP
+以下查询路由逻辑适用于由 systemd\-resolved\&.service 发起的单播 DNS 查找:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果要查找的名称匹配 (即: 等于或具有后缀) 任何链接的任何已配置路由域 (搜索或仅路由)，或全局配置的 DNS 设置，则确定 "best
+matching" 路由域: 匹配标签最多的 \&。然后将查询发送到任何链接的所有 DNS 服务器或与此 "best matching"
+路由域关联的全局配置的 DNS 服务器。(请注意，多个链接可能配置了相同的 "best matching"
+路由域，在这种情况下，查询将发送到并行中的所有链接) \&。
+.sp
+在单标签名称的情况下，当定义搜索域时，应用相同的逻辑，除了名称首先由每个搜索域依次加上后缀 \&。请注意，此搜索逻辑不会 \*(Aqt
+适用于任何至少有一个点 \& 的名称。另请参见下面关于与传统 glibc 解析器的兼容性的讨论 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果查询不匹配任何已配置的路由域 (每个链接或全局)，它将发送到所有在链接上配置 \fIDefaultRoute=\fP 选项集的 DNS
+服务器，以及全局配置的 DNS 服务器 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果没有配置为 \fIDefaultRoute=\fP 的链接，也没有配置全局 DNS 服务器，则使用其中一个内置的回退 DNS 服务器 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+否则单播 DNS 查询失败，因为无法确定合适的 DNS 服务器 \&。
+.RE
+.PP
+\fIDefaultRoute=\fP 选项是一个布尔值设置，可使用 \fBresolvectl\fP 或在 \&.network files\&
+中配置。如果未设置，则根据链接配置的 DNS 域隐式确定: 如果有 \*(Aqs 除 "~\&." 之外的仅路由域，则默认为 false，否则为
+true\&。
+.PP
+这实际上意味着: 为了支持单标签非合成名称，定义适当的搜索域 \&。为了更好地将路由域配置未明确匹配的所有 DNS 查询路由到特定链接，请在其上配置
+"~\&." 仅路由域 \&。这将确保这些查询不会考虑其他链接 (除非它们也带有这样的路由域) \&。为了仅在没有其他首选链接时将所有此类 DNS
+查询路由到特定链接，请将链接的 \fIDefaultRoute=\fP 选项设置为 true，并且不要在其上配置 "~\&." 仅路由域
+\&。最后，为了确保特定链接永远不会收到与其配置的任何路由域不匹配的任何 DNS 流量，请将其 \fIDefaultRoute=\fP 选项设置为
+false\&。
+.PP
+有关 systemd\-resolved 提供的 D\-Bus API 的信息，请参见 \fBorg.freedesktop.resolve1\fP(5)。
+.SH "COMPATIBILITY WITH THE TRADITIONAL GLIBC STUB RESOLVER"
+.PP
+本节简要概述了 \fBnss\-resolve\fP(8) 和 \fBsystemd\-resolved\fP 实现的存根解析器与 nss\-dns\&
+中实现的传统存根解析器的差异。
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+有些名称总是在内部解析 (参见上面的综合记录) \&。如果在 /etc/hosts\& 中提供，传统上它们将由 nss
+文件解析。但请注意，如何构造查询的细节在客户端库的控制下 \&。 nss\-dns 将首先尝试使用搜索域解析名称，即使这些查询被路由到
+systemd\-resolved，它也会使用多标签名称路由的通常规则通过网络将它们发送出去 \&\s-2\u [3]\d\s+2\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+使用单播 DNS 不会为 A 和 AAAA 记录解析单标签名称 (除非用 \fIResolveUnicastSingleLabel=\fP 覆盖，请参见
+\fBresolved.conf\fP(5))\&。这类似于在 \fBresolv.conf\fP(5)\& 中设置的 \fBno\-tld\-query\fP 选项。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+搜索域不用于多标签名称的 \fIsuffixing\fP\&。(搜索域仍然用于查找 \fIrouting\fP，用于最初指定为单标签或多标签 \& 的名称。)
+任何至少有一个点的名称始终被解释为 FQDN\&。 nss\-dns 会将名称解析为相对 (使用搜索域) 和绝对 FQDN 名称
+\&。一些名称将首先解析为相对名称，在该查询失败后，将解析为绝对名称，而其他名称将以相反的顺序解析 \&。/etc/resolv\&.conf 中的
+\fIndots\fP 选项用于控制名称需要多少点才能解析为相对优先 \&。这个存根解析器根本没有实现这一点: 多标签名称仅解析为
+FQDN\&.\&\s-2\u [4]\d\s+2
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+此解析器具有用于 MulticastDNS 的特殊 "\&.local" 域的概念，除非明确配置，否则不会将具有该后缀的查询路由到单播 DNS
+服务器，请参见上文 \&。此外，链接本地地址的反向查找不会发送到单播 DNS 服务器 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+此解析器在内部读取和缓存 /etc/hosts\&。(换句话说，nss\-resolve 除了替换 nss\-dns 之外，还替换了 nss\-files)
+\&。/etc/hosts 中的条目具有最高优先级 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+除了经典的单播 DNS 协议之外，此解析器还实现了 LLMNR 和 MulticastDNS，并将使用 LLMNR (启用时) 解析单标签名称，使用
+MulticastDNS (启用时) \& 解析以 "\&.local" 结尾的名称。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+目前不支持 \fBresolv.conf\fP(5) 中描述的环境变量 \fI$LOCALDOMAIN\fP 和 \fI$RES_OPTIONS\fP\&。
+.RE
+.SH /ETC/RESOLV\&.CONF
+.PP
+支持四种处理 /etc/resolv\&.conf 的模式 (请参见 \fBresolv.conf\fP(5)):
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fBsystemd\-resolved\fP 维护 /run/systemd/resolve/stub\-resolv\&.conf 文件以与传统的 Linux
+程序兼容 \&。此文件将 127\&.0\&.0\&.53 DNS 存根 (见上文) 列为唯一的 DNS 服务器 \&。它还包含
+systemd\-resolved\& 使用的搜索域列表。搜索域列表始终保持最新 \&。请注意，应用程序不应直接使用
+/run/systemd/resolve/stub\-resolv\&.conf，而只能通过 /etc/resolv\&.conf\&
+中的符号链接使用。该文件可能是 /etc/resolv\&.conf 的符号链接，以便将绕过本地 DNS API
+的所有本地客户端连接到具有正确搜索域设置的 \fBsystemd\-resolved\fP\&。推荐使用这种操作方式。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+提供的静态文件 /usr/lib/systemd/resolv\&.conf 将 127\&.0\&.0\&.53 DNS 存根 (见上文) 列为唯一的
+DNS 服务器 \&。该文件可能是 /etc/resolv\&.conf 的符号链接，以便将绕过本地 DNS API 的所有本地客户端连接到
+\fBsystemd\-resolved\fP\&。此文件不包含任何搜索域 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+\fBsystemd\-resolved\fP 维护 /run/systemd/resolve/resolv\&.conf 文件以与传统的 Linux 程序兼容
+\&。该文件可能与 /etc/resolv\&.conf 有符号链接，并且始终保持最新，包含有关所有已知 DNS 服务器的信息 \&。请注意文件格式
+\*(Aqs 限制: 它不知道每个接口 DNS 服务器的概念，因此只包含系统范围的 DNS 服务器定义 \&。请注意，应用程序不应直接使用
+/run/systemd/resolve/resolv\&.conf，而只能通过 /etc/resolv\&.conf\&
+中的符号链接使用。如果使用这种操作模式，绕过任何本地 DNS API 的本地客户端也将绕过 \fBsystemd\-resolved\fP 并直接与已知的
+DNS 服务器对话 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+或者，/etc/resolv\&.conf 可能由其他包管理，在这种情况下，\fBsystemd\-resolved\fP 将读取它以获取 DNS 配置数据
+\&。在这种操作模式下，\fBsystemd\-resolved\fP 是此配置文件的使用者而不是提供者 \&。
+.RE
+.PP
+请注意，根据 /etc/resolv\&.conf 是指向 /run/systemd/resolve/resolv\&.conf 的符号链接还是将
+127\&.0\&.0\&.53 列为 DNS 服务器 \&，会完全自动检测为该文件选择的操作模式。
+.SH SIGNALS
+.PP
+\fBSIGUSR1\fP
+.RS 4
+收到 \fBSIGUSR1\fP 进程信号后，\fBsystemd\-resolved\fP 会将其维护的所有 DNS 资源记录缓存的内容，以及它了解的有关已配置
+DNS 服务器的所有特性级别信息转储到系统日志中。
+.RE
+.PP
+\fBSIGUSR2\fP
+.RS 4
+在接收到 \fBSIGUSR2\fP 进程信号后，\fBsystemd\-resolved\fP 将刷新它维护的所有缓存。请注意，通常不需要显式请求此 \(en
+除了调试目的 \(en 因为 \fBsystemd\-resolved\fP 无论如何都会在主机任何时候自动刷新缓存 \*(Aqs 网络配置更改
+\&。将此信号发送到 \fBsystemd\-resolved\fP 相当于 \fBresolvectl flush\-caches\fP
+命令，但建议使用后者，因为它以同步方式运行 \&。
+.RE
+.PP
+\fBSIGRTMIN+1\fP
+.RS 4
+收到 \fBSIGRTMIN+1\fP 进程信号后，\fBsystemd\-resolved\fP 将忘记它了解的有关已配置 DNS 服务器的所有信息
+\&。具体而言，有关服务器特性支持的任何信息都会被清除，并且服务器特性探测逻辑会在下一个请求时重新启动，从特性最全的级别开始
+\&。请注意，通常不需要显式请求此 \(en 除了调试目的 \(en 因为 \fBsystemd\-resolved\fP 会在 DNS
+服务器配置更改时自动忘记学习的信息 \&。将此信号发送到 \fBsystemd\-resolved\fP 相当于 \fBresolvectl reset\-server\-features\fP 命令，但建议使用后者，因为它以同步方式运行 \&。
+.RE
+.SH CREDENTIALS
+.PP
+\fBsystemd\-resolved\fP 支持由 \fILoadCredential=\fP/\fISetCredential=\fP 实现的服务凭证逻辑
+(有关详细信息，请参见 \fBsystemd.exec\fP(1)) \&。传入时使用以下凭据:
+.PP
+\fInetwork\&.dns\fP, \fInetwork\&.search_domains\fP
+.RS 4
+可能包含以空格分隔的 DNS 服务器 IP 地址和 DNS 搜索域列表 \&。此信息仅在未提供通过
+/etc/systemd/resolved\&.conf、/etc/resolv\&.conf 或内核命令行的显式配置时使用 \&。
+.RE
+.SH "KERNEL COMMAND LINE"
+.PP
+\fBsystemd\-resolved\fP 还支持两个内核命令行选项:
+.PP
+\fInameserver=\fP, \fIdomain=\fP
+.RS 4
+采用 DNS 服务器的 IP 地址 (在 \fInameserver=\fP) 的情况下) 和 DNS 搜索域 (在 \fIdomain=\fP) 的情况下
+\&。可以多次使用，以定义多个 DNS servers/search 域 \&。如果指定了这些选项中的任何一个，则不会读取
+/etc/resolv\&.conf，并且将忽略 \fBresolved.conf\fP(5) 的 \fIDNS=\fP 和 \fIDomains=\fP 设置
+\&。这两个内核命令行选项因此覆盖系统配置 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBresolved.conf\fP(5), \fBdnssec\-trust\-anchors.d\fP(5),
+\fBnss\-resolve\fP(8), \fBresolvectl\fP(1), \fBresolv.conf\fP(5), \fBhosts\fP(5),
+\fBsystemd.network\fP(5), \fBsystemd\-networkd.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+RFC3493
+.RS 4
+\%https://tools.ietf.org/html/rfc3493
+.RE
+.IP " 2." 4
+RFC6762
+.RS 4
+\%https://tools.ietf.org/html/rfc6762
+.RE
+.IP " 3." 4
+例如，如果 /etc/resolv.conf 有
+.sp
+.RS 4
+.if  n \{\
+.RS 4
+.\}
+.nf
+名称服务器 127.0.0.53
+搜索 foobar.com barbar.com
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+然后我们查找 "localhost"，nss\-dns 将向侦听 127.0.0.53:53 的 systemd\-resolved 发送以下查询: 首先是
+"localhost.foobar.com"，然后是 "localhost.barbar.com"，最后是 "localhost"。如果
+(hopefully) 前两个查询失败，systemd\-resolved 将为第三个查询合成一个答案。
+.RE
+.sp
+.RS 4n
+当将 nss\-dns 与任何搜索域一起使用时，始终配置具有更高优先级的 nss 文件并为不应使用搜索域解析的名称提供映射是至关重要的。
+.RE
+.IP " 4." 4
+目前已经定义了 1500 多个顶级域名，并定期添加新的，通常使用本地也可能使用的 "attractive"
+名称。不以这种方式查找多标签名称可以避免双向的脆弱性:
+有效的全局名称可能会被本地名称遮盖，并且当创建新的顶级域时，相对本地名称的解析可能会突然中断，或者当已注册顶级域的新子域。将任何给定名称解析为相对名称或绝对名称可以避免这种歧义。
+
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

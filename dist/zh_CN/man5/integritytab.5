@@ -1,0 +1,170 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH INTEGRITYTAB 5 "" "systemd 253" integritytab
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+integritytab \- 完整性块设备的配置
+.SH SYNOPSIS
+.PP
+/etc/integritytab
+.SH DESCRIPTION
+.PP
+/etc/integritytab 文件描述了在系统引导期间设置的完整性保护块设备。
+.PP
+空行和以 "#" 字符开头的行将被忽略 \&。剩余的每一行都描述了一个 verity integrity protected block
+device\&。字段由空格 \& 分隔。
+.PP
+每一行都在表格中
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\fIvolume\-name\fP \fIblock\-device\fP
+    \fI[keyfile|\-]\fP \fI[options|\-]\fP
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+前两个字段是强制性的，其余两个是可选的，并且仅当用户在完整性格式中指定非默认选项时才需要。
+.PP
+第一个字段包含生成的完整性卷的名称; 它的块设备设置在 /dev/mapper/\& 下面。
+.PP
+第二个字段包含底层块设备的路径，或通过 "UUID=" 后跟 UUID、"PARTUUID=" 后跟分区 UUID、"LABEL="
+后跟标签、"PARTLABEL=" 后跟分区标签 \& 来指定块设备。
+.PP
+第三个字段 (如果存在) 包含密钥文件的绝对文件名路径或 "\-" 以指定无 \&。当文件名存在时，"integrity\-algorithm" 默认为
+"hmac\-sha256"，其密钥长度源自密钥文件中的字节数 \&。目前，使用密钥文件时唯一支持的完整性算法是
+hmac\-sha256\&。密钥文件的最大大小为 4096 字节 \&。
+.PP
+第四个字段 (如果存在) 是逗号分隔的选项列表或 "\-" 以指定无 \&。识别以下选项:
+.PP
+\fBallow\-discards\fP
+.RS 4
+允许对设备使用丢弃 (TRIM) 请求 \&。该选项从 Linux 内核版本 5\&.7\& 开始可用。
+.RE
+.PP
+\fBjournal\-watermark=[0\&.\&.100]%\fP
+.RS 4
+以百分比 \& 表示的期刊水印。当日志百分比超过此水印时，将启动日志刷新 \&。设置 "0%" 的值使用默认值 \&。
+.RE
+.PP
+\fBjournal\-commit\-time=[0\&.\&.N]\fP
+.RS 4
+以毫秒为单位的提交时间 \&。当这个时间过去时 (并且没有发出明确的刷新操作)，日志被写入 \&。设置零值使用默认值 \&。
+.RE
+.PP
+\fBdata\-device=/dev/disk/by\-\&.\&.\&.\fP
+.RS 4
+指定包含现有数据的单独块设备。在块设备的完整性选项卡中指定的第二个字段将包含计算的完整性标签和数据设备日志，但不包含最终用户数据 \&。
+.RE
+.PP
+\fBintegrity\-algorithm=[crc32c|crc32|sha1|sha256|hmac\-sha256]\fP
+.RS 4
+用于完整性检查的算法 \&。默认为 crc32c\&。必须匹配格式化期间使用的选项 \&。
+.RE
+.PP
+在早期引导和重新加载系统管理器配置时，此文件由 \fBsystemd\-integritysetup\-generator\fP(8)\& 转换为原生
+systemd 单元。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&/etc/integritytab\fP
+.PP
+设置两个完整性保护块设备 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+home PARTUUID=4973d0b8\-1b15\-c449\-96ec\-94bab7f6a7b8 \- journal\-commit\-time=10,allow\-discards,journal\-watermark=55%
+数据 PARTUUID=5d4b1808\-be76\-774d\-88af\-03c4c3a41761 \- 允许丢弃
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&2.\ \&/etc/integritytab\fP
+.PP
+使用默认值设置 1 个完整性保护块设备
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+主页 PARTUUID=4973d0b8\-1b15\-c449\-96ec\-94bab7f6a7b8
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&3.\ \&/etc/integritytab\fP
+.PP
+使用包含用户数据的现有数据块设备设置 1 个完整性设备
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+主页 PARTUUID=4973d0b8\-1b15\-c449\-96ec\-94bab7f6a7b8\-data\-device=/dev/9276d9c0\-d4e3\-4297\-b4ff\-3307cd0d092f
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&/etc/integritytab\fP
+.PP
+使用默认值使用 HMAC 密钥文件设置 1 个完整性设备
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+主页 PARTUUID=4973d0b8\-1b15\-c449\-96ec\-94bab7f6a7b8 /etc/hmac\&.key
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-integritysetup@.service\fP(8),
+\fBsystemd\-integritysetup\-generator\fP(8), \fBintegritysetup\fP(8),
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,141 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Justin Pryzby <pryzbyj@justinpryzby.com>
+.\"
+.\" %%%LICENSE_START(PERMISSIVE_MISC)
+.\" Permission is hereby granted, free of charge, to any person obtaining
+.\" a copy of this software and associated documentation files (the
+.\" "Software"), to deal in the Software without restriction, including
+.\" without limitation the rights to use, copy, modify, merge, publish,
+.\" distribute, sublicense, and/or sell copies of the Software, and to
+.\" permit persons to whom the Software is furnished to do so, subject to
+.\" the following conditions:
+.\"
+.\" The above copyright notice and this permission notice shall be
+.\" included in all copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+.\" EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+.\" IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+.\" CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+.\" TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+.\" SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.\" %%%LICENSE_END
+.\"
+.\" References:
+.\"   glibc manual and source
+.\"
+.\" 2006-05-19, mtk, various edits and example program
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rpmatch 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+rpmatch \- 确定问题的答案是肯定的还是 negative
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint rpmatch(const char *\fP\fIresponse\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBrpmatch\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBrpmatch\fP() 处理用户对是或否问题的回答，并支持国际化。
+.PP
+\fIresponse\fP 应该是包含用户提供的响应的空终止字符串，可能通过 \fBfgets\fP(3) 或 \fBgetline\fP(3) 获得。
+.PP
+如果程序已调用 \fBsetlocale\fP(3) 来实现其更改，则根据环境变量 \fBLANG\fP、\fBLC_MESSAGES\fP 和 \fBLC_ALL\fP
+考虑用户的语言首选项。
+.PP
+无论语言环境如何，匹配 \fB\[ha][Yy]\fP 的响应总是被接受为肯定的，匹配 \fB\[ha][Nn]\fP 的响应总是被接受为 negative。
+.SH "RETURN VALUE"
+检查 \fIresponse\fP 后，\fBrpmatch\fP() 返回 0 用于识别 negative 响应 ("no")，1 用于识别正响应
+("yes")，当 \fIresponse\fP 的值未被识别时返回 \-1。
+.SH ERRORS
+\-1 的返回值可能表示输入无效或其他错误。 仅测试返回值是否为非零是不正确的。
+.PP
+\fBrpmatch\fP() 可能因 \fBregcomp\fP(3) 或 \fBregexec\fP(3) 可能失败的任何原因而失败; 错误的原因无法从
+\fIerrno\fP 或其他任何地方获得，但表明 regex 引擎出现故障 (但这种情况与无法识别的 \fIresponse\fP) 值无法区分。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBrpmatch\fP()
+T}	Thread safety	MT\-Safe locale
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBrpmatch\fP() 不是任何标准所必需的，但在 GNU C 库、FreeBSD 和 AIX 下可用。
+.SH BUGS
+某些语言环境 (包括 "C") 的 \fBYESEXPR\fP 和 \fBNOEXPR\fP 仅检查 \fIresponse\fP 的第一个字符。 这可能意味着
+"yno" 等人。解析为 \fB1\fP。 这是一个不幸的历史副作用，应该通过适当的本地化及时修复，并且不应阻止 \fBrpmatch\fP()
+成为区分二进制答案的正确方法。
+.SH EXAMPLES
+以下程序显示将 \fBrpmatch\fP() 应用于程序命令行参数中给定的字符串时的结果。
+.PP
+.\" SRC BEGIN (rpmatch.c)
+.EX
+#define _DEFAULT_SOURCE
+#include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    if (argc != 2 || strcmp(argv[1], "\-\-help") == 0) {
+        fprintf(stderr, "%s response\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    setlocale(LC_ALL, "");
+    printf("rpmatch() returns: %d\en", rpmatch(argv[1]));
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfgets\fP(3), \fBgetline\fP(3), \fBnl_langinfo\fP(3), \fBregcomp\fP(3),
+\fBsetlocale\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

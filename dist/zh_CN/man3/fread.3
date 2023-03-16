@@ -1,0 +1,147 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1990, 1991 The Regents of the University of California.
+.\" and Copyright (c) 2020 Arkadiusz Drabczyk <arkadiusz@drabczyk.org>
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)fread.3	6.6 (Berkeley) 6/29/91
+.\"
+.\" Converted for Linux, Mon Nov 29 15:37:33 1993, faith@cs.unc.edu
+.\" Sun Feb 19 21:26:54 1995 by faith, return values
+.\" Modified Thu Apr 20 20:43:53 1995 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" Modified Fri May 17 10:21:51 1996 by Martin Schulze <joey@infodrom.north.de>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fread 3 2022\-12\-29 "Linux man\-pages 6.03" 
+.SH NAME
+fread, fwrite \- 二进制流 input/output
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBsize_t fread(void \fP\fIptr\fP\fB[restrict .\fP\fIsize\fP\fB * .\fP\fInmemb\fP\fB],\fP
+\fB             size_t \fP\fIsize\fP\fB, size_t \fP\fInmemb\fP\fB,\fP 
+\fB             FILE *restrict \fP\fIstream\fP\fB);\fP
+\fBsize_t fwrite(const void \fP\fIptr\fP\fB[restrict .\fP\fIsize\fP\fB * .\fP\fInmemb\fP\fB],\fP
+\fB             size_t \fP\fIsize\fP\fB, size_t \fP\fInmemb\fP\fB,\fP
+\fB             FILE *restrict \fP\fIstream\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+函数 \fBfread\fP() 从 \fIstream\fP 指向的流中读取 \fInmemb\fP 项数据，每个 \fIsize\fP 字节长，将它们存储在 \fIptr\fP
+给定的位置。
+.PP
+函数 \fBfwrite\fP() 向 \fIstream\fP 指向的流中写入 \fInmemb\fP 项数据，每个 \fIsize\fP 字节长，从 \fIptr\fP
+给定的位置获取它们。
+.PP
+对于非锁定对应项，请参见 \fBunlocked_stdio\fP(3)。
+.SH "RETURN VALUE"
+成功时，\fBfread\fP() 和 \fBfwrite\fP() 返回读取或写入的项数。 只有当 \fIsize\fP 为 1 时，此数字才等于传输的字节数。
+如果发生错误，或者到达文件末尾，则返回值为一个短项计数 (或零)。
+.PP
+流的文件位置指示器按成功读取或写入的字节数前进。
+.PP
+\fBfread\fP() 不区分文件结束和错误，调用者必须使用 \fBfeof\fP(3) 和 \fBferror\fP(3) 来确定发生了什么。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfread\fP(),
+\fBfwrite\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99.
+.SH EXAMPLES
+下面的程序通过以二进制模式解析 /bin/sh ELF 可执行文件并打印其魔法和类来演示 \fBfread\fP() 的使用:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+ELF magic: 0x7f454c46
+Class: 0x02
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (fread.c)
+\&
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+int
+main(void)
+{
+    FILE           *fp;
+    size_t         ret;
+    unsigned char  buffer[4];
+
+    fp = fopen("/bin/sh", "rb");
+    if (!fp) {
+        perror("fopen");
+        return EXIT_FAILURE;
+    }
+
+    ret = fread(buffer, sizeof(*buffer), ARRAY_SIZE(buffer), fp);
+    if (ret != ARRAY_SIZE(buffer)) {
+        fprintf(stderr, "fread() failed: %zu\en", ret);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("ELF magic: %#04x%02x%02x%02x\en", buffer[0], buffer[1],
+           buffer[2], buffer[3]);
+
+    ret = fread(buffer, 1, 1, fp);
+    if (ret != 1) {
+        fprintf(stderr, "fread() failed: %zu\en", ret);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Class: %#04x\en", buffer[0]);
+
+    fclose(fp);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBread\fP(2), \fBwrite\fP(2), \fBfeof\fP(3), \fBferror\fP(3), \fBunlocked_stdio\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

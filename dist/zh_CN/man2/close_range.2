@@ -1,0 +1,210 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2020 Stephen Kitt <steve@sk2.org>
+.\" and Copyright (c) 2021 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH close_range 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+close_range \- 关闭给定范围内的所有文件描述符
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/close_range.h>\fP
+.PP
+\fBint close_range(unsigned int \fP\fIfirst\fP\fB, unsigned int \fP\fIlast\fP\fB,\fP
+\fB                unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBclose_range\fP() 系统调用关闭从 \fIfirst\fP 到 \fIlast\fP (included) 所有打开的文件描述符。
+.PP
+当前忽略关闭给定文件描述符的错误。
+.PP
+\fIflags\fP 是包含 0 个或多个以下内容的位掩码:
+.TP 
+\fBCLOSE_RANGE_CLOEXEC\fP (since Linux 5.11)
+在指定的文件描述符上设置 close\-on\-exec 标志，而不是立即关闭它们。
+.TP 
+\fBCLOSE_RANGE_UNSHARE\fP
+在关闭它们之前取消与任何其他进程共享指定的文件描述符，避免与共享文件描述符表的其他线程竞争。
+.SH "RETURN VALUE"
+成功时，\fBclose_range\fP() 返回 0。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 无效，或 \fIfirst\fP 大于 \fIlast\fP。
+.PP
+\fBCLOSE_RANGE_UNSHARE\fP 可能会发生以下情况 (在构建新的描述符表时) :
+.TP 
+\fBEMFILE\fP
+打开的文件描述符的数量超过了 \fI/proc/sys/fs/nr_open\fP 中指定的限制 (请参见 \fBproc\fP(5)).  在指定
+\fBCLOSE_RANGE_UNSHARE\fP 标志的 \fBclose_range\fP() 之前降低该限制的情况下，可能会发生此错误。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.SH VERSIONS
+\fBclose_range\fP() 最早出现在 Linux 5.9。 glibc 2.34 中添加了库支持。
+.SH STANDARDS
+\fBclose_range\fP() 是一个非标准的函数，也出现在 FreeBSD 上。
+.SH NOTES
+.SS "Closing all open file descriptors"
+.\" 278a5fbaed89dacd04e9d052f4594ffd0e0585de
+为了避免盲目地关闭可能的文件描述符范围内的文件描述符，有时 (在 Linux 上) 通过在 \fI/proc/self/fd/\fP
+中列出打开的文件描述符并在每个文件描述符上调用 \fBclose\fP(2) 来实现这一点。 \fBclose_range\fP() 可以在不需要 \fI/proc\fP
+的情况下在单个系统调用中处理这个问题，这提供了显着的性能优势。
+.SS "Closing file descriptors before exec"
+.\" 60997c3d45d9a67daf01c56d805ae4fec37e0bd8
+文件描述符可以安全地关闭使用
+.PP
+.in +4n
+.EX
+/* we don't want anything past stderr here */
+close_range(3, \[ti]0U, CLOSE_RANGE_UNSHARE);
+execve(....);
+.EE
+.in
+.PP
+\fBCLOSE_RANGE_UNSHARE\fP 在概念上等同于
+.PP
+.in +4n
+.EX
+unshare(CLONE_FILES);
+close_range(first, last, 0);
+.EE
+.in
+.PP
+但可以更有效: 如果非共享范围超出调用者文件描述符表中分配的当前最大文件描述符数 (\fIlast\fP 为 \[ti] 0U
+时的常见情况)，内核将取消共享一个新的文件描述符表调用者直到 \fIfirst\fP，复制尽可能少的文件描述符。 这完全避免了后续的 \fBclose\fP(2)
+调用; 一旦表被取消共享，整个操作就完成了。
+.SS "Closing files on exec"
+.\" 582f1fb6b721facf04848d2ca57f34468da1813e
+这在多个 pre\-\fBexec\fP 设置步骤存在相互冲突风险的情况下特别有用。 例如，设置 \fBseccomp\fP(2) 配置文件可能会与
+\fBclose_range\fP() 调用冲突: 如果在设置 \fBseccomp\fP(2)
+配置文件之前关闭文件描述符，则配置文件设置本身无法使用它们，也无法控制它们的关闭包; 如果之后关闭文件描述符，则 seccomp 配置文件无法阻止
+\fBclose_range\fP() 调用或任何回退。 使用 \fBCLOSE_RANGE_CLOEXEC\fP 可以避免这种情况: 可以在设置
+\fBseccomp\fP(2) 配置文件之前标记描述符，并且配置文件可以控制对 \fBclose_range\fP() 的访问而不影响调用进程。
+.SH EXAMPLES
+下图程序打开其命令行中命名的文件参数，显示其已打开的文件列表 (通过遍历 \fI/proc/PID/fd\fP) 中的条目，使用
+\fBclose_range\fP() 关闭所有大于或等于 3 的文件描述符，然后一次 more 显示进程的打开文件列表。 下面的例子演示了程序的使用:
+.PP
+.in +4n
+.EX
+$ \fBtouch /tmp/a /tmp/b /tmp/c\fP
+$ \fB./a.out /tmp/a /tmp/b /tmp/c\fP
+/tmp/a 作为 FD 3 打开
+/tmp/b 作为 FD 4 打开
+/tmp/c 作为 FD 5 打开
+/proc/self/fd/0 ==> /dev/pts/1
+/proc/self/fd/1 ==> /dev/pts/1
+/proc/self/fd/2 ==> /dev/pts/1
+/proc/self/fd/3 ==> /tmp/a
+/proc/self/fd/4 ==> /tmp/b
+/proc/self/fd/5 ==> /tmp/b
+/proc/self/fd/6 ==> /proc/9005/fd
+=== === === 即将调用 close_range() === === =
+/proc/self/fd/0 ==> /dev/pts/1
+/proc/self/fd/1 ==> /dev/pts/1
+/proc/self/fd/2 ==> /dev/pts/1
+/proc/self/fd/3 ==> /proc/9005/fd
+.EE
+.in
+.PP
+请注意，显示路径名 \fI/proc/9005/fd\fP 的行来自对 \fBopendir\fP(3) 的调用。
+.SS "Program source"
+.\" SRC BEGIN (close_range.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <dirent.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+/* Show the contents of the symbolic links in /proc/self/fd */
+
+static void
+show_fds(void)
+{
+    DIR            *dirp;
+    char           path[PATH_MAX], target[PATH_MAX];
+    ssize_t        len;
+    struct dirent  *dp;
+
+    dirp = opendir("/proc/self/fd");
+    if (dirp  == NULL) {
+        perror("opendir");
+        exit(EXIT_FAILURE);
+    }
+
+    for (;;) {
+        dp = readdir(dirp);
+        if (dp == NULL)
+            break;
+
+        if (dp\->d_type == DT_LNK) {
+            snprintf(path, sizeof(path), "/proc/self/fd/%s",
+                     dp\->d_name);
+
+            len = readlink(path, target, sizeof(target));
+            printf("%s ==> %.*s\en", path, (int) len, target);
+        }
+    }
+
+    closedir(dirp);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int  fd;
+
+    for (size_t j = 1; j < argc; j++) {
+        fd = open(argv[j], O_RDONLY);
+        if (fd == \-1) {
+            perror(argv[j]);
+            exit(EXIT_FAILURE);
+        }
+        printf("%s opened as FD %d\en", argv[j], fd);
+    }
+
+    show_fds();
+
+    printf("========= About to call close_range() =======\en");
+
+    if (syscall(SYS_close_range, 3, \[ti]0U, 0) == \-1) {
+        perror("close_range");
+        exit(EXIT_FAILURE);
+    }
+
+    show_fds();
+    exit(EXIT_FAILURE);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclose\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,124 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH COREDUMP\&.CONF 5 "" "systemd 253" coredump.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+coredump.conf, coredump.conf.d \- 核心转储存储配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/coredump\&.conf
+.PP
+/etc/systemd/coredump\&.conf\&.d/*\&.conf
+.PP
+/run/systemd/coredump\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/coredump\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+这些文件配置 \fBsystemd\-coredump\fP(8) 的行为，\fBsystemd\-coredump\fP(8) 是内核调用的核心转储处理程序。是否使用
+\fBsystemd\-coredump\fP 由内核决定 \*(Aqs \fIkernel\&.core_pattern\fP \fBsysctl\fP(8)
+setting\&. 有关详细信息，请参见 \fBsystemd\-coredump\fP(8) 和 \fBcore\fP(5) 页面 \&。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH OPTIONS
+.PP
+所有选项都在 [Coredump] 部分配置:
+.PP
+\fIStorage=\fP
+.RS 4
+控制存储核心的位置。"none"、"external" 和 `日志`\& 之一。当 "none" 时，可以记录核心转储
+(如果可能，包括回溯)，但不会永久存储 \&。当 "external" (默认) 时，核心将存储在 /var/coredump/\& 中。当
+"journal" 时，核心将存储在日志中并按照正常的日志旋转模式旋转 \&。
+.sp
+当核心存储在日志中时，它们可能会按照日志压缩设置进行压缩，请参见
+\fBjournald.conf\fP(5)\&。当核心存储在外部时，它们将默认被压缩，见下文 \&。
+.RE
+.PP
+\fICompress=\fP
+.RS 4
+控制外部存储的压缩。采用布尔值参数，默认为 `yes`\&。
+.RE
+.PP
+\fIProcessSizeMax=\fP
+.RS 4
+将被处理的内核的最大大小 (以字节为单位)。可以存储超过此大小的核心转储，但不会生成回溯 \&。与同一配置文件中的其他大小一样，允许以 1024
+为基数的常用后缀 (B、K、M、G、T、P 和 E) \&。在 32 位系统上默认为 1G，在 64 位系统上默认为 32G\&。
+.sp
+设置 \fIStorage=none\fP 和 \fIProcessSizeMax=0\fP 会禁用除日志条目 \& 之外的所有核心转储处理。
+.RE
+.PP
+\fIExternalSizeMax=\fP, \fIJournalSizeMax=\fP
+.RS 4
+要保存在磁盘上的单独文件 (默认值: 32 位系统上为 1G，64 位系统上为 32G) 或日志 (默认值: 10M) \& 中的核心的最大
+(压缩或未压缩) 大小 (以字节为单位)。与 \fBProcessSizeMax=\fP\& 中一样，允许使用元后缀。
+.PP
+\fIExternalSizeMax=infinity\fP 将核心大小设置为无限制 \&。
+.RE
+.PP
+\fIMaxUse=\fP, \fIKeepFree=\fP
+.RS 4
+对磁盘空间实现限制，以字节为单位，由外部存储的核心转储 \& 占用。与 \fBProcessSizeMax=\fP\&
+中一样，允许使用元后缀。\fBMaxUse=\fP 确保一旦核心转储占用的总磁盘空间增长超过此限制 (默认为总磁盘大小的 10%)，就会删除旧的核心转储
+\&。\fBKeepFree=\fP 控制至少要保留多少磁盘空间 (默认为总磁盘大小的 15%)
+\&。请注意，在处理核心转储时，核心转储使用的磁盘空间可能会暂时超过这些限制。请注意，旧的核心转储也会根据时间通过
+\fBsystemd\-tmpfiles\fP(8)\& 删除。将任一值设置为 0 以关闭基于大小的清理 \&。
+.RE
+.PP
+所有值的默认值都列为默认安装的模板 /etc/systemd/coredump\&.conf 文件中的注释 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-journald.service\fP(8), \fBcoredumpctl\fP(1), \fBsystemd\-tmpfiles\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

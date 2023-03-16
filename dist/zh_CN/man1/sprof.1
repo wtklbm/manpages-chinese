@@ -1,0 +1,243 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sprof 1 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+sprof \- 读取和显示共享对象分析数据
+.SH SYNOPSIS
+.nf
+\fBsprof\fP [\fIoption\fP]... \fIshared\-object\-path\fP [\fIprofile\-data\-path\fP]
+.fi
+.SH DESCRIPTION
+\fBsprof\fP 命令显示指定为其第一个命令行参数的共享对象 (共享库) 的分析总结。 分析总结是使用先前在 (optional)
+第二个命令行参数中生成的分析数据创建的。 如果省略分析数据路径名，则 \fBsprof\fP 将尝试使用共享对象的 soname
+来推断它，在当前目录中查找名为 \fI<soname>.profile\fP 的文件。
+.SH OPTIONS
+以下命令行选项指定要生成的配置文件输出:
+.TP 
+\fB\-c\fP, \fB\-\-call\-pairs\fP
+为共享对象导出的接口打印成对的调用路径列表，以及每条路径被使用的次数。
+.TP 
+\fB\-p\fP, \fB\-\-flat\-profile\fP
+生成受监视对象中所有函数的平面配置文件，包括计数和刻度。
+.TP 
+\fB\-q\fP, \fB\-\-graph\fP
+生成调用图。
+.PP
+如果未指定上述选项，则默认行为是显示平面轮廓和调用图。
+.PP
+以下附加命令行选项可用:
+.TP 
+\fB\-?\fP, \fB\-\-help\fP
+显示命令行选项和参数的总结并退出。
+.TP 
+\fB\-\-usage\fP
+显示一条简短的用法消息并退出。
+.TP 
+\fB\-V\fP, \fB\-\-version\fP
+显示程序版本并退出。
+.SH STANDARDS
+\fBsprof\fP 命令是 GNU 的扩展，在 POSIX.1 中不存在。
+.SH EXAMPLES
+下面的例子演示了 \fBsprof\fP 的使用。 该示例由一个调用共享对象中的两个函数的主程序组成。 一、主程序代码:
+.PP
+.in +4n
+.EX
+$ \fBcat prog.c\fP
+#include <stdlib.h>
+
+void x1(void);
+void x2(void);
+
+int
+main(int argc, char *argv[])
+{
+    x1();
+    x2();
+    exit(EXIT_SUCCESS);
+}
+.EE
+.in
+.PP
+函数 \fIx1\fP() 和 \fIx2\fP() 在以下用于构造共享对象的源文件中定义:
+.PP
+.in +4n
+.EX
+$ \fBcat libdemo.c\fP
+#include <unistd.h>
+
+void
+consumeCpu1(int lim)
+{
+    for (unsigned int j = 0; j < lim; j++)
+	getppid();
+}
+
+void
+x1(void) {
+    for (unsigned int j = 0; j < 100; j++)
+	consumeCpu1(200000);
+}
+
+void
+consumeCpu2(int lim)
+{
+    for (unsigned int j = 0; j < lim; j++)
+	getppid();
+}
+
+void
+x2(void)
+{
+    for (unsigned int j = 0; j < 1000; j++)
+	consumeCpu2(10000);
+}
+.EE
+.in
+.PP
+现在我们构造共享对象，真名 \fIlibdemo.so.1.0.1\fP，soname \fIlibdemo.so.1\fP:
+.PP
+.in +4n
+.EX
+$ \fBcc \-g \-fPIC \-shared \-Wl,\-soname,libdemo.so.1 \e\fP
+        \fB\-o libdemo.so.1.0.1 libdemo.c\fP
+.EE
+.in
+.PP
+然后我们为库 soname 和库链接器名称构造符号链接:
+.PP
+.in +4n
+.EX
+$ \fBln \-sf libdemo.so.1.0.1 libdemo.so.1\fP
+$ \fBln \-sf libdemo.so.1 libdemo.so\fP
+.EE
+.in
+.PP
+接下来，我们编译主程序，将其链接到共享对象，然后列出程序的动态依赖项:
+.PP
+.in +4n
+.EX
+$ \fBcc \-g \-o prog prog.c \-L. \-ldemo\fP
+$ \fBldd prog\fP
+	linux\-vdso.so.1 =>  (0x00007fff86d66000)
+	找不到 libdemo.so.1 =>
+	libc.so.6 => /lib64/libc.so.6 (0x00007fd4dc138000)
+	/lib64/ld\-linux\-x86\-64.so.2 (0x00007fd4dc51f000)
+.EE
+.in
+.PP
+为了获取共享对象的分析信息，我们使用库的 soname 定义环境变量 \fBLD_PROFILE\fP:
+.PP
+.in +4n
+.EX
+$ \fBexport LD_PROFILE=libdemo.so.1\fP
+.EE
+.in
+.PP
+然后，我们使用应写入配置文件输出的目录的路径名定义环境变量 \fBLD_PROFILE_OUTPUT\fP，如果该目录尚不存在，则创建该目录:
+.PP
+.in +4n
+.EX
+$ \fBexport LD_PROFILE_OUTPUT=$(pwd)/prof_data\fP
+$ \fBmkdir \-p $LD_PROFILE_OUTPUT\fP
+.EE
+.in
+.PP
+\fBLD_PROFILE\fP 导致分析输出为 \fIappended\fP 到输出文件 (如果它已经存在)，因此我们确保没有预先存在的分析数据:
+.PP
+.in +4n
+.EX
+$ \fBrm \-f $LD_PROFILE_OUTPUT/$LD_PROFILE.profile\fP
+.EE
+.in
+.PP
+然后我们运行该程序以生成分析输出，该输出被写入 \fBLD_PROFILE_OUTPUT\fP: 中指定目录中的文件
+.PP
+.in +4n
+.EX
+$ \fBLD_LIBRARY_PATH=. ./prog\fP
+$ \fBls prof_data\fP
+libdemo.so.1.profile
+.EE
+.in
+.PP
+然后我们使用 \fBsprof \-p\fP 选项生成带有计数和刻度的平面配置文件:
+.PP
+.in +4n
+.EX
+$ \fBsprof \-p libdemo.so.1 $LD_PROFILE_OUTPUT/libdemo.so.1.profile\fP
+平面轮廓:
+
+每个样本计为 0.01 秒。
+  % cumulative self 自我总计
+ time seconds seconds 调用 us/call us/call 名称
+ 60.00      0.06     0.06      100   600.00           consumeCpu1
+ 40.00      0.10     0.04     1000    40.00           consumeCpu2
+  0.00      0.10     0.00        1     0.00           x1
+  0.00      0.10     0.00        1     0.00           x2
+.EE
+.in
+.PP
+\fBsprof \-q\fP 选项生成调用图:
+.PP
+.in +4n
+.EX
+$ \fBsprof \-q libdemo.so.1 $LD_PROFILE_OUTPUT/libdemo.so.1.profile\fP
+
+index % time self children 叫名字
+
+                0.00    0.00      100/100         x1 [1]
+[0]    100.0    0.00    0.00      100         consumeCpu1 [0]
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+                0.00    0.00        1/1           <UNKNOWN>
+[1]      0.0    0.00    0.00        1         x1 [1]
+                0.00    0.00      100/100         consumeCpu1 [0]
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+                0.00    0.00     1000/1000        x2 [3]
+[2]      0.0    0.00    0.00     1000         consumeCpu2 [2]
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+                0.00    0.00        1/1           <UNKNOWN>
+[3]      0.0    0.00    0.00        1         x2 [3]
+                0.00    0.00     1000/1000        consumeCpu2 [2]
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+.EE
+.in
+.PP
+在上方和下方，"<UNKNOWN>" 字符串表示配置文件对象之外的标识符 (在此示例中，这些是 \fImain()\fP) 的实例。
+.PP
+\fBsprof \-c\fP 选项生成调用对列表及其出现次数:
+.PP
+.in +4n
+.EX
+$ \fBsprof \-c libdemo.so.1 $LD_PROFILE_OUTPUT/libdemo.so.1.profile\fP
+<UNKNOWN>                  x1                                 1
+x1                         consumeCpu1                      100
+<UNKNOWN>                  x2                                 1
+x2                         consumeCpu2                     1000
+.EE
+.in
+.SH "SEE ALSO"
+\fBgprof\fP(1), \fBldd\fP(1), \fBld.so\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

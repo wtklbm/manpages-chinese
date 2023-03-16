@@ -1,0 +1,143 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1990, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"	@(#)btree.3	8.4 (Berkeley) 8/18/94
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH btree 3 2022\-12\-04 "Linux man\-pages 6.03" 
+.\".UC 7
+.SH NAME
+btree\-btree 数据库访问方法
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h> #include <db.h>\fP
+.fi
+.SH DESCRIPTION
+\fINote well\fP: 此页面记录了在 glibc 2.1 之前提供的接口。 从 glibc 2.2 开始，glibc 不再提供这些接口。
+您可能正在寻找 \fIlibdb\fP 库提供的 API。
+.PP
+例程 \fBdbopen\fP(3) 是数据库文件的库接口。 受支持的文件格式之一是 btree 文件。 数据库访问方法的一般描述在 \fBdbopen\fP(3)
+中，此手册页仅描述 btree 特定信息。
+.PP
+btree 数据结构体是一个排序的、平衡的树结构体，存储关联的 key/data 对。
+.PP
+提供给 \fBdbopen\fP(3) 的 btree 访问方法特定数据结构体在 \fI<db.h>\fP 包含文件中定义如下:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    unsigned long flags;
+    unsigned int  cachesize;
+    int           maxkeypage;
+    int           minkeypage;
+    unsigned int  psize;
+    int         (*compare)(const DBT *key1, const DBT *key2);
+    size_t      (*prefix)(const DBT *key1, const DBT *key2);
+    int           lorder;
+} BTREEINFO;
+.EE
+.in
+.PP
+这个结构体的元素如下:
+.TP 
+\fIflags\fP
+标志值由以下任何值的 ORing 指定:
+.RS
+.TP 
+\fBR_DUP\fP
+允许树中有重复键，即如果要插入的键在树中已经存在，则允许插入。 如 \fBdbopen\fP(3)
+中所述，默认行为是在插入新密钥时覆盖匹配的密钥，或者如果指定了 \fBR_NOOVERWRITE\fP 标志则失败。 \fBR_DUP\fP 标志被
+\fBR_NOOVERWRITE\fP 标志覆盖，如果指定了 \fBR_NOOVERWRITE\fP 标志，尝试将重复键插入树中将失败。
+.IP
+如果数据库包含重复键，如果使用 \fIget\fP 例程，则 key/data 对的检索顺序是不确定的，但是，设置了 \fBR_CURSOR\fP 标志的
+\fIseq\fP 例程调用将始终返回任何重复键组的逻辑 "first"。
+.RE
+.TP 
+\fIcachesize\fP
+内存缓存的建议最大大小 (以字节为单位)。 该值为 \fIonly\fP 建议值，访问方法将分配更多内存而不是失败。
+由于每次搜索都会检查树的根页面，因此缓存最近使用的页面会大大缩短访问时间。 此外，物理写入会尽可能地延迟，因此适度的缓存可以显着减少 I/O
+操作的数量。 显然，如果在修改树时系统崩溃，使用缓存会增加 (但只会增加) 损坏或丢失数据的可能性。 如果 \fIcachesize\fP 为 0
+(未指定大小)，则使用默认缓存。
+.TP 
+\fImaxkeypage\fP
+.\" The maximum number of keys which will be stored on any single page.
+.\" Because of the way the btree data structure works,
+.\" .I maxkeypage
+.\" must always be greater than or equal to 2.
+.\" If
+.\" .I maxkeypage
+.\" is 0 (no maximum number of keys is specified), the page fill factor is
+.\" made as large as possible (which is almost invariably what is wanted).
+将存储在任何单个页面上的最大键数。 目前未实现。
+.TP 
+\fIminkeypage\fP
+将存储在任何单个页面上的最小键数。 该值用于确定哪些键将存储在溢出页上，也就是说，如果一个键或数据项的长度超过页面大小除以 minkeypage
+值，它将存储在溢出页上而不是页面本身。 如果 \fIminkeypage\fP 为 0 (未指定最小键数)，则使用值 2。
+.TP 
+\fIpsize\fP
+页面大小是用于树中节点的页面大小 (以字节为单位)。 最小页面大小为 512 字节，最大页面大小为 64\KiB。 如果 \fIpsize\fP 为 0
+(未指定页面大小)，则根据底层文件系统 I/O 块大小选择页面大小。
+.TP 
+\fIcompare\fP
+Compare 是关键比较函数。 如果第一个键参数被认为分别小于、等于或大于第二个键参数，它必须返回一个小于、等于或大于零的整数。
+每次打开给定的树时，必须使用相同的比较函数。 如果 \fIcompare\fP 为 NULL (未指定比较函数)，则按词法比较键，较短的键被认为小于较长的键。
+.TP 
+\fIprefix\fP
+Prefix 是前缀比较函数。 如果指定，此例程必须返回确定第二个键参数大于第一个键参数所需的字节数。 如果密钥相等，则应返回密钥长度。
+请注意，此例程的用处非常依赖于数据，但是，在某些数据集中可以产生显着减少的树大小和搜索时间。 如果 \fIprefix\fP 为 NULL
+(未指定前缀函数)，\fIand\fP 未指定比较函数，则使用默认的词法比较例程。 如果 \fIprefix\fP 为 NULL
+并且指定了比较例程，则不进行前缀比较。
+.TP 
+\fIlorder\fP
+存储的数据库元数据中整数的字节顺序。 数字应以整数表示订单; 例如，大端顺序为数字 4,321。 如果 \fIlorder\fP 为 0
+(未指定顺序)，则使用当前主机顺序。
+.PP
+如果文件已经存在 (并且未指定 \fBO_TRUNC\fP 标志)，则忽略为参数 \fIflags\fP、\fIlorder\fP 和 \fIpsize\fP
+指定的值，以支持创建树时使用的值。
+.PP
+树的前向顺序扫描是从最小键到最大键。
+.PP
+通过从树中删除 key/data 对释放的空间永远不会被回收，尽管它通常可以重新使用。 这意味着 btree 存储结构体是只增长的。
+唯一的解决方案是避免过度删除，或者通过扫描现有树定期创建一棵新树。
+.PP
+btree 中的搜索、插入和删除都将在 O lg base N 中完成，其中 base 是平均填充因子。 通常，将有序数据插入 btrees
+会导致较低的填充因子。 此实现已被修改以使有序插入成为最佳情况，从而产生比正常页面填充因子更好的结果。
+.SH ERRORS
+\fIbtree\fP 访问方法例程可能会失败并为库例程 \fBdbopen\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.SH BUGS
+仅支持大字节序和小字节序。
+.SH "SEE ALSO"
+\fBdbopen\fP(3), \fBhash\fP(3), \fBmpool\fP(3), \fBrecno\fP(3)
+.PP
+\fIThe Ubiquitous B\-tree\fP，道格拉斯・科默，ACM Comput。生存。11, 2 (1979 年 6 月)，121\-138。
+.PP
+\fIPrefix B\-trees\fP，Bayer 和 Unterauer，数据库系统上的 ACM 交易，卷。2, 1 (1977 年 3
+月)，11\-26。
+.PP
+\fIThe Art of Computer Programming Vol. 3: Sorting and Searching\fP, D.E.  高德纳
+(Knuth)，1968 年，第 471\-480 页。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

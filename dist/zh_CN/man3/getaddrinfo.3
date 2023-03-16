@@ -1,0 +1,513 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2007, 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (c) 2006 Ulrich Drepper <drepper@redhat.com>
+.\" A few pieces of an earlier version remain:
+.\" Copyright 2000, Sam Varshavchik <mrsam@courier-mta.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References: RFC 2553
+.\"
+.\" 2005-08-09, mtk, added AI_ALL, AI_ADDRCONFIG, AI_V4MAPPED,
+.\"			and AI_NUMERICSERV.
+.\" 2006-11-25, Ulrich Drepper <drepper@redhat.com>
+.\"     Add text describing Internationalized Domain Name extensions.
+.\" 2007-06-08, mtk: added example programs
+.\" 2008-02-26, mtk; clarify discussion of NULL 'hints' argument; other
+.\"     minor rewrites.
+.\" 2008-06-18, mtk: many parts rewritten
+.\" 2008-12-04, Petr Baudis <pasky@suse.cz>
+.\"	Describe results ordering and reference /etc/gai.conf.
+.\"
+.\" FIXME . glibc's 2.9 NEWS file documents DCCP and UDP-lite support
+.\"           and is SCTP support now also there?
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getaddrinfo 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getaddrinfo, freeaddrinfo, gai_strerror \- 网络地址和服务转换
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <sys/socket.h>\fP
+\fB#include <netdb.h>\fP
+.PP
+\fBint getaddrinfo(const char *restrict \fP\fInode\fP\fB,\fP
+\fB                const char *restrict \fP\fIservice\fP\fB,\fP
+\fB                const struct addrinfo *restrict \fP\fIhints\fP\fB,\fP
+\fB                struct addrinfo **restrict \fP\fIres\fP\fB);\fP
+.PP
+\fBvoid freeaddrinfo(struct addrinfo *\fP\fIres\fP\fB);\fP
+.PP
+\fBconst char *gai_strerror(int \fP\fIerrcode\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetaddrinfo\fP(), \fBfreeaddrinfo\fP(), \fBgai_strerror\fP():
+.nf
+    由于 glibc 2.22:
+        _POSIX_C_SOURCE >= 200112L
+    glibc 2.21 及更早版本:
+        _POSIX_C_SOURCE
+.fi
+.SH DESCRIPTION
+.\" .BR getipnodebyname (3),
+.\" .BR getipnodebyaddr (3),
+给定 \fInode\fP 和 \fIservice\fP，它们标识 Internet 主机和服务，\fBgetaddrinfo\fP() 返回一个或多个
+\fIaddrinfo\fP 结构，每个结构包含一个 Internet 地址，可以在调用于 \fBbind\fP(2) 或 \fBconnect\fP(2) 中指定。
+\fBgetaddrinfo\fP() 函数将 \fBgethostbyname\fP(3) 和 \fBgetservbyname\fP(3)
+函数提供的功能组合到一个接口中，但与后者函数不同的是，\fBgetaddrinfo\fP() 是可重入的，允许程序消除 IPv4 与 IPv6 的依赖关系。
+.PP
+\fBgetaddrinfo\fP() 使用的 \fIaddrinfo\fP 结构体包含以下字段:
+.PP
+.in +4n
+.EX
+struct addrinfo {
+    int              ai_flags;
+    int              ai_family;
+    int              ai_socktype;
+    int              ai_protocol;
+    socklen_t        ai_addrlen;
+    struct sockaddr *ai_addr;
+    char            *ai_canonname;
+    struct addrinfo *ai_next;
+};
+.EE
+.in
+.PP
+\fIhints\fP 参数指向一个 \fIaddrinfo\fP 结构体，该结构体指定用于选择在 \fIres\fP 指向的列表中返回的套接字地址结构的标准。 如果
+\fIhints\fP 不是 NULL，它指向一个 \fIaddrinfo\fP 结构体，其 \fIai_family\fP、\fIai_socktype\fP 和
+\fIai_protocol\fP 指定限制由 \fBgetaddrinfo\fP() 返回的套接字地址集的标准，如下所示:
+.TP 
+\fIai_family\fP
+该字段指定返回地址所需的地址族。 此字段的有效值包括 \fBAF_INET\fP 和 \fBAF_INET6\fP。 值 \fBAF_UNSPEC\fP 表示
+\fBgetaddrinfo\fP() 应返回可与 \fInode\fP 和 \fIservice\fP 一起使用的任何地址族 (例如 IPv4 或 IPv6)
+的套接字地址。
+.TP 
+\fIai_socktype\fP
+该字段指定首选套接字类型，例如 \fBSOCK_STREAM\fP 或 \fBSOCK_DGRAM\fP。 在此字段中指定 0 表示
+\fBgetaddrinfo\fP() 可以返回任何类型的套接字地址。
+.TP 
+\fIai_protocol\fP
+该字段指定返回的套接字地址的协议。 在此字段中指定 0 表示 \fBgetaddrinfo\fP() 可以返回具有任何协议的套接字地址。
+.TP 
+\fIai_flags\fP
+此字段指定其他选项，如下所述。 多个标志通过按位或将它们一起指定。
+.PP
+\fIhints\fP 指向的结构体中的所有其他字段必须根据需要包含 0 或空指针。
+.PP
+指定 \fIhints\fP 为 NULL 等同于将 \fIai_socktype\fP 和 \fIai_protocol\fP 设置为 0; \fIai_family\fP
+至 \fBAF_UNSPEC\fP; 和 \fIai_flags\fP 到 \fB(AI_V4MAPPED\ |\ AI_ADDRCONFIG)\fP。 (POSIX 为
+\fIai_flags\fP 指定不同的默认值; 参见注释。) \fInode\fP 指定数字网络地址 (对于 IPv4，\fBinet_aton\fP(3)
+支持的数字和点表示法; 对于 IPv6，\fBinet_pton\fP(3)) 支持的十六进制字符串格式) 或网络主机名，查找并解析其网络地址。 如果
+\fIhints.ai_flags\fP 包含 \fBAI_NUMERICHOST\fP 标志，则 \fInode\fP 必须是数字网络地址。
+\fBAI_NUMERICHOST\fP 标志禁止任何可能冗长的网络主机地址查找。
+.PP
+如果在 \fIhints.ai_flags\fP 中指定了 \fBAI_PASSIVE\fP 标志，并且 \fInode\fP 为 NULL，则返回的套接字地址将适用于
+\fBbind\fP(2)ing 将与 \fBaccept\fP(2) 连接的套接字。 返回的套接字地址将包含 IPv4 地址的 "wildcard
+address" (\fBINADDR_ANY\fP，IPv6 地址的 \fBIN6ADDR_ANY_INIT\fP)。
+通配符地址由打算接受任何主机网络地址上的连接的应用程序 (通常是服务器) 使用。 如果 \fInode\fP 不为 NULL，则忽略
+\fBAI_PASSIVE\fP 标志。
+.PP
+如果 \fIhints.ai_flags\fP 中未设置 \fBAI_PASSIVE\fP 标志，则返回的套接字地址将适用于
+\fBconnect\fP(2)、\fBsendto\fP(2) 或 \fBsendmsg\fP(2)。 如果 \fInode\fP 为
+NULL，则网络地址将设置为回环接口地址 IPv4 地址为 (\fBINADDR_LOOPBACK\fP，IPv6 地址为
+\fBIN6ADDR_LOOPBACK_INIT\fP) ; 这由打算与在同一主机上运行的对等点通信的应用程序使用。
+.PP
+\fIservice\fP 在每个返回地址结构体中设置端口。 如果这个参数是服务名 (见 \fBservices\fP(5))，则翻译成对应的端口号。
+这个参数也可以指定为十进制数，简单的转换成二进制即可。 如果 \fIservice\fP 为 NULL，则返回的套接字地址的端口号将保持未初始化状态。 如果在
+\fIhints.ai_flags\fP 中指定了 \fBAI_NUMERICSERV\fP 并且 \fIservice\fP 不为 NULL，则 \fIservice\fP
+必须指向包含数字端口号的字符串。 此标志用于在已知不需要的情况下禁止调用名称解析服务。
+.PP
+\fInode\fP 或 \fIservice\fP，但不能同时为 NULL。
+.PP
+\fBgetaddrinfo\fP() 函数分配并初始化 \fIaddrinfo\fP 结构的链表，每个网络地址匹配 \fInode\fP 和 \fIservice\fP，受
+\fIhints\fP 施加的任何限制，并返回指向 \fIres\fP 中列表开头的指针。 链表中的项由 \fIai_next\fP 域链接。
+.PP
+链表可能有多个 \fIaddrinfo\fP 结构体有几个原因，包括: 网络主机是多宿主的，可通过多种协议访问 (例如，\fBAF_INET\fP 和
+\fBAF_INET6\fP); 或者同一服务可用于多种套接字类型 (例如，一个 \fBSOCK_STREAM\fP 地址和另一个 \fBSOCK_DGRAM\fP
+地址)。 通常，应用程序应该尝试按照地址返回的顺序使用这些地址。 \fBgetaddrinfo\fP() 内使用的排序函数在 RFC\3484 中定义;
+可以通过编辑 \fI/etc/gai.conf\fP (自 glibc 2.5 起可用) 针对特定系统调整顺序。
+.PP
+.\" Prior to glibc 2.3.4, the ai_canonname of each addrinfo
+.\" structure was set pointing to the canonical name; that was
+.\" more than POSIX.1-2001 specified, or other implementations provided.
+.\" MTK, Aug 05
+如果 \fIhints.ai_flags\fP 包含 \fBAI_CANONNAME\fP 标志，则返回列表中第一个 \fIaddrinfo\fP 结构的
+\fIai_canonname\fP 字段设置为指向主机的正式名称。
+.PP
+每个返回的 \fIaddrinfo\fP 结构体的剩余字段初始化如下:
+.IP \[bu] 3
+\fIai_family\fP、\fIai_socktype\fP、\fIai_protocol\fP 字段返回 socket 创建参数 (即这些字段与
+\fBsocket\fP(2)) 对应的参数含义相同。 例如，\fIai_family\fP 可能返回 \fBAF_INET\fP 或 \fBAF_INET6\fP;
+\fIai_socktype\fP 可能返回 \fBSOCK_DGRAM\fP 或 \fBSOCK_STREAM\fP; \fIai_protocol\fP 返回套接字的协议。
+.IP \[bu]
+指向套接字地址的指针放在 \fIai_addr\fP 字段中，套接字地址的长度 (以字节为单位) 放在 \fIai_addrlen\fP 字段中。
+.PP
+如果 \fIhints.ai_flags\fP 包含 \fBAI_ADDRCONFIG\fP 标志，则只有当本地系统至少配置了一个 IPv4 地址时，\fIres\fP
+指向的列表中才返回 IPv4 地址，只有当本地系统至少配置了一个 IPv6 地址时，才返回 IPv6 地址。
+在这种情况下，回环地址不被视为有效的配置地址。 例如，此标志在纯 IPv4 系统上很有用，以确保 \fBgetaddrinfo\fP() 不会返回在
+\fBconnect\fP(2) 或 \fBbind\fP(2) 中总是失败的 IPv6 套接字地址。
+.PP
+如果 \fIhints.ai_flags\fP 指定 \fBAI_V4MAPPED\fP 标志，\fIhints.ai_family\fP 指定为
+\fBAF_INET6\fP，没有找到匹配的 IPv6 地址，则返回 \fIres\fP 指向的列表中的 IPv4 映射的 IPv6 地址。 如果在
+\fIhints.ai_flags\fP 中指定了 \fBAI_V4MAPPED\fP 和 \fBAI_ALL\fP，则返回 \fIres\fP 指向的列表中的 IPv6 和
+IPv4 映射的 IPv6 地址。 如果未同时指定 \fBAI_V4MAPPED\fP，则忽略 \fBAI_ALL\fP。
+.PP
+\fBfreeaddrinfo\fP() 函数释放为动态分配的链表 \fIres\fP 分配的内存。
+.SS "Extensions to getaddrinfo() for Internationalized Domain Names"
+从 glibc 2.3.4 开始，\fBgetaddrinfo\fP() 已扩展为有选择地允许传入和传出主机名透明地转换为国际化域名 (IDN) 格式
+(请参见 RFC 3490，\fIInternationalizing Domain Names in Applications (IDNA)\fP).
+定义了四个新标志:
+.TP 
+\fBAI_IDN\fP
+如果指定了此标志，则 \fInode\fP 中给出的节点名称将在必要时转换为 IDN 格式。 源编码是当前语言环境的编码。
+.IP
+.\" Implementation Detail:
+.\" To minimize effects on system performance the implementation might
+.\" want to check whether the input string contains any non-ASCII
+.\" characters.  If there are none the IDN step can be skipped completely.
+.\" On systems which allow not-ASCII safe encodings for a locale this
+.\" might be a problem.
+如果输入名称包含非 ASCII 字符，则使用 IDN 编码。 包含非 ASCII 字符的节点名称 (由点分隔) 的那些部分在传递给名称解析函数之前使用
+ASCII 兼容编码 (ACE) 进行编码。
+.TP 
+\fBAI_CANONIDN\fP
+名称查找成功后，如果指定了 \fBAI_CANONNAME\fP 标志，则 \fBgetaddrinfo\fP() 将返回对应于传回的 \fIaddrinfo\fP
+结构体值的节点的规范名称。 返回值是名称解析函数返回值的精确副本。
+.IP
+.\"
+.\"Implementation Detail:
+.\"If no component of the returned name starts with xn\-\- the IDN
+.\"step can be skipped, therefore avoiding unnecessary slowdowns.
+如果名称是使用 ACE 编码的，那么它将包含名称的一个或多个组件的 \fIxn\-\-\fP 前缀。 要将这些组件转换为可读形式，除了
+\fBAI_CANONNAME\fP 之外还可以传递 \fBAI_CANONIDN\fP 标志。 生成的字符串使用当前语言环境的编码进行编码。
+.TP 
+\fBAI_IDN_ALLOW_UNASSIGNED\fP, \fBAI_IDN_USE_STD3_ASCII_RULES\fP
+设置这些标志将分别启用 IDNA_ALLOW_UNASSIGNED (允许未分配的 Unicode 代码点) 和
+IDNA_USE_STD3_ASCII_RULES (检查输出以确保它是符合 STD3 的主机名) 标志以用于 IDNA 处理。
+.SH "RETURN VALUE"
+.\" FIXME glibc defines the following additional errors, some which
+.\" can probably be returned by getaddrinfo(); they need to
+.\" be documented.
+.\"    #ifdef __USE_GNU
+.\"    #define EAI_INPROGRESS  -100  /* Processing request in progress.  */
+.\"    #define EAI_CANCELED    -101  /* Request canceled.  */
+.\"    #define EAI_NOTCANCELED -102  /* Request not canceled.  */
+.\"    #define EAI_ALLDONE     -103  /* All requests done.  */
+.\"    #define EAI_INTR        -104  /* Interrupted by a signal.  */
+.\"    #define EAI_IDN_ENCODE  -105  /* IDN encoding failed.  */
+.\"    #endif
+如果成功，\fBgetaddrinfo\fP() 将返回 0，或者返回以下非零错误代码之一:
+.TP 
+\fBEAI_ADDRFAMILY\fP
+.\" Not in SUSv3
+指定的网络主机在请求的地址族中没有任何网络地址。
+.TP 
+\fBEAI_AGAIN\fP
+名称服务器返回临时故障指示。 稍后再试。
+.TP 
+\fBEAI_BADFLAGS\fP
+\fIhints.ai_flags\fP 包含无效标志; 或者，\fIhints.ai_flags\fP 包含 \fBAI_CANONNAME\fP 而 \fIname\fP
+为 NULL。
+.TP 
+\fBEAI_FAIL\fP
+名称服务器返回永久性故障指示。
+.TP 
+\fBEAI_FAMILY\fP
+不支持请求的地址系列。
+.TP 
+\fBEAI_MEMORY\fP
+内存不足。
+.TP 
+\fBEAI_NODATA\fP
+.\" Not in SUSv3
+指定的网络主机存在，但没有定义任何网络地址。
+.TP 
+\fBEAI_NONAME\fP
+\fInode\fP 或 \fIservice\fP 未知; 或者 \fInode\fP 和 \fIservice\fP 都为 NULL; 或
+\fBAI_NUMERICSERV\fP 在 \fIhints.ai_flags\fP 中指定，而 \fIservice\fP 不是数字端口号字符串。
+.TP 
+\fBEAI_SERVICE\fP
+请求的服务不适用于请求的套接字类型。 它可能通过另一种套接字类型可用。 例如，如果 \fIservice\fP 是 "shell"
+(仅在流套接字上可用的服务)，并且 \fIhints.ai_protocol\fP 是 \fBIPPROTO_UDP\fP，或者
+\fIhints.ai_socktype\fP 是 \fBSOCK_DGRAM\fP，则可能会发生此错误; 或者如果 \fIservice\fP 不是 NULL，并且
+\fIhints.ai_socktype\fP 是 \fBSOCK_RAW\fP (不支持服务概念的套接字类型)，则可能会发生错误。
+.TP 
+\fBEAI_SOCKTYPE\fP
+不支持请求的套接字类型。 例如，如果 \fIhints.ai_socktype\fP 和 \fIhints.ai_protocol\fP 不一致 (例如，分别为
+\fBSOCK_DGRAM\fP 和 \fBIPPROTO_TCP\fP)，就会发生这种情况。
+.TP 
+\fBEAI_SYSTEM\fP
+其他系统错误; \fIerrno\fP 被设置为指示错误。
+.PP
+\fBgai_strerror\fP() 函数将这些错误代码转换为人类可读的字符串，适用于错误报告。
+.SH FILES
+\fI/etc/gai.conf\fP
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetaddrinfo\fP()
+T}	Thread safety	MT\-Safe env locale
+T{
+\fBfreeaddrinfo\fP(),
+\fBgai_strerror\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.  \fBgetaddrinfo\fP() 函数记录在 RFC\2553 中。
+.SH NOTES
+\fBgetaddrinfo\fP() 支持 \fIaddress\fP\fB%\fP\fIscope\-id\fP 表示法来指定 IPv6 作用域 \- ID。
+.PP
+\fBAI_ADDRCONFIG\fP、\fBAI_ALL\fP 和 \fBAI_V4MAPPED\fP 从 glibc 2.3.3 开始可用。
+\fBAI_NUMERICSERV\fP 自 glibc 2.3.4 起可用。
+.PP
+.\" POSIX.1-2001, POSIX.1-2008
+根据 POSIX.1，将 \fIhints\fP 指定为 NULL 应该会导致 \fIai_flags\fP 被假定为 0。 GNU C 库在这种情况下假定值为
+\fB(AI_V4MAPPED\~|\~AI_ADDRCONFIG)\fP，因为该值被认为是对规范的改进。
+.SH EXAMPLES
+.\" getnameinfo.3 refers to this example
+.\" socket.2 refers to this example
+.\" bind.2 refers to this example
+.\" connect.2 refers to this example
+.\" recvfrom.2 refers to this example
+.\" sendto.2 refers to this example
+以下程序演示了 \fBgetaddrinfo\fP()、\fBgai_strerror\fP()、\fBfreeaddrinfo\fP() 和
+\fBgetnameinfo\fP(3) 的使用。 这些程序是 UDP 数据报的回显服务器和客户端。
+.SS "Server program"
+.\" SRC BEGIN (server.c)
+\&
+.EX
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#define BUF_SIZE 500
+
+int
+main(int argc, char *argv[])
+{
+    int                      sfd, s;
+    char                     buf[BUF_SIZE];
+    ssize_t                  nread;
+    socklen_t                peer_addrlen;
+    struct addrinfo          hints;
+    struct addrinfo          *result, *rp;
+    struct sockaddr_storage  peer_addr;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s port\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    hints.ai_flags = AI_PASSIVE;     /* For wildcard IP address */
+    hints.ai_protocol = 0;          /* Any protocol */
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
+
+    s = getaddrinfo(NULL, argv[1], &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\en", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+
+    /* getaddrinfo() returns a list of address structures.
+       Try each address until we successfully bind(2).
+       If socket(2) (or bind(2)) fails, we (close the socket
+       and) try the next address. */
+
+    for (rp = result; rp != NULL; rp = rp\->ai_next) {
+        sfd = socket(rp\->ai_family, rp\->ai_socktype,
+                     rp\->ai_protocol);
+        if (sfd == \-1)
+            continue;
+
+        if (bind(sfd, rp\->ai_addr, rp\->ai_addrlen) == 0)
+            break;                   /* Success */
+
+        close(sfd);
+    }
+
+    freeaddrinfo(result);           /* No longer needed */
+
+    if (rp == NULL) {               /* No address succeeded */
+        fprintf(stderr, "Could not bind\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Read datagrams and echo them back to sender. */
+
+    for (;;) {
+        char host[NI_MAXHOST], service[NI_MAXSERV];
+
+        peer_addrlen = sizeof(peer_addr);
+        nread = recvfrom(sfd, buf, BUF_SIZE, 0,
+                         (struct sockaddr *) &peer_addr, &peer_addrlen);
+        if (nread == \-1)
+            continue;                /* Ignore failed request */
+
+        s = getnameinfo((struct sockaddr *) &peer_addr,
+                        peer_addrlen, host, NI_MAXHOST,
+                        service, NI_MAXSERV, NI_NUMERICSERV);
+        if (s == 0)
+            printf("Received %zd bytes from %s:%s\en",
+                   nread, host, service);
+        else
+            fprintf(stderr, "getnameinfo: %s\en", gai_strerror(s));
+
+        if (sendto(sfd, buf, nread, 0, (struct sockaddr *) &peer_addr,
+                   peer_addrlen) != nread)
+        {
+            fprintf(stderr, "Error sending response\en");
+        }
+    }
+}
+.EE
+.\" SRC END
+.SS "Client program"
+.\" SRC BEGIN (client.c)
+\&
+.EX
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#define BUF_SIZE 500
+
+int
+main(int argc, char *argv[])
+{
+    int              sfd, s;
+    char             buf[BUF_SIZE];
+    size_t           len;
+    ssize_t          nread;
+    struct addrinfo  hints;
+    struct addrinfo  *result, *rp;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s host port msg...\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Obtain address(es) matching host/port. */
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;          /* Any protocol */
+
+    s = getaddrinfo(argv[1], argv[2], &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\en", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+
+    /* getaddrinfo() returns a list of address structures.
+       Try each address until we successfully connect(2).
+       If socket(2) (or connect(2)) fails, we (close the socket
+       and) try the next address. */
+
+    for (rp = result; rp != NULL; rp = rp\->ai_next) {
+        sfd = socket(rp\->ai_family, rp\->ai_socktype,
+                     rp\->ai_protocol);
+        if (sfd == \-1)
+            continue;
+
+        if (connect(sfd, rp\->ai_addr, rp\->ai_addrlen) != \-1)
+            break;                   /* Success */
+
+        close(sfd);
+    }
+
+    freeaddrinfo(result);           /* No longer needed */
+
+    if (rp == NULL) {               /* No address succeeded */
+        fprintf(stderr, "Could not connect\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Send remaining command\-line arguments as separate
+       datagrams, and read responses from server. */
+
+    for (size_t j = 3; j < argc; j++) {
+        len = strlen(argv[j]) + 1;
+                /* +1 for terminating null byte */
+
+        if (len > BUF_SIZE) {
+            fprintf(stderr,
+                    "Ignoring long message in argument %zu\en", j);
+            continue;
+        }
+
+        if (write(sfd, argv[j], len) != len) {
+            fprintf(stderr, "partial/failed write\en");
+            exit(EXIT_FAILURE);
+        }
+
+        nread = read(sfd, buf, BUF_SIZE);
+        if (nread == \-1) {
+            perror("read");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("Received %zd bytes: %s\en", nread, buf);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.\" .BR getipnodebyaddr (3),
+.\" .BR getipnodebyname (3),
+\fBgetaddrinfo_a\fP(3), \fBgethostbyname\fP(3), \fBgetnameinfo\fP(3), \fBinet\fP(3),
+\fBgai.conf\fP(5), \fBhostname\fP(7), \fBip\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,206 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Wed Jul 28 11:12:17 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Mon May 13 23:08:50 1996 by Martin Schulze (joey@linux.de)
+.\" Modified 11 May 1998 by Joseph S. Myers (jsm28@cam.ac.uk)
+.\" Modified 990912 by aeb
+.\" 2007-10-10 mtk
+.\"     Added description of GLOB_TILDE_NOMATCH
+.\"     Expanded the description of various flags
+.\"     Various wording fixes.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH glob 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+glob、globfree \- 查找与模式匹配的路径名，从 glob() 释放内存
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <glob.h>\fP
+.PP
+\fBint glob(const char *restrict \fP\fIpattern\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB         int (*\fP\fIerrfunc\fP\fB)(const char *\fP\fIepath\fP\fB, int \fP\fIeerrno\fP\fB),\fP
+\fB         glob_t *restrict \fP\fIpglob\fP\fB);\fP
+\fBvoid globfree(glob_t *\fP\fIpglob\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBglob\fP() 函数根据 shell 使用的规则搜索所有匹配 \fIpattern\fP 的路径名 (参见 \fBglob\fP(7)).
+没有进行波浪号扩展或参数替换; 如果您想要这些，请使用 \fBwordexp\fP(3)。
+.PP
+\fBglobfree\fP() 函数将动态分配的存储空间从较早的调用释放到 \fBglob\fP()。
+.PP
+\fBglob\fP() 调用的结果存储在 \fIpglob\fP 指向的结构体中。 此结构体的类型为 \fIglob_t\fP (在
+\fI<glob.h>\fP) 中声明并包括 POSIX.2 定义的以下元素 (更多可能作为扩展存在) :
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    size_t   gl_pathc;    /* Count of paths matched so far  */
+    char   **gl_pathv;    /* List of matched pathnames.  */
+    size_t   gl_offs;     /* Slots to reserve in \fIgl_pathv\fP.  */
+} glob_t;
+.EE
+.in
+.PP
+结果存储在动态分配的存储空间中。
+.PP
+参数 \fIflags\fP 由零个或多个以下符号常量的按位或组成，它修改 \fBglob\fP(): 的行为
+.TP 
+\fBGLOB_ERR\fP
+读取错误时返回 (例如，因为目录没有读取权限)。 默认情况下，尽管有错误，\fBglob\fP() 仍会尝试继续读取它可以读取的所有目录。
+.TP 
+\fBGLOB_MARK\fP
+将斜杠追加到对应于目录的每个路径。
+.TP 
+\fBGLOB_NOSORT\fP
+不要对返回的路径名进行排序。 这样做的唯一原因是为了节省处理时间。 默认情况下，返回的路径名是排序的。
+.TP 
+\fBGLOB_DOOFFS\fP
+在 \fIpglob\->pathv\fP 中的字符串列表的开头保留 \fIpglob\->gl_offs\fP 插槽。 保留槽包含空指针。
+.TP 
+\fBGLOB_NOCHECK\fP
+如果没有模式匹配，则返回原始模式。 默认情况下，如果没有匹配项，\fBglob\fP() 将返回 \fBGLOB_NOMATCH\fP。
+.TP 
+\fBGLOB_APPEND\fP
+将此调用的结果追加到由先前调用返回的结果的 vector 到 \fBglob\fP()。 不要在第一次调用 \fBglob\fP() 时设置此标志。
+.TP 
+\fBGLOB_NOESCAPE\fP
+不允许将反斜杠 (\[aq]\e\[aq]) 用作转义字符。 通常，反斜杠可以用来引用后面的字符，提供一种机制来关闭特殊含义的元字符。
+.PP
+\fIflags\fP 还可能包含以下任何内容，这些内容是 GNU 扩展且未由 POSIX.2 定义:
+.TP 
+\fBGLOB_PERIOD\fP
+允许前导句点与元字符匹配。 默认情况下，元字符不能匹配前导句点。
+.TP 
+\fBGLOB_ALTDIRFUNC\fP
+使用替代函数
+\fIpglob\->gl_closedir\fP、\fIpglob\->gl_readdir\fP、\fIpglob\->gl_opendir\fP、\fIpglob\->gl_lstat\fP
+和 \fIpglob\->gl_stat\fP 来访问文件系统，而不是使用普通库函数。
+.TP 
+\fBGLOB_BRACE\fP
+展开 \fB{a,b}\fP 形式的 \fBcsh\fP(1) 样式大括号表达式。 大括号表达式可以嵌套。 因此，例如，指定模式
+"{foo/{,cat,dog},bar}" 将返回与使用以下字符串的四个单独的 \fBglob\fP() 调用相同的结果:
+"foo/"、"foo/cat"、"foo/dog" 和 "bar"。
+.TP 
+\fBGLOB_NOMAGIC\fP
+如果模式不包含元字符，那么它应该作为唯一的匹配词返回，即使不存在具有该名称的文件。
+.TP 
+\fBGLOB_TILDE\fP
+进行波浪线扩展。 如果波浪号 (\[aq]\[ti]\[aq]) 是模式中的唯一字符，或者初始波浪号后紧跟斜杠
+(\[aq]/\[aq])，则调用者的主目录将替换波浪号。 如果初始波浪号后跟用户名 (例如
+"\[ti]andrea/bin")，则波浪号和用户名将替换为该用户的主目录。 如果用户名无效，或者无法确定主目录，则不执行替换。
+.TP 
+\fBGLOB_TILDE_CHECK\fP
+这提供了类似于 \fBGLOB_TILDE\fP 的行为。 不同之处在于，如果用户名无效，或者无法确定主目录，则 \fBglob\fP()
+不使用模式本身作为名称，而是返回 \fBGLOB_NOMATCH\fP 以指示错误。
+.TP 
+\fBGLOB_ONLYDIR\fP
+这是一个 \fIhint\fP 到 \fBglob\fP()，调用者只对与模式匹配的目录感兴趣。 如果实现可以轻松确定文件类型信息，则不会将非目录文件返回给调用者。
+但是，调用者仍必须检查返回的文件是否为目录。 (此标志的目的仅仅是在调用者只对目录感兴趣时优化性能。)
+.PP
+如果 \fIerrfunc\fP 不为 NULL，则在参数 \fIepath\fP (指向失败路径的指针) 和 \fIeerrno\fP (从对
+\fBopendir\fP(3)、\fBreaddir\fP(3) 或 \fBstat\fP(2) 的调用之一返回的 \fIerrno\fP 的值) 出现错误时调用。 如果
+\fIerrfunc\fP 返回非零值，或者如果 \fBGLOB_ERR\fP 已设置，则 \fBglob\fP() 将在调用到 \fIerrfunc\fP 之后终止。
+.PP
+成功返回后，\fIpglob\->gl_pathc\fP 包含匹配路径名的数量，\fIpglob\->gl_pathv\fP
+包含指向匹配路径名指针列表的指针。 指针列表以空指针结束。
+.PP
+可以多次调用 \fBglob\fP()。 在这种情况下，必须在第二次和以后的调用中在 \fIflags\fP 中设置 \fBGLOB_APPEND\fP 标志。
+.PP
+作为 GNU 扩展，\fIpglob\->gl_flags\fP 设置为指定的标志，\fBor\fPed 和 \fBGLOB_MAGCHAR\fP
+(如果找到任何元字符)。
+.SH "RETURN VALUE"
+成功完成后，\fBglob\fP() 返回零。 其他可能的回报是:
+.TP 
+\fBGLOB_NOSPACE\fP
+内存不足，
+.TP 
+\fBGLOB_ABORTED\fP
+对于读取错误，和
+.TP 
+\fBGLOB_NOMATCH\fP
+没有找到匹配项。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBglob\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:utent env
+sig:ALRM timer locale
+T}
+T{
+\fBglobfree\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+在上表中，\fIrace:utent\fP 中的 \fIutent\fP 表示如果在一个程序的不同线程中并行使用任数
+\fBsetutent\fP(3)、\fBgetutent\fP(3) 或 \fBendutent\fP(3) 中的任何一个，则可能发生数据竞争。 \fBglob\fP()
+调用了那些函数，所以我们使用 race:utent 来提醒用户。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, POSIX.2.
+.SH NOTES
+结构体元素 \fIgl_pathc\fP 和 \fIgl_offs\fP 在 glibc 2.1 中声明为 \fIsize_t\fP，根据 POSIX.2
+它们应该是这样，但在 glibc 2.0 中声明为 \fIint\fP。
+.SH BUGS
+\fBglob\fP() 函数可能因底层函数调用失败而失败，例如 \fBmalloc\fP(3) 或 \fBopendir\fP(3)。 这些会将它们的错误代码存储在
+\fIerrno\fP 中。
+.SH EXAMPLES
+一个使用示例是下面的代码，它模拟了打字
+.PP
+.in +4n
+.EX
+ls \-l *.c ../*.c
+.EE
+.in
+.PP
+在 shell 中:
+.PP
+.in +4n
+.EX
+glob_t globbuf;
+
+globbuf.gl_offs = 2;
+glob("*.c", GLOB_DOOFFS, NULL, &globbuf);
+glob("../*.c", GLOB_DOOFFS | GLOB_APPEND, NULL, &globbuf);
+globbuf.gl_pathv[0] = "ls";
+globbuf.gl_pathv[1] = "\-l";
+execvp("ls", &globbuf.gl_pathv[0]);
+.EE
+.in
+.SH "SEE ALSO"
+\fBls\fP(1), \fBsh\fP(1), \fBstat\fP(2), \fBexec\fP(3), \fBfnmatch\fP(3), \fBmalloc\fP(3),
+\fBopendir\fP(3), \fBreaddir\fP(3), \fBwordexp\fP(3), \fBglob\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

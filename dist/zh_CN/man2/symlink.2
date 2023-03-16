@@ -1,0 +1,167 @@
+.\" -*- coding: UTF-8 -*-
+.\" This manpage is Copyright (C) 1992 Drew Eckhardt;
+.\"             and Copyright (C) 1993 Michael Haardt, Ian Jackson.
+.\"		and Copyright (C) 2006, 2014 Michael Kerrisk
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1993-07-24 by Rik Faith
+.\" Modified 1996-04-26 by Nick Duffek <nsd@bbc.com>
+.\" Modified 1996-11-06 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH symlink 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+symlink, symlinkat \- 为文件创建一个新名称
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint symlink(const char *\fP\fItarget\fP\fB, const char *\fP\fIlinkpath\fP\fB);\fP
+.PP
+\fB#include <fcntl.h>           \fP/* Definition of \fBAT_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint symlinkat(const char *\fP\fItarget\fP\fB, int \fP\fInewdirfd\fP\fB, const char *\fP\fIlinkpath\fP\fB);\fP
+.PP
+.fi
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsymlink\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500 || _POSIX_C_SOURCE >= 200112L
+        || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.PP
+\fBsymlinkat\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _ATFILE_SOURCE
+.fi
+.SH DESCRIPTION
+\fBsymlink\fP() 创建一个名为 \fIlinkpath\fP 的符号链接，其中包含字符串 \fItarget\fP。
+.PP
+符号链接在运行时被解释为好像链接的内容已被替换为查找文件或目录所遵循的路径。
+.PP
+符号链接可能包含 \fI..\fP 路径组件，这些组件 (如果在链接的开头使用) 指的是链接所在目录的父目录。
+.PP
+符号链接 (也称为软链接) 可以指向现有文件或不存在的文件; 后一种情况称为悬垂链接。
+.PP
+符号链接的权限无关紧要; 跟随链接时会忽略所有权 (除非启用了 \fIprotected_symlinks\fP 特性如 \fBproc\fP(5))
+中所述，但会在请求删除或重命名链接并且链接位于设置了粘性位 (\fBS_ISVTX\fP) 的目录中时进行检查。
+.PP
+如果 \fIlinkpath\fP 存在，它将被 \fInot\fP 覆盖。
+.SS symlinkat()
+\fBsymlinkat\fP() 系统调用的操作方式与 \fBsymlink\fP() 完全相同，除了此处描述的差异。
+.PP
+如果 \fIlinkpath\fP 中给出的路径名是相对的，那么它被解释为相对于文件描述符 \fInewdirfd\fP 引用的目录
+(而不是相对于调用进程的当前工作目录，如 \fBsymlink\fP() 对相对路径名所做的那样)。
+.PP
+如果 \fIlinkpath\fP 是相对的且 \fInewdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则 \fIlinkpath\fP
+被解释为相对于调用进程的当前工作目录 (如 \fBsymlink\fP()).
+.PP
+如果 \fIlinkpath\fP 是绝对的，则忽略 \fInewdirfd\fP。
+.PP
+有关对 \fBsymlinkat\fP() 的需求的说明，请参见 \fBopenat\fP(2)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+对包含 \fIlinkpath\fP 的目录的写访问被拒绝，或者 \fIlinkpath\fP 的路径前缀中的目录之一不允许搜索权限。 (另见
+\fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+(\fBsymlinkat\fP()) \fIlinkpath\fP 是相对的，但 \fInewdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEDQUOT\fP
+用户在文件系统上的资源配额已用完。 资源可以是索引节点或磁盘块，具体取决于文件系统的实现。
+.TP 
+\fBEEXIST\fP
+\fIlinkpath\fP 已经存在。
+.TP 
+\fBEFAULT\fP
+\fItarget\fP 或 \fIlinkpath\fP 指向您可访问的地址空间之外。
+.TP 
+\fBEIO\fP
+发生 I/O 错误。
+.TP 
+\fBELOOP\fP
+解析 \fIlinkpath\fP 时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fItarget\fP 或 \fIlinkpath\fP 太长。
+.TP 
+\fBENOENT\fP
+\fIlinkpath\fP 中的目录组件不存在或者是悬垂符号链接，或者 \fItarget\fP 或 \fIlinkpath\fP 是空字符串。
+.TP 
+\fBENOENT\fP
+(\fBsymlinkat\fP()) \fIlinkpath\fP 是相对路径名，\fInewdirfd\fP 是指已删除的目录。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBENOSPC\fP
+包含该文件的设备没有空间容纳新的目录条目。
+.TP 
+\fBENOTDIR\fP
+在 \fIlinkpath\fP 中用作目录的组件实际上不是目录。
+.TP 
+\fBENOTDIR\fP
+(\fBsymlinkat\fP()) \fIlinkpath\fP 是相对的，\fInewdirfd\fP 是指文件而不是目录的文件描述符。
+.TP 
+\fBEPERM\fP
+包含 \fIlinkpath\fP 的文件系统不支持创建符号链接。
+.TP 
+\fBEROFS\fP
+\fIlinkpath\fP 在只读文件系统上。
+.SH VERSIONS
+\fBsymlinkat\fP() 在 Linux 2.6.16 中加入; glibc 2.4 中添加了库支持。
+.SH STANDARDS
+.\" SVr4 documents additional error codes EDQUOT and ENOSYS.
+.\" See
+.\" .BR open (2)
+.\" re multiple files with the same name, and NFS.
+\fBsymlink\fP(): SVr4, 4.3BSD, POSIX.1\-2001, POSIX.1\-2008.
+.PP
+\fBsymlinkat\fP(): POSIX.1\-2008.
+.SH NOTES
+不检查 \fItarget\fP。
+.PP
+删除符号链接引用的名称实际上会删除文件 (除非它还有其他硬链接)。 如果不需要此行为，请使用 \fBlink\fP(2)。
+.SS "glibc notes"
+在 \fBsymlinkat\fP() 不可用的旧内核上，glibc 包装器函数退回到使用 \fBsymlink\fP()。 当 \fIlinkpath\fP
+是相对路径名时，glibc 根据 \fI/proc/self/fd\fP 中对应于 \fInewdirfd\fP 参数的符号链接构造路径名。
+.SH "SEE ALSO"
+\fBln\fP(1), \fBnamei\fP(1), \fBlchown\fP(2), \fBlink\fP(2), \fBlstat\fP(2), \fBopen\fP(2),
+\fBreadlink\fP(2), \fBrename\fP(2), \fBunlink\fP(2), \fBpath_resolution\fP(7),
+\fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

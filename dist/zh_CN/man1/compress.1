@@ -1,0 +1,134 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH COMPRESS 1 local  
+.SH NAME
+compress, uncompress, zcat \- 压缩和扩展数据
+.SH SYNOPSIS
+.ll +8
+\fBcompress\fP [ \fB\-f\fP ] [ \fB\-k\fP ] [ \fB\-v\fP ] [ \fB\-c\fP ] [ \fB\-V\fP ] [ \fB\-r\fP ] [
+\fB\-b\fP \fIbits\fP ] [ \fB\-\-\fP ] [ \fIname \&...\fP ]
+.ll -8
+.br
+\fBuncompress\fP [ \fB\-f\fP ] [ \fB\-k\fP ] [ \fB\-v\fP ] [ \fB\-c\fP ] [ \fB\-V\fP ] [ \fB\-\-\fP ] [
+\fIname \&...\fP ]
+.br
+\fBzcat\fP [ \fB\-V\fP ] [ \fB\-\-\fP ] [ \fIname \&...\fP ]
+.SH DESCRIPTION
+\fICompress\fP 使用自适应 Lempel\-Ziv 编码减小命名文件的大小。 只要有可能，每个文件都会被一个扩展名为 \fB\&.Z,\fP
+的文件替换，同时保持相同的所有权模式、访问和修改时间。 如果没有指定文件，标准输入被压缩到标准输出。 \fICompress\fP 只会尝试压缩常规文件。
+特别是，它会忽略符号链接。如果一个文件有多个硬链接，\fIcompress\fP 将拒绝压缩它，除非给出 \fB\-f\fP 标志。
+.PP
+如果未给出 \fB\-f\fP 而 \fIcompress\fP 在前台运行，则会提示用户是否应覆盖现有文件。
+.PP
+可以使用 \fIuncompress\fP 或 \fIzcat.\fP 将压缩文件恢复为原始格式
+.PP
+\fIuncompress\fP 在其命令行上获取文件列表，并将名称以 \fB\&.Z\fP 结尾且以正确幻数开头的每个文件替换为不带 \fB\&.Z.\fP
+的未压缩文件。未压缩文件将具有压缩文件的模式、所有权和时间戳。
+.PP
+\fB\-k\fP 选项使 \fIcompress/uncompress\fP 保留输入文件而不是自动删除它们。
+.PP
+\fB\-c\fP 选项使 \fIcompress/uncompress\fP 写入标准输出; 没有文件被改变。
+.PP
+\fIzcat\fP 等同于 \fIuncompress\fP \fB\-c.\fP \fIzcat\fP 在命令行或其标准输入上解压缩文件列表，并将解压缩的数据写入标准输出。
+\fIzcat\fP 将解压缩具有正确幻数的文件，无论它们是否具有 \fB\&.Z\fP 后缀。
+.PP
+如果指定了 \fB\-r\fP 标志，\fIcompress\fP 将递归操作。如果在命令行上指定的任何文件名是目录，\fIcompress\fP
+将进入该目录并压缩它在其中找到的所有文件。 压缩时，任何已经压缩的文件都将被忽略，解压时，任何已经解压的文件都将被忽略。
+.PP
+\fB\-V\fP 标志告诉这些程序中的每一个在进行任何压缩或解压缩之前在标准错误上打印其版本和补丁级别，以及编译期间指定的任何预处理器标志。
+.PP
+\fICompress\fP 使用在 "A Technique for High Performance Data Compression" 中流行的修改后的
+Lempel\-Ziv 算法，Terry A. 韦尔奇，\fIIEEE Computer,\fP 卷。17，没有。6 (1984 年 6
+月)，pp. 8\-19。文件中的公共子字符串首先被替换为 257 及以上的 9 位代码。 当达到代码 512 时，算法切换到 10
+位代码并继续使用更多位，直到达到 \fB\-b\fP 标志指定的限制 (默认为 16)。 \fIBits\fP 必须介于 9 和 16 之间。
+可以在源代码中更改默认值以允许 \fIcompress\fP 在较小的机器上运行。
+.PP
+达到 \fIbits\fP 限制后，\fIcompress\fP 会定期检查压缩率。 如果增加，\fIcompress\fP 继续使用现有的代码字典。
+但是，如果压缩率降低，\fIcompress\fP 会丢弃子字符串表并从头开始重建它。 这允许算法适应文件的下一个 "block"。
+.PP
+请注意，\fIuncompress,\fP 省略了 \fB\-b\fP 标志，因为在压缩期间指定的 \fIbits\fP
+参数在输出中进行了编码，连同一个幻数以确保既不会尝试解压缩随机数据，也不会尝试重新压缩压缩数据。
+.PP
+.ne 8
+获得的压缩量取决于输入的大小、每个代码的 \fIbits\fP 数量以及公共子串的分布。 通常，源代码或英文等文本会减少 50\-60%。
+压缩通常比通过霍夫曼编码 (在 \fIpack\fP) 或自适应霍夫曼编码 (\fIcompact\fP) 中使用) 实现的压缩效果要好得多，并且计算时间更短。
+.PP
+在 \fB\-v\fP 选项下，将打印一条消息，显示每个压缩文件的减少百分比。
+.PP
+\fB\-\-\fP 可用于停止选项解析并强制将所有剩余的参数视为路径。
+.SH DIAGNOSTICS
+退出状态一般为 0; 如果 (attempted) 压缩后最后一个文件较大，则状态为 2; 如果发生错误，退出状态为 1.
+.PP
+用法: 压缩 [\-dfvcVr] [\-b maxbits] [file ...]
+.in +8
+在命令行上指定了无效选项。
+.in -8
+缺少最大位
+.in +8
+Maxbits 必须跟在 \fB\-b\fP 之后。
+.in -8
+\fIfile\fP: 不是压缩格式
+.in +8
+指定给 \fIuncompress\fP 的文件还没有被压缩。
+.in -8
+\fIfile\fP: 用 \fIxx\fP 位压缩，只能处理 \fIyy\fP 位
+.in +8
+\fIFile\fP 是由一个程序压缩的，该程序可以处理比原生上的压缩代码更多的 \fIbits\fP。 使用较小的 \fIbits\fP 重新压缩文件。
+.in -8
+\fIfile\fP: 已经有 .Z 后缀 \-\- 没有变化
+.in +8
+假定该文件已被压缩。 重命名文件并重试。
+.in -8
+\fIfile\fP: 文件名太长，无法添加到 .Z
+.in +8
+无法压缩文件，因为其名称超过 12 个字符。 重命名并重试。 BSD 系统上不会出现此消息。
+.in -8
+\fIfile\fP 已经存在; 您想覆盖 (y 或 n) 吗?
+.in +8
+如果要替换输出文件，则响应 "y"; "n" 如果不是。
+.in -8
+解压缩: 损坏的输入
+.in +8
+检测到 SIGSEGV 违规，这通常意味着输入文件已损坏。
+.in -8
+压缩: \fIxx.xx%\fP
+.in +8
+通过压缩保存的输入的百分比。 (仅与 \fB\-v\fP.) 相关
+.in -8
+\-\- 不是常规文件或目录: 忽略
+.in +8
+当输入文件不是常规文件或目录 (例如符号链接、套接字、FIFO、设备文件) 时，它保持不变。
+.in -8
+\-\- 有 \fIxx\fP 其他链接: 不变
+.in +8
+输入文件有链接; 它保持不变。 有关更多信息，请参见 \fIln\fP(1)。使用 \fB\-f\fP 标志强制压缩多链接文件。
+.in -8
+\-\- 文件不变
+.in +8
+压缩不会实现任何节省。 输入仍然是处女。
+.in -8
+.SH BUGS
+虽然压缩文件在大内存机器之间是兼容的，\fB\-b\fP\12 应该用于文件传输到具有小进程数据空间的架构 (64KB 或更少，如 DEC PDP
+系列、Intel 80286 等所展示的)
+.SH "SEE ALSO"
+\fBpack\fP(1), \fBcompact\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

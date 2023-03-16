@@ -1,0 +1,131 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 Mitchum DSouza <m.dsouza@mrc-applied-psychology.cambridge.ac.uk>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Thu Dec 13 22:51:19 2001 by Martin Schulze <joey@infodrom.org>
+.\" Modified 2001-12-14 aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH catopen 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+catopen, catclose\-open/close 消息目录
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <nl_types.h>\fP
+.PP
+\fBnl_catd catopen(const char *\fP\fIname\fP\fB, int \fP\fIflag\fP\fB);\fP
+\fBint catclose(nl_catd \fP\fIcatalog\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+函数 \fBcatopen\fP() 打开消息目录并返回目录描述符。 描述符在 \fBcatclose\fP() 或 \fBexecve\fP(2) 之前一直有效。
+如果文件描述符用于实现目录描述符，则将设置 \fBFD_CLOEXEC\fP 标志。
+.PP
+参数 \fIname\fP 指定要打开的消息目录的名称。 如果 \fIname\fP 指定一个绝对路径 (即包含一个 \[aq]/\[aq])，则 \fIname\fP
+指定消息目录的路径名。 否则，环境变量 \fBNLSPATH\fP 与 \fIname\fP 一起使用代替 \fB%N\fP (参见 \fBlocale\fP(7)).
+当进程具有 root 权限时，是否使用 \fBNLSPATH\fP 是未指定的。 如果环境中不存在
+\fBNLSPATH\fP，或者无法在它指定的任何路径中打开消息目录，则使用实现定义的路径。 当 \fIflag\fP 参数为 \fBNL_CAT_LOCALE\fP
+时，后者的默认路径可能取决于 \fBLC_MESSAGES\fP 语言环境设置，当 \fIflag\fP 参数为 0 时，可能取决于 \fBLANG\fP 环境变量。
+更改区域设置的 \fBLC_MESSAGES\fP 部分可能会使打开的目录描述符无效。
+.PP
+\fIflag\fP 参数到 \fBcatopen\fP() 用于指示要使用的语言的来源。 如果它设置为 \fBNL_CAT_LOCALE\fP，那么它将使用
+\fBLC_MESSAGES\fP 的当前区域设置。 否则，它将使用 \fBLANG\fP 环境变量。
+.PP
+函数 \fBcatclose\fP() 关闭 \fIcatalog\fP 标识的消息目录。 它使对 \fIcatalog\fP 定义的消息目录的任何后续引用无效。
+.SH "RETURN VALUE"
+函数 \fBcatopen\fP() 在成功时返回类型为 \fInl_catd\fP 的消息目录描述符。 失败时，它返回 \fI(nl_catd)\~\-1\fP 并设置
+\fIerrno\fP 以指示错误。 可能的错误值包括 \fBopen\fP(2) 调用的所有可能值。
+.PP
+函数 \fBcatclose\fP() 成功返回 0，失败返回 \-1。
+.SH ENVIRONMENT
+.TP 
+\fBLC_MESSAGES\fP
+可能是 \fBLC_MESSAGES\fP 区域设置的来源，因此如果 \fIflag\fP 设置为 \fBNL_CAT_LOCALE\fP 则确定要使用的语言。
+.TP 
+\fBLANG\fP
+\fIflag\fP 时使用的语言是 0.
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBcatopen\fP()
+T}	Thread safety	MT\-Safe env
+T{
+\fBcatclose\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.\" In XPG 1987, Vol. 3 it says:
+.\" .I "The flag argument of catopen is reserved for future use"
+.\" .IR "and should be set to 0" .
+.\"
+.\" It is unclear what the source was for the constants
+.\" .B MCLoadBySet
+.\" and
+.\" .B MCLoadAll
+.\" (see below).
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+.\" (Compare
+.\" .B MCLoadAll
+.\" below.)
+.\" .SS Linux notes
+.\" These functions are available for Linux since libc 4.4.4c.
+.\" In the case of linux libc4 and libc5, the catalog descriptor
+.\" .I nl_catd
+.\" is a
+.\" .BR mmap (2)'ed
+.\" area of memory and not a file descriptor.
+.\" The
+.\" .I flag
+.\" argument to
+.\" .BR catopen ()
+.\" should be either
+.\" .B MCLoadBySet
+.\" (=0) or
+.\" .B MCLoadAll
+.\" (=1).
+.\" The former value indicates that a set from the catalog is to be
+.\" loaded when needed, whereas the latter causes the initial call to
+.\" .BR catopen ()
+.\" to load the entire catalog into memory.
+.\" The default search path varies, but usually looks at a number of places below
+.\" .I /etc/locale
+.\" and
+.\" .IR /usr/lib/locale .
+以上是 POSIX.1 的说明。 \fBNL_CAT_LOCALE\fP 的 glibc 值为 1。 默认路径各不相同，但通常会查看
+\fI/usr/share/locale\fP 以下的多个位置。
+.SH "SEE ALSO"
+\fBcatgets\fP(3), \fBsetlocale\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

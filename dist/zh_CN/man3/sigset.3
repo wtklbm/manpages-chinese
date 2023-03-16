@@ -1,0 +1,140 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2005 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigset 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+sigset、sighold、sigrelse、sigignore\-System V 信号 API
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBtypedef void (*sighandler_t)(int);\fP
+.PP
+\fBsighandler_t sigset(int \fP\fIsig\fP\fB, sighandler_t \fP\fIdisp\fP\fB);\fP
+.PP
+\fBint sighold(int \fP\fIsig\fP\fB);\fP
+\fBint sigrelse(int \fP\fIsig\fP\fB);\fP
+\fBint sigignore(int \fP\fIsig\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsigset\fP(), \fBsighold\fP(), \fBsigrelse\fP(), \fBsigignore\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+这些函数在 glibc 中作为使用历史 System V 信号 API 的程序的兼容接口提供。 此 API 已过时: 新应用应使用 POSIX 信号
+API (\fBsigaction\fP(2)、\fBsigprocmask\fP(2) 等)
+.PP
+\fBsigset\fP() 函数修改信号 \fIsig\fP 的配置。 \fIdisp\fP 参数可以是信号处理程序函数的地址，或以下常量之一:
+.TP 
+\fBSIG_DFL\fP
+将 \fIsig\fP 的配置重置为默认值。
+.TP 
+\fBSIG_IGN\fP
+忽略 \fIsig\fP。
+.TP 
+\fBSIG_HOLD\fP
+将 \fIsig\fP 添加到进程的信号掩码中，但保持 \fIsig\fP 的配置不变。
+.PP
+如果 \fIdisp\fP 指定信号处理程序的地址，则在处理程序执行期间将 \fIsig\fP 添加到进程的信号掩码。
+.PP
+如果 \fIdisp\fP 被指定为 \fBSIG_HOLD\fP 以外的值，则 \fIsig\fP 将从进程的信号掩码中删除。
+.PP
+无法更改 \fBSIGKILL\fP 和 \fBSIGSTOP\fP 的配置。
+.PP
+\fBsighold\fP() 函数将 \fIsig\fP 添加到调用进程的信号掩码中。
+.PP
+\fBsigrelse\fP() 函数从调用进程的信号掩码中删除 \fIsig\fP。
+.PP
+\fBsigignore\fP() 函数设置 \fIsig\fP 到 \fBSIG_IGN\fP 的配置。
+.SH "RETURN VALUE"
+成功时，如果 \fIsig\fP 在调用之前被阻塞，则 \fBsigset\fP() 返回 \fBSIG_HOLD\fP，如果在调用之前未被阻塞，则返回信号的先前配置。
+出错时，\fBsigset\fP() 返回 \-1，并设置 \fIerrno\fP 以指示错误。 (但请参见下面的错误。)
+.PP
+\fBsighold\fP()、\fBsigrelse\fP()、\fBsigignore\fP() 函数成功返回 0; 出错时，这些函数返回 \-1 并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+对于 \fBsigset\fP()，请参见 \fBsigaction\fP(2) 和 \fBsigprocmask\fP(2) 下的错误。
+.PP
+对于 \fBsighold\fP() 和 \fBsigrelse\fP()，请参见 \fBsigprocmask\fP(2) 下的错误。
+.PP
+对于 \fBsigignore\fP()，请参见 \fBsigaction\fP(2) 下的错误。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsigset\fP(),
+\fBsighold\fP(),
+\fBsigrelse\fP(),
+\fBsigignore\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+SVr4, POSIX.1\-2001, POSIX.1\-2008.  这些函数已过时: 不要在新程序中使用它们。 POSIX.1\-2008 将
+\fBsighold\fP()、\fBsigignore\fP()、\fBsigpause\fP(3)、\fBsigrelse\fP() 和 \fBsigset\fP()
+标记为已过时，建议改用 \fBsigaction\fP(2)、\fBsigprocmask\fP(2)、\fBpthread_sigmask\fP(3) 和
+\fBsigsuspend\fP(2)。
+.SH NOTES
+这些函数出现在 glibc 2.1 中。
+.PP
+\fIsighandler_t\fP 类型是 GNU 的扩展; 在此页面上使用它只是为了使 \fBsigset\fP() 原型更易于阅读。
+.PP
+\fBsigset\fP() 函数提供可靠的信号处理语义 (当调用 \fBsigaction\fP(2) 时 \fIsa_mask\fP 等于 0)。
+.PP
+在 System V 上，\fBsignal\fP() 函数提供了不可靠的语义 (如调用 \fBsigaction\fP(2) 时 \fIsa_mask\fP 等于
+\fISA_RESETHAND | SA_NODEFER\fP)。 在 BSD 上，\fBsignal\fP() 提供可靠的语义。 POSIX.1\-2001 未指定
+\fBsignal\fP() 的这些方面。 有关详细信息，请参见 \fBsignal\fP(2)。
+.PP
+为了等待信号，BSD 和 System V 都提供了一个名为 \fBsigpause\fP(3) 的函数，但这个函数在两个系统上的参数不同。
+有关详细信息，请参见 \fBsigpause\fP(3)。
+.SH BUGS
+在 glibc 2.2 之前，如果 \fIdisp\fP 被指定为 \fBSIG_HOLD\fP 以外的值，则 \fBsigset\fP() 不会解锁 \fIsig\fP。
+.PP
+.\" See http://sourceware.org/bugzilla/show_bug.cgi?id=1951
+在 glibc 2.5 之前，\fBsigset\fP() 在两种情况下没有正确返回信号的先前配置。 首先，如果 \fIdisp\fP 被指定为
+\fBSIG_HOLD\fP，那么成功的 \fBsigset\fP() 总是返回 \fBSIG_HOLD\fP。 相反，它应该返回信号的先前配置
+(除非信号被阻止，在这种情况下应该返回 \fBSIG_HOLD\fP)。 第二，如果信号当前被阻塞，那么成功的 \fBsigset\fP() 的返回值应该是
+\fBSIG_HOLD\fP。 相反，返回信号的先前配置。 自 glibc 2.5 以来，这些问题已得到修复。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBpause\fP(2), \fBsigaction\fP(2), \fBsignal\fP(2), \fBsigprocmask\fP(2),
+\fBraise\fP(3), \fBsigpause\fP(3), \fBsigvec\fP(3), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

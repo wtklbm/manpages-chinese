@@ -1,0 +1,201 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NETWORKD\&.CONF 5 "" "systemd 253" networkd.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+networkd.conf, networkd.conf.d \- 全局网络配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/networkd\&.conf
+.PP
+/etc/systemd/networkd\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/networkd\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+这些配置文件控制全局网络参数 \&。目前是 DHCP 唯一标识符 (DUID)\&。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH "[NETWORK] SECTION OPTIONS"
+.PP
+[Network] 部分提供以下选项:
+.PP
+\fISpeedMeter=\fP
+.RS 4
+采用布尔值 \&。如果设置为 yes，则 \fBsystemd\-networkd\fP 测量每个接口的流量，\fBnetworkctl status \fP\fIINTERFACE\fP 显示测量的速度 \&。默认为无 \&。
+.RE
+.PP
+\fISpeedMeterIntervalSec=\fP
+.RS 4
+指定计算各接口流量速度的时间间隔 \&。如果是 \fISpeedMeter=no\fP，该值将被忽略 \&。默认为 10 秒 \&。
+.RE
+.PP
+\fIManageForeignRoutingPolicyRules=\fP
+.RS 4
+一个布尔值 \&。当为真时，\fBsystemd\-networkd\fP 将删除未在 \&.network 文件中配置的规则 (协议 "kernel"
+的规则除外) \&。当为 false 时，它不会删除任何外部规则，即使它们没有在 \&.network 文件 \& 中配置也会保留它们。默认为是 \&。
+.RE
+.PP
+\fIManageForeignRoutes=\fP
+.RS 4
+一个布尔值 \&。当为 true 时，\fBsystemd\-networkd\fP 将删除 \&.network 文件中未配置的路由 (协议为
+"kernel"、\fIKeepConfiguration=\fP 为 true 或 "dhcp" 时为
+"dhcp"、\fIKeepConfiguration=\fP 为 true 或 "static" 时为 "static" 的路由除外) \&。当为
+false 时，它不会删除任何外部路由，即使它们没有在 \&.network 文件 \& 中配置也会保留它们。默认为是 \&。
+.RE
+.PP
+\fIRouteTable=\fP
+.RS 4
+定义路由表名称 \&。采用以空格分隔的路由表名称和编号对列表 \&。每对中的路由表名称和编号用冒号分隔，i\&.e\&.,
+"\fIname\fP:\fInumber\fP"\&。路由表名称不能是 "default"、"main" 或 "local"，因为这些路由表名称分别使用路由表编号
+253、254 和 255 预定义 \&。路由表编号必须是 1\&...4294967295\& 范围内的整数。可以多次指定此设置
+\&。如果指定了空字符串，则先前指定的列表将被清除 \&。默认为取消设置 \&。
+.RE
+.SH "[DHCPV4] SECTION OPTIONS"
+.PP
+此部分配置 DHCP 协议使用的 DHCP 唯一标识符 (DUID) 值 \&。如果 \fBClientIdentifier=duid\fP\&，DHCPv4
+客户端协议在获取动态 IPv4 地址时将 IAID 和 DUID 发送给 DHCP 服务器。IAID 和 DUID 允许 DHCP 服务器唯一标识请求
+DHCP IP 地址的机器和接口。要配置 IAID 和 ClientIdentifier，请参见 \fBsystemd.network\fP(5)\&。
+.PP
+理解以下选项:
+.PP
+\fIDUIDType=\fP
+.RS 4
+指定应如何生成 DUID\&。有关所有选项的描述，请参见 \m[blue]\fBRFC 3315\fP\m[]\&\s-2\u[1]\d\s+2\&。
+.sp
+理解以下值:
+.PP
+\fBvendor\fP
+.RS 4
+如果是 "DUIDType=vendor"，则将使用 "43793" 作为供应商标识符 (systemd) 和 \fBmachine\-id\fP(5)\&
+的散列内容生成 DUID 值。如果未指定 \fIDUIDType=\fP\&，则这是默认值。
+.RE
+.PP
+\fBuuid\fP
+.RS 4
+如果 "DUIDType=uuid" 和 \fIDUIDRawData=\fP 未设置，则产品 UUID 用作 DUID 值 \&。如果系统没有有效的产品
+UUID，则应用程序特定的 \fBmachine\-id\fP(5) 将用作 DUID 值 \&。关于特定于应用程序的机器 ID，请参见
+\fBsd_id128_get_machine_app_specific\fP(3)\&。
+.RE
+.PP
+\fBlink\-layer\-time[:\fP\fITIME\fP\fB]\fP, \fBlink\-layer\fP
+.RS 4
+如果指定 "link\-layer\-time" 或 "link\-layer"，则接口的 MAC 地址用作 DUID 值
+\&。"link\-layer\-time" 的值可以在冒号后附加时间值，e\&.g\&。 `链路层时间: 2018\-01\-23 12:34:56
+UTC`\&。默认时间值为 `2000\-01\-01 00:00:00 UTC`\&。
+.RE
+.sp
+在所有情况下，\fIDUIDRawData=\fP 都可用于覆盖使用的实际 DUID 值 \&。
+.RE
+.PP
+\fIDUIDRawData=\fP
+.RS 4
+将 DHCP DUID 值指定为单个换行符终止的十六进制字符串，每个字节由 `:`\& 分隔。发送的 DUID 由 \fIDUIDType=\fP 指定的
+DUID 类型和此处配置的值 \& 组成。
+.sp
+此处指定的 DUID 值会覆盖 \fBsystemd\-networkd.service\fP(8) 从机器 ID\& 生成的 DUID。要为每个网络配置
+DUID，请参见 \fBsystemd.network\fP(5)\&。配置的 DHCP DUID 应符合 \m[blue]\fBRFC 3315\fP\m[]\&\s-2\u[2]\d\s+2、\m[blue]\fBRFC 6355\fP\m[]\&\s-2\u[3]\d\s+2\&
+中的规范。要配置 IAID，请参见 \fBsystemd.network\fP(5)\&。
+.PP
+\fBExample\ \&1.\ \&A DUIDType=vendor with a custom value\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+DUIDType=vendor
+DUIDRawData=00:00:ab:11:f9:2a:c2:77:29:f9:5c:00
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+这指定了一个 14 字节的 DUID，类型为 DUID\-EN ("00:02")，企业编号为 43793 ("00:00:ab:11")，标识符值为
+`f9:2a:c2:77:29:f9:5c:00`\&。
+.RE
+.SH "[DHCPV6] SECTION OPTIONS"
+.PP
+本节配置 DHCPv6 协议使用的 DHCP 唯一标识符 (DUID) 值 \&。DHCPv6 客户端协议在获取动态 IPv6 地址时将 DHCP
+唯一标识符和接口身份关联标识符 (IAID) 发送给 DHCPv6 服务器 \&。IAID 和 DUID 允许 DHCPv6 服务器唯一标识机器和请求
+DHCP IP 地址的接口 \&。要配置 IAID，请参见 \fBsystemd.network\fP(5)\&。
+.PP
+理解以下选项:
+.PP
+\fIDUIDType=\fP, \fIDUIDRawData=\fP
+.RS 4
+如 [DHCPv4] 部分 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.network\fP(5), \fBsystemd\-networkd.service\fP(8),
+\fBmachine\-id\fP(5), \fBsd_id128_get_machine_app_specific\fP(3)
+.SH NOTES
+.IP " 1." 4
+RFC 3315
+.RS 4
+\%https://tools.ietf.org/html/rfc3315#section\-9
+.RE
+.IP " 2." 4
+RFC 3315
+.RS 4
+\%http://tools.ietf.org/html/rfc3315#section\-9
+.RE
+.IP " 3." 4
+RFC 6355
+.RS 4
+\%http://tools.ietf.org/html/rfc6355
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

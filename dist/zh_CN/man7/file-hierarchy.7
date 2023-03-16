@@ -1,0 +1,611 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH FILE\-HIERARCHY 7 "" "systemd 253" file\-hierarchy
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+file\-hierarchy \- 文件系统层次结构概述
+.SH DESCRIPTION
+.PP
+使用 \fBsystemd\fP(1) 系统和服务管理器的操作系统基于受 UNIX 启发的文件系统层次结构进行组织，更具体地说，\m[blue]\fBFile System Hierarchy\fP\m[]\&\s-2\u[1]\d\s+2 规范和 \fBhier\fP(7) 中描述的层次结构具有各种扩展，部分记录在
+\m[blue]\fBXDG Base Directory Specification\fP\m[]\&\s-2\u[2]\d\s+2 和
+\m[blue]\fBXDG User Directories\fP\m[]\&\s-2\u[3]\d\s+2\&. 本手册页描述了这些规范的更一般化但最小化和现代化的子集，它更严格地定义了
+systemd 对文件系统层次结构提出的建议和限制。
+.PP
+此处描述的许多路径都可以使用 \fBsystemd\-path\fP(1) 工具查询 \&。
+.SH "GENERAL STRUCTURE"
+.PP
+/
+.RS 4
+文件系统根 \&。通常可写，但这不是必需的 \&。可能是一个临时文件系统 (`tmpfs`) \&。不与其他主机共享 (除非只读) \&。
+.RE
+.PP
+/boot/
+.RS 4
+用于启动系统的启动分区 \&。在 EFI 系统上，这可能是 EFI 系统分区 (ESP)，另请参见
+\fBsystemd\-gpt\-auto\-generator\fP(8)\&。这个目录通常是主机的本地目录，应该被认为是只读的，除非安装了新的内核或引导加载程序
+\&。此目录仅存在于需要引导加载程序 \& 的物理或仿真硬件上运行的系统上。
+.RE
+.PP
+/efi/
+.RS 4
+如果引导分区 /boot / 与 EFI 系统分区 (ESP) 分开维护，则后者挂载在这里 \&。需要对 EFI
+系统分区进行操作的工具应该先在这个挂载点寻找它，如果前者没有则回退到 /boot/\(em\*(Aqt qualify
+(比如如果不是挂载点或者没有正确的文件系统类型 \fBMSDOS_SUPER_MAGIC\fP)\&。
+.RE
+.PP
+/etc/
+.RS 4
+系统特定的配置 \&。该目录可能是也可能不是只读的
+\&。通常，此目录预先填充有供应商提供的配置文件，但应用程序不应假设此目录已完全填充或根本没有填充，并且如果配置丢失，应回退到默认值 \&。
+.RE
+.PP
+/home/
+.RS 4
+普通用户的位置 \*(Aqs home directories\&. 可能与其他系统共享，并且从不只读
+\&。此目录只应供普通用户使用，切勿供系统用户使用
+\&。该目录以及可能包含在其中的目录可能仅在后期启动或什至仅在用户身份验证后才变得可用或可写。该目录可能位于功能有限的网络文件系统上，因此应用程序不应假设全套文件
+API 在此目录上可用 \&。应用程序通常不应直接引用该目录，而是通过每个用户的 \fI$HOME\fP 环境变量，或通过用户数据库的主目录字段 \&。
+.RE
+.PP
+/root/
+.RS 4
+根用户的主目录 \&。root 用户 \*(Aqs 主目录位于 /home / 之外，以确保 root 用户即使在 /home /
+不可用和挂载的情况下也可以登录 \&。
+.RE
+.PP
+/srv/
+.RS 4
+存储通用服务器，载荷，的地方，由管理员管理 \&。对该目录的内部组织方式没有限制 \&。通常可写，并可能在系统之间共享
+\&。此目录可能仅在引导期间很晚才变得可用或可写。
+.RE
+.PP
+/tmp/
+.RS 4
+存放小临时文件的地方 \&。此目录通常作为 "tmpfs" 实例安装，因此不应用于较大的文件 \&。(对较大的文件使用 /var/tmp/\&。)
+该目录通常在启动时刷新 \&。此外，在一定时间内未访问的文件可能会自动删除 \&。
+.sp
+如果应用程序发现设置了环境变量 \fI$TMPDIR\fP，它们应该使用其中指定的目录而不是 /tmp/ (有关详细信息，请参见 \fBenviron\fP(7)
+和 \m[blue]\fBIEEE Std 1003\&.1\fP\m[]\&\s-2\u[4]\d\s+2) \&。
+.sp
+由于系统的其他用户可以访问 /tmp/，因此必须仅使用 \fBmkstemp\fP(3)、\fBmkdtemp\fP(3) 和类似调用 \&
+创建此目录下的文件和子目录。有关详细信息，请参见 \m[blue]\fBUsing /tmp/ and /var/tmp/ Safely\fP\m[]\&\s-2\u[5]\d\s+2\&。
+.RE
+.SH "RUNTIME DATA"
+.PP
+/run/
+.RS 4
+用于系统包的 "tmpfs" 文件系统，用于放置运行时数据、套接字文件和类似的 \&。该目录在启动时刷新，通常只对特权程序可写 \&。始终可写 \&。
+.RE
+.PP
+/run/log/
+.RS 4
+运行时系统日志 \&。系统组件可能会将私有日志放置在此目录中 \&。始终可写，即使 /var/log/ 可能还不可访问 \&。
+.RE
+.PP
+/run/user/
+.RS 4
+包含每个用户的运行时目录，每个目录通常单独安装 "tmpfs" 实例 \&。始终可写，在每次重新启动和用户注销时刷新
+\&。用户代码不应直接引用此目录，而应通过 \fI$XDG_RUNTIME_DIR\fP 环境变量，如 \m[blue]\fBXDG Base Directory Specification\fP\m[]\&\s-2\u[2]\d\s+2\& 中所述。
+.RE
+.SH "VENDOR\-SUPPLIED OPERATING SYSTEM RESOURCES"
+.PP
+/usr/
+.RS 4
+供应商提供的操作系统资源 \&。通常是只读的，但这不是必需的 \&。可能在多个主机之间共享 \&。管理员不应修改此目录，除非在安装或删除供应商提供的包时
+\&。
+.RE
+.PP
+/usr/bin/
+.RS 4
+应出现在 \fI$PATH\fP 搜索路径 \& 中的用户命令的二进制文件和可执行文件。建议不要将对从 shell 调用无用的二进制文件
+(例如守护程序二进制文件) 放在该目录中; 这些应该放在 /usr/lib/ 的子目录中而不是 \&。
+.RE
+.PP
+/usr/include/
+.RS 4
+系统库的 C 和 C++API 头文件 \&.
+.RE
+.PP
+/usr/lib/
+.RS 4
+与所有架构兼容的静态私有供应商数据 (尽管不一定与架构无关) \&。请注意，这包括不定期从 shell\&
+调用的内部可执行文件或其他二进制文件。这样的二进制文件可能适用于系统支持的任何体系结构。不要将公共库放在这个目录中，使用 \fI$libdir\fP
+(见下文)，而不是 \&。
+.RE
+.PP
+/usr/lib/\fIarch\-id\fP/
+.RS 4
+放置动态库的位置，也叫 \fI$libdir\fP\&。要使用的体系结构标识符在 \m[blue]\fBMultiarch Architecture Specifiers (Tuples)\fP\m[]\&\s-2\u[6]\d\s+2 列表 \& 中定义。\fI$libdir\fP 的旧位置是
+/usr/lib/、/usr/lib64/\&。该目录不应该用于特定于包的数据，除非该数据也依赖于体系结构 \&。要查询 \fI$libdir\fP
+以获取系统的主要架构，请调用:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-path 系统 \- 库 \- arch
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+/usr/share/
+.RS 4
+多个包之间共享的资源，例如文档、手册页、时区信息、字体和其他资源 \&。通常，存储在此目录下的文件的精确位置和格式受确保互操作性的规范约束。
+.RE
+.PP
+/usr/share/doc/
+.RS 4
+操作系统或系统包的文档 \&。
+.RE
+.PP
+/usr/share/factory/etc/
+.RS 4
+供应商提供的默认配置文件的库 \&。此目录应填充所有配置文件的原始供应商版本，这些配置文件可能位于
+/etc/\&. 这对于将系统的本地配置与供应商默认值进行比较以及使用默认值填充本地配置很有用 \&。
+.RE
+.PP
+/usr/share/factory/var/
+.RS 4
+与 /usr/share/factory/etc/ 类似，但用于可变持久数据目录 /var/\& 中文件的供应商版本。
+.RE
+.SH "PERSISTENT VARIABLE SYSTEM DATA"
+.PP
+/var/
+.RS 4
+持久的、可变的系统数据 \&。在正常系统操作期间可写
+\&。该目录可能预先填充了供应商提供的数据，但是应用程序应该能够在该子层次结构中重建必要的文件和目录，如果它们丢失的话，因为系统可能会在没有填充该目录的情况下启动
+\&。建议使用持久性，但可选，以支持临时系统 \&。此目录可能仅在引导期间很晚才变得可用或可写。因此，需要在早期启动期间运行的组件不应无条件地依赖此目录
+\&。
+.RE
+.PP
+/var/cache/
+.RS 4
+持久系统缓存数据 \&。系统组件可能会将非必要数据放置在此目录中 \&。刷新此目录应该不会影响程序的运行，除了增加重建这些缓存所需的运行时间之外。
+.RE
+.PP
+/var/lib/
+.RS 4
+持久系统数据 \&。系统组件可能会将私有数据放置在此目录中 \&。
+.RE
+.PP
+/var/log/
+.RS 4
+持久系统日志 \&。系统组件可能会将私有日志放在该目录中，但建议通过 \fBsyslog\fP(3) 和 \fBsd_journal_print\fP(3) 调用
+\& 进行大部分日志记录。
+.RE
+.PP
+/var/spool/
+.RS 4
+持久系统假脱机数据，例如打印机或邮件队列 \&。
+.RE
+.PP
+/var/tmp/
+.RS 4
+较大且持久的临时文件的位置 \&。与 /tmp / 相比，此目录通常从持久物理文件系统挂载，因此可以接受更大的文件 \&。(将 /tmp /
+用于小的临时文件 \&。) 此目录通常不会在启动时刷新，但会应用基于时间的清理在特定时间内未被访问的文件 \&。
+.sp
+如果应用程序发现设置了环境变量 \fI$TMPDIR\fP，它们应该使用其中指定的目录而不是 /var/tmp/ (有关详细信息，请参见
+\fBenviron\fP(7)) \&。
+.sp
+应用与 /tmp / 相同的安全限制: 应使用 \fBmkstemp\fP(3)、\fBmkdtemp\fP(3) 和类似的调用
+\&。有关此目录的更多详细信息，请参见 \m[blue]\fBUsing /tmp/ and /var/tmp/ Safely\fP\m[]\&\s-2\u[5]\d\s+2\&。
+.RE
+.SH "VIRTUAL KERNEL AND API FILE SYSTEMS"
+.PP
+/dev/
+.RS 4
+设备节点的根目录 \&。通常，此目录作为 "devtmpfs" 实例安装，但在 sandboxed/containerized setups\&
+中可能是不同的类型。该目录由内核和 \fBsystemd\-udevd\fP(8) 共同管理，不应被其他组件写入
+\&。许多特殊用途的虚拟文件系统可能挂载在此目录下 \&。
+.RE
+.PP
+/dev/shm/
+.RS 4
+放置 POSIX 共享内存段，通过 \fBshm_open\fP(3)\& 创建。该目录在引导时刷新，是一个 "tmpfs" 文件系统
+\&。由于所有用户都对该目录具有写入权限，因此应特别注意避免名称冲突和漏洞 \&。对于普通用户来说，这个目录下的共享内存段通常会在用户注销时被删除
+\&。通常，最好在 /run/ (对于系统程序) 或 \fI$XDG_RUNTIME_DIR\fP (对于用户程序) 中使用内存映射文件而不是 POSIX
+共享内存段，因为这些目录不是全局可写的，因此不易受到安全性的攻击 \- 敏感名称冲突 \&。
+.RE
+.PP
+/proc/
+.RS 4
+公开进程列表和其他功能的虚拟内核文件系统。这个文件系统主要是一个与内核接口的 API，而不是一个可以存储普通文件的地方。详见
+\fBproc\fP(5)\&。许多特殊用途的虚拟文件系统可能挂载在此目录下 \&。
+.RE
+.PP
+/proc/sys/
+.RS 4
+/proc/ 下的层次结构公开了许多内核可调参数 \&。在此 API 文件树中配置设置的主要方法是通过 \fBsysctl.d\fP(5) 文件 \&。在
+sandboxed/containerized 设置中，此目录通常以只读方式挂载 \&。
+.RE
+.PP
+/sys/
+.RS 4
+公开发现的设备和其他功能的虚拟内核文件系统。这个文件系统主要是一个与内核接口的 API，而不是一个可以存储普通文件的地方。在
+sandboxed/containerized 设置中，此目录通常以只读方式挂载 \&。许多特殊用途的虚拟文件系统可能挂载在此目录下 \&。
+.RE
+.PP
+/sys/fs/cgroup/
+.RS 4
+公开进程控制组 (cgroups)\& 的虚拟内核文件系统。这个文件系统是一个与内核接口的 API，而不是一个可以存储普通文件的地方。在以默认
+"unified" 模式运行的当前系统上，此目录用作 "cgroup2" 文件系统的挂载点，它为所有资源控制器提供统一的 cgroup 层次结构
+\&。在具有非默认配置的系统上，该目录可能是一个包含各种 "cgroup" (v1) 资源控制器挂载点的 tmpfs 文件系统;
+在这样的配置中，如果安装了 "cgroup2"，它将安装在 /sys/fs/cgroup/unified/ 上，但 cgroup2 不会附加资源控制器
+\&。在 sandboxed/containerized 设置中，此目录可能不存在或可能包含功能的子集 \&。
+.RE
+.SH "COMPATIBILITY SYMLINKS"
+.PP
+/bin/, /sbin/, /usr/sbin/
+.RS 4
+这些兼容性符号链接指向 /usr/bin/，确保引用这些遗留路径的脚本和二进制文件正确找到它们的二进制文件 \&。
+.RE
+.PP
+/lib/
+.RS 4
+此兼容性符号链接指向 /usr/lib/，确保引用此遗留路径的程序正确找到它们的资源 \&。
+.RE
+.PP
+/lib64/
+.RS 4
+在某些架构 ABI 上，此兼容性符号链接指向 \fI$libdir\fP，确保引用此遗留路径的二进制文件正确找到它们的动态加载器 \&。此符号链接仅存在于其
+ABI 将动态加载程序放置在此路径中的体系结构 \&。
+.RE
+.PP
+/var/run/
+.RS 4
+此兼容性符号链接指向 /run/，确保引用此遗留路径的程序正确找到它们的运行时数据 \&。
+.RE
+.SH "HOME DIRECTORY"
+.PP
+用户应用程序可能希望将文件和目录放在用户 \*(Aqs 主目录 \&. 他们应该遵循以下基本结构体 \&。请注意，其中一些目录也由
+\m[blue]\fBXDG Base Directory Specification\fP\m[]\&\s-2\u[2]\d\s+2\& 标准化
+(尽管更弱)。高级用户资源的附加位置由 \m[blue]\fBxdg\-user\-dirs\fP\m[]\&\s-2\u[3]\d\s+2\& 定义。
+.PP
+~/\&.cache/
+.RS 4
+持久用户缓存数据 \&。用户程序可能会将非必要的数据放置在此目录中
+\&。刷新此目录应该不会影响程序的运行，除了增加重建这些缓存所需的运行时间之外。如果应用程序发现设置了
+\fI$XDG_CACHE_HOME\fP，它应该使用其中指定的目录而不是此目录 \&。
+.RE
+.PP
+~/\&.config/
+.RS 4
+应用程序配置和状态 \&。当创建新用户时，该目录将为空或根本不存在 \&。如果此目录中的配置或状态丢失，应用程序应回退到默认值
+\&。如果应用程序发现设置了 \fI$XDG_CONFIG_HOME\fP，它应该使用其中指定的目录而不是此目录 \&。
+.RE
+.PP
+~/\&.local/bin/
+.RS 4
+应出现在用户 \*(Aqs \fI$PATH\fP 搜索路径 \&. 建议不要将对从 shell 调用无用的可执行文件放在该目录中; 这些应该放在
+~/\&.local/lib/ 而不是 \&
+的子目录中。将体系结构相关的二进制文件放在这个地方时应该小心，如果主目录在具有不同体系结构的多个主机之间共享，这可能会出现问题。
+.RE
+.PP
+~/\&.local/lib/
+.RS 4
+与所有架构兼容的静态私有供应商数据。
+.RE
+.PP
+~/\&.local/lib/\fIarch\-id\fP/
+.RS 4
+放置公共动态库的位置 \&。要使用的体系结构标识符在 \m[blue]\fBMultiarch Architecture Specifiers (Tuples)\fP\m[]\&\s-2\u[6]\d\s+2 list\& 上定义。
+.RE
+.PP
+~/\&.local/share/
+.RS 4
+多个包之间共享的资源，例如字体或插图 \&。通常，存储在此目录下的文件的精确位置和格式受确保互操作性的规范约束。如果应用程序发现设置了
+\fI$XDG_DATA_HOME\fP，它应该使用其中指定的目录而不是此目录 \&。
+.RE
+.SH "WRITE ACCESS"
+.SS "Unprivileged Write Access"
+.PP
+非特权进程通常缺乏对大部分层次结构的写入权限。
+.PP
+普通用户例外的是 /tmp/、/var/tmp/、/dev/shm/，以及用户的主目录 \fI$HOME\fP (一般在 /home / 下) 和运行时目录
+\fI$XDG_RUNTIME_DIR\fP (在 /run/user/ 下) 都是可写的 \&。
+.PP
+对于非特权系统进程，只有 /tmp/、/var/tmp/ 和 /dev/shm/ 是可写的 \&。如果非特权系统进程需要 /var / 或 /run /
+中的私有可写目录，建议在守护程序代码中丢弃特权之前创建它，在引导期间通过 \fBtmpfiles.d\fP(5) 片段创建它，或者通过
+\fIStateDirectory=\fP 和 \fIRuntimeDirectory=\fP 指令创建它服务单位数量 (详见
+\fBsystemd.unit\fP(5)) \&。
+.PP
+/tmp/, /var/tmp/ and /dev/shm/ should be mounted \fBnosuid\fP and \fBnodev\fP,
+which means that set\-user\-id mode and character or block special devices are
+not interpreted on those file systems\&. In general it is not possible to
+mount them \fBnoexec\fP, because various programs use those directories for
+dynamically generated or optimized code, and with that flag those use cases
+would break\&. Using this flag is OK on special\-purpose installations or
+systems where all software that may be installed is known and doesn\*(Aqt
+require such functionality\&. See the discussion of
+\fBnosuid\fP/\fBnodev\fP/\fBnoexec\fP in \fBmount\fP(8)  and \fBPROT_EXEC\fP in
+\fBmmap\fP(2)\&.
+.SS "Lack of Write Access on Read\-Only Systems and during System Recovery"
+.PP
+如上所述，一些系统使用 /usr 和 /etc 层次结构以只读方式安装，可能只允许在包升级期间进行写访问 \&。层次结构的其他部分通常以读写方式挂载
+(特别是 /var 和 /var/tmp)，但当内核以只读方式重新挂载文件系统以响应错误时，或者当系统以只读方式启动时，可能是只读的用于恢复目的
+\&。在合理的范围内，应用程序应该准备好在没有写访问权限的情况下执行，因此，例如，未能将非必要数据保存到 /var/cache/ 或未能在
+/var/log 下创建自定义日志文件不会阻止应用程序运行 \&。
+.PP
+/run/ 目录从最早的引导开始就可用，并且始终是可写的 \&。它应该用于任何运行时数据和套接字，以便对 e\&.g\& 进行写访问。 不需要 /etc
+或 /var\&。
+.SH "NODE TYPES"
+.PP
+Unix 文件系统支持不同类型的文件节点，包括常规文件、目录、符号链接、字符和块设备节点、套接字和 FIFO\&。
+.PP
+强烈建议 /dev / 是设备节点应放置在其下的唯一位置 \&。同样，/run/ 应该是放置套接字和 FIFO\&
+的唯一位置。常规文件、目录和符号链接可用于所有目录 \&。
+.SH "SYSTEM PACKAGES"
+.PP
+系统包的开发人员在将文件放入文件系统时应遵循严格的规则 \&。下表列出了供应商提供的特定类型文件的推荐位置。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&System package vendor files locations\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Directory
+T}:T{
+Purpose
+T}
+.T&
+l l
+l l
+l l
+l l
+l l.
+T{
+/usr/bin/
+T}:T{
+Package executables that shall appear in the \fI$PATH\fP executable search path, compiled for any of the supported architectures compatible with the operating system\&. It is not recommended to place internal binaries or binaries that are not commonly invoked from the shell in this directory, such as daemon binaries\&. As this directory is shared with most other packages of the system, special care should be taken to pick unique names for files placed here, that are unlikely to clash with other package\*(Aqs files\&.
+T}
+T{
+/usr/lib/\fIarch\-id\fP/
+T}:T{
+Public shared libraries of the package\&. As above, be careful with using too generic names, and pick unique names for your libraries to place here to avoid name clashes\&.
+T}
+T{
+/usr/lib/\fIpackage\fP/
+T}:T{
+Private static vendor resources of the package, including private binaries and libraries, or any other kind of read\-only vendor data\&.
+T}
+T{
+/usr/lib/\fIarch\-id\fP/\fIpackage\fP/
+T}:T{
+Private other vendor resources of the package that are architecture\-specific and cannot be shared between architectures\&. Note that this generally does not include private executables since binaries of a specific architecture may be freely invoked from any other supported system architecture\&.
+T}
+T{
+/usr/include/\fIpackage\fP/
+T}:T{
+Public C/C++ APIs of public shared libraries of the package\&.
+T}
+.TE
+.sp 1
+.PP
+额外的静态供应商文件可以安装在 /usr/share/ 层次结构中由各种相关规范定义的位置 \&。
+.PP
+以下目录应由程序包用于本地配置和在运行时创建的文件:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \&System package variable files locations\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Directory
+T}:T{
+Purpose
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+/etc/\fIpackage\fP/
+T}:T{
+System\-specific configuration for the package\&. It is recommended to default to safe fallbacks if this configuration is missing, if this is possible\&. Alternatively, a \fBtmpfiles.d\fP(5) fragment may be used to copy or symlink the necessary files and directories from /usr/share/factory/ during boot, via the "L" or "C" directives\&.
+T}
+T{
+/run/\fIpackage\fP/
+T}:T{
+Runtime data for the package\&. Packages must be able to create the necessary subdirectories in this tree on their own, since the directory is flushed automatically on boot\&. Alternatively, a \fBtmpfiles.d\fP(5) fragment may be used to create the necessary directories during boot, or the \fIRuntimeDirectory=\fP directive of service units may be used to create them at service startup (see \fBsystemd.unit\fP(5) for details)\&.
+T}
+T{
+/run/log/\fIpackage\fP/
+T}:T{
+Runtime log data for the package\&. As above, the package needs to make sure to create this directory if necessary, as it will be flushed on every boot\&.
+T}
+T{
+/var/cache/\fIpackage\fP/
+T}:T{
+Persistent cache data of the package\&. If this directory is flushed, the application should work correctly on next invocation, though possibly slowed down due to the need to rebuild any local cache files\&. The application must be capable of recreating this directory should it be missing and necessary\&. To create an empty directory, a \fBtmpfiles.d\fP(5) fragment or the \fICacheDirectory=\fP directive of service units (see \fBsystemd.unit\fP(5)) may be used\&.
+T}
+T{
+/var/lib/\fIpackage\fP/
+T}:T{
+Persistent private data of the package\&. This is the primary place to put persistent data that does not fall into the other categories listed\&. Packages should be able to create the necessary subdirectories in this tree on their own, since the directory might be missing on boot\&. To create an empty directory, a \fBtmpfiles.d\fP(5) fragment or the \fIStateDirectory=\fP directive of service units (see \fBsystemd.unit\fP(5)) may be used\&.
+T}
+T{
+/var/log/\fIpackage\fP/
+T}:T{
+Persistent log data of the package\&. As above, the package should make sure to create this directory if necessary, possibly using \fBtmpfiles.d\fP(5) or \fILogsDirectory=\fP (see \fBsystemd.unit\fP(5)), as it might be missing\&.
+T}
+T{
+/var/spool/\fIpackage\fP/
+T}:T{
+Persistent spool/queue data of the package\&. As above, the package should make sure to create this directory if necessary, as it might be missing\&.
+T}
+.TE
+.sp 1
+.SH "USER PACKAGES"
+.PP
+在用户上下文中运行的程序在将自己的文件放在用户 \*(Aqs 主目录 \&. 如果应用程序安装在主目录 \&
+中，下表列出了供应商提供的特定类型文件在主目录中的推荐位置。(在系统范围内安装的用户应用程序包含在上面列出的供应商文件规则中。)
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&3.\ \&Vendor package file locations under the home directory of the user\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Directory
+T}:T{
+Purpose
+T}
+.T&
+l l
+l l
+l l
+l l.
+T{
+~/\&.local/bin/
+T}:T{
+Package executables that shall appear in the \fI$PATH\fP executable search path\&. It is not recommended to place internal executables or executables that are not commonly invoked from the shell in this directory, such as daemon executables\&. As this directory is shared with most other packages of the user, special care should be taken to pick unique names for files placed here, that are unlikely to clash with other package\*(Aqs files\&.
+T}
+T{
+~/\&.local/lib/\fIarch\-id\fP/
+T}:T{
+Public shared libraries of the package\&. As above, be careful with using overly generic names, and pick unique names for your libraries to place here to avoid name clashes\&.
+T}
+T{
+~/\&.local/lib/\fIpackage\fP/
+T}:T{
+Private, static vendor resources of the package, compatible with any architecture, or any other kind of read\-only vendor data\&.
+T}
+T{
+~/\&.local/lib/\fIarch\-id\fP/\fIpackage\fP/
+T}:T{
+Private other vendor resources of the package that are architecture\-specific and cannot be shared between architectures\&.
+T}
+.TE
+.sp 1
+.PP
+其他静态供应商文件可以安装在 ~/\&.local/share/ 层次结构中，镜像上面 "Vendor\-supplied operating
+system resources" 部分中指定的子目录 \&。
+.PP
+以下目录应由程序包用于每个用户的本地配置和在运行时创建的文件:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&4.\ \&User package variable file locations\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Directory
+T}:T{
+Purpose
+T}
+.T&
+l l
+l l
+l l.
+T{
+~/\&.config/\fIpackage\fP/
+T}:T{
+User\-specific configuration and state for the package\&. It is required to default to safe fallbacks if this configuration is missing\&.
+T}
+T{
+\fI$XDG_RUNTIME_DIR\fP/\fIpackage\fP/
+T}:T{
+User runtime data for the package\&.
+T}
+T{
+~/\&.cache/\fIpackage\fP/
+T}:T{
+Persistent cache data of the package\&. If this directory is flushed, the application should work correctly on next invocation, though possibly slowed down due to the need to rebuild any local cache files\&. The application must be capable of recreating this directory should it be missing and necessary\&.
+T}
+.TE
+.sp 1
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBhier\fP(7), \fBsystemd\-path\fP(1),
+\fBsystemd\-gpt\-auto\-generator\fP(8), \fBsysctl.d\fP(5), \fBtmpfiles.d\fP(5),
+\fBpkg\-config\fP(1), \fBsystemd.unit\fP(5)
+.SH NOTES
+.IP " 1." 4
+文件系统层次结构
+.RS 4
+\%http://refspecs.linuxfoundation.org/FHS_3.0/fhs\-3.0.html
+.RE
+.IP " 2." 4
+XDG 基本目录规范
+.RS 4
+\%https://standards.freedesktop.org/basedir\-spec/basedir\-spec\-latest.html
+.RE
+.IP " 3." 4
+XDG 用户目录
+.RS 4
+\%https://www.freedesktop.org/wiki/Software/xdg\-user\-dirs
+.RE
+.IP " 4." 4
+IEEE Std 1003.1
+.RS 4
+\%http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03
+.RE
+.IP " 5." 4
+安全使用 /tmp / 和 /var/tmp/
+.RS 4
+\%https://systemd.io/TEMPORARY_DIRECTORIES
+.RE
+.IP " 6." 4
+多体系结构说明符 (Tuples)
+.RS 4
+\%https://wiki.debian.org/Multiarch/Tuples
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

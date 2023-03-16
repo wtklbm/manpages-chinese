@@ -1,0 +1,515 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2014 Peter Zijlstra <peterz@infradead.org>
+.\" and Copyright (C) 2014 Juri Lelli <juri.lelli@gmail.com>
+.\" Various pieces from the old sched_setscheduler(2) page
+.\" 	Copyright (C) Tom Bjorkholm, Markus Kuhn & David A. Wheeler 1996-1999
+.\" 	and Copyright (C) 2007 Carsten Emde <Carsten.Emde@osadl.org>
+.\" 	and Copyright (C) 2008 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Worth looking at: http://rt.wiki.kernel.org/index.php
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sched 7 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+sched\-CPU 调度概述
+.SH DESCRIPTION
+.\"
+由于 Linux 2.6.23，默认调度器是 CFS，即 "Completely Fair Scheduler"。 CFS 调度程序取代了早期的
+"O(1)" 调度程序。
+.SS "API summary"
+Linux 提供以下系统调用来控制 CPU 调度行为、策略和进程 (或更准确地说，线程) 的优先级。
+.TP 
+\fBnice\fP(2)
+为调用线程设置一个新的 nice 值，并返回新的 nice 值。
+.TP 
+\fBgetpriority\fP(2)
+返回指定用户拥有所有权的线程、进程组或线程集的 nice 值。
+.TP 
+\fBsetpriority\fP(2)
+设置线程、进程组或指定用户拥有所有权的线程集的 nice 值。
+.TP 
+\fBsched_setscheduler\fP(2)
+设置指定线程的调度策略和参数。
+.TP 
+\fBsched_getscheduler\fP(2)
+返回指定线程的调度策略。
+.TP 
+\fBsched_setparam\fP(2)
+设置指定线程的调度参数。
+.TP 
+\fBsched_getparam\fP(2)
+获取指定线程的调度参数。
+.TP 
+\fBsched_get_priority_max\fP(2)
+返回指定调度策略中可用的最大优先级。
+.TP 
+\fBsched_get_priority_min\fP(2)
+返回指定调度策略中可用的最小优先级。
+.TP 
+\fBsched_rr_get_interval\fP(2)
+获取用于在 "round\-robin" 调度策略下调度的线程的量程。
+.TP 
+\fBsched_yield\fP(2)
+导致调用者放弃 CPU，以便执行其他线程。
+.TP 
+\fBsched_setaffinity\fP(2)
+(Linux\-specific) 设置指定线程的 CPU 亲和力。
+.TP 
+\fBsched_getaffinity\fP(2)
+(Linux\-specific) 获取指定线程的 CPU 亲和性。
+.TP 
+\fBsched_setattr\fP(2)
+设置指定线程的调度策略和参数。 这个 (Linux\-specific) 系统调用提供了 \fBsched_setscheduler\fP(2) 和
+\fBsched_setparam\fP(2) 功能的超集。
+.TP 
+\fBsched_getattr\fP(2)
+.\"
+获取指定线程的调度策略和参数。 这个 (Linux\-specific) 系统调用提供了 \fBsched_getscheduler\fP(2) 和
+\fBsched_getparam\fP(2) 功能的超集。
+.SS "Scheduling policies"
+调度器是内核组件，它决定 CPU 接下来将执行哪个可运行线程。 每个线程都有一个关联的调度策略和一个 \fIstatic\fP
+调度优先级，\fIsched_priority\fP。 调度程序根据对系统上所有线程的调度策略和静态优先级的了解做出决定。
+.PP
+对于在正常调度策略 (\fBSCHED_OTHER\fP、\fBSCHED_IDLE\fP、\fBSCHED_BATCH\fP)
+之一下调度的线程，\fIsched_priority\fP 不用于调度决策 (必须指定为 0)。
+.PP
+在实时策略 (\fBSCHED_FIFO\fP、\fBSCHED_RR\fP) 之一下调度的进程具有 1 (low) 到 99 (high) 范围内的
+\fIsched_priority\fP 值。 (正如数字所暗示的那样，实时线程总是比普通线程具有更高的优先级。) 请注意: POSIX.1
+要求实现仅支持实时策略的最少 32 个不同的优先级，并且某些系统仅提供这个最小值。 可移植程序应使用
+\fBsched_get_priority_min\fP(2) 和 \fBsched_get_priority_max\fP(2) 来查找特定策略支持的优先级范围。
+.PP
+从概念上讲，调度程序为每个可能的 \fIsched_priority\fP 值维护一个可运行线程列表。
+为了确定接下来运行哪个线程，调度程序查找具有最高静态优先级的非空列表并选择位于该列表头部的线程。
+.PP
+一个线程的调度策略决定了它将被插入到具有相同静态优先级的线程列表中的哪个位置，以及它将如何在这个列表中移动。
+.PP
+所有调度都是抢占式的: 如果具有更高静态优先级的线程准备好运行，则当前正在运行的线程将被抢占并返回到其静态优先级的等待列表。
+调度策略仅在具有相同静态优先级的可运行线程列表中确定排序。
+.SS "SCHED_FIFO: First in\-first out scheduling"
+\fBSCHED_FIFO\fP 只能与高于 0 的静态优先级一起使用，这意味着当 \fBSCHED_FIFO\fP
+线程变为可运行时，它将始终立即抢占任何当前正在运行的 \fBSCHED_OTHER\fP、\fBSCHED_BATCH\fP 或 \fBSCHED_IDLE\fP 线程。
+\fBSCHED_FIFO\fP 是一种没有时间分片的简单调度算法。 对于根据 \fBSCHED_FIFO\fP 策略安排的线程，以下规则适用:
+.IP \[bu] 3
+一个正在运行的 \fBSCHED_FIFO\fP
+线程已被另一个更高优先级的线程抢占，将根据其优先级保留在列表的头部，并在所有更高优先级的线程再次被阻塞后立即恢复执行。
+.IP \[bu]
+当一个阻塞的 \fBSCHED_FIFO\fP 线程变为可运行时，它将被插入到优先级列表的末尾。
+.IP \[bu]
+如果对
+\fBsched_setscheduler\fP(2)、\fBsched_setparam\fP(2)、\fBsched_setattr\fP(2)、\fBpthread_setschedparam\fP(3)
+或 \fBpthread_setschedprio\fP(3) 的调用更改由 \fIpid\fP 标识的正在运行或可运行的 \fBSCHED_FIFO\fP
+线程的优先级，则对线程在列表中位置的影响取决于线程优先级更改的方向:
+.RS
+.IP (a) 5
+如果提高了线程的优先级，则将其置于新优先级列表的末尾。 因此，它可能会抢占当前正在运行的具有相同优先级的线程。
+.IP (b)
+如果线程的优先级不变，它在运行列表中的位置也不变。
+.IP (c)
+如果线程的优先级降低，它会被放在新优先级列表的前面。
+.RE
+.IP
+.\" In Linux 2.2.x and Linux 2.4.x, the thread is placed at the front of the queue
+.\" In Linux 2.0.x, the Right Thing happened: the thread went to the back -- MTK
+根据 POSIX.1\-2008，使用 \fBpthread_setschedprio\fP(3) 以外的任何机制更改线程的优先级 (或策略)
+应该导致线程被放置在其优先级列表的末尾。
+.IP \[bu]
+调用 \fBsched_yield\fP(2) 的线程将放在列表的末尾。
+.PP
+没有其他事件会将根据 \fBSCHED_FIFO\fP 策略调度的线程移动到具有相同静态优先级的可运行线程的等待列表中。
+.PP
+\fBSCHED_FIFO\fP 线程一直运行，直到它被 I/O 请求阻塞、被更高优先级的线程抢占或调用 \fBsched_yield\fP(2)。
+.SS "SCHED_RR: Round\-robin scheduling"
+.\" On Linux 2.4, the length of the RR interval is influenced
+.\" by the process nice value -- MTK
+.\"
+\fBSCHED_RR\fP 是 \fBSCHED_FIFO\fP 的简单增强。 上面针对 \fBSCHED_FIFO\fP 描述的所有内容也适用于
+\fBSCHED_RR\fP，除了每个线程只允许运行最大时间片。 如果 \fBSCHED_RR\fP
+线程已经运行了等于或长于时间片的时间段，它将被放在优先级列表的末尾。 \fBSCHED_RR\fP
+线程已被更高优先级线程抢占并随后作为正在运行的线程恢复执行，将完成其循环时间片的未到期部分。 可以使用
+\fBsched_rr_get_interval\fP(2) 检索时间片的长度。
+.SS "SCHED_DEADLINE: Sporadic task model deadline scheduling"
+从 Linux 3.14 开始，Linux 提供了 deadline 调度策略 (\fBSCHED_DEADLINE\fP)。 该政策目前是使用 GEDF
+(全球最早截止日期优先) 结合 CBS (常量带宽服务器) 实现的。 要设置和获取此策略和相关属性，必须使用特定于 Linux 的
+\fBsched_setattr\fP(2) 和 \fBsched_getattr\fP(2) 系统调用。
+.PP
+零星任务是具有一系列作业的任务，其中每个作业每个周期最多激活一次。 每个作业还有一个 \fIrelative deadline\fP，它应该在此之前完成执行，以及一个 \fIcomputation time\fP，这是执行该作业所需的 CPU 时间。
+由于必须执行新作业而唤醒任务的时刻称为 \fIarrival time\fP (也称为请求时间或释放时间)。 \fIstart time\fP
+是任务开始执行的时间。 因此，通过将相对截止时间添加到到达时间来获得 \fIabsolute deadline\fP。
+.PP
+下图阐明了这些术语:
+.PP
+.in +4n
+.EX
+arrival/wakeup 绝对期限
+     | 开始时间 |
+     |        |                         |
+     v        v                         v
+\-\-\-\-\-x\-\-\-\-\-\-\-\-xooooooooooooooooo\-\-\-\-\-\-\-\-x\-\-\-\-\-\-\-\-x\-\-\-
+              |<\- 补偿。时间 \->|
+     |<\-\-\-\-\-\-\- 相对期限 \-\-\-\-\-\->|
+     |<\-\-\-\-\-\-\-\-\-\-\-\-\-\- 期间 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\->|
+.EE
+.in
+.PP
+使用 \fBsched_setattr\fP(2) 为线程设置 \fBSCHED_DEADLINE\fP 策略时，可以指定三个参数:
+\fIRuntime\fP、\fIDeadline\fP 和 \fIPeriod\fP。 这些参数不一定对应于上述术语: 通常的做法是将 Runtime
+设置为大于平均计算时间 (或硬实时任务的最坏情况执行时间)，Deadline 为相对截止时间，Period 为任务期间。 因此，对于
+\fBSCHED_DEADLINE\fP 调度，我们有:
+.PP
+.in +4n
+.EX
+arrival/wakeup 绝对期限
+     | 开始时间 |
+     |        |                         |
+     v        v                         v
+\-\-\-\-\-x\-\-\-\-\-\-\-\-xooooooooooooooooo\-\-\-\-\-\-\-\-x\-\-\-\-\-\-\-\-x\-\-\-
+              |<\-\- 运行时间 \-\-\-\-\-\-\->|
+     |<\-\-\-\-\-\-\-\-\-\-\- 截止日期 \-\-\-\-\-\-\-\-\-\-\->|
+     |<\-\-\-\-\-\-\-\-\-\-\-\-\-\- 期间 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\->|
+.EE
+.in
+.PP
+.\" FIXME It looks as though specifying sched_period as 0 means
+.\" "make sched_period the same as sched_deadline".
+.\" This needs to be documented.
+三个 deadline\-scheduling 参数分别对应 \fIsched_attr\fP 结构体的
+\fIsched_runtime\fP、\fIsched_deadline\fP、\fIsched_period\fP 字段; 请参见
+\fBsched_setattr\fP(2)。 这些字段以纳秒为单位表示值。 如果 \fIsched_period\fP 指定为 0，则与
+\fIsched_deadline\fP 相同。
+.PP
+内核要求:
+.PP
+.in +4n
+.EX
+sched_runtime <= sched_deadline <= sched_period
+.EE
+.in
+.PP
+.\" See __checkparam_dl in kernel/sched/core.c
+此外，在当前的实现中，所有参数值必须至少为 1024 (即刚好超过 1 微秒，这是实现的分辨率)，并且小于 2\[ha] 63。
+如果其中任何一项检查失败，\fBsched_setattr\fP(2) 将失败并显示错误 \fBEINVAL\fP。
+.PP
+CBS 通过限制试图超过其指定运行时的线程来保证任务之间的互不干扰。
+.PP
+为确保期限调度保证，内核必须防止 \fBSCHED_DEADLINE\fP 线程集在给定约束内不可行 (schedulable) 的情况。
+因此，内核在设置或更改 \fBSCHED_DEADLINE\fP 策略和属性时执行准入测试。 本次入学测试计算变更是否可行; 如果不是，则
+\fBsched_setattr\fP(2) 失败并显示错误 \fBEBUSY\fP。
+.PP
+例如，要求 (但不一定足够) 总利用率小于或等于可用 CPU
+总数，其中，由于每个线程可以最大程度地运行每个周期的运行时间，因此该线程的利用率是其运行时间除以按其期间。
+.PP
+为了实现当线程被接纳为 \fBSCHED_DEADLINE\fP 策略时所做的保证，\fBSCHED_DEADLINE\fP 线程是系统中优先级最高 (用户可控)
+的线程; 如果任何 \fBSCHED_DEADLINE\fP 线程是可运行的，它将抢占根据其他策略之一调度的任何线程。
+.PP
+根据 \fBSCHED_DEADLINE\fP 策略调度的线程对 \fBfork\fP(2) 的调用失败并出现错误 \fBEAGAIN\fP，除非该线程设置了其
+reset\-on\-fork 标志 (见下文)。
+.PP
+.\"
+.\" FIXME Calling sched_getparam() on a SCHED_DEADLINE thread
+.\" fails with EINVAL, but sched_getscheduler() succeeds.
+.\" Is that intended? (Why?)
+.\"
+调用 \fBsched_yield\fP(2) 的 \fBSCHED_DEADLINE\fP 线程将放弃当前作业并等待新周期开始。
+.SS "SCHED_OTHER: Default Linux time\-sharing scheduling"
+\fBSCHED_OTHER\fP 只能用于静态优先级 0 (即，实时策略下的线程始终优先于 \fBSCHED_OTHER\fP 进程)。
+\fBSCHED_OTHER\fP 是标准的 Linux 分时调度程序，适用于所有不需要特殊实时机制的线程。
+.PP
+要运行的线程是根据仅在此列表中确定的 \fIdynamic\fP 优先级从静态优先级 0 列表中选择的。 动态优先级基于 nice 值
+(见下文)，并且随着线程准备好运行但被调度程序拒绝运行的每个时间量程而增加。 这确保了所有 \fBSCHED_OTHER\fP 线程之间的公平进展。
+.PP
+.\"
+在 Linux 内核源码中，\fBSCHED_OTHER\fP 策略实际上被命名为 \fBSCHED_NORMAL\fP。
+.SS "The nice value"
+nice 值是一个属性，可用于影响 CPU 调度程序在调度决策中支持或反对进程。 它会影响 \fBSCHED_OTHER\fP 和
+\fBSCHED_BATCH\fP (见下文) 进程的调度。 可以使用 \fBnice\fP(2)、\fBsetpriority\fP(2) 或
+\fBsched_setattr\fP(2) 修改 nice 值。
+.PP
+根据 POSIX.1，nice 值是每个进程的属性; 也就是说，进程中的线程应该共享一个 nice 值。 但是，在 Linux 上，nice
+值是每个线程的属性: 同一进程中的不同线程可能具有不同的 nice 值。
+.PP
+.\" Linux before 1.3.36 had \-infinity..15.
+.\" Since Linux 1.3.43, Linux has the range \-20..19.
+nice 值的范围因 UNIX 系统而异。 在现代 Linux 上，范围是 \-20 (高优先级) 到 + 19 (低优先级)。 在某些其他系统上，范围是
+\-20..20。 非常早期的 Linux 内核 (在 Linux 2.0 之前) 的范围是 \- infinity..15。
+.PP
+nice 值影响 \fBSCHED_OTHER\fP 进程的相对调度的程度同样因 UNIX 系统和 Linux 内核版本而异。
+.PP
+随着 Linux 2.6.23 中 CFS 调度程序的出现，Linux 采用了一种算法，使 nice 值的相对差异具有更强的效果。
+在当前的实现中，两个进程的 nice 值每相差一元，就会导致调度程序偏爱较高优先级进程的程度为 1.25。 这会导致非常低的 nice 值 (+19)
+在系统上有任何其他更高优先级负载时真正为进程提供很少的 CPU，并使高 nice 值 (\-20) 将大部分 CPU 分配给需要它的应用程序
+(例如，一些音频应用程序) .
+.PP
+在 Linux 上，\fBRLIMIT_NICE\fP 资源限制可用于定义可以将非特权进程的 nice 值提高到的限制; 详见
+\fBsetrlimit\fP(2)。
+.PP
+.\"
+有关 nice 值的更多详细信息，请参见下面有关自动组特性和组调度的小节。
+.SS "SCHED_BATCH: Scheduling batch processes"
+(自 Linux 2.6.16 起。) \fBSCHED_BATCH\fP 只能在静态优先级 0 下使用。 该策略与 \fBSCHED_OTHER\fP
+类似，它根据线程的动态优先级 (基于 nice 值) 来调度线程。 不同之处在于，此策略将导致调度程序始终假定该线程是 CPU 密集型的。
+因此，调度程序将对唤醒行为应用一个小的调度惩罚，因此该线程在调度决策中会受到轻微的不利影响。
+.PP
+.\" The following paragraph is drawn largely from the text that
+.\" accompanied Ingo Molnar's patch for the implementation of
+.\" SCHED_BATCH.
+.\" commit b0a9499c3dd50d333e2aedb7e894873c58da3785
+.\"
+此策略适用于非交互式但不想降低其 nice 值的工作负载，以及需要确定性调度策略且交互性不会导致额外抢占 (在工作负载的任务之间) 的工作负载。
+.SS "SCHED_IDLE: Scheduling very low priority jobs"
+(自 Linux 2.6.23 起。) \fBSCHED_IDLE\fP 只能在静态优先级 0 下使用; 进程 nice 值对此策略没有影响。
+.PP
+.\"
+此策略旨在以极低的优先级运行作业 (甚至低于 \fBSCHED_OTHER\fP 或 \fBSCHED_BATCH\fP 策略的 + 19 nice 值)。
+.SS "Resetting scheduling policy for child processes"
+每个线程都有一个 reset\-on\-fork 调度标志。 设置此标志后，\fBfork\fP(2) 创建的子进程不会继承特权调度策略。
+可以通过以下任一方式设置 reset\-on\-fork 标志:
+.IP \[bu] 3
+调用 \fBsched_setscheduler\fP(2) 时将 \fBSCHED_RESET_ON_FORK\fP 标志位或运算成 \fIpolicy\fP 参数
+(自 Linux 2.6.32 起) ; or
+.IP \[bu]
+调用 \fBsched_setattr\fP(2) 时在 \fIattr.sched_flags\fP 中指定
+\fBSCHED_FLAG_RESET_ON_FORK\fP 标志。
+.PP
+请注意，与这两个 API 一起使用的常量具有不同的名称。 可以使用 \fBsched_getscheduler\fP(2) 和
+\fBsched_getattr\fP(2) 类似地检索 reset\-on\-fork 标志的状态。
+.PP
+reset\-on\-fork 特性适用于媒体播放应用程序，可用于防止应用程序逃避 \fBRLIMIT_RTTIME\fP 资源限制 (通过创建多个子进程参见
+\fBgetrlimit\fP(2))。
+.PP
+更准确地说，如果设置了 reset\-on\-fork 标志，则以下规则适用于随后创建的子节点:
+.IP \[bu] 3
+如果调用线程的调度策略为 \fBSCHED_FIFO\fP 或 \fBSCHED_RR\fP，则该策略将在子进程中重置为 \fBSCHED_OTHER\fP。
+.IP \[bu]
+如果调用进程具有 negative nice 值，则 nice 值在子进程中重置为零。
+.PP
+.\"
+启用 reset\-on\-fork 标志后，只有当线程具有 \fBCAP_SYS_NICE\fP 能力时才能重置它。 该标志在 \fBfork\fP(2)
+创建的子进程中被禁用。
+.SS "Privileges and resource limits"
+在 Linux 2.6.12 之前，只有特权 (\fBCAP_SYS_NICE\fP) 线程可以设置非零静态优先级 (即设置实时调度策略)。
+非特权线程可以进行的唯一更改是设置 \fBSCHED_OTHER\fP 策略，并且只有在调用者的有效用户 ID 与目标线程 (即 \fIpid\fP)
+指定的线程，其政策正在改变。
+.PP
+线程必须具有 (\fBCAP_SYS_NICE\fP) 特权才能设置或修改 \fBSCHED_DEADLINE\fP 策略。
+.PP
+从 Linux 2.6.12 开始，\fBRLIMIT_RTPRIO\fP 资源限制为 \fBSCHED_RR\fP 和 \fBSCHED_FIFO\fP
+策略定义了非特权线程静态优先级的上限。 改变调度策略和优先级的规则如下:
+.IP \[bu] 3
+如果非特权线程具有非零 \fBRLIMIT_RTPRIO\fP 软限制，则它可以更改其调度策略和优先级，但受限于优先级不能设置为高于其当前优先级和
+\fBRLIMIT_RTPRIO\fP 软限制的最大值的值。
+.IP \[bu]
+如果 \fBRLIMIT_RTPRIO\fP 软限制为 0，则唯一允许的更改是降低优先级或切换到非实时策略。
+.IP \[bu]
+根据相同的规则，另一个非特权线程也可以进行这些更改，只要进行更改的线程的有效用户 ID 与目标线程的真实或有效用户 ID 相匹配。
+.IP \[bu]
+.\" commit c02aa73b1d18e43cfd79c2f193b225e84ca497c8
+\fBSCHED_IDLE\fP 政策适用特殊规则。 在 Linux 2.6.39 之前，在此策略下运行的非特权线程无法更改其策略，无论其
+\fBRLIMIT_RTPRIO\fP 资源限制的值如何。 从 Linux 2.6.39 开始，非特权线程可以切换到 \fBSCHED_BATCH\fP 或
+\fBSCHED_OTHER\fP 策略，只要它的 nice 值在其 \fBRLIMIT_NICE\fP 资源限制允许的范围内 (参见
+\fBgetrlimit\fP(2)).
+.PP
+特权 (\fBCAP_SYS_NICE\fP) 线程忽略 \fBRLIMIT_RTPRIO\fP 限制; 与旧内核一样，它们可以对调度策略和优先级进行任意更改。
+有关 \fBRLIMIT_RTPRIO\fP 的更多信息，请参见 \fBgetrlimit\fP(2)。
+.SS "Limiting the CPU usage of real\-time and deadline processes"
+在 \fBSCHED_FIFO\fP、\fBSCHED_RR\fP 或 \fBSCHED_DEADLINE\fP
+策略下调度的线程中的非阻塞无限循环可能会阻止所有其他线程永远访问 CPU。 在 Linux 2.6.25
+之前，防止失控的实时进程冻结系统的唯一方法是运行 (在控制台) 一个 shell 调度在比测试应用程序更高的静态优先级下。
+这允许紧急终止未按预期阻止或终止的经过测试的实时应用程序。
+.PP
+从 Linux 2.6.25 开始，还有其他技术可以处理失控的实时和截止时间进程。 其中之一是使用 \fBRLIMIT_RTTIME\fP
+资源限制来设置实时进程可能消耗的 CPU 时间上限。 有关详细信息，请参见 \fBgetrlimit\fP(2)。
+.PP
+从 Linux 2.6.25 开始，Linux 也提供了两个 \fI/proc\fP 文件，可以用来预留一定的 CPU 时间给非实时进程使用。 以这种方式保留
+CPU 时间允许将一些 CPU 时间分配给 (say) a root shell，可用于终止失控进程。 这两个文件都以微秒为单位指定时间值:
+.TP 
+\fI/proc/sys/kernel/sched_rt_period_us\fP
+此文件指定一个调度周期，该周期相当于 100% CPU 带宽。 此文件中的值范围从 1 到 \fBINT_MAX\fP，给出 1 微秒到大约 35
+分钟的操作范围。 此文件中的默认值为 1,000,000 (1 秒)。
+.TP 
+\fI/proc/sys/kernel/sched_rt_runtime_us\fP
+此文件中的值指定系统上所有实时和截止时间计划进程可以使用多少 "period" 时间。 此文件中的值范围可以从 \-1 到 \fBINT_MAX\fP\-1。指定
+\-1 使运行时间与周期相同; 也就是说，没有为非实时进程预留 CPU 时间 (这是 Linux 2.6.25 之前的行为)。 此文件中的默认值为
+950,000 (0.95 秒)，这意味着 5% 的 CPU 时间保留给不在实时或截止日期调度策略下运行的进程。
+.SS "Response time"
+.\" as described in
+.\" .BR request_irq (9).
+等待 I/O 的阻塞高优先级线程在被再次调度之前有一定的响应时间。 设备驱动程序 writer 可以通过使用 "slow interrupt"
+中断处理程序大大减少此响应时间。
+.SS Miscellaneous
+子进程跨 \fBfork\fP(2) 继承调度策略和参数。 调度策略和参数跨 \fBexecve\fP(2) 保留。
+.PP
+.\"
+实时进程通常需要内存锁定以避免分页延迟; 这可以用 \fBmlock\fP(2) 或 \fBmlockall\fP(2) 来完成。
+.SS "The autogroup feature"
+.\" commit 5091faa449ee0b7d73bc296a93bca9540fc51d0a
+自 Linux 2.6.38 以来，内核提供了一种称为自动分组的特性以提高面对多进程、CPU
+密集型工作负载时的交互式桌面性能，例如使用大量并行构建进程构建 Linux 内核 (即 \fBmake\fP(1) \fB\-j\fP 标志)。
+.PP
+此特性与 CFS 调度程序一起运行，并且需要使用 \fBCONFIG_SCHED_AUTOGROUP\fP 配置的内核。 在正在运行的系统上，通过文件
+\fI/proc/sys/kernel/sched_autogroup_enabled\fP 启用或禁用此，特性; 值为 0 将禁用该特性而值为 1
+将启用它。 此文件中的默认值为 1，除非内核是使用 \fInoautogroup\fP 参数引导的。
+.PP
+通过 \fBsetsid\fP(2) 创建新会话时，会创建一个新的自动组; 例如，当一个新的终端窗口启动时，就会发生这种情况。 \fBfork\fP(2)
+创建的新进程继承了其父进程的自动组成员资格。 因此，会话中的所有进程都是同一自动组的成员。 当组中的最后一个进程终止时，自动组自动销毁。
+.PP
+当启用自动分组时，自动分组的所有成员都被放置在同一个内核调度程序 "task group" 中。 CFS 调度程序采用一种算法来均衡跨任务组的 CPU
+周期分配。 可以通过以下示例描述这对交互式桌面性能的好处。
+.PP
+.\" Mike Galbraith, 25 Nov 2016:
+.\"     I'd say something more wishy-washy here, like cycles are
+.\"     distributed fairly across groups and leave it at that, as your
+.\"     detailed example is incorrect due to SMP fairness (which I don't
+.\"     like much because [very unlikely] worst case scenario
+.\"     renders a box sized group incapable of utilizing more that
+.\"     a single CPU total).  For example, if a group of NR_CPUS
+.\"     size competes with a singleton, load balancing will try to give
+.\"     the singleton a full CPU of its very own.  If groups intersect for
+.\"     whatever reason on say my quad lappy, distribution is 80/20 in
+.\"     favor of the singleton.
+假设有两个自动组竞争同一个 CPU (即，假设是单个 CPU 系统或使用 \fBtaskset\fP(1) 将所有进程限制在 SMP 系统上的同一个 CPU
+上)。 第一组包含来自以 \fImake\~\-j10\fP 启动的内核构建的十个 CPU 绑定进程。 另一个包含单个 CPU 绑定进程: 视频播放器。
+自动分组的效果是两组将各自获得一半的 CPU 周期。 也就是说，视频播放器将获得 50% 的 CPU 周期，而不是仅仅 9%
+的周期，这可能会导致视频播放质量下降。 SMP 系统上的情况更为复杂，但总体效果是相同的: 调度程序在任务组之间分配 CPU 周期，这样包含大量 CPU
+绑定进程的自动组不会以占用 CPU 周期为代价系统上的其他作业。
+.PP
+可以通过文件 \fI/proc/\fPpid\fI/autogroup\fP: 查看进程的自动组 (任务组) 成员身份
+.PP
+.in +4n
+.EX
+$ \fBcat /proc/1/autogroup\fP
+/autogroup\-1 不错 0
+.EE
+.in
+.PP
+.\" FIXME .
+.\" Because of a bug introduced in Linux 4.7
+.\" (commit 2159197d66770ec01f75c93fb11dc66df81fd45b made changes
+.\" that exposed the fact that autogroup didn't call scale_load()),
+.\" it happened that *all* values in this range caused a task group
+.\" to be further disfavored by the scheduler, with \-20 resulting
+.\" in the scheduler mildly disfavoring the task group and +19 greatly
+.\" disfavoring it.
+.\"
+.\" A patch was posted on 23 Nov 2016
+.\" ("sched/autogroup: Fix 64bit kernel nice adjustment";
+.\" check later to see in which kernel version it lands.
+此文件还可用于修改分配给自动组的 CPU 带宽。 这是通过将 "nice" 范围内的数字写入文件以设置自动组的 nice 值来完成的。 允许的范围是从
++ 19 (低优先级) 到 \-20 (高优先级)。 (写入超出此范围的值会导致 \fBwrite\fP(2) 失败并出现错误 \fBEINVAL\fP.)
+.PP
+autogroup nice 设置与进程 nice 值具有相同的含义，但适用于根据其他自动组的相对 nice 值将 CPU
+周期作为一个整体分配给自动组。 对于自动组内的进程，它接收到的 CPU 周期将是自动组的 nice 值 (与其他自动组相比) 和进程的 nice 值
+(与同一自动组中的其他进程相比) 的乘积。
+.PP
+使用 \fBcgroups\fP(7) CPU 控制器将进程放置在根 CPU cgroup 以外的 cgroup 中会覆盖自动分组的效果。
+.PP
+.\"
+自动分组特性仅对在非实时策略 (\fBSCHED_OTHER\fP、\fBSCHED_BATCH\fP 和 \fBSCHED_IDLE\fP) 下安排的进程进行分组。
+它不会对根据实时和截止日期策略安排的流程进行分组。 这些进程是根据前面描述的规则安排的。
+.SS "The nice value and group scheduling"
+当调度非实时进程 (即那些在 \fBSCHED_OTHER\fP、\fBSCHED_BATCH\fP 和 \fBSCHED_IDLE\fP 策略下调度的进程)
+时，如果内核配置了 \fBCONFIG_FAIR_GROUP_SCHED\fP 选项 (这是典型的)，CFS 调度程序会采用一种称为 "group
+scheduling" 的技术。
+.PP
+在组调度下，线程被调度到 "task groups"。 任务组具有层次关系，植根于系统上的初始任务组，称为 "root task group"。
+在下列情况下成立任务组:
+.IP \[bu] 3
+CPU cgroup 中的所有线程组成一个任务组。 这个 task group 的 parent 就是对应 parent cgroup 的 task
+group。
+.IP \[bu]
+如果启用了自动分组，则 (implicitly) 的所有线程都放置在一个自动分组中 (即，由 \fBsetsid\fP(2)) 创建的同一会话形成一个任务组。
+因此，每个新的自动组都是一个单独的任务组。 根任务组是所有此类自动组的父级。
+.IP \[bu]
+如果启用自动分组，则根任务组由根 CPU cgroup 中的所有进程组成，这些进程没有以其他方式隐式放置到新的自动组中。
+.IP \[bu]
+如果禁用自动分组，则根任务组包含根 CPU cgroup 中的所有进程。
+.IP \[bu]
+如果组调度被禁用 (即内核配置没有 \fBCONFIG_FAIR_GROUP_SCHED\fP)，那么系统上的所有进程理论上都被放置在一个任务组中。
+.PP
+在组调度下，线程的 nice 值对调度决策 \fIonly relative to other threads in the same task group\fP 有影响。 就 UNIX 系统上 nice 值的传统语义而言，这会产生一些令人惊讶的结果。 特别是，如果启用了自动分组
+(这是各种发行版中的默认设置)，则在进程上使用 \fBsetpriority\fP(2) 或 \fBnice\fP(1) 仅对相对于在同一会话中执行的其他进程
+(通常: 相同终端窗口) 的调度有影响。
+.PP
+.\" More succinctly: the nice(1) command is in many cases a no-op since
+.\" Linux 2.6.38.
+.\"
+相反，对于 (例如) 不同会话中唯一受 CPU 限制的进程的两个进程 (例如，不同的终端
+windows，每个作业都绑定到不同的自动组)，\fImodifying the nice value of the process in one of the sessions\fP \fIhas no effect\fP 根据调度程序相对于进程的决策在另一个会话中。
+此处可能有用的解决方法是使用如下命令修改最终会话中进程的 \fIall\fP 的自动分组 nice 值:
+.PP
+.in +4n
+.EX
+$ \fBecho 10 > /proc/self/autogroup\fP
+.EE
+.in
+.SS "Real\-time features in the mainline Linux kernel"
+.\" FIXME . Probably this text will need some minor tweaking
+.\" ask Carsten Emde about this.
+从 Linux 2.6.18 开始，Linux 逐渐具备实时能力，大部分都是从之前的 \fIrealtime\-preempt\fP 补丁集衍生出来的。
+在补丁完全合并到主线内核之前，必须安装它们才能达到最佳实时性能。 这些补丁被命名为:
+.PP
+.in +4n
+.EX
+patch\-\fIkernelversion\fP\-rt\fIpatchversion\fP
+.EE
+.in
+.PP
+并且可以从
+.UR http://www.kernel.org\:/pub\:/linux\:/kernel\:/projects\:/rt/
+.UE .
+下载
+.PP
+如果没有补丁并且在它们完全包含到主线内核中之前，内核配置仅提供三个抢占类
+\fBCONFIG_PREEMPT_NONE\fP、\fBCONFIG_PREEMPT_VOLUNTARY\fP 和
+\fBCONFIG_PREEMPT_DESKTOP\fP，它们分别不提供、部分减少和显着减少最坏情况下的调度延迟。
+.PP
+应用补丁或将其完全包含到主线内核后，附加配置项 \fBCONFIG_PREEMPT_RT\fP 可用。 如果选择此项，Linux 将转换为常规实时操作系统。
+然后使用 FIFO 和 RR 调度策略来运行具有真正实时优先级和最小最坏情况调度延迟的线程。
+.SH NOTES
+\fBcgroups\fP(7) CPU 控制器可用于限制进程组的 CPU 消耗。
+.PP
+最初，Standard Linux 旨在作为一个通用操作系统，能够处理后台进程、交互式应用程序和要求不高的实时应用程序
+(通常需要满足时间期限的应用程序)。 尽管 Linux 2.6 允许内核抢占和新引入的 O(1)
+调度程序确保调度所需的时间是固定的和确定的，而不管活动任务的数量如何，但直到 Linux 2.6.17 才可能实现真正的实时计算。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBchcpu\fP(1), \fBchrt\fP(1), \fBlscpu\fP(1), \fBps\fP(1), \fBtaskset\fP(1), \fBtop\fP(1),
+\fBgetpriority\fP(2), \fBmlock\fP(2), \fBmlockall\fP(2), \fBmunlock\fP(2),
+\fBmunlockall\fP(2), \fBnice\fP(2), \fBsched_get_priority_max\fP(2),
+\fBsched_get_priority_min\fP(2), \fBsched_getaffinity\fP(2), \fBsched_getparam\fP(2),
+\fBsched_getscheduler\fP(2), \fBsched_rr_get_interval\fP(2),
+\fBsched_setaffinity\fP(2), \fBsched_setparam\fP(2), \fBsched_setscheduler\fP(2),
+\fBsched_yield\fP(2), \fBsetpriority\fP(2), \fBpthread_getaffinity_np\fP(3),
+\fBpthread_getschedparam\fP(3), \fBpthread_setaffinity_np\fP(3),
+\fBsched_getcpu\fP(3), \fBcapabilities\fP(7), \fBcpuset\fP(7)
+.ad
+.PP
+\fIProgramming for the real world \- POSIX.4\fP，作者 Bill
+O.\&Gallmeister，O'Reilly&Associates, Inc.，ISBN 1\-56592\-074\-0。
+.PP
+Linux 内核源文件
+\fI\%Documentation/\:scheduler/\:sched\-deadline\:.txt\fP、\fI\%Documentation/\:scheduler/\:sched\-rt\-group\:.txt\fP、\fI\%Documentation/\:scheduler/\:sched\-design\-CFS\:.txt\fP
+和 \fI\%Documentation/\:scheduler/\:sched\-nice\-design\:.txt\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

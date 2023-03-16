@@ -1,0 +1,79 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) IBM Corp. 2012
+.\" Author: Jan Glauber <jang@linux.vnet.ibm.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH s390_runtime_instr 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+s390_runtime_instr\-enable/disable s390 CPU 运行时检测
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <asm/runtime_instr.h>\fP /* Definition of \fBS390_*\fP constants */
+\fB#include <sys/syscall.h>\fP       /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_s390_runtime_instr, int \fP\fIcommand\fP\fB, int \fP\fIsignum\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBs390_runtime_instr\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBs390_runtime_instr\fP() 系统调用启动或停止调用线程的 CPU 运行时检测。
+.PP
+\fIcommand\fP 参数控制调用线程的运行时检测是启动 (\fBS390_RUNTIME_INSTR_START\fP, 1) 还是停止
+(\fBS390_RUNTIME_INSTR_STOP\fP, 2)。
+.PP
+.\" commit b38feccd663b55ab07116208b68e1ffc7c3c7e78
+\fIsignum\fP 参数指定实时信号的编号。 此参数用于指定在运行时检测缓冲区已满或发生运行时检测暂停中断时应传递给线程的信号编号。
+此特性从未使用过，在 Linux 4.4 中删除了对该特性的支持; 因此，在当前的内核中，这个参数被忽略了。
+.SH "RETURN VALUE"
+成功时，\fBs390_runtime_instr\fP() 返回 0 并通过为线程分配默认的运行时检测控制块来启用线程进行运行时检测。
+然后调用者可以读取和修改控制块并启动运行时检测。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fIcommand\fP 中指定的值不是有效命令。
+.TP 
+\fBEINVAL\fP
+\fIsignum\fP 中指定的值不是实时信号编号。 从 Linux 4.4 开始，\fIsignum\fP 参数无效，因此无效的信号编号不会导致错误。
+.TP 
+\fBENOMEM\fP
+为运行时检测控制块分配内存失败。
+.TP 
+\fBEOPNOTSUPP\fP
+运行时检测工具不可用。
+.SH VERSIONS
+本系统调用自 Linux 3.7 起可用。
+.SH STANDARDS
+此 Linux 特定系统调用仅适用于 s390 架构。 运行时检测工具从 System z EC12 开始可用。
+.SH NOTES
+.\" commit df2f815a7df7edb5335a3bdeee6a8f9f6f9c35c4
+\fIasm/runtime_instr.h\fP 头文件从 Linux 4.16 开始可用。
+.PP
+从 Linux 4.4 开始，取消了对信号的支持，检查 \fIsignum\fP 是否是有效的实时信号也是如此。 为了向后兼容旧内核，建议在
+\fIsignum\fP 中传递有效的实时信号编号并为该信号安装处理程序。
+.SH "SEE ALSO"
+\fBsyscall\fP(2), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,134 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2003 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH path_resolution 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+path_resolution \- 如何将路径名解析为文件
+.SH DESCRIPTION
+某些 UNIX/Linux 系统调用将一个或多个文件名作为参数。 文件名 (或路径名) 解析如下。
+.SS "Step 1: start of the resolution process"
+如果路径名以 \[aq]/\[aq] 字符开头，则起始查找目录是调用进程的根目录。 进程从其父进程继承其根目录。 通常这将是文件层次结构的根目录。
+一个进程可以通过使用 \fBchroot\fP(2) 系统调用获得不同的根目录，或者可以通过使用设置了 \fBRESOLVE_IN_ROOT\fP 标志的
+\fBopenat2\fP(2) 临时使用不同的根目录。
+.PP
+一个进程可能会获得一个完全私有的挂载命名空间，以防它 \[em] 或其祖先之一 \[em] 是通过调用设置了 \fBCLONE_NEWNS\fP 标志的
+\fBclone\fP(2) 系统调用启动的。 这处理路径名的 \[aq]/\[aq] 部分。
+.PP
+如果路径名不以 \[aq]/\[aq] 字符开头，则解析进程的起始查找目录是进程的当前工作目录 \[em] 或者在 \fBopenat\fP(2)\-style
+系统调用的情况下，\fIdfd\fP 参数 (或当前工作目录，如果 \fBAT_FDCWD\fP 作为 \fIdfd\fP 参数传递)。
+当前工作目录是从父目录继承的，可以使用 \fBchdir\fP(2) 系统调用来改变。
+.PP
+以 \[aq]/\[aq] 字符开头的路径名称为绝对路径名。 不以 \[aq]/\[aq] 开头的路径名称为相对路径名。
+.SS "Step 2: walk along the path"
+将当前查找目录设置为起始查找目录。 现在，对于路径名的每个非最终组件，组件是由 \[aq]/\[aq] 字符分隔的子字符串，在当前查找目录中查找该组件。
+.PP
+如果进程对当前查找目录没有搜索权限，则返回 \fBEACCES\fP 错误 (`权限被拒绝`)。
+.PP
+如果未找到组件，则返回 \fBENOENT\fP 错误 (`没有这样的文件或目录`)。
+.PP
+如果找到组件，但既不是目录也不是符号链接，则返回 \fBENOTDIR\fP 错误 (`不是目录`)。
+.PP
+如果找到该组件并且是一个目录，我们将当前查找目录设置为该目录，然后转到下一个组件。
+.PP
+如果找到该组件并且是一个符号链接，我们首先解析这个符号链接 (以当前查找目录作为起始查找目录)。 出错时，返回该错误。 如果结果不是目录，则返回
+\fBENOTDIR\fP 错误。 如果符号链接的解析成功并返回一个目录，我们将当前查找目录设置为该目录，然后转到下一个组件。 请注意，如果路径名的前缀
+('dirname') 组件包含一个文件名，该文件名是解析为目录的符号链接
+(其中该目录的前缀组件可能包含符号链接，等等)，则此处的解析过程可能涉及递归。
+为了防止内核发生栈溢出，同时也为了防止拒绝服务，对最大递归深度和最大符号链接数进行了限制。 超过最大值时返回 \fBELOOP\fP 错误
+(`符号链接级别太多`)。
+.PP
+.\"
+.\" presently: max recursion depth during symlink resolution: 5
+.\" max total number of symbolic links followed: 40
+.\" _POSIX_SYMLOOP_MAX is 8
+.\" MAXSYMLINKS is 40
+.\" MAX_NESTED_LINKS
+.\" commit 894bc8c4662ba9daceafe943a5ba0dd407da5cd3
+目前在 Linux 上实现，解析路径名时将遵循的最大符号链接数为 40。 Linux 2.6.18 之前，递归深度限制为 5。 从 Linux
+2.6.18 开始，此限制提高到 8。 在 Linux 4.2 中，内核的路径名解析代码被重新编写以消除递归的使用，因此唯一剩下的限制是整个路径名最多
+40 个解析。
+.PP
+可以使用 \fBopenat2\fP(2) 阻止此阶段符号链接的解析，并设置 \fBRESOLVE_NO_SYMLINKS\fP 标志。
+.SS "Step 3: find the final entry"
+路径名的最后一个组件的查找就像上一步中描述的所有其他组件一样，有两个区别: (i) 最后一个组件不需要是目录 (至少就路径解析过程而言是这样 \[em]
+它可能必须是一个目录，或者非目录，因为特定系统的要求调用)，而 (ii) 如果找不到该组件则不一定是错误 \[em] 也许我们只是在创建它。
+有关最终条目处理的详细信息，请参见特定系统调用的手册页。
+.SS ". and .."
+按照约定，每个目录都有条目 "." 和 ".."，分别指目录本身及其父目录。
+.PP
+路径解析过程将假定这些条目具有它们的常规含义，而不管它们是否实际存在于物理文件系统中。
+.PP
+不能越过根: "/.." 与 "/" 相同。
+.SS "Mount points"
+在 \fImount dev path\fP 命令之后，路径名 "path" 指的是设备 "dev" 上文件系统层次结构的根，而不再是之前所指的任何内容。
+.PP
+可以走出挂载的文件系统: "path/.." 指的是 "path" 的父目录，在 "dev" 上的文件系统层次结构之外。
+.PP
+使用 \fBopenat2\fP(2) 可以阻止挂载点的遍历，并设置 \fBRESOLVE_NO_XDEV\fP 标志 (但请注意，这也会限制绑定挂载遍历)。
+.SS "Trailing slashes"
+如果路径名以 \[aq]/\[aq] 结尾，则强制解析前面的组件，如步骤 2 中所示:
+斜杠前面的组件存在并解析为目录，或者命名要创建的目录解析路径名后立即执行。 否则，尾随的 \[aq]/\[aq] 将被忽略。
+.SS "Final symbolic link"
+如果路径名的最后一个组成部分是符号链接，则取决于系统调用所引用的文件是符号链接还是对其内容进行路径解析的结果。 比如系统调用 \fBlstat\fP(2)
+会对符号链接进行操作，而 \fBstat\fP(2) 则对符号链接指向的文件进行操作。
+.SS "Length limit"
+路径名有最大长度。 如果路径名 (或在解析符号链接时获得的一些中间路径名) 太长，则返回 \fBENAMETOOLONG\fP 错误 (`文件名太长`)。
+.SS "Empty pathname"
+在原始 UNIX 中，空路径名指的是当前目录。 如今 POSIX 规定不得成功解析空路径名。 在这种情况下，Linux 返回 \fBENOENT\fP。
+.SS Permissions
+文件的权限位由三组三位组成; 请参见 \fBchmod\fP(1) 和 \fBstat\fP(2)。 当调用进程的有效用户 ID 等于文件的所有者 ID
+时，使用第一组三个。 当文件的组 ID 等于调用进程的有效组 ID，或者是调用进程的补充组 ID 之一 (由 \fBsetgroups\fP(2)).
+如果两者都不成立，则使用第三组。
+.PP
+在使用的三位中，第一位确定读取权限，第二位确定普通文件的写入权限和最后的执行权限，或者目录的搜索权限。
+.PP
+Linux 在权限检查中使用 fsuid 而不是有效用户 ID。 通常 fsuid 等于有效用户 ID，但 fsuid 可以通过系统调用
+\fBsetfsuid\fP(2) 更改。
+.PP
+(这里 "fsuid" 代表类似 "filesystem user ID" 的东西。在进程可以向具有相同有效用户 ID
+的进程发送信号的时候，实现用户空间 NFS 服务器需要这个概念。现在已经过时了。没有人应该使用 \fBsetfsuid\fP(2).)
+.PP
+.\" FIXME . say something about filesystem mounted read-only ?
+同样，Linux 使用 fsgid (`文件系统组 ID`) 而不是有效组 ID。参见 \fBsetfsgid\fP(2)。
+.SS "Bypassing permission checks: superuser and capabilities"
+.\" (but for exec at least one x bit must be set) -- AEB
+.\" but there is variation across systems on this point: for
+.\" example, HP-UX and Tru64 are as described by AEB.  However,
+.\" on some implementations (e.g., Solaris, FreeBSD),
+.\" access(X_OK) by superuser will report success, regardless
+.\" of the file's execute permission bits. -- MTK (Oct 05)
+在传统的 UNIX 系统中，超级用户 (\fIroot\fP (用户 ID 0) 无所不能，在访问文件时绕过所有权限限制。
+.PP
+在 Linux 上，超级用户权限被划分为不同的能力 (参见 \fBcapabilities\fP(7)).  两个功能与文件权限检查相关:
+\fBCAP_DAC_OVERRIDE\fP 和 \fBCAP_DAC_READ_SEARCH\fP。 (如果进程的 fsuid 为 0，则该进程具有这些功能。)
+.PP
+\fBCAP_DAC_OVERRIDE\fP 能力覆盖所有权限检查，但仅当文件的三个执行权限位中的至少一个设置时才授予执行权限。
+.PP
+.\" FIXME . say something about immutable files
+.\" FIXME . say something about ACLs
+\fBCAP_DAC_READ_SEARCH\fP 能力授予对目录的读取和搜索权限，以及对普通文件的读取权限。
+.SH "SEE ALSO"
+\fBreadlink\fP(2), \fBcapabilities\fP(7), \fBcredentials\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,106 @@
+.\" -*- coding: UTF-8 -*-
+.\" -*- nroff -*-
+.\" Copyright 1997 by Theodore Ts'o.  All Rights Reserved.
+.\" .TH RESIZE2FS 8 "February 2023" "E2fsprogs version 1.47.0"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RESIZE2FS 8 "February 2023" "E2fsprogs version 1.47.0" 
+.SH NAME
+resize2fs\-ext2/ext3/ext4 文件系统大小调整器
+.SH SYNOPSIS
+\fBresize2fs\fP [ \fB\-fFpPMbs\fP ] [ \fB\-d\fP \fIdebug\-flags\fP ] [ \fB\-S\fP \fIRAID\-stride\fP
+] [ \fB\-z\fP \fIundo_file\fP ] \fIdevice\fP [ \fIsize\fP ]
+.SH DESCRIPTION
+\fBresize2fs\fP 程序将调整 ext2、ext3 或 ext4 文件系统的大小。 它可用于放大或缩小位于 \fIdevice\fP
+上的未挂载文件系统。 如果挂载了文件系统，它可以用来扩展挂载文件系统的大小，假设内核和文件系统支持在线调整大小。 (现代 Linux 2.6
+内核将支持使用 ext3 和 ext4 安装的文件系统的在线调整大小; ext3 文件系统将需要使用启用了 resize_inode 特性的文件系统。)
+.PP
+\fIsize\fP 参数指定请求的文件系统的新大小。 如果没有指定单位，则 \fIsize\fP 参数的单位为文件系统的文件系统块大小。 可选地，\fIsize\fP
+参数可以使用以下单位指示符之一作为后缀: 'K'、'M'、'G'、'T' (大写或小写) 或 's'，表示 2 千字节、兆字节、千兆字节、太字节或
+512 的幂字节扇区分别。文件系统的 \fIsize\fP 可能永远不会大于分区的大小。 如果没有指定 \fIsize\fP 参数，它将默认为分区的大小。
+.PP
+\fBresize2fs\fP 程序不操纵分区的大小。 如果您想扩大一个文件系统，您必须确保您可以先扩大底层分区的大小。 这可以使用 \fBfdisk\fP(8)
+来完成，方法是删除分区并以更大的大小重新创建它，或者如果您使用的是逻辑卷管理器 \fBlvm\fP(8)，则使用 \fBlvextend\fP(8)。
+重新创建分区时，请确保使用与以前相同的起始磁盘柱面创建它! 否则，调整大小操作肯定不起作用，您可能会丢失整个文件系统。 运行 \fBfdisk\fP(8)
+后，运行 resize2fs 调整 ext2 文件系统的大小，以使用新扩大的分区中的所有空间。
+.PP
+如果要缩小 ext2 分区，请先使用 \fBresize2fs\fP 缩小文件系统的大小。 然后您可以使用 \fBfdisk\fP(8) 来缩小分区的大小。
+缩小分区大小时，确保不要小于 ext2 文件系统的新大小!
+.PP
+\fB\-b\fP 和 \fB\-s\fP 选项分别启用和禁用 64 位，特性。 resize2fs 程序当然会负责调整块组描述符的大小，并根据需要将其他数据块移开。
+无法通过更改 64 位状态来调整文件系统的大小并发。
+.SH OPTIONS
+.TP 
+\fB\-b\fP
+打开 64 位特性根据需要调整组描述符的大小，并将其他元数据移开。
+.TP 
+\fB\-d \fP\fIdebug\-flags\fP
+打开各种 resize2fs 调试特性如果它们已被编译到二进制文件中。 \fIdebug\-flags\fP 应通过添加以下列表中所需特性的数量来计算:
+.br
+  2\-\ 调试块重定位
+.br
+  4\-\ 调试 inode 重定位
+.br
+  8\-\ 调试移动 inode 表
+.br
+  16\-\ 打印时序信息
+.br
+  32\-\ 调试最小文件系统大小 (\-M) 计算
+.TP 
+\fB\-f\fP
+强制 resize2fs 继续文件系统调整大小操作，覆盖 resize2fs 通常执行的一些安全检查。
+.TP 
+\fB\-F\fP
+在开始之前刷新文件系统设备的缓冲区高速缓存。 只有在进行 \fBresize2fs\fP 计时赛时才真正有用。
+.TP 
+\fB\-M\fP
+考虑到文件系统中存储的文件，收缩文件系统以尽可能地减小其大小。
+.TP 
+\fB\-p\fP
+在离线 (non\-trivial) 调整大小操作期间打印出每个 \fBresize2fs\fP 阶段的完成百分比条，以便用户可以跟踪程序正在做什么。
+(对于非常快速的调整大小操作，可能不会显示任何进度条。)
+.TP 
+\fB\-P\fP
+如果使用 \fBresize2fs\fP's \fB\-M\fP 选项缩小文件系统，则打印文件系统块的估计数量，然后退出。
+.TP 
+\fB\-s\fP
+关闭 64 位特性并释放不再使用的块。
+.TP 
+\fB\-S \fP\fIRAID\-stride\fP
+\fBresize2fs\fP 程序将试探性地确定创建文件系统时指定的 RAID 跨度。 此选项允许用户明确指定要由 resize2fs 使用的 RAID
+步幅设置。
+.TP 
+\fB\-z\fP\fI undo_file\fP
+在覆盖文件系统块之前，将块的旧内容写入撤消文件。 如果出现问题，此撤消文件可与 e2undo(8) 一起使用以恢复文件系统的旧内容。 如果空字符串作为
+undo_file 参数传递，则撤消文件将写入通过 \fIE2FSPROGS_UNDO_DIR\fP 环境变量指定的目录中名为
+resize2fs\-\fIdevice\fP.e2undo 的文件。
+
+WARNING: 撤消文件不能用于从电源或系统崩溃中恢复。
+.SH "KNOWN BUGS"
+resize2fs 估计的文件系统的最小大小可能不正确，尤其是对于块大小为 1k 和 2k 的文件系统。
+.SH AUTHOR
+\fBresize2fs\fP 由 Theodore Ts'o <tytso@mit.edu> 编写。
+.SH COPYRIGHT
+Resize2fs 1998 年由 Theodore Ts'o 和 PowerQuest, Inc. 版权所有。 版权所有。 截至 4 月，2000
+\fBResize2fs\fP 可能会根据 GPL 的条款重新分发。
+.SH "SEE ALSO"
+\fBfdisk\fP(8), \fBe2fsck\fP(8), \fBmke2fs\fP(8), \fBlvm\fP(8), \fBlvextend\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

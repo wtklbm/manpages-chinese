@@ -1,0 +1,115 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2018 Eugene Syromyatnikov <evgsyr@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH s390_guarded_storage 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+s390_guarded_storage \- 使用 z/Architecture 保护存储设施的操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <asm/guarded_storage.h> \fP/* Definition of \fBGS_*\fP constants */
+\fB#include <sys/syscall.h>         \fP/* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_s390_guarded_storage, int \fP\fIcommand\fP\fB,\fP
+\fB            struct gs_cb *\fP\fIgs_cb\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBs390_guarded_storage\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBs390_guarded_storage\fP() 系统调用允许对用户空间进程使用受保护的存储设施 (z/Architecture\-specific
+特性)。
+.PP
+.\" The description is based on
+.\" http://www-05.ibm.com/de/linux-on-z-ws-us/agenda/pdfs/8_-_Linux_Whats_New_-_Stefan_Raspl.pdf
+.\" and "z/Architecture Principles of Operation" obtained from
+.\" http://publibfi.boulder.ibm.com/epubs/pdf/dz9zr011.pdf
+受保护的存储设施是一种硬件特性允许将多达 64 个内存区域 (从 z14 开始) 标记为受保护; 使用新引入的 "Load Guarded" (LGG)
+或 "Load Logical and Shift Guarded" (LLGFSG)
+指令读取指针将导致对加载值进行范围检查，并在受保护区域之一受到影响时调用 (先前设置的) 用户空间处理程序。
+.PP
+.\" The command description is copied from v4.12-rc1~139^2~56^2 commit message
+\fIcommand\fP 参数表示执行哪个函数。 支持以下命令:
+.TP 
+\fBGS_ENABLE\fP
+为调用任务启用受保护的存储设施。 受保护的存储控制块的初始内容将全为零。 启用后，用户空间代码可以使用 "Load Guarded Storage
+Controls" (LGSC) 指令 (或 \fIasm/guarded_storage.h\fP 标头中提供的 \fBload_gs_cb\fP()
+函数包装器) 加载任意控制块。 启用任务时，内核将在上下文切换时保存和恢复受保护存储寄存器的调用内容。
+.TP 
+\fBGS_DISABLE\fP
+禁止对调用任务使用受保护的存储设施。 内核将停止保存并恢复受保护存储寄存器的内容，这些寄存器的特定于任务的内容将丢失。
+.TP 
+\fBGS_SET_BC_CB\fP
+将广播保护存储控制块设置为 \fIgs_cb\fP 参数中提供的那个。 这是按线程调用的，并将特定的受保护存储控制块与调用任务相关联。 该控制块将在广播命令
+\fBGS_BROADCAST\fP 中使用。
+.TP 
+\fBGS_CLEAR_BC_CB\fP
+清除广播保护存储控制块。 受保护的存储控制块将不再具有由 \fBGS_SET_BC_CB\fP 命令建立的关联。
+.TP 
+\fBGS_BROADCAST\fP
+向调用任务的所有线程兄弟发送广播。 已建立广播保护存储控制块的每个兄弟节点都将加载该控制块，并将启用保护存储。 广播保护存储控制块被消耗; 没有使用
+\fBGS_SET_BC_CB\fP 刷新存储的控制块的第二次广播不会有任何效果。
+.PP
+\fIgs_cb\fP 参数指定了受保护的存储控制块结构体的地址，目前仅由 \fBGS_SET_BC_CB\fP 命令使用; 上述所有其他命令都忽略此参数。
+.SH "RETURN VALUE"
+成功时，\fBs390_guarded_storage\fP() 的返回值为 0.
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIcommand\fP 是 \fBGS_SET_BC_CB\fP，\fIgs_cb\fP 参数指向的受保护存储控制块结构体的复制失败。
+.TP 
+\fBEINVAL\fP
+\fIcommand\fP 参数中提供的值无效。
+.TP 
+\fBENOMEM\fP
+\fIcommand\fP 是 \fBGS_ENABLE\fP 或 \fBGS_SET_BC_CB\fP 之一，新的受保护存储控制块的分配失败。
+.TP 
+\fBEOPNOTSUPP\fP
+硬件不支持受保护的存储设施。
+.SH VERSIONS
+.\" 916cda1aa1b412d7cf2991c3af7479544942d121, v4.12-rc1~139^2~56^2
+本系统调用自 Linux 4.12 起可用。
+.SH STANDARDS
+此 Linux 特定系统调用仅适用于 s390 架构。
+.PP
+受保护的存储设施从系统 z14 开始可用。
+.SH NOTES
+从第十二版开始的 "z/Architecture Principles of Operations"
+中提供了受保护存储设施的描述以及相关说明和受保护存储控制块和受保护存储事件参数列表结构体布局。
+.PP
+.\" .PP
+.\" For the example of using the guarded storage facility, see
+.\" .UR https://developer.ibm.com/javasdk/2017/09/25/concurrent-scavenge-using-guarded-storage-facility-works/
+.\" the article with the description of its usage in the Java Garbage Collection
+.\" .UE
+\fIgs_cb\fP 结构体有一个字段 \fIgsepla\fP (受保护的存储事件参数列表地址)，它是指向受保护的存储事件参数列表结构体的用户空间指针 (在
+\fIgseha\fP 字段中包含上述事件处理程序的地址)，和它的布局在 \fIasm/guarded_storage.h\fP 标头中作为 \fBgs_epl\fP
+结构体类型定义提供。
+.SH "SEE ALSO"
+\fBsyscall\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

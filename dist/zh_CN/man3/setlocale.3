@@ -1,0 +1,157 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 by Thomas Koenig (ig25@rz.uni-karlsruhe.de)
+.\" and Copyright 1999 by Bruno Haible (haible@clisp.cons.org)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 18:20:12 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Tue Jul 15 16:49:10 1997 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Sun Jul  4 14:52:16 1999 by Bruno Haible (haible@clisp.cons.org)
+.\" Modified Tue Aug 24 17:11:01 1999 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Tue Feb  6 03:31:55 2001 by Andries Brouwer (aeb@cwi.nl)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setlocale 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+setlocale \- 设置当前语言环境
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <locale.h>\fP
+.PP
+\fBchar *setlocale(int \fP\fIcategory\fP\fB, const char *\fP\fIlocale\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBsetlocale\fP() 函数用于设置或查询程序的当前语言环境。
+.PP
+如果 \fIlocale\fP 不为 NULL，则根据参数修改程序的当前语言环境。 参数 \fIcategory\fP 决定了程序当前语言环境的哪些部分应该被修改。
+.ad l
+.nh
+.TS
+lB lB
+lB lx.
+Category	Governs
+LC_ALL	All of the locale
+LC_ADDRESS	T{
+Formatting of addresses and
+geography\-related items (*)
+T}
+LC_COLLATE	String collation
+LC_CTYPE	Character classification
+LC_IDENTIFICATION	T{
+Metadata describing the locale (*)
+T}
+LC_MEASUREMENT	T{
+Settings related to measurements
+(metric versus US customary) (*)
+T}
+LC_MESSAGES	T{
+Localizable natural\-language messages
+T}
+LC_MONETARY	T{
+Formatting of monetary values
+T}
+LC_NAME	T{
+Formatting of salutations for persons (*)
+T}
+LC_NUMERIC	T{
+Formatting of nonmonetary numeric values
+T}
+LC_PAPER	T{
+Settings related to the standard paper size (*)
+T}
+LC_TELEPHONE	T{
+Formats to be used with telephone services (*)
+T}
+LC_TIME	T{
+Formatting of date and time values
+T}
+.TE
+.hy
+.ad
+.PP
+上表中标有星号的类别为 GNU 扩展名。 有关这些语言环境类别的更多信息，请参见 \fBlocale\fP(7)。
+.PP
+参数 \fIlocale\fP 是指向包含 \fIcategory\fP 所需设置的字符串的指针。 这样的字符串要么是众所周知的常量，如 "C" 或 "da_DK"
+(见下文)，要么是 \fBsetlocale\fP() 的另一个调用返回的不透明字符串。
+.PP
+如果 \fIlocale\fP 为空字符串 \fB""\fP，则根据环境变量设置应修改的语言环境的每个部分。 细节取决于实现。 对于 glibc，首先 (不考虑
+\fIcategory\fP)，检查环境变量 \fBLC_ALL\fP，然后检查与类别同名的环境变量 (见上表)，最后检查环境变量 \fBLANG\fP。
+使用第一个现有环境变量。 如果其值不是有效的语言环境规范，则语言环境不变，并且 \fBsetlocale\fP() 返回 NULL。
+.PP
+语言环境 \fB"C"\fP 或 \fB"POSIX"\fP 是可移植的语言环境; 它存在于所有符合标准的系统上。
+.PP
+语言环境名称通常采用 \fIlanguage\fP[_\fIterritory\fP][.\fIcodeset\fP][@\fImodifier\fP] 格式，其中
+\fIlanguage\fP 是 ISO 639 语言代码，\fIterritory\fP 是 ISO 3166 国家 / 地区代码，\fIcodeset\fP
+是字符集或编码标识符，如 \fBISO\-8859\-1\fP 或 \fBUTF\-8\fP。 有关所有受支持语言环境的列表，请尝试 "locale \-a" (请参见
+\fBlocale\fP(1)).
+.PP
+如果 \fIlocale\fP 为 NULL，则仅查询当前语言环境，而不修改。
+.PP
+在主程序启动时，默认选择便携式 \fB"C"\fP 语言环境。 通过调用以下程序可以使程序可移植到所有语言环境:
+.PP
+.in +4n
+.EX
+setlocale(LC_ALL, "");
+.EE
+.in
+.PP
+程序初始化后，然后:
+.IP \[bu] 3
+使用从 \fBlocaleconv\fP(3) 调用返回的值来获取与区域设置相关的信息;
+.IP \[bu]
+如果 \fBMB_CUR_MAX > 1\fP，则使用多字节宽字符函数进行文本处理;
+.IP \[bu]
+使用 \fBstrcoll\fP(3) 和 \fBstrxfrm\fP(3) 比较字符串; and
+.IP \[bu]
+使用 \fBwcscoll\fP(3) 和 \fBwcsxfrm\fP(3) 比较宽字符串。
+.SH "RETURN VALUE"
+对 \fBsetlocale\fP() 的成功调用返回对应于区域设置的不透明字符串。 该字符串可以分配在静态存储中。
+返回的字符串是这样的，后续使用该字符串及其关联的类别将恢复进程语言环境的那一部分。 如果无法满足请求，则返回值为 NULL。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsetlocale\fP()
+T}	Thread safety	MT\-Unsafe const:locale env
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99.
+.PP
+C 标准仅指定类别 \fBLC_ALL\fP、\fBLC_COLLATE\fP、\fBLC_CTYPE\fP、\fBLC_MONETARY\fP、\fBLC_NUMERIC\fP 和
+\fBLC_TIME\fP。 POSIX.1 添加 \fBLC_MESSAGES\fP。 其余类别是 GNU 扩展。
+.SH "SEE ALSO"
+\fBlocale\fP(1), \fBlocaledef\fP(1), \fBisalpha\fP(3), \fBlocaleconv\fP(3),
+\fBnl_langinfo\fP(3), \fBrpmatch\fP(3), \fBstrcoll\fP(3), \fBstrftime\fP(3),
+\fBcharsets\fP(7), \fBlocale\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

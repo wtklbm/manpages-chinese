@@ -1,0 +1,120 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) Markus Kuhn, 1996
+.\" and Copyright (C) Linux Foundation, 2008, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" 1996-04-10  Markus Kuhn <mskuhn@cip.informatik.uni-erlangen.de>
+.\"             First version written
+.\" Modified, 2004-10-24, aeb
+.\" 2008-06-24, mtk
+.\"     Minor rewrites of some parts.
+.\"     NOTES: describe case where clock_nanosleep() can be preferable.
+.\"     NOTES: describe CLOCK_REALTIME versus CLOCK_NANOSLEEP
+.\"     Replace crufty discussion of HZ with a pointer to time(7).
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH nanosleep 2 2023\-02\-12 "Linux man\-pages 6.03" 
+.SH NAME
+nanosleep \- 高分辨率睡眠
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBint nanosleep(const struct timespec *\fP\fIreq\fP\fB,\fP
+\fB              struct timespec *_Nullable \fP\fIrem\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBnanosleep\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+\fBnanosleep\fP() 暂停调用线程的执行，直到至少 \fI*req\fP 中指定的时间已经过去，或者传递触发调用线程中的处理程序调用或终止进程的信号。
+.PP
+如果调用被信号处理程序中断，\fBnanosleep\fP() 返回 \-1，将 \fIerrno\fP 设置为 \fBEINTR\fP，并将剩余时间写入 \fIrem\fP
+指向的结构体，除非 \fIrem\fP 为 NULL。 然后可以使用 \fI*rem\fP 的值再次调用 \fBnanosleep\fP() 并完成指定的暂停
+(但请参见注释)。
+.PP
+\fBtimespec\fP(3) 结构体用于以纳秒精度指定时间间隔。
+.PP
+纳秒字段的值必须在 [0, 999999999] 范围内。
+.PP
+与 \fBsleep\fP(3) 和 \fBusleep\fP(3) 相比，\fBnanosleep\fP() 具有以下优点: 它提供了更高的指定睡眠间隔的分辨率;
+POSIX.1 明确指定不与信号交互; 并且它使恢复已被信号处理程序中断的睡眠的任务变得更加容易。
+.SH "RETURN VALUE"
+在请求的时间间隔内成功休眠后，\fBnanosleep\fP() 返回 0。 如果调用被信号处理程序中断或遇到错误，则返回 \-1，\fIerrno\fP
+设置为指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+从用户空间复制信息时出现问题。
+.TP 
+\fBEINTR\fP
+暂停已被传递给线程的信号中断 (请参见 \fBsignal\fP(7)).  剩余休眠时间已经写入 \fI*rem\fP，线程可以轻松再次调用
+\fBnanosleep\fP()，继续暂停。
+.TP 
+\fBEINVAL\fP
+\fItv_nsec\fP 字段中的值不在 [0, 999999999] 或 \fItv_sec\fP 范围内，是 negative。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+如果 \fIreq\fP 中指定的时间间隔不是底层时钟粒度的精确倍数 (请参见 \fBtime\fP(7))，则该时间间隔将四舍五入为下一个倍数。
+此外，在睡眠完成后，在 CPU 再次空闲以再次执行调用线程之前可能仍然存在延迟。
+.PP
+如果调用在被信号中断后反复重启，那么 \fBnanosleep\fP()
+休眠一段相对时间的事实可能会出现问题，因为调用中断和重启之间的时间会导致睡眠最终完成的时间漂移。 使用具有绝对时间值的
+\fBclock_nanosleep\fP(2) 可以避免此问题。
+.PP
+.\" See also http://thread.gmane.org/gmane.linux.kernel/696854/
+.\" Subject: nanosleep() uses CLOCK_MONOTONIC, should be CLOCK_REALTIME?
+.\" Date: 2008-06-22 07:35:41 GMT
+POSIX.1 指定 \fBnanosleep\fP() 应根据 \fBCLOCK_REALTIME\fP 时钟测量时间。 但是，Linux 使用
+\fBCLOCK_MONOTONIC\fP 时钟测量时间。 这可能无关紧要，因为 \fBclock_settime\fP(2) 的 POSIX.1 规范说
+\fBCLOCK_REALTIME\fP 中的不连续变化不应该影响 \fBnanosleep\fP():
+.RS
+.PP
+通过 \fBclock_settime\fP(2) 设置 \fBCLOCK_REALTIME\fP 时钟的值对阻塞等待基于此时钟的相对时间服务的线程没有影响，包括
+\fBnanosleep\fP() 函数; ... 因此，这些时间服务将在请求的相对间隔过去时到期，与时钟的新值或旧值无关。
+.RE
+.SS "Old behavior"
+为了支持需要更精确暂停的应用程序 (例如，为了控制一些时间关键的硬件)，当从实时调度的线程调用时，\fBnanosleep\fP()
+将通过微秒精度的忙等待来处理最多 2 毫秒的暂停 \fBSCHED_FIFO\fP 或 \fBSCHED_RR\fP 之类的策略。 这个特殊的扩展在 Linux
+2.5.39 中被移除，因此在 Linux 2.6.0 和以后的内核中不可用。
+.SH BUGS
+如果捕获信号并使用 \fBnanosleep\fP() 的程序以非常高的速率接收信号，则内核计算睡眠间隔和返回的 \fIremain\fP
+值中的调度延迟和舍入错误意味着 \fIremain\fP 值可能会在连续重新启动 \fBnanosleep\fP() 时稳定为 \fIincrease\fP 调用。
+为避免此类问题，请使用带有 \fBTIMER_ABSTIME\fP 标志的 \fBclock_nanosleep\fP(2) 休眠到绝对截止日期。
+.PP
+在 Linux 2.4 中，如果 \fBnanosleep\fP() 被信号停止 (例如，\fBSIGTSTP\fP)，则在线程被 \fBSIGCONT\fP
+信号恢复后调用失败并出现错误 \fBEINTR\fP。 如果系统调用随后重新启动，则线程处于停止状态的时间是 \fInot\fP 计入睡眠间隔。 此问题已在
+Linux 2.6.0 及更高版本的内核中修复。
+.SH "SEE ALSO"
+\fBclock_nanosleep\fP(2), \fBrestart_syscall\fP(2), \fBsched_setscheduler\fP(2),
+\fBtimer_create\fP(2), \fBsleep\fP(3), \fBtimespec\fP(3), \fBusleep\fP(3), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

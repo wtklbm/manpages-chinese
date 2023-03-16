@@ -1,0 +1,183 @@
+.\" -*- coding: UTF-8 -*-
+.\" mkfs.fat.8 - manpage for fs.fatck
+.\"
+.\" Copyright (C) 2006-2014 Daniel Baumann <daniel@debian.org>
+.\" Copyright (C) 2016 Andreas Bombe <aeb@debian.org>
+.\" Copyright (C) 2018-2021 Pali Rohár <pali.rohar@gmail.com>
+.\"
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program. If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\" The complete text of the GNU General Public License
+.\" can be found in /usr/share/common-licenses/GPL-3 file.
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH MKFS.FAT 8 2021\-01\-31 "dosfstools 4.2" 
+.SH NAME
+.\" ----------------------------------------------------------------------------
+mkfs.fat \- 创建一个 MS\-DOS FAT 文件系统
+.SH SYNOPSIS
+.\" ----------------------------------------------------------------------------
+\fBmkfs.fat\fP [\fIOPTIONS\fP] \fIDEVICE\fP [\fIBLOCK\-COUNT\fP]
+.SH DESCRIPTION
+\fBmkfs.fat\fP 用于在设备或映像文件中创建 FAT 文件系统。 \fIDEVICE\fP 是设备对应的特殊文件 (如 /dev/sdXX) 或图像文件
+(当给出选项 \fB\-C\fP 时不需要存在)。 \fIBLOCK\-COUNT\fP 是设备上的块数，一个块的大小始终为 1024 字节，与扇区大小或簇大小无关。
+因此 \fIBLOCK\-COUNT\fP 以 KiB 元指定文件系统的大小，而不是扇区数 (与所有其他 \fBmkfs.fat\fP 选项一样)。
+如果省略，\fBmkfs.fat\fP 会自动选择一个文件系统大小来填充可用空间。
+.PP
+支持 FAT 文件系统的两种不同变体。 标准是由 Microsoft 定义的 FAT12、FAT16 和 FAT32 文件系统，广泛用于硬盘和可移动媒体
+(如 U 盘和 SD 卡)。 另一个是在 Atari ST 上使用的遗留 Atari 变体。
+.PP
+.\" ----------------------------------------------------------------------------
+在 Atari 模式下，如果用户没有另外指示，\fBmkfs.fat\fP 将始终使用每个簇 2 个扇区，因为 GEMDOS 不太喜欢其他值。 它还将遵守
+GEMDOS 可以处理的最大扇区数。 通过增加逻辑扇区大小来管理更大的文件系统。 为文件系统生成一个 Atari 兼容序列号，12 位 FAT
+仅用于具有常用软盘大小 (720k、1.2M、1.44M、2.88M) 之一的文件系统，否则为 16 位 FAT。 这可以用 \fB\-F\fP 选项覆盖。
+一些特定于 PC 的引导扇区字段未写入，并且引导消息 (选项 \fB\-m\fP) 被忽略。
+.SH OPTIONS
+.IP \fB\-a\fP 4
+通常，对于除非常小的文件系统之外的任何文件系统，\fBmkfs.fat\fP
+会将所有数据结构对齐到簇大小，以确保只要分区正确对齐，文件系统中的所有数据结构也将对齐。 此选项禁用对齐; 这可能会提供一些额外的存储集群，但代价是
+RAID、闪存介质或大扇区硬盘的性能显着下降。
+.IP \fB\-A\fP 4
+如果尚未激活，请选择使用 FAT 文件系统的 Atari 变体，否则选择标准 FAT 文件系统。 如果 \fBmkfs.fat\fP 在 68k Atari
+Linux 上运行，则默认选择此项。
+.IP "\fB\-b\fP \fISECTOR\-OF\-BACKUP\fP" 4
+选择 FAT32 的备份引导扇区的位置。 默认值取决于保留扇区的数量，但通常是扇区 6。 如果备份引导扇区之后有可用空间，则 FAT32
+信息扇区的备份将放在备份引导扇区之后，通常位于第 7 扇区。 备份必须在保留扇区范围内。 值 0 完全禁止创建备份引导和信息 FAT32 扇区。
+.IP \fB\-c\fP 4
+在创建文件系统之前检查设备是否有坏块。
+.IP \fB\-C\fP 4
+创建命令行中给出的 \fIDEVICE\fP 文件，并将要创建的文件系统写入其中。 这可用于在文件中而不是在真实设备上创建新的文件系统，并避免提前使用
+\fBdd\fP 来创建适当大小的文件。 使用此选项时，必须给出 \fIBLOCK\-COUNT\fP，否则将不知道文件系统的预期大小。
+创建的文件是一个稀疏文件，实际上只包含元数据区域 (引导扇区、FAT 和根目录)。 数据部分不会存储在磁盘上，但文件的大小仍然正确。
+生成的文件可以稍后复制到软盘或其他设备，或通过循环设备安装。
+.IP "\fB\-D\fP \fIDRIVE\-NUMBER\fP" 4
+指定要存储在 FAT 引导扇区中的 BIOS 驱动器号。 对于硬盘和可移动媒体，它通常是 0x80\(en0xFF (0x80 是第一个硬盘
+C:，0x81 是第二个硬盘 D:，...)，对于软盘设备或用于软盘仿真的分区，它是 0x00\(en0x7F (0x00 是第一张软盘 A:，0x01
+是第二张软盘 B:)。
+.IP "\fB\-f\fP \fINUMBER\-OF\-FATS\fP" 4
+指定文件系统中文件分配表的数量。 默认是 2.
+.IP "\fB\-F\fP \fIFAT\-SIZE\fP" 4
+指定使用的文件分配表的类型 (12、16 或 32 位)。 如果没有指定，\fBmkfs.fat\fP 将自动选择 12、16 和 32
+位，无论哪种更适合文件系统大小。
+.IP "\fB\-g\fP \fIHEADS\fP/\fISECTORS\-PER\-TRACK\fP" 4
+指定代表 \fIDEVICE\fP 的磁盘几何形状的 \fIHEADS\fP 和 \fISECTORS\-PER\-TRACK\fP 数字。 这两个数字都存储在 FAT
+引导扇区中。 编号 \fISECTORS\-PER\-TRACK\fP 也用于对齐 FAT 扇区的总数。 默认情况下，磁盘几何是从 \fIDEVICE\fP
+本身读取的。 如果它不可用，则使用 \fILBA\-Assist Translation\fP 和基于磁盘扇区总数的 \fISD Card Part 2 File System Specification\fP 的转换表。
+.IP "\fB\-h\fP \fINUMBER\-OF\-HIDDEN\-SECTORS\fP" 4
+指定存储在 FAT 引导扇区中的所谓 \fIhidden sectors\fP 的编号: 此编号代表包含文件系统的分区的起始扇区。
+通常这是相对于磁盘开始的偏移量 (以扇区为单位)，尽管对于 0x05 类型的扩展分区 (非 LBA 扩展分区) 中包含的 MBR 逻辑卷，FAT 的
+MS\-DOS 实现中的一个怪癖需要它与包含扩展引导记录的分区的 immediate 相关。 引导代码和其他处理 FAT
+卷的软件也可能依赖于正确设置该字段; 大多数现代 FAT 实现都会忽略它。 默认情况下，如果 \fIDEVICE\fP 是分区块设备，\fBmkfs.fat\fP
+使用相对于磁盘起始的分区偏移量。 否则，\fBmkfs.fat\fP 假定为零。 使用此选项覆盖此行为。
+.IP "\fB\-i\fP \fIVOLUME\-ID\fP" 4
+设置新创建的文件系统的卷 ID; \fIVOLUME\-ID\fP 是一个 32 位的十六进制数 (例如，2e24ec82)。
+默认值是一个取决于文件系统创建时间的数字。
+.IP \fB\-I\fP 4
+忽略并禁用安全检查。 默认情况下，\fBmkfs.fat\fP 拒绝在具有分区或虚拟映射的设备上创建文件系统。 \fBmkfs.fat\fP
+会抱怨并告诉您它拒绝工作。 这在使用 MO 磁盘时有所不同。 MO 磁盘上并不总是需要分区。 文件系统可以直接进入整个磁盘。 在其他操作系统下，这称为
+\fIsuperfloppy\fP 格式。 此开关将强制 \fBmkfs.fat\fP 正常工作。
+.IP "\fB\-l\fP \fIFILENAME\fP" 4
+从 \fIFILENAME\fP 读取坏块列表。
+.IP "\fB\-m\fP \fIMESSAGE\-FILE\fP" 4
+设置用户在未正确安装操作系统的情况下尝试启动此文件系统时收到的消息。 一旦将换行符转换为回车换行符组合并展开制表符，消息文件不得超过 418 字节。
+如果文件名是连字符 (\-)，则文本取自标准输入。
+.IP "\fB\-M\fP \fIFAT\-MEDIA\-TYPE\fP" 4
+指定要存储在 FAT 引导扇区中的媒体类型。 对于硬盘，该值通常是 0xF8，对于软盘或用于软盘仿真的分区，该值通常是 0xF0 或从 0xF9 到
+0xFF 的值。
+.IP \fB\-\-mbr\fP[=\fIy\fP|\fIyes\fP|\fIn\fP|\fIno\fP|\fIa\fP|\fIauto\fP] 4
+用磁盘签名一个分区填充 (fake) MBR 表，该分区从扇区 0 (包括 MBR 本身) 开始并跨越整个磁盘设备。 只有在 Microsoft
+Windows 系统上使用的不可移动磁盘以及格式化整个未分区磁盘时才需要它。 磁盘签名和分区表的位置与第一个 FAT 扇区 (引导代码位置)
+的末尾重叠，因此没有额外的空间使用。 默认是 \fIauto\fP 模式，其中 \fBmkfs.fat\fP 在格式化整个未分区磁盘时只为不可移动磁盘放置 MBR
+表。
+.IP "\fB\-n\fP \fIVOLUME\-NAME\fP" 4
+设置文件系统的卷名 (label)。 卷名称最长可达 11 个字符。 提供空字符串、仅由空格组成的字符串或字符串 "NO NAME" 作为
+\fIVOLUME\-NAME\fP 与不提供 \fB\-n\fP 选项的效果相同。 默认是没有标签。
+.IP \fB\-\-codepage\fP=\fIPAGE\fP 4
+使用 DOS 代码页 \fIPAGE\fP 对标签进行编码。 默认使用代码页 850。
+.IP "\fB\-r\fP \fIROOT\-DIR\-ENTRIES\fP" 4
+选择根目录中可用条目的最少数量。 软盘的默认值为 112 或 224，硬盘的默认值为 512。 请注意，这是最小数量，由于结构对齐，它可能会增加
+\fBmkfs.fat\fP。 另请详见 \fBmkfs.fat\fP 选项 \fB\-a\fP。
+.IP "\fB\-R\fP \fINUMBER\-OF\-RESERVED\-SECTORS\fP" 4
+选择最少数量的保留扇区。 对于 FAT32 格式，至少需要 2 个保留扇区，默认为 32。 否则默认为 1 (仅引导扇区)。
+请注意，这是最小数量，由于结构对齐，它可能会增加 \fBmkfs.fat\fP。 另请详见 \fBmkfs.fat\fP 选项 \fB\-a\fP。
+.IP "\fB\-s\fP \fISECTORS\-PER\-CLUSTER\fP" 4
+指定每个簇的磁盘扇区数。 必须是 2 的幂，即 1, 2, 4, 8, ... 128.
+.IP "\fB\-S\fP \fILOGICAL\-SECTOR\-SIZE\fP" 4
+指定每个逻辑扇区的字节数。 必须是 2 的幂并且大于或等于 512，即 512、1024、2048、4096、8192、16384 或 32768。
+大于 4096 的值不符合 FAT 文件系统规范，可能无法在任何地方使用。
+.IP \fB\-v\fP 4
+详细执行。
+.IP "\fB\-\-offset\fP \fISECTOR\fP" 4
+将特定扇区的文件系统写入设备文件。 这对于在分区磁盘映像中创建文件系统非常有用，而无需设置循环设备。
+.IP "\fB\-\-variant\fP \fITYPE\fP" 4
+创建变体 \fITYPE\fP 的文件系统。 可接受的值为 \fIstandard\fP 和 \fIatari\fP (upper/lower 大小写的任意组合)。
+有关差异，请参见上文描述。
+.IP \fB\-\-help\fP 4
+显示选项总结并退出。
+.IP \fB\-\-invariant\fP 4
+.\" ----------------------------------------------------------------------------
+对通常随机生成或基于时间的数据 (例如卷 ID 和创建时间) 使用常量。 使用此选项在同一设备上多次运行 \fBmkfs.fat\fP 会产生相同的结果。
+它的主要用途是测试 \fBmkfs.fat\fP。
+.SH BUGS
+.\" ----------------------------------------------------------------------------
+\fBmkfs.fat\fP 无法创建可引导的文件系统。 由于各种原因，这并不像您乍看之下想象的那么容易，并且已经进行了很多讨论。 \fBmkfs.fat\fP
+根本不支持它; )
+.SH "SEE ALSO"
+.\" ----------------------------------------------------------------------------
+\fBfatlabel\fP(8), \fBfsck.fat\fP(8)
+.SH HOMEPAGE
+.\" ----------------------------------------------------------------------------
+\fBdosfstools\fP 项目的主页是它的
+.UR https://github.com/dosfstools/dosfstools
+GitHub 项目页面
+.UE .
+.SH AUTHORS
+\fBdosfstools\fP 由
+.MT werner.almesberger@\:lrc.di.epfl.ch
+Werner
+Almesberger
+.ME ,
+.MT Roman.Hodek@\:informatik.\:uni\-erlangen.de
+Roman
+Hodek
+.ME ,
+等人编写。 目前的维护者是
+.MT aeb@\:debian.org
+Andreas Bombe
+.ME
+和
+.MT pali.rohar@\:gmail.com
+Pali Rohár
+.ME .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

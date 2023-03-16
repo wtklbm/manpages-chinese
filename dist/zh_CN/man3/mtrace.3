@@ -1,0 +1,137 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2012 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mtrace 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+mtrace、muntrace\-malloc 跟踪
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <mcheck.h>\fP
+.PP
+\fBvoid mtrace(void);\fP
+\fBvoid muntrace(void);\fP
+.fi
+.SH DESCRIPTION
+\fBmtrace\fP() 函数为 memory\-allocation 函数 (\fBmalloc\fP(3),\fBrealloc\fP(3)
+\fBmemalign\fP(3),\fBfree\fP(3)) 安装 hook 函数。 这些钩子函数记录了有关内存分配和释放的跟踪信息。
+跟踪信息可用于发现内存泄漏并尝试释放程序中未分配的内存。
+.PP
+\fBmuntrace\fP() 函数禁用 \fBmtrace\fP() 安装的钩子函数，因此不再记录内存分配函数的跟踪信息。 如果 \fBmtrace\fP()
+没有成功安装钩子数，\fBmuntrace\fP() 什么都不做。
+.PP
+调用 \fBmtrace\fP() 时，它会检查环境变量 \fBMALLOC_TRACE\fP 的值，该值应包含要记录跟踪信息的文件的路径名。
+如果路径名被成功打开，它将被截断为零长度。
+.PP
+如果未设置 \fBMALLOC_TRACE\fP，或者它指定的路径名无效或不可写，则不会安装，钩子，函数，并且 \fBmtrace\fP() 无效。 在
+set\-user\-ID 和 set\-group\-ID 程序中，\fBMALLOC_TRACE\fP 被忽略，\fBmtrace\fP() 没有作用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmtrace\fP(),
+\fBmuntrace\fP()
+T}	Thread safety	MT\-Unsafe
+.TE
+.hy
+.ad
+.sp 1
+.\" FIXME: The marking is different from that in the glibc manual,
+.\" markings in glibc manual are more detailed:
+.\"
+.\"      mtrace: MT-Unsafe env race:mtrace const:malloc_hooks init
+.\"      muntrace: MT-Unsafe race:mtrace const:malloc_hooks locale
+.\"
+.\" But there is something wrong in glibc manual, for example:
+.\" glibc manual says muntrace should have marking locale because it calls
+.\" fprintf(), but muntrace does not execute area which cause locale problem.
+.SH STANDARDS
+这些函数是 GNU 的扩展名。
+.SH NOTES
+在正常使用中，\fBmtrace\fP() 在程序开始执行时被调用一次，\fBmuntrace\fP() 永远不会被调用。
+.PP
+在调用 \fBmtrace\fP() 后产生的跟踪输出是文本的，但不是设计为人类可读的。 GNU C 库提供了一个 Perl 脚本
+\fBmtrace\fP(1)，它解释跟踪日志并生成人类可读的输出。 为获得最佳结果，应在启用调试的情况下编译跟踪程序，以便将行号信息记录在可执行文件中。
+.PP
+\fBmtrace\fP() 执行的跟踪会导致性能下降 (如果 \fBMALLOC_TRACE\fP 指向有效的可写路径名)。
+.SH BUGS
+\fBmtrace\fP(1) 生成的行号信息并不总是准确的: 行号引用可能指的是源代码的前一个或后一个 (nonblank) 行。
+.SH EXAMPLES
+下面的 shell 会话演示了在两个不同位置存在内存泄漏的程序中 \fBmtrace\fP() 函数和 \fBmtrace\fP(1) 命令的使用。
+演示使用以下程序:
+.PP
+.in +4n
+.\" SRC BEGIN (t_mtrace.c)
+$ \fBcat t_mtrace.c\fP
+.EX
+#include <mcheck.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    mtrace();
+
+    for (unsigned int j = 0; j < 2; j++)
+        malloc(100);            /* Never freed\-\-a memory leak */
+
+    calloc(16, 16);             /* Never freed\-\-a memory leak */
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.in
+.PP
+当我们按如下方式运行程序时，我们看到 \fBmtrace\fP() 在程序的两个不同位置诊断出内存泄漏:
+.PP
+.in +4n
+.EX
+$ \fBcc \-g t_mtrace.c \-o t_mtrace\fP
+$ \fBexport MALLOC_TRACE=/tmp/t\fP
+$ \fB./t_mtrace\fP
+$ \fBmtrace ./t_mtrace $MALLOC_TRACE\fP
+内存未释放:
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+   Address     Size     Caller
+0x084c9378     0x64  at /home/cecilia/t_mtrace.c:12
+0x084c93e0     0x64  at /home/cecilia/t_mtrace.c:12
+0x084c9448    0x100  at /home/cecilia/t_mtrace.c:16
+.EE
+.in
+.PP
+关于未释放内存的前两条消息对应于 \fIfor\fP 循环内的两个 \fBmalloc\fP(3) 调用。 最终消息对应于对 \fBcalloc\fP(3) 的调用
+(它又调用 \fBmalloc\fP(3)).
+.SH "SEE ALSO"
+\fBmtrace\fP(1), \fBmalloc\fP(3), \fBmalloc_hook\fP(3), \fBmcheck\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

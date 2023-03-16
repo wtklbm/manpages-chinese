@@ -1,0 +1,192 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2005, 2013 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" a few fragments from an earlier (1996) version by
+.\" Andries Brouwer (aeb@cwi.nl) remain.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Rewritten old page, 960210, aeb@cwi.nl
+.\" Updated, added strtok_r. 2000-02-13 Nicolás Lichtmaier <nick@debian.org>
+.\" 2005-11-17, mtk: Substantial parts rewritten
+.\" 2013-05-19, mtk: added much further detail on the operation of strtok()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strtok 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strtok, strtok_r \- 从字符串中提取 tokens
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <string.h>\fP
+.PP
+\fBchar *strtok(char *restrict \fP\fIstr\fP\fB, const char *restrict \fP\fIdelim\fP\fB);\fP
+\fBchar *strtok_r(char *restrict \fP\fIstr\fP\fB, const char *restrict \fP\fIdelim\fP\fB,\fP
+\fB               char **restrict \fP\fIsaveptr\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBstrtok_r\fP():
+.nf
+    _POSIX_C_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBstrtok\fP() 函数将字符串分解为零个或多个非空 tokens 的序列。 在第一次调用 \fBstrtok\fP() 时，要在 \fIstr\fP
+中指定要解析的字符串。 在随后的每个应解析相同字符串的调用中，\fIstr\fP 必须为 NULL。
+.PP
+\fIdelim\fP 参数指定一组字节，用于在解析的字符串中分隔 tokens。 调用者可以在解析相同字符串的连续调用中在 \fIdelim\fP
+中指定不同的字符串。
+.PP
+对 \fBstrtok\fP() 的每个调用都会返回一个指向包含下一个 token 的空终止字符串的指针。 该字符串不包括定界字节。 如果找不到更多的
+tokens，则 \fBstrtok\fP() 返回 NULL。
+.PP
+对同一字符串进行操作的对 \fBstrtok\fP() 的一系列调用会维护一个指针，该指针确定开始搜索下一个 token 的点。 对 \fBstrtok\fP()
+的第一个调用将此指针设置为指向字符串的第一个字节。 下一个 token 的开始是通过向前扫描 \fIstr\fP 中的下一个非定界符字节来确定的。
+如果找到这样的字节，则将其作为下一个 token 的开始。 如果没有找到这样的字节，则不再有 tokens，\fBstrtok\fP() 返回 NULL。
+(因此，空字符串或仅包含定界符的字符串将导致 \fBstrtok\fP() 在第一个调用上返回 NULL。)
+.PP
+通过向前扫描找到每个 token 的结尾，直到找到下一个定界符字节或直到遇到终止空字节 (\[aq]\e0\[aq])。
+如果找到分隔符字节，则用空字节覆盖它以终止当前 token，并且 \fBstrtok\fP() 保存指向后续字节的指针; 该指针将用作搜索下一个 token
+时的起点。 在这种情况下，\fBstrtok\fP() 返回指向找到的 token 开始的指针。
+.PP
+从上面的描述可以看出，解析字符串中的两个或多个连续分隔符字节的序列被认为是单个分隔符，字符串开头或结尾的分隔符字节将被忽略。 换句话说:
+\fBstrtok\fP() 返回的 tokens 总是非空字符串。 因此，例如，给定字符串 "\fIaaa;;bbb,\fP"，连续调用指定分隔符字符串
+"\fI;,\fP" 的 \fBstrtok\fP() 将返回字符串 "\fIaaa\fP" 和 "\fIbbb\fP"，然后是空指针。
+.PP
+\fBstrtok_r\fP() 函数是 \fBstrtok\fP() 的可重入版本。 \fIsaveptr\fP 参数是指向 \fIchar\~*\fP
+变量的指针，\fBstrtok_r\fP() 在内部使用该变量，以便在解析相同字符串的连续调用之间保持上下文。
+.PP
+在第一次调用 \fBstrtok_r\fP() 时，\fIstr\fP 应该指向要解析的字符串，而忽略 \fI*saveptr\fP 的值 (但请参见 NOTES)。
+在后续调用中，\fIstr\fP 应为 NULL，并且 \fIsaveptr\fP (及其指向的缓冲区) 自上次调用后应保持不变。
+.PP
+可以使用指定不同 \fIsaveptr\fP 参数的 \fBstrtok_r\fP() 调用序列同时解析不同的字符串。
+.SH "RETURN VALUE"
+\fBstrtok\fP() 和 \fBstrtok_r\fP() 函数返回指向下一个 token 的指针，如果没有更多的 tokens，则返回 NULL。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrtok\fP()
+T}	Thread safety	MT\-Unsafe race:strtok
+T{
+\fBstrtok_r\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.TP 
+\fBstrtok\fP()
+POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.TP 
+\fBstrtok_r\fP()
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+.\" Tru64, according to its manual page
+在某些实现中，\fI*saveptr\fP 在用于解析 \fIstr\fP 的第一个调用 \fBstrtok_r\fP() 时需要为 NULL。
+.SH BUGS
+使用这些函数时要小心。 如果您确实使用它们，请注意:
+.IP \[bu] 3
+这些函数修改他们的第一个参数。
+.IP \[bu]
+这些函数不能用在常量，字符串，上。
+.IP \[bu]
+定界字节的身份丢失。
+.IP \[bu]
+\fBstrtok\fP() 函数在解析时使用静态缓冲区，因此它不是线程安全的。 如果这对您很重要，请使用 \fBstrtok_r\fP()。
+.SH EXAMPLES
+下面的程序使用嵌套循环，利用 \fBstrtok_r\fP() 将字符串分解为 tokens 的两级层次结构。 第一个命令行参数指定要解析的字符串。
+第二个参数指定分隔符 byte(s)，用于将该字符串分隔为 "major" tokens。 第三个参数指定分隔符 byte(s)，用于将 "major"
+tokens 分隔为子标记。
+.PP
+该程序产生的输出示例如下:
+.PP
+.in +4n
+.EX
+$\fB ./a.out \[aq]a/bbb///cc;xxx:yyy:\[aq] \[aq]:;\[aq] \[aq]/\[aq]\fP
+1: a/bbb///cc
+         \-\-> a
+         \-\-> bbb
+         \-\-> cc
+2: xxx
+         \-\-> xxx
+3: yyy
+         \-\-> yyy
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (strtok.c)
+\&
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    char *str1, *str2, *token, *subtoken;
+    char *saveptr1, *saveptr2;
+    int j;
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s string delim subdelim\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    for (j = 1, str1 = argv[1]; ; j++, str1 = NULL) {
+        token = strtok_r(str1, argv[2], &saveptr1);
+        if (token == NULL)
+            break;
+        printf("%d: %s\en", j, token);
+
+        for (str2 = token; ; str2 = NULL) {
+            subtoken = strtok_r(str2, argv[3], &saveptr2);
+            if (subtoken == NULL)
+                break;
+            printf("\et \-\-> %s\en", subtoken);
+        }
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.PP
+另一个使用 \fBstrtok\fP() 的示例程序可以在 \fBgetaddrinfo_a\fP(3) 中找到。
+.SH "SEE ALSO"
+\fBmemchr\fP(3), \fBstrchr\fP(3), \fBstring\fP(3), \fBstrpbrk\fP(3), \fBstrsep\fP(3),
+\fBstrspn\fP(3), \fBstrstr\fP(3), \fBwcstok\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

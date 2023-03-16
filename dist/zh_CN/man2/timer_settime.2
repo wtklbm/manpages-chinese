@@ -1,0 +1,112 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2009 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH timer_settime 2 2022\-12\-03 "Linux man\-pages 6.03" 
+.SH NAME
+timer_settime, timer_gettime\-arm/disarm 和 POSIX 每个进程定时器的获取状态
+.SH LIBRARY
+实时库 (\fIlibrt\fP、\fI\-lrt\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBint timer_settime(timer_t \fP\fItimerid\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB                  const struct itimerspec *restrict \fP\fInew_value\fP\fB,\fP
+\fB                  struct itimerspec *_Nullable restrict \fP\fIold_value\fP\fB);\fP
+\fBint timer_gettime(timer_t \fP\fItimerid\fP\fB, struct itimerspec *\fP\fIcurr_value\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBtimer_settime\fP(), \fBtimer_gettime\fP():
+.nf
+    _POSIX_C_SOURCE >= 199309L
+.fi
+.SH DESCRIPTION
+\fBtimer_settime\fP() 分支或解除 \fItimerid\fP 所识别的定时器。 \fInew_value\fP 参数是指向
+\fIitimerspec\fP 结构体的指针，它指定新的初始值和定时器的新间隔。 \fIitimerspec\fP 结构体在
+\fBitimerspec\fP(3type) 中描述。
+.PP
+\fIitimerspec\fP 结构体的每个子结构都是 \fBtimespec\fP(3) 结构体，它允许以秒和纳秒为单位指定时间值。 这些时间值是根据
+\fBtimer_create\fP(2) 创建定时器时指定的时钟来测量的。
+.PP
+如果 \fInew_value\->it_value\fP 指定一个非零值 (即，任一子字段非零)，则 \fBtimer_settime\fP() 分支
+(starts) 计时器，将其设置为在给定时间最初到期。 (如果定时器已经准备就绪，则先前的设置将被覆盖。) 如果
+\fInew_value\->it_value\fP 指定零值 (即，两个子字段均为零)，则定时器将被解除。
+.PP
+\fInew_value\->it_interval\fP 字段指定定时器的周期，以秒和纳秒为单位。
+如果此字段非零，则每次武装定时器到期时，定时器都会从 \fInew_value\->it_interval\fP 中指定的值重新加载。 如果
+\fInew_value\->it_interval\fP 指定零值，则计时器仅在 \fIit_value\fP 指定的时间到期一次。
+.PP
+.\" By experiment: the overrun count is set correctly, for CLOCK_REALTIME.
+默认情况下，\fInew_value\->it_value\fP 中指定的初始过期时间被解释为相对于调用时计时器时钟上的当前时间。 这可以通过在
+\fIflags\fP 中指定 \fBTIMER_ABSTIME\fP 来修改，在这种情况下，\fInew_value\->it_value\fP
+被解释为定时器时钟上测量的绝对值; 即当时钟值达到 \fInew_value\->it_value\fP 指定的值时，定时器将超时。
+如果指定的绝对时间已经过去，则定时器立即终止，溢出计数 (见 \fBtimer_getoverrun\fP(2)) 将被正确设置。
+.PP
+.\" Similar remarks might apply with respect to process and thread CPU time
+.\" clocks, but these clocks are not currently (2.6.28) settable on Linux.
+如果在配备基于该时钟的绝对计时器时调整 \fBCLOCK_REALTIME\fP 时钟的值，则将适当调整计时器的到期时间。 对
+\fBCLOCK_REALTIME\fP 时钟的调整对基于该时钟的相关计时器没有影响。
+.PP
+如果 \fIold_value\fP 不为 NULL，则它指向一个缓冲区，该缓冲区用于返回定时器的前一个间隔 (在
+\fIold_value\->it_interval\fP) 中以及定时器之前下一次到期之前的时间量 (在
+\fIold_value\->it_value\fP) 中)。
+.PP
+\fBtimer_gettime\fP() 在 \fIcurr_value\fP 指向的缓冲区中为 \fItimerid\fP 指定的定时器返回到下一次到期的时间和间隔。
+在 \fIcurr_value\->it_value\fP 中返回到下一次定时器到期的剩余时间; 这始终是一个相对值，无论在启用定时器时是否使用了
+\fBTIMER_ABSTIME\fP 标志。 如果 \fIcurr_value\->it_value\fP 中返回的值为零，则定时器当前处于解除状态。
+计时器间隔在 \fIcurr_value\->it_interval\fP 中返回。 如果 \fIcurr_value\->it_interval\fP
+中返回的值为零，则这是一个 "one\-shot" 定时器。
+.SH "RETURN VALUE"
+成功时，\fBtimer_settime\fP() 和 \fBtimer_gettime\fP() 返回 0。 出错时返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+这些函数可能会失败并出现以下错误:
+.TP 
+\fBEFAULT\fP
+\fInew_value\fP、\fIold_value\fP 或 \fIcurr_value\fP 不是有效指针。
+.TP 
+\fBEINVAL\fP
+.\" FIXME . eventually: invalid value in flags
+\fItimerid\fP 无效。
+.PP
+\fBtimer_settime\fP() 可能会因以下错误而失败:
+.TP 
+\fBEINVAL\fP
+\fInew_value.it_value\fP 为，负; 或者 \fInew_value.it_value.tv_nsec\fP 是 negative 或大于
+999,999,999。
+.SH VERSIONS
+这些系统调用从 Linux 2.6 开始可用。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH EXAMPLES
+请参见 \fBtimer_create\fP(2)。
+.SH "SEE ALSO"
+\fBtimer_create\fP(2), \fBtimer_getoverrun\fP(2), \fBtimespec\fP(3), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

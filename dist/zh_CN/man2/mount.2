@@ -1,0 +1,462 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1993 Rickard E. Faith <faith@cs.unc.edu>
+.\" and Copyright (C) 1994 Andries E. Brouwer <aeb@cwi.nl>
+.\" and Copyright (C) 2002, 2005, 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1996-11-04 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2001-10-13 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Added note on historical behavior of MS_NOSUID
+.\" Modified 2002-05-16 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Extensive changes and additions
+.\" Modified 2002-05-27 by aeb
+.\" Modified 2002-06-11 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Enhanced descriptions of MS_MOVE, MS_BIND, and MS_REMOUNT
+.\" Modified 2004-06-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" 2005-05-18, mtk, Added MNT_EXPIRE, plus a few other tidy-ups.
+.\" 2008-10-06, mtk: move umount*() material into separate umount.2 page.
+.\" 2008-10-06, mtk: Add discussion of namespaces.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mount 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mount \- 挂载文件系统
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mount.h>\fP
+.PP
+\fBint mount(const char *\fP\fIsource\fP\fB, const char *\fP\fItarget\fP\fB,\fP
+\fB          const char *\fP\fIfilesystemtype\fP\fB, unsigned long \fP\fImountflags\fP\fB,\fP
+\fB          const void *_Nullable \fP\fIdata\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBmount\fP() 将 \fIsource\fP 指定的文件系统 (通常是指设备的路径名，但也可以是目录或文件的路径名，或虚拟字符串) 附加到
+\fItarget\fP 中的路径名指定的位置 (目录或文件) .
+.PP
+挂载文件系统需要适当的权限 (Linux: \fBCAP_SYS_ADMIN\fP 能力)。
+.PP
+内核支持的 \fIfilesystemtype\fP 参数值在 \fI/proc/filesystems\fP 中列出
+(例如，"btrfs"、"ext4"、"jfs"、"xfs"、"vfat"、"fuse"、"tmpfs"、"cgroup"、"proc"、"mqueue"、"nfs"、"cifs"、"iso9660")。
+当加载适当的模块时，可能会出现更多类型。
+.PP
+\fIdata\fP 参数由不同的文件系统解释。 通常它是该文件系统理解的一串以逗号分隔的选项。 有关每种文件系统类型可用选项的详细信息，请参见
+\fBmount\fP(8)。 如果没有选项，这个参数可以指定为 NULL。
+.PP
+根据 \fImountflags\fP 中指定的位，对 \fBmount\fP() 的调用执行多种通用操作类型中的一种。 选择执行哪个操作由测试
+\fImountflags\fP 中设置的位决定，测试按此处列出的顺序进行:
+.IP \[bu] 3
+重新安装现有安装: \fImountflags\fP 包括 \fBMS_REMOUNT\fP。
+.IP \[bu]
+创建绑定挂载: \fImountflags\fP 包含 \fBMS_BIND\fP。
+.IP \[bu]
+更改现有安装的传播类型: \fImountflags\fP 包括 \fBMS_SHARED\fP、\fBMS_PRIVATE\fP、\fBMS_SLAVE\fP 或
+\fBMS_UNBINDABLE\fP 之一。
+.IP \[bu]
+将现有安装移动到新位置: \fImountflags\fP 包括 \fBMS_MOVE\fP。
+.IP \[bu]
+创建一个新的挂载: \fImountflags\fP 不包含上述任何标志。
+.PP
+.\"
+本页后面将详细介绍这些操作中的每一个。 可以在 \fImountflags\fP 中指定更多的标志来修改 \fBmount\fP() 的行为，如下所述。
+.SS "Additional mount flags"
+.\"
+.\" FIXME 2.6.25 Added MS_I_VERSION, which needs to be documented.
+.\" commit 7a224228ed79d587ece2304869000aad1b8e97dd
+.\" (This is a per-superblock flag)
+.\"
+下面的列表描述了可以在 \fImountflags\fP 中指定的附加标志。 请注意，某些操作类型会忽略部分或全部这些标志，如本页后面所述。
+.TP 
+\fBMS_DIRSYNC\fP (since Linux 2.5.19)
+使此文件系统上的目录更改同步。 (可以使用 \fBchattr\fP(1).) 为单个目录或子树获取此属性
+.TP 
+\fBMS_LAZYTIME\fP (since Linux 4.0)
+.\" commit 0ae45f63d4ef8d8eeec49c7d8b44a1775fff13e8
+.\" commit fe032c422c5ba562ba9c2d316f55e258e03259c6
+.\" commit a26f49926da938f47561f386be56a83dd37a496d
+通过仅在内存中维护这些更改来减少 inode 时间戳 (atime、mtime、ctime) 的磁盘更新。 磁盘上的时间戳仅在以下情况下更新:
+.RS
+.IP \[bu] 3
+inode 需要更新一些与文件时间戳无关的更改;
+.IP \[bu]
+该应用程序使用 \fBfsync\fP(2)、\fBsyncfs\fP(2) 或 \fBsync\fP(2);
+.IP \[bu]
+一个未删除的 inode 从内存中被逐出; or
+.IP \[bu]
+自 inode 写入磁盘以来已超过 24 小时。
+.RE
+.IP
+此挂载选项显着减少了更新 inode 时间戳所需的写入，尤其是 mtime 和 atime。 但是，在系统崩溃的情况下，磁盘上的 atime 和
+mtime 字段最多可能会过时 24 小时。
+.IP
+此选项可能具有显着优势的工作负载示例包括频繁随机写入预分配文件，以及还启用了 \fBMS_STRICTATIME\fP 挂载选项的情况。 (组合
+\fBMS_STRICTATIME\fP 和 \fBMS_LAZYTIME\fP 的优点是 \fBstat\fP(2) 将返回正确更新的 atime，但 atime
+更新仅在上面列出的情况下才会刷新到磁盘。)
+.TP 
+\fBMS_MANDLOCK\fP
+.\" commit 95ace75414f312f9a7b93d873f386987b92a5301
+允许强制锁定此文件系统中的文件。 (强制锁定仍然必须在每个文件的基础上启用，如 \fBfcntl\fP(2).) 中所述自 Linux 4.5
+以来，此安装选项需要 \fBCAP_SYS_ADMIN\fP 功能和配置有 \fBCONFIG_MANDATORY_FILE_LOCKING\fP 选项的内核。
+强制锁定已在 Linux 5.15 中完全弃用，因此该标志应被视为已弃用。
+.TP 
+\fBMS_NOATIME\fP
+不要更新此文件系统上 (所有类型的) 文件的访问时间。
+.TP 
+\fBMS_NODEV\fP
+不允许访问此文件系统上的设备 (特殊文件)。
+.TP 
+\fBMS_NODIRATIME\fP
+不要更新此文件系统上目录的访问时间。 该标志提供了 \fBMS_NOATIME\fP 提供的功能的子集; 也就是说，\fBMS_NOATIME\fP 意味着
+\fBMS_NODIRATIME\fP。
+.TP 
+\fBMS_NOEXEC\fP
+.\" (Possibly useful for a filesystem that contains non-Linux executables.
+.\" Often used as a security feature, e.g., to make sure that restricted
+.\" users cannot execute files uploaded using ftp or so.)
+不允许从此文件系统执行程序。
+.TP 
+\fBMS_NOSUID\fP
+.\" (This is a security feature to prevent users executing set-user-ID and
+.\" set-group-ID programs from removable disk devices.)
+从该文件系统执行程序时，不要遵守 set\-user\-ID 和 set\-group\-ID 位或文件功能。 此外，SELinux 域转换需要权限
+\fInosuid_transition\fP，这反过来也需要策略能力 \fInnp_nosuid_transition\fP。
+.TP 
+\fBMS_RDONLY\fP
+以只读方式挂载文件系统。
+.TP 
+\fBMS_REC\fP (since Linux 2.4.11)
+与 \fBMS_BIND\fP 结合使用以创建递归绑定挂载，并与传播类型标志结合使用以递归更改子树中所有挂载的传播类型。 有关详细信息，请参见下文。
+.TP 
+\fBMS_RELATIME\fP (since Linux 2.6.20)
+.\" Matthew Garrett notes in the patch that added this behavior
+.\" that this lets utilities such as tmpreaper (which deletes
+.\" files based on last access time) work correctly.
+当访问此文件系统上的文件时，仅当 atime 的当前值小于或等于文件的最后修改时间 (mtime) 或最后状态更改时间 (ctime)
+时，才更新文件的最后访问时间 (atime)。 此选项对于需要知道文件自上次修改后何时被读取的程序 (例如 \fBmutt\fP(1)) 很有用。 从
+Linux 2.6.30 开始，内核默认为该标志提供的行为 (除非指定了 \fBMS_NOATIME\fP)，并且需要 \fBMS_STRICTATIME\fP
+标志才能获得传统语义。 此外，自 Linux 2.6.30 起，如果文件的上次访问时间超过 1 天，则始终更新。
+.TP 
+\fBMS_SILENT\fP (since Linux 2.6.17)
+禁止在内核日志中显示某些 (\fIprintk\fP()) 警告消息。 此标志取代了名称错误且已过时的 \fBMS_VERBOSE\fP 标志 (自 Linux
+2.4.12 起可用)，后者具有相同的含义。
+.TP 
+\fBMS_STRICTATIME\fP (since Linux 2.6.30)
+访问此文件系统上的文件时，始终更新上次访问时间 (atime)。 (这是 Linux 2.6.30 之前的默认行为。) 指定此标志会覆盖设置
+\fBMS_NOATIME\fP 和 \fBMS_RELATIME\fP 标志的效果。
+.TP 
+\fBMS_SYNCHRONOUS\fP
+同步写入此文件系统 (就好像为所有打开此文件系统的文件指定了 \fBopen\fP(2) 的 \fBO_SYNC\fP 标志)。
+.TP 
+\fBMS_NOSYMFOLLOW\fP (since Linux 5.10)
+.\" dab741e0e02bd3c4f5e2e97be74b39df2523fc6e
+解析路径时不要遵循符号链接。 仍然可以创建符号链接，并且 \fBreadlink\fP(1)、\fBreadlink\fP(2)、\fBrealpath\fP(1) 和
+\fBrealpath\fP(3) 仍然可以正常工作。
+.PP
+从 Linux 2.4
+开始，上面的一些标志可以在每个挂载的基础上设置，而其他的则适用于挂载文件系统的超级块，这意味着同一文件系统的所有挂载共享这些标志。
+(以前，所有标志都是每个超级块。)
+.PP
+每个挂载点标志如下:
+.IP \[bu] 3
+从 Linux 2.4 开始: \fBMS_NODEV\fP、\fBMS_NOEXEC\fP 和 \fBMS_NOSUID\fP 标志可在每个安装点的基础上设置。
+.IP \[bu]
+此外，由于 Linux 2.6.16: \fBMS_NOATIME\fP 和 \fBMS_NODIRATIME\fP。
+.IP \[bu]
+此外，由于 Linux 2.6.20: \fBMS_RELATIME\fP。
+.PP
+.\" And MS_I_VERSION?
+以下标志是每个超级块的: \fBMS_DIRSYNC\fP、\fBMS_LAZYTIME\fP、\fBMS_MANDLOCK\fP、\fBMS_SILENT\fP 和
+\fBMS_SYNCHRONOUS\fP。 这些标志的初始设置在文件系统的第一次挂载时确定，并将由同一文件系统的所有后续挂载共享。
+随后，可以通过重新安装操作更改标志的设置 (见下文)。 此类更改将通过与文件系统关联的所有挂载可见。
+.PP
+.\"
+从 Linux 2.6.16 开始，\fBMS_RDONLY\fP 可以在每个挂载点以及底层文件系统超级块上设置或清除。
+仅当文件系统和挂载点都未标记为只读时，挂载的文件系统才可写。
+.SS "Remounting an existing mount"
+可以通过在 \fImountflags\fP 中指定 \fBMS_REMOUNT\fP 来重新安装现有安装。 这允许您更改现有安装的 \fImountflags\fP 和
+\fIdata\fP，而无需卸载并重新安装文件系统。 \fItarget\fP 应与初始 \fBmount\fP() 调用中指定的值相同。
+.PP
+\fIsource\fP 和 \fIfilesystemtype\fP 参数被忽略。
+.PP
+\fImountflags\fP 和 \fIdata\fP 参数应与原始 \fBmount\fP() 调用中使用的值相匹配，但有意更改的参数除外。
+.PP
+.\" FIXME
+.\" MS_LAZYTIME seems to be available only on a few filesystems,
+.\" and on ext4, it seems (from experiment that this flag
+.\" can only be enabled (but not disabled) on a remount.
+.\" The following code in ext4_remount() (kernel 4.17) seems to
+.\" confirm this:
+.\"
+.\"        if (*flags & SB_LAZYTIME)
+.\"                sb->s_flags |= SB_LAZYTIME;
+.\" See the definition of MS_RMT_MASK in include/uapi/linux/fs.h,
+.\" which excludes MS_DIRSYNC and MS_SILENT, although SB_DIRSYNC
+.\" and SB_SILENT are split out as per-superblock flags in do_mount()
+.\" (Linux 4.17 source code)
+以下 \fImountflags\fP 可以改变:
+\fBMS_LAZYTIME\fP、\fBMS_MANDLOCK\fP、\fBMS_NOATIME\fP、\fBMS_NODEV\fP、\fBMS_NODIRATIME\fP、\fBMS_NOEXEC\fP、\fBMS_NOSUID\fP、\fBMS_RELATIME\fP、\fBMS_RDONLY\fP、\fBMS_STRICTATIME\fP
+(其作用是清除 \fBMS_NOATIME\fP 和 \fBMS_RELATIME\fP 标志位) 和 \fBMS_SYNCHRONOUS\fP。 在重新安装期间尝试更改
+\fBMS_DIRSYNC\fP 和 \fBMS_SILENT\fP 标志的设置将被忽略。 请注意，每个超级块标志的更改通过关联文件系统的所有挂载都是可见的
+(因为每个超级块标志由所有挂载共享)。
+.PP
+.\" commit ffbc6f0ead47fa5a1dc9642b0331cb75c20a640e
+自 Linux 3.17 起，如果 \fImountflags\fP 中未指定
+\fBMS_NOATIME\fP、\fBMS_NODIRATIME\fP、\fBMS_RELATIME\fP 或
+\fBMS_STRICTATIME\fP，则重新挂载操作会保留这些标志的现有值 (而不是默认为 \fBMS_RELATIME\fP)。
+.PP
+.\" See https://lwn.net/Articles/281157/
+从 Linux 2.6.26 开始，\fBMS_REMOUNT\fP 标志可以与 \fBMS_BIND\fP 一起使用以仅修改每个挂载点标志。
+这对于在不更改底层文件系统的情况下设置或清除挂载上的 "read\-only" 标志特别有用。 将 \fImountflags\fP 指定为:
+.PP
+.in +4n
+.EX
+MS_REMOUNT | MS_BIND | MS_RDONLY
+.EE
+.in
+.PP
+.\"
+将使通过此挂载点的访问变为只读，而不会影响其他挂载。
+.SS "Creating a bind mount"
+.\" since Linux 2.4.0-test9
+如果 \fImountflags\fP 包含 \fBMS_BIND\fP (自 Linux 2.4 起可用)，则执行绑定安装。
+绑定挂载使文件或目录子树在单个目录层次结构中的另一点可见。 绑定挂载可能跨越文件系统边界并跨越 \fBchroot\fP(2) 监狱。
+.PP
+\fIfilesystemtype\fP 和 \fIdata\fP 参数被忽略。
+.PP
+\fImountflags\fP 参数中的其余位 (\fBMS_REC\fP 除外，如下所述) 也将被忽略。 (绑定挂载与底层挂载具有相同的挂载选项。)
+但是，请参见上面关于重新挂载的讨论，了解将现有绑定挂载设置为只读的方法。
+.PP
+.\"
+默认情况下，当一个目录被绑定挂载时，只有那个目录被挂载; 如果目录树下有任何子挂载，则它们不是绑定挂载的。 如果还指定了 \fBMS_REC\fP
+标志，则执行递归绑定挂载操作: \fIsource\fP 子树下的所有子挂载 (不可绑定挂载除外) 也绑定挂载到 \fItarget\fP 子树中的相应位置。
+.SS "Changing the propagation type of an existing mount"
+如果 \fImountflags\fP 包括 \fBMS_SHARED\fP、\fBMS_PRIVATE\fP、\fBMS_SLAVE\fP 或
+\fBMS_UNBINDABLE\fP 之一 (自 Linux 2.6.15 起全部可用)，则现有安装的传播类型将更改。
+如果指定了这些标志中的多个，则会产生错误。
+.PP
+在更改传播类型时可以指定的唯一其他标志是 \fBMS_REC\fP (如下所述) 和 \fBMS_SILENT\fP (被忽略)。
+.PP
+\fIsource\fP、\fIfilesystemtype\fP 和 \fIdata\fP 参数被忽略。
+.PP
+传播类型标志的含义如下:
+.TP 
+\fBMS_SHARED\fP
+共享此坐骑。 紧接此挂载下的挂载和卸载事件将传播到属于此挂载对等组成员的其他挂载。
+这里的传播意味着相同的挂载或卸载将自动发生在对等组中的所有其他挂载下。 相反，在对等挂载下发生的挂载和卸载事件将传播到此挂载。
+.TP 
+\fBMS_PRIVATE\fP
+将此安装设为私有。 装载和卸载事件不会传播进出此装载。
+.TP 
+\fBMS_SLAVE\fP
+如果这是一个共享挂载，它是包含其他成员的对等组的成员，请将其转换为从属挂载。
+如果这是一个共享挂载，它是不包含其他成员的对等组的成员，请将其转换为私有挂载。 否则，安装的传播类型保持不变。
+.IP
+当挂载是从属时，挂载和卸载事件从它以前所属的 (master) 共享对等组传播到此挂载。 此挂载下的挂载和卸载事件不会传播到任何对等点。
+.IP
+挂载可以是另一个对等组的从属，同时与它所属的对等组共享挂载和卸载事件。
+.TP 
+\fBMS_UNBINDABLE\fP
+使这个坐骑不可绑定。 这就像一个私有挂载，此外这个挂载不能绑定挂载。 当在目录子树上执行递归绑定安装 (\fBmount\fP() (带有
+\fBMS_BIND\fP 和 \fBMS_REC\fP 标志) 时，在复制该子树以生成目标子树时，子树内任何不可绑定的安装都将自动修剪 (即不复制)。
+.PP
+默认情况下，更改传播类型只会影响 \fItarget\fP 安装。 如果在 \fImountflags\fP 中也指定了 \fBMS_REC\fP 标志，则
+\fItarget\fP 下所有挂载的传播类型也会更改。
+.PP
+.\"
+有关挂载传播类型 (包括分配给新挂载的默认传播类型) 的更多详细信息，请参见 \fBmount_namespaces\fP(7)。
+.SS "Moving a mount"
+如果 \fImountflags\fP 包含标志 \fBMS_MOVE\fP (自 Linux 2.4.18 起可用)，则移动子树: \fIsource\fP
+指定现有安装，\fItarget\fP 指定该安装要重新定位到的新位置。 移动是原子的: 在任何时候都不会卸载子树。
+.PP
+.\"
+\fImountflags\fP 参数中的其余位将被忽略，\fIfilesystemtype\fP 和 \fIdata\fP 参数也是如此。
+.SS "Creating a new mount"
+如果在 \fImountflags\fP 中未指定
+\fBMS_REMOUNT\fP、\fBMS_BIND\fP、\fBMS_MOVE\fP、\fBMS_SHARED\fP、\fBMS_PRIVATE\fP、\fBMS_SLAVE\fP 或
+\fBMS_UNBINDABLE\fP，则 \fBmount\fP() 将执行其默认操作: 创建新安装。 \fIsource\fP 指定新挂载的源，\fItarget\fP
+指定创建挂载点的目录。
+.PP
+.\"
+使用 \fIfilesystemtype\fP 和 \fIdata\fP 参数，并且可以在 \fImountflags\fP 中指定更多的位来修改调用的行为。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+下面给出的错误值是由与文件系统类型无关的错误引起的。 每种文件系统类型都可能有自己的特殊错误和特殊行为。 有关详细信息，请参见 Linux 内核源代码。
+.TP 
+\fBEACCES\fP
+路径的组成部分不可搜索。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEACCES\fP
+尝试在未提供 \fBMS_RDONLY\fP 标志的情况下安装只读文件系统。
+.IP
+由于各种原因，文件系统可能是只读的，包括: 它驻留在只读光盘上; 它驻留在具有已设置为将设备标记为只读的物理开关的设备上;
+文件系统实现是在只读支持下编译的; 或者在最初安装文件系统时检测到错误，因此它被标记为只读并且不能重新安装为读写 (直到错误被修复)。
+.IP
+一些文件系统在尝试挂载只读文件系统时返回错误 \fBEROFS\fP。
+.TP 
+\fBEACCES\fP
+.\" mtk: Probably: write permission is required for MS_BIND, with
+.\" the error EPERM if not present; CAP_DAC_OVERRIDE is required.
+块设备 \fIsource\fP 位于使用 \fBMS_NODEV\fP 选项安装的文件系统上。
+.TP 
+\fBEBUSY\fP
+尝试将新挂载直接堆叠到在此挂载命名空间中创建的具有相同 \fIsource\fP 和 \fItarget\fP 的现有挂载点之上。
+.TP 
+\fBEBUSY\fP
+\fIsource\fP 不能以只读方式重新挂载，因为它仍然保持打开以供写入的文件。
+.TP 
+\fBEFAULT\fP
+其中一个指针参数指向用户地址空间之外。
+.TP 
+\fBEINVAL\fP
+\fIsource\fP 有一个无效的超级块。
+.TP 
+\fBEINVAL\fP
+已尝试重新安装操作 (\fBMS_REMOUNT\fP)，但 \fIsource\fP 尚未安装到 \fItarget\fP 上。
+.TP 
+\fBEINVAL\fP
+尝试了移动操作 (\fBMS_MOVE\fP)，但 \fIsource\fP 下的安装树包含不可绑定的安装，而 \fItarget\fP 是传播类型为
+\fBMS_SHARED\fP 的安装。
+.TP 
+\fBEINVAL\fP
+尝试了移动操作 (\fBMS_MOVE\fP)，但 \fIsource\fP 装载的父装载具有传播类型 \fBMS_SHARED\fP。
+.TP 
+\fBEINVAL\fP
+尝试移动操作 (\fBMS_MOVE\fP)，但 \fIsource\fP 不是安装，或者是 \[aq]/\[aq]。
+.TP 
+\fBEINVAL\fP
+.\" See commit 8823c079ba7136dc1948d6f6dcb5f8022bde438e
+请求绑定操作 (\fBMS_BIND\fP)，其中 \fIsource\fP 引用挂载命名空间魔术链接 (即 \fI/proc/[pid]/ns/mnt\fP
+魔术链接或绑定挂载到此类链接) 并且 \fItarget\fP 的父挂载的传播类型为
+\fBMS_SHARED\fP，但请求绑定挂载的传播可能会导致循环依赖，从而阻止挂载命名空间被释放。
+.TP 
+\fBEINVAL\fP
+\fImountflags\fP 包括 \fBMS_SHARED\fP、\fBMS_PRIVATE\fP、\fBMS_SLAVE\fP 或 \fBMS_UNBINDABLE\fP
+中的一个以上。
+.TP 
+\fBEINVAL\fP
+\fImountflags\fP 包括 \fBMS_SHARED\fP、\fBMS_PRIVATE\fP、\fBMS_SLAVE\fP 或
+\fBMS_UNBINDABLE\fP，还包括 \fBMS_REC\fP 或 \fBMS_SILENT\fP 以外的标志。
+.TP 
+\fBEINVAL\fP
+尝试绑定安装一个不可绑定的安装。
+.TP 
+\fBEINVAL\fP
+在非特权挂载命名空间 (即，由非特权用户创建的用户命名空间拥有所有权的挂载命名空间) 中，尝试了绑定挂载操作 (\fBMS_BIND\fP) 而不指定
+(\fBMS_REC\fP)，这会显示其中一个子挂载下面的文件系统树目录被绑定。
+.TP 
+\fBELOOP\fP
+路径名解析期间遇到的链接太多。
+.TP 
+\fBELOOP\fP
+尝试了移动操作，\fItarget\fP 是 \fIsource\fP 的后代。
+.TP 
+\fBEMFILE\fP
+(如果不需要块设备: ) 虚拟设备表已满。
+.TP 
+\fBENAMETOOLONG\fP
+路径名比 \fBMAXPATHLEN\fP 长。
+.TP 
+\fBENODEV\fP
+\fIfilesystemtype\fP 未在内核中配置。
+.TP 
+\fBENOENT\fP
+路径名为空或具有不存在的组件。
+.TP 
+\fBENOMEM\fP
+内核无法分配空闲页面来将文件名或数据复制到其中。
+.TP 
+\fBENOTBLK\fP
+\fIsource\fP 不是块设备 (需要一个设备)。
+.TP 
+\fBENOTDIR\fP
+\fItarget\fP 或 \fIsource\fP 的前缀不是目录。
+.TP 
+\fBENXIO\fP
+块设备的主编号 \fIsource\fP 越界。
+.TP 
+\fBEPERM\fP
+调用者没有所需的权限。
+.TP 
+\fBEPERM\fP
+尝试修改 (\fBMS_REMOUNT\fP)、\fBMS_RDONLY\fP、\fBMS_NOSUID\fP 或 \fBMS_NOEXEC\fP 标志，或 "atime"
+标志之一 (\fBMS_NOATIME\fP、\fBMS_NODIRATIME\fP、\fBMS_RELATIME\fP) 现有安装，但安装已锁定; 请参见
+\fBmount_namespaces\fP(7)。
+.TP 
+\fBEROFS\fP
+尝试在未提供 \fBMS_RDONLY\fP 标志的情况下安装只读文件系统。 请参见上面的 \fBEACCES\fP。
+.SH VERSIONS
+.\"
+\fBMS_DIRSYNC\fP、\fBMS_MOVE\fP、\fBMS_PRIVATE\fP、\fBMS_REC\fP、\fBMS_RELATIME\fP、\fBMS_SHARED\fP、\fBMS_SLAVE\fP、\fBMS_STRICTATIME\fP
+和 \fBMS_UNBINDABLE\fP 的定义已添加到 glibc 2.12 的 glibc 头文件中。
+.SH STANDARDS
+此函数是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+.\" Multiple mounts on same mount point: since Linux 2.3.99pre7.
+由于 Linux 2.4 单个文件系统可以挂载在多个挂载点，并且多个挂载可以堆叠在同一个挂载点上。
+.PP
+\fImountflags\fP 参数的前 16 位可能有幻数 0xC0ED (\fBMS_MGC_VAL\fP)。 (描述中讨论的所有其他标志都占用
+\fImountflags\fP.) 的低 16 位，在 Linux 2.4 之前需要指定 \fBMS_MGC_VAL\fP，但由于 Linux 2.4
+不再需要，如果指定则忽略。
+.PP
+当一个不同的 \fBMS_SYNC\fP 添加到 \fI<mman.h>\fP 时，原来的 \fBMS_SYNC\fP 标志在 1.1.69 中被重命名为
+\fBMS_SYNCHRONOUS\fP。
+.PP
+.\" The change is in patch-2.4.0-prerelease.
+.\"
+在 Linux 2.4 之前，尝试在安装有 \fBMS_NOSUID\fP 的文件系统上执行 set\-user\-ID 或 set\-group\-ID 程序将因
+\fBEPERM\fP 而失败。 由于 Linux 2.4，set\-user\-ID 和 set\-group\-ID 位在这种情况下会被忽略。
+.SS "Mount namespaces"
+从 Linux 2.4.19 开始，Linux 提供挂载命名空间。 挂载命名空间是进程可见的一组文件系统挂载。 挂载命名空间可以 (并且通常)
+在多个进程之间共享，并且一个进程对命名空间的更改 (即挂载和卸载) 对于共享同一命名空间的所有其他进程都是可见的。 (2.4.19 之前的 Linux
+情况可以被认为是系统上的每个进程共享一个命名空间的情况。)
+.PP
+\fBfork\fP(2) 创建的子进程共享其父进程的挂载命名空间; mount 命名空间在 \fBexecve\fP(2) 中保留。
+.PP
+进程可以获得私有挂载命名空间，如果: 它是使用 \fBclone\fP(2) \fBCLONE_NEWNS\fP
+标志创建的，在这种情况下，它的新命名空间被初始化为调用 \fBclone\fP(2) 的进程的命名空间的 \fIcopy\fP; 或者它使用
+\fBCLONE_NEWNS\fP 标志调用
+\fBunshare\fP(2)，这会导致调用者的挂载命名空间获得它之前与其他进程共享的命名空间的私有副本，因此调用者的 future
+挂载和卸载对其他进程不可见 (子进程除外) 调用者随后创建的)，反之亦然。
+.PP
+.\"
+有关挂载命名空间的更多详细信息，请参见 \fBmount_namespaces\fP(7)。
+.SS "Parental relationship between mounts"
+每个挂载都有一个父挂载。 所有挂载的整体父关系定义了一个挂载命名空间内的进程所看到的单一目录层次结构。
+.PP
+新挂载的父级在创建挂载时定义。 在通常情况下，新挂载的父级是包含新挂载所附加的目录或文件的文件系统的挂载。
+在新坐骑堆叠在现有坐骑顶部的情况下，新坐骑的父级是堆叠在该位置的前一个坐骑。
+.PP
+.\"
+坐骑之间的亲本关系可以通过 \fI/proc/[pid]/mountinfo\fP 文件发现 (见下文)。
+.SS "/proc/[pid]/mounts and /proc/[pid]/mountinfo"
+特定于 Linux 的 \fI/proc/[pid]/mounts\fP 文件公开了具有指定 ID
+的进程的挂载命名空间中的挂载列表。\fI/proc/[pid]/mountinfo\fP 文件公开了更多关于挂载的信息，包括传播类型和挂载 ID
+信息，这些信息使得发现挂载之间的亲本关系成为可能。 有关此文件的详细信息，请参见 \fBproc\fP(5) 和
+\fBmount_namespaces\fP(7)。
+.SH "SEE ALSO"
+\fBmountpoint\fP(1), \fBchroot\fP(2), \fBioctl_iflags\fP(2), \fBmount_setattr\fP(2),
+\fBpivot_root\fP(2), \fBumount\fP(2), \fBmount_namespaces\fP(7),
+\fBpath_resolution\fP(7), \fBfindmnt\fP(8), \fBlsblk\fP(8), \fBmount\fP(8), \fBumount\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

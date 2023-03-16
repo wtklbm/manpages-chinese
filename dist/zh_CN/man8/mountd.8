@@ -1,0 +1,188 @@
+.\" -*- coding: UTF-8 -*-
+.\"@(#)rpc.mountd.8"
+.\"
+.\" Copyright (C) 1999 Olaf Kirch <okir@monad.swb.de>
+.\" Modified by Paul Clements, 2004.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH rpc.mountd 8 "31 Dec 2009"  
+.SH NAME
+rpc.mountd\-NFS 安装守护进程
+.SH SYNOPSIS
+\fB/usr/sbin/rpc.mountd [\fP\fIoptions\fP\fB]\fP
+.SH DESCRIPTION
+\fBrpc.mountd\fP 守护程序实现了 NFS MOUNT 协议的服务器端，NFS MOUNT 协议是 NFS 版本 2 [RFC1094] 和
+NFS 版本 3 [RFC1813] 使用的 NFS 端协议。 它还响应来自 Linux 内核的请求以验证客户端并提供访问权限的详细信息。
+.PP
+NFS 服务器 (\fInfsd\fP) 维护一个身份验证和授权信息的缓存，用于识别每个请求的来源，然后该来源对任何本地文件系统具有什么访问权限。
+当在缓存中找不到所需信息时，服务器会向 \fBmountd\fP 发送请求以填充缺失的信息。 mountd 使用存储在
+\fB/var/lib/nfs/etab\fP 中并由 \fBexportfs\fP(8) 维护的信息表，可能基于 \fBexports\fP(5)
+的内容来响应每个请求。
+.SS "Mounting exported NFS File Systems"
+NFS MOUNT 协议有几个过程。 其中最重要的是 MNT (安装导出) 和 UMNT (卸载导出)。
+.PP
+MNT 请求有两个参数: 一个显式参数，包含要挂载的导出根目录的路径名，以及一个隐式参数，即发送者的 IP 地址。
+.PP
+当从 NFS 客户端接收到 MNT 请求时，\fBrpc.mountd\fP 会根据其导出表检查路径名和发送者的 IP 地址。
+如果发送者被允许访问请求的导出，\fBrpc.mountd\fP 将导出的根目录的 NFS 文件句柄返回给客户端。 然后，客户端可以使用根文件句柄和 NFS
+LOOKUP 请求来导航导出的目录结构体。
+.SS "The rmtab File"
+\fBrpc.mountd\fP 守护程序通过向 \fI/var/lib/nfs/rmtab\fP 文件添加条目来注册每个成功的 MNT 请求。 当从 NFS
+客户端接收到 UMNT 请求时，\fBrpc.mountd\fP 只需从 \fI/var/lib/nfs/rmtab\fP
+中删除匹配的条目，只要该导出的访问控制列表允许该发送者访问该导出。
+.PP
+通过使用 \fBshowmount\fP(8) 命令，客户端可以发现 NFS 服务器当前正在导出的文件系统列表，或已安装其导出的其他客户端列表。
+\fBshowmount\fP(8) 使用 NFS MOUNT 协议中的其他过程来报告有关服务器导出文件系统的信息。
+.PP
+但是请注意，几乎不能保证 \fI/var/lib/nfs/rmtab\fP 的内容是准确的。 即使在调用 UMNT 之后，客户端也可以继续访问导出。
+如果客户端在未发送 UMNT 请求的情况下重新启动，则该客户端的陈旧条目将保留在 \fI/var/lib/nfs/rmtab\fP 中。
+.SS "Mounting File Systems with NFSv4"
+NFS 版本 4 (及更高版本) 不使用单独的 NFS MOUNT 协议。 而是使用 Linux 内核 (\fInfsd\fP) 中的 NFS
+服务器处理的常规 NFS 请求执行挂载。 因此，\fI/var/lib/nfs/rmtab\fP 不会更新以反映任何 NFSv4 活动。
+.SH OPTIONS
+.TP 
+\fB\-d kind  or  \-\-debug kind\fP
+开启调试。有效类型为: all、auth、调用、general 和 parse。
+.TP 
+\fB\-l\fP or \fB\-\-log\-auth\fP
+启用记录对来自 nfsd 的身份验证和访问请求的响应。 然后每个响应由内核缓存 30 分钟 (或由下面的 \fB\-\-ttl\fP
+设置)，如果相关客户端保持活动状态，将在 15 分钟后 (ttl 时间的一半) 刷新。 请注意，\fB\-l\fP 等同于 \fB\-d auth\fP，因此可以在
+\fB[mountd]\fP 部分中使用 \fB\[dq]debug = auth\[dq]\fP 在 \fB/etc/nfs.conf\fP 中启用。
+.IP
+当使用 NFSv3 时，\fBrpc.mountd\fP 将始终记录对 MOUNT 请求的身份验证响应，但要获得 NFSv4 的类似日志，则需要此选项。
+.TP 
+\fB\-i\fP or \fB\-\-cache\-use\-ipaddr\fP
+通常，每个客户端 IP 地址都与 \fB/etc/exports\fP 中找到的每个主机标识符 (名称、通配符、网络组等)
+相匹配，并且由所有匹配的标识符形成一个组合身份。 许多客户端通常会 map 到相同的组合身份，因此执行此映射会减少内核需要存储的不同访问详细信息的数量。
+指定 \fB\-i\fP 选项会抑制此映射，以便为每个客户端 IP 地址请求和缓存对每个文件系统的访问。 这样做会稍微增加更新缓存的负担，但可以使 \fB\-l\fP
+选项生成的日志消息更易于阅读。
+.TP 
+\fB\-T  or  \-\-ttl\fP
+为提供给内核的缓存信息提供生存时间 (TTL)。 如果在此时间过半后需要信息，内核通常会请求更新。 增加提供的数量 (以秒为单位)
+会降低缓存更新请求的速率，当这些请求使用 \fB\-l\fP 记录时，这一点尤为明显。 然而，增加也意味着主机名到地址映射的更改可能需要更长的时间才能被注意到。
+默认 TTL 为 1800 (30 分钟)。
+.TP 
+\fB\-F  or  \-\-foreground\fP
+在前台运行 (不要守护进程)
+.TP 
+\fB\-h  or  \-\-help\fP
+显示使用信息。
+.TP 
+\fB\-o num  or  \-\-descriptors num\fP
+将打开文件描述符的数量限制设置为 num。默认是保持限制不变。
+.TP 
+\fB\-N mountd\-version  or  \-\-no\-nfs\-version mountd\-version\fP
+此选项可用于请求 \fBrpc.mountd\fP 不提供某些版本的 NFS。当前版本的 \fBrpc.mountd\fP 可以同时支持 NFS 版本 2、3 和
+4。如果不应提供这些版本中的任何一个，则必须使用选项 \fB\-\-no\-nfs\-version <vers> .\fP 调用
+\fBrpc.mountd\fP
+.TP 
+\fB\-n  or  \-\-no\-tcp\fP
+不要为 mount 通告 TCP。
+.TP 
+\fB\-p num  or  \-P num  or  \-\-port num\fP
+指定用于 RPC 侦听器套接字的端口号。 如果未指定此选项，\fBrpc.mountd\fP 将尝试查询
+\fI/etc/services\fP，如果获取端口成功，则为所有侦听器套接字设置相同的端口，否则为每个侦听器套接字选择一个随机的临时端口。
+.IP
+当 NFS MOUNT 请求必须穿过客户端和服务器之间的防火墙时，此选项可用于修复 \fBrpc.mountd\fP's 侦听器的端口值。
+.TP 
+\fB\-H  prog or  \-\-ha\-callout prog\fP
+指定高可用性标注程序。 该程序接收所有 MOUNT 和 UNMOUNT 请求的调用。 这允许在高可用性 NFS (HA\-NFS) 环境中使用
+\fBrpc.mountd\fP。
+.IP
+标注程序以 4 参数运行。 第一个是 \fBmount\fP 或 \fBunmount\fP，具体取决于标注的原因。 第二个是执行挂载的客户端的名称。
+第三个是客户端安装的路径。 最后一个是我们认为客户在该路径上拥有所有权的并发坐骑数量。
+.IP
+2.6 和更高版本的内核不需要此标注。 相反，在 \fI/proc/fs/nfsd\fP 上挂载 nfsd 文件系统。
+.TP 
+\fB\-s,\fP\fB \-\-state\-directory\-path \fP\fIdirectory\fP
+指定放置状态信息的目录 (etab 和 rmtab)。 如果未指定此选项，则使用默认值 \fI/var/lib/nfs\fP。
+.TP 
+\fB\-r,\fP\fB \-\-reverse\-lookup\fP
+\fBrpc.mountd\fP 跟踪 \fIrmtab\fP 文件中的 IP 地址。 当发出 DUMP 请求时 (例如，由运行 \fBshowmount \-a\fP
+的人发出)，它默认返回 IP 地址而不是主机名。此选项使 \fBrpc.mountd\fP 对每个 IP 地址执行反向查找并返回该主机名。
+在某些情况下，启用它会对性能产生实质性的 negative 影响。
+.TP 
+\fB\-t N\fP or \fB\-\-num\-threads=N \fPor\fB \-\-num\-threads N \fP
+此选项指定 rpc.mountd 生成的工作线程数。 默认值为 1 个线程，这可能就足够了。 通常只有 NFS
+服务器需要更多线程，这些服务器需要在几秒钟内处理数百个 NFS 安装的安装风暴，或者当您的 DNS 服务器速度慢或不可靠时。
+.TP 
+\fB\-u  or  \-\-no\-udp\fP
+不要为挂载公布 UDP
+.TP 
+\fB\-V version  or  \-\-nfs\-version version\fP
+该选项可用于请求 \fBrpc.mountd\fP 提供特定版本的 NFS。当前版本的 \fBrpc.mountd\fP 可以同时支持 NFS 版本 2 和更新版本
+3.
+.TP 
+\fB\-v  or  \-\-version\fP
+打印 \fBrpc.mountd\fP 的版本并退出。
+.TP 
+\fB\-g  or  \-\-manage\-gids\fP
+接受来自内核的请求，将 map 用户 ID 编号放入组 ID 编号列表中，以用于访问控制。 NFS 请求通常 (使用 Kerberos
+或其他加密身份验证时除外) 包含用户 ID 和组 ID 列表。 由于 NFS 协议的限制，最多可以列出 16 个组 ID。 如果您使用 \fB\-g\fP
+标志，那么从客户端接收到的组 ID 列表将替换为通过在服务器上进行适当查找而确定的组 ID 列表。请注意，'primary' 组 ID
+不受影响，因此客户端上的 \fBnewgroup\fP 命令仍然有效。 此函数需要版本至少为 2.6.21 的 Linux 内核。
+
+.SH "CONFIGURATION FILE"
+许多可以在命令行上设置的选项也可以通过在 \fB[mountd]\fP 中设置的值来控制，或者在某些情况下，通过 \fI/etc/nfs.conf\fP 配置文件的
+\fB[nfsd]\fP 部分设置。 \fB[mountd]\fP 部分识别的值包括
+\fBmanage\-gids\fP、\fBcache\-use\-ipaddr\fP、\fBdescriptors\fP、\fBport\fP、\fBthreads\fP、\fBttl\fP、\fBreverse\-lookup\fP
+和 \fBstate\-directory\-path\fP、\fBha\-callout\fP，它们与同名选项具有相同的效果。
+
+\fB[nfsd]\fP 部分识别的值包括 \fBTCP\fP、\fBUDP\fP、\fBvers3\fP 和 \fBvers4\fP，它们的含义与 \fBrpc.nfsd\fP(8)
+给出的含义相同。
+
+.SH "TCP_WRAPPERS SUPPORT"
+您可以使用 \fBtcp_wrapper\fP 库或 \fBiptables\fP(8) 保护您的 \fBrpc.mountd\fP 侦听器。
+.PP
+请注意，\fBtcp_wrapper\fP 库仅支持 IPv4 网络。
+.PP
+将允许访问 \fBrpc.mountd\fP 的 NFS 对等体的主机名添加到 \fI/etc/hosts.allow\fP。 使用守护程序名称
+\fBmountd\fP，即使 \fBrpc.mountd\fP 二进制文件具有不同的名称。
+.PP
+当无法解析为 IP 地址时，将忽略任一访问文件中使用的主机名。 有关详细信息，请参见 \fBtcpd\fP(8) 和 \fBhosts_access\fP(5)
+手册页。
+.SS "IPv6 and TI\-RPC support"
+TI\-RPC 是在 IPv6 上支持 NFS 的先决条件。 如果 TI\-RPC 支持内置到 \fBrpc.mountd\fP 中，它会尝试在
+\fI/etc/netconfig\fP 中标记为 'visible' 的网络传输上启动侦听器。
+只要至少一个网络传输侦听器成功启动，\fBrpc.mountd\fP 就会运行。
+.SH FILES
+.TP  2.5i
+\fI/etc/exports\fP
+\fBexportfs\fP 的输入文件、列表导出、导出选项和访问控制列表
+.TP  2.5i
+\fI/var/lib/nfs/rmtab\fP
+访问服务器导出的客户端表
+.SH "SEE ALSO"
+\fBexportfs\fP(8), \fBexports\fP(5), \fBshowmount\fP(8), \fBrpc.nfsd\fP(8),
+\fBrpc.rquotad\fP(8), \fBnfs\fP(5), \fBnfs.conf\fP(5), \fBtcpd\fP(8),
+\fBhosts_access\fP(5), \fBiptables\fP(8), \fBnetconfig\fP(5)
+.sp
+RFC 1094 \- "NFS: Network File System Protocol Specification"
+.br
+RFC 1813 \- "NFS Version 3 Protocol Specification"
+.br
+RFC 7530 \- "Network File System (NFS) Version 4 Protocol"
+.br
+RFC 8881 \- "Network File System (NFS) Version 4 Minor Version 1 Protocol"
+.SH AUTHOR
+奥拉夫・基尔希，H. J. Lu, G. 艾伦・莫里斯三世和许多其他人。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

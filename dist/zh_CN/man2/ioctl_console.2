@@ -1,0 +1,544 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1995 Jim Van Zandt <jrv@vanzandt.mv.com> and aeb
+.\" Sun Feb 26 11:46:23 MET 1995
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified, Sun Feb 26 15:04:20 1995, faith@cs.unc.edu
+.\" Modified, Thu Apr 20 22:08:17 1995, jrv@vanzandt.mv.com
+.\" Modified, Mon Sep 18 22:32:47 1995, hpa@storm.net (H. Peter Anvin)
+.\" FIXME The following are not documented:
+.\"     KDFONTOP (since Linux 2.1.111)
+.\"     KDGKBDIACRUC (since Linux 2.6.24)
+.\"     KDSKBDIACR
+.\"     KDSKBDIACRUC (since Linux 2.6.24)
+.\"     KDKBDREP (since Linux 2.1.113)
+.\"     KDMAPDISP (not implemented as at Linux 2.6.27)
+.\"     KDUNMAPDISP (not implemented as at Linux 2.6.27)
+.\"     VT_LOCKSWITCH (since Linux 1.3.47, needs CAP_SYS_TTY_CONFIG)
+.\"     VT_UNLOCKSWITCH (since Linux 1.3.47, needs CAP_SYS_TTY_CONFIG)
+.\"     VT_GETHIFONTMASK (since Linux 2.6.18)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_console 2 2023\-01\-22 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_console \- 控制台终端和虚拟控制台的 ioctl
+.SH DESCRIPTION
+控制台终端和虚拟控制台支持以下特定于 Linux 的 \fBioctl\fP(2) 请求。 每个都需要第三个参数，这里假定为 \fIargp\fP。
+.TP 
+\fBKDGETLED\fP
+获取 LED 的状态。 \fIargp\fP 指向一个 \fIchar\fP。 \fI*argp\fP 的低三位设置 LED 的状态，如下所示:
+.TS
+l l l.
+LED_CAP 	0x04	caps lock led
+LED_NUM 	0x02	num lock led
+LED_SCR 	0x01	scroll lock led
+.TE
+.TP 
+\fBKDSETLED\fP
+设置 LED。 LED 设置为对应于 \fIargp\fP 中无符号长整数的低三位。 但是，如果设置了更高位，LED 将恢复正常: 显示 caps
+lock、num lock 和 scroll lock 的键盘号码状态。
+.PP
+在 Linux 1.1.54 之前，LED 只是反映相应键盘标志的状态，KDGETLED/KDSETLED 也会改变键盘标志。 由于 Linux
+1.1.54，可以使 LED 显示任意信息，但默认情况下它们显示键盘标志。 以下两个 ioctl 用于访问键盘标志。
+.TP 
+\fBKDGKBLED\fP
+获取键盘标志 CapsLock、NumLock、ScrollLock (不是灯)。 \fIargp\fP 指向一个设置为标志状态的字符。 低位三位 (掩码
+0x7) 获得当前标志状态，下一个半字节的低位 (掩码 0x70) 获得默认标志状态。 (自 Linux 1.1.54 起。)
+.TP 
+\fBKDSKBLED\fP
+设置键盘标志 CapsLock、NumLock、ScrollLock (不亮)。 \fIargp\fP 是具有所需标志状态的无符号长整数。 低位三位 (掩码
+0x7) 具有标志状态，下一个半字节的低位 (掩码 0x70) 具有默认标志状态。 (自 Linux 1.1.54 起。)
+.TP 
+\fBKDGKBTYPE\fP
+获取键盘类型。 这将返回值 KB_101，定义为 0x02。
+.TP 
+\fBKDADDIO\fP
+添加 I/O 端口为有效。 相当于 \fIioperm(arg,1,1)\fP。
+.TP 
+\fBKDDELIO\fP
+删除有效的 I/O 端口。 相当于 \fIioperm(arg,1,0)\fP。
+.TP 
+\fBKDENABIO\fP
+启用 I/O 到视频板。 相当于 \fIioperm(0x3b4, 0x3df\-0x3b4+1, 1)\fP。
+.TP 
+\fBKDDISABIO\fP
+禁用 I/O 到视频板。 相当于 \fIioperm(0x3b4, 0x3df\-0x3b4+1, 0)\fP。
+.TP 
+\fBKDSETMODE\fP
+设置 text/graphics 模式。 \fIargp\fP 是一个无符号整数，包含以下之一:
+.TS
+l l.
+KD_TEXT	0x00
+KD_GRAPHICS	0x01
+.TE
+.TP 
+\fBKDGETMODE\fP
+获取 text/graphics 模式。 \fIargp\fP 指向 \fIint\fP，\fIint\fP 被设置为上面显示的 \fBKDSETMODE\fP 值之一。
+.TP 
+\fBKDMKTONE\fP
+生成指定长度的音调。 \fIargp\fP 中无符号长整数的低 16 位指定时钟周期的周期，高 16 位给出以毫秒为单位的持续时间。
+如果持续时间为零，则声音关闭。 控制立即返回。 例如，\fIargp\fP = (125<<16) + 0x637 将指定通常与 ctrl\-G
+关联的蜂鸣声。 (因此从 Linux 0.99pl1 开始; 在 Linux 2.1.49\-50 中损坏。)
+.TP 
+\fBKIOCSOUND\fP
+开始或停止声音生成。 \fIargp\fP 的低 16 位以时钟周期为单位指定周期 (即 \fIargp\fP = 1193180/frequency)。
+\fIargp\fP =0 关闭声音。 在任何一种情况下，控制都会立即返回。
+.TP 
+\fBGIO_CMAP\fP
+从内核获取当前默认颜色 map。 \fIargp\fP 指向一个 48 字节的数组。 (自 Linux 1.3.3 起。)
+.TP 
+\fBPIO_CMAP\fP
+更改默认文本模式颜色 map。 \fIargp\fP 指向一个 48 字节数组，该数组按顺序包含 16 种可用屏幕颜色的红色、绿色和蓝色值: 0
+表示关闭，255 表示全亮度。 默认颜色依次为:
+黑色、深红色、深绿色、棕色、深蓝色、深紫色、深青色、浅灰色、深灰色、亮红色、亮绿色、黄色、亮蓝色、亮紫色、亮青色、和白色。 (自 Linux 1.3.3
+起。)
+.TP 
+\fBGIO_FONT\fP
+获取扩展形式的 256 个字符的屏幕字体。 \fIargp\fP 指向一个 8192 字节的数组。 如果当前加载的字体是 512
+字符的字体，或者如果控制台未处于文本模式，则失败并返回错误代码 \fBEINVAL\fP。
+.TP 
+\fBGIO_FONTX\fP
+获取屏幕字体和相关信息。 \fIargp\fP 指向 \fIstruct consolefontdesc\fP (参见 \fBPIO_FONTX\fP).
+在调用上，\fIcharcount\fP 字段应设置为适合 \fIchardata\fP 指向的缓冲区的最大字符数。 返回时，\fIcharcount\fP 和
+\fIcharheight\fP 分别填充当前加载字体的相应数据，如果 \fIcharcount\fP 的初始值表明有足够的空间可用，则 \fIchardata\fP
+数组包含字体数据; 否则缓冲区不变，\fIerrno\fP 设置为 \fBENOMEM\fP。 (自 Linux 1.3.1 起。)
+.TP 
+\fBPIO_FONT\fP
+设置 256 个字符的屏幕字体。 将字体加载到 EGA/VGA 字符生成器中。 \fIargp\fP 指向一个 8192 字节的 map，每个字符 32
+个字节。 只有其中的第一个 \fIN\fP 用于 8x\fIN\fP 字体 (0 < \fIN\fP <= 32)。 此调用还使 Unicode
+映射无效。
+.TP 
+\fBPIO_FONTX\fP
+设置屏幕字体和关联的渲染信息。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct consolefontdesc {
+    unsigned short charcount;  /* characters in font
+                                  (256 or 512) */
+    unsigned short charheight; /* scan lines per
+                                  character (1\-32) */
+    char          *chardata;   /* font data in
+                                  expanded form */
+};
+.EE
+.in
+.IP
+如有必要，屏幕将适当调整大小，并将 \fBSIGWINCH\fP 发送到适当的进程。 此调用还使 Unicode 映射无效。 (自 Linux 1.3.1
+起。)
+.TP 
+\fBPIO_FONTRESET\fP
+将屏幕字体、大小和 Unicode 映射重置为启动默认值。 \fIargp\fP 未使用，但应设置为 NULL 以确保与 Linux 的 future
+版本兼容。 (自 Linux 1.3.28 起。)
+.TP 
+\fBGIO_SCRNMAP\fP
+从内核获取屏幕映射。 \fIargp\fP 指向大小为 E_TABSZ 的区域，其中加载了用于显示每个字符的字体位置。 如果当前加载的字体超过 256
+个字符，此调用可能会返回无用信息。
+.TP 
+\fBGIO_UNISCRNMAP\fP
+从内核获取完整的 Unicode 屏幕映射。 \fIargp\fP 指向一个大小为 \fIE_TABSZ*sizeof(unsigned short)\fP
+的区域，其中加载了每个字符代表的 Unicode。 一组特殊的 Unicode，从 U+F000 开始，用于表示 "direct to font"
+映射。 (自 Linux 1.3.1 起。)
+.TP 
+\fBPIO_SCRNMAP\fP
+加载内核中的 "user definable" (fourth) 表，其中 maps 字节到控制台屏幕符号。 \fIargp\fP 指向大小为 E_TABSZ
+的区域。
+.TP 
+\fBPIO_UNISCRNMAP\fP
+加载内核中的 "user definable" (fourth) 表，将 maps 字节转换为 Unicode，然后根据当前加载的
+Unicode\-to\-font map 将其转换为屏幕符号。 以 U+F000 开头的特殊 Unicode 可用于 map 直接到字体符号。 (自
+Linux 1.3.1 起。)
+.TP 
+\fBGIO_UNIMAP\fP
+从内核获取 Unicode 到字体的映射。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct unimapdesc {
+    unsigned short  entry_ct;
+    struct unipair *entries;
+};
+.EE
+.in
+.IP
+where \fIentries\fP points to an array of
+.IP
+.in +4n
+.EX
+struct unipair {
+    unsigned short unicode;
+    unsigned short fontpos;
+};
+.EE
+.in
+.IP
+(自 Linux 1.1.92 起。)
+.TP 
+\fBPIO_UNIMAP\fP
+将 unicode 到字体的映射放在内核中。 \fIargp\fP 指向一个 \fIstruct unimapdesc\fP。 (从 Linux 1.1.92
+开始)
+.TP 
+\fBPIO_UNIMAPCLR\fP
+清表，可能建议哈希算法。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct unimapinit {
+    unsigned short advised_hashsize;  /* 0 if no opinion */
+    unsigned short advised_hashstep;  /* 0 if no opinion */
+    unsigned short advised_hashlevel; /* 0 if no opinion */
+};
+.EE
+.in
+.IP
+(自 Linux 1.1.92 起。)
+.TP 
+\fBKDGKBMODE\fP
+获取当前键盘模式。 \fIargp\fP 指向 \fIlong\fP，它被设置为以下之一:
+.TS
+l l.
+K_RAW	0x00  /* Raw (scancode) mode */
+K_XLATE	0x01  /* Translate keycodes using keymap */
+K_MEDIUMRAW	0x02  /* Medium raw (scancode) mode */
+K_UNICODE	0x03  /* Unicode mode */
+K_OFF	0x04  /* Disabled mode; since Linux 2.6.39 */
+.\" K_OFF: commit 9fc3de9c83565fcaa23df74c2fc414bb6e7efb0a
+.TE
+.TP 
+\fBKDSKBMODE\fP
+设置当前键盘模式。 \fIargp\fP 是 \fIlong\fP，等于为 \fBKDGKBMODE\fP 显示的值之一。
+.TP 
+\fBKDGKBMETA\fP
+获取元键处理模式。 \fIargp\fP 指向 \fIlong\fP，它被设置为以下之一:
+.TS
+l l l.
+K_METABIT	0x03	set high order bit
+K_ESCPREFIX	0x04	escape prefix
+.TE
+.TP 
+\fBKDSKBMETA\fP
+设置元键处理模式。 \fIargp\fP 是一个 \fIlong\fP，等于上面显示的 \fBKDGKBMETA\fP 值之一。
+.TP 
+\fBKDGKBENT\fP
+获取键转换表中的一项 (键码到操作代码)。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct kbentry {
+    unsigned char  kb_table;
+    unsigned char  kb_index;
+    unsigned short kb_value;
+};
+.EE
+.in
+.IP
+填写前两个成员: \fIkb_table\fP 选择密钥表 (0 <= \fIkb_table\fP <
+MAX_NR_KEYMAPS)，\fIkb_index\fP 是密钥代码 (0 <= \fIkb_index\fP < NR_KEYS)。
+\fIkb_value\fP 设置为相应的操作代码，如果没有该键则设置为 K_HOLE，如果 \fIkb_table\fP 无效则设置为 K_NOSUCHMAP。
+.TP 
+\fBKDSKBENT\fP
+在转换表中设置一个条目。 \fIargp\fP 指向一个 \fIstruct kbentry\fP。
+.TP 
+\fBKDGKBSENT\fP
+获取一个函数密钥字符串。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct kbsentry {
+    unsigned char kb_func;
+    unsigned char kb_string[512];
+};
+.EE
+.in
+.IP
+\fIkb_string\fP 设置为 \fIkb_func\fPth 函数键动作代码对应的 (null\-terminated) 字符串。
+.TP 
+\fBKDSKBSENT\fP
+设置一个函数键字符串条目。 \fIargp\fP 指向一个 \fIstruct kbsentry\fP。
+.TP 
+\fBKDGKBDIACR\fP
+阅读内核重音表。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct kbdiacrs {
+    unsigned int   kb_cnt;
+    struct kbdiacr kbdiacr[256];
+};
+.EE
+.in
+.IP
+其中 \fIkb_cnt\fP 是数组中的条目数，每个条目是一个
+.IP
+.in +4n
+.EX
+struct kbdiacr {
+    unsigned char diacr;
+    unsigned char base;
+    unsigned char result;
+};
+.EE
+.in
+.TP 
+\fBKDGETKEYCODE\fP
+读取内核键码表条目 (扫描代码到键码)。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct kbkeycode {
+    unsigned int scancode;
+    unsigned int keycode;
+};
+.EE
+.in
+.IP
+\fIkeycode\fP 设置为对应给定的 \fIscancode\fP。 (89 <= \fIscancode\fP <= 255 only.
+For 1 <= \fIscancode\fP <= 88, \fIkeycode\fP==\fIscancode\fP.)  (Since Linux
+1.1.63.)
+.TP 
+\fBKDSETKEYCODE\fP
+写入内核键码表条目。 \fIargp\fP 指向一个 \fIstruct kbkeycode\fP。 (自 Linux 1.1.63 起。)
+.TP 
+\fBKDSIGACCEPT\fP
+当通过按下适当的组合键生成信号 \fIargp\fP 时，调用进程表明它愿意接受信号。 (1 <= \fIargp\fP <= NSIG).  (见
+\fIlinux/drivers/char/keyboard.c\fP.) 中的 \fIspawn_console\fP()
+.TP 
+\fBVT_OPENQRY\fP
+返回第一个可用的 (non\-opened) 控制台。 \fIargp\fP 指向 \fIint\fP，它设置为 vt 的编号 (1 <= \fI*argp\fP
+<= MAX_NR_CONSOLES)。
+.TP 
+\fBVT_GETMODE\fP
+获取活动 vt 的模式。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct vt_mode {
+    char  mode;    /* vt mode */
+    char  waitv;   /* if set, hang on writes if not active */
+    short relsig;  /* signal to raise on release req */
+    short acqsig;  /* signal to raise on acquisition */
+    short frsig;   /* unused (set to 0) */
+};
+.EE
+.in
+.IP
+设置为活动 vt 的模式。 \fImode\fP 设置为以下值之一:
+.TS
+l l.
+VT_AUTO	auto vt switching
+VT_PROCESS	process controls switching
+VT_ACKACQ	acknowledge switch
+.TE
+.TP 
+\fBVT_SETMODE\fP
+设置活动 vt 的模式。 \fIargp\fP 指向一个 \fIstruct vt_mode\fP。
+.TP 
+\fBVT_GETSTATE\fP
+获取全局 vt 状态信息。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct vt_stat {
+    unsigned short v_active;  /* active vt */
+    unsigned short v_signal;  /* signal to send */
+    unsigned short v_state;   /* vt bit mask */
+};
+.EE
+.in
+.IP
+对于每个使用中的 vt，都会设置 \fIv_state\fP 成员中的相应位。 (Linux 1.0 到 Linux 1.1.92。)
+.TP 
+\fBVT_RELDISP\fP
+释放一个显示。
+.TP 
+\fBVT_ACTIVATE\fP
+切换到 vt \fIargp\fP (1 <= \fIargp\fP <= MAX_NR_CONSOLES)。
+.TP 
+\fBVT_WAITACTIVE\fP
+等到 vt \fIargp\fP 被激活。
+.TP 
+\fBVT_DISALLOCATE\fP
+释放与 vt \fIargp\fP 关联的内存。 (自 Linux 1.1.54 起。)
+.TP 
+\fBVT_RESIZE\fP
+设置内核对屏幕大小的想法。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct vt_sizes {
+    unsigned short v_rows;       /* # rows */
+    unsigned short v_cols;       /* # columns */
+    unsigned short v_scrollsize; /* no longer used */
+};
+.EE
+.in
+.IP
+请注意，这不会更改视频模式。 请参见 \fBresizecons\fP(8)。 (自 Linux 1.1.54 起。)
+.TP 
+\fBVT_RESIZEX\fP
+设置内核对各种屏幕参数的想法。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct vt_consize {
+    unsigned short v_rows;  /* number of rows */
+    unsigned short v_cols;  /* number of columns */
+    unsigned short v_vlin;  /* number of pixel rows
+                               on screen */ 
+    unsigned short v_clin;  /* number of pixel rows
+                               per character */ 
+    unsigned short v_vcol;  /* number of pixel columns
+                               on screen */
+    unsigned short v_ccol;  /* number of pixel columns
+                               per character */
+};
+.EE
+.in
+.IP
+任何一个参数都可以设置为零，表示 "no change"，但如果设置多个参数，则必须自洽。 请注意，这不会更改视频模式。 请参见
+\fBresizecons\fP(8)。 (自 Linux 1.3.3 起。)
+.PP
+以下 ioctl 的操作取决于 \fIargp\fP 指向的结构体中的第一个字节，这里称为 \fIsubcode\fP。 这些仅对超级用户或当前终端的所有者合法。
+自 Linux 2.5.71 以来，符号 \fIsubcode\fPs 在 \fI<linux/tiocl.h>\fP 中可用。
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fB0\fP
+转储屏幕。 消失在 Linux 1.1.92。 (对于 Linux 1.1.92 或更高版本，改为从 \fI/dev/vcsN\fP 或
+\fI/dev/vcsaN\fP 读取。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fB1\fP
+获取任务信息。 消失在 Linux 1.1.92。
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_SETSEL\fP
+设置选择。 \fIargp\fP 指向一个
+.IP
+.in +4n
+.EX
+struct {
+    char  subcode;
+    short xs, ys, xe, ye;
+    short sel_mode;
+};
+.EE
+.in
+.IP
+\fIxs\fP 和 \fIys\fP 是起始列和行。 \fIxe\fP 和 \fIye\fP 是结束列和行。 (左上角为 row=column=1。) \fIsel_mode\fP
+为 0 为逐字选，1 为逐字选，2 为逐行选。 指示的屏幕字符被突出显示并保存在内核缓冲区中。
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_PASTESEL\fP
+粘贴选择。 选择缓冲区中的字符被写入 \fIfd\fP。
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_UNBLANKSCREEN\fP
+打开屏幕。
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_SELLOADLUT\fP
+设置 256 位查找表的内容，定义 "word" 中的字符，用于逐字选择。 (自 Linux 1.1.32 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_GETSHIFTSTATE\fP
+\fIargp\fP 指向一个 char，它被设置为内核变量 \fIshift_state\fP 的值。 (自 Linux 1.1.32 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_GETMOUSEREPORTING\fP
+\fIargp\fP 指向一个 char，它被设置为内核变量 \fIreport_mouse\fP 的值。 (自 Linux 1.1.33 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fB8\fP
+转储屏幕宽度和高度、游标位置以及所有字符属性对。 (仅限 Linux 1.1.67 到 Linux 1.1.91。对于 Linux 1.1.92
+或更高版本，改为从 \fI/dev/vcsa*\fP 读取。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fB9\fP
+恢复屏幕宽度和高度、游标位置和所有字符属性对。 (仅限 Linux 1.1.67 至 Linux 1.1.91。对于 Linux 1.1.92
+或更高版本，改为写入 \fI/dev/vcsa*\fP。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_SETVESABLANK\fP
+处理新一代显示器的省电，特性。 VESA 屏幕消隐模式设置为 \fIargp[1]\fP，它控制屏幕消隐的作用:
+.RS
+.TP 
+\fB0\fP
+屏幕消隐被禁用。
+.TP 
+\fB1\fP
+当前的视频适配器寄存器设置被保存，然后控制器被编程为关闭垂直同步脉冲。 这会将监视器置于 "standby" 模式。 如果您的显示器有一个
+Off_Mode 计时器，那么它最终会自行关闭。
+.TP 
+\fB2\fP
+保存当前设置，然后关闭垂直和水平同步脉冲。 这会将监视器置于 "off" 模式。 如果您的显示器没有 Off_Mode 计时器，或者如果您希望显示器在
+blank_timer 超时时立即关闭电源，则选择此选项。 (\fICaution:\fP 频繁断电会损坏显示器。) (自 Linux 1.1.76 起。)
+.RE
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_SETKMSGREDIRECT\fP
+更改内核消息的目标 ("console"): 默认情况下，如果设置为 \fB0\fP，消息将写入当前活动的 VT。 要写入的 VT 是 \fBsubcode\fP
+之后的单个字节。 (自 Linux 2.5.36 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_GETFGCONSOLE\fP
+返回当前在前台的 VT 数量。 (自 Linux 2.5.36 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_SCROLLCONSOLE\fP
+将前景 VT 向下滚动指定数量的 \fIlines\fP，如果是 \fB0\fP，则滚动屏幕的一半。 \fIlines\fP 是 *(((int32_t
+*)&subcode) + 1)。 (自 Linux 2.5.67 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_BLANKSCREEN\fP
+空白前景 VT，忽略 "pokes" (typing): 只能显式取消空白 (通过切换 VT，文本模式等)。 (自 Linux 2.5.71 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_BLANKEDSCREEN\fP
+返回当前消隐的 VT 数量，如果没有则返回 \fB0\fP。 (自 Linux 2.5.71 起。)
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fB16\fP
+没用过。
+.TP 
+\fBTIOCLINUX\fP, \fBsubcode\fP=\fBTIOCL_GETKMSGREDIRECT\fP
+返回内核消息的目标。 (自 Linux 2.6.17 起。)
+.SH "RETURN VALUE"
+成功时，返回 0 (除非另有说明)。 失败时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+文件描述符无效。
+.TP 
+\fBEINVAL\fP
+文件描述符或 \fIargp\fP 无效。
+.TP 
+\fBENOTTY\fP
+文件描述符与字符特殊设备无关，或者指定的请求不适用于它。
+.TP 
+\fBEPERM\fP
+权限不足。
+.SH NOTES
+\fBWarning\fP: 不要将此手册页视为 Linux 控制台 ioctl 的文档。 这仅供好奇者使用，作为阅读源代码的替代方法。 Ioctl
+是未记录的 Linux 内部结构，可能会在没有警告的情况下更改。 (事实上，这个页面或多或少地描述了内核版本 1.1.94 的情况;
+与早期版本有许多细微的和不太细微的差异。)
+.PP
+很多时候，ioctl 被引入用于内核和一个特定的知名程序
+(fdisk、hdparm、setserial、tunelp、loadkeys、selection、setfont 等)
+之间的通信，并且它们的行为将在该特定程序需要时更改。
+.PP
+使用这些 ioctl 的程序不能移植到其他版本的 UNIX，不能在旧版本的 Linux 上运行，也不能在 Linux 的 future 版本上运行。
+.PP
+使用 POSIX 函数。
+.SH "SEE ALSO"
+\fBdumpkeys\fP(1), \fBkbd_mode\fP(1), \fBloadkeys\fP(1), \fBmknod\fP(1), \fBsetleds\fP(1),
+\fBsetmetamode\fP(1), \fBexecve\fP(2), \fBfcntl\fP(2), \fBioctl_tty\fP(2), \fBioperm\fP(2),
+\fBtermios\fP(3), \fBconsole_codes\fP(4), \fBmt\fP(4), \fBsd\fP(4), \fBtty\fP(4),
+\fBttyS\fP(4), \fBvcs\fP(4), \fBvcsa\fP(4), \fBcharsets\fP(7), \fBmapscrn\fP(8),
+\fBresizecons\fP(8), \fBsetfont\fP(8)
+.PP
+\fI/usr/include/linux/kd.h\fP, \fI/usr/include/linux/vt.h\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

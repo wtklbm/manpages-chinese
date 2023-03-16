@@ -1,0 +1,596 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016, IBM Corporation.
+.\" Written by Mike Rapoport <rppt@linux.vnet.ibm.com>
+.\" and Copyright (C) 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH userfaultfd 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+userfaultfd \- 创建一个文件描述符来处理用户空间中的页面错误
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP             /* Definition of \fBO_*\fP constants */
+\fB#include <sys/syscall.h>\fP       /* Definition of \fBSYS_*\fP constants */
+\fB#include <linux/userfaultfd.h>\fP /* Definition of \fBUFFD_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_userfaultfd, int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBuserfaultfd\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBuserfaultfd\fP() 创建一个新的 userfaultfd 对象，可用于将页面错误处理委托给用户空间应用程序，并返回引用新对象的文件描述符。
+新的 userfaultfd 对象使用 \fBioctl\fP(2) 配置。
+.PP
+配置 userfaultfd 对象后，应用程序可以使用 \fBread\fP(2) 接收 userfaultfd 通知。 从 userfaultfd
+读取可能是阻塞的或非阻塞的，这取决于用于创建 userfaultfd 的 \fIflags\fP 的值或对 \fBfcntl\fP(2) 的后续调用。
+.PP
+以下值可能在 \fIflags\fP 中按位或运算以改变 \fBuserfaultfd\fP(): 的行为
+.TP 
+\fBO_CLOEXEC\fP
+为新的 userfaultfd 文件描述符启用 close\-on\-exec 标志。 请参见 \fBopen\fP(2) 中 \fBO_CLOEXEC\fP
+标志的说明。
+.TP 
+\fBO_NONBLOCK\fP
+为 userfaultfd 对象启用非阻塞操作。 请参见 \fBopen\fP(2) 中 \fBO_NONBLOCK\fP 标志的说明。
+.TP 
+\fBUFFD_USER_MODE_ONLY\fP
+这是 Linux 5.11 中引入的 userfaultfd 特定标志。 设置后，userfaultfd
+对象将只能处理来自已注册区域的用户空间的页面错误。 当使用此 userfaultfd 在注册范围内触发内核引发的故障时，将传送 \fBSIGBUS\fP
+信号。
+.PP
+.\"
+当引用 userfaultfd 对象的最后一个文件描述符关闭时，所有注册到该对象的内存范围都将被取消注册，并且未读事件将被刷新。
+.PP
+Userfaultfd 支持三种注册方式:
+.TP 
+\fBUFFDIO_REGISTER_MODE_MISSING\fP (since Linux 4.10)
+当注册为 \fBUFFDIO_REGISTER_MODE_MISSING\fP 模式时，用户空间将在访问丢失的页面时收到页面错误通知。
+故障线程将停止执行，直到通过 \fBUFFDIO_COPY\fP 或 \fBUFFDIO_ZEROPAGE\fP ioctl 从用户空间解决页面错误。
+.TP 
+\fBUFFDIO_REGISTER_MODE_MINOR\fP (since Linux 5.13)
+当以 \fBUFFDIO_REGISTER_MODE_MINOR\fP 模式注册时，用户空间将在发生轻微页面错误时收到页面错误通知。
+也就是说，当后备页面在页面缓存中，但页表条目尚不存在时。 出错的线程将停止执行，直到通过 \fBUFFDIO_CONTINUE\fP ioctl
+从用户空间解决页面错误。
+.TP 
+\fBUFFDIO_REGISTER_MODE_WP\fP (since Linux 5.7)
+当注册为 \fBUFFDIO_REGISTER_MODE_WP\fP 模式时，用户空间将在写保护页面被写入时收到页面错误通知。
+故障线程将停止执行，直到用户空间使用 \fBUFFDIO_WRITEPROTECT\fP ioctl 写取消保护页面。
+.PP
+同一内存范围可以同时启用多种模式。
+.PP
+自 Linux 4.14 起，userfaultfd 页面错误通知可以选择性地将错误线程 ID 信息嵌入到通知中。 在初始化 userfaultfd
+上下文时，需要使用 \fBUFFD_FEATURE_THREAD_ID\fP 特性位显式启用此，特性。 默认情况下，线程 ID 报告被禁用。
+.SS Usage
+userfaultfd 机制旨在允许多线程程序中的线程为进程中的其他线程执行用户空间分页。 当注册到 userfaultfd
+对象的区域之一发生页面错误时，发生错误的线程将进入睡眠状态，并生成一个事件，该事件可通过 userfaultfd 文件描述符读取。
+故障处理线程从此文件描述符中读取事件并使用 \fBioctl_userfaultfd\fP(2) 中描述的操作为它们提供服务。
+在为页面错误事件提供服务时，错误处理线程可以触发休眠线程的唤醒。
+.PP
+故障线程和故障处理线程有可能在不同进程的上下文中运行。 在这种情况下，这些线程可能属于不同的程序，执行错误线程的程序不一定会与处理页面错误的程序合作。
+在这种非合作模式下，监视 userfaultfd 和处理页面错误的进程需要知道错误进程的虚拟内存布局的变化，以避免内存损坏。
+.PP
+从 Linux 4.11 开始，userfaultfd 还可以通知故障处理线程有关故障进程的虚拟内存布局的变化。 此外，如果故障进程调用
+\fBfork\fP(2)，则与父进程关联的 userfaultfd 对象可能会被复制到子进程中，并且 userfaultfd 监视器将被通知
+(通过下面描述的 \fBUFFD_EVENT_FORK\fP) 有关为创建的 userfault 对象关联的文件描述符子进程，它允许 userfaultfd
+监视器为子进程执行用户空间分页。 与必须同步并需要显式或隐式唤醒的页面错误不同，所有其他事件都是异步传递的，非合作进程会在 userfaultfd
+管理器执行 \fBread\fP(2) 后立即恢复执行。 userfaultfd 管理器应该小心地将对 \fBUFFDIO_COPY\fP 的调用与事件处理同步。
+.PP
+.\" Regarding the preceding sentence, Mike Rapoport says:
+.\"     The major point here is that current events delivery model could be
+.\"     problematic for multi-threaded monitor. I even suspect that it would be
+.\"     impossible to ensure synchronization between page faults and non-page
+.\"     fault events in multi-threaded monitor.
+.\" .PP
+.\" FIXME elaborate about non-cooperating mode, describe its limitations
+.\" for kernels before Linux 4.11, features added in Linux 4.11
+.\" and limitations remaining in Linux 4.11
+.\" Maybe it's worth adding a dedicated sub-section...
+.\"
+当前事件传递的异步模型最适合单线程非合作 userfaultfd 管理器实现。
+.PP
+.\"
+从 Linux 5.7 开始，userfaultfd 可以使用新的写保护寄存器模式进行同步页面脏跟踪。 在使用此特性之前，应检查特性位
+\fBUFFD_FEATURE_PAGEFAULT_FLAG_WP\fP。 和原来的 userfaultfd missing
+模式类似，write\-protect 模式会在写保护页时产生 userfaultfd 通知。
+用户需要通过取消对故障页面的保护并踢出故障线程继续进行来解决页面故障。 有关详细信息，请参见 "Userfaultfd write\-protect
+mode" 部分。
+.SS "Userfaultfd operation"
+使用 \fBuserfaultfd\fP() 创建 userfaultfd 对象后，应用程序必须使用 \fBUFFDIO_API\fP \fBioctl\fP(2)
+操作启用它。 此操作允许内核和用户空间之间的握手以确定 API 版本和支持的，特性。 此操作必须在下面描述的任何其他 \fBioctl\fP(2)
+操作之前执行 (或者那些操作因 \fBEINVAL\fP 错误而失败)。
+.PP
+\fBUFFDIO_API\fP 操作成功后，应用程序使用 \fBUFFDIO_REGISTER\fP \fBioctl\fP(2) 操作注册内存地址范围。 成功完成
+\fBUFFDIO_REGISTER\fP 操作后，在请求的内存范围内发生页面错误，并且满足注册时定义的模式，将由内核转发给用户空间应用程序。
+然后应用程序可以使用 \fBUFFDIO_COPY ,\fP \fBUFFDIO_ZEROPAGE ,\fP 或 \fBUFFDIO_CONTINUE\fP
+\fBioctl\fP(2) 操作来解决页面错误。
+.PP
+从 Linux 4.14 开始，如果应用程序使用 \fBUFFDIO_API\fP \fBioctl\fP(2) 设置 \fBUFFD_FEATURE_SIGBUS\fP
+特性位，则不会将页面错误通知转发到用户空间。 而是将 \fBSIGBUS\fP 信号传递给故障进程。 使用此特性userfaultfd
+可用于稳健性目的，以简单地捕获对未分配页面的注册地址范围内区域的任何访问，而无需侦听 userfaultfd 事件。 处理此类内存访问不需要
+userfaultfd 监视器。 例如，此特性对于希望防止内核在通过内存映射访问 hole 时自动分配页面和填充稀疏文件中的空洞的应用程序很有用。
+.PP
+如果与 \fBUFFD_FEATURE_FORK\fP 结合使用，则 \fBUFFD_FEATURE_SIGBUS\fP 特性通过 \fBfork\fP(2) 隐式继承。
+.PP
+可以在 \fBioctl_userfaultfd\fP(2) 中找到各种 \fBioctl\fP(2) 操作的详细信息。
+.PP
+自 Linux 4.11 起，在 \fBUFFDIO_API\fP 操作期间可能会启用页面错误以外的事件。
+.PP
+.\"
+直到 Linux 4.11，userfaultfd 只能与匿名私有内存映射一起使用。 从 Linux 4.11 开始，userfaultfd 也可以与
+hugetlbfs 和共享内存映射一起使用。
+.SS "Userfaultfd write\-protect mode (since Linux 5.7)"
+从 Linux 5.7 开始，userfaultfd 支持匿名内存的写保护模式。 在使用此特性之前，用户需要先使用 \fBUFFDIO_API\fP
+ioctl 针对特性位 \fBUFFD_FEATURE_PAGEFAULT_FLAG_WP\fP 检查此特性的可用性。
+.PP
+从 Linux 5.19 开始，shmem 和 hugetlbfs 内存类型也支持写保护模式。 可用特性位
+\fBUFFD_FEATURE_WP_HUGETLBFS_SHMEM\fP 检测。
+.PP
+要注册到 userfaultfd 写保护模式，用户需要启动 \fBUFFDIO_REGISTER\fP ioctl 并设置模式
+\fBUFFDIO_REGISTER_MODE_WP\fP。 请注意，使用多种模式监视同一内存范围是合法的。 例如，用户可以在模式设置为
+\fBUFFDIO_REGISTER_MODE_MISSING | UFFDIO_REGISTER_MODE_WP\fP 的情况下执行
+\fBUFFDIO_REGISTER\fP。 当只有 \fBUFFDIO_REGISTER_MODE_WP\fP 注册时，用户空间将在缺少页面时收到 \fInot\fP
+的任何通知。 相反，只有当一个现有的但写保护的页面被写入时，用户空间才会收到写保护页面错误通知。
+.PP
+\fBUFFDIO_REGISTER\fP ioctl 完成并设置 \fBUFFDIO_REGISTER_MODE_WP\fP 模式后，用户可以使用 ioctl
+\fBUFFDIO_WRITEPROTECT\fP 对范围内的任何现有内存进行写保护，其中 \fIuffdio_writeprotect.mode\fP 应设置为
+\fBUFFDIO_WRITEPROTECT_MODE_WP\fP。
+.PP
+当写保护事件发生时，用户空间将收到一个页面错误通知，其 \fIuffd_msg.pagefault.flags\fP 将设置
+\fBUFFD_PAGEFAULT_FLAG_WP\fP 标志。 注意: 由于只有写入才能触发此类故障，因此写保护通知将始终设置
+\fBUFFD_PAGEFAULT_FLAG_WRITE\fP 位和 \fBUFFD_PAGEFAULT_FLAG_WP\fP 位。
+.PP
+.\"
+要解决写保护页面错误，用户应启动另一个 \fBUFFDIO_WRITEPROTECT\fP ioctl，其
+\fIuffd_msg.pagefault.flags\fP 应清除错误页面或范围上的标志 \fBUFFDIO_WRITEPROTECT_MODE_WP\fP。
+.SS "Userfaultfd minor fault mode (since Linux 5.13)"
+从 Linux 5.13 开始，userfaultfd 支持 minor fault 模式。 在这种模式下，错误消息不是针对主要故障 (页面丢失)
+产生的，而是针对较小故障产生的，其中页面存在于页面缓存中，但页表条目尚不存在。 用户需要先使用 \fBUFFDIO_API\fP ioctl
+检查此特性的可用性，然后再使用此，特性: \fBUFFD_FEATURE_MINOR_HUGETLBFS\fP since Linux 5.13，或
+\fBUFFD_FEATURE_MINOR_SHMEM\fP since Linux 5.14。
+.PP
+要注册到 userfaultfd 轻微故障模式，用户需要启动 \fBUFFDIO_REGISTER\fP ioctl 并设置模式
+\fBUFFD_REGISTER_MODE_MINOR\fP。
+.PP
+当发生小错误时，用户空间将收到一个页面错误通知，其 \fIuffd_msg.pagefault.flags\fP 将设置
+\fBUFFD_PAGEFAULT_FLAG_MINOR\fP 标志。
+.PP
+要解决轻微页面错误，处理程序应决定是否需要先修改现有页面内容。 如果是这样，这应该通过第二个非 userfaultfd 注册映射到同一支持页面
+(例如，通过映射 shmem 或 hugetlbfs 文件两次) 就地完成。 一旦页面被认为是 "up to date"，就可以通过启动
+\fBUFFDIO_CONTINUE\fP ioctl 来解决故障，它会安装页表条目并 (默认情况下) 唤醒发生故障的 thread(s)。
+.PP
+.\"
+轻微故障模式仅支持 hugetlbfs 支持 (自 Linux 5.13 起) 和 shmem 支持 (自 Linux 5.14 起) 内存。
+.SS "Reading from the userfaultfd structure"
+来自 userfaultfd 文件描述符的每个 \fBread\fP(2) 返回一个或多个 \fIuffd_msg\fP 结构，每个结构描述一个页面错误事件或非合作
+userfaultfd 使用所需的事件:
+.PP
+.in +4n
+.EX
+struct uffd_msg {
+    __u8  event;             /* Type of event */
+    ...
+    union {
+        struct {
+            __u64 flags;     /* Flags describing fault */
+            __u64 address;   /* Faulting address */
+            union {
+                __u32 ptid; /* Thread ID of the fault */
+            } feat;
+        } pagefault;
+
+        struct {            /* Since Linux 4.11 */
+            __u32 ufd;      /* Userfault file descriptor
+                               of the child process */
+        } fork;
+
+        struct {            /* Since Linux 4.11 */
+            __u64 from;     /* Old address of remapped area */
+            __u64 to;       /* New address of remapped area */
+            __u64 len;      /* Original mapping length */
+        } remap;
+
+        struct {            /* Since Linux 4.11 */
+            __u64 start;    /* Start address of removed area */
+            __u64 end;      /* End address of removed area */
+        } remove;
+        ...
+    } arg;
+
+    /* Padding fields omitted */
+} __packed;
+.EE
+.in
+.PP
+如果有多个事件可用并且提供的缓冲区足够大，则 \fBread\fP(2) 返回提供的缓冲区中容纳的尽可能多的事件。 如果提供给 \fBread\fP(2)
+的缓冲区小于 \fIuffd_msg\fP 结构体的大小，则 \fBread\fP(2) 会失败并出现错误 \fBEINVAL\fP。
+.PP
+\fIuffd_msg\fP 结构体中设置的字段如下:
+.TP 
+\fIevent\fP
+事件的类型。 根据事件类型，\fIarg\fP union 的不同字段表示事件处理所需的详细信息。 仅当在与 \fBUFFDIO_API\fP
+\fBioctl\fP(2) 的 API 握手期间启用了适当的特性时，才会生成非页面错误事件。
+.IP
+以下值可以出现在 \fIevent\fP 字段中:
+.RS
+.TP 
+\fBUFFD_EVENT_PAGEFAULT\fP (since Linux 4.3)
+页面错误事件。 页错误详细信息在 \fIpagefault\fP 字段中可用。
+.TP 
+\fBUFFD_EVENT_FORK\fP (since Linux 4.11)
+.\" FIXME describe duplication of userfault file descriptor during fork
+当故障进程调用 \fBfork\fP(2) (或没有 \fBCLONE_VM\fP 标志的 \fBclone\fP(2)) 时生成。 \fIfork\fP
+字段中提供了事件详细信息。
+.TP 
+\fBUFFD_EVENT_REMAP\fP (since Linux 4.11)
+当故障进程调用 \fBmremap\fP(2) 时生成。 \fIremap\fP 字段中提供了事件详细信息。
+.TP 
+\fBUFFD_EVENT_REMOVE\fP (since Linux 4.11)
+当故障进程使用 \fBMADV_DONTNEED\fP 或 \fBMADV_REMOVE\fP 建议调用 \fBmadvise\fP(2) 时生成。 \fIremove\fP
+字段中提供了事件详细信息。
+.TP 
+\fBUFFD_EVENT_UNMAP\fP (since Linux 4.11)
+当故障进程取消映射内存范围时生成，显式使用 \fBmunmap\fP(2) 或在 \fBmmap\fP(2) 或 \fBmremap\fP(2) 期间隐式使用。
+\fIremove\fP 字段中提供了事件详细信息。
+.RE
+.TP 
+\fIpagefault.address\fP
+触发页面错误的地址。
+.TP 
+\fIpagefault.flags\fP
+描述事件的标志位掩码。 对于 \fBUFFD_EVENT_PAGEFAULT\fP，可能会出现以下标志:
+.RS
+.TP 
+\fBUFFD_PAGEFAULT_FLAG_WP\fP
+如果设置了此标志，则故障是写保护故障。
+.TP 
+\fBUFFD_PAGEFAULT_FLAG_MINOR\fP
+如果设置了此标志，则故障是小故障。
+.TP 
+\fBUFFD_PAGEFAULT_FLAG_WRITE\fP
+如果设置了此标志，则错误是写错误。
+.PP
+如果 \fBUFFD_PAGEFAULT_FLAG_WP\fP 和 \fBUFFD_PAGEFAULT_FLAG_MINOR\fP 均未设置，则故障为缺失故障。
+.RE
+.TP 
+\fIpagefault.feat.pid\fP
+触发页面错误的线程 ID。
+.TP 
+\fIfork.ufd\fP
+与为 \fBfork\fP(2) 创建的子对象创建的 userfault 对象关联的文件描述符。
+.TP 
+\fIremap.from\fP
+使用 \fBmremap\fP(2) 重新映射的内存范围的原始地址。
+.TP 
+\fIremap.to\fP
+使用 \fBmremap\fP(2) 重新映射的内存范围的新地址。
+.TP 
+\fIremap.len\fP
+使用 \fBmremap\fP(2) 重新映射的内存范围的原始长度。
+.TP 
+\fIremove.start\fP
+使用 \fBmadvise\fP(2) 释放或未映射的内存范围的起始地址
+.TP 
+\fIremove.end\fP
+使用 \fBmadvise\fP(2) 释放或未映射的内存范围的结束地址
+.PP
+userfaultfd 文件描述符上的 \fBread\fP(2) 可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP
+使用 \fBUFFDIO_API\fP \fBioctl\fP(2) 操作尚未启用 userfaultfd 对象
+.PP
+.\" FIXME What is the reason for this seemingly odd behavior with respect
+.\" to the O_NONBLOCK flag? (see userfaultfd_poll() in fs/userfaultfd.c).
+.\" Something needs to be said about this.
+如果在关联的打开文件描述中启用了 \fBO_NONBLOCK\fP 标志，则可以使用 \fBpoll\fP(2)、\fBselect\fP(2) 和
+\fBepoll\fP(7) 监视 userfaultfd 文件描述符。 当事件可用时，文件描述符指示为可读。 如果未启用 \fBO_NONBLOCK\fP
+标志，则 \fBpoll\fP(2) (always) 指示文件具有 \fBPOLLERR\fP 条件，\fBselect\fP(2) 指示文件描述符可读和可写。
+.SH "RETURN VALUE"
+成功时，\fBuserfaultfd\fP() 返回一个指向 userfaultfd 对象的新文件描述符。 出错时返回 \-1，并设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中指定了一个不受支持的值。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENOMEM\fP
+可用内核内存不足。
+.TP 
+\fBEPERM\fP (since Linux 5.2)
+.\" cefdca0a86be517bc390fc4541e3674b8e7803b0
+调用者没有特权 (在初始用户命名空间中不具有 \fBCAP_SYS_PTRACE\fP 能力)，并且
+\fI/proc/sys/vm/unprivileged_userfaultfd\fP 具有值 0.
+.SH VERSIONS
+\fBuserfaultfd\fP() 系统调用最早出现在 Linux 4.3。
+.PP
+在 Linux 4.11 中添加了对 hugetlbfs 和共享内存区域以及非页面错误事件的支持
+.SH STANDARDS
+\fBuserfaultfd\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+userfaultfd 机制可用作基于使用 \fBSIGSEGV\fP 信号和 \fBmmap\fP(2) 的传统用户空间分页技术的替代方法。 它还可以用于实现
+checkpoint/restore 机制的惰性恢复，以及复制后迁移，以在将虚拟机和 Linux 容器从一台主机转移到另一台主机时允许 (nearly)
+不间断执行。
+.SH BUGS
+如果启用了 \fBUFFD_FEATURE_EVENT_FORK\fP 并且来自 \fBfork\fP(2) 系列的系统调用被信号中断或失败，则可能会创建陈旧的
+userfaultfd 描述符。 在这种情况下，虚假的 \fBUFFD_EVENT_FORK\fP 将被传送到 userfaultfd 监视器。
+.SH EXAMPLES
+下面的程序演示了 userfaultfd 机制的使用。 该程序为使用 \fBmmap\fP(2)
+创建的请求页面零区域中的页面创建两个线程，其中一个线程充当进程的页面错误处理程序。
+.PP
+该程序采用一个命令行参数，这是将在映射中创建的页面数，其页面错误将通过 userfaultfd 处理。 创建 userfaultfd
+对象后，程序会创建指定大小的匿名私有映射，并使用 \fBUFFDIO_REGISTER\fP \fBioctl\fP(2) 操作注册该映射的地址范围。
+然后程序创建第二个线程来执行处理页面错误的任务。
+.PP
+然后主线程遍历映射的页面，从连续的页面中获取字节。 因为这些页面还没有被访问过，第一次访问每个页面中的一个字节将在 userfaultfd
+文件描述符上触发一个页面错误事件。
+.PP
+每个页面错误事件都由第二个线程处理，该线程位于一个循环中，处理来自 userfaultfd 文件描述符的输入。 在每次循环迭代中，第二个线程首先调用
+\fBpoll\fP(2) 来检查文件描述符的状态，然后从文件描述符中读取一个事件。 所有此类事件都应该是 \fBUFFD_EVENT_PAGEFAULT\fP
+事件，线程通过使用 \fBUFFDIO_COPY\fP \fBioctl\fP(2) 操作将一页数据复制到故障区域来处理这些事件。
+.PP
+以下是我们在运行程序时看到的示例:
+.PP
+.in +4n
+.EX
+$ \fB./userfaultfd_demo 3\fP
+Address returned by mmap() = 0x7fd30106c000
+
+fault_handler_thread():
+    poll() returns: nready = 1;  POLLIN = 1;  POLLERR = 0
+    UFFD_EVENT_PAGEFAULT event: flags = 0;  address = 7fd30106c00f
+        (uffdio_copy.copy returned 4096)
+Read address 0x7fd30106c00f in main(): A
+Read address 0x7fd30106c40f in main(): A
+Read address 0x7fd30106c80f in main(): A
+Read address 0x7fd30106cc0f in main(): A
+
+fault_handler_thread():
+    poll() returns: nready = 1;  POLLIN = 1;  POLLERR = 0
+    UFFD_EVENT_PAGEFAULT event: flags = 0;  address = 7fd30106d00f
+        (uffdio_copy.copy returned 4096)
+Read address 0x7fd30106d00f in main(): B
+Read address 0x7fd30106d40f in main(): B
+Read address 0x7fd30106d80f in main(): B
+Read address 0x7fd30106dc0f in main(): B
+
+fault_handler_thread():
+    poll() returns: nready = 1;  POLLIN = 1;  POLLERR = 0
+    UFFD_EVENT_PAGEFAULT event: flags = 0;  address = 7fd30106e00f
+        (uffdio_copy.copy returned 4096)
+Read address 0x7fd30106e00f in main(): C
+Read address 0x7fd30106e40f in main(): C
+Read address 0x7fd30106e80f in main(): C
+Read address 0x7fd30106ec0f in main(): C
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (userfaultfd.c)
+\&
+.EX
+/* userfaultfd_demo.c
+
+   根据 GNU 通用公共许可证版本 2 或更高版本获得许可。
+*/
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <linux/userfaultfd.h>
+#include <poll.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+static int page_size;
+
+static void *
+fault_handler_thread(void *arg)
+{
+    int                 nready;
+    long                uffd;    /* userfaultfd file descriptor */
+    ssize_t             nread;
+    struct pollfd       pollfd;
+    struct uffdio_copy  uffdio_copy;
+
+    static int      fault_cnt = 0; /* Number of faults so far handled */
+    static char     *page = NULL;
+    static struct uffd_msg  msg;   /* Data read from userfaultfd */
+
+    uffd = (long) arg;
+
+    /* Create a page that will be copied into the faulting region. */
+
+    if (page == NULL) {
+        page = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, \-1, 0);
+        if (page == MAP_FAILED)
+            err(EXIT_FAILURE, "mmap");
+    }
+
+    /* Loop, handling incoming events on the userfaultfd
+       file descriptor. */
+
+    for (;;) {
+
+        /* See what poll() tells us about the userfaultfd. */
+
+        pollfd.fd = uffd;
+        pollfd.events = POLLIN;
+        nready = poll(&pollfd, 1, \-1);
+        if (nready == \-1)
+            err(EXIT_FAILURE, "poll");
+
+        printf("\enfault_handler_thread():\en");
+        printf("    poll() returns: nready = %d; "
+               "POLLIN = %d; POLLERR = %d\en", nready,
+               (pollfd.revents & POLLIN) != 0,
+               (pollfd.revents & POLLERR) != 0);
+
+        /* Read an event from the userfaultfd. */
+
+        nread = read(uffd, &msg, sizeof(msg));
+        if (nread == 0) {
+            printf("EOF on userfaultfd!\en");
+            exit(EXIT_FAILURE);
+        }
+
+        if (nread == \-1)
+            err(EXIT_FAILURE, "read");
+
+        /* We expect only one kind of event; verify that assumption. */
+
+        if (msg.event != UFFD_EVENT_PAGEFAULT) {
+            fprintf(stderr, "Unexpected event on userfaultfd\en");
+            exit(EXIT_FAILURE);
+        }
+
+        /* Display info about the page\-fault event. */
+
+        printf("    UFFD_EVENT_PAGEFAULT event: ");
+        printf("flags = %"PRIx64"; ", msg.arg.pagefault.flags);
+        printf("address = %"PRIx64"\en", msg.arg.pagefault.address);
+
+        /* Copy the page pointed to by \[aq]page\[aq] into the faulting
+           region. Vary the contents that are copied in, so that it
+           is more obvious that each fault is handled separately. */
+
+        memset(page, \[aq]A\[aq] + fault_cnt % 20, page_size);
+        fault_cnt++;
+
+        uffdio_copy.src = (unsigned long) page;
+
+        /* We need to handle page faults in units of pages(!).
+           So, round faulting address down to page boundary. */
+
+        uffdio_copy.dst = (unsigned long) msg.arg.pagefault.address &
+                                           \[ti](page_size \- 1);
+        uffdio_copy.len = page_size;
+        uffdio_copy.mode = 0;
+        uffdio_copy.copy = 0;
+        if (ioctl(uffd, UFFDIO_COPY, &uffdio_copy) == \-1)
+            err(EXIT_FAILURE, "ioctl\-UFFDIO_COPY");
+
+        printf("        (uffdio_copy.copy returned %"PRId64")\en",
+               uffdio_copy.copy);
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    int        s;
+    char       c;
+    char       *addr;    /* Start of region handled by userfaultfd */
+    long       uffd;     /* userfaultfd file descriptor */
+    size_t     len, l;  /* Length of region handled by userfaultfd */
+    pthread_t  thr;     /* ID of thread that handles page faults */
+    struct uffdio_api       uffdio_api;
+    struct uffdio_register  uffdio_register;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s num\-pages\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    page_size = sysconf(_SC_PAGE_SIZE);
+    len = strtoull(argv[1], NULL, 0) * page_size;
+
+    /* Create and enable userfaultfd object. */
+
+    uffd = syscall(SYS_userfaultfd, O_CLOEXEC | O_NONBLOCK);
+    if (uffd == \-1)
+        err(EXIT_FAILURE, "userfaultfd");
+
+    uffdio_api.api = UFFD_API;
+    uffdio_api.features = 0;
+    if (ioctl(uffd, UFFDIO_API, &uffdio_api) == \-1)
+        err(EXIT_FAILURE, "ioctl\-UFFDIO_API");
+
+    /* Create a private anonymous mapping. The memory will be
+       demand\-zero paged\-\-that is, not yet allocated. When we
+       actually touch the memory, it will be allocated via
+       the userfaultfd. */
+
+    addr = mmap(NULL, len, PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANONYMOUS, \-1, 0);
+    if (addr == MAP_FAILED)
+        err(EXIT_FAILURE, "mmap");
+
+    printf("Address returned by mmap() = %p\en", addr);
+
+    /* Register the memory range of the mapping we just created for
+       handling by the userfaultfd object. In mode, we request to track
+       missing pages (i.e., pages that have not yet been faulted in). */
+
+    uffdio_register.range.start = (unsigned long) addr;
+    uffdio_register.range.len = len;
+    uffdio_register.mode = UFFDIO_REGISTER_MODE_MISSING;
+    if (ioctl(uffd, UFFDIO_REGISTER, &uffdio_register) == \-1)
+        err(EXIT_FAILURE, "ioctl\-UFFDIO_REGISTER");
+
+    /* Create a thread that will process the userfaultfd events. */
+
+    s = pthread_create(&thr, NULL, fault_handler_thread, (void *) uffd);
+    if (s != 0) {
+        errc(EXIT_FAILURE, s, "pthread_create");
+    }
+
+    /* Main thread now touches memory in the mapping, touching
+       locations 1024 bytes apart. This will trigger userfaultfd
+       events for all pages in the region. */
+
+    l = 0xf;    /* Ensure that faulting address is not on a page
+                   boundary, in order to test that we correctly
+                   handle that case in fault_handling_thread().  */
+    while (l < len) {
+        c = addr[l];
+        printf("Read address %p in %s(): ", addr + l, __func__);
+        printf("%c\en", c);
+        l += 1024;
+        usleep(100000);         /* Slow things down a little */
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfcntl\fP(2), \fBioctl\fP(2), \fBioctl_userfaultfd\fP(2), \fBmadvise\fP(2), \fBmmap\fP(2)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/admin\-guide/mm/userfaultfd.rst\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,164 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2016 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tmpfs 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+tmpfs \- 虚拟内存文件系统
+.SH DESCRIPTION
+\fBtmpfs\fP 工具允许创建内容驻留在虚拟内存中的文件系统。 由于此类文件系统上的文件通常驻留在 RAM 中，因此文件访问速度非常快。
+.PP
+当通过如下命令挂载类型为 \fBtmpfs\fP 的文件系统时，会自动创建文件系统:
+.PP
+.in +4n
+.EX
+$ sudo mount \-t tmpfs \-o 大小 = 10M tmpfs /mnt/mytmpfs
+.EE
+.in
+.PP
+\fBtmpfs\fP 文件系统具有以下属性:
+.IP \[bu] 3
+当物理内存压力需要时，文件系统可以使用交换空间。
+.IP \[bu]
+文件系统只消耗存储文件系统当前内容所需的物理内存和交换空间。
+.IP \[bu]
+在重新安装操作 (\fImount\ \-o\ remount\fP) 期间，可以更改文件系统大小 (不会丢失文件系统的现有内容)。
+.PP
+.\" See mm/shmem.c:shmem_parse_options for options it supports.
+如果卸载 \fBtmpfs\fP 文件系统，则其内容将被丢弃 (lost)。
+.SS "Mount options"
+\fBtmpfs\fP 文件系统支持以下挂载选项:
+.TP 
+\fBsize\fP=\fIbytes\fP
+指定文件系统大小的上限。 大小以字节为单位，并四舍五入为整个页面。
+.IP
+尺寸可能有 \fBk\fP、\fBm\fP 或 \fBg\fP 后缀表示 Ki、Mi、Gi (二进制 kilo (kibi)、二进制 mega (mebi) 和二进制
+giga (gibi))。
+.IP
+该大小也可能有一个 % 后缀，以将此实例限制为物理 RAM 的百分比。
+.IP
+当既未指定 \fBsize\fP 也未指定 \fBnr_blocks\fP 时，默认值为 \fIsize=50%\fP。
+.TP 
+\fBnr_blocks\fP=\fIblocks\fP
+与 \fBsize\fP 相同，但在 \fBPAGE_CACHE_SIZE\fP 的块中。
+.IP
+可以使用 \fBk\fP、\fBm\fP 或 \fBg\fP 后缀 (如 \fBsize\fP) 指定块，但不能使用 % 后缀。
+.TP 
+\fBnr_inodes\fP=\fIinodes\fP
+此实例的最大索引节点数。 默认值是物理 RAM 页数的一半，或者 (在具有 highmem 的机器上) lowmem RAM 页数，以较小者为准。
+.IP
+可以使用 \fBk\fP、\fBm\fP 或 \fBg\fP 后缀 (如 \fBsize\fP) 指定索引节点，但不能使用 % 后缀。
+.TP 
+\fBmode\fP=\fImode\fP
+设置根目录的初始权限。
+.TP 
+\fBgid\fP=\fIgid\fP (since Linux 2.5.7)
+.\" Technically this is also in some version of Linux 2.4.
+.\" commit 099445b489625b80b1d6687c9b6072dbeaca4096
+设置根目录的初始组 ID。
+.TP 
+\fBuid\fP=\fIuid\fP (since Linux 2.5.7)
+.\" Technically this is also in some version of Linux 2.4.
+.\" commit 099445b489625b80b1d6687c9b6072dbeaca4096
+设置根目录的初始用户 ID。
+.TP 
+\fBhuge\fP=\fIhuge_option\fP (since Linux 4.7.0)
+.\" commit 5a6e75f8110c97e2a5488894d4e922187e6cb343
+设置本实例所有文件的 huge table 内存分配策略 (如果启用了 \fBCONFIG_TRANSPARENT_HUGE_PAGECACHE\fP)。
+.IP
+\fIhuge_option\fP 值为以下之一:
+.RS
+.TP 
+\fBnever\fP
+不要分配大页面。 这是默认设置。
+.TP 
+\fBalways\fP
+每次需要新页面时都尝试分配大页面。
+.TP 
+\fBwithin_size\fP
+仅当大页面完全位于 \fIi_size\fP 内时才分配大页面。 也尊重 \fBfadvise\fP(2) 和 \fBmadvise\fP(2) 提示
+.TP 
+\fBadvise\fP
+只有在使用 \fBfadvise\fP(2) 或 \fBmadvise\fP(2) 请求时才分配大页面。
+.TP 
+\fBdeny\fP
+在紧急情况下使用，强制关闭所有坐骑的巨大选项。
+.TP 
+\fBforce\fP
+为所有坐骑强制启用 huge 选项; 对测试有用。
+.RE
+.TP 
+\fBmpol\fP=\fImpol_option\fP (since Linux 2.6.15)
+.\" commit 7339ff8302fd70aabf5f1ae26e0c4905fa74a495
+为该实例中的所有文件设置 NUMA 内存分配策略 (如果启用 \fBCONFIG_NUMA\fP)。
+.IP
+\fImpol_option\fP 值为以下之一:
+.RS
+.TP 
+\fBdefault\fP
+使用进程分配策略 (参见 \fBset_mempolicy\fP(2)).
+.TP 
+\fBprefer\fP:\fInode\fP
+最好从给定的 \fInode\fP 分配内存。
+.TP 
+\fBbind\fP:\fInodelist\fP
+仅从 \fInodelist\fP 中的节点分配内存。
+.TP 
+\fBinterleave\fP
+依次从各个节点分配。
+.TP 
+\fBinterleave\fP:\fInodelist\fP
+从 \fIin\fP 轮次的每个节点开始分配。
+.TP 
+\fBlocal\fP
+最好从本地节点分配内存。
+.RE
+.IP
+在上面，\fInodelist\fP 是指定 NUMA 节点的十进制数字和范围的逗号分隔列表。 范围是一对用连字符分隔的十进制数，即范围内的最小和最大节点号。
+例如，\fImpol=bind:0\-3,5,7,9\-15\fP。
+.SH VERSIONS
+\fBtmpfs\fP 设施被添加到 Linux 2.4 中，作为较旧的 \fBramfs\fP 设施的继承者，它不提供限制检查或允许使用交换空间。
+.SH NOTES
+为了让用户空间工具和应用程序创建 \fBtmpfs\fP 文件系统，内核必须配置 \fBCONFIG_TMPFS\fP 选项。
+.PP
+\fBtmpfs\fP 文件系统支持扩展属性 (参见 \fBxattr\fP(7))，但不允许使用 \fIuser\fP 扩展属性。
+.PP
+内部共享内存文件系统用于 System V 共享内存 (\fBshmget\fP(2)) 和带有 \fBMAP_SHARED\fP 和
+\fBMAP_ANONYMOUS\fP 标志的共享匿名映射 (\fBmmap\fP(2)。 无论内核是否配置了 \fBCONFIG_TMPFS\fP
+选项，该文件系统都可用。
+.PP
+安装在 \fI/dev/shm\fP 的 \fBtmpfs\fP 文件系统用于实现 POSIX 共享内存 (\fBshm_overview\fP(7)) 和 POSIX
+信号量 (\fBsem_overview\fP(7))。
+.PP
+所有 \fBtmpfs\fP 文件系统消耗的内存量显示在 \fI/proc/meminfo\fP 的 \fIShmem\fP 字段和 \fBfree\fP(1) 显示的
+\fIshared\fP 字段中。
+.PP
+\fBtmpfs\fP 设施以前称为 \fBshmfs\fP。
+.SH "SEE ALSO"
+\fBdf\fP(1), \fBdu\fP(1), \fBmemfd_create\fP(2), \fBmmap\fP(2), \fBset_mempolicy\fP(2),
+\fBshm_open\fP(3), \fBmount\fP(8)
+.PP
+内核源文件 \fIDocumentation/filesystems/tmpfs.txt\fP 和
+\fIDocumentation/admin\-guide/mm/transhuge.rst\fP。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

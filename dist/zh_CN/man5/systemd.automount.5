@@ -1,0 +1,168 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.AUTOMOUNT 5 "" "systemd 253" systemd.automount
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.automount\-Automount 元配置
+.SH SYNOPSIS
+.PP
+\fIautomount\fP\&.automount
+.SH DESCRIPTION
+.PP
+名称以 "\&.automount" 结尾的元配置文件编码有关由 systemd\&
+控制和监督的文件系统自动挂载点的信息。自动挂载单元可用于实现按需挂载以及文件系统的并行挂载。
+.PP
+此手册页列出了特定于此元类型 \& 的配置选项。所有元配置文件的通用选项见 \fBsystemd.unit\fP(5)\&。通用配置项配置在泛型 [Unit]
+和 [Install] 部分 \&。automount 特定的配置选项在 [Automount] 部分配置。
+.PP
+自动挂载单元必须以它们控制的自动挂载目录命名 \&。示例: automount 点 /home/lennart 必须配置在一个元文件
+home\-lennart\&.automount\& 中。有关用于将文件系统路径转换为元名称的转义逻辑的详细信息，请参见
+\fBsystemd.unit\fP(5)\&。请注意，automount 单元不能被模板化，也不可能通过创建符号链接到它的元文件 \& 来将多个名称添加到
+automount 元。
+.PP
+对于每个 automount 元文件，必须存在一个匹配的 mount 元文件 (有关详细信息，请参见 \fBsystemd.mount\fP(5))，当访问
+automount 路径时，该文件将被激活 \&。示例: 如果自动挂载单元 home\-lennart\&.automount 处于活动状态并且用户访问
+/home/lennart，则挂载单元 home\-lennart\&.mount 将被激活 \&。
+.PP
+请注意，自动挂载单元与挂载本身是分开的，因此您不应在此处为挂载依赖项设置 \fIAfter=\fP 或
+\fIRequires=\fP\&。例如，您不应在网络文件系统 \& 上设置 \fIAfter=network\-online\&.target\fP
+或类似内容。这样做可能会导致订购周期 \&。
+.PP
+请注意，Linux 上的自动挂载支持是特权的，因此自动挂载单元仅在系统服务管理器 (和 root\* (Aqs 用户服务管理器) 中可用，但在非特权用户
+\* (Aq 服务管理器 \&。
+.PP
+请注意，自动挂载单元不应嵌套 \&。(内部自动挂载点的建立会无条件地固定外部挂载点，破坏其目的 \&。)
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+隐式添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果一个自动挂载单元在文件系统层次结构中的另一个挂载单元之下，则在层次结构中更高的单元上创建需求和排序依赖性 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在自动挂载单元和它激活的挂载单元之间创建隐式 \fIBefore=\fP 依赖性 \&。
+.RE
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Automount 单元在 umount\&.target 上获取自动 \fIBefore=\fP 和 \fIConflicts=\fP，以便在关机期间停止 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Automount 单元自动获得对 local\-fs\-pre\&.target 的 \fIAfter=\fP 依赖，以及对
+local\-fs\&.target\& 的 \fIBefore=\fP 依赖。
+.RE
+.SH FSTAB
+.PP
+Automount 单元可以通过元文件或 /etc/fstab (详见 \fBfstab\fP(5)) \& 配置。
+.PP
+有关 systemd 如何解析 /etc/fstab 的详细信息，请参见 \fBsystemd.mount\fP(5)\&。
+.PP
+如果 /etc/fstab 和元文件中都配置了自动挂载点，则后者的配置优先 \&。
+.SH OPTIONS
+.PP
+Automount 元文件可能包含 [Unit] 和 [Install] 部分，这些部分在 \fBsystemd.unit\fP(5)\& 中进行了描述。
+.PP
+Automount 元文件必须包含一个 [Automount] 部分，其中包含有关它所监管的文件系统自动挂载点的信息 \&。特定于自动挂载单元的
+[Automount] 部分的选项如下:
+.PP
+\fIWhere=\fP
+.RS 4
+采用自动挂载点目录的绝对路径 \&。如果在安装自动挂载点时自动挂载点不存在，则会创建它 \&。该字符串必须反映在元文件名 \& 中。(见上文 \&。)
+此选项是必需的 \&。
+.RE
+.PP
+\fIExtraOptions=\fP
+.RS 4
+创建 autofs 挂载点 \& 时要使用的额外挂载选项。这需要一个逗号分隔的选项列表 \&。此设置是可选的
+\&。请注意，通常的说明符扩展应用于此设置，因此字符值百分比字符应写为 `%%`\&。
+.RE
+.PP
+\fIDirectoryMode=\fP
+.RS 4
+如果需要 \&，会自动创建自动挂载点的目录 (以及任何父目录)。此选项指定创建这些目录时使用的文件系统访问模式 \&。采用八进制表示法 \&
+的访问模式。默认为 0755\&。
+.RE
+.PP
+\fITimeoutIdleSec=\fP
+.RS 4
+配置空闲超时 \&。一旦挂载空闲了指定的时间，systemd 将尝试卸载 \&。取一个以秒为单位的小于元的值，或者一个时间跨度值，例如 `5min
+20s`\&。传递 0 以禁用超时逻辑 \&。默认情况下禁用超时 \&。
+.RE
+.PP
+检查 \fBsystemd.unit\fP(5)、\fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5) 以获得更多设置 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd.unit\fP(5), \fBsystemd.mount\fP(5),
+\fBmount\fP(8), \fBautomount\fP(8), \fBsystemd.directives\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,203 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2017, Yubin Ruan <ablacktshirt@gmail.com>
+.\" and Copyright (c) 2017, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_mutexattr_setrobust 3 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_mutexattr_getrobust、pthread_mutexattr_setrobust \- 获取和设置互锁属性对象的健壮性属性
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_mutexattr_getrobust(const pthread_mutexattr_t *\fP\fIattr\fP\fB,\fP
+\fB                                int *\fP\fIrobustness\fP\fB);\fP
+\fBint pthread_mutexattr_setrobust(pthread_mutexattr_t *\fP\fIattr\fP\fB,\fP
+\fB                                int \fP\fIrobustness\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpthread_mutexattr_getrobust\fP(), \fBpthread_mutexattr_setrobust\fP():
+.nf
+.\" FIXME .
+.\" But see https://sourceware.org/bugzilla/show_bug.cgi?id=22125
+    _POSIX_C_SOURCE >= 200809L
+.fi
+.SH DESCRIPTION
+\fBpthread_mutexattr_getrobust\fP() 函数将 \fIattr\fP 引用的互连锁属性对象的健壮性属性值放在
+\fI*robustness\fP 中。 \fBpthread_mutexattr_setrobust\fP() 函数将 \fIattr\fP
+引用的互连锁属性对象的健壮性属性值设置为 \fI*robustness\fP 中指定的值。
+.PP
+robustness 属性指定当拥有线程在没有解锁交互锁的情况下死亡时交互锁的行为。 以下值对 \fIrobustness\fP: 有效
+.TP 
+\fBPTHREAD_MUTEX_STALLED\fP
+这是互连锁属性对象的默认值。 如果一个互联锁被初始化为 \fBPTHREAD_MUTEX_STALLED\fP
+属性，并且它的所有者在没有解锁它的情况下死亡，互联锁之后会保持锁定状态，任何 future 尝试在互联锁上调用
+\fBpthread_mutex_lock\fP(3) 将无限期地阻止。
+.TP 
+\fBPTHREAD_MUTEX_ROBUST\fP
+如果一个交互锁被初始化为 \fBPTHREAD_MUTEX_ROBUST\fP 属性并且它的所有者在没有解锁它的情况下死亡，任何 future
+尝试在这个交互锁上调用 \fBpthread_mutex_lock\fP(3) 都会成功并返回 \fBEOWNERDEAD\fP
+以指示原始所有者不再存在并且交互锁是处于不一致的状态。 通常在 \fBEOWNERDEAD\fP 归还后，下一个拥有者应该在获得的互联锁上再次调用
+\fBpthread_mutex_consistent\fP(3) 使其一致，然后再使用它。
+.IP
+如果下一个拥有者在保持一致之前使用 \fBpthread_mutex_unlock\fP(3) 解锁了互联锁，则互联锁将永久无法使用，并且任何后续使用
+\fBpthread_mutex_lock\fP(3) 锁定它的尝试都将失败并显示错误 \fBENOTRECOVERABLE\fP。 这样的交互锁唯一允许的操作是
+\fBpthread_mutex_destroy\fP(3)。
+.IP
+如果下一个所有者在调用 \fBpthread_mutex_consistent\fP(3) 之前终止，则此交互锁上的进一步
+\fBpthread_mutex_lock\fP(3) 操作仍将返回 \fBEOWNERDEAD\fP。
+.PP
+请注意，\fBpthread_mutexattr_getrobust\fP() 和 \fBpthread_mutexattr_setrobust\fP() 的
+\fIattr\fP 参数应引用由 \fBpthread_mutexattr_init\fP(3) 初始化的交互锁属性对象，否则行为未定义。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0。 出错时，它们返回一个正的错误号。
+.PP
+在 glibc 实现中，\fBpthread_mutexattr_getrobust\fP() 总是返回零。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+\fBPTHREAD_MUTEX_STALLED\fP 或 \fBPTHREAD_MUTEX_ROBUST\fP 以外的值被传递给
+\fBpthread_mutexattr_setrobust\fP()。
+.SH VERSIONS
+在 glibc 2.12 中添加了 \fBpthread_mutexattr_getrobust\fP() 和
+\fBpthread_mutexattr_setrobust\fP()。
+.SH STANDARDS
+POSIX.1\-2008.
+.SH NOTES
+.\" E.g., Solaris, according to its manual page
+在 Linux 实现中，当使用进程共享的健壮互联锁时，如果健壮互联锁的所有者在没有先解锁互联锁的情况下执行 \fBexecve\fP(2)，则等待线程也会收到
+\fBEOWNERDEAD\fP 通知。 POSIX.1 没有指定这个细节，但至少在其他一些实现中也会出现相同的行为。
+.PP
+在将 \fBpthread_mutexattr_getrobust\fP() 和 \fBpthread_mutexattr_setrobust\fP() 添加到
+POSIX 之前，如果定义了 \fB_GNU_SOURCE\fP，glibc 定义了以下等效的非标准函数:
+.PP
+.nf
+\fB[[deprecated]]\fP 
+\fBint pthread_mutexattr_getrobust_np(const pthread_mutexattr_t *\fP\fIattr\fP\fB,\fP
+\fB                                   int *\fP\fIrobustness\fP\fB);\fP
+\fB[[deprecated]]\fP
+\fBint pthread_mutexattr_setrobust_np(const pthread_mutexattr_t *\fP\fIattr\fP\fB,\fP
+\fB                                   int \fP\fIrobustness\fP\fB);\fP
+.fi
+.PP
+相应地，也定义了常量 \fBPTHREAD_MUTEX_STALLED_NP\fP 和 \fBPTHREAD_MUTEX_ROBUST_NP\fP。
+.PP
+这些最初出现在 glibc 2.4 中的 GNU 特定 API 现在已经过时，不应在新程序中使用; 自 glibc 2.34 以来，这些 API
+被标记为已弃用。
+.SH EXAMPLES
+下面的程序演示了互连锁属性对象的健壮性属性的使用。 在这个程序中，持有交互锁的线程在没有解锁交互锁的情况下过早死亡。
+主线程随后成功获取到互连锁并得到错误 \fBEOWNERDEAD\fP，之后使互连锁保持一致。
+.PP
+以下 shell 会话显示了我们在运行该程序时看到的内容:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+[original owner] 设置锁定...
+[original owner] 锁定。现在不解锁就退出。
+[main] 试图锁定坚固的互连锁。
+[main] pthread_mutex_lock() 返回 EOWNERDEAD
+[main] 现在让交互锁保持一致
+[main] 互联锁现在是一致的; unlocking
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_mutexattr_setrobust.c)
+.EX
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define handle_error_en(en, msg) \e
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static pthread_mutex_t mtx;
+
+static void *
+original_owner_thread(void *ptr)
+{
+    printf("[original owner] Setting lock...\en");
+    pthread_mutex_lock(&mtx);
+    printf("[original owner] Locked. Now exiting without unlocking.\en");
+    pthread_exit(NULL);
+}
+
+int
+main(void)
+{
+    pthread_t thr;
+    pthread_mutexattr_t attr;
+    int s;
+
+    pthread_mutexattr_init(&attr);
+
+    pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+
+    pthread_mutex_init(&mtx, &attr);
+
+    pthread_create(&thr, NULL, original_owner_thread, NULL);
+
+    sleep(2);
+
+    /* "original_owner_thread" should have exited by now. */
+
+    printf("[main] Attempting to lock the robust mutex.\en");
+    s = pthread_mutex_lock(&mtx);
+    if (s == EOWNERDEAD) {
+        printf("[main] pthread_mutex_lock() returned EOWNERDEAD\en");
+        printf("[main] Now make the mutex consistent\en");
+        s = pthread_mutex_consistent(&mtx);
+        if (s != 0) 
+            handle_error_en(s, "pthread_mutex_consistent");
+        printf("[main] Mutex is now consistent;  unlocking\en");
+        s = pthread_mutex_unlock(&mtx);
+        if (s != 0)
+            handle_error_en(s, "pthread_mutex_unlock");
+
+        exit(EXIT_SUCCESS);
+    } else if (s == 0) {
+        printf("[main] pthread_mutex_lock() unexpectedly succeeded\en");
+        exit(EXIT_FAILURE);
+    } else {
+        printf("[main] pthread_mutex_lock() unexpectedly failed\en");
+        handle_error_en(s, "pthread_mutex_lock");
+    }
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBget_robust_list\fP(2), \fBset_robust_list\fP(2),
+\fBpthread_mutex_consistent\fP(3), \fBpthread_mutex_init\fP(3),
+\fBpthread_mutex_lock\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,108 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1983, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     $Id: getsockopt.2,v 1.1 1999/05/24 14:57:04 freitag Exp $
+.\"
+.\" Modified Sat Jul 24 16:19:32 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Mon Apr 22 02:29:06 1996 by Martin Schulze (joey@infodrom.north.de)
+.\" Modified Tue Aug 27 10:52:51 1996 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Thu Jan 23 13:29:34 1997 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Sun Mar 28 21:26:46 1999 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified 1999 by Andi Kleen <ak@muc.de>.
+.\"     Removed most stuff because it is in socket.7 now.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getsockopt 2 2022\-11\-10 "Linux man\-pages 6.03" 
+.SH NAME
+getsockopt, setsockopt \- 获取和设置套接字选项
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fBint getsockopt(int \fP\fIsockfd\fP\fB, int \fP\fIlevel\fP\fB, int \fP\fIoptname\fP\fB,\fP
+\fB               void \fP\fIoptval\fP\fB[restrict *.\fP\fIoptlen\fP\fB],\fP
+\fB               socklen_t *restrict \fP\fIoptlen\fP\fB);\fP
+\fBint setsockopt(int \fP\fIsockfd\fP\fB, int \fP\fIlevel\fP\fB, int \fP\fIoptname\fP\fB,\fP
+\fB               const void \fP\fIoptval\fP\fB[.\fP\fIoptlen\fP\fB],\fP
+\fB               socklen_t \fP\fIoptlen\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBgetsockopt\fP() 和 \fBsetsockopt\fP() 操作文件描述符 \fIsockfd\fP 引用的套接字的选项。
+选项可能存在于多个协议级别; 它们总是出现在最上面的套接字层。
+.PP
+操作套接字选项时，必须指定选项所在的级别和选项的名称。 要在套接字 API 级别操作选项，\fIlevel\fP 被指定为 \fBSOL_SOCKET\fP。
+要在任何其他级别操作选项，请提供控制该选项的适当协议的协议号。 例如，要表示一个选项由 \fBTCP\fP 协议解释，\fIlevel\fP 应该设置为
+\fBTCP\fP 的协议号; 请参见 \fBgetprotoent\fP(3)。
+.PP
+参数 \fIoptval\fP 和 \fIoptlen\fP 用于访问 \fBsetsockopt\fP() 的选项值。 对于
+\fBgetsockopt\fP()，它们标识一个缓冲区，其中将返回所请求的 option(s) 的值。 对于
+\fBgetsockopt\fP()，\fIoptlen\fP 是一个值 \- 结果参数，最初包含 \fIoptval\fP
+指向的缓冲区的大小，并在返回时修改以指示返回值的实际大小。 如果不提供或返回任何选项值，则 \fIoptval\fP 可能为 NULL。
+.PP
+\fIOptname\fP 和任何指定的选项都未经解释地传递给适当的协议模块进行解释。 包含文件 \fI<sys/socket.h>\fP
+包含套接字级别选项的定义，如下所述。 其他协议级别的选项在格式和名称上有所不同; 请参见手册第 4 节中的相应条目。
+.PP
+大多数套接字级选项将 \fIint\fP 参数用于 \fIoptval\fP。 对于
+\fBsetsockopt\fP()，参数应该为非零以启用布尔选项，或者如果要禁用该选项则为零。
+.PP
+有关可用套接字选项的说明，请参见 \fBsocket\fP(7) 和相应的协议手册页。
+.SH "RETURN VALUE"
+成功时，标准选项返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+Netfilter 允许程序员定义带有关联处理程序的自定义套接字选项; 对于此类选项，成功时的返回值是处理程序返回的值。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+参数 \fIsockfd\fP 不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIoptval\fP 指向的地址不在进程地址空间的有效部分。 对于 \fBgetsockopt\fP()，如果 \fIoptlen\fP
+不在进程地址空间的有效部分中，也可能返回此错误。
+.TP 
+\fBEINVAL\fP
+\fIoptlen\fP 在 \fBsetsockopt\fP() 中无效。 在某些情况下，此错误也可能因 \fIoptval\fP 中的无效值而发生 (例如，对于
+\fBip\fP(7)) 中描述的 \fBIP_ADD_MEMBERSHIP\fP 选项)。
+.TP 
+\fBENOPROTOOPT\fP
+该选项在指示的级别未知。
+.TP 
+\fBENOTSOCK\fP
+文件描述符 \fIsockfd\fP 不引用套接字。
+.SH STANDARDS
+.\" SVr4 documents additional ENOMEM and ENOSR error codes, but does
+.\" not document the
+.\" .BR SO_SNDLOWAT ", " SO_RCVLOWAT ", " SO_SNDTIMEO ", " SO_RCVTIMEO
+.\" options
+POSIX.1\-2001、POSIX.1\-2008、SVr4、4.4BSD (这些系统调用最早出现在 4.2BSD 中)。
+.SH NOTES
+有关 \fIsocklen_t\fP 类型的背景，请参见 \fBaccept\fP(2)。
+.SH BUGS
+几个套接字选项应该在系统的较低级别处理。
+.SH "SEE ALSO"
+\fBioctl\fP(2), \fBsocket\fP(2), \fBgetprotoent\fP(3), \fBprotocols\fP(5), \fBip\fP(7),
+\fBpacket\fP(7), \fBsocket\fP(7), \fBtcp\fP(7), \fBudp\fP(7), \fBunix\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

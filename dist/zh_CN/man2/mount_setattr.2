@@ -1,0 +1,606 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2021 by Christian Brauner <christian.brauner@ubuntu.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mount_setattr 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+mount_setattr \- 更改挂载或挂载树的属性
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+
+.PP
+\fB#include <linux/fcntl.h>\fP /* Definition of \fBAT_*\fP constants */
+\fB#include <linux/mount.h>\fP /* Definition of \fBMOUNT_ATTR_*\fP constants */
+\fB#include <sys/syscall.h>\fP /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_mount_setattr, int \fP\fIdirfd\fP\fB, const char *\fP\fIpathname\fP\fB,\fP
+\fB            unsigned int \fP\fIflags\fP\fB, struct mount_attr *\fP\fIattr\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBmount_setattr\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBmount_setattr\fP() 系统调用更改挂载或整个挂载树的挂载属性。 如果 \fIpathname\fP
+是一个相对路径名，那么它被解释为相对于文件描述符 \fIdirfd\fP 引用的目录。 如果 \fIdirfd\fP 是特殊值 \fBAT_FDCWD\fP，则
+\fIpathname\fP 被解释为相对于调用进程的当前工作目录。 如果 \fIpathname\fP 是空字符串并且在 \fIflags\fP 中指定了
+\fBAT_EMPTY_PATH\fP，则 \fIdirfd\fP 标识的安装的安装属性将更改。 (有关 \fIdirfd\fP 参数为何有用的解释，请参见
+\fBopenat\fP(2)。)
+.PP
+\fBmount_setattr\fP() 系统调用使用可扩展结构体 (\fIstruct mount_attr\fP) 以允许 future 扩展。
+\fBmount_setattr\fP() 的任何非标志扩展都将作为追加到此结构体的新字段来实现，新字段中的值为零导致内核表现得好像该扩展字段不存在一样。
+因此，调用者 \fImust\fP 在初始化时用零填充这个结构体。 有关详细信息，请参见 \fBNOTES\fP 下的 "Extensibility" 小节。
+.PP
+\fIsize\fP 参数通常应指定为 \fIsizeof(struct mount_attr)\fP。 但是，如果调用者使用支持扩展 \fIstruct mount_attr\fP 的内核，但调用者不打算使用这些特性则可以将早期版本的结构体的大小与扩展结构体一起传递。 这允许内核不复制最终未使用的结构体部分。
+对于每个更改 \fIstruct mount_attr\fP 大小的扩展，内核将公开 \fBMOUNT_ATTR_SIZE_VER\fP\fInumber\fP\&
+形式的定义。例如，\fIstruct mount_attr\fP 初始版本尺寸的宏是 \fBMOUNT_ATTR_SIZE_VER0\fP。
+.PP
+\fIflags\fP 参数可用于更改路径名解析行为。 支持的值是:
+.TP 
+\fBAT_EMPTY_PATH\fP
+如果 \fIpathname\fP 是空字符串，则更改 \fIdirfd\fP 本身的挂载属性。
+.TP 
+\fBAT_RECURSIVE\fP
+更改整个挂载树的挂载属性。
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+不要跟随尾随的符号链接。
+.TP 
+\fBAT_NO_AUTOMOUNT\fP
+不要触发自动挂载。
+.PP
+\fBmount_setattr\fP() 的 \fIattr\fP 参数是如下形式的结构体:
+.PP
+.in +4n
+.EX
+struct mount_attr {
+    __u64 attr_set;     /* Mount properties to set */
+    __u64 attr_clr;     /* Mount properties to clear */
+    __u64 propagation;  /* Mount propagation type */
+    __u64 userns_fd;    /* User namespace file descriptor */
+};
+.EE
+.in
+.PP
+\fIattr_set\fP 和 \fIattr_clr\fP 成员用于指定应该为挂载或挂载树设置或清除的挂载属性。 \fIattr_set\fP
+中设置的标志启用安装或安装树上的属性，\fIattr_clr\fP 中设置的标志从安装或安装树中删除属性。
+.PP
+当更改挂载属性时，内核将首先清除 \fIattr_clr\fP 字段中指定的标志，然后设置 \fIattr_set\fP 字段中指定的标志。 例如，这些设置:
+.PP
+.in +4n
+.EX
+struct mount_attr attr = {
+    .attr_clr = MOUNT_ATTR_NOEXEC | MOUNT_ATTR_NODEV,
+    .attr_set = MOUNT_ATTR_RDONLY | MOUNT_ATTR_NOSUID,
+};
+.EE
+.in
+.PP
+相当于以下步骤:
+.PP
+.in +4n
+.EX
+unsigned int current_mnt_flags = mnt\->mnt_flags;
+
+/*
+ * Clear all flags set in .attr_clr,
+ * clearing MOUNT_ATTR_NOEXEC and MOUNT_ATTR_NODEV.
+ */
+current_mnt_flags &= \(tiattr\->attr_clr;
+
+/*
+ * Now set all flags set in .attr_set,
+ * applying MOUNT_ATTR_RDONLY and MOUNT_ATTR_NOSUID.
+ */
+current_mnt_flags |= attr\->attr_set;
+
+mnt\->mnt_flags = current_mnt_flags;
+.EE
+.in
+.PP
+作为此更改的结果，挂载或挂载树 (a) 是只读的; (b) 阻止 set\-user\-ID 和 set\-group\-ID 程序的执行; (c)
+允许执行程序; (d) 允许访问设备。
+.PP
+在应用更改后，在 \fIattr_clr\fP 和 \fIattr_set\fP 中请求的具有相同标志集的多个更改保证是幂等的。
+.PP
+可以在 \fIattr_set\fP 或 \fIattr_clr\fP 字段中指定以下挂载属性:
+.TP 
+\fBMOUNT_ATTR_RDONLY\fP
+如果在 \fIattr_set\fP 中设置，则使挂载为只读。 如果在 \fIattr_clr\fP 中设置，则删除在装载上设置的只读设置。
+.TP 
+\fBMOUNT_ATTR_NOSUID\fP
+如果在 \fIattr_set\fP 中设置，则导致挂载在执行程序时不遵守设置用户 ID 和设置组 ID 模式位和文件功能。 如果在 \fIattr_clr\fP
+中设置，则清除设置用户 ID、设置组 ID 和文件功能限制 (如果在此安装上设置)。
+.TP 
+\fBMOUNT_ATTR_NODEV\fP
+如果在 \fIattr_set\fP 中设置，则阻止访问此安装上的设备。 如果在 \fIattr_clr\fP 中设置，则删除阻止访问此安装上的设备的限制。
+.TP 
+\fBMOUNT_ATTR_NOEXEC\fP
+如果在 \fIattr_set\fP 中设置，则阻止在此安装上执行程序。 如果在 \fIattr_clr\fP 中设置，则删除阻止在此安装上执行程序的限制。
+.TP 
+\fBMOUNT_ATTR_NOSYMFOLLOW\fP
+如果在 \fIattr_set\fP 中设置，则阻止在此挂载上跟随符号链接。 如果在 \fIattr_clr\fP 中设置，则删除阻止在此挂载上跟踪符号链接的限制。
+.TP 
+\fBMOUNT_ATTR_NODIRATIME\fP
+如果在 \fIattr_set\fP 中设置，则阻止更新此安装上目录的访问时间。 如果在 \fIattr_clr\fP 中设置，则删除阻止更新目录访问时间的限制。
+请注意，\fBMOUNT_ATTR_NODIRATIME\fP 可以与其他访问时间设置结合使用，并且由 noatime 设置暗示。
+所有其他访问时间设置都是互斥的。
+.TP 
+\fBMOUNT_ATTR__ATIME\fP \- changing access\-time settings
+下面列出的访问时间值是一个枚举，其中包括值零，以掩码 \fBMOUNT_ATTR__ATIME\fP 定义的位表示。 尽管这些位是一个枚举 (与
+\fBMOUNT_ATTR_NOEXEC\fP) 等其他挂载标志相比，它们仍然在 \fIattr_set\fP 和 \fIattr_clr\fP 中传递，以与引入此行为的
+\fBfsmount\fP(2) 保持一致。
+.IP
+请注意，由于访问时间值是枚举而不是位值，因此想要转换到不同访问时间设置的调用者不能简单地在 \fIattr_set\fP 中指定访问时间设置，还必须在
+\fIattr_clr\fP 字段中包含 \fBMOUNT_ATTR__ATIME\fP。 内核将验证 \fBMOUNT_ATTR__ATIME\fP 未在
+\fIattr_clr\fP 中部分设置 (即 \fBMOUNT_ATTR__ATIME\fP 位域中的所有位已设置或已清除)，并且如果未设置
+\fBMOUNT_ATTR__ATIME\fP，则 \fIattr_set\fP 未设置任何访问时间位在 \fIattr_clr\fP。
+.RS
+.TP 
+\fBMOUNT_ATTR_RELATIME\fP
+通过此挂载访问文件时，仅当 atime 的当前值小于或等于文件的最后修改时间 (mtime) 或最后状态更改时间 (ctime)
+时，才更新文件的最后访问时间 (atime)。
+.IP
+要在安装或安装树上启用此访问时间设置，必须在 \fIattr_set\fP 中设置 \fBMOUNT_ATTR_RELATIME\fP，并且必须在
+\fIattr_clr\fP 字段中设置 \fBMOUNT_ATTR__ATIME\fP。
+.TP 
+\fBMOUNT_ATTR_NOATIME\fP
+不要更新此装载上的 (所有类型的) 文件的访问时间。
+.IP
+要在安装或安装树上启用此访问时间设置，必须在 \fIattr_set\fP 中设置 \fBMOUNT_ATTR_NOATIME\fP，并且必须在
+\fIattr_clr\fP 字段中设置 \fBMOUNT_ATTR__ATIME\fP。
+.TP 
+\fBMOUNT_ATTR_STRICTATIME\fP
+在此安装上访问文件时，始终更新上次访问时间 (atime)。
+.IP
+要在安装或安装树上启用此访问时间设置，必须在 \fIattr_set\fP 中设置 \fBMOUNT_ATTR_STRICTATIME\fP，并且必须在
+\fIattr_clr\fP 字段中设置 \fBMOUNT_ATTR__ATIME\fP。
+.RE
+.TP 
+\fBMOUNT_ATTR_IDMAP\fP
+如果在 \fIattr_set\fP 中设置，则创建 ID 映射安装。 ID 映射取自 \fIuserns_fd\fP 中指定的用户命名空间并附加到挂载。
+.IP
+由于挂载 ID 映射后不支持更改 ID 映射，所以在 \fIattr_clr\fP 中指定 \fBMOUNT_ATTR_IDMAP\fP 是无效的。
+.IP
+有关详细信息，请参见注释下的 "ID\-mapped mounts" 小节。
+.PP
+\fIpropagation\fP 字段用于指定挂载或挂载树的传播类型。 该字段的值为零，意味着保持传播类型不变，或者它具有以下值之一:
+.TP 
+\fBMS_PRIVATE\fP
+将所有坐骑变成 private 坐骑。
+.TP 
+\fBMS_SHARED\fP
+将所有坐骑变成共享坐骑。
+.TP 
+\fBMS_SLAVE\fP
+将所有坐骑变成依赖坐骑。
+.TP 
+\fBMS_UNBINDABLE\fP
+将所有坐骑变成不可绑定的坐骑。
+.PP
+有关上述传播类型的更多详细信息，请参见 \fBmount_namespaces\fP(7)。
+.SH "RETURN VALUE"
+成功时，\fBmount_setattr\fP() 返回零。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误原因。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEBADF\fP
+\fIuserns_fd\fP 不是有效的文件描述符。
+.TP 
+\fBEBUSY\fP
+调用者试图将挂载更改为 \fBMOUNT_ATTR_RDONLY\fP，但挂载仍保持文件打开以供写入。
+.TP 
+\fBEBUSY\fP
+调用者试图创建一个 ID 映射挂载，引发 \fBMOUNT_ATTR_IDMAP\fP 并指定 \fIuserns_fd\fP，但挂载仍然保持文件打开以供写入。
+.TP 
+\fBEINVAL\fP
+通过 \fIdirfd\fP 和 \fIpathname\fP 参数到 \fBmount_setattr\fP() 指定的路径名不是挂载点。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 中设置了不支持的值。
+.TP 
+\fBEINVAL\fP
+在 \fImount_attr\fP 的 \fIattr_set\fP 字段中指定了不受支持的值。
+.TP 
+\fBEINVAL\fP
+在 \fImount_attr\fP 的 \fIattr_clr\fP 字段中指定了不受支持的值。
+.TP 
+\fBEINVAL\fP
+在 \fImount_attr\fP 的 \fIpropagation\fP 字段中指定了不受支持的值。
+.TP 
+\fBEINVAL\fP
+在 \fImount_attr\fP 的 \fIpropagation\fP 字段中设置了
+\fBMS_SHARED\fP、\fBMS_SLAVE\fP、\fBMS_PRIVATE\fP 或 \fBMS_UNBINDABLE\fP 中的一个以上。
+.TP 
+\fBEINVAL\fP
+在 \fIattr_set\fP 字段中指定了访问时间设置，但没有在 \fIattr_clr\fP 字段中设置 \fBMOUNT_ATTR__ATIME\fP。
+.TP 
+\fBEINVAL\fP
+在 \fIattr_clr\fP 中指定了 \fBMOUNT_ATTR_IDMAP\fP。
+.TP 
+\fBEINVAL\fP
+在 \fIuserns_fd\fP 中指定了一个超过 \fBINT_MAX\fP 的文件描述符值。
+.TP 
+\fBEINVAL\fP
+在 \fIuserns_fd\fP 中指定了有效的文件描述符值，但文件描述符未引用用户命名空间。
+.TP 
+\fBEINVAL\fP
+底层文件系统不支持 ID 映射挂载。
+.TP 
+\fBEINVAL\fP
+要进行 ID 映射的挂载不是分离式挂载; 也就是说，挂载以前在挂载命名空间中不可见。
+.TP 
+\fBEINVAL\fP
+在 \fIattr_clr\fP 中指定了部分访问时间设置，而不是设置 \fBMOUNT_ATTR__ATIME\fP。
+.TP 
+\fBEINVAL\fP
+挂载位于调用者的挂载命名空间之外。
+.TP 
+\fBEINVAL\fP
+底层文件系统已挂载在非初始用户命名空间所拥有所有权的挂载命名空间中
+.TP 
+\fBENOENT\fP
+路径名为空或具有不存在的组件。
+.TP 
+\fBENOMEM\fP
+将挂载传播更改为 \fBMS_SHARED\fP 时，需要为所有未设置对等组 ID 的挂载分配一个新的对等组 ID。
+此分配失败，因为没有足够的内存来分配相关的内部结构。
+.TP 
+\fBENOSPC\fP
+.\" Christian Brauner: i.e. someone has somehow managed to
+.\" allocate so many peer groups and managed to keep the kernel running
+.\" (???) that the ida has ran out of ids
+.\" Note that technically further error codes are possible that are
+.\" specific to the ID allocation implementation used.
+将挂载传播更改为 \fBMS_SHARED\fP 时，需要为所有未设置对等组 ID 的挂载分配一个新的对等组 ID。 此分配失败，因为内核已用完 ID。
+.TP 
+\fBEPERM\fP
+其中一个支架至少设置了
+\fBMOUNT_ATTR_NOATIME\fP、\fBMOUNT_ATTR_NODEV\fP、\fBMOUNT_ATTR_NODIRATIME\fP、\fBMOUNT_ATTR_NOEXEC\fP、\fBMOUNT_ATTR_NOSUID\fP
+或 \fBMOUNT_ATTR_RDONLY\fP 之一，并且标记已锁定。 在以下情况下，坐骑属性会锁定在坐骑上:
+.RS
+.IP \[bu] 3
+创建一个新的挂载或挂载树，导致跨用户命名空间的挂载传播 (即传播到不同用户命名空间拥有所有权的挂载命名空间)。
+内核将锁定上述标志以防止这些敏感属性被更改。
+.IP \[bu]
+创建一个新的挂载和用户命名空间对。 例如，在 \fBunshare\fP(2)、\fBclone\fP(2) 或 \fBclone3\fP(2) 中指定
+\fBCLONE_NEWUSER | CLONE_NEWNS\fP 时会发生这种情况。 上述标志在新的挂载命名空间中被锁定，以防止敏感的挂载属性被更改。
+由于新创建的挂载命名空间将由新创建的用户命名空间拥有，因此在没有此类锁定的情况下，在新用户命名空间中具有特权的调用进程将能够更改敏感的挂载属性
+(例如，在新的挂载命名空间中将标记为只读的挂载重新挂载为读写)。
+.RE
+.TP 
+\fBEPERM\fP
+在 \fIuserns_fd\fP 中指定了一个有效的文件描述符值，但文件描述符引用了初始用户命名空间。
+.TP 
+\fBEPERM\fP
+试图将 ID 映射添加到已经 ID 映射的安装。
+.TP 
+\fBEPERM\fP
+调用者在初始用户命名空间中没有 \fBCAP_SYS_ADMIN\fP。
+.SH VERSIONS
+.\" commit 7d6beb71da3cc033649d641e1e608713b8220290
+.\" commit 2a1867219c7b27f928e2545782b86daaf9ad50bd
+.\" commit 9caccd41541a6f7d6279928d9f971f6642c361af
+\fBmount_setattr\fP() 最早出现在 Linux 5.12。
+.SH STANDARDS
+\fBmount_setattr\fP() 是特定于 Linux 的。
+.SH NOTES
+.SS "ID\-mapped mounts"
+创建 ID 映射挂载可以更改位于挂载下的所有文件的所有权。 因此，ID 映射挂载使得以临时和本地化的方式更改所有权成为可能。
+这是一个本地化的更改，因为所有权更改仅通过特定的安装可见。 公开文件系统的所有其他用户和位置不受影响。
+这是一个临时更改，因为所有权更改与坐骑的生命周期有关。
+.PP
+每当调用者通过 ID 映射挂载与文件系统交互时，挂载的 ID 映射将应用于与文件系统对象关联的用户和组 ID。 这包括与 inode 关联的用户和组
+ID，以及以下 \fBxattr\fP(7) 键:
+.IP \[bu] 3
+\fIsecurity.capability\fP，每当文件系统功能以 \fBVFS_CAP_REVISION_3\fP 格式存储或返回时，它会在功能旁边存储根用户
+ID (请参见 \fBcapabilities\fP(7)).
+.IP \[bu]
+\fIsystem.posix_acl_access\fP 和 \fIsystem.posix_acl_default\fP，只要用户 ID 或组 ID 存储在
+\fBACL_USER\fP 或 \fBACL_GROUP\fP 条目中。
+.PP
+必须满足以下条件才能创建 ID 映射挂载:
+.IP \[bu] 3
+.\" commit bd303368b776eead1c29e6cdda82bde7128b82a7
+.\" Christian Brauner
+.\"     Note, currently no filesystems mountable in non-initial user namespaces
+.\"     support ID-mapped mounts.
+调用者必须在安装文件系统的用户命名空间中具有 \fBCAP_SYS_ADMIN\fP 功能。
+.IP \[bu]
+.\" fs_flags = FS_ALLOW_IDMAP in kernel sources
+底层文件系统必须支持 ID 映射挂载。 目前，以下文件系统支持 ID 映射挂载:
+.IP
+.RS
+.PD 0
+.IP \[bu] 3
+\fBxfs\fP(5) (自 Linux 5.12)
+.IP \[bu]
+\fBext4\fP(5) (自 Linux 5.12)
+.IP \[bu]
+\fBFAT\fP (自 Linux 5.12)
+.IP \[bu]
+.\" commit 5b9b26f5d0b88b74001dcfe4ab8a8f2f4e744112
+\fBbtrfs\fP(5) (自 Linux 5.15)
+.IP \[bu]
+.\" commit 82cae269cfa953032fbb8980a7d554d60fb00b17
+\fBntfs3\fP (自 Linux 5.15)
+.IP \[bu]
+.\" commit 984fc4e76d63345499f01c0c198a4b44860cf027
+\fBf2fs\fP (自 Linux 5.18)
+.IP \[bu]
+.\" commit 6c459b78d4793afbba6d864c466cc5cd2932459d
+\fBerofs\fP (自 Linux 5.19)
+.IP \[bu]
+\fBoverlayfs\fP (自 Linux 5.19 起支持 ID 映射的下层和上层)
+.PD
+.RE
+.IP \[bu] 3
+挂载不得已进行 ID 映射。 这也意味着无法更改挂载的 ID 映射。
+.IP \[bu]
+坐骑必须是分离式坐骑; 也就是说，它必须是通过调用创建的
+.IP \[bu]
+.\" commit 1bbcd277a53e08d619ffeec56c5c9287f2bf42f
+安装不能有任何 writers。 \fBopen_tree\fP(2) 带有 \fBOPEN_TREE_CLONE\fP 标志，并且它不能在挂载命名空间中可见。
+(换句话说: 挂载一定不能附加到具有系统调用的文件系统层次结构，例如 \fBmove_mount\fP(2).)
+.PP
+可以为用户 ID、组 ID 和项目 ID 创建 ID 映射。 ID 映射本质上是将一系列用户或组 ID 映射到另一个或相同范围的用户或组 ID。 ID
+映射以三个由空格分隔的数字写入 map 文件。 前两个数字分别指定两个用户命名空间中的起始用户或组 ID。 第三个数字指定 ID 映射的范围。
+例如，"1000\ 1001\ 1" 等用户 ID 的映射表示调用方用户命名空间中的用户 ID 1000 映射到其祖先用户命名空间中的用户 ID
+1001。 由于 map 范围为 1，因此仅映射用户 ID 1000。
+.PP
+可以为每个 ID 映射类型指定最多 340 个 ID 映射。 如果任何用户 ID 或组 ID 未映射，则该未映射用户或组 ID
+拥有所有权的所有文件将分别显示为由溢出用户 ID 或溢出组 ID 拥有。
+.PP
+可以在 \fBuser_namespaces\fP(7) 中找到有关设置 ID 映射的更多详细信息。
+.PP
+通常情况下，传入 \fIuserns_fd\fP 的用户命名空间 (与 \fIattr_set\fP) 中的 \fBMOUNT_ATTR_IDMAP\fP 一起创建 ID
+映射挂载) 将是容器的用户命名空间。 在其他情况下，它将是与用户登录会话关联的专用用户命名空间，就像
+\fBsystemd\-homed.service\fP(8)) 中的可移植主目录一样。为了 ID 映射挂载而创建专用的用户命名空间也非常好。
+.PP
+ID 映射挂载在以下和各种其他场景中很有用:
+.IP \[bu] 3
+在多个用户或多台机器之间共享文件或文件系统，尤其是在复杂的场景中。 例如，ID 映射挂载用于在 \fBsystemd\-homed.service\fP(8)
+中实现可移植主目录，它们允许用户将他们的主目录移动到外部存储设备，并在多台计算机上使用它，他们被分配了不同的用户 ID 和组 ID。
+这有效地使得在登录时分配随机用户 ID 和组 ID 成为可能。
+.IP \[bu]
+使用非特权容器从主机共享文件或文件系统。 这允许用户避免必须通过 \fBchown\fP(2) 永久更改所有权。
+.IP \[bu]
+ID 映射容器的根文件系统。 用户无需通过 \fBchown\fP(2) 永久更改所有权。 特别是对于大型根文件系统，使用 \fBchown\fP(2)
+可能会非常昂贵。
+.IP \[bu]
+在具有非重叠 ID 映射的容器之间共享文件或文件系统。
+.IP \[bu]
+为缺乏所有权概念的文件系统实现自主访问 (DAC) 权限检查。
+.IP \[bu]
+在每次安装的基础上有效地更改所有权。 与 \fBchown\fP(2) 不同的是，使用 ID 映射挂载可以瞬间更改大量文件的所有权。
+如上所述，当虚拟机或容器的整个根文件系统的所有权要更改时，这尤其有用。 使用 ID 映射挂载，单个 \fBmount_setattr\fP()
+系统调用将足以更改所有文件的所有权。
+.IP \[bu]
+考虑到当前的所有权。 ID 映射精确指定用户或组 ID 应该映射到什么。 这与 \fBchown\fP(2)
+系统调用形成对比，后者本身无法考虑其更改的文件的当前所有权。 它只是将所有权更改为指定的用户 ID 和组 ID。
+.IP \[bu]
+.\"
+本地和临时限制所有权更改。 ID 映射的坐骑可以在本地更改所有权，将所有权更改限制在特定的坐骑上，并且暂时因为所有权更改仅在坐骑存在时才适用。
+相比之下，通过 \fBchown\fP(2) 系统调用更改所有权会全局和永久地更改所有权。
+.SS Extensibility
+为了允许 future 可扩展性，\fBmount_setattr\fP() 要求用户空间应用程序指定它传递的 \fImount_attr\fP 结构体的大小。
+通过提供此信息，\fBmount_setattr\fP() 可以提供向前和向后兼容性，\fIsize\fP 充当隐式版本号。
+(因为总是会，追加，新的扩展字段，结构体的大小总是会增加。) 这种扩展性设计与其他系统调用非常相似，例如
+\fBperf_setattr\fP(2)、\fBperf_event_open\fP(2)、\fBclone3\fP(2) 和 \fBopenat2\fP(2)。
+.PP
+设 \fIusize\fP 为用户空间应用程序指定的结构体大小，\fIksize\fP 为内核支持的结构体大小，则考虑三种情况:
+.IP \[bu] 3
+如果 \fIksize\fP 等于 \fIusize\fP，则没有版本不匹配，\fIattr\fP 可以逐字使用。
+.IP \[bu]
+如果 \fIksize\fP 大于 \fIusize\fP，则存在内核支持的一些用户空间应用程序不知道的扩展字段。
+因为任何添加的扩展字段中的零值都表示无操作，所以内核将用户空间应用程序未提供的所有扩展字段视为具有零值。 这提供了向后兼容性。
+.IP \[bu]
+如果 \fIksize\fP 小于 \fIusize\fP，则存在一些用户空间应用程序知道但内核不支持的扩展字段。
+因为任何扩展字段的零值都必须表示空操作，所以内核可以安全地忽略不支持的扩展字段 (如果它们全为零)。 如果任何不受支持的扩展字段不为零，则返回 \-1
+并将 \fIerrno\fP 设置为 \fBE2BIG\fP。 这提供了向前兼容性。
+.PP
+因为 \fIstruct mount_attr\fP 的定义在 future 中可能会改变 (随着系统头文件更新时添加新字段)，用户空间应用程序应该对
+\fIstruct mount_attr\fP 进行零填充以确保使用新头文件重新编译程序不会在运行时导致虚假错误。 最简单的方法是使用指定的初始化:
+.PP
+.in +4n
+.EX
+struct mount_attr attr = {
+    .attr_set = MOUNT_ATTR_RDONLY,
+    .attr_clr = MOUNT_ATTR_NODEV
+};
+.EE
+.in
+.PP
+或者，可以使用 \fBmemset\fP(3) 或类似的函数对结构体进行零填充:
+.PP
+.in +4n
+.EX
+struct mount_attr attr;
+memset(&attr, 0, sizeof(attr));
+attr.attr_set = MOUNT_ATTR_RDONLY;
+attr.attr_clr = MOUNT_ATTR_NODEV;
+.EE
+.in
+.PP
+希望确定正在运行的内核支持哪些扩展的用户空间应用程序可以通过使用每个字节都非零的结构体对 \fIsize\fP 进行二进制搜索 (以找到不会产生
+\fBE2BIG\fP) 错误的最大值) 来实现。
+.SH EXAMPLES
+.\" SRC BEGIN (mount_setattr.c)
+.EX
+/*
+ * This program allows the caller to create a new detached mount
+ * and set various properties on it.
+ */
+#define _GNU_SOURCE
+#include <err.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <linux/mount.h>
+#include <linux/types.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+static inline int
+mount_setattr(int dirfd, const char *pathname, unsigned int flags,
+              struct mount_attr *attr, size_t size)
+{
+    return syscall(SYS_mount_setattr, dirfd, pathname, flags,
+                   attr, size);
+}
+
+static inline int
+open_tree(int dirfd, const char *filename, unsigned int flags)
+{
+    return syscall(SYS_open_tree, dirfd, filename, flags);
+}
+
+static inline int
+move_mount(int from_dirfd, const char *from_pathname,
+           int to_dirfd, const char *to_pathname, unsigned int flags)
+{
+    return syscall(SYS_move_mount, from_dirfd, from_pathname,
+                   to_dirfd, to_pathname, flags);
+}
+
+static const struct option longopts[] = {
+    {"map\-mount",       required_argument,  NULL,  \[aq]a\[aq]},
+    {"recursive",       no_argument,        NULL,  \[aq]b\[aq]},
+    {"read\-only",       no_argument,        NULL,  \[aq]c\[aq]},
+    {"block\-setid",     no_argument,        NULL,  \[aq]d\[aq]},
+    {"block\-devices",   no_argument,        NULL,  \[aq]e\[aq]},
+    {"block\-exec",      no_argument,        NULL,  \[aq]f\[aq]},
+    {"no\-access\-time",  no_argument,        NULL,  \[aq]g\[aq]},
+    { NULL,             0,                  NULL,   0 },
+};
+
+int
+main(int argc, char *argv[])
+{
+    int                fd_userns = \-1;
+    int                fd_tree;
+    int                index = 0;
+    int                ret;
+    bool               recursive = false;
+    const char         *source;
+    const char         *target;
+    struct mount_attr  *attr = &(struct mount_attr){};
+
+    while ((ret = getopt_long_only(argc, argv, "",
+                                   longopts, &index)) != \-1) {
+        switch (ret) {
+        case \[aq]a\[aq]:
+            fd_userns = open(optarg, O_RDONLY | O_CLOEXEC);
+            if (fd_userns == \-1)
+                err(EXIT_FAILURE, "open(%s)", optarg);
+            break;      
+        case \[aq]b\[aq]:
+            recursive = true;
+            break;
+        case \[aq]c\[aq]:
+            attr\->attr_set |= MOUNT_ATTR_RDONLY;
+            break;
+        case \[aq]d\[aq]:
+            attr\->attr_set |= MOUNT_ATTR_NOSUID;
+            break;
+        case \[aq]e\[aq]:
+            attr\->attr_set |= MOUNT_ATTR_NODEV;
+            break;
+        case \[aq]f\[aq]:
+            attr\->attr_set |= MOUNT_ATTR_NOEXEC;
+            break;
+        case \[aq]g\[aq]:
+            attr\->attr_set |= MOUNT_ATTR_NOATIME;
+            attr\->attr_clr |= MOUNT_ATTR__ATIME;
+            break;
+        default:
+            errx(EXIT_FAILURE, "Invalid argument specified");
+        }
+    }
+
+    if ((argc \- optind) < 2)
+        errx(EXIT_FAILURE, "Missing source or target mount point");
+
+    source = argv[optind];
+    target = argv[optind + 1];
+
+.\" Christian Brauner
+.\"     When writing programs I like to never use relative paths with AT_FDCWD
+.\"     because. Because making assumptions about the current working directory
+.\"     of the calling process is just too easy to get wrong; especially when
+.\"     pivot_root() or chroot() are in play.
+.\"     My absolut preference (joke intended) is to open a well-known starting
+.\"     point with an absolute path to get a dirfd and then scope all future
+.\"     operations beneath that dirfd. This already works with old-style
+.\"     openat() and _very_ cautious programming but openat2() and its
+.\"     resolve-flag space have made this **chef's kiss**.
+.\"     If I can't operate based on a well-known dirfd I use absolute paths
+.\"     with a -EBADF dirfd passed to *at() functions.
+    /* In the following, \-1 as the \[aq]dirfd\[aq] argument ensures that
+       open_tree() fails if \[aq]source\[aq] is not an absolute pathname. */
+
+    fd_tree = open_tree(\-1, source,
+                        OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC |
+                        AT_EMPTY_PATH | (recursive ? AT_RECURSIVE : 0));
+    if (fd_tree == \-1)
+        err(EXIT_FAILURE, "open(%s)", source);
+
+    if (fd_userns >= 0) {
+        attr\->attr_set  |= MOUNT_ATTR_IDMAP;
+        attr\->userns_fd = fd_userns;
+    }
+
+    ret = mount_setattr(fd_tree, "",
+                        AT_EMPTY_PATH | (recursive ? AT_RECURSIVE : 0),
+                        attr, sizeof(struct mount_attr));
+    if (ret == \-1)
+        err(EXIT_FAILURE, "mount_setattr");
+
+    close(fd_userns);
+
+    /* In the following, \-1 as the \[aq]to_dirfd\[aq] argument ensures that
+       open_tree() fails if \[aq]target\[aq] is not an absolute pathname. */
+
+    ret = move_mount(fd_tree, "", \-1, target,
+                     MOVE_MOUNT_F_EMPTY_PATH);
+    if (ret == \-1)
+        err(EXIT_FAILURE, "move_mount() to %s", target);
+
+    close(fd_tree);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBnewgidmap\fP(1), \fBnewuidmap\fP(1), \fBclone\fP(2), \fBmount\fP(2), \fBunshare\fP(2),
+\fBproc\fP(5), \fBcapabilities\fP(7), \fBmount_namespaces\fP(7),
+\fBuser_namespaces\fP(7), \fBxattr\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

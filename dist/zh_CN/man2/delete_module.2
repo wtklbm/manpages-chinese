@@ -1,0 +1,123 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2012 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH delete_module 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+delete_module \- 卸载内核模块
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fcntl.h>\fP            /* Definition of \fBO_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_delete_module, const char *\fP\fIname\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBdelete_module\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBdelete_module\fP() 系统调用尝试删除由 \fIname\fP 标识的未使用的可加载模块条目。 如果模块有 \fIexit\fP
+函数，则在卸载模块之前执行该函数。 \fIflags\fP 参数用于修改系统调用的行为，如下所述。 此系统调用需要权限。
+.PP
+根据以下规则尝试删除模块:
+.IP (1) 5
+如果有其他加载的模块依赖于 (即引用其中定义的符号) 该模块，则调用失败。
+.IP (2)
+否则，如果模块的引用计数 (即当前使用该模块的进程数) 为零，则立即卸载该模块。
+.IP (3)
+.\"  	O_TRUNC == KMOD_REMOVE_FORCE in kmod library
+.\"  	O_NONBLOCK == KMOD_REMOVE_NOWAIT in kmod library
+如果模块具有非零引用计数，则行为取决于 \fIflags\fP 中设置的位。 在正常使用中 (参见注释)，始终指定 \fBO_NONBLOCK\fP
+标志，并且可能额外指定 \fBO_TRUNC\fP 标志。
+.IP
+\fIflags\fP 的各种组合具有以下效果:
+.RS
+.TP 
+\fBflags == O_NONBLOCK\fP
+调用立即返回，但有错误。
+.TP 
+\fBflags == (O_NONBLOCK | O_TRUNC)\fP
+该模块将立即卸载，无论它是否具有非零引用计数。
+.TP 
+\fB(flags & O_NONBLOCK) == 0\fP
+如果 \fIflags\fP 未指定 \fBO_NONBLOCK\fP，则会发生以下步骤:
+.RS
+.IP \[bu] 3
+该模块被标记为不允许新的引用。
+.IP \[bu]
+如果模块的引用计数不为零，则调用者将处于不可中断的睡眠状态 (\fBTASK_UNINTERRUPTIBLE\fP)，直到引用计数为零，此时调用解除阻塞。
+.IP \[bu]
+模块以通常的方式卸载。
+.RE
+.RE
+.PP
+\fBO_TRUNC\fP 标志对上述规则有进一步的影响。 默认情况下，如果模块具有 \fIinit\fP 函数但没有 \fIexit\fP
+函数，则尝试删除该模块将失败。 但是，如果指定了 \fBO_TRUNC\fP，则绕过此要求。
+.PP
+使用 \fBO_TRUNC\fP 标志是危险的! 如果内核不是用 \fBCONFIG_MODULE_FORCE_UNLOAD\fP 构建的，则此标志将被忽略。
+(通常，\fBCONFIG_MODULE_FORCE_UNLOAD\fP 是启用的。) 使用这个标志会污染内核 (TAINT_FORCED_RMMOD)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBUSY\fP
+该模块不是 "live" (即它仍在初始化或已标记为删除) ; 或者，该模块有 \fIinit\fP 函数但没有 \fIexit\fP 函数，并且 \fIflags\fP
+中未指定 \fBO_TRUNC\fP。
+.TP 
+\fBEFAULT\fP
+\fIname\fP 指的是进程可访问地址空间之外的位置。
+.TP 
+\fBENOENT\fP
+不存在该名称的模块。
+.TP 
+\fBEPERM\fP
+调用者没有特权 (没有 \fBCAP_SYS_MODULE\fP 能力)，或者模块卸载被禁用 (参见
+\fI/proc/sys/kernel/modules_disabled\fP in \fBproc\fP(5)).
+.TP 
+\fBEWOULDBLOCK\fP
+其他模块依赖于该模块; 或者，在 \fIflags\fP 中指定了 \fBO_NONBLOCK\fP，但该模块的引用计数不为零，并且 \fIflags\fP 中未指定
+\fBO_TRUNC\fP。
+.SH STANDARDS
+\fBdelete_module\fP() 是特定于 Linux 的。
+.SH NOTES
+glibc 不支持 \fBdelete_module\fP() 系统调用。 glibc 头文件中没有提供声明，但是，由于历史的怪癖，glibc 2.23
+之前的 glibc 版本确实为该系统导出了 ABI 调用。 因此，为了使用这个系统调用，(在 glibc 2.23 之前)
+在您的代码中手动声明接口就足够了; 或者，您可以使用 \fBsyscall\fP(2) 调用系统调用。
+.PP
+如果从 \fIflags\fP 中省略 \fBO_NONBLOCK\fP 可能发生的不间断睡眠被认为是不可取的，因为睡眠进程处于无法杀死的状态。 与 Linux
+3.7 一样，指定 \fBO_NONBLOCK\fP 是可选的，但在 future 内核中它可能成为强制性的。
+.SS "Linux 2.4 and earlier"
+在 Linux 2.4 及更早版本，系统调用只取一个参数:
+.PP
+\fB int delete_module(const char *\fP\fIname\fP\fB);\fP
+.PP
+如果 \fIname\fP 为 NULL，则删除所有标记为自动清理的未使用模块。
+.PP
+\fBdelete_module\fP() 在 Linux、2.4 和更早版本中的行为差异的一些进一步详细信息目前在本手册页中解释了 \fInot\fP。
+.SH "SEE ALSO"
+\fBcreate_module\fP(2), \fBinit_module\fP(2), \fBquery_module\fP(2), \fBlsmod\fP(8),
+\fBmodprobe\fP(8), \fBrmmod\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

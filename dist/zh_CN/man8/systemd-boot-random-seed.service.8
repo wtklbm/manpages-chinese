@@ -1,0 +1,119 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-BOOT\-RANDOM\-SEED\&.SERVICE 8 "" "systemd 253" systemd\-boot\-random\-seed.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-boot\-random\-seed.service \- 在启动时刷新引导加载程序随机 seed
+.SH SYNOPSIS
+.PP
+systemd\-boot\-random\-seed\&.service
+.SH DESCRIPTION
+.PP
+systemd\-boot\-random\-seed\&.service 是一个系统服务，它自动从 Linux 内核熵池中刷新存储在 EFI 系统分区
+(ESP) 中的引导加载程序随机 seed。引导加载程序随机 seed 主要由来自 UEFI 环境的 \fBsystemd\-boot\fP(7) 使用和更新
+(如果未使用前者则为 \fBsystemd\-stub\fP(7)，但后者被使用)，并作为初始 RNG seed 传递给
+OS\&。这是确保操作系统提供完全初始化的随机池的有效方法。
+.PP
+该服务还自动生成一个 \*(Aqsystem token\*(Aq 以存储在系统中的 EFI 变量中 \*(Aqs
+NVRAM\&。然后引导加载程序可以通过加密哈希将磁盘上的随机 seed 和系统 token 组合起来，并将其传递给它引导的操作系统作为它的熵池的初始化
+seed\&。注意: 存储在 ESP 中的随机 seed 在 \fIevery\fP 重启时刷新，确保多个后续引导将使用不同的种子启动 \&。另一方面，系统
+token 随机生成 \fIonce\fP，然后持久化存储在系统 \*(Aqs EFI 变量存储中，确保相同的磁盘映像赢得 \*(如果使用 Aqt
+导致相同系列的 boot loader seed 值在并行 \& 中的多个系统上。
+.PP
+systemd\-boot\-random\-seed\&.service 元调用 \fBbootctl random\-seed\fP 命令，更新 ESP 中的随机
+seed，初始化系统 token 如果 \*(Aqs 还没有初始化 \&。该服务是有条件的，因此它仅在使用实现 \m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[1]\d\s+2\& 的引导加载程序时运行。
+.PP
+有关更多详细信息，请参见 \fBbootctl\fP(1)，关于此服务调用的命令 \&。
+.PP
+注意 systemd\-boot\-random\-seed\&.service 和 \fBsystemd\-random\-seed\fP(8)\&
+的关系。前者维护引导环境消耗和更新的随机 seed (i\&.e\&. \fBsystemd\-boot\fP(7) 或
+\fBsystemd\-stub\fP(7))，后者维护操作系统本身消耗和更新的随机 seed\&。前者确保当常规磁盘访问尚不可用时
+(i\&.e\&. 当操作系统随机 seed 尚无法加载时) 操作系统在最早启动期间已经有一个填充的熵池。后者的处理要晚得多，一旦可写磁盘访问可用
+\&。因此它不能用于 seed 初始引导阶段，但通常具有更高质量的熵 \&。这两个文件都在启动时被消耗和更新，但在不同的时间
+\&。Specifically:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+在 UEFI 模式下，systemd\-boot 或 systemd\-stub 组件从 ESP 加载引导加载程序随机 seed，使用可用熵和系统
+token 对其进行哈希处理，然后在磁盘上更新它。派生的 seed 被传递给内核，内核将其写入熵池 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+在用户空间中，systemd\-random\-seed\&.service 服务加载操作系统随机
+seed，将其写入内核熵池，然后使用从内核熵池派生的新值在磁盘上更新它 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+在用户空间中，systemd\-boot\-random\-seed\&.service 服务使用从内核熵池派生的新值更新引导加载程序随机 seed。
+.RE
+.PP
+此逻辑应确保内核 \*(Aqs 熵池已经在最早的 bool 期间播种，如果可能的话，但最高质量的熵传播回两个磁盘上的种子 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBrandom\fP(4), \fBbootctl\fP(1), \fBsystemd\-boot\fP(7),
+\fBsystemd\-stub\fP(7), \fBsystemd\-random\-seed.service\fP(8)
+.SH NOTES
+.IP " 1." 4
+引导加载程序接口
+.RS 4
+\%https://systemd.io/BOOT_LOADER_INTERFACE
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

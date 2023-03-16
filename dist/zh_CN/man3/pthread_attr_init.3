@@ -1,0 +1,279 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_attr_init 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_attr_init, pthread_attr_destroy \- 初始化和销毁线程属性对象
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_attr_init(pthread_attr_t *\fP\fIattr\fP\fB);\fP
+\fBint pthread_attr_destroy(pthread_attr_t *\fP\fIattr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_attr_init\fP() 函数用默认属性值初始化 \fIattr\fP 指向的线程属性对象。 在此调用之后，可以使用各种相关函数 (列在
+`还请参见` 下) 来设置对象的各个属性，然后可以在一个或多个创建线程的 \fBpthread_create\fP(3) 调用中使用该对象。
+.PP
+在已初始化的线程属性对象上调用 \fBpthread_attr_init\fP() 会导致未定义的行为。
+.PP
+当不再需要线程属性对象时，应该使用 \fBpthread_attr_destroy\fP() 函数进行销毁。 销售线程属性对象对使用该对象创建的线程没有影响。
+.PP
+一旦线程属性对象被销毁，它就可以使用 \fBpthread_attr_init\fP() 重新初始化。 销售线程属性对象的任何其他使用都会产生未定义的结果。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0; 出错时，它们返回一个非零错误号。
+.SH ERRORS
+POSIX.1 记录 \fBpthread_attr_init\fP() 的 \fBENOMEM\fP 错误; 在 Linux 上，这些函数总是成功 (但可移植和
+future 证明应用程序仍然应该处理可能的错误返回)。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_attr_init\fP(),
+\fBpthread_attr_destroy\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+\fIpthread_attr_t\fP 类型应该被视为不透明的: 除了通过 pthreads
+函数以外，对对象的任何访问都是不可移植的，并且会产生未定义的结果。
+.SH EXAMPLES
+下面的程序可选地使用 \fBpthread_attr_init\fP() 和各种相关函数来初始化用于创建单个线程的线程属性对象。 创建后，线程使用
+\fBpthread_getattr_np\fP(3) 函数 (非标准 GNU 扩展) 检索线程的属性，然后显示这些属性。
+.PP
+如果程序在没有命令行参数的情况下运行，那么它会将 NULL 作为 \fBpthread_create\fP(3) 的 \fIattr\fP
+参数传递，以便使用默认属性创建线程。 使用 NPTL 线程实现在 Linux/x86\-32 上运行程序，我们看到以下内容:
+.PP
+.in +4n
+.EX
+.\" Results from glibc 2.8, SUSE 11.0; Oct 2008
+$\fB ulimit \-s\fP       # 没有栈限制 ==> 默认栈大小为 2 MB
+unlimited
+$\fB ./a.out\fP
+线程属性:
+        Detach state        = PTHREAD_CREATE_JOINABLE
+        Scope               = PTHREAD_SCOPE_SYSTEM
+        Inherit scheduler   = PTHREAD_INHERIT_SCHED
+        Scheduling policy   = SCHED_OTHER
+        Scheduling priority = 0
+        Guard size          = 4096 bytes
+        Stack address       = 0x40196000
+        Stack size          = 0x201000 bytes
+.EE
+.in
+.PP
+当我们将栈大小作为命令行参数提供时，程序会初始化一个线程属性对象，在该对象中设置各种属性，并将指向调用中对象的指针传递给
+\fBpthread_create\fP(3)。 使用 NPTL 线程实现在 Linux/x86\-32 上运行程序，我们看到以下内容:
+.PP
+.in +4n
+.EX
+.\" Results from glibc 2.8, SUSE 11.0; Oct 2008
+$\fB ./a.out 0x3000000\fP
+posix_memalign() allocated at 0x40197000
+线程属性:
+        Detach state        = PTHREAD_CREATE_DETACHED
+        Scope               = PTHREAD_SCOPE_SYSTEM
+        Inherit scheduler   = PTHREAD_EXPLICIT_SCHED
+        Scheduling policy   = SCHED_OTHER
+        Scheduling priority = 0
+        Guard size          = 0 bytes
+        Stack address       = 0x40197000
+        Stack size          = 0x3000000 bytes
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_attr_init.c)
+\&
+.EX
+#define _GNU_SOURCE     /* To get pthread_getattr_np() declaration */
+#include <err.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+static void
+display_pthread_attr(pthread_attr_t *attr, char *prefix)
+{
+    int s, i;
+    size_t v;
+    void *stkaddr;
+    struct sched_param sp;
+
+    s = pthread_attr_getdetachstate(attr, &i);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getdetachstate");
+    printf("%sDetach state        = %s\en", prefix,
+           (i == PTHREAD_CREATE_DETACHED) ? "PTHREAD_CREATE_DETACHED" :
+           (i == PTHREAD_CREATE_JOINABLE) ? "PTHREAD_CREATE_JOINABLE" :
+           "???");
+
+    s = pthread_attr_getscope(attr, &i);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getscope");
+    printf("%sScope               = %s\en", prefix,
+           (i == PTHREAD_SCOPE_SYSTEM)  ? "PTHREAD_SCOPE_SYSTEM" :
+           (i == PTHREAD_SCOPE_PROCESS) ? "PTHREAD_SCOPE_PROCESS" :
+           "???");
+
+    s = pthread_attr_getinheritsched(attr, &i);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getinheritsched");
+    printf("%sInherit scheduler   = %s\en", prefix,
+           (i == PTHREAD_INHERIT_SCHED)  ? "PTHREAD_INHERIT_SCHED" :
+           (i == PTHREAD_EXPLICIT_SCHED) ? "PTHREAD_EXPLICIT_SCHED" :
+           "???");
+
+    s = pthread_attr_getschedpolicy(attr, &i);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getschedpolicy");
+    printf("%sScheduling policy   = %s\en", prefix,
+           (i == SCHED_OTHER) ? "SCHED_OTHER" :
+           (i == SCHED_FIFO)  ? "SCHED_FIFO" :
+           (i == SCHED_RR)    ? "SCHED_RR" :
+           "???");
+
+    s = pthread_attr_getschedparam(attr, &sp);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getschedparam");
+    printf("%sScheduling priority = %d\en", prefix, sp.sched_priority);
+
+    s = pthread_attr_getguardsize(attr, &v);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getguardsize");
+    printf("%sGuard size          = %zu bytes\en", prefix, v);
+
+    s = pthread_attr_getstack(attr, &stkaddr, &v);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getstack");
+    printf("%sStack address       = %p\en", prefix, stkaddr);
+    printf("%sStack size          = %#zx bytes\en", prefix, v);
+}
+
+static void *
+thread_start(void *arg)
+{
+    int s;
+    pthread_attr_t gattr;
+
+    /* pthread_getattr_np() is a non\-standard GNU extension that
+       retrieves the attributes of the thread specified in its
+       first argument. */
+
+    s = pthread_getattr_np(pthread_self(), &gattr);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_getattr_np");
+
+    printf("Thread attributes:\en");
+    display_pthread_attr(&gattr, "\et");
+
+    exit(EXIT_SUCCESS);         /* Terminate all threads */
+}
+
+int
+main(int argc, char *argv[])
+{
+    pthread_t thr;
+    pthread_attr_t attr;
+    pthread_attr_t *attrp;      /* NULL or &attr */
+    int s;
+
+    attrp = NULL;
+
+    /* If a command\-line argument was supplied, use it to set the
+       stack\-size attribute and set a few other thread attributes,
+       and set attrp pointing to thread attributes object. */
+
+    if (argc > 1) {
+        size_t stack_size;
+        void *sp;
+
+        attrp = &attr;
+
+        s = pthread_attr_init(&attr);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_init");
+
+        s = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_setdetachstate");
+
+        s = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_setinheritsched");
+
+        stack_size = strtoul(argv[1], NULL, 0);
+
+        s = posix_memalign(&sp, sysconf(_SC_PAGESIZE), stack_size);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "posix_memalign");
+
+        printf("posix_memalign() allocated at %p\en", sp);
+
+        s = pthread_attr_setstack(&attr, sp, stack_size);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_setstack");
+    }
+
+    s = pthread_create(&thr, attrp, &thread_start, NULL);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_create");
+
+    if (attrp != NULL) {
+        s = pthread_attr_destroy(attrp);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_destroy");
+    }
+
+    pause();    /* Terminates when other thread calls exit() */
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBpthread_attr_setaffinity_np\fP(3), \fBpthread_attr_setdetachstate\fP(3),
+\fBpthread_attr_setguardsize\fP(3), \fBpthread_attr_setinheritsched\fP(3),
+\fBpthread_attr_setschedparam\fP(3), \fBpthread_attr_setschedpolicy\fP(3),
+\fBpthread_attr_setscope\fP(3), \fBpthread_attr_setsigmask_np\fP(3),
+\fBpthread_attr_setstack\fP(3), \fBpthread_attr_setstackaddr\fP(3),
+\fBpthread_attr_setstacksize\fP(3), \fBpthread_create\fP(3),
+\fBpthread_getattr_np\fP(3), \fBpthread_setattr_default_np\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,85 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2008, 2014, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Created   Sat Aug 21 1995     Thomas K. Dyas <tdyas@eden.rutgers.edu>
+.\" Modified Tue Oct 22 22:09:03 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" 2008-06-26, mtk, added some more detail on the work done by sigreturn()
+.\" 2014-12-05, mtk, rewrote all of the rest of the original page
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigreturn 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+sigreturn、rt_sigreturn \- 从信号处理程序和清理栈帧返回
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fBint sigreturn(...);\fP
+.fi
+.SH DESCRIPTION
+.\" See arch/x86/kernel/signal.c::__setup_frame() [in Linux 3.17 source code]
+如果 Linux 内核确定一个未阻塞的信号正在为一个进程挂起，那么，在该进程的下一次转换回用户模式时 (例如，从系统调用返回时或当进程被重新调度到
+CPU 上时)，它创建用户空间栈上的一个新框架，它保存了各种进程上下文 (处理器状态字、寄存器、信号掩码和信号栈设置)。
+.PP
+内核还安排在返回用户模式期间调用信号处理程序，并且在从处理程序返回时，控制权传递给一段通常称为 "signal trampoline" 的用户空间代码。
+信号蹦床代码依次调用 \fBsigreturn\fP()。
+.PP
+这个 \fBsigreturn\fP() 调用撤销所有已完成的操作 \[em] 改变进程的信号掩码，切换信号栈 (参见
+\fBsigaltstack\fP(2))\[em]in 命令来调用信号处理程序。 使用之前保存在用户空间栈上的信息 \fBsigreturn\fP()
+恢复进程的信号掩码，切换栈，并恢复进程的上下文 (处理器标志和寄存器，包括栈指针和指令指针)，以便进程恢复执行它被信号中断的地方。
+.SH "RETURN VALUE"
+\fBsigreturn\fP() 永远不会返回。
+.SH STANDARDS
+许多 UNIX 类型的系统都有一个 \fBsigreturn\fP() 系统调用或接近等效的系统。 但是，此调用未在 POSIX
+中指定，其行为的详细信息因系统而异。
+.SH NOTES
+.\" See sysdeps/unix/sysv/linux/sigreturn.c and
+.\" signal/sigreturn.c in the glibc source
+\fBsigreturn\fP() 的存在只是为了允许信号处理程序的实现。 应该直接调用 \fBnever\fP。 (实际上，GNU C 库中的一个简单
+\fBsigreturn\fP() 包装器仅返回 \-1，\fIerrno\fP 设置为 \fBENOSYS\fP.) 传递给 \fBsigreturn\fP() 的参数
+(如果有) 的详细信息因架构而异。 (在某些架构上，例如 x86\-64，\fBsigreturn\fP()
+不需要参数，因为它需要的所有信息都可以在先前由内核在用户空间栈上创建的栈帧中获得。)
+.PP
+.\" See, for example, sysdeps/unix/sysv/linux/i386/sigaction.c and
+.\" sysdeps/unix/sysv/linux/x86_64/sigaction.c in the glibc (2.20) source.
+曾几何时，UNIX 系统将信号蹦床代码放置在用户栈中。 如今，用户栈的页面受到保护以禁止代码执行。 因此，在现代 Linux
+系统上，根据体系结构，信号蹦床代码位于 \fBvdso\fP(7) 或 C 库中。 在后一种情况下，C 库的 \fBsigaction\fP(2)
+包装器函数通过将其地址放在 \fIsigaction\fP 结构体的 \fIsa_restorer\fP 字段中来通知内核蹦床代码的位置，并在
+\fIsa_flags\fP 字段中设置 \fBSA_RESTORER\fP 标志。
+.PP
+保存的进程上下文信息放在 \fIucontext_t\fP 结构体中 (参见 \fI<sys/ucontext.h>\fP).
+该结构体在信号处理程序中可见，作为通过 \fBsigaction\fP(2) 和 \fBSA_SIGINFO\fP 标志建立的处理程序的第三个参数。
+.PP
+.\"
+在其他一些 UNIX 系统上，信号蹦床的操作略有不同。 特别是，在某些系统上，在转换回用户模式后，内核将控制权传递给蹦床
+(而不是信号处理程序)，蹦床代码调用信号处理程序 (然后在处理程序返回后调用 \fBsigreturn\fP())。
+.SS "C library/kernel differences"
+.\"
+原来的 Linux 系统调用被命名为 \fBsigreturn\fP()。 但是随着 Linux 2.2
+加入了实时信号，一个新的系统调用，\fBrt_sigreturn\fP() 增加了支持放大的 \fIsigset_t\fP 类型。 GNU C
+库向我们隐藏了这些细节，在内核提供 \fBrt_sigreturn\fP() 时透明地使用它。
+.SH "SEE ALSO"
+\fBkill\fP(2), \fBrestart_syscall\fP(2), \fBsigaltstack\fP(2), \fBsignal\fP(2),
+\fBgetcontext\fP(3), \fBsignal\fP(7), \fBvdso\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

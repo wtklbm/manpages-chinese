@@ -1,0 +1,162 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH VERITYTAB 5 "" "systemd 253" veritytab
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+veritytab\-verity 块设备的配置
+.SH SYNOPSIS
+.PP
+/etc/veritytab
+.SH DESCRIPTION
+.PP
+/etc/veritytab 文件描述了在系统引导期间设置的受真实性保护的块设备。
+.PP
+空行和以 "#" 字符开头的行将被忽略 \&。剩余的每一行都描述了一个受真实性保护的块设备 \&。字段由空格 \& 分隔。
+.PP
+每一行都在表格中
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\fIvolume\-name\fP \fIdata\-device\fP \fIhash\-device\fP \fIroothash\fP \fIoptions\fP
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+前四个字段是必填的，其余的是可选的 \&。
+.PP
+第一个字段包含生成的 verity 卷的名称; 它的块设备设置在 /dev/mapper/\& 下面。
+.PP
+第二个字段包含底层块数据设备的路径，或通过 "UUID=" 后跟 UUID\& 的块设备规范。
+.PP
+第三个字段包含底层块哈希设备的路径，或通过 "UUID=" 后跟 UUID\& 的块设备规范。
+.PP
+第四个字段是十六进制的 "roothash"\&。
+.PP
+第五个字段 (如果存在) 是以逗号分隔的选项列表 \&。识别以下选项:
+.PP
+\fBignore\-corruption\fP, \fBrestart\-on\-corruption\fP, \fBpanic\-on\-corruption\fP
+.RS 4
+定义检测到数据真实性问题 (数据损坏) \& 时要执行的操作。如果没有这些选项，内核将导致 IO 操作失败并出现 I/O 错误 \&。使用
+"\-\-ignore\-corruption" 选项，仅记录损坏 \&。对于 "\-\-restart\-on\-corruption" 或
+"\-\-panic\-on\-corruption"，内核会立即重新启动 (panicked)\&。(您必须提供如何避免重启循环 \& 的方法。)
+.RE
+.PP
+\fBignore\-zero\-blocks\fP
+.RS 4
+指示内核不验证预期包含零的块，而是始终直接返回零 \&。警告: 仅在非常特殊的情况下使用此选项 \&。该选项自 Linux 内核版本 4\&.5\&
+起可用。
+.RE
+.PP
+\fBcheck\-at\-most\-once\fP
+.RS 4
+指示内核仅在第一次从数据设备读取块时验证块，而不是每次 \&。警告: 它提供了较低级别的安全性，因为只会检测数据设备的离线篡改 \* (将检测到 Aqs
+内容，而不是在线篡改 \&。该选项从 Linux 内核版本 4\&.17\& 开始可用。
+.RE
+.PP
+\fBroot\-hash\-signature=\fP\fIPATH\fP\fB|base64:\fP\fIHEX\fP
+.RS 4
+编码根哈希签名的 base64 字符串，前缀为 "base64:" 或用于验证根哈希 (在内核中) \& 的根哈希签名文件的路径。此特性需要 Linux
+内核版本 5\&.4 或更新 \&。
+.RE
+.PP
+\fB_netdev\fP
+.RS 4
+将此 veritysetup 设备标记为需要网络 \&。它会在网络可用后启动，类似于标有 \fB_netdev\fP\& 的
+\fBsystemd.mount\fP(5) 单元。设置此设备的服务元将在 remote\-fs\-pre\&.target 和
+remote\-veritysetup\&.target 之间排序，而不是 veritysetup\-pre\&.target 和
+veritysetup\&.target\&。
+.sp
+提示: 如果此设备用于 \fBfstab\fP(5) 中指定的挂载点，则 \fB_netdev\fP 选项也应用于挂载点
+\&。否则，可能会创建一个依赖循环，其中挂载点将被 local\-fs\&.target 拉入，而配置网络的服务通常只启动 \fIafter\fP
+本地文件系统已挂载 \&。
+.RE
+.PP
+\fBnoauto\fP
+.RS 4
+此设备将不会添加到 veritysetup\&.target\&。这意味着它不会在启动时自动启用，除非有其他东西将它拉入
+\&。特别是，如果设备用于挂载点，它 \*(Aqll 在引导期间自动启用，除非挂载点本身也被 \fBnoauto\fP\& 禁用。
+.RE
+.PP
+\fBnofail\fP
+.RS 4
+该设备不会成为 veritysetup\&.target\& 的硬依赖。它 \*(Aqll
+仍然被拉入并启动，但系统不会等待设备出现并被启用，如果不成功启动也不会失败 \&。请注意，依赖启用设备的其他单元可能仍会失败
+\&。特别是，如果设备用于挂载点，则挂载点本身也需要有 \fBnofail\fP 选项，否则如果设备没有启用成功就会启动失败 \&。
+.RE
+.PP
+\fBx\-initrd\&.attach\fP
+.RS 4
+在 initrd 中设置这个受真实性保护的块设备，类似于用 \fBx\-initrd\&.mount\fP\& 标记的 \fBsystemd.mount\fP(5)
+单元。
+.sp
+虽然它 \*(Aqs 没有必要用 \fBx\-initrd\&.mount\fP 标记根文件系统的挂载条目，但仍然建议 \fBx\-initrd\&.attach\fP
+与包含根文件系统的受真实性保护的块设备一起使用，否则 systemd 将在常规系统关闭期间尝试分离设备而它 \*(Aqs 仍在使用中
+\&。使用此选项，设备仍将分离，但稍后会在卸载根文件系统之后 \&。
+.sp
+包含安装在 initrd 中的文件系统的所有其他受 verity 保护的块设备都应使用此选项 \&。
+.RE
+.PP
+在早期引导和重新加载系统管理器配置时，此文件由 \fBsystemd\-veritysetup\-generator\fP(8)\& 转换为原生 systemd
+单元。
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&/etc/veritytab example\fP
+.PP
+设置两个受真实性保护的块设备 \&。一个使用设备块，另一个使用文件 \&。
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+usr  PARTUUID=783e45ae\-7aa3\-484a\-beef\-a80ff9c19cbb PARTUUID=21dc1dfe\-4c33\-8b48\-98a9\-918a22eb3e37 36e3f740ad502e2c25e2a23d9c7c17bf0fdad2300b7580842d4b7ec1fb0fa263 auto
+data /etc/data /etc/hash a5ee4b42f70ae1f46a08a7c92c2e0a20672ad2f514792730f5d49d7606ab8fdf auto
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-veritysetup@.service\fP(8),
+\fBsystemd\-veritysetup\-generator\fP(8), \fBfstab\fP(5), \fBveritysetup\fP(8),
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

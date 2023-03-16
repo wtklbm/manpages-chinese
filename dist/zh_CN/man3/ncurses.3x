@@ -1,0 +1,1182 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"***************************************************************************
+.\" Copyright 2018-2020,2021 Thomas E. Dickey                                *
+.\" Copyright 1998-2015,2017 Free Software Foundation, Inc.                  *
+.\"                                                                          *
+.\" Permission is hereby granted, free of charge, to any person obtaining a  *
+.\" copy of this software and associated documentation files (the            *
+.\" "Software"), to deal in the Software without restriction, including      *
+.\" without limitation the rights to use, copy, modify, merge, publish,      *
+.\" distribute, distribute with modifications, sublicense, and/or sell       *
+.\" copies of the Software, and to permit persons to whom the Software is    *
+.\" furnished to do so, subject to the following conditions:                 *
+.\"                                                                          *
+.\" The above copyright notice and this permission notice shall be included  *
+.\" in all copies or substantial portions of the Software.                   *
+.\"                                                                          *
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+.\" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+.\" IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+.\" DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+.\" OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+.\" THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+.\"                                                                          *
+.\" Except as contained in this notice, the name(s) of the above copyright   *
+.\" holders shall not be used in advertising or otherwise to promote the     *
+.\" sale, use or other dealings in this Software without prior written       *
+.\" authorization.                                                           *
+.\"***************************************************************************
+.\"
+.\" $Id: ncurses.3x,v 1.156 2021/12/25 21:19:26 tom Exp $
+.hy 0
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ncurses 3X ""  
+.ie  \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie  \n(.g .ds '' \(rq
+.el       .ds '' ''
+.de  bP
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
+..
+.de  NS
+.ie n  .sp
+.el    .sp .5
+.ie n  .in +4
+.el    .in +2
+.nf
+.ft C			\" Courier
+..
+.de  NE
+.fi
+.ft R
+.ie n  .in -4
+.el    .in -2
+..
+.ds n 5
+.ds d /usr/share/terminfo
+.SH NAME
+\fBncurses\fP\-CRT 屏幕处理和优化包
+.SH SYNOPSIS
+\fB#include <curses.h>\fP
+.br
+.SH DESCRIPTION
+\fBncurses\fP 库例程为用户提供了一种终端独立的方法，通过合理的优化来更新字符屏幕。 此实现是 \*(``new curses\*(''
+(ncurses) 并且是 4.4BSD 经典 curses 的批准替代品，已停产。 这描述了 \fBncurses\fP 版本 6.4 (补丁
+20221231)。
+.PP
+\fBncurses\fP 库模拟 System V Release 4 UNIX 和 XPG4 (X/Open 可移植性指南) curses (也称为
+XSI curses) 的 curses 库。 XSI 代表 X/Open 系统接口扩展。 \fBncurses\fP 库可以源代码形式自由再分发。 与
+SVr4 curses 的不同之处在下面的 \fIEXTENSIONS\fP 和 \fIPORTABILITY\fP 部分进行了总结，并在各个手册页的相应
+\fIEXTENSIONS\fP、\fIPORTABILITY\fP 和 \fIBUGS\fP 部分进行了详细描述。
+.PP
+\fBncurses\fP 库还提供了许多有用的扩展，即无法通过简单的附加库实现但需要访问库内部的，特性。
+.PP
+使用这些例程的程序必须与 \fB\-lncurses\fP 选项链接，或者 (如果已生成) 与调试库 \fB\-lncurses_g\fP 链接。
+(您的系统集成商可能还以名称 \fB\-lcurses\fP 和 \fB\-lcurses_g\fP.) 安装了这些库 ncurses_g 库生成跟踪日志 (在一个名为
+\*(``trace\* (当前目录中的 \*(rq) 的文件中，描述 curses 操作。 另请参见 \fBALTERNATE CONFIGURATIONS\fP
+部分。
+.PP
+\fBncurses\fP 包支持: 全屏、窗口、pad 操作; 输出到 windows 和焊盘; 读取终端输入; 控制终端和 \fBcurses\fP
+输入和输出选项; 环境查询例程; 颜色处理; 使用软标签键; 术语信息功能; 以及访问底层终端操作例程。
+.SS Initialization
+.PP
+该库使用调用程序已初始化的语言环境。 这通常是用 \fBsetlocale\fP(3): 完成的
+.NS
+\fBsetlocale(LC_ALL, "");\fP
+.NE
+.PP
+如果语言环境未初始化，则库假定字符可打印，如 ISO\-8859\-1 中所示，以便与某些遗留程序一起使用。
+当尚未设置语言环境时，您应该初始化语言环境，而不是依赖库的特定细节。
+.PP
+在使用处理 windows 和屏幕的任何其他例程之前，必须调用函数 \fBinitscr\fP 或 \fBnewterm\fP 来初始化库。 退出前必须调用例程
+\fBendwin\fP(3X)。
+.PP
+要在不回显的情况下一次输入一个字符 (大多数交互式、面向屏幕的程序都需要这样)，应使用以下顺序:
+.NS
+\fBinitscr(); cbreak(); noecho();\fP
+.NE
+.PP
+大多数程序会另外使用序列:
+.NS
+\fBintrflush(stdscr, FALSE);\fP \fBkeypad(stdscr, TRUE);\fP
+.NE
+.PP
+在运行 \fBcurses\fP 程序之前，应设置终端的制表位，并且必须输出其初始化字符串 (如果已定义)。 这可以通过在导出 shell 环境变量
+\fBTERM\fP 后执行 \fBtput init\fP 命令来完成。 \fBtset(1)\fP 通常负责这样做。 [See \fBterminfo\fP(\*n)
+for further details.]
+.SS Datatypes
+.PP
+\fBncurses\fP 库允许操作称为 \fIwindows\fP 的数据结构，它可以被认为是代表 CRT 屏幕的全部或部分的二维字符数组。 提供了一个名为
+\fBstdscr\fP 的默认窗口，它是最终屏幕的大小。 其他人可以使用 \fBnewwin\fP 创建。
+.PP
+请注意，\fBcurses\fP 不处理重叠的 windows，这是由 \fBpanel\fP(3X) 库完成的。 这意味着您可以使用 \fBstdscr\fP
+或将屏幕分成平铺的 windows 而根本不使用 \fBstdscr\fP。 将两者混合会导致不可预测和不良的影响。
+.PP
+Windows 被称为变量声明为 \fBWINDOW *\fP。 这些数据结构使用此处和 \fBncurses\fP 手册页中其他地方描述的例程进行操作。
+其中，最基本的例程是 \fBmove\fP 和 \fBaddch\fP。 这些例程的更通用版本包含在名称中以 \fBw\fP 开头，允许用户指定窗口。 不以 \fBw\fP
+开头的例程会影响 \fBstdscr\fP。
+.PP
+在使用例程操作窗口后，调用 \fBrefresh\fP(3X)，告诉 \fBcurses\fP 使用户的 CRT 屏幕看起来像 \fBstdscr\fP。
+窗口中的字符实际上是 \fBchtype\fP 类型 (字符和属性数据)，因此有关字符的其他信息也可以与每个字符一起存储。
+.PP
+也可以操纵称为 \fIpads\fP 的特殊 windows。 这些是 windows，不受屏幕大小的限制，不需要完整显示其内容。 有关更多信息，请参见
+\fBcurs_pad\fP(3X)。
+.PP
+除了在屏幕上绘制字符外，还可以支持视频属性和颜色，使字符在支持此类显示增强功能的终端上以下划线、反转视频或彩色等方式显示。 可以指定要输出的线条图字符。
+在输入时，\fBcurses\fP 还能够将传输转义序列的箭头键和函数键翻译成单个值。 视频属性、画线字符、输入值使用名称，定义在
+\fB<curses.h>\fP 中，如 \fBA_REVERSE\fP、\fBACS_HLINE\fP、\fBKEY_LEFT\fP。
+.SS "Environment variables"
+.PP
+如果设置了环境变量 \fBLINES\fP 和 \fBCOLUMNS\fP，或者程序在窗口环境下执行，环境中的行和列信息将覆盖 \fIterminfo\fP 读取的信息。
+这会影响在 AT&T 630 层中运行的程序，例如，屏幕大小是可变的 (请参见 \fBENVIRONMENT\fP).
+.PP
+如果定义了环境变量 \fBTERMINFO\fP，任何使用 \fBcurses\fP 的程序都会在检查标准位置之前检查本地最终定义。 例如，如果 \fBTERM\fP
+设置为 \fBatt4424\fP，则编译后的终点定义位于
+.NS
+\fB\*d/a/att4424\fP.
+.NE
+.PP
+(\fBa\fP 是从 \fBatt4424\fP 的第一个字母复制的，以避免创建巨大的目录。) 但是，如果 \fBTERMINFO\fP 设置为
+\fB$HOME/myterms\fP，\fBcurses\fP 首先检查
+.NS
+\fB$HOME/myterms/a/att4424\fP,
+.NE
+.PP
+如果失败，它会检查
+.NS
+\fB\*d/a/att4424\fP.
+.NE
+.PP
+这对于开发实验定义或在 \fB\*d\fP 中的写权限不可用时很有用。
+.PP
+整数变量 \fBLINES\fP 和 \fBCOLS\fP 定义在 \fB<curses.h>\fP 中，由 \fBinitscr\fP 填充屏幕尺寸。 常量
+\fBTRUE\fP 和 \fBFALSE\fP 的值分别为 \fB1\fP 和 \fB0\fP。
+.PP
+.\"
+\fBcurses\fP 例程还定义了 \fBWINDOW *\fP 变量 \fBcurscr\fP，它用于某些底层操作，如清除和重绘包含垃圾的屏幕。 \fBcurscr\fP
+只能用于少数例程。
+.SS "Routine and Argument Names"
+许多 \fBcurses\fP 例程有两个或更多版本。 以 \fIw\fP 为前缀的例程需要一个窗口参数。 以 \fIp\fP 为前缀的例程需要填充参数。
+没有前缀的一般用 \fBstdscr\fP。
+.PP
+以 \fBmv\fP 为前缀的例程需要在执行适当的操作之前移动到 \fIy\fP 和 \fIx\fP 坐标。 \fBmv\fP 例程暗示在调用其他例程之前先调用
+\fBmove\fP。 坐标 \fIy\fP 始终指代 (窗口的) 行，而 \fIx\fP 始终指代列。 左上角始终是 (0,0)，而不是 (1,1)。
+.PP
+以 \fBmvw\fP 为前缀的例程采用窗口参数以及 \fIx\fP 和 \fIy\fP 坐标。 窗口参数总是在坐标之前指定。
+.PP
+在每种情况下，\fIwin\fP 是受影响的窗口，\fIpad\fP 是受影响的焊盘; \fIwin\fP 和 \fIpad\fP 始终是指向类型 \fBWINDOW\fP 的指针。
+.PP
+选项设置例程需要一个值为 \fBTRUE\fP 或 \fBFALSE\fP 的布尔标志 \fIbf\fP; \fIbf\fP 始终是 \fBbool\fP 类型。
+库例程中使用的大部分数据类型，如 \fBWINDOW\fP、\fBSCREEN\fP、\fBbool\fP、\fBchtype\fP，都是在
+\fB<curses.h>\fP 中定义的。 \fB<term.h>\fP 中定义了用于 terminfo 例程的类型，例如
+\fBTERMINAL\fP。
+.PP
+本手册页描述了可能出现在库的任何配置中的函数。 库有两种常见的配置:
+.RS 3
+.TP  5
+\fIncurses\fP
+\*(``normal\*('' 库，它处理 8 位字符。 正常的 (8\-bit) 库将字符与属性组合存储在 \fBchtype\fP 数据中。
+.IP
+单独的属性 (没有相应的字符) 可以存储在 \fBchtype\fP 或等效的 \fBattr_t\fP 数据中。 在任何一种情况下，数据都存储在类似整数的形式中。
+.IP
+\fBWINDOW\fP 中的每个 cell (行和列) 都存储为 \fBchtype\fP。
+.TP  5
+\fIncursesw\fP
+所谓的 \*(``wide\*('' 库，它处理多字节字符 (参见 \fBALTERNATE CONFIGURATIONS\fP).
+\*(``wide\*('' 库包括来自 \*(``normal\*('' 库的所有调用。 它使用存储多字节字符的数据类型增加了大约三分之一的调用:
+.RS 5
+.TP  5
+\fBcchar_t\fP
+对应于 \fBchtype\fP。 然而它是一个结构体，因为存储的数据多于一个整数所能容纳的数据。 这些字符足够大，需要一个完整的整数值 \- 每个 cell
+可能有一个以上的字符。 视频属性和颜色存储在结构体的单独字段中。
+.IP
+\fBWINDOW\fP 中的每个 cell (行和列) 都存储为 \fBcchar_t\fP。
+.IP
+\fBsetcchar\fP(3X) 和 \fBgetcchar\fP(3X) 函数从 \fBcchar_t\fP 结构体中存储和检索数据。
+.TP  5
+\fBwchar_t\fP
+存储一个 \*(``wide\*('' 字符。 与 \fBchtype\fP 一样，这可能是一个整数。
+.TP  5
+\fBwint_t\fP
+存储 \fBwchar_t\fP 或 \fBWEOF\fP \- 不一样，尽管两者可能具有相同的大小。
+.RE
+.IP
+\*(``wide\*('' 库提供了新的函数，它类似于 \*(``normal\*('' 库中的函数。 有一个与许多 normal/wide
+变体相关的命名约定: a\*(``_w\*('' 插入到名称中。 例如，\fBwaddch\fP 变为 \fBwadd_wch\fP。
+.RE
+.PP
+.\"
+.SS "Routine Name Index"
+下表列出了 \*(``normal\*('' 和 \*(``wide\*('' 库中提供的 \fBcurses\fP 例程以及描述它们的手册页的名称。 用
+\*(``*\*('' 标记的例程是特定于 ncurses 的，XPG4 未描述或存在于 SVr4 中。
+.PP
+.TS
+center tab(/);
+l l
+l l .
+\fBcurses\fP Routine Name/Manual Page Name
+=
+COLOR_PAIR/\fBcurs_color\fP(3X)
+PAIR_NUMBER/\fBcurs_attr\fP(3X)
+add_wch/\fBcurs_add_wch\fP(3X)
+add_wchnstr/\fBcurs_add_wchstr\fP(3X)
+add_wchstr/\fBcurs_add_wchstr\fP(3X)
+addch/\fBcurs_addch\fP(3X)
+addchnstr/\fBcurs_addchstr\fP(3X)
+addchstr/\fBcurs_addchstr\fP(3X)
+addnstr/\fBcurs_addstr\fP(3X)
+addnwstr/\fBcurs_addwstr\fP(3X)
+addstr/\fBcurs_addstr\fP(3X)
+addwstr/\fBcurs_addwstr\fP(3X)
+alloc_pair/\fBnew_pair\fP(3X)*
+assume_default_colors/\fBdefault_colors\fP(3X)*
+attr_get/\fBcurs_attr\fP(3X)
+attr_off/\fBcurs_attr\fP(3X)
+attr_on/\fBcurs_attr\fP(3X)
+attr_set/\fBcurs_attr\fP(3X)
+attroff/\fBcurs_attr\fP(3X)
+attron/\fBcurs_attr\fP(3X)
+attrset/\fBcurs_attr\fP(3X)
+baudrate/\fBcurs_termattrs\fP(3X)
+beep/\fBcurs_beep\fP(3X)
+bkgd/\fBcurs_bkgd\fP(3X)
+bkgdset/\fBcurs_bkgd\fP(3X)
+bkgrnd/\fBcurs_bkgrnd\fP(3X)
+bkgrndset/\fBcurs_bkgrnd\fP(3X)
+border/\fBcurs_border\fP(3X)
+border_set/\fBcurs_border_set\fP(3X)
+box/\fBcurs_border\fP(3X)
+box_set/\fBcurs_border_set\fP(3X)
+can_change_color/\fBcurs_color\fP(3X)
+cbreak/\fBcurs_inopts\fP(3X)
+chgat/\fBcurs_attr\fP(3X)
+clear/\fBcurs_clear\fP(3X)
+clearok/\fBcurs_outopts\fP(3X)
+clrtobot/\fBcurs_clear\fP(3X)
+clrtoeol/\fBcurs_clear\fP(3X)
+color_content/\fBcurs_color\fP(3X)
+color_set/\fBcurs_attr\fP(3X)
+copywin/\fBcurs_overlay\fP(3X)
+curs_set/\fBcurs_kernel\fP(3X)
+curses_trace/\fBcurs_trace\fP(3X)*
+curses_version/\fBcurs_extend\fP(3X)*
+def_prog_mode/\fBcurs_kernel\fP(3X)
+def_shell_mode/\fBcurs_kernel\fP(3X)
+define_key/\fBdefine_key\fP(3X)*
+del_curterm/\fBcurs_terminfo\fP(3X)
+delay_output/\fBcurs_util\fP(3X)
+delch/\fBcurs_delch\fP(3X)
+deleteln/\fBcurs_deleteln\fP(3X)
+delscreen/\fBcurs_initscr\fP(3X)
+delwin/\fBcurs_window\fP(3X)
+derwin/\fBcurs_window\fP(3X)
+doupdate/\fBcurs_refresh\fP(3X)
+dupwin/\fBcurs_window\fP(3X)
+echo/\fBcurs_inopts\fP(3X)
+echo_wchar/\fBcurs_add_wch\fP(3X)
+echochar/\fBcurs_addch\fP(3X)
+endwin/\fBcurs_initscr\fP(3X)
+erase/\fBcurs_clear\fP(3X)
+erasechar/\fBcurs_termattrs\fP(3X)
+erasewchar/\fBcurs_termattrs\fP(3X)
+exit_curses/\fBcurs_memleaks\fP(3X)*
+exit_terminfo/\fBcurs_memleaks\fP(3X)*
+extended_color_content/\fBcurs_color\fP(3X)*
+extended_pair_content/\fBcurs_color\fP(3X)*
+extended_slk_color/\fBcurs_slk\fP(3X)*
+filter/\fBcurs_util\fP(3X)
+find_pair/\fBnew_pair\fP(3X)*
+flash/\fBcurs_beep\fP(3X)
+flushinp/\fBcurs_util\fP(3X)
+free_pair/\fBnew_pair\fP(3X)*
+get_wch/\fBcurs_get_wch\fP(3X)
+get_wstr/\fBcurs_get_wstr\fP(3X)
+getattrs/\fBcurs_attr\fP(3X)
+getbegx/\fBcurs_legacy\fP(3X)*
+getbegy/\fBcurs_legacy\fP(3X)*
+getbegyx/\fBcurs_getyx\fP(3X)
+getbkgd/\fBcurs_bkgd\fP(3X)
+getbkgrnd/\fBcurs_bkgrnd\fP(3X)
+getcchar/\fBcurs_getcchar\fP(3X)
+getch/\fBcurs_getch\fP(3X)
+getcurx/\fBcurs_legacy\fP(3X)*
+getcury/\fBcurs_legacy\fP(3X)*
+getmaxx/\fBcurs_legacy\fP(3X)*
+getmaxy/\fBcurs_legacy\fP(3X)*
+getmaxyx/\fBcurs_getyx\fP(3X)
+getmouse/\fBcurs_mouse\fP(3X)*
+getn_wstr/\fBcurs_get_wstr\fP(3X)
+getnstr/\fBcurs_getstr\fP(3X)
+getparx/\fBcurs_legacy\fP(3X)*
+getpary/\fBcurs_legacy\fP(3X)*
+getparyx/\fBcurs_getyx\fP(3X)
+getstr/\fBcurs_getstr\fP(3X)
+getsyx/\fBcurs_kernel\fP(3X)
+getwin/\fBcurs_util\fP(3X)
+getyx/\fBcurs_getyx\fP(3X)
+halfdelay/\fBcurs_inopts\fP(3X)
+has_colors/\fBcurs_color\fP(3X)
+has_ic/\fBcurs_termattrs\fP(3X)
+has_il/\fBcurs_termattrs\fP(3X)
+has_key/\fBcurs_getch\fP(3X)*
+has_mouse/\fBcurs_mouse\fP(3X)*
+hline/\fBcurs_border\fP(3X)
+hline_set/\fBcurs_border_set\fP(3X)
+idcok/\fBcurs_outopts\fP(3X)
+idlok/\fBcurs_outopts\fP(3X)
+immedok/\fBcurs_outopts\fP(3X)
+in_wch/\fBcurs_in_wch\fP(3X)
+in_wchnstr/\fBcurs_in_wchstr\fP(3X)
+in_wchstr/\fBcurs_in_wchstr\fP(3X)
+inch/\fBcurs_inch\fP(3X)
+inchnstr/\fBcurs_inchstr\fP(3X)
+inchstr/\fBcurs_inchstr\fP(3X)
+init_color/\fBcurs_color\fP(3X)
+init_extended_color/\fBcurs_color\fP(3X)*
+init_extended_pair/\fBcurs_color\fP(3X)*
+init_pair/\fBcurs_color\fP(3X)
+initscr/\fBcurs_initscr\fP(3X)
+innstr/\fBcurs_instr\fP(3X)
+innwstr/\fBcurs_inwstr\fP(3X)
+ins_nwstr/\fBcurs_ins_wstr\fP(3X)
+ins_wch/\fBcurs_ins_wch\fP(3X)
+ins_wstr/\fBcurs_ins_wstr\fP(3X)
+insch/\fBcurs_insch\fP(3X)
+insdelln/\fBcurs_deleteln\fP(3X)
+insertln/\fBcurs_deleteln\fP(3X)
+insnstr/\fBcurs_insstr\fP(3X)
+insstr/\fBcurs_insstr\fP(3X)
+instr/\fBcurs_instr\fP(3X)
+intrflush/\fBcurs_inopts\fP(3X)
+inwstr/\fBcurs_inwstr\fP(3X)
+is_cleared/\fBcurs_opaque\fP(3X)*
+is_idcok/\fBcurs_opaque\fP(3X)*
+is_idlok/\fBcurs_opaque\fP(3X)*
+is_immedok/\fBcurs_opaque\fP(3X)*
+is_keypad/\fBcurs_opaque\fP(3X)*
+is_leaveok/\fBcurs_opaque\fP(3X)*
+is_linetouched/\fBcurs_touch\fP(3X)
+is_nodelay/\fBcurs_opaque\fP(3X)*
+is_notimeout/\fBcurs_opaque\fP(3X)*
+is_pad/\fBcurs_opaque\fP(3X)*
+is_scrollok/\fBcurs_opaque\fP(3X)*
+is_subwin/\fBcurs_opaque\fP(3X)*
+is_syncok/\fBcurs_opaque\fP(3X)*
+is_term_resized/\fBresizeterm\fP(3X)*
+is_wintouched/\fBcurs_touch\fP(3X)
+isendwin/\fBcurs_initscr\fP(3X)
+key_defined/\fBkey_defined\fP(3X)*
+key_name/\fBcurs_util\fP(3X)
+keybound/\fBkeybound\fP(3X)*
+keyname/\fBcurs_util\fP(3X)
+keyok/\fBkeyok\fP(3X)*
+keypad/\fBcurs_inopts\fP(3X)
+killchar/\fBcurs_termattrs\fP(3X)
+killwchar/\fBcurs_termattrs\fP(3X)
+leaveok/\fBcurs_outopts\fP(3X)
+longname/\fBcurs_termattrs\fP(3X)
+mcprint/\fBcurs_print\fP(3X)*
+meta/\fBcurs_inopts\fP(3X)
+mouse_trafo/\fBcurs_mouse\fP(3X)*
+mouseinterval/\fBcurs_mouse\fP(3X)*
+mousemask/\fBcurs_mouse\fP(3X)*
+move/\fBcurs_move\fP(3X)
+mvadd_wch/\fBcurs_add_wch\fP(3X)
+mvadd_wchnstr/\fBcurs_add_wchstr\fP(3X)
+mvadd_wchstr/\fBcurs_add_wchstr\fP(3X)
+mvaddch/\fBcurs_addch\fP(3X)
+mvaddchnstr/\fBcurs_addchstr\fP(3X)
+mvaddchstr/\fBcurs_addchstr\fP(3X)
+mvaddnstr/\fBcurs_addstr\fP(3X)
+mvaddnwstr/\fBcurs_addwstr\fP(3X)
+mvaddstr/\fBcurs_addstr\fP(3X)
+mvaddwstr/\fBcurs_addwstr\fP(3X)
+mvchgat/\fBcurs_attr\fP(3X)
+mvcur/\fBcurs_terminfo\fP(3X)
+mvdelch/\fBcurs_delch\fP(3X)
+mvderwin/\fBcurs_window\fP(3X)
+mvget_wch/\fBcurs_get_wch\fP(3X)
+mvget_wstr/\fBcurs_get_wstr\fP(3X)
+mvgetch/\fBcurs_getch\fP(3X)
+mvgetn_wstr/\fBcurs_get_wstr\fP(3X)
+mvgetnstr/\fBcurs_getstr\fP(3X)
+mvgetstr/\fBcurs_getstr\fP(3X)
+mvhline/\fBcurs_border\fP(3X)
+mvhline_set/\fBcurs_border_set\fP(3X)
+mvin_wch/\fBcurs_in_wch\fP(3X)
+mvin_wchnstr/\fBcurs_in_wchstr\fP(3X)
+mvin_wchstr/\fBcurs_in_wchstr\fP(3X)
+mvinch/\fBcurs_inch\fP(3X)
+mvinchnstr/\fBcurs_inchstr\fP(3X)
+mvinchstr/\fBcurs_inchstr\fP(3X)
+mvinnstr/\fBcurs_instr\fP(3X)
+mvinnwstr/\fBcurs_inwstr\fP(3X)
+mvins_nwstr/\fBcurs_ins_wstr\fP(3X)
+mvins_wch/\fBcurs_ins_wch\fP(3X)
+mvins_wstr/\fBcurs_ins_wstr\fP(3X)
+mvinsch/\fBcurs_insch\fP(3X)
+mvinsnstr/\fBcurs_insstr\fP(3X)
+mvinsstr/\fBcurs_insstr\fP(3X)
+mvinstr/\fBcurs_instr\fP(3X)
+mvinwstr/\fBcurs_inwstr\fP(3X)
+mvprintw/\fBcurs_printw\fP(3X)
+mvscanw/\fBcurs_scanw\fP(3X)
+mvvline/\fBcurs_border\fP(3X)
+mvvline_set/\fBcurs_border_set\fP(3X)
+mvwadd_wch/\fBcurs_add_wch\fP(3X)
+mvwadd_wchnstr/\fBcurs_add_wchstr\fP(3X)
+mvwadd_wchstr/\fBcurs_add_wchstr\fP(3X)
+mvwaddch/\fBcurs_addch\fP(3X)
+mvwaddchnstr/\fBcurs_addchstr\fP(3X)
+mvwaddchstr/\fBcurs_addchstr\fP(3X)
+mvwaddnstr/\fBcurs_addstr\fP(3X)
+mvwaddnwstr/\fBcurs_addwstr\fP(3X)
+mvwaddstr/\fBcurs_addstr\fP(3X)
+mvwaddwstr/\fBcurs_addwstr\fP(3X)
+mvwchgat/\fBcurs_attr\fP(3X)
+mvwdelch/\fBcurs_delch\fP(3X)
+mvwget_wch/\fBcurs_get_wch\fP(3X)
+mvwget_wstr/\fBcurs_get_wstr\fP(3X)
+mvwgetch/\fBcurs_getch\fP(3X)
+mvwgetn_wstr/\fBcurs_get_wstr\fP(3X)
+mvwgetnstr/\fBcurs_getstr\fP(3X)
+mvwgetstr/\fBcurs_getstr\fP(3X)
+mvwhline/\fBcurs_border\fP(3X)
+mvwhline_set/\fBcurs_border_set\fP(3X)
+mvwin/\fBcurs_window\fP(3X)
+mvwin_wch/\fBcurs_in_wch\fP(3X)
+mvwin_wchnstr/\fBcurs_in_wchstr\fP(3X)
+mvwin_wchstr/\fBcurs_in_wchstr\fP(3X)
+mvwinch/\fBcurs_inch\fP(3X)
+mvwinchnstr/\fBcurs_inchstr\fP(3X)
+mvwinchstr/\fBcurs_inchstr\fP(3X)
+mvwinnstr/\fBcurs_instr\fP(3X)
+mvwinnwstr/\fBcurs_inwstr\fP(3X)
+mvwins_nwstr/\fBcurs_ins_wstr\fP(3X)
+mvwins_wch/\fBcurs_ins_wch\fP(3X)
+mvwins_wstr/\fBcurs_ins_wstr\fP(3X)
+mvwinsch/\fBcurs_insch\fP(3X)
+mvwinsnstr/\fBcurs_insstr\fP(3X)
+mvwinsstr/\fBcurs_insstr\fP(3X)
+mvwinstr/\fBcurs_instr\fP(3X)
+mvwinwstr/\fBcurs_inwstr\fP(3X)
+mvwprintw/\fBcurs_printw\fP(3X)
+mvwscanw/\fBcurs_scanw\fP(3X)
+mvwvline/\fBcurs_border\fP(3X)
+mvwvline_set/\fBcurs_border_set\fP(3X)
+napms/\fBcurs_kernel\fP(3X)
+newpad/\fBcurs_pad\fP(3X)
+newterm/\fBcurs_initscr\fP(3X)
+newwin/\fBcurs_window\fP(3X)
+nl/\fBcurs_inopts\fP(3X)
+nocbreak/\fBcurs_inopts\fP(3X)
+nodelay/\fBcurs_inopts\fP(3X)
+noecho/\fBcurs_inopts\fP(3X)
+nofilter/\fBcurs_util\fP(3X)*
+nonl/\fBcurs_inopts\fP(3X)
+noqiflush/\fBcurs_inopts\fP(3X)
+noraw/\fBcurs_inopts\fP(3X)
+notimeout/\fBcurs_inopts\fP(3X)
+overlay/\fBcurs_overlay\fP(3X)
+overwrite/\fBcurs_overlay\fP(3X)
+pair_content/\fBcurs_color\fP(3X)
+pecho_wchar/\fBcurs_pad\fP(3X)*
+pechochar/\fBcurs_pad\fP(3X)
+pnoutrefresh/\fBcurs_pad\fP(3X)
+prefresh/\fBcurs_pad\fP(3X)
+printw/\fBcurs_printw\fP(3X)
+putp/\fBcurs_terminfo\fP(3X)
+putwin/\fBcurs_util\fP(3X)
+qiflush/\fBcurs_inopts\fP(3X)
+raw/\fBcurs_inopts\fP(3X)
+redrawwin/\fBcurs_refresh\fP(3X)
+refresh/\fBcurs_refresh\fP(3X)
+reset_color_pairs/\fBcurs_color\fP(3X)*
+reset_prog_mode/\fBcurs_kernel\fP(3X)
+reset_shell_mode/\fBcurs_kernel\fP(3X)
+resetty/\fBcurs_kernel\fP(3X)
+resize_term/\fBresizeterm\fP(3X)*
+resizeterm/\fBresizeterm\fP(3X)*
+restartterm/\fBcurs_terminfo\fP(3X)
+ripoffline/\fBcurs_kernel\fP(3X)
+savetty/\fBcurs_kernel\fP(3X)
+scanw/\fBcurs_scanw\fP(3X)
+scr_dump/\fBcurs_scr_dump\fP(3X)
+scr_init/\fBcurs_scr_dump\fP(3X)
+scr_restore/\fBcurs_scr_dump\fP(3X)
+scr_set/\fBcurs_scr_dump\fP(3X)
+scrl/\fBcurs_scroll\fP(3X)
+scroll/\fBcurs_scroll\fP(3X)
+scrollok/\fBcurs_outopts\fP(3X)
+set_curterm/\fBcurs_terminfo\fP(3X)
+set_term/\fBcurs_initscr\fP(3X)
+setcchar/\fBcurs_getcchar\fP(3X)
+setscrreg/\fBcurs_outopts\fP(3X)
+setsyx/\fBcurs_kernel\fP(3X)
+setupterm/\fBcurs_terminfo\fP(3X)
+slk_attr/\fBcurs_slk\fP(3X)*
+slk_attr_off/\fBcurs_slk\fP(3X)
+slk_attr_on/\fBcurs_slk\fP(3X)
+slk_attr_set/\fBcurs_slk\fP(3X)
+slk_attroff/\fBcurs_slk\fP(3X)
+slk_attron/\fBcurs_slk\fP(3X)
+slk_attrset/\fBcurs_slk\fP(3X)
+slk_clear/\fBcurs_slk\fP(3X)
+slk_color/\fBcurs_slk\fP(3X)
+slk_init/\fBcurs_slk\fP(3X)
+slk_label/\fBcurs_slk\fP(3X)
+slk_noutrefresh/\fBcurs_slk\fP(3X)
+slk_refresh/\fBcurs_slk\fP(3X)
+slk_restore/\fBcurs_slk\fP(3X)
+slk_set/\fBcurs_slk\fP(3X)
+slk_touch/\fBcurs_slk\fP(3X)
+slk_wset/\fBcurs_slk\fP(3X)*
+standend/\fBcurs_attr\fP(3X)
+standout/\fBcurs_attr\fP(3X)
+start_color/\fBcurs_color\fP(3X)
+subpad/\fBcurs_pad\fP(3X)
+subwin/\fBcurs_window\fP(3X)
+syncok/\fBcurs_window\fP(3X)
+term_attrs/\fBcurs_termattrs\fP(3X)
+termattrs/\fBcurs_termattrs\fP(3X)
+termname/\fBcurs_termattrs\fP(3X)
+tgetent/\fBcurs_termcap\fP(3X)
+tgetflag/\fBcurs_termcap\fP(3X)
+tgetnum/\fBcurs_termcap\fP(3X)
+tgetstr/\fBcurs_termcap\fP(3X)
+tgoto/\fBcurs_termcap\fP(3X)
+tigetflag/\fBcurs_terminfo\fP(3X)
+tigetnum/\fBcurs_terminfo\fP(3X)
+tigetstr/\fBcurs_terminfo\fP(3X)
+timeout/\fBcurs_inopts\fP(3X)
+tiparm/\fBcurs_terminfo\fP(3X)*
+touchline/\fBcurs_touch\fP(3X)
+touchwin/\fBcurs_touch\fP(3X)
+tparm/\fBcurs_terminfo\fP(3X)
+tputs/\fBcurs_termcap\fP(3X)
+tputs/\fBcurs_terminfo\fP(3X)
+trace/\fBcurs_trace\fP(3X)*
+typeahead/\fBcurs_inopts\fP(3X)
+unctrl/\fBcurs_util\fP(3X)
+unget_wch/\fBcurs_get_wch\fP(3X)
+ungetch/\fBcurs_getch\fP(3X)
+ungetmouse/\fBcurs_mouse\fP(3X)*
+untouchwin/\fBcurs_touch\fP(3X)
+use_default_colors/\fBdefault_colors\fP(3X)*
+use_env/\fBcurs_util\fP(3X)
+use_extended_names/\fBcurs_extend\fP(3X)*
+use_legacy_coding/\fBlegacy_coding\fP(3X)*
+use_tioctl/\fBcurs_util\fP(3X)*
+vid_attr/\fBcurs_terminfo\fP(3X)
+vid_puts/\fBcurs_terminfo\fP(3X)
+vidattr/\fBcurs_terminfo\fP(3X)
+vidputs/\fBcurs_terminfo\fP(3X)
+vline/\fBcurs_border\fP(3X)
+vline_set/\fBcurs_border_set\fP(3X)
+vw_printw/\fBcurs_printw\fP(3X)
+vw_scanw/\fBcurs_scanw\fP(3X)
+vwprintw/\fBcurs_printw\fP(3X)
+vwscanw/\fBcurs_scanw\fP(3X)
+wadd_wch/\fBcurs_add_wch\fP(3X)
+wadd_wchnstr/\fBcurs_add_wchstr\fP(3X)
+wadd_wchstr/\fBcurs_add_wchstr\fP(3X)
+waddch/\fBcurs_addch\fP(3X)
+waddchnstr/\fBcurs_addchstr\fP(3X)
+waddchstr/\fBcurs_addchstr\fP(3X)
+waddnstr/\fBcurs_addstr\fP(3X)
+waddnwstr/\fBcurs_addwstr\fP(3X)
+waddstr/\fBcurs_addstr\fP(3X)
+waddwstr/\fBcurs_addwstr\fP(3X)
+wattr_get/\fBcurs_attr\fP(3X)
+wattr_off/\fBcurs_attr\fP(3X)
+wattr_on/\fBcurs_attr\fP(3X)
+wattr_set/\fBcurs_attr\fP(3X)
+wattroff/\fBcurs_attr\fP(3X)
+wattron/\fBcurs_attr\fP(3X)
+wattrset/\fBcurs_attr\fP(3X)
+wbkgd/\fBcurs_bkgd\fP(3X)
+wbkgdset/\fBcurs_bkgd\fP(3X)
+wbkgrnd/\fBcurs_bkgrnd\fP(3X)
+wbkgrndset/\fBcurs_bkgrnd\fP(3X)
+wborder/\fBcurs_border\fP(3X)
+wborder_set/\fBcurs_border_set\fP(3X)
+wchgat/\fBcurs_attr\fP(3X)
+wclear/\fBcurs_clear\fP(3X)
+wclrtobot/\fBcurs_clear\fP(3X)
+wclrtoeol/\fBcurs_clear\fP(3X)
+wcolor_set/\fBcurs_attr\fP(3X)
+wcursyncup/\fBcurs_window\fP(3X)
+wdelch/\fBcurs_delch\fP(3X)
+wdeleteln/\fBcurs_deleteln\fP(3X)
+wecho_wchar/\fBcurs_add_wch\fP(3X)
+wechochar/\fBcurs_addch\fP(3X)
+wenclose/\fBcurs_mouse\fP(3X)*
+werase/\fBcurs_clear\fP(3X)
+wget_wch/\fBcurs_get_wch\fP(3X)
+wget_wstr/\fBcurs_get_wstr\fP(3X)
+wgetbkgrnd/\fBcurs_bkgrnd\fP(3X)
+wgetch/\fBcurs_getch\fP(3X)
+wgetdelay/\fBcurs_opaque\fP(3X)*
+wgetn_wstr/\fBcurs_get_wstr\fP(3X)
+wgetnstr/\fBcurs_getstr\fP(3X)
+wgetparent/\fBcurs_opaque\fP(3X)*
+wgetscrreg/\fBcurs_opaque\fP(3X)*
+wgetstr/\fBcurs_getstr\fP(3X)
+whline/\fBcurs_border\fP(3X)
+whline_set/\fBcurs_border_set\fP(3X)
+win_wch/\fBcurs_in_wch\fP(3X)
+win_wchnstr/\fBcurs_in_wchstr\fP(3X)
+win_wchstr/\fBcurs_in_wchstr\fP(3X)
+winch/\fBcurs_inch\fP(3X)
+winchnstr/\fBcurs_inchstr\fP(3X)
+winchstr/\fBcurs_inchstr\fP(3X)
+winnstr/\fBcurs_instr\fP(3X)
+winnwstr/\fBcurs_inwstr\fP(3X)
+wins_nwstr/\fBcurs_ins_wstr\fP(3X)
+wins_wch/\fBcurs_ins_wch\fP(3X)
+wins_wstr/\fBcurs_ins_wstr\fP(3X)
+winsch/\fBcurs_insch\fP(3X)
+winsdelln/\fBcurs_deleteln\fP(3X)
+winsertln/\fBcurs_deleteln\fP(3X)
+winsnstr/\fBcurs_insstr\fP(3X)
+winsstr/\fBcurs_insstr\fP(3X)
+winstr/\fBcurs_instr\fP(3X)
+winwstr/\fBcurs_inwstr\fP(3X)
+wmouse_trafo/\fBcurs_mouse\fP(3X)*
+wmove/\fBcurs_move\fP(3X)
+wnoutrefresh/\fBcurs_refresh\fP(3X)
+wprintw/\fBcurs_printw\fP(3X)
+wredrawln/\fBcurs_refresh\fP(3X)
+wrefresh/\fBcurs_refresh\fP(3X)
+wresize/\fBwresize\fP(3X)*
+wscanw/\fBcurs_scanw\fP(3X)
+wscrl/\fBcurs_scroll\fP(3X)
+wsetscrreg/\fBcurs_outopts\fP(3X)
+wstandend/\fBcurs_attr\fP(3X)
+wstandout/\fBcurs_attr\fP(3X)
+wsyncdown/\fBcurs_window\fP(3X)
+wsyncup/\fBcurs_window\fP(3X)
+wtimeout/\fBcurs_inopts\fP(3X)
+wtouchln/\fBcurs_touch\fP(3X)
+wunctrl/\fBcurs_util\fP(3X)
+wvline/\fBcurs_border\fP(3X)
+wvline_set/\fBcurs_border_set\fP(3X)
+.TE
+.PP
+根据配置，可能会提供额外的几组函数:
+.RS 3
+.TP  5
+\fBcurs_memleaks\fP(3X) \- curses memory\-leak checking
+.TP  5
+\fBcurs_sp_funcs\fP(3X) \- curses screen\-pointer extension
+.TP  5
+\fBcurs_threads\fP(3X) \- curses thread support
+.TP  5
+\fBcurs_trace\fP(3X) \- curses debugging routines
+.RE
+.SH "RETURN VALUE"
+返回整数的例程在失败时返回 \fBERR\fP，在成功完成时返回 \fBERR\fP 以外的整数值，除非在例程描述中另有说明。
+.PP
+作为一般规则，例程检查作为参数传递的空指针，并将其作为错误处理。
+.PP
+所有宏都返回 \fBw\fP 版本的值，\fBsetscrreg\fP、\fBwsetscrreg\fP、\fBgetyx\fP、\fBgetbegyx\fP 和
+\fBgetmaxyx\fP 除外。 \fBsetscrreg\fP、\fBwsetscrreg\fP、\fBgetyx\fP、\fBgetbegyx\fP 和
+\fBgetmaxyx\fP 的返回值未定义 (即，这些不应用作赋值语句的右侧)。
+.PP
+带有 \*(``mv\*('' 前缀的函数首先使用 \fBwmove\fP 执行游标移动，如果位置在窗口外，或者窗口指针为空，则返回错误。 大多数
+\*(``mv\*(''\-prefixed 函数 (可变参数函数除外，例如 \fBmvprintw\fP) 都作为宏和函数提供。
+.PP
+返回指针的例程在出错时返回 \fBNULL\fP。
+.SH ENVIRONMENT
+.PP
+以下环境符号可用于自定义 \fBncurses\fP 库的运行时行为。 最重要的已经详细讨论过了。
+.SS "CC command\-character"
+.PP
+设置时，将加载的 terminfo 条目的 command_character (即 \fBcmdch\fP 功能) 的出现更改为该变量的值。 很少有
+terminfo 条目提供此，特性。
+.PP
+因为这个名称在开发环境中也用于表示 C 编译器的名称，所以如果它不是单个字符，\fBncurses\fP 将忽略它。
+.SS BAUDRATE
+.PP
+当应用程序将输出重定向到文件时，调试库会检查此环境变量。 变量的数值用于波特率。 如果未找到值，则 \fBncurses\fP 使用 9600。
+这允许测试人员构建可重复的测试用例，其中考虑了取决于波特率的成本。
+.SS COLUMNS
+.PP
+以字符为单位指定屏幕宽度。 在窗口环境中运行的应用程序通常能够获得它们正在执行的窗口的宽度。 如果 \fBCOLUMNS\fP 值和终端的屏幕尺寸都不可用，则
+\fBncurses\fP 使用可能在 terminfo 数据库中指定的尺寸 (即 \fBcols\fP 能力)。
+.PP
+重要的是您的应用程序使用正确的屏幕尺寸。 这并不总是可能的，因为您的应用程序可能在不支持 NAWS (关于窗口大小的协商)
+的主机上运行，或者因为您暂时以另一个用户身份运行。 但是，设置 \fBCOLUMNS\fP 或者 \fBLINES\fP 会覆盖库对从操作系统获得的屏幕尺寸的使用。
+.PP
+可以单独指定 \fBCOLUMNS\fP 或 \fBLINES\fP 符号。 这主要用于规避终端描述的遗留错误特性例如，通常指定 65 行屏幕的 xterm。
+为获得最佳结果，不应在作为仿真运行的终端的终端描述中指定 \fBlines\fP 和 \fBcols\fP。
+.PP
+使用 \fBuse_env\fP 函数禁用所有使用外部环境 (但不包括系统调用) 来确定屏幕大小的功能。 使用 \fBuse_tioctl\fP 函数更新
+\fBCOLUMNS\fP 或 \fBLINES\fP 以匹配从系统调用或终端数据库获得的屏幕尺寸。
+.SS ESCDELAY
+.PP
+指定总时间，以毫秒为单位，ncurses 将等待一个字符序列，例如，一个函数键。 默认值 1000 毫秒足以满足大多数用途。
+但是，它是一个变量以适应不寻常的应用程序。
+.PP
+您可能希望更改此值的最常见实例是使用速度较慢的主机，例如，在网络上运行。 如果主机不能足够快地读取字符，它的效果就好像最终端没有足够快地发送字符一样。
+库，仍然会看到超时。
+.PP
+请注意，xterm 鼠标事件是根据从 xterm 接收到的字符序列构建的。
+如果您的应用程序大量使用多次单击，您可能希望延长此默认值，因为超时适用于组合的多次单击事件以及单个单击。
+.PP
+除了环境变量，这个实现还提供了一个同名的全局变量。 便携式应用程序不应依赖于任何一种形式的 ESCDELAY
+的存在，但设置环境变量而不是全局变量不会在编译应用程序时产生问题。
+.SS HOME
+告诉 \fBncurses\fP 您的主目录在哪里。 这就是它可以读写辅助终端描述的地方:
+.NS
+$HOME/.termcap $HOME/.terminfo
+.NE
+.SS LINES
+.PP
+与 COLUMNS 一样，以字符为单位指定屏幕的高度。 有关详细说明，请参见 COLUMNS。
+.SS MOUSE_BUTTONS_123
+.PP
+这仅适用于 OS/2 EMX 端口。 它指定鼠标按钮的顺序。 OS/2 对 3 键鼠标的编号与其他平台不一致:
+.NS
+1 = left
+.br
+2 = right
+.br
+3 = middle.
+.NE
+.PP
+此变量可让您自定义鼠标。 该变量必须是三位数字 1\-3，顺序不限，例如 123 或 321。 如果不指定，\fBncurses\fP 使用 132。
+.SS NCURSES_ASSUMED_COLORS
+.PP
+覆盖编译的假设，即最终端的默认颜色是黑底白字 (参见 \fBdefault_colors\fP(3X)).  您可以通过提供一个 2 元素列表:
+前景、背景来使用此环境变量设置前景和背景颜色值。 例如，要告诉 ncurses 不要假设任何颜色，请将其设置为 "\-1,\-1"。
+要使其成为黑底绿字，请将其设置为 "2,0"。 允许从零到 terminfo \fBmax_colors\fP 值的任何正值。
+.SS NCURSES_CONSOLE2
+这仅适用于 ncurses 的 MinGW 端口。
+.PP
+\fBConsole2\fP 程序对 Microsoft 控制台 API 调用 \fBCreateConsoleScreenBuffer\fP 的处理有缺陷。
+使用它的应用程序将挂起。 但是，可以通过映射坐标来模拟此调用的动作，显式保存和恢复原始屏幕内容。 设置环境变量 \fBNCGDB\fP 也有同样的效果。
+.SS NCURSES_GPM_TERMS
+.PP
+这仅适用于配置为使用 GPM 接口的 ncurses。
+.PP
+如果存在，环境变量是 \fBTERM\fP 环境变量匹配的一个或多个终端名称的列表。 将其设置为空值将禁用 GPM 接口; 使用对 xterm 等的内置支持。
+.PP
+如果环境变量不存在，如果 \fBTERM\fP 包含 \*(``linux\*(''，ncurses 将尝试打开 GPM。
+.SS NCURSES_NO_HARD_TABS
+.PP
+\fBNcurses\fP 可能会使用制表符作为游标移动优化的一部分。 在某些情况下，您的终端驱动程序可能无法正确处理这些问题。
+设置此环境变量以禁用该，特性。 您还可以调整您的 \fBstty\fP(1) 设置以避免该问题。
+.SS NCURSES_NO_MAGIC_COOKIE
+.PP
+某些终端使用 magic\-cookie 特性需要特殊处理才能正确显示突出显示和其他视频属性。 您可以通过设置此环境变量完全抑制这些终端的突出显示。
+.SS NCURSES_NO_PADDING
+.PP
+terminfo 数据库中的大多数终端描述都是为真正的 \*(`` 硬件 \*('' 终端编写的。 许多人使用终端模拟器，它在窗口环境中运行并使用基于
+curses 的应用程序。 终端模拟器可以复制硬件终端的所有重要方面，但它们没有相同的限制。
+从您的应用程序的角度来看，硬件终端的主要限制是数据流的管理，即时序。 除非硬件终端连接到终端集中器 (进行流量控制)，否则它 (或您的应用程序)
+必须管理数据流，防止溢出。 最便宜的解决方案 (无硬件成本) 是让您的程序通过在终端执行缓慢的操作 (例如清除显示) 后暂停来执行此操作。
+.PP
+因此，许多终端描述 (包括 vt100) 都嵌入了延迟时间。 您可能希望使用这些描述，但不想支付性能损失。
+.PP
+设置 NCURSES_NO_PADDING 环境变量以禁用除强制填充之外的所有内容。 强制填充用作特殊控制序列的一部分，例如 \fBflash\fP。
+.SS NCURSES_NO_SETBUF
+此设置已过时。 变更前
+.RS 3
+.bP
+从 5.9 补丁 20120825 开始，
+.bP
+通过 5.9 补丁 20130126 继续
+.RE
+.PP
+\fBncurses\fP 在最终初始化期间启用缓冲输出。 出于性能原因，这样做 (如在 SVr4 curses 中)。 对于 \fBncurses\fP
+和某些应用程序的测试目的，此特性是可选的。 设置 NCURSES_NO_SETBUF 变量禁用输出缓冲，使输出保持原始 (通常是行缓冲) 模式。
+.PP
+在当前的实现中，ncurses 执行自己的缓冲并且不需要此解决方法。 它不会修改标准输出的缓冲。
+.PP
+更改的原因是为了使中断和其他信号的行为更加稳健。 一个缺点是某些非常规程序会将普通的标准输入输出调用与 ncurses 调用和 (usually)
+工作混合在一起。 这不再可能，因为 ncurses 没有使用缓冲的标准输出，而是使用它自己的输出 (到相同的文件描述符)。 作为特例，\fBputp\fP
+等底层调用仍然使用标准输出。 但是高级 curses 调用不会。
+.SS NCURSES_NO_UTF8_ACS
+.PP
+在初始化期间，\fBncurses\fP 库会检查 terminfo 中描述的 VT100 线条图 (以及相应的替代字符集功能) 已知缺失的特殊情况。
+具体来说，当在 UTF\-8 语言环境中运行时，Linux 控制台模拟器和 GNU 屏幕程序将忽略这些。 Ncurses 检查这些的 \fBTERM\fP
+环境变量。 对于其他特殊情况，您应该设置此环境变量。 这样做会告诉 ncurses 使用对应于 VT100 线条图字形的 Unicode 值。
+这适用于引用的特殊情况，并且可能适用于最终模拟器。
+.PP
+设置此变量时，应将其设置为非零值。 将其设置为零 (或非数字) 会禁用对 \*(``linux\*('' 和 \*(``screen\*(''
+的特殊检查。
+.PP
+作为环境变量的替代，ncurses 检查扩展的 terminfo 功能 \fBU8\fP。 这是一个可以使用 \fBtic\ \-x\fP 编译的数字功能。 例如
+.RS 3
+.sp
+.nf
+\f(CW# linux console, if patched to provide working # VT100 shift\-in/shift\-out, with corresponding font. linux\-vt100|linux console with VT100 line\-graphics,         U8#0, use=linux,\fP
+.sp
+\f(CW# uxterm with vt100Graphics resource set to false xterm\-utf8|xterm relying on UTF\-8 line\-graphics,         U8#1, use=xterm,\fP
+.fi
+.RE
+.PP
+名称 \*(``U8\*('' 被选择为两个字符，以允许使用 ncurses 的 termcap 接口的应用程序使用它。
+.SS NCURSES_TRACE
+.PP
+在初始化期间，\fBncurses\fP 调试库检查 NCURSES_TRACE 环境变量。 如果它被定义为一个数值，\fBncurses\fP 调用
+\fBtrace\fP 函数，使用该值作为参数。
+.PP
+\fBcurses.h\fP 中定义的参数值提供了几种类型的信息。 在启用跟踪的情况下运行时，您的应用程序会将文件 \fBtrace\fP 写入当前目录。
+.PP
+有关更多信息，请参见 \fBcurs_trace\fP(3X)。
+.SS TERM
+.PP
+表示您的终端类型。 每个终端类型都是不同的，尽管许多是相似的。
+.PP
+\fBTERM\fP 通常由终端模拟器设置，以帮助应用程序找到可行的终端描述。 其中一些选择流行的近似值，例如
+\*(``ansi\*('',\*(``vt100\*('',\*(``xterm\*('' 而不是精确拟合。
+经常，您的应用程序会遇到这种方法的问题，例如，不正确的任数键定义。
+.PP
+如果您在您的环境中设置 \fBTERM\fP，它对终端模拟器的运行没有影响。 它只影响应用程序在最终端的工作方式。 同样，作为一般规则
+(\fBxterm\fP(1) 是一个罕见的例外)，允许您将 \fBTERM\fP 指定为参数或配置值的终端模拟器不会更改其行为以匹配该设置。
+.SS TERMCAP
+如果 \fBncurses\fP 库配置了 \fItermcap\fP 支持，如果 terminfo 数据库中不存在，\fBncurses\fP 将检查 termcap
+形式的终端描述。
+.PP
+\fBTERMCAP\fP 环境变量包含一个终端描述 (去掉换行符)，或者一个文件名，告诉 \fBTERM\fP 环境变量所指示的信息存在于何处。
+在任何一种情况下，设置它都会指示 \fBncurses\fP 忽略此信息的通常位置，例如 /etc/termcap。
+.SS TERMINFO
+.PP
+\fBncurses\fP 可以配置为从多个终端数据库读取。 \fBTERMINFO\fP 变量覆盖默认终点数据库的位置。 终端描述 (以终端格式)
+存储在终端数据库中:
+.bP
+通常这些存储在目录树中，使用以最终名称的第一个字母命名的子目录。
+.IP
+这是在旧版 Unix 系统使用的 System V 中使用的方案，\fBTERMINFO\fP 变量被这些系统上的 \fIcurses\fP
+应用程序用来覆盖最终数据库的默认位置。
+.bP
+如果 \fBncurses\fP 被构建为使用散列数据库，则此列表中的每个条目都可能是散列数据库文件的路径，例如，
+.NS
+/usr/share/terminfo.db
+.NE
+.IP
+而不是
+.NS
+/usr/share/terminfo/
+.NE
+.IP
+散列数据库使用较少的磁盘空间并且比目录树快一点。 然而，一些应用程序假设目录树存在，直接读取它而不是使用 terminfo 库调用。
+.bP
+如果 \fBncurses\fP 构建时支持直接读取 termcap 文件，则此列表中的条目可能是 termcap 文件的路径。
+.bP
+如果 \fBTERMINFO\fP 变量以 \*(``hex:\*('' 或 \*(``b64:\*('' 开头，\fBncurses\fP
+使用该变量的其余部分作为编译结束描述。 您可以使用 \fBinfocmp\fP(1M): 生成 base64 格式
+.NS
+TERMINFO="$(infocmp \-0 \-Q2 \-q)" 导出 TERMINFO
+.NE
+.IP
+如果编译描述对应于 \fBTERM\fP 变量标识的终端，则使用它。
+.PP
+设置 \fBTERMINFO\fP 是最简单的，但不是设置默认终端数据库位置的唯一方法。 完整的数据库位置列表如下:
+.RS 3
+.bP
+\fBncurses\fP 写入的最后一个终端数据库 (如果有) 首先被搜索
+.bP
+TERMINFO 环境变量指定的位置
+.bP
+$HOME/.terminfo
+.bP
+TERMINFO_DIRS 环境变量中列出的位置
+.bP
+一个或多个位置，其名称已配置并编译到 ncurses 库中，即，
+.RS 3
+.bP
+无默认值 (对应于 TERMINFO_DIRS 变量)
+.bP
+/usr/share/terminfo (corresponding to the TERMINFO variable)
+.RE
+.RE
+.PP
+.SS TERMINFO_DIRS
+.PP
+指定要搜索终点说明的位置列表。 列表中的每个位置都是一个终端数据库，如 \fBTERMINFO\fP 变量部分所述。 该列表在 Unix 上以冒号 (即
+":") 分隔，在 OS/2 EMX 上以分号分隔。
+.PP
+System V terminfo 中没有对应的特性; 它是为 \fBncurses\fP 开发的扩展。
+.SS TERMPATH
+.PP
+如果 \fBTERMCAP\fP 没有文件名，则 \fBncurses\fP 检查 \fBTERMPATH\fP 环境变量。 这是一个文件名列表，在 Unix
+上以空格或冒号 (即 ":") 分隔，在 OS/2 EMX 上以分号分隔。
+.PP
+如果没有设置 \fBTERMPATH\fP 环境变量，\fBncurses\fP 在文件中查找
+.NS
+/etc/termcap, /usr/share/misc/termcap and $HOME/.termcap,
+.NE
+.PP
+以该顺序。
+.PP
+当当前用户是超级用户 (root)，或者如果应用程序使用 setuid 或 setgid 权限时，库可以配置为忽略以下变量:
+.NS
+$TERMINFO、$TERMINFO_DIRS、$TERMPATH 以及 $HOME。
+.NE
+.SH "ALTERNATE CONFIGURATIONS"
+.PP
+可能有几种不同的配置，具体取决于构建 \fBncurses\fP 时使用的配置脚本选项。 使用 \fBncurses\fP:
+的应用程序开发人员可以看到几个主要选项的效果
+.TP  5
+\-\-disable\-overwrite
+\fBncurses\fP 的标准包含在 \fBSYNOPSIS\fP: 中
+.NS
+\fB#include <curses.h>\fP
+.NE
+.IP
+当 \fBncurses\fP 不是计算机诅咒的主要实现时，此选项用于避免文件名冲突。 如果 \fBncurses\fP
+被安装为禁用覆盖，它会将其标题放在一个子目录中，例如，
+.NS
+\fB#include <ncurses/curses.h>\fP
+.NE
+.IP
+它还省略了允许您使用 \fB\-lcurses\fP 构建可执行文件的符号链接。
+.TP  5
+\-\-enable\-widec
+配置脚本重命名库并且 (如果使用 \fB\-\-disable\-overwrite\fP 选项) 将头文件放在不同的子目录中。 所有的库名称都有一个
+\*(``w\*('' 追加到它们，即，而不是
+.NS
+\fB\-lncurses\fP
+.NE
+.IP
+您链接
+.NS
+\fB\-lncursesw\fP
+.NE
+.IP
+在编译宽字符库以使用扩展的 (wide\-character) 函数时，您还必须在头文件中启用宽字符，特性。 自 XSI Curses Issue 4
+以来，启用这些特性的符号已发生变化:
+.RS
+.bP
+最初，宽字符特性需要符号 \fB_XOPEN_SOURCE_EXTENDED\fP，但这仅对 XPG4 (1996) 有效。
+.bP
+后来，这被认为与定义为 500 的 \fB_XOPEN_SOURCE\fP 冲突。
+.bP
+截至 2018 年年中，此实现中的所有特性都不需要大于 600 的 \fB_XOPEN_SOURCE\fP 特性。 但是，X/Open
+Curses，Issue 7 (2009) 建议定义为 700。
+.bP
+或者，您可以通过定义 \fBNCURSES_WIDECHAR\fP 来启用该特性但需要注意的是，除 \fBcurses.h\fP 之外的其他一些头文件可能需要
+\fB_XOPEN_SOURCE\fP 的特定值 (或系统特定的符号)。
+.RE
+.IP
+为宽字符库安装的 \fBcurses.h\fP 文件旨在与普通库的标题兼容。 只有 \fBWINDOW\fP 结构体的大小不同，很少有应用程序需要一个指向
+\fBWINDOW\fPs 的指针。
+.IP
+如果头文件的安装允许覆盖，则应最后安装宽字符库的头文件，以允许使用同一组头文件中的任一库来构建应用程序。
+.TP  5
+\-\-with\-pthread
+配置脚本重命名库。 所有的库名称都有一个 \*(``t\*('' 追加到它们 (在 \fB\-\-enable\-widec\fP) 添加的任何
+\*(``w\*('' 之前。
+.IP
+\fBLINES\fP 等全局变量被宏替换，以允许只读访问。 同时提供了 setter \- 函数来设置这些值。 某些应用程序 (很少)
+可能需要更改才能使用此约定。
+.TP  5
+\-\-with\-shared
+.TP 
+\-\-with\-normal
+.TP 
+\-\-with\-debug
+.TP 
+\-\-with\-profile
+共享和普通 (static) 库名称的区别在于它们的后缀，例如 \fBlibncurses.so\fP 和 \fBlibncurses.a\fP。
+调试和分析库分别向根名称添加一个 \*(``_g\*('' 和一个 \*(``_p\*(''，例如，\fBlibncurses_g.a\fP 和
+\fBlibncurses_p.a\fP。
+.TP  5
+\-\-with\-termlib
+tinfo 库中提供了不依赖于库是否支持宽字符的底层函数。
+.IP
+通过这样做，可以在 wide/normal 配置之间共享 tinfo 库，并在只需要底层函数时减小库的大小。
+.IP
+那些函数在这些页面中描述:
+.RS
+.bP
+\fBcurs_extend\fP(3X) \- 杂项诅咒扩展
+.bP
+\fBcurs_inopts\fP(3X)\-\fBcurses\fP 输入选项
+.bP
+\fBcurs_kernel\fP(3X) \- 底层 \fBcurses\fP 套路
+.bP
+\fBcurs_termattrs\fP(3X)\-\fBcurses\fP 环境查询例程
+.bP
+\fBcurs_termcap\fP(3X)\-termcap 的 \fBcurses\fP 仿真
+.bP
+\fBcurs_terminfo\fP(3X)\-\fBcurses\fP 接口到 terminfo 数据库
+.bP
+\fBcurs_util\fP(3X) \- 杂项 \fBcurses\fP 实用例程
+.RE
+.TP  5
+\-\-with\-trace
+\fBtrace\fP 函数通常驻留在调试库中，但有时在共享库中配置它很有用。 配置脚本应该检查函数是否存在，而不是假设它总是在调试库中。
+.SH FILES
+.TP  5
+/usr/share/tabset
+包含终端能力数据库初始化文件的目录 /usr/share/terminfo 终端能力数据库
+.SH "SEE ALSO"
+\fBterminfo\fP(\*n) 和名称以 \*(``curs_\*('' 开头的相关页面，用于详细的例程说明。
+.br
+\fBcurs_variables\fP(3X)
+.br
+\fBuser_caps\fP(5) 用于用户定义的功能
+.SH EXTENSIONS
+如果最终设置代码找不到与 \fBTERM\fP 对应的 terminfo 条目，则可以使用 (\fB\-DUSE_GETCAP\fP) 选项编译 \fBncurses\fP
+库，该选项回落到旧式 /etc/termcap 文件。 不建议使用此特性因为它本质上在 \fBncurses\fP 启动代码中包含了整个 termcap
+编译器，这会在内核和启动周期中产生大量成本。
+.PP
+\fBncurses\fP 库包括用于捕获某些终端 (包括 xterm) 上的鼠标事件的工具。 有关详细信息，请参见 \fBcurs_mouse\fP(3X)
+手册页。
+.PP
+\fBncurses\fP 库包括用于响应窗口大小调整事件的工具，例如，当在 xterm 中运行时。 有关详细信息，请参见 \fBresizeterm\fP(3X)
+和 \fBwresize\fP(3X) 手册页。 此外，库可能配置有 \fBSIGWINCH\fP 处理程序。
+.PP
+\fBncurses\fP 库通过允许应用程序设计者在运行时定义额外的键序列来扩展终端的固定键数功能集。 有关详细信息，请参见
+\fBdefine_key\fP(3X) \fBkey_defined\fP(3X) 和 \fBkeyok\fP(3X) 手册页。
+.PP
+\fBncurses\fP 库可以利用实现 ISO\-6429 SGR 39 和 SGR 49
+控件的终端的功能，这允许应用程序将终端重置为其原始前景和背景颜色。
+从用户的角度来看，该应用程序能够在颜色独立设置的背景上绘制彩色文本，从而更好地控制颜色对比度。 有关详细信息，请参见
+\fBdefault_colors\fP(3X) 手册页。
+.PP
+\fBncurses\fP 库包含一个函数，用于将应用程序输出定向到连接到终端设备的打印机。 有关详细信息，请参见 \fBcurs_print\fP(3X)
+手册页。
+.SH PORTABILITY
+\fBncurses\fP 库旨在与 XSI Curses 保持 BASE 级别一致。 支持扩展的 XSI Curses 功能 (包括颜色支持)。
+.PP
+库手册页的 \fBPORTABILITY\fP 部分描述了少量本地差异 (即 XSI Curses 和 \fBncurses\fP 调用之间的个体差异)。
+.SS "Error checking"
+.PP
+在许多情况下，X/Open Curses 对错误条件含糊不清，省略了一些 SVr4 文档。
+.PP
+与其他实现不同，此实现检查参数 (例如指向 WINDOW 结构的指针) 以确保它们不为空。 提供此行为的主要原因是为了防止程序员错误。
+标准接口没有为库提供一种方法来告诉应用程序检测到几种可能的错误中的哪一种。 依赖这个 (或其他一些) 扩展将对 curses
+应用程序的可移植性产生不利影响。
+.SS "Extensions versus portability"
+.PP
+ncurses 提供的大多数扩展都没有标准化。 有些已经被合并到其他实现中，例如 PDCurses 或 NetBSD curses。
+以下是一些需要考虑的因素:
+.bP
+例程 \fBhas_key\fP 不是 XPG4 的一部分，也不存在于 SVr4 中。 有关详细信息，请参见 \fBcurs_getch\fP(3X) 手册页。
+.bP
+例程 \fBslk_attr\fP 不是 XPG4 的一部分，也不存在于 SVr4 中。 有关详细信息，请参见 \fBcurs_slk\fP(3X) 手册页。
+.bP
+与鼠标接口相关的例程 \fBgetmouse\fP、\fBmousemask\fP、\fBungetmouse\fP、\fBmouseinterval\fP 和
+\fBwenclose\fP 不是 XPG4 的一部分，也不存在于 SVr4 中。 有关详细信息，请参见 \fBcurs_mouse\fP(3X) 手册页。
+.bP
+例程 \fBmcprint\fP 在以前的任何 curses 实现中都不存在。 有关详细信息，请参见 \fBcurs_print\fP(3X) 手册页。
+.bP
+例程 \fBwresize\fP 不是 XPG4 的一部分，也不存在于 SVr4 中。 有关详细信息，请参见 \fBwresize\fP(3X) 手册页。
+.bP
+WINDOW 结构体的内部细节可以对应用程序隐藏。 \fBis_scrollok\fP 等的讨论见 \fBcurs_opaque\fP(3X)。
+.bP
+此实现可以配置为为多线程应用程序提供基本支持。 有关详细信息，请参见 \fBcurs_threads\fP(3X)。
+.bP
+此实现还可以配置为提供一组函数，以提高管理多个屏幕的能力。 有关详细信息，请参见 \fBcurs_sp_funcs\fP(3X)。
+.SS "Padding differences"
+.PP
+在历史版本的 curses 中，嵌入在 \fBcr\fP、\fBind\fP、\fBcub1\fP、\fBff\fP 和 \fBtab\fP 功能中的延迟激活了 UNIX tty
+驱动程序中的相应延迟位。 在此实现中，所有填充都是通过发送 NUL 字节来完成的。 这种方法稍微昂贵一些，但显着缩小了与 UNIX
+内核的接口，并相应地增加了程序包的可移植性。
+.SS "Header files"
+头文件 \fB<curses.h>\fP 自动包含头文件 \fB<stdio.h>\fP 和
+\fB<unctrl.h>\fP。
+.PP
+X/Open Curses 还有很多话要说，但并没有结束这个故事:
+.RS 4
+.PP
+包含 <curses.h> 可能会使标题
+<stdio.h>、<term.h>、<termios.h> 和 <wchar.h>
+中的所有符号可见。
+.RE
+.PP
+这是一个更完整的故事:
+.bP
+从 BSD curses 开始，所有实现都包含 <stdio.h>。
+.IP
+BSD 诅咒包括来自内部标头 "curses.ext" 的 <curses.h> 和 <unctrl.h> ("ext"
+是 \fIexterns\fP) 的简称。
+.IP
+BSD 诅咒在内部使用 <stdio.h> (对于 \fBprintw\fP 和 \fBscanw\fP)，但 <curses.h>
+本身没有任何内容依赖于 <stdio.h>。
+.bP
+SVr2 诅咒添加了 \fBnewterm\fP(3X)，它依赖于 <stdio.h>。 即函数原型使用 \fBFILE\fP。
+.IP
+SVr4 诅咒添加了 \fBputwin\fP 和 \fBgetwin\fP，它们也使用 <stdio.h>。
+.IP
+X/Open Curses 记录了所有这三个函数。
+.IP
+SVr4 curses 和 X/Open Curses 不要求开发人员在包含 <curses.h> 之前包含
+<stdio.h>。 两个文档 curses 都显示 <curses.h> 作为唯一必需的标题。
+.IP
+因此，标准 <curses.h> 将始终包含 <stdio.h>。
+.bP
+关于 <unctrl.h>，X/Open Curses 与 SVr4 不一致。
+.IP
+如 \fBcurs_util\fP(3X) 中所述，ncurses 包括来自 <curses.h> (如 SVr4) 的
+<unctrl.h>。
+.bP
+X/Open 关于 <term.h> 和 <termios.h> 的评论可能参考了 HP\-UX 和 AIX:
+.IP
+HP\-UX curses 包含 <curses.h> 中的 <term.h> 以在 curses.h 中声明
+\fBsetupterm\fP，但 ncurses (和 Solaris curses) 不包含。
+.IP
+AIX curses 包括 <term.h> 和 <termios.h>。 同样，ncurses (和 Solaris
+curses) 没有。
+.bP
+X/Open 表示 <curses.h> \fImay\fP 包括 <term.h>，但不要求它这样做。
+.IP
+某些程序使用在 <curses.h> 和 <term.h> 中声明的函数，并且必须在同一模块中包含这两个标头。
+非常旧版本的 AIX curses 在包含 <term.h> 之前需要包含 <curses.h>。
+.IP
+因为 ncurses 头文件包含定义头文件中使用的数据类型所需的头文件，所以 ncurses 头文件可以按任何顺序包含。 但为了可移植性，您应该在
+<term.h> 之前包含 <curses.h>。
+.bP
+X/Open Curses 之所以说 \fI"may make visible"\fP，是因为包含头文件并不一定会使其中的所有符号都可见 (需要考虑
+ifdef)。
+.IP
+例如，如果定义了正确的符号，并且 ncurses 配置为支持宽字符，则在 ncurses <wchar.h> \fImay\fP 中包含。
+如果包含标题，则其符号可能可见。 这取决于用于 \fB_XOPEN_SOURCE\fP 特性测试宏的值。
+.bP
+X/Open Curses 记录了一个必需的标头，在一种特殊情况下: <stdarg.h> 在 <curses.h>
+之前为 \fBvw_printw\fP 和 \fBvw_scanw\fP 函数 (以及过时的 \fBvwprintw\fP 和 \fBvwscanw\fP 函数) 制作原型。
+其中每一个都使用 \fBva_list\fP 参数。
+.IP
+SVr3 中引入了两个过时的函数。 其他函数是在 X/Open Curses 中引入的。 在这两者之间，SVr4 curses 提供了应用程序可能包含
+<varargs.h> 或 <stdarg.h> 的可能性。 最初，这是通过使用 \fBvoid*\fP 作为
+\fBva_list\fP 参数来完成的。 后来，引入了一种特殊类型 (在 <stdio.h>) 中定义)，以允许进行编译器类型检查。
+该特殊类型始终可用，因为 <stdio.h> 始终包含在 <curses.h> 中。
+.IP
+X/Open Curses 实现都不需要应用程序在 <curses.h> 之前包含
+<stdarg.h>，因为它们要么允许特殊类型，要么 (像 ncurses) 直接包含 <stdarg.h>
+以提供可移植接口。
+.SH NOTES
+.PP
+如果 \fBncurses\fP 程序的标准输出被重定向到不是 tty 的东西，屏幕更新将被定向到标准错误。 这是 AT&T System V Release
+3 curses 的一个未记录的，特性。
+.SH AUTHORS
+Zeyd M.  Ben\-Halim, Eric S.  Raymond, Thomas E.  Dickey.  Based on
+\fIpcurses\fP by Pavel Curtis.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

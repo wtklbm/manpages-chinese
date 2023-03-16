@@ -1,0 +1,124 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1997 Nicolás Lichtmaier <nick@debian.org>
+.\" Created Thu Aug  7 00:44:00 ART 1997
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Added section stuff, aeb, 2002-04-22.
+.\" Corrected include file, drepper, 2003-06-15.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH lockf 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+lockf \- 在打开的文件上应用、测试或删除 POSIX 锁
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint lockf(int \fP\fIfd\fP\fB, int \fP\fIcmd\fP\fB, off_t \fP\fIlen\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBlockf\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+        || /* glibc >= 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+对打开文件的一部分应用、测试或删除 POSIX 锁。 文件由 \fIfd\fP 指定，文件描述符为写入打开，\fIcmd\fP 的动作，如果 \fIlen\fP
+为正，则该部分由字节位置 \fIpos\fP..\fIpos\fP+\fIlen\fP\-1 组成，如果 \fIlen\fP 为 negative，则该部分由字节位置
+\fIpos\fP\-\fIlen\fP..\fIpos\fP\-1 组成，其中 \fIpos\fP 是当前文件位置，如果 \fIlen\fP
+为零，该部分从当前文件位置延伸到无穷大，包括当前和 future 文件结束位置。 在所有情况下，该部分都可能会超出当前文件末尾。
+.PP
+在 Linux 上，\fBlockf\fP() 只是 \fBfcntl\fP(2) 锁定之上的接口。 许多其他系统以这种方式实现
+\fBlockf\fP()，但请注意，POSIX.1 未指定 \fBlockf\fP() 和 \fBfcntl\fP(2) 锁之间的关系。
+可移植应用程序应该避免混合调用这些接口。
+.PP
+有效操作如下:
+.TP 
+\fBF_LOCK\fP
+在文件的指定部分设置排他锁。 如果这个部分的 (部分) 已经被锁定，调用将阻塞直到上一个锁被释放。 如果此部分与先前锁定的部分重叠，则将两者合并。
+一旦持有锁的进程关闭文件的某些文件描述符，文件锁就会被释放。 子进程不继承这些锁。
+.TP 
+\fBF_TLOCK\fP
+与 \fBF_LOCK\fP 相同，但如果文件已被锁定，调用从不阻塞并返回错误。
+.TP 
+\fBF_ULOCK\fP
+解锁文件的指示部分。 这可能会导致一个锁定的部分被分成两个锁定的部分。
+.TP 
+\fBF_TEST\fP
+测试锁定: 如果指定部分被该进程解锁或锁定，则返回 0; return \-1, set \fIerrno\fP to \fBEAGAIN\fP (\fBEACCES\fP
+on some other systems), if another process holds a lock.
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP or \fBEAGAIN\fP
+文件被锁定并指定了 \fBF_TLOCK\fP 或 \fBF_TEST\fP，或者操作被禁止，因为该文件已被另一个进程内存映射。
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是打开的文件描述符; 或 \fIcmd\fP 是 \fBF_LOCK\fP 或 \fBF_TLOCK\fP 并且 \fIfd\fP 不是可写文件描述符。
+.TP 
+\fBEDEADLK\fP
+命令为 \fBF_LOCK\fP，此锁定操作将导致死锁。
+.TP 
+\fBEINTR\fP
+在等待获取锁时，调用被处理程序捕获的信号的传递中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+在 \fIcmd\fP 中指定了无效操作。
+.TP 
+\fBENOLCK\fP
+打开的段锁太多，锁表已满。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBlockf\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.SH "SEE ALSO"
+\fBfcntl\fP(2), \fBflock\fP(2)
+.PP
+Linux 内核源码目录 \fIlocks.txt\fP 和 \fImandatory\-locking.txt\fP
+\fIDocumentation/filesystems\fP (在老内核上，这些文件直接在 \fIDocumentation\fP
+目录下，\fImandatory\-locking.txt\fP 称为 \fImandatory.txt\fP)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

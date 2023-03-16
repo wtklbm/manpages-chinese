@@ -1,0 +1,103 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-find\-scanner 1 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-find\-scanner
+.SH NAME
+sane\-find\-scanner \- 查找 SCSI 和 USB 扫描仪及其设备文件
+.SH SYNOPSIS
+\fBsane\-find\-scanner\fP [\fB\-?\fP|\fB\-h\fP|\fB\-\-help\fP] [\fB\-v\fP] [\fB\-q\fP] [\fB\-p\fP] [\fB\-f\fP]
+[\fB\-F\fP \fIfilename\fP] [\fIdevname\fP]
+
+.SH DESCRIPTION
+\fBsane\-find\-scanner\fP 是一个命令行工具，用于查找 SCSI 和 USB 扫描仪并确定其 UNIX
+设备文件。它的主要目的是确保扫描仪可以被 SANE 后端检测到。
+.PP
+对于 \fBSCSI\fP 扫描仪，它会检查默认泛型 SCSI 设备文件 (例如，\fI/dev/sg0\fP) 和 \fI/dev/scanner\fP.
+测试是通过发送 SCSI 查询命令并查找设备类型 "scanner" 或 "processor" 来完成的 (一些旧的 HP 扫描仪似乎发送
+"processor")。所以 \fBsane\-find\-scanner\fP 会找到任何连接到这些默认设备文件的 SCSI 扫描仪，即使它不受任何 SANE
+后端支持。
+.PP
+对于 \fBUSB\fP 扫描仪，首先测试 USB 内核扫描仪设备文件 (例如
+\fI/dev/usb/scanner0\fP、\fI/dev/usb/scanner\fP 和
+\fI/dev/usbscanner\fP))。如果操作系统支持此特性则会打开文件并确定供应商和设备 ID。当前，只有在 Linux 扫描仪模块或
+FreeBSD 或 OpenBSD uscanner 驱动程序支持的情况下，才能通过这种方式找到 USB
+扫描仪。测试之后，\fBsane\-find\-scanner\fP 尝试扫描 USB 库 libusb (如果可用) 找到的 USB 设备。扫描仪没有特殊的
+USB 类，因此用于区分扫描仪和其他 USB 设备的试探法并不完美。 \fBsane\-find\-scanner\fP 还试图找出扫描仪中使用的 USB
+芯片的类型。如果检测到，它将在供应商和产品 ID 之后打印。 \fBsane\-find\-scanner\fP 甚至可以找到任何 SANE 后端都不支持的
+USB 扫描仪。
+.PP
+\fBsane\-find\-scanner\fP 不会找到大多数并行端口扫描器，或连接到专有端口的扫描器。\fIsane\-find\-scanner \-p .\fP
+可能会检测到某些 \fBparallel port\fP 扫描器在撰写本文时，这将仅检测 Mustek 并行端口扫描器。
+
+.SH OPTIONS
+.TP  8
+\fB\-?, \-h, \-\-help\fP
+打印一条简短的使用信息。
+.TP  8
+\fB\-v\fP
+详细输出。如果使用一次，\fBsane\-find\-scanner\fP 显示每个设备名称和测试结果。 如果使用两次，还会打印 SCSI 查询信息和 USB
+设备描述符。
+.TP  8
+\fB\-q\fP
+安静。只打印设备，没有评论。
+.TP  8
+\fB\-p\fP
+探测并行端口扫描器。
+.TP  8
+\fB\-f\fP
+强制打开所有明确指定的设备作为 SCSI 和 USB 设备。如果 \fBsane\-find\-scanner\fP 在确定设备类型时出错，这很有用。
+.TP  8
+\fB\-F filename\fP
+filename 是一个文件，其中包含 Linux 使用的 /proc/bus/usb/devices 格式的 USB 描述符。
+\fBsane\-find\-scanner\fP 尝试识别在此类文件中找到的所有 USB 扫描仪的 chipset(s)。当 \fIcat /proc/bus/usb/devices\fP 的输出可用但扫描仪本身不可用时，此选项对开发人员很有用。
+.TP  8
+\fBdevname\fP
+测试设备文件 "devname". 如果给出了 devname，则不会检查其他设备。
+.SH EXAMPLE
+\fIsane\-find\-scanner \-v\fP
+.br
+检查所有可用扫描仪的 SCSI 和 USB 设备，并为每个设备文件打印一行。
+.PP
+\fIsane\-find\-scanner /dev/scanner\fP
+.br
+仅在 /dev/scanner 处查找 (SCSI) 扫描仪并打印结果。
+.PP
+\fIsane\-find\-scanner \-p\fP
+.br
+并行端口扫描器的探针。
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBsane\-usb\fP(5), \fBscanimage\fP(1),
+\fBxscanimage\fP(1), \fBxsane\fP(1), \fBsane\-"backendname"\fP(5)
+
+.SH AUTHOR
+Oliver Rauch、Henning Meier\-Geinitz 等
+.SH "SUPPORTED PLATFORMS"
+USB 支持仅限于 Linux (内核、libusb)、FreeBSD (内核、libusb)、NetBSD、(libusb)、OpenBSD
+(内核、libusb)。检测供应商和设备 ID 仅适用于 Linux 或 libusb。
+.PP
+Irix、EMX、Linux、Next、AIX、Solaris、FreeBSD、NetBSD、OpenBSD 和 HP\-UX 支持 SCSI。
+
+.SH BUGS
+尚不支持大多数并行端口扫描器。
+.br
+USB 芯片组的检测仅限于少数芯片组。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

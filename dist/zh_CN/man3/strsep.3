@@ -1,0 +1,146 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 18:00:10 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Mon Jan 20 12:04:18 1997 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified Tue Jan 23 20:23:07 2001 by Andries Brouwer (aeb@cwi.nl)
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH strsep 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+strsep \- 从字符串中提取 token
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <string.h>\fP
+.PP
+\fBchar *strsep(char **restrict \fP\fIstringp\fP\fB, const char *restrict \fP\fIdelim\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBstrsep\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+如果 \fI*stringp\fP 为 NULL，则 \fBstrsep\fP() 函数返回 NULL 并且不执行任何其他操作。 否则，此函数会在字符串
+\fI*stringp\fP 中找到第一个 token，它由字符串 \fIdelim\fP 中的一个字节分隔。 这个 token 通过用空字节
+(\[aq]\e0\[aq]) 覆盖定界符来终止，并且 \fI*stringp\fP 被更新为指向 token 之后。 如果没有找到定界符，则 token
+被视为整个字符串 \fI*stringp\fP，\fI*stringp\fP 设为 NULL。
+.SH "RETURN VALUE"
+\fBstrsep\fP() 函数返回一个指向 token 的指针，即返回 \fI*stringp\fP 的原始值。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstrsep\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+4.4BSD.
+.SH NOTES
+\fBstrsep\fP() 函数是作为 \fBstrtok\fP(3) 的替代品引入的，因为后者无法处理空字段。 但是，\fBstrtok\fP(3) 符合
+C99，因此更便携。
+.SH BUGS
+使用这个函数时要小心。 如果您确实使用它，请注意:
+.IP \[bu] 3
+这个函数修改了它的第一个参数。
+.IP \[bu]
+这个函数不能用在常量，字符串，上。
+.IP \[bu]
+定界字符的身份丢失。
+.SH EXAMPLES
+下面的程序是在 \fBstrtok\fP(3) 中找到的程序的一个端口，但是，它不会丢弃多个分隔符或空的 tokens:
+.PP
+.in +4n
+.EX
+$\fB ./a.out \[aq]a/bbb///cc;xxx:yyy:\[aq] \[aq]:;\[aq] \[aq]/\[aq]\fP
+1: a/bbb///cc
+         \-\-> a
+         \-\-> bbb
+         \-\->
+         \-\->
+         \-\-> cc
+2: xxx
+         \-\-> xxx
+3: yyy
+         \-\-> yyy
+4:
+         \-\->
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (strsep.c)
+\&
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    char *token, *subtoken;
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s string delim subdelim\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    for (unsigned int j = 1; (token = strsep(&argv[1], argv[2])); j++) {
+        printf("%u: %s\en", j, token);
+
+        while ((subtoken = strsep(&token, argv[3])))
+            printf("\et \-\-> %s\en", subtoken);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBmemchr\fP(3), \fBstrchr\fP(3), \fBstring\fP(3), \fBstrpbrk\fP(3), \fBstrspn\fP(3),
+\fBstrstr\fP(3), \fBstrtok\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

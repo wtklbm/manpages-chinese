@@ -1,0 +1,192 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-ESCAPE 1 "" "systemd 253" systemd\-escape
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-escape \- 在 systemd 元名称中使用的转义字符串
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-escape\fR\ 'u
+\fBsystemd\-escape\fP [OPTIONS...] [STRING...]
+.SH DESCRIPTION
+.PP
+\fBsystemd\-escape\fP 可用于转义字符串以包含在 systemd 元名称 \& 中。该命令可用于转义和撤消字符串转义 \&。
+.PP
+该命令在命令行上获取任意数量的字符串，并将逐一处理它们，一个接一个 \&。它会将它们以空格分隔输出到 stdout\&。
+.PP
+默认情况下，此命令将对传递的字符串进行转义，除非传递 \fB\-\-unescape\fP 导致应用逆运算 \&。如果给出
+\fB\-\-mangle\fP，则会应用一种特殊的转义模式，它假设字符串已经转义，但会转义所有明显未转义的内容 \&。
+.PP
+有关转义和非转义算法的详细信息，请参见 \fBsystemd.unit\fP(5)\& 中的相关部分。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-suffix=\fP
+.RS 4
+将指定的元类型后缀追加到转义字符串 \&。采用 systemd 支持的元类型之一，例如 "service" 或 `mount`\&。不得与
+\fB\-\-template=\fP、\fB\-\-unescape\fP 或 \fB\-\-mangle\fP\& 一起使用。
+.RE
+.PP
+\fB\-\-template=\fP
+.RS 4
+将转义字符串插入元名称模板 \&。采用元名称模板，例如 foobar@\&.service\&。对于
+\fB\-\-unescape\fP，期望此模板的实例化元名称并仅提取和取消转义实例部分 \&。不得与 \fB\-\-suffix=\fP、\fB\-\-instance\fP 或
+\fB\-\-mangle\fP\& 一起使用。
+.RE
+.PP
+\fB\-\-path\fP, \fB\-p\fP
+.RS 4
+转义或取消转义字符串时，假定它指的是文件系统路径 \&。这会消除前导、尾随或重复的 "/" 字符并拒绝 "\&." 和 "\&.\&." 路径组件
+\&。这对于生成适合使用元文件中的 "%f" 说明符进行转义的字符串特别有用，请参见 \fBsystemd.unit\fP(5)\&。
+.RE
+.PP
+\fB\-\-unescape\fP, \fB\-u\fP
+.RS 4
+不要转义指定的字符串，而是撤消转义，反转操作 \&。不得与 \fB\-\-suffix=\fP 或 \fB\-\-mangle\fP\& 一起使用。
+.RE
+.PP
+\fB\-\-mangle\fP, \fB\-m\fP
+.RS 4
+与 \fB\-\-escape\fP 类似，但只转义明显尚未转义的字符，并可能自动将适当的元类型后缀追加到字符串 \&。不得与
+\fB\-\-suffix=\fP、\fB\-\-template=\fP 或 \fB\-\-unescape\fP\& 一起使用。
+.RE
+.PP
+\fB\-\-instance\fP
+.RS 4
+使用 \fB\-\-unescape\fP，转义并仅打印实例化元名称模板的实例部分 \&。对于未实例化的模板 (如 ssh@\&.service) 或非模板名称
+(如 ssh\&.service\&) 会导致错误。必须与 \fB\-\-unescape\fP 一起使用，不能与 \fB\-\-template\fP\& 一起使用。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH EXAMPLES
+.PP
+要转义单个字符串:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-escape \*(AqHallöchen, Meister\*(Aq
+Hall\exc3\exb6chen\ex2c\ex20Meister
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+要撤消对单个字符串的转义:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-escape \-u \*(AqHall\exc3\exb6chen\ex2c\ex20Meister\*(Aq
+Hallöchen, 梅斯特
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+为路径生成挂载元:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-escape \-p \-\-suffix=mount "/tmp//waldi/foobar/"
+tmp\-waldi\-foobar\&.mount
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+生成三个字符串的实例名称:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-escape \-\-template=systemd\-nspawn@\&.service \*(AqMy Container 1\*(Aq \*(Aqcontainerb\*(Aq \*(Aqcontainer/III\*(Aq
+systemd\-nspawn@My\ex20Container\ex201\&.service systemd\-nspawn@containerb\&.service systemd\-nspawn@container\-III\&.service
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+提取实例化元的实例部分:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-escape \-u \-\-instance \*(Aqsystemd\-nspawn@My\ex20Container\ex201\&.service\*(Aq
+我的容器 1
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+要提取特定模板实例的实例部分:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+$ systemd\-escape \-u \-\-template=systemd\-nspawn@\&.service \*(Aqsystemd\-nspawn@My\ex20Container\ex201\&.service\*(Aq
+我的容器 1
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.unit\fP(5), \fBsystemctl\fP(1)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

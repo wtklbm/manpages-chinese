@@ -1,0 +1,106 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1995 Yggdrasil Computing, Incorporated.
+.\" and Copyright 2003, 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dlsym 3 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+dlsym、dlvsym \- 获取共享对象或可执行文件中符号的地址
+.SH LIBRARY
+Dynamic linking library (\fIlibdl\fP, \fI\-ldl\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <dlfcn.h>\fP
+.PP
+\fBvoid *dlsym(void *restrict \fP\fIhandle\fP\fB, const char *restrict \fP\fIsymbol\fP\fB);\fP
+.PP
+\fB#define _GNU_SOURCE\fP
+\fB#include <dlfcn.h>\fP
+.PP
+\fBvoid *dlvsym(void *restrict \fP\fIhandle\fP\fB, const char *restrict \fP\fIsymbol\fP\fB,\fP
+\fB             const char *restrict \fP\fIversion\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+函数 \fBdlsym\fP() 获取由 \fBdlopen\fP(3) 返回的动态加载共享对象的 "handle"
+以及一个空终止符号名称，并返回该符号加载到内存中的地址。 如果在指定对象或 \fBdlopen\fP(3)
+加载该对象时自动加载的任何共享对象中未找到该符号，则 \fBdlsym\fP() 返回 NULL。 (\fBdlsym\fP()
+执行的搜索是广度优先的，遍历这些共享对象的依赖树。)
+.PP
+在不寻常的情况下 (请参见注释)，符号的值实际上可能为 NULL。 因此，从 \fBdlsym\fP() 返回 NULL 不需要指示错误。 区分错误和值为
+NULL 的符号的正确方法是调用 \fBdlerror\fP(3) 清除任何旧的错误条件，然后调用 \fBdlsym\fP()，然后再次调用
+\fBdlerror\fP(3)，将其返回值保存到变量中，并检查保存的值是否为不为空。
+.PP
+有两个特殊的伪句柄可以在 \fIhandle\fP: 中指定
+.TP 
+\fBRTLD_DEFAULT\fP
+使用默认的共享对象搜索顺序查找所需符号的第一次出现。 搜索将包括可执行文件及其依赖项中的全局符号，以及使用 \fBRTLD_GLOBAL\fP
+标志动态加载的共享对象中的符号。
+.TP 
+\fBRTLD_NEXT\fP
+在当前对象之后按搜索顺序查找下一次出现的所需符号。 这允许一个人在另一个共享对象中围绕一个函数提供一个包装器，例如，在一个预加载的共享对象中定义一个函数
+(参见 \fBld.so\fP(8)) 中的 \fBLD_PRELOAD\fP 可以找到并调用另一个共享对象中提供的 "real" 函数
+(或就此而言，在有多层预加载的情况下，函数的 "next" 定义)。
+.PP
+必须定义 \fB_GNU_SOURCE\fP 特性测试宏才能从 \fI<dlfcn.h>\fP 获得 \fBRTLD_DEFAULT\fP 和
+\fBRTLD_NEXT\fP 的定义。
+.PP
+函数 \fBdlvsym\fP() 与 \fBdlsym\fP() 的作用相同，但将版本字符串作为附加参数。
+.SH "RETURN VALUE"
+成功时，这些函数返回与 \fIsymbol\fP 关联的地址。 失败时返回 NULL; 可以使用 \fBdlerror\fP(3) 诊断错误原因。
+.SH VERSIONS
+\fBdlsym\fP() 存在于 glibc 2.0 及更高版本中。 \fBdlvsym\fP() 最早出现在 glibc 2.1 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBdlsym\fP(),
+\fBdlvsym\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001 描述了 \fBdlsym\fP()。 \fBdlvsym\fP() 函数是 GNU 的扩展。
+.SH NOTES
+.\"
+当全局符号的地址为 NULL 时，有几种情况。 例如，链接器可以通过链接描述文件或使用 \fI\-\-defsym\fP 命令行选项将符号放置在零地址处。
+未定义的弱符号也有 NULL 值。 最后，符号值可能是 GNU 间接函数 (IFUNC) 解析器函数返回 NULL 作为解析值的结果。
+在后一种情况下，\fBdlsym\fP() 也会无错误地返回 NULL。 然而，在前两种情况下，GNU 动态链接器的行为是不一致的:
+重定位处理成功并且可以观察到符号具有 NULL 值，但是 \fBdlsym\fP() 失败并且 \fBdlerror\fP() 指示查找错误。
+.SS History
+\fBdlsym\fP() 函数是 dlopen API 的一部分，源自 SunOS。 那个系统没有 \fBdlvsym\fP()。
+.SH EXAMPLES
+请参见 \fBdlopen\fP(3)。
+.SH "SEE ALSO"
+\fBdl_iterate_phdr\fP(3), \fBdladdr\fP(3), \fBdlerror\fP(3), \fBdlinfo\fP(3),
+\fBdlopen\fP(3), \fBld.so\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

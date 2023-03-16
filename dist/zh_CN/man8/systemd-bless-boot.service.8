@@ -1,0 +1,113 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-BLESS\-BOOT\&.SERVICE 8 "" "systemd 253" systemd\-bless\-boot.service
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-bless\-boot.service, systemd\-bless\-boot \- 将当前引导过程标记为成功
+.SH SYNOPSIS
+.PP
+systemd\-bless\-boot\&.service
+.PP
+/usr/lib/systemd/system\-bless\-boot
+.SH DESCRIPTION
+.PP
+systemd\-bless\-boot\&.service 是一个系统服务，将当前引导过程标记为成功 \&。它 \*(Aqs 在
+\fBsystemd\-bless\-boot\-generator\fP(8) 检测到使用 \fBsystemd\-boot\fP(7) 风格的启动计数时自动拉入初始事务
+\&。
+.PP
+在内部，该服务基于 \fILoaderBootCountPath\fP EFI 变量 (供应商 UUID
+\fB4a67b082\-0a4c\-41cf\-b6c7\-440b29bb8c4\fP)，从引导加载程序传递到 OS\&. 它包含 \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[1]\d\s+2
+兼容的引导加载程序入口文件或用于引导系统的统一内核映像文件的文件系统路径 (相对于 EFI 系统分区) \&。
+\fBsystemd\-bless\-boot\&.service\fP 从文件名中删除了两个 \*(Aqtries done\*(Aq 和 \*(Aqtries
+left\*(Aq 数字引导计数器从文件名中，它向引导加载程序的 future 调用表明该条目已至少成功完成引导一次
+\&. (此服务将因此在第一次成功引导时重命名引导加载程序入口文件或统一内核映像文件。)
+.SH OPTIONS
+.PP
+/usr/lib/systemd/system\-bless\-boot 可执行文件也可以从命令行调用，采用以下命令之一参数:
+.PP
+\fBstatus\fP
+.RS 4
+引导加载程序入口文件或统一内核映像文件的当前状态显示为 \&。这将输出 "good"、"bad"、"indeterminate"、"clean"
+之一，具体取决于命令 \& 的状态和之前的调用。字符串 "indeterminate" 在启动后最初显示，然后才被标记为 "good" 或
+`bad`\&。使用下面的 \fBgood\fP 命令将引导标记为 "good" 后显示字符串 "good"，调用 \fBbad\fP 命令后显示
+"bad"\&。当引导计数当前未生效时返回字符串 "clean"\&。
+.sp
+如果没有指定命令参数 \&，则隐含此命令。
+.RE
+.PP
+\fBgood\fP
+.RS 4
+调用时，当前引导加载程序入口文件或统一内核映像文件将被标记为 "good"，执行上述文件重命名操作 \&。此命令旨在在成功引导结束时调用
+\&。systemd\-bless\-boot\&.service 元调用此命令 \&。
+.RE
+.PP
+\fBbad\fP
+.RS 4
+当调用 \*(Aqtries left\*(引导加载程序入口文件名或统一内核映像文件名中的 Aq 计数器设置为零，将引导加载程序入口或内核映像标记为
+"bad"，使引导加载程序赢得 \* (Aqt 在 future 靴子上再考虑它 (至少只要还有其他可用的条目尚未标记为 "bad")
+\&。此命令通常不执行，但可用于在检测到问题时立即结束引导计数逻辑，并将引导条目永久标记为坏 \&。
+.RE
+.PP
+\fBindeterminate\fP
+.RS 4
+此命令撤消当前引导加载程序入口文件或统一内核映像文件的任何标记为好或坏 \&。这是通过将引导加载程序入口文件或统一内核映像文件重命名回
+\fILoaderBootCountPath\fP EFI 变量 \& 中编码的路径来实现的。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-boot\fP(7), \fBsystemd.special\fP(7)
+.SH NOTES
+.IP " 1." 4
+引导装载程序规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/boot_loader_specification
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

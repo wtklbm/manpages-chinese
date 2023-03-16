@@ -1,0 +1,231 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-umax_pp 5 "14 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-umax_pp
+.SH NAME
+sane\-umax_pp\-Umax Astra 并行端口平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-umax_pp\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对 Umax 并行端口平板扫描仪的访问。
+以下扫描仪使用此后端:
+.PP
+.RS
+Model:
+.br
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+.br
+阿斯特拉 610P
+.br
+阿斯特拉 1220P
+.br
+HP3200C
+.br
+阿斯特拉 1600P
+.br
+阿斯特拉 2000P
+.br
+Genius ColorPage\-Life Pro
+.br
+.RE
+.PP
+该后端处理 1220P/1600P/2000P dpi 扫描分辨率的 75x75、150x150、300x300、600x600 和
+600x1200，以及 610P 的 75x75、150x150、300x300 和 300x600。在颜色和灰度级中，有一种软件线稿模式。
+.PP
+新一代型号共享嵌入 EPAT 芯片的更新版本的 610P ASIC。 只有 CCD 和 ADC 等部件从一个变为另一个。他们甚至都报告说是通过
+IEEE1284 的 UMAX Astra 1220P。 没有一种软件方法可以正确识别它们。在 windows
+下，型号由安装的驱动程序设置，与硬件无关。
+.PP
+.TP 
+\fBEPP/ECP MODES ONLY\fP
+当前版本的后端仅使用 EPP 或 ECP 模式与扫描器通信。PS/2 模式未实现。610P 仅使用 SPP。建议您使用此后端的当前版本在 BIOS
+中将并行端口设置为 EPP。您可以将其留给 ECP 或 ECP+EPP，但在这种情况下，您可能不会使用 ppdev，如果必须使用
+ECP，则只能直接访问硬件。 ECPEPP 只有在您使用支持 ppdev 字符设备的 2.4 或 2.6 内核时才能工作。
+.PP
+此后端确实仅支持 parport 共享 \fIif you have a kernel with ppdev support.\fP
+.PP
+请注意，如果您不使用 ppdev 字符设备，则后端需要以 root 身份运行。要允许用户访问扫描仪，请通过网络接口运行后端 (请参见
+\fBsaned\fP(8) 和 \fBsane\-net\fP(5))。 一个更轻松的解决方案 (安全方面) 是在前端添加 suid 位 (参见
+\fBchmod\fP(1)).  后端丢弃 root 特权，在获得对 IO 端口的直接访问权后，尽快获得 root 特权，这降低了成为 root 时的风险。
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIport value\fP
+.RE
+.PP
+\fBvalue\fP 在哪里:
+
+.RS
+.TP 
+auto
+自动检测所有并行端口并探测它们以进行扫描
+.TP 
+safe\-auto
+自动检测所有并行端口并为扫描仪探测它们，但不尝试直接硬件访问
+.TP 
+\fI/dev/ppi0\fP
+使用 *BSD ppi 设备，根据可用并行端口的数量，您必须使用 \fI/dev/ppi1\fP，\fI/dev/ppi2\fP， ...
+.TP 
+\fI/dev/parport0\fP
+使用 Linux ppdev 设备，根据可用并行端口的数量，您必须使用 \fI/dev/parport1\fP，\fI/dev/parport2\fP， ...
+.TP 
+0x378
+对给定地址进行直接硬件访问。通常的值为 0x378、0x278、0x3BC 在这种情况下，您必须以根用户身份 (*BSD 和 Linux)
+运行扫描仪，或者在 OS/2 上使用 'IOPL=yes'
+.PP
+.RE
+\fBNOTE:\fP 在所有情况下，您都必须具有足够的权限才能访问所选设备或地址。根据安全设置，设备可能不适用于所有用户。 您必须更改
+\fI/dev/ppi*\fP 或 \fI/dev/parport*\fP 设备上的权限。
+.PP
+.RE
+您可以使用重命名任何设备
+.PP
+.RS
+\fIname devname\fP
+.br
+\fImodel model\fP
+.br
+\fIvendor vendor\fP
+.RE
+.PP
+选项。这些选项适用于最后一个端口选项。
+
+.SH CONFIGURATION
+请确保编辑您使用后端的 \fIumax_pp.conf\fP \fBbefore\fP。
+.PP
+\fIumax_pp.conf\fP 文件的内容是与 Umax 扫描仪对应的选项和设备名称的列表。 空行和以哈希标记 (#) 开头的行将被忽略。
+.PP
+支持的八个选项是
+\fBred\-gain\fP、\fBgreen\-gain\fP、\fBblue\-gain\fP、\fBred\-offset\fP、\fBgreen\-offset\fP、\fBblue\-offset\fP、\fBastra\fP
+和 \fBbuffer\fP。
+
+选项 \fBred\-gain\fP、\fBgreen\-gain\fP 和 \fBblue\-gain\fP 允许您针对给定颜色调整扫描仪的灵敏度。值范围从 0 (最低增益)
+到 15 (highest)。如果前端没有勾选高级选项 "Gain"，后端会自动进行增益校准，不使用用户提供的值。
+
+.PP
+
+选项 \fBred\-offset\fP、\fBgreen\-offset\fP 和 \fBblue\-offset\fP 允许您针对给定颜色调整扫描仪的偏移量。值范围从 0
+(最低偏移量) 到 15 (highest)。
+.PP
+
+选项 \fBastra\fP 允许您更改扫描仪的型号。当前的自动检测是基于在其他型号上使用 1220P
+命令集时扫描的副作用，因此在未知的硬件组合上可能会失败。有效值为 610、1220、1600 和
+2000。只有当自动检测无法正确检测到您的扫描仪型号时，它才有用。如果您的扫描仪工作正常但报告错误，那就这样吧。
+更改模型的唯一有效情况是当您的扫描仪生成 "black" 或 "inverted"
+扫描时。在这种情况下，您可以放置模型。请注意，它会阻止扫描仪型号自动检测。
+.PP
+
+选项 \fBbuffer\fP 允许您更改扫描缓冲区的大小。大小必须以字节为单位指定。默认值为 2
+兆字节。减小此值将提高前端进度条的平滑度，但会更频繁地停止扫描。
+
+.PP
+
+
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/umax_pp.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-umax_pp.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-umax_pp.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_UMAX_PP\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 128 请求打印所有调试输出。 较小的级别减少冗长。
+
+.PP
+.RS
+.nf
+\f (CR 级调试输出
+\-\-\-\-\-\-\- \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+ 0       nothing
+ 1       错误
+ 2       警告和小错误
+ 3 附加信息
+ 4 调试信息
+ 5 码流 (暂不支持)
+ 6 特殊调试 information\fR
+.fi
+.RE
+.PP
+.TP 
+\fBSANE_DEBUG_UMAX_PP_LOW\fP
+该变量为 Umax ASIC 的 SANE 接口设置调试级别。请注意，启用此功能将向您的终端发送数百万行调试输出垃圾邮件。
+
+.PP
+.RS
+.nf
+\f (CR 级调试输出
+\-\-\-\-\-\-\- \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+ 0       nothing
+ 1       错误
+ 8 个命令方块
+ 16 详细代码流程
+ 32 转储数据文件
+ 255     everything\fR
+.fi
+.RE
+.PP
+
+.PP
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-net\fP(5), \fBsaned\fP(8)
+
+.TP 
+For latest bug fixes and information see
+\fIhttp://umax1220p.sourceforge.net/\fP
+
+.SH AUTHOR
+St\['e] phane 伏尔兹 <\fIstef.dev@free.fr\fP>
+
+.SH CREDITS
+得益于 William Stuart 的硬件捐赠，对 610P 的支持成为可能。
+
+.SH "BUG REPORTS"
+如果有什么不对，请联系我。但是我需要一些关于您的扫描仪的信息来帮助您...
+
+.TP 
+\fISANE version\fP
+运行 \fIscanimage \-V\fP 来确定这一点
+.TP 
+\fIthe backend version and your scanner hardware\fP
+以 root 身份运行 \fISANE_DEBUG_UMAX_PP=255 scanimage \-L 2>log\fP。如果您没有从
+\fBsane\-umax_pp\fP 后端获得任何输出，请确保 "umax_pp" 行包含在您的 \fI/etc/sane.d/dll.conf\fP 文件中。
+如果未检测到您的扫描仪，请确保您在 \fIumax_pp.conf\fP 文件中定义了正确的端口地址或正确的设备。
+.TP 
+\fIthe name of your scanner/vendor\fP
+也是一个有值的信息。还请包括您的扫描仪的光学分辨率和灯泡类型，两者都可以在您的扫描仪手册中找到。
+.TP 
+\fIany further comments\fP
+如果您对文档有任何意见 (可以做得更好)，或者您认为我应该知道一些事情，请包括在内。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,163 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NFS.CONF 5   
+.SH NAME
+nfs.conf\-NFS 守护进程和工具的一般配置
+.SH SYNOPSIS
+\fI/etc/nfs.conf\fP
+.SH DESCRIPTION
+.PP
+此文件包含各种 NFS 守护进程和其他进程的特定于站点的配置。 大多数配置也可以通过命令行参数传递给进程，但拥有一个中央文件会更方便。
+特别是，这鼓励跨不同进程的一致配置。
+.PP
+当提供命令行选项时，它们会覆盖在此文件中设置的值。 当此文件未指定特定参数且未提供命令行选项时，每个工具都会提供自己的默认值。
+.PP
+文件格式支持多个部分，每个部分可以包含多个赋值。 一个部分由包含用方括号括起来的部分名称的行引入，因此
+.RS
+\fB[global]\fP
+.RE
+将引入一个名为 \fBglobal\fP 的部分。 赋值是一行，包含值的名称、等号和值的设置，因此
+.RS
+\fBthreads = 4\fP
+.RE
+会将当前部分中名为 \fBthreads\fP 的值设置为 \fB4\fP。 忽略前导和尾随空格和制表符，以及等号周围的空格和制表符。
+分配值周围的单引号和双引号也被删除。 如果结果字符串为空，则忽略整个赋值。
+.PP
+任何以 \*(lq\fB#\fP\*(rq 或 \*(lq\fB;\fP\*(rq 开头的行都将被忽略，任何空行也是如此。
+.PP
+如果分配的值以 \*(lq\fB$\fP\*(rq 开头，则其余部分将被视为名称并在 \fB[environment]\fP 部分或进程环境中查找 (请参见
+\fBenviron\fP(7)).  找到的值用于此值。
+.PP
+值名称 \fBinclude\fP 很特殊。 如果一个部分包含
+.RS
+\fBinclude = /some/file/name\fP
+.RE
+然后将读取命名文件，并将在其中找到的任何赋值添加到当前部分。 如果文件包含节标题，那么将创建新节，就像包含的文件出现在 \fBinclude\fP
+行的位置一样。 如果文件名以连字符开头，则在打开文件之前将其删除，如果文件不存在，则不会发出警告。 通常不存在的包含文件会生成警告。
+.PP
+部分和值名称的查找不区分大小写。
+
+在需要布尔值的情况下，\fBtrue\fP、\fBt\fP、\fByes\fP、\fBy\fP、\fBon\fP 或 \fB1\fP 中的任何一个均可用于 "true"，而
+\fBfalse\fP、\fBf\fP、\fBno\fP、\fBn\fP、\fBoff\fP 或 \fB0\fP 可用于 "false"。 比较不区分大小写。
+
+.SH SECTIONS
+以下部分是各种程序已知的，并且可以包含给定的命名值。 大多数部分还可以包含 \fBdebug\fP 值，它可以是列表
+\fBgeneral\fP、\fBcall\fP、\fBauth\fP、\fBparse\fP、\fBall\fP 中的一个或多个。 当给出列表时，成员应该以逗号分隔。
+.TP 
+\fBgeneral\fP
+识别值: \fBpipefs\-directory\fP。
+
+有关详细信息，请参见 \fBblkmapd\fP(8)、\fBrpc.idmapd\fP(8) 和 \fBrpc.gssd\fP(8)。
+
+.TP 
+\fBexports\fP
+识别值: \fBrootdir\fP。
+
+将 \fBrootdir\fP 设置为有效路径会导致 nfs 服务器的行为就好像所提供的路径已作为所有导出条目的前缀。例如，如果
+\fBrootdir=/my/root\fP，并且 \fB/filesystem\fP 在 /etc/exports 中有一个条目，则客户端将能够将路径挂载为
+\fB/filesystem\fP，但在服务器上，这将解析为路径 \fB/my/root/filesystem\fP。
+
+.TP 
+\fBexportd\fP
+识别值: \fBthreads\fP、\fBcache\-use\-upaddr\fP、\fBttl\fP、\fBstate\-directory\-path\fP
+
+有关详细信息，请参见 \fBexportd\fP(8)。
+
+请注意，为 \fBexportd\fP 设置 \fB\[dq]debug = auth\[dq]\fP 相当于提供 \fB\-\-log\-auth\fP 选项。
+
+.TP 
+\fBnfsdcltrack\fP
+识别值: \fBstoragedir\fP。
+
+\fBnfsdcltrack\fP 程序直接由 Linux 内核运行，没有机会提供命令行参数，所以配置文件是配置这个程序的唯一途径。 有关详细信息，请参见
+\fBnfsdcltrack\fP(8)。
+
+.TP 
+\fBnfsd\fP
+识别值:
+\fBthreads\fP、\fBhost\fP、\fBport\fP、\fBgrace\-time\fP、\fBlease\-time\fP、\fBudp\fP、\fBtcp\fP、\fBvers3\fP、\fBvers4\fP、\fBvers4.0\fP、\fBvers4.1\fP、\fBvers4.2\fP、\fBrdma\fP、
+
+版本和协议值是如上所述的布尔值，也被 \fBrpc.mountd\fP 使用。 线程和两次都是整数。 \fBport\fP 和 \fBrdma\fP 是服务名称或编号。
+有关详细信息，请参见 \fBrpc.nfsd\fP(8)。
+
+.TP 
+\fBmountd\fP
+识别值:
+\fBmanage\-gids\fP、\fBdescriptors\fP、\fBport\fP、\fBthreads\fP、\fBreverse\-lookup\fP、\fBcache\-use\-upaddr\fP、\fBttl\fP、\fBstate\-directory\-path\fP、\fBha\-callout\fP。
+
+这些与 \fB[nfsd]\fP 部分中的协议和版本值一起用于配置 mountd。 有关详细信息，请参见 \fBrpc.mountd\fP(8)。
+
+请注意，为 \fBmountd\fP 设置 \fB\[dq]debug = auth\[dq]\fP 相当于提供 \fB\-\-log\-auth\fP 选项。
+
+\fB[mountd]\fP 部分中的 \fBstate\-directory\-path\fP 值也由 \fBexportfs\fP(8) 使用。
+
+.TP 
+\fBstatd\fP
+识别值: \fBport\fP、\fBoutgoing\-port\fP、\fBname\fP、\fBstate\-directory\-path\fP、\fBha\-callout\fP。
+
+有关详细信息，请参见 \fBrpc.statd\fP(8)。
+
+.TP 
+\fBlockd\fP
+识别值: \fBport\fP 和 \fBudp\-port\fP。
+
+有关详细信息，请参见 \fBrpc.statd\fP(8)。
+
+.TP 
+\fBsm\-notify\fP
+识别值: \fBretry\-time\fP、\fBoutgoing\-port\fP 和 \fBoutgoing\-addr\fP。
+
+有关详细信息，请参见 \fBsm\-notify\fP(8)。
+
+.TP 
+\fBgssd\fP
+识别值:
+\fBverbosity\fP、\fBrpc\-verbosity\fP、\fBuse\-memcache\fP、\fBuse\-machine\-creds\fP、\fBuse\-gss\-proxy\fP、\fBavoid\-dns\fP、\fBlimit\-to\-legacy\-enctypes\fP、\fBcontext\-timeout\fP、\fBrpc\-timeout\fP、\fBkeytab\-file\fP、\fBcred\-cache\-directory\fP、\fBpreferred\-realm\fP、\fBset\-home\fP。
+
+有关详细信息，请参见 \fBrpc.gssd\fP(8)。
+
+.TP 
+\fBsvcgssd\fP
+识别值: \fBprincipal\fP。
+
+有关详细信息，请参见 \fBrpc.svcgssd\fP(8)。
+
+.TP 
+\fBexportfs\fP
+仅识别 \fBdebug=\fP。
+
+.TP 
+\fBnfsrahead\fP
+识别值: \fBnfs\fP、\fBnfsv4\fP、\fBdefault\fP。
+
+有关详细信息，请参见 \fBnfsrahead\fP(5)。
+
+.SH FILES
+.TP  10n
+\fI/etc/nfs.conf\fP
+默认 NFS 客户端配置文件
+.TP  10n
+\fI/etc/nfs.conf.d\fP
+当该目录存在且以 ".conf" 结尾的文件存在时，这些文件将用于设置配置变量。这些文件将覆盖 /etc/nfs.conf 中设置的变量
+.SH "SEE ALSO"
+\fBnfsdcltrack\fP(8), \fBrpc.nfsd\fP(8), \fBrpc.mountd\fP(8), \fBnfsmount.conf\fP(5).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,214 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1995 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tsearch 3 2023\-01\-26 "Linux man\-pages 6.03" 
+.SH NAME
+tsearch, tfind, tdelete, twalk, twalk_r, tdestroy \- 管理二叉搜索树
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <search.h>\fP
+.PP
+\fBtypedef enum { preorder, postorder, endorder, leaf } VISIT;\fP
+.PP
+\fBvoid *tsearch(const void *\fP\fIkey\fP\fB, void **\fP\fIrootp\fP\fB,\fP
+\fB                int (*\fP\fIcompar\fP\fB)(const void *, const void *));\fP
+\fBvoid *tfind(const void *\fP\fIkey\fP\fB, void *const *\fP\fIrootp\fP\fB,\fP
+\fB                int (*\fP\fIcompar\fP\fB)(const void *, const void *));\fP
+\fBvoid *tdelete(const void *restrict \fP\fIkey\fP\fB, void **restrict \fP\fIrootp\fP\fB,\fP
+\fB                int (*\fP\fIcompar\fP\fB)(const void *, const void *));\fP
+\fBvoid twalk(const void *\fP\fIroot\fP\fB,\fP
+\fB                void (*\fP\fIaction\fP\fB)(const void *\fP\fInodep\fP\fB, VISIT \fP\fIwhich\fP\fB,\fP
+\fB                               int \fP\fIdepth\fP\fB));\fP
+.PP
+\fB#define _GNU_SOURCE\fP         /* See feature_test_macros(7) */
+\fB#include <search.h>\fP
+.PP
+\fBvoid twalk_r(const void *\fP\fIroot\fP\fB,\fP
+\fB                void (*\fP\fIaction\fP\fB)(const void *\fP\fInodep\fP\fB, VISIT \fP\fIwhich\fP\fB,\fP
+\fB                               void *\fP\fIclosure\fP\fB),\fP
+\fB                void *\fP\fIclosure\fP\fB);\fP
+\fBvoid tdestroy(void *\fP\fIroot\fP\fB, void (*\fP\fIfree_node\fP\fB)(void *\fP\fInodep\fP\fB));\fP
+.fi
+.SH DESCRIPTION
+\fBtsearch\fP()、\fBtfind\fP()、\fBtwalk\fP() 和 \fBtdelete\fP() 管理二叉搜索树。 它们是从 Knuth
+(6.2.2) 算法 T 推广而来的。 树的每个节点中的第一个字段是指向相应数据项的指针。 (调用程序必须存储实际数据。) \fIcompar\fP
+指向一个比较例程，它采用指向两个项的指针。 它应该返回一个整数，即 negative、零或正数，具体取决于第一项是小于、等于还是大于第二项。
+.PP
+\fBtsearch\fP() 在树中搜索项。 \fIkey\fP 指向要查找的项目。 \fIrootp\fP 指向一个指向树根的变量。 如果树为空，则 \fIrootp\fP
+指向的变量应设置为 NULL。 如果在树中找到该项，则 \fBtsearch\fP() 返回指向相应树节点的指针。 (换句话说，\fBtsearch\fP()
+返回指向数据项的指针。) 如果没有找到该项，则 \fBtsearch\fP() 添加它，并返回指向相应树节点的指针。
+.PP
+\fBtfind\fP() 与 \fBtsearch\fP() 类似，不同之处在于如果未找到该项，则 \fBtfind\fP() 返回 NULL。
+.PP
+\fBtdelete\fP() 从树中删除一项。 其参数与 \fBtsearch\fP() 相同。
+.PP
+\fBtwalk\fP() 执行深度优先、从左到右的二叉树遍历。 \fIroot\fP 指向遍历的起始节点。 如果该节点不是根节点，则只会访问树的一部分。
+\fBtwalk\fP() 每访问一个节点就调用用户函数 \fIaction\fP (即内部节点 3 次，叶子 1 次)。 反过来，\fIaction\fP
+需要三个参数。 第一个参数是指向被访问节点的指针。 节点的结构体是未指定的，但可以将指针转换为指向元素的指针以访问存储在节点中的元素。
+应用程序不得修改此参数指向的结构体。 第二个参数是一个整数，它取值 \fBpreorder\fP、\fBpostorder\fP 或 \fBendorder\fP
+之一，具体取决于这是对内部节点的第一次、第二次还是第三次访问，如果这是对叶子节点的单次访问，则取值 \fBleaf\fP .  (这些符号定义在
+\fI<search.h>\fP.) 第三个参数是节点的深度; 根节点的深度为零。
+.PP
+(更常见的是，\fBpreorder\fP、\fBpostorder\fP 和 \fBendorder\fP 在探望子节点之前被称为
+\fBpreorder\fP、\fBinorder\fP 和 \fBpostorder\fP:，在探视子节点之后被称为 \fBpreorder\fP、\fBinorder\fP 和
+\fBpostorder\fP:。因此，名称 \fBpost\%order\fP 的选择相当混乱。)
+.PP
+\fBtwalk_r\fP() 与 \fBtwalk\fP() 类似，但 \fIclosure\fP 参数指针被传递给动作回调的每次调用，而不是 \fIdepth\fP
+参数，不变。 该指针可用于以线程安全的方式将信息传入和传出回调函数，而无需求助于全局变量。
+.PP
+\fBtdestroy\fP() 删除了 \fIroot\fP 指向的整棵树，释放了 \fBtsearch\fP() 函数分配的所有资源。
+对于每个树节点中的数据，调用函数 \fIfree_node\fP。 指向数据的指针作为参数传递给函数。 如果不需要这样的工作，\fIfree_node\fP
+必须指向一个什么都不做的函数。
+.SH "RETURN VALUE"
+\fBtsearch\fP() 返回指向树中匹配节点或新添加节点的指针，如果没有足够的内存来添加项，则返回 NULL。 \fBtfind\fP()
+返回指向该节点的指针，如果未找到匹配项，则返回 NULL。 如果有多个匹配 key 的项，返回的节点不指定。
+.PP
+\fBtdelete\fP() 返回指向删除节点的父节点的指针，如果未找到该项，则返回 NULL。 如果删除的节点是根节点，则 \fBtdelete\fP()
+返回一个不得访问的悬垂指针。
+.PP
+如果 \fIrootp\fP 在输入时为 NULL，\fBtsearch\fP()、\fBtfind\fP() 和 \fBtdelete\fP() 也会返回 NULL。
+.SH VERSIONS
+\fBtwalk_r\fP() 自 glibc 2.30 起可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBtsearch\fP(),
+\fBtfind\fP(),
+\fBtdelete\fP()
+T}	Thread safety	MT\-Safe race:rootp
+T{
+\fBtwalk\fP()
+T}	Thread safety	MT\-Safe race:root
+T{
+\fBtwalk_r\fP()
+T}	Thread safety	MT\-Safe race:root
+T{
+\fBtdestroy\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4.  函数 \fBtdestroy\fP() 和 \fBtwalk_r\fP() 是 GNU 扩展。
+.SH NOTES
+\fBtwalk\fP() 采用指向根的指针，而另一个函数采用指向指向根的变量的指针。
+.PP
+\fBtdelete\fP() 释放树中节点所需的内存。 用户负责为相应的数据释放内存。
+.PP
+示例程序依赖于 \fBtwalk\fP() 在用参数 "endorder" 或 "leaf" 调用用户函数后不再对节点进行引用。 这适用于 GNU
+库实现，但不在 System V 文档中。
+.SH EXAMPLES
+以下程序将十二个随机数插入二叉树中，其中重复的数字被折叠，然后按顺序打印数字。
+.PP
+.\" SRC BEGIN (tsearch.c)
+.EX
+#define _GNU_SOURCE     /* Expose declaration of tdestroy() */
+#include <search.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+static void *root = NULL;
+
+static void *
+xmalloc(size_t n)
+{
+    void *p;
+
+    p = malloc(n);
+    if (p)
+        return p;
+    fprintf(stderr, "insufficient memory\en");
+    exit(EXIT_FAILURE);
+}
+
+static int
+compare(const void *pa, const void *pb)
+{
+    if (*(int *) pa < *(int *) pb)
+        return \-1;
+    if (*(int *) pa > *(int *) pb)
+        return 1;
+    return 0;
+}
+
+static void
+action(const void *nodep, VISIT which, int depth)
+{
+    int *datap;
+
+    switch (which) {
+    case preorder:
+        break;   
+    case postorder:
+        datap = *(int **) nodep;
+        printf("%6d\en", *datap);
+        break;
+    case endorder:
+        break;
+    case leaf:
+        datap = *(int **) nodep;
+        printf("%6d\en", *datap);
+        break;
+    }
+}
+
+int
+main(void)
+{
+    int  *ptr;
+    int  **val;
+
+    srand(time(NULL));
+    for (unsigned int i = 0; i < 12; i++) {
+        ptr = xmalloc(sizeof(*ptr));
+        *ptr = rand() & 0xff;
+        val = tsearch(ptr, &root, compare);
+        if (val == NULL)
+            exit(EXIT_FAILURE);
+        if (*val != ptr)
+            free(ptr);
+    }
+    twalk(root, action);
+    tdestroy(root, free);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBbsearch\fP(3), \fBhsearch\fP(3), \fBlsearch\fP(3), \fBqsort\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

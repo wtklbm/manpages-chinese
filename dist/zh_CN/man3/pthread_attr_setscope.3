@@ -1,0 +1,102 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_attr_setscope 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_attr_setscope、pthread_attr_getscope\-set/get 争用线程属性对象中的属性
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_attr_setscope(pthread_attr_t *\fP\fIattr\fP\fB, int \fP\fIscope\fP\fB);\fP
+\fBint pthread_attr_getscope(const pthread_attr_t *restrict \fP\fIattr\fP\fB,\fP
+\fB                          int *restrict \fP\fIscope\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_attr_setscope\fP() 函数将 \fIattr\fP 引用的线程属性对象的争用域属性设置为 \fIscope\fP 中指定的值。
+contention 作用域属性定义了一组线程，线程会针对这些线程竞争资源 (例如 CPU)。 POSIX.1 为 \fIscope\fP: 指定两个可能的值
+.TP 
+\fBPTHREAD_SCOPE_SYSTEM\fP
+该线程与系统上处于同一调度分配域 (一组一个或多个处理器) 中的所有进程中的所有其他线程竞争资源。 \fBPTHREAD_SCOPE_SYSTEM\fP
+线程根据其调度策略和优先级相互调度。
+.TP 
+\fBPTHREAD_SCOPE_PROCESS\fP
+该线程与同一个进程中的所有其他线程竞争资源，这些线程也是使用 \fBPTHREAD_SCOPE_PROCESS\fP 争用作业域创建的。
+\fBPTHREAD_SCOPE_PROCESS\fP 线程根据其调度策略和优先级相对于进程中的其他线程进行调度。 POSIX.1
+未指定这些线程如何与系统上其他进程中的其他线程或与使用 \fBPTHREAD_SCOPE_SYSTEM\fP 争用创建的同一进程中的其他线程争用作用域。
+.PP
+POSIX.1 要求一个实现至少支持这些争用域中的一个。 Linux 支持 \fBPTHREAD_SCOPE_SYSTEM\fP，但不支持
+\fBPTHREAD_SCOPE_PROCESS\fP。
+.PP
+在支持多竞争使用域的系统上，那么为了使 \fBpthread_attr_setscope\fP() 所做的参数设置在调用
+\fBpthread_create\fP(3) 时生效，调用者必须使用 \fBpthread_attr_setinheritsched\fP(3) 将属性对象
+\fIattr\fP 的 inherit\-scheduler 属性设置为 \fBPTHREAD_EXPLICIT_SCHED\fP。
+.PP
+\fBpthread_attr_getscope\fP() 函数返回 \fIattr\fP 所指的线程属性对象在 \fIscope\fP 指向的缓冲区中的争用作用域属性。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0; 出错时，它们返回一个非零错误号。
+.SH ERRORS
+\fBpthread_attr_setscope\fP() 可能会因以下错误而失败:
+.TP 
+\fBEINVAL\fP
+在 \fIscope\fP 中指定了无效值。
+.TP 
+\fBENOTSUP\fP
+\fIscope\fP 指定值 \fBPTHREAD_SCOPE_PROCESS\fP，Linux 不支持该值。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_attr_setscope\fP(),
+\fBpthread_attr_getscope\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+\fBPTHREAD_SCOPE_SYSTEM\fP 争用作用域通常表示用户空间线程直接绑定到单个内核调度实体。 Linux 上过时的
+LinuxThreads 实现和现代 NPTL 实现就是这种情况，它们都是 1:1 线程实现。
+.PP
+POSIX.1 指定默认争用作用域是实现定义的。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBpthread_attr_init\fP(3), \fBpthread_attr_setaffinity_np\fP(3),
+\fBpthread_attr_setinheritsched\fP(3), \fBpthread_attr_setschedparam\fP(3),
+\fBpthread_attr_setschedpolicy\fP(3), \fBpthread_create\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

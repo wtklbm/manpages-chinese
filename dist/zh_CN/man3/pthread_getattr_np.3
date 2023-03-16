@@ -1,0 +1,330 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_getattr_np 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_getattr_np \- 获取创建线程的属性
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_getattr_np(pthread_t \fP\fIthread\fP\fB, pthread_attr_t *\fP\fIattr\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_getattr_np\fP() 函数初始化 \fIattr\fP 引用的线程属性对象，以便它包含描述正在运行的线程 \fIthread\fP
+的实际属性值。
+.PP
+返回的属性值可能不同于 \fIattr\fP 对象中传递的相应属性值，该对象用于使用 \fBpthread_create\fP(3) 创建线程。
+特别是，以下属性可能不同:
+.IP \[bu] 3
+分离状态，因为可连接线程在创建后可能已经分离;
+.IP \[bu]
+栈大小，实现可以将其对齐到合适的边界。
+.IP \[bu]
+和保护大小，如果应用程序正在分配自己的栈，实现可能会向上舍入到页面大小的倍数，或者忽略 (即，视为 0)。
+.PP
+此外，如果在用于创建线程的线程属性对象中未设置栈地址属性，则返回的线程属性对象将报告实现为线程选择的实际栈地址。
+.PP
+当不再需要 \fBpthread_getattr_np\fP() 返回的线程属性对象时，应该使用 \fBpthread_attr_destroy\fP(3)
+进行销毁。
+.SH "RETURN VALUE"
+成功时，这个函数返回 0; 出错时，它返回一个非零错误号。
+.SH ERRORS
+.TP 
+\fBENOMEM\fP
+.\" Can happen (but unlikely) while trying to allocate memory for cpuset
+内存不足。
+.PP
+此外，如果 \fIthread\fP 指的是主线程，那么 \fBpthread_getattr_np\fP() 可能会因为各种底层调用的错误而失败:
+\fBfopen\fP(3)，如果 \fI/proc/self/maps\fP 无法打开; 和 \fBgetrlimit\fP(2)，如果不支持
+\fBRLIMIT_STACK\fP 资源限制。
+.SH VERSIONS
+这个函数从 glibc 2.2.3 开始可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_getattr_np\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这个函数是一个非标准的 GNU 扩展; 因此名称中有后缀 "_np" (nonportable)。
+.SH EXAMPLES
+下面的程序演示了 \fBpthread_getattr_np\fP() 的使用。 该程序创建一个线程，然后使用 \fBpthread_getattr_np\fP()
+检索并显示其守卫大小、栈地址和栈大小属性。 命令行参数可用于将这些属性设置为创建线程时默认值以外的值。 下面的 shell 会话演示了该程序的使用。
+.PP
+第一次运行时，在 x86\-32 系统上，使用默认属性创建线程:
+.PP
+.in +4n
+.EX
+$\fB ulimit \-s\fP      # 没有栈限制 ==> 默认栈大小为 2 MB
+unlimited
+$\fB ./a.out\fP
+创建线程的属性:
+        Guard size          = 4096 bytes
+        Stack address       = 0x40196000 (EOS = 0x40397000)
+        Stack size          = 0x201000 (2101248) bytes
+.EE
+.in
+.PP
+在下面的运行中，我们看到如果指定了保护大小，它会向上舍入到系统页面大小的下一个倍数 (x86\-32 上为 4096 字节) :
+.PP
+.in +4n
+.EX
+$\fB ./a.out \-g 4097\fP
+初始化后的线程属性对象:
+        Guard size          = 4097 bytes
+        Stack address       = (nil)
+        Stack size          = 0x0 (0) bytes
+
+创建线程的属性:
+        Guard size          = 8192 bytes
+        Stack address       = 0x40196000 (EOS = 0x40397000)
+        Stack size          = 0x201000 (2101248) bytes
+.EE
+.in
+.\".in +4n
+.\".nf
+.\"$ ./a.out \-s 0x8000
+.\"Thread attributes object after initializations:
+.\"        Guard size          = 4096 bytes
+.\"        Stack address       = 0xffff8000 (EOS = (nil))
+.\"        Stack size          = 0x8000 (32768) bytes
+.\"
+.\"Attributes of created thread:
+.\"        Guard size          = 4096 bytes
+.\"        Stack address       = 0x4001e000 (EOS = 0x40026000)
+.\"        Stack size          = 0x8000 (32768) bytes
+.\".fi
+.\".in
+.PP
+在最后一次运行中，程序手动为线程分配了一个栈。 在这种情况下，防护尺寸属性将被忽略。
+.PP
+.in +4n
+.EX
+$\fB ./a.out \-g 4096 \-s 0x8000 \-a\fP
+在 0x804d000 处分配的线程栈
+
+初始化后的线程属性对象:
+        Guard size          = 4096 bytes
+        Stack address       = 0x804d000 (EOS = 0x8055000)
+        Stack size          = 0x8000 (32768) bytes
+
+创建线程的属性:
+        Guard size          = 0 bytes
+        Stack address       = 0x804d000 (EOS = 0x8055000)
+        Stack size          = 0x8000 (32768) bytes
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_getattr_np.c)
+\&
+.EX
+#define _GNU_SOURCE     /* To get pthread_getattr_np() declaration */
+#include <err.h>
+#include <errno.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+static void
+display_stack_related_attributes(pthread_attr_t *attr, char *prefix)
+{
+    int s;
+    size_t stack_size, guard_size;
+    void *stack_addr;
+
+    s = pthread_attr_getguardsize(attr, &guard_size);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getguardsize");
+    printf("%sGuard size          = %zu bytes\en", prefix, guard_size);
+
+    s = pthread_attr_getstack(attr, &stack_addr, &stack_size);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_getstack");
+    printf("%sStack address       = %p", prefix, stack_addr);
+    if (stack_size > 0)
+        printf(" (EOS = %p)", (char *) stack_addr + stack_size);
+    printf("\en");
+    printf("%sStack size          = %#zx (%zu) bytes\en",
+           prefix, stack_size, stack_size);
+}
+
+static void
+display_thread_attributes(pthread_t thread, char *prefix)
+{
+    int s;
+    pthread_attr_t attr;
+
+    s = pthread_getattr_np(thread, &attr);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_getattr_np");
+
+    display_stack_related_attributes(&attr, prefix);
+
+    s = pthread_attr_destroy(&attr);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_attr_destroy");
+}
+
+static void *           /* Start function for thread we create */
+thread_start(void *arg)
+{
+    printf("Attributes of created thread:\en");
+    display_thread_attributes(pthread_self(), "\et");
+
+    exit(EXIT_SUCCESS);         /* Terminate all threads */
+}
+
+static void
+usage(char *pname, char *msg)
+{
+    if (msg != NULL)
+        fputs(msg, stderr);
+    fprintf(stderr, "Usage: %s [\-s stack\-size [\-a]]"
+            " [\-g guard\-size]\en", pname);
+    fprintf(stderr, "\et\et\-a means program should allocate stack\en");
+    exit(EXIT_FAILURE);
+}
+
+static pthread_attr_t *   /* Get thread attributes from command line */
+get_thread_attributes_from_cl(int argc, char *argv[],
+                              pthread_attr_t *attrp)
+{
+    int s, opt, allocate_stack;
+    size_t stack_size, guard_size;
+    void *stack_addr;
+    pthread_attr_t *ret_attrp = NULL;   /* Set to attrp if we initialize
+                                           a thread attributes object */
+    allocate_stack = 0;
+    stack_size = \-1;
+    guard_size = \-1;
+
+    while ((opt = getopt(argc, argv, "ag:s:")) != \-1) {
+        switch (opt) {
+        case \[aq]a\[aq]:   allocate_stack = 1;                     break;
+        case \[aq]g\[aq]:   guard_size = strtoul(optarg, NULL, 0);  break;
+        case \[aq]s\[aq]:   stack_size = strtoul(optarg, NULL, 0);  break;
+        default:    usage(argv[0], NULL);
+        }
+    }
+
+    if (allocate_stack && stack_size == \-1)
+        usage(argv[0], "Specifying \-a without \-s makes no sense\en");
+
+    if (argc > optind)
+        usage(argv[0], "Extraneous command\-line arguments\en");
+
+    if (stack_size >= 0 || guard_size > 0) {
+        ret_attrp = attrp;
+
+        s = pthread_attr_init(attrp);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_init");
+    }
+
+    if (stack_size >= 0) {
+        if (!allocate_stack) {
+            s = pthread_attr_setstacksize(attrp, stack_size); 
+            if (s != 0) 
+                errc(EXIT_FAILURE, s, "pthread_attr_setstacksize");
+        } else {
+            s = posix_memalign(&stack_addr, sysconf(_SC_PAGESIZE),
+                               stack_size);
+            if (s != 0)
+                errc(EXIT_FAILURE, s, "posix_memalign");
+            printf("Allocated thread stack at %p\en\en", stack_addr);
+
+            s = pthread_attr_setstack(attrp, stack_addr, stack_size);
+            if (s != 0)
+                errc(EXIT_FAILURE, s, "pthread_attr_setstacksize");
+        }
+    }
+
+    if (guard_size >= 0) {
+        s = pthread_attr_setguardsize(attrp, guard_size);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_setstacksize");
+    }
+
+    return ret_attrp;
+}
+
+int
+main(int argc, char *argv[])
+{
+    int s;
+    pthread_t thr;
+    pthread_attr_t attr;
+    pthread_attr_t *attrp = NULL;    /* Set to &attr if we initialize
+                                        a thread attributes object */
+
+    attrp = get_thread_attributes_from_cl(argc, argv, &attr);
+
+    if (attrp != NULL) {
+        printf("Thread attributes object after initializations:\en");
+        display_stack_related_attributes(attrp, "\et");
+        printf("\en");
+    }
+
+    s = pthread_create(&thr, attrp, &thread_start, NULL);
+    if (s != 0)
+        errc(EXIT_FAILURE, s, "pthread_create");
+
+    if (attrp != NULL) {
+        s = pthread_attr_destroy(attrp);
+        if (s != 0)
+            errc(EXIT_FAILURE, s, "pthread_attr_destroy");
+    }
+
+    pause();    /* Terminates when other thread calls exit() */
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBpthread_attr_getaffinity_np\fP(3), \fBpthread_attr_getdetachstate\fP(3),
+\fBpthread_attr_getguardsize\fP(3), \fBpthread_attr_getinheritsched\fP(3),
+\fBpthread_attr_getschedparam\fP(3), \fBpthread_attr_getschedpolicy\fP(3),
+\fBpthread_attr_getscope\fP(3), \fBpthread_attr_getstack\fP(3),
+\fBpthread_attr_getstackaddr\fP(3), \fBpthread_attr_getstacksize\fP(3),
+\fBpthread_attr_init\fP(3), \fBpthread_create\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

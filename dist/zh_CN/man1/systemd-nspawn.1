@@ -1,0 +1,1436 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-NSPAWN 1 "" "systemd 253" systemd\-nspawn
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-nspawn\-Spawn 轻量级容器中的命令或操作系统
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-nspawn\fR\ 'u
+\fBsystemd\-nspawn\fP [OPTIONS...] [\fICOMMAND\fP\ [ARGS...]]
+.HP \w'\fBsystemd\-nspawn\fR\ 'u
+\fBsystemd\-nspawn\fP \-\-boot [OPTIONS...] [ARGS...]
+.SH DESCRIPTION
+.PP
+\fBsystemd\-nspawn\fP 可用于在轻量级命名空间容器中运行命令或操作系统。它在许多方面类似于
+\fBchroot\fP(1)，但更强大，因为它完全虚拟化了文件系统层次结构以及进程树、各种 IPC 子系统以及主机和域名 \&。
+.PP
+\fBsystemd\-nspawn\fP 可以在任何包含操作系统树的目录树上调用，使用 \fB\-\-directory=\fP 命令行选项 \&。通过使用
+\fB\-\-machine=\fP 选项，系统会在几个位置自动搜索操作系统树，最重要的是在 /var/lib/machines/
+中，建议目录用于放置系统上安装的操作系统容器映像 \&。
+.PP
+与 \fBchroot\fP(1)\ 相比，\&\fBsystemd\-nspawn\fP 可用于在容器中启动完整的基于 Linux 的操作系统。
+.PP
+\fBsystemd\-nspawn\fP 将容器中各种内核接口的访问限制为只读，例如 /sys/、/proc/sys/ 或
+/sys/selinux/\&。主机 \*(Aqs 网络接口和系统时钟不能从容器内更改 \&。不能创建设备节点
+\&。主机系统无法重新启动，内核模块可能无法从容器中加载。
+.PP
+使用 \fBdnf\fP(8)、\fBdebootstrap\fP(8) 或 \fBpacman\fP(8) 之类的工具来设置适合作为 \fBsystemd\-nspawn\fP
+容器 \& 的文件系统层次结构的操作系统目录树。有关适当调用这些命令的详细信息，请参见下面的示例部分。
+.PP
+作为安全检查，\fBsystemd\-nspawn\fP 将在启动容器之前验证容器树中是否存在 /usr/lib/os\-release 或
+/etc/os\-release (请参见
+\fBos\-release\fP(5))\&。如果容器的操作系统太旧，可能需要手动将此文件添加到容器树中包含此文件开箱即用的 box\&。
+.PP
+\fBsystemd\-nspawn\fP 可以直接从交互式命令行调用，也可以作为系统服务在后台运行 \&。在这种模式下，每个容器实例都作为自己的服务实例运行;
+提供默认模板元文件 systemd\-nspawn@\&.service 来简化此操作，将容器名称作为实例标识符 \&。请注意，当模板元文件调用
+\fBsystemd\-nspawn\fP 时应用的默认选项与在命令行上交互调用时应用的默认选项不同 \&。最重要的是，模板元文件使用了 \fB\-\-boot\fP
+选项，这不是默认选项，以防从交互式命令行调用 \fBsystemd\-nspawn\fP\&。与默认值的进一步差异与下面的各种支持选项一起记录 \&。
+.PP
+\fBmachinectl\fP(1) 工具可用于对容器执行许多操作。特别是它提供了易于使用的命令，使用 systemd\-nspawn@\&.service
+模板元文件 \& 将容器作为系统服务运行。
+.PP
+与每个容器一起可能存在一个带有 \&.nspawn 后缀的设置文件，其中包含运行容器时要应用的附加设置 \&。有关详细信息，请参见
+\fBsystemd.nspawn\fP(5)\&。设置文件会覆盖 systemd\-nspawn@\&.service
+模板元文件使用的默认选项，因此通常无需直接更改此模板文件 \&。
+.PP
+请注意，\fBsystemd\-nspawn\fP 会将容器私有的文件系统挂载到 /dev/、/run/ 和类似的
+\&。这些在容器外是不可见的，当容器退出时它们的内容将丢失 \&。
+.PP
+请注意，从同一目录树运行两个 \fBsystemd\-nspawn\fP 容器不会使其中的进程相互看到 \&。两个容器的 PID
+命名空间分离已经完成，除了底层文件系统外，容器将共享很少的运行时对象。而是使用 \fBmachinectl\fP(1)\*(Aqs \fBlogin\fP 或
+\fBshell\fP 命令在正在运行的容器中请求额外的登录会话 \&。
+.PP
+\fBsystemd\-nspawn\fP 实现 \m[blue]\fBContainer Interface\fP\m[]\&\s-2\u[1]\d\s+2 规范
+\&。
+.PP
+在运行时，使用 \fBsystemd\-nspawn\fP 调用的容器会在 \fBsystemd\-machined\fP(8)
+服务中注册，该服务会跟踪正在运行的容器，并提供编程接口与它们交互 \&。
+.SH OPTIONS
+.PP
+如果选项 \fB\-\-boot\fP 被指定，参数被用作 init 程序的参数 \&。否则，\fICOMMAND\fP
+指定在容器中启动的程序，剩余的参数作为本程序的参数 \&。如果未使用 \fB\-\-boot\fP 且未指定参数，则在容器中启动 shell\&。
+.PP
+理解以下选项:
+.PP
+\fB\-q\fP, \fB\-\-quiet\fP
+.RS 4
+关闭工具本身的任何状态输出 \&。使用此开关时，nspawn 的唯一输出将是容器操作系统本身的控制台输出 \&。
+.RE
+.PP
+\fB\-\-settings=\fP\fIMODE\fP
+.RS 4
+控制 \fBsystemd\-nspawn\fP 是否应从 \&.nspawn 文件 \& 中搜索和使用额外的每个容器设置。采用布尔值或特殊值
+\fBoverride\fP 或 \fBtrusted\fP\&。
+.sp
+如果启用 (默认)，将在 /etc/systemd/nspawn/ 和 /run/nspawn 中搜索以机器命名的设置文件 (由
+\fB\-\-machine=\fP 设置指定，或从目录或图像文件名派生) 后缀为 \&.nspawn/\&. 如果在那里找到它，它的设置将被读取并使用
+\&。如果在那里没有找到，则随后在与图像文件相同的目录或容器根目录的 immediate 父目录中搜索
+\&。在这种情况下，如果找到该文件，它的设置也将被读取和使用，但潜在的不安全设置将被忽略 \&。请注意，在这两种情况下，命令行上的设置优先于加载的
+\&.nspawn 文件中的相应设置，如果两者都指定了 \&。不安全的设置被认为是提升容器 \*(Aqs
+权限或授予对主机的文件或目录等额外资源的访问权限的所有设置。\&.nspawn 文件的格式和内容详见 \fBsystemd.nspawn\fP(5)\&。
+.sp
+如果此选项设置为 \fBoverride\fP，将以相同的方式搜索、读取和使用文件，但是，优先顺序相反: 从 \&.nspawn
+文件读取的设置将优先于相应的命令行选项，如果两者都指定 \&。
+.sp
+如果该选项设置为 \fBtrusted\fP，文件的搜索、读取和使用方式相同，但无论是在
+/etc/systemd/nspawn/、/run/systemd/nspawn/
+还是在镜像文件或容器根目录下找到，所有设置都会生效，但是，命令行参数仍然优先于相应的设置 \&。
+.sp
+如果禁用，则不会读取 \&.nspawn 文件，并且除了命令行上的设置外，没有其他设置生效 \&。
+.RE
+.SS "Image Options"
+.PP
+\fB\-D\fP, \fB\-\-directory=\fP
+.RS 4
+用作容器的文件系统根目录 \&。
+.sp
+如果既未指定 \fB\-\-directory=\fP 也未指定 \fB\-\-image=\fP，则通过搜索与用 \fB\-\-machine=\fP\&
+指定的机器名称相同的目录来确定目录。精确的搜索路径见 \fBmachinectl\fP(1) 节 "Files and Directories"\&。
+.sp
+如果 \fB\-\-directory=\fP、\fB\-\-image=\fP 或 \fB\-\-machine=\fP 均未指定，则使用当前目录 \&。不能与
+\fB\-\-image=\fP\& 一起指定。
+.RE
+.PP
+\fB\-\-template=\fP
+.RS 4
+用作容器模板的目录或 "btrfs" 子卷 \*(Aqs 根目录 \&. 如果已指定并且容器 \*(Aqs 根目录 (由
+\fB\-\-directory=\fP) 配置，它还不存在，则创建为 "btrfs" 快照 (如果支持) 或普通目录 (otherwise)，并从此模板树中填充
+\&。理想情况下，指定的模板路径指的是 "btrfs" 子卷的根，在这种情况下，会拍摄一个简单的写时复制快照，并立即填充根目录。如果指定的模板路径不引用
+"btrfs" 子卷的根 (或者根本不引用 "btrfs" 文件系统)，则复制树 (尽管可能在 \*(Aqreflink\*(Aq
+copy\-on\-write 方案 \ (em，如果文件系统支持的话)，这可能会更耗时
+\&。请注意，拍摄的快照是指定目录或子卷的快照，包括其下的所有子目录和子卷，但不包括任何子挂载 \&。不能与 \fB\-\-image=\fP 或
+\fB\-\-ephemeral\fP\& 一起指定。
+.sp
+请注意，此开关保留主机名、机器 ID 和所有其他可以识别未修改实例的设置。
+.RE
+.PP
+\fB\-x\fP, \fB\-\-ephemeral\fP
+.RS 4
+如果指定，容器将使用其文件系统的临时快照运行，该快照在容器终止时立即删除 \&。不能与 \fB\-\-template=\fP\& 一起指定。
+.sp
+请注意，此开关保留主机名、机器 ID 和所有其他可以识别未修改实例的设置。请注意 \(em 与 \fB\-\-template=\fP\(em 在支持子卷快照或
+\*(Aqreflinks\*(Aq 原生 ("btrfs" 或新的 "xfs") 的文件系统上拍摄临时快照比在更传统的文件系统上更有效不是
+(`ext4`) \&。请注意，拍摄的快照是指定目录或子卷的快照，包括其下的所有子目录和子卷，但不包括任何子挂载 \&。
+.sp
+使用此选项，不会保留对容器映像的任何修改 \&。将 \fB\-\-volatile=\fP (如下所述) 用于其他机制以在运行时限制容器映像的持久性 \&。
+.RE
+.PP
+\fB\-i\fP, \fB\-\-image=\fP
+.RS 4
+从 \& 挂载容器根目录的磁盘镜像。获取常规文件或块设备节点的路径 \&。文件或块设备必须包含:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+一个 MBR 分区表，带有一个 0x83 类型的分区，标记为可启动 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+具有类型为 0fc63daf\-8483\-4772\-8e79\-3d69d8477de4\& 的单个分区的 GUID 分区表 (GPT)。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+一个 GUID 分区表 (GPT)，带有标记的根分区，挂载为容器的根目录 \&。可选地，GPT 图像可能包含一个 home
+或者一个服务器数据分区，它们被安装到容器中的适当位置。所有这些分区都必须由 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[2]\d\s+2\& 定义的分区类型来标识。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+没有分区表，单个文件系统跨越整个图像 \&。
+.RE
+.sp
+在 GPT 映像上，如果发现 EFI 系统分区 (ESP)，它会自动挂载到 /efi (或 /boot 作为回退)，以防此名称的目录存在且为空 \&。
+.sp
+使用 LUKS 加密的分区会自动解密 \&。此外，如果使用 \fB\-\-root\-hash=\fP 选项 \& 指定了它们的根哈希，则在 GPT 图像上设置
+dm\-verity 数据完整性哈希分区。
+.sp
+如果使用 \fB\-\-root\-hash=\fP 和 \fB\-\-verity\-data=\fP (以及可选的 \fB\-\-root\-hash\-sig=\fP) 选项 \&)
+传递完整性数据，则可以使用 dm\-verity 打开单个文件系统映像 (i\&.e\&. 没有周围分区表的文件系统)。
+.sp
+不安装任何其他分区，例如外部分区或交换分区。不能与 \fB\-\-directory=\fP、\fB\-\-template=\fP\& 一起指定。
+.RE
+.PP
+\fB\-\-oci\-bundle=\fP
+.RS 4
+获取要调用的 OCI 运行时包的路径，如 \m[blue]\fBOCI Runtime Specification\fP\m[]\&\s-2\u[3]\d\s+2\& 中指定的那样。在这种情况下，没有加载 \&.nspawn 文件，并且从
+OCI 运行时 JSON 数据中读取根目录和各种设置 (但在命令行上传递的数据优先) \&。
+.RE
+.PP
+\fB\-\-read\-only\fP
+.RS 4
+以只读方式挂载容器 \* (Aqs 根文件系统 (以及容器映像中的任何其他文件系统容器) \&。这对使用 \fB\-\-bind=\fP、\fB\-\-tmpfs=\fP
+和类似选项 \& 制作的附加支架没有影响。如果容器图像文件或目录本身被标记为只读 \&，则隐含此模式。如果使用
+\fB\-\-volatile=\fP\&，这也是隐含的。在这种情况下，磁盘上的容器镜像是严格只读的，虽然允许更改但仅非持久地保留在内存中
+\&。有关更多详细信息，请参见下文 \&。
+.RE
+.PP
+\fB\-\-volatile\fP, \fB\-\-volatile=\fP\fIMODE\fP
+.RS 4
+以可变模式启动容器 \&。当没有传递模式参数或模式指定为 \fByes\fP 时，启用全易失模式 \&。这意味着根目录被挂载为一个几乎无人居住的
+"tmpfs" 实例，并且操作系统树中的 /usr / 以只读模式挂载到其中
+(系统因此以只读操作系统映像启动，但原始状态和配置，任何更改都会在关机时丢失) \&。当模式参数指定为 \fBstate\fP 时，OS 树以只读方式挂载，但
+/var / 作为可写 "tmpfs" 实例挂载到其中 (系统因此以只读 OS 资源和配置启动，但处于原始状态，并且对后者的任何更改都会在关机时丢失)
+\&。当 mode 参数指定为 \fBoverlay\fP 时，只读根文件系统通过 "overlayfs" 与可写 tmpfs
+实例结合，因此它通常会出现，但任何更改仅应用于临时文件系统，并在容器时丢失终止 \&。当模式参数指定为 \fBno\fP (默认值) 时，整个操作系统树都可写
+(除非指定 \fB\-\-read\-only\fP，见上文) \&。
+.sp
+请注意，如果选择了其中一种可变模式，则其影响仅限于根文件系统 (或在 \fBstate\fP) 的情况下为
+/var/，并且放置在层次结构中的任何其他安装不受影响 \(em 无论它们是否自动建立 ( e\&.g\&. 可能挂载到 /efi / 或 /boot
+/ 的 EFI 系统分区) 或显式 (e\&.g\&. 通过额外的命令行选项，如 \fB\-\-bind=\fP，见下文) \&. 这意味着，即使使用
+\fB\-\-volatile=overlay\fP，也禁止更改 /efi / 或 /boot/，以防在操作的容器映像中存在这样的分区，即使使用
+\fB\-\-volatile=state\fP，假设文件 /etc/foobar 也可能是可写的，如果 \fB\-\-bind=/etc/foobar\fP
+如果用于从只读容器 /etc / 目录之外挂载它。
+.sp
+\fB\-\-ephemeral\fP 选项与此设置密切相关，并通过制作整个操作系统映像的临时、短暂副本并执行该 \& 来提供类似的行为。有关详细信息，请参见上文
+\&。
+.sp
+\fB\-\-tmpfs=\fP 和 \fB\-\-overlay=\fP 选项提供类似的功能，但仅针对操作系统映像的特定子目录 \&。详情见下文 \&。
+.sp
+此选项为容器提供的功能与 "systemd\&.volatile=" 内核命令行开关为主机系统提供的功能类似。有关详细信息，请参见
+\fBkernel\-command\-line\fP(7)\&。
+.sp
+请注意，将此选项设置为 \fByes\fP 或 \fBstate\fP 只会与容器中的操作系统一起正常工作，这些操作系统只能在 /usr /
+挂载的情况下启动，并且能够自动填充 /var/ (如果是 "\-\-volatile=yes"，则为 /etc/) \&. 具体来说，这意味着遵循 /bin
+/ 和 /lib/ (以及相关目录) 从 /usr/ (i\&.e\&。其中前者不是后者的符号链接) 的历史拆分的操作系统不是
+"\-\-volatile=yes" 支持作为容器，载荷 \&。\fBoverlay\fP 选项不需要在操作系统中进行任何特殊准备，但请注意
+"overlayfs" 行为在许多方面与常规文件系统不同，因此兼容性有限 \&。
+.RE
+.PP
+\fB\-\-root\-hash=\fP
+.RS 4
+采用以十六进制 \& 指定的数据完整性 (dm\-verity) 根哈希。如果使用的图像包含适当的完整性数据 (见上文) \&，则此选项启用使用
+dm\-verity 的数据完整性检查。指定的散列必须与完整性数据的根散列相匹配，并且通常至少有 256 位 (因此有 64 个格式化的十六进制字符) 长
+(例如在 SHA256 的情况下) \&。如果未指定此选项，但图像文件带有 "user\&.verity\&.roothash" 扩展文件属性 (请参见
+\fBxattr\fP(7))，则从中读取根哈希，也是格式化的十六进制字符 \&。如果未找到扩展文件属性
+(或底层文件系统不支持)，但在图像文件旁边发现了一个带有 \&.roothash 后缀的文件，否则具有相同的名称 (除非图像具有 \&.raw
+后缀，在这种情况下，根哈希文件的名称中不能包含它)，从中读取根哈希并自动使用，也作为格式化的十六进制字符 \&。
+.sp
+请注意，这会为根文件系统配置根哈希 \&。磁盘映像还可能包含用于 /usr / 层次结构的单独文件系统，它们也可能受 Verity 保护
+\&。此保护的根哈希可以通过 "user\&.verity\&.usrhash" 扩展文件属性或通过与磁盘映像相邻的 \&.usrhash
+文件配置，遵循与此处描述的根文件系统的根哈希相同的格式和逻辑 \&。请注意，\*(Aqs 当前没有从命令行为 /usr / 配置根哈希的开关 \&。
+.sp
+另请详见 \fBsystemd.exec\fP(5)\& 中的 \fIRootHash=\fP 选项。
+.RE
+.PP
+\fB\-\-root\-hash\-sig=\fP
+.RS 4
+采用 \fB\-\-root\-hash=\fP 选项的 PKCS7 签名 \&。语义与 \fIRootHashSignature=\fP 选项相同，请参见
+\fBsystemd.exec\fP(5)\&。
+.RE
+.PP
+\fB\-\-verity\-data=\fP
+.RS 4
+采用数据完整性 (dm\-verity) 文件的路径 \&。如果传递了根哈希并且使用的图像本身不包含完整性数据，则此选项启用使用 dm\-verity
+的数据完整性检查。完整性数据必须与根哈希匹配。如果未指定此选项，但在图像文件旁边发现具有 \&.verity 后缀的文件，否则具有相同的名称
+(除非图像具有 \&.raw 后缀，在这种情况下为 verity 数据文件它的名称中不能包含它)，将从中读取 verity 数据并自动使用 \&。
+.RE
+.PP
+\fB\-\-pivot\-root=\fP
+.RS 4
+Pivot 指定目录到 / 容器里面，或者卸载容器 \*(Aqs old root，或者 pivot 把它放到另一个指定目录 \&。采用以下之一:
+路径参数 \(em 在这种情况下，指定的路径将转向 / 并且旧的根目录将被卸载; 或以冒号分隔的一对新根路径和旧根 \& 的 pivot
+目标。新的根路径将转到 /，而旧的 / 将转到另一个目录 \&。两个路径都必须是绝对路径，在容器 \*(Aqs 文件系统命名空间 \&.
+.sp
+这适用于其中包含多个可引导目录的容器; 例如，几个 \m[blue]\fBOSTree\fP\m[]\&\s-2\u[4]\d\s+2 部署
+\&。它模拟引导加载程序和 initrd 的行为，它们通常选择将哪个目录挂载为根目录并启动容器 \*(Aqs PID 1 in\&.
+.RE
+.SS "Execution Options"
+.PP
+\fB\-a\fP, \fB\-\-as\-pid2\fP
+.RS 4
+调用 shell 或指定程序作为进程 ID (PID) 2 而不是 PID 1 (init)\&。默认情况下，如果既不使用此选项也不使用
+\fB\-\-boot\fP，则所选程序将作为 PID 1 的进程运行，这种模式仅适用于了解 PID 1 的进程在 UNIX\&
+上具有特殊语义的程序。例如，它需要获取所有重新分配给它的进程，并且应该实现 \fBsysvinit\fP 兼容的信号处理 (具体来说: 它需要在 SIGINT
+上重新启动，在 SIGTERM 上重新执行，在 SIGHUP 上重新加载配置，等等) \&。使用 \fB\-\-as\-pid2\fP 时，最小存根初始化进程作为
+PID 1 运行，所选程序作为 PID 2 执行 (因此不需要实现任何特殊语义) \&。存根初始化进程将根据需要收集进程，并且 react
+适当地发出信号 \&。建议使用此模式调用容器中的任意命令，除非它们已被修改为以 PID 1\& 正确运行。或者换句话说:
+这个开关应该用于几乎所有命令，除非命令引用 init 或 shell 实现，因为这些通常能够作为 PID 1\& 正确运行。该选项不能与
+\fB\-\-boot\fP\& 结合使用。
+.RE
+.PP
+\fB\-b\fP, \fB\-\-boot\fP
+.RS 4
+自动搜索 init 程序并将其作为 PID 1 调用，而不是 shell 或用户提供的程序 \&。如果使用此选项，则在命令行上指定的参数将用作 init
+程序的参数 \&。该选项不能与 \fB\-\-as\-pid2\fP\& 结合使用。
+.sp
+下表解释了不同的调用模式和与 \fB\-\-as\-pid2\fP 的关系 (见上文) :
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Invocation Mode\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Switch
+T}:T{
+Explanation
+T}
+.T&
+l l
+l l
+l l.
+T{
+Neither \fB\-\-as\-pid2\fP nor \fB\-\-boot\fP specified
+T}:T{
+The passed parameters are interpreted as the command line, which is executed as PID 1 in the container\&.
+T}
+T{
+\fB\-\-as\-pid2\fP specified
+T}:T{
+The passed parameters are interpreted as the command line, which is executed as PID 2 in the container\&. A stub init process is run as PID 1\&.
+T}
+T{
+\fB\-\-boot\fP specified
+T}:T{
+An init program is automatically searched for and run as PID 1 in the container\&. The passed parameters are used as invocation parameters for this process\&.
+T}
+.TE
+.sp 1
+请注意，如果使用 systemd\-nspawn@\&.service 模板元文件，则 \fB\-\-boot\fP 是默认操作模式 \&。
+.RE
+.PP
+\fB\-\-chdir=\fP
+.RS 4
+在调用容器中的进程之前切换到指定的工作目录 \&。期望容器中的绝对路径 \*(Aqs 文件系统命名空间 \&.
+.RE
+.PP
+\fB\-E \fP\fINAME\fP\fB[=\fP\fIVALUE\fP\fB]\fP, \fB\-\-setenv=\fP\fINAME\fP\fB[=\fP\fIVALUE\fP\fB]\fP
+.RS 4
+指定要传递给容器中的 init 进程的环境变量。这可用于覆盖默认变量或设置额外的变量 \&。可以多次使用，设置多个变量 \&。当省略 "=" 和
+\fIVALUE\fP 时，将使用程序环境中同名变量的值 \&。
+.RE
+.PP
+\fB\-u\fP, \fB\-\-user=\fP
+.RS 4
+转入容器后，改为容器中定义的指定用户 \*(Aqs 用户数据库 \&. 与所有其他 systemd\-nspawn
+特性一样，这不是安全特性仅提供针对意外破坏性操作的保护 \&。
+.RE
+.PP
+\fB\-\-kill\-signal=\fP
+.RS 4
+指定发送给容器的进程信号 \*(当 nspawn 本身收到 \fBSIGTERM\fP 时 Aqs PID 1，以触发容器有序关闭 \&。如果使用
+\fB\-\-boot\fP，则默认为 \fBSIGRTMIN+3\fP (在与 systemd 兼容的初始化系统上，\fBSIGRTMIN+3\fP 触发有序关闭)
+\&。如果未使用 \fB\-\-boot\fP 且未指定此选项，则容器 \*(Aqs 进程通过 \fBSIGKILL\fP\& 突然终止。有关有效信号的列表，请参见
+\fBsignal\fP(7)\&。
+.RE
+.PP
+\fB\-\-notify\-ready=\fP
+.RS 4
+配置对来自容器 \*(Aqs init process\&.  \fB\-\-notify\-ready=\fP 采用布尔值 (\fBno\fP 和
+\fByes\fP)\&。使用选项 \fBno\fP，systemd\-nspawn 在创建 init 进程时用 "READY=1" 消息通知
+systemd\&。使用选项 \fByes\fP，systemd\-nspawn 等待来自容器中 init 进程的 "READY=1"
+消息，然后再将其自己的消息发送到 systemd\&。有关通知的更多详细信息，请参见 \fBsd_notify\fP(3)\&。
+.RE
+.PP
+\fB\-\-suppress\-sync=\fP
+.RS 4
+需要一个布尔参数 \&。如果为真，则关闭容器有效，载荷，的任何形式的磁盘文件系统同步。这意味着所有系统调用，例如
+\fBsync\fP(2)、\fBfsync()\fP、\fBsyncfs()\fP、\&... 将不执行任何操作，\fBO_SYNC\fP/\fBO_DSYNC\fP 标志到
+\fBopen\fP(2) 和相关调用将不可用 \&。这是潜在的危险，因为假设的容器有效，载荷，的数据完整性保证实际上并未强制执行
+(i\&.e\&。如果系统异常关闭，假设已写入磁盘的数据可能会丢失) \&。然而，这可以显着提高容器运行时性能 \(en
+只要这些保证不是必需的或不可取的，例如因为容器写入的任何数据都是临时的、冗余的，或者只是一个将被进一步处理和由管道中的后续步骤完成 \&。默认为
+false\&。
+.RE
+.SS "System Identity Options"
+.PP
+\fB\-M\fP, \fB\-\-machine=\fP
+.RS 4
+设置此容器的机器名称 \&。此名称可用于在运行时识别此容器 (例如在 \fBmachinectl\fP(1) 等工具中)，并用于初始化容器 \* (Aqs
+主机名 (但容器可以选择覆盖) \&。如果未指定，则使用容器根目录路径的最后一个组件，如果选择 \fB\-\-ephemeral\fP
+模式，则可能使用随机标识符作为后缀 \&。如果选择的根目录是主机 \*(Aqs 根目录主机 \*(默认使用 Aqs 主机名 \&。
+.RE
+.PP
+\fB\-\-hostname=\fP
+.RS 4
+控制要在容器内设置的主机名，如果与机器名不同 \&。需要一个有效的主机名作为参数
+\&。如果使用这个选项，容器的内核主机名将被设置为这个值，否则它将被初始化为由上述 \fB\-\-machine=\fP 选项控制的机器名
+\&。机器名称用于从外部识别容器的各个方面，使用此选项可配置的内核主机名对于容器从内部识别自己很有用
+\&。保持两种形式的标识同步通常是个好主意，以避免混淆。因此建议避免使用此选项，并专门使用 \fB\-\-machine=\fP\&。请注意，无论容器
+\*(Aqs 主机名是从使用 \fB\-\-hostname=\fP 设置的名称还是使用 \fB\-\-machine=\fP
+设置的名称初始化的，容器稍后也可以自行自由覆盖其内核主机名 \&。
+.RE
+.PP
+\fB\-\-uuid=\fP
+.RS 4
+为容器设置指定的 UUID\&。如果尚未设置此文件，init 系统将从中初始化 /etc/machine\-id\&。请注意，此选项仅在容器中的
+/etc/machine\-id 未填充 \& 时才生效。
+.RE
+.SS "Property Options"
+.PP
+\fB\-S\fP, \fB\-\-slice=\fP
+.RS 4
+使容器成为指定切片的一部分，而不是默认的 machine\&.slice\&。这仅适用于机器在其自己的使用域单元 i\&.e\& 中运行的情况。如果
+\fB\-\-keep\-unit\fP 是 \*(Aqt used\&.
+.RE
+.PP
+\fB\-\-property=\fP
+.RS 4
+在工作域元上设置一个元属性来注册机器 \&。这仅适用于机器在其自己的使用域单元 i\&.e\& 中运行的情况。如果 \fB\-\-keep\-unit\fP 是
+\*(Aqt used\&. 采用与 \fBsystemctl set\-property\fP\&
+相同的格式进行元属性赋值。这对于为容器设置内存限制和类似内容很有用。
+.RE
+.PP
+\fB\-\-register=\fP
+.RS 4
+控制容器是否注册到 \fBsystemd\-machined\fP(8)\&。采用布尔值参数，默认为 `yes`\&。当容器运行完整的操作系统 (更具体地说:
+系统和服务管理器作为 PID 1) 时，应该启用此选项，并且有助于确保容器可通过 \fBmachinectl\fP(1) 访问并由 \fBps\fP(1)\&
+等工具显示。如果容器不运行服务管理器，建议将此选项设置为 `no`\&。
+.RE
+.PP
+\fB\-\-keep\-unit\fP
+.RS 4
+与其创建一个瞬态作用域元来运行容器，不如简单地使用服务或作用域元 \fBsystemd\-nspawn\fP has been invoked
+in\&。如果设置了 \fB\-\-register=yes\fP，则这个元被注册到 \fBsystemd\-machined\fP(8)\&。如果从服务元中调用
+\fBsystemd\-nspawn\fP，则应使用此开关，并且服务元 \* (Aqs 的唯一目的是运行单个 \fBsystemd\-nspawn\fP 容器
+\&。如果从用户会话运行，则此选项不可用 \&。
+.sp
+请注意，传递 \fB\-\-keep\-unit\fP 会禁用 \fB\-\-slice=\fP 和 \fB\-\-property=\fP\& 的效果。结合使用
+\fB\-\-keep\-unit\fP 和 \fB\-\-register=no\fP 可以禁用任何类型的元分配或使用 \fBsystemd\-machined\fP\& 注册。
+.RE
+.SS "User Namespacing Options"
+.PP
+\fB\-\-private\-users=\fP
+.RS 4
+控制用户命名空间 \&。如果启用，容器将使用其自己的私有 UNIX 用户和组 ID (UID 和 GID) \& 集运行。这涉及将容器中使用的私有
+UIDs/GIDs (从容器 \* (Aqs root 用户 0 及以上) 开始) 映射到主机上不用于其他目的的 UIDs/GIDs 范围
+(通常在主机之外的范围内 \* (Aqs UID/GID 65536)\&。该参数可以指定如下:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果指定了一个或两个冒号分隔的数字，则打开用户命名空间 \&。第一个参数指定分配给容器的第一个主机 UID/GID，第二个参数指定分配给容器的主机
+UIDs/GIDs\&。如果省略第二个参数，则赋值为 65536 UIDs/GIDs\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+如果参数为 "yes"，则用户命名空间打开 \&。要使用的 UID/GID 范围是根据容器根目录 \*(Aqs 目录树
+\&. 要使用该选项，请务必提前准备好目录树，并确保其中的所有文件和目录都在您 \*(Aqd 喜欢使用 \&. 另外，请确保使用的文件 ACL
+在适当的范围内独占引用 UIDs/GIDs\&。在这种模式下，分配给容器的 UIDs/GIDs 编号为 65536，根目录的属主 UID/GID 必须是
+65536\& 的倍数。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+如果参数是 "no"，用户命名空间被关闭 \&。这是默认的 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+如果参数是 "identity"，则使用用户命名空间和前 65536 个 UID/GID\& 的标识映射。这主要等同于
+\fB\-\-private\-users=0:65536\fP\&。虽然它不提供 UID/GID 隔离，但由于所有主机和容器 UIDs/GIDs
+的选择相同，它确实提供进程功能隔离，因此如果具有不同 UID maps 的正确用户命名空间不合适 \&，通常是一个不错的选择。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+特殊值 "pick" 打开用户命名空间 \&。在这种情况下，自动选择 UID/GID 范围 \&。第一步，容器根目录的文件所有者
+UID/GID\*(读取 Aqs 目录树，检查当前没有其他容器正在使用它 \&。如果此检查成功，则使用以这种方式确定的 UID/GID 范围，类似于指定
+"yes" 时的行为 \&。如果检查不成功 (因此根目录中指示的 UID/GID 范围 \* (Aqs 文件所有者已在其他地方使用) 一个新的 \ (en 当前未使用 \ (en UID/GID 范围 65536 UIDs/GIDs 在主机 UID/GIDs 之间随机选择 524288 和
+1878982656，始终从 65536 的倍数开始，并且如果可能，始终从机器名称 \& 中散列。此设置意味着
+\fB\-\-private\-users\-ownership=auto\fP (见下文)，这可能会导致容器中的文件和目录 \* (Aqs
+目录树将由所选范围内的适当用户拥有 \&。使用此选项可使用户名称空间行为完全自动 \&。请注意，第一次调用以前未使用的容器映像可能会导致为其选择一个新的
+UID/GID 范围，因此会导致 (可能代价高昂的) 文件所有权调整操作 \&。然而，容器的后续调用将很便宜 (当然除非选择的 UID/GID
+范围到那时被分配给不同的用途) \&。
+.RE
+.sp
+建议每个容器至少分配 65536 个 UIDs/GIDs，使容器中可用的 UID/GID 范围覆盖 16 位 \&。为了获得最佳安全性，请勿将重叠的
+UID/GID 范围分配给多个容器 \&。因此，最好使用主机 32 位 UIDs/GIDs 的高 16 位作为容器标识符，而低 16 位编码使用的容器
+UID/GID\&。这实际上是 \fB\-\-private\-users=pick\fP 选项 \& 强制执行的行为。
+.sp
+使用用户命名空间时，分配给每个容器的 GID 范围始终选择与 UID 范围相同 \&。
+.sp
+在大多数情况下，使用 \fB\-\-private\-users=pick\fP 是推荐的选项，因为它极大地增强了容器安全性，并且在大多数情况下完全自动运行 \&。
+.sp
+请注意，选取的 UID/GID 范围不会写入 /etc/passwd 或
+/etc/group\&。事实上，范围的分配并没有持久存储在任何地方，除了容器的文件和目录的文件所有权 \&。
+.sp
+请注意，当使用用户命名空间时，磁盘上的文件所有权反映了这一点，并且所有容器 \*(Aqs 文件和目录都属于容器 \*(Aqs 有效用户和组
+ID\&。这意味着根据应用的 UID/GID 偏移 \&，从容器镜像复制文件和向容器镜像复制文件需要更正数字 UID/GID 值。
+.RE
+.PP
+\fB\-\-private\-users\-ownership=\fP
+.RS 4
+控制如何调整容器映像 \*(Aqs UIDs 和 GIDs 以匹配 \fB\-\-private\-users=\fP 选择的 UID/GID 范围，见上文
+\&。采用 "off" (按原样保留图像)、"chown" (递归 \fBchown()\fP 容器 \* (根据需要使用 Aqs 目录树)、"map"
+(以使用透明 ID 映射挂载) 或 "auto" 之一，以便在可用时自动使用 "map" 和 "chown" 哪里没有 \&。
+.sp
+如果选择 "chown"，则容器中的所有文件和目录 \* (将调整 Aqs 目录树，以便它们属于为容器选择的适当 UIDs/GIDs (见上文)
+\&。此操作可能代价高昂，因为它涉及遍历容器的完整目录树 \&。除了实际的文件所有权之外，文件 ACL 也会进行调整 \&。
+.sp
+通常 "map" 是最好的选择，因为它在内存中根据需要透明地 maps UIDs/GIDs 而无需修改图像，也不需要昂贵的递归调整操作
+\&。但是，它不适用于所有文件系统，目前 \&。
+.sp
+如果使用 \fB\-\-private\-users=pick\fP\&，则隐含 \fB\-\-private\-users\-ownership=auto\fP
+选项。如果不使用用户命名空间 \&，则此选项无效。
+.RE
+.PP
+\fB\-U\fP
+.RS 4
+如果内核支持用户命名空间特性相当于 \fB\-\-private\-users=pick \-\-private\-users\-ownership=auto\fP，否则相当于 \fB\-\-private\-users=no\fP\&。
+.sp
+请注意，如果使用 systemd\-nspawn@\&.service 模板元文件，则默认 \fB\-U\fP\&。
+.sp
+Note: 可以通过使用第一个 UID 为 0 重做操作来撤销 \fB\-\-private\-users\-ownership=chown\fP (或
+\fB\-U\fP)) 对文件系统的影响:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemd\-nspawn \&... \-\-private\-users=0 \-\-private\-users\-ownership=chown
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.SS "Networking Options"
+.PP
+\fB\-\-private\-network\fP
+.RS 4
+断开容器与主机的网络连接。这使得容器中的所有网络接口都不可用，除了回环设备和使用 \fB\-\-network\-interface=\fP 指定并配置为
+\fB\-\-network\-veth\fP\& 的那些。如果指定此选项，\fBCAP_NET_ADMIN\fP 功能将添加到容器保留的功能集中 \&。后者可以使用
+\fB\-\-drop\-capability=\fP\& 禁用。如果未指定此选项 (或由下面列出的选项之一暗示)，则容器将具有对主机网络的完全访问权限。
+.RE
+.PP
+\fB\-\-network\-interface=\fP
+.RS 4
+将指定的网络接口分配给容器 \&。这将从调用命名空间中删除指定的接口并将其放入容器中。当容器终止时，它被移回调用命名空间
+\&。请注意，\fB\-\-network\-interface=\fP 表示
+\fB\-\-private\-network\fP\&。此选项可以多次使用以将多个网络接口添加到容器 \&。
+.sp
+请注意，以这种方式指定的任何网络接口在容器启动时必须已经存在 \&。如果容器应通过 systemd\-nspawn@\&.service
+元文件实例在启动时自动启动，则可能需要将元文件丢弃 \- in 添加到服务实例
+(e\&.g\&./etc/systemd/system/systemd\-nspawn@foobar\&.service\&.d/50\-network\&.conf)
+内容如下:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Wants=sys\-subsystem\-net\-devices\-ens1\&.device
+After=sys\-subsystem\-net\-devices\-ens1\&.device
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+这将确保容器服务的激活将延迟到 "ens1" 网络接口出现
+\&。这是必需的，因为硬件探测是完全异步的，并且网络接口可能只会在引导过程的后期发现，在容器正常启动后没有这些显式依赖 \&。
+.RE
+.PP
+\fB\-\-network\-macvlan=\fP
+.RS 4
+创建指定以太网网络接口的 "macvlan" 接口，并将其添加到容器中 \&。"macvlan" 接口是一个虚拟接口，可将第二个 MAC
+地址添加到现有的物理以太网链路 \&。容器中的接口将以主机上的接口命名，并以 `mv\-`\& 为前缀。请注意，\fB\-\-network\-macvlan=\fP
+表示 \fB\-\-private\-network\fP\&。此选项可以多次使用以将多个网络接口添加到容器 \&。
+.sp
+与 \fB\-\-network\-interface=\fP 一样，底层以太网网络接口在容器启动时必须已经存在，因此类似于上面描述的元文件丢弃 \- ins
+可能会有用 \&。
+.RE
+.PP
+\fB\-\-network\-ipvlan=\fP
+.RS 4
+创建指定以太网网络接口的 "ipvlan" 接口，并将其添加到容器中 \&。"ipvlan" 接口是一个虚拟接口，类似于 "macvlan"
+接口，它使用与底层接口相同的 MAC 地址 \&。容器中的接口将以主机上的接口命名，并以 `iv\-`\&
+为前缀。请注意，\fB\-\-network\-ipvlan=\fP 表示
+\fB\-\-private\-network\fP\&。此选项可以多次使用以将多个网络接口添加到容器 \&。
+.sp
+与 \fB\-\-network\-interface=\fP 一样，底层以太网网络接口在容器启动时必须已经存在，因此类似于上面描述的元文件丢弃 \- ins
+可能会有用 \&。
+.RE
+.PP
+\fB\-n\fP, \fB\-\-network\-veth\fP
+.RS 4
+在主机和容器之间创建虚拟以太网链接 ("veth")\&。以太网链接的主机端将作为以容器命名的网络接口可用 \*(Aqs 名称 (用
+\fB\-\-machine=\fP) 指定，前缀为 `ve\-`\&。以太网链路的容器端将被命名为 `host0`\&。\fB\-\-network\-veth\fP
+选项表示 \fB\-\-private\-network\fP\&。
+.sp
+请注意，\fBsystemd\-networkd.service\fP(8) 默认包含一个网络文件
+/usr/lib/systemd/network/80\-container\-ve\&.network 与以这种方式创建的主机端接口相匹配，其中包含通过
+DHCP 在创建的虚拟链接上启用自动地址配置的设置，以及到主机的自动 IP 路由 \* (Aqs 外部网络接口
+\&。它还包含与以这种方式创建的容器端接口相匹配的
+/usr/lib/systemd/network/80\-container\-host0\&.network，其中包含通过 DHCP\&
+启用客户端地址分配的设置。如果 systemd\-networkd 同时在主机和容器内部运行，则可以从容器到主机进行自动 IP
+通信，并进一步连接到外部网络 \&。
+.sp
+请注意，如果使用 systemd\-nspawn@\&.service 模板元文件，则默认 \fB\-\-network\-veth\fP\&。
+.sp
+请注意，在 Linux 上，网络接口名称的长度最多为 15 个字符，而容器名称的长度最多为 64 个字符
+\&。由于此选项从容器名称派生主机端接口名称，因此该名称可能被截断
+\&。因此，需要注意确保接口名称在这种情况下保持唯一，或者更好的容器名称通常不会选择超过 12 个字符，以避免截断
+\&。如果名称被截断，\fBsystemd\-nspawn\fP 会自动在名称后，追加，一个 4 位哈希值以减少冲突的机会。然而，散列算法并不是无冲突的
+\&。(有关此接口的旧命名算法的详细信息，请参见 \fBsystemd.net\-naming\-scheme\fP(7)) \&。或者，可以使用
+\fB\-\-network\-veth\-extra=\fP 选项，它允许独立于容器名称自由配置主机端接口名称 \(em 但可能需要更多的额外配置，以防需要以类似于
+\fB\-\-network\-bridge=\fP 的方式桥接 \&。
+.RE
+.PP
+\fB\-\-network\-veth\-extra=\fP
+.RS 4
+在主机和容器之间添加额外的虚拟以太网链接 \&。采用冒号分隔的主机接口名称和容器接口名称
+\&。后者可以省略，在这种情况下，容器和主机端将被分配相同的名称 \&。此开关独立于 \fB\-\-network\-veth\fP，\(em 相反 \(em
+可以多次使用，并允许配置网络接口名称 \&。请注意，\fB\-\-network\-bridge=\fP 对使用
+\fB\-\-network\-veth\-extra=\fP\& 创建的接口没有影响。
+.RE
+.PP
+\fB\-\-network\-bridge=\fP
+.RS 4
+将使用 \fB\-\-network\-veth\fP 创建的以太网链路的主机端添加到指定的以太网桥接口 \&。期望桥接设备的有效网络接口名称为参数
+\&。请注意，\fB\-\-network\-bridge=\fP 表示 \fB\-\-network\-veth\fP\&。如果使用此选项，以太网链路的主机端将使用
+"vb\-" 前缀而不是 `ve\-`\&。无论使用何种命名前缀，Linux 施加的相同网络接口名称长度限制都适用，以及由此产生的复杂性
+(有关详细信息，请参见上文) \&。
+.sp
+与 \fB\-\-network\-interface=\fP 一样，底层桥接网络接口在容器启动时必须已经存在，因此类似于上面描述的元文件丢弃 \- ins 可能有用
+\&。
+.RE
+.PP
+\fB\-\-network\-zone=\fP
+.RS 4
+创建到容器的虚拟以太网链接 ("veth")，并将其添加到自动管理的以太网桥接口 \&。桥接接口以传递的参数命名，前缀为
+`vz\-`\&。桥接接口在第一个为其名称配置的容器启动时自动创建，并在最后一个为其名称配置的容器退出时自动删除
+\&。因此，以这种方式配置的每个桥接接口只要有 \*(Aqs 至少一个引用它的容器正在运行 \&。这个选项和 \fB\-\-network\-bridge=\fP
+非常相似，除了这个桥接设备的自动 creation/removal\&。
+.sp
+此设置可以轻松地将多个相关容器放置在一个公共的、基于虚拟以太网的广播域上，这里称为
+`区域`\&。每个容器只能是一个区域的一部分，但每个区域可以包含任意数量的容器 \&。每个区域都由其名称 \& 引用。名称可以自由选择 (只要它们在以
+"vz\-" 为前缀时形成有效的网络接口名称)，并且将相同的名称传递给各种并发运行的容器的 \fB\-\-network\-zone=\fP
+开关以将它们加入一个区域就足够了。
+.sp
+请注意，\fBsystemd\-networkd.service\fP(8) 默认包含一个网络文件
+/usr/lib/systemd/network/80\-container\-vz\&.network 与以这种方式创建的网桥接口相匹配，其中包含通过
+DHCP 在创建的虚拟网络上启用自动地址配置的设置，以及到主机的自动 IP 路由 \* (Aqs 外部网络接口 \&。因此，在大多数情况下，使用
+\fB\-\-network\-zone=\fP 是全自动的，足以将加入的广播域中的多个本地容器连接到主机，并进一步连接到外部网络 \&。
+.RE
+.PP
+\fB\-\-network\-namespace\-path=\fP
+.RS 4
+获取表示容器应在其中运行的内核网络命名空间的文件的路径 \&。指定的路径应该引用一个 (可能是绑定安装的) 网络命名空间文件，如内核在
+/proc/net\& 下公开的那样。这使容器进入给定的网络名称空间 \&。一个典型的用例是给 \fBip\-netns\fP(8) 创建的
+/run/netns 下的网络命名空间，例如
+\fB\-\-network\-namespace\-path=/run/netns/foo\fP\&。请注意，此选项不能与其他与网络相关的选项一起使用，例如
+\fB\-\-private\-network\fP 或 \fB\-\-network\-interface=\fP\&。
+.RE
+.PP
+\fB\-p\fP, \fB\-\-port=\fP
+.RS 4
+如果启用私有网络，maps 主机上的 IP 端口到容器上的 IP 端口 \&。采用协议说明符 ("tcp" 或 "udp")，以冒号与 1 到
+65535 范围内的主机端口号分隔，以冒号与 1 到 65535\& 范围内的容器端口号分隔。协议说明符及其分隔冒号可以省略，在这种情况下假定为
+"tcp"\&。容器端口号及其冒号可以省略，在这种情况下隐含与主机端口相同的端口 \&。仅当使用专用网络时才支持此选项，例如使用
+\fB\-\-network\-veth\fP、\fB\-\-network\-zone=\fP \fB\-\-network\-bridge=\fP\&。
+.RE
+.SS "Security Options"
+.PP
+\fB\-\-capability=\fP
+.RS 4
+列出一项或多项附加功能以授予容器 \&。采用以逗号分隔的功能名称列表，有关详细信息，请参见
+\fBcapabilities\fP(7)\&。请注意，以下功能将以任何方式授予:
+\fBCAP_AUDIT_CONTROL\fP、\fBCAP_AUDIT_WRITE\fP、\fBCAP_CHOWN\fP、\fBCAP_DAC_OVERRIDE\fP、\fBCAP_DAC_READ_SEARCH\fP、\fBCAP_FOWNER\fP、\fBCAP_FSETID\fP、\fBCAP_IPC_OWNER\fP、\fBCAP_KILL\fP、\fBCAP_LEASE\fP、\fBCAP_LINUX_IMMUTABLE\fP、\fBCAP_MKNOD\fP、\fBCAP_NET_BIND_SERVICE\fP、\fBCAP_NET_BROADCAST\fP、\fBCAP_NET_RAW\fP、\fBCAP_SETFCAP\fP、\fBCAP_SETGID\fP、\fBCAP_SETPCAP\fP、\fBCAP_SETUID\fP、\fBCAP_SYS_ADMIN\fP、\fBCAP_SYS_BOOT\fP、\fBCAP_SYS_CHROOT\fP、\fBCAP_SYS_NICE\fP、\fBCAP_SYS_PTRACE\fP、\fBCAP_SYS_RESOURCE\fP、\fBCAP_SYS_TTY_CONFIG\fP\&。如果指定
+\fB\-\-private\-network\fP\&，也会保留 \fBCAP_NET_ADMIN\fP。如果传递特殊值 "all"，则保留所有功能 \&。
+.sp
+如果传递了 "help" 的特殊值，程序将打印已知的功能名称并退出 \&。
+.sp
+此选项设置功能的边界集，这也限制了 \fB\-\-ambient\-capability=\fP\& 给出的环境功能。
+.RE
+.PP
+\fB\-\-drop\-capability=\fP
+.RS 4
+为容器指定一项或多项附加功能丢弃。这允许以比默认 (见上文) 更少的功能运行容器 \&。
+.sp
+如果传递了 "help" 的特殊值，程序将打印已知的功能名称并退出 \&。
+.sp
+此选项设置功能的边界集，这也限制了 \fB\-\-ambient\-capability=\fP\& 给出的环境功能。
+.RE
+.PP
+\fB\-\-ambient\-capability=\fP
+.RS 4
+指定一个或多个附加功能以将可继承和环境集传递给在容器内启动的程序。此设置不支持值 "all"\&。
+.sp
+此处指定的所有功能必须在 \fB\-\-capability=\fP 和 \fB\-\-drop\-capability=\fP 选项允许的集合中 \&。否则，将显示错误消息
+\&。
+.sp
+此选项不能与容器的启动模式结合使用 (如通过 \fB\-\-boot\fP)\&.
+.sp
+如果传递了 "help" 的特殊值，程序将打印已知的功能名称并退出 \&。
+.RE
+.PP
+\fB\-\-no\-new\-privileges=\fP
+.RS 4
+采用布尔型参数 \&。指定容器，载荷，的 \fBPR_SET_NO_NEW_PRIVS\fP 标志的值 \&。默认关闭 \&。当打开容器的 payload
+代码时无法获取新的权限，i\&.e\&。"setuid" 文件位以及文件系统功能将不再起作用 \&。有关此标志 \& 的详细信息，请参见
+\fBprctl\fP(2)。
+.RE
+.PP
+\fB\-\-system\-call\-filter=\fP
+.RS 4
+改变应用于容器的系统调用过滤器。采用以空格分隔的系统调用名称或组名称列表 (后者以 "@" 为前缀，如 \fBsystemd\-analyze\fP(1))\&
+的 \fBsyscall\-filter\fP 命令所列。将允许通过的系统调用 \&。该列表可以选择性地以 "~"
+为前缀，在这种情况下，所有列出的系统调用都被禁止 \&。如果多次使用此命令行选项，配置的列表将合并 \&。如果同时配置了一个正列表和一个
+negative 列表 (即一个没有 "~" 前缀和一个有 "~" 前缀的系统调用列表)，则 negative 列表优先于正列表
+\&。请注意，\fBsystemd\-nspawn\fP 始终实现系统调用允许列表 (与拒绝列表相反! )，因此此命令行选项会根据 "~" 前缀 \&
+添加或删除默认允许列表中的条目。请注意，如果使用 \fB\-\-capabilities=\fP\& 传递附加功能，则应用的系统调用过滤器也会隐式更改。
+.RE
+.PP
+\fB\-Z\fP, \fB\-\-selinux\-context=\fP
+.RS 4
+设置 SELinux 安全上下文以用于标记容器中的进程 \&。
+.RE
+.PP
+\fB\-L\fP, \fB\-\-selinux\-apifs\-context=\fP
+.RS 4
+设置 SELinux 安全上下文以用于标记容器中虚拟 API 文件系统中的文件 \&。
+.RE
+.SS "Resource Options"
+.PP
+\fB\-\-rlimit=\fP
+.RS 4
+为容器，载荷，设置指定的 POSIX 资源限制。期望 "\fILIMIT\fP=\fISOFT\fP:\fIHARD\fP" 或 "\fILIMIT\fP=\fIVALUE\fP"
+形式的分配，其中 \fILIMIT\fP 应指代资源限制类型，例如 \fBRLIMIT_NOFILE\fP 或 \fBRLIMIT_NICE\fP\&。\fISOFT\fP 和
+\fIHARD\fP 字段应引用数字软硬资源限制值 \&。如果使用第二种形式，\fIVALUE\fP 可以指定一个值，同时用作软限制和硬限制
+\&。代替数值，特殊字符串 "infinity" 可用于关闭特定类型资源的资源限制 \&。此命令行选项可多次使用以控制多种限制类型的限制
+\&。如果多次使用相同的限制类型，最后一次使用获胜 \&。有关资源限制的详细信息，请参见 \fBsetrlimit\fP(2)\&。默认情况下，容器的资源限制
+\* (Aqs init 进程 (PID 1) 设置为 Linux 内核最初传递给主机 init 系统的相同值
+\&。请注意，某些资源限制是针对每个用户计算的资源强制执行的，特别是 \fBRLIMIT_NPROC\fP\&。这意味着除非部署了用户命名空间
+(i\&.e\&.  使用 \fB\-\-private\-users=\fP，见上文)，任何限制设置都将应用于同一用户在所有本地容器以及主机上的资源使用
+\&。这意味着需要特别注意这些限制，因为它们可能会被不太受信任的代码触发。示例:
+`\-\-rlimit=RLIMIT_NOFILE=8192:16384`\&。
+.RE
+.PP
+\fB\-\-oom\-score\-adjust=\fP
+.RS 4
+更改容器，载荷，的 OOM (`内存不足`) 分数调整值。这控制
+/proc/self/oom_score_adj，它影响当内存变得稀缺时终止此容器的首选项 \&。有关详细信息，请参见 \fBproc\fP(5)\&。采用
+\- 1000\&...1000\& 范围内的整数。
+.RE
+.PP
+\fB\-\-cpu\-affinity=\fP
+.RS 4
+控制容器，载荷，的 CPU 亲和力 \&。采用逗号分隔的 CPU 编号或编号范围列表 (后者 \* (Aqs 开始和结束值由破折号分隔)
+\&。有关详细信息，请参见 \fBsched_setaffinity\fP(2)\&。
+.RE
+.PP
+\fB\-\-personality=\fP
+.RS 4
+控制容器中 \fBuname\fP(2) 报告的架构 ("personality")\&。目前只支持 "x86" 和 "x86\-64"\&。这在 64
+位主机上运行 32 位容器时很有用 \&。如果不使用此设置，容器中报告的个性与主机上报告的相同 \&。
+.RE
+.SS "Integration Options"
+.PP
+\fB\-\-resolv\-conf=\fP
+.RS 4
+配置如何处理容器内部的 /etc/resolv\&.conf (i\&.e\&. 从主机到容器的 DNS 配置同步) \&。采用
+"off"、"copy\-host"、"copy\-static"、"copy\-uplink"、"copy\-stub"、"replace\-host"、"replace\-static"、"replace\-uplink"、"replace\-stub"、"bind\-host"、"bind\-static"、"bind\-uplink"、"bind\-stub"、"delete"
+或 `自动`\& 之一。
+.sp
+如果设置为 "off"，则容器中的 /etc/resolv\&.conf 文件将保留为包含在图像中，并且既不会修改也不会绑定挂载到 \&。
+.sp
+如果设置为 "copy\-host"，主机中的 /etc/resolv\&.conf 文件将被复制到容器中，除非该文件已经存在并且不是常规文件 (例如
+\&.g\&. 符号链接) \&。同样，如果使用 "replace\-host"，则复制文件，替换任何现有的索引节点，包括符号链接 \&。类似地，如果使用
+"bind\-host"，则文件会从主机绑定挂载到容器中。
+.sp
+如果设置为 "copy\-static"、"replace\-static" 或
+"bind\-static"，\fBsystemd\-resolved.service\fP(8) 提供的静态 resolv\&.conf 文件 (特别是:
+/usr/lib/systemd/resolv\&.conf) 将被复制或绑定安装到容器中。
+.sp
+如果设置为 "copy\-uplink"、"replace\-uplink" 或 "bind\-uplink"，则由
+systemd\-resolved\&.service (特别是: /run/systemd/resolve/resolv\&.conf) 管理的上行链路
+resolv\&.conf 文件被复制或绑定安装到容器中。
+.sp
+如果设置为 "copy\-stub"、"replace\-stub" 或 "bind\-stub"，则由 systemd\-resolved\&.service
+(特别是: /run/systemd/resolve/stub\-resolv\&.conf) 管理的存根 resolv\&.conf
+文件将被复制或绑定安装到容器中。
+.sp
+如果设置为 "delete"，容器中的 /etc/resolv\&.conf 文件如果存在则被删除 \&。
+.sp
+最后，如果设置为 "auto"，如果启用了专用网络，则文件保持原样 (请参见 \fB\-\-private\-network\fP)\&。否则，如果
+systemd\-resolved\&.service 正在运行，则使用其存根 resolv\&.conf 文件，如果不是主机 \* (Aqs
+/etc/resolv\&.conf 文件 \&. 在后一种情况下，如果图像可写，则复制文件，否则绑定挂载 \&。
+.sp
+它 \*(Aqs 建议使用 "copy\-\&..." 或 "replace\-\&..."，如果容器应该能够自己更改 DNS 配置，偏离主机 \*(Aqs
+设置 \&。否则 "bind" 更可取，因为这意味着不允许直接更改容器中的 /etc/resolv\&.conf，因为它是只读绑定挂载
+(但请注意，如果容器具有足够的权限，它可能会继续并卸载绑定挂载)\&。请注意，无论文件是绑定安装的还是复制的，在一次性早期初始化之后通常都不会进一步传播配置
+(这是因为文件通常通过复制和重命名来更新) \&。默认为 `自动`\&。
+.RE
+.PP
+\fB\-\-timezone=\fP
+.RS 4
+配置容器内部的 /etc/localtime (i\&.e\&。从主机到容器的本地时区同步) 应如何处理 \&。采用
+"off"、"copy"、"bind"、"symlink"、"delete" 或 `自动`\& 之一。如果设置为 "off"，则容器中的
+/etc/localtime 文件将保留为包含在图像中的样子，既不会修改也不会绑定挂载到 \& 上。如果设置为 "copy"，主机的
+/etc/localtime 文件将被复制到容器中。类似地，如果使用 "bind"，则文件会从主机绑定挂载到容器中。如果设置为
+"symlink"，则会创建一个符号链接，从容器中的 /etc/localtime 指向容器中与主机上的时区设置匹配的时区文件 \&。如果设置为
+"delete"，则删除容器中的文件，如果它存在 \&。如果设置为 "auto" 并且主机的 /etc/localtime 文件是符号链接，则使用
+"symlink" 模式，否则使用 "copy"，除非图像是只读的，在这种情况下使用 "bind" 代替 \&。默认为 `自动`\&。
+.RE
+.PP
+\fB\-\-link\-journal=\fP
+.RS 4
+控制容器 \*(Aqs journal shall be visible to the host system\&。如果启用，允许查看容器 \*
+(来自主机的 Aqs 日志文件 (反之亦然) \&。采用
+"no"、"host"、"try\-host"、"guest"、"try\-guest"、`auto`\& 之一。如果为 "no"，则日志未链接
+\&。如果是 "host"，则日志文件存储在主机文件系统上 (在 /var/log/journal/\fImachine\-id\fP)
+下，子目录被绑定挂载到容器的同一位置 \&。如果是 "guest"，则日志文件存储在来宾文件系统上 (在
+/var/log/journal/\fImachine\-id\fP) 下，子目录在同一位置符号链接到主机 \&。 "try\-host" 和
+"try\-guest" 做同样的事情，但如果主机没有启用持久日志，则不会失败 \&。如果 "auto" (默认) 和 /var/log/journal
+的正确子目录存在，它将被绑定安装到容器中 \&。如果子目录不存在，则不执行链接 \&。实际上，使用 "guest" 或 "host"
+启动一次容器将持久链接日志，如果进一步使用默认的 "auto"\&。
+.sp
+请注意，如果使用 systemd\-nspawn@\&.service 模板元文件，则默认 \fB\-\-link\-journal=try\-guest\fP\&。
+.RE
+.PP
+\fB\-j\fP
+.RS 4
+相当于 \fB\-\-link\-journal=try\-guest\fP\&。
+.RE
+.SS "Mount Options"
+.PP
+\fB\-\-bind=\fP, \fB\-\-bind\-ro=\fP
+.RS 4
+将主机中的文件或目录绑定挂载到容器中。采用以下之一: 路径参数 \\&\(em
+在这种情况下指定的路径将从主机挂载到容器中的相同路径，或者以冒号分隔的路径对 \\&\(em
+在这种情况下第一个指定路径是主机中的源，第二个路径是容器中的目标，或者是源路径、目标路径和挂载选项的冒号分隔的三元组 \&。源路径可以选择使用 "+"
+字符 \& 作为前缀。如果是，源路径取相对于图片 \*(Aqs 根目录
+\&. 这允许在容器镜像中设置绑定挂载。源路径可以指定为空字符串，在这种情况下，主机下的一个临时目录 \* (使用 Aqs /var/tmp/ 目录
+\&。它会在容器关闭时自动删除 \&。如果源路径不是绝对路径，则相对于当前工作目录解析 \&。\fB\-\-bind\-ro=\fP 选项创建只读绑定挂载
+\&。反斜杠转义被解释，因此 "\e:" 可用于在任一路径中嵌入冒号 \&。可以多次指定此选项以创建多个独立的绑定安装点 \&。
+.sp
+挂载选项以逗号分隔 \&。 \fBrbind\fP 和 \fBnorbind\fP 控制是创建递归还是常规绑定挂载 \&。默认为
+`rbind`\&。\fBnoidmap\fP、\fBidmap\fP、\fBrootidmap\fP 控制 ID 映射 \&。
+.sp
+使用 \fBidmap\fP 或 \fBrootidmap\fP 需要源文件系统支持 user/group ID 映射挂载 \&。默认为
+`noidmap`\&。\fBx\fP 是容器 \*(Aqs UID 范围偏移量，\fBy\fP 是容器长度 \*(Aqs UID 范围，\fBp\fP
+是主机上绑定挂载源 inode 的所有者 UID:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果使用 \fBnoidmap\fP，则从容器内部看到的 \fB0 \&... y\fP 范围内的任何用户 \fBz\fP 都映射到主机上 \fBx \&... x + y\fP 范围内的 \fBx + z\fP\&。其他主机用户映射到容器内的 \fBnobody\fP\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果使用 \fBidmap\fP，从容器内部看到的 UID 范围 \fB0 \&... y\fP 中的任何用户 \fBz\fP 都映射到主机上相同 \fB0 \&... y\fP 范围中的相同 \fBz\fP\&。该范围之外的所有主机用户都映射到容器内的 \fBnobody\fP\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+如果使用 \fBrootidmap\fP，则从容器内部看到的用户 \fB0\fP 将映射到主机上的 \fBp\fP\&。该范围之外的所有主机用户都映射到容器内的
+\fBnobody\fP\&。
+.RE
+.sp
+无论使用哪个 ID 映射选项，相同的映射将用于用户和组 ID\&。如果使用 \fBrootidmap\fP，则拥有绑定挂载目录的组将无效 \&。
+.sp
+请注意，当此选项与 \fB\-\-private\-users\fP 结合使用时，生成的挂载点将归 \fBnobody\fP 用户所有 \&。那 \*(Aqs
+因为装载及其文件和目录继续由相关主机用户和组拥有，这些用户和组不存在于容器中，因此显示在通配符 UID 65534 (nobody)\&
+下。如果创建了此类绑定安装，建议使用 \fB\-\-bind\-ro=\fP\& 将它们设置为只读。或者，您可以使用 "idmap" 挂载选项来 map 文件系统
+ID\&。
+.RE
+.PP
+\fB\-\-bind\-user=\fP
+.RS 4
+将主机上指定用户的主目录绑定到容器中 \&。将主机上现有用户的名称作为参数 \&。可以多次使用，将多个用户绑定到容器中 \&。这做了三件事:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+user\*(Aqs 主目录从主机绑定挂载到 /run/home/\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+添加了一个额外的 UID/GID 映射，即 maps 主机用户 \*(Aqs UID/GID 到容器 UID/GID，从 60514\&...60577
+范围分配 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+在 /run/userdb/ 中生成一个 JSON 用户和组记录，描述映射的用户 \&。它包含主机的最小化表示 \*(Aqs
+用户记录，调整为容器中分配给用户的 UID/GID 和主目录路径 \&。\fBnss\-systemd\fP(8) glibc NSS
+模块将从那里获取这些记录并使它们在容器 \*(Aqs user/group 数据库 \&.
+.RE
+.sp
+以上三个操作的组合保证了可以使用与宿主机相同的账号信息登录容器。用户仅在容器运行时被临时映射，并且映射本身不会导致对容器的持久更改
+(登录时生成的日志消息等可能除外) \&。请注意，特别是容器中的 UID/GID 分配不是持久的
+\&。如果用户是临时映射的，最好不要让用户对容器进行持久性更改。如果用户保留用户拥有所有权的文件或目录，并且这些 UIDs/GIDs
+在以后的容器调用期间被重用 (可能具有不同的 \fB\-\-bind\-user=\fP 映射)，则 "new" 用户将可以访问这些文件和目录 \&。
+.sp
+user/group 记录映射仅在容器包含 systemd 249 或更新版本且在 nsswitch\&.conf\& 中正确配置
+\fBnss\-systemd\fP 时才有效。有关详细信息，请参见 \fBnss\-systemd\fP(8)\&。
+.sp
+请注意，从主机传播到容器中的用户记录将包含用户的 UNIX 密码哈希，因此可以在容器中无缝登录 \&。如果容器不如主机那么可信 \*(Aqs 因此使用强
+UNIX 密码散列函数很重要 (e\&.g\&. yescrypt 或类似的，带有 "$y$" 哈希前缀) \&。
+.sp
+当将用户从主机绑定到容器时，执行检查以确保用户名在容器中未知。此外，已检查为其分配的 UID/GID 当前未在容器的 user/group
+数据库中定义。这两项检查都直接访问容器 \*(Aqs /etc/passwd 和 /etc/group，因此可能无法检测到其他数据库中的现有帐户 \&。
+.sp
+此操作仅支持与 \fB\-\-private\-users=\fP/\fB\-U\fP\& 结合使用。
+.RE
+.PP
+\fB\-\-inaccessible=\fP
+.RS 4
+使容器中的指定路径不可访问 \&。这会将指定路径 (必须存在于容器中) 与同类型的文件节点挂载，该文件节点为空且支持最严格的访问模式
+\&。这是从容器，载荷，中屏蔽文件、目录和其他文件系统对象的有效方法。如果所有指定路径都被屏蔽 \&，则可以多次使用此选项。
+.RE
+.PP
+\fB\-\-tmpfs=\fP
+.RS 4
+将 tmpfs 文件系统挂载到容器中。采用单个绝对路径参数，指定将 tmpfs 实例安装到的位置 (在这种情况下，目录访问模式将被选择为 0755，由
+root/root 拥有)，或者可选地使用冒号分隔的一对路径和安装选项字符串用于安装 (在这种情况下，将选择内核默认的访问模式和所有者，除非另有说明)
+\&。反斜杠转义在路径中解释，因此 "\e:" 可用于在路径中嵌入冒号 \&。
+.sp
+请注意，该选项不能用于将容器的根文件系统替换为临时文件系统 \&。然而，下面描述的 \fB\-\-volatile=\fP
+选项提供了类似的功能，重点是实现无状态操作系统映像。
+.RE
+.PP
+\fB\-\-overlay=\fP, \fB\-\-overlay\-ro=\fP
+.RS 4
+将多个目录树组合成一个 overlay 文件系统挂载到容器中。获取要组合的目录树的冒号分隔路径列表和目标挂载点 \&。
+.sp
+在路径中解释反斜杠转义，因此 "\e:" 可用于在路径中嵌入冒号 \&。
+.sp
+如果指定了三个或更多路径，则最后指定的路径为容器中的目标挂载点，之前指定的所有路径均指宿主机上的目录树，并按指定顺序组合成一个覆盖文件系统
+\&。因此，最左边的路径是最低的目录树，倒数第二个路径是堆叠顺序中最高的目录树 \&。如果使用 \fB\-\-overlay\-ro=\fP 而不是
+\fB\-\-overlay=\fP，则会创建一个只读覆盖文件系统
+\&。如果创建了可写覆盖文件系统，则对其所做的所有更改都将写入栈顺序中的最高目录树，i\&.e\&。倒数第二个指定的 \&。
+.sp
+如果只指定了两个路径，那么第二个指定的路径既作为从宿主机看到的栈顺序中的顶级目录树，也作为容器中 overlay 文件系统的挂载点。至少必须指定两个路径
+\&。
+.sp
+源路径可以选择使用 "+" 字符 \& 作为前缀。如果是这样，它们是相对于图像 \*(Aqs 根目录
+\&. 最上面的源路径也可以指定为空字符串，在这种情况下主机下的一个临时目录 \*(使用 Aqs /var/tmp/\&. 该目录在容器关闭时自动删除
+\&。此行为有助于在容器运行时使只读容器目录可写 \&。例如，使用 "\-\-overlay=+/var::/var" 以自动覆盖只读 /var / 目录
+\& 上的可写临时目录。如果源路径不是绝对路径，则相对于当前工作目录 \& 解析它。
+.sp
+有关覆盖文件系统的详细信息，请参见 \m[blue]\fBOverlay Filesystem\fP\m[]\&\s-2\u[5]\d\s+2\&。请注意，覆盖文件系统的语义与普通文件系统有很大不同，特别是关于报告的设备和
+inode 信息 \&。在写入文件时，设备和 inode 信息可能会更改，并且进程有时可能会看到文件的过时版本
+\&。请注意，此开关自动从顶级目录树中为覆盖文件系统派生 "workdir=" 挂载选项，使其成为它的兄弟
+\&。因此，顶级目录树本身不是挂载点是很重要的 (因为工作目录必须与最顶层目录树位于同一文件系统上) \&。另请注意，"lowerdir="
+安装选项接收以与此开关相反的顺序堆叠的路径 \&。
+.sp
+请注意，此选项不能用于将容器的根文件系统替换为覆盖文件系统 \&。然而，上述 \fB\-\-volatile=\fP
+选项提供了类似的功能，重点是实现无状态操作系统映像。
+.RE
+.SS "Input/Output Options"
+.PP
+\fB\-\-console=\fP\fIMODE\fP
+.RS 4
+配置如何设置容器，载荷，的标准输入、输出和错误输出，以及容器的 /dev/console 设备 \&。采用
+\fBinteractive\fP、\fBread\-only\fP、\fBpassive\fP、\fBpipe\fP 或 \fBautopipe\fP\& 之一。如果是
+\fBinteractive\fP，一个伪 TTY 被分配并在容器中作为 /dev/console 可用 \&。然后它双向连接到传递给
+\fBsystemd\-nspawn\fP\& 的标准输入和输出。\fBread\-only\fP 类似，但只传播容器的输出，不读取调用者的输入。如果是
+\fBpassive\fP，则分配一个伪 TTY，但它没有连接到任何地方 \&。在 \fBpipe\fP 模式下，没有分配伪 TTY，但是传递给
+\fBsystemd\-nspawn\fP 的标准输入、输出和错误输出文件描述符被传递给 \(em 原样 \(em 到容器有效，载荷，请参见以下段落
+\&。最后，当在终端上调用 \fBsystemd\-nspawn\fP 时，\fBautopipe\fP 模式像 \fBinteractive\fP 一样运行，否则像
+\fBpipe\fP\&。如果从终端调用 \fBsystemd\-nspawn\fP，则默认为 \fBinteractive\fP，否则为 \fBread\-only\fP\&。
+.sp
+在 \fBpipe\fP 模式下，容器中不会存在 /dev/console\&。这意味着容器，载荷，通常不能是完整的初始化系统，因为初始化系统往往需要
+/dev/console 可用 \&。另一方面，在这种模式下，容器调用可以在 shell pipelines\& 中使用。这是因为中间伪 TTY
+不允许文件结束 (EOF) 条件的独立双向传播，而这是 shell 管道正常工作所必需的 \&。 应谨慎使用 \fINote that the \fP\fBpipe\fP\fI 模式 \fP，因为将任意文件描述符传递给不太受信任的容器，载荷，可能会打开容器，载荷，访问不需要的接口
+\&。例如，如果传递的文件描述符引用某种形式的 TTY，则可以使用 \fBTIOCSTI\fP 等 API 来合成可能用于转义容器的输入 \&。因此
+\fBpipe\fP 模式应该只在有效载荷足够可信或标准 input/output/error 输出文件描述符已知安全时使用，例如管道 \&。
+.RE
+.PP
+\fB\-\-pipe\fP, \fB\-P\fP
+.RS 4
+相当于 \fB\-\-console=pipe\fP\&。
+.RE
+.SS Credentials
+.PP
+\fB\-\-load\-credential=\fP\fIID\fP:\fIPATH\fP, \fB\-\-set\-credential=\fP\fIID\fP:\fIVALUE\fP
+.RS 4
+将凭据传递给容器 \&。这两个选项分别对应元文件 \& 中的 \fILoadCredential=\fP 和 \fISetCredential=\fP
+设置。有关这些概念的详细信息以及选项的语法，请参见 \fBsystemd.exec\fP(5)\*(Aqs 参数 \&.
+.sp
+Note: 当 \fBsystemd\-nspawn\fP 作为 systemd 系统服务运行时，它可以将它通过
+\fILoadCredential=\fP/\fISetCredential=\fP 收到的凭据传播到容器有效载荷 \&。在容器中以 PID 1 运行的
+systemd 服务管理器可以进一步将它们传播到它自己启动的服务
+\&。因此，可以轻松地将凭据从父服务管理器传播到容器管理器服务，并从那里传播到其有效，载荷 \&。这甚至可以递归地完成 \&。
+.sp
+为了将二进制数据嵌入到 \fB\-\-set\-credential=\fP 的凭证数据中，请使用 C 风格转义 (i\&.e\&。"\en" 嵌入换行符，或
+"\ex00" 嵌入 \fBNUL\fP 字节 \&。请注意，调用 shell 可能已经适用转义一次，因此这可能需要两次转义! ) \&。
+.sp
+\fBsystemd\-sysusers.service\fP(8) 和 \fBsystemd\-firstboot\fP(1)
+服务读取以这种方式配置的凭据，用于配置容器 \*(Aqs root 用户 \*(Aqs 密码和
+shell，以及容器首次启动过程中的系统区域设置、键盘映射和时区 \&. 这在与 \fB\-\-volatile=yes\fP
+结合时特别有用，其中每次启动都显示为第一次启动，因为应用于 /etc / 的配置在容器重启周期中丢失 \&。有关详细信息，请参见相应的手册页
+\&。Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-nspawn \-i image\&.raw \e
+        \-\-volatile = 是 \e
+        \-\-set\-credential=firstboot\&.locale:de_DE\&.UTF\-8 \e
+        \-\-set\-credential=passwd\&.hashed\-password\&.root:\*(Aq$y$j9T$yAuRJu1o5HioZAGDYPU5d\&.$F64ni6J2y2nNQve90M/p0ZP0ECP/qqzipNyaY9fjGpC\*(Aq \e
+        \-b
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+上面的命令行会在 volatile 模式下调用指定的镜像文件 image\&.raw，i\&.e\&。带有空的 /etc / 和
+/var/\&。容器，载荷，会将此识别为首次启动，并将调用 systemd\-firstboot\&.service，然后
+systemd\-firstboot\&.service 读取两个传递的凭据以配置系统 \*(Aqs 初始语言环境和 root 密码 \&。
+.RE
+.SS Other
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH ENVIRONMENT
+.PP
+\fI$SYSTEMD_LOG_LEVEL\fP
+.RS 4
+发出消息的最大日志级别 (具有更高日志级别的消息，i\&.e\&。不太重要的消息将被抑制)
+\&。\fBemerg\fP、\fBalert\fP、\fBcrit\fP、\fBerr\fP、\fBwarning\fP、\fBnotice\fP、\fBinfo\fP、\fBdebug\fP 之一
+(按重要性递减顺序) 或 0\&...7\& 范围内的整数。有关详细信息，请参见 \fBsyslog\fP(3)\&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_COLOR\fP
+.RS 4
+一个布尔值 \&。如果为真，写入 tty 的消息将根据优先级着色。
+.sp
+这个设置只在消息直接写入终端时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会自行根据日志级别给消息着色 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TIME\fP
+.RS 4
+一个布尔值 \&。如果为 true，控制台日志消息将以时间戳 \& 为前缀。
+.sp
+这个设置只在消息直接写入终端或文件时才有用，因为 \fBjournalctl\fP(1) 等显示日志的工具会根据条目元数据自行附加时间戳 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_LOCATION\fP
+.RS 4
+一个布尔值 \&。如果为 true，消息将在源代码中以文件名和行号为前缀 \&。
+.sp
+请注意，日志位置通常作为元数据附加到日志条目中。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TID\fP
+.RS 4
+一个布尔值 \&。如果为真，消息将以当前数字线程 ID (TID)\& 为前缀。
+.sp
+请注意，此信息无论如何都作为元数据附加到日记条目 \&。尽管如此，在调试程序时将它直接包含在消息文本中还是很方便的 \&。
+.RE
+.PP
+\fI$SYSTEMD_LOG_TARGET\fP
+.RS 4
+日志消息的目的地 \&。\fBconsole\fP (记录到附加的 tty)、\fBconsole\-prefixed\fP (记录到附加的
+tty，但带有编码日志级别和 "facility" 的前缀，参见 \fBsyslog\fP(3)、\fBkmsg\fP
+(记录到内核循环日志缓冲区)、\fBjournal\fP (记录到日志) 之一，\fBjournal\-or\-kmsg\fP (如果可用则记录到日志，否则记录到
+kmsg)，\fBauto\fP (自动确定适当的日志目标，默认)，\fBnull\fP (禁用日志输出) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGER\fP
+.RS 4
+未给出 \fB\-\-no\-pager\fP 时使用的寻呼机; 覆盖 \fI$PAGER\fP\&。如果 \fI$SYSTEMD_PAGER\fP 和 \fI$PAGER\fP
+都没有设置，则依次尝试一组众所周知的寻呼机实现，包括 \fBless\fP(1) 和 \fBmore\fP(1)，直到找到一个
+\&。如果没有发现寻呼机实现，则不调用寻呼机 \&。将此环境变量设置为空字符串或值 "cat" 等同于传递 \fB\-\-no\-pager\fP\&。
+.sp
+Note: 如果未设置 \fI$SYSTEMD_PAGERSECURE\fP，\fI$SYSTEMD_PAGER\fP (以及 \fI$PAGER\fP) 将被忽略
+\&。
+.RE
+.PP
+\fI$SYSTEMD_LESS\fP
+.RS 4
+覆盖传递给 \fBless\fP (默认 "FRSXMK") \& 的选项。
+.sp
+用户可能希望特别更改两个选项:
+.PP
+\fBK\fP
+.RS 4
+此选项指示寻呼机在按下 Ctrl+C 时立即退出 \&。要允许 \fBless\fP 自己处理 Ctrl+C 以切换回寻呼机命令提示符，请取消设置此选项
+\&。
+.sp
+如果 \fI$SYSTEMD_LESS\fP 的值不包括 "K"，调用的分页器是 \fBless\fP，Ctrl+C 会被可执行文件忽略，需要分页器处理 \&。
+.RE
+.PP
+\fBX\fP
+.RS 4
+此选项指示寻呼机不将 termcap 初始化和取消初始化字符串发送到终端 \&。它默认设置为允许命令输出在终端中保持可见，即使在寻呼机退出 \&
+之后也是如此。然而，这会阻止某些寻呼机功能工作，特别是无法使用鼠标滚动分页输出。
+.RE
+.sp
+有关更多讨论，请参见 \fBless\fP(1)\&。
+.RE
+.PP
+\fI$SYSTEMD_LESSCHARSET\fP
+.RS 4
+覆盖传递给 \fBless\fP 的字符集 (默认为 "utf\-8"，如果调用终端被确定为与 UTF\-8 兼容) \&。
+.RE
+.PP
+\fI$SYSTEMD_PAGERSECURE\fP
+.RS 4
+采用布尔型参数 \&。为真时，启用寻呼机的 "secure" 模式; 如果为假，则禁用 \&。如果根本未设置
+\fI$SYSTEMD_PAGERSECURE\fP，则在有效 UID 与登录会话的所有者不同时启用安全模式，请参见 \fBgeteuid\fP(2) 和
+\fBsd_pid_get_owner_uid\fP(3)\&。在安全模式下，调用寻呼机时将设置
+\fBLESSSECURE=1\fP，寻呼机应禁用打开或创建新文件或启动新子进程的命令 \&。当根本没有设置 \fI$SYSTEMD_PAGERSECURE\fP
+时，将不会使用未知实现安全模式的寻呼机 \&。(目前只有 \fBless\fP(1) 实现了安全模式 \&。)
+.sp
+Note: 当以提升的权限调用命令时，例如在 \fBsudo\fP(8) 或 \fBpkexec\fP(1) 下，必须小心确保未启用意外的交互，特性 \&。寻呼机的
+"Secure" 模式可以如上所述自动启用 \&。设置 \fISYSTEMD_PAGERSECURE=0\fP 或不将其从继承环境中删除允许用户调用任意命令
+\&。请注意，如果要兑现 \fI$SYSTEMD_PAGER\fP 或 \fI$PAGER\fP 变量，则必须同时设置
+\fI$SYSTEMD_PAGERSECURE\fP\&。改为使用 \fB\-\-no\-pager\fP\& 完全禁用寻呼机可能是合理的。
+.RE
+.PP
+\fI$SYSTEMD_COLORS\fP
+.RS 4
+采用布尔型参数 \&。当为真时，\fBsystemd\fP 和相关的实用工具将在其输出中使用颜色，否则输出将为单色 \&。此外，该变量可以采用以下特殊值之一:
+"16"、"256"，分别将颜色的使用限制为基本 16 或 256 ANSI 颜色 \&。这可以被指定以覆盖基于 \fI$TERM\fP
+和控制台连接到什么的自动决定 \&。
+.RE
+.PP
+\fI$SYSTEMD_URLIFY\fP
+.RS 4
+该值必须是布尔值 \&。控制是否应在支持此 \& 的终端模拟器的输出中生成可点击链接。这可以被指定来覆盖 \fBsystemd\fP 基于 \fI$TERM\fP
+和其他条件做出的决定 \&。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Download a Fedora image and start a shell in it\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# machinectl pull\-raw \-\-verify=no \e
+      https://download\&.fedoraproject\&.org/Fedora\-Cloud\-Base\-36\-1\&.5\&.x86_64\&。原始 \&.xz\e
+      Fedora\-Cloud\-Base\-36\-1\&.5\&.x86\-64
+# systemd\-nspawn \-M Fedora\-Cloud\-Base\-36\-1\&.5\&.x86\-64
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将使用 \fBmachinectl\fP(1) 下载图像并在其中打开 shell\&。
+.PP
+\fBExample\ \&2.\ \&Build and boot a minimal Fedora distribution in a container\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# dnf \-y \-\-releasever=36 \-\-installroot=/var/lib/machines/f36 \e
+      \-\-repo=fedora\-\-repo=updates\-\-setopt=install_weak_deps=False 安装 \e
+      passwd dnf fedora\-release vim\-minimal systemd systemd\-networkd
+# systemd\-nspawn \-bD /var/lib/machines/f36
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这会将最小的 Fedora 发行版安装到目录 /var/lib/machines/f36 中，然后在命名空间容器 \&
+中启动该操作系统。因为安装位于标准 /var/lib/machines/ 目录下，所以也可以使用 \fBsystemd\-nspawn \-M f36\fP\&
+启动机器。
+.PP
+\fBExample\ \&3.\ \&Spawn a shell in a container of a minimal Debian unstable distribution\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# debootstrap 不稳定的 ~/debian\-tree/
+# systemd\-nspawn \-D ~/debian\-tree/
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这会在目录 ~/debian\-tree/ 中安装一个最小的 Debian 不稳定发行版，然后在命名空间容器 \& 中从此映像生成 shell。
+.PP
+\fBdebootstrap\fP 支持 box 之外的
+\m[blue]\fBDebian\fP\m[]\&\s-2\u[7]\d\s+2、\m[blue]\fBUbuntu\fP\m[]\&\s-2\u[8]\d\s+2
+和 \m[blue]\fBTanglu\fP\m[]\&\s-2\u[9]\d\s+2，因此可以使用相同的命令来安装其中任何一个 \&。对于 Debian
+系列的其他发行版，必须指定镜像，请参见 \fBdebootstrap\fP(8)\&。
+.PP
+\fBExample\ \&4.\ \&Boot a minimal Arch Linux distribution in a container\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# pacstrap \-c ~/arch\-tree/ 底座
+# systemd\-nspawn \-bD ~/arch\-tree/
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这会将最小的 Arch Linux 发行版安装到目录 ~/arch\-tree/ 中，然后在其中的命名空间容器中启动操作系统 \&。
+.PP
+\fBExample\ \&5.\ \&Install the OpenSUSE Tumbleweed rolling distribution\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# zypper \-\-root=/var/lib/machines/tumbleweed ar \-c \e
+      https://download\&.opensuse\&.org/oss 风滚草
+# zypper\-\-root=/var/tumbleweed 刷新
+# zypper \-\-root=/var/lib/machines/tumbleweed install \-\-no\-recommends \e
+      systemd shadow zypper openSUSE\-release vim
+# systemd\-nspawn \-M 风滚草密码 root
+# systemd\-nspawn \-M 风滚草 \-b
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&6.\ \&Boot into an ephemeral snapshot of the host system\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-nspawn \-D / \-xb
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这会在快照中运行主机系统的副本，当容器退出 \& 时会立即将其删除。在运行时所做的所有文件系统更改将在关闭时丢失，因此 \&。
+.PP
+\fBExample\ \&7.\ \&Run a container with SELinux sandbox security contexts\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# chcon system_u:object_r:svirt_sandbox_file_t:s0:c0,c1 \-R /srv/container
+# systemd\-nspawn \-L system_u:object_r:svirt_sandbox_file_t:s0:c0,c1 \e
+      \-Z 系统 _u: 系统 _r:svirt_lxc_net_t:s0:c0,c1 \-D /srv/container /bin/sh
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&8.\ \&Run a container with an OSTree deployment\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-nspawn \-b \-i ~/image\&.raw \e
+      \-\-pivot\-root=/ostree/deploy/$OS/deploy/$CHECKSUM:/sysroot \e
+      \-\-bind=+/sysroot/ostree/deploy/$OS/var:/var
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "EXIT STATUS"
+.PP
+返回容器中执行的程序的退出码 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.nspawn\fP(5), \fBchroot\fP(1), \fBdnf\fP(8),
+\fBdebootstrap\fP(8), \fBpacman\fP(8), \fBzypper\fP(8), \fBsystemd.slice\fP(5),
+\fBmachinectl\fP(1), \fBbtrfs\fP(8)
+.SH NOTES
+.IP " 1." 4
+容器接口
+.RS 4
+\%https://systemd.io/CONTAINER_INTERFACE
+.RE
+.IP " 2." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.IP " 3." 4
+OCI 运行时规范
+.RS 4
+\%https://github.com/opencontainers/runtime\-spec/blob/master/spec.md
+.RE
+.IP " 4." 4
+OSTree
+.RS 4
+\%https://ostree.readthedocs.io/en/latest/
+.RE
+.IP " 5." 4
+覆盖文件系统
+.RS 4
+\%https://docs.kernel.org/filesystems/overlayfs.html
+.RE
+.IP " 6." 4
+Fedora
+.RS 4
+\%https://getfedora.org
+.RE
+.IP " 7." 4
+Debian
+.RS 4
+\%https://www.debian.org
+.RE
+.IP " 8." 4
+Ubuntu
+.RS 4
+\%https://www.ubuntu.com
+.RE
+.IP " 9." 4
+Tanglu
+.RS 4
+\%https://www.tanglu.org
+.RE
+.IP 10. 4
+Arch Linux
+.RS 4
+\%https://www.archlinux.org
+.RE
+.IP 11. 4
+OpenSUSE 风滚草
+.RS 4
+\%https://software.opensuse.org/distributions/tumbleweed
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

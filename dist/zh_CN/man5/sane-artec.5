@@ -1,0 +1,156 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-artec 5 "11 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-artec
+
+.SH NAME
+sane\-artec\-Artec 平板扫描仪的 SANE 后端
+
+.SH DESCRIPTION
+\fBsane\-artec\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对 Artec/Ultima SCSI 平板扫描仪的访问。
+目前，已知以下扫描器至少可以部分使用此后端:
+.PP
+.RS
+* Artec A6000C
+.br
+* Artec A6000C PLUS
+.br
+* Artec ViewStation AT3
+.br
+* BlackWidow BW4800SP (重新贴标的 Artec AT3)
+.br
+* Artec ViewStation AT6
+.br
+* Artec ViewStation AT12
+.br
+* Artec AM12S
+.br
+* Plustek 19200S (重新贴标的 Artec AM12S)
+.RE
+.PP
+虽然此手册页通常随每个版本更新，但有关新版本的最新信息和无关的有用提示可从后端主页获得:
+\fIhttp://www4.infi.net/~cpinkham/sane\fP。
+
+.SH CONFIGURATION
+
+\fIartec.conf\fP 文件的内容是与 Artec 扫描仪对应的设备名称列表。 空行和以哈希标记 (#) 开头的行将被忽略。
+有关构成有效设备名称的详细信息，请参见 \fBsane\-scsi\fP(5)。
+
+示例文件:
+.br
+.nf
+# artec.conf
+#
+# 这是一条评论。
+#
+# 这一行表示搜索任何 SCSI 设备，这些设备是扫描仪并且有
+# 'ULTIMA' 的供应商字符串
+scsi 极限
+#
+# 下一行强制后端假设找到的下一个扫描器有
+# 指定的供应商字符串 (对测试重新标记的模型有用)。
+供应商 ULTIMA
+#
+# 下一行强制后端假设找到的下一个扫描器有
+# 指定的模型字符串 (对测试重新标记的模型有用)。
+型号 AT3
+#
+# 现在一行实际指定了一个设备。 后台要
+# 假设这是一个 Artec/Ultima AT3 因为我们强迫供应商和
+# 上面的模型。
+/dev/scanner
+#
+# 一旦我们击中扫描仪设备线，强制供应商和型号
+# 字符串是
+# 'forgotten'，因此下一个设备的供应商和型号将是
+# 根据 SCSI 查询的结果确定。
+/dev/sge
+#
+.fi
+
+.SH "SCSI ADAPTER TIPS"
+
+部分 Artec 扫描仪随附 SCSI 适配器。 如果您的扫描仪带有 DTC ISA SCSI 卡，您可能可以将它与最新的 (>= 2.2.0)
+内核一起使用，使用泛型 NCR5380 支持。 您必须将以下引导参数传递给内核: "dtc3181e=0x2c0,0"
+.br
+我没有关于一些较新的 Artec 扫描仪附带的 PCI SCSI 适配器的任何信息。
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/artec.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-artec.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-artec.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_ARTEC\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。例如，值 128 请求打印所有调试输出。较小的级别减少冗长:
+\fBSANE_DEBUG_ARTEC\fP 值:
+
+.nf
+\f (CRNumber 备注
+ 0 打印重要错误
+ 1 打印错误
+ 2 打印感
+ 3 打印警告
+ 4 打印扫描仪 \- 查询
+ 5 打印信息
+ 6 打印不太重要的信息
+ 7 打印主要调用程序
+ 8 打印所有被调用的过程
+ 9 打印程序 info/data 信息
+ 10 打印称为 sane\-init\-routines
+ 11 打印称为 sane\-procedures
+ 12 打印理智的信息
+ 13 打印理智的选项控制消息
+ 50 条打印详细的 data/debug 消息
+ == 100 打印软件 RGB 校准数据
+ == 101 从扫描仪打印原始数据到 artec.data.raw 文件
+ == 128 打印出所有 messages\fR
+.fi
+.PP
+示例: export SANE_DEBUG_ARTEC=13
+
+.SH BUGS
+
+本次发布已知 BUG: A6000C + 用户 v1.92 及更早版本固件后台出现问题，原因尚未确定。
+有时后端不是特别健壮，扫描时没有足够的耐心可能会锁定 SCSI 总线 (或者机器)。 3 \- 通道伽马校正未实现，单通伽马校正在 AT3
+以外的型号上并不完全有效。
+
+.SH "SEE ALSO"
+\fBsane\fP(7)\fB,\fP \fBsane\-scsi\fP(5)
+
+.SH AUTHOR
+
+克里斯・平卡姆 \fI<cpinkham@corp.infi.net>\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

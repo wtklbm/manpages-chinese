@@ -1,0 +1,270 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1990, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"	@(#)dbopen.3	8.5 (Berkeley) 1/2/94
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dbopen 3 2022\-12\-04 "Linux man\-pages 6.03" 
+.UC 7
+.SH NAME
+dbopen \- 数据库访问方法
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <limits.h>\fP
+\fB#include <db.h>\fP
+\fB#include <fcntl.h>\fP
+.PP
+\fBDB *dbopen(const char *\fP\fIfile\fP\fB, int \fP\fIflags\fP\fB, int \fP\fImode\fP\fB, DBTYPE \fP\fItype\fP\fB,\fP
+\fB           const void *\fP\fIopeninfo\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fINote well\fP: 此页面记录了在 glibc 2.1 之前提供的接口。 从 glibc 2.2 开始，glibc 不再提供这些接口。
+您可能正在寻找 \fIlibdb\fP 库提供的 API。
+.PP
+\fBdbopen\fP() 是数据库文件的库接口。 支持的文件格式是 btree、散列和 UNIX 文件导向。 btree 格式表示已排序的平衡树结构体。
+散列格式是一种可扩展的动态散列方案。 平面文件格式是具有固定或可变长度记录的字节流文件。 格式和特定于文件格式的信息在它们各自的手册页
+\fBbtree\fP(3)、\fBhash\fP(3) 和 \fBrecno\fP(3) 中有详细描述。
+.PP
+\fBdbopen\fP() 打开 \fIfile\fP 进行读取或者写入。 可以通过将 \fIfile\fP 参数设置为 NULL 来创建从未打算保留在磁盘上的文件。
+.PP
+.\"Three additional options may be specified by ORing
+.\"them into the
+.\".I flags
+.\"argument.
+.\".TP
+.\"DB_LOCK
+.\"Do the necessary locking in the database to support concurrent access.
+.\"If concurrent access isn't needed or the database is read-only this
+.\"flag should not be set, as it tends to have an associated performance
+.\"penalty.
+.\".TP
+.\"DB_SHMEM
+.\"Place the underlying memory pool used by the database in shared
+.\"memory.
+.\"Necessary for concurrent access.
+.\".TP
+.\"DB_TXN
+.\"Support transactions in the database.
+.\"The DB_LOCK and DB_SHMEM flags must be set as well.
+\fIflags\fP 和 \fImode\fP 参数与 \fBopen\fP(2) 例程指定的一样，但是，只有
+\fBO_CREAT\fP、\fBO_EXCL\fP、\fBO_EXLOCK\fP、\fBO_NONBLOCK\fP、\fBO_RDONLY\fP、\fBO_RDWR\fP、\fBO_SHLOCK\fP
+和 \fBO_TRUNC\fP 标志有意义。 (注意，无法打开数据库文件 \fBO_WRONLY\fP。)
+.PP
+\fItype\fP 参数的类型为 \fIDBTYPE\fP (在 \fI<db.h>\fP 包含文件中定义)，可以设置为
+\fBDB_BTREE\fP、\fBDB_HASH\fP 或 \fBDB_RECNO\fP。
+.PP
+\fIopeninfo\fP 参数是指向访问方法手册页中描述的访问方法特定结构体的指针。 如果 \fIopeninfo\fP 为
+NULL，则每种访问方法都将使用适合系统和访问方法的默认值。
+.PP
+\fBdbopen\fP() 成功时返回指向 \fIDB\fP 结构体的指针，错误时返回 NULL。 \fIDB\fP 结构体在 \fI<db.h>\fP
+包含文件中定义，至少包含以下字段:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    DBTYPE 类型;
+    int (*close)(const DB *db);
+    int (*del)(const DB *db, const DBT *key, unsigned int flags);  
+    int (*fd)(const DB *db);
+    int (*get)(const DB *db, DBT *key, DBT *data,
+               unsigned int flags);
+    int (*put)(const DB *db, DBT *key, const DBT *data,
+               unsigned int flags);
+    int (*sync)(const DB *db, unsigned int flags);
+    int (*seq)(const DB *db, DBT *key, DBT *data,
+               unsigned int flags);
+} DB;
+.EE
+.in
+.PP
+这些元素描述了一个数据库类型和一组执行各种操作的函数。 这些函数采用指向 \fBdbopen\fP() 返回的结构体的指针，有时还有一个或多个指向
+key/data 结构的指针和一个标志值。
+.TP 
+\fItype\fP
+底层访问方法 (和文件格式) 的类型。
+.TP 
+\fIclose\fP
+指向例程的指针，用于将任何缓存信息刷新到磁盘、释放任何分配的资源并关闭底层 file(s)。 由于 key/data
+对可能缓存在内存中，因此无法将文件与 \fIclose\fP 或 \fIsync\fP 函数同步可能会导致信息不一致或丢失。 \fIclose\fP 例程在出错时返回
+\-1 (在成功时设置 \fIerrno\fP) 和 0。
+.TP 
+\fIdel\fP
+指向从数据库中删除 key/data 对的例程的指针。
+.IP
+参数 \fIflag\fP 可以设置为以下值:
+.RS
+.TP 
+\fBR_CURSOR\fP
+删除游标引用的记录。 游标必须先前已初始化。
+.RE
+.IP
+\fIdelete\fP 例程在出错时返回 \-1 (设置 \fIerrno\fP)，成功时返回 0，如果指定的 \fIkey\fP 不在文件中则返回 1。
+.TP 
+\fIfd\fP
+指向例程的指针，该例程返回代表底层数据库的文件描述符。 引用同一文件的文件描述符将返回给所有调用 \fBdbopen\fP() 具有相同 \fIfile\fP
+名称的进程。 这个文件描述符可以安全地用作 \fBfcntl\fP(2) 和 \fBflock\fP(2) 锁定函数的参数。
+文件描述符不一定与访问方法使用的任何，底层，文件相关联。 内存数据库中没有可用的文件描述符。 \fIfd\fP 例程在出错时返回 \-1 (设置
+\fIerrno\fP)，成功时返回文件描述符。
+.TP 
+\fIget\fP
+指向例程的指针，该例程是从数据库进行键控检索的接口。 与指定 \fIkey\fP 关联的数据的地址和长度在 \fIdata\fP 引用的结构体中返回。 \fIget\fP
+例程在出错时返回 \-1 (设置 \fIerrno\fP)，成功时返回 0，如果 \fIkey\fP 不在文件中则返回 1。
+.TP 
+\fIput\fP
+指向在数据库中存储 key/data 对的例程的指针。
+.IP
+参数 \fIflag\fP 可以设置为以下值之一:
+.RS
+.TP 
+\fBR_CURSOR\fP
+替换游标引用的 key/data 对。 游标必须先前已初始化。
+.TP 
+\fBR_IAFTER\fP
+在 \fIkey\fP 引用的数据之后立即，追加，数据，创建一个新的 key/data 对。 追加，的 key/data 对的记录号在 \fIkey\fP
+结构体中返回。 (仅适用于 \fBDB_RECNO\fP 访问方法。)
+.TP 
+\fBR_IBEFORE\fP
+在 \fIkey\fP 引用的数据之前立即插入数据，创建一个新的 key/data 对。 插入的 key/data 对的记录号在 \fIkey\fP 结构体中返回。
+(仅适用于 \fBDB_RECNO\fP 访问方法。)
+.TP 
+\fBR_NOOVERWRITE\fP
+仅当密钥以前不存在时才输入新的 key/data 对。
+.TP 
+\fBR_SETCURSOR\fP
+存储 key/data 对，设置或初始化游标位置以引用它。 (仅适用于 \fBDB_BTREE\fP 和 \fBDB_RECNO\fP 访问方法。)
+.RE
+.IP
+\fBR_SETCURSOR\fP 仅适用于 \fBDB_BTREE\fP 和 \fBDB_RECNO\fP 访问方法，因为它暗示密钥具有不会更改的固有顺序。
+.IP
+\fBR_IAFTER\fP 和 \fBR_IBEFORE\fP 仅适用于 \fBDB_RECNO\fP 访问方法，因为它们都暗示该访问方法能够创建新密钥。
+仅当键是有序且独立的 (例如记录编号) 时，这才是正确的。
+.IP
+\fIput\fP 例程的默认行为是输入新的 key/data 对，替换任何以前存在的密钥。
+.IP
+\fIput\fP 例程在出错时返回 \-1 (设置 \fIerrno\fP)，成功时返回 0，如果设置了 \fBR_NOOVERWRITE\fP \fIflag\fP
+并且密钥已存在于文件中则返回 1。
+.TP 
+\fIseq\fP
+指向例程的指针，该例程是从数据库中进行顺序检索的接口。 \fIkey\fP 引用的结构体返回 key 的地址和长度，\fIdata\fP 引用的结构体返回 data
+的地址和长度。
+.IP
+顺序 key/data 对检索可以随时开始，"cursor" 的位置不受调用 \fIdel\fP、\fIget\fP、\fIput\fP 或 \fIsync\fP 例程的影响。
+顺序扫描时对数据库的修改会反映在扫描中，即插入到游标后的记录不会返回，插入到游标前的记录将返回。
+.IP
+标志值 \fBmust\fP 被设置为以下值之一:
+.RS
+.TP 
+\fBR_CURSOR\fP
+返回与指定键关联的数据。 这与 \fIget\fP 例程的不同之处在于它还将游标设置或初始化到键的位置。 (注意，对于 \fBDB_BTREE\fP
+访问方式，返回的 key 不一定是指定 key 的精确匹配，返回的 key 是大于等于指定 key 的最小 key，允许部分 key 匹配和范围搜索。)
+.TP 
+\fBR_FIRST\fP
+返回数据库的第一个 key/data 对，并将游标设置或初始化为引用它。
+.TP 
+\fBR_LAST\fP
+返回数据库的最后一个 key/data 对，并将游标设置或初始化为引用它。 (仅适用于 \fBDB_BTREE\fP 和 \fBDB_RECNO\fP 访问方法。)
+.TP 
+\fBR_NEXT\fP
+在游标后立即检索 key/data 对。 如果游标尚未设置，这与 \fBR_FIRST\fP 标志相同。
+.TP 
+\fBR_PREV\fP
+立即检索游标前的 key/data 对。 如果游标尚未设置，这与 \fBR_LAST\fP 标志相同。 (仅适用于 \fBDB_BTREE\fP 和
+\fBDB_RECNO\fP 访问方法。)
+.RE
+.IP
+\fBR_LAST\fP 和 \fBR_PREV\fP 仅适用于 \fBDB_BTREE\fP 和 \fBDB_RECNO\fP
+访问方法，因为它们各自暗示密钥具有不会更改的固有顺序。
+.IP
+\fIseq\fP 例程在出错时返回 \-1 (设置 \fIerrno\fP)，成功时为 0，如果没有小于或大于指定键或当前键的 key/data 对则为 1。
+如果正在使用 \fBDB_RECNO\fP 访问方法，并且如果数据库文件是字符特殊文件并且当前没有完整的 key/data 对可用，则 \fIseq\fP 例程返回
+2.
+.TP 
+\fIsync\fP
+指向将任何缓存信息刷新到磁盘的例程的指针。 如果数据库仅在内存中，则 \fIsync\fP 例程无效并且总是会成功。
+.IP
+标志值可以设置为以下值:
+.RS
+.TP 
+\fBR_RECNOSYNC\fP
+如果正在使用 \fBDB_RECNO\fP 访问方法，则此标志会导致同步例程应用于 recno 文件下的 btree 文件，而不是 recno 文件本身。
+(有关更多信息，请参见 \fBrecno\fP(3) 手册页的 \fIbfname\fP 字段。)
+.RE
+.IP
+\fIsync\fP 例程在出错时返回 \-1 (在成功时设置 \fIerrno\fP) 和 0。
+.SS "Key/data pairs"
+对所有文件类型的访问都基于 key/data 对。 键和数据都由以下数据结构体表示:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    void  *data;
+    size_t size;
+} DBT;
+.EE
+.in
+.PP
+\fIDBT\fP 结构体的元素定义如下:
+.TP 
+\fIdata\fP
+指向字节字符串的指针。
+.TP 
+\fIsize\fP
+字节字符串，的长度。
+.PP
+密钥和数据字节字符串可以引用基本上无限长度的字符串，尽管它们中的任何两个必须同时适合可用内存。 应该注意的是，访问方法不提供，字节字符串，对齐的保证。
+.SH ERRORS
+\fBdbopen\fP() 例程可能会失败并为库例程 \fBopen\fP(2) 和 \fBmalloc\fP(3) 或以下指定的任何错误设置 \fIerrno\fP:
+.TP 
+\fBEFTYPE\fP
+文件格式不正确。
+.TP 
+\fBEINVAL\fP
+指定的参数 (哈希函数、填充字节等) 与当前文件规范不兼容，或者对函数无意义
+(例如，在没有事先初始化的情况下使用游标)，或者两者之间不匹配文件和软件的版本号。
+.PP
+\fIclose\fP 例程可能会失败并为库例程 \fBclose\fP(2)、\fBread\fP(2)、\fBwrite\fP(2)、\fBfree\fP(3) 或
+\fBfsync\fP(2) 指定的任何错误设置 \fIerrno\fP。
+.PP
+\fIdel\fP、\fIget\fP、\fIput\fP 和 \fIseq\fP 例程可能会失败并为库例程 \fBread\fP(2)、\fBwrite\fP(2)、\fBfree\fP(3)
+或 \fBmalloc\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.PP
+\fIfd\fP 例程将失败，并将内存数据库的 \fIerrno\fP 设置为 \fBENOENT\fP。
+.PP
+\fIsync\fP 例程可能会失败并为库例程 \fBfsync\fP(2) 指定的任何错误设置 \fIerrno\fP。
+.SH BUGS
+typedef \fIDBT\fP 是 "data base thang" 的助记符，之所以使用它是因为没有人能想到一个尚未使用过的合理名称。
+.PP
+文件描述符接口是一个问题，将在接口的 future 版本中删除。
+.PP
+没有一种访问方法提供任何形式的访问、锁定或事务。
+.SH "SEE ALSO"
+\fBbtree\fP(3), \fBhash\fP(3), \fBmpool\fP(3), \fBrecno\fP(3)
+.PP
+\fILIBTP: Portable, Modular Transactions for UNIX\fP，Margo Seltzer，Michael
+Olson，USENIX 程序集，1992 年冬季。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

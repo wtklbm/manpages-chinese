@@ -1,0 +1,237 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2007 Silicon Graphics, Inc. All Rights Reserved
+.\" Written by Dave Chinner <dgc@sgi.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-only
+.\"
+.\" 2011-09-19: Added FALLOC_FL_PUNCH_HOLE
+.\" 2011-09-19: Substantial restructuring of the page
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fallocate 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fallocate \- 操作文件空间
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP             /* See feature_test_macros(7) */
+\fB#include <fcntl.h>\fP
+.PP
+\fBint fallocate(int \fP\fIfd\fP\fB, int \fP\fImode\fP\fB, off_t \fP\fIoffset\fP\fB, off_t \fP\fIlen\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这是一个不可移植的、特定于 Linux 的系统调用。 对于可移植的、POSIX.1 指定的确保为文件分配空间的方法，请参见
+\fBposix_fallocate\fP(3)。
+.PP
+\fBfallocate\fP() 允许调用者直接操作为 \fIfd\fP 引用的文件分配的磁盘空间，字节范围从 \fIoffset\fP 开始，一直到 \fIlen\fP
+字节。
+.PP
+\fImode\fP 参数确定要在给定范围内执行的操作。 支持的操作的详细信息在下面的小节中给出。
+.SS "Allocating disk space"
+\fBfallocate\fP() 的默认操作 (即 \fImode\fP 为零) 在 \fIoffset\fP 和 \fIlen\fP 指定的范围内分配磁盘空间。 如果
+\fIoffset\fP+\fIlen\fP 大于文件大小，则文件大小 (由 \fBstat\fP(2)) 报告) 将被更改。 \fIoffset\fP 和 \fIlen\fP
+指定范围内的任何子区域在调用前不包含数据的将被初始化为零。 此默认行为与 \fBposix_fallocate\fP(3)
+库函数的行为非常相似，旨在作为一种优化实现函数的方法。
+.PP
+调用成功后，保证后续写入 \fIoffset\fP 和 \fIlen\fP 指定的范围不会因为磁盘空间不足而失败。
+.PP
+如果在 \fImode\fP 中指定了 \fBFALLOC_FL_KEEP_SIZE\fP 标志，调用的行为类似，但即使 \fIoffset\fP+\fIlen\fP
+大于文件大小，文件大小也不会改变。 以这种方式在文件末尾之外预分配归零块对于优化，追加，工作负载很有用。
+.PP
+如果在 \fImode\fP 中指定了 \fBFALLOC_FL_UNSHARE_RANGE\fP
+标志，则共享文件数据区将成为文件私有的，以保证后续写入不会因空间不足而失败。 通常，这将通过对文件中的所有共享数据执行写时复制操作来完成。
+并非所有文件系统都支持此标志。
+.PP
+因为分配是按块大小的块进行的，所以 \fBfallocate\fP() 可能会分配比指定范围更大的磁盘空间。
+.SS "Deallocating file space"
+在 \fImode\fP 中指定 \fBFALLOC_FL_PUNCH_HOLE\fP 标志 (自 Linux 2.6.38 起可用) 会在从 \fIoffset\fP
+开始的字节范围内释放空间 (即创建 hole) 并继续 \fIlen\fP 字节。 在指定范围内，部分文件系统块被清零，整个文件系统块从文件中删除。
+成功调用后，从此范围的后续读取将返回零。
+.PP
+\fBFALLOC_FL_PUNCH_HOLE\fP 标志必须与 \fImode\fP 中的 \fBFALLOC_FL_KEEP_SIZE\fP 进行或运算;
+换句话说，即使在删除文件末尾时，文件大小 (如 \fBstat\fP(2)) 所报告的那样) 也不会改变。
+.PP
+并非所有文件系统都支持 \fBFALLOC_FL_PUNCH_HOLE\fP; 如果文件系统不支持该操作，则返回错误。 至少在以下文件系统上支持该操作:
+.IP \[bu] 3
+XFS (从 Linux 2.6.38 开始)
+.IP \[bu]
+.\" commit a4bb6b64e39abc0e41ca077725f2a72c868e7622
+ext4 (自 Linux 3.0)
+.IP \[bu]
+Btrfs (从 Linux 3.7 开始)
+.IP \[bu]
+.\" commit 83e4fa9c16e4af7122e31be3eca5d57881d236fe
+\fBtmpfs\fP(5) (自 Linux 3.5)
+.IP \[bu]
+.\" commit 4e56a6411fbce6f859566e17298114c2434391a4
+\fBgfs2\fP(5) (自 Linux 4.16)
+.SS "Collapsing file space"
+.\" commit 00f5e61998dd17f5375d9dfc01331f104b83f841
+在 \fImode\fP 中指定 \fBFALLOC_FL_COLLAPSE_RANGE\fP 标志 (自 Linux 3.15 起可用)
+会从文件中删除一个字节范围，而不会留下 hole。 要折叠的字节范围从 \fIoffset\fP 开始并继续 \fIlen\fP 字节。 操作完成时，从位置
+\fIoffset+len\fP 开始的文件内容将追加到位置 \fIoffset\fP，文件将小 \fIlen\fP 字节。
+.PP
+文件系统可能会对操作的粒度进行限制，以确保高效实现。 通常，\fIoffset\fP 和 \fIlen\fP
+必须是文件系统逻辑块大小的倍数，这根据文件系统类型和配置而有所不同。 如果文件系统有这样的要求，如果违反了此要求，\fBfallocate\fP()
+将失败并显示错误 \fBEINVAL\fP。
+.PP
+如果 \fIoffset\fP 加上 \fIlen\fP 指定的区域到达或经过文件末尾，则返回错误; 相反，使用 \fBftruncate\fP(2) 截断文件。
+.PP
+不能在 \fImode\fP 中与 \fBFALLOC_FL_COLLAPSE_RANGE\fP 一起指定其他标志。
+.PP
+.\" commit 9eb79482a97152930b113b51dff530aba9e28c8e
+.\" commit e1d8fb88a64c1f8094b9f6c3b6d2d9e6719c970d
+与 Linux 3.15 一样，ext4 (仅适用于基于扩展的文件) 和 XFS 支持 \fBFALLOC_FL_COLLAPSE_RANGE\fP。
+.SS "Zeroing file space"
+.\" commit 409332b65d3ed8cfa7a8030f1e9d52f372219642
+在 \fImode\fP 中指定 \fBFALLOC_FL_ZERO_RANGE\fP 标志 (自 Linux 3.15 起可用) 将字节范围内的空间归零，从
+\fIoffset\fP 开始并继续 \fIlen\fP 字节。 在指定范围内，块被预分配给跨越文件中空洞的区域。 成功调用后，从此范围的后续读取将返回零。
+.PP
+最好通过将范围转换为未写入的范围来在文件系统内完成清零。 这种方法意味着指定的范围不会在设备上被物理清零 (范围两端的部分块除外)，并且 I/O 是
+(otherwise)，仅需要更新元数据。
+.PP
+如果在 \fImode\fP 中额外指定了 \fBFALLOC_FL_KEEP_SIZE\fP 标志，调用的行为类似，但即使 \fIoffset\fP+\fIlen\fP
+大于文件大小，文件大小也不会改变。 此行为与指定 \fBFALLOC_FL_KEEP_SIZE\fP 的预分配空间相同。
+.PP
+并非所有文件系统都支持 \fBFALLOC_FL_ZERO_RANGE\fP; 如果文件系统不支持该操作，则返回错误。 至少在以下文件系统上支持该操作:
+.IP \[bu] 3
+.\" commit 376ba313147b4172f3e8cf620b9fb591f3e8cdfa
+XFS (从 Linux 3.15 开始)
+.IP \[bu]
+.\" commit b8a8684502a0fc852afa0056c6bb2a9273f6fcc0
+ext4，用于基于范围的文件 (自 Linux 3.15 起)
+.IP \[bu]
+.\" commit 30175628bf7f521e9ee31ac98fa6d6fe7441a556
+SMB3 (自 Linux 3.17)
+.IP \[bu]
+.\" commit f27451f229966874a8793995b8e6b74326d125df
+Btrfs (从 Linux 4.16 开始)
+.SS "Increasing file space"
+.\" commit dd46c787788d5bf5b974729d43e4c405814a4c7d
+在 \fImode\fP 中指定 \fBFALLOC_FL_INSERT_RANGE\fP 标志 (自 Linux 4.1 起可用) 通过在文件大小内插入 hole
+来增加文件空间而不覆盖任何现有数据。 hole 将从 \fIoffset\fP 开始并继续 \fIlen\fP 字节。 当在文件中插入 hole 时，从
+\fIoffset\fP 开始的文件内容将向上移动 (即，到更高的文件偏移量) \fIlen\fP 字节。 在文件中插入 hole 会使文件大小增加 \fIlen\fP
+字节。
+.PP
+此模式在操作粒度方面具有与 \fBFALLOC_FL_COLLAPSE_RANGE\fP 相同的限制。 如果不满足粒度要求，\fBfallocate\fP()
+将失败并显示错误 \fBEINVAL\fP。 如果 \fIoffset\fP 等于或大于文件末尾，则返回错误。 对于此类操作 (即在文件末尾插入 hole)，应使用
+\fBftruncate\fP(2)。
+.PP
+不能在 \fImode\fP 中与 \fBFALLOC_FL_INSERT_RANGE\fP 一起指定其他标志。
+.PP
+.\" commit a904b1ca5751faf5ece8600e18cd3b674afcca1b
+.\" commit 331573febb6a224bc50322e3670da326cb7f4cfc
+.\" f2fs also has support since Linux 4.2
+.\"     commit f62185d0e283e9d311e3ac1020f159d95f0aab39
+\fBFALLOC_FL_INSERT_RANGE\fP 需要文件系统支持。 支持此操作的文件系统包括 XFS (自 Linux 4.1) 和 ext4 (自
+Linux 4.2)。
+.SH "RETURN VALUE"
+成功时，\fBfallocate\fP() 返回零。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符，或者未打开以进行写入。
+.TP 
+\fBEFBIG\fP
+\fIoffset\fP+\fIlen\fP 超过最大文件大小。
+.TP 
+\fBEFBIG\fP
+\fImode\fP 为 \fBFALLOC_FL_INSERT_RANGE\fP，当前文件 size+\fIlen\fP 超出最大文件大小。
+.TP 
+\fBEINTR\fP
+执行过程中捕获到一个信号; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+.\" FIXME . (raise a kernel bug) Probably the len==0 case should be
+.\" a no-op, rather than an error. That would be consistent with
+.\" similar APIs for the len==0 case.
+.\" See "Re: [PATCH] fallocate.2: add FALLOC_FL_PUNCH_HOLE flag definition"
+.\" 21 Sep 2012
+.\" http://thread.gmane.org/gmane.linux.file-systems/48331/focus=1193526
+\fIoffset\fP 小于 0，或 \fIlen\fP 小于或等于 0.
+.TP 
+\fBEINVAL\fP
+\fImode\fP 为 \fBFALLOC_FL_COLLAPSE_RANGE\fP，\fIoffset\fP 加上 \fIlen\fP 所指定的范围到达或超过文件末尾。
+.TP 
+\fBEINVAL\fP
+\fImode\fP 为 \fBFALLOC_FL_INSERT_RANGE\fP，\fIoffset\fP 指定的范围到达或超过文件末尾。
+.TP 
+\fBEINVAL\fP
+\fImode\fP 是 \fBFALLOC_FL_COLLAPSE_RANGE\fP 或 \fBFALLOC_FL_INSERT_RANGE\fP，但
+\fIoffset\fP 或 \fIlen\fP 不是文件系统块大小的倍数。
+.TP 
+\fBEINVAL\fP
+\fImode\fP 包含 \fBFALLOC_FL_COLLAPSE_RANGE\fP 或 \fBFALLOC_FL_INSERT_RANGE\fP 之一以及其他标志;
+\fBFALLOC_FL_COLLAPSE_RANGE\fP 或 \fBFALLOC_FL_INSERT_RANGE\fP 不允许使用其他标志。
+.TP 
+\fBEINVAL\fP
+.\" There was an inconsistency in Linux 3.15-rc1, that should be resolved so that all
+.\" filesystems use this error for this case. (Tytso says ex4 will change.)
+.\" http://thread.gmane.org/gmane.comp.file-systems.xfs.general/60485/focus=5521
+.\" From: Michael Kerrisk (man-pages <mtk.manpages@...>
+.\" Subject: Re: [PATCH v5 10/10] manpage: update FALLOC_FL_COLLAPSE_RANGE flag in fallocate
+.\" Newsgroups: gmane.linux.man, gmane.linux.file-systems
+.\" Date: 2014-04-17 13:40:05 GMT
+\fImode\fP 是 \fBFALLOC_FL_COLLAPSE_RANGE\fP、\fBFALLOC_FL_ZERO_RANGE\fP 或
+\fBFALLOC_FL_INSERT_RANGE\fP，但 \fIfd\fP 引用的文件不是常规文件。
+.TP 
+\fBEIO\fP
+读取或写入文件系统时发生 I/O 错误。
+.TP 
+\fBENODEV\fP
+\fIfd\fP 不引用常规文件或目录。 (如果 \fIfd\fP 是管道或 FIFO，则会产生不同的错误。)
+.TP 
+\fBENOSPC\fP
+包含 \fIfd\fP 引用的文件的设备上没有足够的剩余空间。
+.TP 
+\fBENOSYS\fP
+这个内核没有实现 \fBfallocate\fP()。
+.TP 
+\fBEOPNOTSUPP\fP
+包含 \fIfd\fP 引用的文件的文件系统不支持此操作; 或者包含 \fIfd\fP 引用的文件的文件系统不支持 \fImode\fP。
+.TP 
+\fBEPERM\fP
+\fIfd\fP 引用的文件标记为不变 (参见 \fBchattr\fP(1)).
+.TP 
+\fBEPERM\fP
+\fImode\fP 指定 \fBFALLOC_FL_PUNCH_HOLE\fP、\fBFALLOC_FL_COLLAPSE_RANGE\fP 或
+\fBFALLOC_FL_INSERT_RANGE\fP，\fIfd\fP 引用的文件标记为仅，追加 (请参见 \fBchattr\fP(1)).
+.TP 
+\fBEPERM\fP
+文件密封阻止了该操作; 请参见 \fBfcntl\fP(2)。
+.TP 
+\fBESPIPE\fP
+\fIfd\fP 指的是管道或 FIFO。
+.TP 
+\fBETXTBSY\fP
+\fImode\fP 指定 \fBFALLOC_FL_COLLAPSE_RANGE\fP 或 \fBFALLOC_FL_INSERT_RANGE\fP，但当前正在执行
+\fIfd\fP 引用的文件。
+.SH VERSIONS
+.\" See http://sourceware.org/bugzilla/show_bug.cgi?id=14964
+\fBfallocate\fP() 从 Linux 2.6.23 开始可用。 自 glibc 2.10 起提供支持。 自 glibc 2.18
+以来，\fBFALLOC_FL_*\fP 标志仅在 glibC 头文件中定义。
+.SH STANDARDS
+\fBfallocate\fP() 是特定于 Linux 的。
+.SH "SEE ALSO"
+\fBfallocate\fP(1), \fBftruncate\fP(2), \fBposix_fadvise\fP(3), \fBposix_fallocate\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

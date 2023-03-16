@@ -1,0 +1,230 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-fujitsu 5 "15 Nov 2022" "" "SANE Scanner Access Now Easy"
+.IX sane\-fujitsu
+
+.SH NAME
+sane\-fujitsu \- 富士通平板和 ADF 扫描仪的 SANE 后端
+
+.SH DESCRIPTION
+\fBsane\-fujitsu\fP 库实现了一个 SANE (现在可以轻松访问扫描仪) 后端，可以访问大多数 Fujitsu 平板扫描仪和 ADF 扫描仪。
+
+本文档描述了最初随 SANE 1.1.2 一起提供的后端版本 139。
+
+.SH "SUPPORTED HARDWARE"
+此版本支持所有已知的使用 Fujitsu SCSI 和 SCSI\-over\-USB 协议的型号。具体来说，支持 SCSI M309x 和 M409x
+系列、SCSI fi 系列以及大多数 USB fi、ScanSnap 和 iX 系列扫描仪。 有关详细信息，请参见
+\fIhttp://www.sane\-project.org/sane\-supported\-devices.html\fP 处的列表。
+
+此后端可能支持其他富士通扫描仪。确定支持级别的最佳方法是直接测试扫描仪，或收集正在运行的 windows 驱动程序的踪迹。
+请联系作者寻求帮助或测试结果。
+
+.SH "UNSUPPORTED HARDWARE"
+已知以下扫描仪不能使用此后端，因为它们具有非富士通芯片组或不受支持的接口类型。其中一些扫描仪可能由另一个后端支持。
+.PP
+.RS
+.nf
+\f(CR\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+SCSI: 串行: USB:
+\-\-\-\-\-\-\-\-\-\-\-\- \-\-\-\-\-\-\-\-\-\-\-\- \-\-\-\-\-\-\-\-\-\-\-\-
+扫描仪 M3093E/DE/EX fi\-4110EOX/2
+ScanPartner  M3096EX      fi\-4010CU
+SP\-Jr        M3097E+/DE   S300/S300M
+SP\-10/10C    M3099A/EH/EX S1300/S1100
+SP\-15C/300C               fi\-60F/65F
+SP\-600C/620C              fi\-5015C
+                          SP\-2x/3x\fR
+.fi
+.RE
+.P
+
+.SH OPTIONS
+已努力公开所有硬件选项，包括:
+.PP
+\fBsource s\fP
+.RS
+选择扫描源。选项可能包括 "Flatbed"、"ADF Front"、"ADF Back"、"ADF Duplex"、"Card
+Front"、"Card Back"、"Card Duplex"。
+.RE
+.PP
+\fBmode m\fP
+.RS
+选择扫描模式。选项可能包括 "Lineart"、"Halftone"、"Gray" 和 "Color"。
+.RE
+.PP
+\fBresolution, y\-resolution\fP
+.RS
+控制扫描分辨率。设置 \fB\-\-resolution\fP 也会设置 \fB\-\-y\-resolution,\fP，尽管此行为会被某些前端覆盖。
+.RE
+.PP
+\fBtl\-x, tl\-y, br\-x, br\-y\fP
+.RS
+设置扫描区域的左上角和右下角坐标。这些被一些前端重命名为 \fBt, l, x, y\fP。
+.RE
+.PP
+\fBpage\-width, page\-height\fP
+.RS
+设置纸张尺寸。扫描仪使用它来确定使用 ADF (自动文档进纸器) 时扫描坐标的居中并检测双张进纸错误。
+.RE
+.PP
+其他选项将根据扫描仪的功能提供: 具有 IPC 或 DTC 的机器将具有额外的增强选项，具有 CMP
+的机器将具有压缩选项，具有打印机的机器将具有一组背书选项。
+
+此外，后端公开了几个 'software'
+选项。这些是大型扫描仪原生提供的特性的重新实现，但在主机上运行。这使得较小的机器具有类似的功能。请注意，这些特性有些简单，可能不如原生实现。另请注意，这些特性都需要驱动程序将整个图像缓存在内存中。这几乎肯定会导致扫描速度降低。
+.PP
+\fBswcrop\fP
+.RS
+要求驱动程序检测较大图像中纸张的末端，并裁剪空的 edges。
+.RE
+.PP
+\fBswdeskew\fP
+.RS
+请求驱动程序检测较大图像内纸张的旋转，并反旋转。
+.RE
+.PP
+\fBswdespeck X\fP
+.RS
+要求驱动程序从图像中找到并删除 X 直径或更小的点，并用周围的平均颜色填充空间。
+.RE
+
+使用 \fI'scanimage \-\-help'\fP
+获取列表，但请注意，某些选项可能只有在设置了另一个选项时才可设置，并且高级选项可能会被某些前端程序隐藏。
+
+.SH "CONFIGURATION FILE"
+配置文件 \fIfujitsu.conf\fP 用于告诉后端如何寻找扫描器，并提供控制后端操作的选项。
+每次前端向后端询问扫描仪列表时都会读取此文件，通常仅在前端启动时读取。如果缺少配置文件，后端将无法找到任何扫描仪。
+.PP
+可以通过 4 种方式在配置文件中指定扫描器:
+.PP
+"富士通"
+.RS
+请求后端在系统中的所有 scsi 总线上搜索一个设备，该设备报告自己是 'FUJITSU' 制造的扫描仪。
+.RE
+.PP
+"scsi /dev/sg0" (或其他 scsi 设备文件)
+.RS
+请求后端打开指定的 scsi 设备。仅当您有多个兼容的扫描仪连接到您的系统并且需要指定一个时才有用。可能不应该与上面的其他 "scsi" 行一起使用。
+.RE
+.PP
+"usb 0x04c5 0x1042" (或其他 vendor/product id)
+.RS
+请求后端在系统中的所有 USB 总线中搜索使用该供应商和产品 ID 的设备。然后将查询该设备以确定它是否是富士通扫描仪。
+.RE
+.PP
+"usb /dev/usb/scanner0" (或其他设备文件)
+.RS
+某些系统使用内核驱动程序来访问 USB 扫描仪。此方法未经测试。
+.RE
+.PP
+唯一支持的配置选项是 "buffer\-size=xxx"，它允许您将数据缓冲区中的字节数设置为编译默认值 65536 (64K)
+以外的值。一些用户报告说，如果缓冲区不够大，他们的扫描仪将 "hang" 中间页面，或无法传输图像。
+.PP
+Note: 该选项可能会在配置文件中出现多次。它仅适用于由遵循此选项的 'scsi/usb' 行发现的扫描器。
+.PP
+Note: 后端没有对此值设置上限，因为一些用户要求它非常大。不建议使用高于默认值的值，这可能会使您的操作系统崩溃或锁定您的 scsi
+卡驱动程序。您被警告了。
+.PP
+
+.SH ENVIRONMENT
+后端使用单个环境变量 \fBSANE_DEBUG_FUJITSU\fP，它允许调试输出到标准错误。有效值为:
+.PP
+.RS
+5 个错误
+.br
+10 䇽数迹
+.br
+15 䇽数详细
+.br
+20 选项命令
+.br
+25 SCSI/USB 迹线
+.br
+30 SCSI/USB 写入
+.br
+31 SCSI/USB 读取
+.br
+35 无用的噪音
+.RE
+
+.SH "KNOWN ISSUES"
+平板设备可能无法在最大区域进行扫描，尤其是在高分辨率下。
+.PP
+任何在查询期间不支持 VPD 的模型都不会函数，直到将覆盖添加到后端。
+.PP
+不支持旧扫描仪使用的 CCITT 传真压缩。
+.PP
+后端支持 JPEG 输出，但 SANE 协议不支持，因此在此版本中被禁用。如果您从源代码重建，则可以启用它。
+.PP
+任何扫描仪型号都不支持网络接口。
+
+.SH CREDITS
+m3091 backend: Frederik Ramm <\fIfrederik a t remote d o t org\fP>
+.br
+m3096g backend: Randolph Bentson <\fIbentson a t holmsjoen d o t com\fP>
+.br
+  (感谢 coolscan 驱动程序的未具名作者)
+.br
+fujitsu backend, m3093, fi\-4340C, ipc, cmp, long\-time maintainer:
+.br
+  Oliver Schirrmeister
+<\fIoschirr a t abm d o t de\fP>
+.br
+m3092: Mario Goppold <\fImgoppold a t tbzpariv d o t tcc\-chemnitz dot de\fP>
+.br
+fi\-4220C and basic USB support: Ron Cemer <\fIron a t roncemer d o t com\fP>
+.br
+fi\-4120，fi 系列颜色，后端重写，jpeg，当前维护者:
+  m.  allan noah:
+<\fIkitno455 a t gmail d o t com\fP>
+
+JPEG 输出和低内存使用支持由以下机构资助:
+  档案管理员有限公司
+\fIwww.archivista.ch\fP
+
+代言人支持由以下机构资助:
+  OAS 油田会计服务有限公司
+  1500、840 \- 第七大道 S.W。
+  阿尔伯塔省卡尔加里
+  T2P 3G2 加拿大
+  1\-403\-263\-2600
+\fIwww.oas.ca\fP
+
+自动长度检测支持由以下机构资助:
+  Martin G.  Miller
+Miller
+
+硬件捐赠、软件图像增强和 fi\-6/7xxx 支持由以下机构资助:
+  PFU 美国公司
+\fIfujitsuscanners.com\fP
+
+iX500 支持由以下机构资助:
+  前缀计算机服务
+\fIwww.prefixservice.com\fP
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-scsi\fP(5), \fBsane\-usb\fP(5), \fBsane\-sp15c\fP(5),
+\fBsane\-avision\fP(5), \fBsane\-epjitsu\fP(5)
+
+.SH AUTHOR
+m. 艾伦诺亚: <kitno455 在 gmail 点 com>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

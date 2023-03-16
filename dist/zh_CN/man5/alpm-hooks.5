@@ -1,0 +1,297 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: alpm-hooks
+.\"    Author: [see the "Authors" section]
+.\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
+.\"      Date: 2022-11-01
+.\"    Manual: Pacman Manual
+.\"    Source: Pacman 6.0.2
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ALPM\-HOOKS 5 2022\-11\-01 "Pacman 6\&.0\&.2" "Pacman Manual"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+alpm\-hooks\-alpm 钩子，文件格式
+.SH SYNOPSIS
+.sp
+.nf
+[Trigger] (必需，可重复)
+Operation = Install|Upgrade|Remove (Required, Repeatable)
+Type = Path|Package (Required)
+Target = <Path|PkgName> (Required, Repeatable)
+
+[Action] (Required)
+Description = \&.\&.\&.  (Optional)
+When = PreTransaction|PostTransaction (Required)
+Exec = <Command> (Required)
+Depends = <PkgName> (Optional)
+AbortOnFail (可选，仅限 PreTransaction)
+需求目标 (Optional)
+.fi
+.SH DESCRIPTION
+.sp
+libalpm 提供了根据正在修改的包或者文件指定要在事务之前或之后运行的，钩子，的能力。钩子，由一个描述要运行的操作的 \fI[Action]\fP
+部分和一个或多个 \fI[Trigger]\fP 部分组成，其中描述它应该为哪些事务运行 \&。
+.sp
+钩子，从位于系统，钩子，目录 /usr/share/libalpm/hooks 和 \fBpacman.conf\fP(5) (默认为
+/etc/pacman\&.d/hooks) \& 中指定的其他自定义目录中的文件中读取。文件名需要有后缀
+`\&.hook`\&。钩子，按其文件名的字母顺序运行，其中排序忽略后缀 \&。
+.SH TRIGGERS
+.sp
+钩子，必须至少包含一个 \fI[Trigger]\fP 部分，用于确定哪些事务将导致，钩子，运行 \&。如果定义了多个触发器部分，则在事务匹配触发器的
+\fBany\fP\& 时，钩子，将运行。
+.PP
+\fBOperation =\fP Install|Upgrade|Remove
+.RS 4
+选择将目标与 \& 匹配的操作类型。可以指定多次 \&。如果包或文件已经存在于系统中，则安装被视为升级，无论新包版本是否实际上大于当前安装的版本
+\&。对于路径触发器，即使文件的所有权从一个包更改为另一个 \&，也是如此。Required\&.
+.RE
+.PP
+\fBType =\fP Path|Package
+.RS 4
+选择目标是否与事务包或文件匹配 \&。有关路径触发器 \& 的特殊说明，请参见 CAVEATS。 \fIFile\fP 是 \fIPath\fP 的弃用别名，将在
+future 版本中删除 \&。Required\&.
+.RE
+.PP
+\fBTarget =\fP <path|package>
+.RS 4
+与活动事务匹配的路径或包名。路径指的是包存档中的文件; 安装根路径应包含 \fBnot\fP\&。允许使用 Shell 风格的 glob 模式
+\&。可以通过在目标前加上感叹号 \& 来反转匹配。可以指定多次 \&。Required\&.
+.RE
+.SH ACTIONS
+.PP
+\fBDescription =\fP \&...
+.RS 4
+可选描述，描述钩子正在采取的操作以用于前端输出 \&。
+.RE
+.PP
+\fBExec =\fP <command>
+.RS 4
+命令运行 \&。命令参数被空格 \& 分割。包含空格的值应该用引号 \& 括起来。Required\&.
+.RE
+.PP
+\fBWhen =\fP PreTransaction|PostTransaction
+.RS 4
+何时运行钩子 \&。Required\&.
+.RE
+.PP
+\fBDepends =\fP <package>
+.RS 4
+必须为，钩子，安装的包才能运行 \&。可以指定多次 \&。
+.RE
+.PP
+\fBAbortOnFail\fP
+.RS 4
+如果，钩子，退出非零 \&，则导致事务中止。仅适用于 PreTransaction 钩子 \&。
+.RE
+.PP
+\fBNeedsTargets\fP
+.RS 4
+导致将匹配的触发器目标列表传递给 \fIstdin\fP\& 上的运行，钩子。
+.RE
+.SH "OVERRIDING HOOKS"
+.sp
+可以通过将具有相同名称的文件放在更高优先级的，钩子，目录中来覆盖，钩子。可以通过使用指向 \fI/dev/null\fP\& 的符号链接覆盖它们来禁用，钩子。
+.SH EXAMPLES
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 强制磁盘同步以降低数据损坏的风险
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target =  *
+
+[Action]
+Depends = coreutils
+When = PostTransaction
+Exec = /usr/bin/sync
+.fi
+.if  n \{\
+.RE
+.\}
+.SH CAVEATS
+.sp
+在某些情况下，路径触发器可能会以意想不到的方式起作用 \&。使用安装、升级或删除包的文件列表触发，钩子。当安装或升级以 \fI\&.pacnew\fP
+扩展名提取的文件时，原始文件名用于触发，钩子 \&。删除包时，该包拥有所有权的所有文件都可以触发，钩子，无论它们在包删除之前是否实际存在于文件系统中
+\&。
+.sp
+如果事务因任何原因未能完成 \&，PostTransaction 钩子，将运行 \fBnot\fP。
+.sp
+有关 pacman 及其相关工具的最新信息，请参见 pacman 网站 https://archlinux\&.org/pacman/。
+.SH BUGS
+.sp
+虫子? 您一定在开玩笑; 此软件中没有错误 \&。但如果我们碰巧错了，请在 Pacman 部分的 Arch Linux Bug Tracker
+提交尽可能详细的错误报告 \&。
+.SH AUTHORS
+.sp
+目前的维护者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Allan McRae <allan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Andrew Gregory <andrew\&.gregory\&.8@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Eli Schwartz <eschwartz@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Morgan Adamiec <morganamilo@archlinux\&.org>
+.RE
+.sp
+过去的主要贡献者:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Judd Vinet <jvinet@zeroflux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aurelien Foret <aurelien@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Aaron Griffin <aaron@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dan McGee <dan@archlinux\&.org>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Xavier Chantry <shiningxc@gmail\&.com>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Nagy Gabor <ngaba@bibl\&.u\-szeged\&.hu>
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Dave Reisner <dreisner@archlinux\&.org>
+.RE
+.sp
+对于其他贡献者，请在 pacman\&.git 库 \& 上使用 git shortlog \-s。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

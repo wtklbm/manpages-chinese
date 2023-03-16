@@ -1,0 +1,243 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH LOGIND\&.CONF 5 "" "systemd 253" logind.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+logind.conf, logind.conf.d \- 登录管理器配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/logind\&.conf
+.PP
+/etc/systemd/logind\&.conf\&.d/*\&.conf
+.PP
+/run/systemd/logind\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/logind\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+这些文件配置了 systemd 登录管理器 \fBsystemd\-logind.service\fP(8)\& 的各种参数。有关语法 \& 的一般说明，请参见
+\fBsystemd.syntax\fP(7)。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH OPTIONS
+.PP
+所有选项都在 [Login] 部分配置:
+.PP
+\fINAutoVTs=\fP
+.RS 4
+取一个正整数 \&。配置默认分配多少个虚拟终端 (VTs)，当切换到并且以前未使用时，"autovt" 服务会自动产生在 \&。这些服务是从相应 VT
+TTY 名称的模板单元 autovt@\&.service 实例化的，例如
+autovt@tty4\&.service\&。默认情况下，autovt@\&.service 链接到
+getty@\&.service\&。换句话说，登录提示是在用户切换到未使用的虚拟终端时动态启动的。因此，此参数控制 VTs\& 上可用的登录
+"gettys" 的数量。如果某个 VT 已被某些其他子系统使用 (例如，图形登录)，则不会尝试这种激活 \&。请注意，在 \fIReserveVT=\fP
+中配置的 VT 始终受到这种激活的影响，即使它不是使用 \fINAutoVTs=\fP 指令 \& 配置的 VT 之一。默认为 6\&。设置为 0
+时，"autovt" 服务的自动生成被禁用 \&。
+.RE
+.PP
+\fIReserveVT=\fP
+.RS 4
+取一个正整数 \&。标识应无条件保留用于 autovt@\&. 服务激活 (见上文) \& 的一个虚拟终端。使用此选项选择的 VT
+将被无条件地标记为忙，因此没有其他子系统会分配它 \&。此功能有助于确保无论其他子系统分配了多少 VT，一个登录 "getty" 始终可用 \&。默认为
+6 (换句话说，在 Alt\-F6\& 上总会有一个 "getty" 可用。) \&。当设置为 0 时，VT 预留被禁用 \&。
+.RE
+.PP
+\fIKillUserProcesses=\fP
+.RS 4
+采用布尔型参数 \&。配置用户注销时是否终止用户进程 \&。如果为真，则会话对应的作用域元以及该作用域内的所有进程将被终止 \&。如果为
+false，则作用域为 "abandoned"，见 \fBsystemd.scope\fP(5)，进程未被杀死 \&。默认为 "no"，但请参见下面的选项
+\fIKillOnlyUsers=\fP 和 \fIKillExcludeUsers=\fP\&。
+.sp
+除了会话进程之外，用户进程可能在用户管理器单元 user@\&.service\& 下运行。根据延迟设置，这可能允许用户运行独立于他们的登录会话的进程
+\&。请参见 \fBloginctl\fP(1)\& 中 \fBenable\-linger\fP 的说明。
+.sp
+请注意，设置 \fIKillUserProcesses=yes\fP 会破坏像 \fBscreen\fP(1) 和 \fBtmux\fP(1)
+这样的工具，除非它们被移出会话作用域 \&。请参见 \fBsystemd\-run\fP(1)\& 中的示例。
+.RE
+.PP
+\fIKillOnlyUsers=\fP, \fIKillExcludeUsers=\fP
+.RS 4
+这些设置采用以空格分隔的用户名列表，覆盖 \fIKillUserProcesses=\fP 设置 \&。可以将用户名添加到
+\fIKillExcludeUsers=\fP 以排除该用户的会话作用域中的进程被杀死，即使设置了
+\fIKillUserProcesses=yes\fP\&。如果不设置 \fIKillExcludeUsers=\fP，则默认排除 "root" 用户 \&。
+\fIKillExcludeUsers=\fP 可以设置为空值以覆盖此默认值 \&。如果未排除用户，则接下来检查
+\fIKillOnlyUsers=\fP\&。如果指定了这个设置，只有那些用户的会话作用域中的进程会被杀死 \&。否则，用户以
+\fIKillUserProcesses=yes\fP 设置 \& 为准。
+.RE
+.PP
+\fIIdleAction=\fP
+.RS 4
+配置系统空闲时要执行的操作 \&。采用
+"ignore"、"poweroff"、"reboot"、"halt"、"kexec"、"suspend"、"hibernate"、"hybrid\-sleep"、"suspend\-then\-hibernate"
+和 `锁定`\& 之一。默认为 `忽略`\&。
+.sp
+请注意，这需要用户会话正确地向系统报告空闲状态
+\&。系统将在所有会话报告它们空闲后执行操作，没有空闲抑制锁处于活动状态，随后，\fIIdleActionSec=\fP (见下文) 配置的时间已到期 \&。
+.RE
+.PP
+\fIIdleActionSec=\fP
+.RS 4
+配置在系统空闲后执行 \fIIdleAction=\fP (见上文) 中配置的操作的延迟。
+.RE
+.PP
+\fIInhibitDelayMaxSec=\fP
+.RS 4
+指定系统关闭或睡眠请求因 "delay" 类型的抑制器锁处于活动状态而被延迟的最长时间，在抑制器被忽略并且操作仍然执行之前 \&。默认为 5\&。
+.RE
+.PP
+\fIUserStopDelaySec=\fP
+.RS 4
+指定在用户完全注销后保留用户记录和每用户服务 user@\&.service 的时间。如果设置为零，则在用户的最后一个会话结束时立即终止每用户服务
+\&。如果此选项配置为非零快速 logout/login 周期将加速，因为用户 \*(Aqs 服务管理器不会不断重新启动 \&。如果设置为
+"infinity"，用户的每用户服务在首次登录后永远不会再次终止，并继续运行直到系统关闭 \&。默认为 10s\&。
+.RE
+.PP
+\fIHandlePowerKey=\fP, \fIHandlePowerKeyLongPress=\fP, \fIHandleRebootKey=\fP,
+\fIHandleRebootKeyLongPress=\fP, \fIHandleSuspendKey=\fP,
+\fIHandleSuspendKeyLongPress=\fP, \fIHandleHibernateKey=\fP,
+\fIHandleHibernateKeyLongPress=\fP, \fIHandleLidSwitch=\fP,
+\fIHandleLidSwitchExternalPower=\fP, \fIHandleLidSwitchDocked=\fP
+.RS 4
+控制登录应如何处理系统电源、重启和睡眠键以及盖子开关以触发系统关机、重启或暂停等操作。可以是
+"ignore"、"poweroff"、"reboot"、"halt"、"kexec"、"suspend"、"hibernate"、"hybrid\-sleep"、"suspend\-then\-hibernate"、"lock"
+和 `恢复出厂设置`\& 之一。如果 "ignore"，\fBsystemd\-logind\fP 永远不会处理这些键 \&。如果是 "lock"，所有运行的
+session 都会被锁屏; 否则，将在相应的事件中执行指定的操作 \&。只有带有 "power\-switch" udev 标签的输入设备才会被监视
+key/lid 开关事件 \&。
+.sp
+\fIHandlePowerKey=\fP 默认为 "poweroff"，\fIHandleRebootKey=\fP 默认为
+"reboot"，\fIHandleSuspendKey=\fP 默认为 "suspend"，\fIHandleHibernateKey=\fP 默认为
+"hibernate"，\fIHandlePowerKeyLongPress=\fP 默认为
+"ignore"，\fIHandleRebootKeyLongPress=\fP 默认为
+"poweroff"，\fIHandleSuspendKeyLongPress=\fP 默认为
+"hibernate"，\fIHandleHibernateKeyLongPress=\fP 默认为 `忽略`\&。\fIHandleLidSwitch=\fP
+默认为 `挂起`\&。默认情况下 \fIHandleLidSwitchExternalPower=\fP 被完全忽略 (为了向后兼容) \(em
+一个明确的值必须在它被用来确定行为之前设置 \&。 \fIHandleLidSwitchDocked=\fP 默认为
+`忽略`\&。如果系统插入扩展坞，或者连接了多个显示器，则会发生 \fIHandleLidSwitchDocked=\fP 指定的操作;
+如果系统使用外部电源，则发生 \fIHandleLidSwitchExternalPower=\fP 指定的操作 (如果有) ; 否则发生
+\fIHandleLidSwitch=\fP 动作 \&。
+.sp
+不同的应用程序可能会禁用 logind\* (Aqs 处理系统电源和睡眠键以及盖子开关，方法是使用底部抑制器锁
+(`handle\-power\-key`，"handle\-suspend\-key"、"handle\-hibernate\-key"、"handle\-lid\-switch"、"handle\-reboot\-key")
+\&。这最常被图形桌面环境用来接管挂起和休眠处理，并使用它们自己的配置机制 \&。如果采用底层禁止锁，则在触发该键或开关时登录将不会采取任何操作，并且
+\fIHandle*=\fP 设置无关 \&。
+.RE
+.PP
+\fIPowerKeyIgnoreInhibited=\fP, \fISuspendKeyIgnoreInhibited=\fP,
+\fIHibernateKeyIgnoreInhibited=\fP, \fILidSwitchIgnoreInhibited=\fP,
+\fIRebootKeyIgnoreInhibited=\fP
+.RS 4
+控制 \fBsystemd\-logind\fP 在电源、重启和睡眠键以及盖子开关被触发时所采取的动作是否受制于高级禁止锁
+(`关机`、"reboot"、"sleep"、"idle") \&。低级别抑制器锁
+(`handle\-power\-key`，"handle\-suspend\-key"、"handle\-hibernate\-key"、"handle\-lid\-switch"、"handle\-reboot\-key")
+始终有效，无论此设置如何 \&。
+.sp
+这些设置采用布尔型参数 \&。如果为 "no"，则应用程序采用的抑制器锁得到遵守 \&。如果忽略
+"yes"、"shutdown"、"reboot"、"sleep" 和 "idle" 抑制器锁 \&。
+\fIPowerKeyIgnoreInhibited=\fP、\fISuspendKeyIgnoreInhibited=\fP、\fIHibernateKeyIgnoreInhibited=\fP
+和 \fIRebootKeyIgnoreInhibited=\fP 默认为 `否`\&。\fILidSwitchIgnoreInhibited=\fP 默认为
+`是`\&。这意味着当 \fBsystemd\-logind\fP 自行处理事件时
+(没有低级抑制器锁被另一个应用程序占用)，默认情况下，盖子开关不考虑暂停阻止程序，但电源和睡眠键会 \&。
+.RE
+.PP
+\fIHoldoffTimeoutSec=\fP
+.RS 4
+指定系统启动或系统恢复后的一段时间，在此期间 systemd 将推迟对盖子事件做出反应 \&。这是系统正确检测任何热插拔设备所必需的，以便
+systemd 可以在连接了外部显示器或扩展坞时忽略盖子事件 \&。如果设置为 0，systemd 将始终立即
+react，可能在内核完全探测所有热插拔设备之前 \&。这是安全的，只要您不关心 systemd 是否考虑在系统关闭时插入或拔出的设备 \&。默认为
+30s\&。
+.RE
+.PP
+\fIRuntimeDirectorySize=\fP
+.RS 4
+为每个登录的用户设置 \fI$XDG_RUNTIME_DIR\fP 运行时目录的大小限制。采用以字节为单位的大小，可以选择使用常用的 K、G、M 和 T
+后缀作为后缀，以 1024 (IEC)\& 为基数。或者，可以指定以 "%" 为后缀的数字百分比，它设置相对于物理 RAM\& 数量的大小限制。默认为
+10%\&。请注意，此大小只是一个安全限制 \&。由于每个运行时目录都是一个 tmpfs 文件系统，它只会消耗所需的内存 \&。
+.RE
+.PP
+\fIRuntimeDirectoryInodesMax=\fP
+.RS 4
+为每个登录的用户设置 \fI$XDG_RUNTIME_DIR\fP 运行时目录的 inode 数量限制。接受一个数字，可以选择以常用的 K、G、M 和 T
+后缀作为后缀，以 1024 (IEC)\& 为基数。默认为 \fIRuntimeDirectorySize=\fP 除以
+4096\&。请注意，此大小只是一个安全限制 \&。由于每个运行时目录都是一个 tmpfs 文件系统，它只会消耗所需的内存 \&。
+.RE
+.PP
+\fIInhibitorsMax=\fP
+.RS 4
+控制并发抑制器的最大数量以允许 \&。默认为 8192 (8K)\&。
+.RE
+.PP
+\fISessionsMax=\fP
+.RS 4
+控制要管理的最大并发用户会话数。默认为 8192 (8K)\&。根据 pam_systemd\&.so 模块如何包含在 PAM
+栈配置中，进一步的登录会话将被拒绝，或允许但不被 systemd\-logind\& 跟踪。
+.RE
+.PP
+\fIRemoveIPC=\fP
+.RS 4
+控制当用户完全注销时是否删除属于用户的 System V 和 POSIX IPC 对象 \&。采用布尔型参数 \&。如果启用，用户在最后一次用户
+\*(Aqs sessions terminated\&. 这包括 System V 信号量、共享内存和消息队列，以及 POSIX 共享内存和消息队列
+\&。请注意，root 用户和其他系统用户的 IPC 对象不受此设置的影响 \&。默认为 `是`\&。
+.RE
+.PP
+\fIStopIdleSessionSec=\fP
+.RS 4
+指定以秒为单位的超时或时间跨度值，在此之后 systemd\-logind 检查所有会话的空闲状态 \&。每个空闲时间超过超时的会话都将停止 \&。默认为
+"infinity" (systemd\-logind 不检查会话的空闲状态) \&。时间跨度的语法详见 \fBsystemd.time\fP(7)\&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-logind.service\fP(8), \fBloginctl\fP(1),
+\fBsystemd\-system.conf\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,175 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1998 Alan Cox.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: ddp.7,v 1.3 1999/05/13 11:33:22 freitag Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ddp 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ddp\-Linux AppleTalk 协议实现
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <netatalk/at.h>\fP
+.PP
+\fIddp_socket\fP\fB = socket(AF_APPLETALK, SOCK_DGRAM, 0);\fP
+\fIraw_socket\fP\fB = socket(AF_APPLETALK, SOCK_RAW, \fP\fIprotocol\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+Linux 实现 \fIInside AppleTalk\fP 中描述的 AppleTalk 协议。 内核中仅存在 DDP 层和 AARP。 它们旨在通过
+\fBnetatalk\fP 协议库使用。 此页面为那些希望或需要直接使用 DDP 层的人记录了接口。
+.PP
+AppleTalk 和用户程序之间的通信使用 BSD 兼容的套接字接口工作。 有关套接字的更多信息，请参见 \fBsocket\fP(7)。
+.PP
+通过使用 \fBAF_APPLETALK\fP 套接字系列参数调用 \fBsocket\fP(2) 函数来创建 AppleTalk 套接字。 有效的套接字类型是
+\fBSOCK_DGRAM\fP 以打开 \fBddp\fP 套接字或 \fBSOCK_RAW\fP 以打开 \fBraw\fP 套接字。 \fIprotocol\fP
+是要接收或发送的 AppleTalk 协议。 对于 \fBSOCK_RAW\fP，您必须指定 \fBATPROTO_DDP\fP。
+.PP
+原始套接字只能由具有有效用户 ID 0 的进程或当进程具有 \fBCAP_NET_RAW\fP 能力时打开。
+.SS "Address format"
+AppleTalk 套接字地址被定义为网络号、节点号和端口号的组合。
+.PP
+.in +4n
+.EX
+struct at_addr {
+    unsigned short s_net;
+    unsigned char  s_node;
+};
+
+struct sockaddr_atalk {
+    sa_family_t    sat_family;    /* address family */
+    unsigned char  sat_port;      /* port */
+    struct at_addr sat_addr;      /* net/node */
+};
+.EE
+.in
+.PP
+.\" FIXME . this doesn't make sense [johnl]
+\fIsat_family\fP 始终设置为 \fBAF_APPLETALK\fP。 \fIsat_port\fP 包含端口。 129 以下的端口号称为
+\fIreserved ports\fP。 只有具有有效用户 ID 0 或 \fBCAP_NET_BIND_SERVICE\fP 能力的进程才可以
+\fBbind\fP(2) 到这些套接字。 \fIsat_addr\fP 是主机地址。 \fIstruct at_addr\fP 的 \fInet\fP
+成员包含网络字节顺序的主机网络。 \fBAT_ANYNET\fP 的值是一个通配符，也意味着 \[lq] 这个网络。\[rq] \fIstruct at_addr\fP 的 \fInode\fP 成员包含主机节点号。 \fBAT_ANYNODE\fP 的值是一个通配符，也表示 \[lq] 这个节点。\[rq]
+\fBATADDR_BCAST\fP 的值是一个链路本地广播地址。
+.SS "Socket options"
+不支持特定于协议的套接字选项。
+.SS "/proc interfaces"
+IP 支持一组 \fI/proc\fP 接口来配置一些全局 AppleTalk 参数。 可以通过读取或写入目录 \fI/proc/sys/net/atalk/\fP
+中的文件来访问这些参数。
+.TP 
+\fIaarp\-expiry\-time\fP
+AARP 缓存条目过期之前的时间间隔 (以秒为单位)。
+.TP 
+\fIaarp\-resolve\-time\fP
+解析 AARP 缓存条目之前的时间间隔 (以秒为单位)。
+.TP 
+\fIaarp\-retransmit\-limit\fP
+在节点被宣布死亡之前 AARP 查询的重传次数。
+.TP 
+\fIaarp\-tick\-time\fP
+驱动 AARP 的计时器的计时器速率 (以秒为单位)。
+.PP
+默认值符合规范，永远不需要更改。
+.SS Ioctls
+.\" FIXME . Add a section about multicasting
+\fBsocket\fP(7) 中描述的所有 ioctl 都适用于 DDP。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+用户试图在没有必要权限的情况下执行操作。 这些包括在没有设置广播标志的情况下发送到广播地址，以及在没有有效用户 ID 0 或
+\fBCAP_NET_BIND_SERVICE\fP 的情况下尝试绑定到保留端口。
+.TP 
+\fBEADDRINUSE\fP
+试图绑定到一个已在使用的地址。
+.TP 
+\fBEADDRNOTAVAIL\fP
+请求了不存在的接口或请求的源地址不是本地的。
+.TP 
+\fBEAGAIN\fP
+对非阻塞套接字的操作会阻塞。
+.TP 
+\fBEALREADY\fP
+非阻塞套接字上的连接操作已在进行中。
+.TP 
+\fBECONNABORTED\fP
+连接在 \fBaccept\fP(2) 期间关闭。
+.TP 
+\fBEHOSTUNREACH\fP
+没有路由表条目匹配目标地址。
+.TP 
+\fBEINVAL\fP
+传递的参数无效。
+.TP 
+\fBEISCONN\fP
+在已连接的套接字上调用了 \fBconnect\fP(2)。
+.TP 
+\fBEMSGSIZE\fP
+数据报大于 DDP MTU。
+.TP 
+\fBENODEV\fP
+网络设备不可用或无法发送 IP。
+.TP 
+\fBENOENT\fP
+在没有数据包到达的套接字上调用了 \fBSIOCGSTAMP\fP。
+.TP 
+\fBENOMEM\fP and \fBENOBUFS\fP
+可用内存不足。
+.TP 
+\fBENOPKG\fP
+未配置内核子系统。
+.TP 
+\fBENOPROTOOPT\fP and \fBEOPNOTSUPP\fP
+传递了无效的套接字选项。
+.TP 
+\fBENOTCONN\fP
+该操作仅在连接的套接字上定义，但套接字未连接。
+.TP 
+\fBEPERM\fP
+用户无权设置高优先级、更改配置或向请求的进程或组发送信号。
+.TP 
+\fBEPIPE\fP
+连接被另一端意外关闭或关闭。
+.TP 
+\fBESOCKTNOSUPPORT\fP
+套接字未配置，或请求了未知的套接字类型。
+.SH VERSIONS
+Linux 2.0 或更高版本支持 AppleTalk。 \fI/proc\fP 接口从 Linux 2.2 开始存在。
+.SH NOTES
+小心使用 \fBSO_BROADCAST\fP 选项; 它在 Linux 中没有特权。 粗心地发送到广播地址很容易使网络，重载。
+.SS Compatibility
+基本的 AppleTalk 套接字接口与 BSD 派生系统上的 \fBnetatalk\fP 兼容。 许多 BSD 系统在发送广播帧时没有检查
+\fBSO_BROADCAST\fP; 这可能会导致兼容性问题。
+.PP
+原始套接字模式是 Linux 独有的，它的存在是为了更轻松地支持替代 CAP 包和 AppleTalk 监控工具。
+.SH BUGS
+有太多不一致的错误值。
+.PP
+用于配置路由表、设备、AARP 表和其他设备的 ioctl 尚未描述。
+.SH "SEE ALSO"
+\fBrecvmsg\fP(2), \fBsendmsg\fP(2), \fBcapabilities\fP(7), \fBsocket\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

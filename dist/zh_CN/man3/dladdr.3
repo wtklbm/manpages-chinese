@@ -1,0 +1,192 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (C) 2008 Petr Baudis <pasky@suse.cz> (dladdr caveat)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dladdr 3 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+dladdr, dladdr1 \- translate address to symbolic information
+.SH LIBRARY
+Dynamic linking library (\fIlibdl\fP, \fI\-ldl\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE\fP
+\fB#include <dlfcn.h>\fP
+.PP
+\fBint dladdr(const void *\fP\fIaddr\fP\fB, Dl_info *\fP\fIinfo\fP\fB);\fP
+\fBint dladdr1(const void *\fP\fIaddr\fP\fB, Dl_info *\fP\fIinfo\fP\fB, void **\fP\fIextra_info\fP\fB,\fP
+\fB            int \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+函数 \fBdladdr\fP() 确定 \fIaddr\fP 中指定的地址是否位于调用应用程序加载的共享对象之一中。 如果是，则 \fBdladdr\fP()
+返回有关与 \fIaddr\fP 重叠的共享对象和符号的信息。 此信息在 \fIDl_info\fP 结构体中返回:
+.PP
+.in +4n
+.EX
+typedef 结构体 {
+    const char *dli_fname;  /* Pathname of shared object that
+                               包含地址 */
+    void       *dli_fbase;  /* Base address at which shared
+                               对象已加载 */
+    const char *dli_sname;  /* Name of symbol whose definition
+                               重叠 \fIaddr\fP */
+    void       *dli_saddr;  /* Exact address of symbol named
+                               在 \fIdli_sname\fP */
+} Dl_info;
+.EE
+.in
+.PP
+如果找不到与 \fIaddr\fP 匹配的符号，则将 \fIdli_sname\fP 和 \fIdli_saddr\fP 设置为 NULL。
+.PP
+函数 \fBdladdr1\fP() 类似于 \fBdladdr\fP()，但通过参数 \fIextra_info\fP 返回附加信息。 返回的信息取决于
+\fIflags\fP 中指定的值，该值可以是以下值之一:
+.TP 
+\fBRTLD_DL_LINKMAP\fP
+获取指向匹配文件的链接 map 的指针。 \fIextra_info\fP 参数指向一个 \fIlink_map\fP 结构体 (即 \fIstruct link_map\~**\fP)，在 \fI<link.h>\fP 中定义为:
+.IP
+.in +4n
+.EX
+struct link_map {
+    ElfW(Addr) l_addr;  /* Difference between the
+                           address in the ELF file and
+                           the address in memory */
+    char      *l_name;   /* Absolute pathname where
+                           object was found */
+    ElfW(Dyn) *l_ld;    /* Dynamic section of the
+                           shared object */
+    struct link_map *l_next, *l_prev;
+                        /* Chain of loaded objects */
+
+    /* Plus additional fields private to the
+       implementation */
+};
+.EE
+.in
+.TP 
+\fBRTLD_DL_SYMENT\fP
+获取指向匹配符号的 ELF 符号表条目的指针。 \fIextra_info\fP 参数是一个指向符号指针的指针: \fIconst ElfW(Sym) **\fP。
+\fIElfW\fP() 宏定义将其参数转换为适合硬件架构的 ELF 数据类型的名称。 例如，在 64 位平台上，\fIElfW(Sym)\fP 生成数据类型名称
+\fIElf64_Sym\fP，它在 \fI<elf.h>\fP 中定义为:
+.IP
+.in +4n
+.EX
+typedef struct  {
+    Elf64_Word    st_name;     /* Symbol name */
+    unsigned char st_info;     /* Symbol type and binding */
+    unsigned char st_other;    /* Symbol visibility */
+    Elf64_Section st_shndx;    /* Section index */
+    Elf64_Addr    st_value;    /* Symbol value */
+    Elf64_Xword   st_size;     /* Symbol size */
+} Elf64_Sym;
+.EE
+.in
+.IP
+\fIst_name\fP 字段是字符串表的索引。
+.IP
+\fIst_info\fP 字段对符号的类型和绑定进行编码。 可以使用宏 \fBELF64_ST_TYPE(st_info)\fP (或 32 位平台上的
+\fBELF32_ST_TYPE()\fP) 提取类型，它会产生以下值之一:
+.in +4n
+.TS
+lb lb
+lb l.
+Value	Description
+STT_NOTYPE	Symbol type is unspecified
+STT_OBJECT	Symbol is a data object
+STT_FUNC	Symbol is a code object
+STT_SECTION	Symbol associated with a section
+STT_FILE	Symbol's name is filename
+STT_COMMON	Symbol is a common data object
+STT_TLS	Symbol is thread\-local data object
+STT_GNU_IFUNC	Symbol is indirect code object
+.TE
+.in
+.IP
+可以使用宏 \fBELF64_ST_BIND(st_info)\fP (或 32 位平台上的 \fBELF32_ST_BIND()\fP) 从 \fIst_info\fP
+字段中提取符号绑定，它会产生以下值之一:
+.in +4n
+.TS
+lb lb
+lb l.
+Value	Description
+STB_LOCAL	Local symbol
+STB_GLOBAL	Global symbol
+STB_WEAK	Weak symbol
+STB_GNU_UNIQUE	Unique symbol
+.TE
+.in
+.IP
+\fIst_other\fP 字段包含符号的可见性，可以使用宏 \fBELF64_ST_VISIBILITY(st_info)\fP (或 32 位平台上的
+\fBELF32_ST_VISIBILITY()\fP) 提取，它会产生以下值之一:
+.in +4n
+.TS
+lb lb
+lb l.
+Value	Description
+STV_DEFAULT	Default symbol visibility rules
+STV_INTERNAL	Processor\-specific hidden class
+STV_HIDDEN	Symbol unavailable in other modules
+STV_PROTECTED	Not preemptible, not exported
+.TE
+.in
+.SH "RETURN VALUE"
+成功时，这些函数返回一个非零值。 如果 \fIaddr\fP 中指定的地址可以与共享对象匹配，但不能与共享对象中的符号匹配，则
+\fIinfo\->dli_sname\fP 和 \fIinfo\->dli_saddr\fP 字段设置为 NULL。
+.PP
+.\" According to the FreeBSD man page, dladdr1() does signal an
+.\" error via dlerror() for this case.
+如果 \fIaddr\fP 中指定的地址无法与共享对象匹配，则这些函数返回 0。 在这种情况下，错误消息是 \fInot\fP available via
+\fBdlerror\fP(3)。
+.SH VERSIONS
+\fBdladdr\fP() 存在于 glibc 2.0 及更高版本中。 \fBdladdr1\fP() 最早出现在 glibc 2.3.3 中。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBdladdr\fP(),
+\fBdladdr1\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数是 Solaris 上也存在的非标准 GNU 扩展。
+.SH BUGS
+有时，传递给 \fBdladdr\fP() 的函数指针可能会让您大吃一惊。 在某些体系结构 (特别是 i386 和 x86\-64)
+上，\fIdli_fname\fP 和 \fIdli_fbase\fP 可能最终会指向您从中调用 \fBdladdr\fP()
+的对象，即使用作参数的函数应该来自动态链接库。
+.PP
+问题在于，函数指针仍将在编译时解析，但仅指向原始对象的 \fIplt\fP (过程链接表) 部分 (在要求动态链接器解析符号后调度调用)。
+要解决这个问题，您可以尝试将代码编译为与位置无关的: 这样，编译器就无法再在编译时准备指针，\fBgcc\fP(1) 将生成仅从 \fIgot\fP
+(全局偏移量表) 加载最终符号地址的代码) 在运行时传递给 \fBdladdr\fP() 之前。
+.SH "SEE ALSO"
+\fBdl_iterate_phdr\fP(3), \fBdlinfo\fP(3), \fBdlopen\fP(3), \fBdlsym\fP(3), \fBld.so\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

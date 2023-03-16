@@ -1,0 +1,136 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\"
+.\" Modified 1993-03-29, David Metcalfe
+.\" Modified 1993-07-24, Rik Faith (faith@cs.unc.edu)
+.\" 2006-01-15, mtk, Added example program.
+.\" Modified 2012-03-08, Mark R. Bannister <cambridge@users.sourceforge.net>
+.\"                  and Ben Bacarisse <software@bsb.me.uk>
+.\"     Document qsort_r()
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH qsort 3 2023\-01\-07 "Linux man\-pages 6.03" 
+.SH NAME
+qsort, qsort_r \- 对数组进行排序
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBvoid qsort(void \fP\fIbase\fP\fB[.\fP\fIsize\fP\fB * .\fP\fInmemb\fP\fB], size_t \fP\fInmemb\fP\fB, size_t \fP\fIsize\fP\fB,\fP
+\fB           int (*\fP\fIcompar\fP\fB)(const void [.\fP\fIsize\fP\fB], const void [.\fP\fIsize\fP\fB]));\fP
+\fBvoid qsort_r(void \fP\fIbase\fP\fB[.\fP\fIsize\fP\fB * .\fP\fInmemb\fP\fB], size_t \fP\fInmemb\fP\fB, size_t \fP\fIsize\fP\fB,\fP
+\fB           int (*\fP\fIcompar\fP\fB)(const void [.\fP\fIsize\fP\fB], const void [.\fP\fIsize\fP\fB], void *),\fP
+\fB           void *\fP\fIarg\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBqsort_r\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+\fBqsort\fP() 函数对具有大小为 \fIsize\fP 的 \fInmemb\fP 元素的数组进行排序。 \fIbase\fP 参数指向数组的开始。
+.PP
+数组内容按照 \fIcompar\fP 指向的一个比较函数升序排列，用两个指向被比较对象的参数来调用。
+.PP
+如果第一个参数被认为分别小于、等于或大于第二个，则比较函数必须返回小于、等于或大于零的整数。 如果两个成员比较相等，则它们在排序数组中的顺序未定义。
+.PP
+\fBqsort_r\fP() 函数与 \fBqsort\fP() 相同，只是比较函数 \fIcompar\fP 需要第三个参数。 一个指针通过 \fIarg\fP
+传递给比较函数。 这样比较函数不需要使用全局变量来传递任意参数，因此在线程中使用是可重入和安全的。
+.SH "RETURN VALUE"
+\fBqsort\fP() 和 \fBqsort_r\fP() 函数不返回任何值。
+.SH VERSIONS
+在 glibc 2.8 中添加了 \fBqsort_r\fP()。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBqsort\fP(),
+\fBqsort_r\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBqsort\fP(): POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.SH NOTES
+比较 C 字符串，比较函数可以调用 \fBstrcmp\fP(3)，如下例所示。
+.SH EXAMPLES
+有关使用示例，请参见 \fBbsearch\fP(3) 下的示例。
+.PP
+另一个例子是下面的程序，它对命令行参数中给出的字符串进行排序:
+.PP
+.\" SRC BEGIN (qsort.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static int
+cmpstringp(const void *p1, const void *p2)
+{
+    /* 这个函数的实际参数是 ` 指针
+       指向 char 的指针 `，但 strcmp(3) 参数是` 指针
+       到 char`，因此下面的转换加上解引用。*/
+
+    return strcmp(*(const char **) p1, *(const char **) p2);
+}
+
+int
+main(int argc, char *argv[])
+{
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <string>...\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    qsort(&argv[1], argc \- 1, sizeof(char *), cmpstringp);
+
+    for (size_t j = 1; j < argc; j++)
+        puts(argv[j]);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBsort\fP(1), \fBalphasort\fP(3), \fBstrcmp\fP(3), \fBversionsort\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

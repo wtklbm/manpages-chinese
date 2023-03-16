@@ -1,0 +1,944 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2015 Serge Hallyn <serge@hallyn.com>
+.\" and Copyright (C) 2016, 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH cgroups 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+cgroups\-Linux 控制组
+.SH DESCRIPTION
+.\"
+控制组，通常称为 cgroups，是 Linux 内核的一项特性它允许将进程组织成分层组，然后可以限制和监视这些组对各种类型资源的使用。 内核的
+cgroup 接口是通过称为 cgroupfs 的伪文件系统提供的。 分组是在核心 cgroup
+内核代码中实现的，而资源跟踪和限制是在一组按资源类型划分的子系统 (内存、CPU 等) 中实现的。
+.SS Terminology
+\fIcgroup\fP 是进程的集合，这些进程绑定到通过 cgroup 文件系统定义的一组限制或参数。
+.PP
+\fIsubsystem\fP 是修改 cgroup 中进程行为的内核组件。 各种子系统已经实现，使得可以做一些事情，例如限制 cgroup 可用的 CPU
+时间和内存量，计算 cgroup 使用的 CPU 时间，以及冻结和恢复 cgroup 中进程的执行。 子系统有时也称为 \fIresource controllers\fP (或简称为控制器)。
+.PP
+.\"
+控制器的 cgroups 排列在 \fIhierarchy\fP 中。 该层次结构是通过在 cgroup 文件系统中创建、删除和重命名子目录来定义的。
+在层次结构的每个级别，可以定义属性 (例如，限制)。 cgroups 提供的限制、控制和会计通常在定义属性的 cgroup 下的整个子层次结构中都有效。
+因此，例如，后代 cgroup 不能超过对层次结构中较高级别的 cgroup 的限制。
+.SS "Cgroups version 1 and version 2"
+cgroups 实现的初始版本是在 Linux 2.6.24 中。 随着时间的推移，已经添加了各种 cgroup 控制器以允许管理各种类型的资源。
+然而，这些控制器的开发在很大程度上是不协调的，结果控制器之间出现了许多不一致，并且 cgroup 层次结构的管理变得相当复杂。 可以在内核源文件
+\fIDocumentation/admin\-guide/cgroup\-v2.rst\fP (或 Linux 4.17 及更早版本中的
+\fIDocumentation/cgroup\-v2.txt\fP) 中找到对这些问题的详细描述。
+.PP
+由于初始 cgroups 实现 (cgroups 版本 1) 存在问题，从 Linux 3.10 开始，开始着手新的正交实现以解决这些问题。
+最初标记为实验性的，并隐藏在 \fI\-o\ __DEVEL__sane_behavior\fP 挂载选项后面，新版本 (cgroups 版本 2) 最终随着
+Linux 4.5 的发布而正式发布。 两个版本之间的差异在下面的文本中进行了描述。 存在于 cgroups v1 中的文件
+\fIcgroup.sane_behavior\fP 是此挂载选项的遗留物。 该文件始终报告 "0"，并且仅为了向后兼容而保留。
+.PP
+.\"
+尽管 cgroups v2 旨在替代 cgroups v1，但旧系统继续存在 (并且出于兼容性原因不太可能被删除)。 目前，cgroups v2
+仅实现了 cgroups v1 中可用控制器的子集。 这两个系统的实现使得 v1 控制器和 v2 控制器可以安装在同一系统上。 因此，例如，可以使用版本
+2 支持的那些控制器，同时也可以使用版本 1 控制器，而版本 2 尚不支持这些控制器。 这里唯一的限制是控制器不能同时用于 cgroups v1
+层次结构和 cgroups v2 层次结构。
+.SH "CGROUPS VERSION 1"
+在 cgroups v1 下，每个控制器都可以安装在一个单独的 cgroup 文件系统上，该文件系统在系统上提供自己的进程层次组织。 也可以针对同一
+cgroup 文件系统安装多个 (甚至所有) cgroups v1 控制器，这意味着安装的控制器管理相同的进程层次组织。
+.PP
+.\"
+对于每个已安装的层次结构，目录树反映了控制组层次结构。 每个控制组由一个目录表示，其每个子控制 cgroup 表示为一个子目录。
+例如，\fI/user/joe/1.session\fP 代表控制组 \fI1.session\fP，它是 cgroup \fIjoe\fP 的子组，而 \fIjoe\fP 是
+\fI/user\fP 的子组。 在每个 cgroup 目录下是一组可以读取或写入的文件，反映了资源限制和一些通用的 cgroup 属性。
+.SS "Tasks (threads) versus processes"
+在 cgroups v1 中，区分了 \fIprocesses\fP 和 \fItasks\fP。 在这个视图中，一个进程可以包含多个任务
+(从用户空间的角度来看，更通常称为线程，并在本手册页的其余部分中这样称呼)。 在 cgroups v1 中，可以独立操作进程中线程的 cgroup
+成员资格。
+.PP
+.\"
+cgroups v1 跨不同 cgroup 拆分线程的能力在某些情况下会导致问题。 例如，它对 \fImemory\fP
+控制器没有意义，因为一个进程的所有线程共享一个地址空间。 由于这些问题，在最初的 cgroups v2 实现中删除了独立操作进程中线程的 cgroup
+成员资格的能力，随后以更有限的形式恢复 (参见下面对 "thread mode" 的讨论)。
+.SS "Mounting v1 controllers"
+使用 cgroups 需要使用 \fBCONFIG_CGROUP\fP 选项构建的内核。 此外，每个 v1
+控制器都有一个关联的配置选项，必须设置该选项才能使用该控制器。
+.PP
+为了使用 v1 控制器，必须针对 cgroup 文件系统安装它。 此类挂载的通常位置是在 \fI/sys/fs/cgroup\fP 上挂载的
+\fBtmpfs\fP(5) 文件系统下。 因此，可以按如下方式安装 \fIcpu\fP 控制器:
+.PP
+.in +4n
+.EX
+mount \-t cgroup \-o cpu none /sys/fs/cgroup/cpu
+.EE
+.in
+.PP
+可以针对同一层次结构安装多个控制器。 例如，此处 \fIcpu\fP 和 \fIcpuacct\fP 控制器针对单个层次结构进行组合:
+.PP
+.in +4n
+.EX
+mount \-t cgroup \-o cpu,cpuacct none /sys/fs/cgroup/cpu,cpuacct
+.EE
+.in
+.PP
+合并控制器的效果是进程在所有合并控制器的同一个 cgroup 中。 单独安装控制器允许一个进程在一个控制器的 cgroup \fI/foo1\fP
+中，而在另一个控制器的 \fI/foo2/foo3\fP 中。
+.PP
+可以针对同一层次结构安装所有 v1 控制器:
+.PP
+.in +4n
+.EX
+mount \-t cgroup \-o all cgroup /sys/fs/cgroup
+.EE
+.in
+.PP
+(可以通过省略 \fI\-o all\fP 来获得相同的结果，因为如果没有明确指定控制器，它就是默认值。)
+.PP
+无法针对多个 cgroup 层次结构安装相同的控制器。 例如，不可能将 \fIcpu\fP 和 \fIcpuacct\fP 控制器都安装到一个层次结构中，而将
+\fIcpu\fP 控制器单独安装到另一个层次结构中。 可以使用完全相同的一组联合安装控制器创建多个安装。
+然而，在这种情况下，所有结果都是多个挂载点提供了相同层次结构的视图。
+.PP
+.\"
+请注意，在许多系统上，v1 控制器会自动安装在 \fI/sys/fs/cgroup\fP 下; 特别是，\fBsystemd\fP(1) 会自动创建此类挂载。
+.SS "Unmounting v1 controllers"
+可以使用 \fBumount\fP(8) 命令卸载已挂载的 cgroup 文件系统，如下例所示:
+.PP
+.in +4n
+.EX
+umount /sys/fs/cgroup/pids
+.EE
+.in
+.PP
+.\"
+\fIBut note well\fP: 一个 cgroup 文件系统只有在它不忙时才会被卸载，也就是说，它没有子 cgroups。 如果不是这种情况，那么
+\fBumount\fP(8) 的唯一作用就是让坐骑不可见。 因此，要确保真正移除挂载，必须首先移除所有子 cgroup，而这只能在所有成员进程从这些
+cgroup 移动到根 cgroup 之后才能完成。
+.SS "Cgroups version 1 controllers"
+每个 cgroups 版本 1 控制器都由一个内核配置选项 (如下所列) 管理。 此外，cgroups 特性的可用性由
+\fBCONFIG_CGROUPS\fP 内核配置选项控制。
+.TP 
+\fIcpu\fP (since Linux 2.6.24; \fBCONFIG_CGROUP_SCHED\fP)
+当系统繁忙时，Cgroups 可以保证最小数量的 "CPU shares"。 如果 CPU 不忙，这不会限制 cgroup 的 CPU 使用率。
+有关详细信息，请参见 \fIDocumentation/scheduler/sched\-design\-CFS.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/scheduler/sched\-design\-CFS.txt\fP)。
+.IP
+在 Linux 3.2 中，这个控制器被扩展为提供 CPU "bandwidth" 的控制。 如果内核配置了
+\fBCONFIG_CFS_BANDWIDTH\fP，那么在每个调度周期内 (通过 cgroup 目录中的文件定义)，可以定义分配给 cgroup 中进程的
+CPU 时间上限。 即使没有其他 CPU 竞争，此上限也适用。 可以在内核源文件
+\fIDocumentation/scheduler/sched\-bwc.rst\fP (或 Linux 5.2 及更早版本中的
+\fIDocumentation/scheduler/sched\-bwc.txt\fP) 中找到更多信息。
+.TP 
+\fIcpuacct\fP (since Linux 2.6.24; \fBCONFIG_CGROUP_CPUACCT\fP)
+这提供了对进程组的 CPU 使用情况的统计。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/cpuacct.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/cpuacct.txt\fP) 中找到更多信息。
+.TP 
+\fIcpuset\fP (since Linux 2.6.24; \fBCONFIG_CPUSETS\fP)
+此 cgroup 可用于将 cgroup 中的进程绑定到一组指定的 CPU 和 NUMA 节点。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/cpusets.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/cpusets.txt\fP) 中找到更多信息。
+.
+.TP 
+\fImemory\fP (since Linux 2.6.25; \fBCONFIG_MEMCG\fP)
+内存控制器支持报告和限制 cgroup 使用的进程内存、内核内存和交换空间。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/memory.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/memory.txt\fP) 中找到更多信息。
+.TP 
+\fIdevices\fP (since Linux 2.6.26; \fBCONFIG_CGROUP_DEVICE\fP)
+这支持控制哪些进程可以创建 (mknod) 设备以及打开它们进行读取或写入。 策略可以指定为允许列表和拒绝列表。
+层次结构是强制执行的，因此新规则不得违反目标或祖先 cgroups 的现有规则。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/devices.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/devices.txt\fP) 中找到更多信息。
+.TP 
+\fIfreezer\fP (since Linux 2.6.28; \fBCONFIG_CGROUP_FREEZER\fP)
+\fIfreezer\fP cgroup 可以暂停和恢复 (resume) cgroup 中的所有进程。 冻结 cgroup \fI/A\fP 也会导致其子进程
+(例如 \fI/A/B\fP 中的进程) 被冻结。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/freezer\-subsystem.rst\fP (或
+Linux 5.2 及更早版本中的 \fIDocumentation/cgroup\-v1/freezer\-subsystem.txt\fP) 中找到更多信息。
+.TP 
+\fInet_cls\fP (since Linux 2.6.29; \fBCONFIG_CGROUP_NET_CLASSID\fP)
+这会将为 cgroup 指定的 classid 放置在 cgroup 创建的网络数据包上。 然后可以在防火墙规则中使用这些 classid，也可以使用
+\fBtc\fP(8) 来调整流量。 这仅适用于离开 cgroup 的数据包，不适用于到达 cgroup 的流量。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/net_cls.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/net_cls.txt\fP) 中找到更多信息。
+.TP 
+\fIblkio\fP (since Linux 2.6.33; \fBCONFIG_BLK_CGROUP\fP)
+\fIblkio\fP cgroup 通过以节流和上限的形式对存储层次结构中的叶子节点和中间节点应用 IO 控制来控制和限制对指定块设备的访问。
+.IP
+有两种政策可供选择。 第一个是使用 CFQ 实现的比例权重基于时间的磁盘划分。 这对使用 CFQ 的叶子节点有效。 第二个是限制策略，它指定设备上的
+I/O 速率上限。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/blkio\-controller.rst\fP (或
+Linux 5.2 及更早版本中的 \fIDocumentation/cgroup\-v1/blkio\-controller.txt\fP) 中找到更多信息。
+.TP 
+\fIperf_event\fP (since Linux 2.6.39; \fBCONFIG_CGROUP_PERF\fP)
+该控制器允许 \fIperf\fP 监视分组在 cgroup 中的进程集。
+.IP
+更多信息可以在内核源文件中找到
+.TP 
+\fInet_prio\fP (since Linux 3.3; \fBCONFIG_CGROUP_NET_PRIO\fP)
+这允许为每个网络接口指定 cgroup 的优先级。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/net_prio.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/net_prio.txt\fP) 中找到更多信息。
+.TP 
+\fIhugetlb\fP (since Linux 3.5; \fBCONFIG_CGROUP_HUGETLB\fP)
+这支持限制 cgroup 对大页面的使用。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/hugetlb.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/hugetlb.txt\fP) 中找到更多信息。
+.TP 
+\fIpids\fP (since Linux 4.3; \fBCONFIG_CGROUP_PIDS\fP)
+该控制器允许限制可以在 cgroup (及其后代) 中创建的进程数。
+.IP
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/pids.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/pids.txt\fP) 中找到更多信息。
+.TP 
+\fIrdma\fP (since Linux 4.11; \fBCONFIG_CGROUP_RDMA\fP)
+RDMA 控制器允许限制每个 cgroup 对 RDMA/IB\-specific 资源的使用。
+.IP
+.\"
+可以在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v1/rdma.rst\fP (或 Linux 5.2
+及更早版本中的 \fIDocumentation/cgroup\-v1/rdma.txt\fP) 中找到更多信息。
+.SS "Creating cgroups and moving processes"
+一个 cgroup 文件系统最初包含一个根 cgroup，'/'，所有进程都属于它。 通过在 cgroup 文件系统中创建一个目录来创建一个新的
+cgroup:
+.PP
+.in +4n
+.EX
+目录 /sys/fs/cgroup/cpu/cg1
+.EE
+.in
+.PP
+这将创建一个新的空 cgroup。
+.PP
+通过将进程的 PID 写入 cgroup 的 \fIcgroup.procs\fP 文件，可以将进程移动到此 cgroup:
+.PP
+.in +4n
+.EX
+回声 $$ > /sys/fs/cgroup/cpu/cg1/cgroup.procs
+.EE
+.in
+.PP
+一次只能将一个 PID 写入该文件。
+.PP
+将值 0 写入 \fIcgroup.procs\fP 文件会导致写入进程移动到相应的 cgroup。
+.PP
+将 PID 写入 \fIcgroup.procs\fP 时，进程中的所有线程都会立即移动到新的 cgroup 中。
+.PP
+在层次结构中，进程可以恰好是一个 cgroup 的成员。 将进程的 PID 写入 \fIcgroup.procs\fP 文件会自动将其从其先前所属的
+cgroup 中删除。
+.PP
+可以读取 \fIcgroup.procs\fP 文件以获取作为 cgroup 成员的进程列表。 不保证返回的 PID 列表是有序的。 也不能保证没有重复。
+(例如，一个 PID 可能在从列表中读取时被回收。)
+.PP
+.\"
+在 cgroups v1 中，一个单独的线程可以通过写入线程 ID (即 \fBclone\fP(2) 和 \fBgettid\fP(2)) 返回的内核线程 ID
+到 cgroup 目录下的 \fItasks\fP 文件) 移动到另一个 cgroup。 可以读取此文件以发现作为 cgroup 成员的线程集。
+.SS "Removing cgroups"
+.\"
+要删除一个 cgroup，它必须首先没有子 cgroup 并且不包含 (nonzombie) 进程。 只要是这种情况，就可以简单地删除相应的目录路径名。
+请注意，不能也不需要删除 cgroup 目录中的文件。
+.SS "Cgroups v1 release notification"
+可以使用两个文件来确定内核是否在 cgroup 变空时提供通知。 当 cgroup 不包含子 cgroup 和成员进程时，它被认为是空的。
+.PP
+每个 cgroup 层次结构的根目录中的一个特殊文件 \fIrelease_agent\fP 可用于注册程序的路径名，当层次结构中的 cgroup
+变空时，该程序可能被调用。 调用 \fIrelease_agent\fP 程序时，新空 cgroup 的路径名 (相对于 cgroup 挂载点)
+作为唯一的命令行参数提供。 \fIrelease_agent\fP 程序可能会删除 cgroup 目录，或者可能会用一个进程重新填充它。
+.PP
+\fIrelease_agent\fP 文件的默认值为空，表示不调用任何释放代理。
+.PP
+当挂载 cgroup 文件系统时，也可以通过挂载选项指定 \fIrelease_agent\fP 文件的内容:
+.PP
+.in +4n
+.EX
+mount \-o release_agent=pathname  ...
+.EE
+.in
+.PP
+.\"
+当特定 cgroup 变空时是否调用 \fIrelease_agent\fP 程序由对应 cgroup 目录下 \fInotify_on_release\fP
+文件中的值决定。 如果此文件包含值 0，则不会调用 \fIrelease_agent\fP 程序。 如果它包含值 1，则调用 \fIrelease_agent\fP
+程序。 此文件在根 cgroup 中的默认值为 0。 在创建新的 cgroup 时，这个文件中的值是从父 cgroup 中的相应文件继承而来的。
+.SS "Cgroup v1 named hierarchies"
+在 cgroups v1 中，可以挂载没有附加控制器的 cgroup 层次结构:
+.PP
+.in +4n
+.EX
+mount \-t cgroup \-o none,name=somename none /some/mount/point
+.EE
+.in
+.PP
+可以安装此类层次结构的多个实例; 每个层次结构必须有一个唯一的名称。 这种层次结构的唯一目的是跟踪流程。 (请参见下面对发布通知的讨论。)
+\fBsystemd\fP(1) 用于跟踪服务和用户会话的 \fIname=systemd\fP cgroup 层次结构就是一个例子。
+.PP
+.\"
+从 Linux 5.0 开始，\fIcgroup_no_v1\fP 内核引导选项 (如下所述) 可用于通过指定 \fIcgroup_no_v1=named\fP
+来禁用 cgroup v1 命名层次结构。
+.SH "CGROUPS VERSION 2"
+在 cgroups v2 中，所有安装的控制器都位于一个统一的层次结构中。 虽然 (different) 控制器可以同时安装在 v1 和 v2
+层次结构下，但不可能同时在 v1 和 v2 层次结构下安装同一控制器。
+.PP
+此处总结了 cgroups v2 中的新行为，并在以下小节中对某些情况进行了详细说明。
+.IP \[bu] 3
+Cgroups v2 提供了一个统一的层次结构，所有控制器都安装在该层次结构上。
+.IP \[bu]
+"Internal" 进程是不允许的。 除根 cgroup 外，进程可能仅驻留在叶子节点中 (cgroup 本身不包含子 cgroup)。
+细节比这更微妙，如下所述。
+.IP \[bu]
+必须通过文件 \fIcgroup.controllers\fP 和 \fIcgroup.subtree_control\fP 指定活动的 cgroup。
+.IP \[bu]
+\fItasks\fP 文件已被删除。 此外，\fIcpuset\fP 控制器使用的 \fIcgroup.clone_children\fP 文件已被删除。
+.IP \[bu]
+\fIcgroup.events\fP 文件提供了一种改进的空 cgroup 通知机制。
+.PP
+有关更多更改，请参见内核源代码中的 \fIDocumentation/admin\-guide/cgroup\-v2.rst\fP 文件 (或 Linux
+4.17 及更早版本中的 \fIDocumentation/cgroup\-v2.txt\fP)。
+.
+.PP
+.\"
+上面列出的一些新行为随后进行了修改，在 Linux 4.14 或 "thread mode" 中添加 (如下所述)。
+.SS "Cgroups v2 unified hierarchy"
+在 cgroups v1 中，针对不同层次结构安装不同控制器的能力旨在为应用程序设计提供极大的灵活性。
+但在实践中，灵活性并没有预期的那么有用，而且在许多情况下还增加了复杂性。 因此，在 cgroups v2 中，所有可用的控制器都安装在一个层次结构上。
+可用的控制器会自动挂载，这意味着在使用如下命令挂载 cgroup v2 文件系统时无需 (或不可能) 指定控制器:
+.PP
+.in +4n
+.EX
+mount \-t cgroup2 none /mnt/cgroup2
+.EE
+.in
+.PP
+cgroup v2 控制器仅在当前未通过针对 cgroup v1 层次结构的挂载使用时才可用。 或者，换句话说，不可能对 v1 层次结构和统一的 v2
+层次结构使用相同的控制器。 这意味着可能需要先卸载 v1 控制器 (如上所述)，然后才能在 v2 中使用该控制器。 由于默认情况下
+\fBsystemd\fP(1) 大量使用某些 v1 控制器，因此在某些情况下，在禁用选定的 v1 控制器的情况下启动系统会更简单。
+为此，请在内核引导命令行上指定 \fIcgroup_no_v1=list\fP 选项; \fIlist\fP 是要禁用的控制器名称的逗号分隔列表，或者是单词
+\fIall\fP 以禁用所有 v1 控制器。 (这种情况由 \fBsystemd\fP(1) 正确处理，它回退到在没有指定控制器的情况下运行。)
+.PP
+.\"
+请注意，在许多现代系统上，\fBsystemd\fP(1) 会在引导过程中自动将 \fIcgroup2\fP 文件系统挂载到
+\fI/sys/fs/cgroup/unified\fP。
+.SS "Cgroups v2 mount options"
+挂载组 v2 文件系统时可以指定以下选项 (\fImount\~\-o\fP):
+.TP 
+\fInsdelegate\fP (since Linux 4.15)
+将 cgroup 名称空间视为委托边界。 有关详细信息，请参见下文。
+.TP 
+\fImemory_localevents\fP (since Linux 5.2)
+.\" commit 9852ae3fe5293264f01c49f2571ef7688f7823ce
+.\"
+\fImemory.events\fP 应该只显示 cgroup 本身的统计信息，而不是任何后代 cgroup 的统计信息。 这是 Linux 5.2
+之前的行为。 从 Linux 5.2 开始，默认行为是在 \fImemory.events\fP 中包含后代 cgroup
+的统计信息，并且此挂载选项可用于恢复到旧行为。 此选项是系统范围的，可以在挂载时设置，也可以仅从初始挂载命名空间通过重新挂载进行修改;
+它在非初始命名空间中被默默地忽略。
+.SS "Cgroups v2 controllers"
+以下控制器记录在内核源文件 \fIDocumentation/admin\-guide/cgroup\-v2.rst\fP (或 Linux 4.17
+及更早版本中的 \fIDocumentation/cgroup\-v2.txt\fP) 中，在 cgroups 版本 2 中受支持:
+.TP 
+\fIcpu\fP (since Linux 4.15)
+这是版本 1 \fIcpu\fP 和 \fIcpuacct\fP 控制器的后继产品。
+.TP 
+\fIcpuset\fP (since Linux 5.0)
+这是版本 1 \fIcpuset\fP 控制器的后继产品。
+.TP 
+\fIfreezer\fP (since Linux 5.2)
+.\" commit 76f969e8948d82e78e1bc4beb6b9465908e74873
+这是版本 1 \fIfreezer\fP 控制器的后继产品。
+.TP 
+\fIhugetlb\fP (since Linux 5.6)
+这是版本 1 \fIhugetlb\fP 控制器的后继产品。
+.TP 
+\fIio\fP (since Linux 4.5)
+这是版本 1 \fIblkio\fP 控制器的后继产品。
+.TP 
+\fImemory\fP (since Linux 4.5)
+这是版本 1 \fImemory\fP 控制器的后继产品。
+.TP 
+\fIperf_event\fP (since Linux 4.11)
+这与版本 1 \fIperf_event\fP 控制器相同。
+.TP 
+\fIpids\fP (since Linux 4.5)
+这与版本 1 \fIpids\fP 控制器相同。
+.TP 
+\fIrdma\fP (since Linux 4.11)
+这与版本 1 \fIrdma\fP 控制器相同。
+.PP
+cgroups 版本 1 中没有直接等效的 \fInet_cls\fP 和 \fInet_prio\fP 控制器。 相反，已将支持添加到
+\fBiptables\fP(8) 以允许，钩子 cgroup v2 路径名的 eBPF 过滤器在每个 cgroup 的基础上做出有关网络流量的决策。
+.PP
+.\"
+v2 \fIdevices\fP 控制器不提供接口文件; 相反，通过将 eBPF (\fBBPF_CGROUP_DEVICE\fP) 程序附加到 v2 cgroup
+来控制设备控制。
+.SS "Cgroups v2 subtree control"
+v2 层次结构中的每个 cgroup 包含以下两个文件:
+.TP 
+\fIcgroup.controllers\fP
+此只读文件公开了此 cgroup 中 \fIavailable\fP 的控制器列表。 该文件的内容与父 cgroup 中
+\fIcgroup.subtree_control\fP 文件的内容相匹配。
+.TP 
+\fIcgroup.subtree_control\fP
+这是 cgroup 中 \fIactive\fP (\fIenabled\fP) 的控制器列表。 此文件中的控制器集是此 cgroup 的
+\fIcgroup.controllers\fP 中的集合的子集。 通过将包含空格分隔的控制器名称的字符串写入此文件来修改活动控制器集，每个名称前面都有
+\&'+' (启用控制器) 或 '\-' (禁用控制器)，如以下示例所示:
+.IP
+.in +4n
+.EX
+回声 \[aq]+pids\-memory\[aq] > x/y/cgroup.subtree_control
+.EE
+.in
+.IP
+尝试启用 \fIcgroup.controllers\fP 中不存在的控制器会在写入 \fIcgroup.subtree_control\fP 文件时导致
+\fBENOENT\fP 错误。
+.PP
+因为 \fIcgroup.subtree_control\fP 中的控制器列表是那些 \fIcgroup.controllers\fP
+的子集，所以在层次结构中的一个 cgroup 中已禁用的控制器永远无法在该 cgroup 下面的子树中重新启用。
+.PP
+.\"
+cgroup 的 \fIcgroup.subtree_control\fP 文件决定了在 \fIchild\fP cgroups 中执行的控制器集。 当控制器
+(例如，\fIpids\fP) 存在于父 cgroup 的 \fIcgroup.subtree_control\fP 文件中时，相应的控制器接口文件
+(例如，\fIpids.max\fP) 会在该 cgroup 的子级中自动创建，并可用于在子级 cgroup 中施加资源控制.
+.SS "Cgroups v2 \(dqno internal processes\(dq rule"
+Cgroups v2 执行所谓的 "no internal processes" 规则。 粗略地说，这条规则意味着，除了根 cgroup
+之外，进程只能驻留在叶子节点中 (cgroup 本身不包含子 cgroup)。 这避免了决定如何在作为 cgroup A 成员的进程和 A 的子
+cgroup 中的进程之间划分资源的需要。
+.PP
+例如，如果 cgroup \fI/cg1/cg2\fP 存在，那么进程可能驻留在 \fI/cg1/cg2\fP 中，但不在 \fI/cg1\fP 中。 这是为了避免
+cgroups v1 中关于 \fI/cg1\fP 及其子 cgroups 中的进程之间的资源委派的歧义。 在 cgroups v2 中推荐的方法是为任何非叶
+cgroup 创建一个名为 \fIleaf\fP 的子目录，该目录应包含进程，但不包含子 cgroup。 因此，以前进入 \fI/cg1\fP 的进程现在将进入
+\fI/cg1/leaf\fP。 这样做的好处是明确 \fI/cg1/leaf\fP 和 \fI/cg1\fP's 其他子进程中的进程之间的关系。
+.PP
+"no internal processes" 规则实际上比上述规则更微妙。 更准确地说，规则是 (nonroot) cgroup 不能既 (1)
+有成员进程，也不能 (2) 将资源分配到子 cgroups\[em]，即有一个非空的 \fIcgroup.subtree_control\fP 文件。
+因此，一个 cgroup 可能同时拥有成员进程和子 cgroup，但在为该 cgroup 启用控制器之前，必须将成员进程移出 cgroup
+(例如，可能移入子 cgroup)。
+.PP
+.\"
+随着 Linux 4.14 添加 "thread mode" (如下所述)，在某些情况下放宽了 "no internal processes" 规则。
+.SS "Cgroups v2 cgroup.events file"
+v2 层次结构中的每个非根 cgroup 都包含一个只读文件 \fIcgroup.events\fP，其内容是键值对 (由换行符分隔，键和值由空格分隔)
+提供有关 cgroup 的状态信息:
+.PP
+.in +4n
+.EX
+$ \fBcat mygrp/cgroup.events\fP
+人口 1
+冻结 0
+.EE
+.in
+.PP
+该文件中可能出现以下键:
+.TP 
+\fIpopulated\fP
+如果此 cgroup 或其任何后代具有成员进程，则此键的值为 1，否则为 1 0.
+.TP 
+\fIfrozen\fP (since Linux 5.2)
+.\" commit 76f969e8948d82e78e1bc4beb6b9465908e7487
+如果此 cgroup 当前已冻结，则此键的值为 1，否则为 0。
+.PP
+.\"
+可以监视 \fIcgroup.events\fP 文件，以便在其中一个键的值发生变化时收到通知。 可以使用 \fBinotify\fP(7) 或
+\fBpoll\fP(2) 来完成此类监视，\fBinotify\fP(7) 将更改通知为 \fBIN_MODIFY\fP 事件，它通过返回 \fIrevents\fP
+字段中的 \fBPOLLPRI\fP 和 \fBPOLLERR\fP 位来通知更改。
+.SS "Cgroup v2 release notification"
+Cgroups v2 提供了一种新机制，用于在 cgroup 变空时获取通知。 cgroups v1 \fIrelease_agent\fP 和
+\fInotify_on_release\fP 文件被删除，并由 \fIcgroup.events\fP 文件中的 \fIpopulated\fP 键替换。 此键值要么为
+0，表示 cgroup (及其后代) 不包含 (nonzombie) 成员进程，要么为 1，表示 cgroup (或其后代之一) 包含成员进程。
+.PP
+与 cgroups v1 \fIrelease_agent\fP 机制相比，cgroups v2 发布通知机制具有以下优势:
+.IP \[bu] 3
+它允许更便宜的通知，因为单个进程可以监视多个 \fIcgroup.events\fP 文件 (使用前面描述的技术)。 相比之下，cgroups v1
+机制需要为每个通知创建一个进程的开销。
+.IP \[bu]
+.\"
+不同 cgroup 子层级的通知可以委托给不同的进程。 相比之下，cgroups v1 机制只允许一个释放代理用于整个层次结构。
+.SS "Cgroups v2 cgroup.stat file"
+.\" commit ec39225cca42c05ac36853d11d28f877fde5c42e
+v2 层次结构中的每个 cgroup 都包含一个只读的 \fIcgroup.stat\fP 文件 (首先在 Linux 4.14
+中引入)，该文件由包含键值对的行组成。 此文件中当前出现以下键:
+.TP 
+\fInr_descendants\fP
+这是此 cgroup 下的可见 (即存活) 后代 cgroup 的总数。
+.TP 
+\fInr_dying_descendants\fP
+这是此 cgroup 下垂死的后代 cgroup 的总数。 cgroup 被删除后进入死亡状态。 它会在未定义的时间段内保持该状态
+(这将取决于系统负载)，同时在 cgroup 被销毁之前释放资源。 请注意，某些 cgroup 处于垂死状态是正常现象，并不表示有任何问题。
+.IP
+.\"
+进程不能成为垂死的 cgroup 的成员，垂死的 cgroup 也不能复活。
+.SS "Limiting the number of descendant cgroups"
+v2 层次结构中的每个 cgroup 包含以下文件，可用于查看和设置该 cgroup 下的后代 cgroup 数量限制:
+.TP 
+\fIcgroup.max.depth\fP (since Linux 4.14)
+.\" commit 1a926e0bbab83bae8207d05a533173425e0496d1
+该文件定义了后代 cgroup 嵌套深度的限制。 此文件中的值 0 表示无法创建后代 cgroup。 尝试创建嵌套级别超过限制的后代失败
+(\fImkdir\fP(2) 失败并显示错误 \fBEAGAIN\fP)。
+.IP
+将字符串 \fI"max"\fP 写入此文件意味着不施加限制。 此文件中的默认值为 \fI"max" .\fP
+.TP 
+\fIcgroup.max.descendants\fP (since Linux 4.14)
+.\" commit 1a926e0bbab83bae8207d05a533173425e0496d1
+此文件定义了此 cgroup 可能具有的活动后代 cgroup 数量的限制。 尝试创建超过限制所允许的更多后代失败 (\fImkdir\fP(2)
+失败并出现错误 \fBEAGAIN\fP)。
+.IP
+.\"
+将字符串 \fI"max"\fP 写入此文件意味着不施加限制。 此文件中的默认值为 \fI"max"\fP。
+.SH "CGROUPS DELEGATION: DELEGATING A HIERARCHY TO A LESS PRIVILEGED USER"
+在 cgroups 的上下文中，委托意味着将 cgroup 层次结构的某些子树的管理传递给非特权用户。 Cgroups v1 支持基于 cgroup
+层次结构中文件权限的委派，但包含规则不如 v2 严格 (如下所述)。 Cgroups v2 通过显式设计支持委派和包含。 本节讨论的重点是
+cgroups v2 中的委派，同时指出了 cgroups v1 的一些差异。
+.PP
+需要一些术语来描述委托。 \fIdelegater\fP 是拥有父 cgroup 的特权用户 (即 root)。 \fIdelegatee\fP
+是一个非特权用户，将被授予管理该父 cgroup 下的某些子层次结构所需的权限，称为 \fIdelegated subtree\fP。
+.PP
+为执行委派，委托人通常通过将对象的所有权更改为被委托人的用户 ID，使某些目录和文件可由被委托人写入。 假设我们要委托以 (say)
+\fI/dlgt_grp\fP 为根的层次结构，并且该 cgroup 下还没有任何子 cgroup，则以下所有权更改为被委托者的用户 ID:
+.TP 
+\fI/dlgt_grp\fP
+更改子树根的所有权意味着在子树下创建的任何新 cgroup (及其包含的文件) 也将由受托人拥有。
+.TP 
+\fI/dlgt_grp/cgroup.procs\fP
+更改此文件的所有权意味着受托人可以将进程移动到受托子树的根目录中。
+.TP 
+\fI/dlgt_grp/cgroup.subtree_control\fP (cgroups v2 only)
+更改此文件的所有权意味着受托人可以启用控制器 (存在于 \fI/dlgt_grp/cgroup.controllers\fP)
+中，以便进一步重新分配子树中较低级别的资源。 (作为更改此文件所有权的替代方法，委托人可能会将选定的控制器添加到此文件中。)
+.TP 
+\fI/dlgt_grp/cgroup.threads\fP (cgroups v2 only)
+如果委托线程子树，则必须更改此文件的所有权 (请参见下面的 "thread mode" 的描述)。 这允许被委托者将线程 ID 写入文件。
+(在委托域子树时也可以更改此文件的所有权，但目前这没有任何用处，因为如下所述，无法通过将线程 ID 写入 \fIcgroup.threads\fP 文件来在域
+cgroup 之间移动线程。)
+.IP
+在 cgroups v1 中，应改为委托的相应文件是 \fItasks\fP 文件。
+.PP
+委托人应该 \fInot\fP 更改任何控制器接口文件的所有权 (例如，\fIdlgt_grp\fP 中的 \fIpids.max\fP、\fImemory.high\fP)。
+这些文件从委托子树的上一层开始使用，以便将资源分配到子树中，并且委托人不应该有权更改分配到委托子树中的资源。
+.PP
+有关 cgroups v2 中更多可委托文件的信息，另请参见 NOTES 中对 \fI/sys/kernel/cgroup/delegate\fP
+文件的讨论。
+.PP
+.\"
+执行上述步骤后，受托人可以在受托子树中创建子 cgroup (cgroup 子目录及其包含的文件将归受托人所有) 并在子树中的 cgroup
+之间移动进程。 如果 \fIdlgt_grp/cgroup.subtree_control\fP
+中存在某些控制器，或者该文件的所有权已传递给受托人，则受托人还可以控制相应资源进一步重新分配到委托子树中。
+.SS "Cgroups v2 delegation: nsdelegate and cgroup namespaces"
+.\" commit 5136f6365ce3eace5a926e10f16ed2a233db5ba9
+从 Linux 4.13 开始，在 cgroups v2 层次结构中有第二种方式来执行 cgroup 委托。 这是通过使用 \fInsdelegate\fP
+挂载选项挂载或重新挂载 cgroup v2 文件系统来完成的。 例如，如果 cgroup v2 文件系统已经挂载，我们可以使用
+\fInsdelegate\fP 选项重新挂载它，如下所示:
+.PP
+.in +4n
+.EX
+mount \-t cgroup2 \-o remount,nsdelegate \e
+                 none /sys/fs/cgroup/unified
+.EE
+.in
+.\"
+.\" Alternatively, we could boot the kernel with the options:
+.\"
+.\"    cgroup_no_v1=all systemd.legacy_systemd_cgroup_controller
+.\"
+.\" The effect of the latter option is to prevent systemd from employing
+.\" its "hybrid" cgroup mode, where it tries to make use of cgroups v2.
+.PP
+此挂载选项的作用是使 cgroup 名称空间自动成为委托边界。 更具体地说，以下限制适用于 cgroup 命名空间内的进程:
+.IP \[bu] 3
+写入命名空间根目录中的控制器接口文件将失败，并显示错误 \fBEPERM\fP。 cgroup 命名空间内的进程仍然可以写入 cgroup 命名空间根目录
+(如 \fIcgroup.procs\fP 和 \fIcgroup.subtree_control\fP) 中的可委托文件，并可以在根目录下创建子层次结构。
+.IP \[bu]
+跨命名空间边界迁移进程的尝试被拒绝 (错误 \fBENOENT\fP).  cgroup 命名空间内的进程仍然可以 (根据下面描述的包含规则) 在
+cgroups \fIwithin\fP 命名空间根下的子层次结构之间移动进程。
+.PP
+将 cgroup 命名空间定义为委托边界的能力使 cgroup 命名空间更有用。 要理解原因，假设我们已经有一个 cgroup
+层次结构已使用上述较旧的委托技术委托给非特权用户 \fIcecilia\fP。 进一步假设 \fIcecilia\fP
+想要在现有委托层次结构下进一步委托子层次结构。 (例如，委托层次结构可能与 \fIcecilia\fP.) 运行的非特权容器相关联即使使用了 cgroup
+命名空间，因为两个层次结构都由非特权用户 \fIcecilia\fP 所有，所以可以执行以下非法操作:
+.IP \[bu] 3
+下级层次结构中的进程可以更改该层次结构根目录中的资源控制器设置。 (这些资源控制器设置旨在允许从 \fIparent\fP cgroup 执行控制;
+不应允许子 cgroup 内的进程修改它们。)
+.IP \[bu]
+如果上级层次结构中的 cgroup 以某种方式可见，则下级层次结构内的进程可以将进程移入和移出下级层次结构。
+.PP
+使用 \fInsdelegate\fP 安装选项可以防止这两种可能性。
+.PP
+\fInsdelegate\fP 挂载选项仅在初始挂载命名空间中执行时才有效; 在其他挂载命名空间中，该选项被静默忽略。
+.PP
+\fINote\fP: 在某些系统上，\fBsystemd\fP(1) 会自动挂载 cgroup v2 文件系统。 为了试验 \fInsdelegate\fP
+操作，使用以下命令行选项启动内核可能会有用:
+.PP
+.in +4n
+.EX
+cgroup_no_v1=all systemd.legacy_systemd_cgroup_controller
+.EE
+.in
+.PP
+.\"
+这些选项导致内核在禁用 cgroups v1 控制器的情况下启动 (意味着控制器在 v2 层次结构中可用)，并告诉 \fBsystemd\fP(1)
+不要挂载和使用 cgroup v2 层次结构，以便 v2 层次结构可以手动挂载启动后所需的选项。
+.SS "Cgroup delegation containment rules"
+一些委托 \fIcontainment rules\fP 确保被委托者可以在委托子树内的 cgroup
+之间移动进程，但不能将进程从委托子树外部移动到子树中，反之亦然。 只有满足以下所有条件时，非特权进程 (即受托方) 才能将 "target" 进程的
+PID 写入 \fIcgroup.procs\fP 文件:
+.IP \[bu] 3
+writer 对目标 cgroup 中的 \fIcgroup.procs\fP 文件具有写权限。
+.IP \[bu]
+writer 对源和目标 cgroup 的最近共同祖先中的 \fIcgroup.procs\fP 文件具有写入权限。
+请注意，在某些情况下，最近的共同祖先可能是源或目标 cgroup 本身。 对于 cgroups v1 层次结构不强制执行此要求，因此 v1 中的包含不如
+v2 中严格。 (例如，在 cgroups v1 中，拥有两个不同委托子层次结构的用户可以在层次结构之间移动进程。)
+.IP \[bu]
+如果 cgroup v2 文件系统是使用 \fInsdelegate\fP 选项挂载的，则 writer 必须能够从其 cgroup 命名空间中看到源和目标
+cgroup。
+.IP \[bu]
+.\" commit 576dd464505fc53d501bb94569db76f220104d28
+在 cgroups v1 中: writer (即 delegatee) 的有效 UID 与目标进程的真实用户 ID 或保存的 set\-user\-ID
+匹配。 在 Linux 4.11 之前，这个要求也适用于 cgroups v2 (这是从 cgroups v1
+继承的历史要求，后来认为没有必要，因为其他规则足以满足 cgroups v2 的遏制。)
+.PP
+.\"
+\fINote\fP: 这些委托限制规则的一个后果是非特权委托人无法将第一个进程放入委托子树中; 相反，委托人必须将第一个进程 (被委托人拥有所有权的进程)
+放入委托子树中。
+.SH "CGROUPS VERSION 2 THREAD MODE"
+cgroups v2 施加的限制在 cgroups v1 中不存在，如下所示:
+.IP \[bu] 3
+\fINo thread\-granularity control\fP: 一个进程的所有线程必须在同一个 cgroup 中。
+.IP \[bu]
+\fINo internal processes\fP: 一个 cgroup 不能在子 cgroup 上同时拥有成员进程和运动控制器。
+.PP
+添加这两个限制是因为缺少这些限制导致 cgroups v1 出现问题。 特别是，cgroups v1 允许 cgroup
+成员的线程级粒度的能力对某些控制器来说毫无意义。 (一个值得注意的例子是 \fImemory\fP 控制器: 因为线程共享一个地址空间，所以将线程拆分到不同的
+\fImemory\fP cgroups 是没有意义的。)
+.PP
+尽管 cgroups v2 中的初始设计决策，某些控制器的用例，特别是 \fIcpu\fP 控制器，线程级控制粒度对它们来说是有意义和有用的。
+为了适应此类用例，Linux 4.14 为 cgroups v2 添加了 \fIthread mode\fP。
+.PP
+线程模式允许以下操作:
+.IP \[bu] 3
+\fIthreaded subtrees\fP 的创建，其中进程的线程可能分布在树内的 cgroup 中。 (线程子树可能包含多个多线程进程。)
+.IP \[bu]
+\fIthreaded controllers\fP 的概念，它可以在线程子树中跨 cgroups 分配资源。
+.IP \[bu]
+"no internal processes rule" 的放宽，以便在线程子树中，cgroup 既可以包含成员线程，也可以对子 cgroup
+进行资源控制。
+.PP
+添加线程模式后，每个非根 cgroup 现在都包含一个新文件 \fIcgroup.type\fP，该文件公开并在某些情况下可用于更改 cgroup 的
+"type"。 该文件包含以下类型值之一:
+.TP 
+\fIdomain\fP
+这是一个提供进程粒度控制的普通 v2 cgroup。 如果一个进程是这个 cgroup 的成员，那么这个进程的所有线程 (根据定义) 都在同一个
+cgroup 中。 这是默认的 cgroup 类型，并提供与初始 cgroups v2 实现中为 cgroups 提供的相同行为。
+.TP 
+\fIthreaded\fP
+此 cgroup 是线程子树的成员。 可以将线程添加到此 cgroup，并且可以为 cgroup 启用控制器。
+.TP 
+\fIdomain threaded\fP
+这是一个域 cgroup，用作线程子树的根。 此 cgroup 类型也称为 "threaded root"。
+.TP 
+\fIdomain invalid\fP
+这是处于 "invalid" 状态的线程子树中的 cgroup。 无法将进程添加到 cgroup，也无法为 cgroup 启用控制器。 这个
+cgroup 唯一可以做的事情 (除了删除它) 是通过将字符串 \fI"threaded"\fP 写入 \fIcgroup.type\fP 文件将其转换为
+\fIthreaded\fP cgroup。
+.IP
+.\"
+在创建线程子树期间存在此 "interim" 类型的基本原理 (而不是内核简单地立即将线程根下的所有 cgroup 转换为 \fIthreaded\fP)
+类型是为了允许可能的 future 扩展到线程模式模型
+.SS "Threaded versus domain controllers"
+通过添加线程模式，cgroups v2 现在区分两种类型的资源控制器:
+.IP \[bu] 3
+.\" In the kernel source, look for ".threaded[ \t]*= true" in
+.\" initializations of struct cgroup_subsys
+\fIThreaded\fP 控制器: 这些控制器支持资源控制的线程粒度，并且可以在线程子树内启用，结果相应的控制器接口文件出现在线程子树的 cgroups
+内。 与 Linux 4.19 一样，以下控制器是线程化的: \fIcpu\fP、\fIperf_event\fP 和 \fIpids\fP。
+.IP \[bu]
+.\"
+\fIDomain\fP 控制器: 这些控制器仅支持资源控制的进程粒度。 从域控制器的角度来看，一个进程的所有线程总是在同一个 cgroup 中。
+无法在线程子树内启用域控制器。
+.SS "Creating a threaded subtree"
+有两种途径可以创建线程子树。 第一个途径进行如下:
+.IP (1) 5
+我们将字符串 \fI"threaded"\fP 写入当前类型为 \fIdomain\fP 的 cgroup \fIy/z\fP 的 \fIcgroup.type\fP 文件。
+这具有以下效果:
+.RS
+.IP \[bu] 3
+cgroup \fIy/z\fP 的类型变为 \fIthreaded\fP。
+.IP \[bu]
+父 cgroup 的类型 \fIy\fP 变为 \fIdomain threaded\fP。 父 cgroup 是线程子树 (也称为 "threaded
+root") 的根。
+.IP \[bu]
+\fIy\fP 下尚未属于 \fIthreaded\fP 类型的所有其他 cgroup (因为它们位于新线程根下的现有线程子树中) 将转换为 \fIdomain invalid\fP 类型。 任何随后在 \fIy\fP 下创建的 cgroups 也将具有 \fIdomain invalid\fP 类型。
+.RE
+.IP (2)
+我们将字符串 \fI"threaded"\fP 写入 \fIy\fP 下的每个 \fIdomain invalid\fP cgroup，以便将它们转换为
+\fIthreaded\fP 类型。 作为此步骤的结果，线程根下的所有线程现在都具有 \fIthreaded\fP 类型，并且线程子树现在完全可用。 将
+\fI"threaded"\fP 写入每个 cgroup 的要求有些麻烦，但允许对线程模式模型进行可能的 future 扩展。
+.PP
+创建线程子树的第二种方法如下:
+.IP (1) 5
+在现有的 cgroup \fIz\fP 中，当前类型为 \fIdomain\fP，我们 (1.1) 启用一个或多个线程控制器，(1.2) 使进程成为 \fIz\fP
+的成员。 (这两个步骤可以按任意顺序完成。) 这会产生以下后果:
+.RS
+.IP \[bu] 3
+\fIz\fP 的类型变为 \fIdomain threaded\fP。
+.IP \[bu]
+\fIx\fP 的所有不属于 \fIthreaded\fP 类型的后代 cgroup 都将转换为 \fIdomain invalid\fP 类型。
+.RE
+.IP (2)
+和以前一样，我们通过将字符串 \fI"threaded"\fP 写入 \fIy\fP 下的每个 \fIdomain invalid\fP cgroups
+来使线程子树可用，以便将它们转换为 \fIthreaded\fP 类型。
+.PP
+.\"
+上述创建线程子树的途径的后果之一是线程根 cgroup 只能是 \fIthreaded\fP (和 \fIdomain invalid\fP) cgroups)
+的父级。 线程根 cgroup 不能是 \fIdomain\fP cgroup 的父 cgroup，\fIthreaded\fP cgroup 不能有
+\fIdomain\fP cgroup 的同级。
+.SS "Using a threaded subtree"
+在线程子树中，可以在类型已更改为 \fIthreaded\fP 的每个子组中启用线程控制器; 这样做之后，相应的控制器接口文件就会出现在该 cgroup
+的子项中。
+.PP
+通过将进程的 PID 写入树内 cgroup 之一的 \fIcgroup.procs\fP 文件，可以将进程移动到线程子树中。
+这具有使进程中的所有线程成为相应 cgroup 成员的效果，并使进程成为线程子树的成员。 然后可以通过写入线程 ID 将进程的线程分布在线程子树中
+(请参见子树内不同 cgroup 中的 \fBgettid\fP(2)) 到 \fIcgroup.threads\fP 文件。
+进程的线程必须都驻留在同一个线程子树中。
+.PP
+与写入 \fIcgroup.procs\fP 一样，一些包含规则在写入 \fIcgroup.threads\fP 文件时适用:
+.IP \[bu] 3
+writer 必须对目标 cgroup 中的 cgroup.threads 文件具有写权限。
+.IP \[bu]
+writer 必须对源和目标 cgroup 的共同祖先中的 \fIcgroup.procs\fP 文件具有写入权限。 (在某些情况下，共同祖先可能是源或目标
+cgroup 本身。)
+.IP \[bu]
+源和目标 cgroup 必须位于同一线程子树中。 (在线程子树之外，尝试通过将线程 ID 写入不同 \fIdomain\fP cgroup 中的
+\fIcgroup.threads\fP 文件来移动线程失败，错误为 \fBEOPNOTSUPP\fP.)
+.PP
+\fIcgroup.threads\fP 文件存在于每个 cgroup (包括 \fIdomain\fP cgroup) 中，可以读取它以发现 cgroup
+中存在的线程集。 不保证读取此文件时获得的线程 ID 集是有序的或不重复的。
+.PP
+线程根中的 \fIcgroup.procs\fP 文件显示了作为线程子树成员的所有进程的 PID。 子树中其他 cgroup 中的
+\fIcgroup.procs\fP 文件不可读。
+.PP
+不能在线程子树中启用域控制器; 没有控制器接口文件出现在线程根目录下的 cgroup 中。 从域控制器的角度来看，线程子树是不可见的:
+线程子树内的多线程进程在域控制器看来是驻留在线程根 cgroup 中的进程。
+.PP
+.\"
+在线程子树中，"no internal processes" 规则不适用: cgroup 可以同时包含成员进程 (或线程) 和子 cgroup
+上的练习控制器。
+.SS "Rules for writing to cgroup.type and creating threaded subtrees"
+写入 \fIcgroup.type\fP 文件时适用一些规则:
+.IP \[bu] 3
+只能写入字符串 \fI"threaded"\fP。 换句话说，唯一可能的显式转换是将 \fIdomain\fP cgroup 转换为 \fIthreaded\fP 类型。
+.IP \[bu]
+写入 \fI"threaded"\fP 的效果取决于 \fIcgroup.type\fP 中的当前值，如下:
+.RS
+.IP \[bu] 3
+\fIdomain\fP 或 \fIdomain threaded\fP: 通过上述路径中的第一个开始创建线程子树 (其根是此 cgroup 的父级) ;
+.IP \[bu]
+\fIdomain\ invalid\fP: 将此 cgroup (位于线程子树内) 转换为可用状态 (即 \fIthreaded\fP) 状态;
+.IP \[bu]
+\fIthreaded\fP: 没有影响 (一个 "no\-op")。
+.RE
+.IP \[bu]
+如果父级的类型是 \fIdomain invalid\fP，我们就不能写入 \fIcgroup.type\fP 文件。 换句话说，线程子树的 cgroups
+必须以自上而下的方式转换为 \fIthreaded\fP 状态。
+.PP
+为了创建以 cgroup \fIx\fP: 为根的线程子树，还必须满足一些约束条件
+.IP \[bu] 3
+\fIx\fP 的后代 cgroup 中不能有成员进程。 (cgroup \fIx\fP 本身可以有成员进程。)
+.IP \[bu]
+\fIx\fP's \fIcgroup.subtree_control\fP 文件中可能没有启用域控制器。
+.PP
+.\"
+如果违反了上述任何约束，则将 \fI"threaded"\fP 写入 \fIcgroup.type\fP 文件的尝试将失败，并显示错误 \fBENOTSUP\fP。
+.SS "The \(dqdomain threaded\(dq cgroup type"
+根据上述路径，在以下任一情况下，cgroup 的类型可以更改为 \fIdomain threaded\fP:
+.IP \[bu] 3
+字符串 \fI"threaded"\fP 被写入子 cgroup。
+.IP \[bu]
+线程控制器在 cgroup 中启用，进程成为 cgroup 的成员。
+.PP
+如果上述条件不再成立，\fIdomain threaded\fP cgroup \fIx\fP 可以恢复为 \fIdomain\fP 类型，也就是说，如果 \fIx\fP
+的所有 \fIthreaded\fP 子 cgroup 都被删除并且 \fIx\fP 不再启用线程控制器或不再有成员过程。
+.PP
+当 \fIdomain threaded\fP cgroup \fIx\fP 恢复为 \fIdomain\fP: 类型时
+.IP \[bu] 3
+不在较低级别线程子树中的 \fIx\fP 的所有 \fIdomain invalid\fP 后代都恢复为 \fIdomain\fP 类型。
+.IP \[bu]
+.\"
+任何较低级别的线程子树中的根 cgroups 恢复为 \fIdomain threaded\fP 类型。
+.SS "Exceptions for the root cgroup"
+v2 层次结构的根 cgroup 被特殊对待: 它可以是 \fIdomain\fP 和 \fIthreaded\fP cgroup 的父级。 如果字符串
+\fI"threaded"\fP 被写入根 cgroup 的其中一个子级的 \fIcgroup.type\fP 文件，那么
+.IP \[bu] 3
+该 cgroup 的类型变为 \fIthreaded\fP。
+.IP \[bu]
+该 cgroup 的任何不属于较低级别线程子树的后代的类型更改为 \fIdomain invalid\fP。
+.PP
+请注意，在这种情况下，不存在类型变为 \fIdomain threaded\fP 的 cgroup。 (理论上，根 cgroup 可以被认为是类型更改为
+\fIthreaded\fP.) 的 cgroup 的线程根
+.PP
+.\"
+对根 cgroup 进行这种特殊处理的目的是允许将使用 \fIcpu\fP 控制器的线程 cgroup 放置在层次结构中尽可能高的位置，从而最大限度地减少遍历
+cgroup 层次结构的 (small) 成本。
+.SS "The cgroups v2 \(dqcpu\(dq controller and realtime threads"
+与 Linux 4.19 一样，cgroups v2 \fIcpu\fP 控制器不支持实时线程控制 (特别是根据
+\fBSCHED_FIFO\fP、\fBSCHED_RR\fP、\fBSCHED_DEADLINE\fP 描述的任何策略调度的线程; 参见 \fBsched\fP(7))。
+因此，只有当所有实时线程都在根 cgroup 中时，才能在根 cgroup 中启用 \fIcpu\fP 控制器。 (如果非根 cgroups 中有实时线程，则
+\fIcgroup.subtree_control\fP 文件中的字符串 \fI"+cpu"\fP 的 \fBwrite\fP(2) 失败并出现错误
+\fBEINVAL\fP.)
+.PP
+.\"
+在某些系统上，\fBsystemd\fP(1) 将某些实时线程放置在 v2 层次结构中的非根 cgroup 中。 在此类系统上，必须先将这些线程移至根
+cgroup，然后才能启用 \fIcpu\fP 控制器。
+.SH ERRORS
+\fBmount\fP(2): 会出现以下错误
+.TP 
+\fBEBUSY\fP
+尝试挂载 cgroup 版本 1 文件系统既没有指定 \fIname=\fP 选项 (挂载命名层次结构) 也没有指定控制器名称 (或 \fIall\fP).
+.SH NOTES
+通过 \fBfork\fP(2) 创建的子进程继承其父进程的 cgroup 成员资格。 进程的 cgroup 成员身份在 \fBexecve\fP(2) 中保留。
+.PP
+.\"
+\fBclone3\fP(2) \fBCLONE_INTO_CGROUP\fP 标志可用于创建一个子进程，该子进程在与父进程不同的版本 2 cgroup
+中开始其生命周期。
+.SS "/proc files"
+.TP 
+\fI/proc/cgroups\fP (since Linux 2.6.24)
+该文件包含有关编译到内核中的控制器的信息。 该文件的内容示例 (为了便于阅读而重新格式化) 如下:
+.IP
+.in +4n
+.EX
+#subsys_name 层次结构 num_cgroups 已启用
+处理器集 4 1 1
+中央处理器 8 1 1
+cpuacct         8              1              1
+布莱克奥 6 1 1
+内存 3 1 1
+设备 10 84 1
+冰箱 7 1 1
+net_cls         9              1              1
+性能事件 5 1 1
+net_prio        9              1              1
+hugetlb         0              1              0
+pids            2              1              1
+.EE
+.in
+.IP
+此文件中的字段从左到右为:
+.RS
+.IP [1] 5
+控制器的名称。
+.IP [2]
+挂载此控制器的 cgroup 层次结构的唯一 ID。 如果多个 cgroups v1
+控制器绑定到相同的层次结构，那么每个控制器都会在此字段中显示相同的层次结构 ID。 如果出现以下情况，此字段中的值将为 0:
+.RS
+.IP \[bu] 3
+控制器未安装在 cgroups v1 层次结构上;
+.IP \[bu]
+控制器绑定到 cgroups v2 单个统一层次结构; or
+.IP \[bu]
+控制器被禁用 (见下文)。
+.RE
+.IP [3]
+此层次结构中使用此控制器的控制组数。
+.IP [4]
+如果此控制器已启用，则此字段包含值 1，如果已禁用 (通过 \fIcgroup_disable\fP 内核命令行引导参数)，则此字段包含值 0。
+.RE
+.TP 
+\fI/proc/[pid]/cgroup\fP (since Linux 2.6.24)
+该文件描述了具有相应 PID 的进程所属的控制组。 显示的信息因 cgroups 版本 1 和版本 2 层次结构而异。
+.IP
+对于进程所属的每个 cgroup 层次结构，都有一个条目包含三个以冒号分隔的字段:
+.IP
+.in +4n
+.EX
+hierarchy\-ID:controller\-list:cgroup\-path
+.EE
+.in
+.IP
+例如:
+.IP
+.in +4n
+.EX
+5:cpuacct,cpu,cpuset:/daemons
+.EE
+.in
+.IP
+冒号分隔的字段从左到右是:
+.RS
+.IP [1] 5
+对于 cgroups 版本 1 层次结构，此字段包含一个唯一的层次结构 ID 号，可以与 \fI/proc/cgroups\fP 中的层次结构 ID 匹配。
+对于 cgroups 版本 2 层次结构，此字段包含值 0.
+.IP [2]
+对于 cgroups 版本 1 层次结构，此字段包含以逗号分隔的绑定到层次结构的控制器列表。 对于 cgroups 版本 2 层次结构，此字段为空。
+.IP [3]
+该字段包含流程所属层次结构中控制组的路径名。 此路径名是相对于层次结构的安装点的。
+.RE
+.\"
+.SS "/sys/kernel/cgroup files"
+.TP 
+\fI/sys/kernel/cgroup/delegate\fP (since Linux 4.15)
+.\" commit 01ee6cfb1483fe57c9cbd8e73817dfbf9bacffd3
+此文件导出可委派 (即，其所有权应更改为受托人的用户 ID) 的 cgroups v2 文件列表 (每行一个)。 在 future
+中，可委托文件集可能会更改或增长，并且该文件为内核提供了一种方式来通知用户空间应用程序哪些文件必须被委托。 对于 Linux
+4.15，检查此文件时会看到以下内容:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/kernel/cgroup/delegate\fP
+cgroup.procs
+cgroup.subtree_control
+cgroup.threads
+.EE
+.in
+.TP 
+\fI/sys/kernel/cgroup/features\fP (since Linux 4.15)
+.\" commit 5f2e673405b742be64e7c3604ed4ed3ac14f35ce
+随着时间的推移，内核提供的 cgroups v2 特性集可能会发生变化或增长，或者某些特性可能默认不启用。
+该文件为用户空间应用程序提供了一种发现正在运行的内核支持和启用的特性的方法。 每行列出一个，特性:
+.IP
+.in +4n
+.EX
+$ \fBcat /sys/kernel/cgroup/features\fP
+nsdelegate
+memory_localevents
+.EE
+.in
+.IP
+可以出现在这个文件中的条目是:
+.RS
+.TP 
+\fImemory_localevents\fP (since Linux 5.2)
+内核支持 \fImemory_localevents\fP 挂载选项。
+.TP 
+\fInsdelegate\fP (since Linux 4.15)
+内核支持 \fInsdelegate\fP 挂载选项。
+.TP 
+\fImemory_recursiveprot\fP (since Linux 5.7)
+.\" commit 8a931f801340c2be10552c7b5622d5f4852f3a36
+内核支持 \fImemory_recursiveprot\fP 挂载选项。
+.RE
+.SH "SEE ALSO"
+\fBprlimit\fP(1), \fBsystemd\fP(1), \fBsystemd\-cgls\fP(1), \fBsystemd\-cgtop\fP(1),
+\fBclone\fP(2), \fBioprio_set\fP(2), \fBperf_event_open\fP(2), \fBsetrlimit\fP(2),
+\fBcgroup_namespaces\fP(7), \fBcpuset\fP(7), \fBnamespaces\fP(7), \fBsched\fP(7),
+\fBuser_namespaces\fP(7)
+.PP
+内核源文件 \fIDocumentation/admin\-guide/cgroup\-v2.rst\fP.
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

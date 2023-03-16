@@ -1,0 +1,125 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) Bruno Haible <haible@clisp.cons.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" References consulted:
+.\"   GNU glibc-2 source code and manual
+.\"   OpenGroup's Single UNIX specification
+.\"	http://www.UNIX-systems.org/online.html
+.\"
+.\" 2000-06-30 correction by Yuichi SATO <sato@complex.eng.hokudai.ac.jp>
+.\" 2000-11-15 aeb, fixed prototype
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH iconv 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+iconv \- 执行字符集转换
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <iconv.h>\fP
+.PP
+\fBsize_t iconv(iconv_t \fP\fIcd\fP\fB,\fP
+\fB             char **restrict \fP\fIinbuf\fP\fB, size_t *restrict \fP\fIinbytesleft\fP\fB,\fP
+\fB             char **restrict \fP\fIoutbuf\fP\fB, size_t *restrict \fP\fIoutbytesleft\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBiconv\fP() 函数将一种字符编码的字符序列转换为另一种字符编码的字符序列。 \fIcd\fP 参数是一个转换描述符，之前由调用到
+\fBiconv_open\fP(3) 创建; 转换描述符定义 \fBiconv\fP() 用于转换的字符编码。 \fIinbuf\fP
+参数是指向输入序列第一个字符的变量地址; \fIinbytesleft\fP 指示该缓冲区中的字节数。 \fIoutbuf\fP
+参数是指向输出缓冲区中第一个可用字节的变量的地址; \fIoutbytesleft\fP 指示输出缓冲区中可用的字节数。
+.PP
+主要情况是 \fIinbuf\fP 不为 NULL 且 \fI*inbuf\fP 不为 NULL。 在这种情况下，\fBiconv\fP() 函数将从 \fI*inbuf\fP
+开始的多字节序列转换为从 \fI*outbuf\fP 开始的多字节序列。 最多读取 \fI*inbytesleft\fP 个字节，从 \fI*inbuf\fP 开始。 从
+\fI*outbuf\fP 开始最多写入 \fI*outbytesleft\fP 个字节。
+.PP
+\fBiconv\fP() 函数一次转换一个多字节字符，对于每个字符转换，它增加 \fI*inbuf\fP 并减少 \fI*inbytesleft\fP
+转换的输入字节数，它增加 \fI*outbuf\fP 并减少 \fI*outbytesleft\fP 转换的输出字节数，并更新转换状态包含在 \fIcd\fP 中。
+如果输入的字符编码是有状态的，则 \fBiconv\fP() 函数还可以将输入字节序列转换为对转换状态的更新，而不产生任何输出字节; 这样的输入称为
+\fIshift sequence\fP。 转换可能因以下四个原因而停止:
+.IP \[bu] 3
+输入中遇到无效的多字节序列。 在这种情况下，它将 \fIerrno\fP 设置为 \fBEILSEQ\fP 并返回 \fI(size_t)\ \-1\fP。
+\fI*inbuf\fP 指向无效多字节序列的开头。
+.IP \[bu]
+输入字节序列已完全转换，即 \fI*inbytesleft\fP 已降为 0。 在这种情况下，\fBiconv\fP() 返回在此调用期间执行的不可逆转换的次数。
+.IP \[bu]
+输入中遇到不完整的多字节序列，输入字节序列在它之后终止。 在这种情况下，它将 \fIerrno\fP 设置为 \fBEINVAL\fP 并返回
+\fI(size_t)\ \-1\fP。 \fI*inbuf\fP 指向不完整的多字节序列的开头。
+.IP \[bu]
+输出缓冲区没有更多空间容纳下一个转换字符。 在这种情况下，它将 \fIerrno\fP 设置为 \fBE2BIG\fP 并返回 \fI(size_t)\ \-1\fP。
+.PP
+另一种情况是 \fIinbuf\fP 为 NULL 或 \fI*inbuf\fP 为 NULL，但 \fIoutbuf\fP 不为 NULL 且 \fI*outbuf\fP
+不为 NULL。 在这种情况下，\fBiconv\fP() 函数尝试将 \fIcd\fP's 转换状态设置为初始状态，并在 \fI*outbuf\fP
+存储相应的移位序列。 从 \fI*outbuf\fP 开始最多写入 \fI*outbytesleft\fP 个字节。
+如果输出缓冲器没有更多空间容纳此复位序列，它会将 \fIerrno\fP 设置为 \fBE2BIG\fP 并返回 \fI(size_t)\ \-1\fP。 否则，它会增加
+\fI*outbuf\fP 并减少 \fI*outbytesleft\fP 写入的字节数。
+.PP
+第三种情况是 \fIinbuf\fP 为 NULL 或 \fI*inbuf\fP 为 NULL，\fIoutbuf\fP 为 NULL 或 \fI*outbuf\fP 为
+NULL。 在这种情况下，\fBiconv\fP() 函数将 \fIcd\fP's 转换状态设置为初始状态。
+.SH "RETURN VALUE"
+\fBiconv\fP() 函数返回在此调用期间以不可逆方式转换的字符数; 不计算可逆转换。 如果出现错误，\fBiconv\fP() 返回 \fI(size_t)\ \-1\fP 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+除其他外，可能会出现以下错误:
+.TP 
+\fBE2BIG\fP
+\fI*outbuf\fP 没有足够的空间。
+.TP 
+\fBEILSEQ\fP
+输入中遇到无效的多字节序列。
+.TP 
+\fBEINVAL\fP
+输入中遇到不完整的多字节序列。
+.SH VERSIONS
+这个函数从 glibc 2.1 开始可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBiconv\fP()
+T}	Thread safety	MT\-Safe race:cd
+.TE
+.hy
+.ad
+.sp 1
+.PP
+\fBiconv\fP() 函数是 MT 安全的，只要，调用者，在 \fIcd\fP 参数上安排互斥即可。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+在对 \fBiconv\fP() 的每一系列调用中，最后一次调用 \fIinbuf\fP 或 \fI*inbuf\fP 应等于 NULL，以便清除任何部分转换的输入。
+.PP
+尽管 \fIinbuf\fP 和 \fIoutbuf\fP 的类型为 \fIchar\ **\fP，但这并不意味着它们指向的对象可以解释为 C 字符串或字符数组:
+字符字节序列的解释由转换函数在内部处理。 在某些编码中，零字节可能是多字节字符的有效部分。
+.PP
+\fBiconv\fP() 的调用者必须确保传递给函数的指针适用于访问适当字符集中的字符。 这包括确保在对对齐有严格限制的平台上正确对齐。
+.SH "SEE ALSO"
+\fBiconv_close\fP(3), \fBiconv_open\fP(3), \fBiconvconfig\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

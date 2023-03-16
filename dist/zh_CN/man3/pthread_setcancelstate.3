@@ -1,0 +1,132 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2008 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_setcancelstate 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_setcancelstate、pthread_setcanceltype \- 设置可取消状态和类型
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_setcancelstate(int \fP\fIstate\fP\fB, int *\fP\fIoldstate\fP\fB);\fP
+\fBint pthread_setcanceltype(int \fP\fItype\fP\fB, int *\fP\fIoldtype\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_setcancelstate\fP() 将调用线程的可取消状态设置为 \fIstate\fP 中给定的值。 线程先前的可取消状态在
+\fIoldstate\fP 指向的缓冲区中返回。 \fIstate\fP 参数必须具有以下值之一:
+.TP 
+\fBPTHREAD_CANCEL_ENABLE\fP
+线程是可取消的。 这是所有新线程 (包括初始线程) 中的默认可取消状态。 线程的可取消类型决定可取消线程何时响应取消请求。
+.TP 
+\fBPTHREAD_CANCEL_DISABLE\fP
+线程不可取消。 如果收到取消请求，它将被阻止，直到启用可取消性。
+.PP
+\fBpthread_setcanceltype\fP() 将调用线程的可取消类型设置为 \fItype\fP 中给定的值。 线程的前一个可取消类型在
+\fIoldtype\fP 指向的缓冲区中返回。 \fItype\fP 参数必须具有以下值之一:
+.TP 
+\fBPTHREAD_CANCEL_DEFERRED\fP
+取消请求被推迟，直到线程下一次调用作为取消点的函数 (参见 \fBpthreads\fP(7)).  这是所有新线程 (包括初始线程) 中的默认可取消类型。
+.IP
+即使使用延迟取消，异步信号处理程序中的取消点仍可能会被执行，效果就好像它是异步取消一样。
+.TP 
+\fBPTHREAD_CANCEL_ASYNCHRONOUS\fP
+线程可以随时取消。 (一般情况下，收到取消请求后会立即取消，但系统不保证。)
+.PP
+这些函数中的每一个执行的设置和获取操作对于调用相同函数的进程中的其他线程而言是原子的。
+.SH "RETURN VALUE"
+成功时，这些函数返回 0; 出错时，它们返回一个非零错误号。
+.SH ERRORS
+\fBpthread_setcancelstate\fP() 可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP
+\fIstate\fP 的值无效。
+.PP
+\fBpthread_setcanceltype\fP() 可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP
+.\" .SH VERSIONS
+.\" Available since glibc 2.0
+\fItype\fP 的值无效。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_setcancelstate\fP(),
+\fBpthread_setcanceltype\fP()
+T}	Thread safety	T{
+MT\-Safe
+T}
+T{
+\fBpthread_setcancelstate\fP(),
+\fBpthread_setcanceltype\fP()
+T}	Async\-cancel safety	T{
+AC\-Safe
+T}
+.TE
+.hy
+.ad
+.sp 1
+.hy
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+有关取消线程时发生的情况的详细信息，请参见 \fBpthread_cancel\fP(3)。
+.PP
+如果线程执行某些不能被取消请求中断的关键操作，则短暂禁用可取消性很有用。
+当心长时间禁用可取消性，或围绕可能长时间阻塞的操作，因为这会使线程无法响应取消请求。
+.SS "Asynchronous cancelability"
+将取消类型设置为 \fBPTHREAD_CANCEL_ASYNCHRONOUS\fP 很少有用。 由于线程可以在 \fIany\fP
+时间被取消，它不能安全地保留资源 (例如，使用 \fBmalloc\fP(3)) 分配内存、获取交互锁、信号量或锁等。
+保留资源是不安全的，因为当线程被取消时，应用程序无法知道这些资源的状态; 也就是说，取消是发生在资源预留之前、资源预留期间还是资源释放之后?
+此外，一些内部数据结构 (例如，由任数的 \fBmalloc\fP(3) 系列管理的空闲块链表) 如果在调用任数的过程中发生取消，则可能会处于不一致状态。
+因此，清理处理程序不再有用。
+.PP
+可以安全异步取消的函数称为 \fIasync\-cancel\-safe functions\fP。 POSIX.1\-2001 和 POSIX.1\-2008
+只要求 \fBpthread_cancel\fP(3)、\fBpthread_setcancelstate\fP() 和
+\fBpthread_setcanceltype\fP() 是异步取消安全的。 一般来说，其他库函数不能从异步可取消线程中安全调用。
+.PP
+异步可取消性有用的少数情况之一是取消纯计算绑定循环中的线程。
+.SS "Portability notes"
+.\" It looks like at least Solaris, FreeBSD and Tru64 support this.
+Linux 线程实现允许 \fBpthread_setcancelstate\fP() 的 \fIoldstate\fP 参数为
+NULL，在这种情况下，有关先前可取消状态的信息不会返回给调用者。 许多其他实现也允许 NULL \fIoldstat\fP 参数，但 POSIX.1
+未指定这一点，因此可移植应用程序应始终在 \fIoldstate\fP 中指定非 NULL 值。 一组精确类似的语句适用于
+\fBpthread_setcanceltype\fP() 的 \fIoldtype\fP 参数。
+.SH EXAMPLES
+请参见 \fBpthread_cancel\fP(3)。
+.SH "SEE ALSO"
+\fBpthread_cancel\fP(3), \fBpthread_cleanup_push\fP(3), \fBpthread_testcancel\fP(3),
+\fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

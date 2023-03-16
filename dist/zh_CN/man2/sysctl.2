@@ -1,0 +1,135 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 1996 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Written 11 April 1996 by Andries Brouwer <aeb@cwi.nl>
+.\" 960412: Added comments from Stephen Tweedie
+.\" Modified Tue Oct 22 22:28:41 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Mon Jan  5 20:31:04 1998 by aeb.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sysctl 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+sysctl\-read/write 系统参数
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+\fB#include <linux/sysctl.h>\fP
+.PP
+\fB[[deprecated]] int _sysctl(struct __sysctl_args *\fP\fIargs\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBThis system call no longer exists on current kernels!\fP 见注释。
+.PP
+\fB_sysctl\fP() 调用读取或者写入内核参数。 例如，主机名或打开文件的最大数量。 参数有以下形式
+.PP
+.in +4n
+.EX
+struct __sysctl_args {
+    int    *name;    /* integer vector describing variable */
+    int     nlen;    /* length of this vector */
+    void   *oldval;  /* 0 or address where to store old value */
+    size_t *oldlenp; /* available room for old value,
+                        overwritten by actual size of old value */
+    void   *newval;  /* 0 or address of new value */
+    size_t  newlen;  /* size of new value */
+};
+.EE
+.in
+.PP
+此调用在树结构体中进行搜索，可能类似于 \fI/proc/sys\fP 下的目录树，如果找到请求的项目，则调用一些适当的例程来读取或修改值。
+.SH "RETURN VALUE"
+成功完成后，\fB_sysctl\fP() 返回 0。 否则，返回值 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP, \fBEPERM\fP
+遇到的 "directories" 之一没有搜索权限，或者 \fIoldval\fP 为非零时没有读取权限，或者 \fInewval\fP 为非零时没有写入权限。
+.TP 
+\fBEFAULT\fP
+调用通过将 \fIoldval\fP 设置为非 NULL 来请求先前的值，但允许 \fIoldlenp\fP 中的空间为零。
+.TP 
+\fBENOTDIR\fP
+未找到 \fIname\fP。
+.SH VERSIONS
+本系统调用最早出现在 Linux 1.3.57。 它在 Linux 5.5 中被移除; 在 glibc 2.32 中删除了 glibc 支持。
+.SH STANDARDS
+此调用是特定于 Linux 的，不应在旨在可移植的程序中使用。 它起源于 4.4BSD。 只有 Linux 有 \fI/proc/sys\fP
+镜像，Linux 和 4.4BSD 的对象命名方案不同，但 \fBsysctl\fP() 的函数声明两者是一样的。
+.SH NOTES
+长期以来不鼓励使用此系统调用: 自 Linux 2.6.24 起，使用此系统调用会导致内核日志中出现警告，而在 Linux 5.5
+中，系统调用最终被删除。 请改用 \fI/proc/sys\fP 接口。
+.PP
+请注意，在该系统调用仍然存在的旧内核上，仅当内核配置了 \fBCONFIG_SYSCTL_SYSCALL\fP 选项时它才可用。 此外，glibc
+不为该系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH BUGS
+对象名称因内核版本而异，使得该系统调用于应用程序毫无值。
+.PP
+并非所有可用对象都已正确记录。
+.PP
+还不能通过写入 \fI/proc/sys/kernel/ostype\fP 来更改操作系统。
+.SH EXAMPLES
+.\" SRC BEGIN (sysctl.c)
+.EX
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+#include <linux/sysctl.h>
+
+#define ARRAY_SIZE(arr)  (sizeof(arr) / sizeof((arr)[0]))
+
+int _sysctl(struct __sysctl_args *args);
+
+#define OSNAMESZ 100
+
+int
+main(void)
+{
+    int                   name[] = { CTL_KERN, KERN_OSTYPE };
+    char                  osname[OSNAMESZ];
+    size_t                osnamelth;
+    struct __sysctl_args  args;
+
+    memset(&args, 0, sizeof(args));
+    args.name = name;
+    args.nlen = ARRAY_SIZE(name);
+    args.oldval = osname;
+    args.oldlenp = &osnamelth;
+
+    osnamelth = sizeof(osname);
+
+    if (syscall(SYS__sysctl, &args) == \-1) {
+        perror("_sysctl");
+        exit(EXIT_FAILURE);
+    }
+    printf("This machine is running %*s\en", (int) osnamelth, osname);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBproc\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,117 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2002 Andries Brouwer (aeb@cwi.nl)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Inspired by a page written by Walter Harms.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getfsent 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+getfsent、getfsspec、getfsfile、setfsent、endfsent \- 处理 fstab 条目
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <fstab.h>\fP
+.PP
+\fBint setfsent(void);\fP
+\fBstruct fstab *getfsent(void);\fP
+\fBvoid endfsent(void);\fP
+.PP
+\fBstruct fstab *getfsfile(const char *\fP\fImount_point\fP\fB);\fP
+\fBstruct fstab *getfsspec(const char *\fP\fIspecial_file\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+这些函数是从文件 \fI/etc/fstab\fP 中读取的。 \fIstruct fstab\fP 定义如下:
+.PP
+.in +4n
+.EX
+struct fstab {
+    char       *fs_spec;       /* block device name */
+    char       *fs_file;       /* mount point */
+    char       *fs_vfstype;    /* filesystem type */
+    char       *fs_mntops;     /* mount options */
+    const char *fs_type;       /* rw/rq/ro/sw/xx option */
+    int         fs_freq;       /* dump frequency, in days */
+    int         fs_passno;     /* pass number on parallel dump */
+};
+.EE
+.in
+.PP
+这里字段 \fIfs_type\fP 包含 (在 *BSD 系统上) 五个字符串之一 "rw"、"rq"、"ro"、"sw"、"xx"
+(读写、带配额的读写、只读、交换、忽略)。
+.PP
+函数 \fBsetfsent\fP() 在需要时打开文件并将其定位在第一行。
+.PP
+函数 \fBgetfsent\fP() 解析文件中的下一行。 (需要时打开它。)
+.PP
+必要时，函数 \fBendfsent\fP() 会关闭文件。
+.PP
+函数 \fBgetfsspec\fP() 从头搜索文件并返回找到的第一个 \fIfs_spec\fP 字段与 \fIspecial_file\fP 参数匹配的条目。
+.PP
+函数 \fBgetfsfile\fP() 从头搜索文件并返回找到的第一个 \fIfs_file\fP 字段与 \fImount_point\fP 参数匹配的条目。
+.SH "RETURN VALUE"
+.\" .SH HISTORY
+.\" The
+.\" .BR getfsent ()
+.\" function appeared in 4.0BSD; the other four functions appeared in 4.3BSD.
+成功后，函数 \fBgetfsent\fP()、\fBgetfsfile\fP() 和 \fBgetfsspec\fP() 返回指向 \fIstruct fstab\fP
+的指针，而 \fBsetfsent\fP() 返回 1。 在失败或文件结束时，这些函数分别返回 NULL 和 0。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBendfsent\fP(),
+\fBsetfsent\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:fsent
+T}
+T{
+\fBgetfsent\fP(),
+\fBgetfsspec\fP(),
+\fBgetfsfile\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:fsent locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+这些函数不在 POSIX.1 中。 几个操作系统都有它们，例如 *BSD、SunOS、Digital UNIX、AIX (也有
+\fBgetfstype\fP()).  HP\-UX 有相同名称的函数，但使用 \fIstruct checklist\fP 而不是 \fIstruct fstab\fP，并称这些函数已过时，由 \fBgetmntent\fP(3) 取代。
+.SH NOTES
+这些函数不是线程安全的。
+.PP
+由于 Linux 允许在多个位置安装块特殊设备，并且由于多个设备可以具有相同的安装点，因此具有给定安装点的最后一个设备是有趣的，而
+\fBgetfsfile\fP() 和 \fBgetfsspec\fP() 仅返回第一次出现，这两个函数不适合在 Linux 下使用。
+.SH "SEE ALSO"
+\fBgetmntent\fP(3), \fBfstab\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

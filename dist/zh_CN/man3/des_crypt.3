@@ -1,0 +1,113 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" @(#)des_crypt.3	2.1 88/08/11 4.0 RPCSRC; from 1.16 88/03/02 SMI;
+.\"
+.\" Taken from libc4 sources, which say:
+.\" Copyright (C) 1993 Eric Young - can be distributed under GPL.
+.\"
+.\" However, the above header line suggests that this file in fact is
+.\" Copyright Sun Microsystems, Inc (and is provided for unrestricted use,
+.\" see other Sun RPC sources).
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH des_crypt 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+des_crypt、ecb_crypt、cbc_crypt、des_setparity、DES_FAILED \- 快速 DES 加密
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+.\" Sun version
+.\" .B #include <des_crypt.h>
+\fB#include <rpc/des_crypt.h>\fP
+.PP
+\fBint ecb_crypt(char *\fP\fIkey\fP\fB, char \fP\fIdata\fP\fB[.\fP\fIdatalen\fP\fB], unsigned int \fP\fIdatalen\fP\fB,\fP
+\fB              unsigned int \fP\fImode\fP\fB);\fP
+\fBint cbc_crypt(char *\fP\fIkey\fP\fB, char \fP\fIdata\fP\fB[.\fP\fIdatalen\fP\fB], unsigned int \fP\fIdatalen\fP\fB,\fP
+\fB              unsigned int \fP\fImode\fP\fB, char *\fP\fIivec\fP\fB);\fP
+.PP
+\fBvoid des_setparity(char *\fP\fIkey\fP\fB);\fP
+.PP
+\fBint DES_FAILED(int \fP\fIstatus\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBecb_crypt\fP() 和 \fBcbc_crypt\fP() 执行 NBS DES (数据加密标准)。 这些例程比 \fBcrypt\fP(3)
+更快、更通用。 如果可用，他们还能够利用 DES 硬件。 \fBecb_crypt\fP() 采用 ECB (Electronic Code Book)
+模式加密，独立加密数据块。 \fBcbc_crypt\fP() 以 CBC (密码块链接) 模式加密，将连续的块链接在一起。 CBC
+模式防止块的插入、删除和替换。 此外，明文中的规律性不会出现在密文中。
+.PP
+以下是如何使用这些例程。 第一个参数 \fIkey\fP 是带有奇偶校验的 8 字节加密密钥。 要设置密钥的奇偶校验，对于
+DES，奇偶校验位于每个字节的低位，请使用 \fBdes_setparity\fP()。 第二个参数 \fIdata\fP 包含要加密或解密的数据。 第三个参数
+\fIdatalen\fP 是 \fIdata\fP 的字节长度，必须是 8 的倍数。 第四个参数，\fImode\fP，是一些东西通过 OR 运算形成的。 对于
+\fBDES_ENCRYPT\fP 或 \fBDES_DECRYPT\fP 中的加密方向或。 对于软件与硬件加密，或在 \fBDES_HW\fP 或 \fBDES_SW\fP
+中。 如果指定了 \fBDES_HW\fP，并且没有硬件，则在软件中执行加密，例程返回 \fBDESERR_NOHWDEVICE\fP。 对于
+\fBcbc_crypt\fP()，参数 \fIivec\fP 是链接的 8 字节初始化 vector。 返回时更新到下一个初始化 vector。
+.SH "RETURN VALUE"
+.TP 
+\fBDESERR_NONE\fP
+没有错误。
+.TP 
+\fBDESERR_NOHWDEVICE\fP
+加密成功，但在软件而不是请求的硬件中完成。
+.TP 
+\fBDESERR_HWERROR\fP
+硬件或驱动程序发生错误。
+.TP 
+\fBDESERR_BADPARAM\fP
+坏参数到例程。
+.PP
+.\" .BR DES_FAILED\c
+.\" .BR ( stat )
+.\" So far the Sun page
+.\" Some additions - aeb
+给定结果状态 \fIstat\fP，宏 \fBDES_FAILED(\fP\fIstat\fP\fB)\fP 仅对于前两个状态为假。
+.SH VERSIONS
+这些函数是在 glibc 2.1 中添加的。
+.PP
+因为它们使用不再被认为是安全的 DES 分组密码，所以在 glibc 2.28 中删除了
+\fBecb_crypt\fP()、\fBecb_crypt\fP()、\fBcrypt_r\fP() 和 \fBdes_setparity\fP()。
+应用程序应切换到现代加密库，例如 \fBlibgcrypt\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBecb_crypt\fP(),
+\fBcbc_crypt\fP(),
+\fBdes_setparity\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+4.3BSD.  不在 POSIX.1 中。
+.SH "SEE ALSO"
+\fBdes\fP(1), \fBcrypt\fP(3), \fBxcrypt\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

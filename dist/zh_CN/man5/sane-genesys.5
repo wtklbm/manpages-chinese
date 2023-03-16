@@ -1,0 +1,244 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-genesys 5 "4 Jul 2012" "" "SANE Scanner Access Now Easy"
+.IX sane\-genesys
+.SH NAME
+sane\-genesys \- 基于 GL646、GL841、GL843、GL847 和 GL124 的 USB 平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-genesys\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，它提供对基于 Genesys
+GL646、GL841、GL843、GL847 和 GL124 芯片的 USB 平板扫描仪的访问。 目前，已知以下扫描器可以使用此后端:
+.PP
+.RS
+佳能立德 35/40/50/60/100/110/120/200/210/220/700
+.br
+惠普 HP2300C/HP2400/HP3670/HP3690/G4010/G4050
+.br
+美迪安 MD5345/MD6228/MD6274
+.br
+松下 KV\-SS080
+.br
+Plustek OpticBook 3600
+.br
+宾得 DSmobile 600
+.br
+Syscan/Ambir DocketPORT 467/485/487/665/685
+.br
+Visioneer OneTouch 7100/Strobe XP100 (rev3)/XP200/XP300/Roadwarrior
+.br
+施乐旅行扫描仪 100、OneTouch 2400
+.RE
+
+.PP
+这是支持型号的稳定软件。但是，如果您测试新的或未经测试的扫描仪，请将您的手放在扫描仪的插头上，如果头部在扫描区域的末端碰撞，则将其拔下。
+.PP
+如果您拥有所有权的扫描仪不是上面列出的与此后端一起使用的扫描仪，请通过将扫描仪的确切型号名称以及 USB 供应商和设备 ID (例如来自
+\fI/proc/bus/usb/devices\fP、\fIsane\-find\-scanner\fP 或系统日志) 发送到 sane\-devel
+来告诉我这一点邮件列表。即使扫描仪的名称与上述型号略有不同，也请告诉我。
+.PP
+如果您拥有所有权的扫描仪未被 genesys 后端检测到，但具有 GL646、GL841、GL843、GL847 或 GL124
+芯片组，您可以尝试将其添加到后端。
+.PP
+.SH CALIBRATION
+为了提供正确的图像质量，需要使用随扫描仪出售的校准纸校准单张纸扫描仪。要进行校准，您必须将此目标插入进纸器，然后通过将 \-\-calibrate
+选项传递给 scanimage 或单击图形前端 `高级选项` 中可用的 'calibrate'
+按钮来开始校准。校准结果存储在执行此操作的用户的主目录中的文件中。 如果您将扫描仪插入另一台机器或使用其他帐户，则必须重做校准，除非您使用
+\-\-calibration\-file 选项。 如果没有定义主目录，将使用 \fBUSERAPPPROFILE\fP，然后是 \fBTMPDIR\fP 或
+\fBTMP.\fP
+如果这些目录都不存在，后端将尝试写入当前工作目录。平板扫描仪还利用校准文件作为缓存，以避免在每次扫描前进行校准。如果只检测到一台扫描仪，校准文件名是扫描仪型号的名称。在多个相同型号的情况下，文件名将是逻辑
+USB 设备名的名称。到期时间管理校准在缓存中有效的时间。 \-1 的值意味着永远，0 意味着没有缓存。
+
+.SH "EXTRAS SCAN OPTIONS"
+
+.TP 
+\fB\-\-lamp\-off\-time number\fP
+灯将在给定时间 (以分钟为单位) 后关闭。值为 0 表示灯不会关闭。
+
+.TP 
+\fB\-\-threshold percent\fP
+0..100% (按步骤 1)。选择最小亮度以获得白点。亮度低于该值的像素将被扫描为黑色。
+
+.TP 
+\fB\-\-brightness value\fP
+\-100..100 (步长为 1)。设置亮度增强。0 表示无增强，negative 值降低亮度，正值增加亮度。
+
+.TP 
+\fB\-\-contrast value\fP
+\-100..100 (步长为 1)。设置对比度增强。0 表示无增强，negative 值降低对比度，正值增加对比度。
+
+.TP 
+\fB\-\-disable\-interpolation yes|no\fP
+当使用水平分辨率小于垂直分辨率的高分辨率时，软件会扩展数据以保留图片几何形状。这可以通过此选项禁用以获取真实的扫描数据。
+
+.TP 
+\fB\-\-disable\-dynamic\-lineart yes|no\fP
+禁止使用软件自适应算法生成线稿并依赖硬件线稿。
+
+.TP 
+\fB\-\-color\-filter None|Red|Green|Blue\fP
+使用灰色或线条时，此选项选择使用的颜色。使用滤色器将进行单色扫描。当未选择过滤器 (无值) 时，基于 CIS 的扫描仪可以变为真灰色。
+
+.TP 
+\fB\-\-lamp\-off\-scan\fP
+灯将在扫描过程中关闭。校准仍然在灯亮着的情况下完成。
+
+.TP 
+\fB\-\-clear\-calibration\fP
+清除校准缓存数据，在下一次扫描发生时触发设备的新校准。
+
+.TP 
+\fB\-\-calibration\-file\fP
+指定要使用的校准文件名。至少包含该文件的目录必须存在，因为它不会被创建。如果后端以 root
+身份运行，则禁用此选项。它可能用于单张纸扫描仪，以便为多个用户共享校准文件。
+
+.TP 
+\fB\-\-expiration\-time\fP
+指定缓存校准被视为有效的时间 (以分钟为单位)。如果早于给定值，则进行新的校准。\-1
+的值意味着没有过期和缓存值将永远保留，除非用户使用校准清除选项清除。值为 0 表示禁用缓存。
+
+.PP
+此外，后端公开了几个 'software'
+选项。这些是大型扫描仪原生提供的特性的重新实现，但在主机上运行。这使得较小的机器具有类似的功能。请注意，这些特性有些简单，可能不如原生实现。另请注意，这些特性都需要驱动程序将整个图像缓存在内存中。这几乎肯定会导致扫描速度降低。
+
+.TP 
+\fB\-\-swcrop\fP
+要求驱动程序检测较大图像中纸张的末端，并裁剪空的 edges。
+
+.TP 
+\fB\-\-swdeskew\fP
+请求驱动程序检测较大图像内纸张的旋转，并反旋转。
+
+.TP 
+\fB\-\-swdespeck \-\-despeck X\fP
+要求驱动程序从图像中找到并删除 X 直径或更小的点，并用周围的平均颜色填充空间。
+
+.TP 
+\fB\-\-swskip 0..100% (in steps of 1) [0]\fP
+请求驱动程序丢弃暗像素数量较少的页面。
+
+.TP 
+\fB\-\-swderotate[=(yes|no)] [no]\fP
+请求驱动程序检测并纠正 90 度图像旋转。
+
+.SH "SYSTEM ISSUES"
+此后端需要安装 libusb\-0.1.6 或更高版本，并且尚未在 linux 内核 2.6.9
+或更高版本以外的其他配置中进行测试。但是，它应该可以在任何可以编译 SANE 包的 libusb 系统上运行。有关设置权限和一般 USB 信息，请查看
+\fBsane\-usb\fP(5)。
+
+
+.SH CONFIGURATION
+\fIgenesys.conf\fP 文件的内容是一个 usb 行列表，其中包含与 USB 扫描仪相对应的供应商和产品 ID。该文件还可以包含选项行。
+空行和以哈希标记 (#) 开头的行将被忽略。 扫描仪由 \fBusb vendor_id product_id\fP
+语言自动检测，\fIgenesys.conf\fP 已包含在内。 "vendor_id" 和 "product_id" 是识别扫描仪的十六进制数字。
+.PP
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/genesys.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-genesys.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-genesys.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_GENESYS\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 更高的调试级别会增加输出的冗长程度。如果调试级别设置为 1
+或更高，一些通常隐藏的调试选项将变得可用。小心处理它们。这将打印与核心 genesys 函数相关的消息。
+.TP 
+\fBSANE_DEBUG_GENESYS_IMAGE\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量会启用中间图像数据的记录。要启用此模式，请将环境变量设置为 1.
+
+
+示例 (gl646 的完整且高度详细的输出) :
+.br
+导出 SANE_DEBUG_GENESYS=255
+
+.SH CREDITS
+
+Jack McGill 捐赠了几台单张纸和平板扫描仪，这使得在 genesys 后端添加对它们的支持成为可能:
+.RS
+惠普 HP3670
+.br
+Visioneer 闪光灯 XP100 (rev3)/XP200/Roadwarrior
+.br
+佳能立德 200
+.br
+宾得 DSmobile 600
+.br
+Syscan/Ambir DocketPORT 467/485/487/665/685
+.br
+施乐旅行扫描仪 100、Onetouch 2400
+.RE
+.TP 
+cncsolutions
+(\fIhttp://www.cncsolutions.com.br\fP) 赞助并支持了松下 KV\-SS080 的工作。
+.br
+.TP 
+Brian Paavo from Benthic Science Limited for donating a Canoscan LiDE 700F.
+.br
+.TP 
+Dany Qumsiyeh for donating a Canoscan LiDE 210 and a LiDE 220.
+.br
+.TP 
+Luc Verhaegen for donating a Canoscan LiDE 120.
+.br
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-usb\fP(5)
+.br
+
+
+.SH AUTHOR
+奥利弗劳赫
+.br
+亨宁迈尔 \- 盖尼茨 <\fIhenning@meier\-geinitz.de\fP>
+.br
+格哈德积家 <\fIgerhard@gjaeger.de\fP>
+.br
+St\['e] phane 伏尔兹 <\fIstef.dev@free.fr\fP>
+.br
+菲利普・施密德 <\fIphilipp8288@web.de\fP>
+.br
+皮埃尔威伦布罗克 <\fIpierre@pirsoft.dnsalias.org\fP>
+.br
+Alexey Osipov <\fIsimba@lerlan.ru\fP> 对 HP2400 的最终支持
+
+.SH LIMITATIONS
+
+基于 gl646 的扫描仪未实现节能。gl646 扫描仪未启用动态 (从灰色数据模拟并带有抖动)。由于图像传感器的构建方式，基于 gl847
+的扫描仪的硬件线条被限制为最高 600 dpi。
+.PP
+如果不使用 libusb\-1.0，这个后端会慢很多。所以请确保 sane\-backends 是用 \fB\-\-enable\-libusb_1_0 option.\fP 构建的
+
+.SH BUGS
+对于 LiDE 200，4800 dpi 的扫描数据是从传感器获得的 "as is"。 似乎 windows
+驱动程序做了一些数字处理来改进它，这并没有在后端实现。
+.PP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

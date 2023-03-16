@@ -1,0 +1,301 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: fsck
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH FSCK 8 2022\-05\-11 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+fsck \- 检查并修复 Linux 文件系统
+.SH SYNOPSIS
+.sp
+\fBfsck\fP [\fB\-lsAVRTMNP\fP] [\fB\-r\fP [\fIfd\fP]] [\fB\-C\fP [\fIfd\fP]] [\fB\-t\fP \fIfstype\fP]
+[\fIfilesystem\fP...] [\fB\-\-\fP] [\fIfs\-specific\-options\fP]
+.SH DESCRIPTION
+.sp
+\fBfsck\fP 用于检查并有选择地修复一个或多个 Linux 文件系统。\fIfilesystem\fP 可以是设备名称
+(例如，\fI/dev/hdc1\fP、\fI/dev/sdb2\fP)、挂载点 (例如，\fI/\fP、\fI/usr\fP、\fI/home\fP)) 或文件系统标签或 UUID
+说明符 (例如，UUID=8868abf6\-88c5\-4a83\-98b8\-bfc24057f7bd 或 LABEL=root). 通常，\fBfsck\fP
+程序会尝试处理并行中不同物理磁盘驱动器上的文件系统，以减少检查所有文件系统所需的总时间。
+.sp
+如果在命令行上没有指定文件系统，并且没有指定 \fB\-A\fP 选项，\fBfsck\fP 将默认连续检查 \fI/etc/fstab\fP 中的文件系统。这相当于
+\fB\-As\fP 选项。
+.sp
+\fBfsck\fP 返回的退出状态是以下条件的总和:
+.sp
+\fB0\fP
+.RS 4
+没有错误
+.RE
+.sp
+\fB1\fP
+.RS 4
+文件系统错误已更正
+.RE
+.sp
+\fB2\fP
+.RS 4
+系统应该重新启动
+.RE
+.sp
+\fB4\fP
+.RS 4
+文件系统错误未更正
+.RE
+.sp
+\fB8\fP
+.RS 4
+操作错误
+.RE
+.sp
+\fB16\fP
+.RS 4
+用法或语法错误
+.RE
+.sp
+\fB32\fP
+.RS 4
+用户请求取消检查
+.RE
+.sp
+\fB128\fP
+.RS 4
+共享库错误
+.RE
+.sp
+检查多个文件系统时返回的退出状态是检查的每个文件系统的退出状态的按位或。
+.sp
+实际上，\fBfsck\fP 只是 Linux 下可用的各种文件系统检查器 (\fBfsck\fP.\fIfstype\fP) 的前端。在 \fBPATH\fP
+环境变量中搜索特定于文件系统的检查器。如果 \fBPATH\fP 未定义，则回退到 \fI/sbin\fP。
+.sp
+请参见特定于文件系统的检查器手册页以获取更多详细信息。
+.SH OPTIONS
+.sp
+\fB\-l\fP
+.RS 4
+为整盘设备创建一个独占的 \fBflock\fP(2) 锁文件
+(\fI/run/fsck/<diskname>.lock\fP)。此选项只能与一个设备一起使用 (这意味着 \fB\-A\fP 和 \fB\-l\fP
+是互斥的)。当同时执行多个 \fBfsck\fP 实例时，建议使用此选项。当用于多个设备或非旋转磁盘时，该选项将被忽略。\fBfsck\fP 在执行检查堆叠设备
+(例如 MD 或 DM) 时不会锁定底层设备 \- 此特性尚未实现。
+.RE
+.sp
+\fB\-r\fP [\fIfd\fP]
+.RS 4
+完成时报告每个 fsck 的某些统计信息。这些统计信息包括退出状态、最大运行集大小 (以千字节为单位)、经过的全时钟时间以及 fsck
+运行使用的用户和系统 CPU 时间。例如:
+.sp
+\fB/dev/sda1: status 0, rss 92828, real 4.002804, user 2.677592, sys 0.86186\fP
+.sp
+GUI 前端可以指定文件描述符 \fIfd\fP，在这种情况下，进度条信息将以机器可解析的格式发送到该文件描述符。例如:
+.sp
+\fB/dev/sda1 0 92828 4.002804 2.677592 0.86186\fP
+.RE
+.sp
+\fB\-s\fP
+.RS 4
+序列化 \fBfsck\fP 操作。如果您正在检查多个文件系统并且检查器处于交互模式，这是一个好主意。(注意: \fBe2fsck\fP(8)
+默认以交互模式运行。要使 \fBe2fsck\fP(8) 以非交互模式运行，您必须指定 \fB\-p\fP 或 \fB\-a\fP 选项，如果您希望自动更正错误，或者指定
+\fB\-n\fP 选项，如果您这样做不是。)
+.RE
+.sp
+\fB\-t\fP \fIfslist\fP
+.RS 4
+指定要检查的文件系统的 type(s)。当指定 \fB\-A\fP 标志时，只检查与 \fIfslist\fP 匹配的文件系统。\fIfslist\fP
+参数是以逗号分隔的文件系统和选项说明符列表。此逗号分隔列表中的所有文件系统都可以以否定运算符 \(aq\fBno\fP\(aq 或 \(aq\fB!\fP\(aq
+为前缀，这要求仅检查 \fIfslist\fP 中未列出的那些文件系统。如果 \fIfslist\fP
+中的文件系统都没有以否定运算符为前缀，那么只会检查那些列出的文件系统。
+.sp
+选项说明符可以包含在逗号分隔的 \fIfslist\fP 中。它们的格式必须为 \fBopts=\fP\fIfs\-option\fP。如果存在选项说明符，则只会检查在
+\fI/etc/fstab\fP 的安装选项字段中包含 \fIfs\-option\fP 的文件系统。如果选项说明符以否定运算符为前缀，则只会检查那些在
+\fI/etc/fstab\fP 的挂载选项字段中没有 \fIfs\-option\fP 的文件系统。
+.sp
+例如，如果 \fBopts=ro\fP 出现在 \fIfslist\fP 中，则只检查 \fI/etc/fstab\fP 中列出的具有 \fBro\fP 选项的文件系统。
+.sp
+为了与启动脚本依赖于对 \fBfsck\fP 程序的未授权 UI 更改的 Mandrake 发行版兼容，如果在 \fIfslist\fP 中发现 \fBloop\fP
+文件系统类型，则将其视为 \fBopts=loop\fP 被指定为 \fB\-t\fP 选项的参数。
+.sp
+通常，文件系统类型是通过在 \fI/etc/fstab\fP 文件中搜索 \fIfilesys\fP
+并使用相应的条目来推断的。如果无法推断类型，并且只有一个文件系统作为 \fB\-t\fP 选项的参数给出，则 \fBfsck\fP
+将使用指定的文件系统类型。如果此类型不可用，则使用默认文件系统类型 (当前为 ext2)。
+.RE
+.sp
+\fB\-A\fP
+.RS 4
+遍历 \fI/etc/fstab\fP 文件并尝试一次检查所有文件系统。此选项通常用于 \fI/etc/rc\fP
+系统初始化文件，而不是用于检查单个文件系统的多个命令。
+.sp
+除非指定 \fB\-P\fP 选项 (见下文)，否则将首先检查根文件系统。之后，将按照 \fI/etc/fstab\fP 文件中 \fIfs_passno\fP (第六个)
+字段指定的顺序检查文件系统。\fIfs_passno\fP 值为 0 的文件系统将被跳过，根本不检查。\fIfs_passno\fP
+值大于零的文件系统将按顺序检查，首先检查 \fIfs_passno\fP 值最小的文件系统。如果有多个文件系统具有相同的通行证编号，\fBfsck\fP
+将尝试在并行中检查它们，尽管它会避免在同一物理磁盘上运行多个文件系统检查。
+.sp
+\fBfsck\fP 不检查与任何其他设备并行的栈设备 (RAID、dm\-crypt、...)。\fBFSCK_FORCE_ALL_PARALLEL\fP
+设置见下文。\fI/sys\fP 文件系统用于确定设备之间的依赖关系。
+.sp
+因此，\fI/etc/fstab\fP 文件中一个非常常见的配置是将根文件系统的 \fIfs_passno\fP 值设置为 1，并将所有其他文件系统的
+\fIfs_passno\fP 值设置为 2。如果有利的话，这将允许 \fBfsck\fP
+在并行中自动运行文件系统检查程序。如果系统管理员出于某种原因需要避免在并行中运行多个文件系统检查，则他们可能会选择不使用此配置 \-
+例如，如果所讨论的机器内存不足，以至于过度分页是一个问题。
+.sp
+\fBfsck\fP
+通常不会在调用特定于文件系统的检查器之前检查设备是否实际存在。因此，如果特定于文件系统的检查程序返回致命错误，则不存在的设备可能会导致系统在引导期间进入文件系统修复模式。\fI/etc/fstab\fP
+安装选项 \fBnofail\fP 可用于让 \fBfsck\fP 跳过不存在的设备。\fBfsck\fP 还会跳过具有特殊文件系统类型 \fBauto\fP 的不存在的设备。
+.RE
+.sp
+\fB\-C\fP [\fIfd\fP]
+.RS 4
+为那些支持它们的文件系统检查器 (目前仅用于 ext [234]) 显示 completion/progress 条。\fBfsck\fP
+将管理文件系统检查器，以便一次只有一个检查器显示进度条。GUI 前端可以指定一个文件描述符 \fIfd\fP，在这种情况下，进度条信息将被发送到该文件描述符。
+.RE
+.sp
+\fB\-M\fP
+.RS 4
+不要检查已安装的文件系统并为已安装的文件系统返回 0 的退出状态。
+.RE
+.sp
+\fB\-N\fP
+.RS 4
+Don\(cqt execute，只显示将要完成的操作。
+.RE
+.sp
+\fB\-P\fP
+.RS 4
+设置 \fB\-A\fP 标志后，检查并行中的根文件系统与其他文件系统。这不是世界上最安全的事情，因为如果根文件系统有疑问，像 \fBe2fsck\fP(8)
+可执行文件这样的东西可能会被破坏! 这个选项主要是为那些不希望将根文件系统重新分区为小而紧凑的系统管理员提供的 (这确实是正确的解决方案)。
+.RE
+.sp
+\fB\-R\fP
+.RS 4
+使用 \fB\-A\fP 标志检查所有文件系统时，跳过根文件系统。(这在根文件系统已经以读写方式挂载的情况下很有用。)
+.RE
+.sp
+\fB\-T\fP
+.RS 4
+不要 \(cqt 在启动时显示标题。
+.RE
+.sp
+\fB\-V\fP
+.RS 4
+产生详细的输出，包括执行的所有特定于文件系统的命令。
+.RE
+.sp
+\fB\-?\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-\-version\fP
+.RS 4
+显示版本信息并退出。
+.RE
+.SH "FILESYSTEM SPECIFIC OPTIONS"
+.sp
+\fBOptions which are not understood by fsck are passed to the filesystem\-specific checker!\fP
+.sp
+这些选项 \fBmust\fP 不采用参数，因为 \fBfsck\fP 无法正确猜测哪些选项采用参数，哪些不 \(cqt.
+.sp
+\fB\-\-\fP 之后的选项和参数被视为特定于文件系统的选项，将被传递给特定于文件系统的检查器。
+.sp
+请注意，\fBfsck\fP 并非旨在将任意复杂的选项传递给特定于文件系统的检查器。如果您 \(cqre
+做一些复杂的事情，请直接执行文件系统特定的检查器。如果您给 \fBfsck\fP 传递了一些非常复杂的选项和参数，并且它没有 \(cqt
+做您期望的，\fBdon\(cqt bother reporting it as a bug.\fP 您 \(cqre 几乎肯定会做您应该做的事情 \(cqt
+用 \fBfsck\fP 做。不同文件系统特定的 fsck\(cqs 的选项未标准化。
+.SH ENVIRONMENT
+.sp
+\fBfsck\fP 程序 \(cqs 行为受以下环境影响:
+.sp
+\fBFSCK_FORCE_ALL_PARALLEL\fP
+.RS 4
+如果设置了此环境变量，\fBfsck\fP 将尝试检查并行中所有指定的文件系统，无论这些文件系统是否位于同一设备上。(这对 RAID
+系统或高端存储系统很有用，例如 IBM 或 EMC 等公司销售的存储系统。) 请注意，\fIfs_passno\fP 值仍然被使用。
+.RE
+.sp
+\fBFSCK_MAX_INST\fP
+.RS 4
+此环境变量将限制一次可以运行的文件系统检查器的最大数量。这允许具有大量磁盘的配置避免 \fBfsck\fP 一次启动太多文件系统检查器，这可能会使系统上可用的
+CPU 和内存资源，重载。如果此值为零，则可以生成无限数量的进程。这是目前的默认设置，但 \fBfsck\fP 的 future
+版本可能会尝试根据从操作系统收集的记帐数据自动确定可以运行多少文件系统检查。
+.RE
+.sp
+\fBPATH\fP
+.RS 4
+\fBPATH\fP 环境变量用于查找文件系统检查器。
+.RE
+.sp
+\fBFSTAB_FILE\fP
+.RS 4
+该环境变量允许系统管理员覆盖 \fI/etc/fstab\fP 文件的标准位置。它对测试 \fBfsck\fP 的开发人员也很有用。
+.RE
+.sp
+\fBLIBBLKID_DEBUG=all\fP
+.RS 4
+启用 libblkid 调试输出。
+.RE
+.sp
+\fBLIBMOUNT_DEBUG=all\fP
+.RS 4
+启用 libmount 调试输出。
+.RE
+.SH FILES
+.sp
+\fI/etc/fstab\fP
+.SH AUTHORS
+.sp
+.MTO tytso\(atmit.edu> "Theodore Ts\(cqo" ,
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBfstab\fP(5)、\fBmkfs\fP(8)、\fBfsck.ext2\fP(8) 或 \fBfsck.ext3\fP(8) 或
+\fBe2fsck\fP(8)、\fBfsck.cramfs\fP(8)、\fBfsck.jfs\fP(8)、\fBfsck.nfs\fP(8)、\fBfsck.minix\fP(8)、\fBfsck.msdos\fP(8)、\fBfsck.vfat\fP(8)、\fBfsck.xfs\fP(8)、\fBreiserfsck\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBfsck\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

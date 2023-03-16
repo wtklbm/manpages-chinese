@@ -1,0 +1,350 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"	$NetBSD: fts.3,v 1.13.2.1 1997/11/14 02:09:32 mrg Exp $
+.\"
+.\" Copyright (c) 1989, 1991, 1993, 1994
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)fts.3	8.5 (Berkeley) 4/16/94
+.\"
+.\" 2007-12-08, mtk, Converted from mdoc to man macros
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fts 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+fts、fts_open、fts_read、fts_children、fts_set、fts_close \- 遍历文件层次结构
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/types.h>\fP
+\fB#include <sys/stat.h>\fP
+\fB#include <fts.h>\fP
+.PP
+\fBFTS *fts_open(char * const *\fP\fIpath_argv\fP\fB, int \fP\fIoptions\fP\fB,\fP
+\fB              int (*\fP\fIcompar\fP\fB)(const FTSENT **, const FTSENT **));\fP
+.PP
+\fBFTSENT *fts_read(FTS *\fP\fIftsp\fP\fB);\fP
+.PP
+\fBFTSENT *fts_children(FTS *\fP\fIftsp\fP\fB, int \fP\fIinstr\fP\fB);\fP
+.PP
+\fBint fts_set(FTS *\fP\fIftsp\fP\fB, FTSENT *\fP\fIf\fP\fB, int \fP\fIinstr\fP\fB);\fP
+.PP
+\fBint fts_close(FTS *\fP\fIftsp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+fts 函数是为遍历文件层次结构而提供的。 一个简单的概述是，\fBfts_open\fP() 函数返回一个 "handle" (类型 \fIFTS\ *\fP)，指的是文件层次结构 "stream"。 然后将此句柄提供给其他 fts 函数。 函数 \fBfts_read\fP()
+返回一个指向结构体的指针，该结构体描述了文件层次结构中的一个文件。 函数 \fBfts_children\fP()
+返回一个指向结构链表的指针，每个结构描述了层次结构中目录中包含的一个文件。
+.PP
+通常，目录会被访问两次。在前序 (在他们的任何后代被访问之前) 和在后序 (在他们的所有后代都被访问之后)。 文件被访问一次。 可以遍历层次结构
+"logically" (访问符号链接指向的文件) 或物理地 (访问符号链接本身)，命令层次结构的遍历或修剪或者重新访问层次结构的部分。
+.PP
+在包含文件 \fI<fts.h>\fP.h 中定义了两个结构 (和关联类型)。 第一种类型是 \fIFTS\fP，表示文件层次结构本身的结构体。
+第二种是 \fIFTSENT\fP，代表文件层次结构中文件的结构体。 通常，为文件层次结构中的每个文件返回一个 \fIFTSENT\fP 结构体。
+在本手册页中，"file" 和 "FTSENT structure" 通常可以互换。
+.PP
+\fIFTSENT\fP 结构体包含描述文件的字段。 结构体至少包含以下字段 (还有其他字段应被视为私有实现) :
+.PP
+.in +4n
+.EX
+.\" Also:
+.\"     ino_t fts_ino;                  /* inode (only for directories)*/
+.\"     dev_t fts_dev;                  /* device (only for directories)*/
+.\"     nlink_t fts_nlink;              /* link count (only for directories)*/
+.\"     u_short fts_flags;              /* private flags for FTSENT structure */
+.\"     u_short fts_instr;              /* fts_set() instructions */
+typedef struct _ftsent {
+    unsigned short  fts_info;     /* flags for FTSENT structure */
+    char           *fts_accpath;  /* access path */
+    char           *fts_path;     /* root path */
+    short           fts_pathlen;  /* strlen(fts_path) +
+                                     strlen(fts_name) */
+    char           *fts_name;     /* filename */
+    short           fts_namelen;  /* strlen(fts_name) */
+    short           fts_level;    /* depth (\-1 to N) */
+    int             fts_errno;    /* file errno */
+    long            fts_number;   /* local numeric value */
+    void           *fts_pointer;  /* local address value */
+    struct _ftsent *fts_parent;   /* parent directory */
+    struct _ftsent *fts_link;     /* next file structure */
+    struct _ftsent *fts_cycle;    /* cycle structure */
+    struct stat    *fts_statp;    /* [l]stat(2) information */
+} FTSENT;
+.EE
+.in
+.PP
+.\" .Bl -tag -width "fts_namelen"
+这些字段定义如下:
+.TP 
+\fIfts_info\fP
+.\" .Bl  -tag -width FTS_DEFAULT
+以下值之一描述返回的 \fIFTSENT\fP 结构体及其代表的文件。 除了没有错误 (\fBFTS_D\fP)
+的目录外，所有这些条目都是最终的，也就是说，它们不会被重新访问，也不会访问它们的任何后代。
+.RS
+.TP 
+\fBFTS_D\fP
+按预定顺序访问的目录。
+.TP 
+\fBFTS_DC\fP
+在树中导致循环的目录。 (\fIFTSENT\fP 结构体的 \fIfts_cycle\fP 字段也将被填写。)
+.TP 
+\fBFTS_DEFAULT\fP
+表示未由其他 \fIfts_info\fP 值之一明确描述的文件类型的任何 \fIFTSENT\fP 结构体。
+.TP 
+\fBFTS_DNR\fP
+无法读取的目录。 这是一个错误返回，\fIfts_errno\fP 字段将被设置以指示导致错误的原因。
+.TP 
+\fBFTS_DOT\fP
+名为 "." 或 ".." 的文件未指定为 \fBfts_open\fP() 的文件名 (请参见 \fBFTS_SEEDOT\fP).
+.TP 
+\fBFTS_DP\fP
+按后序访问的目录。 \fIFTSENT\fP 结构体的内容与预购退回时没有变化，即 \fIfts_info\fP 字段设置为 \fBFTS_D\fP。
+.TP 
+\fBFTS_ERR\fP
+这是一个错误返回，\fIfts_errno\fP 字段将被设置以指示导致错误的原因。
+.TP 
+\fBFTS_F\fP
+一个普通的文件。
+.TP 
+\fBFTS_NS\fP
+没有可用的 [\fBl\fP]\fBstat\fP(2) 信息的文件。 \fIfts_statp\fP 字段的内容未定义。 这是一个错误返回，\fIfts_errno\fP
+字段将被设置以指示导致错误的原因。
+.TP 
+\fBFTS_NSOK\fP
+没有请求 [\fBl\fP]\fBstat\fP(2) 信息的文件。 \fIfts_statp\fP 字段的内容未定义。
+.TP 
+\fBFTS_SL\fP
+符号链接。
+.TP 
+\fBFTS_SLNONE\fP
+.\" .El
+与不存在的目标的符号链接。 \fIfts_statp\fP 字段的内容引用符号链接本身的文件特征信息。
+.RE
+.TP 
+\fIfts_accpath\fP
+从当前目录访问文件的路径。
+.TP 
+\fIfts_path\fP
+文件相对于遍历根的路径。 此路径包含指定给 \fBfts_open\fP() 作为前缀的路径。
+.TP 
+\fIfts_pathlen\fP
+\fIfts_path\fP 和 \fIfts_name\fP 引用的字符串的长度之和。
+.TP 
+\fIfts_name\fP
+文件的名称。
+.TP 
+\fIfts_namelen\fP
+\fIfts_name\fP 引用的字符串的长度。
+.TP 
+\fIfts_level\fP
+遍历的深度，编号从 \-1 到 N，找到该文件的位置。 表示遍历起点 (或根) 的父级的 \fIFTSENT\fP 结构体编号为 \-1，根本身的
+\fIFTSENT\fP 结构体编号 0.
+.TP 
+\fIfts_errno\fP
+如果 \fBfts_children\fP() 或 \fBfts_read\fP() 返回 \fIFTSENT\fP 结构体，其 \fIfts_info\fP 字段设置为
+\fBFTS_DNR\fP、\fBFTS_ERR\fP 或 \fBFTS_NS\fP，则 \fIfts_errno\fP 字段包含指定错误原因的错误编号 (即 \fIerrno\fP
+值)。 否则，\fIfts_errno\fP 字段的内容未定义。
+.TP 
+\fIfts_number\fP
+该字段供应用程序使用，fts 函数不修改。 它被初始化为 0.
+.TP 
+\fIfts_pointer\fP
+该字段供应用程序使用，fts 函数不修改。 它被初始化为 NULL。
+.TP 
+\fIfts_parent\fP
+指向 \fIFTSENT\fP 结构体的指针，该指针引用层次结构中紧接在当前文件之上的文件，即该文件所属的目录。 还提供了初始入口点的父结构体，但是，只有
+\fIfts_level\fP、\fIfts_number\fP 和 \fIfts_pointer\fP 字段保证被初始化。
+.TP 
+\fIfts_link\fP
+从 \fBfts_children\fP() 函数返回后，\fIfts_link\fP 字段指向目录成员的 NULL 终止链表中的下一个结构体。
+否则，\fIfts_link\fP 字段的内容未定义。
+.TP 
+\fIfts_cycle\fP
+如果目录导致层次结构中的循环 (参见 \fBFTS_DC\fP)，要么是因为两个目录之间的硬链接，要么是指向目录的符号链接，结构体的 \fIfts_cycle\fP
+字段将指向层次结构中的 \fIFTSENT\fP 结构体引用与当前 \fIFTSENT\fP 结构体相同的文件。 否则，\fIfts_cycle\fP 字段的内容未定义。
+.TP 
+\fIfts_statp\fP
+.\" .El
+指向文件的 [\fBl\fP]\fBstat\fP(2) 信息的指针。
+.PP
+单个缓冲区用于文件层次结构中所有文件的所有路径。 因此，对于 \fBfts_read\fP() 最近返回的文件，\fIfts_path\fP 和
+\fIfts_accpath\fP 字段保证是空终止 \fIonly\fP。 要使用这些字段来引用由其他 \fIFTSENT\fP 结构表示的任何文件，将需要使用
+\fIFTSENT\fP 结构体的 \fIfts_pathlen\fP 字段中包含的信息修改路径缓冲区。 在尝试进一步调用 \fBfts_read\fP()
+之前，应撤消任何此类修改。 \fIfts_name\fP 字段始终以 null 结尾。
+.SS fts_open()
+\fBfts_open\fP() 函数采用指向字符指针数组的指针，这些指针命名一个或多个路径，这些路径构成要遍历的逻辑文件层次结构。 该数组必须以空指针结尾。
+.PP
+.\" .Bl -tag -width "FTS_PHYSICAL"
+有许多选项，至少其中之一 (必须指定 \fBFTS_LOGICAL\fP 或 \fBFTS_PHYSICAL\fP)。 通过对以下值进行或运算来选择选项:
+.TP 
+\fBFTS_LOGICAL\fP
+此选项使 fts 例程返回符号链接目标的 \fIFTSENT\fP 结构，而不是符号链接本身。 如果设置了此选项，则将 \fIFTSENT\fP
+结构返回给应用程序的唯一符号链接是那些引用不存在的文件的符号链接: \fIfts_statp\fP 字段是通过 \fBstat\fP(2) 获得的，回退到
+\fBlstat\fP(2)。
+.TP 
+\fBFTS_PHYSICAL\fP
+此选项导致 fts 例程返回符号链接本身的 \fIFTSENT\fP 结构，而不是它们指向的目标文件。 如果设置了此选项，则层次结构中所有符号链接的
+\fIFTSENT\fP 结构将返回给应用程序: \fIfts_statp\fP 字段是通过 \fBlstat\fP(2) 获得的。
+.TP 
+\fBFTS_COMFOLLOW\fP
+此选项会导致任何指定为根路径的符号链接立即被跟踪，就像通过 \fBFTS_LOGICAL\fP 一样，而不管主模式如何。
+.TP 
+\fBFTS_NOCHDIR\fP
+作为性能优化，fts 函数在遍历文件层次结构时更改目录。 这有一个副作用，即应用程序在遍历期间不能依赖于在任何特定目录中。
+这个选项关闭了这个优化，fts 函数不会改变当前目录。 请注意，应用程序不应自行更改其当前目录并尝试访问文件，除非指定了 \fBFTS_NOCHDIR\fP
+并将绝对路径名作为 \fBfts_open\fP() 的参数提供。
+.TP 
+\fBFTS_NOSTAT\fP
+默认情况下，为每个访问的文件返回 \fIFTSENT\fP 结构引用文件特征信息 (\fIfts_statp\fP 字段)。 此选项作为性能优化放宽了该要求，允许
+fts 函数将 \fIfts_info\fP 字段设置为 \fBFTS_NSOK\fP 并保留 \fIfts_statp\fP 字段的内容未定义。
+.TP 
+\fBFTS_SEEDOT\fP
+默认情况下，除非将它们指定为 \fBfts_open\fP() 的路径参数，否则将忽略在文件层次结构中遇到的任何名为 "." 或 ".." 的文件。 该选项使
+fts 例程为它们返回 \fIFTSENT\fP 结构。
+.TP 
+\fBFTS_XDEV\fP
+.\" .El
+此选项可防止 fts 下降到与开始下降的文件具有不同设备号的目录。
+.PP
+参数 \fBcompar\fP() 指定一个用户定义的函数，可用于对层次结构的遍历进行排序。 它采用两个指向 \fIFTSENT\fP 结构的指针作为参数，并应返回
+negative 值、零或正值，以指示其第一个参数引用的文件是否在所引用文件之前、以任何顺序出现或之后通过它的第二个参数。 \fIFTSENT\fP 结构的
+\fIfts_accpath\fP、\fIfts_path\fP 和 \fIfts_pathlen\fP 字段可用于此比较中的 \fInever\fP。 如果
+\fIfts_info\fP 字段设置为 \fBFTS_NS\fP 或 \fBFTS_NSOK\fP，则 \fIfts_statp\fP 字段也可能不是。 如果
+\fBcompar\fP() 参数为 NULL，则目录遍历顺序对于根路径是在 \fIpath_argv\fP 中列出的顺序，对于其他所有内容都是在目录中列出的顺序。
+.SS fts_read()
+\fBfts_read\fP() 函数返回一个指向 \fIFTSENT\fP 结构体的指针，描述层次结构中的文件。 目录 (可读且不会导致循环)
+至少被访问两次，一次在前序中，一次在后序中。 所有其他文件至少被访问一次。
+(不会导致循环的目录之间的硬链接或符号链接到符号链接可能会导致文件被多次访问，或目录被访问两次以上。)
+.PP
+如果已返回层次结构的所有成员，则 \fBfts_read\fP() 返回 NULL 并将 \fIerrno\fP 设置为 0。
+如果发生与层次结构中的文件无关的错误，则 \fBfts_read\fP() 返回 NULL 并设置 \fIerrno\fP 以指示错误。
+如果发生与返回文件相关的错误，则返回指向 \fIFTSENT\fP 结构体的指针，并且 \fIerrno\fP 可能已设置也可能未设置 (请参见
+\fIfts_info\fP).
+.PP
+\fBfts_read\fP() 返回的 \fIFTSENT\fP 结构可能会在同一文件层次流上调用到 \fBfts_close\fP()
+之后被覆盖，或者在同一文件层次流上调用到 \fBfts_read\fP() 之后被覆盖，除非它们表示目录类型的文件，在这种情况下它们不会被覆盖在
+\fIFTSENT\fP 结构体被后序的函数 \fBfts_read\fP() 返回后，直到调用到 \fBfts_read\fP() 之后才被覆盖。
+.SS fts_children()
+\fBfts_children\fP() 函数返回一个指向 \fIFTSENT\fP 结构体的指针，该指针描述了 \fBfts_read\fP() 最近返回的
+\fIFTSENT\fP 结构体所代表的目录中文件的 NULL 终止链表中的第一个条目。 该列表通过 \fIFTSENT\fP 结构体的 \fIfts_link\fP
+字段链接，并按用户指定的比较函数 (如果有) 排序。 重复调用 \fBfts_children\fP() 将重新创建此链表。
+.PP
+作为一种特殊情况，如果 \fBfts_read\fP() 还没有被层次结构调用，\fBfts_children\fP() 将返回一个指针，指向
+\fBfts_open\fP() 指定的逻辑目录中的文件，即 \fBfts_open\fP() 指定的参数。 否则，如果 \fBfts_read\fP() 最近返回的
+\fIFTSENT\fP 结构体不是预先访问的目录，或者该目录不包含任何文件，则 \fBfts_children\fP() 返回 NULL 并将 \fIerrno\fP
+设置为零。 如果发生错误，\fBfts_children\fP() 返回 NULL 并设置 \fIerrno\fP 以指示错误。
+.PP
+\fBfts_children\fP() 返回的 \fIFTSENT\fP 结构可能会在调用同一文件层次结构流上的
+\fBfts_children\fP()、\fBfts_close\fP() 或 \fBfts_read\fP() 后被覆盖。
+.PP
+.\" .Bl -tag -width FTS_NAMEONLY
+\fIinstr\fP 参数为零或以下值:
+.TP 
+\fBFTS_NAMEONLY\fP
+.\" .El
+只需要文件的名称。 除 \fIfts_name\fP 和 \fIfts_namelen\fP 字段外，返回的结构链表中所有字段的内容均未定义。
+.SS fts_set()
+函数 \fBfts_set\fP() 允许用户应用程序确定对流 \fIftsp\fP 的文件 \fIf\fP 的进一步处理。 \fBfts_set\fP() 函数成功时返回
+0，如果发生错误则返回 \-1。
+.PP
+.\" .Bl -tag -width FTS_PHYSICAL
+\fIinstr\fP 参数为 0 (表示 "do nothing") 或以下值之一:
+.TP 
+\fBFTS_AGAIN\fP
+重新访问文件; 可以重新访问任何文件类型。 对 \fBfts_read\fP() 的下一个调用将返回引用的文件。 此时将重新初始化结构体的
+\fIfts_stat\fP 和 \fIfts_info\fP 字段，但不会更改其他字段。 此选项仅对最近从 \fBfts_read\fP() 返回的文件有意义。
+正常使用是用于后序目录访问，它会导致重新访问目录 (在前序和后序中) 及其所有后代。
+.TP 
+\fBFTS_FOLLOW\fP
+引用的文件必须是符号链接。 如果引用的文件是最近由 \fBfts_read\fP() 返回的文件，则对 \fBfts_read\fP() 的下一个调用将返回
+\fIfts_info\fP 和 \fIfts_statp\fP 字段重新初始化以反映符号链接的目标而不是符号链接本身的文件。 如果文件是
+\fBfts_children\fP() 最近返回的文件之一，结构体的 \fIfts_info\fP 和 \fIfts_statp\fP 字段在
+\fBfts_read\fP() 返回时将反映符号链接的目标而不是符号链接本身。
+无论哪种情况，如果符号链接的目标不存在，则返回的结构体的字段将保持不变，\fIfts_info\fP 字段将设置为 \fBFTS_SLNONE\fP。
+.IP
+如果链接的目标是目录，则完成前序返回，然后返回其所有后代，然后再返回后序。
+.TP 
+\fBFTS_SKIP\fP
+.\" .El
+没有访问此文件的后代。 该文件可能是 \fBfts_children\fP() 或 \fBfts_read\fP() 最近返回的文件之一。
+.SS fts_close()
+\fBfts_close\fP() 函数关闭 \fIftsp\fP 引用的文件层次流，并将当前目录恢复到调用 \fBfts_open\fP() 以打开 \fIftsp\fP
+的目录。 \fBfts_close\fP() 函数成功时返回 0，如果发生错误则返回 \-1。
+.SH ERRORS
+函数 \fBfts_open\fP() 可能会失败并为 \fBopen\fP(2) 和 \fBmalloc\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.PP
+函数 \fBfts_close\fP() 可能会失败并为 \fBchdir\fP(2) 和 \fBclose\fP(2) 指定的任何错误设置 \fIerrno\fP。
+.PP
+函数 \fBfts_read\fP() 和 \fBfts_children\fP() 可能会失败并为
+\fBchdir\fP(2)、\fBmalloc\fP(3)、\fBopendir\fP(3)、\fBreaddir\fP(3) 和 [\fBl\fP]\fBstat\fP(2)
+指定的任何错误设置 \fIerrno\fP。
+.PP
+另外，\fBfts_children\fP()、\fBfts_open\fP()、\fBfts_set\fP() 可能会失败，设置 \fIerrno\fP 如下:
+.TP 
+\fBEINVAL\fP
+\fIoptions\fP 或 \fIinstr\fP 无效。
+.SH VERSIONS
+从 glibc2 开始，这些函数在 Linux 中可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfts_open\fP(),
+\fBfts_set\fP(),
+\fBfts_close\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBfts_read\fP(),
+\fBfts_children\fP()
+T}	Thread safety	MT\-Unsafe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+4.4BSD.
+.SH BUGS
+.\" Fixed by commit 8b7b7f75d91f7bac323dd6a370aeb3e9c5c4a7d5
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=15838
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=11460
+.\"
+.\" The following statement is years old, and seems no closer to
+.\" being true -- mtk
+.\" The
+.\" .I fts
+.\" utility is expected to be included in a future
+.\" POSIX.1
+.\" revision.
+在 glibc 2.23 之前，本手册页中描述的所有 API 在使用 LFS API 编译程序时都是不安全的 (例如，在使用
+\fI\-D_FILE_OFFSET_BITS=64\fP).
+.SH "SEE ALSO"
+\fBfind\fP(1), \fBchdir\fP(2), \fBlstat\fP(2), \fBstat\fP(2), \fBftw\fP(3), \fBqsort\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

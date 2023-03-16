@@ -1,0 +1,153 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2022 Alejandro Colomar <alx@kernel.org>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH stpncpy 3 2023\-01\-26 "Linux man\-pages 6.03" 
+.SH NAME
+stpncpy, strncpy \- 将固定宽度缓冲区归零并将字符串复制到带有截断的字符序列中，并将其余部分归零
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <string.h>\fP
+.PP
+\fBchar *stpncpy(char \fP\fIdst\fP\fB[restrict .\fP\fIsz\fP\fB], const char *restrict \fP\fIsrc\fP\fB,\fP
+\fB               size_t \fP\fIsz\fP\fB);\fP
+\fBchar *strncpy(char \fP\fIdst\fP\fB[restrict .\fP\fIsz\fP\fB], const char *restrict \fP\fIsrc\fP\fB,\fP
+\fB               size_t \fP\fIsz\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBstpncpy\fP():
+.nf
+    由于 glibc 2.10:
+        _POSIX_C_SOURCE >= 200809L
+    在 glibc 2.10 之前:
+        _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+这些函数将 \fIsrc\fP 指向的字符串复制到 \fIdst\fP 指向的固定宽度缓冲区中的空填充字符序列。
+如果目标缓冲区受其大小限制，不足以容纳副本，则生成的字符序列将被截断。 两个函数的区别见 RETURN VALUE。
+.PP
+这些函数的实现可能是:
+.PP
+.in +4n
+.EX
+char *
+stpncpy(char *restrict dst, const char *restrict src, size_t sz)
+{
+    bzero(dst, sz);
+    return mempcpy(dst, src, strnlen(src, sz));
+}
+
+char *
+strncpy(char *restrict dst, const char *restrict src, size_t sz)
+{
+    stpncpy(dst, src, sz);
+    return dst;
+}
+.EE
+.in
+.SH "RETURN VALUE"
+.TP 
+\fBstpncpy\fP()
+返回指向目标字符序列中最后一个字符之后的指针。
+.TP 
+\fBstrncpy\fP()
+返回 \fIdst\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBstpncpy\fP(),
+\fBstrncpy\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.TP 
+\fBstpncpy\fP()
+.\" Before that, it was a GNU extension.
+.\" It first appeared in glibc 1.07 in 1993.
+POSIX.1\-2008.
+.TP 
+\fBstrncpy\fP()
+POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.SH CAVEATS
+这些函数的名字让人摸不着头脑。 这些函数产生空填充字符序列，而不是字符串 (参见 \fBstring_copying\fP(7)).
+.PP
+不可能通过调用的结果来区分截断和刚好适合目标缓冲区的字符序列; 应该通过将输入字符串的长度与目标缓冲区的大小进行比较来检测截断。
+.PP
+如果您打算在链式调用中使用此函数，那么开发一个类似的函数会很有用，它接受指向目标缓冲区末尾 (最后一个元素之后的一个) 而不是其大小的指针。
+.SH EXAMPLES
+.\" SRC BEGIN (stpncpy.c)
+.EX
+#include <err.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int
+main(void)
+{
+    char    *p;
+    char    buf1[20];
+    char    buf2[20];
+    size_t  len;
+
+    if (sizeof(buf1) < strlen("Hello world!"))
+        warnx("stpncpy: truncating character sequence");
+    p = stpncpy(buf1, "Hello world!", sizeof(buf1));
+    len = p \- buf1;
+
+    printf("[len = %zu]: ", len);
+    printf("%.*s\en", (int) len, buf1);   // "Hello world!"
+
+    if (sizeof(buf2) < strlen("Hello world!"))
+        warnx("strncpy: truncating character sequence");
+    strncpy(buf2, "Hello world!", sizeof(buf2));
+    len = strnlen(buf2, sizeof(buf2));
+
+    printf("[len = %zu]: ", len);
+    printf("%.*s\en", (int) len, buf2);   // "Hello world!"
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBwcpncpy\fP(3), \fBstring_copying\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

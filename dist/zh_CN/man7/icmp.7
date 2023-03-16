@@ -1,0 +1,150 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: icmp.7,v 1.6 2000/08/14 08:03:45 ak Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH icmp 7 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+icmp\-Linux IPv4 ICMP 内核模块。
+.SH DESCRIPTION
+该内核协议模块实现了 RFC\792 中定义的 Internet 控制消息协议。 它用于指示错误条件和进行诊断。 用户不直接与该模块交互;
+相反，它与内核中的其他协议通信，并将 ICMP 错误传递给应用层。 内核 ICMP 模块也响应 ICMP 请求。
+.PP
+用户协议可以通过使用协议 \fBIPPROTO_ICMP\fP 打开原始套接字来接收所有本地套接字的 ICMP 数据包。 有关更多信息，请参见
+\fBraw\fP(7)。 可以使用 \fBICMP_FILTER\fP 套接字选项过滤传递到套接字的 ICMP 数据包类型。 ICMP
+数据包也总是由内核处理，即使传递给用户套接字也是如此。
+.PP
+Linux 限制到每个目的地的 ICMP 错误数据包的速率。 \fBICMP_REDIRECT\fP 和 \fBICMP_DEST_UNREACH\fP
+也受传入数据包的目标路由限制。
+.SS "/proc interfaces"
+.\" FIXME . better description needed
+ICMP 支持一组 \fI/proc\fP 接口来配置一些全局 IP 参数。 可以通过读取或写入目录 \fI/proc/sys/net/ipv4/\fP
+中的文件来访问这些参数。 这些参数中的大多数是特定 ICMP 类型的速率限制。 Linux 2.2 使用 token 桶过滤器来限制 ICMP。
+该值是以 jiffies 为单位的超时，直到 token 桶过滤器在突发后被清除。 jiffy 是系统相关的元，在 i386 上通常为 10ms，在
+alpha 和 ia64 上通常为 1ms。
+.TP 
+\fIicmp_destunreach_rate\fP (Linux 2.2 to Linux 2.4.9)
+.\" Precisely: from Linux 2.1.102
+发送 ICMP 目标不可达数据包的最大速率。 这限制了将数据包发送到任何单个路由或目的地的速率。 该限制不影响路径 MTU 发现所需的
+\fBICMP_FRAG_NEEDED\fP 数据包的发送。
+.TP 
+\fIicmp_echo_ignore_all\fP (since Linux 2.2)
+.\" Precisely: 2.1.68
+如果此值非零，Linux 将忽略所有 \fBICMP_ECHO\fP 请求。
+.TP 
+\fIicmp_echo_ignore_broadcasts\fP (since Linux 2.2)
+.\" Precisely: from Linux 2.1.68
+如果此值非零，Linux 将忽略所有发送到广播地址的 \fBICMP_ECHO\fP 数据包。
+.TP 
+\fIicmp_echoreply_rate\fP (Linux 2.2 to Linux 2.4.9)
+.\" Precisely: from Linux 2.1.102
+响应 \fBICMP_ECHOREQUEST\fP 数据包发送 \fBICMP_ECHOREPLY\fP 数据包的最大速率。
+.TP 
+\fIicmp_errors_use_inbound_ifaddr\fP (Boolean; default: disabled; since Linux 2.6.12)
+.\" The following taken from Linux 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+如果禁用，ICMP 错误消息将与退出接口的主地址一起发送。
+.IP
+如果启用，将使用接收到导致 ICMP 错误的数据包的接口的主地址发送消息。 这是许多网络管理员期望路由器的行为。
+它可以使调试复杂的网络布局变得更加容易。
+.IP
+请注意，如果所选接口不存在主地址，则无论此设置如何，都将使用具有主地址的第一个非回环接口的主地址。
+.TP 
+\fIicmp_ignore_bogus_error_responses\fP (Boolean; default: disabled; since Linux 2.2)
+.\" precisely: since Linux 2.1.32
+.\" The following taken from Linux 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+某些路由器通过向广播帧发送虚假响应来违反 RFC1122。 此类违规通常通过内核警告记录。
+如果启用此参数，内核将不会给出此类警告，这将避免日志文件混乱。
+.TP 
+\fIicmp_paramprob_rate\fP (Linux 2.2 to Linux 2.4.9)
+.\" Precisely: from Linux 2.1.102
+发送 \fBICMP_PARAMETERPROB\fP 包的最大速率。 当带有无效 IP 标头的数据包到达时，将发送这些数据包。
+.TP 
+\fIicmp_ratelimit\fP (integer; default: 1000; since Linux 2.4.10)
+.\" The following taken from Linux 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+限制将类型与 \fIicmp_ratemask\fP (见下文) 匹配的 ICMP 数据包发送到特定目标的最大速率。 0
+禁用任何限制，否则响应之间的最小间隔以毫秒为单位。
+.TP 
+\fIicmp_ratemask\fP (integer; default: see below; since Linux 2.4.10)
+.\" The following taken from Linux 2.6.28-rc4 Documentation/networking/ip-sysctl.txt
+由速率受限的 ICMP 类型制成的掩码。
+.IP
+有效位: IHGFEDCBA9876543210
+.br
+默认掩码: 0000001100000011000 (0x1818)
+.IP
+位定义 (见 Linux 内核源文件 \fIinclude/linux/icmp.h\fP):
+.RS 12
+.TS
+l l.
+0 Echo Reply
+3 Destination Unreachable *
+4 Source Quench *
+5 Redirect
+8 Echo Request
+B Time Exceeded *
+C Parameter Problem *
+D Timestamp Request
+E Timestamp Reply
+F Info Request
+G Info Reply
+H Address Mask Request
+I Address Mask Reply
+.TE
+.RE
+.PP
+标有星号的位默认是速率限制的 (参见上面的默认掩码)。
+.TP 
+\fIicmp_timeexceed_rate\fP (Linux 2.2 to Linux 2.4.9)
+发送 \fBICMP_TIME_EXCEEDED\fP 包的最大速率。 发送这些数据包是为了在数据包跨越太多跃点时防止环路。
+.TP 
+\fIping_group_range\fP (two integers; default: see below; since Linux 2.6.39)
+允许创建 ICMP Echo 套接字的组 ID 范围 (包括最小和最大组 ID)。 默认为 "1 0"，这意味着不允许任何组创建 ICMP Echo
+套接字。
+.SH VERSIONS
+在 Linux 2.2 中删除了对 \fBICMP_ADDRESS\fP 请求的支持。
+.PP
+Linux 2.2 中删除了对 \fBICMP_SOURCE_QUENCH\fP 的支持。
+.SH NOTES
+.\" not really true ATM
+.\" .PP
+.\" Linux ICMP should be compliant to RFC 1122.
+由于许多其他实现不支持 \fBIPPROTO_ICMP\fP 原始套接字，因此不应在可移植程序中依赖此，特性。
+.PP
+当 Linux 不充当路由器时，不发送 \fBICMP_REDIRECT\fP 数据包。 它们也仅从路由表中定义的旧网关接受，并且重定向路由在一段时间后过期。
+.PP
+\fBICMP_TIMESTAMP\fP 返回的 64 位时间戳是自纪元 1970\-01\-01 00:00:00 +0000 (UTC) 以来的毫秒数。
+.PP
+Linux ICMP 在内部使用原始套接字发送 ICMP。 此原始套接字可能会出现在 \fBnetstat\fP(8) 输出中，其索引节点为零。
+.SH "SEE ALSO"
+\fBip\fP(7), \fBrdisc\fP(8)
+.PP
+RFC\792 对 ICMP 协议的描述。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

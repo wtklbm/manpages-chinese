@@ -1,0 +1,193 @@
+.\" -*- coding: UTF-8 -*-
+.\"  -*- nroff -*-
+.ig
+Copyright (c) 1999-2020 hands.com Ltd. <http://hands.com/>
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+..
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: June 17 2010 $
+.Dt SSH-COPY-ID 1
+.Os
+.Sh NAME
+.Nm ssh-copy-id
+.Nd use locally available keys to authorise logins on a remote machine
+.Sh SYNOPSIS
+.Nm
+.Op Fl f
+.Op Fl n
+.Op Fl s
+.Op Fl i Op Ar identity_file
+.Op Fl p Ar port
+.Op Fl o Ar ssh_option
+.Op Ar user Ns @ Ns
+.Ar hostname
+.Nm
+.Fl h | Fl ?
+.br
+.Sh DESCRIPTION
+.Nm
+是一个使用
+.Xr ssh 1
+登录远程机器的脚本 (大概是使用登录密码，所以应该启用密码验证，除非您巧妙地使用了多重身份)。
+它汇集了一个或多个指纹的列表 (如下所述) 并尝试使用每个密钥登录，以查看是否已经安装了其中任何一个 (当然，如果您没有使用
+.Xr ssh-agent 1
+，这可能会导致您被反复提示用于密码短语)。 然后，它会汇集那些未能登录的列表，并使用
+ssh，在远程服务器上启用使用这些密钥的登录。 默认情况下，它通过将密钥追加到远程用户的
+.Pa ~/.ssh/authorized_keys
+来添加密钥 (如有必要，创建文件和目录)。 它还能够检测远程系统是否为 NetScreen，并使用其
+.Ql set ssh pka-dsa key ...
+命令代替。
+.Pp
+选项如下:
+.Bl -tag -width Ds
+.It Fl i Ar identity_file
+仅使用
+.Ar identity_file
+中包含的 key(s) (而不是通过
+.Xr ssh-add 1
+或
+.Ic default_ID_file ) .
+如果文件名不以
+.Pa .pub
+结尾，则添加它。 如果省略文件名，则使用
+.Ic default_ID_file
+。
+.Pp
+请注意，这可用于确保复制的密钥具有首选的注释或者应用的额外选项，方法是确保密钥文件在尝试复制之前将这些设置为首选。
+.It Fl f
+强制模式: 不检查密钥是否存在于远程服务器上。 这意味着它不需要私钥。 当然，这可能会导致在远程系统上安装多个密钥副本。
+.It Fl n
+试运行。 不是在远程系统上安装密钥，而是简单地打印本应安装的 key(s)。
+.It Fl s
+SFTP 方式: 公钥通常是在远端执行命令安装的。 使用此选项，将下载用户的
+.Pa ~/.ssh/authorized_keys
+文件，在本地修改并使用 sftp 上传。 如果服务器对可以在远程端使用的命令有限制，则此选项很有用。
+.It Fl h , Fl ?
+Print Usage 总结
+.It Fl p Ar port , Fl o Ar ssh_option
+这两个选项连同它们的参数一起简单地通过，以允许分别设置端口或其他
+.Xr ssh 1
+选项。
+.Pp
+与其将这些指定为命令行选项，不如在
+.Xr ssh 1 Ns 's
+配置文件中使用 (per-host) 设置更好:
+.Xr ssh_config 5
+。
+.El
+.Pp
+没有
+.Fl i
+的默认行为是检查
+.Ql ssh-add -L
+是否提供任何输出，如果是，则使用这些键。
+请注意，这会导致对密钥的注释是将密钥加载到
+.Xr ssh-agent 1
+时提供给
+.Xr ssh-add 1
+的文件名，而不是该文件中包含的注释，这有点遗憾。 否则，如果
+.Xr ssh-add 1
+没有提供密钥，则将使用
+.Ic default_ID_file
+的内容。
+.Pp
+.Ic default_ID_file
+是最近匹配的文件:
+.Pa ~/.ssh/id*.pub
+，(不包括匹配
+.Pa ~/.ssh/*-cert.pub )
+的文件，因此如果您创建的密钥不是您希望
+.Nm
+使用的密钥，只需在您首选密钥的
+.Pa .pub
+文件上使用
+.Xr touch 1
+将其恢复为最最近的。
+.Pp
+.Sh EXAMPLES
+如果您已经在许多远程主机上安装了来自一个系统的密钥，然后您在一台新的客户端计算机上创建了一个新密钥，那么可能很难跟踪您在哪些系统上安装了新密钥钥匙。
+处理此问题的一种方法是将新密钥和旧 key(s) 都加载到您的
+.Xr ssh-agent 1
+中。 首先加载新密钥，不使用
+.Fl c
+选项，然后将一个或多个旧密钥加载到代理中，可能通过 ssh 连接到具有该旧密钥的客户端机器，使用
+.Fl A
+选项允许代理转发:
+.Pp
+.D1 user@newclient$ ssh-add
+.D1 user@newclient$ ssh -A old.client
+.D1 user@oldl$ ssh-add -c
+.D1 No ... prompt for pass-phrase ...
+.D1 user@old$ logoff
+.D1 user@newclient$ ssh someserver
+.Pp
+现在，如果服务器上安装了新密钥，您将被允许自动进入，而如果您只启用了旧的 key(s)，系统将要求您进行确认，这是您退出并运行的提示
+.Pp
+.D1 user@newclient$ ssh-copy-id -i someserver
+.Pp
+在这种情况下，您可能想要指定 -i 选项的原因是确保对已安装密钥的注释是来自
+.Pa .pub
+文件的注释，而不仅仅是加载到代理中的文件名。
+它还确保只安装您想要的 ID，而不是
+.Xr ssh-agent 1
+中的所有密钥。 当然，您可以指定另一个 id，或者根据您的喜好使用
+.Xr ssh-agent 1
+的内容。
+.Pp
+提到了
+.Xr ssh-add 1 Ns 's
+.Fl c
+选项，您可能会考虑在使用代理转发时使用它来避免您的密钥被劫持，但是最好使用
+.Xr ssh 1 Ns 's
+.Ar ProxyCommand
+和
+.Fl W
+选项，通过远程服务器反弹，同时始终直接端到端验证。这样中间的 hop(s) 就无法访问您的
+.Xr ssh-agent 1
+。 在网络上搜索
+.Ql ssh proxycommand nc
+应该很有启发性 (注意，现代方法是使用
+.Fl W
+选项，而不是
+.Xr nc 1 )
+。
+.Sh "SEE ALSO"
+.Xr ssh 1 ,
+.Xr ssh-agent 1 ,
+.Xr sshd 8
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

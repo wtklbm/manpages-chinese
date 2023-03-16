@@ -1,0 +1,355 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2013,  Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fanotify_mark 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fanotify_mark \- 添加、删除或修改文件系统对象上的 fanotify 标记
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/fanotify.h>\fP
+.PP
+\fBint fanotify_mark(int \fP\fIfanotify_fd\fP\fB, unsigned int \fP\fIflags\fP\fB,\fP
+\fB                  uint64_t \fP\fImask\fP\fB, int \fP\fIdirfd\fP\fB,\fP
+\fB                  const char *_Nullable \fP\fIpathname\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+有关 fanotify API 的概述，请参见 \fBfanotify\fP(7)。
+.PP
+\fBfanotify_mark\fP() 添加、删除或修改文件系统对象上的 fanotify 标记。 调用者必须对要标记的文件系统对象具有读取权限。
+.PP
+\fIfanotify_fd\fP 参数是 \fBfanotify_init\fP(2) 返回的文件描述符。
+.PP
+\fIflags\fP 是描述要执行的修改的位掩码。 它必须恰好包含以下值之一:
+.TP 
+\fBFAN_MARK_ADD\fP
+\fImask\fP 中的事件将添加到标记掩码 (或忽略掩码)。 \fImask\fP 必须是非空的，否则会出现错误 \fBEINVAL\fP。
+.TP 
+\fBFAN_MARK_REMOVE\fP
+参数 \fImask\fP 中的事件将从标记掩码 (或从忽略掩码) 中删除。 \fImask\fP 必须是非空的，否则会出现错误 \fBEINVAL\fP。
+.TP 
+\fBFAN_MARK_FLUSH\fP
+从 fanotify 组中删除文件系统的所有标记、安装的所有标记或目录和文件的所有标记。 如果 \fIflags\fP 包含
+\fBFAN_MARK_MOUNT\fP，则从组中删除所有安装标记。 如果 \fIflags\fP 包含
+\fBFAN_MARK_FILESYSTEM\fP，则文件系统的所有标记都将从组中删除。 否则，目录和文件的所有标记都将被删除。 除了
+\fBFAN_MARK_MOUNT\fP 或 \fBFAN_MARK_FILESYSTEM\fP 标志之外，最多只有一个标志可以与
+\fBFAN_MARK_FLUSH\fP 结合使用。 \fImask\fP 被忽略。
+.PP
+如果以上值均未指定，或指定了多个值，则调用失败并显示错误 \fBEINVAL\fP。
+.PP
+此外，以下值中的零个或多个可能会被或运算为 \fIflags\fP:
+.TP 
+\fBFAN_MARK_DONT_FOLLOW\fP
+如果 \fIpathname\fP 是符号链接，则标记链接本身，而不是它所引用的文件。 (默认情况下，如果 \fBfanotify_mark\fP()
+是符号链接，则 \fBfanotify_mark\fP() 解引用 \fIpathname\fP。)
+.TP 
+\fBFAN_MARK_ONLYDIR\fP
+如果要标记的文件系统对象不是目录，则将引发错误 \fBENOTDIR\fP。
+.TP 
+\fBFAN_MARK_MOUNT\fP
+标记 \fIpathname\fP 指定的挂载。 如果 \fIpathname\fP 本身不是挂载点，则包含 \fIpathname\fP 的挂载将被标记。
+挂载的所有目录、子目录和包含的文件都将被监控。
+\fBFAN_CREATE\fP、\fBFAN_ATTRIB\fP、\fBFAN_MOVE\fP、\fBFAN_DELETE_SELF\fP
+等需要文件系统对象由文件句柄标识的事件，当 \fIflags\fP 包含 \fBFAN_MARK_MOUNT\fP 时，不能作为 \fImask\fP 提供。
+尝试这样做将导致返回错误 \fBEINVAL\fP。 使用此标志需要 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBFAN_MARK_FILESYSTEM\fP (since Linux 4.20)
+.\" commit d54f4fba889b205e9cd8239182ca5d27d0ac3bc2
+标记 \fIpathname\fP 指定的文件系统。 包含 \fIpathname\fP 的文件系统将被标记。 将监视来自任何挂载点的文件系统的所有包含文件和目录。
+使用此标志需要 \fBCAP_SYS_ADMIN\fP 功能。
+.TP 
+\fBFAN_MARK_IGNORED_MASK\fP
+.\" commit 497b0c5a7c0688c1b100a9c2e267337f677c198e
+\fImask\fP 中的事件应添加到忽略掩码或从中删除。 请注意，当提供此标志时，标志 \fBFAN_ONDIR\fP 和
+\fBFAN_EVENT_ON_CHILD\fP 无效。 在标记掩码中设置标志 \fBFAN_ONDIR\fP 和 \fBFAN_EVENT_ON_CHILD\fP
+对忽略掩码中设置的事件的影响是不确定的，取决于 Linux 内核版本。 具体来说，在 Linux 5.9
+之前，在文件上设置标记掩码并在其父目录上设置带有忽略掩码的标记不会导致忽略文件上的事件，无论父目录标记掩码中的
+\fBFAN_EVENT_ON_CHILD\fP 标志如何。 当忽略掩码更新为标记上的 \fBFAN_MARK_IGNORED_MASK\fP
+标记时，该标记先前已使用 \fBFAN_MARK_IGNORE\fP 标记更新，更新失败并出现 \fBEEXIST\fP 错误。
+.TP 
+\fBFAN_MARK_IGNORE\fP (since Linux 6.0)
+.\" commit e252f2ed1c8c6c3884ab5dd34e003ed21f1fe6e0
+该标志与设置 \fBFAN_MARK_IGNORED_MASK\fP 标志具有相似的效果。 \fImask\fP 中的事件应添加到忽略掩码或从中删除。 与
+\fBFAN_MARK_IGNORED_MASK\fP 标志不同，此标志还具有 \fBFAN_ONDIR\fP 和 \fBFAN_EVENT_ON_CHILD\fP
+标志对忽略掩码生效的效果。 具体来说，除非用 \fBFAN_MARK_IGNORE\fP 设置 \fBFAN_ONDIR\fP 标志，否则不会忽略目录上的事件。
+如果标志 \fBFAN_EVENT_ON_CHILD\fP 设置为 \fBFAN_MARK_IGNORE\fP，则子项上的事件将被忽略。
+例如，目录上的标记结合了带有 \fBFAN_CREATE\fP 事件和 \fBFAN_ONDIR\fP 标志的掩码以及带有 \fBFAN_CREATE\fP 事件但没有
+\fBFAN_ONDIR\fP 标志的忽略掩码，将导致仅获取用于创建子目录的事件。 当使用 \fBFAN_MARK_IGNORE\fP
+标志添加到安装、文件系统或目录 inode 标记的忽略掩码时，必须指定 \fBFAN_MARK_IGNORED_SURV_MODIFY\fP 标志。
+如果不这样做，将导致 \fBEINVAL\fP 或 \fBEISDIR\fP 错误。
+.TP 
+\fBFAN_MARK_IGNORED_SURV_MODIFY\fP
+忽略掩码应在修改事件后继续存在。 如果未设置此标志，则在标记对象上发生修改事件时清除忽略掩码。 省略此标志通常用于抑制事件 (例如，特定文件的
+\fBFAN_OPEN\fP)，直到该特定文件的内容被修改。 在修改了某些文件的内容之前，抑制整个文件系统或挂载或目录内所有文件上的事件的用处要小得多。
+出于这个原因，\fBFAN_MARK_IGNORE\fP 标志需要挂载、文件系统或目录 inode 标记上的
+\fBFAN_MARK_IGNORED_SURV_MODIFY\fP 标志。 此标志一旦设置就不能从标记中删除。 当在先前使用
+\fBFAN_MARK_IGNORE\fP 和 \fBFAN_MARK_IGNORED_SURV_MODIFY\fP
+标志更新的标记上更新忽略掩码而没有此标志时，更新将失败并出现 \fBEEXIST\fP 错误。
+.TP 
+\fBFAN_MARK_IGNORE_SURV\fP
+这是 (\fBFAN_MARK_IGNORE\fP|\fBFAN_MARK_IGNORED_SURV_MODIFY\fP) 的同义词。
+.TP 
+\fBFAN_MARK_EVICTABLE\fP (since Linux 5.19)
+.\" commit 5f9d3bd520261fd7a850818c71809fd580e0f30c
+当使用此标志创建 inode 标记时，inode 对象将不会被固定到 inode 缓存中，因此，当系统内存压力很高时，可以将 inode 对象从
+inode 缓存中逐出。 inode 对象的逐出导致可逐出标记也丢失。 当不使用 \fBFAN_MARK_EVICATBLE\fP 标志更新可回收 inode
+标记的掩码时，标记的 inode 被固定到 inode 缓存并且标记不再可回收。 当使用 \fBFAN_MARK_EVICTABLE\fP 标志更新不可逐出
+inode 标记的掩码时，inode 标记保持不可逐出并且更新失败并出现 \fBEEXIST\fP 错误。 挂载和文件系统不是可回收的对象，因此，尝试使用
+\fBFAN_MARK_EVICTABLE\fP 标志创建挂载标记或文件系统标记，将导致错误 \fBEINVAL\fP。 例如，inode
+标记可以与安装标记结合使用，以减少来自不感兴趣路径的事件数量。
+事件侦听器读取事件，检查事件中报告的路径是否是感兴趣的，如果不是，则侦听器在目录上设置一个带有忽略掩码的标记。 可回收 inode
+标记允许对大量目录使用此方法，而无需担心固定所有 inode 和耗尽系统内存。
+.PP
+\fImask\fP 定义应监听哪些事件 (或应忽略哪些事件)。 它是由以下值组成的位掩码:
+.TP 
+\fBFAN_ACCESS\fP
+当文件或目录 (但请参见 BUGS) 被访问 (read) 时创建一个事件。
+.TP 
+\fBFAN_MODIFY\fP
+当文件被修改时创建一个事件 (write)。
+.TP 
+\fBFAN_CLOSE_WRITE\fP
+当可写文件关闭时创建一个事件。
+.TP 
+\fBFAN_CLOSE_NOWRITE\fP
+当只读文件或目录关闭时创建一个事件。
+.TP 
+\fBFAN_OPEN\fP
+打开文件或目录时创建事件。
+.TP 
+\fBFAN_OPEN_EXEC\fP (since Linux 5.0)
+.\" commit 9b076f1c0f4869b838a1b7aa0edb5664d47ec8aa
+当打开文件并打算执行时创建一个事件。 有关更多详细信息，请参见注释。
+.TP 
+\fBFAN_ATTRIB\fP (since Linux 5.1)
+.\" commit 235328d1fa4251c6dcb32351219bb553a58838d2
+当文件或目录的元数据发生更改时创建事件。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.TP 
+\fBFAN_CREATE\fP (since Linux 5.1)
+.\" commit 235328d1fa4251c6dcb32351219bb553a58838d2
+在标记的父目录中创建文件或目录时创建事件。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.TP 
+\fBFAN_DELETE\fP (since Linux 5.1)
+.\" commit 235328d1fa4251c6dcb32351219bb553a58838d2
+当标记的父目录中的文件或目录已被删除时创建事件。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.TP 
+\fBFAN_DELETE_SELF\fP (since Linux 5.1)
+.\" commit 235328d1fa4251c6dcb32351219bb553a58838d2
+当标记的文件或目录本身被删除时创建一个事件。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.TP 
+\fBFAN_FS_ERROR\fP (since Linux 5.16)
+.\" commit 9709bd548f11a092d124698118013f66e1740f9b
+当检测到导致文件系统元数据不一致的文件系统错误时创建事件。 为读取缓冲区中的每个事件返回一个 \fBFAN_EVENT_INFO_TYPE_ERROR\fP
+类型的附加信息记录。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.IP
+这种类型的事件依赖于底层文件系统的支持。 在撰写本文时，只有 \fBext4\fP 文件系统报告 \fBFAN_FS_ERROR\fP 事件。
+.IP
+有关更多详细信息，请参见 \fBfanotify\fP(7)。
+.TP 
+\fBFAN_MOVED_FROM\fP (since Linux 5.1)
+.\" commit 235328d1fa4251c6dcb32351219bb553a58838d2
+当文件或目录已从标记的父目录中移动时创建事件。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.TP 
+\fBFAN_MOVED_TO\fP (since Linux 5.1)
+.\" commit 235328d1fa4251c6dcb32351219bb553a58838d2
+当文件或目录已移动到标记的父目录时创建事件。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.TP 
+\fBFAN_RENAME\fP (since Linux 5.17)
+.\" commit 8cc3b1ccd930fe6971e1527f0c4f1bdc8cb56026
+此事件包含由事件 \fBFAN_MOVED_FROM\fP 和 \fBFAN_MOVED_TO\fP 提供的相同信息，但是由具有最多两个信息记录的单个事件表示。
+需要一个通过文件句柄识别文件系统对象的 fanotify 组。 如果要标记的文件系统对象不是目录，则将引发错误 \fBENOTDIR\fP。
+.TP 
+\fBFAN_MOVE_SELF\fP (since Linux 5.1)
+.\" commit 235328d1fa4251c6dcb32351219bb553a58838d2
+当标记的文件或目录本身被移动时创建一个事件。 需要一个通过文件句柄识别文件系统对象的 fanotify 组。
+.TP 
+\fBFAN_OPEN_PERM\fP
+在请求打开文件或目录的权限时创建事件。 需要使用 \fBFAN_CLASS_PRE_CONTENT\fP 或 \fBFAN_CLASS_CONTENT\fP 创建的
+fanotify 文件描述符。
+.TP 
+\fBFAN_OPEN_EXEC_PERM\fP (since Linux 5.0)
+.\" commit 66917a3130f218dcef9eeab4fd11a71cd00cd7c9
+当请求打开文件执行的权限时创建事件。 需要使用 \fBFAN_CLASS_PRE_CONTENT\fP 或 \fBFAN_CLASS_CONTENT\fP 创建的
+fanotify 文件描述符。 有关更多详细信息，请参见注释。
+.TP 
+\fBFAN_ACCESS_PERM\fP
+在请求读取文件或目录的权限时创建事件。 需要使用 \fBFAN_CLASS_PRE_CONTENT\fP 或 \fBFAN_CLASS_CONTENT\fP 创建的
+fanotify 文件描述符。
+.TP 
+\fBFAN_ONDIR\fP
+为目录创建事件，例如，当调用 \fBopendir\fP(3)、\fBreaddir\fP(3) (但请参见 BUGS) 和 \fBclosedir\fP(3) 时。
+如果没有此标志，则仅为文件创建事件。 在目录条目事件的上下文中，例如
+\fBFAN_CREATE\fP、\fBFAN_DELETE\fP、\fBFAN_MOVED_FROM\fP 和 \fBFAN_MOVED_TO\fP，需要指定标志
+\fBFAN_ONDIR\fP 以便在修改子目录条目时创建事件 (即 \fBmkdir\fP(2)/ \fBrmdir\fP(2)).
+.TP 
+\fBFAN_EVENT_ON_CHILD\fP
+应为标记目录的 immediate 子级创建事件。 该标志在标记挂载和文件系统时无效。 请注意，不会为标记目录的子目录的子目录生成事件。
+更具体地，目录条目修改事件 \fBFAN_CREATE\fP、\fBFAN_DELETE\fP、\fBFAN_MOVED_FROM\fP 和
+\fBFAN_MOVED_TO\fP 不会针对在标记目录的子目录内执行的任何条目修改而生成。 请注意，不会为标记目录的子级生成事件
+\fBFAN_DELETE_SELF\fP 和 \fBFAN_MOVE_SELF\fP。 要监视完整的目录树，必须标记相关的挂载或文件系统。
+.PP
+定义了以下组合值:
+.TP 
+\fBFAN_CLOSE\fP
+文件已关闭 (\fBFAN_CLOSE_WRITE\fP|\fBFAN_CLOSE_NOWRITE\fP)。
+.TP 
+\fBFAN_MOVE\fP
+文件或目录已移动 (\fBFAN_MOVED_FROM\fP|\fBFAN_MOVED_TO\fP)。
+.PP
+要标记的文件系统对象由文件描述符 \fIdirfd\fP 和 \fIpathname\fP: 中指定的路径名决定
+.IP \[bu] 3
+如果 \fIpathname\fP 为 NULL，则 \fIdirfd\fP 定义要标记的文件系统对象。
+.IP \[bu]
+如果 \fIpathname\fP 为 NULL，且 \fIdirfd\fP 取特殊值 \fBAT_FDCWD\fP，则标记当前工作目录。
+.IP \[bu]
+如果 \fIpathname\fP 是绝对的，它定义了要标记的文件系统对象，\fIdirfd\fP 被忽略。
+.IP \[bu]
+如果 \fIpathname\fP 是相对的，并且 \fIdirfd\fP 没有值 \fBAT_FDCWD\fP，则要标记的文件系统对象通过解释 \fIpathname\fP
+相对于 \fIdirfd\fP 引用的目录来确定。
+.IP \[bu]
+如果 \fIpathname\fP 是相对的，并且 \fIdirfd\fP 的值为 \fBAT_FDCWD\fP，则要标记的文件系统对象通过解释相对于当前工作目录的
+\fIpathname\fP 来确定。 (有关 \fIdirfd\fP 参数为何有用的解释，请参见 \fBopenat\fP(2)。)
+.SH "RETURN VALUE"
+成功时，\fBfanotify_mark\fP() 返回 0。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+在 \fIfanotify_fd\fP 中传递了无效的文件描述符。
+.TP 
+\fBEBADF\fP
+\fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEEXIST\fP
+\fIdirfd\fP 和 \fIpathname\fP 指示的文件系统对象有一个没有 \fBFAN_MARK_EVICTABLE\fP 标志的更新标记，用户试图用
+\fBFAN_MARK_EVICTABLE\fP 标志更新该标记。
+.TP 
+\fBEEXIST\fP
+\fIdirfd\fP 和 \fIpathname\fP 指示的文件系统对象有一个用 \fBFAN_MARK_IGNORE\fP 标志更新的标记，而用户试图用
+\fBFAN_MARK_IGNORED_MASK\fP 标志更新该标记。
+.TP 
+\fBEEXIST\fP
+\fIdirfd\fP 和 \fIpathname\fP 指示的文件系统对象具有已使用 \fBFAN_MARK_IGNORE\fP 和
+\fBFAN_MARK_IGNORED_SURV_MODIFY\fP 标志更新的标记，而用户试图仅使用 \fBFAN_MARK_IGNORE\fP 标志更新该标记。
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 或 \fImask\fP 中传递了无效值，或者 \fIfanotify_fd\fP 不是 fanotify 文件描述符。
+.TP 
+\fBEINVAL\fP
+fanotify 文件描述符是用 \fBFAN_CLASS_NOTIF\fP 打开的，或者 fanotify 组通过文件句柄识别文件系统对象，掩码包含权限事件
+(\fBFAN_OPEN_PERM\fP 或 \fBFAN_ACCESS_PERM\fP) 的标志。
+.TP 
+\fBEINVAL\fP
+该组是在没有 \fBFAN_REPORT_FID\fP 的情况下初始化的，但 \fImask\fP 中指定的一种或多种事件类型需要它。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 包含 \fBFAN_MARK_IGNORE\fP、\fBFAN_MARK_MOUNT\fP 或
+\fBFAN_MARK_FILESYSTEM\fP，但不包含 \fBFAN_MARK_IGNORED_SURV_MODIFY\fP。
+.TP 
+\fBEISDIR\fP
+\fIflags\fP 包含 \fBFAN_MARK_IGNORE\fP，但不包含 \fBFAN_MARK_IGNORED_SURV_MODIFY\fP，\fIdirfd\fP
+和 \fIpathname\fP 指定一个目录。
+.TP 
+\fBENODEV\fP
+.\" commit 59cda49ecf6c9a32fae4942420701b6e087204f6
+\fIdirfd\fP 和 \fIpathname\fP 指示的文件系统对象与支持 \fIfsid\fP 的文件系统无关 (例如，\fBfuse\fP(4)).
+\fBtmpfs\fP(5) 在 Linux 5.13 之前不支持 \fIfsid\fP。 只有通过文件句柄标识文件系统对象的 fanotify 组才能返回此错误。
+.TP 
+\fBENOENT\fP
+\fIdirfd\fP 和 \fIpathname\fP 指示的文件系统对象不存在。 尝试从未标记的对象中删除标记时也会发生此错误。
+.TP 
+\fBENOMEM\fP
+无法分配必要的内存。
+.TP 
+\fBENOSPC\fP
+此用户的标记数超过限制，并且在使用 \fBfanotify_init\fP(2) 创建 fanotify 文件描述符时未指定
+\fBFAN_UNLIMITED_MARKS\fP 标志。 有关此限制的详细信息，请参见 \fBfanotify\fP(7)。
+.TP 
+\fBENOSYS\fP
+这个内核没有实现 \fBfanotify_mark\fP()。 仅当内核配置了 \fBCONFIG_FANOTIFY\fP 时，fanotify API 才可用。
+.TP 
+\fBENOTDIR\fP
+\fIflags\fP 包含 \fBFAN_MARK_ONLYDIR\fP，\fIdirfd\fP 和 \fIpathname\fP 不指定目录。
+.TP 
+\fBENOTDIR\fP
+\fImask\fP 包含 \fBFAN_RENAME\fP，\fIdirfd\fP 和 \fIpathname\fP 不指定目录。
+.TP 
+\fBENOTDIR\fP
+\fIflags\fP 包含 \fBFAN_MARK_IGNORE\fP，或者 fanotify 组用标志 \fBFAN_REPORT_TARGET_FID\fP
+初始化，\fImask\fP 包含目录条目修改事件 (例如，\fBFAN_CREATE\fP，\fBFAN_DELETE\fP)，或目录事件标志
+(例如，\fBFAN_ONDIR\fP，\fBFAN_EVENT_ON_CHILD\fP)，以及 \fIdirfd\fP 和 \fIpathname\fP 未指定目录。
+.TP 
+\fBEOPNOTSUPP\fP
+\fIpathname\fP 指示的对象与不支持文件句柄编码的文件系统相关联。 只有通过文件句柄标识文件系统对象的 fanotify 组才能返回此错误。
+.TP 
+\fBEPERM\fP
+不允许该操作，因为调用方缺少所需的功能。
+.TP 
+\fBEXDEV\fP
+\fIpathname\fP 指示的文件系统对象驻留在文件系统子卷中 (例如，\fBbtrfs\fP(5)) 使用与其根超级块不同的 \fIfsid\fP。
+只有通过文件句柄标识文件系统对象的 fanotify 组才能返回此错误。
+.SH VERSIONS
+\fBfanotify_mark\fP() 在 Linux 2.6.36 引入，在 Linux 2.6.37 启用。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH NOTES
+.SS "FAN_OPEN_EXEC and FAN_OPEN_EXEC_PERM"
+当在 \fImask\fP 中使用 \fBFAN_OPEN_EXEC\fP 或 \fBFAN_OPEN_EXEC_PERM\fP
+时，只有在直接执行程序时才会返回这些类型的事件。 更具体地说，这意味着将为使用 \fBexecve\fP(2)、\fBexecveat\fP(2) 或
+\fBuselib\fP(2) 打开的文件生成这些类型的事件。 在向解释器传递 (或读取) 文件进行解释的情况下，不会引发这些类型的事件。
+.PP
+此外，如果 Linux 动态链接器上也有标记，则用户也应该期望在使用 \fBexecve\fP(2) 或 \fBexecveat\fP(2) 成功打开 ELF
+对象时收到一个事件。
+.PP
+例如，如果要调用以下 ELF 二进制文件并在 / 上放置 \fBFAN_OPEN_EXEC\fP 标记:
+.PP
+.in +4n
+.EX
+$ /bin/echo 富
+.EE
+.in
+.PP
+在这种情况下，监听应用程序将分别接收 ELF 二进制文件和解释器的 \fBFAN_OPEN_EXEC\fP 事件:
+.PP
+.in +4n
+.EX
+/bin/echo
+/lib64/ld\-linux\-x86\-64.so.2
+.EE
+.in
+.SH BUGS
+Linux 3.16 之前存在以下错误:
+.IP \[bu] 3
+.\" Fixed by commit 0a8dd2db579f7a0ac7033d6b857c3d5dbaa77563
+如果 \fIflags\fP 包含 \fBFAN_MARK_FLUSH\fP、\fIdirfd\fP 和
+\fIpathname\fP，则必须指定有效的文件系统对象，即使未使用该对象。
+.IP \[bu]
+.\" Fixed by commit d4c7cf6cffb1bc711a833b5e304ba5bcfe76398b
+\fBreaddir\fP(2) 不生成 \fBFAN_ACCESS\fP 事件。
+.IP \[bu]
+.\" Fixed by commit cc299a98eb13a9853675a9cbb90b30b4011e1406
+如果使用 \fBFAN_MARK_FLUSH\fP 调用 \fBfanotify_mark\fP()，则不会检查 \fIflags\fP 是否存在无效值。
+.SH "SEE ALSO"
+\fBfanotify_init\fP(2), \fBfanotify\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

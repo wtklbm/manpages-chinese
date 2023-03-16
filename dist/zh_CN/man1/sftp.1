@@ -1,0 +1,691 @@
+.\" -*- coding: UTF-8 -*-
+.\" $OpenBSD: sftp.1,v 1.143 2022/12/16 03:40:03 djm Exp $
+.\"
+.\" Copyright (c) 2001 Damien Miller.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: December 16 2022 $
+.Dt SFTP 1
+.Os
+.Sh NAME
+.Nm sftp
+.Nd OpenSSH secure file transfer
+.Sh SYNOPSIS
+.Nm sftp
+.Op Fl 46AaCfNpqrv
+.Op Fl B Ar buffer_size
+.Op Fl b Ar batchfile
+.Op Fl c Ar cipher
+.Op Fl D Ar sftp_server_command
+.Op Fl F Ar ssh_config
+.Op Fl i Ar identity_file
+.Op Fl J Ar destination
+.Op Fl l Ar limit
+.Op Fl o Ar ssh_option
+.Op Fl P Ar port
+.Op Fl R Ar num_requests
+.Op Fl S Ar program
+.Op Fl s Ar subsystem | sftp_server
+.Op Fl X Ar sftp_option
+.Ar destination
+.Sh DESCRIPTION
+.Nm
+是一个文件传输程序，类似于
+.Xr ftp 1
+，它通过加密的
+.Xr ssh 1
+传输执行所有操作。 它还可能使用 ssh
+的许多特性例如公钥身份验证和压缩。
+.Pp
+.Ar destination
+可以指定为
+.Sm off
+.Oo user @ Oc host Op : path
+.Sm on
+或
+.Sm off
+.No sftp:// Oo user @ Oc host Oo : port Oc Op / path
+形式的 URI。
+.Sm on
+.Pp
+如果
+.Ar destination
+包含
+.Ar path
+而它不是目录，如果使用非交互式身份验证方法，
+.Nm
+将自动检索文件;
+否则它将在成功的交互式身份验证后这样做。
+.Pp
+如果没有指定
+.Ar path
+，或者
+.Ar path
+是一个目录，
+.Nm
+将登录到指定的
+.Ar host
+并进入交互命令模式，如果指定了则切换到远程目录。 可选的尾部斜杠可用于强制将
+.Ar path
+解释为目录。
+.Pp
+由于目标格式使用冒号字符将主机名与路径名或端口号分隔开，因此 IPv6 地址必须括在方括号中以避免歧义。
+.Pp
+选项如下:
+.Bl -tag -width Ds
+.It Fl 4
+强制
+.Nm
+仅使用 IPv4 地址。
+.It Fl 6
+强制
+.Nm
+仅使用 IPv6 地址。
+.It Fl A
+允许将
+.Xr ssh-agent 1
+转发到远程系统。 默认情况下不转发身份验证代理。
+.It Fl a
+尝试继续中断的传输，而不是覆盖现有的部分或完整文件副本。 如果部分内容与正在传输的内容不同，则生成的文件很可能已损坏。
+.It Fl B Ar buffer_size
+指定
+.Nm
+在传输文件时使用的缓冲区大小。 更大的缓冲区以更高的内存消耗为代价需要更少的往返。 默认值为 32768 字节。
+.It Fl b Ar batchfile
+批处理模式从输入
+.Ar batchfile
+而不是
+.Em stdin
+读取一系列命令。
+由于它缺少用户交互，因此应与非交互身份验证结合使用，以避免在连接时输入密码的需要 (有关详细信息，请参见
+.Xr sshd 8
+和
+.Xr ssh-keygen 1 )
+。
+.Pp
+.Sq \-
+的
+.Ar batchfile
+可用于指示标准输入。 如果以下任何命令失败，
+.Nm
+将终止:
+.Ic get , put , reget , reput , rename , ln
+、
+.Ic rm , mkdir , chdir , ls
+、
+.Ic lchdir , copy , cp , chmod , chown
+、
+.Ic chgrp , lpwd , df , symlink
+和
+.Ic lmkdir
+。
+.Pp
+通过在命令前加上
+.Sq \-
+字符 (例如，
+.Ic -rm /tmp/blah* ) .
+可以通过在命令前加上
+.Sq @
+字符来抑制命令的回显。 这两个前缀可以按任何顺序组合，例如
+.Ic -@ls /bsd
+。
+.It Fl C
+启用压缩 (通过 ssh 的
+.Fl C
+标志)。
+.It Fl c Ar cipher
+选择用于加密数据传输的密码。 该选项直接传递给
+.Xr ssh 1
+。
+.It Fl D Ar sftp_server_command
+直接连接到本地 sftp 服务器 (而不是通过
+.Xr ssh 1 ) .
+可以指定命令和参数，例如
+.Qq /path/sftp-server -el debug3
+。 此选项在调试客户端和服务器时可能很有用。
+.It Fl F Ar ssh_config
+为
+.Xr ssh 1
+指定一个替代的每用户配置文件。 该选项直接传递给
+.Xr ssh 1
+。
+.It Fl f
+请求在传输后立即将文件刷新到磁盘。 上传文件时，此特性仅在服务器实现 "fsync@openssh.com" 扩展时启用。
+.It Fl i Ar identity_file
+选择从中读取用于公钥验证的标识 (私钥) 的文件。 该选项直接传递给
+.Xr ssh 1
+。
+.It Fl J Ar destination
+通过首先与
+.Ar destination
+描述的跳转主机建立
+.Nm
+连接，然后从那里建立到最终目的地的 TCP 转发，来连接到目标主机。
+可以用逗号字符分隔指定多个跳转。 这是指定
+.Cm ProxyJump
+配置指令的快捷方式。 该选项直接传递给
+.Xr ssh 1
+。
+.It Fl l Ar limit
+限制使用的带宽，在 Kbit/s 中指定。
+.It Fl N
+禁用安静模式，例如覆盖由
+.Fl b
+标志设置的隐式安静模式。
+.It Fl o Ar ssh_option
+可用于以
+.Xr ssh_config 5
+中使用的格式将选项传递给
+.Nm ssh
+。 这对于指定没有单独的
+.Nm sftp
+命令行标志的选项很有用。 例如，要指定备用端口，请使用:
+.Ic sftp -oPort=24
+。
+有关下面列出的选项及其可能值的完整详细信息，请参见
+.Xr ssh_config 5
+。
+.Pp
+.Bl -tag -width Ds -offset indent -compact
+.It AddressFamily
+.It BatchMode
+.It BindAddress
+.It BindInterface
+.It CanonicalDomains
+.It CanonicalizeFallbackLocal
+.It CanonicalizeHostname
+.It CanonicalizeMaxDots
+.It CanonicalizePermittedCNAMEs
+.It CASignatureAlgorithms
+.It CertificateFile
+.It CheckHostIP
+.It Ciphers
+.It Compression
+.It ConnectionAttempts
+.It ConnectTimeout
+.It ControlMaster
+.It ControlPath
+.It ControlPersist
+.It GlobalKnownHostsFile
+.It GSSAPIAuthentication
+.It GSSAPIDelegateCredentials
+.It HashKnownHosts
+.It Host
+.It HostbasedAcceptedAlgorithms
+.It HostbasedAuthentication
+.It HostKeyAlgorithms
+.It HostKeyAlias
+.It Hostname
+.It IdentitiesOnly
+.It IdentityAgent
+.It IdentityFile
+.It IPQoS
+.It KbdInteractiveAuthentication
+.It KbdInteractiveDevices
+.It KexAlgorithms
+.It KnownHostsCommand
+.It LogLevel
+.It MACs
+.It NoHostAuthenticationForLocalhost
+.It NumberOfPasswordPrompts
+.It PasswordAuthentication
+.It PKCS11Provider
+.It Port
+.It PreferredAuthentications
+.It ProxyCommand
+.It ProxyJump
+.It PubkeyAcceptedAlgorithms
+.It PubkeyAuthentication
+.It RekeyLimit
+.It RequiredRSASize
+.It SendEnv
+.It ServerAliveInterval
+.It ServerAliveCountMax
+.It SetEnv
+.It StrictHostKeyChecking
+.It TCPKeepAlive
+.It UpdateHostKeys
+.It User
+.It UserKnownHostsFile
+.It VerifyHostKeyDNS
+.El
+.It Fl P Ar port
+指定要连接到远程主机上的端口。
+.It Fl p
+保留传输的原始文件的修改时间、访问时间和模式。
+.It Fl q
+安静模式: 禁用进度表以及来自
+.Xr ssh 1
+的警告和诊断消息。
+.It Fl R Ar num_requests
+指定在任一时间有多少请求可能未完成。 增加此值可能会略微提高文件传输速度，但会增加内存使用量。 默认值为 64 个未完成的请求。
+.It Fl r
+上传和下载时递归复制整个目录。 请注意，
+.Nm
+不遵循树遍历中遇到的符号链接。
+.It Fl S Ar program
+用于加密连接的
+.Ar program
+的名称。 该程序必须了解
+.Xr ssh 1
+选项。
+.It Fl s Ar subsystem | sftp_server
+指定 SSH2 子系统或远程主机上 sftp 服务器的路径。 当远程
+.Xr sshd 8
+没有配置 sftp 子系统时，路径很有用。
+.It Fl v
+提高日志记录级别。 此选项也传递给 ssh。
+.It Fl X Ar sftp_option
+指定一个选项来控制 SFTP 协议行为的各个方面。 有效的选项是:
+.Bl -tag -width Ds
+.It Cm nrequests Ns = Ns Ar value
+控制在下载或上传期间的任何时间点可能有多少并发 SFTP 读取或写入请求。 默认情况下，可以同时激活 64 个请求。
+.It Cm buffer Ns = Ns Ar value
+控制下载或上传期间使用的单个 SFTP read/write 操作的最大缓冲区大小。 默认情况下使用 32KB 缓冲区。
+.El
+.El
+.Sh INTERACTIVE COMMANDS
+一旦进入交互模式，
+.Nm
+就会理解一组类似于
+.Xr ftp 1
+的命令。 命令不区分大小写。 包含空格的路径名必须用引号引起来。
+.Xr glob 3
+识别的路径名中包含的任何特殊字符都必须使用反斜杠
+.Pq Sq \e
+进行转义。
+.Bl -tag -width Ds
+.It Ic bye
+退出
+.Nm sftp
+。
+.It Ic cd Op Ar path
+将远程目录更改为
+.Ar path
+。 如果未指定
+.Ar path
+，则将目录更改为会话开始的目录。
+.It Xo Ic chgrp
+.Op Fl h
+.Ar grp
+.Ar path
+.Xc
+将文件组
+.Ar path
+更改为
+.Ar grp
+。
+.Ar path
+可能包含
+.Xr glob 7
+字符，可能匹配多个文件。
+.Ar grp
+必须是数字 GID。
+.Pp
+如果指定了
+.Fl h
+标志，则不会遵循符号链接。 请注意，这仅由实现 "lsetstat@openssh.com" 扩展的服务器支持。
+.It Xo Ic chmod
+.Op Fl h
+.Ar mode
+.Ar path
+.Xc
+将文件
+.Ar path
+的权限更改为
+.Ar mode
+。
+.Ar path
+可能包含
+.Xr glob 7
+字符，可能匹配多个文件。
+.Pp
+如果指定了
+.Fl h
+标志，则不会遵循符号链接。 请注意，这仅由实现 "lsetstat@openssh.com" 扩展的服务器支持。
+.It Xo Ic chown
+.Op Fl h
+.Ar own
+.Ar path
+.Xc
+将文件
+.Ar path
+的所有者更改为
+.Ar own
+。
+.Ar path
+可能包含
+.Xr glob 7
+字符，可能匹配多个文件。
+.Ar own
+必须是数字 UID。
+.Pp
+如果指定了
+.Fl h
+标志，则不会遵循符号链接。 请注意，这仅由实现 "lsetstat@openssh.com" 扩展的服务器支持。
+.It Ic copy Ar oldpath Ar newpath
+将远程文件从
+.Ar oldpath
+复制到
+.Ar newpath
+。
+.Pp
+请注意，这仅由实现 "copy-data" 扩展的服务器支持。
+.It Ic cp Ar oldpath Ar newpath
+.Ic copy
+命令的别名。
+.It Xo Ic df
+.Op Fl hi
+.Op Ar path
+.Xc
+显示保存当前目录 (或
+.Ar path
+，如果指定) 的文件系统的使用信息。
+如果指定了
+.Fl h
+标志，则将使用 "human-readable" 后缀显示容量信息。
+.Fl i
+标志要求显示 inode
+信息以及容量信息。 此命令仅在实现
+.Dq statvfs@openssh.com
+扩展的服务器上受支持。
+.It Ic exit
+退出
+.Nm sftp
+。
+.It Xo Ic get
+.Op Fl afpR
+.Ar remote-path
+.Op Ar local-path
+.Xc
+检索
+.Ar remote-path
+并将其存储在本地机器上。 如果未指定本地路径名，则赋予它在远程计算机上的相同名称。
+.Ar remote-path
+可能包含
+.Xr glob 7
+字符，可能匹配多个文件。 如果是，并且指定了
+.Ar local-path
+，则
+.Ar local-path
+必须指定一个目录。
+.Pp
+如果指定了
+.Fl a
+标志，则尝试恢复现有文件的部分传输。 请注意，恢复假定本地文件的任何部分副本与远程副本匹配。
+如果远程文件内容与部分本地副本不同，则生成的文件很可能已损坏。
+.Pp
+如果指定了
+.Fl f
+标志，则在文件传输完成后将调用
+.Xr fsync 2
+将文件刷新到磁盘。
+.Pp
+.\" undocumented redundant alias
+.\" or
+.\" .Fl P
+如果指定了
+.Fl p
+标志，那么也会复制完整的文件权限和访问时间。
+.Pp
+.\" undocumented redundant alias
+.\" or
+.\" .Fl r
+如果指定了
+.Fl R
+标志，则目录将被递归复制。 请注意，执行递归传输时
+.Nm
+不遵循符号链接。
+.It Ic help
+显示帮助文本。
+.It Ic lcd Op Ar path
+将本地目录更改为
+.Ar path
+。 如果未指定
+.Ar path
+，则将目录更改为本地用户的主目录。
+.It Ic lls Op Ar ls-options Op Ar path
+如果未指定
+.Ar path
+，则显示
+.Ar path
+或当前目录的本地目录列表。
+.Ar ls-options
+可能包含本地系统的
+.Xr ls 1
+命令支持的任何标志。
+.Ar path
+可能包含
+.Xr glob 7
+字符，可能匹配多个文件。
+.It Ic lmkdir Ar path
+创建由
+.Ar path
+指定的本地目录。
+.It Xo Ic ln
+.Op Fl s
+.Ar oldpath
+.Ar newpath
+.Xc
+创建从
+.Ar oldpath
+到
+.Ar newpath
+的链接。 如果指定了
+.Fl s
+标志，则创建的链接是符号链接，否则是硬链接。
+.It Ic lpwd
+打印本地工作目录。
+.It Xo Ic ls
+.Op Fl 1afhlnrSt
+.Op Ar path
+.Xc
+如果未指定
+.Ar path
+，则显示
+.Ar path
+或当前目录的远程目录列表。
+.Ar path
+可能包含
+.Xr glob 7
+字符，可能匹配多个文件。
+.Pp
+以下标志被识别并相应地改变
+.Ic ls
+的行为:
+.Bl -tag -width Ds
+.It Fl 1
+产生单列输出。
+.It Fl a
+列出以点
+.Pq Sq \&.
+开头的文件。
+.It Fl f
+不要对列表进行排序。 默认排序顺序是字典顺序。
+.It Fl h
+当与长格式选项一起使用时，使用元后缀: 字节、千字节、兆字节、千兆字节、太字节、拍字节和艾字节，以便使用 2 的幂来将位数减少到四或更少
+(K=1024，M=1048576 等)。
+.It Fl l
+显示其他详细信息，包括权限和所有权信息。
+.It Fl n
+生成一个长列表，其中包含以数字形式显示的用户和组信息。
+.It Fl r
+反转列表的排序顺序。
+.It Fl S
+按文件大小对列表进行排序。
+.It Fl t
+按上次修改时间对列表进行排序。
+.El
+.It Ic lumask Ar umask
+将本地 umask 设置为
+.Ar umask
+。
+.It Ic mkdir Ar path
+创建由
+.Ar path
+指定的远程目录。
+.It Ic progress
+切换进度表的显示。
+.It Xo Ic put
+.Op Fl afpR
+.Ar local-path
+.Op Ar remote-path
+.Xc
+上传
+.Ar local-path
+并将其存储在远程机器上。 如果未指定远程路径名，则赋予它在本地计算机上的相同名称。
+.Ar local-path
+可能包含
+.Xr glob 7
+字符，可能匹配多个文件。 如果是，并且指定了
+.Ar remote-path
+，则
+.Ar remote-path
+必须指定一个目录。
+.Pp
+如果指定了
+.Fl a
+标志，则尝试恢复现有文件的部分传输。 请注意，恢复假定远程文件的任何部分副本与本地副本匹配。
+如果本地文件内容与远程本地副本不同，则生成的文件很可能已损坏。
+.Pp
+如果指定了
+.Fl f
+标志，则在文件传输后，将向服务器发送请求调用
+.Xr fsync 2
+。 请注意，这仅由实现
+"fsync@openssh.com" 扩展的服务器支持。
+.Pp
+.\" undocumented redundant alias
+.\" or
+.\" .Fl P
+如果指定了
+.Fl p
+标志，那么也会复制完整的文件权限和访问时间。
+.Pp
+.\" undocumented redundant alias
+.\" or
+.\" .Fl r
+如果指定了
+.Fl R
+标志，则目录将被递归复制。 请注意，执行递归传输时
+.Nm
+不遵循符号链接。
+.It Ic pwd
+显示远程工作目录。
+.It Ic quit
+退出
+.Nm sftp
+。
+.It Xo Ic reget
+.Op Fl fpR
+.Ar remote-path
+.Op Ar local-path
+.Xc
+继续下载
+.Ar remote-path
+。 等同于设置了
+.Fl a
+标志的
+.Ic get
+。
+.It Xo Ic reput
+.Op Fl fpR
+.Ar local-path
+.Op Ar remote-path
+.Xc
+继续上传
+.Ar local-path
+。 等同于设置了
+.Fl a
+标志的
+.Ic put
+。
+.It Ic rename Ar oldpath newpath
+将远程文件从
+.Ar oldpath
+重命名为
+.Ar newpath
+。
+.It Ic rm Ar path
+删除
+.Ar path
+指定的远程文件。
+.It Ic rmdir Ar path
+删除
+.Ar path
+指定的远程目录。
+.It Ic symlink Ar oldpath newpath
+创建从
+.Ar oldpath
+到
+.Ar newpath
+的符号链接。
+.It Ic version
+显示
+.Nm
+协议版本。
+.It Ic \&! Ns Ar command
+在本地 shell 中执行
+.Ar command
+。
+.It Ic \&!
+逃到本地 shell。
+.It Ic \&?
+帮助的同义词。
+.El
+.Sh SEE ALSO
+.Xr ftp 1 ,
+.Xr ls 1 ,
+.Xr scp 1 ,
+.Xr ssh 1 ,
+.Xr ssh-add 1 ,
+.Xr ssh-keygen 1 ,
+.Xr ssh_config 5 ,
+.Xr glob 7 ,
+.Xr sftp-server 8 ,
+.Xr sshd 8
+.Rs
+.%A T. Ylonen
+.%A S. Lehtinen
+.%T "SSH File Transfer Protocol"
+.%N draft-ietf-secsh-filexfer-00.txt
+.%D January 2001
+.%O work in progress material
+.Re
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

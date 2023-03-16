@@ -1,0 +1,102 @@
+.\" -*- coding: UTF-8 -*-
+.\" Extended attributes manual page
+.\"
+.\" Copyright (C) 2000, 2002, 2007  Andreas Gruenbacher <agruen@suse.de>
+.\" Copyright (C) 2001, 2002, 2004, 2007 Silicon Graphics, Inc.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH xattr 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+xattr \- 扩展属性
+.SH DESCRIPTION
+扩展属性是与文件和目录永久关联的名称: 值对，类似于与进程关联的环境字符串。 属性可能已定义或未定义。 如果已定义，则其值可能为空或非空。
+.PP
+扩展属性是对与系统中所有 inode 关联的普通属性的扩展 (即 \fBstat\fP(2) 数据)。
+它们通常用于为文件系统提供额外的特性例如，可以使用扩展属性来实现访问控制列表 (ACLs) 等额外的安全，特性。
+.PP
+对文件或目录具有搜索权限的用户可以使用 \fBlistxattr\fP(2) 检索为该文件或目录定义的属性名称列表。
+.PP
+扩展属性作为原子对象访问。 读取 (\fBgetxattr\fP(2)) 会检索属性的全部值并将其存储在缓冲区中。 写入 (\fBsetxattr\fP(2))
+会将任何先前的值替换为新值。
+.PP
+扩展属性消耗的空间可能会被计入文件所有者和文件组的磁盘配额。
+.SS "Extended attribute namespaces"
+属性名称是以 null 结尾的字符串。 属性名称始终以完全限定的 \fInamespace.attribute\fP 形式指定，例如
+\fIuser.mime_type\fP、\fItrusted.md5sum\fP、\fIsystem.posix_acl_access\fP 或
+\fIsecurity.selinux\fP。
+.PP
+命名空间机制用于定义不同类的扩展属性。 存在这些不同的类别有几个原因; 例如，操作一个命名空间的扩展属性所需的权限和能力可能与另一个不同。
+.PP
+目前，\fIsecurity\fP、\fIsystem\fP、\fItrusted\fP 和 \fIuser\fP 扩展属性类定义如下。 可以在 future 中添加其他类。
+.SS "Extended security attributes"
+安全属性命名空间由内核安全模块使用，例如 Security Enhanced Linux，也用于实现文件功能 (参见
+\fBcapabilities\fP(7)).  对安全属性的读写访问权限取决于安全模块为每个安全属性实现的策略。
+当没有加载安全模块时，所有进程都具有对扩展安全属性的读取访问权限，而写入访问权限仅限于具有 \fBCAP_SYS_ADMIN\fP 功能的进程。
+.SS "System extended attributes"
+内核使用系统扩展属性来存储系统对象，例如访问控制列表。 对系统属性的读写访问权限取决于内核中文件系统为每个系统属性实现的策略。
+.SS "Trusted extended attributes"
+可信扩展属性仅对具有 \fBCAP_SYS_ADMIN\fP 能力的进程可见和可访问。 此类中的属性用于在用户空间 (即内核外部)
+中实现机制，这些机制将信息保存在普通进程不应访问的扩展属性中。
+.SS "User extended attributes"
+用户扩展属性可以分配给文件和目录，用于存储任意附加信息，例如文件的 MIME 类型、字符集或编码。 用户属性的访问权限由文件权限位定义:
+检索属性值需要读取权限，更改它需要 writer 权限。
+.PP
+常规文件和目录的文件权限位与特殊文件和符号链接的文件权限位的解释不同。
+对于常规文件和目录，文件权限位定义对文件内容的访问权限，而对于设备特殊文件，它们定义对特殊文件描述的设备的访问权限。 符号链接的文件权限不用于访问检查。
+这些差异将允许用户以一种不受组或全局可写特殊文件和目录的磁盘配额控制的方式使用文件系统资源。
+.PP
+出于这个原因，用户扩展属性只允许用于常规文件和目录，并且对用户扩展属性的访问仅限于所有者和具有适当权限的用户，这些用户对设置了粘性位的目录 (请参见
+\fBchmod\fP(1) 手册页以获取对粘性位)。
+.SS "Filesystem differences"
+内核和文件系统可能会限制可以与文件关联的扩展属性的最大数量和大小。 VFS 对属性名称和值施加的限制分别为 255 字节和 64\kB。
+可以返回的属性名列表也限制在 64\kB (见 \fBlistxattr\fP(2)).
+.PP
+一些文件系统，例如 Reiserfs (以及历史上的 ext2 和 ext3)，需要使用 \fBuser_xattr\fP
+挂载选项挂载文件系统，以便使用用户扩展属性。
+.PP
+在当前的 ext2、ext3 和 ext4 文件系统实现中，文件所有扩展属性的名称和值使用的总字节数必须适合单个文件系统块 (1024、2048 或
+4096 字节，具体取决于在文件系统已创建)。
+.PP
+在 Btrfs、XFS 和 Reiserfs 文件系统实现中，与文件关联的扩展属性的数量没有实际限制，并且用于在磁盘上存储扩展属性信息的算法是可伸缩的。
+.PP
+在 JFS、XFS 和 Reiserfs 文件系统实现中，EA 值中使用的字节数限制是 VFS 强加的上限。
+.PP
+在 Btrfs 文件系统实现中，用于名称、值和实现开销字节的总字节数限制为文件系统 \fInodesize\fP 值 (默认为 16\kB)。
+.SH STANDARDS
+POSIX.1 中没有指定扩展属性，但其他一些系统 (例如 BSD 和 Solaris) 提供了类似的，特性。
+.SH NOTES
+由于存储扩展属性的文件系统也可能用于具有不同字节顺序和机器字大小的体系结构，因此应注意以独立于体系结构的格式存储属性值。
+.PP
+.\" .SH AUTHORS
+.\" Andreas Gruenbacher,
+.\" .RI < a.gruenbacher@bestbits.at >
+.\" and the SGI XFS development team,
+.\" .RI < linux-xfs@oss.sgi.com >.
+此页面以前名为 \fBattr\fP(5)。
+.SH "SEE ALSO"
+\fBattr\fP(1), \fBgetfattr\fP(1), \fBsetfattr\fP(1), \fBgetxattr\fP(2),
+\fBioctl_iflags\fP(2), \fBlistxattr\fP(2), \fBremovexattr\fP(2), \fBsetxattr\fP(2),
+\fBacl\fP(5), \fBcapabilities\fP(7), \fBselinux\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

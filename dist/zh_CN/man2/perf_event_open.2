@@ -1,0 +1,2596 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2012, Vincent Weaver
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" This document is based on the perf_event.h header file, the
+.\" tools/perf/design.txt file, and a lot of bitter experience.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH perf_event_open 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+perf_event_open \- 设置性能监控
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/perf_event.h>\fP    /* Definition of \fBPERF_*\fP constants */
+\fB#include <linux/hw_breakpoint.h>\fP /* Definition of \fBHW_*\fP constants */
+\fB#include <sys/syscall.h>\fP         /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_perf_event_open, struct perf_event_attr *\fP\fIattr\fP\fB,\fP
+\fB            pid_t \fP\fIpid\fP\fB, int \fP\fIcpu\fP\fB, int \fP\fIgroup_fd\fP\fB, unsigned long \fP\fIflags\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBperf_event_open\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+给定参数列表，\fBperf_event_open\fP() 返回一个文件描述符，用于后续系统调用
+(\fBread\fP(2)、\fBmmap\fP(2)、\fBprctl\fP(2)、\fBfcntl\fP(2) 等)。
+.PP
+调用 \fBperf_event_open\fP() 创建一个文件描述符，允许测量性能信息。 每个文件描述符对应一个被测量的事件;
+这些可以组合在一起以同时测量多个事件。
+.PP
+可以通过两种方式启用和禁用事件: 通过 \fBioctl\fP(2) 和通过 \fBprctl\fP(2)。
+当事件被禁用时，它不会计数或产生溢出，但会继续存在并保持其计数值。
+.PP
+事件有两种形式: 计数和采样。 \fIcounting\fP 事件是用于计算发生的事件总数的事件。 通常，计数事件结果使用 \fBread\fP(2) 调用收集。
+\fIsampling\fP 事件定期将测量值写入缓冲区，然后可以通过 \fBmmap\fP(2) 访问该缓冲区。
+.SS Arguments
+\fIpid\fP 和 \fIcpu\fP 参数允许指定要监视的进程和 CPU:
+.TP 
+\fBpid == 0\fP and \fBcpu == \-1\fP
+这测量了任何 CPU 上的调用 process/thread。
+.TP 
+\fBpid == 0\fP and \fBcpu >= 0\fP
+这仅在指定的 CPU 上运行时才测量调用 process/thread。
+.TP 
+\fBpid > 0\fP and \fBcpu == \-1\fP
+这会在任何 CPU 上测量指定的 process/thread。
+.TP 
+\fBpid > 0\fP and \fBcpu >= 0\fP
+这仅在指定的 CPU 上运行时才测量指定的 process/thread。
+.TP 
+\fBpid == \-1\fP and \fBcpu >= 0\fP
+这将测量指定 CPU 上的所有 processes/threads。 这需要 \fBCAP_PERFMON\fP (自 Linux 5.8 起) 或
+\fBCAP_SYS_ADMIN\fP 能力或 \fI/proc/sys/kernel/perf_event_paranoid\fP 值小于 1.
+.TP 
+\fBpid == \-1\fP and \fBcpu == \-1\fP
+此设置无效，将返回错误。
+.PP
+当 \fIpid\fP 大于零时，执行此系统调用的权限由 \fBCAP_PERFMON\fP (自 Linux 5.9 起) 和旧 Linux 版本上的
+ptrace 访问模式 \fBPTRACE_MODE_READ_REALCREDS\fP 检查控制; 请参见 \fBptrace\fP(2)。
+.PP
+\fIgroup_fd\fP 参数允许创建事件组。 一个事件组有一个事件，它是组长。 首先创建领导者，\fIgroup_fd\fP = \-1。
+其余的组成员是通过随后的 \fBperf_event_open\fP() 调用创建的，其中 \fIgroup_fd\fP 被设置为组长的文件描述符。
+(一个单独的事件是用 \fIgroup_fd\fP = \-1 创建的，被认为是一个只有 1 个成员的组。) 一个事件组被调度到 CPU 上作为一个元:
+只有当所有的组中的事件可以放到 CPU 上。 这意味着成员事件的值可以相互比较 \[em] 加、除 (以获得比率)
+等等，因为它们计算了同一组已执行指令的事件。
+.PP
+\fIflags\fP 参数是通过将以下零个或多个值组合在一起形成的:
+.TP 
+\fBPERF_FLAG_FD_CLOEXEC\fP (since Linux 3.14)
+.\" commit a21b0b354d4ac39be691f51c53562e2c24443d9e
+此标志为创建的事件文件描述符启用 close\-on\-exec 标志，以便文件描述符在 \fBexecve\fP(2) 上自动关闭。 在创建时设置
+close\-on\-exec 标志，而不是稍后使用 \fBfcntl\fP(2)，可以避免潜在的竞争状态，即调用线程同时调用
+\fBperf_event_open\fP() 和 \fBfcntl\fP(2)，而另一个线程调用 \fBfork\fP(2)，然后调用 \fBexecve\fP(2)。
+.TP 
+\fBPERF_FLAG_FD_NO_GROUP\fP
+此标志告诉事件忽略 \fIgroup_fd\fP 参数，除非是为了使用 \fBPERF_FLAG_FD_OUTPUT\fP 标志设置输出重定向。
+.TP 
+\fBPERF_FLAG_FD_OUTPUT\fP (broken since Linux 2.6.35)
+.\" commit ac9721f3f54b27a16c7e1afb2481e7ee95a70318
+此标志重新路由事件的采样输出，而不是包含在 \fIgroup_fd\fP 指定的事件的 mmap 缓冲区中。
+.TP 
+\fBPERF_FLAG_PID_CGROUP\fP (since Linux 2.6.39)
+.\" commit e5d1367f17ba6a6fed5fd8b74e4d5720923e0c25
+此标志激活每个容器的系统范围监视。 容器是一种抽象，它隔离一组资源以进行更细粒度的控制 (CPU、内存等)。 在这种模式下，只有当被监控 CPU
+上运行的线程属于指定容器 (cgroup) 时，才会测量事件。 通过传递在 cgroupfs 文件系统中其目录上打开的文件描述符来识别 cgroup。
+例如，如果要监视的 cgroup 称为 \fItest\fP，则必须将在 \fI/dev/cgroup/test\fP 上打开的文件描述符 (假设 cgroupfs
+挂载在 \fI/dev/cgroup\fP) 上) 作为 \fIpid\fP 参数传递。 cgroup 监控仅适用于系统范围的事件，因此可能需要额外的权限。
+.PP
+\fIperf_event_attr\fP 结构体为正在创建的事件提供详细的配置信息。
+.PP
+.in +4n
+.EX
+struct perf_event_attr {
+    __u32 type;                  /* Type of event */
+    __u32 size;                  /* Size of attribute structure */
+    __u64 config;                /* Type\-specific configuration */
+
+    union {
+        __u64 sample_period;    /* Period of sampling */
+        __u64 sample_freq;      /* Frequency of sampling */
+    };
+
+    __u64 sample_type;   /* Specifies values included in sample */
+    __u64 read_format;   /* Specifies values returned in read */
+
+    __u64 disabled       : 1,   /* off by default */
+          inherit        : 1,   /* children inherit it */
+          pinned         : 1,   /* must always be on PMU */
+          exclusive      : 1,   /* only group on PMU */
+          exclude_user   : 1,   /* don\[aq]t count user */
+          exclude_kernel : 1,   /* don\[aq]t count kernel */
+          exclude_hv     : 1,   /* don\[aq]t count hypervisor */
+          exclude_idle   : 1,   /* don\[aq]t count when idle */
+          mmap           : 1,   /* include mmap data */
+          comm           : 1,   /* include comm data */
+          freq           : 1,   /* use freq, not period */
+          inherit_stat   : 1,   /* per task counts */
+          enable_on_exec : 1,   /* next exec enables */
+          task           : 1,   /* trace fork/exit */
+          watermark      : 1,   /* wakeup_watermark */
+          precise_ip     : 2,   /* skid constraint */
+          mmap_data      : 1,   /* non\-exec mmap data */
+          sample_id_all  : 1,   /* sample_type all events */
+          exclude_host   : 1,   /* don\[aq]t count in host */
+          exclude_guest  : 1,   /* don\[aq]t count in guest */
+          exclude_callchain_kernel : 1,
+                                /* exclude kernel callchains */
+          exclude_callchain_user   : 1,
+                                /* exclude user callchains */
+          mmap2          :  1,  /* include mmap with inode data */
+          comm_exec      :  1,  /* flag comm events that are
+                                   due to exec */
+          use_clockid    :  1,  /* use clockid for time fields */
+          context_switch :  1,  /* context switch data */
+          write_backward :  1,  /* Write ring buffer from end
+                                   to beginning */
+          namespaces     :  1,  /* include namespaces data */
+          ksymbol        :  1,  /* include ksymbol events */
+          bpf_event      :  1,  /* include bpf events */
+          aux_output     :  1,  /* generate AUX records
+                                   instead of events */
+          cgroup         :  1,  /* include cgroup events */
+          text_poke      :  1,  /* include text poke events */
+          build_id       :  1,  /* use build id in mmap2 events */
+          inherit_thread :  1,  /* children only inherit */
+                                /* if cloned with CLONE_THREAD */
+          remove_on_exec :  1,  /* event is removed from task
+                                   on exec */
+          sigtrap        :  1,  /* send synchronous SIGTRAP
+                                   on event */
+
+          __reserved_1   : 26;
+
+    union {
+        __u32 wakeup_events;    /* wakeup every n events */
+        __u32 wakeup_watermark; /* bytes before wakeup */
+    };
+
+    __u32     bp_type;          /* breakpoint type  */
+
+    union {
+        __u64 bp_addr;          /* breakpoint address */
+        __u64 kprobe_func;      /* for perf_kprobe */
+        __u64 uprobe_path;      /* for perf_uprobe */
+        __u64 config1;          /* extension of config */
+    };
+
+    union {
+        __u64 bp_len;           /* breakpoint length */
+        __u64 kprobe_addr;      /* with kprobe_func == NULL */
+        __u64 probe_offset;     /* for perf_[k,u]probe */
+        __u64 config2;          /* extension of config1 */
+    };
+    __u64 branch_sample_type;    /* enum perf_branch_sample_type */
+    __u64 sample_regs_user;     /* user regs to dump on samples */
+    __u32 sample_stack_user;     /* size of stack to dump on
+                                   samples */
+    __s32 clockid;               /* clock to use for time fields */
+    __u64 sample_regs_intr;     /* regs to dump on samples */
+    __u32 aux_watermark;        /* aux bytes before wakeup */
+    __u16 sample_max_stack;      /* max frames in callchain */
+    __u16 __reserved_2;         /* align to u64 */
+    __u32 aux_sample_size;      /* max aux sample size */
+    __u32 __reserved_3;         /* align to u64 */
+    __u64 sig_data;              /* user data for sigtrap */
+
+};
+.EE
+.in
+.PP
+\fIperf_event_attr\fP 结构体的字段在下面有更详细的描述:
+.TP 
+\fItype\fP
+该字段指定整体事件类型。 它具有以下值之一:
+.RS
+.TP 
+\fBPERF_TYPE_HARDWARE\fP
+这表示内核提供的 "generalized" 硬件事件之一。 有关详细信息，请参见 \fIconfig\fP 字段定义。
+.TP 
+\fBPERF_TYPE_SOFTWARE\fP
+这表示内核提供的软件定义事件之一 (即使没有可用的硬件支持)。
+.TP 
+\fBPERF_TYPE_TRACEPOINT\fP
+这表示内核跟踪点基础结构提供的跟踪点。
+.TP 
+\fBPERF_TYPE_HW_CACHE\fP
+这表示硬件缓存事件。 这有一个特殊的编码，在 \fIconfig\fP 字段定义中有描述。
+.TP 
+\fBPERF_TYPE_RAW\fP
+这表示 \fIconfig\fP 字段中的 "raw" 实现特定事件。
+.TP 
+\fBPERF_TYPE_BREAKPOINT\fP (since Linux 2.6.33)
+.\" commit 24f1e32c60c45c89a997c73395b69c8af6f0a84e
+这表示 CPU 提供的硬件断点。 断点可以是对地址的 read/write 访问以及指令地址的执行。
+.TP 
+dynamic PMU
+.\" commit 2e80a82a49c4c7eca4e35734380f28298ba5db19
+从 Linux 2.6.38 开始，\fBperf_event_open\fP() 可以支持多个 PMU。 要启用此功能，可以在 \fItype\fP
+字段中使用内核导出的值来指示要使用哪个 PMU。 要使用的值可以在 sysfs 文件系统中找到:
+\fI/sys/bus/event_source/devices\fP 下每个 PMU 实例都有一个子目录。 在每个子目录中都有一个 \fItype\fP
+文件，其内容是一个可用于 \fItype\fP 字段的整数。 例如，\fI/sys/bus/event_source/devices/cpu/type\fP
+包含核心 CPU PMU 的值，通常是 4.
+.TP 
+\fBkprobe\fP and \fBuprobe\fP (since Linux 4.17)
+.\" commit 65074d43fc77bcae32776724b7fa2696923c78e4
+.\" commit e12f03d7031a977356e3d7b75a68c2185ff8d155
+.\" commit 33ea4b24277b06dbc55d7f5772a46f029600255e
+这两个动态 PMU 创建一个 kprobe/uprobe 并将其附加到由 perf_event_open 生成的文件描述符。 kprobe/uprobe
+将销毁文件描述符。 有关详细信息，请参见字段 \fIkprobe_func\fP、\fIuprobe_path\fP、\fIkprobe_addr\fP 和
+\fIprobe_offset\fP。
+.RE
+.TP 
+\fIsize\fP
+用于 forward/backward 兼容性的 \fIperf_event_attr\fP 结构体的大小。 使用 \fIsizeof(struct perf_event_attr)\fP 设置此项以允许内核在编译时查看结构体大小。
+.IP
+.\" commit cb5d76999029ae7a517cb07dfa732c1b5a934fc2
+.\" this was added much later when PERF_ATTR_SIZE_VER2 happened
+.\" but the actual attr_size had increased in Linux 2.6.33
+.\" commit cb5d76999029ae7a517cb07dfa732c1b5a934fc2
+.\" commit 1659d129ed014b715b0b2120e6fd929bdd33ed03
+.\" commit 60e2364e60e86e81bc6377f49779779e6120977f
+.\" commit 1a5941312414c71dece6717da9a0fa1303127afa
+相关 define \fBPERF_ATTR_SIZE_VER0\fP 设置为 64; 这是第一次发布的结构体的大小。
+\fBPERF_ATTR_SIZE_VER1\fP 为 72，对应 Linux 2.6.33 中加断点。 \fBPERF_ATTR_SIZE_VER2\fP 为
+80 对应 Linux 3.4 中增加了分支采样。 \fBPERF_ATTR_SIZE_VER3\fP 为 96 对应 Linux 3.7 中增加了
+\fIsample_regs_user\fP 和 \fIsample_stack_user\fP。 \fBPERF_ATTR_SIZE_VER4\fP 为 104，对应
+Linux 3.19 中增加了 \fIsample_regs_intr\fP。 \fBPERF_ATTR_SIZE_VER5\fP 为 112，对应 Linux
+4.1 中增加了 \fIaux_watermark\fP。
+.TP 
+\fIconfig\fP
+这与 \fItype\fP 字段一起指定您想要的事件。 在 64 位不足以完全指定事件的情况下，也会考虑 \fIconfig1\fP 和 \fIconfig2\fP
+字段。 这些字段的编码是事件相关的。
+.IP
+有多种方法可以设置 \fIconfig\fP 字段，这取决于前面描述的 \fItype\fP 字段的值。 以下是 \fItype\fP 分离出的 \fIconfig\fP
+的各种可能设置。
+.IP
+如果 \fItype\fP 是 \fBPERF_TYPE_HARDWARE\fP，我们正在测量通用硬件 CPU 事件之一。 并非所有这些都适用于所有平台。 将
+\fIconfig\fP 设置为以下之一:
+.RS 12
+.TP 
+\fBPERF_COUNT_HW_CPU_CYCLES\fP
+总周期。 警惕 CPU 频率缩放期间发生的情况。
+.TP 
+\fBPERF_COUNT_HW_INSTRUCTIONS\fP
+退休说明。 请注意，这些可能会受到各种问题的影响，最显着的是硬件中断计数。
+.TP 
+\fBPERF_COUNT_HW_CACHE_REFERENCES\fP
+缓存访问。 通常这表示最后一级缓存访问，但这可能因您的 CPU 而异。 这可能包括预取和一致性消息; 同样，这取决于您的 CPU 设计。
+.TP 
+\fBPERF_COUNT_HW_CACHE_MISSES\fP
+缓存未命中。 通常这表示 Last Level Cache 未命中; 这旨在与 \fBPERF_COUNT_HW_CACHE_REFERENCES\fP
+事件结合使用来计算缓存未命中率。
+.TP 
+\fBPERF_COUNT_HW_BRANCH_INSTRUCTIONS\fP
+.\" commit f287d332ce835f77a4f5077d2c0ef1e3f9ea42d2
+退休分支指令。 在 Linux 2.6.35 之前，这在 AMD 处理器上使用了错误事件。
+.TP 
+\fBPERF_COUNT_HW_BRANCH_MISSES\fP
+错误预测的分支指令。
+.TP 
+\fBPERF_COUNT_HW_BUS_CYCLES\fP
+总线周期，可以不同于总周期。
+.TP 
+\fBPERF_COUNT_HW_STALLED_CYCLES_FRONTEND\fP (since Linux 3.0)
+.\" commit 8f62242246351b5a4bc0c1f00c0c7003edea128a
+发行期间停滞的周期。
+.TP 
+\fBPERF_COUNT_HW_STALLED_CYCLES_BACKEND\fP (since Linux 3.0)
+.\" commit 8f62242246351b5a4bc0c1f00c0c7003edea128a
+退休期间停滞的周期。
+.TP 
+\fBPERF_COUNT_HW_REF_CPU_CYCLES\fP (since Linux 3.3)
+.\" commit c37e17497e01fc0f5d2d6feb5723b210b3ab8890
+总周期; 不受 CPU 频率缩放的影响。
+.RE
+.IP
+如果 \fItype\fP 是 \fBPERF_TYPE_SOFTWARE\fP，我们正在测量内核提供的软件事件。 将 \fIconfig\fP 设置为以下之一:
+.RS 12
+.TP 
+\fBPERF_COUNT_SW_CPU_CLOCK\fP
+这会报告 CPU 时钟，一个高分辨率的每个 CPU 计时器。
+.TP 
+\fBPERF_COUNT_SW_TASK_CLOCK\fP
+这会报告特定于正在运行的任务的时钟计数。
+.TP 
+\fBPERF_COUNT_SW_PAGE_FAULTS\fP
+这报告页面错误的数量。
+.TP 
+\fBPERF_COUNT_SW_CONTEXT_SWITCHES\fP
+.\" commit e49a5bd38159dfb1928fd25b173bc9de4bbadb21
+这计算上下文切换。 在 Linux 2.6.34 之前，这些都被报告为用户空间事件，之后它们被报告为发生在内核中。
+.TP 
+\fBPERF_COUNT_SW_CPU_MIGRATIONS\fP
+这会报告进程迁移到新 CPU 的次数。
+.TP 
+\fBPERF_COUNT_SW_PAGE_FAULTS_MIN\fP
+这会计算次要页面错误的数量。 这些不需要磁盘 I/O 来处理。
+.TP 
+\fBPERF_COUNT_SW_PAGE_FAULTS_MAJ\fP
+这会计算主要页面错误的数量。 这些需要磁盘 I/O 来处理。
+.TP 
+\fBPERF_COUNT_SW_ALIGNMENT_FAULTS\fP (since Linux 2.6.33)
+.\" commit f7d7986060b2890fc26db6ab5203efbd33aa2497
+这会计算对齐错误的数量。 这些发生在未对齐的内存访问发生时; 内核可以处理这些但会降低性能。 这只发生在某些架构上 (从不发生在 x86 上)。
+.TP 
+\fBPERF_COUNT_SW_EMULATION_FAULTS\fP (since Linux 2.6.33)
+.\" commit f7d7986060b2890fc26db6ab5203efbd33aa2497
+这会计算仿真故障的数量。 内核有时会捕获未实现的指令并为用户空间模拟它们。 这会对性能产生负面影响。
+.TP 
+\fBPERF_COUNT_SW_DUMMY\fP (since Linux 3.12)
+.\" commit fa0097ee690693006ab1aea6c01ad3c851b65c77
+这是一个无关紧要的占位符事件。 信息样本记录类型 (例如 mmap 或 comm) 必须与活动事件相关联。
+这个虚拟事件允许在不需要计数事件的情况下收集此类记录。
+.TP 
+\fBPERF_COUNT_SW_BPF_OUTPUT\fP (since Linux 4.4)
+.\" commit a43eec304259a6c637f4014a6d4767159b6a3aa3
+这用于从 BPF 生成原始样本数据。 BPF 程序可以使用 \fBbpf_perf_event_output\fP 帮助程序写入此事件。
+.TP 
+\fBPERF_COUNT_SW_CGROUP_SWITCHES\fP (since Linux 5.13)
+.\" commit d0d1dd628527c77db2391ce0293c1ed344b2365f
+这计算上下文切换到不同 cgroup 中的任务。 换句话说，如果下一个任务在同一个 cgroup 中，则不会计算切换。
+.RE
+.PP
+.RS
+如果 \fItype\fP 是 \fBPERF_TYPE_TRACEPOINT\fP，那么我们正在测量内核跟踪点。 如果在内核中启用了 ftrace，则可以从
+debugfs \fItracing/events/*/*/id\fP 下获取 \fIconfig\fP 中使用的值。
+.RE
+.PP
+.RS
+如果 \fItype\fP 是 \fBPERF_TYPE_HW_CACHE\fP，那么我们正在测量一个硬件 CPU 缓存事件。 要计算适当的 \fIconfig\fP
+值，请使用以下等式:
+.RS 4
+.PP
+.in +4n
+.EX
+配置 = (perf_hw_cache_id) |
+         (perf_hw_cache_op_id << 8) |
+         (perf_hw_cache_op_result_id << 16);
+.EE
+.in
+.PP
+其中 \fIperf_hw_cache_id\fP 是以下之一:
+.RS 4
+.TP 
+\fBPERF_COUNT_HW_CACHE_L1D\fP
+用于测量 1 级数据缓存
+.TP 
+\fBPERF_COUNT_HW_CACHE_L1I\fP
+用于测量 1 级指令缓存
+.TP 
+\fBPERF_COUNT_HW_CACHE_LL\fP
+用于测量末级缓存
+.TP 
+\fBPERF_COUNT_HW_CACHE_DTLB\fP
+用于测量数据 TLB
+.TP 
+\fBPERF_COUNT_HW_CACHE_ITLB\fP
+用于测量指令 TLB
+.TP 
+\fBPERF_COUNT_HW_CACHE_BPU\fP
+用于测量分支预测元
+.TP 
+\fBPERF_COUNT_HW_CACHE_NODE\fP (since Linux 3.1)
+.\" commit 89d6c0b5bdbb1927775584dcf532d98b3efe1477
+用于测量本地内存访问
+.RE
+.PP
+\fIperf_hw_cache_op_id\fP 是以下之一:
+.RS 4
+.TP 
+\fBPERF_COUNT_HW_CACHE_OP_READ\fP
+用于读取访问
+.TP 
+\fBPERF_COUNT_HW_CACHE_OP_WRITE\fP
+用于写访问
+.TP 
+\fBPERF_COUNT_HW_CACHE_OP_PREFETCH\fP
+用于预取访问
+.RE
+.PP
+\fIperf_hw_cache_op_result_id\fP 是以下之一:
+.RS 4
+.TP 
+\fBPERF_COUNT_HW_CACHE_RESULT_ACCESS\fP
+测量访问
+.TP 
+\fBPERF_COUNT_HW_CACHE_RESULT_MISS\fP
+衡量失误
+.RE
+.RE
+.PP
+如果 \fItype\fP 为 \fBPERF_TYPE_RAW\fP，则需要自定义 "raw" \fIconfig\fP 值。 大多数 CPU 支持
+"generalized" 事件未涵盖的事件。 这些是实现定义的; 请参见您的 CPU 手册 (例如 Intel Volume 3B 文档或 AMD
+BIOS 和内核开发人员指南)。 libpfm4 库可用于将体系结构手册中的名称转换为 \fBperf_event_open\fP()
+在此字段中期望的原始十六进制值。
+.PP
+如果 \fItype\fP 是 \fBPERF_TYPE_BREAKPOINT\fP，则将 \fIconfig\fP 设置为零。 它的参数是在其他地方设置的。
+.PP
+如果 \fItype\fP 为 \fBkprobe\fP 或 \fBuprobe\fP，则设置 \fIretprobe\fP (\fIconfig\fP 的第 0
+位，kretprobe/uretprobe 参见
+\fI/sys/bus/event_source/devices/[k,u]probe/format/retprobe\fP)。 有关详细信息，请参见字段
+\fIkprobe_func\fP、\fIuprobe_path\fP、\fIkprobe_addr\fP 和 \fIprobe_offset\fP。
+.RE
+.TP 
+\fIkprobe_func\fP, \fIuprobe_path\fP, \fIkprobe_addr\fP, and \fIprobe_offset\fP
+这些字段描述了动态 PMU \fBkprobe\fP 和 \fBuprobe\fP 的 kprobe/uprobe。 对于 \fBkprobe\fP:，使用
+\fIkprobe_func\fP 和 \fIprobe_offset\fP，或者使用 \fIkprobe_addr\fP 并将 \fIkprobe_func\fP 保留为
+NULL。 对于 \fBuprobe\fP:，使用 \fIuprobe_path\fP 和 \fIprobe_offset\fP。
+.TP 
+\fIsample_period\fP, \fIsample_freq\fP
+"sampling" 事件是每 N 个事件生成一个溢出通知的事件，其中 N 由 \fIsample_period\fP 给出。 采样事件具有
+\fIsample_period\fP > 0。 当发生溢出时，请求的数据被记录在 mmap 缓冲区中。 \fIsample_type\fP
+字段控制每次溢出时记录的数据。
+.IP
+如果您希望使用频率而不是周期，则可以使用 \fIsample_freq\fP。 在这种情况下，您设置 \fIfreq\fP 标志。
+内核将调整采样周期以尝试达到所需的速率。 调整速率是一个定时器滴答声。
+.TP 
+\fIsample_type\fP
+该字段中的各个位指定要包含在样本中的值。 它们将被记录在环形缓冲区中，用户空间可以使用 \fBmmap\fP(2) 访问该缓冲区。
+示例中值的保存顺序记录在下面的 MMAP 布局小节中; 它不是 \fIenum perf_event_sample_format\fP 命令。
+.RS
+.TP 
+\fBPERF_SAMPLE_IP\fP
+记录指令指针。
+.TP 
+\fBPERF_SAMPLE_TID\fP
+记录进程和线程 ID。
+.TP 
+\fBPERF_SAMPLE_TIME\fP
+记录一个时间戳。
+.TP 
+\fBPERF_SAMPLE_ADDR\fP
+记录地址 (如果适用)。
+.TP 
+\fBPERF_SAMPLE_READ\fP
+记录组中所有事件的计数器值，而不仅仅是组长。
+.TP 
+\fBPERF_SAMPLE_CALLCHAIN\fP
+记录调用链 (栈回溯)。
+.TP 
+\fBPERF_SAMPLE_ID\fP
+记录打开事件的组长的唯一 ID。
+.TP 
+\fBPERF_SAMPLE_CPU\fP
+记录 CPU 编号。
+.TP 
+\fBPERF_SAMPLE_PERIOD\fP
+记录当前采样周期。
+.TP 
+\fBPERF_SAMPLE_STREAM_ID\fP
+记录打开的事件的唯一 ID。 与 \fBPERF_SAMPLE_ID\fP 不同，返回的是实际 ID，而不是组长。 此 ID 与
+\fBPERF_FORMAT_ID\fP 返回的 ID 相同。
+.TP 
+\fBPERF_SAMPLE_RAW\fP
+记录附加数据 (如果适用)。 通常由跟踪点事件返回。
+.TP 
+\fBPERF_SAMPLE_BRANCH_STACK\fP (since Linux 3.4)
+.\" commit bce38cd53e5ddba9cb6d708c4ef3d04a4016ec7e
+这提供了最近分支的记录，由 CPU 分支采样硬件 (例如 Intel Last Branch Record) 提供。 并非所有硬件都支持此，特性。
+.IP
+请参见 \fIbranch_sample_type\fP 字段以了解如何过滤报告的分支。
+.TP 
+\fBPERF_SAMPLE_REGS_USER\fP (since Linux 3.7)
+.\" commit 4018994f3d8785275ef0e7391b75c3462c029e56
+记录当前用户级 CPU 寄存器状态 (调用内核前进程中的值)。
+.TP 
+\fBPERF_SAMPLE_STACK_USER\fP (since Linux 3.7)
+.\" commit c5ebcedb566ef17bda7b02686e0d658a7bb42ee7
+记录用户级栈，允许栈展开。
+.TP 
+\fBPERF_SAMPLE_WEIGHT\fP (since Linux 3.10)
+.\" commit c3feedf2aaf9ac8bad6f19f5d21e4ee0b4b87e9c
+记录硬件提供的权重值，该权重值表示采样事件的成本。 这允许硬件突出显示配置文件中的昂贵事件。
+.TP 
+\fBPERF_SAMPLE_DATA_SRC\fP (since Linux 3.10)
+.\" commit d6be9ad6c960f43800a6f118932bc8a5a4eadcd1
+记录数据源: 与采样指令相关的数据在内存层次结构中的来源。 这仅在底层硬件支持此特性时可用。
+.TP 
+\fBPERF_SAMPLE_IDENTIFIER\fP (since Linux 3.12)
+.\" commit ff3d527cebc1fa3707c617bfe9e74f53fcfb0955
+将 \fBSAMPLE_ID\fP 值置于记录中的固定位置，可以是开头 (对于示例事件) 或结尾 (如果是非示例事件)。
+.IP
+这是必要的，因为示例流可能具有来自具有不同 \fIsample_type\fP 设置的各种不同事件源的记录。 无法正确解析事件流，因为需要记录的格式才能找到
+\fBSAMPLE_ID\fP，但在不知道样本属于什么事件的情况下无法找到格式 (导致循环依赖)。
+.IP
+\fBPERF_SAMPLE_IDENTIFIER\fP 设置通过将 \fBSAMPLE_ID\fP 放在固定位置使事件流始终可解析，即使这意味着在记录中具有重复的
+\fBSAMPLE_ID\fP 值也是如此。
+.TP 
+\fBPERF_SAMPLE_TRANSACTION\fP (since Linux 3.13)
+.\" commit fdfbbd07e91f8fe387140776f3fd94605f0c89e5
+记录事务内存终止事件的原因 (例如，来自 Intel TSX 事务内存支持)。
+.IP
+\fIprecise_ip\fP 设置必须大于 0，并且必须测量事务性内存终止事件，否则将不记录任何值。 另请注意，某些 perf_event 测量
+(例如采样周期计数) 可能会导致无关的中止 (通过在事务期间引起中断)。
+.TP 
+\fBPERF_SAMPLE_REGS_INTR\fP (since Linux 3.19)
+.\" commit 60e2364e60e86e81bc6377f49779779e6120977f
+记录 \fIsample_regs_intr\fP 指定的当前 CPU 寄存器状态的子集。 与 \fBPERF_SAMPLE_REGS_USER\fP
+不同，如果在内核代码运行时发生溢出，则寄存器值将返回内核寄存器状态。 如果 CPU 支持寄存器状态的硬件采样 (即 Intel x86 上的 PEBS)
+并且 \fIprecise_ip\fP 设置为高于零，则返回的寄存器值是硬件在采样指令退出时捕获的值。
+.TP 
+\fBPERF_SAMPLE_PHYS_ADDR\fP (since Linux 4.13)
+.\" commit fc7ce9c74c3ad232b084d80148654f926d01ece7
+记录数据的物理地址，如 \fBPERF_SAMPLE_ADDR\fP。
+.TP 
+\fBPERF_SAMPLE_CGROUP\fP (since Linux 5.7)
+.\" commit 96aaab686505c449e24d76e76507290dcc30e008
+记录进程的 (perf_event) cgroup ID。 这对应于 \fBPERF_RECORD_CGROUP\fP 事件中的 \fIid\fP 字段。
+.TP 
+\fBPERF_SAMPLE_DATA_PAGE_SIZE\fP (since Linux 5.11)
+.\" commit 8d97e71811aaafe4abf611dc24822fd6e73df1a1
+像 \fBPERF_SAMPLE_ADDR\fP 一样记录数据的页面大小。
+.TP 
+\fBPERF_SAMPLE_CODE_PAGE_SIZE\fP (since Linux 5.11)
+.\" commit 995f088efebe1eba0282a6ffa12411b37f8990c2
+像 \fBPERF_SAMPLE_IP\fP 一样记录 ip 的页面大小。
+.TP 
+\fBPERF_SAMPLE_WEIGHT_STRUCT\fP (since Linux 5.12)
+.\" commit 2a6c6b7d7ad346f0679d0963cb19b3f0ea7ef32c
+记录硬件提供的权重值，如 \fBPERF_SAMPLE_WEIGHT\fP，但它可以在结构体中表示多个值。 这与 \fBPERF_SAMPLE_WEIGHT\fP
+共享相同的空间，因此用户可以应用其中一个，而不是两者。 它具有以下格式，每个字段的含义取决于硬件实现。
+.PP
+.in +4n
+.EX
+union perf_sample_weight {
+    u64  full;           /* PERF_SAMPLE_WEIGHT */
+    struct {             /* PERF_SAMPLE_WEIGHT_STRUCT */
+        u32  var1_dw;
+        u16  var2_w;
+        u16  var3_w;
+    };
+};
+.EE
+.in
+.RE
+.TP 
+\fIread_format\fP
+该字段指定 \fBread\fP(2) 在 \fBperf_event_open\fP() 文件描述符上返回的数据格式。
+.RS
+.TP 
+\fBPERF_FORMAT_TOTAL_TIME_ENABLED\fP
+添加 64 位 \fItime_enabled\fP 字段。 如果 PMU 被过度使用并且正在发生多路复用，这可用于计算估计的总数。
+.TP 
+\fBPERF_FORMAT_TOTAL_TIME_RUNNING\fP
+添加 64 位 \fItime_running\fP 字段。 如果 PMU 被过度使用并且正在发生多路复用，这可用于计算估计的总数。
+.TP 
+\fBPERF_FORMAT_ID\fP
+添加与事件组对应的 64 位唯一值。
+.TP 
+\fBPERF_FORMAT_GROUP\fP
+允许一次读取事件组中的所有计数器值。
+.TP 
+\fBPERF_FORMAT_LOST  (since Linux 6.0)\fP
+.\" commit 119a784c81270eb88e573174ed2209225d646656
+添加一个 64 位值，该值是此事件丢失的样本数。 这仅在设置 \fIsample_period\fP 或 \fIsample_freq\fP 时才有意义。
+.RE
+.TP 
+\fIdisabled\fP
+\fIdisabled\fP 位指定计数器开始时是禁用还是启用。 如果禁用，该事件稍后可以通过 \fBioctl\fP(2)、\fBprctl\fP(2) 或
+\fIenable_on_exec\fP 启用。
+.IP
+创建事件组时，通常会在 \fIdisabled\fP 设置为 1 的情况下初始化组长，并在 \fIdisabled\fP 设置为 0 的情况下初始化任何子事件。
+尽管 \fIdisabled\fP 为 0，但在组长启用之前，子事件不会开始。
+.TP 
+\fIinherit\fP
+\fIinherit\fP 位指定此计数器应计算子任务的事件以及指定的任务。 这仅适用于新子节点，不适用于创建计数器时的任何现有子节点
+(也不适用于现有子节点的任何新子节点)。
+.IP
+继承不适用于 \fIread_format\fP 值的某些组合，例如 \fBPERF_FORMAT_GROUP\fP。
+.TP 
+\fIpinned\fP
+\fIpinned\fP 位指定如果可能，计数器应始终在 CPU 上。 它仅适用于硬件计数器并且仅适用于组长。 如果无法将固定计数器放入 CPU
+(例如，因为没有足够的硬件计数器或因为与其他事件发生冲突)，则计数器进入 'error' 状态，读取返回文件结束 (即，\fBread\fP(2) 返回 0)
+直到计数器随后被启用或禁用。
+.TP 
+\fIexclusive\fP
+\fIexclusive\fP 位指定当这个计数器的组在 CPU 上时，它应该是唯一使用 CPU 计数器的组。 在 future
+中，这可能允许监控程序支持需要单独运行的 PMU 特性这样它们就不会干扰其他硬件计数器。
+.IP
+请注意，许多意外情况可能会阻止设置了 \fIexclusive\fP 位的事件运行。 这包括运行系统范围测量的任何用户以及性能计数器的任何内核使用
+(包括通常启用的 NMI 看门狗定时器接口)。
+.TP 
+\fIexclude_user\fP
+如果设置了该位，则计数不包括发生在用户空间中的事件。
+.TP 
+\fIexclude_kernel\fP
+如果设置了该位，则计数不包括内核空间中发生的事件。
+.TP 
+\fIexclude_hv\fP
+如果设置了该位，则计数不包括管理程序中发生的事件。 这主要适用于内置支持处理此问题的 PMU (例如 POWER)。
+在大多数机器上处理管理程序测量需要额外的支持。
+.TP 
+\fIexclude_idle\fP
+如果设置，当 CPU 正在运行空闲任务时不计数。 虽然您目前可以为任何事件类型启用此功能，但它会被除软件事件之外的所有事件所忽略。
+.TP 
+\fImmap\fP
+\fImmap\fP 位允许为每个设置了 \fBPROT_EXEC\fP 的 \fBmmap\fP(2) 调用生成 \fBPERF_RECORD_MMAP\fP 样本。
+这允许工具注意到新的可执行代码被映射到程序 (例如动态共享库)，以便地址可以映射回原始代码。
+.TP 
+\fIcomm\fP
+.\" commit 82b897782d10fcc4930c9d4a15b175348fdd2871
+\fIcomm\fP 位允许跟踪由 \fBexecve\fP(2) 和 \fBprctl\fP(PR_SET_NAME) 系统调用修改的进程命令名称以及写入
+\fI/proc/self/comm\fP。 如果 \fIcomm_exec\fP 标志也被成功设置 (从 Linux 3.16 开始可能)，则可以使用 misc
+标志 \fBPERF_RECORD_MISC_COMM_EXEC\fP 将 \fBexecve\fP(2) 的情况与其他情况区分开来。
+.TP 
+\fIfreq\fP
+如果设置了该位，则在设置采样间隔时使用 \fIsample_frequency\fP 而不是 \fIsample_period\fP。
+.TP 
+\fIinherit_stat\fP
+该位可以保存继承任务上下文切换时的事件计数。 这仅在设置了 \fIinherit\fP 字段时才有意义。
+.TP 
+\fIenable_on_exec\fP
+如果该位被设置，一个计数器在调用 \fBexecve\fP(2) 后自动启用。
+.TP 
+\fItask\fP
+如果设置了该位，则 fork/exit 通知将包含在环形缓冲区中。
+.TP 
+\fIwatermark\fP
+如果设置，当我们越过 \fIwakeup_watermark\fP 边界时会发生溢出通知。 否则，溢出通知会在 \fIwakeup_events\fP
+样本之后发生。
+.TP 
+\fIprecise_ip\fP (since Linux 2.6.35)
+.\" commit ab608344bcbde4f55ec4cd911b686b0ce3eae076
+这控制打滑量。 Skid 是在感兴趣的事件发生和内核能够停止并记录该事件之间执行的指令数。 越小的 skid
+越好，并且可以更准确地报告哪些事件对应于哪些指令，但硬件通常受限于它可以有多小。
+.IP
+该字段的可能值如下:
+.RS
+.TP 
+\fB0\fP
+\fBSAMPLE_IP\fP 可以有任意滑动。
+.TP 
+\fB1\fP
+\fBSAMPLE_IP\fP 必须有常量打滑。
+.TP 
+\fB2\fP
+\fBSAMPLE_IP\fP 要求有 0 个打滑。
+.TP 
+\fB3\fP
+\fBSAMPLE_IP\fP 必须有 0 个滑动。 另请参见 \fBPERF_RECORD_MISC_EXACT_IP\fP 的说明。
+.RE
+.TP 
+\fImmap_data\fP (since Linux 2.6.36)
+.\" commit 3af9e859281bda7eb7c20b51879cf43aa788ac2e
+这是 \fImmap\fP 字段的对应项。 这可以为没有设置 \fBPROT_EXEC\fP 的 \fBmmap\fP(2) 调用生成
+\fBPERF_RECORD_MMAP\fP 样本 (例如数据和 SysV 共享内存)。
+.TP 
+\fIsample_id_all\fP (since Linux 2.6.38)
+.\" commit c980d1091810df13f21aabbce545fd98f545bbf7
+如果设置，则如果选择相应的 \fIsample_type\fP，则 TID、TIME、ID、STREAM_ID 和 CPU 可以额外包含在
+non\-\fBPERF_RECORD_SAMPLE\fPs 中。
+.IP
+如果指定了 \fBPERF_SAMPLE_IDENTIFIER\fP，则会包含一个额外的 ID 值作为最后一个值，以便于解析记录流。 这可能会导致 \fIid\fP
+值出现两次。
+.IP
+布局由这个伪结构描述:
+.IP
+.in +4n
+.EX
+struct sample_id {
+    { u32 pid, tid; }   /* if PERF_SAMPLE_TID set */
+    { u64 time;     }   /* if PERF_SAMPLE_TIME set */
+    { u64 id;       }   /* if PERF_SAMPLE_ID set */
+    { u64 stream_id;}   /* if PERF_SAMPLE_STREAM_ID set  */
+    { u32 cpu, res; }   /* if PERF_SAMPLE_CPU set */
+    { u64 id;       }   /* if PERF_SAMPLE_IDENTIFIER set */
+};
+.EE
+.in
+.TP 
+\fIexclude_host\fP (since Linux 3.2)
+.\" commit a240f76165e6255384d4bdb8139895fac7988799
+在执行包括运行 VM 实例的进程 (即已执行 \fBKVM_RUN\fP \fBioctl\fP(2))) 的测量时，仅测量来宾实例内部发生的事件。
+这只有在客人之外才有意义; 此设置不会更改客人内部收集的计数。 目前，此功能仅限于 x86。
+.TP 
+\fIexclude_guest\fP (since Linux 3.2)
+.\" commit a240f76165e6255384d4bdb8139895fac7988799
+在执行包括运行 VM 实例的进程 (即已执行 \fBKVM_RUN\fP \fBioctl\fP(2))) 的测量时，不要测量来宾实例内部发生的事件。
+这只有在客人之外才有意义; 此设置不会更改客人内部收集的计数。 目前，此功能仅限于 x86。
+.TP 
+\fIexclude_callchain_kernel\fP (since Linux 3.7)
+.\" commit d077526485d5c9b12fe85d0b2b3b7041e6bc5f91
+不包括内核调用链。
+.TP 
+\fIexclude_callchain_user\fP (since Linux 3.7)
+.\" commit d077526485d5c9b12fe85d0b2b3b7041e6bc5f91
+不包括用户调用链。
+.TP 
+\fImmap2\fP (since Linux 3.16)
+.\" commit 13d7a2410fa637f450a29ecb515ac318ee40c741
+.\" This is tricky; was committed during 3.12 development
+.\" but right before release was disabled.
+.\" So while you could select mmap2 starting with Linux 3.12
+.\" it did not work until Linux 3.16
+.\" commit a5a5ba72843dd05f991184d6cb9a4471acce1005
+生成一个扩展的可执行 mmap 记录，其中包含足够的附加信息以唯一标识共享映射。 还必须设置 \fImmap\fP 标志才能使其工作。
+.TP 
+\fIcomm_exec\fP (since Linux 3.16)
+.\" commit 82b897782d10fcc4930c9d4a15b175348fdd2871
+这纯粹是一个特性检测标志，它不会改变内核行为。 如果可以成功设置此标志，则在启用 \fIcomm\fP 时，如果报告的重命名事件是由调用
+\fBexecve\fP(2) 引起的，则 \fBPERF_RECORD_MISC_COMM_EXEC\fP 标志将设置在通信记录头的 \fImisc\fP 字段中。
+这允许工具区分各种类型的进程重命名。
+.TP 
+\fIuse_clockid\fP (since Linux 4.1)
+.\" commit 34f439278cef7b1177f8ce24f9fc81dfc6221d3b
+这允许在通过 \fIclockid\fP 字段生成时间戳时选择使用哪个内部 Linux 时钟。 这可以更容易地将 perf
+采样时间与其他工具生成的时间戳相关联。
+.TP 
+\fIcontext_switch\fP (since Linux 4.3)
+.\" commit 45ac1403f564f411c6a383a2448688ba8dd705a4
+这允许在发生上下文切换时生成 \fBPERF_RECORD_SWITCH\fP 记录。 它还可以在 CPU 范围模式下采样时生成
+\fBPERF_RECORD_SWITCH_CPU_WIDE\fP 记录。 此功能是对用于测量上下文切换的现有跟踪点和软件事件的补充。
+这种方法的优点是即使使用严格的 \fIperf_event_paranoid\fP 设置也能提供完整的信息。
+.TP 
+\fIwrite_backward\fP (since Linux 4.6)
+.\" commit 9ecda41acb971ebd07c8fb35faf24005c0baea12
+这会导致环形缓冲区从末尾开始写入。 这是为了支持从可覆盖的环形缓冲区中读取。
+.TP 
+\fInamespaces\fP (since Linux 4.11)
+.\" commit e422267322cd319e2695a535e47c5b1feeac45eb
+这会在任务进入新命名空间时生成 \fBPERF_RECORD_NAMESPACES\fP 记录。 每个名称空间都有设备号和 inode 号的组合。
+.TP 
+\fIksymbol\fP (since Linux 5.0)
+.\" commit 76193a94522f1d4edf2447a536f3f796ce56343b
+这允许在注册或注销新内核符号时生成 \fBPERF_RECORD_KSYMBOL\fP 记录。 这是像 eBPF 一样分析动态内核函数。
+.TP 
+\fIbpf_event\fP (since Linux 5.0)
+.\" commit 6ee52e2a3fe4ea35520720736e6791df1fb67106
+这允许在加载或卸载 eBPF 程序时生成 \fBPERF_RECORD_BPF_EVENT\fP 记录。
+.TP 
+\fIaux_output\fP (since Linux 5.4)
+.\" commit ab43762ef010967e4ccd53627f70a2eecbeafefb
+如果硬件支持，这允许正常的 (non\-AUX) 事件为 AUX 事件生成数据。
+.TP 
+\fIcgroup\fP (since Linux 5.7)
+.\" commit 96aaab686505c449e24d76e76507290dcc30e008
+这会在创建 (并激活) 新的 cgroup 时生成 \fBPERF_RECORD_CGROUP\fP 记录。
+.TP 
+\fItext_poke\fP (since Linux 5.8)
+.\" commit e17d43b93e544f5016c0251d2074c15568d5d963
+这会在内核文本发生更改 (即自修改代码) 时生成 \fBPERF_RECORD_TEXT_POKE\fP 记录。
+.TP 
+\fIbuild_id\fP (since Linux 5.12)
+.\" commit 88a16a1309333e43d328621ece3e9fa37027e8eb
+这会将 \fBPERF_RECORD_MMAP2\fP 中的内容更改为具有构建 ID 而不是设备和 inode 编号。
+.TP 
+\fIinherit_thread\fP (since Linux 5.13)
+.\" commit 2b26f0aa004995f49f7b6f4100dd0e4c39a9ed5f
+这会禁用事件对子进程的继承。 只有同一进程中的新线程 (使用 \fBCLONE_THREAD\fP) 克隆) 才会继承该事件。
+.TP 
+\fIremove_on_exec\fP (since Linux 5.13)
+.\" commit 2e498d0a74e5b88a6689ae1b811f247f91ff188e
+当它通过 \fBexecve\fP(2) 启动一个新的过程映像时，这将关闭该事件。
+.TP 
+\fIsigtrap\fP (since Linux 5.13)
+.\" commit 97ba62b278674293762c3d91f724f1bb922f04e0
+这会在事件溢出时启用 \fBSIGTRAP\fP 的同步信号传送。
+.TP 
+\fIwakeup_events\fP, \fIwakeup_watermark\fP
+此 union 设置在溢出通知发生之前发生了多少个样本 (\fIwakeup_events\fP) 或字节 (\fIwakeup_watermark\fP)。
+使用哪一个由 \fIwatermark\fP 位标志选择。
+.IP
+\fIwakeup_events\fP 仅计算 \fBPERF_RECORD_SAMPLE\fP 记录类型。 要接收所有 \fBPERF_RECORD\fP
+类型的溢出通知，请选择水印并将 \fIwakeup_watermark\fP 设置为 1.
+.IP
+.\" commit f506b3dc0ec454a16d40cab9ee5d75435b39dc50
+在 Linux 3.0 之前，将 \fIwakeup_events\fP 设置为 0 不会导致溢出通知; 最近的内核将 0 视为与 1.
+.TP 
+\fIbp_type\fP (since Linux 2.6.33)
+.\" commit 24f1e32c60c45c89a997c73395b69c8af6f0a84e
+这选择断点类型。 它是以下之一:
+.RS
+.TP 
+\fBHW_BREAKPOINT_EMPTY\fP
+没有断点。
+.TP 
+\fBHW_BREAKPOINT_R\fP
+当我们读取内存位置时计数。
+.TP 
+\fBHW_BREAKPOINT_W\fP
+当我们写入内存位置时计数。
+.TP 
+\fBHW_BREAKPOINT_RW\fP
+计算我们读取或写入内存位置的时间。
+.TP 
+\fBHW_BREAKPOINT_X\fP
+当我们在内存位置执行代码时计数。
+.PP
+这些值可以通过按位或组合，但不允许 \fBHW_BREAKPOINT_R\fP 或 \fBHW_BREAKPOINT_W\fP 与
+\fBHW_BREAKPOINT_X\fP 组合。
+.RE
+.TP 
+\fIbp_addr\fP (since Linux 2.6.33)
+.\" commit 24f1e32c60c45c89a997c73395b69c8af6f0a84e
+这是断点的地址。 对于执行断点，这是相关指令的内存地址; 对于读写断点，它是感兴趣的内存位置的内存地址。
+.TP 
+\fIconfig1\fP (since Linux 2.6.39)
+.\" commit a7e3ed1e470116c9d12c2f778431a481a6be8ab6
+\fIconfig1\fP 用于设置需要额外寄存器或不适合常规配置字段的事件。 Nehalem/Westmere/SandyBridge 上的原始
+OFFCORE_EVENTS 在 Linux 3.3 和更高版本的内核上使用此字段。
+.TP 
+\fIbp_len\fP (since Linux 2.6.33)
+.\" commit 24f1e32c60c45c89a997c73395b69c8af6f0a84e
+如果 \fItype\fP 为 \fBPERF_TYPE_BREAKPOINT\fP，则 \fIbp_len\fP 是被测断点的长度。 选项有
+\fBHW_BREAKPOINT_LEN_1\fP、\fBHW_BREAKPOINT_LEN_2\fP、\fBHW_BREAKPOINT_LEN_4\fP 和
+\fBHW_BREAKPOINT_LEN_8\fP。 对于执行断点，将其设置为 \fIsizeof(long)\fP。
+.TP 
+\fIconfig2\fP (since Linux 2.6.39)
+.\" commit a7e3ed1e470116c9d12c2f778431a481a6be8ab6
+\fIconfig2\fP 是 \fIconfig1\fP 字段的进一步扩展。
+.TP 
+\fIbranch_sample_type\fP (since Linux 3.4)
+.\" commit bce38cd53e5ddba9cb6d708c4ef3d04a4016ec7e
+如果启用 \fBPERF_SAMPLE_BRANCH_STACK\fP，则这指定要包含在分支记录中的分支。
+.IP
+该值的第一部分是特权级别，它是下面列出的值之一的组合。 如果用户没有明确设置权限级别，内核将使用事件的权限级别。 事件和分支权限级别不必匹配。
+.RS
+.TP 
+\fBPERF_SAMPLE_BRANCH_USER\fP
+分支目标在用户空间。
+.TP 
+\fBPERF_SAMPLE_BRANCH_KERNEL\fP
+分支目标在内核空间。
+.TP 
+\fBPERF_SAMPLE_BRANCH_HV\fP
+分支目标在管理程序中。
+.TP 
+\fBPERF_SAMPLE_BRANCH_PLM_ALL\fP
+一个方便的值，它是前面三个值的或运算组合在一起。
+.PP
+除了权限值之外，还必须设置至少一个或多个以下位。
+.TP 
+\fBPERF_SAMPLE_BRANCH_ANY\fP
+任何分支类型。
+.TP 
+\fBPERF_SAMPLE_BRANCH_ANY_CALL\fP
+任何调用分支 (包括直接调用、间接调用和远跳)。
+.TP 
+\fBPERF_SAMPLE_BRANCH_IND_CALL\fP
+间接调用。
+.TP 
+\fBPERF_SAMPLE_BRANCH_CALL\fP (since Linux 4.4)
+.\" commit c229bf9dc179d2023e185c0f705bdf68484c1e73
+直接调用。
+.TP 
+\fBPERF_SAMPLE_BRANCH_ANY_RETURN\fP
+任何返回分支。
+.TP 
+\fBPERF_SAMPLE_BRANCH_IND_JUMP\fP (since Linux 4.2)
+.\" commit c9fdfa14c3792c0160849c484e83aa57afd80ccc
+间接跳跃。
+.TP 
+\fBPERF_SAMPLE_BRANCH_COND\fP (since Linux 3.16)
+.\" commit bac52139f0b7ab31330e98fd87fc5a2664951050
+条件分支。
+.TP 
+\fBPERF_SAMPLE_BRANCH_ABORT_TX\fP (since Linux 3.11)
+.\" commit 135c5612c460f89657c4698fe2ea753f6f667963
+事务内存中止。
+.TP 
+\fBPERF_SAMPLE_BRANCH_IN_TX\fP (since Linux 3.11)
+.\" commit 135c5612c460f89657c4698fe2ea753f6f667963
+事务内存事务中的分支。
+.TP 
+\fBPERF_SAMPLE_BRANCH_NO_TX\fP (since Linux 3.11)
+.\" commit 135c5612c460f89657c4698fe2ea753f6f667963
+.\" commit 2c44b1936bb3b135a3fac8b3493394d42e51cf70
+分支不在事务内存事务中。 \fBPERF_SAMPLE_BRANCH_CALL_STACK\fP (自 Linux 4.1 起)
+分支是硬件生成的调用栈的一部分。 这需要硬件支持，目前只能在 Intel x86 Haswell 或更新版本上找到。
+.RE
+.TP 
+\fIsample_regs_user\fP (since Linux 3.7)
+.\" commit 4018994f3d8785275ef0e7391b75c3462c029e56
+该位掩码定义了一组用户 CPU 寄存器以转储样本。 寄存器掩码的布局是特定于体系结构的，在内核头文件
+\fIarch/ARCH/include/uapi/asm/perf_regs.h\fP 中进行了描述。
+.TP 
+\fIsample_stack_user\fP (since Linux 3.7)
+.\" commit c5ebcedb566ef17bda7b02686e0d658a7bb42ee7
+如果指定了 \fBPERF_SAMPLE_STACK_USER\fP，这将定义要转储的用户栈的大小。
+.TP 
+\fIclockid\fP (since Linux 4.1)
+.\" commit 34f439278cef7b1177f8ce24f9fc81dfc6221d3b
+如果设置了 \fIuse_clockid\fP，则该字段选择将哪个内部 Linux 计时器用于时间戳。 \fIlinux/time.h\fP
+中定义了可用的定时器，目前支持
+\fBCLOCK_MONOTONIC\fP、\fBCLOCK_MONOTONIC_RAW\fP、\fBCLOCK_REALTIME\fP、\fBCLOCK_BOOTTIME\fP
+和 \fBCLOCK_TAI\fP。
+.TP 
+\fIaux_watermark\fP (since Linux 4.1)
+.\" commit 1a5941312414c71dece6717da9a0fa1303127afa
+这指定触发 \fBPERF_RECORD_AUX\fP 样本需要多少数据。
+.TP 
+\fIsample_max_stack\fP (since Linux 4.8)
+.\" commit 97c79a38cd454602645f0470ffb444b3b75ce574
+当 \fIsample_type\fP 包含 \fBPERF_SAMPLE_CALLCHAIN\fP 时，此字段指定生成调用链时要报告多少栈帧。
+.TP 
+\fIaux_sample_size\fP (since Linux 5.5)
+.\" commit a4faf00d994c40e64f656805ac375c65e324eefb
+当设置 \fBPERF_SAMPLE_AUX\fP 标志时，指定所需的 AUX 数据大小。 请注意，它可以获得小于指定大小的数据。
+.TP 
+\fIsig_data\fP (since Linux 5.13)
+.\" commit 97ba62b278674293762c3d91f724f1bb922f04e0
+此数据将被复制到用户的信号处理程序 (通过 \fIsiginfo_t\fP) 中的 \fIsi_perf\fP 来消除触发信号的事件的歧义。
+.SS "Reading results"
+一旦打开了 \fBperf_event_open\fP() 文件描述符，就可以从文件描述符中读取事件的值。 那里的值在打开时由 \fIattr\fP 结构体中的
+\fIread_format\fP 字段指定。
+.PP
+如果您尝试读入一个不足以容纳数据的缓冲区，则会产生错误 \fBENOSPC\fP。
+.PP
+这是读取返回的数据的布局:
+.IP \[bu] 3
+如果指定 \fBPERF_FORMAT_GROUP\fP 以允许一次读取组中的所有事件:
+.IP
+.in +4n
+.EX
+struct read_format {
+    u64 nr;            /* The number of events */
+    u64 time_enabled;  /* if PERF_FORMAT_TOTAL_TIME_ENABLED */
+    u64 time_running;  /* if PERF_FORMAT_TOTAL_TIME_RUNNING */
+    struct {
+        u64 value;     /* The value of the event */
+        u64 id;        /* if PERF_FORMAT_ID */
+        u64 lost;      /* if PERF_FORMAT_LOST */
+    } values[nr];
+};
+.EE
+.in
+.IP \[bu]
+If \fBPERF_FORMAT_GROUP\fP was \fInot\fP specified:
+.IP
+.in +4n
+.EX
+struct read_format {
+    u64 value;         /* The value of the event */
+    u64 time_enabled;  /* if PERF_FORMAT_TOTAL_TIME_ENABLED */
+    u64 time_running;  /* if PERF_FORMAT_TOTAL_TIME_RUNNING */
+    u64 id;            /* if PERF_FORMAT_ID */
+    u64 lost;          /* if PERF_FORMAT_LOST */
+};
+.EE
+.in
+.PP
+读取的值如下:
+.TP 
+\fInr\fP
+此文件描述符中的事件数。 仅在指定 \fBPERF_FORMAT_GROUP\fP 时可用。
+.TP 
+\fItime_enabled\fP, \fItime_running\fP
+启用和运行事件的总时间。 通常这些值是相同的。 如果事件数量多于可用 PMU 计数器槽的数量，则会发生多路复用。
+在这种情况下，事件仅在部分时间运行，并且 \fItime_enabled\fP 和 \fItime running\fP 值可用于缩放计数的估计值。
+.TP 
+\fIvalue\fP
+包含计数器结果的无符号 64 位值。
+.TP 
+\fIid\fP
+此特定事件的全局唯一值; 只有在 \fIread_format\fP 中指定了 \fBPERF_FORMAT_ID\fP 时才会出现。
+.TP 
+\fIlost\fP
+本次事件丢失样本数; 只有在 \fIread_format\fP 中指定了 \fBPERF_FORMAT_LOST\fP 时才会出现。
+.SS "MMAP layout"
+在采样模式下使用 \fBperf_event_open\fP() 时，异步事件 (如计数器溢出或 \fBPROT_EXEC\fP mmap 跟踪)
+将记录到环形缓冲区中。 这个环形缓冲区是通过 \fBmmap\fP(2) 创建和访问的。
+.PP
+mmap 大小应为 1+2\[ha] n 页，其中第一页是元数据页 (\fIstruct perf_event_mmap_page\fP)，其中包含各种信息位，例如环形缓冲区头的位置。
+.PP
+在 Linux 2.6.39 之前，有一个 bug 意味着您必须在采样时分配一个 mmap 环形缓冲区，即使您不打算访问它。
+.PP
+第一个元数据 mmap 页面的结构体如下:
+.PP
+.in +4n
+.EX
+struct perf_event_mmap_page {
+    __u32 version;         /* version number of this structure */
+    __u32 compat_version;  /* lowest version this is compat with */
+    __u32 lock;            /* seqlock for synchronization */
+    __u32 index;           /* hardware counter identifier */
+    __s64 offset;          /* add to hardware counter value */
+    __u64 time_enabled;   /* time event active */
+    __u64 time_running;    /* time event on CPU */
+    union {
+        __u64   capabilities;
+        struct {
+            __u64 cap_usr_time / cap_usr_rdpmc / cap_bit0 : 1,
+                  cap_bit0_is_deprecated : 1,
+                  cap_user_rdpmc         : 1,
+                  cap_user_time          : 1,
+                  cap_user_time_zero     : 1,
+        };
+    };
+    __u16 pmc_width;
+    __u16 time_shift;
+    __u32 time_mult;
+    __u64 time_offset;
+    __u64 __reserved[120];    /* Pad to 1 k */
+    __u64 data_head;          /* head in the data section */
+    __u64 data_tail;          /* user\-space written tail */
+    __u64 data_offset;        /* where the buffer starts */
+    __u64 data_size;          /* data buffer size */
+    __u64 aux_head;
+    __u64 aux_tail;
+    __u64 aux_offset;
+    __u64 aux_size;
+
+}
+.EE
+.in
+.PP
+以下列表更详细地描述了 \fIperf_event_mmap_page\fP 结构体中的字段:
+.TP 
+\fIversion\fP
+这个结构体的版本号。
+.TP 
+\fIcompat_version\fP
+与之兼容的最低版本。
+.TP 
+\fIlock\fP
+用于同步的 seqlock。
+.TP 
+\fIindex\fP
+唯一的硬件计数器标识符。
+.TP 
+\fIoffset\fP
+当使用 rdpmc 进行读取时，必须将此偏移值添加到 rdpmc 返回的值以获得当前总事件计数。
+.TP 
+\fItime_enabled\fP
+事件处于活动状态的时间。
+.TP 
+\fItime_running\fP
+事件运行的时间。
+.TP 
+\fIcap_usr_time\fP / \fIcap_usr_rdpmc\fP / \fIcap_bit0\fP (since Linux 3.4)
+.\" commit c7206205d00ab375839bd6c7ddb247d600693c09
+从 Linux 3.4 到 Linux 3.11 的 \fIcap_usr_time\fP 和 \fIcap_usr_rdpmc\fP 的定义中存在错误。
+这两个位被定义为指向相同的位置，因此无法知道 \fIcap_usr_time\fP 或 \fIcap_usr_rdpmc\fP 是否实际设置。
+.IP
+.\" commit fa7315871046b9a4c48627905691dbde57e51033
+从 Linux 3.12 开始，它们被重命名为 \fIcap_bit0\fP，您应该改用 \fIcap_user_time\fP 和
+\fIcap_user_rdpmc\fP 字段。
+.TP 
+\fIcap_bit0_is_deprecated\fP (since Linux 3.12)
+.\" commit fa7315871046b9a4c48627905691dbde57e51033
+如果设置，该位表示内核支持正确分隔的 \fIcap_user_time\fP 和 \fIcap_user_rdpmc\fP 位。
+.IP
+如果未设置，则表示较旧的内核，其中 \fIcap_usr_time\fP 和 \fIcap_usr_rdpmc\fP map 为同一位，因此应谨慎使用这两个，特性。
+.TP 
+\fIcap_user_rdpmc\fP (since Linux 3.12)
+.\" commit fa7315871046b9a4c48627905691dbde57e51033
+如果硬件支持不使用 syscall 的用户空间读取性能计数器 (这是 x86 上的 "rdpmc" 指令)，则可以使用以下代码进行读取:
+.IP
+.in +4n
+.EX
+u32 seq, time_mult, time_shift, idx, width;
+u64 count, enabled, running;
+u64 cyc, time_offset;
+
+做 {
+    seq = pc\->lock;
+    barrier();
+    enabled = pc\->time_enabled;
+    running = pc\->time_running;
+
+    if (pc\->cap_usr_time && enabled != running) {
+        cyc = rdtsc();
+        time_offset = pc\->time_offset;
+        time_mult   = pc\->time_mult;
+        time_shift  = pc\->time_shift;
+    }
+
+    idx = pc\->index;
+    count = pc\->offset;
+
+    if (pc\->cap_usr_rdpmc && idx) {
+        width = pc\->pmc_width;
+        count += rdpmc(idx \- 1);
+    }
+
+    barrier();
+} while (pc\->lock != seq);
+.EE
+.in
+.TP 
+\fIcap_user_time\fP (since Linux 3.12)
+.\" commit fa7315871046b9a4c48627905691dbde57e51033
+该位表示硬件有一个常量、不间断时间戳计数器 (x86 上的 TSC)。
+.TP 
+\fIcap_user_time_zero\fP (since Linux 3.12)
+.\" commit fa7315871046b9a4c48627905691dbde57e51033
+指示 \fItime_zero\fP 的存在，它允许将时间戳值映射到硬件时钟。
+.TP 
+\fIpmc_width\fP
+如果为 \fIcap_usr_rdpmc\fP，则此字段提供使用 rdpmc 或等效指令读取的值的位宽。 这可用于对结果进行签名扩展，例如:
+.IP
+.in +4n
+.EX
+pmc <<= 64 \- pmc_width;
+pmc >>= 64 \- pmc_width;  // signed shift right
+count += pmc;
+.EE
+.in
+.TP 
+\fItime_shift\fP, \fItime_mult\fP, \fItime_offset\fP
+.IP
+如果是 \fIcap_usr_time\fP，这些字段可用于使用 rdtsc 或类似方法计算自 \fItime_enabled\fP 以来的时间增量
+(以纳秒为单位)。
+.IP
+.in +4n
+.EX
+u64 quot, rem;
+u64 delta;
+
+quot  = cyc >> time_shift;
+rem   = cyc & (((u64)1 << time_shift) \- 1);
+delta = time_offset + quot * time_mult +
+        ((rem * time_mult) >> time_shift);
+.EE
+.in
+.IP
+其中 \fItime_offset\fP、\fItime_mult\fP、\fItime_shift\fP 和 \fIcyc\fP 在上述 seqcount 循环中被读取。
+然后可以将此增量添加到已启用和可能的运行 (如果是 idx)，从而提高缩放比例:
+.IP
+.in +4n
+.EX
+enabled += delta;
+if (idx)
+    running += delta;
+quot  = count / running;
+rem   = count % running;
+count = quot * enabled + (rem * enabled) / running;
+.EE
+.in
+.TP 
+\fItime_zero\fP (since Linux 3.12)
+.\" commit fa7315871046b9a4c48627905691dbde57e51033
+.IP
+如果设置了 \fIcap_usr_time_zero\fP，则可以根据 \fItime_zero\fP、\fItime_mult\fP 和 \fItime_shift\fP
+值计算硬件时钟 (x86 上的 TSC 时间戳计数器) :
+.IP
+.in +4n
+.EX
+time = timestamp \- time_zero;
+quot = time / time_mult;
+rem  = time % time_mult;
+cyc  = (quot << time_shift) + (rem << time_shift) / time_mult;
+.EE
+.in
+.IP
+反之亦然:
+.IP
+.in +4n
+.EX
+quot = cyc >> time_shift;
+rem  = cyc & (((u64)1 << time_shift) \- 1);
+timestamp = time_zero + quot * time_mult +
+            ((rem * time_mult) >> time_shift);
+.EE
+.in
+.TP 
+\fIdata_head\fP
+这指向数据部分的头部。 该值不断增加，它不会换行。 在访问样本之前，需要用 mmap 缓冲区的大小手动包装该值。
+.IP
+在支持 SMP 的平台上，读取 \fIdata_head\fP 值后，用户空间应该发出 rmb()。
+.TP 
+\fIdata_tail\fP
+当映射为 \fBPROT_WRITE\fP 时，\fIdata_tail\fP 的值应该由用户空间写入，以反映最后读取的数据。 在这种情况下，内核不会覆盖未读数据。
+.TP 
+\fIdata_offset\fP (since Linux 4.1)
+.\" commit e8c6deac69629c0cb97c3d3272f8631ef17f8f0f
+包含 mmap 缓冲区中 perf 样本数据开始位置的偏移量。
+.TP 
+\fIdata_size\fP (since Linux 4.1)
+.\" commit e8c6deac69629c0cb97c3d3272f8631ef17f8f0f
+包含 mmap 缓冲区内 perf 样本区域的大小。
+.TP 
+\fIaux_head\fP, \fIaux_tail\fP, \fIaux_offset\fP, \fIaux_size\fP (since Linux 4.1)
+.\" commit 45bfb2e50471abbbfd83d40d28c986078b0d24ff
+AUX 区域允许 \fBmmap\fP(2)\-ing 为高带宽数据流提供一个单独的样本缓冲区 (与主 perf 样本缓冲区分开)。
+高带宽流的一个示例是指令跟踪支持，如较新的 Intel 处理器中所见。
+.IP
+要设置 AUX 区域，首先需要将 \fIaux_offset\fP 设置为大于 \fIdata_offset\fP+\fIdata_size\fP 的偏移量，并将
+\fIaux_size\fP 设置为所需的缓冲区大小。 所需的偏移量和大小必须是页面对齐的，并且大小必须是 2 的幂。 然后将这些值传递给 mmap 以便
+map 到 AUX 缓冲区。 AUX 缓冲区中的页面作为 \fBRLIMIT_MEMLOCK\fP 资源限制的一部分包含在内 (请参见
+\fBsetrlimit\fP(2))，也作为 \fIperf_event_mlock_kb\fP 限额的一部分。
+.IP
+默认情况下，如果 AUX 缓冲区不适合环形缓冲区的可用空间，它将被截断。 如果 AUX
+缓冲区被映射为只读缓冲区，那么它将以环形缓冲区模式运行，旧数据将被新数据覆盖。
+在覆盖模式下，可能无法推断新数据从哪里开始，消费者的工作是在读取时禁用测量以避免可能的数据竞争。
+.IP
+\fIaux_head\fP 和 \fIaux_tail\fP 环形缓冲区指针与前面描述的 \fIdata_head\fP 和 \fIdata_tail\fP
+具有相同的行为和排序规则。
+.PP
+接下来的 2^n 个环形缓冲区页面的布局如下所述。
+.PP
+如果设置了 \fIperf_event_attr.sample_id_all\fP，则所有事件类型都将具有与 where/when (identity)
+相关的 sample_type 选择字段 (TID、TIME、ID、CPU、STREAM_ID)，如下面的 \fBPERF_RECORD_SAMPLE\fP
+所述，它会被隐藏在 \fIperf_event_header\fP 和字段之后已经存在于现有字段中，即在有效，载荷，的末尾。 这允许较旧的 perf
+工具支持较新的 perf.data 文件，同时忽略新的可选字段。
+.PP
+mmap 值以标头开头:
+.PP
+.in +4n
+.EX
+struct perf_event_header {
+    __u32   type;
+    __u16   misc;
+    __u16   size;
+};
+.EE
+.in
+.PP
+下面，我们将更详细地描述 \fIperf_event_header\fP 字段。 为了便于阅读，首先显示描述较短的字段。
+.TP 
+\fIsize\fP
+这表示记录的大小。
+.TP 
+\fImisc\fP
+\fImisc\fP 字段包含有关样本的附加信息。
+.IP
+CPU 模式可以通过使用 \fBPERF_RECORD_MISC_CPUMODE_MASK\fP 屏蔽并查找以下内容之一来确定该值
+(注意这些不是位掩码，一次只能设置一个) :
+.RS
+.TP 
+\fBPERF_RECORD_MISC_CPUMODE_UNKNOWN\fP
+未知的 CPU 模式。
+.TP 
+\fBPERF_RECORD_MISC_KERNEL\fP
+示例发生在内核中。
+.TP 
+\fBPERF_RECORD_MISC_USER\fP
+示例发生在用户代码中。
+.TP 
+\fBPERF_RECORD_MISC_HYPERVISOR\fP
+示例发生在管理程序中。
+.TP 
+\fBPERF_RECORD_MISC_GUEST_KERNEL\fP (since Linux 2.6.35)
+.\" commit 39447b386c846bbf1c56f6403c5282837486200f
+示例发生在来宾内核中。
+.TP 
+\fBPERF_RECORD_MISC_GUEST_USER  (since Linux 2.6.35)\fP
+.\" commit 39447b386c846bbf1c56f6403c5282837486200f
+示例发生在来宾用户代码中。
+.RE
+.PP
+.RS
+由于以下三种状态是由不同的记录类型生成的，因此它们别名为同一位:
+.TP 
+\fBPERF_RECORD_MISC_MMAP_DATA\fP (since Linux 3.10)
+.\" commit 2fe85427e3bf65d791700d065132772fc26e4d75
+这是在映射不可执行时设置的; 否则映射是可执行的。
+.TP 
+\fBPERF_RECORD_MISC_COMM_EXEC\fP (since Linux 3.16)
+.\" commit 82b897782d10fcc4930c9d4a15b175348fdd2871
+如果进程名称更改是由 \fBexecve\fP(2) 系统调用引起的，则在比 Linux 3.16 更新的内核上设置 \fBPERF_RECORD_COMM\fP
+记录。
+.TP 
+\fBPERF_RECORD_MISC_SWITCH_OUT\fP (since Linux 4.3)
+.\" commit 45ac1403f564f411c6a383a2448688ba8dd705a4
+当生成 \fBPERF_RECORD_SWITCH\fP 或 \fBPERF_RECORD_SWITCH_CPU_WIDE\fP
+记录时，该位表示上下文切换远离当前进程 (而不是进入当前进程)。
+.RE
+.PP
+.RS
+此外，还可以设置以下位:
+.TP 
+\fBPERF_RECORD_MISC_EXACT_IP\fP
+这表明 \fBPERF_SAMPLE_IP\fP 的内容指向触发事件的实际指令。 另请详见 \fIperf_event_attr.precise_ip\fP。
+.TP 
+\fBPERF_RECORD_MISC_SWITCH_OUT_PREEMPT\fP (since Linux 4.17)
+.\" commit 101592b4904ecf6b8ed2a4784d41d180319d95a1
+当生成 \fBPERF_RECORD_SWITCH\fP 或 \fBPERF_RECORD_SWITCH_CPU_WIDE\fP 记录时，这表明上下文切换是抢占。
+.TP 
+\fBPERF_RECORD_MISC_MMAP_BUILD_ID\fP (since Linux 5.12)
+.\" commit 88a16a1309333e43d328621ece3e9fa37027e8eb
+这表明 \fBPERF_SAMPLE_MMAP2\fP 的内容包含构建 ID 数据，而不是设备主要和次要编号以及 inode 编号。
+.TP 
+\fBPERF_RECORD_MISC_EXT_RESERVED\fP (since Linux 2.6.35)
+.\" commit 1676b8a077c352085d52578fb4f29350b58b6e74
+这表示有可用的扩展数据 (当前未使用)。
+.TP 
+\fBPERF_RECORD_MISC_PROC_MAP_PARSE_TIMEOUT\fP
+.\" commit 930e6fcd2bcce9bcd9d4aa7e755678d33f3fe6f4
+该位不是由内核设置的。 它是为用户空间 perf 实用程序保留的，用于指示 \fI/proc/i[pid]/maps\fP 解析花费的时间太长并已停止，因此
+mmap 记录可能会被截断。
+.RE
+.TP 
+\fItype\fP
+\fItype\fP 值是以下之一。 相应记录 (位于标题之后) 中的值取决于所选的 \fItype\fP，如图所示。
+.RS
+.TP  4
+\fBPERF_RECORD_MMAP\fP
+MMAP 事件记录 \fBPROT_EXEC\fP 映射，以便我们可以将用户空间 IP 与代码相关联。 他们有以下结构体:
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32    pid, tid;
+    u64    addr;
+    u64    len;
+    u64    pgoff;
+    char   filename[];
+};
+.EE
+.in
+.RS
+.TP 
+\fIpid\fP
+是进程 ID。
+.TP 
+\fItid\fP
+是线程 ID。
+.TP 
+\fIaddr\fP
+是分配内存的地址。 \fIlen\fP 是分配内存的长度。 \fIpgoff\fP 是分配内存的页偏移量。 \fIfilename\fP 是描述已分配内存后备的字符串。
+.RE
+.TP 
+\fBPERF_RECORD_LOST\fP
+该记录指示事件何时丢失。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    id;
+    u64    lost;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIid\fP
+是丢失样本的唯一事件 ID。
+.TP 
+\fIlost\fP
+是丢失的事件数。
+.RE
+.TP 
+\fBPERF_RECORD_COMM\fP
+该记录表示进程名称发生了变化。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32    pid;
+    u32    tid;
+    char   comm[];
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIpid\fP
+是进程 ID。
+.TP 
+\fItid\fP
+是线程 ID。
+.TP 
+\fIcomm\fP
+是一个包含进程新名称的字符串。
+.RE
+.TP 
+\fBPERF_RECORD_EXIT\fP
+该记录表示进程退出事件。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32    pid, ppid;
+    u32    tid, ptid;
+    u64    time;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.TP 
+\fBPERF_RECORD_THROTTLE\fP, \fBPERF_RECORD_UNTHROTTLE\fP
+此记录表示 throttle/unthrottle 事件。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    time;
+    u64    id;
+    u64    stream_id;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.TP 
+\fBPERF_RECORD_FORK\fP
+该记录表示一个 fork 事件。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32    pid, ppid;
+    u32    tid, ptid;
+    u64    time;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.TP 
+\fBPERF_RECORD_READ\fP
+该记录表示读取事件。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32    pid, tid;
+    struct read_format values;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.TP 
+\fBPERF_RECORD_SAMPLE\fP
+该记录表示样本。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    sample_id;   /* if PERF_SAMPLE_IDENTIFIER */
+    u64    ip;          /* if PERF_SAMPLE_IP */
+    u32    pid, tid;    /* if PERF_SAMPLE_TID */
+    u64    time;        /* if PERF_SAMPLE_TIME */
+    u64    addr;        /* if PERF_SAMPLE_ADDR */
+    u64    id;          /* if PERF_SAMPLE_ID */
+    u64    stream_id;   /* if PERF_SAMPLE_STREAM_ID */
+    u32    cpu, res;    /* if PERF_SAMPLE_CPU */
+    u64    period;      /* if PERF_SAMPLE_PERIOD */
+    struct read_format v;
+                        /* if PERF_SAMPLE_READ */
+    u64    nr;          /* if PERF_SAMPLE_CALLCHAIN */
+    u64    ips[nr];     /* if PERF_SAMPLE_CALLCHAIN */
+    u32    size;        /* if PERF_SAMPLE_RAW */
+    char   data[size];  /* if PERF_SAMPLE_RAW */
+    u64    bnr;         /* if PERF_SAMPLE_BRANCH_STACK */
+    struct perf_branch_entry lbr[bnr];
+                        /* if PERF_SAMPLE_BRANCH_STACK */
+    u64    abi;         /* if PERF_SAMPLE_REGS_USER */
+    u64    regs[weight(mask)]; 
+                        /* if PERF_SAMPLE_REGS_USER */
+    u64    size;        /* if PERF_SAMPLE_STACK_USER */
+    char   data[size];  /* if PERF_SAMPLE_STACK_USER */
+    u64    dyn_size;    /* if PERF_SAMPLE_STACK_USER &&
+                           size != 0 */
+    union perf_sample_weight weight;
+                        /* if PERF_SAMPLE_WEIGHT */
+                        /* || PERF_SAMPLE_WEIGHT_STRUCT */
+    u64    data_src;    /* if PERF_SAMPLE_DATA_SRC */
+    u64    transaction; /* if PERF_SAMPLE_TRANSACTION */
+    u64    abi;         /* if PERF_SAMPLE_REGS_INTR */
+    u64    regs[weight(mask)];
+                        /* if PERF_SAMPLE_REGS_INTR */
+    u64    phys_addr;   /* if PERF_SAMPLE_PHYS_ADDR */
+    u64    cgroup;      /* if PERF_SAMPLE_CGROUP */
+    u64    data_page_size;
+                      /* if PERF_SAMPLE_DATA_PAGE_SIZE */
+    u64    code_page_size;
+                      /* if PERF_SAMPLE_CODE_PAGE_SIZE */
+    u64    size;        /* if PERF_SAMPLE_AUX */
+    char   data[size];  /* if PERF_SAMPLE_AUX */
+};
+.EE
+.in
+.RS 4
+.TP  4
+\fIsample_id\fP
+如果启用 \fBPERF_SAMPLE_IDENTIFIER\fP，则会包含一个 64 位唯一 ID。 这是 \fBPERF_SAMPLE_ID\fP \fIid\fP
+值的副本，但包含在示例的开头，因此解析器可以轻松获取该值。
+.TP 
+\fIip\fP
+如果启用 \fBPERF_SAMPLE_IP\fP，则包含一个 64 位指令指针值。
+.TP 
+\fIpid\fP, \fItid\fP
+如果启用 \fBPERF_SAMPLE_TID\fP，则包含 32 位进程 ID 和 32 位线程 ID。
+.TP 
+\fItime\fP
+如果启用 \fBPERF_SAMPLE_TIME\fP，则会包含一个 64 位时间戳。 这是通过 local_clock()
+获得的，如果可用，它是硬件时间戳，如果不可用，则为 jiffies 值。
+.TP 
+\fIaddr\fP
+如果启用 \fBPERF_SAMPLE_ADDR\fP，则会包含一个 64 位地址。 这通常是跟踪点、断点或软件事件的地址; 否则值为 0.
+.TP 
+\fIid\fP
+如果启用 \fBPERF_SAMPLE_ID\fP，则会包含一个 64 位唯一 ID。 如果事件是事件组的成员，则返回组长 ID。 此 ID 与
+\fBPERF_FORMAT_ID\fP 返回的 ID 相同。
+.TP 
+\fIstream_id\fP
+如果启用 \fBPERF_SAMPLE_STREAM_ID\fP，则会包含一个 64 位唯一 ID。 与 \fBPERF_SAMPLE_ID\fP
+不同，返回的是实际 ID，而不是组长。 此 ID 与 \fBPERF_FORMAT_ID\fP 返回的 ID 相同。
+.TP 
+\fIcpu\fP, \fIres\fP
+如果 \fBPERF_SAMPLE_CPU\fP 被启用，除了保留的 (unused) 32 位值之外，这是一个指示正在使用哪个 CPU 的 32 位值。
+.TP 
+\fIperiod\fP
+如果启用 \fBPERF_SAMPLE_PERIOD\fP，则写入一个 64 位值，指示当前采样周期。
+.TP 
+\fIv\fP
+如果启用 \fBPERF_SAMPLE_READ\fP，将包含一个类型为 read_format 的结构体，它具有事件组中所有事件的值。 包含的值取决于在
+\fBperf_event_open\fP() 时使用的 \fIread_format\fP 值。
+.TP 
+\fInr\fP, \fIips[nr]\fP
+如果启用 \fBPERF_SAMPLE_CALLCHAIN\fP，则包含一个 64 位数字，指示将跟随多少个后续 64 位指令指针。 这是当前的调用链。
+.TP 
+\fIsize\fP, \fIdata[size]\fP
+如果启用 \fBPERF_SAMPLE_RAW\fP，则包含一个指示大小的 32 位值，后跟长度大小的 8 位值数组。 这些值用 0 填充以具有 64
+位对齐。
+.IP
+此 RAW 记录数据相对于 ABI 是不透明的。 ABI 不会就其内容的稳定性做出任何 promises，它可能会因事件、硬件和内核版本而异。
+.TP 
+\fIbnr\fP, \fIlbr[bnr]\fP
+如果启用 \fBPERF_SAMPLE_BRANCH_STACK\fP，则包含一个指示记录数的 64 位值，后跟 \fIbnr\fP
+\fIperf_branch_entry\fP 结构，每个结构都包含以下字段:
+.RS
+.TP 
+\fIfrom\fP
+这表示源指令 (可能不是分支)。
+.TP 
+\fIto\fP
+分支目标。
+.TP 
+\fImispred\fP
+分支目标预测错误。
+.TP 
+\fIpredicted\fP
+预测了分支目标。
+.TP 
+\fIin_tx\fP (since Linux 3.11)
+.\" commit 135c5612c460f89657c4698fe2ea753f6f667963
+该分支处于事务性内存事务中。
+.TP 
+\fIabort\fP (since Linux 3.11)
+.\" commit 135c5612c460f89657c4698fe2ea753f6f667963
+该分支处于中止的事务性内存事务中。
+.TP 
+\fIcycles\fP (since Linux 4.3)
+.\" commit 71ef3c6b9d4665ee7afbbe4c208a98917dcfc32f
+这报告自上次分支栈更新以来经过的周期数。
+.PP
+条目从最新到最不最新，因此第一个条目具有最新的分支。
+.PP
+对 \fImispred\fP、\fIpredicted\fP 和 \fIcycles\fP 的支持是可选的; 如果不支持，这些值将是 0.
+.PP
+记录的分支类型由 \fIbranch_sample_type\fP 字段指定。
+.RE
+.TP 
+\fIabi\fP, \fIregs[weight(mask)]\fP
+如果启用 \fBPERF_SAMPLE_REGS_USER\fP，则记录用户 CPU 寄存器。
+.IP
+\fIabi\fP 字段是 \fBPERF_SAMPLE_REGS_ABI_NONE\fP、\fBPERF_SAMPLE_REGS_ABI_32\fP 或
+\fBPERF_SAMPLE_REGS_ABI_64\fP 之一。
+.IP
+\fIregs\fP 字段是由 \fIsample_regs_user\fP 属性字段指定的 CPU 寄存器数组。 值的数量是在
+\fIsample_regs_user\fP 位掩码中设置的位数。
+.TP 
+\fIsize\fP, \fIdata[size]\fP, \fIdyn_size\fP
+如果启用 \fBPERF_SAMPLE_STACK_USER\fP，则会记录用户栈。 这可用于生成栈回溯。 \fIsize\fP 是用户在
+\fIsample_stack_user\fP 中请求的大小或者最大记录大小。 \fIdata\fP 是栈数据 (采样时栈指针指向的内存的原始转储)。
+\fIdyn_size\fP 是实际转储的数据量 (可以小于 \fIsize\fP)。 请注意，如果 \fIsize\fP 为 0.
+.TP 
+\fIweight\fP
+如果启用 \fBPERF_SAMPLE_WEIGHT\fP 或 \fBPERF_SAMPLE_WEIGHT_STRUCT\fP，则会记录硬件提供的 64
+位值，指示事件的成本。 这使得昂贵的事件在配置文件中更清晰地脱颖而出。
+.TP 
+\fIdata_src\fP
+如果启用 \fBPERF_SAMPLE_DATA_SRC\fP，则会记录一个由以下字段组成的 64 位值:
+.RS
+.TP  4
+\fImem_op\fP
+操作码类型，按位组合:
+.IP
+.PD 0
+.RS
+.TP  24
+\fBPERF_MEM_OP_NA\fP
+无法使用
+.TP 
+\fBPERF_MEM_OP_LOAD\fP
+加载指令
+.TP 
+\fBPERF_MEM_OP_STORE\fP
+店铺说明
+.TP 
+\fBPERF_MEM_OP_PFETCH\fP
+Prefetch
+.TP 
+\fBPERF_MEM_OP_EXEC\fP
+可执行代码
+.RE
+.PD
+.TP 
+\fImem_lvl\fP
+内存层次级别命中或未命中，以下的按位组合，左移 \fBPERF_MEM_LVL_SHIFT\fP:
+.IP
+.PD 0
+.RS
+.TP  24
+\fBPERF_MEM_LVL_NA\fP
+无法使用
+.TP 
+\fBPERF_MEM_LVL_HIT\fP
+Hit
+.TP 
+\fBPERF_MEM_LVL_MISS\fP
+Miss
+.TP 
+\fBPERF_MEM_LVL_L1\fP
+一级缓存
+.TP 
+\fBPERF_MEM_LVL_LFB\fP
+行填充缓冲区
+.TP 
+\fBPERF_MEM_LVL_L2\fP
+二级缓存
+.TP 
+\fBPERF_MEM_LVL_L3\fP
+三级缓存
+.TP 
+\fBPERF_MEM_LVL_LOC_RAM\fP
+本地内存
+.TP 
+\fBPERF_MEM_LVL_REM_RAM1\fP
+远程 DRAM 1 跳
+.TP 
+\fBPERF_MEM_LVL_REM_RAM2\fP
+远程 DRAM 2 跳
+.TP 
+\fBPERF_MEM_LVL_REM_CCE1\fP
+远程缓存 1 跳
+.TP 
+\fBPERF_MEM_LVL_REM_CCE2\fP
+远程缓存 2 跳
+.TP 
+\fBPERF_MEM_LVL_IO\fP
+I/O 内存
+.TP 
+\fBPERF_MEM_LVL_UNC\fP
+未缓存的内存
+.RE
+.PD
+.TP 
+\fImem_snoop\fP
+Snoop 模式，以下的按位组合，左移 \fBPERF_MEM_SNOOP_SHIFT\fP:
+.IP
+.PD 0
+.RS
+.TP  24
+\fBPERF_MEM_SNOOP_NA\fP
+无法使用
+.TP 
+\fBPERF_MEM_SNOOP_NONE\fP
+没有窥探
+.TP 
+\fBPERF_MEM_SNOOP_HIT\fP
+窥探命中
+.TP 
+\fBPERF_MEM_SNOOP_MISS\fP
+窥探小姐
+.TP 
+\fBPERF_MEM_SNOOP_HITM\fP
+窥探命中修改
+.RE
+.PD
+.TP 
+\fImem_lock\fP
+锁定指令，以下按位组合，左移 \fBPERF_MEM_LOCK_SHIFT\fP:
+.IP
+.PD 0
+.RS
+.TP  24
+\fBPERF_MEM_LOCK_NA\fP
+无法使用
+.TP 
+\fBPERF_MEM_LOCK_LOCKED\fP
+锁定交易
+.RE
+.PD
+.TP 
+\fImem_dtlb\fP
+TLB 访问命中或未命中，以下的按位组合，左移 \fBPERF_MEM_TLB_SHIFT\fP:
+.IP
+.PD 0
+.RS
+.TP  24
+\fBPERF_MEM_TLB_NA\fP
+无法使用
+.TP 
+\fBPERF_MEM_TLB_HIT\fP
+Hit
+.TP 
+\fBPERF_MEM_TLB_MISS\fP
+Miss
+.TP 
+\fBPERF_MEM_TLB_L1\fP
+一级 TLB
+.TP 
+\fBPERF_MEM_TLB_L2\fP
+二级 TLB
+.TP 
+\fBPERF_MEM_TLB_WK\fP
+五金学步车
+.TP 
+\fBPERF_MEM_TLB_OS\fP
+操作系统故障处理程序
+.RE
+.PD
+.RE
+.TP 
+\fItransaction\fP
+如果设置了 \fBPERF_SAMPLE_TRANSACTION\fP 标志，则会记录一个 64 位字段，描述任何事务内存中止的来源。
+.IP
+该字段是以下值的按位组合:
+.RS
+.TP 
+\fBPERF_TXN_ELISION\fP
+终止来自省略类型的交易 (Intel\-CPU\-specific)。
+.TP 
+\fBPERF_TXN_TRANSACTION\fP
+从泛型交易中终止。
+.TP 
+\fBPERF_TXN_SYNC\fP
+同步终止 (与上报指令相关)。
+.TP 
+\fBPERF_TXN_ASYNC\fP
+异步终止 (与上报指令无关)。
+.TP 
+\fBPERF_TXN_RETRY\fP
+可重试终止 (重试交易可能已经成功)。
+.TP 
+\fBPERF_TXN_CONFLICT\fP
+由于内存与其他线程冲突而终止。
+.TP 
+\fBPERF_TXN_CAPACITY_WRITE\fP
+由于写入容量溢出而终止。
+.TP 
+\fBPERF_TXN_CAPACITY_READ\fP
+由于读取容量溢出而终止。
+.RE
+.IP
+此外，通过右移 \fBPERF_TXN_ABORT_SHIFT\fP 并用值 \fBPERF_TXN_ABORT_MASK\fP 屏蔽，可以从该字段的高 32
+位获得用户指定的终止代码。
+.TP 
+\fIabi\fP, \fIregs[weight(mask)]\fP
+如果启用 \fBPERF_SAMPLE_REGS_INTR\fP，则记录用户 CPU 寄存器。
+.IP
+\fIabi\fP 字段是 \fBPERF_SAMPLE_REGS_ABI_NONE\fP、\fBPERF_SAMPLE_REGS_ABI_32\fP 或
+\fBPERF_SAMPLE_REGS_ABI_64\fP 之一。
+.IP
+\fIregs\fP 字段是由 \fIsample_regs_intr\fP 属性字段指定的 CPU 寄存器数组。 值的数量是在
+\fIsample_regs_intr\fP 位掩码中设置的位数。
+.TP 
+\fIphys_addr\fP
+如果设置了 \fBPERF_SAMPLE_PHYS_ADDR\fP 标志，则记录 64 位物理地址。
+.TP 
+\fIcgroup\fP
+如果设置了 \fBPERF_SAMPLE_CGROUP\fP 标志，则会记录 64 位 cgroup ID (用于 perf_event 子系统)。 要获取
+cgroup 的路径名，ID 应与 \fBPERF_RECORD_CGROUP\fP 中的一个匹配。
+.TP 
+\fIdata_page_size\fP
+如果设置了 \fBPERF_SAMPLE_DATA_PAGE_SIZE\fP 标志，则记录 \fBdata\fP 地址的 64 位页面大小值。
+.TP 
+\fIcode_page_size\fP
+如果设置了 \fBPERF_SAMPLE_CODE_PAGE_SIZE\fP 标志，则记录 \fBip\fP 地址的 64 位页面大小值。
+.TP 
+\fIsize\fP
+.TQ
+\fIdata\fP[\fIsize\fP]
+如果启用 \fBPERF_SAMPLE_AUX\fP，则会记录辅助缓冲区的快照。
+.RE
+.TP 
+\fBPERF_RECORD_MMAP2\fP
+该记录包括有关返回可执行映射的 \fBmmap\fP(2) 调用的扩展信息。 该格式类似于 \fBPERF_RECORD_MMAP\fP
+记录的格式，但包含允许唯一标识共享映射的额外值。 根据标头中的 \fBPERF_RECORD_MISC_MMAP_BUILD_ID\fP
+位，额外值具有不同的布局和含义。
+.IP
+.in +4n
+.EX
+struct { 
+    struct perf_event_header header;
+    u32    pid;
+    u32    tid;
+    u64    addr;
+    u64    len;
+    u64    pgoff;
+    union {
+        struct {
+            u32    maj;
+            u32    min;
+            u64    ino;
+            u64    ino_generation;
+        };
+        struct {   /* if PERF_RECORD_MISC_MMAP_BUILD_ID */
+            u8     build_id_size;
+            u8     __reserved_1;
+            u16    __reserved_2;
+            u8     build_id[20];
+        };
+    };
+    u32    prot;
+    u32    flags;
+    char   filename[];
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIpid\fP
+是进程 ID。
+.TP 
+\fItid\fP
+是线程 ID。
+.TP 
+\fIaddr\fP
+是分配内存的地址。
+.TP 
+\fIlen\fP
+是分配内存的长度。
+.TP 
+\fIpgoff\fP
+是分配内存的页面偏移量。
+.TP 
+\fImaj\fP
+是底层设备的主要 ID。
+.TP 
+\fImin\fP
+是底层设备的次要 ID。
+.TP 
+\fIino\fP
+是索引节点号。
+.TP 
+\fIino_generation\fP
+是 inode 代。
+.TP 
+\fIbuild_id_size\fP
+是 \fIbuild_id\fP 字段的实际大小 (最多 20 个)。
+.TP 
+\fIbuild_id\fP
+是识别二进制文件的原始数据。
+.TP 
+\fIprot\fP
+是保护信息。
+.TP 
+\fIflags\fP
+是标志信息。
+.TP 
+\fIfilename\fP
+是描述分配内存的支持的字符串。
+.RE
+.TP 
+\fBPERF_RECORD_AUX\fP (since Linux 4.1)
+.\" commit 68db7e98c3a6ebe7284b6cf14906ed7c55f3f7f0
+此记录报告新数据在单独的 AUX 缓冲区中可用。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    aux_offset;
+    u64    aux_size;
+    u64    flags;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIaux_offset\fP
+新数据开始的 AUX mmap 区域中的偏移量。
+.TP 
+\fIaux_size\fP
+可用数据的大小。
+.TP 
+\fIflags\fP
+描述 AUX 更新。
+.RS
+.TP 
+\fBPERF_AUX_FLAG_TRUNCATED\fP
+如果设置，则返回的数据将被截断以适合可用的缓冲区大小。
+.TP 
+\fBPERF_AUX_FLAG_OVERWRITE\fP
+.\" commit 2023a0d2829e521fe6ad6b9907f3f90bfbf57142
+如果设置，则返回的数据已覆盖以前的数据。
+.RE
+.RE
+.TP 
+\fBPERF_RECORD_ITRACE_START\fP (since Linux 4.1)
+.\" ec0d7729bbaed4b9d2d3fada693278e13a3d1368
+此记录指示哪个进程启动了指令跟踪事件，允许工具将 AUX 缓冲区中的指令地址与正确的可执行文件正确关联。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32    pid;
+    u32    tid;
+};
+.EE
+.in
+.RS
+.TP 
+\fIpid\fP
+开始指令跟踪的线程的进程 ID。
+.TP 
+\fItid\fP
+开始指令跟踪的线程的线程 ID。
+.RE
+.TP 
+\fBPERF_RECORD_LOST_SAMPLES\fP (since Linux 4.2)
+.\" f38b0dbb491a6987e198aa6b428db8692a6480f8
+使用硬件采样 (例如 Intel PEBS) 时，此记录指示可能丢失的样本数量。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    lost;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIlost\fP
+可能丢失的样本数。
+.RE
+.TP 
+\fBPERF_RECORD_SWITCH\fP (since Linux 4.3)
+.\" commit 45ac1403f564f411c6a383a2448688ba8dd705a4
+该记录表明发生了上下文切换。 \fImisc\fP 字段中的 \fBPERF_RECORD_MISC_SWITCH_OUT\fP
+位指示它是进入还是离开当前进程的上下文切换。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.TP 
+\fBPERF_RECORD_SWITCH_CPU_WIDE\fP (since Linux 4.3)
+.\" commit 45ac1403f564f411c6a383a2448688ba8dd705a4
+与 \fBPERF_RECORD_SWITCH\fP 一样，此记录表示发生了上下文切换，但它仅在 CPU
+范围模式下采样时发生，并提供有关正在切换的进程的附加信息 to/from。 \fImisc\fP 字段中的
+\fBPERF_RECORD_MISC_SWITCH_OUT\fP 位指示它是进入还是离开当前进程的上下文切换。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32 next_prev_pid;
+    u32 next_prev_tid;
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fInext_prev_pid\fP
+CPU 上前一个 (如果切换进来) 或下一个 (如果切换出去) 进程的进程 ID。
+.TP 
+\fInext_prev_tid\fP
+CPU 上上一个 (如果切换) 或下一个 (如果切换) 线程的线程 ID。
+.RE
+.TP 
+\fBPERF_RECORD_NAMESPACES\fP (since Linux 4.11)
+.\" commit e422267322cd319e2695a535e47c5b1feeac45eb
+该记录包括进程的各种命名空间信息。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u32    pid;
+    u32    tid;
+    u64    nr_namespaces;
+    struct { u64 dev, inode } [nr_namespaces];
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIpid\fP
+是进程 ID
+.TP 
+\fItid\fP
+是线程 ID
+.TP 
+\fInr_namespace\fP
+是这个记录中命名空间的数量
+.RE
+.IP
+每个命名空间都有 \fIdev\fP 和 \fIinode\fP 字段，记录在如下固定位置:
+.RS
+.TP 
+\fBNET_NS_INDEX\fP=\fB0\fP
+网络命名空间
+.TP 
+\fBUTS_NS_INDEX\fP=\fB1\fP
+UTS 命名空间
+.TP 
+\fBIPC_NS_INDEX\fP=\fB2\fP
+IPC 命名空间
+.TP 
+\fBPID_NS_INDEX\fP=\fB3\fP
+PID 命名空间
+.TP 
+\fBUSER_NS_INDEX\fP=\fB4\fP
+用户命名空间
+.TP 
+\fBMNT_NS_INDEX\fP=\fB5\fP
+挂载命名空间
+.TP 
+\fBCGROUP_NS_INDEX\fP=\fB6\fP
+Cgroup 命名空间
+.RE
+.TP 
+\fBPERF_RECORD_KSYMBOL\fP (since Linux 5.0)
+.\" commit 76193a94522f1d4edf2447a536f3f796ce56343b
+该记录表示内核符号 register/unregister 事件。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    addr;
+    u32    len;
+    u16    ksym_type;
+    u16    flags;
+    char   name[];
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIaddr\fP
+是内核符号的地址。
+.TP 
+\fIlen\fP
+是内核符号的长度。
+.TP 
+\fIksym_type\fP
+是内核符号的类型。 目前提供以下类型:
+.RS
+.TP 
+\fBPERF_RECORD_KSYMBOL_TYPE_BPF\fP
+内核符号是一个 BPF 函数。
+.RE
+.TP 
+\fIflags\fP
+如果设置了 \fBPERF_RECORD_KSYMBOL_FLAGS_UNREGISTER\fP，则此事件用于注销内核符号。
+.RE
+.TP 
+\fBPERF_RECORD_BPF_EVENT\fP (since Linux 5.0)
+.\" commit 6ee52e2a3fe4ea35520720736e6791df1fb67106
+这条记录表明 BPF 程序被加载或卸载。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u16 type;
+    u16 flags;
+    u32 id;
+    u8 tag[BPF_TAG_SIZE];
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fItype\fP
+是以下值之一:
+.RS
+.TP 
+\fBPERF_BPF_EVENT_PROG_LOAD\fP
+一个 BPF 程序被加载
+.TP 
+\fBPERF_BPF_EVENT_PROG_UNLOAD\fP
+BPF 程序被卸载
+.RE
+.TP 
+\fIid\fP
+是 BPF 程序的 ID。
+.TP 
+\fItag\fP
+是 BPF 程序的标签。 目前，\fBBPF_TAG_SIZE\fP 被定义为 8.
+.RE
+.TP 
+\fBPERF_RECORD_CGROUP\fP (since Linux 5.7)
+.\" commit 96aaab686505c449e24d76e76507290dcc30e008
+这条记录表明一个新的 cgroup 被创建并激活。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    id;
+    char   path[];
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIid\fP
+是 cgroup 标识符。 这也可以通过 cgroup 路径上的 \fBname_to_handle_at\fP(2) 检索 (作为文件句柄)。
+.TP 
+\fIpath\fP
+是 cgroup 从根开始的路径。
+.RE
+.TP 
+\fBPERF_RECORD_TEXT_POKE\fP (since Linux 5.8)
+.\" commit e17d43b93e544f5016c0251d2074c15568d5d963
+该记录表明内核文本发生了变化。 这包括添加和删除文本，并且在这种情况下相应的长度为零。
+.IP
+.in +4n
+.EX
+struct {
+    struct perf_event_header header;
+    u64    addr;
+    u16    old_len;
+    u16    new_len;
+    u8     bytes[];
+    struct sample_id sample_id;
+};
+.EE
+.in
+.RS
+.TP 
+\fIaddr\fP
+是变化的地址
+.TP 
+\fIold_len\fP
+是旧的长度
+.TP 
+\fInew_len\fP
+是新的长度
+.TP 
+\fIbytes\fP
+包含紧跟新字节的旧字节。
+.RE
+.RE
+.SS "Overflow handling"
+事件可以设置为在超过阈值时发出通知，表示溢出。 可以通过使用 \fBpoll\fP(2)、\fBselect\fP(2) 或 \fBepoll\fP(7)
+监视事件文件描述符来捕获溢出情况。 或者，可以通过信号处理程序捕获溢出事件，方法是在文件描述符上启用 I/O 信号; 请参见 \fBfcntl\fP(2)
+中对 \fBF_SETOWN\fP 和 \fBF_SETSIG\fP 操作的讨论。
+.PP
+溢出仅由采样事件生成 (\fIsample_period\fP 必须具有非零值)。
+.PP
+有两种方法可以生成溢出通知。
+.PP
+第一个是设置一个 \fIwakeup_events\fP 或 \fIwakeup_watermark\fP 值，如果一定数量的样本或字节已写入 mmap
+环形缓冲区，将触发该值。 在这种情况下，指示 \fBPOLL_IN\fP。
+.PP
+另一种方法是使用 \fBPERF_EVENT_IOC_REFRESH\fP ioctl。 此 ioctl 添加到计数器，每次事件溢出时该计数器都会递减。
+当非零时，指示 \fBPOLL_IN\fP，但一旦计数器达到 0，则指示 \fBPOLL_HUP\fP 并禁用，底层，事件。
+.PP
+.\" See https://lkml.org/lkml/2011/5/24/337
+刷新一个 event group leader 会刷新所有的 siblings，参数为 0 的 refreshing 目前可以无限刷新;
+这些行为不受支持，不应依赖。
+.PP
+.\" commit 179033b3e064d2cd3f5f9945e76b0a0f0fbf4883
+从 Linux 3.18 开始，如果正在监视的事件附加到不同的进程并且该进程退出，则指示 \fBPOLL_HUP\fP。
+.SS "rdpmc instruction"
+.\" commit c7206205d00ab375839bd6c7ddb247d600693c09
+从 x86 上的 Linux 3.4 开始，不用进入内核就可以使用 \fIrdpmc\fP 指令获得低延迟读取。 请注意，使用 \fIrdpmc\fP
+不一定比其他读取事件值的方法更快。
+.PP
+可以通过 mmap 页面中的 \fIcap_usr_rdpmc\fP 字段检测对此的支持; 可以在该部分找到有关如何计算事件值的文档。
+.PP
+.\" 7911d3f7af14a614617e38245fedf98a724e46a9
+最初，当启用 rdpmc 支持时，任何进程 (不仅仅是具有活动 perf 事件的进程) 都可以使用 rdpmc 指令访问计数器。 从 Linux 4.0
+开始，仅当当前在进程上下文中启用事件时才允许 rdpmc 支持。 要恢复旧行为，请将值 2 写入 \fI/sys/devices/cpu/rdpmc\fP。
+.SS "perf_event ioctl calls"
+各种 ioctl 作用于 \fBperf_event_open\fP() 文件描述符:
+.TP 
+\fBPERF_EVENT_IOC_ENABLE\fP
+这将启用由文件描述符参数指定的单个事件或事件组。
+.IP
+如果在 ioctl 参数中设置了 \fBPERF_IOC_FLAG_GROUP\fP 位，则启用组中的所有事件，即使指定的事件不是组长 (但请参见
+BUGS)。
+.TP 
+\fBPERF_EVENT_IOC_DISABLE\fP
+这将禁用由文件描述符参数指定的单个计数器或事件组。
+.IP
+启用或禁用组长将启用或禁用整个组; 也就是说，当组长被禁用时，组中的所有计数器都不会计数。 启用或禁用领导者以外的组的成员仅影响该计数器;
+禁用非领导者会停止该计数器的计数，但不会影响任何其他计数器。
+.IP
+如果在 ioctl 参数中设置了 \fBPERF_IOC_FLAG_GROUP\fP 位，则组中的所有事件都将被禁用，即使指定的事件不是组长 (但请参见
+BUGS)。
+.TP 
+\fBPERF_EVENT_IOC_REFRESH\fP
+非继承溢出计数器可以使用它来为参数指定的溢出次数启用计数器，之后它被禁用。 此 ioctl 的后续调用将参数值添加到当前计数。 每次溢出都会发生
+\fBPOLL_IN\fP 设置的溢出通知，直到计数达到 0; 当发生这种情况时，将发送一个设置了 \fBPOLL_HUP\fP 的通知并禁用该事件。 使用 0
+的参数被认为是未定义的行为。
+.TP 
+\fBPERF_EVENT_IOC_RESET\fP
+将文件描述符指定的事件计数重置为零。 这只会重置计数; 无法重置多路复用 \fItime_enabled\fP 或 \fItime_running\fP 值。
+.IP
+如果在 ioctl 参数中设置了 \fBPERF_IOC_FLAG_GROUP\fP 位，那么组中的所有事件都会被重置，即使指定的事件不是组长 (但请参见
+BUGS)。
+.TP 
+\fBPERF_EVENT_IOC_PERIOD\fP
+这会更新事件的溢出周期。
+.IP
+.\" commit 3581fe0ef37ce12ac7a4f74831168352ae848edc
+.\" commit bad7192b842c83e580747ca57104dd51fe08c223
+自 Linux 3.7 (在 ARM 上) 和 Linux 3.14 (所有其他架构) 以来，新周期立即生效。
+在旧内核上，新周期直到下一次溢出后才生效。
+.IP
+参数是指向包含所需新周期的 64 位值的指针。
+.IP
+.\" commit ad0cf3478de8677f720ee06393b3147819568d6a
+在 Linux 2.6.36 之前，这个 ioctl 总是由于内核中的错误而失败。
+.TP 
+\fBPERF_EVENT_IOC_SET_OUTPUT\fP
+这告诉内核将事件通知报告给指定的文件描述符而不是默认的文件描述符。 文件描述符必须都在同一个 CPU 上。
+.IP
+参数指定所需的文件描述符，如果应忽略输出，则为 \-1。
+.TP 
+\fBPERF_EVENT_IOC_SET_FILTER\fP (since Linux 2.6.33)
+.\" commit 6fb2915df7f0747d9044da9dbff5b46dc2e20830
+这将为此事件添加一个 ftrace 过滤器。
+.IP
+参数是指向所需 ftrace 过滤器的指针。
+.TP 
+\fBPERF_EVENT_IOC_ID\fP (since Linux 3.12)
+.\" commit cf4957f17f2a89984915ea808876d9c82225b862
+这将返回给定事件文件描述符的事件 ID 值。
+.IP
+参数是指向 64 位无符号整数的指针，用于保存结果。
+.TP 
+\fBPERF_EVENT_IOC_SET_BPF\fP (since Linux 4.1)
+.\" commit 2541517c32be2531e0da59dfd7efc1ce844644f5
+这允许将 Berkeley Packet Filter (BPF) 程序附加到现有的 kprobe 跟踪点事件。 您需要 \fBCAP_PERFMON\fP
+(自 Linux 5.8 起) 或 \fBCAP_SYS_ADMIN\fP 权限才能使用此 ioctl。
+.IP
+参数是一个 BPF 程序文件描述符，由之前的 \fBbpf\fP(2) 系统调用创建。
+.TP 
+\fBPERF_EVENT_IOC_PAUSE_OUTPUT\fP (since Linux 4.7)
+.\" commit 86e7972f690c1017fd086cdfe53d8524e68c661c
+这允许暂停和恢复事件的环形缓冲区。 暂停的环形缓冲区不会阻止样本的生成，而只是丢弃它们。 丢弃的样本被视为丢失，并在可能的情况下导致生成
+\fBPERF_RECORD_LOST\fP 样本。 即使环形缓冲区保持为空，丢弃的样本仍可能触发溢出信号。
+.IP
+参数是一个无符号的 32 位整数。 非零值暂停环形缓冲区，而零值恢复环形缓冲区。
+.TP 
+\fBPERF_EVENT_MODIFY_ATTRIBUTES\fP (since Linux 4.17)
+.\" commit 32ff77e8cc9e66cc4fb38098f64fd54cc8f54573
+这允许修改现有事件而无需关闭和重新打开新事件的开销。 目前这仅支持断点事件。
+.IP
+参数是指向包含更新事件设置的 \fIperf_event_attr\fP 结构体的指针。
+.TP 
+\fBPERF_EVENT_IOC_QUERY_BPF\fP (since Linux 4.16)
+.\" commit f371b304f12e31fe30207c41ca7754564e0ea4dc
+这允许查询哪些 Berkeley Packet Filter (BPF) 程序附加到现有的 kprobe 跟踪点。 每个事件只能附加一个 BPF
+程序，但可以将多个事件附加到一个跟踪点。 在一个跟踪点事件上查询此值会返回附加到跟踪点的所有事件中所有 BPF 程序的 ID。 您需要
+\fBCAP_PERFMON\fP (自 Linux 5.8 起) 或 \fBCAP_SYS_ADMIN\fP 权限才能使用此 ioctl。
+.IP
+参数是指向结构体的指针
+.in +4n
+.EX
+struct perf_event_query_bpf {
+    __u32    ids_len;
+    __u32    prog_cnt;
+    __u32    ids[0];
+};
+.EE
+.in
+.IP
+.\"
+\fIids_len\fP 字段指示可容纳在提供的 \fIids\fP 数组中的 ID 数。 \fIprog_cnt\fP 值由内核使用附加的 BPF 程序数填充。
+\fIids\fP 数组填充了每个附加的 BPF 程序的 ID。 如果程序多于数组容纳不下的数量，则内核将返回 \fBENOSPC\fP，\fIids_len\fP
+将指示已成功复制的程序 ID 的数量。
+.SS "Using prctl(2)"
+进程可以使用 \fBprctl\fP(2) \fBPR_TASK_PERF_EVENTS_ENABLE\fP 和
+\fBPR_TASK_PERF_EVENTS_DISABLE\fP 操作启用或禁用所有当前打开的事件组。 这仅适用于调用进程在本地创建的事件。
+这不适用于附加到调用进程的其他进程创建的事件或从父进程继承的事件。 仅启用和禁用组长，而不是组的任何其他成员。
+.SS "perf_event related configuration files"
+\fI/proc/sys/kernel/\fP 中的文件
+.RS 4
+.TP 
+\fI/proc/sys/kernel/perf_event_paranoid\fP
+\fIperf_event_paranoid\fP 文件可以设置为限制对性能计数器的访问。
+.IP
+.PD 0
+.RS
+.TP 
+\fB2\fP
+.\" default changed in commit 0161028b7c8aebef64194d3d73e43bc3b53b5c66
+仅允许用户空间测量 (默认自 Linux 4.6)。
+.TP 
+\fB1\fP
+允许内核和用户测量 (Linux 4.6 之前的默认值)。
+.TP 
+\fB0\fP
+允许访问特定于 CPU 的数据，但不允许访问原始跟踪点样本。
+.TP 
+\fB\-1\fP
+无限制。
+.RE
+.PD
+.IP
+\fIperf_event_paranoid\fP 文件的存在是确定内核是否支持 \fBperf_event_open\fP() 的官方方法。
+.TP 
+\fI/proc/sys/kernel/perf_event_max_sample_rate\fP
+这设置了最大采样率。 将此值设置得太高会使用户以影响整体机器性能的速率进行采样，并可能锁定机器。 默认值为 100000 (每秒样本数)。
+.TP 
+\fI/proc/sys/kernel/perf_event_max_stack\fP
+.\" Introduced in c5dfd78eb79851e278b7973031b9ca363da87a7e
+该文件设置生成调用跟踪时报告的栈帧条目的最大深度。
+.TP 
+\fI/proc/sys/kernel/perf_event_mlock_kb\fP
+非特权用户可以访问的最大页数 \fBmlock\fP(2)。 默认值为 516 (kB)。
+.RE
+.PP
+\fI/sys/bus/event_source/devices/\fP 中的文件
+.PP
+.RS 4
+从 Linux 2.6.34 开始，内核支持有多个 PMU 可用于监控。 有关如何对这些 PMU 进行编程的信息，请参见
+\fI/sys/bus/event_source/devices/\fP。 每个子目录对应不同的 PMU。
+.TP 
+\fI/sys/bus/event_source/devices/*/type\fP (since Linux 2.6.38)
+.\" commit abe43400579d5de0078c2d3a760e6598e183f871
+这包含一个整数，可用于 \fIperf_event_attr\fP 的 \fItype\fP 字段以指示您希望使用此 PMU。
+.TP 
+\fI/sys/bus/event_source/devices/cpu/rdpmc\fP (since Linux 3.4)
+.\" commit 0c9d42ed4cee2aa1dfc3a260b741baae8615744f
+如果此文件为 1，则允许通过 rdpmc 指令直接在用户空间访问性能计数器寄存器。 这可以通过向文件回显 0 来禁用。
+.IP
+.\" a66734297f78707ce39d756b656bfae861d53f62
+.\" 7911d3f7af14a614617e38245fedf98a724e46a9
+从 Linux 4.0 开始，行为发生了变化，因此 1 现在表示仅允许访问具有活动性能事件的进程，而 2 表示旧的允许任何人访问行为。
+.TP 
+\fI/sys/bus/event_source/devices/*/format/\fP (since Linux 3.4)
+.\" commit 641cc938815dfd09f8fa1ec72deb814f0938ac33
+该子目录包含有关可用于对 \fIperf_event_attr\fP 结构体中的各种 \fIconfig\fP 字段进行编程的特定于体系结构的子字段的信息。
+.IP
+每个文件的内容是配置字段的名称，后跟一个冒号，然后是一系列以逗号分隔的整数位范围。 例如，文件 \fIevent\fP 可能包含值
+\fIconfig1:1,6\-10,44\fP，表示事件是一个属性，它占用 \fIperf_event_attr::config1\fP 的位 1,6\[en]
+10 和 44。
+.TP 
+\fI/sys/bus/event_source/devices/*/events/\fP (since Linux 3.4)
+.\" commit 641cc938815dfd09f8fa1ec72deb814f0938ac33
+该子目录包含具有预定义事件的文件。 内容是描述事件设置的字符串，这些设置是根据前面提到的 \fI./format/\fP 目录中的字段表示的。 这些不一定是
+PMU 支持的所有事件的完整列表，但通常是被认为有用或有趣的事件的子集。
+.IP
+每个文件的内容是以逗号分隔的属性名称列表。 每个条目都有一个可选值 (十六进制或十进制)。 如果未指定值，则假定它是值为 1 的单位字段。
+示例条目可能如下所示: \fIevent=0x2,inv,ldlat=3\fP。
+.TP 
+\fI/sys/bus/event_source/devices/*/uevent\fP
+该文件是用于注入热插拔事件的标准内核设备接口。
+.TP 
+\fI/sys/bus/event_source/devices/*/cpumask\fP (since Linux 3.7)
+.\" commit 314d9f63f385096580e9e2a06eaa0745d92fe4ac
+\fIcpumask\fP 文件包含一个逗号分隔的整数列表，表示主板上每个插槽 (package) 的代表性 CPU 编号。
+在设置非核心或北桥事件时需要这样做，因为这些 PMU 会呈现套接字范围的事件。
+.RE
+.SH "RETURN VALUE"
+成功时，\fBperf_event_open\fP() 返回新的文件描述符。 出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+\fBperf_event_open\fP() 返回的错误可能不一致，并且可能因处理器架构和性能监控单元而异。
+.TP 
+\fBE2BIG\fP
+如果 \fIperf_event_attr\fP \fIsize\fP 值太小 (小于 \fBPERF_ATTR_SIZE_VER0\fP)、太大 (大于页面大小)
+或大于内核支持且额外字节不为零，则返回。 当返回 \fBE2BIG\fP 时，\fIperf_event_attr\fP \fIsize\fP
+字段被内核覆盖为它期望的结构体的大小。
+.TP 
+\fBEACCES\fP
+当请求的事件需要 \fBCAP_PERFMON\fP (自 Linux 5.8) 或 \fBCAP_SYS_ADMIN\fP 权限 (或更宽松的
+perf_event 偏执设置) 时返回。 非特权进程可能会遇到此错误的一些常见情况: 附加到不同用户拥有所有权的进程; 监视给定 CPU 上的所有进程
+(即指定 \fIpid\fP 参数为 \-1) ; 并且在偏执狂设置需要时不设置 \fIexclude_kernel\fP。
+.TP 
+\fBEBADF\fP
+如果 \fIgroup_fd\fP 文件描述符无效则返回，或者如果设置了 \fBPERF_FLAG_PID_CGROUP\fP，\fIpid\fP 中的 cgroup
+文件描述符无效。
+.TP 
+\fBEBUSY\fP (since Linux 4.1)
+.\" bed5b25ad9c8a2f5d735ef0bc746ec870c01c1b0
+如果另一个事件已经具有对 PMU 的独占访问权，则返回。
+.TP 
+\fBEFAULT\fP
+如果 \fIattr\fP 指针指向无效的内存地址，则返回。
+.TP 
+\fBEINTR\fP
+尝试混合 perf 和 ftrace 处理以进行 uprobe 时返回。
+.TP 
+\fBEINVAL\fP
+如果指定的事件无效则返回。 这有很多可能的原因。 一个不详尽的列表: \fIsample_freq\fP 高于最大设置; 要监控的 \fIcpu\fP 不存在;
+\fIread_format\fP 越界; \fIsample_type\fP 越界; \fIflags\fP 值越界; \fIexclusive\fP 或 \fIpinned\fP
+设置且事件不是组长; 事件 \fIconfig\fP 值越界或设置保留位; 不支持选择的泛型事件; 或者没有足够的空间来添加选定的事件。
+.TP 
+\fBEMFILE\fP
+每个打开的事件使用一个文件描述符。 如果打开大量事件，将达到每个进程对打开文件描述符数量的限制，并且无法创建更多事件。
+.TP 
+\fBENODEV\fP
+当事件涉及当前 CPU 不支持的特性时返回。
+.TP 
+\fBENOENT\fP
+如果 \fItype\fP 设置无效则返回。 对于某些不受支持的泛型事件，也会返回此错误。
+.TP 
+\fBENOSPC\fP
+.\" commit aa2bc1ade59003a379ffc485d6da2d92ea3370a6
+在 Linux 3.3 之前，如果没有足够的空间容纳事件，则返回 \fBENOSPC\fP。 在 Linux 3.3 中，这被更改为 \fBEINVAL\fP。
+如果您尝试添加的断点事件多于硬件支持的事件数，仍会返回 \fBENOSPC\fP。
+.TP 
+\fBENOSYS\fP
+如果在 \fIsample_type\fP 中设置了 \fBPERF_SAMPLE_STACK_USER\fP 并且它不受硬件支持，则返回。
+.TP 
+\fBEOPNOTSUPP\fP
+如果请求需要特定硬件特性的事件但没有硬件支持，则返回。 这包括请求低滑动事件 (如果不支持)、分支跟踪 (如果它不可用)、采样 (如果没有 PMU
+中断可用) 以及软件事件的分支栈。
+.TP 
+\fBEOVERFLOW\fP (since Linux 4.8)
+.\" 97c79a38cd454602645f0470ffb444b3b75ce574
+如果请求 \fBPERF_SAMPLE_CALLCHAIN\fP 并且 \fIsample_max_stack\fP 大于
+\fI/proc/sys/kernel/perf_event_max_stack\fP 中指定的最大值，则返回。
+.TP 
+\fBEPERM\fP
+当指定了不受支持的 \fIexclude_hv\fP、\fIexclude_idle\fP、\fIexclude_user\fP 或 \fIexclude_kernel\fP
+设置时，在许多 (但不是全部) 体系结构上返回。
+.IP
+.\" commit a4e95fc2cbb31d70a65beffeaf8773f881328c34
+与 \fBEACCES\fP 一样，当请求的事件需要 \fBCAP_PERFMON\fP (自 Linux 5.8 起) 或 \fBCAP_SYS_ADMIN\fP 权限
+(或更宽松的 perf_event 偏执设置) 时，它也可能发生。 这包括在内核地址上设置断点，以及 (自 Linux 3.13 起) 设置内核函数 \-
+trace 跟踪点。
+.TP 
+\fBESRCH\fP
+如果尝试附加到不存在的进程，则返回。
+.SH VERSION
+.\" commit 0793a61d4df8daeac6492dbf8d2f3e5713caae5e
+.\" commit cdd6c482c9ff9c55475ee7392ec8f672eddb7be6
+\fBperf_event_open\fP() 是在 Linux 2.6.31 中引入的，但被称为 \fBperf_counter_open\fP()。 Linux
+2.6.32 改名。
+.SH STANDARDS
+这个 \fBperf_event_open\fP() 系统调用于 Linux 特定的，不应该用于可移植的程序。
+.SH NOTES
+了解是否启用 \fBperf_event_open\fP() 支持的官方方法是检查文件
+\fI/proc/sys/kernel/perf_event_paranoid\fP 是否存在。
+.PP
+\fBCAP_PERFMON\fP 功能 (自 Linux 5.8 起) 根据最小特权原则 (POSIX IEEE 1003.1e)
+为系统中的性能监控和可观察性操作提供安全方法。 使用 \fBCAP_PERFMON\fP 而不是更强大的 \fBCAP_SYS_ADMIN\fP
+访问系统性能监控和可观察性操作排除了滥用凭证的机会并使操作更加安全。 为了支持 \fBCAP_PERFMON\fP 功能，不鼓励将
+\fBCAP_SYS_ADMIN\fP 用于安全系统性能监控和可观察性。
+.SH BUGS
+.\" commit ba0a6c9f6fceed11c6a99e8326f0477fe383e6b5
+需要 \fBfcntl\fP(2) 的 \fBF_SETOWN_EX\fP 选项才能正确获取线程中的溢出信号。 这是在 Linux 2.6.32 中引入的。
+.PP
+.\" commit b690081d4d3f6a23541493f1682835c3cd5c54a1
+在 Linux 2.6.33 之前 (至少对于 x86)，内核直到读取时间才检查事件是否可以一起安排。 如果启用了 NMI
+看门狗，所有已知内核都会发生同样的情况。 这意味着要查看一组给定的事件是否有效，您必须
+\fBperf_event_open\fP()，开始，然后阅读，然后才能确定您可以获得有效的测量结果。
+.PP
+.\" FIXME . cannot find a kernel commit for this one
+在 Linux 2.6.34 之前，内核不强制执行事件约束。 在那种情况下，如果内核将它们安排在不正确的计数器槽中，某些事件将静默返回 "0"。
+.PP
+.\" commit 45e16a6834b6af098702e5ea6c9a40de42ff77d8
+在 Linux 2.6.34 之前，多路复用时会返回错误结果的错误。
+.PP
+.\" commit 38b435b16c36b0d863efcf3f07b34a6fac9873fd
+如果启用 "inherit" 并启动许多线程，从 Linux 2.6.35 到 Linux 2.6.39 的内核可能会很快使内核崩溃。
+.PP
+.\" commit 050735b08ca8a016bbace4445fa025b88fee770b
+在 Linux 2.6.35 之前，\fBPERF_FORMAT_GROUP\fP 不能与附加进程一起工作。
+.PP
+.\" commit 4ec8363dfc1451f8c8f86825731fe712798ada02
+Linux 2.6.36 和 Linux 3.0 之间的内核代码中存在一个错误，它会忽略 "watermark" 字段，并且如果 union
+中有非零值，就好像选择了 wakeup_event 一样。
+.PP
+.\" commit 724b6daa13e100067c30cfc4d1ad06629609dc4e
+从 Linux 2.6.31 到 Linux 3.4，\fBPERF_IOC_FLAG_GROUP\fP ioctl
+参数被破坏并且将重复操作指定的事件，而不是遍历组中的所有兄弟事件。
+.PP
+.\" commit fa7315871046b9a4c48627905691dbde57e51033
+从 Linux 3.4 到 Linux 3.11，mmap \fIcap_usr_rdpmc\fP 和 \fIcap_usr_time\fP 位映射到相同的位置。
+代码应该改为迁移到新的 \fIcap_user_rdpmc\fP 和 \fIcap_user_time\fP 字段。
+.PP
+.\" commit f287d332ce835f77a4f5077d2c0ef1e3f9ea42d2
+始终仔细检查您的结果! 各种普遍事件都有错误的值观。 比如 retired branch 在 AMD 的机器上测错东西直到 Linux 2.6.35。
+.SH EXAMPLES
+下面是一个简短的例子，它测量一个调用到 \fBprintf\fP(3) 的总指令数。
+.PP
+.\" SRC BEGIN (perf_event_open.c)
+.EX
+#include <linux/perf_event.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+static long
+perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
+                int cpu, int group_fd, unsigned long flags)
+{
+    int ret;
+
+    ret = syscall(SYS_perf_event_open, hw_event, pid, cpu,
+                  group_fd, flags);
+    return ret;
+}
+
+int
+main(void)
+{
+    int                     fd;
+    long long               count;
+    struct perf_event_attr  pe;
+
+    memset(&pe, 0, sizeof(pe));
+    pe.type = PERF_TYPE_HARDWARE;
+    pe.size = sizeof(pe);
+    pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    pe.exclude_hv = 1;
+
+    fd = perf_event_open(&pe, 0, \-1, \-1, 0);
+    if (fd == \-1) {
+       fprintf(stderr, "Error opening leader %llx\en", pe.config);
+       exit(EXIT_FAILURE);
+    }
+
+    ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+
+    printf("Measuring instruction count for this printf\en");
+
+    ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+    read(fd, &count, sizeof(count));
+
+    printf("Used %lld instructions\en", count);
+
+    close(fd);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBperf\fP(1), \fBfcntl\fP(2), \fBmmap\fP(2), \fBopen\fP(2), \fBprctl\fP(2), \fBread\fP(2)
+.PP
+内核源代码树中的 \fIDocumentation/admin\-guide/perf\-security.rst\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

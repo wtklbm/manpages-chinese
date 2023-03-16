@@ -1,0 +1,150 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1995 Peter Tobias <tobias@et-inf.fho-emden.de>
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH hosts.equiv 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+hosts.equiv \- 被授予 "trusted" \fBr\fP 命令访问您系统的主机和用户的列表
+.SH DESCRIPTION
+文件 \fI/etc/hosts.equiv\fP 允许或拒绝主机和用户在不提供密码的情况下使用 \fBr\fP\-commands
+(例如，\fBrlogin\fP、\fBrsh\fP 或 \fBrcp\fP))。
+.PP
+该文件使用以下格式:
+.TP 
+\fI+|[\-]hostname|+@netgroup|\-@netgroup\fP \fI[+|[\-]username|+@netgroup|\-@netgroup]\fP
+.PP
+\fIhostname\fP 是逻辑上等同于本地主机的主机名。 登录到该主机的用户无需提供密码即可访问本地主机上同名的用户帐户。 \fIhostname\fP
+可能是 (optionally) 前面有一个加号 (+)。 如果单独使用加号，它允许任何主机访问您的系统。 您可以通过在 \fIhostname\fP
+前面加上减号 (\-) 来明确拒绝对主机的访问。 来自该主机的用户必须始终提供额外的凭据，可能包括密码。 出于安全原因，您应该始终使用主机名的 FQDN
+而不是短主机名。
+.PP
+\fIusername\fP 条目授予特定用户访问所有用户帐户 (root 除外) 的权限，而无需提供密码。 这意味着用户不限于同名帐户。
+\fIusername\fP 可能是 (optionally) 前面有一个加号 (+)。 您还可以通过在 \fIusername\fP 前面加上减号 (\-)
+来明确拒绝对特定用户的访问。 这表示无论该主机的其他条目是否存在，该用户都是不可信的。
+.PP
+可以通过在网络组前加上 @符号来指定网络组。
+.PP
+使用加号 (+) 时要格外小心。 一个简单的印刷错误可能会导致一个独立的加号。 独立的加号是一个通配符，表示 "any host"!
+.SH FILES
+\fI/etc/hosts.equiv\fP
+.SH NOTES
+一些系统只有当它拥有 root 所有者并且没有任何其他人的写权限时才会尊重该文件的内容。 一些特别偏执的系统甚至要求没有其他硬链接到该文件。
+.PP
+现代系统使用 Pluggable Authentication Modules 库 (PAM)。 对于
+PAM，一个独立的加号被认为是一个通配符，这意味着只有当单词 \fIpromiscuous\fP 添加到特定服务的 PAM 文件中的 auth 组件行时才表示
+"any host" (例如，\fBrlogin\fP).
+.SH EXAMPLES
+下面是一些示例 \fI/etc/host.equiv\fP 或 \fI\[ti]/.rhosts\fP 文件。
+.PP
+允许任何用户从任何主机登录:
+.PP
+.in +4n
+.EX
++
+.EE
+.in
+.PP
+允许 \fIhost\fP 中具有匹配本地帐户的任何用户登录:
+.PP
+.in +4n
+.EX
+host
+.EE
+.in
+.PP
+Note: \fI+host\fP 的使用永远不是有效的语法，包括尝试指定允许来自主机的任何用户。
+.PP
+允许来自 \fIhost\fP 的任何用户登录:
+.PP
+.in +4n
+.EX
+host +
+.EE
+.in
+.PP
+Note: 这与前面的示例不同，因为它不需要匹配的本地帐户。
+.PP
+允许 \fIhost\fP 中的 \fIuser\fP 以任何非根用户身份登录:
+.PP
+.in +4n
+.EX
+主机用户
+.EE
+.in
+.PP
+允许 \fIhost\fP 中具有匹配本地帐户的所有用户登录，\fIbaduser\fP: 除外
+.PP
+.in +4n
+.EX
+主机 \-baduser
+host
+.EE
+.in
+.PP
+拒绝来自 \fIhost\fP: 的所有用户
+.PP
+.in +4n
+.EX
+\-host
+.EE
+.in
+.PP
+Note: \fI\-host\ \-user\fP 的使用永远不是有效的语法，包括尝试指定来自主机的特定用户不受信任。
+.PP
+允许 \fInetgroup\fP: 中所有主机上具有匹配本地帐户的所有用户
+.PP
+.in +4n
+.EX
++@netgroup
+.EE
+.in
+.PP
+禁止 \fInetgroup\fP: 中所有主机上的所有用户
+.PP
+.in +4n
+.EX
+\-@netgroup
+.EE
+.in
+.PP
+允许 \fInetgroup\fP 中的所有用户以任何非根用户身份从 \fIhost\fP 登录:
+.PP
+.in +4n
+.EX
+主持人 +@netgroup
+.EE
+.in
+.PP
+允许 \fInetgroup\fP 中除 \fIbaduser\fP: 之外的所有主机上具有匹配本地帐户的所有用户
+.PP
+.in +4n
+.EX
++@netgroup  \-baduser
++@netgroup
+.EE
+.in
+.PP
+Note: deny 语句必须始终在 allow 语句之前，因为文件是按顺序处理的，直到找到第一个匹配规则。
+.SH "SEE ALSO"
+\fBrhosts\fP(5), \fBrlogind\fP(8), \fBrshd\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

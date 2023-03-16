@@ -1,0 +1,123 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2017 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_iflags 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_iflags\-inode 标志的 ioctl() 操作
+.SH DESCRIPTION
+各种 Linux 文件系统支持修改文件和目录语义的 \fIinode flags\fP\[em]attributes 概念。 可以使用两个
+\fBioctl\fP(2) 操作检索和修改这些标志:
+.PP
+.in +4n
+.EX
+int attr;
+fd = open("pathname", ...);
+
+ioctl(fd, FS_IOC_GETFLAGS, &attr);  /* Place current flags
+                                       in \[aq]attr\[aq] */
+attr |= FS_NOATIME_FL;               /* Tweak returned bit mask */
+ioctl(fd, FS_IOC_SETFLAGS, &attr);  /* 更新 inode 的标志
+                                       由 \[aq] fd\[aq] 引用 */
+.EE
+.in
+.PP
+\fBlsattr\fP(1) 和 \fBchattr\fP(1) shell 命令为这两个操作提供接口，允许用户查看和修改与文件关联的 inode 标志。
+.PP
+支持以下标志 (与 \fBlsattr\fP(1) 和 \fBchattr\fP(1)): 用于指示标志的相应字母一起显示
+.TP 
+\fBFS_APPEND_FL\fP \[aq]a\[aq]
+该文件只能用 \fBO_APPEND\fP 标志打开。 (此限制甚至适用于超级用户。) 只有特权进程 (\fBCAP_LINUX_IMMUTABLE\fP)
+才能设置或清除此属性。
+.TP 
+\fBFS_COMPR_FL\fP \[aq]c\[aq]
+将文件以压缩格式存储在磁盘上。 大多数主流文件系统实现都支持此标志 \fInot\fP; \fBbtrfs\fP(5) 是一个例外。
+.TP 
+\fBFS_DIRSYNC_FL\fP \[aq]D\[aq] (since Linux 2.6.0)
+.\" .TP
+.\" .BR FS_EXTENT_FL " \[aq]e\[aq]"
+.\" FIXME Some support on ext4? (EXT4_EXTENTS_FL)
+将目录更改同步写入磁盘。 此标志提供等同于 \fBmount\fP(2) \fBMS_DIRSYNC\fP 选项的语义，但基于每个目录。 此标志只能应用于目录。
+.TP 
+\fBFS_IMMUTABLE_FL\fP \[aq]i\[aq]
+文件不可更改: 不允许更改文件内容或元数据 (权限、时间戳、所有权、链接数等)。 (此限制甚至适用于超级用户。) 只有特权进程
+(\fBCAP_LINUX_IMMUTABLE\fP) 才能设置或清除此属性。
+.TP 
+\fBFS_JOURNAL_DATA_FL\fP \[aq]j\[aq]
+在 \fBext3\fP(5) 和 \fBext4\fP(5) 文件系统上启用文件数据日志。 在以 \fIordered\fP 或 \fIwriteback\fP
+模式记录日志的文件系统上，特权 (\fBCAP_SYS_RESOURCE\fP) 进程可以设置此标志以启用基于每个文件的数据更新日志。
+.TP 
+\fBFS_NOATIME_FL\fP \[aq]A\[aq]
+.\" .TP
+.\" .BR FS_NOCOMP_FL " \[aq]\[aq]"
+.\" FIXME Support for FS_NOCOMP_FL on Btrfs?
+访问文件时不更新文件的上次访问时间。 这可以为不关心此时间戳准确性的应用程序提供 I/O 性能优势。 此标志提供类似于 \fBmount\fP(2)
+\fBMS_NOATIME\fP 标志的功能，但基于每个文件。
+.TP 
+\fBFS_NOCOW_FL\fP \[aq]C\[aq] (since Linux 2.6.39)
+该文件将不受写时复制更新的影响。 此标志仅对支持写时复制语义的文件系统有效，例如 Btrfs。 请参见 \fBchattr\fP(1) 和
+\fBbtrfs\fP(5)。
+.TP 
+\fBFS_NODUMP_FL\fP \[aq]d\[aq]
+不要将此文件包含在使用 \fBdump\fP(8) 制作的备份中。
+.TP 
+\fBFS_NOTAIL_FL\fP \[aq]t\[aq]
+此标志仅在 Reiserfs 上受支持。 它禁用了 Reiserfs 尾部打包特性该特性试图将小文件 (以及较大文件的最终片段)
+打包到与文件元数据相同的磁盘块中。
+.TP 
+\fBFS_PROJINHERIT_FL\fP \[aq]P\[aq] (since Linux 4.5)
+.\" commit 040cb3786d9b25293b8b0b05b90da0f871e1eb9b
+.\" Flag name was added in Linux 4.4
+.\" FIXME Not currently supported because not in FS_FL_USER_MODIFIABLE?
+继承配额项目 ID。文件和子目录将继承目录的项目 ID。 此标志只能应用于目录。
+.TP 
+\fBFS_SECRM_FL\fP \[aq]s\[aq]
+将文件标记为安全删除。 任何文件系统都没有实现此特性因为从记录介质中安全擦除文件的任务非常困难。
+.TP 
+\fBFS_SYNC_FL\fP \[aq]S\[aq]
+使文件更新同步。 对于文件，这使得所有写入同步 (就好像文件的所有打开都带有 \fBO_SYNC\fP 标志)。 对于目录，这与
+\fBFS_DIRSYNC_FL\fP 标志具有相同的效果。
+.TP 
+\fBFS_TOPDIR_FL\fP \[aq]T\[aq]
+在 Orlov 块分配策略下标记要特殊处理的目录。 有关详细信息，请参见 \fBchattr\fP(1)。 此标志只能应用于目录，并且仅对 ext2、ext3
+和 ext4 有效。
+.TP 
+\fBFS_UNRM_FL\fP \[aq]u\[aq]
+如果文件被删除，允许恢复删除。 这个特性没有被任何文件系统实现，因为它可以在内核之外实现文件恢复机制。
+.PP
+在大多数情况下，当在目录上设置上述任何标志时，该标志将由在该目录内创建的文件和子目录继承。 例外情况包括不可继承的 \fBFS_TOPDIR_FL\fP
+和只能由子目录继承的 \fBFS_DIRSYNC_FL\fP。
+.SH STANDARDS
+Inode 标志是非标准的 Linux 扩展。
+.SH NOTES
+为了使用 \fBFS_IOC_SETFLAGS\fP 操作更改文件的 inode 标志，调用者的有效用户 ID 必须与文件的所有者匹配，或者调用者必须具有
+\fBCAP_FOWNER\fP 能力。
+.PP
+赋予 \fBFS_IOC_GETFLAGS\fP 和 \fBFS_IOC_SETFLAGS\fP 操作的参数类型是 \fIint\~*\fP，尽管在内核源文件
+\fIinclude/uapi/linux/fs.h\fP 中暗示参数是 \fIlong\~*\fP。
+.SH "SEE ALSO"
+\fBchattr\fP(1), \fBlsattr\fP(1), \fBmount\fP(2), \fBbtrfs\fP(5), \fBext4\fP(5), \fBxfs\fP(5),
+\fBxattr\fP(7), \fBmount\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

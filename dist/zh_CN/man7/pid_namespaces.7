@@ -1,0 +1,182 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2013 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (c) 2012 by Eric W. Biederman <ebiederm@xmission.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pid_namespaces 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pid_namespaces\-Linux PID 命名空间概述
+.SH DESCRIPTION
+有关名称空间的概述，请参见 \fBnamespaces\fP(7)。
+.PP
+PID 命名空间隔离了进程 ID 号空间，这意味着不同 PID 命名空间中的进程可以具有相同的 PID。 PID 命名空间允许容器提供一些功能，例如
+suspending/resuming 容器中的进程集以及将容器迁移到新主机，同时容器内的进程保持相同的 PID。
+.PP
+新 PID 命名空间中的 PID 从 1 开始，有点像独立系统，调用 \fBfork\fP(2)、\fBvfork\fP(2) 或 \fBclone\fP(2)
+将生成具有在命名空间内唯一的 PID 的进程。
+.PP
+.\"
+.\" ============================================================
+.\"
+使用 PID 名称空间需要使用 \fBCONFIG_PID_NS\fP 选项配置的内核。
+.SS "The namespace init process"
+在新命名空间中创建的第一个进程 (即使用带有 \fBCLONE_NEWPID\fP 标志的 \fBclone\fP(2) 创建的进程，或使用
+\fBCLONE_NEWPID\fP 标志调用 \fBunshare\fP(2) 后由进程创建的第一个子进程) 具有 PID 1，并且是 "init" 进程命名空间
+(参见 \fBinit\fP(1)).  此进程成为任何孤立的子进程的父进程，因为驻留在此 PID 名称空间中的进程已终止 (有关详细信息，请参见下文)。
+.PP
+如果 PID 命名空间的 "init" 进程终止，内核将通过 \fBSIGKILL\fP 信号终止命名空间中的所有进程。 此行为反映了 "init" 进程对于
+PID 名称空间的正确操作必不可少的事实。 在这种情况下，此 PID 名称空间中的后续 \fBfork\fP(2) 将失败并出现错误 \fBENOMEM\fP;
+无法在 "init" 进程已终止的 PID 名称空间中创建新进程。 例如，当进程使用 \fI/proc/\fPpid\fI/ns/pid\fP
+文件的打开文件描述符时，\fI/proc/\fPpid\fI/ns/pid\fP 文件对应于 \fBsetns\fP(2) 命名空间中的进程，在 "init"
+进程终止后进入该命名空间。 如果 \fBfork\fP(2) 随后创建的第一个子进程终止，则在调用 \fBunshare\fP(2):
+之后可能会发生另一种可能的情况，然后对 \fBfork\fP(2) 的后续调用将失败并返回 \fBENOMEM\fP。
+.PP
+PID 命名空间的其他成员只能将 "init" 进程为其建立信号处理程序的信号发送到 "init" 进程。 此限制甚至适用于特权进程，并防止 PID
+名称空间的其他成员意外终止 "init" 进程。
+.PP
+同样，仅当 "init" 进程已为该信号建立处理程序时，祖先命名空间中的进程才能 \[em] 服从 \fBkill\fP(2)\[em]send
+信号中描述的通常权限检查到子 PID 命名空间的 "init" 进程。 (在处理程序中，\fBsigaction\fP(2) 中描述的
+\fIsiginfo_t\fP \fIsi_pid\fP 字段将为零。) \fBSIGKILL\fP 或 \fBSIGSTOP\fP 被特殊处理: 这些信号在从祖先 PID
+命名空间发送时被强制传递。 这些信号都不能被 "init" 进程捕获，因此将导致与这些信号相关的通常操作 (分别是终止和停止进程)。
+.PP
+.\"
+.\" ============================================================
+.\"
+从 Linux 3.4 开始，\fBreboot\fP(2) 系统调用导致一个信号被发送到命名空间 "init" 进程。 有关详细信息，请参见
+\fBreboot\fP(2)。
+.SS "Nesting PID namespaces"
+.\" commit f2302505775fd13ba93f034206f1e2a587017929
+.\" The kernel constant MAX_PID_NS_LEVEL
+PID 名称空间可以嵌套: 每个 PID 名称空间都有一个父名称空间，除了初始的 ("root") PID 名称空间。 PID 名称空间的父级是使用
+\fBclone\fP(2) 或 \fBunshare\fP(2) 创建名称空间的进程的 PID 名称空间。 因此，PID
+名称空间形成了一棵树，所有名称空间最终都将其祖先追溯到根名称空间。 从 Linux 3.7 开始，内核将 PID 命名空间的最大嵌套深度限制为 32。
+.PP
+一个进程对其 PID 命名空间中的其他进程可见，并且对于每个直接祖先 PID 命名空间中的进程都可以追溯到根 PID 命名空间。
+在此上下文中，"visible" 意味着一个进程可以成为另一个进程使用指定进程 ID 的系统调用的操作目标。相反，子 PID
+命名空间中的进程看不到父级和进一步删除的祖先命名空间中的进程。 更简洁: 进程只能看到 (例如，使用 \fBkill\fP(2) 发送信号，使用
+\fBsetpriority\fP(2) 设置漂亮的值等) 仅包含在其自己的 PID 名称空间和该名称空间的后代中的进程。
+.PP
+进程在可见的 PID 命名空间层次结构的每一层中都有一个进程 ID，并通过每个直接祖先命名空间返回到根 PID 命名空间。 对进程 ID
+进行操作的系统调用始终使用在调用者的 PID 名称空间中可见的进程 ID 进行操作。 对 \fBgetpid\fP(2)
+的调用总是返回与创建进程的命名空间关联的 PID。
+.PP
+PID 命名空间中的某些进程可能有位于命名空间之外的父进程。 例如，命名空间中初始进程的父进程 (即 PID 为 1 的 \fBinit\fP(1) 进程)
+必然位于另一个命名空间中。 同样，使用 \fBsetns\fP(2) 使其子进程加入 PID 名称空间的进程的直接子进程与 \fBsetns\fP(2)
+的调用者位于不同的 PID 名称空间中。 为此类进程调用 \fBgetppid\fP(2) 返回 0.
+.PP
+虽然进程可以自由地下降到子 PID 名称空间 (例如，使用带有 PID 名称空间文件描述符的 \fBsetns\fP(2))，但它们可能不会向另一个方向移动。
+也就是说，进程可能不会进入任何祖先命名空间 (parent、grandparent 等)。 更改 PID 名称空间是一种单向操作。
+.PP
+.\"
+.\" ============================================================
+.\"
+\fBNS_GET_PARENT\fP \fBioctl\fP(2) 操作可用于发现 PID 命名空间之间的父关系; 请参见 \fBioctl_ns\fP(2)。
+.SS "setns(2) and unshare(2) semantics"
+调用指定 PID 命名空间文件描述符的 \fBsetns\fP(2) 和使用 \fBCLONE_NEWPID\fP 标志调用 \fBunshare\fP(2)
+会导致调用者随后创建的子项被放置在与调用者不同的 PID 命名空间中。 (自 Linux 4.12 起，该 PID 名称空间通过
+\fI/proc/\fPpid\fI/ns/pid_for_children\fP 文件显示，如 \fBnamespaces\fP(7).)
+中所述。然而，这些调用不会更改调用进程的 PID 名称空间，因为这样做会改变调用者对其自身 PID 的想法 (如报告的那样
+\fBgetpid\fP())，这会破坏许多应用程序和库。
+.PP
+换句话说: 进程的 PID 名称空间成员身份是在创建进程时确定的，此后无法更改。 除其他外，这意味着进程之间的父关系反映了 PID
+名称空间之间的父关系: 进程的父进程要么在同一名称空间中，要么位于 immediate 父 PID 名称空间中。
+.PP
+.\"
+.\" ============================================================
+.\"
+进程只能使用 \fBCLONE_NEWPID\fP 标志调用 \fBunshare\fP(2) 一次。 执行此操作后，其
+\fI/proc/\fPpid\fI/ns/pid_for_children\fP 符号链接将为空，直到在命名空间中创建第一个子项。
+.SS "Adoption of orphaned children"
+.\" Furthermore, by definition, the parent of the "init" process
+.\" of a PID namespace resides in the parent PID namespace.
+.\"
+.\" ============================================================
+.\"
+当一个子进程成为孤立进程时，它会在其父进程的 PID 命名空间中重新成为 "init" 进程的父进程 (除非父进程的最近祖先之一使用
+\fBprctl\fP(2) \fBPR_SET_CHILD_SUBREAPER\fP 命令将自己标记为孤立后代进程的收割者)。 请注意，由于上述
+\fBsetns\fP(2) 和 \fBunshare\fP(2) 语义，这可能是 PID 命名空间中的 "init" 进程，即子 PID 命名空间的
+\fIparent\fP，而不是子进程自己的 PID 命名空间中的 "init" 进程。
+.SS "Compatibility of CLONE_NEWPID with other CLONE_* flags"
+在当前版本的 Linux 中，\fBCLONE_NEWPID\fP 不能与 \fBCLONE_THREAD\fP 结合使用。 线程需要在同一个 PID
+命名空间中，以便进程中的线程可以相互发送信号。 同样，必须能够在 \fBproc\fP(5) 文件系统中查看一个进程的所有线程。 此外，如果两个线程位于不同的
+PID 名称空间中，则发送信号的进程的进程 ID 在发送信号时无法进行有意义的编码 (请参见 \fBsigaction\fP(2)).h 中
+\fIsiginfo_t\fP 类型的描述)。 由于这是在信号入队时计算的，因此多个 PID 名称空间中的进程共享的信号队列会破坏它。
+.PP
+.\" Note these restrictions were all introduced in
+.\" 8382fcac1b813ad0a4e68a838fc7ae93fa39eda0
+.\" when CLONE_NEWPID|CLONE_VM was disallowed
+.\" (restriction lifted in faf00da544045fdc1454f3b9e6d7f65c841de302)
+.\" (restriction lifted in e79f525e99b04390ca4d2366309545a836c03bf1)
+.\"
+.\" ============================================================
+.\"
+在 Linux 的早期版本中，\fBCLONE_NEWPID\fP 也被禁止 (与 \fBCLONE_SIGHAND\fP (Linux 4.3 之前) 以及
+\fBCLONE_VM\fP (Linux 3.12 之前) 结合使用时出现错误 \fBEINVAL\fP)。 解除这些限制的更改也已移植到早期的稳定内核中。
+.SS "/proc and PID namespaces"
+\fI/proc\fP 文件系统 (在 \fI/proc/\fPpid 目录中) 仅显示在执行挂载的进程的 PID
+命名空间中可见的进程，即使从其他命名空间中的进程查看 \fI/proc\fP 文件系统也是如此。
+.PP
+创建新的 PID 命名空间后，子进程更改其根目录并将新的 procfs 实例挂载到 \fI/proc\fP 以便 \fBps\fP(1) 等工具正常工作是很有用的。
+如果通过将 \fBCLONE_NEWNS\fP 包含在 \fBclone\fP(2) 或 \fBunshare\fP(2) 的 \fIflags\fP
+参数中同时创建新的挂载命名空间，则无需更改根目录: 可以直接在 \fI/proc\fP 上挂载新的 procfs 实例。
+.PP
+从 shell，挂载 \fI/proc\fP 的命令是:
+.PP
+.in +4n
+.EX
+$ mount \-t proc proc /proc
+.EE
+.in
+.PP
+.\"
+.\" ============================================================
+.\"
+在路径 \fI/proc/self\fP 上调用 \fBreadlink\fP(2) 会在 procfs 挂载的 PID 命名空间 (即挂载 procfs 的进程的
+PID 命名空间) 中产生调用者的进程 ID。 当进程想要在其他名称空间中发现其 PID 时，这对于内省目的很有用。
+.SS "/proc files"
+.TP 
+\fB/proc/sys/kernel/ns_last_pid\fP (since Linux 3.3)
+.\" commit b8f566b04d3cddd192cfd2418ae6d54ac6353792
+此文件 (按 PID 命名空间虚拟化) 显示在此 PID 命名空间中分配的最后一个 PID。 当分配下一个 PID 时，内核将搜索大于此值的最低未分配
+PID，并且当随后读取此文件时，它将显示该 PID。
+.IP
+.\" This ability is necessary to support checkpoint restore in user-space
+.\"
+.\" ============================================================
+.\"
+该文件可由拥有 PID 命名空间的用户命名空间内具有 \fBCAP_SYS_ADMIN\fP 或 (自 Linux 5.9 起)
+\fBCAP_CHECKPOINT_RESTORE\fP 功能的进程写入。 这使得确定分配给在此 PID 命名空间内创建的下一个进程的 PID 成为可能。
+.SS Miscellaneous
+当进程 ID 通过 UNIX 域套接字传递给不同 PID 命名空间中的进程时 (请参见 \fBunix\fP(7)) 中对
+\fBSCM_CREDENTIALS\fP 的描述)，它被转换为接收进程的 PID 命名空间中的相应 PID 值。
+.SH STANDARDS
+命名空间是 Linux 特有的，特性。
+.SH EXAMPLES
+请参见 \fBuser_namespaces\fP(7)。
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBreboot\fP(2), \fBsetns\fP(2), \fBunshare\fP(2), \fBproc\fP(5),
+\fBcapabilities\fP(7), \fBcredentials\fP(7), \fBmount_namespaces\fP(7),
+\fBnamespaces\fP(7), \fBuser_namespaces\fP(7), \fBswitch_root\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

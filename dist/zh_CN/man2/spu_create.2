@@ -1,0 +1,162 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) International Business Machines Corp., 2006
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" HISTORY:
+.\" 2005-09-28, created by Arnd Bergmann <arndb@de.ibm.com>
+.\" 2006-06-16, revised by Eduardo M. Fleury <efleury@br.ibm.com>
+.\" 2007-07-10, some polishing by mtk
+.\" 2007-09-28, updates for newer kernels by Jeremy Kerr <jk@ozlabs.org>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH spu_create 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+spu_create \- 创建一个新的 spu 上下文
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/spu.h>\fP          /* Definition of \fBSPU_*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fBint syscall(SYS_spu_create, const char *\fP\fIpathname\fP\fB, unsigned int \fP\fIflags\fP\fB,\fP
+\fB            mode_t \fP\fImode\fP\fB, int \fP\fIneighbor_fd\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBspu_create\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBspu_create\fP() 系统调用用于实现 Cell 宽带引擎架构的 PowerPC 机器，以访问协同处理器单元 (SPUs)。 它为
+\fIpathname\fP 中的 SPU 创建一个新的逻辑上下文，并返回一个与之关联的文件描述符。 \fIpathname\fP 必须引用 SPU 文件系统
+(\fBspufs\fP) 的挂载点中不存在的目录。 如果 \fBspu_create\fP() 成功，则会在 \fIpathname\fP 处创建一个目录，并使用
+\fBspufs\fP(7) 中描述的文件填充该目录。
+.PP
+创建上下文时，返回的文件描述符只能传递给 \fBspu_run\fP(2)，用作 \fIdirfd\fP 参数到 \fB*at\fP 系列系统调用
+(例如，\fBopenat\fP(2))，或关闭; 其他操作未定义。 一个逻辑 SPU 上下文是销售 (以及在上下文的 \fIpathname\fP
+目录中创建的所有文件) 一旦上下文的最后一个引用已经消失; 这通常发生在 \fBspu_create\fP() 返回的文件描述符关闭时。
+.PP
+\fImode\fP 参数 (减去进程的 \fBumask\fP(2)) 中设置的任何位指定用于在 \fBspufs\fP 中创建新目录的权限。 有关可能的
+\fImode\fP 值的完整列表，请参见 \fBstat\fP(2)。
+.PP
+\fIneighbor_fd\fP 仅在指定 \fBSPU_CREATE_AFFINITY_SPU\fP 标志时使用; 见下文。
+.PP
+\fIflags\fP 参数可以是零或以下常量的任何按位或运算组合:
+.TP 
+\fBSPU_CREATE_EVENTS_ENABLED\fP
+不要使用信号来报告 DMA 错误，而是使用 \fIevent\fP 参数到 \fBspu_run\fP(2)。
+.TP 
+\fBSPU_CREATE_GANG\fP
+创建 SPU 帮派而不是上下文。 (一个帮派是一组 SPU 上下文，它们在功能上相互关联并且共享公共调度参数 \[em] 优先级和策略。在 future
+中，可以实现帮派调度，导致该组作为一个单元 .)
+.IP
+将在 \fIpathname\fP 参数指定的位置创建一个新目录。 这个帮派可以用来保存其他 SPU 上下文，通过提供一个在帮派目录内的路径名来进一步调用
+\fBspu_create\fP()。
+.TP 
+\fBSPU_CREATE_NOSCHED\fP
+创建一个不受 SPU 调度程序影响的上下文。 一旦上下文运行，它不会被调度出去，直到它被创建进程销毁。
+.IP
+由于无法从 SPU 中删除上下文，因此 \fBSPU_CREATE_NOSCHED\fP 上下文的某些功能被禁用。 在 \fBspufs\fP
+的上下文目录中只有一部分文件可用。 此外，\fBSPU_CREATE_NOSCHED\fP 上下文在崩溃时无法转储核心文件。
+.IP
+创建 \fBSPU_CREATE_NOSCHED\fP 上下文需要 \fBCAP_SYS_NICE\fP 能力。
+.TP 
+\fBSPU_CREATE_ISOLATE\fP
+创建隔离的 SPU 上下文。 隔离上下文不受某些 PPE (PowerPC 处理元件) 操作的保护，例如访问 SPU 本地存储和 NPC 寄存器。
+.IP
+创建 \fBSPU_CREATE_ISOLATE\fP 上下文还需要 \fBSPU_CREATE_NOSCHED\fP 标志。
+.TP 
+\fBSPU_CREATE_AFFINITY_SPU\fP (since Linux 2.6.23)
+.\" commit 8e68e2f248332a9c3fd4f08258f488c209bd3e0c
+创建一个与另一个 SPU 上下文具有亲和力的上下文。 此关联信息在 SPU 调度算法中使用。 使用此标志需要在 \fIneighbor_fd\fP
+参数中传递引用其他 SPU 上下文的文件描述符。
+.TP 
+\fBSPU_CREATE_AFFINITY_MEM\fP (since Linux 2.6.23)
+.\" commit 8e68e2f248332a9c3fd4f08258f488c209bd3e0c
+创建与系统内存具有亲和力的上下文。 此关联信息在 SPU 调度算法中使用。
+.SH "RETURN VALUE"
+成功时，\fBspu_create\fP() 返回一个新的文件描述符。 失败时，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+当前用户没有对 \fBspufs\fP(7) 安装点的写入权限。
+.TP 
+\fBEEXIST\fP
+SPU 上下文已存在于给定的路径名中。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 不是调用进程地址空间中的有效字符串指针。
+.TP 
+\fBEINVAL\fP
+\fIpathname\fP 不是 \fBspufs\fP(7) 安装点中的目录，或者提供了无效标志。
+.TP 
+\fBELOOP\fP
+解析 \fIpathname\fP 时发现太多符号链接。
+.TP 
+\fBEMFILE\fP
+已达到打开文件描述符数量的每个进程限制。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长。
+.TP 
+\fBENFILE\fP
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENODEV\fP
+已请求隔离上下文，但硬件不支持 SPU 隔离。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 的一部分无法解析。
+.TP 
+\fBENOMEM\fP
+内核无法分配所需的所有资源。
+.TP 
+\fBENOSPC\fP
+没有足够的 SPU 资源可用于创建新上下文，或者已达到用户特定的 SPU 上下文数量限制。
+.TP 
+\fBENOSYS\fP
+当前系统不提供该功能，因为要么硬件不提供 SPU，要么没有加载 spufs 模块。
+.TP 
+\fBENOTDIR\fP
+\fIpathname\fP 的一部分不是目录。
+.TP 
+\fBEPERM\fP
+已给出 \fBSPU_CREATE_NOSCHED\fP 标志，但用户没有 \fBCAP_SYS_NICE\fP 能力。
+.SH FILES
+\fIpathname\fP 必须指向 \fBspufs\fP 安装点下方的位置。 按照惯例，它安装在 \fI/spu\fP 中。
+.SH VERSIONS
+\fBspu_create\fP() 系统调用在 Linux 2.6.16 中加入。
+.SH STANDARDS
+此调用是特定于 Linux 的，仅在 PowerPC 架构上实现。 使用此系统调用的程序不可移植。
+.SH NOTES
+\fBspu_create\fP() 旨在从实现更抽象的 SPU 接口的库中使用，而不是从常规应用程序中使用。 有关推荐的库，请参见
+.UR http://www.bsc.es\:/projects\:/deepcomputing\:/linuxoncell/
+.UE
+。
+.PP
+在 Linux 2.6.23 加入 \fBSPU_CREATE_AFFINITY_SPU\fP 标志之前，\fBspu_create\fP()
+系统调用只用了三个参数 (即没有 \fIneighbor_fd\fP 参数)。
+.SH EXAMPLES
+有关 \fBspu_create\fP() 的使用示例，请参见 \fBspu_run\fP(2)
+.SH "SEE ALSO"
+\fBclose\fP(2), \fBspu_run\fP(2), \fBcapabilities\fP(7), \fBspufs\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

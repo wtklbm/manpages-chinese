@@ -1,0 +1,284 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1998, 1999 Thorsten Kukuk (kukuk@vt.uni-paderborn.de)
+.\" Copyright (c) 2011, Mark R. Bannister <cambridge@users.sourceforge.net>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH nsswitch.conf 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+nsswitch.conf \- 名称服务开关配置文件
+.SH DESCRIPTION
+GNU C 库和某些其他应用程序使用名称服务开关 (NSS) 配置文件 \fI/etc/nsswitch.conf\fP
+来确定从中获取一系列类别的名称服务信息的来源，以及按什么顺序。 每一类信息都由一个数据库名称标识。
+.PP
+该文件是纯 ASCII 文本，列之间用空格或制表符分隔。 第一列指定数据库名称。 其余列描述了要查询的源的顺序以及查找结果可以执行的一组有限的操作。
+.PP
+GNU C 库可以理解以下数据库:
+.TP  12
+\fBaliases\fP
+邮件别名，由 \fBgetaliasent\fP(3) 和相关函数使用。
+.TP 
+\fBethers\fP
+以太网号码。
+.TP 
+\fBgroup\fP
+用户组，由 \fBgetgrent\fP(3) 和相关函数使用。
+.TP 
+\fBhosts\fP
+主机名和号码，由 \fBgethostbyname\fP(3) 和相关函数使用。
+.TP 
+\fBinitgroups\fP
+补充组访问列表，由 \fBgetgrouplist\fP(3) 函数使用。
+.TP 
+\fBnetgroup\fP
+网络范围内的主机和用户列表，用于访问规则。 glibc 2.1 之前的 C 库仅通过 NIS 支持网络组。
+.TP 
+\fBnetworks\fP
+网络名称和编号，由 \fBgetnetent\fP(3) 和相关函数使用。
+.TP 
+\fBpasswd\fP
+用户密码，由 \fBgetpwent\fP(3) 和相关函数使用。
+.TP 
+\fBprotocols\fP
+网络协议，由 \fBgetprotoent\fP(3) 和相关函数使用。
+.TP 
+\fBpublickey\fP
+NFS 和 NIS + 使用的 Secure_RPC 的公钥和私钥。
+.TP 
+\fBrpc\fP
+远程过程调用名称和编号，由 \fBgetrpcbyname\fP(3) 和相关函数使用。
+.TP 
+\fBservices\fP
+网络服务，由 \fBgetservent\fP(3) 和相关函数使用。
+.TP 
+\fBshadow\fP
+影子用户密码，由 \fBgetspnam\fP(3) 和相关函数使用。
+.PP
+GNU C 库忽略名称未知的数据库。 一些应用程序使用它来实现对自己数据库的特殊处理。 例如，\fBsudo\fP(8) 查询 \fBsudoers\fP 数据库。
+可以使用 \fBsubid\fP 数据库配置从属 user/group ID 的委派。 有关详细信息，请参见 \fBsubuid\fP(5) 和
+\fBsubgid\fP(5)。
+.PP
+这是一个示例 \fI/etc/nsswitch.conf\fP 文件:
+.PP
+.in +4n
+.EX
+密码: 兼容
+组: 兼容
+阴影: 兼容
+
+主机: dns [!UNAVAIL=return] 文件
+网络: nis [NOTFOUND=return] 文件
+醚: nis [NOTFOUND=return] 文件
+协议: nis [NOTFOUND=return] 文件
+rpc: nis [NOTFOUND=return] 文件
+服务: nis [NOTFOUND=return] 文件
+.EE
+.in
+.PP
+第一列是数据库名称。 其余列指定:
+.IP \[bu] 3
+一个或多个服务规范，例如 "files"、"db" 或 "nis"。 线上服务的顺序决定了查询这些服务的顺序，直到找到结果。
+.IP \[bu]
+如果从前面的服务获得特定结果，则要执行的可选操作，例如 "[NOTFOUND=return]"。
+.PP
+您的系统支持的服务规范取决于共享库的存在，因此是可扩展的。 名为 \fI/lib/libnss_SERVICE.so.\fP\fBX\fP 的库将提供名为
+\fISERVICE\fP 的库。 在标准安装中，您可以使用 "files"、"db"、"nis" 和 "nisplus"。 对于 \fBhosts\fP
+数据库，您可以额外指定 "dns"。 对于 \fBpasswd\fP、\fBgroup\fP 和 \fBshadow\fP 数据库，您可以另外指定 "compat"
+(请参见下面的 \fBCompatibility mode\fP)。 对于 glibc 2.0，版本号 \fBX\fP 可能为 1，对于 glibc 2.1
+及更高版本，版本号可能为 2。 在安装了附加库的系统上，您可以访问更多服务，例如 "hesiod"、"ldap"、"winbind" 和 "wins"。
+.PP
+也可以在服务规范之后指定操作。 该操作修改从前面的数据源获得的结果之后的行为。 动作项取一般形式:
+.PP
+.RS 4
+[\fISTATUS\fP=\fIACTION\fP]
+.br
+[!\fISTATUS\fP=\fIACTION\fP]
+.RE
+.PP
+where
+.PP
+.RS 4
+\fISTATUS\fP => \fBsuccess\fP | \fBnotfound\fP | \fBunavail\fP | \fBtryagain\fP
+.br
+\fIACTION\fP => \fBreturn\fP | \fBcontinue\fP | \fBmerge\fP
+.RE
+.PP
+这 ! 否定测试，匹配除指定结果之外的所有可能结果。 关键字的大小写并不重要。
+.PP
+\fISTATUS\fP 值与前面服务规范调用的查找函数的结果相匹配，可以是以下之一:
+.RS 4
+.TP  12
+\fBsuccess\fP
+没有发生错误，请求的条目被返回。 此条件的默认操作是 "return"。
+.TP 
+\fBnotfound\fP
+查找成功，但未找到请求的条目。 此条件的默认操作是 "continue"。
+.TP 
+\fBunavail\fP
+该服务永久不可用。 这可能意味着无法读取所需的文件，或者对于网络服务，服务器不可用或不允许查询。 此条件的默认操作是 "continue"。
+.TP 
+\fBtryagain\fP
+该服务暂时不可用。 这可能意味着文件已锁定或服务器当前无法接受更多连接。 此条件的默认操作是 "continue"。
+.RE
+.PP
+\fIACTION\fP 值可以是以下之一:
+.RS 4
+.TP  12
+\fBreturn\fP
+现在返回一个结果。 不要调用任何进一步查找函数。 但是，出于兼容性原因，如果这是为 \fBgroup\fP 数据库和 \fBnotfound\fP
+状态选择的操作，并且配置文件不包含 \fBinitgroups\fP 行，则始终调用下一个查找函数，而不会影响搜索结果。
+.TP 
+\fBcontinue\fP
+调用下查找函数。
+.TP 
+\fBmerge\fP
+\fI[SUCCESS=merge]\fP 用于两个数据库条目之间。 当一个组位于两个组条目中的第一个时，处理将继续到下一个。 如果在下一个条目中也找到了该组
+(并且组名和 GID 完全匹配)，则将第二个条目的成员列表添加到要返回的组对象中。 自 glibc 2.24 起可用。 请注意，不会对
+\fBgetgrent\fP(3) 进行合并，当重复成员出现在要合并的两个条目中时，也不会删除它们。
+.RE
+.SS "Compatibility mode (compat)"
+NSS "compat" 服务与 "files" 类似，不同之处在于它额外允许相应文件中的特殊条目以授予用户或网络组成员访问系统的权限。
+以下条目在此模式下有效:
+.RS 4
+.PP
+对于 \fBpasswd\fP 和 \fBshadow\fP 数据库:
+.RS 4
+.TP  12
+\fB+\fP\fIuser\fP
+包括来自 NIS passwd/shadow map 的指定 \fIuser\fP。
+.TP 
+\fB+@\fP\fInetgroup\fP
+在给定的 \fInetgroup\fP 中包含所有用户。
+.TP 
+\fB\-\fP\fIuser\fP
+从 NIS passwd/shadow map 中排除指定的 \fIuser\fP。
+.TP 
+\fB\-@\fP\fInetgroup\fP
+排除给定 \fInetgroup\fP 中的所有用户。
+.TP 
+\fB+\fP
+从 NIS passwd/shadow map 中包括每个用户，之前排除的用户除外。
+.RE
+.PP
+对于 \fBgroup\fP 数据库:
+.RS 4
+.TP  12
+\fB+\fP\fIgroup\fP
+包括来自 NIS 组 map 的指定 \fIgroup\fP。
+.TP 
+\fB\-\fP\fIgroup\fP
+从 NIS 组 map 中排除指定的 \fIgroup\fP。
+.TP 
+\fB+\fP
+包括 NIS 组 map 中的每个组，之前排除的组除外。
+.RE
+.RE
+.PP
+默认情况下，源是 "nis"，但可以通过将 "compat" 本身以外的任何 NSS 服务指定为伪数据库
+\fBpasswd_compat\fP、\fBgroup_compat\fP 和 \fBshadow_compat\fP 的源来覆盖。
+.SH FILES
+名为 \fISERVICE\fP 的服务由驻留在 \fI/lib\fP 中的名为 \fIlibnss_SERVICE.so.\fP\fBX\fP 的共享对象库实现。
+.RS 4
+.TP  25
+.PD 0
+\fI/etc/nsswitch.conf\fP
+NSS 配置文件。
+.TP 
+\fI/lib/libnss_compat.so.\fP\fBX\fP
+实现 "compat" 源代码。
+.TP 
+\fI/lib/libnss_db.so.\fP\fBX\fP
+实现 "db" 源代码。
+.TP 
+\fI/lib/libnss_dns.so.\fP\fBX\fP
+实现 "dns" 源代码。
+.TP 
+\fI/lib/libnss_files.so.\fP\fBX\fP
+实现 "files" 源代码。
+.TP 
+\fI/lib/libnss_hesiod.so.\fP\fBX\fP
+实现 "hesiod" 源代码。
+.TP 
+\fI/lib/libnss_nis.so.\fP\fBX\fP
+实现 "nis" 源代码。
+.TP 
+\fI/lib/libnss_nisplus.so.\fP\fBX\fP
+实现 "nisplus" 源代码。
+.PD
+.RE
+.PP
+为各个数据库指定 "files" 源时读取以下文件:
+.RS 4
+.TP  12
+.PD 0
+\fBaliases\fP
+\fI/etc/aliases\fP
+.TP 
+\fBethers\fP
+\fI/etc/ethers\fP
+.TP 
+\fBgroup\fP
+\fI/etc/group\fP
+.TP 
+\fBhosts\fP
+\fI/etc/hosts\fP
+.TP 
+\fBinitgroups\fP
+\fI/etc/group\fP
+.TP 
+\fBnetgroup\fP
+\fI/etc/netgroup\fP
+.TP 
+\fBnetworks\fP
+\fI/etc/networks\fP
+.TP 
+\fBpasswd\fP
+\fI/etc/passwd\fP
+.TP 
+\fBprotocols\fP
+\fI/etc/protocols\fP
+.TP 
+\fBpublickey\fP
+\fI/etc/publickey\fP
+.TP 
+\fBrpc\fP
+\fI/etc/rpc\fP
+.TP 
+\fBservices\fP
+\fI/etc/services\fP
+.TP 
+\fBshadow\fP
+\fI/etc/shadow\fP
+.PD
+.RE
+.SH NOTES
+.\" https://sourceware.org/bugzilla/show_bug.cgi?id=12459
+从 glibc 2.33 开始，如果文件更改，\fBnsswitch.conf\fP 会自动重新加载。 在早期版本中，整个文件在每个进程中只被读取一次。
+如果该文件后来被更改，该过程将继续使用旧配置。
+.PP
+传统上，服务信息只有一个来源，通常以单个配置文件的形式出现 (例如，\fI/etc/passwd\fP).  然而，随着网络信息服务 (NIS) 和域名服务
+(DNS) 等其他名称服务的流行，需要一种比编码到 C 库中的固定搜索顺序更灵活的方法。 名称服务切换机制基于 Sun Microsystems 在
+Solaris 2 C 库中使用的机制，为该问题引入了更简洁的解决方案。
+.SH "SEE ALSO"
+\fBgetent\fP(1), \fBnss\fP(5)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

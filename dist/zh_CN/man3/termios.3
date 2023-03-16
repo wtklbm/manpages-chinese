@@ -1,0 +1,706 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1993 Michael Haardt (michael@moria.de)
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\" Copyright (c) 2006-2015, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-02-25 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" Modified 1995-09-02 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" moved to man3, aeb, 950919
+.\" Modified 2001-09-22 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2001-12-17, aeb
+.\" Modified 2004-10-31, aeb
+.\" 2006-12-28, mtk:
+.\"     Added .SS headers to give some structure to this page; and a
+.\"     small amount of reordering.
+.\"     Added a section on canonical and noncanonical mode.
+.\"     Enhanced the discussion of "raw" mode for cfmakeraw().
+.\"     Document CMSPAR.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH termios 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+termios, tcgetattr, tcsetattr, tcsendbreak, tcdrain, tcflush, tcflow,
+cfmakeraw, cfgetospeed, cfgetispeed, cfsetispeed, cfsetospeed, cfsetspeed \-
+获取和设置终端属性，线路控制，获取和设置波特率
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <termios.h>\fP
+\fB#include <unistd.h>\fP
+.PP
+\fBint tcgetattr(int \fP\fIfd\fP\fB, struct termios *\fP\fItermios_p\fP\fB);\fP
+\fBint tcsetattr(int \fP\fIfd\fP\fB, int \fP\fIoptional_actions\fP\fB,\fP
+\fB              const struct termios *\fP\fItermios_p\fP\fB);\fP
+.PP
+\fBint tcsendbreak(int \fP\fIfd\fP\fB, int \fP\fIduration\fP\fB);\fP
+\fBint tcdrain(int \fP\fIfd\fP\fB);\fP
+\fBint tcflush(int \fP\fIfd\fP\fB, int \fP\fIqueue_selector\fP\fB);\fP
+\fBint tcflow(int \fP\fIfd\fP\fB, int \fP\fIaction\fP\fB);\fP
+.PP
+\fBvoid cfmakeraw(struct termios *\fP\fItermios_p\fP\fB);\fP
+.PP
+\fBspeed_t cfgetispeed(const struct termios *\fP\fItermios_p\fP\fB);\fP
+\fBspeed_t cfgetospeed(const struct termios *\fP\fItermios_p\fP\fB);\fP
+.PP
+\fBint cfsetispeed(struct termios *\fP\fItermios_p\fP\fB, speed_t \fP\fIspeed\fP\fB);\fP
+\fBint cfsetospeed(struct termios *\fP\fItermios_p\fP\fB, speed_t \fP\fIspeed\fP\fB);\fP
+\fBint cfsetspeed(struct termios *\fP\fItermios_p\fP\fB, speed_t \fP\fIspeed\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBcfsetspeed\fP(), \fBcfmakeraw\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+termios 数描述了一个通用的终端接口，它被提供来控制异步通信端口。
+.SS "The termios structure"
+这里描述的许多函数都有一个 \fItermios_p\fP 参数，它是指向 \fItermios\fP 结构体的指针。 本结构体至少包含以下成员:
+.PP
+.in +4n
+.EX
+tcflag_t c_iflag;      /* input modes */
+tcflag_t c_oflag;      /* output modes */
+tcflag_t c_cflag;      /* control modes */
+tcflag_t c_lflag;      /* local modes */
+cc_t     c_cc[NCCS];   /* special characters */
+.EE
+.in
+.PP
+下面描述了可以分配给这些字段的值。 在前四个位掩码字段的情况下，一些可能设置的关联标志的定义仅在特定特性测试宏 (参见
+\fBfeature_test_macros\fP(7)) 已定义，如括号 ("[]").
+.PP
+在下面的描述中，"not in POSIX" 表示该值未在 POSIX.1\-2001 中指定，"XSI" 表示该值在 POSIX.1\-2001 中指定为
+XSI 扩展的一部分。
+.PP
+\fIc_iflag\fP 标志常量:
+.TP 
+\fBIGNBRK\fP
+忽略输入的 BREAK 条件。
+.TP 
+\fBBRKINT\fP
+如果设置了 \fBIGNBRK\fP，则忽略 BREAK。 如果未设置但设置了 \fBBRKINT\fP，则 BREAK
+导致输入和输出队列被刷新，如果终端是前台进程组的控制终端，它将导致 \fBSIGINT\fP 被发送到该前台进程组.  当既没有设置 \fBIGNBRK\fP
+也没有设置 \fBBRKINT\fP 时，BREAK 读取为空字节 (\[aq]\e0\[aq])，除非设置了 \fBPARMRK\fP，在这种情况下，它读取为序列
+\e377\e0。
+.TP 
+\fBIGNPAR\fP
+忽略帧错误和奇偶校验错误。
+.TP 
+\fBPARMRK\fP
+如果设置了该位，则在传递给程序时标记具有奇偶校验或帧错误的输入字节。 该位仅在 \fBINPCK\fP 置位且 \fBIGNPAR\fP 未置位时才有意义。
+标记错误字节的方式是用两个前面的字节，\e377 和 \e0。 因此，对于从最终端接收到的一个错误字节，该程序实际上读取了三个字节。 如果有效字节的值为
+\e377，并且未设置 \fBISTRIP\fP (见下文)，程序可能会将其与标记奇偶校验错误的前缀混淆。 因此，一个有效字节 \e377
+作为两个字节传递给程序，在本例中为 \e377\e377。
+.IP
+如果 \fBIGNPAR\fP 和 \fBPARMRK\fP 都没有设置，则读取一个有奇偶错误或帧错误的字符作为 \e0。
+.TP 
+\fBINPCK\fP
+启用输入奇偶校验。
+.TP 
+\fBISTRIP\fP
+剥离第八位。
+.TP 
+\fBINLCR\fP
+在输入时将 NL 翻译成 CR。
+.TP 
+\fBIGNCR\fP
+输入时忽略回车。
+.TP 
+\fBICRNL\fP
+在输入时将回车转换为换行 (除非设置了 \fBIGNCR\fP)。
+.TP 
+\fBIUCLC\fP
+(不在 POSIX 中) Map 输入时将大写字符转换为小写。
+.TP 
+\fBIXON\fP
+在输出上启用 XON/XOFF 流控制。
+.TP 
+\fBIXANY\fP
+(XSI) 输入任何字符将重新启动停止的输出。 (默认设置是只允许 START 字符重新启动输出。)
+.TP 
+\fBIXOFF\fP
+在输入上启用 XON/XOFF 流控制。
+.TP 
+\fBIMAXBEL\fP
+(不在 POSIX 中) 输入队列已满时响铃。 Linux 没有实现这个位，并且就像它总是被设置一样。
+.TP 
+\fBIUTF8\fP (since Linux 2.6.4)
+(不在 POSIX 中) 输入为 UTF8; 这允许在熟化模式下正确执行字符擦除。
+.PP
+\fIc_oflag\fP 标志常量:
+.TP 
+\fBOPOST\fP
+启用实现定义的输出处理。
+.TP 
+\fBOLCUC\fP
+(不在 POSIX 中) Map 输出时将小写字符转换为大写。
+.TP 
+\fBONLCR\fP
+(XSI) Map NL 到 CR\-NL 输出。
+.TP 
+\fBOCRNL\fP
+Map CR 到 NL 输出。
+.TP 
+\fBONOCR\fP
+不要在列输出 CR 0.
+.TP 
+\fBONLRET\fP
+假定 NL 字符执行回车函数; 在 NL 和 CR 之后，内核对当前列的想法都设置为 0。
+.TP 
+\fBOFILL\fP
+延迟发送填充字符，而不是使用定时延迟。
+.TP 
+\fBOFDEL\fP
+填充字符为 ASCII DEL (0177)。 如果未设置，填充字符为 ASCII NUL (\[aq]\e0\[aq])。 (未在 Linux
+上实现。)
+.TP 
+\fBNLDLY\fP
+换行延迟掩码。 值为 \fBNL0\fP 和 \fBNL1\fP。 [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP 或
+\fB_XOPEN_SOURCE\fP]
+.TP 
+\fBCRDLY\fP
+回车延迟掩码。 值为 \fBCR0\fP、\fBCR1\fP、\fBCR2\fP 或 \fBCR3\fP。 [需要 \fB_BSD_SOURCE\fP 或
+\fB_SVID_SOURCE\fP 或 \fB_XOPEN_SOURCE\fP]
+.TP 
+\fBTABDLY\fP
+水平选项卡延迟掩码。 值为 \fBTAB0\fP、\fBTAB1\fP、\fBTAB2\fP、\fBTAB3\fP (或 \fBXTABS\fP，但请参见 \fBBUGS\fP 部分)。
+TAB3 的值，即 XTABS，将制表符扩展为空格 (每八列有一个制表位)。 [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP
+或 \fB_XOPEN_SOURCE\fP]
+.TP 
+\fBBSDLY\fP
+退格延迟掩码。 值为 \fBBS0\fP 或 \fBBS1\fP。 (从未实现过。) [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP 或
+\fB_XOPEN_SOURCE\fP]
+.TP 
+\fBVTDLY\fP
+垂直标签延迟掩码。 值为 \fBVT0\fP 或 \fBVT1\fP。
+.TP 
+\fBFFDLY\fP
+换页延迟掩码。 值为 \fBFF0\fP 或 \fBFF1\fP。 [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP 或
+\fB_XOPEN_SOURCE\fP]
+.PP
+\fIc_cflag\fP 标志常量:
+.TP 
+\fBCBAUD\fP
+(不在 POSIX 中) 波特速度掩码 (4+1 位)。 [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP]
+.TP 
+\fBCBAUDEX\fP
+(不在 POSIX 中) 额外的波特率掩码 (1 位)，包含在 \fBCBAUD\fP 中。 [需要 \fB_BSD_SOURCE\fP 或
+\fB_SVID_SOURCE\fP]
+.IP
+(POSIX says that the baud speed is stored in the \fItermios\fP structure
+without specifying where precisely, and provides \fBcfgetispeed\fP()  and
+\fBcfsetispeed\fP()  for getting at it.  Some systems use bits selected by
+\fBCBAUD\fP in \fIc_cflag\fP, other systems use separate fields, for example,
+\fIsg_ispeed\fP and \fIsg_ospeed\fP.)
+.TP 
+\fBCSIZE\fP
+字符大小掩码。 值为 \fBCS5\fP、\fBCS6\fP、\fBCS7\fP 或 \fBCS8\fP。
+.TP 
+\fBCSTOPB\fP
+设置两个停止位，而不是一个。
+.TP 
+\fBCREAD\fP
+启用接收者。
+.TP 
+\fBPARENB\fP
+启用输出奇偶校验生成和输入奇偶校验。
+.TP 
+\fBPARODD\fP
+如果设置，则输入和输出的奇偶校验为奇数; 否则甚至使用奇偶校验。
+.TP 
+\fBHUPCL\fP
+在最后一个进程关闭设备 (挂断) 后降低调制解调器控制线。
+.TP 
+\fBCLOCAL\fP
+忽略调制解调器控制线。
+.TP 
+\fBLOBLK\fP
+(不在 POSIX 中) 阻止来自非当前 shell 层的输出。 供 \fBshl\fP (shell 层) 使用。 (未在 Linux 上实现。)
+.TP 
+\fBCIBAUD\fP
+(不在 POSIX 中) 输入速度掩码。 \fBCIBAUD\fP 位的值与 \fBCBAUD\fP 位的值相同，左移 \fBIBSHIFT\fP 位。 [需要
+\fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP] (未在 glibc 中实现，通过 \fBTCGET\fP* 和 \fBTCSET\fP*
+ioctl 在 Linux 上支持; 参见 \fBioctl_tty\fP(2))
+.TP 
+\fBCMSPAR\fP
+(不在 POSIX 中) Use "stick" (mark/space) parity (在某些串口设备上支持) : 如果设置了
+\fBPARODD\fP，则奇偶校验位始终为 1; 如果未设置 \fBPARODD\fP，则奇偶校验位始终为 0。 [需要 \fB_BSD_SOURCE\fP 或
+\fB_SVID_SOURCE\fP]
+.TP 
+\fBCRTSCTS\fP
+(不在 POSIX 中) 启用 RTS/CTS (hardware) 流控制。 [需要 \fB_BSD_SOURCE\fP 或
+\fB_SVID_SOURCE\fP]
+.PP
+\fIc_lflag\fP 标志常量:
+.TP 
+\fBISIG\fP
+当接收到任何字符 INTR、QUIT、SUSP 或 DSUSP 时，产生相应的信号。
+.TP 
+\fBICANON\fP
+启用规范模式 (如下所述)。
+.TP 
+\fBXCASE\fP
+.\" glibc is probably now wrong to allow
+.\" Define
+.\" .B _XOPEN_SOURCE
+.\" to expose
+.\" .BR XCASE .
+(不在 POSIX 中; 在 Linux 下不支持) 如果还设置了 \fBICANON\fP，则终端仅为大写。 输入被转换为小写，但前面有 \e 的字符除外。
+输出时，大写字符前面有 \e，小写字符转换为大写。 [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP 或
+\fB_XOPEN_SOURCE\fP]
+.TP 
+\fBECHO\fP
+回显输入的字符。
+.TP 
+\fBECHOE\fP
+如果还设置了 \fBICANON\fP，则 ERASE 字符会擦除前面的输入字符，而 WERASE 会擦除前面的单词。
+.TP 
+\fBECHOK\fP
+如果还设置了 \fBICANON\fP，则 KILL 字符将擦除当前行。
+.TP 
+\fBECHONL\fP
+如果还设置了 \fBICANON\fP，即使没有设置 ECHO，也会回显 NL 字符。
+.TP 
+\fBECHOCTL\fP
+(不在 POSIX) 如果 \fBECHO\fP 也被设置，终端除 TAB、NL、START、STOP 之外的特殊字符被回显为 \fB\[ha]X\fP，其中 X
+是 ASCII 码 0x40 大于特殊字符的字符。 例如，字符 0x08 (BS) 被回显为 \fB\[ha]H\fP。 [需要 \fB_BSD_SOURCE\fP
+或 \fB_SVID_SOURCE\fP]
+.TP 
+\fBECHOPRT\fP
+(不在 POSIX 中) 如果还设置了 \fBICANON\fP 和 \fBECHO\fP，字符将按 erased 打印。 [需要 \fB_BSD_SOURCE\fP 或
+\fB_SVID_SOURCE\fP]
+.TP 
+\fBECHOKE\fP
+(不在 POSIX 中) 如果还设置了 \fBICANON\fP，则通过擦除 \fBECHOE\fP 和 \fBECHOPRT\fP 指定的行中的每个字符来回显
+KILL。 [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP]
+.TP 
+\fBDEFECHO\fP
+(不在 POSIX 中) 仅当进程正在读取时回显。 (未在 Linux 上实现。)
+.TP 
+\fBFLUSHO\fP
+(不在 POSIX 中; 在 Linux 下不受支持) 正在刷新输出。 通过键入 DISCARD 字符来切换此标志。 [需要
+\fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP]
+.TP 
+\fBNOFLSH\fP
+.\" Stevens lets SUSP only flush the input queue
+在为 INT、QUIT 和 SUSP 字符生成信号时禁用刷新输入和输出队列。
+.TP 
+\fBTOSTOP\fP
+将 \fBSIGTTOU\fP 信号发送到试图写入其控制端的后台进程的进程组。
+.TP 
+\fBPENDIN\fP
+(不在 POSIX 中; 在 Linux 下不支持) 当读取下一个字符时，将重新打印输入队列中的所有字符。 (\fBbash\fP(1)
+以这种方式处理提前输入。) [需要 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP]
+.TP 
+\fBIEXTEN\fP
+启用实现定义的输入处理。 必须启用此标志以及 \fBICANON\fP 才能解释特殊字符 EOL2、LNEXT、REPRINT、WERASE，并使
+\fBIUCLC\fP 标志生效。
+.PP
+\fIc_cc\fP 数组定义了终端特殊字符。 符号索引 (初始值) 和含义是:
+.TP 
+\fBVDISCARD\fP
+(不在 POSIX 中; 在 Linux 下不受支持; 017、SI、Ctrl\-O) 切换: start/stop 丢弃未决输出。 设置
+\fBIEXTEN\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVDSUSP\fP
+(POSIX 不支持; Linux 不支持; 031、EM、Ctrl\-Y) 延迟挂起字符 (DSUSP): 用户程序读到该字符时发送
+\fBSIGTSTP\fP 信号。 设置 \fBIEXTEN\fP 和 \fBISIG\fP 时识别，系统支持作业控制，不作为输入传递。
+.TP 
+\fBVEOF\fP
+(004, EOT, Ctrl\-D) 文件结束字符 (EOF)。 更准确地说: 这个字符导致挂起的 tty
+缓冲区被发送到等待的用户程序，而不用等待行尾。 如果它是该行的第一个字符，则用户程序中的 \fBread\fP(2) 返回 0，表示文件结束。 设置
+\fBICANON\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVEOL\fP
+(0, NUL) 额外的行尾字符 (EOL)。 设置 \fBICANON\fP 时识别。
+.TP 
+\fBVEOL2\fP
+(不在 POSIX 中; 0，NUL) 又一个行尾字符 (EOL2)。 设置 \fBICANON\fP 时识别。
+.TP 
+\fBVERASE\fP
+(0177、DEL、rubout 或 010、BS、Ctrl\-H 或 #) 擦除字符 (ERASE)。 这会擦除之前尚未 erased
+的字符，但不会擦除过去的 EOF 或行首。 设置 \fBICANON\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVINTR\fP
+(003、ETX、Ctrl\-C，或 0177、DEL、rubout) 中断字符 (INTR)。 发送 \fBSIGINT\fP 信号。 设置 \fBISIG\fP
+时识别，然后不作为输入传递。
+.TP 
+\fBVKILL\fP
+(025, NAK, Ctrl\-U, or Ctrl\-X, or also @)  Kill character (KILL).  这将擦除自上一个
+EOF 或行首以来的输入。 设置 \fBICANON\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVLNEXT\fP
+(不在 POSIX; 026，SYN，Ctrl\-V) 字面量下一个 (LNEXT)。 引用下一个输入字符，使其失去可能的特殊含义。 设置
+\fBIEXTEN\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVMIN\fP
+非规范读取的最小字符数 (MIN)。
+.TP 
+\fBVQUIT\fP
+(034, FS, Ctrl\-\e) 退出字符 (QUIT)。 发送 \fBSIGQUIT\fP 信号。 设置 \fBISIG\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVREPRINT\fP
+(不在 POSIX; 022、DC2、Ctrl\-R) 重印未读字符 (REPRINT)。 设置 \fBICANON\fP 和 \fBIEXTEN\fP
+时识别，然后不作为输入传递。
+.TP 
+\fBVSTART\fP
+(021, DC1, Ctrl\-Q) 起始字符 (START)。 重新启动由停止字符停止的输出。 设置 \fBIXON\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVSTATUS\fP
+(不在 POSIX 中; 在 Linux 下不受支持; 状态请求: 024、DC4、Ctrl\-T)。 状态字符 (STATUS)。
+在终端显示状态信息，包括前台进程的状态和消耗的 CPU 时间。 还向前台进程组发送 \fBSIGINFO\fP 信号 (Linux 不支持)。
+.TP 
+\fBVSTOP\fP
+(023, DC3, Ctrl\-S) 停止字符 (STOP)。 停止输出，直到输入开始字符。 设置 \fBIXON\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVSUSP\fP
+(032, SUB, Ctrl\-Z) 暂停字符 (SUSP)。 发送 \fBSIGTSTP\fP 信号。 设置 \fBISIG\fP 时识别，然后不作为输入传递。
+.TP 
+\fBVSWTCH\fP
+(不在 POSIX 中; 在 Linux 下不支持; 0，NUL) 切换字符 (SWTCH)。 在 System V 中用于切换 \fIshell layers\fP 中的 shells，shell 作业控制的前身。
+.TP 
+\fBVTIME\fP
+非规范读取 (TIME) 的超时 (以分秒为单位)。
+.TP 
+\fBVWERASE\fP
+(不在 POSIX; 027，ETB，Ctrl\-W) 字擦除 (WERASE)。 设置 \fBICANON\fP 和 \fBIEXTEN\fP
+时识别，然后不作为输入传递。
+.PP
+通过将相应的 \fIc_cc\fP 元素的值设置为 \fB_POSIX_VDISABLE\fP，可以禁用单个终端特殊字符。
+.PP
+上述符号下标值均不同，只是 \fBVTIME\fP、\fBVMIN\fP 可能分别与 \fBVEOL\fP、\fBVEOF\fP 具有相同的值。
+在非规范模式下，特殊字符的含义被超时含义所取代。 \fBVMIN\fP 和 \fBVTIME\fP 的解释见下面非规范模式的说明。
+.SS "Retrieving and changing terminal settings"
+\fBtcgetattr\fP() 获取与 \fIfd\fP 引用的对象关联的参数，并将它们存储在 \fItermios_p\fP 引用的 \fItermios\fP
+结构体中。 这个函数可以从后台进程中调用; 但是，最终属性可能随后会被前台进程更改。
+.PP
+\fBtcsetattr\fP() 从 \fItermios_p\fP 引用的 \fItermios\fP 结构体设置与终端相关的参数 (除非需要底层硬件不可用的支持)。
+\fIoptional_actions\fP 指定更改何时生效:
+.TP 
+\fBTCSANOW\fP
+变化立即发生。
+.TP 
+\fBTCSADRAIN\fP
+写入 \fIfd\fP 的所有输出都已传输后发生更改。 更改影响输出的参数时应使用此选项。
+.TP 
+\fBTCSAFLUSH\fP
+更改发生在写入 \fIfd\fP 引用的对象的所有输出都已传输之后，并且所有已接收但未读取的输入将在进行更改之前被丢弃。
+.SS "Canonical and noncanonical mode"
+\fIc_lflag\fP 中 \fBICANON\fP 规范标志的设置决定最终端是在规范模式 ((\fBICANON\fP set) 还是非规范模式
+((\fBICANON\fP unset) 下运行。 默认设置为 \fBICANON\fP。
+.PP
+在规范模式下:
+.IP \[bu] 3
+输入逐行可用。 输入行定界符之一 (NL、EOL、EOL2; 或行首的 EOF) 时，输入行可用。 除了 EOF 的情况，行定界符包含在
+\fBread\fP(2) 返回的缓冲区中。
+.IP \[bu]
+启用行编辑 (ERASE、KILL; 如果设置了 \fBIEXTEN\fP 标志: WERASE、REPRINT、LNEXT)。 \fBread\fP(2)
+最多返回一行输入; 如果 \fBread\fP(2) 请求的字节数少于当前输入行中可用的字节数，则只读取请求的字节数，其余字符将可用于 future
+\fBread\fP(2)。
+.IP \[bu]
+最大行长度为 4096 个字符 (包括终止换行符) ; 超过 4096 个字符的行将被截断。 在 4095 个字符之后，输入处理 (例如，\fBISIG\fP
+和 \fBECHO*\fP 处理) 继续，但是在 4095 个字符之后直到 (但不包括) 任何终止换行符的任何输入数据都将被丢弃。
+这确保了终端始终可以接收更多输入，直到至少可以读取一行。
+.PP
+在非规范模式下，输入立即可用 (用户无需键入行分隔符)，不执行任何输入处理，并且禁用行编辑。 读取缓冲区将只接受 4095 个字符;
+如果输入模式切换为规范，这将为换行符提供必要的空间。 MIN (\fIc_cc[VMIN]\fP) 和 TIME (\fIc_cc[VTIME]\fP)
+的设置决定了 \fBread\fP(2) 在什么情况下完成; 有四种不同的情况:
+.TP 
+MIN == 0, TIME == 0 (polling read)
+如果数据可用，\fBread\fP(2) 立即返回，返回可用字节数或请求字节数中的较小者。 如果没有数据可用，\fBread\fP(2) 返回 0.
+.TP 
+MIN > 0, TIME == 0 (blocking read)
+\fBread\fP(2) 阻塞直到 MIN 字节可用，并返回最多请求的字节数。
+.TP 
+MIN == 0, TIME > 0 (read with timeout)
+TIME 以十分之一秒为单位指定计时器的限制。 当调用 \fBread\fP(2) 时定时器启动。
+当至少有一个字节的数据可用时，或者当计时器到期时，\fBread\fP(2) 返回。 如果定时器到期而没有任何输入可用，则 \fBread\fP(2) 返回 0。
+如果在调用 \fBread\fP(2) 时数据已经可用，则调用的行为就好像数据是在调用之后立即接收到的一样。
+.TP 
+MIN > 0, TIME > 0 (read with interbyte timeout)
+TIME 以十分之一秒为单位指定计时器的限制。 一旦输入的初始字节可用，则在接收到每个后续字节后重新启动计时器。 \fBread\fP(2)
+在满足以下任一条件时返回:
+.RS
+.IP \[bu] 3
+已收到 MIN 个字节。
+.IP \[bu]
+字节间计时器到期。
+.IP \[bu]
+.\" e.g., Solaris
+已收到 \fBread\fP(2) 请求的字节数。 (POSIX 未指定此终止条件，并且在某些其他实现中，\fBread\fP(2) 在这种情况下不会返回。)
+.RE
+.IP
+由于定时器仅在初始字节可用后才启动，因此至少会读取一个字节。 如果在调用 \fBread\fP(2)
+时数据已经可用，则调用的行为就好像数据是在调用之后立即接收到的一样。
+.PP
+.\" POSIX.1-2008 XBD 11.1.7
+POSIX 没有指定 \fBO_NONBLOCK\fP 文件状态标志的设置是否优先于 MIN 和 TIME 设置。 如果设置了
+\fBO_NONBLOCK\fP，则非规范模式下的 \fBread\fP(2) 可能会立即返回，而不管 MIN 或 TIME 的设置如何。
+此外，如果没有可用数据，则 POSIX 允许非规范模式下的 \fBread\fP(2) 返回 0 或 \-1 (其中 \fIerrno\fP 设置为
+\fBEAGAIN\fP)。
+.SS "Raw mode"
+\fBcfmakeraw\fP() 将终端设置为类似于旧版本 7 终端驱动程序的 "raw" 模式:
+可以逐字符输入，禁用回显，并禁用对终端输入和输出字符的所有特殊处理。 终端属性设置如下:
+.PP
+.in +4n
+.EX
+termios_p\->c_iflag &= \[ti](IGNBRK | BRKINT | PARMRK | ISTRIP
+                |INLCR | 点火器 | ICRNL | 伊克森);
+termios_p\->c_oflag &= \[ti]OPOST;
+termios_p\->c_lflag &= \[ti](ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+termios_p\->c_cflag &= \[ti](CSIZE | PARENB);
+termios_p\->c_cflag |= CS8;
+.EE
+.in
+.\"
+.SS "Line control"
+如果终端正在使用异步串行数据传输，则 \fBtcsendbreak\fP() 在特定持续时间内传输连续的零值位流。 如果 \fIduration\fP
+为零，它传输零值位至少 0.25 秒，但不超过 0.5 秒。 如果 \fIduration\fP 不为零，它会在某个实现定义的时间长度内发送零值位。
+.PP
+如果终端没有使用异步串行数据传输，\fBtcsendbreak\fP() 不做任何动作返回。
+.PP
+\fBtcdrain\fP() 等待，直到写入 \fIfd\fP 引用的对象的所有输出都已传输。
+.PP
+\fBtcflush\fP() 丢弃写入 \fIfd\fP 引用的对象但未传输的数据，或接收但未读取的数据，具体取决于 \fIqueue_selector\fP: 的值
+.TP 
+\fBTCIFLUSH\fP
+刷新收到但未读取的数据。
+.TP 
+\fBTCOFLUSH\fP
+刷新已写入但未传输的数据。
+.TP 
+\fBTCIOFLUSH\fP
+刷新接收但未读取的数据和写入但未传输的数据。
+.PP
+\fBtcflow\fP() 根据 \fIaction\fP: 的值暂停 \fIfd\fP 引用的对象上的数据传输或接收
+.TP 
+\fBTCOOFF\fP
+暂停输出。
+.TP 
+\fBTCOON\fP
+重新启动挂起的输出。
+.TP 
+\fBTCIOFF\fP
+传输一个 STOP 字符，停止终端设备向系统传输数据。
+.TP 
+\fBTCION\fP
+传输一个 START 字符，启动终端设备向系统传输数据。
+.PP
+打开终端文件的默认设置是它的输入和输出都没有被挂起。
+.SS "Line speed"
+波特率函数用于获取和设置 \fItermios\fP 结构体中输入和输出波特率的值。 直到成功调用 \fBtcsetattr\fP() 后，新值才会生效。
+.PP
+将速度设置为 \fBB0\fP 指示调制解调器为 "hang up"。 \fBB38400\fP 对应的实际码率可以用 \fBsetserial\fP(8) 改变。
+.PP
+输入和输出波特率存储在 \fItermios\fP 结构体中。
+.PP
+\fBcfgetospeed\fP() 返回存储在 \fItermios_p\fP 指向的 \fItermios\fP 结构体中的输出波特率。
+.PP
+\fBcfsetospeed\fP() 将存储在 \fItermios_p\fP 指向的 \fItermios\fP 结构体中的输出波特率设置为
+\fIspeed\fP，它必须是以下常量之一:
+.RS
+.TP 
+\fBB0\fP
+.TQ
+\fBB50\fP
+.TQ
+\fBB75\fP
+.TQ
+\fBB110\fP
+.TQ
+\fBB134\fP
+.TQ
+\fBB150\fP
+.TQ
+\fBB200\fP
+.TQ
+\fBB300\fP
+.TQ
+\fBB600\fP
+.TQ
+\fBB1200\fP
+.TQ
+\fBB1800\fP
+.TQ
+\fBB2400\fP
+.TQ
+\fBB4800\fP
+.TQ
+\fBB9600\fP
+.TQ
+\fBB19200\fP
+.TQ
+\fBB38400\fP
+.TQ
+\fBB57600\fP
+.TQ
+\fBB115200\fP
+.TQ
+\fBB230400\fP
+.TQ
+\fBB460800\fP
+.TQ
+\fBB500000\fP
+.TQ
+\fBB576000\fP
+.TQ
+\fBB921600\fP
+.TQ
+\fBB1000000\fP
+.TQ
+\fBB1152000\fP
+.TQ
+\fBB1500000\fP
+.TQ
+\fBB2000000\fP
+.RE
+.PP
+SPARC 架构还支持这些常量:
+.RS
+.TP 
+\fBB76800\fP
+.TQ
+\fBB153600\fP
+.TQ
+\fBB307200\fP
+.TQ
+\fBB614400\fP
+.RE
+.PP
+非 SPARC 体系结构还支持这些常量:
+.RS
+.TP 
+\fBB2500000\fP
+.TQ
+\fBB3000000\fP
+.TQ
+\fBB3500000\fP
+.TQ
+\fBB4000000\fP
+.RE
+.PP
+由于体系结构之间的差异，便携式应用程序应在使用之前检查是否定义了特定的 \fBB\fP\fInnn\fP 常量。
+.PP
+零波特率 \fBB0\fP 用于终止连接。 如果指定了 \fBB0\fP，调制解调器控制线将不再有效。 通常，这会断开线路。 \fBCBAUDEX\fP 是超出
+POSIX.1 中定义的速度 (57600 及以上) 的掩码。 因此，\fBB57600\fP&\fBCBAUDEX\fP 是非零的。
+.PP
+可以通过 \fBTCSETS2\fP ioctl 将波特率设置为不同于 \fBB\fP\fInnn\fP 常量定义的值; 请参见 \fBioctl_tty\fP(2)。
+.PP
+\fBcfgetispeed\fP() 返回存储在 \fItermios\fP 结构体中的输入波特率。
+.PP
+\fBcfsetispeed\fP() 将存储在 \fItermios\fP 结构体中的输入波特率设置为 \fIspeed\fP，必须将其指定为上面为
+\fBcfsetospeed\fP() 列出的 \fBB\fP\fInnn\fP 常量之一。 如果输入波特率设置为字面量常量 \fB0\fP (不是符号常量
+\fBB0\fP)，输入波特率将等于输出波特率。
+.PP
+\fBcfsetspeed\fP() 是 4.4BSD 的扩展。 它取与 \fBcfsetispeed\fP() 相同的参数，同时设置输入和输出速度。
+.SH "RETURN VALUE"
+\fBcfgetispeed\fP() 返回存储在 \fItermios\fP 结构体中的输入波特率。
+.PP
+\fBcfgetospeed\fP() 返回存储在 \fItermios\fP 结构体中的输出波特率。
+.PP
+所有其他函数返回:
+.TP 
+\fB0\fP
+在成功。
+.TP 
+\fB\-1\fP
+失败并设置 \fIerrno\fP 以指示错误。
+.PP
+请注意，如果请求的更改 \fIany\fP 可以成功执行，则 \fBtcsetattr\fP() 返回成功。 因此，当进行多项更改时，可能需要在此调用之后进一步调用
+\fBtcgetattr\fP()，以检查所有更改是否已成功执行。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.nh
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBtcgetattr\fP(),
+\fBtcsetattr\fP(),
+\fBtcdrain\fP(),
+\fBtcflush\fP(),
+\fBtcflow\fP(),
+\fBtcsendbreak\fP(),
+\fBcfmakeraw\fP(),
+\fBcfgetispeed\fP(),
+\fBcfgetospeed\fP(),
+\fBcfsetispeed\fP(),
+\fBcfsetospeed\fP(),
+\fBcfsetspeed\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.\" FIXME: The markings are different from that in the glibc manual.
+.\" markings in glibc manual are more detailed:
+.\"
+.\"     tcsendbreak: MT-Unsafe race:tcattr(filedes)/bsd
+.\"     tcflow: MT-Unsafe race:tcattr(filedes)/bsd
+.\"
+.\" glibc manual says /bsd indicate the preceding marker only applies
+.\" when the underlying kernel is a BSD kernel.
+.\" So, it is safety in Linux kernel.
+.hy
+.SH STANDARDS
+\fBtcgetattr\fP()、\fBtcsetattr\fP()、\fBtcsendbreak\fP()、\fBtcdrain\fP()、\fBtcflush\fP()、\fBtcflow\fP()、\fBcfgetispeed\fP()、\fBcfgetospeed\fP()、\fBcfsetispeed\fP()
+和 \fBcfsetospeed\fP() 在 POSIX.1\-2001 中指定。
+.PP
+\fBcfmakeraw\fP() 和 \fBcfsetspeed\fP() 是非标准的，但在 BSD 上可用。
+.SH NOTES
+UNIX\V7 和几个后来的系统有一个波特率列表，其中在 \fBB0\fP 到 \fBB9600\fP 的值之后可以找到两个常量 \fBEXTA\fP、\fBEXTB\fP
+("External A" 和 "External B")。 许多系统以更高的波特率扩展了该列表。
+.PP
+.\" libc4 until 4.7.5, glibc for sysv: EINVAL for duration > 0.
+.\" libc4.7.6, libc5, glibc for unix: duration in ms.
+.\" glibc for bsd: duration in us
+.\" glibc for sunos4: ignore duration
+非零 \fIduration\fP 与 \fBtcsendbreak\fP() 的影响各不相同。 SunOS 指定 \fIduration\ *\ N\fP
+秒的中断，其中 \fIN\fP 至少为 0.25，且不超过 0.5。 Linux、AIX、DU、Tru64 发送 \fIduration\fP 毫秒的中断。
+FreeBSD 和 NetBSD 以及 HP\-UX 和 MacOS 忽略 \fIduration\fP 的值。 在 Solaris 和 UnixWare
+下，具有非零 \fIduration\fP 的 \fBtcsendbreak\fP() 的行为类似于 \fBtcdrain\fP()。
+.SH BUGS
+.\" kernel 77e5bff1640432f28794a00800955e646dcd7455
+.\" glibc 573963e32ffac46d9891970ddebde2ac3212c5c0
+在 Linux 4.16 之前的 Alpha 架构 (和 glibc 2.28 之前的 glibc) 上，\fBXTABS\fP 值与 \fBTAB3\fP
+不同，结果被最终驱动程序的 \fBN_TTY\fP 行规程代码忽略 (因为它不是 \fBTABDLY\fP 的一部分，掩码)。
+.SH "SEE ALSO"
+\fBreset\fP(1), \fBsetterm\fP(1), \fBstty\fP(1), \fBtput\fP(1), \fBtset\fP(1), \fBtty\fP(1),
+\fBioctl_console\fP(2), \fBioctl_tty\fP(2), \fBcc_t\fP(3type), \fBspeed_t\fP(3type),
+\fBtcflag_t\fP(3type), \fBsetserial\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

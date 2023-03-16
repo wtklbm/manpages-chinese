@@ -1,0 +1,391 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1995 Michael Chastain (mec@shell.portal.com), 15 April 1995.
+.\" and Copyright (C) 2014, 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1997-07-30 by Paul Slootman <paul@wurtel.demon.nl>
+.\" Modified 2004-05-27 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH adjtimex 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+adjtimex、clock_adjtime、ntp_adjtime \- 调整内核时钟
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/timex.h>\fP
+.PP
+\fBint adjtimex(struct timex *\fP\fIbuf\fP\fB);\fP
+.PP
+\fBint clock_adjtime(clockid_t \fP\fIclk_id,\fP\fB struct timex *\fP\fIbuf\fP\fB);\fP
+.PP
+\fBint ntp_adjtime(struct timex *\fP\fIbuf\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+Linux 使用 David L.\&Mills 的时钟调整算法 (参见 RFC\5905)。 系统调用 \fBadjtimex\fP()
+读取并可选地设置该算法的调整参数。 它采用指向 \fItimex\fP 结构体的指针，根据 (selected)
+字段值更新内核参数，并返回使用当前内核值更新的相同结构体。 本结构体声明如下:
+.PP
+.in +4n
+.EX
+struct timex {
+    int  modes;      /* Mode selector */
+    long offset;     /* Time offset; nanoseconds, if STA_NANO
+                        status flag is set, otherwise
+                        microseconds */ 
+    long freq;       /* Frequency offset; see NOTES for units */  
+    long maxerror;   /* Maximum error (microseconds) */
+    long esterror;   /* Estimated error (microseconds) */
+    int  status;     /* Clock command/status */
+    long constant;   /* PLL (phase\-locked loop) time constant */
+    long precision;  /* Clock precision
+                        (microseconds, read\-only) */
+    long tolerance;  /* Clock frequency tolerance (read\-only);
+                        see NOTES for units */
+    struct timeval time;
+                     /* Current time (read\-only, except for
+                        ADJ_SETOFFSET); upon return, time.tv_usec
+                        contains nanoseconds, if STA_NANO status
+                        flag is set, otherwise microseconds */
+    long tick;       /* Microseconds between clock ticks */
+    long ppsfreq;    /* PPS (pulse per second) frequency
+                        (read\-only); see NOTES for units */
+    long jitter;     /* PPS jitter (read\-only); nanoseconds, if
+                        STA_NANO status flag is set, otherwise
+                        microseconds */
+    int  shift;      /* PPS interval duration
+                        (seconds, read\-only) */
+    long stabil;     /* PPS stability (read\-only);
+                        see NOTES for units */
+    long jitcnt;     /* PPS count of jitter limit exceeded
+                        events (read\-only) */ 
+    long calcnt;     /* PPS count of calibration intervals
+                        (read\-only) */
+    long errcnt;     /* PPS count of calibration errors
+                        (read\-only) */
+    long stbcnt;     /* PPS count of stability limit exceeded
+                        events (read\-only) */
+    int tai;         /* TAI offset, as set by previous ADJ_TAI
+                        operation (seconds, read\-only,
+                        since Linux 2.6.26) */
+    /* Further padding bytes to allow for future expansion */
+};
+.EE
+.in
+.PP
+\fImodes\fP 字段确定要设置的参数 (如果有)。 (如本页后面所述，用于 \fBntp_adjtime\fP() 的常量是等效的，但名称不同。)
+它是一个位掩码，包含零个或多个以下位的 bitwise\-\fIor\fP 组合:
+.TP 
+\fBADJ_OFFSET\fP
+.\" commit 074b3b87941c99bc0ce35385b5817924b1ed0c23
+设置与 \fIbuf.offset\fP 的时间偏移。 自 Linux 2.6.26 起，提供的值被限制在范围 (\-0.5s, +0.5s) 内。
+在较旧的内核中，如果提供的值越界，则会发生 \fBEINVAL\fP 错误。
+.TP 
+\fBADJ_FREQUENCY\fP
+.\" commit 074b3b87941c99bc0ce35385b5817924b1ed0c23
+设置 \fIbuf.freq\fP 的频率偏移。 自 Linux 2.6.26 起，提供的值被限制在范围 (\-32768000, +32768000) 内。
+在较旧的内核中，如果提供的值越界，则会发生 \fBEINVAL\fP 错误。
+.TP 
+\fBADJ_MAXERROR\fP
+从 \fIbuf.maxerror\fP 设置最大时间误差。
+.TP 
+\fBADJ_ESTERROR\fP
+从 \fIbuf.esterror\fP 设置估计时间误差。
+.TP 
+\fBADJ_STATUS\fP
+从 \fIbuf.status\fP 设置时钟状态位。 下面提供了这些位的描述。
+.TP 
+\fBADJ_TIMECONST\fP
+从 \fIbuf.constant\fP 设置 PLL 时间常量。 如果 \fBSTA_NANO\fP 状态标志 (见下文) 被清除，内核会将 4 添加到该值。
+.TP 
+\fBADJ_SETOFFSET\fP (since Linux 2.6.39)
+.\" commit 094aa1881fdc1b8889b442eb3511b31f3ec2b762
+.\" Author: Richard Cochran <richardcochran@gmail.com>
+将 \fIbuf.time\fP 添加到当前时间。 如果 \fIbuf.status\fP 包含 \fBADJ_NANO\fP 标志，则
+\fIbuf.time.tv_usec\fP 被解释为纳秒值; 否则它被解释为微秒。
+.IP
+\fIbuf.time\fP 的值是其两个字段的总和，但字段 \fIbuf.time.tv_usec\fP 必须始终为非负数。 以下示例显示如何使用纳秒级分辨率对
+\fItimeval\fP 进行归一化。
+.IP
+.in +4n
+.EX
+while (buf.time.tv_usec < 0) {
+    buf.time.tv_sec  \-= 1;
+    buf.time.tv_usec += 1000000000;
+}
+.EE
+.in
+.TP 
+\fBADJ_MICRO\fP (since Linux 2.6.26)
+.\" commit eea83d896e318bda54be2d2770d2c5d6668d11db
+.\" Author: Roman Zippel <zippel@linux-m68k.org>
+选择微秒分辨率。
+.TP 
+\fBADJ_NANO\fP (since Linux 2.6.26)
+.\" commit eea83d896e318bda54be2d2770d2c5d6668d11db
+.\" Author: Roman Zippel <zippel@linux-m68k.org>
+选择纳秒分辨率。 只能指定 \fBADJ_MICRO\fP 和 \fBADJ_NANO\fP 之一。
+.TP 
+\fBADJ_TAI\fP (since Linux 2.6.26)
+.\" commit 153b5d054ac2d98ea0d86504884326b6777f683d
+设置 TAI (原子国际时间) 与 \fIbuf.constant\fP 的偏移量。
+.IP
+\fBADJ_TAI\fP 不应与 \fBADJ_TIMECONST\fP 结合使用，因为后一种模式也使用 \fIbuf.constant\fP 字段。
+.IP
+有关 TAI 的完整解释以及 TAI 和 UTC 之间的区别，请参见
+.UR http://www.bipm.org/en/bipm/tai/tai.html
+\fIBIPM\fP
+.UE
+.TP 
+\fBADJ_TICK\fP
+从 \fIbuf.tick\fP 设置刻度值。
+.PP
+.\" In general, the other bits are ignored, but ADJ_OFFSET_SINGLESHOT 0x8001
+.\" ORed with ADJ_NANO (0x2000) gives 0xa0001 == ADJ_OFFSET_SS_READ!!
+或者，可以将 \fImodes\fP 指定为以下任一 (多位掩码) 值，在这种情况下，不应在 \fImodes\fP: 中指定其他位
+.TP 
+\fBADJ_OFFSET_SINGLESHOT\fP
+.\" In user space, ADJ_OFFSET_SINGLESHOT is 0x8001
+.\" In kernel space it is 0x0001, and must be ANDed with ADJ_ADJTIME (0x8000)
+老式 \fBadjtime\fP(3): (gradually) 按 \fIbuf.offset\fP 中指定的值调整时间，\fIbuf.offset\fP
+指定以微秒为单位的调整。
+.TP 
+\fBADJ_OFFSET_SS_READ\fP (functional since Linux 2.6.28)
+.\" In user space, ADJ_OFFSET_SS_READ is 0xa001
+.\" In kernel space there is ADJ_OFFSET_READONLY (0x2000) anded with
+.\" ADJ_ADJTIME (0x8000) and ADJ_OFFSET_SINGLESHOT (0x0001) to give 0xa001)
+.\" commit 52bfb36050c8529d9031d2c2513b281a360922ec
+.\" commit 916c7a855174e3b53d182b97a26b2e27a29726a1
+返回 (在 \fIbuf.offset\fP) 中，在较早的 \fBADJ_OFFSET_SINGLESHOT\fP 操作之后要调整的剩余时间量。 这个特性在
+Linux 2.6.24 加入，但是直到 Linux 2.6.28 才正常使用。
+.PP
+对于 \fImodes\fP，普通用户被限制为 0 或 \fBADJ_OFFSET_SS_READ\fP 的值。 只有超级用户可以设置任何参数。
+.PP
+\fIbuf.status\fP 字段是一个位掩码，用于设置或者检索与 NTP 实现相关联的状态位。 掩码中的某些位既可读又可设置，而其他位是只读的。
+.TP 
+\fBSTA_PLL\fP (read\-write)
+通过 \fBADJ_OFFSET\fP 启用锁相环 (PLL) 更新。
+.TP 
+\fBSTA_PPSFREQ\fP (read\-write)
+启用 PPS (pulse\-per\-second) 频率规则。
+.TP 
+\fBSTA_PPSTIME\fP (read\-write)
+启用 PPS 时间规则。
+.TP 
+\fBSTA_FLL\fP (read\-write)
+选择锁频环 (FLL) 模式。
+.TP 
+\fBSTA_INS\fP (read\-write)
+.\" John Stultz;
+.\"     Usually this is written as extending the day by one second,
+.\"     which is represented as:
+.\"        23:59:59
+.\"        23:59:60
+.\"        00:00:00
+.\"
+.\"     But since posix cannot represent 23:59:60, we repeat the last second:
+.\"        23:59:59 + TIME_INS
+.\"        23:59:59 + TIME_OOP
+.\"        00:00:00 + TIME_WAIT
+.\"
+在 UTC 日的最后一秒后插入闰秒，从而将一天的最后一分钟延长一秒。 只要此标志保持设置，闰秒插入每天都会发生。
+.TP 
+\fBSTA_DEL\fP (read\-write)
+.\" John Stultz:
+.\"     Similarly the progression here is:
+.\"        23:59:57 + TIME_DEL
+.\"        23:59:58 + TIME_DEL
+.\"        00:00:00 + TIME_WAIT
+.\" FIXME Does there need to be a statement that it is nonsensical to set
+.\" to set both STA_INS and STA_DEL?
+在 UTC 日的最后一秒删除闰秒。 只要此标志保持设置，每天都会发生闰秒删除。
+.TP 
+\fBSTA_UNSYNC\fP (read\-write)
+时钟不同步。
+.TP 
+\fBSTA_FREQHOLD\fP (read\-write)
+.\" Following text from John Stultz:
+保持频率。 通常通过 \fBADJ_OFFSET\fP 进行的调整也会导致衰减频率调整。
+因此，单个调用可以纠正当前偏移，但随着重复进行同一方向的偏移，小的频率调整将累积起来以修复长期偏差。
+.IP
+.\" According to the Kernel Application Program Interface document,
+.\" STA_FREQHOLD is not used by the NTP version 4 daemon
+此标志可防止在校正 \fBADJ_OFFSET\fP 值时进行小频率调整。
+.TP 
+\fBSTA_PPSSIGNAL\fP (read\-only)
+存在有效的 PPS (pulse\-per\-second) 信号。
+.TP 
+\fBSTA_PPSJITTER\fP (read\-only)
+超过 PPS 信号抖动。
+.TP 
+\fBSTA_PPSWANDER\fP (read\-only)
+超出 PPS 信号漂移。
+.TP 
+\fBSTA_PPSERROR\fP (read\-only)
+PPS 信号校准错误。
+.TP 
+\fBSTA_CLOCKERR\fP (read\-only)
+.\" Not set in current kernel (4.5), but checked in a few places
+时钟硬件故障。
+.TP 
+\fBSTA_NANO\fP (read\-only; since Linux 2.6.26)
+.\" commit eea83d896e318bda54be2d2770d2c5d6668d11db
+.\" Author: Roman Zippel <zippel@linux-m68k.org>
+分辨率 (0 = 微秒，1 = 纳秒)。 通过 \fBADJ_NANO\fP 置位，通过 \fBADJ_MICRO\fP 清零。
+.TP 
+\fBSTA_MODE\fP (since Linux 2.6.26)
+.\" commit eea83d896e318bda54be2d2770d2c5d6668d11db
+.\" Author: Roman Zippel <zippel@linux-m68k.org>
+模式 (0 = 锁相环，1 = 锁频环)。
+.TP 
+\fBSTA_CLK\fP (read\-only; since Linux 2.6.26)
+.\" commit eea83d896e318bda54be2d2770d2c5d6668d11db
+.\" Author: Roman Zippel <zippel@linux-m68k.org>
+时钟源 (0=A，1=B) ; 目前未使用。
+.PP
+.\"
+尝试设置只读 \fIstatus\fP 位将被忽略。
+.SS "clock_adjtime ()"
+\fBclock_adjtime\fP() 系统调用 (在 Linux 2.6.39 中添加) 的行为类似于 \fBadjtimex\fP()，但需要一个额外的
+\fIclk_id\fP 参数来指定要作用的特定时钟。
+.SS "ntp_adjtime ()"
+\fBntp_adjtime\fP() 库函数 (在 NTP "Kernel Application Program API"，KAPI 中描述)
+是一个更便携的接口，用于执行与 \fBadjtimex\fP() 相同的任务。 除以下几点外，与 \fBadjtimex\fP(): 相同
+.IP \[bu] 3
+\fImodes\fP 中使用的常量以 "MOD_" 而不是 "ADJ_" 为前缀，并且具有相同的后缀
+(因此，\fBMOD_OFFSET\fP、\fBMOD_FREQUENCY\fP 等)，除了以下几点中提到的例外情况。
+.IP \[bu]
+\fBMOD_CLKA\fP 是 \fBADJ_OFFSET_SINGLESHOT\fP 的同义词。
+.IP \[bu]
+\fBMOD_CLKB\fP 是 \fBADJ_TICK\fP 的同义词。
+.IP \[bu]
+The 不是 KAPI 中未描述的 \fBADJ_OFFSET_SS_READ\fP 的同义词。
+.SH "RETURN VALUE"
+成功时，\fBadjtimex\fP() 和 \fBntp_adjtime\fP() 返回时钟状态; 即，以下值之一:
+.TP  12
+\fBTIME_OK\fP
+时钟同步，没有闰秒调整挂起。
+.TP 
+\fBTIME_INS\fP
+指示将在 UTC 日结束时添加闰秒。
+.TP 
+\fBTIME_DEL\fP
+指示将在 UTC 日结束时删除闰秒。
+.TP 
+\fBTIME_OOP\fP
+正在插入闰秒。
+.TP 
+\fBTIME_WAIT\fP
+已完成闰秒插入或删除。 该值将被返回，直到下一个 \fBADJ_STATUS\fP 操作清除 \fBSTA_INS\fP 和 \fBSTA_DEL\fP 标志。
+.TP 
+\fBTIME_ERROR\fP
+系统时钟未同步到可靠的服务器。 当以下任一条件成立时返回此值:
+.RS
+.IP \[bu] 3
+设置 \fBSTA_UNSYNC\fP 或 \fBSTA_CLOCKERR\fP。
+.IP \[bu]
+\fBSTA_PPSSIGNAL\fP 清零，\fBSTA_PPSFREQ\fP 或 \fBSTA_PPSTIME\fP 置位。
+.IP \[bu]
+\fBSTA_PPSTIME\fP 和 \fBSTA_PPSJITTER\fP 都已设置。
+.IP \[bu]
+\fBSTA_PPSFREQ\fP 已设置，\fBSTA_PPSWANDER\fP 或 \fBSTA_PPSJITTER\fP 已设置。
+.RE
+.IP
+符号名称 \fBTIME_BAD\fP 是 \fBTIME_ERROR\fP 的同义词，用于向后兼容。
+.PP
+.\" commit 6b43ae8a619d17c4935c3320d2ef9e92bdeed05d changed to asynchronous
+.\"  operation, so we can no longer rely on the return code.
+请注意，从 Linux 3.4 开始，调用异步运行，返回值通常不会反映调用本身引起的状态变化。
+.PP
+失败时，这些调用返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIbuf\fP 不指向可写内存。
+.TP 
+\fBEINVAL\fP (before Linux 2.6.26)
+.\" From a quick glance, it appears there was no clamping or range check
+.\" for buf.freq before Linux 2.0
+试图将 \fIbuf.freq\fP 设置为越界 (\-33554432、+33554432) 的值。
+.TP 
+\fBEINVAL\fP (before Linux 2.6.26)
+试图将 \fIbuf.offset\fP 设置为允许范围之外的值。 在 Linux 2.0 之前，允许的范围是 (\-131072, +131072)。 从
+Linux 2.0 开始，允许的范围是 (\-512000, +512000)。
+.TP 
+\fBEINVAL\fP
+试图将 \fIbuf.status\fP 设置为上面列出的值以外的值。
+.TP 
+\fBEINVAL\fP
+由于两个原因之一，赋予 \fBclock_adjtime\fP() 的 \fIclk_id\fP 无效。 System\-V 样式的硬编码正时钟 ID
+值越界，或者动态 \fIclk_id\fP 未引用时钟对象的有效实例。 有关动态时钟的讨论，请参见 \fBclock_gettime\fP(2)。
+.TP 
+\fBEINVAL\fP
+试图将 \fIbuf.tick\fP 设置为 900000/\fBHZ\fP 到 1100000/\fBHZ\fP 范围之外的值，其中 \fBHZ\fP 是系统定时器中断频率。
+.TP 
+\fBENODEV\fP
+以动态 \fIclk_id\fP 表示的可热插拔设备 (例如 USB) 在其字符设备打开后消失了。 有关动态时钟的讨论，请参见
+\fBclock_gettime\fP(2)。
+.TP 
+\fBEOPNOTSUPP\fP
+给定的 \fIclk_id\fP 不支持调整。
+.TP 
+\fBEPERM\fP
+\fIbuf.modes\fP 既不是 0 也不是 \fBADJ_OFFSET_SS_READ\fP，调用者没有足够的权限。 在 Linux 下，需要
+\fBCAP_SYS_TIME\fP 功能。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fB\%ntp_adjtime\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.sp 1
+.SH STANDARDS
+POSIX.1 中没有描述这些接口
+.PP
+\fBadjtimex\fP() 和 \fBclock_adjtime\fP() 是特定于 Linux 的，不应用于可移植的程序。
+.PP
+NTP 守护程序的首选 API 是 \fBntp_adjtime\fP()。
+.SH NOTES
+在结构体 \fItimex\fP 中，\fIfreq\fP、\fIppsfreq\fP 和 \fIstabil\fP 是带有 16 位小数部分的 ppm
+(百万分之一)，这意味着其中一个字段中的值为 1 实际上意味着 2\[ha]\-16 ppm，并且 2\[ha] 16=65536 是 1 ppm。
+对于两个输入值 (在 \fIfreq\fP) 和输出值的情况下) 都是这种情况。
+.PP
+\fBSTA_INS\fP 和 \fBSTA_DEL\fP 触发的闰秒处理由内核在定时器上下文中完成。 因此，插入或删除闰秒需要一秒钟的时间。
+.SH "SEE ALSO"
+\fBclock_gettime\fP(2), \fBclock_settime\fP(2), \fBsettimeofday\fP(2), \fBadjtime\fP(3),
+\fBntp_gettime\fP(3), \fBcapabilities\fP(7), \fBtime\fP(7), \fBadjtimex\fP(8),
+\fBhwclock\fP(8)
+.PP
+.ad l
+.UR http://www.slac.stanford.edu/comp/unix/\:package/\:rtems/\:src/\:ssrlApps/\:ntpNanoclock/\:api.htm
+NTP "Kernel Application Program Interface"
+.UE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

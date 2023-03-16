@@ -1,0 +1,353 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2017 David Howells <dhowells@redhat.com>
+.\"
+.\" Derived from the stat.2 manual page:
+.\"   Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"   Parts Copyright (c) 1995 Nicolai Langfeldt (janl@ifi.uio.no), 1/1/95
+.\"   and Copyright (c) 2006, 2007, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH statx 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+statx \- 获取文件状态 (extended)
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#define _GNU_SOURCE \fP/* 参见 feature_test_macros(7) */
+\fB#include <fcntl.h>           \fP/* Definition of \fBAT_*\fP constants */
+\fB#include <sys/stat.h>\fP
+.PP
+\fBint statx(int \fP\fIdirfd\fP\fB, const char *restrict \fP\fIpathname\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB          unsigned int \fP\fImask\fP\fB, struct statx *restrict \fP\fIstatxbuf\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+此函数返回有关文件的信息，并将其存储在 \fIstatxbuf\fP 指向的缓冲区中。 返回的缓冲区是以下类型的结构体:
+.PP
+.in +4n
+.EX
+struct statx {
+    __u32 stx_mask;         /* 位掩码表示
+                              填充字段 */
+    __u32 stx_blksize;     /* Block size for filesystem I/O */
+    __u64 stx_attributes;   /* Extra file attribute indicators */
+    __u32 stx_nlink;       /* Number of hard links */
+    __u32 stx_uid;         /* User ID of owner */
+    __u32 stx_gid;         /* Group ID of owner */
+    __u16 stx_mode;         /* File type and mode */
+    __u64 stx_ino;         /* Inode number */
+    __u64 stx_size;        /* Total size in bytes */
+    __u64 stx_blocks;       /* Number of 512B blocks allocated */
+    __u64 stx_attributes_mask;
+                           /* 掩码以显示支持的内容 \[aq]
+                              in stx_attributes */
+
+    /* The following fields are file timestamps */
+    struct statx_timestamp stx_atime;   /* Last access */
+    struct statx_timestamp stx_btime;   /* Creation */
+    struct statx_timestamp stx_ctime;   /* Last status change */
+    struct statx_timestamp stx_mtime;   /* Last modification */
+
+    /* 如果这个文件代表一个设备，那么接下来的两个
+       字段包含设备的 ID */
+    __u32 stx_rdev_major;  /* Major ID */
+    __u32 stx_rdev_minor;  /* Minor ID */
+
+    /* 接下来的两个字段包含设备的 ID
+       包含文件所在的文件系统 */
+    __u32 stx_dev_major;   /* Major ID */
+    __u32 stx_dev_minor;   /* Minor ID */
+
+    __u64 stx_mnt_id;      /* 挂载 ID */
+
+    /* Direct I/O alignment restrictions */
+    __u32 stx_dio_mem_align;
+    __u32 stx_dio_offset_align;
+};
+.EE
+.in
+.PP
+文件时间戳是以下类型的结构:
+.PP
+.in +4n
+.EX
+struct statx_timestamp {
+    __s64 tv_sec;    /* Seconds since the Epoch (UNIX time) */
+    __u32 tv_nsec;   /* Nanoseconds since tv_sec */
+};
+.EE
+.in
+.PP
+(请注意，保留空间和填充被省略。)
+.SS "Invoking statx\fR():\fP"
+要访问文件的状态，文件本身不需要任何权限，但在 \fBstatx\fP() 具有路径名的情况下，\fIpathname\fP 中通向该文件的所有目录都需要执行
+(search) 权限。
+.PP
+\fBstatx\fP() 使用 \fIpathname\fP、\fIdirfd\fP 和 \fIflags\fP 以下列方式之一标识目标文件:
+.TP 
+An absolute pathname
+如果 \fIpathname\fP 以斜杠开头，则它是标识目标文件的绝对路径名。 在这种情况下，\fIdirfd\fP 被忽略。
+.TP 
+A relative pathname
+如果 \fIpathname\fP 是以斜杠以外的字符开头的字符串，并且 \fIdirfd\fP 是 \fBAT_FDCWD\fP，则 \fIpathname\fP
+是相对于进程当前工作目录解释的相对路径名。
+.TP 
+A directory\-relative pathname
+如果 \fIpathname\fP 是以斜杠以外的字符开头的字符串，并且 \fIdirfd\fP 是引用目录的文件描述符，则 \fIpathname\fP 是相对于
+\fIdirfd\fP 引用的目录解释的相对路径名。 (有关这为何有用的解释，请参见 \fBopenat\fP(2)。)
+.TP 
+By file descriptor
+如果 \fIpathname\fP 是空字符串并且 \fIflags\fP 中指定了 \fBAT_EMPTY_PATH\fP 标志 (见下文)，则目标文件是文件描述符
+\fIdirfd\fP 引用的文件。
+.PP
+\fIflags\fP 可用于影响基于路径名的查找。 \fIflags\fP 的值由以下零个或多个常量的 OR 运算构成:
+.TP 
+\fBAT_EMPTY_PATH\fP
+.\" commit 65cfc6722361570bfe255698d9cd4dccaf47570d
+如果 \fIpathname\fP 为空字符串，则对 \fIdirfd\fP 引用的文件进行操作 (可能已经使用 \fBopen\fP(2) \fBO_PATH\fP
+标志获取)。 在这种情况下，\fIdirfd\fP 可以指任何类型的文件，而不仅仅是一个目录。
+.IP
+如果 \fIdirfd\fP 是 \fBAT_FDCWD\fP，则调用在当前工作目录上运行。
+.TP 
+\fBAT_NO_AUTOMOUNT\fP
+如果 \fIpathname\fP 的目录是自动挂载点，则不要自动挂载 \fIpathname\fP 的最终 ("basename") 组件。
+这允许调用者收集自动挂载点的属性 (而不是它将挂载的位置)。 如果挂载点已经挂载，则此标志无效。
+.IP
+\fBAT_NO_AUTOMOUNT\fP 标志可用于扫描目录的工具，以防止自动挂载目录的自动挂载点。
+.IP
+所有 \fBstat\fP(2)、\fBlstat\fP(2) 和 \fBfstatat\fP(2) 都像设置了 \fBAT_NO_AUTOMOUNT\fP 一样工作。
+.TP 
+\fBAT_SYMLINK_NOFOLLOW\fP
+如果 \fIpathname\fP 是符号链接，请不要解引它: 而是返回有关链接本身的信息，如 \fBlstat\fP(2)。
+.PP
+\fIflags\fP 还可用于控制内核在查询远程文件系统上的文件时将执行何种同步。 这是通过对以下值之一进行 ORing 来完成的:
+.TP 
+\fBAT_STATX_SYNC_AS_STAT\fP
+做 \fBstat\fP(2) 做的任何事。 这是默认设置，并且非常特定于文件系统。
+.TP 
+\fBAT_STATX_FORCE_SYNC\fP
+强制属性与服务器同步。 这可能需要网络文件系统执行数据写回以获得正确的时间戳。
+.TP 
+\fBAT_STATX_DONT_SYNC\fP
+不要同步任何东西，而是尽可能地获取系统缓存的任何东西。 这可能意味着返回的信息是近似的，但是，在网络文件系统上，它可能不涉及到服务器的往返 \-\-
+即使没有租约。
+.PP
+\fImask\fP 到 \fBstatx\fP() 的参数用于告诉内核调用者对哪些字段感兴趣。 \fImask\fP 是以下常量的 ORed 组合:
+.PP
+.in +4n
+.TS
+lB l.
+STATX_TYPE	Want stx_mode & S_IFMT
+STATX_MODE	Want stx_mode & \[ti]S_IFMT
+STATX_NLINK	Want stx_nlink
+STATX_UID	Want stx_uid
+STATX_GID	Want stx_gid
+STATX_ATIME	Want stx_atime
+STATX_MTIME	Want stx_mtime
+STATX_CTIME	Want stx_ctime
+STATX_INO	Want stx_ino
+STATX_SIZE	Want stx_size
+STATX_BLOCKS	Want stx_blocks
+STATX_BASIC_STATS	[All of the above]
+STATX_BTIME	Want stx_btime
+STATX_ALL	The same as STATX_BASIC_STATS | STATX_BTIME.
+	It is deprecated and should not be used.
+STATX_MNT_ID	Want stx_mnt_id (since Linux 5.8)
+STATX_DIOALIGN	Want stx_dio_mem_align and stx_dio_offset_align
+	(since Linux 6.1; support varies by filesystem)
+.TE
+.in
+.PP
+请注意，一般情况下，内核会拒绝 \fInot\fP 中除上述以外的 \fImask\fP 中的值。 (有关异常，请参见错误中的 \fBEINVAL\fP。)
+相反，它只是通过 \fIstatx.stx_mask\fP 字段通知调用者此内核和文件系统支持哪些值。 因此，\fIdo not\fP 只需将 \fImask\fP
+设置为 \fBUINT_MAX\fP (设置所有位)，因为 future 中的一个或多个位可用于指定缓冲区的扩展。
+.SS "The returned information"
+目标文件的状态信息在 \fIstatxbuf\fP 指向的 \fIstatx\fP 结构体中返回。 其中包括 \fIstx_mask\fP，它指示返回了哪些其他信息。
+\fIstx_mask\fP 与 \fImask\fP 参数具有相同的格式，并且在其中设置了位以指示已填写哪些字段。
+.PP
+应该注意的是，内核可能会返回未请求的字段，也可能无法返回已请求的字段，具体取决于后备文件系统支持的内容。 (尽管未请求但已给定值的字段可以忽略。)
+在任何一种情况下，\fIstx_mask\fP 都不等于 \fImask\fP。
+.PP
+如果一个文件系统不支持一个字段或者如果它有一个不可表示的值 (例如，一个具有奇异类型的文件)，那么对应于该字段的掩码位将在 \fIstx_mask\fP
+中被清除，即使用户要求它和一个虚拟如果一个值可用 (例如，在某些情况下可以指定虚拟 UID 和 GID 以进行挂载)，则出于兼容性目的将填充该值。
+.PP
+文件系统也可以填写调用者没有要求的字段，如果它有可用的值并且信息是免费提供的。 如果发生这种情况，\fIstx_mask\fP 中的相应位将被设置。
+.PP
+.\" Background: inode attributes are modified with i_mutex held, but
+.\" read by stat() without taking the mutex.
+\fINote\fP: 出于性能和简单的原因，\fIstatx\fP 结构体中的不同字段可能包含系统调用期间不同时刻的状态信息。 例如，如果 \fIstx_mode\fP
+或 \fIstx_uid\fP 被另一个进程通过调用 \fBchmod\fP(2) 或 \fBchown\fP(2) 更改，则 \fBstat\fP() 可能会返回旧的
+\fIstx_mode\fP 和新的 \fIstx_uid\fP，或者旧的 \fIstx_uid\fP 和新的 \fIstx_mode\fP。
+.PP
+除了 \fIstx_mask\fP (如上所述) 之外，\fIstatx\fP 结构体中的字段是:
+.TP 
+\fIstx_blksize\fP
+高效文件系统 I/O 的 "preferred" 块大小。 (以较小的块写入文件可能会导致读取 \- 修改 \- 重写效率低下。)
+.TP 
+\fIstx_attributes\fP
+有关文件的更多状态信息 (有关更多信息，请参见下文)。
+.TP 
+\fIstx_nlink\fP
+文件上的硬链接数。
+.TP 
+\fIstx_uid\fP
+该字段包含文件所有者的用户 ID。
+.TP 
+\fIstx_gid\fP
+该字段包含文件组所有者的 ID。
+.TP 
+\fIstx_mode\fP
+文件类型和模式。 有关详细信息，请参见 \fBinode\fP(7)。
+.TP 
+\fIstx_ino\fP
+文件的索引节点号。
+.TP 
+\fIstx_size\fP
+文件的大小 (如果它是常规文件或符号链接) 以字节为单位。 符号链接的大小是它包含的路径名的长度，没有终止空字节。
+.TP 
+\fIstx_blocks\fP
+分配给介质上文件的块数，以 512 字节为单位。 (当文件有漏洞时，这可能小于 \fIstx_size\fP/512。)
+.TP 
+\fIstx_attributes_mask\fP
+一个掩码，指示 VFS 和文件系统支持 \fIstx_attributes\fP 中的哪些位。
+.TP 
+\fIstx_atime\fP
+文件的上次访问时间戳。
+.TP 
+\fIstx_btime\fP
+文件的创建时间戳。
+.TP 
+\fIstx_ctime\fP
+文件的最后状态更改时间戳。
+.TP 
+\fIstx_mtime\fP
+文件的最后修改时间戳。
+.TP 
+\fIstx_dev_major\fP and \fIstx_dev_minor\fP
+该文件 (inode) 所在的设备。
+.TP 
+\fIstx_rdev_major\fP and \fIstx_rdev_minor\fP
+如果文件是块或字符设备类型，则此文件 (inode) 表示的设备。
+.TP 
+\fIstx_mnt_id\fP
+.\" commit fa2fcf4f1df1559a0a4ee0f46915b496cc2ebf60
+包含文件的挂载的挂载 ID。 这与 \fBname_to_handle_at\fP(2) 报告的数字相同，对应于
+\fI/proc/self/mountinfo\fP 中一条记录的第一个字段中的数字。
+.TP 
+\fIstx_dio_mem_align\fP
+此文件上直接 I/O (\fBO_DIRECT\fP) 的用户内存缓冲区所需的对齐方式 (以字节为单位)，如果此文件不支持直接 I/O，则为 0。
+.IP
+自 Linux 6.1 起，块设备支持 \fBSTATX_DIOALIGN\fP (\fIstx_dio_mem_align\fP 和
+\fIstx_dio_offset_align\fP)。 对常规文件的支持因文件系统而异; 从 Linux 6.1 开始，ext4、f2fs 和 xfs
+都支持它。
+.TP 
+\fIstx_dio_offset_align\fP
+此文件上直接 I/O (\fBO_DIRECT\fP) 的文件偏移量和 I/O 段长度所需的对齐方式 (以字节为单位)，如果此文件不支持直接 I/O，则为
+0。 只有当 \fIstx_dio_mem_align\fP 为非零时，它才会为非零，反之亦然。
+.PP
+.\"
+有关上述字段的更多信息，请参见 \fBinode\fP(7)。
+.SS "File attributes"
+\fIstx_attributes\fP 字段包含一组 ORed 标志，用于指示文件的其他属性。 请注意，任何未指示为
+\fIstx_attributes_mask\fP 支持的属性在此处均没有可用值。 \fIstx_attributes_mask\fP 中的位与
+\fIstx_attributes\fP 逐位对应。
+.PP
+标志如下:
+.TP 
+\fBSTATX_ATTR_COMPRESSED\fP
+该文件由文件系统压缩，可能需要额外的资源才能访问。
+.TP 
+\fBSTATX_ATTR_IMMUTABLE\fP
+该文件无法修改: 无法删除或重命名，无法创建硬链接到此文件，也无法向其中写入数据。 请参见 \fBchattr\fP(1)。
+.TP 
+\fBSTATX_ATTR_APPEND\fP
+该文件只能以追加模式打开以进行写入。 不允许随机访问写入。 请参见 \fBchattr\fP(1)。
+.TP 
+\fBSTATX_ATTR_NODUMP\fP
+运行 \fBdump\fP(8) 等备份程序时，文件不是备份候选。 请参见 \fBchattr\fP(1)。
+.TP 
+\fBSTATX_ATTR_ENCRYPTED\fP
+文件系统加密文件需要密钥。
+.TP 
+\fBSTATX_ATTR_VERITY\fP (since Linux 5.5)
+.\" commit 3ad2522c64cff1f5aebb987b00683268f0cc7c29
+该文件启用了 fs\-verity。 它不能被写入，所有从中读取的内容都将根据覆盖整个文件的加密散列进行验证 (例如，通过 Merkle 树)。
+.TP 
+\fBSTATX_ATTR_DAX\fP (since Linux 5.8)
+该文件处于 DAX (cpu 直接访问) 状态。 DAX 状态尝试最小化软件缓存对 I/O 和此文件的内存映射的影响。 它需要一个已配置为支持 DAX
+的文件系统。
+.IP
+DAX 通常假定所有访问都是通过 CPU 加载 / 存储指令进行的，这可以最大限度地减少小型访问的开销，但可能会对大型传输的 CPU
+利用率产生不利影响。
+.IP
+文件 I/O 直接完成 to/from 用户空间缓冲区和内存映射 I/O 可以通过绕过内核页面缓存的直接内存映射来执行。
+.IP
+虽然 DAX 属性倾向于导致数据同步传输，但它不提供与 \fBO_SYNC\fP 标志相同的保证 (请参见
+\fBopen\fP(2))，其中数据和必要的元数据一起传输。
+.IP
+DAX 文件可能支持使用 \fBMAP_SYNC\fP 标志进行映射，这使程序能够使用 CPU 缓存刷新指令来持久保存 CPU 存储操作，而无需显式
+\fBfsync\fP(2)。 有关更多信息，请参见 \fBmmap\fP(2)。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fIpathname\fP 路径前缀中的目录之一的搜索权限被拒绝。 (另见 \fBpath_resolution\fP(7).)
+.TP 
+\fBEBADF\fP
+\fIpathname\fP 是相对的，但 \fIdirfd\fP 既不是 \fBAT_FDCWD\fP 也不是有效的文件描述符。
+.TP 
+\fBEFAULT\fP
+\fIpathname\fP 或 \fIstatxbuf\fP 为 NULL 或指向进程可访问地址空间之外的位置。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 中指定的标志无效。
+.TP 
+\fBEINVAL\fP
+\fImask\fP 中指定的保留标志。 (目前，有一个这样的标志，由常量 \fBSTATX__RESERVED\fP 指定，值为 0x80000000U。)
+.TP 
+\fBELOOP\fP
+遍历路径名时遇到太多符号链接。
+.TP 
+\fBENAMETOOLONG\fP
+\fIpathname\fP 太长。
+.TP 
+\fBENOENT\fP
+\fIpathname\fP 的组件不存在，或者 \fIpathname\fP 是空字符串并且 \fIflags\fP 中未指定 \fBAT_EMPTY_PATH\fP。
+.TP 
+\fBENOMEM\fP
+内存不足 (即内核内存)。
+.TP 
+\fBENOTDIR\fP
+\fIpathname\fP 的路径前缀的组成部分不是目录，或者 \fIpathname\fP 是相对的，\fIdirfd\fP 是引用文件而不是目录的文件描述符。
+.SH VERSIONS
+\fBstatx\fP() 在 Linux 4.11 中加入; glibc 2.28 中添加了库支持。
+.SH STANDARDS
+\fBstatx\fP() 是特定于 Linux 的。
+.SH "SEE ALSO"
+\fBls\fP(1), \fBstat\fP(1), \fBaccess\fP(2), \fBchmod\fP(2), \fBchown\fP(2),
+\fBname_to_handle_at\fP(2), \fBreadlink\fP(2), \fBstat\fP(2), \fButime\fP(2),
+\fBproc\fP(5), \fBcapabilities\fP(7), \fBinode\fP(7), \fBsymlink\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

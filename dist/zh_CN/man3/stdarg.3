@@ -1,0 +1,180 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1990, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" the American National Standards Committee X3, on Information
+.\" Processing Systems.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"	@(#)stdarg.3	6.8 (Berkeley) 6/29/91
+.\"
+.\" Converted for Linux, Mon Nov 29 15:11:11 1993, faith@cs.unc.edu
+.\" Additions, 2001-10-14, aeb
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH stdarg 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+stdarg, va_start, va_arg, va_end, va_copy \- 变量参数列表
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdarg.h>\fP
+.PP
+\fBvoid va_start(va_list \fP\fIap\fP\fB, \fP\fIlast\fP\fB);\fP
+\fItype\fP\fB va_arg(va_list \fP\fIap\fP\fB, \fP\fItype\fP\fB);\fP
+\fBvoid va_end(va_list \fP\fIap\fP\fB);\fP
+\fBvoid va_copy(va_list \fP\fIdest\fP\fB, va_list \fP\fIsrc\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+一个函数可以用不同数量的不同类型的参数来调用。 包含文件 \fI<stdarg.h>\fP 声明了一个类型 \fIva_list\fP
+并定义了三个宏来遍历一个参数列表，这些参数的数量和类型对于被调用的函数来说是未知的。
+.PP
+被调用函数必须声明一个 \fIva_list\fP 类型的对象，该对象被宏 \fBva_start\fP()、\fBva_arg\fP() 和 \fBva_end\fP()
+使用。
+.SS va_start()
+\fBva_start\fP() 宏初始化 \fIap\fP 供 \fBva_arg\fP() 和 \fBva_end\fP() 后续使用，必须先调用。
+.PP
+参数 \fIlast\fP 是变量参数列表前最后一个参数的名称，即调用函数知道类型的最后一个参数。
+.PP
+因为这个参数的地址可能会用在 \fBva_start\fP() 宏中，所以它不应该声明为寄存器变量，或者声明为函数或数组类型。
+.SS va_arg()
+\fBva_arg\fP() 宏扩展为一个表达式，该表达式具有调用中下一个参数的类型和值。 参数 \fIap\fP 是由 \fBva_start\fP() 初始化的
+\fIva_list\fP \fIap\fP。 每个对 \fBva_arg\fP() 的调用都会修改 \fIap\fP，以便下一个调用返回下一个参数。 参数 \fItype\fP
+是指定的类型名称，因此只需在 \fItype\fP 中添加 * 即可获得指向具有指定类型的对象的指针的类型。
+.PP
+在 \fBva_start\fP() 宏之后第一次使用 \fBva_arg\fP() 宏返回 \fIlast\fP 之后的参数。 连续调用返回剩余参数的值。
+.PP
+如果没有下一个参数，或者 \fItype\fP 与实际下一个参数的类型不兼容 (按照默认参数提升)，就会出现随机错误。
+.PP
+如果将 \fIap\fP 传递给使用 \fBva_arg(\fP\fIap\fP\fB,\fP\fItype\fP\fB),\fP 的函数，则在该函数返回后 \fIap\fP 的值未定义。
+.SS va_end()
+\fBva_start\fP() 的每次调用都必须与同一函数中 \fBva_end\fP() 的相应调用相匹配。 在调用 \fBva_end(\fP\fIap\fP\fB)\fP
+之后，变量 \fIap\fP 未定义。 可以多次遍历列表，每次遍历都用 \fBva_start\fP() 和 \fBva_end\fP() 括起来。
+\fBva_end\fP() 可能是一个宏或一个函数。
+.SS va_copy()
+\fBva_copy\fP() 宏将 (先前初始化的) 变量参数列表 \fIsrc\fP 复制到 \fIdest\fP。 行为就好像 \fBva_start\fP()
+应用到具有相同 \fIlast\fP 参数的 \fIdest\fP，随后是用于达到 \fIsrc\fP 当前状态的相同数量的 \fBva_arg\fP() 调用。
+.PP
+.\" Proposal from clive@demon.net, 1997-02-28
+一个明显的实现会让 \fIva_list\fP 成为指向可变参数函数栈帧的指针。 在这样的设置中 (迄今为止最常见的) 似乎没有什么反对分配的
+.PP
+.in +4n
+.EX
+va_list aq = ap;
+.EE
+.in
+.PP
+不幸的是，还有一些系统使它成为一个指针数组 (长度为 1)，并且需要
+.PP
+.in +4n
+.EX
+va_list aq;
+*aq = *ap;
+.EE
+.in
+.PP
+最后，在寄存器中传递参数的系统上，\fBva_start\fP() 可能需要分配内存，将参数存储在那里，并指示下一个参数，以便 \fBva_arg\fP()
+可以遍历列表。 现在 \fBva_end\fP() 可以再次释放分配的内存。 为了适应这种情况，C99 增加了一个宏
+\fBva_copy\fP()，这样上面的赋值就可以替换为
+.PP
+.in +4n
+.EX
+va_list aq;
+va_copy(aq, ap);
+\&...
+va_end(aq);
+.EE
+.in
+.PP
+\fBva_copy\fP() 的每次调用都必须与同一函数中 \fBva_end\fP() 的相应调用相匹配。 一些不提供 \fBva_copy\fP() 的系统用
+\fB__va_copy\fP 代替，因为这是提案草案中使用的名称。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBva_start\fP(),
+\fBva_end\fP(),
+\fBva_copy\fP()
+T}	Thread safety	MT\-Safe
+T{
+\fBva_arg\fP()
+T}	Thread safety	MT\-Safe race:ap
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+C99.
+.SH BUGS
+与历史上的 \fBvarargs\fP 宏不同，\fBstdarg\fP 宏不允许程序员编写没有固定参数的函数。 此问题主要在将 \fBvarargs\fP 代码转换为
+\fBstdarg\fP 代码时产生工作，但它也为希望将其所有参数传递给采用 \fIva_list\fP 参数的函数 (例如 \fBvfprintf\fP(3))
+的可变参数函数带来了困难。
+.SH EXAMPLES
+函数 \fIfoo\fP 接受一串格式字符，并根据类型打印出与每个格式字符相关联的参数。
+.PP
+.EX
+#include <stdio.h>
+#include <stdarg.h>
+
+void
+foo(char *fmt, ...)   /* \[aq]...\[aq] is C syntax for a variadic function */
+
+{
+    va_list ap;
+    int d;
+    char c;
+    char *s;
+
+    va_start(ap, fmt);
+    while (*fmt)
+        switch (*fmt++) {
+        case \[aq]s\[aq]:              /* string */
+            s = va_arg(ap, char *);
+            printf("string %s\en", s);
+            break;  
+        case \[aq]d\[aq]:              /* int */
+            d = va_arg(ap, int);
+            printf("int %d\en", d);
+            break;
+        case \[aq]c\[aq]:              /* char */
+            /* 这里需要一个转换，因为只有 va_arg
+               采用完全提升的类型 */
+            c = (char) va_arg(ap, int);
+            printf("char %c\en", c);
+            break;
+        }
+    va_end(ap);
+}
+.EE
+.SH "SEE ALSO"
+\fBvprintf\fP(3), \fBvscanf\fP(3), \fBvsyslog\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

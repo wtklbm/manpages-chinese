@@ -1,0 +1,217 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1990, 1991 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)fopen.3	6.8 (Berkeley) 6/29/91
+.\"
+.\" Converted for Linux, Mon Nov 29 15:22:01 1993, faith@cs.unc.edu
+.\" Modified, aeb, 960421, 970806
+.\" Modified, joey, aeb, 2002-01-03
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH fopen 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+fopen, fdopen, freopen \- 流打开函数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBFILE *fopen(const char *restrict \fP\fIpathname\fP\fB, const char *restrict \fP\fImode\fP\fB);\fP
+\fBFILE *fdopen(int \fP\fIfd\fP\fB, const char *\fP\fImode\fP\fB);\fP
+\fBFILE *freopen(const char *restrict \fP\fIpathname\fP\fB, const char *restrict \fP\fImode\fP\fB,\fP
+\fB              FILE *restrict \fP\fIstream\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBfdopen\fP():
+.nf
+    _POSIX_C_SOURCE
+.fi
+.SH DESCRIPTION
+\fBfopen\fP() 函数打开名称为 \fIpathname\fP 指向的字符串的文件，并与它关联一个流。
+.PP
+参数 \fImode\fP 指向以下列序列之一开头的字符串 (可能后跟其他字符，如下所述) :
+.TP 
+\fBr\fP
+打开文本文件进行阅读。 流位于文件的开头。
+.TP 
+\fBr+\fP
+打开阅读和写作。 流位于文件的开头。
+.TP 
+\fBw\fP
+将文件截断为零长度或创建用于写入的文本文件。 流位于文件的开头。
+.TP 
+\fBw+\fP
+打开阅读和写作。 如果文件不存在则创建该文件，否则将被截断。 流位于文件的开头。
+.TP 
+\fBa\fP
+打开以追加 (在文件末尾写入)。 如果文件不存在，则创建该文件。 流位于文件的末尾。
+.TP 
+\fBa+\fP
+打开以供读取和追加 (在文件末尾写入)。 如果文件不存在，则创建该文件。 输出总是追加到文件的末尾。 POSIX 对使用此模式时的初始读取位置保持沉默。
+对于 glibc，读取的初始文件位置在文件的开头，但是对于 Android/BSD/MacOS，读取的初始文件位置在文件的末尾。
+.PP
+\fImode\fP 字符串还可以包含字母 \[aq] b\[aq] 作为最后一个字符或作为上述任何双字符字符串中字符之间的字符。 这只是为了与 ISO C
+兼容，没有任何效果; \[aq] b\[aq] 在所有符合 POSIX 的系统上被忽略，包括 Linux。
+(其他系统可能会以不同方式处理文本文件和二进制文件，如果您对二进制文件执行 I/O 并希望您的程序可以移植到非 UNIX 环境，则添加 \[aq]
+b\[aq] 可能是个好主意.)
+.PP
+有关 \fImode\fP 的 glibc 扩展的详细信息，请参见下面的注释。
+.PP
+任何创建的文件都将具有模式 \fBS_IRUSR\fP | \fBS_IWUSR\fP | \fBS_IRGRP\fP | \fBS_IWGRP\fP | \fBS_IROTH\fP
+| \fBS_IWOTH\fP (0666)，由进程的 umask 值修改 (参见 \fBumask\fP(2)).
+.PP
+读取和写入可以以任何顺序在 read/write 流上混合。 请注意，ANSI C 要求文件定位函数介于输出和输入之间，除非输入操作遇到文件结尾。
+(如果不满足此条件，则允许读取返回除最近的写入结果以外的写入结果。) 因此，在写入和读取之间放置 \fBfseek\fP(3) 或 \fBfsetpos\fP(3)
+操作是一种很好的做法 (在 Linux 下有时确实是必要的) 对这样的流的操作。 此操作可能是一个明显的空操作 (如在 \fIfseek(..., 0L, SEEK_CUR)\fP 中调用其同步副作用)。
+.PP
+在追加模式下打开文件 (\fBa\fP 作为 \fImode\fP) 的第一个字符会导致对该流的所有后续写入操作发生在文件末尾，就好像前面有调用一样:
+.PP
+.in +4n
+.EX
+fseek(stream, 0, SEEK_END);
+.EE
+.in
+.PP
+与流相关联的文件描述符被打开，就好像用带有以下标志的 \fBopen\fP(2) 调用一样:
+.RS
+.TS
+allbox;
+lb lb
+c l.
+fopen() mode	open() flags
+\fIr\fP	O_RDONLY
+\fIw\fP	O_WRONLY | O_CREAT | O_TRUNC
+\fIa\fP	O_WRONLY | O_CREAT | O_APPEND
+\fIr+\fP	O_RDWR
+\fIw+\fP	O_RDWR | O_CREAT | O_TRUNC
+\fIa+\fP	O_RDWR | O_CREAT | O_APPEND
+.TE
+.RE
+.\"
+.SS fdopen()
+.\"
+\fBfdopen\fP() 函数将流与现有文件描述符 \fIfd\fP 相关联。 流的 \fImode\fP (值 "r"、"r+"、"w"、"w+"、"a"、"a+"
+之一) 必须与文件描述符的模式兼容。 新流的文件位置指示器设置为属于 \fIfd\fP 的位置指示器，错误和文件结束指示器被清除。 模式 "w" 或 "w+"
+不会导致文件截断。 文件描述符不会被复制，并且会在 \fBfdopen\fP() 创建的流关闭时关闭。 将 \fBfdopen\fP()
+应用于共享内存对象的结果是不确定的。
+.SS freopen()
+\fBfreopen\fP() 函数打开名称为 \fIpathname\fP 指向的字符串的文件，并将 \fIstream\fP 指向的流与其关联。 原始流 (如果存在)
+已关闭。 \fImode\fP 参数的使用与 \fBfopen\fP() 函数相同。
+.PP
+如果 \fIpathname\fP 参数为空指针，则 \fBfreopen\fP() 将流的模式更改为 \fImode\fP 中指定的模式;
+也就是说，\fBfreopen\fP() 重新打开与流关联的路径名。 此行为的规范已添加到 C99 标准中，它说:
+.PP
+.RS
+在这种情况下，如果对 \fBfreopen\fP() 的调用成功，则不需要关闭与流关联的文件描述符。 允许哪些模式更改 (如果有的话)
+以及在什么情况下是实现定义的。
+.RE
+.PP
+\fBfreopen\fP() 函数的主要用途是更改与标准文本流 (\fIstderr\fP、\fIstdin\fP 或 \fIstdout\fP) 关联的文件。
+.SH "RETURN VALUE"
+成功完成后，\fBfopen\fP()、\fBfdopen\fP() 和 \fBfreopen\fP() 返回 \fIFILE\fP 指针。 否则，返回 NULL 并设置
+\fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEINVAL\fP
+提供给 \fBfopen\fP()、\fBfdopen\fP() 或 \fBfreopen\fP() 的 \fImode\fP 无效。
+.PP
+\fBfopen\fP()、\fBfdopen\fP() 和 \fBfreopen\fP() 函数也可能失败并为例程 \fBmalloc\fP(3) 指定的任何错误设置
+\fIerrno\fP。
+.PP
+\fBfopen\fP() 函数也可能会失败，并为例程 \fBopen\fP(2) 指定的任何错误设置 \fIerrno\fP。
+.PP
+\fBfdopen\fP() 函数也可能会失败，并为例程 \fBfcntl\fP(2) 指定的任何错误设置 \fIerrno\fP。
+.PP
+\fBfreopen\fP() 函数也可能失败并为例程 \fBopen\fP(2)、\fBfclose\fP(3) 和 \fBfflush\fP(3) 指定的任何错误设置
+\fIerrno\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBfopen\fP(),
+\fBfdopen\fP(),
+\fBfreopen\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBfopen\fP(), \fBfreopen\fP(): POSIX.1\-2001, POSIX.1\-2008, C99.
+.PP
+\fBfdopen\fP(): POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+.SS "glibc notes"
+GNU C 库允许对 \fImode\fP: 中指定的字符串进行以下扩展
+.TP 
+\fBc\fP (since glibc 2.3.3)
+不要做打开操作，或者后续的读写操作，线程取消点。 \fBfdopen\fP() 忽略此标志。
+.TP 
+\fBe\fP (since glibc 2.7)
+打开带有 \fBO_CLOEXEC\fP 标志的文件。 有关更多信息，请参见 \fBopen\fP(2)。 \fBfdopen\fP() 忽略此标志。
+.TP 
+\fBm\fP (since glibc 2.3)
+.\" As at glibc 2.4:
+尝试使用 \fBmmap\fP(2) 而不是 I/O 系统调用 (\fBread\fP(2)、\fBwrite\fP(2)) 来访问文件。
+目前，仅尝试对打开以供阅读的文件使用 \fBmmap\fP(2)。
+.TP 
+\fBx\fP
+.\" Since glibc 2.0?
+.\" FIXME . C11 specifies this flag
+以独占方式打开文件 (如 \fBopen\fP(2)).x 的 \fBO_EXCL\fP 标志)。 如果该文件已经存在，则 \fBfopen\fP() 失败，并将
+\fIerrno\fP 设置为 \fBEEXIST\fP。 \fBfdopen\fP() 忽略此标志。
+.PP
+\fBfopen\fP() 和 \fBfreopen\fP() 除了以上字符外，在 \fImode\fP: 中支持以下语法
+.PP
+\fB ,ccs=\fP\fIstring\fP
+.PP
+将给定的 \fIstring\fP 作为编码字符集的名称，并将流标记为面向宽的。 此后，内部转换函数将 I/O 与字符集 \fIstring\fP 相互转换。
+如果未指定 \fB,ccs=\fP\fIstring\fP 语法，则流的宽方向由第一个文件操作确定。
+如果该操作是一个宽字符操作，则流被标记为面向宽的，并且加载转换为编码字符集的函数。
+.SH BUGS
+.\" FIXME . http://sourceware.org/bugzilla/show_bug.cgi?id=12685
+当解析 \fImode\fP 中的单个标志字符 (即 "ccs" 规范之前的字符) 时，\fBfopen\fP() 和 \fBfreopen\fP() 的 glibc
+实现将 \fImode\fP 中检查的字符数限制为 7 (或者，在 glibc 2.14 之前，限制为 6，这还不够包括可能的规范，例如
+"rb+cmxe")。 \fBfdopen\fP() 的当前实现最多解析 \fImode\fP 中的 5 个字符。
+.SH "SEE ALSO"
+\fBopen\fP(2), \fBfclose\fP(3), \fBfileno\fP(3), \fBfmemopen\fP(3), \fBfopencookie\fP(3),
+\fBopen_memstream\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

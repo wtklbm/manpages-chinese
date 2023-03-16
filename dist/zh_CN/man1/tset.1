@@ -1,0 +1,302 @@
+.\" -*- coding: UTF-8 -*-
+.\"***************************************************************************
+.\" Copyright 2018-2021,2022 Thomas E. Dickey                                *
+.\" Copyright 1998-2016,2017 Free Software Foundation, Inc.                  *
+.\"                                                                          *
+.\" Permission is hereby granted, free of charge, to any person obtaining a  *
+.\" copy of this software and associated documentation files (the            *
+.\" "Software"), to deal in the Software without restriction, including      *
+.\" without limitation the rights to use, copy, modify, merge, publish,      *
+.\" distribute, distribute with modifications, sublicense, and/or sell       *
+.\" copies of the Software, and to permit persons to whom the Software is    *
+.\" furnished to do so, subject to the following conditions:                 *
+.\"                                                                          *
+.\" The above copyright notice and this permission notice shall be included  *
+.\" in all copies or substantial portions of the Software.                   *
+.\"                                                                          *
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS  *
+.\" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF               *
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.   *
+.\" IN NO EVENT SHALL THE ABOVE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,   *
+.\" DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR    *
+.\" OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR    *
+.\" THE USE OR OTHER DEALINGS IN THE SOFTWARE.                               *
+.\"                                                                          *
+.\" Except as contained in this notice, the name(s) of the above copyright   *
+.\" holders shall not be used in advertising or otherwise to promote the     *
+.\" sale, use or other dealings in this Software without prior written       *
+.\" authorization.                                                           *
+.\"***************************************************************************
+.\"
+.\" $Id: tset.1,v 1.62 2022/02/12 20:02:20 tom Exp $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tset 1 ""  
+.ie  \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie  \n(.g .ds '' \(rq
+.el       .ds '' ''
+.de  bP
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
+..
+.SH NAME
+\fBtset\fP, \fBreset\fP \- 终端初始化
+.SH SYNOPSIS
+\fBtset\fP [\fB\-IQVcqrsw\fP] [\fB\-\fP] [\fB\-e\fP \fIch\fP] [\fB\-i\fP \fIch\fP] [\fB\-k\fP \fIch\fP]
+[\fB\-m\fP \fImapping\fP] [\fIterminal\fP]
+.br
+\fBreset\fP [\fB\-IQVcqrsw\fP] [\fB\-\fP] [\fB\-e\fP \fIch\fP] [\fB\-i\fP \fIch\fP] [\fB\-k\fP \fIch\fP]
+[\fB\-m\fP \fImapping\fP] [\fIterminal\fP]
+.SH DESCRIPTION
+.SS "tset \- initialization"
+该程序初始化终端。
+.PP
+首先，\fBtset\fP 检索您的终端的当前终端模式设置。 它通过连续测试来做到这一点
+.bP
+标准误，
+.bP
+标准输出，
+.bP
+标准输入和
+.bP
+最终 \*(``/dev/tty\*(''
+.PP
+获取终端设置。 检索到这些设置后，\fBtset\fP 会记住更新设置时要使用的文件描述符。
+.PP
+接下来，\fBtset\fP 确定您正在使用的终端类型。 使用找到的第一个终端类型，按如下方式完成此确定。
+.PP
+1. 在命令行中指定的 \fBterminal\fP 参数。
+.PP
+2. \fBTERM\fP 环境变量的值。
+.PP
+3. (仅限 BSD 系统。) 与 \fI/etc/ttys\fP 文件中的标准错误输出设备关联的终端类型。 (在类似 System\-V 的 UNIX
+和使用该约定的系统上，\fBgetty\fP(1) 通过根据 \fI/etc/inittab\fP.) 传递给它的类型设置 \fBTERM\fP 来完成这项工作
+.PP
+4. 默认终端类型，\*(``unknown\*(''。
+.PP
+如果在命令行上未指定最终类型，则应用 \fB\-m\fP 选项映射 (有关更多信息，请参见 \fBTERMINAL TYPE MAPPING\fP 部分)。
+然后，如果终端类型以问号 (\*(``?\*('') 开头，则提示用户确认终端类型。 空响应确认类型，或者可以输入另一种类型以指定新类型。
+一旦确定了终端类型，就会检索终端的终端描述。 如果没有找到该类型的终端描述，系统会提示用户输入另一个终端类型。
+.PP
+检索到最终描述后，
+.bP
+如果启用 \*(``\fB\-w\fP\*('' 选项，\fBtset\fP 可能会更新终端的窗口大小。
+.IP
+如果无法从操作系统获得窗口大小，但终端描述 (或环境，例如 \fBLINES\fP 和 \fBCOLUMNS\fP
+变量指定此)，则使用它来设置操作系统对窗口大小的概念。
+.bP
+如果启用 \*(``\fB\-c\fP\*('' 选项，则设置退格、中断和行终止字符 (以及许多其他内容)
+.bP
+除非启用 \*(``\fB\-I\fP\*('' 选项，否则最终和制表符 \fIinitialization\fP 字符串将发送到标准错误输出，\fBtset\fP
+等待一秒钟 (以防发出硬件重置)。
+.bP
+最后，如果 erase、interrupt 和 line kill 字符已更改，或未设置为它们的默认值，它们的值将显示到标准错误输出。
+.SS "reset \- reinitialization"
+.PP
+当作为 \fBreset\fP 调用时，\fBtset\fP 将终端模式设置为 \*(``sane\*('' 值:
+.bP
+设置煮熟和回声模式，
+.bP
+关闭 cbreak 和原始模式，
+.bP
+打开换行符翻译和
+.bP
+将任何未设置的特殊字符重置为其默认值
+.PP
+在进行上述终端初始化之前。 此外，它没有使用最终 \fIinitialization\fP 字符串，而是使用最终 \fIreset\fP 字符串。
+.PP
+\fBreset\fP 命令在程序死后留下终端处于异常状态后很有用:
+.bP
+您可能需要输入
+.sp
+    \fI<LF>\fP\fBreset\fP\fI<LF>\fP
+.sp
+(换行符一般是 control\-J) 让最终端起作用，因为回车在异常状态下可能不再起作用。
+.bP
+此外，终端通常不会回显命令。
+.SH OPTIONS
+.PP
+选项如下:
+.TP  5
+\fB\-c\fP
+设置控制字符和模式。
+.TP  5
+\fB\-e\ \fP\fIch\fP
+将擦除字符设置为 \fIch\fP。
+.TP 
+\fB\-I\fP
+不要将最终端或选项卡初始化字符串发送到最终端。
+.TP 
+\fB\-i\ \fP\fIch\fP
+设置中断字符为 \fIch\fP。
+.TP 
+\fB\-k\ \fP\fIch\fP
+将行终止字符设置为 \fIch\fP。
+.TP 
+\fB\-m\ \fP\fImapping\fP
+指定从端口类型到终端的映射。 有关详细信息，请参见 \fBTERMINAL TYPE MAPPING\fP 部分。
+.TP 
+\fB\-Q\fP
+不要显示擦除、中断和行终止字符的任何值。 通常 \fBtset\fP 显示与系统默认值不同的控制字符值。
+.TP 
+\fB\-q\fP
+终端类型显示到标准输出，终端未以任何方式初始化。 选项 \*(``\-\*('' 本身是等价的但过时了。
+.TP 
+\fB\-r\fP
+将最终类型打印到标准错误输出。
+.TP 
+\fB\-s\fP
+打印 shell 命令序列以将环境变量 \fBTERM\fP 初始化为标准输出。 有关详细信息，请参见 \fBSETTING THE ENVIRONMENT\fP
+部分。
+.TP 
+\fB\-V\fP
+报告此程序中使用的 ncurses 版本，然后退出。
+.TP 
+\fB\-w\fP
+调整窗口大小以匹配通过 \fBsetupterm\fP(3X) 推断的大小。 通常这没有影响，除非 \fBsetupterm\fP 无法检测窗口大小。
+.PP
+\fB\-e\fP、\fB\-i\fP 和 \fB\-k\fP 选项的参数可以作为实际字符输入，也可以使用 \*(``hat\*('' 表示法，即 control\-h
+可以指定为 \*(``^H\*('' 或 \*(``^h\*(''.
+.PP
+如果 \fB\-c\fP 或 \fB\-w\fP 均未给出，则假定这两个选项。
+.
+.SH "SETTING THE ENVIRONMENT"
+通常需要将终端类型和有关终端功能的信息输入到 shell 的环境中。 这是使用 \fB\-s\fP 选项完成的。
+.PP
+当指定 \fB\-s\fP 选项时，将信息输入 shell 环境的命令将写入标准输出。 如果 \fBSHELL\fP 环境变量以 \*(``csh\*(''
+结尾，则命令针对 \fBcsh\fP，否则，它们针对 \fBsh\fP(1)。 请注意，\fBcsh\fP 命令设置和取消设置 shell 变量
+\fBnoglob\fP，使其保持未设置状态。 \fB.login\fP 或 \fB.profile\fP 文件中的以下行将正确初始化环境:
+.sp
+    评估 `tset \-s 选项... \`
+.
+.SH "TERMINAL TYPE MAPPING"
+当终端没有硬连线到系统中 (或当前系统信息不正确) 时，从 \fI/etc/ttys\fP 文件或 \fBTERM\fP 环境变量派生的终端类型通常是泛型，如
+\fBnetwork\fP、\fBdialup\fP 或 \fBunknown\fP。 在启动脚本中使用 \fBtset\fP
+时，通常需要提供有关此类端口上使用的终端类型的信息。
+.PP
+\fB\-m\fP 选项 maps 从一些条件集合到一个终端类型，也就是说，告诉 \fBtset\fP\*(`` 如果我以特定的速度在这个端口上，猜测我在那种终端
+\*(''。
+.PP
+\fB\-m\fP 选项的参数由一个可选的端口类型、一个可选的运算符、一个可选的波特率规范、一个可选的冒号 (\*(``:\*('') 字符和一个终端类型组成。
+端口类型是一个字符串 (由运算符或冒号分隔)。 运算符可以是 \*(``>\*(''、\*(``<\*(''、\*(``@\*('' 和
+\*(``!\*(''; \*(``>\*('' 表示大于，\*(``<\*('' 表示小于，\*(``@\*('' 表示等于和
+\*(``!\*('' 反转测试的意义。 波特率指定为一个数字，并与标准错误输出 (应该是控制端) 的速度进行比较。 最终类型是一个字符串。
+.PP
+如果在命令行上未指定终端类型，则 \fB\-m\fP 映射将应用于终端类型。 如果端口类型和波特率与映射匹配，则映射中指定的终端类型替换当前类型。
+如果指定了多个映射，则使用第一个适用的映射。
+.PP
+例如，考虑以下映射: \fBdialup>9600:vt100\fP。 端口类型为拨号，运营商为 >，波特率规格为 9600，终端类型为
+vt100。 该映射的结果是指定如果终端类型为 \fBdialup\fP，波特率大于 9600 波特，则使用 \fBvt100\fP 的终端类型。
+.PP
+如果没有指定波特率，终端类型将匹配任何波特率。 如果没有指定端口类型，终端类型将匹配任何端口类型。 例如，\fB\-m dialup:vt100 \-m :?xterm\fP 将导致任何拨号端口，无论波特率如何，匹配终端类型 vt100，以及任何非拨号端口类型匹配终端类型 ?xterm。
+请注意，由于前导问号，将在默认端口上询问用户是否实际使用 xterm 终端。
+.PP
+\fB\-m\fP 选项参数中不允许有空白字符。 此外，为避免元字符出现问题，建议将整个 \fB\-m\fP 选项参数放在单引号字符内，并且 \fBcsh\fP
+用户在任何感叹号 (\*(``!\*('') 之前插入反斜杠字符 (\*(``\e\*('')。
+.SH HISTORY
+.PP
+\fBreset\fP 命令出现在 1BSD (1978 年 3 月) 中，由 Kurt Shoens 编写。 该程序将 \fIerase\fP 和 \fIkill\fP
+字符分别设置为 \fB^H\fP (backspace) 和 \fB@\fP。 Mark Horton 在 3BSD (1979 年 10 月)
+中对此进行了改进，添加了 \fIintr\fP、\fIquit\fP、\fIstart\fP/\fIstop\fP 和 \fIeof\fP 字符以及更改程序以避免修改任何用户设置。
+那个版本的 \fBreset\fP 没有使用 termcap 数据库。
+.PP
+Eric Allman 在 1BSD 中使用 termcap 数据库提供了一个单独的 \fBtset\fP 命令。 Allman 在源代码中的评论表明他于
+1977 年 10 月开始工作，并在接下来的几年中继续开发。
+.PP
+根据源代码中的注释，\fBtset\fP 程序于 1980 年 9 月进行了修改，以使用从 3BSD 复制的逻辑 \*(``reset\*('' 当它被调用为
+\fBreset\fP.  这个版本出现在 1982 年底的 4.1cBSD 中。
+.PP
+其他开发人员 (例如，Keith Bostic 和 Jim Bloom) 继续修改 \fBtset\fP，直到 4.4BSD 于 1993 年发布。
+.PP
+\fBncurses\fP 实现是根据 Eric S. Raymond <esr@snark.thyrsus.com>.
+.SH COMPATIBILITY
+.PP
+IEEE Std 1003.1/The Open Group Base Specifications Issue 7 (POSIX.1\-2008) 和
+X/Open Curses Issue 7 都没有文档 \fBtset\fP 或 \fBreset\fP。
+.PP
+AT&T \fBtput\fP 实用程序 (AIX、HPUX、Solaris) 结合了终端模式操作以及基于 termcap 的特性例如在 BSD (4.1c)
+中从 \fBtset\fP 重置制表位，大概是为了让 \fBtset\fP 过时。 但是，这些系统中的每一个仍然提供 \fBtset\fP。 实际上，常用的
+\fBreset\fP 实用程序始终是 \fBtset\fP 的别名。
+.PP
+\fBtset\fP 实用程序提供与 BSD 环境的向后兼容性 (在大多数现代 UNIX 下，\fB/etc/inittab\fP 和 \fBgetty\fP(1)
+可以为每条拨号线路适当地设置 \fBTERM\fP; 这避免了 \fBtset\fP's 最重要的用途)。 此实现的行为类似于 4.4BSD
+\fBtset\fP，但此处指定了一些例外情况。
+.PP
+一些选项不同，因为基于 terminfo 的 \fBncurses\fP: 不再支持 \fBTERMCAP\fP 变量
+.bP
+BSD \fBtset\fP 的 \fB\-S\fP 选项不再起作用; 它向标准错误打印错误消息并终止。
+.bP
+\fB\-s\fP 选项只设置 \fBTERM\fP，不设置 \fBTERMCAP\fP。
+.PP
+有一个未记录的 4.4BSD 特性通过名为 \*(``TSET\*('' (或通过任何其他以大写字母开头的名称) 的链接调用
+\fBtset\fP，将最终端设置为仅使用大写。 此特性已被省略。
+.PP
+\fB\-A\fP、\fB\-E\fP、\fB\-h\fP、\fB\-u\fP 和 \fB\-v\fP 选项已从 4.4BSD 中的 \fBtset\fP 实用程序中删除。 它们都没有记录在
+4.3BSD 中，并且充其量都是有限的实用性。 \fB\-a\fP、\fB\-d\fP 和 \fB\-p\fP 选项同样没有记录或有用，但由于它们似乎被广泛使用而被保留。
+强烈建议将这三个选项的任何用法更改为使用 \fB\-m\fP 选项。 因此，上面的用法总结省略了 \fB\-a\fP、\fB\-d\fP 和 \fB\-p\fP 选项。
+.PP
+非常老的系统，例如 3BSD，使用了不同的终端驱动程序，在 1980 年代早期被 4BSD 取代。 为了适应这些较旧的系统，4BSD \fBtset\fP
+提供了一个 \fB\-n\fP 选项来指定应该使用新的终端驱动程序。 此实现不提供该选择。
+.PP
+仍然允许在没有参数的情况下指定 \fB\-e\fP、\fB\-i\fP 和 \fB\-k\fP 选项，但强烈建议固定此类用法以明确指定字符。
+.PP
+从 4.4BSD 开始，将 \fBtset\fP 作为 \fBreset\fP 执行不再意味着 \fB\-Q\fP 选项。 此外，在 \fBtset\fP 的某些历史实现中，\-
+选项与 \fIterminal\fP 参数之间的交互已被删除。
+.PP
+在早期的实现中找不到 \fB\-c\fP 和 \fB\-w\fP 选项。 但是，4.4BSD 中提供了不同的窗口大小更改，特性。
+.bP
+在 4.4BSD 中，如果 \fBtset\fP 无法从操作系统获取窗口大小，则 \fBtset\fP 使用 termcap 描述中的窗口大小来设置窗口大小。
+.bP
+ncurses 中，\fBtset\fP 使用 \fBsetupterm\fP 获取窗口大小，可能来自操作系统、\fBLINES\fP 和 \fBCOLUMNS\fP
+环境变量或终端描述。
+.PP
+从终端描述中获取窗口大小对于这两种实现都是通用的，但被认为已过时。 它唯一的实际用途是用于硬件终端。
+一般来说，只有在从操作系统获取值时出现问题时才会取消设置窗口大小 (并且 \fBsetupterm\fP 仍然会失败)。 因此，\fBLINES\fP 和
+\fBCOLUMNS\fP 环境变量可能有助于解决窗口大小问题。 这些方法的缺点是，如果调整窗口大小，则必须重新计算和重新分配那些变量。
+要更轻松地执行此操作，请使用 \fBresize\fP(1) 程序。
+.SH ENVIRONMENT
+\fBtset\fP 命令使用这些环境变量:
+.TP  5
+SHELL
+告诉 \fBtset\fP 是否使用 \fBsh\fP(1) 或 \fBcsh\fP(1) 语法初始化 \fBTERM\fP。
+.TP  5
+TERM
+表示您的终端类型。 每个终端类型都是不同的，尽管许多是相似的。
+.TP  5
+TERMCAP
+可能表示 termcap 数据库的位置。 如果它不是绝对路径名，例如，以 \*(``/\*('' 开头，\fBtset\fP
+会在查找最终描述之前从环境中删除该变量。
+.SH FILES
+.TP  5
+/etc/ttys
+系统端口名到终端类型映射数据库 (仅限 BSD 版本)。
+.TP 
+/usr/share/terminfo
+终端能力数据库
+.SH "SEE ALSO"
+.hy 0
+\fBcsh\fP(1), \fBsh\fP(1), \fBstty\fP(1), \fBcurs_terminfo\fP(3X), \fBtty\fP(4),
+\fBterminfo\fP(5), \fBttys\fP(5), \fBenviron\fP(7)
+.hy
+.PP
+这描述了 \fBncurses\fP 版本 6.4 (补丁 20221231)。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

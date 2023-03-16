@@ -1,0 +1,158 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-MACHINE\-ID\-SETUP 1 "" "systemd 253" systemd\-machine\-id\-setup
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-machine\-id\-setup \- 在 /etc/machine\-id 中初始化机器 ID
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-machine\-id\-setup\fR\ 'u
+\fBsystemd\-machine\-id\-setup\fP
+.SH DESCRIPTION
+.PP
+\fBsystemd\-machine\-id\-setup\fP 可以被系统安装程序工具用来在安装时初始化存储在 /etc/machine\-id 中的机器
+ID，使用预配的或随机生成的 ID\&。有关此文件 \& 的更多信息，请参见 \fBmachine\-id\fP(5)。
+.PP
+如果在没有 \fB\-\-commit\fP 开关的情况下调用该工具，则 /etc/machine\-id 将使用有效的新机器 ID 进行初始化 (如果它丢失或为空
+\&)。新机器 ID 将通过以下方式获取:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果已经为系统配置了有效的 D\-Bus 机器 ID，则复制 D\-Bus 机器 ID 并用于初始化 /etc/machine\-id\& 中的机器 ID。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+如果在 KVM 虚拟机内部运行并且配置了 UUID (通过 \fB\-uuid\fP 选项)，则此 UUID 用于初始化机器 ID\&。调用者必须确保传递的
+UUID 足够唯一并且对于 VM 的每个启动实例都是不同的。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+类似地，如果在 Linux 容器环境中运行并且为容器配置了 UUID，这将用于初始化机器 ID\&。具体参见 \m[blue]\fBContainer Interface\fP\m[]\&\s-2\u[1]\d\s+2\& 的文档。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+否则，将随机生成一个新 ID\&。
+.RE
+.PP
+\fB\-\-commit\fP 开关可用于将临时加工 ID 提交到磁盘，使其持久 \&。详情见下文 \&。
+.PP
+使用 \fBsystemd\-firstboot\fP(1) 初始化挂载 (但未启动) 系统映像上的机器 ID\&。
+.SH OPTIONS
+.PP
+理解以下选项:
+.PP
+\fB\-\-root=\fP\fIpath\fP
+.RS 4
+取目录路径为参数 \&。操作的所有路径都将以给定的备用 \fIroot\fP 路径为前缀，包括 /etc/machine\-id 本身的路径 \&。
+.RE
+.PP
+\fB\-\-image=\fP\fIpath\fP
+.RS 4
+将设备节点或常规文件的路径作为参数 \&。这与上面描述的 \fB\-\-root=\fP 类似，但在磁盘映像而不是目录树上运行 \&。
+.RE
+.PP
+\fB\-\-commit\fP
+.RS 4
+将临时机器 ID 提交到磁盘 \&。此命令可用于将临时机器 ID 转换为持久机器 ID\&。临时机器 ID 文件是在引导过程的早期阶段从内存文件系统
+(通常为 "tmpfs") 绑定挂载到 /etc/machine\-id 的文件。这可能是因为 /etc / 最初是只读的，并且此时缺少有效的机器 ID
+文件 \&。
+.sp
+如果 /etc/machine\-id 不是从内存文件系统挂载的，或者如果 /etc / 是只读的
+\&，则此命令将不执行任何操作。该命令会将当前的临时机器 ID 写入磁盘并以无竞争的方式卸载 /etc/machine\-id
+挂载点，以确保该文件始终有效并可供其他进程访问 \&。
+.sp
+此命令主要由 \fBsystemd\-machine\-id\-commit.service\fP(8) 早期启动服务 \& 使用。
+.RE
+.PP
+\fB\-\-print\fP
+.RS 4
+打印操作完成后生成或提交的机器 ID\&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时返回 0，否则返回非零失败代码 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBmachine\-id\fP(5), \fBsystemd\-machine\-id\-commit.service\fP(8),
+\fBdbus\-uuidgen\fP(1), \fBsystemd\-firstboot\fP(1)
+.SH NOTES
+.IP " 1." 4
+容器接口
+.RS 4
+\%https://systemd.io/CONTAINER_INTERFACE
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

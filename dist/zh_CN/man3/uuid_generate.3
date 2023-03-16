@@ -1,0 +1,119 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: uuid_generate
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-05-11
+.\"    Manual: Programmer's Manual
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH UUID_GENERATE 3 2022\-05\-11 "util\-linux 2.38.1" "Programmer\(aqs Manual"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+uuid_generate, uuid_generate_random, uuid_generate_time,
+uuid_generate_time_safe \- 创建一个新的唯一 UUID 值
+.SH SYNOPSIS
+.sp
+\fB#include <uuid.h>\fP
+.sp
+\fBvoid uuid_generate(uuid_t \fP\fIout\fP\fB);\fP
+.br
+\fBvoid uuid_generate_random(uuid_t \fP\fIout\fP\fB);\fP
+.br
+\fBvoid uuid_generate_time(uuid_t \fP\fIout\fP\fB);\fP
+.br
+\fBint uuid_generate_time_safe(uuid_t \fP\fIout\fP\fB);\fP
+.br
+\fBvoid uuid_generate_md5(uuid_t \fP\fIout\fP\fB, const uuid_t \fP\fIns\fP\fB, const char \fP\fI*name\fP\fB, size_t \fP\fIlen\fP\fB);\fP
+.br
+\fBvoid uuid_generate_sha1(uuid_t \fP\fIout\fP\fB, const uuid_t \fP\fIns\fP\fB, const char \fP\fI*name\fP\fB, size_t \fP\fIlen\fP\fB);\fP
+.SH DESCRIPTION
+.sp
+\fBuuid_generate\fP() 函数创建了一个新的全球唯一标识符 (UUID)。uuid 将根据来自
+\fBgetrandom\fP(2)、\fI/dev/urandom\fP 或 \fI/dev/random\fP (如果可用) 的高质量随机性生成。如果不可用，则
+\fBuuid_generate\fP() 将使用替代算法，该算法使用当前时间、本地以太网 MAC 地址 (如果可用) 和使用伪随机生成器生成的随机数据。
+.sp
+\fBuuid_generate_random\fP() 函数强制使用全随机 UUID
+格式，即使没有高质量的随机数生成器，在这种情况下，伪随机数生成器也会被替换。请注意，使用伪随机生成器可能会损害以这种方式生成的 UUID 的唯一性。
+.sp
+\fBuuid_generate_time\fP() 函数强制使用替代算法，该算法使用当前时间和本地以太网 MAC 地址 (如果可用)。该算法曾经是用于生成
+UUID 的默认算法，但由于使用了以太网 MAC 地址，它可能会泄露有关生成 UUID 的时间和地点的信息。这会在某些应用程序中导致隐私问题，因此
+\fBuuid_generate\fP() 函数仅在无法获得高质量随机源时才使用此算法。为了保证并发运行的进程生成的 UUID 的唯一性，uuid
+库使用全局时钟状态计数器 (如果进程有权获得对该文件的独占访问权) 或者 \fBuuidd\fP(8) 守护进程，如果它已经在运行或可以被派生按进程
+(如果已安装并且进程有足够的权限运行它)。如果这两种同步机制都不能使用，理论上有可能两个并发运行的进程获得相同的 UUID(s)。要判断 UUID
+是否已以安全方式生成，请使用 \fBuuid_generate_time_safe\fP。
+.sp
+\fBuuid_generate_time_safe\fP() 函数类似于
+\fBuuid_generate_time\fP()，不同之处在于它返回一个值，该值表示是否使用了任何同步机制 (见上文)。
+.sp
+UUID 的长度为 16 字节 (128 位)，它给出了大约 3.4x10^38 个唯一值 (根据 Carl Sagan\(cqs
+\fICosmos\fP). 可以合理地认为新的 UUID 在本地系统上创建的所有 UUID 中，以及在过去和 future 中在其他系统上创建的 UUID
+中是唯一的。
+.sp
+\fBuuid_generate_md5\fP() 和 \fBuuid_generate_sha1\fP() 函数基于提供命名空间和任意二进制字符串的众所周知的
+UUID 生成 MD5 和 SHA1 散列 (predictable) UUID。UUID 符合 V3 和 V5 UUID
+.URL https://tools.ietf.org/html/rfc4122 RFC\-4122 .
+.SH "RETURN VALUE"
+.sp
+新创建的 UUID 在 \fIout\fP 指向的内存位置返回。如果 UUID 以安全方式生成，则 \fBuuid_generate_time_safe\fP()
+返回零，否则返回 \-1。
+.SH "CONFORMING TO"
+.sp
+该库生成与 OSF DCE 1.1 兼容的 UUID，以及与兼容的基于哈希的 UUID V3 和 V5
+.URL https://tools.ietf.org/html/rfc4122 RFC\-4122 .
+.SH AUTHORS
+.sp
+西奥多・Y。Ts\(cqo
+.SH "SEE ALSO"
+.sp
+\fBuuidgen\fP(1), \fBuuid\fP(3), \fBuuid_clear\fP(3), \fBuuid_compare\fP(3),
+\fBuuid_copy\fP(3), \fBuuid_is_null\fP(3), \fBuuid_parse\fP(3), \fBuuid_time\fP(3),
+\fBuuid_unparse\fP(3), \fBuuidd\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+自版本 2.15.1 起，\fBlibuuid\fP 库是 util\-linux 包的一部分。它可以从下载
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

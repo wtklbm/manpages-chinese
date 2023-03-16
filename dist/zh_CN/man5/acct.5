@@ -1,0 +1,136 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2008, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH acct 5 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+acct \- 进程记帐文件
+.SH SYNOPSIS
+.nf
+\fB#include <sys/acct.h>\fP
+.fi
+.SH DESCRIPTION
+如果内核是在启用了 (\fBCONFIG_BSD_PROCESS_ACCT\fP) 的进程记帐选项的情况下构建的，则调用 \fBacct\fP(2)
+会启动进程记帐，例如:
+.PP
+.in +4n
+acct("/var/log/pacct");
+.in
+.PP
+启用进程记帐后，内核会在系统上的每个进程终止时将记录写入记帐文件。 该记录包含有关已终止进程的信息，并在 \fI<sys/acct.h>\fP
+中定义如下:
+.PP
+.in +4n
+.EX
+#define ACCT_COMM 16
+
+typedef u_int16_t comp_t;
+
+struct acct {
+    char ac_flag;           /* Accounting flags */
+    u_int16_t ac_uid;       /* Accounting user ID */
+    u_int16_t ac_gid;       /* Accounting group ID */
+    u_int16_t ac_tty;       /* Controlling terminal */
+    u_int32_t ac_btime;     /* Process creation time
+                               (seconds since the Epoch) */
+    comp_t    ac_utime;     /* User CPU time */
+    comp_t    ac_stime;     /* System CPU time */
+    comp_t    ac_etime;     /* Elapsed time */
+    comp_t    ac_mem;       /* Average memory usage (kB) */
+    comp_t    ac_io;        /* Characters transferred (unused) */
+    comp_t    ac_rw;        /* Blocks read or written (unused) */
+    comp_t    ac_minflt;    /* Minor page faults */
+    comp_t    ac_majflt;    /* Major page faults */
+    comp_t    ac_swaps;     /* Number of swaps (unused) */
+    u_int32_t ac_exitcode;  /* Process termination status
+                               (见 wait(2)) */
+    char      ac_comm[ACCT_COMM+1];
+                            /* 命令名称 (最后的基本名称
+                               执行命令; 空终止) */
+    char      ac_pad[\fIX\fP];    /* padding bytes */
+};
+
+enum {          /* Bits that may be set in ac_flag field */
+    AFORK = 0x01,           /* Has executed fork, but no exec */
+    ASU   = 0x02,           /* Used superuser privileges */
+    ACORE = 0x08,           /* Dumped core */
+    AXSIG = 0x10            /* Killed by a signal */
+};
+.EE
+.in
+.PP
+\fIcomp_t\fP 数据类型是由 3 位 base\-8 指数和 13 位尾数组成的浮点值。 这种类型的值 \fIc\fP 可以转换为 (long)
+整数，如下所示:
+.PP
+.nf
+    v = (c & 0x1fff) << (((c >> 13) & 0x7) * 3);
+.fi
+.PP
+\fIac_utime\fP、\fIac_stime\fP 和 \fIac_etime\fP 字段测量 "clock ticks" 中的时间; 将这些值除以
+\fIsysconf(_SC_CLK_TCK)\fP 以将它们转换为秒。
+.SS "Version 3 accounting file format"
+从 Linux 2.6.8 开始，如果在构建内核时设置了 \fBCONFIG_BSD_PROCESS_ACCT_V3\fP
+选项，则可以生成一个可选的替代版本的记帐文件。 设置此选项后，写入记帐文件的记录将包含额外的字段，并且 \fIc_uid\fP 和 \fIac_gid\fP
+字段的宽度从 16 位加宽到 32 位 (与 Linux 2.4 及更高版本中 UID 和 GID 的增加大小一致)。 记录定义如下:
+.PP
+.in +4n
+.EX
+struct acct_v3 {
+    char      ac_flag;      /* Flags */
+    char      ac_version;   /* Always set to ACCT_VERSION (3) */
+    u_int16_t ac_tty;       /* Controlling terminal */
+    u_int32_t ac_exitcode;  /* Process termination status */
+    u_int32_t ac_uid;       /* Real user ID */
+    u_int32_t ac_gid;       /* Real group ID */
+    u_int32_t ac_pid;       /* Process ID */
+    u_int32_t ac_ppid;      /* Parent process ID */
+    u_int32_t ac_btime;     /* Process creation time */
+    float     ac_etime;     /* Elapsed time */
+    comp_t    ac_utime;     /* User CPU time */
+    comp_t    ac_stime;     /* System time */
+    comp_t    ac_mem;       /* Average memory usage (kB) */
+    comp_t    ac_io;        /* Characters transferred (unused) */
+    comp_t    ac_rw;        /* Blocks read or written
+                               (unused) */
+    comp_t    ac_minflt;    /* Minor page faults */
+    comp_t    ac_majflt;    /* Major page faults */
+    comp_t    ac_swaps;     /* Number of swaps (unused) */
+    char      ac_comm[ACCT_COMM]; /* Command name */
+};
+.EE
+.in
+.SH VERSIONS
+\fIacct_v3\fP 结构体是从 glibc 2.6 开始定义的。
+.SH STANDARDS
+流程记帐起源于 BSD。 虽然它存在于大多数系统中，但它不是标准化的，并且细节因系统而异。
+.SH NOTES
+会计文件中的记录按进程终止时间排序。
+.PP
+直至并包括 Linux 2.6.9，为使用 NPTL 线程库创建的每个线程写入单独的记账记录; 从 Linux 2.6.10
+开始，在进程中的最后一个线程终止时为整个进程写入单个记帐记录。
+.PP
+\fBproc\fP(5) 中描述的 \fI/proc/sys/kernel/acct\fP 文件定义了磁盘空间不足时控制进程记帐行为的设置。
+.SH "SEE ALSO"
+\fBlastcomm\fP(1), \fBacct\fP(2), \fBaccton\fP(8), \fBsa\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

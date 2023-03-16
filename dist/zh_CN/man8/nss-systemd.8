@@ -1,0 +1,190 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH NSS\-SYSTEMD 8 "" "systemd 253" nss\-systemd
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+nss\-systemd、libnss_systemd.so.2 \- 通过 Varlink 进行 user/group 查找的 UNIX 用户和组名称解析
+.SH SYNOPSIS
+.PP
+libnss_systemd\&.so\&.2
+.SH DESCRIPTION
+.PP
+\fBnss\-systemd\fP 是 GNU C 库 (\fBglibc\fP) 的 GNU Name Service Switch (NSS)
+特性的插件模块，为实现 \m[blue]\fBUser/Group Record Lookup API via Varlink\fP\m[]\&\s-2\u[1]\d\s+2 的服务提供 UNIX 用户和组名称解析，例如系统和服务管理器 \fBsystemd\fP(1)
+(其 \fIDynamicUser=\fP 特性见 \fBsystemd.exec\fP(5) 了解详情)，\fBsystemd\-homed.service\fP(8)
+或 \fBsystemd\-machined.service\fP(8)\&。
+.PP
+该模块还确保 root 和 nobody 用户和组 (i\&.e\&。users/groups 与 UIDs/GIDs 0 和 65534)
+始终保持可解析，即使它们不是 \* (/etc/passwd 或 /etc/group 中列出的 Aqt，或者如果这些文件丢失 \&。
+.PP
+该模块最好使用 \fBsystemd\-userdbd.service\fP(8) 来解析用户和组，但也可以在没有运行服务的情况下工作。
+.PP
+要激活 NSS 模块，请将 "systemd" 添加到 /etc/nsswitch\&.conf\& 中以
+"passwd:"、"group:"、"shadow:" 和 "gshadow:" 开头的行。
+.PP
+建议将 "systemd" 放在 /etc/nsswitch\&.conf 行的 "files" 或 "compat" 条目之后，以便基于
+/etc/passwd、/etc/group、/etc/shadow 和 /etc/gshadow 的映射优先 \&。
+.SH "STATIC DROP\-IN JSON USER/GROUP RECORDS"
+.PP
+除了通过上述 Varlink IPC 接口和合成的 root 和 nobody 帐户获取的 user/group
+记录外，该模块还使用户和组帐户对系统可用，这些帐户在 /etc/userdb/、/run/userdb/、/run/host/userdb/ 和
+/usr/lib/userdb/ 目录中的静态丢弃文件中定义 \&.
+.PP
+这是一种通过 JSON 丢弃 \- in files\& 提供静态用户和组记录的简单机制。此类用户记录应以 \m[blue]\fBJSON User Records\fP\m[]\&\s-2\u[2]\d\s+2 规范描述的格式定义，并放置在上述目录之一中，文件名由用户名后缀 \&.user
+组成，具有世界可读的访问模式 \&。以用户记录命名的符号链接 \*(Aqs UID 以十进制格式并以 \&
+为后缀。指向主记录文件的用户也应创建，以便允许通过用户名和 UID\& 进行查找。特权用户记录数据 (e\&.g\&. 散列 UNIX 密码)
+也可以选择提供，在一对单独的伴随文件中，带有 \&.user\-privileged 后缀 \&。数据应存储在以用户名命名的常规文件中，后缀为
+\&.user\-privileged，以及指向它的符号链接，以使用的十进制格式的数字 UID 命名，具有相同的后缀 \&。除了 root\&
+之外，任何人都不能读取这些伴随文件。Example:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\- rw\-r\-\-r\-\-\&。1 root root 723 5 月 10 foobar\&.user
+\- rw\-\-\-\-\-\-\-\-\&。1 root root 123 5 月 10 foobar\&.user\-privileged
+lrwxrwxrwx\&. 1 root root   19 May 10 4711\&.user \-> foobar\&.user
+lrwxrwxrwx\&. 1 root root   19 May 10 4711\&.user\-privileged \-> foobar\&.user\-privileged
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+类似地，可以使用文件后缀 \&.group 和 \&.group\-privileged\& 定义遵循 \m[blue]\fBJSON Group Record\fP\m[]\&\s-2\u[3]\d\s+2 中描述的格式的组记录。
+.PP
+主要 user/group 记录文件 (i\&.e\&。带有 \&.user 和 \&.group 后缀的文件) 不应包含规范中所述的
+"privileged" 部分 \&。特权 user/group 记录文件 (i\&.e\&。那些具有 \&.user\-privileged 和
+\&.group\-privileged 后缀的文件) 应该包含此部分，排他性的 \&。
+.PP
+请注意，静态 user/group 记录通常不会覆盖 /etc/passwd 或 /etc/group 或其他帐户数据库中的冲突记录
+\&。事实上，在丢弃这些文件之前，应该采取合理的谨慎措施以避免 user/group 名称和 UID/GID 冲突 \&。
+.SH "CONFIGURATION IN /ETC/NSSWITCH\&.CONF"
+.PP
+以下是正确启用 \fBnss\-systemd\fP 的示例 /etc/nsswitch\&.conf 文件:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+密码: compat \fBsystemd\fP
+组: 兼容 [SUCCESS=merge] \fBsystemd\fP
+阴影: compat \fBsystemd\fP
+gshadow: 文件 \fBsystemd\fP
+
+hosts: mymachines 解析 [!UNAVAIL=return] 文件 myhostname dns
+网络: 文件
+
+协议: 数据库文件
+服务: 数据库文件
+醚: 数据库文件
+rpc: 数据库文件
+
+网络组: nis
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "EXAMPLE: MAPPINGS PROVIDED BY SYSTEMD\-MACHINED\&.SERVICE"
+.PP
+使用 \fBsystemd\-nspawn\fP(1): 生成容器 "rawhide"
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# systemd\-nspawn \-M rawhide \-\-boot \-\-network\-veth \-\-private\-users=pick
+/var/rawhide\& 上的产卵容器生皮。
+选定的用户命名空间基数 20119552 和范围 65536\&。
+\&.\&.\&.
+
+$ machinectl \-\-max\-addresses=3
+机器类服务操作系统版本地址
+生皮容器 systemd\-nspawn fedora 30 169\&.254\&.40\&.164 fe80::94aa:3aff:fe7b:d4b9
+
+$ getent passwd vu\-rawhide\-0 vu\-rawhide\-81
+vu\-rawhide\-0:*:20119552:65534:vu\-rawhide\-0:/:/usr/sbin/nologin
+vu\-rawhide\-81:*:20119633:65534:vu\-rawhide\-81:/:/usr/sbin/nologin
+
+$ getent 组 vg\-rawhide\-0 vg\-rawhide\-81
+vg\-rawhide\-0:*:20119552:
+vg\-rawhide\-81:*:20119633:
+
+$ ps \-o user:15,pid,tty,command \-e|grep \*(Aq^vu\-rawhide\*(Aq
+vu\-rawhide\-0      692 ?        /usr/lib/systemd/systemd
+vu\-rawhide\-0      731 ?        /usr/lib/systemd/systemd\-journald
+vu\-rawhide\-192    734 ?        /usr/lib/systemd/systemd\-networkd
+vu\-rawhide\-193    738 ?        /usr/lib/systemd/systemd\-resolved
+vu\-rawhide\-0      742 ?        /usr/lib/systemd/systemd\-logind
+vu\-rawhide\-81     744 ?        /usr/bin/dbus\-daemon \-\-system \-\-address=systemd: \-\-nofork \-\-nopidfile \-\-systemd\-activation \-\-syslog\-only
+vu\-rawhide\-0      746 ?        /usr/sbin/sshd \-D \&.\&.\&.
+vu\-rawhide\-0 752 ? /usr/lib/systemd/systemd\-\- 用户
+vu\-rawhide\-0      753 ?        (sd\-pam)
+vu\-rawhide\-0 1628 ? 登录 \-\-zbyszek
+vu\-rawhide\-1000 1630 ? /usr/lib/systemd/systemd\-\- 用户
+vu\-rawhide\-1000  1631 ?        (sd\-pam)
+vu\-rawhide\-1000  1637 pts/8    \-zsh
+.fi
+.if  n \{\
+.RE
+.\}
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.exec\fP(5), \fBnss\-resolve\fP(8), \fBnss\-myhostname\fP(8),
+\fBnss\-mymachines\fP(8), \fBsystemd\-userdbd.service\fP(8),
+\fBsystemd\-homed.service\fP(8), \fBsystemd\-machined.service\fP(8),
+\fBnsswitch.conf\fP(5), \fBgetent\fP(1)
+.SH NOTES
+.IP " 1." 4
+通过 Varlink 的 User/Group 记录查找 API
+.RS 4
+\%https://systemd.io/USER_GROUP_API
+.RE
+.IP " 2." 4
+JSON 用户记录
+.RS 4
+\%https://systemd.io/USER_RECORD
+.RE
+.IP " 3." 4
+JSON 组记录
+.RS 4
+\%https://systemd.io/GROUP_RECORD
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,401 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-mustek_pp 5 "13 Jul 2008"  
+.de  EX
+.sp
+.nf
+.ft CW
+..
+.de  EE
+.ft R
+.fi
+.sp
+..
+.IX sane\-mustek_pp
+.SH NAME
+sane\-mustek_pp\-Mustek 并行端口平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-mustek_pp\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对 Mustek 并行端口平板扫描仪和 OEM
+版本的访问。
+
+Mustek 并行端口扫描仪有 2 类: 常规 \fBCCD\fP (冷阴极设备) 扫描仪和 \fBCIS\fP (接触式图像传感器) 扫描仪。
+.P
+此后端的当前版本支持 CCD 类型扫描仪和 CIS 类型扫描仪。
+.P
+以下扫描仪可能会使用此后端:
+
+.SS "CCD scanners"
+
+.EX
+Model:                  ASIC ID:        CCD Type:       works:
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+SE 6000 P               1013            00              yes 
+SM 4800 P               1013/1015       04/01           yes
+SE 1200 ED Plus         1015            01              no
+SM 1200 ED Plus         1015            01              no
+SE 12000 P              1505            05              no
+600 III EP Plus         1013/1015       00/01           yes
+SE 600 SEP              1013            ??               yes
+600 II EP               ????            ??              no
+MD9848                  1015            00              yes
+Gallery 4800            ????             ??              yes
+Viviscan Compact II     1013            00              yes
+.EE
+.SS "CIS scanners"
+.EX
+Model:                  ASIC ID:        works:
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+Mustek 600 CP & 96 CP   1015            yes (*)
+Mustek 1200 CP          1015            yes
+Mustek 1200 CP+         1015            yes
+.EE
+
+.EX
+OEM versions            Original        works
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+Medion/LifeTec/Tevion
+   MD/LT 9350/9351      1200 CP         yes
+   MD/LT 9850/9851      1200 CP         maybe (**)
+   MD/LT 9858           1200 CP         probably
+   MD/LT 9890/9891      1200 CP         yes
+Targa
+   Funline TS12EP       1200 CP         yes
+   Funline TS6EP        600 CP          yes
+Trust
+   Easy Connect 9600+   600 CP          yes
+Cybercom
+   9352                 1200 CP         yes (***)
+.EE
+.HP
+(*) 此驱动程序的早期版本存在校准问题。他们现在似乎已经解决了。
+.HP
+(**) 过去曾报告过 MD/LT9850 类型的问题 (条纹扫描，在某些分辨率下头部向错误的方向移动)。不知道当前版本的驱动是否还有这些问题。
+.PP
+\fBIF YOU HEAR LOUD CLICKING NOISES, IMMEDIATELY UNPLUG THE SCANNER !\fP
+(这适用于任何类型的扫描仪)。
+.HP
+(***) 可能必须将 engine_delay 参数设置为 1 毫秒才能使引擎运动准确。
+.PP
+请注意，此后端仍在建设中。目前不支持某些型号，有些可能永远不会，因为通信协议仍然未知 (例如，SE 12000 P)。
+.PP
+在 BIOS 中启用 \fBEPP/ECP\fP 后，某些扫描仪的工作速度会更快。然而，EPP 模式可能会导致某些 Linux
+系统出现硬锁。如果是这种情况，您可以在 BIOS 中禁用 ECP/EPP 或在后端本身中禁用它 (请参见全局选项)。
+.PP
+请注意，如果编译了 libieee1284 支持，后端需要以 root 身份运行，或者必须具有对 \fI/dev/parport*\fP
+的适当访问权限。要允许用户访问扫描仪，请通过网络接口运行后端 (请参见 \fBsaned\fP(8) 和 \fBsane\-net\fP(5))。 另请注意，后端
+\fIdoes not\fP 支持 \fIparport sharing\fP，即如果您尝试边扫描边打印，您的计算机可能会崩溃。要启用 parport
+共享，您必须在编译时启用 libieee1284。此后端也与 \fBsane\-musteka4s2\fP(5) 后端冲突。您只能在 \fIdll.conf\fP
+中启用其中之一。 但是，您必须在 \fIdll.conf\fP 中明确启用后端，只需删除 "mustek_pp" 行中的哈希标记即可。
+
+.SH "DEVICE DEFINITION"
+此后端允许通过 \fImustek_pp.conf\fP 文件定义和配置多个设备 (甚至同时，前提是它们连接到不同的并行端口)。请确保编辑此文件
+\fBbefore\fP 您使用后端。
+.PP
+设备可以定义如下:
+.PP
+.RS
+\fIscanner <name> <port name> <driver>\fP
+.RE
+.PP
+where
+.HP
+\fB<name>\fP is an arbitrary name for the device, optionally enclosed
+by double quotes, for instance "LifeTec 9350".
+.HP
+\fB<port name>\fP is the name of the parallel port to which the device
+is connected.  如果 libieee1284 用于与端口 \fI(default\fP \fIsetup)\fP 通信，则有效端口名称为
+\fBparport0\fP、\fBparport1\fP 和 \fBparport2\fP。
+.PP
+如果后端配置为原始 IO \fI(old\fP \fIsetup)\fP，则必须使用端口地址而不是端口名称: \fB0x378\fP、\fB0x278\fP 或
+\fB0x3BC\fP。 对于不同的 Linux 内核版本，并行端口 (lp0、lp1 和 lp2) 到这些地址的映射可能不同。例如，如果您使用的是内核
+2.2.x 或更高版本并且您只有一个并行端口，则此端口被命名为
+lp0，而不考虑基地址。但是，此后端需要您端口的基地址。如果您不确定扫描仪连接到哪个端口，请查看您的
+\fI/etc/conf.modules\fP、\fI/etc/modules.conf\fP 或者 \fI/proc/ioports\fP。
+.PP
+如果您不确定要使用哪个端口，可以使用神奇值 \fB*\fP 来探测您的扫描仪。
+.PP
+.HP
+\fB<driver>\fP is the driver to use for this device.  当前可用的驱动程序有:
+.IP
+\fBcis600\fP: 用于 600 CP、96 CP 和 OEM 版本
+.br
+\fBcis1200\fP: 用于 1200 CP 和 OEM 版本
+.br
+\fBcis1200+\fP: 适用于 1200 CP + 和 OEM 版本
+.br
+\fBccd300\fP: 适用于 600 IIIE P&OEM 版本
+.IP
+\fBChoosing the wrong driver can damage your scanner!\fP
+.br
+特别是，在 600CP 上使用 1200CP 设置可能有害。如果扫描仪开始发出很大的噪音，请立即将其关闭! ! !
+.PP
+在 1200CP 或 1200CP + 上使用 cis600 驱动程序可能并不危险。cis1200 + 驱动程序也适用于 1200CP，在 1200CP
++ 上使用 cis1200 驱动程序通常会导致扫描仅覆盖扫描区域宽度的一半 (也没有危险)。
+.PP
+如果不确定您的 OEM 版本的确切型号，请查看手册或 box 上的光学分辨率: 600CP 的最大光学分辨率为 300x600 DPI，而 1200CP
+和 1200CP + 的最大光学分辨率为 600x1200 DPI。
+.PP
+Examples:
+.PP
+.RS
+扫描仪 "LifeTec 9350" 0x378 cis1200
+.PP
+扫描仪 Mustek_600CP 0x378 cis600
+.PP
+扫描仪 Mustek_600IIIEP * ccd300
+.RE
+
+如果不确定您必须使用哪个端口，或者您的扫描器是否被检测到，您可以使用 \fIsane\-find\-scanner \-p\fP 来探测所有配置的端口。
+
+.SH CONFIGURATION
+.PP
+\fImustek_pp.conf\fP 文件的内容是与 Mustek 扫描仪对应的设备定义和设备选项列表。 空行和以哈希标记 (#)
+开头的行将被忽略。选项具有以下格式:
+.PP
+.RS
+\fIoption <name> [<value>]\fP
+.RE
+.PP
+根据选项的性质，值可能存在也可能不存在。 选项始终适用于它们之前的扫描仪定义。没有全局选项。选项也是特定于驱动程序的:
+并非所有驱动程序都支持所有可能的选项。
+
+.SS "Common options"
+.TP 
+\fBbw <value>\fP
+Black/white 线稿扫描时使用的鉴别值。低于该值的像素值假定为黑色，高于该值的像素值假定为白色。
+.br
+默认值: 127
+.br
+最小值: 0
+.br
+最大值: 255
+.sp
+示例: 选项 bw 150
+
+.SS "CIS driver options"
+.TP 
+\fBtop_adjust <value>\fP
+原点的垂直调整，以毫米 (浮点数) 表示。 此选项可用于在一定限度内校准原点位置。请注意，CIS
+扫描仪可能对温度敏感，并且可能难以避免一定的不准确性。1 到 2 毫米数量级的运行之间的偏移差异并不罕见。
+.br
+默认值: 0.0
+.br
+最低: \-5.0
+.br
+最大值: 5.0
+.br
+.sp
+示例: 选项 top_adjust\-2.5
+.TP 
+\fBslow_skip\fP
+关闭快速跳到扫描区域的开头。当要扫描的区域不是从原点开始时，驱动程序将尝试以尽可能快的速度将扫描头移动到扫描区域的起点。在某些型号上，这可能不起作用，导致很大的误差
+(高达厘米)。 通过设置此选项，驱动程序在跳过期间强制使用正常速度，这可以避免准确性问题。目前，没有已知会发生这些不准确问题的模型。
+.sp
+默认情况下，使用快速跳过。
+.sp
+示例: 选项 slow_skip
+.TP 
+\fBengine_delay <value>\fP
+在正常情况下，驾驶员只需等待扫描仪发出发动机稳定信号，就可以发送新的发动机指令。在极少数情况下，某些扫描仪或者并行端口芯片组似乎会阻止对引擎状态的可靠检测。结果，引擎命令传输得太快，扫描头的移动变得不可靠。据报道，整个垂直扫描范围内的误差范围高达
+10 厘米。要解决此问题，可以设置 engine_delay 选项。如果已设置，驱动程序在每个引擎命令后等待额外的时间，等于 engine_delay
+参数，以毫秒表示。通常 1 毫秒的 engine_delay 就足够了。最大延迟为 100 毫秒。
+.sp
+请注意，每增加 1 ms 延迟，总扫描时间 (最高分辨率) 最多可增加 14 秒，因此最好使用尽可能小的值。
+.sp
+默认值: 0
+.br
+最小值: 0
+.br
+最大值: 100
+.sp
+示例: 选项 engine_delay 1
+
+.SS "CCD driver options"
+.TP 
+\fBtop <value>\fP
+跳转到扫描区域起点的扫描线数。该数字可以是任何正整数。我知道的值是 47 和 56。
+.sp
+默认值: 47
+.br
+最小值: 0
+.br
+最大值: 无
+.br
+.sp
+示例: 选项前 56
+.TP 
+\fBwaitbank <value>\fP
+等待银行更改的 usecs 数。实际上您不应该触及这个值。可以是任何正整数
+.sp
+默认值: 700
+.br
+最小值: 0
+.br
+最大值: 无
+.sp
+示例: 选项 waitbank 700
+.PP
+示例配置文件如下所示:
+.PP
+.EX
+#
+# 0x378 端口上的 LifeTec/Medion 9350
+#
+扫描仪 "LifeTec 9350" 0x378 cis1200
+
+# 一些校准选项 (examples!)。
+option bw 127
+option top_skip \-0.8
+
+#
+# 0x3BC 端口上的 Mustek 600CP
+#
+扫描仪 "Mustek 600CP" 0x3BC cis600
+
+# 一些校准选项 (examples!)。
+option bw 120
+option top_skip 1.2
+
+#
+# 0x278 端口上的 Mustek 1200CP+
+#
+扫描仪 "Mustek 1200CP plus" 0x278 cis1200+
+
+# 一些校准选项 (examples!)。
+选项 bw 130
+选项 top_skip 0.2
+
+#
+# parport0 端口上的 Mustek 600 III EPP
+#
+扫描仪 "Mustek 600 III EPP" parport0 ccd300
+
+# 一些校准选项 (examples!)。
+选项 bw 130
+选项前 56
+.EE
+
+.SH "GLOBAL OPTIONS"
+.PP
+您可以通过位于 \fImustek_pp.conf\fP 文件中任何扫描仪定义之前的全局选项来控制 \fBsane\-\mustek_pp\fP 后端的整体行为。
+.sp
+目前只有一个全局选项:
+
+.SS "Global options"
+.TP 
+\fBno_epp\fP
+禁用并行端口模式 EPP: 解决 Linux parport 代码中的一个已知错误。如果在 EPP 模式下尝试访问并行端口时后端挂起，请启用此选项。
+.sp
+默认值: 使用 EPP
+.sp
+示例: 选项 no_epp
+
+.SH FILES
+.TP 
+\fI/etc/sane.d/mustek_pp.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-mustek_pp.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-mustek_pp.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_MUSTEK_PP\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 例如，值 128 请求打印所有调试输出。 较小的级别减少冗长。
+.EX
+电平调试输出
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+ 0     没有
+ 1     错误
+ 2     警告和小错误
+ 3      附加信息
+ 4     调试信息
+ 5      码流 (暂不支持)
+ 6      特殊调试信息
+.EE
+.TP 
+\fBSANE_DEBUG_SANEI_PA4S2\fP
+此变量为 Mustek 芯片组 A4S2 的 SANE 接口设置调试级别。请注意，启用此功能将向您的终端发送数百万行调试输出垃圾邮件。
+.EX
+电平调试输出
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+ 0     没有
+ 1     错误
+ 2     警告
+ 3      很高兴知道的事情
+ 4      码流
+ 5      详细代码流程
+ 6      一切
+.EE
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-mustek\fP(5), \fBsane\-net\fP(5), \fBsaned\fP(8),
+\fBsane\-find\-scanner\fP(1), \fBscanimage\fP(1)
+
+.TP 
+For latest bug fixes and information see
+\fIhttp://www.penguin\-breeder.org/sane/mustek_pp/\fP
+
+.TP 
+For additional information on the CIS driver, see
+\fIhttp://home.scarlet.be/eddy_de_greef/\fP
+
+.SH AUTHORS
+.nf
+Jochen Eisinger
+<\fIjochen at penguin\-breeder dot org\fP>
+Eddy De Greef
+<\fIeddy_de_greef at scarlet dot be\fP>
+.fi
+
+.SH BUGS
+太多... 请将错误报告发送到 \fIsane\-devel@alioth\-lists.debian.net\fP
+(请注意，您必须先订阅列表才能发送电子邮件……请参见
+\fIhttp://www.sane\-project.org/mailing\-lists.html\fP)。
+
+.SH "BUG REPORTS"
+如果出现问题，请联系我们 (Jochen 用于 CCD 扫描仪，Eddy 用于 CIS 扫描仪)。但是我们需要一些关于您的扫描仪的信息才能帮助您...
+
+.TP 
+\fISANE version\fP
+运行 \fIscanimage \-V\fP 以确定这一点。
+.TP 
+\fIthe backend version and your scanner hardware\fP
+以 root 身份运行 \fISANE_DEBUG_MUSTEK_PP=128 scanimage \-L\fP。如果您没有从
+\fBsane\-mustek_pp\fP 后端获得任何输出，请确保 "mustek_pp" 行包含在您的 \fI/etc/sane.d/dll.conf\fP 中。
+如果未检测到您的扫描仪，请确保您在 \fImustek_pp.conf\fP 中定义了正确的端口地址。
+.TP 
+\fIthe name of your scanner/vendor also a worthy information. Please also include the\fP
+扫描仪的光学分辨率和灯泡类型，都可以在扫描仪的手册中找到。
+.TP 
+\fIany further comments\fP
+如果您对文档有任何意见 (可以做得更好)，或者您认为我应该知道一些事情，请包括在内。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

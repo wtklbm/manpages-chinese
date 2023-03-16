@@ -1,0 +1,399 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1993 by Thomas Koenig <ig25@rz.uni-karlsruhe.de>
+.\" and Copyright (c) 2004 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Sat Jul 24 13:30:06 1993 by Rik Faith <faith@cs.unc.edu>
+.\" Modified Sun Aug 21 17:42:42 1994 by Rik Faith <faith@cs.unc.edu>
+.\"          (Thanks to Koen Holtman <koen@win.tue.nl>)
+.\" Modified Wed May 17 15:54:12 1995 by Rik Faith <faith@cs.unc.edu>
+.\"           To remove *'s from status in macros (Thanks to Michael Shields).
+.\" Modified as suggested by Nick Duffek <nsd@bbc.com>, aeb, 960426
+.\" Modified Mon Jun 23 14:09:52 1997 by aeb - add EINTR.
+.\" Modified Thu Nov 26 02:12:45 1998 by aeb - add SIGCHLD stuff.
+.\" Modified Mon Jul 24 21:37:38 2000 by David A. Wheeler
+.\"          <dwheeler@dwheeler.com> - noted thread issues.
+.\" Modified 26 Jun 01 by Michael Kerrisk
+.\"          Added __WCLONE, __WALL, and __WNOTHREAD descriptions
+.\" Modified 2001-09-25, aeb
+.\" Modified 26 Jun 01 by Michael Kerrisk, <mtk.manpages@gmail.com>
+.\"	Updated notes on setting disposition of SIGCHLD to SIG_IGN
+.\" 2004-11-11, mtk
+.\"	Added waitid(2); added WCONTINUED and WIFCONTINUED()
+.\"	Added text on SA_NOCLDSTOP
+.\"	Updated discussion of SA_NOCLDWAIT to reflect 2.6 behavior
+.\"	Much other text rewritten
+.\" 2005-05-10, mtk, __W* flags can't be used with waitid()
+.\" 2008-07-04, mtk, removed erroneous text about SA_NOCLDSTOP
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH wait 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+wait, waitpid, waitid \- 等待进程改变状态
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/wait.h>\fP
+.PP
+\fBpid_t wait(int *_Nullable \fP\fIwstatus\fP\fB);\fP
+\fBpid_t waitpid(pid_t \fP\fIpid\fP\fB, int *_Nullable \fP\fIwstatus\fP\fB, int \fP\fIoptions\fP\fB);\fP
+.PP
+\fBint waitid(idtype_t \fP\fIidtype\fP\fB, id_t \fP\fIid\fP\fB, siginfo_t *\fP\fIinfop\fP\fB, int \fP\fIoptions\fP\fB);\fP
+                /* 这是 glibc 和 POSIX 接口; see
+                   NOTES 有关原始系统调用的信息。*/
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBwaitid\fP():
+.nf
+.\"    (_XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED)
+    由于 glibc 2.26:
+        _XOPEN_SOURCE >= 500 || _POSIX_C_SOURCE >= 200809L
+    glibc 2.25 及更早版本:
+        _XOPEN_SOURCE
+            || /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+            || /* glibc <= 2.19: */ _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+所有这些系统调用都用于等待调用进程的子进程的状态变化，并获取状态发生变化的子进程的信息。 状态改变被认为是: 子节点终止; 子节点被信号制止了;
+或者子节点被信号恢复。 在终止子的情况下，执行等待允许系统释放与子关联的资源; 如果未执行等待，则终止的子进程将保持 "zombie" 状态
+(请参见下面的注释)。
+.PP
+如果一个子节点已经改变了状态，那么这些调用会立即返回。 否则，它们会阻塞，直到子级更改状态或信号处理程序中断调用 (假设系统调用不会使用
+\fBsigaction\fP(2)) 的 \fBSA_RESTART\fP 标志自动重新启动。
+在本页的其余部分，状态已更改且尚未被这些系统调用之一等待的子节点称为 \fIwaitable\fP。
+.SS "wait() and waitpid()"
+\fBwait\fP() 系统调用挂起调用线程的执行，直到其子线程之一终止。 调用 \fIwait(&wstatus)\fP 相当于:
+.PP
+.in +4n
+.EX
+waitpid(\-1, &wstatus, 0);
+.EE
+.in
+.PP
+\fBwaitpid\fP() 系统调用挂起调用线程的执行，直到 \fIpid\fP 参数指定的子线程改变了状态。 默认情况下，\fBwaitpid\fP()
+仅等待已终止的子级，但可通过 \fIoptions\fP 参数修改此行为，如下所述。
+.PP
+\fIpid\fP 的值可以是:
+.TP 
+< \fB\-1\fP
+意思是等待进程组 ID 等于 \fIpid\fP 的绝对值的任何子进程。
+.TP 
+\fB\-1\fP
+意思是等待任何子进程。
+.TP 
+\fB0\fP
+意思是等待调用到 \fBwaitpid\fP() 时进程组 ID 等于调用进程的任何子进程。
+.TP 
+> \fB0\fP
+意思是等待进程 ID 等于 \fIpid\fP 值的子进程。
+.PP
+\fIoptions\fP 的值是零个或多个以下常量的或运算:
+.TP 
+\fBWNOHANG\fP
+return immediately if no child has exited.
+.TP 
+\fBWUNTRACED\fP
+如果子节点已经停止 (但未通过 \fBptrace\fP(2)) 跟踪)，也会返回。 即使未指定此选项，也会提供已停止的 \fItraced\fP 子项的状态。
+.TP 
+\fBWCONTINUED\fP (since Linux 2.6.10)
+如果已停止的子进程已通过交付 \fBSIGCONT\fP 恢复，也返回。
+.PP
+(对于仅限 Linux 的选项，请参见下文。)
+.PP
+如果 \fIwstatus\fP 不为 NULL，则 \fBwait\fP() 和 \fBwaitpid\fP() 将状态信息存储在它指向的 \fIint\fP 中。
+可以使用以下宏检查此整数 (将整数本身作为参数，而不是指向它的指针，如 \fBwait\fP() 和 \fBwaitpid\fP()!): 中所做的那样
+.TP 
+\fBWIFEXITED(\fP\fIwstatus\fP\fB)\fP
+如果子进程正常终止，即通过调用 \fBexit\fP(3) 或 \fB_exit\fP(2)，或者从 main() 返回，则返回 true。
+.TP 
+\fBWEXITSTATUS(\fP\fIwstatus\fP\fB)\fP
+返回子节点的退出状态。 这包括 \fIstatus\fP 参数的最低有效 8 位，子代在调用于 \fBexit\fP(3) 或 \fB_exit\fP(2) 或作为
+main() 中返回语句的参数指定。 仅当 \fBWIFEXITED\fP 返回 true 时才应使用此宏。
+.TP 
+\fBWIFSIGNALED(\fP\fIwstatus\fP\fB)\fP
+如果子进程被信号终止，则返回 true。
+.TP 
+\fBWTERMSIG(\fP\fIwstatus\fP\fB)\fP
+返回导致子进程终止的信号数。 仅当 \fBWIFSIGNALED\fP 返回 true 时才应使用此宏。
+.TP 
+\fBWCOREDUMP(\fP\fIwstatus\fP\fB)\fP
+如果子进程生成了核心转储，则返回真 (参见 \fBcore\fP(5)).  仅当 \fBWIFSIGNALED\fP 返回 true 时才应使用此宏。
+.IP
+此宏未在 POSIX.1\-2001 中指定，并且在某些 UNIX 实现 (例如 AIX、SunOS) 上不可用。 因此，将其使用包含在 \fI#ifdef WCOREDUMP ... #endif\fP 中。
+.TP 
+\fBWIFSTOPPED(\fP\fIwstatus\fP\fB)\fP
+如果子进程因传递信号而停止，则返回 true; 这只有在调用是使用 \fBWUNTRACED\fP 完成或正在跟踪子节点时才有可能 (参见
+\fBptrace\fP(2)).
+.TP 
+\fBWSTOPSIG(\fP\fIwstatus\fP\fB)\fP
+返回导致子节点停止的信号编号。 仅当 \fBWIFSTOPPED\fP 返回 true 时才应使用此宏。
+.TP 
+\fBWIFCONTINUED(\fP\fIwstatus\fP\fB)\fP
+(自 Linux 2.6.10 起) 如果子进程通过 \fBSIGCONT\fP 的交付恢复，则返回 true。
+.SS waitid()
+\fBwaitid\fP() 系统调用 (自 Linux 2.6.9 起可用) 提供了更精确的控制来等待哪些子状态更改。
+.PP
+\fIidtype\fP 和 \fIid\fP 参数选择 child(ren) 等待，如下:
+.TP 
+\fIidtype\fP == \fBP_PID\fP
+等待进程 ID 与 \fIid\fP 匹配的子进程。
+.TP 
+\fIidtype\fP == \fBP_PIDFD\fP (since Linux 5.4)
+.\" commit 3695eae5fee0605f316fbaad0b9e3de791d7dfaf
+等待 \fIid\fP 中指定的 PID 文件描述符引用的子进程。 (有关 PID 文件描述符的更多信息，请参见 \fBpidfd_open\fP(2)。)
+.TP 
+\fIidtype\fP == \fBP_PGID\fP
+.\" commit 821cc7b0b205c0df64cce59aacc330af251fa8f7
+等待其进程组 ID 匹配 \fIid\fP 的任何子进程。 由于 Linux 5.4，如果 \fIid\fP
+为零，则在调用时等待与调用者进程组在同一进程组中的任何子进程。
+.TP 
+\fIidtype\fP == \fBP_ALL\fP
+等待任何子节点; \fIid\fP 被忽略。
+.PP
+要等待的子状态更改通过对 \fIoptions\fP: 中的以下一个或多个标志进行 ORing 来指定
+.TP 
+\fBWEXITED\fP
+等待已经终止的子节点。
+.TP 
+\fBWSTOPPED\fP
+等待因发出信号而停止的子节点。
+.TP 
+\fBWCONTINUED\fP
+等待 (先前停止的) 已通过交付 \fBSIGCONT\fP 恢复的子级。
+.PP
+以下标志可能在 \fIoptions\fP: 中另外进行或运算
+.TP 
+\fBWNOHANG\fP
+至于 \fBwaitpid\fP()。
+.TP 
+\fBWNOWAIT\fP
+让子节点处于等待状态; 稍后等待调用可用于再次检索子状态信息。
+.PP
+返回成功后，\fBwaitid\fP() 填写 \fIinfop\fP: 指向的 \fIsiginfo_t\fP 结构体的以下字段
+.TP 
+\fIsi_pid\fP
+子进程的进程 ID。
+.TP 
+\fIsi_uid\fP
+子节点的真实用户 ID。 (此字段未在大多数其他实现中设置。)
+.TP 
+\fIsi_signo\fP
+始终设置为 \fBSIGCHLD\fP。
+.TP 
+\fIsi_status\fP
+给 \fB_exit\fP(2) (或 \fBexit\fP(3))) 的子节点的退出状态，或导致子节点终止、停止或继续的信号。 \fIsi_code\fP
+字段可用于确定如何解释该字段。
+.TP 
+\fIsi_code\fP
+设置为以下之一: \fBCLD_EXITED\fP (子项称为 \fB_exit\fP(2)); \fBCLD_KILLED\fP (子节点被信号杀死) ;
+\fBCLD_DUMPED\fP (子节点被信号杀死，核心被丢弃) ; \fBCLD_STOPPED\fP (子节点被信号阻止) ; \fBCLD_TRAPPED\fP
+(被追踪的子节点被困) ; 或 \fBCLD_CONTINUED\fP (子代由 \fBSIGCONT\fP) 继续。
+.PP
+如果在 \fIoptions\fP 中指定了 \fBWNOHANG\fP，并且没有子节点处于等待状态，则 \fBwaitid\fP() 立即返回 0，\fIinfop\fP
+指向的 \fIsiginfo_t\fP 结构体的状态取决于实现。 为了 (portably) 将这种情况与子节点处于等待状态的情况区分开来，请在调用之前将
+\fIsi_pid\fP 字段置零，并在调用返回后检查此字段中的非零值。
+.PP
+.\" POSIX.1-2001 leaves this possibility unspecified; most
+.\" implementations (including Linux) zero out the structure
+.\" in this case, but at least one implementation (AIX 5.1)
+.\" does not -- MTK Nov 04
+POSIX.1\-2008 Technical Corrigendum 1 (2013) 添加了这样的要求: 当 \fIoptions\fP 中指定了
+\fBWNOHANG\fP 并且没有处于可等待状态的子级时，\fBwaitid\fP() 应该将结构体的 \fIsi_pid\fP 和 \fIsi_signo\fP 字段清零。
+在遵守此要求的 Linux 和其他实现上，在调用 \fBwaitid\fP() 之前不必将 \fIsi_pid\fP 字段清零。
+然而，在这一点上，并非所有的实现都遵循 POSIX.1 规范。
+.SH "RETURN VALUE"
+\fBwait\fP(): 成功时，返回被终止子进程的进程 ID; 失败时，返回 \-1。
+.PP
+\fBwaitpid\fP(): 成功时，返回状态改变的子进程 ID; 如果指定了 \fBWNOHANG\fP 并且 \fIpid\fP 指定的一个或多个
+child(ren) 存在，但尚未改变状态，则返回 0。 失败时返回 \-1。
+.PP
+.\" FIXME As reported by Vegard Nossum, if infop is NULL, then waitid()
+.\" returns the PID of the child.  Either this is a bug, or it is intended
+.\" behavior that needs to be documented.  See my Jan 2009 LKML mail
+.\" "waitid() return value strangeness when infop is NULL".
+\fBwaitid\fP(): 在成功时返回 0，或者如果指定了 \fBWNOHANG\fP 并且 \fIid\fP 指定的 child(ren) 还没有改变状态;
+失败时，返回 \-1。
+.PP
+失败时，这些调用中的每一个都会设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+\fIid\fP 中指定的 PID 文件描述符是非阻塞的，它引用的进程尚未终止。
+.TP 
+\fBECHILD\fP
+(对于 \fBwait\fP()) 调用进程没有任何未等待的子进程。
+.TP 
+\fBECHILD\fP
+(对于 \fBwaitpid\fP() 或 \fBwaitid\fP()) \fIpid\fP (\fBwaitpid\fP()) 或 \fIidtype\fP 和 \fIid\fP
+(\fBwaitid\fP()) 指定的进程不存在或不是调用进程的子进程。 (如果 \fBSIGCHLD\fP 的操作设置为
+\fBSIG_IGN\fP，这可能会发生在自己的子节点身上。另请参见有关线程的 \fILinux Notes\fP 部分。)
+.TP 
+\fBEINTR\fP
+\fBWNOHANG\fP 未设置，未阻塞信号或 \fBSIGCHLD\fP 被捕获; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fIoptions\fP 参数无效。
+.TP 
+\fBESRCH\fP
+(对于 \fBwait\fP() 或 \fBwaitpid\fP()) \fIpid\fP 等于 \fBINT_MIN\fP。
+.SH STANDARDS
+SVr4, 4.3BSD, POSIX.1\-2001.
+.SH NOTES
+终止但尚未等待的子节点成为 "zombie"。 内核维护有关僵尸进程的最小信息集
+(PID、终止状态、资源使用信息)，以便父进程稍后执行等待以获取有关子进程的信息。
+只要僵尸没有通过等待从系统中移除，它就会占用内核进程表中的一个槽，如果该表已满，将无法创建更多进程。 如果父进程终止，则其 "zombie" 子进程
+(如果有) 被 \fBinit\fP(1) 收养 (或通过使用 \fBprctl\fP(2) \fBPR_SET_CHILD_SUBREAPER\fP 操作定义的最近的
+"subreaper" 进程) ; \fBinit\fP(1) 自动执行等待以移除僵尸。
+.PP
+POSIX.1\-2001 指定如果 \fBSIGCHLD\fP 的处置设置为 \fBSIG_IGN\fP 或为 \fBSIGCHLD\fP 设置
+\fBSA_NOCLDWAIT\fP 标志 (请参见 \fBsigaction\fP(2))，则终止的子节点不会成为僵尸，并且对 \fBwait\fP() 或
+\fBwaitpid\fP() 的调用将阻塞，直到所有子节点都终止，然后将 \fIerrno\fP 设置为 \fBECHILD\fP 失败。 (原始 POSIX
+标准未指定将 \fBSIGCHLD\fP 设置为 \fBSIG_IGN\fP 的行为。请注意，即使 \fBSIGCHLD\fP 的默认配置为
+"ignore"，但明确将配置设置为 \fBSIG_IGN\fP 会导致对僵尸进程子进程的不同处理。)
+.PP
+Linux 2.6 符合 POSIX 要求。 但是，Linux 2.4 (及更早版本) 不会: 如果在忽略 \fBSIGCHLD\fP 时进行
+\fBwait\fP() 或 \fBwaitpid\fP() 调用，则调用的行为就像 \fBSIGCHLD\fP
+未被忽略一样，也就是说，调用会阻塞，直到下一个子进程终止，然后返回该子进程的进程 ID 和状态。
+.SS "Linux notes"
+在 Linux 内核中，内核调度的线程不是与进程截然不同的结构。 相反，线程只是一个使用 Linux 独有的 \fBclone\fP(2)
+系统调用创建的进程; 其他例程如便携式 \fBpthread_create\fP(3) 调用是使用 \fBclone\fP(2) 实现的。 在 Linux 2.4
+之前，线程只是进程的特例，因此一个线程不能等待另一个线程的子线程，即使后者属于同一个线程组。 然而，POSIX 规定了这样的功能，并且自从 Linux
+2.4 以来，线程可以并且默认情况下将等待同一线程组中其他线程的子线程。
+.PP
+.\" commit 91c4e8ea8f05916df0c8a6f383508ac7c9e10dba
+以下特定于 Linux 的 \fIoptions\fP 用于使用 \fBclone\fP(2) 创建的子项; 它们也可以，因为 Linux 4.7，与
+\fBwaitid\fP(): 一起使用
+.TP 
+\fB__WCLONE\fP
+.\" since 0.99pl10
+仅等待 "clone" 子级。 如果省略，则仅等待 "non\-clone" 子级。 ("clone" 子项在终止时不传送信号，或向其父项传送
+\fBSIGCHLD\fP 以外的信号。) 如果还指定了 \fB__WALL\fP，则忽略此选项。
+.TP 
+\fB__WALL\fP (since Linux 2.4)
+.\" since patch-2.3.48
+等待所有子节点，无论类型 ("clone" 或 "non\-clone") 如何。
+.TP 
+\fB__WNOTHREAD\fP (since Linux 2.4)
+.\" since patch-2.4.0-test8
+不要等待同一线程组中其他线程的子线程。 这是 Linux 2.4 之前的默认值。
+.PP
+.\" commit bf959931ddb88c4e4366e96dd22e68fa0db9527c
+.\" prevents cases where an unreapable zombie is created if
+.\" /sbin/init doesn't use __WALL.
+从 Linux 4.7 开始，如果子节点正在被跟踪，则自动隐含 \fB__WALL\fP 标志。
+.SS "C library/kernel differences"
+\fBwait\fP() 实际上是一个库函数，(在 glibc 中) 被实现为对 \fBwait4\fP(2) 的调用。
+.PP
+.\" e.g., i386 has the system call, but not x86-64
+在某些架构上，没有 \fBwaitpid\fP() 系统调用; 相反，此接口是通过调用 \fBwait4\fP(2) 的 C 库包装器函数实现的。
+.PP
+原始 \fBwaitid\fP() 系统调用采用 \fIstruct rusage\ *\fP 类型的第五个参数。 如果这个参数是非
+NULL，那么它被用来返回关于子节点的资源使用信息，与 \fBwait4\fP(2) 的方式相同。 有关详细信息，请参见 \fBgetrusage\fP(2)。
+.SH BUGS
+根据 POSIX.1\-2008，调用 \fBwaitid\fP() 的应用程序必须确保 \fIinfop\fP 指向 \fIsiginfo_t\fP 结构体
+(即，它是一个非空指针)。 在 Linux 上，如果 \fIinfop\fP 为 NULL，则 \fBwaitid\fP() 成功，并返回等待子进程的进程 ID。
+应用程序应该避免依赖这种不一致、非标准和不必要的特性。
+.SH EXAMPLES
+.\" fork.2 refers to this example program.
+下面的程序演示了 \fBfork\fP(2) 和 \fBwaitpid\fP() 的使用。 该程序创建一个子进程。 如果没有向程序提供命令行参数，则子进程使用
+\fBpause\fP(2) 暂停其执行，以允许用户向子进程发送信号。 否则，如果提供命令行参数，则子级立即退出，使用命令行上提供的整数作为退出状态。
+父进程执行一个使用 \fBwaitpid\fP() 监视子进程的循环，并使用上述 W*() 宏来分析等待状态值。
+.PP
+下面的 shell 会话演示了该程序的使用:
+.PP
+.in +4n
+.EX
+$\fB ./a.out &\fP
+Child PID is 32360
+[1] 32359
+$\fB kill \-STOP 32360\fP
+stopped by signal 19
+$\fB kill \-CONT 32360\fP
+continued
+$\fB kill \-TERM 32360\fP
+killed by signal 15
+[1]+  Done                    ./a.out
+$
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (wait.c)
+\&
+.EX
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int    wstatus;
+    pid_t  cpid, w;
+
+    cpid = fork();
+    if (cpid == \-1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (cpid == 0) {            /* Code executed by child */
+        printf("Child PID is %jd\en", (intmax_t) getpid());
+        if (argc == 1)
+            pause();                    /* Wait for signals */
+        _exit(atoi(argv[1]));
+
+    } else {                    /* Code executed by parent */
+        做 {
+            w = waitpid(cpid, &wstatus, WUNTRACED | WCONTINUED);
+            if (w == \-1) {
+                perror("waitpid");
+                exit(EXIT_FAILURE);
+            }
+
+            if (WIFEXITED(wstatus)) {
+                printf("exited, status=%d\en", WEXITSTATUS(wstatus));
+            } else if (WIFSIGNALED(wstatus)) {
+                printf("killed by signal %d\en", WTERMSIG(wstatus));
+            } else if (WIFSTOPPED(wstatus)) {
+                printf("stopped by signal %d\en", WSTOPSIG(wstatus));
+            } else if (WIFCONTINUED(wstatus)) {
+                printf("continued\en");
+            }
+        } while (!WIFEXITED(wstatus) && !WIFSIGNALED(wstatus));
+        exit(EXIT_SUCCESS);
+    }
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fB_exit\fP(2), \fBclone\fP(2), \fBfork\fP(2), \fBkill\fP(2), \fBptrace\fP(2),
+\fBsigaction\fP(2), \fBsignal\fP(2), \fBwait4\fP(2), \fBpthread_create\fP(3),
+\fBcore\fP(5), \fBcredentials\fP(7), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

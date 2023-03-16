@@ -1,0 +1,130 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified 1993-03-29, David Metcalfe
+.\" Modified 1993-07-24, Rik Faith (faith@cs.unc.edu)
+.\" Modified 2003-10-25, Walter Harms
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH atexit 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+atexit \- 注册一个在正常进程终止时调用的函数
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdlib.h>\fP
+.PP
+\fBint atexit(void (*\fP\fIfunction\fP\fB)(void));\fP
+.fi
+.SH DESCRIPTION
+\fBatexit\fP() 函数注册给定的 \fIfunction\fP 以在正常进程终止时调用，通过 \fBexit\fP(3) 或从程序的 \fImain\fP()
+返回。 如此注册的号码按其注册的相反顺序被调用; 没有参数通过。
+.PP
+同一个函数可以注册多次: 每次注册调用一次。
+.PP
+.\" POSIX.1-2001, POSIX.1-2008
+POSIX.1 要求一个实现至少允许注册 \fBATEXIT_MAX\fP (32) 这样的函数。 可以使用 \fBsysconf\fP(3)
+获得实现支持的实际限制。
+.PP
+当通过 \fBfork\fP(2) 创建子进程时，它会继承其父进程的注册副本。 在成功调用 \fBexec\fP(3) 号码之一后，所有注册都将被删除。
+.SH "RETURN VALUE"
+\fBatexit\fP() 函数成功则返回值 0; 否则它返回一个非零值。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBatexit\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, C99, SVr4, 4.3BSD.
+.SH NOTES
+使用 \fBatexit\fP() 注册的函数 (如果进程因信号传递而异常终止，则不会调用 \fBon_exit\fP(3))。
+.PP
+如果其中一个已注册的函数调用 \fB_exit\fP(2)，则不会调用任何剩余的函数，并且不会执行 \fBexit\fP(3) 执行的其他进程终止步骤。
+.PP
+.\" POSIX.1-2001, POSIX.1-2008
+.\" This can happen on OpenBSD 4.2 for example, and is documented
+.\" as occurring on FreeBSD as well.
+.\" glibc does "the Right Thing" -- invocation of the remaining
+.\" exit handlers carries on as normal.
+POSIX.1 表示多次调用 \fBexit\fP(3) 的结果 (即，在使用 \fBatexit\fP()) 注册的函数中调用 \fBexit\fP(3) 是未定义的。
+在某些系统上 (但不是 Linux)，这会导致无限递归; 可移植程序不应在使用 \fBatexit\fP() 注册的函数中调用 \fBexit\fP(3)。
+.PP
+\fBatexit\fP() 和 \fBon_exit\fP(3) 函数在同一个列表上注册函数: 在正常进程终止时，这两个函数以注册顺序相反的顺序调用已注册的函数。
+.PP
+.\" In glibc, things seem to be handled okay
+根据 POSIX.1，如果 \fBlongjmp\fP(3) 用于终止使用 \fBatexit\fP() 注册的任数之一的执行，则结果未定义。
+.SS "Linux notes"
+由于 glibc 2.2.3、\fBatexit\fP() (和 \fBon_exit\fP(3)) 可以在共享库中使用以建立卸载共享库时调用的函数。
+.SH EXAMPLES
+.\" SRC BEGIN (atexit.c)
+.EX
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+void
+bye(void)
+{
+    printf("That was all, folks\en");
+}
+
+int
+main(void)
+{
+    long a;
+    int i;
+
+    a = sysconf(_SC_ATEXIT_MAX);
+    printf("ATEXIT_MAX = %ld\en", a);
+
+    i = atexit(bye);
+    if (i != 0) {
+        fprintf(stderr, "cannot set exit function\en");
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fB_exit\fP(2), \fBdlopen\fP(3), \fBexit\fP(3), \fBon_exit\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,99 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) Michael Haardt (michael@cantor.informatik.rwth-aachen.de),
+.\"     Sun Jan 15 19:16:33 1995
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified, Sun Feb 26 15:02:58 1995, faith@cs.unc.edu
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH lp 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+lp \- 行式打印机设备
+.SH SYNOPSIS
+.nf
+\fB#include <linux/lp.h>\fP
+.fi
+.SH CONFIGURATION
+\fBlp\fP[0\[en]2] are character devices for the parallel line printers;  他们有主号码
+6 和次号码 0\[en] 2。 次要编号对应于打印机端口基址 0x03bc、0x0378 和 0x0278。 通常它们的模式为 220，并由用户
+\fIroot\fP 和组 \fIlp\fP 所有。 您可以将打印机端口用于轮询或中断。 当预计会有高流量时建议中断，例如激光打印机。
+对于典型的点阵打印机，轮询通常就足够了。 默认是轮询。
+.SH DESCRIPTION
+支持以下 \fBioctl\fP(2) 调用:
+.TP 
+\fBint ioctl(int \fPfd\fB, LPTIME, int \fParg\fB)\fP
+设置当打印机的缓冲区似乎已填满 \fIarg\fP 时驱动程序在重新检查打印机之前休眠的时间量。 如果您有一台快速打印机，减少这个数字;
+如果您的打印机速度较慢，请增加它。 这是百分之一秒，默认 2 是 0.02 秒。 它只影响轮询驱动程序。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPCHAR, int \fParg\fB)\fP
+将轮询驱动程序在等待打印机准备好接收 \fIarg\fP 字符时执行的最大忙等待迭代次数。 如果打印太慢，增加这个数字; 如果系统变得太慢，减少这个数字。
+默认值为 1000。 它只影响轮询驱动程序。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPABORT, int \fParg\fB)\fP
+如果 \fIarg\fP 为 0，打印机驱动程序将重试错误，否则将终止。 默认是 0.
+.TP 
+\fBint ioctl(int \fPfd\fB, LPABORTOPEN, int \fParg\fB)\fP
+如果 \fIarg\fP 为 0，则 \fBopen\fP(2) 将因错误而中止，否则错误将被忽略。 默认是忽略它。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPCAREFUL, int \fParg\fB)\fP
+如果 \fIarg\fP 为 0，则要求所有写时缺纸、脱机、错误信号为假，否则忽略。 默认是忽略它们。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPWAIT, int \fParg\fB)\fP
+.\" FIXME . Actually, since Linux 2.2, the default is 1
+将频闪打印机接受刚刚写入的字符之前等待的忙等待迭代次数，以及再次关闭频闪之前等待的迭代次数设置为 \fIarg\fP。 规范说这个时间应该是 0.5
+微秒，但是经验表明代码造成的延迟已经足够了。 因此，默认值为 0。 这用于轮询和中断驱动程序。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPSETIRQ, int \fParg\fB)\fP
+这个 \fBioctl\fP(2) 需要超级用户权限。 它将包含新 IRQ 的 \fIint\fP 作为参数。 作为副作用，打印机将被重置。 当 \fIarg\fP 为
+0 时，将使用轮询驱动程序，这也是默认的。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPGETIRQ, int *\fParg\fB)\fP
+将当前使用的 IRQ 存储在 \fIarg\fP 中。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPGETSTATUS, int *\fParg\fB)\fP
+将状态端口的值存储在 \fIarg\fP 中。 这些位具有以下含义:
+.TS
+l l.
+LP_PBUSY	inverted busy input, active high
+LP_PACK	unchanged acknowledge input, active low
+LP_POUTPA	unchanged out\-of\-paper input, active high
+LP_PSELECD	unchanged selected input, active high
+LP_PERRORP	unchanged error input, active low
+.TE
+.IP
+有关信号的含义，请参见您的打印机手册。 请注意，还可能设置未记录的位，具体取决于您的打印机。
+.TP 
+\fBint ioctl(int \fPfd\fB, LPRESET)\fP
+重置打印机。 没有使用参数。
+.SH FILES
+.\" .SH AUTHORS
+.\" The printer driver was originally written by Jim Weigand and Linus
+.\" Torvalds.
+.\" It was further improved by Michael K.\& Johnson.
+.\" The interrupt code was written by Nigel Gamble.
+.\" Alan Cox modularized it.
+.\" LPCAREFUL, LPABORT, LPGETSTATUS were added by Chris Metcalf.
+\fI/dev/lp*\fP
+.SH "SEE ALSO"
+\fBchmod\fP(1), \fBchown\fP(1), \fBmknod\fP(1), \fBlpcntl\fP(8), \fBtunelp\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

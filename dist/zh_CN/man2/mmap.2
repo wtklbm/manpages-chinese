@@ -1,0 +1,516 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 1996 Andries Brouwer <aeb@cwi.nl>
+.\" and Copyright (C) 2006, 2007 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2000-03-25 by Jim Van Zandt <jrv@vanzandt.mv.com>
+.\" Modified 2001-10-04 by John Levon <moz@compsoc.man.ac.uk>
+.\" Modified 2003-02-02 by Andi Kleen <ak@muc.de>
+.\" Modified 2003-05-21 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	MAP_LOCKED works from Linux 2.5.37
+.\" Modified 2004-06-17 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2004-09-11 by aeb
+.\" Modified 2004-12-08, from Eric Estievenart <eric.estievenart@free.fr>
+.\" Modified 2004-12-08, mtk, formatting tidy-ups
+.\" Modified 2006-12-04, mtk, various parts rewritten
+.\" 2007-07-10, mtk, Added an example program.
+.\" 2008-11-18, mtk, document MAP_STACK
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mmap 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+mmap、munmap\-map 或取消将文件或设备映射到内存中
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/mman.h>\fP
+.PP
+\fBvoid *mmap(void \fP\fIaddr\fP\fB[.\fP\fIlength\fP\fB], size_t \fP\fIlength\fP\fB, int \fP\fIprot\fP\fB, int \fP\fIflags\fP\fB,\fP
+\fB           int \fP\fIfd\fP\fB, off_t \fP\fIoffset\fP\fB);\fP
+\fBint munmap(void \fP\fIaddr\fP\fB[.\fP\fIlength\fP\fB], size_t \fP\fIlength\fP\fB);\fP
+.fi
+.PP
+有关特性测试宏要求的信息，请参见注释。
+.SH DESCRIPTION
+\fBmmap\fP() 在调用进程的虚拟地址空间中创建一个新映射。 新映射的起始地址在 \fIaddr\fP 中指定。 \fIlength\fP 参数指定映射的长度
+(必须大于 0)。
+.PP
+.\" Before Linux 2.6.24, the address was rounded up to the next page
+.\" boundary; since Linux 2.6.24, it is rounded down!
+如果 \fIaddr\fP 为 NULL，则内核选择创建映射的 (page\-aligned) 地址; 这是创建新映射的最便携方法。 如果 \fIaddr\fP 不为
+NULL，则内核将其作为放置映射的提示; 在 Linux 上，内核将选择附近的页面边界 (但始终高于或等于
+\fI/proc/sys/vm/mmap_min_addr\fP) 指定的值，并尝试在那里创建映射。
+如果那里已经存在另一个映射，内核会选择一个新地址，该地址可能取决于也可能不取决于提示。 新映射的地址作为调用的结果返回。
+.PP
+文件映射的内容 (与匿名映射相反; 参见下面的 \fBMAP_ANONYMOUS\fP) 使用 \fIlength\fP 字节从文件描述符 \fIfd\fP 引用的文件
+(或其他对象) 中的偏移量 \fIoffset\fP 开始进行初始化。 \fIoffset\fP 必须是 \fIsysconf(_SC_PAGE_SIZE)\fP
+返回的页面大小的倍数。
+.PP
+在 \fBmmap\fP() 调用返回后，文件描述符 \fIfd\fP 可以立即关闭而不会使映射无效。
+.PP
+\fIprot\fP 参数描述了映射所需的内存保护 (并且不能与文件的打开模式冲突)。 它是 \fBPROT_NONE\fP 或以下一个或多个标志的按位或:
+.TP  1.1i
+\fBPROT_EXEC\fP
+可以执行页面。
+.TP 
+\fBPROT_READ\fP
+可以阅读页面。
+.TP 
+\fBPROT_WRITE\fP
+页面可能被写入。
+.TP 
+\fBPROT_NONE\fP
+.\"
+可能无法访问页面。
+.SS "The flags argument"
+\fIflags\fP 参数确定映射的更新是否对映射同一区域的其他进程可见，以及更新是否传递到，底层，文件。 此行为是通过在 \fIflags\fP:
+中恰好包含以下值之一来确定的
+.TP 
+\fBMAP_SHARED\fP
+共享此映射。 映射的更新对于映射同一区域的其他进程是可见的，并且 (在文件支持的映射的情况下) 被传递到底层文件。
+(要精确控制何时对，底层，文件进行更新，需要使用 \fBmsync\fP(2).)
+.TP 
+\fBMAP_SHARED_VALIDATE\fP (since Linux 4.15)
+此标志提供与 \fBMAP_SHARED\fP 相同的行为，只是 \fBMAP_SHARED\fP 映射忽略 \fIflags\fP 中的未知标志。 相比之下，当使用
+\fBMAP_SHARED_VALIDATE\fP 创建映射时，内核会验证所有传递的标志都是已知的，并且映射失败并显示错误 \fBEOPNOTSUPP\fP for
+unknown flags。 此映射类型还需要能够使用某些映射标志 (例如，\fBMAP_SYNC\fP).
+.TP 
+\fBMAP_PRIVATE\fP
+创建私有的写时复制映射。 对映射的更新对映射同一文件的其他进程不可见，并且不会传递到，底层，文件。 未指定 \fBmmap\fP()
+调整后对文件所做的更改是否在映射区域中可见。
+.PP
+\fBMAP_SHARED\fP 和 \fBMAP_PRIVATE\fP 在 POSIX.1\-2001 和 POSIX.1\-2008 中都有描述。
+\fBMAP_SHARED_VALIDATE\fP 是 Linux 的扩展。
+.PP
+此外，以下零个或多个值可以在 \fIflags\fP: 中进行或运算
+.TP 
+\fBMAP_32BIT\fP (since Linux 2.4.20, 2.6)
+.\" See http://lwn.net/Articles/294642 "Tangled up in threads", 19 Aug 08
+将映射放入进程地址空间的前 2 GB。 对于 64 位程序，此标志仅在 x86\-64 上受支持。 添加它是为了允许在前 2 GB
+内存中的某处分配线程栈，以提高某些早期 64 位处理器上的上下文切换性能。 现代 x86\-64
+处理器不再有此性能问题，因此不需要在这些系统上使用此标志。 当设置 \fBMAP_FIXED\fP 时，忽略 \fBMAP_32BIT\fP 标志。
+.TP 
+\fBMAP_ANON\fP
+\fBMAP_ANONYMOUS\fP 的同义词; 提供与其他实现的兼容性。
+.TP 
+\fBMAP_ANONYMOUS\fP
+.\" See the pgoff overflow check in do_mmap().
+.\" See the offset check in sys_mmap in arch/x86/kernel/sys_x86_64.c.
+该映射不受任何文件支持; 它的内容被初始化为零。 \fIfd\fP 参数被忽略; 但是，如果指定了 \fBMAP_ANONYMOUS\fP (或
+\fBMAP_ANON\fP))，则某些实现要求 \fIfd\fP 为 \-1，并且便携式应用程序应确保这一点。 \fIoffset\fP 参数应为零。 在 Linux
+2.4 中添加了对 \fBMAP_ANONYMOUS\fP 和 \fBMAP_SHARED\fP 的支持。
+.TP 
+\fBMAP_DENYWRITE\fP
+.\" Introduced in 1.1.36, removed in 1.3.24.
+该标志被忽略。 (很久以前 \[em] Linux 2.0 和更早版本 \[em] 它表示尝试写入底层文件应该因 \fBETXTBSY\fP
+而失败。但这是拒绝服务攻击的来源。)
+.TP 
+\fBMAP_EXECUTABLE\fP
+.\" Introduced in 1.1.38, removed in 1.3.24. Flag tested in proc_follow_link.
+.\" (Long ago, it signaled that the underlying file is an executable.
+.\" However, that information was not really used anywhere.)
+.\" Linus talked about DOS related to MAP_EXECUTABLE, but he was thinking of
+.\" MAP_DENYWRITE?
+该标志被忽略。
+.TP 
+\fBMAP_FILE\fP
+.\" On some systems, this was required as the opposite of
+.\" MAP_ANONYMOUS -- mtk, 1 May 2007
+兼容性标志。 Ignored.
+.TP 
+\fBMAP_FIXED\fP
+不要将 \fIaddr\fP 解释为提示: 将映射恰好放在该地址。 \fIaddr\fP 必须适当对齐: 对于大多数架构，页面大小的倍数就足够了;
+但是，某些架构可能会施加额外的限制。 如果 \fIaddr\fP 和 \fIlength\fP 指定的内存区域与任何现有 mapping(s) 的页面重叠，则现有
+mapping(s) 的重叠部分将被丢弃。 如果不能使用指定的地址，\fBmmap\fP() 将失败。
+.IP
+渴望可移植的软件应该小心使用 \fBMAP_FIXED\fP 标志，记住进程内存映射的确切布局可以在 Linux 版本、C
+库版本和操作系统版本之间发生显着变化。 渴望可移植的软件应该小心使用 \fBMAP_FIXED\fP 标志，记住进程内存映射的确切布局可以在 Linux
+版本、C 库版本和操作系统版本之间发生显着变化。
+.TP 
+\fBMAP_FIXED_NOREPLACE\fP (since Linux 4.17)
+.\" commit a4ff8e8620d3f4f50ac4b41e8067b7d395056843
+此标志提供的行为与 \fBMAP_FIXED\fP 在 \fIaddr\fP 强制执行方面类似，但不同之处在于 \fBMAP_FIXED_NOREPLACE\fP
+从不破坏预先存在的映射范围。 如果请求的范围会与现有映射冲突，则此调用会失败并返回错误 \fBEEXIST.\fP。因此，此标志可用作以原子方式
+(相对于其他线程) 尝试 map 一个地址范围的方法: 一个线程将成功; 所有其他人将报告失败。
+.IP
+请注意，不识别 \fBMAP_FIXED_NOREPLACE\fP 标志的旧内核通常 (在检测到与预先存在的映射冲突时) 回退到
+\[lq]non\-\fBMAP_FIXED\fP\[rq] 类型的行为: 它们将返回一个与请求地址不同的地址。
+因此，向后兼容的软件应该根据请求的地址检查返回的地址。
+.TP 
+\fBMAP_GROWSDOWN\fP
+此标志用于栈。 它向内核虚拟内存系统指示映射应该在内存中向下扩展。 返回地址比进程虚拟地址空间中实际创建的内存区域低一页。 触摸映射下方 "guard"
+页面中的地址将导致映射增长一页。 可以重复这种增长，直到映射增长到下一个较低映射高端的页面内，此时触摸 "guard" 页面将产生 \fBSIGSEGV\fP
+信号。
+.TP 
+\fBMAP_HUGETLB\fP (since Linux 2.6.32)
+使用 "huge" 页面分配映射。 有关详细信息以及下面的注释，请参见 Linux 内核源文件
+\fIDocumentation/admin\-guide/mm/hugetlbpage.rst\fP。
+.TP 
+\fBMAP_HUGE_2MB\fP, \fBMAP_HUGE_1GB\fP (since Linux 3.8)
+.\" See https://lwn.net/Articles/533499/
+与 \fBMAP_HUGETLB\fP 结合使用以在支持多个 hugetlb 页面大小的系统上选择替代 hugetlb 页面大小 (分别为 2\MB 和
+1\GB)。
+.IP
+更一般地，可以通过在偏移量 \fBMAP_HUGE_SHIFT\fP 处的六位中编码所需页面大小的 base\-2 对数来配置所需的大页面大小。
+(该位字段中的零值提供默认大页面大小; 默认大页面大小可以通过 \fI/proc/meminfo\fP.) 公开的 \fIHugepagesize\fP
+字段发现因此，以上两个常量定义为:
+.IP
+.in +4n
+.EX
+#define MAP_HUGE_2MB    (21 << MAP_HUGE_SHIFT)
+#define MAP_HUGE_1GB    (30 << MAP_HUGE_SHIFT)
+.EE
+.in
+.IP
+系统支持的大页面大小范围可以通过列出 \fI/sys/kernel/mm/hugepages\fP 中的子目录来发现。
+.TP 
+\fBMAP_LOCKED\fP (since Linux 2.5.37)
+.\" If set, the mapped pages will not be swapped out.
+标记要锁定的映射区域，方法同 \fBmlock\fP(2)。 此实现将尝试在整个范围内填充 (prefault)，但如果失败，则 \fBmmap\fP()
+调用不会因 \fBENOMEM\fP 而失败。 因此，以后可能会发生重大故障。 所以语义不如 \fBmlock\fP(2) 强。
+映射初始化后不能接受大故障时，应使用 \fBmmap\fP() 加 \fBmlock\fP(2)。 \fBMAP_LOCKED\fP 标志在旧内核中被忽略。
+.TP 
+\fBMAP_NONBLOCK\fP (since Linux 2.5.46)
+.\" commit 54cb8821de07f2ffcd28c380ce9b93d5784b40d7
+此标志仅在与 \fBMAP_POPULATE\fP 结合使用时才有意义。 不要执行预读: 仅为 RAM 中已存在的页面创建页表条目。 自 Linux
+2.6.23 起，此标志导致 \fBMAP_POPULATE\fP 不执行任何操作。 有一天，可能会重新实现 \fBMAP_POPULATE\fP 和
+\fBMAP_NONBLOCK\fP 的组合。
+.TP 
+\fBMAP_NORESERVE\fP
+不要为此映射保留交换空间。 当保留交换空间时，可以保证可以修改映射。 当没有保留交换空间时，如果没有可用的物理内存，则在写入时可能会得到
+\fBSIGSEGV\fP。 另请参见 \fBproc\fP(5) 中对文件 \fI/proc/sys/vm/overcommit_memory\fP 的讨论。 在
+Linux 2.6 之前，此标志仅对私有可写映射有效。
+.TP 
+\fBMAP_POPULATE\fP (since Linux 2.5.46)
+为映射填充 (prefault) 页表。 对于文件映射，这会导致文件预读。 这将有助于减少以后页面错误的阻塞。 如果无法填充映射 (例如，由于使用
+\fBMAP_HUGETLB\fP) 时映射大页面的数量受到限制)，\fBmmap\fP() 调用不会失败。 在 Linux 2.6.23 中添加了对
+\fBMAP_POPULATE\fP 和私有映射的支持。
+.TP 
+\fBMAP_STACK\fP (since Linux 2.6.27)
+在适合进程或线程栈的地址分配映射。
+.IP
+.\" See http://lwn.net/Articles/294642 "Tangled up in threads", 19 Aug 08
+.\" commit cd98a04a59e2f94fa64d5bf1e26498d27427d5e7
+.\" http://thread.gmane.org/gmane.linux.kernel/720412
+.\" "pthread_create() slow for many threads; also time to revisit 64b
+.\"  context switch optimization?"
+该标志目前在 Linux 上是空操作。 然而，通过使用这个标志，如果标志在 future 中实现，应用程序可以确保它们透明地获得支持。 因此，它被用在
+glibc 线程实现中，以考虑到一些架构可能 (later) 需要对栈分配进行特殊处理的事实。 使用这个标志的另一个原因是可移植性:
+\fBMAP_STACK\fP 存在于 (并且有影响) 一些其他系统 (例如，一些 BSD) 上。
+.TP 
+\fBMAP_SYNC\fP (since Linux 4.15)
+此标志仅适用于 \fBMAP_SHARED_VALIDATE\fP 映射类型; \fBMAP_SHARED\fP 类型的映射将默默地忽略此标志。 只有支持 DAX
+(持久内存的直接映射) 的文件才支持此标志。 对于其他文件，使用此标志创建映射会导致 \fBEOPNOTSUPP\fP 错误。
+.IP
+具有此标志的共享文件映射提供了保证，虽然某些内存在进程的地址空间中映射为可写，但即使在系统崩溃或重新启动后，它也会在同一文件中以相同的偏移量可见。
+结合使用适当的 CPU 指令，这为此类映射的用户提供了一种使数据修改持久化的更有效方法。
+.TP 
+\fBMAP_UNINITIALIZED\fP (since Linux 2.6.33)
+不要清除匿名页面。 此标志旨在提高嵌入式设备的性能。 仅当内核配置了 \fBCONFIG_MMAP_ALLOW_UNINITIALIZED\fP
+选项时，此标志才有效。 由于安全隐患，该选项通常仅在嵌入式设备 (即可以完全控制用户内存内容的设备) 上启用。
+.PP
+.\" FIXME . for later review when Issue 8 is one day released...
+.\" POSIX may add MAP_ANON in the future
+.\" http://austingroupbugs.net/tag_view_page.php?tag_id=8
+.\" http://austingroupbugs.net/view.php?id=850
+在上述标志中，只有 \fBMAP_FIXED\fP 在 POSIX.1\-2001 和 POSIX.1\-2008 中指定。 然而，大多数系统也支持
+\fBMAP_ANONYMOUS\fP (或其同义词 \fBMAP_ANON\fP)。
+.SS munmap()
+\fBmunmap\fP() 系统调用删除指定地址范围内的映射，导致进一步引用范围内的地址产生无效内存引用。 当进程终止时，该区域也会自动取消映射。
+另一方面，关闭文件描述符不会取消映射该区域。
+.PP
+地址 \fIaddr\fP 必须是页面大小的倍数 (但 \fIlength\fP 不一定)。 所有包含指定范围一部分的页面都将被取消映射，随后对这些页面的引用将生成
+\fBSIGSEGV\fP。 如果指示的范围不包含任何映射页面，则不是错误。
+.SH "RETURN VALUE"
+成功时，\fBmmap\fP() 返回指向映射区域的指针。 出错时，返回值 \fBMAP_FAILED\fP (即 \fI(void\ *)\ \-1\fP)，并设置
+\fIerrno\fP 以指示错误。
+.PP
+成功时，\fBmunmap\fP() 返回 0。 失败时，它返回 \-1，\fIerrno\fP 被设置为指示错误 (可能是 \fBEINVAL\fP)。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+文件描述符指的是非常规文件。 或者请求文件映射，但 \fIfd\fP 未打开以供读取。 或者请求了 \fBMAP_SHARED\fP 并设置了
+\fBPROT_WRITE\fP，但 read/write (\fBO_RDWR\fP) 模式下没有打开 \fIfd\fP。 或者设置了
+\fBPROT_WRITE\fP，但该文件是仅追加的。
+.TP 
+\fBEAGAIN\fP
+文件已被锁定，或内存过多被锁定 (见 \fBsetrlimit\fP(2)).
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是有效的文件描述符 (并且未设置 \fBMAP_ANONYMOUS\fP)。
+.TP 
+\fBEEXIST\fP
+\fIflags\fP 中指定了 \fBMAP_FIXED_NOREPLACE\fP，\fIaddr\fP 和 \fIlength\fP 覆盖的范围与现有映射冲突。
+.TP 
+\fBEINVAL\fP
+我们不喜欢 \fIaddr\fP、\fIlength\fP 或 \fIoffset\fP (例如，它们太大，或者没有在页面边界上对齐)。
+.TP 
+\fBEINVAL\fP
+(自 Linux 2.6.12 起) \fIlength\fP 是 0.
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 不包含 \fBMAP_PRIVATE\fP、\fBMAP_SHARED\fP 或 \fBMAP_SHARED_VALIDATE\fP。
+.TP 
+\fBENFILE\fP
+.\" This is for shared anonymous segments
+.\" [2.6.7] shmem_zero_setup()-->shmem_file_setup()-->get_empty_filp()
+.\" .TP
+.\" .B ENOEXEC
+.\" A file could not be mapped for reading.
+已达到系统范围内打开文件总数的限制。
+.TP 
+\fBENODEV\fP
+指定文件的底层文件系统不支持内存映射。
+.TP 
+\fBENOMEM\fP
+没有内存可用。
+.TP 
+\fBENOMEM\fP
+将超出进程的最大映射数。 当取消映射现有映射中间的区域时，\fBmunmap\fP() 也会发生此错误，因为这会导致取消映射该区域两侧的两个较小的映射。
+.TP 
+\fBENOMEM\fP
+(自 Linux 4.7 起) 将超出 \fBgetrlimit\fP(2) 中描述的进程的 \fBRLIMIT_DATA\fP 限制。
+.TP 
+\fBENOMEM\fP
+我们不喜欢 \fIaddr\fP，因为它超出了 CPU 的虚拟地址空间。
+.TP 
+\fBEOVERFLOW\fP
+在 32 位架构和大文件扩展名 (即，使用 64 位 \fIoff_t\fP):) 上，用于 \fIlength\fP 的页数加上用于 \fIoffset\fP
+的页数将溢出 \fIunsigned long\fP (32 位)。
+.TP 
+\fBEPERM\fP
+.\" (Since Linux 2.4.25 / Linux 2.6.0.)
+\fIprot\fP 参数请求 \fBPROT_EXEC\fP，但映射区域属于文件系统上的一个文件，该文件已挂载为 no\-exec。
+.TP 
+\fBEPERM\fP
+文件密封阻止了该操作; 请参见 \fBfcntl\fP(2)。
+.TP 
+\fBEPERM\fP
+指定了 \fBMAP_HUGETLB\fP 标志，但调用者没有特权 (没有 \fBCAP_IPC_LOCK\fP 能力) 并且不是
+\fIsysctl_hugetlb_shm_group\fP 组的成员; 请参见
+\fI/proc/sys/vm/sysctl_hugetlb_shm_group\fP 的说明
+.TP 
+\fBETXTBSY\fP
+\fBMAP_DENYWRITE\fP 已设置，但 \fIfd\fP 指定的对象已打开以供写入。
+.PP
+使用映射区域可能会产生以下信号:
+.TP 
+\fBSIGSEGV\fP
+试图写入映射为只读的区域。
+.TP 
+\fBSIGBUS\fP
+试图访问位于映射文件末尾之外的缓冲区页面。 有关页面中对应于不是页面大小倍数的映射文件末尾的字节的处理方式的说明，请参见注释。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBmmap\fP(),
+\fBmunmap\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+.\" SVr4 documents additional error codes ENXIO and ENODEV.
+.\" SUSv2 documents additional error codes EMFILE and EOVERFLOW.
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.4BSD.
+.PP
+.\" POSIX.1-2001: It shall be defined to -1 or 0 or 200112L.
+.\" -1: unavailable, 0: ask using sysconf().
+.\" glibc defines it to 1.
+在 \fBmmap\fP()、\fBmsync\fP(2) 和 \fBmunmap\fP() 可用的 POSIX 系统上，\fB_POSIX_MAPPED_FILES\fP 在
+\fI<unistd.h>\fP 中定义为大于 0 的值。 (另见 \fBsysconf\fP(3).)
+.SH NOTES
+\fBmmap\fP() 映射的内存跨 \fBfork\fP(2) 保留，具有相同的属性。
+.PP
+文件以页面大小的倍数映射。 对于不是页面大小倍数的文件，映射末尾部分页面中的剩余字节在映射时被清零，并且对该区域的修改不会写出到文件中。
+未指定在对应于文件的添加或删除区域的页面上更改映射的，底层，文件大小的影响。
+.PP
+在某些硬件架构 (例如 i386) 上，\fBPROT_WRITE\fP 表示 \fBPROT_READ\fP。 \fBPROT_READ\fP 是否暗示
+\fBPROT_EXEC\fP 取决于体系结构。 如果可移植程序打算在新映射中执行代码，则应始终设置 \fBPROT_EXEC\fP。
+.PP
+创建映射的可移植方法是将 \fIaddr\fP 指定为 0 (NULL)，并从 \fIflags\fP 中省略 \fBMAP_FIXED\fP。
+在这种情况下，系统选择地址进行映射; 选择地址是为了不与任何现有映射冲突，并且不会为 0。 如果指定了 \fBMAP_FIXED\fP 标志，且
+\fIaddr\fP 为 0 (NULL)，则映射地址将为 0 (NULL)。
+.PP
+某些 \fIflags\fP 常量只有在定义了合适的特性测试宏时才被定义 (可能是默认的) : \fB_DEFAULT_SOURCE\fP with glibc
+2.19 或更高版本; 或 glibc 2.19 及更早版本中的 \fB_BSD_SOURCE\fP 或 \fB_SVID_SOURCE\fP。 (使用
+\fB_GNU_SOURCE\fP 也足够了，并且特别要求宏会更合乎逻辑，因为这些标志都是特定于 Linux 的。) 相关标志是:
+\fBMAP_32BIT\fP、\fBMAP_ANONYMOUS\fP (以及同义词
+\fBMAP_ANON\fP)、\fBMAP_DENYWRITE\fP、\fBMAP_EXECUTABLE\fP、\fBMAP_FILE\fP、\fBMAP_GROWSDOWN\fP、\fBMAP_HUGETLB\fP、\fBMAP_LOCKED\fP、\fBMAP_NONBLOCK\fP、\fBMAP_NORESERVE\fP、\fBMAP_POPULATE\fP
+和 \fBMAP_STACK\fP。
+.PP
+.\"
+应用程序可以使用 \fBmincore\fP(2) 确定映射的哪些页面当前驻留在 buffer/page 缓存中。
+.SS "Using MAP_FIXED safely"
+\fBMAP_FIXED\fP 的唯一安全用途是 \fIaddr\fP 和 \fIlength\fP 指定的地址范围以前使用另一个映射保留; 否则，使用
+\fBMAP_FIXED\fP 是危险的，因为它会强行删除预先存在的映射，使多线程进程很容易破坏自己的地址空间。
+.PP
+例如，假设线程 A 查看 \fI/proc/<pid>/maps\fP 以定位它可以使用 \fBMAP_FIXED\fP map
+的未使用地址范围，而线程 B 同时获取同一地址范围的部分或全部。 当线程 A 随后使用 \fBmmap(MAP_FIXED)\fP 时，它将有效地破坏线程 B
+创建的映射。 在这种场景下，线程 B 不需要直接创建映射; 简单地制作一个库调用，在内部使用 \fBdlopen\fP(3) 加载其他一些共享库，就足够了。
+\fBdlopen\fP(3) 调用将 map 库放入进程的地址空间。
+此外，几乎任何库调用都可以通过将内存映射添加到地址空间的方式来实现，要么使用这种技术，要么通过简单地分配内存。 示例包括
+\fBbrk\fP(2)、\fBmalloc\fP(3)、\fBpthread_create\fP(3) 和 PAM 库
+.UR http://www.linux\-pam.org
+.UE .
+.PP
+.\"
+从 Linux 4.17 开始，多线程程序可以使用 \fBMAP_FIXED_NOREPLACE\fP
+标志来避免在尝试在尚未被预先存在的映射保留的固定地址处创建映射时发生上述危险。
+.SS "Timestamps changes for file\-backed mappings"
+对于文件支持的映射，映射文件的 \fIst_atime\fP 字段可以在 \fBmmap\fP() 和相应的取消映射之间随时更新; 映射页面的第一个引用将更新该字段
+(如果尚未更新)。
+.PP
+.\"
+使用 \fBPROT_WRITE\fP 和 \fBMAP_SHARED\fP 映射的文件的 \fIst_ctime\fP 和 \fIst_mtime\fP
+字段将在写入映射区域后更新，并在随后的带有 \fBMS_SYNC\fP 或 \fBMS_ASYNC\fP 标志的 \fBmsync\fP(2) 之前更新，如果发生的话。
+.SS "Huge page (Huge TLB) mappings"
+对于使用大页面的映射，对 \fBmmap\fP() 和 \fBmunmap\fP() 的参数的要求与使用原生系统页面大小的映射的要求有所不同。
+.PP
+对于 \fBmmap\fP()，\fIoffset\fP 必须是底层大页面大小的倍数。 系统自动将 \fIlength\fP 对齐为底层大页面大小的倍数。
+.PP
+.\"
+对于 \fBmunmap\fP()、\fIaddr\fP 和 \fIlength\fP，它们都必须是底层大页面大小的倍数。
+.SS "C library/kernel differences"
+.\" Since around glibc 2.1/2.2, depending on the platform.
+本页描述了 glibc \fBmmap\fP() 包装器函数提供的接口。 本来，这个函数调用了一个同名的系统调用。 自 Linux 2.4
+以来，该系统调用已被 \fBmmap2\fP(2) 取代，如今 glibc \fBmmap\fP() 包装器函数调用 \fBmmap2\fP(2) 并适当调整
+\fIoffset\fP 的值。
+.SH BUGS
+在 Linux 上，没有像上面在 \fBMAP_NORESERVE\fP 下建议的那样的保证。 默认情况下，当系统内存不足时，任何进程都可以随时被杀死。
+.PP
+在 Linux 2.6.7 之前，只有当 \fIprot\fP 指定为 \fBPROT_NONE\fP 时，\fBMAP_POPULATE\fP 标志才有效。
+.PP
+SUSv3 指定如果 \fIlength\fP 为 0，则 \fBmmap\fP() 应该失败。 但是，在 Linux 2.6.12 之前，\fBmmap\fP()
+在这种情况下成功了: 没有创建映射，调用返回 \fIaddr\fP。 由于 Linux 2.6.12，\fBmmap\fP() 在这种情况下失败并出现错误
+\fBEINVAL\fP。
+.PP
+POSIX 指定系统应始终零填充对象末尾的任何部分页面，并且系统永远不会在其末尾之外写入对象的任何修改。 在 Linux
+上，当您在对象结束后将数据写入此类部分页面时，即使文件关闭并取消映射，数据仍保留在页面缓存中，即使数据从未写入文件本身，后续映射也可能会看到修改的内容。
+在某些情况下，这可以通过在取消映射发生之前调用 \fBmsync\fP(2) 来解决; 然而，这在 \fBtmpfs\fP(5) 上不起作用 (例如，当使用
+\fBshm_overview\fP(7)) 中记录的 POSIX 共享内存接口时)。
+.SH EXAMPLES
+.\" FIXME . Add an example here that uses an anonymous shared region for
+.\" IPC between parent and child.
+以下程序将在其第一个命令行参数中指定的文件的一部分打印到标准输出。 要打印的字节范围通过第二个和第三个命令行参数中的偏移量和长度值指定。
+该程序创建文件所需页面的内存映射，然后使用 \fBwrite\fP(2) 输出所需的字节。
+.SS "Program source"
+.\" SRC BEGIN (mmap.c)
+.EX
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#define handle_error(msg) \e
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    int          fd;
+    char         *addr;
+    off_t        offset, pa_offset;
+    size_t       length;
+    ssize_t      s;
+    struct stat  sb;
+
+    if (argc < 3 || argc > 4) {
+        fprintf(stderr, "%s file offset [length]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    fd = open(argv[1], O_RDONLY);
+    if (fd == \-1)
+        handle_error("open");
+
+    if (fstat(fd, &sb) == \-1)           /* To obtain file size */
+        handle_error("fstat");
+
+    offset = atoi(argv[2]);
+    pa_offset = offset & \[ti](sysconf(_SC_PAGE_SIZE) \- 1);
+        /* offset for mmap() must be page aligned */
+
+    if (offset >= sb.st_size) {
+        fprintf(stderr, "offset is past end of file\en");
+        exit(EXIT_FAILURE);
+    }
+
+    if (argc == 4) {
+        length = atoi(argv[3]);
+        if (offset + length > sb.st_size)
+            length = sb.st_size \- offset;
+                /* Can\[aq]t display bytes past end of file */
+
+    } else {    /* No length arg ==> display to end of file */
+        length = sb.st_size \- offset;
+    }
+
+    addr = mmap(NULL, length + offset \- pa_offset, PROT_READ,
+                MAP_PRIVATE, fd, pa_offset);
+    if (addr == MAP_FAILED)
+        handle_error("mmap");
+
+    s = write(STDOUT_FILENO, addr + offset \- pa_offset, length);
+    if (s != length) {
+        if (s == \-1)
+            handle_error("write");
+
+        fprintf(stderr, "partial write");
+        exit(EXIT_FAILURE);
+    }
+
+    munmap(addr, length + offset \- pa_offset);
+    close(fd);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBftruncate\fP(2), \fBgetpagesize\fP(2), \fBmemfd_create\fP(2), \fBmincore\fP(2),
+\fBmlock\fP(2), \fBmmap2\fP(2), \fBmprotect\fP(2), \fBmremap\fP(2), \fBmsync\fP(2),
+\fBremap_file_pages\fP(2), \fBsetrlimit\fP(2), \fBshmat\fP(2), \fBuserfaultfd\fP(2),
+\fBshm_open\fP(3), \fBshm_overview\fP(7)
+.PP
+\fBproc\fP(5):
+\fI/proc/[pid]/maps\fP、\fI/proc/[pid]/map_files\fP、\fI/proc/[pid]/smaps\fP 中以下文件的说明。
+.PP
+B.O. Gallmeister, POSIX.4, O'Reilly, pp. 128\[zh] 129 和 389\[zh] 391。
+.\"
+.\" Repeat after me: private read-only mappings are 100% equivalent to
+.\" shared read-only mappings. No ifs, buts, or maybes. -- Linus
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

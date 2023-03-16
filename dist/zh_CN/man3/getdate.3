@@ -1,0 +1,247 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 2001 walter harms (walter.harms@informatik.uni-oldenburg.de)
+.\" and Copyright 2008, Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified, 2001-12-26, aeb
+.\" 2008-09-07, mtk, Various rewrites; added an example program.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH getdate 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+getdate、getdate_r \- 将日期加时间字符串转换为细分时间
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBstruct tm *getdate(const char *\fP\fIstring\fP\fB);\fP
+.PP
+\fBextern int getdate_err;\fP
+.PP
+\fBint getdate_r(const char *restrict \fP\fIstring\fP\fB, struct tm *restrict \fP\fIres\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBgetdate\fP():
+.nf
+.\"    || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
+    _XOPEN_SOURCE >= 500
+.fi
+.PP
+\fBgetdate_r\fP():
+.nf
+    _GNU_SOURCE
+.fi
+.SH DESCRIPTION
+函数 \fBgetdate\fP() 将 \fIstring\fP 指向的缓冲区中包含的日期和时间的字符串表示形式转换为细分时间。 故障时间存储在 \fItm\fP
+结构体中，并返回指向该结构体的指针作为函数结果。 这个 \fItm\fP 结构体分配在静态存储中，因此它将被对 \fBgetdate\fP() 的进一步调用覆盖。
+.PP
+与 \fBstrptime\fP(3) (具有 \fIformat\fP 参数) 相反，\fBgetdate\fP() 使用在文件中找到的格式，其完整路径名在环境变量
+\fBDATEMSK\fP 中给出。 文件中与给定输入字符串匹配的第一行用于转换。
+.PP
+匹配不区分大小写。 模式或要转换的字符串中多余的空格将被忽略。
+.PP
+模式可以包含的转换规范是为 \fBstrptime\fP(3) 提供的规范。 POSIX.1\-2001 中指定了另一种转换规范:
+.TP 
+\fB%Z\fP
+.\" FIXME Is it (still) true that %Z is not supported in glibc?
+.\" Looking at the glibc 2.21 source code, where the implementation uses
+.\" strptime(), suggests that it might be supported.
+时区名称。 这在 glibc 中没有实现。
+.PP
+当给出 \fB%Z\fP 时，包含故障时间的结构体将初始化为与给定时区中的当前时间相对应的值。 否则，结构体被初始化为与当前本地时间对应的故障时间 (如调用
+\fBlocaltime\fP(3)).
+.PP
+当只给出星期几时，该天被认为是今天或之后的第一个这样的日子。
+.PP
+当只给出月份 (没有年份) 时，该月份被认为是等于或晚于当前月份的第一个这样的月份。 如果没有指定日期，则为该月的第一天。
+.PP
+如果没有给出小时、分钟和秒，则采用当前的小时、分钟和秒。
+.PP
+如果没有给出日期，但我们知道小时，则该小时被认为是等于或晚于当前小时的第一个这样的小时。
+.PP
+\fBgetdate_r\fP() 是一个 GNU 扩展，它提供了 \fBgetdate\fP() 的可重入版本。
+它不是使用全局变量来报告错误和静态缓冲区来返回故障时间，而是通过函数结果值返回错误，并在参数 \fIres\fP 指向的调用者分配的缓冲区中返回结果故障时间。
+.SH "RETURN VALUE"
+成功时，\fBgetdate\fP() 返回指向 \fIstruct tm\fP 的指针。 否则，它返回 NULL 并将全局变量 \fIgetdate_err\fP
+设置为下面显示的错误号之一。 未指定对 \fIerrno\fP 的更改。
+.PP
+成功时 \fBgetdate_r\fP() 返回 0; 出错时它返回下面显示的错误号之一。
+.SH ERRORS
+以下错误通过 \fIgetdate_err\fP 返回 (对于 \fBgetdate\fP()) 或作为函数结果 (对于 \fBgetdate_r\fP()):
+.TP  4n
+\fB1\fP
+\fBDATEMSK\fP 环境变量未定义，或其值为空字符串。
+.TP 
+\fB2\fP
+无法打开 \fBDATEMSK\fP 指定的模板文件进行读取。
+.TP 
+\fB3\fP
+.\" stat()
+无法获取文件状态信息。
+.TP 
+\fB4\fP
+模板文件不是常规文件。
+.TP 
+\fB5\fP
+读取模板文件时遇到错误。
+.TP 
+\fB6\fP
+.\" Error 6 doesn't seem to occur in glibc
+内存分配失败 (可用内存不足)。
+.TP 
+\fB7\fP
+文件中没有与输入匹配的行。
+.TP 
+\fB8\fP
+输入规范无效。
+.SH ENVIRONMENT
+.TP 
+\fBDATEMSK\fP
+包含格式模式的文件。
+.TP 
+\fBTZ\fP, \fBLC_TIME\fP
+\fBstrptime\fP(3) 使用的变量。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBgetdate\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:getdate env locale
+T}
+T{
+\fBgetdate_r\fP()
+T}	Thread safety	T{
+MT\-Safe env locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+\fBstrptime\fP(3) 的 POSIX.1 规范包含使用 \fB%E\fP 或 \fB%O\fP 修饰符的转换规范，而 \fBgetdate\fP()
+没有给出此类规范。 在 glibc 中，\fBgetdate\fP() 是使用 \fBstrptime\fP(3) 实现的，因此两者都支持完全相同的转换。
+.SH EXAMPLES
+下面的程序为其每个命令行参数调用 \fBgetdate\fP()，并为每个调用显示返回的 \fItm\fP 结构体字段中的值。 下面的 shell
+会话演示了程序的运行:
+.PP
+.in +4n
+.EX
+$\fB TFILE=$PWD/tfile\fP
+$\fB echo \[aq]%A\[aq] > $TFILE \fP      # 星期几的全名
+$\fB echo \[aq]%T\[aq] >> $TFILE\fP      # 时间 (HH:MM:SS)
+$\fB echo \[aq]%F\[aq] >> $TFILE\fP      #ISO 日期 (YYYY\-MM\-DD)
+$\fB date\fP
+$\fB export DATEMSK=$TFILE\fP
+$\fB ./a.out Tuesday \[aq]2009\-12\-28\[aq] \[aq]12:22:33\[aq]\fP
+2008 年 9 月 7 日星期日 06:03:36 CEST
+调用 1 ("Tuesday") 成功:
+    tm_sec   = 36
+    tm_min   = 3
+    tm_hour  = 6
+    tm_mday  = 9
+    tm_mon   = 8
+    tm_year  = 108
+    tm_wday  = 2
+    tm_yday  = 252
+    tm_isdst = 1
+调用 2 ("2009\-12\-28") 成功:
+    tm_sec   = 36
+    tm_min   = 3
+    tm_hour  = 6
+    tm_mday  = 28
+    tm_mon   = 11
+    tm_year  = 109
+    tm_wday  = 1
+    tm_yday  = 361
+    tm_isdst = 0
+调用 3 ("12:22:33") 成功:
+    tm_sec   = 33
+    tm_min   = 22
+    tm_hour  = 12
+    tm_mday  = 7
+    tm_mon   = 8
+    tm_year  = 108
+    tm_wday  = 0
+    tm_yday  = 250
+    tm_isdst = 1
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (getdate.c)
+\&
+.EX
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+int
+main(int argc, char *argv[])
+{
+    struct tm *tmp;
+
+    for (size_t j = 1; j < argc; j++) {
+        tmp = getdate(argv[j]);
+
+        if (tmp == NULL) {
+            printf("Call %zu failed; getdate_err = %d\en",
+                   j, getdate_err);
+            continue;
+        }
+
+        printf("Call %zu (\e"%s\e") succeeded:\en", j, argv[j]);
+        printf("    tm_sec   = %d\en", tmp\->tm_sec);
+        printf("    tm_min   = %d\en", tmp\->tm_min);
+        printf("    tm_hour  = %d\en", tmp\->tm_hour);
+        printf("    tm_mday  = %d\en", tmp\->tm_mday);
+        printf("    tm_mon   = %d\en", tmp\->tm_mon);
+        printf("    tm_year  = %d\en", tmp\->tm_year);
+        printf("    tm_wday  = %d\en", tmp\->tm_wday);
+        printf("    tm_yday  = %d\en", tmp\->tm_yday);
+        printf("    tm_isdst = %d\en", tmp\->tm_isdst);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBtime\fP(2), \fBlocaltime\fP(3), \fBsetlocale\fP(3), \fBstrftime\fP(3), \fBstrptime\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

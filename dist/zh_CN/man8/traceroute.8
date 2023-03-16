@@ -1,0 +1,367 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c)  2006   Dmitry Butskoy (dmitry@butskoy.name)
+.\" License: GPL v2 or any later version
+.\" See COPYING for the status of this software
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH TRACEROUTE 8 "11 October 2006" Traceroute "Traceroute For Linux"
+.\" .UC 6
+.SH NAME
+traceroute \- 将路由数据包跟踪打印到网络主机
+.SH SYNOPSIS
+.na
+\fBtraceroute\fP [\fB\-46dFITUnreAV\fP] [\fB\-f first_ttl\fP] [\fB\-g gate,...\fP]
+.br
+.ti +8
+[\fB\-i device\fP] [\fB\-m max_ttl\fP] [\fB\-p port\fP] [\fB\-s src_addr\fP]
+.br
+.ti +8
+[\fB\-q nqueries\fP] [\fB\-N squeries\fP] [\fB\-t tos\fP]
+.br
+.ti +8
+[\fB\-l flow_label\fP] [\fB\-w waittimes\fP] [\fB\-z sendwait\fP] [\fB\-UL\fP] [\fB\-D\fP]
+.br
+.ti +8
+[\fB\-P proto\fP] [\fB\-\-sport=port\fP] [\fB\-M method\fP] [\fB\-O mod_options\fP]
+.br
+.ti +8
+[\fB\-\-mtu\fP] [\fB\-\-back\fP]
+.br
+.ti +8
+\fBhost\fP [\fBpacket_len\fP]
+.br
+\fBtraceroute6\fP [\fIoptions\fP]
+.ad
+.SH DESCRIPTION
+\fItraceroute\fP 跟踪从 IP 网络到给定主机的路由数据包。它利用 IP 协议的生存时间 (TTL)
+字段并尝试从通往主机的路径上的每个网关引出 ICMP TIME_EXCEEDED 响应。
+.P
+\fItraceroute6\fP 相当于 \fItraceroute\fP \fB\-6\fP
+.PP
+唯一需要的参数是目标 \fBhost\fP\ 的名称或 IP 地址。可选的 \fBpacket_len\fP`gth 是探测数据包的总大小 (IPv4 默认为 60
+个字节，IPv6 默认为 80 个字节)。在某些情况下可以忽略指定的大小或增加到最小值。
+.PP
+该程序尝试通过启动带有小 ttl (生存时间) 的探测数据包然后侦听来自网关的 ICMP "time exceeded" 回复来跟踪 IP
+数据包将遵循的路由到某个 Internet 主机。 我们以 1 的 ttl 开始我们的探测，然后增加 1，直到我们获得 ICMP "port
+unreachable" (或 TCP 重置)，这意味着我们到达 "host"，或达到最大值 (默认为 30 跳)。每个 ttl 设置发送三个探测
+(默认情况下)，并打印一行显示
+ttl、网关地址和每个探测的往返时间。如有需要，地址后可附有其他信息。如果探测应答来自不同的网关，则打印每个应答系统的地址。
+如果在特定超时内没有响应，则会为该探测打印 "*" (asterisk)。
+.PP
+在行程时间之后，可以打印一些额外的注解: \fB!H\fP、\fB!N\fP 或 \fB!P\fP (主机、网络或协议不可达)、\fB!S\fP (源路由失败)、\fB!F\fP
+(需要分片)、\fB!X\fP (通信管理禁止)、\fB!V\fP (主机违反优先级)，\fB!C\fP (优先级截止有效)，或 \fB!<num>\fP
+(ICMP 不可到达代码 <num>)。 如果几乎所有的探测都导致某种不可达，traceroute 将放弃并退出。
+.PP
+我们不希望目标主机处理 UDP 探测数据包，因此目标端口设置为不太可能的值 (您可以使用 \fB\-p\fP 标志更改它)。ICMP 或 TCP
+跟踪路由没有这样的问题 (对于 TCP，我们使用半开放技术，这可以防止我们的探测被目标主机上的应用程序看到)。
+.PP
+在现代网络环境中，由于防火墙的广泛使用，传统的 traceroute 方法不能一直适用。 此类防火墙过滤 "unlikely" UDP 端口，甚至过滤
+ICMP 回显。 为了解决这个问题，实现了一些额外的跟踪路由方法 (包括 tcp)，请参见下面的 \fBLIST OF AVAILABLE METHODS\fP。这些方法尝试使用特定的协议和 source/destination 端口，以绕过防火墙 (被防火墙视为允许类型的网络会话的开始)。
+.SH OPTIONS
+.TP 
+\fB\-\-help\fP
+打印帮助信息并退出。
+.TP 
+\fB\-4\fP, \fB\-6\fP
+明确强制 IPv4 或 IPv6 跟踪路由。默认情况下，程序会尝试解析给定的名称，并自动选择合适的协议。如果解析主机名同时返回 IPv4 和 IPv6
+地址，则 \fItraceroute\fP 将使用 IPv4。
+.TP 
+\fB\-I, \-\-icmp\fP
+使用 ICMP ECHO 进行探测
+.TP 
+\fB\-T, \-\-tcp\fP
+使用 TCP SYN 进行探测
+.TP 
+\fB\-d, \-\-debug\fP
+启用套接字级调试 (当 Linux 内核支持时)
+.TP 
+\fB\-F, \-\-dont\-fragment\fP
+不要将探测数据包分段。(对于 IPv4，它还设置 DF 位，告诉中间路由器也不要远程分片)。
+.br
+
+.br
+通过 \fBpacket_len\fP 命令行参数改变探测数据包的大小，您可以手动获取有关各个网络跃点的 MTU 的信息。\fB\-\-mtu\fP 选项 (见下文)
+尝试自动执行此操作。
+.br
+
+.br
+请注意，非碎片化，特性 (如 \fB\-F\fP 或 \fB\-\-mtu\fP) 可以正常工作，因为 Linux 内核仅适用于 2.6.22。 在那个版本之前，IPv6
+总是碎片化的，IPv4 只能使用一次发现的最终 mtu (来自路由缓存)，这可能小于设备的实际 mtu。
+.TP 
+\fB\-f\fP\fI first_ttl\fP\fB, \-\-first=\fP\fIfirst_ttl\fP
+指定以什么 TTL 开始。默认为 1.
+.TP 
+\fB\-g\fP\fI gateway\fP\fB, \-\-gateway=\fP\fIgateway\fP
+告诉 traceroute 向传出数据包添加 IP 源路由选项，告诉网络通过指定的 \fIgateway\fP 路由数据包
+(出于安全原因，大多数路由器已禁用源路由)。 通常，多个 \fIgateway\fP's 是允许的 (逗号分隔)。对于 IPv6，允许采用
+\fInum\fP\fB,\fP\fIaddr\fP\fB,\fP\fIaddr...\fP 的形式，其中 \fInum\fP 是路由头类型 (默认为类型 2)。请注意，类型 0
+路由标头现已弃用 (rfc5095)。
+.TP 
+\fB\-i\fP\fI interface\fP\fB, \-\-interface=\fP\fIinterface\fP
+指定 \fItraceroute\fP 应通过其发送数据包的接口。默认情况下，根据路由表选择接口。
+.TP 
+\fB\-m\fP\fI max_ttl\fP\fB, \-\-max\-hops=\fP\fImax_ttl\fP
+指定 \fItraceroute\fP 将探测的最大跳数 (最大生存时间值)。默认值为 30。
+.TP 
+\fB\-N\fP\fI squeries\fP\fB, \-\-sim\-queries=\fP\fIsqueries\fP
+指定同时发出的探测报文数。 同时发送多个探测可以大大加快 \fItraceroute\fP 的速度。默认值为 16。
+.br
+请注意，某些路由器和主机可以使用 ICMP 速率限制。在这种情况下，指定太大的数字可能会导致某些响应丢失。
+.TP 
+\fB\-n\fP
+显示它们时，不要尝试将 IP 地址 map 到主机名。
+.TP 
+\fB\-p\fP\fI port\fP\fB, \-\-port=\fP\fIport\fP
+对于 UDP 跟踪，指定目标端口 base \fItraceroute\fP 将使用 (目标端口号将由每个探测递增)。
+.br
+对于 ICMP 跟踪，指定初始 ICMP 序列值 (也由每个探测递增)。
+.br
+对于 TCP 和其他协议，仅指定要连接的 (constant) 目标端口。
+.TP 
+\fB\-t\fP\fI tos\fP\fB, \-\-tos=\fP\fItos\fP
+对于 IPv4，设置服务类型 (TOS) 和优先级值。有用的值为 16 (低延迟) 和 8 (高吞吐量)。请注意，为了使用某些 TOS
+优先级值，您必须是超级用户。
+.br
+对于 IPv6，设置流量控制值。
+.TP 
+\fB\-l\fP\fI flow_label\fP\fB, \-\-flowlabel=\fP\fIflow_label\fP
+对 IPv6 数据包使用指定的 flow_label。
+.TP 
+\fB\-w\fP\fI max\fP[\fB,\fP\fIhere\fP\fB,\fP\fInear\fP]\fB, \-\-wait=\fP\fImax\fP[\fB,\fP\fIhere\fP\fB,\fP\fInear\fP]
+确定等待探测响应的时间。
+.br
+
+.br
+有三个 (通常) 由逗号 (或斜杠) 分隔的浮点值。 \fIMax\fP 指定在任何情况下等待的最长时间 (以秒为单位，默认为 5.0)。
+.br
+
+.br
+传统的 traceroute 实现总是等待整个 \fImax\fP 秒以进行任何探测。但是如果我们已经有一些来自 \fBsame\fP 跃点的回复，或者甚至来自某个
+\fBnext\fP 跃点的回复，我们可以使用此类回复的往返时间作为提示来确定实际等待的合理时间量。
+.br
+
+.br
+可选的 \fIhere\fP (默认 3.0) 指定一个因子来乘以已从 \fBsame\fP 跃点接收到的响应的往返时间。结果值用作探测超时，而不是 (但不超过)
+\fImax\fP。 可选的 \fInear\fP (默认 10.0) 为来自某个 \fBnext\fP 跃点的响应指定了一个类似的因素。
+(在这两种情况下都使用第一个找到结果的时间)。
+.br
+
+.br
+首先，我们寻找 \fBsame\fP 跃点 (从现在开始将首先打印的探针)。 如果没有找到，则寻找一些 \fBnext\fP 跃点。如果未找到任何内容，请使用
+\fImax\fP。 如果 \fIhere\fP 或者 \fInear\fP 的值为零，则跳过相应的计算。
+.br
+如果仅指定 \fImax\fP (为了与以前的版本兼容)，则 \fIHere\fP 和 \fInear\fP 始终设置为零。
+.TP 
+\fB\-q\fP\fI nqueries\fP\fB, \-\-queries=\fP\fInqueries\fP
+设置每跳探测数据包的数量。默认是 3.
+.TP 
+\fB\-r\fP
+绕过正常的路由表并直接发送到连接网络上的主机。 如果主机不在直接连接的网络上，则返回错误。 此选项可用于通过没有路由的接口 ping 本地主机。
+.TP 
+\fB\-s\fP\fI source_addr\fP\fB, \-\-source=\fP\fIsource_addr\fP
+选择一个备用源地址。请注意，您必须选择其中一个接口的地址。 默认情况下，使用出接口的地址。
+.TP 
+\fB\-z\fP\fI sendwait\fP\fB, \-\-sendwait=\fP\fIsendwait\fP
+探测之间的最小时间间隔 (默认为 0)。 如果该值大于 10，则它指定一个以毫秒为单位的数字，否则它是一个秒数 (也允许浮点值)。 当某些路由器对
+ICMP 消息使用速率限制时很有用。
+.TP 
+\fB\-e, \-\-extensions\fP
+显示 ICMP 扩展 (rfc4884)。一般形式是 \fICLASS\fP\fB/\fP\fITYPE\fP\fB:\fP 后跟十六进制转储。 MPLS (rfc4950)
+显示为已解析，格式为:
+\fBMPLS:L=\fP\fIlabel\fP\fB,E=\fP\fIexp_use\fP\fB,S=\fP\fIstack_bottom\fP\fB,T=\fP\fITTL\fP (更多对象由
+\fB/\fP 分隔)。
+.TP 
+\fB\-A, \-\-as\-path\-lookups\fP
+在路由注册表中执行 AS 路径查找，并在相应地址后直接打印结果。
+.TP 
+\fB\-V, \-\-version\fP
+打印版本并退出。
+.br
+.P
+还有用于高级用途的其他选项 (例如备用跟踪方法等) :
+.TP 
+\fB\-\-sport\fP=\fIport\fP
+选择要使用的源端口。暗示 \fB\-N\ 1\fP\-w\5。通常源端口 (如果适用) 由系统选择。
+.TP 
+\fB\-\-fwmark\fP=\fImark\fP
+为传出数据包设置防火墙标记 (自 Linux 内核 2.6.25 起)。
+.TP 
+\fB\-M\fP\fI method\fP\fB, \-\-module=\fP\fIname\fP
+使用指定的方法进行 traceroute 操作。默认传统 udp 方法的名称为 \fIdefault\fP，icmp (\fB\-I\fP) 和 tcp
+(\fB\-T\fP) 的名称分别为 \fIicmp\fP 和 \fItcp\fP。
+.br
+特定于方法的选项可以通过 \fB\-O\ \fP 传递。 大多数方法都有其简单的快捷方式，(\fB\-I \fPmeans\fB \-M icmp \fP 等)。
+.TP 
+\fB\-O\fP\fI option\fP\fB, \-\-options=\fP\fIoptions\fP
+指定一些特定于方法的选项。几个选项用逗号分隔 (或在 cmdline 上使用多个 \fB\-O\fP)。 每种方法都可能有自己的特定选项，或者许多根本没有。
+要打印有关可用选项的信息，请使用 \fB\-O\ help\fP。
+.TP 
+\fB\-U, \-\-udp\fP
+使用 UDP 到特定目标端口进行跟踪路由 (而不是增加每个探测的端口)。默认端口为 53 (dns)。
+.TP 
+\fB\-UL\fP
+使用 UDPLITE 进行跟踪路由 (默认端口为 53)。
+.TP 
+\fB\-D, \-\-dccp\fP
+使用 DCCP 请求进行探测。
+.TP 
+\fB\-P\fP\fI protocol\fP\fB, \-\-protocol=\fP\fIprotocol\fP
+使用指定协议的原始数据包进行跟踪路由。默认协议为 253 (rfc3692)。
+.TP 
+\fB\-\-mtu\fP
+沿着被跟踪的路径发现 MTU。表示 \fB\-F\ \-N\ 1\fP。 新的 \fImtu\fP 在需要到达这样的 \fImtu\fP 的跳的第一个探测处以
+\fBF=\fP\fINUM\fP 的形式打印一次。(实际上对应的 "frag needed" icmp 报文正常是上一跳发送的)。
+.br
+
+.br
+请注意，某些路由器可能会缓存曾经看到的关于碎片的信息。因此，您可以从更近的跃点接收最终的 mtu。 尝试通过 \fB\-t\fP 指定一个不寻常的
+\fItos\fP，这可以帮助一次尝试 (然后它也可以缓存在那里)。
+.br
+有关详细信息，请参见 \fB\-F\fP 选项。
+.TP 
+\fB\-\-back\fP
+当看起来与正向不同时，打印向后跳数。这个数字是在假设远程跃点发送初始 ttl 设置为 64、128 或 255 (这似乎是常见做法)
+的回复数据包的情况下猜测的。它以 '\-NUM' 的形式打印为负值。
+.SH "LIST OF AVAILABLE METHODS"
+通常，\fB\-M\ name\fP 可能必须选择特定的跟踪路由方法，但大多数方法都有其简单的 cmdline 开关 (如果存在，您可以在方法名称后看到它们)。
+.SS default
+传统的、古老的跟踪路由方法。默认使用。
+.P
+探测数据包是具有所谓的 "unlikely" 目标端口的 udp 数据报。 第一个探测的 "unlikely" 端口是
+33434，然后对于每个下一个探测，它都会增加一个。由于预期端口未被使用，目标主机通常返回 "icmp unreach port" 作为最终响应。
+(虽然没有人知道当某些应用程序侦听此类端口时会发生什么)。
+.P
+非特权用户可以使用此方法。
+.SS "icmp \  \  \  \-I"
+目前最常用的方法，它使用 icmp 回显数据包进行探测。
+.br
+如果您可以 ping(8) 目标主机，icmp tracerouting 也适用。
+.P
+自内核 3.0 (IPv4，自 3.11 起用于 IPv6) 以来，非特权用户可能会允许使用此方法，它支持新的 \fIdgram icmp\fP (或
+"\fIping\fP") 套接字)。要允许此类套接字，系统管理员应提供 \fInet/ipv4/ping_group_range\fP sysctl
+范围以匹配任何用户组。
+.br
+Options:
+.TP 
+\fBraw\fP
+仅使用原始套接字 (传统方式)。
+.br
+默认情况下首先尝试这种方式 (出于兼容性原因)，然后使用新的 dgram icmp 套接字作为后备。
+.TP 
+\fBdgram\fP
+仅使用 dgram icmp 套接字。
+.SS "tcp \  \  \  \ \-T"
+众所周知的现代方法，旨在绕过防火墙。
+.br
+使用常量目标端口 (默认为 80，http)。
+.P
+如果网络路径中存在一些过滤器，那么很可能任何 "unlikely" udp 端口 (对于 \fIdefault\fP 方法) 甚至 icmp 回显 (对于
+\fIicmp\fP) 方法) 都被过滤，并且整个跟踪路由只会在这样的防火墙处停止。 要绕过网络过滤器，我们必须只使用允许的 protocol/port
+组合。如果我们跟踪某些邮件服务器，那么 \fB\-T \-p 25\fP 更有可能到达它，即使 \fB\-I\fP 不能。
+.P
+此方法使用众所周知的 "half\-open technique"，它可以防止目标主机上的应用程序看到我们的探测器。 通常，会发送一个 tcp
+syn。对于非侦听端口，我们收到 tcp 重置，一切都已完成。对于主动侦听端口，我们收到 tcp syn+ack，但通过 tcp 重置 (而不是预期的
+tcp ack) 进行应答，这样远程 tcp 会话即使在应用程序没有注意到的情况下也是丢弃的。
+.P
+\fItcp\fP 方法有几个选项:
+.TP 
+\fBsyn,ack,fin,rst,psh,urg,ece,cwr\fP
+以任意组合为探测数据包设置指定的 tcp 标志。
+.TP 
+\fBflags\fP=\fInum\fP
+将 tcp 标头中的标志字段设置为 \fInum\fP。
+.TP 
+\fBecn\fP
+发送带有 tcp 标记 ECE 和 CWR 的 syn 数据包 (用于显式拥塞通知，rfc3168)。
+.TP 
+\fBsack,timestamps,window_scaling\fP
+在传出探测数据包中使用相应的 tcp 标头选项。
+.TP 
+\fBsysctl\fP
+对上面的 tcp 标头选项和 \fBecn\fP 使用当前的 sysctl (\fI/proc/sys/net/*\fP) 设置。
+如果没有其他指定，则始终默认设置。
+.TP 
+\fBmss\fP=\fInum\fP
+将 \fInum\fP 的值用于 maxseg tcp 标头选项 (当 \fBsyn\fP).
+.TP 
+\fBinfo\fP
+到达目标主机时打印最终 tcp 回复的 tcp 标志。 允许确定应用程序是否监听端口和其他有用的东西。
+.P
+默认选项是 \fBsyn,sysctl\fP。
+.SS tcpconn
+tcp 方法的初始实现，使用 connect(2) 调用很简单，它可以打开完整的 tcp 会话。不建议正常使用，因为目标应用程序总是会受到影响
+(并且可能会混淆)。
+.SS "udp \  \  \  \ \-U"
+使用带有常量目标端口的 udp 数据报 (默认 53，dns)。
+.br
+也打算绕过防火墙。
+.P
+请注意，与 \fItcp\fP 方法不同，目标主机 \fBalways\fP 上的相应应用程序接收我们的探测
+(带有随机数据)，并且大多数很容易被它们混淆。大多数情况下它不会响应我们的数据包，所以我们永远不会在跟踪中看到最后一跳。(幸运的是，似乎至少 dns
+服务器回复了一些愤怒的东西)。
+.P
+非特权用户可以使用此方法。
+.SS "udplite \  \ \-UL"
+使用 udplite 数据报进行探测 (带有常量目标端口，默认 53)。
+.P
+非特权用户可以使用此方法。
+.br
+Options:
+.TP 
+\fBcoverage\fP=\fInum\fP
+将 udplite 发送覆盖设置为 \fInum\fP。
+.SS "dccp \  \ \-D"
+将 DCCP 请求数据包用于探测 (rfc4340)。
+.P
+此方法使用与 TCP 相同的 "half\-open technique"。 默认目标端口为 33434。
+.P
+Options:
+.TP 
+\fBservice\fP=\fInum\fP
+将 DCCP 服务代码设置为 \fInum\fP (默认为 1885957735)。
+.SS "raw \  \  \  \ \-P proto"
+发送协议 \fIproto\fP 的原始数据包。
+.br
+不使用特定于协议的标头，仅使用 IP 标头。
+.br
+暗示 \fB\-N\ 1\fP\-w\5。
+.br
+Options:
+.TP 
+\fBprotocol\fP=\fIproto\fP
+使用 IP 协议 \fIproto\fP (默认 253)。
+.SH NOTES
+.PP
+为了加快工作速度，通常会同时发送多个探测。 另一方面，它创建了一个 "storm of packages"，尤其是在回复方向。路由器可以限制 icmp
+响应的速率，一些回复可能会丢失。为了避免这种情况，减少同时探测的数量，甚至将其设置为 1 (就像在初始跟踪路由实现中一样)，即 \fB\-N 1\fP
+.PP
+最终的 (target) 主机可以抛弃一些同时进行的探测，甚至可能只回答最新的探测。它会导致在最后一跳附近有额外的 "looks like
+expired" 跳。我们使用智能算法自动检测这种情况，但如果它对您的情况没有帮助，也可以使用 \fB\-N 1\fP。
+.PP
+为了获得更高的稳定性，您可以通过 \fB\-z\fP 选项减慢程序的工作速度，例如使用 \fB\-z 0.5\fP 在探测之间暂停半秒。
+.PP
+为了避免额外的等待，我们使用自适应算法来超时 (有关更多信息，请参见 \fB\-w\fP 选项)。它可能导致过早到期 (尤其是当响应时间有时不同时) 并打印
+"*" 而不是时间。在这种情况下，通过仅指定具有所需超时的 \fB\-w\fP (例如，\fB\-w 5\fP).
+.PP
+如果某些跃点对每种方法都没有报告任何内容，那么获得某些信息的最后机会是使用 \fBping \-R\fP 命令 (IPv4，并且仅适用于最近的 8 跃点)。
+.SH "SEE ALSO"
+\fBping\fP(8), \fBping6\fP(8), \fBtcpdump\fP(8), \fBnetstat\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

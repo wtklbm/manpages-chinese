@@ -1,0 +1,147 @@
+.\" -*- coding: UTF-8 -*-
+''' $Id: uux.1,v 1.15 2002/03/05 22:20:48 ian Rel $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH uux 1 "Taylor UUCP 1.07"  
+.SH NAME
+uux \- 通过 UUCP 执行远程命令
+.SH SYNOPSIS
+\fBuux\fP [ options ] 指令
+.SH DESCRIPTION
+\fIuux\fP 命令用于在远程系统上执行命令，或使用远程系统中的文件在本地系统上执行命令。 该命令不会立即执行; 请求排队，直到 \fIuucico\fP
+(8) 守护程序调用系统并执行它。 除非给出 \fB\-r\fP 或 \fB\-\-nouucico\fP 选项之一，否则守护进程会自动启动。
+
+实际的命令执行是由 \fIuuxqt\fP (8) 守护进程完成的。
+
+文件参数可以像标准输入一样从远程系统收集到执行系统。 标准输出可以定向到远程系统上的文件。
+
+如果要在远程系统上执行，命令名称前面可以有系统名称，后跟感叹号。 一个空的系统名称被当作本地系统。
+
+每个包含感叹号的参数都被视为命名一个文件。 文件所在的系统在感叹号之前，该系统上的路径名在感叹号之后。 一个空的系统名称被认为是本地系统;
+这必须用于将文件传输到在远程系统上执行的命令。 如果路径不是绝对路径，它将追加到本地系统上的当前工作目录; 结果在远程系统上可能没有意义。 路径名可以以
+~/ 开头，在这种情况下，它是相对于相应系统上的 UUCP 公共目录 (通常是 /usr/spool/uucppublic 或
+/var/spool/uucppublic) 的。 路径名可以以 ~name / 开头，在这种情况下，它是相对于适当系统上指定用户的主目录的。
+
+标准输入和输出可以像往常一样被重定向; 使用的路径名可能包含感叹号以表明它们在远程系统上。 请注意，必须引用重定向字符，以便将它们传递给 \fIuux\fP
+而不是由 shell 解释。 追加重定向 (>>) 不起作用。
+
+在开始执行命令之前，所有指定的文件都被收集到一个目录中。 这意味着每个文件必须有一个不同的基本名称。 例如，
+.br
+.in +0.5i
+.nf
+uux 'sys1!diff sys2!~user1/foo sys3!~user2/foo >!foo.diff'
+.fi
+.in -0.5i
+将失败，因为这两个文件都将被复制到 sys1 并存储在名称 foo 下。
+
+参数可以用括号引用以避免感叹号的解释。 这在远程系统上执行 \fIuucp\fP 命令时很有用。
+
+执行空命令的请求 (例如，\fIuux sys!)\fP 将为指定系统创建轮询文件。
+
+\fIuux\fP 的退出状态是在头文件 \fBsysexits.h.\fP 中找到的代码之一，其中 \fBEX_OK\fP (\fB0\fP)
+表示成功，\fBEX_TEMPFAIL\fP (\fB75\fP) 表示暂时失败。
+.SH OPTIONS
+可以为 \fIuux.\fP 提供以下选项
+.TP  5
+\fB\-, \-p, \-\-stdin\fP
+读取标准输入并将其作为要执行的命令的标准输入。
+.TP  5
+\fB\-c, \-\-nocopy\fP
+不要将本地文件复制到假脱机目录。 这是默认设置。 如果它们在被 \fIuucico\fP (8) 守护程序处理之前被删除，复制将失败。 \fIuucico\fP
+(8) 守护程序以及 \fIuux.\fP 的调用程序必须可以读取这些文件
+.TP  5
+\fB\-C, \-\-copy\fP
+将本地文件复制到假脱机目录。
+.TP  5
+\fB\-l, \-\-link\fP
+将本地文件链接到假脱机目录。 如果文件因为位于不同的设备上而无法链接，它将被复制，除非 \fB\-c\fP 或 \fB\-\-nocopy\fP 选项之一也出现
+(换句话说，使用 \fB\-\-link\fP 将默认值从 \fB\-\-nocopy\fP 切换到 \fB\-\-copy).\fP 如果之前更改文件由 \fIuucico\fP (8)
+守护程序处理，将使用更改后的版本。 这些文件必须可由 \fIuucico\fP (8) 守护程序以及 \fIuux.\fP 的调用程序读取
+.TP  5
+\fB\-g grade, \-\-grade grade\fP
+设置文件传输命令的等级。 首先执行更高级别的作业。 成绩跑 0 ... 9 个... Z 一个... z 从高到低。
+.TP  5
+\fB\-n, \-\-notification=no\fP
+不要发送有关作业状态的邮件，即使它失败了。
+.TP  5
+\fB\-z, \-\-notification=error\fP
+如果发生错误，发送有关作业状态的邮件。 对于许多 \fIuuxqt\fP 守护进程，包括 Taylor UUCP \fIuuxqt,\fP，这是默认操作;
+对于那些，\fB\-\-notification=error\fP 将无效。 但是，如果作业成功，一些 \fIuuxqt\fP 守护程序将发送邮件，除非使用
+\fB\-\-notification=error\fP 选项，而其他一些 \fIuuxqt\fP 守护程序将不会在作业失败时发送邮件，除非使用
+\fB\-\-notification=error\fP 选项。
+.TP  5
+\fB\-r, \-\-nouucico\fP
+不要立即启动 \fIuucico\fP (8) 守护程序; 只需排队执行请求以供稍后处理。
+.TP  5
+\fB\-j, \-\-jobid\fP
+在标准输出上打印 jobid。 将为执行操作所需的每个文件复制操作生成一个 jobid。 将 jobid 传递给 \fIuustat\fP (1) 的
+\fB\-\-kill\fP 开关可能会取消这些文件拷贝，这样会导致执行无法完成。
+.TP  5
+\fB\-a address, \-\-requestor address\fP
+将作业状态报告到指定的电子邮件地址。
+.TP  5
+\fB\-x type, \-\-debug type\fP
+打开特定的调试类型。 可以识别以下类型: 异常、聊天、握手、uucp\-proto、proto、端口、配置、spooldir、执行、传入、传出。 只有
+abnormal、config、spooldir 和 execute 对 \fIuux.\fP 有意义
+
+可以给出多种类型，用逗号分隔，\fB\-\-debug\fP 选项可以出现多次。 也可以给出一个数字，它将打开上述列表中的许多类型; 例如，\fB\-\-debug 2\fP 等同于 \fB\-\-debug abnormal,chat.\fP
+.TP  5
+\fB\-I file, \-\-config file\fP
+设置要使用的配置文件。 此选项可能不可用，具体取决于 \fIuux\fP 的编译方式。
+.TP  5
+\fB\-v, \-\-version\fP
+上报版本信息并退出。
+.TP  5
+\fB\-\-help\fP
+打印帮助信息并退出。
+.SH EXAMPLES
+.br
+.nf
+uux \-z \- sys1!rmail user1
+.fi
+在系统 sys1 上执行命令 `rmail user1`，将其作为标准输入提供给 \fIuux\fP 作为标准输入。 如果发生故障，请使用 \fImail\fP
+(1) 发送消息。
+
+.br
+.nf
+uux 'diff \-c sys1!~user1/file1 sys2!~user2/file2 >!file.diff'
+.fi
+从系统 sys1 和系统 sys2 中获取两个命名文件并执行 \fIdiff\fP 并将结果放入当前目录中的 file.diff。 当前目录必须可由
+\fIuuxqt\fP (8) 守护程序写入才能工作。
+
+.br
+.nf
+uux 'sys1!uucp ~user1/file1 (sys2!~user2/file2)'
+.fi
+在系统 sys1 上执行 \fIuucp\fP，将 file1 (在系统 sys1 上) 复制到 sys2。 这说明了使用括号进行引用。
+.SH RESTRICTIONS
+远程系统可能不允许您执行某些命令。 许多远程系统只允许执行 \fIrmail\fP 和 \fIrnews.\fP
+
+某些选项取决于远程系统上 \fIuuxqt\fP (8) 守护程序的功能。
+.SH "SEE ALSO"
+mail(1), uustat(1), uucp(1), uucico(8), uuxqt(8)
+.SH BUGS
+文件不能跨多个系统引用。
+
+\fB\-\-jobid,\fP 输出的 jobid 太多，没有好的方法可以取消需要远程文件的本地执行。
+.SH AUTHOR
+伊恩・兰斯・泰勒 (ian@airs.com)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

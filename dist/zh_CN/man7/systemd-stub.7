@@ -1,0 +1,426 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-STUB 7 "" "systemd 253" systemd\-stub
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-stub、sd\-stub、linuxx64.efi.stub、linuxia32.efi.stub、linuxaa64.efi.stub
+\- 一个简单的 UEFI 内核引导存根
+.SH SYNOPSIS
+.PP
+/usr/lib/systemd/boot/efi/linuxx64\&.efi\&.stub
+.PP
+/usr/lib/systemd/boot/efi/linuxia32\&.efi\&.stub
+.PP
+/usr/lib/systemd/boot/efi/linuxaa64\&.efi\&.stub
+.PP
+\fIESP\fP/\&.\&.\&./\fIfoo\fP\&.efi\&.extra\&.d/*\&.cred
+.PP
+\fIESP\fP/\&.\&.\&./\fIfoo\fP\&.efi\&.extra\&.d/*\&.raw
+.PP
+\fIESP\fP/loader/credentials/*\&.cred
+.SH DESCRIPTION
+.PP
+\fBsystemd\-stub\fP (存储在磁盘上的每个体系结构文件
+linuxx64\&.efi\&.stub、linuxia32\&.efi\&.stub、linuxaa64\&.efi\&.stub 中)
+是一个简单的 UEFI 引导存根 \&。UEFI boot stub 附加在 Linux 内核二进制镜像上，是在过渡到 Linux 内核环境之前在
+UEFI 固件环境中运行的一段代码 \&。UEFI 引导存根确保 Linux 内核可作为常规 UEFI 二进制文件执行，并且能够在将系统切换到
+Linux 世界之前进行各种准备 \&。
+.PP
+UEFI 引导存根在 UEFI PE 二进制文件本身中寻找内核调用的各种资源。这允许在单个 PE 二进制映像 (通常称为 "Unified Kernel
+Image"，或简称 "UKI") 中组合各种资源，然后可以通过 UEFI SecureBoot 作为一个整体对其进行签名，一次覆盖所有单个资源
+\&。具体可能包括:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+ELF Linux 内核映像将在已执行映像的 "\&.linux" PE 部分中查找 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+操作系统发布信息，i\&.e\&。内核所属 OS 的 \fBos\-release\fP(5) 文件，在 "\&.osrel" PE 段 \&.
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+initrd 将从 "\&.initrd" PE 部分加载。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+将在 "\&.dtb" PE 部分 \& 中查找已编译的二进制 DeviceTree。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+将在 "\&.cmdline" PE 部分 \& 中查找传递给调用内核的内核命令行。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+将在 "\&.splash" PE 部分 \& 中查找在调用内核之前显示在屏幕上的启动启动画面 (Windows\&.BMP 格式)。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+启动此内核时预期 TPM2 PCR 值的一组加密签名，采用 JSON 格式，位于 "\&.pcrsig" 部分 \&。这对于实现绑定磁盘加密的 TPM2
+策略很有用，类似于由特定密钥签名的内核。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+PEM 格式的公钥与 "\&.pcrpkey" 部分中的此 TPM2 PCR 签名数据匹配 \&。
+.RE
+.PP
+如果启用了 UEFI SecureBoot 并且 "\&.cmdline" 部分出现在执行的映像中，则通过将一个作为调用参数传递给 EFI
+二进制文件来覆盖内核命令行的任何尝试都会被忽略 \&。因此，为了允许覆盖内核命令行，要么禁用 UEFI SecureBoot，要么不要 \*(Aqt
+在内核映像文件中包含内核命令行 PE 部分 \&. 如果通过 EFI 二进制文件的 EFI 调用参数接受命令行，则将其测量为 TPM PCR 12
+(如果存在 TPM) \&。
+.PP
+如果在 "\&.dtb" 部分中嵌入了 DeviceTree，它将替换相应 EFI 配置表中的现有 DeviceTree\&。systemd\-stub
+将通过 "EFI_DT_FIXUP_PROTOCOL" 向固件询问 DeviceTree\& 的硬件特定修复。
+.PP
+这八个 PE 部分中的七个的内容被测量到 TPM PCR 11 中，否则不使用 \&。因此，它可以毫不费力地预先计算 \&。"\&.pcrsig"
+部分不包含在此 PCR 测量中，因为它 \*(Aqs 应该包含这些测量的预期结果的签名，i\&.e\&。测量操作的输出，因此也不能输入它 \&。
+.PP
+当 "\&.pcrsig" 或者 `\&.pcrpkey` 存在于统一内核映像中时，它们的内容将在合成的 initrd cpio
+存档中传递到引导内核，该存档将它们放置在 /\&.extra/tpm2\-pcr\-signature\&.json 和
+/\&.extra/tpm2\-pcr\-public\-key\&.pem 文件 \&。通常，\fBtmpfiles.d\fP(5) 行然后确保将它们复制到
+/run/systemd/tpm2\-pcr\-signature\&.json 和
+/run/systemd/tpm2\-pcr\-public\-key\&.pem 中，即使在系统从 initrd 环境转换到主机文件系统 \&
+之后，它们仍然可以访问。\fBsystemd\-cryptsetup@.service\fP(8)、\fBsystemd\-cryptenroll\fP(1) 和
+\fBsystemd\-creds\fP(1) 等工具将自动使用这些路径下的文件来解锁受保护的资源 (加密存储或凭据) 或将加密绑定到启动的内核 \&。
+.SH "COMPANION FILES"
+.PP
+\fBsystemd\-stub\fP UEFI 引导存根自动收集两种类型的辅助伴随文件，它们可选地放置在与 EFI 二进制文件相同分区的 \- in
+目录中，从中动态生成 \fBcpio\fP initrd 存档，并将它们传递给内核 \&。Specifically:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+对于名为 \fIfoo\fP\&.efi 的内核二进制文件，它将在其旁边名为 \fIfoo\fP\&.efi\&.extra\&.d/ 的目录中查找带有
+\&.cred 后缀的文件 \&。以这种方式找到的所有文件都会生成一个 \fBcpio\fP 存档，将它们放在 initrd 文件层次结构的
+/\&.extra/credentials/ 目录中 \&。然后主 initrd 可以在这个目录中访问它们
+\&。这应该用于存储辅助的、加密的、经过身份验证的凭据，以便在 UEFI 系统分区 \& 中与 \fILoadCredentialEncrypted=\fP
+一起使用。有关加密凭证的详细信息，请参见 \fBsystemd.exec\fP(5) 和 \fBsystemd\-creds\fP(1)。生成的 \fBcpio\fP
+存档被测量到 TPM PCR 12 (如果存在 TPM) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+类似地，文件 \fIfoo\fP\&.efi\&.extra\&.d/*\&.raw 被打包在 \fBcpio\fP 存档中，并放置在 initrd
+文件层次结构中的 /\&.extra/sysext/ 目录中。这应该用于将额外的系统扩展映像传递给 initrd\&。有关系统扩展图像 \&
+的详细信息，请参见 \fBsystemd\-sysext\fP(8)。包含这些系统扩展映像的生成的 \fBcpio\fP 存档被测量到 TPM PCR 13
+(如果存在 TPM) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+文件 /loader/credentials/*\&.cred 被打包在一个 \fBcpio\fP 存档中，并放置在 initrd 文件层次结构的
+/\&.extra/global_credentials/ 目录中 \&。这应该用于将额外的凭据传递给 initrd，而不管正在引导的内核 \&。生成的
+\fBcpio\fP 存档被测量到 TPM PCR 12 (如果存在 TPM)
+.RE
+.PP
+这些机制可用于以合理安全的方式参数化和扩展可信 (i\&.e\&. 签名)、不可更改的 initrd 映像: 它们包含的所有数据都被测量到 TPM
+PCRs\&。在访问时，应进一步验证它们: 在 encrypting/authenticating 的凭据情况下，它们通过 TPM，由
+\fBsystemd\-creds encrypt \-T\fP 公开 (有关详细信息，请参见 \fBsystemd\-creds\fP(1)) ;
+如果系统扩展图像使用签名的 Verity 图像 \&。
+.SH "TPM PCR NOTES"
+.PP
+请注意，当调用使用 \fBsystemd\-stub\fP 的统一内核时，固件会将其作为一个整体测量到 TPM PCR
+4，涵盖所有嵌入式资源，例如存根代码本身、核心内核、嵌入式 initrd 和内核命令行 (见上文完整列表) \&。
+.PP
+另请注意，Linux 内核会将其接收到的所有 initrd 测量到 TPM PCR 9\& 中。这意味着每种类型的 initrd 将被测量两次或三次:
+内核映像中嵌入的 initrd 将被测量为 PCR 4、PCR 9 和 PCR 11; 从凭据合成的 initrd 将针对 PCR 9 和 PCR 12
+进行测量; 从系统扩展合成的 initrd 将被测量到 PCR 4 和 PCR 9\&。让 \*(Aqs 总结操作系统资源和它们被测量的 PCRs:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&OS Resource PCR Summary\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+OS Resource
+T}:T{
+Measurement PCR
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+\fBsystemd\-stub\fP code (the entry point of the unified PE binary)
+T}:T{
+4
+T}
+T{
+Core kernel code (embedded in unified PE binary)
+T}:T{
+4 + 11
+T}
+T{
+OS release information (embedded in the unified PE binary)
+T}:T{
+4 + 11
+T}
+T{
+Main initrd (embedded in unified PE binary)
+T}:T{
+4 + 9 + 11
+T}
+T{
+Default kernel command line (embedded in unified PE binary)
+T}:T{
+4 + 11
+T}
+T{
+Overridden kernel command line
+T}:T{
+12
+T}
+T{
+Boot splash (embedded in the unified PE binary)
+T}:T{
+4 + 11
+T}
+T{
+TPM2 PCR signature JSON (embedded in unified PE binary, synthesized into initrd)
+T}:T{
+4 + 9
+T}
+T{
+TPM2 PCR PEM public key (embedded in unified PE binary, synthesized into initrd)
+T}:T{
+4 + 9 + 11
+T}
+T{
+Credentials (synthesized initrd from companion files)
+T}:T{
+9 + 12
+T}
+T{
+System Extensions (synthesized initrd from companion files)
+T}:T{
+9 + 13
+T}
+.TE
+.sp 1
+.SH "EFI VARIABLES"
+.PP
+以下 EFI 变量由 \fBsystemd\-stub\fP 在供应商 UUID "4a67b082\-0a4c\-41cf\-b6c7\-440b29bb8c4f"
+下定义、设置和读取，用于引导存根和操作系统之间的通信:
+.PP
+\fILoaderDevicePartUUID\fP
+.RS 4
+包含运行 EFI 映像的 EFI 系统分区的分区 UUID\&。 \fBsystemd\-gpt\-auto\-generator\fP(8)
+使用此信息自动查找启动磁盘，以便自动发现同一磁盘上的各种其他分区 \&。
+.RE
+.PP
+\fILoaderFirmwareInfo\fP, \fILoaderFirmwareType\fP
+.RS 4
+简要固件信息 \&。使用 \fBbootctl\fP(1) 查看此数据 \&。
+.RE
+.PP
+\fILoaderImageIdentifier\fP
+.RS 4
+EFI 可执行文件的路径，相对于 EFI 系统分区 \*(Aqs 根目录 \&. 使用 \fBbootctl\fP(1) 查看此数据 \&。
+.RE
+.PP
+\fIStubInfo\fP
+.RS 4
+简短的存根信息 \&。使用 \fBbootctl\fP(1) 查看此数据 \&。
+.RE
+.PP
+\fIStubPcrKernelImage\fP
+.RS 4
+PCR 寄存器索引内核映像、initrd 映像、boot splash、devicetree 数据库和嵌入式命令行被测量成，格式为十进制 ASCII
+字符串 (e\&.g\&."11")\&。如果测量成功完成，则设置此变量，否则保持未设置 \&。
+.RE
+.PP
+\fIStubPcrKernelParameters\fP
+.RS 4
+内核命令行和凭据被测量到的 PCR 寄存器索引，格式为十进制 ASCII 字符串
+(e\&.g\&. "12")\&。如果测量成功完成，则设置此变量，否则保持未设置 \&。
+.RE
+.PP
+\fIStubPcrInitRDSysExts\fP
+.RS 4
+PCR 寄存器索引 initrd 的 systemd 扩展，这些扩展是从内核映像所在的文件系统中获取的。格式化为十进制 ASCII 字符串
+(e\&.g\&. "13")\&。如果测量成功完成，则设置此变量，否则保持未设置 \&。
+.RE
+.PP
+请注意，上面的一些变量也可能由引导加载程序设置 \&。只有在 \*(Aqt set already\&. 其中一些变量由 \m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[1]\d\s+2\& 定义。
+.SH "INITRD RESOURCES"
+.PP
+以下资源作为 initrd cpio 存档传递给引导的内核，从而构成 initrd 执行环境中的初始文件系统层次结构:
+.PP
+/
+.RS 4
+来自统一内核映像的 "\&.initrd" PE 部分的主要 initrd\&。
+.RE
+.PP
+/\&.extra/credentials/*\&.cred
+.RS 4
+将放在统一内核镜像 (如上所述) 旁边的凭证文件 (后缀 "\&.cred") 复制到 initrd 执行环境中的
+/\&.extra/credentials/ 目录下 \&。
+.RE
+.PP
+/\&.extra/global_credentials/*\&.cred
+.RS 4
+同理，将统一内核镜像所在文件系统中 /loader/credentials/ 目录下的凭证文件复制到 initrd 执行环境中的
+/\&.extra/global_credentials/ 目录下。
+.RE
+.PP
+/\&.extra/sysext/*\&.raw
+.RS 4
+将放在统一内核镜像 (如上所述) 旁边的系统扩展镜像文件 (后缀 "\&.raw") 复制到 initrd 执行环境 \& 中的
+/\&.extra/sysext/ 目录下。
+.RE
+.PP
+/\&.extra/tpm2\-pcr\-signature\&.json
+.RS 4
+将统一内核镜像 "\&.pcrsig" PE 部分包含的 TPM2 PCR 签名 JSON 对象复制到 initrd 执行环境中的
+/\&.extra/tpm2\-pcr\-signature\&.json 文件中 \&。
+.RE
+.PP
+/\&.extra/tpm2\-pcr\-pkey\&.pem
+.RS 4
+将统一内核镜像 "\&.pcrpkey" PE 段包含的 PEM 公钥复制到 initrd 执行环境的
+/\&.extra/tpm2\-pcr\-public\-key\&.pem 文件中。
+.RE
+.PP
+请注意，所有这些文件都位于内核为 initrd 文件层次结构设置的 "tmpfs" 文件系统中，因此在系统从 initrd
+执行环境转换到主机文件系统时丢失。如果这些资源应该在这个转换过程中保留，它们需要首先复制到一个在转换中幸存下来的地方，例如通过合适的
+\fBtmpfiles.d\fP(5) 行 \&。默认情况下，这是针对 TPM2 PCR 签名和公钥文件完成的。
+.SH "ASSEMBLING KERNEL IMAGES"
+.PP
+为了从如上所述的各种组件组装可引导的统一内核映像，请使用 \fBukify\fP(1)\&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\-boot\fP(7), \fBsystemd.exec\fP(5), \fBsystemd\-creds\fP(1),
+\fBsystemd\-sysext\fP(8), \m[blue]\fBBoot Loader Specification\fP\m[]\&\s-2\u[2]\d\s+2, \m[blue]\fBBoot Loader Interface\fP\m[]\&\s-2\u[1]\d\s+2, \fBukify\fP(1), \fBsystemd\-measure\fP(1)
+.SH NOTES
+.IP " 1." 4
+引导加载程序接口
+.RS 4
+\%https://systemd.io/BOOT_LOADER_INTERFACE
+.RE
+.IP " 2." 4
+引导装载程序规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/boot_loader_specification
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

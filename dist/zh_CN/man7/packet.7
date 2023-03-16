@@ -1,0 +1,368 @@
+.\" -*- coding: UTF-8 -*-
+.\" This man page is Copyright (C) 1999 Andi Kleen <ak@muc.de>.
+.\"
+.\" %%%LICENSE_START(VERBATIM_ONE_PARA)
+.\" Permission is granted to distribute possibly modified copies
+.\" of this page provided the header is included verbatim,
+.\" and in case of nontrivial modification author and date
+.\" of the modification is added to the header.
+.\" %%%LICENSE_END
+.\"
+.\" $Id: packet.7,v 1.13 2000/08/14 08:03:45 ak Exp $
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH packet 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+数据包 \- 设备级别的数据包接口
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+\fB#include <linux/if_packet.h>\fP
+\fB#include <net/ethernet.h> /* the L2 protocols */\fP
+.PP
+\fBpacket_socket = socket(AF_PACKET, int \fP\fIsocket_type\fP\fB, int \fP\fIprotocol\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+数据包套接字用于在设备驱动程序 (OSI 第 2 层) 级别接收或发送原始数据包。 它们允许用户在物理层之上的用户空间中实现协议模块。
+.PP
+\fIsocket_type\fP 是 \fBSOCK_RAW\fP (用于包含链路级标头的原始数据包) 或 \fBSOCK_DGRAM\fP
+(用于去除链路级标头的熟数据包)。 链接级标头信息以 \fIsockaddr_ll\fP 结构体中的通用格式提供。 \fIprotocol\fP 是网络字节顺序的
+IEEE 802.3 协议编号。 有关允许的协议列表，请参见 \fI<linux/if_ether.h>\fP 包含文件。 当协议设置为
+\fBhtons(ETH_P_ALL)\fP 时，则接收所有协议。 该协议类型的所有传入数据包将在传递给内核中实现的协议之前传递给数据包套接字。 如果
+\fIprotocol\fP 设置为零，则不会收到任何数据包。 可以选择使用非零 \fIsll_protocol\fP 调用 \fBbind\fP(2)
+以开始接收指定协议的数据包。
+.PP
+为了创建数据包套接字，进程必须在管理其网络命名空间的用户命名空间中具有 \fBCAP_NET_RAW\fP 功能。
+.PP
+\fBSOCK_RAW\fP 数据包在数据包数据没有任何变化的情况下传入和传出设备驱动程序。 当接收到数据包时，地址仍然被解析并以标准的
+\fIsockaddr_ll\fP 地址结构体传递。 传输数据包时，用户提供的缓冲区应包含物理层标头。
+然后，该数据包未经修改地排队到目标地址定义的接口的网络驱动程序。 一些设备驱动程序总是添加其他标头。 \fBSOCK_RAW\fP 与 Linux 2.0
+的过时 \fBAF_INET/SOCK_PACKET\fP 类似但不兼容。
+.PP
+\fBSOCK_DGRAM\fP 的运行级别稍高。 在将数据包传递给用户之前删除物理标头。 通过 \fBSOCK_DGRAM\fP
+数据包套接字发送的数据包在排队之前根据 \fIsockaddr_ll\fP 目标地址中的信息获得合适的物理层标头。
+.PP
+默认情况下，指定协议类型的所有数据包都传递到数据包套接字。 要仅从特定接口获取数据包，请使用 \fBbind\fP(2) 在 \fIstruct sockaddr_ll\fP 中指定地址以将数据包套接字绑定到接口。 用于绑定的字段是 \fIsll_family\fP (应该是
+\fBAF_PACKET\fP)、\fIsll_protocol\fP 和 \fIsll_ifindex\fP。
+.PP
+数据包套接字不支持 \fBconnect\fP(2) 操作。
+.PP
+当 \fBMSG_TRUNC\fP 标志传递给 \fBrecvmsg\fP(2)、\fBrecv\fP(2) 或 \fBrecvfrom\fP(2)
+时，始终返回线路上数据包的实际长度，即使它比缓冲区长。
+.SS "Address types"
+\fIsockaddr_ll\fP 结构体是一个与设备无关的物理层地址。
+.PP
+.in +4n
+.EX
+struct sockaddr_ll {
+    unsigned short sll_family;   /* Always AF_PACKET */
+    unsigned short sll_protocol; /* Physical\-layer protocol */
+    int            sll_ifindex;  /* Interface number */
+    unsigned short sll_hatype;   /* ARP hardware type */
+    unsigned char  sll_pkttype;  /* Packet type */
+    unsigned char  sll_halen;    /* Length of address */
+    unsigned char  sll_addr[8];  /* Physical\-layer address */
+};
+.EE
+.in
+.PP
+这个结构体的字段如下:
+.TP 
+\fIsll_protocol\fP
+是 \fI<linux/if_ether.h>\fP 包含文件中定义的网络字节顺序的标准以太网协议类型。 它默认为套接字的协议。
+.TP 
+\fIsll_ifindex\fP
+是接口的接口索引 (见 \fBnetdevice\fP(7)); 0 匹配任何接口 (仅允许绑定)。 \fIsll_hatype\fP 是
+\fI<linux/if_arp.h>\fP 包含文件中定义的 ARP 类型。
+.TP 
+\fIsll_pkttype\fP
+包含数据包类型。 有效类型为 \fBPACKET_HOST\fP，用于寻址到本地主机的数据包，\fBPACKET_BROADCAST\fP
+用于物理层广播数据包，\fBPACKET_MULTICAST\fP 用于发送到物理层多播地址的数据包，\fBPACKET_OTHERHOST\fP
+用于发送到已被设备捕获的其他主机的数据包驱动程序处于混杂模式，\fBPACKET_OUTGOING\fP 用于源自本地主机的数据包，该数据包环回数据包套接字。
+这些类型只对接收有意义。
+.TP 
+\fIsll_addr\fP
+.TQ
+\fIsll_halen\fP
+包含物理层 (例如，IEEE 802.3) 地址及其长度。 确切的解释取决于设备。
+.PP
+发送数据包时，指定 \fIsll_family\fP、\fIsll_addr\fP、\fIsll_halen\fP、\fIsll_ifindex\fP 和
+\fIsll_protocol\fP 即可。 其他字段应为 0。 \fIsll_hatype\fP 和 \fIsll_pkttype\fP 设置在收到的数据包上供您参考。
+.SS "Socket options"
+数据包套接字选项通过使用级别 \fBSOL_PACKET\fP 调用 \fBsetsockopt\fP(2) 来配置。
+.TP 
+\fBPACKET_ADD_MEMBERSHIP\fP
+.PD 0
+.TP 
+\fBPACKET_DROP_MEMBERSHIP\fP
+.PD
+数据包套接字可用于配置物理层多播和混杂模式。 \fBPACKET_ADD_MEMBERSHIP\fP 添加一个绑定，而
+\fBPACKET_DROP_MEMBERSHIP\fP 丢弃它。 他们都希望 \fIpacket_mreq\fP 结构体作为参数:
+.IP
+.in +4n
+.EX
+struct packet_mreq {
+    int            mr_ifindex;    /* interface index */
+    unsigned short mr_type;       /* action */
+    unsigned short mr_alen;       /* address length */
+    unsigned char  mr_address[8]; /* physical\-layer address */
+};
+.EE
+.in
+.IP
+\fImr_ifindex\fP 包含状态应更改的接口的接口索引。 \fImr_type\fP 字段指定要执行的操作。 \fBPACKET_MR_PROMISC\fP
+允许在共享介质 (通常称为 "promiscuous mode") 上接收所有数据包，\fBPACKET_MR_MULTICAST\fP 将套接字绑定到
+\fImr_address\fP 和 \fImr_alen\fP 中指定的物理层多播组，\fBPACKET_MR_ALLMULTI\fP
+设置套接字以接收到达接口的所有多播数据包。
+.IP
+此外，传统的 ioctl \fBSIOCSIFFLAGS\fP、\fBSIOCADDMULTI\fP、\fBSIOCDELMULTI\fP 也可以用于相同的目的。
+.TP 
+\fBPACKET_AUXDATA\fP (since Linux 2.6.21)
+.\" commit 8dc4194474159660d7f37c495e3fc3f10d0db8cc
+如果启用此二进制选项，数据包套接字将元数据结构体与 \fBrecvmsg\fP(2) 控制字段中的每个数据包一起传递。 结构体可以用 \fBcmsg\fP(3)
+读取。 它被定义为
+.IP
+.in +4n
+.EX
+.\" commit a0cdfcf39362410d5ea983f4daf67b38de129408 added tp_vlan_tpid
+struct tpacket_auxdata {
+    __u32 tp_status;
+    __u32 tp_len;      /* packet length */
+    __u32 tp_snaplen;  /* captured length */
+    __u16 tp_mac;
+    __u16 tp_net;
+    __u16 tp_vlan_tci;
+    __u16 tp_vlan_tpid; /* Since Linux 3.14; earlier, these
+                           是未使用的填充字节 */
+};
+.EE
+.in
+.TP 
+\fBPACKET_FANOUT\fP (since Linux 3.1)
+.\" commit dc99f600698dcac69b8f56dda9a8a00d645c5ffc
+为了跨线程扩展处理，数据包套接字可以形成一个扇出组。 在这种模式下，每个匹配的数据包只排入组中的一个套接字。 套接字通过使用级别
+\fBSOL_PACKET\fP 和选项 \fBPACKET_FANOUT\fP 调用 \fBsetsockopt\fP(2) 来加入扇出组。 每个网络命名空间最多可以有
+65536 个独立的组。 套接字通过在整数选项值的前 16 位中编码 ID 来选择一个组。 第一个加入组的数据包套接字隐式创建它。
+要成功加入现有组，后续数据包套接字必须具有相同的协议、设备设置、扇出模式和标志 (见下文)。 数据包套接字只能通过关闭套接字来离开扇出组。
+当最后一个套接字关闭时，该组将被删除。
+.IP
+Fanout 支持多种算法在套接字之间传播流量，如下所示:
+.RS
+.IP \[bu] 3
+默认模式 \fBPACKET_FANOUT_HASH\fP 将来自同一流的数据包发送到同一套接字以维护每个流的顺序。
+对于每个数据包，它通过将数据包流散列取模组中的套接字数来选择一个套接字，其中流散列是网络层地址和可选传输层端口字段的散列。
+.IP \[bu]
+负载平衡模式 \fBPACKET_FANOUT_LB\fP 实现了循环算法。
+.IP \[bu]
+\fBPACKET_FANOUT_CPU\fP 根据数据包到达的 CPU 选择套接字。
+.IP \[bu]
+\fBPACKET_FANOUT_ROLLOVER\fP 处理单个套接字上的所有数据，当一个套接字积压时移动到下一个套接字。
+.IP \[bu]
+\fBPACKET_FANOUT_RND\fP 使用伪随机数生成器选择套接字。
+.IP \[bu]
+.\" commit 2d36097d26b5991d71a2cf4a20c1a158f0f1bfcd
+\fBPACKET_FANOUT_QM\fP (自 Linux 3.14 起可用) 使用接收到的 skb 的记录 queue_mapping 来选择
+socket。
+.RE
+.IP
+扇出模式可以采用其他选项。 IP 分段会导致来自同一流的数据包具有不同的流哈希值。 如果设置了标志
+\fBPACKET_FANOUT_FLAG_DEFRAG\fP，则会导致在应用扇出之前对数据包进行碎片整理，即使在这种情况下也能保持顺序。
+扇出模式和选项在整数选项值的第二个 16 位中传达。 标志 \fBPACKET_FANOUT_FLAG_ROLLOVER\fP 启用翻转机制作为备份策略:
+如果原始扇出算法选择积压的套接字，则数据包翻转到下一个可用的套接字。
+.TP 
+\fBPACKET_LOSS\fP (with \fBPACKET_TX_RING\fP)
+当在传输环上遇到格式错误的数据包时，默认将其 \fItp_status\fP 重置为 \fBTP_STATUS_WRONG_FORMAT\fP 并立即终止传输。
+格式错误的数据包会阻止自身并随后排队的数据包被发送。 必须修复格式错误，将关联的 \fItp_status\fP 重置为
+\fBTP_STATUS_SEND_REQUEST\fP，并通过 \fBsend\fP(2) 重新启动传输过程。 但是，如果设置了
+\fBPACKET_LOSS\fP，任何格式错误的数据包将被跳过，其 \fItp_status\fP 重置为
+\fBTP_STATUS_AVAILABLE\fP，并继续传输过程。
+.TP 
+\fBPACKET_RESERVE\fP (with \fBPACKET_RX_RING\fP)
+默认情况下，数据包接收环紧跟在元数据结构体和对齐填充之后写入数据包。 此整数选项保留额外的余量。
+.TP 
+\fBPACKET_RX_RING\fP
+为异步数据包接收创建内存映射环形缓冲区。 数据包套接字保留一个连续的应用程序地址空间区域，将其布局到一个数据包槽数组中并复制数据包 (最多
+\fItp_snaplen\fP) 到后续槽中。 每个数据包前面都有一个类似于 \fItpacket_auxdata\fP 的元数据结构体。
+协议字段将偏移量编码为从元数据标头开始的数据。 \fItp_net\fP 将偏移量存储到网络层。 如果数据包套接字是 \fBSOCK_DGRAM\fP 类型，那么
+\fItp_mac\fP 是相同的。 如果它是 \fBSOCK_RAW\fP 类型，则该字段存储链路层帧的偏移量。 数据包套接字和应用程序通过
+\fItp_status\fP 字段通信环的头尾。 数据包套接字拥有所有 \fItp_status\fP 等于 \fBTP_STATUS_KERNEL\fP 的插槽。
+填充槽后，它会更改槽的状态以将所有权转移给应用程序。 在正常操作期间，新的 \fItp_status\fP 值至少将 \fBTP_STATUS_USER\fP
+位设置为表示已存储接收到的数据包。 当应用程序完成对数据包的处理后，它通过将 \fItp_status\fP 设置为等于
+\fBTP_STATUS_KERNEL\fP 将插槽的所有权传回给套接字。
+.IP
+数据包套接字实现了数据包环的多种变体。 Linux 内核源代码树中的
+\fIDocumentation/networking/packet_mmap.rst\fP 描述了实现细节。
+.TP 
+\fBPACKET_STATISTICS\fP
+以结构体的形式检索数据包套接字统计信息
+.IP
+.in +4n
+.EX
+struct tpacket_stats {
+    unsigned int tp_packets;  /* Total packet count */
+    unsigned int tp_drops;    /* Dropped packet count */
+};
+.EE
+.in
+.IP
+接收统计信息会重置内部计数器。 使用变体 \fBTPACKET_V3\fP 的环时，统计结构体会有所不同。
+.TP 
+\fBPACKET_TIMESTAMP\fP (with \fBPACKET_RX_RING\fP; since Linux 2.6.36)
+.\" commit 614f60fa9d73a9e8fdff3df83381907fea7c5649
+数据包接收环总是在元数据标头中存储时间戳。 默认情况下，这是一个软件生成的时间戳，在将数据包复制到环中时生成。 此整数选项选择时间戳的类型。
+除默认外，它还支持 Linux 内核源代码树中 \fIDocumentation/networking/timestamping.rst\fP
+中描述的两种硬件格式。
+.TP 
+\fBPACKET_TX_RING\fP (since Linux 2.6.31)
+.\" commit 69e3c75f4d541a6eb151b3ef91f34033cb3ad6e1
+创建用于数据包传输的内存映射环形缓冲区。 此选项类似于 \fBPACKET_RX_RING\fP 并采用相同的参数。 应用程序将数据包写入
+\fItp_status\fP 等于 \fBTP_STATUS_AVAILABLE\fP 的槽中，并通过将 \fItp_status\fP 更改为
+\fBTP_STATUS_SEND_REQUEST\fP 来安排它们进行传输。 当数据包准备好传输时，应用程序调用 \fBsend\fP(2) 或其变体。 此调用的
+\fIbuf\fP 和 \fIlen\fP 字段将被忽略。 如果使用 \fBsendto\fP(2) 或 \fBsendmsg\fP(2) 传递地址，则会覆盖套接字默认值。
+成功传输后，套接字将 \fItp_status\fP 重置为 \fBTP_STATUS_AVAILABLE\fP。 除非设置了
+\fBPACKET_LOSS\fP，否则它会立即中止错误传输。
+.TP 
+\fBPACKET_VERSION\fP (with \fBPACKET_RX_RING\fP; since Linux 2.6.27)
+.\" commit bbd6ef87c544d88c30e4b762b1b61ef267a7d279
+缺省情况下，\fBPACKET_RX_RING\fP 创建变体 \fBTPACKET_V1\fP 的报文接收环。
+要创建另一个变体，请在创建环之前通过设置此整数选项来配置所需的变体。
+.TP 
+\fBPACKET_QDISC_BYPASS\fP (since Linux 3.14)
+.\" commit d346a3fae3ff1d99f5d0c819bf86edf9094a26a1
+默认情况下，通过数据包套接字发送的数据包会通过内核的 qdisc (流量控制) 层，这适用于绝大多数用例。
+对于使用数据包套接字的流量生成器设备，例如，打算以暴力方式淹没网络 \[em]，以类似于 pktgen\[em]
+的方式测试负载下的设备，可以通过将此整数选项设置为 1 来绕过此层.  一个副作用是避免了 qdisc
+层中的数据包缓冲，当网络设备传输队列繁忙时，这将导致丢弃增加; 因此，使用风险自负。
+.SS Ioctls
+.\" FIXME Document SIOCGSTAMPNS
+\fBSIOCGSTAMP\fP 可用于接收最后接收到的数据包的时间戳。 参数是一个 \fIstruct timeval\fP 变量。
+.PP
+此外，\fBnetdevice\fP(7) 和 \fBsocket\fP(7) 中定义的所有标准 ioctl 在数据包套接字上均有效。
+.SS "Error handling"
+除了将数据包传递给设备驱动程序时发生的错误外，数据包套接字不进行任何错误处理。 他们没有挂起错误的概念。
+.SH ERRORS
+.TP 
+\fBEADDRNOTAVAIL\fP
+传递了未知的多播组地址。
+.TP 
+\fBEFAULT\fP
+用户传递了无效的内存地址。
+.TP 
+\fBEINVAL\fP
+参数无效。
+.TP 
+\fBEMSGSIZE\fP
+数据包大于接口 MTU。
+.TP 
+\fBENETDOWN\fP
+接口不起来。
+.TP 
+\fBENOBUFS\fP
+内存不足，无法分配数据包。
+.TP 
+\fBENODEV\fP
+接口地址中指定的未知设备名称或接口索引。
+.TP 
+\fBENOENT\fP
+没有收到数据包。
+.TP 
+\fBENOTCONN\fP
+没有传递接口地址。
+.TP 
+\fBENXIO\fP
+接口地址包含无效的接口索引。
+.TP 
+\fBEPERM\fP
+用户没有足够的权限执行此操作。
+.PP
+此外，底层驱动程序可能会产生其他错误。
+.SH VERSIONS
+\fBAF_PACKET\fP 是 Linux 2.2 的新特性。 早期的 Linux 版本仅支持 \fBSOCK_PACKET\fP。
+.SH NOTES
+对于可移植程序，建议通过 \fBpcap\fP(3) 使用 \fBAF_PACKET\fP; 虽然这只涵盖了 \fBAF_PACKET\fP 特性的一个子集。
+.PP
+\fBSOCK_DGRAM\fP 数据包套接字不会尝试为 IEEE 802.3 帧创建或解析 IEEE 802.2 LLC 头文件。 当
+\fBETH_P_802_3\fP 被指定为发送协议时，内核创建 802.3 帧并填充长度字段; 用户必须提供 LLC 头文件才能获得完全一致的数据包。
+传入的 802.3 数据包未在 DSAP/SSAP 协议字段上多路复用; 相反，它们作为带有 LLC 头文件前缀的协议 \fBETH_P_802_2\fP
+提供给用户。 因此不可能绑定到 \fBETH_P_802_3\fP; 而是绑定到 \fBETH_P_802_2\fP 并自己进行协议多路复用。
+发送的默认值是填充了协议的标准以太网 DIX 封装。
+.PP
+数据包套接字不受输入或输出防火墙链的约束。
+.SS Compatibility
+在 Linux 2.0 中，获取数据包套接字的唯一方法是使用调用:
+.PP
+.in +4n
+.EX
+socket(AF_INET, SOCK_PACKET, protocol)
+.EE
+.in
+.PP
+这仍然受到支持，但已弃用并强烈反对。 这两种方法之间的主要区别在于 \fBSOCK_PACKET\fP 使用旧的 \fIstruct sockaddr_pkt\fP
+来指定接口，它不提供物理层独立性。
+.PP
+.in +4n
+.EX
+struct sockaddr_pkt {
+    unsigned short spkt_family;
+    unsigned char  spkt_device[14];
+    unsigned short spkt_protocol;
+};
+.EE
+.in
+.PP
+\fIspkt_family\fP 包含设备类型，\fIspkt_protocol\fP 是 \fI<sys/if_ether.h>\fP 中定义的
+IEEE 802.3 协议类型，\fIspkt_device\fP 是以空字符结尾的字符串形式的设备名称，例如 eth0。
+.PP
+此结构体已过时，不应在新代码中使用。
+.SH BUGS
+.SS "LLC header handling"
+IEEE 802.2/803.3 LLC 处理可以被视为一个错误。
+.SS "MSG_TRUNC issues"
+\fBMSG_TRUNC\fP \fBrecvmsg\fP(2) 扩展是一个丑陋的 hack，应该用控制消息代替。 目前还没有办法通过 \fBSOCK_DGRAM\fP
+获取数据包的原始目的地址。
+.SS "spkt_device device name truncation"
+\fIsockaddr_pkt\fP 的 \fIspkt_device\fP 字段大小为 14 字节，小于 \fI<net/if.h>\fP 中定义的常量
+\fBIFNAMSIZ\fP 的 16 字节，描述了网络接口名称的系统限制。 这意味着长度超过 14 字节的网络设备名称将被截断以适应
+\fIspkt_device\fP。 所有这些长度都包括终止空字节 (\[aq]\e0\[aq]))。
+.PP
+旧代码的问题通常表现为许多现代 Linux 发行版中默认启用的 \fBPredictable Network Interface Names\fP
+特性使用的非常长的接口名称。
+.PP
+首选解决方案是重写代码以避免 \fBSOCK_PACKET\fP。 可能的用户解决方案是禁用 \fBPredictable Network Interface Names\fP 或将接口重命名为最多 13 个字节的名称，例如使用 \fBip\fP(8) 工具。
+.SS "Documentation issues"
+.\" .SH CREDITS
+.\" This man page was written by Andi Kleen with help from Matthew Wilcox.
+.\" AF_PACKET in Linux 2.2 was implemented
+.\" by Alexey Kuznetsov, based on code by Alan Cox and others.
+没有记录套接字过滤器。
+.SH "SEE ALSO"
+\fBsocket\fP(2), \fBpcap\fP(3), \fBcapabilities\fP(7), \fBip\fP(7), \fBraw\fP(7),
+\fBsocket\fP(7), \fBip\fP(8),
+.PP
+RFC\894 用于标准 IP 以太网封装。 RFC\1700 用于 IEEE 802.3 IP 封装。
+.PP
+\fI<linux/if_ether.h>\fP 包含物理层协议的文件。
+.PP
+Linux 内核源代码树。 \fIDocumentation/networking/filter.rst\fP 描述了如何将 Berkeley
+数据包过滤器应用于数据包套接字。 \fItools/testing/selftests/net/psock_tpacket.c\fP 包含
+\fBPACKET_RX_RING\fP 和 \fBPACKET_TX_RING\fP 所有可用版本的示例源代码。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,65 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Red Hat, Inc. All Rights Reserved.
+.\" Written by David Howells (dhowells@redhat.com)
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH user\-session\-keyring 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+user\-session\-keyring \- 每个用户的默认会话密钥环
+.SH DESCRIPTION
+用户会话密钥环是用于代表用户锚定密钥的密钥环。 内核处理的每个 UID 都有自己的用户会话密钥环，该密钥环由具有该 UID 的所有进程共享。
+用户会话密钥环具有 \fI_uid_ses.<UID>\fP 形式的名称 (description)，其中 \fI<UID>\fP
+是相应用户的用户 ID。
+.PP
+.\" Davis Howells: the user and user-session keyrings are managed as a pair.
+用户会话密钥环与内核为 UID 维护的记录相关联。 它在第一次尝试访问用户会话密钥环、\fBuser\-keyring\fP(7) 或
+\fBsession\-keyring\fP(7) 时出现。 只要有使用该真实 UID 运行的进程或这些进程打开的文件保持打开状态，密钥环就会保持存在。
+(密钥环也可以通过将其链接到另一个密钥环来无限期固定。)
+.PP
+当一个线程请求它或当一个线程请求它的 \fBsession\-keyring\fP(7) 并且该密钥环不存在时，用户会话密钥环是按需创建的。
+在后一种情况下，将创建一个用户会话密钥环，如果不创建会话密钥环，则用户会话密钥环将被设置为进程的实际会话密钥环。
+.PP
+如果实际会话密钥环不存在，则 \fBrequest_key\fP(2) 会搜索用户会话密钥环，否则将被忽略。
+.PP
+定义了一个特殊的序列号值 \fBKEY_SPEC_USER_SESSION_KEYRING\fP，可用于代替调用进程的用户会话密钥环的实际序列号。
+.PP
+在 \fBkeyctl\fP(1) 实用程序中，可以使用 '\fB@us\fP' 代替数字键 ID，方式大致相同。
+.PP
+用户会话密钥环独立于 \fBclone\fP(2)、\fBfork\fP(2)、\fBvfork\fP(2)、\fBexecve\fP(2) 和 \fB_exit\fP(2)，但当
+UID 记录为销毁时密钥环为销毁，当最后一个锁定它的进程退出时。
+.PP
+如果访问时用户会话密钥环不存在，则会创建它。
+.PP
+与其依赖用户会话密钥环，强烈建议 \[em] 特别是当进程以 root 身份运行时 \[em] 显式设置
+\fBsession\-keyring\fP(7)，例如 \fBpam_keyinit\fP(8)。
+.SH NOTES
+添加用户会话密钥环以支持进程没有会话密钥环的情况，可能是因为它是通过不涉及 PAM 的路径创建的 (例如，它可能是由 \fBinetd\fP(8))
+启动的守护进程)。 在这种情况下，用户会话密钥环充当 \fBsession\-keyring\fP(7) 的替代品。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBkeyctl\fP(1), \fBkeyctl\fP(3), \fBkeyrings\fP(7), \fBpersistent\-keyring\fP(7),
+\fBprocess\-keyring\fP(7), \fBsession\-keyring\fP(7), \fBthread\-keyring\fP(7),
+\fBuser\-keyring\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

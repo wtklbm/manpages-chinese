@@ -1,0 +1,107 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1990, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"	@(#)mpool.3	8.1 (Berkeley) 6/4/93
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mpool 3 2022\-12\-04 "Linux man\-pages 6.03" 
+.UC 7
+.SH NAME
+mpool \- 共享内存缓冲池
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <db.h>\fP
+\fB#include <mpool.h>\fP
+.PP
+\fBMPOOL *mpool_open(DBT *\fP\fIkey\fP\fB, int \fP\fIfd\fP\fB, pgno_t \fP\fIpagesize\fP\fB, pgno_t \fP\fImaxcache\fP\fB);\fP
+.PP
+\fBvoid mpool_filter(MPOOL *\fP\fImp\fP\fB, void (*pgin)(void *, pgno_t, void *),\fP
+\fB                  void (*\fP\fIpgout\fP\fB)(void *, pgno_t, void *),\fP
+\fB                  void *\fP\fIpgcookie\fP\fB);\fP
+.PP
+\fBvoid *mpool_new(MPOOL *\fP\fImp\fP\fB, pgno_t *\fP\fIpgnoaddr\fP\fB);\fP
+\fBvoid *mpool_get(MPOOL *\fP\fImp\fP\fB, pgno_t \fP\fIpgno\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+\fBint mpool_put(MPOOL *\fP\fImp\fP\fB, void *\fP\fIpgaddr\fP\fB, unsigned int \fP\fIflags\fP\fB);\fP
+.PP
+\fBint mpool_sync(MPOOL *\fP\fImp\fP\fB);\fP
+\fBint mpool_close(MPOOL *\fP\fImp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fINote well\fP: 此页面记录了在 glibc 2.1 之前提供的接口。 从 glibc 2.2 开始，glibc 不再提供这些接口。
+您可能正在寻找 \fIlibdb\fP 库提供的 API。
+.PP
+\fIMpool\fP 是库接口，旨在提供面向页面的文件缓冲区管理。 缓冲区可以在进程之间共享。
+.PP
+函数 \fBmpool_open\fP() 初始化一个内存池。 \fIkey\fP 参数是用于在希望共享缓冲区的多个进程之间进行协商的，字节字符串。
+如果文件缓冲区映射到共享内存中，则使用相同键的所有进程将共享缓冲区。 如果 \fIkey\fP 为 NULL，缓冲区将映射到私有内存。 \fIfd\fP
+参数是底层文件的文件描述符，它必须是可搜索的。 如果 \fIkey\fP 为非 NULL 且与已映射的文件匹配，则忽略 \fIfd\fP 参数。
+.PP
+\fIpagesize\fP 参数是文件被分解成的页面的大小 (以字节为单位)。 \fImaxcache\fP 参数是任一时刻从底层文件缓存的最大页数。
+该值与共享文件缓冲区的进程数无关，而是共享文件的任何进程指定的最大值。
+.PP
+\fBmpool_filter\fP() 函数旨在使页面的透明输入和输出处理成为可能。 如果指定了 \fIpgin\fP
+函数，则每次从后备文件将缓冲区读入内存池时都会调用它。 如果指定了 \fIpgout\fP 函数，则每次将缓冲区写入备份文件时都会调用它。 两个函数都是用
+\fIpgcookie\fP 指针、页码和指向要读取或写入的页的指针调用的。
+.PP
+函数 \fBmpool_new\fP() 采用 \fIMPOOL\fP 指针和地址作为参数。 如果可以分配新页，则返回指向该页的指针并将页号存储到
+\fIpgnoaddr\fP 地址中。 否则，返回 NULL 并设置 \fIerrno\fP。
+.PP
+函数 \fBmpool_get\fP() 采用 \fIMPOOL\fP 指针和页码作为参数。 如果页面存在，则返回指向该页面的指针。 否则，返回 NULL 并设置
+\fIerrno\fP。 当前未使用 \fIflags\fP 参数。
+.PP
+函数 \fBmpool_put\fP() 取消固定 \fIpgaddr\fP 引用的页面。 \fIpgaddr\fP 必须是之前由 \fBmpool_get\fP() 或
+\fBmpool_new\fP() 返回的地址。 标志值由以下任何值的 ORing 指定:
+.TP 
+\fBMPOOL_DIRTY\fP
+该页面已被修改，需要写入备份文件。
+.PP
+\fBmpool_put\fP() 在成功时返回 0，如果发生错误则返回 \-1。
+.PP
+函数 \fBmpool_sync\fP() 将与 \fIMPOOL\fP 指针关联的所有修改页面写入备份文件。 \fBmpool_sync\fP() 在成功时返回
+0，如果发生错误则返回 \-1。
+.PP
+\fBmpool_close\fP() 函数释放与内存池 cookie 关联的所有已分配内存。 修改后的页面被 \fBnot\fP 写入支持文件。
+\fBmpool_close\fP() 在成功时返回 0，如果发生错误则返回 \-1。
+.SH ERRORS
+\fBmpool_open\fP() 函数可能会失败并为库例程 \fBmalloc\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.PP
+\fBmpool_get\fP() 函数可能会失败并为以下设置 \fIerrno\fP:
+.TP  15
+\fBEINVAL\fP
+请求的记录不存在。
+.PP
+\fBmpool_new\fP() 和 \fBmpool_get\fP() 函数可能会失败并为库例程 \fBread\fP(2)、\fBwrite\fP(2) 和
+\fBmalloc\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.PP
+\fBmpool_sync\fP() 函数可能会失败并为库例程 \fBwrite\fP(2) 指定的任何错误设置 \fIerrno\fP。
+.PP
+\fBmpool_close\fP() 函数可能会失败并为库例程 \fBfree\fP(3) 指定的任何错误设置 \fIerrno\fP。
+.SH STANDARDS
+不在 POSIX.1 中。 出现在 BSD 上。
+.SH "SEE ALSO"
+\fBbtree\fP(3), \fBdbopen\fP(3), \fBhash\fP(3), \fBrecno\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,601 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006, 2014 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Copyright (C) 2014 Heinrich Schuchardt <xypron.glpk@gmx.de>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH inotify 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+inotify \- 监控文件系统事件
+.SH DESCRIPTION
+\fIinotify\fP API 提供了一种用于监视文件系统事件的机制。 Inotify 可用于监视单个文件或监视目录。 当一个目录被监控时，inotify
+将返回目录本身的事件，以及目录内的文件。
+.PP
+以下系统调用与此 API 一起使用:
+.IP \[bu] 3
+\fBinotify_init\fP(2) 创建一个 inotify 实例并返回一个引用 inotify 实例的文件描述符。 较新的
+\fBinotify_init1\fP(2) 类似于 \fBinotify_init\fP(2)，但具有 \fIflags\fP 参数，可提供对某些额外功能的访问。
+.IP \[bu]
+\fBinotify_add_watch\fP(2) 操作与 inotify 实例关联的 "watch list"。 监视列表中的每一项 ("watch")
+指定文件或目录的路径名，以及内核应该监视该路径名引用的文件的一些事件集。 \fBinotify_add_watch\fP(2) 要么创建一个新的 watch
+项，要么修改一个现有的 watch。 每个 watch 都有一个唯一的 "watch descriptor"，创建 watch 时
+\fBinotify_add_watch\fP(2) 返回的整数。
+.IP \[bu]
+当受监视的文件和目录发生事件时，这些事件将作为结构化数据提供给应用程序，可以使用 \fBread\fP(2) (见下文) 从 inotify
+文件描述符中读取这些数据。
+.IP \[bu]
+\fBinotify_rm_watch\fP(2) 从 inotify 监视列表中删除一项。
+.IP \[bu]
+当引用 inotify 实例的所有文件描述符都已关闭时 (使用 \fBclose\fP(2))，底层对象及其资源被释放以供内核重用;
+所有关联的手表都会自动释放。
+.PP
+通过仔细的编程，应用程序可以使用 inotify 有效地监视和缓存一组文件系统对象的状态。
+然而，健壮的应用程序应该考虑到以下事实，即监控逻辑中的错误或下述类型的竞争可能会使缓存与文件系统状态不一致。
+进行一些一致性检查并在检测到不一致时重建缓存可能是明智的。
+.SS "Reading events from an inotify file descriptor"
+为了确定发生了什么事件，来自 inotify 文件描述符的应用程序 \fBread\fP(2)s。
+如果到目前为止没有发生任何事件，那么假设一个阻塞文件描述符，\fBread\fP(2) 将阻塞直到至少一个事件发生
+(除非被信号中断，在这种情况下调用失败并出现错误 \fBEINTR\fP; 请参见 \fBsignal\fP(7))。
+.PP
+每个成功的 \fBread\fP(2) 都会返回一个包含以下一个或多个结构的缓冲区:
+.PP
+.in +4n
+.EX
+.\" FIXME . The type of the 'wd' field should probably be "int32_t".
+.\" I submitted a patch to fix this.  See the LKML thread
+.\" "[patch] Fix type errors in inotify interfaces", 18 Nov 2008
+.\" glibc bug filed: http://sources.redhat.com/bugzilla/show_bug.cgi?id=7040
+struct inotify_event {
+    int      wd;       /* Watch descriptor */
+    uint32_t mask;     /* Mask describing event */
+    uint32_t cookie;   /* Unique cookie associating related
+                          events (for rename(2)) */
+    uint32_t len;      /* Size of \fIname\fP field */
+    char     name[];   /* Optional null\-terminated name */
+};
+.EE
+.in
+.PP
+\fIwd\fP 标识发生此事件的手表。 它是先前调用返回给 \fBinotify_add_watch\fP(2) 的监视描述符之一。
+.PP
+\fImask\fP 包含描述发生的事件的位 (见下文)。
+.PP
+\fIcookie\fP 是连接相关事件的唯一整数。 目前，这仅用于重命名事件，并允许应用程序连接生成的 \fBIN_MOVED_FROM\fP 和
+\fBIN_MOVED_TO\fP 事件对。 对于所有其他事件类型，\fIcookie\fP 设置为 0.
+.PP
+\fIname\fP 字段仅在为监视目录中的文件返回事件时出现; 它标识监视目录中的文件名。 该文件名以 null 结尾，并且可能包含更多的空字节
+(\[aq]\e0\[aq]) 以将后续读取对齐到合适的地址边界。
+.PP
+\fIlen\fP 字段计算 \fIname\fP 中的所有字节，包括空字节; 因此每个 \fIinotify_event\fP 结构体的长度是
+\fIsizeof(struct inotify_event)+len\fP。
+.PP
+给 \fBread\fP(2) 的缓冲区太小，无法返回下一个事件信息时的行为取决于内核版本: Linux 2.6.21 之前，\fBread\fP(2) 返回 0;
+由于 Linux 2.6.21，\fBread\fP(2) 失败并出现错误 \fBEINVAL\fP。 指定大小的缓冲区
+.PP
+.in +4n
+.EX
+sizeof(struct inotify_event) + NAME_MAX + 1
+.EE
+.in
+.PP
+将足以阅读至少一个事件。
+.SS "inotify events"
+当 \fBread\fP(2)ing 是 inotify 文件描述符时返回的 \fBinotify_add_watch\fP(2) \fImask\fP 参数和
+\fIinotify_event\fP 结构体的 \fImask\fP 字段都是标识 inotify 事件的位掩码。 调用
+\fBinotify_add_watch\fP(2) 时可以在 \fImask\fP 中指定以下位，\fBread\fP(2): 返回的 \fImask\fP 字段中可能返回
+.RS 4
+.TP 
+\fBIN_ACCESS\fP (+)
+文件已被访问 (例如，\fBread\fP(2)、\fBexecve\fP(2))。
+.TP 
+\fBIN_ATTRIB\fP (*)
+.\" FIXME .
+.\" Events do not occur for link count changes on a file inside a monitored
+.\" directory. This differs from other metadata changes for files inside
+.\" a monitored directory.
+元数据更改 \[em] 例如，权限 (例如，\fBchmod\fP(2))、时间戳 (例如，\fButimensat\fP(2))、扩展属性
+(\fBsetxattr\fP(2)))、链接计数 (自 Linux 2.6.25 起; 例如，对于 \fBlink\fP(2) 和 \fBunlink\fP(2))
+的目标，以及 user/group ID (例如，\fBchown\fP(2)) .
+.TP 
+\fBIN_CLOSE_WRITE\fP (+)
+为写入而打开的文件已关闭。
+.TP 
+\fBIN_CLOSE_NOWRITE\fP (*)
+未打开写入的文件或目录已关闭。
+.TP 
+\fBIN_CREATE\fP (+)
+在监视目录中创建 File/directory (例如，UNIX 域套接字上的
+\fBopen\fP(2)、\fBO_CREAT\fP、\fBmkdir\fP(2)、\fBlink\fP(2)、\fBsymlink\fP(2)、\fBbind\fP(2))。
+.TP 
+\fBIN_DELETE\fP (+)
+File/directory 从监视目录中删除。
+.TP 
+\fBIN_DELETE_SELF\fP
+Watched file/directory 本身已被删除。 (如果对象被移动到另一个文件系统，也会发生此事件，因为 \fBmv\fP(1)
+实际上将文件复制到另一个文件系统，然后将其从原始文件系统中删除。) 此外，随后将为监视描述符生成 \fBIN_IGNORED\fP 事件。
+.TP 
+\fBIN_MODIFY\fP (+)
+文件已修改 (例如，\fBwrite\fP(2)、\fBtruncate\fP(2))。
+.TP 
+\fBIN_MOVE_SELF\fP
+看着 file/directory 自己也被感动了。
+.TP 
+\fBIN_MOVED_FROM\fP (+)
+重命名文件时为包含旧文件名的目录生成。
+.TP 
+\fBIN_MOVED_TO\fP (+)
+重命名文件时为包含新文件名的目录生成。
+.TP 
+\fBIN_OPEN\fP (*)
+文件或目录已打开。
+.RE
+.PP
+Inotify 监控是基于 inode 的: 当监控一个文件时 (而不是当监控包含一个文件的目录时)，可以为文件 (在相同或不同目录中)
+的任何链接上的活动生成一个事件。
+.PP
+监控目录时:
+.IP \[bu] 3
+上面标有星号 (*) 的事件既可能发生在目录本身，也可能发生在目录内的对象上; and
+.IP \[bu]
+标有加号 (+) 的事件仅发生在目录内的对象 (而不是目录本身)。
+.PP
+\fINote\fP: 监视目录时，如果事件是通过位于受监视目录之外的路径名 (即链接) 执行的，则不会为目录内的文件生成事件。
+.PP
+当为监视目录内的对象生成事件时，返回的 \fIinotify_event\fP 结构体中的 \fIname\fP 字段标识目录内文件的名称。
+.PP
+\fBIN_ALL_EVENTS\fP 宏定义为上述所有事件的位掩码。 这个宏可以作为调用 \fBinotify_add_watch\fP(2) 时的
+\fImask\fP 参数。
+.PP
+定义了两个额外的便利宏:
+.RS 4
+.TP 
+\fBIN_MOVE\fP
+等于 \fBIN_MOVED_FROM | IN_MOVED_TO\fP。
+.TP 
+\fBIN_CLOSE\fP
+等于 \fBIN_CLOSE_WRITE | IN_CLOSE_NOWRITE\fP。
+.RE
+.PP
+调用 \fBinotify_add_watch\fP(2): 时，可以在 \fImask\fP 中指定以下更多位
+.RS 4
+.TP 
+\fBIN_DONT_FOLLOW\fP (since Linux 2.6.15)
+如果它是符号链接，请不要解引使用 \fIpathname\fP。
+.TP 
+\fBIN_EXCL_UNLINK\fP (since Linux 2.6.36)
+.\" commit 8c1934c8d70b22ca8333b216aec6c7d09fdbd6a6
+默认情况下，当在目录的子项上观看事件时，即使在从目录取消链接后，也会为子项生成事件。 这可能会导致某些应用程序出现大量不感兴趣的事件 (例如，如果观看
+\fI/tmp\fP，其中许多应用程序会创建名称立即取消链接的临时文件)。 指定 \fBIN_EXCL_UNLINK\fP
+会更改默认行为，以便在子项与监视目录取消链接后不会为子项生成事件。
+.TP 
+\fBIN_MASK_ADD\fP
+如果 \fIpathname\fP 对应的文件系统对象已经存在 watch 实例，则将 \fImask\fP 中的事件添加到 watch 掩码中 (而不是替换掩码)
+; 如果还指定了 \fBIN_MASK_CREATE\fP，则会产生错误 \fBEINVAL\fP。
+.TP 
+\fBIN_ONESHOT\fP
+监视 \fIpathname\fP 对应的文件系统对象的一个事件，然后从监视列表中删除。
+.TP 
+\fBIN_ONLYDIR\fP (since Linux 2.6.15)
+只有当它是一个目录时才观察 \fIpathname\fP; 如果 \fIpathname\fP 不是目录，则会产生错误 \fBENOTDIR\fP。
+使用此标志为应用程序提供了一种确保受监视对象是目录的无竞争方式。
+.TP 
+\fBIN_MASK_CREATE\fP (since Linux 4.18)
+仅当 \fIpathname\fP 还没有与之关联的手表时才观看 \fIpathname\fP; 如果 \fIpathname\fP 已经被监视，则会产生错误
+\fBEEXIST\fP。
+.IP
+使用此标志为应用程序提供了一种确保新监视不会修改现有监视的方法。 这很有用，因为多个路径可能引用同一个索引节点，并且在没有此标志的情况下多次调用
+\fBinotify_add_watch\fP(2) 可能会破坏现有的监视掩码。
+.RE
+.PP
+在 \fBread\fP(2): 返回的 \fImask\fP 字段中可以设置以下位
+.RS 4
+.TP 
+\fBIN_IGNORED\fP
+监视被显式 (\fBinotify_rm_watch\fP(2)) 或自动删除 (文件被删除，或文件系统被卸载)。 另请详见错误。
+.TP 
+\fBIN_ISDIR\fP
+这个事件的主题是一个目录。
+.TP 
+\fBIN_Q_OVERFLOW\fP
+事件队列溢出 (\fIwd\fP 是此事件的 \-1)。
+.TP 
+\fBIN_UNMOUNT\fP
+包含监视对象的文件系统已卸载。 此外，随后将为监视描述符生成 \fBIN_IGNORED\fP 事件。
+.RE
+.SS Examples
+假设一个应用程序正在监视目录 \fIdir\fP 和文件 \fIdir/myfile\fP 的所有事件。 下面的示例显示了将为这两个对象生成的一些事件。
+.RS 4
+.TP 
+fd = open("dir/myfile", O_RDWR);
+为 \fIdir\fP 和 \fIdir/myfile\fP 生成 \fBIN_OPEN\fP 事件。
+.TP 
+read(fd, buf, count);
+为 \fIdir\fP 和 \fIdir/myfile\fP 生成 \fBIN_ACCESS\fP 事件。
+.TP 
+write(fd, buf, count);
+为 \fIdir\fP 和 \fIdir/myfile\fP 生成 \fBIN_MODIFY\fP 事件。
+.TP 
+fchmod(fd, mode);
+为 \fIdir\fP 和 \fIdir/myfile\fP 生成 \fBIN_ATTRIB\fP 事件。
+.TP 
+close(fd);
+为 \fIdir\fP 和 \fIdir/myfile\fP 生成 \fBIN_CLOSE_WRITE\fP 事件。
+.RE
+.PP
+假设一个应用程序正在监视目录 \fIdir1\fP 和 \fIdir2\fP，以及文件 \fIdir1/myfile\fP。 以下示例显示了可能生成的一些事件。
+.RS 4
+.TP 
+link("dir1/myfile", "dir2/new");
+为 \fImyfile\fP 生成一个 \fBIN_ATTRIB\fP 事件，为 \fIdir2\fP 生成一个 \fBIN_CREATE\fP 事件。
+.TP 
+rename("dir1/myfile", "dir2/myfile");
+为 \fIdir1\fP 生成一个 \fBIN_MOVED_FROM\fP 事件，为 \fIdir2\fP 生成一个 \fBIN_MOVED_TO\fP 事件，为
+\fImyfile\fP 生成一个 \fBIN_MOVE_SELF\fP 事件。 \fBIN_MOVED_FROM\fP 和 \fBIN_MOVED_TO\fP
+事件将具有相同的 \fIcookie\fP 值。
+.RE
+.PP
+假设 \fIdir1/xx\fP 和 \fIdir2/yy\fP 是 (唯一的) 指向同一文件的链接，并且应用程序正在监视
+\fIdir1\fP、\fIdir2\fP、\fIdir1/xx\fP 和 \fIdir2/yy\fP。 按照下面给出的顺序执行以下调用将生成以下事件:
+.RS 4
+.TP 
+unlink("dir2/yy");
+为 \fIxx\fP 生成一个 \fBIN_ATTRIB\fP 事件 (因为它的链接计数发生变化)，为 \fIdir2\fP 生成一个 \fBIN_DELETE\fP 事件。
+.TP 
+unlink("dir1/xx");
+为 \fIxx\fP 生成 \fBIN_ATTRIB\fP、\fBIN_DELETE_SELF\fP 和 \fBIN_IGNORED\fP 事件，为 \fIdir1\fP 生成
+\fBIN_DELETE\fP 事件。
+.RE
+.PP
+假设一个应用程序正在监视目录 \fIdir\fP 和 (空的) 目录 \fIdir/subdir\fP。 以下示例显示了可能生成的一些事件。
+.RS 4
+.TP 
+mkdir("dir/new", mode);
+为 \fIdir\fP 生成一个 \fBIN_CREATE | IN_ISDIR\fP 事件。
+.TP 
+rmdir("dir/subdir");
+为 \fIsubdir\fP 生成 \fBIN_DELETE_SELF\fP 和 \fBIN_IGNORED\fP 事件，为 \fIdir\fP 生成 \fBIN_DELETE | IN_ISDIR\fP 事件。
+.RE
+.SS "/proc interfaces"
+以下接口可用于限制 inotify 消耗的内核内存量:
+.TP 
+\fI/proc/sys/fs/inotify/max_queued_events\fP
+当应用程序调用 \fBinotify_init\fP(2) 来设置可以排队到相应 inotify 实例的事件数的上限时，将使用此文件中的值。
+超过此限制的事件是丢弃，但始终会生成 \fBIN_Q_OVERFLOW\fP 事件。
+.TP 
+\fI/proc/sys/fs/inotify/max_user_instances\fP
+这指定了每个真实用户 ID 可以创建的 inotify 实例数量的上限。
+.TP 
+\fI/proc/sys/fs/inotify/max_user_watches\fP
+这指定了每个真实用户 ID 可以创建的手表数量的上限。
+.SH VERSIONS
+Inotify 被合并到 Linux 2.6.13 中。 在 glibc 2.4 中添加了所需的库接口。
+(\fBIN_DONT_FOLLOW\fP、\fBIN_MASK_ADD\fP 和 \fBIN_ONLYDIR\fP 是在 glibc 2.5 中添加的。)
+.SH STANDARDS
+inotify API 是特定于 Linux 的。
+.SH NOTES
+可以使用 \fBselect\fP(2)、\fBpoll\fP(2) 和 \fBepoll\fP(7) 监视 Inotify 文件描述符。
+当事件可用时，文件描述符指示为可读。
+.PP
+从 Linux 2.6.25 开始，信号驱动的 I/O 通知可用于 inotify 文件描述符; 请参见 \fBfcntl\fP(2) 中对
+\fBF_SETFL\fP (用于设置 \fBO_ASYNC\fP 标志)、\fBF_SETOWN\fP 和 \fBF_SETSIG\fP 的讨论。 传递给信号处理程序的
+\fIsiginfo_t\fP 结构体 (在 \fBsigaction\fP(2)) 中描述) 设置了以下字段: \fIsi_fd\fP 设置为 inotify
+文件描述符编号; \fIsi_signo\fP 设置为信号编号; \fIsi_code\fP 设置为 \fBPOLL_IN\fP; \fBPOLLIN\fP 设置在
+\fIsi_band\fP 中。
+.PP
+如果在 inotify 文件描述符上产生的连续输出 inotify 事件是相同的 (相同的 \fIwd\fP、\fImask\fP、\fIcookie\fP 和
+\fIname\fP))，那么如果尚未读取较旧的事件，它们将合并为一个事件 (但请参见 BUGS)。
+这减少了事件队列所需的内核内存量，但也意味着应用程序无法使用 inotify 可靠地计算文件事件。
+.PP
+通过从 inotify 文件描述符读取返回的事件形成一个有序队列。 因此，例如，当从一个目录重命名为另一个目录时，可以保证在 inotify
+文件描述符上以正确的顺序产生事件。
+.PP
+可以通过进程的 \fI/proc/\fPpid\fI/fdinfo\fP 目录中的 inotify 文件描述符条目查看通过 inotify
+文件描述符监视的监视描述符集。 有关详细信息，请参见 \fBproc\fP(5)。 \fBFIONREAD\fP \fBioctl\fP(2) 返回可从 inotify
+文件描述符读取的字节数。
+.SS "Limitations and caveats"
+inotify API 不提供有关触发 inotify 事件的用户或进程的信息。 特别是，对于通过 inotify
+监视事件的进程来说，没有简单的方法来区分它自己触发的事件和其他进程触发的事件。
+.PP
+Inotify 仅报告用户空间程序通过文件系统 API 触发的事件。 因此，它不会捕获网络文件系统上发生的远程事件。
+(应用程序必须回退到轮询文件系统以捕获此类事件。) 此外，inotify 无法监视各种伪文件系统，例如 \fI/proc\fP、\fI/sys\fP 和
+\fI/dev/pts\fP。
+.PP
+inotify API 不报告由于 \fBmmap\fP(2)、\fBmsync\fP(2) 和 \fBmunmap\fP(2) 可能发生的文件访问和修改。
+.PP
+inotify API 通过文件名识别受影响的文件。 但是，当应用程序处理 inotify 事件时，文件名可能已经被删除或重命名。
+.PP
+inotify API 通过监视描述符识别事件。 缓存监视描述符和路径名之间的映射 (如果需要) 是应用程序的责任。
+请注意，目录重命名可能会影响多个缓存的路径名。
+.PP
+Inotify 对目录的监控不是递归的: 要监控目录下的子目录，必须创建额外的 watches。 对于大型目录树，这可能会花费大量时间。
+.PP
+如果监视整个目录子树，并且在该树中创建了一个新的子目录或将现有目录重命名为该树，请注意，在您为新子目录创建监视时，新文件 (和子目录)
+可能已经存在子目录里面。 因此，您可能希望在添加监视后立即扫描子目录的内容 (并且，如果需要，递归地为它包含的任何子目录添加监视)。
+.PP
+请注意，事件队列可能会溢出。 在这种情况下，事件会丢失。 健壮的应用程序应该优雅地处理丢失事件的可能性。 例如，可能需要重建部分或全部应用程序缓存。
+(一种简单但可能很昂贵的方法是关闭 inotify 文件描述符，清空缓存，创建一个新的 inotify 文件描述符，然后为要监视的对象重新创建
+watches 和缓存条目。)
+.PP
+.\"
+如果文件系统挂载在受监视目录的顶部，则不会生成任何事件，并且不会为紧接在新挂载点下的对象生成任何事件。
+如果随后卸载文件系统，随后将为目录及其包含的对象生成事件。
+.SS "Dealing with rename() events"
+如上所述，\fBrename\fP(2) 生成的 \fBIN_MOVED_FROM\fP 和 \fBIN_MOVED_TO\fP 事件对可以通过它们的共享 cookie
+值进行匹配。 然而，匹配任务有一些挑战。
+.PP
+当从 inotify 文件描述符中读取时，这两个事件在可用的事件流中通常是连续的。 但是，这并不能保证。 如果多个进程正在触发受监视对象的事件，那么
+(在极少数情况下) 可能会在 \fBIN_MOVED_FROM\fP 和 \fBIN_MOVED_TO\fP 事件之间出现任意数量的其他事件。
+此外，不能保证事件对自动插入到队列中: \fBIN_MOVED_FROM\fP 出现但 \fBIN_MOVED_TO\fP 没有出现的时间间隔可能很短。
+.PP
+因此，匹配由 \fBrename\fP(2) 生成的 \fBIN_MOVED_FROM\fP 和 \fBIN_MOVED_TO\fP 事件对本质上是活泼的。
+(不要忘记，如果一个对象在受监控目录之外被重命名，甚至可能没有 \fBIN_MOVED_TO\fP 事件。) 启发式方法 (例如，假设事件总是连续的)
+可用于确保在大多数情况下匹配，但不可避免地会遗漏一些情况，导致应用程序将 \fBIN_MOVED_FROM\fP 和 \fBIN_MOVED_TO\fP
+事件感知为不相关。 如果监视描述符被销毁并因此重新创建，那么这些监视描述符将与任何未决事件中的监视描述符不一致。 (重新创建 inotify
+文件描述符并重建缓存可能有助于处理这种情况。)
+.PP
+应用程序还应该考虑到 \fBIN_MOVED_FROM\fP 事件是最后一个可以放入由当前调用返回给 \fBread\fP(2) 的缓冲区的事件，并且伴随的
+\fBIN_MOVED_TO\fP 事件可能只在下一个 \fBread\fP(2) 上获取，这应该用 (small) 来完成超时以考虑到
+\fBIN_MOVED_FROM\fP+\fBIN_MOVED_TO\fP 事件对的插入不是原子的这一事实，以及可能没有任何 \fBIN_MOVED_TO\fP
+事件的可能性。
+.SH BUGS
+.\" commit 820c12d5d6c0890bc93dd63893924a13041fdc35
+在 Linux 3.19 之前，\fBfallocate\fP(2) 没有创建任何 inotify 事件。 自 Linux 3.19 起，对
+\fBfallocate\fP(2) 的调用将生成 \fBIN_MODIFY\fP 事件。
+.PP
+.\" FIXME . kernel commit 611da04f7a31b2208e838be55a42c7a1310ae321
+.\" implies that unmount events were buggy since Linux 2.6.11 to Linux 2.6.36
+.\"
+Linux 2.6.16 之前，\fBIN_ONESHOT\fP \fImask\fP 标志不起作用。
+.PP
+正如最初设计和实现的那样，\fBIN_ONESHOT\fP 标志不会导致手表在一个事件后丢弃时生成 \fBIN_IGNORED\fP 事件。
+但是，作为其他更改的意外影响，由于 Linux 2.6.36，在这种情况下会生成 \fBIN_IGNORED\fP 事件。
+.PP
+.\" commit 1c17d18e3775485bf1e0ce79575eb637a94494a2
+在 Linux 2.6.25 之前，旨在合并连续相同事件的内核代码 (即，如果尚未读取较旧的事件，则可能合并最近的两个事件)
+而不是检查最近的事件是否可以与未读的 \fIoldest\fP 合并事件。
+.PP
+.\" FIXME . https://bugzilla.kernel.org/show_bug.cgi?id=77111
+当通过调用 \fBinotify_rm_watch\fP(2) 删除监视描述符时
+(或者因为监视文件被删除或包含它的文件系统被卸载)，该监视描述符的任何挂起的未读事件仍然可以读取。 随着监视描述符随后分配给
+\fBinotify_add_watch\fP(2)，内核循环遍历可能的监视描述符范围 (从 0 到 \fBINT_MAX\fP) 递增。
+分配空闲的监视描述符时，不会检查该监视描述符编号是否在 inotify 队列中有任何未决的未读事件。
+因此，即使在该监视描述符编号的先前化身存在未决的未读事件时，也可能会重新分配监视描述符，结果应用程序可能会读取这些事件并将它们解释为属于与新的相关联的文件回收手表描述符。
+实际上，遇到此错误的可能性极低，因为它需要应用程序循环通过 \fBINT_MAX\fP
+监视描述符，释放监视描述符，同时在队列中保留该监视描述符的未读事件，然后回收该监视描述符。
+出于这个原因，并且因为在实际应用程序中没有出现错误的报告，截至 Linux 3.15，尚未进行任何内核更改以消除此可能的错误。
+.SH EXAMPLES
+以下程序演示了 inotify API 的用法。 它将传递的目录标记为命令行参数，并等待 \fBIN_OPEN\fP、\fBIN_CLOSE_NOWRITE\fP
+和 \fBIN_CLOSE_WRITE\fP 类型的事件。
+.PP
+在编辑文件 \fI/home/user/temp/foo\fP 和列出目录 \fI/tmp\fP 时记录了以下输出。 在打开文件和目录之前，发生了
+\fBIN_OPEN\fP 事件。 文件关闭后，发生 \fBIN_CLOSE_WRITE\fP 事件。 目录关闭后，发生 \fBIN_CLOSE_NOWRITE\fP
+事件。 当用户按下 ENTER 键时，程序的执行结束。
+.SS "Example output"
+.in +4n
+.EX
+$ \fB./a.out /tmp /home/user/temp\fP
+按回车键终止。
+监听事件。
+IN_OPEN: /home/user/temp/foo [file]
+IN_CLOSE_WRITE: /home/user/temp/foo [file]
+IN_OPEN: /tmp/ [directory]
+IN_CLOSE_NOWRITE: /tmp/ [directory]
+
+侦听事件已停止。
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+#include <errno.h>
+#include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/inotify.h>
+#include <unistd.h>
+#include <string.h>
+
+/* Read all available inotify events from the file descriptor \[aq]fd\[aq].
+   wd is the table of watch descriptors for the directories in argv.
+   argc is the length of wd and argv.
+   argv is the list of watched directories.
+   Entry 0 of wd and argv is unused. */
+
+static void
+handle_events(int fd, int *wd, int argc, char* argv[])
+{
+    /* 一些系统不能读取整数变量如果它们不是
+       正确对齐。在其他系统上，不正确的对齐可能
+       降低性能。因此，用于读取的缓冲区
+       inotify 文件描述符应该与
+       struct inotify_event.  */
+
+    char buf[4096]
+        __attribute__ ((aligned(__alignof__(struct inotify_event))));
+    const struct inotify_event *event;
+    ssize_t len;
+
+    /* Loop while events can be read from inotify file descriptor. */
+
+    for (;;) {
+
+        /* Read some events. */
+
+        len = read(fd, buf, sizeof(buf));
+        if (len == \-1 && errno != EAGAIN) {
+            perror("read");
+            exit(EXIT_FAILURE);
+        }
+
+        /* If the nonblocking read() found no events to read, then
+           it returns \-1 with errno set to EAGAIN. In that case,
+           we exit the loop. */
+
+        if (len <= 0)
+            break;
+
+        /* Loop over all events in the buffer. */
+
+        for (char *ptr = buf; ptr < buf + len;
+                ptr += sizeof(struct inotify_event) + event\->len) {
+
+            event = (const struct inotify_event *) ptr;
+
+            /* Print event type. */
+
+            if (event\->mask & IN_OPEN)
+                printf("IN_OPEN: ");
+            if (event\->mask & IN_CLOSE_NOWRITE)
+                printf("IN_CLOSE_NOWRITE: ");
+            if (event\->mask & IN_CLOSE_WRITE)
+                printf("IN_CLOSE_WRITE: ");
+
+            /* Print the name of the watched directory. */
+
+            for (size_t i = 1; i < argc; ++i) {
+                if (wd[i] == event\->wd) {
+                    printf("%s/", argv[i]);
+                    break;
+                }
+            }
+
+            /* Print the name of the file. */
+
+            if (event\->len)
+                printf("%s", event\->name);
+
+            /* Print type of filesystem object. */
+
+            if (event\->mask & IN_ISDIR)
+                printf(" [directory]\en");
+            else
+                printf(" [file]\en");
+        }
+    }
+}
+
+int
+main(int argc, char* argv[])
+{
+    char buf;
+    int fd, i, poll_num;
+    int *wd;
+    nfds_t nfds;
+    struct pollfd fds[2];
+
+    if (argc < 2) {
+        printf("Usage: %s PATH [PATH ...]\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Press ENTER key to terminate.\en");
+
+    /* Create the file descriptor for accessing the inotify API. */
+
+    fd = inotify_init1(IN_NONBLOCK);
+    if (fd == \-1) {
+        perror("inotify_init1");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Allocate memory for watch descriptors. */
+
+    wd = calloc(argc, sizeof(int));
+    if (wd == NULL) {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Mark directories for events
+       \- file was opened
+       \- file was closed */
+
+    for (i = 1; i < argc; i++) {
+        wd[i] = inotify_add_watch(fd, argv[i],
+                                  IN_OPEN | IN_CLOSE);
+        if (wd[i] == \-1) {
+            fprintf(stderr, "Cannot watch \[aq]%s\[aq]: %s\en",
+                    argv[i], strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    /* Prepare for polling. */
+
+    nfds = 2;
+
+    fds[0].fd = STDIN_FILENO;       /* Console input */
+    fds[0].events = POLLIN;
+
+    fds[1].fd = fd;                 /* Inotify input */
+    fds[1].events = POLLIN;
+
+    /* Wait for events and/or terminal input. */
+
+    printf("Listening for events.\en");
+    while (1) {
+        poll_num = poll(fds, nfds, \-1);
+        if (poll_num == \-1) {
+            if (errno == EINTR)
+                continue;
+            perror("poll");
+            exit(EXIT_FAILURE);
+        }
+
+        if (poll_num > 0) {
+
+            if (fds[0].revents & POLLIN) {
+
+                /* Console input is available. Empty stdin and quit. */
+
+                while (read(STDIN_FILENO, &buf, 1) > 0 && buf != \[aq]\en\[aq])
+                    continue;
+                break;
+            }
+
+            if (fds[1].revents & POLLIN) {
+
+                /* Inotify events are available. */
+
+                handle_events(fd, wd, argc, argv);
+            }
+        }
+    }
+
+    printf("Listening for events stopped.\en");
+
+    /* Close inotify file descriptor. */
+
+    close(fd);
+
+    free(wd);
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBinotifywait\fP(1), \fBinotifywatch\fP(1), \fBinotify_add_watch\fP(2),
+\fBinotify_init\fP(2), \fBinotify_init1\fP(2), \fBinotify_rm_watch\fP(2), \fBread\fP(2),
+\fBstat\fP(2), \fBfanotify\fP(7)
+.PP
+Linux 内核源代码树中的 \fIDocumentation/filesystems/inotify.txt\fP
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,155 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 1993 Rickard E. Faith (faith@cs.unc.edu)
+.\" Portions extracted from /usr/include/sys/socket.h, which does not have
+.\" any authorship information in it.  It is probably available under the GPL.
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\" Other portions are from the 6.9 (Berkeley) 3/10/91 man page:
+.\"
+.\" Copyright (c) 1983 The Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\" Modified 1997-01-31 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 1998, 1999 by Andi Kleen
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH connect 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+connect \- 在套接字上发起连接
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/socket.h>\fP
+.PP
+\fBint connect(int \fP\fIsockfd\fP\fB, const struct sockaddr *\fP\fIaddr\fP\fB,\fP
+\fB            socklen_t \fP\fIaddrlen\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBconnect\fP() 系统调用将文件描述符 \fIsockfd\fP 引用的套接字连接到 \fIaddr\fP 指定的地址。 \fIaddrlen\fP 参数指定
+\fIaddr\fP 的大小。 \fIaddr\fP 中地址的格式由套接字 \fIsockfd\fP 的地址空间决定; 有关详细信息，请参见 \fBsocket\fP(2)。
+.PP
+如果套接字 \fIsockfd\fP 是 \fBSOCK_DGRAM\fP 类型，则 \fIaddr\fP 是默认发送数据报的地址，也是接收数据报的唯一地址。
+如果套接字的类型为 \fBSOCK_STREAM\fP 或 \fBSOCK_SEQPACKET\fP，则此调用会尝试连接到绑定到 \fIaddr\fP 指定地址的套接字。
+.PP
+某些协议套接字 (例如，UNIX 域流套接字) 可能仅成功 \fBconnect\fP() 一次。
+.PP
+某些协议套接字 (例如，UNIX 和 Internet 域中的数据报套接字) 可能会多次使用 \fBconnect\fP() 来更改它们的关联。
+.PP
+某些协议套接字 (例如，TCP 套接字以及 UNIX 和 Internet 域中的数据报套接字) 可能会通过连接到 \fIsockaddr\fP 的
+\fIsa_family\fP 成员设置为 \fBAF_UNSPEC\fP 的地址来解除关联; 此后，套接字可以连接到另一个地址。 自 Linux 2.2 起支持
+(\fBAF_UNSPEC\fP。)
+.SH "RETURN VALUE"
+如果连接或绑定成功，则返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+以下仅为一般套接字错误。 可能还有其他特定于域的错误代码。
+.TP 
+\fBEACCES\fP
+对于由路径名标识的 UNIX 域套接字: 套接字文件的写权限被拒绝，或者路径前缀中的目录之一的搜索权限被拒绝。 (另见
+\fBpath_resolution\fP(7).)
+.TP 
+\fBEACCES\fP, \fBEPERM\fP
+用户试图在没有启用套接字广播标志的情况下连接到广播地址，或者连接请求因本地防火墙规则而失败。
+.TP 
+\fBEACCES\fP
+如果 SELinux 策略拒绝连接 (例如，如果有策略表明 HTTP 代理只能连接到与 HTTP
+服务器关联的端口，并且代理尝试连接到不同的端口)，它也可以返回。
+.TP 
+\fBEADDRINUSE\fP
+本地地址已被使用。
+.TP 
+\fBEADDRNOTAVAIL\fP
+(互联网域套接字) \fIsockfd\fP 引用的套接字之前未绑定到地址，在尝试将其绑定到临时端口时，确定临时端口范围内的所有端口号当前都在使用中。 请参见
+\fBip\fP(7) 中对 \fI/proc/sys/net/ipv4/ip_local_port_range\fP 的讨论。
+.TP 
+\fBEAFNOSUPPORT\fP
+传递的地址在其 \fIsa_family\fP 字段中没有正确的地址族。
+.TP 
+\fBEAGAIN\fP
+对于非阻塞 UNIX 域套接字，套接字是非阻塞的，不能立即完成连接。 对于其他套接字系列，路由缓存中的条目不足。
+.TP 
+\fBEALREADY\fP
+套接字是非阻塞的，并且先前的连接尝试尚未完成。
+.TP 
+\fBEBADF\fP
+\fIsockfd\fP 不是有效的打开文件描述符。
+.TP 
+\fBECONNREFUSED\fP
+流套接字上的 \fBconnect\fP() 发现没有人在远程地址上侦听。
+.TP 
+\fBEFAULT\fP
+套接字结构体地址在用户地址空间之外。
+.TP 
+\fBEINPROGRESS\fP
+套接字是非阻塞的，连接不能立即完成。 (UNIX 域套接字失败，取而代之的是 \fBEAGAIN\fP。) 可以通过选择用于写入的套接字来完成
+\fBselect\fP(2) 或 \fBpoll\fP(2)。 \fBselect\fP(2) 表示可写后，用 \fBgetsockopt\fP(2) 读取
+\fBSOL_SOCKET\fP 层的 \fBSO_ERROR\fP 选项，判断 \fBconnect\fP() 是成功完成 (\fBSO_ERROR\fP 为零) 还是不成功
+(\fBSO_ERROR\fP 是这里列出的常见错误码之一，解释失败的原因)。
+.TP 
+\fBEINTR\fP
+.\" For TCP, the connection will complete asynchronously.
+.\" See http://lkml.org/lkml/2005/7/12/254
+系统调用被捕获的信号中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEISCONN\fP
+套接字已连接。
+.TP 
+\fBENETUNREACH\fP
+网络不可达。
+.TP 
+\fBENOTSOCK\fP
+文件描述符 \fIsockfd\fP 不引用套接字。
+.TP 
+\fBEPROTOTYPE\fP
+套接字类型不支持请求的通信协议。 例如，在尝试将 UNIX 域数据报套接字连接到流套接字时可能会发生此错误。
+.TP 
+\fBETIMEDOUT\fP
+尝试连接时超时。 服务器可能太忙而无法接受新连接。 请注意，对于 IP 套接字，当在服务器上启用 syncookies 时，超时可能会很长。
+.SH STANDARDS
+.\" SVr4 documents the additional
+.\" general error codes
+.\" .BR EADDRNOTAVAIL ,
+.\" .BR EINVAL ,
+.\" .BR EAFNOSUPPORT ,
+.\" .BR EALREADY ,
+.\" .BR EINTR ,
+.\" .BR EPROTOTYPE ,
+.\" and
+.\" .BR ENOSR .
+.\" It also
+.\" documents many additional error conditions not described here.
+POSIX.1\-2001、POSIX.1\-2008、SVr4、4.4BSD、(connect\fB()\fP 首次出现在 4.2BSD)。
+.SH NOTES
+有关 \fIsocklen_t\fP 类型的背景，请参见 \fBaccept\fP(2)。
+.PP
+如果 \fBconnect\fP() 失败，则认为套接字的状态为未指定。 便携式应用程序应关闭套接字并创建一个新套接字以重新连接。
+.SH EXAMPLES
+\fBgetaddrinfo\fP(3) 中显示了 \fBconnect\fP() 的使用示例。
+.SH "SEE ALSO"
+\fBaccept\fP(2), \fBbind\fP(2), \fBgetsockname\fP(2), \fBlisten\fP(2), \fBsocket\fP(2),
+\fBpath_resolution\fP(7), \fBselinux\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

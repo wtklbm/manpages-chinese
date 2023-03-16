@@ -1,0 +1,352 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH JOURNALD\&.CONF 5 "" "systemd 253" journald.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+journald.conf、journald.conf.d、journald@.conf \- 日志服务配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/journald\&.conf
+.PP
+/etc/systemd/journald\&.conf\&.d/*\&.conf
+.PP
+/run/systemd/journald\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/journald\&.conf\&.d/*\&.conf
+.PP
+/etc/systemd/journald@\fINAMESPACE\fP\&.conf
+.PP
+/etc/systemd/journald@\fINAMESPACE\fP\&.conf\&.d/*\&.conf
+.PP
+/run/systemd/journald@\fINAMESPACE\fP\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/journald@\fINAMESPACE\fP\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+这些文件配置了 systemd 日志服务 \fBsystemd\-journald.service\fP(8)\& 的各种参数。有关语法 \&
+的一般说明，请参见 \fBsystemd.syntax\fP(7)。
+.PP
+管理默认命名空间的 \fBsystemd\-journald\fP 实例由 /etc/systemd/journald\&.conf 和关联丢弃 \- ins\&
+配置。管理其他名称空间的实例读取 /etc/systemd/journald@\fINAMESPACE\fP\&.conf 和关联的丢弃 \-
+ins，名称空间标识符填充为 \&。这允许每个命名空间携带不同的配置 \&。有关日志名称空间 \& 的详细信息，请参见
+\fBsystemd\-journald.service\fP(8)。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH OPTIONS
+.PP
+所有选项都在 [Journal] 部分配置:
+.PP
+\fIStorage=\fP
+.RS 4
+控制在何处存储日志数据 \&。"volatile"、"persistent"、"auto" 和 `无`\& 之一。如果是
+"volatile"，journal 日志数据将只存储在内存中，i\&.e\&。在 /run/log/journal 层次结构 (根据需要创建) \&
+之下。如果 "persistent"，数据将优先存储在磁盘上，i\&.e\&。在 /var/log/journal 层次结构 (根据需要创建)
+之下，回退到 /run/log/journal (根据需要创建)，在早期启动期间以及如果磁盘不可写 \&。 如果 /var/log/journal
+目录存在，则 "auto" 的行为类似于 "persistent"，否则 "volatile" (目录的存在控制存储模式) \&。"none"
+关闭所有存储，接收到的所有日志数据将丢弃 (但转发到其他目标，如控制台、内核日志缓冲区或系统日志套接字仍然有效) \&。在默认日志命名空间中默认为
+"auto"，在所有其他命名空间中默认为 "persistent"\&。
+.sp
+请注意，journald 最初将使用易失性存储，直到调用 \fBjournalctl \-\-flush\fP (或将 \fBSIGUSR1\fP 发送到
+journald) 将导致它切换到持久日志记录 (在上述条件下) \&。这是通过 `systemd\-journal\-flush\&.service`\&
+在启动时自动完成的。
+.sp
+请注意，当此选项更改为 "volatile" 时，不会删除现有的持久数据 \&。另一方面，带有 \fB\-\-flush\fP 选项的
+\fBjournalctl\fP(1) 可用于将易失性数据移动到持久存储 \&。
+.sp
+当 journal 命名空间 (见 \fBsystemd.exec\fP(5)) 中的 \fILogNamespace=\fP) 被使用时，将
+\fIStorage=\fP 设置为 "volatile" 或 "auto" 不会影响 /var/log/journal/ 中 per\-namespace
+logs 目录的创建，因为 systemd\-journald@\&.service 服务文件默认携带
+\fILogsDirectory=\fP\&. 要关闭它，添加一个单元文件丢弃 \- in 文件，将 \fILogsDirectory=\fP 设置为空字符串 \&。
+.RE
+.PP
+\fICompress=\fP
+.RS 4
+可以取布尔值 \&。如果启用 (默认)，应存储在日志中且大于 512 字节默认阈值的数据对象在写入文件系统之前会被压缩
+\&。也可以设置为字节数直接指定压缩阈值 \&。K、M 和 G 等后缀可用于指定更大的单位 \&。
+.RE
+.PP
+\fISeal=\fP
+.RS 4
+取一个布尔值 \&。如果启用 (默认)，并且密封密钥可用 (由 \fBjournalctl\fP(1)\*(Aqs \fB\-\-setup\-keys\fP
+命令创建)，则为所有持久性日志文件启用 Forward Secure Sealing (FSS)\&。FSS 基于 G\& 的
+\m[blue]\fBSeekable Sequential Key Generators\fP\m[]\&\s-2\u[1]\d\s+2。A\&。马森和
+B\&。Poettering (doi:10\&.1007/978\-3\-642\-40203\-6_7) 并可用于保护日志文件免遭不经意的更改 \&。
+.RE
+.PP
+\fISplitMode=\fP
+.RS 4
+控制是否按用户拆分日志文件，"uid" 或 `none`\&。拆分日志文件主要用于访问控制: 在 UNIX/Linux
+上，访问控制是按文件管理的，日志守护程序将为用户分配对其日志文件的读取权限 \&。如果是 "uid"，所有普通用户 (UID
+在系统用户范围之外的用户、动态服务用户和 nobody 用户) 都将各自获得自己的日志文件，系统用户将登录到系统日志 \&。有关 UID 范围 \&
+的更多详细信息，请参见 \m[blue]\fBUsers, Groups, UIDs and GIDs on systemd systems\fP\m[]\&\s-2\u[2]\d\s+2。如果是 "none"，则日志文件不会被用户拆分，而是所有消息都存储在单个系统日志 \&
+中。在这种模式下，非特权用户通常无权访问他们自己的日志数据 \&。请注意，按用户拆分日志文件仅适用于持久存储的日志。如果日志存储在易失性存储器中
+(参见上面的 \fIStorage=\fP)，则只使用一个日志文件 \&。默认为 `uid`\&。
+.RE
+.PP
+\fIRateLimitIntervalSec=\fP, \fIRateLimitBurst=\fP
+.RS 4
+配置应用于系统上生成的所有消息的速率限制 \&。如果在 \fIRateLimitIntervalSec=\fP 定义的时间间隔内，服务记录的消息多于
+\fIRateLimitBurst=\fP 中指定的消息，则该间隔内的所有其他消息都将丢弃，直到间隔结束 \&。生成关于抛弃消息数量的消息
+\&。此速率限制适用于每个服务，因此记录的两个服务不会相互干扰 \*(Aqs limits\&。默认为 30 秒内发送 10000 条消息
+\&。\fIRateLimitIntervalSec=\fP 的时间规范可以用以下单位指定:
+"s"、"min"、"h"、"ms"、`us`\&。要关闭任何类型的速率限制，请将任一值设置为 0\&。
+.sp
+请注意，有效速率限制乘以一个因子，该因子源自日志的可用磁盘空间 \&。目前，该系数是使用以 2 为底的对数 \& 计算的。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Example \fP\fIRateLimitBurst=\fP 可用磁盘空间的速率修改
+.TS
+allbox tab(:);
+lB lB.
+T{
+Available Disk Space
+T}:T{
+Burst Multiplier
+T}
+.T&
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+<= 1MB
+T}:T{
+1
+T}
+T{
+<= 16MB
+T}:T{
+2
+T}
+T{
+<= 256MB
+T}:T{
+3
+T}
+T{
+<= 4GB
+T}:T{
+4
+T}
+T{
+<= 64GB
+T}:T{
+5
+T}
+T{
+<= 1TB
+T}:T{
+6
+T}
+.TE
+.sp 1
+如果服务通过 \fILogRateLimitIntervalSec=\fP 或者 \fBsystemd.exec\fP(5) 中的
+\fILogRateLimitBurst=\fP 为自身提供速率限制，这些值将覆盖此处指定的设置 \&。
+.RE
+.PP
+\fISystemMaxUse=\fP, \fISystemKeepFree=\fP, \fISystemMaxFileSize=\fP,
+\fISystemMaxFiles=\fP, \fIRuntimeMaxUse=\fP, \fIRuntimeKeepFree=\fP,
+\fIRuntimeMaxFileSize=\fP, \fIRuntimeMaxFiles=\fP
+.RS 4
+对存储的日志文件实现大小限制 \&。以 "System" 为前缀的选项适用于存储在持久文件系统上的日志文件，更具体地说是
+/var/journal\&。以 "Runtime" 为前缀的选项适用于存储在易失性内存文件系统上的日志文件，更具体地说是
+/run/journal\&。前者仅在 /var / 已挂载、可写且目录 /var/log/journal 存在 \& 时使用。否则，只有后者适用
+\&。请注意，这意味着在早期启动期间，如果管理员禁用了持久日志记录，则只有后一个选项适用，而如果启用了持久日志记录并且系统已完全启动 \&，则前者适用。
+\fBjournalctl\fP 和 \fBsystemd\-journald\fP 忽略名称不以 "\&.journal" 或 "\&.journal~"
+结尾的所有文件，因此在计算当前磁盘使用情况时，只会考虑位于适当目录中的这些文件。
+.sp
+\fISystemMaxUse=\fP 和 \fIRuntimeMaxUse=\fP 控制日志最多可以使用多少磁盘空间 \&。 \fISystemKeepFree=\fP
+和 \fIRuntimeKeepFree=\fP 控制 systemd\-journald 应留出多少磁盘空间以供其他用途 \&。
+\fBsystemd\-journald\fP 将遵守这两个限制并使用两个值中较小的值 \&。
+.sp
+第一对默认为相应文件系统大小的 10%，第二对默认为 15%，但每个值的上限为 4G\&。如果文件系统几乎已满，并且在启动
+systemd\-journald 时违反了 \fISystemKeepFree=\fP 或
+\fIRuntimeKeepFree=\fP，则限制将提高到实际空闲的百分比
+\&。这意味着如果之前有足够的可用空间并创建了日志文件，随后其他原因导致文件系统填满，journald
+将停止使用更多空间，但它不会删除现有文件以再次减少占用空间，或者
+\&。另请注意，仅删除归档文件以减少日志文件占用的空间。这意味着，实际上，在清理操作完成后，使用的空间可能仍多于 \fISystemMaxUse=\fP 或
+\fIRuntimeMaxUse=\fP 限制 \&。
+.sp
+\fISystemMaxFileSize=\fP 和 \fIRuntimeMaxFileSize=\fP 控制单个日志文件最多可以增长到多大
+\&。这会影响磁盘空间通过旋转可用的粒度，i\&.e\&。删除历史数据 \&。默认为 \fISystemMaxUse=\fP 和
+\fIRuntimeMaxUse=\fP 配置值的八分之一，因此通常有七个旋转的日志文件被保存为历史 \&。如果启用了日志压缩模式
+(默认启用)，则最大文件大小上限为 4G\&。
+.sp
+以字节为单位指定值或使用 K、M、G、T、P、E 作为指定大小的单位 (等于 1024、1024\(S2、\&... 字节)
+\&。请注意，当日志文件扩展时，大小限制会同步执行，并且不需要由时间触发的显式旋转步骤 \&。
+.sp
+\fISystemMaxFiles=\fP 和 \fIRuntimeMaxFiles=\fP 控制最多保留多少个独立的日志文件
+\&。请注意，只有归档文件会被删除，以减少文件数量，直到达到此限制; 活动文件将保留在
+\&。这意味着，实际上，在清理操作完成后，日志文件总数可能仍多于此限制 \&。此设置默认为 100\&。
+.RE
+.PP
+\fIMaxFileSec=\fP
+.RS 4
+在旋转到下一个日志文件之前将条目存储在单个日志文件中的最长时间 \&。通常，不需要基于时间的轮换，因为基于大小的轮换以及
+\fISystemMaxFileSize=\fP 等选项应该足以确保日志文件不会无限制地增长
+\&。但是，为确保在删除旧日志文件时不会立即丢失太多数据，将此值从默认值 1 更改为有意义 \&。设置为 0 以关闭此，特性
+\&。此设置采用的时间值可能以单位 "year"、"month"、"week"、"day"、"h" 或 "m" 为后缀，以覆盖默认时间单位秒 \&。
+.RE
+.PP
+\fIMaxRetentionSec=\fP
+.RS 4
+存储日志条目的最长时间 \&。这控制是否删除包含早于指定时间跨度的条目的日志文件 \&。通常，不需要基于时间删除旧日志文件，因为使用
+\fISystemMaxUse=\fP 等选项进行基于大小的删除应该足以确保日志文件不会无限制增长 \&。但是，要实现数据保留策略，将此值从默认值 0
+(关闭此，特性) 更改可能有意义 \&。此设置还采用可以以单位 "year"、"month"、"week"、"day"、"h" 或 " m"
+为后缀的时间值，以覆盖默认时间单位秒 \&。
+.RE
+.PP
+\fISyncIntervalSec=\fP
+.RS 4
+将日志文件同步到磁盘之前的超时 \&。同步后，日志文件被置于离线状态 \&。请注意，在记录优先级为 CRIT、ALERT 或 EMERG
+的日志消息后，同步将立即无条件地完成 \&。因此，此设置仅适用于 ERR、WARNING、NOTICE、INFO、DEBUG\& 级别的消息。默认超时为
+5 分钟 \&。
+.RE
+.PP
+\fIForwardToSyslog=\fP, \fIForwardToKMsg=\fP, \fIForwardToConsole=\fP,
+\fIForwardToWall=\fP
+.RS 4
+控制日志守护程序接收的日志消息是否应转发到传统的系统日志守护程序、内核日志缓冲区 (kmsg)、系统控制台，或作为墙消息发送给所有登录用户
+\&。这些选项采用布尔型参数 \&。如果转发到 syslog 已启用但没有任何内容从套接字读取消息，则转发到 syslog 无效
+\&。默认情况下，仅启用转发到墙 \&。这些设置可能会在启动时被内核命令行选项
+"systemd\&.journald\&.forward_to_syslog"、"systemd\&.journald\&.forward_to_kmsg"、"systemd\&.journald\&.forward_to_console"
+和 `systemd\&.journald\&.forward_to_wall`\& 覆盖。如果指定的选项名称没有 "=" 和后面的参数，则假定为
+true\&。否则，参数被解析为布尔值 \&。
+.sp
+转发到控制台时，可以使用 \fITTYPath=\fP 更改要登录的 TTY，如下所述 \&。
+.sp
+转发到内核日志缓冲区 (kmsg) 时，请确保为日志缓冲区选择适当大的大小，例如将 "log_buf_len=8M" 添加到内核命令行 \&。
+\fBsystemd\fP 将自动禁用内核 \*(Aqs rate\-limiting applied to userspace processes
+(equivalent to setting "printk\&.devkmsg=on")\&.
+.RE
+.PP
+\fIMaxLevelStore=\fP, \fIMaxLevelSyslog=\fP, \fIMaxLevelKMsg=\fP,
+\fIMaxLevelConsole=\fP, \fIMaxLevelWall=\fP
+.RS 4
+控制存储在日志中的消息的最大日志级别，转发到系统日志、kmsg、控制台或墙 (如果已启用，请参见上文) \&。作为参数，取
+"emerg"、"alert"、"crit"、"err"、"warning"、"notice"、"info"、"debug" 之一，或 0\(en7
+(对应同级别)\& 范围内的整数值。等于或低于日志级别的消息指定的是 stored/forwarded，上面的消息是丢弃
+\&。\fIMaxLevelStore=\fP 和 \fIMaxLevelSyslog=\fP 默认为 "debug"，以确保所有消息都存储在日志中并转发到
+syslog\&。\fIMaxLevelKMsg=\fP 默认为 "notice"，\fIMaxLevelConsole=\fP 默认为
+"info"，\fIMaxLevelWall=\fP\& 默认为 "emerg"。这些设置可能会在启动时被内核命令行选项
+"systemd\&.journald\&.max_level_store="、"systemd\&.journald\&.max_level_syslog="、"systemd\&.journald\&.max_level_kmsg="、"systemd\&.journald\&.max_level_console="、`systemd\&.journald\&.max_level_wall="\&
+覆盖。
+.RE
+.PP
+\fIReadKMsg=\fP
+.RS 4
+取一个布尔值 \&。如果启用 \fBsystemd\-journal\fP 处理内核生成的 /dev/kmsg 消息
+\&。在默认日志命名空间中，此选项默认启用，在所有其他 \& 中禁用。
+.RE
+.PP
+\fIAudit=\fP
+.RS 4
+取一个布尔值 \&。如果启用 \fBsystemd\-journald\fP 将在启动时打开内核审计 \&。如果禁用，它将关闭
+\&。如果取消设置，它既不会启用也不会禁用它，保持以前的状态不变 \&。这意味着如果另一个工具打开审计，即使 \fBsystemd\-journald\fP
+将其关闭，它仍将收集生成的消息 \&。默认为开 \&。
+.sp
+请注意，此选项不控制 \fBsystemd\-journald\fP 是否收集生成的审计记录，它只控制它是否告诉内核生成它们 \&。如果需要阻止
+\fBsystemd\-journald\fP 收集生成的消息，可以禁用套接字单元
+"systemd\-journald\-audit\&.socket"，此时此设置无效 \&。
+.RE
+.PP
+\fITTYPath=\fP
+.RS 4
+如果使用 \fIForwardToConsole=yes\fP，请更改要使用的控制台 TTY\&。默认为 /dev/console\&。
+.RE
+.PP
+\fILineMax=\fP
+.RS 4
+将流日志转换为记录日志时允许的最大行长度 \&。当 systemd 元 \*(Aqs 标准 output/error
+通过流套接字连接到日志时，读取的数据将在换行符 ("\en", ASCII 10) 和 \fBNUL\fP 字符 \&
+处拆分为单独的日志记录。如果没有为指定字节数读取此类分隔符，则会人为插入硬日志记录边界，将过长的行分解为多个日志记录 \&。选择过大的值会增加
+Journal daemon 对每个流客户端的可能内存使用，因为在最坏的情况下，journal daemon
+需要在内存中缓冲指定数量的字节，然后才能将新的日志记录刷新到磁盘
+\&。另请注意，允许最大行长度过大会影响与传统日志协议的兼容性，因为日志记录可能不再适合单个 \fBAF_UNIX\fP 或 \fBAF_INET\fP 数据报
+\&。采用以字节为单位的大小 \&。如果值以 K、M、G 或 T 为后缀，则指定的大小将分别解析为千字节、兆字节、千兆字节或太字节 (以 1024
+为底) \&。默认为 48K，它相对较大但仍然足够小，因此日志记录很可能适合网络数据报以及元数据的额外空间。请注意，不接受低于 79 的值，并且会撞到
+79\&。
+.RE
+.SH "FORWARDING TO TRADITIONAL SYSLOG DAEMONS"
+.PP
+可以通过两种不同的方式将日志事件传输到不同的日志守护进程 \&。使用第一种方法，消息会立即转发到套接字
+(/run/systemd/journal/syslog)，传统的系统日志守护程序可以在其中读取它们 \&。该方法由
+\fIForwardToSyslog=\fP 选项 \& 控制。使用第二种方法，系统日志守护进程的行为类似于普通的日志客户端，并从日志文件中读取消息，类似于
+\fBjournalctl\fP(1)\&。这样，不必立即读取消息，这允许仅在引导后期启动的日志守护程序访问自系统启动以来的所有消息
+\&。此外，它还可以使用完整的结构化元数据。这种方法当然只有在消息完全存储在日志文件中时才可用 \&。所以如果设置了 \fIStorage=none\fP\&
+将不起作用。应该注意的是，通常系统日志守护程序使用 \fIsecond\fP 方法，因此 \fIStorage=\fP 选项而不是
+\fIForwardToSyslog=\fP 选项与它们相关 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-journald.service\fP(8), \fBjournalctl\fP(1),
+\fBsystemd.journal\-fields\fP(7), \fBsystemd\-system.conf\fP(5)
+.SH NOTES
+.IP " 1." 4
+可搜索的顺序密钥生成器
+.RS 4
+\%https://eprint.iacr.org/2013/397
+.RE
+.IP " 2." 4
+systemd 系统上的用户、组、UID 和 GID
+.RS 4
+\%https://systemd.io/UIDS\-GIDS
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

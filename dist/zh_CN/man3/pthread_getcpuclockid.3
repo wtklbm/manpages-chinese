@@ -1,0 +1,178 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2009 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_getcpuclockid 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_getcpuclockid \- 检索线程的 CPU 时间时钟的 ID
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+\fB#include <time.h>\fP
+.PP
+\fBint pthread_getcpuclockid(pthread_t \fP\fIthread\fP\fB, clockid_t *\fP\fIclockid\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\" The clockid is constructed as follows:
+.\" *clockid = CLOCK_THREAD_CPUTIME_ID | (pd->tid << CLOCK_IDFIELD_SIZE)
+.\" where CLOCK_IDFIELD_SIZE is 3.
+\fBpthread_getcpuclockid\fP() 函数获取在 \fIthread\fP 中给定 ID 的线程的 CPU 时间时钟的 ID，并在
+\fIclockid\fP 指向的位置返回它。
+.SH "RETURN VALUE"
+成功时，这个函数返回 0; 出错时，它返回一个非零错误号。
+.SH ERRORS
+.TP 
+\fBENOENT\fP
+.\" CLOCK_THREAD_CPUTIME_ID not defined
+.\"
+.\" Looking at nptl/pthread_getcpuclockid.c an ERANGE error would
+.\" be possible if kernel thread IDs took more than 29 bits (which
+.\" they currently cannot).
+系统不支持每线程 CPU 时间时钟。
+.TP 
+\fBESRCH\fP
+找不到 ID 为 \fIthread\fP 的线程。
+.SH VERSIONS
+这个函数从 glibc 2.2 开始可用。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_getcpuclockid\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+当 \fIthread\fP 指调用线程时，此函数返回一个标识符，当给定时钟 ID \fBCLOCK_THREAD_CPUTIME_ID\fP 时，该标识符指代由
+\fBclock_gettime\fP(2) 和 \fBclock_settime\fP(2) 操纵的同一时钟。
+.SH EXAMPLES
+下面的程序创建一个线程，然后使用 \fBclock_gettime\fP(2) 检索总进程 CPU 时间，以及两个线程消耗的每个线程 CPU 时间。 以下
+shell 会话显示了一个示例运行:
+.PP
+.in +4n
+.EX
+$ \fB./a.out\fP
+主线程休眠
+子线程开始无限循环
+主线程消耗一些 CPU 时间...
+进程总 CPU 时间: 1.368
+主线程 CPU 时间: 0.376
+子线程 CPU 时间: 0.992
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_getcpuclockid.c)
+\&
+.EX
+/* Link with "\-lrt" */
+
+#include <errno.h>
+#include <pthread.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#define handle_error(msg) \e
+        do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+#define handle_error_en(en, msg) \e
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void *
+thread_start(void *arg)
+{
+    printf("Subthread starting infinite loop\en");
+    for (;;)
+        continue;
+}
+
+static void
+pclock(char *msg, clockid_t cid)
+{
+    struct timespec ts;
+
+    printf("%s", msg);
+    if (clock_gettime(cid, &ts) == \-1)
+        handle_error("clock_gettime");
+    printf("%4jd.%03ld\en", (intmax_t) ts.tv_sec, ts.tv_nsec / 1000000);
+}
+
+int
+main(void)
+{
+    pthread_t thread;
+    clockid_t cid;
+    int s;
+
+    s = pthread_create(&thread, NULL, thread_start, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_create");
+
+    printf("Main thread sleeping\en");
+    sleep(1);
+
+    printf("Main thread consuming some CPU time...\en");
+    for (unsigned int j = 0; j < 2000000; j++)
+        getppid();
+
+    pclock("Process total CPU time: ", CLOCK_PROCESS_CPUTIME_ID);
+
+    s = pthread_getcpuclockid(pthread_self(), &cid);
+    if (s != 0)
+        handle_error_en(s, "pthread_getcpuclockid");
+    pclock("Main thread CPU time:   ", cid);
+
+    /* The preceding 4 lines of code could have been replaced by:
+       pclock("Main thread CPU time:   ", CLOCK_THREAD_CPUTIME_ID); */
+
+    s = pthread_getcpuclockid(thread, &cid);
+    if (s != 0)
+        handle_error_en(s, "pthread_getcpuclockid");
+    pclock("Subthread CPU time: 1    ", cid);
+
+    exit(EXIT_SUCCESS);         /* Terminates both threads */
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclock_gettime\fP(2), \fBclock_settime\fP(2), \fBtimer_create\fP(2),
+\fBclock_getcpuclockid\fP(3), \fBpthread_self\fP(3), \fBpthreads\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

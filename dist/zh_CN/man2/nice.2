@@ -1,0 +1,91 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt <drew@cs.colorado.edu>, March 28, 1992
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1996-11-04 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified 2001-06-04 by aeb
+.\" Modified 2004-05-27 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH nice 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+不错 \- 更改进程优先级
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <unistd.h>\fP
+.PP
+\fBint nice(int \fP\fIinc\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBnice\fP():
+.nf
+    _XOPEN_SOURCE
+        || /* Since glibc 2.19: */ _DEFAULT_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBnice\fP() 将 \fIinc\fP 添加到调用线程的 nice 值。 (较高的 nice 值意味着较低的优先级。)
+.PP
+nice 值的范围是 + 19 (低优先级) 到 \-20 (高优先级)。 尝试在范围之外设置一个不错的值会被限制在该范围内。
+.PP
+传统上，只有特权进程可以降低 nice 值 (即设置更高的优先级)。 但是，由于 Linux 2.6.12，非特权进程可以降低具有合适
+\fBRLIMIT_NICE\fP 软限制的目标进程的 nice 值; 详见 \fBgetrlimit\fP(2)。
+.SH "RETURN VALUE"
+成功时，将返回新的 nice 值 (但请参见下面的注释)。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.PP
+一个成功的调用可以合法地返回 \-1。 要检测错误，请在调用前将 \fIerrno\fP 设置为 0，并在 \fBnice\fP() 返回 \-1 后检查它是否非零。
+.SH ERRORS
+.TP 
+\fBEPERM\fP
+调用进程试图通过提供 negative \fIinc\fP 来提高其优先级，但权限不足。 在 Linux 下，需要 \fBCAP_SYS_NICE\fP 功能。
+(但见 \fBsetrlimit\fP(2).) 中 \fBRLIMIT_NICE\fP 资源限制的讨论
+.SH STANDARDS
+.\" SVr4 documents an additional
+.\" .B EINVAL
+.\" error code.
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.  然而，原始系统调用和 (g) libc (早于 glibc
+2.2.4) 返回值是非标准的，见下文。
+.SH NOTES
+有关 nice 值的更多详细信息，请参见 \fBsched\fP(7)。
+.PP
+.\"
+\fINote\fP: 在 Linux 2.6.38 中加入 "autogroup" 特性意味着 nice 值在很多情况下不再具有其传统的效果。
+有关详细信息，请参见 \fBsched\fP(7)。
+.SS "C library/kernel differences"
+POSIX.1 指定 \fBnice\fP() 应返回新的 nice 值。 但是，原始 Linux 系统调用成功时返回 0。 同样，glibc 2.2.3
+和更早版本中提供的 \fBnice\fP() 包装器函数在成功时返回 0。
+.PP
+从 glibc 2.2.4 开始，glibc 提供的 \fBnice\fP() 包装器函数提供了对 POSIX.1 的一致性，通过调用
+\fBgetpriority\fP(2) 获取新的 nice 值，然后返回给调用者。
+.SH "SEE ALSO"
+\fBnice\fP(1), \fBrenice\fP(1), \fBfork\fP(2), \fBgetpriority\fP(2), \fBgetrlimit\fP(2),
+\fBsetpriority\fP(2), \fBcapabilities\fP(7), \fBsched\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

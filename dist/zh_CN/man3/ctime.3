@@ -1,0 +1,210 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 David Metcalfe (david@prism.demon.co.uk)
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 19:49:27 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified Fri Apr 26 12:38:55 MET DST 1996 by Martin Schulze (joey@linux.de)
+.\" Modified 2001-11-13, aeb
+.\" Modified 2001-12-13, joey, aeb
+.\" Modified 2004-11-16, mtk
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ctime 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+asctime、ctime、gmtime、localtime、mktime、asctime_r、ctime_r、gmtime_r、localtime_r
+\- 将日期和时间转换为细分时间或 ASCII
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <time.h>\fP
+.PP
+\fBchar *asctime(const struct tm *\fP\fItm\fP\fB);\fP
+\fBchar *asctime_r(const struct tm *restrict \fP\fItm\fP\fB,\fP
+\fB                    char \fP\fIbuf\fP\fB[restrict 26]);\fP
+.PP
+\fBchar *ctime(const time_t *\fP\fItimep\fP\fB);\fP
+\fBchar *ctime_r(const time_t *restrict \fP\fItimep\fP\fB,\fP
+\fB                    char \fP\fIbuf\fP\fB[restrict 26]);\fP
+.PP
+\fBstruct tm *gmtime(const time_t *\fP\fItimep\fP\fB);\fP
+\fBstruct tm *gmtime_r(const time_t *restrict \fP\fItimep\fP\fB,\fP
+\fB                    struct tm *restrict \fP\fIresult\fP\fB);\fP
+.PP
+\fBstruct tm *localtime(const time_t *\fP\fItimep\fP\fB);\fP
+\fBstruct tm *localtime_r(const time_t *restrict \fP\fItimep\fP\fB,\fP
+\fB                    struct tm *restrict \fP\fIresult\fP\fB);\fP
+.PP
+\fBtime_t mktime(struct tm *\fP\fItm\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBasctime_r\fP(), \fBctime_r\fP(), \fBgmtime_r\fP(), \fBlocaltime_r\fP():
+.nf
+    _POSIX_C_SOURCE
+        || /* glibc <= 2.19: */ _BSD_SOURCE || _SVID_SOURCE
+.fi
+.SH DESCRIPTION
+\fBctime\fP()、\fBgmtime\fP()、\fBlocaltime\fP() 函数都取一个数据类型 \fItime_t\fP 的参数，代表日历时间。
+当解释为绝对时间值时，它表示自纪元 1970\-01\-01 00:00:00 +0000 (UTC) 以来经过的秒数。
+.PP
+\fBasctime\fP() 和 \fBmktime\fP() 的函数都取一个代表故障时间的参数，是分年、月、日等的表示。
+.PP
+故障时间存储在结构体 \fItm\fP 中，描述在 \fBtm\fP(3type) 中。
+.PP
+调用 \fBctime(\fP\fIt\fP\fB)\fP 相当于 \fBasctime(localtime(\fP\fIt\fP\fB))\fP。 它将日历时间 \fIt\fP 转换为以
+null 结尾的字符串形式
+.PP
+.in +4n
+.EX
+"Wed Jun 30 21:49:08 1993\en"
+.EE
+.in
+.PP
+星期几的缩写是 "Sun"、"Mon"、"Tue"、"Wed"、"Thu"、"Fri" 和 "Sat"。 月份的缩写是
+"Jan"、"Feb"、"Mar"、"Apr"、"May"、"Jun"、"Jul"、"Aug"、"Sep"、"Oct"、"Nov" 和 "Dec"。
+返回值指向一个静态分配的字符串，该字符串可能会被后续调用任何日期和时间函数覆盖。 函数还设置外部变量 \fItzname\fP、\fItimezone\fP 和
+\fIdaylight\fP (有关当前时区的信息，请参见 \fBtzset\fP(3))。 可重入版本 \fBctime_r\fP()
+做同样的事情，但将字符串存储在用户提供的缓冲区中，该缓冲区应至少有 26 字节的空间。
+\fItzname\fP、\fItimezone\fP、\fIdaylight\fP 无需设置。
+.PP
+\fBgmtime\fP() 函数将日历时间 \fItimep\fP 转换为细分时间表示，以协调世界时 (UTC) 表示。 当年份不适合整数时，它可能返回
+NULL。 返回值指向一个静态分配的结构体，它可能会被后续调用任何日期和时间函数覆盖。 \fBgmtime_r\fP()
+函数做同样的事情，但将数据存储在用户提供的结构体中。
+.PP
+\fBlocaltime\fP() 函数将日历时间 \fItimep\fP 转换为细分时间表示，相对于用户指定的时区表示。 函数的作用就好像它调用了
+\fBtzset\fP(3) 并将外部变量 \fItzname\fP 设置为有关当前时区的信息，将 \fItimezone\fP 设置为协调世界时 (UTC)
+与当地标准时间 (以秒为单位) 之间的差异，并将 \fIdaylight\fP 设置为非零值 (如果夏令时规则适用于一年中的某个时候。
+返回值指向一个静态分配的结构体，它可能会被后续调用任何日期和时间函数覆盖。 \fBlocaltime_r\fP()
+函数做同样的事情，但将数据存储在用户提供的结构体中。 \fItzname\fP、\fItimezone\fP、\fIdaylight\fP 无需设置。
+.PP
+\fBasctime\fP() 函数将细分时间值 \fItm\fP 转换为与 \fBctime\fP() 具有相同格式的空终止字符串。
+返回值指向一个静态分配的字符串，该字符串可能会被后续调用任何日期和时间函数覆盖。 \fBasctime_r\fP()
+函数做同样的事情，但将字符串存储在用户提供的缓冲区中，该缓冲区应至少有 26 个字节的空间。
+.PP
+\fBmktime\fP() 函数将以本地时间表示的分解时间结构体转换为日历时间表示。 函数忽略调用方在 \fItm_wday\fP 和 \fItm_yday\fP
+字段中提供的值。 \fItm_isdst\fP 字段中指定的值通知 \fBmktime\fP() 夏令时 (DST) 是否对 \fItm\fP 中提供的时间有效。零表示
+DST 未生效; negative 值意味着 \fBmktime\fP() 应该 (使用时区信息和系统数据库) 尝试确定 DST 是否在指定时间生效。
+.PP
+\fBmktime\fP() 函数修改 \fItm\fP 结构体的字段如下: \fItm_wday\fP 和 \fItm_yday\fP 设置为根据其他字段的内容确定的值;
+如果结构体成员超出其有效时间间隔，它们将被归一化 (例如，10 月 40 日更改为 11 月 9 日) ; \fItm_isdst\fP 被设置
+(不管其初始值如何) 分别为正值或 0，以指示 DST 在指定时间是否生效。 调用 \fBmktime\fP() 还会使用有关当前时区的信息设置外部变量
+\fItzname\fP。
+.PP
+如果指定的分解时间不能表示为日历时间 (自纪元以来的秒数)，则 \fBmktime\fP() 返回 \fI(time_t)\ \-1\fP
+并且不更改分解时间结构体的成员。
+.SH "RETURN VALUE"
+成功时，\fBgmtime\fP() 和 \fBlocaltime\fP() 返回指向 \fIstruct\ tm\fP 的指针。
+.PP
+成功时，\fBgmtime_r\fP() 和 \fBlocaltime_r\fP() 返回 \fIresult\fP 指向的结构体的地址。
+.PP
+成功时，\fBasctime\fP() 和 \fBctime\fP() 返回一个指向字符串的指针。
+.PP
+成功时，\fBasctime_r\fP() 和 \fBctime_r\fP() 返回指向 \fIbuf\fP 指向的字符串的指针。
+.PP
+成功时，\fBmktime\fP() 返回日历时间 (自纪元以来的秒数)，表示为 \fItime_t\fP 类型的值。
+.PP
+出错时，\fBmktime\fP() 返回值 \fI(time_t)\ \-1\fP。 剩余的函数在出错时返回 NULL。 出错时，设置 \fIerrno\fP
+以指示错误。
+.SH ERRORS
+.TP 
+\fBEOVERFLOW\fP
+结果无法表示。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lb lb lbx
+l l l.
+Interface	Attribute	Value
+T{
+\fBasctime\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:asctime locale
+T}
+T{
+\fBasctime_r\fP()
+T}	Thread safety	T{
+MT\-Safe locale
+T}
+T{
+\fBctime\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:tmbuf
+race:asctime env locale
+T}
+T{
+\fBctime_r\fP(),
+\fBgmtime_r\fP(),
+\fBlocaltime_r\fP(),
+\fBmktime\fP()
+T}	Thread safety	T{
+MT\-Safe env locale
+T}
+T{
+\fBgmtime\fP(),
+\fBlocaltime\fP()
+T}	Thread safety	T{
+MT\-Unsafe race:tmbuf env locale
+T}
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001。C99 指定 \fBasctime\fP()、\fBctime\fP()、\fBgmtime\fP()、\fBlocaltime\fP() 和
+\fBmktime\fP()。 POSIX.1\-2008 将 \fBasctime\fP()、\fBasctime_r\fP()、\fBctime\fP() 和
+\fBctime_r\fP() 标记为已过时，建议改用 \fBstrftime\fP(3)。
+.PP
+POSIX 没有指定 \fBctime_r\fP() 的参数为 \fIrestrict\fP; 这是 glibc 特有的。
+.SH NOTES
+四个函数 \fBasctime\fP()、\fBctime\fP()、\fBgmtime\fP() 和 \fBlocaltime\fP()
+返回指向静态数据的指针，因此不是线程安全的。 线程安全版本 \fBasctime_r\fP()、\fBctime_r\fP()、\fBgmtime_r\fP() 和
+\fBlocaltime_r\fP() 由 SUSv2 指定。
+.PP
+POSIX.1\-2001 说: "The \fBasctime\fP(), \fBctime\fP(), \fBgmtime\fP(), and
+\fBlocaltime\fP() functions shall return values in one of two static objects: a
+broken\-down time structure and an array of type \fIchar\fP. Execution of any of
+the functions may overwrite the information returned in either of these
+objects by any of the other functions." 这可能发生在 glibc 实现中。
+.PP
+在许多实现中，包括 glibc，\fItm_mday\fP 中的 0 被解释为前一个月的最后一天。
+.PP
+.\" See http://thread.gmane.org/gmane.comp.time.tz/2034/
+根据 POSIX.1\-2001，要求 \fBlocaltime\fP() 的行为就像调用 \fBtzset\fP(3) 一样，而 \fBlocaltime_r\fP()
+则没有此要求。 对于可移植代码，应在 \fBlocaltime_r\fP() 之前调用 \fBtzset\fP(3)。
+.SH "SEE ALSO"
+\fBdate\fP(1), \fBgettimeofday\fP(2), \fBtime\fP(2), \fButime\fP(2), \fBclock\fP(3),
+\fBdifftime\fP(3), \fBstrftime\fP(3), \fBstrptime\fP(3), \fBtimegm\fP(3), \fBtzset\fP(3),
+\fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

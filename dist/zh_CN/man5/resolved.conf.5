@@ -1,0 +1,278 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH RESOLVED\&.CONF 5 "" "systemd 253" resolved.conf
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+resolved.conf, resolved.conf.d \- 网络名称解析配置文件
+.SH SYNOPSIS
+.PP
+/etc/systemd/resolved\&.conf
+.PP
+/etc/systemd/resolved\&.conf\&.d/*\&.conf
+.PP
+/run/systemd/resolved\&.conf\&.d/*\&.conf
+.PP
+/usr/lib/systemd/resolved\&.conf\&.d/*\&.conf
+.SH DESCRIPTION
+.PP
+这些配置文件控制本地 DNS 和 LLMNR 名称解析。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+默认配置是在编译期间设置的，因此只有在需要偏离这些默认值时才需要配置 \&。最初，/etc/systemd/
+中的主配置文件包含注释掉的条目，显示默认值作为管理员指南 \&。可以通过编辑此文件或创建丢弃 \- ins 来创建本地覆盖，如下所述 \&。建议使用丢弃
+\- ins 进行本地配置，而不是修改主配置文件 \&。
+.PP
+除了 "main" 配置文件，抛弃 \- in 配置片段是从
+/usr/systemd/*\&.conf\&.d/,/usr/systemd/*\&.conf\& 中读取的.d/ 和
+/etc/systemd/*\&.conf\&.d/\&。那些丢弃 \- ins 具有更高的优先级并覆盖主配置文件 \&。* \&.conf\&.d/
+配置子目录中的文件按字典顺序按文件名排序，而不管它们位于哪个子目录中
+\&。当多个文件指定相同的选项时，对于只接受单个值的选项，最后排序的文件中的条目优先，对于接受值列表的选项，条目在排序的文件中出现时收集。
+.PP
+当包需要自定义配置时，可以在 /usr/\& 下安装丢弃 \- ins。/etc/
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。必须使用 Drop\-ins 来覆盖包丢弃 \-
+ins，因为主配置文件具有较低的优先级 \&。建议在这些子目录中的所有文件名前加上一个两位数字和一个破折号，以简化文件的排序 \&。
+.PP
+要禁用供应商提供的配置文件，推荐的方法是在 /etc / 的配置目录中放置一个指向 /dev/null 的符号链接，文件名与供应商配置文件相同 \&。
+.SH OPTIONS
+.PP
+[Resolve] 部分提供以下选项:
+.PP
+\fIDNS=\fP
+.RS 4
+以空格分隔的 IPv4 和 IPv6 地址列表，用作系统 DNS 服务器 \&。每个地址都可以选择采用以 ":" 分隔的端口号、以 "%"
+分隔的网络接口名称或索引以及以 `#`\& 分隔的服务器名称指示 (SNI)。当用端口号指定 IPv6 地址时，地址必须在方括号 \&
+中。也就是说，可接受的完整格式是 "111\&.222\&.333\&.444:9953%ifname#example\&.com" for IPv4
+和 "[1111:2222::3333]:9953%ifname#example\&.com" for IPv6\&。DNS 请求被发送到并行中列出的
+DNS 服务器之一，以从 \fBsystemd\-networkd.service\fP(8) 获取或由外部应用程序在运行时设置的合适的每链接 DNS 服务器
+\&。出于兼容性原因，如果未指定此设置，则使用 /etc/resolv\&.conf 中列出的 DNS 服务器，前提是该文件存在并且其中配置了任何服务器
+\&。此设置默认为空列表 \&。
+.RE
+.PP
+\fIFallbackDNS=\fP
+.RS 4
+以空格分隔的 IPv4 和 IPv6 地址列表，用作后备 DNS 服务器 \&。请参见 \fIDNS=\fP 以了解可接受的地址格式 \&。从
+\fBsystemd\-networkd.service\fP(8) 获得的任何每链接 DNS 服务器都优先于此设置，通过上面的 \fIDNS=\fP 或
+/etc/resolv\&.conf\& 设置的任何服务器也是如此。因此，仅当没有其他 DNS 服务器信息已知 \&
+时才使用此设置。如果未给出此选项，则使用编译的 DNS 服务器列表 \&。
+.RE
+.PP
+\fIDomains=\fP
+.RS 4
+以空格分隔的域列表，可选地以 "~" 为前缀，用于下面描述的两个不同目的 \&。默认为空列表 \&。
+.sp
+在解析单标签主机名 (不包含点的域名) 时，任何以 "~" 为前缀的域 \fInot\fP 都用作搜索后缀，以便将它们限定为完全限定域名
+(FQDN)\&。这些 "search domains" 严格按照指定的顺序处理，直到找到带后缀的名字 \&。出于兼容性原因，如果未指定此设置，则使用
+/etc/resolv\&.conf 中列出的带有 \fIsearch\fP 关键字的搜索域，前提是该文件存在并且其中配置了任何域 \&。
+.sp
+以 "~" 为前缀的域称为 `路由域`\&。此处列出的所有域 (删除 "~" 前缀后的搜索域和路由域) 定义了一个搜索路径，该路径最好将 DNS
+查询定向到此接口 \&。此搜索路径仅在合适的每链接 DNS 服务器已知时有效 \&。此类服务器可以通过 \fIDNS=\fP 设置 (见上文)
+定义，并在运行时动态定义，例如来自 DHCP 租约 \&。如果没有已知的每链接 DNS 服务器，则路由域无效 \&。
+.sp
+使用构造 "~\&." (由表示路由域的 "~" 和表示 DNS 根域的 "\&." 组成，它是所有 DNS 域的隐含后缀) 使用为该链接定义的 DNS
+服务器，最好为所有域 \&。
+.RE
+.PP
+\fILLMNR=\fP
+.RS 4
+采用布尔参数或 `解析`\&。控制链路本地多播名称解析支持本地主机上的 (\m[blue]\fBRFC 4795\fP\m[]\&\s-2\u[1]\d\s+2)\&。如果为真，则启用完整的 LLMNR 响应器和解析器支持 \&。如果为假，则同时禁用
+\&。如果设置为 "resolve"，则仅启用分辨率支持，但禁用响应 \&。请注意，\fBsystemd\-networkd.service\fP(8)
+还维护每个链接的 LLMNR 设置 \&。仅当每个链接和全局设置为 on\& 时，LLMNR 才会在链接上启用。
+.RE
+.PP
+\fIMulticastDNS=\fP
+.RS 4
+采用布尔参数或 `解析`\&。控制本地主机上的多播 DNS 支持 (\m[blue]\fBRFC 6762\fP\m[]\&\s-2\u[2]\d\s+2)\&。如果为真，则启用完整的多播 DNS 响应器和解析器支持 \&。如果为假，则同时禁用
+\&。如果设置为 "resolve"，则仅启用分辨率支持，但禁用响应 \&。请注意，\fBsystemd\-networkd.service\fP(8)
+还维护每个链接的多播 DNS 设置 \&。仅当每个链接和全局设置为 on\& 时，才会在链接上启用多播 DNS。
+.RE
+.PP
+\fIDNSSEC=\fP
+.RS 4
+采用布尔参数或 `允许降级`\&。如果为真，则所有 DNS 查找都在本地通过 DNSSEC 验证 (不包括 LLMNR 和多播 DNS)
+\&。如果检测到对查找请求的响应无效，则会将查找失败返回给应用程序 \&。请注意，此模式需要支持 DNSSEC\& 的 DNS 服务器。如果 DNS
+服务器不正确支持 DNSSEC，所有验证都将失败 \&。如果设置为 "allow\-downgrade" 尝试进行 DNSSEC
+验证，但如果服务器不正确支持 DNSSEC，则 DNSSEC 模式会自动禁用 \&。请注意，此模式使 DNSSEC 验证容易受到 "downgrade"
+攻击，攻击者可能会通过合成表明 DNSSEC 不受支持 \& 的 DNS 响应来触发降级到非 DNSSEC 模式。如果设置为 false，则 DNS
+查找不会经过 DNSSEC 验证 \&。
+.sp
+请注意，DNSSEC 验证需要检索额外的 DNS 数据，因此会导致较小的 DNS 查找时间损失 \&。
+.sp
+DNSSEC 需要 "trust anchors" 的知识来证明数据完整性 \&。Internet 根域的信任锚内置于解析器中，可以使用
+\fBdnssec\-trust\-anchors.d\fP(5)\& 定义其他信任锚。信任锚可能会定期更改，旧的信任锚可能会被撤销
+\&。在这种情况下，在本地配置新的信任锚或使用新的根信任锚更新解析器软件包之前，无法进行 DNSSEC 验证。实际上，当内置信任锚被撤销并且
+\fIDNSSEC=\fP 为真时，所有进一步的查找都将失败，因为无法再证明查找是正确签名还是有效未签名 \&。如果 \fIDNSSEC=\fP 设置为
+"allow\-downgrade"，解析器将在这种情况下自动关闭 DNSSEC 验证 \&。
+.sp
+查找 DNS 数据的客户端程序将被告知是否可以使用 DNSSEC 验证查找，或者是否无法验证返回的数据 (因为在 DNS 中发现数据未签名，或者 DNS
+服务器不支持 DNSSEC 或没有适当的信任锚是已知的) \&。在后一种情况下，假设客户端程序使用辅助方案来验证返回的 DNS 数据，如果需要的话
+\&。
+.sp
+建议在已知 DNS 服务器正确支持 DNSSEC 以及定期进行软件或信任锚更新的系统上将 \fIDNSSEC=\fP 设置为
+true\&。在其他系统上，建议将 \fIDNSSEC=\fP 设置为 `允许降级`\&。
+.sp
+除了这个全局 DNSSEC 设置之外，\fBsystemd\-networkd.service\fP(8) 还维护每个链接的 DNSSEC 设置 \&。对于系统
+DNS 服务器 (见上文)，只有全局 DNSSEC 设置有效 \&。对于每链接 DNS
+服务器，每链接设置有效，除非取消设置，在这种情况下，将使用全局设置 \&。
+.sp
+站点私有 DNS 区域通常与 DNSSEC 操作冲突，除非为它们配置了 negative (如果私有区域未签名) 或正 (如果私有区域已签名) 信任锚
+\&。如果选择 "allow\-downgrade" 模式，则会尝试使用 DNS 根服务器未知的顶级域 (TLDs) 来检测站点专用 DNS 区域
+\&。此逻辑不适用于所有私有区域设置 \&。
+.sp
+默认为 `否`\&。
+.RE
+.PP
+\fIDNSOverTLS=\fP
+.RS 4
+采用布尔参数或 `机会主义`\&。如果为真，所有与服务器的连接都将被加密 \&。请注意，此模式需要支持 DNS\-over\-TLS 并具有有效证书的
+DNS 服务器。如果主机名是使用 "address#server_name" 格式在 \fIDNS=\fP 中指定的，它用于验证其证书并在打开 TLS
+连接时启用服务器名称指示 (SNI)\&。否则证书将根据服务器 \*(Aqs IP\&. 如果 DNS 服务器不支持 DNS\-over\-TLS，所有
+DNS 请求都将失败 \&。
+.sp
+当设置为 "opportunistic" 时，尝试使用 DNS\-over\-TLS\& 发送加密的 DNS 请求。如果 DNS 服务器不支持
+TLS，则禁用 DNS\-over\-TLS\&。请注意，此模式使 DNS\-over\-TLS 容易受到 "downgrade"
+攻击，攻击者可能会通过合成表明不支持 DNS\-over\-TLS 的响应来触发降级到非加密模式 \&。如果设置为 false，DNS 查找将通过
+UDP\& 发送。
+.sp
+请注意，DNS\-over\-TLS 需要发送额外的数据来设置加密连接，因此会导致 DNS 查找时间损失很小。
+.sp
+请注意，在 "opportunistic" 模式下，解析器无法对服务器进行身份验证，因此容易受到 "man\-in\-the\-middle" 攻击 \&。
+.sp
+除了这个全局 \fIDNSOverTLS=\fP 设置 \fBsystemd\-networkd.service\fP(8) 还维护每个链接
+\fIDNSOverTLS=\fP 设置 \&。对于系统 DNS 服务器 (见上文)，只有全局 \fIDNSOverTLS=\fP 设置有效 \&。对于每链接
+DNS 服务器，每链接设置有效，除非取消设置，在这种情况下，将使用全局设置 \&。
+.sp
+默认为 `否`\&。
+.RE
+.PP
+\fICache=\fP
+.RS 4
+将布尔值或 "no\-negative" 作为参数 \&。如果是 "yes"
+(默认)，解析之前查询过的域名，只要有效，就会返回之前的结果，不会产生新的网络请求 \&。请注意，关闭缓存会带来性能损失，当使用 DNSSEC
+时性能损失特别大 \&。如果是 "no\-negative"，则只缓存肯定的答案 \&。
+.sp
+请注意，主机 \- 本地 DNS 服务器的缓存默认情况下处于关闭状态。有关详细信息，请参见 \fICacheFromLocalhost=\fP\&。
+.RE
+.PP
+\fICacheFromLocalhost=\fP
+.RS 4
+接受一个布尔值作为参数 \&。如果 "no" (默认值)，并且响应来自主机本地 IP 地址 (例如 127\&.0\&.0\&.1 或 ::1)，结果将
+\* (缓存 Aqt 以避免潜在的重复本地缓存 \&。
+.RE
+.PP
+\fIDNSStubListener=\fP
+.RS 4
+采用布尔参数或 "udp" 和 `tcp`\& 之一。如果是 "udp"，DNS 存根解析器将侦听地址 127\&.0\&.0\&.53 和
+127\&.0\&.0\&.54、端口 53\& 上的 UDP 请求。如果是 "tcp"，存根将在相同的地址和端口上侦听 TCP 请求 \&。如果为
+"yes" (默认值)，存根将同时侦听 UDP 和 TCP 请求 \&。如果 "no"，存根侦听器被禁用 \&。
+.sp
+127\&.0\&.0\&.53 上的 DNS 存根解析器提供了本地解析器的完整特性集，其中包括提供 LLMNR/MulticastDNS 解析
+\&。127\&.0\&.0\&.54 上的 DNS 存根解析器提供了一个更有限的解析器，它仅在 "proxy"
+模式下运行，i\&.e\&。它将相对未修改的大多数 DNS 消息传递给当前上游 DNS 服务器并返回，但不会尝试在本地处理消息，因此不会验证
+DNSSEC，或提供 LLMNR/MulticastDNS\&。(但是，如果需要，它将转换为 DNS\-over\-TLS 通信 \&。)
+.sp
+请注意，当 DNS 存根侦听器的侦听地址和端口已被使用时，它会隐式关闭 \&。
+.RE
+.PP
+\fIDNSStubListenerExtra=\fP
+.RS 4
+采用 IPv4 或 IPv6 地址来侦听 \&。该地址可以有选择地以协议名称 ("udp" 或 "tcp") 为前缀，以 `:`\&
+分隔。如果未指定协议，该服务将同时侦听 UDP 和 TCP\&。它也可以选择性地以带有分隔符 `:`\& 的数字端口号作为后缀。当用端口号指定 IPv6
+地址时，地址必须在方括号 \& 中。如果未指定端口，则服务使用端口 53\&。请注意，这与使用 \fIDNSStubListener=\fP 配置的主 DNS
+存根无关，并且仅将 \fIadditional\fP 套接字配置为侦听 \&。该选项可以指定多次 \&。如果分配了空字符串，则清除所有先前的分配
+\&。默认为取消设置 \&。
+.sp
+Examples:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+DNSStubListenerExtra=192\&.168\&.10\&.10
+DNSStubListenerExtra=2001:db8:0:f102::10
+DNSStubListenerExtra=192\&.168\&.10\&.11:9953
+DNSStubListenerExtra=[2001:db8:0:f102::11]:9953
+DNSStubListenerExtra=tcp:192\&.168\&.10\&.12
+DNSStubListenerExtra=udp:2001:db8:0:f102::12
+DNSStubListenerExtra=tcp:192\&.168\&.10\&.13:9953
+DNSStubListenerExtra=udp:[2001:db8:0:f102::13]:9953
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.RE
+.PP
+\fIReadEtcHosts=\fP
+.RS 4
+采用布尔型参数 \&。如果 "yes" (默认值)，\fBsystemd\-resolved\fP 将读取 /etc/hosts，并在向 DNS
+服务器发送查询之前尝试使用文件中的条目解析主机或地址 \&。
+.RE
+.PP
+\fIResolveUnicastSingleLabel=\fP
+.RS 4
+采用布尔型参数 \&。如果为 false (默认值)，\fBsystemd\-resolved\fP 将不会通过经典 DNS\& 解析对单标签名称的 A 和
+AAAA 查询。请注意，如果指定了搜索域 (请参见上面的 \fIDomains=\fP) 或使用其他机制，尤其是通过 LLMNR 或来自
+/etc/hosts\&. 如果为 true，即使没有定义搜索域，对单标签名称的查询也会转发到全局 DNS 服务器。
+.sp
+提供此选项是为了与 \fIpublic DNS servers are not used\fP\&. 将单标签名称转发到不受您控制的服务器是不符合标准的，请参见 \m[blue]\fBIAB Statement\fP\m[]\&\s-2\u[3]\d\s+2，并且可能会产生隐私和安全风险 \&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-resolved.service\fP(8),
+\fBsystemd\-networkd.service\fP(8), \fBdnssec\-trust\-anchors.d\fP(5),
+\fBresolv.conf\fP(5)
+.SH NOTES
+.IP " 1." 4
+RFC 4795
+.RS 4
+\%https://tools.ietf.org/html/rfc4795
+.RE
+.IP " 2." 4
+RFC 6762
+.RS 4
+\%https://tools.ietf.org/html/rfc6762
+.RE
+.IP " 3." 4
+IAB 声明
+.RS 4
+\%https://www.iab.org/documents/correspondence\-reports\-documents/2013\-2/iab\-statement\-dotless\-domains\-considered\-harmful/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

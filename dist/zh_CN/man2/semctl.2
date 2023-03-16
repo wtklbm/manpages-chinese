@@ -1,0 +1,320 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright 1993 Giorgio Ciucci (giorgio@crcc.it)
+.\" and Copyright 2004, 2005 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified Tue Oct 22 17:53:56 1996 by Eric S. Raymond <esr@thyrsus.com>
+.\" Modified Fri Jun 19 10:59:15 1998 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified Sun Feb 18 01:59:29 2001 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 20 Dec 2001, Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 21 Dec 2001, aeb
+.\" Modified 27 May 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_IPC_OWNER requirement
+.\" Modified 17 Jun 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"     Added notes on CAP_SYS_ADMIN requirement for IPC_SET and IPC_RMID
+.\" Modified, 11 Nov 2004, Michael Kerrisk <mtk.manpages@gmail.com>
+.\"	Language and formatting clean-ups
+.\"	Rewrote semun text
+.\"	Added semid_ds and ipc_perm structure definitions
+.\" 2005-08-02, mtk: Added IPC_INFO, SEM_INFO, SEM_STAT descriptions.
+.\" 2018-03-20, dbueso: Added SEM_STAT_ANY description.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH semctl 2 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+semctl\-System V 信号量控制操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/sem.h>\fP
+.PP
+\fBint semctl(int \fP\fIsemid\fP\fB, int \fP\fIsemnum\fP\fB, int \fP\fIcmd\fP\fB, ...);\fP
+.fi
+.SH DESCRIPTION
+\fBsemctl\fP() 在 \fIsemid\fP 标识的 System\V 信号量集或该集的 \fIsemnum\fP\-th 信号量上执行 \fIcmd\fP
+指定的控制操作。 (集合中的信号量从 0 开始编号。)
+.PP
+这个函数有三个或四个参数，视 \fIcmd\fP 而定。 当有四个时，第四个的类型为 \fIunion semun\fP。 \fIcalling program\fP
+必须按如下方式定义此 union:
+.PP
+.in +4n
+.EX
+union semun {
+    int              val;    /* Value for SETVAL */
+    struct semid_ds *buf;    /* Buffer for IPC_STAT, IPC_SET */
+    unsigned short  *array;  /* Array for GETALL, SETALL */
+    struct seminfo  *__buf;  /* Buffer for IPC_INFO
+                                (Linux\-specific) */
+};
+.EE
+.in
+.PP
+\fIsemid_ds\fP 数据结构体在 \fI<sys/sem.h>\fP 中定义如下:
+.PP
+.in +4n
+.EX
+struct semid_ds {
+    struct ipc_perm sem_perm;  /* Ownership and permissions */
+    time_t          sem_otime; /* Last semop time */
+    time_t          sem_ctime; /* Creation time/time of last
+                                  modification via semctl() */
+    unsigned long   sem_nsems; /* No. of semaphores in set */
+};
+.EE
+.in
+.PP
+\fIsemid_ds\fP 结构体的字段如下:
+.TP  11
+\fIsem_perm\fP
+这是一个 \fIipc_perm\fP 结构体 (见下文)，它指定了对信号量集的访问权限。
+.TP 
+\fIsem_otime\fP
+\fBsemop\fP(2) 系统上次调用时间。
+.TP 
+\fIsem_ctime\fP
+创建信号量集的时间或最后一次 \fBsemctl\fP() \fBIPCSET\fP、\fBSETVAL\fP 或 \fBSETALL\fP 操作的时间。
+.TP 
+\fIsem_nsems\fP
+集合中的信号量数。 该集合中的每个信号量都由范围从 \fB0\fP 到 \fIsem_nsems\-1\fP 的非负整数引用。
+.PP
+\fIipc_perm\fP 结构体定义如下 (突出显示的字段可使用 \fBIPC_SET\fP): 设置
+.PP
+.in +4n
+.EX
+struct ipc_perm {
+    key_t          __key; /* Key supplied to semget(2) */
+    uid_t          \fBuid\fP;   /* Effective UID of owner */
+    gid_t          \fBgid\fP;   /* Effective GID of owner */
+    uid_t          cuid;  /* Effective UID of creator */
+    gid_t          cgid;  /* Effective GID of creator */
+    unsigned short \fBmode\fP;  /* Permissions */
+    unsigned short __seq; /* Sequence number */
+};
+.EE
+.in
+.PP
+\fIipc_perm\fP 结构体的 \fImode\fP 字段的最低有效 9 位定义共享内存段的访问权限。 权限位如下:
+.TS
+l l.
+0400	Read by user
+0200	Write by user
+0040	Read by group
+0020	Write by group
+0004	Read by others
+0002	Write by others
+.TE
+.PP
+实际上，"write" 表示信号量集的 "alter"。 系统未使用位 0100、0010 和 0001 (执行位)。
+.PP
+\fIcmd\fP 的有效值为:
+.TP 
+\fBIPC_STAT\fP
+将 \fIsemid\fP 关联的内核数据结构体中的信息复制到 \fIarg.buf\fP 指向的 \fIsemid_ds\fP 结构体中。 参数 \fIsemnum\fP
+被忽略。 调用进程必须对信号量集具有读取权限。
+.TP 
+\fBIPC_SET\fP
+将 \fIarg.buf\fP 指向的 \fIsemid_ds\fP 结构体的某些成员的值写入与该信号量集关联的内核数据结构体，同时更新其 \fIsem_ctime\fP
+成员。
+.IP
+结构体的以下成员已更新: \fIsem_perm.uid\fP、\fIsem_perm.gid\fP 和 (最低有效的 9 位) \fIsem_perm.mode\fP。
+.IP
+调用进程的有效 UID 必须与信号量集的所有者 (\fIsem_perm.uid\fP) 或创建者 (\fIsem_perm.cuid\fP)
+匹配，否则调用者必须具有特权。 参数 \fIsemnum\fP 被忽略。
+.TP 
+\fBIPC_RMID\fP
+立即删除信号量集，唤醒在该集的 \fBsemop\fP(2) 调用中阻塞的所有进程 (错误返回并将 \fIerrno\fP 设置为 \fBEIDRM\fP)。
+调用进程的有效用户 ID 必须与信号量集的创建者或所有者相匹配，否则调用者必须具有特权。 参数 \fIsemnum\fP 被忽略。
+.TP 
+\fBIPC_INFO\fP (Linux\-specific)
+在 \fIarg.__buf\fP 指向的结构体中返回有关系统范围信号量限制和参数的信息。 这个结构体是 \fIseminfo\fP 类型的，如果定义了
+\fB_GNU_SOURCE\fP 特性测试宏，则在 \fI<sys/sem.h>\fP 中定义:
+.IP
+.in +4n
+.EX
+struct  seminfo {
+    int semmap;  /* Number of entries in semaphore
+                    map; unused within kernel */
+    int semmni;  /* Maximum number of semaphore sets */ 
+    int semmns;  /* Maximum number of semaphores in all
+                    semaphore sets */
+    int semmnu;  /* System\-wide maximum number of undo
+                    structures; unused within kernel */
+    int semmsl;  /* Maximum number of semaphores in a
+                    set */
+    int semopm;  /* Maximum number of operations for
+                    semop(2) */
+    int semume;  /* Maximum number of undo entries per
+                    process; unused within kernel */
+    int semusz;  /* Size of struct sem_undo */
+    int semvmx;  /* Maximum semaphore value */
+    int semaem;  /* Max. value that can be recorded for
+                    信号量调整 (SEM_UNDO) */
+};
+.EE
+.in
+.IP
+\fIsemmsl\fP、\fIsemmns\fP、\fIsemopm\fP 和 \fIsemmni\fP 设置可以通过 \fI/proc/sys/kernel/sem\fP
+进行更改; 详见 \fBproc\fP(5)。
+.TP 
+\fBSEM_INFO\fP (Linux\-specific)
+返回一个 \fIseminfo\fP 结构体，其中包含与 \fBIPC_INFO\fP 相同的信息，除了以下字段返回有关信号量消耗的系统资源的信息:
+\fIsemusz\fP 字段返回系统上当前存在的信号量集的数量; \fIsemaem\fP 字段返回系统上所有信号量集中的信号量总数。
+.TP 
+\fBSEM_STAT\fP (Linux\-specific)
+像 \fBIPC_STAT\fP 一样返回 \fIsemid_ds\fP 结构体。 但是，\fIsemid\fP
+参数不是信号量标识符，而是内核内部数组的索引，该数组维护有关系统上所有信号量集的信息。
+.TP 
+\fBSEM_STAT_ANY\fP (Linux\-specific, since Linux 4.17)
+像 \fBSEM_STAT\fP 一样返回 \fIsemid_ds\fP 结构体。 但是，不会检查 \fIsem_perm.mode\fP 是否具有 \fIsemid\fP
+的读取权限，这意味着任何用户都可以使用此操作 (就像任何用户都可以读取 \fI/proc/sysvipc/sem\fP 以获得相同的信息一样)。
+.TP 
+\fBGETALL\fP
+将集合中所有信号量的 \fBsemval\fP (即当前值) 返回到 \fIarg.array\fP。 参数 \fIsemnum\fP 被忽略。
+调用进程必须对信号量集具有读取权限。
+.TP 
+\fBGETNCNT\fP
+返回集合中 \fIsemnum\fP\-th 信号量的 \fBsemncnt\fP 值 (即等待信号量值增加的进程数)。 调用进程必须对信号量集具有读取权限。
+.TP 
+\fBGETPID\fP
+返回集合的 \fIsemnum\fP\-th 信号量的 \fBsempid\fP 值。 这是最后一次对该信号量执行操作的进程的 PID (请参见注释)。
+调用进程必须对信号量集具有读取权限。
+.TP 
+\fBGETVAL\fP
+为集合的 \fIsemnum\fP\-th 信号量返回 \fBsemval\fP (即信号量值)。 调用进程必须对信号量集具有读取权限。
+.TP 
+\fBGETZCNT\fP
+为集合的 \fIsemnum\fP\-th 信号量返回 \fBsemzcnt\fP 值 (即等待信号量值变为 0 的进程数)。 调用进程必须对信号量集具有读取权限。
+.TP 
+\fBSETALL\fP
+使用 \fIarg.array\fP 为该集合的所有信号量设置 \fBsemval\fP 值，同时更新与该集合关联的 \fIsemid_ds\fP 结构体的
+\fIsem_ctime\fP 成员。 撤消条目 (请参见 \fBsemop\fP(2)) 已清除所有进程中已更改的信号量。
+如果对信号量值的更改允许其他进程中被阻止的 \fBsemop\fP(2) 调用继续进行，则这些进程将被唤醒。 参数 \fIsemnum\fP 被忽略。
+调用进程必须对信号量集具有 alter (write) 权限。
+.TP 
+\fBSETVAL\fP
+将集合的 \fIsemnum\fP\-th 信号量的信号量值 (\fBsemval\fP) 设置为 \fIarg.val\fP，同时更新与该集合关联的
+\fIsemid_ds\fP 结构体的 \fIsem_ctime\fP 成员。 清除所有进程中更改的信号量的撤消条目。 如果对信号量值的更改允许其他进程中被阻止的
+\fBsemop\fP(2) 调用继续进行，则这些进程将被唤醒。 调用进程必须对信号量集具有更改权限。
+.SH "RETURN VALUE"
+成功时，\fBsemctl\fP() 根据 \fIcmd\fP 返回一个非负值，如下所示:
+.TP 
+\fBGETNCNT\fP
+\fBsemncnt\fP 的值。
+.TP 
+\fBGETPID\fP
+\fBsempid\fP 的值。
+.TP 
+\fBGETVAL\fP
+\fBsemval\fP 的值。
+.TP 
+\fBGETZCNT\fP
+\fBsemzcnt\fP 的值。
+.TP 
+\fBIPC_INFO\fP
+内核内部数组中最高使用条目的索引，记录有关所有信号量集的信息。 (此信息可与重复的 \fBSEM_STAT\fP 或 \fBSEM_STAT_ANY\fP
+操作一起使用，以获得有关系统上所有信号量集的信息。)
+.TP 
+\fBSEM_INFO\fP
+至于 \fBIPC_INFO\fP。
+.TP 
+\fBSEM_STAT\fP
+其索引在 \fIsemid\fP 中给出的信号量集的标识符。
+.TP 
+\fBSEM_STAT_ANY\fP
+至于 \fBSEM_STAT\fP。
+.PP
+所有其他 \fIcmd\fP 值在成功时返回 0。
+.PP
+失败时，\fBsemctl\fP() 返回 \-1 并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+参数 \fIcmd\fP 具有值
+\fBGETALL\fP、\fBGETPID\fP、\fBGETVAL\fP、\fBGETNCNT\fP、\fBGETZCNT\fP、\fBIPC_STAT\fP、\fBSEM_STAT\fP、\fBSEM_STAT_ANY\fP、\fBSETALL\fP
+或 \fBSETVAL\fP 之一，并且调用进程在信号量集上没有所需的权限，并且在管理其 IPC 命名空间的用户命名空间。
+.TP 
+\fBEFAULT\fP
+\fIarg.buf\fP 或 \fIarg.array\fP 指向的地址不可访问。
+.TP 
+\fBEIDRM\fP
+信号量集已删除。
+.TP 
+\fBEINVAL\fP
+\fIcmd\fP 或 \fIsemid\fP 的值无效。 或者: 对于 \fBSEM_STAT\fP 操作，\fIsemid\fP 中指定的索引值引用了当前未使用的数组槽。
+.TP 
+\fBEPERM\fP
+参数 \fIcmd\fP 的值为 \fBIPC_SET\fP 或 \fBIPC_RMID\fP 但调用进程的有效用户 ID 不是创建者 (在
+\fIsem_perm.cuid\fP) 中找到) 或所有者 (在信号量集的 \fIsem_perm.uid\fP) 中找到，进程不具有
+\fBCAP_SYS_ADMIN\fP 能力。
+.TP 
+\fBERANGE\fP
+参数 \fIcmd\fP 的值为 \fBSETALL\fP 或 \fBSETVAL\fP，\fBsemval\fP 的设置值 (对于集合中的某些信号量) 小于 0
+或大于实现限制 \fBSEMVMX\fP。
+.SH STANDARDS
+.\" SVr4 documents more error conditions EINVAL and EOVERFLOW.
+POSIX.1\-2001, POSIX.1\-2008, SVr4.
+.PP
+.\" POSIX.1-2001, POSIX.1-2008
+POSIX.1 将 \fIsemid_ds\fP 结构体的 \fIsem_nsems\fP 字段指定为 \fIunsigned\ short\fP
+类型，并且该字段在大多数其他系统上也是如此定义的。 它在 Linux 2.2 和更早版本上也是如此定义，但是，从 Linux 2.4
+开始，该字段的类型为 \fIunsigned\ long\fP。
+.SH NOTES
+\fBipcs\fP(1) 程序使用 \fBIPC_INFO\fP、\fBSEM_STAT\fP 和 \fBSEM_INFO\fP 操作来提供有关已分配资源的信息。 在
+future 中，这些可能会修改或移动到 \fI/proc\fP 文件系统接口。
+.PP
+\fIstruct semid_ds\fP 中的各个字段在 Linux 2.2 下被键入为 \fIshort\fP，在 Linux 2.4 下已成为
+\fIlong\fP。 要利用这一点，在 glibc\-2.1.91 或更高版本下重新编译就足够了。 (内核通过 \fIcmd\fP.) 中的 \fBIPC_64\fP
+标志区分新旧调用
+.PP
+.\" POSIX.1-2001, POSIX.1-2008
+在 glibc 的一些早期版本中，\fIsemun\fP union 定义在 \fI<sys/sem.h>\fP 中，但是 POSIX.1
+要求调用者定义这个 union。 在 union 定义为 \fInot\fP 的 glibc 版本中，宏 \fB_SEM_SEMUN_UNDEFINED\fP
+定义在 \fI<sys/sem.h>\fP 中。
+.PP
+以下信号量集的系统限制会影响 \fBsemctl\fP() 调用:
+.TP 
+\fBSEMVMX\fP
+\fBsemval\fP: 实现相关的 (32767) 的最大值。
+.PP
+.\"
+为了更好的便携性，最好总是调用 \fBsemctl\fP() 带四个参数。
+.SS "The sempid value"
+POSIX.1 将 \fIsempid\fP 定义为信号量上的 "process ID of [the] last
+operation"，并明确指出该值由成功的 \fBsemop\fP(2) 调用设置，暗示没有其他接口影响 \fIsempid\fP 值。
+.PP
+.\" At least OpenSolaris (and, one supposes, older Solaris) and Darwin
+虽然一些实现符合 POSIX.1 中指定的行为，但其他实现不符合。 (这里的错误可能在于 POSIX.1，因为它可能无法捕获现有实现行为的全部范围。)
+各种其他实现也为更新信号量值的其他操作更新 \fIsempid\fP: \fBSETVAL\fP 和 \fBSETALL\fP 操作，以及作为由于使用
+\fBSEM_UNDO\fP 标志而在进程终止时执行的信号量调整 (请参见 \fBsemop\fP(2)).
+.PP
+.\" commit a5f4db877177d2a3d7ae62a7bac3a5a27e083d7f
+Linux 还更新 \fIsempid\fP 以进行 \fBSETVAL\fP 操作和信号量调整。 然而，有些不一致，包括 Linux 4.5，内核没有为
+\fBSETALL\fP 操作更新 \fIsempid\fP。 这已在 Linux 4.6 中得到纠正。
+.SH EXAMPLES
+请参见 \fBshmop\fP(2)。
+.SH "SEE ALSO"
+\fBipc\fP(2), \fBsemget\fP(2), \fBsemop\fP(2), \fBcapabilities\fP(7),
+\fBsem_overview\fP(7), \fBsysvipc\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

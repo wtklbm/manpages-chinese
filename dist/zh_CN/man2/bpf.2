@@ -1,0 +1,845 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2015 Alexei Starovoitov <ast@kernel.org>
+.\" and Copyright (C) 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH bpf 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+bpf \- 在扩展 BPF map 或程序上执行命令
+.SH SYNOPSIS
+.nf
+\fB#include <linux/bpf.h>\fP
+.PP
+\fBint bpf(int \fP\fIcmd\fP\fB, union bpf_attr *\fP\fIattr\fP\fB, unsigned int \fP\fIsize\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBbpf\fP() 系统调用执行一系列与扩展 Berkeley 数据包过滤器相关的操作。 Extended BPF (或 eBPF) 类似于原来的
+("classic") BPF (cBPF)，用于过滤网络包。 对于 cBPF 和 eBPF
+程序，内核在加载程序之前对其进行静态分析，以确保它们不会损害正在运行的系统。
+.PP
+.\" See 'enum bpf_func_id' in include/uapi/linux/bpf.h
+.\"
+eBPF 以多种方式扩展了 cBPF，包括调用一组固定的内核内助手函数函数 (通过 eBPF 提供的 \fBBPF_CALL\fP 操作码扩展)
+和访问共享数据结构 (例如 eBPF maps) 的能力。
+.SS "Extended BPF Design/Architecture"
+eBPF maps 是一个泛型数据结构体，用于存储不同的数据类型。 数据类型通常被视为二进制 blob，因此用户只需在 map
+创建时指定键的大小和值的大小。 换句话说，给定 map 的 key/value 可以具有任意结构体。
+.PP
+用户进程可以创建多个 maps (key/value\-pairs 是不透明的数据字节) 并通过文件描述符访问它们。 不同的 eBPF
+程序可以在并行中访问相同的 maps。 由用户进程和 eBPF 程序决定它们在 maps 中存储什么。
+.PP
+.\" Defined by the kernel constant MAX_TAIL_CALL_CNT in include/linux/bpf.h
+有一种特殊的 map 类型，称为程序数组。 这种类型的 map 存储引用其他 eBPF 程序的文件描述符。 当执行 map
+中的查找时，程序流就地重定向到另一个 eBPF 程序的开头，并且不会返回到调用程序。 嵌套层数的固定限制为 32，因此无法制作无限循环。
+在运行时，可以修改存储在 map 中的程序文件描述符，因此可以根据特定要求更改程序功能。 程序数组 map 中引用的所有程序必须先前已通过
+\fBbpf\fP() 加载到内核中。 如果 map 查找失败，则当前程序继续执行。 有关更多详细信息，请参见下面的
+\fBBPF_MAP_TYPE_PROG_ARRAY\fP。
+.PP
+通常，eBPF 程序由用户进程加载，并在进程退出时自动卸载。 在某些情况下，例如
+\fBtc\-bpf\fP(8)，即使在加载该程序的进程退出后，该程序仍将继续在内核中保持活动状态。 在这种情况下，tc
+子系统在文件描述符被用户空间程序关闭后持有对 eBPF 程序的引用。 因此，特定程序是否继续存在于内核中取决于它在通过 \fBbpf\fP()
+加载后如何进一步附加到给定的内核子系统。
+.PP
+每个 eBPF 程序都是一组指令，可以安全运行直到完成。 内核验证器静态确定 eBPF 程序终止并且可以安全执行。 在验证期间，内核会为 eBPF
+程序使用的每个 maps 递增引用计数，以便在卸载程序之前无法删除附加的 maps。
+.PP
+eBPF 程序可以附加到不同的事件。 这些事件可以是网络数据包的到达、跟踪事件、网络排队规则的分类事件 (对于附加到 \fBtc\fP(8) 分类器的
+eBPF 程序)，以及可能添加到 future 中的其他类型。 一个新事件触发 eBPF 程序的执行，该程序可以将有关该事件的信息存储在 eBPF
+maps 中。 除了存储数据，eBPF 程序还可以调用一组固定的内核内助手函数函数。
+.PP
+同一个 eBPF 程序可以附加到多个事件，不同的 eBPF 程序可以访问同一个 map:
+.PP
+.in +4n
+.EX
+tracing     tracing    tracing    packet      packet     packet
+event A     event B    event C    on eth0     on eth1    on eth2
+ |             |         |          |           |          \[ha]
+ |             |         |          |           v          |
+ \-\-> tracing <\-\-     tracing      socket    tc ingress   tc egress
+      prog_1          prog_2      prog_3    classifier    action
+      |  |              |           |         prog_4      prog_5
+   |\-\-\-  \-\-\-\-\-|  |\-\-\-\-\-\-|          map_3        |           |
+ map_1       map_2                              \-\-| map_4 |\-\-
+.EE
+.in
+.\"
+.SS Arguments
+\fBbpf\fP() 系统调用要执行的操作由 \fIcmd\fP 参数决定。 每个操作都有一个伴随的参数，通过 \fIattr\fP 提供，它是一个指向
+\fIbpf_attr\fP 类型的 union 的指针 (见下文)。 未使用的字段和填充必须在调用之前清零。 \fIsize\fP 参数是 \fIattr\fP 指向的
+union 的大小。
+.PP
+\fIcmd\fP 中提供的值是以下之一:
+.TP 
+\fBBPF_MAP_CREATE\fP
+创建一个 map 并返回一个引用 map 的文件描述符。 close\-on\-exec 文件描述符标志 (请参见 \fBfcntl\fP(2))
+为新文件描述符自动启用。
+.TP 
+\fBBPF_MAP_LOOKUP_ELEM\fP
+在指定的 map 中按键查找元素并返回其值。
+.TP 
+\fBBPF_MAP_UPDATE_ELEM\fP
+在指定的 map 中创建或更新元素 (key/value 对)。
+.TP 
+\fBBPF_MAP_DELETE_ELEM\fP
+在指定的 map 中通过 key 查找和删除元素。
+.TP 
+\fBBPF_MAP_GET_NEXT_KEY\fP
+在指定的 map 中通过 key 查找一个元素，返回下一个元素的 key。
+.TP 
+\fBBPF_PROG_LOAD\fP
+验证并加载一个 eBPF 程序，返回一个与该程序关联的新文件描述符。 close\-on\-exec 文件描述符标志 (请参见 \fBfcntl\fP(2))
+为新文件描述符自动启用。
+.IP
+\fIbpf_attr\fP union 由不同的 \fBbpf\fP() 命令使用的各种匿名结构组成:
+.PP
+.in +4n
+.EX
+union bpf_attr {
+    struct {    /* Used by BPF_MAP_CREATE */
+        __u32         map_type;
+        __u32         key_size;     /* size of key in bytes */
+        __u32         value_size;   /* size of value in bytes */
+        __u32         max_entries;  /* maximum number of entries
+                                      in a map */
+    };
+
+    struct {    /* Used by BPF_MAP_*_ELEM and BPF_MAP_GET_NEXT_KEY
+                   commands */
+        __u32         map_fd;
+        __aligned_u64 key;
+        union {
+            __aligned_u64 value;
+            __aligned_u64 next_key;
+        };
+        __u64         flags;
+    };
+
+.\"                 commit 2541517c32be2531e0da59dfd7efc1ce844644f5
+    struct {    /* Used by BPF_PROG_LOAD */
+        __u32         prog_type;
+        __u32         insn_cnt;
+        __aligned_u64 insns;      /* \[aq]const struct bpf_insn *\[aq] */
+        __aligned_u64 license;    /* \[aq]const char *\[aq] */
+        __u32         log_level;  /* verbosity level of verifier */
+        __u32         log_size;   /* size of user buffer */ 
+        __aligned_u64 log_buf;    /* user supplied \[aq]char *\[aq]
+                                     buffer */
+        __u32         kern_version;
+                                  /* checked when prog_type=kprobe
+                                     (since Linux 4.1) */
+    };
+} __attribute__((aligned(8)));
+.EE
+.in
+.\"
+.SS "eBPF maps"
+Maps 是一种泛型数据结构体，用于存储不同类型的数据。 它们允许在 eBPF 内核程序之间以及内核和用户空间应用程序之间共享数据。
+.PP
+每个 map 类型都有以下属性:
+.IP \[bu] 3
+type
+.IP \[bu]
+最大元素数
+.IP \[bu]
+密钥大小 (以字节为单位)
+.IP \[bu]
+以字节为单位的值大小
+.PP
+下面的包装函数演示了如何使用各种 \fBbpf\fP() 命令来访问 maps。 函数使用 \fIcmd\fP 参数调用不同的操作。
+.TP 
+\fBBPF_MAP_CREATE\fP
+\fBBPF_MAP_CREATE\fP 命令创建一个新的 map，返回一个指向 map 的新文件描述符。
+.IP
+.in +4n
+.EX
+int
+bpf_create_map(enum bpf_map_type map_type,
+               unsigned int key_size,
+               unsigned int value_size,
+               unsigned int max_entries)
+{
+    union bpf_attr attr = {
+        .map_type    = map_type,
+        .key_size    = key_size,
+        .value_size  = value_size,
+        .max_entries = max_entries
+    };
+
+    return bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
+}
+.EE
+.in
+.IP
+新的 map 具有 \fImap_type\fP 指定的类型，以及 \fIkey_size\fP、\fIvalue_size\fP 和 \fImax_entries\fP
+中指定的属性。 成功时，此操作返回一个文件描述符。 出错时，返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP、\fBEPERM\fP 或
+\fBENOMEM\fP。
+.IP
+\fIkey_size\fP 和 \fIvalue_size\fP 属性将在程序加载期间由验证器使用，以检查程序是否使用正确初始化的 \fIkey\fP 调用
+\fBbpf_map_*_elem\fP() 帮助器函数，并检查程序是否不访问超出指定 \fIvalue_size\fP 的 map 元素 \fIvalue\fP。
+例如，当创建一个 \fIkey_size\fP 为 8 的 map 并且 eBPF 程序调用
+.IP
+.in +4n
+.EX
+bpf_map_lookup_elem(map_fd, fp \- 4)
+.EE
+.in
+.IP
+该程序将被拒绝，因为内核中的助手函数
+.IP
+.in +4n
+.EX
+bpf_map_lookup_elem(map_fd, void *key)
+.EE
+.in
+.IP
+期望从 \fIkey\fP 指向的位置读取 8 个字节，但是 \fIfp\ \-\ 4\fP (其中 \fIfp\fP 为栈顶) 起始地址将导致越界栈访问。
+.IP
+类似地，当创建一个 \fIvalue_size\fP 为 1 的 map 并且 eBPF 程序包含
+.IP
+.in +4n
+.EX
+value = bpf_map_lookup_elem(...);
+*(u32 *) value = 1;
+.EE
+.in
+.IP
+该程序将被拒绝，因为它访问 \fIvalue\fP 指针超出了指定的 1 字节 \fIvalue_size\fP 限制。
+.IP
+当前，\fImap_type\fP: 支持以下值
+.IP
+.in +4n
+.EX
+enum bpf_map_type {
+    BPF_MAP_TYPE_UNSPEC,  /* Reserve 0 as invalid map type */
+    BPF_MAP_TYPE_HASH,
+    BPF_MAP_TYPE_ARRAY,
+    BPF_MAP_TYPE_PROG_ARRAY,
+    BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+    BPF_MAP_TYPE_PERCPU_HASH,
+    BPF_MAP_TYPE_PERCPU_ARRAY,
+    BPF_MAP_TYPE_STACK_TRACE,
+    BPF_MAP_TYPE_CGROUP_ARRAY,
+    BPF_MAP_TYPE_LRU_HASH,
+    BPF_MAP_TYPE_LRU_PERCPU_HASH,
+    BPF_MAP_TYPE_LPM_TRIE,
+    BPF_MAP_TYPE_ARRAY_OF_MAPS,
+    BPF_MAP_TYPE_HASH_OF_MAPS,
+    BPF_MAP_TYPE_DEVMAP,
+    BPF_MAP_TYPE_SOCKMAP,
+    BPF_MAP_TYPE_CPUMAP,
+    BPF_MAP_TYPE_XSKMAP,
+    BPF_MAP_TYPE_SOCKHASH,
+    BPF_MAP_TYPE_CGROUP_STORAGE,
+    BPF_MAP_TYPE_REUSEPORT_SOCKARRAY,
+    BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE,
+    BPF_MAP_TYPE_QUEUE,
+    BPF_MAP_TYPE_STACK,
+    /* See /usr/include/linux/bpf.h for the full list. */
+};
+.EE
+.in
+.IP
+.\" FIXME We need an explanation of why one might choose each of
+.\" these map implementations
+\fImap_type\fP 选择内核中可用的 map 实现之一。 对于所有 map 类型，eBPF 程序使用相同的
+\fBbpf_map_lookup_elem\fP() 和 \fBbpf_map_update_elem\fP() 助手函数访问 maps。 下面给出了各种 map
+类型的更多详细信息。
+.TP 
+\fBBPF_MAP_LOOKUP_ELEM\fP
+\fBBPF_MAP_LOOKUP_ELEM\fP 命令在文件描述符 \fIfd\fP 引用的 map 中查找具有给定 \fIkey\fP 的元素。
+.IP
+.in +4n
+.EX
+int
+bpf_lookup_elem(int fd, const void *key, void *value)
+{
+    union bpf_attr attr = {
+        .map_fd = fd,
+        .key    = ptr_to_u64(key),
+        .value  = ptr_to_u64(value),
+    };
+
+    return bpf(BPF_MAP_LOOKUP_ELEM, &attr, sizeof(attr));
+}
+.EE
+.in
+.IP
+如果找到一个元素，则该操作返回零并将该元素的值存储到 \fIvalue\fP 中，\fIvalue\fP 必须指向 \fIvalue_size\fP 字节的缓冲区。
+.IP
+如果未找到元素，则该操作返回 \-1 并将 \fIerrno\fP 设置为 \fBENOENT\fP。
+.TP 
+\fBBPF_MAP_UPDATE_ELEM\fP
+\fBBPF_MAP_UPDATE_ELEM\fP 命令在文件描述符 \fIfd\fP 引用的 map 中创建或更新具有给定 \fIkey/value\fP 的元素。
+.IP
+.in +4n
+.EX
+int
+bpf_update_elem(int fd, const void *key, const void *value,
+                uint64_t flags)
+{
+    union bpf_attr attr = {
+        .map_fd = fd,
+        .key    = ptr_to_u64(key),
+        .value  = ptr_to_u64(value),
+        .flags  = flags,
+    };
+
+    return bpf(BPF_MAP_UPDATE_ELEM, &attr, sizeof(attr));
+}
+.EE
+.in
+.IP
+\fIflags\fP 参数应指定为以下之一:
+.RS
+.TP 
+\fBBPF_ANY\fP
+创建新元素或更新现有元素。
+.TP 
+\fBBPF_NOEXIST\fP
+仅当新元素不存在时才创建新元素。
+.TP 
+\fBBPF_EXIST\fP
+更新现有元素。
+.RE
+.IP
+成功时，操作返回零。 出错时，返回 \-1 并将 \fIerrno\fP 设置为 \fBEINVAL\fP、\fBEPERM\fP、\fBENOMEM\fP 或
+\fBE2BIG\fP。 \fBE2BIG\fP 表示 map 中的元素数量达到了在 map 创建时指定的 \fImax_entries\fP 限制。 如果
+\fIflags\fP 指定 \fBBPF_NOEXIST\fP 并且带有 \fIkey\fP 的元素已经存在于 map 中，则返回 \fBEEXIST\fP。 如果
+\fIflags\fP 指定 \fBBPF_EXIST\fP 并且 map 中不存在带有 \fIkey\fP 的元素，则将返回 \fBENOENT\fP。
+.TP 
+\fBBPF_MAP_DELETE_ELEM\fP
+\fBBPF_MAP_DELETE_ELEM\fP 命令从文件描述符 \fIfd\fP 引用的 map 中删除键为 \fIkey\fP 的元素。
+.IP
+.in +4n
+.EX
+int
+bpf_delete_elem(int fd, const void *key)
+{
+    union bpf_attr attr = {
+        .map_fd = fd,
+        .key    = ptr_to_u64(key),
+    };
+
+    return bpf(BPF_MAP_DELETE_ELEM, &attr, sizeof(attr));
+}
+.EE
+.in
+.IP
+成功时，返回零。 如果未找到该元素，则返回 \-1 并将 \fIerrno\fP 设置为 \fBENOENT\fP。
+.TP 
+\fBBPF_MAP_GET_NEXT_KEY\fP
+\fBBPF_MAP_GET_NEXT_KEY\fP 命令在文件描述符 \fIfd\fP 引用的 map 中查找 \fIkey\fP 的元素，并将 \fInext_key\fP
+指针设置为下一个元素的键。
+.IP
+.in +4n
+.EX
+int
+bpf_get_next_key(int fd, const void *key, void *next_key)
+{
+    union bpf_attr attr = {
+        .map_fd   = fd,
+        .key      = ptr_to_u64(key),
+        .next_key = ptr_to_u64(next_key),
+    };
+
+    return bpf(BPF_MAP_GET_NEXT_KEY, &attr, sizeof(attr));
+}
+.EE
+.in
+.IP
+如果找到 \fIkey\fP，则操作返回零并将 \fInext_key\fP 指针设置为下一个元素的键。 如果未找到 \fIkey\fP，则操作返回零并将
+\fInext_key\fP 指针设置为第一个元素的键。 如果 \fIkey\fP 是最后一个元素，则返回 \-1 并将 \fIerrno\fP 设置为
+\fBENOENT\fP。 其他可能的 \fIerrno\fP 值为 \fBENOMEM\fP、\fBEFAULT\fP、\fBEPERM\fP 和 \fBEINVAL\fP。
+此方法可用于迭代 map 中的所有元素。
+.TP 
+\fBclose(map_fd)\fP
+.\"
+删除文件描述符 \fImap_fd\fP 引用的 map。 当创建 map 的用户空间程序退出时，所有 maps 将被自动删除 (但请参见注释)。
+.SS "eBPF map types"
+支持以下 map 类型:
+.TP 
+\fBBPF_MAP_TYPE_HASH\fP
+.\" commit 0f8e4bd8a1fc8c4185f1630061d0a1f2d197a475
+哈希表 maps 具有以下特征:
+.RS
+.IP \[bu] 3
+Maps 由用户空间程序创建和销售。 用户空间和 eBPF 程序都可以执行查找、更新和删除操作。
+.IP \[bu]
+内核负责分配和释放 key/value 对。
+.IP \[bu]
+当达到 \fImax_entries\fP 限制时，\fBmap_update_elem\fP() 助手将无法插入新元素。 (这确保 eBPF 程序不会耗尽内存。)
+.IP \[bu]
+\fBmap_update_elem\fP() 以原子方式替换现有元素。
+.RE
+.IP
+哈希表 maps 针对查找速度进行了优化。
+.TP 
+\fBBPF_MAP_TYPE_ARRAY\fP
+.\" commit 28fbcfa08d8ed7c5a50d41a0433aad222835e8e3
+数组 maps 具有以下特点:
+.RS
+.IP \[bu] 3
+针对最快的查找进行了优化。 在 future 中，verifier/JIT 编译器可以识别使用常量键的 lookup() 操作并将其优化为常量指针。
+也可以将非常量键优化为直接指针算法，因为指针和 \fIvalue_size\fP 在 eBPF 程序的生命周期中是常量。
+换句话说，\fBarray_map_lookup_elem\fP() 可能是 verifier/JIT 编译器的 'inlined'，同时保留从用户空间访问此
+map 的权限。
+.IP \[bu]
+所有数组元素都在初始化时预先分配并初始化为零
+.IP \[bu]
+键是一个数组索引，并且必须恰好是四个字节。
+.IP \[bu]
+\fBmap_delete_elem\fP() 失败并出现错误 \fBEINVAL\fP，因为无法删除元素。
+.IP \[bu]
+\fBmap_update_elem\fP() 以 \fBnonatomic\fP 的方式替换元素; 对于原子更新，应该使用哈希表 map。
+然而，有一种特殊情况也可用于数组: 原子内置 \fB__sync_fetch_and_add()\fP 可用于 32 位和 64 位原子计数器。
+例如，如果它表示单个计数器，它可以应用于整个值本身，或者在结构体包含多个计数器的情况下，它可以用于单个计数器。 这对于事件的聚合和统计非常有用。
+.RE
+.IP
+数组 maps 的用途如下:
+.RS
+.IP \[bu] 3
+As "global" eBPF 变量: 一个包含 1 个元素的数组，其键为 (index) 0，值为 'global' 变量的集合，eBPF
+程序可以使用它来保持事件之间的状态。
+.IP \[bu]
+将跟踪事件聚合到一组固定的桶中。
+.IP \[bu]
+网络事件的统计，例如数据包的数量和数据包的大小。
+.RE
+.TP 
+\fBBPF_MAP_TYPE_PROG_ARRAY\fP (since Linux 4.2)
+程序数组 map 是一种特殊的数组 map，其 map 值仅包含引用其他 eBPF 程序的文件描述符。 因此，\fIkey_size\fP 和
+\fIvalue_size\fP 都必须正好是四个字节。 此 map 与 \fBbpf_tail_call\fP() 助手一起使用。
+.IP
+这意味着一个附有程序数组 map 的 eBPF 程序可以从内核端调用到
+.IP
+.in +4n
+.EX
+void bpf_tail_call(void *context, void *prog_map,
+                   unsigned int index);
+.EE
+.in
+.IP
+因此，如果存在的话，用给定程序数组槽中的程序替换它自己的程序流。 这可以被视为不同 eBPF 程序的跳转表。 然后被调用的程序将重用相同的栈。
+当跳转到新程序时，它不会再返回到旧程序。
+.IP
+.\" MAX_TAIL_CALL_CNT
+如果在程序数组的给定索引处没有找到 eBPF 程序 (因为 map 槽不包含有效的程序文件描述符，指定的查找 index/key 越界，或者已超过 32
+个嵌套调用的限制)，继续执行当前的 eBPF 程序。 这可以用作默认情况下的失败。
+.IP
+.\"
+程序数组 map 很有用，例如，在跟踪或网络中，可以在它们自己的子程序中处理单个系统调用或协议，并将它们的标识符用作单个 map 索引。
+这种方法可能会带来性能优势，并且还可以克服单个 eBPF 程序的最大指令限制。
+在动态环境中，用户空间守护进程可能会在运行时自动用更新的版本替换单个子程序以改变整体程序行为，例如，如果全局策略发生变化。
+.SS "eBPF programs"
+\fBBPF_PROG_LOAD\fP 命令用于将 eBPF 程序加载到内核中。 此命令的返回值是与此 eBPF 程序关联的新文件描述符。
+.PP
+.in +4n
+.EX
+char bpf_log_buf[LOG_BUF_SIZE];
+
+int
+bpf_prog_load(enum bpf_prog_type type,
+              const struct bpf_insn *insns, int insn_cnt,
+              const char *license)
+{
+    union bpf_attr attr = {
+        .prog_type = type,
+        .insns     = ptr_to_u64(insns),
+        .insn_cnt  = insn_cnt,
+        .license   = ptr_to_u64(license),
+        .log_buf   = ptr_to_u64(bpf_log_buf),
+        .log_size  = LOG_BUF_SIZE,
+        .log_level = 1,
+    };
+
+    return bpf(BPF_PROG_LOAD, &attr, sizeof(attr));
+}
+.EE
+.in
+.PP
+\fIprog_type\fP 是可用的程序类型之一:
+.IP
+.in +4n
+.EX
+enum bpf_prog_type {
+    BPF_PROG_TYPE_UNSPEC,        /* Reserve 0 as invalid
+                                    program type */
+    BPF_PROG_TYPE_SOCKET_FILTER,
+    BPF_PROG_TYPE_KPROBE,
+    BPF_PROG_TYPE_SCHED_CLS,
+    BPF_PROG_TYPE_SCHED_ACT,
+    BPF_PROG_TYPE_TRACEPOINT,
+    BPF_PROG_TYPE_XDP,
+    BPF_PROG_TYPE_PERF_EVENT,
+    BPF_PROG_TYPE_CGROUP_SKB,
+    BPF_PROG_TYPE_CGROUP_SOCK,
+    BPF_PROG_TYPE_LWT_IN,
+    BPF_PROG_TYPE_LWT_OUT,
+    BPF_PROG_TYPE_LWT_XMIT,
+    BPF_PROG_TYPE_SOCK_OPS,
+    BPF_PROG_TYPE_SK_SKB,
+    BPF_PROG_TYPE_CGROUP_DEVICE,
+    BPF_PROG_TYPE_SK_MSG,
+    BPF_PROG_TYPE_RAW_TRACEPOINT,
+    BPF_PROG_TYPE_CGROUP_SOCK_ADDR,
+    BPF_PROG_TYPE_LWT_SEG6LOCAL,
+    BPF_PROG_TYPE_LIRC_MODE2,
+    BPF_PROG_TYPE_SK_REUSEPORT,
+    BPF_PROG_TYPE_FLOW_DISSECTOR,
+    /* See /usr/include/linux/bpf.h for the full list. */
+};
+.EE
+.in
+.PP
+有关 eBPF 程序类型的更多详细信息，请参见下文。
+.PP
+\fIbpf_attr\fP 的其余字段设置如下:
+.IP \[bu] 3
+\fIinsns\fP 是一组 \fIstruct bpf_insn\fP 指令。
+.IP \[bu]
+\fIinsn_cnt\fP 是 \fIinsns\fP 引用的程序中的指令数。
+.IP \[bu]
+\fIlicense\fP 是一个许可证字符串，它必须与标记为 \fIgpl_only\fP 的调用助手函数兼容 GPL。
+(许可规则与内核模块相同，因此也可以使用双重许可，例如 "Dual BSD/GPL"。)
+.IP \[bu]
+\fIlog_buf\fP 是指向调用者分配的缓冲区的指针，内核验证程序可以在其中存储验证日志。
+这个日志是一个多行字符串，程序作者可以检查它以了解验证者是如何得出 eBPF 程序不安全的结论的。 随着验证者的发展，输出的格式可以随时改变。
+.IP \[bu]
+\fIlog_buf\fP 指向的缓冲区的 \fIlog_size\fP 大小。 如果缓冲区的大小不足以存储所有验证者消息，则返回 \-1，并将 \fIerrno\fP
+设置为 \fBENOSPC\fP。
+.IP \[bu]
+\fIlog_level\fP 验证器的详细级别。 值为零表示验证者不会提供日志; 在这种情况下，\fIlog_buf\fP 必须是 NULL 指针，而
+\fIlog_size\fP 必须为零。
+.PP
+将 \fBclose\fP(2) 应用于 \fBBPF_PROG_LOAD\fP 返回的文件描述符将卸载 eBPF 程序 (但请参见注释)。
+.PP
+.\"
+.\"
+Maps 可从 eBPF 程序访问，用于在 eBPF 程序之间以及 eBPF 程序和用户空间程序之间交换数据。 例如，eBPF 程序可以处理各种事件
+(如 kprobe、数据包) 并将它们的数据存储到 map 中，然后用户空间程序可以从 map 中获取数据。 相反，用户空间程序可以使用 map
+作为配置机制，用 eBPF 程序检查的值填充 map，然后根据这些值动态修改其行为。
+.SS "eBPF program types"
+.\"
+.\" FIXME
+.\" Somewhere in this page we need a general introduction to the
+.\" bpf_context. For example, how does a BPF program access the
+.\" context?
+eBPF 程序类型 (\fIprog_type\fP) 决定了程序可以调用的内核助手函数的子集。 程序类型还决定了程序输入 (上下文) \[em]
+\fIstruct bpf_context\fP 的格式 (这是作为第一个参数传递到 eBPF 程序中的数据块)。
+.PP
+例如，跟踪程序没有与套接字过滤程序完全相同的助手函数子集 (尽管它们可能有一些共同的助手)。 同样，跟踪程序的输入 (context)
+是一组寄存器值，而套接字过滤器的输入是网络数据包。
+.PP
+给定类型的 eBPF 程序可用的函数集可能会在 future 中增加。
+.PP
+支持以下程序类型:
+.TP 
+\fBBPF_PROG_TYPE_SOCKET_FILTER\fP (since Linux 3.19)
+目前 \fBBPF_PROG_TYPE_SOCKET_FILTER\fP 的函数集合为:
+.IP
+.in +4n
+.EX
+bpf_map_lookup_elem(map_fd, void *key)
+                    /* look up key in a map_fd */
+bpf_map_update_elem(map_fd, void *key, void *value)
+                    /* update key/value */
+bpf_map_delete_elem(map_fd, void *key)
+                    /* delete key in a map_fd */
+.EE
+.in
+.IP
+.\" FIXME: We need some text here to explain how the program
+.\" accesses __sk_buff.
+.\" See 'struct __sk_buff' and commit 9bac3d6d548e5
+.\"
+.\" Alexei commented:
+.\" Actually now in case of SOCKET_FILTER, SCHED_CLS, SCHED_ACT
+.\" the program can now access skb fields.
+.\"
+\fIbpf_context\fP 参数是指向 \fIstruct __sk_buff\fP 的指针。
+.TP 
+\fBBPF_PROG_TYPE_KPROBE\fP (since Linux 4.1)
+.\" commit 2541517c32be2531e0da59dfd7efc1ce844644f5
+.\" FIXME Document this program type
+.\"	  Describe allowed helper functions for this program type
+.\"	  Describe bpf_context for this program type
+.\"
+.\" FIXME We need text here to describe 'kern_version'
+[To be documented]
+.TP 
+\fBBPF_PROG_TYPE_SCHED_CLS\fP (since Linux 4.1)
+.\" commit 96be4325f443dbbfeb37d2a157675ac0736531a1
+.\" commit e2e9b6541dd4b31848079da80fe2253daaafb549
+.\" FIXME Document this program type
+.\"	  Describe allowed helper functions for this program type
+.\"	  Describe bpf_context for this program type
+[To be documented]
+.TP 
+\fBBPF_PROG_TYPE_SCHED_ACT\fP (since Linux 4.1)
+.\" commit 94caee8c312d96522bcdae88791aaa9ebcd5f22c
+.\" commit a8cb5f556b567974d75ea29c15181c445c541b1f
+.\" FIXME Document this program type
+.\"	  Describe allowed helper functions for this program type
+.\"	  Describe bpf_context for this program type
+[To be documented]
+.SS Events
+加载程序后，可以将其附加到事件。 各种内核子系统有不同的方法来做到这一点。
+.PP
+.\" commit 89aa075832b0da4402acebd698d0411dcc82d03e
+从 Linux 3.19 开始，下面的调用会将程序 \fIprog_fd\fP 附加到套接字 \fIsockfd\fP，该套接字由较早的调用创建到
+\fBsocket\fP(2):
+.PP
+.in +4n
+.EX
+setsockopt(sockfd, SOL_SOCKET, SO_ATTACH_BPF,
+           &prog_fd, sizeof(prog_fd));
+.EE
+.in
+.PP
+.\" commit 2541517c32be2531e0da59dfd7efc1ce844644f5
+自 Linux 4.1 起，以下调用可用于将文件描述符 \fIprog_fd\fP 引用的 eBPF 程序附加到 perf 事件文件描述符
+\fIevent_fd\fP，该文件描述符由先前调用 \fBperf_event_open\fP(2): 创建
+.PP
+.in +4n
+.EX
+ioctl(event_fd, PERF_EVENT_IOC_SET_BPF, prog_fd);
+.EE
+.in
+.\"
+.\"
+.SH "RETURN VALUE"
+对于成功的调用，返回值取决于操作:
+.TP 
+\fBBPF_MAP_CREATE\fP
+与 eBPF map 关联的新文件描述符。
+.TP 
+\fBBPF_PROG_LOAD\fP
+与 eBPF 程序关联的新文件描述符。
+.TP 
+All other commands
+Zero.
+.PP
+出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBE2BIG\fP
+eBPF 程序太大或 map 达到 \fImax_entries\fP 限制 (最大元素数)。
+.TP 
+\fBEACCES\fP
+对于 \fBBPF_PROG_LOAD\fP，即使所有程序指令都有效，该程序也已被拒绝，因为它被认为是不安全的。
+这可能是因为它可能访问了不允许的内存区域或未初始化的 stack/register，或者因为函数约束与实际类型不匹配，或者因为存在未对齐的内存访问。
+这种情况建议用 \fIlog_level = 1\fP 再次调用 \fBbpf\fP()，并根据验证者提供的具体原因对 \fIlog_buf\fP 进行检验。
+.TP 
+\fBEBADF\fP
+\fIfd\fP 不是打开的文件描述符。
+.TP 
+\fBEFAULT\fP
+指针 (\fIkey\fP 或 \fIvalue\fP 或 \fIlog_buf\fP 或 \fIinsns\fP) 之一在可访问地址空间之外。
+.TP 
+\fBEINVAL\fP
+此内核无法识别 \fIcmd\fP 中指定的值。
+.TP 
+\fBEINVAL\fP
+对于 \fBBPF_MAP_CREATE\fP，\fImap_type\fP 或属性无效。
+.TP 
+\fBEINVAL\fP
+对于 \fBBPF_MAP_*_ELEM\fP 命令，\fIunion bpf_attr\fP 的一些未被该命令使用的字段不设置为零。
+.TP 
+\fBEINVAL\fP
+对于 \fBBPF_PROG_LOAD\fP，表示尝试加载无效程序。 eBPF
+程序可能由于无法识别的指令、使用保留字段、跳出范围、无限循环或未知函数调用而被视为无效。
+.TP 
+\fBENOENT\fP
+对于 \fBBPF_MAP_LOOKUP_ELEM\fP 或 \fBBPF_MAP_DELETE_ELEM\fP，表示未找到具有给定 \fIkey\fP 的元素。
+.TP 
+\fBENOMEM\fP
+无法分配足够的内存。
+.TP 
+\fBEPERM\fP
+调用是在没有足够权限的情况下进行的 (没有 \fBCAP_SYS_ADMIN\fP 能力)。
+.SH VERSIONS
+\fBbpf\fP() 系统调用最早出现在 Linux 3.18。
+.SH STANDARDS
+\fBbpf\fP() 系统调用是 Linux 特有的。
+.SH NOTES
+.\" commit 1be7f75d1668d6296b80bf35dcf6762393530afc
+.\" [Linux 5.6] mtk: The list of available functions is, I think, governed
+.\" by the check in net/core/filter.c::bpf_base_func_proto().
+在 Linux 4.4 之前，所有 \fBbpf\fP() 命令都要求调用者具有 \fBCAP_SYS_ADMIN\fP 能力。 从 Linux 4.4
+开始，非特权用户可以创建类型为 \fBBPF_PROG_TYPE_SOCKET_FILTER\fP 和关联的 maps 的有限程序。 然而，它们可能不会在
+maps 中存储内核指针，目前仅限于以下助手函数数:
+.IP \[bu] 3
+get_random
+.PD 0
+.IP \[bu]
+get_smp_processor_id
+.IP \[bu]
+tail_call
+.IP \[bu]
+ktime_get_ns
+.PD
+.PP
+可以通过将值 1 写入文件 \fI/proc/sys/kernel/unprivileged_bpf_disabled\fP 来阻止非特权访问。
+.PP
+eBPF 对象 (maps 和程序) 可以在进程之间共享。 例如，在 \fBfork\fP(2) 之后，子节点继承了引用相同 eBPF 对象的文件描述符。
+此外，引用 eBPF 对象的文件描述符可以通过 UNIX 域套接字传输。 引用 eBPF 对象的文件描述符可以使用 \fBdup\fP(2)
+和类似调用以通常的方式复制。 只有在引用该对象的所有文件描述符都已关闭后，才会释放 eBPF 对象。
+.PP
+.\" There are also examples for the tc classifier, in the iproute2
+.\" project, in examples/bpf
+eBPF 程序可以用受限的 C 语言编写，并 (使用 \fBclang\fP 编译器) 编译成 eBPF 字节码。 这个受限制的 C
+省略了各种特性例如循环、全局变量、可变参数函数、浮点数以及将结构作为函数参数传递。 一些示例可以在内核源代码树的
+\fIsamples/bpf/*_kern.c\fP 文件中找到。
+.PP
+内核包含一个即时 (JIT) 编译器，可将 eBPF 字节码转换为原生机器码以获得更好的性能。 在 Linux 4.15 之前，JIT
+编译器默认是关闭的，但是可以通过在文件 \fI/proc/sys/net/core/bpf_jit_enable\fP:
+中写入以下整数字符串之一来控制它的运行
+.TP 
+\fB0\fP
+禁用 JIT 编译 (default)。
+.TP 
+\fB1\fP
+正常编译。
+.TP 
+\fB2\fP
+调试模式。 生成的操作码以十六进制转储到内核日志中。 然后可以使用内核源代码树中提供的程序 \fItools/net/bpf_jit_disasm.c\fP
+反汇编这些操作码。
+.PP
+.\" commit 290af86629b25ffd1ed6232c4e9107da031705cb
+从 Linux 4.15 开始，内核可能配置了 \fBCONFIG_BPF_JIT_ALWAYS_ON\fP 选项。 在这种情况下，JIT
+编译器始终处于启用状态，并且 \fIbpf_jit_enable\fP 被初始化为 1 并且是不可改变的。 (提供此内核配置选项是为了缓解针对 BPF
+解释器的 Spectre 攻击之一。)
+.PP
+.\" Last reviewed in Linux 4.18-rc by grepping for BPF_ALU64 in arch/
+.\" and by checking the documentation for bpf_jit_enable in
+.\" Documentation/sysctl/net.txt
+eBPF 的 JIT 编译器目前可用于以下架构:
+.IP \[bu] 3
+.\" commit 0a14842f5a3c0e88a1e59fac5c3025db39721f74
+x86\-64 (自 Linux 3.18 起; cBPF 自 Linux 3.0 起) ;
+.PD 0
+.IP \[bu]
+.\" commit ddecdfcea0ae891f782ae853771c867ab51024c2
+ARM32 (自 Linux 3.18 起; cBPF 自 Linux 3.4 起) ;
+.IP \[bu]
+.\" commit 2809a2087cc44b55e4377d7b9be3f7f5d2569091
+SPARC 32 (自 Linux 3.18 起; cBPF 自 Linux 3.5 起) ;
+.IP \[bu]
+.\" commit e54bcde3d69d40023ae77727213d14f920eb264a
+ARM\-64 (自 Linux 3.18) ;
+.IP \[bu]
+.\" commit c10302efe569bfd646b4c22df29577a4595b4580
+s390 (自 Linux 4.1 起; cBPF 自 Linux 3.7 起) ;
+.IP \[bu]
+.\" commit 0ca87f05ba8bdc6791c14878464efc901ad71e99
+.\" commit 156d0e290e969caba25f1851c52417c14d141b24
+PowerPC 64 (自 Linux 4.8 起; cBPF 自 Linux 3.1 起) ;
+.IP \[bu]
+.\" commit 7a12b5031c6b947cc13918237ae652b536243b76
+SPARC 64 (自 Linux 4.12) ;
+.IP \[bu]
+.\" commit 03f5781be2c7b7e728d724ac70ba10799cc710d7
+x86\-32 (从 Linux 4.18 开始) ;
+.IP \[bu]
+.\" commit c6610de353da5ca6eee5b8960e838a87a90ead0c
+.\" commit f381bf6d82f032b7410185b35d000ea370ac706b
+MIPS 64 (自 Linux 4.18 起; cBPF 自 Linux 3.16 起) ;
+.IP \[bu]
+.\" commit 2353ecc6f91fd15b893fa01bf85a1c7a823ee4f2
+riscv (从 Linux 5.1 开始)。
+.PD
+.SH EXAMPLES
+.\" [[FIXME]] SRC BEGIN (bpf.c)
+.EX
+/* bpf+sockets example:
+ * 1. create array map of 256 elements
+ * 2. load program that counts number of packets received
+ *    r0 = skb\->data[ETH_HLEN + offsetof(struct iphdr, protocol)]
+ *    map[r0]++
+ * 3. attach prog_fd to raw socket via setsockopt()
+ * 4. print number of received TCP/UDP packets every second
+ */
+int
+main(int argc, char *argv[])
+{
+    int sock, map_fd, prog_fd, key;
+    long long value = 0, tcp_cnt, udp_cnt;
+
+    map_fd = bpf_create_map(BPF_MAP_TYPE_ARRAY, sizeof(key),
+                            sizeof(value), 256);
+    if (map_fd < 0) {
+        printf("failed to create map \[aq]%s\[aq]\en", strerror(errno));
+        /* likely not run as root */
+        return 1;
+    }
+
+.\"                                == atomic64_add
+    struct bpf_insn prog[] = {
+        BPF_MOV64_REG(BPF_REG_6, BPF_REG_1),        /* r6 = r1 */
+        BPF_LD_ABS(BPF_B, ETH_HLEN + offsetof(struct iphdr, protocol)),
+                                /* r0 = ip\->proto */
+        BPF_STX_MEM(BPF_W, BPF_REG_10, BPF_REG_0, \-4),
+                                /* *(u32 *)(fp \- 4) = r0 */
+        BPF_MOV64_REG(BPF_REG_2, BPF_REG_10),       /* r2 = fp */
+        BPF_ALU64_IMM(BPF_ADD, BPF_REG_2, \-4),      /* r2 = r2 \- 4 */
+        BPF_LD_MAP_FD(BPF_REG_1, map_fd),           /* r1 = map_fd */
+        BPF_CALL_FUNC(BPF_FUNC_map_lookup_elem),
+                                /* r0 = map_lookup(r1, r2) */
+        BPF_JMP_IMM(BPF_JEQ, BPF_REG_0, 0, 2),
+                                /* if (r0 == 0) goto pc+2 */
+        BPF_MOV64_IMM(BPF_REG_1, 1),                /* r1 = 1 */
+        BPF_XADD(BPF_DW, BPF_REG_0, BPF_REG_1, 0, 0),
+                                /* lock *(u64 *) r0 += r1 */
+        BPF_MOV64_IMM(BPF_REG_0, 0),                /* r0 = 0 */
+        BPF_EXIT_INSN(),                            /* return r0 */
+    };
+
+    prog_fd = bpf_prog_load(BPF_PROG_TYPE_SOCKET_FILTER, prog,
+                            sizeof(prog) / sizeof(prog[0]), "GPL");
+
+    sock = open_raw_sock("lo");
+
+    assert(setsockopt(sock, SOL_SOCKET, SO_ATTACH_BPF, &prog_fd,
+                      sizeof(prog_fd)) == 0);
+
+    for (;;) {
+        key = IPPROTO_TCP;
+        assert(bpf_lookup_elem(map_fd, &key, &tcp_cnt) == 0);
+        key = IPPROTO_UDP;
+        assert(bpf_lookup_elem(map_fd, &key, &udp_cnt) == 0);
+        printf("TCP %lld UDP %lld packets\en", tcp_cnt, udp_cnt);
+        sleep(1);
+    }
+
+    return 0;
+}
+.EE
+.\" SRC END
+.PP
+一些完整的工作代码可以在内核源代码树的 \fIsamples/bpf\fP 目录中找到。
+.SH "SEE ALSO"
+\fBseccomp\fP(2), \fBbpf\-helpers\fP(7), \fBsocket\fP(7), \fBtc\fP(8), \fBtc\-bpf\fP(8)
+.PP
+经典 BPF 和扩展 BPF 在内核源文件 \fIDocumentation/networking/filter.txt\fP 中都有解释。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

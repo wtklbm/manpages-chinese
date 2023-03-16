@@ -1,0 +1,100 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2006, 2010 Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Copyright (C) 2009 Petr Baudis <pasky@suse.cz>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sigevent 7 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+sigevent \- 用于异步例程通知的结构体
+.SH SYNOPSIS
+.nf
+#include <signal.h>
+.PP
+union sigval {            /* Data passed with notification */
+    int     sival_int;    /* Integer value */
+    void   *sival_ptr;    /* Pointer value */
+};
+.PP
+struct sigevent {
+    int    sigev_notify;  /* Notification method */
+    int    sigev_signo;   /* Notification signal */
+    union sigval sigev_value;
+                          /* Data passed with notification */
+    void (*sigev_notify_function)(union sigval);
+                          /* 用于线程的函数
+                             通知 (SIGEV_THREAD) */
+    void  *sigev_notify_attributes;
+                          /* 通知线程的属性
+                             (SIGEV_THREAD) */
+    pid_t  sigev_notify_thread_id;
+                          /* 要发出信号的线程 ID
+                             (SIGEV_THREAD_ID); 特定于 Linux */
+};
+.fi
+.SH DESCRIPTION
+各种 API 使用 \fIsigevent\fP 结构体来描述进程被通知事件的方式 (例如，异步请求的完成、计时器到期或消息的到达)。
+.PP
+SYNOPSIS 中显示的定义是近似的: \fIsigevent\fP 结构体中的某些字段可能被定义为 union 的一部分。 程序应仅使用那些与
+\fIsigev_notify\fP 中指定的值相关的字段。
+.PP
+\fIsigev_notify\fP 字段指定如何执行通知。 该字段可以具有以下值之一:
+.TP 
+\fBSIGEV_NONE\fP
+"null" 通知: 事件发生时不要做任何事情。
+.TP 
+\fBSIGEV_SIGNAL\fP
+通过发送 \fIsigev_signo\fP 中指定的信号通知进程。
+.IP
+如果信号被使用 \fBsigaction\fP(2) \fBSA_SIGINFO\fP 标志注册的信号处理程序捕获，则在作为处理程序的第二个参数传递的
+\fIsiginfo_t\fP 结构体中设置以下字段:
+.RS
+.TP  10
+\fIsi_code\fP
+此字段设置为取决于传递通知的 API 的值。
+.TP 
+\fIsi_signo\fP
+该字段设置为信号编号 (即，与 \fIsigev_signo\fP) 中的值相同)。
+.TP 
+\fIsi_value\fP
+该字段设置为 \fIsigev_value\fP 中指定的值。
+.RE
+.IP
+根据 API，还可以在 \fIsiginfo_t\fP 结构体中设置其他字段。
+.IP
+如果使用 \fBsigwaitinfo\fP(2) 接受信号，同样的信息也可用。
+.TP 
+\fBSIGEV_THREAD\fP
+通过调用 \fIsigev_notify_function\fP "as if" 通知进程这是一个新线程的开始数。
+(这里的实现可能性是每个计时器通知都可能导致创建一个新线程，或者创建一个线程来接收所有通知。) 函数调用时将 \fIsigev_value\fP
+作为它的唯一的参数。 如果 \fIsigev_notify_attributes\fP 不为 NULL，它应该指向一个为新线程定义属性的
+\fIpthread_attr_t\fP 结构体 (参见 \fBpthread_attr_init\fP(3)).
+.TP 
+\fBSIGEV_THREAD_ID\fP (Linux\-specific)
+.\" | SIGEV_SIGNAL vs not?
+目前仅供 POSIX 定时器使用; 请参见 \fBtimer_create\fP(2)。
+.SH "SEE ALSO"
+\fBtimer_create\fP(2), \fBaio_fsync\fP(3), \fBaio_read\fP(3), \fBaio_write\fP(3),
+\fBgetaddrinfo_a\fP(3), \fBlio_listio\fP(3), \fBmq_notify\fP(3), \fBaio\fP(7),
+\fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

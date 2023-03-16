@@ -1,0 +1,238 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\-SYSEXT 8 "" "systemd 253" systemd\-sysext
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd\-sysext, systemd\-sysext.service \- 激活系统扩展镜像
+.SH SYNOPSIS
+.HP \w'\fBsystemd\-sysext\fR\ 'u
+\fBsystemd\-sysext\fP [OPTIONS...] 命令
+.PP
+.nf
+systemd\-sysext\&.service
+.fi
+.SH DESCRIPTION
+.PP
+\fBsystemd\-sysext\fP activates/deactivates 系统扩展图像 \&. 系统扩展图像可能 \(en 在运行时动态 \(em
+使用附加文件扩展 /usr / 和 /opt / 目录层次结构 \&。这在不可改变系统映像上特别有用，其中驻留在只读文件系统上的 /usr / 或者
+/opt / 层次结构应在运行时临时扩展而不进行任何持久修改 \&。
+.PP
+系统扩展映像应包含与常规操作系统树类似的文件和目录。当一个或多个系统扩展映像被激活时，它们的 /usr / 和 /opt / 层次结构通过
+"overlayfs" 与主机操作系统的相同层次结构合并，并且主机 /usr / 和 /opt / 与其重叠 (`合并`)
+\&。当它们被停用时，挂载点被反汇编 \(em 再次显示层次结构的未修改的原始主机版本 (`取消合并`) \&。合并因此使扩展 \* (Aqs
+资源突然出现在 /usr / 和 /opt / 层次结构，就好像它们包含在基本操作系统映像本身中一样
+\&。取消合并使它们再次消失，只留下基本操作系统映像本身附带的文件 \&。
+.PP
+/usr/ 和 /opt / 层次结构之外的扩展映像中包含的文件和目录是 \fInot\fP 合并的，因此当包含在系统扩展映像中时无效
+\&。特别是系统扩展映像中包含的 /etc / 和 /var / 中的文件在激活后将 \fInot\fP 出现在各自的层次结构中。
+.PP
+系统扩展映像是严格只读的，主机 /usr / 和 /opt / 层次结构在激活时也变为只读 \&。
+.PP
+系统扩展应该是纯附加的，i\&.e\&。它们应该只包含底层基本操作系统映像中不存在的文件 \&。不过 (overlayfs)
+的底层机制也允许覆盖或删除文件，但建议不要使用这个 \&。
+.PP
+系统扩展图像可以以下格式提供:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+包含操作系统树的普通目录或 btrfs 子卷
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+带有 GPT 磁盘标签的磁盘映像，位于 \m[blue]\fBDiscoverable Partitions Specification\fP\m[]\&\s-2\u[1]\d\s+2 之后
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+缺少分区表的磁盘映像，带有裸 Linux 文件系统 (例如 \&.g\&.erofs、squashfs 或 ext4)
+.RE
+.PP
+这些图像格式与 \fBsystemd\-nspawn\fP(1) 通过其 \fB\-\-directory=\fP/\fB\-\-image=\fP
+开关支持的格式以及服务管理器通过 \fBRootDirectory=\fP/\fBRootImage=\fP\& 支持的格式相同。与它们类似，它们可以选择性地携带
+Verity 身份验证信息 \&。
+.PP
+系统扩展会在目录
+/etc/extensions/、/run/extensions/、/var/lib/extensions/、/usr/lib/extensions/
+和 /usr/extensions/\& 中自动查找。前两个列出的目录不适合携带大型二进制图像，但对于携带指向它们的符号链接仍然有用
+\&。安装系统扩展的主要位置是 /var/extensions/\&。在这些搜索目录中找到的任何目录都被认为是基于目录的扩展图像，任何带有 \&.raw
+后缀的文件都被认为是基于磁盘图像的扩展图像 \&。
+.PP
+如果启用了
+systemd\-sysext\&.service\&，在引导过程中操作系统扩展映像会自动激活。请注意，此服务仅在安装了系统扩展所在的底层文件系统后运行。这意味着它们不适合运送由最早启动时运行的子系统处理的资源。具体来说，OS
+扩展映像不适合运送系统服务或 \fBsystemd\-sysusers\fP(8) 定义 \&。请参见 \m[blue]\fBPortable Services Documentation\fP\m[]\&\s-2\u[2]\d\s+2，了解以类似于操作系统扩展 \&
+的方式在磁盘映像中传送系统服务的简单机制。请注意这两种机制的不同隔离:
+虽然系统扩展直接使用额外的文件扩展底层操作系统映像，这些文件的出现方式非常类似于操作系统映像本身，因此意味着没有安全隔离，可移植服务意味着服务以一种或另一种方式对沙盒进行级别
+\&。systemd\-sysext\&.service 服务保证在到达 basic\&.target 之前完成启动; IE\&。在常规服务初始化时
+(那些不使用 \fIDefaultDependencies=no\fP) 的服务，系统扩展提供的文件和目录在 /usr / 和 /opt /
+中可用，并且可以访问 \&。
+.PP
+请注意，没有 enabling/disabling 安装的系统扩展映像的概念: 所有安装的扩展映像都会在启动时自动激活 \&。但是，您可以在
+/etc/extensions/ 到 "mask" 中放置一个名为扩展名 (没有 \&.raw)
+的空目录，在优先级较低的系统文件夹中放置一个具有相同名称的扩展名 \&。
+.PP
+强制执行一个简单的版本兼容性机制: 系统扩展映像必须携带一个
+/usr/lib/extension\-release\&.d/extension\-release\&.\fI$name\fP
+文件，该文件必须与其映像名称匹配，该文件与主机 os\-release 文件进行比较: 包含的 \fIID=\fP 字段必须匹配，除非为扩大 \&。如果扩展名
+\fIID=\fP 不是 "_any"，则 \fISYSEXT_LEVEL=\fP 字段 (如果已定义) 必须匹配 \&。如果未定义后者，则
+\fIVERSION_ID=\fP 字段必须改为匹配 \&。如果扩展定义了 \fIARCHITECTURE=\fP 字段并且值不是 "_any"，则它必须匹配内核
+\* (\fBuname\fP(2) 报告的 Aqs 体系结构，但使用的体系结构标识符与 \fBsystemd.unit\fP(5)\& 中描述的
+\fIConditionArchitecture=\fP 相同。系统扩展不应传送 /usr/lib/os\-release 文件 (因为它会合并到主机 /usr
+/ 树中，覆盖主机操作系统版本数据，这是不可取的) \&。extension\-release 文件与操作系统的 os\-release
+文件遵循相同的格式和语义，携带相同的内容，但它描述了扩展 image\& 中携带的资源。
+.SH USES
+.PP
+系统映像的主要用例是调试和开发工具可选的环境，但不包括在不可更改的，底层，操作系统映像本身中 (例如 \&.g\&。\fBstrace\fP(1) 和
+\fBgdb\fP(1) 应是可选安装的为了使 debugging/development 更容易添加)
+\&。系统扩展镜像不应被误解为泛型软件打包框架，因为没有可用的依赖方案:
+系统扩展应该携带它们自己需要的所有文件，除了那些已经在底层主机系统镜像中的文件。通常，系统扩展映像与基本操作系统映像同时构建 \(它们在同一构建系统中
+\&。
+.PP
+系统扩展概念的另一个用例是暂时用更新的资源覆盖操作系统提供的资源，例如在不进行完整的操作系统重建或修改名义上的不可改变图像的情况下，在不可改变操作系统图像上安装某些底层组件的本地编译开发版本
+\&。(例如 \&.g\&. "install" 是一个带有 \fBDESTDIR=/var/lib/extensions/mytest make install && systemd\-sysext refresh\fP 的本地构建包，使其在 /usr / 中可用，就像它安装在操作系统映像本身中一样
+\&。) 无论底层主机 /usr / 是管理为不可更改的磁盘映像或者是传统的包管理器控制 (i\&.e\&. 可写) 树 \&。
+.SH COMMANDS
+.PP
+理解以下命令:
+.PP
+\fBstatus\fP
+.RS 4
+在没有任何命令动词的情况下调用时，或者在指定 \fBstatus\fP 时，将显示当前合并状态，分别针对 /usr / 和 /opt/\&。
+.RE
+.PP
+\fBmerge\fP
+.RS 4
+将所有当前安装的系统扩展映像合并到 /usr / 和 /opt/，方法是使用 "overlayfs"
+文件系统将这些层次结构与扩展映像中包含的层次结构相结合 \&。如果层次结构已经合并 \&，此命令将失败。
+.RE
+.PP
+\fBunmerge\fP
+.RS 4
+通过卸载 \fBmerge\fP 之前创建的 "overlayfs" 文件系统，从 /usr / 和 /opt / 中取消合并所有当前安装的系统扩展映像。
+.RE
+.PP
+\fBrefresh\fP
+.RS 4
+\fBunmerge\fP 和 \fBmerge\fP: 的组合，如果已经安装了现有的 "overlayfs" 实例，则暂时卸载，然后用新版本替换 \&。此命令在
+installing/removing 系统扩展映像之后很有用，以便相应地更新 "overlayfs" 文件系统
+\&。如果执行此命令时没有安装系统扩展，则执行 \fBunmerge\fP 的等价物，而不创建任何新的 "overlayfs" 实例 \&。请注意，当前有
+\*(Aqs 一个既没有安装旧的也没有安装新的 "overlayfs" 文件系统的短暂时刻 \&。这意味着系统扩展提供的所有资源将短暂消失
+\(em，即使它在刷新操作期间持续存在 \&。
+.RE
+.PP
+\fBlist\fP
+.RS 4
+显示已安装扩展图像的简短列表 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH OPTIONS
+.PP
+\fB\-\-root=\fP
+.RS 4
+相对于指定根目录进行操作，i\&.e\&。建立 "overlayfs" 挂载不是在顶级主机 /usr / 和 /opt /
+层次结构上，而是在某个指定的根目录下 \&。
+.RE
+.PP
+\fB\-\-force\fP
+.RS 4
+将系统扩展合并到 /usr / 和 /opt / 时，忽略版本不兼容，i\&.e\&。强制合并，无论扩展图像中包含的版本信息是否与主机匹配 \&。
+.RE
+.PP
+\fB\-\-no\-pager\fP
+.RS 4
+不要将输出通过管道传输到寻呼机 \&。
+.RE
+.PP
+\fB\-\-no\-legend\fP
+.RS 4
+不要打印图例，i\&.e\&。带有提示的列标题和页脚 \&。
+.RE
+.PP
+\fB\-\-json=\fP\fIMODE\fP
+.RS 4
+显示格式为 JSON\& 的输出。期望 "short" (用于尽可能短的输出，没有任何冗余空格或换行符)、"pretty"
+(用于相同版本的漂亮版本，带有缩进和换行符) 或 "off" (关闭 JSON 输出，默认值) \&。
+.RE
+.SH "EXIT STATUS"
+.PP
+成功时，返回 0\&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-nspawn\fP(1)
+.SH NOTES
+.IP " 1." 4
+可发现分区规范
+.RS 4
+\%https://uapi\-group.org/specifications/specs/discoverable_partitions_specification
+.RE
+.IP " 2." 4
+便携式服务文档
+.RS 4
+\%https://systemd.io/PORTABLE_SERVICES
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

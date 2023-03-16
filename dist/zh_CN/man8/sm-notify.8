@@ -1,0 +1,187 @@
+.\" -*- coding: UTF-8 -*-
+.\"@(#)sm-notify.8"
+.\"
+.\" Copyright (C) 2004 Olaf Kirch <okir@suse.de>
+.\"
+.\" Rewritten by Chuck Lever <chuck.lever@oracle.com>, 2009.
+.\" Copyright 2009 Oracle.  All rights reserved.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SM\-NOTIFY 8 "1 November 2009"  
+.SH NAME
+sm\-notify \- 向 NFS 节点发送重启通知
+.SH SYNOPSIS
+\fB/usr/sbin/sm\-notify [\-dfn] [\-m \fP\fIminutes\fP\fB] [\-v \fP\fIname\fP\fB] [\-p \fP\fInotify\-port\fP\fB] [\-P \fP\fIpath\fP\fB]\fP
+.SH DESCRIPTION
+文件锁不是持久文件系统状态的一部分。 因此，当主机重新启动时，锁定状态会丢失。
+.PP
+网络文件系统还必须检测何时由于远程主机重新启动而丢失锁定状态。 NFS 客户端重新启动后，NFS
+服务器必须释放该客户端上运行的应用程序持有的所有文件锁。 服务器重新启动后，客户端必须提醒服务器该客户端上运行的应用程序持有的文件锁。
+.PP
+对于 NFS 版本 2 和版本 3，\fINetwork Status Monitor\fP 协议 (或简称 NSM) 用于通知 NFS 对等方重新启动。 在
+Linux 上，两个独立的用户空间组件构成了 NSM 服务:
+.TP 
+\fBsm\-notify\fP
+在本地系统重新启动后通知 NFS 对等点的帮助程序
+.TP 
+\fBrpc.statd\fP
+监听来自其他主机的重启通知，并管理本地系统重启时要通知的主机列表的守护进程
+.PP
+本地 NFS 锁管理器向其本地 \fBrpc.statd\fP 发出应监视的每个远程对等点的警报。 当本地系统重新启动时，\fBsm\-notify\fP
+命令将重新启动通知受监视对等点上的 NSM 服务。 当远程重新启动时，该对等点通知本地 \fBrpc.statd\fP，后者又将重新启动通知传递回本地 NFS
+锁管理器。
+.SH "NSM OPERATION IN DETAIL"
+NFS 客户端和服务器之间的第一个文件锁定交互导致两个对等点上的 NFS 锁管理器联系它们的本地 NSM 服务以存储关于对方对等点的信息。 在
+Linux 上，本地锁管理器联系 \fBrpc.statd\fP。
+.PP
+\fBrpc.statd\fP 记录有关持久存储上每个受监视 NFS 对等点的信息。
+此信息描述了在本地系统重新启动的情况下如何联系远程对等点，如何识别哪个受监视的对等点报告重新启动，以及当受监视的对等点指示它已重新启动时如何通知本地锁管理器。
+.PP
+NFS 客户端在每个文件锁定请求中发送一个主机名，称为客户端的 \fIcaller_name\fP。 NFS 服务器可以使用此主机名向客户端发送异步
+GRANT 调用，或通知客户端它已重新启动。
+.PP
+Linux NFS 服务器可以向 \fBrpc.statd\fP 提供客户端的 \fIcaller_name\fP 或客户端的网络地址。 出于 NSM
+协议的目的，此名称或地址称为受监视对等方的 \fImon_name\fP。 此外，本地锁管理器告诉 \fBrpc.statd\fP 它认为自己的主机名是什么。 出于
+NSM 协议的目的，此主机名称为 \fImy_name\fP。
+.PP
+NFS 服务器和客户端之间没有等效的交互来通知客户端服务器的 \fIcaller_name\fP。 因此，NFS 客户端实际上并不知道 NFS 服务器可能在
+SM_NOTIFY 请求中使用什么 \fImon_name\fP。 Linux NFS 客户端记录在 mount 命令中使用的服务器主机名，以识别重新启动的
+NFS 服务器。
+.SS "Reboot notification"
+当本地系统重新启动时，\fBsm\-notify\fP 命令从持久存储中读取受监视的对等点列表，并向每个列出的远程对等点上的 NSM 服务发送
+SM_NOTIFY 请求。 它使用 \fImon_name\fP 字符串作为目标。 为确定哪个主机已重新启动，\fBsm\-notify\fP 命令通常会发送
+\fImy_name\fP 字符串，该字符串记录了远程监控时的记录。 远程 \fBrpc.statd\fP 使用此字符串或调用者的网络地址将传入的
+SM_NOTIFY 请求匹配到它自己的监视器列表中的一个或多个对等点。
+.PP
+如果 \fBrpc.statd\fP 在其监视器列表中未找到与传入 SM_NOTIFY 请求匹配的对等点，则不会将通知转发给本地锁管理器。
+此外，每个对等点都有自己的 \fINSM state number\fP，这是一个 32 位整数，在每次通过 \fBsm\-notify\fP
+命令重新启动后都会发生变化。 \fBrpc.statd\fP 使用此数字来区分实际重新启动和重播通知。
+.PP
+NFS 锁恢复的一部分是重新发现哪些对等点需要再次监视。 \fBsm\-notify\fP 命令会在每次重启后清除持久存储上的监控列表。
+.SH OPTIONS
+.TP 
+\fB\-d\fP
+保持 \fBsm\-notify\fP 连接到其控制终端并在前台运行，以便可以直接监控通知进度。
+.TP 
+\fB\-f\fP
+即使自上次系统重启后 \fBsm\-notify\fP 已经运行，也发送通知。
+.TP 
+\fB\-m\fP\fI retry\-time\fP
+指定持续重试向无响应主机发送通知的时间长度 (以分钟为单位)。 如果未指定此选项，\fBsm\-notify\fP 将尝试发送通知 15 分钟。 指定值 0
+会导致 \fBsm\-notify\fP 继续向无响应的对等方发送通知，直到它被手动终止。
+.IP
+如果发送失败、远程不响应、远程的 NSM 服务未注册，或者存在阻止远程的 \fImon_name\fP 解析为地址的 DNS 故障，将重试通知。
+.IP
+在收到有效回复之前，主机不会从通知列表中删除。 但是，SM_NOTIFY 过程的结果无效。 \fBsm\-notify\fP
+无法判断远程是否已识别发送者并已开始适当的锁定恢复。
+.TP 
+\fB\-n\fP
+防止 \fBsm\-notify\fP 更新本地系统的 NSM 状态编号。
+.TP 
+\fB\-p\fP\fI port\fP
+指定发送重新启动通知时应使用的源端口号 \fBsm\-notify\fP。 如果未指定此选项，则使用随机选择的临时端口。
+.IP
+此选项可用于穿越客户端和服务器之间的防火墙。
+.TP 
+\fB\-P, \fP\fB\-\-state\-directory\-path\fP\fI pathname\fP
+指定 NSM 状态信息所在的父目录的路径名。 如果不指定该选项，\fBsm\-notify\fP 默认使用 \fI/var/lib/nfs\fP。
+.IP
+启动后，\fBsm\-notify\fP 尝试将其有效的 UID 和 GID 设置为该目录的子目录 \fBsm\fP 的属主和属组。 更改有效 ids
+后，\fBsm\-notify\fP 只需要访问 state\-directory\-path 中 \fBsm\fP 和 \fBsm.bak\fP 的文件即可。
+.TP 
+\fB\-v\fP\fI ipaddr \fP\fB|\fP\fI hostname\fP
+指定发送重启通知的网络地址，以及发送 SM_NOTIFY 请求时使用的 \fImon_name\fP 参数。 如果不指定该选项，\fBsm\-notify\fP
+使用通配符地址作为传输绑定地址，发送 SM_NOTIFY 请求时使用远程监听时记录的 \fImy_name\fP 作为 \fImon_name\fP 参数。
+.IP
+\fIipaddr\fP 形式可以表示为 IPv4 或 IPv6 表示地址。 如果使用 \fIipaddr\fP 形式，\fBsm\-notify\fP
+命令会将此地址转换为主机名，以便在发送 SM_NOTIFY 请求时用作 \fImon_name\fP 参数。
+.IP
+此选项在远程需要来自特定网络地址的通知的多宿主配置中很有用。
+.SH "CONFIGURATION FILE"
+许多可以在命令行上设置的选项也可以通过在 \fB[sm\-notify]\fP 中设置的值来控制，或者在一种情况下，通过 \fI/etc/nfs.conf\fP
+配置文件的 \fB[statd]\fP 部分设置。
+
+\fB[sm\-notify]\fP 部分识别的值包括: \fBretry\-time\fP、\fBoutgoing\-port\fP 和 \fBoutgoing\-addr\fP。
+它们分别与命令行选项 \fBm\fP、\fBp\fP 和 \fBv\fP 具有相同的效果。
+
+\fB[sm\-notify]\fP 部分中识别的附加值是 \fBlift\-grace\fP。 默认情况下，如果 \fBsm\-notify\fP
+没有要通知的主机，它会提前解除 lockd 的宽限期。 一些高可用性配置将为每个浮动 IP 地址运行一个 \fBsm\-notify\fP。
+在这些配置中，提前解除宽限期可能会阻止客户端回收锁。 将 \fBlift\-grace\fP 设置为 \fBn\fP 将防止 \fBsm\-notify\fP
+提前结束宽限期。 \fBlift\-grace\fP 没有对应的命令行选项。
+
+\fB[statd]\fP 部分中识别的值是 \fBstate\-directory\-path\fP。
+
+.SH SECURITY
+\fBsm\-notify\fP 命令必须以 root 身份启动，以获得访问状态信息数据库所需的权限。 它一启动就放弃 root
+特权，以降低特权升级攻击的风险。
+.PP
+在正常操作期间，它选择的有效用户 ID 是状态目录的所有者。 这允许它在拥有丢弃 root 权限后继续访问该目录中的文件。 要控制
+\fBrpc.statd\fP 选择哪个用户 ID，只需使用 \fBchown\fP(1) 设置状态目录的所有者。
+.SH "ADDITIONAL NOTES"
+重启后的锁恢复对于维护数据完整性和防止不必要的应用程序挂起至关重要。
+.PP
+为了帮助 \fBrpc.statd\fP 将 SM_NOTIFY 请求与 NLM 请求相匹配，应该遵守一些最佳实践，包括:
+.IP
+您系统的 UTS 节点名应该与 NFS 对等方用来联系它们的 DNS 名称相匹配
+.IP
+您系统的 UTS 节点名应始终是完全限定的域名
+.IP
+UTS 节点名的正向和反向 DNS 映射应该一致
+.IP
+客户端用于挂载服务器的主机名应与服务器发送的 SM_NOTIFY 请求中的 \fImon_name\fP 相匹配
+.PP
+卸载 NFS 文件系统不一定会阻止 NFS 客户端或服务器相互监视。 两者可能会继续相互监视一段时间，以防两者之间的后续 NFS
+流量导致新挂载和额外的文件锁定。
+.PP
+在 Linux 上，如果在正常操作期间卸载 \fBlockd\fP 内核模块，则所有远程 NFS 对等点都将不受监视。 这可能发生在 NFS
+客户端上，例如，如果自动挂载程序由于不活动而删除所有 NFS 挂载点。
+.SS "IPv6 and TI\-RPC support"
+TI\-RPC 是在 IPv6 上支持 NFS 的先决条件。 如果 TI\-RPC 支持内置到 \fBsm\-notify\fP 命令中，它将根据 DNS
+为每个远程对等点返回的网络地址选择合适的 IPv4 或 IPv6 传输。 它应该与不支持 TI\-RPC 或 IPv6 的远程系统完全兼容。
+.PP
+目前，\fBsm\-notify\fP 命令仅支持通过数据报传输协议发送通知。
+.SH FILES
+.TP  2.5i
+\fI/var/lib/nfs/sm\fP
+包含监视器列表的目录
+.TP  2.5i
+\fI/var/lib/nfs/sm.bak\fP
+包含通知列表的目录
+.TP  2.5i
+\fI/var/lib/nfs/state\fP
+此主机的 NSM 状态编号
+.TP  2.5i
+\fI/proc/sys/fs/nfs/nsm_local_state\fP
+内核的 NSM 状态号副本
+.SH "SEE ALSO"
+\fBrpc.statd\fP(8), \fBnfs\fP(5), \fBuname\fP(2), \fBhostname\fP(7)
+.PP
+RFC 1094 \- "NFS: Network File System Protocol Specification"
+.br
+RFC 1813 \- "NFS Version 3 Protocol Specification"
+.br
+用于互通的 OpenGroup 协议: XNFS，版本 3W \- 第 11 章
+.SH AUTHORS
+奥拉夫基尔希 <okir@suse.de>
+.br
+卡盘杆 <chuck.lever@oracle.com>
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

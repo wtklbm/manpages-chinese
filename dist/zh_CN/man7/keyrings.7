@@ -1,0 +1,572 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2014 Red Hat, Inc. All Rights Reserved.
+.\" Written by David Howells (dhowells@redhat.com)
+.\" and Copyright (C) 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH keyrings 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+keyrings \- 内核中的密钥管理和保留工具
+.SH DESCRIPTION
+Linux 密钥管理工具主要是各种内核组件在内核中保留或缓存安全数据、身份验证密钥、加密密钥和其他数据的一种方式。
+.PP
+提供了系统调用接口，以便用户空间程序可以管理这些对象，也可以出于自己的目的使用该设施; 请参见
+\fBadd_key\fP(2)、\fBrequest_key\fP(2) 和 \fBkeyctl\fP(2)。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+提供了一个库和一些用户空间实用工具以允许访问该设施。 有关详细信息，请参见 \fBkeyctl\fP(1)、\fBkeyctl\fP(3) 和
+\fBkeyutils\fP(7)。
+.SS Keys
+密钥具有以下属性:
+.TP 
+Serial number (ID)
+这是一个唯一的整数句柄，在系统调用中通过它引用键。 序列号有时与密钥 ID 同义。以编程方式，密钥序列号使用类型 \fIkey_serial_t\fP 表示。
+.TP 
+Type
+密钥的类型定义了密钥中可以保存什么样的数据、如何解析密钥的建议内容以及如何使用有效，载荷。
+.IP
+有许多可用的通用类型，以及一些由特定内核组件定义的专用类型。
+.TP 
+Description (name)
+键描述是一个可打印的字符串，用作键的搜索词 (连同键类型) 以及显示名称。 在搜索过程中，描述可能部分匹配或完全匹配。
+.TP 
+Payload (data)
+有效，载荷，是密钥的实际内容。 这通常在创建密钥时设置，但如果在请求时内核不知道该密钥，则内核可以调用用户空间来完成密钥的实例化。 有关详细信息，请参见
+\fBrequest_key\fP(2)。
+.IP
+如果密钥类型支持并且向调用者授予了适当的权限，则可以读取和更新密钥的有效，载荷。
+.TP 
+Access rights
+与文件非常相似，每个密钥都有一个拥有用户 ID、一个拥有组 ID 和一个安全标签。 每个密钥也有一组权限，尽管比普通 UNIX
+文件有更多权限，并且还有一个额外的类别 \[em] 拥有者 \[em] 超出通常的用户、组和其他 (参见下面的 \fIPossession\fP) .
+.IP
+请注意，密钥是配额控制的，因为它们需要不可交换的内核内存。 拥有用户 ID 指定要从谁的配额中扣除。
+.TP 
+Expiration time
+每个密钥都可以设置过期时间。 当到达该时间时，密钥被标记为已过期并且访问它会失败并显示错误 \fBEKEYEXPIRED\fP。
+如果未删除、更新或替换，则在设定的时间后，过期密钥及其所有链接将自动删除 (垃圾收集)，并且尝试访问该密钥会失败并显示错误 \fBENOKEY\fP。
+.TP 
+Reference count
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+每个键都有一个引用计数。 密钥由密钥环、当前活动用户和进程的凭据引用。 当引用计数达到零时，密钥将被安排为垃圾集合。
+.SS "Key types"
+内核提供了几种基本类型的密钥:
+.TP 
+\fI"keyring"\fP
+.\" Note that keyrings use different fields in struct key in order to store
+.\" their data - index_key instead of type/description and name_link/keys
+.\" instead of payload.
+密钥环是一种特殊的密钥，它存储一组指向其他密钥 (包括其他密钥环) 的链接，类似于包含文件链接的目录。
+密钥环的主要目的是防止其他密钥被垃圾收集，因为没有任何内容指向它们。
+.IP
+以句点 (\[aq].\[aq]) 开头的描述为 (names) 的密钥环保留给实现。
+.TP 
+\fI"user"\fP
+这是一种通用密钥类型。 密钥完全保存在内核内存中。 用户空间应用程序可以读取和更新有效载荷。
+.IP
+这种类型的密钥的有效，载荷，是一个最多 32,767 字节的任意数据块。
+.IP
+描述可以是任何有效的字符串，但它最好以冒号分隔的前缀开头，表示密钥感兴趣的服务 (例如 \fI"afs:mykey"\fP).
+.TP 
+\fI"logon"\fP (since Linux 3.3)
+.\" commit 9f6ed2ca257fa8650b876377833e6f14e272848b
+这种密钥类型本质上与 \fI"user"\fP 相同，但它不提供读取 (即 \fBkeyctl\fP(2) \fBKEYCTL_READ\fP
+操作)，这意味着密钥有效，载荷，从用户空间永远不可见。 这适用于存储不应从用户空间读取的用户名 \- 密码对。
+.IP
+\fI"logon"\fP 密钥 \fImust\fP 的描述以非空冒号分隔的前缀开头，其目的是标识密钥所属的服务。 (请注意，这与 \fI"user"\fP
+类型的密钥不同，在 \fI"user"\fP 类型中，建议包含前缀但不强制执行。)
+.TP 
+\fI"big_key"\fP (since Linux 3.13)
+.\" commit ab3c3587f8cda9083209a61dbe3a4407d3cada10
+此密钥类型类似于 \fI"user"\fP 密钥类型，但它可能包含大小高达 1\MiB 的有效，载荷。 此密钥类型可用于保存 Kerberos
+票证缓存等目的。
+.IP
+.\" commit 13100a72f40f5748a04017e0ab3df4cf27c809ef
+如果数据大小超过将数据存储在文件系统中的开销，则有效，载荷，数据可能存储在 tmpfs 文件系统中，而不是内核内存中。
+(在文件系统中存储数据需要在内核中分配文件系统结构。这些结构的大小决定了使用 tmpfs 存储方法的大小阈值。) 由于 Linux
+4.8，有效载荷数据在存储在 tmpfs 中时被加密，从而防止它被未加密地写入交换空间。
+.PP
+还有更多专门的键类型可用，但这里不讨论它们，因为它们不适合普通用户空间使用。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+以句点 (\[aq].\[aq]) 开头的键类型名称保留给实现。
+.SS Keyrings
+如前所述，密钥环是一种特殊类型的密钥，其中包含指向其他密钥 (可能包括其他密钥环) 的链接。 密钥可以通过多个密钥环链接。 密钥环可以被认为类似于
+UNIX 目录，其中每个目录包含一组指向文件的硬链接。
+.PP
+各种操作 (系统调用) 可能仅适用于密钥环:
+.TP 
+Adding
+可以通过创建密钥的系统调用将密钥添加到密钥环。 这可以防止当系统调用释放其对密钥的最后一次引用时立即删除新密钥。
+.TP 
+Linking
+可以将链接添加到指向已知密钥的密钥环，前提是这不会创建自引用循环。
+.TP 
+Unlinking
+可以从密钥环中删除链接。 当指向某个键的最后一个链接被删除时，该键将被垃圾回收安排删除。
+.TP 
+Clearing
+可以从密钥环中删除所有链接。
+.TP 
+Searching
+密钥环可以被认为是树或子树的根，其中密钥环形成分支，非密钥环形成叶子。 可以在该树中搜索匹配特定类型和描述的关键字。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+有关详细信息，请参见 \fBkeyctl_clear\fP(3)、\fBkeyctl_link\fP(3)、\fBkeyctl_search\fP(3) 和
+\fBkeyctl_unlink\fP(3)。
+.SS "Anchoring keys"
+为防止密钥被垃圾收集，必须将其锚定以在内核未主动使用时保持其引用计数升高。
+.PP
+密钥环用于锚定其他密钥: 每个链接都是密钥上的引用。 请注意，密钥环本身只是密钥，并且也受到相同的锚定要求的约束，以防止它们被垃圾收集。
+.PP
+内核提供了许多可用的锚密钥环。 请注意，其中一些密钥环只会在首次访问时创建。
+.TP 
+Process keyrings
+处理凭据本身引用具有特定语义的密钥环。 只要凭证集存在，这些密钥环就会被固定，通常只要进程存在。
+.IP
+共有三个具有不同 inheritance/sharing 规则的密钥环: \fBsession\-keyring\fP(7)
+(由所有子进程继承和共享)、\fBprocess\-keyring\fP(7) (由进程中的所有线程共享) 和 \fBthread\-keyring\fP(7)
+(特定于特定线程)。
+.IP
+作为使用实际密钥环 ID 的替代方法，在调用 \fBadd_key\fP(2)、\fBkeyctl\fP(2) 和 \fBrequest_key\fP(2)
+时，可以使用特殊密钥环值 \fBKEY_SPEC_SESSION_KEYRING\fP、\fBKEY_SPEC_PROCESS_KEYRING\fP 和
+\fBKEY_SPEC_THREAD_KEYRING\fP 来引用调用者自己的这些密钥环实例。
+.TP 
+User keyrings
+内核已知的每个 UID 都有一个包含两个密钥环的记录: \fBuser\-keyring\fP(7) 和 \fBuser\-session\-keyring\fP(7)。
+只要内核中的 UID 记录存在，它们就会存在。
+.IP
+作为使用实际密钥环 ID 的替代方法，在调用 \fBadd_key\fP(2)、\fBkeyctl\fP(2) 和 \fBrequest_key\fP(2)
+时，可以使用特殊密钥环值 \fBKEY_SPEC_USER_KEYRING\fP 和 \fBKEY_SPEC_USER_SESSION_KEYRING\fP
+来引用调用者自己的这些密钥环实例。
+.IP
+当启动新的登录会话时，\fBpam_keyinit\fP(8) 将指向用户密钥环的链接放置在新的会话密钥环中。
+.TP 
+Persistent keyrings
+系统已知的每个 UID 都有一个 \fBpersistent\-keyring\fP(7)。 它可能会在前面提到的 UID
+记录的生命周期之后继续存在，但设置了到期时间，以便在设置的时间后自动清除。 例如，持久密钥环允许 \fBcron\fP(8)
+脚本使用用户注销后留在持久密钥环中的凭据。
+.IP
+请注意，每次请求持久密钥时，都会重置持久密钥环的过期时间。
+.TP 
+Special keyrings
+内核拥有特殊的密钥环，可以为特殊目的锚定密钥。 这方面的一个例子是 \fIsystem keyring\fP 用于保存用于模块签名验证的加密密钥。
+.IP
+这些特殊的密钥环通常不会被用户空间直接更改。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+最初计划的 "group keyring"，用于存储与内核已知的每个 GID 关联的密钥，目前尚未实现，不太可能实现。 尽管如此，常量
+\fBKEY_SPEC_GROUP_KEYRING\fP 已经被定义为这个钥匙圈。
+.SS Possession
+拥有所有权的概念对于理解密钥环安全模型很重要。 线程是否拥有 key 由以下规则决定:
+.IP (1) 5
+在以下所有规则中，将忽略任何未向调用方授予 \fIsearch\fP 权限的密钥或密钥环。
+.IP (2)
+一个线程直接拥有它的 \fBsession\-keyring\fP(7)、\fBprocess\-keyring\fP(7) 和
+\fBthread\-keyring\fP(7)，因为这些密钥环由它的凭据引用。
+.IP (3)
+如果拥有密钥环，则也拥有它链接到的任何密钥。
+.IP (4)
+如果密钥环链接到的任何密钥本身就是密钥环，则递归应用规则 (3)。
+.IP (5)
+如果从内核上调一个进程来实例化一个密钥 (参见 \fBrequest_key\fP(2))，那么它也像规则 (1)
+一样拥有请求者的密钥环，就好像它是请求者一样。
+.PP
+请注意，拥有权不是密钥的基本属性，而是必须在每次需要密钥时计算。
+.PP
+Possession 旨在允许设置用户 ID 的程序从用户的 shell 运行以访问用户的密钥。
+向密钥拥有者授予权限，同时拒绝向密钥所有者和组授予权限，可以根据 UID 和 GID 匹配防止对密钥的访问。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+当它创建会话密钥环时，\fBpam_keyinit\fP(8) 添加到 \fBuser\-keyring\fP(7)
+的链接，从而默认拥有用户密钥环及其包含的任何内容。
+.SS "Access rights"
+每个密钥都具有以下与安全相关的属性:
+.IP \[bu] 3
+所属用户 ID
+.IP \[bu]
+允许访问密钥的组的 ID
+.IP \[bu]
+安全标签
+.IP \[bu]
+权限掩码
+.PP
+权限掩码包含四组权限。 前三组是互斥的。 一个且只有一个对特定的访问检查有效。 按照优先级降序排列，这三组是:
+.TP 
+\fIuser\fP
+如果密钥的用户 ID 与调用者的文件系统用户 ID 匹配，则该集合指定授予的权限。
+.TP 
+\fIgroup\fP
+如果用户 ID 不匹配且密钥的组 ID 与调用者的文件系统 GID 或调用者的补充组 ID 之一匹配，则该集合指定授予的权限。
+.TP 
+\fIother\fP
+如果密钥的用户 ID 和组 ID 都不匹配，则该集合指定授予的权限。
+.PP
+第四组权利是:
+.TP 
+\fIpossessor\fP
+如果确定调用者拥有密钥，则该集合指定授予的权限。
+.PP
+钥匙的完整权利集是前三套适用的 union 加上第四套 (如果拥有钥匙)。
+.PP
+四个掩码中的每一个都可以授予的权限集如下:
+.TP 
+\fIview\fP
+可以读取密钥的属性。 这包括类型、描述和访问权限 (不包括安全标签)。
+.TP 
+\fIread\fP
+对于密钥: 可以读取密钥的有效载荷。 对于密钥环: 可以读取密钥环链接到的序列号 (keys) 列表。
+.TP 
+\fIwrite\fP
+可以更新密钥的有效，载荷，并且可以撤销密钥。 对于密钥环，可以向密钥环添加链接或从密钥环中删除链接，并且可以完全清除密钥环 (删除所有链接)，
+.TP 
+\fIsearch\fP
+对于密钥 (或密钥环) : 可以通过搜索找到密钥。 对于密钥环: 可以搜索由密钥环链接到的密钥和密钥环。
+.TP 
+\fIlink\fP
+可以创建从密钥环到密钥的链接。 创建密钥时建立的密钥的初始链接不需要此权限。
+.TP 
+\fIsetattr\fP
+可以更改密钥的所有权详细信息和安全标签，可以设置密钥的到期时间，也可以撤销密钥。
+.PP
+除了访问权限外，任何活动的 Linux 安全模块 (LSM) 都可以根据其政策的规定阻止对密钥的访问。 LSM 可以为密钥赋予安全标签或其他属性;
+该标签可通过 \fBkeyctl_get_security\fP(3) 检索。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+有关详细信息，请参见
+\fBkeyctl_chown\fP(3)、\fBkeyctl_describe\fP(3)、\fBkeyctl_get_security\fP(3)、\fBkeyctl_setperm\fP(3)
+和 \fBselinux\fP(8)。
+.SS "Searching for keys"
+Linux 密钥管理工具的主要特性之一是能够找到进程保留的密钥。 \fBrequest_key\fP(2) 系统调用是用户空间应用程序查找密钥的主要访问点。
+(在内部，内核有类似的东西可供使用密钥的内部组件使用。)
+.PP
+搜索算法的工作原理如下:
+.IP (1) 5
+进程密钥环按以下顺序搜索: \fBthread\-keyring\fP(7) (如果存在)，\fBprocess\-keyring\fP(7) (如果存在)，然后是
+\fBsession\-keyring\fP(7) (如果存在) 或 \fBuser\-session\-keyring\fP(7) (如果存在)。
+.IP (2)
+如果调用者是由 \fBrequest_key\fP(2) upcall 机制调用的进程，那么还将搜索 \fBrequest_key\fP(2)
+的原始调用者的密钥环。
+.IP (3)
+密钥环树的搜索按广度优先顺序进行: 首先搜索每个密钥环以查找匹配项，然后搜索该密钥环所引用的密钥环。
+.IP (4)
+如果找到有效的匹配键，则搜索终止并返回该键。
+.IP (5)
+如果找到附加了错误状态的匹配键，则会记录该错误状态并继续搜索。
+.IP (6)
+如果没有找到有效的匹配键，则返回第一个指出的错误状态; 否则，返回 \fBENOKEY\fP 错误。
+.PP
+也可以搜索特定的密钥环，在这种情况下，只适用步骤 (3) 到 (6)。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+有关详细信息，请参见 \fBrequest_key\fP(2) 和 \fBkeyctl_search\fP(3)。
+.SS "On\-demand key creation"
+如果找不到密钥，\fBrequest_key\fP(2) 将在给定 \fIcallout_info\fP
+参数的情况下创建一个新密钥，然后向上调用用户空间以实例化该密钥。 这允许根据需要创建密钥。
+.PP
+通常，这将涉及内核创建一个执行 \fBrequest\-key\fP(8) 程序的新进程，然后该进程将根据其配置执行适当的处理程序。
+.PP
+处理程序被传递一个特殊的授权密钥，允许它并且只有它可以实例化新密钥。 这也用于允许处理程序执行的搜索也搜索请求者的密钥环。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+有关详细信息，请参见
+\fBrequest_key\fP(2)、\fBkeyctl_assume_authority\fP(3)、\fBkeyctl_instantiate\fP(3)、\fBkeyctl_negate\fP(3)、\fBkeyctl_reject\fP(3)、\fBrequest\-key\fP(8)
+和 \fBrequest\-key.conf\fP(5)。
+.SS "/proc files"
+内核提供各种 \fI/proc\fP 文件，这些文件公开有关密钥的信息或定义密钥使用限制。
+.TP 
+\fI/proc/keys\fP (since Linux 2.6.10)
+.\" David Howells, Dec 2016 linux-man@:
+.\" This [The thread need not possess the key for it to be visible in
+.\" this file.] is correct.  See proc_keys_show() in security/keys/proc.c:
+.\"
+.\"	rc = key_task_permission(key_ref, ctx.cred, KEY_NEED_VIEW);
+.\"	if (rc < 0)
+.\"		return 0;
+.\"
+.\"Possibly it shouldn't be, but for now it is.
+.\"
+该文件公开了读取线程对其具有 \fIview\fP 权限的键列表，提供了有关每个键的各种信息。 线程不需要拥有它在这个文件中可见的密钥。
+.IP
+列表中包含的唯一密钥是那些授予 \fIview\fP 读取进程权限的密钥 (无论它是否拥有它们)。 LSM
+安全检查仍在执行，并且可能会过滤掉进程无权查看的更多密钥。
+.IP
+在此文件中可能会看到的数据示例 (为便于引用在下面对列进行了编号) 如下所示:
+.IP
+.EX
+  (1)     (2)     (3)(4)    (5)     (6)   (7)   (8)        (9)
+009a2028 I\-\-Q\-\-\-1 perm 3f010000 1000 1000 用户 krb_ccache:primary: 12
+1806c4ba I\-\-Q\-\-\-   1 perm 3f010000  1000  1000 keyring  _pid: 2
+25d3a08f I\-\-Q\-\-\-1 perm 1f3f0000 1000 65534 钥匙圈 _uid_ses.1000: 1
+28576bd8 I\-\-Q\-\-\-   3 perm 3f010000  1000  1000 keyring  _krb: 1
+2c546d21 I\-\-Q\-\-\- 190 perm 3f030000  1000  1000 keyring  _ses: 2
+30a4e0be I\-\-\-\-\-\-4 2d 1f030000 1000 65534 钥匙圈 _persistent.1000: 1
+32100fab I\-\-Q\-\-\-4 perm 1f3f0000 1000 65534 钥匙圈 _uid.1000: 2
+32a387ea I\-\-Q\-\-\-   1 perm 3f010000  1000  1000 keyring  _pid: 2
+3ce56aea I\-\-Q\-\-\-   5 perm 3f030000  1000  1000 keyring  _ses: 1
+.EE
+.IP
+该文件每一行显示的字段如下:
+.RS
+.TP 
+ID (1)
+密钥的 ID (序列号)，以十六进制表示。
+.TP 
+Flags (2)
+一组描述密钥状态的标志:
+.RS
+.TP 
+I
+.\" KEY_FLAG_INSTANTIATED
+密钥已实例化。
+.TP 
+R
+.\" KEY_FLAG_REVOKED
+密钥已被撤销。
+.TP 
+D
+.\" KEY_FLAG_DEAD
+.\" unregister_key_type() in the kernel source
+密钥已失效 (即密钥类型已注销)。 (在垃圾集合期间，一个键可能会短暂地处于这种状态。)
+.TP 
+Q
+.\" KEY_FLAG_IN_QUOTA
+密钥有助于用户的配额。
+.TP 
+U
+.\" KEY_FLAG_USER_CONSTRUCT
+密钥正在通过回调到用户空间来构建; 请参见 \fBrequest\-key\fP(2)。
+.TP 
+N
+.\" KEY_FLAG_NEGATIVE
+密钥是负实例化的。
+.TP 
+i
+.\" KEY_FLAG_INVALIDATED
+密钥已失效。
+.RE
+.TP 
+Usage (3)
+这是固定密钥的内核凭证结构数量的计数 (大约: 引用此密钥的线程和打开文件引用的数量)。
+.TP 
+Timeout (4)
+密钥到期前的时间量，以人类可读的形式 (周、天、小时、分钟和秒) 表示。 这里的字符串 \fIperm\fP 表示密钥是永久的 (没有超时)。 字符串
+\fIexpd\fP 表示密钥已过期，但尚未被垃圾回收。
+.TP 
+Permissions (5)
+密钥权限，用四个十六进制字节表示，从左到右依次为所有者、用户、组和其他权限。 在每个字节中，权限位如下:
+.IP
+.PD 0
+.RS 12
+.TP 
+0x01
+\fIview\fP
+.TP 
+0x02
+\fIread\fP
+.TP 
+0x04
+\fIwrite\fP
+.TP 
+0x08
+\fIsearch\fP
+.TP 
+0x10
+\fIlink\fP
+.TP 
+0x20
+\fIsetattr\fP
+.RE
+.PD
+.TP 
+UID (6)
+密钥所有者的用户 ID。
+.TP 
+GID (7)
+密钥的组 ID。 这里的值 \-1 表示 key 没有 group ID; 对于内核创建的密钥，在某些情况下可能会发生这种情况。
+.TP 
+Type (8)
+密钥类型 (用户、密钥环等)
+.TP 
+Description (9)
+密钥描述 (name)。 该字段包含有关密钥的描述信息。 对于大多数键类型，它具有以下形式
+.IP
+.in +4n
+.EX
+名称 [: 额外信息]
+.EE
+.in
+.IP
+\fIname\fP 子字段是键的描述 (name)。 可选的 \fIextra\-info\fP 字段提供有关密钥的一些进一步信息。
+此处显示的信息取决于密钥类型，如下所示:
+.RS
+.TP 
+\fI"user"\fP and \fI"logon"\fP
+密钥，载荷，的字节大小 (以十进制表示)。
+.TP 
+\fI"keyring"\fP
+链接到密钥环的密钥数，如果没有密钥链接到密钥环，则为字符串 \fIempty\fP。
+.TP 
+\fI"big_key"\fP
+以字节为单位的有效载荷大小，如果密钥有效载荷超过阈值，则后跟字符串 \fI[file]\fP，这意味着有效载荷存储在 (swappable)
+\fBtmpfs\fP(5) 文件系统中，否则为字符串 \fI[buff]\fP，表明密钥足够小，可以驻留在内核中记忆。
+.RE
+.IP
+对于 \fI".request_key_auth"\fP 密钥类型 (授权密钥; 参见 \fBrequest_key\fP(2))，描述字段具有以下示例所示的形式:
+.IP
+.in +4n
+.EX
+键: c9a9b19 pid: 28880 ci: 10
+.EE
+.in
+.IP
+三个子字段如下:
+.RS
+.TP 
+\fIkey\fP
+在请求程序中实例化的密钥的十六进制 ID。
+.TP 
+\fIpid\fP
+请求程序的 PID。
+.TP 
+\fIci\fP
+应实例化所请求密钥的标注数据的长度 (即，与授权密钥关联的有效，载荷，的长度)。
+.RE
+.RE
+.TP 
+\fI/proc/key\-users\fP (since Linux 2.6.10)
+该文件列出了每个在系统上至少有一个密钥的用户 ID 的各种信息。 在此文件中可能会看到的数据示例如下:
+.IP
+.in +4n
+.EX
+   0:    10 9/9 2/1000000 22/25000000
+  42:     9 9/9 8/200 106/20000
+1000:    11 11/11 10/200 271/20000
+.EE
+.in
+.IP
+每行显示的字段如下:
+.RS
+.TP 
+\fIuid\fP
+用户 ID。
+.TP 
+\fIusage\fP
+这是内核结构体的内核内部使用计数，用于记录关键用户。
+.TP 
+\fInkeys\fP/\fInikeys\fP
+用户拥有所有权的密钥总数，以及已实例化的密钥数。
+.TP 
+\fIqnkeys\fP/\fImaxkeys\fP
+用户拥有所有权的密钥数量，以及用户可以拥有所有权的最大密钥数量。
+.TP 
+\fIqnbytes\fP/\fImaxbytes\fP
+该用户拥有所有权的密钥有效载荷中消耗的字节数，以及该用户密钥有效载荷中字节数的上限。
+.RE
+.TP 
+\fI/proc/sys/kernel/keys/gc_delay\fP (since Linux 2.6.32)
+.\" commit 5d135440faf7db8d566de0c6fab36b16cf9cfc3b
+此文件中的值指定间隔 (以秒为单位)，之后将对已撤销和过期的密钥进行垃圾回收。 有这样一个间隔的目的是为了有一个时间窗口，用户空间可以看到一个错误
+(分别是 \fBEKEYREVOKED\fP 和 \fBEKEYEXPIRED\fP)，表明密钥发生了什么。
+.IP
+此文件中的默认值为 300 (即 5 分钟)。
+.TP 
+\fI/proc/sys/kernel/keys/persistent_keyring_expiry\fP (since Linux 3.13)
+.\" commit f36f8c75ae2e7d4da34f4c908cebdb4aa42c977e
+该文件定义了一个时间间隔 (以秒为单位)，每次访问密钥环 (通过 \fBkeyctl_get_persistent\fP(3) 或 \fBkeyctl\fP(2)
+\fBKEYCTL_GET_PERSISTENT\fP 操作) 时，持久密钥环的过期计时器都会重置到该时间间隔。
+.IP
+此文件中的默认值为 259200 (即 3 天)。
+.PP
+以下文件 (可由特权进程写入) 用于对密钥数量和可存储在密钥有效，载荷，中的数据字节数实现配额:
+.TP 
+\fI/proc/sys/kernel/keys/maxbytes\fP (since Linux 2.6.26)
+.\" commit 0b77f5bfb45c13e1e5142374f9d6ca75292252a4
+.\" Previously: KEYQUOTA_MAX_BYTES      10000
+这是非 root 用户可以在用户拥有所有权的密钥的有效，载荷，中保留的最大数据字节数。
+.IP
+此文件中的默认值为 20,000。
+.TP 
+\fI/proc/sys/kernel/keys/maxkeys\fP (since Linux 2.6.26)
+.\" commit 0b77f5bfb45c13e1e5142374f9d6ca75292252a4
+.\" Previously: KEYQUOTA_MAX_KEYS       100
+这是非 root 用户可以拥有所有权的最大密钥数。
+.IP
+此文件中的默认值为 200。
+.TP 
+\fI/proc/sys/kernel/keys/root_maxbytes\fP (since Linux 2.6.26)
+这是 root 用户 (root 用户命名空间中的 UID 0) 可以在 root 拥有所有权的密钥的有效，载荷，中保存的最大数据字节数。
+.IP
+.\"738c5d190f6540539a04baf36ce21d46b5da04bd
+.\" commit 0b77f5bfb45c13e1e5142374f9d6ca75292252a4
+此文件中的默认值为 25,000,000 (Linux 3.17 之前为 20,000)。
+.TP 
+\fI/proc/sys/kernel/keys/root_maxkeys\fP (since Linux 2.6.26)
+.\" commit 0b77f5bfb45c13e1e5142374f9d6ca75292252a4
+这是 root 用户 (root 用户命名空间中的 UID 0) 可以拥有所有权的最大密钥数。
+.IP
+.\"738c5d190f6540539a04baf36ce21d46b5da04bd
+此文件中的默认值为 1,000,000 (Linux 3.17 之前为 200)。
+.PP
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+关于密钥环，请注意密钥环中的每个链接都占用 4 个字节的密钥环，载荷。
+.SS Users
+Linux 密钥管理工具有许多用户和用途，但不限于那些已经存在的。
+.PP
+该工具的内核用户包括:
+.TP 
+Network filesystems \- DNS
+内核使用 keys 提供的 upcall 机制 upcall 到用户空间做 DNS 查找，然后缓存结果。
+.TP 
+AF_RXRPC and kAFS \- Authentication
+AF_RXRPC 网络协议和内核 AFS 文件系统使用密钥来存储执行安全或加密流量所需的票据。 然后通过 AF_RXRPC 上的网络操作和 kAFS
+上的文件系统操作来查找这些。
+.TP 
+NFS \- User ID mapping
+NFS 文件系统使用密钥来存储外部用户 ID 到本地用户 ID 的映射。
+.TP 
+CIFS \- Password
+CIFS 文件系统使用密钥来存储用于访问远程共享的密码。
+.TP 
+Module verification
+可以使内核构建过程对模块进行加密签名。 然后在加载模块时检查该签名。
+.PP
+该工具的用户空间用户包括:
+.TP 
+Kerberos key storage
+.\"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+MIT Kerberos 5 工具 (libkrb5) 可以使用密钥来存储身份验证
+tokens，可以在用户最后一次使用它们后的一段设定时间自动清理，但在此之前允许它们在用户注销后停留，以便 \fBcron\fP(8) 脚本可以使用它们。
+.SH "SEE ALSO"
+.ad l
+.nh
+\fBkeyctl\fP(1), \fBadd_key\fP(2), \fBkeyctl\fP(2), \fBrequest_key\fP(2), \fBkeyctl\fP(3),
+\fBkeyutils\fP(7), \fBpersistent\-keyring\fP(7), \fBprocess\-keyring\fP(7),
+\fBsession\-keyring\fP(7), \fBthread\-keyring\fP(7), \fBuser\-keyring\fP(7),
+\fBuser\-session\-keyring\fP(7), \fBpam_keyinit\fP(8), \fBrequest\-key\fP(8)
+.PP
+内核源文件 \fIDocumentation/crypto/asymmetric\-keys.txt\fP 和
+\fIDocumentation/security/keys\fP 下 (或者，在 Linux 4.13 之前，在文件
+\fIDocumentation/security/keys.txt\fP).
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

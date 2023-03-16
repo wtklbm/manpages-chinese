@@ -1,0 +1,143 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.SCOPE 5 "" "systemd 253" systemd.scope
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.scope \- 作用域元配置
+.SH SYNOPSIS
+.PP
+\fIscope\fP\&.scope
+.SH DESCRIPTION
+.PP
+作用域单元不是通过元配置文件配置的，而是仅使用 systemd\& 的总线接口以编程方式创建的。它们的命名类似于文件名 \&。以 "\&.scope"
+结尾的元表示一个使用域单元 \&。作用域单元管理一组系统进程 \&。与服务单元不同，使用域单元管理外部创建的进程，并且不会自行关闭进程 \&。
+.PP
+工作域单元的主要目的是对系统服务的工作进程进行分组，以组织和管理资源 \&。
+.PP
+\fBsystemd\-run \fP\fB\-\-scope\fP 可用于从命令行 \& 在新的工作域单元中轻松启动命令。
+.PP
+请参见 \m[blue]\fBNew Control Group Interfaces\fP\m[]\&\s-2\u[1]\d\s+2，了解如何使用程序中的作用域单元 \&。
+.PP
+请注意，与服务单元不同，作业域单元没有 "main" 进程: 作业域中的所有进程都是等价的
+\&。因此，作业域元的生命周期并不绑定到一个特定进程的生命周期，而是绑定到作业域 \&
+中至少一个进程的存在。这也意味着这些进程的退出状态与作用域元故障状态 \&
+无关。使用域单元可能仍会进入故障状态，例如由于资源耗尽或达到停止超时，但不是由于它们内部的程序不正常地终止
+\&。由于作为使用域单元管理的进程通常仍然是将它们分叉出来的原始进程的子进程，因此该进程的工作也是收集它们的退出状态并根据需要对它们采取行动 \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+隐式依赖项可能会作为 \fBsystemd.resource\-control\fP(5)\& 中记录的资源控制参数的结果添加。
+.SS "Default Dependencies"
+.PP
+除非设置 \fIDefaultDependencies=no\fP，否则将添加以下依赖项:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+作用域单元将自动具有 \fIConflicts=\fP 和 \fIBefore=\fP 类型的依赖项 on
+shutdown\&.target\&。这些确保使用域单元在系统关闭之前被删除。只有涉及提前启动或延迟系统关闭的使用域单元才应禁用
+\fIDefaultDependencies=\fP 选项 \&。
+.RE
+.SH OPTIONS
+.PP
+作用域文件可能包含 [Unit] 部分，在 \fBsystemd.unit\fP(5)\& 中描述。
+.PP
+作业域文件可能包含一个 [Scope] 部分，其中包含有关作业域及其包含的单位的信息 \&。本节中可能使用的许多选项与其他元类型共享
+\&。这些选项记录在 \fBsystemd.kill\fP(5) 和 \fBsystemd.resource\-control\fP(5)\& 中。作业域单元
+[Scope] 部分特有的选项如下:
+.PP
+\fIOOMPolicy=\fP
+.RS 4
+配置内核内存不足 (OOM) 查杀策略和用户空间 OOM killer \fBsystemd\-oomd.service\fP(8)\&。在 Linux
+上，当内存变得稀缺以至于内核无法为自己分配内存时，它可能会决定终止正在运行的进程以释放内存并减少内存压力
+\&。请注意，systemd\-oomd\&.service
+是一种更灵活的解决方案，旨在通过尝试在内核必须采取行动之前尽早终止服务来防止用户空间内存不足的情况，而不仅仅是内核。
+.sp
+此设置采用 \fBcontinue\fP、\fBstop\fP 或 \fBkill\fP\& 之一。如果设置为 \fBcontinue\fP 并且单元中的进程被 OOM
+杀手杀死，这将被记录但单元继续运行 \&。如果设置为 \fBstop\fP，则记录事件，但元被服务管理器干净地终止 \&。如果设置为 \fBkill\fP 和元
+\*(Aqs 进程之一被 OOM 杀手杀死，则指示内核通过将 memory\&.oom\&.group 属性设置为 \fB1\fP 来杀死所有剩余的元进程;
+另请详见 \m[blue]\fBkernel documentation\fP\m[]\&\s-2\u[2]\d\s+2\&。
+.sp
+默认为 \fBsystemd\-system.conf\fP(5) 中的设置 \fIDefaultOOMPolicy=\fP 设置为，除了 \fIDelegate=\fP
+打开的单元外，它默认为 \fBcontinue\fP\&。
+.sp
+使用 \fIOOMScoreAdjust=\fP 设置来配置元进程是否应被 Linux OOM 杀手逻辑视为进程终止的首选或次首选候选者
+\&。有关详细信息，请参见 \fBsystemd.exec\fP(5)\&。
+.sp
+此设置也适用于 \fBsystemd\-oomd\fP\&。与内核 OOM 终止类似，此设置决定了 \fBsystemd\-oomd\fP 终止与之关联的 cgroup
+后单元的状态 \&。
+.RE
+.PP
+\fIRuntimeMaxSec=\fP
+.RS 4
+配置作业域运行的最长时间 \&。如果使用它并且作业域的活动时间超过指定时间，它将终止并进入故障状态 \&。传递 "infinity" (默认值)
+以配置无运行时限制 \&。
+.RE
+.PP
+\fIRuntimeRandomizedExtraSec=\fP
+.RS 4
+此选项通过将最大运行时间增加 0 和指定值 (以秒为单位) \& 之间均匀分布的持续时间来修改 \fIRuntimeMaxSec=\fP。如果
+\fIRuntimeMaxSec=\fP 未指定，则此特性将被禁用 \&。
+.RE
+.PP
+检查 \fBsystemd.unit\fP(5)、\fBsystemd.exec\fP(5) 和 \fBsystemd.kill\fP(5) 以获得更多设置 \&。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-run\fP(1), \fBsystemd.unit\fP(5),
+\fBsystemd.resource\-control\fP(5), \fBsystemd.service\fP(5),
+\fBsystemd.directives\fP(7)\&.
+.SH NOTES
+.IP " 1." 4
+新的控制组界面
+.RS 4
+\%https://www.freedesktop.org/wiki/Software/systemd/ControlGroupInterface
+.RE
+.IP " 2." 4
+内核文档
+.RS 4
+\%https://docs.kernel.org/admin\-guide/cgroup\-v2.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

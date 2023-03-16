@@ -1,0 +1,319 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: lsblk
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-08-04
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH LSBLK 8 2022\-08\-04 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+lsblk \- 列出块设备
+.SH SYNOPSIS
+.sp
+\fBlsblk\fP [options] [\fIdevice\fP...]
+.SH DESCRIPTION
+.sp
+\fBlsblk\fP 列出有关所有可用或指定块设备的信息。\fBlsblk\fP 命令读取 \fBsysfs\fP 文件系统和 \fBudev db\fP 以收集信息。如果
+udev db 不可用或者 \fBlsblk\fP 是在没有 udev 支持的情况下编译的，那么它会尝试从块设备读取标签、UUID
+和文件系统类型。在这种情况下，root 权限是必需的。
+.sp
+该命令默认以树状格式打印所有块设备 (RAM 磁盘除外)。使用 \fBlsblk \-\-help\fP 获取所有可用列的列表。
+.sp
+默认输出以及 \fB\-\-fs\fP 和 \fB\-\-topology\fP
+等选项的默认输出可能会发生变化。因此，您应该尽可能避免在脚本中使用默认输出。在需要稳定输出的环境中，始终使用 \fB\-\-output\fP
+\fIcolumns\-list\fP 和 \fB\-\-list\fP 显式定义预期列。
+.sp
+请注意，当 \fBudev\fP 还没有关于最近添加或修改的设备的所有信息时，\fBlsblk\fP 可能会及时执行。在这种情况下，建议在 \fBlsblk\fP
+之前使用 \fBudevadm settle\fP 来与 udev 同步。
+.sp
+块设备和文件系统之间的关系并不总是一对一的。文件系统可能使用更多的块设备，或者同一个文件系统可以通过更多路径访问。这就是 \fBlsblk\fP 提供
+MOUNTPOINT 和 MOUNTPOINTS (pl.) 列的原因。MOUNTPOINT 列仅显示一个挂载点
+(通常是文件系统的最后一个挂载实例)，而 MOUNTPOINTS 列通过多行 cell 显示与设备关联的所有挂载点。
+.SH OPTIONS
+.sp
+\fB\-A\fP, \fB\-\-noempty\fP
+.RS 4
+不要 \(cqt 打印空设备。
+.RE
+.sp
+\fB\-a\fP, \fB\-\-all\fP
+.RS 4
+禁用所有内置过滤器并列出所有空设备和 RAM 磁盘设备。
+.RE
+.sp
+\fB\-b\fP, \fB\-\-bytes\fP
+.RS 4
+以字节而不是人类可读的格式打印大小。
+.sp
+默认情况下，元，大小以字节表示，元前缀为 2^10 (1024) 的幂。符号的缩写被截断以达到更好的可读性，通过单独展示它们的第一个字母; 示例: "1
+KiB" 和 "1 MiB" 分别显示为 "1 K" 和 "1 M"，然后故意省略了这些缩写中的 "iB"。
+.RE
+.sp
+\fB\-D\fP, \fB\-\-discard\fP
+.RS 4
+打印有关每个设备的丢弃功能 (TRIM、UNMAP) 的信息。
+.RE
+.sp
+\fB\-d\fP, \fB\-\-nodeps\fP
+.RS 4
+不要打印支架设备或奴隶。例如，\fBlsblk \-\-nodeps /dev/sda\fP 仅打印有关 sda 设备的信息。
+.RE
+.sp
+\fB\-E\fP, \fB\-\-dedup\fP \fIcolumn\fP
+.RS 4
+使用 \fIcolumn\fP 作为去重键对输出树进行去重。如果该密钥对设备不可用，或者该设备是一个分区且父级全盘设备提供相同的密钥，则该设备始终被打印出来。
+.sp
+通常的用例是对系统多路径设备上的输出进行重复数据删除，例如通过 \fB\-E WWN\fP。
+.RE
+.sp
+\fB\-e\fP, \fB\-\-exclude\fP \fIlist\fP
+.RS 4
+排除由主要设备编号的逗号分隔 \fIlist\fP 指定的设备。请注意，如果未指定 \fB\-\-all\fP，则默认情况下会排除 RAM 磁盘
+(major=1)。过滤器仅应用于顶级设备。这可能会使设备层次结构不明显的 \fB\-\-list\fP 输出格式感到困惑。
+.RE
+.sp
+\fB\-f\fP, \fB\-\-fs\fP
+.RS 4
+输出有关文件系统的信息。该选项等同于 \fB\-o NAME,FSTYPE,FSVER,LABEL,UUID,FSAVAIL,FSUSE%,MOUNTPOINTS\fP。有关文件系统和 raid 的权威信息由
+\fBblkid\fP(8) 命令提供。
+.RE
+.sp
+\fB\-I\fP, \fB\-\-include\fP \fIlist\fP
+.RS 4
+包括由主要设备编号的逗号分隔 \fIlist\fP 指定的设备。过滤器仅应用于顶级设备。这可能会使设备层次结构不明显的 \fB\-\-list\fP 输出格式感到困惑。
+.RE
+.sp
+\fB\-i\fP, \fB\-\-ascii\fP
+.RS 4
+使用 ASCII 字符进行树格式设置。
+.RE
+.sp
+\fB\-J\fP, \fB\-\-json\fP
+.RS 4
+使用 JSON 输出格式。它 \(cqs 强烈建议使用 \fB\-\-output\fP，如有必要，还建议使用 \fB\-\-tree\fP。
+.RE
+.sp
+\fB\-l\fP, \fB\-\-list\fP
+.RS 4
+以列表的形式产生输出。输出不提供有关设备之间关系的信息，并且由于 2.34 版本，如果未指定 \fB\-\-pairs\fP 或
+\fB\-\-raw\fP，则每个设备仅打印一次 (可解析输出以向后兼容的方式维护)。
+.RE
+.sp
+\fB\-M\fP, \fB\-\-merge\fP
+.RS 4
+子树的父组为 RAID 和多路径设备提供更易读的输出。需要树状输出。
+.RE
+.sp
+\fB\-m\fP, \fB\-\-perms\fP
+.RS 4
+输出有关设备所有者、组和模式的信息。该选项等同于 \fB\-o NAME,SIZE,OWNER,GROUP,MODE\fP。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-noheadings\fP
+.RS 4
+不要打印标题行。
+.RE
+.sp
+\fB\-o\fP, \fB\-\-output\fP \fIlist\fP
+.RS 4
+指定要打印的输出列。使用 \fB\-\-help\fP 获取所有受支持列的列表。这些列可能会影响树状输出。默认是为列 \(aqNAME\(aq 使用树 (另请参见
+\fB\-\-tree\fP).
+.sp
+如果 \fIlist\fP 以 \fI+list\fP 格式指定 (例如，\fBlsblk \-o +UUID\fP).
+.RE
+.sp
+\fB\-O\fP, \fB\-\-output\-all\fP
+.RS 4
+输出所有可用的列。
+.RE
+.sp
+\fB\-P\fP, \fB\-\-pairs\fP
+.RS 4
+以 key="value" 对的形式产生输出。输出行仍然按依赖项排序。所有可能不安全的值字符都是十六进制转义的
+(\(rsx<code>)。另见选项 \fB\-\-shell\fP。
+.RE
+.sp
+\fB\-p\fP, \fB\-\-paths\fP
+.RS 4
+打印完整的设备路径。
+.RE
+.sp
+\fB\-r\fP, \fB\-\-raw\fP
+.RS 4
+以原始格式生成输出。输出行仍然按依赖项排序。在 NAME、KNAME、LABEL、PARTLABEL 和 MOUNTPOINT
+列中，所有可能不安全的字符都是十六进制转义的 (\(rsx<code>)。
+.RE
+.sp
+\fB\-S\fP, \fB\-\-scsi\fP
+.RS 4
+仅输出有关 SCSI 设备的信息。所有分区、从属设备和持有设备都将被忽略。
+.RE
+.sp
+\fB\-s\fP, \fB\-\-inverse\fP
+.RS 4
+以相反的顺序打印依赖关系。如果请求 \fB\-\-list\fP 输出，则行仍按依赖项排序。
+.RE
+.sp
+\fB\-T\fP, \fB\-\-tree\fP[\fB=\fP\fIcolumn\fP]
+.RS 4
+强制树状输出格式。如果指定了 \fIcolumn\fP，则会在列中打印一棵树。默认是 NAME 列。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-topology\fP
+.RS 4
+输出有关块设备拓扑的信息。这个选项等同于
+.sp
+\fB\-o NAME,ALIGNMENT,MIN\-IO,OPT\-IO,PHY\-SEC,LOG\-SEC,ROTA,SCHED,RQ\-SIZE,RA,WSAME\fP.
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.sp
+\fB\-w\fP, \fB\-\-width\fP \fInumber\fP
+.RS 4
+将输出宽度指定为字符数。默认是终端列数，如果不是在终端上执行，那么输出宽度默认是完全不受限制的。此选项还强制 \fBlsblk\fP
+假定最终控制字符和不安全字符是不允许的。预期的用例是例如 \fBwatch\fP(1) 命令使用 \fBlsblk\fP 时。
+.RE
+.sp
+\fB\-x\fP, \fB\-\-sort\fP \fIcolumn\fP
+.RS 4
+按 \fIcolumn\fP 对输出行进行排序。默认情况下，此选项启用 \fB\-\-list\fP 输出格式。可以使用选项 \fB\-\-tree\fP
+来强制树状输出，然后树枝由 \fIcolumn\fP 排序。
+.RE
+.sp
+\fB\-y\fP, \fB\-\-shell\fP
+.RS 4
+列名将被修改为仅包含 shell 变量标识符允许的字符，例如，MIN_IO 和 FSUSE_PCT 而不是 MIN\-IO 和
+FSUSE%。例如，这可用于 \fB\-\-pairs\fP。请注意，此特性已在 2.37 版本中自动为 \fB\-\-pairs\fP
+启用，但由于兼容性问题，现在需要通过 \fB\-\-shell\fP 请求此行为。
+.RE
+.sp
+\fB\-z\fP, \fB\-\-zoned\fP
+.RS 4
+打印每个设备的区域相关信息。
+.RE
+.sp
+\fB\-\-sysroot\fP \fIdirectory\fP
+.RS 4
+为发出 \fBlsblk\fP 命令的实例以外的 Linux 实例收集数据。指定目录为待巡查 Linux 实例的系统根目录。target
+目录下的真实设备节点可以用带有 udev 属性的文本文件代替。
+.RE
+.SH "EXIT STATUS"
+.sp
+0
+.RS 4
+success
+.RE
+.sp
+1
+.RS 4
+failure
+.RE
+.sp
+32
+.RS 4
+没有找到指定的设备
+.RE
+.sp
+64
+.RS 4
+一些指定的设备找到了，一些没有找到
+.RE
+.SH ENVIRONMENT
+.sp
+\fBLSBLK_DEBUG\fP=all
+.RS 4
+启用 \fBlsblk\fP 调试输出。
+.RE
+.sp
+\fBLIBBLKID_DEBUG\fP=all
+.RS 4
+启用 \fBlibblkid\fP 调试输出。
+.RE
+.sp
+\fBLIBMOUNT_DEBUG\fP=all
+.RS 4
+启用 \fBlibmount\fP 调试输出。
+.RE
+.sp
+\fBLIBSMARTCOLS_DEBUG\fP=all
+.RS 4
+启用 \fBlibsmartcols\fP 调试输出。
+.RE
+.sp
+\fBLIBSMARTCOLS_DEBUG_PADDING\fP=on
+.RS 4
+使用可见的填充字符。
+.RE
+.SH NOTES
+.sp
+对于分区，一些信息 (例如，队列属性) 是从父设备继承的。
+.sp
+\fBlsblk\fP 命令需要能够通过 major:minor 编号查找每个块设备，这是通过使用 \fI/sys/dev/block\fP 完成的。这个
+sysfs 块目录出现在内核 2.6.27 (2008 年 10 月) 中。如果足够新的内核出现问题，请检查在构建内核时是否启用了
+\fBCONFIG_SYSFS\fP。
+.SH AUTHORS
+.sp
+.MTO mbroz\(atredhat.com "Milan Broz" ,
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBls\fP(1), \fBblkid\fP(8), \fBfindmnt\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBlsblk\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

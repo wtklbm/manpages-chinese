@@ -1,0 +1,506 @@
+.\" -*- coding: UTF-8 -*-
+.\"
+.\" bc.1 - the *roff document processor source for the bc manual
+.\"
+.\" This file is part of GNU bc.
+.\" Copyright (C) 1991-1994, 1997, 2000, 2003, 2006, 2017 Free Software Foundation, Inc.
+.\"
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License , or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; see the file COPYING.  If not, write to:
+.\"   The Free Software Foundation, Inc.
+.\"   51 Franklin Street, Fifth Floor
+.\"   Boston, MA 02110-1301  USA
+.\"
+.\" You may contact the author by:
+.\" e-mail: philnelson@acm.org
+.\" us-mail: Philip A. Nelson
+.\" Computer Science Department, 9062
+.\" Western Washington University
+.\" Bellingham, WA 98226-9062
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH bc 1 2006\-06\-11 "GNU Project" 
+.SH NAME
+bc \- 一种任意精度的计算器语言
+.SH SYNTAX
+\fBbc\fP [ \fB\-hlwsqv\fP ] [long\-options] [ \fI file ...\fP ]
+.SH DESCRIPTION
+\fBbc\fP 是一种支持任意精度数字并交互式执行语言句的语言。 在语法上与 C 编程语言有一些相似之处。 命令行选项提供标准数学库。
+如果需要，在处理任何文件之前定义数学库。 \fBbc\fP 首先按列出的顺序处理命令行上列出的所有文件的代码。 处理完所有文件后，\fBbc\fP 从标准输入读取。
+所有代码都在读取时执行。 (如果文件包含停止处理器的命令，\fBbc\fP 将永远不会从标准输入中读取。)
+.PP
+这个版本的 \fBbc\fP 包含一些超出传统 \fBbc\fP 实现和 POSIX 草案标准的扩展。 命令行选项可能导致这些扩展打印警告或被拒绝。
+本文档描述了该处理器接受的语言。 扩展将被识别为这样。
+.SS OPTIONS
+.IP "\-h, \-\-help"
+打印用法并退出。
+.IP "\-i, \-\-interactive"
+强制交互模式。
+.IP "\-l, \-\-mathlib"
+定义标准数学库。
+.IP "\-w, \-\-warn"
+对 POSIX \fBbc\fP 的扩展给出警告。
+.IP "\-s, \-\-standard"
+精确处理 POSIX \fBbc\fP 语言。
+.IP "\-q, \-\-quiet"
+不要打印正常的 GNU bc welcome。
+.IP "\-v, \-\-version"
+打印版本号和版权并退出。
+.SS NUMBERS
+\fBbc\fP 中最基本的元素是数字。 数字是任意精度的数字。 这个精度既有整数部分，也有小数部分。 所有数字在内部都以十进制表示，所有计算均以十进制完成。
+(此版本截断了除法和乘法运算的结果。) 数字有两个属性，长度和比例。 长度是 \fBbc\fP
+用来表示一个数的小数位数的总数，小数位是小数点后的小数位数的总数。 例如:
+.nf
+.RS
+ .000001 的长度为 6，比例为 6。
+ 1935.000 的长度为 7，比例为 3.
+.RE
+.fi
+.SS VARIABLES
+数字存储在两种变量中，简单变量和数组。 简单变量和数组变量都被命名。 名称以字母开头，后跟任意数量的字母、数字和下划线。 所有字母必须小写。
+(完整的字母数字名称是一个扩展名。在 POSIX \fBbc\fP 中，所有名称都是一个小写字母。)
+变量的类型在上下文中是明确的，因为所有数组变量名称后面都将跟有方括号 ([])。
+.PP
+有四个特殊变量，\fBscale, ibase, obase,\fP 和 \fBlast\fP。 \fBscale\fP 定义了一些操作如何使用小数点后的数字。
+\fBscale\fP 的默认值为 0。\fBibase\fP 和 \fBobase\fP 定义了输入和输出数字的转换基础。 输入和输出的默认值都是以 10 为底。
+\fBlast\fP (扩展名) 是一个变量，它具有最后打印的数字的值。 这些将在适当的时候进一步详细讨论。
+所有这些变量都可以分配给它们的值，也可以用在表达式中。
+.SS COMMENTS
+\fBbc\fP 中的注释以字符 \fB/*\fP 开头，以字符 \fB*/\fP 结尾。 注释可以从任何地方开始，并在输入中显示为一个空格。
+(这会导致注释分隔其他输入项。例如，在变量名中间找不到注释。) 注释包括注释开头和结尾之间的任何换行符 (行尾)。
+.PP
+为了支持 \fBbc\fP 的脚本使用，添加了单行注释作为扩展。 单行注释从 \fB#\fP 字符开始，一直到该行的下一个结尾。
+行尾字符不是注释的一部分，可以正常处理。
+.SS EXPRESSIONS
+数字由表达式和语言句操作。 由于该语言被设计为具有交互性，因此尽快执行语句和表达式。 没有 "main" 程序。 相反，代码会在遇到时执行。
+(函数，稍后详细讨论，在遇到时定义。)
+.PP
+一个简单的表达就是一个常量。\fBbc\fP 使用由变量 \fBibase\fP 指定的当前输入基数将常量转换为内部十进制数。(函数除外。) \fBibase\fP
+的合法值为 2 到 36。(大于 16 的碱基是扩展。) 将超出此范围的值分配给 \fBibase\fP 将导致值 2 或 36。 输入数字可能包含字符
+0\-9 和 A\-Z。(注意: 必须大写，小写字母是变量名。) 无论 \fBibase\fP 的值如何，单个数字总是具有该数字的值。(即 A=10。)
+对于多位数，\fBbc\fP 将所有大于或等于 ibase 的输入数字更改为 \fBibase\fP\-1 的值。这使得数字 \fBZZZ\fP 始终是输入基数中最大的 3
+位数字。
+.PP
+完整表达式类似于许多其他高级语言。 由于只有一种数字，因此没有混合类型的规则。 相反，在表达的尺度上有规则。 每个表达式都有一个尺度。
+这是从原始数字的比例、执行的操作以及在许多情况下变量 \fBscale\fP 的值中得出的。变量 \fBscale\fP 的合法值为 0 到 C
+整数可表示的最大数。
+.PP
+在下面对合法表达式的描述中，"expr" 指的是一个完整的表达式，"var" 指的是一个简单变量或数组变量。 一个简单的变量只是一个
+.RS
+\fIname\fP
+.RE
+数组变量指定为
+.RS
+\fIname\fP[\fIexpr\fP]
+.RE
+除非特别提及，否则结果的比例是所涉及表达式的最大比例。
+.IP "\- expr"
+结果是表达式的否定。
+.IP "++ var"
+变量加一，新值是表达式的结果。
+.IP "\-\- var"
+变量减一，新值是表达式的结果。
+.IP "var ++"
+ 表达式的结果是
+变量，然后变量递增 1。
+.IP "var \-\-"
+表达式的结果是变量的值，然后变量减一。
+.IP "expr + expr"
+表达式的结果是两个表达式的总和。
+.IP "expr \- expr"
+表达式的结果是两个表达式的差值。
+.IP "expr * expr"
+表达式的结果是两个表达式的乘积。
+.IP "expr / expr"
+表达式的结果是两个表达式的商。 结果的小数位数是变量 \fBscale\fP 的值。
+.IP "expr % expr"
+表达式的结果是 "remainder"，它是按以下方式计算的。 要计算 a%b，首先将 a/b 计算为 \fBscale\fP 位。 该结果用于根据
+\fBscale\fP+scale(b) 和 scale(a) 的最大值计算 a\-(a/b)*b。 如果 \fBscale\fP
+设置为零并且两个表达式都是整数，则此表达式是整数余数函数。
+.IP "expr ^ expr"
+表达式的结果是第一个提高到第二个的值。第二个表达式必须是整数。 (如果第二个表达式不是整数，则会生成警告并截断表达式以获得整数值。) 如果指数为
+negative，则结果的小数位数为 \fBscale\fP。 如果指数为正，则结果的小数位数是第一个表达式的小数位数乘以指数的值和 \fBscale\fP
+的最大值与第一个表达式的小数位数的乘积。 (例如 scale(a^b) =min (scale (a)*b, max (\fBscale,\fP
+scale(a))).) 需要注意的是 expr^0 总是返回值 1.
+.IP "( expr )"
+这会改变标准优先级以强制对表达式求值。
+.IP "var = expr"
+变量被赋予表达式的值。
+.IP "var <op>= expr"
+这等同于 "var = var <op> expr"，只是 "var" 部分仅计算一次。 如果 "var"
+是一个数组，这可能会有所不同。
+.PP
+关系表达式是一种特殊的表达式，它始终计算为 0 或 1，如果关系为假则为 0，如果关系为真则为 1。 这些可能出现在任何法律表达中。 (POSIX bc
+要求关系表达式只能用在 if、while 和 for 语句中，并且只能在其中进行一次关系测试。) 关系运算符是
+.IP "expr1 < expr2"
+如果 expr1 严格小于 expr2，则结果为 1。
+.IP "expr1 <= expr2"
+如果 expr1 小于或等于 expr2，则结果为 1。
+.IP "expr1 > expr2"
+如果 expr1 严格大于 expr2，则结果为 1。
+.IP "expr1 >= expr2"
+如果 expr1 大于或等于 expr2，则结果为 1。
+.IP "expr1 == expr2"
+如果 expr1 等于 expr2，则结果为 1。
+.IP "expr1 != expr2"
+如果 expr1 不等于 expr2，则结果为 1。
+.PP
+布尔运算也是合法的。 (POSIX \fBbc\fP 没有布尔运算)。与关系表达式一样，所有布尔运算的结果都是 0 和 1 (表示假和真)。 布尔运算符是:
+.IP !expr
+如果 expr 是，则结果为 1 0.
+.IP "expr && expr"
+如果两个表达式都非零，则结果为 1。
+.IP "expr || expr"
+如果任一表达式不为零，则结果为 1。
+.PP
+表达式优先级如下: (从低到高)
+.nf
+.RS
+|| 运算符，左结合
+&& 运算符，左结合
+! 运算符，非关联
+关系运算符，左结合
+赋值运算符，右结合
++ 和 \- 运算符，左结合
+* ,/ 和 % 运算符，左结合
+^ 运算符，右结合
+一元运算符，非关联
+++ 和 \-\- 运算符，非关联
+.RE
+.fi
+.PP
+选择此优先级是为了使 POSIX 兼容的 \fBbc\fP 程序能够正确运行。这将导致关系和逻辑运算符在与赋值表达式一起使用时出现一些异常行为。 考虑表达式:
+.RS
+a = 3 < 5
+.RE
+.PP
+大多数 C 程序员会假设这会将 "3 < 5" (值 1) 的结果分配给变量 "a"。 它在 \fBbc\fP 中所做的是将值 3 赋给变量
+"a"，然后将 3 与 5 进行比较。 在赋值运算符中使用关系和逻辑运算符时最好使用括号。
+.PP
+\fBbc\fP 中提供了一些更特殊的表达式。 这些与用户定义的函数和标准函数有关。 它们都显示为
+"\fIname\fP\fB(\fP\fIparameters\fP\fB)\fP"。 有关用户定义的函数，请参见函数部分。 标准的函数是:
+.IP "length ( expression )"
+长度函数的值是表达式中有效数字的个数。
+.IP "read ( )"
+read 函数 (扩展名) 将从标准输入中读取一个数字，而不管函数出现在哪里。 当心，这可能会导致标准输入中数据和程序的混合出现问题。
+此函数的最佳用途是在以前编写的需要用户输入的程序中，但绝不允许用户输入程序代码。 读函数的值是使用变量 \fBibase\fP
+的当前值作为转换基数从标准输入读取的数。
+.IP "scale ( expression )"
+刻度函数的值是表达式中小数点后的位数。
+.IP "sqrt ( expression )"
+sqrt 函数的值是表达式的平方根。 如果表达式为 negative，则会生成运行时错误。
+.SS STATEMENTS
+语句 (与大多数代数语言一样) 提供表达式评估的顺序。 在 \fBbc\fP 语句中执行 "as soon as possible."
+当遇到换行符并且有一个或多个完整的语句时执行。 由于此 immediate 执行，换行符在 \fBbc\fP
+中非常重要。事实上，分号和换行符都用作语句分隔符。 换行符放置不当会导致语法错误。 因为换行符是语句分隔符，所以可以使用反斜杠字符隐藏换行符。 序列
+"\e<nl>" (其中 <nl> 是换行符) 对 \fBbc\fP 显示为空白而不是换行符。
+语句列表是由分号和换行符分隔的一系列语句。 以下是 \fBbc\fP 语句的列表及其作用: (括号 ([]) 中的内容是语句的可选部分。)
+.IP expression
+该语句执行以下两个操作之一。 如果表达式以 "<variable> <assignment> ...`
+开头，则认为是赋值语句。 如果表达式不是赋值语句，则计算表达式并将其打印到输出中。 打印数字后，打印换行符。 例如，"a=1"
+是赋值语句，"(a=1)" 是具有嵌入赋值的表达式。 打印的所有数字都打印在变量 \fBobase\fP 指定的基数中。\fB obase\fP 的合法值为 2 到
+BC_BASE_MAX。 (请参见 `限制` 部分。) 对于从 2 到 16 的基数，使用通常的数字书写方法。 对于大于 16 的基数，\fBbc\fP
+使用多字符数字方法打印数字，其中每个较高的基数都打印为基数 10 的数字。 多字符数字由空格分隔。 每个数字包含表示 "obase\-1"
+的十进制值所需的字符数。 由于数字具有任意精度，因此某些数字可能无法在单个输出行上打印。 这些长数字将使用 "\e" 作为一行的最后一个字符跨行拆分。
+每行打印的最大字符数为 70。 由于 \fBbc\fP 的交互性质，打印数字会导致将打印值分配给特殊变量 \fBlast\fP
+的副作用。这允许用户恢复最后打印的值，而不必重新键入打印数字的表达式。 分配给 \fBlast\fP 是合法的，并且会用分配的值覆盖最后打印的值。
+新分配的值将一直保留，直到打印下一个数字或将另一个值分配给 \fBlast\fP。 (某些安装可能允许使用不属于数字的单个句点 (.) 作为
+\fBlast\fP.) 的简写符号
+.IP string
+该字符串被打印到输出。 字符串以双引号字符开头并包含直到下一个双引号字符的所有字符。 所有字符都是字面意思，包括任何换行符。 字符串后不打印换行符。
+.IP "\fBprint\fP list"
+print 语句 (扩展) 提供了另一种输出方法。 "list" 是由逗号分隔的字符串和表达式列表。 每个字符串或表达式都按列表的顺序打印。
+不打印终止换行符。 表达式被计算，它们的值被打印并分配给变量 \fBlast\fP。print 语句中的字符串被打印到输出中，并且可能包含特殊字符。
+特殊字符以反斜杠字符 (\e) 开头。 \fBbc\fP 识别的特殊字符有 "a" (提示或响铃)、"b" (backspace)、"f" (换页)、"n"
+(newline)、"r" (回车)、"q" (双引号)、"t" (tab)、"\e" (backslash)。 反斜杠后面的任何其他字符都将被忽略。
+.IP "{ statement_list }"
+这是复合语句。 它允许将多个语句组合在一起执行。
+.IP "\fBif\fP ( expression ) statement1 [\fBelse\fP statement2]"
+if 语句计算表达式并根据表达式的值执行 statement1 或 statement2。 如果表达式非零，则执行 statement1。 如果
+statement2 存在且表达式的值为 0，则执行 statement2。 (else 子句是一个扩展。)
+.IP "\fBwhile\fP ( expression ) statement"
+while 语句将在表达式为非零时执行该语句。 它在每次执行语句之前计算表达式。 循环的终止是由零表达式值或 break 语句的执行引起的。
+.IP "\fBfor\fP ( [expression1] ; [expression2] ; [expression3] ) statement"
+for 语句控制语句的重复执行。 Expression1 在循环之前被评估。 Expression2 在每次执行语句之前进行评估。
+如果它不为零，则对语句进行求值。 如果它为零，则循环终止。 每次执行该语句后，都会先对 expression3 求值，然后再对 expression2
+求值。 如果 expression1 或 expression3 缺失，则在它们将被计算的点上不计算任何东西。 如果缺少
+expression2，则与用值 1 代替 expression2 相同。 (可选表达式是一个扩展。POSIX \fBbc\fP 需要所有三个表达式。)
+以下是 for 语句的等效代码:
+.nf
+.RS
+expression1;
+while (expression2) {
+   statement;
+   expression3;
+}
+.RE
+.fi
+.IP \fBbreak\fP
+此语句导致强制退出最近的封闭 while 语句或 for 语句。
+.IP \fBcontinue\fP
+continue 语句 (扩展) 导致最近的封闭 for 语句开始下一次迭代。
+.IP \fBhalt\fP
+halt 语句 (扩展) 是一条执行语句，它使 \fBbc\fP 处理器仅在执行时退出。 例如，"if (0 == 1) halt" 不会因为没有执行
+halt 而导致 \fBbc\fP 终止。
+.IP \fBreturn\fP
+从一个函数返回值 0。 (参见函数部分。)
+.IP "\fBreturn\fP ( expression )"
+从一个函数返回表达式的值。 (请参见有关函数的部分。) 作为扩展，括号不是必需的。
+.SS "PSEUDO STATEMENTS"
+这些句句不是传统意义上的句句。 他们不执行语言句。 他们的函数是在 "compile" 时间进行的。
+.IP \fBlimits\fP
+打印由 \fBbc\fP 的本地版本强制执行的本地限制。 这是一个扩展。
+.IP \fBquit\fP
+当 quit 语句被读取时，\fBbc\fP 处理器被终止，而不管 quit 语句在哪里被发现。 例如，"if (0 == 1) quit" 将导致
+\fBbc\fP 终止。
+.IP \fBwarranty\fP
+打印更长的保修通知。 这是一个扩展。
+.SS FUNCTIONS
+函数提供了一种定义可以稍后执行的计算的方法。 \fBbc\fP 中的函数总是计算一个值并将其返回给调用者。 函数定义是
+"dynamic"，因为函数在输入中遇到定义之前是未定义的。 然后使用该定义，直到遇到相同名称的另一个定义函数。 然后新定义替换旧定义。
+一个函数定义如下:
+.nf
+.RS
+\fBdefine \fP\fIname \fP\fB( \fP\fIparameters \fP\fB) { \fP\fInewline      auto_list   statement_list \fP\fB}\fP
+.RE
+.fi
+一个函数调用只是 "\fIname\fP\fB(\fP\fIparameters\fP\fB)\fP" 形式的表达式。
+.PP
+参数是数字或数组 (扩展)。 在函数定义中，零个或多个参数是通过列出它们的名称并用逗号分隔来定义的。 所有参数都是调用值参数。 数组在参数定义中用符号
+"\fIname\fP\fB[]\fP" 指定。 在函数调用中，实际参数是数字参数的完整表达式。 相同的符号用于传递数组和定义数组参数。 命名数组按值传递给函数。
+由于函数定义是动态的，因此在调用函数时会检查参数编号和类型。 参数数量或类型的任何不匹配都会导致运行时错误。 调用未定义的函数也会出现运行时错误。
+.PP
+\fIauto_list\fP 是可选的变量列表，供 "local" 使用。 自动列表 (如果存在) 的语法是 "\fBauto \fP\fIname\fP,
+\&... ;"。 (分号是可选的。) 每个 \fIname\fP 都是自动变量的名称。 可以使用与参数中使用的相同的符号来指定数组。
+这些变量在函数的开头将它们的值压入栈。 然后将变量初始化为零，并在函数的整个执行过程中使用。 在函数退出时，弹出这些变量，以便恢复这些变量的原始值
+(调用函数时)。 这些参数实际上是自动变量，它们被初始化为函数调用中提供的值。 Auto 变量不同于传统的本地变量，因为如果函数 A 调用函数 B，B
+可以通过使用相同的名称访问函数 A 的函数，除非函数 B 已经调用它们 auto 函数。 由于 auto 变量和参数压栈，\fBbc\fP 支持递归函数。
+.PP
+函数体是 \fBbc\fP 语句的列表。 同样，语言句由分号或换行符分隔。 Return 语句导致一个函数的终止和一个值的返回。 返回语句有两个版本。
+第一种形式 "\fBreturn\fP" 将值 0 返回给调用表达式。 第二种形式 "\fBreturn ( \fP\fIexpression \fP\fB)\fP"
+计算表达式的值并将该值返回给调用表达式。 每个函数的末尾都有一个隐含的 "\fBreturn (0)\fP"。 这允许一个函数在没有显式 return
+语句的情况下终止并返回 0。
+.PP
+函数也改变了变量 \fBibase\fP 的用法。 函数体中的所有常量将使用函数调用时 \fBibase\fP 的值进行转换。 \fBibase\fP
+的变化在函数执行过程中会被忽略，标准函数 \fBread\fP 除外，它总是使用 \fBibase\fP 的当前值进行数字转换。
+.PP
+数个扩展名已添加到函数。 首先，定义的格式略有放宽。 该标准要求左大括号与 \fBdefine\fP 关键字位于同一行，所有其他部分必须位于后续行。
+这个版本的 \fBbc\fP 将允许在函数的左大括号之前和之后有任意数量的换行符。 例如，以下定义是合法的。
+.nf
+.RS
+\f(CW define d (n) { return (2*n); } define d (n)   { return (2*n); }\fP
+
+.RE
+.fi
+.PP
+函数可以定义为 \fBvoid\fP。 void 函数不返回任何值，因此不能在任何需要值的地方使用。 void 函数在输入行上自行调用时不会产生任何输出。
+关键字 \fBvoid\fP 放在关键字 \fBdefine\fP 和函数名称之间。 例如，考虑以下会话。
+.nf
+.RS
+\f(CW  define py (y) { print "\-\-\->", y, "<\-\-\-", "\en"; }  define void px (x) { print "\-\-\->", x, "<\-\-\-", "\en"; }  py(1) \-\-\->1<\-\-\-  0 px(1) \-\-\->1<\-\-\-\fP
+
+.RE
+.fi
+由于 \fBpy\fP 不是 void 函数，因此 \fBpy(1)\fP 的调用打印所需的输出，然后打印第二行，即函数的值。 由于未给出显式 return
+语句的函数的值为零，因此打印零。 对于 \fBpx(1)\fP，不打印零，因为函数是空函数。
+.PP
+此外，还添加了数组的变量调用。 变量数组声明调用，函数定义中数组参数的声明类似于 "\fI*name\fP\fB[]\fP"。 对函数的调用与按值数组调用相同。
+.SS "MATH LIBRARY"
+如果使用 \fB\-l\fP 选项调用 \fBbc\fP，则会预加载数学库并将默认比例设置为 20。 数学函数将根据调用时设置的比例计算他们的结果。
+数学库定义了以下函数:
+.IP "s (\fIx\fP)"
+x, x 的正弦值以弧度为单位。
+.IP "c (\fIx\fP)"
+x, x 的余弦以弧度为单位。
+.IP "a (\fIx\fP)"
+x 的反正切，反正切返回弧度。
+.IP "l (\fIx\fP)"
+的自然对数 x.
+.IP "e (\fIx\fP)"
+将 e 提高到该值的指数函数 x.
+.IP "j (\fIn,x\fP)"
+整数阶 n 的贝塞尔函数 x.
+.SS EXAMPLES
+在 /bin/sh 中，下面将 "pi" 的值赋值给 shell 变量 \fBpi\fP。
+.RS
+\f(CW pi=$(echo "scale=10; 4*a(1)" | bc \-l)\fP
+.RE
+.PP
+下面是数学库中使用的指数函数的定义。 这个函数写成 POSIX \fBbc\fP。
+.nf
+.RS
+\f(CW scale = 20\fP
+
+\f(CW/* Uses the fact that e^x = (e^(x/2))^2    When x is small enough, we use the series:      e^x = 1 + x + x^2/2! + x^3/3! + ... */\fP
+
+\f(CWdefine e(x) {   auto  a, d, e, f, i, m, v, z\fP
+
+\f(CW/* 检查 x 的符号。*/    if (x<0) {      m = 1      x = \-x   } \fP
+
+\f(CW  /* Precondition x. */    z = scale;    scale = 4 + z + .44*x;    while (x > 1) {      f += 1;     x /= 2;   }\fP
+
+\f(CW  /* Initialize the variables. */   v = 1+x   a = x   d = 1\fP
+
+\f(CW  for (i=2; 1; i++) {      e = (a *= x) / (d *= i)     if (e == 0) {        if (f>0) while (f\-\-)  v = v*v;        scale = z        if (m) return (1/v);        return (v/1);      }     v += e   } }\fP
+
+.RE
+.fi
+.PP
+以下是使用 \fBbc\fP 的扩展特性实现计算支票簿余额的简单程序的代码。 这个程序最好保存在一个文件中，这样它就可以多次使用而不必在每次使用时重新输入。
+.nf
+.RS
+\f(CW scale=2 print "\enCheck book program!\en" print "  Remember, deposits are negative transactions.\en" print "  Exit by a 0 transaction.\en\en"\fP
+
+\f(CWprint "Initial balance? "; bal = read() bal /= 1 print "\en" while (1) {   "current balance = "; bal   "transaction? "; trans = read()   if (trans == 0) break;   bal \-= trans   bal /= 1 } quit\fP
+
+.RE
+.fi
+.PP
+下面是递归阶乘函数的定义。
+.nf
+.RS
+\f(CW  define f (x) {    if (x <= 1) return (1);    return (f(x\-1) * x);  }\fP
+
+.RE
+.fi
+.SS "READLINE AND LIBEDIT OPTIONS"
+GNU \fBbc\fP 可以编译 (通过配置选项) 以使用 GNU \fBreadline\fP 输入编辑器库或 BSD \fBlibedit\fP 库。
+这允许用户在将行发送到 \fBbc\fP 之前对其进行编辑。 它还允许输入以前行的历史记录。 选择此选项时，\fBbc\fP 多了一个特殊变量。 这个特殊变量
+\fBhistory\fP 是保留的历史行数。 对于 \fBreadline\fP，\-1 的值意味着保留无限数量的历史记录行。 将 \fBhistory\fP
+的值设置为正数会将历史行数限制为给定的数字。 值 0 禁用历史，特性。 默认值为 100。有关详细信息，请阅读 GNU
+\fBreadline\fP、\fBhistory\fP 和 BSD \fBlibedit\fP 库的用户手册。 不能同时启用 \fBreadline\fP 和
+\fBlibedit\fP。
+.SS DIFFERENCES
+此版本的 \fBbc\fP 是从 POSIX P1003.2/D11 草案实现的，包含一些与草案和传统实现相关的差异和扩展。 它不是使用 \fIdc(1).\fP
+以传统方式实现的。此版本是一个解析和运行程序的字节码翻译的单个进程。 有一个 "undocumented" 选项 (\-c)
+会导致程序将字节码输出到标准输出而不是运行它。 它主要用于调试解析器和准备数学库。
+.PP
+差异的一个主要来源是扩展，其中扩展特性以添加更多特性和添加，其中添加了新，特性。 以下是差异和扩展的列表。
+.IP "LANG environment"
+该版本在 LANG 环境变量和所有 LC_ 开头的环境变量的处理上不符合 POSIX 标准。
+.IP names
+繁体和 POSIX \fBbc\fP 对于函数、变量和数组有单字母名称。 它们已扩展为以字母开头的多字符名称，可以包含字母、数字和下划线字符。
+.IP Strings
+字符串不允许包含 NUL 字符。 POSIX 表示所有字符都必须包含在字符串中。
+.IP last
+POSIX \fBbc\fP 没有 \fBlast\fP 变量。 \fBbc\fP 的某些实现以类似的方式使用句点 (.)。
+.IP comparisons
+POSIX \fBbc\fP 只允许在 if 语句、while 语句和 for 语句的第二个表达式中进行比较。 此外，在每个语言句子中只允许一个关系操作。
+.IP "if statement, else clause"
+POSIX \fBbc\fP 没有 else 子句。
+.IP "for statement"
+POSIX \fBbc\fP 要求所有表达式都出现在 for 语句中。
+.IP "&&, ||, !"
+POSIX \fBbc\fP 没有逻辑运算符。
+.IP "read function"
+POSIX \fBbc\fP 没有读函数。
+.IP "print statement"
+POSIX \fBbc\fP 没有打印语句。
+.IP "continue statement"
+POSIX \fBbc\fP 没有 continue 语句。
+.IP "return statement"
+POSIX \fBbc\fP 需要将返回表达式括起来。
+.IP "array parameters"
+POSIX \fBbc\fP 不 (currently) 完全支持数组参数。 POSIX 语法允许数组在函数定义中，但不提供将数组指定为实际参数的方法。
+(这很可能是语法中的疏忽。) \fBbc\fP 的传统实现只有按值数组参数调用。
+.IP "function format"
+POSIX \fBbc\fP 需要左大括号与 \fBdefine\fP 关键字在同一行，\fBauto\fP 语句在下一行。
+.IP "=+, =\-, =*, =/, =%, =^"
+POSIX \fBbc\fP 不需要定义这些 "old style" 赋值运算符。 此版本可能允许这些 "old style" 分配。 使用 limits
+语句查看安装的版本是否支持它们。 如果它确实支持 "old style" 赋值运算符，则语句 "a =\- 1" 会将 \fBa\fP 减 1，而不是将
+\fBa\fP 设置为值 \-1。
+.IP "spaces in numbers"
+\fBbc\fP 的其他实现允许数字中有空格。 例如，"x=1 3" 会将值 13 赋给变量 x。 相同的语句会在该版本的 \fBbc\fP 中导致语法错误。
+.IP "errors and execution"
+当在程序中发现语法和其他错误时，此实现与其他实现的不同之处在于将执行哪些代码。
+如果在一个函数定义中发现语法错误，错误恢复会尝试找到语句的开头并继续解析函数。 一旦发现函数有语法错误，函数将不可调用，变为 undefined。
+交互式执行代码中的语法错误将使当前执行块无效。 执行块由出现在完整的语言句子序列之后的行尾终止。 例如，
+.nf
+.RS
+a = 1
+b = 2
+.RE
+.fi
+有两个执行块和
+.nf
+.RS
+{ a = 1
+  b = 2 }
+.RE
+.fi
+有一个执行块。 任何运行时错误都会终止当前执行块的执行。 运行时警告不会终止当前执行块。
+.IP Interrupts
+在交互式会话期间，SIGINT 信号 (通常由终端中的 control\-C 字符生成) 将导致当前执行块的执行被中断。 它将显示一个 "runtime"
+错误，指示哪个函数被中断。 清理完所有运行时结构后，将打印一条消息以通知用户 \fBbc\fP 已准备好接受更多输入。
+所有之前定义的函数值保持定义，所有非自动变量的值都是中断点的值。 在清理过程中删除所有自动变量和函数参数。 在非交互式会话期间，SIGINT 信号将终止
+\fBbc\fP 的整个运行。
+.SS LIMITS
+以下是当前针对此 \fBbc\fP 处理器的限制。 其中一些可能已被安装更改。 使用 limits 语句查看实际值。
+.IP BC_BASE_MAX
+最大输出基数目前设置为 999。 最大输入基数为 16。
+.IP BC_DIM_MAX
+这是目前分发的 65535 的任意限制。 您的安装可能有所不同。
+.IP BC_SCALE_MAX
+小数点后的位数限制为 INT_MAX 位。 此外，小数点前的位数限制为 INT_MAX 位数。
+.IP BC_STRING_MAX
+字符串中字符数的限制是 INT_MAX 个字符。
+.IP exponent
+升操作 (^) 中的指数值限制为 LONG_MAX。
+.IP "variable names"
+对于简单变量、数组和函数，当前唯一名称的数量限制为 32767 个。
+.SH "ENVIRONMENT VARIABLES"
+以下环境变量由 \fBbc\fP: 处理
+.IP POSIXLY_CORRECT
+这与 \fB\-s\fP 选项相同。
+.IP BC_ENV_ARGS
+这是将参数获取到 \fBbc\fP 的另一种机制。 格式同命令行参数。 这些参数首先被处理，因此在任何命令行参数文件之前处理环境参数中列出的任何文件。
+这允许用户在每次调用 \fBbc\fP 时设置 "standard" 选项和要处理的文件。 环境变量中的文件通常包含用户希望在每次运行 \fBbc\fP
+时定义的函数的函数定义。
+.IP BC_LINE_LENGTH
+这应该是一个整数，指定数字输出行中的字符数。这包括长数字的反斜杠和换行符。 作为扩展，零值禁用多行，特性。 此变量的任何其他小于 3
+的值都将行长度设置为 70。
+.SH DIAGNOSTICS
+如果命令行中的任何一个文件无法打开，\fBbc\fP 将报告该文件不可用并终止。 此外，还有应该不言自明的编译和运行时诊断。
+.SH BUGS
+错误恢复还不是很好。
+.PP
+通过电子邮件向 \fBbug\-bc@gnu.org\fP 报告错误。 请务必在 `主题: ` 字段中的某处包含单词 `bc`。
+.SH AUTHOR
+.nf
+菲利普 A。Nelson
+philnelson@acm.org
+.fi
+.SH ACKNOWLEDGEMENTS
+作者要感谢 Steve Sommars (Steve.Sommars@att.com) 在测试实现中提供的广泛帮助。 给出了很多很好的建议。
+由于他的参与，这是一个更好的产品。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

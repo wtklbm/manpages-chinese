@@ -1,0 +1,871 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.SPECIAL 7 "" "systemd 253" systemd.special
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.special \- 特殊系统单位
+.SH SYNOPSIS
+.PP
+basic\&.target, bluetooth\&.target, cryptsetup\-pre\&.target,
+cryptsetup\&.target, veritysetup\-pre\&.target, veritysetup\&.target,
+ctrl\-alt\-del\&.target, blockdev@\&.target, boot\-complete\&.target,
+default\&.target, emergency\&.target, exit\&.target, factory\-reset\&.target,
+final\&.target, first\-boot\-complete\&.target, getty\&.target,
+getty\-pre\&.target, graphical\&.target, halt\&.target, hibernate\&.target,
+hybrid\-sleep\&.target, suspend\-then\-hibernate\&.target, initrd\&.target,
+initrd\-fs\&.target, initrd\-root\-device\&.target, initrd\-root\-fs\&.target,
+initrd\-usr\-fs\&.target, integritysetup\-pre\&.target,
+integritysetup\&.target, kbrequest\&.target, kexec\&.target,
+local\-fs\-pre\&.target, local\-fs\&.target, machines\&.target
+multi\-user\&.target, network\-online\&.target, network\-pre\&.target,
+network\&.target, nss\-lookup\&.target, nss\-user\-lookup\&.target,
+paths\&.target, poweroff\&.target, printer\&.target, reboot\&.target,
+remote\-cryptsetup\&.target, remote\-veritysetup\&.target,
+remote\-fs\-pre\&.target, remote\-fs\&.target, rescue\&.target,
+rpcbind\&.target, runlevel2\&.target, runlevel3\&.target,
+runlevel4\&.target, runlevel5\&.target, shutdown\&.target, sigpwr\&.target,
+sleep\&.target, slices\&.target, smartcard\&.target, sockets\&.target,
+sound\&.target, suspend\&.target, swap\&.target, sysinit\&.target,
+system\-update\&.target, system\-update\-pre\&.target, time\-set\&.target,
+time\-sync\&.target, timers\&.target, umount\&.target, usb\-gadget\&.target,
+\-\&.slice, system\&.slice, user\&.slice, machine\&.slice, \-\&.mount,
+dbus\&.service, dbus\&.socket, display\-manager\&.service, init\&.scope,
+syslog\&.socket, system\-update\-cleanup\&.service
+.SH DESCRIPTION
+.PP
+systemd\& 对一些单元进行了特殊处理。其中许多具有特殊的内部语义，不能重命名，而其他的则具有标准含义，应该出现在所有系统上 \&。
+.SH "UNITS MANAGED BY THE SYSTEM SERVICE MANAGER"
+.SS "Special System Units"
+.PP
+\-\&.mount
+.RS 4
+根挂载点，i\&.e\&。/ 路径 \& 的挂载元。这个元是无条件激活的，在系统启动的整个过程中，因为这个挂载点是基本用户空间从 \& 运行的地方。
+.RE
+.PP
+basic\&.target
+.RS 4
+涵盖基本启动 \& 的特殊目标单元。
+.sp
+systemd 会自动将此目标元的 \fIAfter=\fP 类型的依赖项添加到所有服务 (除了 \fIDefaultDependencies=no\fP)\&.
+.sp
+通常，这应该引入所有本地挂载点加上 /var/、/tmp/ 和 /var/tmp/、交换设备、套接字、计时器、路径单元和通用守护进程所需的其他基本初始化
+\&。提到的挂载点是特殊的，以允许它们是远程的。
+.sp
+该目标通常不会直接拉入任何非目标单元，而是通过其他早期启动目标间接拉入。相反，它意味着作为延迟启动服务的同步点 \&。有关涉及的目标的详细信息，请参见
+\fBbootup\fP(7)\&。
+.RE
+.PP
+boot\-complete\&.target
+.RS 4
+此目标旨在作为服务的泛型同步点，这些服务应确定或根据引导过程是否成功完成 \&
+采取行动。在这个元之前订购成功启动过程所需的单元被认为是成功的，并从目标单元向它们添加 \fIRequires=\fP 依赖
+\&。在目标单元之后命令仅当启动过程被认为成功时才运行的单元，并从中拉入目标，也使用
+\fIRequires=\fP\&。请注意，默认情况下，此目标元不是初始引导事务的一部分，但应该仅在希望仅在成功引导时运行的单元需要时才被拉入 \&。
+.sp
+请参见 \fBsystemd\-boot\-check\-no\-failures.service\fP(8) 以了解实现泛型系统健康检查并在
+boot\-complete\&.target\& 之前自行命令的服务。
+.sp
+请参见 \fBsystemd\-bless\-boot.service\fP(8) 以了解将引导成功信息传播到引导加载程序并在引导完成 \&.target\&
+后自行命令的服务。
+.RE
+.PP
+ctrl\-alt\-del\&.target
+.RS 4
+只要在控制台上按下 Control+Alt+Del\&，systemd 就会启动这个目标。通常，这应该是别名 (symlinked) 以重新启动
+\&.target\&。
+.RE
+.PP
+cryptsetup\&.target
+.RS 4
+为所有加密块设备引入设置服务的目标。
+.RE
+.PP
+veritysetup\&.target
+.RS 4
+为所有受 verity 完整性保护的块设备引入设置服务的目标。
+.RE
+.PP
+dbus\&.service
+.RS 4
+D\-Bus 总线守护进程 \& 的一个特殊单元。一旦此服务完全启动，systemd 将连接到它并注册其服务 \&。
+.RE
+.PP
+dbus\&.socket
+.RS 4
+D\-Bus 系统总线套接字的专用单元 \&。所有带有 \fIType=dbus\fP 的单位都会自动获得对这个元 \& 的依赖。
+.RE
+.PP
+default\&.target
+.RS 4
+默认元 systemd 在 bootup\& 启动。通常，这应该是别名 (symlinked) 到 multi\-user\&.target 或图形
+\&.target\&。有关更多讨论，请参见 \fBbootup\fP(7)\&。
+.sp
+默认的单元 systemd 在启动时启动，可以使用 \fIsystemd\&.unit=\fP 内核命令行选项覆盖，或者更方便地使用短名称，如
+\fIsingle\fP、\fIrescue\fP、\fI1\fP、\fI3\fP、\fI5\fP、\&...; 请参见 \fBsystemd\fP(1)\&。
+.RE
+.PP
+display\-manager\&.service
+.RS 4
+显示管理器服务 \&。通常，这应该是别名为 (symlinked) 到 gdm\&.service 或类似的显示管理器服务 \&。
+.RE
+.PP
+emergency\&.target
+.RS 4
+一个特殊的目标单元，在主控制台上启动紧急 shell\&。此目标不会引入其他服务或安装 \&。它是启动系统以获得交互式 shell 的最小版本;
+唯一运行的进程通常只是系统管理器 (PID 1) 和 shell 进程 \&。这个元可以通过在内核命令行指定 \fIemergency\fP 来使用;
+当对所需文件系统的文件系统检查失败并且启动无法继续 \& 时，也会使用它。与 rescue\&.target
+相比，它的作用类似，但也启动最基本的服务并挂载所有文件系统 \&。
+.sp
+在许多方面，启动到 emergency\&.target 类似于在内核命令行上使用 "init=/bin/sh"
+启动的效果，除了紧急模式为您提供完整的系统和服务管理器，并允许启动单个单元以便按步骤继续启动过程 \&.
+.sp
+请注意，根据到达 emergency\&.target 的方式，根文件系统可能以只读或读写方式挂载 (没有专门为此目标重新挂载)
+\&。例如，当在内核命令行上使用 \fIro\fP 并在 emergency\&.target
+上保持这种方式时，系统可能会以只读方式启动，或者系统可能会在部分启动并重新安装磁盘后转换为 emergency\&.target 读取 \- 写 \&。
+.RE
+.PP
+exit\&.target
+.RS 4
+关闭系统或用户服务管理器 \& 的特殊服务单元。相当于非容器系统上的 poweroff\&.target，在容器中也有效 \&。
+.sp
+systemd 在作为用户服务守护程序运行时接收到 \fBSIGTERM\fP 或 \fBSIGINT\fP 信号时将启动这个单元。
+.sp
+正常情况下，这个 (indirectly) 拉进来 shutdown\&.target，反过来应该会和所有想在 service manager
+开始退出时计划关机的单元冲突 \&。
+.RE
+.PP
+factory\-reset\&.target
+.RS 4
+触发恢复出厂设置的特殊目标 \&。
+.RE
+.PP
+final\&.target
+.RS 4
+一个特殊的目标单元，在关闭逻辑期间使用，可用于在所有正常服务已经终止并且所有挂载都已卸载 \& 后拉入延迟服务。
+.RE
+.PP
+getty\&.target
+.RS 4
+一个特殊的目标单元，它拉入静态配置的本地 TTY getty 实例 \&。
+.RE
+.PP
+graphical\&.target
+.RS 4
+用于设置图形登录屏幕 \& 的特殊目标单元。这会引入多用户 \&.target\&。
+.sp
+需要图形登录的单位在安装时需要在这个元 (或 multi\-user\&.target) 上加上自己元的 \fIWants=\fP 依赖。最好通过元
+\*(Aqs [Install] 部分 \& 中的 \fIWantedBy=graphical\&.target\fP 配置。
+.RE
+.PP
+hibernate\&.target
+.RS 4
+用于休眠系统的特殊目标元 \&。这会引入 sleep\&.target\&。
+.RE
+.PP
+hybrid\-sleep\&.target
+.RS 4
+用于同时休眠和挂起系统的特殊目标单元 \&。这会引入 sleep\&.target\&。
+.RE
+.PP
+suspend\-then\-hibernate\&.target
+.RS 4
+一个特殊的目标单元，用于挂起系统一段时间，唤醒它并使其进入休眠 \&。这会引入 sleep\&.target\&。
+.RE
+.PP
+halt\&.target
+.RS 4
+一个特殊的目标单元，用于关闭和暂停系统 \&。请注意，此目标与 poweroff\&.target 不同，因为它通常实际上只是停止系统而不是关闭系统电源
+\&。
+.sp
+想要停止系统的应用程序不应该直接启动这个单元，而应该直接执行 \fBsystemctl halt\fP (可能带有 \fB\-\-no\-block\fP 选项) 或调用
+\fBsystemd\fP(1)\*(Aqs \fBorg\&.freedesktop\&.systemd1\&.Manager\&.Halt\fP D\-Bus
+方法 \&。
+.RE
+.PP
+init\&.scope
+.RS 4
+这个作用域元是系统和服务管理器 (PID 1) 本身所在的地方 \&。只要系统正在运行，它就处于活动状态 \&。
+.RE
+.PP
+initrd\&.target
+.RS 4
+这是 initrd 中的默认目标，类似于主系统中的 default\&.target\&。它用于挂载真正的根并过渡到它 \&。有关更多讨论，请参见
+\fBbootup\fP(7)\&。
+.RE
+.PP
+initrd\-fs\&.target
+.RS 4
+\fBsystemd\-fstab\-generator\fP(3) 自动将 \fIBefore=\fP 类型的依赖项添加到 sysroot\-usr\&.mount
+以及在 /etc/fstab 中找到的所有已设置 \fBx\-initrd\&.mount\fP 挂载选项且未设置 \fBnoauto\fP 挂载选项的挂载点
+\&。它也是在 sysroot\&.mount\& 之后间接排序的。因此，一旦达到此目标，/sysroot/ 层次结构就已完全设置好，准备过渡到主机
+OS\&。
+.RE
+.PP
+initrd\-root\-device\&.target
+.RS 4
+一个特殊的 initrd 目标元，当根文件系统设备可用时到达，但在它被挂载之前 \&。 \fBsystemd\-fstab\-generator\fP(3) 和
+\fBsystemd\-gpt\-auto\-generator\fP(3) 自动设置适当的依赖关系来实现这一点 \&。
+.RE
+.PP
+initrd\-root\-fs\&.target
+.RS 4
+\fBsystemd\-fstab\-generator\fP(3) 自动将 \fIBefore=\fP 类型的依赖项添加到 sysroot\&.mount
+元，这是从内核命令行生成的 \*(Aqs \fIroot=\fP 设置 (或等效项) \&。
+.RE
+.PP
+initrd\-usr\-fs\&.target
+.RS 4
+\fBsystemd\-fstab\-generator\fP(3) 自动将 \fIBefore=\fP 类型的依赖添加到 sysusr\-usr\&.mount
+元，这是从内核命令行生成的 \*(Aqs \fIusr=\fP switch\&. 服务可能会在这个目标单元之后对自己进行排序，以便在 /sysusr /
+层次结构可用时在最初没有根文件系统但具有初始化的 /usr / 并且需要在设置根目录之前访问它的系统上运行文件系统最终切换到 \&。在不使用
+\fIusr=\fP 的系统上，此目标在 sysroot\&.mount 之后排序，因此大部分等同于
+initrd\-root\-fs\&.target\&。在任何系统上，一旦达到此目标，支持 /usr /
+的文件系统就会被挂载，尽管可能在两个不同的位置，要么在 /sysusr / 下，要么在 /sysroot / 层次结构 \& 下。
+.RE
+.PP
+kbrequest\&.target
+.RS 4
+只要在控制台上按下 Alt+ArrowUp\&，systemd
+就会启动这个目标。请注意，任何对计算机具有物理访问权限的用户都可以执行此操作，无需身份验证，因此应谨慎使用 \&。
+.RE
+.PP
+kexec\&.target
+.RS 4
+一个特殊的目标单元，用于通过 kexec\& 关闭和重启系统。
+.sp
+想要重启系统的应用程序不应该直接启动这个单元，而是应该直接执行 \fBsystemctl kexec\fP (可能带有 \fB\-\-no\-block\fP 选项)
+或调用 \fBsystemd\fP(1)\*(Aqs \fBorg\&.freedesktop\&.systemd1\&.Manager\&.KExec\fP
+D\-Bus 方法 \&。
+.RE
+.PP
+local\-fs\&.target
+.RS 4
+\fBsystemd\-fstab\-generator\fP(3) 自动将 \fIBefore=\fP 类型的依赖项添加到所有引用此目标的本地安装点的安装单元元
+\&。此外，对于 /etc/fstab 中列出的那些设置了 \fBauto\fP 挂载选项的挂载，它将类型 \fIWants=\fP 的依赖项添加到此目标单元。
+.RE
+.PP
+machines\&.target
+.RS 4
+用于启动所有容器和其他虚拟机的标准目标元 \&。有关示例，请参见 systemd\-nspawn@\&.service。
+.RE
+.PP
+multi\-user\&.target
+.RS 4
+用于设置多用户系统 (非图形) \& 的特殊目标单元。这是由 graphical\&.target\& 引入的。
+.sp
+需要多用户系统的单位在安装时要在这个元上加上自己元的 \fIWants=\fP 依赖 \&。最好通过元 \*(Aqs [Install] 部分 \& 中的
+\fIWantedBy=multi\-user\&.target\fP 配置。
+.RE
+.PP
+network\-online\&.target
+.RS 4
+严格要求配置网络连接的单元应该引入 network\-online\&.target (通过 \fIWants=\fP 类型依赖) 并在它之后对自己进行排序
+\&。此目标元旨在引入延迟进一步执行的服务，直到网络充分设置 \&。确切地说，这需要留给网络管理服务的实现。
+.sp
+注意这个元和 network\&.target\& 的区别。这个元是一个活跃的元 (i\&.e\&. 由消费者而不是这个功能的提供者拉入)
+并且拉入可能增加进一步执行的实质性延迟的服务。相比之下，network\&.target 是一个被动单元
+(i\&.e\&. 由功能的提供者引入，而不是消费者)，通常不会延迟执行太多 \&。通常，network\&.target 是大多数系统引导的一部分，而
+network\-online\&.target 不是，除非至少有一个元需要它 \&。另请参见 \m[blue]\fBRunning Services After the Network Is Up\fP\m[]\&\s-2\u[1]\d\s+2 了解更多信息 \&。
+.sp
+远程网络文件系统的所有挂载单元都会自动拉入这个元，并在它之后对自己进行排序 \&。请注意，仅对其他主机提供 \fIprovide\fP 功能 (与其他主机的
+\fIconsume\fP 功能相反) 的网络守护进程通常不需要将其拉入 \&。
+.sp
+systemd 自动将此目标元的 \fIWants=\fP 和 \fIAfter=\fP 类型的依赖项添加到所有 SysV 初始化脚本服务单元，其中 LSB
+标头引用 "$network" 设施 \&。
+.sp
+注意这个元只在原来的系统启动逻辑 \& 时才有用。系统启动完成后，将不再跟踪系统的在线状态
+\&。因此它不能作为一个网络连接监控的概念，它纯粹是一个一次性系统启动的概念 \&。
+.RE
+.PP
+paths\&.target
+.RS 4
+一个特殊的目标单元，它设置了所有路径单元 (详见 \fBsystemd.path\fP(5))，这些单元在启动后应处于活动状态 \&。
+.sp
+建议应用程序安装的路径单元通过 \fIWants=\fP 依赖项从这个元 \& 中拉入。最好通过路径中的 \fIWantedBy=paths\&.target\fP
+配置 \*(Aqs [Install] section\&.
+.RE
+.PP
+poweroff\&.target
+.RS 4
+一个特殊的目标单元，用于关闭和关闭系统 \&。
+.sp
+想要关闭系统电源的应用程序不应该直接启动这个单元，而是应该直接执行 \fBsystemctl poweroff\fP (可能带有 \fB\-\-no\-block\fP
+选项) 或调用 \fBsystemd\-logind\fP(8)\*(Aqs
+\fBorg\&.freedesktop\&.login1\&.Manager\&.PowerOff\fP D\-Bus 方法 \&。
+.sp
+runlevel0\&.target 是此目标元的别名，用于与 SysV\& 兼容。
+.RE
+.PP
+reboot\&.target
+.RS 4
+一个特殊的目标单元，用于关闭和重新启动系统 \&。
+.sp
+想要重启系统的应用程序不应该直接启动这个单元，而是应该直接执行 \fBsystemctl reboot\fP (可能带有 \fB\-\-no\-block\fP 选项)
+或调用 \fBsystemd\-logind\fP(8)\*(Aqs
+\fBorg\&.freedesktop\&.login1\&.Manager\&.Reboot\fP D\-Bus 方法 \&。
+.sp
+runlevel6\&.target 是此目标元的别名，用于与 SysV\& 兼容。
+.RE
+.PP
+remote\-cryptsetup\&.target
+.RS 4
+类似于 cryptsetup\&.target，但用于通过网络访问的加密设备 \&。它用于标有 \fB_netdev\fP\& 的
+\fBcrypttab\fP(8) 条目。
+.RE
+.PP
+remote\-veritysetup\&.target
+.RS 4
+类似于 veritysetup\&.target，但用于通过网络访问的 verity integrity protected devices。它用于标有
+\fB_netdev\fP\& 的 \fBveritytab\fP(8) 条目。
+.RE
+.PP
+remote\-fs\&.target
+.RS 4
+类似于 local\-fs\&.target，但用于远程挂载点 \&。
+.sp
+systemd 自动将此目标元的 \fIAfter=\fP 类型的依赖项添加到所有 SysV 初始化脚本服务单元，其中 LSB 标头引用
+"$remote_fs" 设施 \&。
+.RE
+.PP
+rescue\&.target
+.RS 4
+一个特殊的目标单元，它会拉入基本系统 (包括系统安装) 并产生救援
+shell\&。隔离到此目标，以便在单用户模式下管理系统，并挂载所有文件系统但不运行任何服务，除了最基本的 \&。与
+emergency\&.target 相比，它精简了很多，不提供文件系统和最基本的服务 \&。与 multi\-user\&.target 相比，这个
+target 可以看作是单用户 \&.target\&。
+.sp
+runlevel1\&.target 是此目标元的别名，用于与 SysV\& 兼容。
+.sp
+使用 "systemd\&.unit=rescue\&.target" 内核命令行选项引导进入此模式 \&。这个内核命令行选项的简称是 "1"，用于与
+SysV\& 兼容。
+.RE
+.PP
+runlevel2\&.target, runlevel3\&.target, runlevel4\&.target,
+runlevel5\&.target
+.RS 4
+这些是每当 SysV 兼容性代码分别要求运行级别 2、3、4、5 时调用的目标 \&。最好将其作为 (i\&.e\&. symlink to)
+graphical\&.target (对于运行级别 5) 或 multi\-user\&.target (其他) \& 的别名。
+.RE
+.PP
+shutdown\&.target
+.RS 4
+一个特殊的目标单元，在系统关闭时终止服务 \&。
+.sp
+应在系统关闭时终止的服务应将 \fIConflicts=\fP 和 \fIBefore=\fP 依赖项添加到此元为其服务元，这是在设置
+\fIDefaultDependencies=yes\fP (默认) \& 时隐式完成的。
+.RE
+.PP
+sigpwr\&.target
+.RS 4
+当 systemd 接收到 SIGPWR 进程信号时启动的特殊目标，该信号通常由内核或 UPS 守护进程在断电时发送 \&。
+.RE
+.PP
+sleep\&.target
+.RS 4
+由 suspend\&.target、hibernate\&.target 和 hybrid\-sleep\&.target
+拉入的特殊目标单元，可用于将单元挂接到睡眠状态逻辑 \&。
+.RE
+.PP
+slices\&.target
+.RS 4
+一个特殊的目标单元，它设置了所有的切片单元 (详见 \fBsystemd.slice\fP(5))，这些单元在启动后始终处于活动状态 \&。默认情况下，泛型
+system\&.slice 切片元以及根切片元 \-\&.slice 被拉入并在此元之前排序 (见下文) \&。
+.sp
+通常不需要将切片单元添加到 slices\&.target\&。而是在启动某个使用 \fISlice=\fP 的单元时，会自动启动指定的 slice\&。将
+\fIWantedBy=slices\&.target\fP 行添加到 [Install] 部分应该只对需要始终处于活动状态的单元进行
+\&。在这种情况下，需要注意避免通过对 "parent" 切片 \& 的自动依赖性创建循环。
+.RE
+.PP
+sockets\&.target
+.RS 4
+一个特殊的目标单元，它设置了所有在启动后激活的套接字单元 (详见 \fBsystemd.socket\fP(5)) \&。
+.sp
+可以套接字激活的服务在安装时需要为自己的套接字单元添加 \fIWants=\fP 依赖到这个单元。这最好通过套接字中的
+\fIWantedBy=sockets\&.target\fP 元 \*(Aqs [Install] section\&.
+.RE
+.PP
+suspend\&.target
+.RS 4
+挂起系统的特殊目标元 \&。这会引入 sleep\&.target\&。
+.RE
+.PP
+swap\&.target
+.RS 4
+类似于 local\-fs\&.target，但用于交换分区和交换文件 \&。
+.RE
+.PP
+sysinit\&.target
+.RS 4
+systemd 自动将此目标单元的类型 \fIRequires=\fP 和 \fIAfter=\fP 的依赖项添加到所有服务 (除了那些带有
+\fIDefaultDependencies=no\fP)\&.
+.sp
+该目标引入系统初始化所需的服务。此目标引入的系统服务应声明 \fIDefaultDependencies=no\fP
+并手动指定它们的所有依赖项，包括访问除只读根文件系统之外的任何内容 \&。该 target 的依赖关系详见 \fBbootup\fP(7)\&。
+.RE
+.PP
+syslog\&.socket
+.RS 4
+socket 元 syslog 实现应该监听 \&。所有用户空间日志消息都将在此套接字上可用 \&。有关 syslog 集成的更多信息，请参见
+\m[blue]\fBSyslog Interface\fP\m[]\&\s-2\u[2]\d\s+2 文档 \&。
+.RE
+.PP
+system\-update\&.target, system\-update\-pre\&.target,
+system\-update\-cleanup\&.service
+.RS 4
+一个特殊的目标元，用于离线系统更新 \&。 如果 /system\-update 存在
+\&，\fBsystemd\-system\-update\-generator\fP(8) 会将引导过程重定向到此目标。有关详细信息，请参见
+\fBsystemd.offline\-updates\fP(7)\&。
+.sp
+更新应该在到达 system\-update\&.target 之前发生，实现它们的服务应该导致机器重新启动 \&。执行更新的主要单位应在
+system\-update\-pre\&.target 之后对自己进行排序，但不要将其拉入
+\&。只想在系统更新期间运行，但在执行实际系统更新之前的服务应该在这个元之前命令自己并将其拉入 \&。作为一项安全措施，如果这没有发生，并且在到达
+system\-update\&.target 后 /system\-update 仍然存在，system\-update\-cleanup\&.service
+将删除此符号链接并重新启动机器 \&。
+.RE
+.PP
+timers\&.target
+.RS 4
+一个特殊的目标单元，它设置了所有的定时器单元 (详见 \fBsystemd.timer\fP(5))，这些单元在启动后应该是活动的 \&。
+.sp
+建议应用程序安装的计时器单元通过 \fIWants=\fP 依赖项从这个元 \& 中拉入。这最好通过定时器中的
+\fIWantedBy=timers\&.target\fP 元 \*(Aqs [Install] section\&.
+.RE
+.PP
+umount\&.target
+.RS 4
+一个特殊的目标单元，它在系统关闭时卸载所有挂载点和自动挂载点 \&。
+.sp
+在系统关闭时应卸载的挂载应为其挂载单元添加冲突依赖到此单元，这是在设置 \fIDefaultDependencies=yes\fP (默认) \&
+时隐式完成的。
+.RE
+.SS "Special System Units for Devices"
+.PP
+当某些类型的设备出现在系统中时，一些目标单元会自动拉入 \&。这些可用于根据可用硬件的特定类型自动激活各种服务。
+.PP
+bluetooth\&.target
+.RS 4
+一旦插入蓝牙控制器或在启动时可用，该目标就会自动启动。
+.sp
+这可用于在找到蓝牙硬件时动态地引入蓝牙管理守护进程 \&。
+.RE
+.PP
+printer\&.target
+.RS 4
+一旦插入打印机或在启动时变得可用，该目标就会自动启动。
+.sp
+这可用于在找到打印机硬件时动态地引入打印机管理守护进程 \&。
+.RE
+.PP
+smartcard\&.target
+.RS 4
+一旦插入智能卡控制器或在启动时可用，该目标就会自动启动。
+.sp
+这可用于在找到智能卡硬件时动态地引入智能卡管理守护进程 \&。
+.RE
+.PP
+sound\&.target
+.RS 4
+一旦插入声卡或在启动时可用，该目标就会自动启动 \&。
+.sp
+这可用于在找到音频硬件时动态地引入音频管理守护进程 \&。
+.RE
+.PP
+usb\-gadget\&.target
+.RS 4
+只要 USB 设备控制器在启动时可用，该目标就会自动启动。
+.sp
+这可用于在找到 UDC 硬件时动态拉入 usb gadget\&。
+.RE
+.SS "Special Passive System Units"
+.PP
+定义了许多特殊的系统目标，可用于正确地命令可选服务的启动 \&。这些目标通常不是初始引导事务的一部分，除非它们被其中一个实现服务显式引入
+\&。特别需要注意的是，这些 \fIpassive\fP 目标单元一般不是服务的消费者拉进来的，而是服务的提供者拉进来的。这意味着:
+消费服务应该在这些目标之后 (视情况而定) 对自己进行排序，而不是将其拉入 \&。提供服务应该在这些目标之前 (根据需要) 对自己进行排序，并将其拉入
+(通过 \fIWants=\fP 类型依赖) \&。
+.PP
+请注意，这些被动单元不能手动启动，i\&.e\&。 "systemctl start time\-sync\&.target" 将因错误 \&
+而失败。它们只能被依赖 \& 拉进来。这是强制执行的，因为它们仅用于订购目的，因此作为交易中的唯一元没有用 \&。
+.PP
+blockdev@\&.target
+.RS 4
+此模板元用于在合成这些块设备的服务之后订购挂载单元和块设备的其他消费者 \&。特别是，这旨在用于存储服务 (例如分配和管理虚拟块设备的
+\fBsystemd\-cryptsetup@.service\fP(5)/
+\fBsystemd\-veritysetup@.service\fP(5))\&。存储服务在 blockdev@\&.target
+实例之前排序，消费者单元在它之后 \&。该顺序在关闭期间尤为重要，因为它确保首先停用挂载，然后支持挂载的服务 \&。blockdev@\&.target
+实例应该通过存储守护进程的 \fBWants=\fP 依赖项被引入，因此通常不会成为任何事务的一部分，除非使用存储守护进程
+\&。此模板实例的实例名称元必须是正确转义的块设备节点路径，e\&.g\&。 blockdev@dev\-mapper\-foobar\&. 存储设备
+/dev/foobar\& 的目标。
+.RE
+.PP
+cryptsetup\-pre\&.target
+.RS 4
+这个被动目标单元可能会被想要在任何加密块设备设置之前运行的服务拉入
+\&。达到此目标后，将设置所有加密的块设备。由于关闭顺序隐含地是单元之间的反向启动顺序，因此该目标对于确保仅在所有加密块设备完全停止后才关闭服务特别有用
+\&。
+.RE
+.PP
+veritysetup\-pre\&.target
+.RS 4
+这个被动目标元可能会被想要在任何真实完整性保护的块设备设置之前运行的服务拉入 \&。达到此目标后，将设置所有受 verity
+完整性保护的块设备。\&。由于关闭顺序隐含地是单元之间的反向启动顺序，因此此目标对于确保仅在所有受 verity 完整性保护的块设备完全停止 \&
+后才关闭服务特别有用。
+.RE
+.PP
+first\-boot\-complete\&.target
+.RS 4
+此被动目标旨在作为需要在第一次启动期间运行一次的单元的同步点 \&。只有在此目标之前订购的所有单元都完成后，\fBmachine\-id\fP(5)
+才会提交到磁盘，将第一次引导标记为已完成 \&。如果在此之前的任何时间启动被中止，则下一次启动将使用
+\fIConditionFirstBoot=yes\fP\& 重新运行任何单元。
+.RE
+.PP
+getty\-pre\&.target
+.RS 4
+一个特殊的被动目标元 \&。此目标的用户应通过依赖项将其拉入引导事务 (例如 \&.g\&.\fIWants=\fP)\&。如果您想在 getty
+启动之前使用控制台，请在此元之前订购元 \&.
+.RE
+.PP
+local\-fs\-pre\&.target
+.RS 4
+此目标元自动排在所有标有 \fBauto\fP (见上文) \& 的本地挂载点之前。它可用于在所有本地挂载之前执行某些单元。
+.RE
+.PP
+network\&.target
+.RS 4
+这个元应该表示网络功能何时可用，但它只是非常模糊地定义了它应该意味着什么 \&。但是，以下内容至少应适用:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在启动时，任何配置的合成网络设备 (我 \&.e\&。不是需要硬件显示和探测的物理设备，而是虚拟设备，如桥接设备和类似的以编程方式创建的设备)
+不依赖于任何底层硬件都应在达到此目标时分配 \&。在达到 network\&.target\& 时，这些接口不必也已完成 IP 级别配置。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+在关闭时，在 network\&.target 之后订购的元将在网络 \(em 到那时可能设置的任何级别 \(em 被关闭
+\&。因此，在编写需要在关机时进行网络访问的服务文件时，它很有用，这些服务文件应该在此目标之后自行排序，而不是将其拉入 \&。另请参见
+\m[blue]\fBRunning Services After the Network Is Up\fP\m[]\&\s-2\u[1]\d\s+2
+了解更多信息 \&。
+.RE
+.sp
+必须强调的是，在启动时 \*(Aqs 不保证在达到此目标时基于硬件的设备已经出现，甚至获得完整的 IP 配置 \&。为此，请按上述方式使用
+network\-online\&.target\&。
+.RE
+.PP
+network\-pre\&.target
+.RS 4
+这个被动目标单元可能会被想要在任何网络设置之前运行的服务引入，例如为了设置防火墙 \&。所有的网络管理软件都在这个目标之后命令自己，但不把它拉进来
+\&。另请参见 \m[blue]\fBRunning Services After the Network Is Up\fP\m[]\&\s-2\u[1]\d\s+2 了解更多信息 \&。
+.RE
+.PP
+nss\-lookup\&.target
+.RS 4
+应该用作所有 host/network 名称服务查找的同步点的目标 \&。请注意，这与应该使用 nss\-user\-lookup\&.target 的
+UNIX user/group 名称查找无关 \&。所有必须提供完整 host/network 名称解析的服务都应在此目标之后排序，但不要将其拉入
+\&。systemd 自动将此目标元的 \fIAfter=\fP 类型的依赖项添加到所有 SysV 初始化脚本服务单元，其中 LSB 标头引用
+"$named" 设施 \&。
+.RE
+.PP
+nss\-user\-lookup\&.target
+.RS 4
+应该用作所有常规 UNIX user/group 名称服务查找的同步点的目标 \&。请注意，这与应该使用 nss\-lookup\&.target 的
+host/network 名称查找无关 \&。所有需要完整 user/group 数据库可用性的服务都应在此目标之后排序，但不要将其拉入 \&。所有提供
+user/group 数据库部分的服务都应在此目标之前排序，并将其拉入 \&。请注意，此元仅与常规用户和组相关 \ (em
+系统用户和组需要在最早的引导期间可解析，因此不需要针对此目标进行任何特殊排序 \&。
+.RE
+.PP
+remote\-fs\-pre\&.target
+.RS 4
+这个目标单元自动排在所有安装点单元 (见上文) 和标有 \fB_netdev\fP\& 的 cryptsetup/veritysetup
+设备之前。它可用于在远程加密设备和安装建立之前运行某些单元。请注意，这个元一般不是初始事务的一部分，除非在所有远程挂载之前想要订购的元通过
+\fIWants=\fP 类型依赖 \& 将其拉入。如果元想被出现的第一个远程挂载拉入，它应该使用 network\-online\&.target (见上文)
+\&。
+.RE
+.PP
+rpcbind\&.target
+.RS 4
+portmapper/rpcbind 拉入这个目标并在它之前命令自己，以表明它的可用性 \&。systemd 自动将此目标元的 \fIAfter=\fP
+类型的依赖项添加到所有 SysV 初始化脚本服务单元，其中 LSB 标头引用 "$portmap" 设施 \&。
+.RE
+.PP
+time\-set\&.target
+.RS 4
+负责从本地源 (例如维护的时间戳文件或不精确的实时时钟) 设置系统时钟 (\fBCLOCK_REALTIME\fP)
+的服务应引入此目标并在它之前对自己进行排序 \&。需要近似、大致单调时间的服务应在此元之后排序，但不要将其拉入 \&。
+.sp
+该目标不提供 time\-sync\&.target 的精度保证
+(见下文)，但不依赖于远程时钟源是否可达，i\&.e\&。目标通常不会因网络问题和类似问题而延迟
+\&。对于需要近似时钟精度和粗略单调性但激活不应因可能不可靠的网络通信 \& 而延迟的服务，建议使用此目标。
+.sp
+服务管理器自动将此目标元的 \fIAfter=\fP 类型的依赖项添加到所有具有至少一个 \fIOnCalendar=\fP 指令 \& 的计时器单元。
+.sp
+\fBsystemd\-timesyncd.service\fP(8) 服务是一个简单的守护进程，它拉入这个目标并在它之前命令自己 \&。除了实现 SNTP
+网络协议外，它还在磁盘上维护一个时间戳文件，其修改时间定期更新 \&。在服务启动时，本地系统时钟从该修改时间开始设置，确保它大致单调增加。
+.sp
+请注意，在 time\-set\&.target 之后订购一个元仅当存在 \*(Aqs 实际上是在它之前订购的服务延迟它直到时钟被调整为粗略的单调性
+\&。否则，可能会在时钟调整为大致单调之前达到此目标。启用 \fBsystemd\-timesyncd.service\fP(8) 或替代 NTP
+实现以延迟目标 \&。
+.RE
+.PP
+time\-sync\&.target
+.RS 4
+指示系统时钟 (\fBCLOCK_REALTIME\fP) 与远程源已完成同步的服务应引入此目标并在它之前对自己进行排序
+\&。需要准确时间的服务应该在这个元之后订购，但不要拉入 \&。
+.sp
+服务管理器自动将此目标元的 \fIAfter=\fP 类型的依赖项添加到所有具有引用 "$time" 工具的 LSB 标头的 SysV
+初始化脚本服务单元，以及所有具有至少一个 \fIOnCalendar=\fP 指令 \& 的计时器单元。
+.sp
+该目标提供比 time\-set\&.target (见上文) 更严格的时钟精度保证，但可能需要网络通信，因此会引入不可预测的延迟
+\&。需要时钟精度且网络通信延迟可以接受的服务应使用此目标 \&。需要不太准确的时钟，并且只有近似和大致单调的时钟行为的服务应该改用
+time\-set\&.target\&。
+.sp
+请注意，只有在 time\-sync\&.target 之后订购元元才有效 \*(Aqs 实际上是在它之前订购的服务延迟它直到达到时钟同步
+\&。否则，这个目标可能会在时钟与任何远程精确引用时钟同步之前达到。使用 \fBsystemd\-timesyncd.service\fP(8) 时，启用
+\fBsystemd\-time\-wait\-sync.service\fP(8) 延迟目标; 或对其他 NTP 实现使用等效服务 \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Comparison\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+time\-set\&.target
+T}:T{
+time\-sync\&.target
+T}
+.T&
+l l
+l l
+l l
+l l
+l l.
+T{
+"quick" to reach
+T}:T{
+"slow" to reach
+T}
+T{
+typically uses local clock sources, boot process not affected by availability of external resources
+T}:T{
+typically uses remote clock sources, inserts dependencies on remote resources into boot process
+T}
+T{
+reliable, because local
+T}:T{
+unreliable, because typically network involved
+T}
+T{
+typically guarantees an approximate and roughly monotonic clock only
+T}:T{
+typically guarantees an accurate clock
+T}
+T{
+implemented by systemd\-timesyncd\&.service
+T}:T{
+implemented by systemd\-time\-wait\-sync\&.service
+T}
+.TE
+.sp 1
+.RE
+.SS "Special Slice Units"
+.PP
+有四个 "\&.slice" 单元构成了为服务、用户和虚拟机或容器分配资源的层次结构的基础。有关切片单元 \& 的详细信息，请参见
+\fBsystemd.slice\fP(7)。
+.PP
+\-\&.slice
+.RS 4
+根切片是切片层次结构的根 \&。它通常不直接包含单位，但可用于设置整棵树的默认值 \&。
+.RE
+.PP
+system\&.slice
+.RS 4
+默认情况下，\fBsystemd\fP 启动的所有系统服务都在这个 slice\& 中找到。
+.RE
+.PP
+user\&.slice
+.RS 4
+默认情况下，所有代表用户启动的用户进程和服务，包括每个用户的 systemd 实例都在这个切片中找到 \&。这是由
+systemd\-logind\&.service\& 引入的。
+.RE
+.PP
+machine\&.slice
+.RS 4
+默认情况下，所有注册到 \fBsystemd\-machined\fP 的虚拟机和容器都在这个切片中找到 \&。这是由
+systemd\-machined\&.service\& 引入的。
+.RE
+.SH "UNITS MANAGED BY THE USER SERVICE MANAGER"
+.SS "Special User Units"
+.PP
+当 systemd 作为用户实例运行时，以下特殊单元可用:
+.PP
+default\&.target
+.RS 4
+这是用户会话的主要目标，默认启动 \&。组成正常用户会话的各种服务应该被拉入这个目标 \&。在这方面，default\&.target 与系统实例中的
+multi\-user\&.target 类似，但它是一个真正的元，而不是别名 \&。
+.RE
+.PP
+此外，以下单位可用，它们的定义与其系统对应单位相似:
+exit\&.target、shutdown\&.target、sockets\&.target、timers\&.target、paths\&.target、bluetooth\&.target、printer\&.target、smartcard\&.target、sound\&.target\&。
+.SS "Special Passive User Units"
+.PP
+graphical\-session\&.target
+.RS 4
+每当任何图形会话正在运行时，此目标都是活动的 \&。它用于在会话终止时停止仅适用于图形 (X、Wayland 等 \&.) 会话的用户服务
+\&。此类服务的 [Unit] 部分中应包含 "PartOf=graphical\-session\&.target"\&。特定会话
+(e\&.g\&.gnome\-session\&.target) 的目标使用
+`BindsTo=graphical\-session\&.target`\& 启动和停止 "graphical\-session\&.target"。
+.sp
+会话目标启动哪些服务由 "Wants=" 和 "Requires=" 依赖项决定。对于可以独立启用的服务，应该使用 "\&.wants/" 和
+"\&.requires/" 中的符号链接，参见
+\fBsystemd.unit\fP(5)\&。这些符号链接应该以包的形式提供，或者应该在安装后动态添加，例如使用 "systemctl
+add\-wants"，请参见 \fBsystemctl\fP(1)\&。
+.PP
+\fBExample\ \&1.\ \&Nautilus as part of a GNOME session\fP
+"gnome\-session\&.target" 引入 Nautilus 作为顶级服务:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=User systemd services for GNOME graphical session
+Wants=nautilus\&.service
+BindsTo=graphical\-session\&.target
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+"nautilus\&.service" 在会话停止时停止:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=Render the desktop icons with Nautilus
+PartOf=graphical\-session\&.target
+
+[Service]
+\&...
+.fi
+.if  n \{\
+.RE
+.\}
+.RE
+.PP
+graphical\-session\-pre\&.target
+.RS 4
+该目标包含设置图形会话环境或全局配置的服务，例如 SSH/GPG 代理 (需要将环境变量导出到所有桌面进程) 或在操作系统升级后迁移过时的 d\-conf
+密钥 (需要在启动任何可能使用它们的进程之前发生) \&。该目标必须在启动图形会话之前启动，例如 gnome\-session\&.target\&。
+.RE
+.PP
+xdg\-desktop\-autostart\&.target
+.RS 4
+XDG 规范定义了一种使用 XDG 桌面文件自动启动应用程序的方法。systemd 为自动启动目录中的 XDG 桌面文件提供
+\fBsystemd\-xdg\-autostart\-generator\fP(8)\&。桌面环境可以通过添加对
+xdg\-desktop\-autostart\&.target\& 的 \fIWants=\fP 依赖项来选择使用此服务。
+.RE
+.SS "Special User Slice Units"
+.PP
+有四个 "\&.slice" 单元构成了用户层次结构的基础，用于为用户应用程序和服务分配资源 \&。有关切片单元的详细信息，请参见
+\fBsystemd.slice\fP(7)，有关 \m[blue]\fBDesktop Environments\fP\m[]\&\s-2\u[3]\d\s+2
+的文档以获取更多信息 \&。
+.PP
+\-\&.slice
+.RS 4
+根切片是用户的根 \*(Aqs slice hierarchy\&. 它通常不直接包含单位，但可用于设置整棵树的默认值 \&。
+.RE
+.PP
+app\&.slice
+.RS 4
+默认情况下，\fBsystemd\fP 管理的所有用户服务和应用程序都在这个切片 \& 中找到。所有交互式启动的应用程序，如 Web
+浏览器和文本编辑器以及非关键服务都应放入此切片 \&。
+.RE
+.PP
+session\&.slice
+.RS 4
+会话所需的所有基本服务和应用程序都应使用此切片 \&。这些服务要么无法轻易重启，要么延迟问题可能会影响系统和应用程序的交互性
+\&。这包括显示服务器、屏幕 readers 和其他服务，例如 DBus 或 XDG 门户 \&。此类服务应通过将
+\fISlice=session\&.slice\fP 添加到其元文件 \& 来配置为该切片的一部分。
+.RE
+.PP
+background\&.slice
+.RS 4
+所有运行低优先级后台任务的服务都应该使用这个切片 \&。这允许资源优先分配给其他切片。示例包括非交互式任务，如文件索引或备份操作，其中延迟并不重要
+\&。
+.RE
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd.unit\fP(5), \fBsystemd.service\fP(5),
+\fBsystemd.socket\fP(5), \fBsystemd.target\fP(5), \fBsystemd.slice\fP(5),
+\fBbootup\fP(7), \fBsystemd\-fstab\-generator\fP(8), \fBuser@.service\fP(5)
+.SH NOTES
+.IP " 1." 4
+网络启动后运行服务
+.RS 4
+\%https://systemd.io/NETWORK_ONLINE
+.RE
+.IP " 2." 4
+系统日志接口
+.RS 4
+\%https://www.freedesktop.org/wiki/Software/systemd/syslog
+.RE
+.IP " 3." 4
+桌面环境
+.RS 4
+\%https://systemd.io/DESKTOP_ENVIRONMENTS
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,155 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sane\-mustek_usb 5 "13 Jul 2008" "" "SANE Scanner Access Now Easy"
+.IX sane\-mustek_usb
+.SH NAME
+sane\-mustek_usb\-Mustek USB 平板扫描仪的 SANE 后端
+.SH DESCRIPTION
+\fBsane\-mustek_usb\fP 库实现了一个 SANE (扫描仪访问现在容易) 后端，提供对 Mustek USB 平板扫描仪 (包括来自
+Trust 的克隆) 的访问。 目前，已知以下扫描器或多或少地与此后端一起工作:
+.PP
+.RS
+Mustek 600 CU
+.br
+Mustek 1200 UB
+.br
+Mustek 1200 CU
+.br
+Mustek 1200 CU Plus
+.br
+信任紧凑型扫描 USB 19200
+.br
+.RE
+.PP
+可以在 Mustek USB 后端主页 \fIhttp://www.meier\-geinitz.de/sane/mustek_usb\-backend/\fP
+上找到更多详细信息。
+.PP
+plustek 后端支持 Mustek BearPaw 1200 和 2400 扫描仪。有关详细信息，请参见
+\fBsane\-plustek\fP(5)。Mustek BearPaw 1200F 由 MA\-1509 后端支持。有关详细信息，请参见
+\fBsane\-ma1509\fP(5)。gt68xx 后端支持其他 Mustek USB 扫描仪，请参见 \fBsane\-gt68xx\fP(5)。
+.PP
+此后端只能与操作系统已检测到的扫描仪一起使用。有关详细信息，请参见 \fBsane\-usb\fP(5)。
+.PP
+如果您拥有所有权的 Mustek (或 Trust) 扫描仪不是上面列出的可与此后端一起使用的扫描仪，请通过将扫描仪的确切型号名称以及 USB
+供应商和设备 ID (例如来自 \fI/proc/bus/usb/devices\fP 或系统日志) 发送给我来告知我.
+
+.SH "DEVICE NAMES"
+此后端需要以下形式的设备名称:
+.PP
+.RS
+\fIspecial\fP
+.RE
+.PP
+其中 \fIspecial\fP 是对应于 USB 扫描仪的特殊设备的路径名。 例如，对于 Linux，这样的设备名称可以是
+\fI/dev/usb/scanner0\fP 或 \fI/dev/usbscanner1\fP。
+.PP
+对于 FreeBSD，使用 \fI/dev/uscanner0\fP。
+
+.SH CONFIGURATION
+\fImustek_usb.conf\fP 文件的内容是与 Mustek USB 扫描仪对应的选项和设备名称列表。 空行和以哈希标记 (#)
+开头的行将被忽略。如果设备名称放在 \fImustek_usb.conf\fP 中，则它后面必须跟一个包含关键字 \fBoption\fP
+的行和一个指定扫描仪类型的选项。可以使用以下选项: \fB600cu\fP、\fB1200cu\fP、\fB1200cu_plus\fP、\fB1200ub\fP。 对于
+Trust Compact Scan USB 19200，使用 `option 1200ub`。
+.PP
+\fImustek_usb.conf\fP 中已经包含的 \fBusb vendor_id product_id\fP 语句可以自动检测扫描仪，而不是使用设备名称。
+这仅受 Linux 2.4.8 及更高版本以及支持 libsub 的所有系统的支持。"vendor_id" 和 "product_id"
+是识别扫描仪的十六进制数字。如果这不起作用，则必须将设备名称和指定扫描仪类型的选项放在 \fImustek_usb.conf\fP 中，如上所述。
+.PP
+全局 \fBoption max_block_size\fP 可用于限制从 USB 系统在一圈内获取的数据量。如果发生 USB 错误，可能值得尝试。
+.PP
+示例配置文件如下所示:
+.PP
+.RS
+# Comment
+.br
+选项 max_block_size 1024
+.br
+usb 0x055f 0x0001
+.br
+/dev/usb/scanner0
+.br
+选项 600cu
+.RE
+.PP
+第一行被忽略。第二行将缓冲区大小设置为最大 1024 字节。 第三行尝试自动检测供应商 ID 0x055f 和产品 ID 0x0001 (Mustek
+1200 CU) 的扫描仪。第四行告诉后端附加到 \fI/dev/usb/scanner0\fP，第五行指定 \fI/dev/usb/scanner0\fP 是
+Mustek 600 CU。
+.SH FILES
+.TP 
+\fI/etc/sane.d/mustek_usb.conf\fP
+后端配置文件 (另见下面对 \fBSANE_CONFIG_DIR\fP 的描述)。
+.TP 
+\fI/usr/lib/sane/libsane\-mustek_usb.a\fP
+实现此后端的静态库。
+.TP 
+\fI/usr/lib/sane/libsane\-mustek_usb.so\fP
+实现此后端的共享库 (存在于支持动态加载的系统上)。
+.SH ENVIRONMENT
+.TP 
+\fBSANE_CONFIG_DIR\fP
+此环境变量指定可能包含配置文件的目录列表。 在 *NIX 系统上，目录由冒号 (`:') 分隔，在 OS/2 下，目录由分号 (`;') 分隔。
+如果未设置此变量，则在两个默认目录中搜索配置文件: 首先是当前工作目录 (".")，然后是 \fI/etc/sane.d\fP。
+如果环境变量的值以目录分隔符结尾，则在明确指定的目录之后搜索默认目录。 例如，将 \fBSANE_CONFIG_DIR\fP 设置为
+"/tmp/config:" 将导致搜索目录 \fItmp/config\fP、\fI.\fP 和 \fI/etc/sane.d\fP (按此顺序)。
+.TP 
+\fBSANE_DEBUG_MUSTEK_USB\fP
+如果库是在启用调试支持的情况下编译的，则此环境变量控制此后端的调试级别。 更高的调试级别会增加输出的冗长程度。
+
+.nf
+\f (CR 值说明
+0     无输出
+1     打印致命错误
+2     打印重要信息
+3     打印非致命错误和不太重要的消息
+4     打印除调试信息以外的所有信息
+5      打印高级调试信息
+6      打印中级调试信息
+7      打印低级调试 messages\fR
+.fi
+
+示例: export SANE_DEBUG_MUSTEK_USB=4
+
+.SH "SEE ALSO"
+\fBsane\fP(7), \fBsane\-usb\fP(5), \fBsane\-mustek\fP(5), \fBsane\-mustek_pp\fP(5),
+\fBsane\-plustek\fP(5), \fBsane\-gt68xx\fP(5), \fBsane\-ma1509\fP(5)
+.br
+\fI/usr/share/doc/sane/mustek_usb/mustek_usb.CHANGES\fP,
+.br
+\fI/usr/share/doc/sane/mustek_usb/mustek_usb.TODO\fP
+.br
+\fIhttp://www.meier\-geinitz.de/sane/mustek_usb\-backend/\fP
+
+.SH AUTHOR
+亨宁迈尔 \- 盖尼茨 <\fIhenning@meier\-geinitz.de\fP>
+.br
+此后端基于 Mustek 的 Mustek 1200ub 后端，由 Tom Wang 维护。
+
+.SH BUGS
+这些设备有一个硬件错误: 一旦数据写入它们，它们就无法重置 (toggle= DATA0)。这意味着，任何试图重置设备的操作都会导致超时。
+
+在早期版本中，此后端在某些配置中第二次加载时失败。在这种情况下，唯一的选择是重新插入扫描仪。后端现在使用该错误的解决方法，但它仅在 Linux
+上进行过测试。其他操作系统的报告表示赞赏。
+
+.PP
+Mustek 后端主页 \fIhttp://www.meier\-geinitz.de/sane/mustek_usb\-backend/\fP
+提供了更详细的错误信息。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

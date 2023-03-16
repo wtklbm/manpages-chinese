@@ -1,0 +1,278 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2017 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH ioctl_ns 2 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+ioctl_ns\-Linux 命名空间的 ioctl() 操作
+.SH DESCRIPTION
+.\" ============================================================
+.\"
+.SS "Discovering namespace relationships"
+提供以下 \fBioctl\fP(2) 操作以允许发现名称空间关系 (请参见 \fBuser_namespaces\fP(7) 和
+\fBpid_namespaces\fP(7)).  调用的形式是:
+.PP
+.in +4n
+.EX
+new_fd = ioctl(fd, request);
+.EE
+.in
+.PP
+在每种情况下，\fIfd\fP 都指代 \fI/proc/\fPpid\fI/ns/*\fP 文件。 两个操作都在成功时返回一个新的文件描述符。
+.TP 
+\fBNS_GET_USERNS\fP (since Linux 4.9)
+.\" commit bcac25a58bfc6bd79191ac5d7afb49bea96da8c9
+.\" commit 6786741dbf99e44fb0c0ed85a37582b8a26f1c3b
+返回一个文件描述符，该文件描述符引用 \fIfd\fP 引用的命名空间的拥有用户命名空间。
+.TP 
+\fBNS_GET_PARENT\fP (since Linux 4.9)
+.\" commit a7306ed8d94af729ecef8b6e37506a1c6fc14788
+返回一个文件描述符，该文件描述符引用 \fIfd\fP 引用的命名空间的父命名空间。 此操作仅对分层命名空间 (即 PID 和用户命名空间) 有效。
+对于用户命名空间，\fBNS_GET_PARENT\fP 与 \fBNS_GET_USERNS\fP 同义。
+.PP
+这些操作返回的新文件描述符用 \fBO_RDONLY\fP 和 \fBO_CLOEXEC\fP 打开 (执行时关闭; 参见 \fBfcntl\fP(2)) 标志。
+.PP
+通过将 \fBfstat\fP(2) 应用于返回的文件描述符，可以获得 \fIstat\fP 结构体，其 \fIst_dev\fP (驻留设备) 和 \fIst_ino\fP
+(inode 编号) 字段共同标识 owning/parent 名称空间。 这个 inode 号可以和另一个
+\fI/proc/\fPpid\fI/ns/\fP{\fIpid\fP,\fIuser\fP} 文件的 inode 号匹配来判断是否是 owning/parent 命名空间。
+.PP
+这些 \fBioctl\fP(2) 操作中的任何一个都可能失败并出现以下错误:
+.TP 
+\fBEPERM\fP
+请求的命名空间在调用者的命名空间作用域之外。 例如，如果拥有所有权的用户命名空间是调用者当前用户命名空间的祖先，则可能会发生此错误。
+它也可能发生在尝试获取初始用户或 PID 命名空间的父级时。
+.TP 
+\fBENOTTY\fP
+此内核版本不支持该操作。
+.PP
+此外，\fBNS_GET_PARENT\fP 操作可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 指的是一个非分层命名空间。
+.PP
+.\" ============================================================
+.\"
+有关使用这些操作的示例，请参见示例部分。
+.SS "Discovering the namespace type"
+.\" commit e5ff5ce6e20ee22511398bb31fb912466cf82a36
+\fBNS_GET_NSTYPE\fP 操作 (自 Linux 4.11 起可用) 可用于发现文件描述符 \fIfd\fP: 引用的命名空间类型
+.PP
+.in +4n
+.EX
+nstype = ioctl(fd, NS_GET_NSTYPE);
+.EE
+.in
+.PP
+\fIfd\fP 指的是 \fI/proc/\fPpid\fI/ns/*\fP 文件。
+.PP
+.\" ============================================================
+.\"
+返回值是可以指定给 \fBclone\fP(2) 或 \fBunshare\fP(2) 以创建命名空间的 \fBCLONE_NEW*\fP 值之一。
+.SS "Discovering the owner of a user namespace"
+.\" commit 015bb305b8ebe8d601a238ab70ebdc394c7a19ba
+\fBNS_GET_OWNER_UID\fP 操作 (自 Linux 4.11 起可用) 可用于发现用户名称空间的所有者用户 ID
+(即，创建用户名称空间的进程的有效用户 ID)。 调用的形式是:
+.PP
+.in +4n
+.EX
+uid_t uid;
+ioctl(fd, NS_GET_OWNER_UID, &uid);
+.EE
+.in
+.PP
+\fIfd\fP 指的是 \fI/proc/\fPpid\fI/ns/user\fP 文件。
+.PP
+第三个参数指向的 \fIuid_t\fP 中返回所有者用户 ID。
+.PP
+此操作可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP
+\fIfd\fP 不引用用户命名空间。
+.SH ERRORS
+上述任何 \fBioctl\fP() 操作都可能返回以下错误:
+.TP 
+\fBENOTTY\fP
+\fIfd\fP 不引用 \fI/proc/[pid]/ns/*\fP 文件。
+.SH STANDARDS
+本页描述的命名空间和操作是特定于 Linux 的。
+.SH EXAMPLES
+下面显示的示例使用上述 \fBioctl\fP(2) 操作来执行命名空间关系的简单发现。 以下 shell 会话显示了使用该程序的各种示例。
+.PP
+尝试获取初始用户命名空间的父级失败，因为它没有父级:
+.PP
+.in +4n
+.EX
+$ \fB./ns_show /proc/self/ns/user p\fP
+父命名空间在您的命名空间之外
+.EE
+.in
+.PP
+创建一个运行驻留在新用户和 UTS 命名空间中的 \fBsleep\fP(1) 的进程，并显示新 UTS 命名空间与新用户命名空间相关联:
+.PP
+.in +4n
+.EX
+$ \fBunshare \-Uu sleep 1000 &\fP
+[1] 23235
+$ \fB./ns_show /proc/23235/ns/uts u\fP
+拥有用户命名空间的 Device/Inode 是: [0,3]/4026532448
+拥有用户命名空间的 Device/Inode 是: [0,3]/4026532448
+user:[4026532448]
+.EE
+.in
+.PP
+然后证明上例中新用户命名空间的父级是初始用户命名空间:
+.PP
+.in +4n
+.EX
+$ \fBreadlink /proc/self/ns/user\fP
+user:[4026531837]
+$ \fB./ns_show /proc/23235/ns/user p\fP
+父命名空间的 Device/Inode 为: [0,3]/4026531837
+.EE
+.in
+.PP
+在新的用户命名空间中启动 shell，并显示在此 shell 中，无法发现父用户命名空间。 同样，无法发现 UTS 命名空间
+(与初始用户命名空间相关联)。
+.PP
+.in +4n
+.EX
+$ \fBPS1="sh2$ " unshare \-U bash\fP
+sh2$ \fB./ns_show /proc/self/ns/user p\fP
+父命名空间在您的命名空间之外
+sh2$ \fB./ns_show /proc/self/ns/uts u\fP
+所属用户命名空间在您的命名空间之外
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (ns_show.c)
+\&
+.EX
+/* ns_show.c
+
+   根据 GNU 通用公共许可证 v2 或更高版本获得许可。
+*/
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/nsfs.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <unistd.h>
+
+int
+main(int argc, char *argv[])
+{
+    int          fd, userns_fd, parent_fd;
+    struct stat  sb;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s /proc/[pid]/ns/[file] [p|u]\en",
+                argv[0]);
+        fprintf(stderr, "\enDisplay the result of one or both "
+                "of NS_GET_USERNS (u) or NS_GET_PARENT (p)\en"
+                "for the specified /proc/[pid]/ns/[file]. If neither "
+                "\[aq]p\[aq] nor \[aq]u\[aq] is specified,\en"
+                "NS_GET_USERNS is the default.\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Obtain a file descriptor for the \[aq]ns\[aq] file specified
+       in argv[1]. */
+
+    fd = open(argv[1], O_RDONLY);
+    if (fd == \-1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Obtain a file descriptor for the owning user namespace and
+       then obtain and display the inode number of that namespace. */
+
+    if (argc < 3 || strchr(argv[2], \[aq]u\[aq])) {
+        userns_fd = ioctl(fd, NS_GET_USERNS);
+
+        if (userns_fd == \-1) {
+            if (errno == EPERM)
+                printf("The owning user namespace is outside "
+                       "your namespace scope\en");
+            else
+               perror("ioctl\-NS_GET_USERNS");
+            exit(EXIT_FAILURE);
+         }
+
+        if (fstat(userns_fd, &sb) == \-1) {
+            perror("fstat\-userns");
+            exit(EXIT_FAILURE);
+        }
+        printf("Device/Inode of owning user namespace is: "
+               "[%x,%x] / %ju\en",
+               major(sb.st_dev),
+               minor(sb.st_dev),
+               (uintmax_t) sb.st_ino);
+
+        close(userns_fd);
+    }
+
+    /* Obtain a file descriptor for the parent namespace and
+       then obtain and display the inode number of that namespace. */
+
+    if (argc > 2 && strchr(argv[2], \[aq]p\[aq])) {
+        parent_fd = ioctl(fd, NS_GET_PARENT);
+
+        if (parent_fd == \-1) {
+            if (errno == EINVAL)
+                printf("Can\[aq] get parent namespace of a "
+                       "nonhierarchical namespace\en");
+            else  if (errno == EPERM)
+                printf("The parent namespace is outside "
+                       "your namespace scope\en");
+            else
+                perror("ioctl\-NS_GET_PARENT");
+            exit(EXIT_FAILURE);
+        }
+
+        if (fstat(parent_fd, &sb) == \-1) {
+            perror("fstat\-parentns");
+            exit(EXIT_FAILURE);
+        }
+        printf("Device/Inode of parent namespace is: [%x,%x] / %ju\en",
+               major(sb.st_dev),
+               minor(sb.st_dev),
+               (uintmax_t) sb.st_ino);
+
+        close(parent_fd);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBfstat\fP(2), \fBioctl\fP(2), \fBproc\fP(5), \fBnamespaces\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

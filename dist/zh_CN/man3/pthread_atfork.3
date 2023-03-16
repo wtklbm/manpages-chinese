@@ -1,0 +1,73 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2017 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_atfork 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_atfork \- 注册 fork 处理程序
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <pthread.h>\fP
+.PP
+\fBint pthread_atfork(void (*\fP\fIprepare\fP\fB)(void), void (*\fP\fIparent\fP\fB)(void),\fP
+\fB                   void (*\fP\fIchild\fP\fB)(void));\fP
+.fi
+.SH DESCRIPTION
+\fBpthread_atfork\fP() 函数注册 fork 处理程序，当 \fBfork\fP(2) 被进程中的任何线程调用时，这些处理程序将被执行。
+处理程序在调用 \fBfork\fP(2) 的线程的上下文中执行。
+.PP
+可以注册三种处理程序:
+.IP \[bu] 3
+\fIprepare\fP 指定在 \fBfork\fP(2) 处理开始之前在父进程中执行的处理程序。
+.IP \[bu]
+\fIparent\fP 指定在 \fBfork\fP(2) 处理完成后在父进程中执行的处理程序。
+.IP \[bu]
+\fIchild\fP 指定在 \fBfork\fP(2) 处理完成后在子进程中执行的处理程序。
+.PP
+如果在 \fBfork\fP(2) 处理的相应阶段不需要处理程序，则三个参数中的任何一个都可以为 NULL。
+.SH "RETURN VALUE"
+成功时，\fBpthread_atfork\fP() 返回零。 出错时，它返回一个错误号。 进程可能会多次调用 \fBpthread_atfork\fP()
+以注册其他处理程序。 每个阶段的处理程序按指定顺序调用: \fIprepare\fP 处理程序按与注册相反的顺序调用; \fIparent\fP 和
+\fIchild\fP 处理程序按注册顺序调用。
+.SH ERRORS
+.TP 
+\fBENOMEM\fP
+无法分配内存来记录 fork 处理程序列表条目。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+当在多线程进程中调用 \fBfork\fP(2) 时，子进程中只会复制调用线程。 \fBpthread_atfork\fP() 的初衷是让子进程回到一致的状态。
+例如，在调用到 \fBfork\fP(2) 时，其他线程可能已经锁定了在子进程中复制的用户空间内存中可见的交互锁。
+这样的互锁永远不会被解锁，因为放置锁的线程在子线程中没有重复。 \fBpthread_atfork\fP() 的目的是提供一种机制，使应用程序 (或库)
+可以确保互连锁和其他进程和线程状态将恢复到一致状态。 在实践中，这项任务通常太难而不可行。
+.PP
+在多线程进程中的 \fBfork\fP(2) 在子进程中返回后，子进程应该只调用 async\-signal\-safe 函数 (参见
+\fBsignal\-safety\fP(7)) 直到它调用 \fBexecve\fP(2) 来执行新程序。
+.PP
+POSIX.1 指定 \fBpthread_atfork\fP() 不应因错误 \fBEINTR\fP 而失败。
+.SH "SEE ALSO"
+\fBfork\fP(2), \fBatexit\fP(3), \fBpthreads\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

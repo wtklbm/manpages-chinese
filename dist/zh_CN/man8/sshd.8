@@ -1,0 +1,819 @@
+.\" -*- coding: UTF-8 -*-
+.\"
+.\" Author: Tatu Ylonen <ylo@cs.hut.fi>
+.\" Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+.\"                    All rights reserved
+.\"
+.\" As far as I am concerned, the code I have written for this software
+.\" can be used freely for any purpose.  Any derived versions of this
+.\" software must be clearly marked as such, and if the derived work is
+.\" incompatible with the protocol description in the RFC file, it must be
+.\" called by a name other than "ssh" or "Secure Shell".
+.\"
+.\" Copyright (c) 1999,2000 Markus Friedl.  All rights reserved.
+.\" Copyright (c) 1999 Aaron Campbell.  All rights reserved.
+.\" Copyright (c) 1999 Theo de Raadt.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $OpenBSD: sshd.8,v 1.322 2023/01/18 01:50:21 millert Exp $
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.Dd $Mdocdate: January 18 2023 $
+.Dt SSHD 8
+.Os
+.Sh NAME
+.Nm sshd
+.Nd OpenSSH daemon
+.Sh SYNOPSIS
+.Nm sshd
+.Bk -words
+.Op Fl 46DdeiqTtV
+.Op Fl C Ar connection_spec
+.Op Fl c Ar host_certificate_file
+.Op Fl E Ar log_file
+.Op Fl f Ar config_file
+.Op Fl g Ar login_grace_time
+.Op Fl h Ar host_key_file
+.Op Fl o Ar option
+.Op Fl p Ar port
+.Op Fl u Ar len
+.Ek
+.Sh DESCRIPTION
+.Nm
+(OpenSSH Daemon) 是
+.Xr ssh 1
+的守护程序。
+它通过不安全的网络在两个不受信任的主机之间提供安全的加密通信。
+.Pp
+.Nm
+侦听来自客户端的连接。 它通常在从
+.Pa /etc/rc
+启动时启动。 它为每个传入连接派生一个新的守护进程。
+分叉守护进程处理密钥交换、加密、身份验证、命令执行和数据交换。
+.Pp
+可以使用命令行选项或配置文件配置
+.Nm
+(默认为
+.Xr sshd_config 5 ) ;
+命令行选项覆盖配置文件中指定的值。 当
+.Nm
+收到挂断信号
+.Dv SIGHUP
+时，它会重新读取其配置文件，它会使用启动时使用的名称和选项执行自身，例如 \&
+.Pa /usr/sbin/sshd
+。
+.Pp
+选项如下:
+.Bl -tag -width Ds
+.It Fl 4
+强制
+.Nm
+仅使用 IPv4 地址。
+.It Fl 6
+强制
+.Nm
+仅使用 IPv6 地址。
+.It Fl C Ar connection_spec
+指定用于
+.Fl T
+扩展测试模式的连接参数。 如果提供，则在将配置写入标准输出之前应用配置文件中任何适用的
+.Cm Match
+指令。
+连接参数以关键字 = 值对的形式提供，可以以任何顺序提供，可以使用多个
+.Fl C
+选项，也可以作为逗号分隔的列表。 关键字为
+.Dq addr
+、
+.Dq user
+、
+.Dq host
+、
+.Dq laddr
+、
+.Dq lport
+、
+.Dq rdomain
+，分别对应源地址、用户、解析的源主机名、本地地址、本地端口号和路由域。
+.It Fl c Ar host_certificate_file
+指定证书文件的路径以在密钥交换期间识别
+.Nm
+。 证书文件必须匹配使用
+.Fl h
+选项或
+.Cm HostKey
+配置指令指定的主机密钥文件。
+.It Fl D
+指定此选项时，
+.Nm
+不会分离，也不会成为守护进程。 这样可以轻松监控
+.Nm sshd
+。
+.It Fl d
+调试模式。 服务器将详细的调试输出发送到标准错误，并且不会将自己置于后台。 服务器也不会
+.Xr fork 2
+，只会处理一个连接。
+此选项仅用于调试服务器。 多个
+.Fl d
+选项提高了调试级别。 最大值是 3.
+.It Fl E Ar log_file
+将调试日志追加到
+.Ar log_file
+而不是系统日志。
+.It Fl e
+将调试日志写入标准错误而不是系统日志。
+.It Fl f Ar config_file
+指定配置文件的名称。 默认为
+.Pa /etc/ssh/sshd_config
+。 如果没有配置文件，
+.Nm
+拒绝启动。
+.It Fl g Ar login_grace_time
+为客户端提供宽限时间来验证自己 (默认 120 秒)。 如果客户端在这几秒内无法对用户进行身份验证，则服务器会断开连接并退出。 零值表示没有限制。
+.It Fl h Ar host_key_file
+指定从中读取主机密钥的文件。 如果
+.Nm
+不是以 root 身份运行，则必须给出此选项 (因为正常的主机密钥文件通常不能被 root
+以外的任何人读取)。 默认值为
+.Pa /etc/ssh/ssh_host_ecdsa_key
+、
+.Pa /etc/ssh/ssh_host_ed25519_key
+和
+.Pa /etc/ssh/ssh_host_rsa_key
+。
+不同的主机密钥算法可以有多个主机密钥文件。
+.It Fl i
+指定正在从
+.Xr inetd 8
+运行
+.Nm
+。
+.It Fl o Ar option
+可用于以配置文件中使用的格式提供选项。 这对于指定没有单独命令行标志的选项很有用。 有关选项及其值的完整详细信息，请参见
+.Xr sshd_config 5
+。
+.It Fl p Ar port
+指定服务器侦听连接的端口 (默认 22)。 允许多个端口选项。 当指定命令行端口时，将忽略在配置文件中使用
+.Cm Port
+选项指定的端口。
+使用
+.Cm ListenAddress
+选项指定的端口覆盖命令行端口。
+.It Fl q
+静音模式。 不会向系统日志发送任何内容。 通常记录每个连接的开始、验证和终止。
+.It Fl T
+扩展测试模式。 检查配置文件的有效性，将有效的配置输出到 stdout，然后退出。 可选地，可以通过使用一个或多个
+.Fl C
+选项指定连接参数来应用
+.Cm Match
+规则。
+.It Fl t
+测试模式。 只检查配置文件的有效性和密钥的完整性。 这对于可靠地更新
+.Nm
+很有用，因为配置选项可能会更改。
+.It Fl u Ar len
+此选项用于指定
+.Vt utmp
+结构体中包含远程主机名的字段的大小。 如果解析的主机名比
+.Ar len
+长，将使用点分十进制值代替。
+这允许主机名非常长且溢出该字段的主机仍然被唯一标识。 指定
+.Fl u0
+表示只应将点分十进制地址放入
+.Pa utmp
+文件中。
+.Fl u0
+也可用于防止
+.Nm
+发出 DNS 请求，除非身份验证机制或配置需要它。 可能需要 DNS 的身份验证机制包括
+.Cm HostbasedAuthentication
+并在密钥文件中使用
+.Cm from="pattern-list"
+选项。 需要 DNS
+的配置选项包括在
+.Cm AllowUsers
+或
+.Cm DenyUsers
+中使用 USER@HOST 模式。
+.It Fl V
+显示版本号并退出。
+.El
+.Sh AUTHENTICATION
+OpenSSH SSH 守护程序仅支持 SSH 协议 2。 每个主机都有一个主机特定的密钥，用于标识主机。
+每当客户端连接时，守护程序都会使用其公共主机密钥进行响应。 客户端将主机密钥与自己的数据库进行比较，以验证它是否未更改。 前向保密是通过
+Diffie-Hellman 密钥协议提供的。 此密钥协议导致共享会话密钥。 会话的其余部分使用对称密码加密。
+客户端从服务器提供的算法中选择要使用的加密算法。 此外，会话完整性是通过加密消息身份验证代码 (MAC) 提供的。
+.Pp
+最后，服务器和客户端进入身份验证对话。 客户端尝试使用基于主机的身份验证、公钥身份验证、质询 - 响应身份验证或密码身份验证来验证自己。
+.Pp
+无论身份验证类型如何，都会检查帐户以确保它可以访问。 如果帐户被锁定，则无法访问，在
+.Cm DenyUsers
+中列出或其组在
+.Cm DenyGroups
+\& 中列出。 锁定帐户的定义取决于系统。一些平台有自己的帐户数据库 (例如 AIX)，一些修改密码字段 (
+.Ql \&*LK\&*
+on Solaris and UnixWare,
+.Ql \&*
+on HP-UX, contains
+.Ql Nologin
+on Tru64, a leading
+.Ql \&*LOCKED\&*
+on FreeBSD and a leading
+.Ql \&!
+on most Linuxes)。 如果需要在允许公钥的同时禁用帐户的密码身份验证，则 passwd 字段应设置为这些值以外的值
+(例如
+.Ql NP
+或
+.Ql \&*NP\&*
+)。
+.Pp
+如果客户端成功验证了自己的身份，则会进入准备会话的对话框。 此时，客户端可能会请求诸如分配伪 tty、转发 X11 连接、转发 TCP
+连接或通过安全通道转发身份验证代理连接之类的事情。
+.Pp
+此后，客户端请求交互式 shell 或执行或非交互式命令，
+.Nm
+将使用其
+.Fl c
+选项通过用户的 shell 执行该命令。
+然后双方进入会话模式。 在这种模式下，任何一方都可以随时发送数据，这些数据在服务器端被转发 to/from、shell 或命令，在客户端被用户终端转发。
+.Pp
+当用户程序终止，所有转发的 X11 等连接都关闭后，服务端向客户端发送退出状态命令，双方退出。
+.Sh LOGIN PROCESS
+当用户成功登录时，
+.Nm
+会执行以下操作:
+.Bl -enum -offset indent
+.It 
+如果登录是在 tty 上，并且没有指定命令，则打印上次登录时间和
+.Pa /etc/motd
+(除非在配置文件中或被
+.Pa ~/.hushlogin
+阻止; 请参见
+.Sx FILES
+部分)。
+.It 
+如果登录在 tty 上，则记录登录时间。
+.It 
+检查
+.Pa /etc/nologin ;
+如果存在，则打印内容并退出 (除非是 root)。
+.It 
+更改为以普通用户权限运行。
+.It 
+设置基本环境。
+.It 
+读取文件
+.Pa ~/.ssh/environment
+(如果存在)，并允许用户更改其环境。 请参见
+.Xr sshd_config 5
+中的
+.Cm PermitUserEnvironment
+选项。
+.It 
+更改用户的主目录。
+.It 
+如果
+.Pa ~/.ssh/rc
+存在并且设置了
+.Xr sshd_config 5
+.Cm PermitUserRC
+选项，则运行它; else 如果
+.Pa /etc/ssh/sshrc
+存在，运行它; 否则运行
+.Xr xauth 1
+。
+.Dq rc
+文件在标准输入中被赋予 X11 身份验证协议和 cookie。 请参见下面的
+.Sx SSHRC
+。
+.It 
+运行用户的 shell 或命令。 所有命令都在系统密码数据库中指定的用户登录名 shell 下运行。
+.El
+.Sh SSHRC
+如果文件
+.Pa ~/.ssh/rc
+存在，则
+.Xr sh 1
+在读取环境文件之后但在启动用户的 shell 或命令之前运行它。 它不得在
+stdout 上产生任何输出; 必须改用标准错误。 如果正在使用 X11 转发，它将在其标准输入中接收 "proto cookie" 对
+(在其环境中接收
+.Ev DISPLAY )
+。 该脚本必须调用
+.Xr xauth 1
+，因为
+.Nm
+不会自动运行 xauth 来添加
+X11 cookie。
+.Pp
+该文件的主要目的是运行在用户主目录可访问之前可能需要的任何初始化例程; AFS 是此类环境的一个特例。
+.Pp
+该文件可能包含一些初始化代码，后跟类似于以下内容的内容:
+.Bd -literal -offset 3n
+如果读取原型 cookie&&[ -n "$DISPLAY" ]; then 
+	如果 [ `echo $DISPLAY | cut -c1-10` = 'localhost:' ]; then
+		# X11UseLocalhost = 是
+		echo 添加 unix:`echo $DISPLAY |
+		    剪切 - c11-` $proto $cookie
+	else
+		# X11UseLocalhost = 否
+		echo 添加 $DISPLAY $proto $cookie
+	菲 | xauth -q-
+fi
+.Ed
+.Pp
+如果该文件不存在，则运行
+.Pa /etc/ssh/sshrc
+，如果也不存在，则使用 xauth 添加 cookie。
+.Sh AUTHORIZED_KEYS FILE FORMAT
+.Cm AuthorizedKeysFile
+指定包含用于公钥认证的公钥的文件; 如果未指定此选项，则默认为
+.Pa ~/.ssh/authorized_keys
+和
+.Pa ~/.ssh/authorized_keys2
+。 文件的每一行都包含一个键 (空行和以
+.Ql #
+开头的行将被忽略为注释)。 公钥由以下空格分隔的字段组成: 选项、密钥类型、base64 编码密钥、注释。 选项字段是可选的。
+支持的密钥类型有:
+.Pp
+.Bl -item -compact -offset indent
+.It 
+sk-ecdsa-sha2-nistp256@openssh.com
+.It 
+ecdsa-sha2-nistp256
+.It 
+ecdsa-sha2-nistp384
+.It 
+ecdsa-sha2-nistp521
+.It 
+sk-ssh-ed25519@openssh.com
+.It 
+ssh-ed25519
+.It 
+ssh-dss
+.It 
+ssh-rsa
+.El
+.Pp
+注释字段不用于任何用途 (但可能方便用户识别密钥)。
+.Pp
+请注意，此文件中的行可以有数百个字节长 (由于公钥编码的大小)，最大为 8 KB，这允许 RSA 密钥最大为 16 KB。 您不想输入它们; 相反，复制
+.Pa id_dsa.pub
+、
+.Pa id_ecdsa.pub
+、
+.Pa id_ecdsa_sk.pub
+、
+.Pa id_ed25519.pub
+、
+.Pa id_ed25519_sk.pub
+或
+.Pa id_rsa.pub
+文件并进行编辑。
+.Pp
+.Nm
+强制执行 1024 位的最小 RSA 密钥模数大小。
+.Pp
+选项 (如果存在) 由逗号分隔的选项规范组成。 不允许有空格，双引号内除外。 支持以下选项规范 (请注意选项关键字不区分大小写) :
+.Bl -tag -width Ds
+.It Cm agent-forwarding
+启用先前由
+.Cm restrict
+选项禁用的身份验证代理转发。
+.It Cm cert-authority
+指定列出的密钥是受信任的证书颁发机构 (CA)，可以验证用于用户身份验证的签名证书。
+.Pp
+证书可以对类似于这些密钥选项的访问限制进行编码。 如果同时存在证书限制和密钥选项，则应用两者中限制最严格的 union。
+.It Cm command="command"
+指定只要使用此密钥进行身份验证就执行该命令。 忽略用户提供的命令 (如果有)。 如果客户端请求 pty，则命令在 pty 上运行; 否则它会在没有
+tty 的情况下运行。 如果需要 8 位清洁通道，则不得请求 pty 或应指定
+.Cm no-pty
+。 引号可以通过用反斜杠引用来包含在命令中。
+.Pp
+此选项可能有助于限制某些公钥仅执行特定操作。 一个示例可能是允许远程备份但仅此而已的密钥。 请注意，客户端可以指定 TCP 或者 X11
+转发，除非它们被明确禁止，例如使用
+.Cm restrict
+密钥选项。
+.Pp
+客户端最初提供的命令在
+.Ev SSH_ORIGINAL_COMMAND
+环境变量中可用。 请注意，此选项适用于 shell、命令或子系统执行。
+另请注意，此命令可能会被
+.Xr sshd_config 5
+.Cm ForceCommand
+指令取代。
+.Pp
+如果指定了一个命令，并且在用于认证的证书中嵌入了一个强制命令，则只有当两个命令相同时，证书才会被接受。
+.It Cm environment="NAME=value"
+指定在使用此键登录时要将字符串添加到环境中。 Environment 变量以这种方式设置覆盖其他默认环境值。 这种类型的多个选项是允许的。
+默认情况下禁用环境处理，并通过
+.Cm PermitUserEnvironment
+选项进行控制。
+.It Cm expiry-time="timespec"
+指定不接受密钥的时间。 时间可以指定为 YYYYMMDD[Z] 日期或 YYYYMMDDHHMM [SS][Z] 时间。
+日期和时间将在系统时区中解释，除非以 Z 字符为后缀，在这种情况下，它们将在 UTC 时区中解释。
+.It Cm from="pattern-list"
+指定除了公钥身份验证之外，远程主机的规范名称或其 IP 地址必须出现在以逗号分隔的模式列表中。 有关模式的更多信息，请参见
+.Xr ssh_config 5
+中的模式。
+.Pp
+除了可以应用于主机名或地址的通配符匹配之外，
+.Cm from
+节可以使用 CIDR address/masklen 表示法匹配 IP 地址。
+.Pp
+此选项的目的是选择性地增加安全性: 公钥身份验证本身不信任网络或名称服务器或任何东西 (但密钥除外) ;
+但是，如果有人以某种方式窃取了密钥，则该密钥允许入侵者从世界任何地方登录。 这个额外的选项使得使用被盗的密钥更加困难
+(除了密钥之外，名称服务器或者路由器也必须被破坏)。
+.It Cm no-agent-forwarding
+当此密钥用于身份验证时，禁止身份验证代理转发。
+.It Cm no-port-forwarding
+当此密钥用于身份验证时禁止 TCP 转发。 客户端的任何端口转发请求都将返回错误。 这可能会被使用，例如与
+.Cm command
+选项结合使用。
+.It Cm no-pty
+防止 tty 分配 (分配 pty 的请求将失败)。
+.It Cm no-user-rc
+禁止执行
+.Pa ~/.ssh/rc
+。
+.It Cm no-X11-forwarding
+当此密钥用于身份验证时禁止 X11 转发。 客户端的任何 X11 转发请求都将返回错误。
+.It Cm permitlisten="[host:]port"
+使用
+.Xr ssh 1
+.Fl R
+选项限制远程端口转发，使其只能侦听指定的主机 (optional) 和端口。
+可以通过将地址括在方括号中来指定 IPv6 地址。 可以应用多个
+.Cm permitlisten
+选项，用逗号分隔。 主机名可能包含通配符，如
+.Xr ssh_config 5
+中的 PATTERNS 部分所述。
+.Cm *
+的端口规范匹配任何端口。 请注意，
+.Cm GatewayPorts
+的设置可能会进一步限制侦听地址。 请注意，如果请求转发时未指定侦听主机，则
+.Xr ssh 1
+将发送主机名
+.Dq localhost
+，并且此名称与显式本地主机地址
+.Dq 127.0.0.1
+和
+.Dq ::1
+的处理方式不同。
+.It Cm permitopen="host:port"
+使用
+.Xr ssh 1
+.Fl L
+选项限制本地端口转发，使其只能连接到指定的主机和端口。 可以通过将地址括在方括号中来指定 IPv6
+地址。 可以应用多个
+.Cm permitopen
+选项，用逗号分隔。 没有对指定的主机名执行模式匹配或名称查找，它们必须是字面量主机名或者地址。
+.Cm *
+的端口规范匹配任何端口。
+.It Cm port-forwarding
+启用之前由
+.Cm restrict
+选项禁用的端口转发。
+.It Cm principals="principals"
+在
+.Cm cert-authority
+行中，将允许的证书身份验证主体指定为逗号分隔列表。
+列表中的至少一个名称必须出现在证书的委托人列表中，证书才能被接受。 对于未使用
+.Cm cert-authority
+选项标记为可信证书签署者的密钥，将忽略此选项。
+.It Cm pty
+允许之前由
+.Cm restrict
+选项禁用的 tty 分配。
+.It Cm no-touch-required
+不需要为使用此密钥进行的签名证明用户在场。 此选项仅对 FIDO 验证器算法
+.Cm ecdsa-sk
+和
+.Cm ed25519-sk
+有意义。
+.It Cm verify-required
+要求使用此密钥进行的签名证明他们验证了用户，例如通过 PIN。 此选项仅对 FIDO 验证器算法
+.Cm ecdsa-sk
+和
+.Cm ed25519-sk
+有意义。
+.It Cm restrict
+启用所有限制，即禁用端口、代理和 X11 转发，以及禁用
+.Pa ~/.ssh/rc
+的 PTY 分配和执行。 如果将任何 future
+限制功能添加到 authorized_keys 文件，它们将包含在此集合中。
+.It Cm tunnel="n"
+在服务器上强制使用
+.Xr tun 4
+设备。 如果没有此选项，如果客户端请求隧道，将使用下一个可用设备。
+.It Cm user-rc
+启用之前由
+.Cm restrict
+选项禁用的
+.Pa ~/.ssh/rc
+的执行。
+.It Cm X11-forwarding
+允许之前由
+.Cm restrict
+选项禁用的 X11 转发。
+.El
+.Pp
+authorized_keys 文件示例:
+.Bd -literal -offset 3n
+# 行首允许注释。允许有空行。
+# 普通密钥，没有限制
+ssh-rsa ...
+# 强制命令，禁用 PTY 和所有转发
+限制，命令 =`转储 / 家`ssh-rsa ...
+# 限制 ssh -L 转发目的地
+permitopen="192.0.2.1:80",permitopen="192.0.2.2:25" ssh-rsa ...
+# 限制 ssh -R 转发监听
+permitlisten="localhost:8080",permitlisten="[::1]:22000" ssh-rsa ...
+# 隧道转发配置
+tunnel="0",command="sh /etc/netstart tun0" ssh-rsa ...
+# 覆盖限制以允许 PTY 分配
+限制,pty,command="nethack" ssh-rsa ...
+# 无需触摸即可允许 FIDO 键
+无需触摸 sk-ecdsa-sha2-nistp256@openssh.com ...
+# 需要 FIDO 密钥的用户验证 (例如 PIN 或生物识别)
+需要验证 sk-ecdsa-sha2-nistp256@openssh.com ...
+# 信任 CA 密钥，如果在证书中请求，则允许非接触式 FIDO
+cert-authority,no-touch-required,principals="user_a" ssh-rsa ...
+.Ed
+.Sh SSH_KNOWN_HOSTS FILE FORMAT
+.Pa /etc/ssh/ssh_known_hosts
+和
+.Pa ~/.ssh/known_hosts
+文件包含所有已知主机的主机公钥。
+全局文件应由管理员 (optional) 准备，每个用户文件自动维护: 每当用户连接到未知主机时，其密钥将添加到每个用户文件中。
+.Pp
+这些文件中的每一行都包含以下字段: 标记 (optional)、主机名、密钥类型、base64 编码密钥、注释。 这些字段由空格分隔。
+.Pp
+该标记是可选的，但如果它存在，则它必须是
+.Dq @cert-authority
+之一，以指示该行包含证书颁发机构 (CA) 密钥，或
+.Dq @revoked
+，以指示该行中包含的密钥已被撤销并且永远不能被接受.  一条关键线上只能使用一个标记。
+.Pp
+主机名是逗号分隔的模式列表
+.Pf ( Ql *
+和
+.Ql \&?
+作为通配符) ; 每个模式依次与主机名匹配。 当
+.Nm sshd
+验证客户端时，例如使用
+.Cm HostbasedAuthentication
+时，这将是规范的客户端主机名。 当
+.Xr ssh 1
+验证服务器时，这将是用户提供的主机名、
+.Xr ssh 1
+.Cm HostkeyAlias
+的值 (如果已指定) 或规范服务器主机名
+(如果使用了
+.Xr ssh 1
+.Cm CanonicalizeHostname
+选项)。
+.Pp
+一个模式也可以在
+.Ql \&!
+之前表示否定: 如果主机名匹配一个否定的模式，它不会被接受 (通过那一行)，即使它匹配该行的另一个模式。
+主机名或地址可以选择包含在
+.Ql \&[
+和
+.Ql \&]
+括号内，然后是
+.Ql \&:
+和非标准端口号。
+.Pp
+或者，主机名可以以散列形式存储，如果文件内容被泄露，则隐藏主机名和地址。 散列主机名以
+.Ql |
+字符开头。
+一行中只能出现一个散列主机名，并且不能应用上述任何否定或通配符运算符。
+.Pp
+keytype 和 base64 编码的密钥直接取自主机密钥; 例如，它们可以从
+.Pa /etc/ssh/ssh_host_rsa_key.pub
+获得。 可选的注释字段一直持续到行尾，未使用。
+.Pp
+以
+.Ql #
+开头的行和空行将被忽略为注释。
+.Pp
+进行主机认证时，如果任何匹配行具有正确的密钥，则认证被接受; 要么完全匹配，要么如果服务器提供了用于身份验证的证书，则为签署证书的证书颁发机构的密钥。
+对于作为证书颁发机构信任的密钥，它必须使用上述
+.Dq @cert-authority
+标记。
+.Pp
+已知主机文件还提供了将密钥标记为已撤销的工具，例如，当已知关联的私钥已被盗时。 通过在密钥行的开头包含
+.Dq @revoked
+标记来指定已撤销的密钥，并且永远不会接受身份验证或作为证书颁发机构，而是会在遇到它们时从
+.Xr ssh 1
+发出警告。
+.Pp
+允许 (但不建议) 为相同的名称设置多行或不同的主机密钥。 当来自不同域的主机名的简短形式被放入文件中时，这将不可避免地发生。
+文件中可能包含相互矛盾的信息; 如果可以从任一文件中找到有效信息，则接受身份验证。
+.Pp
+请注意，这些文件中的行通常有数百个字符长，您肯定不想手动输入主机密钥。 相反，通过脚本
+.Xr ssh-keyscan 1
+或采用
+.Pa /etc/ssh/ssh_host_rsa_key.pub
+并在前面添加主机名来生成它们。
+.Xr ssh-keygen 1
+还为
+.Pa ~/.ssh/known_hosts
+提供了一些基本的自动编辑功能，包括删除与主机名匹配的主机并将所有主机名转换为其散列表示形式。
+.Pp
+示例 ssh_known_hosts 文件:
+.Bd -literal -offset 3n
+# 行首允许注释
+cvs.example.net,192.0.2.10 ssh-rsa AAAA1234.....=
+# 哈希主机名
+|1|JfKTdBh7rNbXkVAQCRp4OQoPfmI=|USECr3SWf1JUPsms5AqfD5QfxkM= ssh-rsa
+AAAA1234.....=
+# 一个被撤销的密钥
+@revoked * ssh-rsa AAAAB5W...
+# 一个 CA 密钥，接受*.mydomain.com 或*.mydomain.org 中的任何主机
+@cert-authority *.mydomain.org,*.mydomain.com ssh-rsa AAAAB5W...
+.Ed
+.Sh FILES
+.Bl -tag -width Ds -compact
+.It Pa ~/.hushlogin
+如果分别启用
+.Cm PrintLastLog
+和
+.Cm PrintMotd
+，则此文件用于禁止打印上次登录时间和
+.Pa /etc/motd
+。 它不会抑制
+.Cm Banner
+指定的横幅打印。
+.Pp
+.It Pa ~/.rhosts
+此文件用于基于主机的身份验证 (有关详细信息，请参见
+.Xr ssh 1 )
+。 在某些机器上，如果用户的主目录位于 NFS
+分区上，则此文件可能需要是全局可读的，因为
+.Nm
+以根用户身份读取它。 此外，此文件必须归用户所有，并且不得具有其他任何人的写入权限。
+大多数机器的推荐权限是用户的 read/write，其他人无法访问。
+.Pp
+.It Pa ~/.shosts
+该文件的使用方式与
+.Pa .rhosts
+完全相同，但允许基于主机的身份验证而不允许使用 rlogin/rsh 登录。
+.Pp
+.It Pa ~/.ssh/
+此目录是所有特定于用户的配置和身份验证信息的默认位置。 一般没有要求将此目录的全部内容保密，但建议用户权限为
+read/write/execute，其他人无法访问。
+.Pp
+.It Pa ~/.ssh/authorized_keys
+列出可用于以该用户身份登录的公钥 (DSA、ECDSA、Ed25519、RSA)。 该文件的格式如上所述。 文件内容不高度敏感，但建议用户权限为
+read/write，其他人不可访问。
+.Pp
+如果此文件、
+.Pa ~/.ssh
+目录或用户的主目录可由其他用户写入，则该文件可能会被未经授权的用户修改或替换。 在这种情况下，除非
+.Cm StrictModes
+选项已设置为
+.Dq no
+，否则
+.Nm
+将不允许使用它。
+.Pp
+.It Pa ~/.ssh/environment
+该文件在登录时被读入环境 (如果存在)。 它只能包含空行、注释行 (以
+.Ql # )
+开头) 和 name=value 形式的赋值行。
+该文件应该只能由用户写入; 它不需要被其他任何人阅读。 默认情况下禁用环境处理，并通过
+.Cm PermitUserEnvironment
+选项进行控制。
+.Pp
+.It Pa ~/.ssh/known_hosts
+包含用户登录的所有主机的主机密钥列表，这些主机不在系统范围的已知主机密钥列表中。 该文件的格式如上所述。 该文件应该只能由 root/the
+所有者写入，并且可以但不必是世界可读的。
+.Pp
+.It Pa ~/.ssh/rc
+包含在用户的主目录变得可访问之前要运行的初始化例程。 该文件应该只能由用户写入，不需要任何其他人读取。
+.Pp
+.It Pa /etc/hosts.equiv
+此文件用于基于主机的身份验证 (请参见
+.Xr ssh 1 ) .
+它应该只能由 root 写入。
+.Pp
+.It Pa /etc/ssh/moduli
+包含用于 "Diffie-Hellman Group Exchange" 密钥交换方法的 Diffie-Hellman 组。 文件格式在
+.Xr moduli 5
+中描述。 如果在此文件中找不到可用的组，则将使用固定的内部组。
+.Pp
+.It Pa /etc/motd
+请参见
+.Xr motd 5
+。
+.Pp
+.It Pa /etc/nologin
+如果这个文件存在，
+.Nm
+拒绝让除 root 以外的任何人登录。 该文件的内容显示给任何试图登录的人，并且拒绝非 root 连接。
+该文件应该是世界可读的。
+.Pp
+.It Pa /etc/ssh/shosts.equiv
+该文件的使用方式与
+.Pa hosts.equiv
+完全相同，但允许基于主机的身份验证而不允许使用 rlogin/rsh 登录。
+.Pp
+.It Pa /etc/ssh/ssh_host_ecdsa_key
+.It Pa /etc/ssh/ssh_host_ed25519_key
+.It Pa /etc/ssh/ssh_host_rsa_key
+这些文件包含主机密钥的私有部分。 这些文件应该只由 root 拥有，只能由 root 读取，其他人不能访问。 请注意，如果这些文件是
+group/world-accessible，则
+.Nm
+不会启动。
+.Pp
+.It Pa /etc/ssh/ssh_host_ecdsa_key.pub
+.It Pa /etc/ssh/ssh_host_ed25519_key.pub
+.It Pa /etc/ssh/ssh_host_rsa_key.pub
+这些文件包含主机密钥的公共部分。 这些文件应该是全局可读的，但只能由 root 用户写入。 它们的内容应该与各自的隐私部分相匹配。
+这些文件并没有真正用于任何用途; 提供它们是为了方便用户，因此可以将它们的内容复制到已知的主机文件中。 这些文件是使用
+.Xr ssh-keygen 1
+创建的。
+.Pp
+.It Pa /etc/ssh/ssh_known_hosts
+系统范围内的已知主机密钥列表。 该文件应由系统管理员准备，以包含组织中所有机器的公共主机密钥。 该文件的格式如上所述。 该文件应该只能由
+root/the 所有者写入，并且应该是世界可读的。
+.Pp
+.It Pa /etc/ssh/sshd_config
+包含
+.Nm sshd
+的配置数据。
+.Xr sshd_config 5
+中描述了文件格式和配置选项。
+.Pp
+.It Pa /etc/ssh/sshrc
+与
+.Pa ~/.ssh/rc
+类似，它可用于全局指定特定于机器的登录时初始化。 这个文件应该只能由 root 写入，并且应该是世界可读的。
+.Pp
+.It Pa /var/empty
+.Nm
+在预认证阶段权限分离时使用的
+.Xr chroot 2
+目录。 该目录不应包含任何文件，并且必须由 root
+所有，而不是组或世界可写。
+.Pp
+.It Pa /run/sshd.pid
+包含侦听连接的
+.Nm
+的进程 ID (如果有多个守护进程同时为不同的端口运行，这包含最后启动的进程 ID)。 该文件的内容不敏感;
+它可以是世界可读的。
+.El
+.Sh SEE ALSO
+.Xr scp 1 ,
+.Xr sftp 1 ,
+.Xr ssh 1 ,
+.Xr ssh-add 1 ,
+.Xr ssh-agent 1 ,
+.Xr ssh-keygen 1 ,
+.Xr ssh-keyscan 1 ,
+.Xr chroot 2 ,
+.Xr login.conf 5 ,
+.Xr moduli 5 ,
+.Xr sshd_config 5 ,
+.Xr inetd 8 ,
+.Xr sftp-server 8
+.Sh AUTHORS
+OpenSSH 是 Tatu Ylonen 发布的原始免费 ssh 1.2.12 的衍生版本。 Aaron Campbell、Bob
+Beck、Markus Friedl、Niels Provos、Theo de Raadt 和 Dug Song
+删除了许多错误，重新添加了更新的特性并创建了 OpenSSH。 Markus Friedl 贡献了对 SSH 协议版本 1.5 和 2.0 的支持。
+Niels Provos 和 Markus Friedl 贡献了对特权分离的支持。
+.Pp
+.Sh [手册页中文版]
+.Pp
+本翻译为免费文档；阅读
+.Lk https://www.gnu.org/licenses/gpl-3.0.html GNU 通用公共许可证第 3 版
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.Pp
+该中文翻译由 wtklbm 根据个人学习需要制作
+.Mt wtklbm<wtklbm@gmail.com>
+.Pp
+项目地址:
+.Mt https://github.com/wtklbm/manpages-chinese
+.Me 。

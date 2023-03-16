@@ -1,0 +1,121 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1992 Drew Eckhardt (drew@cs.colorado.edu), March 28, 1992
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" Modified by Michael Haardt <michael@moria.de>
+.\" Modified 1993-07-24 by Rik Faith <faith@cs.unc.edu>
+.\" Modified 1995-06-10 by Andries Brouwer <aeb@cwi.nl>
+.\" Modified 2004-06-23 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" Modified 2004-10-10 by Andries Brouwer <aeb@cwi.nl>
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH utime 2 2022\-12\-03 "Linux man\-pages 6.03" 
+.SH NAME
+utime, utimes \- 更改文件上次访问和修改时间
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <utime.h>\fP
+.PP
+\fBint utime(const char *\fP\fIfilename\fP\fB,\fP
+\fB          const struct utimbuf *_Nullable \fP\fItimes\fP\fB);\fP
+.PP
+\fB#include <sys/time.h>\fP
+.PP
+\fBint utimes(const char *\fP\fIfilename\fP\fB,\fP
+\fB          const struct timeval \fP\fItimes\fP\fB[_Nullable 2]);\fP
+.fi
+.SH DESCRIPTION
+\fBNote:\fP 现代应用程序可能更喜欢使用 \fButimensat\fP(2) 中描述的接口。
+.PP
+\fButime\fP() 系统调用将 \fIfilename\fP 指定的 inode 的访问和修改时间分别修改为 \fItimes\fP 的 \fIactime\fP 和
+\fImodtime\fP 字段。 状态更改时间 (ctime) 将设置为当前时间，即使其他时间戳实际上没有更改。
+.PP
+如果 \fItimes\fP 为 NULL，则文件的访问和修改时间设置为当前时间。
+.PP
+在以下情况下允许更改时间戳: 进程具有适当的权限，或者有效用户 ID 等于文件的用户 ID，或者 \fItimes\fP 为 NULL
+并且进程具有文件的写权限。
+.PP
+\fIutimbuf\fP 结构体是:
+.PP
+.in +4n
+.EX
+struct utimbuf {
+    time_t 活动时间; /* access time */
+    time_t 调制时间; /* modification time */
+};
+.EE
+.in
+.PP
+\fButime\fP() 系统调用允许指定分辨率为 1 秒的时间戳。
+.PP
+\fButimes\fP() 系统调用类似，但 \fItimes\fP 参数指的是数组而不是结构体。 该数组的元素是 \fItimeval\fP 结构，它允许 1
+微秒的精度来指定时间戳。 \fItimeval\fP 结构体是:
+.PP
+.in +4n
+.EX
+struct timeval {
+    long tv_sec;        /* seconds */
+    long tv_usec;       /* microseconds */
+};
+.EE
+.in
+.PP
+\fItimes[0]\fP 指定新的访问时间，\fItimes[1]\fP 指定新的修改时间。 如果 \fItimes\fP 为 NULL，则类似于
+\fButime\fP()，文件的访问和修改时间设置为当前时间。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEACCES\fP
+\fIpath\fP 路径前缀中的目录之一的搜索权限被拒绝 (另请参见 \fBpath_resolution\fP(7)).
+.TP 
+\fBEACCES\fP
+\fItimes\fP 为 NULL，调用者的有效用户 ID 与文件的所有者不匹配，调用者没有对该文件的写访问权，并且调用者没有特权 (Linux: 既没有
+\fBCAP_DAC_OVERRIDE\fP 也没有 \fBCAP_FOWNER\fP 能力)。
+.TP 
+\fBENOENT\fP
+\fIfilename\fP 不存在。
+.TP 
+\fBEPERM\fP
+\fItimes\fP 不为 NULL，调用者的有效 UID 与文件所有者不匹配，调用者没有特权 (Linux: 不具备 \fBCAP_FOWNER\fP 能力)。
+.TP 
+\fBEROFS\fP
+\fIpath\fP 驻留在只读文件系统上。
+.SH STANDARDS
+\fButime\fP(): SVr4, POSIX.1\-2001.  POSIX.1\-2008 将 \fButime\fP() 标记为已过时。
+.PP
+\fButimes\fP(): 4.3BSD, POSIX.1\-2001.
+.SH NOTES
+.\"
+.\" In libc4 and libc5,
+.\" .BR utimes ()
+.\" is just a wrapper for
+.\" .BR utime ()
+.\" and hence does not allow a subsecond resolution.
+Linux 不允许更改不可更改文件上的时间戳，或将时间戳设置为不同于仅，追加，文件上的当前时间的时间戳。
+.SH "SEE ALSO"
+\fBchattr\fP(1), \fBtouch\fP(1), \fBfutimesat\fP(2), \fBstat\fP(2), \fButimensat\fP(2),
+\fBfutimens\fP(3), \fBfutimes\fP(3), \fBinode\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,141 @@
+.\" -*- coding: UTF-8 -*-
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH TCPD 8   
+.SH NAME
+tcpd \- 互联网服务的访问控制设施
+.SH DESCRIPTION
+.PP
+\fItcpd\fP 程序可以设置为监视对
+\fItelnet\fP、\fIfinger\fP、\fIftp\fP、\fIexec\fP、\fIrsh\fP、\fIrlogin\fP、\fItftp\fP、\fItalk\fP、\fIcomsat\fP
+和其他与可执行文件具有一对一映射的服务的传入请求。
+.PP
+该程序支持 4.3BSD 风格的套接字和系统 V.4 风格的 TLI。 当 TLI 下的协议不是 Internet 协议时，功能可能会受到限制。
+.PP
+有两种可能的操作模式: 在 \fIinetd\fP 启动服务之前执行 \fItcpd\fP，或者将守护程序与 \fIlibwrap\fP 共享库链接，如
+\fIhosts_access\fP(3) 手册页中所述。\fIinetd\fP 启动时的操作如下: 每当服务请求到达时，\fIinetd\fP 守护程序就会被诱骗运行
+\fItcpd\fP 程序而不是所需的服务器。\fItcpd\fP 记录请求并进行一些额外的检查。当一切正常时，\fItcpd\fP 运行适当的服务器程序并离开。
+.PP
+可选特性包括: 基于模式的访问控制、使用 RFC 931 等协议的客户端用户名查找、防止假装拥有他人主机名的主机以及防止假装拥有他人网络地址的主机。
+.SH LOGGING
+由 \fItcpd\fP 监视的连接通过 \fIsyslog\fP(3) 设施报告。每条记录都包含一个时间戳、客户端主机名和所请求服务的名称。
+该信息可用于检测不需要的活动，尤其是当来自多个主机的日志文件信息合并时。
+.PP
+为了找出日志的去向，请检查系统日志配置文件，通常是 /etc/syslog.conf。
+.SH "ACCESS CONTROL"
+可选地，\fItcpd\fP 支持一种基于模式匹配的简单形式的访问控制。 访问控制软件提供，钩子，用于在模式触发时执行 shell 命令。
+有关详细信息，请参见 \fIhosts_access\fP(5) 手册页。
+.SH "HOST NAME VERIFICATION"
+某些协议 (\fIrlogin, rsh\fP) 的身份验证方案依赖于主机名。一些实现相信它们从任何随机名称服务器获得的主机名;
+其他实现更为谨慎，但使用了有缺陷的算法。
+.PP
+\fItcpd\fP 通过查看 name\->address DNS 服务器返回的主机名和地址来验证 address\->name DNS
+服务器返回的客户端主机名。 如果检测到任何差异，\fItcpd\fP 就会断定它正在处理一个假装拥有其他主机名的主机。
+.PP
+如果源代码是用 \-DPARANOID 编译的，\fItcpd\fP 将丢弃连接以防主机 name/address 不匹配。 否则，主机名可以与
+\fIPARANOID\fP 通配符匹配，之后可以采取适当的操作。
+.SH "HOST ADDRESS SPOOFING"
+可选地，\fItcpd\fP 在它处理的每个连接上禁用源路由套接字选项。这将解决来自假装拥有属于其他网络的地址的主机的大多数攻击。UDP
+服务不受益于此保护。这个特性必须在编译时开启。
+.SH "RFC 931"
+当启用 RFC 931 等查找时 (编译时选项) \fItcpd\fP 将尝试建立客户端用户的名称。仅当客户端主机运行符合 RFC 931
+的守护程序时，这才会成功。 客户端用户名查找不适用于面向数据报的连接，并且在来自 PC 的连接的情况下可能会导致明显的延迟。
+.SH EXAMPLES
+使用 \fItcpd\fP 的细节取决于编译到程序中的路径名信息。
+.SH "EXAMPLE 1"
+当 \fItcpd\fP 期望将原始网络守护程序移动到 "other" 位置时，此示例适用。
+.PP
+为了监控对 \fIfinger\fP 服务的访问，把原来的 finger 守护进程移到 "other" 的地方，在原来的 finger 守护进程的地方安装
+tcpd。无需更改配置文件。
+.nf
+.sp
+.in +5
+# 目录 /other/place
+# mv /usr/sbin/in.fingerd /other/place
+# cp tcpd /usr/sbin/in.fingerd
+.fi
+.PP
+该示例假定网络守护进程位于 /usr/sbin 中。在某些系统上，网络守护进程位于 /usr/sbin 或 /usr/libexec
+中，或者它们的名称没有 `in.\' 前缀。
+.SH "EXAMPLE 2"
+此示例适用于 \fItcpd\fP 期望网络守护程序保留在其原始位置的情况。
+.PP
+为了监控对 \fIfinger\fP 服务的访问，对 \fIinetd\fP 配置文件 (通常是 \fI/etc/inetd.conf\fP):
+.nf
+.sp
+.ti +5
+手指流 tcp nowait nobody /usr/sbin/in.fingerd in.fingerd
+.sp
+becomes:
+.sp
+.ti +5
+手指流 tcp nowait nobody /usr/sbin/tcpd in.fingerd
+.sp
+.fi
+.PP
+该示例假定网络守护进程位于 /usr/sbin 中。在某些系统上，网络守护进程位于 /usr/sbin 或 /usr/libexec
+中，这些守护进程的名称没有 `in.` 前缀，或者 inetd 配置文件中没有用户 ID 字段。
+.PP
+\fItcpd\fP 涵盖的其他服务也需要进行类似的更改。 向 \fIinetd\fP(8) 进程发送 `kill\-HUP\' 以使更改生效。
+.SH "EXAMPLE 3"
+对于不在公共目录 ("secret" 或其他目录) 中的守护进程，编辑 \fIinetd\fP 配置文件，以便它为进程名称字段指定绝对路径名。例如:
+.nf
+.sp
+    ntalk dgram udp 等待 root /usr/sbin/tcpd /usr/local/lib/ntalkd
+.sp
+.fi
+.PP
+只有路径名的最后一个组件 (ntalkd) 将用于访问控制和日志记录。
+.SH BUGS
+一些 UDP (和 RPC) 守护进程在完成工作后会逗留一段时间，以防收到另一个请求。 在 inetd 配置文件中，这些服务使用 \fIwait\fP
+选项注册。只会记录启动此类守护程序的请求。
+.PP
+该程序不适用于 TCP 上的 RPC 服务。这些服务在 inetd 配置文件中注册为 \fIrpc/tcp\fP。受此限制影响的唯一重要服务是
+\fIrexd\fP，它由 \fIon(1)\fP 命令使用。这不是什么大损失。 在大多数系统上，\fIrexd\fP 不如 /etc/hosts.equiv
+中的通配符安全。
+.PP
+RPC 广播请求 (例如: \fIrwall, rup, rusers\fP) 总是显示为来自响应主机。发生的情况是客户端将请求广播到其网络上的所有
+\fIportmap\fP 守护进程; 每个 \fIportmap\fP 守护进程将请求转发给本地守护进程。据 \fIrwall\fP 等守护进程所知，请求来自本地主机。
+.SH FILES
+.PP
+主机访问控制表的默认位置是:
+.PP
+/etc/hosts.allow
+.br
+/etc/hosts.deny
+.SH "SEE ALSO"
+.na
+.nf
+hosts_access(3)，由 libwrap 库提供的函数。
+hosts_access(5)，tcpd 访问控制表的格式。
+syslog.conf(5)，syslogd 控制文件的格式。
+inetd.conf(5)，inetd 控制文件的格式。
+.SH AUTHORS
+.na
+.nf
+Wietse Venema (wietse@wzv.win.tue.nl),
+数学与计算科学系，
+埃因霍温科技大学
+Den Dolech 2, P.O. Box 513,
+5600 MB 埃因霍温，荷兰
+
+.\" @(#) tcpd.8 1.5 96/02/21 16:39:16
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

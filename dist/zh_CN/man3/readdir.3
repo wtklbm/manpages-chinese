@@ -1,0 +1,195 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 1993 David Metcalfe (david@prism.demon.co.uk)
+.\" and Copyright (C) 2008, 2016 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" References consulted:
+.\"     Linux libc source code
+.\"     Lewine's _POSIX Programmer's Guide_ (O'Reilly & Associates, 1991)
+.\"     386BSD man pages
+.\" Modified Sat Jul 24 16:09:49 1993 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 11 June 1995 by Andries Brouwer (aeb@cwi.nl)
+.\" Modified 22 July 1996 by Andries Brouwer (aeb@cwi.nl)
+.\" 2007-07-30 Ulrich Drepper <drepper@redhat.com>, mtk:
+.\"     Rework discussion of nonstandard structure fields.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH readdir 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+readdir \- 读取一个目录
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <dirent.h>\fP
+.PP
+\fBstruct dirent *readdir(DIR *\fP\fIdirp\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+\fBreaddir\fP() 函数返回一个指向 \fIdirent\fP 结构体的指针，表示 \fIdirp\fP 指向的目录流中的下一个目录条目。
+它在到达目录流的末尾或发生错误时返回 NULL。
+.PP
+在 glibc 实现中，\fIdirent\fP 结构体定义如下:
+.PP
+.in +4n
+.EX
+struct dirent {
+    ino_t          d_ino;       /* Inode number */
+    off_t          d_off;       /* Not an offset; see below */
+    unsigned short d_reclen;    /* Length of this record */
+    unsigned char  d_type;      /* Type of file; not supported
+                                   按所有文件系统类型 */
+    char           d_name[256]; /* Null\-terminated filename */
+};
+.EE
+.in
+.PP
+POSIX.1 强制要求的 \fIdirent\fP 结构体中的唯一字段是 \fId_name\fP 和 \fId_ino\fP。
+其他字段是非标准化的，并非出现在所有系统中; 有关更多详细信息，请参见下面的注释。
+.PP
+\fIdirent\fP 结构体的字段如下:
+.TP 
+\fId_ino\fP
+这是文件的 inode 编号。
+.TP 
+\fId_off\fP
+.\" https://lwn.net/Articles/544298/
+\fId_off\fP 中返回的值与在目录流中的当前位置调用 \fBtelldir\fP(3) 时返回的值相同。 请注意，尽管 \fId_off\fP
+字段具有类型和名称，但它很少是现代文件系统上的任何类型的目录偏移量。 应用程序应将此字段视为不透明值，不对其内容做出任何假设; 另请详见
+\fBtelldir\fP(3)。
+.TP 
+\fId_reclen\fP
+这是返回记录的大小 (以字节为单位)。 这可能与上面显示的结构体定义的大小不匹配; 见注释。
+.TP 
+\fId_type\fP
+该字段包含一个指示文件类型的值，如果进一步的操作取决于文件类型，则可以避免调用 \fBlstat\fP(2) 的开销。
+.IP
+当一个合适的特性测试宏被定义为 (\fB_DEFAULT_SOURCE\fP since glibc 2.19, or \fB_BSD_SOURCE\fP on
+glibc 2.19 and earlier, glibc defines the following 宏常量用于 \fId_type\fP: 中返回的值
+.RS
+.TP  12
+\fBDT_BLK\fP
+这是块设备。
+.TP 
+\fBDT_CHR\fP
+这是一个字符设备。
+.TP 
+\fBDT_DIR\fP
+这是一个目录。
+.TP 
+\fBDT_FIFO\fP
+这是命名管道 (FIFO)。
+.TP 
+\fBDT_LNK\fP
+这是一个符号链接。
+.TP 
+\fBDT_REG\fP
+这是一个常规文件。
+.TP 
+\fBDT_SOCK\fP
+这是一个 UNIX 域套接字。
+.TP 
+\fBDT_UNKNOWN\fP
+无法确定文件类型。
+.RE
+.IP
+.\" kernel 2.6.27
+.\" The same sentence is in getdents.2
+目前，只有一些文件系统 (其中: Btrfs、ext2、ext3 和 ext4) 完全支持返回 \fId_type\fP 中的文件类型。
+所有应用程序都必须正确处理 \fBDT_UNKNOWN\fP 的返回。
+.TP 
+\fId_name\fP
+该字段包含空终止文件名。 该字段包含空终止文件名。
+.PP
+\fBreaddir\fP() 返回的数据可能会被随后为同一目录流调用 \fBreaddir\fP() 所覆盖。
+.SH "RETURN VALUE"
+成功时，\fBreaddir\fP() 返回指向 \fIdirent\fP 结构体的指针。 (这个结构体可能是静态分配的; 不要尝试 \fBfree\fP(3) 它。)
+.PP
+如果到达目录流的末尾，则返回 NULL 并且不更改 \fIerrno\fP。 如果发生错误，则返回 NULL 并设置 \fIerrno\fP 以指示错误。
+要区分流结束和错误，请在调用 \fBreaddir\fP() 之前将 \fIerrno\fP 设置为零，然后在返回 NULL 时检查 \fIerrno\fP 的值。
+.SH ERRORS
+.TP 
+\fBEBADF\fP
+无效的目录流描述符 \fIdirp\fP。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBreaddir\fP()
+T}	Thread safety	MT\-Unsafe race:dirstream
+.TE
+.hy
+.ad
+.sp 1
+.PP
+.\" FIXME .
+.\" http://www.austingroupbugs.net/view.php?id=696
+在当前的 POSIX.1 规范 (POSIX.1\-2008) 中，不要求 \fBreaddir\fP() 是线程安全的。 但是，在现代实现 (包括 glibc
+实现) 中，并发调用指定不同目录流的 \fBreaddir\fP() 是线程安全的。 在多个线程必须从同一目录流读取的情况下，使用具有外部同步的
+\fBreaddir\fP() 仍然优于使用已弃用的 \fBreaddir_r\fP(3) 函数。 预计 POSIX.1 的 future 版本将要求
+\fBreaddir\fP() 在同时用于不同目录流时是线程安全的。
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008, SVr4, 4.3BSD.
+.SH NOTES
+使用 \fBopendir\fP(3) 打开目录流。
+.PP
+连续调用 \fBreaddir\fP() 读取文件名的顺序取决于文件系统的实现; 名称不太可能以任何方式排序。
+.PP
+.\" POSIX.1-2001, POSIX.1-2008
+.\"
+在 POSIX.1 中仅指定字段 \fId_name\fP 和 (作为 XSI 扩展) \fId_ino\fP。 除了 Linux，\fId_type\fP 字段主要仅在
+BSD 系统上可用。 其余字段在许多但不是所有系统上都可用。 在 glibc 下，程序可以通过测试是否定义了宏
+\fB_DIRENT_HAVE_D_NAMLEN\fP、\fB_DIRENT_HAVE_D_RECLEN\fP、\fB_DIRENT_HAVE_D_OFF\fP 或
+\fB_DIRENT_HAVE_D_TYPE\fP 来检查 POSIX.1 中未定义的字段的可用性。
+.SS "The d_name field"
+上面显示的 \fIdirent\fP 结构体定义取自 glibC 头文件，并显示具有固定大小的 \fId_name\fP 字段。
+.PP
+\fIWarning\fP: 应用程序应避免依赖于 \fId_name\fP 字段的大小。 POSIX 将其定义为 \fIchar\ d_name[]\fP，一个未指定大小的字符数组，在终止空字节 (\[aq]\e0\[aq]) 之前最多有 \fBNAME_MAX\fP 个字符。
+.PP
+POSIX.1 明确指出该字段不应用作左值。 该标准还指出 \fIsizeof(d_name)\fP 的使用是不正确的; 请改用
+\fIstrlen(d_name)\fP。 (在某些系统上，该字段被定义为 \fIchar\~d_name[1]\fP!) 言下之意，使用
+\fIsizeof(struct dirent)\fP 来捕获记录的大小包括 \fId_name\fP 的大小也是不正确的。
+.PP
+请注意，虽然调
+.PP
+.in +4n
+.EX
+fpathconf(fd, _PC_NAME_MAX)
+.EE
+.in
+.PP
+对于大多数文件系统返回值 255，在某些文件系统 (例如 CIFS、Windows SMB 服务器) 上，\fId_name\fP 中返回的以空结尾的文件名
+(correctly) 实际上可能超过此大小。 在这种情况下，\fId_reclen\fP 字段包含的值将超过上面显示的 glibc \fIdirent\fP
+结构体的大小。
+.SH "SEE ALSO"
+\fBgetdents\fP(2), \fBread\fP(2), \fBclosedir\fP(3), \fBdirfd\fP(3), \fBftw\fP(3),
+\fBoffsetof\fP(3), \fBopendir\fP(3), \fBreaddir_r\fP(3), \fBrewinddir\fP(3),
+\fBscandir\fP(3), \fBseekdir\fP(3), \fBtelldir\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

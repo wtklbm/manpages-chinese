@@ -1,0 +1,168 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 1980, 1991 Regents of the University of California.
+.\" All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" the American National Standards Committee X3, on Information
+.\" Processing Systems.
+.\"
+.\" SPDX-License-Identifier: BSD-4-Clause-UC
+.\"
+.\"     @(#)setbuf.3	6.10 (Berkeley) 6/29/91
+.\"
+.\" Converted for Linux, Mon Nov 29 14:55:24 1993, faith@cs.unc.edu
+.\" Added section to BUGS, Sun Mar 12 22:28:33 MET 1995,
+.\"                   Thomas.Koenig@ciw.uni-karlsruhe.de
+.\" Correction,  Sun, 11 Apr 1999 15:55:18,
+.\"     Martin Vicente <martin@netadmin.dgac.fr>
+.\" Correction,  2000-03-03, Andreas Jaeger <aj@suse.de>
+.\" Added return value for setvbuf, aeb,
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH setbuf 3 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+setbuf、setbuffer、setlinebuf、setvbuf \- 流缓冲操作
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <stdio.h>\fP
+.PP
+\fBint setvbuf(FILE *restrict \fP\fIstream\fP\fB, char \fP\fIbuf\fP\fB[restrict .\fP\fIsize\fP\fB],\fP
+\fB            int \fP\fImode\fP\fB, size_t \fP\fIsize\fP\fB);\fP
+.PP
+\fBvoid setbuf(FILE *restrict \fP\fIstream\fP\fB, char *restrict \fP\fIbuf\fP\fB);\fP
+\fBvoid setbuffer(FILE *restrict \fP\fIstream\fP\fB, char \fP\fIbuf\fP\fB[restrict .\fP\fIsize\fP\fB],\fP
+\fB            size_t \fP\fIsize\fP\fB);\fP
+\fBvoid setlinebuf(FILE *\fP\fIstream\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsetbuffer\fP(), \fBsetlinebuf\fP():
+.nf
+    由于 glibc 2.19:
+        _DEFAULT_SOURCE
+    glibc 2.19 及更早版本:
+        _BSD_SOURCE
+.fi
+.SH DESCRIPTION
+可用的三种缓冲类型是无缓冲、块缓冲和行缓冲。 当输出流无缓冲时，信息一写入就会出现在目标文件或终端上; 当它是块缓冲时，许多字符被保存并作为一个块写入;
+当它是行缓冲时，字符将被保存直到输出换行符或从附加到终端设备 (通常为 \fIstdin\fP).  函数 \fBfflush\fP(3) 可用于强制提前出块。
+(见 \fBfclose\fP(3).)
+.PP
+通常所有文件都是块缓冲的。 如果一个流引用一个终端 (就像 \fIstdout\fP 通常那样)，它是行缓冲的。 默认情况下，标准错误流 \fIstderr\fP
+始终是无缓冲的。
+.PP
+\fBsetvbuf\fP() 函数可用于任何打开的流以更改其缓冲区。 \fImode\fP 参数必须是以下三个宏之一:
+.RS
+.TP 
+\fB_IONBF\fP
+unbuffered
+.TP 
+\fB_IOLBF\fP
+行缓冲
+.TP 
+\fB_IOFBF\fP
+完全缓冲
+.RE
+.PP
+除无缓冲文件外，\fIbuf\fP 参数应指向至少 \fIsize\fP 字节长的缓冲区; 将使用此缓冲区而不是当前缓冲区。 如果参数 \fIbuf\fP 为
+NULL，则仅影响模式; 将在下一次读取或写入操作时分配一个新缓冲区。 \fBsetvbuf\fP() 函数只能在打开流之后和对其执行任何其他操作之前使用。
+.PP
+其他三个调用实际上只是调用 \fBsetvbuf\fP() 的别名。 \fBsetbuf\fP() 函数正好等同于调用
+.PP
+.in +4n
+setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ);
+.in
+.PP
+\fBsetbuffer\fP() 函数相同，只是缓冲区的大小由调用者决定，而不是由默认的 \fBBUFSIZ\fP 决定。 \fBsetlinebuf\fP()
+函数完全等同于调用:
+.PP
+.in +4n
+setvbuf(stream, NULL, _IOLBF, 0);
+.in
+.SH "RETURN VALUE"
+函数 \fBsetvbuf\fP() 成功返回 0。 它在失败时返回非零值 (\fImode\fP 无效或无法满足请求)。 它可能会在失败时设置 \fIerrno\fP。
+.PP
+其他函数不返回值。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsetbuf\fP(),
+\fBsetbuffer\fP(),
+\fBsetlinebuf\fP(),
+\fBsetvbuf\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+\fBsetbuf\fP() 和 \fBsetvbuf\fP() 函数符合 C99。
+.SH NOTES
+.\" https://www.austingroupbugs.net/view.php?id=397#c799
+.\" 0000397: setbuf and errno
+POSIX 注意到 \fIerrno\fP 的值在调用 \fBsetbuf\fP() 后未指定，并进一步指出，由于在成功调用 \fBsetbuf\fP() 后
+\fIerrno\fP 的值不需要保持不变，因此应用程序应该改为使用 \fBsetvbuf\fP() 以检测错误。
+.SH BUGS
+.\" The
+.\" .BR setbuffer ()
+.\" and
+.\" .BR setlinebuf ()
+.\" functions are not portable to versions of BSD before 4.2BSD, and
+.\" are available under Linux since libc 4.5.21.
+.\" On 4.2BSD and 4.3BSD systems,
+.\" .BR setbuf ()
+.\" always uses a suboptimal buffer size and should be avoided.
+.\".PP
+您必须确保 \fIbuf\fP 指向的空间在 \fIstream\fP 关闭时仍然存在，这也发生在程序终止时。 例如，以下是无效的:
+.PP
+.\" [[invalid]] SRC BEGIN (setbuf.c)
+.EX
+#include <stdio.h>
+
+int
+main(void)
+{
+    char buf[BUFSIZ];
+
+    setbuf(stdout, buf);
+    printf("Hello, world!\en");
+    return 0;
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBstdbuf\fP(1), \fBfclose\fP(3), \fBfflush\fP(3), \fBfopen\fP(3), \fBfread\fP(3),
+\fBmalloc\fP(3), \fBprintf\fP(3), \fBputs\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

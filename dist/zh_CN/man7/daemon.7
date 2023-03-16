@@ -1,0 +1,745 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH DAEMON 7 "" "systemd 253" daemon
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+daemon \- 编写和打包系统守护进程
+.SH DESCRIPTION
+.PP
+守护进程是在后台运行并监督系统或为其他进程提供功能的服务进程。传统上，守护进程是按照源自 SysV Unix\&
+的方案实现的。现代守护进程应该遵循一个更简单但更强大的方案 (这里称为 "new\-style" 守护进程)，由 \fBsystemd\fP(1)\&
+实现。本手册页涵盖了这两种方案，特别是包括对应包含在 systemd init 系统 \& 中的守护进程的建议。
+.SS "SysV Daemons"
+.PP
+当一个传统的 SysV 守护进程启动时，它应该执行以下步骤作为初始化的一部分。请注意，这些步骤对于新型守护进程来说是不必要的
+(见下文)，并且只有在必须与 SysV 兼容的情况下才应实现 \&。
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+关闭除标准输入、输出和错误 (i\&.e\&. 前三个文件描述符 0、1、2) \&
+之外的所有打开的文件描述符。这确保没有意外传递的文件描述符留在守护进程中。在 Linux 上，这最好通过迭代 /proc/self/fd
+来实现，并回退从文件描述符 3 迭代到 \fBgetrlimit()\fP 为 \fBRLIMIT_NOFILE\fP\& 返回的值。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+将所有信号处理程序重置为其默认值 \&。最好通过迭代可用信号直到 \fB_NSIG\fP 的限制并将它们重置为 \fBSIG_DFL\fP\& 来完成此操作。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+使用 \fBsigprocmask()\fP\& 重置信号掩码。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+清理环境块，删除或重置可能对守护进程运行时产生负面影响的环境变量。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+调用 \fBfork()\fP，创建后台进程 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+在子节点中，调用 \fBsetsid()\fP 从任何终端分离并创建一个独立的会话 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+在子进程中，再次调用 \fBfork()\fP，确保守护进程永远不会再重新获取一个终端 \&。(如果程序 \(em 及其所有依赖项 \(em 没有在可能打开
+TTY 设备节点的每个 `open()` 调用上仔细指定 `O_NOCTTY`\&。)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 8.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  8." 4.2
+.\}
+在第一个子节点中调用 \fBexit()\fP，以便只有第二个子节点 (实际的守护进程) 留在 \&。这确保守护进程重新成为 init/PID 1
+的父级，因为所有守护进程都应该是 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 9.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  9." 4.2
+.\}
+在守护进程中，将 /dev/null 连接到标准输入、输出和错误 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'10.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "10." 4.2
+.\}
+在 daemon 进程中，将 umask 重置为 0，这样传递给 \fBopen()\fP、\fBmkdir()\fP
+等的文件模式直接控制创建的文件和目录的访问模式 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'11.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "11." 4.2
+.\}
+在 daemon 进程中，将当前目录更改为根目录 (/)，以免 daemon 不自觉地阻塞挂载点被卸载 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'12.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "12." 4.2
+.\}
+在守护进程中，写入守护进程 PID (由 \fBgetpid()\fP) 返回到 PID 文件，例如 /run/foobar\&.pid (对于假设的守护进程
+"foobar") 以确保守护进程不能启动多次 \&。这必须以无竞争的方式实现，以便只有在同时验证先前存储在 PID 文件中的 PID
+不再存在或属于外部进程时才更新 PID 文件。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'13.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "13." 4.2
+.\}
+在守护进程中，丢弃特权，如果可能且适用 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'14.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "14." 4.2
+.\}
+从守护进程，通知启动的原始进程初始化完成 \&。这可以通过在第一个 \fBfork()\fP
+之前创建的未命名管道或类似的通信通道来实现，因此在原始进程和守护进程中都可用 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'15.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "15." 4.2
+.\}
+在原程序中调用 \fBexit()\fP\&。调用守护进程的进程必须能够依赖这个 \fBexit()\fP
+发生在初始化完成并且所有外部通信通道都已建立并且可以访问之后 \&。
+.RE
+.PP
+不应使用 BSD \fBdaemon()\fP 函数，因为它只实现了这些步骤的一个子集 \&。
+.PP
+需要提供与 SysV 系统兼容性的守护进程应该实现上面指出的方案。但是，建议通过命令行参数使此行为可选和可配置，以简化调试并使用 systemd\&
+简化与系统的集成。
+.SS "New\-Style Daemons"
+.PP
+Linux 的现代服务应作为新型守护进程 \& 实现。这使得在运行时更容易监督和控制它们并简化它们的实现。
+.PP
+对于开发新型守护进程，不需要执行为 SysV 守护进程推荐的任何初始化步骤 \&。诸如 systemd 之类的新型初始化系统使所有这些都变得多余
+\&。此外，由于其中一些步骤会干扰进程监控、文件描述符传递和 init 系统的其他功能，因此建议在作为新型服务运行时不要执行它们 \&。
+.PP
+请注意，新型 init 系统保证在干净的进程上下文中执行守护进程: 保证环境块被清理，信号处理程序和掩码被重置，并且没有遗留的文件描述符被传递
+\&。守护进程将在它们自己的会话中执行，标准输入连接到 /dev/null，标准 output/error 连接到
+\fBsystemd\-journald.service\fP(8) 日志服务，除非另有配置 \&。umask 被重置 \&。
+.PP
+建议新型守护进程实现以下内容:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果收到 \fBSIGTERM\fP，请关闭守护程序并干净地退出 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+如果收到 \fBSIGHUP\fP，请重新加载配置文件 (如果适用) \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+提供来自主守护进程的正确退出代码，因为初始化系统使用它来检测服务错误和问题 \&。建议遵循 \m[blue]\fBLSB recommendations for SysV init scripts\fP\m[]\&\s-2\u[1]\d\s+2\& 中定义的退出代码方案。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+如果可能和适用，公开守护进程 \*(通过 D\-Bus IPC 系统的 Aqs 控制接口并获取总线名称作为初始化的最后一步 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+对于 systemd 中的集成，提供一个 \&.service 元文件，其中包含有关启动、停止和以其他方式维护守护进程的信息 \&。有关详细信息，请参见
+\fBsystemd.service\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+尽可能依赖 init system\*(Aqs 功能来限制守护进程对文件、服务和其他资源的访问，i\&.e\&。在 systemd 的情况下，依赖
+systemd\*(Aqs 资源限制控制而不是自己实现，依赖 systemd\*(Aqs 特权抛弃代码而不是在守护进程中实现，类似 \&。请参见
+\fBsystemd.exec\fP(5) 了解可用的控件 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+如果使用 D\-Bus，请通过提供 D\-Bus 服务激活配置文件 \& 使您的守护进程总线可激活。这有很多好处: 您的守护进程可以按需延迟启动;
+它可以在并行到其他需要它的守护进程 \(em 最大化并行化和启动速度;
+您的守护进程可以在失败时重新启动而不会丢失任何总线请求，因为总线对可激活服务的请求进行排队 \&。详情见下文 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 8.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  8." 4.2
+.\}
+如果您的守护进程通过套接字向其他本地进程或远程客户端提供服务，则应按照下面指出的方案使它可激活套接字 \&。与 D\-Bus
+激活一样，这可以按需启动服务，并且可以改进服务启动的并行化。此外，对于无状态协议 (例如
+syslog、DNS)，可以重新启动实现基于套接字激活的守护进程而不会丢失单个请求 \&。详情见下文 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 9.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  9." 4.2
+.\}
+如果适用，守护进程应该通过 \fBsd_notify\fP(3) 接口通知初始化系统启动完成或状态更新。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'10.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "10." 4.2
+.\}
+新式守护进程可以选择简单地通过 \fBfprintf()\fP 记录到标准错误，然后由初始化系统转发到 syslog，而不是使用 \fBsyslog()\fP
+调用直接记录到系统 syslog 服务。如果日志级别是必需的，可以通过在各个日志行前面加上 "<4>" (对于 syslog
+优先级方案中的日志级别 4 "WARNING") 这样的字符串进行编码，遵循与 Linux 内核 \* (Aqs \fBprintk()\fP 级别系统
+\&。详见 \fBsd\-daemon\fP(3) 和 \fBsystemd.exec\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'11.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "11." 4.2
+.\}
+由于在没有控制 TTY (但作为它们自己的会话领导者) 的情况下调用新型守护程序，因此应注意始终在可能引用 TTY 设备节点的 `open()`
+调用上指定 `O_NOCTTY`，以便不会意外获取控制 TTY\&。
+.RE
+.PP
+这些建议与 \m[blue]\fBApple MacOS X Daemon Requirements\fP\m[]\&\s-2\u[2]\d\s+2\&
+相似但不完全相同。
+.SH ACTIVATION
+.PP
+新型 init 系统提供多种附加机制来激活服务，如下所述 \&。通常将服务配置为同时通过多种机制激活 \&。systemd 的示例:
+bluetoothd\&.service 可能会在插入蓝牙硬件或应用程序通过 D\-Bus\&
+访问其编程接口时被激活。或者，打印服务器守护程序可能会在流量到达 IPP 端口时被激活，或者当打印机被插入时，或者当文件在打印机假脱机目录中排队时
+\&。即使对于旨在无条件地在系统启动时启动的服务，实现下面概述的各种激活方案中的一些也是一个好主意，以最大限度地并行化。如果守护进程实现了 D\-Bus
+服务或监听套接字，实现完整的总线和套接字激活方案允许启动守护进程及其客户端并行
+(加速启动)，因为它的所有通信通道都已经建立，并且没有请求丢失，因为客户端请求将由总线系统 (在 D\-Bus 的情况下) 或内核 (在套接字的情况下)
+排队，直到激活完成 \&。
+.SS "Activation on Boot"
+.PP
+旧式守护进程通常通过 SysV 初始化脚本在启动时专门激活 (并由管理员手动激活)，如 \m[blue]\fBLSB Linux Standard Base Core Specification\fP\m[]\&\s-2\u[1]\d\s+2\&.Linux
+初始化系统普遍支持这种激活方法，包括旧式和新式系统 \&。除其他问题外，SysV 初始化脚本的缺点是在引导过程中涉及 shell 脚本 \&。新型
+init 系统通常在启动和运行期间使用更新版本的激活，并使用更小的服务描述文件 \&。
+.PP
+在 systemd 中，如果开发人员或管理员希望确保在启动时自动激活服务或其他单元，建议在 multi\-user\&.target 或
+graphical\&.target 的 \&.wants/ 目录中放置单元文件的符号链接，这通常用作系统启动时的引导目标 \&。有关
+\&.wants/ 目录的详细信息，请参见 \fBsystemd.unit\fP(5)，有关两个引导目标 \& 的详细信息，请参见
+\fBsystemd.special\fP(7)。
+.SS "Socket\-Based Activation"
+.PP
+为了最大化可能的并行性和健壮性并简化配置和开发，建议所有通过侦听套接字进行通信的新型守护进程都采用基于套接字的激活
+\&。在基于套接字的激活方案中，监听套接字的创建和绑定作为守护进程与本地 (有时是远程) 客户端的主要通信通道被移出守护进程代码并移入初始化系统
+\&。基于每个守护进程的配置，init 系统安装套接字，然后在相应的守护进程启动时将它们交给派生的进程
+\&。可选地，服务的激活可以延迟到第一个入站流量到达套接字以实现守护进程的按需激活。然而，这个方案的主要优点是所有套接字的所有提供者和所有消费者都可以在所有套接字建立后立即启动
+\&。除此之外，守护进程可以在仅丢失最少数量的客户端事务甚至根本不丢失任何客户端请求的情况下重新启动 (后者对于无状态协议尤其如此，例如 DNS 或
+syslog)，因为套接字保持绑定并且在重启期间可以访问，并且所有请求都在排队，而守护进程无法处理它们 \&。
+.PP
+支持套接字激活的新型守护进程必须能够从 init 系统接收它们的套接字，而不是自己创建和绑定它们 \&。systemd 为该方案提供的编程接口详见
+\fBsd_listen_fds\fP(3) 和 \fBsd\-daemon\fP(3)\&。有关将现有守护进程移植到基于套接字的激活的详细信息，请参见下文
+\&。以最小的努力，除了在同一代码库中创建传统的内部套接字之外，还可以实现基于套接字的激活，以支持来自同一守护程序二进制文件的新式和旧式初始化系统。
+.PP
+systemd 通过 \&.socket 单元实现基于套接字的激活，这在 \fBsystemd.socket\fP(5)\&
+中有描述。为基于套接字的激活配置套接字单元时，所有侦听套接字都必须由特殊目标元套接字 \&.target\& 拉入。建议在 [Install]
+部分放置一个 \fIWantedBy=sockets\&.target\fP 指令，以自动添加对安装套接字元 \& 的依赖。除非设置
+\fIDefaultDependencies=no\fP，否则会为所有套接字单元隐式创建必要的顺序依赖性 \&。有关 sockets\&.target
+的详细信息，请参见 \fBsystemd.special\fP(7)\&。当套接字单元安装在 sockets\&.target\&
+中时，没有必要也不建议在套接字单元上放置任何额外的依赖项 (例如来自 multi\-user\&.target 或类似的)。
+.SS "Bus\-Based Activation"
+.PP
+当 D\-Bus IPC 系统用于与客户端通信时，新型守护进程应采用总线激活，以便在客户端应用程序访问其 IPC 接口时自动激活 \&。这是在 D\-Bus
+服务文件中配置的 (不要与 systemd 服务元文件混淆! ) \&。为确保 D\-Bus 使用 systemd
+启动和维护守护进程，请使用这些服务文件中的 \fISystemdService=\fP 指令为 D\-Bus 服务配置匹配的 systemd 服务
+\&。e\&.g\&.: 对于 D\-Bus 激活文件名为 org\&.freedesktop\&.RealtimeKit\&.service 的
+D\-Bus 服务，确保在该文件中设置 \fISystemdService=rtkit\-daemon\&.service\fP 以将其绑定到 systemd
+服务 rtkit\-daemon\&.service\&。这是确保守护程序在通过多种机制同时激活时以无竞争方式启动所必需的 \&。
+.SS "Device\-Based Activation"
+.PP
+通常，管理特定类型硬件的守护进程只有在相应类型的硬件插入或以其他方式可用时才被激活 \&。在新型初始化系统中，可以将激活绑定到硬件
+plug/unplug 事件 \&。在 systemd 中，出现在 sysfs/udev 设备树中的内核设备如果用字符串 `systemd`\&
+标记，则可以作为单元公开。像任何其他类型的单元一样，它们可能会在激活时拉入其他单元 (i\&.e\&. 插入)，从而实现基于设备的激活
+\&。systemd 依赖项可以通过 \fISYSTEMD_WANTS=\fP 属性编码在 udev 数据库中。有关详细信息，请参见
+\fBsystemd.device\fP(5)\&。通常，仅通过专用目标间接地从设备中提取服务会更好。示例: 不是从所有各种蓝牙加密狗和其他可用硬件中提取
+bluetoothd\&.service，而是从它们中提取 bluetooth\&.target 并从该目标中提取
+bluetoothd\&.service\&。这提供了更好的抽象，并为管理员提供了通过使用 \fBsystemctl\fP(1) 的 \fBenable\fP
+之类的命令统一控制 bluetooth\&.target\&.wants/ 符号链接来启用 bluetoothd\&.service 的选项，而不是操纵
+udev 规则集 \&。
+.SS "Path\-Based Activation"
+.PP
+通常，处理假脱机文件或目录 (例如打印系统) 的守护进程的运行时间可能会延迟，直到这些文件系统对象更改状态或变为非空
+\&。新型初始化系统提供了一种将服务激活绑定到文件系统更改的方法。systemd 通过在 \&.path 单元中配置的基于路径的激活来实现此方案，如
+\fBsystemd.path\fP(5)\& 中所述。
+.SS "Timer\-Based Activation"
+.PP
+一些实现旨在定期执行的清理作业的守护进程受益于基于计时器的激活 \&。在 systemd 中，这是通过 \&.timer 单元实现的，如
+\fBsystemd.timer\fP(5)\& 中所述。
+.SS "Other Forms of Activation"
+.PP
+在某些系统中建议并实现了其他形式的激活 \&。然而，通常有更简单或更好的替代方案，或者它们可以将上述方案组合在一起。示例:
+有时，当在网络接口上配置了特定 IP 地址时，启动守护程序或 \&.socket 单元似乎很有用，因为网络套接字应绑定到地址
+\&。然而，另一种实现方法是利用 Linux \fBIP_FREEBIND\fP/\fBIPV6_FREEBIND\fP 套接字选项，可通过 systemd
+套接字文件中的 \fIFreeBind=yes\fP 访问 (有关详细信息，请参见 \fBsystemd.socket\fP(5))
+\&。启用此选项后，允许套接字绑定到非本地、未配置的 IP 地址，因此允许在特定 IP
+地址实际可用之前绑定到该地址，从而使对已配置地址的显式依赖变得多余 \&。另一个经常被建议用于激活服务的触发器是低系统负载
+\&。然而，在这里，更有说服力的方法可能是正确使用操作系统的特性特别是 CPU 或 Linux\& 的 I/O
+调度程序。与其基于监视操作系统调度程序从用户空间调度作业，建议将进程调度留给操作系统调度程序本身 \&。systemd 提供对 CPU 和 I/O
+调度程序的细粒度访问。如果 init 系统执行的进程不应对其他进程可用的 CPU 量或 I/O 带宽产生负面影响，则应配置
+\fICPUSchedulingPolicy=idle\fP 或者
+\fIIOSchedulingClass=idle\fP\&。可选地，这可以与基于计时器的激活相结合，以在运行时安排后台作业并且对系统的影响最小，并将其从引导阶段本身移除
+\&。
+.SH "INTEGRATION WITH SYSTEMD"
+.SS "Writing systemd Unit Files"
+.PP
+在编写 systemd 元文件时，建议考虑以下建议:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果可能，请不要在服务文件 \& 中使用 \fIType=forking\fP 设置。但如果这样做，请确保使用 \fIPIDFile=\fP\& 设置 PID
+文件路径。有关详细信息，请参见 \fBsystemd.service\fP(5)\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+如果您的守护进程在总线上注册了一个 D\-Bus 名称，请确保尽可能在服务文件中使用 \fIType=dbus\fP\&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+确保使用 \fIDescription=\fP\& 设置一个良好的人类可读描述字符串。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+不要禁用 \fIDefaultDependencies=\fP，除非您真的知道您在做什么并且您的元涉及早期启动或延迟系统关闭 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+通常，几乎不需要显式定义任何依赖项 \&。但是，如果您确实配置了显式依赖，只引用 \fBsystemd.special\fP(7)
+上列出的元名或您自己的包引入的名字，以保持元文件操作系统无关 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+确保包含一个 [Install] 部分，其中包含元文件 \& 的安装信息。有关详细信息，请参见
+\fBsystemd.unit\fP(5)\&。要在启动时激活您的服务，请确保添加 \fIWantedBy=multi\-user\&.target\fP 或
+\fIWantedBy=graphical\&.target\fP 指令 \&。要在启动时激活套接字，请确保添加
+\fIWantedBy=sockets\&.target\fP\&。通常，您还想确保在安装服务时也安装了套接字，因此在服务文件 foo\&.service
+中添加 \fIAlso=foo\&.socket\fP，用于假设的程序 foo\&。
+.RE
+.SS "Installing systemd Service Files"
+.PP
+在构建安装时 (例如包构建期间的 \&.g\&.\fBmake install\fP)，建议包将其 systemd 元文件安装在 \fBpkg\-config systemd \-\-variable=systemdsystemunitdir\fP (用于系统服务) 或 \fBpkg\-config systemd \-\-variable=systemduserunitdir\fP (用于用户服务) \&
+返回的目录中。这将使服务在明确请求时在系统中可用，但不会在引导期间自动激活它们。可选地，在软件包安装过程中 (例如管理员的 e\&.g\&.\fBrpm \-i\fP)，应该通过 \fBsystemctl\fP(1) 工具的 \fBenable\fP 命令在 systemd
+配置目录中创建符号链接，以便在启动时自动激活它们。
+.PP
+建议使用 \fBautoconf\fP(1) 的包使用如下配置脚本摘录来确定源配置期间的元安装路径:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+PKG_PROG_PKG_CONFIG
+AC_ARG_WITH([systemdsystemunitdir],
+     [AS_HELP_STRING([\-\-with\-systemdsystemunitdir=DIR], [Directory for systemd service files])],,
+     [with_systemdsystemunitdir=auto])
+AS_IF ([测试 "x$with_systemdsystemunitdir" = "xyes" \-o "x$with_systemdsystemunitdir" ="xauto"], [
+     def_systemdsystemunitdir=$($PKG_CONFIG \-\-variable=systemdsystemunitdir systemd)
+
+     AS_IF ([测试 "x$def_systemdsystemunitdir" ="x"],
+   [AS_IF([test "x$with_systemdsystemunitdir" = "xyes"],
+    [AC_MSG_ERROR ([已请求 systemd 支持，但 pkg\-config 无法查询 systemd 包]) ])
+    with_systemdsystemunitdir=no],
+   [with_systemdsystemunitdir="$def_systemdsystemunitdir"])])
+AS_IF ([测试 "x$with_systemdsystemunitdir" !="xno"],
+      [AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])])
+AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemdsystemunitdir" != "xno"])
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+此代码段允许在 systemd 机器上自动安装元文件，并可选择允许在没有 systemd\& 的机器上安装它们。(为用户元目录修改此片段作为
+reader\& 的练习。)
+.PP
+此外，为确保 \fBmake distcheck\fP 继续工作，建议在 \fBautomake\fP(1)\-based 项目的顶层 Makefile\&.am
+文件中添加以下内容:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+AM_DISTCHECK_CONFIGURE_FLAGS = \e
+  \-\-with\-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+最后，元文件应该安装在系统中，并带有如下所示的 automake 摘录:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+如果 HAVE_SYSTEMD
+systemdsystemunit_DATA = \e
+  foobar\&.socket \e
+  foobar\&.service
+endif
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+在 \fBrpm\fP(8)\&.spec 文件中，在安装 / 卸载期间使用如下代码片段对服务进行 enable/disable\&。这利用了
+systemd\& 附带的 RPM 宏。有关详细信息和其他包管理器的等效信息，请参见您的发行版的包装指南 \&。
+.PP
+在文件的顶部:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+构建要求: systemd
+%{?systemd_requires}
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+作为小脚本，更进一步:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+%post
+%systemd_post foobar\&.service foobar\&.socket
+
+%preun
+%systemd_preun foobar\&.service foobar\&.socket
+
+%postun
+%systemd_postun
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+如果服务在升级期间需要重新启动，请将上面的 "%postun" scriptlet 替换为以下内容:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+%postun
+%systemd_postun_with_restart foobar\&.service
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，"%systemd_post" 和 "%systemd_preun" 期望 installed/removed 的所有单元的名称为参数，以空格
+\& 分隔。 "%systemd_postun" 不需要参数 \&。 "%systemd_postun_with_restart"
+期望单元重新启动为参数 \&。
+.PP
+为了便于从仅提供 SysV 初始化脚本的软件包版本升级到同时提供 SysV 初始化脚本和原生 systemd 服务文件的软件包版本，请使用如下片段:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+%triggerun \-\- foobar < 0\&.47\&.11\-1
+如果 /sbin/chkconfi g\-\-level 5 foobar ; 然后
+  /bin/systemctl\-\-no\-reload 启用 foobar\&.service foobar\&.socket >/dev/null 2>&1 ||:
+fi
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+其中 0\&.47\&.11\-1 是包含原生元文件 \& 的第一个包版本。此片段将确保首次安装元文件时，当且仅当启用 SysV
+初始化脚本时，它才会启用，从而确保启用状态未更改 \&。请注意，\fBchkconfig\fP 是一个特定于 Fedora 的命令，可用于检查是否启用了
+SysV 初始化脚本 \&。其他操作系统必须在此处使用不同的命令 \&。
+.SH "PORTING EXISTING DAEMONS"
+.PP
+由于诸如 systemd 之类的新型初始化系统与传统的 SysV 初始化系统兼容，因此将现有守护进程移植到新型 \&
+并不是绝对必要的。然而，这样做为守护进程提供了额外的功能，并简化了与新型初始化系统的集成。
+.PP
+要移植现有的 SysV 兼容守护进程，建议执行以下步骤:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+如果尚未实现，请向守护进程添加一个可选的命令行开关以禁用守护进程 \&。这不仅对在新型 init 系统中使用守护进程很有用，而且对简化调试也很有用。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+如果守护进程通过本地 \fBAF_UNIX\fP 套接字为本地系统上运行的其他软件提供接口，请考虑实现基于套接字的激活 (见上文)
+\&。通常，一个最小的补丁就足以实现这一点: 在守护程序代码中扩展套接字创建，以便首先检查 \fBsd_listen_fds\fP(3) 是否已通过套接字
+\&。如果传递了套接字 (i\&.e\&. 当 \fBsd_listen_fds()\fP 返回正值时)，则跳过套接字创建步骤并使用传递的套接字
+\&。其次，如果套接字已通过 \&. 第三，如果守护程序正常关闭所有剩余的打开文件描述符作为它的初始化的一部分，则必须保留从 init 系统传递的套接字
+\&。由于新型初始化系统保证没有遗留的文件描述符被传递给执行的进程，如果套接字被传递
+\&，那么简单地跳过所有剩余打开的文件描述符的关闭可能是一个不错的选择。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+为服务编写并安装一个 systemd 元文件
+(如果使用基于套接字的激活，则为套接字，如果守护程序处理假脱机目录，则为路径元文件)，有关详细信息，请参见上文 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+如果守护进程通过 D\-Bus 公开接口，请为该服务编写并安装 D\-Bus 激活文件，详情请参见上文 \&。
+.RE
+.SH "PLACING DAEMON DATA"
+.PP
+建议遵循放置包文件的一般准则，如 \fBfile\-hierarchy\fP(7)\& 中所述。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsd\-daemon\fP(3), \fBsd_listen_fds\fP(3), \fBsd_notify\fP(3),
+\fBdaemon\fP(3), \fBsystemd.service\fP(5), \fBfile\-hierarchy\fP(7)
+.SH NOTES
+.IP " 1." 4
+SysV 初始化脚本的 LSB 建议
+.RS 4
+\%http://refspecs.linuxbase.org/LSB_3.1.1/LSB\-Core\-generic/LSB\-Core\-generic/iniscrptact.html
+.RE
+.IP " 2." 4
+Apple MacOS X 守护程序要求
+.RS 4
+\%https://developer.apple.com/library/mac/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

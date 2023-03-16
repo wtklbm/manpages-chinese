@@ -1,0 +1,112 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2008 Michael Kerrisk <tmk.manpages@gmail.com>
+.\" and Copyright 2003 Abhijit Menon-Sen <ams@wiw.org>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\" 2004-05-31, added tgkill, ahu, aeb
+.\" 2008-01-15 mtk -- rewrote DESCRIPTION
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH tkill 2 2022\-12\-04 "Linux man\-pages 6.03" 
+.SH NAME
+tkill, tgkill \- 向线程发送信号
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP           /* Definition of \fBSIG*\fP constants */
+\fB#include <sys/syscall.h>\fP      /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fB[[deprecated]] int syscall(SYS_tkill, pid_t \fP\fItid\fP\fB, 整数 \fP\fIsig\fP\fB);\fP
+.PP
+\fB#include <signal.h>\fP
+.PP
+\fBint tgkill(pid_t \fP\fItgid\fP\fB, pid_t \fP\fItid\fP\fB, int \fP\fIsig\fP\fB);\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为 \fBtkill\fP() 提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+\fBtgkill\fP() 向线程组 \fItgid\fP 中线程 ID 为 \fItid\fP 的线程发送信号 \fIsig\fP。 (相比之下，\fBkill\fP(2)
+可用于仅向作为一个整体的进程 (即线程组) 发送信号，并且该信号将被传递到该进程内的任意线程。)
+.PP
+.\" FIXME Maybe say something about the following:
+.\" http://sourceware.org/bugzilla/show_bug.cgi?id=12889
+.\"
+.\" Quoting Rich Felker <bugdal@aerifal.cx>:
+.\"
+.\" There is a race condition in pthread_kill: it is possible that,
+.\" between the time pthread_kill reads the pid/tid from the target
+.\" thread descriptor and the time it makes the tgkill syscall,
+.\" the target thread terminates and the same tid gets assigned
+.\" to a new thread in the same process.
+.\"
+.\" (The tgkill syscall was designed to eliminate a similar race
+.\" condition in tkill, but it only succeeded in eliminating races
+.\" where the tid gets reused in a different process, and does not
+.\" help if the same tid gets assigned to a new thread in the
+.\" same process.)
+.\"
+.\" The only solution I can see is to introduce a mutex that ensures
+.\" that a thread cannot exit while pthread_kill is being called on it.
+.\"
+.\" Note that in most real-world situations, like almost all race
+.\" conditions, this one will be extremely rare. To make it
+.\" measurable, one could exhaust all but 1-2 available pid values,
+.\" possibly by lowering the max pid parameter in /proc, forcing
+.\" the same tid to be reused rapidly.
+\fBtkill\fP() 是 \fBtgkill\fP() 的过时前身。 它只允许指定目标线程 ID，如果线程终止并回收其线程
+ID，这可能会导致向错误的线程发出信号。 避免使用此系统调用。
+.PP
+这些是原始系统调用接口，供内部线程库使用。
+.SH "RETURN VALUE"
+成功时，返回零。 出错时返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+已达到 \fBRLIMIT_SIGPENDING\fP 资源限制，\fIsig\fP 是实时信号。
+.TP 
+\fBEAGAIN\fP
+可用内核内存不足，\fIsig\fP 是实时信号。
+.TP 
+\fBEINVAL\fP
+指定了无效的线程 ID、线程组 ID 或信号。
+.TP 
+\fBEPERM\fP
+没有权限。 有关所需的权限，请参见 \fBkill\fP(2)。
+.TP 
+\fBESRCH\fP
+不存在具有指定线程 ID (和线程组 ID) 的进程。
+.SH VERSIONS
+自 Linux 2.4.19/2.5.4 起支持 \fBtkill\fP()。 在 Linux 2.5.75 中添加了 \fBtgkill\fP()。
+.PP
+在 glibc 2.30 中添加了对 \fBtgkill\fP() 的库支持。
+.SH STANDARDS
+\fBtkill\fP() 和 \fBtgkill\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+有关线程组的说明，请参见 \fBclone\fP(2) 中 \fBCLONE_THREAD\fP 的说明。
+.PP
+在 glibc 2.30 之前，也没有 \fBtgkill\fP() 的包装器函数。
+.SH "SEE ALSO"
+\fBclone\fP(2), \fBgettid\fP(2), \fBkill\fP(2), \fBrt_sigqueueinfo\fP(2)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

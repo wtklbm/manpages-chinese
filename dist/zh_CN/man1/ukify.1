@@ -1,0 +1,256 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH UKIFY 1 "" "systemd 253" ukify
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+ukify \- 将内核和 initrd 组合成一个签名的统一内核映像
+.SH SYNOPSIS
+.HP \w'\fB/usr/lib/systemd/ukify\fR\ 'u
+\fB/usr/lib/systemd/ukify\fP \fILINUX\fP \fIINITRD\fP... [OPTIONS...]
+.SH DESCRIPTION
+.PP
+Note: 此命令目前是实验性的 \&。虽然它旨在成为 systemd 的常规组件，但它的行为和界面可能仍会发生变化 \&。
+.PP
+\fBukify\fP 是一种工具，它将内核和 initrd 与 UEFI 引导存根相结合，以创建 \m[blue]\fBUnified Kernel Image (UKI)\fP\m[]\&\s-2\u[1]\d\s+2\(em 一个 PE 二进制文件，可以由固件执行以启动嵌入式 linux 内核
+\&。有关存根 \& 的详细信息，请参见 \fBsystemd\-stub\fP(7)。
+.PP
+其他部分将自动或仅在提供特定选项时插入到 UKI 中 \&。请参见下面对
+\fB\-\-cmdline=\fP、\fB\-\-os\-release=\fP、\fB\-\-devicetree=\fP、\fB\-\-splash=\fP、\fB\-\-pcrpkey=\fP、\fB\-\-uname=\fP
+和 \fB\-\-section=\fP 的讨论 \&。
+.PP
+如果通过 \fB\-\-pcr\-public\-key=\fP 和 \fB\-\-pcr\-private\-key=\fP 选项提供 PCR
+签名密钥，则在使用给定内核、initrd 和其他部分启动后将看到的 PCR 值将被计算、签名并嵌入到 UKI\& 中。
+\fBsystemd\-measure\fP(1) 用于执行此计算和签名 \&。
+.PP
+PCR 值的计算是针对特定的引导阶段路径完成的。这些可以用 \fB\-\-phases=\fP 选项 \& 指定。如果未指定，则使用
+\fBsystemd\-measure\fP 提供的默认值 \&。也可以多次指定
+\fB\-\-pcr\-private\-key=\fP、\fB\-\-pcr\-public\-key=\fP 和 \fB\-\-phases=\fP 参数
+\&。然后将使用每个指定的密钥执行签名 \&。当同时使用 \fB\-\-phases=\fP 和 \fB\-\-pcr\-private\-key=\fP
+时，它们必须被指定相同的次数，然后第 n 个引导阶段路径集将被第 n 个密钥 \& 签名。这可用于为启动的不同阶段构建不同的信任策略。
+.PP
+如果通过 \fB\-\-secureboot\-private\-key=\fP 选项提供 SecureBoot 签名密钥，生成的 PE
+二进制文件将作为一个整体进行签名，从而使生成的 UKI 受到 SecureBoot\& 的信任。另请参见 \fBsystemd\-boot\fP(7)\&
+中自动注册的讨论。
+.SH OPTIONS
+.PP
+请注意，\fILINUX\fP 位置参数是必需的 \&。\fIINITRD\fP 位置参数可选 \&。如果指定了多个，它们将全部组合成一个 PE 部分
+\&。这对于在实际的 initrd\& 之前添加微代码非常有用。
+.PP
+理解以下选项:
+.PP
+\fB\-\-cmdline=\fP\fITEXT\fP\fB|\fP\fI@PATH\fP
+.RS 4
+指定内核命令行 ("\&.cmdline" 部分) \&。参数可以是一个字面量字符串，或者 "@" 后跟一个路径名
+\&。如果未指定，则不会嵌入任何命令行 \&。
+.RE
+.PP
+\fB\-\-os\-release=\fP\fITEXT\fP\fB|\fP\fI@PATH\fP
+.RS 4
+指定 os\-release 描述 ("\&.osrel" 部分) \&。参数可以是一个字面量字符串，或者 "@" 后跟一个路径名
+\&。如果未指定，将从主机系统中获取 \fBos\-release\fP(5) 文件 \&。
+.RE
+.PP
+\fB\-\-devicetree=\fP\fIPATH\fP
+.RS 4
+指定设备树描述 ("\&.dtb" 部分) \&。参数是已编译的二进制 DeviceTree 文件的路径 \&。如果未指定，该部分将不存在 \&。
+.RE
+.PP
+\fB\-\-splash=\fP\fIPATH\fP
+.RS 4
+指定在引导期间显示的图片 ("\&.splash" 部分) \&。参数是 BMP 文件的路径 \&。如果未指定，该部分将不存在 \&。
+.RE
+.PP
+\fB\-\-pcrpkey=\fP\fIPATH\fP
+.RS 4
+指定要嵌入 "\&.pcrpkey" 部分 \& 的公钥路径。如果没有指定，并且有 \*(Aqs exactly one
+\fB\-\-pcr\-public\-key=\fP 参数，将使用该键 \&。否则，该部分将不存在 \&。
+.RE
+.PP
+\fB\-\-uname=\fP\fIVERSION\fP
+.RS 4
+指定内核版本 (如 \fBuname \-r\fP，"\&.uname" 部分) \&。如果未指定，将尝试从内核映像中提取版本字符串
+\&。如果已知，建议显式传递它，因为提取是基于启发式的，不是很可靠 \&。如果未指定且提取失败，则该部分将不存在 \&。
+.RE
+.PP
+\fB\-\-section=\fP\fINAME\fP\fB:\fP\fITEXT\fP\fB|\fP\fI@PATH\fP
+.RS 4
+指定任意附加部分 "\fINAME\fP"\&。请注意，名称按原样使用，如果部分名称应以点开头，则必须包含在 \fINAME\fP\&
+中。参数可以是一个字面量字符串，或者 "@" 后跟一个路径名 \&。可以多次指定此选项 \&。以这种方式指定的任何部分都将 (按顺序) 插入始终位于最后
+\& 的 "\&.linux" 部分之前。
+.RE
+.PP
+\fB\-\-pcr\-private\-key=\fP\fIPATH\fP
+.RS 4
+指定用于签署 PCR 策略的私钥 \&。可以多次指定此选项，在这种情况下将生成多个签名 \&。
+.RE
+.PP
+\fB\-\-pcr\-public\-key=\fP\fIPATH\fP
+.RS 4
+指定用于签署 PCR 策略的公钥 \&。可以多次指定此选项，类似于 \fB\-\-pcr\-private\-key=\fP 选项
+\&。如果不存在，将从私钥中提取公钥 \&。如果存在，则此选项必须指定与 \fB\-\-pcr\-private\-key=\fP 选项 \& 相同的次数。
+.RE
+.PP
+\fB\-\-phases=\fP\fILIST\fP
+.RS 4
+以逗号或空格分隔的以冒号分隔的相路径列表，用于为 \& 签署策略。如果不存在，将使用默认的
+\fBsystemd\-measure\fP(1)\&。当出现此参数时，它必须出现与 \fB\-\-pcr\-private\-key=\fP 选项 \&
+相同的次数。每组引导阶段路径都将使用相应的私钥进行签名 \&。
+.RE
+.PP
+\fB\-\-pcr\-banks=\fP\fIPATH\fP
+.RS 4
+为 \& 签署策略的 PCR 银行的逗号或空格分隔列表。如果不存在，将使用所有已知的库
+(`sha1`、"sha256"、"sha384"、"sha512")，如果系统不支持，这将失败 \&。
+.RE
+.PP
+\fB\-\-secureboot\-private\-key=\fP\fISB_KEY\fP
+.RS 4
+用于对生成的二进制文件进行签名的私钥路径 \&。如果使用 \fB\-\-signing\-engine=\fP 选项，这也可能是特定于引擎的名称 \&。
+.RE
+.PP
+\fB\-\-secureboot\-certificate=\fP\fISB_CERT\fP
+.RS 4
+用于对生成的二进制文件进行签名的证书路径。如果使用 \fB\-\-signing\-engine=\fP 选项，这也可能是特定于引擎的名称 \&。
+.RE
+.PP
+\fB\-\-signing\-engine=\fP\fIENGINE\fP
+.RS 4
+用于对生成的二进制文件进行签名的 "engine"。该选项当前逐字传递给 \fBsbsign\fP(1)\& 的 \fB\-\-engine=\fP 选项。
+.RE
+.PP
+\fB\-\-sign\-kernel\fP, \fB\-\-no\-sign\-kernel\fP
+.RS 4
+覆盖在 Linux 二进制文件嵌入组合图像之前是否对它本身进行签名的检测 \&。如果未指定，则在通过
+\fB\-\-secureboot\-private\-key=\fP 选项提供 SecureBoot 签名密钥并且二进制文件尚未签名 \&
+的情况下将对其进行签名。如果指定了 \fB\-\-sign\-kernel\fP，并且二进制文件已经被签名，那么无论如何都会，追加，签名 \&。
+.RE
+.PP
+\fB\-\-tools=\fP\fIDIRS\fP
+.RS 4
+使用 helper tools\& 指定一个或多个目录。 \fBukify\fP 将首先在这些目录中寻找辅助工具，如果没有找到，则尝试以通常的方式从
+\fI$PATH\fP 加载它们 \&。
+.RE
+.PP
+\fB\-\-measure\fP, \fB\-\-no\-measure\fP
+.RS 4
+启用或禁用对 \fBsystmed\-measure\fP 的调用以打印预先计算的 PCR 值 \&。默认为 false\&。
+.RE
+.PP
+\fB\-\-output=\fP\fIFILENAME\fP
+.RS 4
+输出文件名 \&。如果未指定，将使用 \fILINUX\fP 参数的名称，后缀为 "\&.unsigned\&.efi" 或
+"\&.signed\&.efi"，具体取决于是否执行了 SecureBoot 签名 \&。
+.RE
+.PP
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+打印一个简短的帮助文本并退出 \&。
+.RE
+.PP
+\fB\-\-version\fP
+.RS 4
+打印一个短版本字符串并退出 \&。
+.RE
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Minimal invocation\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+ukify \e
+      /lib/modules/6\&.0\&.9\-300\&.fc37\&.x86_64/vmlinuz \e
+      /some/path/initramfs\-6\&.0\&.9\-300\&.fc37\&.x86_64\&.img \e
+      \-\-cmdline=\*(Aqquiet rw\*(Aq
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这会创建一个未签名的 UKI\&./vmlinuz\&.unsigned\&.efi\&。
+.PP
+\fBExample\ \&2.\ \&All the bells and whistles\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+/usr/lib/systemd/ukify \e
+      /lib/modules/6\&.0\&.9\-300\&.fc37\&.x86_64/vmlinuz \e
+      early_cpio \e
+      /some/path/initramfs\-6\&.0\&.9\-300\&.fc37\&.x86_64\&.img \e
+      \-\-pcr\-private\-key=pcr\-private\-initrd\-key\&.pem \e
+      \-\-pcr\-public\-key=pcr\-public\-initrd\-key\&.pem \e
+      \-\-phases=\*(Aqenter\-initrd\*(Aq \e
+      \-\-pcr\-private\-key=pcr\-private\-system\-key\&.pem \e
+      \-\-pcr\-public\-key=pcr\-public\-system\-key\&.pem \e
+      \-\-phases=\*(Aqenter\-initrd:leave\-initrd enter\-initrd:leave\-initrd:sysinit \e
+                enter\-initrd:leave\-initrd:sysinit:ready\*(Aq \e
+      \-\-pcr\-banks=sha384,sha512 \e
+      \-\-secureboot\-private\-key=sb\&.key \e
+      \-\-secureboot\-certificate=sb\&.cert \e
+      \-\-sign\-kernel \e
+      \-\-cmdline=\*(Aqquiet rw rhgb\*(Aq
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这将创建一个已签名的 UKI\&./vmlinuz\&.signed\&.efi\&。initrd 部分包含两个串联的部分，early_cpio 和
+initramfs\-6\&.0\&.9\-300\&.fc37\&.x86_64\&.img\&。"\&.pcrsig" 部分中嵌入的策略将使用密钥
+pcr\-private\-initrd\-key\&.pem 为 initrd (\fBenter\-initrd\fP 阶段) 签名，并为主系统 (阶段
+\fBleave\-initrd\fP、\fBsysinit\fP、\fBready\fP) 使用密钥
+pcr\-private\-system\-key\&.pem\&. Linux 二进制文件和生成的组合映像将使用 SecureBoot 密钥
+sb\&.key\& 进行签名。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-stub\fP(7), \fBsystemd\-boot\fP(7), \fBobjcopy\fP(1),
+\fBsystemd\-pcrphase.service\fP(1)
+.SH NOTES
+.IP " 1." 4
+统一内核映像 (UKI)
+.RS 4
+\%https://uapi\-group.org/specifications/specs/unified_kernel_image/
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

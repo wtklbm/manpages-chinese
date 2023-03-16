@@ -1,0 +1,85 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 2000 lars brinkhoff <lars@nocrew.org>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified, Thu Jan 27 19:16:19 CET 2000, lars@nocrew.org
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH dsp56k 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+dsp56k\-DSP56001 接口设备
+.SH SYNOPSIS
+.nf
+\fB#include <asm/dsp56k.h>\fP
+.PP
+\fBssize_t read(int \fP\fIfd\fP\fB, void *\fP\fIdata\fP\fB, size_t \fP\fIlength\fP\fB);\fP
+\fBssize_t write(int \fP\fIfd\fP\fB, void *\fP\fIdata\fP\fB, size_t \fP\fIlength\fP\fB);\fP
+.PP
+\fBint ioctl(int \fP\fIfd\fP\fB, DSP56K_UPLOAD, struct dsp56k_upload *\fP\fIprogram\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, DSP56K_SET_TX_WSIZE, int \fP\fIwsize\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, DSP56K_SET_RX_WSIZE, int \fP\fIwsize\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, DSP56K_HOST_FLAGS, struct dsp56k_host_flags *\fP\fIflags\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, DSP56K_HOST_CMD, int \fP\fIcmd\fP\fB);\fP
+.fi
+.SH CONFIGURATION
+\fIdsp56k\fP 设备是一个字符设备，主设备号 55，次设备号 0.
+.SH DESCRIPTION
+Motorola DSP56001 是一款完全可编程的 24 位数字信号处理器，可在 Atari Falcon030 兼容计算机中使用。
+\fIdsp56k\fP 专用文件用于控制 DSP56001，并使用双向握手主机端口发送和接收数据。
+.PP
+要将数据流发送到信号处理器，请将 \fBwrite\fP(2) 用于设备，将 \fBread\fP(2) 用于接收处理后的数据。 数据可以在主机端以 8、16、24
+或 32 位数量发送或接收，但在 DSP56001 中始终被视为 24 位数量。
+.PP
+以下 \fBioctl\fP(2) 调用用于控制 \fIdsp56k\fP 设备:
+.TP 
+\fBDSP56K_UPLOAD\fP
+重置 DSP56001 并上传程序。 第三个 \fBioctl\fP(2) 参数必须是指向 \fIstruct dsp56k_upload\fP 的指针，其成员
+\fIbin\fP 指向 DSP56001 二进制程序，\fIlen\fP 设置为程序的长度，以 24 位字计算。
+.TP 
+\fBDSP56K_SET_TX_WSIZE\fP
+设置发送字长。 允许的值在 1 到 4 的范围内，是一次发送到 DSP56001 的字节数。 这些数据量要么用包含零的字节填充，要么被截断以适应
+DSP56001 的原生 24 位数据格式。
+.TP 
+\fBDSP56K_SET_RX_WSIZE\fP
+设置接收字长。 允许的值在 1 到 4 的范围内，是一次从 DSP56001 接收的字节数。 这些数据量将被截断或用空字节
+(\[aq]\e0\[aq]) 填充以适应 DSP56001 的原生 24 位数据格式。
+.TP 
+\fBDSP56K_HOST_FLAGS\fP
+读写主机标志。 主机标志是四个通用位，可由主机和 DSP56001 读取。 位 0 和 1 可由主机写入，位 2 和 3 可由 DSP56001 写入。
+.IP
+要访问主机标志，第三个 \fBioctl\fP(2) 参数必须是指向 \fIstruct dsp56k_host_flags\fP 的指针。 如果在 \fIdir\fP
+成员中设置位 0 或 1，则 \fIout\fP 中的相应位将写入主机标志。 所有主机标志的状态将在 \fIstatus\fP 成员的低四位中返回。
+.TP 
+\fBDSP56K_HOST_CMD\fP
+发送主机命令。 允许的值在 0 到 31 范围内，并且是由 DSP56001 中运行的程序处理的用户定义命令。
+.SH FILES
+.\" .SH AUTHORS
+.\" Fredrik Noring <noring@nocrew.org>, lars brinkhoff <lars@nocrew.org>,
+.\" Tomas Berndtsson <tomas@nocrew.org>.
+\fI/dev/dsp56k\fP
+.SH "SEE ALSO"
+\fIlinux/include/asm\-m68k/dsp56k.h\fP、\fIlinux/drivers/char/dsp56k.c\fP、
+.UR http://dsp56k.nocrew.org/
+.UE ,
+DSP56000/DSP56001 数字信号处理器用户手册
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

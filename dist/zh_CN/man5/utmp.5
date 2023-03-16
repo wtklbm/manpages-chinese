@@ -1,0 +1,217 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (c) 1993 Michael Haardt (michael@cantor.informatik.rwth-aachen.de),
+.\" Fri Apr  2 11:32:09 MET DST 1993
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\" Modified 1993-07-25 by Rik Faith (faith@cs.unc.edu)
+.\" Modified 1995-02-26 by Michael Haardt
+.\" Modified 1996-07-20 by Michael Haardt
+.\" Modified 1997-07-02 by Nicolás Lichtmaier <nick@debian.org>
+.\" Modified 2004-10-31 by aeb, following Gwenole Beauchesne
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH utmp 5 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+utmp, wtmp \- 登录记录
+.SH SYNOPSIS
+.nf
+\fB#include <utmp.h>\fP
+.fi
+.SH DESCRIPTION
+\fIutmp\fP 文件允许人们发现有关谁当前正在使用该系统的信息。 目前使用该系统的用户可能更多，因为并非所有程序都使用 utmp 日志记录。
+.PP
+\fBWarning:\fP \fIutmp\fP 一定不能被用户类 "other" 写入，因为许多系统程序 (foolishly) 依赖于它的完整性。 如果您将
+\fIutmp\fP 留给除文件所有者和组所有者以外的任何用户可写，您就有伪造系统日志文件和修改系统文件的风险。
+.PP
+该文件是一系列 \fIutmp\fP 结构，在 \fI<utmp.h>\fP 中声明如下 (请注意，这只是几个定义中的一个; 详细信息取决于
+libc 的版本) :
+.PP
+.in +4n
+.EX
+/* Values for ut_type field, below */
+
+#define EMPTY         0 /* Record does not contain valid info
+                           (formerly known as UT_UNKNOWN on Linux) */
+#define RUN_LVL       1 /* Change in system run\-level (see
+                           \fBinit\fP(1)) */
+#define BOOT_TIME     2 /* Time of system boot (in \fIut_tv\fP) */  
+#define NEW_TIME      3 /* Time after system clock change
+                           (in \fIut_tv\fP) */
+#define OLD_TIME      4 /* Time before system clock change
+                           (in \fIut_tv\fP) */
+#define INIT_PROCESS  5 /* Process spawned by \fBinit\fP(1) */
+#define LOGIN_PROCESS 6 /* Session leader process for user login */
+#define USER_PROCESS  7 /* Normal process */
+#define DEAD_PROCESS  8 /* Terminated process */
+#define ACCOUNTING    9 /* Not implemented */
+
+#define UT_LINESIZE      32
+#define UT_NAMESIZE      32
+#define UT_HOSTSIZE     256
+
+struct exit_status {              /* Type for ut_exit, below */
+    short e_termination;          /* Process termination status */
+    short e_exit;                 /* Process exit status */
+};
+
+struct utmp {
+    short   ut_type;               /* Type of record */
+    pid_t   ut_pid;               /* PID of login process */
+    char    ut_line[UT_LINESIZE]; /* Device name of tty \- "/dev/" */
+    char    ut_id[4];              /* Terminal name suffix,
+                                     or inittab(5) ID */
+    char    ut_user[UT_NAMESIZE]; /* Username */
+    char    ut_host[UT_HOSTSIZE]; /* Hostname for remote login, or
+                                     kernel version for run\-level
+                                     messages */
+    struct  exit_status ut_exit;   /* Exit status of a process
+                                     marked as DEAD_PROCESS;  not
+                                     Linux init(1) 使用 */
+    /* ut_session 和 ut_tv 字段的大小必须相同
+       编译 32 位和 64 位。 这允许数据文件和共享
+       在 32 位和 64 位应用程序之间共享内存。*/
+#if __WORDSIZE == 64 && defined __WORDSIZE_COMPAT32
+    int32_t ut_session;           /* Session ID (\fBgetsid\fP(2)),
+                                     used for windowing */
+    struct {
+        int32_t tv_sec;           /* Seconds */
+        int32_t tv_usec;          /* Microseconds */
+    } ut_tv;                      /* Time entry was made */
+#else
+     long   ut_session;            /* Session ID */
+     struct timeval ut_tv;         /* Time entry was made */
+#endif
+
+    int32_t ut_addr_v6[4];        /* Internet address of remote
+                                     host;  IPv4 address uses
+                                     just ut_addr_v6[0] */
+    char __unused[20];             /* Reserved for future use */
+};
+
+/* Backward compatibility hacks */
+#define ut_name ut_user
+#ifndef _NO_UT_TIME
+#define ut_time ut_tv.tv_sec
+#endif
+#define ut_xtime ut_tv.tv_sec
+#define ut_addr ut_addr_v6[0]
+.EE
+.in
+.PP
+这个结构体以 \fBtime\fP(2) 的形式给出了与用户终端关联的特殊文件名、用户登录名、登录时间。 如果字符串字段短于字段的大小，则字符串字段以空字节
+(\[aq]\e0\[aq]) 终止。
+.PP
+有史以来创建的第一个条目是 \fBinit\fP(1) 处理 \fBinittab\fP(5) 的结果。 但是，在处理条目之前，\fBinit\fP(1) 通过将
+\fIut_type\fP 设置为 \fBDEAD_PROCESS\fP 来清除 utmp，为每个记录清除 \fIut_user\fP、\fIut_host\fP 和
+\fIut_time\fP 的空字节，其中 \fIut_type\fP 不是 \fBDEAD_PROCESS\fP 或 \fBRUN_LVL\fP，并且不存在 PID
+\fIut_pid\fP 的进程。 如果找不到具有所需 \fIut_id\fP 的空记录，则 \fBinit\fP(1) 创建一个新记录。 它将 inittab 中的
+\fIut_id\fP、\fIut_pid\fP 和 \fIut_time\fP 设置为当前值，将 \fIut_type\fP 设置为 \fBINIT_PROCESS\fP。
+.PP
+\fBmingetty\fP(8) (或 \fBagetty\fP(8))) 通过 PID 定位入口，将 \fIut_type\fP 改成
+\fBLOGIN_PROCESS\fP，改成 \fIut_time\fP，设置 \fIut_line\fP，等待连接建立。 \fBlogin\fP(1)，用户认证通过后，将
+\fIut_type\fP 改为 \fBUSER_PROCESS\fP，将 \fIut_time\fP 改为 \fIut_host\fP、\fIut_addr\fP。 根据
+\fBmingetty\fP(8) (或 \fBagetty\fP(8)) 和 \fBlogin\fP(1)，记录可能由 \fIut_line\fP 而不是首选的
+\fIut_pid\fP 定位。
+.PP
+当 \fBinit\fP(1) 发现一个进程已经退出时，它通过 \fIut_pid\fP 定位到它的 utmp 入口，将 \fIut_type\fP 设置为
+\fBDEAD_PROCESS\fP，并将 \fIut_user\fP、\fIut_host\fP 和 \fIut_time\fP 清除为空字节。
+.PP
+\fBxterm\fP(1) 等终端模拟器直接创建 \fBUSER_PROCESS\fP 记录，使用终端名称的一部分后缀字符串
+(\fI/dev/[pt]ty\fP). 后面的字符) 生成 \fIut_id\fP。 如果他们找到这个 ID 的
+\fBDEAD_PROCESS\fP，他们会回收它，否则他们会创建一个新条目。 如果可以，他们会在退出时将其标记为
+\fBDEAD_PROCESS\fP，建议他们也将 \fIut_line\fP、\fIut_time\fP、\fIut_user\fP 和 \fIut_host\fP 设为空。
+.PP
+\fBtelnetd\fP(8) 设置了一个 \fBLOGIN_PROCESS\fP 条目，然后像往常一样将其余的留给 \fBlogin\fP(1)。 telnet
+会话结束后，\fBtelnetd\fP(8) 以描述的方式清理 utmp。
+.PP
+\fIwtmp\fP 文件记录所有登录和注销。 它的格式与 \fIutmp\fP 完全一样，只是空用户名表示在关联的终端上注销。 此外，带有用户名
+\fBshutdown\fP 或 \fBreboot\fP 的终端名称 \fB\[ti]\fP 表示系统关闭或重新启动，一对终端名称 \fB|\fP/\fB}\fP 记录
+\fBdate\fP(1) 更改时的 old/new 系统时间。 \fIwtmp\fP 由 \fBlogin\fP(1)、\fBinit\fP(1) 和 \fBgetty\fP(8)
+的某些版本 (例如，\fBmingetty\fP(8) 或 \fBagetty\fP(8))) 维护。
+这些程序都不会创建该文件，因此如果它被删除，记录保存将被关闭。
+.SH FILES
+\fI/var/run/utmp\fP
+.br
+\fI/var/log/wtmp\fP
+.SH STANDARDS
+POSIX.1 没有指定一个 \fIutmp\fP 结构体，而是一个名为 \fIutmpx\fP 的结构体 (作为 XSI 扩展的一部分)，并指定了字段
+\fIut_type\fP、\fIut_pid\fP、\fIut_line\fP、\fIut_id\fP、\fIut_user\fP 和 \fIut_tv\fP。 POSIX.1 不指定
+\fIut_line\fP 和 \fIut_user\fP 字段的长度。
+.PP
+Linux 将 \fIutmpx\fP 结构体定义为与 \fIutmp\fP 结构体相同。
+.SS "Comparison with historical systems"
+Linux utmp 条目既不符合 v7/BSD 也不符合 System V; 他们是两者的混合体。
+.PP
+v7/BSD 字段较少; 最重要的是，它缺少 \fIut_type\fP，这会导致原生 v7/BSD\-like 程序显示 (例如) 死机或登录条目。
+此外，没有为会话分配槽的配置文件。 BSD 这样做是因为它缺少 \fIut_id\fP 字段。
+.PP
+在 Linux 中 (如在 System V 中)，记录的 \fIut_id\fP 字段一旦被设置就永远不会改变，它保留了那个槽而不需要配置文件。 清除
+\fIut_id\fP 可能会导致竞争状态，从而导致 utmp 条目损坏和潜在的安全漏洞。 System V
+语义不需要通过用空字节填充上述字段来清除它们，但可以运行许多采用 BSD 语义且不修改 utmp 的程序。 如上文所述，Linux 对行内容使用 BSD
+约定。
+.PP
+.\" mtk: What is the referrent of "them" in the following sentence?
+.\" System V only uses the type field to mark them and logs
+.\" informative messages such as \fB"new time"\fP in the line field.
+系统 V 没有 \fIut_host\fP 或 \fIut_addr_v6\fP 字段。
+.SH NOTES
+与可以通过删除文件禁用 utmp 日志记录的各种其他系统不同，utmp 必须始终存在于 Linux 上。 如果您想禁用 \fBwho\fP(1)，那么不要让
+utmp 世界可读。
+.PP
+文件格式取决于机器，因此建议仅在创建它的机器架构上对其进行处理。
+.PP
+请注意，在 \fIbiarch\fP 平台上，即可以同时运行 32 位和 64 位应用程序 (x86\-64、ppc64、s390x 等)
+的系统，\fIut_tv\fP 在 32 位模式下的大小与在 64 位模式下的大小相同模式。 如果存在 \fIut_session\fP 和
+\fIut_time\fP，也是如此。 这允许在 32 位和 64 位应用程序之间共享数据文件和共享内存。 这是通过将 \fIut_session\fP
+的类型更改为 \fIint32_t\fP，将 \fIut_tv\fP 的类型更改为具有两个 \fIint32_t\fP 字段 \fItv_sec\fP 和 \fItv_usec\fP
+的结构体来实现的。 由于 \fIut_tv\fP 可能与 \fIstruct timeval\fP 不同，因此不用调:
+.PP
+.in +4n
+.EX
+gettimeofday((struct timeval *) &ut.ut_tv, NULL);
+.EE
+.in
+.PP
+建议使用以下设置此字段的方法:
+.PP
+.in +4n
+.EX
+struct utmp ut;
+struct timeval tv;
+
+gettimeofday(&tv, NULL);
+ut.ut_tv.tv_sec = tv.tv_sec;
+ut.ut_tv.tv_usec = tv.tv_usec;
+.EE
+.in
+.\" .PP
+.\" Note that the \fIutmp\fP struct from libc5 has changed in libc6.
+.\" Because of this,
+.\" binaries using the old libc5 struct will corrupt
+.\" .IR /var/run/utmp " and/or " /var/log/wtmp .
+.\" .SH BUGS
+.\" This man page is based on the libc5 one, things may work differently now.
+.SH "SEE ALSO"
+\fBac\fP(1), \fBdate\fP(1), \fBinit\fP(1), \fBlast\fP(1), \fBlogin\fP(1), \fBlogname\fP(1),
+\fBlslogins\fP(1), \fBusers\fP(1), \fButmpdump\fP(1), \fBwho\fP(1), \fBgetutent\fP(3),
+\fBgetutmp\fP(3), \fBlogin\fP(3), \fBlogout\fP(3), \fBlogwtmp\fP(3), \fBupdwtmp\fP(3)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

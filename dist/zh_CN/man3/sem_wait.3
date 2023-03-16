@@ -1,0 +1,206 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (C) 2006 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH sem_wait 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+sem_wait, sem_timedwait, sem_trywait \- 锁定信号量
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <semaphore.h>\fP
+.PP
+\fBint sem_wait(sem_t *\fP\fIsem\fP\fB);\fP
+\fBint sem_trywait(sem_t *\fP\fIsem\fP\fB);\fP
+\fBint sem_timedwait(sem_t *restrict \fP\fIsem\fP\fB,\fP
+\fB                  const struct timespec *restrict \fP\fIabs_timeout\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBsem_timedwait\fP():
+.nf
+    _POSIX_C_SOURCE >= 200112L
+.fi
+.SH DESCRIPTION
+\fBsem_wait\fP() 递减 \fIsem\fP 指向的信号量 (locks)。 如果信号量的值大于零，则减量继续进行，而函数立即返回。
+如果信号量当前的值为零，则调用将阻塞，直到可以执行递减 (即信号量值上升到零以上) 或信号处理程序中断调用为止。
+.PP
+\fBsem_trywait\fP() 和 \fBsem_wait\fP() 一样，只是如果不能立即执行减量，那么调用返回错误 (\fIerrno\fP 设置为
+\fBEAGAIN\fP) 而不是阻塞。
+.PP
+\fBsem_timedwait\fP() 与 \fBsem_wait\fP() 相同，只是 \fIabs_timeout\fP
+指定了在不能立即执行递减时调用应阻塞的时间量限制。 \fIabs_timeout\fP 参数指向一个 \fBtimespec\fP(3) 结构体，它指定了自纪元
+1970\-01\-01 00:00:00 +0000 (UTC) 以来以秒和纳秒为单位的绝对超时。
+.PP
+如果在调用时超时已经过期，并且无法立即锁定信号量，则 \fBsem_timedwait\fP() 失败，超时错误 (\fIerrno\fP 设置为
+\fBETIMEDOUT\fP)。
+.PP
+如果可以立即执行该操作，则无论 \fIabs_timeout\fP 的值如何，\fBsem_timedwait\fP() 都不会因超时错误而失败。
+此外，在这种情况下不检查 \fIabs_timeout\fP 的有效性。
+.SH "RETURN VALUE"
+所有这些函数在成功时返回 0; 出错时，信号量的值保持不变，返回 \-1，并设置 \fIerrno\fP 以指示错误。
+.SH ERRORS
+.TP 
+\fBEAGAIN\fP
+(\fBsem_trywait\fP()) 无法在没有阻塞的情况下执行操作 (即，信号量当前的值为零)。
+.TP 
+\fBEINTR\fP
+调用被信号处理程序中断; 请参见 \fBsignal\fP(7)。
+.TP 
+\fBEINVAL\fP
+\fIsem\fP 不是有效的信号量。
+.TP 
+\fBEINVAL\fP
+(\fBsem_timedwait\fP()) \fIabs_timeout.tv_nsecs\fP 的值小于 0，或大于等于 10 亿。
+.TP 
+\fBETIMEDOUT\fP
+.\" POSIX.1-2001 also allows EDEADLK -- "A deadlock condition
+.\" was detected", but this does not occur on Linux(?).
+(\fBsem_timedwait\fP()) 在锁定信号量之前调用超时。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBsem_wait\fP(),
+\fBsem_trywait\fP(),
+\fBsem_timedwait\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH EXAMPLES
+下面显示的 (有点微不足道的) 程序在未命名的信号量上运行。 该程序需要两个命令行参数。 第一个参数指定一个秒值，用于设置报警定时器以生成
+\fBSIGALRM\fP 信号。 此处理程序执行 \fBsem_post\fP(3) 以增加正在使用 \fBsem_timedwait\fP() 在 \fImain()\fP
+中等待的信号量。 第二个命令行参数指定超时的长度，以秒为单位，对于 \fBsem_timedwait\fP()。 下面显示了程序的两次不同运行所发生的情况:
+.PP
+.in +4n
+.EX
+$\fB ./a.out 2 3\fP
+即将调用 sem_timedwait()
+来自处理程序的 sem_post()
+sem_timedwait() 成功
+$\fB ./a.out 2 1\fP
+即将调用 sem_timedwait()
+sem_timedwait() 超时
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (sem_wait.c)
+\&
+.EX
+#include <errno.h>
+#include <semaphore.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+#include <assert.h>
+
+sem_t sem;
+
+#define handle_error(msg) \e
+    do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void
+handler(int sig)
+{
+    write(STDOUT_FILENO, "sem_post() from handler\en", 24);
+    if (sem_post(&sem) == \-1) {
+        write(STDERR_FILENO, "sem_post() failed\en", 18);
+        _exit(EXIT_FAILURE);
+    }
+}
+
+int
+main(int argc, char *argv[])
+{
+    struct sigaction sa;
+    struct timespec ts;
+    int s;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <alarm\-secs> <wait\-secs>\en",
+                argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (sem_init(&sem, 0, 0) == \-1)
+        handle_error("sem_init");
+
+    /* Establish SIGALRM handler; set alarm timer using argv[1]. */
+
+    sa.sa_handler = handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    if (sigaction(SIGALRM, &sa, NULL) == \-1)
+        handle_error("sigaction");
+
+    alarm(atoi(argv[1]));
+
+    /* Calculate relative interval as current time plus
+       number of seconds given argv[2]. */
+
+    if (clock_gettime(CLOCK_REALTIME, &ts) == \-1)
+        handle_error("clock_gettime");
+
+    ts.tv_sec += atoi(argv[2]);
+
+    printf("%s() about to call sem_timedwait()\en", __func__);
+    while ((s = sem_timedwait(&sem, &ts)) == \-1 && errno == EINTR)
+        continue;        /* 如果被处理程序中断则重新启动。*/
+
+    /* Check what happened. */
+
+    if (s == \-1) {
+        if (errno == ETIMEDOUT)
+            printf("sem_timedwait() timed out\en");
+        else
+            perror("sem_timedwait");
+    } else
+        printf("sem_timedwait() succeeded\en");
+
+    exit((s == 0) ? EXIT_SUCCESS : EXIT_FAILURE);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBclock_gettime\fP(2), \fBsem_getvalue\fP(3), \fBsem_post\fP(3), \fBtimespec\fP(3),
+\fBsem_overview\fP(7), \fBtime\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

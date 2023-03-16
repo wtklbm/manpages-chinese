@@ -1,0 +1,93 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright © 2017-2020 Mickaël Salaün <mic@digikod.net>
+.\" Copyright © 2019-2020 ANSSI
+.\" Copyright © 2021 Microsoft Corporation
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH landlock_restrict_self 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+landlock_restrict_self \- 执行 Landlock 规则集
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/landlock.h>\fP  /* Definition of \fBLANDLOCK_*\fP constants */
+\fB#include <sys/syscall.h>\fP     /* Definition of \fBSYS_*\fP constants */
+.PP
+\fBint syscall(SYS_landlock_restrict_self, int \fP\fIruleset_fd\fP\fB,\fP
+\fB            uint32_t \fP\fIflags\fP\fB);\fP
+.SH DESCRIPTION
+一旦 Landlock 规则集填充了所需的规则，\fBlandlock_restrict_self\fP() 系统调用就可以在调用线程上强制执行此规则集。
+有关全面概述，请参见 \fBlandlock\fP(7)。
+.PP
+一个线程可以用多个规则集来限制，然后这些规则集组合在一起形成线程的 Landlock 域。 这可以看作是一堆规则集，但它以更有效的方式实现。
+域只能以这样一种方式更新，即每个过去的约束和 future 组成的规则集将限制线程及其 future 子线程的整个生命周期。 然后可以使用来自不同来源
+(例如，初始系统配置、用户会话策略、内置应用程序策略) 的多个独立规则集逐步实现定制的访问控制策略。 但是，大多数应用程序应该只需要一次调用
+\fBlandlock_restrict_self\fP()，并且由于组合规则集的限制，它们应该避免任意数量的此类调用。 相反，由于对
+\fBlandlock_add_rule\fP(2) 的多次调用，鼓励开发人员构建定制的规则集。
+.PP
+为了强制执行规则集，调用者必须在其用户命名空间中具有 \fBCAP_SYS_ADMIN\fP 功能，或者线程必须已经设置了 \fIno_new_privs\fP
+位。 对于 \fBseccomp\fP(2)，这避免了非特权进程可能影响特权子进程行为的情况 (例如，由于设置用户 ID 二进制文件)。
+如果该位尚未被该线程的祖先设置，则该线程必须进行以下调整:
+.IP
+.EX
+prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+.EE
+.PP
+\fIruleset_fd\fP 是通过 \fBlandlock_create_ruleset\fP(2) 获得的 Landlock
+规则集文件描述符，并完全填充了一组对 \fBlandlock_add_rule\fP(2) 的调用。
+.PP
+\fIflags\fP must be  0.
+.SH "RETURN VALUE"
+成功时，\fBlandlock_restrict_self\fP() 返回 0.
+.SH ERRORS
+\fBlandlock_restrict_self\fP() 可能因以下原因而失败:
+.TP 
+\fBEOPNOTSUPP\fP
+内核支持 Landlock，但在启动时禁用。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 不是 0.
+.TP 
+\fBEBADF\fP
+\fIruleset_fd\fP 不是当前线程的文件描述符。
+.TP 
+\fBEBADFD\fP
+\fIruleset_fd\fP 不是规则集文件描述符。
+.TP 
+\fBEPERM\fP
+\fIruleset_fd\fP 没有对底层规则集的读取权限，或者调用线程未使用 \fIno_new_privs\fP 运行，或者它的用户命名空间中没有
+\fBCAP_SYS_ADMIN\fP。
+.TP 
+\fBE2BIG\fP
+已达到调用线程的最大组合规则集数。 此限制当前为 64。
+.SH VERSIONS
+在 Linux 5.13 中添加了 Landlock。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH EXAMPLES
+请参见 \fBlandlock\fP(7)。
+.SH "SEE ALSO"
+\fBlandlock_create_ruleset\fP(2), \fBlandlock_add_rule\fP(2), \fBlandlock\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

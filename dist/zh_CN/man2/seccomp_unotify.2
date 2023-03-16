@@ -1,0 +1,1377 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2020 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH seccomp_unotify 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+seccomp_unotify\-Seccomp 用户空间通知机制
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/seccomp.h>\fP
+\fB#include <linux/filter.h>\fP
+\fB#include <linux/audit.h>\fP
+.PP
+\fBint seccomp(unsigned int \fP\fIoperation\fP\fB, unsigned int \fP\fIflags\fP\fB, void *\fP\fIargs\fP\fB);\fP
+.PP
+\fB#include <sys/ioctl.h>\fP
+.PP
+\fBint ioctl(int \fP\fIfd\fP\fB, SECCOMP_IOCTL_NOTIF_RECV,\fP
+\fB          struct seccomp_notif *\fP\fIreq\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, SECCOMP_IOCTL_NOTIF_SEND,\fP
+\fB          struct seccomp_notif_resp *\fP\fIresp\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, SECCOMP_IOCTL_NOTIF_ID_VALID, __u64 *\fP\fIid\fP\fB);\fP
+\fBint ioctl(int \fP\fIfd\fP\fB, SECCOMP_IOCTL_NOTIF_ADDFD,\fP
+\fB          struct seccomp_notif_addfd *\fP\fIaddfd\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+.\"
+此页面描述了 Secure Computing (seccomp) 工具提供的用户空间通知机制。 除了使用
+\fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP 标志、\fBSECCOMP_RET_USER_NOTIF\fP 操作值和
+\fBseccomp\fP(2) 中描述的 \fBSECCOMP_GET_NOTIF_SIZES\fP 操作外，该机制还涉及使用许多相关的 \fBioctl\fP(2)
+操作 (如下所述)。
+.SS Overview
+在 seccomp 过滤器的常规使用中，关于如何处理系统调用的决定是由过滤器本身做出的。 相比之下，用户空间通知机制允许 seccomp
+过滤器将系统调用的处理委托给另一个用户空间进程。 请注意，此机制明确 \fBnot\fP 旨在作为一种实现安全策略的方法; 见注释。
+.PP
+在后面的讨论中，安装了 seccomp filter 的 thread(s) 是 (are) 简称为
+\fItarget\fP，被用户态通知机制通知的进程简称为 \fIsupervisor\fP。
+.PP
+具有适当特权的 supervisor 可以使用用户空间通知机制代表目标执行操作。 用户空间通知机制的优点是 supervisor
+通常能够检索有关目标和执行系统调用的信息，而 seccomp 过滤器本身不能。 (seccomp
+过滤器在它可以获得的信息和它可以执行的操作方面是有限的，因为它在内核中的虚拟机上运行。)
+.PP
+.\"-------------------------------------
+目标和 supervisor 执行的步骤概述如下:
+.IP (1) 5
+目标以通常的方式建立一个 seccomp 过滤器，但有两个区别:
+.RS
+.IP \[bu] 3
+.\" FIXME
+.\" Is the last sentence above correct?
+.\"
+.\" Kees Cook (25 Oct 2020) notes:
+.\"
+.\" I like this limitation, but I expect that it'll need to change in the
+.\" future. Even with LSMs, we see the need for arbitrary stacking, and the
+.\" idea of there being only 1 supervisor will eventually break down. Right
+.\" now there is only 1 because only container managers are using this
+.\" feature. But if some daemon starts using it to isolate some thread,
+.\" suddenly it might break if a container manager is trying to listen to it
+.\" too, etc. I expect it won't be needed soon, but I do think it'll change.
+.\"
+\fBseccomp\fP(2) \fIflags\fP 参数包括标志 \fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP。
+因此，(successful) \fBseccomp\fP(2) 调用的返回值是一个新的 "listening" 文件描述符，可用于接收通知。
+一个线程只能安装一个 "listening" seccomp 过滤器。
+.IP \[bu]
+在适当的情况下，seccomp 过滤器返回操作值 \fBSECCOMP_RET_USER_NOTIF\fP。 此返回值将触发通知事件。
+.RE
+.\"-------------------------------------
+.IP (2)
+.\" Jann Horn:
+.\"     Instead of using unix domain sockets to send the fd to the
+.\"     parent, I think you could also use clone3() with
+.\"     flags==CLONE_FILES|SIGCHLD, dup2() the seccomp fd to an fd
+.\"     that was reserved in the parent, call unshare(CLONE_FILES)
+.\"     in the child after setting up the seccomp fd, and wake
+.\"     up the parent with something like pthread_cond_signal()?
+.\"     I'm not sure whether that'd look better or worse in the
+.\"     end though, so maybe just ignore this comment.
+.\"-------------------------------------
+为了 supervisor 可以使用侦听文件描述符获取通知，必须将该文件描述符 (的副本) 从目标传递到 supervisor。
+完成此操作的一种方法是通过目标和 supervisor 之间的 UNIX 域套接字连接传递文件描述符 (使用 \fBunix\fP(7)) 中描述的
+\fBSCM_RIGHTS\fP 辅助消息类型)。 另一种方法是使用 \fBpidfd_getfd\fP(2)。
+.IP (3)
+.\"-------------------------------------
+supervisor 将在侦听文件描述符上接收通知事件。 这些事件作为 \fIseccomp_notif\fP 类型的结构返回。
+因为这个结构体及其大小可能会随内核版本而变化，supervisor 必须首先使用 \fBseccomp\fP(2)
+\fBSECCOMP_GET_NOTIF_SIZES\fP 操作确定这个结构体的大小，该操作返回类型为 \fIseccomp_notif_sizes\fP
+的结构体。 supervisor 分配一个大小为 \fIseccomp_notif_sizes.seccomp_notif\fP 字节的缓冲区来接收通知事件。
+此外，supervisor 为它将提供给内核 (以及目标) 的响应 (一个 \fIstruct seccomp_notif_resp\fP 结构体)
+分配另一个大小为 \fIseccomp_notif_sizes.seccomp_notif_resp\fP 字节的缓冲区。
+.IP (4)
+.\"-------------------------------------
+然后目标执行其工作负载，其中包括将由 seccomp 过滤器控制的系统调用。 每当这些系统调用之一导致过滤器返回
+\fBSECCOMP_RET_USER_NOTIF\fP 操作值时，内核执行 \fInot\fP (yet) 执行系统调用; 相反，目标的执行在内核内部被暂时阻塞
+(处于可被信号中断的睡眠状态)，并且在监听文件描述符上生成通知事件。
+.IP (5)
+.\" FIXME
+.\" Christian Brauner:
+.\"
+.\" Do we support O_NONBLOCK with SECCOMP_IOCTL_NOTIF_RECV and if
+.\" not should we?
+.\"
+.\" Michael Kerrisk:
+.\"
+.\" A quick test suggests that O_NONBLOCK has no effect on the blocking
+.\" behavior of SECCOMP_IOCTL_NOTIF_RECV.
+supervisor 现在可以重复监视 \fBSECCOMP_RET_USER_NOTIF\fP\-triggered 事件的侦听文件描述符。
+为此，supervisor 使用 \fBSECCOMP_IOCTL_NOTIF_RECV\fP \fBioctl\fP(2) 操作来读取有关通知事件的信息;
+此操作会阻塞，直到有事件可用。 该操作返回一个 \fIseccomp_notif\fP 结构体，其中包含有关目标正在尝试的系统调用的信息。 (如 NOTES
+中所述，还可以使用 \fBselect\fP(2)、\fBpoll\fP(2) 或 \fBepoll\fP(7).) 监视文件描述符
+.
+.\"-------------------------------------
+.IP (6)
+\fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作返回的 \fIseccomp_notif\fP 结构体包含传递给 seccomp 过滤器的相同信息
+(\fIseccomp_data\fP 结构体)。 此信息允许 supervisor 发现系统调用编号和目标系统调用的参数。
+此外，通知事件包含触发通知的线程的 ID 和在后续 \fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP 和
+\fBSECCOMP_IOCTL_NOTIF_SEND\fP 操作中使用的唯一 cookie 值。
+.IP
+.\" Tycho Andersen mentioned that there are alternatives to /proc/PID/mem,
+.\" such as ptrace() and /proc/PID/map_files
+.\"-------------------------------------
+通知中的信息可用于发现目标系统调用的指针参数的值。 (这是无法在 seccomp 过滤器中完成的事情。) supervisor
+可以执行此操作的一种方法是打开相应的 \fI/proc/\fPtid\fI/mem\fP 文件 (请参见 \fBproc\fP(5))
+并从与指针参数之一对应的位置读取字节其值在通知事件中提供。 (supervisor 必须小心避免在执行此操作时可能发生的竞争条件; 请参见下面对
+\fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP \fBioctl\fP(2) 操作的描述。) 此外，supervisor
+可以访问其他在用户空间中可见但不可见的系统信息可从 seccomp 过滤器访问。
+.IP (7)
+根据上一步获得信息后，supervisor 可以选择执行响应目标系统调用的操作 (如上所述，当 seccomp 过滤器返回
+\fBSECCOMP_RET_USER_NOTIF\fP 操作值时不执行)。
+.IP
+.\"-------------------------------------
+这里的一个示例用例与容器有关。 目标可能位于容器内，它没有足够的能力在容器的挂载命名空间中挂载文件系统。 然而，supervisor
+可能是一个更有特权的进程，它确实有足够的能力来执行挂载操作。
+.IP (8)
+supervisor 然后发送对通知的响应。 内核使用此响应中的信息为目标的系统调用构造返回值，并提供将分配给目标的 \fIerrno\fP 变量的值。
+.IP
+.\"-------------------------------------
+使用 \fBSECCOMP_IOCTL_NOTIF_SEND\fP \fBioctl\fP(2) 操作发送响应，该操作用于将
+\fIseccomp_notif_resp\fP 结构体传输到内核。 这个结构体包括一个 cookie 值，supervisor 在
+\fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作返回的 \fIseccomp_notif\fP 结构体中获得。 此 cookie
+值允许内核将响应与目标相关联。 这个结构体必须包含 supervisor 在 \fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作返回的
+\fIseccomp_notif\fP 结构体中得到的 cookie 值; cookie 允许内核将响应与目标相关联。
+.IP (9)
+.\"-------------------------------------
+发送通知后，目标线程中的系统调用解除阻塞，返回 supervisor 在通知响应中提供的信息。
+.PP
+.\"
+作为最后两个步骤的变体，supervisor 可以发送一个响应，告诉内核它应该执行目标线程的系统调用; 请参见下面对
+\fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP 的讨论。
+.SH "IOCTL OPERATIONS"
+.\"
+seccomp 用户空间通知文件描述符支持以下 \fBioctl\fP(2) 操作。 对于这些操作中的每一个，\fBioctl\fP(2) 的第一个 (文件描述符)
+参数是调用返回给带有 \fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP 标志的 \fBseccomp\fP(2) 的监听文件描述符。
+.SS SECCOMP_IOCTL_NOTIF_RECV
+\fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作 (自 Linux 5.0 起可用) 用于获取用户空间通知事件。
+如果当前没有此类事件未决，则操作将阻塞，直到事件发生。 第三个 \fBioctl\fP(2) 参数是指向以下形式的结构体的指针，其中包含有关事件的信息。
+这个结构体必须在调用前清零。
+.PP
+.in +4n
+.EX
+struct seccomp_notif {
+    __u64  id;              /* Cookie */
+    __u32  pid;             /* TID of target thread */
+    __u32  flags;           /* Currently unused (0) */
+    struct seccomp_data data;   /* See seccomp(2) */
+};
+.EE
+.in
+.PP
+该结构体中的字段如下:
+.TP 
+\fIid\fP
+这是用于通知的 cookie。 每个这样的 cookie 保证对于相应的 seccomp 过滤器是唯一的。
+.RS
+.IP \[bu] 3
+cookie 可以与下面描述的 \fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP \fBioctl\fP(2) 操作一起使用。
+.IP \[bu]
+当向内核返回通知响应时，supervisor 必须在 \fIseccomp_notif_resp\fP 结构体中包含 cookie 值，该值被指定为
+\fBSECCOMP_IOCTL_NOTIF_SEND\fP 操作的参数。
+.RE
+.TP 
+\fIpid\fP
+这是触发通知事件的目标线程的线程 ID。
+.TP 
+\fIflags\fP
+这是提供有关事件的更多信息的标志的位掩码。 在当前的实现中，该字段始终为零。
+.TP 
+\fIdata\fP
+这是一个 \fIseccomp_data\fP 结构体，其中包含有关触发通知的系统调用的信息。 这是传递给 seccomp 过滤器的相同结构体。
+有关此结构体的详细信息，请参见 \fBseccomp\fP(2)。
+.PP
+成功时，此操作返回 0; 失败时，返回 \-1，并设置 \fIerrno\fP 以指示错误原因。 此操作可能会失败并出现以下错误:
+.TP 
+\fBEINVAL\fP (since Linux 5.5)
+.\" commit 2882d53c9c6f3b8311d225062522f03772cf0179
+传递给调用的 \fIseccomp_notif\fP 结构体包含非零字段。
+.TP 
+\fBENOENT\fP
+.\" FIXME
+.\" From my experiments,
+.\" it appears that if a SECCOMP_IOCTL_NOTIF_RECV is done after
+.\" the target thread terminates, then the ioctl() simply
+.\" blocks (rather than returning an error to indicate that the
+.\" target no longer exists).
+.\"
+.\" I found that surprising, and it required some contortions in
+.\" the example program.  It was not possible to code my SIGCHLD
+.\" handler (which reaps the zombie when the worker/target
+.\" terminates) to simply set a flag checked in the main
+.\" handleNotifications() loop, since this created an
+.\" unavoidable race where the child might terminate just after
+.\" I had checked the flag, but before I blocked (forever!) in the
+.\" SECCOMP_IOCTL_NOTIF_RECV operation. Instead, I had to code
+.\" the signal handler to simply call _exit(2) in order to
+.\" terminate the parent process (the supervisor).
+.\"
+.\" Is this expected behavior? It seems to me rather
+.\" desirable that SECCOMP_IOCTL_NOTIF_RECV should give an error
+.\" if the target has terminated.
+.\"
+.\" Jann posted a patch to rectify this, but there was no response
+.\" (Lore link: https://bit.ly/3jvUBxk) to his question about fixing
+.\" this issue. (I've tried building with the patch, but encountered
+.\" an issue with the target process entering D state after a signal.)
+.\"
+.\" For now, this behavior is documented in BUGS.
+.\"
+.\" Kees Cook commented: Let's change [this] ASAP!
+.\"
+目标线程在生成通知信息时被信号杀死，或者目标的 (blocked) 系统调用被信号处理程序中断。
+.SS SECCOMP_IOCTL_NOTIF_ID_VALID
+\fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP 操作 (自 Linux 5.0 起可用) 用于检查由较早的
+\fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作返回的通知 ID 是否仍然有效 (即，目标仍然存在并且其系统调用仍然被阻塞以等待响应)。
+.PP
+第三个 \fBioctl\fP(2) 参数是指向 \fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作返回的 cookie (\fIid\fP) 的指针。
+.PP
+此操作是必要的，以避免当 \fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作返回的 \fIpid\fP 终止时可能发生的竞争状态，并且该进程 ID
+被另一个进程重用。 这种比赛的一个例子如下
+.IP (1) 5
+在侦听文件描述符上生成通知。 返回的 \fIseccomp_notif\fP 包含目标线程的 TID (在结构体的 \fIpid\fP 字段中)。
+.IP (2)
+目标终止。
+.IP (3)
+在系统上创建了另一个线程或进程，它偶然重用了目标终止时释放的 TID。
+.IP (4)
+supervisor \fBopen\fP(2)s 第 1 步获取的 TID 的 \fI/proc/\fPtid\fI/mem\fP 文件，目的是 (say) 检查内存
+location(s)，里面包含系统调用的 argument(s)，在第 1 步触发通知 1.
+.PP
+.\" Jann Horn:
+.\"     the PID can be reused, but the /proc/$pid directory is
+.\"     internally not associated with the numeric PID, but,
+.\"     conceptually speaking, with a specific incarnation of the
+.\"     PID, or something like that.  (Actually, it is associated
+.\"     with the "struct pid", which is not reused, instead of the
+.\"     numeric PID.
+在上述场景中，风险在于 supervisor 可能会尝试访问目标进程以外的进程的内存。 通过使用
+\fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP 操作调用 \fBopen\fP(2) 来验证生成通知的进程是否仍然存在，可以避免这种竞争。
+(请注意，如果目标在后一步之后终止，则文件描述符中的后续 \fBread\fP(2) 可能会返回 0，表示文件结束。)
+.PP
+有关必须执行 \fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP 检查的其他情况的讨论，请参见注释。
+.PP
+.\"
+成功时 (即通知 ID 仍然有效)，此操作返回 0。 失败时 (即通知 ID 不再有效)，返回 \-1，并将 \fIerrno\fP 设置为
+\fBENOENT\fP。
+.SS SECCOMP_IOCTL_NOTIF_SEND
+\fBSECCOMP_IOCTL_NOTIF_SEND\fP 操作 (自 Linux 5.0 起可用) 用于将通知响应发送回内核。 此结构体的第三个
+\fBioctl\fP(2) 参数是指向以下形式的结构体的指针:
+.PP
+.in +4n
+.EX
+struct seccomp_notif_resp {
+    __u64 id;           /* Cookie value */
+    __s64 val;          /* Success return value */
+    __s32 error;        /* 0 (success) or negative error number */
+    __u32 flags;        /* See below */
+};
+.EE
+.in
+.PP
+这个结构体的字段如下:
+.TP 
+\fIid\fP
+这是使用 \fBSECCOMP_IOCTL_NOTIF_RECV\fP 操作获得的 cookie 值。 此 cookie
+值允许内核正确地将此响应与触发用户空间通知的系统调用相关联。
+.TP 
+\fIval\fP
+这是将用于目标系统调用的欺骗性成功返回的值; 见下文。
+.TP 
+\fIerror\fP
+这是将用作目标系统调用的欺骗性错误返回的错误号 (\fIerrno\fP) 的值; 见下文。
+.TP 
+\fIflags\fP
+这是一个包含零个或多个以下标志的位掩码:
+.RS
+.TP 
+\fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP (since Linux 5.5)
+.\" commit fb3c5386b382d4097476ce9647260fc89b34afdb
+告诉内核执行目标的系统调用。
+.RE
+.PP
+有两种可能的响应:
+.IP \[bu] 3
+对内核的响应，告诉它执行目标系统调用。 在这种情况下，\fIflags\fP 字段包括
+\fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP，\fIerror\fP 和 \fIval\fP 字段必须为零。
+.IP
+这种响应在 supervisor 需要对目标系统调用进行比 seccomp 过滤器更深入的分析 (例如，检查指针参数的值)
+的情况下很有用，并且已确定系统调用不需要 supervisor 的仿真，supervisor 希望系统调用在目标中正常执行。
+.IP
+应谨慎使用 \fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP 标志; 见注释。
+.IP \[bu]
+目标系统调用的欺骗性返回值。 在这种情况下，内核不会执行目标的系统调用，而是导致系统调用返回 \fIseccomp_notif_resp\fP
+结构体字段指定的欺骗值。 supervisor 应该设置这个结构体的字段如下:
+.RS
+.IP + 3
+\fIflags\fP 不包含 \fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP。
+.IP +
+对于欺骗性 "success" 返回，\fIerror\fP 设置为 0，对于欺骗性 "failure" 返回，设置为 negative 错误编号。
+在前一种情况下，内核使目标系统调用返回 \fIval\fP 字段中指定的值。 在后一种情况下，内核导致目标系统调用返回 \-1，并且 \fIerrno\fP
+被赋予否定的 \fIerror\fP 值。
+.IP +
+.\" FIXME
+.\" Kees Cook suggested:
+.\"
+.\" Strictly speaking, this is architecture specific, but
+.\" all architectures do it this way. Should seccomp enforce
+.\" val == 0 when err != 0 ?
+.\"
+.\" Christian Brauner
+.\"
+.\" Feels like it should, at least for the SEND ioctl where we already
+.\" verify that val and err are both 0 when CONTINUE is specified (as you
+.\" pointed out correctly above).
+\fIval\fP 设置为一个值，该值将用作目标系统调用的欺骗性 "success" 返回的返回值。 如果 \fIerror\fP
+字段包含非零值，则忽略此字段中的值。
+.RE
+.PP
+成功时，此操作返回 0; 失败时，返回 \-1，并设置 \fIerrno\fP 以指示错误原因。 此操作可能会失败并出现以下错误:
+.TP 
+\fBEINPROGRESS\fP
+已发送对此通知的回复。
+.TP 
+\fBEINVAL\fP
+在 \fIflags field.\fP 中指定了无效值
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 字段包含 \fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP，而 \fIerror\fP 或 \fIval\fP 字段不为零。
+.TP 
+\fBENOENT\fP
+.\" Jann Horn notes:
+.\"     you could also get this [ENOENT] if a response has already
+.\"     been sent, instead of EINPROGRESS - the only difference is
+.\"     whether the target thread has picked up the response yet
+.\"
+目标中阻塞的系统调用已被信号处理程序中断或目标已终止。
+.SS SECCOMP_IOCTL_NOTIF_ADDFD
+\fBSECCOMP_IOCTL_NOTIF_ADDFD\fP 操作 (自 Linux 5.9 起可用) 允许 supervisor
+将文件描述符安装到目标的文件描述符表中。 与 \fBunix\fP(7) 中描述的 \fBSCM_RIGHTS\fP
+消息的使用非常相似，此操作在语义上等同于将文件描述符从 supervisor 的文件描述符表复制到目标的文件描述符表中。
+.PP
+\fBSECCOMP_IOCTL_NOTIF_ADDFD\fP 操作允许 supervisor 模拟目标系统调用 (例如生成文件描述符的
+\fBsocket\fP(2) 或 \fBopenat\fP(2))。 supervisor 可以执行生成文件描述符 (和关联的打开文件描述)
+的系统调用，然后使用此操作分配指向目标中相同打开文件描述的文件描述符。 (有关打开文件描述的解释，请参见 \fBopen\fP(2).)
+.PP
+一旦执行了这个操作，supervisor 就可以关闭它的文件描述符副本。
+.PP
+在目标中，接收到的文件描述符受到与应用于 \fBSCM_RIGHTS\fP 辅助消息中接收的文件描述符相同的 Linux 安全模块 (LSM) 检查的约束。
+如果文件描述符引用套接字，它会继承目标的 cgroup 版本 1 网络控制器设置 (\fIclassid\fP 和 \fInetprioidx\fP)。
+.PP
+第三个 \fBioctl\fP(2) 参数是指向以下形式的结构体的指针:
+.PP
+.in +4n
+.EX
+struct seccomp_notif_addfd {
+    __u64 id;           /* Cookie value */
+    __u32 flags;        /* Flags */
+    __u32 srcfd;        /* Local file descriptor number */
+    __u32 newfd;        /* 0 or desired file descriptor
+                           number in target */
+    __u32 newfd_flags;  /* Flags to set on target file
+                           descriptor */
+};
+.EE
+.in
+.PP
+该结构体中的字段如下:
+.TP 
+\fIid\fP
+该字段应设置为通过 \fBSECCOMP_IOCTL_NOTIF_RECV\fP 获取的通知 ID (cookie 值)。
+.TP 
+\fIflags\fP
+该字段是修改操作行为的标志的位掩码。 目前，只支持一个标志:
+.RS
+.TP 
+\fBSECCOMP_ADDFD_FLAG_SETFD\fP
+在目标中分配文件描述符时，使用 \fInewfd\fP 字段中指定的文件描述符编号。
+.TP 
+\fBSECCOMP_ADDFD_FLAG_SEND\fP (since Linux 5.14)
+.\" commit 0ae71c7720e3ae3aabd2e8a072d27f7bd173d25c
+执行相当于 \fBSECCOMP_IOCTL_NOTIF_ADDFD\fP 加 \fBSECCOMP_IOCTL_NOTIF_SEND\fP 的原子操作。
+调用成功后，目标进程的 \fIerrno\fP 将为 0，返回值将是在目标中分配的文件描述符编号。
+如果在目标中分配文件描述符失败，则目标的系统调用将继续阻塞，直到发送成功的响应。
+.RE
+.TP 
+\fIsrcfd\fP
+该字段应设置为 supervisor 中要复制的文件描述符的编号。
+.TP 
+\fInewfd\fP
+该字段确定在目标中分配哪个文件描述符编号。 如果设置了 \fBSECCOMP_ADDFD_FLAG_SETFD\fP
+标志，则此字段指定应分配哪个文件描述符编号。 如果这个文件描述符编号已经在目标中打开，它会自动关闭并重新使用。 如果由于 LSM
+检查导致描述符复制失败，或者如果 \fIsrcfd\fP 不是有效的文件描述符，则文件描述符 \fInewfd\fP 将不会在目标进程中关闭。
+.IP
+如果未设置 \fBSECCOMP_ADDFD_FLAG_SETFD\fP 标志，则此字段必须为 0，并且内核会分配目标中最低的未使用文件描述符编号。
+.TP 
+\fInewfd_flags\fP
+该字段是一个位掩码，指定应在目标进程中接收的文件描述符上设置的标志。 当前，仅实现了以下标志:
+.RS
+.TP 
+\fBO_CLOEXEC\fP
+在接收到的文件描述符上设置 close\-on\-exec 标志。
+.RE
+.PP
+成功时，此 \fBioctl\fP(2) 调用返回在目标中分配的文件描述符的编号。 假设仿真系统调用是一个返回文件描述符作为它的函数结果的系统
+(例如，\fBsocket\fP(2))，这个值可以用作返回值 (\fIresp.val\fP)，它在随后随 \fBSECCOMP_IOCTL_NOTIF_SEND\fP
+操作发送的响应中提供。
+.PP
+出错时，返回 \-1 并设置 \fIerrno\fP 以指示错误原因。
+.PP
+此操作可能会失败并出现以下错误:
+.TP 
+\fBEBADF\fP
+在目标中分配文件描述符会导致超过目标的 \fBRLIMIT_NOFILE\fP 限制 (请参见 \fBgetrlimit\fP(2)).
+.TP 
+\fBEBUSY\fP
+如果使用标志 \fBSECCOMP_IOCTL_NOTIF_SEND\fP，这意味着在处理其他 \fBSECCOMP_IOCTL_NOTIF_ADDFD\fP
+请求之前操作无法继续。
+.TP 
+\fBEINPROGRESS\fP
+\fIid\fP 字段中指定的用户空间通知存在但尚未被提取 (由 \fBSECCOMP_IOCTL_NOTIF_RECV\fP) 或已被响应 (由
+\fBSECCOMP_IOCTL_NOTIF_SEND\fP).
+.TP 
+\fBEINVAL\fP
+在 \fIflags\fP 或 \fInewfd_flags\fP 字段中指定了无效标志，或者 \fInewfd\fP 字段为非零且 \fIflags\fP 字段中未指定
+\fBSECCOMP_ADDFD_FLAG_SETFD\fP 标志。
+.TP 
+\fBEMFILE\fP
+\fInewfd\fP 中指定的文件描述符编号超过了 \fI/proc/sys/fs/nr_open\fP 中指定的限制。
+.TP 
+\fBENOENT\fP
+目标中阻塞的系统调用已被信号处理程序中断或目标已终止。
+.PP
+下面是一些示例代码 (省略了错误处理)，它使用 \fBSECCOMP_ADDFD_FLAG_SETFD\fP 操作 (这里，模拟一个调用于
+\fBopenat\fP(2)):
+.PP
+.EX
+.in +4n
+int fd, removeFd;
+
+fd = openat(req\->data.args[0], path, req\->data.args[2],
+                req\->data.args[3]);
+
+struct seccomp_notif_addfd addfd;
+addfd.id = req\->id; /* Cookie from SECCOMP_IOCTL_NOTIF_RECV */
+addfd.srcfd = fd;
+addfd.newfd = 0;
+addfd.flags = 0;
+addfd.newfd_flags = O_CLOEXEC;
+
+targetFd = ioctl(notifyFd, SECCOMP_IOCTL_NOTIF_ADDFD, &addfd);
+
+close(fd);          /* No longer needed in supervisor */
+
+struct seccomp_notif_resp *resp;
+    /* Code to allocate 'resp' omitted */
+resp\->id = req\->id;
+resp\->error = 0;         /* "Success" */
+resp\->val = targetFd;
+resp\->flags = 0;
+ioctl(notifyFd, SECCOMP_IOCTL_NOTIF_SEND, resp);
+.in
+.EE
+.SH NOTES
+.\"
+用户空间通知机制的一个示例用例是允许容器管理器 (通常以比容器内的进程更高的特权运行的进程) 挂载块设备或为容器创建设备节点。 挂载用例提供了
+\fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP \fBioctl\fP(2) 操作在何处有用的示例。 在收到 \fBmount\fP(2)
+系统调用的通知后，容器管理器 ("supervisor") 可以区分挂载块文件系统的请求 (这对于容器内的 "target" 进程来说是不可能的)
+并挂载该文件系统。 另一方面，如果容器管理器检测到该操作可以由容器内的进程执行 (例如，挂载 \fBtmpfs\fP(5)
+文件系统)，它可以通知内核目标进程的 \fBmount\fP(2) 系统调用可以继续。
+.SS "select()/poll()/epoll semantics"
+可以使用 \fBpoll\fP(2)、\fBepoll\fP(7) 和 \fBselect\fP(2) 监视 \fBseccomp\fP(2) 与
+\fBSECCOMP_FILTER_FLAG_NEW_LISTENER\fP 标志一起使用时返回的文件描述符。 这些接口表明文件描述符已准备就绪，如下所示:
+.IP \[bu] 3
+当通知挂起时，这些接口指示文件描述符是可读的。 在这样的指示之后，后续的 \fBSECCOMP_IOCTL_NOTIF_RECV\fP \fBioctl\fP(2)
+将不会阻塞，返回有关通知的信息，或者如果目标已被信号杀死或其系统调用已被信号处理程序中断，则失败并返回错误 \fBEINTR\fP。
+.IP \[bu]
+收到通知后 (即通过 \fBSECCOMP_IOCTL_NOTIF_RECV\fP \fBioctl\fP(2)
+操作)，这些接口指示文件描述符是可写的，这意味着可以使用 \fBSECCOMP_IOCTL_NOTIF_SEND\fP \fBioctl\fP(2)
+操作发送通知响应。
+.IP \[bu]
+在使用过滤器的最后一个线程终止并使用 \fBwaitpid\fP(2) (或类似的) 收割后，文件描述符指示文件结束条件 (在 \fBselect\fP(2)
+中可读; 在 \fBpoll\fP(2)/ \fBepoll_wait\fP(2)) 中为 \fBPOLLHUP\fP/\fBEPOLLHUP\fP。
+.SS "Design goals; use of SECCOMP_USER_NOTIF_FLAG_CONTINUE"
+用户空间通知特性的目的是允许代表目标执行系统调用。 目标系统调用应由 supervisor 处理或允许在内核中正常继续 (将应用标准安全策略)。
+.PP
+\fBNote well\fP: 不得使用此机制来制定有关系统调用的安全策略决策，由于下文所述的原因，这在本质上容易出现竞争。
+.PP
+必须谨慎使用 \fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP 标志。 如果由 supervisor 设置，目标的系统调用将继续。
+但是，这里存在检查时间和使用时间的竞争，因为攻击者可以利用目标被阻止等待 "continue" 响应的时间间隔来执行重写系统调用参数等操作。
+.PP
+此外请注意，如果现有过滤器允许使用 \fBseccomp\fP(2) 或 \fBprctl\fP(2) 安装过滤器，该过滤器返回优先级高于
+\fBSECCOMP_RET_USER_NOTIF\fP 的操作值，则可以绕过用户空间通知程序 (请参见 \fBseccomp\fP(2)).
+.PP
+.\"
+因此，应该绝对清楚，seccomp 用户空间通知机制 \fBcan not\fP 用于实现安全策略! 当 supervisor
+认为这是安全的时候，它应该只用于这样的场景: 一个更高特权的进程监督一个较低特权目标的系统调用，以绕过内核强制的安全限制。
+换句话说，为了继续一个系统调用，supervisor 应该确保另一个安全机制或内核本身足以阻止系统调用，如果它的参数被重写为不安全的东西。
+.SS "Caveats regarding the use of /proc/[tid]/mem"
+上面的讨论指出，在打开目标的 \fI/proc/\fPtid\fI/mem\fP 文件时需要使用 \fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP
+\fBioctl\fP(2)，以避免在目标终止并且其 ID 被另一个 (unrelated) 线程回收的情况下访问错误进程的内存的可能性。
+但是，如以下段落中所述，在其他情况下也需要使用此 \fBioctl\fP(2) 操作。
+.PP
+考虑以下场景，其中 supervisor 尝试读取目标被阻止的 \fBmount\fP(2) 系统调用的路径名参数:
+.IP (1) 5
+目标从其任数 (\fIfunc()\fP) 之一调用 \fBmount\fP(2)，这会触发用户空间通知并导致目标阻塞。
+.IP (2)
+supervisor 收到通知，打开 \fI/proc/\fPtid\fI/mem\fP，(successfully) 进行
+\fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP 检查。
+.IP (3)
+目标接收到一个信号，导致 \fBmount\fP(2) 停止。
+.IP (4)
+信号处理程序在目标中执行，然后返回。
+.IP (5)
+从处理程序返回后，\fIfunc()\fP 的执行恢复，它返回 (并且可能调用其他函数，覆盖用于 \fIfunc()\fP) 栈帧的内存。
+.IP (6)
+使用通知信息中提供的地址，supervisor 从目标的内存位置读取用于包含路径名。
+.IP (7)
+supervisor 现在用上一步中获得的一些任意字节调用 \fBmount\fP(2)。
+.PP
+上述场景的结论是: 由于目标的阻塞系统调用可能被信号处理程序中断，supervisor 必须写入期望目标可能在 \fBany\fP 时间放弃其系统调用;
+在这种情况下，supervisor 从目标内存中获取的任何信息都必须被视为无效。
+.PP
+为了防止出现这种情况，每次从目标内存中读取都必须与使用通过 \fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP 检查获得的字节分开。
+在上面的示例中，检查将放在最后两个步骤之间。 示例中显示了此类检查的示例。
+.PP
+.\"
+从上面的内容可以看出，supervisor 对目标内存的写入 \fBnever\fP 可以被认为是安全的。
+.SS "Caveats regarding blocking system calls"
+假设目标执行阻塞系统调用 (例如，supervisor 应该处理的 \fBaccept\fP(2))。 然后 supervisor
+可能会依次执行相同的阻塞系统调用。
+.PP
+在这种情况下，重要的是要注意，如果目标系统调用现在被信号中断，supervisor 是 \fInot\fP 通知的。 如果 supervisor
+没有采取适当的措施主动发现目标的系统调用已经被取消，就会出现各种困难。 以 \fBaccept\fP(2) 为例，supervisor 可能会在其
+\fBaccept\fP(2) 中保持阻塞，并持有一个端口号，目标 (在信号处理程序中断后，可能会关闭其监听套接字) 可能希望能够在 \fBbind\fP(2)
+调用中重用。
+.PP
+因此，当 supervisor 希望模拟阻塞系统调用时，它必须以这样一种方式进行，即如果目标系统调用被信号处理程序中断，它会得到通知。 例如，如果
+supervisor 本身执行相同的阻塞系统调用，那么它可以使用一个单独的线程使用 \fBSECCOMP_IOCTL_NOTIF_ID_VALID\fP
+操作来检查目标是否仍然在其系统调用中被阻塞。 或者，在 \fBaccept\fP(2) 示例中，supervisor 可能使用 \fBpoll\fP(2)
+来监视通知文件描述符 (以便发现目标的 \fBaccept\fP(2) 调用何时被中断) 和监听文件描述符 (以便知道连接何时可用)。
+.PP
+.\"
+如果目标的系统调用被中断，supervisor 必须注意释放它代表目标获取的资源 (例如，文件描述符)。
+.SS "Interaction with SA_RESTART signal handlers"
+考虑以下情况:
+.IP (1) 5
+目标进程已使用 \fBsigaction\fP(2) 安装带有 \fBSA_RESTART\fP 标志的信号处理程序。
+.IP (2)
+目标进行了系统调用，触发了 seccomp 用户空间通知，目标当前处于阻塞状态，直到 supervisor 发送通知响应。
+.IP (3)
+信号被传送到目标并执行信号处理程序。
+.IP (4)
+当 (if) supervisor 尝试发送通知响应时，\fBSECCOMP_IOCTL_NOTIF_SEND\fP \fBioctl\fP(2))
+操作将失败并出现 \fBENOENT\fP 错误。
+.PP
+在这种情况下，内核将重新启动目标系统调用。 因此，supervisor 将收到另一个用户空间通知。
+因此，根据信号处理程序中断阻塞系统调用的次数，supervisor 可能会收到目标系统调用的同一实例的多个通知。
+.PP
+.\" FIXME
+.\" About the above, Kees Cook commented:
+.\"
+.\" Does this need fixing? I imagine the correct behavior for this case
+.\" would be a response to _SEND of EINPROGRESS and the target would see
+.\" EINTR normally?
+.\"
+.\" I mean, it's not like seccomp doesn't already expose weirdness with
+.\" syscall restarts. Not even arm64 compat agrees[3] with arm32 in this
+.\" regard. :(
+一个奇怪的是，即使对于 \fBsignal\fP(7) 中列出的阻塞系统调用 (通常 \fBnever\fP 由 \fBSA_RESTART\fP
+标志重新启动)，也会发生如本场景中所述的系统调用重新启动。
+.
+.\" FIXME
+.\" Michael Kerrisk:
+.\" I wonder about the effect of this oddity for system calls that
+.\" are normally nonrestartable because they have timeouts. My
+.\" understanding is that the kernel doesn't restart those system
+.\" calls because it's impossible for the kernel to restart the call
+.\" with the right timeout value. I wonder what happens when those
+.\" system calls are restarted in the scenario we're discussing.)
+.PP
+此外，如果 supervisor 响应是添加了 \fBSECCOMP_IOCTL_NOTIF_ADDFD\fP 的文件描述符，则可以使用标志
+\fBSECCOMP_ADDFD_FLAG_SEND\fP 自动添加文件描述符并返回该值，确保没有文件描述符无意中泄漏到目标中。
+.SH BUGS
+.\" or a poll/epoll/select
+.\" FIXME
+.\" Comment from Kees Cook:
+.\"
+.\" I want this fixed. It caused me no end of pain when building the
+.\" selftests, and ended up spawning my implementing a global test timeout
+.\" in kselftest. :P Before the usage counter refactor, there was no sane
+.\" way to deal with this, but now I think we're close.
+.\"
+如果在目标终止后执行 \fBSECCOMP_IOCTL_NOTIF_RECV\fP \fBioctl\fP(2) 操作，则 \fBioctl\fP(2) 调用会简单地阻塞
+(而不是返回错误以指示目标不再存在)。
+.SH EXAMPLES
+下面显示的 (有点做作的) 程序演示了本页中描述的接口的使用。 该程序创建一个子进程作为 "target" 进程。 子进程安装一个 seccomp
+过滤器，如果对 \fBmkdir\fP(2) 进行调用，该过滤器将返回 \fBSECCOMP_RET_USER_NOTIF\fP 操作值。
+然后，子进程为每个提供的命令行参数调用 \fBmkdir\fP(2) 一次，并报告调用返回的结果。 处理完所有参数后，子进程终止。
+.PP
+父进程充当 supervisor，监听目标进程调用 \fBmkdir\fP(2) 时生成的通知。 当出现这样的通知时，supervisor 检查目标进程的内存
+(使用 \fI/proc/\fPpid\fI/mem\fP) 发现提供给 \fBmkdir\fP(2) 调用的路径名参数，并执行以下操作之一:
+.IP \[bu] 3
+如果路径名以前缀 "/tmp/" 开头，则 supervisor 会尝试创建指定目录，然后根据 supervisor 的 \fBmkdir\fP(2)
+调用的返回值欺骗目标进程返回。 如果调用成功，则伪造的成功返回值就是路径名的长度。
+.IP \[bu]
+如果路径名以 "./" 开头 (即，它是一个相对路径名)，则 supervisor 向内核发送一个
+\fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP 响应，表示内核应该执行目标进程的 \fBmkdir\fP(2) 调用。
+.IP \[bu]
+如果路径名以其他前缀开头，则 supervisor 会伪装为目标进程返回错误，因此目标进程的 \fBmkdir\fP(2) 调用似乎失败并显示错误
+\fBEOPNOTSUPP\fP (`不支持操作`)。 此外，如果指定的路径名恰好是 "/bye"，则 supervisor 终止。
+.PP
+该程序可用于演示 seccomp 用户空间通知机制行为的各个方面。 为了帮助此类演示，该程序记录了各种消息以显示目标进程 (以 "T:" 为前缀的行)
+和 supervisor (以 "S:" 为前缀的缩进行) 的操作。
+.PP
+在以下示例中，目标尝试创建目录 \fI/tmp/x\fP。 收到通知后，supervisor 代表目标创建目录，并欺骗目标进程的 \fBmkdir\fP(2)
+调用接收成功返回。
+.PP
+.in +4n
+.EX
+$ \fB./seccomp_unotify /tmp/x\fP
+T: PID = 23168
+
+T: 即将到 mkdir("/tmp/x")
+        S: 收到 PID 23168 的通知 (ID 0x17445c4a0f4e0e3c)
+        S: 执行: mkdir("/tmp/x", 0700)
+        S: 成功! 欺骗返回 = 6
+        S: 发送响应 (flags=0; val=6; error=0)
+T: 成功: mkdir(2) 返回 6
+
+T: terminating
+        S: 目标已终止; bye
+.EE
+.in
+.PP
+在上面的输出中，注意目标进程看到的欺骗返回值是 6 (路径名 \fI/tmp/x\fP) 的长度，而正常的 \fBmkdir\fP(2) 调用成功时返回 0。
+.PP
+在下一个示例中，目标尝试使用相对路径名 \fI./sub\fP 创建目录。 由于此路径名以 "./" 开头，因此 supervisor 向内核发送
+\fBSECCOMP_USER_NOTIF_FLAG_CONTINUE\fP 响应，然后内核 (successfully) 执行目标进程的
+\fBmkdir\fP(2) 调用。
+.PP
+.in +4n
+.EX
+$ \fB./seccomp_unotify ./sub\fP
+T: PID = 23204
+
+T: 即将到 mkdir("./sub")
+        S: 收到 PID 23204 的通知 (ID 0xddb16abe25b4c12)
+        S: target can execute system 调用
+        S: 发送响应 (flags= 0x1; val=0; error=0)
+T: 成功: mkdir(2) 返回 0
+
+T: terminating
+        S: 目标已终止; bye
+.EE
+.in
+.PP
+如果目标进程尝试创建一个路径名不以 "." 开头且不以前缀 "/tmp/" 开头的目录，则 supervisor 会为目标的 \fBmkdir\fP(2)
+调用 (未执行) 欺骗错误返回 (\fBEOPNOTSUPP\fP，"Operation not supported") ):
+.PP
+.in +4n
+.EX
+$ \fB./seccomp_unotify /xxx\fP
+T: PID = 23178
+
+T: 即将到 mkdir("/xxx")
+        S: 收到 PID 23178 的通知 (ID 0xe7dc095d1c524e80)
+        S: 欺骗错误响应 (不支持操作)
+        S: 发送响应 (flags=0; val=0; error= \-95)
+T: 错误: mkdir(2): 不支持操作
+
+T: terminating
+        S: 目标已终止; bye
+.EE
+.in
+.PP
+在下一个示例中，目标进程尝试创建一个路径名为 \fB/tmp/nosuchdir/b\fP 的目录。 收到通知后，supervisor 尝试创建该目录，但
+\fBmkdir\fP(2) 调用失败，因为目录 \fB/tmp/nosuchdir\fP 不存在。 因此，supervisor
+伪造一个错误返回，将它收到的错误传递回目标进程的 \fBmkdir\fP(2) 调用。
+.PP
+.in +4n
+.EX
+$ \fB./seccomp_unotify /tmp/nosuchdir/b\fP
+T: PID = 23199
+
+T: 即将到 mkdir("/tmp/nosuchdir/b")
+        S: 收到 PID 23199 的通知 (ID 0x8744454293506046)
+        S: 执行: mkdir("/tmp/nosuchdir/b", 0700)
+        S: 失败! (errno=2; 没有那个文件或目录)
+        S: 发送响应 (flags=0; val=0; error= \-2)
+T: 错误: mkdir(2): 没有那个文件或目录
+
+T: terminating
+        S: 目标已终止; bye
+.EE
+.in
+.PP
+如果 supervisor 收到通知并发现目标 \fBmkdir\fP(2) 的参数是字符串 "/bye"，那么 (以及欺骗 \fBEOPNOTSUPP\fP
+错误)，supervisor 终止。 如果目标进程随后执行另一个 \fBmkdir\fP(2)，触发其 seccomp 过滤器返回
+\fBSECCOMP_RET_USER_NOTIF\fP 操作值，则内核会导致目标进程的系统调用失败，并返回错误 \fBENOSYS\fP (`函数未实现`)。
+以下示例证明了这一点:
+.PP
+.in +4n
+.EX
+$ \fB./seccomp_unotify /bye /tmp/y\fP
+T: PID = 23185
+
+T: 即将到 mkdir("/bye")
+        S: 收到 PID 23185 的通知 (ID 0xa81236b1d2f7b0f4)
+        S: 欺骗错误响应 (不支持操作)
+        S: 发送响应 (flags=0; val=0; error= \-95)
+        S: 终止 **********
+T: 错误: mkdir(2): 不支持操作
+
+T: 即将到 mkdir("/tmp/y")
+T: ERROR: mkdir(2): 函数未实现
+
+T: terminating
+.EE
+.in
+.\"
+.SS "Program source"
+.\" SRC BEGIN (seccomp_unotify.c)
+.EX
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <linux/audit.h>
+#include <linux/filter.h>
+#include <linux/seccomp.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/prctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#define ARRAY_SIZE(arr)  (sizeof(arr) / sizeof((arr)[0]))
+
+/* Send the file descriptor \[aq]fd\[aq] over the connected UNIX domain socket
+   \[aq]sockfd\[aq]. Returns 0 on success, or \-1 on error. */
+
+static int
+sendfd(int sockfd, int fd)
+{
+    int             data;
+    struct iovec    iov;
+    struct msghdr   msgh;
+    struct cmsghdr  *cmsgp;
+
+    /* 分配一个合适大小的字符数组来保存辅助数据。
+       然而，由于这个缓冲区实际上是一个 \[aq] 结构体 cmsghdr\[aq]，所以使用
+       union 以确保它适当对齐。*/
+    union {
+        char   buf[CMSG_SPACE(sizeof(int))];
+                        /* Space large enough to hold an \[aq]int\[aq] */
+        struct cmsghdr align;
+    } controlMsg;
+
+    /* The \[aq]msg_name\[aq] field can be used to specify the address of the
+       destination socket when sending a datagram. However, we do not
+       need to use this field because \[aq]sockfd\[aq] is a connected socket. */
+
+    msgh.msg_name = NULL;
+    msgh.msg_namelen = 0;
+
+    /* On Linux, we must transmit at least one byte of real data in
+       order to send ancillary data. We transmit an arbitrary integer
+       whose value is ignored by recvfd(). */
+
+    msgh.msg_iov = &iov;
+    msgh.msg_iovlen = 1;
+    iov.iov_base = &data;
+    iov.iov_len = sizeof(int);
+    data = 12345;
+
+    /* Set \[aq]msghdr\[aq] fields that describe ancillary data */
+
+    msgh.msg_control = controlMsg.buf;
+    msgh.msg_controllen = sizeof(controlMsg.buf);
+
+    /* Set up ancillary data describing file descriptor to send */
+
+    cmsgp = CMSG_FIRSTHDR(&msgh);
+    cmsgp\->cmsg_level = SOL_SOCKET;
+    cmsgp\->cmsg_type = SCM_RIGHTS;
+    cmsgp\->cmsg_len = CMSG_LEN(sizeof(int));
+    memcpy(CMSG_DATA(cmsgp), &fd, sizeof(int));
+
+    /* Send real plus ancillary data */
+
+    if (sendmsg(sockfd, &msgh, 0) == \-1)
+        return \-1;
+
+    return 0;
+}
+
+/* Receive a file descriptor on a connected UNIX domain socket. Returns
+   the received file descriptor on success, or \-1 on error. */
+
+static int
+recvfd(int sockfd)
+{
+    int            data, fd;
+    ssize_t        nr;
+    struct iovec   iov;
+    struct msghdr  msgh;
+
+    /* 为辅助数据分配一个字符缓冲区。看评论
+       in sendfd() */
+    union {
+        char   buf[CMSG_SPACE(sizeof(int))];
+        struct cmsghdr align;
+    } controlMsg;
+    struct cmsghdr *cmsgp;
+
+    /* The \[aq]msg_name\[aq] field can be used to obtain the address of the
+       sending socket. However, we do not need this information. */
+
+    msgh.msg_name = NULL;
+    msgh.msg_namelen = 0;
+
+    /* Specify buffer for receiving real data */
+
+    msgh.msg_iov = &iov;
+    msgh.msg_iovlen = 1;
+    iov.iov_base = &data;       /* Real data is an \[aq]int\[aq] */
+    iov.iov_len = sizeof(int);
+
+    /* Set \[aq]msghdr\[aq] fields that describe ancillary data */
+
+    msgh.msg_control = controlMsg.buf;
+    msgh.msg_controllen = sizeof(controlMsg.buf);
+
+    /* Receive real plus ancillary data; real data is ignored */
+
+    nr = recvmsg(sockfd, &msgh, 0);
+    if (nr == \-1)
+        return \-1;
+
+    cmsgp = CMSG_FIRSTHDR(&msgh);
+
+    /* Check the validity of the \[aq]cmsghdr\[aq] */
+
+    if (cmsgp == NULL
+        || cmsgp\->cmsg_len != CMSG_LEN(sizeof(int))
+        || cmsgp\->cmsg_level != SOL_SOCKET
+        || cmsgp\->cmsg_type != SCM_RIGHTS)
+    {
+        errno = EINVAL;
+        return \-1;
+    }
+
+    /* Return the received file descriptor to our caller */
+
+    memcpy(&fd, CMSG_DATA(cmsgp), sizeof(int));
+    return fd;
+}
+
+static void
+sigchldHandler(int sig)
+{
+    char msg[] = "\etS: target has terminated;  bye\en";
+
+    write(STDOUT_FILENO, msg, sizeof(msg) \- 1);
+    _exit(EXIT_SUCCESS);
+}
+
+static int
+seccomp(unsigned int operation, unsigned int flags, void *args)
+{
+    return syscall(SYS_seccomp, operation, flags, args);
+}
+
+/* The following is the x86\-64\-specific BPF boilerplate code for checking
+   that the BPF program is running on the right architecture + ABI. At
+   completion of these instructions, the accumulator contains the system
+   call number. */
+
+/* For the x32 ABI, all system call numbers have bit 30 set */
+
+#define X32_SYSCALL_BIT         0x40000000
+
+#define X86_64_CHECK_ARCH_AND_LOAD_SYSCALL_NR \e
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS, \e
+                 (offsetof(struct seccomp_data, arch))), \e
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_X86_64, 0, 2), \e
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS, \e
+                 (offsetof(struct seccomp_data, nr))), \e
+        BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, X32_SYSCALL_BIT, 0, 1), \e
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS)
+
+/* installNotifyFilter() installs a seccomp filter that generates
+   user\-space notifications (SECCOMP_RET_USER_NOTIF) when the process
+   calls mkdir(2); the filter allows all other system calls.
+
+   The function return value is a file descriptor from which the
+   user\-space notifications can be fetched.  */
+
+static int
+installNotifyFilter(void)
+{
+    int notifyFd;
+
+    struct sock_filter filter[] = {
+        X86_64_CHECK_ARCH_AND_LOAD_SYSCALL_NR,
+
+        /* mkdir() triggers notification to user\-space supervisor */
+
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_mkdir, 0, 1),
+        BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_USER_NOTIF),
+
+        /* Every other system call is allowed */
+
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+    };
+
+    struct sock_fprog prog = {
+        .len = ARRAY_SIZE(filter),
+        .filter = filter,
+    };
+
+    /* Install the filter with the SECCOMP_FILTER_FLAG_NEW_LISTENER flag;
+       as a result, seccomp() returns a notification file descriptor. */
+
+    notifyFd = seccomp(SECCOMP_SET_MODE_FILTER,
+                       SECCOMP_FILTER_FLAG_NEW_LISTENER, &prog);
+    if (notifyFd == \-1)
+        err(EXIT_FAILURE, "seccomp\-install\-notify\-filter");
+
+    return notifyFd;
+}
+
+/* Close a pair of sockets created by socketpair() */
+
+static void
+closeSocketPair(int sockPair[2])
+{
+    if (close(sockPair[0]) == \-1)
+        err(EXIT_FAILURE, "closeSocketPair\-close\-0");
+    if (close(sockPair[1]) == \-1)
+        err(EXIT_FAILURE, "closeSocketPair\-close\-1");
+}
+
+/* Implementation of the target process; create a child process that:
+
+   (1) 安装一个 seccomp 过滤器
+       SECCOMP_FILTER_FLAG_NEW_LISTENER 标志;
+   (2) 写入从返回的 seccomp 通知文件描述符
+       上一步到 UNIX 域套接字，\[aq] sockPair [0]\[aq];
+   (3) 为 \[aq] argv\[aq] 的每个元素调用 mkdir(2)。
+
+   parent 中的函数返回值为 child 的 PID
+   process;  这个函数子节点不归。*/
+
+static pid_t
+targetProcess(int sockPair[2], char *argv[])
+{
+    int    notifyFd, s;
+    pid_t  targetPid;
+
+    targetPid = fork();
+
+    if (targetPid == \-1)
+        err(EXIT_FAILURE, "fork");
+
+    if (targetPid > 0)          /* In parent, return PID of child */
+        return targetPid;
+
+    /* Child falls through to here */
+
+    printf("T: PID = %ld\en", (long) getpid());
+
+    /* Install seccomp filter(s) */
+
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
+        err(EXIT_FAILURE, "prctl");
+
+    notifyFd = installNotifyFilter();
+
+    /* Pass the notification file descriptor to the tracing process over
+       a UNIX domain socket */
+
+    if (sendfd(sockPair[0], notifyFd) == \-1)
+        err(EXIT_FAILURE, "sendfd");
+
+    /* Notification and socket FDs are no longer needed in target */
+
+    if (close(notifyFd) == \-1)
+        err(EXIT_FAILURE, "close\-target\-notify\-fd");
+
+    closeSocketPair(sockPair);
+
+    /* Perform a mkdir() call for each of the command\-line arguments */
+
+    for (char **ap = argv; *ap != NULL; ap++) {
+        printf("\enT: about to mkdir(\e"%s\e")\en", *ap);
+
+        s = mkdir(*ap, 0700);
+        if (s == \-1)
+            perror("T: ERROR: mkdir(2)");
+        else
+            printf("T: SUCCESS: mkdir(2) returned %d\en", s);
+    }
+
+    printf("\enT: terminating\en");
+    exit(EXIT_SUCCESS);
+}
+
+/* Check that the notification ID provided by a SECCOMP_IOCTL_NOTIF_RECV
+   operation is still valid. It will no longer be valid if the target
+   process has terminated or is no longer blocked in the system call that
+   generated the notification (because it was interrupted by a signal).
+
+   在进行访问等操作时可以使用此操作
+   目标进程中的 /proc/PID 文件以避免 TOCTOU race
+   SECCOMP_IOCTL_NOTIF_RECV 返回的 PID 的条件
+   终止并被另一个进程重用。*/
+
+static bool
+cookieIsValid(int notifyFd, uint64_t id)
+{
+    return ioctl(notifyFd, SECCOMP_IOCTL_NOTIF_ID_VALID, &id) == 0;
+}
+
+/* Access the memory of the target process in order to fetch the
+   pathname referred to by the system call argument \[aq]argNum\[aq] in
+   \[aq]req\->data.args[]\[aq].  The pathname is returned in \[aq]path\[aq],
+   a buffer of \[aq]len\[aq] bytes allocated by the caller.
+
+   如果成功获取路径名，则返回 true，否则返回 false
+   otherwise.  有关失败的可能原因，请参见下面的注释。*/
+
+static bool
+getTargetPathname(struct seccomp_notif *req, int notifyFd,
+                  int argNum, char *path, size_t len)
+{
+    int      procMemFd;
+    char     procMemPath[PATH_MAX];
+    ssize_t  nread;
+
+    snprintf(procMemPath, sizeof(procMemPath), "/proc/%d/mem", req\->pid);
+
+    procMemFd = open(procMemPath, O_RDONLY | O_CLOEXEC);
+    if (procMemFd == \-1)
+        return false;
+
+    /* Check that the process whose info we are accessing is still alive
+       and blocked in the system call that caused the notification.
+       If the SECCOMP_IOCTL_NOTIF_ID_VALID operation (performed in
+       cookieIsValid()) succeeded, we know that the /proc/PID/mem file
+       descriptor that we opened corresponded to the process for which we
+       received a notification. If that process subsequently terminates,
+       then read() on that file descriptor will return 0 (EOF). */
+
+    if (!cookieIsValid(notifyFd, req\->id)) {
+        close(procMemFd);
+        return false;
+    }
+
+    /* Read bytes at the location containing the pathname argument */
+
+    nread = pread(procMemFd, path, len, req\->data.args[argNum]);
+
+    close(procMemFd);
+
+    if (nread <= 0)
+        return false;
+
+    /* Once again check that the notification ID is still valid. The
+       case we are particularly concerned about here is that just
+       before we fetched the pathname, the target\[aq]s blocked system
+       call was interrupted by a signal handler, and after the handler
+       returned, the target carried on execution (past the interrupted
+       system call). In that case, we have no guarantees about what we
+       are reading, since the target\[aq]s memory may have been arbitrarily
+       changed by subsequent operations. */
+
+    if (!cookieIsValid(notifyFd, req\->id)) {
+        perror("\etS: notification ID check failed!!!");
+        return false;
+    }
+
+    /* Even if the target\[aq]s system call was not interrupted by a signal,
+       we have no guarantees about what was in the memory of the target
+       process. (The memory may have been modified by another thread, or
+       even by an external attacking process.) We therefore treat the
+       buffer returned by pread() as untrusted input. The buffer should
+       contain a terminating null byte; if not, then we will trigger an
+       error for the target process. */
+
+    if (strnlen(path, nread) < nread)
+        return true;
+
+    return false;
+}
+
+/* Allocate buffers for the seccomp user\-space notification request and
+   response structures. It is the caller\[aq]s responsibility to free the
+   buffers returned via \[aq]req\[aq] and \[aq]resp\[aq]. */
+
+static void
+allocSeccompNotifBuffers(struct seccomp_notif **req,
+                         struct seccomp_notif_resp **resp,
+                         struct seccomp_notif_sizes *sizes)
+{
+    size_t  resp_size;
+
+    /* Discover the sizes of the structures that are used to receive
+       notifications and send notification responses, and allocate
+       buffers of those sizes. */
+
+    if (seccomp(SECCOMP_GET_NOTIF_SIZES, 0, sizes) == \-1)
+        err(EXIT_FAILURE, "seccomp\-SECCOMP_GET_NOTIF_SIZES");
+
+    *req = malloc(sizes\->seccomp_notif);
+    if (*req == NULL)
+        err(EXIT_FAILURE, "malloc\-seccomp_notif");
+
+    /* When allocating the response buffer, we must allow for the fact
+       that the user\-space binary may have been built with user\-space
+       headers where \[aq]struct seccomp_notif_resp\[aq] is bigger than the
+       response buffer expected by the (older) kernel. Therefore, we
+       allocate a buffer that is the maximum of the two sizes. This
+       ensures that if the supervisor places bytes into the response
+       structure that are past the response size that the kernel expects,
+       then the supervisor is not touching an invalid memory location. */
+
+    resp_size = sizes\->seccomp_notif_resp;
+    if (sizeof(struct seccomp_notif_resp) > resp_size)
+        resp_size = sizeof(struct seccomp_notif_resp);
+
+    *resp = malloc(resp_size);
+    if (*resp == NULL)
+        err(EXIT_FAILURE, "malloc\-seccomp_notif_resp");
+
+}
+
+/* Handle notifications that arrive via the SECCOMP_RET_USER_NOTIF file
+   descriptor, \[aq]notifyFd\[aq]. */
+
+static void
+handleNotifications(int notifyFd)
+{
+    bool                        pathOK;
+    char                        path[PATH_MAX];
+    struct seccomp_notif        *req;
+    struct seccomp_notif_resp   *resp;
+    struct seccomp_notif_sizes  sizes;
+
+    allocSeccompNotifBuffers(&req, &resp, &sizes);
+
+    /* Loop handling notifications */
+
+    for (;;) {
+
+        /* Wait for next notification, returning info in \[aq]*req\[aq]  */
+
+        memset(req, 0, sizes.seccomp_notif);
+        if (ioctl(notifyFd, SECCOMP_IOCTL_NOTIF_RECV, req) == \-1) {
+            if (errno == EINTR)
+                continue;
+            err(EXIT_FAILURE, "\etS: ioctl\-SECCOMP_IOCTL_NOTIF_RECV");
+        }
+
+        printf("\etS: got notification (ID %#llx) for PID %d\en",
+               req\->id, req\->pid);
+
+        /* The only system call that can generate a notification event
+           is mkdir(2). Nevertheless, we check that the notified system
+           call is indeed mkdir() as kind of future\-proofing of this
+           code in case the seccomp filter is later modified to
+           generate notifications for other system calls. */
+
+        if (req\->data.nr != SYS_mkdir) {
+            printf("\etS: notification contained unexpected "
+                   "system call number; bye!!!\en");
+            exit(EXIT_FAILURE);
+        }
+
+        pathOK = getTargetPathname(req, notifyFd, 0, path, sizeof(path));
+
+        /* Prepopulate some fields of the response */
+
+        resp\->id = req\->id;     /* Response includes notification ID */
+        resp\->flags = 0;
+        resp\->val = 0;
+
+        /* If getTargetPathname() failed, trigger an EINVAL error
+           response (sending this response may yield an error if the
+           failure occurred because the notification ID was no longer
+           valid); if the directory is in /tmp, then create it on behalf
+           of the supervisor; if the pathname starts with \[aq].\[aq], tell the
+           kernel to let the target process execute the mkdir();
+           otherwise, give an error for a directory pathname in any other
+           location. */
+
+        if (!pathOK) {
+            resp\->error = \-EINVAL;
+            printf("\etS: spoofing error for invalid pathname (%s)\en",
+                   strerror(\-resp\->error));
+        } else if (strncmp(path, "/tmp/", strlen("/tmp/")) == 0) {
+            printf("\etS: executing: mkdir(\e"%s\e", %#llo)\en",
+                   path, req\->data.args[1]);
+
+            if (mkdir(path, req\->data.args[1]) == 0) {
+                resp\->error = 0;            /* "Success" */
+                resp\->val = strlen(path);   /* Used as return value of
+                                               mkdir() in target */
+                printf("\etS: success! spoofed return = %lld\en",
+                       resp\->val);
+            } else {
+
+                /* If mkdir() failed in the supervisor, pass the error
+                   back to the target */
+
+                resp\->error = \-errno;
+                printf("\etS: failure! (errno = %d; %s)\en", errno,
+                       strerror(errno));
+            }
+        } else if (strncmp(path, "./", strlen("./")) == 0) {
+            resp\->error = resp\->val = 0;
+            resp\->flags = SECCOMP_USER_NOTIF_FLAG_CONTINUE;
+            printf("\etS: target can execute system call\en");
+        } else {
+            resp\->error = \-EOPNOTSUPP;
+            printf("\etS: spoofing error response (%s)\en",
+                   strerror(\-resp\->error));
+        }
+
+        /* Send a response to the notification */
+
+        printf("\etS: sending response "
+               "(flags = %#x; val = %lld; error = %d)\en",
+               resp\->flags, resp\->val, resp\->error);
+
+        if (ioctl(notifyFd, SECCOMP_IOCTL_NOTIF_SEND, resp) == \-1) {
+            if (errno == ENOENT)
+                printf("\etS: response failed with ENOENT; "
+                       "perhaps target process\[aq]s syscall was "
+                       "interrupted by a signal?\en");
+            else
+                perror("ioctl\-SECCOMP_IOCTL_NOTIF_SEND");
+        }
+
+        /* If the pathname is just "/bye", then the supervisor breaks out
+           of the loop and terminates. This allows us to see what happens
+           if the target process makes further calls to mkdir(2). */
+
+        if (strcmp(path, "/bye") == 0)
+            break;
+    }
+
+    free(req);
+    free(resp);
+    printf("\etS: terminating **********\en");
+    exit(EXIT_FAILURE);
+}
+
+/* Implementation of the supervisor process:
+
+   (1) 从 \[aq] sockPair [1]\[aq] 获取通知文件描述符
+   (2) 处理到达该文件描述符的通知。*/
+
+static void
+supervisor(int sockPair[2])
+{
+    int notifyFd;
+
+    notifyFd = recvfd(sockPair[1]);
+
+    if (notifyFd == \-1)
+        err(EXIT_FAILURE, "recvfd");
+
+    closeSocketPair(sockPair);  /* We no longer need the socket pair */
+
+    handleNotifications(notifyFd);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int               sockPair[2];
+    struct sigaction  sa;
+
+    setbuf(stdout, NULL);
+
+    if (argc < 2) {
+        fprintf(stderr, "At least one pathname argument is required\en");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Create a UNIX domain socket that is used to pass the seccomp
+       notification file descriptor from the target process to the
+       supervisor process. */
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockPair) == \-1)
+        err(EXIT_FAILURE, "socketpair");
+
+    /* Create a child process\-\-the "target"\-\-that installs seccomp
+       filtering. The target process writes the seccomp notification
+       file descriptor onto \[aq]sockPair[0]\[aq] and then calls mkdir(2) for
+       each directory in the command\-line arguments. */
+
+    (void) targetProcess(sockPair, &argv[optind]);
+
+    /* Catch SIGCHLD when the target terminates, so that the
+       supervisor can also terminate. */
+
+    sa.sa_handler = sigchldHandler;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGCHLD, &sa, NULL) == \-1)
+        err(EXIT_FAILURE, "sigaction");
+
+    supervisor(sockPair);
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBioctl\fP(2), \fBpidfd_getfd\fP(2), \fBpidfd_open\fP(2), \fBseccomp\fP(2)
+.PP
+可以在内核源文件 \fIsamples/seccomp/user\-trap.c\fP 中找到进一步的示例程序。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,157 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2009 Linux Foundation, written by Michael Kerrisk
+.\"     <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH pthread_sigmask 3 2022\-12\-15 "Linux man\-pages 6.03" 
+.SH NAME
+pthread_sigmask \- 检查和更改阻塞信号的掩码
+.SH LIBRARY
+POSIX 线程库 (\fIlibpthread\fP, \fI\-lpthread\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <signal.h>\fP
+.PP
+\fBint pthread_sigmask(int \fP\fIhow\fP\fB, const sigset_t *\fP\fIset\fP\fB, sigset_t *\fP\fIoldset\fP\fB);\fP
+.fi
+.PP
+.RS -4
+特性测试宏 glibc 的要求 (参见 \fBfeature_test_macros\fP(7)):
+.RE
+.PP
+\fBpthread_sigmask\fP():
+.nf
+    _POSIX_C_SOURCE >= 199506L || _XOPEN_SOURCE >= 500
+.fi
+.SH DESCRIPTION
+\fBpthread_sigmask\fP() 函数与 \fBsigprocmask\fP(2) 类似，区别在于它在多线程程序中的使用由 POSIX.1 明确指定。
+本页中注明了其他差异。
+.PP
+有关此函数的参数和操作的说明，请参见 \fBsigprocmask\fP(2)。
+.SH "RETURN VALUE"
+成功时，\fBpthread_sigmask\fP() 返回 0; 出错时，它返回一个错误号。
+.SH ERRORS
+请参见 \fBsigprocmask\fP(2)。
+.SH ATTRIBUTES
+有关本节中使用的术语的解释，请参见 \fBattributes\fP(7)。
+.ad l
+.nh
+.TS
+allbox;
+lbx lb lb
+l l l.
+Interface	Attribute	Value
+T{
+\fBpthread_sigmask\fP()
+T}	Thread safety	MT\-Safe
+.TE
+.hy
+.ad
+.sp 1
+.SH STANDARDS
+POSIX.1\-2001, POSIX.1\-2008.
+.SH NOTES
+新线程继承其创建者信号掩码的副本。
+.PP
+glibc \fBpthread_sigmask\fP() 函数默默地忽略了阻止 NPTL 线程实现内部使用的两个实时信号的尝试。 有关详细信息，请参见
+\fBnptl\fP(7)。
+.SH EXAMPLES
+下面的程序在主线程中阻塞一些信号，然后创建一个专用线程通过 \fBsigwait\fP(3) 获取这些信号。 下面的 shell 会话演示了它的用法:
+.PP
+.in +4n
+.EX
+$\fB ./a.out &\fP
+[1] 5423
+$\fB kill \-QUIT %1\fP
+信号处理线程得到信号 3
+$\fB kill \-USR1 %1\fP
+信号处理线程得到信号 10
+$\fB kill \-TERM %1\fP
+[1]+  Terminated              ./a.out
+.EE
+.in
+.SS "Program source"
+.\" SRC BEGIN (pthread_sigmask.c)
+\&
+.EX
+#include <errno.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+/* Simple error handling functions */
+
+#define handle_error_en(en, msg) \e
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+static void *
+sig_thread(void *arg)
+{
+    sigset_t *set = arg;
+    int s, sig;
+
+    for (;;) {
+        s = sigwait(set, &sig);
+        if (s != 0)
+            handle_error_en(s, "sigwait");
+        printf("Signal handling thread got signal %d\en", sig);
+    }
+}
+
+int
+main(void)
+{
+    pthread_t thread;
+    sigset_t set;
+    int s;
+
+    /* Block SIGQUIT and SIGUSR1; other threads created by main()
+       will inherit a copy of the signal mask. */
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGQUIT);
+    sigaddset(&set, SIGUSR1);
+    s = pthread_sigmask(SIG_BLOCK, &set, NULL);
+    if (s != 0)
+        handle_error_en(s, "pthread_sigmask");
+
+    s = pthread_create(&thread, NULL, &sig_thread, &set);
+    if (s != 0)
+        handle_error_en(s, "pthread_create");
+
+    /* Main thread carries on to create other threads and/or do
+       other work. */
+
+    pause();            /* Dummy pause so we can test program */
+}
+.EE
+.\" SRC END
+.SH "SEE ALSO"
+\fBsigaction\fP(2), \fBsigpending\fP(2), \fBsigprocmask\fP(2),
+\fBpthread_attr_setsigmask_np\fP(3), \fBpthread_create\fP(3), \fBpthread_kill\fP(3),
+\fBsigsetops\fP(3), \fBpthreads\fP(7), \fBsignal\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

@@ -1,0 +1,270 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" Copyright (c) 2013, 2016, 2017 by Michael Kerrisk <mtk.manpages@gmail.com>
+.\" and Copyright (c) 2012 by Eric W. Biederman <ebiederm@xmission.com>
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH namespaces 7 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+命名空间 \- Linux 命名空间概述
+.SH DESCRIPTION
+命名空间将全局系统资源包装在一个抽象中，使命名空间内的进程看起来它们拥有自己独立的全局资源实例。
+全局资源的更改对属于命名空间成员的其他进程可见，但对其他进程不可见。 名称空间的一种用途是实现容器。
+.PP
+.\"
+此页面提供指向有关各种命名空间类型的信息的指针，描述关联的 \fI/proc\fP 文件，并总结用于使用命名空间的 API。
+.SS "Namespace types"
+下表显示了 Linux 上可用的命名空间类型。 该表的第二列显示了用于指定各种 API 中命名空间类型的标志值。
+第三列标识提供有关命名空间类型详细信息的手册页。 最后一列是按命名空间类型隔离的资源的总结。
+.ad l
+.nh
+.TS
+lB lB lB lB
+l1 lB1 l1 l.
+Namespace	Flag	Page	Isolates
+Cgroup	CLONE_NEWCGROUP	\fBcgroup_namespaces\fP(7)	T{
+Cgroup root directory
+T}
+IPC	CLONE_NEWIPC	\fBipc_namespaces\fP(7)	T{
+System V IPC,
+POSIX message queues
+T}
+Network	CLONE_NEWNET	\fBnetwork_namespaces\fP(7)	T{
+Network devices,
+stacks, ports, etc.
+T}
+Mount	CLONE_NEWNS	\fBmount_namespaces\fP(7)	Mount points
+PID	CLONE_NEWPID	\fBpid_namespaces\fP(7)	Process IDs
+Time	CLONE_NEWTIME	\fBtime_namespaces\fP(7)	T{
+Boot and monotonic
+clocks
+T}
+User	CLONE_NEWUSER	\fBuser_namespaces\fP(7)	T{
+User and group IDs
+T}
+UTS	CLONE_NEWUTS	\fButs_namespaces\fP(7)	T{
+Hostname and NIS
+domain name
+T}
+.TE
+.hy
+.ad
+.\"
+.\" ==================== The namespaces API ====================
+.\"
+.SS "The namespaces API"
+除了下面描述的各种 \fI/proc\fP 文件外，命名空间 API 还包括以下系统调用:
+.TP 
+\fBclone\fP(2)
+\fBclone\fP(2) 系统调用创建新进程。 如果调用的 \fIflags\fP 参数指定了上面列出的一个或多个 \fBCLONE_NEW*\fP
+标志，则为每个标志创建新的名称空间，并且子进程成为这些名称空间的成员。 (本系统调用还实现了一些与命名空间无关的特性。)
+.TP 
+\fBsetns\fP(2)
+\fBsetns\fP(2) 系统调用允许调用进程加入现有的命名空间。 要加入的名称空间是通过引用下面描述的 \fI/proc/\fPpid\fI/ns\fP
+文件之一的文件描述符指定的。
+.TP 
+\fBunshare\fP(2)
+\fBunshare\fP(2) 系统调用将调用进程移动到新的命名空间。 如果调用的 \fIflags\fP 参数指定了上面列出的一个或多个
+\fBCLONE_NEW*\fP 标志，则为每个标志创建新的名称空间，并且调用进程成为这些名称空间的成员。 (本系统调用还实现了一些与命名空间无关的特性。)
+.TP 
+\fBioctl\fP(2)
+可以使用各种 \fBioctl\fP(2) 操作来发现有关命名空间的信息。 \fBioctl_ns\fP(2) 中描述了这些操作。
+.PP
+.\"
+.\" ==================== The /proc/[pid]/ns/ directory ====================
+.\"
+在大多数情况下，使用 \fBclone\fP(2) 和 \fBunshare\fP(2) 创建新命名空间需要 \fBCAP_SYS_ADMIN\fP
+能力，因为在新命名空间中，创建者将有权更改全局资源，这些资源对随后创建的其他进程可见，或加入命名空间。 用户命名空间是个例外: 从 Linux 3.8
+开始，创建用户命名空间不需要特权。
+.SS "The /proc/[pid]/ns/ directory"
+.\" See commit 6b4e306aa3dc94a0545eb9279475b1ab6209a31f
+每个进程都有一个 \fI/proc/\fPpid\fI/ns/\fP 子目录，其中包含每个支持由 \fBsetns\fP(2): 操作的名称空间的条目
+.PP
+.in +4n
+.EX
+$ \fBls \-l /proc/$$/ns | awk \[aq]{print $1, $9, $10, $11}\[aq]\fP
+总计 0
+lrwxrwxrwx. cgroup \-> cgroup:[4026531835]
+lrwxrwxrwx。工控机 \-> 工控机: [4026531839]
+lrwxrwxrwx. mnt \-> mnt:[4026531840]
+lrwxrwxrwx。网 \-> 网: [4026531969]
+lrwxrwxrwx. pid \-> pid:[4026531836]
+lrwxrwxrwx. pid_for_children \-> pid:[4026531834]
+lrwxrwxrwx。时间 \-> 时间: [4026531834]
+lrwxrwxrwx。time_for_children \-> 时间: [4026531834]
+lrwxrwxrwx。用户 \-> 用户: [4026531837]
+lrwxrwxrwx. uts \-> uts:[4026531838]
+.EE
+.in
+.PP
+绑定安装 (参见 \fBmount\fP(2)) 此目录中的文件之一到文件系统中的其他位置，即使命名空间中当前的所有进程都终止，也会使 \fIpid\fP
+指定的进程的相应命名空间保持活动状态。
+.PP
+打开此目录中的文件之一 (或绑定安装到这些文件之一的文件) 返回 \fIpid\fP 指定的进程的相应名称空间的文件句柄。
+只要这个文件描述符保持打开状态，命名空间就会保持活动状态，即使命名空间中的所有进程都终止了。 文件描述符可以传递给 \fBsetns\fP(2)。
+.PP
+.\" commit bf056bfa80596a5d14b26b17276a56a0dcb080e5
+.\" Eric Biederman: "I reserve the right for st_dev to be significant
+.\" when comparing namespaces."
+.\" https://lore.kernel.org/lkml/87poky5ca9.fsf@xmission.com/
+.\" Re: Documenting the ioctl interfaces to discover relationships...
+.\" Date: Mon, 12 Dec 2016 11:30:38 +1300
+在 Linux 3.7 及更早版本中，这些文件显示为硬链接。 从 Linux 3.8 开始，它们显示为符号链接。
+如果两个进程在同一个命名空间中，那么它们的 \fI/proc/\fPpid\fI/ns/\fPxxx 符号链接的设备 ID 和索引节点号将相同; 应用程序可以使用
+\fBstat\fP(2) 返回的 \fIstat.st_dev\fP 和 \fIstat.st_ino\fP 字段进行检查。 此符号链接的内容是一个包含命名空间类型和
+inode 编号的字符串，如下例所示:
+.PP
+.in +4n
+.EX
+$ \fBreadlink /proc/$$/ns/uts\fP
+uts:[4026531838]
+.EE
+.in
+.PP
+该子目录下的符号链接如下:
+.TP 
+\fI/proc/\fPpid\fI/ns/cgroup\fP (since Linux 4.6)
+该文件是进程的 cgroup 命名空间的句柄。
+.TP 
+\fI/proc/\fPpid\fI/ns/ipc\fP (since Linux 3.0)
+该文件是进程的 IPC 名称空间的句柄。
+.TP 
+\fI/proc/\fPpid\fI/ns/mnt\fP (since Linux 3.8)
+.\" commit 8823c079ba7136dc1948d6f6dcb5f8022bde438e
+该文件是进程挂载命名空间的句柄。
+.TP 
+\fI/proc/\fPpid\fI/ns/net\fP (since Linux 3.0)
+该文件是进程网络名称空间的句柄。
+.TP 
+\fI/proc/\fPpid\fI/ns/pid\fP (since Linux 3.8)
+.\" commit 57e8391d327609cbf12d843259c968b9e5c1838f
+该文件是进程的 PID 名称空间的句柄。 这个句柄对于进程的生命周期是永久的 (即进程的 PID 命名空间成员永远不会改变)。
+.TP 
+\fI/proc/\fPpid\fI/ns/pid_for_children\fP (since Linux 4.12)
+.\" commit eaa0d190bfe1ed891b814a52712dcd852554cb08
+此文件是此进程创建的子进程的 PID 名称空间的句柄。 这可能会因调用 \fBunshare\fP(2) 和 \fBsetns\fP(2) 而改变 (请参见
+\fBpid_namespaces\fP(7))，因此该文件可能与 \fI/proc/\fPpid\fI/ns/pid\fP 不同。
+只有在命名空间中创建第一个子进程后，符号链接才会获得一个值。 (之前，符号链接的 \fBreadlink\fP(2) 将返回一个空缓冲区。)
+.TP 
+\fI/proc/\fPpid\fI/ns/time\fP (since Linux 5.6)
+该文件是进程时间命名空间的句柄。
+.TP 
+\fI/proc/\fPpid\fI/ns/time_for_children\fP (since Linux 5.6)
+此文件是此进程创建的子进程的时间命名空间的句柄。 这可能会因调用 \fBunshare\fP(2) 和 \fBsetns\fP(2) 而改变 (请参见
+\fBtime_namespaces\fP(7))，因此该文件可能与 \fI/proc/\fPpid\fI/ns/time\fP 不同。
+.TP 
+\fI/proc/\fPpid\fI/ns/user\fP (since Linux 3.8)
+.\" commit cde1975bc242f3e1072bde623ef378e547b73f91
+该文件是进程的用户名称空间的句柄。
+.TP 
+\fI/proc/\fPpid\fI/ns/uts\fP (since Linux 3.0)
+该文件是进程的 UTS 名称空间的句柄。
+.PP
+.\"
+.\" ==================== The /proc/sys/user directory ====================
+.\"
+解释引用或读取 (\fBreadlink\fP(2)) 这些符号链接的权限由 ptrace 访问模式 \fBPTRACE_MODE_READ_FSCREDS\fP
+检查控制; 请参见 \fBptrace\fP(2)。
+.SS "The \fI/proc/sys/user\fP directory"
+\fI/proc/sys/user\fP 目录中的文件 (从 Linux 4.9 开始存在) 公开了对可以创建的各种类型的命名空间数量的限制。 文件如下:
+.TP 
+\fImax_cgroup_namespaces\fP
+此文件中的值定义了每个用户对可以在用户命名空间中创建的 cgroup 命名空间数量的限制。
+.TP 
+\fImax_ipc_namespaces\fP
+此文件中的值定义了每个用户对可以在用户命名空间中创建的 ipc 命名空间数量的限制。
+.TP 
+\fImax_mnt_namespaces\fP
+此文件中的值定义了每个用户对可以在用户命名空间中创建的挂载命名空间数量的限制。
+.TP 
+\fImax_net_namespaces\fP
+此文件中的值定义了每个用户对可以在用户命名空间中创建的网络命名空间数量的限制。
+.TP 
+\fImax_pid_namespaces\fP
+此文件中的值定义了每个用户对可以在用户命名空间中创建的 PID 命名空间数量的限制。
+.TP 
+\fImax_time_namespaces\fP (since Linux 5.7)
+.\" commit eeec26d5da8248ea4e240b8795bb4364213d3247
+此文件中的值定义了每个用户对可以在用户命名空间中创建的时间命名空间数量的限制。
+.TP 
+\fImax_user_namespaces\fP
+此文件中的值定义了每个用户对可以在用户命名空间中创建的用户命名空间数量的限制。
+.TP 
+\fImax_uts_namespaces\fP
+此文件中的值定义了每个用户对可以在用户命名空间中创建的 uts 命名空间数量的限制。
+.PP
+请注意有关这些文件的以下详细信息:
+.IP \[bu] 3
+这些文件中的值可由特权进程修改。
+.IP \[bu]
+这些文件公开的值是打开进程所在的用户命名空间的限制。
+.IP \[bu]
+限制是针对每个用户的。 同一用户命名空间中的每个用户都可以创建不超过定义限制的命名空间。
+.IP \[bu]
+这些限制适用于所有用户，包括 UID 0.
+.IP \[bu]
+除了可能强制执行的任何其他每个命名空间限制 (例如针对 PID 和用户命名空间的限制) 之外，这些限制也适用。
+.IP \[bu]
+遇到这些限制时，\fBclone\fP(2) 和 \fBunshare\fP(2) 会失败并显示错误 \fBENOSPC\fP。
+.IP \[bu]
+对于初始用户命名空间，每个文件中的默认值都是可以创建的线程数限制的一半 (\fI/proc/sys/kernel/threads\-max\fP)。
+在所有后代用户命名空间中，每个文件中的默认值为 \fBMAXINT\fP。
+.IP \[bu]
+创建名称空间时，该对象也会根据祖先名称空间进行计算。 更确切地说:
+.RS
+.IP \[bu] 3
+每个用户命名空间都有一个创建者 UID。
+.IP \[bu]
+创建名称空间时，它会根据每个祖先用户名称空间中的创建者 UID 进行计算，并且内核确保不超过祖先名称空间中创建者 UID 的相应名称空间限制。
+.IP \[bu]
+前面提到的一点确保创建新的用户命名空间不能用作逃避当前用户命名空间中有效限制的手段。
+.RE
+.\"
+.SS "Namespace lifetime"
+在没有任何其他因素的情况下，当命名空间中的最后一个进程终止或离开命名空间时，命名空间将自动拆除。
+但是，有许多其他因素可能会导致命名空间存在，即使它没有成员进程。 这些因素包括:
+.IP \[bu] 3
+对应的 \fI/proc/\fPpid\fI/ns/*\fP 文件存在打开的文件描述符或绑定安装。
+.IP \[bu]
+名称空间是分层的 (即，PID 或用户名称空间)，并且具有子名称空间。
+.IP \[bu]
+它是一个拥有一个或多个非用户命名空间的用户命名空间。
+.IP \[bu]
+它是一个 PID 命名空间，并且有一个进程通过 \fI/proc/\fPpid\fI/ns/pid_for_children\fP 符号链接引用该命名空间。
+.IP \[bu]
+它是一个时间命名空间，并且有一个进程通过 \fI/proc/\fPpid\fI/ns/time_for_children\fP 符号链接引用该命名空间。
+.IP \[bu]
+它是一个 IPC 命名空间，对应挂载了一个 \fImqueue\fP 文件系统 (见 \fBmq_overview\fP(7)) 就是指这个命名空间。
+.IP \[bu]
+它是一个 PID 命名空间，对应的 \fBproc\fP(5) 文件系统挂载就是指这个命名空间。
+.SH EXAMPLES
+请参见 \fBclone\fP(2) 和 \fBuser_namespaces\fP(7)。
+.SH "SEE ALSO"
+\fBnsenter\fP(1), \fBreadlink\fP(1), \fBunshare\fP(1), \fBclone\fP(2), \fBioctl_ns\fP(2),
+\fBsetns\fP(2), \fBunshare\fP(2), \fBproc\fP(5), \fBcapabilities\fP(7),
+\fBcgroup_namespaces\fP(7), \fBcgroups\fP(7), \fBcredentials\fP(7),
+\fBipc_namespaces\fP(7), \fBnetwork_namespaces\fP(7), \fBpid_namespaces\fP(7),
+\fBuser_namespaces\fP(7), \fButs_namespaces\fP(7), \fBlsns\fP(8), \fBswitch_root\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

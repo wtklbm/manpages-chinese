@@ -1,0 +1,155 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright (C) 2003 Free Software Foundation, Inc.
+.\" Copyright (C) 2015 Andrew Lutomirski
+.\" Author: Kent Yoder
+.\"
+.\" SPDX-License-Identifier: GPL-1.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH set_thread_area 2 2022\-10\-30 "Linux man\-pages 6.03" 
+.SH NAME
+get_thread_area, set_thread_area \- 操作线程本地存储信息
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <sys/syscall.h>\fP     /* Definition of \fBSYS_*\fP constants */
+\fB#include <unistd.h>\fP
+.PP
+\fB#if defined __i386__ || defined __x86_64__\fP
+\fB# include <asm/ldt.h>\fP        /* Definition of \fBstruct user_desc\fP */
+.PP
+\fBint syscall(SYS_get_thread_area, struct user_desc *\fP\fIu_info\fP\fB);\fP
+\fBint syscall(SYS_set_thread_area, struct user_desc *\fP\fIu_info\fP\fB);\fP
+.PP
+\fB#elif defined __m68k__\fP
+.PP
+\fBint syscall(SYS_get_thread_area);\fP
+\fBint syscall(SYS_set_thread_area, unsigned long \fP\fItp\fP\fB);\fP
+.PP
+\fB#elif defined __mips__\fP
+.PP
+\fBint syscall(SYS_set_thread_area, unsigned long \fP\fIaddr\fP\fB);\fP
+.PP
+\fB#endif\fP
+.fi
+.PP
+\fINote\fP: glibc 没有为这些系统调用提供包装器，因此需要使用 \fBsyscall\fP(2)。
+.SH DESCRIPTION
+这些调用为线程本地存储实现提供特定于体系结构的支持。 目前，\fBset_thread_area\fP() 在 m68k、MIPS 和 x86 (32 位和
+64 位变体) 上可用; \fBget_thread_area\fP() 在 m68k 和 x86 上可用。
+.PP
+在 m68k 和 MIPS 上，\fBset_thread_area\fP() 允许在与调用线程关联的内核数据结构体中存储任意指针 (在 m68k 上的
+\fBtp\fP 参数和 MIPS 上的 \fBaddr\fP 参数中提供) ; 稍后可以使用 \fBget_thread_area\fP() 检索此指针 (有关获取
+MIPS 上的线程指针的信息，另请参见注释)。
+.PP
+在 x86 上，Linux 将三个全局描述符表 (GDT) 条目专用于线程本地存储。 有关 GDT 的更多信息，请参见英特尔软件开发人员手册或 AMD
+架构编程手册。
+.PP
+这两个系统调用都采用一个参数，它是指向以下类型的结构体的指针:
+.PP
+.in +4n
+.EX
+struct user_desc {
+    unsigned int  entry_number;
+    unsigned int  base_addr;
+    unsigned int  limit;
+    unsigned int  seg_32bit:1;
+    unsigned int  contents:2;
+    unsigned int  read_exec_only:1;
+    unsigned int  limit_in_pages:1;
+    unsigned int  seg_not_present:1;
+    unsigned int  useable:1;
+#ifdef __x86_64__
+    unsigned int  lm:1;
+#endif
+};
+.EE
+.in
+.PP
+\fBget_thread_area\fP() 读取 \fIu_info\->entry_number\fP 指示的 GDT 条目并填写 \fIu_info\fP
+中的其余字段。
+.PP
+\fBset_thread_area\fP() 在 GDT 中设置一个 TLS 条目。
+.PP
+\fBset_thread_area\fP() 设置的 TLS 数组项对应用户传入的 \fIu_info\->entry_number\fP 的值。
+如果此值在范围内，则 \fBset_thread_area\fP() 将 \fIu_info\fP 指向的 TLS 描述符写入线程的 TLS 数组。
+.PP
+当 \fBset_thread_area\fP() 传递 \fIentry_number\fP 或 \-1 时，它会搜索一个免费的 TLS 条目。 如果
+\fBset_thread_area\fP() 找到空闲的 TLS 条目，则在返回时设置 \fIu_info\->entry_number\fP
+的值以显示哪个条目已更改。
+.PP
+如果 \fIread_exec_only\fP 和 \fIseg_not_present\fP 设置为 1 并且所有其他字段都为 0，则 \fIuser_desc\fP
+被视为 "empty"。 如果将 "empty" 描述符传递给 \fBset_thread_area\fP()，则相应的 TLS 条目将被清除。
+有关更多详细信息，请参见错误。
+.PP
+由于 Linux 3.19，\fBset_thread_area\fP() 不能用于写入不存在的段、16 位段或代码段，尽管清除段仍然可以接受。
+.SH "RETURN VALUE"
+在 x86 上，这些系统调用成功时返回 0，失败时返回 \-1，\fIerrno\fP 设置为指示错误。
+.PP
+在 MIPS 和 m68k 上，\fBset_thread_area\fP() 总是返回 0。 在 m68k 上，\fBget_thread_area\fP()
+返回线程区域指针值 (之前通过 \fBset_thread_area\fP()).
+.SH ERRORS
+.TP 
+\fBEFAULT\fP
+\fIu_info\fP 是无效指针。
+.TP 
+\fBEINVAL\fP
+\fIu_info\->entry_number\fP 越界。
+.TP 
+\fBENOSYS\fP
+\fBget_thread_area\fP() 或 \fBset_thread_area\fP() 被调用为 64 位系统调用。
+.TP 
+\fBESRCH\fP
+(\fBset_thread_area\fP()) 找不到可用的 TLS 条目。
+.SH VERSIONS
+\fBset_thread_area\fP() 最早出现在 Linux 2.5.29。 \fBget_thread_area\fP() 最早出现在 Linux
+2.5.32。
+.SH STANDARDS
+\fBset_thread_area\fP() 和 \fBget_thread_area\fP() 是特定于 Linux 的，不应在旨在可移植的程序中使用。
+.SH NOTES
+这些系统调用通常仅供线程库使用。
+.PP
+\fBarch_prctl\fP(2) 可以干扰 x86 上的 \fBset_thread_area\fP()。 有关详细信息，请参见
+\fBarch_prctl\fP(2)。 这通常不是问题，因为 \fBarch_prctl\fP(2) 通常仅由 64 位程序使用。
+.PP
+在 MIPS 上，可以使用指令获取线程区指针的当前值:
+.PP
+.in +4n
+.EX
+rdhwr 目标，$29
+.EE
+.in
+.PP
+该指令陷阱并由内核处理。
+.SH BUGS
+.\" commit e30ab185c490e9a9381385529e0fd32f0a399495
+在 Linux 3.19 之前的 64 位内核上，\fIuser_desc\fP 中的填充位之一 (如果设置) 将防止描述符被视为空 (请参见
+\fBmodify_ldt\fP(2)).  因此，清除 TLS 条目的唯一可靠方法是使用 \fBmemset\fP(3) 将整个 \fIuser_desc\fP
+结构归零，包括填充位，然后设置 \fIread_exec_only\fP 和 \fIseg_not_present\fP 位。 在 Linux 3.19 上，除了
+\fIentry_number\fP 之外完全由零组成的 \fIuser_desc\fP 也将被解释为清除 TLS 条目的请求，但这在旧内核上的表现不同。
+.PP
+在 Linux 3.19 之前，DS 和 ES 段寄存器不得引用 TLS 条目。
+.SH "SEE ALSO"
+\fBarch_prctl\fP(2), \fBmodify_ldt\fP(2), \fBptrace\fP(2)  (\fBPTRACE_GET_THREAD_AREA\fP
+and \fBPTRACE_SET_THREAD_AREA\fP)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

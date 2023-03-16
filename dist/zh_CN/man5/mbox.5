@@ -1,0 +1,126 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\" -*-nroff-*-
+.\"
+.\"     Copyright (C) 2000 Thomas Roessler <roessler@does-not-exist.org>
+.\"
+.\"	This document is in the public domain and may be distributed and
+.\"	changed arbitrarily.
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH mbox 5 "February 19th, 2002" Unix "User Manuals"
+.\"
+.SH NAME
+.\"
+mbox \- 邮件消息存储格式。
+.SH DESCRIPTION
+本文档描述了 Unix 主机传统上用于在本地存储邮件消息的格式。 \fBmbox\fP
+文件通常驻留在系统的邮件假脱机中，在用户的邮件目录中以各种名称存在，在用户的主目录中以名称 \fBmbox\fP 存在。
+.PP
+\fBmbox\fP 是包含任意数量电子邮件的文本文件。 每条消息都包含一个邮戳，后跟根据 \fBRFC822\fP、\fBRFC2822\fP
+格式化的电子邮件消息。文件格式是面向行的。行由换行符 (ASCII 10) 分隔。
+.PP
+邮戳行由四个字符 "From"、后跟一个空格字符、邮件的信封发送者地址、空格和时间戳组成。此行通常称为 From_ 行。
+.PP
+发送者地址应为 \fBaddr\-spec\fP，如 \fBRFC2822\fP 3.4.1 中所定义。日期预计为 \fBasctime\fP(3) 输出的
+\fBdate\-time\fP。 出于与遗留软件的兼容性原因，大于或等于 70 的两位数年份应解释为 1970 + 年，而小于 70 的两位数年份应解释为
+2000\-2069 年。读取此格式文件的软件还应准备好接受非数字时区信息，例如中欧时间 "CET DST"、夏令时。
+.PP
+Example:
+.IP "" 1
+>From example@example.com Fri Jun 23 02:56:55 2000
+.PP
+为了避免错误解释邮件正文中以四个字符 "From" 开头后跟一个空格字符的行，邮件投递代理必须在正文行的开头引用任何出现的 "From "。
+.sp
+有两种不同的引用方案，第一个 (\fBMBOXO\fP) 通过在行前面加上 '>' 来仅引用正文中的普通 "From " 行; 第二个
+(\fBMBOXRD\fP) 也引用了已经引用的 "From " lines by prepending a '>' (i.e. ">From
+", ">>From ", ...)。后者的优点是线条像
+.IP "" 1
+>From the command line you can use the '\-p' option
+.PP
+没有被错误引用，因为 \fBMBOXRD\fP\-MDA 会将行变成
+.IP "" 1
+>>From the command line you can use the '\-p' option
+.PP
+在存储它之前。除了 \fBMBOXO\fP 和 \fBMBOXRD\fP 之外，还有 \fBMBOXCL\fP，它是 \fBMBOXO\fP，带有
+`Content\-Length: ` 字段，其中包含消息正文中的字节数; 一些 MUA (如 \fBmutt\fP(1))) 在将 \fBMBOXO\fP
+邮箱写回时会自动将 \fBMBOXO\fP 邮箱转换为 \fBMBOXCL\fP 邮箱，因为任何 \fBMBOXO\fP\-MUA 都可以毫无问题地读取
+\fBMBOXCL\fP。
+.PP
+.\"
+如果修改时间 (通常通过非空 \fBmbox\fP 文件的 \fBstat\fP(2)) 确定) 大于文件有新邮件的访问时间。许多 MUA 在每条消息中放置一个
+Status: 标头，以指示哪些消息已被阅读。
+.SH LOCKING
+由于 \fBmbox\fP 文件在并行中经常被多个程序访问，所以 \fBmbox\fP 文件一般不应该在没有锁定的情况下访问。
+.PP
+通常使用三种不同的锁定机制 (及其组合) :
+.IP \(bu
+\fBfcntl\fP(2) 锁定主要用于最近的 POSIX 兼容系统。如果通过网络文件系统 (NFS) 访问 \fBmbox\fP
+文件，则特别建议使用这种锁定方法，因为它似乎是可靠地使 NFS 客户端缓存无效的唯一方法。
+.IP \(bu
+\fBflock\fP(2) 锁定主要用于基于 BSD 的系统。
+.IP \(bu
+点锁用于各种系统。为了锁定名为 \fIfolder\fP 的 \fBmbox\fP 文件，应用程序首先在 \fIfolder\fP
+所在的目录中创建一个具有唯一名称的临时文件。应用程序然后尝试使用 \fBlink\fP(2) 系统调用创建一个名为 \fIfolder.lock\fP
+的硬链接到临时文件。应使用 \fBstat\fP(2) 调用额外验证 \fBlink\fP(2)
+系统调用是否成功。如果链接成功，则邮件文件夹被认为是点锁定的。然后可以安全地解除临时文件的链接。
+.IP ""
+为了释放锁定，应用程序只需取消链接 \fIfolder.lock\fP 文件。
+.PP
+如果结合了多种方法，实现者应确保使用 \fBfcntl\fP(2) 和 \fBflock\fP(2) 系统调用的非阻塞变体以避免死锁。
+.PP
+如果结合了多种方法，则在获得所有单独的锁之前，不得认为 \fBmbox\fP
+文件已成功锁定。当其中一种锁定方法失败时，应用程序应释放它成功获得的所有锁定，并在适当的延迟后从头开始重新启动整个锁定过程。
+.PP
+.\"
+特定系统上使用的锁定机制是本地策略的问题，并且应该被系统上安装的所有访问 \fBmbox\fP 文件的应用程序一致使用。否则可能会导调用子邮件数据丢失和
+\fBmbox\fP 文件损坏。
+.SH FILES
+\fI/var/spool/mail/$LOGNAME\fP
+.RS
+\fB$LOGNAME\fP's 传入邮件文件夹。
+.RE
+.PP
+\fI$HOME/mbox\fP
+.RS
+用户的存档邮件消息，在他的 \fB$HOME\fP 目录中。
+.RE
+.PP
+\fI$HOME/Mail/\fP
+.RS
+用户 \fB$HOME\fP 目录中的一个目录，通常用于存放 \fBmbox\fP 格式的文件夹。
+.RE
+.PP
+.\"
+.SH "SEE ALSO"
+.\"
+\fBmutt\fP(1), \fBfcntl\fP(2), \fBflock\fP(2), \fBlink\fP(2), \fBstat\fP(2), \fBasctime\fP(3),
+\fBmaildir\fP(5), \fBmmdf\fP(5), \fBRFC822\fP, \fBRFC976\fP, \fBRFC2822\fP
+.SH AUTHOR
+.\"
+Thomas Roessler <roessler@does\-not\-exist.org>, Urs Janssen
+<urs@tin.org>
+.SH HISTORY
+\fBmbox\fP 格式出现在 Version 6 AT&T Unix 中。
+.br
+\fBRFC976\fP 中记录了这种格式的变体。
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

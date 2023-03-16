@@ -1,0 +1,270 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright 2002 Urs Thuermann (urs@isnogud.escape.de)
+.\" and Copyright 2015 Michael Kerrisk <mtk.manpages@gmail.com>
+.\"
+.\" SPDX-License-Identifier: GPL-2.0-or-later
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH loop 4 2023\-02\-05 "Linux man\-pages 6.03" 
+.SH NAME
+loop, loop\-control \- 循环设备
+.SH SYNOPSIS
+.nf
+#include <linux/loop.h>
+.fi
+.SH DESCRIPTION
+循环设备是一种块设备，它不会将其数据块映射到物理设备 (如硬盘或光盘驱动器)，而是映射到文件系统中常规文件的块或另一个块设备。
+这可能很有用，例如为存储在文件中的文件系统映像提供块设备，以便可以使用 \fBmount\fP(8) 命令挂载它。 您可以做
+.PP
+.in +4n
+.EX
+$ \fBdd if=/dev/zero of=file.img bs=1MiB count=10\fP
+$ \fBsudo losetup /dev/loop4 file.img\fP
+$ \fBsudo mkfs \-t ext4 /dev/loop4\fP
+$ \fBsudo mkdir /myloopdev\fP
+$ \fBsudo mount /dev/loop4 /myloopdev\fP
+.EE
+.in
+.PP
+另一个例子见 \fBlosetup\fP(8)。
+.PP
+可以为每个循环设备指定一个传输函数，用于加密和解密目的。
+.PP
+循环块设备提供以下 \fBioctl\fP(2) 操作:
+.TP 
+\fBLOOP_SET_FD\fP
+将循环设备与其文件描述符作为 (third) \fBioctl\fP(2) 参数传递的打开文件相关联。
+.TP 
+\fBLOOP_CLR_FD\fP
+解除循环设备与任何文件描述符的关联。
+.TP 
+\fBLOOP_SET_STATUS\fP
+使用 (third) \fBioctl\fP(2) 参数设置循环设备的状态。 这个参数是指向 \fIloop_info\fP 结构体的指针，在
+\fI<linux/loop.h>\fP 中定义为:
+.IP
+.in +4n
+.EX
+struct loop_info {
+    int           lo_number;      /* ioctl r/o */
+    dev_t         lo_device;      /* ioctl r/o */
+    unsigned long lo_inode;       /* ioctl r/o */
+    dev_t         lo_rdevice;     /* ioctl r/o */
+    int           lo_offset;
+    int           lo_encrypt_type;
+    int           lo_encrypt_key_size;  /* ioctl w/o */
+    int           lo_flags;       /* ioctl r/w (r/o before
+                                     Linux 2.6.25) */
+    char          lo_name[LO_NAME_SIZE];
+    unsigned char lo_encrypt_key[LO_KEY_SIZE];
+                                  /* ioctl w/o */
+    unsigned long lo_init[2];
+    char          reserved[4];
+};
+.EE
+.in
+.IP
+加密类型 (\fIlo_encrypt_type\fP) 应为
+\fBLO_CRYPT_NONE\fP、\fBLO_CRYPT_XOR\fP、\fBLO_CRYPT_DES\fP、\fBLO_CRYPT_FISH2\fP、\fBLO_CRYPT_BLOW\fP、\fBLO_CRYPT_CAST128\fP、\fBLO_CRYPT_IDEA\fP、\fBLO_CRYPT_DUMMY\fP、\fBLO_CRYPT_SKIPJACK\fP
+或 (自 Linux 2.6.0 起) \fBLO_CRYPT_CRYPTOAPI\fP 之一。
+.IP
+\fIlo_flags\fP 字段是一个位掩码，可以包含以下零个或多个:
+.RS
+.TP 
+\fBLO_FLAGS_READ_ONLY\fP
+回环设备是只读的。
+.TP 
+\fBLO_FLAGS_AUTOCLEAR\fP (since Linux 2.6.25)
+.\" commit 96c5865559cee0f9cbc5173f3c949f6ce3525581
+回环设备将在最后一次关闭时自动销毁。
+.TP 
+\fBLO_FLAGS_PARTSCAN\fP (since Linux 3.2)
+.\" commit e03c8dd14915fabc101aa495828d58598dc5af98
+允许自动分区扫描。
+.TP 
+\fBLO_FLAGS_DIRECT_IO\fP (since Linux 4.10)
+.\" commit 2e5ab5f379f96a6207c45be40c357ebb1beb8ef3
+使用直接 I/O 模式访问备份文件。
+.RE
+.IP
+唯一可以被 \fBLOOP_SET_STATUS\fP 修改的 \fIlo_flags\fP 是 \fBLO_FLAGS_AUTOCLEAR\fP 和
+\fBLO_FLAGS_PARTSCAN\fP。
+.TP 
+\fBLOOP_GET_STATUS\fP
+获取循环设备的状态。 (third) \fBioctl\fP(2) 参数必须是指向 \fIstruct loop_info\fP 的指针。
+.TP 
+\fBLOOP_CHANGE_FD\fP (since Linux 2.6.5)
+将循环设备的后备存储切换到 (third) \fBioctl\fP(2) 参数中指定的新文件标识文件描述符，它是一个整数。
+仅当循环设备为只读且新后备存储与旧后备存储的大小和类型相同时，此操作才有可能。
+.TP 
+\fBLOOP_SET_CAPACITY\fP (since Linux 2.6.30)
+.\" commit 53d6660836f233df66490707365ab177e5fb2bb4
+调整实时循环设备的大小。 可以更改底层后备存储的大小，然后使用此操作，以便循环驱动程序了解新大小。 这个操作不需要参数。
+.TP 
+\fBLOOP_SET_DIRECT_IO\fP (since Linux 4.10)
+.\" commit ab1cb278bc7027663adbfb0b81404f8398437e11
+在循环设备上设置 DIRECT I/O 模式，以便它可以用来打开备份文件。 (third) \fBioctl\fP(2) 参数是一个无符号长值。 非零表示直接
+I/O 模式。
+.TP 
+\fBLOOP_SET_BLOCK_SIZE\fP (since Linux 4.14)
+.\" commit 89e4fdecb51cf5535867026274bc97de9480ade5
+设置循环设备的块大小。 (third) \fBioctl\fP(2) 参数是一个无符号长值。 该值必须是 [512,pagesize] 范围内的 2 的幂;
+否则，会产生 \fBEINVAL\fP 错误。
+.TP 
+\fBLOOP_CONFIGURE\fP (since Linux 5.8)
+.\" commit 3448914e8cc550ba792d4ccc74471d1ca4293aae
+使用 (third) \fBioctl\fP(2) 参数一步设置和配置所有回路设备参数。 这个参数是指向 \fIloop_config\fP 结构体的指针，在
+\fI<linux/loop.h>\fP 中定义为:
+.IP
+.in +4n
+.EX
+struct loop_config {
+    __u32               fd;
+    __u32               block_size;
+    struct loop_info64  info;
+    __u64               __reserved[8];
+};
+.EE
+.in
+.IP
+除了做 \fBLOOP_SET_STATUS\fP 可以做的事情，\fBLOOP_CONFIGURE\fP 还可以用来做以下事情:
+.RS
+.IP \[bu] 3
+通过设置 \fIloop_config.block_size\fP 立即设置正确的块大小;
+.IP \[bu]
+通过在 \fIloop_config.info.lo_flags\fP 中设置 \fBLO_FLAGS_DIRECT_IO\fP 明确请求直接 I/O 模式;
+and
+.IP \[bu]
+通过在 \fIloop_config.info.lo_flags\fP 中设置 \fBLO_FLAGS_READ_ONLY\fP 明确请求只读模式。
+.RE
+.PP
+从 Linux 2.6 开始，新增了两个 \fBioctl\fP(2) 操作:
+.TP 
+\fBLOOP_SET_STATUS64\fP, \fBLOOP_GET_STATUS64\fP
+这些类似于上面描述的 \fBLOOP_SET_STATUS\fP 和 \fBLOOP_GET_STATUS\fP 但使用 \fIloop_info64\fP
+结构体，它有一些额外的字段和更大的范围用于其他一些字段:
+.IP
+.in +4n
+.EX
+struct loop_info64 {
+    uint64_t lo_device;           /* ioctl r/o */
+    uint64_t lo_inode;            /* ioctl r/o */
+    uint64_t lo_rdevice;          /* ioctl r/o */
+    uint64_t lo_offset;
+    uint64_t lo_sizelimit;  /* bytes, 0 == max available */
+    uint32_t lo_number;           /* ioctl r/o */
+    uint32_t lo_encrypt_type;
+    uint32_t lo_encrypt_key_size; /* ioctl w/o */
+    uint32_t lo_flags; i          /* ioctl r/w (r/o before
+                                     Linux 2.6.25) */
+    uint8_t  lo_file_name[LO_NAME_SIZE];
+    uint8_t  lo_crypt_name[LO_NAME_SIZE];
+    uint8_t  lo_encrypt_key[LO_KEY_SIZE]; /* ioctl w/o */
+    uint64_t lo_init[2];
+};
+.EE
+.in
+.SS /dev/loop\-control
+.\" commit 770fe30a46a12b6fb6b63fbe1737654d28e84844
+从 Linux 3.1 开始，内核提供了 \fI/dev/loop\-control\fP 设备，它允许应用程序动态查找空闲设备，并从系统中添加和删除循环设备。
+要执行这些操作，首先打开 \fI/dev/loop\-control\fP，然后使用以下 \fBioctl\fP(2) 操作之一:
+.TP 
+\fBLOOP_CTL_GET_FREE\fP
+分配或寻找空闲的循环设备以供使用。 成功时，设备编号作为调用的结果返回。 这个操作不需要参数。
+.TP 
+\fBLOOP_CTL_ADD\fP
+在第三个 \fBioctl\fP(2) 参数中添加设备号指定为长整型的新回路设备。 成功时，设备索引作为调用的结果返回。 如果设备已分配，调用将失败并返回错误
+\fBEEXIST\fP。
+.TP 
+\fBLOOP_CTL_REMOVE\fP
+去掉第三个 \fBioctl\fP(2) 参数中设备号指定为长整型的回路设备。 成功时，设备编号作为调用的结果返回。 如果设备正在使用中，调用将失败并显示错误
+\fBEBUSY\fP。
+.SH FILES
+.TP 
+\fI/dev/loop*\fP
+循环块特殊设备文件。
+.SH EXAMPLES
+下面的程序使用 \fI/dev/loop\-control\fP
+设备找到空闲的循环设备，打开循环设备，打开一个文件作为设备的底层存储，然后将循环设备与后备存储相关联。 下面的 shell 会话演示了该程序的使用:
+.PP
+.in +4n
+.EX
+$ \fBdd if=/dev/zero of=file.img bs=1MiB count=10\fP
+10+0 records in
+10+0 records out
+10485760 bytes (10 MB) copied, 0.00609385 s, 1.7 GB/s
+10485760 bytes (10 MB) copied, 0.00609385 s, 1.7 GB/s
+loopname = /dev/loop5
+.EE
+.in
+.SS "Program source"
+\&
+.EX
+#include <fcntl.h>
+#include <linux/loop.h>
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \e
+                        } while (0)
+
+int
+main(int argc, char *argv[])
+{
+    int loopctlfd, loopfd, backingfile;
+    long devnr;
+    char loopname[4096];
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s backing\-file\en", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    loopctlfd = open("/dev/loop\-control", O_RDWR);
+    if (loopctlfd == \-1)
+        errExit("open: /dev/loop\-control");
+
+    devnr = ioctl(loopctlfd, LOOP_CTL_GET_FREE);
+    if (devnr == \-1)
+        errExit("ioctl\-LOOP_CTL_GET_FREE");
+
+    sprintf(loopname, "/dev/loop%ld", devnr);
+    printf("loopname = %s\en", loopname);
+
+    loopfd = open(loopname, O_RDWR);
+    if (loopfd == \-1)
+        errExit("open: loopname");
+
+    backingfile = open(argv[1], O_RDWR);
+    if (backingfile == \-1)
+        errExit("open: backing\-file");
+
+    if (ioctl(loopfd, LOOP_SET_FD, backingfile) == \-1)
+        errExit("ioctl\-LOOP_SET_FD");
+
+    exit(EXIT_SUCCESS);
+}
+.EE
+.SH "SEE ALSO"
+\fBlosetup\fP(8), \fBmount\fP(8)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

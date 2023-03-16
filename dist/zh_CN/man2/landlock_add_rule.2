@@ -1,0 +1,102 @@
+.\" -*- coding: UTF-8 -*-
+.\" Copyright © 2017-2020 Mickaël Salaün <mic@digikod.net>
+.\" Copyright © 2019-2020 ANSSI
+.\" Copyright © 2021 Microsoft Corporation
+.\"
+.\" SPDX-License-Identifier: Linux-man-pages-copyleft
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH landlock_add_rule 2 2023\-02\-10 "Linux man\-pages 6.03" 
+.SH NAME
+landlock_add_rule \- 将新的 Landlock 规则添加到规则集中
+.SH LIBRARY
+标准 C 库 (\fIlibc\fP、\fI\-lc\fP)
+.SH SYNOPSIS
+.nf
+\fB#include <linux/landlock.h>\fP  /* Definition of \fBLANDLOCK_*\fP constants */
+\fB#include <sys/syscall.h>\fP     /* Definition of \fBSYS_*\fP constants */
+.PP
+\fBint syscall(SYS_landlock_add_rule, int \fP\fIruleset_fd\fP\fB,\fP
+\fB            enum landlock_rule_type \fP\fIrule_type\fP\fB,\fP
+\fB            const void *\fP\fIrule_attr\fP\fB, uint32_t \fP\fIflags\fP\fB);\fP
+.fi
+.SH DESCRIPTION
+Landlock 规则描述了对对象的操作。 一个对象目前是一个文件层次结构，相关的文件系统操作定义了一组访问权限。 此
+\fBlandlock_add_rule\fP() 系统调用可以将新的 Landlock 规则添加到使用
+\fBlandlock_create_ruleset\fP(2) 创建的现有规则集中。 有关全面概述，请参见 \fBlandlock\fP(7)。
+.PP
+\fIruleset_fd\fP 是使用 \fBlandlock_create_ruleset\fP(2) 获得的 Landlock 规则集文件描述符。
+.PP
+\fIrule_type\fP 标识 \fIrule_attr\fP 指向的结构体类型。 目前，Linux 支持以下 \fIrule_type\fP 值:
+.TP 
+\fBLANDLOCK_RULE_PATH_BENEATH\fP
+这将对象类型定义为文件层次结构。 在这种情况下，\fIrule_attr\fP 指向以下结构体:
+.IP
+.in +4n
+.EX
+struct landlock_path_beneath_attr {
+    __u64 allowed_access;
+    __s32 parent_fd;
+} __attribute__((packed));
+.EE
+.in
+.IP
+\fIallowed_access\fP 包含此文件层次结构允许的文件系统操作的位掩码 (请参见 \fBlandlock\fP(7)) 中的
+\fBFilesystem actions\fP。
+.IP
+\fIparent_fd\fP 是一个打开的文件描述符，最好带有 \fIO_PATH\fP 标志，它标识文件层次结构的父目录或只是一个文件。
+.PP
+\fIflags\fP must be  0.
+.SH "RETURN VALUE"
+成功时，\fBlandlock_add_rule\fP() 返回 0.
+.SH ERRORS
+\fBlandlock_add_rule\fP() 可能因以下原因而失败:
+.TP 
+\fBEOPNOTSUPP\fP
+内核支持 Landlock，但在启动时禁用。
+.TP 
+\fBEINVAL\fP
+\fIflags\fP 不为 0，或者规则访问不一致 (即，\fIrule_attr\->allowed_access\fP 不是规则集处理的访问的子集)。
+.TP 
+\fBENOMSG\fP
+空访问 (即 \fIrule_attr\->allowed_access\fP 为 0)。
+.TP 
+\fBEBADF\fP
+\fIruleset_fd\fP 不是当前线程的文件描述符，或者 \fIrule_attr\fP 的成员不是预期的文件描述符。
+.TP 
+\fBEBADFD\fP
+\fIruleset_fd\fP 不是规则集文件描述符，或者 \fIrule_attr\fP 的成员不是预期的文件描述符类型。
+.TP 
+\fBEPERM\fP
+\fIruleset_fd\fP 对底层规则集没有写入权限。
+.TP 
+\fBEFAULT\fP
+\fIrule_attr\fP 不是有效地址。
+.SH VERSIONS
+在 Linux 5.13 中添加了 Landlock。
+.SH STANDARDS
+这个系统调用是 Linux 特有的。
+.SH EXAMPLES
+请参见 \fBlandlock\fP(7)。
+.SH "SEE ALSO"
+\fBlandlock_create_ruleset\fP(2), \fBlandlock_restrict_self\fP(2), \fBlandlock\fP(7)
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

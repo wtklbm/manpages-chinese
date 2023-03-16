@@ -1,0 +1,2641 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"     Title: mount
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.15
+.\"      Date: 2022-08-04
+.\"    Manual: System Administration
+.\"    Source: util-linux 2.38.1
+.\"  Language: English
+.\"
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH MOUNT 8 2022\-08\-04 "util\-linux 2.38.1" "System Administration"
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de  URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if  \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH NAME
+mount \- 挂载一个文件系统
+.SH SYNOPSIS
+.sp
+\fBmount\fP [\fB\-h\fP|\fB\-V\fP]
+.sp
+\fBmount\fP [\fB\-l\fP] [\fB\-t\fP \fIfstype\fP]
+.sp
+\fBmount\fP \fB\-a\fP [\fB\-fFnrsvw\fP] [\fB\-t\fP \fIfstype\fP] [\fB\-O\fP \fIoptlist\fP]
+.sp
+\fBmount\fP [\fB\-fnrsvw\fP] [\fB\-o\fP \fIoptions\fP] \fIdevice\fP|\fImountpoint\fP
+.sp
+\fBmount\fP [\fB\-fnrsvw\fP] [\fB\-t\fP \fIfstype\fP] [\fB\-o\fP \fIoptions\fP] \fIdevice mountpoint\fP
+.sp
+\fBmount\fP \fB\-\-bind\fP|\fB\-\-rbind\fP|\fB\-\-move\fP \fIolddir newdir\fP
+.sp
+\fBmount\fP
+\fB\-\-make\-\fP[\fBshared\fP|\fBslave\fP|\fBprivate\fP|\fBunbindable\fP|\fBrshared\fP|\fBrslave\fP|\fBrprivate\fP|\fBrunbindable\fP]
+\fImountpoint\fP
+.SH DESCRIPTION
+.sp
+Unix 系统中可访问的所有文件都排列在一棵大树中，即文件层次结构，以 \fI/\fP 为根。这些文件可以分布在多个设备上。\fBmount\fP
+命令用于将在某些设备上找到的文件系统附加到大文件树。相反，\fBumount\fP(8)
+命令将再次分离它。文件系统用于控制数据如何存储在设备上或通过网络或其他服务以虚拟方式提供。
+.sp
+\fBmount\fP 命令的标准形式是:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-t\fP \fItype device dir\fP
+.br
+.RE
+.ll
+.sp
+这告诉内核附加在 \fIdevice\fP 上找到的文件系统 (在目录 \fIdir\fP 中属于 \fItype\fP) 类型)。选项 \fB\-t\fP \fItype\fP
+是可选的。\fBmount\fP 命令通常能够检测文件系统。默认情况下，root 权限是挂载文件系统所必需的。有关详细信息，请参见下面的
+"Non\-superuser mounts" 部分。\fIdir\fP 的先前内容 (如果有) 和所有者和模式变得不可见，只要此文件系统保持挂载状态，路径名
+\fIdir\fP 指的是 \fIdevice\fP 上文件系统的根目录。
+.sp
+如果只给出目录或设备，例如:
+.RS 3
+.ll -.6i
+.sp
+\fBmount\fP \fI/dir\fP
+.br
+.RE
+.ll
+.sp
+然后 \fBmount\fP 在 \fI/etc/fstab\fP 文件中寻找挂载点 (如果没有找到则寻找设备)。\(cqs 可能使用 \fB\-\-target\fP 或
+\fB\-\-source\fP 选项来避免对给定参数的歧义解释。例如:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-\-target\fP \fI/mountpoint\fP
+.br
+.RE
+.ll
+.sp
+同一个文件系统可以挂载多次，在某些情况下 (例如网络文件系统) 同一个文件系统可以在同一个挂载点上挂载多次。\fBmount\fP
+命令不实现任何策略来控制此行为。所有行为都由内核控制，并且通常特定于文件系统驱动程序。\fB\-\-all\fP 是例外，在这种情况下，已安装的文件系统将被忽略
+(有关更多详细信息，请参见下面的 \fB\-\-all\fP)。
+.SS "Listing the mounts"
+.sp
+维护列表模式只是为了向后兼容。
+.sp
+要获得更强大和可自定义的输出，请使用 \fBfindmnt\fP(8)、\fBespecially in your scripts\fP。请注意，挂载点名称中的控制字符被替换为 \(aq?\(aq.
+.sp
+以下命令列出所有已安装的文件系统 (类型为 \fItype\fP):
+.RS 3
+.ll -.6i
+.sp
+\fBmount\fP [\fB\-l\fP] [\fB\-t\fP \fItype\fP]
+.br
+.RE
+.ll
+.sp
+选项 \fB\-l\fP 将标签添加到此列表。见下文。
+.SS "Indicating the device and filesystem"
+.sp
+大多数设备由 (块特殊设备的) 文件名指示，如 \fI/dev/sda1\fP，但还有其他可能性。例如，在 NFS 装载的情况下，\fIdevice\fP
+可能看起来像 \fIknuth.cwi.nl:/dir\fP。
+.sp
+磁盘分区设备名不稳定; 硬件重新配置以及添加或删除设备可能会导致名称发生变化。这就是为什么它 \(cqs 强烈建议使用文件系统或分区标识符，如 UUID
+或 LABEL。当前支持的标识符 (tags):
+.sp
+LABEL=\fIlabel\fP
+.RS 4
+人类可读的文件系统标识符。另请详见 \fB\-L\fP。
+.RE
+.sp
+UUID=\fIuuid\fP
+.RS 4
+文件系统通用唯一标识符。UUID 的格式通常是一系列由连字符分隔的十六进制数字。另请详见 \fB\-U\fP。
+.sp
+请注意，\fBmount\fP 使用 UUID 作为字符串。来自命令行或 \fBfstab\fP(5) 的 UUID 不会转换为内部二进制表示。UUID
+的字符串表示应基于小写字符。
+.RE
+.sp
+PARTLABEL=\fIlabel\fP
+.RS 4
+人类可读的分区标识符。此标识符独立于文件系统，不会因 \fBmkfs\fP 或 \fBmkswap\fP 操作而改变。它 \(cqs 支持例如 GUID 分区表
+(GPT)。
+.RE
+.sp
+PARTUUID=\fIuuid\fP
+.RS 4
+分区通用唯一标识符。此标识符独立于文件系统，不会因 \fBmkfs\fP 或 \fBmkswap\fP 操作而改变。它 \(cqs 支持例如 GUID 分区表
+(GPT)。
+.RE
+.sp
+ID=\fIid\fP
+.RS 4
+由 udevd 生成的硬件块设备 ID。该标识符通常基于 WWN (唯一存储标识符)，由硬件制造商分配。有关更多详细信息，请参见 \fBls /dev/disk/by\-id\fP，此目录和运行 udevd 是必需的。不建议将此标识符用于泛型，因为标识符没有严格定义，它取决于 udev、udev
+规则和硬件。
+.RE
+.sp
+命令 \fBlsblk \-\-fs\fP 提供可用块设备上的文件系统、标签和 UUID 的概述。命令 \fBblkid \-p <device>\fP
+提供有关指定设备上的文件系统的详细信息。
+.sp
+不要 \(cqt 忘记了，不能保证 UUID 和标签真的是唯一的，尤其是当您移动、共享或复制设备时。使用 \fBlsblk \-o +UUID,PARTUUID\fP 验证 UUID 在您的系统中是否确实是唯一的。
+.sp
+推荐的设置是使用标签 (例如 \fBUUID\fP=\fIuuid\fP) 而不是 \fI/etc/fstab\fP 文件中的
+\fI/dev/disk/by\-{label,uuid,id,partuuid,partlabel}\fP udev
+符号链接。标签更具可读性、健壮性和便携性。\fBmount\fP(8) 命令在内部使用 udev 符号链接，因此在 \fI/etc/fstab\fP
+中使用符号链接与标记相比没有优势。有关详细信息，请参见 \fBlibblkid\fP(3)。
+.sp
+\fIproc\fP 文件系统不与特殊设备相关联，并且在安装它时，可以使用任意关键字 (例如 \fIproc\fP) 来代替设备规范。(通常选择 \fInone\fP
+就没那么幸运了: 错误消息 \(aqnone already mounted\(aq from \fBmount\fP can be confusing.)
+.SS "The files /etc/fstab, /etc/mtab and /proc/mounts"
+.sp
+文件 \fI/etc/fstab\fP (参见 \fBfstab\fP(5))，可能包含描述通常使用哪些选项将哪些设备安装在何处的行。可以使用 \fB\-\-fstab\fP
+\fIpath\fP 命令行选项覆盖 \fBfstab\fP(5) 文件的默认位置 (有关更多详细信息，请参见下文)。
+.sp
+命令
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-a\fP [\fB\-t\fP \fItype\fP] [\fB\-O\fP \fIoptlist\fP]
+.br
+.RE
+.ll
+.sp
+(通常在引导脚本中给出) 导致 \fIfstab\fP 中提到的所有文件系统 (具有正确的类型或者具有或不具有正确的选项) 按指示安装，除了那些其行包含
+\fBnoauto\fP 关键字的文件系统。添加 \fB\-F\fP 选项将使 \fBmount\fP fork，以便文件系统挂载在并行中。
+.sp
+当挂载 \fIfstab\fP 或 \fImtab\fP 中提到的文件系统时，在命令行上仅指定设备或仅指定挂载点就足够了。
+.sp
+程序 \fBmount\fP 和 \fBumount\fP(8) 传统上在文件 \fI/etc/mtab\fP
+中维护当前安装的文件系统列表。默认情况下，在编译时完全禁用对常规经典 \fI/etc/mtab\fP 的支持，因为在当前的 Linux 系统上，最好让
+\fI/etc/mtab\fP 成为 \fI/proc/mounts\fP 的符号链接。在用户空间中维护的常规 \fImtab\fP
+文件无法可靠地与名称空间、容器和其他高级 Linux 特性一起使用。如果启用了常规 \fImtab\fP 支持，那么它 \(cqs
+可以使用该文件以及符号链接。
+.sp
+如果没有给 \fBmount\fP 参数，则打印已安装文件系统的列表。
+.sp
+如果您想覆盖 \fI/etc/fstab\fP 的挂载选项，您必须使用 \fB\-o\fP 选项:
+.RS 3
+.ll -.6i
+.sp
+\fBmount\fP \fIdevice\fP|\fIdir\fP \fB\-o\fP \fIoptions\fP
+.br
+.RE
+.ll
+.sp
+然后命令行中的安装选项将追加到 \fI/etc/fstab\fP 的选项列表中。可以使用 \fB\-\-options\-mode\fP
+命令行选项更改此默认行为。通常的行为是，如果存在冲突，则最后一个选项获胜。
+.sp
+如果指定了 \fIdevice\fP (或 LABEL、UUID、ID、PARTUUID 或 PARTLABEL) 和 \fIdir\fP，则 \fBmount\fP
+程序不会读取 \fI/etc/fstab\fP 文件。例如，将设备 \fBfoo\fP 挂载到 \fB/dir\fP:
+.RS 3
+.ll -.6i
+.sp
+\fBmount /dev/foo /dir\fP
+.br
+.RE
+.ll
+.sp
+可以通过使用 \fB\-\-options\-source\-force\fP 命令行选项始终从 \fIfstab\fP 读取配置来更改此默认行为。对于非 root
+用户，\fBmount\fP 始终读取 \fIfstab\fP 配置。
+.SS "Non\-superuser mounts"
+.sp
+通常，只有超级用户才能挂载文件系统。然而，当 \fIfstab\fP 在一行中包含 \fBuser\fP 选项时，任何人都可以挂载相应的文件系统。
+.sp
+因此，给定一条线
+.RS 3
+.ll -.6i
+.sp
+\fB/dev/cdrom /cd iso9660 ro,user,noauto,unhide\fP
+.br
+.RE
+.ll
+.sp
+任何用户都可以使用以下命令挂载在插入的 CDROM 上找到的 iso9660 文件系统:
+.RS 3
+.ll -.6i
+.sp
+\fBmount /cd\fP
+.br
+.RE
+.ll
+.sp
+请注意，\fBmount\fP 对非 root 用户非常严格，并且在解析 \fIfstab\fP 或执行辅助程序之前验证命令行上指定的所有路径。\(cqs
+强烈建议使用有效的挂载点来指定文件系统，否则 \fBmount\fP 可能会失败。例如，在命令行上使用 NFS 或 CIFS 源是个坏主意。
+.sp
+自 util\-linux 2.35 以来，根据 libmount\(cqs 内部安全规则，当用户权限不足时，\fBmount\fP 不会退出。相反，它放弃
+suid 权限并继续作为普通的非根用户。此行为支持不需要 root 权限的用例 (例如，fuse 文件系统、用户名称空间等)。
+.sp
+有关详细信息，请参见 \fBfstab\fP(5)。只有安装文件系统的用户才能再次卸载它。如果任何用户应该能够卸载它，则在 \fIfstab\fP 行中使用
+\fBusers\fP 而不是 \fBuser\fP。\fBowner\fP 选项类似于 \fBuser\fP
+选项，但限制用户必须是特殊文件的所有者。如果登录脚本使控制台用户成为此设备的所有者，这可能对 \fI/dev/fd\fP 等很有用。\fBgroup\fP
+选项类似，但限制用户必须是特殊文件组的成员。
+.SS "Bind mount operation"
+.sp
+在其他地方重新安装部分文件层次结构。调用是:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-\-bind\fP \fIolddir newdir\fP
+.br
+.RE
+.ll
+.sp
+或使用此 \fIfstab\fP 条目:
+.RS 3
+.ll -.6i
+.sp
+\fB/\fP\fIolddir\fP \fB/\fP\fInewdir\fP \fBnone bind\fP
+.br
+.RE
+.ll
+.sp
+在此调用之后，可以在两个地方访问相同的内容。
+.sp
+重要的是要了解 "bind" 不会在内核 VFS 中创建任何二级或特殊节点。"bind" 只是附加文件系统的另一个操作。没有任何地方存储文件系统已被
+"bind" 操作附加的信息。\fIolddir\fP 和 \fInewdir\fP 是独立的，\fIolddir\fP 可以卸载。
+.sp
+还可以重新挂载单个文件 (在单个文件上)。\(cqs 也可以使用绑定挂载从常规目录创建挂载点，例如:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-\-bind foo foo\fP
+.br
+.RE
+.ll
+.sp
+绑定挂载调用仅附加 (部分) 单个文件系统，而不是可能的子挂载。整个文件层次结构，包括 submounts 可以附加到第二个位置，方法是使用:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-\-rbind\fP \fIolddir newdir\fP
+.br
+.RE
+.ll
+.sp
+请注意，内核维护的文件系统挂载选项将与原始挂载点上的选项保持一致。用户空间挂载选项 (例如，_netdev) 不会被 \fBmount\fP 复制，并且需要在
+\fBmount\fP 命令行上显式指定选项。
+.sp
+由于 util\-linux 2.27 \fBmount\fP 允许通过将相关选项与 \fB\-\-bind\fP 一起传递来更改挂载选项。例如:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-o bind,ro foo foo\fP
+.br
+.RE
+.ll
+.sp
+Linux 内核不支持此，特性; 它是在用户空间中通过额外的 \fBmount\fP(2) 重新挂载系统调用实现的。这个解决方案不是原子的。
+.sp
+创建只读绑定挂载的另一种 (classic) 方法是使用重新挂载操作，例如:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-\-bind\fP \fIolddir newdir\fP
+.sp
+\fBmount \-o remount,bind,ro\fP \fIolddir newdir\fP
+.br
+.RE
+.ll
+.sp
+请注意，只读绑定将创建一个只读挂载点 (VFS 条目)，但原始文件系统超级块仍将是可写的，这意味着 \fIolddir\fP 将是可写的，但
+\fInewdir\fP 将是只读的。
+.sp
+它 \(cqs 也可以通过 "remount,bind" 操作更改
+nosuid、nodev、noexec、noatime、nodiratime、relatime 和 nosymfollow VFS 条目标志。其他标志
+(例如特定于文件系统的标志) 被静默忽略。\(cqs 不可能递归地更改挂载选项 (例如使用 \fB\-o rbind,ro\fP).
+.sp
+自 util\-linux 2.31 以来，\fBmount\fP 在 \fBremount\fP 操作中忽略来自 \fI/etc/fstab\fP 的 \fBbind\fP
+标志 (如果在命令行上指定了 \fB\-o remount\fP)。这是通过命令行完全控制重新挂载时的挂载选项所必需的。在以前的版本中，始终应用绑定标志，并且在不与绑定语义交互的情况下不可能重新定义挂载选项。当在
+\fI/etc/fstab\fP 文件中指定 "remount,bind" 时，此 \fBmount\fP 行为不会影响情况。
+.SS "The move operation"
+.sp
+把一个 \fBmounted tree\fP 移到另一个地方 (atomically)。调用是:
+.RS 3
+.ll -.6i
+.sp
+\fBmount \-\-move\fP \fIolddir newdir\fP
+.br
+.RE
+.ll
+.sp
+这将导致以前出现在 \fIolddir\fP 下的内容现在可以在 \fInewdir\fP 下访问。文件的物理位置没有改变。请注意，\fIolddir\fP
+必须是挂载点。
+.sp
+另请注意，移动位于共享装载下的装载是无效且不受支持的。使用 \fBfindmnt \-o TARGET,PROPAGATION\fP 查看当前传播标志。
+.SS "Shared subtree operations"
+.sp
+从 Linux 2.6.15
+开始，可以将挂载及其子挂载标记为共享、私有、从属或不可绑定。共享安装提供了创建该安装的镜像的能力，这样任何镜像中的安装和卸载就会传播到另一个镜像。从挂载接收来自其主挂载的传播，但反之则不然。私有坐骑没有传播能力。不可绑定挂载是无法通过绑定操作克隆的私有挂载。详细语义记录在内核源代码树的
+\fIDocumentation/filesystems/sharedsubtree.txt\fP 文件中; 另请详见
+\fBmount_namespaces\fP(7)。
+.sp
+支持的操作有:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+mount\-\-make \- 共享挂载点
+mount\-\-make\-slave 挂载点
+mount\-\-make\-private 挂载点
+mount\-\-make\-unbindable 挂载点
+.fam
+.fi
+.if  n .RE
+.sp
+以下命令允许递归地更改给定挂载点下所有挂载的类型。
+.sp
+.if  n .RS 4
+.nf
+.fam C
+mount\-\-make\-rshared 挂载点
+mount\-\-make\-rslave 挂载点
+mount\-\-make\-rprivate 挂载点
+mount\-\-make\-runbindable 挂载点
+.fam
+.fi
+.if  n .RE
+.sp
+当请求 \fB\-\-make\-\fP* 操作时为 \fBmount\fP \fBdoes not read\fP \fBfstab\fP(5)。必须在命令行上指定所有必要的信息。
+.sp
+请注意，Linux 内核不允许使用单个 \fBmount\fP(2) 系统调整更改多个传播标志，并且这些标志不能与其他挂载选项和操作混合使用。
+.sp
+由于 util\-linux 2.23，\fBmount\fP 命令可用于通过一个 \fBmount\fP(8) 调整进行更多传播 (topology)
+更改，并与其他挂载操作一起执行。当前面的安装操作成功时，传播标志由额外的 \fBmount\fP(2) 系统调用应用。请注意，此用例不是原子的。可以将
+\fBfstab\fP(5) 中的传播标志指定为挂载选项
+(\fBprivate\fP、\fBslave\fP、\fBshared\fP、\fBunbindable\fP、\fBrprivate\fP、\fBrslave\fP、\fBrshared\fP、\fBrunbindable\fP)。
+.sp
+例如:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+mount \-\-make\-private \-\-make\-unbindable /dev/sda1 /foo
+.fam
+.fi
+.if  n .RE
+.sp
+是相同的:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+挂载 /dev/sda1/foo
+mount \-\-make\-private /foo
+mount \-\-make\-unbindable /foo
+.fam
+.fi
+.if  n .RE
+.SH "COMMAND\-LINE OPTIONS"
+.sp
+\fBmount\fP 调用使用的全套挂载选项是通过首先从 \fIfstab\fP 表中提取文件系统的挂载选项，然后应用 \fB\-o\fP 参数指定的任何选项，最后应用
+\fB\-r\fP 或 \fB\-w\fP 选项 (如果存在) 来确定的。
+.sp
+\fBmount\fP 命令不会将所有命令行选项传递给 \fB/sbin/mount.\fP\fIsuffix\fP 安装助手。\fBmount\fP
+和安装助手之间的接口在下面的 \fBEXTERNAL HELPERS\fP 部分中描述。
+.sp
+\fBmount\fP 命令可用的命令行选项有:
+.sp
+\fB\-a\fP, \fB\-\-all\fP
+.RS 4
+挂载 \fIfstab\fP 中提到的所有 (给定类型的) 文件系统 (除了那些其行包含 \fBnoauto\fP 关键字的文件系统)。文件系统按照它们在
+\fIfstab\fP 中的顺序安装。\fBmount\fP 命令比较文件系统源、目标 (和 fs 根用于绑定安装或 btrfs)
+以检测已安装的文件系统。已安装文件系统的内核表在 \fBmount \-\-all\fP 期间被缓存。这意味着将安装所有重复的 \fIfstab\fP 条目。
+.sp
+正确的功能取决于 \fI/proc\fP (检测已安装的文件系统) 和 \fI/sys\fP (评估 UUID = 或 LABEL = 等文件系统标签)。\(cqs
+强烈建议在执行 \fBmount \-a\fP 之前挂载 \fI/proc\fP 和 \fI/sys\fP 文件系统，或者将 /proc 和 /sys 保留在
+\fIfstab\fP 的开头。
+.sp
+选项 \fB\-\-all\fP 也可以用于重新安装操作。在这种情况下，所有过滤器 (\fB\-t\fP 和 \fB\-O\fP) 都应用于已安装的文件系统表。
+.sp
+从版本 2.35 开始，可以使用命令行选项 \fB\-o\fP 更改 \fIfstab\fP 的安装选项 (另请参见 \fB\-\-options\-mode\fP).
+.sp
+请注意，使用 \fBmount \-a\fP 进行 \fIfstab\fP 检查是一种不好的做法。推荐的解决方案是 \fBfindmnt \-\-verify\fP。
+.RE
+.sp
+\fB\-B\fP, \fB\-\-bind\fP
+.RS 4
+在其他地方重新安装一个子树 (这样它的内容在两个地方都可用)。见上文，在 \fBBind mounts\fP 下。
+.RE
+.sp
+\fB\-c\fP, \fB\-\-no\-canonicalize\fP
+.RS 4
+不要 \(cqt 规范化路径。\fBmount\fP 命令规范化所有路径 (默认情况下来自命令行或 \fIfstab\fP)。对于已经规范化的绝对路径，此选项可以与
+\fB\-f\fP 标志一起使用。该选项专为调用 \fBmount \-i\fP 的安装助手而设计。强烈建议不要将此命令行选项用于正常的安装操作。
+.sp
+请注意，\fBmount\fP 不会将此选项传递给 \fB/sbin/mount.\fP\fItype\fP 助手。
+.RE
+.sp
+\fB\-F\fP, \fB\-\-fork\fP
+.RS 4
+(与 \fB\-a\fP.) Fork 一起使用，为每个设备关闭一个新的 \fBmount\fP 化身。这将在并行中的不同设备或不同 NFS
+服务器上进行挂载。这样做的好处是速度更快; NFS 超时也在并行中进行。一个缺点是安装操作的顺序是未定义的。因此，如果您想同时安装 \fI/usr\fP 和
+\fI/usr/spool\fP，则不能使用此选项。
+.RE
+.sp
+\fB\-f, \-\-fake\fP
+.RS 4
+导致除实际系统调用之外的所有操作; 如果它 \(cqs 不明显，这个 "fakes" 安装文件系统。此选项与 \fB\-v\fP 标志结合使用以确定
+\fBmount\fP 命令试图执行的操作。它还可用于为之前使用 \fB\-n\fP 选项安装的设备添加条目。\fB\-f\fP 选项检查 \fI/etc/mtab\fP
+中的现有记录，并在记录已存在时失败 (对于常规的非伪装，此检查由内核完成)。
+.RE
+.sp
+\fB\-i, \-\-internal\-only\fP
+.RS 4
+不要 \(cqt 调用 \fB/sbin/mount.\fP\fIfilesystem\fP 助手，即使它存在。
+.RE
+.sp
+\fB\-L\fP, \fB\-\-label\fP \fIlabel\fP
+.RS 4
+挂载具有指定 \fIlabel\fP 的分区。
+.RE
+.sp
+\fB\-l\fP, \fB\-\-show\-labels\fP
+.RS 4
+在挂载输出中添加标签。\fBmount\fP 必须具有读取磁盘设备的权限 (例如设置用户 ID root) 才能工作。可以使用 \fBe2label\fP(8)
+实用程序为 ext2、ext3 或 ext4 设置这样的标签，或者使用 \fBxfs_admin\fP(8) 为 XFS 设置这样的标签，或者使用
+\fBreiserfstune\fP(8) 为 reiserfs 设置这样的标签。
+.RE
+.sp
+\fB\-M\fP, \fB\-\-move\fP
+.RS 4
+将子树移动到其他地方。见上文 \fBThe move operation\fP 小节。
+.RE
+.sp
+\fB\-m\fP, \fB\-\-mkdir\fP[=\fImode\fP]
+.RS 4
+如果目标目录尚不存在，则允许创建目标目录 (mountpoint)。别名为 "\-o X\-mount.mkdir[=mode]"，默认模式为
+0755。有关详细信息，请参见下面的 \fBX\-mount.mkdir\fP。
+.RE
+.sp
+\fB\-n\fP, \fB\-\-no\-mtab\fP
+.RS 4
+无需写入 \fI/etc/mtab\fP 即可挂载。例如，当 \fI/etc\fP 在只读文件系统上时，这是必需的。
+.RE
+.sp
+\fB\-N\fP, \fB\-\-namespace\fP \fIns\fP
+.RS 4
+在 \fIns\fP 指定的挂载命名空间中进行挂载操作。\fIns\fP 是在该命名空间中运行的进程的 PID 或代表该命名空间的特殊文件。
+.sp
+\fBmount\fP 读 \fI/etc/fstab\fP，写 \fI/etc/mtab: (or writes to _/run/mount\fP)，调用
+\fBmount\fP(2) 时切换到挂载命名空间，否则运行在原来的挂载命名空间。这意味着目标命名空间不必包含执行 \fBmount\fP(2)
+调用所需的任何库或其他要求。
+.sp
+有关更多信息，请参见 \fBmount_namespaces\fP(7)。
+.RE
+.sp
+\fB\-O\fP, \fB\-\-test\-opts\fP \fIopts\fP
+.RS 4
+限制 \fB\-a\fP 选项适用的文件系统集。在这方面，它类似于 \fB\-t\fP 选项，只是 \fB\-O\fP 没有 \fB\-a\fP 就没用了。例如，命令
+.sp
+\fBmount \-a \-O no_netdev\fP
+.sp
+挂载所有文件系统，除了那些在 \fI/etc/fstab\fP 文件的选项字段中指定了选项 \fInetdev\fP 的文件系统。
+.sp
+与 \fB\-t\fP 不同的是每个选项都是精确匹配的; 一个选项开头的前导 \fBno\fP 不会否定其余选项。
+.sp
+\fB\-t\fP 和 \fB\-O\fP 选项具有累积效果; 也就是说，命令
+.sp
+\fBmount \-a \-t ext2 \-O _netdev\fP
+.sp
+使用 _netdev 选项安装所有 ext2 文件系统，而不是所有 ext2 或指定了 _netdev 选项的文件系统。
+.RE
+.sp
+\fB\-o\fP, \fB\-\-options\fP \fIopts\fP
+.RS 4
+使用指定的安装选项。\fIopts\fP 参数是以逗号分隔的列表。例如:
+.sp
+\fBmount LABEL=mydisk \-o noatime,nodev,nosuid\fP
+.sp
+有关详细信息，请参见 \fBFILESYSTEM\-INDEPENDENT MOUNT OPTIONS\fP 和 \fBFILESYSTEM\-SPECIFIC MOUNT OPTIONS\fP 部分。
+.RE
+.sp
+\fB\-\-options\-mode\fP \fImode\fP
+.RS 4
+控制如何将来自 \fIfstab\fP/\fImtab\fP 的选项与来自命令行的选项组合。\fImode\fP 可以是
+\fBignore\fP、\fBappend\fP、\fBprepend\fP 或 \fBreplace\fP 之一。例如，\fBappend\fP 表示来自 \fIfstab\fP
+的选项追加到来自命令行的选项。默认值为 \fBprepend\fP\(em 这意味着命令行选项在 \fIfstab\fP
+选项之后计算。请注意，如果存在冲突，则以最后一个选项为准。
+.RE
+.sp
+\fB\-\-options\-source\fP \fIsource\fP
+.RS 4
+默认选项的来源。\fIsource\fP 是以逗号分隔的 \fBfstab\fP、\fBmtab\fP 和 \fBdisable\fP 列表。\fBdisable\fP 禁用
+\fBfstab\fP 和 \fBmtab\fP 并启用 \fB\-\-options\-source\-force\fP。默认值为 \fBfstab,mtab\fP。
+.RE
+.sp
+\fB\-\-options\-source\-force\fP
+.RS 4
+即使指定了 \fIdevice\fP 和 \fIdir\fP，也使用 \fIfstab\fP/\fImtab\fP 中的选项。
+.RE
+.sp
+\fB\-R\fP, \fB\-\-rbind\fP
+.RS 4
+在其他地方重新挂载子树和所有可能的子挂载 (以便其内容在两个地方都可用)。见上文 \fBBind mounts\fP 小节。
+.RE
+.sp
+\fB\-r\fP, \fB\-\-read\-only\fP
+.RS 4
+以只读方式挂载文件系统。同义词是 \fB\-o ro\fP。
+.sp
+请注意，根据文件系统类型、状态和内核行为，系统可能仍会写入设备。例如，如果文件系统脏了，ext3 和 ext4
+将重播日志。为了防止这种写访问，您可能需要使用 \fBro,noload\fP 挂载选项挂载 ext3 或 ext4
+文件系统，或者将块设备本身设置为只读模式，请参见 \fBblockdev\fP(8) 命令。
+.RE
+.sp
+\fB\-s\fP
+.RS 4
+容忍草率的安装选项而不是失败。这将忽略文件系统类型不支持的挂载选项。并非所有文件系统都支持此选项。目前它 \(cqs 仅由 \fBmount.nfs\fP
+挂载助手支持。
+.RE
+.sp
+\fB\-\-source\fP \fIdevice\fP
+.RS 4
+如果 \fBmount\fP 命令只给出一个参数，则参数可能被解释为目标 (mountpoint) 或源 (device)。此选项允许您明确定义参数是挂载源。
+.RE
+.sp
+\fB\-\-target\fP \fIdirectory\fP
+.RS 4
+如果挂载命令只给出一个参数，则参数可能被解释为目标 (mountpoint) 或源 (device)。此选项允许您明确定义参数是挂载目标。
+.RE
+.sp
+\fB\-\-target\-prefix\fP \fIdirectory\fP
+.RS 4
+将指定目录添加到所有挂载目标。这个选项可以跟在 \fIfstab\fP 后面，但是挂载操作是在另外一个地方进行的，例如:
+.sp
+\fBmount \-\-all \-\-target\-prefix /chroot \-o X\-mount.mkdir\fP
+.sp
+将所有从系统 \fIfstab\fP 挂载到 \fI/chroot\fP，创建所有缺少的挂载点 (由于 X\-mount.mkdir)。另请参见 \fB\-\-fstab\fP
+以使用替代 \fIfstab\fP。
+.RE
+.sp
+\fB\-T\fP, \fB\-\-fstab\fP \fIpath\fP
+.RS 4
+指定替代 \fIfstab\fP 文件。如果 \fIpath\fP 是目录，那么目录下的文件按 \fBstrverscmp\fP(3) 排序; 以 "." 开头或没有
+\&\fI.fstab\fP 扩展名的文件将被忽略。可以多次指定该选项。此选项主要用于 initramfs 或 chroot
+脚本，其中指定了超出标准系统配置的额外配置。
+.sp
+请注意，\fBmount\fP 不会将选项 \fB\-\-fstab\fP 传递给 \fB/sbin/mount.\fP\fItype\fP 助手，这意味着替代 \fIfstab\fP
+文件对于助手来说是不可见的。这对于普通挂载是没有问题的，但是用户 (non\-root) 挂载总是需要 \fIfstab\fP 来验证用户 \(cqs 权限。
+.RE
+.sp
+\fB\-t\fP, \fB\-\-types\fP \fIfstype\fP
+.RS 4
+\fB\-t\fP 后面的参数用来表示文件系统类型。当前支持的文件系统类型取决于正在运行的内核。有关文件系统的完整列表，请参见
+\fI/proc/filesystems\fP 和 \fI/lib/modules/$(uname \-r)/kernel/fs\fP。最常见的是
+ext2、ext3、ext4、xfs、btrfs、vfat、sysfs、proc、nfs 和 cifs。
+.sp
+程序 \fBmount\fP 和 \fBumount\fP(8) 支持文件系统子类型。子类型由 \(aq.subtype\(aq 后缀定义。例如
+\(aqfuse.sshfs\(aq. 它 \(cqs 建议使用子类型表示法而不是向挂载源添加任何前缀 (例如
+\(aqsshfs#example.com\(aq 已弃用)。
+.sp
+如果没有给出 \fB\-t\fP 选项，或者如果指定了 \fBauto\fP 类型，\fBmount\fP 将尝试猜测所需的类型。\fBmount\fP 使用
+\fBlibblkid\fP(3) 库来猜测文件系统类型; 如果没有出现任何看起来熟悉的内容，\fBmount\fP 将尝试读取文件
+\fI/etc/filesystems\fP，或者，如果该文件不存在，则尝试读取
+\fI/proc/filesystems\fP。此处列出的所有文件系统类型都将被尝试，但标记为 "nodev" 的文件系统类型除外 (例如
+\fIdevpts\fP、\fIproc\fP 和 \fInfs\fP)。如果 \fI/etc/filesystems\fP 以单个 * 结尾，mount 之后将读取
+\fI/proc/filesystems\fP。尝试时，所有文件系统类型都将使用挂载选项 \fBsilent\fP 进行挂载。
+.sp
+\fBauto\fP 类型可能对用户安装的软盘有用。创建文件 \fI/etc/filesystems\fP 可用于更改探测顺序 (例如，在 msdos 之前尝试
+vfat 或在 ext2 之前尝试 ext3) 或者如果您使用内核模块自动加载器。
+.sp
+对于 \fB\-t\fP 选项以及 \fI/etc/fstab\fP 条目，可以在逗号分隔的列表中指定不止一种类型。\fB\-t\fP 选项的文件系统类型列表可以以
+\fBno\fP 为前缀，以指定不应对其采取任何操作的文件系统类型。在 \fI/etc/fstab\fP 条目中指定时，前缀 \fBno\fP 无效。
+.sp
+前缀 \fBno\fP 对于 \fB\-a\fP 选项可能有意义。例如，命令
+.sp
+\fBmount \-a \-t nomsdos,smbfs\fP
+.sp
+挂载除 \fImsdos\fP 和 \fIsmbfs\fP 类型之外的所有文件系统。
+.sp
+对于大多数类型，所有 \fBmount\fP 程序所要做的就是发出一个简单的 \fBmount\fP(2)
+系统调用，并且不需要文件系统类型的详细知识。然而，对于少数类型 (如
+nfs、nfs4、cifs、smbfs、ncpfs)，需要特殊代码。nfs、nfs4、cifs、smbfs 和 ncpfs
+文件系统有一个单独的挂载程序。为了能够以统一的方式处理所有类型，\fBmount\fP 将在使用类型 \fItype\fP 调用时执行程序
+\fB/sbin/mount.\fP\fItype\fP (如果存在)。由于不同版本的 \fBsmbmount\fP
+程序有不同的调用约定，\fB/sbin/mount.smbfs\fP 可能必须是一个 shell 脚本来设置所需的调用。
+.RE
+.sp
+\fB\-U\fP, \fB\-\-uuid\fP \fIuuid\fP
+.RS 4
+挂载具有指定 \fIuuid\fP 的分区。
+.RE
+.sp
+\fB\-v\fP, \fB\-\-verbose\fP
+.RS 4
+详细模式。
+.RE
+.sp
+\fB\-w\fP, \fB\-\-rw\fP, \fB\-\-read\-write\fP
+.RS 4
+挂载文件系统 read/write。读写是内核默认值，\fBmount\fP 默认值是尝试只读，如果之前的 \fBmount\fP(2) syscall
+在写保护设备上带有读写标志失败。
+.sp
+同义词是 \fB\-o rw\fP。
+.sp
+请注意，在命令行上指定 \fB\-w\fP 会强制 \fBmount\fP 从不尝试在写保护设备或已安装的只读文件系统上进行只读安装。
+.RE
+.sp
+\fB\-h\fP, \fB\-\-help\fP
+.RS 4
+显示帮助文本并退出。
+.RE
+.sp
+\fB\-V\fP, \fB\-\-version\fP
+.RS 4
+打印版本并退出。
+.RE
+.SH "FILESYSTEM\-INDEPENDENT MOUNT OPTIONS"
+.sp
+其中一些选项仅在出现在 \fI/etc/fstab\fP 文件中时才有用。
+.sp
+其中一些选项可以在系统内核中默认启用或禁用。要检查当前设置，请参见 \fI/proc/mounts\fP
+中的选项。请注意，文件系统还具有每个文件系统特定的默认安装选项 (例如，参见 ext\fIN\fP 文件系统的 \fBtune2fs \-l\fP 输出)。
+.sp
+以下选项适用于正在挂载的任何文件系统 (但并非每个文件系统实际上都支持它们 \- 例如，今天的 \fBsync\fP 选项仅对
+ext2、ext3、ext4、fat、vfat、ufs 和 xfs 有效) :
+.sp
+\fBasync\fP
+.RS 4
+文件系统的所有 I/O 都应该异步完成。(另请参见 \fBsync\fP 选项。)
+.RE
+.sp
+\fBatime\fP
+.RS 4
+不要使用 \fBnoatime\fP 特性因此 inode 访问时间由内核默认值控制。另请参见 \fBrelatime\fP 和 \fBstrictatime\fP
+安装选项的说明。
+.RE
+.sp
+\fBnoatime\fP
+.RS 4
+不要更新此文件系统上的 inode 访问时间 (例如，为了更快地访问新闻 spool 以加速新闻服务器)。这适用于所有 inode 类型
+(也适用于目录)，因此它表示 \fBnodiratime\fP。
+.RE
+.sp
+\fBauto\fP
+.RS 4
+可以使用 \fB\-a\fP 选项安装。
+.RE
+.sp
+\fBnoauto\fP
+.RS 4
+只能显式挂载 (即 \fB\-a\fP 选项不会导致文件系统挂载)。
+.RE
+.sp
+\fBcontext=\fP\fIcontext\fP、\fBfscontext=\fP\fIcontext\fP、\fBdefcontext=\fP\fIcontext\fP 和
+\fBrootcontext=\fP\fIcontext\fP
+.RS 4
+\fBcontext=\fP 选项在挂载不支持扩展属性的文件系统时很有用，例如使用 VFAT 格式化的软盘或硬盘，或者通常不在 SELinux
+下运行的系统，例如来自非 SELinux 工作站的 ext3 或 ext4 格式化磁盘. 您也可以在您不信任的文件系统上使用
+\fBcontext=\fP，例如软盘。它还有助于与早期 2.4.<x> 内核版本上支持 xattr 的文件系统兼容。即使在支持 xattrs
+的情况下，您也可以通过为整个磁盘分配一个安全上下文来节省时间，而不必标记每个文件。
+.sp
+可移动媒体的常用选项是 \fBcontext="system_u:object_r:removable_t\fP。
+.sp
+\fBfscontext=\fP 选项适用于所有文件系统，无论它们是否支持 xattr。fscontext
+选项将总体文件系统标签设置为特定的安全上下文。此文件系统标签与文件上的各个标签是分开的。它代表了特定类型的权限检查的整个文件系统，例如在挂载或文件创建期间。单个文件标签仍然是从文件本身的
+xattrs 中获得的。context 选项实际上设置了 fscontext 提供的聚合上下文，此外还为单个文件提供了相同的标签。
+.sp
+您可以使用 \fBdefcontext=\fP 选项为未标记文件设置默认安全上下文。这会覆盖策略中为未标记文件设置的值，并且需要支持 xattr
+标记的文件系统。
+.sp
+\fBrootcontext=\fP 选项允许您在 FS 或 inode 对用户空间可见之前明确标记正在安装的 FS 的根 inode。这被发现对像无状态
+Linux 这样的东西很有用。
+.sp
+请注意，内核拒绝任何包含上下文选项 \fBeven\fP 的重新安装请求，当当前上下文未更改时。
+.sp
+\fBWarning: the\fP \fIcontext\fP \fBvalue might contain commas\fP，在这种情况下，必须正确引用该值，否则
+\fBmount\fP 会将逗号解释为挂载选项之间的分隔符。不要 \(cqt 忘记了 shell 去除了引号，因此去除了 \fBdouble quoting is required\fP。例如:
+.RE
+.RS 3
+.ll -.6i
+.sp
+mount \-t tmpfs none /mnt \-o \(rs
+\(aqcontext="system_u:object_r:tmp_t:s0:c127,c456",noexec\(aq
+.br
+.RE
+.ll
+.sp
+有关详细信息，请参见 \fBselinux\fP(8)。
+.sp
+\fBdefaults\fP
+.RS 4
+使用默认选项: \fBrw\fP、\fBsuid\fP、\fBdev\fP、\fBexec\fP、\fBauto\fP、\fBnouser\fP 和 \fBasync\fP。
+.sp
+请注意，所有默认安装选项的实际设置取决于内核和文件系统类型。有关更多详细信息，请参见本节的开头。
+.RE
+.sp
+\fBdev\fP
+.RS 4
+解释文件系统上的字符或块特殊设备。
+.RE
+.sp
+\fBnodev\fP
+.RS 4
+不要解释文件系统上的字符或块特殊设备。
+.RE
+.sp
+\fBdiratime\fP
+.RS 4
+更新此文件系统上的目录 inode 访问时间。这是默认设置。(设置 \fBnoatime\fP 时忽略此选项。)
+.RE
+.sp
+\fBnodiratime\fP
+.RS 4
+不要更新此文件系统上的目录 inode 访问时间。(设置 \fBnoatime\fP 时隐含此选项。)
+.RE
+.sp
+\fBdirsync\fP
+.RS 4
+文件系统中的所有目录更新都应该同步完成。这会影响以下系统调用:
+\fBcreat\fP(2)、\fBlink\fP(2)、\fBunlink\fP(2)、\fBsymlink\fP(2)、\fBmkdir\fP(2)、\fBrmdir\fP(2)、\fBmknod\fP(2)
+和 \fBrename\fP(2)。
+.RE
+.sp
+\fBexec\fP
+.RS 4
+允许执行二进制文件和其他可执行文件。
+.RE
+.sp
+\fBnoexec\fP
+.RS 4
+不允许在挂载的文件系统上直接执行任何二进制文件。
+.RE
+.sp
+\fBgroup\fP
+.RS 4
+如果普通用户之一 \(cqs groups 与设备组匹配，则允许普通用户挂载文件系统。此选项隐含选项 \fBnosuid\fP 和 \fBnodev\fP
+(除非被后续选项覆盖，如选项行 \fBgroup,dev,suid\fP) 中所示。
+.RE
+.sp
+\fBiversion\fP
+.RS 4
+每次修改 inode 时，i_version 字段都会递增。
+.RE
+.sp
+\fBnoiversion\fP
+.RS 4
+不要增加 i_version inode 字段。
+.RE
+.sp
+\fBmand\fP
+.RS 4
+允许强制锁定此文件系统。请参见 \fBfcntl\fP(2)。Linux 5.15 中不推荐使用此选项。
+.RE
+.sp
+\fBnomand\fP
+.RS 4
+不允许强制锁定此文件系统。
+.RE
+.sp
+\fB_netdev\fP
+.RS 4
+文件系统驻留在需要网络访问的设备上 (用于防止系统在系统上启用网络之前尝试挂载这些文件系统)。
+.RE
+.sp
+\fBnofail\fP
+.RS 4
+如果该设备不存在，请不要报告该设备的错误。
+.RE
+.sp
+\fBrelatime\fP
+.RS 4
+相对于修改或更改时间更新 inode 访问时间。仅当先前访问时间早于当前修改或更改时间时，访问时间才会更新。(类似于 \fBnoatime\fP，但它不会
+\(cqt break \fBmutt\fP(1) 或其他需要知道文件自上次修改后是否已被读取的应用程序。)
+.sp
+从 Linux 2.6.30 开始，内核默认为该选项提供的行为 (除非指定了 \fBnoatime\fP)，需要 \fBstrictatime\fP
+选项才能获得传统语义。此外，自 Linux 2.6.30 起，如果超过 1 天，文件 \(cqs 上次访问时间总是更新。
+.RE
+.sp
+\fBnorelatime\fP
+.RS 4
+不要使用 \fBrelatime\fP 特性。另请参见 \fBstrictatime\fP 安装选项。
+.RE
+.sp
+\fBstrictatime\fP
+.RS 4
+允许明确请求全时更新。这使得内核可以默认为 \fBrelatime\fP 或
+\fBnoatime\fP，但仍允许用户空间覆盖它。有关默认系统安装选项的更多详细信息，请参见 \fI/proc/mounts\fP。
+.RE
+.sp
+\fBnostrictatime\fP
+.RS 4
+使用内核 \(cqs 默认行为来更新 inode 访问时间。
+.RE
+.sp
+\fBlazytime\fP
+.RS 4
+仅在文件索引节点的内存版本上更新时间 (atime、mtime、ctime)。
+.sp
+对于对预分配文件执行频繁随机写入的工作负载，此安装选项显着减少了对 inode 表的写入。
+.sp
+磁盘上的时间戳仅在以下情况下更新:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+inode 需要更新一些与文件时间戳无关的更改
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+应用程序使用 \fBfsync\fP(2)、\fBsyncfs\fP(2) 或 \fBsync\fP(2)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+未删除的 inode 从内存中逐出
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+自 inode 写入磁盘以来已超过 24 小时。
+.RE
+.RE
+.sp
+\fBnolazytime\fP
+.RS 4
+不要使用 lazytime 特性。
+.RE
+.sp
+\fBsuid\fP
+.RS 4
+从该文件系统执行程序时，遵守 set\-user\-ID 和 set\-group\-ID 位或文件功能。
+.RE
+.sp
+\fBnosuid\fP
+.RS 4
+从该文件系统执行程序时，不要遵守 set\-user\-ID 和 set\-group\-ID 位或文件功能。此外，SELinux 域转换需要权限
+\fInosuid_transition\fP，这反过来也需要策略能力 \fInnp_nosuid_transition\fP。
+.RE
+.sp
+\fBsilent\fP
+.RS 4
+打开静音标志。
+.RE
+.sp
+\fBloud\fP
+.RS 4
+关闭静音标志。
+.RE
+.sp
+\fBowner\fP
+.RS 4
+如果普通用户是设备的所有者，则允许普通用户挂载文件系统。此选项隐含选项 \fBnosuid\fP 和 \fBnodev\fP (除非被后续选项覆盖，如选项行
+\fBowner,dev,suid\fP) 中所示。
+.RE
+.sp
+\fBremount\fP
+.RS 4
+尝试重新挂载一个已经挂载的文件系统。这通常用于更改文件系统的挂载标志，尤其是使只读文件系统可写。它不会更改设备或安装点。
+.sp
+重新安装操作与 \fBbind\fP 标志一起具有特殊的语义。见上文 \fBBind mounts\fP 小节。
+.sp
+重新安装功能遵循 \fBmount\fP 命令与 \fIfstab\fP 选项一起使用的标准方式。这意味着 \fBmount\fP 不读取 \fIfstab\fP
+(或仅当同时指定 \fIdevice\fP 和 \fIdir\fP 时才读取 \fImtab\fP)。
+.sp
+\fBmount \-o remount,rw /dev/foo /dir\fP
+.sp
+在这个调整之后，所有旧的挂载选项都被替换，来自 \fIfstab\fP (或 \fImtab\fP) 的任意内容被忽略，除了由 \fBmount\fP
+命令内部生成和维护的 \fBloop=\fP 选项。
+.sp
+\fBmount \-o remount,rw /dir\fP
+.sp
+在此调用之后，\fBmount\fP 读取 \fIfstab\fP 并将这些选项与来自命令行 (\fB\-o\fP) 的选项合并。如果在 \fIfstab\fP
+中找不到挂载点，则允许使用未指定的源重新挂载。
+.sp
+\fBmount\fP 允许使用 \fB\-\-all\fP 重新挂载与指定过滤器 (\fB\-O\fP 和 \fB\-t\fP) 匹配的所有已挂载的文件系统。例如:
+.sp
+\fBmount \-\-all \-o remount,ro \-t vfat\fP
+.sp
+以只读模式重新挂载所有已挂载的 vfat 文件系统。每个文件系统都按 \fBmount \-o remount,ro\fP \fI/dir\fP
+语义重新挂载。这意味着 \fBmount\fP 命令读取 \fIfstab\fP 或 \fImtab\fP 并将这些选项与来自命令行的选项合并。
+.RE
+.sp
+\fBro\fP
+.RS 4
+以只读方式挂载文件系统。
+.RE
+.sp
+\fBrw\fP
+.RS 4
+以读写方式挂载文件系统。
+.RE
+.sp
+\fBsync\fP
+.RS 4
+文件系统的所有 I/O 都应该同步完成。对于写入周期数有限的介质 (例如某些闪存驱动器)，\fBsync\fP 可能会导致生命周期缩短。
+.RE
+.sp
+\fBuser\fP
+.RS 4
+允许普通用户挂载文件系统。安装用户的名称被写入 \fImtab\fP 文件 (或在没有常规 \fImtab\fP) 的系统上写入 \fI/run/mount\fP
+中的私有 libmount 文件，以便同一用户可以再次卸载文件系统。此选项意味着选项 \fBnoexec\fP、\fBnosuid\fP 和 \fBnodev\fP
+(除非被后续选项覆盖，如选项行 \fBuser,exec,dev,suid\fP) 中所示。
+.RE
+.sp
+\fBnouser\fP
+.RS 4
+禁止普通用户挂载文件系统。这是默认设置; 它并不意味着任何其他选择。
+.RE
+.sp
+\fBusers\fP
+.RS 4
+允许任何用户挂载和卸载文件系统，即使其他普通用户已挂载它。此选项意味着选项 \fBnoexec\fP、\fBnosuid\fP 和 \fBnodev\fP
+(除非被后续选项覆盖，如选项行 \fBusers,exec,dev,suid\fP) 中所示。
+.RE
+.sp
+\fBX\-\fP*
+.RS 4
+所有以 "X\-" 为前缀的选项都被解释为注释或用户空间应用程序特定的选项。这些选项不会存储在用户空间 (例如，\fImtab\fP 文件)，也不会发送到
+mount.\fItype\fP 助手或 \fBmount\fP(2) 系统调用。建议的格式是 \fBX\-\fP\fIappname\fP.\fIoption\fP。
+.RE
+.sp
+\fBx\-\fP*
+.RS 4
+与 \fBX\-\fP* 选项相同，但永久存储在用户空间中。这意味着这些选项也可用于 \fBumount\fP(8)
+或其他操作。请注意，在用户空间中维护挂载选项很棘手，因为它需要使用基于 libmount 的工具，并且不能保证这些选项将始终可用
+(例如在移动挂载操作之后或在非共享命名空间中)。
+.sp
+请注意，在 util\-linux v2.30 之前，x\-*选项尚未由 libmount 维护并存储在用户空间中 (功能与现在的
+X\-*相同)，但由于用例数量不断增加 (在 initrd 中，systemd 等) 的功能已得到扩展，以保持现有的 \fIfstab\fP
+配置无需更改即可使用。
+.RE
+.sp
+\fBX\-mount.mkdir\fP[=\fImode\fP]
+.RS 4
+如果目标目录尚不存在，则允许创建目标目录 (mountpoint)。可选参数 \fImode\fP 以八进制表示法指定用于 \fBmkdir\fP(2)
+的文件系统访问模式。默认模式是 0755。只有 root 用户或在没有 suid 权限的情况下执行 \fBmount\fP 时才支持此功能。该选项也支持
+\fBx\-mount.mkdir\fP，但此表示法自 v2.30 起已弃用。另请参见 \fB\-\-mkdir\fP 命令行选项。
+.RE
+.sp
+\fBX\-mount.subdir=\fP\fIdirectory\fP
+.RS 4
+允许从文件系统而不是根目录挂载子目录。目前，该特性是通过临时文件系统根目录挂载到非共享命名空间，然后将子目录绑定到最终挂载点并卸载文件系统的根来实现的。尽管它是由多个
+\fBmount\fP(2) 系统调用实现的，但子目录挂载对于系统的其余部分以原子方式显示。此特性是实验性的。
+.RE
+.sp
+\fBnosymfollow\fP
+.RS 4
+解析路径时不要遵循符号链接。仍然可以创建符号链接，并且 \fBreadlink\fP(1)、\fBreadlink\fP(2)、\fBrealpath\fP(1) 和
+\fBrealpath\fP(3) 仍然可以正常工作。
+.RE
+.SH "FILESYSTEM\-SPECIFIC MOUNT OPTIONS"
+.sp
+本节列出了特定于特定文件系统的选项。在可能的情况下，您应该首先查阅特定于文件系统的手册页以获取详细信息。下表列出了其中一些页面。
+.TS
+allbox tab(:);
+lt lt.
+T{
+.sp
+\fBFilesystem(s)\fP
+T}:T{
+.sp
+\fBManual page\fP
+T}
+T{
+.sp
+btrfs
+T}:T{
+.sp
+\fBbtrfs\fP(5)
+T}
+T{
+.sp
+cifs
+T}:T{
+.sp
+\fBmount.cifs\fP(8)
+T}
+T{
+.sp
+ext2, ext3, ext4
+T}:T{
+.sp
+\fBext4\fP(5)
+T}
+T{
+.sp
+fuse
+T}:T{
+.sp
+\fBfuse\fP(8)
+T}
+T{
+.sp
+nfs
+T}:T{
+.sp
+\fBnfs\fP(5)
+T}
+T{
+.sp
+tmpfs
+T}:T{
+.sp
+\fBtmpfs\fP(5)
+T}
+T{
+.sp
+xfs
+T}:T{
+.sp
+\fBxfs\fP(5)
+T}
+.TE
+.sp
+.sp
+请注意，上面列出的某些页面可能仅在您安装相应的用户空间工具后才可用。
+.sp
+以下选项仅适用于某些文件系统。我们按文件系统对它们进行排序。所有选项都遵循 \fB\-o\fP 标志。
+.sp
+支持哪些选项取决于正在运行的内核。更多信息可以在内核源代码子目录 \fIDocumentation/filesystems\fP 中的文件系统特定文件中找到。
+.SS "Mount options for adfs"
+.sp
+\fBuid=\fP\fIvalue\fP 和 \fBgid=\fP\fIvalue\fP
+.RS 4
+设置文件系统中文件的所有者和组 (默认值: uid=gid=0)。
+.RE
+.sp
+\fBownmask=\fP\fIvalue\fP 和 \fBothmask=\fP\fIvalue\fP
+.RS 4
+为 ADFS 设置权限掩码 \(aqowner\(aq 权限和 \(aqother\(aq 权限，分别为 (默认值: 分别为 0700 和
+0077)。另请详见 \fI/usr/src/linux/Documentation/filesystems/adfs.rst\fP。
+.RE
+.SS "Mount options for affs"
+.sp
+\fBuid=\fP\fIvalue\fP 和 \fBgid=\fP\fIvalue\fP
+.RS 4
+设置文件系统根目录的所有者和组 (默认: uid=gid=0，但如果选项 \fBuid\fP 或 \fBgid\fP 没有指定值，则采用当前进程的 UID 和
+GID)。
+.RE
+.sp
+\fBsetuid=\fP\fIvalue\fP 和 \fBsetgid=\fP\fIvalue\fP
+.RS 4
+设置所有文件的所有者和组。
+.RE
+.sp
+\fBmode=\fP\fIvalue\fP
+.RS 4
+忽略原始权限，将所有文件的模式设置为 \fIvalue\fP&0777。为具有读取权限的目录添加搜索权限。该值以八进制形式给出。
+.RE
+.sp
+\fBprotect\fP
+.RS 4
+不允许对文件系统上的保护位进行任何更改。
+.RE
+.sp
+\fBusemp\fP
+.RS 4
+将文件系统根目录的 UID 和 GID 设置为第一次同步或卸载时挂载点的 UID 和 GID，然后清除此选项。Strange ...
+.RE
+.sp
+\fBverbose\fP
+.RS 4
+为每次成功安装打印一条信息性消息。
+.RE
+.sp
+\fBprefix=\fP\fIstring\fP
+.RS 4
+跟随链接时，在卷名前使用的前缀。
+.RE
+.sp
+\fBvolume=\fP\fIstring\fP
+.RS 4
+在 \(aq/\(aq 跟随符号链接时使用的前缀 (长度最多 30)。
+.RE
+.sp
+\fBreserved=\fP\fIvalue\fP
+.RS 4
+(默认值: 2。) 设备开始处未使用的块数。
+.RE
+.sp
+\fBroot=\fP\fIvalue\fP
+.RS 4
+明确给出根块的位置。
+.RE
+.sp
+\fBbs=\fP\fIvalue\fP
+.RS 4
+给块大小。允许的值为 512、1024、2048、4096。
+.RE
+.sp
+\fBgrpquota\fP|\fBnoquota\fP|\fBquota\fP|\fBusrquota\fP
+.RS 4
+这些选项被接受但被忽略。(但是，配额实用工具可能对 \fI/etc/fstab\fP.) 中的此类字符串 react
+.RE
+.SS "Mount options for debugfs"
+.sp
+debugfs 文件系统是一个伪文件系统，通常安装在 \fI/sys/kernel/debug\fP 上。从内核版本 3.4 开始，debugfs
+具有以下选项:
+.sp
+\fBuid=\fP\fIn\fP\fB, gid=\fP\fIn\fP
+.RS 4
+设置挂载点的所有者和组。
+.RE
+.sp
+\fBmode=\fP\fIvalue\fP
+.RS 4
+设置挂载点的模式。
+.RE
+.SS "Mount options for devpts"
+.sp
+devpts 文件系统是一个伪文件系统，通常安装在 \fI/dev/pts\fP 上。为了获得一个伪终端，进程打开 \fI/dev/ptmx\fP;
+然后伪终端的编号可供进程使用，伪终端从机可以作为 \fI/dev/pts/\fP<number> 访问。
+.sp
+\fBuid=\fP\fIvalue\fP 和 \fBgid=\fP\fIvalue\fP
+.RS 4
+这会将新创建的伪终端的所有者或组设置为指定的值。当没有指定时，它们将被设置为创建进程的 UID 和 GID。例如，如果有一个 GID 为 5 的 tty
+组，那么 \fBgid=5\fP 将使新创建的伪终端属于 tty 组。
+.RE
+.sp
+\fBmode=\fP\fIvalue\fP
+.RS 4
+将新创建的伪终端的模式设置为指定值。默认值为 0600。\fBmode=620\fP 和 \fBgid=5\fP 的值使 "mesg y"
+成为新创建的伪终端的默认值。
+.RE
+.sp
+\fBnewinstance\fP
+.RS 4
+创建一个 devpts 文件系统的私有实例，这样在这个新实例中分配的伪终端索引独立于在其他 devpts 实例中创建的索引。
+.sp
+没有此 \fBnewinstance\fP 选项的所有 devpts 共享同一组伪终端索引 (即传统模式)。每个带有 \fBnewinstance\fP 选项的
+devpts 都有一组私有的伪终端索引。
+.sp
+该选项主要用于支持 Linux 内核中的容器。它在以 2.6.29 开始的 Linux 内核版本中实现。此外，只有在内核配置中启用
+\fBCONFIG_DEVPTS_MULTIPLE_INSTANCES\fP 时，此挂载选项才有效。
+.sp
+要有效地使用此选项，\fI/dev/ptmx\fP 必须是指向 \fIpts/ptmx\fP 的符号链接。有关详细信息，请参见 Linux 内核源代码树中的
+\fIDocumentation/filesystems/devpts.txt\fP。
+.RE
+.sp
+\fBptmxmode=\fP\fIvalue\fP
+.RS 4
+在 devpts 文件系统中为新的 \fIptmx\fP 设备节点设置模式。
+.sp
+由于支持多个 devpts 实例 (请参见上面的 \fBnewinstance\fP 选项)，每个实例在 devpts 文件系统的根目录中都有一个私有
+\fIptmx\fP 节点 (通常为 \fI/dev/pts/ptmx\fP).
+.sp
+为了与旧版本内核兼容，新 \fIptmx\fP 节点的默认模式为 0000。\fBptmxmode=\fP\fIvalue\fP 为 \fIptmx\fP
+节点指定了更有用的模式，在指定 \fBnewinstance\fP 选项时强烈推荐使用。
+.sp
+此选项仅在以 2.6.29 开头的 Linux 内核版本中实现。此外，此选项仅在内核配置中启用
+\fBCONFIG_DEVPTS_MULTIPLE_INSTANCES\fP 时才有效。
+.RE
+.SS "Mount options for fat"
+.sp
+(注意: \fIfat\fP 不是单独的文件系统，而是 \fImsdos\fP、\fIumsdos\fP 和 \fIvfat\fP 文件系统的公共部分。)
+.sp
+\fBblocksize=\fP{\fB512\fP|\fB1024\fP|\fB2048\fP}
+.RS 4
+设置块大小 (默认 512)。此选项已过时。
+.RE
+.sp
+\fBuid=\fP\fIvalue\fP 和 \fBgid=\fP\fIvalue\fP
+.RS 4
+设置所有文件的所有者和组。(默认值: 当前进程的 UID 和 GID。)
+.RE
+.sp
+\fBumask=\fP\fIvalue\fP
+.RS 4
+设置 umask (存在 \fBnot\fP 的权限的位掩码)。默认为当前进程的 umask。该值以八进制形式给出。
+.RE
+.sp
+\fBdmask=\fP\fIvalue\fP
+.RS 4
+设置仅应用于目录的 umask。默认为当前进程的 umask。该值以八进制形式给出。
+.RE
+.sp
+\fBfmask=\fP\fIvalue\fP
+.RS 4
+设置仅应用于常规文件的 umask。默认为当前进程的 umask。该值以八进制形式给出。
+.RE
+.sp
+\fBallow_utime=\fP\fIvalue\fP
+.RS 4
+该选项控制 mtime/atime 的权限检查。
+.sp
+\fB20\fP
+.RS 4
+如果当前进程在 group of file\(cqs 组 ID 中，您可以更改时间戳。
+.RE
+.sp
+\fB2\fP
+.RS 4
+其他用户可以更改时间戳。
+.RE
+.RE
+.sp
+默认值是从 \(aqdmask\(aq 选项设置的。(如果目录是可写的，\fButime\fP(2) 也是允许的。即 ~dmask&022)
+.sp
+通常 \fButime\fP(2) 检查当前进程是否是文件的所有者，或者它是否具有 \fBCAP_FOWNER\fP 能力。但是 FAT 文件系统 don\(cqt
+在磁盘上有 UID/GID，所以正常检查太不灵活了。使用此选项，您可以放松一下。
+.sp
+\fBcheck=\fP\fIvalue\fP
+.RS 4
+可以选择三种不同的挑剔程度:
+.sp
+\fBr\fP[\fBelaxed\fP]
+.RS 4
+大写和小写字母被接受并等效，长名称部分被截断 (例如 \fIverylongname.foobar\fP 变为 \fIverylong.foo\fP)，每个名称部分
+(名称和扩展名) 接受前导和嵌入空格。
+.RE
+.sp
+\fBn\fP[\fBormal\fP]
+.RS 4
+与 "relaxed" 类似，但拒绝许多特殊字符 (*、?、<、空格等)。这是默认设置。
+.RE
+.sp
+\fBs\fP[\fBtrict\fP]
+.RS 4
+与 "normal" 类似，但包含长部分或有时在 Linux 上使用但 MS\-DOS 不接受的特殊字符 (+、= 等) 的名称将被拒绝。
+.RE
+.RE
+.sp
+\fBcodepage=\fP\fIvalue\fP
+.RS 4
+设置用于在 FAT 和 VFAT 文件系统上转换为短名称字符的代码页。默认情况下，使用代码页 437。
+.RE
+.sp
+\fBconv=\fP\fImode\fP
+.RS 4
+此选项已过时，可能会失败或被忽略。
+.RE
+.sp
+\fBcvf_format=\fP\fImodule\fP
+.RS 4
+强制驱动程序使用 CVF (压缩卷文件) 模块 cvf\fI_module\fP 而不是自动检测。如果内核支持 \fBkmod\fP，则
+\fBcvf_format=\fP\fIxxx\fP 选项还控制按需 CVF 模块加载。此选项已过时。
+.RE
+.sp
+\fBcvf_option=\fP\fIoption\fP
+.RS 4
+传递给 CVF 模块的选项。此选项已过时。
+.RE
+.sp
+\fBdebug\fP
+.RS 4
+打开 \fIdebug\fP 标志。将打印版本字符串和文件系统参数列表 (如果参数看起来不一致，也会打印这些数据)。
+.RE
+.sp
+\fBdiscard\fP
+.RS 4
+如果设置，则导致在释放块时向块设备发出 discard/TRIM 命令。这对于 SSD 设备和 sparse/thinly\-provisioned
+LUN 很有用。
+.RE
+.sp
+\fBdos1xfloppy\fP
+.RS 4
+如果设置，则使用回退默认 BIOS 参数块配置，由支持设备大小决定。这些静态参数与 DOS 1.x 假定的 160 kiB、180 kiB、320
+kiB 和 360 kiB 软盘和软盘映像的默认值相匹配。
+.RE
+.sp
+\fBerrors=\fP{\fBpanic\fP|\fBcontinue\fP|\fBremount\-ro\fP}
+.RS 4
+指定针对严重错误的 FAT 行为: 紧急、不做任何事情继续或以只读模式重新安装分区 (默认行为)。
+.RE
+.sp
+\fBfat=\fP{\fB12\fP|\fB16\fP|\fB32\fP}
+.RS 4
+指定 12、16 或 32 位胖。这会覆盖自动 FAT 类型检测例程。谨慎使用!
+.RE
+.sp
+\fBiocharset=\fP\fIvalue\fP
+.RS 4
+用于在 8 位字符和 16 位 Unicode 字符之间转换的字符集。默认为 iso8859\-1。长文件名以 Unicode 格式存储在磁盘上。
+.RE
+.sp
+\fBnfs=\fP{\fBstale_rw\fP|\fBnostale_ro\fP}
+.RS 4
+仅当您想通过 NFS 导出 FAT 文件系统时才启用此选项。
+.sp
+\fBstale_rw\fP: 此选项维护目录 inode 的索引 (cache)，nfs 相关代码使用该索引来改进查找。支持 NFS 上的完整文件操作
+(read/write)，但在 NFS 服务器上进行缓存逐出，这可能会导致虚假的 \fBESTALE\fP 错误。
+.sp
+\fBnostale_ro\fP: 此选项根据文件在 FAT 目录条目中的磁盘位置确定索引节点号和文件句柄。这可确保在文件从 inode 缓存中逐出后不会返回
+\fBESTALE\fP。但是，这意味着重命名、创建和取消链接等操作可能会导致以前指向一个文件的文件句柄指向另一个文件，从而可能导致数据损坏。出于这个原因，此选项还以只读方式挂载文件系统。
+.sp
+为了保持向后兼容性，\fB\-o nfs\fP 也被接受，默认为 \fBstale_rw\fP。
+.RE
+.sp
+\fBtz=UTC\fP
+.RS 4
+此选项禁用本地时间 (由 Windows 在 FAT 上使用) 和 UTC (Linux 在内部使用) 之间的时间戳转换。这在安装设置为 UTC 的设备
+(如数码相机) 时特别有用，以避免本地时间的缺陷。
+.RE
+.sp
+\fBtime_offset=\fP\fIminutes\fP
+.RS 4
+设置将时间戳从 FAT 使用的本地时间转换为 UTC 的偏移量。即，将从每个时间戳中减去 \fIminutes\fP，将其转换为 Linux 内部使用的
+UTC。当通过 \fBsettimeofday\fP(2) 在内核中设置的时区不是文件系统使用的时区时，这很有用。请注意，在存在 DST
+的所有情况下，此选项仍未提供正确的时间戳 \- 不同 DST 设置中的时间戳将关闭一小时。
+.RE
+.sp
+\fBquiet\fP
+.RS 4
+打开 \fIquiet\fP 标志。对 chown 或 chmod 文件的尝试不会返回错误，尽管它们会失败。谨慎使用!
+.RE
+.sp
+\fBrodir\fP
+.RS 4
+FAT 具有 \fBATTR_RO\fP (read\-only) 属性。在 Windows 上，目录的 \fBATTR_RO\fP
+将被忽略，并且仅由应用程序用作标志 (例如它 \ (cqs set for the customized folder)。
+.sp
+如果您甚至想将 \fBATTR_RO\fP 用作目录的只读标志，请设置此选项。
+.RE
+.sp
+\fBshowexec\fP
+.RS 4
+如果设置，则仅当名称的扩展部分为 .EXE、.COM 或 .BAT 时才允许文件的执行权限位。默认情况下未设置。
+.RE
+.sp
+\fBsys_immutable\fP
+.RS 4
+如果设置，FAT 上的 \fBATTR_SYS\fP 属性将作为 Linux 上的 \fBIMMUTABLE\fP 标志处理。默认情况下未设置。
+.RE
+.sp
+\fBflush\fP
+.RS 4
+如果设置，文件系统将尝试比正常情况更早地刷新到磁盘。默认情况下未设置。
+.RE
+.sp
+\fBusefree\fP
+.RS 4
+使用存储在 \fBFSINFO\fP 上的 "free clusters" 值。它 \(cqll 用于在不扫描磁盘的情况下确定空闲簇的数量。但是它
+\(默认情况下不使用 cqs，因为最近的 Windows don\(cqt 在某些情况下正确更新它。如果您确定 \fBFSINFO\fP 上的 "free
+clusters" 是正确的，通过这个选项您可以避免扫描磁盘。
+.RE
+.sp
+\fBdots\fP, \fBnodots\fP, \fBdotsOK=\fP[\fByes\fP|\fBno\fP]
+.RS 4
+各种将 Unix 或 DOS 约定强加到 FAT 文件系统上的错误尝试。
+.RE
+.SS "Mount options for hfs"
+.sp
+\fBcreator=\fP\fIcccc\fP\fB, type=\fP\fIcccc\fP
+.RS 4
+设置 creator/type 值，如用于创建新文件的 MacOS 查找器所示。默认值: \(aq????\(aq.
+.RE
+.sp
+\fBuid=\fP\fIn\fP\fB, gid=\fP\fIn\fP
+.RS 4
+设置所有文件的所有者和组。(默认值: 当前进程的 UID 和 GID。)
+.RE
+.sp
+\fBdir_umask=\fP\fIn\fP\fB, file_umask=\fP\fIn\fP\fB, umask=\fP\fIn\fP
+.RS 4
+设置用于所有目录、所有常规文件或所有文件和目录的 umask。默认为当前进程的 umask。
+.RE
+.sp
+\fBsession=\fP\fIn\fP
+.RS 4
+选择要安装的 CDROM 会话。默认将决定留给 CDROM 驱动程序。此选项将失败，除了 CDROM 作为底层设备。
+.RE
+.sp
+\fBpart=\fP\fIn\fP
+.RS 4
+从设备中选择分区号 n。仅对 CDROM 有意义。默认为根本不解析分区表。
+.RE
+.sp
+\fBquiet\fP
+.RS 4
+不要 \(cqt 抱怨无效的挂载选项。
+.RE
+.SS "Mount options for hpfs"
+.sp
+\fBuid=\fP\fIvalue\fP 和 \fBgid=\fP\fIvalue\fP
+.RS 4
+设置所有文件的所有者和组。(默认值: 当前进程的 UID 和 GID。)
+.RE
+.sp
+\fBumask=\fP\fIvalue\fP
+.RS 4
+设置 umask (存在 \fBnot\fP 的权限的位掩码)。默认为当前进程的 umask。该值以八进制形式给出。
+.RE
+.sp
+\fBcase=\fP{\fBlower\fP|\fBasis\fP}
+.RS 4
+将所有文件名转换为小写，或保留它们。(Default: \fBcase=lower\fP.)
+.RE
+.sp
+\fBconv=\fP\fImode\fP
+.RS 4
+此选项已过时，可能会失败或被忽略。
+.RE
+.sp
+\fBnocheck\fP
+.RS 4
+当某些一致性检查失败时，不要停止挂载。
+.RE
+.SS "Mount options for iso9660"
+.sp
+ISO 9660 是描述在 CD\-ROM 上使用的文件系统结构的标准。(这种文件系统类型也出现在某些 DVD 上。另请参见 \fIudf\fP 文件系统。)
+.sp
+正常的 \fIiso9660\fP 文件名以 8.3 格式出现 (即对文件名长度有类似 DOS
+的限制)，此外所有字符均为大写。也没有文件所有权、保护、链接数、block/character 设备的提供等字段。
+.sp
+Rock Ridge 是 iso9660 的扩展，它提供了所有这些类 UNIX 的特性。基本上每个目录记录都有扩展，提供所有附加信息，当使用 Rock
+Ridge 时，文件系统与普通的 UNIX 文件系统没有区别 (当然，除了它是只读的)。
+.sp
+\fBnorock\fP
+.RS 4
+禁止使用 Rock Ridge 扩展，即使可用。比照。\fBmap\fP。
+.RE
+.sp
+\fBnojoliet\fP
+.RS 4
+禁止使用 Microsoft Joliet 扩展，即使可用。比照。\fBmap\fP。
+.RE
+.sp
+\fBcheck=\fP{\fBr\fP[\fBelaxed\fP]|\fBs\fP[\fBtrict\fP]}
+.RS 4
+使用 \fBcheck=relaxed\fP，文件名在进行查找之前首先转换为小写。这可能只有与 \fBnorock\fP 和 \fBmap=normal\fP
+一起才有意义。(Default: \fBcheck=strict\fP.)
+.RE
+.sp
+\fBuid=\fP\fIvalue\fP 和 \fBgid=\fP\fIvalue\fP
+.RS 4
+为文件系统中的所有文件提供指定的用户或组 ID，可能会覆盖在 Rock Ridge 扩展中找到的信息。(Default:
+\fBuid=0,gid=0\fP.)
+.RE
+.sp
+\fBmap=\fP{\fBn\fP[\fBormal\fP]|\fBo\fP[\fBff\fP]|\fBa\fP[\fBcorn\fP]}
+.RS 4
+对于非 Rock Ridge 卷，正常名称翻译 maps 大写到小写 ASCII，丢掉尾随 \(aq;1\(aq，并将 \(aq;\(aq 转换为
+\(aq.\(aq. 对于 \fBmap=off\fP，不进行任何名称翻译。请参见 \fBnorock\fP。(默认值: \fBmap=normal\fP.)
+\fBmap=acorn\fP 与 \fBmap=normal\fP 类似，但如果存在，也会应用 Acorn 扩展。
+.RE
+.sp
+\fBmode=\fP\fIvalue\fP
+.RS 4
+对于非 Rock Ridge 卷，为所有文件指定指定模式。(默认: 每个人都有读取和执行权限。) 八进制模式值需要前导 0.
+.RE
+.sp
+\fBunhide\fP
+.RS 4
+还显示隐藏文件和关联文件。(如果普通文件和关联或隐藏文件的文件名相同，可能会导致普通文件无法访问。)
+.RE
+.sp
+\fBblock=\fP{\fB512\fP|\fB1024\fP|\fB2048\fP}
+.RS 4
+将块大小设置为指定的值。(Default: \fBblock=1024\fP.)
+.RE
+.sp
+\fBconv=\fP\fImode\fP
+.RS 4
+此选项已过时，可能会失败或被忽略。
+.RE
+.sp
+\fBcruft\fP
+.RS 4
+如果文件长度的高字节包含其他垃圾，则设置此挂载选项以忽略文件长度的高位。这意味着文件不能大于 16 MB。
+.RE
+.sp
+\fBsession=\fP\fIx\fP
+.RS 4
+选择多区段 CD 上的区段数。
+.RE
+.sp
+\fBsbsector=\fP\fIxxx\fP
+.RS 4
+会话从扇区 xxx 开始。
+.RE
+.sp
+以下选项与 vfat 相同，只有在使用使用 Microsoft\(cqs Joliet 扩展名编码的光盘时，指定它们才有意义。
+.sp
+\fBiocharset=\fP\fIvalue\fP
+.RS 4
+用于将 CD 上的 16 位 Unicode 字符转换为 8 位字符的字符集。默认为 iso8859\-1。
+.RE
+.sp
+\fButf8\fP
+.RS 4
+将 CD 上的 16 位 Unicode 字符转换为 UTF\-8。
+.RE
+.SS "Mount options for jfs"
+.sp
+\fBiocharset=\fP\fIname\fP
+.RS 4
+用于从 Unicode 转换为 ASCII 的字符集。默认是不做转换。使用 \fBiocharset=utf8\fP 进行 UTF8 翻译。这需要在内核
+\&\fI.config\fP 文件中设置 \fBCONFIG_NLS_UTF8\fP。
+.RE
+.sp
+\fBresize=\fP\fIvalue\fP
+.RS 4
+将卷大小调整为 \fIvalue\fP 块。JFS 只支持增大卷，不支持缩小卷。此选项仅在重新安装期间有效，此时卷以读写方式安装。没有值的 \fBresize\fP
+关键字会将卷增大到分区的完整大小。
+.RE
+.sp
+\fBnointegrity\fP
+.RS 4
+不要写日记。此选项的主要用途是在从备份媒体恢复卷时允许更高的性能。如果系统异常结束，则无法保证卷的完整性。
+.RE
+.sp
+\fBintegrity\fP
+.RS 4
+默认。将元数据更改提交到日志。使用此选项重新安装先前指定 \fBnointegrity\fP 选项的卷以恢复正常行为。
+.RE
+.sp
+\fBerrors=\fP{\fBcontinue\fP|\fBremount\-ro\fP|\fBpanic\fP}
+.RS 4
+定义遇到错误时的行为。(忽略错误并仅将文件系统标记为错误并继续，或者将文件系统重新挂载为只读，或者崩溃并停止系统。)
+.RE
+.sp
+\fBnoquota\fP|\fBquota\fP|\fBusrquota\fP|\fBgrpquota\fP
+.RS 4
+这些选项被接受但被忽略。
+.RE
+.SS "Mount options for msdos"
+.sp
+请参见 fat 的安装选项。如果 \fImsdos\fP 文件系统检测到不一致，它会报告错误并将文件系统设置为只读。文件系统可以通过重新挂载再次变为可写。
+.SS "Mount options for ncpfs"
+.sp
+就像 \fInfs\fP 一样，\fIncpfs\fP 实现需要一个二进制参数 (\fIstruct ncp_mount_data\fP) 到 \fBmount\fP(2)
+系统调用。这个参数是由 \fBncpmount\fP(8) 构造的，\fBmount\fP (2.12) 的当前版本对 ncpfs 一无所知。
+.SS "Mount options for ntfs"
+.sp
+\fBiocharset=\fP\fIname\fP
+.RS 4
+返回文件名时使用的字符集。与 VFAT 不同，NTFS 禁止包含不可转换字符的名称。Deprecated.
+.RE
+.sp
+\fBnls=\fP\fIname\fP
+.RS 4
+之前称为 \fIiocharset\fP 的选项的新名称。
+.RE
+.sp
+\fButf8\fP
+.RS 4
+使用 UTF\-8 转换文件名。
+.RE
+.sp
+\fBuni_xlate=\fP{\fB0\fP|\fB1\fP|\fB2\fP}
+.RS 4
+对于 0 (或 \(aqno\(aq 或 \(aqfalse\(aq))，不要对未知的 Unicode 字符使用转义序列。对于 1 (或
+\(aqyes\(aq 或 \(aqtrue\(aq) 或 2)，使用以 ":" 开头的 vfat 样式的 4 字节转义序列。这里 2
+给出了小端编码，1 给出了字节交换的大端编码。
+.RE
+.sp
+\fBposix=[0|1]\fP
+.RS 4
+如果启用 (posix=1)，文件系统区分大小写。8.3 别名显示为硬链接而不是被抑制。此选项已过时。
+.RE
+.sp
+\fBuid=\fP\fIvalue\fP、\fBgid=\fP\fIvalue\fP 和 \fBumask=\fP\fIvalue\fP
+.RS 4
+设置文件系统的文件权限。umask 值以八进制形式给出。默认情况下，这些文件由 root 拥有，其他人无法读取。
+.RE
+.SS "Mount options for overlay"
+.sp
+自 Linux 3.18 以来，覆盖伪文件系统为其他文件系统实现了 union 挂载。
+.sp
+覆盖文件系统结合了两个文件系统 \-\- 一个 \fBupper\fP 文件系统和一个 \fBlower\fP
+文件系统。当两个文件系统中都存在一个名称时，上层文件系统中的对象是可见的，而下层文件系统中的对象是隐藏的，或者在目录的情况下，与上层对象合并。
+.sp
+下层文件系统可以是 Linux 支持的任何文件系统，不需要是可写的。下层文件系统甚至可以是另一个
+overlayfs。上层文件系统通常是可写的，如果是，它必须支持创建 trusted.* 扩展属性，并且必须在 readdir 响应中提供有效的
+d_type，因此 NFS 不适合。
+.sp
+两个只读文件系统的只读覆盖可以使用任何文件系统类型。选项 \fBlowerdir\fP 和 \fBupperdir\fP 通过使用合并到一个合并目录中:
+.RS 3
+.ll -.6i
+.sp
+.if  n .RS 4
+.nf
+.fam C
+mount \-t overlay  overlay  \(rs
+  \-olowerdir=/lower,upperdir=/upper,workdir=/work  /merged
+.fam
+.fi
+.if  n .RE
+.br
+.RE
+.ll
+.sp
+\fBlowerdir=\fP\fIdirectory\fP
+.RS 4
+任何文件系统，都不需要位于可写文件系统上。
+.RE
+.sp
+\fBupperdir=\fP\fIdirectory\fP
+.RS 4
+upperdir 通常位于可写文件系统上。
+.RE
+.sp
+\fBworkdir=\fP\fIdirectory\fP
+.RS 4
+workdir 需要是与 upperdir 在同一文件系统上的空目录。
+.RE
+.sp
+\fBuserxattr\fP
+.RS 4
+使用 "\fBuser.overlay.\fP" xattr 命名空间而不是 "\fBtrusted.overlay.\fP"。这对于非特权安装 overlayfs
+很有用。
+.RE
+.sp
+\fBredirect_dir=\fP{\fBon\fP|\fBoff\fP|\fBfollow\fP|\fBnofollow\fP}
+.RS 4
+如果启用 \fIredirect_dir\fP 特性则目录将被复制 (但不是内容)。然后将
+"{\fBtrusted\fP|\fBuser\fP}.overlay.redirect" 扩展属性设置为从覆盖层的根开始的原始位置的路径。最后目录被移动到新位置。
+.sp
+\fBon\fP
+.RS 4
+重定向已启用。
+.RE
+.sp
+\fBoff\fP
+.RS 4
+如果在 kernel/module 配置中启用了 "redirect_always_follow" 特性则不会创建重定向，并且只会遵循重定向。
+.RE
+.sp
+\fBfollow\fP
+.RS 4
+重定向不是创建的，而是遵循的。
+.RE
+.sp
+\fBnofollow\fP
+.RS 4
+不创建也不遵循重定向 (如果未启用 "redirect_always_follow" 特性则相当于 "redirect_dir=off")。
+.RE
+.RE
+.sp
+\fBindex=\fP{\fBon\fP|\fBoff\fP}
+.RS 4
+索引节点。如果禁用此特性并且复制了具有多个硬链接的文件，那么这将 "break" 链接。更改不会传播到引用同一 inode 的其他名称。
+.RE
+.sp
+\fBuuid=\fP{\fBon\fP|\fBoff\fP}
+.RS 4
+可用于将文件句柄中的底层文件系统的 UUID 替换为 null，并有效地禁用 UUID 检查。这在底层磁盘被复制并且该副本的 UUID
+发生更改的情况下很有用。这仅适用于所有 lower/upper/work 目录都在同一文件系统上的情况，否则它将回退到正常行为。
+.RE
+.sp
+\fBnfs_export=\fP{\fBon\fP|\fBoff\fP}
+.RS 4
+当底层文件系统支持 NFS 导出并启用 "nfs_export" 特性时，可以将覆盖文件系统导出到 NFS。
+.sp
+使用 "nfs_export" 特性在任何较低对象的 copy_up
+上，索引目录下会创建一个索引条目。索引条目名称是复制原始文件句柄的十六进制表示。对于非目录对象，索引条目是指向上层 inode
+的硬链接。对于目录对象，索引条目具有扩展属性 "{\fBtrusted\fP|\fBuser\fP}.overlay.upper"，带有上层目录 inode
+的编码文件句柄。
+.sp
+从覆盖文件系统对象编码文件句柄时，适用以下规则
+.RS 4
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+对于非上层对象，从下层 inode 编码下层文件句柄
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+对于索引对象，从 copy_up 源编码一个较低的文件句柄
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+对于纯上层对象和现有的非索引上层对象，从上层 inode 编码上层文件句柄
+.RE
+.RE
+.sp
+编码覆盖文件句柄包括
+.RS 4
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+标头包括路径类型信息 (例如 lower/upper)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+底层文件系统的 UUID
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+底层 inode 的底层文件系统编码
+.RE
+.RE
+.sp
+这种编码格式与存储在扩展属性 "{\fBtrusted\fP|\fBuser\fP}.overlay.origin"
+中的文件句柄的编码格式相同。解码覆盖文件句柄时，遵循以下步骤
+.RS 4
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+通过 UUID 和路径类型信息查找底层。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+将底层文件系统文件句柄解码为底层目录。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+对于较低的文件句柄，按名称在索引目录中查找句柄。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+如果在索引中发现空白，则返回 \fBESTALE\fP。这表示在其文件句柄被编码后被删除的覆盖对象。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+对于非目录，从解码的底层目录、路径类型和索引节点 (如果找到) 实例化一个断开连接的覆盖目录。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+对于目录，使用连接的底层解码目录、路径类型和索引来查找连接的覆盖目录。
+.RE
+.RE
+.sp
+解码非目录文件句柄可能会返回断开连接的目录。断开连接的目录项的 copy_up 将创建一个没有上层别名的上层索引条目。
+.sp
+当覆盖文件系统有多个下层时，中间层目录可能有一个 "redirect" 到下层目录。因为中间层 "redirects" 没有索引，从
+"redirect" 原始目录编码的下层文件句柄不能用于查找中间层或上层目录。 同样，从 "redirect"
+原始目录的后代编码的较低文件句柄不能用于重建连接的覆盖路径。为了减少无法从较低文件句柄解码的目录的情况，这些目录在编码时被复制并编码为较高文件句柄。在没有上层的覆盖文件系统上，不能使用此缓解措施
+NFS 导出在此设置中需要关闭重定向跟随 (例如 "\fIredirect_dir=nofollow\fP").
+.sp
+覆盖文件系统不支持非目录可连接文件句柄，因此使用 \fIsubtree_check\fP exportfs 配置导出将导致无法通过 NFS 查找文件。
+.sp
+启用 NFS 导出特性后，所有目录索引条目都会在安装时进行验证，以检查上层文件句柄是否过时。在某些情况下，此验证可能会导致大量开销。
+.sp
+Note: 挂载选项 \fIindex=off,nfs_export=on\fP 与读写挂载冲突，将导致错误。
+.RE
+.sp
+\fBxino=\fP{\fBon\fP|\fBoff\fP|\fBauto\fP}
+.RS 4
+"xino" 特性由来自真实对象 st_ino 的唯一对象标识符和底层 fsid 索引组成。"xino" 特性使用 fsid 的高 inode
+编号位，因为底层文件系统很少使用高 inode 编号位。如果底层 inode 编号确实溢出到 xino 高位，覆盖文件系统将回退到该 inode 的非
+xino 行为。
+.sp
+有关此选项效果的详细说明，请参见
+.URL https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html?highlight=overlayfs "" ""
+.RE
+.sp
+\fBmetacopy=\fP{\fBon\fP|\fBoff\fP}
+.RS 4
+当启用仅元数据复制特性时，overlayfs 将仅在执行元数据特定操作 (如 chown/chmod) 时复制元数据 (而不是整个文件)。当打开文件进行
+WRITE 操作时，完整文件将在稍后复制。
+.sp
+换句话说，这是延迟数据向上复制操作，当需要实际修改数据时才向上复制数据。
+.RE
+.sp
+\fBvolatile\fP
+.RS 4
+不稳定的安装座不能保证在崩溃中幸存下来。强烈建议仅在无需大量努力即可重新创建写入覆盖层的数据时才使用易失性挂载。
+.sp
+使用 "volatile" 选项挂载的优点是省略了对上层文件系统的所有形式的同步调用。
+.sp
+为了避免给人一种错误的安全感，volatile 挂载的 syncfs (和 fsync) 语义与 VFS 的其余部分略有不同。如果在 volatile
+mount 发生后 upperdir 的文件系统发生任何写回错误，所有 sync
+函数将返回错误。一旦达到这个条件，文件系统将不会恢复，并且每个后续的同步调用都会返回一个错误，即使 upperdir
+自上次同步调用以来没有遇到新的错误。
+.sp
+当使用 "volatile" 选项安装覆盖时，将创建目录
+"$workdir/work/incompat/volatile"。在下一次挂载期间，覆盖检查此目录并拒绝挂载
+(如果存在)。这是一个强烈的指示，表明用户应该丢弃上层目录和工作目录并创建新目录。在极少数情况下，用户知道系统没有崩溃并且 upperdir
+的内容完好无损，可以删除 "volatile" 目录。
+.RE
+.SS "Mount options for reiserfs"
+.sp
+Reiserfs 是一个日志文件系统。
+.sp
+\fBconv\fP
+.RS 4
+指示版本 3.6 reiserfs 软件挂载版本 3.5 文件系统，对新创建的对象使用 3.6 格式。此文件系统将不再与 reiserfs 3.5
+工具兼容。
+.RE
+.sp
+\fBhash=\fP{\fBrupasov\fP|\fBtea\fP|\fBr5\fP|\fBdetect\fP}
+.RS 4
+选择 reiserfs 将使用哪个哈希函数在目录中查找文件。
+.sp
+\fBrupasov\fP
+.RS 4
+Yury Yu 发明的哈希。鲁帕索夫。它速度快并且保留了局部性，将按字典顺序关闭的文件名映射到关闭的哈希值。不应使用此选项，因为它很可能会导致哈希冲突。
+.RE
+.sp
+\fBtea\fP
+.RS 4
+由 Jeremy Fitzhardinge 实现的 Davis\-Meyer 函数。它在名称中使用哈希置换位。它获得了高随机性，因此以一定的 CPU
+成本实现了哈希冲突的低概率。如果 r5 散列遇到 \fBEHASHCOLLISION\fP 错误，则可以使用此方法。
+.RE
+.sp
+\fBr5\fP
+.RS 4
+rupasov 哈希的修改版本。它默认使用并且是最好的选择，除非文件系统有巨大的目录和不寻常的文件名模式。
+.RE
+.sp
+\fBdetect\fP
+.RS 4
+指示 \fBmount\fP 通过检查正在挂载的文件系统来检测正在使用哪个散列函数，并将此信息写入 reiserfs
+超级块。这仅在第一次挂载旧格式文件系统时有用。
+.RE
+.RE
+.sp
+\fBhashed_relocation\fP
+.RS 4
+调整块分配器。这可能会在某些情况下提供性能改进。
+.RE
+.sp
+\fBno_unhashed_relocation\fP
+.RS 4
+调整块分配器。这可能会在某些情况下提供性能改进。
+.RE
+.sp
+\fBnoborder\fP
+.RS 4
+禁用 Yury Yu 发明的边界分配器算法。鲁帕索夫。这可能会在某些情况下提供性能改进。
+.RE
+.sp
+\fBnolog\fP
+.RS 4
+禁用日记功能。这将在某些情况下提供轻微的性能改进，代价是失去 reiserfs\(cqs 从崩溃中快速恢复。即使启用此选项，reiserfs
+仍会执行所有日志操作，除了实际写入其日志区域。\fInolog\fP 的实现正在进行中。
+.RE
+.sp
+\fBnotail\fP
+.RS 4
+默认情况下，reiserfs 将小文件和 \(aqfile tails\(aq 直接存储到它的树中。这会混淆一些实用工具，例如
+\fBlilo\fP(8)。此选项用于禁用将文件打包到树中。
+.RE
+.sp
+\fBreplayonly\fP
+.RS 4
+重播日志中的事务，但实际上并不挂载文件系统。主要由 \fIreiserfsck\fP 使用。
+.RE
+.sp
+\fBresize=\fP\fInumber\fP
+.RS 4
+允许在线扩展 reiserfs 分区的重新挂载选项。指示 reiserfs 假定设备具有 \fInumber\fP 块。此选项设计用于逻辑卷管理 (LVM)
+下的设备。有一个特殊的 \fIresizer\fP 实用程序，可以从
+.URL ftp://ftp.namesys.com/pub/reiserfsprogs "" \fP.
+.RE
+.sp
+\fBuser_xattr\fP
+.RS 4
+\fIEnable Extended User Attributes. See the \fP\fBattr\fP\fI(1) manual page.\fP
+.RE
+.sp
+\fBacl\fP
+.RS 4
+\fIEnable POSIX Access Control Lists. See the \fP\fBacl\fP\fI(5) manual page.\fP
+.RE
+.sp
+\fBbarrier=none\fP\fI / \fP\fBbarrier=flush\fP
+.RS 4
+\fIThis disables / enables the use of write barriers in the journaling code. \fP\fBbarrier=none\fP\fI disables, \fP\fBbarrier=flush\fP\fI enables (default). This also requires an IO stack which can support barriers, and if reiserfs gets an error on a barrier write, it will disable barriers again with a warning. Write barriers enforce proper on\-disk ordering of journal commits, making volatile disk write caches safe to use, at some performance penalty. If your disks are battery\-backed in one way or another, disabling barriers may safely improve performance.\fP
+.RE
+.SS "Mount options for ubifs"
+.sp
+UBIFS 是一个在 UBI 卷之上工作的闪存文件系统。请注意，\fBatime\fP 不受支持且始终处于关闭状态。
+.sp
+设备名称可以指定为
+.RS 3
+.ll -.6i
+.sp
+\fBubiX_Y\fP
+.RS 4
+UBI 设备号 \fBX\fP，卷号 \fBY\fP
+.RE
+.sp
+\fBubiY\fP
+.RS 4
+UBI 设备号 \fB0\fP，卷号 \fBY\fP
+.RE
+.sp
+\fBubiX:NAME\fP
+.RS 4
+UBI 设备编号 \fBX\fP，名称为 \fBNAME\fP 的卷
+.RE
+.sp
+\fBubi:NAME\fP
+.RS 4
+UBI 设备编号 \fB0\fP，名称为 \fBNAME\fP 的卷
+.RE
+.br
+.RE
+.ll
+.sp
+可以使用替代 \fB!\fP 分隔符代替 \fB:\fP。
+.sp
+以下挂载选项可用:
+.sp
+\fBbulk_read\fP
+.RS 4
+启用批量读取。VFS 预读被禁用，因为它会降低文件系统的速度。Bulk\-Read
+是一种内部优化。如果一次性读取数据，而不是多次读取请求，一些闪存可能会读取得更快。例如，如果读取一个以上的 NAND 页，OneNAND 可以执行
+"read\-while\-load"。
+.RE
+.sp
+\fBno_bulk_read\fP
+.RS 4
+不要批量阅读。这是默认设置。
+.RE
+.sp
+\fBchk_data_crc\fP
+.RS 4
+检查数据 CRC\-32 校验和。这是默认设置。
+.RE
+.sp
+\fBno_chk_data_crc\fP
+.RS 4
+不检查数据 CRC\-32 校验和。使用此选项，文件系统不会检查数据的 CRC\-32
+校验和，但会检查内部索引信息。该选项只影响阅读，不影响写作。CRC\-32 始终在写入数据时计算。
+.RE
+.sp
+\fBcompr=\fP{\fBnone\fP|\fBlzo\fP|\fBzlib\fP}
+.RS 4
+选择写入新文件时使用的默认压缩器。如果使用 \fBnone\fP 选项安装，仍然可以读取压缩文件。
+.RE
+.SS "Mount options for udf"
+.sp
+UDF 是由光存储技术协会 OSTA 定义的 "Universal Disk Format" 文件系统，通常用于 DVD\-ROM，通常以混合
+UDF/ISO\-9660 文件系统的形式出现。然而，它本身可以完美地用于磁盘驱动器、闪存驱动器和其他块设备。另请详见 \fIiso9660\fP。
+.sp
+\fBuid=\fP
+.RS 4
+使文件系统中的所有文件都属于给定用户。uid=forget can be specified independently of (or usually
+in addition to) uid=<user> and results in UDF not storing uids to
+the media.  实际上记录的 uid 是 UDF 标准定义的 32 位溢出 uid \-1。该值以有效用户名 <user>
+或相应的十进制用户 ID 或特殊字符串 "forget" 的形式给出。
+.RE
+.sp
+\fBgid=\fP
+.RS 4
+使文件系统中的所有文件都属于给定的组。gid=forget can be specified independently of (or usually
+in addition to) gid=<group> and results in UDF not storing gids to
+the media.  实际上记录的 gid 是 UDF 标准定义的 32 位溢出 gid \-1。该值以有效组名 <group>
+或相应的十进制组 ID 或特殊字符串 "forget" 的形式给出。
+.RE
+.sp
+\fBumask=\fP
+.RS 4
+屏蔽所有从文件系统读取的 inode 的给定权限。该值以八进制形式给出。
+.RE
+.sp
+\fBmode=\fP
+.RS 4
+如果设置了 \fBmode=\fP，将从文件系统读取的所有非目录 inode 的权限将设置为给定模式。该值以八进制形式给出。
+.RE
+.sp
+\fBdmode=\fP
+.RS 4
+如果设置了 \fBdmode=\fP，将从文件系统读取的所有目录 inode 的权限将设置为给定的 dmode。该值以八进制形式给出。
+.RE
+.sp
+\fBbs=\fP
+.RS 4
+设置块大小。内核版本 2.6.30 之前的默认值为 2048。从 2.6.30 开始和 4.11 之前，它是逻辑设备块大小，回退到 2048。从
+4.11 开始，它是逻辑块大小，可以回退到逻辑设备块大小和 4096 之间的任何有效块大小。
+.sp
+有关其他详细信息，请参见 \fBmkudffs\fP(8) 2.0 + 联机帮助页，以及 \fBCOMPATIBILITY\fP 和 \fBBLOCK SIZE\fP
+部分。
+.RE
+.sp
+\fBunhide\fP
+.RS 4
+显示隐藏的文件。
+.RE
+.sp
+\fBundelete\fP
+.RS 4
+在列表中显示已删除的文件。
+.RE
+.sp
+\fBadinicb\fP
+.RS 4
+在 inode 中嵌入数据。(default)
+.RE
+.sp
+\fBnoadinicb\fP
+.RS 4
+Don\(cqt 在 inode 中嵌入数据。
+.RE
+.sp
+\fBshortad\fP
+.RS 4
+使用短 UDF 地址描述符。
+.RE
+.sp
+\fBlongad\fP
+.RS 4
+使用长 UDF 地址描述符。(default)
+.RE
+.sp
+\fBnostrict\fP
+.RS 4
+取消严格的一致性。
+.RE
+.sp
+\fBiocharset=\fP
+.RS 4
+设置 NLS 字符集。这需要使用 \fBCONFIG_UDF_NLS\fP 选项编译的内核。
+.RE
+.sp
+\fButf8\fP
+.RS 4
+设置 UTF\-8 字符集。
+.RE
+.SS "Mount options for debugging and disaster recovery"
+.sp
+\fBnovrs\fP
+.RS 4
+忽略卷识别序列并尝试安装。
+.RE
+.sp
+\fBsession=\fP
+.RS 4
+为多会话记录的光学媒体选择会话号。(默认 = 上次会话)
+.RE
+.sp
+\fBanchor=\fP
+.RS 4
+覆盖标准锚点位置。(默认值 = 256)
+.RE
+.sp
+\fBlastblock=\fP
+.RS 4
+设置文件系统的最后一个块。
+.RE
+.SS "Unused historical mount options that may be encountered and should be removed"
+.sp
+\fBuid=ignore\fP
+.RS 4
+忽略，改用 uid=<user>。
+.RE
+.sp
+\fBgid=ignore\fP
+.RS 4
+忽略，改用 gid=<group>。
+.RE
+.sp
+\fBvolume=\fP
+.RS 4
+未实现和忽略。
+.RE
+.sp
+\fBpartition=\fP
+.RS 4
+未实现和忽略。
+.RE
+.sp
+\fBfileset=\fP
+.RS 4
+未实现和忽略。
+.RE
+.sp
+\fBrootdir=\fP
+.RS 4
+未实现和忽略。
+.RE
+.SS "Mount options for ufs"
+.sp
+\fBufstype=\fP\fIvalue\fP
+.RS 4
+UFS 是一种广泛用于不同操作系统的文件系统。问题是实现之间的差异。某些实现的特性没有记录，因此很难自动识别 uf 的类型。那 \(cqs
+为什么用户必须通过安装选项指定 ufs 的类型。可能的值是:
+.sp
+\fBold\fP
+.RS 4
+ufs 的旧格式，这是默认的，只读的。(不要 \ (cqt 忘记给出 \fB\-r\fP 选项。)
+.RE
+.sp
+\fB44bsd\fP
+.RS 4
+对于由类 BSD 系统 (NetBSD、FreeBSD、OpenBSD) 创建的文件系统。
+.RE
+.sp
+\fBufs2\fP
+.RS 4
+在 FreeBSD 中使用 5.x 支持读写。
+.RE
+.sp
+\fB5xbsd\fP
+.RS 4
+ufs2 的同义词。
+.RE
+.sp
+\fBsun\fP
+.RS 4
+对于由 SunOS 或 Solaris 在 Sparc 上创建的文件系统。
+.RE
+.sp
+\fBsunx86\fP
+.RS 4
+对于 Solaris 在 x86 上创建的文件系统。
+.RE
+.sp
+\fBhp\fP
+.RS 4
+对于 HP\-UX 创建的文件系统，只读。
+.RE
+.sp
+\fBnextstep\fP
+.RS 4
+对于由 NeXTStep (在 NeXT 站上) 创建的文件系统 (当前只读)。
+.RE
+.sp
+\fBnextstep\-cd\fP
+.RS 4
+对于 NextStep CDROM (block_size == 2048)，只读。
+.RE
+.sp
+\fBopenstep\fP
+.RS 4
+对于由 OpenStep 创建的文件系统 (当前只读)。macOS 也使用相同的文件系统类型。
+.RE
+.RE
+.sp
+\fBonerror=\fP\fIvalue\fP
+.RS 4
+设置错误行为:
+.sp
+\fBpanic\fP
+.RS 4
+如果遇到错误，会导致内核崩溃。
+.RE
+.sp
+[\fBlock\fP|\fBumount\fP|\fBrepair\fP]
+.RS 4
+这些挂载选项目前不 \(cqt 做任何事情; 当遇到错误时，只会打印一条控制台消息。
+.RE
+.RE
+.SS "Mount options for umsdos"
+.sp
+请参见 msdos 的挂载选项。\fBdotsOK\fP 选项被 \fIumsdos\fP 明确杀死。
+.SS "Mount options for vfat"
+.sp
+首先，识别 \fIfat\fP 的挂载选项。\fBdotsOK\fP 选项被 \fIvfat\fP 明确杀死。此外，还有
+.sp
+\fBuni_xlate\fP
+.RS 4
+将未处理的 Unicode 字符转换为特殊的转义序列。这使您可以备份和恢复使用任何 Unicode
+字符创建的文件名。如果没有此选项，则在无法进行翻译时使用 \(aq?\(aq。转义符是 \(aq:\(aq 因为它在 vfat
+文件系统上是无效的。使用的转义序列，其中 u 是 Unicode 字符，是: \(aq:\(aq, (u&0x3f),
+((u>>6)&0x3f), (u>>12)。
+.RE
+.sp
+\fBposix\fP
+.RS 4
+允许两个名称仅大小写不同的文件。此选项已过时。
+.RE
+.sp
+\fBnonumtail\fP
+.RS 4
+在尝试 \fIname~num.ext\fP 之前，首先尝试创建一个没有序列号的短名称。
+.RE
+.sp
+\fButf8\fP
+.RS 4
+UTF8 是控制台使用的 Unicode 文件系统安全 8 位编码。可以使用此选项为文件系统启用它，也可以使用 utf8=0、utf8=no 或
+utf8=false 禁用它。如果 \fIuni_xlate\fP 被设置，UTF8 被禁用。
+.RE
+.sp
+\fBshortname=\fP\fImode\fP
+.RS 4
+定义创建和显示适合 8.3 字符的文件名的行为。如果存在文件的长名称，它将始终是显示的首选名称。有四个 \fImode\fPs:
+.sp
+\fBlower\fP
+.RS 4
+在显示时强制短名称小写; 当短名称不是全部大写时存储长名称。
+.RE
+.sp
+\fBwin95\fP
+.RS 4
+在显示时强制短名称为大写; 当短名称不是全部大写时存储长名称。
+.RE
+.sp
+\fBwinnt\fP
+.RS 4
+按原样显示简称; 当短名称不是全部小写或全部大写时存储长名称。
+.RE
+.sp
+\fBmixed\fP
+.RS 4
+按原样显示简称; 当短名称不是全部大写时存储长名称。这种模式是 Linux 2.6.32 以来的默认模式。
+.RE
+.RE
+.SS "Mount options for usbfs"
+.sp
+\fBdevuid=\fP\fIuid\fP 和 \fBdevgid=\fP\fIgid\fP 和 \fBdevmode=\fP\fImode\fP
+.RS 4
+在 usbfs 文件系统中设置设备文件的所有者和组以及模式 (默认值: uid=gid=0，模式 = 0644)。模式以八进制给出。
+.RE
+.sp
+\fBbusuid=\fP\fIuid\fP 和 \fBbusgid=\fP\fIgid\fP 和 \fBbusmode=\fP\fImode\fP
+.RS 4
+在 usbfs 文件系统中设置总线目录的所有者和组以及模式 (默认值: uid=gid=0，模式 = 0555)。模式以八进制给出。
+.RE
+.sp
+\fBlistuid=\fP\fIuid\fP 和 \fBlistgid=\fP\fIgid\fP 和 \fBlistmode=\fP\fImode\fP
+.RS 4
+设置文件 \fIdevices\fP 的所有者和组以及模式 (默认: uid=gid=0，模式 = 0444)。模式以八进制给出。
+.RE
+.SH "DM\-VERITY SUPPORT"
+.sp
+device\-mapper verity 目标使用内核加密 API 提供块设备的只读透明完整性检查。\fBmount\fP 命令可以打开 dm\-verity
+设备并在设备文件系统挂载之前进行完整性验证。在 libmount 中需要 libcryptsetup (可选地通过 \fBdlopen\fP(3)). 如果
+libcryptsetup 支持提取已安装设备的根哈希，则现有设备将在匹配的情况下自动重用。dm\-verity 的挂载选项:
+.sp
+\fBverity.hashdevice=\fP\fIpath\fP
+.RS 4
+与要传递给 dm\-verity 的源卷关联的哈希树设备的路径。
+.RE
+.sp
+\fBverity.roothash=\fP\fIhex\fP
+.RS 4
+\fIverity.hashdevice\fP 根的十六进制编码哈希。与 \fIverity.roothashfile.\fP 互斥
+.RE
+.sp
+\fBverity.roothashfile=\fP\fIpath\fP
+.RS 4
+包含 \fIverity.hashdevice.\fP 根的十六进制编码散列的文件路径与 \fIverity.roothash.\fP 互斥
+.RE
+.sp
+\fBverity.hashoffset=\fP\fIoffset\fP
+.RS 4
+如果哈希树设备嵌入在源卷中，则 dm\-verity 使用 \fIoffset\fP (默认值: 0) 来访问树。
+.RE
+.sp
+\fBverity.fecdevice=\fP\fIpath\fP
+.RS 4
+与要传递给 dm\-verity 的源卷关联的前向纠错 (FEC) 设备的路径。选修的。需要使用 \fBCONFIG_DM_VERITY_FEC\fP
+构建的内核。
+.RE
+.sp
+\fBverity.fecoffset=\fP\fIoffset\fP
+.RS 4
+如果 FEC 设备嵌入在源卷中，则 dm\-verity 使用 \fIoffset\fP (默认值: 0) 到达 FEC 区域。Optional.
+.RE
+.sp
+\fBverity.fecroots=\fP\fIvalue\fP
+.RS 4
+FEC 的奇偶校验字节 (默认值: 2)。Optional.
+.RE
+.sp
+\fBverity.roothashsig=\fP\fIpath\fP
+.RS 4
+根哈希十六进制字符串的 \fBpkcs7\fP(1ssl) 签名路径。需要来自 cryptsetup 的
+crypt_activate_by_signed_key() 和使用 \fBCONFIG_DM_VERITY_VERIFY_ROOTHASH_SIG\fP
+构建的内核。对于设备重用，签名必须被设备的所有安装使用或不被使用。Optional.
+.RE
+.sp
+\fBverity.oncorruption=\fP\fIignore\fP|\fIrestart\fP|\fIpanic\fP
+.RS 4
+指示内核在检测到损坏时忽略、重新启动或崩溃。默认情况下，I/O 操作会失败。需要 Linux 4.1 或更新版本，以及 libcrypsetup
+2.3.4 或更新版本。Optional.
+.RE
+.sp
+自 util\-linux v2.35 起受支持。
+.sp
+例如命令:
+.sp
+.if  n .RS 4
+.nf
+.fam C
+mksquashfs /etc /tmp/etc.squashfs
+dd if=/dev/zero of=/tmp/etc.hash bs=1M count=10
+veritysetup 格式 /tmp/etc.squashfs /tmp/etc.hash
+openssl smime \-sign \-in <hash> \-nocerts \-inkey private.key \(rs
+\-signer private.crt \-noattr \-binary \-outform der \-out /tmp/etc.roothash.p7s
+mount \-o verity.hashdevice=/tmp/etc.hash,verity.roothash=<hash>,\(rs
+verity.roothashsig=/tmp/etc.roothash.p7s /tmp/etc.squashfs /mnt
+.fam
+.fi
+.if  n .RE
+.sp
+从 \fI/etc\fP 目录、Verity 哈希设备创建 squashfs 映像，并将经过验证的文件系统映像挂载到 \fI/mnt\fP。如果使用
+roothashsig，内核将验证根哈希是否由内核密钥环中的密钥签名。
+.SH "LOOP\-DEVICE SUPPORT"
+.sp
+另一种可能的类型是通过循环设备安装。例如，命令
+.RS 3
+.ll -.6i
+.sp
+\fBmount /tmp/disk.img /mnt \-t vfat \-o loop=/dev/loop3\fP
+.br
+.RE
+.ll
+.sp
+会设置循环设备 \fI/dev/loop3\fP 对应文件 \fI/tmp/disk.img\fP，然后把这个设备挂载到 \fI/mnt\fP 上。
+.sp
+如果没有提到明确的循环设备 (但只给出了一个选项 \(aq\fB\-o loop\fP\(aq)，那么 \fBmount\fP
+将尝试找到一些未使用的循环设备并使用它，例如
+.RS 3
+.ll -.6i
+.sp
+\fBmount /tmp/disk.img /mnt \-o loop\fP
+.br
+.RE
+.ll
+.sp
+如果未指定文件系统类型或文件系统对于 libblkid 已知，则 \fBmount\fP 命令 \fBautomatically\fP
+从常规文件创建循环设备，例如:
+.RS 3
+.ll -.6i
+.sp
+\fBmount /tmp/disk.img /mnt\fP
+.sp
+\fBmount \-t ext4 /tmp/disk.img /mnt\fP
+.br
+.RE
+.ll
+.sp
+这种支架知道三个选项，即 \fBloop\fP、\fBoffset\fP 和 \fBsizelimit\fP，它们实际上是 \fBlosetup\fP(8)
+的选项。(除了那些特定于文件系统类型的选项之外，还可以使用这些选项。)
+.sp
+由于支持 Linux 2.6.25 循环设备的自动销毁，这意味着 \fBmount\fP 分配的任何循环设备将由 \fBumount\fP 独立于
+\fI/etc/mtab\fP 释放。
+.sp
+您也可以使用 \fBlosetup \-d\fP 或 \fBumount \-d\fP 手动释放循环设备。
+.sp
+自 util\-linux v2.29 以来，如果相同的备份文件已用于具有相同偏移量和大小限制的某些循环设备，则 \fBmount\fP
+会重新使用循环设备而不是初始化新设备。这是避免文件系统损坏所必需的。
+.SH "EXIT STATUS"
+.sp
+\fBmount\fP 具有以下退出状态值 (这些位可以进行或运算) :
+.sp
+\fB0\fP
+.RS 4
+success
+.RE
+.sp
+\fB1\fP
+.RS 4
+不正确的调用或权限
+.RE
+.sp
+\fB2\fP
+.RS 4
+系统错误 (内存不足，不能 fork，没有更多的循环设备)
+.RE
+.sp
+\fB4\fP
+.RS 4
+内部 \fBmount\fP 错误
+.RE
+.sp
+\fB8\fP
+.RS 4
+用户中断
+.RE
+.sp
+\fB16\fP
+.RS 4
+写入或锁定 \fI/etc/mtab\fP 的问题
+.RE
+.sp
+\fB32\fP
+.RS 4
+mount failure
+.RE
+.sp
+\fB64\fP
+.RS 4
+一些安装成功
+.sp
+命令 \fBmount \-a\fP 返回 0 (全部成功)、32 (全部失败) 或 64 (部分失败，部分成功)。
+.RE
+.SH "EXTERNAL HELPERS"
+.sp
+外部挂载助手的语法是:
+.sp
+\fB/sbin/mount.\fP\fIsuffix\fP \fIspec dir\fP [\fB\-sfnv\fP] [\fB\-N\fP \fInamespace\fP] [\fB\-o\fP
+\fIoptions\fP] [\fB\-t\fP \fItype\fP\fB.\fP\fIsubtype\fP]
+.sp
+其中 \fIsuffix\fP 是文件系统类型，\fB\-sfnvoN\fP 选项与普通挂载选项具有相同的含义。\fB\-t\fP 选项用于支持子类型的文件系统 (例如
+\fB/sbin/mount.fuse \-t fuse.sshfs\fP).
+.sp
+命令 \fBmount\fP 不会将挂载选项
+\fBunbindable\fP、\fBrunbindable\fP、\fBprivate\fP、\fBrprivate\fP、\fBslave\fP、\fBrslave\fP、\fBshared\fP、\fBrshared\fP、\fBauto\fP、\fBnoauto\fP、\fBcomment\fP、\fBx\-\fP*、\fBloop\fP、\fBoffset\fP
+和 \fBsizelimit\fP 传递给 mount.<suffix> 助手。所有其他选项都在逗号分隔的列表中用作 \fB\-o\fP 选项的参数。
+.SH ENVIRONMENT
+.sp
+\fBLIBMOUNT_FSTAB\fP=<path>
+.RS 4
+覆盖 \fIfstab\fP 文件的默认位置 (suid 忽略)
+.RE
+.sp
+\fBLIBMOUNT_MTAB\fP=<path>
+.RS 4
+覆盖 \fImtab\fP 文件的默认位置 (suid 忽略)
+.RE
+.sp
+\fBLIBMOUNT_DEBUG\fP=all
+.RS 4
+启用 libmount 调试输出
+.RE
+.sp
+\fBLIBBLKID_DEBUG\fP=all
+.RS 4
+启用 libblkid 调试输出
+.RE
+.sp
+\fBLOOPDEV_DEBUG\fP=all
+.RS 4
+启用循环设备设置调试输出
+.RE
+.SH FILES
+.sp
+另请参见上面的 "\fBThe files /etc/fstab, /etc/mtab and /proc/mounts\fP" 部分。
+.sp
+\fI/etc/fstab\fP
+.RS 4
+文件系统表
+.RE
+.sp
+\fI/run/mount\fP
+.RS 4
+libmount 私有运行时目录
+.RE
+.sp
+\fI/etc/mtab\fP
+.RS 4
+挂载文件系统表或指向 \fI/proc/mounts\fP 的符号链接
+.RE
+.sp
+\fI/etc/mtab~\fP
+.RS 4
+锁定文件 (在具有 \fImtab\fP 符号链接的系统上未使用)
+.RE
+.sp
+\fI/etc/mtab.tmp\fP
+.RS 4
+临时文件 (在带有 \fImtab\fP 符号链接的系统上未使用)
+.RE
+.sp
+\fI/etc/filesystems\fP
+.RS 4
+要尝试的文件系统类型列表
+.RE
+.SH HISTORY
+.sp
+版本 5 AT&T UNIX 中存在 \fBmount\fP 命令。
+.SH BUGS
+.sp
+损坏的文件系统可能会导致崩溃。
+.sp
+某些 Linux 文件系统不 \ (cqt 支持 \fB\-o sync\fP 和 \fB\-o dirsync\fP (ext2、ext3、ext4、fat 和
+vfat 文件系统 \fIdo\fP 在使用 \fBsync\fP 选项安装时支持同步更新 (a la BSD) )。
+.sp
+\fB\-o remount\fP 可能无法更改挂载参数 (例如，所有 \fIext2fs\fP\-specific 参数，除 \fBsb\fP
+外，都可以通过重新挂载更改，但您可以 \ (cqt 更改 \fIfatfs\fP) 的 \fBgid\fP 或 \fBumask\fP。
+.sp
+文件 \fI/etc/mtab\fP 和 \fI/proc/mounts\fP 可能不 \(cqt 在具有常规 \fImtab\fP 文件的系统上匹配。第一个文件仅基于
+\fBmount\fP 命令选项，但第二个文件的内容还取决于内核和其他设置 (例如，在远程 NFS 服务器上 \ (在某些情况下，\fBmount\fP
+命令可能会报告有关 NFS 的不可靠信息安装点和 \fI/proc/mount\fP 文件通常包含更可靠的信息。) 这是用指向 \fI/proc/mounts\fP
+文件的符号链接替换 \fImtab\fP 文件的另一个原因。
+.sp
+检查文件描述符引用的 NFS 文件系统上的文件 (即函数的 \fBfcntl\fP 和 \fBioctl\fP 系列) 可能会导致不一致的结果，因为即使使用了
+\fBnoac\fP 挂载选项，内核中也缺少一致性检查。
+.sp
+如果 \fBmount\fP 命令可以 \(cqt 确认块设备的大小已按要求配置，则使用较旧内核时，使用 \fBoffset\fP 或 \fBsizelimit\fP
+选项的 \fBloop\fP 选项可能会失败。这种情况可以通过在使用配置的环路设备调用 \fBmount\fP 之前手动使用 \fBlosetup\fP(8)
+命令来解决。
+.SH AUTHORS
+.sp
+.MTO kzak\(atredhat.com "Karel Zak" ""
+.SH "SEE ALSO"
+.sp
+\fBmount\fP(2), \fBumount\fP(2), \fBfilesystems\fP(5), \fBfstab\fP(5), \fBnfs\fP(5),
+\fBxfs\fP(5), \fBmount_namespaces\fP(7), \fBxattr\fP(7), \fBe2label\fP(8),
+\fBfindmnt\fP(8), \fBlosetup\fP(8), \fBlsblk\fP(8), \fBmke2fs\fP(8), \fBmountd\fP(8),
+\fBnfsd\fP(8), \fBswapon\fP(8), \fBtune2fs\fP(8), \fBumount\fP(8), \fBxfs_admin\fP(8)
+.SH "REPORTING BUGS"
+.sp
+对于错误报告，请使用问题跟踪器
+.URL https://github.com/util\-linux/util\-linux/issues "" .
+.SH AVAILABILITY
+.sp
+\fBmount\fP 命令是 util\-linux 包的一部分，可以从
+.URL https://www.kernel.org/pub/linux/utils/util\-linux/ "Linux Kernel Archive" .
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

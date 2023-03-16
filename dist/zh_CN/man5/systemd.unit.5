@@ -1,0 +1,1953 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH SYSTEMD\&.UNIT 5 "" "systemd 253" systemd.unit
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+systemd.unit \- 元配置
+.SH SYNOPSIS
+.PP
+\fIservice\fP\&.service, \fIsocket\fP\&.socket, \fIdevice\fP\&.device,
+\fImount\fP\&.mount, \fIautomount\fP\&.automount, \fIswap\fP\&.swap,
+\fItarget\fP\&.target, \fIpath\fP\&.path, \fItimer\fP\&.timer, \fIslice\fP\&.slice,
+\fIscope\fP\&.scope
+.SS "System Unit Search Path"
+.PP
+.nf
+/etc/systemd/system\&.control/*
+/run/systemd/system\&.control/*
+/run/systemd/transient/*
+/run/systemd/generator\&.early/*
+/etc/systemd/system/*
+/etc/systemd/system\&.attached/*
+/run/systemd/system/*
+/run/systemd/system\&.attached/*
+/run/systemd/generator/*
+\&...
+/usr/lib/systemd/system/*
+/run/systemd/generator\&.late/*
+.fi
+.SS "User Unit Search Path"
+.PP
+.nf
+~/\&.config/systemd/user\&.control/*
+$XDG_RUNTIME_DIR/systemd/user\&.control/*
+$XDG_RUNTIME_DIR/systemd/transient/*
+$XDG_RUNTIME_DIR/systemd/generator\&.early/*
+~/\&.config/systemd/user/*
+$XDG_CONFIG_DIRS/systemd/user/*
+/etc/systemd/user/*
+$XDG_RUNTIME_DIR/systemd/user/*
+/run/systemd/user/*
+$XDG_RUNTIME_DIR/systemd/generator/*
+$XDG_DATA_HOME/systemd/user/*
+$XDG_DATA_DIRS/systemd/user/*
+\&...
+/usr/lib/systemd/user/*
+$XDG_RUNTIME_DIR/systemd/generator\&.late/*
+.fi
+.SH DESCRIPTION
+.PP
+元文件是一种纯文本 ini 样式文件，它编码有关服务、套接字、设备、挂载点、自动挂载点、交换文件或分区、启动目标、监视文件系统路径的信息，由
+\fBsystemd\fP(1) 控制和监督的定时器、资源管理片或一组外部创建的进程 \&。有关语法 \& 的一般说明，请参见
+\fBsystemd.syntax\fP(7)。
+.PP
+该手册页列出了所有元类型 \& 的常用配置选项。这些选项需要在元文件的 [Unit] 或 [Install] 部分进行配置 \&。
+.PP
+除了这里描述的泛型 [Unit] 和 [Install] 部分，每个元可能有一个特定类型的部分，e\&.g\&。[Service] 为服务元
+\&。有关详细信息，请参见相应的手册页:
+\fBsystemd.service\fP(5)、\fBsystemd.socket\fP(5)、\fBsystemd.device\fP(5)、\fBsystemd.mount\fP(5)、\fBsystemd.automount\fP(5)、\fBsystemd.swap\fP(5)、\fBsystemd.target\fP(5)、\fBsystemd.path\fP(5)、\fBsystemd.timer\fP(5)、\fBsystemd.slice\fP(5)、\fBsystemd.scope\fP(5)\&。
+.PP
+元文件从编译期间确定的一组路径加载，在下一节中描述 \&。
+.PP
+有效的元名称由一个 "name prefix" 和一个点以及一个指定元类型的后缀 \& 组成。"unit prefix" 必须由一个或多个有效字符
+(ASCII 字母、数字、":"、"\-"、"_"、"\&." 和 "\e") \& 组成。元名称包括后缀的总长度不得超过 256 个字符
+\&。类型后缀必须是
+"\&.service"、"\&.socket"、"\&.device"、"\&.mount"、"\&.automount"、"\&.swap"、"\&.target"、"\&.path"、"\&.timer"、"\&.slice"
+或 `\&.scope`\& 之一。
+.PP
+单位名称可以通过称为 `实例名称`\& 的单个参数来参数化。然后基于 "template file" 构建元，作为多个服务或其他单元的定义
+\&。模板元必须在名称末尾 (紧跟在类型后缀之前) 有一个 "@"\&。完整的元名是在 "@" 和元类后缀 \&
+之间插入实例名组成的。在元文件本身中，可以使用 "%i" 和其他说明符引用实例参数，请参见下文 \&。
+.PP
+元文件可能包含除此处列出的选项之外的其他选项 \&。如果 systemd 遇到未知选项，它会写入一条警告日志消息，但会继续加载元
+\&。如果一个选项或部分名称以 \fBX\-\fP 为前缀，它会被 systemd\& 完全忽略。忽略部分中的选项不需要前缀 \&。应用程序可以使用它在元文件
+\& 中包含附加信息。要访问这些选项，应用程序需要自行解析元文件 \&。
+.PP
+通过在元搜索路径之一中创建从新名称到现有名称的符号链接，单位可以别名 (有一个替代名称)
+\&。例如，systemd\-networkd\&.service 具有别名
+dbus\-org\&.freedesktop\&.network1\&.service，在安装期间作为符号链接创建，因此当通过 D\-Bus 请求
+\fBsystemd\fP 加载 dbus\-org\&.freedesktop\&.network1\&.service 时，它 \*(Aqll 加载
+systemd\-networkd\&.service\&。作为另一个示例，default\&.target\(em 是在引导时启动的默认系统目标
+\(em 通常别名为 multi\-user\&.target 或 graphical\&.target 以选择默认启动的内容 \&。别名可用于
+\fBdisable\fP、\fBstart\fP、\fBstop\fP、\fBstatus\fP 等命令，以及所有元依赖指令，包括
+\fIWants=\fP、\fIRequires=\fP、\fIBefore=\fP、\fIAfter=\fP\&。别名不能与 \fBpreset\fP 命令 \& 一起使用。
+.PP
+别名遵循以下限制: 某种类型的元 ("\&.service", "\&.socket",\&...) 只能被具有相同类型后缀 \&
+的名称作为别名。普通的元 (不是模板或实例) 只能由普通名称 \& 别名。一个模板实例只能被另一个模板实例作为别名，并且实例部分必须相同
+\&。一个模板可以被另一个模板作为别名 (在这种情况下别名适用于模板的所有实例) \&。作为一种特殊情况，模板实例
+(e\&.g\&. "alias@inst\&.service") 可能是指向不同模板
+(e\&.g\&. "template@inst\&.service")\& 的符号链接。在那种情况下，只有这个特定实例被别名，而模板的其他实例 (例如
+\&.g\&. "alias@foo\&.service"、"alias@bar\&.service") 没有被别名 \&。这些规则保留了实例
+(如果有的话) 始终为给定的元及其所有别名 \&
+唯一定义的要求。别名符号链接的目标必须指向一个有效的元文件位置，i\&.e\&。符号链接目标名称必须与所描述的符号链接源名称相匹配，并且目标路径必须在元搜索路径之一中，有关更多详细信息，请参见下面的元文件加载路径部分
+\&。注意目标文件可能不存在，i\&.e\&。符号链接可能是悬垂 \&。
+.PP
+元文件可以通过 [Install] 部分中的 \fIAlias=\fP 指令指定别名 \&。启用元时，将为这些名称创建符号链接，并在禁用元时删除
+\&。例如，reboot\&.target 指定 \fIAlias=ctrl\-alt\-del\&.target\fP，因此当启用时，将创建指向
+reboot\&.target 文件的符号链接 /etc/systemd/system/ctrl\-alt\-del\&.service，当调用
+Ctrl+Alt+Del 时，\fBsystemd\fP 将查找 ctrl\-alt\-del\&.service 并执行 reboot\&.service\&。
+\fBsystemd\fP 在正常操作期间根本不查看 [Install] 部分，因此该部分中的任何指令仅通过在启用 \& 期间创建的符号链接起作用。
+.PP
+与元文件 foo\&.service 一起，目录 foo\&.service\&.wants/ 可能存在 \&。从这样的目录中链接的所有元文件都作为
+\fIWants=\fP 类型的依赖项隐式添加到元 \& 中。\fIRequires=\fP 类型依赖项也存在类似的功能，目录后缀在本例中为
+\&.requires/\&。此功能可用于将单元挂接到其他单元的启动中，而无需修改它们的元文件 \&。\fIWants=\fP 和 \fIRequires=\fP
+的语义详见下文 \&。在 \&.wants/ 或 \&.requires/ 目录中创建符号链接的首选方法是在目标元的 [Install]
+部分指定依赖项，并使用 \fBsystemctl\fP(1)\ 的 \fBenable\fP 或 \fBpreset\fP 命令在文件系统中创建符号链接
+&. 目标可以是普通元 (普通元或模板元的特定实例) \&。如果源元是模板，目标也可以是模板，此时实例将 "propagated"
+到目标元，形成一个有效的元实例 \&。因此，\&.wants/ 或 \&.requires/
+中符号链接的目标必须指向有效的元文件位置，i\&.e\&。符号链接目标名称必须满足所描述的要求，并且目标路径必须在元搜索路径之一中，请参见下面的元文件加载路径部分以获取更多详细信息
+\&。注意目标文件可能不存在，i\&.e\&。符号链接可能是悬垂 \&。
+.PP
+与元文件 foo\&.service 一起，"drop\-in" 目录 foo\&.service\&.d/ 可能存在 \&。该目录中所有后缀为
+"\&.conf" 的文件将按字母数字顺序合并，并在解析完主元文件本身后进行解析 \&。这对于更改或添加元的配置设置很有用，而无需修改元文件
+\&。每个丢弃 \- in 文件必须包含适当的节标题 \&。对于实例化单元，此逻辑将首先查找实例 "\&.d/" 子目录
+(e\&.g\&."foo@bar\&.service\&.d/") 并读取其 "\&.conf" 文件，然后是模板 "\&.d/" 子目录
+(e\&.g\&."foo@\&.service\&.d/") 和 "\&.conf" 文件在那里 \&。此外，对于包含破折号 ("\-")
+的元名，也搜索所有破折号后重复截断元名生成的目录集 \&。具体来说，对于元名称 foo\-bar\-baz\&.service，不仅会搜索常规丢弃 \- in
+目录 foo\-bar\-baz\&.service\&.d/，还会搜索 foo\-bar\-\&.service\&.d/ 和
+foo\-\&.service\&.d/\&。这对于为一组相关单元定义公共丢弃 \- ins 很有用，这些单元的名称以公共前缀 \&
+开头。该方案对于挂载、自动挂载和切片单元特别有用，它们的系统命名结构体是围绕作为组件分隔符的破折号构建的。请注意，在前缀层次结构更下方的同名丢弃 \-
+in 文件会覆盖更上方的文件，即 i\&.e\&。 foo\-bar\-\&.service\&.d/10\-override\&.conf 覆盖
+foo\-\&.service\&.d/10\-override\&.conf\&。
+.PP
+在单元别名 (如上所述) 的情况下，别名和所有别名的插件都被加载 \&。在 default\&.target 别名 graphical\&.target
+的示例中，default\&.target\&.d/、default\&.target\&.wants/、default\&.target\&.requires/、graphical\&.target\&.d/、graphical\&.target\&.wants/、graphical\&.target\&.requires/
+都将被读取 \&。对于模板，模板的插入、任何模板别名、模板实例和所有别名实例都是读取
+\&。当只有一个特定的模板实例被别名时，目标模板、目标模板实例和别名模板实例的 dropins 被读取 \&。
+.PP
+除了 /etc/systemd/system，系统服务的 "\&.d/" 目录下的丢弃 \- /usr/lib/systemd/system 或
+/run/systemd/system 目录 \&。/etc/ 中的插入文件优先于 /run / 中的文件，而 /run / 中的文件又优先于
+/usr/lib/\& 中的文件。任何这些目录下的插入文件都优先于位于任何位置的元文件 \&。具有不同名称的多个丢弃 \- in
+文件按字典顺序应用，无论它们位于哪个目录中 \&。
+.PP
+单位也支持顶级丢弃 \- in with \fItype\fP\&.d/，其中 \fItype\fP 可能是 e\&.g\&。 "service" 或
+"socket"，允许更改或添加系统上所有相应元文件的设置 \&。应用抛弃 \- in 配置的格式和优先级遵循上面定义的 \&。与名称特定的覆盖目录 \&
+中的文件相比，\fItype\fP\&.d/ 中的文件具有较低的优先级。通常的规则适用: 具有不同名称的多个丢弃 \- in
+文件按字典顺序应用，无论它们位于哪个目录中，因此 \fItype\fP\&.d/ 中的文件仅在没有丢弃 \- ins
+或掩码时适用于单元具有更高优先级的目录中的名称 \&。请参见示例 \&。
+.PP
+请注意，虽然 systemd
+在单元之间提供了一个灵活的依赖系统，但建议仅谨慎使用此功能，而是依赖于基于总线或基于套接字的激活等技术，这些技术使依赖关系隐式，从而使系统更简单、更灵活
+\&.
+.PP
+如上所述，元可以从模板文件中实例化。这允许从单个配置文件创建多个单元 \&。如果 systemd 查找元配置文件，它将首先在文件系统 \&
+中搜索字面量元名称。如果没有成功并且元名称包含 "@" 字符，systemd 将查找具有相同名称但具有实例字符串 (i\&.e\&. "@"
+字符和后缀之间的部分) 的元模板删除 \&。示例: 如果请求服务 getty@tty3\&.service 但未找到该名称的文件，systemd 将查找
+getty@\&.service 并在找到时从该配置文件实例化服务 \&。
+.PP
+要从配置文件中引用实例字符串，您可以在许多配置选项中使用特殊的 "%i" 说明符 \&。详情见下文 \&。
+.PP
+如果一个元文件为空 (i\&.e\&. 文件大小为 0) 或者符号链接到 /dev/null，它的配置将不会被加载并且它会出现 "masked"
+的加载状态，并且不能被激活 \&。使用此作为完全禁用元的有效方法，即使手动 \& 也无法启动它。
+.PP
+元文件格式由 \m[blue]\fBInterface Portability and Stability Promise\fP\m[]\&\s-2\u[1]\d\s+2\& 覆盖。
+.SH "STRING ESCAPING FOR INCLUSION IN UNIT NAMES"
+.PP
+有时将任意字符串转换为元名称 \& 很有用。为此，使用了一种字符串转义方法，以便将包含任意字节值 (\fBNUL\fP) 除外) 的 map
+字符串转换为有效的元名称及其受限字符集 \&。一个常见的特殊情况是反映文件系统层次结构中对象路径的元名称 \&。例: 设备元
+dev\-sda\&.device 指的是文件系统中设备节点为 /dev/sda 的设备 \&。
+.PP
+转义算法的操作如下: 给定一个字符串，任何 "/" 字符都被替换为 "\-"，所有其他不是 ASCII 字母数字、":"、"_" 或 "\&."
+的字符都被替换为 C 风格的 "\ex2d" 转义字符 \&。此外，当 "\&." 作为转义字符串中的第一个字符出现时，它会被替换为这样的 C
+风格转义字符 \&。
+.PP
+当输入符合绝对文件系统路径时，该算法略有扩展: 根目录 "/" 的路径被编码为单破折号 `\-`\&。此外，任何前导、尾随或重复的 "/"
+字符都会在转换前从字符串中删除 \&。示例: /foo//bar/baz/ 变为 `foo\-bar\-baz`\&。
+.PP
+这种转义是完全可逆的，只要知道转义的字符串是否是路径即可 (路径和非路径字符串的转义结果不同) \&。\fBsystemd\-escape\fP(1)
+命令可用于对任意字符串应用和反向转义 \&。使用 \fBsystemd\-escape \-\-path\fP 转义路径字符串，使用
+\fBsystemd\-escape\fP 不使用 \fB\-\-path\fP 否则 \&。
+.SH "AUTOMATIC DEPENDENCIES"
+.SS "Implicit Dependencies"
+.PP
+一些元依赖被隐式建立，依赖于元类型和元配置 \&。这些隐式依赖可以使元配置文件更干净 \&。对于每个元类型的隐式依赖，请参考各自手册页中的
+"Implicit Dependencies" 部分 \&。
+.PP
+例如，具有 \fIType=dbus\fP 的服务单元自动获取类型 \fIRequires=\fP 和 \fIAfter=\fP 对 dbus\&.socket\&
+的依赖。有关详细信息，请参见 \fBsystemd.service\fP(5)\&。
+.SS "Default Dependencies"
+.PP
+默认依赖与隐式依赖类似，但可以通过将 \fIDefaultDependencies=\fP 设置为 \fIyes\fP (默认) 和 \fIno\fP
+来开启和关闭，而隐式依赖始终有效 \&。有关在每个元类型中启用 \fIDefaultDependencies=\fP 的效果，请参见相应手册页中的
+"Default Dependencies" 部分 \&。
+.PP
+例如，目标单元将补充所有已配置的 \fIWants=\fP 或 \fIRequires=\fP 类型的依赖项和 \fIAfter=\fP\&
+类型的依赖项。有关详细信息，请参见 \fBsystemd.target\fP(5)\&。请注意，可以通过在指定单元中设置
+\fIDefaultDependencies=no\fP 来选择退出此行为，或者可以通过显式 \fIBefore=\fP 依赖项 \& 选择性地覆盖它。
+.SH "UNIT FILE LOAD PATH"
+.PP
+元文件从编译期间确定的一组路径加载，在下面的两个表中描述 \&。在前面列出的目录中找到的元文件覆盖列表中较低目录中的同名文件 \&。
+.PP
+当变量 \fI$SYSTEMD_UNIT_PATH\fP 被设置时，这个变量的内容覆盖元加载路径 \&。如果 \fI$SYSTEMD_UNIT_PATH\fP
+以空组件 (":") 结尾，通常的元加载路径将追加到变量的内容 \&。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \& Load path when running in system mode (\-\-system)\&.\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Path
+T}:T{
+Description
+T}
+.T&
+l l
+l ^
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+/etc/systemd/system\&.control
+T}:T{
+Persistent and transient configuration created using the dbus API
+T}
+T{
+/run/systemd/system\&.control
+T}:
+T{
+/run/systemd/transient
+T}:T{
+Dynamic configuration for transient units
+T}
+T{
+/run/systemd/generator\&.early
+T}:T{
+Generated units with high priority (see \fIearly\-dir\fP in \fBsystemd.generator\fP(7))
+T}
+T{
+/etc/systemd/system
+T}:T{
+System units created by the administrator
+T}
+T{
+/run/systemd/system
+T}:T{
+Runtime units
+T}
+T{
+/run/systemd/generator
+T}:T{
+Generated units with medium priority (see \fInormal\-dir\fP in \fBsystemd.generator\fP(7))
+T}
+T{
+/usr/local/lib/systemd/system
+T}:T{
+System units installed by the administrator
+T}
+T{
+/usr/lib/systemd/system
+T}:T{
+System units installed by the distribution package manager
+T}
+T{
+/run/systemd/generator\&.late
+T}:T{
+Generated units with low priority (see \fIlate\-dir\fP in \fBsystemd.generator\fP(7))
+T}
+.TE
+.sp 1
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&2.\ \& Load path when running in user mode (\-\-user)\&.\fP
+.TS
+allbox tab(:);
+lB lB.
+T{
+Path
+T}:T{
+Description
+T}
+.T&
+l l
+l ^
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l
+l l.
+T{
+$XDG_CONFIG_HOME/systemd/user\&.control or ~/\&.config/systemd/user\&.control
+T}:T{
+Persistent and transient configuration created using the dbus API (\fI$XDG_CONFIG_HOME\fP is used if set, ~/\&.config otherwise)
+T}
+T{
+$XDG_RUNTIME_DIR/systemd/user\&.control
+T}:
+T{
+$XDG_RUNTIME_DIR/systemd/transient
+T}:T{
+Dynamic configuration for transient units
+T}
+T{
+$XDG_RUNTIME_DIR/systemd/generator\&.early
+T}:T{
+Generated units with high priority (see \fIearly\-dir\fP in \fBsystemd.generator\fP(7))
+T}
+T{
+$XDG_CONFIG_HOME/systemd/user or $HOME/\&.config/systemd/user
+T}:T{
+User configuration (\fI$XDG_CONFIG_HOME\fP is used if set, ~/\&.config otherwise)
+T}
+T{
+$XDG_CONFIG_DIRS/systemd/user or /etc/xdg/systemd/user
+T}:T{
+Additional configuration directories as specified by the XDG base directory specification (\fI$XDG_CONFIG_DIRS\fP is used if set, /etc/xdg otherwise)
+T}
+T{
+/etc/systemd/user
+T}:T{
+User units created by the administrator
+T}
+T{
+$XDG_RUNTIME_DIR/systemd/user
+T}:T{
+Runtime units (only used when $XDG_RUNTIME_DIR is set)
+T}
+T{
+/run/systemd/user
+T}:T{
+Runtime units
+T}
+T{
+$XDG_RUNTIME_DIR/systemd/generator
+T}:T{
+Generated units with medium priority (see \fInormal\-dir\fP in \fBsystemd.generator\fP(7))
+T}
+T{
+$XDG_DATA_HOME/systemd/user or $HOME/\&.local/share/systemd/user
+T}:T{
+Units of packages that have been installed in the home directory (\fI$XDG_DATA_HOME\fP is used if set, ~/\&.local/share otherwise)
+T}
+T{
+$XDG_DATA_DIRS/systemd/user or /usr/local/share/systemd/user and /usr/share/systemd/user
+T}:T{
+Additional data directories as specified by the XDG base directory specification (\fI$XDG_DATA_DIRS\fP is used if set, /usr/local/share and /usr/share otherwise)
+T}
+T{
+$dir/systemd/user for each \fI$dir\fP in \fI$XDG_DATA_DIRS\fP
+T}:T{
+Additional locations for installed user units, one for each entry in \fI$XDG_DATA_DIRS\fP
+T}
+T{
+/usr/local/lib/systemd/user
+T}:T{
+User units installed by the administrator
+T}
+T{
+/usr/lib/systemd/user
+T}:T{
+User units installed by the distribution package manager
+T}
+T{
+$XDG_RUNTIME_DIR/systemd/generator\&.late
+T}:T{
+Generated units with low priority (see \fIlate\-dir\fP in \fBsystemd.generator\fP(7))
+T}
+.TE
+.sp 1
+.PP
+用户管理器实例的加载路径集可以使用各种环境变量 \& 进行扩充或更改。并且环境变量可以依次使用环境生成器设置，请参见
+\fBsystemd.environment\-generator\fP(7)\&。特别是 \fI$XDG_DATA_HOME\fP 和
+\fI$XDG_DATA_DIRS\fP 可以使用 \fBsystemd\-environment\-d\-generator\fP(8)\&
+轻松设置。因此，此处列出的目录只是默认目录 \&。根据编译选项和当前环境使用查看将使用的实际列表
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+systemd\-analyze\-\-user 元 \- paths
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+此外，通过创建指向目录 \& 中的元文件的符号链接，可以从不在元加载路径上的目录将其他单元加载到 systemd 中。您可以为此使用
+\fBsystemctl link\fP; 请参见 \fBsystemctl\fP(1)\&。启动 systemd 时，链接的元文件所在的文件系统必须可以访问
+(例如 \&.g\&。不允许在 /home / 或 /var / 下的任何内容，除非这些目录位于根文件系统上) \&。
+.PP
+区分 "linked unit files" 和 "unit file aliases" 很重要: 符号链接 \fItarget\fP
+在元加载路径内的任何符号链接都成为别名: 源名称和目标文件名必须满足上面在别名讨论中列出的特定约束，但符号链接目标不 \*(Aqt
+必须存在，实际上并没有使用符号链接目标路径，除了检查目标是否在元加载路径内 \&。相反，在元加载路径之外的符号链接表示链接的元文件
+\&。加载文件时遵循符号链接，但目标名称未被使用 (甚至可能不是有效的元文件名) \&。例如，符号链接
+/etc/systemd/system/alias1\&.service →
+service1\&.service、/etc/systemd/system/alias2\&.service →
+/usr/lib/systemd/service1\&.service、/etc/systemd/system/alias3\&.service →
+/etc/systemd/system/service1\&.service 都是有效的别名，service1\&.service
+将有四个名称，即使元文件位于 /run/service1\&.service\&。相反，符号链接
+/etc/systemd/system/link1\&.service →\&.\&./link1_service_file 表示
+link1\&.service 是 "linked unit"，/etc/systemd/link1_service_file 的内容提供其配置 \&。
+.SH "UNIT GARBAGE COLLECTION"
+.PP
+系统和服务管理器加载一个元 \*(第一次引用一个元时自动加载 Aqs 配置 \&。当不再需要该元元时，它会自动卸载元元配置并再次状态 (`垃圾集合`)
+\&。元可以通过多种不同的机制引用:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 1.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  1." 4.2
+.\}
+另一个加载元引用它具有依赖关系，例如 \fIAfter=\fP，\fIWants=\fP，\&...
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 2.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  2." 4.2
+.\}
+元当前正在启动、运行、重新加载或停止 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 3.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  3." 4.2
+.\}
+元目前处于 \fBfailed\fP 状态 \&。(但见下文 \&。)
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 4.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  4." 4.2
+.\}
+元的作业正在等待 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 5.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  5." 4.2
+.\}
+元被一个活跃的 IPC 客户端程序固定 \&。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 6.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  6." 4.2
+.\}
+元是一个特殊的 "perpetual" 元，始终处于活动状态并加载 \&。永久单元的示例是根挂载单元 \-\&.mount
+或服务管理器本身所在的作用域单元 init\&.scope。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04' 7.\h'+01'\c
+.\}
+.el \{\
+.sp -1
+.IP "  7." 4.2
+.\}
+元有与之关联的正在运行的进程 \&。
+.RE
+.PP
+垃圾集合逻辑可以用 \fICollectMode=\fP 选项改变，它允许配置是否允许自动卸载处于 \fBfailed\fP 状态的单元，见下文 \&。
+.PP
+请注意，当一个元 \*(Aqs 配置和状态被卸载时，所有执行结果，如退出代码、退出信号、资源消耗和其他统计数据都会丢失，除了存储在日志子系统 \&
+中的内容。
+.PP
+使用 \fBsystemctl daemon\-reload\fP 或等效命令重新加载元配置，而元已加载 \&。在这种情况下，所有配置设置都被清除并替换为新配置
+(但是可能不会立即生效)，但是所有运行时状态都会被保存 / 恢复 \&。
+.SH "[UNIT] SECTION OPTIONS"
+.PP
+元文件可能包含一个 [Unit] 部分，其中包含有关元的泛型信息，该信息不依赖于元的类型:
+.PP
+\fIDescription=\fP
+.RS 4
+元 \& 的人类可读的简短标题。这可能被 \fBsystemd\fP (和其他 UI) 用作元的用户可见标签，因此尽管名称为
+\&，但此字符串应该标识元而不是描述它。这个字符串也应该 \*(Aqt 只是重复元名 \&。 "Apache2 Web Server"
+就是一个很好的例子 \&。不好的例子是 "high\-performance light\-weight HTTP server" (太泛型) 或
+"Apache2" (对于不知道 Apache 的人没有意义，重复元名称) \&。 \fBsystemd\fP 可能会在状态信息中使用这个字符串作为名词
+(`Starting \fIdescription\fP\&.\&.\&.",`Started \fIdescription\fP\&.",`Reached
+target \fIdescription\fP\&.",`Failed to start \fIdescription\fP\&."),
+所以应该大写，不能是完整的句子，也不能是带连续动词 \&。错误示例包括 "exiting the container" 或 `每天更新一次数据库
+\&。`\&。
+.RE
+.PP
+\fIDocumentation=\fP
+.RS 4
+以空格分隔的 URI 列表，用于引用此元或其配置 \& 的文档。仅接受类型为
+"http://"、"https://"、"file:"、"info:"、`man:`\& 的 URI。有关这些 URI 的语法的详细信息，请参见
+\fBuri\fP(7)\&。URI 应按相关性顺序列出，从最相关的 \& 开始。最好先引用解释元 \*(Aqs
+用途的文档，然后是它的配置方式，然后是任何其他相关文档 \&。可以多次指定此选项，在这种情况下，指定的 URI 列表将被合并
+\&。如果将空字符串分配给此选项，则会重置列表并且所有先前的分配都将无效 \&。
+.RE
+.PP
+\fIWants=\fP
+.RS 4
+配置 (weak) 对其他单元的需求依赖性
+\&。可以多次指定此选项，或者可以在一个选项中指定多个空格分隔的单元，在这种情况下，将创建所有列出的名称的依赖项
+\&。这种类型的依赖项也可以在元配置文件之外配置，方法是将符号链接添加到元文件 \& 附带的 \&.wants/ 目录。详情见上文 \&。
+.sp
+如果配置元为 \&，将启动此选项中列出的单元。但是如果列出的单位启动失败或者不能添加到交易中，不影响整个交易的有效性，这个元还是会启动
+\&。这是将一个元的启动挂接到另一个元 \& 的启动的推荐方法。
+.sp
+请注意，需求依赖性不会影响服务启动或停止的顺序 \&。这必须使用 \fIAfter=\fP 或 \fIBefore=\fP 选项独立配置 \&。如果单元
+foo\&.service 拉入单元 bar\&.service 与 \fIWants=\fP 的配置，没有顺序与 \fIAfter=\fP 或
+\fIBefore=\fP 配置，那么两个单元将同时启动，如果 foo\&.service 被激活，它们之间没有任何延迟 \&。
+.RE
+.PP
+\fIRequires=\fP
+.RS 4
+与 \fIWants=\fP 类似，但声明了更强的需求依赖性 \&。也可以通过将符号链接添加到伴随元文件 \& 的 \&.requires/
+目录来配置这种类型的依赖项。
+.sp
+如果这个元被激活，列出的单位也将被激活 \&。如果其他单元之一未能激活，并且设置了对失败单元的排序依赖性 \fIAfter=\fP，则该单元将不会启动
+\&。此外，无论是否指定 \fIAfter=\fP，如果其他单元之一被明确停止 (或重新启动)，则此单元将被停止 (或重新启动) \&。
+.sp
+通常，使用 \fIWants=\fP 而不是 \fIRequires=\fP 是更好的选择，以便在处理失败的服务时实现更健壮的系统 \&。
+.sp
+请注意，此依赖类型并不意味着其他元在该元运行时必须始终处于活动状态 \&。具体来说: 失败的条件检查 (例如
+\fIConditionPathExists=\fP、\fIConditionPathIsSymbolicLink=\fP、\&... \ (em 见下文)
+不会导致具有 \fIRequires=\fP 依赖项的单元的启动作业失败 \&。此外，某些元类型可能会自行停用
+(例如，服务进程可能决定完全退出，或者设备可能被用户拔掉)，这不会传播到具有 \fIRequires=\fP 依赖性 \& 的单元。将 \fIBindsTo=\fP
+依赖类型与 \fIAfter=\fP 一起使用，以确保在没有特定其他单元也处于活动状态 (见下文) \& 的情况下，一个单元永远不会处于活动状态。
+.RE
+.PP
+\fIRequisite=\fP
+.RS 4
+类似于 \fIRequires=\fP\&。但是，如果这里列出的单元还没有启动，它们将不会启动，并且这个元启动会立即失败 \&。 \fIRequisite=\fP
+并不意味着顺序依赖性，即使两个单元都在同一个事务中启动 \&。因此这个设置通常应该与 \fIAfter=\fP 结合使用，以确保这个元不在其他元 \&
+之前启动。
+.sp
+当 \fIRequisite=b\&.service\fP 用于 a\&.service 时，这种依赖在 b\&.service\& 的属性列表中会显示为
+\fIRequisiteOf=a\&.service\fP。 不能直接指定 \fIRequisiteOf=\fP 依赖 \&。
+.RE
+.PP
+\fIBindsTo=\fP
+.RS 4
+配置需求依赖，在风格上与 \fIRequires=\fP\& 非常相似。但是，这种依赖类型更强: 除了 \fIRequires=\fP
+的作用外，它还声明如果绑定的元被停止，这个元也将被停止 \&。这意味着一个元绑定到另一个突然进入非活动状态的元也将被停止
+\&。由于不同的原因，单元可能会突然、意外地进入非活动状态:
+服务单元的主进程可能会自行终止，设备单元的支持设备可能会被拔掉，或者挂载单元的挂载点可能会在没有涉及的情况下被卸载系统和服务管理器 \&。
+.sp
+当在同一个元上与 \fIAfter=\fP 一起使用时，\fIBindsTo=\fP 的行为甚至更强
+\&。在这种情况下，严格绑定到的元必须处于活动状态才能使该元也处于活动状态
+\&。这不仅意味着一个元绑定到另一个突然进入非活动状态的元，而且一个元绑定到另一个元由于未满足条件检查而被跳过 (例如
+\fIConditionPathExists=\fP，\fIConditionPathIsSymbolicLink=\fP，\&... \(em 见下文)
+将停止，如果它正在运行 \&。因此，在许多情况下，最好将 \fIBindsTo=\fP 与 \fIAfter=\fP\& 结合使用。
+.sp
+当 \fIBindsTo=b\&.service\fP 用于 a\&.service 时，这种依赖在 b\&.service\& 的属性列表中会显示为
+\fIBoundBy=a\&.service\fP。 不能直接指定 \fIBoundBy=\fP 依赖 \&。
+.RE
+.PP
+\fIPartOf=\fP
+.RS 4
+配置类似于 \fIRequires=\fP 的依赖项，但仅限于停止和重新启动单元 \&。当 systemd 停止或重新启动此处列出的单元时，操作将传播到此元
+\&。请注意，这是一种单向依赖 \\&\ (em 对此元的更改不会影响列出的单位 \&。
+.sp
+当 \fIPartOf=b\&.service\fP 用于 a\&.service 时，这种依赖在 b\&.service\& 的属性列表中会显示为
+\fIConsistsOf=a\&.service\fP。 不能直接指定 \fIConsistsOf=\fP 依赖 \&。
+.RE
+.PP
+\fIUpholds=\fP
+.RS 4
+配置类似 \fIWants=\fP 的依赖，但是只要这个元启动了，\fIUpholds=\fP 中列出的所有单元只要发现不活动或失败就会启动，并且不会为它们排队
+\&。\fIWants=\fP 对另一个单元的依赖在该单元启动时具有一次性效果，而 \fIUpholds=\fP 对它的依赖具有持续效果，必要时不断重启单元
+\&。这是服务单元 \fIRestart=\fP 设置的替代方案，以确保它们在任何情况下都保持运行 \&。
+.sp
+当 \fIUpholds=b\&.service\fP 用于 a\&.service 时，这种依赖关系将在 b\&.service\& 的属性列表中显示为
+\fIUpheldBy=a\&.service\fP。不能直接指定 \fIUpheldBy=\fP 依赖 \&。
+.RE
+.PP
+\fIConflicts=\fP
+.RS 4
+以空格分隔的元名称列表 \&。配置 negative 需求依赖项 \&。如果一个元在另一个元上有 \fIConflicts=\fP
+设置，启动前者将停止后者，反之亦然 \&。
+.sp
+请注意，此设置并不意味着排序依赖性，类似于上述 \fIWants=\fP 和 \fIRequires=\fP 依赖性
+\&。这意味着要确保冲突的单元在另一个单元启动之前停止，必须声明 \fIAfter=\fP 或 \fIBefore=\fP 依赖项 \&。\*(Aqt
+使用两个排序依赖项中的哪一个并不重要，因为停止作业总是在启动作业之前排序，请参见下面 \fIBefore=\fP/\fIAfter=\fP 中的讨论 \&。
+.sp
+如果与元 B 冲突的元 A 计划与 B 同时启动，则事务将失败 (如果两者都是事务的必需部分) 或修改为固定 (如果一个或两个作业是不是交易的必需部分)
+\&。在后一种情况下，不需要的作业将被删除，或者如果两者都不需要，则将启动冲突的单元并停止冲突的单元 \&。
+.RE
+.PP
+\fIBefore=\fP, \fIAfter=\fP
+.RS 4
+这两个设置需要一个以空格分隔的元名称 \& 列表。它们可能被指定多次，在这种情况下，所有列出的名称的依赖性都被创建 \&。
+.sp
+这两个设置配置单元之间的顺序依赖性 \&。如果元 foo\&.service 包含设置 \fBBefore=bar\&.service\fP
+并且两个单元都在启动，bar\&.service\*(Aqs 启动延迟，直到 foo\&.service 完成启动 \&。 \fIAfter=\fP 是
+\fIBefore=\fP 的倒数，i\&.e\&。而 \fIBefore=\fP 确保配置的单元在列出的单元开始启动之前启动，\fIAfter=\fP
+确保相反，列出的单元在配置的单元启动之前完全启动 \&。
+.sp
+当两个具有顺序依赖关系的单元关闭时，将应用启动顺序的倒数 \&。IE\&。如果一个元在另一个元上配置 \fIAfter=\fP，如果两者都关闭
+\&，则前者先于后者停止。给定两个单元，它们之间有任何顺序依赖关系，如果一个单元关闭而另一个单元启动，则在启动之前命令关闭 \&。\*(Aqt
+关系是排序依赖项是 \fIAfter=\fP 还是 \fIBefore=\fP，在这种情况下 \&。它也不 \*(Aqt
+不管两者中的哪一个被关闭，只要一个被关闭而另一个被启动; 在所有情况下都是在启动之前命令关闭
+\&。如果两个单元之间没有顺序依赖关系，它们将同时关闭或启动，并且不会发生任何顺序 \&。这取决于元类型何时恰好一个元完成启动 \&。最重要的是，对于
+\fIBefore=\fP/\fIAfter=\fP 而言，当所有配置的启动命令都已被调用并且它们失败或报告启动成功 \&
+时，服务单元的启动被视为已完成。请注意，这确实包括 \fIExecStartPost=\fP (或关闭情况下的 \fIExecStopPost=\fP) \&。
+.sp
+请注意，这些设置独立于 \fIRequires=\fP、\fIWants=\fP、\fIRequisite=\fP 或 \fIBindsTo=\fP\&
+配置的需求依赖性并与其正交。在 \fIAfter=\fP 和 \fIWants=\fP
+选项中都包含一个元名称是一种常见的模式，在这种情况下，列出的元将在使用这些选项配置的元之前启动 \&。
+.sp
+请注意，\fIBefore=\fP 对设备单元的依赖性没有影响，并且不受支持 \&。设备通常由于外部热插拔事件而变得可用，并且 systemd
+会立即创建相应的设备元 \&。
+.RE
+.PP
+\fIOnFailure=\fP
+.RS 4
+当此元进入 "failed" 状态 \& 时激活的一个或多个单元的空格分隔列表。使用 \fIRestart=\fP 的服务元仅在达到启动限制后才进入失败状态
+\&。
+.RE
+.PP
+\fIOnSuccess=\fP
+.RS 4
+当此元进入 "inactive" 状态 \& 时激活的一个或多个单元的空格分隔列表。
+.RE
+.PP
+\fIPropagatesReloadTo=\fP, \fIReloadPropagatedFrom=\fP
+.RS 4
+一个或多个单元的空格分隔列表，来自该元的重新加载请求应传播到的单元，或重新加载请求应传播到该单元的单元，分别为
+\&。在元上发出重新加载请求也会自动将使用这两个设置 \& 链接到它的所有单元的重新加载请求排队。
+.RE
+.PP
+\fIPropagatesStopTo=\fP, \fIStopPropagatedFrom=\fP
+.RS 4
+一个或多个单元的空格分隔列表，从该单元发出的停止请求应传播到的单元，或将停止请求从其传播到该单元的单元，分别为
+\&。在元上发出停止请求也会自动将使用这两个设置 \& 链接到它的所有单元的停止请求排队。
+.RE
+.PP
+\fIJoinsNamespaceOf=\fP
+.RS 4
+对于启动进程的单元 (例如服务单元)，列出一个或多个其他单元，其网络或者临时文件命名空间要加入 \&。这仅适用于支持
+\fIPrivateNetwork=\fP、\fINetworkNamespacePath=\fP、\fIPrivateIPC=\fP、\fIIPCNamespacePath=\fP
+和 \fIPrivateTmp=\fP 指令的元类型 (有关详细信息，请参见 \fBsystemd.exec\fP(5))
+\&。如果启动具有此设置集的单元，其进程将看到与已启动的列出的单元相同的 /tmp/、/var/tmp/、IPC 名称空间和网络名称空间
+\&。如果已经启动了多个列出的单元，则未定义加入哪个名称空间 \&。请注意，此设置仅在同时为加入命名空间的元和加入命名空间的元 \& 启用
+\fIPrivateNetwork=\fP/\fINetworkNamespacePath=\fP、\fIPrivateIPC=\fP/\fIIPCNamespacePath=\fP
+或者 \fIPrivateTmp=\fP 时才有效。
+.RE
+.PP
+\fIRequiresMountsFor=\fP
+.RS 4
+采用以空格分隔的绝对路径列表 \&。为访问指定路径所需的所有安装单元自动添加 \fIRequires=\fP 和 \fIAfter=\fP 类型的依赖项 \&。
+.sp
+标有 \fBnoauto\fP 的挂载点不会通过 local\-fs\&.target 自动挂载，但仍可用于此选项的目的，i\&.e\&。他们会被这个元 \&
+拉进来。
+.RE
+.PP
+\fIOnFailureJobMode=\fP
+.RS 4
+取值
+"fail"、"replace"、"replace\-irreversibly"、"isolate"、"flush"、"ignore\-dependencies"
+或 `忽略要求`\&。默认为 `替换`\&。指定 \fIOnFailure=\fP 中列出的单元如何排队 \&。有关可能值 \& 的详细信息，请参见
+\fBsystemctl\fP(1)\*(Aqs \fB\-\-job\-mode=\fP 选项。如果设置为 "isolate"，则 \fIOnFailure=\fP\&
+中只能列出一个元。
+.RE
+.PP
+\fIIgnoreOnIsolate=\fP
+.RS 4
+采用布尔型参数 \&。如果 \fBtrue\fP，这个元在隔离另一个元 \& 时不会停止。服务、目标、套接字、计时器和路径单元默认为
+\fBfalse\fP，片、使用域、设备、交换、挂载和自动挂载单元默认为 \fBtrue\fP。
+.RE
+.PP
+\fIStopWhenUnneeded=\fP
+.RS 4
+采用布尔型参数 \&。如果是 \fBtrue\fP，则这个元不再使用时停止 \&。请注意，为了最小化要执行的工作，默认情况下 systemd
+不会停止单元，除非它们与其他单元冲突，或者用户明确要求它们关闭 \&。如果设置了这个选项，当没有其他活跃的元需要它时，一个元将被自动清理 \&。默认为
+\fBfalse\fP\&。
+.RE
+.PP
+\fIRefuseManualStart=\fP, \fIRefuseManualStop=\fP
+.RS 4
+采用布尔型参数 \&。如果 \fBtrue\fP，这个元只能间接激活或去激活
+\&。在这种情况下，用户请求的显式启动或终止将被拒绝，但是如果它作为另一个单元的依赖项启动或停止，启动或终止将成功
+\&。这主要是一项安全特性可确保用户不会意外激活不打算明确激活的单元，也不会意外停用不打算停用的单元 \&。这些选项默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIAllowIsolate=\fP
+.RS 4
+采用布尔型参数 \&。如果是 \fBtrue\fP，这个元可以和 \fBsystemctl isolate\fP 命令 \& 一起使用。否则，这将被拒绝
+\&。除了应该使用类似于 SysV 初始化系统中的运行级别的目标单元之外，将此禁用可能是一个好主意，只是作为避免不可用系统状态的预防措施
+\&。该选项默认为 \fBfalse\fP\&。
+.RE
+.PP
+\fIDefaultDependencies=\fP
+.RS 4
+采用布尔型参数 \&。如果是 \fByes\fP，(默认)，一些默认的依赖会隐式地为元 \& 创建。实际创建的依赖依赖于元类型
+\&。例如，对于服务单元，这些依赖关系确保服务仅在基本系统初始化完成后启动，并在系统关闭时正确终止。有关详细信息，请参见相应的手册页
+\&。通常，只有涉及提前启动或延迟关闭的服务才应将此选项设置为 \fBno\fP\&。强烈建议为大多数常用单位启用此选项 \&。如果设置为
+\fBno\fP，此选项不会禁用所有隐式依赖项，只是非必要的 \&。
+.RE
+.PP
+\fICollectMode=\fP
+.RS 4
+为这个元 \& 调整 "garbage collection" 算法。采用 \fBinactive\fP 或 \fBinactive\-or\-failed\fP\&
+之一。如果设置为 \fBinactive\fP，如果单元处于 \fBinactive\fP 状态且未被客户端、作业或其他单元引用，则元将被卸载 \ (但如果它处于
+\fBfailed\fP 状态，则单元不会被卸载 \&。在 \fBfailed\fP 模式下，直到用户调用 \fBsystemctl reset\-failed\fP
+以重置 \fBfailed\fP 状态或等效命令 \& 时，才会卸载失败的单元。如果此选项设置为
+\fBinactive\-or\-failed\fP:，则此行为会改变，在这种情况下，即使单元处于 \fBfailed\fP 状态，单元也会被卸载，因此不需要显式重置
+\fBfailed\fP 状态 \&。请注意，如果使用此模式，元结果 (例如退出代码、退出信号、消耗的资源、\&...)
+将在元完成后立即刷新，但存储在日志子系统 \& 中的内容除外。默认为 \fBinactive\fP\&。
+.RE
+.PP
+\fIFailureAction=\fP, \fISuccessAction=\fP
+.RS 4
+配置单元停止并进入失败状态或非活动状态 \& 时采取的动作。采用
+\fBnone\fP、\fBreboot\fP、\fBreboot\-force\fP、\fBreboot\-immediate\fP、\fBpoweroff\fP、\fBpoweroff\-force\fP、\fBpoweroff\-immediate\fP、\fBexit\fP
+和 \fBexit\-force\fP\& 之一。在系统模式下，所有选项都是允许的 \&。在用户模式下，只允许 \fBnone\fP、\fBexit\fP 和
+\fBexit\-force\fP\&。这两个选项默认为 \fBnone\fP\&。
+.sp
+如果设置了 \fBnone\fP，则不会触发任何动作 \&。 \fBreboot\fP 导致在正常关机程序之后重新启动 (i\&.e\&。相当于
+\fBsystemctl reboot\fP)\&。\fBreboot\-force\fP
+导致强制重新启动，这将强制终止所有进程，但在重新启动时应该不会导致脏文件系统 (i\&.e\&. 相当于 \fBsystemctl reboot \-f\fP)
+和 \fBreboot\-immediate\fP 导致 immediate 执行 \fBreboot\fP(2) 系统调用，可能导致数据丢失
+(i\&.e\&. 相当于 \fBsystemctl reboot \-ff\fP)\&。同理
+\fBpoweroff\fP，\fBpoweroff\-force\fP，\fBpoweroff\-immediate\fP 有通电的作用以相似的语义 \& 关闭系统。
+\fBexit\fP 导致管理器按照正常的关闭程序退出，而 \fBexit\-force\fP 导致它在不关闭服务的情况下终止 \&。默认情况下使用 \fBexit\fP
+或 \fBexit\-force\fP 时，从服务管理器返回单元 (如果适用) 主进程的退出状态 \&。然而，这可能会被
+\fIFailureActionExitStatus=\fP/\fISuccessActionExitStatus=\fP 覆盖，见下文 \&。
+.RE
+.PP
+\fIFailureActionExitStatus=\fP, \fISuccessActionExitStatus=\fP
+.RS 4
+当 \fIFailureAction=\fP/\fISuccessAction=\fP 设置为 \fBexit\fP 或 \fBexit\-force\fP
+并且操作被触发时，控制退出状态传播回调用容器管理器 (在系统服务的情况下) 或服务管理器 (在用户管理器的情况下)。默认情况下，触发元 (如果适用)
+的主进程的退出状态被传播 \&。采用 0\&...255 范围内的值或空字符串来请求默认行为 \&。
+.RE
+.PP
+\fIJobTimeoutSec=\fP, \fIJobRunningTimeoutSec=\fP
+.RS 4
+\fIJobTimeoutSec=\fP 指定作业排队时开始运行的整个作业的超时 \&。 \fIJobRunningTimeoutSec=\fP
+指定在排队作业实际启动时开始运行的超时 \&。如果达到任何一个限制，作业将被取消，但是单元不会改变状态，甚至不会进入 "failed" 模式 \&。
+.sp
+这两个设置都采用默认单位秒的时间跨度，但可以指定其他单位，请参见 \fBsystemd.time\fP(5)\&。默认值为 "infinity"
+(禁用作业超时)，但 \fIJobRunningTimeoutSec=\fP 默认为 \fIDefaultTimeoutStartSec=\fP\&
+的设备单元除外。
+.sp
+Note: 这些超时独立于任何元 \- 特定超时 (例如，在服务单元中使用 \fITimeoutStartSec=\fP 设置的超时) \&。作业超时对元本身
+\& 没有影响。或者换句话说: 元特定的超时对于终止元状态变化很有用，并恢复它们 \&。然而，使用此选项设置的作业超时对于终止仅等待元状态更改的作业有用
+\&。
+.RE
+.PP
+\fIJobTimeoutAction=\fP, \fIJobTimeoutRebootArgument=\fP
+.RS 4
+\fIJobTimeoutAction=\fP 可选地配置一个额外的操作，以便在超时时采取，请参见上面的 \fIJobTimeoutSec=\fP 和
+\fIJobRunningTimeoutSec=\fP 的描述 \&。它采用与 \fIStartLimitAction=\fP\& 相同的值。默认为
+\fBnone\fP\&。
+.sp
+\fIJobTimeoutRebootArgument=\fP 配置一个可选的重启字符串以传递给 \fBreboot\fP(2) 系统调用 \&。
+.RE
+.PP
+\fIStartLimitIntervalSec=\fP\fIinterval\fP, \fIStartLimitBurst=\fP\fIburst\fP
+.RS 4
+配置元启动限速 \&。在 \fIinterval\fP 时间跨度内启动超过 \fIburst\fP 次的单元不允许再启动 \&。使用
+\fIStartLimitIntervalSec=\fP 配置检查间隔，使用 \fIStartLimitBurst=\fP 配置每个间隔允许启动多少次 \&。
+.sp
+\fIinterval\fP 为时间跨度，默认单位为秒，但可以指定其他单位，参见 \fBsystemd.time\fP(5)\&。在管理器配置文件中默认为
+\fIDefaultStartLimitIntervalSec=\fP，可以设置为 0 以禁用任何类型的速率限制 \&。 \fIburst\fP
+是一个数字，在管理器配置文件中默认为 \fIDefaultStartLimitBurst=\fP\&.
+.sp
+这些配置选项与服务设置 \fIRestart=\fP 结合使用时特别有用 (参见 \fBsystemd.service\fP(5));
+但是，它们适用于所有类型的启动 (包括手动启动)，而不仅仅是那些由 \fIRestart=\fP 逻辑 \& 触发的启动。
+.sp
+请注意，为 \fIRestart=\fP 配置并达到启动限制的单元不再尝试重新启动; 然而，在 \fIinterval\fP 通过 \&
+之后，它们仍然可以在稍后的某个时间手动或从定时器或套接字重新启动。从那时起，重新启动逻辑再次激活 \&。 \fBsystemctl reset\-failed\fP 将导致服务的重启率计数器被刷新，如果管理员想手动启动一个元并且启动限制干扰了它，这很有用
+\&。在执行任何元条件检查后执行速率限制，因此条件失败的元激活不计入速率限制 \&。
+.sp
+当元由于垃圾集合逻辑 (见上文) 而被卸载时，它的速率限制计数器也被清除 \&。这意味着为一个没有被连续引用的元配置启动速率限制是没有效果的。
+.sp
+此设置不适用于 slice、target、device 和作用域单元，因为它们是元类型，它们的激活可能永远不会失败，或者可能只成功一次 \&。
+.RE
+.PP
+\fIStartLimitAction=\fP
+.RS 4
+配置在达到 \fIStartLimitIntervalSec=\fP 和 \fIStartLimitBurst=\fP 配置的速率限制时采取的附加操作 \&。采用与
+\fIFailureAction=\fP/\fISuccessAction=\fP 设置相同的值 \&。如果设置了
+\fBnone\fP，达到速率限制将不会触发任何操作，除了不允许启动 \&。默认为 \fBnone\fP\&。
+.RE
+.PP
+\fIRebootArgument=\fP
+.RS 4
+如果 \fIStartLimitAction=\fP 或 \fIFailureAction=\fP 是重启操作，则为 \fBreboot\fP(2) 系统调用配置可选参数
+\&。这就像可选的参数到 \fBsystemctl reboot\fP 命令 \& 一样。
+.RE
+.PP
+\fISourcePath=\fP
+.RS 4
+此元已从 \& 生成配置文件的路径。这主要用于将配置从外部配置文件格式转换为原生元文件 \& 的生成器工具的实现。此功能不应在普通单元中使用 \&。
+.RE
+.SS "Conditions and Asserts"
+.PP
+元文件也可能包括一些 \fICondition\&...=\fP 和 \fIAssert\&...=\fP 设置 \&。在单元启动之前，systemd
+将验证指定的条件和断言是否为真 \&。如果不是，单元的开始将被 (大部分是静默地) 跳过 (在条件的情况下)，或中止并显示错误消息 (在断言的情况下)
+\&。失败的条件或断言不会导致元被移动到 "failed" 状态 \&。在执行排队的启动作业时检查条件和断言
+\&。仍然遵守排序依赖性，因此其他单元仍然被拉入并排序，就好像这个元已成功激活一样，并且条件和断言在单元正常启动的精确时刻执行，因此可以在之前订购的单元之后验证系统状态完成初始化
+\&。使用条件表达式跳过不适用于本地系统的单元，例如因为内核或运行时环境不 \*(Aqt 需要它们的功能 \&。
+.PP
+如果指定了多个条件，则如果所有条件都适用，则将执行元 (i\&.e\&。应用逻辑 AND) \&。条件检查可以在等号
+("Condition\&...=|\&...") 之后使用管道符号 ("|")，这会导致条件变为 \fItriggering\fP 条件
+\&。如果为元定义了至少一个触发条件，则如果元的至少一个触发条件适用且所有常规 (i\&.e\&. 非触发) 条件适用，则元将启动
+\&。如果在参数前加上管道符号和感叹号，则必须先传递管道符号，然后再传递感叹号
+\&。如果这些选项中的任何一个被指定为空字符串，条件列表将被完全重置，所有先前的条件设置 (任何类型) 都将无效 \&。
+.PP
+The \fIAssertArchitecture=\fP, \fIAssertVirtualization=\fP,
+\&... 选项类似于条件，但会导致启动作业失败 (而不是被跳过) \&。失败的检查被记录 \&。未满足条件的单元被认为处于干净状态，如果未被引用
+\&，将被垃圾回收。这意味着在查询时，条件失败可能会或可能不会显示在元 \& 的状态中。
+.PP
+请注意，断言和条件表达式都不会导致元状态更改 \&。另请注意，在执行作业时会检查两者，i\&.e\&。在依赖工作很久之后，它本身就在排队
+\&。因此，条件表达式和断言表达式都不适合条件化元依赖 \&。
+.PP
+\fBsystemd\-analyze\fP(1) 的 \fBcondition\fP 动词可用于测试条件和断言表达式 \&。
+.PP
+除 \fIConditionPathIsSymbolicLink=\fP 外，所有路径检查都遵循符号链接 \&。
+.PP
+\fIConditionArchitecture=\fP
+.RS 4
+检查系统是否运行在特定架构上 \&。采用
+"x86"、"x86\-64"、"ppc"、"ppc\-le"、"ppc64"、"ppc64\-le"、"ia64"、"parisc"、"parisc64"、"s390"、"s390x"、"sparc"、"sparc64"、"mips"、"mips\-le"、"mips64"、"mips64\-le"、"alpha"、"arm"、"arm\-be"、"arm64"、"sh"、X0221X、,
+"m68k", "tilegx", "cris", "arc", "arc\-be", or "native"\&.
+.sp
+该体系结构由 X00X 返回的信息确定，因此受 X01X\& 的约束。请注意，同一元文件中的 X02X 设置对此条件没有影响
+\&。一个特殊的体系结构名称 "native" 被映射到系统管理器本身为 \& 编译的体系结构。可以通过在前面加上感叹号 \& 来否定测试。
+.RE
+.PP
+\fIConditionFirmware=\fP
+.RS 4
+检查系统 \*(Aqs 固件是否为某种类型 \&。以下值是可能的:
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+"uefi" 匹配带有 EFI\& 的系统。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+"device\-tree" 匹配具有设备树 \& 的系统。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+"device\-tree\-compatible(\fIvalue\fP)" 匹配具有与 `值`\& 兼容的设备树的系统。
+.RE
+.sp
+.RS 4
+.ie  n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+"smbios\-field(\fIfield\fP \fIoperator\fP \fIvalue\fP)" 匹配具有包含特定值 \& 的 SMBIOS 字段的系统。
+\fIfield\fP 是暴露为 /sys/id/\& 下的 "sysfs" 属性文件的 SMBIOS 字段的名称。 \fIoperator\fP 是
+"<"、"<="、">="、">"、"=="、"<>" 之一用于版本比较，"=" 和 "!="
+用于字面量字符串比较，或 "$="、"!$=" 用于 shell 风格的 glob 比较 \&。 \fIvalue\fP 是 SMBIOS 字段值的预期值
+(在使用 "$="/"!$=" 的情况下可能包含 shell 样式的 glob) \&。
+.RE
+.RE
+.PP
+\fIConditionVirtualization=\fP
+.RS 4
+检查系统是否在虚拟化环境中执行，并可选择测试是否是特定的实现 \&。采用布尔值来检查是否在任何虚拟化环境中执行，或者采用 "vm" 和
+"container" 之一来测试泛型虚拟化解决方案，或者采用
+"qemu"、"kvm"、"amazon"、"zvm"、"vmware"、"microsoft"、"oracle"、"powervm"、"xen"
+之一，"bochs", "uml", "bhyve", "qnx", "apple", "sre", "openvz", "lxc",
+"lxc\-libvirt", "systemd\-nspawn", "docker", "podman", "rkt", "wsl", "proot",
+"pouch", "acrn" 来测试特定的实现，或者 "private\-users" 来检查我们是否正在运行用户命名空间
+\&。有关已知虚拟化技术及其标识符的完整列表，请参见 \fBsystemd\-detect\-virt\fP(1)。如果嵌套了多种虚拟化技术，则只考虑最里面的
+\&。可以通过在前面加上感叹号 \& 来否定测试。
+.RE
+.PP
+\fIConditionHost=\fP
+.RS 4
+\fIConditionHost=\fP 可用于匹配主机的主机名或机器 ID\&。这要么采用主机名字符串 (可选 shell 样式 globs)，该字符串根据
+\fBgethostname\fP(2) 返回的本地设置主机名进行测试，要么采用格式化为字符串的机器 ID (参见
+\fBmachine\-id\fP(5))\&。可以通过在前面加上感叹号 \ 来否定测试 &.
+.RE
+.PP
+\fIConditionKernelCommandLine=\fP
+.RS 4
+\fIConditionKernelCommandLine=\fP 可用于检查是否设置了特定的内核命令行选项 (或者是否以感叹号 \(em unset)\&
+作为前缀。参数必须是单个单词或赋值 (i\&.e\&. 两个单词，用 "=")\&
+分隔。在前一种情况下，内核命令行会搜索按原样出现的单词，或在赋值的左侧显示的单词 \&。在后一种情况下，通过右侧和左侧匹配 \&
+查找准确的赋值。这在通过 /proc/cmdline
+与用户空间通信的内核命令行上运行，除非服务管理器作为容器管理器的有效，载荷，被调用，在这种情况下，将使用 PID 1 的命令行 (i\&.e\&.
+/proc/1/cmdline)\&.
+.RE
+.PP
+\fIConditionKernelVersion=\fP
+.RS 4
+\fIConditionKernelVersion=\fP 可用于检查内核版本 (由 \fBuname \-r\fP) 报告)
+是否匹配某个表达式，或者如果以感叹号为前缀，则不匹配 \&。参数必须是 (可能被引用的) 表达式 \& 的列表。每个表达式以 "=" 或 "!="
+之一开始进行字符串比较，以 "<"、"<="、"=="、"<>"、">="、">"
+开始进行版本比较，或以 "$="、"!$=" 开始进行 shell 样式的全局匹配 \&。如果未指定运算符，则隐含 "$="\&。
+.sp
+请注意，使用内核版本字符串来确定内核支持哪些特性是一种不可靠的方法，因为将驱动程序、特性和修复程序从较新的上游内核反向移植到发行版提供的旧版本中是一种普遍的做法。因此，此检查本质上是不可移植的，不应用于可能用于不同发行版的单元。
+.RE
+.PP
+\fIConditionCredential=\fP
+.RS 4
+\fIConditionCredential=\fP 可用于检查指定名称的凭据是否已传递到服务管理器 \&。有关凭据 \& 的详细信息，请参见
+\m[blue]\fBSystem and Service Credentials\fP\m[]\&\s-2\u[2]\d\s+2。如果在系统服务管理器的服务中使用，这可能用于根据传入的系统凭据对服务进行条件化
+\&。如果在针对每个用户的服务管理器的服务中使用，这可以用于根据传递到属于用户 \& 的元 @\&.service
+服务实例的凭据来条件化服务。参数必须是有效的凭证名称 \&。
+.RE
+.PP
+\fIConditionEnvironment=\fP
+.RS 4
+\fIConditionEnvironment=\fP 可用于检查是否设置了特定环境变量 (或者是否在服务管理器中以感叹号 \(em unset) 为前缀
+\*(Aqs 环境块 \&. 参数可以是一个单词，用于检查具有此名称的变量是否在环境块中定义，或赋值
+("\fIname\fP=\fIvalue\fP")，用于检查具有此确切值的变量是否已定义 \&。注意检查服务管理器本身的环境块，i\&.e\&。不是用
+\fIEnvironment=\fP 或 \fIEnvironmentFile=\fP 定义的任何变量，如上所述
+\&。当服务管理器在容器化环境中运行或作为每个用户服务管理器运行时，这特别有用，以检查由封闭容器管理器或 PAM\& 传入的变量。
+.RE
+.PP
+\fIConditionSecurity=\fP
+.RS 4
+\fIConditionSecurity=\fP 可用于检查系统是否启用了给定的安全技术 \&。目前，可识别的值为
+"selinux"、"apparmor"、"tomoyo"、"ima"、"smack"、"audit"、"uefi\-secureboot" 和
+`tpm2`\&。可以通过在前面加上感叹号 \& 来否定测试。
+.RE
+.PP
+\fIConditionCapability=\fP
+.RS 4
+检查给定的能力是否存在于服务管理器的能力边界集中 (i\&.e\&。这不检查能力是否在允许或有效的集合中实际可用，有关详细信息，请参见
+\fBcapabilities\fP(7)) \&。传递一个功能名称，如 "CAP_MKNOD"，可能带有感叹号前缀以否定检查 \&。
+.RE
+.PP
+\fIConditionACPower=\fP
+.RS 4
+检查系统是否有交流电源，或者在元 \& 激活时完全由电池供电。这需要一个布尔参数 \&。如果设置为 "true"，则仅当系统的至少一个 AC
+连接器连接到电源时，或者如果没有已知的 AC 连接器 \&，该条件才会成立。相反，如果设置为
+"false"，则只有在至少有一个已知的交流连接器并且所有交流连接器都与电源断开连接时，条件才会成立 \&。
+.RE
+.PP
+\fIConditionNeedsUpdate=\fP
+.RS 4
+将 /var / 或 /etc / 之一作为参数，可能以 "!" 为前缀 (以反转条件)
+\&。此条件可用于根据指定目录是否需要更新对单元进行条件化，因为 /usr/\*(Aqs 修改时间比指定目录中的戳记文件 \&.updated\&
+更新。这对于在 /usr / 中实现供应商操作系统资源的脱机更新很有用，这些资源需要在下一次启动时更新 /etc / 或
+/var/。使用此条件的单元应在 \fBsystemd\-update\-done.service\fP(8) 之前对自己进行排序，以确保它们在标记文件 \*
+(Aqs 修改时间重置，表明已完成更新 \&。
+.sp
+如果在内核命令行上指定了 \fIsystemd\&.condition\-needs\-update=\fP 选项
+(采用布尔值)，它将覆盖此条件检查的结果，优先于任何文件修改时间检查
+\&。如果使用内核命令行选项，systemd\-update\-done\&.service 将不会对任何后续的
+\fIConditionNeedsUpdate=\fP 检查产生 immediate 影响，直到系统重新启动，不再指定内核命令行选项 \&。
+.sp
+请注意，为使此方案生效，/usr/ 的时间戳应在其内容被修改后显式更新 \&。只有当目录的 immediate
+子目录被修改时，内核才会自动更新目录的修改时间戳; 嵌套文件的修改不会自动导致 /usr / 的 mtime 被更新 \&。
+.sp
+另请注意，如果更新方法包含调用以自行执行适当的更新后步骤，则它不应触及 /usr/\&
+的时间戳。在典型的分发打包方案中，包将执行任何所需的更新步骤作为安装或升级的一部分，以使包内容立即可用 \&。
+\fIConditionNeedsUpdate=\fP 应该与其他更新机制一起使用，这样的 immediate 更新不会发生 \&。
+.RE
+.PP
+\fIConditionFirstBoot=\fP
+.RS 4
+采用布尔型参数 \&。此条件可用于根据系统是否是第一次启动 \& 对单元进行条件化。这大致意味着当系统开始引导时 /etc / 未填充
+(有关详细信息，请参见 \fBmachine\-id\fP(5))\& 中的 "First Boot Semantics"。在管理器完成启动阶段 \&
+后，首次引导被视为完成 (此条件将评估为 false)。
+.sp
+此条件可用于在出厂重置后第一次启动时填充 /etc/，或者在新系统实例首次启动时 \&。
+.sp
+为了稳健，带有 \fIConditionFirstBoot=yes\fP 的单元应该在 first\-boot\-complete\&.target
+之前对自己进行排序，并使用 \fIWants=\fP\& 拉入这个被动目标。这确保在第一次启动中止的情况下，这些单元将在下一次系统启动期间重新运行 \&。
+.sp
+如果在内核命令行上指定了 \fIsystemd\&.condition\-first\-boot=\fP 选项 (取一个布尔值)，它将覆盖此条件检查的结果，优先于
+/etc/machine\-id 存在检查 \&。
+.RE
+.PP
+\fIConditionPathExists=\fP
+.RS 4
+检查文件是否存在 \&。如果指定的绝对路径名不存在，条件将失败 \&。如果传递给 \fIConditionPathExists=\fP 的绝对路径名以感叹号
+("!") 为前缀，则测试被否定，只有在路径不存在 \& 时才启动单元。
+.RE
+.PP
+\fIConditionPathExistsGlob=\fP
+.RS 4
+\fIConditionPathExistsGlob=\fP 类似于
+\fIConditionPathExists=\fP，但检查是否存在至少一个文件或目录匹配指定的通配模式 \&。
+.RE
+.PP
+\fIConditionPathIsDirectory=\fP
+.RS 4
+\fIConditionPathIsDirectory=\fP 类似于 \fIConditionPathExists=\fP 但验证某个路径是否存在并且是一个目录
+\&。
+.RE
+.PP
+\fIConditionPathIsSymbolicLink=\fP
+.RS 4
+\fIConditionPathIsSymbolicLink=\fP 和 \fIConditionPathExists=\fP
+类似但是验证某个路径是否存在并且是一个符号链接 \&。
+.RE
+.PP
+\fIConditionPathIsMountPoint=\fP
+.RS 4
+\fIConditionPathIsMountPoint=\fP 类似于 \fIConditionPathExists=\fP 但验证某个路径是否存在并且是挂载点
+\&。
+.RE
+.PP
+\fIConditionPathIsReadWrite=\fP
+.RS 4
+\fIConditionPathIsReadWrite=\fP 与 \fIConditionPathExists=\fP 类似，但验证底层文件系统可读可写
+(i\&.e\&. not mounted read\-only) \&。
+.RE
+.PP
+\fIConditionPathIsEncrypted=\fP
+.RS 4
+\fIConditionPathIsEncrypted=\fP 类似于 \fIConditionPathExists=\fP，但验证底层文件系统 \*(Aqs
+后备块设备已使用 dm\-crypt/LUKS\& 加密。请注意，此检查不涵盖 ext4 每目录加密，并且仅检测块级加密
+\&。此外，如果指定路径驻留在回环块设备之上的文件系统上，则仅检测回环设备之上的加密 \&。未检测回环块设备背后的文件系统是否加密。
+.RE
+.PP
+\fIConditionDirectoryNotEmpty=\fP
+.RS 4
+\fIConditionDirectoryNotEmpty=\fP 与 \fIConditionPathExists=\fP
+类似，但验证某个路径是否存在并且是一个非空目录 \&。
+.RE
+.PP
+\fIConditionFileNotEmpty=\fP
+.RS 4
+\fIConditionFileNotEmpty=\fP 与 \fIConditionPathExists=\fP 类似，但验证某个路径是否存在，并引用带有非零大小
+\& 的常规文件。
+.RE
+.PP
+\fIConditionFileIsExecutable=\fP
+.RS 4
+\fIConditionFileIsExecutable=\fP 与 \fIConditionPathExists=\fP
+类似，但验证某个路径是否存在，是否为常规文件，并标记为可执行 \&。
+.RE
+.PP
+\fIConditionUser=\fP
+.RS 4
+\fIConditionUser=\fP 采用数字 "UID"、UNIX 用户名或特殊值
+`@system`\&。此条件可用于检查服务管理器是否作为给定用户运行。特殊值 "@system" 可用于检查用户 id 是否在系统用户范围内
+\&。该选项对系统服务没有用，因为系统管理器以 root 用户独占运行，因此测试结果为常量 \&。
+.RE
+.PP
+\fIConditionGroup=\fP
+.RS 4
+\fIConditionGroup=\fP 与 \fIConditionUser=\fP 类似，但验证服务管理器 \*(Aqs
+真实或有效组，或其任何辅助组，匹配指定的组或 GID\&。此设置不支持特殊值 `@system`\&。
+.RE
+.PP
+\fIConditionControlGroupController=\fP
+.RS 4
+检查给定的 cgroup 控制器 (e\&.g\&."cpu") 是否可用于系统 \&。
+.sp
+可以传递多个控制器，并用空格分隔它们; 在这种情况下，只有在所有列出的控制器都可供使用 \& 时，条件才会通过。systemd 未知的控制器将被忽略
+\&。有效的控制器是 "cpu"、"cpuset"、"io"、"memory" 和 `pids`\&。即使在内核中可用，如果在内核命令行上使用
+\fIcgroup_disable=controller\fP\& 禁用了特定控制器，它也可能不可用。
+.RE
+.PP
+\fIConditionMemory=\fP
+.RS 4
+验证指定数量的系统内存可用于当前系统 \&。将以字节为单位的内存大小作为参数，可以选择使用比较运算符 "<"、"<="、"=" (或
+"==")、"!=" (或 "<>")、">="、">"\&)
+作为前缀。在裸机系统上比较系统中的物理内存量具有指定的大小，遵循指定的比较运算符 \&。In containers 比较分配给容器的内存量，而不是
+\&。
+.RE
+.PP
+\fIConditionCPUs=\fP
+.RS 4
+验证指定数量的 CPU 可用于当前系统 \&。以 CPU 个数为参数，可选前缀为比较运算符 "<"、"<="、"=" (或
+"==")、"!=" (或 "<>")、">="、">"\&)。比较 service manager 配置的 CPU
+affinity mask 中的 CPU 个数本身具有指定的数字，遵守指定的比较运算符 \&。在物理系统上，服务管理器的关联掩码中的 CPU
+数量通常与物理 CPU 数量匹配，但在特殊和虚拟环境中可能会有所不同 \&。特别是，在容器中，关联掩码通常与分配给容器的 CPU
+数量相匹配，而不是物理上可用的 CPU 数量。
+.RE
+.PP
+\fIConditionCPUFeature=\fP
+.RS 4
+通过 "CPUID" 指令验证给定的 CPU 特性是否可用 \&。此条件仅在 i386 和 x86\-64 处理器上执行 \&。在其他处理器上，假定
+CPU 不支持给定的，特性 \&。它检查叶子 "1"、"7"、"0x80000001" 和 `0x80000007`\&。有效值为:
+"fpu"、"vme"、"de"、"pse"、"tsc"、"msr"、"pae"、"mce"、"cx8"、"apic"、"sep"、"mtrr"、"pge"、"mca"、"cmov"、"pat"、"pse36"、"clflush"、"mmx"、"fxsr"、"sse"、"sse2"
+"pni", "pclmul", "monitor", "ssse3", "fma3", "cx16", "sse4_1", "sse4_2",
+"movbe", "popcnt", "aes", "xsave", "osxsave", "avx", "f16c", "rdrand",
+"bmi1", "avx2", "bmi2", "rdseed", "adx", "sha_ni", "syscall", "rdtscp",
+"lm", "lahf_lm"，"abm"，`constant_tsc`\&。
+.RE
+.PP
+\fIConditionOSRelease=\fP
+.RS 4
+确认在主机 \*(Aqs \fBos\-release\fP(5)\&.
+.sp
+除了精确的字符串匹配 (使用 "=" 和 "!=")，版本参数支持相对比较 (e\&.g\&. "VERSION_ID"; 使用
+"<"、"<="、"=="、"<>"、">="、">") 和 shell 样式的通配符比较 ( "*",
+"?", "[]") 支持 "$=" (match) 和 "!$=" (不匹配)\&。
+.RE
+.PP
+\fIConditionMemoryPressure=\fP, \fIConditionCPUPressure=\fP,
+\fIConditionIOPressure=\fP
+.RS 4
+验证整个系统 (内存、CPU 或 IO) 压力是否低于或等于阈值 \&。此设置将阈值作为参数 \&。它可以指定为一个简单的百分比值，以 "%"
+为后缀，在这种情况下，压力将被测量为尝试启动单元之前最后五分钟的平均值 \&。或者，也可以使用 "/" 作为分隔符来指定平均时间跨度，例如:
+`10%/1min`\&。支持的时间跨度与内核提供的相匹配，并且限于 "10sec"、"1min" 和 `5min`\&。首先检查 "full"
+PSI，如果没有找到 "some" 将检查 \&。有关详细信息，请参见有关 \m[blue]\fBPSI (Pressure Stall Information)\fP\m[]\&\s-2\u[3]\d\s+2\& 的文档。
+.sp
+可选地，阈值可以以将检查压力的切片元为前缀，后跟 `: `\&。如果未指定切片元，将测量整体系统压力，而不是特定的 cgroup\*(Aqs\&.
+.RE
+.PP
+\fIAssertArchitecture=\fP, \fIAssertVirtualization=\fP, \fIAssertHost=\fP,
+\fIAssertKernelCommandLine=\fP, \fIAssertKernelVersion=\fP, \fIAssertCredential=\fP,
+\fIAssertEnvironment=\fP, \fIAssertSecurity=\fP, \fIAssertCapability=\fP,
+\fIAssertACPower=\fP, \fIAssertNeedsUpdate=\fP, \fIAssertFirstBoot=\fP,
+\fIAssertPathExists=\fP, \fIAssertPathExistsGlob=\fP, \fIAssertPathIsDirectory=\fP,
+\fIAssertPathIsSymbolicLink=\fP, \fIAssertPathIsMountPoint=\fP,
+\fIAssertPathIsReadWrite=\fP, \fIAssertPathIsEncrypted=\fP,
+\fIAssertDirectoryNotEmpty=\fP, \fIAssertFileNotEmpty=\fP,
+\fIAssertFileIsExecutable=\fP, \fIAssertUser=\fP, \fIAssertGroup=\fP,
+\fIAssertControlGroupController=\fP, \fIAssertMemory=\fP, \fIAssertCPUs=\fP,
+\fIAssertCPUFeature=\fP, \fIAssertOSRelease=\fP, \fIAssertMemoryPressure=\fP,
+\fIAssertCPUPressure=\fP, \fIAssertIOPressure=\fP
+.RS 4
+类似于上述的
+\fIConditionArchitecture=\fP，\fIConditionVirtualization=\fP，\&...，条件设置，这些设置为元 \&
+的启动添加了断言检查。但是，与条件设置不同，任何不满足的断言设置都会导致启动作业失败 (这意味着它会被大声记录)
+\&。请注意，命中配置的断言不会导致单元进入 "failed" 状态 (或者实际上导致单元的任何状态更改)，它只会影响为其排队的作业
+\&。对在不满足特定要求时无法运行的单元使用断言表达式，并且当这是管理员或用户应该调查的内容时 \&。
+.RE
+.SH "MAPPING OF UNIT PROPERTIES TO THEIR INVERSES"
+.PP
+与第二个元建立关系的元设置通常显示在两个单位的属性中，例如 \fBsystemctl show\fP 输出
+\&。在某些情况下，属性的名称与配置设置的名称相同，但并不总是 \&。此表列出了通过某种依赖关系连接的两个单元上显示的属性，并显示了 "source"
+元上的哪个属性对应于 "target" 元 \& 上的哪个属性。
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&3.\ \& Forward and reverse unit properties\fP
+.TS
+allbox tab(:);
+lB lB lB s.
+T{
+"Forward" property
+T}:T{
+"Reverse" property
+T}:T{
+Where used
+T}
+.T&
+l l l s
+l l ^ ^
+l l l l
+l l l l
+l l l l
+l l l l
+l l l l
+l l l s
+l l l l
+l l l s
+l l ^ ^
+l l l l.
+T{
+\fIBefore=\fP
+T}:T{
+\fIAfter=\fP
+T}:T{
+[Unit] section
+T}
+T{
+\fIAfter=\fP
+T}:T{
+\fIBefore=\fP
+T}::
+T{
+\fIRequires=\fP
+T}:T{
+\fIRequiredBy=\fP
+T}:T{
+[Unit] section
+T}:T{
+[Install] section
+T}
+T{
+\fIWants=\fP
+T}:T{
+\fIWantedBy=\fP
+T}:T{
+[Unit] section
+T}:T{
+[Install] section
+T}
+T{
+\fIPartOf=\fP
+T}:T{
+\fIConsistsOf=\fP
+T}:T{
+[Unit] section
+T}:T{
+an automatic property
+T}
+T{
+\fIBindsTo=\fP
+T}:T{
+\fIBoundBy=\fP
+T}:T{
+[Unit] section
+T}:T{
+an automatic property
+T}
+T{
+\fIRequisite=\fP
+T}:T{
+\fIRequisiteOf=\fP
+T}:T{
+[Unit] section
+T}:T{
+an automatic property
+T}
+T{
+\fITriggers=\fP
+T}:T{
+\fITriggeredBy=\fP
+T}:T{
+Automatic properties, see notes below
+T}
+T{
+\fIConflicts=\fP
+T}:T{
+\fIConflictedBy=\fP
+T}:T{
+[Unit] section
+T}:T{
+an automatic property
+T}
+T{
+\fIPropagatesReloadTo=\fP
+T}:T{
+\fIReloadPropagatedFrom=\fP
+T}:T{
+[Unit] section
+T}
+T{
+\fIReloadPropagatedFrom=\fP
+T}:T{
+\fIPropagatesReloadTo=\fP
+T}::
+T{
+\fIFollowing=\fP
+T}:T{
+n/a
+T}:T{
+An automatic property
+T}:T{
+\ \&
+T}
+.TE
+.sp 1
+.PP
+Note: \fIWantedBy=\fP 和 \fIRequiredBy=\fP 在 [Install] 部分中用于在 \&.wants/ 和
+\&.requires/ 目录中创建符号链接 \&。它们不能直接用作元配置设置 \&。
+.PP
+Note: \fIConsistsOf=\fP、\fIBoundBy=\fP、\fIRequisiteOf=\fP、\fIConflictedBy=\fP
+连同它们的反转一起隐式创建，不能直接指定 \&。
+.PP
+Note: \fITriggers=\fP 是在套接字、路径元或自动挂载元和它们激活的元之间隐式创建的 \&。默认情况下会触发同名的元，但这可以使用
+\fISockets=\fP、\fIService=\fP 和 \fIUnit=\fP 设置 \& 覆盖。有关详细信息，请参见
+\fBsystemd.service\fP(5)、\fBsystemd.socket\fP(5)、\fBsystemd.path\fP(5) 和
+\fBsystemd.automount\fP(5)\&。 \fITriggeredBy=\fP 是在触发的元 \& 上隐式创建的。
+.PP
+Note: \fIFollowing=\fP 用于对设备别名进行分组，指向 systemd 用来跟踪设备状态的 "primary" 设备元，通常对应一个
+sysfs 路径 \&。它不会出现在 "target" 元 \& 中。
+.SH "[INSTALL] SECTION OPTIONS"
+.PP
+元文件可能包含一个 [Install] 部分，其中包含元 \& 的安装信息。该部分在运行时不由 \fBsystemd\fP(1) 解释; 在安装元 \&
+的过程中被 \fBsystemctl\fP(1) 工具的 \fBenable\fP 和 \fBdisable\fP 命令使用。
+.PP
+\fIAlias=\fP
+.RS 4
+此元应安装在 \& 下的以空格分隔的附加名称列表。此处列出的名称必须具有与元文件名 \& 相同的后缀
+(i\&.e\&. 类型)。可以多次指定此选项，在这种情况下，将使用所有列出的名称 \&。在安装时，\fBsystemctl enable\fP
+将创建从这些名称到元文件名 \& 的符号链接。请注意，并非所有元类型都支持此类别名，它们不支持此设置 \&。具体来说，mount、slice、swap
+和 automount 单元不支持别名 \&。
+.RE
+.PP
+\fIWantedBy=\fP, \fIRequiredBy=\fP
+.RS 4
+此选项可以多次使用，或者可以给出以空格分隔的元名称列表 \&。当 \fBsystemctl enable\fP\& 安装此单元时，将在每个列出的单元的
+\&.wants/ 或 \&.requires/ 目录中创建一个符号链接。这具有将类型 \fIWants=\fP 或 \fIRequires=\fP
+的依赖项从列出的元添加到当前元 \& 的效果。初步结果是当前元会在列出的元启动时启动，有关详细信息，请参见 [Unit] 部分对 \fIWants=\fP 和
+\fIRequires=\fP 的描述 \&。
+.sp
+如果模板单元列出非模板单元，则列表元必须设置 \fIDefaultInstance=\fP，或者必须使用实例名称 \& 调用 \fBsystemctl enable\fP。实例 (默认或指定) 将被添加到列出的元 \& 的 \&.wants/ 或 \&.requires/ 列表中。例如，服务
+getty@\&.service 中的 \fBWantedBy=getty\&.target\fP 将导致 \fBsystemctl enable getty@tty2\&.service\fP 创建指向 getty@\&.service\& 的
+getty\&.target\&.wants/getty@tty2\&.service 链接。这也适用于列出模板化单元的特定实例:
+该特定实例将获得依赖性 \&。一个模板元也可以列出一个模板元，在这种情况下，将添加一个泛型依赖，其中列表元的每个实例都将依赖于具有相同实例值 \&
+的所列模板的实例。例如，服务 monitor@\&.service 中的 \fBWantedBy=container@\&.target\fP 会导致
+\fBsystemctl enable monitor@\&.service\fP 创建
+container@\&.target\&.wants/monitor@\&.service 链接到
+monitor@\&.service，适用于所有实例容器 @\&.target\&。
+.RE
+.PP
+\fIAlso=\fP
+.RS 4
+安装 / 卸载此元时 install/deinstall 的附加单元 \&。如果用户请求 installation/deinstallation
+的单元配置了此选项，\fBsystemctl enable\fP 和 \fBsystemctl disable\fP 将自动列出此选项中的
+install/uninstall 单元 \&。
+.sp
+此选项可以多次使用，或者可以给出以空格分隔的元名称列表 \&。
+.RE
+.PP
+\fIDefaultInstance=\fP
+.RS 4
+在模板元文件中，这指定如果启用模板而没有任何显式设置实例 \&，则应为哪个实例启用元元。该选项对非模板元文件 \&
+无效。指定的字符串必须可用作实例标识符 \&。
+.RE
+.PP
+以下说明符在安装部分进行解释:
+%a、%b、%B、%g、%G、%H、%i、%j、%l、%m、%n、%N、%o、%p、%u、%U、%v、%w、%W、%%\&。对于它们的含义，请参见下一节
+\&。
+.SH SPECIFIERS
+.PP
+许多设置解析说明符，这些说明符可用于编写引用运行时的泛型元文件或在加载元文件时替换的元参数 \&。说明符必须已知且可解析才能使设置有效
+\&。可以理解以下说明符:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&4.\ \&Specifiers available in unit files\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"%a"
+T}:T{
+Architecture
+T}:T{
+A short string identifying the architecture of the local system\&. A string such as \fBx86\fP, \fBx86\-64\fP or \fBarm64\fP\&. See the architectures defined for \fIConditionArchitecture=\fP above for a full list\&.
+T}
+T{
+"%A"
+T}:T{
+Operating system image version
+T}:T{
+The operating system image version identifier of the running system, as read from the \fIIMAGE_VERSION=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%b"
+T}:T{
+Boot ID
+T}:T{
+The boot ID of the running system, formatted as string\&. See \fBrandom\fP(4) for more information\&.
+T}
+T{
+"%B"
+T}:T{
+Operating system build ID
+T}:T{
+The operating system build identifier of the running system, as read from the \fIBUILD_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%C"
+T}:T{
+Cache directory root
+T}:T{
+This is either /var/cache (for the system manager) or the path "$XDG_CACHE_HOME" resolves to (for user managers)\&.
+T}
+T{
+"%d"
+T}:T{
+Credentials directory
+T}:T{
+This is the value of the "$CREDENTIALS_DIRECTORY" environment variable if available\&. See section "Credentials" in \fBsystemd.exec\fP(5) for more information\&.
+T}
+T{
+"%E"
+T}:T{
+Configuration directory root
+T}:T{
+This is either /etc/ (for the system manager) or the path "$XDG_CONFIG_HOME" resolves to (for user managers)\&.
+T}
+T{
+"%f"
+T}:T{
+Unescaped filename
+T}:T{
+This is either the unescaped instance name (if applicable) with / prepended (if applicable), or the unescaped prefix name prepended with /\&. This implements unescaping according to the rules for escaping absolute file system paths discussed above\&.
+T}
+T{
+"%g"
+T}:T{
+User group
+T}:T{
+This is the name of the group running the service manager instance\&. In case of the system manager this resolves to "root"\&.
+T}
+T{
+"%G"
+T}:T{
+User GID
+T}:T{
+This is the numeric GID of the user running the service manager instance\&. In case of the system manager this resolves to "0"\&.
+T}
+T{
+"%h"
+T}:T{
+User home directory
+T}:T{
+This is the home directory of the \fIuser running the service manager instance\fP\&. In case of the system manager this resolves to "/root"\&.
+
+Note that this setting is \fInot\fP influenced by the \fIUser=\fP setting configurable in the [Service] section of the service unit\&.
+T}
+T{
+"%H"
+T}:T{
+Host name
+T}:T{
+The hostname of the running system at the point in time the unit configuration is loaded\&.
+T}
+T{
+"%i"
+T}:T{
+Instance name
+T}:T{
+For instantiated units this is the string between the first "@" character and the type suffix\&. Empty for non\-instantiated units\&.
+T}
+T{
+"%I"
+T}:T{
+Unescaped instance name
+T}:T{
+Same as "%i", but with escaping undone\&.
+T}
+T{
+"%j"
+T}:T{
+Final component of the prefix
+T}:T{
+This is the string between the last "\-" and the end of the prefix name\&. If there is no "\-", this is the same as "%p"\&.
+T}
+T{
+"%J"
+T}:T{
+Unescaped final component of the prefix
+T}:T{
+Same as "%j", but with escaping undone\&.
+T}
+T{
+"%l"
+T}:T{
+Short host name
+T}:T{
+The hostname of the running system at the point in time the unit configuration is loaded, truncated at the first dot to remove any domain component\&.
+T}
+T{
+"%L"
+T}:T{
+Log directory root
+T}:T{
+This is either /var/log (for the system manager) or the path "$XDG_CONFIG_HOME" resolves to with /log appended (for user managers)\&.
+T}
+T{
+"%m"
+T}:T{
+Machine ID
+T}:T{
+The machine ID of the running system, formatted as string\&. See \fBmachine\-id\fP(5) for more information\&.
+T}
+T{
+"%M"
+T}:T{
+Operating system image identifier
+T}:T{
+The operating system image identifier of the running system, as read from the \fIIMAGE_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%n"
+T}:T{
+Full unit name
+T}:T{
+\ \&
+T}
+T{
+"%N"
+T}:T{
+Full unit name
+T}:T{
+Same as "%n", but with the type suffix removed\&.
+T}
+T{
+"%o"
+T}:T{
+Operating system ID
+T}:T{
+The operating system identifier of the running system, as read from the \fIID=\fP field of /etc/os\-release\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%p"
+T}:T{
+Prefix name
+T}:T{
+For instantiated units, this refers to the string before the first "@" character of the unit name\&. For non\-instantiated units, same as "%N"\&.
+T}
+T{
+"%P"
+T}:T{
+Unescaped prefix name
+T}:T{
+Same as "%p", but with escaping undone\&.
+T}
+T{
+"%q"
+T}:T{
+Pretty host name
+T}:T{
+The pretty hostname of the running system at the point in time the unit configuration is loaded, as read from the \fIPRETTY_HOSTNAME=\fP field of /etc/machine\-info\&. If not set, resolves to the short hostname\&. See \fBmachine\-info\fP(5) for more information\&.
+T}
+T{
+"%s"
+T}:T{
+User shell
+T}:T{
+This is the shell of the user running the service manager instance\&.
+T}
+T{
+"%S"
+T}:T{
+State directory root
+T}:T{
+This is either /var/lib (for the system manager) or the path "$XDG_CONFIG_HOME" resolves to (for user managers)\&.
+T}
+T{
+"%t"
+T}:T{
+Runtime directory root
+T}:T{
+This is either /run/ (for the system manager) or the path "$XDG_RUNTIME_DIR" resolves to (for user managers)\&.
+T}
+T{
+"%T"
+T}:T{
+Directory for temporary files
+T}:T{
+This is either /tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%u"
+T}:T{
+User name
+T}:T{
+This is the name of the \fIuser running the service manager instance\fP\&. In case of the system manager this resolves to "root"\&.
+
+Note that this setting is \fInot\fP influenced by the \fIUser=\fP setting configurable in the [Service] section of the service unit\&.
+T}
+T{
+"%U"
+T}:T{
+User UID
+T}:T{
+This is the numeric UID of the \fIuser running the service manager instance\fP\&. In case of the system manager this resolves to "0"\&.
+
+Note that this setting is \fInot\fP influenced by the \fIUser=\fP setting configurable in the [Service] section of the service unit\&.
+T}
+T{
+"%v"
+T}:T{
+Kernel release
+T}:T{
+Identical to \fBuname \-r\fP output\&.
+T}
+T{
+"%V"
+T}:T{
+Directory for larger and persistent temporary files
+T}:T{
+This is either /var/tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%w"
+T}:T{
+Operating system version ID
+T}:T{
+The operating system version identifier of the running system, as read from the \fIVERSION_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%W"
+T}:T{
+Operating system variant ID
+T}:T{
+The operating system variant identifier of the running system, as read from the \fIVARIANT_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%y"
+T}:T{
+The path to the fragment
+T}:T{
+This is the path where the main part of the unit file is located\&. For linked unit files, the real path outside of the unit search directories is used\&. For units that don\*(Aqt have a fragment file, this specifier will raise an error\&.
+T}
+T{
+"%Y"
+T}:T{
+The directory of the fragment
+T}:T{
+This is the directory part of "%y"\&.
+T}
+T{
+"%%"
+T}:T{
+Single percent sign
+T}:T{
+Use "%%" in place of "%" to specify a single percent sign\&.
+T}
+.TE
+.sp 1
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Allowing units to be enabled\fP
+.PP
+以下代码段 (highlighted) 允许通过 \fBsystemctl enable\fP: 启用元 (e\&.g\&. foo\&.service)
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=Foo
+
+[Service]
+ExecStart=/usr/sbin/foo\-daemon
+
+\fI[Install]\fP
+\fIWantedBy=multi\-user\&.target\fP
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+运行 \fBsystemctl enable\fP 后，将创建一个链接到实际元的符号链接
+/etc/systemd/system/multi\-user\&.target\&.wants/foo\&.service\&。它告诉 systemd
+在启动 multi\-user\&.target\& 时引入元。反向 \fBsystemctl disable\fP 将再次删除该符号链接 \&。
+.PP
+\fBExample\ \&2.\ \&Overriding vendor settings\fP
+.PP
+有两种方法可以覆盖元文件中的供应商设置: 将元文件从 /usr/lib/systemd/system 复制到 /etc/systemd/system
+并修改所选设置 \&。或者，可以在 /etc/systemd/system 中创建一个名为 \fIunit\fP\&.d/ 的目录，并在其中放置一个丢弃 \-
+in 文件 \fIname\fP\&.conf，该目录仅更改感兴趣的特定设置 \&。请注意，如果存在多个这样的丢弃 \- in
+文件，则将读取这些文件，并按其文件名 \& 的字典顺序进行处理。
+.PP
+第一种方法的好处是很容易覆盖完整的元，vendor 元不再解析 \&。它的缺点是供应商对元文件的改进不会自动包含在更新中。
+.PP
+第二种方法的优点是只覆盖自己特别想要的设置，其中自动应用供应商对元的更新 \&。这样做的缺点是供应商的某些 future 更新可能与本地更改不兼容
+\&。
+.PP
+这也适用于 systemd 的用户实例，但元文件的位置不同 \&。有关更多详细信息，请参见元加载路径部分 \&。
+.PP
+假设有一个供应商提供的元 /usr/lib/systemd/system/httpd\&.service，其内容如下:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=Some HTTP server
+After=remote\-fs\&.target sqldb\&.service
+Requires=sqldb\&.service
+AssertPathExists=/srv/webserver
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/some\-fancy\-httpd\-server
+Nice=5
+
+[Install]
+WantedBy=multi\-user\&.target
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+现在想以管理员身份更改一些设置: 首先，在本地设置中，/srv/webserver 可能不存在，因为 HTTP 服务器配置为使用
+/srv/www\&。其次，本地配置使 HTTP 服务器还依赖于内存缓存服务 memcached\&.service，应将其拉入
+(\fIRequires=\fP) 并适当地排序 (\fIAfter=\fP)\&。第三，为了进一步加强服务，管理员想设置 \fIPrivateTmp=\fP 设置
+(详见 \fBsystemd.exec\fP(5)) \&。最后，管理员想将服务的 niceness 重置为其默认值 0\&。
+.PP
+第一种可能是将元文件复制到 /etc/systemd/system/httpd\&.service 并更改所选设置:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=Some HTTP server
+After=remote\-fs\&.target sqldb\&.service \fImemcached\&.service\fP
+Requires=sqldb\&.service \fImemcached\&.service\fP
+AssertPathExists=\fI/srv/www\fP
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/some\-fancy\-httpd\-server
+\fINice=0\fP
+\fIPrivateTmp=yes\fP
+
+[Install]
+WantedBy=multi\-user\&.target
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+或者，管理员可以创建一个丢弃 \- in 文件
+/etc/systemd/system/httpd\&.service\&.d/local\&.conf，其内容如下:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+After=memcached\&.service
+Requires=memcached\&.service
+# 重置所有断言，然后重新添加我们想要的条件
+AssertPathExists=
+AssertPathExists=/srv/www
+
+[Service]
+Nice=0
+PrivateTmp=yes
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，对于丢弃 \- in 文件，如果想要从被解析为列表 (并且不是依赖项) 的设置中删除条目，例如 \fIAssertPathExists=\fP
+(或服务单元中的 e\&.g\&. \fIExecStart=\fP)，在重新添加除要删除的条目之外的所有条目之前，需要先清除列表
+\&。Dependencies (\fIAfter=\fP, etc\&.) 不能重置为空列表，所以只能在丢弃 \- ins\&
+中添加依赖。如果要删除依赖项，则必须覆盖整个元 \&。
+.PP
+\fBExample\ \&3.\ \&Top level drop\-ins with template units\fP
+.PP
+顶级每类型丢弃 \- ins 可用于更改特定类型的所有单位的某些方面 \&。例如，通过创建丢弃 \- in 文件的
+/etc/systemd/system/service\&.d/ 目录，丢弃 \- in 文件的内容可以应用于所有服务单元 \&。我们可以通过让顶级丢弃
+\- in 实例化一个辅助助手元 \& 来更进一步。例如，考虑以下一组单元和丢弃 \- in 文件，我们在其中为所有服务单元安装 \fIOnFailure=\fP
+依赖项 \&。
+.PP
+/etc/systemd/system/failure\-handler@\&.service:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+Description=My failure handler for %i
+
+[Service]
+Type=oneshot
+# 当 %i 意外退出时执行一些特殊操作 \&。
+ExecStart=/usr/sbin/myfailurehandler %i
+     
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+然后我们可以添加一个 failure\-handler@\&.service 实例作为所有服务单元的 \fIOnFailure=\fP 依赖项 \&。
+.PP
+/etc/systemd/system/service\&.d/10\-all\&.conf:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+[Unit]
+OnFailure=failure\-handler@%N\&.service
+    
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+现在，在运行 \fBsystemctl daemon\-reload\fP 之后，所有服务都将获得对
+failure\-handler@%N\&.service\& 的 \fIOnFailure=\fP 依赖。模板实例单元也将获得依赖性，从而导致创建递归依赖链
+\&。systemd 将尝试检测这些递归依赖链，其中模板元直接递归依赖于自身，如果找到它们，将自动删除此类依赖 \&。如果 systemd 没有
+\*(Aqt 检测到递归依赖链，我们可以通过到 /dev/null 的符号链接禁用模板实例单元的丢弃 \- in 来自己打破链:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\fBmkdir /etc/systemd/system/failure\-handler@\&.service\&.d/\fP
+\fBln \-s /dev/null /etc/systemd/system/failure\-handler@\&.service\&.d/10\-all\&.conf\fP
+\fBsystemctl daemon\-reload\fP
+    
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+这确保如果 failure\-handler@\&.service 实例失败，它不会触发名为
+failure\-handler@failure\-handler\&.service\& 的实例。
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemctl\fP(1), \fBsystemd\-system.conf\fP(5),
+\fBsystemd.special\fP(7), \fBsystemd.service\fP(5), \fBsystemd.socket\fP(5),
+\fBsystemd.device\fP(5), \fBsystemd.mount\fP(5), \fBsystemd.automount\fP(5),
+\fBsystemd.swap\fP(5), \fBsystemd.target\fP(5), \fBsystemd.path\fP(5),
+\fBsystemd.timer\fP(5), \fBsystemd.scope\fP(5), \fBsystemd.slice\fP(5),
+\fBsystemd.time\fP(7), \fBsystemd\-analyze\fP(1), \fBcapabilities\fP(7),
+\fBsystemd.directives\fP(7), \fBuname\fP(1)
+.SH NOTES
+.IP " 1." 4
+界面便携性和稳定性 Promise
+.RS 4
+\%https://systemd.io/PORTABILITY_AND_STABILITY/
+.RE
+.IP " 2." 4
+系统和服务凭证
+.RS 4
+\%https://systemd.io/CREDENTIALS
+.RE
+.IP " 3." 4
+PSI (压力失速信息)
+.RS 4
+\%https://docs.kernel.org/accounting/psi.html
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。

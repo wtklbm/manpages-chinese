@@ -1,0 +1,827 @@
+.\" -*- coding: UTF-8 -*-
+'\" t
+.\"*******************************************************************
+.\"
+.\" This file was generated with po4a. Translate the source file.
+.\"
+.\"*******************************************************************
+.TH TMPFILES\&.D 5 "" "systemd 253" tmpfiles.d
+.ie  \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH NAME
+tmpfiles.d \- 用于创建、删除和清理易失性和临时文件的配置
+.SH SYNOPSIS
+.PP
+.nf
+/etc/tmpfiles\&.d/*\&.conf
+/run/tmpfiles\&.d/*\&.conf
+/usr/lib/tmpfiles\&.d/*\&.conf
+    
+.fi
+.PP
+.nf
+~/\&.config/user\-tmpfiles\&.d/*\&.conf
+$XDG_RUNTIME_DIR/user\-tmpfiles\&.d/*\&.conf
+~/\&.local/share/user\-tmpfiles\&.d/*\&.conf
+\&...
+/usr/share/user\-tmpfiles\&.d/*\&.conf
+    
+.fi
+
+.sp
+.nf
+#Type 路径模式用户组年龄参数
+f /file/to/create 模式用户组 \- 内容
+f+ /file/to/create\-or\-truncate 模式用户组 \- 内容
+w /file/to/write\-to\-\-\-\- 内容
+w+ /file/to/append\-to\-\-\-\- 内容
+d /directory/to/create\-and\-cleanup 模式用户组 cleanup\-age\-
+D /directory/to/create\-and\-remove 模式用户组 cleanup\-age\-
+e /directory/to/cleanup 模式用户组 cleanup\-age\-
+v /subvolume\-or\-directory/to/create 方式用户组 cleanup\-age\-
+q /subvolume\-or\-directory/to/create 模式用户组 cleanup\-age\-
+Q /subvolume\-or\-directory/to/create 模式用户组 cleanup\-age\-
+p /fifo/to/create 模式用户组 \-\-
+p+/fifo/to/[re] create 模式用户组 \-\-
+L     /symlink/to/create                       \-    \-    \-     \-           symlink/target/path
+L+    /symlink/to/[re]create                   \-    \-    \-     \-           symlink/target/path
+c /dev/char\-device\-to\-create 模式用户组 \- major:minor
+c+/dev/char\-device\-to\-[re] create 模式用户组 \- major:minor
+b /dev/block\-device\-to\-create 模式用户组 \- major:minor
+b+/dev/block\-device\-to\-[re] create 模式用户组 \- major:minor
+C /target/to/create\-\-\- 清除年龄 /source/to/copy
+x /path\-or\-glob/to/ignore/recursively\-\-\- 清理年龄 \-
+X /path\-or\-glob/to/ignore\-\-\- 清理年龄 \-
+r     /empty/dir/to/remove                     \-    \-    \-     \-           \-
+R     /dir/to/remove/recursively               \-    \-    \-     \-           \-
+z /path\-or\-glob/to/adjust/mode 模式用户组 \-\-
+Z /path\-or\-glob/to/adjust/mode/recursively 模式用户组 \-\-
+t     /path\-or\-glob/to/set/xattrs              \-    \-    \-     \-           xattrs
+T     /path\-or\-glob/to/set/xattrs/recursively  \-    \-    \-     \-           xattrs
+h /path\-or\-glob/to/set/attrs\-\-\-\- 文件属性
+H /path\-or\-glob/to/set/attrs/recursively\-\-\-\- 文件属性
+一个 /path\-or\-glob/to/set/acls\-\-\-\-POSIX ACL
+a+    /path\-or\-glob/to/append/acls             \-    \-    \-     \-           POSIX ACLs
+A     /path\-or\-glob/to/set/acls/recursively    \-    \-    \-     \-           POSIX ACLs
+A+    /path\-or\-glob/to/append/acls/recursively \-    \-    \-     \-           POSIX ACLs
+
+.fi
+.SH DESCRIPTION
+.PP
+tmpfiles\&.d 配置文件提供泛型机制来定义常规文件、目录、管道和设备节点的 \fIcreation\fP，调整它们的 \fIaccess mode, ownership, attributes, quota assignments, and contents\fP，最后是它们基于时间的
+\fIremoval\fP\&。它最常用于易失性和临时文件和目录 (例如位于 /run/、/tmp/、/var/tmp/ 下的文件和目录，API
+文件系统，例如 /sys / 或 /proc/，以及 / 变量 /)\&。
+.PP
+\fBsystemd\-tmpfiles\fP(8) 使用此配置在启动期间创建易失性文件和目录，并在之后进行定期清理 \&。有关
+systemd\-tmpfiles\-setup\&.service、systemd\-tmpfiles\-clean\&.service 和相关单位 \&
+的说明，请参见 \fBsystemd\-tmpfiles\fP(8)。
+.PP
+系统守护进程经常需要 /run / 下的私有运行时目录来存储通信套接字和类似的 \&。对于这些，如果不需要 tmpfiles\&.d
+提供的灵活性，最好在它们的元文件中使用 \fIRuntimeDirectory=\fP (有关详细信息，请参见 \fBsystemd.exec\fP(5))
+\&。优点是元需要的配置集中在一个地方，目录的生命周期与服务本身的生命周期绑定。同样，\fIStateDirectory=\fP、\fICacheDirectory=\fP、\fILogsDirectory=\fP
+和 \fIConfigurationDirectory=\fP 应该用于在 /var/lib/、/var/cache/、/var/log/ 和 /etc/\&
+下创建目录。 tmpfiles\&.d 应该用于生命周期独立于任何服务或需要更复杂配置的文件。
+.SH "CONFIGURATION DIRECTORIES AND PRECEDENCE"
+.PP
+每个配置文件的命名格式为 \fIpackage\fP\&.conf 或
+\fIpackage\fP\-\fIpart\fP\&.conf\&。当需要轻松覆盖配置的这一部分时，应使用第二个变体。
+.PP
+/etc/tmpfiles\&.d 中的文件覆盖 /usr/lib/tmpfiles\&.d 和 /run/tmpfiles\&.d\&
+中同名的文件。/run/tmpfiles\&.d 中的文件覆盖 /usr/tmpfiles\&.d\& 中同名的文件。软件包应将其配置文件安装在
+/usr/tmpfiles\&.d\& 中。/etc/tmpfiles\&.d
+中的文件是为本地管理员保留的，他们可以使用此逻辑来覆盖供应商包安装的配置文件 \&。所有配置文件都按字典顺序按文件名排序，而不管它们位于哪个目录中
+\&。如果多个文件指定相同的路径，则将应用按字典顺序最早名称的文件中的条目 (请注意，由于 "!"
+而被抑制的行在应用之前被过滤，这意味着如果前面的行带有感叹号并且由于那，将应用路径中稍后的行匹配) \&。所有其他冲突的条目将被记录为错误
+\&。当两行互为前缀路径和后缀路径时，总是先创建前缀行，后创建后缀 (如果删除适用于该行，则顺序相反: 先删除后缀，后删除前缀) \&. 采用 glob
+的行在不接受 glob 的行之后应用 \&。如果要对同一个文件应用多个操作 (例如 ACL、xattr、文件属性调整)，这些操作总是以相同的固定顺序执行
+\&。除这些情况外，files/directories 将按照它们列出的顺序进行处理 \&。
+.PP
+如果管理员想要禁用供应商提供的配置文件，推荐的方法是在 /etc/tmpfiles\&.d/ 中放置一个指向 /dev/null
+的符号链接，具有相同的文件名 \&。
+.SH "CONFIGURATION FILE FORMAT"
+.PP
+配置格式为每条路径一行，包含类型、路径、模式、所有权、年龄和参数字段 \&。行由换行符分隔，字段由空格分隔:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+#Type 路径模式用户组年龄参数 \&...
+d /run/user 0755 根根 10d\-
+L     /tmp/foobar \-    \-    \-     \-   /dev/null
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+字段可能包含 C 风格的转义符 \&。除第七个字段 ("argument") 外，所有字段都可以用引号 \&
+括起来。请注意，在参数字段开头之后的行中发现的任何空格都将被视为参数字段 \& 的一部分。要以空白字符开始参数字段，请使用 C 样式转义符
+(e\&.g\&. "\ex20")\&。
+.SS Type
+.PP
+该类型由单个字母和可选的一个或多个修饰符字符组成: 加号 ("+")、感叹号 ("!")、减号 ("\-")、等号 ("=")、波浪号 ("~")
+或者插入符 ("^")\&。
+.PP
+可以理解以下线型:
+.PP
+\fIf\fP, \fIf+\fP
+.RS 4
+如果文件不存在，\fIf\fP 将创建一个文件 \&。如果给出参数参数并且文件还不存在，它将被写入文件 \&。 \fIf+\fP 将创建或截断文件
+\&。如果给出参数参数，它将被写入文件 \&。不遵循符号链接 \&。
+.RE
+.PP
+\fIw\fP, \fIw+\fP
+.RS 4
+将参数参数写入文件，如果文件存在 \&。如果以 \fI+\fP 为后缀，该行将追加到文件 \&。如果您的配置将多行写入同一个文件，请使用
+\fIw+\fP\&。这种类型的行接受 shell 风格的 globs 来代替正常的路径名 \&。参数参数将在没有尾随换行符 \& 的情况下写入。C
+风格的反斜杠转义被解释为 \&。遵循符号链接 \&。
+.RE
+.PP
+\fId\fP
+.RS 4
+创建一个目录 \&。如果指定 \&，模式和所有权将被调整。如果指定了年龄参数 \&，则此目录的内容会受到基于时间的清理。
+.RE
+.PP
+\fID\fP
+.RS 4
+与 \fId\fP 类似，但另外使用 \fB\-\-remove\fP 时会删除目录中的内容 \&。
+.RE
+.PP
+\fIe\fP
+.RS 4
+调整现有目录的模式和所有权，并根据 age\& 删除其内容。这种类型的行接受 shell 风格的 globs 来代替正常的路径名 \&。如果指定了
+age 参数 \&，目录的内容将受到基于时间的清理。如果年龄参数为 "0"，则每次运行 \fBsystemd\-tmpfiles \-\-clean\fP
+都会无条件删除内容 \&。
+.sp
+要使此条目有用，必须至少指定模式、用户、组或年龄参数之一，否则此条目无效 \&。作为例外，与 \fI!\fP 组合时无效的条目可能会有用，请参见示例 \&。
+.RE
+.PP
+\fIv\fP
+.RS 4
+如果路径不存在，则创建一个子卷，文件系统支持子卷 (btrfs)，系统本身安装到一个子卷中 (具体: 根目录 / 本身就是一个子卷)
+\&。否则，创建一个普通目录，方法同 \fId\fP\&。
+.sp
+使用此行类型创建的子卷未分配给任何更高级别的配额组 \&。为此，请使用 \fIq\fP 或 \fIQ\fP，它们允许创建简单的配额组层次结构，请参见下文 \&。
+.RE
+.PP
+\fIq\fP
+.RS 4
+创建与 \fIv\fP 相同的子卷或目录，但将子卷分配给与 parent\&
+相同的更高级别的配额组。这确保应用于父子卷的更高级别的限制和记帐也包括指定的子卷。在非 btrfs 文件系统上，此行类型与 \fId\fP\& 相同。
+.sp
+如果子卷已经存在，则不会更改配额层次结构，无论子卷是否已附加到配额组 \&。另请详见下面的 \fIQ\fP\&。有关 btrfs 配额组概念的详细信息，请参见
+\fBbtrfs\-qgroup\fP(8)。
+.RE
+.PP
+\fIQ\fP
+.RS 4
+创建与 \fIv\fP 相同的子卷或目录，但将新的子卷分配给新的叶配额组 \&。不是像 \fIq\fP
+那样从父级复制更高级别的配额组分配，而是确定父子卷的最低配额组不是叶配额组 \&。然后，插入一个 "intermediary"
+配额组，该配额组比该级别低一级，并且与指定的子卷共享相同的 ID 部分。如果父子卷不存在更高级别的配额组，则会插入与指定子卷共享相同 ID 的级别
+255 的新配额组 \&。然后将这个新的中间配额组分配给父子卷 \*(Aqs 更高级别的配额组，并将指定的子卷 \*(Aqs 叶配额组分配给它 \&。
+.sp
+实际上，这具有与 \fIq\fP 类似的效果，但是为指定的子卷引入了一个新的更高级别的配额组，可用于对指定的子卷和在其中创建的子卷实现限制和计算
+\&。因此，通过仅通过 \fIq\fP 和 \fIQ\fP 创建子卷，实现了 "subtree quotas" 的概念 \&。每个设置了 \fIQ\fP
+的子卷都将创建一个 "subtree" 配额组，并且在其中创建的所有子子卷都将分配给它 \&。每个设置了 \fIq\fP 的子卷都不会获得这样的
+"subtree" 配额组，但确保它们被添加到与其 immediate parents 相同的 "subtree" 配额组 \&。
+.sp
+建议将 \fIQ\fP 用于通常包含更多子卷的子卷，并且需要对所有子子卷一起进行记帐和配额限制 \&。\fIQ\fP 的示例通常是 /home / 或
+/var/machines/\&。相比之下，\fIq\fP 应该用于通常不包含更多子卷或者不需要会计和配额限制的子卷一起应用于所有子子卷 \&。\fIq\fP
+的示例通常是 /var / 或 /var/tmp/\&。
+.sp
+与 \fIq\fP 一样，如果子卷已经存在，则 \fIQ\fP 对配额组层次结构没有影响，无论子卷是否已经属于配额组 \&。
+.RE
+.PP
+\fIp\fP, \fIp+\fP
+.RS 4
+如果命名管道 (FIFO) 尚不存在，则创建它 \&。如果后缀为 \fI+\fP 并且要创建管道的位置已经存在一个文件，则它将被删除并替换为管道 \&。
+.RE
+.PP
+\fIL\fP, \fIL+\fP
+.RS 4
+如果符号链接尚不存在，则创建一个符号链接 \&。如果后缀为 \fI+\fP 并且要创建符号链接的文件或目录已经存在，它将被删除并替换为符号链接
+\&。如果省略参数，则创建指向目录 /usr/share/factory/ 中具有相同名称的文件的符号链接 \&。请注意，符号链接的权限和所有权将被忽略
+\&。
+.RE
+.PP
+\fIc\fP, \fIc+\fP
+.RS 4
+如果字符设备节点不存在则创建一个字符设备节点 \&。如果后缀为 \fI+\fP，并且要创建设备节点的地方已经存在一个文件，则将其删除并替换为设备节点
+\&。建议在该条目后加上感叹号以仅在引导时创建静态设备节点，因为 udev 不会管理在运行时创建的静态设备节点 \&。
+.RE
+.PP
+\fIb\fP, \fIb+\fP
+.RS 4
+如果块设备节点不存在则创建一个块设备节点 \&。如果后缀为 \fI+\fP，并且要创建设备节点的地方已经存在一个文件，则将其删除并替换为设备节点
+\&。建议在该条目后加上感叹号以仅在引导时创建静态设备节点，因为 udev 不会管理在运行时创建的静态设备节点 \&。
+.RE
+.PP
+\fIC\fP
+.RS 4
+递归复制文件或目录，如果目标文件或目录尚不存在或目标目录为空 \&。请注意，如果目标目录已存在且不为空
+\&，则此命令不会进入子目录。相反，整个复制操作被跳过 \&。如果省略参数，则复制源目录 /usr/share/factory/ 中的同名文件
+\&。不遵循符号链接 \&。如果指定了 age 参数 \&，目录的内容将受到基于时间的清理。
+.RE
+.PP
+\fIx\fP
+.RS 4
+在清洁过程中忽略路径 \&。使用此类型将路径排除在使用 Age 参数 \& 控制的清理范围之外。请注意，此类型的行不会影响 \fIr\fP 或 \fIR\fP 行
+\& 的效果。这种类型的行接受 shell 风格的 globs 来代替正常的路径名 \&。
+.RE
+.PP
+\fIX\fP
+.RS 4
+在清洁过程中忽略路径 \&。使用此类型将路径排除在使用 Age 参数 \& 控制的清理范围之外。与 \fIx\fP 不同的是，如果 path
+是一个目录，这个参数不会排除目录的内容，而是只排除目录本身 \&。请注意，此类型的行不会影响 \fIr\fP 或 \fIR\fP 行 \& 的效果。这种类型的行接受
+shell 风格的 globs 来代替正常的路径名 \&。
+.RE
+.PP
+\fIr\fP
+.RS 4
+删除文件或目录 (如果存在) \&。这不能用于删除非空目录，为此使用 \fIR\fP\&。这种类型的行接受 shell 风格的 globs 来代替正常的路径名
+\&。不遵循符号链接 \&。
+.RE
+.PP
+\fIR\fP
+.RS 4
+递归删除路径及其所有子目录 (如果它是目录) \&。这种类型的行接受 shell 风格的 globs 来代替正常的路径名 \&。不遵循符号链接 \&。
+.RE
+.PP
+\fIz\fP
+.RS 4
+调整访问模式、用户和组所有权，并恢复文件或目录的 SELinux 安全上下文 (如果存在) \&。这种类型的行接受 shell 风格的 globs
+来代替正常的路径名 \&。不遵循符号链接 \&。
+.RE
+.PP
+\fIZ\fP
+.RS 4
+递归设置访问模式、用户和组所有权，并恢复文件或目录 (如果存在) 及其子目录和其中包含的文件 (如果适用) 的 SELinux 安全上下文
+\&。这种类型的行接受 shell 风格的 globs 来代替正常的路径名 \&。不遵循符号链接 \&。
+.RE
+.PP
+\fIt\fP
+.RS 4
+设置扩展属性，有关详细信息，请参见 \fBattr\fP(5)\&。参数字段应采用 \fInamespace\fP\&.\fIattribute\fP=\fIvalue\fP
+形式的一个或多个赋值表达式，示例见下文 \&。这种类型的行接受 shell 风格的 globs 来代替正常的路径名 \&。这对于设置 SMACK 标签
+\& 很有用。不遵循符号链接 \&。
+.sp
+请注意，可使用此行类型设置的扩展属性与可使用 \fIh\fP/\fIH\fP 设置的 Linux 文件属性是不同的概念，请参见下文 \&。
+.RE
+.PP
+\fIT\fP
+.RS 4
+与 \fIt\fP 相同，但递归操作 \&。
+.RE
+.PP
+\fIh\fP
+.RS 4
+设置 Linux file/directory 属性 \&。这种类型的行接受 shell 风格的 globs 来代替正常的路径名 \&。
+.sp
+参数字段的格式为 \fI[+\-=][aAcCdDeijPsStTu]\fP\&。前缀 \fI+\fP (默认) 导致添加属性; \fI\-\fP 导致属性被移除; \fI=\fP
+导致属性被设置为与后面的字母 \& 完全一样。字母 "aAcCdDeijPsStTu" 选择文件的新属性，有关详细信息，请参见
+\fBchattr\fP(1)\&。
+.sp
+仅将 \fI=\fP 作为参数传递会重置上面列出的所有文件属性 \&。必须指出的是，\fI=\fP 前缀将自身限制为此处列出的字母 \&
+对应的属性。所有其他属性将保持不变 \&。不遵循符号链接 \&。
+.sp
+请注意，可使用此行类型设置的 Linux 文件属性与可使用 \fIt\fP/\fIT\fP 设置的扩展属性是不同的概念，请参见上文 \&。
+.RE
+.PP
+\fIH\fP
+.RS 4
+与 \fIh\fP 相同，但递归操作 \&。
+.RE
+.PP
+\fIa\fP, \fIa+\fP
+.RS 4
+设置 POSIX ACL (访问控制列表)，请参见 \fBacl\fP(5)\&。如果以 \fI+\fP 为后缀，指定的条目将添加到现有集合 \&。
+\fBsystemd\-tmpfiles\fP 会根据文件的访问方式自动为用户和组添加所需的基本条目，除非基本条目已经存在或明确指定
+\&。如果没有明确指定或已经存在 \&，将添加掩码。这种类型的行接受 shell 风格的 globs 来代替正常的路径名
+\&。这对于允许对某些文件的额外访问很有用 \&。不遵循符号链接 \&。
+.RE
+.PP
+\fIA\fP, \fIA+\fP
+.RS 4
+与 \fIa\fP 和 \fIa+\fP 相同，但递归 \&。不遵循符号链接 \&。
+.RE
+.SS "Type Modifiers"
+.PP
+如果使用感叹号 ("!")，则此行仅在引导期间执行是安全的，并且可以破坏正在运行的系统 \&。没有感叹号的行被认为在任何时候都可以安全执行，例如
+\&.g\&。关于包升级 \&。 如果给定 \fB\-\-boot\fP 选项 \&，\fBsystemd\-tmpfiles\fP 将只考虑带感叹号的行。
+.PP
+例如:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 确保这些是默认创建的，以便其他人无法
+d /tmp/\&.X11\-unix 1777 root root 10d
+
+# 取消链接 X11 锁定文件
+r! /tmp/\&.X [0\-9]*\- 锁
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+与第一行相反，第二行会破坏正在运行的系统，并且只会使用 \fB\-\-boot\fP\& 执行。
+.PP
+如果使用负号 ("\-")，这行在 create (也只是 create) 时运行失败不会导致 \fBsystemd\-tmpfiles\fP 的执行返回错误
+\&。
+.PP
+例如:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 修改 sysfs 但不要 \*(Aqt 失败，如果我们在一个只读 /proc 的容器中
+w\- /proc/sys/vm/swappiness \- \- \- \- 10
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+如果使用等号 ("=")，则检查指定路径中现有对象的文件类型，如果不匹配则删除 \&。这包括任何隐式创建的父目录 (可以是目录或目录符号链接)
+\&。例如，如果有一个 FIFO 代替父路径组件之一，它将被替换为目录 \&。
+.PP
+如果使用了波浪字符 ("~")，则引用数 (i\&.e\&. 6th) 列为 \m[blue]\fBBase64 decoded\fP\m[]\&\s-2\u[1]\d\s+2 before use\&。只有可以写入文件内容的行类型 i\&.e\& 才支持此修饰符。
+\fIf\fP、\fIf+\fP、\fIw\fP、\fI+\fP\&。这对于将任意二进制数据 (包括换行符和 NUL 字节) 写入文件 \&
+很有用。请注意，如果使用此开关，则无论是在 Base64 解码 \& 之前还是之后，参数都不受说明符扩展的影响。
+.PP
+如果使用插入字符 ("^")，则参数 (i\&.e\&. 6th) 列采用服务凭证名称从 \& 中读取参数数据。有关凭证概念 \& 的详细信息，请参见
+\m[blue]\fBSystem and Service Credentials\fP\m[]\&\s-2\u[2]\d\s+2。只有可以写入文件内容的行类型 i\&.e\& 才支持此修饰符。
+\fIf\fP、\fIf+\fP、\fIw\fP、\fIw+\fP\&。这对于编写包含来自其他地方的内容的任意文件很有用，包括来自 VM 或进一步向上的容器管理器
+\&。如果没有为 \fBsystemd\-tmpfiles\fP 服务设置指定的凭据，则会自动跳过该行 \&。如果 "^" 和 "~" 组合在一起，Base64
+解码将应用于凭证内容 \&。
+.PP
+请注意，对于导致创建任何类型文件节点的所有行类型
+(i\&.e\&。如果需要，\fIf\fP/\fIF\fP、\fId\fP/\fID\fP/\fIv\fP/\fIq\fP/\fIQ\fP、\fIp\fP、\fIL\fP、\fIc\fP/\fIb\fP 和 \fIC\fP)
+前导目录将隐式创建，由具有访问权限的根拥有 0755\& 模式。为了以不同的模式或所有权创建它们，请确保添加适当的 \fId\fP 行 \&。
+.SS Path
+.PP
+文件系统路径规范支持简单说明符扩展，见下文 \&。路径 (扩展后) 必须是绝对路径 \&。
+.SS Mode
+.PP
+创建此文件或目录时使用的文件访问模式 \&。如果省略或设置为 "\-"，则使用默认值: 目录为 0755，所有其他文件对象为 0644\&。对于
+\fIz\fP、\fIZ\fP 行，省略或设置为 "\-" 时，不修改文件访问方式 \&。对于 \fIx\fP、\fIr\fP、\fIR\fP、\fIL\fP、\fIt\fP 和 \fIa\fP 行
+\&，忽略此参数。
+.PP
+可选地，如果以 "~" 为前缀，则访问模式将根据已为现有文件或目录设置的访问位进行屏蔽:
+如果现有文件未设置所有可执行位，则所有可执行位也将从新访问模式中删除
+\&。类似地，如果从旧访问模式中删除所有读取位，它们也会从新访问模式中删除，如果所有写入位都删除，它们也会从新访问模式中删除
+\&。此外，sticky/SUID/SGID 位被删除，除非应用于目录 \&。此功能与 \fIZ\fP\& 一起使用时特别有用。
+.PP
+可选地，如果以 ":" 为前缀，配置的访问模式仅在创建新 inode 时使用 \&。如果该行引用的 inode 已经存在，则其访问模式将保留不变 \&。
+.SS "User, Group"
+.PP
+用于此文件或目录的用户和组 \&。这可以是数字 ID 或 user/group 名称 \&。如果省略或设置为 "\-"，则使用调用
+\fBsystemd\-tmpfiles\fP 的用户和用户组 \&。对于 \fIz\fP 和 \fIZ\fP 行，当省略或设置为 "\-" 时，文件所有权不会被修改
+\&。\fIx\fP、\fIr\fP、\fIR\fP、\fIL\fP、\fIt\fP 和 \fIa\fP 行 \& 将忽略这些参数。
+.PP
+这个字段一般应该只引用系统 users/groups,i\&.e\&。保证在早期启动期间可解析的 users/groups\&。如果此字段引用
+users/groups 仅在稍后引导期间变得可解析 (i\&.e\&. 在 NIS、LDAP
+或类似的网络目录服务变得可用之后)，则该行声明的操作的执行可能会失败 \&。有关系统 user/group 定义要求的更多信息，另请参见
+\m[blue]\fBNotes on Resolvability of User and Group Names\fP\m[]\&\s-2\u[3]\d\s+2。
+.PP
+可选地，如果以 ":" 为前缀，配置的 user/group 信息仅在创建新 inode 时使用 \&。如果该行引用的 inode 已经存在，则其
+user/group 保留在原位未修改 \&。
+.SS Age
+.PP
+设置日期字段后，用于决定清理时要删除的文件。如果文件或目录早于当前时间减去 age 字段，则将其删除
+\&。字段格式是一系列整数，每个整数后跟相应时间单位的以下后缀之一: \fBs\fP、\fBm\fP 或 \fBmin\fP、\fBh\fP、\fBd\fP、\fBw\fP、\fBms\fP 和
+\fBus\fP，表示秒、分钟、小时、天、周，分别为毫秒和微秒 \&。也可以使用时间单位的全名 \&。
+.PP
+如果指定了多个整数和单位，则对时间值求和 \&。如果给出的整数没有元，则假定为 \fBs\fP\&。
+.PP
+当年龄设置为零时，文件被无条件清理 \&。
+.PP
+age 字段仅适用于以 \fId\fP、\fID\fP、\fIe\fP、\fIv\fP、\fIq\fP、\fIQ\fP、\fIC\fP、\fIx\fP 和 \fIX\fP\& 开头的行。如果省略或设置为
+"\-"，则不会进行自动清理 \&。
+.PP
+如果 age 字段以波浪字符 "~" 开头，则清理仅适用于指定目录内一级的文件和目录，而不适用于它紧邻的文件和目录 \&。
+.PP
+文件系统条目的年龄由其最后修改时间戳 (mtime)、最后访问时间戳 (atime) 和 (目录除外) 最后状态更改时间戳 (ctime)\&
+确定。默认情况下，如果这三个 (或两个) 值中的任何一个比当前时间减去 age 字段 \&
+更近，则它会阻止清理。要根据特定类型的文件时间戳限制删除，可以使用 age\-by 参数 \&。
+.PP
+age\-by 参数会覆盖用于年龄检查的时间戳类型。可以通过在年龄参数前加上一系列字符来指定时间戳类型和冒号 (":"):
+"\fIage\-by\fP\&.\&.\&.:\fIcleanup\-age\fP"\&。参数可以由 \fBa\fP (\fBA\fP (目录)、\fBb\fP (\fBB\fP
+(目录)、\fBc\fP (\fBC\fP (目录) 或 \fBm\fP (\fBM\fP (目录) \& 组成。分别表示文件系统条目的访问、创建、最后状态更改和最后修改时间
+\&。小写字母表示文件应考虑给定的时间戳类型，而大写字母表示目录应考虑给定的时间戳类型 \&。有关时间戳类型的更多详细信息，请参见
+\fBstatx\fP(2) 文件时间戳字段。
+.PP
+如果不指定，age\-by 字段默认为 \fBabcmABM\fP, i\&.e\&。默认情况下，所有文件时间戳都会被考虑在内，目录的最后状态更改时间戳
+(ctime) 除外 \&。这是因为老化逻辑本身会在删除其中的文件时更改
+ctime\&。为确保运行老化逻辑不会反馈到自身的下一次迭代，默认情况下会忽略目录的 ctime\&。
+.PP
+例如:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# 创建和修改的文件以及访问的目录超过
+# 一个小时前在 "/tmp/foo/bar"，受到基于时间的清理 \&。
+d /tmp/foo/bar \- \- \- \- bmA:1h \-
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+请注意，在运行老化算法时，\*(Aqshared\*(Aq BSD 文件锁定 (请参见 \fBflock\fP(2)) 是在算法下降到的每个目录
+(以及该目录下的每个目录，等等) \&。如果老化算法发现某个目录已被锁定，则跳过它 (以及它下面的所有内容)
+\&。应用程序可以使用它暂时从老化算法中排除某些目录子树: 应用程序可以自己使用 BSD 文件锁，只要它们保持目录老化，它下面的所有内容都被禁用 \&。
+.SS Argument
+.PP
+对于 \fIL\fP 行，确定符号链接 \& 的目标路径。对于 \fIc\fP 和 \fIb\fP，确定设备节点的 major/minor，major 和 minor
+格式为整数，由 ":" 分隔，e\&.g\&。 `1:3`\&。对于 \fIf\fP、\fIF\fP 和 \fIw\fP，参数可用于指定写入文件的短字符串，后缀为换行符
+\&。对于 \fIC\fP，指定源文件或目录 \&。对于 \fIt\fP 和 \fIT\fP，确定要设置的扩展属性 \&。对于 \fIa\fP 和 \fIA\fP，确定要设置的
+ACL 属性 \&。对于 \fIh\fP 和 \fIH\fP，确定要设置的文件属性 \&。忽略所有其他行 \&。
+.PP
+该字段可以包含说明符，见下文 \&。
+.SH SPECIFIERS
+.PP
+可以在 "path" 和 "argument" 字段中使用说明符 \&。未知或无法解析的说明符被视为无效配置 \&。理解以下扩展:
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBTable\ \&1.\ \&Specifiers available\fP
+.TS
+allbox tab(:);
+lB lB lB.
+T{
+Specifier
+T}:T{
+Meaning
+T}:T{
+Details
+T}
+.T&
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l
+l l l.
+T{
+"%a"
+T}:T{
+Architecture
+T}:T{
+A short string identifying the architecture of the local system\&. A string such as \fBx86\fP, \fBx86\-64\fP or \fBarm64\fP\&. See the architectures defined for \fIConditionArchitecture=\fP in \fBsystemd.unit\fP(5) for a full list\&.
+T}
+T{
+"%A"
+T}:T{
+Operating system image version
+T}:T{
+The operating system image version identifier of the running system, as read from the \fIIMAGE_VERSION=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%b"
+T}:T{
+Boot ID
+T}:T{
+The boot ID of the running system, formatted as string\&. See \fBrandom\fP(4) for more information\&.
+T}
+T{
+"%B"
+T}:T{
+Operating system build ID
+T}:T{
+The operating system build identifier of the running system, as read from the \fIBUILD_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%C"
+T}:T{
+System or user cache directory
+T}:T{
+In \fB\-\-user\fP mode, this is the same as \fI$XDG_CACHE_HOME\fP, and /var/cache otherwise\&.
+T}
+T{
+"%g"
+T}:T{
+User group
+T}:T{
+This is the name of the group running the command\&. In case of the system instance this resolves to "root"\&.
+T}
+T{
+"%G"
+T}:T{
+User GID
+T}:T{
+This is the numeric GID of the group running the command\&. In case of the system instance this resolves to \fB0\fP\&.
+T}
+T{
+"%h"
+T}:T{
+User home directory
+T}:T{
+This is the home directory of the user running the command\&. In case of the system instance this resolves to "/root"\&.
+T}
+T{
+"%H"
+T}:T{
+Host name
+T}:T{
+The hostname of the running system\&.
+T}
+T{
+"%l"
+T}:T{
+Short host name
+T}:T{
+The hostname of the running system, truncated at the first dot to remove any domain component\&.
+T}
+T{
+"%L"
+T}:T{
+System or user log directory
+T}:T{
+In \fB\-\-user\fP mode, this is the same as \fI$XDG_CONFIG_HOME\fP with /log appended, and /var/log otherwise\&.
+T}
+T{
+"%m"
+T}:T{
+Machine ID
+T}:T{
+The machine ID of the running system, formatted as string\&. See \fBmachine\-id\fP(5) for more information\&.
+T}
+T{
+"%M"
+T}:T{
+Operating system image identifier
+T}:T{
+The operating system image identifier of the running system, as read from the \fIIMAGE_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%o"
+T}:T{
+Operating system ID
+T}:T{
+The operating system identifier of the running system, as read from the \fIID=\fP field of /etc/os\-release\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%S"
+T}:T{
+System or user state directory
+T}:T{
+In \fB\-\-user\fP mode, this is the same as \fI$XDG_CONFIG_HOME\fP, and /var/lib otherwise\&.
+T}
+T{
+"%t"
+T}:T{
+System or user runtime directory
+T}:T{
+In \fB\-\-user\fP mode, this is the same \fI$XDG_RUNTIME_DIR\fP, and /run/ otherwise\&.
+T}
+T{
+"%T"
+T}:T{
+Directory for temporary files
+T}:T{
+This is either /tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%u"
+T}:T{
+User name
+T}:T{
+This is the name of the user running the command\&. In case of the system instance this resolves to "root"\&.
+T}
+T{
+"%U"
+T}:T{
+User UID
+T}:T{
+This is the numeric UID of the user running the command\&. In case of the system instance this resolves to \fB0\fP\&.
+T}
+T{
+"%v"
+T}:T{
+Kernel release
+T}:T{
+Identical to \fBuname \-r\fP output\&.
+T}
+T{
+"%V"
+T}:T{
+Directory for larger and persistent temporary files
+T}:T{
+This is either /var/tmp or the path "$TMPDIR", "$TEMP" or "$TMP" are set to\&. (Note that the directory may be specified without a trailing slash\&.)
+T}
+T{
+"%w"
+T}:T{
+Operating system version ID
+T}:T{
+The operating system version identifier of the running system, as read from the \fIVERSION_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%W"
+T}:T{
+Operating system variant ID
+T}:T{
+The operating system variant identifier of the running system, as read from the \fIVARIANT_ID=\fP field of /etc/os\-release\&. If not set, resolves to an empty string\&. See \fBos\-release\fP(5) for more information\&.
+T}
+T{
+"%%"
+T}:T{
+Single percent sign
+T}:T{
+Use "%%" in place of "%" to specify a single percent sign\&.
+T}
+.TE
+.sp 1
+.SH EXAMPLES
+.PP
+\fBExample\ \&1.\ \&Create directories with specific mode and ownership\fP
+.PP
+\fBscreen\fP(1)，需要在启动时创建两个具有特定模式和所有权的目录:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/tmpfiles\&.d/screen\&.conf
+d /run/screens 1777 根屏幕 10d
+d /run/uscreens 0755 根屏幕 10d12h
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+/run/screens 和 /run/uscreens 的内容将在 10 和 10\ (分别为 12 天 \&) 后清理。
+.PP
+\fBExample\ \&2.\ \&Create a directory with a SMACK attribute\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+D /run/cups \- \- \- \-
+t /run/cups \- \- \- \- security\&.SMACK64=printing user\&.attr\-with\-spaces="foo bar"
+      
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+该目录将由 root 拥有并具有默认模式 \&。它的内容不受基于时间的清理，但会在 \fBsystemd\-tmpfiles \-\-remove\fP
+运行时被删除 \&。
+.PP
+\fBExample\ \&3.\ \&Create a directory and prevent its contents from cleanup\fP
+.PP
+\fBabrt\fP(1)，需要一个在启动时创建的具有特定模式和所有权的目录，其内容应该从应用于 /var/tmp 内容的自动清理中保留下来:
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/tmpfiles\&.d/tmp\&.conf
+d /var/tmp 1777 根根 30d
+.fi
+.if  n \{\
+.RE
+.\}
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/tmpfiles\&.d/abrt\&.conf
+d /var/tmp/abrt 0755 中断中断 \-
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+\fBExample\ \&4.\ \&Apply clean up during boot and based on time\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/tmpfiles\&.d/dnf\&.conf
+r! /var/cache/dnf/*/*/download_lock\&.pid
+r! /var/cache/dnf/*/*/metadata_lock\&.pid
+r! /var/lib/dnf/rpmdb_lock\&.pid
+e  /var/cache/dnf/ \- \- \- 30d
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+锁定文件将在引导期间删除。/var/cache/dnf/ 中的任何文件和目录在 30 天内未被访问后将被删除 \&。
+.PP
+\fBExample\ \&5.\ \&Empty the contents of a cache directory on boot\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+# /usr/lib/tmpfiles\&.d/krb5rcache\&.conf
+电子! /var/cache/krb5rcache\-\-\-0
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+/var/cache/krb5rcache/ 中的任何文件和子目录都将在启动时被删除。不会创建目录 \&。
+.PP
+\fBExample\ \&6.\ \&Provision SSH public key access for root user via Credentials in QEMU\fP
+.sp
+.if  n \{\
+.RS 4
+.\}
+.nf
+\-smbios type=11,value=io\&.systemd\&.credential\&.binary:tmpfiles\&.extra=$(echo "f~ /root/\&.ssh/authorized_keys 700 root root \- $(ssh\-add \-L | base64 \-w 0)" | base64 \-w 0)
+.fi
+.if  n \{\
+.RE
+.\}
+.PP
+通过将此行传递给 QEMU，当前用户的公钥将在 base64 中编码，添加到 tmpfiles\&.d 行，告诉 systemd\-tmpfiles
+将其解码为 /root/\&.ssh/authorized_keys，在 base64 中对该行本身进行编码并将其作为凭据传递，systemd
+在启动时从 SMBIOS 获取该凭据 \&。
+.SH "/RUN/ AND /VAR/RUN/"
+.PP
+/var/run/ is a deprecated symlink to /run/, and applications should use the
+latter\&.  \fBsystemd\-tmpfiles\fP will warn if /var/run/ is used\&.
+.SH "SEE ALSO"
+.PP
+\fBsystemd\fP(1), \fBsystemd\-tmpfiles\fP(8), \fBsystemd\-delta\fP(1),
+\fBsystemd.exec\fP(5), \fBattr\fP(5), \fBgetfattr\fP(1), \fBsetfattr\fP(1),
+\fBsetfacl\fP(1), \fBgetfacl\fP(1), \fBchattr\fP(1), \fBbtrfs\-subvolume\fP(8),
+\fBbtrfs\-qgroup\fP(8)
+.SH NOTES
+.IP " 1." 4
+Base64 解码
+.RS 4
+\%https://www.rfc\-editor.org/rfc/rfc4648.html
+.RE
+.IP " 2." 4
+系统和服务凭证
+.RS 4
+\%https://systemd.io/CREDENTIALS
+.RE
+.IP " 3." 4
+关于用户名和组名可解析性的说明
+.RS 4
+\%https://systemd.io/UIDS\-GIDS/#notes\-on\-resolvability\-of\-user\-and\-group\-names
+.RE
+.PP
+.SH [手册页中文版]
+.PP
+本翻译为免费文档；阅读
+.UR https://www.gnu.org/licenses/gpl-3.0.html
+GNU 通用公共许可证第 3 版
+.UE
+或稍后的版权条款。因使用该翻译而造成的任何问题和损失完全由您承担。
+.PP
+该中文翻译由 wtklbm
+.B <wtklbm@gmail.com>
+根据个人学习需要制作。
+.PP
+项目地址:
+.UR \fBhttps://github.com/wtklbm/manpages-chinese\fR
+.ME 。
